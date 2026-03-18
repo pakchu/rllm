@@ -1,0 +1,72 @@
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from training.calibrate_vlm_bias import (
+    _frange_inclusive,
+    calibrate_action_biases,
+    load_action_scores,
+    score_metrics,
+)
+from training.eval_vlm_policy import summarize_action_metrics, select_action_from_scores
+
+
+class TestCalibrateVlmBias(unittest.TestCase):
+    def test_frange_inclusive(self):
+        vals = _frange_inclusive(-0.2, 0.2, 0.1)
+        self.assertEqual(vals, [-0.2, -0.1, 0.0, 0.1, 0.2])
+
+    def test_load_action_scores(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "rep.json"
+            p.write_text(
+                json.dumps(
+                    {
+                        "action_scores": [
+                            {"target": "BUY", "scores": {"BUY": 0.2, "HOLD": 0.1, "SELL": 0.0}}
+                        ]
+                    }
+                )
+            )
+            rows = load_action_scores([str(p)])
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["target"], "BUY")
+
+    def test_calibrate_action_biases_improves_objective(self):
+        rows = [
+            {"target": "BUY", "scores": {"BUY": 0.0, "HOLD": 0.1, "SELL": 0.2}},
+            {"target": "BUY", "scores": {"BUY": 0.0, "HOLD": 0.2, "SELL": 0.3}},
+            {"target": "SELL", "scores": {"BUY": 0.2, "HOLD": 0.1, "SELL": 0.0}},
+            {"target": "SELL", "scores": {"BUY": 0.3, "HOLD": 0.2, "SELL": 0.0}},
+            {"target": "HOLD", "scores": {"BUY": 0.0, "HOLD": 0.2, "SELL": 0.1}},
+            {"target": "HOLD", "scores": {"BUY": 0.1, "HOLD": 0.3, "SELL": 0.2}},
+        ]
+        report = calibrate_action_biases(
+            rows=rows,
+            buy_min=-0.4,
+            buy_max=0.4,
+            buy_step=0.2,
+            hold_min=-0.4,
+            hold_max=0.4,
+            hold_step=0.2,
+            sell_min=-0.4,
+            sell_max=0.4,
+            sell_step=0.2,
+            top_k=3,
+        )
+        best = report["best"]
+        preds0 = []
+        targets = []
+        for r in rows:
+            p0, _ = select_action_from_scores(r["scores"], action_biases={"BUY": 0.0, "HOLD": 0.0, "SELL": 0.0})
+            preds0.append(p0)
+            targets.append(r["target"])
+        m0 = summarize_action_metrics(targets=targets, predictions=preds0)
+        baseline_obj = score_metrics(m0)
+        self.assertGreaterEqual(best["objective"], baseline_obj)
+        self.assertEqual(len(report["top_candidates"]), 3)
+
+
+if __name__ == "__main__":
+    unittest.main()

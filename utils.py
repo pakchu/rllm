@@ -77,3 +77,75 @@ def max_drawdown(history):
     # MDD는 드로우다운의 최소값(음수)이므로 절댓값으로 반환
     mdd = np.min(drawdowns)
     return f'{-mdd * 100:.4f}'
+
+
+def log_returns(series):
+    """Compute log returns from a positive-valued series."""
+    values = np.asarray(series, dtype=dtype)
+    if len(values) < 2:
+        return np.asarray([], dtype=dtype)
+    if np.any(values <= 0):
+        raise ValueError("log_returns requires strictly positive values")
+    return np.log(values[1:] / values[:-1])
+
+
+def range_volatility_pct(highs, lows):
+    """
+    Compute `(max_high - min_low) / midpoint` where midpoint is
+    `(max_high + min_low)/2`.
+    """
+    highs_arr = np.asarray(highs, dtype=dtype)
+    lows_arr = np.asarray(lows, dtype=dtype)
+    if len(highs_arr) == 0 or len(lows_arr) == 0:
+        raise ValueError("highs/lows must be non-empty")
+    max_high = np.max(highs_arr)
+    min_low = np.min(lows_arr)
+    midpoint = (max_high + min_low) / dtype(2.0)
+    if midpoint == 0:
+        return 0.0
+    return float((max_high - min_low) / midpoint)
+
+
+def sharpe_ratio_log(log_rets, periods_per_year, risk_free_rate=0.0):
+    """Annualized Sharpe ratio for log-return series."""
+    arr = np.asarray(log_rets, dtype=dtype)
+    if len(arr) == 0:
+        return 0.0
+    rf_per_period = dtype(risk_free_rate) / dtype(periods_per_year)
+    excess = arr - rf_per_period
+    std = np.std(excess)
+    if std == 0:
+        return 0.0
+    return float((np.mean(excess) / std) * np.sqrt(dtype(periods_per_year)))
+
+
+def min_sharpe(equity, underlying, rf=0.0, periods_per_year=365):
+    """
+    Compute `min(Sharpe_cash, Sharpe_underlying)`.
+
+    - Sharpe_cash: excess log-return Sharpe against risk-free rate.
+    - Sharpe_underlying: relative Sharpe against underlying benchmark.
+    """
+    strategy_log = log_returns(equity)
+    benchmark_log = log_returns(underlying)
+
+    n = min(len(strategy_log), len(benchmark_log))
+    if n == 0:
+        return 0.0
+    strategy_log = strategy_log[-n:]
+    benchmark_log = benchmark_log[-n:]
+
+    sharpe_cash = sharpe_ratio_log(
+        strategy_log, periods_per_year=periods_per_year, risk_free_rate=rf
+    )
+
+    std_strategy = np.std(strategy_log)
+    if std_strategy == 0:
+        sharpe_underlying = 0.0
+    else:
+        sharpe_underlying = float(
+            ((np.mean(strategy_log) - np.mean(benchmark_log)) / std_strategy)
+            * np.sqrt(dtype(periods_per_year))
+        )
+
+    return float(min(sharpe_cash, sharpe_underlying))
