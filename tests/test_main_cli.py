@@ -89,6 +89,36 @@ class TestMainCLI(unittest.TestCase):
         self.assertEqual(args.image_render_backend, "fast")
         self.assertFalse(args.unfreeze_visual_backbone)
 
+    def test_parse_train_vlm_action_schema(self):
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "train-vlm-smoke",
+                "--action-schema",
+                "trade_gate",
+                "--prompt-style",
+                "symbolic",
+            ]
+        )
+        self.assertEqual(args.cmd, "train-vlm-smoke")
+        self.assertEqual(args.action_schema, "trade_gate")
+        self.assertEqual(args.prompt_style, "symbolic")
+
+    def test_parse_eval_vlm_action_schema(self):
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "eval-vlm",
+                "--action-schema",
+                "trade_gate",
+                "--decision-mode",
+                "likelihood",
+            ]
+        )
+        self.assertEqual(args.cmd, "eval-vlm")
+        self.assertEqual(args.action_schema, "trade_gate")
+        self.assertEqual(args.decision_mode, "likelihood")
+
     def test_parse_backtest(self):
         parser = build_parser()
         args = parser.parse_args(

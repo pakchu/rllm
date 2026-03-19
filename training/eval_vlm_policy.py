@@ -11,8 +11,10 @@ import numpy as np
 
 from models.option_b_vlm import (
     AUTO_MODEL_NAME,
-    TRADING_ACTION_SYSTEM_PROMPT,
     auto_select_vlm_model,
+    get_action_labels,
+    get_default_action_label,
+    make_action_system_prompt,
     parse_action_label,
 )
 from training.data_sources import load_market_data
@@ -135,6 +137,7 @@ def evaluate_vlm_policy(
     window_size: int = 96,
     resolution: int = 224,
     cache_dir: str | None = "data/image_cache_vlm",
+    action_schema: str = "buy_hold_sell",
     prompt_style: str = "numeric",
     prompt_feature_mode: str = "basic_v0",
     hold_band: float = 0.0005,
@@ -176,6 +179,9 @@ def evaluate_vlm_policy(
     from transformers import AutoModelForImageTextToText, AutoProcessor
 
     chosen_model = _resolve_eval_model_name(model_name)
+    labels = get_action_labels(action_schema)
+    default_label = get_default_action_label(action_schema)
+    system_prompt = make_action_system_prompt(action_schema)
     market_df = load_market_data(
         source=source,
         input_csv=input_csv,
@@ -195,6 +201,7 @@ def evaluate_vlm_policy(
         window_size=window_size,
         resolution=resolution,
         cache_dir=cache_dir,
+        action_schema=action_schema,
         prompt_style=prompt_style,
         prompt_feature_mode=prompt_feature_mode,
         hold_band=hold_band,
@@ -244,18 +251,22 @@ def evaluate_vlm_policy(
     if mode not in {"generate", "likelihood"}:
         raise ValueError(f"decision_mode must be one of {{'generate','likelihood'}}, got {decision_mode}")
 
-    action_biases = {
+    action_biases = {label: 0.0 for label in labels}
+    legacy_biases = {
         "BUY": float(action_bias_buy),
         "HOLD": float(action_bias_hold),
         "SELL": float(action_bias_sell),
     }
+    for label, value in legacy_biases.items():
+        if label in action_biases:
+            action_biases[label] = float(value)
 
     action_token_ids: dict[str, "torch.Tensor"] = {}
     if mode == "likelihood":
         tokenizer = getattr(processor, "tokenizer", None)
         if tokenizer is None:
             raise ValueError("Processor must expose tokenizer for likelihood decision_mode.")
-        for label in ACTION_LABELS:
+        for label in labels:
             ids = tokenizer.encode(label, add_special_tokens=False)
             if not ids:
                 ids = tokenizer.encode(f" {label}", add_special_tokens=False)
@@ -286,7 +297,7 @@ def evaluate_vlm_policy(
         meta: list[tuple[int, str, int]] = []
         for i in range(batch_n):
             base_ids = prompt_ids[i, : prompt_lens[i]]
-            for label in ACTION_LABELS:
+            for label in labels:
                 a_ids = action_token_ids[label]
                 seq = torch.cat([base_ids, a_ids], dim=0)
                 seqs.append(seq)
@@ -320,18 +331,18 @@ def evaluate_vlm_policy(
                 start = 0
                 for count in image_patch_counts:
                     block = v[start : start + count]
-                    for _ in ACTION_LABELS:
+                    for _ in labels:
                         blocks.append(block)
                     start += count
                 packed_inputs[k] = torch.cat(blocks, dim=0)
             else:
-                packed_inputs[k] = v.repeat_interleave(len(ACTION_LABELS), dim=0)
+                packed_inputs[k] = v.repeat_interleave(len(labels), dim=0)
 
         outputs = model(**packed_inputs)
         log_probs = F.log_softmax(outputs.logits, dim=-1)
 
         scores_per_sample: list[dict[str, float]] = [
-            {label: float("-inf") for label in ACTION_LABELS} for _ in range(batch_n)
+            {label: float("-inf") for label in labels} for _ in range(batch_n)
         ]
         for row_idx, (sample_idx, label, act_len) in enumerate(meta):
             a_ids = action_token_ids[label]
@@ -358,7 +369,7 @@ def evaluate_vlm_policy(
             batch_images = []
             for s in batch_samples:
                 messages = [
-                    {"role": "system", "content": TRADING_ACTION_SYSTEM_PROMPT},
+                    {"role": "system", "content": system_prompt},
                     {
                         "role": "user",
                         "content": [{"type": "image"}, {"type": "text", "text": s.prompt}],
@@ -395,13 +406,17 @@ def evaluate_vlm_policy(
                 for s, one_out, prompt_len in zip(batch_samples, out, prompt_lens):
                     gen = one_out[int(prompt_len) :]
                     txt = processor.decode(gen, skip_special_tokens=True).strip()
-                    pred = parse_action_label(txt, default="HOLD")
+                    pred = parse_action_label(txt, default=default_label, labels=labels)
                     preds.append(pred)
                     raw_texts.append(txt)
             else:
                 batch_scores = _score_actions_likelihood(inputs)
                 for s, scores in zip(batch_samples, batch_scores):
-                    pred, adjusted = select_action_from_scores(scores, action_biases=action_biases)
+                    pred, adjusted = select_action_from_scores(
+                        scores,
+                        action_biases=action_biases,
+                        labels=labels,
+                    )
                     txt = json.dumps({"scores": scores, "adjusted": adjusted}, ensure_ascii=False)
                     preds.append(pred)
                     raw_texts.append(txt)
@@ -421,7 +436,7 @@ def evaluate_vlm_policy(
             if done % 20 == 0 or done == len(samples):
                 print(f"[eval-vlm] {done}/{len(samples)}")
 
-    metrics = summarize_action_metrics(targets=targets, predictions=preds, labels=ACTION_LABELS)
+    metrics = summarize_action_metrics(targets=targets, predictions=preds, labels=labels)
     report = {
         "model": chosen_model,
         "adapter_dir": used_adapter,
@@ -437,6 +452,7 @@ def evaluate_vlm_policy(
         "window_size": int(window_size),
         "sample_mode": sample_mode,
         "sample_seed": int(sample_seed),
+        "action_schema": str(action_schema),
         "prompt_style": str(prompt_style),
         "prompt_feature_mode": str(prompt_feature_mode),
         "hold_band": float(hold_band),
@@ -514,6 +530,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--window-size", type=int, default=96)
     parser.add_argument("--resolution", type=int, default=224)
     parser.add_argument("--cache-dir", type=str, default="data/image_cache_vlm")
+    parser.add_argument(
+        "--action-schema",
+        type=str,
+        default="buy_hold_sell",
+        choices=["buy_hold_sell", "trade_gate"],
+    )
     parser.add_argument(
         "--prompt-style",
         type=str,
@@ -612,6 +634,7 @@ def main() -> None:
         window_size=args.window_size,
         resolution=args.resolution,
         cache_dir=args.cache_dir or None,
+        action_schema=args.action_schema,
         prompt_style=args.prompt_style,
         prompt_feature_mode=args.prompt_feature_mode,
         hold_band=args.hold_band,

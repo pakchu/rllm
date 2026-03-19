@@ -5,9 +5,12 @@ import pandas as pd
 
 from training.vlm_trading_data import (
     action_from_next_return,
+    action_from_trade_gate_next_return,
+    action_from_trade_gate_utilities,
     action_from_utilities,
     build_vlm_training_samples,
     completion_text_to_label,
+    completion_text_to_label_for_schema,
     compute_action_utilities,
     compute_dynamic_risk_weight,
     reward_from_action,
@@ -62,6 +65,9 @@ class TestVlmTradingData(unittest.TestCase):
         self.assertEqual(action_from_next_return(-0.01), "SELL")
         self.assertEqual(action_from_next_return(0.0), "HOLD")
         self.assertEqual(action_from_utilities(0.004, 0.0039, -0.01, hold_margin=0.0002), "HOLD")
+        self.assertEqual(action_from_trade_gate_next_return(0.01), "TRADE")
+        self.assertEqual(action_from_trade_gate_next_return(0.0), "NO_TRADE")
+        self.assertEqual(action_from_trade_gate_utilities(0.004, 0.0039, -0.01, hold_margin=0.0002), "NO_TRADE")
 
     def test_completion_text_to_label(self):
         self.assertEqual(completion_text_to_label("I choose BUY"), "BUY")
@@ -79,6 +85,10 @@ class TestVlmTradingData(unittest.TestCase):
                 ]
             ),
             "SELL",
+        )
+        self.assertEqual(
+            completion_text_to_label_for_schema("NO_TRADE", action_schema="trade_gate"),
+            "NO_TRADE",
         )
 
     def test_reward_sign(self):
@@ -121,6 +131,29 @@ class TestVlmTradingData(unittest.TestCase):
             utility_gap_scale=400.0,
         )
         self.assertGreater(r_buy, r_sell)
+
+    def test_reward_trade_gate_utility_mode(self):
+        r_trade = reward_from_action(
+            "TRADE",
+            "TRADE",
+            0.0,
+            reward_mode="utility",
+            action_utility_buy=0.003,
+            action_utility_hold=0.0,
+            action_utility_sell=-0.002,
+            action_schema="trade_gate",
+        )
+        r_no_trade = reward_from_action(
+            "NO_TRADE",
+            "TRADE",
+            0.0,
+            reward_mode="utility",
+            action_utility_buy=0.003,
+            action_utility_hold=0.0,
+            action_utility_sell=-0.002,
+            action_schema="trade_gate",
+        )
+        self.assertGreater(r_trade, r_no_trade)
 
     def test_compute_action_utilities_cost_and_risk(self):
         low_risk = compute_action_utilities(
@@ -222,6 +255,24 @@ class TestVlmTradingData(unittest.TestCase):
         self.assertIn("Candle Pattern:", prompt)
         self.assertIn("Order Flow:", prompt)
         self.assertIn("Tags:", prompt)
+
+    def test_build_samples_trade_gate_schema(self):
+        samples = build_vlm_training_samples(
+            market_df=_oscillating_market_df(),
+            timeframe="5m",
+            window_size=32,
+            resolution=32,
+            cache_dir=None,
+            max_samples=8,
+            sample_mode="balanced",
+            prompt_style="symbolic",
+            prompt_feature_mode="engineered_v1",
+            action_schema="trade_gate",
+        )
+        self.assertEqual(len(samples), 8)
+        self.assertTrue(all(s.target_action in {"TRADE", "NO_TRADE"} for s in samples))
+        records = samples_to_hf_records(samples, action_schema="trade_gate")
+        self.assertIn("NO_TRADE", records[0]["prompt"][0]["content"])
 
     def test_build_samples_random_mode_is_seeded(self):
         s1 = build_vlm_training_samples(

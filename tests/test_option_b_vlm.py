@@ -6,6 +6,8 @@ from models.option_b_vlm import (
     auto_select_vlm_model,
     build_trading_prompt,
     detect_gpu_vram_gb,
+    get_action_labels,
+    make_action_system_prompt,
     parse_action_label,
     recommended_vlm_models,
 )
@@ -41,6 +43,25 @@ class TestOptionBVLM(unittest.TestCase):
             "SELL",
         )
         self.assertEqual(action_to_id("BUY"), 0)
+
+    def test_trade_gate_prompt_and_parse(self):
+        prompt = build_trading_prompt(
+            TradingPromptState(
+                timeframe="5m",
+                position_size_pct=0.0,
+                last_entry_price=0.0,
+                range_volatility_pct=0.02,
+            ),
+            prompt_style="numeric",
+            action_schema="trade_gate",
+        )
+        self.assertIn("TRADE/NO_TRADE", prompt)
+        self.assertEqual(get_action_labels("trade_gate"), ("TRADE", "NO_TRADE"))
+        self.assertIn("NO_TRADE", make_action_system_prompt("trade_gate"))
+        self.assertEqual(
+            parse_action_label("Final answer: NO_TRADE", default="NO_TRADE", labels=("TRADE", "NO_TRADE")),
+            "NO_TRADE",
+        )
 
     def test_symbolic_prompt_style(self):
         prompt = build_trading_prompt(

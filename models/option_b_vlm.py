@@ -11,12 +11,52 @@ from typing import Iterable
 RECOMMENDED_VLM_MODEL = "Qwen/Qwen3-VL-8B-Instruct"
 FALLBACK_VLM_MODEL = "Qwen/Qwen2.5-VL-7B-Instruct"
 ACTION_LABELS = ("BUY", "HOLD", "SELL")
+ACTIONS_TRADE_GATE = ("TRADE", "NO_TRADE")
+ACTION_SCHEMA_LABELS = {
+    "buy_hold_sell": ACTION_LABELS,
+    "trade_gate": ACTIONS_TRADE_GATE,
+}
+ACTION_SCHEMA_DEFAULTS = {
+    "buy_hold_sell": "HOLD",
+    "trade_gate": "NO_TRADE",
+}
 AUTO_MODEL_NAME = "auto"
-TRADING_ACTION_SYSTEM_PROMPT = (
-    "You are a BTCUSDT trading policy. "
-    "Reply with exactly one uppercase token: BUY, HOLD, or SELL. "
-    "Do not include any other words, punctuation, or explanation."
-)
+
+
+def get_action_labels(action_schema: str = "buy_hold_sell") -> tuple[str, ...]:
+    """Resolve action label set for the selected schema."""
+    key = str(action_schema).strip().lower()
+    if key not in ACTION_SCHEMA_LABELS:
+        raise ValueError(
+            "action_schema must be one of "
+            f"{sorted(ACTION_SCHEMA_LABELS)}, got {action_schema}"
+        )
+    return ACTION_SCHEMA_LABELS[key]
+
+
+def get_default_action_label(action_schema: str = "buy_hold_sell") -> str:
+    """Default fallback label for the selected action schema."""
+    key = str(action_schema).strip().lower()
+    if key not in ACTION_SCHEMA_DEFAULTS:
+        raise ValueError(
+            "action_schema must be one of "
+            f"{sorted(ACTION_SCHEMA_DEFAULTS)}, got {action_schema}"
+        )
+    return ACTION_SCHEMA_DEFAULTS[key]
+
+
+def make_action_system_prompt(action_schema: str = "buy_hold_sell") -> str:
+    """Strict system prompt for the selected action schema."""
+    labels = get_action_labels(action_schema)
+    labels_text = ", ".join(labels[:-1]) + f", or {labels[-1]}" if len(labels) > 1 else labels[0]
+    return (
+        "You are a BTCUSDT trading policy. "
+        f"Reply with exactly one uppercase token: {labels_text}. "
+        "Do not include any other words, punctuation, or explanation."
+    )
+
+
+TRADING_ACTION_SYSTEM_PROMPT = make_action_system_prompt("buy_hold_sell")
 
 
 @dataclass(frozen=True)
@@ -92,7 +132,11 @@ def _format_numeric_value(label: str, value: float) -> str:
     return f"{label}: {value:.4f}"
 
 
-def build_trading_prompt(state: TradingPromptState, prompt_style: str = "numeric") -> str:
+def build_trading_prompt(
+    state: TradingPromptState,
+    prompt_style: str = "numeric",
+    action_schema: str = "buy_hold_sell",
+) -> str:
     """Build a strict action-only prompt for VLM policy inference."""
     style = str(prompt_style).strip().lower()
     if style not in {"numeric", "symbolic", "hybrid"}:
@@ -100,6 +144,8 @@ def build_trading_prompt(state: TradingPromptState, prompt_style: str = "numeric
             "prompt_style must be one of {'numeric','symbolic','hybrid'}, "
             f"got {prompt_style}"
         )
+    action_labels = get_action_labels(action_schema)
+    action_text = "/".join(action_labels)
 
     numeric_lines = [
         _format_numeric_value("Position Size (%)", float(state.position_size_pct)),
@@ -136,38 +182,60 @@ def build_trading_prompt(state: TradingPromptState, prompt_style: str = "numeric
         f"Timeframe: {state.timeframe}\n"
         "Chart: [IMAGE]\n"
         f"{feature_block}\n\n"
-        "Output format: one uppercase token only (BUY/HOLD/SELL).\n"
+        f"Output format: one uppercase token only ({action_text}).\n"
         "Answer:"
     )
 
 
-def parse_action_label(text: str, default: str = "HOLD") -> str:
+def parse_action_label(
+    text: str,
+    default: str | None = None,
+    labels: Iterable[str] = ACTION_LABELS,
+) -> str:
     """
     Parse action label from arbitrary model output.
 
-    Uses whole-token regex matching and prefers the last matched token,
-    which is more robust when prompts contain "BUY/HOLD/SELL" instruction text.
+    Uses whole-token regex matching across the supplied label set and
+    prefers the last matched token, which is more robust when prompts
+    contain instruction text mentioning the label choices.
     """
+    label_tuple = tuple(str(label).upper() for label in labels)
+    if not label_tuple:
+        raise ValueError("labels must not be empty")
     upper = text.upper()
-    matches = re.findall(r"\b(BUY|HOLD|SELL)\b", upper)
+    pattern = r"(?<![A-Z0-9_])(" + "|".join(
+        re.escape(label) for label in sorted(label_tuple, key=len, reverse=True)
+    ) + r")(?![A-Z0-9_])"
+    matches = re.findall(pattern, upper)
     if matches:
         return matches[-1]
-    return default
+    if default is None:
+        return label_tuple[0]
+    return str(default).upper()
 
 
-def action_to_id(action_label: str) -> int:
-    """Map BUY/HOLD/SELL -> 0/1/2."""
-    mapping = {"BUY": 0, "HOLD": 1, "SELL": 2}
-    return mapping.get(action_label.upper(), 1)
+def action_to_id(action_label: str, labels: Iterable[str] = ACTION_LABELS) -> int:
+    """Map action label to its index within the selected label set."""
+    label_tuple = tuple(str(label).upper() for label in labels)
+    mapping = {label: i for i, label in enumerate(label_tuple)}
+    default = mapping.get(label_tuple[0], 0)
+    return mapping.get(action_label.upper(), default)
 
 
-def id_to_action(action_id: int) -> str:
-    """Map action id 0/1/2 -> BUY/HOLD/SELL."""
-    mapping = {0: "BUY", 1: "HOLD", 2: "SELL"}
-    return mapping.get(int(action_id), "HOLD")
+def id_to_action(action_id: int, labels: Iterable[str] = ACTION_LABELS) -> str:
+    """Map action id to label within the selected label set."""
+    label_tuple = tuple(str(label).upper() for label in labels)
+    idx = int(action_id)
+    if 0 <= idx < len(label_tuple):
+        return label_tuple[idx]
+    return label_tuple[0]
 
 
-def validate_action_labels(labels: Iterable[str]) -> bool:
-    """Check labels are a subset of BUY/HOLD/SELL."""
-    valid = set(ACTION_LABELS)
-    return all(label in valid for label in labels)
+def validate_action_labels(
+    labels: Iterable[str],
+    *,
+    action_schema: str = "buy_hold_sell",
+) -> bool:
+    """Check labels are a subset of the selected schema labels."""
+    valid = set(get_action_labels(action_schema))
+    return all(str(label).upper() in valid for label in labels)

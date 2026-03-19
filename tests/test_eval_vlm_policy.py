@@ -28,6 +28,15 @@ class TestEvalVlmPolicy(unittest.TestCase):
         self.assertEqual(pred1, "BUY")
         self.assertGreater(adj1["BUY"], adj0["BUY"])
 
+    def test_select_action_from_scores_trade_gate(self):
+        pred, adj = select_action_from_scores(
+            {"TRADE": 0.1, "NO_TRADE": 0.2},
+            action_biases={"TRADE": 0.15},
+            labels=("TRADE", "NO_TRADE"),
+        )
+        self.assertEqual(pred, "TRADE")
+        self.assertGreater(adj["TRADE"], adj["NO_TRADE"])
+
 
 if __name__ == "__main__":
     unittest.main()

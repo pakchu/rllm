@@ -20,6 +20,8 @@ class TestTrainVlmGrpoArgs(unittest.TestCase):
                 "uniform",
                 "--sample-seed",
                 "7",
+                "--action-schema",
+                "trade_gate",
                 "--prompt-style",
                 "hybrid",
                 "--prompt-feature-mode",
@@ -89,6 +91,7 @@ class TestTrainVlmGrpoArgs(unittest.TestCase):
             self.assertEqual(args.source, "synthetic")
             self.assertEqual(args.sample_mode, "uniform")
             self.assertEqual(args.sample_seed, 7)
+            self.assertEqual(args.action_schema, "trade_gate")
             self.assertEqual(args.prompt_style, "hybrid")
             self.assertEqual(args.prompt_feature_mode, "engineered_v1")
             self.assertEqual(args.target_horizon, 3)

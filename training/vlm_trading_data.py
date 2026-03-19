@@ -11,9 +11,11 @@ import pandas as pd
 from PIL import Image
 
 from models.option_b_vlm import (
-    TRADING_ACTION_SYSTEM_PROMPT,
     TradingPromptState,
     build_trading_prompt,
+    get_action_labels,
+    get_default_action_label,
+    make_action_system_prompt,
     parse_action_label,
 )
 from preprocessing.chart_generator import ChartGenerator, ChartGeneratorConfig
@@ -70,6 +72,28 @@ def action_from_utilities(
     if best_label != "HOLD" and (best_value - hold_value) <= float(hold_margin):
         return "HOLD"
     return best_label
+
+
+def action_from_trade_gate_next_return(
+    next_return: float,
+    hold_band: float = 0.0005,
+) -> str:
+    """Binary trade gate label from absolute horizon return."""
+    return "TRADE" if abs(float(next_return)) > float(hold_band) else "NO_TRADE"
+
+
+def action_from_trade_gate_utilities(
+    utility_buy: float,
+    utility_hold: float,
+    utility_sell: float,
+    hold_margin: float = 0.0,
+) -> str:
+    """Binary trade gate label from directional-vs-hold utility gap."""
+    directional_best = max(float(utility_buy), float(utility_sell))
+    hold_value = float(utility_hold)
+    if (directional_best - hold_value) > float(hold_margin):
+        return "TRADE"
+    return "NO_TRADE"
 
 
 def _window_drawdown_pct(window: pd.DataFrame) -> float:
@@ -183,6 +207,18 @@ def compute_action_utilities(
 
 def completion_text_to_label(completion) -> str:
     """Extract BUY/HOLD/SELL label from GRPO completion payload."""
+    return completion_text_to_label_for_schema(completion, action_schema="buy_hold_sell")
+
+
+def completion_text_to_label_for_schema(
+    completion,
+    *,
+    action_schema: str = "buy_hold_sell",
+) -> str:
+    """Extract action label from GRPO completion payload for the chosen schema."""
+    labels = get_action_labels(action_schema)
+    default = get_default_action_label(action_schema)
+
     def _extract_texts(content):
         if isinstance(content, str):
             return [content]
@@ -198,7 +234,7 @@ def completion_text_to_label(completion) -> str:
         return []
 
     if isinstance(completion, str):
-        return parse_action_label(completion, default="HOLD")
+        return parse_action_label(completion, default=default, labels=labels)
     if isinstance(completion, list) and completion:
         # conversational completion format
         assistant_texts = []
@@ -214,10 +250,10 @@ def completion_text_to_label(completion) -> str:
                     fallback_texts.extend(texts)
 
         if assistant_texts:
-            return parse_action_label(" ".join(assistant_texts), default="HOLD")
+            return parse_action_label(" ".join(assistant_texts), default=default, labels=labels)
         if fallback_texts:
-            return parse_action_label(" ".join(fallback_texts), default="HOLD")
-    return "HOLD"
+            return parse_action_label(" ".join(fallback_texts), default=default, labels=labels)
+    return default
 
 
 def reward_from_action(
@@ -234,6 +270,7 @@ def reward_from_action(
     action_utility_sell: float | None = None,
     utility_reward_scale: float = 400.0,
     utility_gap_scale: float = 400.0,
+    action_schema: str = "buy_hold_sell",
 ) -> float:
     """
     Reward action quality.
@@ -246,12 +283,18 @@ def reward_from_action(
     scale = 1.0 + min(abs(next_return) / max(hold_band, 1e-9), 5.0) * 0.1
     pred = str(predicted_action).upper()
     tgt = str(target_action).upper()
+    schema = str(action_schema).strip().lower()
 
     class_weight_map = {
         "BUY": float(buy_reward_weight),
         "HOLD": float(hold_reward_weight),
         "SELL": float(sell_reward_weight),
     }
+    if schema == "trade_gate":
+        class_weight_map = {
+            "TRADE": 0.5 * (float(buy_reward_weight) + float(sell_reward_weight)),
+            "NO_TRADE": float(hold_reward_weight),
+        }
     class_weight = class_weight_map.get(tgt, 1.0)
 
     mode = str(reward_mode).lower().strip()
@@ -278,8 +321,14 @@ def reward_from_action(
                 "HOLD": 0.0,
                 "SELL": float(-next_return),
             }
-        pred_u = float(utility_table.get(pred, utility_table["HOLD"]))
-        hold_u = float(utility_table["HOLD"])
+        if schema == "trade_gate":
+            utility_table = {
+                "TRADE": float(max(utility_table["BUY"], utility_table["SELL"])),
+                "NO_TRADE": float(utility_table["HOLD"]),
+            }
+        hold_key = "NO_TRADE" if schema == "trade_gate" else "HOLD"
+        pred_u = float(utility_table.get(pred, utility_table[hold_key]))
+        hold_u = float(utility_table[hold_key])
         best_u = float(max(utility_table.values()))
         utility_reward = float(utility_reward_scale) * (pred_u - hold_u)
         utility_regret = float(utility_gap_scale) * (best_u - pred_u)
@@ -288,6 +337,11 @@ def reward_from_action(
         if abs(best_u - pred_u) <= 1e-12:
             reward += 1.0
         return float(reward * class_weight)
+
+    if schema == "trade_gate":
+        if pred == tgt:
+            return float(1.0 * scale * class_weight)
+        return float(-1.0 * scale * class_weight)
 
     if pred == tgt:
         return float(1.0 * scale * class_weight)
@@ -316,6 +370,7 @@ def make_grpo_reward_func(
     reward_mode: str = "classification",
     utility_reward_scale: float = 400.0,
     utility_gap_scale: float = 400.0,
+    action_schema: str = "buy_hold_sell",
 ):
     """Build reward function compatible with TRL GRPOTrainer."""
 
@@ -331,7 +386,7 @@ def make_grpo_reward_func(
         del kwargs
         rewards = []
         for i, (comp, tgt, ret) in enumerate(zip(completions, target_action, next_return)):
-            pred = completion_text_to_label(comp)
+            pred = completion_text_to_label_for_schema(comp, action_schema=action_schema)
             buy_u = (
                 None
                 if action_utility_buy is None
@@ -362,6 +417,7 @@ def make_grpo_reward_func(
                     action_utility_sell=sell_u,
                     utility_reward_scale=utility_reward_scale,
                     utility_gap_scale=utility_gap_scale,
+                    action_schema=action_schema,
                 )
             )
         return rewards
@@ -626,6 +682,7 @@ def build_vlm_training_samples(
     sample_seed: int = 42,
     prompt_style: str = "numeric",
     prompt_feature_mode: str = "basic_v0",
+    action_schema: str = "buy_hold_sell",
 ) -> List[VLMTrainingSample]:
     """
     Build trading-derived VLM samples with image + prompt + target action.
@@ -669,6 +726,8 @@ def build_vlm_training_samples(
             "prompt_feature_mode must be one of {'basic_v0','engineered_v1'}, "
             f"got {prompt_feature_mode}"
         )
+    action_schema_key = str(action_schema).lower().strip()
+    get_action_labels(action_schema_key)
 
     feature_frame = build_market_feature_frame(market_df, window_size=window_size)
 
@@ -715,15 +774,29 @@ def build_vlm_training_samples(
             dynamic_risk_weight=risk_weight,
             hold_reward_bias=utility_hold_reward_bias,
         )
-        if label_mode_key == "utility":
-            target_action = action_from_utilities(
-                utility_buy=utilities["BUY"],
-                utility_hold=utilities["HOLD"],
-                utility_sell=utilities["SELL"],
-                hold_margin=utility_hold_margin,
-            )
+        if action_schema_key == "trade_gate":
+            if label_mode_key == "utility":
+                target_action = action_from_trade_gate_utilities(
+                    utility_buy=utilities["BUY"],
+                    utility_hold=utilities["HOLD"],
+                    utility_sell=utilities["SELL"],
+                    hold_margin=utility_hold_margin,
+                )
+            else:
+                target_action = action_from_trade_gate_next_return(
+                    next_return,
+                    hold_band=hold_band,
+                )
         else:
-            target_action = action_from_next_return(next_return, hold_band=hold_band)
+            if label_mode_key == "utility":
+                target_action = action_from_utilities(
+                    utility_buy=utilities["BUY"],
+                    utility_hold=utilities["HOLD"],
+                    utility_sell=utilities["SELL"],
+                    hold_margin=utility_hold_margin,
+                )
+            else:
+                target_action = action_from_next_return(next_return, hold_band=hold_band)
         candidates.append(
             (
                 t,
@@ -754,8 +827,9 @@ def build_vlm_training_samples(
     else:  # balanced
         labels = np.array([candidates[i][1] for i in positions], dtype=object)
         selected_chunks = []
-        per_class = max_samples // 3
-        for label in ("BUY", "HOLD", "SELL"):
+        schema_labels = get_action_labels(action_schema_key)
+        per_class = max(1, max_samples // max(1, len(schema_labels)))
+        for label in schema_labels:
             idx = positions[labels == label]
             if len(idx) == 0:
                 continue
@@ -815,7 +889,11 @@ def build_vlm_training_samples(
             extra_symbolic_features=extra_symbolic_features,
             context_tags=context_tags,
         )
-        prompt = build_trading_prompt(state, prompt_style=prompt_style)
+        prompt = build_trading_prompt(
+            state,
+            prompt_style=prompt_style,
+            action_schema=action_schema_key,
+        )
 
         samples.append(
             VLMTrainingSample(
@@ -834,15 +912,20 @@ def build_vlm_training_samples(
     return samples
 
 
-def samples_to_hf_records(samples: Iterable[VLMTrainingSample]) -> list[dict]:
+def samples_to_hf_records(
+    samples: Iterable[VLMTrainingSample],
+    *,
+    action_schema: str = "buy_hold_sell",
+) -> list[dict]:
     """Convert samples into Hugging Face Dataset records."""
+    system_prompt = make_action_system_prompt(action_schema)
     records = []
     for s in samples:
         records.append(
             {
                 # TRL multimodal GRPO expects conversational prompts (not pre-templated strings).
                 "prompt": [
-                    {"role": "system", "content": TRADING_ACTION_SYSTEM_PROMPT},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": s.prompt},
                 ],
                 "image": s.image,
