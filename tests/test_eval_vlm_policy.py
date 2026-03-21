@@ -37,6 +37,16 @@ class TestEvalVlmPolicy(unittest.TestCase):
         self.assertEqual(pred, "TRADE")
         self.assertGreater(adj["TRADE"], adj["NO_TRADE"])
 
+    def test_summarize_action_metrics_trade_side(self):
+        out = summarize_action_metrics(
+            targets=["LONG", "SHORT", "LONG", "SHORT"],
+            predictions=["LONG", "LONG", "SHORT", "SHORT"],
+            labels=("LONG", "SHORT"),
+        )
+        self.assertEqual(out["num_samples"], 4)
+        self.assertAlmostEqual(out["directional_recall_mean"], 0.5)
+        self.assertAlmostEqual(out["directional_recall_gap"], 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

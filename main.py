@@ -220,7 +220,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--action-schema",
         type=str,
         default="buy_hold_sell",
-        choices=["buy_hold_sell", "trade_gate"],
+        choices=["buy_hold_sell", "trade_gate", "trade_side"],
     )
     train_vlm.add_argument(
         "--prompt-style",
@@ -342,7 +342,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--action-schema",
         type=str,
         default="buy_hold_sell",
-        choices=["buy_hold_sell", "trade_gate"],
+        choices=["buy_hold_sell", "trade_gate", "trade_side"],
     )
     eval_vlm.add_argument(
         "--prompt-style",

@@ -96,6 +96,34 @@ def action_from_trade_gate_utilities(
     return "NO_TRADE"
 
 
+def action_from_trade_side_next_return(
+    next_return: float,
+    hold_band: float = 0.0005,
+) -> str | None:
+    """Directional trade-side label; returns None when no trade should be taken."""
+    ret = float(next_return)
+    if abs(ret) <= float(hold_band):
+        return None
+    return "LONG" if ret > 0.0 else "SHORT"
+
+
+def action_from_trade_side_utilities(
+    utility_buy: float,
+    utility_hold: float,
+    utility_sell: float,
+    hold_margin: float = 0.0,
+) -> str | None:
+    """Directional trade-side label; returns None when hold dominates directional utility."""
+    if action_from_trade_gate_utilities(
+        utility_buy=utility_buy,
+        utility_hold=utility_hold,
+        utility_sell=utility_sell,
+        hold_margin=hold_margin,
+    ) != "TRADE":
+        return None
+    return "LONG" if float(utility_buy) >= float(utility_sell) else "SHORT"
+
+
 def _window_drawdown_pct(window: pd.DataFrame) -> float:
     """Max drawdown over close series in [0, 1]."""
     if len(window) == 0:
@@ -295,6 +323,11 @@ def reward_from_action(
             "TRADE": 0.5 * (float(buy_reward_weight) + float(sell_reward_weight)),
             "NO_TRADE": float(hold_reward_weight),
         }
+    elif schema == "trade_side":
+        class_weight_map = {
+            "LONG": float(buy_reward_weight),
+            "SHORT": float(sell_reward_weight),
+        }
     class_weight = class_weight_map.get(tgt, 1.0)
 
     mode = str(reward_mode).lower().strip()
@@ -326,9 +359,17 @@ def reward_from_action(
                 "TRADE": float(max(utility_table["BUY"], utility_table["SELL"])),
                 "NO_TRADE": float(utility_table["HOLD"]),
             }
-        hold_key = "NO_TRADE" if schema == "trade_gate" else "HOLD"
-        pred_u = float(utility_table.get(pred, utility_table[hold_key]))
-        hold_u = float(utility_table[hold_key])
+        if schema == "trade_side":
+            hold_u = float(action_utility_hold if action_utility_hold is not None else 0.0)
+            utility_table = {
+                "LONG": float(action_utility_buy if action_utility_buy is not None else next_return),
+                "SHORT": float(action_utility_sell if action_utility_sell is not None else -next_return),
+            }
+            pred_u = float(utility_table.get(pred, hold_u))
+        else:
+            hold_key = "NO_TRADE" if schema == "trade_gate" else "HOLD"
+            pred_u = float(utility_table.get(pred, utility_table[hold_key]))
+            hold_u = float(utility_table[hold_key])
         best_u = float(max(utility_table.values()))
         utility_reward = float(utility_reward_scale) * (pred_u - hold_u)
         utility_regret = float(utility_gap_scale) * (best_u - pred_u)
@@ -339,6 +380,10 @@ def reward_from_action(
         return float(reward * class_weight)
 
     if schema == "trade_gate":
+        if pred == tgt:
+            return float(1.0 * scale * class_weight)
+        return float(-1.0 * scale * class_weight)
+    if schema == "trade_side":
         if pred == tgt:
             return float(1.0 * scale * class_weight)
         return float(-1.0 * scale * class_weight)
@@ -787,6 +832,19 @@ def build_vlm_training_samples(
                     next_return,
                     hold_band=hold_band,
                 )
+        elif action_schema_key == "trade_side":
+            if label_mode_key == "utility":
+                target_action = action_from_trade_side_utilities(
+                    utility_buy=utilities["BUY"],
+                    utility_hold=utilities["HOLD"],
+                    utility_sell=utilities["SELL"],
+                    hold_margin=utility_hold_margin,
+                )
+            else:
+                target_action = action_from_trade_side_next_return(
+                    next_return,
+                    hold_band=hold_band,
+                )
         else:
             if label_mode_key == "utility":
                 target_action = action_from_utilities(
@@ -797,6 +855,8 @@ def build_vlm_training_samples(
                 )
             else:
                 target_action = action_from_next_return(next_return, hold_band=hold_band)
+        if target_action is None:
+            continue
         candidates.append(
             (
                 t,

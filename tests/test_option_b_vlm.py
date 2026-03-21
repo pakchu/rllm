@@ -63,6 +63,24 @@ class TestOptionBVLM(unittest.TestCase):
             "NO_TRADE",
         )
 
+    def test_trade_side_prompt_and_parse(self):
+        prompt = build_trading_prompt(
+            TradingPromptState(
+                timeframe="5m",
+                position_size_pct=0.0,
+                last_entry_price=0.0,
+                range_volatility_pct=0.02,
+            ),
+            prompt_style="symbolic",
+            action_schema="trade_side",
+        )
+        self.assertIn("LONG/SHORT", prompt)
+        self.assertIn("LONG", make_action_system_prompt("trade_side"))
+        self.assertEqual(
+            parse_action_label("SHORT", default="LONG", labels=("LONG", "SHORT")),
+            "SHORT",
+        )
+
     def test_symbolic_prompt_style(self):
         prompt = build_trading_prompt(
             TradingPromptState(

@@ -11,6 +11,7 @@ import numpy as np
 
 from models.option_b_vlm import (
     AUTO_MODEL_NAME,
+    ACTION_SCHEMA_LABELS,
     auto_select_vlm_model,
     get_action_labels,
     get_default_action_label,
@@ -88,10 +89,19 @@ def summarize_action_metrics(
 
     recalls = [float(per_class[label]["recall"]) for label in labels]
     balanced_recall = float(np.mean(recalls)) if recalls else 0.0
-    buy_recall = float(per_class.get("BUY", {}).get("recall", 0.0))
-    sell_recall = float(per_class.get("SELL", {}).get("recall", 0.0))
-    directional_recall_mean = 0.5 * (buy_recall + sell_recall)
-    directional_recall_gap = abs(buy_recall - sell_recall)
+    directional_pair = None
+    if "BUY" in per_class and "SELL" in per_class:
+        directional_pair = ("BUY", "SELL")
+    elif "LONG" in per_class and "SHORT" in per_class:
+        directional_pair = ("LONG", "SHORT")
+    if directional_pair is not None:
+        lhs_recall = float(per_class.get(directional_pair[0], {}).get("recall", 0.0))
+        rhs_recall = float(per_class.get(directional_pair[1], {}).get("recall", 0.0))
+        directional_recall_mean = 0.5 * (lhs_recall + rhs_recall)
+        directional_recall_gap = abs(lhs_recall - rhs_recall)
+    else:
+        directional_recall_mean = 0.0
+        directional_recall_gap = 0.0
 
     target_counts = {k: int(np.sum(conf[label_to_idx[k], :])) for k in labels}
     pred_counts = {k: int(np.sum(conf[:, label_to_idx[k]])) for k in labels}
@@ -534,7 +544,7 @@ def parse_args() -> argparse.Namespace:
         "--action-schema",
         type=str,
         default="buy_hold_sell",
-        choices=["buy_hold_sell", "trade_gate"],
+        choices=sorted(ACTION_SCHEMA_LABELS),
     )
     parser.add_argument(
         "--prompt-style",

@@ -110,13 +110,13 @@ class TestMainCLI(unittest.TestCase):
             [
                 "eval-vlm",
                 "--action-schema",
-                "trade_gate",
+                "trade_side",
                 "--decision-mode",
                 "likelihood",
             ]
         )
         self.assertEqual(args.cmd, "eval-vlm")
-        self.assertEqual(args.action_schema, "trade_gate")
+        self.assertEqual(args.action_schema, "trade_side")
         self.assertEqual(args.decision_mode, "likelihood")
 
     def test_parse_backtest(self):

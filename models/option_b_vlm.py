@@ -12,13 +12,16 @@ RECOMMENDED_VLM_MODEL = "Qwen/Qwen3-VL-8B-Instruct"
 FALLBACK_VLM_MODEL = "Qwen/Qwen2.5-VL-7B-Instruct"
 ACTION_LABELS = ("BUY", "HOLD", "SELL")
 ACTIONS_TRADE_GATE = ("TRADE", "NO_TRADE")
+ACTIONS_TRADE_SIDE = ("LONG", "SHORT")
 ACTION_SCHEMA_LABELS = {
     "buy_hold_sell": ACTION_LABELS,
     "trade_gate": ACTIONS_TRADE_GATE,
+    "trade_side": ACTIONS_TRADE_SIDE,
 }
 ACTION_SCHEMA_DEFAULTS = {
     "buy_hold_sell": "HOLD",
     "trade_gate": "NO_TRADE",
+    "trade_side": "LONG",
 }
 AUTO_MODEL_NAME = "auto"
 
