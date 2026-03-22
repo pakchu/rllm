@@ -119,6 +119,24 @@ class TestMainCLI(unittest.TestCase):
         self.assertEqual(args.action_schema, "trade_side")
         self.assertEqual(args.decision_mode, "likelihood")
 
+    def test_parse_compose_gate_side(self):
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "compose-gate-side",
+                "--gate-report",
+                "gate.json",
+                "--side-report",
+                "side.json",
+                "--floor-score",
+                "-123.0",
+            ]
+        )
+        self.assertEqual(args.cmd, "compose-gate-side")
+        self.assertEqual(args.gate_report, "gate.json")
+        self.assertEqual(args.side_report, "side.json")
+        self.assertAlmostEqual(args.floor_score, -123.0)
+
     def test_parse_backtest(self):
         parser = build_parser()
         args = parser.parse_args(

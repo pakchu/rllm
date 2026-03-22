@@ -579,6 +579,19 @@ def build_parser() -> argparse.ArgumentParser:
     calibrate_vlm.add_argument("--weight-directional-gap", type=float, default=0.10)
     calibrate_vlm.add_argument("--output", type=str, default="results/vlm_bias_calibration.json")
 
+    compose_gate_side = sub.add_parser(
+        "compose-gate-side",
+        help="Compose trade_gate and trade_side eval reports into BUY/HOLD/SELL report",
+    )
+    compose_gate_side.add_argument("--gate-report", type=str, required=True)
+    compose_gate_side.add_argument("--side-report", type=str, required=True)
+    compose_gate_side.add_argument("--floor-score", type=float, default=-1.0e9)
+    compose_gate_side.add_argument(
+        "--output",
+        type=str,
+        default="results/composed_gate_side_policy.json",
+    )
+
     walkforward = sub.add_parser(
         "optiona-walkforward",
         help="Run Option A walk-forward policy selection on real market periods",
@@ -1067,6 +1080,19 @@ def cmd_eval_vlm(args: argparse.Namespace) -> None:
     print(report["metrics"])
 
 
+def cmd_compose_gate_side(args: argparse.Namespace) -> None:
+    from training.compose_gate_side_policy import compose_gate_side_reports
+
+    report = compose_gate_side_reports(
+        gate_report_path=args.gate_report,
+        side_report_path=args.side_report,
+        output_path=args.output,
+        floor_score=args.floor_score,
+    )
+    print(f"[compose-gate-side] saved={Path(args.output).resolve()}")
+    print(report["metrics"])
+
+
 def cmd_select_vlm_checkpoint(args: argparse.Namespace) -> None:
     from training.select_vlm_checkpoint import parse_step_list, select_best_vlm_checkpoint
 
@@ -1353,6 +1379,8 @@ def main() -> None:
         cmd_select_vlm_checkpoint(args)
     elif args.cmd == "calibrate-vlm-bias":
         cmd_calibrate_vlm_bias(args)
+    elif args.cmd == "compose-gate-side":
+        cmd_compose_gate_side(args)
     elif args.cmd == "optiona-walkforward":
         cmd_optiona_walkforward(args)
     elif args.cmd == "cnn-dryrun":
