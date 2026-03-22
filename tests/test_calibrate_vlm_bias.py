@@ -5,6 +5,7 @@ from pathlib import Path
 
 from training.calibrate_vlm_bias import (
     _frange_inclusive,
+    _bias_grid_from_legacy_args,
     calibrate_action_biases,
     load_action_scores,
     score_metrics,
@@ -66,6 +67,55 @@ class TestCalibrateVlmBias(unittest.TestCase):
         baseline_obj = score_metrics(m0)
         self.assertGreaterEqual(best["objective"], baseline_obj)
         self.assertEqual(len(report["top_candidates"]), 3)
+
+    def test_calibrate_action_biases_trade_gate(self):
+        rows = [
+            {"target": "TRADE", "scores": {"TRADE": 0.0, "NO_TRADE": 0.2}},
+            {"target": "TRADE", "scores": {"TRADE": 0.1, "NO_TRADE": 0.2}},
+            {"target": "NO_TRADE", "scores": {"TRADE": 0.2, "NO_TRADE": 0.1}},
+            {"target": "NO_TRADE", "scores": {"TRADE": 0.3, "NO_TRADE": 0.2}},
+        ]
+        report = calibrate_action_biases(
+            rows=rows,
+            labels=("TRADE", "NO_TRADE"),
+            bias_grid={
+                "TRADE": (-0.4, 0.4, 0.2),
+                "NO_TRADE": (-0.4, 0.4, 0.2),
+            },
+            top_k=2,
+        )
+        self.assertEqual(report["grid"]["labels"], ["TRADE", "NO_TRADE"])
+        self.assertEqual(len(report["top_candidates"]), 2)
+        self.assertIn("TRADE", report["best"]["biases"])
+        self.assertIn("NO_TRADE", report["best"]["biases"])
+
+    def test_bias_grid_from_legacy_args_trade_side(self):
+        grid = _bias_grid_from_legacy_args(
+            ("LONG", "SHORT"),
+            buy_min=-0.8,
+            buy_max=0.8,
+            buy_step=0.1,
+            hold_min=-0.6,
+            hold_max=0.6,
+            hold_step=0.1,
+            sell_min=-0.8,
+            sell_max=0.8,
+            sell_step=0.1,
+            trade_min=-1.5,
+            trade_max=1.5,
+            trade_step=0.1,
+            no_trade_min=-1.5,
+            no_trade_max=1.5,
+            no_trade_step=0.1,
+            long_min=-1.2,
+            long_max=1.2,
+            long_step=0.2,
+            short_min=-0.9,
+            short_max=0.9,
+            short_step=0.3,
+        )
+        self.assertEqual(grid["LONG"], (-1.2, 1.2, 0.2))
+        self.assertEqual(grid["SHORT"], (-0.9, 0.9, 0.3))
 
 
 if __name__ == "__main__":
