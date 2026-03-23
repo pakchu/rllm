@@ -6,6 +6,8 @@ from pathlib import Path
 from training.calibrate_vlm_bias import (
     _frange_inclusive,
     _bias_grid_from_legacy_args,
+    _candidate_constraint_report,
+    _parse_label_value_specs,
     calibrate_action_biases,
     load_action_scores,
     score_metrics,
@@ -116,6 +118,53 @@ class TestCalibrateVlmBias(unittest.TestCase):
         )
         self.assertEqual(grid["LONG"], (-1.2, 1.2, 0.2))
         self.assertEqual(grid["SHORT"], (-0.9, 0.9, 0.3))
+
+    def test_parse_label_value_specs(self):
+        parsed = _parse_label_value_specs(["TRADE=0.25", "NO_TRADE=0.4"], name="x")
+        self.assertEqual(parsed, {"TRADE": 0.25, "NO_TRADE": 0.4})
+
+    def test_candidate_constraint_report(self):
+        metrics = {
+            "num_samples": 100,
+            "pred_counts": {"TRADE": 70, "NO_TRADE": 30},
+            "per_class": {
+                "TRADE": {"recall": 0.6},
+                "NO_TRADE": {"recall": 0.4},
+            },
+        }
+        rep = _candidate_constraint_report(
+            metrics,
+            min_recall_by_label={"TRADE": 0.5, "NO_TRADE": 0.3},
+            min_pred_frac_by_label={"TRADE": 0.2},
+            max_pred_frac_by_label={"TRADE": 0.8},
+        )
+        self.assertTrue(rep["feasible"])
+        rep_fail = _candidate_constraint_report(
+            metrics,
+            min_recall_by_label={"NO_TRADE": 0.5},
+        )
+        self.assertFalse(rep_fail["feasible"])
+
+    def test_calibrate_action_biases_with_constraints(self):
+        rows = [
+            {"target": "TRADE", "scores": {"TRADE": 0.0, "NO_TRADE": 0.2}},
+            {"target": "TRADE", "scores": {"TRADE": 0.1, "NO_TRADE": 0.2}},
+            {"target": "NO_TRADE", "scores": {"TRADE": 0.2, "NO_TRADE": 0.1}},
+            {"target": "NO_TRADE", "scores": {"TRADE": 0.3, "NO_TRADE": 0.2}},
+        ]
+        report = calibrate_action_biases(
+            rows=rows,
+            labels=("TRADE", "NO_TRADE"),
+            bias_grid={
+                "TRADE": (-0.4, 0.4, 0.2),
+                "NO_TRADE": (-0.4, 0.4, 0.2),
+            },
+            min_pred_frac_by_label={"TRADE": 0.25},
+            max_pred_frac_by_label={"TRADE": 0.75},
+            top_k=2,
+        )
+        self.assertIn("constraints", report)
+        self.assertIn("feasible_count", report["constraints"])
 
 
 if __name__ == "__main__":

@@ -557,6 +557,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Grid-search action biases for VLM likelihood decision mode",
     )
     calibrate_vlm.add_argument(
+        "--action-schema",
+        type=str,
+        default="buy_hold_sell",
+        choices=["buy_hold_sell", "trade_gate", "trade_side"],
+    )
+    calibrate_vlm.add_argument(
         "--input-report",
         type=str,
         action="append",
@@ -572,11 +578,26 @@ def build_parser() -> argparse.ArgumentParser:
     calibrate_vlm.add_argument("--sell-min", type=float, default=-0.8)
     calibrate_vlm.add_argument("--sell-max", type=float, default=0.8)
     calibrate_vlm.add_argument("--sell-step", type=float, default=0.1)
+    calibrate_vlm.add_argument("--trade-min", type=float, default=-1.5)
+    calibrate_vlm.add_argument("--trade-max", type=float, default=1.5)
+    calibrate_vlm.add_argument("--trade-step", type=float, default=0.1)
+    calibrate_vlm.add_argument("--no-trade-min", type=float, default=-1.5)
+    calibrate_vlm.add_argument("--no-trade-max", type=float, default=1.5)
+    calibrate_vlm.add_argument("--no-trade-step", type=float, default=0.1)
+    calibrate_vlm.add_argument("--long-min", type=float, default=-1.5)
+    calibrate_vlm.add_argument("--long-max", type=float, default=1.5)
+    calibrate_vlm.add_argument("--long-step", type=float, default=0.1)
+    calibrate_vlm.add_argument("--short-min", type=float, default=-1.5)
+    calibrate_vlm.add_argument("--short-max", type=float, default=1.5)
+    calibrate_vlm.add_argument("--short-step", type=float, default=0.1)
     calibrate_vlm.add_argument("--top-k", type=int, default=10)
     calibrate_vlm.add_argument("--weight-accuracy", type=float, default=1.0)
     calibrate_vlm.add_argument("--weight-balanced-recall", type=float, default=0.15)
     calibrate_vlm.add_argument("--weight-directional-mean", type=float, default=0.05)
     calibrate_vlm.add_argument("--weight-directional-gap", type=float, default=0.10)
+    calibrate_vlm.add_argument("--require-min-recall", type=str, action="append", default=[])
+    calibrate_vlm.add_argument("--require-min-pred-frac", type=str, action="append", default=[])
+    calibrate_vlm.add_argument("--require-max-pred-frac", type=str, action="append", default=[])
     calibrate_vlm.add_argument("--output", type=str, default="results/vlm_bias_calibration.json")
 
     compose_gate_side = sub.add_parser(
@@ -1176,11 +1197,18 @@ def cmd_select_vlm_checkpoint(args: argparse.Namespace) -> None:
 
 
 def cmd_calibrate_vlm_bias(args: argparse.Namespace) -> None:
-    from training.calibrate_vlm_bias import calibrate_action_biases, load_action_scores
+    from models.option_b_vlm import get_action_labels
+    from training.calibrate_vlm_bias import (
+        _bias_grid_from_legacy_args,
+        _parse_label_value_specs,
+        calibrate_action_biases,
+        load_action_scores,
+    )
 
     rows = load_action_scores(args.input_report)
-    report = calibrate_action_biases(
-        rows=rows,
+    labels = get_action_labels(args.action_schema)
+    bias_grid = _bias_grid_from_legacy_args(
+        labels,
         buy_min=args.buy_min,
         buy_max=args.buy_max,
         buy_step=args.buy_step,
@@ -1190,6 +1218,26 @@ def cmd_calibrate_vlm_bias(args: argparse.Namespace) -> None:
         sell_min=args.sell_min,
         sell_max=args.sell_max,
         sell_step=args.sell_step,
+        trade_min=args.trade_min,
+        trade_max=args.trade_max,
+        trade_step=args.trade_step,
+        no_trade_min=args.no_trade_min,
+        no_trade_max=args.no_trade_max,
+        no_trade_step=args.no_trade_step,
+        long_min=args.long_min,
+        long_max=args.long_max,
+        long_step=args.long_step,
+        short_min=args.short_min,
+        short_max=args.short_max,
+        short_step=args.short_step,
+    )
+    report = calibrate_action_biases(
+        rows=rows,
+        labels=labels,
+        bias_grid=bias_grid,
+        min_recall_by_label=_parse_label_value_specs(args.require_min_recall, name="require-min-recall"),
+        min_pred_frac_by_label=_parse_label_value_specs(args.require_min_pred_frac, name="require-min-pred-frac"),
+        max_pred_frac_by_label=_parse_label_value_specs(args.require_max_pred_frac, name="require-max-pred-frac"),
         top_k=args.top_k,
         weight_accuracy=args.weight_accuracy,
         weight_balanced_recall=args.weight_balanced_recall,

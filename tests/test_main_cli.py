@@ -137,6 +137,33 @@ class TestMainCLI(unittest.TestCase):
         self.assertEqual(args.side_report, "side.json")
         self.assertAlmostEqual(args.floor_score, -123.0)
 
+    def test_parse_calibrate_vlm_bias_trade_gate_constraints(self):
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "calibrate-vlm-bias",
+                "--action-schema",
+                "trade_gate",
+                "--input-report",
+                "gate.json",
+                "--trade-min",
+                "-2.0",
+                "--trade-max",
+                "2.0",
+                "--require-min-recall",
+                "TRADE=0.3",
+                "--require-max-pred-frac",
+                "TRADE=0.6",
+            ]
+        )
+        self.assertEqual(args.cmd, "calibrate-vlm-bias")
+        self.assertEqual(args.action_schema, "trade_gate")
+        self.assertEqual(args.input_report, ["gate.json"])
+        self.assertAlmostEqual(args.trade_min, -2.0)
+        self.assertAlmostEqual(args.trade_max, 2.0)
+        self.assertEqual(args.require_min_recall, ["TRADE=0.3"])
+        self.assertEqual(args.require_max_pred_frac, ["TRADE=0.6"])
+
     def test_parse_backtest(self):
         parser = build_parser()
         args = parser.parse_args(

@@ -6,6 +6,7 @@ import argparse
 import json
 import itertools
 from pathlib import Path
+from typing import Any
 
 from models.option_b_vlm import ACTION_SCHEMA_LABELS, get_action_labels
 from training.eval_vlm_policy import ACTION_LABELS, select_action_from_scores, summarize_action_metrics
@@ -144,11 +145,61 @@ def _bias_grid_from_legacy_args(
     }
 
 
+def _parse_label_value_specs(specs: list[str] | None, *, name: str) -> dict[str, float]:
+    out: dict[str, float] = {}
+    for spec in specs or []:
+        text = str(spec).strip()
+        if "=" not in text:
+            raise ValueError(f"{name} spec must look like LABEL=VALUE, got {spec}")
+        label, value = text.split("=", 1)
+        out[str(label).strip().upper()] = float(value)
+    return out
+
+
+def _candidate_constraint_report(
+    metrics: dict[str, Any],
+    *,
+    min_recall_by_label: dict[str, float] | None = None,
+    min_pred_frac_by_label: dict[str, float] | None = None,
+    max_pred_frac_by_label: dict[str, float] | None = None,
+) -> dict[str, Any]:
+    label_set = set(metrics.get("per_class", {}).keys())
+    pred_counts = metrics.get("pred_counts", {})
+    total = max(1, int(metrics.get("num_samples", 0)))
+    failures: list[str] = []
+
+    for label, floor in (min_recall_by_label or {}).items():
+        if label not in label_set:
+            failures.append(f"missing_label:{label}")
+            continue
+        recall = float(metrics["per_class"][label]["recall"])
+        if recall < float(floor):
+            failures.append(f"recall:{label}<{float(floor):.6f}")
+
+    for label, floor in (min_pred_frac_by_label or {}).items():
+        frac = float(pred_counts.get(label, 0)) / float(total)
+        if frac < float(floor):
+            failures.append(f"pred_frac:{label}<{float(floor):.6f}")
+
+    for label, ceil in (max_pred_frac_by_label or {}).items():
+        frac = float(pred_counts.get(label, 0)) / float(total)
+        if frac > float(ceil):
+            failures.append(f"pred_frac:{label}>{float(ceil):.6f}")
+
+    return {
+        "feasible": not failures,
+        "failures": failures,
+    }
+
+
 def calibrate_action_biases(
     rows: list[dict],
     *,
     labels: tuple[str, ...] = ACTION_LABELS,
     bias_grid: dict[str, tuple[float, float, float]] | None = None,
+    min_recall_by_label: dict[str, float] | None = None,
+    min_pred_frac_by_label: dict[str, float] | None = None,
+    max_pred_frac_by_label: dict[str, float] | None = None,
     buy_min: float = -0.8,
     buy_max: float = 0.8,
     buy_step: float = 0.1,
@@ -177,6 +228,12 @@ def calibrate_action_biases(
     for combo in itertools.product(*(grid_values[label] for label in labels)):
         biases = {label: float(value) for label, value in zip(labels, combo)}
         metrics = _evaluate_bias(rows=rows, action_biases=biases, labels=labels)
+        constraints = _candidate_constraint_report(
+            metrics,
+            min_recall_by_label=min_recall_by_label,
+            min_pred_frac_by_label=min_pred_frac_by_label,
+            max_pred_frac_by_label=max_pred_frac_by_label,
+        )
         objective = score_metrics(
             metrics,
             weight_accuracy=weight_accuracy,
@@ -192,12 +249,15 @@ def calibrate_action_biases(
                 "balanced_recall": float(metrics.get("balanced_recall", 0.0)),
                 "directional_recall_mean": float(metrics.get("directional_recall_mean", 0.0)),
                 "directional_recall_gap": float(metrics.get("directional_recall_gap", 0.0)),
+                "constraints": constraints,
                 "metrics": metrics,
             }
         )
 
+    feasible = [x for x in candidates if bool(x["constraints"]["feasible"])]
     candidates.sort(
         key=lambda x: (
+            1 if x["constraints"]["feasible"] else 0,
             float(x["objective"]),
             float(x["accuracy"]),
             -float(x["directional_recall_gap"]),
@@ -205,7 +265,7 @@ def calibrate_action_biases(
         reverse=True,
     )
     keep = max(1, int(top_k))
-    best = candidates[0]
+    best = feasible[0] if feasible else candidates[0]
     return {
         "num_rows": int(len(rows)),
         "grid": {
@@ -229,6 +289,12 @@ def calibrate_action_biases(
                 "directional_recall_mean": float(weight_directional_mean),
                 "directional_recall_gap": float(weight_directional_gap),
             },
+        },
+        "constraints": {
+            "min_recall_by_label": {k: float(v) for k, v in (min_recall_by_label or {}).items()},
+            "min_pred_frac_by_label": {k: float(v) for k, v in (min_pred_frac_by_label or {}).items()},
+            "max_pred_frac_by_label": {k: float(v) for k, v in (max_pred_frac_by_label or {}).items()},
+            "feasible_count": int(len(feasible)),
         },
         "best": best,
         "top_candidates": candidates[:keep],
@@ -276,6 +342,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--weight-balanced-recall", type=float, default=0.15)
     parser.add_argument("--weight-directional-mean", type=float, default=0.05)
     parser.add_argument("--weight-directional-gap", type=float, default=0.10)
+    parser.add_argument(
+        "--require-min-recall",
+        type=str,
+        action="append",
+        default=[],
+        help="Repeatable LABEL=VALUE constraint, e.g. TRADE=0.30",
+    )
+    parser.add_argument(
+        "--require-min-pred-frac",
+        type=str,
+        action="append",
+        default=[],
+        help="Repeatable LABEL=VALUE prediction fraction floor, e.g. TRADE=0.10",
+    )
+    parser.add_argument(
+        "--require-max-pred-frac",
+        type=str,
+        action="append",
+        default=[],
+        help="Repeatable LABEL=VALUE prediction fraction ceiling, e.g. TRADE=0.60",
+    )
     parser.add_argument("--output", type=str, default="results/vlm_bias_calibration.json")
     return parser.parse_args()
 
@@ -284,6 +371,9 @@ def main() -> None:
     args = parse_args()
     rows = load_action_scores(args.input_report)
     labels = get_action_labels(args.action_schema)
+    min_recall_by_label = _parse_label_value_specs(args.require_min_recall, name="require-min-recall")
+    min_pred_frac_by_label = _parse_label_value_specs(args.require_min_pred_frac, name="require-min-pred-frac")
+    max_pred_frac_by_label = _parse_label_value_specs(args.require_max_pred_frac, name="require-max-pred-frac")
     bias_grid = _bias_grid_from_legacy_args(
         labels,
         buy_min=args.buy_min,
@@ -312,6 +402,9 @@ def main() -> None:
         rows=rows,
         labels=labels,
         bias_grid=bias_grid,
+        min_recall_by_label=min_recall_by_label,
+        min_pred_frac_by_label=min_pred_frac_by_label,
+        max_pred_frac_by_label=max_pred_frac_by_label,
         buy_min=args.buy_min,
         buy_max=args.buy_max,
         buy_step=args.buy_step,
