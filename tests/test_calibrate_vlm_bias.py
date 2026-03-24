@@ -165,6 +165,7 @@ class TestCalibrateVlmBias(unittest.TestCase):
         )
         self.assertIn("constraints", report)
         self.assertIn("feasible_count", report["constraints"])
+        self.assertTrue(report["best"]["constraints"]["feasible"])
 
 
 if __name__ == "__main__":

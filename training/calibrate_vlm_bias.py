@@ -254,7 +254,6 @@ def calibrate_action_biases(
             }
         )
 
-    feasible = [x for x in candidates if bool(x["constraints"]["feasible"])]
     candidates.sort(
         key=lambda x: (
             1 if x["constraints"]["feasible"] else 0,
@@ -264,6 +263,7 @@ def calibrate_action_biases(
         ),
         reverse=True,
     )
+    feasible = [x for x in candidates if bool(x["constraints"]["feasible"])]
     keep = max(1, int(top_k))
     best = feasible[0] if feasible else candidates[0]
     return {
