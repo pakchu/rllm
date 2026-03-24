@@ -32,6 +32,8 @@ def compose_gate_side_reports(
     side_report_path: str,
     output_path: str,
     floor_score: float = FLOOR_SCORE,
+    gate_margin_threshold: float = 0.0,
+    side_weight: float = 1.0,
 ) -> dict[str, Any]:
     gate = _load_report(gate_report_path)
     side = _load_report(side_report_path)
@@ -59,12 +61,20 @@ def compose_gate_side_reports(
         no_trade_score = float(gate_scores.get("NO_TRADE", floor_score))
         long_score = float(side_scores.get("LONG", floor_score))
         short_score = float(side_scores.get("SHORT", floor_score))
+        trade_margin = float(trade_score - no_trade_score)
 
-        composed_scores = {
-            "BUY": float(trade_score + long_score),
-            "HOLD": float(no_trade_score),
-            "SELL": float(trade_score + short_score),
-        }
+        if side_row is None or trade_margin < float(gate_margin_threshold):
+            composed_scores = {
+                "BUY": float(floor_score),
+                "HOLD": float(no_trade_score),
+                "SELL": float(floor_score),
+            }
+        else:
+            composed_scores = {
+                "BUY": float(trade_score + float(side_weight) * long_score),
+                "HOLD": float(no_trade_score),
+                "SELL": float(trade_score + float(side_weight) * short_score),
+            }
         pred = max(COMPOSED_LABELS, key=lambda k: (composed_scores[k], -COMPOSED_LABELS.index(k)))
 
         gate_target = str(gate_row.get("target", "NO_TRADE"))
@@ -95,6 +105,8 @@ def compose_gate_side_reports(
             "side_report": str(Path(side_report_path).resolve()),
             "rule": "BUY=gate.TRADE+side.LONG, SELL=gate.TRADE+side.SHORT, HOLD=gate.NO_TRADE",
             "floor_score_for_missing_side": float(floor_score),
+            "gate_margin_threshold": float(gate_margin_threshold),
+            "side_weight": float(side_weight),
             "gate_rows": int(len(gate_rows)),
             "side_rows": int(len(side_rows)),
             "side_date_overlap": int(sum(1 for row in gate_rows if str(row['date']) in side_by_date)),
@@ -115,6 +127,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--side-report", type=str, required=True)
     parser.add_argument("--output", type=str, default="results/composed_gate_side_policy.json")
     parser.add_argument("--floor-score", type=float, default=FLOOR_SCORE)
+    parser.add_argument("--gate-margin-threshold", type=float, default=0.0)
+    parser.add_argument("--side-weight", type=float, default=1.0)
     return parser.parse_args()
 
 
@@ -125,6 +139,8 @@ def main() -> None:
         side_report_path=args.side_report,
         output_path=args.output,
         floor_score=args.floor_score,
+        gate_margin_threshold=args.gate_margin_threshold,
+        side_weight=args.side_weight,
     )
     print(json.dumps({"metrics": out["metrics"], "composition": out["composition"]}, indent=2))
 

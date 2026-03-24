@@ -607,6 +607,8 @@ def build_parser() -> argparse.ArgumentParser:
     compose_gate_side.add_argument("--gate-report", type=str, required=True)
     compose_gate_side.add_argument("--side-report", type=str, required=True)
     compose_gate_side.add_argument("--floor-score", type=float, default=-1.0e9)
+    compose_gate_side.add_argument("--gate-margin-threshold", type=float, default=0.0)
+    compose_gate_side.add_argument("--side-weight", type=float, default=1.0)
     compose_gate_side.add_argument(
         "--output",
         type=str,
@@ -1109,6 +1111,8 @@ def cmd_compose_gate_side(args: argparse.Namespace) -> None:
         side_report_path=args.side_report,
         output_path=args.output,
         floor_score=args.floor_score,
+        gate_margin_threshold=args.gate_margin_threshold,
+        side_weight=args.side_weight,
     )
     print(f"[compose-gate-side] saved={Path(args.output).resolve()}")
     print(report["metrics"])
