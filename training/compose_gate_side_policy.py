@@ -33,6 +33,7 @@ def compose_gate_side_reports(
     output_path: str,
     floor_score: float = FLOOR_SCORE,
     gate_margin_threshold: float = 0.0,
+    side_margin_threshold: float = 0.0,
     side_weight: float = 1.0,
 ) -> dict[str, Any]:
     gate = _load_report(gate_report_path)
@@ -62,8 +63,13 @@ def compose_gate_side_reports(
         long_score = float(side_scores.get("LONG", floor_score))
         short_score = float(side_scores.get("SHORT", floor_score))
         trade_margin = float(trade_score - no_trade_score)
+        side_margin = float(abs(long_score - short_score))
 
-        if side_row is None or trade_margin < float(gate_margin_threshold):
+        if (
+            side_row is None
+            or trade_margin < float(gate_margin_threshold)
+            or side_margin < float(side_margin_threshold)
+        ):
             composed_scores = {
                 "BUY": float(floor_score),
                 "HOLD": float(no_trade_score),
@@ -106,6 +112,7 @@ def compose_gate_side_reports(
             "rule": "BUY=gate.TRADE+side.LONG, SELL=gate.TRADE+side.SHORT, HOLD=gate.NO_TRADE",
             "floor_score_for_missing_side": float(floor_score),
             "gate_margin_threshold": float(gate_margin_threshold),
+            "side_margin_threshold": float(side_margin_threshold),
             "side_weight": float(side_weight),
             "gate_rows": int(len(gate_rows)),
             "side_rows": int(len(side_rows)),
@@ -128,6 +135,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=str, default="results/composed_gate_side_policy.json")
     parser.add_argument("--floor-score", type=float, default=FLOOR_SCORE)
     parser.add_argument("--gate-margin-threshold", type=float, default=0.0)
+    parser.add_argument("--side-margin-threshold", type=float, default=0.0)
     parser.add_argument("--side-weight", type=float, default=1.0)
     return parser.parse_args()
 
@@ -140,6 +148,7 @@ def main() -> None:
         output_path=args.output,
         floor_score=args.floor_score,
         gate_margin_threshold=args.gate_margin_threshold,
+        side_margin_threshold=args.side_margin_threshold,
         side_weight=args.side_weight,
     )
     print(json.dumps({"metrics": out["metrics"], "composition": out["composition"]}, indent=2))

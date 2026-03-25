@@ -132,6 +132,8 @@ class TestMainCLI(unittest.TestCase):
                 "-123.0",
                 "--gate-margin-threshold",
                 "0.25",
+                "--side-margin-threshold",
+                "0.15",
                 "--side-weight",
                 "1.5",
             ]
@@ -141,6 +143,7 @@ class TestMainCLI(unittest.TestCase):
         self.assertEqual(args.side_report, "side.json")
         self.assertAlmostEqual(args.floor_score, -123.0)
         self.assertAlmostEqual(args.gate_margin_threshold, 0.25)
+        self.assertAlmostEqual(args.side_margin_threshold, 0.15)
         self.assertAlmostEqual(args.side_weight, 1.5)
 
     def test_parse_calibrate_vlm_bias_trade_gate_constraints(self):

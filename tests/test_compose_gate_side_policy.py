@@ -102,6 +102,48 @@ class TestComposeGateSidePolicy(unittest.TestCase):
             self.assertEqual(out["action_scores"][0]["pred"], "HOLD")
             self.assertAlmostEqual(out["composition"]["gate_margin_threshold"], 0.2)
 
+    def test_side_margin_threshold_forces_hold(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            gate_path = tmp / "gate.json"
+            side_path = tmp / "side.json"
+            out_path = tmp / "composed.json"
+
+            gate_report = {
+                "action_schema": "trade_gate",
+                "action_scores": [
+                    {
+                        "date": "2025-01-01 00:00:00",
+                        "target": "TRADE",
+                        "next_return": 0.01,
+                        "adjusted_scores": {"TRADE": -0.1, "NO_TRADE": -1.0},
+                    }
+                ],
+            }
+            side_report = {
+                "action_schema": "trade_side",
+                "action_scores": [
+                    {
+                        "date": "2025-01-01 00:00:00",
+                        "target": "LONG",
+                        "next_return": 0.01,
+                        "adjusted_scores": {"LONG": -0.20, "SHORT": -0.21},
+                    }
+                ],
+            }
+            gate_path.write_text(json.dumps(gate_report))
+            side_path.write_text(json.dumps(side_report))
+
+            out = compose_gate_side_reports(
+                gate_report_path=str(gate_path),
+                side_report_path=str(side_path),
+                output_path=str(out_path),
+                side_margin_threshold=0.05,
+            )
+
+            self.assertEqual(out["action_scores"][0]["pred"], "HOLD")
+            self.assertAlmostEqual(out["composition"]["side_margin_threshold"], 0.05)
+
 
 if __name__ == "__main__":
     unittest.main()
