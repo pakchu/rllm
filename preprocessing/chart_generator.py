@@ -92,7 +92,16 @@ class ChartGenerator:
             return None
         cache_file = self._cache_path / f"{key}.npy"
         if cache_file.exists():
-            return np.load(cache_file)
+            try:
+                return np.load(cache_file)
+            except Exception:
+                # Treat corrupted / truncated cache artifacts as cache misses.
+                # This keeps long-running eval jobs alive by regenerating bad entries.
+                try:
+                    cache_file.unlink()
+                except FileNotFoundError:
+                    pass
+                return None
         return None
 
     def _save_cache(self, key: str, image: np.ndarray) -> None:

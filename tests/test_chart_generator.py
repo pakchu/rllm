@@ -76,6 +76,21 @@ class TestChartGenerator(unittest.TestCase):
 
         self.assertTrue(np.allclose(image_a, image_b))
 
+
+    def test_corrupt_cache_is_regenerated(self):
+        df = _sample_market_df()
+        window = df.iloc[10:106].copy()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            gen = ChartGenerator(ChartGeneratorConfig(resolution=64, cache_dir=tmpdir))
+            key = gen._cache_key(window)
+            bad_file = Path(tmpdir) / f"{key}.npy"
+            bad_file.write_bytes(b"")
+
+            image = gen.render_window(window)
+            self.assertEqual(image.shape, (3, 64, 64))
+            self.assertGreater(bad_file.stat().st_size, 0)
+
     def test_cache_writes_and_reuses(self):
         df = _sample_market_df()
         window = df.iloc[10:106].copy()
