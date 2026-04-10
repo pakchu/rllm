@@ -20,6 +20,7 @@ from models.option_b_vlm import (
 )
 from training.data_sources import load_market_data
 from training.vlm_trading_data import build_vlm_training_samples
+from utils import disable_transformers_allocator_warmup
 
 
 ACTION_LABELS = ("BUY", "HOLD", "SELL")
@@ -239,12 +240,13 @@ def evaluate_vlm_policy(
         raise ValueError("No evaluation samples generated.")
 
     processor = AutoProcessor.from_pretrained(chosen_model, trust_remote_code=True)
-    model = AutoModelForImageTextToText.from_pretrained(
-        chosen_model,
-        device_map="auto",
-        dtype=torch.bfloat16,
-        trust_remote_code=True,
-    )
+    with disable_transformers_allocator_warmup():
+        model = AutoModelForImageTextToText.from_pretrained(
+            chosen_model,
+            device_map="auto",
+            dtype=torch.bfloat16,
+            trust_remote_code=True,
+        )
     used_adapter = None
     if adapter_dir:
         from peft import PeftModel

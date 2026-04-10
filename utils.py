@@ -149,3 +149,29 @@ def min_sharpe(equity, underlying, rf=0.0, periods_per_year=365):
         )
 
     return float(min(sharpe_cash, sharpe_underlying))
+
+
+from contextlib import contextmanager
+
+@contextmanager
+def disable_transformers_allocator_warmup():
+    """Temporarily disable Transformers allocator warmup to avoid CUDA OOM during model load."""
+    try:
+        from transformers import modeling_utils
+    except Exception:
+        yield
+        return
+
+    original = getattr(modeling_utils, 'caching_allocator_warmup', None)
+    if original is None:
+        yield
+        return
+
+    def _noop(*args, **kwargs):
+        return None
+
+    modeling_utils.caching_allocator_warmup = _noop
+    try:
+        yield
+    finally:
+        modeling_utils.caching_allocator_warmup = original

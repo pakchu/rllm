@@ -28,3 +28,19 @@ class TestTrainingHelpers(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+from utils import disable_transformers_allocator_warmup
+
+class TestAllocatorWarmupDisable(unittest.TestCase):
+    def test_disable_transformers_allocator_warmup_context_restores(self):
+        try:
+            from transformers import modeling_utils
+        except Exception:
+            self.skipTest('transformers unavailable')
+        original = getattr(modeling_utils, 'caching_allocator_warmup', None)
+        self.assertIsNotNone(original)
+        with disable_transformers_allocator_warmup():
+            self.assertIsNot(modeling_utils.caching_allocator_warmup, original)
+            self.assertIsNone(modeling_utils.caching_allocator_warmup())
+        self.assertIs(modeling_utils.caching_allocator_warmup, original)

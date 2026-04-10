@@ -20,6 +20,7 @@ from training.vlm_trading_data import (
     make_grpo_reward_func,
     samples_to_hf_records,
 )
+from utils import disable_transformers_allocator_warmup
 
 
 def _resolve_model_name(model_name: str, allow_fallback: bool) -> str:
@@ -327,13 +328,14 @@ def train_vlm_grpo_smoke(
         )
 
     processor = AutoProcessor.from_pretrained(chosen_model, trust_remote_code=True)
-    model = AutoModelForImageTextToText.from_pretrained(
-        chosen_model,
-        device_map="auto",
-        dtype=torch.bfloat16,
-        quantization_config=quant_cfg,
-        trust_remote_code=True,
-    )
+    with disable_transformers_allocator_warmup():
+        model = AutoModelForImageTextToText.from_pretrained(
+            chosen_model,
+            device_map="auto",
+            dtype=torch.bfloat16,
+            quantization_config=quant_cfg,
+            trust_remote_code=True,
+        )
 
     peft_cfg = LoraConfig(
         r=lora_r,
