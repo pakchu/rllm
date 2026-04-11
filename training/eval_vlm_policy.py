@@ -183,11 +183,12 @@ def evaluate_vlm_policy(
     action_bias_sell: float = 0.0,
     eval_batch_size: int = 1,
     store_action_scores: bool = False,
+    load_in_4bit: bool = False,
     output: str | None = None,
 ) -> dict:
     """Evaluate VLM (base or LoRA adapter) against next-return-derived labels."""
     import torch
-    from transformers import AutoModelForImageTextToText, AutoProcessor
+    from transformers import AutoModelForImageTextToText, AutoProcessor, BitsAndBytesConfig
 
     chosen_model = _resolve_eval_model_name(model_name)
     labels = get_action_labels(action_schema)
@@ -240,11 +241,19 @@ def evaluate_vlm_policy(
         raise ValueError("No evaluation samples generated.")
 
     processor = AutoProcessor.from_pretrained(chosen_model, trust_remote_code=True)
+    quant_cfg = None
+    if load_in_4bit:
+        quant_cfg = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+        )
     with disable_transformers_allocator_warmup():
         model = AutoModelForImageTextToText.from_pretrained(
             chosen_model,
             device_map="auto",
             dtype=torch.bfloat16,
+            quantization_config=quant_cfg,
             trust_remote_code=True,
         )
     used_adapter = None
@@ -494,6 +503,7 @@ def evaluate_vlm_policy(
             "store_action_scores": bool(store_action_scores),
         },
         "generation": {
+            "load_in_4bit": bool(load_in_4bit),
             "max_completion_length": int(max_completion_length),
             "min_new_tokens": int(min_new_tokens),
             "do_sample": bool(do_sample),
@@ -681,6 +691,7 @@ def main() -> None:
         action_bias_sell=args.action_bias_sell,
         eval_batch_size=args.eval_batch_size,
         store_action_scores=args.store_action_scores == "true",
+        load_in_4bit=args.load_in_4bit,
         output=args.output or None,
     )
     print(json.dumps(report["metrics"], indent=2))

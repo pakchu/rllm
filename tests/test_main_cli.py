@@ -488,6 +488,7 @@ class TestMainCLI(unittest.TestCase):
                 "0.2",
                 "--store-action-scores",
                 "true",
+                "--load-in-4bit",
             ]
         )
         self.assertEqual(args.cmd, "eval-vlm")
@@ -503,6 +504,7 @@ class TestMainCLI(unittest.TestCase):
         self.assertEqual(args.prompt_style, "hybrid")
         self.assertEqual(args.prompt_feature_mode, "engineered_v1")
         self.assertEqual(args.do_sample, "true")
+        self.assertTrue(args.load_in_4bit)
         self.assertAlmostEqual(args.temperature, 1.5)
         self.assertEqual(args.decision_mode, "likelihood")
         self.assertAlmostEqual(args.action_bias_buy, 0.2)

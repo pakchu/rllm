@@ -417,6 +417,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="false",
         choices=["true", "false"],
     )
+    eval_vlm.add_argument("--load-in-4bit", action="store_true", default=False)
     eval_vlm.add_argument("--output", type=str, default="results/eval_vlm.json")
 
     select_vlm = sub.add_parser(
