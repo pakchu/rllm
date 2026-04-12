@@ -304,6 +304,25 @@ class TestVlmTradingData(unittest.TestCase):
         records = samples_to_hf_records(samples, action_schema="trade_gate")
         self.assertIn("NO_TRADE", records[0]["prompt"][0]["content"])
 
+
+    def test_build_samples_text_only_modality(self):
+        samples = build_vlm_training_samples(
+            market_df=_rich_market_df(),
+            timeframe="5m",
+            window_size=32,
+            resolution=32,
+            cache_dir=None,
+            max_samples=4,
+            sample_mode="uniform",
+            prompt_style="hybrid",
+            prompt_feature_mode="engineered_v1",
+            modality="text_only",
+        )
+        self.assertEqual(len(samples), 4)
+        self.assertTrue(all(s.image is None for s in samples))
+        records = samples_to_hf_records(samples)
+        self.assertTrue(all('image' not in r for r in records))
+
     def test_build_samples_trade_side_schema(self):
         samples = build_vlm_training_samples(
             market_df=_oscillating_market_df(),

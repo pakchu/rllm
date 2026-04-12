@@ -26,10 +26,10 @@ from preprocessing.timeframe import make_window
 
 @dataclass(frozen=True)
 class VLMTrainingSample:
-    """One training sample for VLM GRPO."""
+    """One training sample for VLM/text GRPO."""
 
     prompt: str
-    image: Image.Image
+    image: Image.Image | None
     target_action: str
     next_return: float
     date: str
@@ -728,6 +728,7 @@ def build_vlm_training_samples(
     prompt_style: str = "numeric",
     prompt_feature_mode: str = "basic_v0",
     action_schema: str = "buy_hold_sell",
+    modality: str = "multimodal",
 ) -> List[VLMTrainingSample]:
     """
     Build trading-derived VLM samples with image + prompt + target action.
@@ -738,14 +739,22 @@ def build_vlm_training_samples(
       - label_mode='utility': cost/risk-aware action utility argmax
     where horizon return uses `(open_{t+h} - open_t)/open_t`.
     """
-    renderer = ChartGenerator(
-        ChartGeneratorConfig(
-            resolution=resolution,
-            cache_dir=cache_dir,
-            show_indicators=True,
-            show_oscillators=True,
+    modality_key = str(modality).lower().strip()
+    if modality_key not in {"multimodal", "text_only"}:
+        raise ValueError(
+            "modality must be one of {'multimodal','text_only'}, "
+            f"got {modality}"
         )
-    )
+    renderer = None
+    if modality_key == "multimodal":
+        renderer = ChartGenerator(
+            ChartGeneratorConfig(
+                resolution=resolution,
+                cache_dir=cache_dir,
+                show_indicators=True,
+                show_oscillators=True,
+            )
+        )
 
     horizon = max(1, int(target_horizon))
     start_t = window_size - 1
@@ -922,8 +931,10 @@ def build_vlm_training_samples(
             dynamic_risk_weight,
         ) = candidates[int(pos)]
         window = make_window(market_df, t=t, w=window_size)
-        image_chw = renderer.render_window(window)
-        image = _chw_to_pil(image_chw)
+        image = None
+        if renderer is not None:
+            image_chw = renderer.render_window(window)
+            image = _chw_to_pil(image_chw)
 
         regime, vol_level, momentum, trend_strength, window_vol = _symbolic_market_labels(window)
         feature_row = feature_frame.iloc[t]
@@ -981,21 +992,21 @@ def samples_to_hf_records(
     system_prompt = make_action_system_prompt(action_schema)
     records = []
     for s in samples:
-        records.append(
-            {
-                # TRL multimodal GRPO expects conversational prompts (not pre-templated strings).
-                "prompt": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": s.prompt},
-                ],
-                "image": s.image,
-                "target_action": s.target_action,
+        record = {
+            # TRL conversational prompt format.
+            "prompt": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": s.prompt},
+            ],
+            "target_action": s.target_action,
                 "next_return": float(s.next_return),
                 "action_utility_buy": float(s.action_utility_buy),
                 "action_utility_hold": float(s.action_utility_hold),
                 "action_utility_sell": float(s.action_utility_sell),
-                "dynamic_risk_weight": float(s.dynamic_risk_weight),
-                "date": s.date,
-            }
-        )
+            "dynamic_risk_weight": float(s.dynamic_risk_weight),
+            "date": s.date,
+        }
+        if s.image is not None:
+            record["image"] = s.image
+        records.append(record)
     return records
