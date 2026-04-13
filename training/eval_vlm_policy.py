@@ -148,6 +148,7 @@ def evaluate_vlm_policy(
     window_size: int = 96,
     resolution: int = 224,
     cache_dir: str | None = "data/image_cache_vlm",
+    modality: str = "multimodal",
     action_schema: str = "buy_hold_sell",
     prompt_style: str = "numeric",
     prompt_feature_mode: str = "basic_v0",
@@ -188,7 +189,7 @@ def evaluate_vlm_policy(
 ) -> dict:
     """Evaluate VLM (base or LoRA adapter) against next-return-derived labels."""
     import torch
-    from transformers import AutoModelForImageTextToText, AutoProcessor, BitsAndBytesConfig
+    from transformers import AutoModelForCausalLM, AutoModelForImageTextToText, AutoProcessor, AutoTokenizer, BitsAndBytesConfig
 
     chosen_model = _resolve_eval_model_name(model_name)
     labels = get_action_labels(action_schema)
@@ -213,6 +214,7 @@ def evaluate_vlm_policy(
         window_size=window_size,
         resolution=resolution,
         cache_dir=cache_dir,
+        modality=modality,
         action_schema=action_schema,
         prompt_style=prompt_style,
         prompt_feature_mode=prompt_feature_mode,
@@ -240,7 +242,6 @@ def evaluate_vlm_policy(
     if not samples:
         raise ValueError("No evaluation samples generated.")
 
-    processor = AutoProcessor.from_pretrained(chosen_model, trust_remote_code=True)
     quant_cfg = None
     if load_in_4bit:
         quant_cfg = BitsAndBytesConfig(
@@ -248,14 +249,34 @@ def evaluate_vlm_policy(
             bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=torch.bfloat16,
         )
-    with disable_transformers_allocator_warmup():
-        model = AutoModelForImageTextToText.from_pretrained(
-            chosen_model,
-            device_map="auto",
-            dtype=torch.bfloat16,
-            quantization_config=quant_cfg,
-            trust_remote_code=True,
+    modality_key = str(modality).lower().strip()
+    if modality_key not in {"multimodal", "text_only"}:
+        raise ValueError(
+            "modality must be one of {'multimodal','text_only'}, "
+            f"got {modality}"
         )
+    if modality_key == "text_only":
+        processor = AutoTokenizer.from_pretrained(chosen_model, trust_remote_code=True)
+        if getattr(processor, 'pad_token_id', None) is None:
+            processor.pad_token = processor.eos_token
+        with disable_transformers_allocator_warmup():
+            model = AutoModelForCausalLM.from_pretrained(
+                chosen_model,
+                device_map="auto",
+                dtype=torch.bfloat16,
+                quantization_config=quant_cfg,
+                trust_remote_code=True,
+            )
+    else:
+        processor = AutoProcessor.from_pretrained(chosen_model, trust_remote_code=True)
+        with disable_transformers_allocator_warmup():
+            model = AutoModelForImageTextToText.from_pretrained(
+                chosen_model,
+                device_map="auto",
+                dtype=torch.bfloat16,
+                quantization_config=quant_cfg,
+                trust_remote_code=True,
+            )
     used_adapter = None
     if adapter_dir:
         from peft import PeftModel
@@ -389,13 +410,19 @@ def evaluate_vlm_policy(
             batch_texts = []
             batch_images = []
             for s in batch_samples:
-                messages = [
-                    {"role": "system", "content": system_prompt},
-                    {
-                        "role": "user",
-                        "content": [{"type": "image"}, {"type": "text", "text": s.prompt}],
-                    },
-                ]
+                if modality_key == "text_only":
+                    messages = [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": s.prompt},
+                    ]
+                else:
+                    messages = [
+                        {"role": "system", "content": system_prompt},
+                        {
+                            "role": "user",
+                            "content": [{"type": "image"}, {"type": "text", "text": s.prompt}],
+                        },
+                    ]
                 batch_texts.append(
                     processor.apply_chat_template(
                         messages, tokenize=False, add_generation_prompt=True
@@ -403,12 +430,19 @@ def evaluate_vlm_policy(
                 )
                 batch_images.append(s.image)
 
-            inputs = processor(
-                text=batch_texts,
-                images=batch_images,
-                return_tensors="pt",
-                padding=True,
-            ).to(device)
+            if modality_key == "text_only":
+                inputs = processor(
+                    batch_texts,
+                    return_tensors="pt",
+                    padding=True,
+                ).to(device)
+            else:
+                inputs = processor(
+                    text=batch_texts,
+                    images=batch_images,
+                    return_tensors="pt",
+                    padding=True,
+                ).to(device)
             if mode == "generate":
                 out = model.generate(
                     **inputs,
@@ -473,6 +507,7 @@ def evaluate_vlm_policy(
         "window_size": int(window_size),
         "sample_mode": sample_mode,
         "sample_seed": int(sample_seed),
+        "modality": str(modality),
         "action_schema": str(action_schema),
         "prompt_style": str(prompt_style),
         "prompt_feature_mode": str(prompt_feature_mode),
@@ -553,6 +588,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--resolution", type=int, default=224)
     parser.add_argument("--cache-dir", type=str, default="data/image_cache_vlm")
     parser.add_argument(
+        "--modality",
+        type=str,
+        default="multimodal",
+        choices=["multimodal", "text_only"],
+    )
+    parser.add_argument(
         "--action-schema",
         type=str,
         default="buy_hold_sell",
@@ -627,6 +668,7 @@ def parse_args() -> argparse.Namespace:
         default="false",
         choices=["true", "false"],
     )
+    parser.add_argument("--load-in-4bit", action="store_true", default=False)
     parser.add_argument("--output", type=str, default="results/eval_vlm.json")
     return parser.parse_args()
 
@@ -656,6 +698,7 @@ def main() -> None:
         window_size=args.window_size,
         resolution=args.resolution,
         cache_dir=args.cache_dir or None,
+        modality=args.modality,
         action_schema=args.action_schema,
         prompt_style=args.prompt_style,
         prompt_feature_mode=args.prompt_feature_mode,

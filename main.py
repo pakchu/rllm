@@ -217,6 +217,12 @@ def build_parser() -> argparse.ArgumentParser:
     train_vlm.add_argument("--cache-dir", type=str, default="data/image_cache_vlm")
     train_vlm.add_argument("--max-samples", type=int, default=256)
     train_vlm.add_argument(
+        "--modality",
+        type=str,
+        default="multimodal",
+        choices=["multimodal", "text_only"],
+    )
+    train_vlm.add_argument(
         "--action-schema",
         type=str,
         default="buy_hold_sell",
@@ -338,6 +344,12 @@ def build_parser() -> argparse.ArgumentParser:
     eval_vlm.add_argument("--window-size", type=int, default=96)
     eval_vlm.add_argument("--resolution", type=int, default=224)
     eval_vlm.add_argument("--cache-dir", type=str, default="data/image_cache_vlm")
+    eval_vlm.add_argument(
+        "--modality",
+        type=str,
+        default="multimodal",
+        choices=["multimodal", "text_only"],
+    )
     eval_vlm.add_argument(
         "--action-schema",
         type=str,
@@ -988,6 +1000,7 @@ def cmd_train_vlm_smoke(args: argparse.Namespace) -> None:
         resolution=args.resolution,
         cache_dir=args.cache_dir or None,
         max_samples=args.max_samples,
+        modality=args.modality,
         action_schema=args.action_schema,
         prompt_style=args.prompt_style,
         prompt_feature_mode=args.prompt_feature_mode,
@@ -1065,6 +1078,7 @@ def cmd_eval_vlm(args: argparse.Namespace) -> None:
         window_size=args.window_size,
         resolution=args.resolution,
         cache_dir=args.cache_dir or None,
+        modality=args.modality,
         action_schema=args.action_schema,
         prompt_style=args.prompt_style,
         prompt_feature_mode=args.prompt_feature_mode,

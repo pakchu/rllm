@@ -659,3 +659,30 @@ class TestMainCLI(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+    def test_parse_train_vlm_text_only_modality(self):
+        parser = build_parser()
+        args = parser.parse_args([
+            "train-vlm-smoke",
+            "--modality",
+            "text_only",
+            "--action-schema",
+            "trade_gate",
+        ])
+        self.assertEqual(args.cmd, "train-vlm-smoke")
+        self.assertEqual(args.modality, "text_only")
+        self.assertEqual(args.action_schema, "trade_gate")
+
+    def test_parse_eval_vlm_text_only_modality(self):
+        parser = build_parser()
+        args = parser.parse_args([
+            "eval-vlm",
+            "--modality",
+            "text_only",
+            "--action-schema",
+            "trade_side",
+        ])
+        self.assertEqual(args.cmd, "eval-vlm")
+        self.assertEqual(args.modality, "text_only")
+        self.assertEqual(args.action_schema, "trade_side")

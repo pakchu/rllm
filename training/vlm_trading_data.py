@@ -964,6 +964,7 @@ def build_vlm_training_samples(
             state,
             prompt_style=prompt_style,
             action_schema=action_schema_key,
+            modality=modality_key,
         )
 
         samples.append(

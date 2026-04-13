@@ -139,6 +139,7 @@ def build_trading_prompt(
     state: TradingPromptState,
     prompt_style: str = "numeric",
     action_schema: str = "buy_hold_sell",
+    modality: str = "multimodal",
 ) -> str:
     """Build a strict action-only prompt for VLM policy inference."""
     style = str(prompt_style).strip().lower()
@@ -149,6 +150,12 @@ def build_trading_prompt(
         )
     action_labels = get_action_labels(action_schema)
     action_text = "/".join(action_labels)
+    modality_key = str(modality).strip().lower()
+    if modality_key not in {"multimodal", "text_only"}:
+        raise ValueError(
+            "modality must be one of {'multimodal','text_only'}, "
+            f"got {modality}"
+        )
 
     numeric_lines = [
         _format_numeric_value("Position Size (%)", float(state.position_size_pct)),
@@ -181,9 +188,10 @@ def build_trading_prompt(
     else:
         feature_block = f"{numeric_block}\n{symbolic_block}"
 
+    chart_line = "Chart: [IMAGE]\n" if modality_key == "multimodal" else ""
     return (
         f"Timeframe: {state.timeframe}\n"
-        "Chart: [IMAGE]\n"
+        f"{chart_line}"
         f"{feature_block}\n\n"
         f"Output format: one uppercase token only ({action_text}).\n"
         "Answer:"

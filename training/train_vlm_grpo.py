@@ -134,6 +134,7 @@ def train_vlm_grpo_smoke(
     resolution: int = 224,
     cache_dir: str | None = "data/image_cache_vlm",
     max_samples: int = 256,
+    modality: str = "multimodal",
     action_schema: str = "buy_hold_sell",
     prompt_style: str = "numeric",
     prompt_feature_mode: str = "basic_v0",
@@ -214,6 +215,7 @@ def train_vlm_grpo_smoke(
         window_size=window_size,
         resolution=resolution,
         cache_dir=cache_dir,
+        modality=modality,
         action_schema=action_schema,
         prompt_style=prompt_style,
         prompt_feature_mode=prompt_feature_mode,
@@ -268,6 +270,7 @@ def train_vlm_grpo_smoke(
             "window_size": window_size,
             "sample_mode": sample_mode,
             "sample_seed": sample_seed,
+            "modality": str(modality),
             "action_schema": str(action_schema),
             "prompt_style": str(prompt_style),
             "prompt_feature_mode": str(prompt_feature_mode),
@@ -313,8 +316,10 @@ def train_vlm_grpo_smoke(
     from datasets import Dataset
     from peft import LoraConfig
     from transformers import (
+        AutoModelForCausalLM,
         AutoModelForImageTextToText,
         AutoProcessor,
+        AutoTokenizer,
         BitsAndBytesConfig,
     )
     from trl import GRPOConfig, GRPOTrainer
@@ -327,15 +332,34 @@ def train_vlm_grpo_smoke(
             bnb_4bit_compute_dtype=torch.bfloat16,
         )
 
-    processor = AutoProcessor.from_pretrained(chosen_model, trust_remote_code=True)
-    with disable_transformers_allocator_warmup():
-        model = AutoModelForImageTextToText.from_pretrained(
-            chosen_model,
-            device_map="auto",
-            dtype=torch.bfloat16,
-            quantization_config=quant_cfg,
-            trust_remote_code=True,
+    modality_key = str(modality).lower().strip()
+    if modality_key not in {"multimodal", "text_only"}:
+        raise ValueError(
+            "modality must be one of {'multimodal','text_only'}, "
+            f"got {modality}"
         )
+    if modality_key == "text_only":
+        processor = AutoTokenizer.from_pretrained(chosen_model, trust_remote_code=True)
+        if getattr(processor, 'pad_token_id', None) is None:
+            processor.pad_token = processor.eos_token
+        with disable_transformers_allocator_warmup():
+            model = AutoModelForCausalLM.from_pretrained(
+                chosen_model,
+                device_map="auto",
+                dtype=torch.bfloat16,
+                quantization_config=quant_cfg,
+                trust_remote_code=True,
+            )
+    else:
+        processor = AutoProcessor.from_pretrained(chosen_model, trust_remote_code=True)
+        with disable_transformers_allocator_warmup():
+            model = AutoModelForImageTextToText.from_pretrained(
+                chosen_model,
+                device_map="auto",
+                dtype=torch.bfloat16,
+                quantization_config=quant_cfg,
+                trust_remote_code=True,
+            )
 
     peft_cfg = LoraConfig(
         r=lora_r,
@@ -409,6 +433,7 @@ def train_vlm_grpo_smoke(
         "label_counts": label_counts,
         "sample_mode": str(sample_mode),
         "sample_seed": int(sample_seed),
+        "modality": str(modality),
         "action_schema": str(action_schema),
         "prompt_style": str(prompt_style),
         "prompt_feature_mode": str(prompt_feature_mode),
@@ -469,6 +494,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--resolution", type=int, default=224)
     parser.add_argument("--cache-dir", type=str, default="data/image_cache_vlm")
     parser.add_argument("--max-samples", type=int, default=256)
+    parser.add_argument(
+        "--modality",
+        type=str,
+        default="multimodal",
+        choices=["multimodal", "text_only"],
+    )
     parser.add_argument(
         "--action-schema",
         type=str,
@@ -605,6 +636,7 @@ def main() -> None:
         resolution=args.resolution,
         cache_dir=args.cache_dir or None,
         max_samples=args.max_samples,
+        modality=args.modality,
         action_schema=args.action_schema,
         prompt_style=args.prompt_style,
         prompt_feature_mode=args.prompt_feature_mode,
