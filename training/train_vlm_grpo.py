@@ -339,7 +339,7 @@ def train_vlm_grpo_smoke(
             f"got {modality}"
         )
     if modality_key == "text_only":
-        processor = AutoTokenizer.from_pretrained(chosen_model, trust_remote_code=True)
+        processor = AutoTokenizer.from_pretrained(chosen_model, trust_remote_code=True, use_fast=False)
         if getattr(processor, 'pad_token_id', None) is None:
             processor.pad_token = processor.eos_token
         with disable_transformers_allocator_warmup():
