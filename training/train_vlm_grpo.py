@@ -361,11 +361,21 @@ def train_vlm_grpo_smoke(
                 trust_remote_code=True,
             )
 
+    # Gemma 4 wraps the vision tower attention projections in Gemma4ClippableLinear,
+    # which PEFT cannot LoRA-wrap directly. In text-only mode we only need the
+    # language model, so constrain LoRA to language attention projections.
+    if modality_key == "text_only" and "gemma-4" in chosen_model.lower():
+        lora_targets: list[str] | str = (
+            r".*language_model\.layers\.\d+\.self_attn\.(q_proj|k_proj|v_proj|o_proj)$"
+        )
+    else:
+        lora_targets = ["q_proj", "k_proj", "v_proj", "o_proj"]
+
     peft_cfg = LoraConfig(
         r=lora_r,
         lora_alpha=lora_alpha,
         lora_dropout=0.05,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+        target_modules=lora_targets,
         task_type="CAUSAL_LM",
     )
 
