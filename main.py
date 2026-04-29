@@ -423,6 +423,7 @@ def build_parser() -> argparse.ArgumentParser:
     eval_vlm.add_argument("--action-bias-buy", type=float, default=0.0)
     eval_vlm.add_argument("--action-bias-hold", type=float, default=0.0)
     eval_vlm.add_argument("--action-bias-sell", type=float, default=0.0)
+    eval_vlm.add_argument("--eval-batch-size", type=int, default=1)
     eval_vlm.add_argument(
         "--store-action-scores",
         type=str,
@@ -1112,7 +1113,9 @@ def cmd_eval_vlm(args: argparse.Namespace) -> None:
         action_bias_buy=args.action_bias_buy,
         action_bias_hold=args.action_bias_hold,
         action_bias_sell=args.action_bias_sell,
+        eval_batch_size=args.eval_batch_size,
         store_action_scores=args.store_action_scores == "true",
+        load_in_4bit=args.load_in_4bit,
         output=args.output,
     )
     print(f"[eval-vlm] saved={Path(args.output).resolve()}")
