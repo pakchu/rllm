@@ -306,8 +306,10 @@ def evaluate_vlm_policy(
     action_token_ids: dict[str, "torch.Tensor"] = {}
     if mode == "likelihood":
         tokenizer = getattr(processor, "tokenizer", None)
+        if tokenizer is None and hasattr(processor, "encode"):
+            tokenizer = processor
         if tokenizer is None:
-            raise ValueError("Processor must expose tokenizer for likelihood decision_mode.")
+            raise ValueError("Processor/tokenizer must expose encode() for likelihood decision_mode.")
         for label in labels:
             ids = tokenizer.encode(label, add_special_tokens=False)
             if not ids:
@@ -330,7 +332,10 @@ def evaluate_vlm_policy(
             attn_dtype = torch.long
         extra_inputs = {k: v for k, v in inputs.items() if k not in {"input_ids", "attention_mask"}}
 
-        pad_token_id = getattr(getattr(processor, "tokenizer", None), "pad_token_id", None)
+        inner_tokenizer = getattr(processor, "tokenizer", None)
+        if inner_tokenizer is None and hasattr(processor, "pad_token_id"):
+            inner_tokenizer = processor
+        pad_token_id = getattr(inner_tokenizer, "pad_token_id", None)
         if pad_token_id is None:
             pad_token_id = 0
 
