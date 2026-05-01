@@ -728,6 +728,7 @@ def build_vlm_training_samples(
     prompt_style: str = "numeric",
     prompt_feature_mode: str = "basic_v0",
     action_schema: str = "buy_hold_sell",
+    trade_side_sample_policy: str = "trade_only",
     modality: str = "multimodal",
 ) -> List[VLMTrainingSample]:
     """
@@ -782,6 +783,13 @@ def build_vlm_training_samples(
         )
     action_schema_key = str(action_schema).lower().strip()
     get_action_labels(action_schema_key)
+    trade_side_sample_policy_key = str(trade_side_sample_policy).lower().strip()
+    if trade_side_sample_policy_key not in {"trade_only", "directional_all"}:
+        raise ValueError(
+            "trade_side_sample_policy must be one of "
+            "{'trade_only','directional_all'}, "
+            f"got {trade_side_sample_policy}"
+        )
 
     feature_frame = build_market_feature_frame(market_df, window_size=window_size)
 
@@ -842,18 +850,28 @@ def build_vlm_training_samples(
                     hold_band=hold_band,
                 )
         elif action_schema_key == "trade_side":
-            if label_mode_key == "utility":
-                target_action = action_from_trade_side_utilities(
-                    utility_buy=utilities["BUY"],
-                    utility_hold=utilities["HOLD"],
-                    utility_sell=utilities["SELL"],
-                    hold_margin=utility_hold_margin,
-                )
+            if trade_side_sample_policy_key == "directional_all":
+                if label_mode_key == "utility":
+                    target_action = (
+                        "LONG"
+                        if float(utilities["BUY"]) >= float(utilities["SELL"])
+                        else "SHORT"
+                    )
+                else:
+                    target_action = "LONG" if next_return >= 0.0 else "SHORT"
             else:
-                target_action = action_from_trade_side_next_return(
-                    next_return,
-                    hold_band=hold_band,
-                )
+                if label_mode_key == "utility":
+                    target_action = action_from_trade_side_utilities(
+                        utility_buy=utilities["BUY"],
+                        utility_hold=utilities["HOLD"],
+                        utility_sell=utilities["SELL"],
+                        hold_margin=utility_hold_margin,
+                    )
+                else:
+                    target_action = action_from_trade_side_next_return(
+                        next_return,
+                        hold_band=hold_band,
+                    )
         else:
             if label_mode_key == "utility":
                 target_action = action_from_utilities(

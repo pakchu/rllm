@@ -111,12 +111,15 @@ class TestMainCLI(unittest.TestCase):
                 "eval-vlm",
                 "--action-schema",
                 "trade_side",
+                "--trade-side-sample-policy",
+                "directional_all",
                 "--decision-mode",
                 "likelihood",
             ]
         )
         self.assertEqual(args.cmd, "eval-vlm")
         self.assertEqual(args.action_schema, "trade_side")
+        self.assertEqual(args.trade_side_sample_policy, "directional_all")
         self.assertEqual(args.decision_mode, "likelihood")
 
     def test_parse_compose_gate_side(self):

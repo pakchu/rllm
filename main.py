@@ -357,6 +357,16 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["buy_hold_sell", "trade_gate", "trade_side"],
     )
     eval_vlm.add_argument(
+        "--trade-side-sample-policy",
+        type=str,
+        default="trade_only",
+        choices=["trade_only", "directional_all"],
+        help=(
+            "For action_schema=trade_side, score only trade-labeled windows "
+            "or every window with a forced LONG/SHORT target for inference composition."
+        ),
+    )
+    eval_vlm.add_argument(
         "--prompt-style",
         type=str,
         default="numeric",
@@ -1081,6 +1091,7 @@ def cmd_eval_vlm(args: argparse.Namespace) -> None:
         cache_dir=args.cache_dir or None,
         modality=args.modality,
         action_schema=args.action_schema,
+        trade_side_sample_policy=args.trade_side_sample_policy,
         prompt_style=args.prompt_style,
         prompt_feature_mode=args.prompt_feature_mode,
         hold_band=args.hold_band,

@@ -341,6 +341,35 @@ class TestVlmTradingData(unittest.TestCase):
         records = samples_to_hf_records(samples, action_schema="trade_side")
         self.assertIn("LONG", records[0]["prompt"][0]["content"])
 
+    def test_build_samples_trade_side_directional_all_keeps_flat_windows(self):
+        trade_only = build_vlm_training_samples(
+            market_df=_oscillating_market_df(),
+            timeframe="5m",
+            window_size=32,
+            resolution=32,
+            cache_dir=None,
+            max_samples=None,
+            sample_mode="sequential",
+            action_schema="trade_side",
+            label_mode="utility",
+            utility_hold_margin=0.05,
+        )
+        directional_all = build_vlm_training_samples(
+            market_df=_oscillating_market_df(),
+            timeframe="5m",
+            window_size=32,
+            resolution=32,
+            cache_dir=None,
+            max_samples=None,
+            sample_mode="sequential",
+            action_schema="trade_side",
+            trade_side_sample_policy="directional_all",
+            label_mode="utility",
+            utility_hold_margin=0.05,
+        )
+        self.assertGreater(len(directional_all), len(trade_only))
+        self.assertTrue(all(s.target_action in {"LONG", "SHORT"} for s in directional_all))
+
     def test_build_samples_random_mode_is_seeded(self):
         s1 = build_vlm_training_samples(
             market_df=_oscillating_market_df(),
