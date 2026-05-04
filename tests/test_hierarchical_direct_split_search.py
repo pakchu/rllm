@@ -4,10 +4,41 @@ import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from training.hierarchical_direct_split_search import run_search
+from training.hierarchical_direct_split_search import HierSimConfig, _simulate_hier, run_search
 
 
 class TestHierarchicalDirectSplitSearch(unittest.TestCase):
+    def test_forward_horizon_returns_are_not_compounded_per_bar(self):
+        rows = []
+        base = datetime(2025, 1, 1, 0, 0, 0)
+        for i in range(12):
+            rows.append(
+                {
+                    "date": (base + timedelta(minutes=5 * i)).isoformat(sep=" "),
+                    "next_return": 0.01,
+                    "gate_scores": {"TRADE": 1.0, "NO_TRADE": 0.0},
+                    "side_scores": {"LONG": 1.0, "SHORT": 0.0},
+                }
+            )
+
+        out = _simulate_hier(
+            rows,
+            HierSimConfig(
+                inverse=False,
+                gate_margin_threshold=0.0,
+                side_margin_threshold=0.0,
+                hold_bars=12,
+                cooldown_bars=0,
+            ),
+            leverage=1.0,
+            fee_rate=0.0,
+            slippage_rate=0.0,
+        )
+
+        self.assertEqual(out["sim"]["trade_entries"], 1)
+        self.assertAlmostEqual(out["sim"]["ret_pct"], 1.0, places=6)
+        self.assertEqual(out["sim"]["return_application"], "entry_forward_return_non_overlap")
+
     def test_run_search_finds_candidate_on_synthetic_reports(self):
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)

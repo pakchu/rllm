@@ -12,6 +12,8 @@ from typing import Any
 
 from training.search_significant_cagr_mdd_pool import _pass_relaxed, _pass_strict
 
+_ROW_ARRAY_CACHE: dict[int, tuple[list[float], list[float], list[float], list[float], list[datetime], float, float]] = {}
+
 
 @dataclass(frozen=True)
 class HierSimConfig:
@@ -42,16 +44,26 @@ def _pair_rows(
         side_row = side_by_date.get(date)
         if side_row is None:
             continue
+        gate_scores = gate_row.get("adjusted_scores") or gate_row.get("scores") or {}
+        side_scores = side_row.get("adjusted_scores") or side_row.get("scores") or {}
+        long_score = float(side_scores.get("LONG", float("-inf")))
+        short_score = float(side_scores.get("SHORT", float("-inf")))
         paired.append(
             {
                 "date": date,
                 "next_return": float(gate_row.get("next_return", 0.0)),
-                "gate_scores": gate_row.get("adjusted_scores") or gate_row.get("scores") or {},
-                "side_scores": side_row.get("adjusted_scores") or side_row.get("scores") or {},
+                "gate_scores": gate_scores,
+                "side_scores": side_scores,
+                "_gate_margin": float(gate_scores.get("TRADE", float("-inf")))
+                - float(gate_scores.get("NO_TRADE", float("-inf"))),
+                "_side_dir": long_score - short_score,
+                "_side_margin": abs(long_score - short_score),
             }
         )
     if not paired:
         raise ValueError("No overlapping dates between gate and side reports.")
+    for row in paired:
+        row["_dt"] = datetime.fromisoformat(str(row["date"]))
     return paired
 
 
@@ -60,6 +72,13 @@ def _norm_cdf(x: float) -> float:
 
 
 def _signal_from_row(row: dict[str, Any], cfg: HierSimConfig) -> int:
+    if "_gate_margin" in row and "_side_dir" in row and "_side_margin" in row:
+        if float(row["_gate_margin"]) < float(cfg.gate_margin_threshold):
+            return 0
+        if float(row["_side_margin"]) < float(cfg.side_margin_threshold):
+            return 0
+        return (-1 if cfg.inverse else 1) if float(row["_side_dir"]) >= 0.0 else (1 if cfg.inverse else -1)
+
     gate_scores = row["gate_scores"]
     side_scores = row["side_scores"]
     trade_score = float(gate_scores.get("TRADE", float("-inf")))
@@ -85,90 +104,86 @@ def _simulate_hier(
     fee_rate: float,
     slippage_rate: float,
 ) -> dict[str, Any]:
+    """Simulate gate+side scores using one forward return per entry.
+
+    VLM reports store ``next_return`` as a forward-horizon return for the
+    current window, not as the next 5-minute bar return.  The previous
+    simulator multiplied that forward return once per held bar, which
+    double-counted overlapping horizons for h12 experiments.  This simulator
+    treats each entry as consuming exactly one row's forward return, charges
+    entry+exit costs, and then skips ``hold_bars`` rows before looking for the
+    next entry.
+    """
     eq = 1.0
     peak = 1.0
     max_dd = 0.0
-
-    side = 0
-    bars_left = 0
-    cooldown = 0
-    trade_entry_eq: float | None = None
 
     entries = 0
     turnover_legs = 0
     trade_returns: list[float] = []
     gap_flatten_events = 0
 
-    row_dts = [datetime.fromisoformat(str(row["date"])) for row in rows]
-    deltas_sec = [
-        max(0.0, float((b - a).total_seconds()))
-        for a, b in zip(row_dts[:-1], row_dts[1:])
-        if b > a
-    ]
-    inferred_bar_sec = 300.0
-    if deltas_sec:
-        deltas_sec_sorted = sorted(deltas_sec)
-        inferred_bar_sec = float(deltas_sec_sorted[len(deltas_sec_sorted) // 2])
-    gap_sec_threshold = max(600.0, inferred_bar_sec * 1.5)
+    cache_key = id(rows)
+    cached = _ROW_ARRAY_CACHE.get(cache_key)
+    if cached is None:
+        gate_margins = [float(row.get("_gate_margin", 0.0)) for row in rows]
+        side_margins = [float(row.get("_side_margin", 0.0)) for row in rows]
+        side_dirs = [float(row.get("_side_dir", 0.0)) for row in rows]
+        next_returns = [float(row.get("next_return", 0.0)) for row in rows]
+        row_dts = [row.get("_dt") or datetime.fromisoformat(str(row["date"])) for row in rows]
+        deltas_sec = [
+            max(0.0, float((b - a).total_seconds()))
+            for a, b in zip(row_dts[:-1], row_dts[1:])
+            if b > a
+        ]
+        inferred_bar_sec = 300.0
+        if deltas_sec:
+            deltas_sec_sorted = sorted(deltas_sec)
+            inferred_bar_sec = float(deltas_sec_sorted[len(deltas_sec_sorted) // 2])
+        gap_sec_threshold = max(600.0, inferred_bar_sec * 1.5)
+        cached = (gate_margins, side_margins, side_dirs, next_returns, row_dts, inferred_bar_sec, gap_sec_threshold)
+        _ROW_ARRAY_CACHE[cache_key] = cached
+    gate_margins, side_margins, side_dirs, next_returns, row_dts, inferred_bar_sec, gap_sec_threshold = cached
 
-    prev_dt: datetime | None = None
-    for row, row_dt in zip(rows, row_dts):
-        if prev_dt is not None and float((row_dt - prev_dt).total_seconds()) > gap_sec_threshold:
-            if side != 0 and trade_entry_eq is not None:
-                leg = abs(int(side))
-                turnover_legs += leg
-                eq *= max(
-                    0.0,
-                    1.0 - (float(fee_rate) + float(slippage_rate)) * float(leg) * float(leverage),
-                )
-                trade_returns.append(eq / trade_entry_eq - 1.0)
-                trade_entry_eq = None
-                side = 0
-                bars_left = 0
-                cooldown = 0
-                gap_flatten_events += 1
+    step = max(1, int(cfg.hold_bars))
+    cooldown_step = max(0, int(cfg.cooldown_bars))
+    gate_threshold = float(cfg.gate_margin_threshold)
+    side_threshold = float(cfg.side_margin_threshold)
+    inverse = bool(cfg.inverse)
+    lev = float(leverage)
+    cost = (float(fee_rate) + float(slippage_rate)) * lev
+    i = 0
+    while i < len(rows):
+        next_ret = next_returns[i]
+        if gate_margins[i] < gate_threshold or side_margins[i] < side_threshold:
+            i += 1
+            continue
+        signal = (-1 if inverse else 1) if side_dirs[i] >= 0.0 else (1 if inverse else -1)
+        if signal == 0:
+            i += 1
+            continue
 
-        next_ret = float(row.get("next_return", 0.0))
-        if side != 0:
-            eq *= max(0.0, 1.0 + float(side) * float(next_ret) * float(leverage))
+        entry_eq = eq
+        entries += 1
+        turnover_legs += 2
 
-        target = side
-        if side != 0:
-            bars_left -= 1
-            if bars_left <= 0:
-                target = 0
-        if side == 0 and cooldown > 0:
-            cooldown -= 1
+        # Entry cost, one forward-horizon return, exit cost.  No overlapping
+        # forward returns are compounded while this synthetic position is open.
+        eq *= max(0.0, 1.0 - cost)
+        eq *= max(0.0, 1.0 + float(signal) * next_ret * lev)
+        eq *= max(0.0, 1.0 - cost)
+        trade_returns.append(eq / entry_eq - 1.0)
 
-        signal = _signal_from_row(row, cfg)
-        if side == 0 and cooldown <= 0 and signal != 0:
-            target = signal
-            bars_left = int(cfg.hold_bars)
-
-        if target != side:
-            leg = abs(int(target) - int(side))
-            turnover_legs += leg
-            eq *= max(0.0, 1.0 - (float(fee_rate) + float(slippage_rate)) * float(leg) * float(leverage))
-
-            if side != 0 and trade_entry_eq is not None:
-                trade_returns.append(eq / trade_entry_eq - 1.0)
-                trade_entry_eq = None
-                if target == 0:
-                    cooldown = int(cfg.cooldown_bars)
-
-            if target != 0:
-                entries += 1
-                trade_entry_eq = eq
-
-        side = target
         peak = max(peak, eq)
         if peak > 0.0:
             max_dd = max(max_dd, 1.0 - eq / peak)
-        prev_dt = row_dt
 
-    if side != 0 and trade_entry_eq is not None:
-        eq *= max(0.0, 1.0 - (float(fee_rate) + float(slippage_rate)) * float(leverage))
-        trade_returns.append(eq / trade_entry_eq - 1.0)
+        next_i = i + step + cooldown_step
+        if next_i < len(row_dts) and float((row_dts[next_i] - row_dts[i]).total_seconds()) > gap_sec_threshold * (
+            step + cooldown_step
+        ):
+            gap_flatten_events += 1
+        i = next_i
 
     n = len(trade_returns)
     if n >= 2:
@@ -218,6 +233,7 @@ def _simulate_hier(
             "samples": int(len(rows)),
             "gap_flatten_events": int(gap_flatten_events),
             "inferred_bar_minutes": float(inferred_bar_sec / 60.0),
+            "return_application": "entry_forward_return_non_overlap",
         },
         "trade_stats": {
             "n_trades": int(n),
@@ -292,6 +308,7 @@ def run_search(
 
     strict = sorted([x for x in candidates if x["significance"]["strict_pass"]], key=_rank_key, reverse=True)
     relaxed = sorted([x for x in candidates if x["significance"]["relaxed_pass"]], key=_rank_key, reverse=True)
+    top = sorted(candidates, key=_rank_key, reverse=True)[:20]
     selected = strict[0] if strict else (relaxed[0] if relaxed else None)
     selected_from = "strict" if strict else ("relaxed" if relaxed else None)
 
@@ -330,6 +347,7 @@ def run_search(
             "strict_pass_count_test": int(len(strict)),
             "relaxed_pass_count_test": int(len(relaxed)),
         },
+        "top_test_candidates": top,
         "selected_from": selected_from,
         "selected_params": selected["params"] if selected else None,
         "selected_test_metrics": selected,
