@@ -607,6 +607,12 @@ def parse_args() -> argparse.Namespace:
         choices=sorted(ACTION_SCHEMA_LABELS),
     )
     parser.add_argument(
+        "--trade-side-sample-policy",
+        type=str,
+        default="trade_only",
+        choices=["trade_only", "all"],
+    )
+    parser.add_argument(
         "--prompt-style",
         type=str,
         default="numeric",
@@ -707,6 +713,7 @@ def main() -> None:
         cache_dir=args.cache_dir or None,
         modality=args.modality,
         action_schema=args.action_schema,
+        trade_side_sample_policy=args.trade_side_sample_policy,
         prompt_style=args.prompt_style,
         prompt_feature_mode=args.prompt_feature_mode,
         hold_band=args.hold_band,
