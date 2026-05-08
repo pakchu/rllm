@@ -610,7 +610,7 @@ def parse_args() -> argparse.Namespace:
         "--trade-side-sample-policy",
         type=str,
         default="trade_only",
-        choices=["trade_only", "all"],
+        choices=["trade_only", "directional_all"],
     )
     parser.add_argument(
         "--prompt-style",
