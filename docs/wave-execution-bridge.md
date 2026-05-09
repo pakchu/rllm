@@ -21,18 +21,16 @@ RLLM_EXECUTION_DRY_RUN=false
 
 or the CLI is called with `--live`.
 
-Live mode requires Binance credentials:
+Live mode requires Binance credentials. The bridge first loads the sibling
+`wave_trading/.env` file, then respects any environment variables already set in
+the current process. Do not print or commit credential values.
 
 ```bash
-# testnet by default
+# testnet by default; values may come from /home/pakchu/workspace/wave_trading/.env
 export BINANCE_TESTNET=true
-export BINANCE_TESTNET_API_KEY=...
-export BINANCE_TESTNET_API_SECRET=...
 
-# live account
+# live account; requires live keys in environment or wave_trading/.env
 export BINANCE_TESTNET=false
-export BINANCE_LIVE_API_KEY=...
-export BINANCE_LIVE_API_SECRET=...
 ```
 
 ## One-shot smoke command

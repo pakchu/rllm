@@ -22,6 +22,33 @@ TradeSignal = Literal["LONG", "SHORT", "HOLD"]
 DEFAULT_WAVE_TRADING_PATH = "/home/pakchu/workspace/wave_trading"
 
 
+def load_env_file(path: str | Path, *, override: bool = False) -> dict[str, str]:
+    """Load simple KEY=VALUE lines from a dotenv file without printing secrets.
+
+    This avoids adding python-dotenv as a dependency while allowing the bridge
+    to reuse the sibling wave_trading repo's existing credential file.
+    Values already present in the process environment win unless override=True.
+    """
+
+    env_path = Path(path).expanduser()
+    loaded: dict[str, str] = {}
+    if not env_path.exists():
+        return loaded
+    for raw_line in env_path.read_text().splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if not key:
+            continue
+        loaded[key] = value
+        if override or key not in os.environ:
+            os.environ[key] = value
+    return loaded
+
+
 @dataclass(frozen=True)
 class WaveExecutionConfig:
     """Configuration for the wave_trading execution bridge."""
@@ -141,7 +168,7 @@ class WaveExecutionBridge:
     @classmethod
     def from_env(cls, *, config: WaveExecutionConfig | None = None) -> "WaveExecutionBridge":
         cfg = config or WaveExecutionConfig.from_env()
-        api_key, api_secret = _load_api_credentials(cfg.testnet)
+        api_key, api_secret = _load_api_credentials(cfg.testnet, cfg.wave_trading_path)
         client_cls, executor_cls = load_wave_execution_classes(cfg.wave_trading_path)
         client = client_cls(api_key=api_key, api_secret=api_secret, testnet=cfg.testnet)
         signal_generator = _StaticSignalGenerator(
@@ -207,7 +234,8 @@ class WaveExecutionBridge:
             await close()
 
 
-def _load_api_credentials(testnet: bool) -> tuple[str, str]:
+def _load_api_credentials(testnet: bool, wave_trading_path: str = DEFAULT_WAVE_TRADING_PATH) -> tuple[str, str]:
+    load_env_file(Path(wave_trading_path) / ".env", override=False)
     if testnet:
         key = os.environ.get("BINANCE_TESTNET_API_KEY", "")
         secret = os.environ.get("BINANCE_TESTNET_API_SECRET", "")

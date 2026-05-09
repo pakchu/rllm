@@ -1,11 +1,16 @@
+import os
+import tempfile
 import unittest
+from pathlib import Path
 
 from execution.wave_execution import (
     ExecutionDecision,
     WaveExecutionBridge,
     WaveExecutionConfig,
     _StaticSignalGenerator,
+    _load_api_credentials,
     _validate_decision,
+    load_env_file,
 )
 
 
@@ -73,6 +78,49 @@ class WaveExecutionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(args[:5], ("SHORT", 0.8, 100.0, 2.0, "sig-2"))
         self.assertEqual(args[5], 5)
         self.assertEqual(kwargs, {"ws_client": None})
+
+    def test_loads_wave_trading_env_without_overriding_existing_values(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env_file = Path(tmp) / ".env"
+            env_file.write_text("BINANCE_TESTNET_API_KEY=file-key\nBINANCE_TESTNET_API_SECRET=file-secret\n")
+            old_key = os.environ.get("BINANCE_TESTNET_API_KEY")
+            old_secret = os.environ.get("BINANCE_TESTNET_API_SECRET")
+            try:
+                os.environ["BINANCE_TESTNET_API_KEY"] = "existing-key"
+                os.environ.pop("BINANCE_TESTNET_API_SECRET", None)
+                loaded = load_env_file(env_file)
+                self.assertEqual(loaded["BINANCE_TESTNET_API_KEY"], "file-key")
+                self.assertEqual(os.environ["BINANCE_TESTNET_API_KEY"], "existing-key")
+                self.assertEqual(os.environ["BINANCE_TESTNET_API_SECRET"], "file-secret")
+            finally:
+                if old_key is None:
+                    os.environ.pop("BINANCE_TESTNET_API_KEY", None)
+                else:
+                    os.environ["BINANCE_TESTNET_API_KEY"] = old_key
+                if old_secret is None:
+                    os.environ.pop("BINANCE_TESTNET_API_SECRET", None)
+                else:
+                    os.environ["BINANCE_TESTNET_API_SECRET"] = old_secret
+
+    def test_credentials_can_be_loaded_from_wave_trading_env_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".env").write_text("BINANCE_TESTNET_API_KEY=k\nBINANCE_TESTNET_API_SECRET=s\n")
+            old_dry = os.environ.get("RLLM_EXECUTION_DRY_RUN")
+            old_key = os.environ.pop("BINANCE_TESTNET_API_KEY", None)
+            old_secret = os.environ.pop("BINANCE_TESTNET_API_SECRET", None)
+            try:
+                os.environ["RLLM_EXECUTION_DRY_RUN"] = "false"
+                self.assertEqual(_load_api_credentials(True, str(root)), ("k", "s"))
+            finally:
+                if old_dry is None:
+                    os.environ.pop("RLLM_EXECUTION_DRY_RUN", None)
+                else:
+                    os.environ["RLLM_EXECUTION_DRY_RUN"] = old_dry
+                if old_key is not None:
+                    os.environ["BINANCE_TESTNET_API_KEY"] = old_key
+                if old_secret is not None:
+                    os.environ["BINANCE_TESTNET_API_SECRET"] = old_secret
 
 
 if __name__ == "__main__":
