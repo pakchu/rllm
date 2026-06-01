@@ -84,18 +84,22 @@ def _fit_multiclass_logistic(
     losses: list[float] = []
     y_int = y.astype(np.int64)
     one_hot = np.eye(int(n_classes), dtype=np.float64)[y_int]
-    n = max(1, int(x.shape[0]))
+    class_counts = np.bincount(y_int, minlength=int(n_classes)).astype(np.float64)
+    class_counts = np.where(class_counts < 1.0, 1.0, class_counts)
+    class_weights = float(x.shape[0]) / (float(n_classes) * class_counts)
+    sample_w = class_weights[y_int]
+    denom = max(1e-12, float(sample_w.sum()))
     for _ in range(max(1, int(epochs))):
         logits = x @ w + b
         logits = logits - logits.max(axis=1, keepdims=True)
         exp = np.exp(logits)
         p = exp / np.maximum(1e-12, exp.sum(axis=1, keepdims=True))
-        err = p - one_hot
-        grad_w = (x.T @ err) / float(n) + float(l2) * w
-        grad_b = err.mean(axis=0)
+        err = (p - one_hot) * sample_w[:, None]
+        grad_w = (x.T @ err) / denom + float(l2) * w
+        grad_b = err.sum(axis=0) / denom
         w -= float(learning_rate) * grad_w
         b -= float(learning_rate) * grad_b
-        loss = -float(np.mean(np.log(p[np.arange(n), y_int] + 1e-9)))
+        loss = -float(np.sum(sample_w * np.log(p[np.arange(len(y_int)), y_int] + 1e-9)) / denom)
         loss += 0.5 * float(l2) * float(np.sum(w * w))
         losses.append(loss)
     return w, b, losses
@@ -481,7 +485,14 @@ def run_baseline(
         "periods": {"train": [train_start, train_end], "test": [test_start, test_end], "eval": [eval_start, eval_end]},
         "path_outcome": path_cfg.__dict__,
         "sampling": {"stride_bars": int(stride_bars)},
-        "model": {"type": "standardized_logistic_regression_numpy", **cfg.__dict__, "final_loss": float(losses[-1]), "side_mode": side_mode_key, "side_final_loss": float(side_losses[-1])},
+        "model": {
+            "type": "standardized_logistic_regression_numpy",
+            **cfg.__dict__,
+            "final_loss": float(losses[-1]),
+            "side_mode": side_mode_key,
+            "side_training": "class_balanced_multiclass_logistic",
+            "side_final_loss": float(side_losses[-1]),
+        },
         "feature_columns": list(EXTENDED_MARKET_FEATURE_COLUMNS),
         "selected_threshold_from_test": th,
         "selected_side_confidence_min_from_test": side_conf,
