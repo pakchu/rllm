@@ -68,6 +68,46 @@ def _fit_logistic(x: np.ndarray, y: np.ndarray, cfg: LinearGateConfig) -> tuple[
     return w, b, losses
 
 
+def _fit_multiclass_logistic(
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    n_classes: int,
+    epochs: int,
+    learning_rate: float,
+    l2: float,
+    seed: int,
+) -> tuple[np.ndarray, np.ndarray, list[float]]:
+    rng = np.random.default_rng(int(seed))
+    w = rng.normal(0.0, 0.01, size=(x.shape[1], int(n_classes)))
+    b = np.zeros(int(n_classes), dtype=np.float64)
+    losses: list[float] = []
+    y_int = y.astype(np.int64)
+    one_hot = np.eye(int(n_classes), dtype=np.float64)[y_int]
+    n = max(1, int(x.shape[0]))
+    for _ in range(max(1, int(epochs))):
+        logits = x @ w + b
+        logits = logits - logits.max(axis=1, keepdims=True)
+        exp = np.exp(logits)
+        p = exp / np.maximum(1e-12, exp.sum(axis=1, keepdims=True))
+        err = p - one_hot
+        grad_w = (x.T @ err) / float(n) + float(l2) * w
+        grad_b = err.mean(axis=0)
+        w -= float(learning_rate) * grad_w
+        b -= float(learning_rate) * grad_b
+        loss = -float(np.mean(np.log(p[np.arange(n), y_int] + 1e-9)))
+        loss += 0.5 * float(l2) * float(np.sum(w * w))
+        losses.append(loss)
+    return w, b, losses
+
+
+def _softmax_scores(x: np.ndarray, w: np.ndarray, b: np.ndarray) -> np.ndarray:
+    logits = x @ w + b
+    logits = logits - logits.max(axis=1, keepdims=True)
+    exp = np.exp(logits)
+    return exp / np.maximum(1e-12, exp.sum(axis=1, keepdims=True))
+
+
 def _build_dataset(
     market: pd.DataFrame,
     *,
@@ -96,6 +136,7 @@ def _build_dataset(
                 "signal_pos": int(pos),
                 "target": int(bool(gate)),
                 "side": best.side,
+                "side_target": 1 if best.side == "LONG" else 0,
                 "best_net_return": float(best.net_return),
                 "best_mae": float(best.mae),
                 "best_utility": float(best.utility),
@@ -150,6 +191,7 @@ def _strict_sim_from_scores(
     scores: np.ndarray,
     *,
     threshold: float,
+    side_scores: np.ndarray | None = None,
     path_cfg: PathOutcomeConfig,
     fee_rate: float,
     slippage_rate: float,
@@ -167,7 +209,7 @@ def _strict_sim_from_scores(
     entries = 0
     next_allowed_pos = 0
     skipped = 0
-    for row, score in zip(rows, scores):
+    for row_idx, (row, score) in enumerate(zip(rows, scores)):
         if float(score) < float(threshold):
             continue
         signal_pos = int(row["signal_pos"])
@@ -178,8 +220,12 @@ def _strict_sim_from_scores(
         if entry_pos >= len(market) - 1 or exit_pos >= len(market):
             skipped += 1
             continue
-        side = str(row["side"]).upper()
-        signal = 1 if side == "LONG" else -1
+        if side_scores is None:
+            side = str(row["side"]).upper()
+            signal = 1 if side == "LONG" else -1
+        else:
+            # side class 1 = LONG, class 0 = SHORT
+            signal = 1 if float(side_scores[row_idx, 1]) >= float(side_scores[row_idx, 0]) else -1
         entry_eq = eq
         entries += 1
         eq *= max(0.0, 1.0 - cost)
@@ -228,7 +274,7 @@ def _strict_sim_from_scores(
             "trade_entries": int(entries),
             "samples": int(len(rows)),
             "skipped_missing_bars": int(skipped),
-            "return_application": "supervised_gate_oracle_side_actual_ohlc_bar_by_bar_strict_mdd",
+            "return_application": "supervised_gate_supervised_or_oracle_side_actual_ohlc_bar_by_bar_strict_mdd",
         },
         "trade_stats": _trade_stats(trade_returns),
     }
@@ -239,13 +285,13 @@ def _select_threshold(
     scores: np.ndarray,
     market: pd.DataFrame,
     *,
+    side_scores: np.ndarray | None = None,
     path_cfg: PathOutcomeConfig,
     fee_rate: float,
     slippage_rate: float,
     leverage: float,
     cooldown_bars: int,
     min_trades: int,
-    stride_bars: int = 1,
 ) -> dict[str, Any]:
     candidates = sorted(set(float(x) for x in np.quantile(scores, np.linspace(0.05, 0.95, 19))))
     candidates.extend([0.25, 0.5, 0.75])
@@ -256,6 +302,7 @@ def _select_threshold(
             market,
             scores,
             threshold=th,
+            side_scores=side_scores,
             path_cfg=path_cfg,
             fee_rate=fee_rate,
             slippage_rate=slippage_rate,
@@ -270,7 +317,7 @@ def _select_threshold(
             best = (key, row)
     if best is None:
         th = 0.5
-        return {"threshold": th, "strict": _strict_sim_from_scores(rows, market, scores, threshold=th, path_cfg=path_cfg, fee_rate=fee_rate, slippage_rate=slippage_rate, leverage=leverage, cooldown_bars=cooldown_bars), "classification": _classification_metrics(rows, scores, th)}
+        return {"threshold": th, "strict": _strict_sim_from_scores(rows, market, scores, threshold=th, side_scores=side_scores, path_cfg=path_cfg, fee_rate=fee_rate, slippage_rate=slippage_rate, leverage=leverage, cooldown_bars=cooldown_bars), "classification": _classification_metrics(rows, scores, th)}
     return best[1]
 
 
@@ -302,6 +349,7 @@ def run_baseline(
     cooldown_bars: int,
     min_trades: int,
     stride_bars: int = 1,
+    side_mode: str = "oracle",
 ) -> dict[str, Any]:
     market = pd.read_csv(market_csv)
     required = {"date", "open", "high", "low", "close", "volume"}
@@ -332,18 +380,39 @@ def run_baseline(
     x_train_z, mean, std = _standardize_train(x_train)
     cfg = LinearGateConfig(epochs=epochs, learning_rate=learning_rate, l2=l2, positive_weight=positive_weight)
     w, b, losses = _fit_logistic(x_train_z, y_train, cfg)
+    side_mode_key = str(side_mode).strip().lower()
+    if side_mode_key not in {"oracle", "supervised"}:
+        raise ValueError("side_mode must be one of {'oracle','supervised'}")
+    y_side_train = np.asarray([int(r["side_target"]) for r in train_rows], dtype=np.int64)
+    sw, sb, side_losses = _fit_multiclass_logistic(
+        x_train_z,
+        y_side_train,
+        n_classes=2,
+        epochs=epochs,
+        learning_rate=learning_rate,
+        l2=l2,
+        seed=43,
+    )
 
     def score(rows: list[dict[str, Any]]) -> np.ndarray:
         x, _ = _rows_to_xy(rows)
         return _sigmoid(_standardize_apply(x, mean, std) @ w + b)
 
+    def side_score(rows: list[dict[str, Any]]) -> np.ndarray:
+        x, _ = _rows_to_xy(rows)
+        return _softmax_scores(_standardize_apply(x, mean, std), sw, sb)
+
     train_scores = score(train_rows)
     test_scores = score(test_rows)
     eval_scores = score(eval_rows)
+    train_side_scores = side_score(train_rows) if side_mode_key == "supervised" else None
+    test_side_scores = side_score(test_rows) if side_mode_key == "supervised" else None
+    eval_side_scores = side_score(eval_rows) if side_mode_key == "supervised" else None
     selected = _select_threshold(
         test_rows,
         test_scores,
         market,
+        side_scores=test_side_scores,
         path_cfg=path_cfg,
         fee_rate=fee_rate,
         slippage_rate=slippage_rate,
@@ -358,20 +427,20 @@ def run_baseline(
         "periods": {"train": [train_start, train_end], "test": [test_start, test_end], "eval": [eval_start, eval_end]},
         "path_outcome": path_cfg.__dict__,
         "sampling": {"stride_bars": int(stride_bars)},
-        "model": {"type": "standardized_logistic_regression_numpy", **cfg.__dict__, "final_loss": float(losses[-1])},
+        "model": {"type": "standardized_logistic_regression_numpy", **cfg.__dict__, "final_loss": float(losses[-1]), "side_mode": side_mode_key, "side_final_loss": float(side_losses[-1])},
         "feature_columns": list(EXTENDED_MARKET_FEATURE_COLUMNS),
         "selected_threshold_from_test": th,
         "splits": {
-            "train": {"classification": _classification_metrics(train_rows, train_scores, th), "strict": _strict_sim_from_scores(train_rows, market, train_scores, threshold=th, path_cfg=path_cfg, fee_rate=fee_rate, slippage_rate=slippage_rate, leverage=leverage, cooldown_bars=cooldown_bars)},
+            "train": {"classification": _classification_metrics(train_rows, train_scores, th), "strict": _strict_sim_from_scores(train_rows, market, train_scores, threshold=th, side_scores=train_side_scores, path_cfg=path_cfg, fee_rate=fee_rate, slippage_rate=slippage_rate, leverage=leverage, cooldown_bars=cooldown_bars)},
             "test": selected,
-            "eval": {"classification": _classification_metrics(eval_rows, eval_scores, th), "strict": _strict_sim_from_scores(eval_rows, market, eval_scores, threshold=th, path_cfg=path_cfg, fee_rate=fee_rate, slippage_rate=slippage_rate, leverage=leverage, cooldown_bars=cooldown_bars)},
+            "eval": {"classification": _classification_metrics(eval_rows, eval_scores, th), "strict": _strict_sim_from_scores(eval_rows, market, eval_scores, threshold=th, side_scores=eval_side_scores, path_cfg=path_cfg, fee_rate=fee_rate, slippage_rate=slippage_rate, leverage=leverage, cooldown_bars=cooldown_bars)},
         },
         "leakage_guard": {
             "features_are_past_only": True,
             "threshold_selected_on": "test",
             "eval_used_for_selection": False,
-            "side_is_oracle_future_label": True,
-            "deployable_policy": False,
+            "side_is_oracle_future_label": side_mode_key == "oracle",
+            "deployable_policy": side_mode_key == "supervised",
         },
     }
     Path(output).parent.mkdir(parents=True, exist_ok=True)
@@ -407,6 +476,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--cooldown-bars", type=int, default=0)
     p.add_argument("--min-trades", type=int, default=20)
     p.add_argument("--stride-bars", type=int, default=12)
+    p.add_argument("--side-mode", choices=["oracle", "supervised"], default="oracle")
     return p.parse_args()
 
 
