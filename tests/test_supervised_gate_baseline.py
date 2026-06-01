@@ -60,6 +60,7 @@ class TestSupervisedGateBaseline(unittest.TestCase):
                 l2=0.0,
                 cooldown_bars=0,
                 min_trades=1,
+                stride_bars=1,
             )
             self.assertTrue(out.exists())
             self.assertTrue(report["leakage_guard"]["features_are_past_only"])

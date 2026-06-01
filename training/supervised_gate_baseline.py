@@ -73,11 +73,12 @@ def _build_dataset(
     *,
     window_size: int,
     path_cfg: PathOutcomeConfig,
+    stride_bars: int = 1,
 ) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     features = build_market_feature_frame(market, window_size=window_size)
     rows: list[dict[str, Any]] = []
     last_signal_pos = len(market) - max(1, int(path_cfg.entry_delay_bars)) - max(1, int(path_cfg.hold_bars)) - 1
-    for pos in range(max(0, int(window_size) - 1), max(0, last_signal_pos) + 1):
+    for pos in range(max(0, int(window_size) - 1), max(0, last_signal_pos) + 1, max(1, int(stride_bars))):
         long = compute_trade_path_outcome(market, pos, "LONG", path_cfg)
         short = compute_trade_path_outcome(market, pos, "SHORT", path_cfg)
         if long is None or short is None:
@@ -244,6 +245,7 @@ def _select_threshold(
     leverage: float,
     cooldown_bars: int,
     min_trades: int,
+    stride_bars: int = 1,
 ) -> dict[str, Any]:
     candidates = sorted(set(float(x) for x in np.quantile(scores, np.linspace(0.05, 0.95, 19))))
     candidates.extend([0.25, 0.5, 0.75])
@@ -299,6 +301,7 @@ def run_baseline(
     l2: float,
     cooldown_bars: int,
     min_trades: int,
+    stride_bars: int = 1,
 ) -> dict[str, Any]:
     market = pd.read_csv(market_csv)
     required = {"date", "open", "high", "low", "close", "volume"}
@@ -321,7 +324,7 @@ def run_baseline(
         min_net_return=min_net_return,
         max_mae=max_mae,
     )
-    _, all_rows = _build_dataset(market, window_size=window_size, path_cfg=path_cfg)
+    _, all_rows = _build_dataset(market, window_size=window_size, path_cfg=path_cfg, stride_bars=stride_bars)
     train_rows = _slice_rows(all_rows, train_start, train_end)
     test_rows = _slice_rows(all_rows, test_start, test_end)
     eval_rows = _slice_rows(all_rows, eval_start, eval_end)
@@ -354,6 +357,7 @@ def run_baseline(
         "files": {"market_csv": str(Path(market_csv).resolve())},
         "periods": {"train": [train_start, train_end], "test": [test_start, test_end], "eval": [eval_start, eval_end]},
         "path_outcome": path_cfg.__dict__,
+        "sampling": {"stride_bars": int(stride_bars)},
         "model": {"type": "standardized_logistic_regression_numpy", **cfg.__dict__, "final_loss": float(losses[-1])},
         "feature_columns": list(EXTENDED_MARKET_FEATURE_COLUMNS),
         "selected_threshold_from_test": th,
@@ -402,6 +406,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--l2", type=float, default=0.001)
     p.add_argument("--cooldown-bars", type=int, default=0)
     p.add_argument("--min-trades", type=int, default=20)
+    p.add_argument("--stride-bars", type=int, default=12)
     return p.parse_args()
 
 
