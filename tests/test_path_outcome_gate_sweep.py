@@ -55,6 +55,7 @@ class TestPathOutcomeGateSweep(unittest.TestCase):
                 max_mae_values=[0.02],
                 cooldown_bars_values=[0],
                 min_train_trades=1,
+                stride_bars=1,
             )
             self.assertTrue(out.exists())
             self.assertEqual(report["search_summary"]["num_candidates"], 1)

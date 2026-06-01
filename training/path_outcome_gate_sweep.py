@@ -50,11 +50,12 @@ def _compute_signal_table(
     mae_penalty_values: list[float],
     mfe_bonus_values: list[float],
     window_size: int,
+    stride_bars: int = 1,
 ) -> list[dict[str, Any]]:
     """Precompute long/short outcomes for each mae/mfe utility variant."""
     last_signal_pos = len(market) - max(1, int(entry_delay_bars)) - max(1, int(hold_bars)) - 1
     rows: list[dict[str, Any]] = []
-    for pos in range(max(0, int(window_size) - 1), max(0, last_signal_pos) + 1):
+    for pos in range(max(0, int(window_size) - 1), max(0, last_signal_pos) + 1, max(1, int(stride_bars))):
         base: dict[str, Any] = {
             "date": str(pd.to_datetime(market.iloc[pos]["date"])),
             "signal_pos": int(pos),
@@ -232,6 +233,7 @@ def run_sweep(
     max_mae_values: list[float],
     cooldown_bars_values: list[int],
     min_train_trades: int,
+    stride_bars: int = 1,
 ) -> dict[str, Any]:
     market = load_market_bars(market_csv)
 
@@ -247,6 +249,7 @@ def run_sweep(
             mae_penalty_values=mae_penalty_values,
             mfe_bonus_values=mfe_bonus_values,
             window_size=window_size,
+            stride_bars=stride_bars,
         ), df
 
     train_rows, train_market = slice_rows(train_start, train_end)
@@ -311,6 +314,7 @@ def run_sweep(
             "slippage_rate": float(slippage_rate),
             "leverage": float(leverage),
             "min_train_trades": int(min_train_trades),
+            "stride_bars": int(stride_bars),
         },
         "periods": {
             "train": [train_start, train_end],
@@ -356,6 +360,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-mae-values", default="0.01,0.015,0.02,0.03")
     p.add_argument("--cooldown-bars-values", default="0,6,12,24")
     p.add_argument("--min-train-trades", type=int, default=20)
+    p.add_argument("--stride-bars", type=int, default=12)
     return p.parse_args()
 
 
@@ -383,6 +388,7 @@ def main() -> None:
         max_mae_values=_parse_float_list(args.max_mae_values),
         cooldown_bars_values=_parse_int_list(args.cooldown_bars_values),
         min_train_trades=args.min_train_trades,
+        stride_bars=args.stride_bars,
     )
     preview = [
         {
