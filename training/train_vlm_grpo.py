@@ -11,7 +11,7 @@ from models.option_b_vlm import (
     FALLBACK_VLM_MODEL,
     RECOMMENDED_VLM_MODEL,
     ACTION_SCHEMA_LABELS,
-    auto_select_vlm_model,
+    resolve_vlm_model_alias,
     detect_gpu_vram_gb,
 )
 from training.data_sources import load_market_data
@@ -25,12 +25,8 @@ from utils import disable_transformers_allocator_warmup
 
 def _resolve_model_name(model_name: str, allow_fallback: bool) -> str:
     key = model_name.strip()
-    if key.lower() == AUTO_MODEL_NAME:
-        # For GRPO action-token training, we prioritize exploration stability
-        # over newest release preference.
-        return auto_select_vlm_model(prefer_latest=False)
-    if key:
-        return model_name
+    if key.lower() == AUTO_MODEL_NAME or key:
+        return resolve_vlm_model_alias(key, prefer_latest=True)
     if allow_fallback:
         return FALLBACK_VLM_MODEL
     return RECOMMENDED_VLM_MODEL

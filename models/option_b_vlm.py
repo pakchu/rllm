@@ -8,8 +8,10 @@ from dataclasses import dataclass, field
 from typing import Iterable
 
 
-RECOMMENDED_VLM_MODEL = "Qwen/Qwen3-VL-8B-Instruct"
+GEMMA4_E4B_IT_MODEL = "google/gemma-4-E4B-it"
+QWEN3_VL_MODEL = "Qwen/Qwen3-VL-8B-Instruct"
 FALLBACK_VLM_MODEL = "Qwen/Qwen2.5-VL-7B-Instruct"
+RECOMMENDED_VLM_MODEL = GEMMA4_E4B_IT_MODEL
 ACTION_LABELS = ("BUY", "HOLD", "SELL")
 ACTIONS_TRADE_GATE = ("TRADE", "NO_TRADE")
 ACTIONS_TRADE_SIDE = ("LONG", "SHORT")
@@ -81,10 +83,11 @@ def recommended_vlm_models() -> list[str]:
     """
     Ordered model candidates for RL-VLM stage.
 
-    1) Qwen3-VL-8B-Instruct: latest default.
-    2) Qwen2.5-VL-7B-Instruct: compatibility fallback.
+    1) google/gemma-4-E4B-it: preferred small Gemma 4 instruction model.
+    2) Qwen/Qwen3-VL-8B-Instruct: vision-language compatibility alternative.
+    3) Qwen/Qwen2.5-VL-7B-Instruct: compatibility fallback.
     """
-    return [RECOMMENDED_VLM_MODEL, FALLBACK_VLM_MODEL]
+    return [RECOMMENDED_VLM_MODEL, QWEN3_VL_MODEL, FALLBACK_VLM_MODEL]
 
 
 def detect_gpu_vram_gb() -> float | None:
@@ -111,15 +114,35 @@ def auto_select_vlm_model(prefer_latest: bool = True) -> str:
     Select model based on GPU VRAM and preference.
 
     Current policy:
-      - >=24GB: latest (Qwen3-VL-8B) if prefer_latest else fallback
-      - otherwise: fallback (Qwen2.5-VL-7B)
+      - prefer_latest=True and >=12GB VRAM: Gemma 4 E4B instruction model
+      - prefer_latest=True below 12GB: Qwen2.5-VL fallback
+      - prefer_latest=False: Qwen2.5-VL fallback for legacy reproducibility
     """
     vram_gb = detect_gpu_vram_gb()
-    if vram_gb is None:
-        return RECOMMENDED_VLM_MODEL if prefer_latest else FALLBACK_VLM_MODEL
-    if vram_gb >= 24:
-        return RECOMMENDED_VLM_MODEL if prefer_latest else FALLBACK_VLM_MODEL
+    if not prefer_latest:
+        return FALLBACK_VLM_MODEL
+    if vram_gb is None or vram_gb >= 12:
+        return RECOMMENDED_VLM_MODEL
     return FALLBACK_VLM_MODEL
+
+
+def resolve_vlm_model_alias(model_name: str, *, prefer_latest: bool = True) -> str:
+    """Resolve friendly model aliases to concrete Hugging Face ids."""
+    key = str(model_name or "").strip()
+    low = key.lower()
+    if low in {AUTO_MODEL_NAME, ""}:
+        return auto_select_vlm_model(prefer_latest=prefer_latest)
+    aliases = {
+        "gemma4": GEMMA4_E4B_IT_MODEL,
+        "gemma-4": GEMMA4_E4B_IT_MODEL,
+        "gemma4-e4b": GEMMA4_E4B_IT_MODEL,
+        "gemma-4-e4b": GEMMA4_E4B_IT_MODEL,
+        "gemma4-e4b-it": GEMMA4_E4B_IT_MODEL,
+        "gemma-4-e4b-it": GEMMA4_E4B_IT_MODEL,
+        "qwen3-vl": QWEN3_VL_MODEL,
+        "qwen2.5-vl": FALLBACK_VLM_MODEL,
+    }
+    return aliases.get(low, key)
 
 
 def _format_numeric_value(label: str, value: float) -> str:

@@ -10,6 +10,8 @@ from models.option_a import (
 from models.option_b_vlm import (
     AUTO_MODEL_NAME,
     FALLBACK_VLM_MODEL,
+    GEMMA4_E4B_IT_MODEL,
+    QWEN3_VL_MODEL,
     RECOMMENDED_VLM_MODEL,
     TradingPromptState,
     auto_select_vlm_model,
@@ -17,6 +19,7 @@ from models.option_b_vlm import (
     detect_gpu_vram_gb,
     parse_action_label,
     recommended_vlm_models,
+    resolve_vlm_model_alias,
 )
 
 __all__ = [
@@ -34,4 +37,7 @@ __all__ = [
     "AUTO_MODEL_NAME",
     "RECOMMENDED_VLM_MODEL",
     "FALLBACK_VLM_MODEL",
+    "GEMMA4_E4B_IT_MODEL",
+    "QWEN3_VL_MODEL",
+    "resolve_vlm_model_alias",
 ]

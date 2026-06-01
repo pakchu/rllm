@@ -12,11 +12,11 @@ import numpy as np
 from models.option_b_vlm import (
     AUTO_MODEL_NAME,
     ACTION_SCHEMA_LABELS,
-    auto_select_vlm_model,
     get_action_labels,
     get_default_action_label,
     make_action_system_prompt,
     parse_action_label,
+    resolve_vlm_model_alias,
 )
 from training.data_sources import load_market_data
 from training.vlm_trading_data import build_vlm_training_samples
@@ -124,11 +124,7 @@ def summarize_action_metrics(
 
 
 def _resolve_eval_model_name(model_name: str) -> str:
-    key = model_name.strip()
-    if key.lower() == AUTO_MODEL_NAME:
-        # Align with RL fine-tuning path where exploration stability matters.
-        return auto_select_vlm_model(prefer_latest=False)
-    return key
+    return resolve_vlm_model_alias(model_name, prefer_latest=True)
 
 
 def load_sample_dates(path: str | None) -> list[str] | None:

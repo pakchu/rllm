@@ -4,6 +4,7 @@ from models.option_b_vlm import (
     TradingPromptState,
     action_to_id,
     auto_select_vlm_model,
+    resolve_vlm_model_alias,
     build_trading_prompt,
     detect_gpu_vram_gb,
     get_action_labels,
@@ -17,7 +18,8 @@ class TestOptionBVLM(unittest.TestCase):
     def test_recommended_models(self):
         models = recommended_vlm_models()
         self.assertGreaterEqual(len(models), 2)
-        self.assertIn("Qwen/Qwen3-VL-8B-Instruct", models[0])
+        self.assertEqual(models[0], "google/gemma-4-E4B-it")
+        self.assertIn("Qwen/Qwen3-VL-8B-Instruct", models[1])
 
     def test_prompt_and_action_parse(self):
         prompt = build_trading_prompt(
@@ -105,6 +107,7 @@ class TestOptionBVLM(unittest.TestCase):
             self.assertGreater(vram, 0.0)
         selected = auto_select_vlm_model(prefer_latest=True)
         self.assertIn(selected, recommended_vlm_models())
+        self.assertEqual(resolve_vlm_model_alias("gemma4"), "google/gemma-4-E4B-it")
 
 
 if __name__ == "__main__":
