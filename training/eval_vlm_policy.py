@@ -170,6 +170,11 @@ def evaluate_vlm_policy(
     utility_min_risk_weight: float = 0.0,
     utility_max_risk_weight: float = 1.0,
     utility_hold_reward_bias: float = 0.0,
+    path_entry_delay_bars: int = 1,
+    path_mae_penalty: float = 1.0,
+    path_mfe_bonus: float = 0.0,
+    path_min_net_return: float = 0.0,
+    path_max_mae: float = 1.0,
     max_samples: int = 128,
     sample_mode: str = "balanced",
     sample_seed: int = 42,
@@ -237,6 +242,11 @@ def evaluate_vlm_policy(
         utility_min_risk_weight=utility_min_risk_weight,
         utility_max_risk_weight=utility_max_risk_weight,
         utility_hold_reward_bias=utility_hold_reward_bias,
+        path_entry_delay_bars=path_entry_delay_bars,
+        path_mae_penalty=path_mae_penalty,
+        path_mfe_bonus=path_mfe_bonus,
+        path_min_net_return=path_min_net_return,
+        path_max_mae=path_max_mae,
         max_samples=max_samples,
         sample_mode=sample_mode,
         sample_seed=sample_seed,
@@ -262,15 +272,29 @@ def evaluate_vlm_policy(
         if getattr(processor, 'pad_token_id', None) is None:
             processor.pad_token = processor.eos_token
         with disable_transformers_allocator_warmup():
-            model = AutoModelForCausalLM.from_pretrained(
-                chosen_model,
-                device_map="auto",
-                dtype=torch.bfloat16,
-                quantization_config=quant_cfg,
-                trust_remote_code=True,
-            )
+            try:
+                model = AutoModelForCausalLM.from_pretrained(
+                    chosen_model,
+                    device_map="auto",
+                    dtype=torch.bfloat16,
+                    quantization_config=quant_cfg,
+                    trust_remote_code=True,
+                )
+            except ValueError as exc:
+                if "Unrecognized configuration class" not in str(exc):
+                    raise
+                processor = AutoProcessor.from_pretrained(chosen_model, trust_remote_code=True)
+                model = AutoModelForImageTextToText.from_pretrained(
+                    chosen_model,
+                    device_map="auto",
+                    dtype=torch.bfloat16,
+                    quantization_config=quant_cfg,
+                    trust_remote_code=True,
+                )
+        text_processor = getattr(processor, "tokenizer", processor)
     else:
         processor = AutoProcessor.from_pretrained(chosen_model, trust_remote_code=True)
+        text_processor = getattr(processor, "tokenizer", processor)
         with disable_transformers_allocator_warmup():
             model = AutoModelForImageTextToText.from_pretrained(
                 chosen_model,
@@ -431,14 +455,14 @@ def evaluate_vlm_policy(
                         },
                     ]
                 batch_texts.append(
-                    processor.apply_chat_template(
+                    text_processor.apply_chat_template(
                         messages, tokenize=False, add_generation_prompt=True
                     )
                 )
                 batch_images.append(s.image)
 
             if modality_key == "text_only":
-                inputs = processor(
+                inputs = text_processor(
                     batch_texts,
                     return_tensors="pt",
                     padding=True,
@@ -467,7 +491,7 @@ def evaluate_vlm_policy(
                 )
                 for s, one_out, prompt_len in zip(batch_samples, out, prompt_lens):
                     gen = one_out[int(prompt_len) :]
-                    txt = processor.decode(gen, skip_special_tokens=True).strip()
+                    txt = text_processor.decode(gen, skip_special_tokens=True).strip()
                     pred = parse_action_label(txt, default=default_label, labels=labels)
                     preds.append(pred)
                     raw_texts.append(txt)
@@ -538,6 +562,13 @@ def evaluate_vlm_policy(
             "min_risk_weight": float(utility_min_risk_weight),
             "max_risk_weight": float(utility_max_risk_weight),
             "hold_reward_bias": float(utility_hold_reward_bias),
+        },
+        "path_outcome": {
+            "entry_delay_bars": int(path_entry_delay_bars),
+            "mae_penalty": float(path_mae_penalty),
+            "mfe_bonus": float(path_mfe_bonus),
+            "min_net_return": float(path_min_net_return),
+            "max_mae": float(path_max_mae),
         },
         "decision": {
             "mode": mode,
@@ -630,7 +661,7 @@ def parse_args() -> argparse.Namespace:
         "--label-mode",
         type=str,
         default="next_return",
-        choices=["next_return", "utility"],
+        choices=["next_return", "utility", "path_outcome"],
     )
     parser.add_argument("--utility-hold-margin", type=float, default=0.0)
     parser.add_argument("--utility-fee-rate", type=float, default=0.0005)
@@ -651,6 +682,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--utility-min-risk-weight", type=float, default=0.0)
     parser.add_argument("--utility-max-risk-weight", type=float, default=1.0)
     parser.add_argument("--utility-hold-reward-bias", type=float, default=0.0)
+    parser.add_argument("--path-entry-delay-bars", type=int, default=1)
+    parser.add_argument("--path-mae-penalty", type=float, default=1.0)
+    parser.add_argument("--path-mfe-bonus", type=float, default=0.0)
+    parser.add_argument("--path-min-net-return", type=float, default=0.0)
+    parser.add_argument("--path-max-mae", type=float, default=1.0)
     parser.add_argument("--max-samples", type=int, default=128)
     parser.add_argument(
         "--sample-mode",
@@ -733,6 +769,11 @@ def main() -> None:
         utility_min_risk_weight=args.utility_min_risk_weight,
         utility_max_risk_weight=args.utility_max_risk_weight,
         utility_hold_reward_bias=args.utility_hold_reward_bias,
+        path_entry_delay_bars=args.path_entry_delay_bars,
+        path_mae_penalty=args.path_mae_penalty,
+        path_mfe_bonus=args.path_mfe_bonus,
+        path_min_net_return=args.path_min_net_return,
+        path_max_mae=args.path_max_mae,
         max_samples=args.max_samples,
         sample_mode=args.sample_mode,
         sample_seed=args.sample_seed,
