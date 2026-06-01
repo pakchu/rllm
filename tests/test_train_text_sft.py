@@ -54,6 +54,19 @@ class TestTrainTextSFT(unittest.TestCase):
             targets = {json.loads(r["target"])["side"] for r in sampled}
             self.assertEqual(targets, {"NONE", "LONG", "SHORT"})
 
+    def test_balanced_sampling_spreads_side_only_labels(self):
+        with tempfile.TemporaryDirectory() as td:
+            data = Path(td) / "side.jsonl"
+            rows = [{"task": "side", "prompt": f"L{i}", "target": '{"side":"LONG"}'} for i in range(10)]
+            rows += [{"task": "side", "prompt": f"S{i}", "target": '{"side":"SHORT"}'} for i in range(2)]
+            data.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+            sampled = load_jsonl(data, max_samples=4, sample_mode="balanced", seed=7)
+            counts = {}
+            for row in sampled:
+                side = json.loads(row["target"])["side"]
+                counts[side] = counts.get(side, 0) + 1
+            self.assertEqual(counts, {"LONG": 2, "SHORT": 2})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -42,6 +42,8 @@ def _row_bucket(row: dict[str, Any]) -> str:
         return target[:80]
     if isinstance(parsed, dict) and "gate" in parsed:
         return f"gate={parsed.get('gate')},side={parsed.get('side')}"
+    if isinstance(parsed, dict) and "side" in parsed:
+        return f"side={parsed.get('side')}"
     if isinstance(parsed, dict):
         return str(parsed.get("regime", row.get("task", "unknown")))
     return str(parsed)[:80]
@@ -98,6 +100,8 @@ def _target_counter(rows: list[dict[str, Any]]) -> dict[str, int]:
             parsed = json.loads(target)
             if isinstance(parsed, dict) and "gate" in parsed:
                 counts[f"gate={parsed.get('gate')},side={parsed.get('side')}"] += 1
+            elif isinstance(parsed, dict) and "side" in parsed:
+                counts[f"side={parsed.get('side')}"] += 1
             elif isinstance(parsed, dict):
                 for key in ("regime", "risk_state", "trend_alignment", "location"):
                     if key in parsed:
