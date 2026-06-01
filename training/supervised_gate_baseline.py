@@ -397,6 +397,7 @@ def run_baseline(
     stride_bars: int = 1,
     side_mode: str = "oracle",
     side_confidence_candidates: str = "0",
+    side_train_positive_only: bool = True,
 ) -> dict[str, Any]:
     market = pd.read_csv(market_csv)
     required = {"date", "open", "high", "low", "close", "volume"}
@@ -430,9 +431,14 @@ def run_baseline(
     side_mode_key = str(side_mode).strip().lower()
     if side_mode_key not in {"oracle", "supervised"}:
         raise ValueError("side_mode must be one of {'oracle','supervised'}")
-    y_side_train = np.asarray([int(r["side_target"]) for r in train_rows], dtype=np.int64)
+    side_train_rows = [r for r in train_rows if int(r["target"]) == 1] if bool(side_train_positive_only) else train_rows
+    if not side_train_rows:
+        side_train_rows = train_rows
+    x_side_train, _ = _rows_to_xy(side_train_rows)
+    x_side_train_z = _standardize_apply(x_side_train, mean, std)
+    y_side_train = np.asarray([int(r["side_target"]) for r in side_train_rows], dtype=np.int64)
     sw, sb, side_losses = _fit_multiclass_logistic(
-        x_train_z,
+        x_side_train_z,
         y_side_train,
         n_classes=2,
         epochs=epochs,
@@ -491,6 +497,8 @@ def run_baseline(
             "final_loss": float(losses[-1]),
             "side_mode": side_mode_key,
             "side_training": "class_balanced_multiclass_logistic",
+            "side_train_positive_only": bool(side_train_positive_only),
+            "side_train_samples": int(len(side_train_rows)),
             "side_final_loss": float(side_losses[-1]),
         },
         "feature_columns": list(EXTENDED_MARKET_FEATURE_COLUMNS),
@@ -553,6 +561,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--stride-bars", type=int, default=12)
     p.add_argument("--side-mode", choices=["oracle", "supervised"], default="oracle")
     p.add_argument("--side-confidence-candidates", default="0")
+    p.add_argument("--side-train-positive-only", action=argparse.BooleanOptionalAction, default=True)
     return p.parse_args()
 
 
