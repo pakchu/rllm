@@ -42,6 +42,14 @@ class TestTextStepAnalyzerData(unittest.TestCase):
         trader_target = json.loads(trader[0]["target"])
         self.assertIn("hold_bars", trader_target)
         self.assertTrue(analyzer[0]["leakage_guard"]["target_step_uses_future_path"])
+        self.assertTrue(trader[0]["leakage_guard"]["prompt_removes_teacher_forced_step_labels"])
+        self.assertTrue(trader[0]["leakage_guard"]["prompt_does_not_reveal_selected_hold_bars"])
+        prompt = trader[0]["prompt"]
+        self.assertNotIn("preferred_step_bars", prompt)
+        self.assertNotIn("preferred_step_label", prompt)
+        self.assertNotIn("selected_gate", prompt)
+        self.assertNotIn("selected_side", prompt)
+        self.assertIn("choose hold_bars from [12,24]", prompt)
 
 
 if __name__ == "__main__":

@@ -118,6 +118,46 @@ def _enrich_summary(summary: dict[str, Any], *, best_hold: int, best_record: dic
     return out
 
 
+
+def _summary_for_trader(summary: dict[str, Any]) -> dict[str, Any]:
+    """Remove teacher-forced future labels before building trader prompts.
+
+    The analyzer target may include preferred_step_* and step_reason because that
+    is the supervised label the analyzer learns.  Direct trader SFT/eval cannot
+    consume those teacher labels, otherwise the trader prompt leaks the future
+    path outcome.  A live cascade may later feed analyzer model predictions with
+    the same field names, but generated datasets must not teacher-force them.
+    """
+    blocked = {
+        "preferred_step_bars",
+        "preferred_step_label",
+        "step_reason",
+        "candidate_step_outcomes_for_training_audit",
+    }
+    return {k: v for k, v in summary.items() if k not in blocked}
+
+
+def build_step_trader_input(
+    analyzer_summary_text: str,
+    *,
+    hold_candidates: tuple[int, ...],
+    entry_delay_bars: int,
+) -> str:
+    candidates = ",".join(str(int(x)) for x in hold_candidates)
+    return "\n".join(
+        [
+            "You are the trader stage for a BTCUSDT futures trading bot.",
+            "You receive only the analyzer's past-only symbolic market summary.",
+            "Decide whether an executable trade is justified after fees/slippage and adverse excursion risk.",
+            f"Execution: enter after {int(entry_delay_bars)} bar(s); choose hold_bars from [{candidates}], or 0 for NO_TRADE.",
+            "Output exactly one JSON object with keys gate, side, and hold_bars.",
+            "gate must be TRADE or NO_TRADE. side must be LONG, SHORT, or NONE.",
+            "hold_bars must be one of the candidate holds for TRADE, or 0 for NO_TRADE.",
+            "",
+            f"Analyzer summary: {analyzer_summary_text}",
+        ]
+    )
+
 def build_step_trader_target(best_record: dict[str, Any], best_hold: int) -> dict[str, Any]:
     gate = str(best_record["trade_gate_label"])
     return {
@@ -158,6 +198,7 @@ def build_step_records(
         summary = build_analyzer_summary(market, pos, window_size=cfg.window_size, feature_frame=feature_frame)
         step_summary = _enrich_summary(summary, best_hold=best_hold, best_record=best_rec, candidates=candidates, feature_profile=cfg.feature_profile)
         summary_text = analyzer_summary_to_text(step_summary)
+        trader_summary_text = analyzer_summary_to_text(_summary_for_trader(step_summary))
         analyzer_rows.append(
             {
                 "task": "step_analyzer",
@@ -178,13 +219,21 @@ def build_step_records(
                 "task": "step_trader",
                 "date": best_rec["date"],
                 "signal_pos": int(pos),
-                "prompt": build_trader_input(summary_text, hold_bars=best_hold, entry_delay_bars=cfg.entry_delay_bars)
-                + "\nUse the analyzer preferred_step_bars when deciding hold_bars.",
+                "prompt": build_step_trader_input(
+                    trader_summary_text,
+                    hold_candidates=cfg.hold_candidates,
+                    entry_delay_bars=cfg.entry_delay_bars,
+                ),
                 "target": json.dumps(build_step_trader_target(best_rec, best_hold), sort_keys=True, separators=(",", ":")),
                 "trade_gate_label": best_rec["trade_gate_label"],
                 "trade_side_label": best_rec["trade_side_label"],
                 "preferred_step_bars": int(best_hold) if best_rec["trade_gate_label"] == "TRADE" else 0,
-                "leakage_guard": {"prompt_uses_analyzer_summary_only": True, "label_uses_future_path": True},
+                "leakage_guard": {
+                    "prompt_uses_analyzer_summary_only": True,
+                    "prompt_removes_teacher_forced_step_labels": True,
+                    "prompt_does_not_reveal_selected_hold_bars": True,
+                    "label_uses_future_path": True,
+                },
             }
         )
         best_path_rows.append(best_rec)
