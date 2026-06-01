@@ -23,6 +23,7 @@ from typing import Any, Literal
 
 import pandas as pd
 
+from preprocessing.external_features import attach_wave_trading_external_features
 from preprocessing.market_features import build_market_feature_frame
 from preprocessing.timeframe import make_window
 from training.path_outcome_dataset import PathOutcomeConfig, make_path_outcome_record, summarize_records
@@ -57,7 +58,12 @@ class TextPipelineConfig:
     stride_bars: int = 12
 
 
-def load_market_frame(path: str | Path) -> pd.DataFrame:
+def load_market_frame(
+    path: str | Path,
+    *,
+    wave_trading_root: str | Path | None = None,
+    external_tolerance: str | None = None,
+) -> pd.DataFrame:
     df = pd.read_csv(path)
     required = {"date", "open", "high", "low", "close", "volume"}
     missing = required.difference(df.columns)
@@ -67,6 +73,12 @@ def load_market_frame(path: str | Path) -> pd.DataFrame:
     df["date"] = pd.to_datetime(df["date"], errors="raise")
     for col in ("open", "high", "low", "close", "volume"):
         df[col] = df[col].astype(float)
+    if wave_trading_root:
+        df = attach_wave_trading_external_features(
+            df,
+            wave_trading_root=wave_trading_root,
+            tolerance=external_tolerance,
+        )
     return df
 
 
@@ -280,6 +292,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--min-utility", type=float, default=0.0)
     p.add_argument("--max-mae", type=float, default=0.015)
     p.add_argument("--stride-bars", type=int, default=12)
+    p.add_argument("--wave-trading-root", default="", help="Optional wave_trading root for DXY/Kimchi cached external features")
+    p.add_argument("--external-tolerance", default="", help="Optional pandas Timedelta tolerance for backward external joins")
     return p.parse_args()
 
 
@@ -299,7 +313,11 @@ def main() -> None:
         max_mae=args.max_mae,
         stride_bars=args.stride_bars,
     )
-    market = load_market_frame(args.market_csv)
+    market = load_market_frame(
+        args.market_csv,
+        wave_trading_root=args.wave_trading_root or None,
+        external_tolerance=args.external_tolerance or None,
+    )
     analyzer_rows, trader_rows, path_rows = build_text_pipeline_records(
         market,
         cfg,
@@ -313,6 +331,21 @@ def main() -> None:
         "as_of": datetime.now(timezone.utc).isoformat(),
         "market_csv": str(Path(args.market_csv).resolve()),
         "outputs": {"analyzer": args.analyzer_output, "trader": args.trader_output},
+        "external_features": {
+            "wave_trading_root": str(Path(args.wave_trading_root).resolve()) if args.wave_trading_root else "",
+            "columns": [c for c in market.columns if c in {
+                "dxy",
+                "dxy_zscore",
+                "dxy_momentum",
+                "kimchi_premium",
+                "kimchi_premium_zscore",
+                "kimchi_premium_change",
+                "usdkrw",
+                "usdkrw_zscore",
+                "usdkrw_momentum",
+            }],
+            "join": "backward_asof_no_future" if args.wave_trading_root else "disabled",
+        },
         "config": asdict(cfg),
         "records": {"analyzer": len(analyzer_rows), "trader": len(trader_rows)},
         "path_label_summary": summarize_records(path_rows),

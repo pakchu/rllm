@@ -42,6 +42,14 @@ EXTENDED_MARKET_FEATURE_COLUMNS = CORE_MARKET_FEATURE_COLUMNS + (
     "funding_zscore",
     "oi_change",
     "oi_zscore",
+    "dxy",
+    "dxy_zscore",
+    "dxy_momentum",
+    "kimchi_premium",
+    "kimchi_premium_zscore",
+    "kimchi_premium_change",
+    "usdkrw_zscore",
+    "usdkrw_momentum",
 )
 
 
@@ -65,8 +73,10 @@ def _return_over(close: pd.Series, periods: int) -> pd.Series:
 
 
 def _rolling_zscore(series: pd.Series, window: int, *, clip: float = 5.0) -> pd.Series:
-    mean = series.rolling(window, min_periods=max(5, window // 3)).mean()
-    std = series.rolling(window, min_periods=max(5, window // 3)).std(ddof=0)
+    window = max(1, int(window))
+    min_periods = min(window, max(2, window // 3))
+    mean = series.rolling(window, min_periods=min_periods).mean()
+    std = series.rolling(window, min_periods=min_periods).std(ddof=0)
     out = (series - mean) / std.replace(0.0, np.nan)
     return _clean_series(out, clip=clip)
 
@@ -182,6 +192,24 @@ def build_market_feature_frame(
     else:
         feature_map["oi_change"] = pd.Series(0.0, index=market_df.index)
         feature_map["oi_zscore"] = pd.Series(0.0, index=market_df.index)
+
+    optional_external_defaults = {
+        "dxy": 0.0,
+        "dxy_zscore": 0.0,
+        "dxy_momentum": 0.0,
+        "kimchi_premium": 0.0,
+        "kimchi_premium_zscore": 0.0,
+        "kimchi_premium_change": 0.0,
+        "usdkrw_zscore": 0.0,
+        "usdkrw_momentum": 0.0,
+    }
+    for col, default in optional_external_defaults.items():
+        series = _optional_column(market_df, col)
+        feature_map[col] = (
+            _clean_series(series, clip=5.0)
+            if series is not None
+            else pd.Series(float(default), index=market_df.index)
+        )
 
     frame = pd.DataFrame(feature_map, index=market_df.index)
     return frame.replace([np.inf, -np.inf], 0.0).fillna(0.0)

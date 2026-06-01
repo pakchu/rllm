@@ -215,6 +215,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-mae", type=float, default=0.015)
     p.add_argument("--stride-bars", type=int, default=12)
     p.add_argument("--feature-profile", choices=["compact_v1", "rich_v1"], default="rich_v1")
+    p.add_argument("--wave-trading-root", default="", help="Optional wave_trading root for DXY/Kimchi cached external features")
+    p.add_argument("--external-tolerance", default="", help="Optional pandas Timedelta tolerance for backward external joins")
     return p.parse_args()
 
 
@@ -237,7 +239,11 @@ def main() -> None:
         hold_candidates=hold_candidates,
         feature_profile=args.feature_profile,
     )
-    market = load_market_frame(args.market_csv)
+    market = load_market_frame(
+        args.market_csv,
+        wave_trading_root=args.wave_trading_root or None,
+        external_tolerance=args.external_tolerance or None,
+    )
     analyzer_rows, trader_rows, best_path_rows = build_step_records(
         market,
         cfg,
@@ -255,6 +261,21 @@ def main() -> None:
         "as_of": datetime.now(timezone.utc).isoformat(),
         "market_csv": str(Path(args.market_csv).resolve()),
         "outputs": {"analyzer": args.analyzer_output, "trader": args.trader_output},
+        "external_features": {
+            "wave_trading_root": str(Path(args.wave_trading_root).resolve()) if args.wave_trading_root else "",
+            "columns": [c for c in market.columns if c in {
+                "dxy",
+                "dxy_zscore",
+                "dxy_momentum",
+                "kimchi_premium",
+                "kimchi_premium_zscore",
+                "kimchi_premium_change",
+                "usdkrw",
+                "usdkrw_zscore",
+                "usdkrw_momentum",
+            }],
+            "join": "backward_asof_no_future" if args.wave_trading_root else "disabled",
+        },
         "config": asdict(cfg),
         "records": {"analyzer": len(analyzer_rows), "trader": len(trader_rows)},
         "preferred_step_counts": dict(sorted(step_counts.items(), key=lambda kv: int(kv[0]))),

@@ -631,6 +631,27 @@ def _risk_state_label(feature_row: pd.Series) -> str:
     )
 
 
+def _macro_state_label(feature_row: pd.Series) -> str:
+    dxy_z = float(feature_row.get("dxy_zscore", 0.0))
+    dxy_mom = float(feature_row.get("dxy_momentum", 0.0))
+    usdkrw_z = float(feature_row.get("usdkrw_zscore", 0.0))
+    if dxy_z > 1.0 or dxy_mom > 0.01 or usdkrw_z > 1.25:
+        return "DOLLAR_STRENGTH"
+    if dxy_z < -1.0 or dxy_mom < -0.01 or usdkrw_z < -1.25:
+        return "DOLLAR_WEAKNESS"
+    return "MACRO_NEUTRAL"
+
+
+def _korea_premium_label(feature_row: pd.Series) -> str:
+    premium = float(feature_row.get("kimchi_premium", 0.0))
+    premium_z = float(feature_row.get("kimchi_premium_zscore", 0.0))
+    if premium > 0.03 or premium_z > 1.25:
+        return "KIMCHI_PREMIUM_HIGH"
+    if premium < -0.005 or premium_z < -1.25:
+        return "KIMCHI_DISCOUNT"
+    return "KIMCHI_NEUTRAL"
+
+
 def _engineered_prompt_features(
     window: pd.DataFrame,
     feature_row: pd.Series,
@@ -665,6 +686,29 @@ def _engineered_prompt_features(
         numeric_features.append(
             ("Open Interest Z-Score", float(feature_row.get("oi_zscore", 0.0)))
         )
+    if "dxy" in window.columns:
+        numeric_features.extend(
+            [
+                ("Dollar Index", float(feature_row.get("dxy", 0.0))),
+                ("Dollar Index Z-Score", float(feature_row.get("dxy_zscore", 0.0))),
+                ("Dollar Index Momentum", float(feature_row.get("dxy_momentum", 0.0))),
+            ]
+        )
+    if "kimchi_premium" in window.columns:
+        numeric_features.extend(
+            [
+                ("Kimchi Premium", float(feature_row.get("kimchi_premium", 0.0))),
+                ("Kimchi Premium Z-Score", float(feature_row.get("kimchi_premium_zscore", 0.0))),
+                ("Kimchi Premium Change", float(feature_row.get("kimchi_premium_change", 0.0))),
+            ]
+        )
+    if "usdkrw" in window.columns:
+        numeric_features.extend(
+            [
+                ("USDKRW Z-Score", float(feature_row.get("usdkrw_zscore", 0.0))),
+                ("USDKRW Momentum", float(feature_row.get("usdkrw_momentum", 0.0))),
+            ]
+        )
 
     trend_alignment = _trend_alignment_label(feature_row)
     location = _location_label(feature_row)
@@ -675,8 +719,10 @@ def _engineered_prompt_features(
         feature_row, has_taker_flow="taker_buy_base" in window.columns
     )
     risk_state = _risk_state_label(feature_row)
+    macro_state = _macro_state_label(feature_row) if "dxy" in window.columns or "usdkrw" in window.columns else "MACRO_UNKNOWN"
+    korea_premium = _korea_premium_label(feature_row) if "kimchi_premium" in window.columns else "KIMCHI_UNKNOWN"
 
-    symbolic_features = (
+    symbolic_items = [
         ("Trend Alignment", trend_alignment),
         ("Location", location),
         ("Oscillator", oscillator),
@@ -684,7 +730,12 @@ def _engineered_prompt_features(
         ("Candle Pattern", candle_pattern),
         ("Order Flow", order_flow),
         ("Risk State", risk_state),
-    )
+    ]
+    if macro_state != "MACRO_UNKNOWN":
+        symbolic_items.append(("Macro Dollar State", macro_state))
+    if korea_premium != "KIMCHI_UNKNOWN":
+        symbolic_items.append(("Korea Premium State", korea_premium))
+    symbolic_features = tuple(symbolic_items)
     tags = tuple(
         tag
         for tag in (
@@ -694,8 +745,10 @@ def _engineered_prompt_features(
             volume_state,
             order_flow,
             risk_state,
+            macro_state,
+            korea_premium,
         )
-        if tag != "UNKNOWN"
+        if tag not in {"UNKNOWN", "MACRO_UNKNOWN", "KIMCHI_UNKNOWN"}
     )
     return tuple(numeric_features), symbolic_features, tags
 
