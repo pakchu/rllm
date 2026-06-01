@@ -109,9 +109,15 @@ def build_analyzer_input(market: pd.DataFrame, signal_pos: int, *, window_size: 
     return "\n".join(lines)
 
 
-def build_analyzer_summary(market: pd.DataFrame, signal_pos: int, *, window_size: int) -> dict[str, Any]:
+def build_analyzer_summary(
+    market: pd.DataFrame,
+    signal_pos: int,
+    *,
+    window_size: int,
+    feature_frame: pd.DataFrame | None = None,
+) -> dict[str, Any]:
     """Deterministic past-only teacher summary for analyzer SFT targets."""
-    features = build_market_feature_frame(market, window_size=window_size)
+    features = feature_frame if feature_frame is not None else build_market_feature_frame(market, window_size=window_size)
     feature_row = features.iloc[int(signal_pos)]
     window = make_window(market, t=int(signal_pos), w=int(window_size))
     regime, vol_level, momentum, trend_strength, window_vol = _symbolic_market_labels(window)
@@ -210,8 +216,9 @@ def build_text_pipeline_records(
     analyzer_records: list[dict[str, Any]] = []
     trader_records: list[dict[str, Any]] = []
     path_records: list[dict[str, Any]] = []
+    feature_frame = build_market_feature_frame(market, window_size=cfg.window_size)
     for pos, path_record in _iter_signal_positions(market, cfg, start_date, end_date):
-        summary = build_analyzer_summary(market, pos, window_size=cfg.window_size)
+        summary = build_analyzer_summary(market, pos, window_size=cfg.window_size, feature_frame=feature_frame)
         summary_text = analyzer_summary_to_text(summary)
         analyzer_records.append(
             {
