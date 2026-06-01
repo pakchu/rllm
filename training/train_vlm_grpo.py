@@ -361,13 +361,29 @@ def train_vlm_grpo_smoke(
         if getattr(processor, 'pad_token_id', None) is None:
             processor.pad_token = processor.eos_token
         with disable_transformers_allocator_warmup():
-            model = AutoModelForCausalLM.from_pretrained(
-                chosen_model,
-                device_map="auto",
-                dtype=torch.bfloat16,
-                quantization_config=quant_cfg,
-                trust_remote_code=True,
-            )
+            try:
+                model = AutoModelForCausalLM.from_pretrained(
+                    chosen_model,
+                    device_map="auto",
+                    dtype=torch.bfloat16,
+                    quantization_config=quant_cfg,
+                    trust_remote_code=True,
+                )
+            except ValueError as exc:
+                if "Unrecognized configuration class" not in str(exc):
+                    raise
+                # Some VLM checkpoints (for example Qwen2.5-VL) expose a
+                # multimodal config even when training with text-only prompts.
+                # Keep the text-only dataset path but load the model through
+                # the image-text auto class that owns that config.
+                processor = AutoProcessor.from_pretrained(chosen_model, trust_remote_code=True)
+                model = AutoModelForImageTextToText.from_pretrained(
+                    chosen_model,
+                    device_map="auto",
+                    dtype=torch.bfloat16,
+                    quantization_config=quant_cfg,
+                    trust_remote_code=True,
+                )
     else:
         processor = AutoProcessor.from_pretrained(chosen_model, trust_remote_code=True)
         with disable_transformers_allocator_warmup():
