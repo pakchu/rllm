@@ -121,6 +121,13 @@ def build_training_text(row: dict[str, Any], tokenizer: Any | None = None) -> st
     return f"<|user|>\n{prompt}\n<|assistant|>\n{target}"
 
 
+def build_prompt_completion_record(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "prompt": [{"role": "user", "content": str(row["prompt"])}],
+        "completion": [{"role": "assistant", "content": str(row["target"])}],
+    }
+
+
 def summarize_rows(rows: list[dict[str, Any]], cfg: TextSFTConfig, resolved_model: str) -> dict[str, Any]:
     tasks: Counter[str] = Counter(str(r.get("task", "unknown")) for r in rows)
     prompt_lens = [len(str(r.get("prompt", ""))) for r in rows]
@@ -157,7 +164,7 @@ def train_text_sft(cfg: TextSFTConfig, *, dry_run: bool = False) -> dict[str, An
     tokenizer = AutoTokenizer.from_pretrained(resolved_model, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-    dataset = Dataset.from_list([{"text": build_training_text(row, tokenizer)} for row in rows])
+    dataset = Dataset.from_list([build_prompt_completion_record(row) for row in rows])
     quantization_config = None
     if cfg.load_in_4bit:
         quantization_config = BitsAndBytesConfig(
@@ -193,6 +200,7 @@ def train_text_sft(cfg: TextSFTConfig, *, dry_run: bool = False) -> dict[str, An
         report_to=[],
         max_length=int(cfg.max_seq_length),
         packing=False,
+        completion_only_loss=True,
     )
     trainer = SFTTrainer(
         model=model,

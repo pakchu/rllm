@@ -3,7 +3,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from training.train_text_sft import TextSFTConfig, build_training_text, load_jsonl, train_text_sft
+from training.train_text_sft import (
+    TextSFTConfig,
+    build_prompt_completion_record,
+    build_training_text,
+    load_jsonl,
+    train_text_sft,
+)
 
 
 class TestTrainTextSFT(unittest.TestCase):
@@ -28,6 +34,11 @@ class TestTrainTextSFT(unittest.TestCase):
         self.assertIn("<|user|>", text)
         self.assertIn("<|assistant|>", text)
         self.assertTrue(text.endswith("T"))
+
+    def test_prompt_completion_record_separates_loss_target(self):
+        record = build_prompt_completion_record({"prompt": "P", "target": "T"})
+        self.assertEqual(record["prompt"], [{"role": "user", "content": "P"}])
+        self.assertEqual(record["completion"], [{"role": "assistant", "content": "T"}])
 
     def test_balanced_sampling_spreads_trader_labels(self):
         with tempfile.TemporaryDirectory() as td:
