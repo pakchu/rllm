@@ -232,6 +232,7 @@ def _strict_sim_from_scores(
     lows = market["low"].to_numpy(dtype=float)
     eq = 1.0
     peak = 1.0
+    min_marked_eq = 1.0
     max_dd = 0.0
     cost = (float(fee_rate) + float(slippage_rate)) * float(leverage)
     trade_returns: list[float] = []
@@ -260,6 +261,7 @@ def _strict_sim_from_scores(
         entry_eq = eq
         entries += 1
         eq *= max(0.0, 1.0 - cost)
+        min_marked_eq = min(min_marked_eq, eq)
         max_dd = max(max_dd, 1.0 - max(0.0, eq) / peak if peak > 0 else 0.0)
         for j in range(entry_pos, exit_pos):
             open_j = float(opens[j])
@@ -272,12 +274,15 @@ def _strict_sim_from_scores(
                 adverse_ret = (open_j - float(highs[j])) / open_j
                 close_ret = (open_j - float(opens[j + 1])) / open_j
             adverse_eq = eq * (1.0 + float(leverage) * adverse_ret)
+            min_marked_eq = min(min_marked_eq, adverse_eq)
             max_dd = max(max_dd, 1.0 - max(0.0, adverse_eq) / peak if peak > 0 else 0.0)
             eq *= max(0.0, 1.0 + float(leverage) * close_ret)
+            min_marked_eq = min(min_marked_eq, eq)
             peak = max(peak, eq)
             if eq <= 0.0:
                 break
         eq *= max(0.0, 1.0 - cost)
+        min_marked_eq = min(min_marked_eq, eq)
         max_dd = max(max_dd, 1.0 - max(0.0, eq) / peak if peak > 0 else 0.0)
         peak = max(peak, eq)
         trade_returns.append(eq / entry_eq - 1.0)
@@ -293,13 +298,18 @@ def _strict_sim_from_scores(
         years = max(1.0 / 365.25, (datetime.fromisoformat(end) - datetime.fromisoformat(start)).total_seconds() / (365.25 * 24 * 3600))
     ret_pct = (eq - 1.0) * 100.0
     gross = 1.0 + ret_pct / 100.0
-    cagr_pct = ((gross ** (1.0 / years) - 1.0) * 100.0) if gross > 0.0 else -100.0
+    annualization_factor = 1.0 / years
+    cagr_pct = ((gross ** annualization_factor - 1.0) * 100.0) if gross > 0.0 else -100.0
     mdd_pct = max_dd * 100.0
     return {
         "period": {"start": start, "end": end, "years": float(years)},
         "sim": {
             "ret_pct": float(ret_pct),
             "cagr_pct": float(cagr_pct),
+            "final_equity": float(eq),
+            "peak_equity": float(peak),
+            "min_marked_equity": float(min_marked_eq),
+            "annualization_factor": float(annualization_factor),
             "strict_mdd_pct": float(mdd_pct),
             "cagr_to_strict_mdd": float(cagr_pct / mdd_pct) if mdd_pct > 1e-12 else float("inf"),
             "trade_entries": int(entries),
