@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from training.train_text_sft import TextSFTConfig, build_training_text, train_text_sft
+from training.train_text_sft import TextSFTConfig, build_training_text, load_jsonl, train_text_sft
 
 
 class TestTrainTextSFT(unittest.TestCase):
@@ -28,6 +28,20 @@ class TestTrainTextSFT(unittest.TestCase):
         self.assertIn("<|user|>", text)
         self.assertIn("<|assistant|>", text)
         self.assertTrue(text.endswith("T"))
+
+    def test_balanced_sampling_spreads_trader_labels(self):
+        with tempfile.TemporaryDirectory() as td:
+            data = Path(td) / "trader.jsonl"
+            rows = []
+            for i in range(10):
+                rows.append({"task": "trader", "prompt": f"P{i}", "target": '{"gate":"NO_TRADE","side":"NONE"}'})
+            for i in range(2):
+                rows.append({"task": "trader", "prompt": f"L{i}", "target": '{"gate":"TRADE","side":"LONG"}'})
+                rows.append({"task": "trader", "prompt": f"S{i}", "target": '{"gate":"TRADE","side":"SHORT"}'})
+            data.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+            sampled = load_jsonl(data, max_samples=6, sample_mode="balanced", seed=7)
+            targets = {json.loads(r["target"])["side"] for r in sampled}
+            self.assertEqual(targets, {"NONE", "LONG", "SHORT"})
 
 
 if __name__ == "__main__":

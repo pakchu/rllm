@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -20,6 +21,7 @@ class TextSFTConfig:
     output_dir: str = "checkpoints/text_sft"
     max_samples: int = 0
     max_seq_length: int = 2048
+    sample_mode: str = "sequential"
     max_steps: int = 50
     num_train_epochs: float = 1.0
     learning_rate: float = 2e-5
@@ -32,18 +34,60 @@ class TextSFTConfig:
     seed: int = 42
 
 
-def load_jsonl(path: str | Path, *, max_samples: int = 0) -> list[dict[str, Any]]:
+def _row_bucket(row: dict[str, Any]) -> str:
+    target = str(row.get("target", ""))
+    try:
+        parsed = json.loads(target)
+    except Exception:
+        return target[:80]
+    if isinstance(parsed, dict) and "gate" in parsed:
+        return f"gate={parsed.get('gate')},side={parsed.get('side')}"
+    if isinstance(parsed, dict):
+        return str(parsed.get("regime", row.get("task", "unknown")))
+    return str(parsed)[:80]
+
+
+def _select_rows(rows: list[dict[str, Any]], *, max_samples: int, sample_mode: str, seed: int) -> list[dict[str, Any]]:
+    if not max_samples or int(max_samples) >= len(rows):
+        return rows
+    mode = str(sample_mode).strip().lower()
+    if mode not in {"sequential", "random", "balanced"}:
+        raise ValueError("sample_mode must be one of {'sequential','random','balanced'}")
+    rng = random.Random(int(seed))
+    max_n = int(max_samples)
+    if mode == "sequential":
+        return rows[:max_n]
+    if mode == "random":
+        idx = sorted(rng.sample(range(len(rows)), max_n))
+        return [rows[i] for i in idx]
+
+    buckets: dict[str, list[int]] = {}
+    for i, row in enumerate(rows):
+        buckets.setdefault(_row_bucket(row), []).append(i)
+    per_bucket = max(1, max_n // max(1, len(buckets)))
+    selected: list[int] = []
+    for bucket in sorted(buckets):
+        idxs = list(buckets[bucket])
+        rng.shuffle(idxs)
+        selected.extend(idxs[: min(per_bucket, len(idxs))])
+    if len(selected) < max_n:
+        remaining = [i for i in range(len(rows)) if i not in set(selected)]
+        rng.shuffle(remaining)
+        selected.extend(remaining[: max_n - len(selected)])
+    selected = sorted(selected[:max_n])
+    return [rows[i] for i in selected]
+
+
+def load_jsonl(path: str | Path, *, max_samples: int = 0, sample_mode: str = "sequential", seed: int = 42) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     with Path(path).open() as f:
         for line in f:
             if not line.strip():
                 continue
             rows.append(json.loads(line))
-            if max_samples and len(rows) >= int(max_samples):
-                break
     if not rows:
         raise ValueError(f"no rows loaded from {path}")
-    return rows
+    return _select_rows(rows, max_samples=int(max_samples), sample_mode=sample_mode, seed=int(seed))
 
 
 def _target_counter(rows: list[dict[str, Any]]) -> dict[str, int]:
@@ -96,7 +140,7 @@ def summarize_rows(rows: list[dict[str, Any]], cfg: TextSFTConfig, resolved_mode
 
 def train_text_sft(cfg: TextSFTConfig, *, dry_run: bool = False) -> dict[str, Any]:
     resolved_model = resolve_vlm_model_alias(cfg.model_name, prefer_latest=True)
-    rows = load_jsonl(cfg.train_jsonl, max_samples=cfg.max_samples)
+    rows = load_jsonl(cfg.train_jsonl, max_samples=cfg.max_samples, sample_mode=cfg.sample_mode, seed=cfg.seed)
     summary = summarize_rows(rows, cfg, resolved_model)
     Path(cfg.output_dir).mkdir(parents=True, exist_ok=True)
     summary_path = Path(cfg.output_dir) / "sft_summary.json"
@@ -169,6 +213,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output-dir", required=True)
     p.add_argument("--max-samples", type=int, default=0)
     p.add_argument("--max-seq-length", type=int, default=2048)
+    p.add_argument("--sample-mode", choices=["sequential", "random", "balanced"], default="sequential")
     p.add_argument("--max-steps", type=int, default=50)
     p.add_argument("--num-train-epochs", type=float, default=1.0)
     p.add_argument("--learning-rate", type=float, default=2e-5)
@@ -191,6 +236,7 @@ def main() -> None:
         output_dir=args.output_dir,
         max_samples=args.max_samples,
         max_seq_length=args.max_seq_length,
+        sample_mode=args.sample_mode,
         max_steps=args.max_steps,
         num_train_epochs=args.num_train_epochs,
         learning_rate=args.learning_rate,
