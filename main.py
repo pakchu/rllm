@@ -229,6 +229,12 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["buy_hold_sell", "trade_gate", "trade_side"],
     )
     train_vlm.add_argument(
+        "--trade-side-sample-policy",
+        type=str,
+        default="trade_only",
+        choices=["trade_only", "directional_all"],
+    )
+    train_vlm.add_argument(
         "--prompt-style",
         type=str,
         default="numeric",
@@ -246,7 +252,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--label-mode",
         type=str,
         default="next_return",
-        choices=["next_return", "utility"],
+        choices=["next_return", "utility", "path_outcome"],
     )
     train_vlm.add_argument("--buy-reward-weight", type=float, default=1.0)
     train_vlm.add_argument("--hold-reward-weight", type=float, default=1.0)
@@ -276,6 +282,11 @@ def build_parser() -> argparse.ArgumentParser:
     train_vlm.add_argument("--utility-min-risk-weight", type=float, default=0.0)
     train_vlm.add_argument("--utility-max-risk-weight", type=float, default=1.0)
     train_vlm.add_argument("--utility-hold-reward-bias", type=float, default=0.0)
+    train_vlm.add_argument("--path-entry-delay-bars", type=int, default=1)
+    train_vlm.add_argument("--path-mae-penalty", type=float, default=1.0)
+    train_vlm.add_argument("--path-mfe-bonus", type=float, default=0.0)
+    train_vlm.add_argument("--path-min-net-return", type=float, default=0.0)
+    train_vlm.add_argument("--path-max-mae", type=float, default=1.0)
     train_vlm.add_argument("--utility-reward-scale", type=float, default=400.0)
     train_vlm.add_argument("--utility-gap-scale", type=float, default=400.0)
     train_vlm.add_argument(
@@ -384,7 +395,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--label-mode",
         type=str,
         default="next_return",
-        choices=["next_return", "utility"],
+        choices=["next_return", "utility", "path_outcome"],
     )
     eval_vlm.add_argument("--utility-hold-margin", type=float, default=0.0)
     eval_vlm.add_argument("--utility-fee-rate", type=float, default=0.0005)
@@ -405,6 +416,11 @@ def build_parser() -> argparse.ArgumentParser:
     eval_vlm.add_argument("--utility-min-risk-weight", type=float, default=0.0)
     eval_vlm.add_argument("--utility-max-risk-weight", type=float, default=1.0)
     eval_vlm.add_argument("--utility-hold-reward-bias", type=float, default=0.0)
+    eval_vlm.add_argument("--path-entry-delay-bars", type=int, default=1)
+    eval_vlm.add_argument("--path-mae-penalty", type=float, default=1.0)
+    eval_vlm.add_argument("--path-mfe-bonus", type=float, default=0.0)
+    eval_vlm.add_argument("--path-min-net-return", type=float, default=0.0)
+    eval_vlm.add_argument("--path-max-mae", type=float, default=1.0)
     eval_vlm.add_argument("--max-samples", type=int, default=128)
     eval_vlm.add_argument(
         "--sample-mode",
@@ -413,6 +429,12 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["sequential", "random", "balanced", "uniform"],
     )
     eval_vlm.add_argument("--sample-seed", type=int, default=42)
+    eval_vlm.add_argument(
+        "--sample-date-file",
+        type=str,
+        default="",
+        help="Optional JSON report/list or newline file of exact sample dates to evaluate.",
+    )
     eval_vlm.add_argument("--max-completion-length", type=int, default=8)
     eval_vlm.add_argument("--min-new-tokens", type=int, default=1)
     eval_vlm.add_argument(
@@ -490,7 +512,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--label-mode",
         type=str,
         default="next_return",
-        choices=["next_return", "utility"],
+        choices=["next_return", "utility", "path_outcome"],
     )
     select_vlm.add_argument("--buy-reward-weight", type=float, default=1.0)
     select_vlm.add_argument("--hold-reward-weight", type=float, default=1.0)
@@ -520,6 +542,11 @@ def build_parser() -> argparse.ArgumentParser:
     select_vlm.add_argument("--utility-min-risk-weight", type=float, default=0.0)
     select_vlm.add_argument("--utility-max-risk-weight", type=float, default=1.0)
     select_vlm.add_argument("--utility-hold-reward-bias", type=float, default=0.0)
+    select_vlm.add_argument("--path-entry-delay-bars", type=int, default=1)
+    select_vlm.add_argument("--path-mae-penalty", type=float, default=1.0)
+    select_vlm.add_argument("--path-mfe-bonus", type=float, default=0.0)
+    select_vlm.add_argument("--path-min-net-return", type=float, default=0.0)
+    select_vlm.add_argument("--path-max-mae", type=float, default=1.0)
     select_vlm.add_argument("--utility-reward-scale", type=float, default=400.0)
     select_vlm.add_argument("--utility-gap-scale", type=float, default=400.0)
     select_vlm.add_argument(
@@ -1013,6 +1040,7 @@ def cmd_train_vlm_smoke(args: argparse.Namespace) -> None:
         max_samples=args.max_samples,
         modality=args.modality,
         action_schema=args.action_schema,
+        trade_side_sample_policy=args.trade_side_sample_policy,
         prompt_style=args.prompt_style,
         prompt_feature_mode=args.prompt_feature_mode,
         hold_band=args.hold_band,
@@ -1036,6 +1064,11 @@ def cmd_train_vlm_smoke(args: argparse.Namespace) -> None:
         utility_min_risk_weight=args.utility_min_risk_weight,
         utility_max_risk_weight=args.utility_max_risk_weight,
         utility_hold_reward_bias=args.utility_hold_reward_bias,
+        path_entry_delay_bars=args.path_entry_delay_bars,
+        path_mae_penalty=args.path_mae_penalty,
+        path_mfe_bonus=args.path_mfe_bonus,
+        path_min_net_return=args.path_min_net_return,
+        path_max_mae=args.path_max_mae,
         utility_reward_scale=args.utility_reward_scale,
         utility_gap_scale=args.utility_gap_scale,
         sample_mode=args.sample_mode,
@@ -1111,9 +1144,15 @@ def cmd_eval_vlm(args: argparse.Namespace) -> None:
         utility_min_risk_weight=args.utility_min_risk_weight,
         utility_max_risk_weight=args.utility_max_risk_weight,
         utility_hold_reward_bias=args.utility_hold_reward_bias,
+        path_entry_delay_bars=args.path_entry_delay_bars,
+        path_mae_penalty=args.path_mae_penalty,
+        path_mfe_bonus=args.path_mfe_bonus,
+        path_min_net_return=args.path_min_net_return,
+        path_max_mae=args.path_max_mae,
         max_samples=args.max_samples,
         sample_mode=args.sample_mode,
         sample_seed=args.sample_seed,
+        sample_date_file=args.sample_date_file or None,
         max_completion_length=args.max_completion_length,
         min_new_tokens=args.min_new_tokens,
         do_sample=args.do_sample == "true",
@@ -1200,6 +1239,11 @@ def cmd_select_vlm_checkpoint(args: argparse.Namespace) -> None:
         utility_min_risk_weight=args.utility_min_risk_weight,
         utility_max_risk_weight=args.utility_max_risk_weight,
         utility_hold_reward_bias=args.utility_hold_reward_bias,
+        path_entry_delay_bars=args.path_entry_delay_bars,
+        path_mae_penalty=args.path_mae_penalty,
+        path_mfe_bonus=args.path_mfe_bonus,
+        path_min_net_return=args.path_min_net_return,
+        path_max_mae=args.path_max_mae,
         utility_reward_scale=args.utility_reward_scale,
         utility_gap_scale=args.utility_gap_scale,
         sample_mode=args.sample_mode,

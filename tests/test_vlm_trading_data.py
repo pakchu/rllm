@@ -370,6 +370,31 @@ class TestVlmTradingData(unittest.TestCase):
         self.assertGreater(len(directional_all), len(trade_only))
         self.assertTrue(all(s.target_action in {"LONG", "SHORT"} for s in directional_all))
 
+    def test_build_samples_can_filter_exact_dates(self):
+        baseline = build_vlm_training_samples(
+            market_df=_market_df(90),
+            timeframe="1m",
+            window_size=16,
+            resolution=32,
+            cache_dir=None,
+            max_samples=6,
+            sample_mode="uniform",
+            modality="text_only",
+        )
+        keep = [baseline[1].date, baseline[4].date]
+        filtered = build_vlm_training_samples(
+            market_df=_market_df(90),
+            timeframe="1m",
+            window_size=16,
+            resolution=32,
+            cache_dir=None,
+            max_samples=None,
+            sample_mode="sequential",
+            modality="text_only",
+            sample_dates=keep,
+        )
+        self.assertEqual([s.date for s in filtered], keep)
+
     def test_build_samples_random_mode_is_seeded(self):
         s1 = build_vlm_training_samples(
             market_df=_oscillating_market_df(),

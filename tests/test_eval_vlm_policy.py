@@ -1,6 +1,9 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
-from training.eval_vlm_policy import select_action_from_scores, summarize_action_metrics
+from training.eval_vlm_policy import load_sample_dates, select_action_from_scores, summarize_action_metrics
 
 
 class TestEvalVlmPolicy(unittest.TestCase):
@@ -36,6 +39,21 @@ class TestEvalVlmPolicy(unittest.TestCase):
         )
         self.assertEqual(pred, "TRADE")
         self.assertGreater(adj["TRADE"], adj["NO_TRADE"])
+
+    def test_load_sample_dates_from_action_score_report(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "report.json"
+            p.write_text(json.dumps({"action_scores": [{"date": "2025-01-01 00:01:00"}]}))
+            self.assertEqual(load_sample_dates(str(p)), ["2025-01-01 00:01:00"])
+
+    def test_load_sample_dates_from_newline_file(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "dates.txt"
+            p.write_text("2025-01-01 00:01:00\n2025-01-01 00:02:00\n")
+            self.assertEqual(
+                load_sample_dates(str(p)),
+                ["2025-01-01 00:01:00", "2025-01-01 00:02:00"],
+            )
 
     def test_summarize_action_metrics_trade_side(self):
         out = summarize_action_metrics(

@@ -131,6 +131,43 @@ def _resolve_eval_model_name(model_name: str) -> str:
     return key
 
 
+def load_sample_dates(path: str | None) -> list[str] | None:
+    """Load evaluation sample dates from JSON report/list or newline text file."""
+    if not path:
+        return None
+    src = Path(path)
+    raw = src.read_text().strip()
+    if not raw:
+        raise ValueError(f"sample date file is empty: {path}")
+    dates: list[str] = []
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        data = None
+    if isinstance(data, dict):
+        rows = data.get("action_scores") or data.get("samples") or data.get("dates")
+        if rows is None:
+            raise ValueError(
+                "sample date JSON object must contain action_scores, samples, or dates"
+            )
+        data = rows
+    if isinstance(data, list):
+        for item in data:
+            if isinstance(item, dict):
+                value = item.get("date")
+            else:
+                value = item
+            if value is None:
+                continue
+            dates.append(str(np.datetime64(str(value).replace(" ", "T"))).replace("T", " "))
+    else:
+        dates = [line.strip() for line in raw.splitlines() if line.strip()]
+    normalized = [str(np.datetime64(str(x).replace(" ", "T"))).replace("T", " ") for x in dates]
+    if not normalized:
+        raise ValueError(f"No sample dates loaded from: {path}")
+    return normalized
+
+
 def evaluate_vlm_policy(
     model_name: str = AUTO_MODEL_NAME,
     adapter_dir: str | None = None,
@@ -178,6 +215,7 @@ def evaluate_vlm_policy(
     max_samples: int = 128,
     sample_mode: str = "balanced",
     sample_seed: int = 42,
+    sample_date_file: str | None = None,
     max_completion_length: int = 8,
     min_new_tokens: int = 1,
     do_sample: bool = False,
@@ -214,6 +252,7 @@ def evaluate_vlm_policy(
         synthetic_regime_amplitude=synthetic_regime_amplitude,
         synthetic_regime_period=synthetic_regime_period,
     )
+    requested_sample_dates = load_sample_dates(sample_date_file)
     samples = build_vlm_training_samples(
         market_df=market_df,
         timeframe=timeframe,
@@ -250,6 +289,7 @@ def evaluate_vlm_policy(
         max_samples=max_samples,
         sample_mode=sample_mode,
         sample_seed=sample_seed,
+        sample_dates=requested_sample_dates,
     )
     if not samples:
         raise ValueError("No evaluation samples generated.")
@@ -538,6 +578,8 @@ def evaluate_vlm_policy(
         "window_size": int(window_size),
         "sample_mode": sample_mode,
         "sample_seed": int(sample_seed),
+        "sample_date_file": str(Path(sample_date_file).resolve()) if sample_date_file else None,
+        "requested_sample_dates": 0 if requested_sample_dates is None else int(len(requested_sample_dates)),
         "modality": str(modality),
         "action_schema": str(action_schema),
         "prompt_style": str(prompt_style),
@@ -695,6 +737,12 @@ def parse_args() -> argparse.Namespace:
         choices=["sequential", "random", "balanced", "uniform"],
     )
     parser.add_argument("--sample-seed", type=int, default=42)
+    parser.add_argument(
+        "--sample-date-file",
+        type=str,
+        default="",
+        help="Optional JSON report/list or newline file of exact sample dates to evaluate.",
+    )
     parser.add_argument("--max-completion-length", type=int, default=8)
     parser.add_argument("--min-new-tokens", type=int, default=1)
     parser.add_argument("--do-sample", type=str, default="false", choices=["true", "false"])
@@ -777,6 +825,7 @@ def main() -> None:
         max_samples=args.max_samples,
         sample_mode=args.sample_mode,
         sample_seed=args.sample_seed,
+        sample_date_file=args.sample_date_file or None,
         max_completion_length=args.max_completion_length,
         min_new_tokens=args.min_new_tokens,
         do_sample=args.do_sample == "true",

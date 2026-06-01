@@ -736,6 +736,7 @@ def build_vlm_training_samples(
     action_schema: str = "buy_hold_sell",
     trade_side_sample_policy: str = "trade_only",
     modality: str = "multimodal",
+    sample_dates: Iterable[str] | None = None,
 ) -> List[VLMTrainingSample]:
     """
     Build trading-derived VLM samples with image + prompt + target action.
@@ -799,10 +800,16 @@ def build_vlm_training_samples(
         )
 
     feature_frame = build_market_feature_frame(market_df, window_size=window_size)
+    sample_date_set = None
+    if sample_dates is not None:
+        sample_date_set = {str(pd.to_datetime(x)) for x in sample_dates}
 
     # First pass: compute candidate metadata without rendering images.
     candidates = []
     for t in range(start_t, end_t):
+        row_date = str(pd.to_datetime(market_df.loc[t, "date"]))
+        if sample_date_set is not None and row_date not in sample_date_set:
+            continue
         open_t = float(market_df.loc[t, "open"])
         open_th = float(market_df.loc[t + horizon, "open"])
         next_return = 0.0 if open_t == 0 else (open_th - open_t) / open_t

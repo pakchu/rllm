@@ -115,12 +115,27 @@ class TestMainCLI(unittest.TestCase):
                 "directional_all",
                 "--decision-mode",
                 "likelihood",
+                "--label-mode",
+                "path_outcome",
+                "--sample-date-file",
+                "gate.json",
+                "--path-entry-delay-bars",
+                "1",
+                "--path-mae-penalty",
+                "0.7",
+                "--path-min-net-return",
+                "0.001",
             ]
         )
         self.assertEqual(args.cmd, "eval-vlm")
         self.assertEqual(args.action_schema, "trade_side")
         self.assertEqual(args.trade_side_sample_policy, "directional_all")
         self.assertEqual(args.decision_mode, "likelihood")
+        self.assertEqual(args.label_mode, "path_outcome")
+        self.assertEqual(args.sample_date_file, "gate.json")
+        self.assertEqual(args.path_entry_delay_bars, 1)
+        self.assertAlmostEqual(args.path_mae_penalty, 0.7)
+        self.assertAlmostEqual(args.path_min_net_return, 0.001)
 
     def test_parse_compose_gate_side(self):
         parser = build_parser()
