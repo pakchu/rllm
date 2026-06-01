@@ -136,6 +136,7 @@ def train_vlm_grpo_smoke(
     max_samples: int = 256,
     modality: str = "multimodal",
     action_schema: str = "buy_hold_sell",
+    trade_side_sample_policy: str = "trade_only",
     prompt_style: str = "numeric",
     prompt_feature_mode: str = "basic_v0",
     hold_band: float = 0.0005,
@@ -159,6 +160,11 @@ def train_vlm_grpo_smoke(
     utility_min_risk_weight: float = 0.0,
     utility_max_risk_weight: float = 1.0,
     utility_hold_reward_bias: float = 0.0,
+    path_entry_delay_bars: int = 1,
+    path_mae_penalty: float = 1.0,
+    path_mfe_bonus: float = 0.0,
+    path_min_net_return: float = 0.0,
+    path_max_mae: float = 1.0,
     utility_reward_scale: float = 400.0,
     utility_gap_scale: float = 400.0,
     sample_mode: str = "balanced",
@@ -217,6 +223,7 @@ def train_vlm_grpo_smoke(
         cache_dir=cache_dir,
         modality=modality,
         action_schema=action_schema,
+        trade_side_sample_policy=trade_side_sample_policy,
         prompt_style=prompt_style,
         prompt_feature_mode=prompt_feature_mode,
         hold_band=hold_band,
@@ -236,6 +243,11 @@ def train_vlm_grpo_smoke(
         utility_min_risk_weight=utility_min_risk_weight,
         utility_max_risk_weight=utility_max_risk_weight,
         utility_hold_reward_bias=utility_hold_reward_bias,
+        path_entry_delay_bars=path_entry_delay_bars,
+        path_mae_penalty=path_mae_penalty,
+        path_mfe_bonus=path_mfe_bonus,
+        path_min_net_return=path_min_net_return,
+        path_max_mae=path_max_mae,
         max_samples=max_samples,
         sample_mode=sample_mode,
         sample_seed=sample_seed,
@@ -272,6 +284,7 @@ def train_vlm_grpo_smoke(
             "sample_seed": sample_seed,
             "modality": str(modality),
             "action_schema": str(action_schema),
+            "trade_side_sample_policy": str(trade_side_sample_policy),
             "prompt_style": str(prompt_style),
             "prompt_feature_mode": str(prompt_feature_mode),
             "target_horizon": int(target_horizon),
@@ -297,6 +310,11 @@ def train_vlm_grpo_smoke(
             "utility_min_risk_weight": float(utility_min_risk_weight),
             "utility_max_risk_weight": float(utility_max_risk_weight),
             "utility_hold_reward_bias": float(utility_hold_reward_bias),
+            "path_entry_delay_bars": int(path_entry_delay_bars),
+            "path_mae_penalty": float(path_mae_penalty),
+            "path_mfe_bonus": float(path_mfe_bonus),
+            "path_min_net_return": float(path_min_net_return),
+            "path_max_mae": float(path_max_mae),
             "utility_reward_scale": float(utility_reward_scale),
             "utility_gap_scale": float(utility_gap_scale),
             "reward_variance_guard": str(reward_variance_guard),
@@ -445,6 +463,7 @@ def train_vlm_grpo_smoke(
         "sample_seed": int(sample_seed),
         "modality": str(modality),
         "action_schema": str(action_schema),
+        "trade_side_sample_policy": str(trade_side_sample_policy),
         "prompt_style": str(prompt_style),
         "prompt_feature_mode": str(prompt_feature_mode),
         "target_horizon": int(target_horizon),
@@ -467,6 +486,11 @@ def train_vlm_grpo_smoke(
         "utility_min_risk_weight": float(utility_min_risk_weight),
         "utility_max_risk_weight": float(utility_max_risk_weight),
         "utility_hold_reward_bias": float(utility_hold_reward_bias),
+        "path_entry_delay_bars": int(path_entry_delay_bars),
+        "path_mae_penalty": float(path_mae_penalty),
+        "path_mfe_bonus": float(path_mfe_bonus),
+        "path_min_net_return": float(path_min_net_return),
+        "path_max_mae": float(path_max_mae),
         "utility_reward_scale": float(utility_reward_scale),
         "utility_gap_scale": float(utility_gap_scale),
         "reward_variance_guard": str(reward_variance_guard),
@@ -517,6 +541,13 @@ def parse_args() -> argparse.Namespace:
         choices=sorted(ACTION_SCHEMA_LABELS),
     )
     parser.add_argument(
+        "--trade-side-sample-policy",
+        type=str,
+        default="trade_only",
+        choices=["trade_only", "directional_all"],
+        help="For trade_side schema, either train only executable trade windows or all directional windows.",
+    )
+    parser.add_argument(
         "--prompt-style",
         type=str,
         default="numeric",
@@ -535,8 +566,8 @@ def parse_args() -> argparse.Namespace:
         "--label-mode",
         type=str,
         default="next_return",
-        choices=["next_return", "utility"],
-        help="Target label source: raw horizon sign or cost/risk-aware utility argmax.",
+        choices=["next_return", "utility", "path_outcome"],
+        help="Target label source: raw horizon sign, horizon utility, or executable delayed-entry path outcome.",
     )
     parser.add_argument("--buy-reward-weight", type=float, default=1.0)
     parser.add_argument("--hold-reward-weight", type=float, default=1.0)
@@ -577,6 +608,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--utility-min-risk-weight", type=float, default=0.0)
     parser.add_argument("--utility-max-risk-weight", type=float, default=1.0)
     parser.add_argument("--utility-hold-reward-bias", type=float, default=0.0)
+    parser.add_argument("--path-entry-delay-bars", type=int, default=1)
+    parser.add_argument("--path-mae-penalty", type=float, default=1.0)
+    parser.add_argument("--path-mfe-bonus", type=float, default=0.0)
+    parser.add_argument("--path-min-net-return", type=float, default=0.0)
+    parser.add_argument("--path-max-mae", type=float, default=1.0)
     parser.add_argument("--utility-reward-scale", type=float, default=400.0)
     parser.add_argument("--utility-gap-scale", type=float, default=400.0)
     parser.add_argument(
@@ -648,6 +684,7 @@ def main() -> None:
         max_samples=args.max_samples,
         modality=args.modality,
         action_schema=args.action_schema,
+        trade_side_sample_policy=args.trade_side_sample_policy,
         prompt_style=args.prompt_style,
         prompt_feature_mode=args.prompt_feature_mode,
         hold_band=args.hold_band,
@@ -671,6 +708,11 @@ def main() -> None:
         utility_min_risk_weight=args.utility_min_risk_weight,
         utility_max_risk_weight=args.utility_max_risk_weight,
         utility_hold_reward_bias=args.utility_hold_reward_bias,
+        path_entry_delay_bars=args.path_entry_delay_bars,
+        path_mae_penalty=args.path_mae_penalty,
+        path_mfe_bonus=args.path_mfe_bonus,
+        path_min_net_return=args.path_min_net_return,
+        path_max_mae=args.path_max_mae,
         utility_reward_scale=args.utility_reward_scale,
         utility_gap_scale=args.utility_gap_scale,
         sample_mode=args.sample_mode,

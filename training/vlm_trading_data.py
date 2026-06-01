@@ -22,6 +22,7 @@ from preprocessing.chart_generator import ChartGenerator, ChartGeneratorConfig
 from preprocessing.market_features import build_market_feature_frame
 from preprocessing.scalars import compute_range_volatility_pct
 from preprocessing.timeframe import make_window
+from training.path_outcome_dataset import PathOutcomeConfig, compute_trade_path_outcome
 
 
 @dataclass(frozen=True)
@@ -722,6 +723,11 @@ def build_vlm_training_samples(
     utility_min_risk_weight: float = 0.0,
     utility_max_risk_weight: float = 1.0,
     utility_hold_reward_bias: float = 0.0,
+    path_entry_delay_bars: int = 1,
+    path_mae_penalty: float = 1.0,
+    path_mfe_bonus: float = 0.0,
+    path_min_net_return: float = 0.0,
+    path_max_mae: float = 1.0,
     max_samples: int | None = None,
     sample_mode: str = "sequential",
     sample_seed: int = 42,
@@ -738,6 +744,7 @@ def build_vlm_training_samples(
     Target action is derived by:
       - label_mode='next_return': horizon return sign
       - label_mode='utility': cost/risk-aware action utility argmax
+      - label_mode='path_outcome': delayed-entry executable path utility
     where horizon return uses `(open_{t+h} - open_t)/open_t`.
     """
     modality_key = str(modality).lower().strip()
@@ -770,9 +777,9 @@ def build_vlm_training_samples(
             f"got {sample_mode}"
         )
     label_mode_key = str(label_mode).lower().strip()
-    if label_mode_key not in {"next_return", "utility"}:
+    if label_mode_key not in {"next_return", "utility", "path_outcome"}:
         raise ValueError(
-            "label_mode must be one of {'next_return','utility'}, "
+            "label_mode must be one of {'next_return','utility','path_outcome'}, "
             f"got {label_mode}"
         )
     prompt_feature_mode_key = str(prompt_feature_mode).lower().strip()
@@ -822,22 +829,56 @@ def build_vlm_training_samples(
         else:
             horizon_min_low = open_t
             horizon_max_high = open_t
-        utilities = compute_action_utilities(
-            open_t=open_t,
-            open_th=open_th,
-            horizon_min_low=horizon_min_low,
-            horizon_max_high=horizon_max_high,
-            fee_rate=utility_fee_rate,
-            slippage_rate=utility_slippage_rate,
-            leverage=utility_leverage,
-            stop_loss=utility_stop_loss,
-            take_profit=utility_take_profit,
-            use_log_return=utility_use_log_return,
-            dynamic_risk_weight=risk_weight,
-            hold_reward_bias=utility_hold_reward_bias,
-        )
+        if label_mode_key == "path_outcome":
+            path_cfg = PathOutcomeConfig(
+                hold_bars=horizon,
+                entry_delay_bars=path_entry_delay_bars,
+                fee_rate=utility_fee_rate,
+                slippage_rate=utility_slippage_rate,
+                leverage=utility_leverage,
+                mae_penalty=path_mae_penalty,
+                mfe_bonus=path_mfe_bonus,
+                hold_margin=utility_hold_margin,
+                min_net_return=path_min_net_return,
+                max_mae=path_max_mae,
+            )
+            long_outcome = compute_trade_path_outcome(market_df, t, "LONG", path_cfg)
+            short_outcome = compute_trade_path_outcome(market_df, t, "SHORT", path_cfg)
+            if long_outcome is None or short_outcome is None:
+                continue
+            best_outcome = long_outcome if long_outcome.utility >= short_outcome.utility else short_outcome
+            path_trade_ok = (
+                float(best_outcome.utility) > float(utility_hold_margin)
+                and float(best_outcome.net_return) > float(path_min_net_return)
+                and float(best_outcome.mae) <= float(path_max_mae)
+            )
+            utilities = {
+                "BUY": float(long_outcome.utility),
+                "HOLD": float(utility_hold_reward_bias),
+                "SELL": float(short_outcome.utility),
+            }
+            next_return = float(best_outcome.net_return)
+        else:
+            best_outcome = None
+            path_trade_ok = False
+            utilities = compute_action_utilities(
+                open_t=open_t,
+                open_th=open_th,
+                horizon_min_low=horizon_min_low,
+                horizon_max_high=horizon_max_high,
+                fee_rate=utility_fee_rate,
+                slippage_rate=utility_slippage_rate,
+                leverage=utility_leverage,
+                stop_loss=utility_stop_loss,
+                take_profit=utility_take_profit,
+                use_log_return=utility_use_log_return,
+                dynamic_risk_weight=risk_weight,
+                hold_reward_bias=utility_hold_reward_bias,
+            )
         if action_schema_key == "trade_gate":
-            if label_mode_key == "utility":
+            if label_mode_key == "path_outcome":
+                target_action = "TRADE" if path_trade_ok else "NO_TRADE"
+            elif label_mode_key == "utility":
                 target_action = action_from_trade_gate_utilities(
                     utility_buy=utilities["BUY"],
                     utility_hold=utilities["HOLD"],
@@ -851,7 +892,13 @@ def build_vlm_training_samples(
                 )
         elif action_schema_key == "trade_side":
             if trade_side_sample_policy_key == "directional_all":
-                if label_mode_key == "utility":
+                if label_mode_key == "path_outcome":
+                    target_action = (
+                        "LONG"
+                        if best_outcome is not None and best_outcome.side == "LONG"
+                        else "SHORT"
+                    )
+                elif label_mode_key == "utility":
                     target_action = (
                         "LONG"
                         if float(utilities["BUY"]) >= float(utilities["SELL"])
@@ -860,7 +907,17 @@ def build_vlm_training_samples(
                 else:
                     target_action = "LONG" if next_return >= 0.0 else "SHORT"
             else:
-                if label_mode_key == "utility":
+                if label_mode_key == "path_outcome":
+                    target_action = (
+                        None
+                        if not path_trade_ok
+                        else (
+                            "LONG"
+                            if best_outcome is not None and best_outcome.side == "LONG"
+                            else "SHORT"
+                        )
+                    )
+                elif label_mode_key == "utility":
                     target_action = action_from_trade_side_utilities(
                         utility_buy=utilities["BUY"],
                         utility_hold=utilities["HOLD"],
@@ -873,7 +930,16 @@ def build_vlm_training_samples(
                         hold_band=hold_band,
                     )
         else:
-            if label_mode_key == "utility":
+            if label_mode_key == "path_outcome":
+                if not path_trade_ok:
+                    target_action = "HOLD"
+                else:
+                    target_action = (
+                        "BUY"
+                        if best_outcome is not None and best_outcome.side == "LONG"
+                        else "SELL"
+                    )
+            elif label_mode_key == "utility":
                 target_action = action_from_utilities(
                     utility_buy=utilities["BUY"],
                     utility_hold=utilities["HOLD"],

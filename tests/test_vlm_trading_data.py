@@ -453,6 +453,48 @@ class TestVlmTradingData(unittest.TestCase):
         self.assertTrue(all(np.isfinite(s.action_utility_sell) for s in samples))
         self.assertTrue(any(s.dynamic_risk_weight > 0.0 for s in samples))
 
+    def test_label_mode_path_outcome_uses_delayed_executable_path(self):
+        samples = build_vlm_training_samples(
+            market_df=_market_df(90),
+            timeframe="1m",
+            window_size=16,
+            resolution=32,
+            cache_dir=None,
+            max_samples=10,
+            target_horizon=3,
+            label_mode="path_outcome",
+            utility_fee_rate=0.0,
+            utility_slippage_rate=0.0,
+            utility_leverage=1.0,
+            path_entry_delay_bars=1,
+            path_mae_penalty=0.0,
+            path_min_net_return=0.0,
+            sample_mode="sequential",
+            action_schema="trade_gate",
+        )
+        self.assertEqual(len(samples), 10)
+        self.assertTrue(all(s.target_action in {"TRADE", "NO_TRADE"} for s in samples))
+        self.assertTrue(any(s.target_action == "TRADE" for s in samples))
+        self.assertTrue(all(np.isfinite(s.action_utility_buy) for s in samples))
+        self.assertTrue(all(np.isfinite(s.action_utility_sell) for s in samples))
+
+    def test_path_outcome_trade_side_trade_only_filters_no_trade_windows(self):
+        samples = build_vlm_training_samples(
+            market_df=_oscillating_market_df(90),
+            timeframe="1m",
+            window_size=16,
+            resolution=32,
+            cache_dir=None,
+            max_samples=None,
+            target_horizon=3,
+            label_mode="path_outcome",
+            utility_hold_margin=10.0,
+            sample_mode="sequential",
+            action_schema="trade_side",
+            trade_side_sample_policy="trade_only",
+        )
+        self.assertEqual(samples, [])
+
 
 if __name__ == "__main__":
     unittest.main()
