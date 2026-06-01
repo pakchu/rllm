@@ -185,6 +185,30 @@ def _classification_metrics(rows: list[dict[str, Any]], scores: np.ndarray, thre
     }
 
 
+def _side_classification_metrics(rows: list[dict[str, Any]], side_scores: np.ndarray | None) -> dict[str, Any]:
+    if side_scores is None:
+        return {"mode": "oracle", "num_samples": int(len(rows))}
+    y = np.asarray([int(r["side_target"]) for r in rows], dtype=np.int64)
+    pred = (side_scores[:, 1] >= side_scores[:, 0]).astype(np.int64)
+    long_pos = max(1, int((y == 1).sum()))
+    short_pos = max(1, int((y == 0).sum()))
+    long_recall = float(((pred == 1) & (y == 1)).sum() / long_pos)
+    short_recall = float(((pred == 0) & (y == 0)).sum() / short_pos)
+    margin = np.abs(side_scores[:, 1] - side_scores[:, 0])
+    return {
+        "mode": "supervised",
+        "num_samples": int(len(rows)),
+        "long_targets": int((y == 1).sum()),
+        "short_targets": int((y == 0).sum()),
+        "predicted_long": int((pred == 1).sum()),
+        "accuracy": float((pred == y).mean()) if len(rows) else 0.0,
+        "recall_long": long_recall,
+        "recall_short": short_recall,
+        "balanced_recall": float(0.5 * (long_recall + short_recall)),
+        "mean_confidence_margin": float(margin.mean()) if len(margin) else 0.0,
+    }
+
+
 def _strict_sim_from_scores(
     rows: list[dict[str, Any]],
     market: pd.DataFrame,
@@ -192,6 +216,7 @@ def _strict_sim_from_scores(
     *,
     threshold: float,
     side_scores: np.ndarray | None = None,
+    side_confidence_min: float = 0.0,
     path_cfg: PathOutcomeConfig,
     fee_rate: float,
     slippage_rate: float,
@@ -225,6 +250,8 @@ def _strict_sim_from_scores(
             signal = 1 if side == "LONG" else -1
         else:
             # side class 1 = LONG, class 0 = SHORT
+            if abs(float(side_scores[row_idx, 1]) - float(side_scores[row_idx, 0])) < float(side_confidence_min):
+                continue
             signal = 1 if float(side_scores[row_idx, 1]) >= float(side_scores[row_idx, 0]) else -1
         entry_eq = eq
         entries += 1
@@ -286,6 +313,7 @@ def _select_threshold(
     market: pd.DataFrame,
     *,
     side_scores: np.ndarray | None = None,
+    side_confidence_candidates: tuple[float, ...] = (0.0,),
     path_cfg: PathOutcomeConfig,
     fee_rate: float,
     slippage_rate: float,
@@ -297,27 +325,41 @@ def _select_threshold(
     candidates.extend([0.25, 0.5, 0.75])
     best = None
     for th in sorted(set(candidates)):
-        rep = _strict_sim_from_scores(
-            rows,
-            market,
-            scores,
-            threshold=th,
-            side_scores=side_scores,
-            path_cfg=path_cfg,
-            fee_rate=fee_rate,
-            slippage_rate=slippage_rate,
-            leverage=leverage,
-            cooldown_bars=cooldown_bars,
-        )
-        if int(rep["sim"]["trade_entries"]) < int(min_trades):
-            continue
-        row = {"threshold": float(th), "strict": rep, "classification": _classification_metrics(rows, scores, th)}
-        key = (float(rep["sim"]["cagr_to_strict_mdd"]), float(rep["sim"]["cagr_pct"]), -float(rep["sim"]["strict_mdd_pct"]))
-        if best is None or key > best[0]:
-            best = (key, row)
+        for side_conf in sorted(set(float(x) for x in side_confidence_candidates)):
+            rep = _strict_sim_from_scores(
+                rows,
+                market,
+                scores,
+                threshold=th,
+                side_scores=side_scores,
+                side_confidence_min=side_conf,
+                path_cfg=path_cfg,
+                fee_rate=fee_rate,
+                slippage_rate=slippage_rate,
+                leverage=leverage,
+                cooldown_bars=cooldown_bars,
+            )
+            if int(rep["sim"]["trade_entries"]) < int(min_trades):
+                continue
+            row = {
+                "threshold": float(th),
+                "side_confidence_min": float(side_conf),
+                "strict": rep,
+                "classification": _classification_metrics(rows, scores, th),
+                "side_classification": _side_classification_metrics(rows, side_scores),
+            }
+            key = (float(rep["sim"]["cagr_to_strict_mdd"]), float(rep["sim"]["cagr_pct"]), -float(rep["sim"]["strict_mdd_pct"]))
+            if best is None or key > best[0]:
+                best = (key, row)
     if best is None:
         th = 0.5
-        return {"threshold": th, "strict": _strict_sim_from_scores(rows, market, scores, threshold=th, side_scores=side_scores, path_cfg=path_cfg, fee_rate=fee_rate, slippage_rate=slippage_rate, leverage=leverage, cooldown_bars=cooldown_bars), "classification": _classification_metrics(rows, scores, th)}
+        return {
+            "threshold": th,
+            "side_confidence_min": 0.0,
+            "strict": _strict_sim_from_scores(rows, market, scores, threshold=th, side_scores=side_scores, path_cfg=path_cfg, fee_rate=fee_rate, slippage_rate=slippage_rate, leverage=leverage, cooldown_bars=cooldown_bars),
+            "classification": _classification_metrics(rows, scores, th),
+            "side_classification": _side_classification_metrics(rows, side_scores),
+        }
     return best[1]
 
 
@@ -350,6 +392,7 @@ def run_baseline(
     min_trades: int,
     stride_bars: int = 1,
     side_mode: str = "oracle",
+    side_confidence_candidates: str = "0",
 ) -> dict[str, Any]:
     market = pd.read_csv(market_csv)
     required = {"date", "open", "high", "low", "close", "volume"}
@@ -408,11 +451,21 @@ def run_baseline(
     train_side_scores = side_score(train_rows) if side_mode_key == "supervised" else None
     test_side_scores = side_score(test_rows) if side_mode_key == "supervised" else None
     eval_side_scores = side_score(eval_rows) if side_mode_key == "supervised" else None
+    side_conf_candidates = tuple(
+        sorted(
+            {
+                max(0.0, float(x.strip()))
+                for x in str(side_confidence_candidates).split(",")
+                if x.strip()
+            }
+        )
+    ) or (0.0,)
     selected = _select_threshold(
         test_rows,
         test_scores,
         market,
         side_scores=test_side_scores,
+        side_confidence_candidates=side_conf_candidates if side_mode_key == "supervised" else (0.0,),
         path_cfg=path_cfg,
         fee_rate=fee_rate,
         slippage_rate=slippage_rate,
@@ -421,6 +474,7 @@ def run_baseline(
         min_trades=min_trades,
     )
     th = float(selected["threshold"])
+    side_conf = float(selected.get("side_confidence_min", 0.0))
     report = {
         "as_of": datetime.now(timezone.utc).isoformat(),
         "files": {"market_csv": str(Path(market_csv).resolve())},
@@ -430,14 +484,24 @@ def run_baseline(
         "model": {"type": "standardized_logistic_regression_numpy", **cfg.__dict__, "final_loss": float(losses[-1]), "side_mode": side_mode_key, "side_final_loss": float(side_losses[-1])},
         "feature_columns": list(EXTENDED_MARKET_FEATURE_COLUMNS),
         "selected_threshold_from_test": th,
+        "selected_side_confidence_min_from_test": side_conf,
         "splits": {
-            "train": {"classification": _classification_metrics(train_rows, train_scores, th), "strict": _strict_sim_from_scores(train_rows, market, train_scores, threshold=th, side_scores=train_side_scores, path_cfg=path_cfg, fee_rate=fee_rate, slippage_rate=slippage_rate, leverage=leverage, cooldown_bars=cooldown_bars)},
+            "train": {
+                "classification": _classification_metrics(train_rows, train_scores, th),
+                "side_classification": _side_classification_metrics(train_rows, train_side_scores),
+                "strict": _strict_sim_from_scores(train_rows, market, train_scores, threshold=th, side_scores=train_side_scores, side_confidence_min=side_conf, path_cfg=path_cfg, fee_rate=fee_rate, slippage_rate=slippage_rate, leverage=leverage, cooldown_bars=cooldown_bars),
+            },
             "test": selected,
-            "eval": {"classification": _classification_metrics(eval_rows, eval_scores, th), "strict": _strict_sim_from_scores(eval_rows, market, eval_scores, threshold=th, side_scores=eval_side_scores, path_cfg=path_cfg, fee_rate=fee_rate, slippage_rate=slippage_rate, leverage=leverage, cooldown_bars=cooldown_bars)},
+            "eval": {
+                "classification": _classification_metrics(eval_rows, eval_scores, th),
+                "side_classification": _side_classification_metrics(eval_rows, eval_side_scores),
+                "strict": _strict_sim_from_scores(eval_rows, market, eval_scores, threshold=th, side_scores=eval_side_scores, side_confidence_min=side_conf, path_cfg=path_cfg, fee_rate=fee_rate, slippage_rate=slippage_rate, leverage=leverage, cooldown_bars=cooldown_bars),
+            },
         },
         "leakage_guard": {
             "features_are_past_only": True,
             "threshold_selected_on": "test",
+            "side_confidence_selected_on": "test",
             "eval_used_for_selection": False,
             "side_is_oracle_future_label": side_mode_key == "oracle",
             "deployable_policy": side_mode_key == "supervised",
@@ -477,6 +541,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--min-trades", type=int, default=20)
     p.add_argument("--stride-bars", type=int, default=12)
     p.add_argument("--side-mode", choices=["oracle", "supervised"], default="oracle")
+    p.add_argument("--side-confidence-candidates", default="0")
     return p.parse_args()
 
 
@@ -485,6 +550,7 @@ def main() -> None:
     out = run_baseline(**vars(args))
     print(json.dumps({
         "selected_threshold_from_test": out["selected_threshold_from_test"],
+        "selected_side_confidence_min_from_test": out["selected_side_confidence_min_from_test"],
         "train": out["splits"]["train"],
         "test": out["splits"]["test"],
         "eval": out["splits"]["eval"],
