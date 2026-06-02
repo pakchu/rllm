@@ -17,6 +17,7 @@ from typing import Any
 
 import pandas as pd
 
+from preprocessing.market_features import build_market_feature_frame
 from training.path_outcome_dataset import PathOutcomeConfig, compute_trade_path_outcome
 from training.text_analyzer_trader_data import build_analyzer_summary, load_market_frame
 from training.text_step_analyzer_data import StepAnalyzerConfig, _iter_positions, parse_hold_candidates
@@ -97,9 +98,10 @@ def build_calibration_records(
         mae_penalty=cfg.mae_penalty,
         stride_bars=int(stride_bars),
     )
+    feature_frame = build_market_feature_frame(market, window_size=cfg.window_size)
     records: list[dict[str, Any]] = []
     for pos in _iter_positions(market, step_cfg, start_date, end_date):
-        summary = build_analyzer_summary(market, pos, window_size=cfg.window_size)
+        summary = build_analyzer_summary(market, pos, window_size=cfg.window_size, feature_frame=feature_frame)
         actions = _record_actions(market, pos, cfg)
         if not actions:
             continue
