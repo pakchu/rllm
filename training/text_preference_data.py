@@ -40,12 +40,11 @@ def _target_with_hold(row: dict[str, Any]) -> dict[str, Any]:
     return {"gate": target["gate"], "side": target["side"], "hold_bars": hold}
 
 
-def _response(action: dict[str, Any], *, reason: str) -> str:
+def _response(action: dict[str, Any]) -> str:
     payload = {
         "gate": str(action["gate"]),
         "side": str(action["side"]),
         "hold_bars": int(action.get("hold_bars", 0) or 0),
-        "reason": reason,
     }
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
@@ -85,7 +84,7 @@ def build_preference_pairs(
     for row in rows:
         prompt = str(row["prompt"])
         chosen_action = _target_with_hold(row)
-        chosen = _response(chosen_action, reason="chosen_by_executable_future_path_label_for_training_only")
+        chosen = _response(chosen_action)
         for rejected_action, reason in _rejected_actions(chosen_action, hold_candidates)[: max(1, int(max_pairs_per_row))]:
             pairs.append(
                 {
@@ -94,9 +93,10 @@ def build_preference_pairs(
                     "signal_pos": row.get("signal_pos"),
                     "prompt": prompt,
                     "chosen": chosen,
-                    "rejected": _response(rejected_action, reason=reason),
+                    "rejected": _response(rejected_action),
                     "chosen_action": chosen_action,
                     "rejected_action": rejected_action,
+                    "rejection_reason": reason,
                     "leakage_guard": {
                         "prompt_reused_from_leak_safe_trader_record": True,
                         "chosen_rejected_use_future_path_labels_for_training_only": True,

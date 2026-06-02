@@ -26,10 +26,12 @@ class TestTextPreferenceData(unittest.TestCase):
         self.assertEqual(len(pairs), 4)
         self.assertTrue(all("preferred_step_bars" not in p["prompt"] for p in pairs))
         first = json.loads(pairs[0]["chosen"])
+        self.assertNotIn("reason", first)
         self.assertEqual(first["gate"], "TRADE")
         self.assertEqual(first["side"], "LONG")
         self.assertEqual(first["hold_bars"], 96)
         rejected = [json.loads(p["rejected"]) for p in pairs[:2]]
+        self.assertTrue(all("reason" not in r for r in rejected))
         self.assertIn("NO_TRADE", {r["gate"] for r in rejected})
         self.assertIn("SHORT", {r["side"] for r in rejected})
         self.assertTrue(pairs[0]["leakage_guard"]["chosen_rejected_use_future_path_labels_for_training_only"])
@@ -62,6 +64,7 @@ class TestTextPreferenceData(unittest.TestCase):
             self.assertEqual(len(rows), 2)
             self.assertIn("chosen", rows[0])
             self.assertIn("rejected", rows[0])
+            self.assertIn("rejection_reason", rows[0])
 
 
 if __name__ == "__main__":
