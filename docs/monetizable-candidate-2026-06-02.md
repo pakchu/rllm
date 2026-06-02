@@ -85,3 +85,23 @@ This supports the current thesis: the LLM should act as a **selective regime/edg
 2. Extend the same strict recheck to the full top-80 candidate set and rank by train/test only, with eval report-only.
 3. Add a 3-year train/test/eval equivalent for this policy family; the old 3-year h144 forward-return candidate failed exact strict validation, so recent-year success is insufficient.
 4. If the candidate survives, export it as a paper-trading candidate only, not live production.
+
+## Follow-up 3-year train-bias strict verification
+
+Artifact: `results/h144_candidate73_3y_trainbias_exact_strict.json`
+
+The same candidate was then frozen and applied to the 3-year train/val/oos train-bias split.  This is the stricter no-reselection check because it uses train-bias-calibrated val/oos files rather than the split-local recent biascal files used by the promising recent-year artifact.
+
+| Split | Trades | CAGR | Strict MDD | CAGR/MDD | CI95 lower mean trade |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| train | 463 | 18.03% | 20.90% | 0.86 | -0.050% |
+| val | 107 | 8.18% | 12.48% | 0.66 | -0.206% |
+| oos | 105 | -35.36% | 29.13% | -1.21 | -0.472% |
+| all | 675 | 5.97% | 32.85% | 0.18 | -0.074% |
+
+Conclusion: the candidate is rejected for production.  The recent-year result does not survive the stricter 3-year train-bias validation, and the OOS period fails both return and drawdown constraints.  The likely lesson is that split-local bias calibration can manufacture a recent holdout edge that disappears when the analyzer/trader thresholds are carried through with train-only calibration.
+
+Updated stop rule: do not promote any future candidate unless it passes both:
+
+1. exact strict OHLC bar-by-bar recheck on the candidate's own test/eval files, and
+2. a train-bias or train-selected calibration replay where all thresholds/biases are fixed before val/oos.
