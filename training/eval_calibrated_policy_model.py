@@ -16,7 +16,7 @@ from typing import Any
 
 from models.option_b_vlm import RECOMMENDED_VLM_MODEL, resolve_vlm_model_alias
 from training.calibrated_regime_policy import CalibratedPolicyConfig, _metrics_from_trades, build_calibration_records, fit_rules
-from training.export_calibrated_policy_labels import _policy_target_for_record, build_policy_trader_input
+from training.export_calibrated_policy_labels import _policy_target_for_record, build_policy_trader_input, format_policy_book
 from training.text_analyzer_trader_data import analyzer_summary_to_text, load_market_frame
 from training.text_step_analyzer_data import parse_hold_candidates
 from utils import disable_transformers_allocator_warmup
@@ -239,6 +239,7 @@ def run_model_policy_eval(
         eval_records = eval_records[: int(max_eval_records)]
     rules = fit_rules(train_records, cfg)
     oracle_actions = _policy_oracle_actions(eval_records, rules)
+    policy_book = format_policy_book(rules)
     if prediction_mode == "oracle_echo":
         resolved_model = resolve_vlm_model_alias(model_name, prefer_latest=True)
         generated_rows: list[dict[str, Any]] = []
@@ -252,6 +253,8 @@ def run_model_policy_eval(
                 analyzer_summary_to_text(row["summary"]),
                 hold_candidates=cfg.hold_candidates,
                 entry_delay_bars=cfg.entry_delay_bars,
+                current_policy_key=str(row["key"]),
+                policy_book=policy_book,
             )
             for row in eval_records
         ]

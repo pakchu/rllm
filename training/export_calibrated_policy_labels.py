@@ -18,19 +18,39 @@ from training.text_analyzer_trader_data import analyzer_summary_to_text, build_a
 from training.text_step_analyzer_data import parse_hold_candidates
 
 
-def build_policy_trader_input(summary_text: str, *, hold_candidates: tuple[int, ...], entry_delay_bars: int) -> str:
-    return "\n".join(
-        [
-            "You are the trader stage for a BTCUSDT futures trading bot.",
-            "You receive only the analyzer's past-only symbolic market summary.",
-            "Imitate the train-calibrated symbolic policy. Do not invent trades outside the policy.",
-            f"Execution: enter after {int(entry_delay_bars)} bar(s). Allowed hold_bars: {','.join(str(x) for x in hold_candidates)}.",
-            "Output exactly one JSON object with keys gate, side, hold_bars, policy_key, reason.",
-            "gate must be TRADE or NO_TRADE. side must be LONG, SHORT, or NONE. hold_bars is 0 for NO_TRADE.",
-            "",
-            f"Analyzer summary: {summary_text}",
-        ]
-    )
+def format_policy_book(rules: dict[str, dict[str, Any]]) -> str:
+    if not rules:
+        return "No calibrated trade rules. Always output NO_TRADE."
+    lines: list[str] = []
+    for key in sorted(rules):
+        action = rules[key]["action"]
+        lines.append(f"- {key} => TRADE {action['side']} hold_bars={int(action['hold_bars'])}")
+    lines.append("- Any current_policy_key not listed above => NO_TRADE NONE hold_bars=0")
+    return "\n".join(lines)
+
+
+def build_policy_trader_input(
+    summary_text: str,
+    *,
+    hold_candidates: tuple[int, ...],
+    entry_delay_bars: int,
+    current_policy_key: str = "",
+    policy_book: str = "",
+) -> str:
+    lines = [
+        "You are the trader stage for a BTCUSDT futures trading bot.",
+        "You receive only the analyzer's past-only symbolic market summary and a train-calibrated policy book.",
+        "Imitate the train-calibrated symbolic policy exactly. Do not invent trades outside the policy book.",
+        f"Execution: enter after {int(entry_delay_bars)} bar(s). Allowed hold_bars: {','.join(str(x) for x in hold_candidates)}.",
+        "Output exactly one JSON object with keys gate, side, hold_bars, policy_key, reason.",
+        "gate must be TRADE or NO_TRADE. side must be LONG, SHORT, or NONE. hold_bars is 0 for NO_TRADE.",
+    ]
+    if policy_book:
+        lines.extend(["", "Calibrated policy book:", str(policy_book)])
+    if current_policy_key:
+        lines.extend(["", f"Current policy_key: {current_policy_key}"])
+    lines.extend(["", f"Analyzer summary: {summary_text}"])
+    return "\n".join(lines)
 
 
 def _policy_target_for_record(
@@ -81,6 +101,7 @@ def build_calibrated_policy_sft_rows(
     train_records = build_calibration_records(market, cfg, start_date=train_start, end_date=train_end, stride_bars=stride_bars)
     label_records = build_calibration_records(market, cfg, start_date=label_start, end_date=label_end, stride_bars=stride_bars)
     rules = fit_rules(train_records, cfg)
+    policy_book = format_policy_book(rules)
     analyzer_rows: list[dict[str, Any]] = []
     trader_rows: list[dict[str, Any]] = []
     next_available_pos = -1
@@ -106,7 +127,11 @@ def build_calibrated_policy_sft_rows(
                 "date": row["date"],
                 "signal_pos": int(row["signal_pos"]),
                 "prompt": build_policy_trader_input(
-                    summary_text, hold_candidates=cfg.hold_candidates, entry_delay_bars=cfg.entry_delay_bars
+                    summary_text,
+                    hold_candidates=cfg.hold_candidates,
+                    entry_delay_bars=cfg.entry_delay_bars,
+                    current_policy_key=str(row["key"]),
+                    policy_book=policy_book,
                 ),
                 "target": json.dumps(target, sort_keys=True, separators=(",", ":"), ensure_ascii=False),
                 "trade_gate_label": target["gate"],
@@ -126,6 +151,7 @@ def build_calibrated_policy_sft_rows(
         "records": {"train": len(train_records), "label": len(label_records)},
         "rules_count": len(rules),
         "target_counts": target_counts,
+        "policy_book": policy_book,
         "rules_preview": list(rules.values())[:20],
     }
     return analyzer_rows, trader_rows, summary
