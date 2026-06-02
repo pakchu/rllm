@@ -23,9 +23,18 @@ class TestTrainTextDPO(unittest.TestCase):
             self.assertEqual(len(rows), 2)
             self.assertTrue(all("prompt" in r and "chosen" in r and "rejected" in r for r in rows))
 
-    def test_dataset_rows_use_prompt_chosen_rejected_strings(self):
+    def test_dataset_rows_use_conversational_prompt_chosen_rejected(self):
         rows = [{"prompt": "p", "chosen": "c", "rejected": "r", "extra": 1}]
-        self.assertEqual(_dataset_rows(rows), [{"prompt": "p", "chosen": "c", "rejected": "r"}])
+        self.assertEqual(
+            _dataset_rows(rows),
+            [
+                {
+                    "prompt": [{"role": "user", "content": "p"}],
+                    "chosen": [{"role": "assistant", "content": "c"}],
+                    "rejected": [{"role": "assistant", "content": "r"}],
+                }
+            ],
+        )
 
     def test_dry_run_writes_summary_without_loading_model(self):
         with tempfile.TemporaryDirectory() as tmp:

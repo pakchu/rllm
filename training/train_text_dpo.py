@@ -101,9 +101,13 @@ def summarize_rows(rows: list[dict[str, Any]], cfg: TextDPOConfig, resolved_mode
     }
 
 
-def _dataset_rows(rows: list[dict[str, Any]]) -> list[dict[str, str]]:
+def _dataset_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [
-        {"prompt": str(r["prompt"]), "chosen": str(r["chosen"]), "rejected": str(r["rejected"])}
+        {
+            "prompt": [{"role": "user", "content": str(r["prompt"])}],
+            "chosen": [{"role": "assistant", "content": str(r["chosen"])}],
+            "rejected": [{"role": "assistant", "content": str(r["rejected"])}],
+        }
         for r in rows
     ]
 
