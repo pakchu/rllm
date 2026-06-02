@@ -209,6 +209,55 @@ def evaluate_router_specialists(
     return metrics
 
 
+def _precompute_router_action_rows(
+    records: list[dict[str, Any]],
+    *,
+    router_fields: tuple[str, ...],
+    specialist_key_fields: tuple[str, ...],
+) -> dict[str, dict[str, dict[str, list[dict[str, Any]]]]]:
+    by_router: dict[str, dict[str, dict[str, list[dict[str, Any]]]]] = {}
+    for row in records:
+        router = _router_key(row, router_fields)
+        key = _summary_key(row["summary"], specialist_key_fields)
+        action_map = by_router.setdefault(router, {}).setdefault(key, {})
+        for action_key, outcome in row["actions"].items():
+            action_map.setdefault(str(action_key), []).append(
+                {"date": row.get("date", ""), "signal_pos": int(row.get("signal_pos", -1)), "router_key": router, "key": key, **outcome}
+            )
+    return by_router
+
+
+def evaluate_router_specialists_precomputed(
+    *,
+    records_count: int,
+    action_rows: dict[str, dict[str, dict[str, list[dict[str, Any]]]]],
+    specialists: dict[str, dict[str, Any]],
+    include_intratrade_mdd: bool = True,
+) -> dict[str, Any]:
+    candidate_trades: list[dict[str, Any]] = []
+    for router, book in specialists.items():
+        router_rows = action_rows.get(router, {})
+        for key, rule in book["rules"].items():
+            action = rule["action"]
+            action_key = f"{action['side']}_{int(action['hold_bars'])}"
+            hold_bars = int(action["hold_bars"])
+            for row in router_rows.get(str(key), {}).get(action_key, []):
+                candidate_trades.append({**row, "_selected_hold_bars": hold_bars})
+
+    trades: list[dict[str, Any]] = []
+    next_available_pos = -1
+    for trade in sorted(candidate_trades, key=lambda x: int(x.get("signal_pos", -1))):
+        signal_pos = int(trade.get("signal_pos", -1))
+        if signal_pos <= next_available_pos:
+            continue
+        trades.append(trade)
+        next_available_pos = signal_pos + int(trade.get("_selected_hold_bars", trade.get("hold_bars", 0)))
+
+    metrics = _metrics_from_trades(trades, records_count=int(records_count), include_intratrade_mdd=include_intratrade_mdd)
+    metrics["non_overlapping"] = True
+    return metrics
+
+
 def run_sweep(
     *,
     market_csv: str,
@@ -276,6 +325,9 @@ def run_sweep(
         router_stats = _precompute_router_stats(
             train_records, router_fields=router, specialist_key_fields=specialist_fields
         )
+        eval_action_rows = _precompute_router_action_rows(
+            eval_records, router_fields=router, specialist_key_fields=specialist_fields
+        )
         cache: dict[tuple[tuple[str, tuple[tuple[str, str, int], ...]], ...], dict[str, Any]] = {}
         grid = itertools.product(
             _parse_ints(min_train_samples),
@@ -320,11 +372,10 @@ def run_sweep(
             else:
                 misses += 1
                 metrics = _augment_metrics(
-                    evaluate_router_specialists(
-                        eval_records,
-                        specialists,
-                        router_fields=router,
-                        specialist_key_fields=specialist_fields,
+                    evaluate_router_specialists_precomputed(
+                        records_count=len(eval_records),
+                        action_rows=eval_action_rows,
+                        specialists=specialists,
                     ),
                     years=years,
                 )

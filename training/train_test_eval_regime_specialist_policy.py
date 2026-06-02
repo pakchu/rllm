@@ -19,8 +19,9 @@ from training.calibrated_regime_policy import CalibratedPolicyConfig
 from training.sweep_calibrated_regime_policy import _augment_metrics, _parse_floats, _parse_ints, _parse_key_sets, _score
 from training.sweep_regime_specialist_policy import (
     _precompute_router_stats,
+    _precompute_router_action_rows,
     _specialist_signature,
-    evaluate_router_specialists,
+    evaluate_router_specialists_precomputed,
     fit_router_specialists_from_stats,
 )
 from training.sweep_yearly_stable_policy import _load_or_build_records, _records_cache_path
@@ -38,22 +39,20 @@ def _cache_exists(cache_dir: str, *, split: str, start: str, end: str, stride_ba
 
 
 def _eval_specialists_cached(
-    records: list[dict[str, Any]],
     specialists: dict[str, dict[str, Any]],
     *,
-    router_fields: tuple[str, ...],
-    specialist_key_fields: tuple[str, ...],
+    records_count: int,
+    action_rows: dict[str, dict[str, dict[str, list[dict[str, Any]]]]],
     years: float,
     cache: dict[tuple[tuple[str, tuple[tuple[str, str, int], ...]], ...], dict[str, Any]],
 ) -> dict[str, Any]:
     signature = _specialist_signature(specialists)
     if signature not in cache:
         cache[signature] = _augment_metrics(
-            evaluate_router_specialists(
-                records,
-                specialists,
-                router_fields=router_fields,
-                specialist_key_fields=specialist_key_fields,
+            evaluate_router_specialists_precomputed(
+                records_count=records_count,
+                action_rows=action_rows,
+                specialists=specialists,
             ),
             years=years,
         )
@@ -112,6 +111,7 @@ def run_validate(
 
     for specialist_fields in _parse_key_sets(specialist_key_sets):
         router_stats = _precompute_router_stats(train_records, router_fields=router, specialist_key_fields=specialist_fields)
+        test_action_rows = _precompute_router_action_rows(test_records, router_fields=router, specialist_key_fields=specialist_fields)
         test_cache: dict[tuple[tuple[str, tuple[tuple[str, str, int], ...]], ...], dict[str, Any]] = {}
         for min_samples, mean_net, mean_utility, win_rate, max_mae, year_samples, year_net, year_win, good_years, bad_net in itertools.product(
             _parse_ints(min_train_samples),
@@ -138,7 +138,7 @@ def run_validate(
             stable = YearlyStableConfig(min_year_samples=year_samples, min_year_mean_net=year_net, min_year_win_rate=year_win, max_year_mean_mae=max_mae)
             specialists = fit_router_specialists_from_stats(router_stats, cfg=cfg, stable=stable, min_good_years=good_years, max_bad_year_mean_net=bad_net)
             before = len(test_cache)
-            test_metrics = _eval_specialists_cached(test_records, specialists, router_fields=router, specialist_key_fields=specialist_fields, years=test_years, cache=test_cache)
+            test_metrics = _eval_specialists_cached(specialists, records_count=len(test_records), action_rows=test_action_rows, years=test_years, cache=test_cache)
             if len(test_cache) == before:
                 hits += 1
             else:
@@ -162,13 +162,16 @@ def run_validate(
     top_by_test = sorted(candidates, key=lambda r: r["test_score"], reverse=True)[:top_k]
     eval_results: list[dict[str, Any]] = []
     eval_cache: dict[tuple[tuple[str, tuple[tuple[str, str, int], ...]], ...], dict[str, Any]] = {}
+    eval_action_rows_cache: dict[tuple[str, ...], dict[str, dict[str, dict[str, list[dict[str, Any]]]]]] = {}
     for item in top_by_test:
         specialist_fields = tuple(item["specialist_key_fields"])
         cfg = CalibratedPolicyConfig(**{k: v for k, v in item["config"].items() if k != "hold_candidates"}, hold_candidates=tuple(item["config"]["hold_candidates"]))
         stable = YearlyStableConfig(**item["stable_config"])
         router_stats = _precompute_router_stats(train_records, router_fields=router, specialist_key_fields=specialist_fields)
         specialists = fit_router_specialists_from_stats(router_stats, cfg=cfg, stable=stable, min_good_years=int(item["min_good_years"]), max_bad_year_mean_net=float(item["max_bad_year_mean_net"]))
-        eval_metrics = _eval_specialists_cached(eval_records, specialists, router_fields=router, specialist_key_fields=specialist_fields, years=eval_years, cache=eval_cache)
+        if specialist_fields not in eval_action_rows_cache:
+            eval_action_rows_cache[specialist_fields] = _precompute_router_action_rows(eval_records, router_fields=router, specialist_key_fields=specialist_fields)
+        eval_metrics = _eval_specialists_cached(specialists, records_count=len(eval_records), action_rows=eval_action_rows_cache[specialist_fields], years=eval_years, cache=eval_cache)
         eval_results.append({**item, "eval_score": _score(eval_metrics, min_trades=min_eval_trades), "eval_metrics": eval_metrics})
 
     report = {
