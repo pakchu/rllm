@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from training.text_label_data import build_label_jsonl, build_label_rows
-from training.eval_text_label import evaluate_text_label, parse_label
+from training.eval_text_label import VALID_VALUES, evaluate_text_label, parse_label
 
 
 class TestTextLabelData(unittest.TestCase):
@@ -27,6 +27,10 @@ class TestTextLabelData(unittest.TestCase):
             self.assertEqual(summary["target_counts"], {"TRADE": 1})
             eval_rep = evaluate_text_label(eval_jsonl=str(out), output=str(Path(td) / "eval.json"), key="gate")
             self.assertEqual(eval_rep["metrics"]["accuracy"], 1.0)
+
+    def test_candidate_label_order_prefers_no_trade_first_for_gate(self):
+        self.assertEqual(VALID_VALUES["gate"][0], "NO_TRADE")
+        self.assertEqual(VALID_VALUES["gate"][1], "TRADE")
 
 
 if __name__ == "__main__":
