@@ -72,12 +72,45 @@ def _load_model(model_name: str, adapter_dir: str):
     return resolved, tokenizer, model
 
 
-def _generate_action(tokenizer: Any, model: Any, prompt: str, *, max_new_tokens: int, allowed_holds: tuple[int, ...]) -> tuple[dict[str, Any], str]:
+def _chat_text(tokenizer: Any, prompt: str) -> str:
     messages = [{"role": "user", "content": prompt}]
     if getattr(tokenizer, "chat_template", None):
-        text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    else:
-        text = f"<|user|>\n{prompt}\n<|assistant|>\n"
+        return str(tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True))
+    return f"<|user|>\n{prompt}\n<|assistant|>\n"
+
+
+def _generate_actions_batched(
+    tokenizer: Any,
+    model: Any,
+    prompts: list[str],
+    *,
+    max_new_tokens: int,
+    allowed_holds: tuple[int, ...],
+    batch_size: int,
+) -> list[tuple[dict[str, Any], str]]:
+    results: list[tuple[dict[str, Any], str]] = []
+    bs = max(1, int(batch_size))
+    tokenizer.padding_side = "left"
+    for start in range(0, len(prompts), bs):
+        chunk = prompts[start : start + bs]
+        texts = [_chat_text(tokenizer, prompt) for prompt in chunk]
+        inputs = tokenizer(texts, return_tensors="pt", padding=True).to(model.device)
+        prompt_lengths = inputs["attention_mask"].sum(dim=1).tolist()
+        out = model.generate(
+            **inputs,
+            max_new_tokens=int(max_new_tokens),
+            do_sample=False,
+            pad_token_id=tokenizer.pad_token_id,
+            eos_token_id=tokenizer.eos_token_id,
+        )
+        for i in range(len(chunk)):
+            generated = tokenizer.decode(out[i][int(prompt_lengths[i]) :], skip_special_tokens=True)
+            results.append((parse_policy_json(generated, allowed_holds=allowed_holds), generated))
+    return results
+
+
+def _generate_action(tokenizer: Any, model: Any, prompt: str, *, max_new_tokens: int, allowed_holds: tuple[int, ...]) -> tuple[dict[str, Any], str]:
+    text = _chat_text(tokenizer, prompt)
     inputs = tokenizer(text, return_tensors="pt").to(model.device)
     out = model.generate(
         **inputs,
@@ -163,6 +196,7 @@ def run_model_policy_eval(
     key_fields: str = "regime,trend_alignment,location,risk_state",
     max_eval_records: int = 0,
     max_new_tokens: int = 80,
+    generation_batch_size: int = 4,
     prediction_mode: str = "model",
 ) -> dict[str, Any]:
     cfg = CalibratedPolicyConfig(
@@ -189,15 +223,27 @@ def run_model_policy_eval(
         if not adapter_dir:
             raise ValueError("adapter_dir is required for prediction_mode=model")
         resolved_model, tokenizer, model = _load_model(model_name, adapter_dir)
-        model_actions = []
-        generated_rows = []
-        for row in eval_records:
-            summary_text = analyzer_summary_to_text(row["summary"])
-            prompt = build_policy_trader_input(summary_text, hold_candidates=cfg.hold_candidates, entry_delay_bars=cfg.entry_delay_bars)
-            action, raw = _generate_action(tokenizer, model, prompt, max_new_tokens=max_new_tokens, allowed_holds=cfg.hold_candidates)
-            model_actions.append(action)
-            if len(generated_rows) < 50:
-                generated_rows.append({"date": row["date"], "signal_pos": row["signal_pos"], "key": row["key"], "raw": raw, "parsed": action})
+        prompts = [
+            build_policy_trader_input(
+                analyzer_summary_to_text(row["summary"]),
+                hold_candidates=cfg.hold_candidates,
+                entry_delay_bars=cfg.entry_delay_bars,
+            )
+            for row in eval_records
+        ]
+        generated = _generate_actions_batched(
+            tokenizer,
+            model,
+            prompts,
+            max_new_tokens=max_new_tokens,
+            allowed_holds=cfg.hold_candidates,
+            batch_size=int(generation_batch_size),
+        )
+        model_actions = [action for action, _raw in generated]
+        generated_rows = [
+            {"date": row["date"], "signal_pos": row["signal_pos"], "key": row["key"], "raw": raw, "parsed": action}
+            for row, (action, raw) in list(zip(eval_records, generated))[:50]
+        ]
     else:
         raise ValueError("prediction_mode must be one of {'model','oracle_echo'}")
     report = {
@@ -205,6 +251,7 @@ def run_model_policy_eval(
         "model_name": resolved_model,
         "adapter_dir": adapter_dir,
         "prediction_mode": prediction_mode,
+        "generation_batch_size": int(generation_batch_size),
         "config": asdict(cfg),
         "periods": {"train": [train_start, train_end], "eval": [eval_start, eval_end]},
         "records": {"train": len(train_records), "eval": len(eval_records)},
@@ -241,6 +288,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--key-fields", default="regime,trend_alignment,location,risk_state")
     p.add_argument("--max-eval-records", type=int, default=0)
     p.add_argument("--max-new-tokens", type=int, default=80)
+    p.add_argument("--generation-batch-size", type=int, default=4)
     p.add_argument("--prediction-mode", choices=["model", "oracle_echo"], default="model")
     return p.parse_args()
 
