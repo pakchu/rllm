@@ -106,3 +106,15 @@ External research points to the same structural fix: use the LLM as a **reasonin
 ### Immediate next implementation unit
 
 Build a train/test/eval router-specialist validation script that freezes all choices selected on test and reports final eval only once.  This should become the main gate before exporting analyzer/trader SFT labels.
+
+## 2026-06-02 risk-sensitive action sweep result
+
+A direct risk-sensitive state/action sweep was added after drift skip/flip overlays.  It selects actions per analyzer bucket from all LONG/SHORT hold candidates using train-only `mean_return - MAE - CVaR/downside` style objectives, selects hyperparameters on test, and reports eval without selection leakage.
+
+Result on `train=2020-2024`, `test=2025H1`, `eval=2025H2-2026-02`:
+
+- Best test-selected candidate: `test` 192 trades, CAGR `~65.9%`, strict MDD `~25.9%`, ratio `~2.55`.
+- Untouched eval: 229 trades, CAGR `~-52.4%`, strict MDD `~51.4%`, ratio `~-1.02`.
+- Even eval-diagnostic ordering stayed negative.  Coarse risk-sensitive action fitting over analyzer buckets does not generalize.
+
+Implication: the next viable direction is not another bucketed outcome-fit sweep.  The analyzer must produce explicit regime-transition / edge-decay forecasts from richer context, and the trader/RL layer must be evaluated with rolling or online adaptation constraints rather than static train-period bucket averages.
