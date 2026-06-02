@@ -107,21 +107,33 @@ def _fit_k_of_years_from_stats(
     return rules
 
 
-def fit_router_specialists(
+def _precompute_router_stats(
     train_records: list[dict[str, Any]],
     *,
     router_fields: tuple[str, ...],
     specialist_key_fields: tuple[str, ...],
+) -> dict[str, dict[str, Any]]:
+    router_groups = _group_by_router(train_records, router_fields)
+    return {
+        router: {
+            "train_records": len(rows),
+            "stats": _precompute_group_year_stats(_with_key(rows, specialist_key_fields)),
+        }
+        for router, rows in router_groups.items()
+    }
+
+
+def fit_router_specialists_from_stats(
+    router_stats: dict[str, dict[str, Any]],
+    *,
     cfg: CalibratedPolicyConfig,
     stable: YearlyStableConfig,
     min_good_years: int = 0,
     max_bad_year_mean_net: float = -1.0,
 ) -> dict[str, dict[str, Any]]:
-    router_groups = _group_by_router(train_records, router_fields)
     specialists: dict[str, dict[str, Any]] = {}
-    for router, rows in router_groups.items():
-        keyed = _with_key(rows, specialist_key_fields)
-        stats = _precompute_group_year_stats(keyed)
+    for router, payload in router_stats.items():
+        stats = payload["stats"]
         if min_good_years > 0:
             rules = _fit_k_of_years_from_stats(
                 stats,
@@ -133,8 +145,30 @@ def fit_router_specialists(
         else:
             rules = _fit_from_stats(stats, cfg, stable)
         if rules:
-            specialists[router] = {"router_key": router, "rules": rules, "train_records": len(rows)}
+            specialists[router] = {"router_key": router, "rules": rules, "train_records": int(payload["train_records"])}
     return specialists
+
+
+def fit_router_specialists(
+    train_records: list[dict[str, Any]],
+    *,
+    router_fields: tuple[str, ...],
+    specialist_key_fields: tuple[str, ...],
+    cfg: CalibratedPolicyConfig,
+    stable: YearlyStableConfig,
+    min_good_years: int = 0,
+    max_bad_year_mean_net: float = -1.0,
+) -> dict[str, dict[str, Any]]:
+    router_stats = _precompute_router_stats(
+        train_records, router_fields=router_fields, specialist_key_fields=specialist_key_fields
+    )
+    return fit_router_specialists_from_stats(
+        router_stats,
+        cfg=cfg,
+        stable=stable,
+        min_good_years=min_good_years,
+        max_bad_year_mean_net=max_bad_year_mean_net,
+    )
 
 
 def _specialist_signature(specialists: dict[str, dict[str, Any]]) -> tuple[tuple[str, tuple[tuple[str, str, int], ...]], ...]:
@@ -239,6 +273,9 @@ def run_sweep(
     hits = 0
     misses = 0
     for specialist_fields in _parse_key_sets(specialist_key_sets):
+        router_stats = _precompute_router_stats(
+            train_records, router_fields=router, specialist_key_fields=specialist_fields
+        )
         cache: dict[tuple[tuple[str, tuple[tuple[str, str, int], ...]], ...], dict[str, Any]] = {}
         grid = itertools.product(
             _parse_ints(min_train_samples),
@@ -269,10 +306,8 @@ def run_sweep(
                 min_year_win_rate=year_win,
                 max_year_mean_mae=max_mae,
             )
-            specialists = fit_router_specialists(
-                train_records,
-                router_fields=router,
-                specialist_key_fields=specialist_fields,
+            specialists = fit_router_specialists_from_stats(
+                router_stats,
                 cfg=cfg,
                 stable=stable,
                 min_good_years=good_years,

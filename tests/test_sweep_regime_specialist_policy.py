@@ -1,7 +1,7 @@
 import unittest
 
 from training.calibrated_regime_policy import CalibratedPolicyConfig
-from training.sweep_regime_specialist_policy import _group_by_router, _router_key, evaluate_router_specialists
+from training.sweep_regime_specialist_policy import _group_by_router, _precompute_router_stats, _router_key, evaluate_router_specialists
 
 
 class TestSweepRegimeSpecialistPolicy(unittest.TestCase):
@@ -38,3 +38,16 @@ class TestSweepRegimeSpecialistPolicy(unittest.TestCase):
         metrics = evaluate_router_specialists(records, specialists, router_fields=("regime",), specialist_key_fields=("location",))
         self.assertEqual(metrics["trades"], 1)
         self.assertGreater(metrics["compounded_return"], 0)
+
+
+    def test_precompute_router_stats_builds_each_router_once(self):
+        rows = [
+            {
+                "date": "2023-01-01",
+                "summary": {"regime": "UP", "location": "PREMIUM"},
+                "actions": {"LONG_48": {"side": "LONG", "hold_bars": 48, "net_return": 0.01, "mae": 0.001, "utility": 0.009}},
+            }
+        ]
+        stats = _precompute_router_stats(rows, router_fields=("regime",), specialist_key_fields=("location",))
+        self.assertEqual(stats["regime=UP"]["train_records"], 1)
+        self.assertIn("location=PREMIUM", stats["regime=UP"]["stats"])
