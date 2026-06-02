@@ -3,10 +3,17 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from training.eval_text_trader import evaluate_text_trader, parse_trader_json
+from training.eval_text_trader import _action_json, _candidate_actions, evaluate_text_trader, parse_trader_json
 
 
 class TestEvalTextTrader(unittest.TestCase):
+    def test_candidate_actions_cover_no_trade_and_trade_horizons(self):
+        actions = _candidate_actions([48, 96])
+        self.assertEqual(actions[0], {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0})
+        self.assertEqual(actions[-1], {"gate": "TRADE", "side": "SHORT", "hold_bars": 96})
+        self.assertEqual(len(actions), 5)
+        self.assertEqual(_action_json(actions[-1]), '{"gate":"TRADE","hold_bars":96,"side":"SHORT"}')
+
     def test_parse_trader_json_normalizes_invalid_outputs(self):
         self.assertEqual(parse_trader_json('x {"gate":"TRADE","side":"LONG","hold_bars":96} y'), {"gate": "TRADE", "side": "LONG", "hold_bars": 96})
         self.assertEqual(parse_trader_json('{"gate":"NO_TRADE","side":"SHORT","hold_bars":288}'), {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0})

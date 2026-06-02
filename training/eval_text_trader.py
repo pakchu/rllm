@@ -17,6 +17,24 @@ VALID_GATES = {"TRADE", "NO_TRADE"}
 VALID_SIDES = {"LONG", "SHORT", "NONE"}
 
 
+def _action_json(action: dict[str, Any]) -> str:
+    payload = {
+        "gate": str(action["gate"]),
+        "hold_bars": int(action.get("hold_bars", 0) or 0),
+        "side": str(action["side"]),
+    }
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _candidate_actions(hold_candidates: list[int]) -> list[dict[str, Any]]:
+    holds = [int(h) for h in hold_candidates if int(h) > 0]
+    actions: list[dict[str, Any]] = [{"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0}]
+    for side in ("LONG", "SHORT"):
+        for hold in holds:
+            actions.append({"gate": "TRADE", "side": side, "hold_bars": hold})
+    return actions
+
+
 def parse_trader_json(text: str) -> dict[str, Any]:
     raw = str(text).strip()
     try:
@@ -78,13 +96,7 @@ def _metrics(rows: list[dict[str, Any]], predictions: list[dict[str, Any]]) -> d
     }
 
 
-def _generate_predictions(
-    rows: list[dict[str, Any]],
-    *,
-    model_name: str,
-    adapter_dir: str,
-    max_new_tokens: int,
-) -> list[dict[str, Any]]:
+def _load_text_model(model_name: str, adapter_dir: str):
     disable_transformers_allocator_warmup()
     from peft import PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -96,14 +108,28 @@ def _generate_predictions(
     base = AutoModelForCausalLM.from_pretrained(resolved, trust_remote_code=True, device_map="auto")
     model = PeftModel.from_pretrained(base, adapter_dir)
     model.eval()
+    return tokenizer, model
+
+
+def _chat_prompt_text(tokenizer: Any, prompt: str) -> str:
+    messages = [{"role": "user", "content": prompt}]
+    if getattr(tokenizer, "chat_template", None):
+        return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    return f"<|user|>\n{prompt}\n<|assistant|>\n"
+
+
+def _generate_predictions(
+    rows: list[dict[str, Any]],
+    *,
+    model_name: str,
+    adapter_dir: str,
+    max_new_tokens: int,
+) -> list[dict[str, Any]]:
+    tokenizer, model = _load_text_model(model_name, adapter_dir)
     preds: list[dict[str, Any]] = []
     for row in rows:
         prompt = str(row["prompt"])
-        messages = [{"role": "user", "content": prompt}]
-        if getattr(tokenizer, "chat_template", None):
-            text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        else:
-            text = f"<|user|>\n{prompt}\n<|assistant|>\n"
+        text = _chat_prompt_text(tokenizer, prompt)
         inputs = tokenizer(text, return_tensors="pt").to(model.device)
         out = model.generate(
             **inputs,
@@ -114,6 +140,55 @@ def _generate_predictions(
         )
         generated = tokenizer.decode(out[0][inputs["input_ids"].shape[-1] :], skip_special_tokens=True)
         preds.append(parse_trader_json(generated))
+    return preds
+
+
+def _candidate_logprob_predictions(
+    rows: list[dict[str, Any]],
+    *,
+    model_name: str,
+    adapter_dir: str,
+    hold_candidates: list[int],
+    score_normalization: str = "mean",
+) -> list[dict[str, Any]]:
+    import torch
+
+    tokenizer, model = _load_text_model(model_name, adapter_dir)
+    actions = _candidate_actions(hold_candidates)
+    action_texts = [_action_json(a) for a in actions]
+    normalize = str(score_normalization).strip().lower()
+    if normalize not in {"sum", "mean"}:
+        raise ValueError("score_normalization must be one of {'sum','mean'}")
+
+    preds: list[dict[str, Any]] = []
+    for row in rows:
+        prompt_text = _chat_prompt_text(tokenizer, str(row["prompt"]))
+        prompt_ids = tokenizer(prompt_text, add_special_tokens=False)["input_ids"]
+        sequences: list[list[int]] = []
+        candidate_spans: list[tuple[int, int]] = []
+        for text in action_texts:
+            candidate_ids = tokenizer(text, add_special_tokens=False)["input_ids"]
+            if tokenizer.eos_token_id is not None:
+                candidate_ids = candidate_ids + [int(tokenizer.eos_token_id)]
+            start = len(prompt_ids)
+            end = start + len(candidate_ids)
+            sequences.append(prompt_ids + candidate_ids)
+            candidate_spans.append((start, end))
+        encoded = tokenizer.pad({"input_ids": sequences}, return_tensors="pt")
+        input_ids = encoded["input_ids"].to(model.device)
+        attention_mask = encoded["attention_mask"].to(model.device)
+        with torch.no_grad():
+            logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
+            log_probs = torch.log_softmax(logits[:, :-1, :], dim=-1)
+        scores: list[float] = []
+        for i, (start, end) in enumerate(candidate_spans):
+            token_positions = torch.arange(start - 1, end - 1, device=log_probs.device)
+            labels = input_ids[i, start:end]
+            token_scores = log_probs[i, token_positions, labels]
+            score = token_scores.sum() if normalize == "sum" else token_scores.mean()
+            scores.append(float(score.detach().cpu()))
+        best_idx = max(range(len(scores)), key=lambda i: scores[i])
+        preds.append(dict(actions[best_idx]))
     return preds
 
 
@@ -128,6 +203,8 @@ def evaluate_text_trader(
     seed: int = 42,
     prediction_mode: str = "target_echo",
     max_new_tokens: int = 32,
+    hold_candidates: str = "48,96,144,288",
+    score_normalization: str = "mean",
 ) -> dict[str, Any]:
     rows = load_jsonl(eval_jsonl, max_samples=max_samples, sample_mode=sample_mode, seed=seed)
     mode = str(prediction_mode).strip().lower()
@@ -137,14 +214,29 @@ def evaluate_text_trader(
         if not adapter_dir:
             raise ValueError("adapter_dir is required for prediction_mode=model")
         predictions = _generate_predictions(rows, model_name=model_name, adapter_dir=adapter_dir, max_new_tokens=max_new_tokens)
+    elif mode == "candidate_logprob":
+        if not adapter_dir:
+            raise ValueError("adapter_dir is required for prediction_mode=candidate_logprob")
+        holds = [int(x) for x in str(hold_candidates).split(",") if str(x).strip()]
+        predictions = _candidate_logprob_predictions(
+            rows,
+            model_name=model_name,
+            adapter_dir=adapter_dir,
+            hold_candidates=holds,
+            score_normalization=score_normalization,
+        )
     else:
-        raise ValueError("prediction_mode must be one of {'target_echo','model'}")
+        raise ValueError("prediction_mode must be one of {'target_echo','model','candidate_logprob'}")
     report = {
         "eval_jsonl": str(Path(eval_jsonl).resolve()),
         "model_name": resolve_vlm_model_alias(model_name, prefer_latest=True),
         "adapter_dir": adapter_dir,
         "prediction_mode": mode,
         "metrics": _metrics(rows, predictions),
+        "candidate_logprob": {
+            "hold_candidates": hold_candidates,
+            "score_normalization": score_normalization,
+        } if mode == "candidate_logprob" else None,
     }
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_text(json.dumps(report, indent=2, ensure_ascii=False))
@@ -160,8 +252,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-samples", type=int, default=0)
     p.add_argument("--sample-mode", choices=["sequential", "random", "balanced"], default="sequential")
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--prediction-mode", choices=["target_echo", "model"], default="target_echo")
+    p.add_argument("--prediction-mode", choices=["target_echo", "model", "candidate_logprob"], default="target_echo")
     p.add_argument("--max-new-tokens", type=int, default=32)
+    p.add_argument("--hold-candidates", default="48,96,144,288")
+    p.add_argument("--score-normalization", choices=["sum", "mean"], default="mean")
     return p.parse_args()
 
 
