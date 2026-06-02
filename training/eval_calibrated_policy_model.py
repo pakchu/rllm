@@ -1,0 +1,253 @@
+"""Evaluate a text trader adapter as an executable calibrated policy.
+
+The adapter receives analyzer summaries and emits JSON actions.  This evaluator
+runs those generated actions over chronological eval records with the same strict
+non-overlap/intra-trade-MAE accounting used for calibrated rule baselines.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+from dataclasses import asdict
+from pathlib import Path
+from typing import Any
+
+from models.option_b_vlm import RECOMMENDED_VLM_MODEL, resolve_vlm_model_alias
+from training.calibrated_regime_policy import CalibratedPolicyConfig, _metrics_from_trades, build_calibration_records, fit_rules
+from training.export_calibrated_policy_labels import _policy_target_for_record, build_policy_trader_input
+from training.text_analyzer_trader_data import analyzer_summary_to_text, load_market_frame
+from training.text_step_analyzer_data import parse_hold_candidates
+from utils import disable_transformers_allocator_warmup
+
+
+def parse_policy_json(text: str, *, allowed_holds: tuple[int, ...]) -> dict[str, Any]:
+    raw = str(text).strip()
+    obj: dict[str, Any]
+    try:
+        parsed = json.loads(raw)
+        obj = parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        match = re.search(r"\{.*?\}", raw, flags=re.DOTALL)
+        if match:
+            try:
+                parsed = json.loads(match.group(0))
+                obj = parsed if isinstance(parsed, dict) else {}
+            except Exception:
+                obj = {}
+        else:
+            obj = {}
+    gate = str(obj.get("gate", "NO_TRADE")).upper()
+    side = str(obj.get("side", "NONE")).upper()
+    try:
+        hold_bars = int(obj.get("hold_bars", 0))
+    except Exception:
+        hold_bars = 0
+    if gate != "TRADE":
+        return {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0, "policy_key": str(obj.get("policy_key", "")), "reason": str(obj.get("reason", "PARSED_NO_TRADE"))}
+    if side not in {"LONG", "SHORT"} or hold_bars not in set(int(x) for x in allowed_holds):
+        return {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0, "policy_key": str(obj.get("policy_key", "")), "reason": "INVALID_TRADE_JSON"}
+    return {
+        "gate": "TRADE",
+        "side": side,
+        "hold_bars": hold_bars,
+        "policy_key": str(obj.get("policy_key", "")),
+        "reason": str(obj.get("reason", "MODEL_TRADE")),
+    }
+
+
+def _load_model(model_name: str, adapter_dir: str):
+    disable_transformers_allocator_warmup()
+    from peft import PeftModel
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    resolved = resolve_vlm_model_alias(model_name, prefer_latest=True)
+    tokenizer = AutoTokenizer.from_pretrained(resolved, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    base = AutoModelForCausalLM.from_pretrained(resolved, trust_remote_code=True, device_map="auto")
+    model = PeftModel.from_pretrained(base, adapter_dir)
+    model.eval()
+    return resolved, tokenizer, model
+
+
+def _generate_action(tokenizer: Any, model: Any, prompt: str, *, max_new_tokens: int, allowed_holds: tuple[int, ...]) -> tuple[dict[str, Any], str]:
+    messages = [{"role": "user", "content": prompt}]
+    if getattr(tokenizer, "chat_template", None):
+        text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    else:
+        text = f"<|user|>\n{prompt}\n<|assistant|>\n"
+    inputs = tokenizer(text, return_tensors="pt").to(model.device)
+    out = model.generate(
+        **inputs,
+        max_new_tokens=int(max_new_tokens),
+        do_sample=False,
+        pad_token_id=tokenizer.pad_token_id,
+        eos_token_id=tokenizer.eos_token_id,
+    )
+    generated = tokenizer.decode(out[0][inputs["input_ids"].shape[-1] :], skip_special_tokens=True)
+    return parse_policy_json(generated, allowed_holds=allowed_holds), generated
+
+
+def _policy_oracle_actions(records: list[dict[str, Any]], rules: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    actions: list[dict[str, Any]] = []
+    next_available_pos = -1
+    for row in records:
+        target, next_available_pos = _policy_target_for_record(row, rules, next_available_pos=next_available_pos)
+        actions.append(target)
+    return actions
+
+
+def _metrics_from_actions(records: list[dict[str, Any]], actions: list[dict[str, Any]]) -> dict[str, Any]:
+    trades: list[dict[str, Any]] = []
+    next_available_pos = -1
+    invalid_or_missing = 0
+    overlap_skips = 0
+    for row, action in zip(records, actions):
+        signal_pos = int(row["signal_pos"])
+        if signal_pos <= next_available_pos:
+            overlap_skips += 1
+            continue
+        if str(action.get("gate", "NO_TRADE")).upper() != "TRADE":
+            continue
+        side = str(action.get("side", "")).upper()
+        hold_bars = int(action.get("hold_bars", 0) or 0)
+        outcome = row["actions"].get(f"{side}_{hold_bars}")
+        if outcome is None:
+            invalid_or_missing += 1
+            continue
+        trades.append({"date": row["date"], "signal_pos": signal_pos, "key": row["key"], **outcome})
+        next_available_pos = signal_pos + hold_bars
+    metrics = _metrics_from_trades(trades, records_count=len(records), include_intratrade_mdd=True)
+    metrics["non_overlapping"] = True
+    metrics["model_invalid_or_missing_action"] = invalid_or_missing
+    metrics["model_overlap_skips"] = overlap_skips
+    return metrics
+
+
+def _agreement(records: list[dict[str, Any]], model_actions: list[dict[str, Any]], oracle_actions: list[dict[str, Any]]) -> dict[str, Any]:
+    counts: dict[str, int] = {}
+    exact = 0
+    gate_correct = 0
+    for row, pred, target in zip(records, model_actions, oracle_actions):
+        pg, tg = str(pred.get("gate", "NO_TRADE")), str(target.get("gate", "NO_TRADE"))
+        ps, ts = str(pred.get("side", "NONE")), str(target.get("side", "NONE"))
+        ph, th = int(pred.get("hold_bars", 0) or 0), int(target.get("hold_bars", 0) or 0)
+        gate_correct += int(pg == tg)
+        exact += int((pg, ps, ph) == (tg, ts, th))
+        key = f"target={tg}/{ts}/{th}|pred={pg}/{ps}/{ph}"
+        counts[key] = counts.get(key, 0) + 1
+    n = max(1, len(records))
+    return {"records": len(records), "gate_accuracy": gate_correct / n, "exact_action_accuracy": exact / n, "confusion": dict(sorted(counts.items()))}
+
+
+def run_model_policy_eval(
+    *,
+    market_csv: str,
+    output: str,
+    adapter_dir: str,
+    model_name: str = RECOMMENDED_VLM_MODEL,
+    wave_trading_root: str = "",
+    train_start: str,
+    train_end: str,
+    eval_start: str,
+    eval_end: str,
+    stride_bars: int = 12,
+    hold_candidates: str = "48,96,144,288",
+    min_train_samples: int = 12,
+    min_train_mean_net: float = 0.0,
+    min_train_mean_utility: float = -0.002,
+    min_train_win_rate: float = 0.55,
+    max_train_mean_mae: float = 0.015,
+    key_fields: str = "regime,trend_alignment,location,risk_state",
+    max_eval_records: int = 0,
+    max_new_tokens: int = 80,
+    prediction_mode: str = "model",
+) -> dict[str, Any]:
+    cfg = CalibratedPolicyConfig(
+        hold_candidates=parse_hold_candidates(hold_candidates),
+        min_train_samples=int(min_train_samples),
+        min_train_mean_net=float(min_train_mean_net),
+        min_train_mean_utility=float(min_train_mean_utility),
+        min_train_win_rate=float(min_train_win_rate),
+        max_train_mean_mae=float(max_train_mean_mae),
+        key_fields=tuple(x.strip() for x in str(key_fields).split(",") if x.strip()),
+    )
+    market = load_market_frame(market_csv, wave_trading_root=wave_trading_root or None)
+    train_records = build_calibration_records(market, cfg, start_date=train_start, end_date=train_end, stride_bars=stride_bars)
+    eval_records = build_calibration_records(market, cfg, start_date=eval_start, end_date=eval_end, stride_bars=stride_bars)
+    if max_eval_records and int(max_eval_records) > 0:
+        eval_records = eval_records[: int(max_eval_records)]
+    rules = fit_rules(train_records, cfg)
+    oracle_actions = _policy_oracle_actions(eval_records, rules)
+    if prediction_mode == "oracle_echo":
+        resolved_model = resolve_vlm_model_alias(model_name, prefer_latest=True)
+        generated_rows: list[dict[str, Any]] = []
+        model_actions = oracle_actions
+    elif prediction_mode == "model":
+        if not adapter_dir:
+            raise ValueError("adapter_dir is required for prediction_mode=model")
+        resolved_model, tokenizer, model = _load_model(model_name, adapter_dir)
+        model_actions = []
+        generated_rows = []
+        for row in eval_records:
+            summary_text = analyzer_summary_to_text(row["summary"])
+            prompt = build_policy_trader_input(summary_text, hold_candidates=cfg.hold_candidates, entry_delay_bars=cfg.entry_delay_bars)
+            action, raw = _generate_action(tokenizer, model, prompt, max_new_tokens=max_new_tokens, allowed_holds=cfg.hold_candidates)
+            model_actions.append(action)
+            if len(generated_rows) < 50:
+                generated_rows.append({"date": row["date"], "signal_pos": row["signal_pos"], "key": row["key"], "raw": raw, "parsed": action})
+    else:
+        raise ValueError("prediction_mode must be one of {'model','oracle_echo'}")
+    report = {
+        "market_csv": str(Path(market_csv).resolve()),
+        "model_name": resolved_model,
+        "adapter_dir": adapter_dir,
+        "prediction_mode": prediction_mode,
+        "config": asdict(cfg),
+        "periods": {"train": [train_start, train_end], "eval": [eval_start, eval_end]},
+        "records": {"train": len(train_records), "eval": len(eval_records)},
+        "rules_count": len(rules),
+        "model_metrics": _metrics_from_actions(eval_records, model_actions),
+        "oracle_metrics": _metrics_from_actions(eval_records, oracle_actions),
+        "agreement": _agreement(eval_records, model_actions, oracle_actions),
+        "generated_preview": generated_rows,
+        "leakage_guard": {"rules_fit_on_train_period_only": True, "model_inputs_use_past_only_analyzer_summary": True},
+    }
+    Path(output).parent.mkdir(parents=True, exist_ok=True)
+    Path(output).write_text(json.dumps(report, indent=2, ensure_ascii=False))
+    return report
+
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Evaluate generated text trader actions with strict policy backtest")
+    p.add_argument("--market-csv", required=True)
+    p.add_argument("--output", required=True)
+    p.add_argument("--adapter-dir", default="")
+    p.add_argument("--model-name", default=RECOMMENDED_VLM_MODEL)
+    p.add_argument("--wave-trading-root", default="")
+    p.add_argument("--train-start", required=True)
+    p.add_argument("--train-end", required=True)
+    p.add_argument("--eval-start", required=True)
+    p.add_argument("--eval-end", required=True)
+    p.add_argument("--stride-bars", type=int, default=12)
+    p.add_argument("--hold-candidates", default="48,96,144,288")
+    p.add_argument("--min-train-samples", type=int, default=12)
+    p.add_argument("--min-train-mean-net", type=float, default=0.0)
+    p.add_argument("--min-train-mean-utility", type=float, default=-0.002)
+    p.add_argument("--min-train-win-rate", type=float, default=0.55)
+    p.add_argument("--max-train-mean-mae", type=float, default=0.015)
+    p.add_argument("--key-fields", default="regime,trend_alignment,location,risk_state")
+    p.add_argument("--max-eval-records", type=int, default=0)
+    p.add_argument("--max-new-tokens", type=int, default=80)
+    p.add_argument("--prediction-mode", choices=["model", "oracle_echo"], default="model")
+    return p.parse_args()
+
+
+def main() -> None:
+    print(json.dumps(run_model_policy_eval(**vars(parse_args())), indent=2, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()
