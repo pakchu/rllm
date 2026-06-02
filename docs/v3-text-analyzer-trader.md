@@ -193,3 +193,43 @@ Router hint distribution:
 - `LOW_CONFIDENCE_ROUTER`: 223
 
 This is now the preferred LLM direction: train Gemma-style analyzer models to detect regime/edge transition states, then let a separate trader/RL layer consume those router states.  Future experiments should benchmark whether these labels improve strict OOS results over the non-LLM trend baseline before any live-candidate promotion.
+
+## 2026-06-03 edge-decay router oracle diagnostic
+
+After creating the edge-decay analyzer target, the next validation was to test whether the labels define a useful router objective before spending GPU time on fine-tuning.  `training/edge_decay_router_backtest.py` maps edge-decay targets/predictions into a strict OHLC route:
+
+- `ALLOW_TREND_SPECIALIST` -> trade with `trend_side`
+- `CONSIDER_REVERSAL_SPECIALIST` -> trade opposite `trend_side`
+- `REDUCE_OR_SKIP_TREND_SPECIALIST`, `RANGE_ROUTER_ONLY`, `LOW_CONFIDENCE_ROUTER` -> skip
+
+Important: this is an **oracle-label diagnostic** when run on teacher records.  The labels use future path outcomes, so this is not a deployable trading result.  It answers only: "if a model could predict these labels from past-only prompts, would the routing target be economically meaningful?"
+
+Full stride-96 macro dataset:
+
+- records: `data/edge_decay_analyzer_h144_macro_stride96_full.jsonl`
+- summary: `results/edge_decay_analyzer_h144_macro_stride96_full_summary.json`
+- total records: 3,457 from `2023-01-01 02:55:00` to `2026-02-26 02:55:00`
+
+Oracle router strict result:
+
+- artifact: `results/edge_decay_router_oracle_h144_macro_stride96_split.json`
+- execution: hold `432` bars, cooldown `12` bars, leverage `0.5`, entry delay `1`
+
+| Split | Samples | Trades | CAGR | Strict MDD | CAGR/MDD | CI95 lower mean trade |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| train | 2,365 | 288 | 347.57% | 5.22% | 66.57 | 0.997% |
+| val | 547 | 71 | 324.48% | 4.44% | 73.15 | 0.806% |
+| oos | 535 | 70 | 353.84% | 6.87% | 51.47 | 0.849% |
+
+Interpretation:
+
+- The target structure has a very strong oracle upper bound under the strict simulator.
+- This confirms the move away from gate thresholds: the economically useful decision is closer to "is this edge persisting, decaying, or reversing?" than "is TRADE score above a fixed margin?"
+- The result is not a live candidate until a model predicts these router labels from past-only prompts and is evaluated with no access to teacher targets.
+
+Next required step:
+
+1. Build train/val/oos analyzer SFT splits from `edge_decay_analyzer_h144_macro_stride96_full.jsonl`.
+2. Fine-tune/evaluate the Gemma analyzer on `edge_decay_label`, `transition_label`, `risk_label`, and `recommended_router_hint` exact-match/F1.
+3. Replace teacher targets with model predictions in `edge_decay_router_backtest.py` and run the same strict split report.
+4. Only then connect the trader/RL layer.
