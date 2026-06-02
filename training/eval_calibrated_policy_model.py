@@ -95,7 +95,7 @@ def _generate_actions_batched(
         chunk = prompts[start : start + bs]
         texts = [_chat_text(tokenizer, prompt) for prompt in chunk]
         inputs = tokenizer(texts, return_tensors="pt", padding=True).to(model.device)
-        prompt_lengths = inputs["attention_mask"].sum(dim=1).tolist()
+        prompt_length = int(inputs["input_ids"].shape[1])
         out = model.generate(
             **inputs,
             max_new_tokens=int(max_new_tokens),
@@ -104,7 +104,7 @@ def _generate_actions_batched(
             eos_token_id=tokenizer.eos_token_id,
         )
         for i in range(len(chunk)):
-            generated = tokenizer.decode(out[i][int(prompt_lengths[i]) :], skip_special_tokens=True)
+            generated = tokenizer.decode(out[i][prompt_length:], skip_special_tokens=True)
             results.append((parse_policy_json(generated, allowed_holds=allowed_holds), generated))
     return results
 
