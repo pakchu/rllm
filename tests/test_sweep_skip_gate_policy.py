@@ -1,6 +1,6 @@
 import unittest
 
-from training.sweep_skip_gate_policy import evaluate_policy_with_skip, fit_skip_allowlist
+from training.sweep_skip_gate_policy import _precompute_skip_stats, evaluate_policy_with_skip, fit_skip_allowlist, fit_skip_allowlist_from_stats
 
 
 class TestSweepSkipGatePolicy(unittest.TestCase):
@@ -13,6 +13,16 @@ class TestSweepSkipGatePolicy(unittest.TestCase):
         allow = fit_skip_allowlist(rows, router_fields=("regime",), action_side="LONG", action_hold_bars=48, min_samples=2, min_mean_net=0, min_win_rate=0.5, max_mean_mae=0.01, min_good_years=2, min_year_samples=1, min_year_mean_net=0, min_year_win_rate=0.5, max_bad_year_mean_net=-0.005)
         self.assertIn("regime=UP", allow)
         self.assertNotIn("regime=DOWN", allow)
+
+    def test_fit_skip_allowlist_from_stats_matches_record_fit(self):
+        rows = [
+            {"date": "2023-01-01", "summary": {"regime": "UP"}, "actions": {"LONG_48": {"side": "LONG", "hold_bars": 48, "net_return": 0.01, "mae": 0.001, "utility": 0.009}}},
+            {"date": "2024-01-01", "summary": {"regime": "UP"}, "actions": {"LONG_48": {"side": "LONG", "hold_bars": 48, "net_return": 0.02, "mae": 0.002, "utility": 0.018}}},
+        ]
+        kwargs = dict(min_samples=2, min_mean_net=0, min_win_rate=0.5, max_mean_mae=0.01, min_good_years=2, min_year_samples=1, min_year_mean_net=0, min_year_win_rate=0.5, max_bad_year_mean_net=-0.005)
+        direct = fit_skip_allowlist(rows, router_fields=("regime",), action_side="LONG", action_hold_bars=48, **kwargs)
+        from_stats = fit_skip_allowlist_from_stats(_precompute_skip_stats(rows, router_fields=("regime",), action_side="LONG", action_hold_bars=48), **kwargs)
+        self.assertEqual(direct, from_stats)
 
     def test_evaluate_policy_with_skip_blocks_unallowed_router(self):
         records = [{"date": "2025-01-01", "signal_pos": 1, "summary": {"regime": "DOWN", "key": "K"}, "actions": {"LONG_48": {"side": "LONG", "hold_bars": 48, "net_return": 0.01, "mae": 0.001, "utility": 0.009}}}]

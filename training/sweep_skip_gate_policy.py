@@ -37,6 +37,70 @@ def _group_rows(records: list[dict[str, Any]], key_fields: tuple[str, ...]) -> d
     return groups
 
 
+def _precompute_skip_stats(
+    train_records: list[dict[str, Any]],
+    *,
+    router_fields: tuple[str, ...],
+    action_side: str,
+    action_hold_bars: int,
+) -> dict[str, dict[str, Any]]:
+    """Precompute router/year aggregates once for threshold-only sweeps."""
+    action_key = f"{action_side}_{int(action_hold_bars)}"
+    stats: dict[str, dict[str, Any]] = {}
+    for key, rows in _group_rows(train_records, router_fields).items():
+        by_year: dict[int, list[dict[str, Any]]] = {}
+        for row in rows:
+            by_year.setdefault(_year(row), []).append(row)
+        stats[key] = {
+            "router_key": key,
+            "overall": _aggregate_action(rows, action_key),
+            "yearly": {str(year): _aggregate_action(year_rows, action_key) for year, year_rows in sorted(by_year.items())},
+        }
+    return stats
+
+
+def fit_skip_allowlist_from_stats(
+    stats: dict[str, dict[str, Any]],
+    *,
+    min_samples: int,
+    min_mean_net: float,
+    min_win_rate: float,
+    max_mean_mae: float,
+    min_good_years: int,
+    min_year_samples: int,
+    min_year_mean_net: float,
+    min_year_win_rate: float,
+    max_bad_year_mean_net: float,
+) -> dict[str, dict[str, Any]]:
+    allow: dict[str, dict[str, Any]] = {}
+    for key, item in stats.items():
+        overall = item["overall"]
+        if int(overall.get("samples", 0)) < int(min_samples):
+            continue
+        if float(overall.get("mean_net_return", 0.0)) < float(min_mean_net):
+            continue
+        if float(overall.get("win_rate", 0.0)) < float(min_win_rate):
+            continue
+        if float(overall.get("mean_mae", 1e9)) > float(max_mean_mae):
+            continue
+        good_years = 0
+        bad_year = False
+        yearly = item["yearly"]
+        for ystats in yearly.values():
+            if int(ystats.get("samples", 0)) < int(min_year_samples):
+                continue
+            mean_net = float(ystats.get("mean_net_return", 0.0))
+            if mean_net <= float(max_bad_year_mean_net):
+                bad_year = True
+                break
+            if mean_net >= float(min_year_mean_net) and float(ystats.get("win_rate", 0.0)) >= float(min_year_win_rate):
+                good_years += 1
+        if bad_year or good_years < int(min_good_years):
+            continue
+        allow[key] = {"router_key": key, "overall": overall, "yearly": yearly, "good_years": good_years}
+    return allow
+
+
 def fit_skip_allowlist(
     train_records: list[dict[str, Any]],
     *,
@@ -53,37 +117,23 @@ def fit_skip_allowlist(
     min_year_win_rate: float,
     max_bad_year_mean_net: float,
 ) -> dict[str, dict[str, Any]]:
-    action_key = f"{action_side}_{int(action_hold_bars)}"
-    allow: dict[str, dict[str, Any]] = {}
-    for key, rows in _group_rows(train_records, router_fields).items():
-        overall = _aggregate_action(rows, action_key)
-        if int(overall.get("samples", 0)) < int(min_samples):
-            continue
-        if float(overall.get("mean_net_return", 0.0)) < float(min_mean_net):
-            continue
-        if float(overall.get("win_rate", 0.0)) < float(min_win_rate):
-            continue
-        if float(overall.get("mean_mae", 1e9)) > float(max_mean_mae):
-            continue
-        good_years = 0
-        bad_year = False
-        years = sorted({_year(row) for row in rows})
-        yearly: dict[str, dict[str, Any]] = {}
-        for year in years:
-            ystats = _aggregate_action([row for row in rows if _year(row) == year], action_key)
-            yearly[str(year)] = ystats
-            if int(ystats.get("samples", 0)) < int(min_year_samples):
-                continue
-            mean_net = float(ystats.get("mean_net_return", 0.0))
-            if mean_net <= float(max_bad_year_mean_net):
-                bad_year = True
-                break
-            if mean_net >= float(min_year_mean_net) and float(ystats.get("win_rate", 0.0)) >= float(min_year_win_rate):
-                good_years += 1
-        if bad_year or good_years < int(min_good_years):
-            continue
-        allow[key] = {"router_key": key, "overall": overall, "yearly": yearly, "good_years": good_years}
-    return allow
+    return fit_skip_allowlist_from_stats(
+        _precompute_skip_stats(
+            train_records,
+            router_fields=router_fields,
+            action_side=action_side,
+            action_hold_bars=action_hold_bars,
+        ),
+        min_samples=min_samples,
+        min_mean_net=min_mean_net,
+        min_win_rate=min_win_rate,
+        max_mean_mae=max_mean_mae,
+        min_good_years=min_good_years,
+        min_year_samples=min_year_samples,
+        min_year_mean_net=min_year_mean_net,
+        min_year_win_rate=min_year_win_rate,
+        max_bad_year_mean_net=max_bad_year_mean_net,
+    )
 
 
 def _candidate_rule_for_row(
@@ -211,6 +261,7 @@ def run_sweep(
     base_rules, base_key_fields = _load_top_rules(base_report, top_index=base_top_index, include_indices=include_base_rule_indices)
     addon_rules, addon_key_fields = _fit_addon_from_report(train_records, base_rules, base_key_fields, addon_report, addon_top_index)
     router_fields = tuple(x.strip() for x in skip_router_fields.split(",") if x.strip())
+    skip_stats = _precompute_skip_stats(train_records, router_fields=router_fields, action_side=skip_action_side, action_hold_bars=skip_action_hold_bars)
     years = max(1e-9, (pd.to_datetime(eval_end) - pd.to_datetime(eval_start)).days / 365.25)
     results: list[dict[str, Any]] = []
     total = 0
@@ -226,11 +277,8 @@ def run_sweep(
         _parse_floats(max_bad_year_mean_net),
     ):
         total += 1
-        allow = fit_skip_allowlist(
-            train_records,
-            router_fields=router_fields,
-            action_side=skip_action_side,
-            action_hold_bars=skip_action_hold_bars,
+        allow = fit_skip_allowlist_from_stats(
+            skip_stats,
             min_samples=ms,
             min_mean_net=mn,
             min_win_rate=wr,
