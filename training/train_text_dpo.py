@@ -32,6 +32,7 @@ class TextDPOConfig:
     lora_alpha: int = 32
     lora_dropout: float = 0.05
     seed: int = 42
+    init_adapter_dir: str = ""
 
 
 def _action_bucket(text: str) -> str:
@@ -124,7 +125,7 @@ def train_text_dpo(cfg: TextDPOConfig, *, dry_run: bool = False) -> dict[str, An
 
     disable_transformers_allocator_warmup()
     from datasets import Dataset
-    from peft import LoraConfig
+    from peft import LoraConfig, PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from trl import DPOConfig, DPOTrainer
 
@@ -140,6 +141,9 @@ def train_text_dpo(cfg: TextDPOConfig, *, dry_run: bool = False) -> dict[str, An
         task_type="CAUSAL_LM",
         target_modules="all-linear",
     )
+    if cfg.init_adapter_dir:
+        model = PeftModel.from_pretrained(model, cfg.init_adapter_dir, is_trainable=True)
+        peft_config = None
     args = DPOConfig(
         output_dir=cfg.output_dir,
         max_steps=int(cfg.max_steps),
@@ -186,6 +190,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--lora-alpha", type=int, default=32)
     p.add_argument("--lora-dropout", type=float, default=0.05)
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--init-adapter-dir", default="", help="Optional SFT LoRA adapter to continue from before DPO")
     p.add_argument("--dry-run", action="store_true")
     return p.parse_args()
 
@@ -209,6 +214,7 @@ def main() -> None:
         lora_alpha=args.lora_alpha,
         lora_dropout=args.lora_dropout,
         seed=args.seed,
+        init_adapter_dir=args.init_adapter_dir,
     )
     print(json.dumps(train_text_dpo(cfg, dry_run=bool(args.dry_run)), indent=2, ensure_ascii=False))
 

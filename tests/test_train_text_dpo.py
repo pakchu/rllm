@@ -49,11 +49,13 @@ class TestTrainTextDPO(unittest.TestCase):
                     max_samples=2,
                     sample_mode="balanced",
                     max_steps=3,
+                    init_adapter_dir="checkpoints/schema_adapter",
                 ),
                 dry_run=True,
             )
             self.assertTrue(report["dry_run"])
             self.assertEqual(report["rows"], 2)
+            self.assertEqual(report["config"]["init_adapter_dir"], "checkpoints/schema_adapter")
             self.assertTrue((out / "dpo_summary.json").exists())
 
 
