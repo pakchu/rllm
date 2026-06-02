@@ -16,7 +16,6 @@ from training.calibrated_regime_policy import (
     CalibratedPolicyConfig,
     _aggregate_action,
     build_calibration_records,
-    evaluate_rules,
 )
 from training.sweep_calibrated_regime_policy import (
     _augment_metrics,
@@ -25,6 +24,8 @@ from training.sweep_calibrated_regime_policy import (
     _parse_ints,
     _parse_key_sets,
     _score,
+    _evaluate_rules_precomputed,
+    _precompute_action_rows,
 )
 from training.text_analyzer_trader_data import load_market_frame
 from training.text_step_analyzer_data import parse_hold_candidates
@@ -53,7 +54,7 @@ def _records_cache_path(
 
 
 def _load_or_build_records(
-    market: pd.DataFrame,
+    market: pd.DataFrame | None,
     cfg: CalibratedPolicyConfig,
     *,
     start_date: str,
@@ -62,26 +63,48 @@ def _load_or_build_records(
     split: str,
     records_cache_dir: str = "",
 ) -> list[dict[str, Any]]:
-    if not records_cache_dir:
-        return build_calibration_records(
-            market, cfg, start_date=start_date, end_date=end_date, stride_bars=stride_bars
+    path = None
+    if records_cache_dir:
+        path = _records_cache_path(
+            records_cache_dir,
+            split=split,
+            start_date=start_date,
+            end_date=end_date,
+            stride_bars=stride_bars,
+            cfg=cfg,
         )
-    path = _records_cache_path(
-        records_cache_dir,
-        split=split,
-        start_date=start_date,
-        end_date=end_date,
-        stride_bars=stride_bars,
-        cfg=cfg,
-    )
-    if path.exists():
-        return json.loads(path.read_text())
+        if path.exists():
+            return json.loads(path.read_text())
+    if market is None:
+        raise ValueError("market is required when calibration record cache is missing")
     records = build_calibration_records(
         market, cfg, start_date=start_date, end_date=end_date, stride_bars=stride_bars
     )
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(records, ensure_ascii=False))
+    if path is not None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(records, ensure_ascii=False))
     return records
+
+
+def _records_cache_exists(
+    records_cache_dir: str,
+    cfg: CalibratedPolicyConfig,
+    *,
+    train_start: str,
+    train_end: str,
+    eval_start: str,
+    eval_end: str,
+    stride_bars: int,
+) -> bool:
+    if not records_cache_dir:
+        return False
+    train_path = _records_cache_path(
+        records_cache_dir, split="train", start_date=train_start, end_date=train_end, stride_bars=stride_bars, cfg=cfg
+    )
+    eval_path = _records_cache_path(
+        records_cache_dir, split="eval", start_date=eval_start, end_date=eval_end, stride_bars=stride_bars, cfg=cfg
+    )
+    return train_path.exists() and eval_path.exists()
 
 
 def _year(row: dict[str, Any]) -> int:
@@ -90,20 +113,24 @@ def _year(row: dict[str, Any]) -> int:
 
 def _precompute_group_year_stats(records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     groups: dict[str, list[dict[str, Any]]] = {}
-    years = sorted({_year(r) for r in records})
+    year_groups: dict[str, dict[int, list[dict[str, Any]]]] = {}
+    years: set[int] = set()
     for row in records:
-        groups.setdefault(str(row["key"]), []).append(row)
+        key = str(row["key"])
+        year = _year(row)
+        years.add(year)
+        groups.setdefault(key, []).append(row)
+        year_groups.setdefault(key, {}).setdefault(year, []).append(row)
 
+    sorted_years = sorted(years)
     out: dict[str, dict[str, Any]] = {}
     for key, rows in groups.items():
         action_keys = sorted({action_key for row in rows for action_key in row["actions"]})
         actions = []
         for action_key in action_keys:
             yearly = {
-                str(year): _aggregate_action(
-                    [row for row in rows if _year(row) == year], action_key
-                )
-                for year in years
+                str(year): _aggregate_action(year_groups.get(key, {}).get(year, []), action_key)
+                for year in sorted_years
             }
             actions.append({"overall": _aggregate_action(rows, action_key), "yearly": yearly})
         out[key] = {"group_samples": len(rows), "actions": actions}
@@ -165,6 +192,19 @@ def _fit_from_stats(
     return rules
 
 
+def _rule_signature(rules: dict[str, dict[str, Any]]) -> tuple[tuple[str, str, int], ...]:
+    return tuple(
+        sorted(
+            (
+                str(key),
+                str(rule["action"]["side"]),
+                int(rule["action"]["hold_bars"]),
+            )
+            for key, rule in rules.items()
+        )
+    )
+
+
 def run_sweep(
     *,
     market_csv: str,
@@ -189,8 +229,18 @@ def run_sweep(
     top_k: int = 50,
     records_cache_dir: str = "",
 ) -> dict[str, Any]:
-    market = load_market_frame(market_csv, wave_trading_root=wave_trading_root or None)
     base = CalibratedPolicyConfig(hold_candidates=parse_hold_candidates(hold_candidates))
+    market = None
+    if not _records_cache_exists(
+        records_cache_dir,
+        base,
+        train_start=train_start,
+        train_end=train_end,
+        eval_start=eval_start,
+        eval_end=eval_end,
+        stride_bars=stride_bars,
+    ):
+        market = load_market_frame(market_csv, wave_trading_root=wave_trading_root or None)
     train_base = _load_or_build_records(
         market,
         base,
@@ -213,10 +263,14 @@ def run_sweep(
 
     results = []
     total = 0
+    metrics_cache_hits = 0
+    metrics_cache_misses = 0
     for keys in _parse_key_sets(key_sets):
         train_records = _copy_with_keys(train_base, keys)
         eval_records = _copy_with_keys(eval_base, keys)
+        eval_action_rows = _precompute_action_rows(eval_records)
         stats = _precompute_group_year_stats(train_records)
+        metrics_cache: dict[tuple[tuple[str, str, int], ...], dict[str, Any]] = {}
         grid = itertools.product(
             _parse_ints(min_train_samples),
             _parse_floats(min_train_mean_net),
@@ -245,15 +299,23 @@ def run_sweep(
                 max_year_mean_mae=max_mae,
             )
             rules = _fit_from_stats(stats, cfg, stable)
-            metrics = _augment_metrics(
-                evaluate_rules(
-                    eval_records,
-                    rules,
-                    non_overlapping=True,
-                    include_intratrade_mdd=True,
-                ),
-                years=years,
-            )
+            signature = _rule_signature(rules)
+            if signature in metrics_cache:
+                metrics_cache_hits += 1
+                metrics = metrics_cache[signature]
+            else:
+                metrics_cache_misses += 1
+                metrics = _augment_metrics(
+                    _evaluate_rules_precomputed(
+                        records_count=len(eval_records),
+                        action_rows=eval_action_rows,
+                        rules=rules,
+                        non_overlapping=True,
+                        include_intratrade_mdd=True,
+                    ),
+                    years=years,
+                )
+                metrics_cache[signature] = metrics
             results.append(
                 {
                     "score": _score(metrics, min_trades=min_eval_trades),
@@ -269,7 +331,7 @@ def run_sweep(
     report = {
         "periods": {"train": [train_start, train_end], "eval": [eval_start, eval_end]},
         "records": {"train": len(train_base), "eval": len(eval_base)},
-        "sweep": {"total_configs": total, "min_eval_trades": min_eval_trades},
+        "sweep": {"total_configs": total, "min_eval_trades": min_eval_trades, "metrics_cache_hits": metrics_cache_hits, "metrics_cache_misses": metrics_cache_misses},
         "top": ranked[:top_k],
     }
     Path(output).parent.mkdir(parents=True, exist_ok=True)
