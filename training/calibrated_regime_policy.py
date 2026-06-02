@@ -160,19 +160,8 @@ def fit_rules(train_records: list[dict[str, Any]], cfg: CalibratedPolicyConfig) 
     return rules
 
 
-def evaluate_rules(records: list[dict[str, Any]], rules: dict[str, dict[str, Any]]) -> dict[str, Any]:
-    trades: list[dict[str, Any]] = []
-    for row in records:
-        rule = rules.get(str(row["key"]))
-        if not rule:
-            continue
-        action = rule["action"]
-        action_key = f"{action['side']}_{int(action['hold_bars'])}"
-        outcome = row["actions"].get(action_key)
-        if outcome is None:
-            continue
-        trades.append({"date": row["date"], "key": row["key"], **outcome})
-    n = len(records)
+def _metrics_from_trades(trades: list[dict[str, Any]], *, records_count: int, include_intratrade_mdd: bool) -> dict[str, Any]:
+    n = int(records_count)
     t = len(trades)
     if not trades:
         return {"records": n, "trades": 0, "coverage": 0.0}
@@ -182,8 +171,11 @@ def evaluate_rules(records: list[dict[str, Any]], rules: dict[str, dict[str, Any
     equity = 1.0
     peak = 1.0
     max_dd = 0.0
-    for r in nets:
-        equity *= 1.0 + r
+    for trade in trades:
+        if include_intratrade_mdd:
+            trough = equity * (1.0 - max(0.0, float(trade.get("mae", 0.0))))
+            max_dd = max(max_dd, 1.0 - trough / peak)
+        equity *= 1.0 + float(trade["net_return"])
         peak = max(peak, equity)
         max_dd = max(max_dd, 1.0 - equity / peak)
     return {
@@ -197,7 +189,38 @@ def evaluate_rules(records: list[dict[str, Any]], rules: dict[str, dict[str, Any
         "sum_net_return": sum(nets),
         "compounded_return": equity - 1.0,
         "strict_mdd_proxy": max_dd,
+        "mdd_includes_intratrade_mae": bool(include_intratrade_mdd),
     }
+
+
+def evaluate_rules(
+    records: list[dict[str, Any]],
+    rules: dict[str, dict[str, Any]],
+    *,
+    non_overlapping: bool = False,
+    include_intratrade_mdd: bool = False,
+) -> dict[str, Any]:
+    trades: list[dict[str, Any]] = []
+    next_available_pos = -1
+    for row in records:
+        signal_pos = int(row.get("signal_pos", -1))
+        if non_overlapping and signal_pos <= next_available_pos:
+            continue
+        rule = rules.get(str(row["key"]))
+        if not rule:
+            continue
+        action = rule["action"]
+        hold_bars = int(action["hold_bars"])
+        action_key = f"{action['side']}_{hold_bars}"
+        outcome = row["actions"].get(action_key)
+        if outcome is None:
+            continue
+        trades.append({"date": row["date"], "signal_pos": signal_pos, "key": row["key"], **outcome})
+        if non_overlapping:
+            next_available_pos = signal_pos + hold_bars
+    metrics = _metrics_from_trades(trades, records_count=len(records), include_intratrade_mdd=include_intratrade_mdd)
+    metrics["non_overlapping"] = bool(non_overlapping)
+    return metrics
 
 
 def run_calibrated_policy(
@@ -239,6 +262,8 @@ def run_calibrated_policy(
         "rules": {"count": len(rules), "items": list(rules.values())[:50]},
         "train_metrics": evaluate_rules(train_records, rules),
         "eval_metrics": evaluate_rules(eval_records, rules),
+        "train_strict_metrics": evaluate_rules(train_records, rules, non_overlapping=True, include_intratrade_mdd=True),
+        "eval_strict_metrics": evaluate_rules(eval_records, rules, non_overlapping=True, include_intratrade_mdd=True),
         "leakage_guard": {"rules_fit_on_train_period_only": True, "eval_uses_fixed_train_rules": True},
     }
     Path(output).parent.mkdir(parents=True, exist_ok=True)
