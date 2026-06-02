@@ -1,6 +1,6 @@
 import unittest
 
-from training.sweep_skip_gate_policy import _precompute_skip_stats, evaluate_policy_with_skip, fit_skip_allowlist, fit_skip_allowlist_from_stats
+from training.sweep_skip_gate_policy import _allowlist_signature, _precompute_skip_stats, evaluate_policy_with_skip, fit_skip_allowlist, fit_skip_allowlist_from_stats
 
 
 class TestSweepSkipGatePolicy(unittest.TestCase):
@@ -28,3 +28,6 @@ class TestSweepSkipGatePolicy(unittest.TestCase):
         records = [{"date": "2025-01-01", "signal_pos": 1, "summary": {"regime": "DOWN", "key": "K"}, "actions": {"LONG_48": {"side": "LONG", "hold_bars": 48, "net_return": 0.01, "mae": 0.001, "utility": 0.009}}}]
         metrics = evaluate_policy_with_skip(records, base_rules={"key=K": {"action": {"side": "LONG", "hold_bars": 48}}}, base_key_fields=("key",), skip_allowlist={}, skip_router_fields=("regime",))
         self.assertEqual(metrics["trades"], 0)
+
+    def test_allowlist_signature_is_order_stable(self):
+        self.assertEqual(_allowlist_signature({"b": {}, "a": {}}), ("a", "b"))

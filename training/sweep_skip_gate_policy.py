@@ -196,6 +196,10 @@ def evaluate_policy_with_skip(
     return metrics
 
 
+def _allowlist_signature(allow: dict[str, dict[str, Any]]) -> tuple[str, ...]:
+    return tuple(sorted(allow.keys()))
+
+
 def _fit_addon_from_report(train_records: list[dict[str, Any]], base_rules: dict[str, dict[str, Any]], base_key_fields: tuple[str, ...], addon_report: str, addon_top_index: int) -> tuple[dict[str, dict[str, Any]], tuple[str, ...]]:
     if not addon_report:
         return {}, ()
@@ -265,6 +269,9 @@ def run_sweep(
     years = max(1e-9, (pd.to_datetime(eval_end) - pd.to_datetime(eval_start)).days / 365.25)
     results: list[dict[str, Any]] = []
     total = 0
+    metrics_cache: dict[tuple[str, ...], dict[str, Any]] = {}
+    metrics_cache_hits = 0
+    metrics_cache_misses = 0
     for ms, mn, wr, mae, gy, ys, yn, yw, bad in itertools.product(
         _parse_ints(min_samples),
         _parse_floats(min_mean_net),
@@ -289,18 +296,25 @@ def run_sweep(
             min_year_win_rate=yw,
             max_bad_year_mean_net=bad,
         )
-        metrics = _augment_metrics(
-            evaluate_policy_with_skip(
-                eval_records,
-                base_rules=base_rules,
-                base_key_fields=base_key_fields,
-                addon_rules=addon_rules,
-                addon_key_fields=addon_key_fields,
-                skip_allowlist=allow,
-                skip_router_fields=router_fields,
-            ),
-            years=years,
-        )
+        signature = _allowlist_signature(allow)
+        if signature in metrics_cache:
+            metrics_cache_hits += 1
+            metrics = metrics_cache[signature]
+        else:
+            metrics_cache_misses += 1
+            metrics = _augment_metrics(
+                evaluate_policy_with_skip(
+                    eval_records,
+                    base_rules=base_rules,
+                    base_key_fields=base_key_fields,
+                    addon_rules=addon_rules,
+                    addon_key_fields=addon_key_fields,
+                    skip_allowlist=allow,
+                    skip_router_fields=router_fields,
+                ),
+                years=years,
+            )
+            metrics_cache[signature] = metrics
         results.append(
             {
                 "score": _score(metrics, min_trades=min_eval_trades),
@@ -328,7 +342,12 @@ def run_sweep(
         "periods": {"train": [train_start, train_end], "eval": [eval_start, eval_end]},
         "records": {"train": len(train_records), "eval": len(eval_records)},
         "policy": {"base_rules_count": len(base_rules), "addon_rules_count": len(addon_rules)},
-        "sweep": {"total_configs": total, "min_eval_trades": int(min_eval_trades)},
+        "sweep": {
+            "total_configs": total,
+            "min_eval_trades": int(min_eval_trades),
+            "metrics_cache_hits": metrics_cache_hits,
+            "metrics_cache_misses": metrics_cache_misses,
+        },
         "top": ranked[:top_k],
     }
     Path(output).parent.mkdir(parents=True, exist_ok=True)
