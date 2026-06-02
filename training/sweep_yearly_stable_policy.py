@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
+import re
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,59 @@ from training.sweep_calibrated_regime_policy import (
 from training.text_analyzer_trader_data import load_market_frame
 from training.text_step_analyzer_data import parse_hold_candidates
 from training.yearly_stable_regime_policy import YearlyStableConfig
+
+
+def _slug(value: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]+", "-", str(value)).strip("-")
+
+
+def _records_cache_path(
+    cache_dir: str | Path,
+    *,
+    split: str,
+    start_date: str,
+    end_date: str,
+    stride_bars: int,
+    cfg: CalibratedPolicyConfig,
+) -> Path:
+    holds = "-".join(str(x) for x in cfg.hold_candidates)
+    name = (
+        f"calibration_records_{_slug(split)}_{_slug(start_date)}_{_slug(end_date)}"
+        f"_stride{int(stride_bars)}_w{int(cfg.window_size)}_h{holds}.json"
+    )
+    return Path(cache_dir) / name
+
+
+def _load_or_build_records(
+    market: pd.DataFrame,
+    cfg: CalibratedPolicyConfig,
+    *,
+    start_date: str,
+    end_date: str,
+    stride_bars: int,
+    split: str,
+    records_cache_dir: str = "",
+) -> list[dict[str, Any]]:
+    if not records_cache_dir:
+        return build_calibration_records(
+            market, cfg, start_date=start_date, end_date=end_date, stride_bars=stride_bars
+        )
+    path = _records_cache_path(
+        records_cache_dir,
+        split=split,
+        start_date=start_date,
+        end_date=end_date,
+        stride_bars=stride_bars,
+        cfg=cfg,
+    )
+    if path.exists():
+        return json.loads(path.read_text())
+    records = build_calibration_records(
+        market, cfg, start_date=start_date, end_date=end_date, stride_bars=stride_bars
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(records, ensure_ascii=False))
+    return records
 
 
 def _year(row: dict[str, Any]) -> int:
@@ -133,14 +187,27 @@ def run_sweep(
     min_year_win_rate: str = "0.45,0.48,0.50",
     min_eval_trades: int = 30,
     top_k: int = 50,
+    records_cache_dir: str = "",
 ) -> dict[str, Any]:
     market = load_market_frame(market_csv, wave_trading_root=wave_trading_root or None)
     base = CalibratedPolicyConfig(hold_candidates=parse_hold_candidates(hold_candidates))
-    train_base = build_calibration_records(
-        market, base, start_date=train_start, end_date=train_end, stride_bars=stride_bars
+    train_base = _load_or_build_records(
+        market,
+        base,
+        start_date=train_start,
+        end_date=train_end,
+        stride_bars=stride_bars,
+        split="train",
+        records_cache_dir=records_cache_dir,
     )
-    eval_base = build_calibration_records(
-        market, base, start_date=eval_start, end_date=eval_end, stride_bars=stride_bars
+    eval_base = _load_or_build_records(
+        market,
+        base,
+        start_date=eval_start,
+        end_date=eval_end,
+        stride_bars=stride_bars,
+        split="eval",
+        records_cache_dir=records_cache_dir,
     )
     years = max(1e-9, (pd.to_datetime(eval_end) - pd.to_datetime(eval_start)).days / 365.25)
 
@@ -228,6 +295,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-year-win-rate", default="0.45,0.48,0.50")
     parser.add_argument("--min-eval-trades", type=int, default=30)
     parser.add_argument("--top-k", type=int, default=50)
+    parser.add_argument("--records-cache-dir", default="")
     return parser.parse_args()
 
 

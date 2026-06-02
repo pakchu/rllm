@@ -1,7 +1,8 @@
+import tempfile
 import unittest
 
 from training.calibrated_regime_policy import CalibratedPolicyConfig
-from training.sweep_yearly_stable_policy import _fit_from_stats
+from training.sweep_yearly_stable_policy import _fit_from_stats, _records_cache_path
 from training.yearly_stable_regime_policy import YearlyStableConfig
 
 
@@ -58,3 +59,18 @@ class TestSweepYearlyStablePolicy(unittest.TestCase):
             max_year_mean_mae=0.1,
         )
         self.assertFalse(_fit_from_stats(stats, cfg, stable))
+
+
+    def test_records_cache_path_is_stable_for_period_and_stride(self):
+        cfg = CalibratedPolicyConfig(hold_candidates=(48, 96), window_size=96)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _records_cache_path(
+                tmp,
+                split="train",
+                start_date="2023-01-01",
+                end_date="2024-12-31",
+                stride_bars=12,
+                cfg=cfg,
+            )
+        self.assertIn("train_2023-01-01_2024-12-31_stride12_w96_h48-96", path.name)
+        self.assertTrue(path.name.endswith(".json"))
