@@ -20,6 +20,7 @@ import pandas as pd
 from training.calibrated_regime_policy import (
     CalibratedPolicyConfig,
     _aggregate_action,
+    _metrics_from_trades,
     _summary_key,
     build_calibration_records,
 )
@@ -98,7 +99,7 @@ def _precompute_action_rows(records: list[dict[str, Any]]) -> dict[str, dict[str
     for row in records:
         action_map = by_key.setdefault(str(row["key"]), {})
         for action_key, outcome in row["actions"].items():
-            action_map.setdefault(str(action_key), []).append({"date": row["date"], "key": row["key"], **outcome})
+            action_map.setdefault(str(action_key), []).append({"date": row.get("date", ""), "signal_pos": int(row.get("signal_pos", -1)), "key": row["key"], **outcome})
     return by_key
 
 
@@ -107,38 +108,30 @@ def _evaluate_rules_precomputed(
     records_count: int,
     action_rows: dict[str, dict[str, list[dict[str, Any]]]],
     rules: dict[str, dict[str, Any]],
+    non_overlapping: bool = False,
+    include_intratrade_mdd: bool = False,
 ) -> dict[str, Any]:
-    trades: list[dict[str, Any]] = []
+    candidate_trades: list[dict[str, Any]] = []
     for key, rule in rules.items():
         action = rule["action"]
         action_key = f"{action['side']}_{int(action['hold_bars'])}"
-        trades.extend(action_rows.get(str(key), {}).get(action_key, []))
-    n = int(records_count)
-    t = len(trades)
-    if not trades:
-        return {"records": n, "trades": 0, "coverage": 0.0}
-    nets = [float(x["net_return"]) for x in trades]
-    maes = [float(x["mae"]) for x in trades]
-    utils = [float(x["utility"]) for x in trades]
-    equity = 1.0
-    peak = 1.0
-    max_dd = 0.0
-    for r in nets:
-        equity *= 1.0 + r
-        peak = max(peak, equity)
-        max_dd = max(max_dd, 1.0 - equity / peak)
-    return {
-        "records": n,
-        "trades": t,
-        "coverage": t / max(1, n),
-        "mean_net_return": sum(nets) / t,
-        "mean_mae": sum(maes) / t,
-        "mean_utility": sum(utils) / t,
-        "win_rate": sum(1 for x in nets if x > 0.0) / t,
-        "sum_net_return": sum(nets),
-        "compounded_return": equity - 1.0,
-        "strict_mdd_proxy": max_dd,
-    }
+        hold_bars = int(action["hold_bars"])
+        for row in action_rows.get(str(key), {}).get(action_key, []):
+            candidate_trades.append({**row, "_selected_hold_bars": hold_bars})
+    if non_overlapping:
+        trades: list[dict[str, Any]] = []
+        next_available_pos = -1
+        for trade in sorted(candidate_trades, key=lambda x: int(x.get("signal_pos", -1))):
+            signal_pos = int(trade.get("signal_pos", -1))
+            if signal_pos <= next_available_pos:
+                continue
+            trades.append(trade)
+            next_available_pos = signal_pos + int(trade.get("_selected_hold_bars", trade.get("hold_bars", 0)))
+    else:
+        trades = candidate_trades
+    metrics = _metrics_from_trades(trades, records_count=int(records_count), include_intratrade_mdd=include_intratrade_mdd)
+    metrics["non_overlapping"] = bool(non_overlapping)
+    return metrics
 
 
 def _period_years(records: list[dict[str, Any]]) -> float:
@@ -228,12 +221,32 @@ def run_sweep(
                 key_fields=key_fields,
             )
             rules = _fit_rules_from_stats(train_group_stats, cfg)
-            train_metrics = _augment_metrics(
+            train_proxy_metrics = _augment_metrics(
                 _evaluate_rules_precomputed(records_count=len(train_records), action_rows=train_action_rows, rules=rules),
                 years=train_years,
             )
-            validation_metrics = _augment_metrics(
+            validation_proxy_metrics = _augment_metrics(
                 _evaluate_rules_precomputed(records_count=len(validation_records), action_rows=validation_action_rows, rules=rules),
+                years=validation_years,
+            )
+            train_metrics = _augment_metrics(
+                _evaluate_rules_precomputed(
+                    records_count=len(train_records),
+                    action_rows=train_action_rows,
+                    rules=rules,
+                    non_overlapping=True,
+                    include_intratrade_mdd=True,
+                ),
+                years=train_years,
+            )
+            validation_metrics = _augment_metrics(
+                _evaluate_rules_precomputed(
+                    records_count=len(validation_records),
+                    action_rows=validation_action_rows,
+                    rules=rules,
+                    non_overlapping=True,
+                    include_intratrade_mdd=True,
+                ),
                 years=validation_years,
             )
             results.append(
@@ -243,6 +256,8 @@ def run_sweep(
                     "rules_count": len(rules),
                     "train_metrics": train_metrics,
                     "validation_metrics": validation_metrics,
+                    "train_proxy_metrics": train_proxy_metrics,
+                    "validation_proxy_metrics": validation_proxy_metrics,
                     "rules_preview": list(rules.values())[:10],
                 }
             )
