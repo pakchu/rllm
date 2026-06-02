@@ -14,7 +14,9 @@ from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
 
-from training.calibrated_regime_policy import CalibratedPolicyConfig, _aggregate_action, _summary_key
+import pandas as pd
+
+from training.calibrated_regime_policy import CalibratedPolicyConfig, _aggregate_action, _metrics_from_trades, _summary_key
 from training.export_calibrated_policy_labels import build_policy_trader_input, format_policy_book
 from training.sweep_calibrated_regime_policy import _copy_with_keys
 from training.sweep_yearly_stable_policy import _fit_from_stats, _load_or_build_records, _precompute_group_year_stats, _records_cache_path
@@ -155,6 +157,7 @@ def run_export(
     next_available_pos = -1
     analyzer_rows: list[dict[str, Any]] = []
     trader_rows: list[dict[str, Any]] = []
+    simulated_trades: list[dict[str, Any]] = []
     target_counts: dict[str, int] = {}
     drift_counts: dict[str, int] = {}
     for row in sorted(label_records, key=lambda r: int(r.get("signal_pos", 0))):
@@ -194,6 +197,9 @@ def run_export(
             action = rule["action"]
             hold_bars = int(action["hold_bars"])
             target = {"gate": "TRADE", "side": str(action["side"]), "hold_bars": hold_bars, "policy_key": key, "drift_risk": drift_risk, "reason": "DRIFT_AWARE_CALIBRATED_EDGE"}
+            outcome = row["actions"].get(_rule_action_key(rule))
+            if outcome:
+                simulated_trades.append({"date": row["date"], "signal_pos": signal_pos, "policy_key": key, "drift_risk": drift_risk, **outcome})
             next_available_pos = signal_pos + hold_bars
         target_counts[str(target["reason"])] = target_counts.get(str(target["reason"]), 0) + 1
         if rule is not None:
@@ -229,6 +235,12 @@ def run_export(
         )
     write_jsonl(analyzer_output, analyzer_rows)
     write_jsonl(trader_output, trader_rows)
+    metrics = _metrics_from_trades(simulated_trades, records_count=len(label_records), include_intratrade_mdd=True)
+    years = max(1e-9, (pd.to_datetime(label_end) - pd.to_datetime(label_start)).days / 365.25)
+    compounded = float(metrics.get("compounded_return", 0.0) or 0.0)
+    mdd = float(metrics.get("strict_mdd_proxy", 0.0) or 0.0)
+    cagr = (1.0 + compounded) ** (1.0 / years) - 1.0 if compounded > -0.999 else 0.0
+    metrics.update({"years": years, "cagr_proxy": cagr, "cagr_to_mdd_proxy": cagr / mdd if mdd > 0 else (float("inf") if cagr > 0 else 0.0), "non_overlapping": True})
     summary = {
         "source_report": report,
         "periods": {"train": [train_start, train_end], "label": [label_start, label_end]},
@@ -237,6 +249,7 @@ def run_export(
         "key_fields": list(cfg.key_fields),
         "target_counts": target_counts,
         "drift_counts": drift_counts,
+        "simulated_label_policy_metrics": metrics,
         "drift_config": {"recent_window": recent_window, "min_recent_samples": min_recent_samples, "high_min_mean_net": high_min_mean_net, "high_min_win_rate": high_min_win_rate, "high_max_mean_mae": high_max_mean_mae, "medium_mean_drop": medium_mean_drop},
     }
     if summary_output:
