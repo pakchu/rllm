@@ -118,3 +118,24 @@ Result on `train=2020-2024`, `test=2025H1`, `eval=2025H2-2026-02`:
 - Even eval-diagnostic ordering stayed negative.  Coarse risk-sensitive action fitting over analyzer buckets does not generalize.
 
 Implication: the next viable direction is not another bucketed outcome-fit sweep.  The analyzer must produce explicit regime-transition / edge-decay forecasts from richer context, and the trader/RL layer must be evaluated with rolling or online adaptation constraints rather than static train-period bucket averages.
+
+## 2026-06-02 anti-overfit stability gate snapshot
+
+`training/split_stability_report.py` was run over the main recent artifacts:
+
+- stable policy TTE 2020-2022 / 2023-2024 / 2025-2026
+- router-specialist TTE 2020-2022 / 2023-2024 / 2025-2026
+- stable policy 2020-2024 / 2025H1 / 2025H2-2026
+- drift skip overlay
+- drift action overlay
+- risk-sensitive state policy
+
+Gate criteria: eval trades >= 30, eval CAGR/strict-MDD >= 3, eval strict MDD <= 15%, and ratio gap no worse than -3.  Result: `overall_pass=false`; every tested family failed.  Representative failures:
+
+- Stable 2020-2022→2023-2024→2025-2026: test ratio `~2.21`, eval ratio `~-0.15`.
+- Router-specialist: test ratio `~1.86`, eval ratio `~-0.48`.
+- 2025H1-selected stable: test ratio `~11.49`, eval ratio `~-0.70`.
+- Drift overlay/action overlay: test ratio `~11.81`, eval ratio `~0.26`, but only 15 eval trades.
+- Risk-sensitive state policy: test ratio `~2.55`, eval ratio `~-1.02` with large drawdown.
+
+This becomes the current stop condition for static bucket/rule experiments: do not promote a strategy, label set, or fine-tune target unless it passes the stability gate or improves the gate definition with stronger no-leak evidence.
