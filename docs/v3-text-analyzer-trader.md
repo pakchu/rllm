@@ -69,3 +69,40 @@ The first V3 implementation unit will:
 - add tests for text-only dataset records and eval/training CLI surfaces
 
 Only after that will analyzer/trader split-specific tasks be added.
+
+## 2026-06-02 research + experiment reflection: what must change next
+
+Recent long-horizon experiments invalidate the idea that a single symbolic rule book trained on recent BTC regimes is enough.  The 2025-focused hybrid candidate looked good on the recent holdout, but failed on 2020-2022 with large strict drawdown; the broader 2020-2024 retrain improved robustness but only reached about `63` eval trades, `~15%` CAGR, `~8.7%` strict MDD, and `~1.72` CAGR/MDD on 2025-2026.  Skip gates raised precision only by collapsing to too few trades.
+
+External research points to the same structural fix: use the LLM as a **reasoning/router/risk signal generator**, not as a raw numeric predictor.  Relevant current directions:
+
+- Trading-R1 frames trading LLMs around structured thesis generation, facts-grounded analysis, volatility-adjusted decision making, and RL-trained reasoning rather than one-shot numeric labels: https://arxiv.org/abs/2509.11420
+- FinRL-DeepSeek combines LLM-generated risk assessment/recommendation signals with risk-sensitive RL (CVaR/PPO style), which matches our strict-MDD bottleneck better than pure return maximization: https://arxiv.org/abs/2502.07393
+- Language-model-guided RL work treats LLM-generated strategies/signals as guidance for an RL execution agent rather than directly executing model text: https://huggingface.co/papers/2508.02366
+- MM-DREX-style routing uses a dynamic router plus specialist experts for trend/reversal/breakout/positioning, aligning with our finding that 2021/2022 and 2025 require different specialists: https://huggingface.co/papers/2509.05080
+- Feature-enriched imitative RL emphasizes enriched context and imitation+RL under partial observability, aligning with the need to pull DXY/kimchi/wave-trading macro signals into analyzer text: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5375707
+
+### New V3 target structure
+
+1. **Analyzer = state and risk router**
+   - Produces discrete text/state labels: market cycle, volatility stress, trend/reversal/breakout suitability, expected adverse excursion bucket, trade horizon bucket, and confidence.
+   - Input must include price/volume plus wave-trading macro context such as DXY and kimchi premium when available.
+   - It must be trained/evaluated on past-only labels and never on eval-period outcomes.
+
+2. **Specialist trader heads = action experts**
+   - Separate candidates for trend, reversal, breakout, and flat/skip.
+   - Each specialist should be selected only by train/test evidence, then frozen for final eval.
+
+3. **RL/risk overlay = strict-MDD controller**
+   - Optimize position decision, skip, cooldown, and horizon with a risk-sensitive objective (`return - drawdown/CVaR/MAE penalty`).
+   - CAGR/MDD must be reported on untouched eval; test-selected parameters cannot be re-picked from eval.
+
+4. **Validation protocol**
+   - Train: long period, e.g. 2020-2022/2023 depending on experiment.
+   - Test: at least 6 months, used for parameter/model selection.
+   - Eval: at least 6 months, untouched final report.
+   - Also report year-by-year and trade-count significance, because recent-only candidates have repeatedly overfit.
+
+### Immediate next implementation unit
+
+Build a train/test/eval router-specialist validation script that freezes all choices selected on test and reports final eval only once.  This should become the main gate before exporting analyzer/trader SFT labels.
