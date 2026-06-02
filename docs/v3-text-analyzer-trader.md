@@ -304,3 +304,47 @@ PYTHONPATH=. uv run python -m training.eval_edge_decay_analyzer \
 ```
 
 The real milestone is not SFT loss; it is strict router performance using `prediction` fields, not teacher targets.
+
+## 2026-06-03 Gemma4 edge-decay analyzer run1 result
+
+Actual Gemma4-E4B LoRA SFT was completed on the chronological train split, then evaluated with model-generated predictions only.  This is the first no-teacher router check for the edge-decay analyzer objective.
+
+Training command/artifact:
+
+- adapter: `checkpoints/edge_decay_analyzer_gemma4_lora_run1`
+- train rows: 2,365 (`2023-01-01 02:55:00` → `2025-02-27 02:55:00`)
+- model: `google/gemma-4-E4B-it`
+- LoRA: r=16, alpha=32, dropout=0.05
+- steps: 400, effective batch 8, max sequence length 3072
+- runtime: 5,918s (~98.6m)
+- final summary: `checkpoints/edge_decay_analyzer_gemma4_lora_run1/sft_summary.json`
+- train loss: 0.1787
+
+The original model eval loop was too slow because it generated one sample at a time and wrote predictions only after completion.  `training/eval_edge_decay_analyzer.py` now uses batched deterministic generation, left padding, `torch.inference_mode()`, progress logs, and streaming JSONL writes.  The first unbatched val run was stopped after ~56m with no output; the batched run completed val/oos generation with visible progress.
+
+Model prediction metrics:
+
+| Split | Samples | exact all keys | trend side acc | edge label acc | transition acc | risk acc | router hint acc |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| val | 547 | 38.21% | 89.21% | 40.04% | 51.74% | 44.97% | 41.68% |
+| oos | 535 | 39.25% | 91.03% | 42.43% | 48.97% | 47.48% | 44.30% |
+
+Strict router backtest using model predictions:
+
+| Split | Samples | Trades | CAGR | Strict MDD | CAGR/MDD | Artifact |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| val | 547 | 54 | 3.61% | 10.77% | 0.335 | `results/edge_decay_router_val_model_run1.json` |
+| oos | 535 | 43 | -26.64% | 19.69% | -1.352 | `results/edge_decay_router_oos_model_run1.json` |
+
+Interpretation:
+
+- This run **failed** the profitability target.  The teacher/oracle router upper bound remains strong, but the SFT analyzer does not predict the economically important router hints accurately enough.
+- The model learned `trend_side` well, but that is the least valuable key; the router depends on separating `ALLOW_TREND_SPECIALIST`, `CONSIDER_REVERSAL_SPECIALIST`, and skip states.  Those labels are confused heavily with `REDUCE_OR_SKIP_TREND_SPECIALIST` and `RANGE_ROUTER_ONLY`.
+- The result supports the user's concern that simply asking the LLM to reconstruct many numeric-derived labels is not enough.  The LLM should be used where it has an advantage: compressing multi-source market context into a small set of semantically robust regime narratives, not copying a brittle five-key teacher JSON.
+
+Next structural change:
+
+1. Replace five-key label imitation with a smaller decision-critical target: `TRADE_TREND`, `FADE_TREND`, `ABSTAIN`, plus a concise natural-language rationale class.
+2. Make the analyzer output calibrated uncertainty/evidence quality, not only a class.
+3. Train/evaluate with router utility weighting so confusing a profitable allow/fade state with skip is penalized differently from confusing two skip-like states.
+4. Keep the batched eval path and require val+oos strict router reports before any further RL/trader stage.

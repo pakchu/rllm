@@ -67,8 +67,19 @@ def _metrics(rows: list[dict[str, Any]], predictions: list[dict[str, str]]) -> d
     return {"num_samples": len(rows), "exact_all_keys_accuracy": exact / max(1, len(rows)), "keys": key_metrics}
 
 
-def _generate_predictions(rows: list[dict[str, Any]], *, model_name: str, adapter_dir: str, max_new_tokens: int) -> list[dict[str, str]]:
+def _generate_predictions(
+    rows: list[dict[str, Any]],
+    *,
+    model_name: str,
+    adapter_dir: str,
+    max_new_tokens: int,
+    batch_size: int,
+    progress_every: int,
+    prediction_output: str = "",
+) -> list[dict[str, str]]:
     disable_transformers_allocator_warmup()
+    import torch
+
     from peft import PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -76,26 +87,55 @@ def _generate_predictions(rows: list[dict[str, Any]], *, model_name: str, adapte
     tokenizer = AutoTokenizer.from_pretrained(resolved, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"
     base = AutoModelForCausalLM.from_pretrained(resolved, trust_remote_code=True, device_map="auto")
     model = PeftModel.from_pretrained(base, adapter_dir)
     model.eval()
+    device = next(model.parameters()).device
     preds: list[dict[str, str]] = []
-    for row in rows:
-        messages = [{"role": "user", "content": str(row["prompt"])}]
-        if getattr(tokenizer, "chat_template", None):
-            text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        else:
-            text = f"<|user|>\n{row['prompt']}\n<|assistant|>\n"
-        inputs = tokenizer(text, return_tensors="pt").to(model.device)
-        out = model.generate(
-            **inputs,
-            max_new_tokens=int(max_new_tokens),
-            do_sample=False,
-            pad_token_id=tokenizer.pad_token_id,
-            eos_token_id=tokenizer.eos_token_id,
-        )
-        generated = tokenizer.decode(out[0][inputs["input_ids"].shape[-1] :], skip_special_tokens=True)
-        preds.append(parse_edge_decay_json(generated))
+    stream = None
+    if prediction_output:
+        out_path = Path(prediction_output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        stream = out_path.open("w")
+    try:
+        for start in range(0, len(rows), max(1, int(batch_size))):
+            batch = rows[start : start + max(1, int(batch_size))]
+            texts = []
+            for row in batch:
+                messages = [{"role": "user", "content": str(row["prompt"])}]
+                if getattr(tokenizer, "chat_template", None):
+                    text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+                else:
+                    text = f"<|user|>\n{row['prompt']}\n<|assistant|>\n"
+                texts.append(text)
+            inputs = tokenizer(texts, return_tensors="pt", padding=True).to(device)
+            with torch.inference_mode():
+                out = model.generate(
+                    **inputs,
+                    max_new_tokens=int(max_new_tokens),
+                    do_sample=False,
+                    pad_token_id=tokenizer.pad_token_id,
+                    eos_token_id=tokenizer.eos_token_id,
+                    use_cache=True,
+                )
+            prompt_width = inputs["input_ids"].shape[-1]
+            for idx, generated_ids in enumerate(out[:, prompt_width:]):
+                generated = tokenizer.decode(generated_ids, skip_special_tokens=True)
+                pred = parse_edge_decay_json(generated)
+                preds.append(pred)
+                if stream is not None:
+                    merged = dict(batch[idx])
+                    merged["prediction"] = json.dumps(pred, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+                    stream.write(json.dumps(merged, ensure_ascii=False) + "\n")
+            if stream is not None:
+                stream.flush()
+            done = min(start + len(batch), len(rows))
+            if progress_every > 0 and (done == len(rows) or done % progress_every == 0):
+                print(f"generated {done}/{len(rows)} edge-decay predictions", flush=True)
+    finally:
+        if stream is not None:
+            stream.close()
     return preds
 
 
@@ -121,6 +161,8 @@ def evaluate_edge_decay_analyzer(
     seed: int = 42,
     prediction_mode: str = "target_echo",
     max_new_tokens: int = 128,
+    batch_size: int = 4,
+    progress_every: int = 64,
 ) -> dict[str, Any]:
     rows = load_jsonl(eval_jsonl, max_samples=max_samples, sample_mode=sample_mode, seed=seed)
     if prediction_mode == "target_echo":
@@ -128,10 +170,18 @@ def evaluate_edge_decay_analyzer(
     elif prediction_mode == "model":
         if not adapter_dir:
             raise ValueError("adapter_dir is required for prediction_mode=model")
-        preds = _generate_predictions(rows, model_name=model_name, adapter_dir=adapter_dir, max_new_tokens=max_new_tokens)
+        preds = _generate_predictions(
+            rows,
+            model_name=model_name,
+            adapter_dir=adapter_dir,
+            max_new_tokens=max_new_tokens,
+            batch_size=batch_size,
+            progress_every=progress_every,
+            prediction_output=prediction_output,
+        )
     else:
         raise ValueError("prediction_mode must be one of {'target_echo','model'}")
-    if prediction_output:
+    if prediction_output and prediction_mode != "model":
         write_prediction_jsonl(prediction_output, rows, preds)
     report = {
         "eval_jsonl": str(Path(eval_jsonl).resolve()),
@@ -162,6 +212,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--prediction-mode", choices=["target_echo", "model"], default="target_echo")
     p.add_argument("--max-new-tokens", type=int, default=128)
+    p.add_argument("--batch-size", type=int, default=4)
+    p.add_argument("--progress-every", type=int, default=64)
     return p.parse_args()
 
 
