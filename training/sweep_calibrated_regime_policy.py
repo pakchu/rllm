@@ -19,10 +19,9 @@ import pandas as pd
 
 from training.calibrated_regime_policy import (
     CalibratedPolicyConfig,
+    _aggregate_action,
     _summary_key,
     build_calibration_records,
-    evaluate_rules,
-    fit_rules,
 )
 from training.text_analyzer_trader_data import load_market_frame
 from training.text_step_analyzer_data import parse_hold_candidates
@@ -54,6 +53,92 @@ def _copy_with_keys(records: list[dict[str, Any]], key_fields: tuple[str, ...]) 
         clone["key"] = _summary_key(row["summary"], key_fields)
         keyed.append(clone)
     return keyed
+
+
+def _precompute_train_action_stats(records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for row in records:
+        groups.setdefault(str(row["key"]), []).append(row)
+    out: dict[str, dict[str, Any]] = {}
+    for key, rows in groups.items():
+        action_keys = sorted({a for r in rows for a in r["actions"]})
+        out[key] = {
+            "group_samples": len(rows),
+            "actions": [_aggregate_action(rows, action_key) for action_key in action_keys],
+        }
+    return out
+
+
+def _fit_rules_from_stats(group_stats: dict[str, dict[str, Any]], cfg: CalibratedPolicyConfig) -> dict[str, dict[str, Any]]:
+    rules: dict[str, dict[str, Any]] = {}
+    for key, stats in group_stats.items():
+        candidates = [c for c in stats["actions"] if int(c.get("samples", 0)) >= int(cfg.min_train_samples)]
+        qualified = [
+            c
+            for c in candidates
+            if float(c["mean_net_return"]) >= float(cfg.min_train_mean_net)
+            and float(c["mean_utility"]) >= float(cfg.min_train_mean_utility)
+            and float(c["win_rate"]) >= float(cfg.min_train_win_rate)
+            and float(c["mean_mae"]) <= float(cfg.max_train_mean_mae)
+        ]
+        if not qualified:
+            continue
+        best = max(qualified, key=lambda c: (float(c["mean_utility"]), float(c["mean_net_return"]), float(c["win_rate"])))
+        rules[key] = {
+            "key": key,
+            "train_samples_in_group": int(stats["group_samples"]),
+            "action": best,
+            "qualified_actions": qualified[:5],
+        }
+    return rules
+
+
+def _precompute_action_rows(records: list[dict[str, Any]]) -> dict[str, dict[str, list[dict[str, Any]]]]:
+    by_key: dict[str, dict[str, list[dict[str, Any]]]] = {}
+    for row in records:
+        action_map = by_key.setdefault(str(row["key"]), {})
+        for action_key, outcome in row["actions"].items():
+            action_map.setdefault(str(action_key), []).append({"date": row["date"], "key": row["key"], **outcome})
+    return by_key
+
+
+def _evaluate_rules_precomputed(
+    *,
+    records_count: int,
+    action_rows: dict[str, dict[str, list[dict[str, Any]]]],
+    rules: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    trades: list[dict[str, Any]] = []
+    for key, rule in rules.items():
+        action = rule["action"]
+        action_key = f"{action['side']}_{int(action['hold_bars'])}"
+        trades.extend(action_rows.get(str(key), {}).get(action_key, []))
+    n = int(records_count)
+    t = len(trades)
+    if not trades:
+        return {"records": n, "trades": 0, "coverage": 0.0}
+    nets = [float(x["net_return"]) for x in trades]
+    maes = [float(x["mae"]) for x in trades]
+    utils = [float(x["utility"]) for x in trades]
+    equity = 1.0
+    peak = 1.0
+    max_dd = 0.0
+    for r in nets:
+        equity *= 1.0 + r
+        peak = max(peak, equity)
+        max_dd = max(max_dd, 1.0 - equity / peak)
+    return {
+        "records": n,
+        "trades": t,
+        "coverage": t / max(1, n),
+        "mean_net_return": sum(nets) / t,
+        "mean_mae": sum(maes) / t,
+        "mean_utility": sum(utils) / t,
+        "win_rate": sum(1 for x in nets if x > 0.0) / t,
+        "sum_net_return": sum(nets),
+        "compounded_return": equity - 1.0,
+        "strict_mdd_proxy": max_dd,
+    }
 
 
 def _period_years(records: list[dict[str, Any]]) -> float:
@@ -122,6 +207,9 @@ def run_sweep(
     for key_fields in _parse_key_sets(key_sets):
         train_records = _copy_with_keys(train_records_base, key_fields)
         validation_records = _copy_with_keys(validation_records_base, key_fields)
+        train_group_stats = _precompute_train_action_stats(train_records)
+        train_action_rows = _precompute_action_rows(train_records)
+        validation_action_rows = _precompute_action_rows(validation_records)
         for samples, mean_net, mean_utility, win_rate, max_mae in itertools.product(
             _parse_ints(min_train_samples),
             _parse_floats(min_train_mean_net),
@@ -139,9 +227,15 @@ def run_sweep(
                 max_train_mean_mae=max_mae,
                 key_fields=key_fields,
             )
-            rules = fit_rules(train_records, cfg)
-            train_metrics = _augment_metrics(evaluate_rules(train_records, rules), years=train_years)
-            validation_metrics = _augment_metrics(evaluate_rules(validation_records, rules), years=validation_years)
+            rules = _fit_rules_from_stats(train_group_stats, cfg)
+            train_metrics = _augment_metrics(
+                _evaluate_rules_precomputed(records_count=len(train_records), action_rows=train_action_rows, rules=rules),
+                years=train_years,
+            )
+            validation_metrics = _augment_metrics(
+                _evaluate_rules_precomputed(records_count=len(validation_records), action_rows=validation_action_rows, rules=rules),
+                years=validation_years,
+            )
             results.append(
                 {
                     "score": _score(validation_metrics, min_trades=int(min_validation_trades)),
