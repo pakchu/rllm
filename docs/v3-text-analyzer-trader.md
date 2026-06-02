@@ -139,3 +139,57 @@ Gate criteria: eval trades >= 30, eval CAGR/strict-MDD >= 3, eval strict MDD <= 
 - Risk-sensitive state policy: test ratio `~2.55`, eval ratio `~-1.02` with large drawdown.
 
 This becomes the current stop condition for static bucket/rule experiments: do not promote a strategy, label set, or fine-tune target unless it passes the stability gate or improves the gate definition with stronger no-leak evidence.
+
+## 2026-06-03 direction change: stop gate optimization, train edge-decay analyzer
+
+The fixed gate-threshold family has failed repeatedly under train-bias, raw-score, and strict OOS replay.  The next stage therefore stops treating `TRADE/NO_TRADE` gate optimization as the main search surface.
+
+New analyzer target:
+
+- predict whether the current past-only regime edge **persists, decays, reverses, or becomes adverse-stress**;
+- include macro context from wave_trading DXY / Kimchi / USDKRW features when local caches are available;
+- output router hints such as `ALLOW_TREND_SPECIALIST`, `REDUCE_OR_SKIP_TREND_SPECIALIST`, `CONSIDER_REVERSAL_SPECIALIST`, or `RANGE_ROUTER_ONLY`;
+- leave actual sizing/entry decisions to trader/RL execution layers.
+
+Implementation unit:
+
+- `training/edge_decay_analyzer_data.py`
+  - builds past-only analyzer/router prompts;
+  - labels future path diagnostics over short and long horizons;
+  - explicitly avoids `TRADE/NO_TRADE` targets;
+  - carries leakage guards: prompt is past-only, target uses future path, external features are backward-asof joined, and this is not gate-threshold optimization.
+- `tests/test_edge_decay_analyzer_data.py`
+  - validates label classification, leakage flags, and CLI output.
+
+Initial real-data sample:
+
+```bash
+PYTHONPATH=. uv run python -m training.edge_decay_analyzer_data \
+  --market-csv data/2023-01-01_2026-02-28_d2a88c0700504d6a5e15bc3839ad84b6.csv.gz \
+  --wave-trading-root ../workspace/wave_trading \
+  --output data/edge_decay_analyzer_h144_macro_sample.jsonl \
+  --summary-output results/edge_decay_analyzer_h144_macro_sample_summary.json \
+  --window-size 144 --short-hold-bars 72 --long-hold-bars 432 --stride-bars 96 \
+  --leverage 0.5 --trend-feature trend_96 --trend-threshold 0.0025 \
+  --max-records 1000
+```
+
+Sample label distribution over the first 1,000 records:
+
+- `EDGE_PERSIST`: 153
+- `WEAK_PERSIST`: 163
+- `EDGE_DECAY`: 26
+- `REVERSAL_RISK`: 68
+- `ADVERSE_STRESS`: 242
+- `NO_EDGE`: 26
+- `NO_CLEAR_TREND`: 288
+
+Router hint distribution:
+
+- `ALLOW_TREND_SPECIALIST`: 153
+- `REDUCE_OR_SKIP_TREND_SPECIALIST`: 268
+- `CONSIDER_REVERSAL_SPECIALIST`: 68
+- `RANGE_ROUTER_ONLY`: 288
+- `LOW_CONFIDENCE_ROUTER`: 223
+
+This is now the preferred LLM direction: train Gemma-style analyzer models to detect regime/edge transition states, then let a separate trader/RL layer consume those router states.  Future experiments should benchmark whether these labels improve strict OOS results over the non-LLM trend baseline before any live-candidate promotion.
