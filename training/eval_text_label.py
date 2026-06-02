@@ -124,7 +124,7 @@ def _candidate_logprob_predictions(rows: list[dict[str, Any]], *, key: str, mode
     return preds
 
 
-def evaluate_text_label(*, eval_jsonl: str, output: str, key: str, model_name: str = RECOMMENDED_VLM_MODEL, adapter_dir: str = "", max_samples: int = 0, sample_mode: str = "sequential", seed: int = 42, prediction_mode: str = "target_echo", max_new_tokens: int = 8) -> dict[str, Any]:
+def evaluate_text_label(*, eval_jsonl: str, output: str, key: str, model_name: str = RECOMMENDED_VLM_MODEL, adapter_dir: str = "", max_samples: int = 0, sample_mode: str = "sequential", seed: int = 42, prediction_mode: str = "target_echo", max_new_tokens: int = 8, score_normalization: str = "mean") -> dict[str, Any]:
     key = str(key).strip().lower()
     if key not in VALID_VALUES:
         raise ValueError("key must be one of {'gate','side'}")
@@ -138,10 +138,18 @@ def evaluate_text_label(*, eval_jsonl: str, output: str, key: str, model_name: s
     elif prediction_mode == "candidate_logprob":
         if not adapter_dir:
             raise ValueError("adapter_dir is required for prediction_mode=candidate_logprob")
-        preds = _candidate_logprob_predictions(rows, key=key, model_name=model_name, adapter_dir=adapter_dir)
+        preds = _candidate_logprob_predictions(rows, key=key, model_name=model_name, adapter_dir=adapter_dir, score_normalization=score_normalization)
     else:
         raise ValueError("prediction_mode must be one of {'target_echo','model','candidate_logprob'}")
-    report = {"eval_jsonl": str(Path(eval_jsonl).resolve()), "key": key, "model_name": resolve_vlm_model_alias(model_name, prefer_latest=True), "adapter_dir": adapter_dir, "prediction_mode": prediction_mode, "metrics": _metrics(rows, preds, key=key)}
+    report = {
+        "eval_jsonl": str(Path(eval_jsonl).resolve()),
+        "key": key,
+        "model_name": resolve_vlm_model_alias(model_name, prefer_latest=True),
+        "adapter_dir": adapter_dir,
+        "prediction_mode": prediction_mode,
+        "score_normalization": score_normalization if prediction_mode == "candidate_logprob" else None,
+        "metrics": _metrics(rows, preds, key=key),
+    }
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_text(json.dumps(report, indent=2, ensure_ascii=False))
     return report
@@ -159,6 +167,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--prediction-mode", choices=["target_echo", "model", "candidate_logprob"], default="target_echo")
     p.add_argument("--max-new-tokens", type=int, default=8)
+    p.add_argument("--score-normalization", choices=["sum", "mean"], default="mean")
     return p.parse_args()
 
 
