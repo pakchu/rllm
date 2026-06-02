@@ -1,6 +1,6 @@
 import unittest
 
-from training.eval_calibrated_policy_model import _agreement, _apply_rule_guard, _candidate_targets_for_row, _metrics_from_actions, parse_policy_json
+from training.eval_calibrated_policy_model import _agreement, _apply_rule_guard, _candidate_logprob_actions, _candidate_targets_for_row, _metrics_from_actions, parse_policy_json
 
 
 class TestEvalCalibratedPolicyModel(unittest.TestCase):

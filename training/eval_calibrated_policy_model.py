@@ -208,6 +208,8 @@ def _candidate_logprob_actions(
     records: list[dict[str, Any]],
     rules: dict[str, dict[str, Any]],
     cfg: CalibratedPolicyConfig,
+    *,
+    candidate_trade_margin: float = 0.0,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     actions: list[dict[str, Any]] = []
     previews: list[dict[str, Any]] = []
@@ -226,6 +228,12 @@ def _candidate_logprob_actions(
                 policy_book=policy_book,
             )
             action, scored = _score_candidate_texts(tokenizer, model, prompt, candidates)
+            if len(scored) == 2:
+                no_score = float(scored[0]["mean_logprob"])
+                trade_score = float(scored[1]["mean_logprob"])
+                margin = trade_score - no_score
+                action = candidates[1] if margin >= float(candidate_trade_margin) else candidates[0]
+                action = {**action, "logprob_margin": margin}
         actions.append(action)
         if len(previews) < 50 and len(candidates) > 1:
             previews.append({"date": row["date"], "signal_pos": row["signal_pos"], "key": row["key"], "parsed": action, "scores": scored})
@@ -308,6 +316,7 @@ def run_model_policy_eval(
     generation_batch_size: int = 4,
     prediction_mode: str = "model",
     rule_guard: str = "none",
+    candidate_trade_margin: float = 0.0,
 ) -> dict[str, Any]:
     cfg = CalibratedPolicyConfig(
         hold_candidates=parse_hold_candidates(hold_candidates),
@@ -334,7 +343,14 @@ def run_model_policy_eval(
         if not adapter_dir:
             raise ValueError("adapter_dir is required for prediction_mode=candidate_logprob")
         resolved_model, tokenizer, model = _load_model(model_name, adapter_dir)
-        model_actions, generated_rows = _candidate_logprob_actions(tokenizer, model, eval_records, rules, cfg)
+        model_actions, generated_rows = _candidate_logprob_actions(
+            tokenizer,
+            model,
+            eval_records,
+            rules,
+            cfg,
+            candidate_trade_margin=float(candidate_trade_margin),
+        )
     elif prediction_mode == "model":
         if not adapter_dir:
             raise ValueError("adapter_dir is required for prediction_mode=model")
@@ -379,6 +395,7 @@ def run_model_policy_eval(
         "prediction_mode": prediction_mode,
         "generation_batch_size": int(generation_batch_size),
         "rule_guard": str(rule_guard),
+        "candidate_trade_margin": float(candidate_trade_margin),
         "config": asdict(cfg),
         "periods": {"train": [train_start, train_end], "eval": [eval_start, eval_end]},
         "records": {"train": len(train_records), "eval": len(eval_records)},
@@ -418,6 +435,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--generation-batch-size", type=int, default=4)
     p.add_argument("--prediction-mode", choices=["model", "candidate_logprob", "oracle_echo"], default="model")
     p.add_argument("--rule-guard", choices=["none", "current_key_any", "current_key_action"], default="none")
+    p.add_argument("--candidate-trade-margin", type=float, default=0.0)
     return p.parse_args()
 
 
