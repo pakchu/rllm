@@ -233,3 +233,74 @@ Next required step:
 2. Fine-tune/evaluate the Gemma analyzer on `edge_decay_label`, `transition_label`, `risk_label`, and `recommended_router_hint` exact-match/F1.
 3. Replace teacher targets with model predictions in `edge_decay_router_backtest.py` and run the same strict split report.
 4. Only then connect the trader/RL layer.
+
+## 2026-06-03 model-prediction pipeline preparation
+
+The oracle router is now connected to a model-prediction pipeline so future runs can replace teacher labels with Gemma analyzer outputs.
+
+New utilities:
+
+- `training/split_edge_decay_sft.py`
+  - chronologically splits edge-decay records into train/val/oos JSONL files.
+  - preserves leakage guards: prompts are past-only; targets are future path labels; no gate-threshold optimization.
+- `training/eval_edge_decay_analyzer.py`
+  - parses/evaluates full edge-decay JSON outputs across all keys:
+    - `trend_side`
+    - `edge_decay_label`
+    - `transition_label`
+    - `risk_label`
+    - `recommended_router_hint`
+  - writes prediction JSONL with a `prediction` field, directly consumable by `training.edge_decay_router_backtest`.
+- `training/train_text_sft.py`
+  - SFT dry-run summaries now count edge-decay target labels instead of treating them as generic analyzer rows.
+
+Generated chronological splits from `data/edge_decay_analyzer_h144_macro_stride96_full.jsonl`:
+
+| Split | Records | Period |
+| --- | ---: | --- |
+| train | 2,365 | `2023-01-01 02:55:00` → `2025-02-27 02:55:00` |
+| val | 547 | `2025-03-01 02:55:00` → `2025-08-30 02:55:00` |
+| oos | 535 | `2025-09-01 02:55:00` → `2026-02-26 02:55:00` |
+
+Artifacts:
+
+- `data/edge_decay_analyzer_h144_macro_train.jsonl`
+- `data/edge_decay_analyzer_h144_macro_val.jsonl`
+- `data/edge_decay_analyzer_h144_macro_oos.jsonl`
+- `results/edge_decay_analyzer_h144_macro_split_summary.json`
+
+Pipeline smoke checks:
+
+1. Target-echo eval on 64 validation rows wrote predictions to `results/edge_decay_analyzer_val_target_echo_predictions.jsonl` with exact all-key accuracy `1.0`.
+2. Those prediction rows were accepted by `edge_decay_router_backtest.py` and produced a strict router smoke report at `results/edge_decay_router_val_target_echo_smoke.json`.
+3. Gemma-4-E4B SFT dry-run on 128 balanced train rows succeeded and wrote `checkpoints/edge_decay_analyzer_gemma4_dryrun/sft_summary.json`.
+
+Next command for actual analyzer SFT:
+
+```bash
+PYTHONPATH=. uv run python -m training.train_text_sft \
+  --train-jsonl data/edge_decay_analyzer_h144_macro_train.jsonl \
+  --output-dir checkpoints/edge_decay_analyzer_gemma4_lora \
+  --model-name gemma4-e4b \
+  --sample-mode balanced \
+  --max-samples 0 \
+  --max-steps 400 \
+  --max-seq-length 3072 \
+  --per-device-train-batch-size 1 \
+  --gradient-accumulation-steps 8 \
+  --lora-r 16 --lora-alpha 32 --lora-dropout 0.05
+```
+
+Then evaluate with:
+
+```bash
+PYTHONPATH=. uv run python -m training.eval_edge_decay_analyzer \
+  --eval-jsonl data/edge_decay_analyzer_h144_macro_val.jsonl \
+  --output results/edge_decay_analyzer_val_model_eval.json \
+  --prediction-output results/edge_decay_analyzer_val_model_predictions.jsonl \
+  --prediction-mode model \
+  --model-name gemma4-e4b \
+  --adapter-dir checkpoints/edge_decay_analyzer_gemma4_lora
+```
+
+The real milestone is not SFT loss; it is strict router performance using `prediction` fields, not teacher targets.
