@@ -23,6 +23,22 @@ class TestTrainTextDPO(unittest.TestCase):
             self.assertEqual(len(rows), 2)
             self.assertTrue(all("prompt" in r and "chosen" in r and "rejected" in r for r in rows))
 
+    def test_load_preference_jsonl_gate_balanced_overweights_no_trade(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "pref.jsonl"
+            rows = []
+            for i in range(10):
+                rows.append({"prompt": f"nt{i}", "chosen": '{"gate":"NO_TRADE","side":"NONE","hold_bars":0}', "rejected": '{"gate":"TRADE","side":"LONG","hold_bars":48}'})
+            for i in range(30):
+                side = "LONG" if i % 2 == 0 else "SHORT"
+                hold = [48, 96, 144][i % 3]
+                rows.append({"prompt": f"t{i}", "chosen": f'{{"gate":"TRADE","side":"{side}","hold_bars":{hold}}}', "rejected": '{"gate":"NO_TRADE","side":"NONE","hold_bars":0}'})
+            path.write_text("".join(json.dumps(r) + "\n" for r in rows))
+            selected = load_preference_jsonl(path, max_samples=12, sample_mode="gate_balanced")
+            gates = [json.loads(r["chosen"])["gate"] for r in selected]
+            self.assertEqual(gates.count("NO_TRADE"), 6)
+            self.assertEqual(gates.count("TRADE"), 6)
+
     def test_dataset_rows_use_conversational_prompt_chosen_rejected(self):
         rows = [{"prompt": "p", "chosen": "c", "rejected": "r", "extra": 1}]
         self.assertEqual(

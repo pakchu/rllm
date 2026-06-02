@@ -45,22 +45,18 @@ def _action_bucket(text: str) -> str:
     return str(obj)[:80]
 
 
-def _select_rows(rows: list[dict[str, Any]], *, max_samples: int, sample_mode: str, seed: int) -> list[dict[str, Any]]:
-    if not max_samples or int(max_samples) >= len(rows):
-        return rows
-    mode = str(sample_mode).strip().lower()
-    if mode not in {"sequential", "random", "balanced"}:
-        raise ValueError("sample_mode must be one of {'sequential','random','balanced'}")
-    rng = random.Random(int(seed))
-    max_n = int(max_samples)
-    if mode == "sequential":
-        return rows[:max_n]
-    if mode == "random":
-        idx = sorted(rng.sample(range(len(rows)), max_n))
-        return [rows[i] for i in idx]
-    buckets: dict[str, list[int]] = {}
-    for i, row in enumerate(rows):
-        buckets.setdefault(_action_bucket(str(row.get("chosen", ""))), []).append(i)
+def _chosen_gate(row: dict[str, Any]) -> str:
+    try:
+        obj = json.loads(str(row.get("chosen", "")))
+    except Exception:
+        return "UNKNOWN"
+    if not isinstance(obj, dict):
+        return "UNKNOWN"
+    gate = str(obj.get("gate", "UNKNOWN")).upper()
+    return gate if gate in {"TRADE", "NO_TRADE"} else "UNKNOWN"
+
+
+def _balanced_from_buckets(buckets: dict[str, list[int]], *, max_n: int, rng: random.Random) -> list[int]:
     per_bucket = max(1, max_n // max(1, len(buckets)))
     selected: list[int] = []
     for key in sorted(buckets):
@@ -69,9 +65,43 @@ def _select_rows(rows: list[dict[str, Any]], *, max_samples: int, sample_mode: s
         selected.extend(idxs[: min(per_bucket, len(idxs))])
     if len(selected) < max_n:
         used = set(selected)
-        rest = [i for i in range(len(rows)) if i not in used]
+        rest = [i for idxs in buckets.values() for i in idxs if i not in used]
         rng.shuffle(rest)
         selected.extend(rest[: max_n - len(selected)])
+    return selected[:max_n]
+
+
+def _select_rows(rows: list[dict[str, Any]], *, max_samples: int, sample_mode: str, seed: int) -> list[dict[str, Any]]:
+    if not max_samples or int(max_samples) >= len(rows):
+        return rows
+    mode = str(sample_mode).strip().lower()
+    if mode not in {"sequential", "random", "balanced", "gate_balanced"}:
+        raise ValueError("sample_mode must be one of {'sequential','random','balanced','gate_balanced'}")
+    rng = random.Random(int(seed))
+    max_n = int(max_samples)
+    if mode == "sequential":
+        return rows[:max_n]
+    if mode == "random":
+        idx = sorted(rng.sample(range(len(rows)), max_n))
+        return [rows[i] for i in idx]
+    if mode == "gate_balanced":
+        gate_buckets: dict[str, list[int]] = {}
+        for i, row in enumerate(rows):
+            gate_buckets.setdefault(_chosen_gate(row), []).append(i)
+        selected = _balanced_from_buckets(gate_buckets, max_n=max_n, rng=rng)
+        trade_selected = [i for i in selected if _chosen_gate(rows[i]) == "TRADE"]
+        no_trade_selected = [i for i in selected if _chosen_gate(rows[i]) == "NO_TRADE"]
+        if trade_selected:
+            trade_action_buckets: dict[str, list[int]] = {}
+            for i in trade_selected:
+                trade_action_buckets.setdefault(_action_bucket(str(rows[i].get("chosen", ""))), []).append(i)
+            trade_selected = _balanced_from_buckets(trade_action_buckets, max_n=max_n - len(no_trade_selected), rng=rng)
+            selected = no_trade_selected + trade_selected
+    else:
+        buckets: dict[str, list[int]] = {}
+        for i, row in enumerate(rows):
+            buckets.setdefault(_action_bucket(str(row.get("chosen", ""))), []).append(i)
+        selected = _balanced_from_buckets(buckets, max_n=max_n, rng=rng)
     return [rows[i] for i in sorted(selected[:max_n])]
 
 
@@ -179,7 +209,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output-dir", required=True)
     p.add_argument("--max-samples", type=int, default=0)
     p.add_argument("--max-length", type=int, default=2048)
-    p.add_argument("--sample-mode", choices=["sequential", "random", "balanced"], default="sequential")
+    p.add_argument("--sample-mode", choices=["sequential", "random", "balanced", "gate_balanced"], default="sequential")
     p.add_argument("--max-steps", type=int, default=50)
     p.add_argument("--num-train-epochs", type=float, default=1.0)
     p.add_argument("--learning-rate", type=float, default=5e-7)
