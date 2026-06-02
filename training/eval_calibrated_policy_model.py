@@ -146,6 +146,92 @@ def _apply_rule_guard(row: dict[str, Any], action: dict[str, Any], rules: dict[s
     return rejected
 
 
+def _candidate_targets_for_row(row: dict[str, Any], rules: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    no_trade = {
+        "gate": "NO_TRADE",
+        "hold_bars": 0,
+        "policy_key": str(row["key"]),
+        "reason": "NO_CALIBRATED_EDGE",
+        "side": "NONE",
+    }
+    rule = rules.get(str(row["key"]))
+    if not rule:
+        return [no_trade]
+    action = rule["action"]
+    trade = {
+        "gate": "TRADE",
+        "hold_bars": int(action["hold_bars"]),
+        "policy_key": str(row["key"]),
+        "reason": "CALIBRATED_EDGE",
+        "side": str(action["side"]),
+    }
+    return [no_trade, trade]
+
+
+def _score_candidate_texts(tokenizer: Any, model: Any, prompt: str, candidates: list[dict[str, Any]]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    import torch
+
+    prompt_ids = tokenizer(_chat_text(tokenizer, prompt), add_special_tokens=False)["input_ids"]
+    sequences: list[list[int]] = []
+    spans: list[tuple[int, int]] = []
+    target_texts: list[str] = []
+    for candidate in candidates:
+        text = json.dumps(candidate, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        ids = tokenizer(text, add_special_tokens=False)["input_ids"]
+        if tokenizer.eos_token_id is not None:
+            ids = ids + [int(tokenizer.eos_token_id)]
+        start = len(prompt_ids)
+        end = start + len(ids)
+        sequences.append(prompt_ids + ids)
+        spans.append((start, end))
+        target_texts.append(text)
+    encoded = tokenizer.pad({"input_ids": sequences}, return_tensors="pt")
+    input_ids = encoded["input_ids"].to(model.device)
+    attention_mask = encoded["attention_mask"].to(model.device)
+    with torch.no_grad():
+        logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
+        log_probs = torch.log_softmax(logits[:, :-1, :], dim=-1)
+    scored: list[dict[str, Any]] = []
+    for i, (start, end) in enumerate(spans):
+        positions = torch.arange(start - 1, end - 1, device=log_probs.device)
+        label_tensor = input_ids[i, start:end]
+        token_scores = log_probs[i, positions, label_tensor]
+        score = float(token_scores.mean().detach().cpu())
+        scored.append({"candidate": candidates[i], "text": target_texts[i], "mean_logprob": score})
+    best = max(scored, key=lambda x: float(x["mean_logprob"]))["candidate"]
+    return dict(best), scored
+
+
+def _candidate_logprob_actions(
+    tokenizer: Any,
+    model: Any,
+    records: list[dict[str, Any]],
+    rules: dict[str, dict[str, Any]],
+    cfg: CalibratedPolicyConfig,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    actions: list[dict[str, Any]] = []
+    previews: list[dict[str, Any]] = []
+    policy_book = format_policy_book(rules)
+    for row in records:
+        candidates = _candidate_targets_for_row(row, rules)
+        if len(candidates) == 1:
+            action = candidates[0]
+            scored = [{"candidate": action, "mean_logprob": None}]
+        else:
+            prompt = build_policy_trader_input(
+                analyzer_summary_to_text(row["summary"]),
+                hold_candidates=cfg.hold_candidates,
+                entry_delay_bars=cfg.entry_delay_bars,
+                current_policy_key=str(row["key"]),
+                policy_book=policy_book,
+            )
+            action, scored = _score_candidate_texts(tokenizer, model, prompt, candidates)
+        actions.append(action)
+        if len(previews) < 50 and len(candidates) > 1:
+            previews.append({"date": row["date"], "signal_pos": row["signal_pos"], "key": row["key"], "parsed": action, "scores": scored})
+    return actions, previews
+
+
 def _policy_oracle_actions(records: list[dict[str, Any]], rules: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     actions: list[dict[str, Any]] = []
     next_available_pos = -1
@@ -244,6 +330,11 @@ def run_model_policy_eval(
         resolved_model = resolve_vlm_model_alias(model_name, prefer_latest=True)
         generated_rows: list[dict[str, Any]] = []
         model_actions = oracle_actions
+    elif prediction_mode == "candidate_logprob":
+        if not adapter_dir:
+            raise ValueError("adapter_dir is required for prediction_mode=candidate_logprob")
+        resolved_model, tokenizer, model = _load_model(model_name, adapter_dir)
+        model_actions, generated_rows = _candidate_logprob_actions(tokenizer, model, eval_records, rules, cfg)
     elif prediction_mode == "model":
         if not adapter_dir:
             raise ValueError("adapter_dir is required for prediction_mode=model")
@@ -280,7 +371,7 @@ def run_model_policy_eval(
             for row, (action, raw), guarded in list(zip(eval_records, generated, model_actions))[:50]
         ]
     else:
-        raise ValueError("prediction_mode must be one of {'model','oracle_echo'}")
+        raise ValueError("prediction_mode must be one of {'model','candidate_logprob','oracle_echo'}")
     report = {
         "market_csv": str(Path(market_csv).resolve()),
         "model_name": resolved_model,
@@ -325,7 +416,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-eval-records", type=int, default=0)
     p.add_argument("--max-new-tokens", type=int, default=80)
     p.add_argument("--generation-batch-size", type=int, default=4)
-    p.add_argument("--prediction-mode", choices=["model", "oracle_echo"], default="model")
+    p.add_argument("--prediction-mode", choices=["model", "candidate_logprob", "oracle_echo"], default="model")
     p.add_argument("--rule-guard", choices=["none", "current_key_any", "current_key_action"], default="none")
     return p.parse_args()
 

@@ -1,6 +1,6 @@
 import unittest
 
-from training.eval_calibrated_policy_model import _agreement, _apply_rule_guard, _metrics_from_actions, parse_policy_json
+from training.eval_calibrated_policy_model import _agreement, _apply_rule_guard, _candidate_targets_for_row, _metrics_from_actions, parse_policy_json
 
 
 class TestEvalCalibratedPolicyModel(unittest.TestCase):
@@ -22,6 +22,13 @@ class TestEvalCalibratedPolicyModel(unittest.TestCase):
         self.assertEqual(metrics["trades"], 2)
         self.assertEqual(metrics["model_overlap_skips"], 1)
         self.assertGreater(metrics["strict_mdd_proxy"], 0.19)
+
+    def test_candidate_targets_include_trade_only_for_rule_key(self):
+        rules = {"k": {"action": {"side": "LONG", "hold_bars": 96}}}
+        self.assertEqual(len(_candidate_targets_for_row({"key": "missing"}, rules)), 1)
+        targets = _candidate_targets_for_row({"key": "k"}, rules)
+        self.assertEqual([t["gate"] for t in targets], ["NO_TRADE", "TRADE"])
+        self.assertEqual(targets[1]["hold_bars"], 96)
 
     def test_rule_guard_rejects_trade_outside_current_key_action(self):
         row = {"key": "k"}
