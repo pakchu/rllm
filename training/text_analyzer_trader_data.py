@@ -90,6 +90,102 @@ def _feature_line(name: str, value: str) -> str:
     return f"- {name}: {value}"
 
 
+def _bar_return_bucket(ret: float) -> str:
+    r = float(ret)
+    if r <= -0.006:
+        return "DROP"
+    if r <= -0.002:
+        return "DOWN"
+    if r < 0.002:
+        return "FLAT"
+    if r < 0.006:
+        return "UP"
+    return "RALLY"
+
+
+def _bar_range_bucket(range_pct: float) -> str:
+    r = float(range_pct)
+    if r < 0.003:
+        return "TIGHT"
+    if r < 0.008:
+        return "NORMAL"
+    if r < 0.015:
+        return "WIDE"
+    return "EXTREME"
+
+
+def _volume_bucket(z: float) -> str:
+    v = float(z)
+    if v < -0.75:
+        return "QUIET"
+    if v < 0.75:
+        return "NORMAL"
+    if v < 1.75:
+        return "ACTIVE"
+    return "SURGE"
+
+
+def _recent_bar_sequence(window: pd.DataFrame, *, bars: int = 16) -> tuple[list[str], dict[str, int]]:
+    """Return a compact past-only token sequence for the latest bars.
+
+    The analyzer's symbolic aggregate features were too lossy for gate
+    separation.  This sequence keeps local candle order without exposing any
+    future path labels: each token is direction/range/volume/wick state for a
+    bar already inside the input window.
+    """
+
+    recent = window.tail(max(1, int(bars))).copy()
+    vol_mean = float(recent["volume"].mean()) if len(recent) else 0.0
+    vol_std = float(recent["volume"].std(ddof=0)) if len(recent) else 0.0
+    tokens: list[str] = []
+    stats = {
+        "rally_or_up": 0,
+        "drop_or_down": 0,
+        "flat": 0,
+        "wide_or_extreme": 0,
+        "upper_rejections": 0,
+        "lower_rejections": 0,
+        "volume_active_or_surge": 0,
+    }
+    for _, row in recent.iterrows():
+        open_ = float(row["open"])
+        high = float(row["high"])
+        low = float(row["low"])
+        close = float(row["close"])
+        volume = float(row["volume"])
+        denom = close if close else max(open_, 1.0)
+        ret = 0.0 if open_ == 0.0 else close / open_ - 1.0
+        range_pct = 0.0 if denom == 0.0 else (high - low) / denom
+        body = abs(close - open_)
+        upper = max(0.0, high - max(open_, close))
+        lower = max(0.0, min(open_, close) - low)
+        vol_z = 0.0 if vol_std <= 0.0 else (volume - vol_mean) / vol_std
+        direction = _bar_return_bucket(ret)
+        range_state = _bar_range_bucket(range_pct)
+        volume_state = _volume_bucket(vol_z)
+        wick_state = "BALANCED"
+        if upper > max(body, lower) * 1.4:
+            wick_state = "UPPER_REJECT"
+        elif lower > max(body, upper) * 1.4:
+            wick_state = "LOWER_REJECT"
+        tokens.append(f"{direction}|{range_state}|{volume_state}|{wick_state}")
+        if direction in {"RALLY", "UP"}:
+            stats["rally_or_up"] += 1
+        elif direction in {"DROP", "DOWN"}:
+            stats["drop_or_down"] += 1
+        else:
+            stats["flat"] += 1
+        if range_state in {"WIDE", "EXTREME"}:
+            stats["wide_or_extreme"] += 1
+        if wick_state == "UPPER_REJECT":
+            stats["upper_rejections"] += 1
+        if wick_state == "LOWER_REJECT":
+            stats["lower_rejections"] += 1
+        if volume_state in {"ACTIVE", "SURGE"}:
+            stats["volume_active_or_surge"] += 1
+    return tokens, stats
+
+
 def build_analyzer_input(market: pd.DataFrame, signal_pos: int, *, window_size: int) -> str:
     """Prompt for analyzer fine-tuning; uses only bars <= signal_pos."""
     window = make_window(market, t=int(signal_pos), w=int(window_size))
@@ -136,6 +232,7 @@ def build_analyzer_summary(
     numeric, symbolic, tags = _engineered_prompt_features(window, feature_row)
     numeric_map = {k: float(v) for k, v in numeric}
     symbolic_map = {k: str(v) for k, v in symbolic}
+    bar_sequence, sequence_stats = _recent_bar_sequence(window)
     summary = {
         "regime": regime,
         "volatility_level": vol_level,
@@ -157,6 +254,8 @@ def build_analyzer_summary(
             "window_drawdown_pct": round(float(feature_row.get("window_drawdown", 0.0)) * 100.0, 3),
             "volume_zscore": round(float(feature_row.get("volume_zscore", 0.0)), 3),
         },
+        "recent_bar_sequence": bar_sequence,
+        "sequence_stats": sequence_stats,
         "symbolic_features": symbolic_map,
         "numeric_feature_names": sorted(numeric_map),
     }
