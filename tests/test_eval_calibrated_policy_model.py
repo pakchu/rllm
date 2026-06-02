@@ -1,6 +1,6 @@
 import unittest
 
-from training.eval_calibrated_policy_model import _agreement, _metrics_from_actions, parse_policy_json
+from training.eval_calibrated_policy_model import _agreement, _apply_rule_guard, _metrics_from_actions, parse_policy_json
 
 
 class TestEvalCalibratedPolicyModel(unittest.TestCase):
@@ -22,6 +22,16 @@ class TestEvalCalibratedPolicyModel(unittest.TestCase):
         self.assertEqual(metrics["trades"], 2)
         self.assertEqual(metrics["model_overlap_skips"], 1)
         self.assertGreater(metrics["strict_mdd_proxy"], 0.19)
+
+    def test_rule_guard_rejects_trade_outside_current_key_action(self):
+        row = {"key": "k"}
+        rules = {"k": {"action": {"side": "LONG", "hold_bars": 96}}}
+        accepted = _apply_rule_guard(row, {"gate": "TRADE", "side": "LONG", "hold_bars": 96}, rules, "current_key_action")
+        self.assertEqual(accepted["gate"], "TRADE")
+        rejected = _apply_rule_guard(row, {"gate": "TRADE", "side": "LONG", "hold_bars": 48}, rules, "current_key_action")
+        self.assertEqual(rejected["gate"], "NO_TRADE")
+        no_key = _apply_rule_guard({"key": "missing"}, {"gate": "TRADE", "side": "LONG", "hold_bars": 96}, rules, "current_key_any")
+        self.assertEqual(no_key["reason"], "RULE_GUARD_NO_CURRENT_KEY")
 
     def test_agreement_counts_gate_and_exact(self):
         records = [{"x": 1}, {"x": 2}]

@@ -123,6 +123,29 @@ def _generate_action(tokenizer: Any, model: Any, prompt: str, *, max_new_tokens:
     return parse_policy_json(generated, allowed_holds=allowed_holds), generated
 
 
+def _apply_rule_guard(row: dict[str, Any], action: dict[str, Any], rules: dict[str, dict[str, Any]], mode: str) -> dict[str, Any]:
+    guard = str(mode).strip().lower()
+    if guard in {"", "none"}:
+        return action
+    if str(action.get("gate", "NO_TRADE")).upper() != "TRADE":
+        return action
+    rule = rules.get(str(row["key"]))
+    if not rule:
+        rejected = dict(action)
+        rejected.update({"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0, "reason": "RULE_GUARD_NO_CURRENT_KEY"})
+        return rejected
+    expected = rule["action"]
+    if guard == "current_key_any":
+        return action
+    if guard != "current_key_action":
+        raise ValueError("rule_guard must be one of {'none','current_key_any','current_key_action'}")
+    if str(action.get("side", "")).upper() == str(expected["side"]).upper() and int(action.get("hold_bars", 0) or 0) == int(expected["hold_bars"]):
+        return action
+    rejected = dict(action)
+    rejected.update({"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0, "reason": "RULE_GUARD_ACTION_MISMATCH"})
+    return rejected
+
+
 def _policy_oracle_actions(records: list[dict[str, Any]], rules: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     actions: list[dict[str, Any]] = []
     next_available_pos = -1
@@ -198,6 +221,7 @@ def run_model_policy_eval(
     max_new_tokens: int = 80,
     generation_batch_size: int = 4,
     prediction_mode: str = "model",
+    rule_guard: str = "none",
 ) -> dict[str, Any]:
     cfg = CalibratedPolicyConfig(
         hold_candidates=parse_hold_candidates(hold_candidates),
@@ -239,10 +263,18 @@ def run_model_policy_eval(
             allowed_holds=cfg.hold_candidates,
             batch_size=int(generation_batch_size),
         )
-        model_actions = [action for action, _raw in generated]
+        raw_model_actions = [action for action, _raw in generated]
+        model_actions = [_apply_rule_guard(row, action, rules, rule_guard) for row, action in zip(eval_records, raw_model_actions)]
         generated_rows = [
-            {"date": row["date"], "signal_pos": row["signal_pos"], "key": row["key"], "raw": raw, "parsed": action}
-            for row, (action, raw) in list(zip(eval_records, generated))[:50]
+            {
+                "date": row["date"],
+                "signal_pos": row["signal_pos"],
+                "key": row["key"],
+                "raw": raw,
+                "parsed": action,
+                "guarded": guarded,
+            }
+            for row, (action, raw), guarded in list(zip(eval_records, generated, model_actions))[:50]
         ]
     else:
         raise ValueError("prediction_mode must be one of {'model','oracle_echo'}")
@@ -252,6 +284,7 @@ def run_model_policy_eval(
         "adapter_dir": adapter_dir,
         "prediction_mode": prediction_mode,
         "generation_batch_size": int(generation_batch_size),
+        "rule_guard": str(rule_guard),
         "config": asdict(cfg),
         "periods": {"train": [train_start, train_end], "eval": [eval_start, eval_end]},
         "records": {"train": len(train_records), "eval": len(eval_records)},
@@ -290,6 +323,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-new-tokens", type=int, default=80)
     p.add_argument("--generation-batch-size", type=int, default=4)
     p.add_argument("--prediction-mode", choices=["model", "oracle_echo"], default="model")
+    p.add_argument("--rule-guard", choices=["none", "current_key_any", "current_key_action"], default="none")
     return p.parse_args()
 
 
