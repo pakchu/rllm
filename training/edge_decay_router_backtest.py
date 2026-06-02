@@ -62,6 +62,19 @@ def route_record(record: dict[str, Any], cfg: EdgeRouterExecutionConfig) -> str:
     """Map an edge-decay target/prediction record to LONG/SHORT/NONE."""
     target_raw = record.get("prediction") or record.get("target") or "{}"
     target = json.loads(target_raw) if isinstance(target_raw, str) else dict(target_raw)
+    decision = str(target.get("decision", ""))
+    if decision == "ABSTAIN":
+        return "NONE"
+    if decision == "TRADE_TREND":
+        action_side = str(target.get("action_side", target.get("trend_side", "NONE")))
+        return action_side if action_side in {"LONG", "SHORT"} else "NONE"
+    if decision == "FADE_TREND":
+        action_side = str(target.get("action_side", ""))
+        if action_side in {"LONG", "SHORT"}:
+            return action_side
+        trend_side = str(target.get("trend_side", "NONE"))
+        side = _opposite(trend_side)
+        return side if side in {"LONG", "SHORT"} else "NONE"
     hint = str(target.get("recommended_router_hint", ""))
     trend_side = str(target.get("trend_side", "NONE"))
     if hint in set(cfg.allow_hints):
@@ -130,7 +143,7 @@ def simulate_router_records(
 
     for record in sorted(records, key=lambda r: str(r.get("date", ""))):
         target = json.loads(record.get("prediction") or record.get("target") or "{}")
-        hint = str(target.get("recommended_router_hint", ""))
+        hint = str(target.get("recommended_router_hint", target.get("decision", "")))
         hint_counts[hint] = hint_counts.get(hint, 0) + 1
         action = route_record(record, cfg)
         action_counts[action] = action_counts.get(action, 0) + 1

@@ -54,6 +54,15 @@ class TestEdgeDecayRouterBacktest(unittest.TestCase):
         self.assertEqual(route_record(_record("2025-01-01", "CONSIDER_REVERSAL_SPECIALIST", "LONG"), cfg), "SHORT")
         self.assertEqual(route_record(_record("2025-01-01", "REDUCE_OR_SKIP_TREND_SPECIALIST", "LONG"), cfg), "NONE")
 
+    def test_route_record_maps_decision_targets(self):
+        cfg = EdgeRouterExecutionConfig()
+        trade = {"target": json.dumps({"decision": "TRADE_TREND", "action_side": "LONG"})}
+        fade = {"target": json.dumps({"decision": "FADE_TREND", "action_side": "SHORT"})}
+        abstain = {"target": json.dumps({"decision": "ABSTAIN", "action_side": "NONE"})}
+        self.assertEqual(route_record(trade, cfg), "LONG")
+        self.assertEqual(route_record(fade, cfg), "SHORT")
+        self.assertEqual(route_record(abstain, cfg), "NONE")
+
     def test_simulate_router_records_uses_strict_ohlc_path(self):
         with tempfile.TemporaryDirectory() as td:
             market_path = Path(td) / "m.csv"

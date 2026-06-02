@@ -348,3 +348,70 @@ Next structural change:
 2. Make the analyzer output calibrated uncertainty/evidence quality, not only a class.
 3. Train/evaluate with router utility weighting so confusing a profitable allow/fade state with skip is penalized differently from confusing two skip-like states.
 4. Keep the batched eval path and require val+oos strict router reports before any further RL/trader stage.
+
+## 2026-06-03 decision-critical analyzer target
+
+The failed Gemma4 edge-decay run showed that a five-key teacher JSON is not the right LLM target.  The model learned the obvious trend side but failed on the economically important router hint.  The next structure compresses the teacher into the smallest decision-critical target:
+
+- `TRADE_TREND`: trade with the current trend.
+- `FADE_TREND`: trade against the current trend.
+- `ABSTAIN`: no position.
+
+New module:
+
+- `training/decision_analyzer_data.py`
+  - converts edge-decay teacher records into `decision_analyzer` SFT records.
+  - prompt remains past-only.
+  - target is compressed from future path diagnostics, so it is still a teacher label and not deployable until model predictions replace targets.
+  - output keys: `decision`, `action_side`, `confidence`, `rationale_class`.
+
+Generated artifacts:
+
+- full records: `data/decision_analyzer_h144_macro_stride96_full.jsonl`
+- full summary: `results/decision_analyzer_h144_macro_stride96_full_summary.json`
+- split summary: `results/decision_analyzer_h144_macro_split_summary.json`
+- dry-run SFT summary: `checkpoints/decision_analyzer_gemma4_dryrun/sft_summary.json`
+
+Full decision distribution over 3,457 records (`2023-01-01 02:55:00` → `2026-02-26 02:55:00`):
+
+| Decision | Count |
+| --- | ---: |
+| `ABSTAIN` | 2,536 |
+| `TRADE_TREND` | 675 |
+| `FADE_TREND` | 246 |
+
+Chronological splits:
+
+| Split | Records | Period | TRADE | FADE | ABSTAIN |
+| --- | ---: | --- | ---: | ---: | ---: |
+| train | 2,370 | `2023-01-01 02:55:00` → `2025-02-28 18:55:00` | 461 | 148 | 1,761 |
+| val | 552 | `2025-03-01 02:55:00` → `2025-08-31 18:55:00` | 108 | 54 | 390 |
+| oos | 535 | `2025-09-01 02:55:00` → `2026-02-26 02:55:00` | 106 | 44 | 385 |
+
+Strict oracle router check using decision targets:
+
+| Split | Samples | Trades | CAGR | Strict MDD | CAGR/MDD |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| train | 2,370 | 288 | 346.72% | 5.22% | 66.41 |
+| val | 552 | 71 | 321.14% | 4.44% | 72.40 |
+| oos | 535 | 70 | 353.84% | 6.87% | 51.47 |
+
+This preserves the oracle upper bound while giving the LLM a much smaller and more directly tradable output space than the failed five-key edge-decay target.
+
+Next actual Gemma run:
+
+```bash
+PYTHONPATH=. uv run python -m training.train_text_sft \
+  --train-jsonl data/decision_analyzer_h144_macro_train.jsonl \
+  --output-dir checkpoints/decision_analyzer_gemma4_lora_run1 \
+  --model-name gemma4-e4b \
+  --sample-mode balanced \
+  --max-samples 0 \
+  --max-steps 400 \
+  --max-seq-length 3072 \
+  --per-device-train-batch-size 1 \
+  --gradient-accumulation-steps 8 \
+  --lora-r 16 --lora-alpha 32 --lora-dropout 0.05
+```
+
+The next evaluation must use model predictions, not decision targets, then run `training.edge_decay_router_backtest` on those prediction rows.  Promotion condition remains val+oos strict router evidence, not SFT loss.

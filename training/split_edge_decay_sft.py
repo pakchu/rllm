@@ -36,10 +36,23 @@ def _select(rows: list[dict[str, Any]], start: str, end: str) -> list[dict[str, 
 
 
 def _target_counts(rows: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
-    counts: dict[str, dict[str, int]] = {"edge_decay_label": {}, "transition_label": {}, "risk_label": {}, "recommended_router_hint": {}}
+    keys = (
+        "decision",
+        "action_side",
+        "confidence",
+        "rationale_class",
+        "edge_decay_label",
+        "transition_label",
+        "risk_label",
+        "recommended_router_hint",
+    )
+    counts: dict[str, dict[str, int]] = {}
     for row in rows:
         target = json.loads(str(row.get("target", "{}")))
-        for key in counts:
+        for key in keys:
+            if key not in target:
+                continue
+            counts.setdefault(key, {})
             value = str(target.get(key, ""))
             counts[key][value] = counts[key].get(value, 0) + 1
     return {k: dict(sorted(v.items())) for k, v in counts.items()}
