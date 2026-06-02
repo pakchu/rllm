@@ -17,7 +17,7 @@ VALID_GATES = {"TRADE", "NO_TRADE"}
 VALID_SIDES = {"LONG", "SHORT", "NONE"}
 
 
-def parse_trader_json(text: str) -> dict[str, str]:
+def parse_trader_json(text: str) -> dict[str, Any]:
     raw = str(text).strip()
     try:
         obj = json.loads(raw)
@@ -30,16 +30,24 @@ def parse_trader_json(text: str) -> dict[str, str]:
         gate = "NO_TRADE"
     if side not in VALID_SIDES:
         side = "NONE"
+    try:
+        hold_bars = int(obj.get("hold_bars", 0) or 0)
+    except Exception:
+        hold_bars = 0
     if gate == "NO_TRADE":
         side = "NONE"
-    return {"gate": gate, "side": side}
+        hold_bars = 0
+    elif hold_bars <= 0:
+        hold_bars = 0
+    return {"gate": gate, "side": side, "hold_bars": hold_bars}
 
 
-def _metrics(rows: list[dict[str, Any]], predictions: list[dict[str, str]]) -> dict[str, Any]:
+def _metrics(rows: list[dict[str, Any]], predictions: list[dict[str, Any]]) -> dict[str, Any]:
     n = len(rows)
     gate_ok = 0
     side_ok_when_trade = 0
     trade_targets = 0
+    hold_ok_when_trade = 0
     exact = 0
     confusion: dict[str, int] = {}
     for row, pred in zip(rows, predictions):
@@ -50,14 +58,20 @@ def _metrics(rows: list[dict[str, Any]], predictions: list[dict[str, str]]) -> d
             trade_targets += 1
             if pred["side"] == target["side"]:
                 side_ok_when_trade += 1
+            if int(pred.get("hold_bars", 0) or 0) == int(target.get("hold_bars", 0) or 0):
+                hold_ok_when_trade += 1
         if pred == target:
             exact += 1
-        key = f"target={target['gate']}/{target['side']}|pred={pred['gate']}/{pred['side']}"
+        key = (
+            f"target={target['gate']}/{target['side']}/{target.get('hold_bars', 0)}|"
+            f"pred={pred['gate']}/{pred['side']}/{pred.get('hold_bars', 0)}"
+        )
         confusion[key] = confusion.get(key, 0) + 1
     return {
         "num_samples": n,
         "gate_accuracy": gate_ok / max(1, n),
         "side_accuracy_when_target_trade": side_ok_when_trade / max(1, trade_targets),
+        "hold_accuracy_when_target_trade": hold_ok_when_trade / max(1, trade_targets),
         "exact_action_accuracy": exact / max(1, n),
         "trade_targets": trade_targets,
         "confusion": dict(sorted(confusion.items())),
@@ -70,7 +84,7 @@ def _generate_predictions(
     model_name: str,
     adapter_dir: str,
     max_new_tokens: int,
-) -> list[dict[str, str]]:
+) -> list[dict[str, Any]]:
     disable_transformers_allocator_warmup()
     from peft import PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -82,7 +96,7 @@ def _generate_predictions(
     base = AutoModelForCausalLM.from_pretrained(resolved, trust_remote_code=True, device_map="auto")
     model = PeftModel.from_pretrained(base, adapter_dir)
     model.eval()
-    preds: list[dict[str, str]] = []
+    preds: list[dict[str, Any]] = []
     for row in rows:
         prompt = str(row["prompt"])
         messages = [{"role": "user", "content": prompt}]
