@@ -575,3 +575,41 @@ Interpretation:
 - Online/adaptive memory over the current symbolic summary does not solve the problem.
 - The failure survives no-lookahead maturity rules, so the issue is not only fixed train-bucket overfit.
 - The current summary representation lacks enough predictive state information for the 432-bar execution horizon.  Next work should either shorten/condition horizons, enrich the analyzer with direct temporal path prototypes, or move the LLM role toward generating multi-horizon uncertainty/risk narratives rather than action selection.
+
+## 2026-06-03 multi-horizon edge viability report
+
+After fixed buckets and online memory failed at the 432-bar execution horizon, the next diagnostic tested whether the horizon itself was the main problem.  The script recomputes TREND/FADE path outcomes from OHLC for multiple hold lengths using only past `source_edge_target.trend_side` for action orientation.
+
+New module:
+
+- `training/multi_horizon_edge_report.py`
+  - recomputes same-trend and fade/opposite outcomes for multiple hold horizons;
+  - reports static `TREND`, static `FADE`, and non-deployable `ORACLE` upper bound per split;
+  - uses future OHLC only for offline target design, never for inference side selection.
+- `tests/test_multi_horizon_edge_report.py`
+  - verifies horizon parsing, path summary behavior on toy OHLC, oracle upper bound, and CLI output.
+
+Run config:
+
+```text
+hold_bars_list = 36,72,144,288,432
+entry_delay_bars = 1
+leverage = 0.5
+fee = 0.04%, slippage = 0.01%
+```
+
+Summary table from `results/multi_horizon_edge_report_run1.json`:
+
+| Hold bars | Train best static mean | Val best static mean | OOS best static mean | Val oracle mean | OOS oracle mean |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 36 | -0.043% | -0.049% | -0.033% | 0.231% | 0.262% |
+| 72 | -0.034% | -0.045% | -0.009% | 0.368% | 0.422% |
+| 144 | -0.028% | -0.041% | -0.022% | 0.529% | 0.595% |
+| 288 | -0.049% | 0.007% | -0.028% | 0.786% | 0.892% |
+| 432 | 0.013% | -0.029% | -0.032% | 0.930% | 1.045% |
+
+Interpretation:
+
+- Shortening the horizon alone does not create a usable static TREND/FADE edge; static action means are negative or near zero across val/oos.
+- The oracle upper bound is strong and increases with horizon, so the opportunity exists, but it requires choosing between trend/fade/skip from richer state information.
+- The next target should not be a single action label at one horizon.  It should expose multi-horizon path-shape/risk information to the LLM, e.g. direction stability, reversal pressure, adverse-excursion bucket, and horizon-specific uncertainty.  The trader/RL layer can then learn when that path-shape narrative is actionable.
