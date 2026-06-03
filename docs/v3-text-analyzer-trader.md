@@ -695,3 +695,50 @@ Result:
 - horizon-key micro accuracy: `1.0` for all horizon keys
 
 This locks the evaluation bridge.  The next safe step is an actual Gemma path-shape LoRA run, followed by model-mode eval on val/oos.  Because target length averages ~1,254 chars, use a larger generation budget than decision targets, e.g. `--max-new-tokens 1536`, and monitor truncation.
+
+## 2026-06-04 Gemma4 multi-horizon path-shape LoRA result
+
+A real Gemma4 LoRA SFT was run on the multi-horizon path-shape analyzer target.  This target asks the analyzer to describe future path-shape classes, not to emit a direct trade action.  The intent is to test whether an LLM can learn a richer router state before attaching a trader/RL execution layer.
+
+Training setup:
+
+- model: `google/gemma-4-E4B-it` via repo alias `gemma4-e4b`
+- adapter: `checkpoints/multi_horizon_path_shape_gemma4_lora_run1`
+- train data: `data/multi_horizon_path_shape_h36_72_144_288_432_train.jsonl`
+- train rows: `2,370`, chronological range `2023-01-01` to `2025-02-28`
+- val rows: `552`, chronological range `2025-03-01` to `2025-08-31`
+- OOS rows: `535`, chronological range `2025-09-01` to `2026-02-26`
+- sequence length: `4096`
+- LoRA: `r=16`, `alpha=32`, `dropout=0.05`
+- optimization: `400` steps, batch `1`, grad accumulation `8`, `lr=2e-5`, balanced sample mode
+- runtime: `3,494s` (`~58.2m`), final train loss `0.06021`
+
+Leakage boundary:
+
+- model-mode eval uses only the prompt text;
+- the path-shape target uses future OHLC and is therefore only a supervised label;
+- target-echo is marked as oracle-only and is not a trading result;
+- this run evaluates label learnability, not profitability.
+
+Validation / OOS analyzer accuracy:
+
+| Split | Samples | Exact top-level | Exact all keys | Trend side | Direction stability | Reversal pressure | Risk profile | Best-path micro |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| val | 552 | 25.54% | 19.20% | 88.59% | 55.80% | 55.07% | 40.40% | 50.54% |
+| OOS | 535 | 22.24% | 18.50% | 91.03% | 58.32% | 57.01% | 37.20% | 53.31% |
+
+Artifacts:
+
+- `results/multi_horizon_path_shape_val_model_run1_eval.json`
+- `results/multi_horizon_path_shape_val_model_run1_predictions.jsonl`
+- `results/multi_horizon_path_shape_oos_model_run1_eval.json`
+- `results/multi_horizon_path_shape_oos_model_run1_predictions.jsonl`
+- `logs/multi_horizon_path_shape_gemma4_lora_run1_train.log`
+- `logs/multi_horizon_path_shape_val_model_run1_eval.log`
+- `logs/multi_horizon_path_shape_oos_model_run1_eval.log`
+
+Interpretation:
+
+- Positive: the model learned `trend_side` very well and OOS did not collapse, so the text prompt carries stable direction information.
+- Weak: exact structured path-shape reconstruction is low, especially risk/path bucket fields.  Low train loss plus weak structured OOS accuracy suggests the target is too long/nested and partly memorization-friendly.
+- Current conclusion: do **not** promote this analyzer to trading yet.  The next useful step is to compress the analyzer target into fewer decision-relevant states and/or make step/horizon selection a first-class label, then test whether those states improve strict no-leak trader/RL backtests.
