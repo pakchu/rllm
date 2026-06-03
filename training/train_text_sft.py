@@ -40,6 +40,8 @@ def _row_bucket(row: dict[str, Any]) -> str:
         parsed = json.loads(target)
     except Exception:
         return target[:80]
+    if isinstance(parsed, dict) and "direction_stability" in parsed:
+        return f"stability={parsed.get('direction_stability')},risk={parsed.get('risk_profile')}"
     if isinstance(parsed, dict) and "decision" in parsed:
         return f"decision={parsed.get('decision')},side={parsed.get('action_side')}"
     if isinstance(parsed, dict) and "edge_decay_label" in parsed:
@@ -102,7 +104,11 @@ def _target_counter(rows: list[dict[str, Any]]) -> dict[str, int]:
         target = str(row.get("target", ""))
         try:
             parsed = json.loads(target)
-            if isinstance(parsed, dict) and "decision" in parsed:
+            if isinstance(parsed, dict) and "direction_stability" in parsed:
+                for key in ("trend_side", "direction_stability", "reversal_pressure", "risk_profile"):
+                    if key in parsed:
+                        counts[f"{key}={parsed[key]}"] += 1
+            elif isinstance(parsed, dict) and "decision" in parsed:
                 for key in ("decision", "action_side", "confidence", "rationale_class"):
                     if key in parsed:
                         counts[f"{key}={parsed[key]}"] += 1

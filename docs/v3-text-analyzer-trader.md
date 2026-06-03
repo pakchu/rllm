@@ -613,3 +613,50 @@ Interpretation:
 - Shortening the horizon alone does not create a usable static TREND/FADE edge; static action means are negative or near zero across val/oos.
 - The oracle upper bound is strong and increases with horizon, so the opportunity exists, but it requires choosing between trend/fade/skip from richer state information.
 - The next target should not be a single action label at one horizon.  It should expose multi-horizon path-shape/risk information to the LLM, e.g. direction stability, reversal pressure, adverse-excursion bucket, and horizon-specific uncertainty.  The trader/RL layer can then learn when that path-shape narrative is actionable.
+
+## 2026-06-03 multi-horizon path-shape analyzer target
+
+The multi-horizon viability report showed that static action labels are weak while oracle upper bounds remain strong.  The next LLM target therefore stops asking for a final action and instead asks the analyzer to describe path shape and risk across horizons.
+
+New module:
+
+- `training/multi_horizon_path_shape_data.py`
+  - builds `multi_horizon_path_shape_analyzer` SFT records;
+  - prompt uses only the past-only analyzer summary JSON;
+  - target uses future OHLC path outcomes to describe horizon-wise trend/fade return buckets, adverse-excursion buckets, relative edge, best path, and tradable path count;
+  - top-level target keys: `trend_side`, `direction_stability`, `reversal_pressure`, `risk_profile`, `horizons`, `summary_counts`;
+  - this is explicitly not a final action target.
+- `tests/test_multi_horizon_path_shape_data.py`
+  - verifies target derivation, leakage guards, summary counts, and CLI output.
+
+Generated artifacts:
+
+- full records: `data/multi_horizon_path_shape_h36_72_144_288_432_full.jsonl`
+- full summary: `results/multi_horizon_path_shape_h36_72_144_288_432_full_summary.json`
+- split summary: `results/multi_horizon_path_shape_h36_72_144_288_432_split_summary.json`
+- dry-run SFT summary: `checkpoints/multi_horizon_path_shape_gemma4_dryrun/sft_summary.json`
+
+Full dataset distribution over 3,457 records:
+
+| Target key | Distribution |
+| --- | --- |
+| `direction_stability` | `HORIZON_CONFLICT=1461`, `FADE_STABLE=679`, `TREND_STABLE=567`, `NO_STABLE_EDGE=750` |
+| `reversal_pressure` | `HIGH=1767`, `LOW=1302`, `MEDIUM=388` |
+| `risk_profile` | `EXTREME_PATH_RISK=1410`, `MIXED_PATH_RISK=1002`, `HIGH_PATH_RISK=801`, `LOW_PATH_RISK=244` |
+| `trend_side` | `LONG=1443`, `SHORT=1295`, `NONE=719` |
+
+Chronological splits:
+
+| Split | Records | Period |
+| --- | ---: | --- |
+| train | 2,370 | `2023-01-01 02:55:00` → `2025-02-28 18:55:00` |
+| val | 552 | `2025-03-01 02:55:00` → `2025-08-31 18:55:00` |
+| oos | 535 | `2025-09-01 02:55:00` → `2026-02-26 02:55:00` |
+
+Dry-run SFT on 128 balanced train rows resolved `gemma4-e4b` to `google/gemma-4-E4B-it`, with prompt length mean `2572` chars and target length mean `1254` chars.  This fits the existing `max_seq_length=3072` path but is close enough that actual SFT should monitor truncation.
+
+Next step:
+
+1. Add an evaluator for path-shape JSON keys before long SFT.
+2. Run target-echo smoke to ensure parsing works.
+3. Fine-tune Gemma on this target only if the evaluator can report top-level and horizon-level accuracy, then pass predicted path-shape narratives into a separate trader/RL layer.

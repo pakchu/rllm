@@ -45,6 +45,10 @@ def _target_counts(rows: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
         "transition_label",
         "risk_label",
         "recommended_router_hint",
+        "trend_side",
+        "direction_stability",
+        "reversal_pressure",
+        "risk_profile",
     )
     counts: dict[str, dict[str, int]] = {}
     for row in rows:
