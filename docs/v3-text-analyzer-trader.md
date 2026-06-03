@@ -742,3 +742,36 @@ Interpretation:
 - Positive: the model learned `trend_side` very well and OOS did not collapse, so the text prompt carries stable direction information.
 - Weak: exact structured path-shape reconstruction is low, especially risk/path bucket fields.  Low train loss plus weak structured OOS accuracy suggests the target is too long/nested and partly memorization-friendly.
 - Current conclusion: do **not** promote this analyzer to trading yet.  The next useful step is to compress the analyzer target into fewer decision-relevant states and/or make step/horizon selection a first-class label, then test whether those states improve strict no-leak trader/RL backtests.
+
+## 2026-06-04 compact path-shape router target
+
+The first Gemma4 path-shape run showed that the model can learn direction but struggles with long nested horizon JSON.  The next target therefore compresses the teacher path-shape labels into a short router state:
+
+- `trend_side`
+- `action_path`: `TREND` / `FADE` / `NONE`
+- `horizon_bars`: `0,36,72,144,288,432`
+- `horizon_policy`: `SHORT_STEP` / `MID_STEP` / `LONG_STEP` / `SKIP_STEP`
+- `edge_quality`: `STRONG` / `MODERATE` / `WEAK` / `NO_EDGE`
+- `risk_budget`: `AGGRESSIVE_OK` / `NORMAL` / `SMALL` / `AVOID_OR_TINY`
+- `score_bucket`, `direction_stability`, `reversal_pressure`
+
+This makes the analyzer responsible for the step/horizon/router decision while still leaving final order execution to trader/RL.  The label is derived from future path-shape teacher targets, so the same leakage boundary applies: prompts are past-only, targets are supervised future-path labels, and target-echo is oracle-only.
+
+Generated split summaries:
+
+| Split | Rows | Target chars mean | Action path distribution | Horizon policy distribution | Risk budget distribution |
+| --- | ---: | ---: | --- | --- | --- |
+| train | 2,370 | 233.8 | FADE 915 / TREND 914 / NONE 541 | LONG 1,256 / SKIP 541 / SHORT 321 / MID 252 | AVOID 1,549 / SMALL 512 / NORMAL 206 / AGGRESSIVE 103 |
+| val | 552 | 232.5 | FADE 227 / TREND 217 / NONE 108 | LONG 317 / SKIP 108 / SHORT 70 / MID 57 | AVOID 291 / SMALL 147 / NORMAL 74 / AGGRESSIVE 40 |
+| OOS | 535 | 232.7 | FADE 227 / TREND 206 / NONE 102 | LONG 298 / SKIP 102 / SHORT 73 / MID 62 | AVOID 319 / SMALL 142 / NORMAL 47 / AGGRESSIVE 27 |
+
+Dry-run SFT summary:
+
+- artifact: `checkpoints/compact_path_shape_gemma4_dryrun/sft_summary.json`
+- model alias: `gemma4-e4b` -> `google/gemma-4-E4B-it`
+- train rows: `2,370`
+- prompt chars mean: `2,647.1`
+- target chars mean: `233.8`, down from the previous path-shape target mean of about `1,266`
+- suggested first real SFT: `max_seq_len=3072`, `max_steps=300-400`, `max_new_tokens=384`
+
+Next gate: train this compact analyzer and evaluate val/OOS exact JSON accuracy.  Promote to trader/RL backtest only if OOS action_path/horizon_policy/risk_budget accuracy is materially better than the nested target run and does not collapse into a static majority policy.

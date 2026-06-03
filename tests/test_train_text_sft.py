@@ -67,6 +67,22 @@ class TestTrainTextSFT(unittest.TestCase):
                 counts[side] = counts.get(side, 0) + 1
             self.assertEqual(counts, {"LONG": 2, "SHORT": 2})
 
+    def test_balanced_sampling_spreads_compact_path_shape_labels(self):
+        with tempfile.TemporaryDirectory() as td:
+            data = Path(td) / "compact.jsonl"
+            rows = []
+            for i in range(8):
+                rows.append({"task": "compact", "prompt": f"N{i}", "target": json.dumps({"action_path": "NONE", "horizon_policy": "SKIP_STEP", "risk_budget": "AVOID_OR_TINY"})})
+            for i in range(2):
+                rows.append({"task": "compact", "prompt": f"T{i}", "target": json.dumps({"action_path": "TREND", "horizon_policy": "LONG_STEP", "risk_budget": "SMALL"})})
+                rows.append({"task": "compact", "prompt": f"F{i}", "target": json.dumps({"action_path": "FADE", "horizon_policy": "SHORT_STEP", "risk_budget": "NORMAL"})})
+            data.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+            sampled = load_jsonl(data, max_samples=6, sample_mode="balanced", seed=7)
+            actions = {json.loads(r["target"])["action_path"] for r in sampled}
+            self.assertEqual(actions, {"NONE", "TREND", "FADE"})
+            summary = train_text_sft(TextSFTConfig(model_name="gemma4", train_jsonl=str(data), output_dir=str(Path(td) / "out"), max_samples=6, sample_mode="balanced"), dry_run=True)
+            self.assertIn("action_path=TREND", summary["target_counts"])
+
 
 if __name__ == "__main__":
     unittest.main()
