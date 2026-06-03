@@ -471,3 +471,53 @@ Next structural fix:
 1. Redesign analyzer labels away from direct future-path oracle classes and toward past-computable state/risk descriptions plus separately evaluated execution outcomes.
 2. Keep macro/price sequence features, but preserve more local structure than the current coarse symbolic summary.
 3. Use the learnability gate as a cheap stop/go check before every LLM SFT target.
+
+## 2026-06-03 train-selected analyzer state edge report
+
+After the decision-label learnability gate failed, the next diagnostic stopped asking the LLM to predict future oracle classes and instead tested whether past-only analyzer states have stable economic edge.
+
+New module:
+
+- `training/analyzer_state_edge_report.py`
+  - extracts past-only analyzer state buckets from the same summary JSON;
+  - chooses bucket actions (`TREND` or `FADE`) on train only using path diagnostics;
+  - freezes that bucket policy for val/oos;
+  - exports router-compatible predictions whose side comes only from past `source_edge_target.trend_side`, never from target action side.
+- `tests/test_analyzer_state_edge_report.py`
+  - verifies train-only bucket selection, fixed val/oos application, CLI outputs, and side leakage protection.
+
+Run 1 bucket fields:
+
+```text
+regime,trend_alignment,location,volatility_level,risk_state,sequence_stats.wide_or_extreme
+```
+
+Selection: train only, min train count `20`, min mean return `0.1%`, max `64` buckets.
+
+Offline path-diagnostic report:
+
+| Split | Trades | Mean return/trade | Win rate | CI95 mean return |
+| --- | ---: | ---: | ---: | ---: |
+| train | 369 | 0.240% | 52.6% | [0.089%, 0.392%] |
+| val | 100 | -0.011% | 41.0% | [-0.268%, 0.247%] |
+| oos | 83 | -0.313% | 43.4% | [-0.627%, -0.000%] |
+
+Strict router using the frozen state policy:
+
+| Split | Trades | CAGR | Strict MDD | CAGR/MDD |
+| --- | ---: | ---: | ---: | ---: |
+| val | 58 | 7.99% | 10.38% | 0.77 |
+| oos | 51 | -23.57% | 20.83% | -1.13 |
+
+A stricter train positive-CI variant selected only one bucket:
+
+| Split | Trades | CAGR | Strict MDD | CAGR/MDD |
+| --- | ---: | ---: | ---: | ---: |
+| val | 8 | 2.72% | 2.35% | 1.16 |
+| oos | 3 | -2.88% | 4.58% | -0.63 |
+
+Interpretation:
+
+- Coarse analyzer states do not carry stable enough edge across the current val/oos periods.
+- This narrows the failure: the issue is not only LLM class imitation; the current state abstraction itself is too weak/nonstationary for execution.
+- The next redesign must preserve more temporal/local structure or introduce adaptive/online regime memory.  Simply mapping current symbolic state buckets to fixed actions is another overfit path.
