@@ -56,6 +56,8 @@ class TestDecisionAnalyzerData(unittest.TestCase):
         self.assertEqual(rec["task"], "decision_analyzer")
         self.assertIn(target["decision"], {"TRADE_TREND", "FADE_TREND", "ABSTAIN"})
         self.assertIn("Return exactly one JSON object", rec["prompt"])
+        self.assertIn("Past-only analyzer summary:", rec["prompt"])
+        self.assertNotIn("Do not emit TRADE/NO_TRADE", rec["prompt"])
         self.assertFalse(rec["leakage_guard"]["prompt_uses_future_path"])
         self.assertTrue(rec["leakage_guard"]["target_uses_future_path"])
         self.assertTrue(rec["leakage_guard"]["decision_target_is_compressed_from_edge_teacher"])

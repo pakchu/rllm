@@ -111,23 +111,32 @@ def derive_decision_target(edge_record: dict[str, Any], cfg: DecisionAnalyzerCon
     return target_out
 
 
+def _past_summary_text(edge_record: dict[str, Any]) -> str:
+    summary = edge_record.get("past_summary")
+    if isinstance(summary, dict):
+        return json.dumps(summary, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    if isinstance(summary, str) and summary.strip():
+        return summary.strip()
+    prompt = str(edge_record.get("prompt", ""))
+    marker = "Past-only analyzer summary: "
+    if marker in prompt:
+        return prompt.rsplit(marker, 1)[-1].strip()
+    return prompt.strip()
+
+
 def build_decision_prompt(edge_record: dict[str, Any]) -> str:
-    summary = str(edge_record.get("past_summary") or edge_record.get("prompt", ""))
-    if not isinstance(edge_record.get("past_summary"), str):
-        # The edge prompt already embeds a natural-language past-only summary.
-        # Reuse the original prompt text when the structured summary is a dict.
-        summary = str(edge_record.get("prompt", ""))
+    summary = _past_summary_text(edge_record)
     return "\n".join(
         [
             "You are the decision analyzer for a BTCUSDT futures router.",
-            "Use only the past-only market and macro context below.",
+            "Use only the past-only analyzer summary JSON below.",
             "Choose the smallest safe trading decision. Do not optimize thresholds or mention future returns.",
             "Decision set: TRADE_TREND means trade with the current trend; FADE_TREND means trade against it; ABSTAIN means no position.",
             "Return exactly one JSON object with keys decision, action_side, confidence, rationale_class.",
             "Allowed action_side values: LONG, SHORT, NONE. Use NONE only with ABSTAIN.",
             "Allowed confidence values: HIGH, MEDIUM, LOW.",
             "",
-            f"Past-only context: {summary}",
+            f"Past-only analyzer summary: {summary}",
         ]
     )
 

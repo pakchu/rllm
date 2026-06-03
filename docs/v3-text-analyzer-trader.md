@@ -415,3 +415,59 @@ PYTHONPATH=. uv run python -m training.train_text_sft \
 ```
 
 The next evaluation must use model predictions, not decision targets, then run `training.edge_decay_router_backtest` on those prediction rows.  Promotion condition remains val+oos strict router evidence, not SFT loss.
+
+## 2026-06-03 decision feature learnability gate
+
+The decision-critical target kept the oracle upper bound, but two Gemma4-E4B SFT runs exposed a lower-level issue: changing class balance moved the failure mode rather than producing a robust predictor.
+
+Gemma decision analyzer runs:
+
+| Run | Train data | Result |
+| --- | --- | --- |
+| run1 | natural chronological train, 400 LoRA steps | collapsed to `ABSTAIN/NONE` on all 552 val samples; strict router made 0 trades |
+| run2 | balanced train 700/700/700, 400 LoRA steps | broke abstain collapse but over-traded; val strict router 101 trades, CAGR `-24.54%`, strict MDD `17.01%`, ratio `-1.44` |
+
+A dependency-free feature learnability gate was added before spending more GPU time:
+
+- `training/decision_feature_learnability.py`
+  - parses the same past-only analyzer summary seen by the decision LLM;
+  - flattens symbolic fields and binned numeric evidence;
+  - trains a categorical Naive Bayes baseline on train only;
+  - reports train/val/oos accuracy versus the majority-class baseline;
+  - can write router-compatible prediction JSONL.
+- `tests/test_decision_feature_learnability.py`
+  - verifies prompt summary parsing, feature flattening, toy separability, CLI outputs, and that prediction side uses only past `source_edge_target.trend_side`, never `target.action_side`.
+
+Actual no-leak feature gate on the current train/val/oos decision splits:
+
+| Split | Samples | NB accuracy | Majority baseline | Beats baseline? |
+| --- | ---: | ---: | ---: | --- |
+| train | 2,370 | 72.41% | 74.30% | no |
+| val | 552 | 56.52% | 70.65% | no |
+| oos | 535 | 54.02% | 71.96% | no |
+
+Artifacts:
+
+- feature report: `results/decision_feature_learnability_nb_run1.json`
+- predictions: `results/decision_feature_nb_run1_predictions/{train,val,oos}_predictions.jsonl`
+- strict val router: `results/decision_router_val_feature_nb_run1.json`
+- strict oos router: `results/decision_router_oos_feature_nb_run1.json`
+
+Strict router using the no-leak NB decision predictions and past-only trend side:
+
+| Split | Trades | CAGR | Strict MDD | CAGR/MDD |
+| --- | ---: | ---: | ---: | ---: |
+| val | 79 | -31.82% | 24.41% | -1.30 |
+| oos | 75 | -14.72% | 13.44% | -1.09 |
+
+Interpretation:
+
+- The current analyzer summary features are not proving decision-label learnability even for a cheap baseline; the LLM failures are therefore not just a Gemma capacity/training issue.
+- The decision prompt was also simplified to remove nested edge-decay instructions.  It now feeds only the past-only analyzer summary JSON instead of wrapping the previous edge prompt, preventing conflicting instructions such as edge-label output versus decision output.
+- Promotion rule: do not run another long Gemma SFT on this target unless a train-only baseline beats majority on both val and oos or the target/feature schema is redesigned.
+
+Next structural fix:
+
+1. Redesign analyzer labels away from direct future-path oracle classes and toward past-computable state/risk descriptions plus separately evaluated execution outcomes.
+2. Keep macro/price sequence features, but preserve more local structure than the current coarse symbolic summary.
+3. Use the learnability gate as a cheap stop/go check before every LLM SFT target.
