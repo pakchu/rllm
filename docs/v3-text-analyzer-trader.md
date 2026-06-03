@@ -660,3 +660,38 @@ Next step:
 1. Add an evaluator for path-shape JSON keys before long SFT.
 2. Run target-echo smoke to ensure parsing works.
 3. Fine-tune Gemma on this target only if the evaluator can report top-level and horizon-level accuracy, then pass predicted path-shape narratives into a separate trader/RL layer.
+
+## 2026-06-03 path-shape evaluator and target-echo smoke
+
+Before long Gemma SFT, the path-shape target now has a dedicated evaluator.
+
+New module:
+
+- `training/eval_multi_horizon_path_shape_analyzer.py`
+  - parses model/target JSON robustly, including fenced or noisy text around the JSON object;
+  - normalizes top-level keys: `trend_side`, `direction_stability`, `reversal_pressure`, `risk_profile`;
+  - normalizes each horizon's `trend_return_bucket`, `fade_return_bucket`, `trend_mae_bucket`, `fade_mae_bucket`, `relative_edge`, `best_path`, and `tradable_path_count`;
+  - reports exact top-level accuracy, exact all-key accuracy, per-top-key accuracy, horizon-key micro accuracy, and per-horizon confusion matrices;
+  - supports target-echo and model generation modes.
+- `tests/test_eval_multi_horizon_path_shape_analyzer.py`
+  - verifies invalid/default parsing, nested horizon normalization, target-echo metrics, and prediction JSONL export.
+
+Target-echo smoke on full validation split:
+
+```bash
+PYTHONPATH=. uv run python -m training.eval_multi_horizon_path_shape_analyzer \
+  --eval-jsonl data/multi_horizon_path_shape_h36_72_144_288_432_val.jsonl \
+  --output results/multi_horizon_path_shape_val_target_echo_eval.json \
+  --prediction-output results/multi_horizon_path_shape_val_target_echo_predictions.jsonl \
+  --prediction-mode target_echo \
+  --hold-bars-list 36,72,144,288,432
+```
+
+Result:
+
+- samples: `552`
+- exact top-level accuracy: `1.0`
+- exact all-key accuracy: `1.0`
+- horizon-key micro accuracy: `1.0` for all horizon keys
+
+This locks the evaluation bridge.  The next safe step is an actual Gemma path-shape LoRA run, followed by model-mode eval on val/oos.  Because target length averages ~1,254 chars, use a larger generation budget than decision targets, e.g. `--max-new-tokens 1536`, and monitor truncation.
