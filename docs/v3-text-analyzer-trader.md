@@ -521,3 +521,57 @@ Interpretation:
 - Coarse analyzer states do not carry stable enough edge across the current val/oos periods.
 - This narrows the failure: the issue is not only LLM class imitation; the current state abstraction itself is too weak/nonstationary for execution.
 - The next redesign must preserve more temporal/local structure or introduce adaptive/online regime memory.  Simply mapping current symbolic state buckets to fixed actions is another overfit path.
+
+## 2026-06-03 leakage-safe online state memory diagnostic
+
+Fixed train-selected state buckets failed OOS, so the next diagnostic tested an adaptive regime-memory idea without lookahead.  The goal was to see whether similar recent analyzer states can guide action selection better than a static bucket map.
+
+New module:
+
+- `training/online_state_memory_report.py`
+  - keeps a recency-aware memory of prior analyzer states;
+  - at each decision, a prior example is eligible only after `example.signal_pos + hold_bars <= current.signal_pos`;
+  - chooses `TREND`, `FADE`, or `SKIP` from top-k similar matured examples;
+  - exports router-compatible predictions using only past `source_edge_target.trend_side` for side selection.
+- `tests/test_online_state_memory_report.py`
+  - verifies delayed memory maturity, similar-memory action choice, CLI output, and side leakage protection.
+
+Default run config:
+
+```text
+similarity_fields = regime,trend_alignment,location,volatility_level,risk_state,sequence_stats.wide_or_extreme,sequence_stats.rally_or_up,sequence_stats.drop_or_down
+top_k = 64
+min_similarity = 0.625
+min_neighbors = 20
+min_mean_return = 0.1%
+recency_halflife_bars = 8640
+hold_bars = 432
+```
+
+Offline online-memory report:
+
+| Split | Trades | Mean return/trade | Win rate | CI95 mean return |
+| --- | ---: | ---: | ---: | ---: |
+| train | 1,030 | 0.071% | 50.1% | [-0.023%, 0.165%] |
+| val | 201 | -0.117% | 45.8% | [-0.314%, 0.080%] |
+| oos | 233 | -0.007% | 51.1% | [-0.195%, 0.182%] |
+
+Strict router using online-memory predictions:
+
+| Split | Trades | CAGR | Strict MDD | CAGR/MDD |
+| --- | ---: | ---: | ---: | ---: |
+| val | 76 | -44.68% | 26.89% | -1.66 |
+| oos | 76 | -19.36% | 15.83% | -1.22 |
+
+A single risk-sensitive variant (`top_k=32`, `min_similarity=0.75`, `min_mean_return=0.2%`, `mae_penalty=0.05`, `recency_halflife_bars=4320`) also failed:
+
+| Split | Trades | CAGR | Strict MDD | CAGR/MDD |
+| --- | ---: | ---: | ---: | ---: |
+| val | 82 | -30.70% | 19.68% | -1.56 |
+| oos | 81 | -26.79% | 17.47% | -1.53 |
+
+Interpretation:
+
+- Online/adaptive memory over the current symbolic summary does not solve the problem.
+- The failure survives no-lookahead maturity rules, so the issue is not only fixed train-bucket overfit.
+- The current summary representation lacks enough predictive state information for the 432-bar execution horizon.  Next work should either shorten/condition horizons, enrich the analyzer with direct temporal path prototypes, or move the LLM role toward generating multi-horizon uncertainty/risk narratives rather than action selection.
