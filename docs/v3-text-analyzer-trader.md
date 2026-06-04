@@ -881,3 +881,32 @@ Dry-run SFT summary:
 - prompt chars mean: `2,671.1`
 - target chars mean: `246.0`
 - no model loaded; this only verifies SFT schema/sampling readiness.
+
+## 2026-06-04 fade-warning narrow SFT target
+
+The repaired key-wise baseline showed that only `fade_warning` clearly beats majority on both val and OOS.  The next SFT target is therefore narrowed to a fade-risk analyzer instead of another full route/horizon JSON.
+
+Target keys:
+
+- `trend_side`
+- `fade_warning`: `FADE_STRONG` / `FADE_WATCH` / `NO_FADE_WARNING`
+- `skip_reason`: auxiliary explanation, not direct routing
+- `trend_continuation_quality`: auxiliary context
+
+Generated split summaries:
+
+| Split | Rows | Target chars mean | Fade warning distribution | Skip reason highlights |
+| --- | ---: | ---: | --- | --- |
+| train | 2,370 | 127.7 | NO 914 / STRONG 750 / WATCH 706 | ADVERSE 1,009 / NO_EDGE 522 / FADE 339 / TREND 292 |
+| val | 552 | 127.9 | STRONG 204 / NO 204 / WATCH 144 | ADVERSE 183 / FADE 130 / NO_EDGE 107 / TREND 97 |
+| OOS | 535 | 127.8 | STRONG 190 / NO 186 / WATCH 159 | ADVERSE 217 / NO_EDGE 100 / FADE 97 / TREND 78 |
+
+Validation bridge:
+
+- target-echo val: exact all keys `1.0`, exact primary key `1.0`
+- target-echo OOS: exact all keys `1.0`, exact primary key `1.0`
+- dry-run artifact: `checkpoints/fade_warning_gemma4_dryrun/sft_summary.json`
+- prompt chars mean: `2,522.1`
+- target chars mean: `127.7`
+
+Next gate: run a real Gemma4 LoRA on this narrow target and evaluate model-mode `fade_warning` on val/OOS.  A later trading test should use it as a fade-risk veto/filter, not as a standalone action policy.
