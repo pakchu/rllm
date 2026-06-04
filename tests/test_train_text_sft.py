@@ -83,6 +83,22 @@ class TestTrainTextSFT(unittest.TestCase):
             summary = train_text_sft(TextSFTConfig(model_name="gemma4", train_jsonl=str(data), output_dir=str(Path(td) / "out"), max_samples=6, sample_mode="balanced"), dry_run=True)
             self.assertIn("action_path=TREND", summary["target_counts"])
 
+    def test_balanced_sampling_spreads_repaired_router_labels(self):
+        with tempfile.TemporaryDirectory() as td:
+            data = Path(td) / "repaired.jsonl"
+            rows = []
+            for i in range(8):
+                rows.append({"task": "repaired", "prompt": f"N{i}", "target": json.dumps({"fade_warning": "NO_FADE_WARNING", "skip_reason": "NO_EDGE", "primary_route": "SKIP"})})
+            for i in range(2):
+                rows.append({"task": "repaired", "prompt": f"F{i}", "target": json.dumps({"fade_warning": "FADE_STRONG", "skip_reason": "TRADEABLE_FADE", "primary_route": "FADE"})})
+                rows.append({"task": "repaired", "prompt": f"W{i}", "target": json.dumps({"fade_warning": "FADE_WATCH", "skip_reason": "LOW_CONFIDENCE", "primary_route": "SKIP"})})
+            data.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+            sampled = load_jsonl(data, max_samples=6, sample_mode="balanced", seed=7)
+            warnings = {json.loads(r["target"])["fade_warning"] for r in sampled}
+            self.assertEqual(warnings, {"NO_FADE_WARNING", "FADE_STRONG", "FADE_WATCH"})
+            summary = train_text_sft(TextSFTConfig(model_name="gemma4", train_jsonl=str(data), output_dir=str(Path(td) / "out"), max_samples=6, sample_mode="balanced"), dry_run=True)
+            self.assertIn("fade_warning=FADE_STRONG", summary["target_counts"])
+
 
 if __name__ == "__main__":
     unittest.main()

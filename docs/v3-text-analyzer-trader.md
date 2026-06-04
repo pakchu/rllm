@@ -838,3 +838,46 @@ Conclusion:
 - Compact analyzer outputs are not yet monetizable.  Even the val-selected route cannot produce positive validation economics and fails badly on OOS.
 - The issue is not just execution tuning; the model's current `action_path`/trend-vs-fade signal is not economically reliable.
 - Next target repair should remove the collapsed risk label, avoid forcing FADE/TREND from weak path buckets, and train a binary/ordinal question that the LLM can actually learn: e.g. `trend_continuation_quality` + `fade_warning` + `skip_reason`, with class balancing and a baseline comparison before another full 100-minute SFT.
+
+## 2026-06-04 repaired router-state target and learnability gate
+
+After compact run1 failed strict execution, the next target repair removed the collapsed `risk_budget` label and decomposed the overloaded `action_path` into simpler questions:
+
+- `trend_continuation_quality`: `CONTINUE_STRONG` / `CONTINUE_WATCH` / `NO_CONTINUATION`
+- `fade_warning`: `FADE_STRONG` / `FADE_WATCH` / `NO_FADE_WARNING`
+- `skip_reason`: `TRADEABLE_TREND` / `TRADEABLE_FADE` / `CONFLICTING_HORIZONS` / `ADVERSE_RISK` / `LOW_CONFIDENCE` / `NO_EDGE`
+- `primary_route`: `TREND` / `FADE` / `SKIP`
+- `horizon_policy`: `SHORT_STEP` / `MID_STEP` / `LONG_STEP` / `SKIP_STEP`
+
+Generated repaired split distributions:
+
+| Split | Rows | Primary route | Fade warning | Skip reason highlights |
+| --- | ---: | --- | --- | --- |
+| train | 2,370 | SKIP 1,739 / FADE 339 / TREND 292 | NO 914 / STRONG 750 / WATCH 706 | ADVERSE 1,009 / NO_EDGE 522 / FADE 339 / TREND 292 |
+| val | 552 | SKIP 325 / FADE 130 / TREND 97 | NO 204 / STRONG 204 / WATCH 144 | ADVERSE 183 / FADE 130 / NO_EDGE 107 / TREND 97 |
+| OOS | 535 | SKIP 360 / FADE 97 / TREND 78 | STRONG 190 / NO 186 / WATCH 159 | ADVERSE 217 / NO_EDGE 100 / FADE 97 / TREND 78 |
+
+Key-wise categorical Naive Bayes learnability baseline:
+
+| Key | Val acc | Val majority | OOS acc | OOS majority | Pass? |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `trend_continuation_quality` | 47.64% | 54.53% | 44.11% | 54.39% | no |
+| `fade_warning` | 49.64% | 36.96% | 48.79% | 35.51% | yes |
+| `skip_reason` | 39.86% | 33.15% | 43.18% | 40.56% | weak yes |
+| `primary_route` | 50.91% | 58.88% | 54.39% | 67.29% | no |
+| `horizon_policy` | 44.93% | 58.88% | 50.28% | 67.29% | no |
+
+Interpretation:
+
+- The repaired target did not make full route/horizon selection learnable.  `primary_route` and `horizon_policy` still fail majority on val/OOS.
+- `fade_warning` is the clearest learnable signal and generalizes above majority on both val and OOS.
+- `skip_reason` barely clears majority and may be useful as an auxiliary explanation, but not as a direct trading policy.
+- Next SFT should be narrower than previous full JSON targets: train/evaluate a `fade_warning`-centric analyzer first, optionally with `skip_reason` auxiliary output, before another strict trading backtest.
+
+Dry-run SFT summary:
+
+- artifact: `checkpoints/repaired_router_state_gemma4_dryrun/sft_summary.json`
+- train rows: `2,370`
+- prompt chars mean: `2,671.1`
+- target chars mean: `246.0`
+- no model loaded; this only verifies SFT schema/sampling readiness.
