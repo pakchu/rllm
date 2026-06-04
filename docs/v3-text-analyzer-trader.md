@@ -945,3 +945,28 @@ Artifacts:
 - `results/fade_warning_oos_model_run1_predictions.jsonl`
 
 Next economic test: use `fade_warning` as a conservative filter/veto on an existing trend-side route.  It should not open trades by itself.  Candidate filters: skip `FADE_STRONG`, reduce or skip `FADE_STRONG|FADE_WATCH`, or flip only in a diagnostic oracle-style mode that is not promoted without val-selected OOS proof.
+
+## 2026-06-04 fade-warning filter strict backtest result
+
+The fade-warning model was tested as intended: a filter/veto on a trend-side route, not as an entry policy.  Execution remained strict OHLC with one-bar entry delay and intrabar adverse movement included in MDD.
+
+Baseline filter: skip only `FADE_STRONG`, hold `432`, cooldown `12`, leverage `0.5`.
+
+| Split | Trades | CAGR | Strict MDD | CAGR/MDD | CI95 mean trade |
+| --- | ---: | ---: | ---: | ---: | --- |
+| val | 83 | -17.76% | 14.82% | -1.20 | [-0.392%, 0.173%] |
+| OOS | 78 | -25.59% | 20.24% | -1.26 | [-0.456%, 0.103%] |
+
+Val-only sweep:
+
+- candidates: hold `36/72/144/288/432`, cooldown `0/12/36`, skip set `{FADE_STRONG}`, `{FADE_STRONG,FADE_WATCH}`, or no skip.
+- selection used val only; OOS was not used for parameter choice.
+- selected config was effectively no fade filter: hold `144`, cooldown `0`, skip set empty.
+- selected val: `222` trades, CAGR `-13.59%`, strict MDD `16.35%`, CAGR/MDD `-0.83`.
+- untouched OOS: `217` trades, CAGR `-34.42%`, strict MDD `26.90%`, CAGR/MDD `-1.28`.
+
+Conclusion:
+
+- The fade-warning signal is learnable as a label but not economically useful as a direct trend veto in this formulation.
+- This is an important negative result: improving label accuracy above majority is insufficient if the label is not aligned with expected trade PnL.
+- Next work should move the LLM target from future path classification to **counterfactual economic filtering**: label whether skipping a trend-side candidate improves strict trade return/MDD, or use DPO/preference pairs comparing `take trend` vs `skip` vs `fade` under the same timestamp.
