@@ -910,3 +910,38 @@ Validation bridge:
 - target chars mean: `127.7`
 
 Next gate: run a real Gemma4 LoRA on this narrow target and evaluate model-mode `fade_warning` on val/OOS.  A later trading test should use it as a fade-risk veto/filter, not as a standalone action policy.
+
+## 2026-06-04 fade-warning Gemma4 LoRA result
+
+A full Gemma4 LoRA SFT was run on the narrow fade-warning target.
+
+Training setup:
+
+- model: `google/gemma-4-E4B-it` via `gemma4-e4b`
+- adapter: `checkpoints/fade_warning_gemma4_lora_run1`
+- train data: `data/fade_warning_h36_72_144_288_432_train.jsonl`
+- train rows: `2,370`
+- sequence length: `3072`
+- LoRA: `r=16`, `alpha=32`, `dropout=0.05`
+- optimization: `300` steps, batch `1`, grad accumulation `8`, `lr=2e-5`, balanced sample mode
+- runtime: `3,254s` (`~54.2m`), final train loss `0.1067`
+
+Validation / OOS model-mode accuracy:
+
+| Split | Samples | Exact all keys | Fade warning | Skip reason | Trend continuation | Trend side |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| val | 552 | 27.90% | 49.09% | 47.83% | 50.00% | 89.13% |
+| OOS | 535 | 28.97% | 50.09% | 54.77% | 48.04% | 90.84% |
+
+Compared with the cheap NB baseline, the LoRA matches/slightly improves `fade_warning` and improves `skip_reason` OOS, while keeping strong `trend_side`.  It still does not make `trend_continuation_quality` reliable, and many `FADE_STRONG` targets are softened to `FADE_WATCH`.
+
+Artifacts:
+
+- `checkpoints/fade_warning_gemma4_lora_run1/sft_summary.json`
+- `logs/fade_warning_gemma4_lora_run1_train.log`
+- `results/fade_warning_val_model_run1_eval.json`
+- `results/fade_warning_val_model_run1_predictions.jsonl`
+- `results/fade_warning_oos_model_run1_eval.json`
+- `results/fade_warning_oos_model_run1_predictions.jsonl`
+
+Next economic test: use `fade_warning` as a conservative filter/veto on an existing trend-side route.  It should not open trades by itself.  Candidate filters: skip `FADE_STRONG`, reduce or skip `FADE_STRONG|FADE_WATCH`, or flip only in a diagnostic oracle-style mode that is not promoted without val-selected OOS proof.
