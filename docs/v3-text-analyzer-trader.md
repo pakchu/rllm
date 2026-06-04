@@ -814,3 +814,27 @@ Interpretation:
 - `action_path` is only ~53-55%, and confusion shows many FADE targets predicted as TREND.  That means the model still has a trend/fade discrimination problem.
 - `risk_budget` is not genuinely learned; predictions collapse almost entirely to `AVOID_OR_TINY`, so the apparent OOS accuracy reflects class imbalance rather than useful sizing control.
 - This is not yet a trading candidate.  The next work unit should remove or rebalance the collapsed `risk_budget` label, make trend-vs-fade discrimination easier, and backtest only fields that show genuine OOS learnability (`trend_side`, `horizon_policy`, `edge_quality`) before further SFT.
+
+## 2026-06-04 compact router strict backtest result
+
+The compact analyzer was next tested as a real model-prediction router on strict OHLC execution.  This uses model predictions only, not target echo.  Strict MDD is marked bar-by-bar including adverse intrabar high/low movement, with one-bar entry delay.
+
+Conservative learned-fields route:
+
+- route: ignore weak `action_path` and collapsed `risk_budget`; trade `trend_side` only when `edge_quality >= STRONG`; map `horizon_policy` to hold bars (`SHORT=72`, `MID=144`, `LONG=432`); cooldown `12`; leverage `0.5`.
+- val: `101` trades, CAGR `-36.85%`, strict MDD `21.80%`, CAGR/MDD `-1.69`, CI95 mean trade `[-0.459%, 0.018%]`.
+- OOS: `99` trades, CAGR `8.67%`, strict MDD `11.92%`, CAGR/MDD `0.73`, CI95 mean trade `[-0.193%, 0.290%]`.
+
+Val-only sweep:
+
+- candidates: `72` combinations across route mode (`learned_fields`/`action_path`), min edge (`MODERATE`/`STRONG`), cooldown (`0/12/36`), and hold maps.
+- selection was based on val only; OOS was not used for parameter choice.
+- selected config: `action_path`, `min_edge_quality=MODERATE`, cooldown `0`, holds `SHORT=36`, `MID=72`, `LONG=288`.
+- selected val: `121` trades, CAGR `-0.89%`, strict MDD `16.55%`, CAGR/MDD `-0.05`.
+- untouched OOS: `120` trades, CAGR `-35.67%`, strict MDD `27.12%`, CAGR/MDD `-1.32`.
+
+Conclusion:
+
+- Compact analyzer outputs are not yet monetizable.  Even the val-selected route cannot produce positive validation economics and fails badly on OOS.
+- The issue is not just execution tuning; the model's current `action_path`/trend-vs-fade signal is not economically reliable.
+- Next target repair should remove the collapsed risk label, avoid forcing FADE/TREND from weak path buckets, and train a binary/ordinal question that the LLM can actually learn: e.g. `trend_continuation_quality` + `fade_warning` + `skip_reason`, with class balancing and a baseline comparison before another full 100-minute SFT.
