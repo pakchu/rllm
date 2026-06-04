@@ -970,3 +970,42 @@ Conclusion:
 - The fade-warning signal is learnable as a label but not economically useful as a direct trend veto in this formulation.
 - This is an important negative result: improving label accuracy above majority is insufficient if the label is not aligned with expected trade PnL.
 - Next work should move the LLM target from future path classification to **counterfactual economic filtering**: label whether skipping a trend-side candidate improves strict trade return/MDD, or use DPO/preference pairs comparing `take trend` vs `skip` vs `fade` under the same timestamp.
+
+## 2026-06-04 counterfactual economic preference target
+
+After path-shape and fade-warning labels failed strict economic tests, the next target moved from classification to counterfactual economic preference.  For each timestamp, the builder compares executable candidates using future OHLC path utility:
+
+- `SKIP`
+- `TREND` with hold bars `36/72/144/288/432`
+- `FADE` with hold bars `36/72/144/288/432`
+
+The prompt remains past-only.  Chosen/rejected responses are training-only preference labels derived from future OHLC utility (`net_return - mae_penalty * mae`).  Output schema is the execution-facing minimal action JSON:
+
+```json
+{"gate":"TRADE","side":"LONG","hold_bars":144}
+```
+
+Generated preference data:
+
+| Split | Pairs | Mean utility gap | Prompt chars mean |
+| --- | ---: | ---: | ---: |
+| train | 5,571 | 0.744% | 2,286.2 |
+| val | 1,335 | 0.659% | 2,283.3 |
+| OOS | 1,308 | 0.714% | 2,284.0 |
+
+DPO dry-run:
+
+- artifact: `checkpoints/economic_preference_gemma4_dpo_dryrun/dpo_summary.json`
+- model alias: `gemma4-e4b` -> `google/gemma-4-E4B-it`
+- train rows: `5,571`
+- `max_length=3072`
+- chosen action distribution includes both `TRADE` and `NO_TRADE`, both sides, and all hold horizons.
+
+Leakage boundary:
+
+- prompts are past-only;
+- chosen/rejected use future OHLC paths for preference training only;
+- this is not a backtest result;
+- final promotion still requires model-mode generation plus strict val-selected OOS backtest.
+
+Next gate: run a real Gemma4 DPO/LoRA on these economic preferences, then evaluate whether generated `gate/side/hold_bars` actions produce better strict validation/OOS economics than prior SFT classifiers.
