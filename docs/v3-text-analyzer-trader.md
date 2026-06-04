@@ -775,3 +775,42 @@ Dry-run SFT summary:
 - suggested first real SFT: `max_seq_len=3072`, `max_steps=300-400`, `max_new_tokens=384`
 
 Next gate: train this compact analyzer and evaluate val/OOS exact JSON accuracy.  Promote to trader/RL backtest only if OOS action_path/horizon_policy/risk_budget accuracy is materially better than the nested target run and does not collapse into a static majority policy.
+
+## 2026-06-04 compact Gemma4 router-state LoRA result
+
+A full Gemma4 LoRA SFT was run on the compact path-shape router target.
+
+Training setup:
+
+- model: `google/gemma-4-E4B-it` via repo alias `gemma4-e4b`
+- adapter: `checkpoints/compact_path_shape_gemma4_lora_run1`
+- train data: `data/compact_path_shape_h36_72_144_288_432_train.jsonl`
+- train rows: `2,370`
+- sequence length: `3072`
+- LoRA: `r=16`, `alpha=32`, `dropout=0.05`
+- optimization: `400` steps, batch `1`, grad accumulation `8`, `lr=2e-5`, balanced sample mode
+- runtime: `6,028s` (`~100.5m`), final train loss `0.102`
+
+Validation / OOS compact analyzer accuracy:
+
+| Split | Samples | Exact all keys | Exact primary keys | Trend side | Action path | Horizon policy | Edge quality | Risk budget | Direction stability | Reversal pressure |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| val | 552 | 22.83% | 31.52% | 88.95% | 54.71% | 68.84% | 84.96% | 52.90% | 55.80% | 58.70% |
+| OOS | 535 | 19.63% | 29.72% | 91.03% | 52.90% | 68.79% | 86.54% | 59.63% | 56.45% | 58.32% |
+
+Artifacts:
+
+- `checkpoints/compact_path_shape_gemma4_lora_run1/sft_summary.json`
+- `logs/compact_path_shape_gemma4_lora_run1_train.log`
+- `results/compact_path_shape_val_model_run1_eval.json`
+- `results/compact_path_shape_val_model_run1_predictions.jsonl`
+- `results/compact_path_shape_oos_model_run1_eval.json`
+- `results/compact_path_shape_oos_model_run1_predictions.jsonl`
+
+Interpretation:
+
+- The compact schema improved the learnability of high-level router fields versus nested path-shape reconstruction: `horizon_policy` is stable at ~69% and `edge_quality` is ~85-87% on val/OOS.
+- `trend_side` remains strong at ~89-91%.
+- `action_path` is only ~53-55%, and confusion shows many FADE targets predicted as TREND.  That means the model still has a trend/fade discrimination problem.
+- `risk_budget` is not genuinely learned; predictions collapse almost entirely to `AVOID_OR_TINY`, so the apparent OOS accuracy reflects class imbalance rather than useful sizing control.
+- This is not yet a trading candidate.  The next work unit should remove or rebalance the collapsed `risk_budget` label, make trend-vs-fade discrimination easier, and backtest only fields that show genuine OOS learnability (`trend_side`, `horizon_policy`, `edge_quality`) before further SFT.
