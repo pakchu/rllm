@@ -1,0 +1,60 @@
+{
+  "as_of": "2026-06-05T02:45:45.856378+00:00",
+  "predictions_jsonl": "/home/pakchu/rllm/results/economic_preference_oos_dpo_run1_clp_predictions.jsonl",
+  "market_csv": "/home/pakchu/rllm/data/2023-01-01_2026-02-28_d2a88c0700504d6a5e15bc3839ad84b6.csv.gz",
+  "config": {
+    "leverage": 0.5,
+    "fee_rate": 0.0004,
+    "slippage_rate": 0.0001,
+    "entry_delay_bars": 1,
+    "cooldown_bars": 0,
+    "max_hold_bars": 432
+  },
+  "dedupe": {
+    "raw_prediction_rows": 1308,
+    "unique_signal_rows": 436
+  },
+  "backtest": {
+    "period": {
+      "start": "2025-09-01 02:55:00",
+      "end": "2026-02-26 02:55:00",
+      "years": 0.487337440109514
+    },
+    "sim": {
+      "ret_pct": -11.647478770771457,
+      "cagr_pct": -22.439054940490642,
+      "strict_mdd_pct": 15.32725307174555,
+      "cagr_to_strict_mdd": -1.4639971582288986,
+      "trade_entries": 428,
+      "turnover_legs": 856,
+      "samples": 436,
+      "skipped_no_trade": 8,
+      "skipped_cooldown": 0,
+      "skipped_missing_bars": 0,
+      "invalid_actions": 0,
+      "forced_liquidations": 0,
+      "entry_delay_bars": 1,
+      "return_application": "generated_action_actual_ohlc_bar_by_bar_strict_mdd"
+    },
+    "trade_stats": {
+      "n_trades": 428,
+      "mean_trade_ret_pct": -0.026997176880669427,
+      "std_trade_ret_pct": 0.6214545576018069,
+      "t_stat_like": -0.8987333528923933,
+      "p_value_mean_ret_approx": 0.36879470709871676,
+      "ci95_mean_trade_ret_pct": [
+        -0.08587389099817432,
+        0.03187953723683546
+      ],
+      "effect_size_d": -0.043441916308171485,
+      "n_required_for_80pct_power_alpha5pct": 4160,
+      "n_gap_to_power_rule": 3732
+    }
+  },
+  "leakage_guard": {
+    "predictions_are_one_action_per_past_prompt_after_dedupe": true,
+    "uses_forward_return_column": false,
+    "entry_after_signal_by_bars": 1,
+    "strict_mdd_includes_intrabar_adverse_excursion": true
+  }
+}

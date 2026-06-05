@@ -1,0 +1,51 @@
+{
+  "as_of": "2026-06-05T02:28:12Z",
+  "model": "google/gemma-4-E4B-it + economic_preference_gemma4_dpo_run1",
+  "method": "DPO-only from base model, candidate_logprob action selection, strict OHLC backtest after signal dedupe",
+  "diagnosis": "DPO-only learned gate loosely but collapsed horizon/action scoring to hold=72 and failed economically. Next route is chosen-action SFT warm-start before DPO.",
+  "val": {
+    "classification": {
+      "rows": 1335,
+      "unique_signals": 445,
+      "gate_accuracy": 0.9101123595505618,
+      "side_accuracy_when_target_trade": 0.49403341288782815,
+      "hold_accuracy_when_target_trade": 0.13365155131264916,
+      "exact_action_accuracy": 0.06292134831460675,
+      "prediction_counts": {"NO_TRADE/NONE/0": 42, "TRADE/LONG/36": 3, "TRADE/LONG/72": 612, "TRADE/SHORT/36": 3, "TRADE/SHORT/72": 675}
+    },
+    "strict_backtest": {
+      "trade_entries": 431,
+      "cagr_pct": -36.14441381898206,
+      "strict_mdd_pct": 26.751204986085263,
+      "cagr_to_strict_mdd": -1.3511321765798106,
+      "mean_trade_ret_pct": -0.05084541729132231,
+      "p_value_mean_ret_approx": 0.037397202662557305
+    }
+  },
+  "oos": {
+    "classification": {
+      "rows": 1308,
+      "unique_signals": 436,
+      "gate_accuracy": 0.926605504587156,
+      "side_accuracy_when_target_trade": 0.5219512195121951,
+      "hold_accuracy_when_target_trade": 0.11219512195121951,
+      "exact_action_accuracy": 0.05733944954128441,
+      "prediction_counts": {"NO_TRADE/NONE/0": 24, "TRADE/LONG/36": 3, "TRADE/LONG/72": 597, "TRADE/SHORT/72": 684}
+    },
+    "strict_backtest": {
+      "trade_entries": 428,
+      "cagr_pct": -22.439054940490642,
+      "strict_mdd_pct": 15.32725307174555,
+      "cagr_to_strict_mdd": -1.4639971582288986,
+      "mean_trade_ret_pct": -0.026997176880669427,
+      "p_value_mean_ret_approx": 0.36879470709871676
+    }
+  },
+  "leakage_guard": {
+    "classification_uses_chosen_only_for_metrics": true,
+    "backtest_uses_generated_predictions": true,
+    "preference_pair_duplicates_deduped_to_one_signal_action": true,
+    "uses_forward_return_column": false
+  },
+  "next": "Train chosen-action SFT warm-start on deduped economic_chosen_sft train data, evaluate action distribution, then continue DPO from SFT adapter if action manifold improves."
+}
