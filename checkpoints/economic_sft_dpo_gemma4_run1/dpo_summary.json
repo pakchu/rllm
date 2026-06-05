@@ -1,0 +1,56 @@
+{
+  "model_name": "google/gemma-4-E4B-it",
+  "train_jsonl": "/home/pakchu/rllm/data/economic_preference_h36_72_144_288_432_train.jsonl",
+  "output_dir": "checkpoints/economic_sft_dpo_gemma4_run1",
+  "rows": 5571,
+  "chosen_counts": {
+    "gate=NO_TRADE,side=NONE,hold=0": 450,
+    "gate=TRADE,side=LONG,hold=144": 420,
+    "gate=TRADE,side=LONG,hold=288": 651,
+    "gate=TRADE,side=LONG,hold=36": 285,
+    "gate=TRADE,side=LONG,hold=432": 1002,
+    "gate=TRADE,side=LONG,hold=72": 366,
+    "gate=TRADE,side=SHORT,hold=144": 402,
+    "gate=TRADE,side=SHORT,hold=288": 585,
+    "gate=TRADE,side=SHORT,hold=36": 282,
+    "gate=TRADE,side=SHORT,hold=432": 780,
+    "gate=TRADE,side=SHORT,hold=72": 348
+  },
+  "rejected_counts": {
+    "gate=NO_TRADE,side=NONE,hold=0": 975,
+    "gate=TRADE,side=LONG,hold=144": 518,
+    "gate=TRADE,side=LONG,hold=288": 423,
+    "gate=TRADE,side=LONG,hold=36": 550,
+    "gate=TRADE,side=LONG,hold=432": 310,
+    "gate=TRADE,side=LONG,hold=72": 532,
+    "gate=TRADE,side=SHORT,hold=144": 473,
+    "gate=TRADE,side=SHORT,hold=288": 392,
+    "gate=TRADE,side=SHORT,hold=36": 551,
+    "gate=TRADE,side=SHORT,hold=432": 291,
+    "gate=TRADE,side=SHORT,hold=72": 556
+  },
+  "prompt_chars": {
+    "min": 2231,
+    "max": 2347,
+    "mean": 2286.1787829833065
+  },
+  "config": {
+    "model_name": "gemma4-e4b",
+    "train_jsonl": "data/economic_preference_h36_72_144_288_432_train.jsonl",
+    "output_dir": "checkpoints/economic_sft_dpo_gemma4_run1",
+    "max_samples": 0,
+    "max_length": 3072,
+    "sample_mode": "balanced",
+    "max_steps": 200,
+    "num_train_epochs": 1.0,
+    "learning_rate": 2e-07,
+    "beta": 0.1,
+    "per_device_train_batch_size": 1,
+    "gradient_accumulation_steps": 8,
+    "lora_r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05,
+    "seed": 42,
+    "init_adapter_dir": "checkpoints/economic_chosen_sft_gemma4_run1"
+  }
+}

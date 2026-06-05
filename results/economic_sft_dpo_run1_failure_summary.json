@@ -1,0 +1,30 @@
+{
+  "as_of": "2026-06-05T14:40:07Z",
+  "model": "google/gemma-4-E4B-it + economic_sft_dpo_gemma4_run1",
+  "method": "chosen-action SFT warm-start followed by DPO preference tuning",
+  "training": {
+    "max_steps": 200,
+    "runtime_seconds": 10690,
+    "train_loss": 0.6864,
+    "init_adapter": "checkpoints/economic_chosen_sft_gemma4_run1"
+  },
+  "val_candidate_logprob_mean": {
+    "rows": 1335,
+    "unique_signals": 445,
+    "gate_accuracy": 0.9415730337078652,
+    "side_accuracy_when_target_trade": 0.4964200477326969,
+    "hold_accuracy_when_target_trade": 0.14081145584725538,
+    "exact_action_accuracy": 0.06292134831460675,
+    "prediction_counts": {"TRADE/LONG/36": 6, "TRADE/LONG/72": 1059, "TRADE/SHORT/36": 3, "TRADE/SHORT/72": 267}
+  },
+  "val_strict_backtest": {
+    "trade_entries": 445,
+    "cagr_pct": -41.935074819499164,
+    "strict_mdd_pct": 25.58902200279205,
+    "cagr_to_strict_mdd": -1.6387916198955779,
+    "mean_trade_ret_pct": -0.05990030948653537,
+    "p_value_mean_ret_approx": 0.012773267308584746
+  },
+  "diagnosis": "Warm-start DPO did not solve the candidate selection collapse. The policy is still dominated by a small subset of unconditional action priors, especially hold=72, and remains economically negative.",
+  "next": "Instrument candidate-level scores and run train-only prior/PMI style reranking so action selection is not driven by unconditional JSON/action priors."
+}
