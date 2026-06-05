@@ -1,0 +1,31 @@
+{
+  "as_of": "2026-06-05T07:08:25Z",
+  "model": "google/gemma-4-E4B-it + economic_chosen_sft_gemma4_run1",
+  "method": "chosen-action SFT warm-start on one highest-utility target per signal timestamp",
+  "training": {
+    "rows": 1857,
+    "max_steps": 200,
+    "runtime_seconds": 2114,
+    "train_loss": 0.4579,
+    "epoch": 0.8616
+  },
+  "val_candidate_logprob_mean": {
+    "rows": 1335,
+    "unique_signals": 445,
+    "gate_accuracy": 0.9415730337078652,
+    "side_accuracy_when_target_trade": 0.4916467780429594,
+    "hold_accuracy_when_target_trade": 0.13842482100238662,
+    "exact_action_accuracy": 0.06741573033707865,
+    "prediction_counts": {"TRADE/LONG/36": 24, "TRADE/LONG/72": 1044, "TRADE/SHORT/36": 9, "TRADE/SHORT/72": 258}
+  },
+  "val_strict_backtest": {
+    "trade_entries": 445,
+    "cagr_pct": -46.87672778034076,
+    "strict_mdd_pct": 28.832317103556015,
+    "cagr_to_strict_mdd": -1.6258397690333133,
+    "mean_trade_ret_pct": -0.06991698322594402,
+    "p_value_mean_ret_approx": 0.003539930301953653
+  },
+  "diagnosis": "SFT learned JSON format but candidate-logprob still collapses mostly to LONG/72 and loses more than DPO-only. Use SFT only as a warm-start for DPO, not as a tradable policy.",
+  "next": "Run DPO initialized from checkpoints/economic_chosen_sft_gemma4_run1."
+}
