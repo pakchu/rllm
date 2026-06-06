@@ -1,0 +1,23 @@
+{
+  "as_of": "2026-06-06T13:30:00+09:00",
+  "method": "pairwise best-action ranking baseline from economic value rows",
+  "data": {
+    "train": "data/economic_value_h36_72_144_288_432_train.jsonl",
+    "val": "data/economic_value_h36_72_144_288_432_val.jsonl"
+  },
+  "best_val_case": {
+    "min_utility_gap": 0.005,
+    "l2": 0.1,
+    "threshold": 1.0,
+    "train_pairs": 13995,
+    "top1_best_action_accuracy": 0.344,
+    "trades": 65,
+    "cagr_pct": 9.92,
+    "strict_mdd_pct": 11.67,
+    "cagr_to_strict_mdd": 0.85,
+    "mean_trade_ret_pct": 0.0816,
+    "p_value": 0.621
+  },
+  "diagnosis": "Pairwise ranking learns some best-action ordering but not enough to produce statistically meaningful strict returns. The bottleneck is likely opportunity detection: profitable signals are rare and weakly separated from non-opportunities.",
+  "decision": "Move from always-rank-actions to opportunity/event mining. First detect whether a signal has sufficiently high oracle utility; only then rank/select an action."
+}
