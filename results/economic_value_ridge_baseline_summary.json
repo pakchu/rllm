@@ -1,0 +1,23 @@
+{
+  "as_of": "2026-06-06T13:00:00+09:00",
+  "method": "direct economic utility ridge baseline from past-only analyzer summary + candidate action",
+  "data": {
+    "train_rows": 20940,
+    "train_signals": 2370,
+    "val_rows": 5002,
+    "val_signals": 552,
+    "oos_rows": 4895,
+    "oos_signals": 535
+  },
+  "train_fit": {
+    "corr_approx": 0.269,
+    "note": "In-sample utility correlation is weak, and action selection mostly chooses SKIP on val."
+  },
+  "val_sweeps": {
+    "standard_thresholds": "threshold >= 0 produced zero trades; threshold -0.0025 produced 7 losing trades.",
+    "wide_thresholds": "thresholds from -0.02 to -0.0025 still produced the same 7 losing trades for normal alphas.",
+    "best_nonzero_case": {"trades": 7, "cagr_pct": -2.70, "strict_mdd_pct": 1.62, "cagr_to_strict_mdd": -1.67, "mean_trade_ret_pct": -0.1953, "p_value": 0.2158}
+  },
+  "diagnosis": "A simple linear value scorer cannot extract a profitable action ranking from the current past-summary features. It is too conservative and mostly selects SKIP; when forced to trade, selected trades lose.",
+  "decision": "Do not promote direct ridge value scoring. Next step is a pairwise/ranking learnability baseline to test whether best-vs-candidate ordering is learnable at all before training another LLM head."
+}
