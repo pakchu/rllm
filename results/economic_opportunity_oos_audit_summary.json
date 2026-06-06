@@ -1,0 +1,41 @@
+{
+  "as_of": "2026-06-06T14:30:00+09:00",
+  "audit_target": "economic_opportunity_oos_oracle_u0p003_s0p7 vs majority live-safe baseline",
+  "oracle_upper_bound": {
+    "is_live_tradable": false,
+    "reason": "oracle_best mode selects the eval row's future-utility best action after the event detector fires; this is intentional label leakage for upper-bound measurement only.",
+    "prediction_file": "results/economic_opportunity_oos_oracle_u0p003_s0p7_predictions.jsonl",
+    "rows": 535,
+    "unique_signals": 535,
+    "trade_signals": 171,
+    "duplicate_signals": 0,
+    "predicted_trade_actions_equal_future_best_action": "171/171",
+    "strict_backtest_trade_entries_after_cooldown": 98,
+    "strict_backtest": {
+      "cagr_pct": 1138.0644984426565,
+      "strict_mdd_pct": 5.207204689641576,
+      "cagr_to_strict_mdd": 218.55574464098743,
+      "mean_trade_ret_pct": 1.2631990420717467,
+      "p_value": 0.0
+    }
+  },
+  "live_safe_majority": {
+    "is_live_tradable_as_backtest_logic": true,
+    "prediction_file": "results/economic_opportunity_oos_majority_u0p003_s0p7_predictions.jsonl",
+    "rows": 535,
+    "unique_signals": 535,
+    "trade_signals": 179,
+    "duplicate_signals": 0,
+    "action": {"gate": "TRADE", "side": "LONG", "hold_bars": 432},
+    "predicted_trade_actions_equal_future_best_action": "25/179",
+    "strict_backtest_trade_entries_after_cooldown": 77,
+    "strict_backtest": {
+      "cagr_pct": -22.975139275169486,
+      "strict_mdd_pct": 23.52546004137689,
+      "cagr_to_strict_mdd": -0.9766074386966507,
+      "mean_trade_ret_pct": -0.1576864827488301,
+      "p_value": 0.25697695576017443
+    }
+  },
+  "conclusion": "The huge oracle CAGR/MDD is explained by future-action leakage, not duplicate trades. Event detection survives OOS, but live-safe action selection fails. Future reports must label oracle_best outputs as non-tradable upper bounds."
+}

@@ -1,0 +1,88 @@
+{
+  "as_of": "2026-06-06T04:55:15.421102+00:00",
+  "train_jsonl": "data/economic_value_h36_72_144_288_432_train.jsonl",
+  "eval_jsonl": "data/economic_value_h36_72_144_288_432_oos.jsonl",
+  "config": {
+    "utility_threshold": 0.003,
+    "score_threshold": 0.7,
+    "mode": "majority_train_action",
+    "features": 170,
+    "lr": 0.2,
+    "l2": 1.0,
+    "epochs": 500
+  },
+  "train_event_metrics": {
+    "tp": 658,
+    "fp": 215,
+    "fn": 630,
+    "tn": 867,
+    "precision": 0.7537227949599083,
+    "recall": 0.5108695652173914,
+    "predicted_positive": 873,
+    "actual_positive": 1288
+  },
+  "eval_event_metrics": {
+    "tp": 137,
+    "fp": 42,
+    "fn": 185,
+    "tn": 171,
+    "precision": 0.7653631284916201,
+    "recall": 0.4254658385093168,
+    "predicted_positive": 179,
+    "actual_positive": 322
+  },
+  "train_positive_rate": 0.5434599156118144,
+  "eval_positive_rate": 0.6018691588785047,
+  "fallback_action": {
+    "gate": "TRADE",
+    "side": "LONG",
+    "hold_bars": 432
+  },
+  "prediction_counts": {
+    "NO_TRADE/NONE/0": 356,
+    "TRADE/LONG/432": 179
+  },
+  "strict_backtest_path": "results/economic_opportunity_oos_majority_u0p003_s0p7.strict_backtest.json",
+  "strict_backtest": {
+    "period": {
+      "start": "2025-09-01 02:55:00",
+      "end": "2026-02-26 02:55:00",
+      "years": 0.487337440109514
+    },
+    "sim": {
+      "ret_pct": -11.945611872809536,
+      "cagr_pct": -22.975139275169486,
+      "strict_mdd_pct": 23.52546004137689,
+      "cagr_to_strict_mdd": -0.9766074386966507,
+      "trade_entries": 77,
+      "turnover_legs": 154,
+      "samples": 535,
+      "skipped_no_trade": 151,
+      "skipped_cooldown": 307,
+      "skipped_missing_bars": 0,
+      "invalid_actions": 0,
+      "forced_liquidations": 0,
+      "entry_delay_bars": 1,
+      "return_application": "generated_action_actual_ohlc_bar_by_bar_strict_mdd"
+    },
+    "trade_stats": {
+      "n_trades": 77,
+      "mean_trade_ret_pct": -0.1576864827488301,
+      "std_trade_ret_pct": 1.2206560394557353,
+      "t_stat_like": -1.1335652516093446,
+      "p_value_mean_ret_approx": 0.25697695576017443,
+      "ci95_mean_trade_ret_pct": [
+        -0.4303355479428458,
+        0.1149625824451856
+      ],
+      "effect_size_d": -0.12918174952801542,
+      "n_required_for_80pct_power_alpha5pct": 471,
+      "n_gap_to_power_rule": 394
+    }
+  },
+  "leakage_guard": {
+    "features_are_past_only": true,
+    "eval_utility_not_used_for_fit_or_selection": true,
+    "oracle_best_mode_is_upper_bound_not_live_policy": false
+  }
+}
