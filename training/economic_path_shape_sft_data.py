@@ -41,7 +41,8 @@ def trader_prompt(summary: str, analyzer_target: dict[str, Any]) -> str:
     }
     return (
         "You are a futures trader using a path-shape analyzer output.\n"
-        "Choose exactly one JSON action from LONG, SHORT, or NO_TRADE using the provided stop/target template.\n"
+        "Choose exactly one JSON action using the provided stop/target template.\n"
+        "Schema: gate must be TRADE or NO_TRADE; side must be LONG/SHORT for TRADE and NONE for NO_TRADE.\n"
         "Return keys: gate, side, target_pct, stop_pct, max_hold_bars.\n\n"
         f"Past-only analyzer summary: {summary}\n\n"
         f"Analyzer path-shape output: {json.dumps(analyzer_view, ensure_ascii=False, sort_keys=True)}"
