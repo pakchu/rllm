@@ -1,0 +1,49 @@
+{
+  "as_of": "2026-06-06T13:50:00+09:00",
+  "method": "opportunity/event detection before action selection",
+  "oracle_upper_bound": {
+    "best_case": {
+      "utility_threshold": 0.003,
+      "score_threshold": 0.5,
+      "precision": 0.712,
+      "recall": 0.864,
+      "trades": 132,
+      "cagr_pct": 1937.56,
+      "strict_mdd_pct": 3.42,
+      "cagr_to_strict_mdd": 566.53,
+      "mean_trade_ret_pct": 1.1551,
+      "p_value": 0.0
+    },
+    "interpretation": "If the eval oracle action is available after detecting opportunities, returns are enormous; this is an upper bound and not live-tradable. It proves opportunity timestamps contain large exploitable moves."
+  },
+  "live_safe_majority_action": {
+    "best_case": {
+      "utility_threshold": 0.003,
+      "score_threshold": 0.7,
+      "fallback_action": {"gate": "TRADE", "side": "LONG", "hold_bars": 432},
+      "precision": 0.769,
+      "recall": 0.366,
+      "trades": 67,
+      "cagr_pct": 18.16,
+      "strict_mdd_pct": 8.88,
+      "cagr_to_strict_mdd": 2.04,
+      "mean_trade_ret_pct": 0.1338,
+      "p_value": 0.4154
+    },
+    "interpretation": "Opportunity filtering plus a train-derived fixed action is the best live-safe result so far, but still below CAGR/MDD 3 and statistically insignificant."
+  },
+  "live_safe_event_plus_pairwise_rank": {
+    "best_case": {
+      "utility_threshold": 0.0075,
+      "event_threshold": 0.7,
+      "min_utility_gap": 0.0025,
+      "trades": 3,
+      "cagr_pct": 0.32,
+      "strict_mdd_pct": 4.45,
+      "cagr_to_strict_mdd": 0.07,
+      "p_value": 0.8971
+    },
+    "interpretation": "Pairwise action ranker destroys the opportunity-filter advantage; action selection remains the bottleneck."
+  },
+  "decision": "Opportunity detection is the most promising structural change. Next useful work should focus on action selection inside detected opportunities, not more global ranking. Candidate actions should be learned conditional on event type/regime or via separate long/short opportunity detectors."
+}
