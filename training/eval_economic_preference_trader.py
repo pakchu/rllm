@@ -26,6 +26,18 @@ from training.eval_text_trader import (
 from training.train_text_dpo import load_preference_jsonl
 
 
+def dedupe_signal_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[tuple[str, int]] = set()
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        key = (str(row.get("date")), int(row.get("signal_pos", -1) or -1))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(row)
+    return out
+
+
 def _target_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [{**r, "target": str(r["chosen"])} for r in rows]
 
@@ -81,8 +93,11 @@ def evaluate_economic_preference_trader(
     max_new_tokens: int = 48,
     hold_candidates: str = "36,72,144,288,432",
     score_normalization: str = "mean",
+    batch_size: int = 1,
+    dedupe_signals: bool = False,
 ) -> dict[str, Any]:
-    rows = load_preference_jsonl(eval_jsonl, max_samples=max_samples, sample_mode=sample_mode, seed=seed)
+    loaded_rows = load_preference_jsonl(eval_jsonl, max_samples=max_samples, sample_mode=sample_mode, seed=seed)
+    rows = dedupe_signal_rows(loaded_rows) if dedupe_signals else loaded_rows
     target_rows = _target_rows(rows)
     mode = str(prediction_mode).strip().lower()
     if mode == "target_echo":
@@ -101,6 +116,7 @@ def evaluate_economic_preference_trader(
             adapter_dir=adapter_dir,
             hold_candidates=holds,
             score_normalization=score_normalization,
+            batch_size=batch_size,
         )
     else:
         raise ValueError("prediction_mode must be one of {'target_echo','model','candidate_logprob'}")
@@ -117,11 +133,17 @@ def evaluate_economic_preference_trader(
         "adapter_dir": adapter_dir,
         "prediction_mode": mode,
         "predictions_output": predictions_output,
+        "row_selection": {
+            "loaded_rows": len(loaded_rows),
+            "evaluated_rows": len(rows),
+            "dedupe_signals": bool(dedupe_signals),
+        },
         "metrics_vs_chosen": _metrics(target_rows, predictions),
         "prediction_summary": _summarize_predictions(pred_rows),
         "candidate_logprob": {
             "hold_candidates": hold_candidates,
             "score_normalization": score_normalization,
+            "batch_size": batch_size,
         }
         if mode == "candidate_logprob"
         else None,
@@ -150,6 +172,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-new-tokens", type=int, default=48)
     p.add_argument("--hold-candidates", default="36,72,144,288,432")
     p.add_argument("--score-normalization", choices=["sum", "mean"], default="mean")
+    p.add_argument("--batch-size", type=int, default=1, help="Rows per candidate-logprob scoring batch; economic action candidate sets are memory-heavy")
+    p.add_argument("--dedupe-signals", action="store_true", help="Evaluate one preference row per signal for backtest-oriented scoring")
     return p.parse_args()
 
 

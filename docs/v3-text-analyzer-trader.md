@@ -1009,3 +1009,41 @@ Leakage boundary:
 - final promotion still requires model-mode generation plus strict val-selected OOS backtest.
 
 Next gate: run a real Gemma4 DPO/LoRA on these economic preferences, then evaluate whether generated `gate/side/hold_bars` actions produce better strict validation/OOS economics than prior SFT classifiers.
+
+## 2026-06-07 candidate-logprob correction invalidates economic preference DPO run1
+
+A later candidate-logprob audit found that the shared text-trader candidate scorer used tokenizer padding defaults and full-sequence `log_softmax`.  The scorer now forces right padding, records candidate scoring metadata, supports signal dedupe for preference evaluation, and scores only candidate token positions to reduce unnecessary memory pressure.
+
+Relevant commits:
+
+- `5aa59e0` / `3f98629` / `e54062b`: fixed candidate span alignment in JSON-key, stable-trader, and text-trader evaluators.
+- follow-up evaluator patch: economic preference evaluation can dedupe duplicate preference pairs to one signal row and passes explicit batch size into the corrected scorer.
+
+Corrected DPO run1 smoke check:
+
+- adapter: `checkpoints/economic_preference_gemma4_dpo_run1`
+- data: first `180` val preference rows, deduped to `60` unique signal rows
+- mode: `candidate_logprob`, `score_normalization=mean`, `batch_size=1`
+- report: `results/economic_preference_val_dpo_run1_clp_dedup_smoke60_batched_eval.json`
+- strict backtest: `results/economic_preference_val_dpo_run1_clp_dedup_smoke60_batched_strict_backtest.json`
+
+Corrected result:
+
+- prediction distribution: `NO_TRADE/NONE/0 = 60/60`
+- chosen distribution: `54/60` rows were trade targets
+- gate accuracy: `10.0%`
+- side accuracy when target trade: `0.0%`
+- hold accuracy when target trade: `0.0%`
+- strict backtest trades: `0`
+
+Interpretation:
+
+- The old DPO run1 report showed over-trading and negative economics; after right-padding correction the same checkpoint collapses to all abstain on the smoke slice.
+- Either way, DPO run1 is rejected.  The important correction is that old candidate-logprob action distributions are not comparable to corrected reports.
+- Full val/OOS corrected scoring remains too slow with the current brute-force candidate approach, and it is not worth running for this rejected checkpoint after an all-NO_TRADE smoke.
+
+Next implementation requirement:
+
+- Do not continue full brute-force candidate scoring for economic preference runs without a cheaper selection path.
+- Add a shortlist/cached scorer or switch to generation-first evaluation for broad sweeps.
+- If economic preference is retried, start from a chosen-action SFT warm-start or a smaller action space, then require corrected smoke to produce a non-degenerate action distribution before full val/OOS backtests.

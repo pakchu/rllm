@@ -123,12 +123,13 @@ def _score_candidate_batch(
 
     with torch.no_grad():
         logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
-        log_probs = torch.log_softmax(logits[:, :-1, :], dim=-1)
     scores: list[float] = []
     for i, (start, end) in enumerate(spans):
-        positions = torch.arange(start - 1, end - 1, device=log_probs.device)
+        positions = torch.arange(start - 1, end - 1, device=logits.device)
         labels = input_ids[i, start:end]
-        token_scores = log_probs[i, positions, labels]
+        selected_logits = logits[i, positions, :].float()
+        label_logits = selected_logits.gather(1, labels.reshape(-1, 1)).squeeze(1)
+        token_scores = label_logits - torch.logsumexp(selected_logits, dim=-1)
         score = token_scores.sum() if score_normalization == "sum" else token_scores.mean()
         scores.append(float(score.detach().cpu()))
     return scores
