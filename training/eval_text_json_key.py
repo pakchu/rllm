@@ -51,6 +51,7 @@ def _generate_predictions(rows: list[dict[str, Any]], *, key: str, model_name: s
     tokenizer = AutoTokenizer.from_pretrained(resolved, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "right"
     base = AutoModelForCausalLM.from_pretrained(resolved, trust_remote_code=True, device_map="auto")
     model = PeftModel.from_pretrained(base, adapter_dir)
     model.eval()
@@ -83,9 +84,38 @@ def _candidate_json(key: str, value: str) -> str:
     return json.dumps({key: value}, sort_keys=True, ensure_ascii=False)
 
 
-def _candidate_logprob_predictions(rows: list[dict[str, Any]], *, key: str, model_name: str, adapter_dir: str, score_normalization: str = "mean") -> list[str]:
+def _score_candidate_batch(
+    *,
+    model: Any,
+    input_ids: Any,
+    attention_mask: Any,
+    spans: list[tuple[int, int]],
+    score_normalization: str,
+) -> list[float]:
     import torch
 
+    with torch.no_grad():
+        logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
+        log_probs = torch.log_softmax(logits[:, :-1, :], dim=-1)
+    scores: list[float] = []
+    for i, (start, end) in enumerate(spans):
+        positions = torch.arange(start - 1, end - 1, device=log_probs.device)
+        labels = input_ids[i, start:end]
+        token_scores = log_probs[i, positions, labels]
+        score = token_scores.sum() if score_normalization == "sum" else token_scores.mean()
+        scores.append(float(score.detach().cpu()))
+    return scores
+
+
+def _candidate_logprob_predictions(
+    rows: list[dict[str, Any]],
+    *,
+    key: str,
+    model_name: str,
+    adapter_dir: str,
+    score_normalization: str = "mean",
+    batch_size: int = 8,
+) -> list[str]:
     disable_transformers_allocator_warmup()
     from peft import PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -94,47 +124,56 @@ def _candidate_logprob_predictions(rows: list[dict[str, Any]], *, key: str, mode
     tokenizer = AutoTokenizer.from_pretrained(resolved, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "right"
     base = AutoModelForCausalLM.from_pretrained(resolved, trust_remote_code=True, device_map="auto")
     model = PeftModel.from_pretrained(base, adapter_dir)
     model.eval()
     values = _candidate_values(key)
-    candidate_texts = [_candidate_json(key, v) for v in values]
+    candidate_token_ids: list[list[int]] = []
+    for value in values:
+        cand_ids = tokenizer(_candidate_json(key, value), add_special_tokens=False)["input_ids"]
+        if tokenizer.eos_token_id is not None:
+            cand_ids = cand_ids + [int(tokenizer.eos_token_id)]
+        candidate_token_ids.append(cand_ids)
     normalize = str(score_normalization).strip().lower()
     if normalize not in {"sum", "mean"}:
         raise ValueError("score_normalization must be one of {'sum','mean'}")
+    batch_size = max(1, int(batch_size))
     preds: list[str] = []
-    for row in rows:
-        prompt = str(row["prompt"])
-        messages = [{"role": "user", "content": prompt}]
-        if getattr(tokenizer, "chat_template", None):
-            prompt_text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        else:
-            prompt_text = f"<|user|>\n{prompt}\n<|assistant|>\n"
-        prompt_ids = tokenizer(prompt_text, add_special_tokens=False)["input_ids"]
+    for offset in range(0, len(rows), batch_size):
+        row_batch = rows[offset : offset + batch_size]
         sequences: list[list[int]] = []
         spans: list[tuple[int, int]] = []
-        for text in candidate_texts:
-            cand_ids = tokenizer(text, add_special_tokens=False)["input_ids"]
-            if tokenizer.eos_token_id is not None:
-                cand_ids = cand_ids + [int(tokenizer.eos_token_id)]
+        candidate_count_by_row: list[int] = []
+        for row in row_batch:
+            prompt = str(row["prompt"])
+            messages = [{"role": "user", "content": prompt}]
+            if getattr(tokenizer, "chat_template", None):
+                prompt_text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            else:
+                prompt_text = f"<|user|>\n{prompt}\n<|assistant|>\n"
+            prompt_ids = tokenizer(prompt_text, add_special_tokens=False)["input_ids"]
             start = len(prompt_ids)
-            end = start + len(cand_ids)
-            sequences.append(prompt_ids + cand_ids)
-            spans.append((start, end))
+            candidate_count_by_row.append(len(candidate_token_ids))
+            for cand_ids in candidate_token_ids:
+                end = start + len(cand_ids)
+                sequences.append(prompt_ids + cand_ids)
+                spans.append((start, end))
         encoded = tokenizer.pad({"input_ids": sequences}, return_tensors="pt")
         input_ids = encoded["input_ids"].to(model.device)
         attention_mask = encoded["attention_mask"].to(model.device)
-        with torch.no_grad():
-            logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
-            log_probs = torch.log_softmax(logits[:, :-1, :], dim=-1)
-        scores = []
-        for i, (start, end) in enumerate(spans):
-            positions = torch.arange(start - 1, end - 1, device=log_probs.device)
-            labels = input_ids[i, start:end]
-            token_scores = log_probs[i, positions, labels]
-            score = token_scores.sum() if normalize == "sum" else token_scores.mean()
-            scores.append(float(score.detach().cpu()))
-        preds.append(values[max(range(len(scores)), key=lambda i: scores[i])])
+        flat_scores = _score_candidate_batch(
+            model=model,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            spans=spans,
+            score_normalization=normalize,
+        )
+        score_offset = 0
+        for candidate_count in candidate_count_by_row:
+            scores = flat_scores[score_offset : score_offset + candidate_count]
+            preds.append(values[max(range(len(scores)), key=lambda i: scores[i])])
+            score_offset += candidate_count
     return preds
 
 
@@ -150,6 +189,8 @@ def evaluate_text_json_key(
     seed: int = 42,
     prediction_mode: str = "target_echo",
     max_new_tokens: int = 16,
+    batch_size: int = 8,
+    score_normalization: str = "mean",
 ) -> dict[str, Any]:
     key = str(key).strip().lower()
     if key not in VALID_VALUES:
@@ -164,7 +205,14 @@ def evaluate_text_json_key(
     elif prediction_mode == "candidate_logprob":
         if not adapter_dir:
             raise ValueError("adapter_dir is required for prediction_mode=candidate_logprob")
-        preds = _candidate_logprob_predictions(rows, key=key, model_name=model_name, adapter_dir=adapter_dir)
+        preds = _candidate_logprob_predictions(
+            rows,
+            key=key,
+            model_name=model_name,
+            adapter_dir=adapter_dir,
+            score_normalization=score_normalization,
+            batch_size=batch_size,
+        )
     else:
         raise ValueError("prediction_mode must be one of {'target_echo','model','candidate_logprob'}")
     report = {
@@ -173,6 +221,8 @@ def evaluate_text_json_key(
         "model_name": resolve_vlm_model_alias(model_name, prefer_latest=True),
         "adapter_dir": adapter_dir,
         "prediction_mode": prediction_mode,
+        "batch_size": batch_size if prediction_mode == "candidate_logprob" else None,
+        "score_normalization": score_normalization if prediction_mode == "candidate_logprob" else None,
         "metrics": _metrics(rows, preds, key=key),
     }
     Path(output).parent.mkdir(parents=True, exist_ok=True)
@@ -192,6 +242,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--prediction-mode", choices=["target_echo", "model", "candidate_logprob"], default="target_echo")
     p.add_argument("--max-new-tokens", type=int, default=16)
+    p.add_argument("--batch-size", type=int, default=8, help="Rows per candidate-logprob scoring batch")
+    p.add_argument("--score-normalization", choices=["sum", "mean"], default="mean")
     return p.parse_args()
 
 
