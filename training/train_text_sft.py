@@ -131,7 +131,9 @@ def _target_counter(rows: list[dict[str, Any]]) -> dict[str, int]:
                     if key in parsed:
                         counts[f"{key}={parsed[key]}"] += 1
             elif isinstance(parsed, dict) and "gate" in parsed:
-                counts[f"gate={parsed.get('gate')},side={parsed.get('side')}"] += 1
+                for key in ("gate", "risk", "side"):
+                    if key in parsed:
+                        counts[f"{key}={parsed[key]}"] += 1
             elif isinstance(parsed, dict) and "side" in parsed:
                 counts[f"side={parsed.get('side')}"] += 1
             elif isinstance(parsed, dict):
