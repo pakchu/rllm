@@ -40,6 +40,8 @@ def _row_bucket(row: dict[str, Any]) -> str:
         parsed = json.loads(target)
     except Exception:
         return target[:80]
+    if isinstance(parsed, dict) and "action" in parsed:
+        return f"action={parsed.get('action')},risk={parsed.get('risk')}"
     if isinstance(parsed, dict) and "fade_warning" in parsed:
         return f"fade={parsed.get('fade_warning')},skip={parsed.get('skip_reason')},route={parsed.get('primary_route')}"
     if isinstance(parsed, dict) and "action_path" in parsed:
@@ -108,7 +110,11 @@ def _target_counter(rows: list[dict[str, Any]]) -> dict[str, int]:
         target = str(row.get("target", ""))
         try:
             parsed = json.loads(target)
-            if isinstance(parsed, dict) and "fade_warning" in parsed:
+            if isinstance(parsed, dict) and "action" in parsed:
+                for key in ("action", "risk"):
+                    if key in parsed:
+                        counts[f"{key}={parsed[key]}"] += 1
+            elif isinstance(parsed, dict) and "fade_warning" in parsed:
                 for key in ("trend_side", "trend_continuation_quality", "fade_warning", "skip_reason", "primary_route", "horizon_policy", "trend_score_bucket", "fade_score_bucket"):
                     if key in parsed:
                         counts[f"{key}={parsed[key]}"] += 1
