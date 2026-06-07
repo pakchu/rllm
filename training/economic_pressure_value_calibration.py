@@ -98,6 +98,9 @@ def bucket(x: float, cuts: Iterable[float]) -> str:
 
 
 def context_values(row: dict[str, Any]) -> dict[str, str]:
+    cached = row.get("_context_values")
+    if isinstance(cached, dict):
+        return cached
     cf = compact_features(row)
     state = cf.get("state", {}) if isinstance(cf.get("state"), dict) else {}
     sym = cf.get("symbolic", {}) if isinstance(cf.get("symbolic"), dict) else {}
@@ -126,6 +129,13 @@ def context_values(row: dict[str, Any]) -> dict[str, str]:
         "seq_bias": "up" if int(seq.get("rally_or_up", 0) or 0) > int(seq.get("drop_or_down", 0) or 0) else "down" if int(seq.get("drop_or_down", 0) or 0) > int(seq.get("rally_or_up", 0) or 0) else "flat",
         "tags": "+".join(str(t) for t in tags[:4]),
     }
+
+
+def attach_context_cache(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    for row in rows:
+        if not isinstance(row.get("_context_values"), dict):
+            row["_context_values"] = context_values(row)
+    return rows
 
 
 KEY_LEVELS = {
@@ -275,9 +285,9 @@ def evaluate_config(rows: list[dict[str, Any]], tables: dict[tuple[str, ...], St
 
 def run_calibration(*, train_jsonl: str, val_predictions_jsonl: str, oos_predictions_jsonl: str, market_csv: str, output: str, prefix: str, horizon_bars: int = 36, target_pct: float = 0.5, stop_pct: float = 0.6, leverage: float = 0.5, fee_rate: float = 0.0004, slippage_rate: float = 0.0001, entry_delay_bars: int = 1, min_trades: int = 50) -> dict[str, Any]:
     market = load_market_bars(market_csv)
-    train_rows = load_jsonl(train_jsonl)
-    val_rows = load_jsonl(val_predictions_jsonl)
-    oos_rows = load_jsonl(oos_predictions_jsonl)
+    train_rows = attach_context_cache(load_jsonl(train_jsonl))
+    val_rows = attach_context_cache(load_jsonl(val_predictions_jsonl))
+    oos_rows = attach_context_cache(load_jsonl(oos_predictions_jsonl))
     tables = fit_tables(train_rows, market, horizon_bars=horizon_bars, target_pct=target_pct, stop_pct=stop_pct, leverage=leverage, fee_rate=fee_rate, slippage_rate=slippage_rate, entry_delay_bars=entry_delay_bars)
     configs = []
     for level in KEY_LEVELS:
