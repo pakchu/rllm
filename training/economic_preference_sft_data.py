@@ -39,9 +39,10 @@ def preference_rows_to_sft(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for row in rows:
         key = (str(row.get("date")), int(row.get("signal_pos", -1)))
         chosen_action = row.get("chosen_action") or {}
-        util = float(chosen_action.get("utility", 0.0) or 0.0)
+        util = float(chosen_action.get("rank_utility", chosen_action.get("utility", 0.0)) or 0.0)
         prev = best_by_signal.get(key)
-        prev_util = float(((prev or {}).get("chosen_action") or {}).get("utility", -1e9) or -1e9)
+        prev_action = ((prev or {}).get("chosen_action") or {})
+        prev_util = float(prev_action.get("rank_utility", prev_action.get("utility", -1e9)) or -1e9)
         if prev is None or util > prev_util:
             best_by_signal[key] = row
     out: list[dict[str, Any]] = []

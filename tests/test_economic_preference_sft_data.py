@@ -14,6 +14,12 @@ def _row(date: str, pos: int, chosen: dict, util: float):
     }
 
 
+def _ranked_row(date: str, pos: int, chosen: dict, util: float, rank_util: float):
+    row = _row(date, pos, chosen, util)
+    row["chosen_action"]["rank_utility"] = rank_util
+    return row
+
+
 def test_preference_rows_to_sft_dedupes_to_best_utility_per_signal():
     rows = [
         _row("2025-01-01 00:00:00", 1, {"gate": "TRADE", "side": "LONG", "hold_bars": 36}, 0.01),
@@ -24,6 +30,16 @@ def test_preference_rows_to_sft_dedupes_to_best_utility_per_signal():
     assert len(out) == 2
     assert json.loads(out[0]["target"])["hold_bars"] == 72
     assert out[0]["leakage_guard"]["one_row_per_signal_timestamp"] is True
+
+
+def test_preference_rows_to_sft_uses_rank_utility_when_present():
+    rows = [
+        _ranked_row("2025-01-01 00:00:00", 1, {"gate": "TRADE", "side": "LONG", "hold_bars": 432}, 0.03, 0.001),
+        _ranked_row("2025-01-01 00:00:00", 1, {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0}, 0.0, 0.01),
+    ]
+    out = preference_rows_to_sft(rows)
+    assert len(out) == 1
+    assert json.loads(out[0]["target"]) == {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0}
 
 
 def test_build_economic_preference_sft_jsonl_writes_summary(tmp_path: Path):

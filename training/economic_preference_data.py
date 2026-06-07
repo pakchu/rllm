@@ -34,6 +34,9 @@ class EconomicPreferenceConfig:
     mae_penalty: float = 1.0
     min_utility_gap: float = 0.001
     max_pairs_per_row: int = 3
+    no_trade_utility: float = 0.0
+    min_trade_net_return: float = -1.0
+    max_trade_mae: float = 1.0
 
 
 def _opposite(side: str) -> str:
@@ -68,6 +71,7 @@ def _candidate_actions(row: dict[str, Any], market, cfg: EconomicPreferenceConfi
             "side": "NONE",
             "hold_bars": 0,
             "utility": 0.0,
+            "rank_utility": float(cfg.no_trade_utility),
             "net_return": 0.0,
             "mae": 0.0,
             "mfe": 0.0,
@@ -91,6 +95,9 @@ def _candidate_actions(row: dict[str, Any], market, cfg: EconomicPreferenceConfi
             out = compute_trade_path_outcome(market, int(row.get("signal_pos", 0)), side, pcfg)  # type: ignore[arg-type]
             if out is None:
                 continue
+            rank_utility = float(out.utility)
+            if float(out.net_return) < float(cfg.min_trade_net_return) or float(out.mae) > float(cfg.max_trade_mae):
+                rank_utility = float("-inf")
             candidates.append(
                 {
                     "route": route,
@@ -98,12 +105,13 @@ def _candidate_actions(row: dict[str, Any], market, cfg: EconomicPreferenceConfi
                     "side": side,
                     "hold_bars": int(hold),
                     "utility": float(out.utility),
+                    "rank_utility": rank_utility,
                     "net_return": float(out.net_return),
                     "mae": float(out.mae),
                     "mfe": float(out.mfe),
                 }
             )
-    return sorted(candidates, key=lambda x: (float(x["utility"]), float(x["net_return"])), reverse=True)
+    return sorted(candidates, key=lambda x: (float(x.get("rank_utility", x["utility"])), float(x["net_return"])), reverse=True)
 
 
 def _preference_prompt(source_prompt: str) -> str:
@@ -133,7 +141,7 @@ def build_economic_preference_pairs(rows: list[dict[str, Any]], market, cfg: Eco
         chosen = candidates[0]
         pair_count = 0
         for rejected in candidates[1:]:
-            gap = float(chosen["utility"]) - float(rejected["utility"])
+            gap = float(chosen.get("rank_utility", chosen["utility"])) - float(rejected.get("rank_utility", rejected["utility"]))
             if gap < float(cfg.min_utility_gap):
                 continue
             pairs.append(
@@ -144,8 +152,8 @@ def build_economic_preference_pairs(rows: list[dict[str, Any]], market, cfg: Eco
                     "prompt": _preference_prompt(str(row.get("prompt", ""))),
                     "chosen": _action_response(chosen),
                     "rejected": _action_response(rejected),
-                    "chosen_action": {k: chosen[k] for k in ("route", "gate", "side", "hold_bars", "utility", "net_return", "mae")},
-                    "rejected_action": {k: rejected[k] for k in ("route", "gate", "side", "hold_bars", "utility", "net_return", "mae")},
+                    "chosen_action": {k: chosen[k] for k in ("route", "gate", "side", "hold_bars", "utility", "rank_utility", "net_return", "mae")},
+                    "rejected_action": {k: rejected[k] for k in ("route", "gate", "side", "hold_bars", "utility", "rank_utility", "net_return", "mae")},
                     "utility_gap": gap,
                     "leakage_guard": {
                         "prompt_uses_future_path": False,
@@ -202,6 +210,9 @@ def build_economic_preference_jsonl(
     fee_rate: float = 0.0004,
     slippage_rate: float = 0.0001,
     mae_penalty: float = 1.0,
+    no_trade_utility: float = 0.0,
+    min_trade_net_return: float = -1.0,
+    max_trade_mae: float = 1.0,
     max_records: int = 0,
 ) -> dict[str, Any]:
     cfg = EconomicPreferenceConfig(
@@ -213,6 +224,9 @@ def build_economic_preference_jsonl(
         fee_rate=float(fee_rate),
         slippage_rate=float(slippage_rate),
         mae_penalty=float(mae_penalty),
+        no_trade_utility=float(no_trade_utility),
+        min_trade_net_return=float(min_trade_net_return),
+        max_trade_mae=float(max_trade_mae),
     )
     rows = load_jsonl(records)
     if max_records:
@@ -246,6 +260,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--fee-rate", type=float, default=0.0004)
     p.add_argument("--slippage-rate", type=float, default=0.0001)
     p.add_argument("--mae-penalty", type=float, default=1.0)
+    p.add_argument("--no-trade-utility", type=float, default=0.0)
+    p.add_argument("--min-trade-net-return", type=float, default=-1.0)
+    p.add_argument("--max-trade-mae", type=float, default=1.0)
     p.add_argument("--max-records", type=int, default=0)
     return p.parse_args()
 
