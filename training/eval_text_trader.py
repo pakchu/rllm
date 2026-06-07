@@ -105,6 +105,7 @@ def _load_text_model(model_name: str, adapter_dir: str):
     tokenizer = AutoTokenizer.from_pretrained(resolved, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "right"
     base = AutoModelForCausalLM.from_pretrained(resolved, trust_remote_code=True, device_map="auto")
     model = PeftModel.from_pretrained(base, adapter_dir)
     model.eval()
@@ -143,6 +144,29 @@ def _generate_predictions(
     return preds
 
 
+def _score_candidate_batch(
+    *,
+    model: Any,
+    input_ids: Any,
+    attention_mask: Any,
+    spans: list[tuple[int, int]],
+    score_normalization: str,
+) -> list[float]:
+    import torch
+
+    with torch.no_grad():
+        logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
+        log_probs = torch.log_softmax(logits[:, :-1, :], dim=-1)
+    scores: list[float] = []
+    for i, (start, end) in enumerate(spans):
+        token_positions = torch.arange(start - 1, end - 1, device=log_probs.device)
+        labels = input_ids[i, start:end]
+        token_scores = log_probs[i, token_positions, labels]
+        score = token_scores.sum() if score_normalization == "sum" else token_scores.mean()
+        scores.append(float(score.detach().cpu()))
+    return scores
+
+
 def _candidate_logprob_predictions(
     rows: list[dict[str, Any]],
     *,
@@ -150,45 +174,52 @@ def _candidate_logprob_predictions(
     adapter_dir: str,
     hold_candidates: list[int],
     score_normalization: str = "mean",
+    batch_size: int = 4,
 ) -> list[dict[str, Any]]:
-    import torch
-
     tokenizer, model = _load_text_model(model_name, adapter_dir)
     actions = _candidate_actions(hold_candidates)
-    action_texts = [_action_json(a) for a in actions]
+    action_token_ids: list[list[int]] = []
+    for action in actions:
+        action_ids = tokenizer(_action_json(action), add_special_tokens=False)["input_ids"]
+        if tokenizer.eos_token_id is not None:
+            action_ids = action_ids + [int(tokenizer.eos_token_id)]
+        action_token_ids.append(action_ids)
     normalize = str(score_normalization).strip().lower()
     if normalize not in {"sum", "mean"}:
         raise ValueError("score_normalization must be one of {'sum','mean'}")
+    batch_size = max(1, int(batch_size))
 
     preds: list[dict[str, Any]] = []
-    for row in rows:
-        prompt_text = _chat_prompt_text(tokenizer, str(row["prompt"]))
-        prompt_ids = tokenizer(prompt_text, add_special_tokens=False)["input_ids"]
+    for offset in range(0, len(rows), batch_size):
+        row_batch = rows[offset : offset + batch_size]
         sequences: list[list[int]] = []
         candidate_spans: list[tuple[int, int]] = []
-        for text in action_texts:
-            candidate_ids = tokenizer(text, add_special_tokens=False)["input_ids"]
-            if tokenizer.eos_token_id is not None:
-                candidate_ids = candidate_ids + [int(tokenizer.eos_token_id)]
+        candidate_count_by_row: list[int] = []
+        for row in row_batch:
+            prompt_text = _chat_prompt_text(tokenizer, str(row["prompt"]))
+            prompt_ids = tokenizer(prompt_text, add_special_tokens=False)["input_ids"]
             start = len(prompt_ids)
-            end = start + len(candidate_ids)
-            sequences.append(prompt_ids + candidate_ids)
-            candidate_spans.append((start, end))
+            candidate_count_by_row.append(len(action_token_ids))
+            for action_ids in action_token_ids:
+                end = start + len(action_ids)
+                sequences.append(prompt_ids + action_ids)
+                candidate_spans.append((start, end))
         encoded = tokenizer.pad({"input_ids": sequences}, return_tensors="pt")
         input_ids = encoded["input_ids"].to(model.device)
         attention_mask = encoded["attention_mask"].to(model.device)
-        with torch.no_grad():
-            logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
-            log_probs = torch.log_softmax(logits[:, :-1, :], dim=-1)
-        scores: list[float] = []
-        for i, (start, end) in enumerate(candidate_spans):
-            token_positions = torch.arange(start - 1, end - 1, device=log_probs.device)
-            labels = input_ids[i, start:end]
-            token_scores = log_probs[i, token_positions, labels]
-            score = token_scores.sum() if normalize == "sum" else token_scores.mean()
-            scores.append(float(score.detach().cpu()))
-        best_idx = max(range(len(scores)), key=lambda i: scores[i])
-        preds.append(dict(actions[best_idx]))
+        flat_scores = _score_candidate_batch(
+            model=model,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            spans=candidate_spans,
+            score_normalization=normalize,
+        )
+        score_offset = 0
+        for candidate_count in candidate_count_by_row:
+            scores = flat_scores[score_offset : score_offset + candidate_count]
+            best_idx = max(range(len(scores)), key=lambda i: scores[i])
+            preds.append(dict(actions[best_idx]))
+            score_offset += candidate_count
     return preds
 
 
@@ -205,6 +236,7 @@ def evaluate_text_trader(
     max_new_tokens: int = 32,
     hold_candidates: str = "48,96,144,288",
     score_normalization: str = "mean",
+    batch_size: int = 4,
 ) -> dict[str, Any]:
     rows = load_jsonl(eval_jsonl, max_samples=max_samples, sample_mode=sample_mode, seed=seed)
     mode = str(prediction_mode).strip().lower()
@@ -224,6 +256,7 @@ def evaluate_text_trader(
             adapter_dir=adapter_dir,
             hold_candidates=holds,
             score_normalization=score_normalization,
+            batch_size=batch_size,
         )
     else:
         raise ValueError("prediction_mode must be one of {'target_echo','model','candidate_logprob'}")
@@ -236,6 +269,7 @@ def evaluate_text_trader(
         "candidate_logprob": {
             "hold_candidates": hold_candidates,
             "score_normalization": score_normalization,
+            "batch_size": batch_size,
         } if mode == "candidate_logprob" else None,
     }
     Path(output).parent.mkdir(parents=True, exist_ok=True)
@@ -256,6 +290,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-new-tokens", type=int, default=32)
     p.add_argument("--hold-candidates", default="48,96,144,288")
     p.add_argument("--score-normalization", choices=["sum", "mean"], default="mean")
+    p.add_argument("--batch-size", type=int, default=4, help="Rows per candidate-logprob scoring batch")
     return p.parse_args()
 
 
