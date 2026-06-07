@@ -1082,3 +1082,102 @@ Next implication:
 
 - A future economic-preference retry must first pass a small generation smoke with valid `side` and plausible `hold_bars` distribution.
 - If DPO is retried, it should be warm-started from a supervised chosen-action model and/or use action-only constrained decoding before any full strict backtest.
+
+## 2026-06-07 chosen-action SFT run1 generation survives format but fails OOS target
+
+After DPO-only failed, the existing chosen-action SFT warm-start was rechecked with generation-first evaluation and deduped one row per signal.  Unlike DPO-only, the SFT checkpoint emits executable action JSON.
+
+Checkpoint:
+
+- adapter: `checkpoints/economic_chosen_sft_gemma4_run1`
+- eval mode: `model` generation, `max_new_tokens=48`
+- validation data: `data/economic_preference_h36_72_144_288_432_val.jsonl`
+- OOS data: `data/economic_preference_h36_72_144_288_432_oos.jsonl`
+
+Generation smoke30:
+
+- report: `results/economic_preference_val_sft_run1_generation_dedup_smoke30_eval.json`
+- strict backtest: `results/economic_preference_val_sft_run1_generation_dedup_smoke30_strict_backtest.json`
+- valid actions: `30/30`
+- trades: `7`
+- CAGR/MDD: `369.23`, but not meaningful with only 7 trades and p=`0.264`.
+
+Generation smoke150:
+
+- report: `results/economic_preference_val_sft_run1_generation_dedup_smoke150_eval.json`
+- strict backtest: `results/economic_preference_val_sft_run1_generation_dedup_smoke150_strict_backtest.json`
+- valid actions: `150/150`
+- trades: `35`
+- CAGR: `99.74%`
+- strict MDD: `8.49%`
+- CAGR/MDD: `11.74`
+- p-value: `0.230`; still statistically weak.
+
+Full validation:
+
+- report: `results/economic_preference_val_sft_run1_generation_dedup_full_eval.json`
+- strict backtest: `results/economic_preference_val_sft_run1_generation_dedup_full_strict_backtest.json`
+- rows: `445` unique signals
+- prediction distribution: mostly `TRADE/LONG/432` (`287`) and `TRADE/SHORT/432` (`121`)
+- trades: `106`
+- CAGR: `30.70%`
+- strict MDD: `8.49%`
+- CAGR/MDD: `3.61`
+- p-value: `0.263`
+
+Untouched OOS:
+
+- report: `results/economic_preference_oos_sft_run1_generation_dedup_full_eval.json`
+- strict backtest: `results/economic_preference_oos_sft_run1_generation_dedup_full_strict_backtest.json`
+- rows: `436` unique signals
+- trades: `104`
+- CAGR: `25.31%`
+- strict MDD: `13.85%`
+- CAGR/MDD: `1.83`
+- p-value: `0.352`
+
+Interpretation:
+
+- SFT warm-start solved the executable-action format problem.
+- It did not solve side/hold economic generalization.  Full validation clears the ratio threshold, but untouched OOS falls to `1.83`, below the `>=3` target.
+- The model has a strong long-432 bias and weak side accuracy (~48-50%), so it behaves more like a coarse long-horizon exposure selector than a robust trader.
+
+## 2026-06-07 val-selected action filter also fails OOS
+
+A post-model action subset sweep was added in `training/sweep_prediction_action_filter.py`.  It selects allowed generated sides/holds using validation predictions only, then applies the frozen filter to OOS predictions.
+
+Run:
+
+```bash
+PYTHONPATH=. uv run python -m training.sweep_prediction_action_filter \
+  --val-predictions results/economic_preference_val_sft_run1_generation_dedup_full_predictions.jsonl \
+  --oos-predictions results/economic_preference_oos_sft_run1_generation_dedup_full_predictions.jsonl \
+  --market-csv data/2023-01-01_2026-02-28_d2a88c0700504d6a5e15bc3839ad84b6.csv.gz \
+  --output results/economic_preference_sft_run1_generation_action_filter_val_selected_oos.json \
+  --min-trades 30 --max-mdd 15 --top-k 10
+```
+
+Selected on val:
+
+- sides: `LONG,SHORT`
+- holds: `432`
+- cooldown: `0`
+- val trades: `104`
+- val CAGR/MDD: `4.00`
+
+Frozen OOS result:
+
+- OOS trades: `100`
+- OOS CAGR: `-6.41%`
+- OOS strict MDD: `20.31%`
+- OOS CAGR/MDD: `-0.32`
+
+Decision:
+
+- Reject SFT run1 as a deployable candidate.
+- Keep the chosen-action SFT path as useful because it learns valid action formatting, but require a different target/modeling approach before DPO or RL.
+
+Next direction:
+
+- The current target over-rewards always taking long-horizon exposure.  Redesign the action target to include explicit `NO_TRADE` opportunity cost and side-confidence calibration, or train separate side and hold heads with a strict no-trade prior.
+- Any next model must pass: valid-action smoke, full val, untouched OOS, min trade count, and p/power checks.
