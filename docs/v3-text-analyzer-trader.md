@@ -1181,3 +1181,46 @@ Next direction:
 
 - The current target over-rewards always taking long-horizon exposure.  Redesign the action target to include explicit `NO_TRADE` opportunity cost and side-confidence calibration, or train separate side and hold heads with a strict no-trade prior.
 - Any next model must pass: valid-action smoke, full val, untouched OOS, min trade count, and p/power checks.
+
+## 2026-06-07 conservative no-trade target smoke
+
+The first chosen-action SFT target was rejected because it made `NO_TRADE` only a tiny minority class and encouraged long-horizon exposure.  A new economic target ranking channel now separates raw future path utility from training rank utility:
+
+- raw `utility` remains `net_return - mae_penalty * mae` for diagnostics;
+- `rank_utility` is used only to choose preference/SFT labels;
+- `NO_TRADE` can receive a positive utility hurdle so weak future-positive trades are labeled as abstain;
+- prompts remain past-only, and future OHLC is used only for training labels.
+
+No-trade hurdle sweep on the same chronological splits:
+
+| Hurdle | Train no-trade | Val no-trade | OOS no-trade | Interpretation |
+| --- | ---: | ---: | ---: | --- |
+| `0.002` | 437/1,857 (23.5%) | 90/445 (20.2%) | 87/436 (20.0%) | still trade-heavy, likely closest to old over-trading target |
+| `0.004` | 696/1,857 (37.5%) | 160/445 (36.0%) | 141/436 (32.3%) | current next candidate: moderate abstention without collapse-level imbalance |
+| `0.006` | 901/1,857 (48.5%) | 223/445 (50.1%) | 207/436 (47.5%) | balanced but may bias generation to abstain |
+| `0.008` | 1,069/1,857 (57.6%) | 273/445 (61.3%) | 249/436 (57.1%) | too conservative in first SFT smoke |
+| `0.010` | 1,226/1,857 (66.0%) | 305/445 (68.5%) | 289/436 (66.3%) | likely abstain-collapse risk |
+| `0.012` | 1,345/1,857 (72.4%) | 336/445 (75.5%) | 315/436 (72.2%) | likely abstain-collapse risk |
+
+Run `nt0p008` SFT:
+
+- train data: `data/economic_chosen_sft_conservative_nt0p008_h36_72_144_288_432_train.jsonl`
+- adapter: `checkpoints/economic_chosen_sft_conservative_nt0p008_gemma4_run1`
+- model: `gemma4-e4b` -> `google/gemma-4-E4B-it`
+- LoRA: r=16, alpha=32, dropout=0.05
+- steps: 300, effective batch 8, max length 3072
+- runtime: 3,742s (~62.4m)
+- train loss: 0.185
+
+Corrected validation smoke:
+
+- generation smoke80: `results/economic_preference_conservative_nt0p008_val_sft_run1_generation_dedup_smoke80_eval.json`
+- candidate-logprob smoke60: `results/economic_preference_conservative_nt0p008_val_sft_run1_clp_dedup_smoke60_eval.json`
+- both modes predicted `NO_TRADE/NONE/0` for every smoke row;
+- strict backtest trades: 0.
+
+Decision:
+
+- Reject `nt0p008` as too conservative for direct SFT; it fixed over-trading by collapsing to abstention.
+- Do not evaluate full val/OOS for `nt0p008`.
+- Next candidate should move the target toward `nt0p004` (about one-third no-trade) or use a balanced sampler that does not let the `NO_TRADE` token dominate generation.
