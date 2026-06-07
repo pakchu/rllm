@@ -40,8 +40,15 @@ def parse_trader_json(text: str) -> dict[str, Any]:
     try:
         obj = json.loads(raw)
     except Exception:
-        match = re.search(r"\{.*\}", raw, flags=re.DOTALL)
-        obj = json.loads(match.group(0)) if match else {}
+        obj = {}
+        for match in re.finditer(r"\{[^{}]*\}", raw, flags=re.DOTALL):
+            try:
+                candidate = json.loads(match.group(0))
+            except Exception:
+                continue
+            if isinstance(candidate, dict):
+                obj = candidate
+                break
     gate = str(obj.get("gate", "NO_TRADE")).upper()
     side = str(obj.get("side", "NONE")).upper()
     if gate not in VALID_GATES:

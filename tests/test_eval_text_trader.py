@@ -35,5 +35,9 @@ class TestEvalTextTrader(unittest.TestCase):
             self.assertTrue(out.exists())
 
 
+    def test_parse_multiple_json_objects_uses_first_valid(self):
+        parsed = parse_trader_json('{"gate":"TRADE","side":"LONG","hold_bars":144}\n{"gate":"NO_TRADE"}')
+        self.assertEqual(parsed, {"gate": "TRADE", "side": "LONG", "hold_bars": 144})
+
 if __name__ == "__main__":
     unittest.main()

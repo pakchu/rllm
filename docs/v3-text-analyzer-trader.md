@@ -1047,3 +1047,38 @@ Next implementation requirement:
 - Do not continue full brute-force candidate scoring for economic preference runs without a cheaper selection path.
 - Add a shortlist/cached scorer or switch to generation-first evaluation for broad sweeps.
 - If economic preference is retried, start from a chosen-action SFT warm-start or a smaller action space, then require corrected smoke to produce a non-degenerate action distribution before full val/OOS backtests.
+
+## 2026-06-07 generation-first check also rejects economic preference DPO run1
+
+After candidate-logprob correction collapsed the DPO run1 smoke to all `NO_TRADE`, a generation-first smoke was run to check whether the model's free-form output contained usable action structure.
+
+Parser fix:
+
+- `parse_trader_json` now scans for the first valid flat JSON object instead of greedily parsing from the first `{` to the last `}`.
+- This prevents malformed multi-object generations from crashing evaluation; bad or invalid actions still default or become invalid in strict backtest.
+
+Generation smoke:
+
+- adapter: `checkpoints/economic_preference_gemma4_dpo_run1`
+- data: first `90` val preference rows, deduped to `30` unique signal rows
+- mode: `model`, `max_new_tokens=48`
+- report: `results/economic_preference_val_dpo_run1_generation_dedup_smoke30_eval.json`
+- strict backtest: `results/economic_preference_val_dpo_run1_generation_dedup_smoke30_strict_backtest.json`
+
+Result:
+
+- prediction counts: `NO_TRADE/NONE/0 = 3`, `TRADE/NONE/0 = 4`, `TRADE/NONE/1 = 23`
+- exact action accuracy: `0.0%`
+- side accuracy when target trade: `0.0%`
+- strict backtest: `0` trades, `27` invalid actions
+
+Interpretation:
+
+- Candidate-logprob mode degenerates to all abstain after correction.
+- Generation mode degenerates to invalid `TRADE/NONE` actions.
+- Therefore DPO run1 did not learn the executable action manifold. It is rejected without full val/OOS runs.
+
+Next implication:
+
+- A future economic-preference retry must first pass a small generation smoke with valid `side` and plausible `hold_bars` distribution.
+- If DPO is retried, it should be warm-started from a supervised chosen-action model and/or use action-only constrained decoding before any full strict backtest.
