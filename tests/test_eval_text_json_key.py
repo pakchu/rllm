@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from training.eval_text_json_key import evaluate_text_json_key, parse_key_json
+from training.eval_text_json_key import _candidate_json, evaluate_text_json_key, parse_key_json
 
 
 class TestEvalTextJsonKey(unittest.TestCase):
@@ -11,6 +11,10 @@ class TestEvalTextJsonKey(unittest.TestCase):
         self.assertEqual(parse_key_json('x {"side":"SHORT"}', key="side"), "SHORT")
         self.assertEqual(parse_key_json('{"gate":"TRADE"}', key="gate"), "TRADE")
         self.assertEqual(parse_key_json('bad', key="gate"), "NO_TRADE")
+        self.assertEqual(parse_key_json('{"gate":"BAD"}', key="gate"), "NO_TRADE")
+
+    def test_candidate_json_single_key_shape(self):
+        self.assertEqual(_candidate_json("side", "LONG"), '{"side": "LONG"}')
 
     def test_target_echo_metrics(self):
         with tempfile.TemporaryDirectory() as td:

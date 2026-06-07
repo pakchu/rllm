@@ -75,6 +75,69 @@ def _generate_predictions(rows: list[dict[str, Any]], *, key: str, model_name: s
     return preds
 
 
+def _candidate_values(key: str) -> list[str]:
+    return sorted(VALID_VALUES[key])
+
+
+def _candidate_json(key: str, value: str) -> str:
+    return json.dumps({key: value}, sort_keys=True, ensure_ascii=False)
+
+
+def _candidate_logprob_predictions(rows: list[dict[str, Any]], *, key: str, model_name: str, adapter_dir: str, score_normalization: str = "mean") -> list[str]:
+    import torch
+
+    disable_transformers_allocator_warmup()
+    from peft import PeftModel
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    resolved = resolve_vlm_model_alias(model_name, prefer_latest=True)
+    tokenizer = AutoTokenizer.from_pretrained(resolved, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    base = AutoModelForCausalLM.from_pretrained(resolved, trust_remote_code=True, device_map="auto")
+    model = PeftModel.from_pretrained(base, adapter_dir)
+    model.eval()
+    values = _candidate_values(key)
+    candidate_texts = [_candidate_json(key, v) for v in values]
+    normalize = str(score_normalization).strip().lower()
+    if normalize not in {"sum", "mean"}:
+        raise ValueError("score_normalization must be one of {'sum','mean'}")
+    preds: list[str] = []
+    for row in rows:
+        prompt = str(row["prompt"])
+        messages = [{"role": "user", "content": prompt}]
+        if getattr(tokenizer, "chat_template", None):
+            prompt_text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        else:
+            prompt_text = f"<|user|>\n{prompt}\n<|assistant|>\n"
+        prompt_ids = tokenizer(prompt_text, add_special_tokens=False)["input_ids"]
+        sequences: list[list[int]] = []
+        spans: list[tuple[int, int]] = []
+        for text in candidate_texts:
+            cand_ids = tokenizer(text, add_special_tokens=False)["input_ids"]
+            if tokenizer.eos_token_id is not None:
+                cand_ids = cand_ids + [int(tokenizer.eos_token_id)]
+            start = len(prompt_ids)
+            end = start + len(cand_ids)
+            sequences.append(prompt_ids + cand_ids)
+            spans.append((start, end))
+        encoded = tokenizer.pad({"input_ids": sequences}, return_tensors="pt")
+        input_ids = encoded["input_ids"].to(model.device)
+        attention_mask = encoded["attention_mask"].to(model.device)
+        with torch.no_grad():
+            logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
+            log_probs = torch.log_softmax(logits[:, :-1, :], dim=-1)
+        scores = []
+        for i, (start, end) in enumerate(spans):
+            positions = torch.arange(start - 1, end - 1, device=log_probs.device)
+            labels = input_ids[i, start:end]
+            token_scores = log_probs[i, positions, labels]
+            score = token_scores.sum() if normalize == "sum" else token_scores.mean()
+            scores.append(float(score.detach().cpu()))
+        preds.append(values[max(range(len(scores)), key=lambda i: scores[i])])
+    return preds
+
+
 def evaluate_text_json_key(
     *,
     eval_jsonl: str,
@@ -98,8 +161,12 @@ def evaluate_text_json_key(
         if not adapter_dir:
             raise ValueError("adapter_dir is required for prediction_mode=model")
         preds = _generate_predictions(rows, key=key, model_name=model_name, adapter_dir=adapter_dir, max_new_tokens=max_new_tokens)
+    elif prediction_mode == "candidate_logprob":
+        if not adapter_dir:
+            raise ValueError("adapter_dir is required for prediction_mode=candidate_logprob")
+        preds = _candidate_logprob_predictions(rows, key=key, model_name=model_name, adapter_dir=adapter_dir)
     else:
-        raise ValueError("prediction_mode must be one of {'target_echo','model'}")
+        raise ValueError("prediction_mode must be one of {'target_echo','model','candidate_logprob'}")
     report = {
         "eval_jsonl": str(Path(eval_jsonl).resolve()),
         "key": key,
@@ -123,7 +190,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-samples", type=int, default=0)
     p.add_argument("--sample-mode", choices=["sequential", "random", "balanced"], default="sequential")
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--prediction-mode", choices=["target_echo", "model"], default="target_echo")
+    p.add_argument("--prediction-mode", choices=["target_echo", "model", "candidate_logprob"], default="target_echo")
     p.add_argument("--max-new-tokens", type=int, default=16)
     return p.parse_args()
 
