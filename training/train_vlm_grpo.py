@@ -176,12 +176,19 @@ def train_vlm_grpo_smoke(
     top_p: float = 0.95,
     top_k: int = 50,
     scale_rewards: str = "batch",
+    grpo_loss_type: str = "dapo",
+    grpo_beta: float = 0.0,
+    grpo_num_iterations: int = 1,
+    grpo_steps_per_generation: int = 0,
+    gradient_accumulation_steps: int = 1,
     reward_variance_guard: str = "auto",
     max_completion_length: int = 8,
     min_new_tokens: int = 1,
     do_sample: bool = True,
     log_completions: bool = False,
     num_completions_to_print: int = 2,
+    require_nonzero_grad: bool = False,
+    min_nonzero_grad_norm: float = 1e-9,
     load_in_4bit: bool = False,
     lora_r: int = 8,
     lora_alpha: int = 16,
@@ -458,9 +465,15 @@ def train_vlm_grpo_smoke(
         num_train_epochs=1,
         max_steps=max_steps,
         per_device_train_batch_size=safe_per_device_batch,
-        gradient_accumulation_steps=1,
+        gradient_accumulation_steps=max(1, int(gradient_accumulation_steps)),
         num_generations=safe_num_generations,
         generation_batch_size=generation_batch_size,
+        steps_per_generation=None
+        if int(grpo_steps_per_generation) <= 0
+        else int(grpo_steps_per_generation),
+        num_iterations=max(1, int(grpo_num_iterations)),
+        beta=float(grpo_beta),
+        loss_type=str(grpo_loss_type),
         temperature=float(temperature),
         top_p=float(top_p),
         top_k=int(top_k),
@@ -496,6 +509,29 @@ def train_vlm_grpo_smoke(
         peft_config=peft_cfg,
     )
     trainer.train()
+
+    grad_norms: list[float] = []
+    reward_stds: list[float] = []
+    for item in trainer.state.log_history:
+        if "grad_norm" in item:
+            try:
+                grad_norms.append(float(item["grad_norm"]))
+            except (TypeError, ValueError):
+                pass
+        if "reward_std" in item:
+            try:
+                reward_stds.append(float(item["reward_std"]))
+            except (TypeError, ValueError):
+                pass
+    max_grad_norm = max(grad_norms) if grad_norms else 0.0
+    max_reward_std = max(reward_stds) if reward_stds else 0.0
+    if require_nonzero_grad and max_grad_norm <= float(min_nonzero_grad_norm):
+        raise RuntimeError(
+            "GRPO run produced no effective policy-gradient update "
+            f"(max_grad_norm={max_grad_norm:.6g}, max_reward_std={max_reward_std:.6g}). "
+            "Change the sample seed/window, increase generation diversity, or inspect reward grouping "
+            "before treating this checkpoint as trainable."
+        )
 
     trainer.save_model(str(out))
     run_meta = {
@@ -546,11 +582,20 @@ def train_vlm_grpo_smoke(
         "effective_per_device_train_batch_size": int(safe_per_device_batch),
         "effective_num_generations": int(safe_num_generations),
         "scale_rewards": str(scale_rewards),
+        "grpo_loss_type": str(grpo_loss_type),
+        "grpo_beta": float(grpo_beta),
+        "grpo_num_iterations": int(grpo_num_iterations),
+        "grpo_steps_per_generation": int(grpo_steps_per_generation),
+        "gradient_accumulation_steps": int(gradient_accumulation_steps),
         "max_completion_length": int(max_completion_length),
         "min_new_tokens": int(min_new_tokens),
         "do_sample": bool(do_sample),
         "log_completions": bool(log_completions),
         "num_completions_to_print": int(num_completions_to_print),
+        "require_nonzero_grad": bool(require_nonzero_grad),
+        "min_nonzero_grad_norm": float(min_nonzero_grad_norm),
+        "max_observed_grad_norm": float(max_grad_norm),
+        "max_observed_reward_std": float(max_reward_std),
         "variance_guard_notes": variance_guard_notes,
     }
     (out / "train_config.json").write_text(json.dumps(run_meta, indent=2))
@@ -697,12 +742,38 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--log-completions", action="store_true", default=False)
     parser.add_argument("--num-completions-to-print", type=int, default=2)
     parser.add_argument(
+        "--require-nonzero-grad",
+        action="store_true",
+        default=False,
+        help="Fail the run if logged GRPO grad_norm never exceeds --min-nonzero-grad-norm.",
+    )
+    parser.add_argument("--min-nonzero-grad-norm", type=float, default=1e-9)
+    parser.add_argument(
         "--scale-rewards",
         type=str,
         default="batch",
         choices=["group", "batch", "none"],
         help="GRPO reward scaling mode. batch/none helps when group reward_std collapses to zero.",
     )
+    parser.add_argument(
+        "--grpo-loss-type",
+        type=str,
+        default="dapo",
+        choices=["grpo", "bnpo", "dr_grpo", "dapo", "cispo", "sapo", "luspo"],
+        help=(
+            "TRL GRPO loss variant. cispo is useful for smoke-testing on-policy "
+            "gradient flow because it keeps log-probability in the objective."
+        ),
+    )
+    parser.add_argument("--grpo-beta", type=float, default=0.0)
+    parser.add_argument("--grpo-num-iterations", type=int, default=1)
+    parser.add_argument(
+        "--grpo-steps-per-generation",
+        type=int,
+        default=0,
+        help="<=0 uses TRL default; >0 forwards steps_per_generation to GRPOConfig.",
+    )
+    parser.add_argument("--gradient-accumulation-steps", type=int, default=1)
     parser.add_argument(
         "--reward-variance-guard",
         type=str,
@@ -793,7 +864,14 @@ def main() -> None:
         do_sample=args.do_sample == "true",
         log_completions=args.log_completions,
         num_completions_to_print=args.num_completions_to_print,
+        require_nonzero_grad=args.require_nonzero_grad,
+        min_nonzero_grad_norm=args.min_nonzero_grad_norm,
         scale_rewards=args.scale_rewards,
+        grpo_loss_type=args.grpo_loss_type,
+        grpo_beta=args.grpo_beta,
+        grpo_num_iterations=args.grpo_num_iterations,
+        grpo_steps_per_generation=args.grpo_steps_per_generation,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
         reward_variance_guard=args.reward_variance_guard,
         load_in_4bit=args.load_in_4bit,
         lora_r=args.lora_r,
