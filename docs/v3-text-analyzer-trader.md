@@ -1293,3 +1293,68 @@ Decision:
 - Reject action-balanced direct SFT.  Balancing the sampled rows did not fix the model's learned output prior; it still generated long-horizon LONG almost everywhere.
 - This strengthens the root-cause diagnosis: direct imitation of future-derived action labels is not a learnable/stable single-step target from the current past-only summary.
 - Next work unit should move to a single-policy schema that predicts semantic state plus a smaller action abstraction (`action`, `exit_profile`) and evaluate cheap learnability before another GPU run.
+
+## 2026-06-08 single-policy schema and cheap learnability gate
+
+The two-LLM analyzer/trader chain was collapsed into a single semantic policy target before doing more GPU work.  New modules:
+
+- `training/single_policy_sft_data.py`
+  - builds one past-only prompt -> one compact policy JSON target;
+  - target keys: `regime`, `edge_quality`, `risk`, `action`, `exit_profile`, `confidence`;
+  - maps raw hold bars into `exit_profile` (`FAST`, `NORMAL`, `TRAIL`) so the LLM is not asked to emit numeric hold bars;
+  - still uses future OHLC utility for training labels only.
+- `training/eval_single_policy.py`
+  - evaluates target echo or model generation;
+  - maps `action` + `exit_profile` back to strict executable actions for backtest.
+
+Generated data:
+
+- `data/single_policy_nt0p004_h36_72_144_288_432_train.jsonl`
+- `data/single_policy_nt0p004_h36_72_144_288_432_val.jsonl`
+- `data/single_policy_nt0p004_h36_72_144_288_432_oos.jsonl`
+
+Label distribution:
+
+| Split | Rows | NO_TRADE | LONG | SHORT | AVOID | FAST | NORMAL | TRAIL |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| train | 2,370 | 1,209 | 620 | 541 | 1,209 | 171 | 507 | 483 |
+| val | 552 | 267 | 147 | 138 | 267 | 38 | 119 | 128 |
+| OOS | 535 | 240 | 132 | 163 | 240 | 49 | 121 | 125 |
+
+Target-echo strict upper bound is very high, but this is explicitly an oracle/teacher check, not deployable evidence.  It confirms the label can encode profitable actions if the future-derived target is known:
+
+| Policy | Split | Trades | CAGR | Strict MDD | CAGR/MDD | p-value |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| target echo, action+exit_profile | val | 103 | 1451.12% | 4.22% | 343.70 | 0.000 |
+| target echo, action+exit_profile | OOS | 104 | 1428.74% | 5.21% | 274.38 | 0.000 |
+
+Cheap past-only learnability gate:
+
+- report: `results/single_policy_nt0p004_feature_learnability.json`
+- model: dependency-free categorical Naive Bayes over the same past-only summary features.
+
+| Key | Val acc | Val majority | OOS acc | OOS majority | Decision |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `action` | 0.489 | 0.484 | 0.479 | 0.449 | barely learnable, weak margin |
+| `risk` | 0.504 | 0.484 | 0.499 | 0.449 | barely learnable, weak margin |
+| `exit_profile` | 0.455 | 0.484 | 0.428 | 0.449 | not learnable |
+| `edge_quality` | 0.451 | 0.484 | 0.409 | 0.449 | not learnable |
+| `regime` | 0.429 | 0.418 | 0.376 | 0.437 | fails OOS |
+| `confidence` | 0.656 | 0.866 | 0.611 | 0.867 | not learnable; majority dominates |
+
+Action-only NB strict backtest with fixed hold bars was also run to test whether the learnable part of the target is economically useful.  Best fixed-hold result was still far below target:
+
+| Hold | Val CAGR/MDD | OOS CAGR/MDD | Notes |
+| ---: | ---: | ---: | --- |
+| 36 | -1.13 | -1.47 | overtrades and loses |
+| 72 | -1.22 | 0.55 | OOS positive but weak, p=0.761 |
+| 144 | -0.42 | -0.36 | loses |
+| 288 | 0.78 | 0.68 | best but below target, p~0.67 |
+| 432 | -1.57 | -0.82 | loses / MDD too high |
+
+Decision:
+
+- Do not train another Gemma SFT on this single-policy schema yet.
+- The target-echo upper bound is strong only because labels use future OHLC.  The past-only cheap predictor cannot convert the same summary into profitable action decisions.
+- The fundamental blocker is still input signal/representation: the current compact summary does not expose enough stable information for side/no-trade/exit decisions.
+- Next work should change the input feature representation, not the LLM count or SFT sampling.  Candidate direction: feed event/macro/regime features from `../wave_trading` plus recent realized path snippets, then rerun learnability before GPU training.
