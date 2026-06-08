@@ -20,9 +20,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from training.analyzer_state_edge_report import _opposite, _trend_side
+from training.analyzer_state_edge_report import _opposite, _trend_side as _source_edge_trend_side
 from training.decision_analyzer_data import _past_summary_text
-from training.decision_feature_learnability import load_jsonl
+from training.decision_feature_learnability import load_jsonl, parse_jsonish
 from training.edge_decay_analyzer_data import write_jsonl
 from training.multi_horizon_edge_report import parse_horizons
 from training.path_outcome_dataset import PathOutcomeConfig, compute_trade_path_outcome
@@ -80,6 +80,17 @@ def _path_for_side(market, signal_pos: int, side: str, hold_bars: int, cfg: Mult
         leverage=float(cfg.leverage),
     )
     return compute_trade_path_outcome(market, int(signal_pos), side, path_cfg)  # type: ignore[arg-type]
+
+
+def _trend_side(record: dict[str, Any]) -> str:
+    """Read past trend side from both old and enriched analyzer schemas."""
+
+    side = _source_edge_trend_side(record)
+    if side in {"LONG", "SHORT"}:
+        return side
+    target = parse_jsonish(record.get("target"))
+    side = str(target.get("trend_side", "NONE"))
+    return side if side in {"LONG", "SHORT"} else "NONE"
 
 
 def _one_horizon_shape(record: dict[str, Any], market, hold_bars: int, cfg: MultiHorizonShapeConfig) -> dict[str, Any]:

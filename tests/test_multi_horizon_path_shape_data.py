@@ -54,6 +54,21 @@ class TestMultiHorizonPathShapeData(unittest.TestCase):
             self.assertEqual(target["horizons"]["6"]["trend_return_bucket"], "STRONG_POSITIVE")
             self.assertIn(target["risk_profile"], {"LOW_PATH_RISK", "MIXED_PATH_RISK", "HIGH_PATH_RISK", "EXTREME_PATH_RISK"})
 
+    def test_derives_trend_side_from_edge_decay_target_schema(self):
+        with tempfile.TemporaryDirectory() as td:
+            market_path = Path(td) / "m.csv"
+            _market(market_path)
+            market = load_market_bars(str(market_path))
+            cfg = MultiHorizonShapeConfig(hold_bars_list=(3,), fee_rate=0.0, slippage_rate=0.0, leverage=1.0)
+            rec = _record(5, "LONG")
+            rec.pop("source_edge_target")
+            rec["target"] = json.dumps({"trend_side": "LONG", "edge_decay_label": "EDGE_PERSIST"})
+
+            target = derive_path_shape_target(rec, market, cfg)
+
+            self.assertEqual(target["trend_side"], "LONG")
+            self.assertNotEqual(target["horizons"]["3"]["relative_edge"], "NO_TREND_SIDE")
+
     def test_build_record_uses_past_prompt_and_future_target_guard(self):
         with tempfile.TemporaryDirectory() as td:
             market_path = Path(td) / "m.csv"
