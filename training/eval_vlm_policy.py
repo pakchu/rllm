@@ -18,6 +18,7 @@ from models.option_b_vlm import (
     parse_action_label,
     resolve_vlm_model_alias,
 )
+from preprocessing.external_features import attach_wave_trading_external_features
 from training.data_sources import load_market_data
 from training.vlm_trading_data import build_vlm_training_samples
 from utils import disable_transformers_allocator_warmup
@@ -178,6 +179,8 @@ def evaluate_vlm_policy(
     synthetic_drift: float = 0.0,
     synthetic_regime_amplitude: float = 0.0004,
     synthetic_regime_period: int = 720,
+    wave_trading_root: str = "",
+    external_tolerance: str = "",
     window_size: int = 96,
     resolution: int = 224,
     cache_dir: str | None = "data/image_cache_vlm",
@@ -248,6 +251,28 @@ def evaluate_vlm_policy(
         synthetic_regime_amplitude=synthetic_regime_amplitude,
         synthetic_regime_period=synthetic_regime_period,
     )
+    external_columns: list[str] = []
+    if wave_trading_root:
+        market_df = attach_wave_trading_external_features(
+            market_df,
+            wave_trading_root=wave_trading_root,
+            tolerance=external_tolerance or None,
+        )
+        external_columns = [
+            c
+            for c in (
+                "dxy",
+                "dxy_zscore",
+                "dxy_momentum",
+                "kimchi_premium",
+                "kimchi_premium_zscore",
+                "kimchi_premium_change",
+                "usdkrw",
+                "usdkrw_zscore",
+                "usdkrw_momentum",
+            )
+            if c in market_df.columns
+        ]
     requested_sample_dates = load_sample_dates(sample_date_file)
     samples = build_vlm_training_samples(
         market_df=market_df,
@@ -570,6 +595,12 @@ def evaluate_vlm_policy(
         "end_date": end_date,
         "market_type": market_type,
         "source_num_rows": int(len(market_df)),
+        "external_features": {
+            "wave_trading_root": str(wave_trading_root),
+            "external_tolerance": str(external_tolerance),
+            "columns": external_columns,
+            "join": "backward_asof_no_future" if wave_trading_root else "disabled",
+        },
         "timeframe": timeframe,
         "window_size": int(window_size),
         "sample_mode": sample_mode,
@@ -660,6 +691,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--synthetic-drift", type=float, default=0.0)
     parser.add_argument("--synthetic-regime-amplitude", type=float, default=0.0004)
     parser.add_argument("--synthetic-regime-period", type=int, default=720)
+    parser.add_argument(
+        "--wave-trading-root",
+        type=str,
+        default="",
+        help="Optional wave_trading root for backward-asof DXY/Kimchi external features.",
+    )
+    parser.add_argument(
+        "--external-tolerance",
+        type=str,
+        default="",
+        help="Optional pandas Timedelta tolerance for external feature joins.",
+    )
     parser.add_argument("--window-size", type=int, default=96)
     parser.add_argument("--resolution", type=int, default=224)
     parser.add_argument("--cache-dir", type=str, default="data/image_cache_vlm")
@@ -788,6 +831,8 @@ def main() -> None:
         synthetic_drift=args.synthetic_drift,
         synthetic_regime_amplitude=args.synthetic_regime_amplitude,
         synthetic_regime_period=args.synthetic_regime_period,
+        wave_trading_root=args.wave_trading_root,
+        external_tolerance=args.external_tolerance,
         window_size=args.window_size,
         resolution=args.resolution,
         cache_dir=args.cache_dir or None,
