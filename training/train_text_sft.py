@@ -53,7 +53,7 @@ def _row_bucket(row: dict[str, Any]) -> str:
     if isinstance(parsed, dict) and "edge_decay_label" in parsed:
         return f"edge={parsed.get('edge_decay_label')},hint={parsed.get('recommended_router_hint')}"
     if isinstance(parsed, dict) and "gate" in parsed:
-        return f"gate={parsed.get('gate')},side={parsed.get('side')}"
+        return f"gate={parsed.get('gate')},side={parsed.get('side')},hold={parsed.get('hold_bars')}"
     if isinstance(parsed, dict) and "side" in parsed:
         return f"side={parsed.get('side')}"
     if isinstance(parsed, dict):
