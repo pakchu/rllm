@@ -186,6 +186,37 @@ def _recent_bar_sequence(window: pd.DataFrame, *, bars: int = 16) -> tuple[list[
     return tokens, stats
 
 
+def _rounded_numeric_features(numeric_map: dict[str, float]) -> dict[str, float]:
+    """Keep compact numeric evidence values instead of names-only metadata.
+
+    Earlier analyzer summaries retained only ``numeric_feature_names``.  That
+    made the prompt say "Dollar Index" or "Kimchi Premium" exists while hiding
+    the actual value from both the LLM and cheap learnability baselines.  Values
+    here are computed from the same feature row, which is history-only at
+    ``signal_pos``.
+    """
+
+    return {k: round(float(v), 6) for k, v in sorted(numeric_map.items())}
+
+
+def _macro_evidence_from_numeric(numeric_map: dict[str, float]) -> dict[str, float]:
+    """Expose external/macro values as a small dedicated block for LLM prompts."""
+
+    wanted = {
+        "Dollar Index",
+        "Dollar Index Momentum",
+        "Dollar Index Z-Score",
+        "Kimchi Premium",
+        "Kimchi Premium Change",
+        "Kimchi Premium Z-Score",
+        "USDKRW Momentum",
+        "USDKRW Z-Score",
+        "Funding Rate",
+        "Open Interest Z-Score",
+    }
+    return {k: round(float(v), 6) for k, v in sorted(numeric_map.items()) if k in wanted}
+
+
 def build_analyzer_input(market: pd.DataFrame, signal_pos: int, *, window_size: int) -> str:
     """Prompt for analyzer fine-tuning; uses only bars <= signal_pos."""
     window = make_window(market, t=int(signal_pos), w=int(window_size))
@@ -233,6 +264,8 @@ def build_analyzer_summary(
     numeric_map = {k: float(v) for k, v in numeric}
     symbolic_map = {k: str(v) for k, v in symbolic}
     bar_sequence, sequence_stats = _recent_bar_sequence(window)
+    numeric_features = _rounded_numeric_features(numeric_map)
+    macro_evidence = _macro_evidence_from_numeric(numeric_map)
     summary = {
         "regime": regime,
         "volatility_level": vol_level,
@@ -257,6 +290,8 @@ def build_analyzer_summary(
         "recent_bar_sequence": bar_sequence,
         "sequence_stats": sequence_stats,
         "symbolic_features": symbolic_map,
+        "numeric_features": numeric_features,
+        "macro_evidence": macro_evidence,
         "numeric_feature_names": sorted(numeric_map),
     }
     return summary

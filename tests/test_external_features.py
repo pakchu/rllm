@@ -103,6 +103,10 @@ class TestExternalFeatures(unittest.TestCase):
 
         self.assertIn("Dollar Index", summary["numeric_feature_names"])
         self.assertIn("Kimchi Premium", summary["numeric_feature_names"])
+        self.assertIn("Dollar Index", summary["numeric_features"])
+        self.assertIn("Kimchi Premium", summary["numeric_features"])
+        self.assertIn("Dollar Index Momentum", summary["macro_evidence"])
+        self.assertIn("Kimchi Premium Change", summary["macro_evidence"])
         self.assertIn("Macro Dollar State", summary["symbolic_features"])
         self.assertIn("Korea Premium State", summary["symbolic_features"])
 
