@@ -1224,3 +1224,40 @@ Decision:
 - Reject `nt0p008` as too conservative for direct SFT; it fixed over-trading by collapsing to abstention.
 - Do not evaluate full val/OOS for `nt0p008`.
 - Next candidate should move the target toward `nt0p004` (about one-third no-trade) or use a balanced sampler that does not let the `NO_TRADE` token dominate generation.
+
+## 2026-06-08 nt0p004 generation-first full validation failure
+
+After `nt0p008` collapsed to all abstain, a less conservative no-trade hurdle was tried.
+
+Run `nt0p004` SFT:
+
+- train data: `data/economic_chosen_sft_conservative_nt0p004_h36_72_144_288_432_train.jsonl`
+- adapter: `checkpoints/economic_chosen_sft_conservative_nt0p004_gemma4_run1`
+- model: `gemma4-e4b` -> `google/gemma-4-E4B-it`
+- LoRA: r=16, alpha=32, dropout=0.05
+- steps: 200, effective batch 8, max length 3072
+- runtime: 2,002s (~33.4m)
+- train loss: 0.2738
+- target distribution: 1,161 `TRADE`, 696 `NO_TRADE`, with LONG/SHORT roughly balanced.
+
+Smoke results:
+
+- generation smoke80: 18 strict trades, CAGR 55.03%, strict MDD 8.75%, CAGR/MDD 6.29, but p-value 0.675 and only 18 trades.
+- corrected candidate-logprob smoke60: 59/60 `NO_TRADE`, 1 trade, CAGR -34.52%; candidate-logprob remains unusable as a policy surface for this adapter.
+
+Full validation generation result:
+
+- report: `results/economic_preference_conservative_nt0p004_val_sft_run1_generation_dedup_full_eval.json`
+- strict backtest: `results/economic_preference_conservative_nt0p004_val_sft_run1_generation_dedup_full_strict_backtest.json`
+- prediction distribution: 330 `TRADE/LONG/432`, 91 `TRADE/SHORT/432`, 15 `TRADE/LONG/288`, 9 `TRADE/SHORT/288`, 0 `NO_TRADE`
+- trades: 106
+- CAGR: -0.94%
+- strict MDD: 16.38%
+- CAGR/MDD: -0.057
+- p-value: 0.973
+
+Decision:
+
+- Reject `nt0p004` direct SFT.  It avoided the all-abstain failure of `nt0p008`, but overcorrected into always-trade/long-horizon exposure.
+- Do not run untouched OOS for this checkpoint; validation already fails the target and exceeds the strict MDD limit.
+- Next step is not post-hoc gate optimization.  The target must be trained with action-balanced sampling so `NO_TRADE`, side, and hold decisions are all represented during LoRA updates.
