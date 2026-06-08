@@ -1261,3 +1261,35 @@ Decision:
 - Reject `nt0p004` direct SFT.  It avoided the all-abstain failure of `nt0p008`, but overcorrected into always-trade/long-horizon exposure.
 - Do not run untouched OOS for this checkpoint; validation already fails the target and exceeds the strict MDD limit.
 - Next step is not post-hoc gate optimization.  The target must be trained with action-balanced sampling so `NO_TRADE`, side, and hold decisions are all represented during LoRA updates.
+
+## 2026-06-08 action-balanced SFT still collapses to long-horizon exposure
+
+After direct `nt0p004` SFT generated only trade actions on full validation, the text SFT sampler was changed to balance by full action bucket (`gate`, `side`, and `hold_bars`) instead of only gate/side.  This was intended to expose `NO_TRADE` and shorter hold profiles during LoRA updates.
+
+Run:
+
+- adapter: `checkpoints/economic_chosen_sft_conservative_nt0p004_balanced_gemma4_run1`
+- train data: `data/economic_chosen_sft_conservative_nt0p004_h36_72_144_288_432_train.jsonl`
+- sample mode: `balanced`
+- max samples: 1,100
+- steps: 200
+- runtime: 2,229s (~37.2m)
+- train loss: 0.2899
+- sampled target distribution: 252 `NO_TRADE`, 848 `TRADE`, 436 LONG, 412 SHORT.
+
+Validation smoke80 generation:
+
+- report: `results/economic_preference_conservative_nt0p004_balanced_val_sft_run1_generation_dedup_smoke80_eval.json`
+- strict backtest: `results/economic_preference_conservative_nt0p004_balanced_val_sft_run1_generation_dedup_smoke80_strict_backtest.json`
+- prediction distribution: 77 `TRADE/LONG/432`, 2 `TRADE/SHORT/432`, 1 `TRADE/LONG/288`, 0 `NO_TRADE`
+- trades: 18
+- CAGR: -65.83%
+- strict MDD: 9.54%
+- CAGR/MDD: -6.90
+- p-value: 0.322
+
+Decision:
+
+- Reject action-balanced direct SFT.  Balancing the sampled rows did not fix the model's learned output prior; it still generated long-horizon LONG almost everywhere.
+- This strengthens the root-cause diagnosis: direct imitation of future-derived action labels is not a learnable/stable single-step target from the current past-only summary.
+- Next work unit should move to a single-policy schema that predicts semantic state plus a smaller action abstraction (`action`, `exit_profile`) and evaluate cheap learnability before another GPU run.
