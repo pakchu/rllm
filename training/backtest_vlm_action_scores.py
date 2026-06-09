@@ -78,6 +78,7 @@ def simulate(
     cost = (float(exec_cfg.fee_rate) + float(exec_cfg.slippage_rate)) * float(exec_cfg.leverage)
     hold = max(1, int(hold_bars))
     entry_delay = max(0, int(exec_cfg.entry_delay_bars))
+    used_action_specific_holds = False
 
     for row in rows:
         dt = datetime.fromisoformat(str(row["date"]))
@@ -92,6 +93,7 @@ def simulate(
         if signal == 0:
             continue
         row_hold = _action_to_hold_bars(pred_action, hold)
+        used_action_specific_holds = used_action_specific_holds or row_hold != hold
         entry_pos = pos + entry_delay
         exit_pos = entry_pos + row_hold
         if entry_pos >= len(market) - 1 or exit_pos >= len(market):
@@ -145,6 +147,7 @@ def simulate(
             "samples": len(rows),
             "skipped_missing_bars": skipped_missing_bars,
             "hold_bars": hold,
+            "hold_bars_mode": "action_label_or_default" if used_action_specific_holds else "fixed_default",
             "entry_delay_bars": entry_delay,
             "return_application": "actual_ohlc_bar_by_bar_fixed_hold_strict_mdd",
         },
