@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import json
 from dataclasses import dataclass
 from typing import Iterable, List
 
@@ -37,6 +38,7 @@ class VLMTrainingSample:
     action_utility_buy: float = 0.0
     action_utility_hold: float = 0.0
     action_utility_sell: float = 0.0
+    action_utility_map: dict[str, float] | None = None
     dynamic_risk_weight: float = 0.0
 
 
@@ -370,6 +372,7 @@ def reward_from_action(
     action_utility_buy: float | None = None,
     action_utility_hold: float | None = None,
     action_utility_sell: float | None = None,
+    action_utility_map: dict[str, float] | None = None,
     utility_reward_scale: float = 400.0,
     utility_gap_scale: float = 400.0,
     action_schema: str = "buy_hold_sell",
@@ -418,10 +421,20 @@ def reward_from_action(
             f"got {reward_mode}"
         )
     if mode == "utility":
+        if schema == "multi_horizon_side" and action_utility_map is not None:
+            utility_table = {
+                str(k).upper(): float(v) for k, v in action_utility_map.items()
+            }
+            hold_u = float(utility_table.get("NO_TRADE", 0.0))
+            pred_u = float(utility_table.get(pred, hold_u))
+            best_u = float(max(utility_table.values())) if utility_table else hold_u
+            utility_reward = float(utility_reward_scale) * (pred_u - hold_u)
+            utility_regret = float(utility_gap_scale) * (best_u - pred_u)
+            reward = utility_reward - utility_regret
+            if pred == tgt:
+                reward += 1.0
+            return float(reward * class_weight)
         if schema == "multi_horizon_side":
-            # Per-horizon utilities are represented in the target label but
-            # not yet carried as per-label reward columns. Preserve a stable
-            # GRPO signal by using exact multi-class classification here.
             if pred == tgt:
                 return float(1.0 * scale * class_weight)
             return float(-1.0 * scale * class_weight)
@@ -518,6 +531,7 @@ def make_grpo_reward_func(
         action_utility_buy=None,
         action_utility_hold=None,
         action_utility_sell=None,
+        action_utility_map=None,
         **kwargs,
     ):
         del kwargs
@@ -539,6 +553,16 @@ def make_grpo_reward_func(
                 if action_utility_sell is None
                 else float(action_utility_sell[i])
             )
+            utility_map = None
+            if action_utility_map is not None:
+                raw_map = action_utility_map[i]
+                if isinstance(raw_map, str):
+                    try:
+                        utility_map = json.loads(raw_map)
+                    except json.JSONDecodeError:
+                        utility_map = None
+                elif isinstance(raw_map, dict):
+                    utility_map = raw_map
             rewards.append(
                 reward_from_action(
                     predicted_action=pred,
@@ -552,6 +576,7 @@ def make_grpo_reward_func(
                     action_utility_buy=buy_u,
                     action_utility_hold=hold_u,
                     action_utility_sell=sell_u,
+                    action_utility_map=utility_map,
                     utility_reward_scale=utility_reward_scale,
                     utility_gap_scale=utility_gap_scale,
                     action_schema=action_schema,
@@ -1201,6 +1226,11 @@ def build_vlm_training_samples(
         else:
             horizon_min_low = open_t
             horizon_max_high = open_t
+        action_utility_map = {
+            "BUY": 0.0,
+            "HOLD": 0.0,
+            "SELL": 0.0,
+        }
         if action_schema_key == "multi_horizon_side" and label_mode_key == "path_outcome":
             target_action, multi_utilities, next_return = action_from_multi_horizon_path_outcomes(
                 market_df,
@@ -1222,6 +1252,10 @@ def build_vlm_training_samples(
                 "BUY": float(max(long_utils, default=0.0)),
                 "HOLD": float(multi_utilities.get("NO_TRADE", 0.0)),
                 "SELL": float(max(short_utils, default=0.0)),
+            }
+            action_utility_map = {
+                str(label).upper(): float(multi_utilities.get(label, 0.0))
+                for label in get_action_labels(action_schema_key)
             }
             best_outcome = None
             path_trade_ok = target_action != "NO_TRADE"
@@ -1253,6 +1287,7 @@ def build_vlm_training_samples(
                 "HOLD": float(utility_hold_reward_bias),
                 "SELL": float(short_outcome.utility),
             }
+            action_utility_map = dict(utilities)
             next_return = float(best_outcome.net_return)
         else:
             best_outcome = None
@@ -1271,6 +1306,7 @@ def build_vlm_training_samples(
                 dynamic_risk_weight=risk_weight,
                 hold_reward_bias=utility_hold_reward_bias,
             )
+            action_utility_map = dict(utilities)
         if action_schema_key == "multi_horizon_side":
             if label_mode_key != "path_outcome":
                 if float(utilities["BUY"]) >= max(float(utilities["SELL"]), float(utilities["HOLD"])):
@@ -1363,6 +1399,7 @@ def build_vlm_training_samples(
                 float(utilities["HOLD"]),
                 float(utilities["SELL"]),
                 float(risk_weight),
+                action_utility_map,
             )
         )
 
@@ -1417,6 +1454,7 @@ def build_vlm_training_samples(
             action_utility_hold,
             action_utility_sell,
             dynamic_risk_weight,
+            action_utility_map,
         ) = candidates[int(pos)]
         window = make_window(market_df, t=t, w=window_size)
         image = None
@@ -1471,6 +1509,9 @@ def build_vlm_training_samples(
                 action_utility_buy=float(action_utility_buy),
                 action_utility_hold=float(action_utility_hold),
                 action_utility_sell=float(action_utility_sell),
+                action_utility_map={
+                    str(k).upper(): float(v) for k, v in dict(action_utility_map).items()
+                },
                 dynamic_risk_weight=float(dynamic_risk_weight),
             )
         )
@@ -1498,6 +1539,13 @@ def samples_to_hf_records(
                 "action_utility_buy": float(s.action_utility_buy),
                 "action_utility_hold": float(s.action_utility_hold),
                 "action_utility_sell": float(s.action_utility_sell),
+            "action_utility_map": json.dumps(
+                {
+                    str(k).upper(): float(v)
+                    for k, v in dict(s.action_utility_map or {}).items()
+                },
+                sort_keys=True,
+            ),
             "dynamic_risk_weight": float(s.dynamic_risk_weight),
             "date": s.date,
         }

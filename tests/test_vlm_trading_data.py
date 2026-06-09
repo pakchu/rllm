@@ -186,6 +186,43 @@ class TestVlmTradingData(unittest.TestCase):
         )
         self.assertGreater(r_long, r_short)
 
+    def test_reward_multi_horizon_side_utility_map(self):
+        utility_map = {
+            "NO_TRADE": 0.0,
+            "LONG_36": 0.001,
+            "LONG_72": 0.004,
+            "LONG_144": -0.002,
+            "SHORT_36": -0.001,
+            "SHORT_72": 0.002,
+            "SHORT_144": -0.003,
+        }
+        best = reward_from_action(
+            "LONG_72",
+            "LONG_72",
+            0.004,
+            reward_mode="utility",
+            action_schema="multi_horizon_side",
+            action_utility_map=utility_map,
+        )
+        weaker = reward_from_action(
+            "SHORT_72",
+            "LONG_72",
+            0.004,
+            reward_mode="utility",
+            action_schema="multi_horizon_side",
+            action_utility_map=utility_map,
+        )
+        flat = reward_from_action(
+            "NO_TRADE",
+            "LONG_72",
+            0.004,
+            reward_mode="utility",
+            action_schema="multi_horizon_side",
+            action_utility_map=utility_map,
+        )
+        self.assertGreater(best, weaker)
+        self.assertGreater(weaker, flat)
+
     def test_compute_action_utilities_cost_and_risk(self):
         low_risk = compute_action_utilities(
             open_t=100.0,
@@ -597,6 +634,8 @@ class TestVlmTradingData(unittest.TestCase):
         )
         records = samples_to_hf_records(samples, action_schema="multi_horizon_side")
         self.assertIn("LONG_36", records[0]["prompt"][0]["content"])
+        self.assertIn("action_utility_map", records[0])
+        self.assertIn("LONG_36", records[0]["action_utility_map"])
 
 
 if __name__ == "__main__":
