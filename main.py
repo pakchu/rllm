@@ -226,7 +226,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--action-schema",
         type=str,
         default="buy_hold_sell",
-        choices=["buy_hold_sell", "trade_gate", "trade_side"],
+        choices=["buy_hold_sell", "trade_gate", "trade_side", "multi_horizon_side"],
     )
     train_vlm.add_argument(
         "--trade-side-sample-policy",
@@ -287,6 +287,7 @@ def build_parser() -> argparse.ArgumentParser:
     train_vlm.add_argument("--path-mfe-bonus", type=float, default=0.0)
     train_vlm.add_argument("--path-min-net-return", type=float, default=0.0)
     train_vlm.add_argument("--path-max-mae", type=float, default=1.0)
+    train_vlm.add_argument("--multi-horizon-bars", type=str, default="36,72,144")
     train_vlm.add_argument("--utility-reward-scale", type=float, default=400.0)
     train_vlm.add_argument("--utility-gap-scale", type=float, default=400.0)
     train_vlm.add_argument(
@@ -365,7 +366,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--action-schema",
         type=str,
         default="buy_hold_sell",
-        choices=["buy_hold_sell", "trade_gate", "trade_side"],
+        choices=["buy_hold_sell", "trade_gate", "trade_side", "multi_horizon_side"],
     )
     eval_vlm.add_argument(
         "--trade-side-sample-policy",
@@ -421,6 +422,7 @@ def build_parser() -> argparse.ArgumentParser:
     eval_vlm.add_argument("--path-mfe-bonus", type=float, default=0.0)
     eval_vlm.add_argument("--path-min-net-return", type=float, default=0.0)
     eval_vlm.add_argument("--path-max-mae", type=float, default=1.0)
+    eval_vlm.add_argument("--multi-horizon-bars", type=str, default="36,72,144")
     eval_vlm.add_argument("--max-samples", type=int, default=128)
     eval_vlm.add_argument(
         "--sample-mode",
@@ -547,6 +549,7 @@ def build_parser() -> argparse.ArgumentParser:
     select_vlm.add_argument("--path-mfe-bonus", type=float, default=0.0)
     select_vlm.add_argument("--path-min-net-return", type=float, default=0.0)
     select_vlm.add_argument("--path-max-mae", type=float, default=1.0)
+    select_vlm.add_argument("--multi-horizon-bars", type=str, default="36,72,144")
     select_vlm.add_argument("--utility-reward-scale", type=float, default=400.0)
     select_vlm.add_argument("--utility-gap-scale", type=float, default=400.0)
     select_vlm.add_argument(
@@ -611,7 +614,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--action-schema",
         type=str,
         default="buy_hold_sell",
-        choices=["buy_hold_sell", "trade_gate", "trade_side"],
+        choices=["buy_hold_sell", "trade_gate", "trade_side", "multi_horizon_side"],
     )
     calibrate_vlm.add_argument(
         "--input-report",
@@ -1069,6 +1072,7 @@ def cmd_train_vlm_smoke(args: argparse.Namespace) -> None:
         path_mfe_bonus=args.path_mfe_bonus,
         path_min_net_return=args.path_min_net_return,
         path_max_mae=args.path_max_mae,
+        multi_horizon_bars=args.multi_horizon_bars,
         utility_reward_scale=args.utility_reward_scale,
         utility_gap_scale=args.utility_gap_scale,
         sample_mode=args.sample_mode,
@@ -1149,6 +1153,7 @@ def cmd_eval_vlm(args: argparse.Namespace) -> None:
         path_mfe_bonus=args.path_mfe_bonus,
         path_min_net_return=args.path_min_net_return,
         path_max_mae=args.path_max_mae,
+        multi_horizon_bars=args.multi_horizon_bars,
         max_samples=args.max_samples,
         sample_mode=args.sample_mode,
         sample_seed=args.sample_seed,
@@ -1244,6 +1249,7 @@ def cmd_select_vlm_checkpoint(args: argparse.Namespace) -> None:
         path_mfe_bonus=args.path_mfe_bonus,
         path_min_net_return=args.path_min_net_return,
         path_max_mae=args.path_max_mae,
+        multi_horizon_bars=args.multi_horizon_bars,
         utility_reward_scale=args.utility_reward_scale,
         utility_gap_scale=args.utility_gap_scale,
         sample_mode=args.sample_mode,

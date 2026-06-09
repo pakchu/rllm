@@ -7,6 +7,7 @@ from training.vlm_trading_data import (
     action_from_next_return,
     action_from_trade_gate_next_return,
     action_from_trade_gate_utilities,
+    action_from_multi_horizon_path_outcomes,
     action_from_trade_side_next_return,
     action_from_trade_side_utilities,
     action_from_utilities,
@@ -542,6 +543,60 @@ class TestVlmTradingData(unittest.TestCase):
             trade_side_sample_policy="trade_only",
         )
         self.assertEqual(samples, [])
+
+    def test_multi_horizon_side_path_outcome_labels_side_and_hold(self):
+        market = _oscillating_market_df(120)
+        label, utilities, net_return = action_from_multi_horizon_path_outcomes(
+            market,
+            32,
+            hold_bars_list=(36, 72),
+            utility_fee_rate=0.0,
+            utility_slippage_rate=0.0,
+            utility_leverage=1.0,
+            path_mae_penalty=0.0,
+            path_min_net_return=-1.0,
+            path_max_mae=1.0,
+        )
+        self.assertIn(label, {"NO_TRADE", "LONG_36", "LONG_72", "SHORT_36", "SHORT_72"})
+        self.assertIn("LONG_36", utilities)
+        self.assertIn("SHORT_72", utilities)
+        self.assertTrue(np.isfinite(net_return))
+
+        samples = build_vlm_training_samples(
+            market_df=market,
+            timeframe="1m",
+            window_size=16,
+            resolution=32,
+            cache_dir=None,
+            max_samples=12,
+            target_horizon=3,
+            label_mode="path_outcome",
+            sample_mode="balanced",
+            action_schema="multi_horizon_side",
+            multi_horizon_bars="36,72",
+            utility_fee_rate=0.0,
+            utility_slippage_rate=0.0,
+            utility_leverage=1.0,
+            path_mae_penalty=0.0,
+            path_min_net_return=-1.0,
+            path_max_mae=1.0,
+        )
+        self.assertGreater(len(samples), 0)
+        self.assertTrue(
+            all(
+                s.target_action
+                in {
+                    "NO_TRADE",
+                    "LONG_36",
+                    "LONG_72",
+                    "SHORT_36",
+                    "SHORT_72",
+                }
+                for s in samples
+            )
+        )
+        records = samples_to_hf_records(samples, action_schema="multi_horizon_side")
+        self.assertIn("LONG_36", records[0]["prompt"][0]["content"])
 
 
 if __name__ == "__main__":

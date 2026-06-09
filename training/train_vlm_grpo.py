@@ -164,6 +164,7 @@ def train_vlm_grpo_smoke(
     path_mfe_bonus: float = 0.0,
     path_min_net_return: float = 0.0,
     path_max_mae: float = 1.0,
+    multi_horizon_bars: str = "36,72,144",
     utility_reward_scale: float = 400.0,
     utility_gap_scale: float = 400.0,
     sample_mode: str = "balanced",
@@ -276,6 +277,7 @@ def train_vlm_grpo_smoke(
         path_mfe_bonus=path_mfe_bonus,
         path_min_net_return=path_min_net_return,
         path_max_mae=path_max_mae,
+        multi_horizon_bars=multi_horizon_bars,
         max_samples=max_samples,
         sample_mode=sample_mode,
         sample_seed=sample_seed,
@@ -349,6 +351,7 @@ def train_vlm_grpo_smoke(
             "path_mfe_bonus": float(path_mfe_bonus),
             "path_min_net_return": float(path_min_net_return),
             "path_max_mae": float(path_max_mae),
+            "multi_horizon_bars": str(multi_horizon_bars),
             "utility_reward_scale": float(utility_reward_scale),
             "utility_gap_scale": float(utility_gap_scale),
             "reward_variance_guard": str(reward_variance_guard),
@@ -576,6 +579,7 @@ def train_vlm_grpo_smoke(
         "path_mfe_bonus": float(path_mfe_bonus),
         "path_min_net_return": float(path_min_net_return),
         "path_max_mae": float(path_max_mae),
+        "multi_horizon_bars": str(multi_horizon_bars),
         "utility_reward_scale": float(utility_reward_scale),
         "utility_gap_scale": float(utility_gap_scale),
         "reward_variance_guard": str(reward_variance_guard),
@@ -719,6 +723,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--path-mfe-bonus", type=float, default=0.0)
     parser.add_argument("--path-min-net-return", type=float, default=0.0)
     parser.add_argument("--path-max-mae", type=float, default=1.0)
+    parser.add_argument(
+        "--multi-horizon-bars",
+        type=str,
+        default="36,72,144",
+        help="Comma-separated hold bars for action_schema=multi_horizon_side.",
+    )
     parser.add_argument("--utility-reward-scale", type=float, default=400.0)
     parser.add_argument("--utility-gap-scale", type=float, default=400.0)
     parser.add_argument(
@@ -847,6 +857,7 @@ def main() -> None:
         path_mfe_bonus=args.path_mfe_bonus,
         path_min_net_return=args.path_min_net_return,
         path_max_mae=args.path_max_mae,
+        multi_horizon_bars=args.multi_horizon_bars,
         utility_reward_scale=args.utility_reward_scale,
         utility_gap_scale=args.utility_gap_scale,
         sample_mode=args.sample_mode,

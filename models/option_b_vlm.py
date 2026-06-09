@@ -15,15 +15,26 @@ RECOMMENDED_VLM_MODEL = GEMMA4_E4B_IT_MODEL
 ACTION_LABELS = ("BUY", "HOLD", "SELL")
 ACTIONS_TRADE_GATE = ("TRADE", "NO_TRADE")
 ACTIONS_TRADE_SIDE = ("LONG", "SHORT")
+ACTIONS_MULTI_HORIZON_SIDE = (
+    "NO_TRADE",
+    "LONG_36",
+    "LONG_72",
+    "LONG_144",
+    "SHORT_36",
+    "SHORT_72",
+    "SHORT_144",
+)
 ACTION_SCHEMA_LABELS = {
     "buy_hold_sell": ACTION_LABELS,
     "trade_gate": ACTIONS_TRADE_GATE,
     "trade_side": ACTIONS_TRADE_SIDE,
+    "multi_horizon_side": ACTIONS_MULTI_HORIZON_SIDE,
 }
 ACTION_SCHEMA_DEFAULTS = {
     "buy_hold_sell": "HOLD",
     "trade_gate": "NO_TRADE",
     "trade_side": "LONG",
+    "multi_horizon_side": "NO_TRADE",
 }
 AUTO_MODEL_NAME = "auto"
 

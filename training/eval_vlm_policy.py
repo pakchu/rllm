@@ -211,6 +211,7 @@ def evaluate_vlm_policy(
     path_mfe_bonus: float = 0.0,
     path_min_net_return: float = 0.0,
     path_max_mae: float = 1.0,
+    multi_horizon_bars: str = "36,72,144",
     max_samples: int = 128,
     sample_mode: str = "balanced",
     sample_seed: int = 42,
@@ -307,6 +308,7 @@ def evaluate_vlm_policy(
         path_mfe_bonus=path_mfe_bonus,
         path_min_net_return=path_min_net_return,
         path_max_mae=path_max_mae,
+        multi_horizon_bars=multi_horizon_bars,
         max_samples=max_samples,
         sample_mode=sample_mode,
         sample_seed=sample_seed,
@@ -638,6 +640,7 @@ def evaluate_vlm_policy(
             "mfe_bonus": float(path_mfe_bonus),
             "min_net_return": float(path_min_net_return),
             "max_mae": float(path_max_mae),
+            "multi_horizon_bars": str(multi_horizon_bars),
         },
         "decision": {
             "mode": mode,
@@ -768,6 +771,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--path-mfe-bonus", type=float, default=0.0)
     parser.add_argument("--path-min-net-return", type=float, default=0.0)
     parser.add_argument("--path-max-mae", type=float, default=1.0)
+    parser.add_argument(
+        "--multi-horizon-bars",
+        type=str,
+        default="36,72,144",
+        help="Comma-separated hold bars for action_schema=multi_horizon_side.",
+    )
     parser.add_argument("--max-samples", type=int, default=128)
     parser.add_argument(
         "--sample-mode",
@@ -863,6 +872,7 @@ def main() -> None:
         path_mfe_bonus=args.path_mfe_bonus,
         path_min_net_return=args.path_min_net_return,
         path_max_mae=args.path_max_mae,
+        multi_horizon_bars=args.multi_horizon_bars,
         max_samples=args.max_samples,
         sample_mode=args.sample_mode,
         sample_seed=args.sample_seed,

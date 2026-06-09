@@ -125,6 +125,79 @@ def action_from_trade_side_utilities(
     return "LONG" if float(utility_buy) >= float(utility_sell) else "SHORT"
 
 
+def parse_multi_horizon_bars(value: str | Iterable[int] | None) -> tuple[int, ...]:
+    """Parse comma/space separated hold-bar horizons for multi-horizon actions."""
+    if value is None:
+        return (36, 72, 144)
+    if isinstance(value, str):
+        raw_items = [x.strip() for part in value.split(",") for x in part.split()]
+        vals = [int(x) for x in raw_items if x]
+    else:
+        vals = [int(x) for x in value]
+    vals = sorted({int(x) for x in vals if int(x) > 0})
+    if not vals:
+        raise ValueError("multi_horizon_bars must contain at least one positive integer")
+    allowed = {36, 72, 144}
+    unsupported = set(vals).difference(allowed)
+    if unsupported:
+        raise ValueError(
+            "multi_horizon_bars currently supports only schema labels "
+            f"{sorted(allowed)}, got unsupported {sorted(unsupported)}"
+        )
+    return tuple(vals)
+
+
+def action_from_multi_horizon_path_outcomes(
+    market_df: pd.DataFrame,
+    signal_pos: int,
+    *,
+    hold_bars_list: tuple[int, ...] = (36, 72, 144),
+    path_entry_delay_bars: int = 1,
+    utility_fee_rate: float = 0.0005,
+    utility_slippage_rate: float = 0.0001,
+    utility_leverage: float = 1.0,
+    path_mae_penalty: float = 1.0,
+    path_mfe_bonus: float = 0.0,
+    utility_hold_margin: float = 0.0,
+    path_min_net_return: float = 0.0,
+    path_max_mae: float = 1.0,
+) -> tuple[str, dict[str, float], float]:
+    """Choose NO_TRADE or best side+horizon from executable path outcomes."""
+    best_label = "NO_TRADE"
+    best_utility = float(utility_hold_margin)
+    best_net_return = 0.0
+    utilities: dict[str, float] = {"NO_TRADE": 0.0}
+    for hold_bars in hold_bars_list:
+        cfg = PathOutcomeConfig(
+            hold_bars=int(hold_bars),
+            entry_delay_bars=path_entry_delay_bars,
+            fee_rate=utility_fee_rate,
+            slippage_rate=utility_slippage_rate,
+            leverage=utility_leverage,
+            mae_penalty=path_mae_penalty,
+            mfe_bonus=path_mfe_bonus,
+            hold_margin=utility_hold_margin,
+            min_net_return=path_min_net_return,
+            max_mae=path_max_mae,
+        )
+        for side in ("LONG", "SHORT"):
+            outcome = compute_trade_path_outcome(market_df, signal_pos, side, cfg)
+            if outcome is None:
+                continue
+            label = f"{side}_{int(hold_bars)}"
+            utilities[label] = float(outcome.utility)
+            trade_ok = (
+                float(outcome.utility) > float(utility_hold_margin)
+                and float(outcome.net_return) > float(path_min_net_return)
+                and float(outcome.mae) <= float(path_max_mae)
+            )
+            if trade_ok and float(outcome.utility) > best_utility:
+                best_label = label
+                best_utility = float(outcome.utility)
+                best_net_return = float(outcome.net_return)
+    return best_label, utilities, best_net_return
+
+
 def _window_drawdown_pct(window: pd.DataFrame) -> float:
     """Max drawdown over close series in [0, 1]."""
     if len(window) == 0:
@@ -329,6 +402,13 @@ def reward_from_action(
             "LONG": float(buy_reward_weight),
             "SHORT": float(sell_reward_weight),
         }
+    elif schema == "multi_horizon_side":
+        class_weight_map = {"NO_TRADE": float(hold_reward_weight)}
+        for label in get_action_labels(schema):
+            if label.startswith("LONG_"):
+                class_weight_map[label] = float(buy_reward_weight)
+            elif label.startswith("SHORT_"):
+                class_weight_map[label] = float(sell_reward_weight)
     class_weight = class_weight_map.get(tgt, 1.0)
 
     mode = str(reward_mode).lower().strip()
@@ -338,6 +418,13 @@ def reward_from_action(
             f"got {reward_mode}"
         )
     if mode == "utility":
+        if schema == "multi_horizon_side":
+            # Per-horizon utilities are represented in the target label but
+            # not yet carried as per-label reward columns. Preserve a stable
+            # GRPO signal by using exact multi-class classification here.
+            if pred == tgt:
+                return float(1.0 * scale * class_weight)
+            return float(-1.0 * scale * class_weight)
         if (
             action_utility_buy is not None
             and action_utility_hold is not None
@@ -385,6 +472,10 @@ def reward_from_action(
             return float(1.0 * scale * class_weight)
         return float(-1.0 * scale * class_weight)
     if schema == "trade_side":
+        if pred == tgt:
+            return float(1.0 * scale * class_weight)
+        return float(-1.0 * scale * class_weight)
+    if schema == "multi_horizon_side":
         if pred == tgt:
             return float(1.0 * scale * class_weight)
         return float(-1.0 * scale * class_weight)
@@ -994,6 +1085,7 @@ def build_vlm_training_samples(
     path_mfe_bonus: float = 0.0,
     path_min_net_return: float = 0.0,
     path_max_mae: float = 1.0,
+    multi_horizon_bars: str | Iterable[int] | None = None,
     max_samples: int | None = None,
     sample_mode: str = "sequential",
     sample_seed: int = 42,
@@ -1032,8 +1124,16 @@ def build_vlm_training_samples(
         )
 
     horizon = max(1, int(target_horizon))
+    action_schema_key = str(action_schema).lower().strip()
+    get_action_labels(action_schema_key)
+    multi_horizons = parse_multi_horizon_bars(multi_horizon_bars)
+    max_required_horizon = (
+        max(horizon, max(multi_horizons))
+        if action_schema_key == "multi_horizon_side"
+        else horizon
+    )
     start_t = window_size - 1
-    end_t = len(market_df) - horizon  # because we access t+h
+    end_t = len(market_df) - max_required_horizon  # because we access t+h or multi-horizon paths
     if end_t <= start_t:
         return []
 
@@ -1056,8 +1156,6 @@ def build_vlm_training_samples(
             "{'basic_v0','engineered_v1','edge_state_v2'}, "
             f"got {prompt_feature_mode}"
         )
-    action_schema_key = str(action_schema).lower().strip()
-    get_action_labels(action_schema_key)
     trade_side_sample_policy_key = str(trade_side_sample_policy).lower().strip()
     if trade_side_sample_policy_key not in {"trade_only", "directional_all"}:
         raise ValueError(
@@ -1103,7 +1201,31 @@ def build_vlm_training_samples(
         else:
             horizon_min_low = open_t
             horizon_max_high = open_t
-        if label_mode_key == "path_outcome":
+        if action_schema_key == "multi_horizon_side" and label_mode_key == "path_outcome":
+            target_action, multi_utilities, next_return = action_from_multi_horizon_path_outcomes(
+                market_df,
+                t,
+                hold_bars_list=multi_horizons,
+                path_entry_delay_bars=path_entry_delay_bars,
+                utility_fee_rate=utility_fee_rate,
+                utility_slippage_rate=utility_slippage_rate,
+                utility_leverage=utility_leverage,
+                path_mae_penalty=path_mae_penalty,
+                path_mfe_bonus=path_mfe_bonus,
+                utility_hold_margin=utility_hold_margin,
+                path_min_net_return=path_min_net_return,
+                path_max_mae=path_max_mae,
+            )
+            long_utils = [v for k, v in multi_utilities.items() if k.startswith("LONG_")]
+            short_utils = [v for k, v in multi_utilities.items() if k.startswith("SHORT_")]
+            utilities = {
+                "BUY": float(max(long_utils, default=0.0)),
+                "HOLD": float(multi_utilities.get("NO_TRADE", 0.0)),
+                "SELL": float(max(short_utils, default=0.0)),
+            }
+            best_outcome = None
+            path_trade_ok = target_action != "NO_TRADE"
+        elif label_mode_key == "path_outcome":
             path_cfg = PathOutcomeConfig(
                 hold_bars=horizon,
                 entry_delay_bars=path_entry_delay_bars,
@@ -1149,7 +1271,15 @@ def build_vlm_training_samples(
                 dynamic_risk_weight=risk_weight,
                 hold_reward_bias=utility_hold_reward_bias,
             )
-        if action_schema_key == "trade_gate":
+        if action_schema_key == "multi_horizon_side":
+            if label_mode_key != "path_outcome":
+                if float(utilities["BUY"]) >= max(float(utilities["SELL"]), float(utilities["HOLD"])):
+                    target_action = f"LONG_{max(multi_horizons)}"
+                elif float(utilities["SELL"]) >= max(float(utilities["BUY"]), float(utilities["HOLD"])):
+                    target_action = f"SHORT_{max(multi_horizons)}"
+                else:
+                    target_action = "NO_TRADE"
+        elif action_schema_key == "trade_gate":
             if label_mode_key == "path_outcome":
                 target_action = "TRADE" if path_trade_ok else "NO_TRADE"
             elif label_mode_key == "utility":

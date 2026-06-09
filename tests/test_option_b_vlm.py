@@ -83,6 +83,40 @@ class TestOptionBVLM(unittest.TestCase):
             "SHORT",
         )
 
+    def test_multi_horizon_side_prompt_and_parse(self):
+        prompt = build_trading_prompt(
+            TradingPromptState(
+                timeframe="5m",
+                position_size_pct=0.0,
+                last_entry_price=0.0,
+                range_volatility_pct=0.02,
+            ),
+            prompt_style="symbolic",
+            action_schema="multi_horizon_side",
+        )
+        self.assertIn("LONG_36", prompt)
+        self.assertIn("SHORT_144", make_action_system_prompt("multi_horizon_side"))
+        self.assertEqual(
+            get_action_labels("multi_horizon_side"),
+            (
+                "NO_TRADE",
+                "LONG_36",
+                "LONG_72",
+                "LONG_144",
+                "SHORT_36",
+                "SHORT_72",
+                "SHORT_144",
+            ),
+        )
+        self.assertEqual(
+            parse_action_label(
+                "Final answer: SHORT_72",
+                default="NO_TRADE",
+                labels=get_action_labels("multi_horizon_side"),
+            ),
+            "SHORT_72",
+        )
+
     def test_symbolic_prompt_style(self):
         prompt = build_trading_prompt(
             TradingPromptState(

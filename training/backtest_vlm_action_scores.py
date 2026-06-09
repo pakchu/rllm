@@ -27,11 +27,28 @@ def _load_action_rows(report_path: str | Path) -> tuple[list[dict[str, Any]], di
 
 def _action_to_signal(action: str) -> int:
     key = str(action).upper().strip()
+    if key.startswith("LONG_"):
+        return 1
+    if key.startswith("SHORT_"):
+        return -1
     if key in {"BUY", "LONG"}:
         return 1
     if key in {"SELL", "SHORT"}:
         return -1
     return 0
+
+
+def _action_to_hold_bars(action: str, default_hold_bars: int) -> int:
+    """Return action-specific hold bars for labels like LONG_36."""
+    key = str(action).upper().strip()
+    if "_" not in key:
+        return max(1, int(default_hold_bars))
+    suffix = key.rsplit("_", 1)[-1]
+    try:
+        hold = int(suffix)
+    except ValueError:
+        return max(1, int(default_hold_bars))
+    return max(1, hold)
 
 
 def simulate(
@@ -70,11 +87,13 @@ def simulate(
             continue
         if pos < next_allowed_market_pos:
             continue
-        signal = _action_to_signal(str(row.get("pred", "HOLD")))
+        pred_action = str(row.get("pred", "HOLD"))
+        signal = _action_to_signal(pred_action)
         if signal == 0:
             continue
+        row_hold = _action_to_hold_bars(pred_action, hold)
         entry_pos = pos + entry_delay
-        exit_pos = entry_pos + hold
+        exit_pos = entry_pos + row_hold
         if entry_pos >= len(market) - 1 or exit_pos >= len(market):
             skipped_missing_bars += 1
             continue
