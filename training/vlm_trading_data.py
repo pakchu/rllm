@@ -375,6 +375,7 @@ def reward_from_action(
     action_utility_map: dict[str, float] | None = None,
     utility_reward_scale: float = 400.0,
     utility_gap_scale: float = 400.0,
+    wrong_trade_penalty: float = 0.0,
     action_schema: str = "buy_hold_sell",
 ) -> float:
     """
@@ -475,6 +476,16 @@ def reward_from_action(
         utility_reward = float(utility_reward_scale) * (pred_u - hold_u)
         utility_regret = float(utility_gap_scale) * (best_u - pred_u)
         reward = utility_reward - utility_regret
+        if float(wrong_trade_penalty) > 0.0:
+            if schema == "buy_hold_sell":
+                pred_is_trade = pred in {"BUY", "SELL"}
+                target_is_trade = tgt in {"BUY", "SELL"}
+                if pred_is_trade and tgt == "HOLD":
+                    reward -= float(wrong_trade_penalty)
+                elif pred_is_trade and target_is_trade and pred != tgt:
+                    reward -= float(wrong_trade_penalty)
+            elif schema == "trade_gate" and pred == "TRADE" and tgt == "NO_TRADE":
+                reward -= float(wrong_trade_penalty)
         # give a fixed bonus when selecting utility-optimal action
         if abs(best_u - pred_u) <= 1e-12:
             reward += 1.0
@@ -520,6 +531,7 @@ def make_grpo_reward_func(
     reward_mode: str = "classification",
     utility_reward_scale: float = 400.0,
     utility_gap_scale: float = 400.0,
+    wrong_trade_penalty: float = 0.0,
     action_schema: str = "buy_hold_sell",
 ):
     """Build reward function compatible with TRL GRPOTrainer."""
@@ -579,6 +591,7 @@ def make_grpo_reward_func(
                     action_utility_map=utility_map,
                     utility_reward_scale=utility_reward_scale,
                     utility_gap_scale=utility_gap_scale,
+                    wrong_trade_penalty=wrong_trade_penalty,
                     action_schema=action_schema,
                 )
             )

@@ -140,6 +140,29 @@ class TestVlmTradingData(unittest.TestCase):
         )
         self.assertGreater(r_buy, r_sell)
 
+    def test_wrong_trade_penalty_discourages_false_entries(self):
+        base = reward_from_action(
+            "BUY",
+            "HOLD",
+            0.0,
+            reward_mode="utility",
+            action_utility_buy=-0.001,
+            action_utility_hold=0.0,
+            action_utility_sell=-0.002,
+            wrong_trade_penalty=0.0,
+        )
+        penalized = reward_from_action(
+            "BUY",
+            "HOLD",
+            0.0,
+            reward_mode="utility",
+            action_utility_buy=-0.001,
+            action_utility_hold=0.0,
+            action_utility_sell=-0.002,
+            wrong_trade_penalty=2.0,
+        )
+        self.assertLess(penalized, base)
+
     def test_reward_trade_gate_utility_mode(self):
         r_trade = reward_from_action(
             "TRADE",

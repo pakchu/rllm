@@ -167,6 +167,7 @@ def train_vlm_grpo_smoke(
     multi_horizon_bars: str = "36,72,144",
     utility_reward_scale: float = 400.0,
     utility_gap_scale: float = 400.0,
+    wrong_trade_penalty: float = 0.0,
     sample_mode: str = "balanced",
     sample_seed: int = 42,
     max_steps: int = 10,
@@ -354,6 +355,7 @@ def train_vlm_grpo_smoke(
             "multi_horizon_bars": str(multi_horizon_bars),
             "utility_reward_scale": float(utility_reward_scale),
             "utility_gap_scale": float(utility_gap_scale),
+            "wrong_trade_penalty": float(wrong_trade_penalty),
             "reward_variance_guard": str(reward_variance_guard),
             "effective_per_device_train_batch_size": int(safe_per_device_batch),
             "effective_num_generations": int(safe_num_generations),
@@ -505,6 +507,7 @@ def train_vlm_grpo_smoke(
             reward_mode=reward_mode,
             utility_reward_scale=utility_reward_scale,
             utility_gap_scale=utility_gap_scale,
+            wrong_trade_penalty=wrong_trade_penalty,
             action_schema=action_schema,
         ),
         train_dataset=dataset,
@@ -582,6 +585,7 @@ def train_vlm_grpo_smoke(
         "multi_horizon_bars": str(multi_horizon_bars),
         "utility_reward_scale": float(utility_reward_scale),
         "utility_gap_scale": float(utility_gap_scale),
+        "wrong_trade_penalty": float(wrong_trade_penalty),
         "reward_variance_guard": str(reward_variance_guard),
         "effective_per_device_train_batch_size": int(safe_per_device_batch),
         "effective_num_generations": int(safe_num_generations),
@@ -732,6 +736,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--utility-reward-scale", type=float, default=400.0)
     parser.add_argument("--utility-gap-scale", type=float, default=400.0)
     parser.add_argument(
+        "--wrong-trade-penalty",
+        type=float,
+        default=0.0,
+        help="Extra utility-mode penalty for predicting a trade when target is HOLD or the opposite side.",
+    )
+    parser.add_argument(
         "--sample-mode",
         type=str,
         default="balanced",
@@ -860,6 +870,7 @@ def main() -> None:
         multi_horizon_bars=args.multi_horizon_bars,
         utility_reward_scale=args.utility_reward_scale,
         utility_gap_scale=args.utility_gap_scale,
+        wrong_trade_penalty=args.wrong_trade_penalty,
         sample_mode=args.sample_mode,
         sample_seed=args.sample_seed,
         output_dir=args.output_dir,

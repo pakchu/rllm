@@ -72,6 +72,8 @@ class TestTrainVlmGrpoArgs(unittest.TestCase):
                 "350",
                 "--utility-gap-scale",
                 "420",
+                "--wrong-trade-penalty",
+                "2.5",
                 "--max-completion-length",
                 "5",
                 "--min-new-tokens",
@@ -119,6 +121,7 @@ class TestTrainVlmGrpoArgs(unittest.TestCase):
             self.assertAlmostEqual(args.utility_hold_reward_bias, -0.0001)
             self.assertAlmostEqual(args.utility_reward_scale, 350)
             self.assertAlmostEqual(args.utility_gap_scale, 420)
+            self.assertAlmostEqual(args.wrong_trade_penalty, 2.5)
             self.assertEqual(args.max_completion_length, 5)
             self.assertEqual(args.min_new_tokens, 2)
             self.assertEqual(args.do_sample, "false")
