@@ -308,7 +308,7 @@ def parse_args() -> argparse.Namespace:
         "--prompt-feature-mode",
         type=str,
         default="basic_v0",
-        choices=["basic_v0", "engineered_v1"],
+        choices=["basic_v0", "engineered_v1", "edge_state_v2"],
     )
     parser.add_argument("--max-samples", type=int, default=300)
     parser.add_argument("--hold-band", type=float, default=0.0005)

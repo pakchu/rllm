@@ -652,6 +652,219 @@ def _korea_premium_label(feature_row: pd.Series) -> str:
     return "KIMCHI_NEUTRAL"
 
 
+def _return_pct_from_window(window: pd.DataFrame, bars: int) -> float:
+    """Past-only close return over at most ``bars`` rows ending at the signal row."""
+    if len(window) < 2:
+        return 0.0
+    lookback = max(1, int(bars))
+    ref_idx = max(0, len(window) - 1 - lookback)
+    ref = float(window["close"].iloc[ref_idx])
+    now = float(window["close"].iloc[-1])
+    if ref == 0.0:
+        return 0.0
+    return float((now - ref) / ref)
+
+
+def _rolling_path_stats(window: pd.DataFrame, bars: int) -> tuple[float, float, float]:
+    """Past-only path return, max drawdown, and max runup over recent bars."""
+    if len(window) < 2:
+        return 0.0, 0.0, 0.0
+    recent = window.iloc[max(0, len(window) - int(bars)) :]
+    closes = np.asarray(recent["close"], dtype=np.float64)
+    if len(closes) < 2 or closes[0] == 0.0:
+        return 0.0, 0.0, 0.0
+    path_return = float((closes[-1] - closes[0]) / closes[0])
+    running_peak = np.maximum.accumulate(np.maximum(closes, 1e-12))
+    running_trough = np.minimum.accumulate(np.maximum(closes, 1e-12))
+    max_drawdown = float(np.max(np.maximum(0.0, 1.0 - closes / running_peak)))
+    max_runup = float(np.max(np.maximum(0.0, closes / running_trough - 1.0)))
+    return path_return, max_drawdown, max_runup
+
+
+def _realized_vol_pct(window: pd.DataFrame, bars: int) -> float:
+    if len(window) < 3:
+        return 0.0
+    recent = window.iloc[max(0, len(window) - int(bars) - 1) :]
+    close = recent["close"].astype(float)
+    ret = np.log(close / close.shift(1).replace(0.0, np.nan)).replace([np.inf, -np.inf], np.nan).dropna()
+    if len(ret) == 0:
+        return 0.0
+    return float(ret.std(ddof=0) * math.sqrt(max(1, int(bars))))
+
+
+def _sign_label(value: float, *, flat: float = 0.0015) -> str:
+    if value > flat:
+        return "UP"
+    if value < -flat:
+        return "DOWN"
+    return "FLAT"
+
+
+def _pressure_label(value: float, *, low: float = -0.35, high: float = 0.35) -> str:
+    if value <= low:
+        return "SHORT_PRESSURE"
+    if value >= high:
+        return "LONG_PRESSURE"
+    return "MIXED_PRESSURE"
+
+
+def _regime_playbook_label(
+    *,
+    short_ret: float,
+    medium_ret: float,
+    long_ret: float,
+    range_pos: float,
+    vol_short: float,
+    vol_long: float,
+    risk_state: str,
+) -> str:
+    """LLM-readable playbook token from past-only trend/range/volatility state."""
+    aligned_up = short_ret > 0.0015 and medium_ret > 0.0025 and long_ret > 0.004
+    aligned_down = short_ret < -0.0015 and medium_ret < -0.0025 and long_ret < -0.004
+    vol_expanding = vol_short > max(0.0001, vol_long * 1.25)
+    near_high = range_pos > 0.65
+    near_low = range_pos < -0.65
+    stressed = risk_state in {"ELEVATED", "STRESS"}
+
+    if aligned_up and vol_expanding and not near_high:
+        return "TREND_FOLLOW_LONG"
+    if aligned_down and vol_expanding and not near_low:
+        return "TREND_FOLLOW_SHORT"
+    if near_low and short_ret > -0.004 and not stressed:
+        return "MEAN_REVERT_LONG"
+    if near_high and short_ret < 0.004 and not stressed:
+        return "MEAN_REVERT_SHORT"
+    if vol_short < max(0.0001, vol_long * 0.70) and abs(medium_ret) < 0.004:
+        return "SQUEEZE_WAIT"
+    if abs(medium_ret) < 0.003 and abs(range_pos) < 0.45:
+        return "CHOP_WAIT"
+    return "REGIME_MIXED"
+
+
+def _cross_market_pressure_label(feature_row: pd.Series) -> str:
+    """Combine DXY, USDKRW, and kimchi into a crypto risk pressure token."""
+    dxy_z = float(feature_row.get("dxy_zscore", 0.0))
+    dxy_mom = float(feature_row.get("dxy_momentum", 0.0))
+    usdkrw_z = float(feature_row.get("usdkrw_zscore", 0.0))
+    usdkrw_mom = float(feature_row.get("usdkrw_momentum", 0.0))
+    kimchi_z = float(feature_row.get("kimchi_premium_zscore", 0.0))
+    kimchi_chg = float(feature_row.get("kimchi_premium_change", 0.0))
+    # Dollar strength and rising USDKRW usually pressure BTC risk assets.
+    # Rising kimchi can be local risk appetite, but extreme/high and falling
+    # premium can warn of local demand exhaustion.
+    score = (
+        -0.45 * dxy_z
+        - 16.0 * dxy_mom
+        - 0.35 * usdkrw_z
+        - 12.0 * usdkrw_mom
+        + 0.25 * kimchi_z
+        + 10.0 * kimchi_chg
+    )
+    return _pressure_label(score)
+
+
+def _edge_state_prompt_features(
+    window: pd.DataFrame,
+    feature_row: pd.Series,
+) -> tuple[tuple[tuple[str, float], ...], tuple[tuple[str, str], ...], tuple[str, ...]]:
+    """
+    LLM-oriented, past-only feature summary.
+
+    Unlike engineered_v1's raw indicator dump, this mode exposes the trading
+    structure the policy must reason over: multi-horizon path shape, regime
+    playbook, cross-market pressure, and strict-drawdown risk context.
+    """
+    ret_1h = _return_pct_from_window(window, 12)
+    ret_2h = _return_pct_from_window(window, 24)
+    ret_8h = _return_pct_from_window(window, 96)
+    path_ret_6h, path_dd_6h, path_runup_6h = _rolling_path_stats(window, 72)
+    path_ret_12h, path_dd_12h, path_runup_12h = _rolling_path_stats(window, 144)
+    vol_1h = _realized_vol_pct(window, 12)
+    vol_8h = _realized_vol_pct(window, 96)
+
+    risk_state = _risk_state_label(feature_row)
+    range_pos = float(feature_row.get("range_pos", 0.0))
+    playbook = _regime_playbook_label(
+        short_ret=ret_1h,
+        medium_ret=ret_2h,
+        long_ret=ret_8h,
+        range_pos=range_pos,
+        vol_short=vol_1h,
+        vol_long=vol_8h,
+        risk_state=risk_state,
+    )
+    cross_pressure = _cross_market_pressure_label(feature_row)
+    trend_alignment = _trend_alignment_label(feature_row)
+    location = _location_label(feature_row)
+    oscillator = _oscillator_label(feature_row)
+    candle_pattern = _candle_pattern_label(feature_row)
+    order_flow = _order_flow_label(
+        feature_row, has_taker_flow="taker_buy_base" in window.columns
+    )
+
+    numeric_features: list[tuple[str, float]] = [
+        ("Past Return 1h", ret_1h),
+        ("Past Return 2h", ret_2h),
+        ("Past Return 8h", ret_8h),
+        ("Past Path Return 6h", path_ret_6h),
+        ("Past Path Drawdown 6h", path_dd_6h),
+        ("Past Path Runup 6h", path_runup_6h),
+        ("Past Path Return 12h", path_ret_12h),
+        ("Past Path Drawdown 12h", path_dd_12h),
+        ("Past Path Runup 12h", path_runup_12h),
+        ("Realized Vol 1h", vol_1h),
+        ("Realized Vol 8h", vol_8h),
+        ("Range Position", range_pos),
+        ("Order Flow Imbalance", float(feature_row.get("taker_imbalance", 0.0))),
+    ]
+    if "dxy" in window.columns or "usdkrw" in window.columns:
+        numeric_features.extend(
+            [
+                ("DXY Z", float(feature_row.get("dxy_zscore", 0.0))),
+                ("DXY Momentum", float(feature_row.get("dxy_momentum", 0.0))),
+                ("USDKRW Z", float(feature_row.get("usdkrw_zscore", 0.0))),
+                ("USDKRW Momentum", float(feature_row.get("usdkrw_momentum", 0.0))),
+            ]
+        )
+    if "kimchi_premium" in window.columns:
+        numeric_features.extend(
+            [
+                ("Kimchi Z", float(feature_row.get("kimchi_premium_zscore", 0.0))),
+                ("Kimchi Change", float(feature_row.get("kimchi_premium_change", 0.0))),
+            ]
+        )
+
+    symbolic_features = (
+        ("Playbook", playbook),
+        ("Short Horizon Direction", _sign_label(ret_1h)),
+        ("Medium Horizon Direction", _sign_label(ret_2h)),
+        ("Long Horizon Direction", _sign_label(ret_8h)),
+        ("Trend Alignment", trend_alignment),
+        ("Location", location),
+        ("Oscillator", oscillator),
+        ("Candle Pattern", candle_pattern),
+        ("Order Flow", order_flow),
+        ("Risk State", risk_state),
+        ("Cross Market Pressure", cross_pressure),
+    )
+    tags = tuple(
+        tag
+        for tag in (
+            playbook,
+            _sign_label(ret_1h),
+            _sign_label(ret_2h),
+            _sign_label(ret_8h),
+            trend_alignment,
+            location,
+            order_flow,
+            risk_state,
+            cross_pressure,
+        )
+        if tag != "UNKNOWN"
+    )
+    return tuple(numeric_features), symbolic_features, tags
+
+
 def _engineered_prompt_features(
     window: pd.DataFrame,
     feature_row: pd.Series,
@@ -837,9 +1050,10 @@ def build_vlm_training_samples(
             f"got {label_mode}"
         )
     prompt_feature_mode_key = str(prompt_feature_mode).lower().strip()
-    if prompt_feature_mode_key not in {"basic_v0", "engineered_v1"}:
+    if prompt_feature_mode_key not in {"basic_v0", "engineered_v1", "edge_state_v2"}:
         raise ValueError(
-            "prompt_feature_mode must be one of {'basic_v0','engineered_v1'}, "
+            "prompt_feature_mode must be one of "
+            "{'basic_v0','engineered_v1','edge_state_v2'}, "
             f"got {prompt_feature_mode}"
         )
     action_schema_key = str(action_schema).lower().strip()
@@ -1091,6 +1305,12 @@ def build_vlm_training_samples(
                 extra_symbolic_features,
                 context_tags,
             ) = _engineered_prompt_features(window, feature_row)
+        elif prompt_feature_mode_key == "edge_state_v2":
+            (
+                extra_numeric_features,
+                extra_symbolic_features,
+                context_tags,
+            ) = _edge_state_prompt_features(window, feature_row)
         state = TradingPromptState(
             timeframe=timeframe,
             position_size_pct=0.0,

@@ -286,6 +286,29 @@ class TestVlmTradingData(unittest.TestCase):
         self.assertIn("Order Flow:", prompt)
         self.assertIn("Tags:", prompt)
 
+    def test_build_samples_edge_state_prompt_mode(self):
+        samples = build_vlm_training_samples(
+            market_df=_rich_market_df(),
+            timeframe="5m",
+            window_size=32,
+            resolution=32,
+            cache_dir=None,
+            max_samples=4,
+            sample_mode="uniform",
+            prompt_style="hybrid",
+            prompt_feature_mode="edge_state_v2",
+        )
+        self.assertEqual(len(samples), 4)
+        prompt = samples[0].prompt
+        self.assertIn("Past Return 1h:", prompt)
+        self.assertIn("Past Path Drawdown 6h:", prompt)
+        self.assertIn("Realized Vol 8h:", prompt)
+        self.assertIn("Playbook:", prompt)
+        self.assertIn("Cross Market Pressure:", prompt)
+        self.assertIn("Tags:", prompt)
+        self.assertNotIn("Target", prompt)
+        self.assertNotIn("Future", prompt)
+
     def test_build_samples_trade_gate_schema(self):
         samples = build_vlm_training_samples(
             market_df=_oscillating_market_df(),
