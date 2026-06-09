@@ -1082,6 +1082,109 @@ def _engineered_prompt_features(
     return tuple(numeric_features), symbolic_features, tags
 
 
+
+def _edge_state_v3_prompt_features(
+    window: pd.DataFrame,
+    feature_row: pd.Series,
+) -> tuple[tuple[tuple[str, float], ...], tuple[tuple[str, str], ...], tuple[str, ...]]:
+    """Past-only LLM decision card with explicit side/step reasoning cues.
+
+    V3 keeps the v2 edge-state facts, then adds compressed categorical
+    decisions that a small text LLM can learn more easily than raw decimals:
+    trade readiness, side thesis, no-trade cause, and a past-only step focus.
+    These are derived only from the input window and backward-asof external
+    features; no target or future path fields are exposed.
+    """
+    numeric_v2, symbolic_v2, tags_v2 = _edge_state_prompt_features(window, feature_row)
+    numeric_dict = {k: float(v) for k, v in numeric_v2}
+
+    ret_1h = float(numeric_dict.get("Past Return 1h", 0.0))
+    ret_2h = float(numeric_dict.get("Past Return 2h", 0.0))
+    ret_8h = float(numeric_dict.get("Past Return 8h", 0.0))
+    path_ret_6h = float(numeric_dict.get("Past Path Return 6h", 0.0))
+    path_dd_6h = float(numeric_dict.get("Past Path Drawdown 6h", 0.0))
+    path_runup_6h = float(numeric_dict.get("Past Path Runup 6h", 0.0))
+    vol_1h = float(numeric_dict.get("Realized Vol 1h", 0.0))
+    vol_8h = float(numeric_dict.get("Realized Vol 8h", 0.0))
+    range_pos = float(numeric_dict.get("Range Position", 0.0))
+    flow = float(numeric_dict.get("Order Flow Imbalance", 0.0))
+
+    sym = {str(k): str(v) for k, v in symbolic_v2}
+    playbook = sym.get("Playbook", "REGIME_MIXED")
+    risk_state = sym.get("Risk State", "NORMAL")
+    cross_pressure = sym.get("Cross Market Pressure", "MIXED_PRESSURE")
+    trend_alignment = sym.get("Trend Alignment", "MIXED")
+    location = sym.get("Location", "NEAR_FAIR")
+    oscillator = sym.get("Oscillator", "NEUTRAL")
+
+    vol_ratio = vol_1h / max(vol_8h, 1e-6)
+    path_efficiency = abs(path_ret_6h) / max(path_dd_6h + path_runup_6h, 1e-6)
+    side_pressure = (1.5 * ret_1h) + ret_2h + (0.5 * ret_8h) + (0.002 * flow)
+    risk_penalty = 1.0 if risk_state == "STRESS" else 0.5 if risk_state == "ELEVATED" else 0.0
+    tradeability_score = (abs(side_pressure) * 120.0) + min(vol_ratio, 3.0) * 0.25 + min(path_efficiency, 2.0) * 0.20 - risk_penalty
+
+    if risk_state == "STRESS":
+        step_focus = "WAIT_RISK"
+    elif vol_ratio >= 1.45 or abs(ret_1h) >= 0.004:
+        step_focus = "FAST_36"
+    elif abs(ret_2h) >= 0.004 or playbook in {"MEAN_REVERT_LONG", "MEAN_REVERT_SHORT"}:
+        step_focus = "MID_72"
+    elif abs(ret_8h) >= 0.006 and risk_state in {"CALM", "NORMAL"}:
+        step_focus = "SLOW_144"
+    else:
+        step_focus = "WAIT_CHOP"
+
+    long_votes = 0
+    short_votes = 0
+    if ret_1h > 0.0015: long_votes += 1
+    if ret_2h > 0.0025: long_votes += 1
+    if ret_8h > 0.0040: long_votes += 1
+    if trend_alignment in {"BULL_STACK", "BULL_REVERSAL"}: long_votes += 1
+    if location in {"DISCOUNT", "EXTREME_DISCOUNT"} or oscillator in {"WASHOUT", "OVERSOLD"}: long_votes += 1
+    if cross_pressure == "LONG_PRESSURE": long_votes += 1
+    if ret_1h < -0.0015: short_votes += 1
+    if ret_2h < -0.0025: short_votes += 1
+    if ret_8h < -0.0040: short_votes += 1
+    if trend_alignment in {"BEAR_STACK", "BEAR_REVERSAL"}: short_votes += 1
+    if location in {"PREMIUM", "EXTREME_PREMIUM"} or oscillator in {"OVERBOUGHT", "BLOWOFF"}: short_votes += 1
+    if cross_pressure == "SHORT_PRESSURE": short_votes += 1
+
+    long_setup = "LONG_ALIGNED" if long_votes >= 4 and long_votes > short_votes else "LONG_POSSIBLE" if long_votes >= 3 else "LONG_WEAK"
+    short_setup = "SHORT_ALIGNED" if short_votes >= 4 and short_votes > long_votes else "SHORT_POSSIBLE" if short_votes >= 3 else "SHORT_WEAK"
+    if risk_state == "STRESS":
+        trade_readiness = "AVOID_RISK"
+        no_trade_cause = "RISK_STRESS"
+    elif playbook in {"SQUEEZE_WAIT", "CHOP_WAIT"} and max(long_votes, short_votes) < 4:
+        trade_readiness = "WAIT_FOR_EDGE"
+        no_trade_cause = "CHOP_OR_SQUEEZE"
+    elif long_setup == "LONG_ALIGNED" or short_setup == "SHORT_ALIGNED":
+        trade_readiness = "SETUP_READY"
+        no_trade_cause = "NONE"
+    elif cross_pressure == "MIXED_PRESSURE" and max(long_votes, short_votes) < 3:
+        trade_readiness = "WAIT_FOR_EDGE"
+        no_trade_cause = "MACRO_MIXED"
+    else:
+        trade_readiness = "WATCHLIST"
+        no_trade_cause = "EDGE_WEAK"
+
+    numeric_extra = (
+        ("Vol Expansion Ratio", float(vol_ratio)),
+        ("Path Efficiency 6h", float(path_efficiency)),
+        ("Side Pressure Score", float(side_pressure)),
+        ("Tradeability Score", float(tradeability_score)),
+        ("Long Evidence Votes", float(long_votes)),
+        ("Short Evidence Votes", float(short_votes)),
+    )
+    symbolic_extra = (
+        ("Step Focus", step_focus),
+        ("Trade Readiness", trade_readiness),
+        ("Long Thesis", long_setup),
+        ("Short Thesis", short_setup),
+        ("No Trade Cause", no_trade_cause),
+    )
+    tags = tuple(dict.fromkeys((*tags_v2, step_focus, trade_readiness, long_setup, short_setup, no_trade_cause)))
+    return tuple(numeric_v2) + numeric_extra, tuple(symbolic_v2) + symbolic_extra, tags
+
 def build_vlm_training_samples(
     market_df: pd.DataFrame,
     timeframe: str = "1m",
@@ -1175,10 +1278,10 @@ def build_vlm_training_samples(
             f"got {label_mode}"
         )
     prompt_feature_mode_key = str(prompt_feature_mode).lower().strip()
-    if prompt_feature_mode_key not in {"basic_v0", "engineered_v1", "edge_state_v2"}:
+    if prompt_feature_mode_key not in {"basic_v0", "engineered_v1", "edge_state_v2", "edge_state_v3"}:
         raise ValueError(
             "prompt_feature_mode must be one of "
-            "{'basic_v0','engineered_v1','edge_state_v2'}, "
+            "{'basic_v0','engineered_v1','edge_state_v2','edge_state_v3'}, "
             f"got {prompt_feature_mode}"
         )
     trade_side_sample_policy_key = str(trade_side_sample_policy).lower().strip()
@@ -1479,6 +1582,12 @@ def build_vlm_training_samples(
                 extra_symbolic_features,
                 context_tags,
             ) = _edge_state_prompt_features(window, feature_row)
+        elif prompt_feature_mode_key == "edge_state_v3":
+            (
+                extra_numeric_features,
+                extra_symbolic_features,
+                context_tags,
+            ) = _edge_state_v3_prompt_features(window, feature_row)
         state = TradingPromptState(
             timeframe=timeframe,
             position_size_pct=0.0,
