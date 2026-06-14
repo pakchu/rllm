@@ -393,6 +393,27 @@ class TestVlmTradingData(unittest.TestCase):
         self.assertNotIn("Target", prompt)
         self.assertNotIn("Future", prompt)
 
+    def test_build_samples_edge_state_v4_prompt_mode(self):
+        samples = build_vlm_training_samples(
+            market_df=_rich_market_df(),
+            timeframe="5m",
+            window_size=96,
+            resolution=32,
+            cache_dir=None,
+            max_samples=4,
+            sample_mode="uniform",
+            prompt_style="hybrid",
+            prompt_feature_mode="edge_state_v4",
+        )
+        self.assertEqual(len(samples), 4)
+        prompt = samples[0].prompt
+        self.assertIn("Regime Memory:", prompt)
+        self.assertIn("Regime Trap Risk:", prompt)
+        self.assertIn("Similar Regime Count:", prompt)
+        self.assertIn("Similar Regime Forward 36:", prompt)
+        self.assertNotIn("Target", prompt)
+        self.assertNotIn("Future", prompt)
+
     def test_build_samples_trade_gate_schema(self):
         samples = build_vlm_training_samples(
             market_df=_oscillating_market_df(),

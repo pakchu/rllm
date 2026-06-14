@@ -1198,6 +1198,122 @@ def _edge_state_v3_prompt_features(
     tags = tuple(dict.fromkeys((*tags_v2, step_focus, trade_readiness, long_setup, short_setup, no_trade_cause)))
     return tuple(numeric_v2) + numeric_extra, tuple(symbolic_v2) + symbolic_extra, tags
 
+
+def _wide_location_bucket(label: str) -> str:
+    if label in {"EXTREME_DISCOUNT", "DISCOUNT"}:
+        return "DISCOUNT_ZONE"
+    if label in {"EXTREME_PREMIUM", "PREMIUM"}:
+        return "PREMIUM_ZONE"
+    return "FAIR_ZONE"
+
+
+def _regime_memory_prompt_features(
+    window: pd.DataFrame,
+    current_symbolic: tuple[tuple[str, str], ...],
+    *,
+    local_window_size: int = 96,
+    forward_bars: int = 36,
+    stride: int = 6,
+) -> tuple[tuple[tuple[str, float], ...], tuple[tuple[str, str], ...], tuple[str, ...]]:
+    """Summarize past-only outcomes of similar regimes inside ``window``.
+
+    For a signal at t, this function only uses anchors whose forward outcome
+    is fully contained in the input window, i.e. anchor + forward_bars <= t.
+    That is historical regime memory, not target leakage.
+    """
+    if len(window) < max(48, int(forward_bars) + 8):
+        return (
+            (("Similar Regime Count", 0.0), ("Similar Regime Forward 36", 0.0), ("Similar Regime Reversal Rate", 0.0)),
+            (("Regime Memory", "MEMORY_THIN"), ("Regime Trap Risk", "TRAP_UNKNOWN")),
+            ("MEMORY_THIN",),
+        )
+    cur = {str(k): str(v) for k, v in current_symbolic}
+    cur_trend = cur.get("Trend Alignment", "MIXED")
+    cur_loc = _wide_location_bucket(cur.get("Location", "NEAR_FAIR"))
+    cur_osc = cur.get("Oscillator", "NEUTRAL")
+    cur_pressure = cur.get("Cross Market Pressure", "MIXED_PRESSURE")
+    cur_step = cur.get("Step Focus", "WAIT_CHOP")
+    cur_long = cur.get("Long Thesis", "LONG_WEAK")
+    cur_short = cur.get("Short Thesis", "SHORT_WEAK")
+    expected_sign = 0
+    if cur_long == "LONG_ALIGNED" and cur_short != "SHORT_ALIGNED":
+        expected_sign = 1
+    elif cur_short == "SHORT_ALIGNED" and cur_long != "LONG_ALIGNED":
+        expected_sign = -1
+
+    local_df = window.reset_index(drop=True).copy()
+    feature_frame = build_market_feature_frame(local_df, window_size=min(int(local_window_size), len(local_df)))
+    last_anchor = len(local_df) - 1 - int(forward_bars)
+    first_anchor = max(32, int(local_window_size) // 2)
+    matched_returns: list[float] = []
+    matched_expected: list[float] = []
+    for anchor in range(first_anchor, max(first_anchor, last_anchor) + 1, max(1, int(stride))):
+        local_win = local_df.iloc[max(0, anchor - int(local_window_size) + 1) : anchor + 1]
+        if len(local_win) < 24:
+            continue
+        _, sym2, _ = _edge_state_prompt_features(local_win, feature_frame.iloc[anchor])
+        _, sym3, _ = _edge_state_v3_prompt_features(local_win, feature_frame.iloc[anchor])
+        sym = {str(k): str(v) for k, v in (*sym2, *sym3)}
+        score = 0
+        score += sym.get("Trend Alignment") == cur_trend
+        score += _wide_location_bucket(sym.get("Location", "NEAR_FAIR")) == cur_loc
+        score += sym.get("Oscillator") == cur_osc
+        score += sym.get("Cross Market Pressure") == cur_pressure
+        score += sym.get("Step Focus") == cur_step
+        if score < 3:
+            continue
+        now = float(local_df.loc[anchor, "close"])
+        later = float(local_df.loc[anchor + int(forward_bars), "close"])
+        if now <= 0.0:
+            continue
+        fwd = (later - now) / now
+        matched_returns.append(float(fwd))
+        if expected_sign != 0:
+            matched_expected.append(float(expected_sign * fwd))
+
+    n = len(matched_returns)
+    if n == 0:
+        return (
+            (("Similar Regime Count", 0.0), ("Similar Regime Forward 36", 0.0), ("Similar Regime Reversal Rate", 0.0)),
+            (("Regime Memory", "MEMORY_THIN"), ("Regime Trap Risk", "TRAP_UNKNOWN")),
+            ("MEMORY_THIN",),
+        )
+    arr = np.asarray(matched_returns, dtype=np.float64)
+    mean_fwd = float(np.mean(arr))
+    if expected_sign == 0 or not matched_expected:
+        reversal_rate = 0.0
+        trap = "TRAP_UNKNOWN"
+        memory = "MEMORY_MIXED" if abs(mean_fwd) < 0.0015 else ("MEMORY_LONG_DRIFT" if mean_fwd > 0 else "MEMORY_SHORT_DRIFT")
+    else:
+        exp_arr = np.asarray(matched_expected, dtype=np.float64)
+        reversal_rate = float(np.mean(exp_arr < 0.0))
+        if reversal_rate >= 0.60 and n >= 3:
+            trap = "TRAP_HIGH"
+            memory = "RECENT_REVERSAL_RISK"
+        elif float(np.mean(exp_arr > 0.0)) >= 0.60 and n >= 3:
+            trap = "TRAP_LOW"
+            memory = "RECENT_CONTINUATION"
+        else:
+            trap = "TRAP_MIXED"
+            memory = "MEMORY_MIXED"
+    numeric = (
+        ("Similar Regime Count", float(n)),
+        ("Similar Regime Forward 36", mean_fwd),
+        ("Similar Regime Reversal Rate", float(reversal_rate)),
+    )
+    symbolic = (("Regime Memory", memory), ("Regime Trap Risk", trap))
+    return numeric, symbolic, (memory, trap)
+
+
+def _edge_state_v4_prompt_features(
+    window: pd.DataFrame,
+    feature_row: pd.Series,
+) -> tuple[tuple[tuple[str, float], ...], tuple[tuple[str, str], ...], tuple[str, ...]]:
+    """Edge-state v3 plus past-only similar-regime memory."""
+    numeric_v3, symbolic_v3, tags_v3 = _edge_state_v3_prompt_features(window, feature_row)
+    mem_numeric, mem_symbolic, mem_tags = _regime_memory_prompt_features(window, symbolic_v3)
+    return tuple(numeric_v3) + mem_numeric, tuple(symbolic_v3) + mem_symbolic, tuple(dict.fromkeys((*tags_v3, *mem_tags)))
+
 def build_vlm_training_samples(
     market_df: pd.DataFrame,
     timeframe: str = "1m",
@@ -1291,10 +1407,10 @@ def build_vlm_training_samples(
             f"got {label_mode}"
         )
     prompt_feature_mode_key = str(prompt_feature_mode).lower().strip()
-    if prompt_feature_mode_key not in {"basic_v0", "engineered_v1", "edge_state_v2", "edge_state_v3"}:
+    if prompt_feature_mode_key not in {"basic_v0", "engineered_v1", "edge_state_v2", "edge_state_v3", "edge_state_v4"}:
         raise ValueError(
             "prompt_feature_mode must be one of "
-            "{'basic_v0','engineered_v1','edge_state_v2','edge_state_v3'}, "
+            "{'basic_v0','engineered_v1','edge_state_v2','edge_state_v3','edge_state_v4'}, "
             f"got {prompt_feature_mode}"
         )
     trade_side_sample_policy_key = str(trade_side_sample_policy).lower().strip()
@@ -1601,6 +1717,12 @@ def build_vlm_training_samples(
                 extra_symbolic_features,
                 context_tags,
             ) = _edge_state_v3_prompt_features(window, feature_row)
+        elif prompt_feature_mode_key == "edge_state_v4":
+            (
+                extra_numeric_features,
+                extra_symbolic_features,
+                context_tags,
+            ) = _edge_state_v4_prompt_features(window, feature_row)
         state = TradingPromptState(
             timeframe=timeframe,
             position_size_pct=0.0,

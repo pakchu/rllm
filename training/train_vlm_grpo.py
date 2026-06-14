@@ -671,7 +671,7 @@ def parse_args() -> argparse.Namespace:
         "--prompt-feature-mode",
         type=str,
         default="basic_v0",
-        choices=["basic_v0", "engineered_v1", "edge_state_v2", "edge_state_v3"],
+        choices=["basic_v0", "engineered_v1", "edge_state_v2", "edge_state_v3", "edge_state_v4"],
         help="Prompt feature set: legacy prompt fields only or engineered LLM-oriented features.",
     )
     parser.add_argument("--hold-band", type=float, default=0.0005)
