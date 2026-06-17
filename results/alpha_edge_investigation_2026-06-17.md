@@ -455,3 +455,32 @@ Interpretation:
 - The honest live-causal reference-scoring version fails.
 - Keep the useful engineering pieces (mirrored pairs, candidate metadata, causal reference scoring), but do not promote this Gemma pairwise policy to live trading.
 - Next target should avoid cross-sectional future-pool ranking and instead train a single-candidate value/regime outcome predictor calibrated against historical references known at decision time.
+
+## Single-candidate activation fallback
+
+After rejecting future-pool pairwise backtests, trained a live-causal single-candidate Gemma-4 activation model:
+- Train data: `data/kimchi_flow_activation_edge_state_v7_2020_2024_train.jsonl`.
+- Rows: 1,183 candidates from 2020-2024.
+- Labels: ACTIVATE 531 / ABSTAIN 652; LONG 326 / SHORT 205 / NONE 652.
+- Model: Gemma-4 E4B LoRA r=8, LR=1e-5, 120 steps, max length 4096.
+- Evaluation: `training/eval_kimchi_flow_activation.py --prediction-mode candidate_score`, choosing among fixed ACTIVATE-LONG / ACTIVATE-SHORT / ABSTAIN JSON candidates by logprob.
+
+Results:
+- 2025 val:
+  - Decision accuracy 63.2%, exact JSON accuracy 60.5%.
+  - Pred activations 11 vs oracle activations 19.
+  - Strict selected-trade backtest: ret +2.96%, CAGR 23.2, strict MDD 1.55, 11 trades, p≈0.056.
+- 2025 final test:
+  - Decision accuracy 47.6%, exact JSON accuracy 40.5%.
+  - Pred activations 10 vs oracle activations 20.
+  - Strict selected-trade backtest: ret -1.14%, CAGR -7.7, strict MDD 9.68, 10 trades, p≈0.845.
+
+Interpretation:
+- The absolute single-candidate model is live-causal, but not profitable on the 2025 final test.
+- It is too conservative on short activations and misses many Q4 winners.
+- Current Gemma SFT target formulations tested so far:
+  1. flat activation: failed generalization;
+  2. pairwise split-internal ranking: invalid due future-pool leakage;
+  3. pairwise historical-reference scoring: live-causal but failed;
+  4. single-candidate activation: live-causal but failed final test.
+- Next promising path is not another small SFT tweak; it should change the target to explicit regime outcome/value estimation with calibrated historical baselines, or move the LLM into explanation/feature construction while a simpler causal scorer handles execution.
