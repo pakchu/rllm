@@ -137,3 +137,34 @@ Test split proxy:
 Interpretation:
 - Unlike generic LONG/SHORT or TRADE/NO_TRADE labels, this target is aligned with the actual discovered edge.
 - Next step is a small Gemma SFT run on train, validation on val, then test activation predictions mapped back to fixed-rule returns.
+
+## Gemma-4 Kimchi-flow activation SFT smoke result
+
+Trained `google/gemma-4-E4B-it` LoRA on the 2025 Kimchi-flow activation target:
+- Train rows: 137, split 2025-01..2025-07.
+- Config: LoRA r=8/alpha=16/dropout=0.05, max_seq_length=3072, max_steps=40, lr=2e-5.
+- Runtime: 323.5s, train_loss 1.286, epoch 1.146.
+- Checkpoint: `checkpoints/gemma4_kimchi_flow_activation_v5_r8_step40` (~404MB with checkpoint-40).
+
+Evaluation modes added to `training/eval_kimchi_flow_activation.py`:
+- `model`: free JSON generation then strict parser.
+- `candidate_score`: fixed JSON candidate logprob selection among ACTIVATE_LONG, ACTIVATE_SHORT, ABSTAIN_BAD, ABSTAIN_MARGINAL.
+
+Leak-safe holdout results:
+
+| split | mode | pred sum ret pct | oracle sum ret pct | pred activations | exact |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| val 2025-08..09 | all_abstain | 0.000 | 10.286 | 0 | 0.026 |
+| val 2025-08..09 | all_activate_long | 0.615 | 10.286 | 38 | 0.289 |
+| val 2025-08..09 | model/free generation | 1.508 | 10.286 | 12 | 0.079 |
+| val 2025-08..09 | candidate_score | 0.615 | 10.286 | 38 | 0.447 |
+| test 2025-10..12 | all_abstain | 0.000 | 25.315 | 0 | 0.119 |
+| test 2025-10..12 | all_activate_long | 10.749 | 25.315 | 42 | 0.167 |
+| test 2025-10..12 | model/free generation | -0.319 | 25.315 | 11 | 0.095 |
+| test 2025-10..12 | candidate_score | 10.653 | 25.315 | 39 | 0.405 |
+
+Interpretation:
+- The target/oracle is profitable, but the current prompt+SFT does not learn a profitable activation boundary.
+- Free generation is not reliable: it emits unseen regime strings such as `UPTREND`/`RANGE`, which the parser must coerce back into valid labels.
+- Candidate scoring removes JSON-format noise and improves exact accuracy, but mostly collapses to near all-activate behavior; it does not add selection alpha.
+- This is not a deployable result. The next improvement should not be “more steps” first; it should diagnose which past-only features distinguish the missed large winners from the false activations, then expose those features in a simpler activation target/prompt.
