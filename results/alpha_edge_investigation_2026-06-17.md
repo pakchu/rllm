@@ -114,3 +114,26 @@ Interpretation:
 - V5 descriptors are not useful as generic direction/gate predictors by themselves.
 - This supports the prior conclusion: V5 should not be bolted onto the old generic path-outcome target and expected to fix it.
 - Next target should be aligned to the discovered edge: Kimchi-flow activation, side-context quality, and abstain decisions around the audited regime-conditional rule.
+
+## Kimchi-flow activation SFT target
+
+Implemented `training/kimchi_flow_activation_sft_data.py` to align the LLM target with the discovered edge instead of generic path-outcome direction labels.
+
+Generated 2025 activation rows from the fixed Kimchi-flow rule:
+- Total rows: 217 fixed-rule signal dates.
+- Target counts: ACTIVATE 109 / ABSTAIN 108.
+- Side counts: LONG 61 / SHORT 48 / NONE 108.
+- Split:
+  - train: 2025-01..2025-07, 137 rows.
+  - val: 2025-08..2025-09, 38 rows.
+  - test: 2025-10..2025-12, 42 rows.
+
+Implemented `training/eval_kimchi_flow_activation.py` for target-echo and simple baselines.
+Test split proxy:
+- target_echo oracle: +25.32 pct-points over 20 activations.
+- all_abstain: 0 pct-points over 0 activations.
+- all_activate_long: +10.75 pct-points over 42 activations.
+
+Interpretation:
+- Unlike generic LONG/SHORT or TRADE/NO_TRADE labels, this target is aligned with the actual discovered edge.
+- Next step is a small Gemma SFT run on train, validation on val, then test activation predictions mapped back to fixed-rule returns.
