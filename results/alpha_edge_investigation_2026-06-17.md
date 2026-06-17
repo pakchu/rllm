@@ -332,3 +332,30 @@ Interpretation:
 - Pairwise/ranking is learnable within the validation regime, so it is a better target shape than flat activation.
 - It still fails across the October/November/December regime shift, reinforcing that the next missing piece is broader regime coverage, not just target format.
 - Next data step: build the same MTF/pairwise dataset over a longer historical period with external features, not only 2025, so pairwise ranking sees stress/broad-on transitions before final holdout.
+
+## Longer timeframe pairwise expansion: 2024 train → 2025 holdout
+
+Expanded the MTF pairwise-ranker training set from the 2024 fixed-report `test` trades and used 2025 only as forward evaluation:
+- Train source: `data/kimchi_flow_pairwise_v7_2024.jsonl`, 1,773 balanced A/B pairs.
+- Model: Gemma-4 E4B instruction LoRA, r=8, alpha=16, dropout=0.05, max length 2048, 120 steps.
+- Evaluation mode: candidate JSON log-probability comparison, not sampled generation, via `training/eval_pairwise_choice.py --mode model_logprob`.
+
+Results:
+- 2025 train-period pairs: 53.3% (320/600), weak.
+- 2025 validation-period pairs: 63.3% (164/259), good but regime-specific.
+- 2025 final test-period pairs: 43.0% (34/79), worse than balanced baseline.
+
+Added `training/audit_pairwise_regime_coverage.py` to verify whether the final holdout regimes were covered by the training set.
+Coverage audit (`results/audit_pairwise_v7_2024_train_to_2025_test_gemma4_2024_step120.json`):
+- Final 2025 test contains 35 rows of `3D_STRESS|1W_STRESS`.
+- 2024 training contains 0 rows of `3D_STRESS|1W_STRESS`.
+- Model accuracy in that unseen bucket: 25.7% (9/35), with a strong wrong-side bias toward B.
+- On known training buckets only, final-test accuracy is 56.8% (25/44), still modest but no longer catastrophic.
+
+Interpretation:
+- The latest failure is not just model size or prompt shape. It is regime coverage.
+- Longer-timeframe context exposed the missing condition: the final holdout is dominated by a 3D+1W stress-stress regime absent from 2024 training.
+- A deployable LLM/RL policy must include either:
+  1. enough historical stress-stress examples before the final holdout, or
+  2. an explicit out-of-distribution/unknown-regime abstention layer, then only trade known/regime-supported buckets.
+- This supports adding longer historical data and regime-coverage gating before any live trading integration.

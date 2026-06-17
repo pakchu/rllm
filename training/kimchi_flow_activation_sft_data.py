@@ -34,13 +34,23 @@ class KimchiFlowActivationConfig:
     min_bad_ret_pct: float = -0.05
     include_no_trade_context: bool = True
     prompt_feature_mode: str = "edge_state_v5"
+    trade_split: str = "eval"
 
 
-def _load_trades(path: str) -> list[dict[str, Any]]:
+def _load_trades(path: str, split: str = "eval") -> list[dict[str, Any]]:
     fixed = json.load(open(path))
-    trades = fixed.get("monthly", {}).get("eval", {}).get("trades", [])
+    split_key = str(split).strip().lower()
+    if split_key == "all":
+        trades = []
+        for key in ("train", "test", "eval"):
+            trades.extend(fixed.get("monthly", {}).get(key, {}).get("trades", []))
+    else:
+        trades = fixed.get("monthly", {}).get(split_key, {}).get("trades", [])
     if not trades:
-        raise ValueError("fixed_report lacks monthly.eval.trades; rerun fixed-rule backtest with full trade export")
+        raise ValueError(
+            f"fixed_report lacks monthly.{split_key}.trades; "
+            "rerun fixed-rule backtest with full trade export"
+        )
     return trades
 
 
@@ -86,7 +96,7 @@ def _activation_prompt(base_prompt: str) -> str:
 
 
 def build_rows(cfg: KimchiFlowActivationConfig) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    trades = _load_trades(cfg.fixed_report)
+    trades = _load_trades(cfg.fixed_report, cfg.trade_split)
     market = _load_market(cfg.input_csv, cfg.start, cfg.end)
     sample_dates = [str(pd.to_datetime(t["signal_date"])) for t in trades]
     # Generate prompts exactly at fixed-rule signal dates.
@@ -181,6 +191,7 @@ def parse_args():
     p.add_argument('--max-samples', type=int, default=0); p.add_argument('--sample-mode', default='uniform'); p.add_argument('--sample-seed', type=int, default=42)
     p.add_argument('--min-good-ret-pct', type=float, default=0.10); p.add_argument('--min-bad-ret-pct', type=float, default=-0.05)
     p.add_argument('--prompt-feature-mode', default='edge_state_v5', choices=['edge_state_v5', 'edge_state_v6', 'edge_state_v7'])
+    p.add_argument('--trade-split', default='eval', choices=['train', 'test', 'eval', 'all'])
     return p.parse_args()
 
 

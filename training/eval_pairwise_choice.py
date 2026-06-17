@@ -1,4 +1,4 @@
-"""Evaluate pairwise choice rows with baselines or Gemma LoRA generation."""
+"""Evaluate pairwise choice rows with baselines or Gemma LoRA scoring/generation."""
 from __future__ import annotations
 
 import argparse, json, re
@@ -43,6 +43,29 @@ def chat(tok: Any, prompt: str) -> str:
     return f"<|user|>\n{prompt}\n<|assistant|>\n"
 
 
+def _sequence_logprob(tok: Any, model: Any, prompt: str, completion: str) -> float:
+    """Return total log P(completion | prompt) using teacher forcing.
+
+    This is much faster and less format-sensitive than free generation for the
+    pairwise ranker because the valid answers are fixed JSON snippets.
+    """
+    import torch
+
+    prefix = chat(tok, prompt)
+    full = prefix + completion
+    enc_full = tok(full, return_tensors="pt").to(model.device)
+    enc_prefix = tok(prefix, return_tensors="pt").to(model.device)
+    prefix_len = enc_prefix["input_ids"].shape[-1]
+    with torch.no_grad():
+        logits = model(**enc_full).logits[:, :-1, :]
+    target_ids = enc_full["input_ids"][:, 1:]
+    logp = torch.log_softmax(logits, dim=-1)
+    token_logp = logp.gather(-1, target_ids.unsqueeze(-1)).squeeze(-1)
+    # token at target_ids index i is original input token i+1.
+    completion_start = max(0, prefix_len - 1)
+    return float(token_logp[:, completion_start:].sum().detach().cpu())
+
+
 def eval_rows(rows, mode, model_name, adapter_dir, max_new_tokens):
     raw=[]; preds=[]
     if mode in {'always_a','always_b'}:
@@ -55,6 +78,16 @@ def eval_rows(rows, mode, model_name, adapter_dir, max_new_tokens):
             with torch.no_grad(): out=model.generate(**inp, max_new_tokens=max_new_tokens, do_sample=False, pad_token_id=tok.pad_token_id, eos_token_id=tok.eos_token_id)
             gen=tok.decode(out[0][inp['input_ids'].shape[-1]:], skip_special_tokens=True)
             raw.append(gen); preds.append(parse_choice(gen))
+    elif mode=='model_logprob':
+        tok,model=_load_model(model_name,adapter_dir)
+        cand_a='{"choice":"A","confidence":"HIGH"}'
+        cand_b='{"choice":"B","confidence":"HIGH"}'
+        for r in rows:
+            score_a=_sequence_logprob(tok,model,r['prompt'],cand_a)
+            score_b=_sequence_logprob(tok,model,r['prompt'],cand_b)
+            pred='A' if score_a>=score_b else 'B'
+            raw.append(json.dumps({'score_a':score_a,'score_b':score_b},ensure_ascii=False))
+            preds.append(pred)
     else: raise ValueError(mode)
     targets=[parse_choice(r['target']) for r in rows]
     ok=[p==t for p,t in zip(preds,targets)]
@@ -64,7 +97,7 @@ def eval_rows(rows, mode, model_name, adapter_dir, max_new_tokens):
 
 def main():
     p=argparse.ArgumentParser(); p.add_argument('--eval-jsonl',required=True); p.add_argument('--output',required=True); p.add_argument('--predictions-jsonl',default='')
-    p.add_argument('--mode',choices=['always_a','always_b','model'],default='always_a'); p.add_argument('--model-name',default=RECOMMENDED_VLM_MODEL); p.add_argument('--adapter-dir',default=''); p.add_argument('--max-new-tokens',type=int,default=32)
+    p.add_argument('--mode',choices=['always_a','always_b','model','model_logprob'],default='always_a'); p.add_argument('--model-name',default=RECOMMENDED_VLM_MODEL); p.add_argument('--adapter-dir',default=''); p.add_argument('--max-new-tokens',type=int,default=32)
     args=p.parse_args(); rows=load_jsonl(args.eval_jsonl); rep,preds,raw=eval_rows(rows,args.mode,args.model_name,args.adapter_dir,args.max_new_tokens)
     Path(args.output).write_text(json.dumps(rep,indent=2,ensure_ascii=False))
     if args.predictions_jsonl: Path(args.predictions_jsonl).write_text('\n'.join(json.dumps({'target':parse_choice(r['target']),'prediction':p,'raw':raw[i]},ensure_ascii=False) for i,(r,p) in enumerate(zip(rows,preds)))+'\n')
