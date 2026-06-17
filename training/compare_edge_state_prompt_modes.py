@@ -17,6 +17,7 @@ from training.vlm_trading_data import build_vlm_training_samples
 class ComparePromptModesConfig:
     input_csv: str
     output: str
+    samples_output: str = ""
     modes: str = "edge_state_v4,edge_state_v5"
     start: str = "2025-01-01"
     end: str = "2025-12-01 23:59:59"
@@ -42,6 +43,33 @@ def _load_market(path: str, start: str, end: str) -> pd.DataFrame:
     first = int(mask.to_numpy().argmax()) if mask.any() else 0
     warm = max(0, first - int(2 * 144))
     return df.iloc[warm:].reset_index(drop=True)
+
+
+def _descriptor_fields(prompt: str) -> dict[str, str]:
+    wanted = {"Kimchi Flow Regime", "Long Entry Context", "Short Entry Context", "Regime Failure Cue", "Trade Readiness", "Step Focus", "Regime Memory", "Regime Trap Risk"}
+    out: dict[str, str] = {}
+    for line in str(prompt).splitlines():
+        if ":" not in line:
+            continue
+        key, val = line.split(":", 1)
+        key = key.strip(); val = val.strip()
+        if key in wanted:
+            out[key] = val
+    return out
+
+
+def _sample_rows(mode: str, samples) -> list[dict]:
+    return [
+        {
+            "mode": mode,
+            "date": s.date,
+            "target_action": s.target_action,
+            "next_return": s.next_return,
+            "prompt": s.prompt,
+            "descriptors": _descriptor_fields(s.prompt),
+        }
+        for s in samples
+    ]
 
 
 def _sample_summary(samples) -> dict:
@@ -75,6 +103,7 @@ def run(cfg: ComparePromptModesConfig) -> dict:
     if cfg.wave_trading_root:
         market = attach_wave_trading_external_features(market, wave_trading_root=cfg.wave_trading_root, tolerance=cfg.external_tolerance)
     report = {"as_of": datetime.now(timezone.utc).isoformat(), "config": asdict(cfg), "modes": {}}
+    sample_rows: list[dict] = []
     for mode in [x.strip() for x in cfg.modes.split(',') if x.strip()]:
         samples = build_vlm_training_samples(
             market,
@@ -97,6 +126,10 @@ def run(cfg: ComparePromptModesConfig) -> dict:
             path_max_mae=1.0,
         )
         report["modes"][mode] = _sample_summary(samples)
+        sample_rows.extend(_sample_rows(mode, samples))
+    if cfg.samples_output:
+        Path(cfg.samples_output).parent.mkdir(parents=True, exist_ok=True)
+        Path(cfg.samples_output).write_text("\n".join(json.dumps(r, ensure_ascii=False, sort_keys=True) for r in sample_rows) + "\n")
     Path(cfg.output).parent.mkdir(parents=True, exist_ok=True)
     Path(cfg.output).write_text(json.dumps(report, indent=2, ensure_ascii=False))
     return report
@@ -104,7 +137,7 @@ def run(cfg: ComparePromptModesConfig) -> dict:
 
 def parse_args():
     p=argparse.ArgumentParser()
-    p.add_argument('--input-csv', required=True); p.add_argument('--output', required=True)
+    p.add_argument('--input-csv', required=True); p.add_argument('--output', required=True); p.add_argument('--samples-output', default='')
     p.add_argument('--modes', default='edge_state_v4,edge_state_v5')
     p.add_argument('--start', default='2025-01-01'); p.add_argument('--end', default='2025-12-01 23:59:59')
     p.add_argument('--window-size', type=int, default=144); p.add_argument('--max-samples', type=int, default=256); p.add_argument('--sample-mode', default='uniform'); p.add_argument('--sample-seed', type=int, default=42)

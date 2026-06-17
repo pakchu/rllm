@@ -99,3 +99,18 @@ Smoke result with 128 uniform 2025 samples:
 
 Operational directive:
 - Future Gemma V5 runs should use `--prompt-style hybrid`, not `numeric`, otherwise the language descriptors that make V5 useful are not visible to the model.
+
+## Cheap descriptor-signal audit
+
+Using exported V5 hybrid prompt samples:
+- 512 `trade_side` samples: LONG 259 / SHORT 253.
+- 512 `trade_gate` samples: TRADE 321 / NO_TRADE 191.
+
+Descriptor mutual information against generic targets was very weak:
+- For LONG/SHORT, strongest field was `Regime Memory` at ≈0.016 bits; Kimchi-flow and entry-context fields were lower.
+- For TRADE/NO_TRADE, strongest field was `Kimchi Flow Regime` at ≈0.007 bits.
+
+Interpretation:
+- V5 descriptors are not useful as generic direction/gate predictors by themselves.
+- This supports the prior conclusion: V5 should not be bolted onto the old generic path-outcome target and expected to fix it.
+- Next target should be aligned to the discovered edge: Kimchi-flow activation, side-context quality, and abstain decisions around the audited regime-conditional rule.
