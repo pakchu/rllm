@@ -307,3 +307,28 @@ Interpretation:
   1. determine higher-timeframe mode (`BROAD_ON_STRESS`, `SELECTIVE_MIXED_OR_CHOP`, `AVOID`);
   2. only in selective mode, apply lower-timeframe activation/side judgement.
 - This preserves the user goal of using LLM/RL while giving the LLM a task aligned with its strength: regime explanation and mode selection rather than noisy numeric micro-thresholding.
+
+## Hierarchical MTF mode and pairwise selective ranking
+
+Implemented `training/mtf_mode_policy_dataset.py` to test a hierarchical policy:
+1. choose higher-timeframe mode (`BROAD_ON`, `SELECTIVE`, `AVOID`) from 3D/1W/MTF buckets;
+2. in `SELECTIVE`, apply lower-timeframe confirmation.
+
+Findings:
+- With a simple lower-timeframe rule, train+val-fit MTF mode policies did not beat all-activate on test.
+- With oracle selective decisions, the hierarchy recovers the upper bound, confirming the bottleneck is the selective lower-timeframe chooser, not the concept of mode switching.
+
+Implemented `training/kimchi_flow_pairwise_dataset.py` and `training/eval_pairwise_choice.py` to convert selective lower-timeframe judgement into pairwise ranking:
+- Train: 600 A/B pairs from 2025-01..07.
+- Val: 259 pairs from 2025-08..09.
+- Test: 79 pairs from 2025-10..12.
+- Orientation is balanced; always-A/always-B baselines are ~50%.
+
+Gemma-4 pairwise LoRA (`checkpoints/gemma4_pairwise_v7_r8_step80`):
+- Val accuracy: 69.1% (179/259), clear improvement over ~50% baseline.
+- Test accuracy: 50.6% (40/79), no improvement over baseline.
+
+Interpretation:
+- Pairwise/ranking is learnable within the validation regime, so it is a better target shape than flat activation.
+- It still fails across the October/November/December regime shift, reinforcing that the next missing piece is broader regime coverage, not just target format.
+- Next data step: build the same MTF/pairwise dataset over a longer historical period with external features, not only 2025, so pairwise ranking sees stress/broad-on transitions before final holdout.
