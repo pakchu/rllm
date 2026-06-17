@@ -400,3 +400,22 @@ Interpretation:
 - Mirroring is a necessary fix: it removes A/B position collapse and should be kept for all pairwise LLM/RL stages.
 - However, the long-history mirrored LLM still does not produce a deployable final-test edge. It is only slightly above random on 79 pairs.
 - The next substantive step should map pairwise predictions back into actual trade selection/returns and then search for target formulations that include explicit regime outcome labels, not only pair ordering.
+
+## Pairwise economic-return mapping check
+
+Although mirrored pairwise final-test accuracy is only 51.9%, mapping each pair prediction to the realized return of the selected candidate shows a stronger economic signal:
+
+Mirrored Gemma-4 pairwise model (`checkpoints/gemma4_pairwise_v7_2020_2024_mirror_r8_step100_lr1e5`):
+- 2025 train: mean selected return +0.4345 pct per pair, n=600, one-sided p≈6.6e-19.
+- 2025 val: mean selected return +0.1719 pct per pair, n=259, one-sided p≈8.5e-06.
+- 2025 final test: mean selected return +0.3561 pct per pair, n=79, one-sided p≈0.0046.
+
+Bucket notes on 2025 final test:
+- `3D_STRESS|1W_STRESS`: +0.4925 pct mean, n=35.
+- `3D_MIXED|1W_CHOP`: +0.6146 pct mean, n=9.
+- `3D_MIXED|1W_MIXED`: near flat, n=27.
+
+Caution:
+- Pair rows are not independent executable trades; the same trade candidate can appear in multiple pairs.
+- Therefore this is not yet a valid live-trading backtest or CAGR/MDD proof.
+- The next required step is to aggregate pairwise wins into one score per candidate signal date, remove duplicate comparisons, and backtest the resulting selected/abstained fixed-rule trades with strict MDD.
