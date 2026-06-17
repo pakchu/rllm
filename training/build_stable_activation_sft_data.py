@@ -12,7 +12,7 @@ from pathlib import Path
 from statistics import mean
 from typing import Any
 
-NUM_RE = re.compile(r"^([A-Za-z][A-Za-z0-9 /()_%.-]*?):\s*(-?\d+(?:\.\d+)?)\s*$")
+NUM_RE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9 /()_%.-]*?):\s*(-?\d+(?:\.\d+)?)\s*$")
 
 
 def load_jsonl(path: str) -> list[dict[str, Any]]:

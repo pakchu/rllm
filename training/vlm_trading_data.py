@@ -1477,6 +1477,100 @@ def _edge_state_v6_prompt_features(
     tags = tuple(dict.fromkeys((*tags_v5, weekly_regime, weekly_location)))
     return tuple(numeric_v5) + numeric_extra, tuple(symbolic_v5) + symbolic_extra, tags
 
+
+def _higher_timeframe_regime(
+    label: str,
+    *,
+    return_1: float,
+    return_4: float,
+    range_1: float,
+    range_pos: float,
+    drawdown_4: float,
+) -> tuple[tuple[tuple[str, float], ...], tuple[tuple[str, str], ...], tuple[str, ...]]:
+    key = label.upper()
+    if return_4 >= 0.08 and drawdown_4 <= 0.08:
+        regime = f"{key}_BROAD_RISK_ON"
+    elif return_4 <= -0.08 or drawdown_4 >= 0.15:
+        regime = f"{key}_STRESS"
+    elif abs(return_4) <= 0.03 and range_1 >= 0.08:
+        regime = f"{key}_CHOP"
+    else:
+        regime = f"{key}_MIXED"
+
+    if range_pos >= 0.50:
+        location = f"{key}_UPPER_RANGE"
+    elif range_pos <= -0.50:
+        location = f"{key}_LOWER_RANGE"
+    else:
+        location = f"{key}_MID_RANGE"
+
+    stress_score = 0
+    if regime in {f"{key}_STRESS", f"{key}_CHOP"}:
+        stress_score += 1
+    if range_pos <= -0.50 and return_1 < 0.0:
+        stress_score += 1
+    if drawdown_4 >= 0.10:
+        stress_score += 1
+
+    numeric = (
+        (f"{label} Return 1", return_1),
+        (f"{label} Return 4", return_4),
+        (f"{label} Range 1", range_1),
+        (f"{label} Range Position", range_pos),
+        (f"{label} Drawdown 4", drawdown_4),
+        (f"{label} Stress Score", float(stress_score)),
+    )
+    symbolic = ((f"{label} Regime", regime), (f"{label} Location", location))
+    return numeric, symbolic, (regime, location)
+
+
+def _edge_state_v7_prompt_features(
+    window: pd.DataFrame,
+    feature_row: pd.Series,
+) -> tuple[tuple[tuple[str, float], ...], tuple[tuple[str, str], ...], tuple[str, ...]]:
+    """V5 plus completed 4h/1d/3d/1w regime features.
+
+    This generalizes v6 beyond weekly context.  Each higher timeframe excludes
+    the current incomplete candle via shifted completed-bar feature alignment.
+    """
+    numeric_v5, symbolic_v5, tags_v5 = _edge_state_v5_prompt_features(window, feature_row)
+    specs = (
+        ("4H", "htf_4h"),
+        ("1D", "htf_1d"),
+        ("3D", "htf_3d"),
+        ("1W", "htf_1w"),
+    )
+    numeric_extra: list[tuple[str, float]] = []
+    symbolic_extra: list[tuple[str, str]] = []
+    tag_extra: list[str] = []
+    stress_total = 0.0
+    for label, prefix in specs:
+        numeric, symbolic, tags = _higher_timeframe_regime(
+            label,
+            return_1=float(feature_row.get(f"{prefix}_return_1", 0.0)),
+            return_4=float(feature_row.get(f"{prefix}_return_4", 0.0)),
+            range_1=float(feature_row.get(f"{prefix}_range_1", 0.0)),
+            range_pos=float(feature_row.get(f"{prefix}_range_pos", 0.0)),
+            drawdown_4=float(feature_row.get(f"{prefix}_drawdown_4", 0.0)),
+        )
+        numeric_extra.extend(numeric)
+        symbolic_extra.extend(symbolic)
+        tag_extra.extend(tags)
+        for name, value in numeric:
+            if name.endswith("Stress Score"):
+                stress_total += float(value)
+
+    if stress_total >= 5.0:
+        mtf_mode = "MTF_STRESS_BROAD_OR_REVERSAL"
+    elif stress_total <= 1.0:
+        mtf_mode = "MTF_LOW_STRESS_SELECTIVE"
+    else:
+        mtf_mode = "MTF_MIXED_FILTER"
+    numeric_extra.append(("MTF Stress Total", stress_total))
+    symbolic_extra.append(("MTF Activation Mode", mtf_mode))
+    tag_extra.append(mtf_mode)
+    return tuple(numeric_v5) + tuple(numeric_extra), tuple(symbolic_v5) + tuple(symbolic_extra), tuple(dict.fromkeys((*tags_v5, *tag_extra)))
+
 def build_vlm_training_samples(
     market_df: pd.DataFrame,
     timeframe: str = "1m",
@@ -1570,10 +1664,10 @@ def build_vlm_training_samples(
             f"got {label_mode}"
         )
     prompt_feature_mode_key = str(prompt_feature_mode).lower().strip()
-    if prompt_feature_mode_key not in {"basic_v0", "engineered_v1", "edge_state_v2", "edge_state_v3", "edge_state_v4", "edge_state_v5", "edge_state_v6"}:
+    if prompt_feature_mode_key not in {"basic_v0", "engineered_v1", "edge_state_v2", "edge_state_v3", "edge_state_v4", "edge_state_v5", "edge_state_v6", "edge_state_v7"}:
         raise ValueError(
             "prompt_feature_mode must be one of "
-            "{'basic_v0','engineered_v1','edge_state_v2','edge_state_v3','edge_state_v4','edge_state_v5','edge_state_v6'}, "
+            "{'basic_v0','engineered_v1','edge_state_v2','edge_state_v3','edge_state_v4','edge_state_v5','edge_state_v6','edge_state_v7'}, "
             f"got {prompt_feature_mode}"
         )
     trade_side_sample_policy_key = str(trade_side_sample_policy).lower().strip()
@@ -1898,6 +1992,12 @@ def build_vlm_training_samples(
                 extra_symbolic_features,
                 context_tags,
             ) = _edge_state_v6_prompt_features(window, feature_row)
+        elif prompt_feature_mode_key == "edge_state_v7":
+            (
+                extra_numeric_features,
+                extra_symbolic_features,
+                context_tags,
+            ) = _edge_state_v7_prompt_features(window, feature_row)
         state = TradingPromptState(
             timeframe=timeframe,
             position_size_pct=0.0,

@@ -274,3 +274,36 @@ Interpretation:
 - Weekly context is useful, but not as a simple “defensive means filter” rule.
 - In the 2025-11 holdout, high weekly drawdown/defensive context coincided with broad Kimchi-flow opportunity, which explains why the prior selective activation model missed many winners.
 - Next target should explicitly learn a higher-level switch such as `BROAD_ON_AFTER_WEEKLY_STRESS` vs `SELECTIVE_IN_MIXED_WEEKLY_REGIME`, then apply lower-timeframe activation only inside the selective branch.
+
+## Multi-timeframe regime context: edge_state_v7
+
+Generalized completed-weekly features into completed higher-timeframe features for 4h/1d/3d/1w:
+- `htf_4h_*`, `htf_1d_*`, `htf_3d_*`, `htf_1w_*`
+- each set includes completed-bar return, 4-bar return, range, range position, drawdown, and stress score.
+
+Leakage guard:
+- Every higher-timeframe candle is resampled, shifted by one completed candle, then backward as-of joined to 1m rows.
+- The current incomplete 4h/1d/3d/1w candle is never used.
+
+Implemented `edge_state_v7`, exposing numeric and symbolic 4H/1D/3D/1W regimes plus an aggregate `MTF Activation Mode`.
+Generated `data/kimchi_flow_activation_edge_state_v7_2025*.jsonl`.
+
+Important implementation fix:
+- The feature-diagnosis regex previously ignored numeric feature names starting with digits, so `4H`, `1D`, `3D`, `1W` numeric fields were missed.
+- Updated `diagnose_activation_feature_separability.py`, `build_stable_activation_sft_data.py`, and `evaluate_stable_activation_score.py` to parse digit-leading feature labels.
+
+Findings:
+- Individual activation GOOD/BAD separability still does not select higher-timeframe features under train+val stability. Stable-v7 selected only short-horizon/Kimchi context fields and still failed test (`pred -1.61` vs all-activate `+10.75`).
+- Therefore higher-timeframe context should not be treated as a direct per-trade activation threshold.
+- Bucket audit shows it is useful as a regime-switch layer:
+  - Test `1W_STRESS`: 16 rows, all-activate +13.24, oracle +15.93 → broad-on is mostly fine.
+  - Test `1W_MIXED`: 12 rows, all-activate -4.91, oracle +2.17 → selective filter needed.
+  - Test `1W_CHOP`: 10 rows, all-activate -0.16, oracle +3.75 → selective filter needed.
+  - Test `3D_STRESS`: 16 rows, all-activate +8.05, oracle +11.11 → stress can be opportunity, not just risk.
+
+Interpretation:
+- The useful long-timeframe information is mainly 3D/1W, not 4H/1D in this sample.
+- The next LLM target should be hierarchical:
+  1. determine higher-timeframe mode (`BROAD_ON_STRESS`, `SELECTIVE_MIXED_OR_CHOP`, `AVOID`);
+  2. only in selective mode, apply lower-timeframe activation/side judgement.
+- This preserves the user goal of using LLM/RL while giving the LLM a task aligned with its strength: regime explanation and mode selection rather than noisy numeric micro-thresholding.

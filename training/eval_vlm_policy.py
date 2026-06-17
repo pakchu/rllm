@@ -737,7 +737,7 @@ def parse_args() -> argparse.Namespace:
         "--prompt-feature-mode",
         type=str,
         default="basic_v0",
-        choices=["basic_v0", "engineered_v1", "edge_state_v2", "edge_state_v3", "edge_state_v4", "edge_state_v5", "edge_state_v6"],
+        choices=["basic_v0", "engineered_v1", "edge_state_v2", "edge_state_v3", "edge_state_v4", "edge_state_v5", "edge_state_v6", "edge_state_v7"],
     )
     parser.add_argument("--hold-band", type=float, default=0.0005)
     parser.add_argument("--target-horizon", type=int, default=1)

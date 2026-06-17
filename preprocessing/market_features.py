@@ -55,6 +55,26 @@ EXTENDED_MARKET_FEATURE_COLUMNS = CORE_MARKET_FEATURE_COLUMNS + (
     "weekly_range_1w",
     "weekly_range_pos",
     "weekly_drawdown_4w",
+    "htf_4h_return_1",
+    "htf_4h_return_4",
+    "htf_4h_range_1",
+    "htf_4h_range_pos",
+    "htf_4h_drawdown_4",
+    "htf_1d_return_1",
+    "htf_1d_return_4",
+    "htf_1d_range_1",
+    "htf_1d_range_pos",
+    "htf_1d_drawdown_4",
+    "htf_3d_return_1",
+    "htf_3d_return_4",
+    "htf_3d_range_1",
+    "htf_3d_range_pos",
+    "htf_3d_drawdown_4",
+    "htf_1w_return_1",
+    "htf_1w_return_4",
+    "htf_1w_range_1",
+    "htf_1w_range_pos",
+    "htf_1w_drawdown_4",
 )
 
 
@@ -92,22 +112,28 @@ def _optional_column(df: pd.DataFrame, name: str) -> pd.Series | None:
     return df[name].astype(float)
 
 
-def _completed_weekly_features(market_df: pd.DataFrame) -> dict[str, pd.Series]:
-    """Previous completed weekly-candle features aligned to each intraday row.
+def _completed_timeframe_features(
+    market_df: pd.DataFrame,
+    *,
+    prefix: str,
+    resample_rule: str,
+    min_source_rows: int,
+) -> dict[str, pd.Series]:
+    """Previous completed higher-timeframe features aligned to each row.
 
-    The weekly candle that contains the current row is deliberately excluded.
-    We resample to week-ending Sunday bars, compute weekly features, shift them
-    by one completed week, then as-of join backward to every market timestamp.
-    This makes row ``t`` depend only on rows from weeks completed before ``t``.
+    The higher-timeframe candle that contains the current row is deliberately
+    excluded.  We resample, compute features, shift them by one completed bar,
+    then backward as-of join to every market timestamp.  This makes row ``t``
+    depend only on higher-timeframe candles completed before ``t``.
     """
     defaults = {
-        "weekly_return_1w": pd.Series(0.0, index=market_df.index),
-        "weekly_return_4w": pd.Series(0.0, index=market_df.index),
-        "weekly_range_1w": pd.Series(0.0, index=market_df.index),
-        "weekly_range_pos": pd.Series(0.0, index=market_df.index),
-        "weekly_drawdown_4w": pd.Series(0.0, index=market_df.index),
+        f"{prefix}_return_1": pd.Series(0.0, index=market_df.index),
+        f"{prefix}_return_4": pd.Series(0.0, index=market_df.index),
+        f"{prefix}_range_1": pd.Series(0.0, index=market_df.index),
+        f"{prefix}_range_pos": pd.Series(0.0, index=market_df.index),
+        f"{prefix}_drawdown_4": pd.Series(0.0, index=market_df.index),
     }
-    if "date" not in market_df.columns or len(market_df) < 7 * 24 * 60:
+    if "date" not in market_df.columns or len(market_df) < int(min_source_rows):
         return defaults
 
     source = market_df[["date", "open", "high", "low", "close"]].copy()
@@ -117,28 +143,28 @@ def _completed_weekly_features(market_df: pd.DataFrame) -> dict[str, pd.Series]:
         return defaults
     source = source.set_index("date")
 
-    weekly = pd.DataFrame(
+    htf = pd.DataFrame(
         {
-            "open": source["open"].resample("W-SUN", label="right", closed="right").first(),
-            "high": source["high"].resample("W-SUN", label="right", closed="right").max(),
-            "low": source["low"].resample("W-SUN", label="right", closed="right").min(),
-            "close": source["close"].resample("W-SUN", label="right", closed="right").last(),
+            "open": source["open"].resample(resample_rule, label="right", closed="right").first(),
+            "high": source["high"].resample(resample_rule, label="right", closed="right").max(),
+            "low": source["low"].resample(resample_rule, label="right", closed="right").min(),
+            "close": source["close"].resample(resample_rule, label="right", closed="right").last(),
         }
     ).dropna()
-    if len(weekly) < 2:
+    if len(htf) < 2:
         return defaults
 
-    prev = weekly.shift(1)
-    w_range = (prev["high"] - prev["low"]).replace(0.0, np.nan)
-    features = pd.DataFrame(index=weekly.index)
-    features["weekly_return_1w"] = _clean_series(prev["close"] / prev["open"].replace(0.0, np.nan) - 1.0)
-    features["weekly_return_4w"] = _clean_series(
+    prev = htf.shift(1)
+    htf_range = (prev["high"] - prev["low"]).replace(0.0, np.nan)
+    features = pd.DataFrame(index=htf.index)
+    features[f"{prefix}_return_1"] = _clean_series(prev["close"] / prev["open"].replace(0.0, np.nan) - 1.0)
+    features[f"{prefix}_return_4"] = _clean_series(
         prev["close"] / prev["close"].shift(4).replace(0.0, np.nan) - 1.0
     )
-    features["weekly_range_1w"] = _clean_series(w_range / prev["close"].replace(0.0, np.nan))
-    features["weekly_range_pos"] = _clean_series(((prev["close"] - prev["low"]) / w_range) * 2.0 - 1.0)
-    weekly_peak_4 = prev["close"].rolling(4, min_periods=1).max()
-    features["weekly_drawdown_4w"] = _clean_series(1.0 - prev["close"] / weekly_peak_4.replace(0.0, np.nan))
+    features[f"{prefix}_range_1"] = _clean_series(htf_range / prev["close"].replace(0.0, np.nan))
+    features[f"{prefix}_range_pos"] = _clean_series(((prev["close"] - prev["low"]) / htf_range) * 2.0 - 1.0)
+    htf_peak_4 = prev["close"].rolling(4, min_periods=1).max()
+    features[f"{prefix}_drawdown_4"] = _clean_series(1.0 - prev["close"] / htf_peak_4.replace(0.0, np.nan))
     features = features.replace([np.inf, -np.inf], 0.0).fillna(0.0).reset_index(names="date")
 
     target_dates = pd.DataFrame({"date": pd.to_datetime(market_df["date"], errors="coerce")})
@@ -152,6 +178,37 @@ def _completed_weekly_features(market_df: pd.DataFrame) -> dict[str, pd.Series]:
     out: dict[str, pd.Series] = {}
     for col in defaults:
         out[col] = pd.Series(aligned[col].fillna(0.0).to_numpy(), index=market_df.index)
+    return out
+
+
+def _completed_multitimeframe_features(market_df: pd.DataFrame) -> dict[str, pd.Series]:
+    """Leak-safe completed higher-timeframe features for 4h/1d/3d/1w."""
+    specs = (
+        ("htf_4h", "4h", 4 * 60 * 4),
+        ("htf_1d", "1D", 24 * 60 * 4),
+        ("htf_3d", "3D", 3 * 24 * 60 * 4),
+        ("htf_1w", "W-SUN", 7 * 24 * 60),
+    )
+    out: dict[str, pd.Series] = {}
+    for prefix, rule, min_rows in specs:
+        out.update(
+            _completed_timeframe_features(
+                market_df,
+                prefix=prefix,
+                resample_rule=rule,
+                min_source_rows=min_rows,
+            )
+        )
+    # Backward-compatible weekly aliases used by edge_state_v6.
+    alias_pairs = {
+        "weekly_return_1w": "htf_1w_return_1",
+        "weekly_return_4w": "htf_1w_return_4",
+        "weekly_range_1w": "htf_1w_range_1",
+        "weekly_range_pos": "htf_1w_range_pos",
+        "weekly_drawdown_4w": "htf_1w_drawdown_4",
+    }
+    for alias, src in alias_pairs.items():
+        out[alias] = out.get(src, pd.Series(0.0, index=market_df.index))
     return out
 
 
@@ -279,7 +336,7 @@ def build_market_feature_frame(
             else pd.Series(float(default), index=market_df.index)
         )
 
-    feature_map.update(_completed_weekly_features(market_df))
+    feature_map.update(_completed_multitimeframe_features(market_df))
 
     frame = pd.DataFrame(feature_map, index=market_df.index)
     return frame.replace([np.inf, -np.inf], 0.0).fillna(0.0)
