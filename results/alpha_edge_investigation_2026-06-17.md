@@ -85,3 +85,17 @@ Interpretation:
 - V5 does not encode a deployable always-on rule.
 - It gives Gemma explicit language for when the 2025-like Kimchi/liquidity opportunity is present and when to abstain.
 - The next training run should compare `edge_state_v4` vs `edge_state_v5` under identical train/test/eval splits before any live integration.
+
+## edge_state_v4 vs edge_state_v5 prompt smoke
+
+A direct prompt-mode comparison on 2025 samples showed why `prompt_style=hybrid` is required:
+- `prompt_style=numeric` includes V5 numeric scores but omits symbolic descriptors such as `Kimchi Flow Regime`.
+- `prompt_style=hybrid` includes both numeric evidence and symbolic regime/context descriptors.
+
+Smoke result with 128 uniform 2025 samples:
+- edge_state_v4: labels LONG 63 / SHORT 65, mean prompt length ≈1637 chars.
+- edge_state_v5: labels LONG 63 / SHORT 65, mean prompt length ≈2072 chars.
+- V5 prompt includes `Kimchi Flow Regime`, `Long Entry Context`, `Short Entry Context`, and `Regime Failure Cue`.
+
+Operational directive:
+- Future Gemma V5 runs should use `--prompt-style hybrid`, not `numeric`, otherwise the language descriptors that make V5 useful are not visible to the model.
