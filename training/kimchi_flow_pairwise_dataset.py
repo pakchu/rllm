@@ -62,6 +62,22 @@ def candidate_text(row: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def candidate_meta(row: dict[str, Any]) -> dict[str, Any]:
+    src = row.get("source_trade", {}) or {}
+    tgt = target(row)
+    return {
+        "date": row.get("date"),
+        "signal_date": src.get("signal_date", row.get("date")),
+        "entry_date": src.get("entry_date"),
+        "exit_date": src.get("exit_date"),
+        "side": src.get("side", tgt.get("side", "UNKNOWN")),
+        "trade_ret_pct": float(row.get("trade_ret_pct", src.get("ret_pct", 0.0))),
+        "decision": tgt.get("decision"),
+        "quality": tgt.get("quality"),
+        "bucket": bucket(row),
+    }
+
+
 def make_prompt(a: dict[str, Any], b: dict[str, Any]) -> str:
     return "\n".join([
         "You are a BTCUSDT Kimchi-flow selective-mode ranker.",
@@ -81,6 +97,8 @@ def _pair_row(g: dict[str, Any], b: dict[str, Any], *, a: dict[str, Any], brow: 
         'date':g['date'], 'bucket':bucket_key,
         'prompt':make_prompt(a,brow),
         'target':json.dumps({'choice':choice,'confidence':'HIGH'}, sort_keys=True, separators=(',',':')),
+        'candidate_a': candidate_meta(a),
+        'candidate_b': candidate_meta(brow),
         'winner_ret_pct':float(g['trade_ret_pct']), 'loser_ret_pct':float(b['trade_ret_pct']),
         'leakage_guard': {'prompt_uses_future_path': False, 'target_uses_realized_pair_order_for_training_only': True},
     }

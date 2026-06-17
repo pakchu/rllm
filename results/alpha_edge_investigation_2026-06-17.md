@@ -419,3 +419,39 @@ Caution:
 - Pair rows are not independent executable trades; the same trade candidate can appear in multiple pairs.
 - Therefore this is not yet a valid live-trading backtest or CAGR/MDD proof.
 - The next required step is to aggregate pairwise wins into one score per candidate signal date, remove duplicate comparisons, and backtest the resulting selected/abstained fixed-rule trades with strict MDD.
+
+## Candidate-level aggregation and future-pool leakage correction
+
+Converted pairwise predictions into candidate-level scores and strict OHLC backtests.
+
+First attempt: split-internal candidate aggregation
+- Rebuilt pairwise rows with candidate A/B metadata and aggregated pairwise logprob margins into one score per candidate.
+- Natural threshold `score_mean > 0` on split-internal pairs:
+  - 2025 train: CAGR 67.7 / strict MDD 4.75 / 58 trades / p≈0.0013.
+  - 2025 val: CAGR 41.3 / strict MDD 3.32 / 18 trades / p≈0.020.
+  - 2025 test: CAGR 23.8 / strict MDD 4.10 / 13 trades / p≈0.33.
+- Train/val-selected threshold `score_mean > -0.25` looked stronger:
+  - 2025 test: CAGR 87.6 / strict MDD 4.35 / 24 trades / p≈0.12.
+
+Critical correction:
+- Split-internal candidate aggregation is not live-causal because a candidate is scored by comparing it to other candidates from the same future evaluation window.
+- This is not feature leakage, but it is ranking-pool leakage: at live decision time, future candidates do not exist yet.
+- Therefore the split-internal candidate backtest must not be treated as a deployable result.
+
+Implemented causal historical-reference scoring:
+- `training/build_pairwise_reference_score_dataset.py` builds pairs where each eval candidate is compared only against 2020-2024 historical reference candidates.
+- `training/eval_pairwise_candidate_backtest.py --candidate-role eval_candidate` aggregates only live eval candidates, excluding historical references from execution.
+
+Causal historical-reference results with Gemma-4 mirrored pairwise model:
+- refs_per_side=4:
+  - 2025 val: CAGR 15.9 / strict MDD 2.91 / 14 trades / p≈0.33.
+  - 2025 test: CAGR -15.7 / strict MDD 10.19 / 9 trades / p≈0.53.
+- refs_per_side=16:
+  - 2025 val: CAGR 19.0 / strict MDD 3.32 / 14 trades / p≈0.24.
+  - 2025 test: CAGR -27.1 / strict MDD 10.19 / 7 trades / p≈0.15.
+
+Interpretation:
+- The apparent candidate-level edge was largely dependent on future-pool comparison.
+- The honest live-causal reference-scoring version fails.
+- Keep the useful engineering pieces (mirrored pairs, candidate metadata, causal reference scoring), but do not promote this Gemma pairwise policy to live trading.
+- Next target should avoid cross-sectional future-pool ranking and instead train a single-candidate value/regime outcome predictor calibrated against historical references known at decision time.
