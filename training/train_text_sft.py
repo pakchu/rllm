@@ -42,6 +42,8 @@ def _row_bucket(row: dict[str, Any]) -> str:
         return target[:80]
     if isinstance(parsed, dict) and "action" in parsed:
         return f"action={parsed.get('action')},risk={parsed.get('risk')}"
+    if isinstance(parsed, dict) and "choice" in parsed:
+        return f"choice={parsed.get('choice')},confidence={parsed.get('confidence')}"
     if isinstance(parsed, dict) and "fade_warning" in parsed:
         return f"fade={parsed.get('fade_warning')},skip={parsed.get('skip_reason')},route={parsed.get('primary_route')}"
     if isinstance(parsed, dict) and "action_path" in parsed:
@@ -112,6 +114,10 @@ def _target_counter(rows: list[dict[str, Any]]) -> dict[str, int]:
             parsed = json.loads(target)
             if isinstance(parsed, dict) and "action" in parsed:
                 for key in ("action", "risk"):
+                    if key in parsed:
+                        counts[f"{key}={parsed[key]}"] += 1
+            elif isinstance(parsed, dict) and "choice" in parsed:
+                for key in ("choice", "confidence"):
                     if key in parsed:
                         counts[f"{key}={parsed[key]}"] += 1
             elif isinstance(parsed, dict) and "fade_warning" in parsed:

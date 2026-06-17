@@ -113,7 +113,20 @@ def run(cfg: FixedRegimeRuleConfig) -> dict[str, Any]:
     ed=asdict(base); ed.update({"eval_start":cfg.eval_start,"eval_end":cfg.eval_end})
     eval_cfg=FeatureRuleConfig(**ed)
     ev=simulate_rule(market=market, feature_values=gated, dates=dates, rule=rule, cfg=eval_cfg)
-    report={"as_of":datetime.now(timezone.utc).isoformat(),"config":asdict(cfg),"fitted_regime_threshold":regime_thr,"fitted_signal_rule":rule,"test":test,"eval":ev,"monthly":{"test":_monthly_trade_replay(market,features,dates,gated,rule,cfg,cfg.test_start,cfg.test_end),"eval":_monthly_trade_replay(market,features,dates,gated,rule,cfg,cfg.eval_start,cfg.eval_end)},"leakage_guard":{"regime_threshold_fit_train_only":True,"signal_thresholds_and_direction_fit_train_only":True,"test_and_eval_after_train":True,"external_join":"backward_asof_with_tolerance","entry_delay_bars":cfg.entry_delay_bars}}
+    report={
+        "as_of":datetime.now(timezone.utc).isoformat(),
+        "config":asdict(cfg),
+        "fitted_regime_threshold":regime_thr,
+        "fitted_signal_rule":rule,
+        "test":test,
+        "eval":ev,
+        "monthly":{
+            "train":_monthly_trade_replay(market,features,dates,gated,rule,cfg,cfg.train_start,cfg.train_end),
+            "test":_monthly_trade_replay(market,features,dates,gated,rule,cfg,cfg.test_start,cfg.test_end),
+            "eval":_monthly_trade_replay(market,features,dates,gated,rule,cfg,cfg.eval_start,cfg.eval_end),
+        },
+        "leakage_guard":{"regime_threshold_fit_train_only":True,"signal_thresholds_and_direction_fit_train_only":True,"test_and_eval_after_train":True,"external_join":"backward_asof_with_tolerance","entry_delay_bars":cfg.entry_delay_bars},
+    }
     Path(cfg.output).parent.mkdir(parents=True, exist_ok=True); Path(cfg.output).write_text(json.dumps(report,indent=2,ensure_ascii=False))
     return report
 

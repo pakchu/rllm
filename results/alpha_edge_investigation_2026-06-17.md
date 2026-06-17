@@ -359,3 +359,44 @@ Interpretation:
   1. enough historical stress-stress examples before the final holdout, or
   2. an explicit out-of-distribution/unknown-regime abstention layer, then only trade known/regime-supported buckets.
 - This supports adding longer historical data and regime-coverage gating before any live trading integration.
+
+## Long-history mirrored pairwise POC
+
+Built a correct 5m long-history cache from wave_trading 1m BTCUSDT:
+- Raw source: `/home/pakchu/workspace/wave_trading/data/2020-01-01_2025-12-15_52bcaa88960cc9b2e902e496475d0fec.csv.gz`.
+- 5m aggregate: `data/btcusdt_5m_2020-01-01_2025-12-15.csv.gz`, 626,399 rows.
+- External cache: `data/cache_market_ext_5m_2020-01-01_2025-12-02.csv.gz`, 622,765 rows with DXY proxy, Kimchi premium, USDKRW.
+
+Important correction:
+- The first long-cache attempt used 1m bars, so `horizon=288` became 4.8h instead of the intended 24h. That result is invalid for comparison.
+- The corrected 5m fixed-rule report reproduces the intended bar semantics:
+  - train 2020-2023 trades: 940
+  - 2024 test: CAGR 23.3 / strict MDD 18.4 / 243 trades
+  - 2025 eval: CAGR 50.1 / strict MDD 11.8 / 216 trades / p≈0.017
+
+Regime coverage repair:
+- 2020-2023 pairwise data contains 85 `3D_STRESS|1W_STRESS` pairs.
+- Combined 2020-2024 train contains no unseen bucket for 2025 final test.
+- Training on non-mirrored 2020-2024 data collapsed to almost always-A:
+  - 2025 train 48.8%, val 51.4%, test 49.4%.
+  - This confirms pairwise SFT has strong position-bias risk even when target counts are globally balanced.
+
+Implemented `--mirror-pairs` in `training/kimchi_flow_pairwise_dataset.py`:
+- For each good-vs-bad pair, add both original and swapped A/B prompts with opposite target.
+- Mirrored 2020-2024 train: 50,764 pairs, exactly A=25,382 / B=25,382.
+- Stress-stress coverage after mirroring: 4,216 pairs.
+
+Gemma-4 mirrored pairwise LoRA POC:
+- Train: random 8,000 mirrored pairs from 2020-2024, LoRA r=8, LR=1e-5, 100 steps.
+- 2025 train: 61.2% (367/600), A/B predictions 259/341.
+- 2025 val: 62.5% (162/259), A/B predictions 125/134.
+- 2025 final test: 51.9% (41/79), A/B predictions 18/61.
+
+Margin audit:
+- Logprob margin is calibrated on train/val (higher margin → higher accuracy).
+- On 2025 final test it is anti-calibrated (top-margin rows are worse), so margin gating would be another overfit.
+
+Interpretation:
+- Mirroring is a necessary fix: it removes A/B position collapse and should be kept for all pairwise LLM/RL stages.
+- However, the long-history mirrored LLM still does not produce a deployable final-test edge. It is only slightly above random on 79 pairs.
+- The next substantive step should map pairwise predictions back into actual trade selection/returns and then search for target formulations that include explicit regime outcome labels, not only pair ordering.

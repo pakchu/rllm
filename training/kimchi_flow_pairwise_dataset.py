@@ -75,7 +75,18 @@ def make_prompt(a: dict[str, Any], b: dict[str, Any]) -> str:
     ])
 
 
-def build_pairs(rows: list[dict[str, Any]], *, max_pairs: int, seed: int) -> list[dict[str, Any]]:
+def _pair_row(g: dict[str, Any], b: dict[str, Any], *, a: dict[str, Any], brow: dict[str, Any], choice: str, bucket_key: str) -> dict[str, Any]:
+    return {
+        'task':'kimchi_flow_pairwise_rank_sft',
+        'date':g['date'], 'bucket':bucket_key,
+        'prompt':make_prompt(a,brow),
+        'target':json.dumps({'choice':choice,'confidence':'HIGH'}, sort_keys=True, separators=(',',':')),
+        'winner_ret_pct':float(g['trade_ret_pct']), 'loser_ret_pct':float(b['trade_ret_pct']),
+        'leakage_guard': {'prompt_uses_future_path': False, 'target_uses_realized_pair_order_for_training_only': True},
+    }
+
+
+def build_pairs(rows: list[dict[str, Any]], *, max_pairs: int, seed: int, mirror_pairs: bool = False) -> list[dict[str, Any]]:
     rng=random.Random(seed)
     by={}
     for r in rows: by.setdefault(bucket(r), []).append(r)
@@ -91,14 +102,9 @@ def build_pairs(rows: list[dict[str, Any]], *, max_pairs: int, seed: int) -> lis
                     a,brow,choice=g,b,'A'
                 else:
                     a,brow,choice=b,g,'B'
-                pairs.append({
-                    'task':'kimchi_flow_pairwise_rank_sft',
-                    'date':g['date'], 'bucket':key,
-                    'prompt':make_prompt(a,brow),
-                    'target':json.dumps({'choice':choice,'confidence':'HIGH'}, sort_keys=True, separators=(',',':')),
-                    'winner_ret_pct':float(g['trade_ret_pct']), 'loser_ret_pct':float(b['trade_ret_pct']),
-                    'leakage_guard': {'prompt_uses_future_path': False, 'target_uses_realized_pair_order_for_training_only': True},
-                })
+                pairs.append(_pair_row(g,b,a=a,brow=brow,choice=choice,bucket_key=key))
+                if mirror_pairs:
+                    pairs.append(_pair_row(g,b,a=brow,brow=a,choice='B' if choice=='A' else 'A',bucket_key=key))
     rng.shuffle(pairs)
     if max_pairs and len(pairs)>max_pairs: pairs=pairs[:max_pairs]
     return pairs
@@ -108,11 +114,12 @@ def main() -> None:
     p=argparse.ArgumentParser()
     p.add_argument('--input-jsonl', required=True); p.add_argument('--output', required=True); p.add_argument('--summary-output', default='')
     p.add_argument('--max-pairs', type=int, default=1000); p.add_argument('--seed', type=int, default=42)
+    p.add_argument('--mirror-pairs', action='store_true', help='Add swapped A/B copy for every pair to remove position bias.')
     args=p.parse_args()
     rows=load_jsonl(args.input_jsonl)
-    pairs=build_pairs(rows,max_pairs=args.max_pairs,seed=args.seed)
+    pairs=build_pairs(rows,max_pairs=args.max_pairs,seed=args.seed,mirror_pairs=args.mirror_pairs)
     write_jsonl(args.output,pairs)
-    summary={'input':args.input_jsonl,'output':args.output,'rows':len(rows),'pairs':len(pairs),'prompt_chars':{'min':min([len(x['prompt']) for x in pairs], default=0),'max':max([len(x['prompt']) for x in pairs], default=0),'mean':sum(len(x['prompt']) for x in pairs)/max(1,len(pairs))}}
+    summary={'input':args.input_jsonl,'output':args.output,'rows':len(rows),'pairs':len(pairs),'mirror_pairs':bool(args.mirror_pairs),'prompt_chars':{'min':min([len(x['prompt']) for x in pairs], default=0),'max':max([len(x['prompt']) for x in pairs], default=0),'mean':sum(len(x['prompt']) for x in pairs)/max(1,len(pairs))}}
     if args.summary_output: Path(args.summary_output).write_text(json.dumps(summary,indent=2,ensure_ascii=False))
     print(json.dumps(summary,indent=2,ensure_ascii=False))
 
