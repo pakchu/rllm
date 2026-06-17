@@ -168,3 +168,21 @@ Interpretation:
 - Free generation is not reliable: it emits unseen regime strings such as `UPTREND`/`RANGE`, which the parser must coerce back into valid labels.
 - Candidate scoring removes JSON-format noise and improves exact accuracy, but mostly collapses to near all-activate behavior; it does not add selection alpha.
 - This is not a deployable result. The next improvement should not be “more steps” first; it should diagnose which past-only features distinguish the missed large winners from the false activations, then expose those features in a simpler activation target/prompt.
+
+## Activation feature separability diagnosis
+
+Added `training/diagnose_activation_feature_separability.py` to check whether the prompt features contain stable, past-only separability for the Kimchi-flow activation target.
+
+Result summary from `results/activation_feature_separability_v5_2025.json`:
+- Train 2025-01..07: target activation is moderately separable by `llm_long_context_score` (AUC 0.67), `side_pressure_score` (0.625), `past_return_1h` (0.622), and `tradeability_score` (0.620).
+- Val 2025-08..09: strongest features shift to `past_return_2h` (0.769), `side_pressure_score` (0.726), `llm_short_context_score` (0.720), `range_position` (0.679).
+- Test 2025-10..12: strongest apparent split shifts again to `dxy_z` (0.670), while several flow/context features weaken or reverse (`order_flow_imbalance`/`taker_imbalance` AUC 0.390, `llm_failure_cue_score` AUC 0.333).
+
+Interpretation:
+- The prompt does contain some local signal, but not a stable activation boundary across 2025 subperiods.
+- This explains the Gemma SFT failure: the target/oracle is profitable, but the observable prompt features do not expose a consistent rule that survives val/test drift.
+- Next step should be a feature/target redesign, not merely longer SFT. Candidate directions:
+  1. restrict prompts to features with cross-split stable sign;
+  2. add explicit month/regime shift descriptors and ask Gemma for confidence-calibrated abstention;
+  3. create pairwise preference/ranking examples inside the same local regime window rather than absolute GOOD/BAD labels;
+  4. validate feature separability before spending GPU on another SFT run.
