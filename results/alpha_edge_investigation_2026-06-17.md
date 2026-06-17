@@ -217,3 +217,27 @@ Interpretation:
 - However, the LLM still underperforms the simple all-activate-long baseline on the final test.
 - Adding val to training made the model too conservative and missed too many large winners.
 - Current best Gemma SFT result is not deployable. Next check: whether a transparent stable-feature score/threshold can beat all-activate on test. If not, SFT has no stable boundary to learn.
+
+## Transparent stable-score threshold check
+
+Added `training/evaluate_stable_activation_score.py` to verify whether the selected stable features contain a simple threshold boundary that beats all-activate before asking Gemma to learn it.
+
+Protocol:
+- Fit scaler on train only.
+- Use stable-v1 selected features and train/val AUC-edge weights.
+- Select threshold on val only with minimum validation trade count.
+- Evaluate final result on untouched test.
+
+Result from `results/eval_stable_activation_score_v1.json`:
+- Train: score threshold +28.505 pct-points vs all-activate +27.050.
+- Val: score threshold +6.877 pct-points vs all-activate +0.615.
+- Test: score threshold -3.156 pct-points vs all-activate +10.749.
+
+Monthly test decomposition:
+- 2025-10: all-activate -0.8 pct-points, stable-v1 train-only model +2.88. A selective filter helps.
+- 2025-11: all-activate +11.6 pct-points, oracle +17.3, but stable-v1 model captures only +0.48 or 0.0 depending on checkpoint. Selective filtering hurts by missing broad winners.
+- 2025-12: only one sample, not meaningful.
+
+Interpretation:
+- There are at least two sub-regimes inside the final holdout: October needs filtering; November rewards broad activation.
+- The next model should not learn a single global activation threshold. It needs a regime switch between selective mode and broad-on mode, or a target that explicitly learns whether filtering is useful in the current macro/micro context.
