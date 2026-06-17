@@ -35,3 +35,30 @@ Move from linear/global rules to regime-aware interaction discovery:
 2. Fit simple rules inside regimes, not globally.
 3. Require regime candidates to pass train and test before eval is inspected.
 4. Feed only robust regime descriptors into Gemma-based LLM policy; do not ask the LLM to infer raw numeric edge from weak raw features.
+
+## Follow-up: regime-conditioned candidate audit
+
+Candidate discovered by sensitivity scan:
+- Regime: `kimchi_premium_change` in train-window low bucket.
+- Signal: `trades_ratio` quantile rule.
+- Horizon: 288 bars.
+- Fit from 2023-01-01..2024-06-30 with rq=0.25/sq=0.25:
+  - test 2024-07..2025-08: CAGR 60.70%, strict MDD 8.12%, ratio 7.47, 280 trades, p≈0.004.
+  - eval 2025-09..2025-12-01 effective: CAGR 40.60%, strict MDD 11.55%, ratio 3.52, 61 trades, p≈0.062.
+
+External data caveat:
+- wave_trading Kimchi/DXY caches end in early/mid December 2025 while the market file extends to 2026-02-27.
+- The apparent 2026 eval interval produced no 2026 trades for this candidate; effective OOS trading ended on 2025-12-02.
+
+Longer split audit:
+- Fit 2020..2022, test 2023..2024, eval 2025:
+  - test failed: CAGR -3.22%, strict MDD 38.04%, 478 trades, p≈0.936.
+  - eval 2025 strong: CAGR 52.56%, strict MDD 11.55%, 217 trades, p≈0.013.
+- Fit 2020..2023, test 2024, eval 2025:
+  - test weak: CAGR 23.29%, strict MDD 18.41%, ratio 1.27, 243 trades, p≈0.267.
+  - eval 2025 strong: CAGR 50.03%, strict MDD 11.81%, ratio 4.24, 217 trades, p≈0.017.
+
+Interpretation:
+- The candidate is not a timeless alpha. It appears to be a strong 2025 regime-specific alpha.
+- It should not be deployed as an always-on rule.
+- Next LLM/RL direction: train Gemma to identify when the 2025-like Kimchi-flow regime is active and abstain otherwise, rather than directly predicting every trade from raw numeric bars.
