@@ -186,3 +186,34 @@ Interpretation:
   2. add explicit month/regime shift descriptors and ask Gemma for confidence-calibrated abstention;
   3. create pairwise preference/ranking examples inside the same local regime window rather than absolute GOOD/BAD labels;
   4. validate feature separability before spending GPU on another SFT run.
+
+## Stable compact prompt v1 SFT
+
+Built `training/build_stable_activation_sft_data.py` to remove unstable prompt noise before another Gemma run.
+Selection protocol:
+- Feature selection uses train 2025-01..07 and val 2025-08..09 only.
+- Test 2025-10..12 is not used to choose features.
+- Numeric prompt fields are selected only when train and val activation AUC have the same direction and both exceed the minimum edge threshold.
+
+Selected stable-v1 fields:
+`llm_long_context_score`, `side_pressure_score`, `past_return_2h`, `llm_short_context_score`, `tradeability_score`, `long_evidence_votes`, `range_position`, `past_return_1h`, `past_path_return_6h`, `kimchi_flow_change`.
+
+Prompt compression:
+- Original V5 hybrid prompt mean length ≈2546 chars.
+- Stable-v1 compact prompt mean length ≈692 chars.
+
+Gemma-4 LoRA stable-v1 train-only run:
+- Train rows: 137, steps: 40, max_seq_length: 1024.
+- Test free generation improved from the prior negative result to +3.356 pct-points over 10 activations.
+- Test candidate scoring remained effectively all-activate-like: +10.749 pct-points over 42 activations.
+
+Gemma-4 LoRA stable-v1 train+val run:
+- Train rows: 175, steps: 80, max_seq_length: 1024.
+- Test free generation: +2.601 pct-points over 5 activations.
+- Test candidate scoring: +2.524 pct-points over 7 activations.
+
+Interpretation:
+- Compact stable features improved free-generation from negative to positive, so prompt noise was part of the failure.
+- However, the LLM still underperforms the simple all-activate-long baseline on the final test.
+- Adding val to training made the model too conservative and missed too many large winners.
+- Current best Gemma SFT result is not deployable. Next check: whether a transparent stable-feature score/threshold can beat all-activate on test. If not, SFT has no stable boundary to learn.
