@@ -62,3 +62,26 @@ Interpretation:
 - The candidate is not a timeless alpha. It appears to be a strong 2025 regime-specific alpha.
 - It should not be deployed as an always-on rule.
 - Next LLM/RL direction: train Gemma to identify when the 2025-like Kimchi-flow regime is active and abstain otherwise, rather than directly predicting every trade from raw numeric bars.
+
+## LLM regime descriptor update: edge_state_v5
+
+Monthly state descriptors were weak (largest effect around d≈0.34), so the useful signal is not a broad monthly regime label alone. Entry-context audit on 2025 eval trades was more informative:
+- Overall winners had higher `bb_z`, `rsi_norm`, `range_pos`, `sma48_ratio`, `close_zscore_48`, and lower bearish shadow imbalance than losers.
+- LONG winners were more associated with positive taker imbalance / taker buy ratio, higher `bb_z`, higher `rsi_norm`, and stronger upper-shadow context.
+- SHORT winners were more associated with higher `close_zscore_48`, `sma48_ratio`, lower `window_drawdown`, stronger volume participation, and lower taker imbalance.
+
+Implemented `edge_state_v5` in `training/vlm_trading_data.py`:
+- Builds on `edge_state_v4`.
+- Adds Kimchi-flow activation descriptors from the audited rule:
+  - `Kimchi Flow Regime`
+  - `Long Entry Context`
+  - `Short Entry Context`
+  - `Regime Failure Cue`
+- Adds numeric context scores:
+  - `Kimchi Flow Change`, `Kimchi Z`, `Trades Participation`, `Taker Imbalance`
+  - `LLM Long Context Score`, `LLM Short Context Score`, `LLM Failure Cue Score`
+
+Interpretation:
+- V5 does not encode a deployable always-on rule.
+- It gives Gemma explicit language for when the 2025-like Kimchi/liquidity opportunity is present and when to abstain.
+- The next training run should compare `edge_state_v4` vs `edge_state_v5` under identical train/test/eval splits before any live integration.

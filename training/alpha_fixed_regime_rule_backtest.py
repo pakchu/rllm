@@ -88,7 +88,7 @@ def _monthly_trade_replay(market: pd.DataFrame, features: pd.DataFrame, dates: p
     months={}
     for m,g in df.groupby("month"):
         months[m]={"n":int(len(g)),"mean_trade_ret_pct":float(g.ret_pct.mean()),"sum_trade_ret_pct":float(g.ret_pct.sum()),"long_n":int((g.side=="LONG").sum()),"short_n":int((g.side=="SHORT").sum())}
-    return {"trade_count":int(len(df)),"months":months,"last_trades":trades[-10:]}
+    return {"trade_count":int(len(df)),"months":months,"trades":trades,"last_trades":trades[-10:]}
 
 
 def run(cfg: FixedRegimeRuleConfig) -> dict[str, Any]:

@@ -1314,6 +1314,112 @@ def _edge_state_v4_prompt_features(
     mem_numeric, mem_symbolic, mem_tags = _regime_memory_prompt_features(window, symbolic_v3)
     return tuple(numeric_v3) + mem_numeric, tuple(symbolic_v3) + mem_symbolic, tuple(dict.fromkeys((*tags_v3, *mem_tags)))
 
+
+def _bucket_signed(value: float, *, pos: float, neg: float, high_label: str, low_label: str, mid_label: str) -> str:
+    if value >= pos:
+        return high_label
+    if value <= neg:
+        return low_label
+    return mid_label
+
+
+def _edge_state_v5_prompt_features(
+    window: pd.DataFrame,
+    feature_row: pd.Series,
+) -> tuple[tuple[tuple[str, float], ...], tuple[tuple[str, str], ...], tuple[str, ...]]:
+    """V4 plus regime-activation descriptors from Kimchi-flow alpha audits.
+
+    The added fields are still past-only.  They are not a direct trading rule;
+    they describe whether the audited 2025-like Kimchi/liquidity regime is
+    present and whether long/short entry context resembles historical winners.
+    """
+    numeric_v4, symbolic_v4, tags_v4 = _edge_state_v4_prompt_features(window, feature_row)
+    kimchi_change = float(feature_row.get("kimchi_premium_change", 0.0))
+    kimchi_z = float(feature_row.get("kimchi_premium_zscore", 0.0))
+    trades_ratio = float(feature_row.get("trades_ratio", 0.0))
+    taker_imbalance = float(feature_row.get("taker_imbalance", 0.0))
+    range_pos = float(feature_row.get("range_pos", 0.0))
+    bb_z = float(feature_row.get("bb_z", 0.0))
+    rsi_norm = float(feature_row.get("rsi_norm", 0.0))
+    close_z = float(feature_row.get("close_zscore_48", 0.0))
+    sma48 = float(feature_row.get("sma48_ratio", 0.0))
+    window_dd = float(feature_row.get("window_drawdown", 0.0))
+    volume_ratio = float(feature_row.get("volume_ratio", 0.0))
+    usdkrw_mom = float(feature_row.get("usdkrw_momentum", 0.0))
+
+    # Thresholds are deliberately rounded from audits, not copied as a hidden
+    # optimizer.  The LLM receives regime/context cues and can abstain.
+    kimchi_flow_regime = (kimchi_change <= -0.0007) and (trades_ratio >= 0.78 or trades_ratio <= 0.47)
+    if kimchi_flow_regime and trades_ratio >= 0.78:
+        flow_activation = "KIMCHI_FLOW_LONG_ACTIVE"
+    elif kimchi_flow_regime and trades_ratio <= 0.47:
+        flow_activation = "KIMCHI_FLOW_SHORT_ACTIVE"
+    elif kimchi_change <= -0.0007:
+        flow_activation = "KIMCHI_FLOW_WATCH"
+    else:
+        flow_activation = "KIMCHI_FLOW_INACTIVE"
+
+    long_context_score = 0
+    if taker_imbalance >= 0.03:
+        long_context_score += 1
+    if bb_z >= 0.5 or close_z >= 0.5:
+        long_context_score += 1
+    if rsi_norm >= 0.08:
+        long_context_score += 1
+    if range_pos >= 0.25:
+        long_context_score += 1
+    if long_context_score >= 3:
+        long_context = "LONG_CONTEXT_WINLIKE"
+    elif long_context_score >= 2:
+        long_context = "LONG_CONTEXT_MIXED"
+    else:
+        long_context = "LONG_CONTEXT_WEAK"
+
+    short_context_score = 0
+    if close_z >= 0.5 or sma48 >= 0.002:
+        short_context_score += 1
+    if window_dd <= 0.006:
+        short_context_score += 1
+    if volume_ratio >= 0.35:
+        short_context_score += 1
+    if taker_imbalance <= -0.03:
+        short_context_score += 1
+    if usdkrw_mom <= 0.0005:
+        short_context_score += 1
+    if short_context_score >= 3:
+        short_context = "SHORT_CONTEXT_WINLIKE"
+    elif short_context_score >= 2:
+        short_context = "SHORT_CONTEXT_MIXED"
+    else:
+        short_context = "SHORT_CONTEXT_WEAK"
+
+    failure_cue_score = 0
+    if window_dd >= 0.010:
+        failure_cue_score += 1
+    if usdkrw_mom >= 0.0012:
+        failure_cue_score += 1
+    if abs(kimchi_z) < 0.2 and abs(taker_imbalance) < 0.03:
+        failure_cue_score += 1
+    failure_cue = "ABSTAIN_FAILURE_REGIME" if failure_cue_score >= 2 else "NO_FAILURE_CUE"
+
+    numeric_extra = (
+        ("Kimchi Flow Change", kimchi_change),
+        ("Kimchi Z", kimchi_z),
+        ("Trades Participation", trades_ratio),
+        ("Taker Imbalance", taker_imbalance),
+        ("LLM Long Context Score", float(long_context_score)),
+        ("LLM Short Context Score", float(short_context_score)),
+        ("LLM Failure Cue Score", float(failure_cue_score)),
+    )
+    symbolic_extra = (
+        ("Kimchi Flow Regime", flow_activation),
+        ("Long Entry Context", long_context),
+        ("Short Entry Context", short_context),
+        ("Regime Failure Cue", failure_cue),
+    )
+    tags = tuple(dict.fromkeys((*tags_v4, flow_activation, long_context, short_context, failure_cue)))
+    return tuple(numeric_v4) + numeric_extra, tuple(symbolic_v4) + symbolic_extra, tags
+
 def build_vlm_training_samples(
     market_df: pd.DataFrame,
     timeframe: str = "1m",
@@ -1407,10 +1513,10 @@ def build_vlm_training_samples(
             f"got {label_mode}"
         )
     prompt_feature_mode_key = str(prompt_feature_mode).lower().strip()
-    if prompt_feature_mode_key not in {"basic_v0", "engineered_v1", "edge_state_v2", "edge_state_v3", "edge_state_v4"}:
+    if prompt_feature_mode_key not in {"basic_v0", "engineered_v1", "edge_state_v2", "edge_state_v3", "edge_state_v4", "edge_state_v5"}:
         raise ValueError(
             "prompt_feature_mode must be one of "
-            "{'basic_v0','engineered_v1','edge_state_v2','edge_state_v3','edge_state_v4'}, "
+            "{'basic_v0','engineered_v1','edge_state_v2','edge_state_v3','edge_state_v4','edge_state_v5'}, "
             f"got {prompt_feature_mode}"
         )
     trade_side_sample_policy_key = str(trade_side_sample_policy).lower().strip()
@@ -1723,6 +1829,12 @@ def build_vlm_training_samples(
                 extra_symbolic_features,
                 context_tags,
             ) = _edge_state_v4_prompt_features(window, feature_row)
+        elif prompt_feature_mode_key == "edge_state_v5":
+            (
+                extra_numeric_features,
+                extra_symbolic_features,
+                context_tags,
+            ) = _edge_state_v5_prompt_features(window, feature_row)
         state = TradingPromptState(
             timeframe=timeframe,
             position_size_pct=0.0,
