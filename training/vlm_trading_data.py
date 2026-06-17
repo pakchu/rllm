@@ -1420,6 +1420,63 @@ def _edge_state_v5_prompt_features(
     tags = tuple(dict.fromkeys((*tags_v4, flow_activation, long_context, short_context, failure_cue)))
     return tuple(numeric_v4) + numeric_extra, tuple(symbolic_v4) + symbolic_extra, tags
 
+
+def _edge_state_v6_prompt_features(
+    window: pd.DataFrame,
+    feature_row: pd.Series,
+) -> tuple[tuple[tuple[str, float], ...], tuple[tuple[str, str], ...], tuple[str, ...]]:
+    """V5 plus completed-weekly regime features.
+
+    Weekly features come from the previous completed weekly candle only.  They
+    are intended to help the LLM decide whether Kimchi-flow should be filtered
+    selectively or kept broadly active in higher-timeframe trend regimes.
+    """
+    numeric_v5, symbolic_v5, tags_v5 = _edge_state_v5_prompt_features(window, feature_row)
+    weekly_return_1w = float(feature_row.get("weekly_return_1w", 0.0))
+    weekly_return_4w = float(feature_row.get("weekly_return_4w", 0.0))
+    weekly_range_1w = float(feature_row.get("weekly_range_1w", 0.0))
+    weekly_range_pos = float(feature_row.get("weekly_range_pos", 0.0))
+    weekly_drawdown_4w = float(feature_row.get("weekly_drawdown_4w", 0.0))
+
+    if weekly_return_4w >= 0.08 and weekly_drawdown_4w <= 0.08:
+        weekly_regime = "WEEKLY_BROAD_RISK_ON"
+    elif weekly_return_4w <= -0.08 or weekly_drawdown_4w >= 0.15:
+        weekly_regime = "WEEKLY_DEFENSIVE_FILTER"
+    elif abs(weekly_return_4w) <= 0.03 and weekly_range_1w >= 0.08:
+        weekly_regime = "WEEKLY_CHOP_FILTER"
+    else:
+        weekly_regime = "WEEKLY_MIXED"
+
+    if weekly_range_pos >= 0.50:
+        weekly_location = "WEEKLY_UPPER_RANGE"
+    elif weekly_range_pos <= -0.50:
+        weekly_location = "WEEKLY_LOWER_RANGE"
+    else:
+        weekly_location = "WEEKLY_MID_RANGE"
+
+    weekly_filter_score = 0
+    if weekly_regime in {"WEEKLY_DEFENSIVE_FILTER", "WEEKLY_CHOP_FILTER"}:
+        weekly_filter_score += 1
+    if weekly_range_pos <= -0.50 and weekly_return_1w < 0.0:
+        weekly_filter_score += 1
+    if weekly_drawdown_4w >= 0.10:
+        weekly_filter_score += 1
+
+    numeric_extra = (
+        ("Weekly Return 1w", weekly_return_1w),
+        ("Weekly Return 4w", weekly_return_4w),
+        ("Weekly Range 1w", weekly_range_1w),
+        ("Weekly Range Position", weekly_range_pos),
+        ("Weekly Drawdown 4w", weekly_drawdown_4w),
+        ("Weekly Filter Score", float(weekly_filter_score)),
+    )
+    symbolic_extra = (
+        ("Weekly Regime", weekly_regime),
+        ("Weekly Location", weekly_location),
+    )
+    tags = tuple(dict.fromkeys((*tags_v5, weekly_regime, weekly_location)))
+    return tuple(numeric_v5) + numeric_extra, tuple(symbolic_v5) + symbolic_extra, tags
+
 def build_vlm_training_samples(
     market_df: pd.DataFrame,
     timeframe: str = "1m",
@@ -1513,10 +1570,10 @@ def build_vlm_training_samples(
             f"got {label_mode}"
         )
     prompt_feature_mode_key = str(prompt_feature_mode).lower().strip()
-    if prompt_feature_mode_key not in {"basic_v0", "engineered_v1", "edge_state_v2", "edge_state_v3", "edge_state_v4", "edge_state_v5"}:
+    if prompt_feature_mode_key not in {"basic_v0", "engineered_v1", "edge_state_v2", "edge_state_v3", "edge_state_v4", "edge_state_v5", "edge_state_v6"}:
         raise ValueError(
             "prompt_feature_mode must be one of "
-            "{'basic_v0','engineered_v1','edge_state_v2','edge_state_v3','edge_state_v4','edge_state_v5'}, "
+            "{'basic_v0','engineered_v1','edge_state_v2','edge_state_v3','edge_state_v4','edge_state_v5','edge_state_v6'}, "
             f"got {prompt_feature_mode}"
         )
     trade_side_sample_policy_key = str(trade_side_sample_policy).lower().strip()
@@ -1835,6 +1892,12 @@ def build_vlm_training_samples(
                 extra_symbolic_features,
                 context_tags,
             ) = _edge_state_v5_prompt_features(window, feature_row)
+        elif prompt_feature_mode_key == "edge_state_v6":
+            (
+                extra_numeric_features,
+                extra_symbolic_features,
+                context_tags,
+            ) = _edge_state_v6_prompt_features(window, feature_row)
         state = TradingPromptState(
             timeframe=timeframe,
             position_size_pct=0.0,

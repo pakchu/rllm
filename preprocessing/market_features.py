@@ -50,6 +50,11 @@ EXTENDED_MARKET_FEATURE_COLUMNS = CORE_MARKET_FEATURE_COLUMNS + (
     "kimchi_premium_change",
     "usdkrw_zscore",
     "usdkrw_momentum",
+    "weekly_return_1w",
+    "weekly_return_4w",
+    "weekly_range_1w",
+    "weekly_range_pos",
+    "weekly_drawdown_4w",
 )
 
 
@@ -85,6 +90,69 @@ def _optional_column(df: pd.DataFrame, name: str) -> pd.Series | None:
     if name not in df.columns:
         return None
     return df[name].astype(float)
+
+
+def _completed_weekly_features(market_df: pd.DataFrame) -> dict[str, pd.Series]:
+    """Previous completed weekly-candle features aligned to each intraday row.
+
+    The weekly candle that contains the current row is deliberately excluded.
+    We resample to week-ending Sunday bars, compute weekly features, shift them
+    by one completed week, then as-of join backward to every market timestamp.
+    This makes row ``t`` depend only on rows from weeks completed before ``t``.
+    """
+    defaults = {
+        "weekly_return_1w": pd.Series(0.0, index=market_df.index),
+        "weekly_return_4w": pd.Series(0.0, index=market_df.index),
+        "weekly_range_1w": pd.Series(0.0, index=market_df.index),
+        "weekly_range_pos": pd.Series(0.0, index=market_df.index),
+        "weekly_drawdown_4w": pd.Series(0.0, index=market_df.index),
+    }
+    if "date" not in market_df.columns or len(market_df) < 7 * 24 * 60:
+        return defaults
+
+    source = market_df[["date", "open", "high", "low", "close"]].copy()
+    source["date"] = pd.to_datetime(source["date"], errors="coerce")
+    source = source.dropna(subset=["date"]).sort_values("date")
+    if source.empty:
+        return defaults
+    source = source.set_index("date")
+
+    weekly = pd.DataFrame(
+        {
+            "open": source["open"].resample("W-SUN", label="right", closed="right").first(),
+            "high": source["high"].resample("W-SUN", label="right", closed="right").max(),
+            "low": source["low"].resample("W-SUN", label="right", closed="right").min(),
+            "close": source["close"].resample("W-SUN", label="right", closed="right").last(),
+        }
+    ).dropna()
+    if len(weekly) < 2:
+        return defaults
+
+    prev = weekly.shift(1)
+    w_range = (prev["high"] - prev["low"]).replace(0.0, np.nan)
+    features = pd.DataFrame(index=weekly.index)
+    features["weekly_return_1w"] = _clean_series(prev["close"] / prev["open"].replace(0.0, np.nan) - 1.0)
+    features["weekly_return_4w"] = _clean_series(
+        prev["close"] / prev["close"].shift(4).replace(0.0, np.nan) - 1.0
+    )
+    features["weekly_range_1w"] = _clean_series(w_range / prev["close"].replace(0.0, np.nan))
+    features["weekly_range_pos"] = _clean_series(((prev["close"] - prev["low"]) / w_range) * 2.0 - 1.0)
+    weekly_peak_4 = prev["close"].rolling(4, min_periods=1).max()
+    features["weekly_drawdown_4w"] = _clean_series(1.0 - prev["close"] / weekly_peak_4.replace(0.0, np.nan))
+    features = features.replace([np.inf, -np.inf], 0.0).fillna(0.0).reset_index(names="date")
+
+    target_dates = pd.DataFrame({"date": pd.to_datetime(market_df["date"], errors="coerce")})
+    target_dates["_row"] = np.arange(len(target_dates))
+    aligned = pd.merge_asof(
+        target_dates.sort_values("date"),
+        features.sort_values("date"),
+        on="date",
+        direction="backward",
+    ).sort_values("_row")
+    out: dict[str, pd.Series] = {}
+    for col in defaults:
+        out[col] = pd.Series(aligned[col].fillna(0.0).to_numpy(), index=market_df.index)
+    return out
 
 
 def build_market_feature_frame(
@@ -210,6 +278,8 @@ def build_market_feature_frame(
             if series is not None
             else pd.Series(float(default), index=market_df.index)
         )
+
+    feature_map.update(_completed_weekly_features(market_df))
 
     frame = pd.DataFrame(feature_map, index=market_df.index)
     return frame.replace([np.inf, -np.inf], 0.0).fillna(0.0)

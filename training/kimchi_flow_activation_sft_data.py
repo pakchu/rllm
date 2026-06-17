@@ -2,7 +2,7 @@
 
 Targets are aligned to the discovered edge: activate/abstain and side context
 around the audited Kimchi-change/trades-ratio rule, not generic direction labels.
-Prompts are past-only edge_state_v5 hybrid prompts.
+Prompts are past-only edge-state hybrid prompts.
 """
 from __future__ import annotations
 
@@ -33,6 +33,7 @@ class KimchiFlowActivationConfig:
     min_good_ret_pct: float = 0.10
     min_bad_ret_pct: float = -0.05
     include_no_trade_context: bool = True
+    prompt_feature_mode: str = "edge_state_v5"
 
 
 def _load_trades(path: str) -> list[dict[str, Any]]:
@@ -97,7 +98,7 @@ def build_rows(cfg: KimchiFlowActivationConfig) -> tuple[list[dict[str, Any]], d
         sample_seed=cfg.sample_seed,
         target_horizon=1,
         label_mode="next_return",
-        prompt_feature_mode="edge_state_v5",
+        prompt_feature_mode=cfg.prompt_feature_mode,
         action_schema="buy_hold_sell",
         prompt_style="hybrid",
         modality="text_only",
@@ -179,6 +180,7 @@ def parse_args():
     p.add_argument('--start', default='2025-01-01'); p.add_argument('--end', default='2025-12-01 23:59:59'); p.add_argument('--window-size', type=int, default=144)
     p.add_argument('--max-samples', type=int, default=0); p.add_argument('--sample-mode', default='uniform'); p.add_argument('--sample-seed', type=int, default=42)
     p.add_argument('--min-good-ret-pct', type=float, default=0.10); p.add_argument('--min-bad-ret-pct', type=float, default=-0.05)
+    p.add_argument('--prompt-feature-mode', default='edge_state_v5', choices=['edge_state_v5', 'edge_state_v6'])
     return p.parse_args()
 
 

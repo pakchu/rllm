@@ -241,3 +241,36 @@ Monthly test decomposition:
 Interpretation:
 - There are at least two sub-regimes inside the final holdout: October needs filtering; November rewards broad activation.
 - The next model should not learn a single global activation threshold. It needs a regime switch between selective mode and broad-on mode, or a target that explicitly learns whether filtering is useful in the current macro/micro context.
+
+## Completed-weekly regime features: edge_state_v6
+
+Added leak-safe completed-weekly features to `preprocessing/market_features.py` and exposed them through `edge_state_v6`:
+- `weekly_return_1w`
+- `weekly_return_4w`
+- `weekly_range_1w`
+- `weekly_range_pos`
+- `weekly_drawdown_4w`
+- `weekly_filter_score`
+- symbolic `Weekly Regime` and `Weekly Location`
+
+Leakage guard:
+- Weekly bars are resampled as week-ending Sunday candles.
+- The current/incomplete weekly candle is excluded by shifting weekly features by one completed week before backward as-of alignment to each 1m row.
+- Therefore row `t` only sees weekly information from weeks completed before `t`.
+
+Generated `data/kimchi_flow_activation_edge_state_v6_2025*.jsonl` from the same fixed Kimchi-flow trade report used for v5. Prompt mean length increased from ~2546 chars to ~2811 chars.
+
+Feature separability:
+- Weekly fields are not strong train/val individual GOOD/BAD classifiers.
+- On final test, `weekly_range_1w` becomes a meaningful feature (AUC ≈0.605, return corr ≈0.208), but this was not visible enough in train/val to justify using it as a direct activation threshold.
+
+Weekly bucket audit:
+- Test `WEEKLY_DEFENSIVE_FILTER`: 16 rows, all-activate +13.24 pct-points, oracle +15.93.
+- Test `WEEKLY_MIXED`: 12 rows, all-activate -4.91 pct-points, oracle +2.17.
+- Test filter-score=1: 28 rows, all-activate +11.23 pct-points, oracle +18.80.
+- Test filter-score=0: 8 rows, all-activate -1.89 pct-points, oracle +3.74.
+
+Interpretation:
+- Weekly context is useful, but not as a simple “defensive means filter” rule.
+- In the 2025-11 holdout, high weekly drawdown/defensive context coincided with broad Kimchi-flow opportunity, which explains why the prior selective activation model missed many winners.
+- Next target should explicitly learn a higher-level switch such as `BROAD_ON_AFTER_WEEKLY_STRESS` vs `SELECTIVE_IN_MIXED_WEEKLY_REGIME`, then apply lower-timeframe activation only inside the selective branch.
