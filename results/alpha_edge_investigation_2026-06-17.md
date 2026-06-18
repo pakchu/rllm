@@ -809,3 +809,27 @@ Interpretation:
 - Simply adding more handcrafted event families does not solve the target. The same regime-fragility pattern remains.
 - The useful signal may require richer state-conditioned action choice rather than global family thresholds.
 - For the LLM+RL path, the next dataset should present many candidate actions per timestamp and let the model learn conditional preference/ranking, not select one global family.
+
+## Event-action policy dataset and learnability baseline
+
+Implemented `training/event_action_policy_data.py` to build a single-LLM policy dataset. Each row gives Gemma a past-only state plus a candidate action book containing the top event families and allowed holds. The target chooses the best action by strict future path utility for training only.
+
+Generated splits with 6h stride, top-5 families, holds 72/144/288/432:
+- Train 2020-2023: 5,844 rows; TRADE 4,796 / NO_TRADE 1,048; prompt mean ≈1.29k chars.
+- Val 2024: 1,464 rows; TRADE 1,231 / NO_TRADE 233.
+- Eval 2025: 1,334 rows; TRADE 1,116 / NO_TRADE 218.
+- Main target families: macro_pressure, kimchi_extreme_fade, mean_reversion_stretch, orderflow, higher-timeframe.
+
+Oracle upper bound check (target used as prediction, so not deployable):
+- Val oracle: CAGR 4329, strict MDD 4.70, 276 trades.
+- Eval oracle: CAGR 2094, strict MDD 5.34, 254 trades.
+- Interpretation: the action space has huge ex-post opportunity, but this only proves label capacity, not learnability.
+
+Implemented `training/knn_event_action_policy_baseline.py` as a cheap learnability check before GPU fine-tuning.
+- Train -> val KNN k=25: exact action accuracy 13.7%, gate accuracy 33.1%; backtest CAGR 25.30, strict MDD 11.91, ratio 2.12, 146 trades, p≈0.205.
+- Train+val -> eval KNN k=25: exact action accuracy 14.0%, gate accuracy 34.3%; backtest CAGR -29.68, strict MDD 30.03, ratio -0.99, 150 trades, p≈0.024 negative.
+
+Interpretation:
+- The richer action space is expressive, but naïve imitation of ex-post best actions is not stable out-of-sample.
+- The eval failure is statistically negative, so a plain SFT target on the current labels would likely overfit or learn the wrong regime mapping.
+- Next repair should make targets more conservative and learnable: raise no-trade utility, require positive lower-bound/MAE constraints, or transform the task into preference/risk ranking where bad trades are explicitly rejected rather than forcing an ex-post best trade at most timestamps.
