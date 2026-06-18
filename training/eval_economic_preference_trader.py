@@ -19,8 +19,11 @@ from typing import Any
 from models.option_b_vlm import RECOMMENDED_VLM_MODEL, resolve_vlm_model_alias
 from training.eval_text_trader import (
     _candidate_logprob_predictions,
+    _chat_prompt_text,
     _generate_predictions,
     _metrics,
+    _score_candidate_batch,
+    _load_text_model,
     parse_trader_json,
 )
 from training.train_text_dpo import load_preference_jsonl
@@ -44,6 +47,100 @@ def _target_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def _action_key(action: dict[str, Any]) -> str:
     return f"{action.get('gate')}/{action.get('side')}/{int(action.get('hold_bars', 0) or 0)}"
+
+
+def _extract_candidate_book(prompt: str) -> list[dict[str, Any]]:
+    marker = "Candidate action book: "
+    for line in str(prompt).splitlines():
+        if line.startswith(marker):
+            book = json.loads(line[len(marker) :])
+            if not isinstance(book, list):
+                raise ValueError("candidate action book is not a list")
+            return [b for b in book if isinstance(b, dict)]
+    raise ValueError("prompt lacks Candidate action book")
+
+
+def _full_action_json(action: dict[str, Any]) -> str:
+    if str(action.get("gate", "NO_TRADE")).upper() == "NO_TRADE":
+        payload = {"confidence": "HIGH", "family": "NONE", "gate": "NO_TRADE", "hold_bars": 0, "side": "NONE"}
+    else:
+        payload = {
+            "confidence": str(action.get("confidence", "HIGH")).upper(),
+            "family": str(action["family"]),
+            "gate": "TRADE",
+            "hold_bars": int(action["hold_bars"]),
+            "side": str(action["side"]).upper(),
+        }
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _candidate_book_actions(row: dict[str, Any], hold_candidates: list[int]) -> list[dict[str, Any]]:
+    holds = [int(h) for h in hold_candidates if int(h) > 0]
+    actions: list[dict[str, Any]] = [{"gate": "NO_TRADE", "family": "NONE", "side": "NONE", "hold_bars": 0, "confidence": "HIGH"}]
+    seen = {("NO_TRADE", "NONE", "NONE", 0)}
+    for cand in _extract_candidate_book(str(row["prompt"])):
+        family = str(cand.get("family", "")).strip()
+        side = str(cand.get("side", "")).upper().strip()
+        allowed = cand.get("allowed_holds", holds)
+        allowed_holds = [int(h) for h in allowed if int(h) in holds]
+        if not family or side not in {"LONG", "SHORT"}:
+            continue
+        for hold in allowed_holds:
+            key = ("TRADE", family, side, int(hold))
+            if key in seen:
+                continue
+            seen.add(key)
+            actions.append({"gate": "TRADE", "family": family, "side": side, "hold_bars": int(hold), "confidence": "HIGH"})
+    return actions
+
+
+def _candidate_book_logprob_predictions(
+    rows: list[dict[str, Any]],
+    *,
+    model_name: str,
+    adapter_dir: str,
+    hold_candidates: list[int],
+    score_normalization: str = "mean",
+    batch_size: int = 1,
+) -> list[dict[str, Any]]:
+    tokenizer, model = _load_text_model(model_name, adapter_dir)
+    normalize = str(score_normalization).strip().lower()
+    if normalize not in {"sum", "mean"}:
+        raise ValueError("score_normalization must be one of {'sum','mean'}")
+    batch_size = max(1, int(batch_size))
+
+    preds: list[dict[str, Any]] = []
+    for offset in range(0, len(rows), batch_size):
+        row_batch = rows[offset : offset + batch_size]
+        sequences: list[list[int]] = []
+        candidate_spans: list[tuple[int, int]] = []
+        candidate_actions_by_row: list[list[dict[str, Any]]] = []
+        for row in row_batch:
+            prompt_ids = tokenizer(_chat_prompt_text(tokenizer, str(row["prompt"])), add_special_tokens=False)["input_ids"]
+            start = len(prompt_ids)
+            actions = _candidate_book_actions(row, hold_candidates)
+            candidate_actions_by_row.append(actions)
+            for action in actions:
+                action_ids = tokenizer(_full_action_json(action), add_special_tokens=False)["input_ids"]
+                if tokenizer.eos_token_id is not None:
+                    action_ids = action_ids + [int(tokenizer.eos_token_id)]
+                sequences.append(prompt_ids + action_ids)
+                candidate_spans.append((start, start + len(action_ids)))
+        encoded = tokenizer.pad({"input_ids": sequences}, return_tensors="pt")
+        flat_scores = _score_candidate_batch(
+            model=model,
+            input_ids=encoded["input_ids"].to(model.device),
+            attention_mask=encoded["attention_mask"].to(model.device),
+            spans=candidate_spans,
+            score_normalization=normalize,
+        )
+        score_offset = 0
+        for actions in candidate_actions_by_row:
+            scores = flat_scores[score_offset : score_offset + len(actions)]
+            best_idx = max(range(len(scores)), key=lambda i: scores[i])
+            preds.append(parse_trader_json(_full_action_json(actions[best_idx])))
+            score_offset += len(actions)
+    return preds
 
 
 def _prediction_rows(rows: list[dict[str, Any]], predictions: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -118,8 +215,20 @@ def evaluate_economic_preference_trader(
             score_normalization=score_normalization,
             batch_size=batch_size,
         )
+    elif mode == "candidate_book_logprob":
+        if not adapter_dir:
+            raise ValueError("adapter_dir is required for prediction_mode=candidate_book_logprob")
+        holds = [int(x) for x in str(hold_candidates).split(",") if str(x).strip()]
+        predictions = _candidate_book_logprob_predictions(
+            rows,
+            model_name=model_name,
+            adapter_dir=adapter_dir,
+            hold_candidates=holds,
+            score_normalization=score_normalization,
+            batch_size=batch_size,
+        )
     else:
-        raise ValueError("prediction_mode must be one of {'target_echo','model','candidate_logprob'}")
+        raise ValueError("prediction_mode must be one of {'target_echo','model','candidate_logprob','candidate_book_logprob'}")
 
     pred_rows = _prediction_rows(rows, predictions)
     if predictions_output:
@@ -151,6 +260,7 @@ def evaluate_economic_preference_trader(
             "prompt_uses_future_path": False,
             "chosen_rejected_used_for_metrics_only": True,
             "model_input_excludes_chosen_rejected": True,
+            "candidate_book_logprob_uses_prompt_visible_actions_only": mode == "candidate_book_logprob",
         },
     }
     Path(output).parent.mkdir(parents=True, exist_ok=True)
@@ -168,7 +278,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-samples", type=int, default=0)
     p.add_argument("--sample-mode", choices=["sequential", "random", "balanced", "gate_balanced"], default="sequential")
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--prediction-mode", choices=["target_echo", "model", "candidate_logprob"], default="target_echo")
+    p.add_argument("--prediction-mode", choices=["target_echo", "model", "candidate_logprob", "candidate_book_logprob"], default="target_echo")
     p.add_argument("--max-new-tokens", type=int, default=48)
     p.add_argument("--hold-candidates", default="36,72,144,288,432")
     p.add_argument("--score-normalization", choices=["sum", "mean"], default="mean")

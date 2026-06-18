@@ -877,3 +877,13 @@ Generated preference data:
 Interpretation:
 - This is now a better fit for LLM+DPO/RL than the previous single-label SFT rows.
 - The next actual model step should train a small Gemma adapter on these preferences, then evaluate candidate logprob ranking/backtest without using eval targets for selection.
+
+### 2026-06-18 Gemma event-action SFT/DPO smoke and scoring audit
+
+- Added a candidate-book logprob evaluator for event-action preference rows because the earlier generic candidate scorer omitted the `family`/`confidence` JSON schema used during training and scored actions that were not necessarily in the prompt-visible candidate book.
+- DPO dry-run on `data/event_action_preferences_moderate_train.jsonl` confirmed `gemma4-e4b` resolves to `google/gemma-4-E4B-it`, 512 gate-balanced rows, and 50/50 chosen gate balance.
+- 10-step DPO-from-base smoke (`checkpoints/event_action_gemma4_dpo_smoke`) ran successfully in 199.6s but validation candidate-logprob backtest on 238 deduped 2024 rows was negative: generic scorer CAGR -1.33 / strict MDD 8.43 / 60 trades; candidate-book scorer CAGR -5.13 / strict MDD 12.59 / 184 trades. This rejects base-only short DPO as a useful policy.
+- Added `gate_balanced` sampling to `training/train_text_sft.py`; dry-run on 1024 SFT rows produced 512 TRADE / 512 NO_TRADE targets instead of the prior trade-heavy balanced sample.
+- 24-step gate-balanced SFT smoke (`checkpoints/event_action_gemma4_sft_gate_smoke`) trained in 161.8s and learned the output schema (train loss 1.01), but candidate-book logprob validation still over-traded: 238/238 predictions were TRADE, CAGR -10.91 / strict MDD 14.82 / 190 trades. Free-generation on 64 rows produced some NO_TRADE (7/64) but still negative CAGR -1.37 / strict MDD 7.49 / 57 trades.
+- 24-step DPO continuation from the SFT adapter (`checkpoints/event_action_gemma4_sft_dpo_gate_smoke`) improved DPO pairwise training margins (final train loss 0.6664, rewards/accuracy mostly 0.875-1.0), but validation candidate-book logprob remained over-trading and degraded: CAGR -18.47 / strict MDD 20.29 / 193 trades.
+- Interpretation: current Gemma event-action setup is learning JSON/schema and some pairwise preference signal, but the inference interface is not yet learning a robust abstention/no-trade boundary. The next useful change is not more steps on the same labels; it is to redesign inference/training around explicit trade-vs-abstain utility calibration or generate preference pairs where NO_TRADE directly beats marginal trades, while keeping selection confined to validation and holding eval untouched.

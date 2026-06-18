@@ -67,8 +67,8 @@ def _select_rows(rows: list[dict[str, Any]], *, max_samples: int, sample_mode: s
     if not max_samples or int(max_samples) >= len(rows):
         return rows
     mode = str(sample_mode).strip().lower()
-    if mode not in {"sequential", "random", "balanced"}:
-        raise ValueError("sample_mode must be one of {'sequential','random','balanced'}")
+    if mode not in {"sequential", "random", "balanced", "gate_balanced"}:
+        raise ValueError("sample_mode must be one of {'sequential','random','balanced','gate_balanced'}")
     rng = random.Random(int(seed))
     max_n = int(max_samples)
     if mode == "sequential":
@@ -76,6 +76,27 @@ def _select_rows(rows: list[dict[str, Any]], *, max_samples: int, sample_mode: s
     if mode == "random":
         idx = sorted(rng.sample(range(len(rows)), max_n))
         return [rows[i] for i in idx]
+    if mode == "gate_balanced":
+        gate_buckets: dict[str, list[int]] = {}
+        for i, row in enumerate(rows):
+            try:
+                parsed = json.loads(str(row.get("target", "")))
+                gate = str(parsed.get("gate", "UNKNOWN")).upper() if isinstance(parsed, dict) else "UNKNOWN"
+            except Exception:
+                gate = "UNKNOWN"
+            gate_buckets.setdefault(gate, []).append(i)
+        per_bucket = max(1, max_n // max(1, len(gate_buckets)))
+        selected: list[int] = []
+        for bucket in sorted(gate_buckets):
+            idxs = list(gate_buckets[bucket])
+            rng.shuffle(idxs)
+            selected.extend(idxs[: min(per_bucket, len(idxs))])
+        if len(selected) < max_n:
+            used = set(selected)
+            remaining = [i for idxs in gate_buckets.values() for i in idxs if i not in used]
+            rng.shuffle(remaining)
+            selected.extend(remaining[: max_n - len(selected)])
+        return [rows[i] for i in sorted(selected[:max_n])]
 
     buckets: dict[str, list[int]] = {}
     for i, row in enumerate(rows):
@@ -265,7 +286,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output-dir", required=True)
     p.add_argument("--max-samples", type=int, default=0)
     p.add_argument("--max-seq-length", type=int, default=2048)
-    p.add_argument("--sample-mode", choices=["sequential", "random", "balanced"], default="sequential")
+    p.add_argument("--sample-mode", choices=["sequential", "random", "balanced", "gate_balanced"], default="sequential")
     p.add_argument("--max-steps", type=int, default=50)
     p.add_argument("--num-train-epochs", type=float, default=1.0)
     p.add_argument("--learning-rate", type=float, default=2e-5)
