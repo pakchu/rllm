@@ -510,3 +510,37 @@ Interpretation:
 - This is still useful: it separates feature/value weakness from LLM output-format issues.
 - Current bottleneck appears to be insufficient causal predictive signal in the candidate feature set, not just SFT tuning.
 - Next substantial work should add stronger causal features/targets: realized stress-transition labels, market-state change labels, and explicit post-signal path-risk value estimates rather than binary activate/abstain.
+
+## Post-signal path-value target probe
+
+Implemented a live-causal path-value scorer to test whether the edge-state prompts contain signal for executable post-signal path quality, not just terminal fixed-rule return.
+
+New scripts:
+- `training/eval_causal_knn_path_value_scorer.py`
+  - Labels historical reference candidates with executable path outcomes: scheduled entry/exit, fees/slippage, MAE/MFE, net return, and utility.
+  - Scores eval candidates only against historical reference rows; eval future path is used only for audit after selection.
+- `training/sweep_causal_knn_path_value.py`
+  - Runs KNN metric/threshold sweeps without reloading market data for every threshold.
+
+Setup:
+- Reference: `data/kimchi_flow_activation_edge_state_v7_2020_2024_train.jsonl` (2020-2024 only).
+- Val: `data/kimchi_flow_activation_edge_state_v7_2025_val.jsonl`.
+- Test: `data/kimchi_flow_activation_edge_state_v7_2025_test.jsonl`.
+- Market: `data/cache_market_ext_5m_2020-01-01_2025-12-02.csv.gz`.
+- Hold: 288 x 5m bars, entry delay 1 bar, leverage 0.5, fee 4bp, slippage 1bp.
+- Selection rule: score threshold fixed from val before reading test.
+
+Val-selected candidates checked on test:
+- Conservative val winner: `target_metric=path_net_pct`, `k=15`, `threshold=0.25`.
+  - Val: ret +3.41%, CAGR 22.6, strict MDD 1.24, ratio 18.3, 9 trades, p≈0.093.
+  - Fixed test: ret +1.23%, CAGR 8.14, strict MDD 2.99, ratio 2.72, 5 trades, p≈0.472.
+- Trade-count-friendly val candidate: `target_metric=path_net_pct`, `k=5`, `threshold=-0.5`.
+  - Val: ret +2.76%, CAGR 18.0, strict MDD 3.15, ratio 5.72, 28 trades, p≈0.412.
+  - Fixed test: ret +7.90%, CAGR 62.8, strict MDD 11.35, ratio 5.53, 31 trades, p≈0.297.
+
+Interpretation:
+- The path-net KNN target is directionally better than the previous path-utility target and gives an encouraging fixed-test ratio for the broader threshold.
+- It is still not statistically significant: p≈0.297 on 31 final-test trades and the score/target correlation is weak.
+- The result should be treated as a candidate signal family, not a deployable alpha.
+- Important leakage guard: the apparent `k=5, threshold=0.25` test top result was not selected on val and must not be treated as valid model selection.
+- Next work should expand the validation/test horizon and improve path-value features, especially features that forecast adverse excursion and stress transition rather than average nearest-neighbor terminal return.
