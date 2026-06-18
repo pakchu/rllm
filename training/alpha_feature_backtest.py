@@ -137,6 +137,7 @@ def simulate_rule(
     max_dd = 0.0
     entries = 0
     trade_returns: list[float] = []
+    executed: list[dict[str, Any]] = []
     side_counts = {"LONG": 0, "SHORT": 0}
     skipped = 0
 
@@ -176,6 +177,18 @@ def simulate_rule(
         max_dd = max(max_dd, _drawdown_from_trough(peak, eq))
         peak = max(peak, eq)
         trade_returns.append(eq / entry_eq - 1.0)
+        executed.append(
+            {
+                "signal_date": str(dates.iloc[pos]),
+                "entry_date": str(dates.iloc[entry_pos]),
+                "exit_date": str(dates.iloc[exit_pos]),
+                "side": "LONG" if signal > 0 else "SHORT",
+                "feature": str(cfg.feature),
+                "feature_value": float(feature_values[pos]),
+                "horizon": int(cfg.horizon),
+                "executed_ret_pct": (eq / entry_eq - 1.0) * 100.0,
+            }
+        )
         next_allowed = exit_pos + max(0, int(cfg.cooldown_bars))
         if eq <= 0.0:
             break
@@ -204,6 +217,7 @@ def simulate_rule(
             "return_application": "actual_ohlc_bar_by_bar_feature_quantile_strict_mdd",
         },
         "trade_stats": _trade_stats(trade_returns),
+        "executed": executed,
     }
 
 

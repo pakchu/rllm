@@ -706,3 +706,30 @@ Interpretation:
 - The active-regime results remain promising, but the full operational strategy does not yet meet the original target once inactive/no-trade periods are included.
 - The current edge is a regime-specific module, not a complete capital-efficient trading bot.
 - Next step should focus on either adding complementary regimes to deploy capital during gated-off periods, or explicitly measuring active-period capital allocation separately from always-on portfolio CAGR.
+
+## Complementary univariate fallback check
+
+Goal: find a second, no-leak module that can trade the periods where the v8 drawdown-acceleration gate disables capital, especially 2024, without reintroducing future leakage.
+
+Ran `training/alpha_feature_scan.py` over the extended feature frame with 5m data, horizons 72/144/288, and leak-safe completed higher-timeframe features. The feature set already includes longer bars (`htf_1d_*`, `htf_3d_*`, `htf_1w_*`) plus wave-trading-style macro/external fields when present.
+
+Frozen-rule backtest sweep:
+- Fit 2020-2023 -> eval 2024 for candidate fallback validation.
+- Fit 2020-2024 -> eval 2025 for later sanity check.
+- Rule: bottom/top 20% quantile, direction chosen only on fit window, 1-bar entry delay, 0.5x leverage, strict bar-by-bar MDD.
+
+Result summary:
+- No univariate fallback passed 2024. The best tested 2024 candidates were still negative; example `candle_range`, h=288, fit 2020-2023 -> 2024: CAGR -34.19, strict MDD 43.60, 360 trades, p≈0.119.
+- `candle_range`, h=288, fit 2020-2024 -> 2025 was positive but weak: CAGR 15.27, strict MDD 18.40, ratio 0.83, 330 trades, p≈0.451. This cannot justify deployment because the analogous no-leak 2024 validation failed hard.
+- Combining 2024 candle fallback with 2025 v8 guard gives a failed non-overlap portfolio: CAGR -4.90, strict MDD 41.67, 485 trades, p≈0.836.
+- A 2025-only priority combination of v8 guard + candle fallback looks attractive (CAGR 68.51, strict MDD 10.00, 260 trades, p≈0.008), but this is not acceptable as selection evidence because the fallback module was not validated out-of-sample before 2025.
+
+Implementation added:
+- `training/alpha_feature_backtest.py` now emits executed trades for module-level combination audits.
+- `training/aggregate_trade_modules.py` combines already-executed no-leak module outputs with priority-based overlap resolution.
+
+Interpretation:
+- Simple univariate long-timeframe/external-feature fallbacks do not solve the inactive-regime drag.
+- The next useful branch should not be another naive gate or single-feature quantile rule. It should either:
+  1. train/score a richer text/LLM state representation that reasons over multi-timeframe context and decides abstain/long/short directly; or
+  2. use the v8 module only as an active-capital sleeve and measure capital allocation separately from always-on portfolio CAGR.
