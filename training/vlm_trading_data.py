@@ -1571,6 +1571,109 @@ def _edge_state_v7_prompt_features(
     tag_extra.append(mtf_mode)
     return tuple(numeric_v5) + tuple(numeric_extra), tuple(symbolic_v5) + tuple(symbolic_extra), tuple(dict.fromkeys((*tags_v5, *tag_extra)))
 
+
+
+def _edge_state_v8_prompt_features(
+    window: pd.DataFrame,
+    feature_row: pd.Series,
+) -> tuple[tuple[tuple[str, float], ...], tuple[tuple[str, str], ...], tuple[str, ...]]:
+    """V7 plus past-only strict-drawdown/stress-transition descriptors.
+
+    These features are designed for the path-net / strict-MDD bottleneck.  They
+    expose only historical path shape and completed higher-timeframe stress;
+    no post-signal outcome or future candidate-pool information is used.
+    """
+    numeric_v7, symbolic_v7, tags_v7 = _edge_state_v7_prompt_features(window, feature_row)
+    num = {str(k): float(v) for k, v in numeric_v7}
+
+    ret_1h = float(num.get("Past Return 1h", 0.0))
+    ret_2h = float(num.get("Past Return 2h", 0.0))
+    ret_8h = float(num.get("Past Return 8h", 0.0))
+    dd_6h = float(num.get("Past Path Drawdown 6h", 0.0))
+    dd_12h = float(num.get("Past Path Drawdown 12h", 0.0))
+    ru_6h = float(num.get("Past Path Runup 6h", 0.0))
+    ru_12h = float(num.get("Past Path Runup 12h", 0.0))
+    vol_1h = float(num.get("Realized Vol 1h", 0.0))
+    vol_8h = float(num.get("Realized Vol 8h", 0.0))
+    mtf_stress = float(num.get("MTF Stress Total", 0.0))
+    h4_stress = float(num.get("4H Stress Score", 0.0))
+    d1_stress = float(num.get("1D Stress Score", 0.0))
+    d3_stress = float(num.get("3D Stress Score", 0.0))
+    w1_stress = float(num.get("1W Stress Score", 0.0))
+    taker = float(feature_row.get("taker_imbalance", 0.0))
+    trades_ratio = float(feature_row.get("trades_ratio", 0.0))
+    kimchi_change = float(feature_row.get("kimchi_premium_change", 0.0))
+    dxy_mom = float(feature_row.get("dxy_momentum", 0.0))
+    usdkrw_mom = float(feature_row.get("usdkrw_momentum", 0.0))
+    candle_range = float(feature_row.get("candle_range", 0.0))
+    body_to_range = float(feature_row.get("body_to_range", 0.0))
+    shadow_imbalance = float(feature_row.get("shadow_imbalance", 0.0))
+
+    vol_expansion = vol_1h / max(vol_8h, 1e-6)
+    drawdown_accel = dd_6h - (0.5 * dd_12h)
+    runup_drawdown_balance = (ru_6h + 1e-6) / max(dd_6h + 1e-6, 1e-6)
+    path_compression = abs(ret_2h) / max(vol_8h, 1e-6)
+    trend_conflict = abs(ret_1h - ret_8h) / max(vol_8h, 1e-6)
+    candle_shock = candle_range * (0.5 + body_to_range) + abs(shadow_imbalance)
+    flow_shock = abs(taker) * max(0.0, trades_ratio)
+    macro_pressure = dxy_mom + usdkrw_mom
+    kimchi_liquidity_pressure = -kimchi_change * max(0.0, trades_ratio)
+    htf_stress_gradient = h4_stress + d1_stress - d3_stress - w1_stress
+    strict_risk_score = (
+        1.5 * max(0.0, drawdown_accel)
+        + 0.75 * max(0.0, vol_expansion - 1.0)
+        + 0.5 * max(0.0, trend_conflict - 1.0)
+        + 0.5 * candle_shock
+        + 0.25 * mtf_stress
+    )
+
+    if strict_risk_score >= 3.0:
+        path_risk = "PATH_RISK_EXTREME"
+    elif strict_risk_score >= 1.8:
+        path_risk = "PATH_RISK_HIGH"
+    elif strict_risk_score >= 0.9:
+        path_risk = "PATH_RISK_MEDIUM"
+    else:
+        path_risk = "PATH_RISK_LOW"
+
+    if vol_expansion >= 1.35 and htf_stress_gradient >= 1.0:
+        stress_transition = "STRESS_EXPANDING_SHORT_TERM"
+    elif vol_expansion <= 0.75 and mtf_stress <= 2.0:
+        stress_transition = "STRESS_COMPRESSING_LOW"
+    elif drawdown_accel > 0.006:
+        stress_transition = "DRAWDOWN_ACCELERATING"
+    else:
+        stress_transition = "STRESS_MIXED"
+
+    if runup_drawdown_balance >= 1.75 and drawdown_accel <= 0.0:
+        path_asymmetry = "RUNUP_DOMINANT"
+    elif runup_drawdown_balance <= 0.65 or drawdown_accel > 0.004:
+        path_asymmetry = "DRAWDOWN_DOMINANT"
+    else:
+        path_asymmetry = "PATH_BALANCED"
+
+    numeric_extra = (
+        ("Vol Expansion 1h/8h", float(vol_expansion)),
+        ("Drawdown Acceleration 6h", float(drawdown_accel)),
+        ("Runup Drawdown Balance", float(runup_drawdown_balance)),
+        ("Path Compression", float(path_compression)),
+        ("Trend Conflict Score", float(trend_conflict)),
+        ("Candle Shock Score", float(candle_shock)),
+        ("Flow Shock Score", float(flow_shock)),
+        ("Macro Pressure Score", float(macro_pressure)),
+        ("Kimchi Liquidity Pressure", float(kimchi_liquidity_pressure)),
+        ("HTF Stress Gradient", float(htf_stress_gradient)),
+        ("Strict Path Risk Score", float(strict_risk_score)),
+    )
+    symbolic_extra = (
+        ("Path Risk Regime", path_risk),
+        ("Stress Transition", stress_transition),
+        ("Path Asymmetry", path_asymmetry),
+    )
+    tags = tuple(dict.fromkeys((*tags_v7, path_risk, stress_transition, path_asymmetry)))
+    return tuple(numeric_v7) + numeric_extra, tuple(symbolic_v7) + symbolic_extra, tags
+
+
 def build_vlm_training_samples(
     market_df: pd.DataFrame,
     timeframe: str = "1m",
@@ -1664,10 +1767,10 @@ def build_vlm_training_samples(
             f"got {label_mode}"
         )
     prompt_feature_mode_key = str(prompt_feature_mode).lower().strip()
-    if prompt_feature_mode_key not in {"basic_v0", "engineered_v1", "edge_state_v2", "edge_state_v3", "edge_state_v4", "edge_state_v5", "edge_state_v6", "edge_state_v7"}:
+    if prompt_feature_mode_key not in {"basic_v0", "engineered_v1", "edge_state_v2", "edge_state_v3", "edge_state_v4", "edge_state_v5", "edge_state_v6", "edge_state_v7", "edge_state_v8"}:
         raise ValueError(
             "prompt_feature_mode must be one of "
-            "{'basic_v0','engineered_v1','edge_state_v2','edge_state_v3','edge_state_v4','edge_state_v5','edge_state_v6','edge_state_v7'}, "
+            "{'basic_v0','engineered_v1','edge_state_v2','edge_state_v3','edge_state_v4','edge_state_v5','edge_state_v6','edge_state_v7','edge_state_v8'}, "
             f"got {prompt_feature_mode}"
         )
     trade_side_sample_policy_key = str(trade_side_sample_policy).lower().strip()
@@ -1998,6 +2101,12 @@ def build_vlm_training_samples(
                 extra_symbolic_features,
                 context_tags,
             ) = _edge_state_v7_prompt_features(window, feature_row)
+        elif prompt_feature_mode_key == "edge_state_v8":
+            (
+                extra_numeric_features,
+                extra_symbolic_features,
+                context_tags,
+            ) = _edge_state_v8_prompt_features(window, feature_row)
         state = TradingPromptState(
             timeframe=timeframe,
             position_size_pct=0.0,

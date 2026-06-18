@@ -566,3 +566,33 @@ Interpretation:
 - This is the strongest non-leaky, trade-count-reasonable candidate so far, but it still misses the target `CAGR / strict MDD >= 3` and the p-value is not yet below 0.05.
 - The score/target correlation remains weak and slightly negative, so much of the improvement may still come from filtering exposure to a generally favorable 2025 fixed-rule regime rather than from true local KNN ranking skill.
 - Next direction should not be more threshold tweaking. It should add features/targets that directly forecast strict drawdown contributors: adverse excursion, pre-entry drawdown context, volatility compression/expansion, and multi-timeframe stress transition.
+
+## Edge-state v8 path-risk feature probe
+
+Added `edge_state_v8` to test whether explicit strict-drawdown/stress-transition descriptors help the causal path-net scorer:
+- Past-only additions: vol expansion 1h/8h, drawdown acceleration, runup/drawdown balance, path compression, trend conflict, candle/flow shock, macro pressure, kimchi-liquidity pressure, HTF stress gradient, and strict path risk score.
+- KNN feature vector also now includes fixed-rule side indicators (`fixed_side_long`, `fixed_side_short`) derived from candidate metadata, so historical neighbors can be side-aware without exposing future outcomes.
+
+Generated v8 activation datasets:
+- 2020-2023 train/reference: 940 rows, prompt mean ≈3944 chars.
+- 2024 validation: 243 rows, prompt mean ≈3948 chars.
+- 2025 evaluation: 216 rows, prompt mean ≈3942 chars.
+
+Validation setup:
+- Reference: 2020-2023 v8 rows.
+- Validation: 2024 v8 rows.
+- Sweep: `target_metric=path_net_pct`, k in {5,10,15,25}, threshold in {-0.5,0,0.25}.
+
+2024 validation:
+- Best broad setting by ratio: `k=10`, `threshold=-0.5`.
+- Result: ret +22.24%, CAGR 22.32, strict MDD 13.13, ratio 1.70, 205 trades, p≈0.254.
+- This is not better than the prior v7 2024 validation candidate by statistical quality, but it is a valid fixed setting to test on 2025.
+
+2025 fixed evaluation with live-updated 2020-2024 v8 reference:
+- Fixed val-selected setting: `k=10`, `threshold=-0.5`.
+- Result: ret +30.86%, CAGR 34.68, strict MDD 11.55, ratio 3.00, 175 trades, p≈0.051.
+
+Interpretation:
+- This is the first non-leaky, trade-count-reasonable candidate to reach the stated ratio target on 2025 full evaluation.
+- It is still not deployment-ready: p≈0.051 is borderline and score/target correlation is near zero, so the result may be a regime-exposure filter rather than a robust local value predictor.
+- Treat v8 as a promising candidate family, not a solved strategy. Next validation should stress it across walk-forward year blocks and inspect executed-trade monthly distribution / strict MDD attribution before any LLM SFT or live trading integration.

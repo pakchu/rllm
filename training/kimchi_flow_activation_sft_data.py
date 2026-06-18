@@ -190,7 +190,7 @@ def parse_args():
     p.add_argument('--start', default='2025-01-01'); p.add_argument('--end', default='2025-12-01 23:59:59'); p.add_argument('--window-size', type=int, default=144)
     p.add_argument('--max-samples', type=int, default=0); p.add_argument('--sample-mode', default='uniform'); p.add_argument('--sample-seed', type=int, default=42)
     p.add_argument('--min-good-ret-pct', type=float, default=0.10); p.add_argument('--min-bad-ret-pct', type=float, default=-0.05)
-    p.add_argument('--prompt-feature-mode', default='edge_state_v5', choices=['edge_state_v5', 'edge_state_v6', 'edge_state_v7'])
+    p.add_argument('--prompt-feature-mode', default='edge_state_v5', choices=['edge_state_v5', 'edge_state_v6', 'edge_state_v7', 'edge_state_v8'])
     p.add_argument('--trade-split', default='eval', choices=['train', 'test', 'eval', 'all'])
     return p.parse_args()
 

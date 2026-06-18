@@ -49,6 +49,15 @@ class CausalKNNPathValueConfig:
 
 def _vector(row: dict[str, Any], keys: list[str]) -> np.ndarray:
     _, nums = parse_prompt(row["prompt"])
+    src = row.get("source_trade", {}) or {}
+    tgt = {}
+    try:
+        tgt = json.loads(str(row.get("target", "{}")))
+    except Exception:
+        tgt = {}
+    side = str(src.get("side", tgt.get("side", ""))).upper()
+    nums["fixed_side_long"] = 1.0 if side == "LONG" else 0.0
+    nums["fixed_side_short"] = 1.0 if side == "SHORT" else 0.0
     return np.asarray([float(nums.get(k, 0.0)) for k in keys], dtype=float)
 
 

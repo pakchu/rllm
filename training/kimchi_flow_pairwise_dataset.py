@@ -14,6 +14,10 @@ FEATURE_KEYS = [
     "side_pressure_score","past_return_2h","past_return_8h","tradeability_score",
     "range_position","past_path_return_6h","past_path_drawdown_12h",
     "3d_return_4","3d_range_1","3d_drawdown_4","1w_return_4","1w_range_1","1w_drawdown_4","mtf_stress_total",
+    "vol_expansion_1h_8h","drawdown_acceleration_6h","runup_drawdown_balance",
+    "path_compression","trend_conflict_score","candle_shock_score","flow_shock_score",
+    "macro_pressure_score","kimchi_liquidity_pressure","htf_stress_gradient","strict_path_risk_score",
+    "fixed_side_long","fixed_side_short",
 ]
 SYM_KEYS = ["3D_regime","3D_location","1W_regime","1W_location","mtf_mode"]
 
