@@ -484,3 +484,29 @@ Interpretation:
   3. pairwise historical-reference scoring: live-causal but failed;
   4. single-candidate activation: live-causal but failed final test.
 - Next promising path is not another small SFT tweak; it should change the target to explicit regime outcome/value estimation with calibrated historical baselines, or move the LLM into explanation/feature construction while a simpler causal scorer handles execution.
+
+## Causal KNN value scorer over LLM/regime features
+
+Implemented `training/eval_causal_knn_value_scorer.py` as a non-LLM causal value scorer:
+- Input features are the same compact numeric/symbolic regime fields exposed to the LLM (`edge_state_v7`).
+- Each eval candidate is scored against historical 2020-2024 reference candidates only.
+- Score is the mean realized return of K nearest historical candidates, optionally within the same `3D_regime|1W_regime` bucket.
+- This avoids future-pool ranking leakage and tests whether the LLM-exposed features contain a simple causal value edge.
+
+Validation-selected result:
+- Best val ratio used k=15, threshold=0.25, but only 9 val trades and 4 final-test trades.
+- 2025 test for that setting: CAGR 12.7 / strict MDD 2.18 / 4 trades / p≈0.108. Too few trades to be meaningful.
+
+More trade-count-friendly settings:
+- k=15, threshold=0:
+  - 2025 val: CAGR 13.7 / MDD 2.54 / 16 trades / p≈0.443.
+  - 2025 test: CAGR 22.6 / MDD 4.93 / 19 trades / p≈0.468.
+- k=25, threshold=0:
+  - 2025 val: CAGR 12.4 / MDD 2.57 / 16 trades / p≈0.443.
+  - 2025 test: CAGR 11.9 / MDD 3.59 / 15 trades / p≈0.647.
+
+Interpretation:
+- The LLM/regime features contain some positive drift in Q4, but not a statistically meaningful or target-level edge.
+- This is still useful: it separates feature/value weakness from LLM output-format issues.
+- Current bottleneck appears to be insufficient causal predictive signal in the candidate feature set, not just SFT tuning.
+- Next substantial work should add stronger causal features/targets: realized stress-transition labels, market-state change labels, and explicit post-signal path-risk value estimates rather than binary activate/abstain.
