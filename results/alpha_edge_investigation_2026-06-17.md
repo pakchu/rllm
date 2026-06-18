@@ -858,3 +858,22 @@ Interpretation:
 - Conservative labels avoid catastrophic eval overtrading but become mostly inactive.
 - Moderate labels can produce a good-looking eval pocket, but validation rejects the setting. Selecting it would be another eval leak.
 - Label thresholding alone is insufficient. The next format should train preference/rejection behavior: explicitly compare chosen safe trade vs rejected risky trade/no-trade, and let DPO/RL learn relative risk rather than forcing a single ex-post target class.
+
+## Event-action preference data for DPO/RL-style learning
+
+Implemented `training/event_action_preference_data.py` to convert the event-action book into chosen/rejected preference pairs. This addresses the failure mode of single-label imitation: instead of forcing Gemma to reproduce one ex-post best class, the model can learn relative risk rejection between a safer chosen action and hard negative alternatives.
+
+Moderate preference configuration:
+- no-trade utility 0.2%, min net 0.1%, max MAE 1.5%, min utility 0.2%, MFE/MAE >= 1.0.
+- utility gap >= 0.3%, max 3 pairs per timestamp.
+- Prompts remain past-only; chosen/rejected labels use future OHLC utility for training only.
+
+Generated preference data:
+- Train 2020-2023: 17,532 pairs.
+- Val 2024: 4,392 pairs.
+- Eval 2025: 4,002 pairs.
+- JSON audit: no NaN/Infinity tokens after finite-audit repair.
+
+Interpretation:
+- This is now a better fit for LLM+DPO/RL than the previous single-label SFT rows.
+- The next actual model step should train a small Gemma adapter on these preferences, then evaluate candidate logprob ranking/backtest without using eval targets for selection.
