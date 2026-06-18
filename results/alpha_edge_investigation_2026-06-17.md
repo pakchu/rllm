@@ -781,3 +781,31 @@ Interpretation:
 - Cross-representation agreement reduces drawdown but also removes too much edge and does not generalize.
 - Current evidence says the problem is not just gate optimization. The candidate pool itself is too narrow/regime-fragile.
 - Next meaningful work should expand the event/candidate pool and train/evaluate a single LLM policy over a richer action space, instead of repeatedly filtering the same Kimchi-flow pool.
+
+## Wider event candidate pool probe
+
+Implemented `training/event_candidate_pool_probe.py` to test whether the bottleneck is the narrow Kimchi-flow candidate pool. The script builds past-only event families from the extended feature frame: momentum, mean reversion, volatility breakout, drawdown continuation/reversal, order-flow follow/fade, kimchi flow/fade, macro pressure, higher-timeframe momentum/fade, and candle shock follow/fade.
+
+Protocol:
+- Thresholds are fit on train only via feature-strength quantile.
+- Family selection uses validation only after a train-positive/min-trade filter.
+- Eval is reported once for the selected family.
+- Strict OHLC simulation uses entry delay, fees/slippage, 0.5x leverage, non-overlap, and intrabar strict MDD.
+
+Fold A: train 2020-2022 -> val 2023 -> eval 2024
+- Selected family: `momentum_trend`.
+- Validation: CAGR 10.89, strict MDD 13.68, ratio 0.80, 80 trades, p≈0.504.
+- Eval 2024: CAGR 6.78, strict MDD 12.87, ratio 0.53, 136 trades, p≈0.621.
+- Conclusion: broad feature-family pool does not produce a validated 2024 edge from pre-2024 data.
+
+Fold B: train 2020-2023 -> val 2024 -> eval 2025
+- Train-positive filter selected `higher_tf_momentum` despite only marginal validation evidence.
+- Validation: CAGR 12.58, strict MDD 7.49, ratio 1.68, 53 trades, p≈0.307.
+- Eval 2025: only 1 executed trade, ret -1.96; not useful.
+- Top raw validation family `kimchi_flow_follow` looked stronger on 2024 validation: CAGR 28.06, MDD 12.87, ratio 2.18, 215 trades, p≈0.190, but 2025 eval degraded to CAGR 14.48, MDD 13.47, ratio 1.08, p≈0.401.
+- `kimchi_extreme_fade` was especially unstable: 2024 val positive, 2025 eval CAGR -44.55, MDD 45.45.
+
+Interpretation:
+- Simply adding more handcrafted event families does not solve the target. The same regime-fragility pattern remains.
+- The useful signal may require richer state-conditioned action choice rather than global family thresholds.
+- For the LLM+RL path, the next dataset should present many candidate actions per timestamp and let the model learn conditional preference/ranking, not select one global family.
