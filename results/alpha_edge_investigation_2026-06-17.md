@@ -903,3 +903,17 @@ Interpretation:
 - Raw gate scoring is normalization-sensitive: mean logprob predicted almost all NO_TRADE (val accuracy 0.161; 1,461/1,464 NO_TRADE), while sum logprob predicted almost all TRADE (accuracy 0.833 mostly due trade-heavy val labels; only 2/233 true NO_TRADE caught). Generation on the first 256 val rows was mixed but only 0.633 accuracy.
 - Threshold sweep on the 238-row action-validation subset improved over always-trade but remained weak: best sum-margin threshold 38.056 produced CAGR 1.56 / strict MDD 3.73 / ratio 0.42 with only 24 trades and non-significant trade stats. Mean-margin best was weaker: CAGR 0.65 / strict MDD 3.74 / 16 trades.
 - Conclusion: explicit two-stage gate is structurally better than full-action likelihood, but the current gate labels are not a profitable abstention boundary. Next step should rebuild gate labels around actual minimum utility / path-risk thresholds instead of oracle best-action gate labels, then re-test the two-stage design.
+
+### 2026-06-18 Utility-threshold gate labels
+
+- Added `training/event_action_gate_utility_data.py` to rebuild gate labels from future audit only when the best action clears explicit utility/risk thresholds, instead of labeling TRADE whenever the oracle best action is a trade.
+- Generated three gate label families from gate-first event-action rows:
+  - `u006`: train 2,997 TRADE / 2,847 NO_TRADE; val 791 / 673; eval 643 / 691.
+  - `u010`: train 2,177 TRADE / 3,667 NO_TRADE; val 543 / 921; eval 422 / 912.
+  - `u015`: train 1,418 TRADE / 4,426 NO_TRADE; val 335 / 1,129; eval 233 / 1,101.
+- Trained 24-step Gemma utility gate smoke adapters for u010 and u006. Both trained successfully (`u010` train loss 0.5556; `u006` train loss 0.5468).
+- Two-stage validation on the existing 238-row action-prediction subset improved capital preservation but not statistical usefulness:
+  - u010 best mean-margin threshold: CAGR 2.81 / strict MDD 1.56 / ratio 1.80, but only 8 trades.
+  - u006 best threshold: CAGR 1.81 / strict MDD 1.68 / ratio 1.08, also only 8 trades.
+  - With minimum trade count >=30, u006 drops to CAGR -1.75 / MDD 7.17 over 97 trades; u010 mean-margin best with >=30 trades is only CAGR 0.37 / MDD 5.64 over 40 trades.
+- Conclusion: utility-threshold gate can avoid bad trades but the current action scorer has no robust edge when trade count becomes meaningful. The next step should replace full-action candidate likelihood with a value/ranker objective over prompt-visible actions, then re-use the utility gate as a risk filter.
