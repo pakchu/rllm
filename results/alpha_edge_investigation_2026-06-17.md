@@ -833,3 +833,28 @@ Interpretation:
 - The richer action space is expressive, but naïve imitation of ex-post best actions is not stable out-of-sample.
 - The eval failure is statistically negative, so a plain SFT target on the current labels would likely overfit or learn the wrong regime mapping.
 - Next repair should make targets more conservative and learnable: raise no-trade utility, require positive lower-bound/MAE constraints, or transform the task into preference/risk ranking where bad trades are explicitly rejected rather than forcing an ex-post best trade at most timestamps.
+
+## Conservative label repair attempt
+
+Updated `training/event_action_policy_data.py` with stricter target filters:
+- `min_trade_net_return`
+- `max_trade_mae`
+- `min_trade_utility`
+- `min_trade_mfe_to_mae`
+
+Conservative setting tested:
+- no-trade utility 0.4%, min net 0.2%, max MAE 1.0%, min utility 0.4%, MFE/MAE >= 1.2.
+- Label distribution became safer: train TRADE 2,883 / NO_TRADE 2,961; val TRADE 796 / NO_TRADE 668; eval TRADE 730 / NO_TRADE 604.
+- KNN k=25 collapsed to almost all NO_TRADE: val 1 trade, eval 3 trades.
+- Smaller-k eval sweep: k=1 gave CAGR 16.66 / MDD 12.67 / ratio 1.32 with 210 trades; k=5 gave CAGR 11.95 / MDD 14.90 / ratio 0.80; k>=10 weak/negative. Still below target and not statistically strong.
+
+Moderate setting tested:
+- no-trade utility 0.2%, min net 0.1%, max MAE 1.5%, min utility 0.2%, MFE/MAE >= 1.0.
+- Label distribution: train TRADE 3,982 / NO_TRADE 1,862; val TRADE 1,076 / NO_TRADE 388; eval TRADE 991 / NO_TRADE 343.
+- Eval-only KNN k=5 looked promising: CAGR 28.49, strict MDD 9.30, ratio 3.06, 221 trades, p≈0.124.
+- But validation k sweep invalidated it: train->2024 val was negative for k=1/3/5/10. k=5 validation: CAGR -25.61, MDD 38.66, 226 trades.
+
+Interpretation:
+- Conservative labels avoid catastrophic eval overtrading but become mostly inactive.
+- Moderate labels can produce a good-looking eval pocket, but validation rejects the setting. Selecting it would be another eval leak.
+- Label thresholding alone is insufficient. The next format should train preference/rejection behavior: explicitly compare chosen safe trade vs rejected risky trade/no-trade, and let DPO/RL learn relative risk rather than forcing a single ex-post target class.

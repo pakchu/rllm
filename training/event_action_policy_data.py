@@ -38,6 +38,8 @@ class EventActionPolicyConfig:
     no_trade_utility: float = 0.001
     min_trade_net_return: float = -1.0
     max_trade_mae: float = 1.0
+    min_trade_utility: float = -1.0
+    min_trade_mfe_to_mae: float = 0.0
     entry_delay_bars: int = 1
     leverage: float = 0.5
     fee_rate: float = 0.0004
@@ -109,12 +111,19 @@ def _action_utility(market: pd.DataFrame, signal_pos: int, side: str, hold: int,
     if out is None:
         return None
     rank_utility = float(out.utility)
-    if float(out.net_return) < float(cfg.min_trade_net_return) or float(out.mae) > float(cfg.max_trade_mae):
+    mfe_to_mae = float(out.mfe) / max(float(out.mae), 1e-9)
+    if (
+        float(out.net_return) < float(cfg.min_trade_net_return)
+        or float(out.mae) > float(cfg.max_trade_mae)
+        or float(out.utility) < float(cfg.min_trade_utility)
+        or mfe_to_mae < float(cfg.min_trade_mfe_to_mae)
+    ):
         rank_utility = float("-inf")
     return {
         "net_return": float(out.net_return),
         "mae": float(out.mae),
         "mfe": float(out.mfe),
+        "mfe_to_mae": mfe_to_mae,
         "utility": float(out.utility),
         "rank_utility": rank_utility,
     }
@@ -198,7 +207,7 @@ def build_event_action_policy_rows(market: pd.DataFrame, cfg: EventActionPolicyC
                 "signal_pos": int(pos),
                 "prompt": _prompt(date, state, book, cfg),
                 "target": json.dumps(_target(best, cfg), sort_keys=True, separators=(",", ":"), ensure_ascii=False),
-                "target_action_audit": {k: best.get(k) for k in ("gate", "family", "side", "hold_bars", "rank_utility", "net_return", "mae", "mfe", "utility")},
+                "target_action_audit": {k: best.get(k) for k in ("gate", "family", "side", "hold_bars", "rank_utility", "net_return", "mae", "mfe", "mfe_to_mae", "utility")},
                 "candidate_count": len(actions),
                 "leakage_guard": {
                     "prompt_uses_future_path": False,
@@ -275,6 +284,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--no-trade-utility", type=float, default=0.001)
     p.add_argument("--min-trade-net-return", type=float, default=-1.0)
     p.add_argument("--max-trade-mae", type=float, default=1.0)
+    p.add_argument("--min-trade-utility", type=float, default=-1.0)
+    p.add_argument("--min-trade-mfe-to-mae", type=float, default=0.0)
     p.add_argument("--entry-delay-bars", type=int, default=1)
     p.add_argument("--leverage", type=float, default=0.5)
     p.add_argument("--fee-rate", type=float, default=0.0004)
@@ -300,6 +311,8 @@ def main() -> None:
         no_trade_utility=float(args.no_trade_utility),
         min_trade_net_return=float(args.min_trade_net_return),
         max_trade_mae=float(args.max_trade_mae),
+        min_trade_utility=float(args.min_trade_utility),
+        min_trade_mfe_to_mae=float(args.min_trade_mfe_to_mae),
         entry_delay_bars=int(args.entry_delay_bars),
         leverage=float(args.leverage),
         fee_rate=float(args.fee_rate),
