@@ -267,7 +267,13 @@ def run_fold(rows: list[dict[str, Any]], fold: dict[str, str], args: argparse.Na
         "selected_on_val": chosen,
         "validation_gate_passed": validation_gate_passed,
         "validation_gate": {"min_val_ratio": args.min_val_ratio, "max_val_mdd": args.max_val_mdd, "max_val_p": args.max_val_p, "min_val_trades": args.min_val_trades},
-        "eval_fixed": {"sim": eval_result["sim"], "trade_stats": eval_result["trade_stats"], "candidate_count": eval_candidate_count, "guarded_count": eval_guarded_count},
+        "eval_fixed": {
+            "sim": eval_result["sim"],
+            "trade_stats": eval_result["trade_stats"],
+            "candidate_count": eval_candidate_count,
+            "guarded_count": eval_guarded_count,
+            **({"executed": eval_result.get("executed", [])} if getattr(args, "include_executed", False) else {}),
+        },
         "top_val_trials": sorted(trials, key=lambda t: float(t["sim"].get("cagr_to_strict_mdd", -1e9)), reverse=True)[:10],
         "leakage_guard": {
             "val_scored_against_rows_before_val_start": True,
@@ -286,11 +292,29 @@ def default_folds() -> list[dict[str, str]]:
     ]
 
 
+def load_folds(path: str | None) -> list[dict[str, str]]:
+    if not path:
+        return default_folds()
+    obj = json.loads(Path(path).read_text())
+    folds = obj.get("folds", obj)
+    if not isinstance(folds, list):
+        raise ValueError("folds JSON must be a list or an object with a folds list")
+    required = {"name", "val_start", "eval_start", "eval_end"}
+    out = []
+    for fold in folds:
+        missing = required - set(fold)
+        if missing:
+            raise ValueError(f"fold missing keys {sorted(missing)}: {fold}")
+        out.append({k: str(fold[k]) for k in sorted(required)})
+    return out
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Walk-forward causal KNN guard evaluator")
     p.add_argument("--rows-jsonl", action="append", required=True)
     p.add_argument("--market-csv", required=True)
     p.add_argument("--output", required=True)
+    p.add_argument("--folds-json", default="", help="Optional JSON list/object defining non-overlapping or custom folds.")
     p.add_argument("--target-metric", default="path_net_pct")
     p.add_argument("--k", type=int, action="append", default=[])
     p.add_argument("--score-threshold", type=float, action="append", default=[])
@@ -306,6 +330,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--slippage-rate", type=float, default=0.0001)
     p.add_argument("--no-same-bucket", action="store_true")
     p.add_argument("--min-bucket-refs", type=int, default=20)
+    p.add_argument("--include-executed", action="store_true", help="Persist executed eval trades for aggregate audits.")
     return p.parse_args()
 
 
@@ -323,7 +348,7 @@ def main() -> None:
         ]
     args._market = load_market(args.market_csv)
     rows = load_rows(args.rows_jsonl)
-    folds = default_folds()
+    folds = load_folds(args.folds_json or None)
     results = [run_fold(rows, fold, args) for fold in folds]
     out = {
         "as_of": datetime.now(timezone.utc).isoformat(),

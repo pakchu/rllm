@@ -676,3 +676,33 @@ Interpretation:
 - Validation gating is necessary. Without it, early weak folds would trade and fail.
 - The strongest 2025 full-year drawdown-acceleration result is still promising, but formal fold-level tests show statistical power is not yet sufficient: allowed fold p-values are ≈0.115 and ≈0.154.
 - Next work should aggregate gated fold equity and add more historical rows/periods if possible. If more data cannot be added, the practical next step is paper-trading with the validation gate rather than claiming production readiness.
+
+## Non-overlap aggregate correction
+
+Important correction: the initial aggregate walk-forward calculation was invalid because default diagnostic folds overlap. `2024_to_2025` evaluates full 2025, while `2025H1_to_2025H2` evaluates 2025H2 again. The aggregate output contained 29 duplicate signal/side trades and must not be used as portfolio-level evidence.
+
+Implemented fixes:
+- `training/walk_forward_knn_guard_eval.py` now supports `--folds-json` for explicit non-overlapping fold sets and `--include-executed` for downstream audits.
+- `training/aggregate_walk_forward_equity.py` aggregates executed fold trades and emits duplicate/overlap warnings.
+- Added non-overlap configs:
+  - `configs/walk_forward/v8_full_year_nonoverlap.json`
+  - `configs/walk_forward/v8_half_year_nonoverlap.json`
+
+Corrected full-year non-overlap aggregate:
+- Folds: 2023->2024, 2024->2025.
+- 2024 was disabled by validation gate; 2025 traded.
+- No duplicate trades.
+- Aggregate period: 2024-01-02 to 2026-01-01, ~2.00 years.
+- Aggregate: ret +18.05%, CAGR 8.67, strict MDD 4.89, ratio 1.77, 81 trades, p≈0.115.
+
+Corrected half-year non-overlap aggregate:
+- Folds: 2024H1->2024H2, 2025H1->2025H2.
+- 2024H2 was disabled by validation gate; 2025H2 traded.
+- No duplicate trades.
+- Aggregate period: 2024-07-01 to 2026-01-01, ~1.50 years.
+- Aggregate: ret +11.87%, CAGR 7.76, strict MDD 4.68, ratio 1.66, 60 trades, p≈0.154.
+
+Interpretation:
+- The active-regime results remain promising, but the full operational strategy does not yet meet the original target once inactive/no-trade periods are included.
+- The current edge is a regime-specific module, not a complete capital-efficient trading bot.
+- Next step should focus on either adding complementary regimes to deploy capital during gated-off periods, or explicitly measuring active-period capital allocation separately from always-on portfolio CAGR.
