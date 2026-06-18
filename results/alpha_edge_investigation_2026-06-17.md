@@ -596,3 +596,24 @@ Interpretation:
 - This is the first non-leaky, trade-count-reasonable candidate to reach the stated ratio target on 2025 full evaluation.
 - It is still not deployment-ready: p≈0.051 is borderline and score/target correlation is near zero, so the result may be a regime-exposure filter rather than a robust local value predictor.
 - Treat v8 as a promising candidate family, not a solved strategy. Next validation should stress it across walk-forward year blocks and inspect executed-trade monthly distribution / strict MDD attribution before any LLM SFT or live trading integration.
+
+## V8 2025 fixed-eval distribution audit
+
+Ran detailed evaluator plus `training/audit_candidate_backtest_distribution.py` on the v8 val-selected setting (`path_net_pct`, `k=10`, threshold `-0.5`, reference 2020-2024, eval 2025 full).
+
+Overall executed-trade distribution:
+- Trades: 175.
+- Mean trade return: +0.160%.
+- Win rate: 53.1%.
+- Top 5 gains sum: +16.44%; top 10 gains sum: +28.24%.
+- Bottom 5 losses sum: -10.94%; bottom 10 losses sum: -18.33%.
+
+Monthly distribution:
+- Positive months: Jan +3.30, Mar +2.73, Apr +2.81, May +7.22, Jul +6.86, Sep +4.18, Nov +6.55 simple trade-return pct sum.
+- Negative months: Feb -0.27, Jun -0.74, Aug -2.74, Oct -1.97.
+- October is the main strict-MDD stress candidate: 19 trades, mean -0.10%, worst -3.64%, mean path MAE 2.38%.
+
+Interpretation:
+- The v8 result is not a single-month artifact; gains are spread across multiple months.
+- However, top-10 gains roughly equal the total simple trade-return sum, so concentration is still material.
+- The next feature/guard work should specifically reduce October-like high-MAE regimes without discarding the broad 2025 exposure that creates the edge.
