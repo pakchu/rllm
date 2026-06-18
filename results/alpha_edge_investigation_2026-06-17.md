@@ -544,3 +544,25 @@ Interpretation:
 - The result should be treated as a candidate signal family, not a deployable alpha.
 - Important leakage guard: the apparent `k=5, threshold=0.25` test top result was not selected on val and must not be treated as valid model selection.
 - Next work should expand the validation/test horizon and improve path-value features, especially features that forecast adverse excursion and stress transition rather than average nearest-neighbor terminal return.
+
+## Longer 2024-val / 2025-full path-net check
+
+To reduce the short-window problem, re-ran the path-net scorer with a longer chronological validation/evaluation split:
+- Hyperparameter selection reference: 2020-2023 candidates only.
+- Validation: full 2024 candidates.
+- Fixed final evaluation: full 2025 candidates.
+- Candidate family: `target_metric=path_net_pct`; k in {5,10,15,25}; threshold in {-0.5,0,0.25}.
+
+2024 validation result:
+- Best broad trade-count setting: `k=5`, `threshold=-0.5`.
+- 2024 val: ret +24.17%, CAGR 24.27, strict MDD 14.21, ratio 1.71, 177 trades, p≈0.195.
+- This is not target-level, but it gives enough trades to test whether the signal survives into 2025.
+
+2025 fixed evaluation:
+- Frozen reference variant (`reference=2020-2023`, same k/th): ret +16.21%, CAGR 18.09, strict MDD 14.19, ratio 1.27, 170 trades, p≈0.258.
+- Live-updated reference variant (`reference=2020-2024`, same k/th): ret +26.12%, CAGR 29.29, strict MDD 11.55, ratio 2.54, 164 trades, p≈0.072.
+
+Interpretation:
+- This is the strongest non-leaky, trade-count-reasonable candidate so far, but it still misses the target `CAGR / strict MDD >= 3` and the p-value is not yet below 0.05.
+- The score/target correlation remains weak and slightly negative, so much of the improvement may still come from filtering exposure to a generally favorable 2025 fixed-rule regime rather than from true local KNN ranking skill.
+- Next direction should not be more threshold tweaking. It should add features/targets that directly forecast strict drawdown contributors: adverse excursion, pre-entry drawdown context, volatility compression/expansion, and multi-timeframe stress transition.
