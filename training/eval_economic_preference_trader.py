@@ -62,16 +62,16 @@ def _extract_candidate_book(prompt: str) -> list[dict[str, Any]]:
 
 def _full_action_json(action: dict[str, Any]) -> str:
     if str(action.get("gate", "NO_TRADE")).upper() == "NO_TRADE":
-        payload = {"confidence": "HIGH", "family": "NONE", "gate": "NO_TRADE", "hold_bars": 0, "side": "NONE"}
+        payload = {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0, "family": "NONE", "confidence": "HIGH"}
     else:
         payload = {
-            "confidence": str(action.get("confidence", "HIGH")).upper(),
-            "family": str(action["family"]),
             "gate": "TRADE",
-            "hold_bars": int(action["hold_bars"]),
             "side": str(action["side"]).upper(),
+            "hold_bars": int(action["hold_bars"]),
+            "family": str(action["family"]),
+            "confidence": str(action.get("confidence", "HIGH")).upper(),
         }
-    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
 
 
 def _candidate_book_actions(row: dict[str, Any], hold_candidates: list[int]) -> list[dict[str, Any]]:
