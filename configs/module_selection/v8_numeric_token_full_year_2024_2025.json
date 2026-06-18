@@ -1,0 +1,52 @@
+{
+  "description": "Full-year module selection audit. Each eval year can trade only modules that passed the immediately preceding validation year. Token 2024 discovery candidates are included only with their pre-2024 validation files, so they should fail rather than leak 2024 selection.",
+  "validation_gate": {
+    "min_trades": 50,
+    "min_ratio": 1.5,
+    "max_mdd": 15.0,
+    "max_p": 0.30
+  },
+  "folds": [
+    {
+      "name": "select_2023_trade_2024",
+      "val_start": "2023-01-01",
+      "eval_start": "2024-01-01",
+      "eval_end": "2025-01-01",
+      "modules": [
+        {
+          "name": "numeric_v8_sprisk_ge_0p2545",
+          "validation_result": "results/path_value_knn/manifest_numeric_ref2020_2022_eval2023_k10_thm05_sprisk_ge_0p2545.json",
+          "eval_result": "results/path_value_knn/manifest_numeric_ref2020_2023_eval2024_k10_thm05_sprisk_ge_0p2545.json"
+        },
+        {
+          "name": "token_v8_k40_thm0p2",
+          "validation_result": "results/path_value_knn/token_sweep_2023val/token_v8_ref2020_2022_eval2023_k40_thm0p2.json",
+          "eval_result": "results/path_value_knn/token_sweep/token_v8_ref2020_2023_eval2024_k40_thm0p2.json"
+        },
+        {
+          "name": "token_v8_k20_th0p2",
+          "validation_result": "results/path_value_knn/token_sweep_2023val/token_v8_ref2020_2022_eval2023_k20_th0p2.json",
+          "eval_result": "results/path_value_knn/token_sweep/token_v8_ref2020_2023_eval2024_k20_th0p2.json"
+        }
+      ]
+    },
+    {
+      "name": "select_2024_trade_2025",
+      "val_start": "2024-01-01",
+      "eval_start": "2025-01-01",
+      "eval_end": "2026-01-01",
+      "modules": [
+        {
+          "name": "numeric_v8_sprisk_ge_0p3882",
+          "validation_result": "results/path_value_knn/manifest_numeric_ref2020_2023_eval2024_k10_thm05_sprisk_ge_0p3882.json",
+          "eval_result": "results/path_value_knn/manifest_numeric_ref2020_2024_eval2025_k10_thm05_sprisk_ge_0p3882.json"
+        },
+        {
+          "name": "token_v8_k40_thm0p2",
+          "validation_result": "results/path_value_knn/token_sweep/token_v8_ref2020_2023_eval2024_k40_thm0p2.json",
+          "eval_result": "results/path_value_knn/token_v8_ref2020_2024_eval2025_k40_thm0p2_valbest.json"
+        }
+      ]
+    }
+  ]
+}

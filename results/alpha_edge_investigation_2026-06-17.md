@@ -758,3 +758,26 @@ Next direction:
 - Keep the token scorer as a cheap LLM-feature probe.
 - Move from single-period threshold search to fold-stability selection: settings must pass pre-period validation before they can trade the next period.
 - If fold-stability keeps disabling most periods, the practical architecture should be active-capital sleeve + paper-trading validation, not always-on CAGR claims.
+
+## Validation-only module selector and numeric/token intersection
+
+Implemented `training/select_validated_modules.py` to stop manual cherry-picking. A manifest lists validation/eval result pairs; for each fold, the selector may choose only modules whose validation result passes a fixed gate. Eval files are reported but not used for selection. The aggregate applies a component strict-MDD floor so trade-to-trade aggregation cannot understate intrabar module drawdown.
+
+Manifest tested: `configs/module_selection/v8_numeric_token_full_year_2024_2025.json`.
+- Gate: min 50 trades, ratio >= 1.5, strict MDD <= 15, p <= 0.30.
+- 2023 validation -> 2024 eval: no module passed. Numeric v8 failed; token candidates either failed or had too few trades.
+- 2024 validation -> 2025 eval: token `k=40`, threshold `-0.2` won on validation, so it was selected mechanically over numeric.
+- Aggregate 2024-2025 result: CAGR 11.16, strict MDD 13.60, ratio 0.82, 154 trades, p≈0.112.
+
+Interpretation:
+- A validation winner-takes-all selector is still not stable enough. The 2024 token validation winner degraded materially in 2025.
+- This is a useful anti-cheat result: once selection is automated and inactive periods are counted, the apparent 2024+2025 success disappears.
+
+Implemented `training/intersect_candidate_modules.py` to test a conservative ensemble: trade only when numeric path-risk and token-state modules select the same signal_date+side.
+- 2024 validation intersection: numeric selected 69, token selected 153, intersection 47; CAGR 11.75, MDD 5.38, ratio 2.19, p≈0.175. It fails the min-50-trade gate.
+- 2025 eval intersection with fixed modules: intersection 53; CAGR 6.87, MDD 5.73, ratio 1.20, p≈0.462.
+
+Interpretation:
+- Cross-representation agreement reduces drawdown but also removes too much edge and does not generalize.
+- Current evidence says the problem is not just gate optimization. The candidate pool itself is too narrow/regime-fragile.
+- Next meaningful work should expand the event/candidate pool and train/evaluate a single LLM policy over a richer action space, instead of repeatedly filtering the same Kimchi-flow pool.
