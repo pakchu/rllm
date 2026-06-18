@@ -645,3 +645,34 @@ Interpretation:
 - The guard is conceptually plausible: avoid candidates where recent 6h drawdown is accelerating versus the 12h context.
 - Remaining risk: the guard was chosen from a small 2024 guard sweep and still needs walk-forward year-block validation; October high-MAE regimes remain unresolved.
 - Next required step: implement a formal walk-forward evaluator that repeatedly selects scorer/guard on one period and evaluates the next period, rather than relying on a single 2024→2025 handoff.
+
+## Formal walk-forward guard validation
+
+Implemented `training/walk_forward_knn_guard_eval.py` to prevent single-handoff overconfidence. Each fold enforces:
+1. validation candidates are scored only against rows before validation start;
+2. k/threshold/guard are selected on validation only;
+3. evaluation candidates are scored only against rows before evaluation start;
+4. selected parameters are applied unchanged to evaluation.
+
+Default folds tested:
+- 2023 validation -> 2024 evaluation.
+- 2024H1 validation -> 2024H2 evaluation.
+- 2024 validation -> 2025 evaluation.
+- 2025H1 validation -> 2025H2 evaluation.
+
+Ungated walk-forward result:
+- 2023->2024: validation failed and evaluation failed (eval CAGR -0.99, MDD 10.03, 110 trades, p≈0.997).
+- 2024H1->2024H2: eval CAGR 16.70, MDD 9.68, ratio 1.72, 79 trades, p≈0.450.
+- 2024->2025: eval CAGR 21.00, MDD 6.24, ratio 3.36, 81 trades, p≈0.115.
+- 2025H1->2025H2: eval CAGR 31.64, MDD 10.06, ratio 3.15, 60 trades, p≈0.154.
+
+Validation-gated walk-forward result:
+- Gate: validation ratio >= 1.5, validation MDD <= 15, validation p <= 0.30, validation trades >= 50.
+- Gate correctly disabled weak 2023->2024 and 2024H1->2024H2 eval periods as no-trade.
+- Gate allowed 2024->2025 and 2025H1->2025H2; both fixed eval periods stayed above ratio 3.
+
+Interpretation:
+- The candidate is not a universal always-on alpha; it is a regime-conditional strategy family.
+- Validation gating is necessary. Without it, early weak folds would trade and fail.
+- The strongest 2025 full-year drawdown-acceleration result is still promising, but formal fold-level tests show statistical power is not yet sufficient: allowed fold p-values are ≈0.115 and ≈0.154.
+- Next work should aggregate gated fold equity and add more historical rows/periods if possible. If more data cannot be added, the practical next step is paper-trading with the validation gate rather than claiming production readiness.
