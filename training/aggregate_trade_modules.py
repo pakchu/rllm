@@ -29,6 +29,14 @@ def _extract_period(obj: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
+def _extract_sim(obj: dict[str, Any]) -> dict[str, Any]:
+    if "sim" in obj:
+        return dict(obj["sim"])
+    if "result" in obj and "sim" in obj["result"]:
+        return dict(obj["result"]["sim"])
+    return {}
+
+
 def _extract_executed(obj: dict[str, Any]) -> list[dict[str, Any]]:
     if "executed" in obj:
         return list(obj.get("executed") or [])
@@ -60,6 +68,7 @@ def aggregate_modules(module_specs: list[str], *, output: str) -> dict[str, Any]
             raise ValueError(f"module spec must be [priority=]name=path: {spec}")
         obj = json.loads(Path(path).read_text())
         period = _extract_period(obj)
+        sim = _extract_sim(obj)
         if period:
             periods.append({"module": name, **period})
         extracted = []
@@ -75,7 +84,7 @@ def aggregate_modules(module_specs: list[str], *, output: str) -> dict[str, Any]
                 "_exit_dt": _parse_dt(tr.get("exit_date", tr.get("signal_date"))),
             }
             extracted.append(row)
-        modules.append({"name": name, "priority": priority, "path": path, "period": period, "executed": len(extracted)})
+        modules.append({"name": name, "priority": priority, "path": path, "period": period, "sim": sim, "executed": len(extracted)})
         trades.extend(extracted)
 
     accepted: list[dict[str, Any]] = []
@@ -148,7 +157,12 @@ def aggregate_modules(module_specs: list[str], *, output: str) -> dict[str, Any]
         start = end = datetime.now()
     yrs = _years(start, end)
     cagr = ((eq ** (1.0 / yrs) - 1.0) * 100.0) if eq > 0 else -100.0
-    mdd = max_dd * 100.0
+    trade_to_trade_mdd = max_dd * 100.0
+    component_strict_mdd = max(
+        (float(m.get("sim", {}).get("strict_mdd_pct", 0.0) or 0.0) for m in modules),
+        default=0.0,
+    )
+    mdd = max(trade_to_trade_mdd, component_strict_mdd)
     public_trades = [
         {k: v for k, v in tr.items() if not str(k).startswith("_")}
         for tr in accepted
@@ -163,8 +177,10 @@ def aggregate_modules(module_specs: list[str], *, output: str) -> dict[str, Any]
             "ret_pct": (eq - 1.0) * 100.0,
             "cagr_pct": cagr,
             "strict_mdd_pct": mdd,
+            "trade_to_trade_mdd_pct": trade_to_trade_mdd,
+            "component_strict_mdd_floor_pct": component_strict_mdd,
             "cagr_to_strict_mdd": cagr / mdd if mdd > 1e-12 else 0.0,
-            "return_application": "accepted_module_executed_trade_compound",
+            "return_application": "accepted_module_executed_trade_compound_with_component_strict_mdd_floor",
         },
         "trade_stats": _trade_stats(returns),
         "by_module": by_module,

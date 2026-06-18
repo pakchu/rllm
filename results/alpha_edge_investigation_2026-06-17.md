@@ -733,3 +733,28 @@ Interpretation:
 - The next useful branch should not be another naive gate or single-feature quantile rule. It should either:
   1. train/score a richer text/LLM state representation that reasons over multi-timeframe context and decides abstain/long/short directly; or
   2. use the v8 module only as an active-capital sleeve and measure capital allocation separately from always-on portfolio CAGR.
+
+## Token-state KNN branch and stricter pre-2024 check
+
+Hypothesis: raw numeric matching may be a poor proxy for what a Gemma-style LLM can learn. I added `training/eval_causal_token_knn_path_value.py`, which converts the v8 prompt into symbolic tokens and coarse numeric buckets, then scores eval candidates by causal Jaccard KNN over historical token states.
+
+Initial 2024 discovery check:
+- Reference 2020-2023 -> eval 2024, token KNN sweep over k/threshold.
+- Best apparent setting: `k=40`, threshold `-0.2`.
+- 2024 result: CAGR 39.48, strict MDD 9.67, ratio 4.08, 153 trades, p≈0.027.
+- Fixed 2025 with reference 2020-2024: CAGR 25.00, strict MDD 13.60, ratio 1.84, 154 trades, p≈0.112.
+
+Leakage/selection correction:
+- The 2024 discovery result cannot be treated as out-of-sample because k/threshold were selected on 2024 itself.
+- Ran stricter pre-2024 selection: reference 2020-2022 -> validation 2023.
+- 2023 validation failed. Best ratio candidate had only 33 trades and p≈0.704; the previously attractive `k=40`, threshold `-0.2` had CAGR -17.76, strict MDD 21.87, 132 trades.
+
+Interpretation:
+- Symbolic token-state matching is a useful diagnostic and did reveal a 2024 pocket, but it is not stable enough to select before 2024.
+- The 2024 token branch must be treated as selection-biased until a prior validation period can justify it.
+- This reinforces the core issue: the alpha is regime-fragile and parameter selection must be fold-gated. No more claiming 2024+2025 portfolio success from settings chosen on 2024.
+
+Next direction:
+- Keep the token scorer as a cheap LLM-feature probe.
+- Move from single-period threshold search to fold-stability selection: settings must pass pre-period validation before they can trade the next period.
+- If fold-stability keeps disabling most periods, the practical architecture should be active-capital sleeve + paper-trading validation, not always-on CAGR claims.
