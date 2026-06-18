@@ -124,7 +124,21 @@ def _candidate_logprob_predictions(rows: list[dict[str, Any]], *, key: str, mode
     return preds
 
 
-def evaluate_text_label(*, eval_jsonl: str, output: str, key: str, model_name: str = RECOMMENDED_VLM_MODEL, adapter_dir: str = "", max_samples: int = 0, sample_mode: str = "sequential", seed: int = 42, prediction_mode: str = "target_echo", max_new_tokens: int = 8, score_normalization: str = "mean") -> dict[str, Any]:
+def _prediction_rows(rows: list[dict[str, Any]], preds: list[str], *, key: str) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for row, pred in zip(rows, preds):
+        out.append(
+            {
+                "date": row.get("date"),
+                "signal_pos": row.get("signal_pos"),
+                "prediction": pred,
+                "target": parse_label(str(row["target"]), key=key),
+            }
+        )
+    return out
+
+
+def evaluate_text_label(*, eval_jsonl: str, output: str, key: str, model_name: str = RECOMMENDED_VLM_MODEL, adapter_dir: str = "", max_samples: int = 0, sample_mode: str = "sequential", seed: int = 42, prediction_mode: str = "target_echo", max_new_tokens: int = 8, score_normalization: str = "mean", predictions_output: str = "") -> dict[str, Any]:
     key = str(key).strip().lower()
     if key not in VALID_VALUES:
         raise ValueError("key must be one of {'gate','side'}")
@@ -147,9 +161,14 @@ def evaluate_text_label(*, eval_jsonl: str, output: str, key: str, model_name: s
         "model_name": resolve_vlm_model_alias(model_name, prefer_latest=True),
         "adapter_dir": adapter_dir,
         "prediction_mode": prediction_mode,
+        "predictions_output": predictions_output,
         "score_normalization": score_normalization if prediction_mode == "candidate_logprob" else None,
         "metrics": _metrics(rows, preds, key=key),
     }
+    if predictions_output:
+        outp = Path(predictions_output)
+        outp.parent.mkdir(parents=True, exist_ok=True)
+        outp.write_text("\n".join(json.dumps(r, ensure_ascii=False, sort_keys=True) for r in _prediction_rows(rows, preds, key=key)) + "\n")
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_text(json.dumps(report, indent=2, ensure_ascii=False))
     return report
@@ -168,6 +187,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--prediction-mode", choices=["target_echo", "model", "candidate_logprob"], default="target_echo")
     p.add_argument("--max-new-tokens", type=int, default=8)
     p.add_argument("--score-normalization", choices=["sum", "mean"], default="mean")
+    p.add_argument("--predictions-output", default="")
     return p.parse_args()
 
 
