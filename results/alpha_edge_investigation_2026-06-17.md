@@ -617,3 +617,31 @@ Interpretation:
 - The v8 result is not a single-month artifact; gains are spread across multiple months.
 - However, top-10 gains roughly equal the total simple trade-return sum, so concentration is still material.
 - The next feature/guard work should specifically reduce October-like high-MAE regimes without discarding the broad 2025 exposure that creates the edge.
+
+## V8 drawdown-acceleration guard breakthrough
+
+Ran a small 2024-only guard sweep on top of the v8 path-net scorer. The goal was not broad threshold retuning, but testing whether a past-only strict-drawdown proxy can reduce high-MAE regimes.
+
+Validation-only guard candidates:
+- Base v8 (`k=10`, threshold `-0.5`): 2024 val ratio 1.70, CAGR 22.32, strict MDD 13.13, 205 trades, p≈0.254.
+- Ratio-best guard: `strict_path_risk_score >= 0.3882`: 2024 val ratio 2.36, CAGR 15.31, strict MDD 6.48, 69 trades, p≈0.195.
+- Trade-count-friendly guard: `drawdown_acceleration_6h <= 0.003`: 2024 val ratio 2.06, CAGR 20.51, strict MDD 9.94, 134 trades, p≈0.194.
+
+Fixed 2025 evaluation for the trade-count-friendly guard:
+- Reference: 2020-2024 v8 rows.
+- Eval: 2025 full v8 rows.
+- Fixed settings: `target_metric=path_net_pct`, `k=10`, threshold `-0.5`, guard `drawdown_acceleration_6h <= 0.003`.
+- Result: ret +38.02%, CAGR 42.85, strict MDD 10.06, CAGR/MDD 4.26, 125 trades, p≈0.0058.
+- Power note: current n=125, approximate n required for 80% power ≈129, gap 4 trades.
+
+Guarded monthly audit:
+- Overall: mean trade +0.264%, win rate 59.2%.
+- Positive months: Jan +7.89, Mar +5.70, Apr +2.75, May +6.24, Jul +9.27, Sep +4.18 simple trade-return pct sum.
+- Negative months remain: Feb -0.13, Jun -0.26, Aug -1.82, Oct -1.32.
+- October remains the primary stress pocket: 12 trades, worst -3.64%, mean path MAE 3.11%.
+
+Interpretation:
+- This is a materially stronger, non-leaky candidate than the unguarded v8 result: target ratio cleared with statistically meaningful p-value and 100+ trades.
+- The guard is conceptually plausible: avoid candidates where recent 6h drawdown is accelerating versus the 12h context.
+- Remaining risk: the guard was chosen from a small 2024 guard sweep and still needs walk-forward year-block validation; October high-MAE regimes remain unresolved.
+- Next required step: implement a formal walk-forward evaluator that repeatedly selects scorer/guard on one period and evaluates the next period, rather than relying on a single 2024→2025 handoff.
