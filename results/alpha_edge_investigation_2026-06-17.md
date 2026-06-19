@@ -917,3 +917,14 @@ Interpretation:
   - u006 best threshold: CAGR 1.81 / strict MDD 1.68 / ratio 1.08, also only 8 trades.
   - With minimum trade count >=30, u006 drops to CAGR -1.75 / MDD 7.17 over 97 trades; u010 mean-margin best with >=30 trades is only CAGR 0.37 / MDD 5.64 over 40 trades.
 - Conclusion: utility-threshold gate can avoid bad trades but the current action scorer has no robust edge when trade count becomes meaningful. The next step should replace full-action candidate likelihood with a value/ranker objective over prompt-visible actions, then re-use the utility gate as a risk filter.
+
+## 2026-06-20 continual Gemma value-ranker rolling-gate validation
+
+- Fixed full-2024 val with value-ranker threshold 0 failed: CAGR -11.49%, strict MDD 26.36%, 478 trades.
+- Monthly continual LoRA harness was added with a max-hold label embargo; each month predicts before training on newly available labels.
+- Q1 validation (2024-01..03) with post-hoc margin threshold showed that trading the top ~32.4% of margins could reach CAGR/MDD > 3, but p-values remained weak.
+- Corrected Q2 holdout using Q1-updated adapter and fixed raw threshold 18.6413 failed: CAGR -1.70%, MDD 6.31%, ratio -0.27, 78 trades.
+- Rolling percentile gate q=0.676/warmup=20 using Q1 history only also failed on corrected Q2: CAGR -4.21%, MDD 6.31%, ratio -0.67, 74 trades.
+- Monthly Q2 decomposition: April drove the loss (-34.53% annualized, MDD 6.31%), while May/June were positive. This suggests edge is regime-fragile rather than solved by score-scale normalization alone.
+
+Leakage note: Q2 rolling-gate threshold used only prior Q1 prediction margins as initial history plus online past margins within Q2. Current-month future distribution was not used.
