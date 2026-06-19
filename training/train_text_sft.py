@@ -32,6 +32,7 @@ class TextSFTConfig:
     lora_dropout: float = 0.05
     load_in_4bit: bool = False
     seed: int = 42
+    base_adapter_dir: str = ""
 
 
 def _row_bucket(row: dict[str, Any]) -> str:
@@ -222,7 +223,7 @@ def train_text_sft(cfg: TextSFTConfig, *, dry_run: bool = False) -> dict[str, An
 
     disable_transformers_allocator_warmup()
     from datasets import Dataset
-    from peft import LoraConfig
+    from peft import LoraConfig, PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
     from trl import SFTConfig, SFTTrainer
 
@@ -243,14 +244,18 @@ def train_text_sft(cfg: TextSFTConfig, *, dry_run: bool = False) -> dict[str, An
         device_map="auto",
         quantization_config=quantization_config,
     )
-    peft_config = LoraConfig(
-        r=int(cfg.lora_r),
-        lora_alpha=int(cfg.lora_alpha),
-        lora_dropout=float(cfg.lora_dropout),
-        bias="none",
-        task_type="CAUSAL_LM",
-        target_modules="all-linear",
-    )
+    peft_config = None
+    if cfg.base_adapter_dir:
+        model = PeftModel.from_pretrained(model, cfg.base_adapter_dir, is_trainable=True)
+    else:
+        peft_config = LoraConfig(
+            r=int(cfg.lora_r),
+            lora_alpha=int(cfg.lora_alpha),
+            lora_dropout=float(cfg.lora_dropout),
+            bias="none",
+            task_type="CAUSAL_LM",
+            target_modules="all-linear",
+        )
     args = SFTConfig(
         output_dir=cfg.output_dir,
         max_steps=int(cfg.max_steps),
@@ -297,6 +302,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--lora-dropout", type=float, default=0.05)
     p.add_argument("--load-in-4bit", action="store_true")
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--base-adapter-dir", default="", help="Optional existing LoRA adapter to continue fine-tuning")
     p.add_argument("--dry-run", action="store_true")
     return p.parse_args()
 
@@ -320,6 +326,7 @@ def main() -> None:
         lora_dropout=args.lora_dropout,
         load_in_4bit=args.load_in_4bit,
         seed=args.seed,
+        base_adapter_dir=args.base_adapter_dir,
     )
     print(json.dumps(train_text_sft(cfg, dry_run=bool(args.dry_run)), indent=2, ensure_ascii=False))
 
