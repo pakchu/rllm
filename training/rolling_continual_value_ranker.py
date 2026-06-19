@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -46,6 +45,10 @@ class ContinualValueConfig:
     batch_size: int = 8
     score_key: str = "mean"
     threshold: float = 0.0
+    gate_mode: str = "fixed"
+    rolling_quantile: float = 0.676
+    rolling_warmup: int = 20
+    rolling_history_predictions: tuple[str, ...] = ()
     update_steps: int = 16
     max_update_samples: int = 2048
     max_seq_length: int = 2048
@@ -106,6 +109,85 @@ def _run_backtest(predictions_jsonl: str, market_csv: str) -> dict[str, Any]:
     return strict_backtest_actions(rows, load_market_bars(market_csv), EconomicActionBacktestConfig())
 
 
+NO_TRADE = {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0, "family": "NONE", "confidence": "HIGH"}
+
+
+def _quantile(values: list[float], q: float) -> float:
+    if not values:
+        return float("inf")
+    xs = sorted(float(x) for x in values)
+    idx = min(len(xs) - 1, max(0, int(float(q) * (len(xs) - 1))))
+    return float(xs[idx])
+
+
+def _load_margin_history(paths: tuple[str, ...]) -> list[float]:
+    history: list[float] = []
+    for path in paths:
+        if not path:
+            continue
+        for line in Path(path).read_text().splitlines():
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if "value_margin" in row:
+                history.append(float(row["value_margin"]))
+    return history
+
+
+def _apply_prediction_gate(
+    *,
+    predictions_jsonl: str | Path,
+    output_jsonl: str | Path,
+    mode: str,
+    fixed_threshold: float,
+    rolling_history: list[float],
+    rolling_quantile: float,
+    rolling_warmup: int,
+) -> dict[str, Any]:
+    rows = [json.loads(line) for line in Path(predictions_jsonl).read_text().splitlines() if line.strip()]
+    out: list[dict[str, Any]] = []
+    mode = str(mode).strip().lower()
+    no_trade = 0
+    trade = 0
+    thresholds: list[float] = []
+    for row in sorted(rows, key=lambda r: (str(r.get("date")), int(r.get("signal_pos", -1) or -1))):
+        margin = float(row.get("value_margin", float("-inf")))
+        if mode == "rolling_quantile":
+            if len(rolling_history) < int(rolling_warmup):
+                threshold = float("inf")
+            else:
+                threshold = _quantile(rolling_history, float(rolling_quantile))
+            rolling_history.append(margin)
+        elif mode == "fixed":
+            threshold = float(fixed_threshold)
+        else:
+            raise ValueError("gate_mode must be one of {'fixed','rolling_quantile'}")
+        pred = dict(row.get("prediction", {})) if isinstance(row.get("prediction"), dict) else {}
+        if margin < threshold:
+            pred = dict(NO_TRADE)
+            no_trade += 1
+        else:
+            pred["gate"] = "TRADE"
+            trade += 1
+        thresholds.append(threshold)
+        out.append({**row, "prediction": pred, "applied_gate_mode": mode, "applied_threshold": threshold})
+    _write_jsonl(output_jsonl, out)
+    finite_thresholds = [x for x in thresholds if x != float("inf")]
+    return {
+        "mode": mode,
+        "output_jsonl": str(output_jsonl),
+        "rows": len(out),
+        "trade": trade,
+        "no_trade": no_trade,
+        "fixed_threshold": fixed_threshold,
+        "rolling_quantile": rolling_quantile,
+        "rolling_warmup": rolling_warmup,
+        "threshold_min": min(finite_thresholds) if finite_thresholds else None,
+        "threshold_max": max(finite_thresholds) if finite_thresholds else None,
+        "history_size_after": len(rolling_history),
+    }
+
+
 def _aggregate(folds: list[dict[str, Any]]) -> dict[str, Any]:
     # Aggregate by compounding fold-level returns and taking max fold MDD as a conservative first-pass proxy.
     eq = 1.0
@@ -141,12 +223,14 @@ def run_continual(cfg: ContinualValueConfig) -> dict[str, Any]:
     # become available after the live evaluation starts.
     last_trained_until: datetime | None = _dt(folds[0].start) if folds else None
     report: dict[str, Any] = {"as_of": datetime.now(timezone.utc).isoformat(), "config": asdict(cfg), "folds": []}
+    rolling_history = _load_margin_history(cfg.rolling_history_predictions)
 
     for idx, fold in enumerate(folds, start=1):
         fold_start = _dt(fold.start)
         fold_end = _dt(fold.end)
         score_rows = _filter_rows(rows, fold_start, fold_end)
         pred_path = work / f"{fold.label}_predictions.jsonl"
+        raw_pred_path = work / f"{fold.label}_raw_predictions.jsonl"
         scores_path = work / f"{fold.label}_scores.jsonl"
         fold_report: dict[str, Any] = {"fold": asdict(fold), "adapter_before_prediction": current_adapter, "score_rows": len(score_rows)}
         score_jsonl = work / f"{fold.label}_score_rows.jsonl"
@@ -155,15 +239,25 @@ def run_continual(cfg: ContinualValueConfig) -> dict[str, Any]:
         if not cfg.dry_run and not cfg.skip_scoring and score_rows:
             fold_report["score_summary"] = score_value_rows(
                 value_jsonl=str(score_jsonl),
-                predictions_output=str(pred_path),
+                predictions_output=str(raw_pred_path if cfg.gate_mode == "rolling_quantile" else pred_path),
                 scores_output=str(scores_path),
                 model_name=cfg.model_name,
                 adapter_dir=current_adapter,
                 batch_size=int(cfg.batch_size),
                 max_signals=0,
                 score_key=cfg.score_key,
-                threshold=float(cfg.threshold),
+                threshold=float(-1e9 if cfg.gate_mode == "rolling_quantile" else cfg.threshold),
             )
+            if cfg.gate_mode == "rolling_quantile":
+                fold_report["gate_summary"] = _apply_prediction_gate(
+                    predictions_jsonl=raw_pred_path,
+                    output_jsonl=pred_path,
+                    mode=cfg.gate_mode,
+                    fixed_threshold=float(cfg.threshold),
+                    rolling_history=rolling_history,
+                    rolling_quantile=float(cfg.rolling_quantile),
+                    rolling_warmup=int(cfg.rolling_warmup),
+                )
             fold_report["backtest"] = _run_backtest(str(pred_path), cfg.market_csv)
 
         train_end = fold_end - embargo
@@ -224,6 +318,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--batch-size", type=int, default=8)
     p.add_argument("--score-key", choices=["mean", "sum"], default="mean")
     p.add_argument("--threshold", type=float, default=0.0)
+    p.add_argument("--gate-mode", choices=["fixed", "rolling_quantile"], default="fixed")
+    p.add_argument("--rolling-quantile", type=float, default=0.676)
+    p.add_argument("--rolling-warmup", type=int, default=20)
+    p.add_argument("--rolling-history-predictions", default="", help="Comma-separated prior prediction JSONL files used only as past margin history")
     p.add_argument("--update-steps", type=int, default=16)
     p.add_argument("--max-update-samples", type=int, default=2048)
     p.add_argument("--max-seq-length", type=int, default=2048)
@@ -253,6 +351,10 @@ def main() -> None:
         batch_size=a.batch_size,
         score_key=a.score_key,
         threshold=a.threshold,
+        gate_mode=a.gate_mode,
+        rolling_quantile=a.rolling_quantile,
+        rolling_warmup=a.rolling_warmup,
+        rolling_history_predictions=tuple(x for x in a.rolling_history_predictions.split(",") if x),
         update_steps=a.update_steps,
         max_update_samples=a.max_update_samples,
         max_seq_length=a.max_seq_length,
