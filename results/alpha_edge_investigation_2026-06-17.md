@@ -928,3 +928,12 @@ Interpretation:
 - Monthly Q2 decomposition: April drove the loss (-34.53% annualized, MDD 6.31%), while May/June were positive. This suggests edge is regime-fragile rather than solved by score-scale normalization alone.
 
 Leakage note: Q2 rolling-gate threshold used only prior Q1 prediction margins as initial history plus online past margins within Q2. Current-month future distribution was not used.
+
+## 2026-06-20 Q3 rolling-gate continuation
+
+- Q3 rolling percentile continuation used the Q2-updated adapter and Q1+Q2 margin history with the preselected q=0.676/warmup=20.
+- Result failed hard: 2024-07..09 ret -11.20%, CAGR -37.91%, strict MDD proxy 16.46%, CAGR/MDD -2.30, 74 trades.
+- July alone caused most damage: ret -14.87%, strict MDD 16.46%, 23 trades. August recovered strongly, September was near-flat.
+- Conclusion: continual LoRA + rolling percentile score normalization is not robust to regime breaks; it can find isolated monthly wins but fails the multi-quarter validation requirement.
+
+Decision: Do not promote this value-ranker/rolling-gate stack to 2025 eval. Next work should target regime-break detection or a different label/action abstraction rather than further threshold tuning.
