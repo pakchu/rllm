@@ -951,3 +951,18 @@ Decision: Do not promote this value-ranker/rolling-gate stack to 2025 eval. Next
   - Q2 loss2 diagnostic: CAGR -28.72%, MDD 11.63%, 79 trades.
 
 Conclusion: online loss-pause reduces some exposure but does not repair the underlying negative edge. Next work should move the abstention decision before entry by labeling/predicting regime-break or unsafe-context states from past-only features.
+
+## 2026-06-20 pre-entry regime safety abstraction
+
+Implemented `training/event_regime_safety_data.py` to label each signal before action ranking as:
+- `SAFE_TRADE`: at least one candidate action has enough net edge with bounded MAE.
+- `UNSAFE_NO_EDGE`: no candidate has enough edge, but broad path risk is not extreme.
+- `BREAK_RISK`: candidate set shows severe adverse excursion / broad negative path risk.
+
+Smoke label distributions with stride 72 and hold candidates 72/144/288/432:
+- 2024 Q1: 364 rows; SAFE_TRADE 139, UNSAFE_NO_EDGE 160, BREAK_RISK 65.
+- 2024 Q2: 364 rows; SAFE_TRADE 120, UNSAFE_NO_EDGE 178, BREAK_RISK 66.
+
+This replaces post-loss pausing with a pre-entry abstention abstraction. Prompts remain past-only (state + candidate book); labels use future executable action outcomes for training only.
+
+Note: `../wave_trading` external forex cache lookup failed in this environment for DXY component tickers, so the smoke used the existing market cache features without rejoining wave_trading caches.
