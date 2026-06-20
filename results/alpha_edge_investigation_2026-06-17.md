@@ -999,3 +999,21 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - Q2: CAGR 1.35%, strict MDD 1.25%, 6 trades.
 - This reduces loss by nearly abstaining, but trade count is statistically meaningless. ALLOW margin distributions also collapse around zero and do not separate true ALLOW from BLOCK; in Q2 true ALLOW mean margin was worse than BLOCK.
 - Conclusion: categorical prompt compression alone did not make Gemma4 learn a useful exact-action verifier. Continue away from pure LLM classification toward a hybrid where the LLM produces stable symbolic/compressed features and a lightweight chronological tabular/ranker model learns the realized action edge.
+
+### 2026-06-20 — Symbolic action ridge hybrid gives weak positive but misses target
+- Pivoted from pure LLM classification to a hybrid: use the categorical LLM-style regime/action text as symbolic features, then train a leakage-safe ridge ranker on realized action utility.
+- Implemented `training/symbolic_action_ridge.py` with train-only vocabulary/scaling/ridge fit, validation-only config selection, and fixed holdout evaluation.
+- Q1-only validation overfit:
+  - train 2020-2023, val Q1 2024 selected `target=net_return, alpha=10000, threshold=0.003, min_gap=0.0`.
+  - Q1 val: CAGR 193.31%, strict MDD 5.90%, 52 trades.
+  - Q2 holdout: CAGR -18.46%, strict MDD 9.82%, 56 trades.
+  - Conclusion: single-quarter validation is too unstable.
+- Longer validation setup:
+  - train 2020-2022: 87,680 candidate-action rows, ALLOW 7,333.
+  - validation 2023 full year: 29,200 rows, ALLOW 1,451.
+  - holdout 2024 H1: Q1+Q2, 14,560 rows / 728 signal samples.
+  - selection required at least 120 validation trades.
+- 2023-selected config: `target=utility, alpha=1000, threshold=0.003, min_gap=0.0005`.
+  - 2023 validation: CAGR 3.61%, strict MDD 6.96%, ratio 0.52, 166 trades.
+  - 2024 H1 holdout: CAGR 2.12%, strict MDD 4.90%, ratio 0.43, 88 trades.
+- Conclusion: symbolic ridge is more robust than pure LLM classifiers and avoids the Q2 blow-up, but the edge is far below target. Treat as a weak positive baseline and expand the action/feature pool rather than tuning gates on the same surface.
