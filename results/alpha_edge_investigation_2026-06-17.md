@@ -937,3 +937,17 @@ Leakage note: Q2 rolling-gate threshold used only prior Q1 prediction margins as
 - Conclusion: continual LoRA + rolling percentile score normalization is not robust to regime breaks; it can find isolated monthly wins but fails the multi-quarter validation requirement.
 
 Decision: Do not promote this value-ranker/rolling-gate stack to 2025 eval. Next work should target regime-break detection or a different label/action abstraction rather than further threshold tuning.
+
+## 2026-06-20 online loss-pause overlay holdout
+
+- Added `training/online_risk_overlay_backtest.py` to test live-usable risk-off pauses using only completed prior trade results.
+- Q1 validation smoke on existing predictions looked promising:
+  - base: CAGR -11.01%, MDD 11.21%, 141 trades.
+  - pause after 2 losses: CAGR 34.94%, MDD 7.24%, 67 trades.
+  - pause after 3 losses: CAGR 53.87%, MDD 7.69%, 102 trades.
+- Q1-selected `pause_after_losses=3, pause_bars=864` failed on corrected Q2 raw predictions generated from the Q1-updated adapter:
+  - Q2 raw base: CAGR -40.61%, MDD 10.25%, 142 trades.
+  - Q2 loss3 overlay: CAGR -22.43%, MDD 9.37%, 101 trades, p=0.465.
+  - Q2 loss2 diagnostic: CAGR -28.72%, MDD 11.63%, 79 trades.
+
+Conclusion: online loss-pause reduces some exposure but does not repair the underlying negative edge. Next work should move the abstention decision before entry by labeling/predicting regime-break or unsafe-context states from past-only features.
