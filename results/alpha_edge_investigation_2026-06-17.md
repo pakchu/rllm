@@ -966,3 +966,21 @@ Smoke label distributions with stride 72 and hold candidates 72/144/288/432:
 This replaces post-loss pausing with a pre-entry abstention abstraction. Prompts remain past-only (state + candidate book); labels use future executable action outcomes for training only.
 
 Note: `../wave_trading` external forex cache lookup failed in this environment for DXY component tickers, so the smoke used the existing market cache features without rejoining wave_trading caches.
+
+### 2026-06-20 — Gemma4 pre-entry safety gate rejected
+- Added a past-only `event_regime_safety` dataset that asks Gemma4-E4B to classify each signal as `SAFE_TRADE`, `UNSAFE_NO_EDGE`, or `BREAK_RISK` from past-only state plus prompt-visible candidate action book.
+- Leak guard: prompts contain only past state/candidate descriptors; labels use future action outcomes only for supervised training, not for inference.
+- Train data: `data/event_regime_safety_train_2020_2023.jsonl`, 5,844 rows, 2020-01-01..2023-12-31, counts `SAFE_TRADE=2201`, `UNSAFE_NO_EDGE=2266`, `BREAK_RISK=1377`.
+- Gemma4-E4B LoRA run: `checkpoints/event_regime_safety_gemma4_2020_2023_s64`, 4,096 balanced rows, 64 steps, runtime 447.1s, train loss 0.2729.
+- Holdout label accuracy was weak:
+  - Q1 2024: 364 rows, accuracy 38.46%.
+  - Q2 2024: 364 rows, accuracy 37.09%.
+- Applied predicted `SAFE_TRADE` as a front gate to the existing value-ranker actions:
+  - Q1: CAGR -51.85%, strict MDD 19.39%, 89 trades.
+  - Q2: CAGR -26.62%, strict MDD 11.78%, 81 trades.
+- SAFE margin threshold sweep (`0..4`) did not rescue Q1 or Q2; all variants had negative CAGR.
+- Oracle target gate upper bound also failed to generalize:
+  - Q1 oracle: CAGR 36.06%, strict MDD 8.31%, 66 trades, but p≈0.51 and underpowered.
+  - Q2 oracle: CAGR -31.61%, strict MDD 14.40%, 62 trades.
+- Conclusion: the pre-entry generic regime safety label is not aligned with the realized action chosen by the value-ranker. It can select a signal where some candidate was safe, while the ranker executes a different or fragile action. Reject this label family for the current stack.
+- Next structural pivot: train a post-ranker action verifier that receives the selected action plus state and predicts whether *that exact executable action* should be taken. This preserves the LLM/RL-style staged decision but makes the learned gate target action-conditioned realized profitability/risk rather than generic regime safety.
