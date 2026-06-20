@@ -984,3 +984,18 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - Q2 oracle: CAGR -31.61%, strict MDD 14.40%, 62 trades.
 - Conclusion: the pre-entry generic regime safety label is not aligned with the realized action chosen by the value-ranker. It can select a signal where some candidate was safe, while the ranker executes a different or fragile action. Reject this label family for the current stack.
 - Next structural pivot: train a post-ranker action verifier that receives the selected action plus state and predicts whether *that exact executable action* should be taken. This preserves the LLM/RL-style staged decision but makes the learned gate target action-conditioned realized profitability/risk rather than generic regime safety.
+
+### 2026-06-20 — Categorical exact-action verifier smoke rejected
+- Built `event_action_verifier_text` as a post-ranker action verifier: each row labels one exact executable action as `ALLOW` or `BLOCK` from categorical past-only regime tokens and selected action tokens, avoiding raw decimal dumps.
+- Train data: 116,880 candidate-action rows over 2020-2023; `ALLOW=8,784` (7.5%), `BLOCK=108,096`.
+- Q1 2024 verifier rows: 7,280 rows, `ALLOW=583` (8.0%); Q2 2024: 7,280 rows, `ALLOW=429` (5.9%).
+- Gemma4-E4B LoRA smoke: `checkpoints/event_action_verifier_text_gemma4_2020_2023_s64`, 4,096 balanced rows, 64 steps, runtime 434.5s, train loss 0.3692.
+- To avoid slow CPU scoring of all candidates, added selected-action extraction and scored only the 364 value-ranker-selected actions per quarter.
+- Selected-action label reports:
+  - Q1 accuracy 92.86%, but confusion was `ALLOW->BLOCK=20`, `BLOCK->ALLOW=6`, `BLOCK->BLOCK=338`: the model found no true ALLOW.
+  - Q2 accuracy 93.96%, but confusion was `ALLOW->BLOCK=16`, `BLOCK->ALLOW=6`, `BLOCK->BLOCK=342`: same over-conservative collapse.
+- Composed hard `ALLOW` gate with value-ranker:
+  - Q1: CAGR -4.31%, strict MDD 2.28%, 6 trades.
+  - Q2: CAGR 1.35%, strict MDD 1.25%, 6 trades.
+- This reduces loss by nearly abstaining, but trade count is statistically meaningless. ALLOW margin distributions also collapse around zero and do not separate true ALLOW from BLOCK; in Q2 true ALLOW mean margin was worse than BLOCK.
+- Conclusion: categorical prompt compression alone did not make Gemma4 learn a useful exact-action verifier. Continue away from pure LLM classification toward a hybrid where the LLM produces stable symbolic/compressed features and a lightweight chronological tabular/ranker model learns the realized action edge.
