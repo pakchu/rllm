@@ -103,6 +103,33 @@ def _feature_candidates(features: pd.DataFrame) -> dict[str, tuple[np.ndarray, n
     out["candle_shock_follow"] = (candle_shock, candle_dir)
     out["candle_shock_fade"] = (candle_shock, -candle_dir)
 
+    # New pool-expansion families for the symbolic ridge stage.  These are all
+    # computed from completed/current-bar history-only features and expose more
+    # diverse hypotheses than the original momentum/reversion families.
+    compression = np.maximum(0.0, 0.035 - arr("range_vol")) * (np.abs(arr("return_zscore_48")) + np.abs(arr("trend_12")) * 20.0)
+    compression_dir = np.sign(arr("trend_12") + 0.5 * arr("body_ratio"))
+    out["vol_compression_breakout"] = (compression, compression_dir)
+    out["vol_compression_fakeout"] = (compression, -compression_dir)
+
+    micro_reversal = np.abs(arr("return_zscore_48")) + np.maximum(0.0, np.abs(arr("range_pos")) - 0.55) + np.maximum(0.0, np.abs(arr("rsi_norm")) - 0.35)
+    micro_reversal_dir = -np.sign(arr("return_zscore_48") + arr("range_pos") + arr("rsi_norm"))
+    out["micro_exhaustion_reversal"] = (micro_reversal, micro_reversal_dir)
+
+    htf_pullback = np.abs(arr("htf_1w_return_4")) + np.abs(arr("htf_1d_return_4")) + np.maximum(0.0, -arr("htf_4h_return_1") * np.sign(arr("htf_1d_return_4")))
+    htf_pullback_dir = np.sign(arr("htf_1d_return_4") + arr("htf_1w_return_4"))
+    out["htf_pullback_resume"] = (htf_pullback, htf_pullback_dir)
+
+    htf_break = arr("htf_1d_drawdown_4") + arr("htf_3d_drawdown_4") + np.maximum(0.0, -arr("trend_96") * np.sign(arr("htf_1d_return_4")))
+    out["htf_structure_break"] = (htf_break, -np.sign(arr("htf_1d_return_4") + arr("htf_1w_return_4")))
+
+    macro_kimchi_div = np.abs(arr("dxy_zscore") - arr("kimchi_premium_zscore")) + np.abs(arr("usdkrw_momentum"))
+    macro_kimchi_dir = -np.sign(arr("dxy_zscore") + arr("usdkrw_zscore") - arr("kimchi_premium_zscore"))
+    out["macro_kimchi_divergence"] = (macro_kimchi_div, macro_kimchi_dir)
+
+    funding_stress = np.abs(arr("funding_zscore")) + np.abs(arr("oi_zscore")) + np.abs(arr("oi_change"))
+    funding_dir = -np.sign(arr("funding_zscore") + 0.5 * arr("oi_change"))
+    out["derivatives_stress_fade"] = (funding_stress, funding_dir)
+
     return out
 
 

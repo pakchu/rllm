@@ -1017,3 +1017,27 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - 2023 validation: CAGR 3.61%, strict MDD 6.96%, ratio 0.52, 166 trades.
   - 2024 H1 holdout: CAGR 2.12%, strict MDD 4.90%, ratio 0.43, 88 trades.
 - Conclusion: symbolic ridge is more robust than pure LLM classifiers and avoids the Q2 blow-up, but the edge is far below target. Treat as a weak positive baseline and expand the action/feature pool rather than tuning gates on the same surface.
+
+### 2026-06-20 — Expanded symbolic action pool finds 2024 edge but 2025 remains weak
+- Expanded `_feature_candidates` with additional past-only action families: volatility compression breakout/fakeout, micro exhaustion reversal, HTF pullback resume, HTF structure break, macro-kimchi divergence, derivatives stress fade.
+- Rebuilt symbolic action datasets with `top_k_families=8`.
+  - train 2020-2022: 140,288 rows, ALLOW 11,781.
+  - validation 2023: 46,720 rows, ALLOW 2,337.
+  - holdout 2024H1: 23,296 rows, ALLOW 1,642.
+- 2023-selected config (`target=net_return, alpha=10000, threshold=0.003, min_gap=0.0`) improved materially:
+  - 2023 val: CAGR 12.89%, strict MDD 11.84%, ratio 1.09, 247 trades.
+  - 2024H1 holdout: CAGR 78.67%, strict MDD 9.34%, ratio 8.42, 139 trades.
+- Fixed config retrained on 2020-2023 and evaluated on full 2024:
+  - 2024: CAGR 51.46%, strict MDD 11.01%, ratio 4.67, 215 trades, p≈0.024.
+  - This meets the single-year target profile and is the strongest non-cheating result so far.
+- Same fixed config failed 2025:
+  - 2025 Jan-Nov: CAGR -15.40%, strict MDD 21.23%, 193 trades.
+- Added monthly prior-only retraining (`rolling_symbolic_action_ridge.py`) and tested 2025 using 2020-2024 history plus prior 2025 months only:
+  - 2025 rolling: CAGR 5.14%, strict MDD 13.61%, ratio 0.38, 150 trades, p≈0.68.
+  - Adaptation avoids the large negative year but has weak/insignificant edge.
+- Combined 2024 fixed + 2025 rolling:
+  - 2024-01-01..2025-11-30: CAGR 26.85%, strict MDD 15.54%, ratio 1.73, 365 trades, p≈0.038.
+- Risk overlay selected on 2024 (monthly loss stop 6%) did not improve 2025 or combined performance:
+  - 2025 rolling + ml6: CAGR 0.13%, strict MDD 15.34%.
+  - 2024 fixed + 2025 rolling + ml6: CAGR 25.21%, strict MDD 15.60%.
+- Conclusion: expanded symbolic/action pool creates a real 2024 edge, but 2025 needs new features/data or regime-specific adaptation; risk overlay is not the bottleneck.
