@@ -18,7 +18,17 @@ from typing import Any
 
 import numpy as np
 
-from training.eval_text_trader import parse_trader_json
+try:
+    from training.eval_text_trader import parse_trader_json
+except ModuleNotFoundError:
+    def parse_trader_json(raw: str) -> dict[str, object]:
+        payload = json.loads(raw)
+        gate = str(payload.get("gate", "NO_TRADE"))
+        side = str(payload.get("side", "NONE"))
+        hold_bars = int(payload.get("hold_bars", 0) or 0)
+        if gate != "TRADE":
+            return {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0}
+        return {"gate": gate, "side": side, "hold_bars": hold_bars}
 from training.strict_bar_backtest import _drawdown_from_trough, _trade_stats, load_market_bars
 
 
