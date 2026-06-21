@@ -1190,3 +1190,13 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - 2023: CAGR 24.62%, strict MDD 16.32%, 257 trades.
   - 2023-2025: CAGR 40.78%, strict MDD 16.32%, ratio 2.50, 627 trades, p≈0.0032.
 - Conclusion: this is the first candidate that honestly passes the 2024-2025 out-of-sample target after selecting the sizing rule on 2023. It still does not satisfy the stricter interpretation of 3+ calendar years including 2023, because 2023 remains a marginal regime. Next work should focus on a 2023-specific regime-risk detector or action surface that reduces the 2023 MDD below 15 without cutting 2024-2025 CAGR below 50.
+
+### 2026-06-21 — Monthly stops and hard stops do not fix the remaining 2023 weakness
+- Re-generated clean final candidate prediction artifacts with `short_or_higher_tf_momentum` scaled to 0.4.
+- Tested monthly loss stops on the final candidate (`leverage=0.81`, TP4):
+  - Monthly loss stops did not reduce the 2023 MDD; 2023 remained CAGR 24.62%, MDD 16.32%.
+  - Best 2024-2025 variants stayed around CAGR 50-51%, MDD 14.31-14.74%, so monthly stops are not the missing 2023 fix.
+- Tested hard stop-loss exits with TP4:
+  - SL 3.5 lowered 2023 MDD to 14.75 but destroyed 2024-2025 performance (CAGR 27.67%, MDD 23.01%).
+  - SL 1.5/2.0 also reduced some 2023 risk but cut 2024-2025 CAGR to 15-19% and/or worsened combined drawdown.
+- Conclusion: the remaining failure is not solved by generic online risk overlays. The best candidate remains no hard stop, TP4, conditional sizing. The next improvement must target regime/action selection before entry rather than exit-level damage control.
