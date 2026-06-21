@@ -1499,3 +1499,15 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - Best row: `wave_all h144 q0.20`, lev0.20/no pause: test CAGR -0.36%, strict MDD 12.08%, ratio -0.03, 1053 trades.
   - Most other rows were materially negative or above MDD limits; no eval was run because no test-like candidate passed selection.
 - Interpretation: simply copying wave_trading's feature themes into rllm's 5m ridge/quantile action surface is insufficient. The wave_trading edge likely depends on the full structure: 15m sampling, wavelet denoising, logistic probability thresholds, and ATR trailing exits. Next valid step is to directly run/port the actual wave_trading 15m strategy over refreshed 2026 data before trying to fuse it into the LLM/RL stack.
+
+### 2026-06-21 — Actual wave_trading 15m best strategy is positive but too sparse
+- Added `training/validate_wave_trading_best.py` as a bridge that runs with wave_trading's own venv (`PyWavelets` + `sklearn`) and validates the documented 15-feature best strategy:
+  - 15m BTCUSDT, wavelet-denoised base close/volume features, flow wavelet, VWAP-deviation wavelet, GK volatility, price efficiency, candle patterns.
+  - LogisticRegression probability thresholds, ATR trailing-stop labels, 9-month train / 2-month test rolling windows, purge gap = 8 bars.
+- Extended Binance 15m cache through 2026-06-02 inside wave_trading and ran fixed-parameter validation.
+- LR C/penalty sweep with features/exit fixed:
+  - Best by 2024H2-2025 selection: `C=0.05`, `penalty=l1`.
+  - Test 2024H2-2025: CAGR 12.10%, MDD 6.20%, Calmar 1.95, 70 trades, win rate 54.29%.
+  - Eval 2026 Jan-May: CAGR 17.13%, MDD 2.09%, Calmar 8.21, only 6 trades.
+  - Default-like `C=0.1`, `l2`: test CAGR 11.27%, MDD 6.20%, Calmar 1.82, 80 trades; eval CAGR 16.82%, MDD 2.73%, Calmar 6.17, 11 trades.
+- Conclusion: the real wave_trading structure generalizes much better than the rllm linear-combo/action-book experiments and remains positive in 2026, but it is too sparse and low-CAGR for the target. It should be treated as a high-precision teacher / gating prior for the LLM+RL stack, not as a complete trading bot by itself.
