@@ -1079,3 +1079,18 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
 - Combined with 2024-selected family blocks (`macro_kimchi_divergence,orderflow_follow`) did not help:
   - 2024-2025 combined dropped to CAGR 30.97%, MDD 13.54%, ratio 2.29.
 - Conclusion: token-conditioned filtering is the first robust cross-year improvement that keeps trade count and statistical signal while passing ratio>3 over 2024-2025. It still misses the CAGR 50 target, so the next work should improve return capture, not further suppress risk blindly.
+
+### 2026-06-21 — Training only from 2023 does not improve 2025
+- Tested the hypothesis that older 2020-2022 data may hurt current-regime adaptation.
+- Setup A: train on 2023 only, select config on full 2024, hold out 2025.
+  - Selected config remained `target=net_return, alpha=10000, threshold=0.003, min_gap=0.0`.
+  - 2024 validation: CAGR 30.10%, strict MDD 16.33%, ratio 1.84, 244 trades.
+  - 2025 holdout: CAGR -6.01%, strict MDD 15.10%, 223 trades.
+  - Worse than the broader-history 2020-2023 fixed model on 2024 and still failed 2025.
+- Setup B: monthly rolling 2025 with history limited to 2023+2024 plus prior 2025 months only.
+  - 2025: CAGR -1.14%, strict MDD 13.99%, 169 trades, p≈0.996.
+  - Worse than full-history rolling (`2020-2024 + prior 2025`) which reached CAGR 5.14% before token filtering.
+- Setup C: same 2023+ rolling with the previously selected micro token filter.
+  - 2025: CAGR 2.86%, strict MDD 15.94%, 162 trades.
+  - Still far below the full-history rolling + micro token filter result (CAGR 17.85%, MDD 9.22%).
+- Conclusion: older 2020-2022 data is not just stale noise; it regularizes the symbolic ridge model. The stronger direction is not to discard old history wholesale, but to use recency/regime weighting or ensemble recent-history and long-history models.
