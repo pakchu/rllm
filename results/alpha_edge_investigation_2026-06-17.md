@@ -1274,3 +1274,27 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - Blocks 2026-01 and 2026-02 fully, producing zero 2026 trades/losses.
   - But it also blocks too many useful historical months; 2024-2025 drops to CAGR 43.70%, MDD 13.05%, 270 trades.
 - Conclusion: month-level abstention is a promising risk layer: it can cut the 2026 drawdown and can even fully avoid early 2026. However, the rules found so far either leave February losses or sacrifice too much 2024-2025 CAGR. The next step should train a more expressive abstention classifier over month-start tokens/continuous features, not rely on one or two hand-picked token pairs.
+
+### 2026-06-21 — Extending 2026 validation through May invalidates the current candidate
+- Downloaded Binance futures BTCUSDT 5m OHLCV through 2026-06-01, covering effective bars from 2019-12-31 15:00 to 2026-05-31 15:00.
+- Built a wider 2026 v3/k8 verifier dataset for 2026-01-01 through 2026-06-01 with DXY/Kimchi/USDKRW features attached from `/home/pakchu/workspace/wave_trading` using 30min backward-asof tolerance.
+  - Candidate rows: 19,104.
+  - ALLOW labels: 1,018, allow rate 5.33%.
+  - Leakage guard remains: prompts are past-only, labels use future outcomes, and the dataset itself is not a backtest.
+- Ran prior-only monthly rolling symbolic ridge with 2020-2025 history and no current-month labels in each fit:
+  - 2026-01 train rows 276,544; 2026-02 280,512; 2026-03 284,096; 2026-04 288,064; 2026-05 291,904.
+  - Eval predictions: 597 scored decision rows over 2026-01-01 02:55 to 2026-05-30 02:55.
+- Results on the widened Jan-May 2026 window:
+
+| candidate | return | CAGR | strict MDD | CAGR/MDD | trades | p-value |
+|---|---:|---:|---:|---:|---:|---:|
+| baseline rolling ridge | -16.23% | -35.22% | 20.71% | -1.70 | 75 | 0.132 |
+| micro filter + short/HTF scale0.4, lev0.81, TP4 | -18.33% | -39.12% | 23.82% | -1.64 | 74 | 0.228 |
+| `SHORT 144h` gate, lev0.76, TP4 | -19.25% | -40.79% | 24.10% | -1.69 | 66 | 0.153 |
+| Jan-only month gate (`daily_context=up`, `volume=volume_normal`) | -13.33% | -29.57% | 15.24% | -1.94 | 47 | 0.245 |
+| Jan-Apr month gate (`book_drawdown_continuation`, `book_higher_tf_fade`) | +0.49% | +1.20% | 3.55% | 0.34 | 8 | 0.777 |
+
+- Diagnostic buckets for the current `SHORT 144h` candidate:
+  - Worst: `hold=432` (32 trades, mean -0.82%, sum -26.27%), `side=LONG` (50 trades, sum -13.20%), `month=2026-02` (10 trades, sum -8.88%), `month=2026-01` (20 trades, sum -8.25%), `drawdown_reversal` (13 trades, mean -0.60%).
+  - Best: `hold=72` (17 trades, sum +3.91%), `htf_pullback_resume|LONG` (7 trades, sum +3.55%), `hold=144` (9 trades, sum +3.08%), `higher_tf_momentum|hold=144` (5 trades, 100% win, sum +1.88%), `month=2026-05` (8 trades, sum +0.50%).
+- Conclusion: the Jan-Feb failure was not just too small a sample. Extending to Jan-May confirms that the current model family is not live-worthy: it loses money over 66-75 trades, fails MDD, and the only non-negative month-abstention variant trades just 8 times with no statistical power. The persistent bad exposure is long 432h / drawdown-reversal in early-2026-like regimes. The next architecture should stop optimizing gates around the same ridge signal and instead learn a regime-conditioned horizon/action policy or abstention model with enough trade count, likely separating trend-capture validity from reversal validity.
