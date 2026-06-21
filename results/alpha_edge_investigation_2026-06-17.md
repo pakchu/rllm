@@ -1062,3 +1062,20 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - Overlay is not the primary fix.
 - 2025-only diagnostic upper bound (not selection-safe): blocking `micro_exhaustion_reversal` alone would give CAGR 17.85%, MDD 9.22%, 143 trades; blocking micro/orderflow/macro-kimchi gives CAGR 20.57%, MDD 9.23%, 119 trades. Still below target and partly under trade-count ambition.
 - Conclusion: family-level suppression helps diagnose the failure but cannot meet the target. The next useful work is token/regime-conditioned detection of when `micro_exhaustion_reversal` flips from profitable 2024 behavior to harmful 2025 behavior, plus new 2025-specific regime features.
+
+### 2026-06-21 — Token-conditioned micro filter improves robustness
+- Added token-level trade diagnostics by joining executed trades back to the symbolic candidate prompt for the selected action.
+- Focused on `micro_exhaustion_reversal`, the biggest 2025 decayed family.
+- 2024 micro diagnostics showed that the family was already weak under tokens such as:
+  - `kimchi_context=kimchi_neutral`
+  - `medium_trend=flat`
+  - `orderflow=sell_aggression_strong`
+  - `weekly_context=strong_up`
+  - `recent_drawdown=no_recent_drawdown`
+- Applied this 2024-derived token block only to `micro_exhaustion_reversal`, then tested fixed on 2025 rolling:
+  - 2024: CAGR 53.01%, strict MDD 11.01%, ratio 4.81, 213 trades, p≈0.020.
+  - 2025 rolling: CAGR 17.85%, strict MDD 9.22%, ratio 1.94, 143 trades, p≈0.182.
+  - 2024-2025 combined: CAGR 34.65%, strict MDD 11.04%, ratio 3.14, 356 trades, p≈0.0077.
+- Combined with 2024-selected family blocks (`macro_kimchi_divergence,orderflow_follow`) did not help:
+  - 2024-2025 combined dropped to CAGR 30.97%, MDD 13.54%, ratio 2.29.
+- Conclusion: token-conditioned filtering is the first robust cross-year improvement that keeps trade count and statistical signal while passing ratio>3 over 2024-2025. It still misses the CAGR 50 target, so the next work should improve return capture, not further suppress risk blindly.
