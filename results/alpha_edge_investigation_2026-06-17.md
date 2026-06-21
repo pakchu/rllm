@@ -1359,3 +1359,23 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - 5 selected buckets, 2026 union: 341 candidates, mean net -0.00043, sum net -0.148, win rate 51.61%, t≈-1.20.
   - Top historical buckets such as `mean_reversion_stretch|hold=72 & book_drawdown_reversal:LONG` looked good in 2024H1/H2 but turned negative in 2026.
 - Conclusion: the current candidate/action-book symbolic surface does not contain a stable transferable positive edge detectable by direct bucket mining. The problem is deeper than model choice or thresholding: the candidate generator / action label surface likely needs redesign. Next direction should build a new action universe or new feature surface (e.g. continuous compact features, event-specific alpha families, or external-flow-led triggers) before applying LLM/RL again.
+
+### 2026-06-21 — Continuous feature alpha finds a 2026-positive but historically unstable source
+- Moved beyond the symbolic action-book surface and scanned continuous OHLCV/external features with `alpha_linear_combo_scan.py`.
+  - Train: 2023-01-01 to 2024-06-30.
+  - Test/selection: 2024-07-01 to 2025-12-31.
+  - Eval: 2026-01-01 to 2026-06-01.
+  - External features attached from `/home/pakchu/workspace/wave_trading` via backward-asof 30min tolerance.
+- Best notable continuous feature source: `external_plus_market`, horizon 288, quantile 0.20.
+  - Standard feature-rule test: 2024H2-2025 CAGR 23.07%, strict MDD 39.08%, 533 trades.
+  - Standard feature-rule 2026 eval: CAGR 46.50%, strict MDD 19.23%, 143 trades.
+  - This is the first recent surface with 2026 positive CAGR and statistically meaningful trade count, but test MDD is far beyond the target.
+- Added `training/export_linear_combo_feature_predictions.py` to export leak-safe linear-combo feature rules as prediction streams so the strict online overlay/TP engine can evaluate them.
+- TP4 online-overlay execution for `external_plus_market h288 q0.20`:
+  - Test 2024H2-2025 at leverage 0.76: CAGR 33.08%, strict MDD 40.28%, 550 trades.
+  - Eval 2026 Jan-May at leverage 0.76: CAGR 37.24%, strict MDD 19.06%, 145 trades.
+  - Lower leverage plus pause-after-losses can make 2026 meet ratio-like behavior but not the historical test window. Example leverage 0.20 + pause-after-4-losses: test CAGR 6.92%, MDD 9.93%, ratio 0.70; eval CAGR 16.36%, MDD 5.41%, ratio 3.02.
+- Recent-train sanity check (train 2024 only, test 2025, eval 2026) rejected the same source as stable:
+  - 2025 test at leverage 0.20: CAGR -7.34%, MDD 15.57%, 357 trades.
+  - 2026 eval at leverage 0.20: CAGR 2.69%, MDD 5.78%, 144 trades.
+- Conclusion: continuous feature surfaces are more promising than the symbolic action-book surface because they can generate 2026-positive, high-trade-count behavior. However, the current linear combo candidate is historically unstable and fails selection/test. Next work should search for a feature source that survives 2025 test first, likely with more explicit external-flow/event triggers or a train/test selection objective that penalizes MDD before ever checking 2026.
