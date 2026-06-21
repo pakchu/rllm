@@ -1326,3 +1326,21 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
 - Additional OOS stability check on 2024H2 with the same fixed setting, trained only on 2020-2023:
   - CAGR -28.34%, strict MDD 27.55%, ratio -1.03, 41 trades, p≈0.230.
 - Conclusion: the validation-first threshold procedure prevented 2026 eval fitting, but the selected rule is not stable across adjacent 2024 halves. The regime-expert score stream has some pockets of apparent edge, yet the edge does not persist. Next structural move should not be another scalar threshold; it should either (1) change labels/objective to reward realized trade distribution and penalize drawdown-prone long 432h/reversal paths directly, or (2) use a much smaller precomputed feature table to run nested walk-forward model selection at scale.
+
+### 2026-06-21 — Tail-risk objective reduces drawdown but does not create alpha
+- Added two continuous risk-sensitive targets to `symbolic_action_ridge.target_value`:
+  - `tail_risk = net_return - 1.5*MAE - long-horizon/reversal MAE penalty`.
+  - `distributional_safety = net_return + small MFE credit - MAE/loss/asymmetry penalties`.
+  - These are not hard gates; long 432h and reversal actions can still score well if their reward/risk is strong.
+- 2026 Jan-May with 2024-2025 history, rolling monthly, leverage 0.76, TP4:
+  - `tail_risk`: CAGR -4.68%, strict MDD 4.15%, 68 trades, p≈0.670.
+  - `distributional_safety`: CAGR -11.69%, strict MDD 8.13%, 87 trades, p≈0.413.
+  - Compared with the previous short144 candidate at CAGR -40.79%, MDD 24.10%, the new target strongly reduces damage but remains unprofitable.
+- Historical sanity for `tail_risk`, trained on 2020-2023:
+  - 2024H1: CAGR -1.96%, strict MDD 2.88%, 57 trades, p≈0.818.
+  - 2024H2: CAGR -9.40%, strict MDD 6.25%, 48 trades, p≈0.175.
+  - Threshold sweeps did not find positive H1/H2 candidates; lowering thresholds increased trade count but worsened CAGR.
+- Tried using `tail_risk` as a safety lens on the previous `SHORT 144h` branch:
+  - Same-action confirmation was too sparse: 2026 produced only 4-6 trades, although positive.
+  - Context-only confirmation preserved more trades but failed 2026 across thresholds; e.g. threshold 0.0 gave 2024H1 CAGR 8.86%, 2024H2 CAGR 17.53%, but 2026 CAGR -37.61% with MDD 20.86%.
+- Conclusion: the risk-sensitive objective is useful as a damage-control diagnostic, not a profit engine. It confirms that directly penalizing MAE/tail exposure addresses the previous drawdown pathology, but it also removes/weakens too much edge. Next move should mine a separate positive edge source rather than trying to rescue the same action ranker with safer labels.

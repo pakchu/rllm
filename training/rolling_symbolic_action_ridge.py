@@ -60,7 +60,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--alpha", type=float, default=10000.0)
     p.add_argument("--threshold", type=float, default=0.003)
     p.add_argument("--min-gap", type=float, default=0.0)
-    p.add_argument("--target", choices=["utility", "net_return", "risk_adjusted"], default="net_return")
+    p.add_argument("--target", choices=["utility", "net_return", "risk_adjusted", "tail_risk", "distributional_safety"], default="net_return")
     p.add_argument("--min-feature-count", type=int, default=5)
     p.add_argument("--market-csv", default="")
     p.add_argument("--backtest-output", default="")

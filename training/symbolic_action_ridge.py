@@ -111,10 +111,37 @@ class FeatureSpace:
 
 def target_value(row: dict[str, Any], *, target: str = "utility") -> float:
     audit = row.get("action_audit", {}) if isinstance(row.get("action_audit"), dict) else {}
+    net = float(audit.get("net_return", 0.0) or 0.0)
+    mae = max(0.0, float(audit.get("mae", 0.0) or 0.0))
+    mfe = max(0.0, float(audit.get("mfe", 0.0) or 0.0))
+    rr = mfe / max(mae, 1e-6)
+    action = row.get("action", {}) if isinstance(row.get("action"), dict) else {}
+    hold = int(action.get("hold_bars", audit.get("hold_bars", 0)) or 0)
+    family = str(action.get("family", audit.get("family", "")))
+    side = str(action.get("side", audit.get("side", ""))).upper()
+    long_tail_penalty = 0.0
+    if hold >= 432:
+        long_tail_penalty += 0.15 * mae
+    if side == "LONG" and hold >= 432:
+        long_tail_penalty += 0.20 * mae
+    if family in {"drawdown_reversal", "drawdown_continuation"}:
+        long_tail_penalty += 0.20 * mae
     if target == "net_return":
-        return float(audit.get("net_return", 0.0) or 0.0)
+        return net
     if target == "risk_adjusted":
-        return float(audit.get("net_return", 0.0) or 0.0) - float(audit.get("mae", 0.0) or 0.0)
+        return net - mae
+    if target == "tail_risk":
+        # Prefer trades whose expected return survives adverse excursion; this is
+        # deliberately continuous, not a hard gate, so the model can still learn
+        # safe long-horizon trades when reward/risk is strong.
+        return net - 1.5 * mae - long_tail_penalty
+    if target == "distributional_safety":
+        # Penalize left-tail shape and weak reward/risk asymmetry while preserving
+        # upside for high-MFE actions.  A small MFE credit avoids collapsing into
+        # pure abstention on all volatile opportunities.
+        asym_penalty = 0.004 if rr < 1.2 else 0.0
+        loss_penalty = 0.5 * abs(min(0.0, net))
+        return net + 0.25 * mfe - 1.25 * mae - long_tail_penalty - asym_penalty - loss_penalty
     return float(audit.get("utility", audit.get("rank_utility", 0.0)) or 0.0)
 
 
@@ -259,7 +286,7 @@ def parse_args() -> argparse.Namespace:
     sub = p.add_subparsers(dest="cmd", required=True)
     tr = sub.add_parser("train-predict")
     tr.add_argument("--train-jsonl", required=True); tr.add_argument("--eval-jsonl", required=True); tr.add_argument("--predictions-output", required=True)
-    tr.add_argument("--alpha", type=float, default=100.0); tr.add_argument("--threshold", type=float, default=0.0); tr.add_argument("--min-gap", type=float, default=0.0); tr.add_argument("--target", choices=["utility", "net_return", "risk_adjusted"], default="utility"); tr.add_argument("--min-feature-count", type=int, default=5)
+    tr.add_argument("--alpha", type=float, default=100.0); tr.add_argument("--threshold", type=float, default=0.0); tr.add_argument("--min-gap", type=float, default=0.0); tr.add_argument("--target", choices=["utility", "net_return", "risk_adjusted", "tail_risk", "distributional_safety"], default="utility"); tr.add_argument("--min-feature-count", type=int, default=5)
     sw = sub.add_parser("sweep")
     sw.add_argument("--train-jsonl", required=True); sw.add_argument("--val-jsonl", required=True); sw.add_argument("--holdout-jsonl", required=True); sw.add_argument("--market-csv", required=True); sw.add_argument("--output", required=True); sw.add_argument("--work-dir", required=True); sw.add_argument("--min-trades", type=int, default=30)
     return p.parse_args()

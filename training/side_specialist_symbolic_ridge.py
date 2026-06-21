@@ -158,7 +158,7 @@ def parse_args() -> argparse.Namespace:
         sp.add_argument("--alpha", type=float, default=10000.0)
         sp.add_argument("--threshold", type=float, default=0.003)
         sp.add_argument("--min-gap", type=float, default=0.0)
-        sp.add_argument("--target", choices=["utility", "net_return", "risk_adjusted"], default="net_return")
+        sp.add_argument("--target", choices=["utility", "net_return", "risk_adjusted", "tail_risk", "distributional_safety"], default="net_return")
         sp.add_argument("--min-feature-count", type=int, default=5)
         sp.add_argument("--market-csv", default="")
         sp.add_argument("--backtest-output", default="")
