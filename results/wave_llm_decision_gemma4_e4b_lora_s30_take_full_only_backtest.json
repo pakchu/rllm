@@ -1,0 +1,142 @@
+{
+  "as_of": "2026-06-21T23:08:02.268374+00:00",
+  "config": {
+    "predictions_jsonl": "results/wave_llm_decision_gemma4_e4b_lora_s30_take_full_only_predictions.jsonl",
+    "market_csv": "data/2020-01-01_2026-06-01_btcusdt_futures_5m.csv.gz",
+    "output": "results/wave_llm_decision_gemma4_e4b_lora_s30_take_full_only_backtest.json",
+    "leverage": 1.0,
+    "fee_rate": 0.0004,
+    "slippage_rate": 0.0001,
+    "entry_delay_bars": 3,
+    "cooldown_bars": 0,
+    "max_hold_bars": 432,
+    "pause_after_losses": 0,
+    "pause_bars": 864,
+    "rolling_window_trades": 0,
+    "rolling_loss_stop_pct": 0.0,
+    "rolling_drawdown_stop_pct": 0.0,
+    "monthly_loss_stop_pct": 0.0,
+    "trade_stop_loss_pct": 0.0,
+    "trade_take_profit_pct": 0.0,
+    "atr_trailing_stop_mult": 3.75,
+    "atr_period": 45
+  },
+  "period": {
+    "start": "2024-07-04 23:30:00",
+    "end": "2026-02-06 00:00:00",
+    "years": 1.5906913073237507
+  },
+  "sim": {
+    "ret_pct": 7.2850212550928495,
+    "cagr_pct": 4.5198140893310645,
+    "strict_mdd_pct": 3.738449970208879,
+    "cagr_to_strict_mdd": 1.2090075098901292,
+    "trade_entries": 5,
+    "turnover_legs": 10,
+    "samples": 42,
+    "skipped_no_trade": 37,
+    "skipped_cooldown": 0,
+    "skipped_overlay": 0,
+    "skipped_missing_bars": 0,
+    "invalid_actions": 0,
+    "forced_liquidations": 0,
+    "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+  },
+  "trade_stats": {
+    "n_trades": 5,
+    "mean_trade_ret_pct": 1.4628044756850955,
+    "std_trade_ret_pct": 3.450750420253686,
+    "t_stat_like": 0.9478895449014669,
+    "p_value_mean_ret_approx": 0.34318568800570626,
+    "ci95_mean_trade_ret_pct": [
+      -1.5619116294396018,
+      4.487520580809793
+    ],
+    "effect_size_d": 0.42390909151220385,
+    "n_required_for_80pct_power_alpha5pct": 44,
+    "n_gap_to_power_rule": 39
+  },
+  "executed": [
+    {
+      "date": "2024-07-05 04:00:00",
+      "signal_pos": 474492,
+      "side": "LONG",
+      "hold_bars": 12,
+      "position_scale": 1.0,
+      "exit_reason": "atr_trailing_stop",
+      "exit_pos": 474496,
+      "trade_ret_pct": -2.517509001931517,
+      "equity": 0.9748249099806848
+    },
+    {
+      "date": "2024-07-05 04:30:00",
+      "signal_pos": 474498,
+      "side": "LONG",
+      "hold_bars": 12,
+      "position_scale": 1.0,
+      "exit_reason": "time",
+      "exit_pos": 474513,
+      "trade_ret_pct": -0.12716082954709051,
+      "equity": 0.9735853145385217
+    },
+    {
+      "date": "2025-03-11 00:30:00",
+      "signal_pos": 546162,
+      "side": "LONG",
+      "hold_bars": 12,
+      "position_scale": 1.0,
+      "exit_reason": "time",
+      "exit_pos": 546177,
+      "trade_ret_pct": 2.6551026866653338,
+      "equity": 0.9994350043818131
+    },
+    {
+      "date": "2025-11-16 21:45:00",
+      "signal_pos": 618417,
+      "side": "LONG",
+      "hold_bars": 12,
+      "position_scale": 1.0,
+      "exit_reason": "time",
+      "exit_pos": 618432,
+      "trade_ret_pct": 0.630628030714786,
+      "equity": 1.0057377216682204
+    },
+    {
+      "date": "2026-02-06 00:00:00",
+      "signal_pos": 641772,
+      "side": "LONG",
+      "hold_bars": 12,
+      "position_scale": 1.0,
+      "exit_reason": "time",
+      "exit_pos": 641787,
+      "trade_ret_pct": 6.6729614925239655,
+      "equity": 1.0728502125509285
+    }
+  ],
+  "leakage_guard": {
+    "overlay_uses_only_completed_prior_trades": true,
+    "does_not_use_future_prices_for_gate_decision": true,
+    "entry_after_signal_by_bars": 3,
+    "strict_mdd_includes_intrabar_adverse_excursion": true,
+    "atr_trailing_stop_uses_entry_or_prior_atr": true
+  },
+  "decision_backtest_config": {
+    "eval_jsonl": "data/wave_llm_decision_sft_eval_2024h2_2026.jsonl",
+    "prediction_report": "results/wave_llm_decision_gemma4_e4b_lora_s30_eval_report.json",
+    "market_csv": "data/2020-01-01_2026-06-01_btcusdt_futures_5m.csv.gz",
+    "output": "results/wave_llm_decision_gemma4_e4b_lora_s30_take_full_only_backtest.json",
+    "predictions_output": "results/wave_llm_decision_gemma4_e4b_lora_s30_take_full_only_predictions.jsonl",
+    "policy": "take_full_only",
+    "hold_bars": 12,
+    "leverage": 1.0,
+    "entry_delay_bars": 3,
+    "atr_trailing_stop_mult": 3.75,
+    "atr_period": 45
+  },
+  "decision_counts": {
+    "TAKE_SMALL": 33,
+    "ABSTAIN": 4,
+    "TAKE_FULL": 5
+  },
+  "note": "Rows are model-scored executed base candidates; skipped replacement opportunities are not generated."
+}
