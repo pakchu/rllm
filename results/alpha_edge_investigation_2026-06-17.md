@@ -1413,3 +1413,21 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - External `trade` guard scale0.5: CAGR -27.32%, strict MDD 17.67%, ratio -1.55, 66 trades.
   - External side-or-score guard scale0.5: CAGR -44.06%, strict MDD 25.19%, ratio -1.75, 66 trades.
 - Conclusion: the 2024-winning SHORT144 branch is not rescued by simple tail-risk or external-feature guards. The guards can preserve most of the historical 2024 performance and reduce some 2026 damage, but they do not flip the 2026 regime back to profitability. This supports the earlier diagnosis: the old symbolic action surface had a regime-specific 2024/2025 edge that inverted or disappeared in early 2026. Next work should develop a new alpha/regime surface from the continuous external-plus-market lead rather than keep patching SHORT144.
+
+### 2026-06-21 — External regime filter materially improves the continuous lead split
+- Added `training/scan_feature_regime_filters.py` to test simple past-feature veto rules on an existing prediction stream with an explicit split:
+  - Selector: 2024H2.
+  - Validation: 2025.
+  - Final eval: 2026 Jan-May.
+  - Thresholds are computed from selector-window trade rows only; validation and eval are not used to fit thresholds.
+  - Dense `NO_TRADE` rows are omitted from scratch files so scans do not fill WSL.
+- Base signal under test: `external_plus_market h288 q0.20`, leverage 0.30, pause-after-4-losses, no TP.
+  - Baseline selector 2024H2: CAGR 10.60%, strict MDD 14.55%, ratio 0.73, 176 trades.
+  - Baseline validation 2025: CAGR 9.70%, strict MDD 14.16%, ratio 0.68, 343 trades.
+  - Baseline eval 2026 Jan-May: CAGR 25.12%, strict MDD 8.02%, ratio 3.13, 140 trades.
+- Fast external-feature scan found a much better historical split filter:
+  - Filter: `usdkrw_momentum <= 0.0` on all trades.
+  - Selector 2024H2: CAGR 25.88%, strict MDD 8.63%, ratio 3.00, 170 trades.
+  - Validation 2025: CAGR 24.23%, strict MDD 11.29%, ratio 2.15, 330 trades.
+  - Eval 2026 Jan-May: unchanged from baseline because all 2026 eval trade rows pass the filter: CAGR 25.12%, strict MDD 8.02%, ratio 3.13, 140 trades.
+- Interpretation: this is the strongest recent non-cheating lead. It improves both 2024H2 and 2025 without looking at 2026, keeps hundreds of trades, and preserves the good 2026 behavior. It still does not fully meet the hard target because 2025 validation ratio is 2.15 < 3 and CAGR is below the original 50% target. Next work should optimize this family, not the old SHORT144 branch: cache/vectorize the scanner, add side-specific filters and two-stage filters selected on 2024H2 then validated on 2025, and only then re-check 2026.
