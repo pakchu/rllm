@@ -1094,3 +1094,23 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - 2025: CAGR 2.86%, strict MDD 15.94%, 162 trades.
   - Still far below the full-history rolling + micro token filter result (CAGR 17.85%, MDD 9.22%).
 - Conclusion: older 2020-2022 data is not just stale noise; it regularizes the symbolic ridge model. The stronger direction is not to discard old history wholesale, but to use recency/regime weighting or ensemble recent-history and long-history models.
+
+### 2026-06-21 — Recency weighting and long/recent agreement do not beat the token-filter baseline
+- Added `weighted_symbolic_action_ridge.py` to test whether old history should be retained but down/up-weighted by date only. This avoids target leakage because weights depend only on row timestamps.
+- Fixed 2024 test with 2020-2023 training and the previously selected symbolic config:
+  - exp half-life 365d: CAGR -3.32%, strict MDD 14.99%, 149 trades.
+  - exp half-life 730d: CAGR 23.46%, strict MDD 13.24%, 173 trades.
+  - step weight from 2023-01-01, recent weight 2/3/5: best was weight 5 with CAGR 20.00%, strict MDD 11.93%, 215 trades.
+  - All are materially worse than unweighted long-history 2024 (CAGR 51.46%, MDD 11.01%). Recency weighting is therefore rejected for now.
+- Added `prediction_agreement_filter.py` to test whether a long-history model should trade only when a recent-history model agrees.
+  - `side` agreement, 2024-2025: CAGR 23.04%, strict MDD 13.59%, 243 trades, p≈0.0229.
+  - `family_side` agreement, 2024-2025: CAGR 12.84%, strict MDD 10.96%, 148 trades.
+  - `trade` agreement, 2024-2025: CAGR 18.31%, strict MDD 17.85%, 283 trades.
+  - Agreement filtering reduces useful 2024 exposure and does not beat the 2024-derived micro token filter baseline (CAGR 34.65%, MDD 11.04%, 356 trades, p≈0.0077).
+- Sizing sensitivity on the current best token-filter stream:
+  - leverage 0.65: CAGR 46.25%, strict MDD 14.29%, 356 trades, p≈0.0080.
+  - leverage 0.68: CAGR 48.64%, strict MDD 14.94%, 356 trades.
+  - leverage 0.70: CAGR 50.24%, strict MDD 15.37%, 356 trades.
+  - This nearly reaches the target but does not honestly satisfy strict MDD<=15 at CAGR>=50; leverage 0.68 is the current honest boundary.
+- Fixed a risk-overlay implementation issue: rolling drawdown/loss stops now require at least `rolling_window_trades` completed trades before activation. Without this, a 50-trade window could pause after only a few early trades. Re-testing showed rolling-DD stops still kill too much exposure and are not a solution.
+- Conclusion: the best verified branch remains long-history symbolic ridge + 2024-derived micro token filter. The next real improvement should increase return capture/action quality, not discard history or require recent-model agreement.

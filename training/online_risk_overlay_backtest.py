@@ -125,7 +125,7 @@ def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
             skipped_overlay += 1
             continue
 
-        if cfg.rolling_window_trades > 0:
+        if cfg.rolling_window_trades > 0 and len(trade_returns) >= int(cfg.rolling_window_trades):
             roll_loss = -_rolling_loss(trade_returns, int(cfg.rolling_window_trades)) * 100.0
             roll_dd = _rolling_dd(trade_returns, int(cfg.rolling_window_trades)) * 100.0
             if float(cfg.rolling_loss_stop_pct) > 0.0 and roll_loss >= float(cfg.rolling_loss_stop_pct):
