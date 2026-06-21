@@ -1298,3 +1298,17 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - Worst: `hold=432` (32 trades, mean -0.82%, sum -26.27%), `side=LONG` (50 trades, sum -13.20%), `month=2026-02` (10 trades, sum -8.88%), `month=2026-01` (20 trades, sum -8.25%), `drawdown_reversal` (13 trades, mean -0.60%).
   - Best: `hold=72` (17 trades, sum +3.91%), `htf_pullback_resume|LONG` (7 trades, sum +3.55%), `hold=144` (9 trades, sum +3.08%), `higher_tf_momentum|hold=144` (5 trades, 100% win, sum +1.88%), `month=2026-05` (8 trades, sum +0.50%).
 - Conclusion: the Jan-Feb failure was not just too small a sample. Extending to Jan-May confirms that the current model family is not live-worthy: it loses money over 66-75 trades, fails MDD, and the only non-negative month-abstention variant trades just 8 times with no statistical power. The persistent bad exposure is long 432h / drawdown-reversal in early-2026-like regimes. The next architecture should stop optimizing gates around the same ridge signal and instead learn a regime-conditioned horizon/action policy or abstention model with enough trade count, likely separating trend-capture validity from reversal validity.
+
+### 2026-06-21 — Regime-conditioned expert policy POC does not yet solve generalization
+- Added `training/regime_conditioned_symbolic_policy.py` to stop stacking fixed gates onto a single global ridge model.
+  - For each eval month it fits only on rows before that month.
+  - It builds multiple past-token regime experts: trend up/down, strong down, drawdown, low drawdown, orderflow buy/sell, range low/high, DXY pressure, kimchi premium, book trend, and book reversal.
+  - The selected action comes from the highest-scoring eligible expert; `expert_margin` can require the winning expert to beat the next expert before trading.
+  - Leakage guard: expert slices use prompt tokens only, current-month labels are not used for current-month decisions.
+- Initial 2026 Jan-May POC trained only on 2024-2025 history for speed:
+  - Raw regime expert policy (`threshold=0.003`, `expert_margin=0.0`) over-traded: 128 trades, CAGR -47.90%, strict MDD 34.25%.
+  - Post-hoc 2026 threshold sweep found an apparently good setting (`threshold=0.004`, `expert_margin=0.002`): 54 trades, CAGR 29.13%, strict MDD 7.06%, ratio 4.12.
+  - This is not a valid success because the threshold was selected on 2026 eval itself.
+- Leak-free sanity check of that fixed setting on 2024H1, trained on 2020-2023 only:
+  - 88 trades, return -6.70%, CAGR -13.07%, strict MDD 30.56%, ratio -0.43, p≈0.779.
+- Conclusion: the regime-expert architecture is directionally closer to the desired structure, but the current implementation does not produce a stable out-of-sample edge. The 2026 threshold win should be treated as eval overfit. Next work should focus on stronger validation-first model selection and computational throughput: cache token matrices / precomputed feature shards, then select thresholds on historical validation only before touching 2026.
