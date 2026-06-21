@@ -12,6 +12,7 @@ import argparse
 import json
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +57,11 @@ def _read_prediction_files(raw: str) -> list[dict[str, Any]]:
     return out
 
 
+@lru_cache(maxsize=4)
+def _load_market_bars_cached(path: str):
+    return load_market_bars(path)
+
+
 def _month_key(date: str) -> str:
     dt = datetime.fromisoformat(str(date))
     return f"{dt.year:04d}-{dt.month:02d}"
@@ -85,7 +91,7 @@ def _rolling_dd(trade_returns: list[float], n: int) -> float:
 
 def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
     rows = _read_prediction_files(cfg.predictions_jsonl)
-    market = load_market_bars(cfg.market_csv)
+    market = _load_market_bars_cached(cfg.market_csv)
     opens = market["open"].to_numpy(dtype=float)
     highs = market["high"].to_numpy(dtype=float)
     lows = market["low"].to_numpy(dtype=float)

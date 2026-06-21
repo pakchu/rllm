@@ -99,13 +99,19 @@ def _state_text(state: dict[str, Any]) -> list[str]:
     trend96 = _signed_bucket(float(state.get("trend_96", 0.0)))
     h4 = _signed_bucket(float(state.get("htf_4h_return_4", 0.0)))
     d1 = _signed_bucket(float(state.get("htf_1d_return_1", 0.0)))
+    d3 = _signed_bucket(float(state.get("htf_3d_return_1", 0.0)))
     w4 = _signed_bucket(float(state.get("htf_1w_return_4", 0.0)))
     rsi = _bucket(float(state.get("rsi_norm", 0.0)), (-0.35, -0.12, 0.12, 0.35), ("oversold", "soft_oversold", "neutral", "soft_overbought", "overbought"))
     range_pos = _bucket(float(state.get("range_pos", 0.5)), (0.15, 0.35, 0.65, 0.85), ("near_range_low", "lower_range", "middle_range", "upper_range", "near_range_high"))
+    weekly_pos = _bucket(float(state.get("htf_1w_range_pos", 0.0)), (-0.65, -0.25, 0.25, 0.65), ("weekly_near_low", "weekly_lower", "weekly_middle", "weekly_upper", "weekly_near_high"))
     drawdown = _bucket(float(state.get("window_drawdown", 0.0)), (0.005, 0.015, 0.035), ("no_recent_drawdown", "small_drawdown", "medium_drawdown", "large_drawdown"))
     htf_dd = _bucket(float(state.get("htf_1d_drawdown_4", 0.0)), (0.01, 0.03, 0.06), ("daily_dd_low", "daily_dd_medium", "daily_dd_high", "daily_dd_extreme"))
+    weekly_dd = _bucket(float(state.get("htf_1w_drawdown_4", 0.0)), (0.03, 0.08, 0.16), ("weekly_dd_low", "weekly_dd_medium", "weekly_dd_high", "weekly_dd_extreme"))
     volume = _bucket(float(state.get("volume_zscore", 0.0)), (-1.0, -0.25, 0.75, 1.5), ("volume_very_low", "volume_low", "volume_normal", "volume_high", "volume_extreme"))
     taker = _bucket(float(state.get("taker_imbalance", 0.0)), (-0.08, -0.02, 0.02, 0.08), ("sell_aggression_strong", "sell_aggression", "flow_balanced", "buy_aggression", "buy_aggression_strong"))
+    funding = _bucket(float(state.get("funding_zscore", 0.0)), (-1.0, -0.25, 0.25, 1.0), ("funding_discount", "funding_soft_discount", "funding_neutral", "funding_soft_premium", "funding_premium"))
+    oi = _bucket(float(state.get("oi_zscore", 0.0)), (-1.0, -0.25, 0.25, 1.0), ("oi_low", "oi_soft_low", "oi_neutral", "oi_soft_high", "oi_high"))
+    oi_change = _bucket(float(state.get("oi_change", 0.0)), (-0.02, -0.005, 0.005, 0.02), ("oi_flush", "oi_falling", "oi_stable", "oi_building", "oi_squeeze"))
     macro = _bucket(float(state.get("dxy_zscore", 0.0)), (-1.0, -0.25, 0.25, 1.0), ("dxy_low", "dxy_soft_low", "dxy_neutral", "dxy_soft_high", "dxy_high"))
     kimchi = _bucket(float(state.get("kimchi_premium_zscore", 0.0)), (-1.0, -0.25, 0.25, 1.0), ("kimchi_discount", "kimchi_soft_discount", "kimchi_neutral", "kimchi_soft_premium", "kimchi_premium"))
     return [
@@ -113,13 +119,19 @@ def _state_text(state: dict[str, Any]) -> list[str]:
         f"medium_trend={trend96}",
         f"four_hour_context={h4}",
         f"daily_context={d1}",
+        f"three_day_context={d3}",
         f"weekly_context={w4}",
         f"oscillator={rsi}",
         f"location={range_pos}",
+        f"weekly_location={weekly_pos}",
         f"recent_drawdown={drawdown}",
         f"higher_tf_drawdown={htf_dd}",
+        f"weekly_drawdown={weekly_dd}",
         f"volume={volume}",
         f"orderflow={taker}",
+        f"funding_context={funding}",
+        f"open_interest_level={oi}",
+        f"open_interest_change={oi_change}",
         f"dollar_pressure={macro}",
         f"kimchi_context={kimchi}",
     ]

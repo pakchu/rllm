@@ -1114,3 +1114,27 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - This nearly reaches the target but does not honestly satisfy strict MDD<=15 at CAGR>=50; leverage 0.68 is the current honest boundary.
 - Fixed a risk-overlay implementation issue: rolling drawdown/loss stops now require at least `rolling_window_trades` completed trades before activation. Without this, a 50-trade window could pause after only a few early trades. Re-testing showed rolling-DD stops still kill too much exposure and are not a solution.
 - Conclusion: the best verified branch remains long-history symbolic ridge + 2024-derived micro token filter. The next real improvement should increase return capture/action quality, not discard history or require recent-model agreement.
+
+### 2026-06-21 — Richer categorical state tokens reproduce but do not improve the best branch
+- Expanded analyzer/verifier text state tokens with past-only higher timeframe and derivatives context:
+  - `three_day_context`, `weekly_location`, `weekly_drawdown`
+  - `funding_context`, `open_interest_level`, `open_interest_change`
+- Generated v3/k8 yearly datasets with the same candidate pool and labels. Row counts matched the prior v2/k8 split shape:
+  - 2020-2022 train: 140,288 rows, ALLOW 11,781.
+  - 2023 select: 46,720 rows, ALLOW 2,337.
+  - 2024 eval: 46,848 rows, ALLOW 3,322.
+  - 2025 eval: 42,688 rows, ALLOW 2,175.
+- Selection using 2020-2022 train and 2023 validation again chose `target=net_return, alpha=10000, threshold=0.003, min_gap=0.0`.
+  - 2024 holdout before retraining: CAGR 30.50%, strict MDD 19.29%, 262 trades. This is worse than desired, but the fair production-style comparison is retrain through 2023 before 2024.
+- Fixed retrain through 2023, then evaluate 2024:
+  - 2024: CAGR 51.46%, strict MDD 11.01%, ratio 4.67, 215 trades, p≈0.0241.
+  - This exactly reproduces the prior v2/k8 fixed result; the new tokens did not change the selected live actions enough to matter.
+- Prior-only monthly rolling through 2025:
+  - 2025: CAGR 5.14%, strict MDD 13.61%, 150 trades, p≈0.6802.
+  - 2024-2025 combined before token filter: CAGR 26.85%, strict MDD 15.54%, 365 trades, p≈0.0385.
+- Applying the existing 2024-derived `micro_exhaustion_reversal` token filter to v3 predictions reproduces the current best:
+  - 2024: CAGR 53.01%, strict MDD 11.01%, 213 trades, p≈0.0199.
+  - 2025: CAGR 17.85%, strict MDD 9.22%, 143 trades, p≈0.1816.
+  - 2024-2025 combined: CAGR 34.65%, strict MDD 11.04%, ratio 3.14, 356 trades, p≈0.0077.
+- Engineering note: added an in-process market-bar cache for repeated strict backtests. The v3 sweep initially generated 53/420 configs slowly because it reloaded the same CSV every time; after caching, the same sweep completed much faster.
+- Conclusion: simply adding more categorical context is not enough. The bottleneck is not missing 3d/weekly/funding tokens in the text; it is return capture/action construction or model class. Next improvement should alter action quality/horizon/sizing or train a model that can exploit continuous magnitudes, not just add more discrete state tokens.
