@@ -224,29 +224,39 @@ def load_wave_trading_cached_bars(
     wave_trading_root: str | Path,
     tickers: Iterable[str],
 ) -> pd.DataFrame:
-    """Load cached bars from wave_trading/data matching all requested tickers."""
+    """Load and merge wave_trading cached bars matching all requested tickers.
+
+    wave_trading caches are date-range keyed.  Choosing only the largest matching
+    file silently ignored newer smaller 2026 extension caches.  This loader
+    merges all matching cache shards, de-duplicates mirrored ``data`` and
+    ``research/data`` files by filename, then de-duplicates bars by
+    ``(date, tic)`` using the latest loaded row.
+    """
     root = Path(wave_trading_root).expanduser().resolve()
     ticker_set = {str(t) for t in tickers}
     candidates = list((root / "data").glob("*.csv.gz")) + list((root / "research" / "data").glob("*.csv.gz"))
-    seen: set[Path] = set()
-    best_path: Path | None = None
-    best_size = -1
-    for path in candidates:
+    selected: list[Path] = []
+    seen_names: set[str] = set()
+    for path in sorted(candidates, key=lambda p: (p.name, str(p))):
         path = path.resolve()
-        if path in seen:
+        if path.name in seen_names:
             continue
-        seen.add(path)
         try:
             preview = pd.read_csv(path, usecols=["tic"], nrows=200_000)
         except Exception:
             continue
         present = {str(x) for x in preview["tic"].dropna().unique()}
-        if ticker_set.issubset(present) and path.stat().st_size > best_size:
-            best_path = path
-            best_size = path.stat().st_size
-    if best_path is None:
+        if ticker_set.issubset(present):
+            selected.append(path)
+            seen_names.add(path.name)
+    if not selected:
         raise FileNotFoundError(f"no wave_trading cache with tickers {sorted(ticker_set)} under {root}")
-    return pd.read_csv(best_path, parse_dates=["date"], compression="gzip")
+    frames = [pd.read_csv(path, parse_dates=["date"], compression="gzip") for path in selected]
+    out = pd.concat(frames, ignore_index=True)
+    out = out[out["tic"].astype(str).isin(ticker_set)].copy()
+    out["date"] = pd.to_datetime(out["date"], errors="raise", utc=True).dt.tz_convert(None)
+    out = out.sort_values(["date", "tic"]).drop_duplicates(["date", "tic"], keep="last").reset_index(drop=True)
+    return out
 
 
 def attach_wave_trading_external_features(

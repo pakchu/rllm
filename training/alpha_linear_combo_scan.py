@@ -66,7 +66,7 @@ def _parse_list(s: str, cast):
 
 def _feature_groups(columns: list[str]) -> dict[str, list[str]]:
     groups = {
-        "external": ["dxy_zscore", "dxy_momentum", "kimchi_premium_zscore", "kimchi_premium_change", "usdkrw_zscore", "usdkrw_momentum"],
+        "external": ["dxy_zscore", "dxy_momentum", "kimchi_premium_zscore", "kimchi_premium_change", "usdkrw_zscore", "usdkrw_momentum", "dxy_available", "kimchi_available", "usdkrw_available", "external_any_available"],
         "kimchi_only": ["kimchi_premium_zscore", "kimchi_premium_change"],
         "trend": ["trend_12", "trend_24", "trend_96", "sma12_ratio", "sma24_ratio", "sma48_ratio", "bb_z", "close_zscore_48", "return_zscore_48"],
         "range_reversion": ["range_vol", "range_pos", "window_drawdown", "rsi_norm", "mfi_norm"],

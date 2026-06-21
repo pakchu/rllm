@@ -50,6 +50,10 @@ EXTENDED_MARKET_FEATURE_COLUMNS = CORE_MARKET_FEATURE_COLUMNS + (
     "kimchi_premium_change",
     "usdkrw_zscore",
     "usdkrw_momentum",
+    "dxy_available",
+    "kimchi_available",
+    "usdkrw_available",
+    "external_any_available",
     "weekly_return_1w",
     "weekly_return_4w",
     "weekly_range_1w",
@@ -327,6 +331,10 @@ def build_market_feature_frame(
         "kimchi_premium_change": 0.0,
         "usdkrw_zscore": 0.0,
         "usdkrw_momentum": 0.0,
+        "dxy_available": 0.0,
+        "kimchi_available": 0.0,
+        "usdkrw_available": 0.0,
+        "external_any_available": 0.0,
     }
     for col, default in optional_external_defaults.items():
         series = _optional_column(market_df, col)

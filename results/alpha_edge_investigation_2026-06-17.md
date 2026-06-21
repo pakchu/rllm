@@ -1471,3 +1471,22 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - Test: CAGR 3.06%, strict MDD 12.07%, ratio 0.25, 508 trades.
   - Eval: CAGR 7.20%, strict MDD 6.49%, ratio 1.11, 138 trades.
 - Conclusion: without valid external data, the current simple market-only linear-combo surface is not enough. The next valid route is either (1) refresh external/macro data through 2026 and re-run availability-guarded external scans, or (2) build a stronger market-only model/LLM feature representation rather than relying on current linear combos.
+
+### 2026-06-21 — Added 2026 wave_trading external shards and revalidated external alpha
+- Added 2026 wave_trading cache shards from the local PostgreSQL source:
+  - Forex DXY components: 899,978 rows, 2026-01-01 21:07 to 2026-06-02 00:00.
+  - USDKRW: 141,892 rows, 2026-01-01 21:10 to 2026-06-02 00:00.
+  - KRW-BTC: 218,501 rows, 2026-01-01 00:00 to 2026-06-02 00:00.
+- Updated the rllm wave_trading cache loader to merge all matching cache shards instead of selecting only the largest stale file. After merge:
+  - Forex cache covers 2020-01-02 to 2026-06-02, 13,778,354 rows.
+  - USDKRW covers 2020-01-01 to 2026-06-02, 2,020,518 rows.
+  - KRW-BTC covers 2020-01-01 to 2026-06-02, 3,320,197 rows.
+  - 2026 joined availability: USDKRW≈66.9%, DXY≈69.1%, Kimchi≈66.9%.
+- Added external availability flags to the market feature frame and `external`/`external_plus_market` groups so neutral-filled external gaps are no longer indistinguishable from true zero regimes.
+- Re-generated the previous `external_plus_market h288 q0.20` lead with refreshed data:
+  - Test 2024H2-2025, leverage 0.30 + pause-after-4: CAGR 10.18%, strict MDD 14.55%, ratio 0.70, 518 trades.
+  - Eval 2026 Jan-May: CAGR -9.83%, strict MDD 9.34%, ratio -1.05, 144 trades.
+- Focused refreshed availability-aware external scan (`external`, `external_plus_market`; h=144/288; q=0.10/0.20/0.30; lev=0.20/0.30; pause=0/4) did not find a valid target candidate:
+  - Best selection row: `external_plus_market h288 q0.20`, lev0.20/no pause: test CAGR 1.66%, MDD 7.50%, ratio 0.22; eval CAGR -0.14%, MDD 7.54%.
+  - Best eval-positive pocket: `external_plus_market h288 q0.10`, lev0.30/pause4: eval CAGR 29.06%, MDD 5.34%, ratio 5.44, but test ratio only 0.05, so it is not selectable.
+- Conclusion: adding 2026 wave_trading data was necessary and fixed the previous missing-data issue, but it does not resurrect the external linear-combo alpha. The next valid direction is stronger representation/modeling over refreshed external+market data, not reusing the old linear-combo rule.
