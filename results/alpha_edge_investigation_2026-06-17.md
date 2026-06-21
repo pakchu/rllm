@@ -1396,3 +1396,20 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - LONG-only: test CAGR 0.48%, MDD 14.40%; eval CAGR -11.67%.
   - SHORT-only: test CAGR -13.77%, MDD 33.38%; eval CAGR -7.88%.
 - Conclusion: this is a real improvement over the symbolic surface because historical test MDD can be pushed below 15 with hundreds of trades while 2026 remains positive. It still does not meet the target because test CAGR/MDD is only ~0.70. The next alpha work should keep this `external_plus_market h288 q0.20` signal as a base lead and add a regime filter specifically for its bad month clusters, rather than changing model families again.
+
+### 2026-06-21 — Simple guards do not rescue the historical SHORT144 branch
+- Added `training/apply_guard_to_predictions.py` so a sparse base prediction stream can be guarded by another prediction stream without changing the base model.
+  - `exact` matching is for sparse symbolic guard streams.
+  - `asof_pos` matching is for dense 5m feature-signal streams, using only the latest guard row at or before the base signal position.
+  - Failed guard checks can either block a trade or downscale it with `position_scale`; the strict online backtester already applies that scale at execution time.
+- Clean 2024-only sanity on the historical `SHORT 144h` base, leverage 0.76 + TP4:
+  - Base 2024: CAGR 68.87%, strict MDD 11.17%, ratio 6.17, 206 trades, p≈0.0076.
+  - Tail-risk guard scale0.5: CAGR 41.13%, strict MDD 8.11%, ratio 5.07, 201 trades, p≈0.0140.
+  - External `trade` guard scale0.5: CAGR 55.38%, strict MDD 11.70%, ratio 4.73, 205 trades, p≈0.0109.
+  - External side-or-score guard scale0.5: CAGR 63.23%, strict MDD 10.59%, ratio 5.97, 205 trades, p≈0.0100.
+- Same fixed guards on 2026 Jan-May:
+  - Base 2026 Jan-May: CAGR -40.79%, strict MDD 24.10%, ratio -1.69, 66 trades.
+  - Tail-risk guard scale0.5: CAGR -32.77%, strict MDD 19.35%, ratio -1.69, 66 trades.
+  - External `trade` guard scale0.5: CAGR -27.32%, strict MDD 17.67%, ratio -1.55, 66 trades.
+  - External side-or-score guard scale0.5: CAGR -44.06%, strict MDD 25.19%, ratio -1.75, 66 trades.
+- Conclusion: the 2024-winning SHORT144 branch is not rescued by simple tail-risk or external-feature guards. The guards can preserve most of the historical 2024 performance and reduce some 2026 damage, but they do not flip the 2026 regime back to profitability. This supports the earlier diagnosis: the old symbolic action surface had a regime-specific 2024/2025 edge that inverted or disappeared in early 2026. Next work should develop a new alpha/regime surface from the continuous external-plus-market lead rather than keep patching SHORT144.
