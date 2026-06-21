@@ -14,13 +14,13 @@ import json
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from training.online_risk_overlay_backtest import OnlineRiskOverlayConfig, run_overlay
-from training.symbolic_action_ridge import FeatureSpace, load_jsonl, row_tokens, target_value, write_jsonl, _candidate_rows_from_preds
+from training.symbolic_action_ridge import load_jsonl, row_tokens, target_value, write_jsonl, _candidate_rows_from_preds
 
 
 NO_TRADE = {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0, "family": "REGIME_POLICY", "confidence": "HIGH"}
@@ -29,6 +29,76 @@ NO_TRADE = {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0, "family": "REGIM
 def _date(row: dict[str, Any]) -> pd.Timestamp:
     return pd.Timestamp(str(row.get("date")))
 
+
+
+def plain_tokens_from_rich(rich_tokens: list[str]) -> set[str]:
+    toks: set[str] = set()
+    for tok in rich_tokens:
+        if tok.startswith("regime:"):
+            toks.add(tok.removeprefix("regime:"))
+        elif tok.startswith("book:"):
+            val = tok.removeprefix("book:")
+            toks.add("book_" + val.split(":", 1)[0])
+        elif tok.startswith("action:"):
+            toks.add(tok.removeprefix("action:"))
+        elif tok.startswith("raw_action:"):
+            toks.add(tok.removeprefix("raw_action:"))
+    return toks
+
+
+@dataclass(frozen=True)
+class RowCache:
+    row: dict[str, Any]
+    date: pd.Timestamp
+    rich_tokens: list[str]
+    plain_tokens: set[str]
+    target_value: float
+
+
+def build_cache(rows: list[dict[str, Any]], *, target: str) -> list[RowCache]:
+    out: list[RowCache] = []
+    for row in rows:
+        rich = row_tokens(row)
+        out.append(RowCache(row=row, date=_date(row), rich_tokens=rich, plain_tokens=plain_tokens_from_rich(rich), target_value=target_value(row, target=target)))
+    return out
+
+
+@dataclass
+class CachedFeatureSpace:
+    vocab: dict[str, int]
+    mean: np.ndarray
+    std: np.ndarray
+
+    @classmethod
+    def fit(cls, token_lists: list[list[str]], *, min_count: int) -> "CachedFeatureSpace":
+        counts: Counter[str] = Counter()
+        for toks in token_lists:
+            counts.update(toks)
+        vocab = {"bias": 0}
+        for tok, cnt in sorted(counts.items()):
+            if tok == "bias":
+                continue
+            if cnt >= int(min_count):
+                vocab[tok] = len(vocab)
+        dummy = cls(vocab=vocab, mean=np.zeros(len(vocab)), std=np.ones(len(vocab)))
+        x = dummy.matrix(token_lists, scale=False)
+        mean = x.mean(axis=0)
+        std = x.std(axis=0)
+        std[std < 1e-9] = 1.0
+        mean[0] = 0.0
+        std[0] = 1.0
+        return cls(vocab=vocab, mean=mean, std=std)
+
+    def matrix(self, token_lists: list[list[str]], *, scale: bool = True) -> np.ndarray:
+        x = np.zeros((len(token_lists), len(self.vocab)), dtype=np.float64)
+        for i, toks in enumerate(token_lists):
+            for tok in toks:
+                j = self.vocab.get(tok)
+                if j is not None:
+                    x[i, j] = 1.0
+        if scale:
+            x = (x - self.mean) / self.std
+        return x
 
 def prompt_plain_tokens(row: dict[str, Any]) -> set[str]:
     toks: set[str] = set()
@@ -174,8 +244,10 @@ def _choose_expert_best(candidates: list[dict[str, Any]], candidate_x: np.ndarra
 def rolling_predict(*, history_jsonl: str, eval_jsonl: str, predictions_output: str, summary_output: str, start_date: str, end_date: str, alpha: float = 10000.0, threshold: float = 0.003, min_gap: float = 0.0, expert_margin: float = 0.0, target: str = "net_return", min_feature_count: int = 5, min_train_rows: int = 2000) -> dict[str, Any]:
     history = load_jsonl(history_jsonl)
     ev = load_jsonl(eval_jsonl)
-    all_rows = sorted(history + ev, key=_date)
-    eval_rows = [r for r in ev if pd.Timestamp(start_date) <= _date(r) < pd.Timestamp(end_date)]
+    history_cache = build_cache(history, target=target)
+    eval_cache = build_cache(ev, target=target)
+    all_cache = sorted(history_cache + eval_cache, key=lambda c: c.date)
+    eval_rows = [c for c in eval_cache if pd.Timestamp(start_date) <= c.date < pd.Timestamp(end_date)]
     months = pd.date_range(pd.Timestamp(start_date).replace(day=1), pd.Timestamp(end_date), freq="MS")
     out: list[dict[str, Any]] = []
     month_summaries: list[dict[str, Any]] = []
@@ -183,33 +255,32 @@ def rolling_predict(*, history_jsonl: str, eval_jsonl: str, predictions_output: 
         mend = mstart + pd.offsets.MonthBegin(1)
         if mstart >= pd.Timestamp(end_date):
             continue
-        train = [r for r in all_rows if _date(r) < mstart]
-        test = [r for r in eval_rows if mstart <= _date(r) < min(mend, pd.Timestamp(end_date))]
+        train = [c for c in all_cache if c.date < mstart]
+        test = [c for c in eval_rows if mstart <= c.date < min(mend, pd.Timestamp(end_date))]
         if not test:
             continue
-        fs = FeatureSpace.fit(train, min_count=int(min_feature_count))
-        x_train = fs.matrix(train)
-        y_train = np.asarray([target_value(r, target=target) for r in train], dtype=np.float64)
-        train_tokens = [prompt_plain_tokens(r) for r in train]
+        fs = CachedFeatureSpace.fit([c.rich_tokens for c in train], min_count=int(min_feature_count))
+        x_train = fs.matrix([c.rich_tokens for c in train])
+        y_train = np.asarray([c.target_value for c in train], dtype=np.float64)
         fitted: list[FittedExpert] = []
         for spec in EXPERTS:
             if spec.name == "global":
                 idxs = list(range(len(train)))
             else:
-                idxs = [i for i, toks in enumerate(train_tokens) if _spec_matches_tokens(spec, toks)]
+                idxs = [i for i, c in enumerate(train) if _spec_matches_tokens(spec, c.plain_tokens)]
             ex = _fit_expert_from_matrix(x_train, y_train, idxs, spec, alpha=alpha, min_train_rows=min_train_rows)
             if ex is not None:
                 fitted.append(ex)
-        groups: dict[tuple[str, int], list[tuple[int, dict[str, Any]]]] = defaultdict(list)
-        for i, r in enumerate(test):
-            groups[(str(r.get("date")), int(r.get("signal_pos", -1) or -1))].append((i, r))
-        x_test = fs.matrix(test)
-        test_tokens = [prompt_plain_tokens(r) for r in test]
+        groups: dict[tuple[str, int], list[tuple[int, RowCache]]] = defaultdict(list)
+        for i, c in enumerate(test):
+            groups[(str(c.row.get("date")), int(c.row.get("signal_pos", -1) or -1))].append((i, c))
+        x_test = fs.matrix([c.rich_tokens for c in test])
         month_rows: list[dict[str, Any]] = []
         for key in sorted(groups):
             idxs = [i for i, _ in groups[key]]
-            candidates = [r for _, r in groups[key]]
-            chosen = _choose_expert_best(candidates, x_test[np.asarray(idxs, dtype=np.int64)], [test_tokens[i] for i in idxs], fitted, threshold=threshold, min_gap=min_gap, expert_margin=expert_margin)
+            cached_candidates = [c for _, c in groups[key]]
+            candidates = [c.row for c in cached_candidates]
+            chosen = _choose_expert_best(candidates, x_test[np.asarray(idxs, dtype=np.int64)], [c.plain_tokens for c in cached_candidates], fitted, threshold=threshold, min_gap=min_gap, expert_margin=expert_margin)
             month_rows.append({"date": key[0], "signal_pos": key[1], **chosen})
         out.extend(month_rows)
         month_summaries.append({
@@ -223,7 +294,7 @@ def rolling_predict(*, history_jsonl: str, eval_jsonl: str, predictions_output: 
             "chosen_experts": dict(Counter(str(r.get("expert")) for r in month_rows if r["prediction"].get("gate") == "TRADE")),
         })
     write_jsonl(predictions_output, out)
-    report = {"config": {"alpha": alpha, "threshold": threshold, "min_gap": min_gap, "expert_margin": expert_margin, "target": target, "min_feature_count": min_feature_count, "min_train_rows": min_train_rows, "expert_names": [e.name for e in EXPERTS]}, "history_jsonl": history_jsonl, "eval_jsonl": eval_jsonl, "predictions_output": predictions_output, "period": {"start": start_date, "end": end_date}, "rows": len(out), "months": month_summaries, "leakage_guard": {"each_month_fit_uses_rows_before_month_start_only": True, "current_month_labels_not_used_for_current_month": True, "expert_slices_use_past_only_prompt_tokens": True, "config_fixed_before_eval": True}}
+    report = {"config": {"alpha": alpha, "threshold": threshold, "min_gap": min_gap, "expert_margin": expert_margin, "target": target, "min_feature_count": min_feature_count, "min_train_rows": min_train_rows, "expert_names": [e.name for e in EXPERTS]}, "history_jsonl": history_jsonl, "eval_jsonl": eval_jsonl, "predictions_output": predictions_output, "period": {"start": start_date, "end": end_date}, "rows": len(out), "months": month_summaries, "leakage_guard": {"each_month_fit_uses_rows_before_month_start_only": True, "current_month_labels_not_used_for_current_month": True, "expert_slices_use_past_only_prompt_tokens": True, "row_tokens_precomputed_once_per_run": True, "config_fixed_before_eval": True}}
     Path(summary_output).parent.mkdir(parents=True, exist_ok=True)
     Path(summary_output).write_text(json.dumps(report, indent=2, ensure_ascii=False))
     return report

@@ -1312,3 +1312,17 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
 - Leak-free sanity check of that fixed setting on 2024H1, trained on 2020-2023 only:
   - 88 trades, return -6.70%, CAGR -13.07%, strict MDD 30.56%, ratio -0.43, p≈0.779.
 - Conclusion: the regime-expert architecture is directionally closer to the desired structure, but the current implementation does not produce a stable out-of-sample edge. The 2026 threshold win should be treated as eval overfit. Next work should focus on stronger validation-first model selection and computational throughput: cache token matrices / precomputed feature shards, then select thresholds on historical validation only before touching 2026.
+
+### 2026-06-21 — Validation-first threshold selection still fails stability
+- Optimized `regime_conditioned_symbolic_policy.py` to precompute row tokens once per run and added `training/sweep_regime_policy_thresholds.py` so threshold selection can replay an existing score stream without refitting the experts.
+  - 2024H1 fixed-config rerun kept identical metrics and added a leakage flag for single-run token precomputation.
+  - Runtime for 2024H1 remained about 4m13s with ~15GB max RSS, so dense monthly matrix/ridge fitting is still the dominant bottleneck.
+- Selected thresholds on 2024H1 only, using 2020-2023-trained score stream:
+  - Selected `threshold=0.008`, `min_gap=0.0`, `expert_margin=0.002`.
+  - 2024H1 validation: CAGR 32.97%, strict MDD 11.22%, ratio 2.94, 44 trades, p≈0.205.
+- Applied that fixed threshold to 2026 Jan-May using a 2024-2025-trained score stream:
+  - CAGR 1.16%, strict MDD 8.16%, ratio 0.14, only 14 trades, p≈0.920.
+  - It avoids most damage but is not a statistically useful profit engine.
+- Additional OOS stability check on 2024H2 with the same fixed setting, trained only on 2020-2023:
+  - CAGR -28.34%, strict MDD 27.55%, ratio -1.03, 41 trades, p≈0.230.
+- Conclusion: the validation-first threshold procedure prevented 2026 eval fitting, but the selected rule is not stable across adjacent 2024 halves. The regime-expert score stream has some pockets of apparent edge, yet the edge does not persist. Next structural move should not be another scalar threshold; it should either (1) change labels/objective to reward realized trade distribution and penalize drawdown-prone long 432h/reversal paths directly, or (2) use a much smaller precomputed feature table to run nested walk-forward model selection at scale.
