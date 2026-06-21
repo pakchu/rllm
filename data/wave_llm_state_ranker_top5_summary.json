@@ -1,0 +1,103 @@
+{
+  "config": {
+    "wave_root": "/home/pakchu/workspace/wave_trading",
+    "market_5m_csv": "data/2020-01-01_2026-06-01_btcusdt_futures_5m.csv.gz",
+    "fold_consistency_report": "results/wave_fold_consistency_2021_2024h1_to_2024h2_2026_report.json",
+    "train_output": "data/wave_llm_state_ranker_top5_train_2021_2024h1.jsonl",
+    "eval_output": "data/wave_llm_state_ranker_top5_eval_2024h2_2026.jsonl",
+    "summary_output": "data/wave_llm_state_ranker_top5_summary.json",
+    "top_k": 5,
+    "start_date": "2020-01-01",
+    "end_date": "2026-06-02",
+    "selection_folds": "2021-01-01|2021-06-30 23:59:59,2021-07-01|2021-12-31 23:59:59,2022-01-01|2022-06-30 23:59:59,2022-07-01|2022-12-31 23:59:59,2023-01-01|2023-06-30 23:59:59,2023-07-01|2023-12-31 23:59:59,2024-01-01|2024-06-30 23:59:59",
+    "eval_start": "2024-07-01",
+    "eval_end": "2026-06-01 00:00:00",
+    "lr_c": 0.05,
+    "lr_penalty": "l1",
+    "leverage": 1.0,
+    "entry_delay_bars": 3,
+    "atr_trailing_stop_mult": 3.75,
+    "atr_period": 45,
+    "external_tolerance": "30min"
+  },
+  "policies": [
+    {
+      "long_th": 0.66,
+      "short_th": 0.32,
+      "trend_window": 864,
+      "long_mode": "down",
+      "short_mode": "all"
+    },
+    {
+      "long_th": 0.69,
+      "short_th": 0.32,
+      "trend_window": 288,
+      "long_mode": "down",
+      "short_mode": "all"
+    },
+    {
+      "long_th": 0.69,
+      "short_th": 0.32,
+      "trend_window": 288,
+      "long_mode": "all",
+      "short_mode": "up"
+    },
+    {
+      "long_th": 0.66,
+      "short_th": 0.32,
+      "trend_window": 864,
+      "long_mode": "down",
+      "short_mode": "down"
+    },
+    {
+      "long_th": 0.66,
+      "short_th": 0.35,
+      "trend_window": 864,
+      "long_mode": "down",
+      "short_mode": "down"
+    }
+  ],
+  "outputs": {
+    "train": "data/wave_llm_state_ranker_top5_train_2021_2024h1.jsonl",
+    "eval": "data/wave_llm_state_ranker_top5_eval_2024h2_2026.jsonl"
+  },
+  "train": {
+    "rows": 2173,
+    "mean_reward_pct": 0.023880059608248103,
+    "positive_rate": 0.5213989875747814,
+    "decisions": {
+      "TAKE_FULL": 581,
+      "ABSTAIN": 1040,
+      "TAKE_SMALL": 552
+    },
+    "policy_ranks": {
+      "1": 481,
+      "2": 383,
+      "3": 441,
+      "4": 419,
+      "5": 449
+    }
+  },
+  "eval": {
+    "rows": 181,
+    "mean_reward_pct": 0.2778497040955874,
+    "positive_rate": 0.4530386740331492,
+    "decisions": {
+      "ABSTAIN": 99,
+      "TAKE_SMALL": 43,
+      "TAKE_FULL": 39
+    },
+    "policy_ranks": {
+      "1": 42,
+      "2": 31,
+      "3": 32,
+      "4": 33,
+      "5": 43
+    }
+  },
+  "leakage_guard": {
+    "policies_selected_before_eval": true,
+    "features_signal_time_or_prior": true,
+    "eval_rows_not_used_for_training": true
+  }
+}
