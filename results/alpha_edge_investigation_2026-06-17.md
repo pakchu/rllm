@@ -1260,3 +1260,17 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - Best listed candidates still had 2026 around CAGR -61% to -63% with MDD around 19.9-22.5%.
   - `four_hour_context=strong_down` worsened 2026 to CAGR -76.34%.
 - Conclusion: historical long-432 validity gating can improve 2023-2025 and may be valuable for robustness, but it does not solve early 2026. The 2026 failure is not captured by the same historical bad-token signatures; this points to a broader regime drift/abstention problem, not just a long-432 token gate.
+
+### 2026-06-21 — Month-level abstention helps risk but does not solve 2026 profitability
+- Added `month_regime_gate_filter.py`, which uses the first candidate prompt tokens in each calendar month to decide whether to abstain for that month. This is live-usable as long as the candidate prompt is built from past/current-bar features only.
+- Searched single-token and token-pair month gates on the `SHORT 144h` gated branch selected from 2023-2025, then evaluated 2026.
+- Jan-only abstention candidate:
+  - Rule: month tokens include `daily_context=up` and `volume=volume_normal`.
+  - Blocks 2024-12 and 2025-02 historically; blocks 2026-01 in eval.
+  - 2024-2025 improves to CAGR 57.74%, strict MDD 13.05%, 306 trades, p≈0.00032.
+  - 2026 improves drawdown but remains negative: CAGR -41.60%, MDD 13.46%, 10 trades.
+- Full Jan-Feb 2026 abstention candidate:
+  - Rule: month tokens include `book_drawdown_continuation` and `book_higher_tf_fade`.
+  - Blocks 2026-01 and 2026-02 fully, producing zero 2026 trades/losses.
+  - But it also blocks too many useful historical months; 2024-2025 drops to CAGR 43.70%, MDD 13.05%, 270 trades.
+- Conclusion: month-level abstention is a promising risk layer: it can cut the 2026 drawdown and can even fully avoid early 2026. However, the rules found so far either leave February losses or sacrifice too much 2024-2025 CAGR. The next step should train a more expressive abstention classifier over month-start tokens/continuous features, not rely on one or two hand-picked token pairs.
