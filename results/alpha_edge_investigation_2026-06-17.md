@@ -1157,3 +1157,17 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - 2023 with the same micro filter and TP4/leverage0.68: CAGR 11.49%, strict MDD 19.84%, 255 trades, p≈0.549.
   - 2023-2025 combined: CAGR 38.28%, strict MDD 19.84%, ratio 1.93, 621 trades, p≈0.0066.
 - Conclusion: TP exits are the first clear return-capture improvement and produce a strong recent 2-year candidate, but the original 3-year+ / strict MDD<=15 target is not solved. The hard failure is 2023 drawdown/low edge. Next work must either detect the 2023 regime as unsafe or build a separate 2023-robust action surface; claiming the 2024-2025 result as final would be leakage/selection bias.
+
+### 2026-06-21 — 2023 failure decomposition and simple action blocks are not enough
+- Decomposed the 2023 TP4/leverage0.68 run by month/family/side/token.
+- Main 2023 weak buckets:
+  - `side=SHORT`: 63 trades, -9.78 pct cumulative.
+  - `month=2023-08`: 21 trades, -8.21 pct.
+  - `kimchi_extreme_fade|SHORT`: 20 trades, -7.15 pct.
+  - `mean_reversion_stretch`: 10 trades, -6.99 pct.
+  - `higher_tf_momentum`: 29 trades, -4.43 pct.
+- Tested simple 2023-derived action blocks with TP4/leverage0.68 and then applied them fixed to 2024-2025:
+  - `block_short`: 2023 CAGR 22.26%, MDD 16.93%; 2025 CAGR 28.68%, MDD 12.39%; 2023-2025 CAGR 36.32%, MDD 16.93.
+  - `block_htf_mom`: 2023 CAGR 6.07%, MDD 17.49%; 2025 CAGR 32.85%, MDD 12.36%; 2024-2025 CAGR 45.10%, MDD 12.68.
+  - `block_2023_worst4` (`SHORT` or `mean_reversion_stretch` or `higher_tf_momentum`): 2023 CAGR 33.46%, MDD 15.98%; 2025 CAGR 33.57%, MDD 12.39%; 2023-2025 CAGR 29.15%, MDD 15.98.
+- Conclusion: 2023 can be partially defended with simple past-observable action blocks, but those blocks either miss the MDD<=15 target or destroy too much 2024-2025 upside. The next useful change is not a broad static action ban; it needs a regime classifier or different action construction that avoids 2023 drawdown while preserving 2024 trend capture.
