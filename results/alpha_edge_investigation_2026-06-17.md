@@ -1138,3 +1138,22 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - 2024-2025 combined: CAGR 34.65%, strict MDD 11.04%, ratio 3.14, 356 trades, p≈0.0077.
 - Engineering note: added an in-process market-bar cache for repeated strict backtests. The v3 sweep initially generated 53/420 configs slowly because it reloaded the same CSV every time; after caching, the same sweep completed much faster.
 - Conclusion: simply adding more categorical context is not enough. The bottleneck is not missing 3d/weekly/funding tokens in the text; it is return capture/action construction or model class. Next improvement should alter action quality/horizon/sizing or train a model that can exploit continuous magnitudes, not just add more discrete state tokens.
+
+### 2026-06-21 — Take-profit exits create a strong 2024-2025 candidate but fail 3-year strict validation
+- Added optional live-usable trade exits to the strict online backtest:
+  - `trade_take_profit_pct` and `trade_stop_loss_pct` are account-level per-trade exits.
+  - Intrabar OHLC ambiguity is handled conservatively: if stop and take-profit both touch in the same bar, stop is assumed first.
+  - Strict MDD still includes intrabar adverse excursion before any exit.
+- Selected exit parameters on 2024 only using the current best token-filter predictions.
+  - Best 2024-safe candidate: leverage 0.68, no stop, take-profit 4%.
+  - 2024: CAGR 87.70%, strict MDD 14.72%, 222 trades, p≈0.0084.
+- Fixed that 2024-selected exit and evaluated 2025:
+  - 2025: CAGR 26.46%, strict MDD 12.38%, ratio 2.14, 144 trades, p≈0.1673.
+  - This improves 2025 return over the no-exit token-filter baseline (17.85%) but still does not reach ratio>=3 on 2025 alone.
+- 2024-2025 combined with the fixed exit:
+  - CAGR 54.77%, strict MDD 14.72%, ratio 3.72, 366 trades, p≈0.0033.
+  - This passes the numeric target over the selection+eval combined period, but 2024 is the parameter-selection year, so it is not a pure out-of-sample claim.
+- Longer diagnostic including 2023:
+  - 2023 with the same micro filter and TP4/leverage0.68: CAGR 11.49%, strict MDD 19.84%, 255 trades, p≈0.549.
+  - 2023-2025 combined: CAGR 38.28%, strict MDD 19.84%, ratio 1.93, 621 trades, p≈0.0066.
+- Conclusion: TP exits are the first clear return-capture improvement and produce a strong recent 2-year candidate, but the original 3-year+ / strict MDD<=15 target is not solved. The hard failure is 2023 drawdown/low edge. Next work must either detect the 2023 regime as unsafe or build a separate 2023-robust action surface; claiming the 2024-2025 result as final would be leakage/selection bias.

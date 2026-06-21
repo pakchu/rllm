@@ -37,6 +37,8 @@ class OnlineRiskOverlayConfig:
     rolling_loss_stop_pct: float = 0.0
     rolling_drawdown_stop_pct: float = 0.0
     monthly_loss_stop_pct: float = 0.0
+    trade_stop_loss_pct: float = 0.0
+    trade_take_profit_pct: float = 0.0
 
 
 def _read_prediction_files(raw: str) -> list[dict[str, Any]]:
@@ -162,6 +164,9 @@ def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
         entries += 1
         eq *= max(0.0, 1.0 - cost)
         max_dd = max(max_dd, _drawdown_from_trough(peak, eq))
+        position_start_eq = eq
+        entry_price = float(opens[entry_pos])
+        exit_reason = "time"
         signal = 1 if side == "LONG" else -1
         for j in range(entry_pos, exit_pos):
             open_j = float(opens[j])
@@ -175,17 +180,48 @@ def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
                 close_ret = (open_j - float(opens[j + 1])) / open_j
             adverse_eq = eq * (1.0 + float(cfg.leverage) * adverse_ret)
             max_dd = max(max_dd, _drawdown_from_trough(peak, adverse_eq))
+            if entry_price > 0.0:
+                if signal > 0:
+                    from_entry_low = (float(lows[j]) - entry_price) / entry_price
+                    from_entry_high = (float(highs[j]) - entry_price) / entry_price
+                else:
+                    from_entry_low = (entry_price - float(highs[j])) / entry_price
+                    from_entry_high = (entry_price - float(lows[j])) / entry_price
+                stop_hit = (
+                    float(cfg.trade_stop_loss_pct) > 0.0
+                    and float(cfg.leverage) * from_entry_low * 100.0 <= -float(cfg.trade_stop_loss_pct)
+                )
+                take_hit = (
+                    float(cfg.trade_take_profit_pct) > 0.0
+                    and float(cfg.leverage) * from_entry_high * 100.0 >= float(cfg.trade_take_profit_pct)
+                )
+                # Conservative same-bar ordering: if both levels are touched, assume
+                # the adverse stop is hit first. This avoids optimistic intrabar
+                # path assumptions from OHLC-only bars.
+                if stop_hit:
+                    eq = position_start_eq * max(0.0, 1.0 - float(cfg.trade_stop_loss_pct) / 100.0)
+                    max_dd = max(max_dd, _drawdown_from_trough(peak, eq))
+                    exit_reason = "stop_loss"
+                    exit_pos = j + 1
+                    break
+                if take_hit:
+                    eq = position_start_eq * max(0.0, 1.0 + float(cfg.trade_take_profit_pct) / 100.0)
+                    peak = max(peak, eq)
+                    exit_reason = "take_profit"
+                    exit_pos = j + 1
+                    break
             eq *= max(0.0, 1.0 + float(cfg.leverage) * close_ret)
             peak = max(peak, eq)
             if eq <= 0.0:
                 forced_liquidations += 1
+                exit_reason = "liquidation"
                 break
         eq *= max(0.0, 1.0 - cost)
         max_dd = max(max_dd, _drawdown_from_trough(peak, eq))
         peak = max(peak, eq)
         trade_ret = eq / entry_eq - 1.0
         trade_returns.append(trade_ret)
-        executed.append({"date": row.get("date"), "signal_pos": signal_pos, "side": side, "hold_bars": hold_bars, "trade_ret_pct": trade_ret * 100.0, "equity": eq})
+        executed.append({"date": row.get("date"), "signal_pos": signal_pos, "side": side, "hold_bars": hold_bars, "exit_reason": exit_reason, "trade_ret_pct": trade_ret * 100.0, "equity": eq})
         consecutive_losses = consecutive_losses + 1 if trade_ret < 0.0 else 0
         if int(cfg.pause_after_losses) > 0 and consecutive_losses >= int(cfg.pause_after_losses):
             overlay_paused_until = exit_pos + max(1, int(cfg.pause_bars))
@@ -254,6 +290,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--rolling-loss-stop-pct", type=float, default=0.0)
     p.add_argument("--rolling-drawdown-stop-pct", type=float, default=0.0)
     p.add_argument("--monthly-loss-stop-pct", type=float, default=0.0)
+    p.add_argument("--trade-stop-loss-pct", type=float, default=0.0)
+    p.add_argument("--trade-take-profit-pct", type=float, default=0.0)
     return p.parse_args()
 
 
