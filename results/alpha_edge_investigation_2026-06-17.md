@@ -1235,3 +1235,16 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - Re-leveraged to 0.76: 2024-2025 CAGR 50.99%, MDD 13.53%, 337 trades; 2023-2025 CAGR 41.24%, MDD 13.53%, 573 trades.
   - 2026 still fails: around CAGR -63.50%, MDD 22.51% at leverage 0.76.
 - Conclusion: a useful short lesson emerged: do not suppress all shorts; suppress the weak 144h short horizon and keep longer 288/432h shorts. This gives a cleaner 2024-2025 and 2023-2025 profile than the previous scaling-only candidate, but 2026 requires a separate long-432/drawdown-reversal regime fix.
+
+### 2026-06-21 — 2026 long-horizon counterfactual gates do not rescue the system
+- Tested counterfactual gates for the 2026 failure buckets on both the scaling-only candidate and the improved `SHORT 144h` gate candidate.
+- Blocking `LONG 432h`:
+  - Reduces some drawdown but destroys the historical alpha source.
+  - On the scaling-only branch, 2024-2025 collapses to CAGR 12.50%, MDD 14.78%; 2026 still fails at CAGR -58.62%, MDD 18.65%.
+  - On the `SHORT 144h` branch, 2024-2025 collapses to CAGR 13.87%, MDD 14.17%; 2026 still fails at CAGR -53.84%, MDD 17.60%.
+- Blocking `drawdown_reversal`:
+  - Helps 2026 somewhat but remains negative and hurts the prior pass.
+  - Scaling-only branch: 2026 improves to CAGR -19.25%, MDD 18.02%, but 2024-2025 drops to CAGR 41.03%, MDD 16.36%.
+  - `SHORT 144h` branch: 2026 improves to CAGR -41.76%, MDD 16.99%, but 2024-2025 drops to CAGR 39.98%, MDD 15.39%.
+- Blocking `LONG 432h` plus `drawdown_reversal` is worse: it removes too much edge and still fails 2026.
+- Conclusion: 2026 cannot be fixed by a simple family/horizon gate. The live-worthy next architecture needs a short-capable model plus a regime detector that decides when long 432h trend capture is valid, instead of globally blocking the very exposure that created the 2024-2025 edge.
