@@ -162,7 +162,10 @@ def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
 
         entry_eq = eq
         entries += 1
-        eq *= max(0.0, 1.0 - cost)
+        position_scale = min(1.0, max(0.0, float(row.get("position_scale", 1.0) or 1.0)))
+        trade_leverage = float(cfg.leverage) * position_scale
+        trade_cost = (float(cfg.fee_rate) + float(cfg.slippage_rate)) * trade_leverage
+        eq *= max(0.0, 1.0 - trade_cost)
         max_dd = max(max_dd, _drawdown_from_trough(peak, eq))
         position_start_eq = eq
         entry_price = float(opens[entry_pos])
@@ -189,11 +192,11 @@ def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
                     from_entry_high = (entry_price - float(lows[j])) / entry_price
                 stop_hit = (
                     float(cfg.trade_stop_loss_pct) > 0.0
-                    and float(cfg.leverage) * from_entry_low * 100.0 <= -float(cfg.trade_stop_loss_pct)
+                    and trade_leverage * from_entry_low * 100.0 <= -float(cfg.trade_stop_loss_pct)
                 )
                 take_hit = (
                     float(cfg.trade_take_profit_pct) > 0.0
-                    and float(cfg.leverage) * from_entry_high * 100.0 >= float(cfg.trade_take_profit_pct)
+                    and trade_leverage * from_entry_high * 100.0 >= float(cfg.trade_take_profit_pct)
                 )
                 # Conservative same-bar ordering: if both levels are touched, assume
                 # the adverse stop is hit first. This avoids optimistic intrabar
@@ -210,18 +213,18 @@ def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
                     exit_reason = "take_profit"
                     exit_pos = j + 1
                     break
-            eq *= max(0.0, 1.0 + float(cfg.leverage) * close_ret)
+            eq *= max(0.0, 1.0 + trade_leverage * close_ret)
             peak = max(peak, eq)
             if eq <= 0.0:
                 forced_liquidations += 1
                 exit_reason = "liquidation"
                 break
-        eq *= max(0.0, 1.0 - cost)
+        eq *= max(0.0, 1.0 - trade_cost)
         max_dd = max(max_dd, _drawdown_from_trough(peak, eq))
         peak = max(peak, eq)
         trade_ret = eq / entry_eq - 1.0
         trade_returns.append(trade_ret)
-        executed.append({"date": row.get("date"), "signal_pos": signal_pos, "side": side, "hold_bars": hold_bars, "exit_reason": exit_reason, "trade_ret_pct": trade_ret * 100.0, "equity": eq})
+        executed.append({"date": row.get("date"), "signal_pos": signal_pos, "side": side, "hold_bars": hold_bars, "position_scale": position_scale, "exit_reason": exit_reason, "trade_ret_pct": trade_ret * 100.0, "equity": eq})
         consecutive_losses = consecutive_losses + 1 if trade_ret < 0.0 else 0
         if int(cfg.pause_after_losses) > 0 and consecutive_losses >= int(cfg.pause_after_losses):
             overlay_paused_until = exit_pos + max(1, int(cfg.pause_bars))
