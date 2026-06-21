@@ -1511,3 +1511,17 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - Eval 2026 Jan-May: CAGR 17.13%, MDD 2.09%, Calmar 8.21, only 6 trades.
   - Default-like `C=0.1`, `l2`: test CAGR 11.27%, MDD 6.20%, Calmar 1.82, 80 trades; eval CAGR 16.82%, MDD 2.73%, Calmar 6.17, 11 trades.
 - Conclusion: the real wave_trading structure generalizes much better than the rllm linear-combo/action-book experiments and remains positive in 2026, but it is too sparse and low-CAGR for the target. It should be treated as a high-precision teacher / gating prior for the LLM+RL stack, not as a complete trading bot by itself.
+
+### 2026-06-22 — Wave teacher export shows exit-logic dependence and sparse gate limits
+- Added `training/export_wave_trading_teacher_predictions.py` to export the actual wave_trading rolling LogisticRegression teacher as a dense 15m decision stream mapped to rllm 5m `signal_pos`.
+  - Teacher config: documented 15-feature wave_trading best, `C=0.05`, `penalty=l1`, 9-month train / 2-month test, purge=8 bars.
+  - 2024H2-2025 teacher stream: 52,704 rows, 125 teacher trade rows, 77 LONG / 48 SHORT.
+  - 2026 Jan-May teacher stream: 14,461 rows, 6 teacher trade rows, 2 LONG / 4 SHORT.
+- Direct rllm strict fixed-hold approximation of the teacher is not valid:
+  - 2024H2-2025, leverage 1, hold=1h: CAGR -28.01%, strict MDD 39.58%, 66 executed trades.
+  - 2026 Jan-May: CAGR 3.42%, strict MDD 4.34%, only 5 trades.
+  - This contradicts the positive native wave_trading validation, confirming that the edge depends heavily on ATR trailing exits, not just entry direction.
+- Used the teacher as a same-side gate for refreshed `external_plus_market h288 q0.20`:
+  - Test 2024H2-2025: CAGR 0.34%, MDD 5.66%, ratio 0.06, 18 trades.
+  - Eval 2026 Jan-May: CAGR 13.71%, MDD 1.47%, ratio 9.32, only 4 trades.
+- Conclusion: the teacher is useful as a high-precision signal source but far too sparse, and fixed-hold translation destroys historical performance. Next work should either port ATR trailing execution into rllm's evaluator/live executor, or lower teacher thresholds under 2024H2-2025 selection to increase trade count before touching 2026.
