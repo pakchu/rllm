@@ -1200,3 +1200,21 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - SL 3.5 lowered 2023 MDD to 14.75 but destroyed 2024-2025 performance (CAGR 27.67%, MDD 23.01%).
   - SL 1.5/2.0 also reduced some 2023 risk but cut 2024-2025 CAGR to 15-19% and/or worsened combined drawdown.
 - Conclusion: the remaining failure is not solved by generic online risk overlays. The best candidate remains no hard stop, TP4, conditional sizing. The next improvement must target regime/action selection before entry rather than exit-level damage control.
+
+### 2026-06-21 — 2026 Jan-Feb validation fails the current candidate
+- Built a 2026 v3/k8 verifier dataset from local OHLCV through 2026-02-27 and attached DXY/Kimchi/USDKRW from `/home/pakchu/workspace/wave_trading` with backward-asof 30min tolerance.
+  - 2026 rows: 7,168, ALLOW 437, allow rate 6.10%.
+  - Effective backtest prediction period: 2026-01-01 02:55 to 2026-02-25 20:55.
+- Ran prior-only monthly rolling with history through 2025:
+  - January 2026 fit used 276,544 prior rows.
+  - February 2026 fit used 280,512 prior rows, including prior January labels only.
+  - Leakage guard: each month uses rows before month start only.
+- Baseline rolling symbolic ridge 2026:
+  - Return -6.48%, annualized CAGR -35.92%, strict MDD 16.10%, 34 trades, p≈0.501.
+- Current final candidate fixed from the 2023-selected / 2024-2025-passing setup (`micro token filter`, `short_or_higher_tf_momentum` scale 0.4, leverage 0.81, TP4):
+  - Return -11.23%, annualized CAGR -54.65%, strict MDD 23.82%, 34 trades, p≈0.426.
+  - This is a clear failure, though the sample is short and underpowered.
+- 2026 failure decomposition differs from the 2023 failure:
+  - Worst: `hold=432` (16 trades, -11.61 pct cumulative), `side=LONG` (22 trades, -8.90 pct), `month=2026-01` (-8.78 pct), `drawdown_reversal` (-4.26 pct), `higher_tf_fade` (-3.03 pct).
+  - Best: `higher_tf_momentum|hold=144` (6 trades, +1.61 pct), `higher_tf_momentum|side=LONG` (7 trades, +1.33 pct).
+- Conclusion: the 2024-2025 OOS pass does not generalize into early 2026. The current sizing rule penalizes HTF momentum, but in 2026 HTF momentum was one of the only positive buckets while long 432h/drawdown-reversal exposure caused the damage. Next work should add regime-aware horizon/family control, especially reducing 432h long/drawdown-reversal exposure under early-2026-like regimes, rather than reusing the 2023-specific short/HTF momentum scaling rule blindly.
