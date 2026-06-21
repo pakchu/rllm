@@ -16,6 +16,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from training.eval_text_trader import parse_trader_json
 from training.strict_bar_backtest import _drawdown_from_trough, _trade_stats, load_market_bars
 
@@ -39,6 +41,8 @@ class OnlineRiskOverlayConfig:
     monthly_loss_stop_pct: float = 0.0
     trade_stop_loss_pct: float = 0.0
     trade_take_profit_pct: float = 0.0
+    atr_trailing_stop_mult: float = 0.0
+    atr_period: int = 45
 
 
 def _read_prediction_files(raw: str) -> list[dict[str, Any]]:
@@ -91,12 +95,31 @@ def _rolling_dd(trade_returns: list[float], n: int) -> float:
     return dd
 
 
+def _rolling_atr(highs: np.ndarray, lows: np.ndarray, opens: np.ndarray, period: int) -> np.ndarray:
+    period = max(1, int(period))
+    prev_close = np.roll(opens, 1)
+    prev_close[0] = opens[0]
+    true_range = np.maximum.reduce([
+        highs - lows,
+        np.abs(highs - prev_close),
+        np.abs(lows - prev_close),
+    ])
+    atr = np.empty_like(true_range, dtype=float)
+    csum = np.cumsum(true_range, dtype=float)
+    for i in range(len(true_range)):
+        start = max(0, i - period + 1)
+        total = csum[i] - (csum[start - 1] if start > 0 else 0.0)
+        atr[i] = total / float(i - start + 1)
+    return atr
+
+
 def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
     rows = _read_prediction_files(cfg.predictions_jsonl)
     market = _load_market_bars_cached(cfg.market_csv)
     opens = market["open"].to_numpy(dtype=float)
     highs = market["high"].to_numpy(dtype=float)
     lows = market["low"].to_numpy(dtype=float)
+    atr = _rolling_atr(highs, lows, opens, int(cfg.atr_period)) if float(cfg.atr_trailing_stop_mult) > 0.0 else None
     eq = peak = 1.0
     max_dd = 0.0
     entries = 0
@@ -171,6 +194,12 @@ def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
         entry_price = float(opens[entry_pos])
         exit_reason = "time"
         signal = 1 if side == "LONG" else -1
+        atr_stop_price = None
+        if atr is not None and entry_price > 0.0:
+            atr_ref_pos = max(0, entry_pos - 1)
+            atr_distance = float(atr[atr_ref_pos]) * float(cfg.atr_trailing_stop_mult)
+            if atr_distance > 0.0:
+                atr_stop_price = entry_price - atr_distance if signal > 0 else entry_price + atr_distance
         for j in range(entry_pos, exit_pos):
             open_j = float(opens[j])
             if open_j <= 0.0:
@@ -181,7 +210,7 @@ def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
             else:
                 adverse_ret = (open_j - float(highs[j])) / open_j
                 close_ret = (open_j - float(opens[j + 1])) / open_j
-            adverse_eq = eq * (1.0 + float(cfg.leverage) * adverse_ret)
+            adverse_eq = eq * (1.0 + trade_leverage * adverse_ret)
             max_dd = max(max_dd, _drawdown_from_trough(peak, adverse_eq))
             if entry_price > 0.0:
                 if signal > 0:
@@ -201,10 +230,26 @@ def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
                 # Conservative same-bar ordering: if both levels are touched, assume
                 # the adverse stop is hit first. This avoids optimistic intrabar
                 # path assumptions from OHLC-only bars.
+                atr_stop_hit = False
+                atr_stop_ret = 0.0
+                if atr_stop_price is not None:
+                    if signal > 0 and float(lows[j]) <= float(atr_stop_price):
+                        atr_stop_hit = True
+                        atr_stop_ret = (float(atr_stop_price) - entry_price) / entry_price
+                    elif signal < 0 and float(highs[j]) >= float(atr_stop_price):
+                        atr_stop_hit = True
+                        atr_stop_ret = (entry_price - float(atr_stop_price)) / entry_price
                 if stop_hit:
                     eq = position_start_eq * max(0.0, 1.0 - float(cfg.trade_stop_loss_pct) / 100.0)
                     max_dd = max(max_dd, _drawdown_from_trough(peak, eq))
                     exit_reason = "stop_loss"
+                    exit_pos = j + 1
+                    break
+                if atr_stop_hit:
+                    eq = position_start_eq * max(0.0, 1.0 + trade_leverage * atr_stop_ret)
+                    max_dd = max(max_dd, _drawdown_from_trough(peak, eq))
+                    peak = max(peak, eq)
+                    exit_reason = "atr_trailing_stop"
                     exit_pos = j + 1
                     break
                 if take_hit:
@@ -213,6 +258,11 @@ def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
                     exit_reason = "take_profit"
                     exit_pos = j + 1
                     break
+            if atr_stop_price is not None:
+                if signal > 0:
+                    atr_stop_price = max(float(atr_stop_price), float(highs[j]) - atr_distance)
+                else:
+                    atr_stop_price = min(float(atr_stop_price), float(lows[j]) + atr_distance)
             eq *= max(0.0, 1.0 + trade_leverage * close_ret)
             peak = max(peak, eq)
             if eq <= 0.0:
@@ -224,7 +274,7 @@ def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
         peak = max(peak, eq)
         trade_ret = eq / entry_eq - 1.0
         trade_returns.append(trade_ret)
-        executed.append({"date": row.get("date"), "signal_pos": signal_pos, "side": side, "hold_bars": hold_bars, "position_scale": position_scale, "exit_reason": exit_reason, "trade_ret_pct": trade_ret * 100.0, "equity": eq})
+        executed.append({"date": row.get("date"), "signal_pos": signal_pos, "side": side, "hold_bars": hold_bars, "position_scale": position_scale, "exit_reason": exit_reason, "exit_pos": exit_pos, "trade_ret_pct": trade_ret * 100.0, "equity": eq})
         consecutive_losses = consecutive_losses + 1 if trade_ret < 0.0 else 0
         if int(cfg.pause_after_losses) > 0 and consecutive_losses >= int(cfg.pause_after_losses):
             overlay_paused_until = exit_pos + max(1, int(cfg.pause_bars))
@@ -269,6 +319,7 @@ def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
             "does_not_use_future_prices_for_gate_decision": True,
             "entry_after_signal_by_bars": int(cfg.entry_delay_bars),
             "strict_mdd_includes_intrabar_adverse_excursion": True,
+            "atr_trailing_stop_uses_entry_or_prior_atr": True,
         },
     }
     Path(cfg.output).parent.mkdir(parents=True, exist_ok=True)
@@ -295,6 +346,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--monthly-loss-stop-pct", type=float, default=0.0)
     p.add_argument("--trade-stop-loss-pct", type=float, default=0.0)
     p.add_argument("--trade-take-profit-pct", type=float, default=0.0)
+    p.add_argument("--atr-trailing-stop-mult", type=float, default=0.0)
+    p.add_argument("--atr-period", type=int, default=45)
     return p.parse_args()
 
 
