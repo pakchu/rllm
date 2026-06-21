@@ -1218,3 +1218,20 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - Worst: `hold=432` (16 trades, -11.61 pct cumulative), `side=LONG` (22 trades, -8.90 pct), `month=2026-01` (-8.78 pct), `drawdown_reversal` (-4.26 pct), `higher_tf_fade` (-3.03 pct).
   - Best: `higher_tf_momentum|hold=144` (6 trades, +1.61 pct), `higher_tf_momentum|side=LONG` (7 trades, +1.33 pct).
 - Conclusion: the 2024-2025 OOS pass does not generalize into early 2026. The current sizing rule penalizes HTF momentum, but in 2026 HTF momentum was one of the only positive buckets while long 432h/drawdown-reversal exposure caused the damage. Next work should add regime-aware horizon/family control, especially reducing 432h long/drawdown-reversal exposure under early-2026-like regimes, rather than reusing the 2023-specific short/HTF momentum scaling rule blindly.
+
+### 2026-06-21 — Side-specialist ridge is not enough; short horizon gating improves the prior candidate
+- Implemented `side_specialist_symbolic_ridge.py`, which fits separate LONG and SHORT symbolic ridge models and then compares side-specific candidate scores at decision time.
+- 2026 prior-only rolling with side-specialist ridge failed:
+  - Baseline side-specialist 2026: CAGR -53.46%, strict MDD 19.31%, 36 trades, p≈0.140.
+  - Applying the existing micro token filter + `short_or_higher_tf_momentum` 0.4 sizing + TP4/leverage0.81 worsened to CAGR -74.90%, MDD 29.55%.
+  - Conclusion: simply separating LONG/SHORT regressors increases trade aggressiveness but does not make shorts robust.
+- Decomposed the current final candidate by side/horizon:
+  - 2023 shorts were slightly negative overall; SHORT 72h and 144h were the main bad short horizons, while SHORT 288/432 were roughly flat to positive.
+  - 2024-2025 shorts were positive overall but SHORT 144h was weak; SHORT 288/432 were better.
+  - 2026 still failed mostly from LONG 432h and drawdown-reversal, so short improvement alone cannot fix 2026.
+- Added `action_gate_filter.py` for auditable NO_TRADE gates and tested short horizon gates selected from 2023.
+- Best short-specific gate: block `SHORT` with `hold_bars=144`.
+  - At leverage 0.81 with TP4: 2024-2025 CAGR 54.35%, MDD 14.37%, 339 trades; 2023-2025 CAGR 43.15%, MDD 15.31%.
+  - Re-leveraged to 0.76: 2024-2025 CAGR 50.99%, MDD 13.53%, 337 trades; 2023-2025 CAGR 41.24%, MDD 13.53%, 573 trades.
+  - 2026 still fails: around CAGR -63.50%, MDD 22.51% at leverage 0.76.
+- Conclusion: a useful short lesson emerged: do not suppress all shorts; suppress the weak 144h short horizon and keep longer 288/432h shorts. This gives a cleaner 2024-2025 and 2023-2025 profile than the previous scaling-only candidate, but 2026 requires a separate long-432/drawdown-reversal regime fix.
