@@ -1041,3 +1041,24 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - 2025 rolling + ml6: CAGR 0.13%, strict MDD 15.34%.
   - 2024 fixed + 2025 rolling + ml6: CAGR 25.21%, strict MDD 15.60%.
 - Conclusion: expanded symbolic/action pool creates a real 2024 edge, but 2025 needs new features/data or regime-specific adaptation; risk overlay is not the bottleneck.
+
+### 2026-06-21 — 2025 weakness decomposed by family; overlays insufficient
+- Added action prediction diagnostics to attribute realized strict-backtest trades by month, family, side, and horizon.
+- 2024 fixed model diagnostics:
+  - Strong contributors: `mean_reversion_stretch`, `macro_pressure`, `htf_pullback_resume`, `higher_tf_momentum`, mostly long/432h.
+  - Weak contributors: `orderflow_follow`, `macro_kimchi_divergence`, `drawdown_continuation/reversal`.
+- 2025 rolling diagnostics:
+  - Largest weakness came from `micro_exhaustion_reversal` (16 trades, -6.10 pct cumulative), then orderflow and macro-kimchi buckets.
+  - `micro_exhaustion_reversal` was not a 2024 loser, so a 2024-only static family block would not catch the main 2025 decay.
+- Tested static family filters selected using 2024 only:
+  - Best 2024 block set was `macro_kimchi_divergence,orderflow_follow`: 2024 CAGR 53.26%, MDD 10.76%, 198 trades.
+  - Applied to 2025 rolling: CAGR 8.48%, MDD 15.33%, 135 trades.
+  - Combined 2024-2025: CAGR 28.83%, MDD 17.91%, ratio 1.61, 332 trades.
+  - This improves 2025 return but worsens combined drawdown; not target-sufficient.
+- Added per-family online risk-off overlay (pause only the family after completed prior losses).
+  - Best 2024-selected config: 3 family losses, 864-bar pause, 5% family monthly stop.
+  - 2025 rolling fixed application: CAGR 3.74%, MDD 13.61%, 146 trades.
+  - Combined 2024-2025: CAGR 26.99%, MDD 15.31%, ratio 1.76, 357 trades.
+  - Overlay is not the primary fix.
+- 2025-only diagnostic upper bound (not selection-safe): blocking `micro_exhaustion_reversal` alone would give CAGR 17.85%, MDD 9.22%, 143 trades; blocking micro/orderflow/macro-kimchi gives CAGR 20.57%, MDD 9.23%, 119 trades. Still below target and partly under trade-count ambition.
+- Conclusion: family-level suppression helps diagnose the failure but cannot meet the target. The next useful work is token/regime-conditioned detection of when `micro_exhaustion_reversal` flips from profitable 2024 behavior to harmful 2025 behavior, plus new 2025-specific regime features.
