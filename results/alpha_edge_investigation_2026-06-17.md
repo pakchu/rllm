@@ -1248,3 +1248,15 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - `SHORT 144h` branch: 2026 improves to CAGR -41.76%, MDD 16.99%, but 2024-2025 drops to CAGR 39.98%, MDD 15.39%.
 - Blocking `LONG 432h` plus `drawdown_reversal` is worse: it removes too much edge and still fails 2026.
 - Conclusion: 2026 cannot be fixed by a simple family/horizon gate. The live-worthy next architecture needs a short-capable model plus a regime detector that decides when long 432h trend capture is valid, instead of globally blocking the very exposure that created the 2024-2025 edge.
+
+### 2026-06-21 — Long-432 validity tokens improve history but do not rescue 2026
+- Searched for tokens that identify bad `LONG` 432h trades on the `SHORT 144h` gated branch, selecting from 2023-2025 only and then testing 2026.
+- Bad historical long-432 tokens included:
+  - `four_hour_context=strong_down`, `volume=volume_high`, `higher_tf_drawdown=daily_dd_medium`, `recent_drawdown=large_drawdown`, `daily_context=down`, `kimchi_context=kimchi_soft_premium`.
+- Useful historical gates:
+  - Blocking long-432 when `short_trend=strong_down` improved 2023-2025 to CAGR 48.72%, MDD 12.93%, ratio 3.77 and 2024-2025 to CAGR 63.32%, MDD 11.17%.
+  - Similar improvements came from `medium_trend=strong_down` and `recent_drawdown=large_drawdown` gates.
+- 2026 remained negative under all single-token gates:
+  - Best listed candidates still had 2026 around CAGR -61% to -63% with MDD around 19.9-22.5%.
+  - `four_hour_context=strong_down` worsened 2026 to CAGR -76.34%.
+- Conclusion: historical long-432 validity gating can improve 2023-2025 and may be valuable for robustness, but it does not solve early 2026. The 2026 failure is not captured by the same historical bad-token signatures; this points to a broader regime drift/abstention problem, not just a long-432 token gate.
