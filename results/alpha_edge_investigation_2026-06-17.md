@@ -1455,3 +1455,19 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - 2025: CAGR -11.02%, strict MDD 19.50%, ratio -0.57, 230 trades.
   - 2026 Jan-May: 0 trades because USDKRW data is unavailable.
 - Corrected conclusion: the USDKRW filter is rejected. The earlier positive 2026 result is not a valid live-trading proof. Any future external/macro feature must require explicit source availability coverage for the evaluated period, or the model must degrade to a separately validated market-only path when external feeds are absent.
+
+### 2026-06-21 — Market-only focused scan fails to replace the invalidated external filter
+- After rejecting the USDKRW momentum filter, ran a focused external-free scan using only BTC market features: `trend`, `range_reversion`, and `candle_flow`.
+  - Train: 2023-01-01 to 2024-06-30.
+  - Test/selection: 2024-07-01 to 2025-12-31.
+  - Eval: 2026-01-01 to 2026-06-01.
+  - Horizons: 72/144/288; quantiles: 0.10/0.20/0.30; leverage: 0.20/0.30/0.40; pause-after-losses: 0/4; TP: 0/4.
+- Best market-only completed candidate:
+  - `candle_flow`, horizon 288, q=0.30, leverage 0.20, no pause, no TP.
+  - Test: CAGR 6.56%, strict MDD 10.87%, ratio 0.60, 546 trades.
+  - Eval 2026 Jan-May: CAGR -7.97%, strict MDD 6.72%, ratio -1.19, 149 trades.
+- Best 2026-positive market-only candidate among top rows:
+  - `range_reversion`, horizon 288, q=0.20, leverage 0.20, pause-after-4.
+  - Test: CAGR 3.06%, strict MDD 12.07%, ratio 0.25, 508 trades.
+  - Eval: CAGR 7.20%, strict MDD 6.49%, ratio 1.11, 138 trades.
+- Conclusion: without valid external data, the current simple market-only linear-combo surface is not enough. The next valid route is either (1) refresh external/macro data through 2026 and re-run availability-guarded external scans, or (2) build a stronger market-only model/LLM feature representation rather than relying on current linear combos.
