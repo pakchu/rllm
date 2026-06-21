@@ -1525,3 +1525,14 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - Test 2024H2-2025: CAGR 0.34%, MDD 5.66%, ratio 0.06, 18 trades.
   - Eval 2026 Jan-May: CAGR 13.71%, MDD 1.47%, ratio 9.32, only 4 trades.
 - Conclusion: the teacher is useful as a high-precision signal source but far too sparse, and fixed-hold translation destroys historical performance. Next work should either port ATR trailing execution into rllm's evaluator/live executor, or lower teacher thresholds under 2024H2-2025 selection to increase trade count before touching 2026.
+
+### 2026-06-22 — Lowering wave teacher thresholds destroys the edge
+- Added `training/sweep_wave_teacher_thresholds.py` to hold 2026 out while sweeping only the wave_trading teacher entry probability thresholds.
+  - Fixed: documented 15 features, ATR trailing labels/exits, 9m/2m rolling, `C=0.05`, `penalty=l1`.
+  - Selection window: 2024H2-2025.
+  - Eval window: 2026 Jan-May, reported only after test-like pass or positive test.
+- Threshold grid: LONG 0.54/0.57/0.60/0.63/0.66, SHORT 0.35/0.38/0.41/0.44/0.47.
+- Result: every lower-threshold, higher-trade-count candidate fails the historical test window.
+  - Example highest trade-count candidate `long=0.54, short=0.47`: 4,205 trades, test CAGR -68.53%, MDD 82.29%; eval CAGR -27.88%.
+  - Even moderate variants are negative; e.g. `long=0.66, short=0.44`: 517 trades, test CAGR -10.11%, MDD 25.04%.
+- Conclusion: wave_trading's edge is a sparse high-precision threshold phenomenon. Trade count cannot be increased by simply relaxing probabilities; the next useful path is either a second-stage model around teacher-near states or a separate alpha that uses teacher as a risk gate, not threshold loosening.
