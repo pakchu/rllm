@@ -1379,3 +1379,20 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - 2025 test at leverage 0.20: CAGR -7.34%, MDD 15.57%, 357 trades.
   - 2026 eval at leverage 0.20: CAGR 2.69%, MDD 5.78%, 144 trades.
 - Conclusion: continuous feature surfaces are more promising than the symbolic action-book surface because they can generate 2026-positive, high-trade-count behavior. However, the current linear combo candidate is historically unstable and fails selection/test. Next work should search for a feature source that survives 2025 test first, likely with more explicit external-flow/event triggers or a train/test selection objective that penalizes MDD before ever checking 2026.
+
+### 2026-06-21 — Overlay-in-loop search improves drawdown but still lacks test ratio
+- Added `training/scan_linear_combo_overlay.py` to rank continuous feature candidates after strict execution overlay rather than by raw feature-rule CAGR. This lets selection prioritize historical test MDD/trade-count before 2026 eval.
+- Ran a focused partial scan over `external_plus_market`, `external`, and `kimchi_plus_trend`, horizons 144/288, quantiles 0.10-0.30, leverage 0.10-0.30, pause-after-losses 0/4, monthly stops 0/6, TP 0/4.
+  - The broad run was stopped after 678 completed test backtests because runtime was high; completed artifacts were parsed directly.
+- Best completed test-MDD candidate:
+  - `external_plus_market`, horizon 288, q=0.20, leverage 0.30, pause-after-4-losses, no monthly stop, no TP.
+  - Test 2024H2-2025: CAGR 10.18%, strict MDD 14.55%, ratio 0.70, 518 trades.
+  - Eval 2026 Jan-May: CAGR 25.12%, strict MDD 8.02%, ratio 3.13, 140 trades.
+- Safer lower-leverage variant:
+  - leverage 0.20, pause-after-4-losses.
+  - Test: CAGR 6.92%, strict MDD 9.93%, ratio 0.70, 518 trades.
+  - Eval: CAGR 16.36%, strict MDD 5.41%, ratio 3.02, 140 trades.
+- Rejected simple side-only decomposition:
+  - LONG-only: test CAGR 0.48%, MDD 14.40%; eval CAGR -11.67%.
+  - SHORT-only: test CAGR -13.77%, MDD 33.38%; eval CAGR -7.88%.
+- Conclusion: this is a real improvement over the symbolic surface because historical test MDD can be pushed below 15 with hundreds of trades while 2026 remains positive. It still does not meet the target because test CAGR/MDD is only ~0.70. The next alpha work should keep this `external_plus_market h288 q0.20` signal as a base lead and add a regime filter specifically for its bad month clusters, rather than changing model families again.
