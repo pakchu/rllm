@@ -226,6 +226,10 @@ def evaluate_text_json_key(
         "batch_size": batch_size if prediction_mode == "candidate_logprob" else None,
         "score_normalization": score_normalization if prediction_mode == "candidate_logprob" else None,
         "metrics": _metrics(rows, preds, key=key),
+        "predictions": [
+            {"index": i, "prediction": pred, "target": parse_key_json(str(row["target"]), key=key)}
+            for i, (row, pred) in enumerate(zip(rows, preds))
+        ],
     }
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_text(json.dumps(report, indent=2, ensure_ascii=False))
