@@ -205,6 +205,18 @@ def attach_external_features(
     momentum_period: int = 96,
 ) -> pd.DataFrame:
     joined = backward_asof_external_join(market, external, tolerance=tolerance)
+    # Preserve source availability before derived features fill missing values with
+    # neutral zeros.  Without these flags, missing future macro/premium caches are
+    # indistinguishable from true zero momentum/z-score regimes.
+    if "dxy" in joined.columns:
+        joined["dxy_available"] = joined["dxy"].notna().astype(float)
+    if "kimchi_premium" in joined.columns:
+        joined["kimchi_available"] = joined["kimchi_premium"].notna().astype(float)
+    if "usdkrw" in joined.columns:
+        joined["usdkrw_available"] = joined["usdkrw"].notna().astype(float)
+    available_cols = [c for c in ("dxy_available", "kimchi_available", "usdkrw_available") if c in joined.columns]
+    if available_cols:
+        joined["external_any_available"] = joined[available_cols].max(axis=1)
     return add_external_derived_features(joined, zscore_window=zscore_window, momentum_period=momentum_period)
 
 

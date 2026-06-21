@@ -1443,3 +1443,15 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - `dxy_zscore <= 1.06`, SHORT scope: selector ratio 9.49, validation ratio 1.72, eval unchanged.
   - `usdkrw_zscore >= 0.50`, SHORT scope: validation ratio 1.29 but eval turns negative, so it is unsafe.
 - Conclusion: the side-specific scan confirms the first useful regime idea but does not solve the hard target. The next material improvement likely needs two-stage filters or a more expressive model over the same external/macro state, with selection constrained to 2024H2 and validation on 2025.
+
+### 2026-06-21 — Revalidation invalidates the USDKRW momentum filter
+- Additional robustness diagnostics found a data-availability bug in the external-feature path:
+  - `/home/pakchu/workspace/wave_trading` USDKRW cache ends at 2025-12-01 and has zero 2026 rows.
+  - Forex cache also ends at 2025-12-01; KRW-BTC ends at 2025-12-15.
+  - The feature pipeline filled missing external-derived values with neutral `0.0`, so `usdkrw_momentum <= 0.0` was passing all 2026 rows because 2026 USDKRW momentum was missing/filled, not because the macro regime was genuinely favorable.
+- Added source availability flags before neutral fill and made regime-filter diagnostics treat unavailable external features as missing rather than valid zero values.
+- With availability enforced, the previously promising `usdkrw_momentum <= 0.0` filter no longer works:
+  - Leverage 0.30 + pause-after-4, 2024H2: CAGR 0.59%, strict MDD 11.11%, ratio 0.05, 129 trades.
+  - 2025: CAGR -11.02%, strict MDD 19.50%, ratio -0.57, 230 trades.
+  - 2026 Jan-May: 0 trades because USDKRW data is unavailable.
+- Corrected conclusion: the USDKRW filter is rejected. The earlier positive 2026 result is not a valid live-trading proof. Any future external/macro feature must require explicit source availability coverage for the evaluated period, or the model must degrade to a separately validated market-only path when external feeds are absent.

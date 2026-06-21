@@ -85,7 +85,7 @@ def _slice_rows(rows: list[dict[str, Any]], start: str, end: str) -> list[dict[s
     return out
 
 
-def _apply_filter(rows: list[dict[str, Any]], values: np.ndarray, *, feature: str, direction: str, threshold: float, scope: str, preserve_other_side: bool) -> tuple[list[dict[str, Any]], dict[str, int]]:
+def _apply_filter(rows: list[dict[str, Any]], values: np.ndarray, *, feature: str, direction: str, threshold: float, scope: str, preserve_other_side: bool, availability: np.ndarray | None = None) -> tuple[list[dict[str, Any]], dict[str, int]]:
     out: list[dict[str, Any]] = []
     stats = {"trade_rows": 0, "passed": 0, "blocked": 0, "missing_feature": 0, "other_side_preserved": 0}
     scope = scope.upper()
@@ -107,7 +107,10 @@ def _apply_filter(rows: list[dict[str, Any]], values: np.ndarray, *, feature: st
             continue
         pos = int(r.get("signal_pos", -1) or -1)
         v = float(values[pos]) if 0 <= pos < len(values) else float("nan")
-        if not np.isfinite(v):
+        available = True
+        if availability is not None:
+            available = bool(0 <= pos < len(availability) and float(availability[pos]) >= 0.5)
+        if not available or not np.isfinite(v):
             stats["missing_feature"] += 1
             ok = False
         elif direction == "ge":
@@ -123,6 +126,16 @@ def _apply_filter(rows: list[dict[str, Any]], values: np.ndarray, *, feature: st
             stats["blocked"] += 1
             out.append({**r, "blocked_prediction": r.get("prediction"), "prediction": dict(NO_TRADE), "regime_filter": {"feature": feature, "direction": direction, "threshold": threshold, "scope": scope, "value": v}})
     return out, stats
+
+
+def _availability_for_feature(market: pd.DataFrame, feature: str) -> np.ndarray | None:
+    if feature.startswith("usdkrw") and "usdkrw_available" in market.columns:
+        return market["usdkrw_available"].to_numpy(dtype=float)
+    if feature.startswith("dxy") and "dxy_available" in market.columns:
+        return market["dxy_available"].to_numpy(dtype=float)
+    if feature.startswith("kimchi") and "kimchi_available" in market.columns:
+        return market["kimchi_available"].to_numpy(dtype=float)
+    return None
 
 
 def _bt(pred_path: str, cfg: FeatureRegimeFilterConfig) -> dict[str, Any]:
@@ -202,8 +215,9 @@ def run_scan(cfg: FeatureRegimeFilterConfig) -> dict[str, Any]:
                     # Reuse scratch files so broad scans do not fill WSL with
                     # thousands of full prediction streams. Metrics and filter
                     # metadata are captured in the JSON report.
-                    sel_pred, sel_stats = _apply_filter(selector_rows, vals, feature=col, direction=direction, threshold=thr, scope=scope, preserve_other_side=bool(cfg.preserve_other_side))
-                    val_pred, val_stats = _apply_filter(validation_rows, vals, feature=col, direction=direction, threshold=thr, scope=scope, preserve_other_side=bool(cfg.preserve_other_side))
+                    availability = _availability_for_feature(market, col)
+                    sel_pred, sel_stats = _apply_filter(selector_rows, vals, feature=col, direction=direction, threshold=thr, scope=scope, preserve_other_side=bool(cfg.preserve_other_side), availability=availability)
+                    val_pred, val_stats = _apply_filter(validation_rows, vals, feature=col, direction=direction, threshold=thr, scope=scope, preserve_other_side=bool(cfg.preserve_other_side), availability=availability)
                     sel_path = work / "candidate_selector.jsonl"
                     val_path = work / "candidate_validation.jsonl"
                     _write_jsonl(sel_path, sel_pred)
@@ -214,7 +228,7 @@ def run_scan(cfg: FeatureRegimeFilterConfig) -> dict[str, Any]:
                     eval_bt = None
                     eval_stats = None
                     if score > -999.0 or (float(val_bt["sim"]["cagr_pct"]) > 0 and float(val_bt["sim"]["strict_mdd_pct"]) <= 25.0):
-                        ev_pred, eval_stats = _apply_filter(final_eval_rows, vals, feature=col, direction=direction, threshold=thr, scope=scope, preserve_other_side=bool(cfg.preserve_other_side))
+                        ev_pred, eval_stats = _apply_filter(final_eval_rows, vals, feature=col, direction=direction, threshold=thr, scope=scope, preserve_other_side=bool(cfg.preserve_other_side), availability=availability)
                         ev_path = work / "candidate_eval.jsonl"
                         _write_jsonl(ev_path, ev_pred)
                         eval_bt = _bt(str(ev_path), cfg)
