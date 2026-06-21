@@ -1431,3 +1431,15 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - Validation 2025: CAGR 24.23%, strict MDD 11.29%, ratio 2.15, 330 trades.
   - Eval 2026 Jan-May: unchanged from baseline because all 2026 eval trade rows pass the filter: CAGR 25.12%, strict MDD 8.02%, ratio 3.13, 140 trades.
 - Interpretation: this is the strongest recent non-cheating lead. It improves both 2024H2 and 2025 without looking at 2026, keeps hundreds of trades, and preserves the good 2026 behavior. It still does not fully meet the hard target because 2025 validation ratio is 2.15 < 3 and CAGR is below the original 50% target. Next work should optimize this family, not the old SHORT144 branch: cache/vectorize the scanner, add side-specific filters and two-stage filters selected on 2024H2 then validated on 2025, and only then re-check 2026.
+
+### 2026-06-21 — Side-specific external filters do not beat the simple USDKRW filter
+- Expanded the external-feature regime scan from `ALL` scope only to `ALL/LONG/SHORT` scopes, 252 candidates total, with the same selector/validation/eval protocol.
+- Result: the previous `usdkrw_momentum <= 0.0` all-trade filter remains the top selection candidate.
+  - Selector 2024H2: CAGR 25.88%, strict MDD 8.63%, ratio 3.00, 170 trades.
+  - Validation 2025: CAGR 24.23%, strict MDD 11.29%, ratio 2.15, 330 trades.
+  - Eval 2026 Jan-May: CAGR 25.12%, strict MDD 8.02%, ratio 3.13, 140 trades.
+- Notable rejected side-specific examples:
+  - `kimchi_premium_change >= 0`, LONG scope: selector ratio 2.77, validation ratio 1.78, eval unchanged.
+  - `dxy_zscore <= 1.06`, SHORT scope: selector ratio 9.49, validation ratio 1.72, eval unchanged.
+  - `usdkrw_zscore >= 0.50`, SHORT scope: validation ratio 1.29 but eval turns negative, so it is unsafe.
+- Conclusion: the side-specific scan confirms the first useful regime idea but does not solve the hard target. The next material improvement likely needs two-stage filters or a more expressive model over the same external/macro state, with selection constrained to 2024H2 and validation on 2025.
