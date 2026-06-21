@@ -1344,3 +1344,18 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - Same-action confirmation was too sparse: 2026 produced only 4-6 trades, although positive.
   - Context-only confirmation preserved more trades but failed 2026 across thresholds; e.g. threshold 0.0 gave 2024H1 CAGR 8.86%, 2024H2 CAGR 17.53%, but 2026 CAGR -37.61% with MDD 20.86%.
 - Conclusion: the risk-sensitive objective is useful as a damage-control diagnostic, not a profit engine. It confirms that directly penalizing MAE/tail exposure addresses the previous drawdown pathology, but it also removes/weakens too much edge. Next move should mine a separate positive edge source rather than trying to rescue the same action ranker with safer labels.
+
+### 2026-06-21 — Stable bucket mining finds no transferable positive edge
+- Added `training/stable_edge_bucket_miner.py` to search for positive symbolic buckets before training another model.
+  - Buckets combine action family/side/horizon with regime/book tokens and optional token pairs.
+  - Selection uses future labels only inside explicitly declared historical selection windows; final eval is not used for bucket selection.
+- Strict selection on 2024H1 and 2024H2 found no buckets that were simultaneously strong in both halves:
+  - `min_count=40`, `mean_net>=0.001`, `t>=1.0`: 0 buckets.
+  - Relaxed `min_count=30`, `mean_net>=0.0005`, `t>=0.5`: 0 buckets.
+  - Relaxed `min_count=20`, `mean_net>=0.0003`, `t>=0.3`: 0 buckets.
+- Very loose selection (`min_count=20`, non-negative mean in both halves) found 9 buckets, but their 2026 Jan-May union failed:
+  - Eval union: 534 candidates, mean net -0.00056, sum net -0.299, win rate 47.94%, t≈-1.94.
+- Pair-token scan did not rescue it:
+  - 5 selected buckets, 2026 union: 341 candidates, mean net -0.00043, sum net -0.148, win rate 51.61%, t≈-1.20.
+  - Top historical buckets such as `mean_reversion_stretch|hold=72 & book_drawdown_reversal:LONG` looked good in 2024H1/H2 but turned negative in 2026.
+- Conclusion: the current candidate/action-book symbolic surface does not contain a stable transferable positive edge detectable by direct bucket mining. The problem is deeper than model choice or thresholding: the candidate generator / action label surface likely needs redesign. Next direction should build a new action universe or new feature surface (e.g. continuous compact features, event-specific alpha families, or external-flow-led triggers) before applying LLM/RL again.
