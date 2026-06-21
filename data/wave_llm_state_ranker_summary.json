@@ -1,0 +1,90 @@
+{
+  "config": {
+    "wave_root": "/home/pakchu/workspace/wave_trading",
+    "market_5m_csv": "data/2020-01-01_2026-06-01_btcusdt_futures_5m.csv.gz",
+    "fold_consistency_report": "results/wave_fold_consistency_2021_2024h1_to_2024h2_2026_report.json",
+    "train_output": "data/wave_llm_state_ranker_train_2021_2024h1.jsonl",
+    "eval_output": "data/wave_llm_state_ranker_eval_2024h2_2026.jsonl",
+    "summary_output": "data/wave_llm_state_ranker_summary.json",
+    "start_date": "2020-01-01",
+    "end_date": "2026-06-02",
+    "selection_folds": "2021-01-01|2021-06-30 23:59:59,2021-07-01|2021-12-31 23:59:59,2022-01-01|2022-06-30 23:59:59,2022-07-01|2022-12-31 23:59:59,2023-01-01|2023-06-30 23:59:59,2023-07-01|2023-12-31 23:59:59,2024-01-01|2024-06-30 23:59:59",
+    "eval_start": "2024-07-01",
+    "eval_end": "2026-06-01 00:00:00",
+    "lr_c": 0.05,
+    "lr_penalty": "l1",
+    "leverage": 1.0,
+    "entry_delay_bars": 3,
+    "atr_trailing_stop_mult": 3.75,
+    "atr_period": 45,
+    "attach_external": true,
+    "external_tolerance": "30min"
+  },
+  "policy": {
+    "long_th": 0.66,
+    "short_th": 0.32,
+    "trend_window": 864,
+    "long_mode": "down",
+    "short_mode": "all"
+  },
+  "teacher_params": {
+    "train_months": 9,
+    "test_months": 2,
+    "pt_mult": 3.75,
+    "holding_period": 4,
+    "atr_period": 15,
+    "long_th": 0.66,
+    "short_th": 0.35,
+    "base_ws": 150,
+    "base_wavelet": "haar",
+    "base_level": 4,
+    "base_th": 1.585,
+    "add_ws": 55,
+    "add_wavelet": "db4",
+    "add_level": 4,
+    "add_th": 0.524,
+    "nw_ws": 28,
+    "features": 15
+  },
+  "outputs": {
+    "train": "data/wave_llm_state_ranker_train_2021_2024h1.jsonl",
+    "eval": "data/wave_llm_state_ranker_eval_2024h2_2026.jsonl"
+  },
+  "train": {
+    "rows": 481,
+    "mean_reward_pct": 0.02896911865495593,
+    "std_reward_pct": 1.6604857066347893,
+    "positive_rate": 0.5155925155925156,
+    "decisions": {
+      "TAKE_FULL": 121,
+      "ABSTAIN": 233,
+      "TAKE_SMALL": 127
+    },
+    "sides": {
+      "SHORT": 112,
+      "LONG": 369
+    }
+  },
+  "eval": {
+    "rows": 42,
+    "mean_reward_pct": 0.35512664263954086,
+    "std_reward_pct": 1.8246903151442069,
+    "positive_rate": 0.47619047619047616,
+    "decisions": {
+      "ABSTAIN": 22,
+      "TAKE_SMALL": 10,
+      "TAKE_FULL": 10
+    },
+    "sides": {
+      "LONG": 30,
+      "SHORT": 12
+    }
+  },
+  "prompt_contract": "prompt contains bucketed past-only state; reward and target are label-only",
+  "leakage_guard": {
+    "rolling_teacher_train_before_candidate_period": true,
+    "features_signal_time_or_prior": true,
+    "external_join_backward_asof": true,
+    "eval_rows_not_used_for_training": true
+  }
+}
