@@ -1490,3 +1490,12 @@ Note: `../wave_trading` external forex cache lookup failed in this environment f
   - Best selection row: `external_plus_market h288 q0.20`, lev0.20/no pause: test CAGR 1.66%, MDD 7.50%, ratio 0.22; eval CAGR -0.14%, MDD 7.54%.
   - Best eval-positive pocket: `external_plus_market h288 q0.10`, lev0.30/pause4: eval CAGR 29.06%, MDD 5.34%, ratio 5.44, but test ratio only 0.05, so it is not selectable.
 - Conclusion: adding 2026 wave_trading data was necessary and fixed the previous missing-data issue, but it does not resurrect the external linear-combo alpha. The next valid direction is stronger representation/modeling over refreshed external+market data, not reusing the old linear-combo rule.
+
+### 2026-06-21 — Non-wavelet wave_trading-inspired ridge POC fails
+- Added `training/wave_feature_ridge_policy.py`, a dependency-free POC that borrows wave_trading's non-wavelet ideas without adding sklearn/PyWavelets to rllm:
+  - price efficiency, Garman-Klass volatility, VWAP deviation, candle shape, volume spike/regime, taker imbalance, CVD momentum, volume-price divergence/correlation, plus refreshed external availability features.
+  - Ridge fit and quantile rule are trained on 2023-2024H1, selected on 2024H2-2025, and eval is only reported for test-like candidates.
+- Focused scan over `wave_all` and `wave_external`, horizons 144/288, q=0.10/0.20, leverage 0.20/0.30, pause 0/4 found no selectable positive candidate.
+  - Best row: `wave_all h144 q0.20`, lev0.20/no pause: test CAGR -0.36%, strict MDD 12.08%, ratio -0.03, 1053 trades.
+  - Most other rows were materially negative or above MDD limits; no eval was run because no test-like candidate passed selection.
+- Interpretation: simply copying wave_trading's feature themes into rllm's 5m ridge/quantile action surface is insufficient. The wave_trading edge likely depends on the full structure: 15m sampling, wavelet denoising, logistic probability thresholds, and ATR trailing exits. Next valid step is to directly run/port the actual wave_trading 15m strategy over refreshed 2026 data before trying to fuse it into the LLM/RL stack.
