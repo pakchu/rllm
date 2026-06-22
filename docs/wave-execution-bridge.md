@@ -6,7 +6,7 @@ Binance USDT-M Futures order execution to the sibling repository at
 
 ## Boundary
 
-- `rllm` owns: analyzer/trader inference, regime filter, risk overlay, final `LONG`/`SHORT`/`HOLD` decision.
+- `rllm` owns: single-policy inference, regime/risk state interpretation, deterministic conversion to final `LONG`/`SHORT`/`HOLD` decision.
 - `wave_trading` owns: Binance REST client, leverage/margin setup, post-only maker orders, fill polling, position open/close, trade CSV logging.
 
 The bridge is implemented in `execution/wave_execution.py`.
@@ -75,4 +75,6 @@ PYTHONPATH=. uv run python -m execution.wave_execution \
 module import time. The bridge injects a minimal signal-generator stub so this
 repo can depend on the executor/client layer without pulling in wavelet research
 dependencies. RLLM provides the final signal directly to
-`TradingExecutor.handle_signal(...)`.
+`TradingExecutor.handle_signal(...)`. The deprecated analyzer/trader cascade must not be
+revived in the live execution path; any LLM output should first be reduced to the
+single compact policy contract and then converted deterministically to an executor signal.

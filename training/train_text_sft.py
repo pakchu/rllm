@@ -1,4 +1,8 @@
-"""Text-only LoRA SFT entrypoint for analyzer/trader LLM stages."""
+"""Text-only LoRA SFT entrypoint for compact policy datasets.
+
+Legacy analyzer/trader datasets remain loadable for historical reproduction, but
+the active RLLM path is a single compact policy JSON surface.
+"""
 
 from __future__ import annotations
 
@@ -312,7 +316,7 @@ def train_text_sft(cfg: TextSFTConfig, *, dry_run: bool = False) -> dict[str, An
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Fine-tune Gemma/Qwen text analyzer or trader with LoRA SFT")
+    p = argparse.ArgumentParser(description="Fine-tune Gemma/Qwen text policy datasets with LoRA SFT")
     p.add_argument("--model-name", default=RECOMMENDED_VLM_MODEL)
     p.add_argument("--train-jsonl", required=True)
     p.add_argument("--output-dir", required=True)
