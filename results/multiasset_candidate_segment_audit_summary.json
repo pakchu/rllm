@@ -1,0 +1,164 @@
+{
+  "experiment": "multiasset_candidate_segment_audit",
+  "train_days": 365,
+  "candidates": [
+    {
+      "name": "rolling_excess_spread_0p004",
+      "rationale": "best prior diagnostic after rolling retrain + score-spread abstention",
+      "params": {
+        "horizon": 288,
+        "stride": 96,
+        "target": "excess",
+        "l2": 100.0,
+        "top_k": 2,
+        "portfolio": "long_short",
+        "regime_filter": "market_mom_pos",
+        "min_score_spread": 0.004,
+        "score_sign": 1.0
+      },
+      "segments": [
+        {
+          "segment": "2024H1",
+          "cagr_pct": 63.591595103347245,
+          "strict_mdd_pct": 7.1051939577857155,
+          "cagr_to_mdd": 8.950015366387708,
+          "p": 0.00922361964772378
+        },
+        {
+          "segment": "2024H2",
+          "cagr_pct": 4.870246014385393,
+          "strict_mdd_pct": 15.668897128416548,
+          "cagr_to_mdd": 0.3108225151056031,
+          "p": 0.4402400181055275
+        },
+        {
+          "segment": "2025H1",
+          "cagr_pct": 5.413609406237385,
+          "strict_mdd_pct": 8.569815884180054,
+          "cagr_to_mdd": 0.6317066176685254,
+          "p": 0.27839175971230223
+        },
+        {
+          "segment": "2025H2",
+          "cagr_pct": -2.3271226042760107,
+          "strict_mdd_pct": 10.1479544265748,
+          "cagr_to_mdd": -0.22931937870965344,
+          "p": 0.25565982952620336
+        },
+        {
+          "segment": "2026YTD",
+          "cagr_pct": 1.4409355612474917,
+          "strict_mdd_pct": 6.488526777151272,
+          "cagr_to_mdd": 0.22207438001513824,
+          "p": 0.3638887476811119
+        }
+      ]
+    },
+    {
+      "name": "utility1_positive_eval_diagnostic",
+      "rationale": "utility branch with positive 2025-2026 eval but failed 2024 validation",
+      "params": {
+        "horizon": 288,
+        "stride": 96,
+        "target": "utility1_excess",
+        "l2": 100.0,
+        "top_k": 2,
+        "portfolio": "long_short",
+        "regime_filter": "market_mom_pos",
+        "min_score_spread": 0.0,
+        "score_sign": 1.0
+      },
+      "segments": [
+        {
+          "segment": "2024H1",
+          "cagr_pct": 13.568005059468135,
+          "strict_mdd_pct": 19.67573134095946,
+          "cagr_to_mdd": 0.6895807238038101,
+          "p": 0.40826516095058096
+        },
+        {
+          "segment": "2024H2",
+          "cagr_pct": -72.70129237168462,
+          "strict_mdd_pct": 53.10502153177301,
+          "cagr_to_mdd": -1.3690097522733713,
+          "p": 0.011006683960996355
+        },
+        {
+          "segment": "2025H1",
+          "cagr_pct": 7.238346738280832,
+          "strict_mdd_pct": 15.122070509494723,
+          "cagr_to_mdd": 0.47866108901794086,
+          "p": 0.37956289121983255
+        },
+        {
+          "segment": "2025H2",
+          "cagr_pct": -9.449433244025872,
+          "strict_mdd_pct": 13.272280189425556,
+          "cagr_to_mdd": -0.7119675827484816,
+          "p": 0.6870911391557977
+        },
+        {
+          "segment": "2026YTD",
+          "cagr_pct": 34.371727349730506,
+          "strict_mdd_pct": 5.69083601119803,
+          "cagr_to_mdd": 6.03983795739259,
+          "p": 0.010927325663162568
+        }
+      ]
+    },
+    {
+      "name": "utility3_validation_sign_inverted",
+      "rationale": "best utility sign-sweep validation return but failed strict MDD and eval",
+      "params": {
+        "horizon": 288,
+        "stride": 96,
+        "target": "utility3_excess",
+        "l2": 100.0,
+        "top_k": 2,
+        "portfolio": "long_short",
+        "regime_filter": "market_mom_pos",
+        "min_score_spread": 0.0,
+        "score_sign": -1.0
+      },
+      "segments": [
+        {
+          "segment": "2024H1",
+          "cagr_pct": -29.70267927536858,
+          "strict_mdd_pct": 24.360992473787913,
+          "cagr_to_mdd": -1.2192721338150836,
+          "p": 0.5249886003373061
+        },
+        {
+          "segment": "2024H2",
+          "cagr_pct": 187.25497679965196,
+          "strict_mdd_pct": 14.753096890433026,
+          "cagr_to_mdd": 12.692587745497802,
+          "p": 0.007730353344075569
+        },
+        {
+          "segment": "2025H1",
+          "cagr_pct": -26.85787787859325,
+          "strict_mdd_pct": 22.269274957112415,
+          "cagr_to_mdd": -1.206050844956464,
+          "p": 0.577402225928705
+        },
+        {
+          "segment": "2025H2",
+          "cagr_pct": -32.38181012514381,
+          "strict_mdd_pct": 24.342529721825766,
+          "cagr_to_mdd": -1.3302565713254502,
+          "p": 0.29880714060408264
+        },
+        {
+          "segment": "2026YTD",
+          "cagr_pct": -43.63392089445563,
+          "strict_mdd_pct": 25.39559243792513,
+          "cagr_to_mdd": -1.7181690484721215,
+          "p": 0.02555628785085373
+        }
+      ]
+    }
+  ],
+  "conclusion": "Candidate performance is regime-local and often sign-flipping: rolling_excess works mainly in 2024H1; utility1 is destroyed in 2024H2 but good in 2026YTD; utility3 sign-inverted works only in 2024H2 and loses afterward. Current features need an explicit regime/sign selector before any LLM/RL policy can be credible.",
+  "leakage_guard": "Each segment uses monthly models trained only before that segment month; no segment future data is used for features or fitting."
+}
