@@ -33,7 +33,10 @@ class TestExportDxyKimchiPolicySft(unittest.TestCase):
             self.assertEqual(report["raw_counts"], {"train": 2, "test": 1, "eval": 1})
             first = json.loads((root / "train.jsonl").read_text().splitlines()[0])
             self.assertEqual(first["messages"][2]["role"], "assistant")
+            self.assertIn("prompt", first)
+            self.assertIn("target", first)
             self.assertIn("activate", json.loads(first["messages"][2]["content"]))
+            self.assertEqual(json.loads(first["target"]), json.loads(first["messages"][2]["content"]))
 
 
 if __name__ == "__main__":

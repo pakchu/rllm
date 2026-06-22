@@ -44,11 +44,19 @@ def _bucket(row: dict[str, Any]) -> str:
 
 
 def _message_row(row: dict[str, Any], cfg: ExportDxyKimchiSftCfg) -> dict[str, Any]:
+    target = str(row["target"])
+    prompt = str(row["prompt"])
     return {
+        "task": row.get("task"),
+        "split": row.get("split"),
+        "date": row.get("date"),
+        "signal_pos": row.get("signal_pos"),
+        "prompt": prompt,
+        "target": target,
         "messages": [
             {"role": "system", "content": cfg.system_prompt},
-            {"role": "user", "content": str(row["prompt"])},
-            {"role": "assistant", "content": str(row["target"])},
+            {"role": "user", "content": prompt},
+            {"role": "assistant", "content": target},
         ],
         "metadata": {
             "task": row.get("task"),

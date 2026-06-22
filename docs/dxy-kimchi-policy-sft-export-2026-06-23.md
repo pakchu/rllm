@@ -50,3 +50,24 @@ Generated JSONL/results are ignored and not committed.
 ## Next use
 
 Use `data/dxy_kimchi_regime_policy_train_balanced_2026-06-23.jsonl` for a small Gemma 4 / text SFT dry run.  Evaluate on untouched test/eval, not on the balanced train distribution.
+
+## Dry-run verification
+
+`train_text_sft.py` compatibility was verified after exporting both chat `messages` and top-level `prompt`/`target` fields:
+
+```bash
+.venv/bin/python -m training.train_text_sft \
+  --model-name gemma4-e4b \
+  --train-jsonl data/dxy_kimchi_regime_policy_train_balanced_2026-06-23.jsonl \
+  --output-dir checkpoints/dxy_kimchi_policy_gemma4_e4b_dryrun_2026-06-23 \
+  --max-steps 1 \
+  --max-seq-length 2048 \
+  --dry-run
+```
+
+Result:
+
+- resolved model: `google/gemma-4-E4B-it`
+- rows loaded: 200
+- target counts: `NO_TRADE=150`, `LONG=31`, `SHORT=19`
+- dry_run: true
