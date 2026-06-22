@@ -12,23 +12,13 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from training.build_multiasset_regime_sft_data import policy_response
+
 POLICIES = ["excess_spread", "utility1_pos", "utility1_inv", "utility3_pos", "utility3_inv", "cash"]
 
 
 def _response(policy: str, chosen_scores: dict[str, float]) -> str:
-    sorted_scores = sorted(chosen_scores.items(), key=lambda kv: kv[1], reverse=True)
-    score = float(chosen_scores.get(policy, 0.0))
-    best = sorted_scores[0][0] if sorted_scores else policy
-    margin = float(sorted_scores[0][1] - sorted_scores[1][1]) if len(sorted_scores) > 1 else 0.0
-    analyzer = {
-        "regime_actionability": "avoid" if policy == "cash" else "trade",
-        "selected_family": policy,
-        "evidence_strength": "high" if score > 3 and policy == best else "medium" if score > 0 else "low",
-        "score_margin": round(margin if policy == best else -abs(float(chosen_scores.get(best, 0.0)) - score), 4),
-        "risk_note": "preference_candidate_response",
-    }
-    trader = {"policy": policy, "allow_trade": policy != "cash", "reason_code": "monthly_policy_preference_candidate"}
-    return json.dumps({"analyzer": analyzer, "trader": trader}, ensure_ascii=False, sort_keys=True)
+    return policy_response(policy, chosen_scores, reason_code="monthly_policy_preference_candidate")
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
@@ -69,7 +59,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.output).write_text("\n".join(json.dumps(x,ensure_ascii=False,sort_keys=True) for x in out)+("\n" if out else ""))
     counts=Counter((x["metadata"]["chosen_policy"],x["metadata"]["rejected_policy"]) for x in out)
-    summary={"pairs":len(out),"source_rows":len(rows),"chosen_counts":dict(Counter(x["metadata"]["chosen_policy"] for x in out)),"rejected_counts":dict(Counter(x["metadata"]["rejected_policy"] for x in out)),"leakage_guard":"preference labels mirror trailing bandit, not future oracle"}
+    summary={"pairs":len(out),"source_rows":len(rows),"chosen_counts":dict(Counter(x["metadata"]["chosen_policy"] for x in out)),"rejected_counts":dict(Counter(x["metadata"]["rejected_policy"] for x in out)),"schema":"single_policy_no_analyzer_trader_cascade","leakage_guard":"preference labels mirror trailing bandit, not future oracle"}
     if args.summary_output:
         Path(args.summary_output).parent.mkdir(parents=True,exist_ok=True); Path(args.summary_output).write_text(json.dumps(summary,indent=2,ensure_ascii=False))
     return summary

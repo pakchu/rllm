@@ -1,8 +1,8 @@
 """Build LLM SFT rows for monthly multi-asset regime/policy selection.
 
-This brings the recent quant harness back into the RLLM framing: the LLM sees a
+This keeps the quant harness inside the reset RLLM framing: the LLM sees a
 past-only textual regime brief plus trailing candidate-policy evidence, then emits
-an analyzer/trader JSON selecting the next month's policy or CASH.
+one compact policy JSON selecting the next month's policy or CASH.
 
 Labels use the online bandit decision made from prior months only.  Future month
 returns are included only in metadata for audit, not in the prompt or target.
@@ -81,10 +81,10 @@ def _month_market_summary(month: str, price_dir: str, aux_dir: str, symbols: lis
 
 def _prompt(decision: dict[str, Any], prior: list[dict[str, Any]], market: dict[str, Any]) -> str:
     lines = [
-        "You are an RLLM monthly regime analyzer/trader for Binance USD-M alt futures.",
+        "You are a single compact RLLM monthly policy for Binance USD-M alt futures.",
         "Use only past evidence shown here. Choose the next-month policy or CASH.",
         "Candidate policies: excess_spread, utility1_pos, utility1_inv, utility3_pos, utility3_inv, cash.",
-        "Return compact JSON with keys: analyzer, trader.",
+        "Return compact JSON with keys: policy, allow_trade, evidence_strength, score_margin, risk_note, reason_code.",
         f"decision_month: {decision['month']}",
         "current_past_month_market_state:",
     ]
@@ -100,21 +100,33 @@ def _prompt(decision: dict[str, Any], prior: list[dict[str, Any]], market: dict[
     return "\n".join(lines)
 
 
-def _target(decision: dict[str, Any]) -> str:
-    selected = decision["selected"]
-    scores = decision.get("scores", {})
-    best_score = float(scores.get(selected, 0.0))
-    sorted_scores = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
-    margin = float(sorted_scores[0][1] - sorted_scores[1][1]) if len(sorted_scores) > 1 else 0.0
-    analyzer = {
-        "regime_actionability": "trade" if selected != "cash" else "avoid",
-        "selected_family": selected,
-        "evidence_strength": "high" if best_score > 3 and margin > 1 else "medium" if best_score > 0 else "low",
-        "score_margin": round(margin, 4),
+def policy_response(policy: str, scores: dict[str, Any], *, reason_code: str) -> str:
+    """Return the reset single-policy JSON response for a monthly selector row."""
+
+    score_map = {str(k): float(v) for k, v in dict(scores or {}).items()}
+    selected = str(policy)
+    sorted_scores = sorted(score_map.items(), key=lambda kv: kv[1], reverse=True)
+    best_policy = sorted_scores[0][0] if sorted_scores else selected
+    best_score = float(score_map.get(selected, 0.0))
+    if len(sorted_scores) > 1:
+        raw_margin = float(sorted_scores[0][1] - sorted_scores[1][1])
+    else:
+        raw_margin = 0.0
+    if selected != best_policy:
+        raw_margin = -abs(float(score_map.get(best_policy, 0.0)) - best_score)
+    obj = {
+        "policy": selected,
+        "allow_trade": selected != "cash",
+        "evidence_strength": "high" if best_score > 3 and raw_margin > 1 else "medium" if best_score > 0 else "low",
+        "score_margin": round(raw_margin, 4),
         "risk_note": "use_cash_when_all_recent_scores_negative" if selected == "cash" else "candidate_selected_from_trailing_only",
+        "reason_code": reason_code,
     }
-    trader = {"policy": selected, "allow_trade": selected != "cash", "reason_code": "trailing_regime_bandit_label"}
-    return json.dumps({"analyzer": analyzer, "trader": trader}, ensure_ascii=False, sort_keys=True)
+    return json.dumps(obj, ensure_ascii=False, sort_keys=True)
+
+
+def _target(decision: dict[str, Any]) -> str:
+    return policy_response(decision["selected"], decision.get("scores", {}), reason_code="trailing_regime_bandit_label")
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
@@ -133,7 +145,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         rows.append({
             "task": "multiasset_monthly_regime_policy_sft",
             "messages": [
-                {"role": "system", "content": "You emit no-leak analyzer/trader JSON for monthly futures policy selection."},
+                {"role": "system", "content": "You emit one no-leak compact policy JSON for monthly futures policy selection."},
                 {"role": "user", "content": prompt},
                 {"role": "assistant", "content": target},
             ],
@@ -151,7 +163,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     Path(args.output).write_text("\n".join(json.dumps(r, ensure_ascii=False, sort_keys=True) for r in rows) + ("\n" if rows else ""))
     counts = Counter(r["metadata"]["selected_policy"] for r in rows)
     chars = [len(r["prompt"]) + len(r["target"]) for r in rows]
-    summary = {"rows": len(rows), "policy_counts": dict(counts), "chars": {"min": min(chars) if chars else 0, "max": max(chars) if chars else 0, "mean": sum(chars)/max(1,len(chars))}, "source_bandit_sim": report.get("sim"), "leakage_guard": "SFT labels are bandit decisions from trailing evidence only; not future oracle labels"}
+    summary = {"rows": len(rows), "policy_counts": dict(counts), "chars": {"min": min(chars) if chars else 0, "max": max(chars) if chars else 0, "mean": sum(chars)/max(1,len(chars))}, "source_bandit_sim": report.get("sim"), "schema": "single_policy_no_analyzer_trader_cascade", "leakage_guard": "SFT labels are bandit decisions from trailing evidence only; not future oracle labels"}
     if args.summary_output:
         Path(args.summary_output).parent.mkdir(parents=True, exist_ok=True)
         Path(args.summary_output).write_text(json.dumps(summary, indent=2, ensure_ascii=False))
