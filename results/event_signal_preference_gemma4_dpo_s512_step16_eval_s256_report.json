@@ -1,0 +1,29 @@
+{
+  "eval_jsonl": "/home/pakchu/rllm/data/event_signal_preference_ext_c72_s2_eval_unique_sft.jsonl",
+  "model_name": "google/gemma-4-E4B-it",
+  "adapter_dir": "checkpoints/event_signal_preference_gemma4_dpo_s512_step16",
+  "prediction_mode": "candidate_logprob",
+  "metrics": {
+    "num_samples": 256,
+    "gate_accuracy": 0.23828125,
+    "side_accuracy_when_target_trade": 0.037914691943127965,
+    "hold_accuracy_when_target_trade": 0.08056872037914692,
+    "exact_action_accuracy": 0.203125,
+    "trade_targets": 211,
+    "confusion": {
+      "target=NO_TRADE/NONE/0|pred=NO_TRADE/NONE/0": 44,
+      "target=NO_TRADE/NONE/0|pred=TRADE/LONG/288": 1,
+      "target=TRADE/LONG/288|pred=NO_TRADE/NONE/0": 94,
+      "target=TRADE/LONG/288|pred=TRADE/LONG/288": 6,
+      "target=TRADE/LONG/288|pred=TRADE/SHORT/288": 2,
+      "target=TRADE/SHORT/288|pred=NO_TRADE/NONE/0": 100,
+      "target=TRADE/SHORT/288|pred=TRADE/LONG/288": 7,
+      "target=TRADE/SHORT/288|pred=TRADE/SHORT/288": 2
+    }
+  },
+  "candidate_logprob": {
+    "hold_candidates": "288",
+    "score_normalization": "mean",
+    "batch_size": 4
+  }
+}

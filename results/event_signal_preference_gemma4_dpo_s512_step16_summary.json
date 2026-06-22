@@ -1,0 +1,71 @@
+{
+  "dpo_train_summary": {
+    "model_name": "google/gemma-4-E4B-it",
+    "train_jsonl": "/home/pakchu/rllm/data/event_signal_preference_ext_c72_s2_train.jsonl",
+    "output_dir": "checkpoints/event_signal_preference_gemma4_dpo_s512_step16",
+    "rows": 512,
+    "chosen_counts": {
+      "gate=NO_TRADE,side=NONE,hold=0": 256,
+      "gate=TRADE,side=LONG,hold=288": 132,
+      "gate=TRADE,side=SHORT,hold=288": 124
+    },
+    "rejected_counts": {
+      "gate=NO_TRADE,side=NONE,hold=0": 125,
+      "gate=TRADE,side=LONG,hold=288": 198,
+      "gate=TRADE,side=SHORT,hold=288": 189
+    },
+    "prompt_chars": {
+      "min": 1230,
+      "max": 1453,
+      "mean": 1289.34375
+    },
+    "config": {
+      "model_name": "gemma4-e4b",
+      "train_jsonl": "data/event_signal_preference_ext_c72_s2_train.jsonl",
+      "output_dir": "checkpoints/event_signal_preference_gemma4_dpo_s512_step16",
+      "max_samples": 512,
+      "max_length": 2048,
+      "sample_mode": "gate_balanced",
+      "max_steps": 16,
+      "num_train_epochs": 1.0,
+      "learning_rate": 5e-07,
+      "beta": 0.1,
+      "per_device_train_batch_size": 1,
+      "gradient_accumulation_steps": 8,
+      "lora_r": 16,
+      "lora_alpha": 32,
+      "lora_dropout": 0.05,
+      "seed": 44,
+      "init_adapter_dir": ""
+    }
+  },
+  "dpo_eval_s256": {
+    "eval_jsonl": "/home/pakchu/rllm/data/event_signal_preference_ext_c72_s2_eval_unique_sft.jsonl",
+    "model_name": "google/gemma-4-E4B-it",
+    "adapter_dir": "checkpoints/event_signal_preference_gemma4_dpo_s512_step16",
+    "prediction_mode": "candidate_logprob",
+    "metrics": {
+      "num_samples": 256,
+      "gate_accuracy": 0.23828125,
+      "side_accuracy_when_target_trade": 0.037914691943127965,
+      "hold_accuracy_when_target_trade": 0.08056872037914692,
+      "exact_action_accuracy": 0.203125,
+      "trade_targets": 211,
+      "confusion": {
+        "target=NO_TRADE/NONE/0|pred=NO_TRADE/NONE/0": 44,
+        "target=NO_TRADE/NONE/0|pred=TRADE/LONG/288": 1,
+        "target=TRADE/LONG/288|pred=NO_TRADE/NONE/0": 94,
+        "target=TRADE/LONG/288|pred=TRADE/LONG/288": 6,
+        "target=TRADE/LONG/288|pred=TRADE/SHORT/288": 2,
+        "target=TRADE/SHORT/288|pred=NO_TRADE/NONE/0": 100,
+        "target=TRADE/SHORT/288|pred=TRADE/LONG/288": 7,
+        "target=TRADE/SHORT/288|pred=TRADE/SHORT/288": 2
+      }
+    },
+    "candidate_logprob": {
+      "hold_candidates": "288",
+      "score_normalization": "mean",
+      "batch_size": 4
+    }
+  }
+}
