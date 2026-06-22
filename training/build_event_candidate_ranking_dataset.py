@@ -15,6 +15,15 @@ from typing import Any
 
 import numpy as np
 
+EXTERNAL_FEATURE_COLUMNS = (
+    "dxy_zscore",
+    "dxy_momentum",
+    "kimchi_premium_zscore",
+    "kimchi_premium_change",
+    "usdkrw_zscore",
+    "usdkrw_momentum",
+)
+
 
 @dataclass(frozen=True)
 class EventCandidateRankingCfg:
@@ -29,6 +38,7 @@ class EventCandidateRankingCfg:
     max_small_mae_pct: float = 7.5
     min_full_utility_pct: float = 0.5
     min_small_utility_pct: float = 0.0
+    external_feature_csv: str = ""
 
 
 def _load(path: str) -> list[dict[str, Any]]:
@@ -75,6 +85,52 @@ def _prompt(row: dict[str, Any], side: str) -> str:
     return "\n".join(lines)
 
 
+def _load_external_features(path: str) -> dict[str, dict[str, float]]:
+    if not path:
+        return {}
+    import pandas as pd
+
+    usecols = ["date", *EXTERNAL_FEATURE_COLUMNS]
+    df = pd.read_csv(path, usecols=lambda c: c in set(usecols))
+    out: dict[str, dict[str, float]] = {}
+    for rec in df.to_dict("records"):
+        date = str(rec.get("date"))
+        vals: dict[str, float] = {}
+        for col in EXTERNAL_FEATURE_COLUMNS:
+            try:
+                vals[col] = float(rec.get(col, 0.0) or 0.0)
+            except Exception:
+                vals[col] = 0.0
+        vals["external_any_available"] = 1.0 if any(abs(v) > 1e-12 for v in vals.values()) else 0.0
+        out[date] = vals
+    return out
+
+
+def _with_external_features(row: dict[str, Any], external: dict[str, dict[str, float]]) -> dict[str, Any]:
+    if not external:
+        return row
+    vals = external.get(str(row.get("date")))
+    if not vals:
+        return row
+    merged = dict(row)
+    snap = dict(row.get("feature_snapshot", {}) if isinstance(row.get("feature_snapshot"), dict) else {})
+    snap.update(vals)
+    merged["feature_snapshot"] = snap
+    tokens = dict(row.get("state_tokens", {}) if isinstance(row.get("state_tokens"), dict) else {})
+    tokens["external_availability"] = "available" if float(vals.get("external_any_available", 0.0)) else "missing_or_partial"
+    def bucket(v: float) -> str:
+        if v >= 1.0: return "strong_up"
+        if v >= 0.25: return "up"
+        if v <= -1.0: return "strong_down"
+        if v <= -0.25: return "down"
+        return "flat"
+    tokens["dxy_pressure"] = bucket(float(vals.get("dxy_zscore", 0.0)))
+    tokens["kimchi_pressure"] = bucket(float(vals.get("kimchi_premium_zscore", 0.0)))
+    tokens["usdkrw_pressure"] = bucket(float(vals.get("usdkrw_zscore", 0.0)))
+    merged["state_tokens"] = tokens
+    return merged
+
+
 def _candidate_row(row: dict[str, Any], side: str, cfg: EventCandidateRankingCfg) -> dict[str, Any] | None:
     reward = row.get("reward_audit", {}).get(side) if isinstance(row.get("reward_audit"), dict) else None
     if not isinstance(reward, dict):
@@ -103,6 +159,10 @@ def _write(path: str, rows: list[dict[str, Any]]) -> None:
 
 def _summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     rewards = np.asarray([float(r["reward"].get("net_return_pct", 0.0)) for r in rows], dtype=float) if rows else np.asarray([])
+    external_nonzero = {
+        col: int(sum(abs(float((r.get("feature_snapshot", {}) or {}).get(col, 0.0) or 0.0)) > 1e-12 for r in rows))
+        for col in (*EXTERNAL_FEATURE_COLUMNS, "external_any_available")
+    }
     dec = Counter(str(r["target"].get("decision")) for r in rows)
     side = Counter(str(r["side"]) for r in rows)
     lens = [len(str(r["prompt"])) for r in rows]
@@ -112,13 +172,16 @@ def _summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "sides": dict(sorted(side.items())),
         "net_return_pct": {"mean": float(np.mean(rewards)) if len(rewards) else 0.0, "std": float(np.std(rewards)) if len(rewards) else 0.0, "positive_rate": float(np.mean(rewards > 0.0)) if len(rewards) else 0.0},
         "prompt_chars": {"min": min(lens) if lens else 0, "max": max(lens) if lens else 0, "mean": sum(lens) / max(1, len(lens))},
+        "external_nonzero": external_nonzero,
     }
 
 
 def run(cfg: EventCandidateRankingCfg) -> dict[str, Any]:
     sides = [s.strip().upper() for s in cfg.sides.split(",") if s.strip()]
     out: list[dict[str, Any]] = []
-    for row in _load(cfg.input_jsonl):
+    external = _load_external_features(cfg.external_feature_csv)
+    for raw_row in _load(cfg.input_jsonl):
+        row = _with_external_features(raw_row, external)
         for side in sides:
             cand = _candidate_row(row, side, cfg)
             if cand:
@@ -146,6 +209,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-small-mae-pct", type=float, default=EventCandidateRankingCfg.max_small_mae_pct)
     p.add_argument("--min-full-utility-pct", type=float, default=EventCandidateRankingCfg.min_full_utility_pct)
     p.add_argument("--min-small-utility-pct", type=float, default=EventCandidateRankingCfg.min_small_utility_pct)
+    p.add_argument("--external-feature-csv", default=EventCandidateRankingCfg.external_feature_csv)
     return p.parse_args()
 
 

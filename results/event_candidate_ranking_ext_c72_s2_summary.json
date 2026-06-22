@@ -1,0 +1,83 @@
+{
+  "config": {
+    "input_jsonl": "results/event_trigger_fast/c72_s2_dataset.jsonl",
+    "train_output": "results/event_candidate_ranking_ext_c72_s2_train.jsonl",
+    "eval_output": "results/event_candidate_ranking_ext_c72_s2_eval.jsonl",
+    "summary_output": "results/event_candidate_ranking_ext_c72_s2_summary.json",
+    "sides": "LONG,SHORT",
+    "full_net_return_pct": 1.2,
+    "small_net_return_pct": 0.25,
+    "max_full_mae_pct": 5.0,
+    "max_small_mae_pct": 7.5,
+    "min_full_utility_pct": 0.5,
+    "min_small_utility_pct": 0.0,
+    "external_feature_csv": "data/cache_market_ext_5m_2020-01-01_2025-12-02.csv.gz"
+  },
+  "outputs": {
+    "train": "results/event_candidate_ranking_ext_c72_s2_train.jsonl",
+    "eval": "results/event_candidate_ranking_ext_c72_s2_eval.jsonl"
+  },
+  "train": {
+    "rows": 13780,
+    "decisions": {
+      "ABSTAIN": 8524,
+      "TAKE_FULL": 3637,
+      "TAKE_SMALL": 1619
+    },
+    "sides": {
+      "LONG": 6890,
+      "SHORT": 6890
+    },
+    "net_return_pct": {
+      "mean": -0.10000000000000006,
+      "std": 3.3727963903411005,
+      "positive_rate": 0.47924528301886793
+    },
+    "prompt_chars": {
+      "min": 1196,
+      "max": 1438,
+      "mean": 1255.667779390421
+    },
+    "external_nonzero": {
+      "dxy_zscore": 10496,
+      "dxy_momentum": 10050,
+      "kimchi_premium_zscore": 8934,
+      "kimchi_premium_change": 8176,
+      "usdkrw_zscore": 8934,
+      "usdkrw_momentum": 8166,
+      "external_any_available": 10528
+    }
+  },
+  "eval": {
+    "rows": 3824,
+    "decisions": {
+      "ABSTAIN": 2367,
+      "TAKE_FULL": 891,
+      "TAKE_SMALL": 566
+    },
+    "sides": {
+      "LONG": 1912,
+      "SHORT": 1912
+    },
+    "net_return_pct": {
+      "mean": -0.10000000000000005,
+      "std": 2.3217366512004824,
+      "positive_rate": 0.4725418410041841
+    },
+    "prompt_chars": {
+      "min": 1201,
+      "max": 1422,
+      "mean": 1248.8770920502093
+    },
+    "external_nonzero": {
+      "dxy_zscore": 1738,
+      "dxy_momentum": 1654,
+      "kimchi_premium_zscore": 1614,
+      "kimchi_premium_change": 1420,
+      "usdkrw_zscore": 1614,
+      "usdkrw_momentum": 1420,
+      "external_any_available": 1738
+    }
+  },
+  "contract": "side-specific candidate ranking; prompt is signal-time only; target/reward are label-only"
+}
