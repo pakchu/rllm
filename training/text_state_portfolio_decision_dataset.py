@@ -49,6 +49,7 @@ class PortfolioDecisionCfg:
     mae_penalty: float = 0.35
     no_trade_buffer_pct: float = 0.25
     max_rows: int = 0
+    prompt_style: str = "categorical"
 
 
 def _state_tokens(features: pd.DataFrame, pos: int) -> dict[str, str]:
@@ -132,6 +133,63 @@ def _choose(long: dict[str, float], short: dict[str, float], cfg: PortfolioDecis
     return best_side
 
 
+def _fmt_pct(x: float) -> str:
+    return f"{float(x) * 100.0:+.2f}%"
+
+
+def _fmt_num(x: float) -> str:
+    return f"{float(x):+.3f}"
+
+
+def _feature_snapshot(features: pd.DataFrame, pos: int) -> dict[str, float]:
+    cols = [
+        "trend_12", "trend_24", "trend_96",
+        "htf_4h_return_4", "htf_1d_return_4", "htf_3d_return_4", "htf_1w_return_4",
+        "range_pos", "htf_4h_range_pos", "htf_1d_range_pos",
+        "rsi_norm", "mfi_norm", "bb_z", "return_zscore_48", "close_zscore_48",
+        "range_vol", "window_drawdown", "volume_zscore", "trades_ratio",
+        "taker_buy_ratio", "taker_imbalance",
+        "dxy_momentum", "dxy_zscore", "kimchi_premium_zscore", "kimchi_premium_change", "usdkrw_momentum", "usdkrw_zscore",
+        "external_any_available",
+    ]
+    return {c: _safe(features, pos, c) for c in cols}
+
+
+def _rich_prompt(date: str, tokens: dict[str, str], snap: dict[str, float], cfg: PortfolioDecisionCfg) -> str:
+    lines = [
+        "You are a BTCUSDT futures portfolio decision policy.",
+        "Use only past and current market evidence below; future path is not shown.",
+        "Choose exactly one label: LONG, SHORT, or NO_TRADE.",
+        "Prefer trades only when directional evidence is strong enough to overcome fees, slippage, and path drawdown risk.",
+        "Avoid trading when signals conflict or volatility/drawdown risk dominates.",
+        "",
+        f"Date: {date}",
+        f"Decision horizon: enter on next 5m open; hold_bars={int(cfg.hold_bars)}.",
+        "",
+        "Categorical regime summary:",
+    ]
+    for k in sorted(tokens):
+        lines.append(f"- {k}: {tokens[k]}")
+    lines.extend([
+        "",
+        "Numeric evidence snapshot (all computed at or before decision time):",
+        f"- price momentum: 1h={_fmt_pct(snap['trend_12'])}, 2h={_fmt_pct(snap['trend_24'])}, 8h={_fmt_pct(snap['trend_96'])}",
+        f"- higher timeframe returns: 4h_ctx={_fmt_pct(snap['htf_4h_return_4'])}, 1d_ctx={_fmt_pct(snap['htf_1d_return_4'])}, 3d_ctx={_fmt_pct(snap['htf_3d_return_4'])}, 1w_ctx={_fmt_pct(snap['htf_1w_return_4'])}",
+        f"- range location: short_window={_fmt_num(snap['range_pos'])}, 4h={_fmt_num(snap['htf_4h_range_pos'])}, 1d={_fmt_num(snap['htf_1d_range_pos'])} (-1 low, +1 high)",
+        f"- oscillators: rsi_norm={_fmt_num(snap['rsi_norm'])}, mfi_norm={_fmt_num(snap['mfi_norm'])}, bb_z={_fmt_num(snap['bb_z'])}, return_z48={_fmt_num(snap['return_zscore_48'])}, close_z48={_fmt_num(snap['close_zscore_48'])}",
+        f"- risk state: range_vol={_fmt_pct(snap['range_vol'])}, recent_window_drawdown={_fmt_pct(snap['window_drawdown'])}",
+        f"- participation: volume_z={_fmt_num(snap['volume_zscore'])}, trades_ratio={_fmt_num(snap['trades_ratio'])}, taker_buy_ratio={_fmt_num(snap['taker_buy_ratio'])}, taker_imbalance={_fmt_num(snap['taker_imbalance'])}",
+        f"- macro/external: dxy_mom={_fmt_pct(snap['dxy_momentum'])}, dxy_z={_fmt_num(snap['dxy_zscore'])}, kimchi_z={_fmt_num(snap['kimchi_premium_zscore'])}, kimchi_change={_fmt_num(snap['kimchi_premium_change'])}, usdkrw_mom={_fmt_pct(snap['usdkrw_momentum'])}, usdkrw_z={_fmt_num(snap['usdkrw_zscore'])}, external_available={bool(snap['external_any_available'] > 0.5)}",
+        "",
+        "Reasoning checklist:",
+        "1. Decide whether risk-adjusted directional edge exists.",
+        "2. If edge is weak or mixed, output NO_TRADE.",
+        "3. If edge is directional, choose LONG or SHORT.",
+        "Output exactly one label only.",
+    ])
+    return "\n".join(lines)
+
+
 def _prompt(date: str, tokens: dict[str, str], cfg: PortfolioDecisionCfg) -> str:
     lines = [
         "You are a BTCUSDT futures portfolio decision policy.",
@@ -185,14 +243,17 @@ def build_rows(cfg: PortfolioDecisionCfg) -> list[dict[str, Any]]:
             continue
         label = _choose(long, short, cfg)
         tokens = _state_tokens(features, pos)
+        snap = _feature_snapshot(features, pos)
+        prompt = _rich_prompt(str(dates.iloc[pos]), tokens, snap, cfg) if str(cfg.prompt_style).lower() == "rich" else _prompt(str(dates.iloc[pos]), tokens, cfg)
         rows.append({
             "task": "text_state_portfolio_decision",
             "split": split,
             "date": str(dates.iloc[pos]),
             "signal_pos": int(pos),
-            "prompt": _prompt(str(dates.iloc[pos]), tokens, cfg),
+            "prompt": prompt,
             "target": label,
             "state_tokens": tokens,
+            "feature_snapshot": snap if str(cfg.prompt_style).lower() == "rich" else {},
             "reward_audit": {"LONG": long, "SHORT": short, "chosen": label},
             "candidate": {"hold_bars": int(cfg.hold_bars)},
             "leakage_guard": {"prompt_uses_future_path": False, "target_uses_future_path_for_training_only": True, "features_signal_time_or_prior": True},
@@ -230,7 +291,7 @@ def _summary(rows: list[dict[str, Any]], cfg: PortfolioDecisionCfg) -> dict[str,
         "total_rows": len(rows),
         "train": one(train),
         "eval": one(eval_rows),
-        "prompt_contract": "one timestamp -> one portfolio action; future path only in target/reward_audit",
+        "prompt_contract": f"one timestamp -> one portfolio action; prompt_style={cfg.prompt_style}; future path only in target/reward_audit",
         "leakage_guard": {"features_signal_time_or_prior": True, "external_join_backward_asof": bool(cfg.wave_trading_root), "eval_split_not_used_for_train": True},
     }
 
@@ -271,6 +332,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--mae-penalty", type=float, default=PortfolioDecisionCfg.mae_penalty)
     p.add_argument("--no-trade-buffer-pct", type=float, default=PortfolioDecisionCfg.no_trade_buffer_pct)
     p.add_argument("--max-rows", type=int, default=PortfolioDecisionCfg.max_rows)
+    p.add_argument("--prompt-style", choices=["categorical", "rich"], default=PortfolioDecisionCfg.prompt_style)
     return p.parse_args()
 
 
