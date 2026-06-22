@@ -1,0 +1,106 @@
+{
+  "experiment": "multiasset_feature_model_rolling_eval_fixedparams",
+  "protocol": "monthly continuous retrain; hyperparams fixed from static train2023/val2024 selection; train window length varied for diagnosis only",
+  "fixed_params": {
+    "horizon": 288,
+    "stride": 96,
+    "target": "excess",
+    "l2": 100.0,
+    "top_k": 2,
+    "portfolio": "long_short",
+    "regime_filter": "market_mom_pos"
+  },
+  "rows": [
+    {
+      "train_days": 365,
+      "eval": {
+        "ret_pct": -1.4990116198980497,
+        "cagr_pct": -1.063412185681778,
+        "strict_mdd_pct": 14.81569736349504,
+        "cagr_to_strict_mdd": -0.07177604668828885,
+        "rebalance_count": 1548,
+        "avg_turnover_per_rebalance": 0.40148578811369506
+      },
+      "eval_stats": {
+        "rebalance_obs": 1548,
+        "rebalance_mean_ret_pct": 0.020067985646692894,
+        "rebalance_t_stat_like": 1.7971700815761626,
+        "rebalance_p_value_mean_ret_approx": 0.07230862265854521
+      },
+      "n_monthly_models": 18
+    },
+    {
+      "train_days": 180,
+      "eval": {
+        "ret_pct": -12.860416131684271,
+        "cagr_pct": -9.284479201354024,
+        "strict_mdd_pct": 30.605117613542653,
+        "cagr_to_strict_mdd": -0.30336361776455567,
+        "rebalance_count": 1548,
+        "avg_turnover_per_rebalance": 0.37887596899224807
+      },
+      "eval_stats": {
+        "rebalance_obs": 1548,
+        "rebalance_mean_ret_pct": 0.011002578501162399,
+        "rebalance_t_stat_like": 0.9936478114646471,
+        "rebalance_p_value_mean_ret_approx": 0.32039435871266253
+      },
+      "n_monthly_models": 18
+    },
+    {
+      "train_days": 1095,
+      "eval": {
+        "ret_pct": -16.284853301338387,
+        "cagr_pct": -11.822672634286324,
+        "strict_mdd_pct": 30.756402171870747,
+        "cagr_to_strict_mdd": -0.3843971270833208,
+        "rebalance_count": 1548,
+        "avg_turnover_per_rebalance": 0.35239018087855295
+      },
+      "eval_stats": {
+        "rebalance_obs": 1548,
+        "rebalance_mean_ret_pct": 0.007157664522123824,
+        "rebalance_t_stat_like": 0.6236115975728947,
+        "rebalance_p_value_mean_ret_approx": 0.5328826922537673
+      },
+      "n_monthly_models": 18
+    },
+    {
+      "train_days": 730,
+      "eval": {
+        "ret_pct": -14.264341404511427,
+        "cagr_pct": -10.32147898517205,
+        "strict_mdd_pct": 25.310209368658608,
+        "cagr_to_strict_mdd": -0.4077990361451944,
+        "rebalance_count": 1548,
+        "avg_turnover_per_rebalance": 0.38372093023255816
+      },
+      "eval_stats": {
+        "rebalance_obs": 1548,
+        "rebalance_mean_ret_pct": 0.010206679708916477,
+        "rebalance_t_stat_like": 0.9167251349094958,
+        "rebalance_p_value_mean_ret_approx": 0.3592866915768611
+      },
+      "n_monthly_models": 18
+    }
+  ],
+  "best_diagnostic": {
+    "train_days": 365,
+    "eval": {
+      "ret_pct": -1.4990116198980497,
+      "cagr_pct": -1.063412185681778,
+      "strict_mdd_pct": 14.81569736349504,
+      "cagr_to_strict_mdd": -0.07177604668828885,
+      "rebalance_count": 1548,
+      "avg_turnover_per_rebalance": 0.40148578811369506
+    },
+    "eval_stats": {
+      "rebalance_obs": 1548,
+      "rebalance_mean_ret_pct": 0.020067985646692894,
+      "rebalance_t_stat_like": 1.7971700815761626,
+      "rebalance_p_value_mean_ret_approx": 0.07230862265854521
+    }
+  },
+  "conclusion": "Rolling retrain materially reduces collapse versus static model but does not create positive CAGR; best diagnostic train window is near flat with target-like MDD and weak p=0.072.",
+  "leakage_guard": "monthly models fit only on data before each eval month; hyperparams fixed from prior validation; selected_by_eval is diagnostic only and must not be treated as deployable selection"
+}
