@@ -1,0 +1,64 @@
+{
+  "config": {
+    "input_jsonl": "results/event_trigger_fast/c72_s2_dataset.jsonl",
+    "train_output": "results/event_candidate_ranking_c72_s2_train.jsonl",
+    "eval_output": "results/event_candidate_ranking_c72_s2_eval.jsonl",
+    "summary_output": "results/event_candidate_ranking_c72_s2_summary.json",
+    "sides": "LONG,SHORT",
+    "full_net_return_pct": 1.2,
+    "small_net_return_pct": 0.25,
+    "max_full_mae_pct": 5.0,
+    "max_small_mae_pct": 7.5,
+    "min_full_utility_pct": 0.5,
+    "min_small_utility_pct": 0.0
+  },
+  "outputs": {
+    "train": "results/event_candidate_ranking_c72_s2_train.jsonl",
+    "eval": "results/event_candidate_ranking_c72_s2_eval.jsonl"
+  },
+  "train": {
+    "rows": 13780,
+    "decisions": {
+      "ABSTAIN": 8524,
+      "TAKE_FULL": 3637,
+      "TAKE_SMALL": 1619
+    },
+    "sides": {
+      "LONG": 6890,
+      "SHORT": 6890
+    },
+    "net_return_pct": {
+      "mean": -0.10000000000000006,
+      "std": 3.3727963903411005,
+      "positive_rate": 0.47924528301886793
+    },
+    "prompt_chars": {
+      "min": 1205,
+      "max": 1438,
+      "mean": 1257.0105950653121
+    }
+  },
+  "eval": {
+    "rows": 3824,
+    "decisions": {
+      "ABSTAIN": 2367,
+      "TAKE_FULL": 891,
+      "TAKE_SMALL": 566
+    },
+    "sides": {
+      "LONG": 1912,
+      "SHORT": 1912
+    },
+    "net_return_pct": {
+      "mean": -0.10000000000000005,
+      "std": 2.3217366512004824,
+      "positive_rate": 0.4725418410041841
+    },
+    "prompt_chars": {
+      "min": 1207,
+      "max": 1422,
+      "mean": 1249.2839958158995
+    }
+  },
+  "contract": "side-specific candidate ranking; prompt is signal-time only; target/reward are label-only"
+}
