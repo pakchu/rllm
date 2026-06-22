@@ -84,6 +84,7 @@ def run_sweep(args: argparse.Namespace) -> dict[str, Any]:
         setup_sizing=args.setup_sizing,
         min_position_scale=args.min_position_scale,
         max_position_scale=args.max_position_scale,
+        execution_horizon_bars=args.execution_horizon_bars,
     )
     sparse = json.loads(Path(args.sparse_report).read_text())
     market = _load_market(args.market_csv)
@@ -99,11 +100,17 @@ def run_sweep(args: argparse.Namespace) -> dict[str, Any]:
     features = features.loc[:, ~features.columns.duplicated(keep="last")]
     dates = pd.to_datetime(market["date"])
     candidates = [dict(c, _candidate_index=i) for i, c in enumerate(sparse.get("top_strict", [])[: int(args.candidate_limit)])]
-    event_cache = {int(c["_candidate_index"]): _candidate_events(cand=c, report=sparse, dates=dates, features=features, market=market, cfg=base_cfg) for c in candidates}
+    event_cache_by_horizon: dict[int, dict[int, list[dict[str, Any]]]] = {}
     individual_meta = [{"candidate_index": int(c["_candidate_index"]), "key": _candidate_key(c), "candidate": c} for c in candidates]
 
     rows = []
-    for lev in _parse_floats(args.leverages):
+    for exec_horizon in _parse_ints(args.execution_horizons):
+      horizon_base_cfg = replace(base_cfg, execution_horizon_bars=int(exec_horizon))
+      event_cache = event_cache_by_horizon.setdefault(
+          int(exec_horizon),
+          {int(c["_candidate_index"]): _candidate_events(cand=c, report=sparse, dates=dates, features=features, market=market, cfg=horizon_base_cfg) for c in candidates},
+      )
+      for lev in _parse_floats(args.leverages):
         for stop in _parse_floats(args.stop_losses):
             for take in _parse_floats(args.take_profits):
                 for atr in _parse_floats(args.atr_mults):
@@ -125,10 +132,11 @@ def run_sweep(args: argparse.Namespace) -> dict[str, Any]:
                                 setup_sizing=str(args.setup_sizing),
                                 min_position_scale=float(args.min_position_scale),
                                 max_position_scale=float(args.max_position_scale),
+                                execution_horizon_bars=int(exec_horizon),
                             )
                             greedy = _run_greedy(individual=individual_meta, event_cache=event_cache, dates=dates, market=market, cfg=cfg)
                             final = greedy["final"] or {"sim": {"cagr_pct": -100, "strict_mdd_pct": 100, "cagr_to_strict_mdd": -1, "trade_entries": 0}, "trade_stats": {}}
-                            row = {"params": {"leverage": lev, "stop_loss": stop, "take_profit": take, "atr_mult": atr, "rolling_window": rolling_window, "rolling_loss": rolling_loss}, "selected": greedy["selected_candidate_indices"], "final": final, "score": _score(final, cfg)}
+                            row = {"params": {"execution_horizon": exec_horizon, "leverage": lev, "stop_loss": stop, "take_profit": take, "atr_mult": atr, "rolling_window": rolling_window, "rolling_loss": rolling_loss}, "selected": greedy["selected_candidate_indices"], "final": final, "score": _score(final, cfg)}
                             rows.append(row)
                             s = final["sim"]
                             print(json.dumps({"params": row["params"], "selected": row["selected"], "cagr": s["cagr_pct"], "mdd": s["strict_mdd_pct"], "ratio": s["cagr_to_strict_mdd"], "trades": s["trade_entries"], "p": final.get("trade_stats", {}).get("p_value_mean_ret_approx")}, ensure_ascii=False), flush=True)
@@ -160,6 +168,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--setup-sizing", choices=["fixed", "prior_sharpe"], default="fixed")
     p.add_argument("--min-position-scale", type=float, default=0.25)
     p.add_argument("--max-position-scale", type=float, default=1.0)
+    p.add_argument("--execution-horizon-bars", type=int, default=0)
+    p.add_argument("--execution-horizons", default="0")
     return p.parse_args()
 
 

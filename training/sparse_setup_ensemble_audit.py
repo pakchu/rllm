@@ -58,6 +58,7 @@ class EnsembleCfg:
     setup_sizing: str = "fixed"  # fixed | prior_sharpe
     min_position_scale: float = 0.25
     max_position_scale: float = 1.0
+    execution_horizon_bars: int = 0  # 0 keeps candidate horizon
 
 
 def _load_market(path: str) -> pd.DataFrame:
@@ -78,7 +79,7 @@ def _fit_mask(values: np.ndarray, train: np.ndarray, finite_y: np.ndarray, side:
 
 
 def _candidate_events(*, cand: dict[str, Any], report: dict[str, Any], dates: pd.Series, features: pd.DataFrame, market: pd.DataFrame, cfg: EnsembleCfg) -> list[dict[str, Any]]:
-    horizon = int(cand["horizon"])
+    horizon = int(cfg.execution_horizon_bars) if int(cfg.execution_horizon_bars) > 0 else int(cand["horizon"])
     q = float(cand["quantile"])
     fa, fb = cand["features"][0], cand["features"][1]
     fwd = _forward_return(market["open"].astype(float), horizon=horizon, entry_delay_bars=int(cfg.entry_delay_bars))
@@ -107,6 +108,7 @@ def _candidate_events(*, cand: dict[str, Any], report: dict[str, Any], dates: pd
                     "date": str(dates.iloc[int(pos)]),
                     "side": int(side),
                     "horizon": horizon,
+                    "source_horizon": int(cand["horizon"]),
                     "candidate_index": int(cand.get("_candidate_index", -1)),
                     "candidate_key": _candidate_key(cand),
                     "fold": fold["name"],
@@ -417,6 +419,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--setup-sizing", choices=["fixed", "prior_sharpe"], default=EnsembleCfg.setup_sizing)
     p.add_argument("--min-position-scale", type=float, default=EnsembleCfg.min_position_scale)
     p.add_argument("--max-position-scale", type=float, default=EnsembleCfg.max_position_scale)
+    p.add_argument("--execution-horizon-bars", type=int, default=EnsembleCfg.execution_horizon_bars)
     return p.parse_args()
 
 
