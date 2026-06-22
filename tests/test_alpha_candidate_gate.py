@@ -31,6 +31,18 @@ class TestAlphaCandidateGate(unittest.TestCase):
         self.assertIn("insufficient_trade_count_folds", scored["failures"])
         self.assertIn("insufficient_total_trades", scored["failures"])
 
+    def test_candidate_supports_test_eval_report_shape(self):
+        cfg = AlphaGateConfig(input_report="in", output="out", min_positive_folds=2, min_total_trades=100)
+        cand = {
+            "group": "wave_core",
+            "test": {"sim": {"cagr_pct": 40, "strict_mdd_pct": 10, "cagr_to_strict_mdd": 4, "trade_entries": 80}},
+            "eval": {"sim": {"cagr_pct": 35, "strict_mdd_pct": 11, "cagr_to_strict_mdd": 3.2, "trade_entries": 90}},
+        }
+        scored = score_candidate(cand, cfg)
+        self.assertTrue(scored["passed"])
+        self.assertEqual(scored["summary"]["valid_folds"], 2)
+        self.assertEqual(scored["candidate"]["group"], "wave_core")
+
 
 if __name__ == "__main__":
     unittest.main()

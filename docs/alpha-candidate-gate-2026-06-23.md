@@ -53,3 +53,40 @@ formulation, not more LLM fine-tuning over these labels.
 
 Any future LLM/RL training job should require this gate, or an equivalent
 train/test/eval candidate gate, to return `GO` first.
+
+## Additional check: wave/ridge alpha report
+
+Source report:
+`results/wave_feature_ridge_alpha_2020_2023test_2024eval_report.json`
+
+The gate was extended to handle reports with `top_by_selection` and explicit
+`test`/`eval` metrics.
+
+Command:
+
+```bash
+.venv/bin/python -m training.alpha_candidate_gate \
+  --input-report results/wave_feature_ridge_alpha_2020_2023test_2024eval_report.json \
+  --output results/wave_feature_ridge_alpha_candidate_gate_2026-06-23.json \
+  --min-positive-folds 2 \
+  --min-total-trades 300
+```
+
+Decision: `NO_GO`
+
+- candidates checked: `30`
+- candidates passed: `0`
+- top `wave_core` candidates had weak positive 2023 test performance but negative
+  2024-2026 eval performance.
+
+Representative top candidate:
+
+- group: `wave_core`
+- horizon: `72`
+- quantile: `0.1`
+- overlay: leverage `0.2`, pause_after_losses `0`
+- test: CAGR `2.12%`, MDD `8.22%`, CAGR/MDD `0.26`, trades `872`
+- eval: CAGR `-10.59%`, MDD `25.37%`, CAGR/MDD `-0.42`, trades `2025`
+
+Interpretation: wave/ridge feature combinations also fail the alpha gate. They do
+not justify new LLM/RL training as policy priors.

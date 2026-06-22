@@ -28,23 +28,33 @@ class AlphaGateConfig:
     require_all_folds_mdd: bool = True
 
 
+def _sim_to_metric(name: str, sim: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "fold": name,
+        "valid": True,
+        "cagr_pct": float(sim.get("cagr_pct", 0.0)),
+        "strict_mdd_pct": float(sim.get("strict_mdd_pct", 0.0)),
+        "cagr_to_strict_mdd": float(sim.get("cagr_to_strict_mdd", 0.0)),
+        "trade_entries": int(sim.get("trade_entries", 0)),
+    }
+
+
 def _strict_fold_metrics(candidate: dict[str, Any]) -> list[dict[str, Any]]:
+    if "strict_folds" not in candidate and ("test" in candidate or "eval" in candidate):
+        folds = []
+        for split in ("test", "eval"):
+            sim = candidate.get(split, {}).get("sim", {}) if isinstance(candidate.get(split), dict) else {}
+            if sim:
+                folds.append(_sim_to_metric(split, sim))
+        return folds
+
     out: list[dict[str, Any]] = []
     for fold in candidate.get("strict_folds", []) or []:
         if not isinstance(fold, dict) or "result" not in fold:
             out.append({"fold": fold.get("fold") if isinstance(fold, dict) else None, "valid": False, "error": fold.get("error", "missing_result") if isinstance(fold, dict) else "invalid_fold"})
             continue
         sim = fold.get("result", {}).get("sim", {})
-        out.append(
-            {
-                "fold": fold.get("fold"),
-                "valid": True,
-                "cagr_pct": float(sim.get("cagr_pct", 0.0)),
-                "strict_mdd_pct": float(sim.get("strict_mdd_pct", 0.0)),
-                "cagr_to_strict_mdd": float(sim.get("cagr_to_strict_mdd", 0.0)),
-                "trade_entries": int(sim.get("trade_entries", 0)),
-            }
-        )
+        out.append(_sim_to_metric(str(fold.get("fold")), sim))
     return out
 
 
@@ -81,10 +91,13 @@ def score_candidate(candidate: dict[str, Any], cfg: AlphaGateConfig) -> dict[str
     return {
         "candidate": {
             "feature": candidate.get("feature"),
+            "group": candidate.get("group"),
             "horizon": candidate.get("horizon"),
             "quantile": candidate.get("quantile"),
             "event_score": candidate.get("event_score"),
             "strict_score": candidate.get("strict_score"),
+            "selection_score": candidate.get("selection_score"),
+            "overlay": candidate.get("overlay"),
         },
         "passed": not failures,
         "failures": failures,
@@ -105,7 +118,8 @@ def score_candidate(candidate: dict[str, Any], cfg: AlphaGateConfig) -> dict[str
 
 def gate_report(cfg: AlphaGateConfig) -> dict[str, Any]:
     report = json.loads(Path(cfg.input_report).read_text())
-    rows = [score_candidate(c, cfg) for c in report.get("top_strict", [])]
+    source_key = "top_strict" if "top_strict" in report else "top_by_selection" if "top_by_selection" in report else "top"
+    rows = [score_candidate(c, cfg) for c in report.get(source_key, [])]
     rows.sort(
         key=lambda r: (
             bool(r["passed"]),
@@ -123,12 +137,13 @@ def gate_report(cfg: AlphaGateConfig) -> dict[str, Any]:
         "decision": "GO" if passed else "NO_GO",
         "passed_count": len(passed),
         "candidate_count": len(rows),
+        "source_key": source_key,
         "top_candidates": rows[:20],
         "blocking_reason": None if passed else "No rolling alpha candidate satisfies strict CAGR/MDD, MDD cap, trade-count, and fold-consistency gates.",
         "leakage_guard": {
             "consumes_existing_rolling_report_only": True,
             "does_not_refit_or_select_on_final_eval": True,
-            "requires_strict_fold_metrics": True,
+            "requires_strict_fold_or_test_eval_metrics": True,
         },
     }
     Path(cfg.output).parent.mkdir(parents=True, exist_ok=True)
