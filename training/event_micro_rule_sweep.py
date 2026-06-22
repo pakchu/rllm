@@ -34,9 +34,9 @@ OPPORTUNITY_FEATURES = [
     "mp_range_24", "mp_range_48", "mp_range_96", "range_vol", "window_drawdown",
 ]
 SIGNED_FEATURES = [
-    "mp_ret_3", "mp_ret_6", "mp_ret_12", "mp_ret_24", "mp_ret_48", "mp_ret_96",
+    "mp_ret_3", "mp_ret_6", "mp_ret_12", "mp_ret_24", "mp_ret_48", "mp_ret_96", "mp_ret_288",
     "mp_ret_accel_12_48", "mp_ret_accel_24_96",
-    "mp_range_pos_12", "mp_range_pos_24", "mp_range_pos_48", "mp_range_pos_96",
+    "mp_range_pos_12", "mp_range_pos_24", "mp_range_pos_48", "mp_range_pos_96", "mp_range_pos_288",
     "mp_taker_imbalance_mean_12", "mp_taker_imbalance_mean_24", "mp_taker_imbalance_mean_48", "mp_taker_imbalance_mean_96",
     "trend_12", "trend_24", "trend_96", "htf_4h_return_4", "htf_1d_return_4", "htf_3d_return_4", "htf_1w_return_4",
 ]
