@@ -1,0 +1,54 @@
+{
+  "config": {
+    "predictions_jsonl": "results/text_state_portfolio_gemma4_bal768_step32_predictions_first_token.jsonl",
+    "market_csv": "data/2020-01-01_2026-06-01_btcusdt_futures_5m.csv.gz",
+    "output": "results/text_state_portfolio_gemma4_bal768_step32_backtest_first_token.json",
+    "default_hold_bars": 288,
+    "leverage": 1.0,
+    "fee_rate": 0.0004,
+    "slippage_rate": 0.0001,
+    "entry_delay_bars": 1,
+    "max_same_bar_signals": 1,
+    "trade_stop_loss_pct": 0.0,
+    "trade_take_profit_pct": 0.0
+  },
+  "input_rows": 515,
+  "events": 364,
+  "result": {
+    "period": {
+      "start": "2025-01-02 03:00:00",
+      "end": "2026-05-29 03:00:00",
+      "years": 1.4017796030116358
+    },
+    "sim": {
+      "ret_pct": -29.50351618127389,
+      "cagr_pct": -22.073375268952965,
+      "strict_mdd_pct": 49.76894970338371,
+      "cagr_to_strict_mdd": -0.44351700006745837,
+      "trade_entries": 208,
+      "skipped_overlay": 0,
+      "exit_reasons": {
+        "time": 208
+      },
+      "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+    },
+    "trade_stats": {
+      "n_trades": 208,
+      "mean_trade_ret_pct": -0.1412152687924797,
+      "std_trade_ret_pct": 2.314562242764836,
+      "t_stat_like": -0.8799225755994445,
+      "p_value_mean_ret_approx": 0.3789012539435719,
+      "ci95_mean_trade_ret_pct": [
+        -0.4557678607005841,
+        0.1733373231156247
+      ],
+      "effect_size_d": -0.06101165316850261,
+      "n_required_for_80pct_power_alpha5pct": 2109,
+      "n_gap_to_power_rule": 1901
+    },
+    "fold_trade_counts": {
+      "eval": 208
+    }
+  },
+  "leakage_note": "target_echo mode is oracle only; model predictions are required for deployable validation"
+}

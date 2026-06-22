@@ -88,35 +88,43 @@ def _candidate_logprob_predictions(rows: list[dict[str, Any]], *, model_name: st
 
     tokenizer, model = _load_text_model(model_name, adapter_dir)
     normalize = str(score_normalization).strip().lower()
-    if normalize not in {"sum", "mean"}:
-        raise ValueError("score_normalization must be one of {'sum','mean'}")
+    if normalize not in {"sum", "mean", "first_token"}:
+        raise ValueError("score_normalization must be one of {'sum','mean','first_token'}")
     preds: list[str] = []
     score_rows: list[dict[str, float]] = []
     for row in rows:
         prompt_ids = tokenizer(_chat_prompt_text(tokenizer, str(row["prompt"])), add_special_tokens=False)["input_ids"]
-        sequences: list[list[int]] = []
-        spans: list[tuple[int, int]] = []
-        for lab in LABELS:
-            label_ids = tokenizer(lab, add_special_tokens=False)["input_ids"]
-            if tokenizer.eos_token_id is not None:
-                label_ids = label_ids + [int(tokenizer.eos_token_id)]
-            start = len(prompt_ids)
-            end = start + len(label_ids)
-            sequences.append(prompt_ids + label_ids)
-            spans.append((start, end))
-        encoded = tokenizer.pad({"input_ids": sequences}, return_tensors="pt")
-        input_ids = encoded["input_ids"].to(model.device)
-        attention_mask = encoded["attention_mask"].to(model.device)
-        with torch.no_grad():
-            logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
-            log_probs = torch.log_softmax(logits[:, :-1, :], dim=-1)
-        scores: list[float] = []
-        for i, (start, end) in enumerate(spans):
-            positions = torch.arange(start - 1, end - 1, device=log_probs.device)
-            label_tensor = input_ids[i, start:end]
-            token_scores = log_probs[i, positions, label_tensor]
-            score = token_scores.sum() if normalize == "sum" else token_scores.mean()
-            scores.append(float(score.detach().cpu()))
+        if normalize == "first_token":
+            encoded = tokenizer.pad({"input_ids": [prompt_ids]}, return_tensors="pt")
+            input_ids = encoded["input_ids"].to(model.device)
+            attention_mask = encoded["attention_mask"].to(model.device)
+            first_ids = [tokenizer(lab, add_special_tokens=False)["input_ids"][0] for lab in LABELS]
+            with torch.no_grad():
+                logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
+                log_probs = torch.log_softmax(logits[0, len(prompt_ids) - 1, :].float(), dim=-1)
+            scores = [float(log_probs[int(tid)].detach().cpu()) for tid in first_ids]
+        else:
+            # Score each candidate independently.  Batched padded completion scoring
+            # produced identical LONG/SHORT scores on Gemma4 for unequal label lengths.
+            scores = []
+            for lab in LABELS:
+                label_ids = tokenizer(lab, add_special_tokens=False)["input_ids"]
+                if tokenizer.eos_token_id is not None:
+                    label_ids = label_ids + [int(tokenizer.eos_token_id)]
+                start = len(prompt_ids)
+                end = start + len(label_ids)
+                seq = prompt_ids + label_ids
+                encoded = tokenizer.pad({"input_ids": [seq]}, return_tensors="pt")
+                input_ids = encoded["input_ids"].to(model.device)
+                attention_mask = encoded["attention_mask"].to(model.device)
+                with torch.no_grad():
+                    logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
+                    log_probs = torch.log_softmax(logits[:, :-1, :], dim=-1)
+                positions = torch.arange(start - 1, end - 1, device=log_probs.device)
+                label_tensor = input_ids[0, start:end]
+                token_scores = log_probs[0, positions, label_tensor]
+                score = token_scores.sum() if normalize == "sum" else token_scores.mean()
+                scores.append(float(score.detach().cpu()))
         best = max(range(len(scores)), key=lambda i: scores[i])
         preds.append(LABELS[best])
         score_rows.append({lab: scores[i] for i, lab in enumerate(LABELS)})
@@ -187,7 +195,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--prediction-mode", choices=["target_echo", "model", "candidate_logprob"], default="target_echo")
     p.add_argument("--max-new-tokens", type=int, default=8)
-    p.add_argument("--score-normalization", choices=["sum", "mean"], default="mean")
+    p.add_argument("--score-normalization", choices=["sum", "mean", "first_token"], default="mean")
     p.add_argument("--predictions-output", default="")
     return p.parse_args()
 
