@@ -10,8 +10,35 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from models.option_b_vlm import RECOMMENDED_VLM_MODEL, resolve_vlm_model_alias
 from utils import disable_transformers_allocator_warmup
+
+# Keep this entrypoint usable for dry-run/data validation on machines where the
+# RL/VLM model package imports are unavailable.  Importing models.option_b_vlm via
+# the package executes models/__init__.py, which imports torch-backed Option A.
+# Actual training still imports transformer/torch dependencies inside
+# train_text_sft after dry-run has returned.
+GEMMA4_E4B_IT_MODEL = "google/gemma-4-E4B-it"
+QWEN3_VL_MODEL = "Qwen/Qwen3-VL-8B-Instruct"
+FALLBACK_VLM_MODEL = "Qwen/Qwen2.5-VL-7B-Instruct"
+RECOMMENDED_VLM_MODEL = GEMMA4_E4B_IT_MODEL
+
+
+def resolve_vlm_model_alias(model_name: str, *, prefer_latest: bool = True) -> str:
+    key = str(model_name or "").strip()
+    low = key.lower()
+    if low in {"", "auto"}:
+        return RECOMMENDED_VLM_MODEL if prefer_latest else FALLBACK_VLM_MODEL
+    aliases = {
+        "gemma4": GEMMA4_E4B_IT_MODEL,
+        "gemma-4": GEMMA4_E4B_IT_MODEL,
+        "gemma4-e4b": GEMMA4_E4B_IT_MODEL,
+        "gemma-4-e4b": GEMMA4_E4B_IT_MODEL,
+        "gemma4-e4b-it": GEMMA4_E4B_IT_MODEL,
+        "gemma-4-e4b-it": GEMMA4_E4B_IT_MODEL,
+        "qwen3-vl": QWEN3_VL_MODEL,
+        "qwen2.5-vl": FALLBACK_VLM_MODEL,
+    }
+    return aliases.get(low, key)
 
 
 @dataclass(frozen=True)
