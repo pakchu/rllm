@@ -1,6 +1,9 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
-from training.alpha_candidate_gate import AlphaGateConfig, score_candidate
+from training.alpha_candidate_gate import AlphaGateConfig, gate_report, score_candidate
 
 
 def fold(name, cagr, mdd, ratio, trades=100):
@@ -30,6 +33,39 @@ class TestAlphaCandidateGate(unittest.TestCase):
         self.assertFalse(scored["passed"])
         self.assertIn("insufficient_trade_count_folds", scored["failures"])
         self.assertIn("insufficient_total_trades", scored["failures"])
+
+    def test_score_candidate_preserves_regime_metadata(self):
+        cfg = AlphaGateConfig(input_report="in", output="out", min_positive_folds=2, min_total_trades=100)
+        cand = {
+            "regime_col": "dxy_zscore",
+            "regime_side": "low",
+            "signal_col": "kimchi_premium_zscore",
+            "horizon": 144,
+            "test": {"sim": {"cagr_pct": 40, "strict_mdd_pct": 10, "cagr_to_strict_mdd": 4, "trade_entries": 80}},
+            "eval": {"sim": {"cagr_pct": 35, "strict_mdd_pct": 11, "cagr_to_strict_mdd": 3.2, "trade_entries": 90}},
+        }
+        scored = score_candidate(cand, cfg)
+        self.assertEqual(scored["candidate"]["feature"], "kimchi_premium_zscore")
+        self.assertEqual(scored["candidate"]["regime_col"], "dxy_zscore")
+        self.assertEqual(scored["candidate"]["regime_side"], "low")
+
+    def test_gate_report_reads_top_by_test_shape(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            report = {
+                "top_by_test": [
+                    {
+                        "test": {"sim": {"cagr_pct": 40, "strict_mdd_pct": 10, "cagr_to_strict_mdd": 4, "trade_entries": 80}},
+                        "eval": {"sim": {"cagr_pct": 35, "strict_mdd_pct": 11, "cagr_to_strict_mdd": 3.2, "trade_entries": 90}},
+                    }
+                ]
+            }
+            inp = root / "report.json"
+            out = root / "gate.json"
+            inp.write_text(json.dumps(report))
+            gated = gate_report(AlphaGateConfig(input_report=str(inp), output=str(out), min_total_trades=100, min_positive_folds=2))
+        self.assertEqual(gated["source_key"], "top_by_test")
+        self.assertEqual(gated["decision"], "GO")
 
     def test_candidate_supports_test_eval_report_shape(self):
         cfg = AlphaGateConfig(input_report="in", output="out", min_positive_folds=2, min_total_trades=100)

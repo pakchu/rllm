@@ -90,13 +90,18 @@ def score_candidate(candidate: dict[str, Any], cfg: AlphaGateConfig) -> dict[str
 
     return {
         "candidate": {
-            "feature": candidate.get("feature"),
+            "feature": candidate.get("feature") or candidate.get("signal_col"),
             "group": candidate.get("group"),
             "horizon": candidate.get("horizon"),
             "quantile": candidate.get("quantile"),
+            "regime_col": candidate.get("regime_col"),
+            "regime_side": candidate.get("regime_side"),
+            "regime_threshold": candidate.get("regime_threshold"),
+            "filter": candidate.get("filter"),
             "event_score": candidate.get("event_score"),
             "strict_score": candidate.get("strict_score"),
             "selection_score": candidate.get("selection_score"),
+            "test_score": candidate.get("test_score"),
             "overlay": candidate.get("overlay"),
         },
         "passed": not failures,
@@ -118,7 +123,14 @@ def score_candidate(candidate: dict[str, Any], cfg: AlphaGateConfig) -> dict[str
 
 def gate_report(cfg: AlphaGateConfig) -> dict[str, Any]:
     report = json.loads(Path(cfg.input_report).read_text())
-    source_key = "top_strict" if "top_strict" in report else "top_by_selection" if "top_by_selection" in report else "top"
+    if "top_strict" in report:
+        source_key = "top_strict"
+    elif "top_by_selection" in report:
+        source_key = "top_by_selection"
+    elif "top_by_test" in report:
+        source_key = "top_by_test"
+    else:
+        source_key = "top"
     rows = [score_candidate(c, cfg) for c in report.get(source_key, [])]
     rows.sort(
         key=lambda r: (

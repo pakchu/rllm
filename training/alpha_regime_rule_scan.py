@@ -39,6 +39,8 @@ class RegimeRuleScanConfig:
     horizons: str = "144,288"
     signal_quantile: float = 0.2
     regime_quantile: float = 0.33
+    signal_features: str = ""
+    regime_features: str = ""
     window_size: int = 144
     entry_delay_bars: int = 1
     leverage: float = 0.5
@@ -67,6 +69,10 @@ def _forward_return(open_: pd.Series, *, horizon: int, entry_delay_bars: int) ->
 
 def _parse_ints(s: str) -> list[int]:
     return [int(x.strip()) for x in str(s).split(",") if x.strip()]
+
+
+def _parse_strs(s: str) -> list[str]:
+    return [x.strip() for x in str(s).split(",") if x.strip()]
 
 
 def _score(report: dict[str, Any]) -> float:
@@ -106,7 +112,18 @@ def run_scan(cfg: RegimeRuleScanConfig) -> dict[str, Any]:
     features = build_market_feature_frame(market, window_size=cfg.window_size)
     dates = pd.to_datetime(market["date"])
     cols = _candidate_columns(features)
-    regime_cols = _default_regime_columns(cols)
+    requested_signal_cols = _parse_strs(cfg.signal_features)
+    if requested_signal_cols:
+        cols = [c for c in requested_signal_cols if c in features.columns and np.nanstd(features[c].to_numpy(dtype=float)) > 1e-12]
+        if not cols:
+            raise ValueError(f"no requested signal_features are available: {requested_signal_cols}")
+    requested_regime_cols = _parse_strs(cfg.regime_features)
+    if requested_regime_cols:
+        regime_cols = [c for c in requested_regime_cols if c in features.columns and np.nanstd(features[c].to_numpy(dtype=float)) > 1e-12]
+        if not regime_cols:
+            raise ValueError(f"no requested regime_features are available: {requested_regime_cols}")
+    else:
+        regime_cols = _default_regime_columns(_candidate_columns(features))
     train_mask = np.asarray((dates >= pd.Timestamp(cfg.train_start)) & (dates <= pd.Timestamp(cfg.train_end)), dtype=bool)
 
     base_cfg = FeatureRuleConfig(
@@ -197,6 +214,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--horizons", default="144,288")
     p.add_argument("--signal-quantile", type=float, default=0.2)
     p.add_argument("--regime-quantile", type=float, default=0.33)
+    p.add_argument("--signal-features", default="")
+    p.add_argument("--regime-features", default="")
     p.add_argument("--window-size", type=int, default=144)
     p.add_argument("--entry-delay-bars", type=int, default=1)
     p.add_argument("--leverage", type=float, default=0.5)
