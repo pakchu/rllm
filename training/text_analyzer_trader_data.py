@@ -1,4 +1,6 @@
-"""Build text-only analyzer/trader SFT data from executable path labels.
+"""LEGACY / DEPRECATED: kept only to reproduce historical analyzer/trader experiments.
+
+Build text-only analyzer/trader SFT data from executable path labels.
 
 This module separates two LLM jobs:
 

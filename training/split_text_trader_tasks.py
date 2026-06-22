@@ -1,4 +1,6 @@
-"""Split analyzer-summary trader JSONL into separate gate and side SFT tasks."""
+"""LEGACY / DEPRECATED: kept only to reproduce historical analyzer/trader experiments.
+
+Split analyzer-summary trader JSONL into separate gate and side SFT tasks."""
 
 from __future__ import annotations
 

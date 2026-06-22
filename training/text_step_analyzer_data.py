@@ -1,4 +1,6 @@
-"""Build text analyzer/trader data where analyzer also selects execution step.
+"""LEGACY / DEPRECATED: kept only to reproduce historical analyzer/trader experiments.
+
+Build text analyzer/trader data where analyzer also selects execution step.
 
 This stage tests the hypothesis that the LLM should reason over setup horizon
 instead of forcing one fixed hold length.  Analyzer targets include a supervised

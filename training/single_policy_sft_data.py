@@ -1,9 +1,11 @@
 """Build single-LLM semantic policy SFT rows from economic action candidates.
 
-This replaces the two-stage analyzer/trader imitation target with one compact
-policy object.  The target still uses future OHLC utility for training labels,
-but the output avoids raw hold-bar prediction by mapping holds into an
-exit_profile abstraction.  Prompts remain past-only.
+This is the active RLLM reset path after deprecating the oversized
+``analyzer -> trader`` cascade.  It emits one compact policy object from one
+past-only state prompt.  The target still uses future OHLC utility for training
+labels, but the output avoids raw hold-bar prediction by mapping holds into an
+exit_profile abstraction.  Prompts remain past-only and do not expose a live
+two-stage role boundary.
 """
 
 from __future__ import annotations
@@ -143,24 +145,42 @@ def single_policy_target(row: dict[str, Any], market, cfg: SinglePolicyConfig) -
     }
 
 
+def extract_causal_state_context(source_prompt: str, *, max_chars: int = 3000) -> str:
+    """Extract a past-only state context while stripping legacy role wording.
+
+    Older datasets often embedded the state under ``Past-only analyzer summary``.
+    The reset path may reuse those rows for reproducibility, but the new prompt
+    must present the content as causal state, not as an analyzer/trader cascade.
+    """
+
+    text = str(source_prompt or "")
+    legacy_markers = (
+        "Past-only analyzer summary:",
+        "Analyzer summary:",
+        "Past-only analyzer context:",
+    )
+    for marker in legacy_markers:
+        if marker in text:
+            text = text.split(marker, 1)[1]
+            break
+    return text.strip()[-int(max_chars) :]
+
+
 def _policy_prompt(source_prompt: str) -> str:
-    if "Past-only analyzer summary:" in source_prompt:
-        past_summary = source_prompt.split("Past-only analyzer summary:", 1)[1].strip()
-    else:
-        past_summary = str(source_prompt)[-3000:]
+    state_context = extract_causal_state_context(source_prompt)
     return "\n".join(
         [
-            "You are a single LLM policy for BTCUSDT futures.",
-            "Use only the past-only analyzer summary below.",
+            "You are a single compact policy for BTCUSDT futures.",
+            "Use only the past-only causal market state below.",
             "Return one compact JSON object with keys regime, edge_quality, risk, action, exit_profile, confidence.",
             "Allowed regime: TREND_UP, TREND_DOWN, RANGE, CHOP, REVERSAL_RISK.",
             "Allowed edge_quality: NONE, WEAK, MODERATE, STRONG.",
             "Allowed risk: LOW, MID, HIGH.",
             "Allowed action: NO_TRADE, LONG, SHORT.",
             "Allowed exit_profile: AVOID, FAST, NORMAL, TRAIL. If action is NO_TRADE, exit_profile must be AVOID.",
-            "Do not output raw hold_bars or a final exchange order.",
+            "Do not output raw hold_bars, a separate gate/side decision, or a final exchange order.",
             "",
-            f"Past-only analyzer summary: {past_summary}",
+            f"Past-only causal state: {state_context}",
         ]
     )
 
@@ -180,6 +200,7 @@ def build_single_policy_rows(rows: list[dict[str, Any]], market, cfg: SinglePoli
                     "prompt_uses_future_path": False,
                     "target_uses_future_ohlc_utility_for_training_only": True,
                     "single_llm_policy_not_analyzer_trader_chain": True,
+                    "legacy_two_stage_role_wording_stripped": True,
                     "hold_bars_hidden_behind_exit_profile": True,
                 },
             }
@@ -211,6 +232,7 @@ def summarize_single_policy_rows(rows: list[dict[str, Any]], cfg: SinglePolicyCo
             "prompts_are_past_only": True,
             "targets_use_future_ohlc_utility": True,
             "not_a_backtest_result": True,
+            "active_rllm_path": "single_policy_no_analyzer_trader_cascade",
         },
     }
 

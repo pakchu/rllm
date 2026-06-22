@@ -1,4 +1,6 @@
-"""Export portfolio decision rows into separate gate and side SFT tasks."""
+"""LEGACY / DEPRECATED: kept only to reproduce historical analyzer/trader experiments.
+
+Export portfolio decision rows into separate gate and side SFT tasks."""
 from __future__ import annotations
 
 import argparse

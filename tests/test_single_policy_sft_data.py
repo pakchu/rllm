@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from training.single_policy_sft_data import SinglePolicyConfig, exit_profile_for_hold, hold_bars_for_exit_profile, summarize_single_policy_rows
+from training.single_policy_sft_data import SinglePolicyConfig, _policy_prompt, exit_profile_for_hold, extract_causal_state_context, hold_bars_for_exit_profile, summarize_single_policy_rows
 
 
 class TestSinglePolicySftData(unittest.TestCase):
@@ -27,6 +27,16 @@ class TestSinglePolicySftData(unittest.TestCase):
         self.assertEqual(s["field_counts"]["action"], {"LONG": 1, "NO_TRADE": 1})
         self.assertEqual(s["field_counts"]["exit_profile"], {"AVOID": 1, "NORMAL": 1})
         self.assertTrue(s["leakage_guard"]["targets_use_future_ohlc_utility"])
+
+    def test_reset_prompt_strips_legacy_analyzer_trader_boundary(self):
+        source = "Header\nPast-only analyzer summary: trend=UP; risk=LOW"
+        self.assertEqual(extract_causal_state_context(source), "trend=UP; risk=LOW")
+        prompt = _policy_prompt(source)
+        self.assertIn("single compact policy", prompt)
+        self.assertIn("Past-only causal state: trend=UP; risk=LOW", prompt)
+        self.assertNotIn("Past-only analyzer summary", prompt)
+        self.assertNotIn("trader stage", prompt.lower())
+        self.assertIn("separate gate/side", prompt)
 
 
 if __name__ == "__main__":
