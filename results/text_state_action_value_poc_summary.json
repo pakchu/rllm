@@ -1,0 +1,107 @@
+{
+  "as_of": "2026-06-22T05:55:57.139823+00:00",
+  "config": {
+    "market_csv": "data/2020-01-01_2026-06-01_btcusdt_futures_5m.csv.gz",
+    "output": "results/text_state_action_value_poc.jsonl",
+    "summary_output": "results/text_state_action_value_poc_summary.json",
+    "sample_output": "results/text_state_action_value_poc_sample.jsonl",
+    "wave_trading_root": "/home/pakchu/workspace/wave_trading",
+    "external_tolerance": "30min",
+    "start_date": "2020-01-01",
+    "end_date": "2026-06-01",
+    "train_end": "2024-12-31 23:59:59",
+    "eval_start": "2025-01-01",
+    "window_size": 144,
+    "stride_bars": 576,
+    "hold_bars_list": "72,144,288",
+    "sides": "LONG,SHORT",
+    "entry_delay_bars": 1,
+    "leverage": 1.0,
+    "fee_rate": 0.0004,
+    "slippage_rate": 0.0001,
+    "take_min_net_return_pct": 1.5,
+    "max_mae_pct": 4.0,
+    "min_mfe_to_mae": 0.7,
+    "abstain_deadzone_pct": 0.35,
+    "max_rows": 0
+  },
+  "output": "results/text_state_action_value_poc.jsonl",
+  "sample_output": "results/text_state_action_value_poc_sample.jsonl",
+  "total_rows": 7026,
+  "train": {
+    "rows": 5484,
+    "period": {
+      "start": "2020-01-01 03:00:00",
+      "end": "2024-12-31 03:00:00"
+    },
+    "target_counts": {
+      "ABSTAIN": 1399,
+      "SKIP": 3238,
+      "TAKE": 847
+    },
+    "side_counts": {
+      "LONG": 2742,
+      "SHORT": 2742
+    },
+    "hold_counts": {
+      "144": 1828,
+      "288": 1828,
+      "72": 1828
+    },
+    "target_rate": {
+      "ABSTAIN": 0.2551057622173596,
+      "SKIP": 0.5904449307075128,
+      "TAKE": 0.15444930707512763
+    },
+    "net_return_pct": {
+      "mean": -0.10000000000000006,
+      "std": 2.37175496465976
+    },
+    "prompt_chars": {
+      "min": 997,
+      "max": 1079,
+      "mean": 1028.4358132749817
+    }
+  },
+  "eval": {
+    "rows": 1542,
+    "period": {
+      "start": "2025-01-02 03:00:00",
+      "end": "2026-05-29 03:00:00"
+    },
+    "target_counts": {
+      "ABSTAIN": 423,
+      "SKIP": 946,
+      "TAKE": 173
+    },
+    "side_counts": {
+      "LONG": 771,
+      "SHORT": 771
+    },
+    "hold_counts": {
+      "144": 514,
+      "288": 514,
+      "72": 514
+    },
+    "target_rate": {
+      "ABSTAIN": 0.27431906614785995,
+      "SKIP": 0.6134889753566797,
+      "TAKE": 0.11219195849546044
+    },
+    "net_return_pct": {
+      "mean": -0.10000000000000003,
+      "std": 1.7070264222546112
+    },
+    "prompt_chars": {
+      "min": 997,
+      "max": 1081,
+      "mean": 1023.5012970168613
+    }
+  },
+  "prompt_contract": "categorical past-state tokens only; future path appears only in target/reward_audit",
+  "leakage_guard": {
+    "features_signal_time_or_prior": true,
+    "external_join_backward_asof": true,
+    "eval_split_not_used_for_train": true
+  }
+}
