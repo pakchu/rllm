@@ -92,8 +92,8 @@ def _candidate_logprob_predictions(rows: list[dict[str, Any]], *, key: str, mode
     tokenizer, model = _load_text_model(model_name, adapter_dir)
     labels = list(VALID_VALUES[key])
     normalize = str(score_normalization).strip().lower()
-    if normalize not in {"sum", "mean"}:
-        raise ValueError("score_normalization must be one of {'sum','mean'}")
+    if normalize not in {"sum", "mean", "first_token"}:
+        raise ValueError("score_normalization must be one of {'sum','mean','first_token'}")
     preds: list[str] = []
     for row in rows:
         prompt_ids = tokenizer(_chat_prompt_text(tokenizer, str(row["prompt"])), add_special_tokens=False)["input_ids"]
@@ -118,7 +118,10 @@ def _candidate_logprob_predictions(rows: list[dict[str, Any]], *, key: str, mode
             positions = torch.arange(start - 1, end - 1, device=log_probs.device)
             label_tensor = input_ids[i, start:end]
             token_scores = log_probs[i, positions, label_tensor]
-            score = token_scores.sum() if normalize == "sum" else token_scores.mean()
+            if normalize == "first_token":
+                score = token_scores[0]
+            else:
+                score = token_scores.sum() if normalize == "sum" else token_scores.mean()
             scores.append(float(score.detach().cpu()))
         preds.append(labels[max(range(len(scores)), key=lambda i: scores[i])])
     return preds
@@ -186,7 +189,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--prediction-mode", choices=["target_echo", "model", "candidate_logprob"], default="target_echo")
     p.add_argument("--max-new-tokens", type=int, default=8)
-    p.add_argument("--score-normalization", choices=["sum", "mean"], default="mean")
+    p.add_argument("--score-normalization", choices=["sum", "mean", "first_token"], default="mean")
     p.add_argument("--predictions-output", default="")
     return p.parse_args()
 

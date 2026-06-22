@@ -1,0 +1,93 @@
+{
+  "config": {
+    "input_jsonl": "results/text_state_portfolio_decision_poc.jsonl",
+    "gate_train_output": "results/text_state_portfolio_gate_train.jsonl",
+    "gate_eval_output": "results/text_state_portfolio_gate_eval.jsonl",
+    "side_train_output": "results/text_state_portfolio_side_train.jsonl",
+    "side_eval_output": "results/text_state_portfolio_side_eval.jsonl",
+    "summary_output": "results/text_state_portfolio_two_stage_export_summary.json",
+    "side_eval_all_output": "results/text_state_portfolio_side_eval_all.jsonl",
+    "side_train_all_output": "results/text_state_portfolio_side_train_all.jsonl"
+  },
+  "gate_train": {
+    "rows": 1827,
+    "target_counts": {
+      "NO_TRADE": 831,
+      "TRADE": 996
+    },
+    "prompt_chars": {
+      "min": 914,
+      "max": 983,
+      "mean": 942.1828133552272
+    }
+  },
+  "gate_eval": {
+    "rows": 515,
+    "target_counts": {
+      "NO_TRADE": 276,
+      "TRADE": 239
+    },
+    "prompt_chars": {
+      "min": 915,
+      "max": 990,
+      "mean": 938.7747572815534
+    }
+  },
+  "side_train": {
+    "rows": 996,
+    "target_counts": {
+      "LONG": 526,
+      "SHORT": 470
+    },
+    "prompt_chars": {
+      "min": 946,
+      "max": 1015,
+      "mean": 974.6887550200803
+    }
+  },
+  "side_eval": {
+    "rows": 239,
+    "target_counts": {
+      "LONG": 117,
+      "SHORT": 122
+    },
+    "prompt_chars": {
+      "min": 947,
+      "max": 1022,
+      "mean": 971.6401673640167
+    }
+  },
+  "side_train_all": {
+    "rows": 1827,
+    "target_counts": {
+      "LONG": 954,
+      "SHORT": 873
+    },
+    "prompt_chars": {
+      "min": 946,
+      "max": 1015,
+      "mean": 974.1828133552272
+    }
+  },
+  "side_eval_all": {
+    "rows": 515,
+    "target_counts": {
+      "LONG": 258,
+      "SHORT": 257
+    },
+    "prompt_chars": {
+      "min": 947,
+      "max": 1022,
+      "mean": 970.7747572815534
+    }
+  },
+  "outputs": {
+    "gate_train": "results/text_state_portfolio_gate_train.jsonl",
+    "gate_eval": "results/text_state_portfolio_gate_eval.jsonl",
+    "side_train": "results/text_state_portfolio_side_train.jsonl",
+    "side_eval": "results/text_state_portfolio_side_eval.jsonl",
+    "side_train_all": "results/text_state_portfolio_side_train_all.jsonl",
+    "side_eval_all": "results/text_state_portfolio_side_eval_all.jsonl"
+  },
+  "contract": "gate predicts TRADE/NO_TRADE; side predicts LONG/SHORT. *_all side files cover every timestamp using past-state prompt and best-side target from reward audit for offline scoring only; deployable validation composes gate model with side model over all eval rows."
+}
