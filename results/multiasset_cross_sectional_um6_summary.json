@@ -1,0 +1,302 @@
+{
+  "experiment": "multiasset_cross_sectional_um6_2023_2024_eval_2025_2026",
+  "data": "Binance USD-M 5m ADA/BNB/DOGE/ETH/SOL/XRP, 2023-01-01..2026-05-31",
+  "validation": "2023-01-01..2024-12-31",
+  "eval": "2025-01-01..2026-06-01",
+  "leakage_guard": "rolling past-close features; positions decided at rebalance close and applied next close-to-close bar; validation-selected params only; eval holdout",
+  "reports": [
+    {
+      "path": "results/multiasset_cross_sectional_um6_2023_2024_eval_2025_2026_report.json",
+      "selected_params": {
+        "score_mode": "mom",
+        "mom_window": 576,
+        "vol_window": 288,
+        "stride": 96,
+        "top_k": 1,
+        "portfolio": "long_top",
+        "regime_filter": "none",
+        "regime_window": 288
+      },
+      "val": {
+        "ret_pct": 5561.189636522273,
+        "cagr_pct": 653.4495231283007,
+        "strict_mdd_pct": 45.431818325895854,
+        "cagr_to_strict_mdd": 14.383081003734304,
+        "rebalance_count": 2193,
+        "avg_turnover_per_rebalance": 0.6224350205198358
+      },
+      "val_stats": {
+        "rebalance_obs": 2193,
+        "rebalance_mean_ret_pct": 0.25942986100894355,
+        "rebalance_t_stat_like": 4.006732792524836,
+        "rebalance_p_value_mean_ret_approx": 6.156444470173383e-05
+      },
+      "eval": {
+        "ret_pct": -66.46660870238041,
+        "cagr_pct": -53.85657959798049,
+        "strict_mdd_pct": 83.48514079413528,
+        "cagr_to_strict_mdd": -0.6451037763808125,
+        "rebalance_count": 1548,
+        "avg_turnover_per_rebalance": 0.7383720930232558
+      },
+      "eval_stats": {
+        "rebalance_obs": 1548,
+        "rebalance_mean_ret_pct": -0.0021884434926497855,
+        "rebalance_t_stat_like": -0.034179984061874856,
+        "rebalance_p_value_mean_ret_approx": 0.9727336276186502
+      }
+    },
+    {
+      "path": "results/multiasset_cross_sectional_um6_mdd15_selected_report.json",
+      "selected_params": {
+        "score_mode": "dual_mom_reversal",
+        "mom_window": 2016,
+        "vol_window": 288,
+        "stride": 288,
+        "top_k": 2,
+        "portfolio": "long_short",
+        "regime_filter": "market_mom_pos",
+        "regime_window": 2016
+      },
+      "val": {
+        "ret_pct": 133.73418033877678,
+        "cagr_pct": 52.928133508146026,
+        "strict_mdd_pct": 13.314654044121198,
+        "cagr_to_strict_mdd": 3.9751790270146232,
+        "rebalance_count": 731,
+        "avg_turnover_per_rebalance": 0.38782489740082077
+      },
+      "val_stats": {
+        "rebalance_obs": 731,
+        "rebalance_mean_ret_pct": 0.14355521792781842,
+        "rebalance_t_stat_like": 3.0612416670343228,
+        "rebalance_p_value_mean_ret_approx": 0.0022042110762223732
+      },
+      "eval": {
+        "ret_pct": -7.950266377004844,
+        "cagr_pct": -5.695287807981053,
+        "strict_mdd_pct": 15.049069533526914,
+        "cagr_to_strict_mdd": -0.37844783661161674,
+        "rebalance_count": 516,
+        "avg_turnover_per_rebalance": 0.3624031007751938
+      },
+      "eval_stats": {
+        "rebalance_obs": 516,
+        "rebalance_mean_ret_pct": 0.004558604884456268,
+        "rebalance_t_stat_like": 0.14652532089022044,
+        "rebalance_p_value_mean_ret_approx": 0.8835067024516139
+      }
+    },
+    {
+      "path": "results/multiasset_cross_sectional_um6_mdd15_candidates_eval.json",
+      "selection_rule": "validation cagr>0 and strict_mdd<=15, sorted by val cagr_to_mdd; eval is holdout",
+      "candidate_count": 6,
+      "candidates": [
+        {
+          "params": {
+            "score_mode": "dual_mom_reversal",
+            "mom_window": 2016,
+            "vol_window": 288,
+            "stride": 288,
+            "top_k": 2,
+            "portfolio": "long_short",
+            "regime_filter": "market_mom_pos",
+            "regime_window": 2016
+          },
+          "val": {
+            "ret_pct": 133.73418033877678,
+            "cagr_pct": 52.928133508146026,
+            "strict_mdd_pct": 13.314654044121198,
+            "cagr_to_strict_mdd": 3.9751790270146232,
+            "rebalance_count": 731,
+            "avg_turnover_per_rebalance": 0.38782489740082077
+          },
+          "eval": {
+            "ret_pct": -7.950266377004844,
+            "cagr_pct": -5.695287807981053,
+            "strict_mdd_pct": 15.049069533526914,
+            "cagr_to_strict_mdd": -0.37844783661161674,
+            "rebalance_count": 516,
+            "avg_turnover_per_rebalance": 0.3624031007751938
+          },
+          "eval_stats": {
+            "rebalance_obs": 516,
+            "rebalance_mean_ret_pct": 0.004558604884456268,
+            "rebalance_t_stat_like": 0.14652532089022044,
+            "rebalance_p_value_mean_ret_approx": 0.8835067024516139
+          }
+        },
+        {
+          "params": {
+            "score_mode": "vol_adj_mom",
+            "mom_window": 288,
+            "vol_window": 2016,
+            "stride": 288,
+            "top_k": 2,
+            "portfolio": "long_short",
+            "regime_filter": "dispersion_high",
+            "regime_window": 2016
+          },
+          "val": {
+            "ret_pct": 79.64841667179918,
+            "cagr_pct": 34.05988059991167,
+            "strict_mdd_pct": 12.669099957903862,
+            "cagr_to_strict_mdd": 2.6884214911149042,
+            "rebalance_count": 731,
+            "avg_turnover_per_rebalance": 0.6641586867305062
+          },
+          "eval": {
+            "ret_pct": -16.10814601190198,
+            "cagr_pct": -11.690964054116082,
+            "strict_mdd_pct": 30.824747136137642,
+            "cagr_to_strict_mdd": -0.3792720181120346,
+            "rebalance_count": 516,
+            "avg_turnover_per_rebalance": 0.6463178294573644
+          },
+          "eval_stats": {
+            "rebalance_obs": 516,
+            "rebalance_mean_ret_pct": 0.001061091977274703,
+            "rebalance_t_stat_like": 0.03230553782435274,
+            "rebalance_p_value_mean_ret_approx": 0.9742283929661875
+          }
+        },
+        {
+          "params": {
+            "score_mode": "vol_adj_mom",
+            "mom_window": 288,
+            "vol_window": 288,
+            "stride": 288,
+            "top_k": 2,
+            "portfolio": "long_short",
+            "regime_filter": "dispersion_high",
+            "regime_window": 2016
+          },
+          "val": {
+            "ret_pct": 62.74955051194655,
+            "cagr_pct": 27.594612462732137,
+            "strict_mdd_pct": 13.203528843632451,
+            "cagr_to_strict_mdd": 2.0899422260163383,
+            "rebalance_count": 731,
+            "avg_turnover_per_rebalance": 0.6703146374829001
+          },
+          "eval": {
+            "ret_pct": -16.25455111521601,
+            "cagr_pct": -11.800081168342446,
+            "strict_mdd_pct": 27.855735395089766,
+            "cagr_to_strict_mdd": -0.4236140601200028,
+            "rebalance_count": 516,
+            "avg_turnover_per_rebalance": 0.6511627906976745
+          },
+          "eval_stats": {
+            "rebalance_obs": 516,
+            "rebalance_mean_ret_pct": 0.0012028673581502005,
+            "rebalance_t_stat_like": 0.035145241354236,
+            "rebalance_p_value_mean_ret_approx": 0.9719639262934647
+          }
+        },
+        {
+          "params": {
+            "score_mode": "mom",
+            "mom_window": 288,
+            "vol_window": 288,
+            "stride": 288,
+            "top_k": 2,
+            "portfolio": "long_short",
+            "regime_filter": "dispersion_high",
+            "regime_window": 2016
+          },
+          "val": {
+            "ret_pct": 61.96540960592345,
+            "cagr_pct": 27.286650045742043,
+            "strict_mdd_pct": 14.73077076672653,
+            "cagr_to_strict_mdd": 1.852357251215693,
+            "rebalance_count": 731,
+            "avg_turnover_per_rebalance": 0.6621067031463749
+          },
+          "eval": {
+            "ret_pct": -21.841830529205687,
+            "cagr_pct": -16.007203944303406,
+            "strict_mdd_pct": 31.62567848559621,
+            "cagr_to_strict_mdd": -0.5061457875629078,
+            "rebalance_count": 516,
+            "avg_turnover_per_rebalance": 0.6598837209302325
+          },
+          "eval_stats": {
+            "rebalance_obs": 516,
+            "rebalance_mean_ret_pct": -0.011605391630149453,
+            "rebalance_t_stat_like": -0.3316502660429536,
+            "rebalance_p_value_mean_ret_approx": 0.7401533589028881
+          }
+        },
+        {
+          "params": {
+            "score_mode": "dual_mom_reversal",
+            "mom_window": 48,
+            "vol_window": 288,
+            "stride": 288,
+            "top_k": 2,
+            "portfolio": "long_short",
+            "regime_filter": "dispersion_high",
+            "regime_window": 2016
+          },
+          "val": {
+            "ret_pct": 32.90707586612571,
+            "cagr_pct": 15.296563367619243,
+            "strict_mdd_pct": 13.693598519710303,
+            "cagr_to_strict_mdd": 1.1170594307699078,
+            "rebalance_count": 731,
+            "avg_turnover_per_rebalance": 0.4158686730506156
+          },
+          "eval": {
+            "ret_pct": -9.142671656623847,
+            "cagr_pct": -6.56165280993336,
+            "strict_mdd_pct": 20.989566769443414,
+            "cagr_to_strict_mdd": -0.3126149711429874,
+            "rebalance_count": 516,
+            "avg_turnover_per_rebalance": 0.3856589147286822
+          },
+          "eval_stats": {
+            "rebalance_obs": 516,
+            "rebalance_mean_ret_pct": 0.0027404791799896357,
+            "rebalance_t_stat_like": 0.09730001313007457,
+            "rebalance_p_value_mean_ret_approx": 0.9224881455750307
+          }
+        },
+        {
+          "params": {
+            "score_mode": "dual_mom_reversal",
+            "mom_window": 48,
+            "vol_window": 288,
+            "stride": 288,
+            "top_k": 2,
+            "portfolio": "long_short",
+            "regime_filter": "dispersion_high",
+            "regime_window": 288
+          },
+          "val": {
+            "ret_pct": 32.270248031679685,
+            "cagr_pct": 15.01981920128419,
+            "strict_mdd_pct": 13.474762792063967,
+            "cagr_to_strict_mdd": 1.1146629764889213,
+            "rebalance_count": 731,
+            "avg_turnover_per_rebalance": 0.5937072503419972
+          },
+          "eval": {
+            "ret_pct": 3.4276441560441295,
+            "cagr_pct": 2.4142816986207016,
+            "strict_mdd_pct": 15.482981234562509,
+            "cagr_to_strict_mdd": 0.1559313198178736,
+            "rebalance_count": 516,
+            "avg_turnover_per_rebalance": 0.5290697674418605
+          },
+          "eval_stats": {
+            "rebalance_obs": 516,
+            "rebalance_mean_ret_pct": 0.03461249165042999,
+            "rebalance_t_stat_like": 1.378585098019803,
+            "rebalance_p_value_mean_ret_approx": 0.16802271374402666
+          }
+        }
+      ]
+    }
+  ]
+}
