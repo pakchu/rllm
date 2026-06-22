@@ -1,0 +1,81 @@
+{
+  "as_of": "2026-06-22T06:15:06.320494+00:00",
+  "config": {
+    "train_jsonl": "results/text_state_portfolio_decision_poc.jsonl",
+    "output": "results/text_state_portfolio_sft_preflight_report_venv.json",
+    "output_dir": "checkpoints/text_state_portfolio_gemma4_e4b_dryrun_venv",
+    "model_name": "gemma4-e4b",
+    "max_samples": 192,
+    "sample_mode": "balanced",
+    "max_seq_length": 1536
+  },
+  "python": {
+    "executable": "/home/pakchu/rllm/.venv/bin/python",
+    "version": "3.10.10 (main, Nov 10 2025, 22:11:24) [GCC 13.3.0]",
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39"
+  },
+  "modules": {
+    "numpy": true,
+    "torch": true,
+    "transformers": true,
+    "trl": true,
+    "peft": true,
+    "datasets": true,
+    "accelerate": true,
+    "bitsandbytes": true
+  },
+  "gpu": {
+    "available": true,
+    "gpus": [
+      "NVIDIA GeForce RTX 5090, 32607 MiB, 1440 MiB"
+    ]
+  },
+  "dry_run": {
+    "model_name": "google/gemma-4-E4B-it",
+    "train_jsonl": "/home/pakchu/rllm/results/text_state_portfolio_decision_poc.jsonl",
+    "output_dir": "checkpoints/text_state_portfolio_gemma4_e4b_dryrun_venv",
+    "rows": 192,
+    "tasks": {
+      "text_state_portfolio_decision": 192
+    },
+    "target_counts": {
+      "NO_TRADE": 64,
+      "SHORT": 64,
+      "LONG": 64
+    },
+    "prompt_chars": {
+      "min": 926,
+      "max": 988,
+      "mean": 948.7395833333334
+    },
+    "target_chars": {
+      "min": 4,
+      "max": 8,
+      "mean": 5.666666666666667
+    },
+    "config": {
+      "model_name": "gemma4-e4b",
+      "train_jsonl": "results/text_state_portfolio_decision_poc.jsonl",
+      "output_dir": "checkpoints/text_state_portfolio_gemma4_e4b_dryrun_venv",
+      "max_samples": 192,
+      "max_seq_length": 1536,
+      "sample_mode": "balanced",
+      "max_steps": 1,
+      "num_train_epochs": 1.0,
+      "learning_rate": 2e-05,
+      "per_device_train_batch_size": 1,
+      "gradient_accumulation_steps": 8,
+      "lora_r": 16,
+      "lora_alpha": 32,
+      "lora_dropout": 0.05,
+      "load_in_4bit": false,
+      "seed": 42,
+      "base_adapter_dir": ""
+    },
+    "dry_run": true,
+    "summary_path": "checkpoints/text_state_portfolio_gemma4_e4b_dryrun_venv/sft_summary.json"
+  },
+  "can_train_now": true,
+  "missing_for_training": [],
+  "note": "dry_run validates data/model alias only; can_train_now requires local ML dependencies in this Python environment"
+}
