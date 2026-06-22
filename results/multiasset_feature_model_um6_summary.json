@@ -1,0 +1,107 @@
+{
+  "experiment": "multiasset_feature_model_um6_train2023_val2024_eval2025_2026_mdd15",
+  "data": "Binance USD-M 5m ADA/BNB/DOGE/ETH/SOL/XRP + funding + 1h premium, 2023-01-01..2026-06-01",
+  "protocol": "fit scaler/ridge on 2023 train only; select hyperparams on 2024 validation only with MDD<=15; final holdout 2025-01-01..2026-06-01",
+  "feature_count": 28,
+  "selected_params": {
+    "horizon": 288,
+    "stride": 96,
+    "target": "excess",
+    "l2": 100.0,
+    "top_k": 2,
+    "portfolio": "long_short",
+    "regime_filter": "market_mom_pos"
+  },
+  "validation": {
+    "ret_pct": 105.88418125594745,
+    "cagr_pct": 105.9860406524555,
+    "strict_mdd_pct": 9.079249191479978,
+    "cagr_to_strict_mdd": 11.673436692531078,
+    "rebalance_count": 1098,
+    "avg_turnover_per_rebalance": 0.37932604735883424
+  },
+  "validation_stats": {
+    "rebalance_obs": 1098,
+    "rebalance_mean_ret_pct": 0.08762040495449117,
+    "rebalance_t_stat_like": 3.836611471548199,
+    "rebalance_p_value_mean_ret_approx": 0.00012474358788550077
+  },
+  "eval": {
+    "ret_pct": -32.81549431606664,
+    "cagr_pct": -24.537245801789332,
+    "strict_mdd_pct": 37.082843937689034,
+    "cagr_to_strict_mdd": -0.6616872708851486,
+    "rebalance_count": 1548,
+    "avg_turnover_per_rebalance": 0.3417312661498708
+  },
+  "eval_stats": {
+    "rebalance_obs": 1548,
+    "rebalance_mean_ret_pct": -0.0075939698030732805,
+    "rebalance_t_stat_like": -0.6647818100400563,
+    "rebalance_p_value_mean_ret_approx": 0.5061900586759251
+  },
+  "top_abs_coefficients": [
+    [
+      "funding_mean_1d",
+      0.0016870388865006752
+    ],
+    [
+      "funding_mean_7d",
+      -0.0011519510423456335
+    ],
+    [
+      "cs_vol_96",
+      0.0010936937273092356
+    ],
+    [
+      "cs_mom576_minus_mom48",
+      0.0009272954132126078
+    ],
+    [
+      "cs_funding_mean_1d",
+      -0.0009224123353801545
+    ],
+    [
+      "vol_2016",
+      0.0007567522730367802
+    ],
+    [
+      "cs_mom_2016",
+      0.0007534960848642425
+    ],
+    [
+      "cs_vol_288",
+      -0.0007129529920606699
+    ],
+    [
+      "mom576_minus_mom48",
+      -0.0007005665101574112
+    ],
+    [
+      "cs_mom_576",
+      -0.0006688744710287352
+    ],
+    [
+      "mom_576",
+      -0.0005344723963790446
+    ],
+    [
+      "cs_mom_288",
+      0.0005282171057274206
+    ],
+    [
+      "vol_288",
+      0.0005154798084451757
+    ],
+    [
+      "mom_48",
+      0.0004777506259851624
+    ],
+    [
+      "cs_premium_mean_1d",
+      -0.00047450989454956904
+    ]
+  ],
+  "conclusion": "Rejected: learned linear combination overfits 2024 validation and fails 2025-2026 holdout.",
+  "leakage_guard": "model fit on train only; hyperparameters selected on validation only; eval final holdout; features are rolling/ffilled from already observed timestamps; positions apply next close-to-close interval"
+}
