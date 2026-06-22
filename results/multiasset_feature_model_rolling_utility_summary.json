@@ -1,0 +1,90 @@
+{
+  "experiment": "multiasset_feature_model_rolling_utility",
+  "protocol": "2024 rolling validation selects utility target/score sign/spread; selected params then applied to 2025-2026 rolling eval",
+  "target": "future close-path utility = final return + penalty * adverse close excursion, cross-sectional excess; labels only use future path, features remain causal",
+  "no_sign_run": {
+    "selected_params": {
+      "horizon": 288,
+      "stride": 96,
+      "l2": 100.0,
+      "top_k": 2,
+      "portfolio": "long_short",
+      "regime_filter": "market_mom_pos",
+      "target": "utility1_excess",
+      "min_score_spread": 0.0
+    },
+    "validation": {
+      "ret_pct": -44.5758522689763,
+      "cagr_pct": -44.59825104803159,
+      "strict_mdd_pct": 53.757276889548166,
+      "cagr_to_strict_mdd": -0.8296225856020373,
+      "rebalance_count": 1095,
+      "avg_turnover_per_rebalance": 0.22237442922374429
+    },
+    "validation_stats": {
+      "rebalance_obs": 1095,
+      "rebalance_mean_ret_pct": -0.03918194430459634,
+      "rebalance_t_stat_like": -1.5359018852334572,
+      "rebalance_p_value_mean_ret_approx": 0.12456244571614583
+    },
+    "eval": {
+      "ret_pct": 11.295194675670682,
+      "cagr_pct": 7.869403021156329,
+      "strict_mdd_pct": 15.559792900793411,
+      "cagr_to_strict_mdd": 0.5057524268690659,
+      "rebalance_count": 1548,
+      "avg_turnover_per_rebalance": 0.2997416020671835
+    },
+    "eval_stats": {
+      "rebalance_obs": 1548,
+      "rebalance_mean_ret_pct": 0.023145377190190476,
+      "rebalance_t_stat_like": 1.8291533319977624,
+      "rebalance_p_value_mean_ret_approx": 0.0673766413594139
+    },
+    "note": "eval positive but validation failed badly, so not deployable"
+  },
+  "sign_sweep_run": {
+    "selected_params": {
+      "horizon": 288,
+      "stride": 96,
+      "l2": 100.0,
+      "top_k": 2,
+      "portfolio": "long_short",
+      "regime_filter": "market_mom_pos",
+      "target": "utility3_excess",
+      "score_sign": -1.0,
+      "min_score_spread": 0.0
+    },
+    "validation": {
+      "ret_pct": 42.826057851789855,
+      "cagr_pct": 42.8609329271592,
+      "strict_mdd_pct": 30.872853998997474,
+      "cagr_to_strict_mdd": 1.3883048495792132,
+      "rebalance_count": 1095,
+      "avg_turnover_per_rebalance": 0.20593607305936074
+    },
+    "validation_stats": {
+      "rebalance_obs": 1095,
+      "rebalance_mean_ret_pct": 0.046519562635508924,
+      "rebalance_t_stat_like": 1.7911019323923991,
+      "rebalance_p_value_mean_ret_approx": 0.07327693913418054
+    },
+    "eval": {
+      "ret_pct": -44.504768571220076,
+      "cagr_pct": -34.08691009844404,
+      "strict_mdd_pct": 49.53005869890894,
+      "cagr_to_strict_mdd": -0.6882065354627757,
+      "rebalance_count": 1548,
+      "avg_turnover_per_rebalance": 0.24903100775193798
+    },
+    "eval_stats": {
+      "rebalance_obs": 1548,
+      "rebalance_mean_ret_pct": -0.024277716584746725,
+      "rebalance_t_stat_like": -1.867414364424956,
+      "rebalance_p_value_mean_ret_approx": 0.06184374538772275
+    },
+    "note": "validation sign inversion improves return but MDD exceeds target and eval collapses"
+  },
+  "conclusion": "Rejected. Utility target changes the behavior and can produce a positive eval diagnostic, but validation cannot select a target-compliant configuration without later holdout collapse.",
+  "leakage_guard": "monthly models fit only on data before each validation/eval month; target/spread selected on validation only; eval untouched"
+}
