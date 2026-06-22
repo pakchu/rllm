@@ -1,0 +1,36 @@
+import unittest
+
+from training.alpha_candidate_gate import AlphaGateConfig, score_candidate
+
+
+def fold(name, cagr, mdd, ratio, trades=100):
+    return {"fold": name, "result": {"sim": {"cagr_pct": cagr, "strict_mdd_pct": mdd, "cagr_to_strict_mdd": ratio, "trade_entries": trades}}}
+
+
+class TestAlphaCandidateGate(unittest.TestCase):
+    def test_candidate_passes_when_all_gates_satisfied(self):
+        cfg = AlphaGateConfig(input_report="in", output="out", min_positive_folds=2, min_total_trades=100)
+        cand = {"feature": "x", "horizon": 72, "quantile": 0.2, "strict_folds": [fold("a", 50, 10, 5), fold("b", 40, 12, 3.5)]}
+        scored = score_candidate(cand, cfg)
+        self.assertTrue(scored["passed"])
+        self.assertEqual(scored["summary"]["positive_folds"], 2)
+
+    def test_candidate_fails_on_negative_worst_fold_and_mdd(self):
+        cfg = AlphaGateConfig(input_report="in", output="out", min_positive_folds=2, min_total_trades=100)
+        cand = {"feature": "x", "horizon": 72, "quantile": 0.2, "strict_folds": [fold("a", 50, 10, 5), fold("b", -20, 30, -1)]}
+        scored = score_candidate(cand, cfg)
+        self.assertFalse(scored["passed"])
+        self.assertIn("negative_or_zero_worst_fold_cagr", scored["failures"])
+        self.assertIn("mdd_exceeds_limit_in_some_folds", scored["failures"])
+
+    def test_candidate_fails_without_enough_trades(self):
+        cfg = AlphaGateConfig(input_report="in", output="out", min_positive_folds=2, min_fold_trades=30, min_total_trades=100)
+        cand = {"feature": "x", "strict_folds": [fold("a", 50, 10, 5, trades=10), fold("b", 40, 10, 4, trades=10)]}
+        scored = score_candidate(cand, cfg)
+        self.assertFalse(scored["passed"])
+        self.assertIn("insufficient_trade_count_folds", scored["failures"])
+        self.assertIn("insufficient_total_trades", scored["failures"])
+
+
+if __name__ == "__main__":
+    unittest.main()
