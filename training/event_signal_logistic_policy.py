@@ -21,6 +21,7 @@ class Cfg:
     market_csv: str = "data/2020-01-01_2026-06-01_btcusdt_futures_5m.csv.gz"
     min_trade_conf: str = "0.34,0.4,0.45,0.5,0.55,0.6"
     min_val_trades: int = 50
+    feature_allowlist: str = ""
 
 
 def load(p): return [json.loads(l) for l in open(p) if l.strip()]
@@ -38,11 +39,14 @@ def best_label(rows):
         acts.append((rank,side))
     acts.append((0.0,'NO_TRADE'))
     return max(acts)[1]
-def names(groups):
+def names(groups, allowlist=""):
+    allowed={x.strip() for x in str(allowlist).split(',') if x.strip()}
     ks=set(); toks=set()
     for g in groups:
-        r=g[0]; ks.update((r.get('feature_snapshot') or {}).keys())
-        for k,v in (r.get('state_tokens') or {}).items(): toks.add(f'{k}={v}')
+        r=g[0]; cur=set((r.get('feature_snapshot') or {}).keys())
+        ks.update((cur & allowed) if allowed else cur)
+        if not allowed:
+            for k,v in (r.get('state_tokens') or {}).items(): toks.add(f'{k}={v}')
     return sorted(ks), sorted(toks)
 def xy(groups, ns, cs):
     ci={c:i for i,c in enumerate(cs)}; X=np.zeros((len(groups),len(ns)+len(cs))); y=np.zeros(len(groups),int)
@@ -82,7 +86,7 @@ def write(groups,P,path,thr):
 def run(c:Cfg):
     allg=group(load(c.train_candidates)); evg=group(load(c.eval_candidates))
     fit=[g for g in allg if date(g[0])<c.validation_start]; val=[g for g in allg if c.validation_start<=date(g[0])<=c.validation_end]
-    ns,cs=names(fit); Xf,yf=xy(fit,ns,cs); Xv,yv=xy(val,ns,cs); Xe,ye=xy(evg,ns,cs)
+    ns,cs=names(fit,c.feature_allowlist); Xf,yf=xy(fit,ns,cs); Xv,yv=xy(val,ns,cs); Xe,ye=xy(evg,ns,cs)
     Xfz,Xvz=standardize(Xf,Xv); _,Xez=standardize(Xf,Xe); W=train_softmax(Xfz,yf)
     Pv=pred(Xvz,W); Pe=pred(Xez,W); Path(c.work_dir).mkdir(parents=True,exist_ok=True)
     vals=[]
