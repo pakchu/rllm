@@ -1,0 +1,89 @@
+{
+  "as_of": "2026-06-22T06:03:31.517856+00:00",
+  "config": {
+    "market_csv": "data/2020-01-01_2026-06-01_btcusdt_futures_5m.csv.gz",
+    "output": "results/text_state_portfolio_decision_poc.jsonl",
+    "summary_output": "results/text_state_portfolio_decision_poc_summary.json",
+    "sample_output": "results/text_state_portfolio_decision_poc_sample.jsonl",
+    "wave_trading_root": "/home/pakchu/workspace/wave_trading",
+    "external_tolerance": "30min",
+    "start_date": "2020-01-01",
+    "end_date": "2026-06-01",
+    "train_end": "2024-12-31 23:59:59",
+    "eval_start": "2025-01-01",
+    "window_size": 144,
+    "stride_bars": 288,
+    "hold_bars": 288,
+    "entry_delay_bars": 1,
+    "leverage": 1.0,
+    "fee_rate": 0.0004,
+    "slippage_rate": 0.0001,
+    "min_trade_net_return_pct": 1.2,
+    "max_trade_mae_pct": 5.0,
+    "min_advantage_pct": 0.6,
+    "mae_penalty": 0.35,
+    "no_trade_buffer_pct": 0.25,
+    "max_rows": 0
+  },
+  "output": "results/text_state_portfolio_decision_poc.jsonl",
+  "sample_output": "results/text_state_portfolio_decision_poc_sample.jsonl",
+  "total_rows": 2342,
+  "train": {
+    "rows": 1827,
+    "period": {
+      "start": "2020-01-01 03:00:00",
+      "end": "2024-12-31 03:00:00"
+    },
+    "target_counts": {
+      "LONG": 526,
+      "NO_TRADE": 831,
+      "SHORT": 470
+    },
+    "target_rate": {
+      "LONG": 0.28790366721401206,
+      "NO_TRADE": 0.4548440065681445,
+      "SHORT": 0.25725232621784344
+    },
+    "chosen_oracle_utility": {
+      "mean": 1.7940470607854757,
+      "std": 2.5162832493539598
+    },
+    "prompt_chars": {
+      "min": 921,
+      "max": 990,
+      "mean": 949.1828133552272
+    }
+  },
+  "eval": {
+    "rows": 515,
+    "period": {
+      "start": "2025-01-01 03:00:00",
+      "end": "2026-05-30 03:00:00"
+    },
+    "target_counts": {
+      "LONG": 117,
+      "NO_TRADE": 276,
+      "SHORT": 122
+    },
+    "target_rate": {
+      "LONG": 0.22718446601941747,
+      "NO_TRADE": 0.5359223300970873,
+      "SHORT": 0.23689320388349513
+    },
+    "chosen_oracle_utility": {
+      "mean": 1.2402899071758018,
+      "std": 1.6220123985240922
+    },
+    "prompt_chars": {
+      "min": 922,
+      "max": 997,
+      "mean": 945.7747572815534
+    }
+  },
+  "prompt_contract": "one timestamp -> one portfolio action; future path only in target/reward_audit",
+  "leakage_guard": {
+    "features_signal_time_or_prior": true,
+    "external_join_backward_asof": true,
+    "eval_split_not_used_for_train": true
+  }
+}

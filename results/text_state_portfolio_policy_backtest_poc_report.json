@@ -1,0 +1,706 @@
+{
+  "config": {
+    "input_jsonl": "results/text_state_portfolio_decision_poc.jsonl",
+    "market_csv": "data/2020-01-01_2026-06-01_btcusdt_futures_5m.csv.gz",
+    "output": "results/text_state_portfolio_policy_backtest_poc_report.json",
+    "min_count": 8,
+    "smoothing": 2.0,
+    "top_k_tokens": 10,
+    "confidence_thresholds": "0.34,0.38,0.42,0.46,0.50,0.55",
+    "margin_thresholds": "0.00,0.04,0.08,0.12",
+    "leverage": 1.0,
+    "fee_rate": 0.0004,
+    "slippage_rate": 0.0001,
+    "entry_delay_bars": 1,
+    "max_same_bar_signals": 1,
+    "trade_stop_loss_pct": 0.0,
+    "trade_take_profit_pct": 0.0
+  },
+  "train_classification": {
+    "rows": 1827,
+    "accuracy": 0.48002189381499727,
+    "target_counts": {
+      "NO_TRADE": 831,
+      "SHORT": 470,
+      "LONG": 526
+    },
+    "pred_counts": {
+      "NO_TRADE": 1054,
+      "LONG": 420,
+      "SHORT": 353
+    },
+    "by_label": {
+      "LONG": {
+        "support": 526,
+        "predicted": 420,
+        "correct": 159
+      },
+      "SHORT": {
+        "support": 470,
+        "predicted": 353,
+        "correct": 144
+      },
+      "NO_TRADE": {
+        "support": 831,
+        "predicted": 1054,
+        "correct": 574
+      }
+    }
+  },
+  "eval_classification": {
+    "rows": 515,
+    "accuracy": 0.4912621359223301,
+    "target_counts": {
+      "NO_TRADE": 276,
+      "LONG": 117,
+      "SHORT": 122
+    },
+    "pred_counts": {
+      "NO_TRADE": 383,
+      "LONG": 48,
+      "SHORT": 84
+    },
+    "by_label": {
+      "LONG": {
+        "support": 117,
+        "predicted": 48,
+        "correct": 16
+      },
+      "SHORT": {
+        "support": 122,
+        "predicted": 84,
+        "correct": 18
+      },
+      "NO_TRADE": {
+        "support": 276,
+        "predicted": 383,
+        "correct": 219
+      }
+    }
+  },
+  "learned_token_count": 122,
+  "backtests": [
+    {
+      "prob_threshold": 0.46,
+      "margin_threshold": 0.08,
+      "events": 78,
+      "result": {
+        "period": {
+          "start": "2025-01-08 03:00:00",
+          "end": "2026-05-08 03:00:00",
+          "years": 1.3278576317590691
+        },
+        "sim": {
+          "ret_pct": 3.471210980677353,
+          "cagr_pct": 2.6030999992451287,
+          "strict_mdd_pct": 13.684556197627785,
+          "cagr_to_strict_mdd": 0.19022173329204314,
+          "trade_entries": 61,
+          "skipped_overlay": 0,
+          "exit_reasons": {
+            "time": 61
+          },
+          "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+        },
+        "trade_stats": {
+          "n_trades": 61,
+          "mean_trade_ret_pct": 0.08597076078306629,
+          "std_trade_ret_pct": 2.491582886267474,
+          "t_stat_like": 0.26948856899128293,
+          "p_value_mean_ret_approx": 0.787553737579298,
+          "ci95_mean_trade_ret_pct": [
+            -0.5392976569666321,
+            0.7112391785327647
+          ],
+          "effect_size_d": 0.03450447555122485,
+          "n_required_for_80pct_power_alpha5pct": 6593,
+          "n_gap_to_power_rule": 6532
+        },
+        "fold_trade_counts": {
+          "eval": 61
+        }
+      }
+    },
+    {
+      "prob_threshold": 0.34,
+      "margin_threshold": 0.08,
+      "events": 92,
+      "result": {
+        "period": {
+          "start": "2025-01-08 03:00:00",
+          "end": "2026-05-08 03:00:00",
+          "years": 1.3278576317590691
+        },
+        "sim": {
+          "ret_pct": 1.3602613046230783,
+          "cagr_pct": 1.0226923531112098,
+          "strict_mdd_pct": 15.168283061809106,
+          "cagr_to_strict_mdd": 0.06742307939163909,
+          "trade_entries": 71,
+          "skipped_overlay": 0,
+          "exit_reasons": {
+            "time": 71
+          },
+          "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+        },
+        "trade_stats": {
+          "n_trades": 71,
+          "mean_trade_ret_pct": 0.04600347366737177,
+          "std_trade_ret_pct": 2.358395030701606,
+          "t_stat_like": 0.16436269334078923,
+          "p_value_mean_ret_approx": 0.869445630523046,
+          "ci95_mean_trade_ret_pct": [
+            -0.5025809195142186,
+            0.594587866848962
+          ],
+          "effect_size_d": 0.019506262974818965,
+          "n_required_for_80pct_power_alpha5pct": 20629,
+          "n_gap_to_power_rule": 20558
+        },
+        "fold_trade_counts": {
+          "eval": 71
+        }
+      }
+    },
+    {
+      "prob_threshold": 0.38,
+      "margin_threshold": 0.08,
+      "events": 92,
+      "result": {
+        "period": {
+          "start": "2025-01-08 03:00:00",
+          "end": "2026-05-08 03:00:00",
+          "years": 1.3278576317590691
+        },
+        "sim": {
+          "ret_pct": 1.3602613046230783,
+          "cagr_pct": 1.0226923531112098,
+          "strict_mdd_pct": 15.168283061809106,
+          "cagr_to_strict_mdd": 0.06742307939163909,
+          "trade_entries": 71,
+          "skipped_overlay": 0,
+          "exit_reasons": {
+            "time": 71
+          },
+          "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+        },
+        "trade_stats": {
+          "n_trades": 71,
+          "mean_trade_ret_pct": 0.04600347366737177,
+          "std_trade_ret_pct": 2.358395030701606,
+          "t_stat_like": 0.16436269334078923,
+          "p_value_mean_ret_approx": 0.869445630523046,
+          "ci95_mean_trade_ret_pct": [
+            -0.5025809195142186,
+            0.594587866848962
+          ],
+          "effect_size_d": 0.019506262974818965,
+          "n_required_for_80pct_power_alpha5pct": 20629,
+          "n_gap_to_power_rule": 20558
+        },
+        "fold_trade_counts": {
+          "eval": 71
+        }
+      }
+    },
+    {
+      "prob_threshold": 0.46,
+      "margin_threshold": 0.04,
+      "events": 79,
+      "result": {
+        "period": {
+          "start": "2025-01-08 03:00:00",
+          "end": "2026-05-08 03:00:00",
+          "years": 1.3278576317590691
+        },
+        "sim": {
+          "ret_pct": 1.2496247640797487,
+          "cagr_pct": 0.9396390641748242,
+          "strict_mdd_pct": 15.537798258036728,
+          "cagr_to_strict_mdd": 0.06047440239409775,
+          "trade_entries": 62,
+          "skipped_overlay": 0,
+          "exit_reasons": {
+            "time": 62
+          },
+          "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+        },
+        "trade_stats": {
+          "n_trades": 62,
+          "mean_trade_ret_pct": 0.04995417872358762,
+          "std_trade_ret_pct": 2.4872959349511605,
+          "t_stat_like": 0.1581394441578765,
+          "p_value_mean_ret_approx": 0.8743469197059393,
+          "ci95_mean_trade_ret_pct": [
+            -0.569184144543088,
+            0.6690925019902633
+          ],
+          "effect_size_d": 0.02008372949178985,
+          "n_required_for_80pct_power_alpha5pct": 19459,
+          "n_gap_to_power_rule": 19397
+        },
+        "fold_trade_counts": {
+          "eval": 62
+        }
+      }
+    },
+    {
+      "prob_threshold": 0.42,
+      "margin_threshold": 0.08,
+      "events": 87,
+      "result": {
+        "period": {
+          "start": "2025-01-08 03:00:00",
+          "end": "2026-05-08 03:00:00",
+          "years": 1.3278576317590691
+        },
+        "sim": {
+          "ret_pct": 0.5087850994957233,
+          "cagr_pct": 0.38292222478526483,
+          "strict_mdd_pct": 15.787993359069919,
+          "cagr_to_strict_mdd": 0.02425401481216629,
+          "trade_entries": 69,
+          "skipped_overlay": 0,
+          "exit_reasons": {
+            "time": 69
+          },
+          "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+        },
+        "trade_stats": {
+          "n_trades": 69,
+          "mean_trade_ret_pct": 0.03504120998569927,
+          "std_trade_ret_pct": 2.390068122714935,
+          "t_stat_like": 0.12178487645870723,
+          "p_value_mean_ret_approx": 0.9030693916261743,
+          "ci95_mean_trade_ret_pct": [
+            -0.5289103541911357,
+            0.5989927741625344
+          ],
+          "effect_size_d": 0.01466117624542648,
+          "n_required_for_80pct_power_alpha5pct": 36515,
+          "n_gap_to_power_rule": 36446
+        },
+        "fold_trade_counts": {
+          "eval": 69
+        }
+      }
+    },
+    {
+      "prob_threshold": 0.34,
+      "margin_threshold": 0.12,
+      "events": 73,
+      "result": {
+        "period": {
+          "start": "2025-01-08 03:00:00",
+          "end": "2026-05-08 03:00:00",
+          "years": 1.3278576317590691
+        },
+        "sim": {
+          "ret_pct": -2.71709016970505,
+          "cagr_pct": -2.053163449698381,
+          "strict_mdd_pct": 17.01805639765436,
+          "cagr_to_strict_mdd": -0.12064617731443018,
+          "trade_entries": 56,
+          "skipped_overlay": 0,
+          "exit_reasons": {
+            "time": 56
+          },
+          "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+        },
+        "trade_stats": {
+          "n_trades": 56,
+          "mean_trade_ret_pct": -0.017240876069394125,
+          "std_trade_ret_pct": 2.5736051701492313,
+          "t_stat_like": -0.05013158354493203,
+          "p_value_mean_ret_approx": 0.960017531343148,
+          "ci95_mean_trade_ret_pct": [
+            -0.6913092917563877,
+            0.6568275396175993
+          ],
+          "effect_size_d": -0.006699114638627496,
+          "n_required_for_80pct_power_alpha5pct": 174894,
+          "n_gap_to_power_rule": 174838
+        },
+        "fold_trade_counts": {
+          "eval": 56
+        }
+      }
+    },
+    {
+      "prob_threshold": 0.38,
+      "margin_threshold": 0.12,
+      "events": 73,
+      "result": {
+        "period": {
+          "start": "2025-01-08 03:00:00",
+          "end": "2026-05-08 03:00:00",
+          "years": 1.3278576317590691
+        },
+        "sim": {
+          "ret_pct": -2.71709016970505,
+          "cagr_pct": -2.053163449698381,
+          "strict_mdd_pct": 17.01805639765436,
+          "cagr_to_strict_mdd": -0.12064617731443018,
+          "trade_entries": 56,
+          "skipped_overlay": 0,
+          "exit_reasons": {
+            "time": 56
+          },
+          "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+        },
+        "trade_stats": {
+          "n_trades": 56,
+          "mean_trade_ret_pct": -0.017240876069394125,
+          "std_trade_ret_pct": 2.5736051701492313,
+          "t_stat_like": -0.05013158354493203,
+          "p_value_mean_ret_approx": 0.960017531343148,
+          "ci95_mean_trade_ret_pct": [
+            -0.6913092917563877,
+            0.6568275396175993
+          ],
+          "effect_size_d": -0.006699114638627496,
+          "n_required_for_80pct_power_alpha5pct": 174894,
+          "n_gap_to_power_rule": 174838
+        },
+        "fold_trade_counts": {
+          "eval": 56
+        }
+      }
+    },
+    {
+      "prob_threshold": 0.42,
+      "margin_threshold": 0.12,
+      "events": 73,
+      "result": {
+        "period": {
+          "start": "2025-01-08 03:00:00",
+          "end": "2026-05-08 03:00:00",
+          "years": 1.3278576317590691
+        },
+        "sim": {
+          "ret_pct": -2.71709016970505,
+          "cagr_pct": -2.053163449698381,
+          "strict_mdd_pct": 17.01805639765436,
+          "cagr_to_strict_mdd": -0.12064617731443018,
+          "trade_entries": 56,
+          "skipped_overlay": 0,
+          "exit_reasons": {
+            "time": 56
+          },
+          "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+        },
+        "trade_stats": {
+          "n_trades": 56,
+          "mean_trade_ret_pct": -0.017240876069394125,
+          "std_trade_ret_pct": 2.5736051701492313,
+          "t_stat_like": -0.05013158354493203,
+          "p_value_mean_ret_approx": 0.960017531343148,
+          "ci95_mean_trade_ret_pct": [
+            -0.6913092917563877,
+            0.6568275396175993
+          ],
+          "effect_size_d": -0.006699114638627496,
+          "n_required_for_80pct_power_alpha5pct": 174894,
+          "n_gap_to_power_rule": 174838
+        },
+        "fold_trade_counts": {
+          "eval": 56
+        }
+      }
+    },
+    {
+      "prob_threshold": 0.42,
+      "margin_threshold": 0.04,
+      "events": 98,
+      "result": {
+        "period": {
+          "start": "2025-01-08 03:00:00",
+          "end": "2026-05-08 03:00:00",
+          "years": 1.3278576317590691
+        },
+        "sim": {
+          "ret_pct": -4.149874233496364,
+          "cagr_pct": -3.1415342558915094,
+          "strict_mdd_pct": 20.73144710646513,
+          "cagr_to_strict_mdd": -0.1515347307767926,
+          "trade_entries": 76,
+          "skipped_overlay": 0,
+          "exit_reasons": {
+            "time": 76
+          },
+          "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+        },
+        "trade_stats": {
+          "n_trades": 76,
+          "mean_trade_ret_pct": -0.029102691088434288,
+          "std_trade_ret_pct": 2.3435694967918153,
+          "t_stat_like": -0.10825852581988585,
+          "p_value_mean_ret_approx": 0.9137906208029509,
+          "ci95_mean_trade_ret_pct": [
+            -0.5560013727519285,
+            0.49779599057506
+          ],
+          "effect_size_d": -0.012418104574357136,
+          "n_required_for_80pct_power_alpha5pct": 50898,
+          "n_gap_to_power_rule": 50822
+        },
+        "fold_trade_counts": {
+          "eval": 76
+        }
+      }
+    },
+    {
+      "prob_threshold": 0.46,
+      "margin_threshold": 0.12,
+      "events": 71,
+      "result": {
+        "period": {
+          "start": "2025-01-08 03:00:00",
+          "end": "2026-05-08 03:00:00",
+          "years": 1.3278576317590691
+        },
+        "sim": {
+          "ret_pct": -3.7057877169719644,
+          "cagr_pct": -2.8037705574633476,
+          "strict_mdd_pct": 17.861411558907434,
+          "cagr_to_strict_mdd": -0.15697362709640467,
+          "trade_entries": 55,
+          "skipped_overlay": 0,
+          "exit_reasons": {
+            "time": 55
+          },
+          "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+        },
+        "trade_stats": {
+          "n_trades": 55,
+          "mean_trade_ret_pct": -0.0362224664802091,
+          "std_trade_ret_pct": 2.593366431038807,
+          "t_stat_like": -0.10358466813415013,
+          "p_value_mean_ret_approx": 0.91749895526069,
+          "ci95_mean_trade_ret_pct": [
+            -0.7216138046004849,
+            0.6491688716400666
+          ],
+          "effect_size_d": -0.013967353801868919,
+          "n_required_for_80pct_power_alpha5pct": 40233,
+          "n_gap_to_power_rule": 40178
+        },
+        "fold_trade_counts": {
+          "eval": 55
+        }
+      }
+    }
+  ],
+  "top_backtests": [
+    {
+      "prob_threshold": 0.46,
+      "margin_threshold": 0.08,
+      "events": 78,
+      "result": {
+        "period": {
+          "start": "2025-01-08 03:00:00",
+          "end": "2026-05-08 03:00:00",
+          "years": 1.3278576317590691
+        },
+        "sim": {
+          "ret_pct": 3.471210980677353,
+          "cagr_pct": 2.6030999992451287,
+          "strict_mdd_pct": 13.684556197627785,
+          "cagr_to_strict_mdd": 0.19022173329204314,
+          "trade_entries": 61,
+          "skipped_overlay": 0,
+          "exit_reasons": {
+            "time": 61
+          },
+          "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+        },
+        "trade_stats": {
+          "n_trades": 61,
+          "mean_trade_ret_pct": 0.08597076078306629,
+          "std_trade_ret_pct": 2.491582886267474,
+          "t_stat_like": 0.26948856899128293,
+          "p_value_mean_ret_approx": 0.787553737579298,
+          "ci95_mean_trade_ret_pct": [
+            -0.5392976569666321,
+            0.7112391785327647
+          ],
+          "effect_size_d": 0.03450447555122485,
+          "n_required_for_80pct_power_alpha5pct": 6593,
+          "n_gap_to_power_rule": 6532
+        },
+        "fold_trade_counts": {
+          "eval": 61
+        }
+      }
+    },
+    {
+      "prob_threshold": 0.34,
+      "margin_threshold": 0.08,
+      "events": 92,
+      "result": {
+        "period": {
+          "start": "2025-01-08 03:00:00",
+          "end": "2026-05-08 03:00:00",
+          "years": 1.3278576317590691
+        },
+        "sim": {
+          "ret_pct": 1.3602613046230783,
+          "cagr_pct": 1.0226923531112098,
+          "strict_mdd_pct": 15.168283061809106,
+          "cagr_to_strict_mdd": 0.06742307939163909,
+          "trade_entries": 71,
+          "skipped_overlay": 0,
+          "exit_reasons": {
+            "time": 71
+          },
+          "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+        },
+        "trade_stats": {
+          "n_trades": 71,
+          "mean_trade_ret_pct": 0.04600347366737177,
+          "std_trade_ret_pct": 2.358395030701606,
+          "t_stat_like": 0.16436269334078923,
+          "p_value_mean_ret_approx": 0.869445630523046,
+          "ci95_mean_trade_ret_pct": [
+            -0.5025809195142186,
+            0.594587866848962
+          ],
+          "effect_size_d": 0.019506262974818965,
+          "n_required_for_80pct_power_alpha5pct": 20629,
+          "n_gap_to_power_rule": 20558
+        },
+        "fold_trade_counts": {
+          "eval": 71
+        }
+      }
+    },
+    {
+      "prob_threshold": 0.38,
+      "margin_threshold": 0.08,
+      "events": 92,
+      "result": {
+        "period": {
+          "start": "2025-01-08 03:00:00",
+          "end": "2026-05-08 03:00:00",
+          "years": 1.3278576317590691
+        },
+        "sim": {
+          "ret_pct": 1.3602613046230783,
+          "cagr_pct": 1.0226923531112098,
+          "strict_mdd_pct": 15.168283061809106,
+          "cagr_to_strict_mdd": 0.06742307939163909,
+          "trade_entries": 71,
+          "skipped_overlay": 0,
+          "exit_reasons": {
+            "time": 71
+          },
+          "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+        },
+        "trade_stats": {
+          "n_trades": 71,
+          "mean_trade_ret_pct": 0.04600347366737177,
+          "std_trade_ret_pct": 2.358395030701606,
+          "t_stat_like": 0.16436269334078923,
+          "p_value_mean_ret_approx": 0.869445630523046,
+          "ci95_mean_trade_ret_pct": [
+            -0.5025809195142186,
+            0.594587866848962
+          ],
+          "effect_size_d": 0.019506262974818965,
+          "n_required_for_80pct_power_alpha5pct": 20629,
+          "n_gap_to_power_rule": 20558
+        },
+        "fold_trade_counts": {
+          "eval": 71
+        }
+      }
+    },
+    {
+      "prob_threshold": 0.46,
+      "margin_threshold": 0.04,
+      "events": 79,
+      "result": {
+        "period": {
+          "start": "2025-01-08 03:00:00",
+          "end": "2026-05-08 03:00:00",
+          "years": 1.3278576317590691
+        },
+        "sim": {
+          "ret_pct": 1.2496247640797487,
+          "cagr_pct": 0.9396390641748242,
+          "strict_mdd_pct": 15.537798258036728,
+          "cagr_to_strict_mdd": 0.06047440239409775,
+          "trade_entries": 62,
+          "skipped_overlay": 0,
+          "exit_reasons": {
+            "time": 62
+          },
+          "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+        },
+        "trade_stats": {
+          "n_trades": 62,
+          "mean_trade_ret_pct": 0.04995417872358762,
+          "std_trade_ret_pct": 2.4872959349511605,
+          "t_stat_like": 0.1581394441578765,
+          "p_value_mean_ret_approx": 0.8743469197059393,
+          "ci95_mean_trade_ret_pct": [
+            -0.569184144543088,
+            0.6690925019902633
+          ],
+          "effect_size_d": 0.02008372949178985,
+          "n_required_for_80pct_power_alpha5pct": 19459,
+          "n_gap_to_power_rule": 19397
+        },
+        "fold_trade_counts": {
+          "eval": 62
+        }
+      }
+    },
+    {
+      "prob_threshold": 0.42,
+      "margin_threshold": 0.08,
+      "events": 87,
+      "result": {
+        "period": {
+          "start": "2025-01-08 03:00:00",
+          "end": "2026-05-08 03:00:00",
+          "years": 1.3278576317590691
+        },
+        "sim": {
+          "ret_pct": 0.5087850994957233,
+          "cagr_pct": 0.38292222478526483,
+          "strict_mdd_pct": 15.787993359069919,
+          "cagr_to_strict_mdd": 0.02425401481216629,
+          "trade_entries": 69,
+          "skipped_overlay": 0,
+          "exit_reasons": {
+            "time": 69
+          },
+          "return_application": "continuous_sparse_setup_ensemble_actual_ohlc"
+        },
+        "trade_stats": {
+          "n_trades": 69,
+          "mean_trade_ret_pct": 0.03504120998569927,
+          "std_trade_ret_pct": 2.390068122714935,
+          "t_stat_like": 0.12178487645870723,
+          "p_value_mean_ret_approx": 0.9030693916261743,
+          "ci95_mean_trade_ret_pct": [
+            -0.5289103541911357,
+            0.5989927741625344
+          ],
+          "effect_size_d": 0.01466117624542648,
+          "n_required_for_80pct_power_alpha5pct": 36515,
+          "n_gap_to_power_rule": 36446
+        },
+        "fold_trade_counts": {
+          "eval": 69
+        }
+      }
+    }
+  ],
+  "leakage_guard": {
+    "model_fit_on_train_split_only": true,
+    "eval_not_used_for_threshold_training": true
+  },
+  "backtests_count": 24
+}
