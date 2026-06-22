@@ -17,13 +17,25 @@ def load_jsonl(path: str | Path) -> list[dict[str, Any]]:
         return [json.loads(line) for line in f if line.strip()]
 
 
-def _policy_from_row(row: dict[str, Any]) -> dict[str, str]:
+def _policy_from_row(row: dict[str, Any], *, allow_target_echo: bool = False) -> dict[str, str]:
     if isinstance(row.get("policy_prediction"), dict):
         return parse_policy_json(json.dumps(row["policy_prediction"]))
-    return parse_policy_json(str(row.get("target", "{}")))
+    if allow_target_echo:
+        return parse_policy_json(str(row.get("target", "{}")))
+    raise ValueError(
+        "single-policy backtest requires policy_prediction; "
+        "use --allow-target-echo only for explicit oracle diagnostics"
+    )
 
 
-def simulate(rows: list[dict[str, Any]], market_csv: str, exec_cfg: BarExecutionConfig, *, cooldown_bars: int = 0) -> dict[str, Any]:
+def simulate(
+    rows: list[dict[str, Any]],
+    market_csv: str,
+    exec_cfg: BarExecutionConfig,
+    *,
+    cooldown_bars: int = 0,
+    allow_target_echo: bool = False,
+) -> dict[str, Any]:
     market = load_market_bars(market_csv)
     date_to_pos = {ts.to_pydatetime().replace(tzinfo=None): int(i) for i, ts in enumerate(market["date"])}
     opens = market["open"].to_numpy(dtype=float)
@@ -48,7 +60,7 @@ def simulate(rows: list[dict[str, Any]], market_csv: str, exec_cfg: BarExecution
             continue
         if pos < next_allowed_market_pos:
             continue
-        action = policy_to_action(_policy_from_row(row))
+        action = policy_to_action(_policy_from_row(row, allow_target_echo=allow_target_echo))
         side = str(action.get("side", "NONE"))
         hold_bars = int(action.get("hold_bars", 0) or 0)
         signal = 1 if side == "LONG" else -1 if side == "SHORT" else 0
@@ -108,6 +120,7 @@ def simulate(rows: list[dict[str, Any]], market_csv: str, exec_cfg: BarExecution
             "skipped_missing_bars": skipped_missing_bars,
             "entry_delay_bars": int(exec_cfg.entry_delay_bars),
             "return_application": "actual_ohlc_bar_by_bar_variable_hold_strict_mdd",
+            "target_echo_oracle_mode": bool(allow_target_echo),
         },
         "trade_stats": _trade_stats(trade_returns),
     }
@@ -128,10 +141,18 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "as_of": datetime.now(timezone.utc).isoformat(),
         "inputs": {"predictions_jsonl": args.predictions_jsonl, "market_csv": args.market_csv},
         "execution": exec_cfg.__dict__ | {"cooldown_bars": int(args.cooldown_bars)},
-        "result": simulate(rows, args.market_csv, exec_cfg, cooldown_bars=int(args.cooldown_bars)),
+        "result": simulate(
+            rows,
+            args.market_csv,
+            exec_cfg,
+            cooldown_bars=int(args.cooldown_bars),
+            allow_target_echo=bool(args.allow_target_echo),
+        ),
         "leakage_guard": {
             "uses_forward_return_column": False,
-            "uses_prediction_target_or_policy_prediction_only": True,
+            "requires_policy_prediction_by_default": True,
+            "target_echo_allowed": bool(args.allow_target_echo),
+            "target_echo_is_oracle_only": bool(args.allow_target_echo),
             "entry_after_signal_by_bars": int(args.entry_delay_bars),
             "strict_mdd_includes_intrabar_adverse_excursion": True,
         },
@@ -151,6 +172,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--leverage", type=float, default=0.5)
     p.add_argument("--fee-rate", type=float, default=0.0004)
     p.add_argument("--slippage-rate", type=float, default=0.0001)
+    p.add_argument("--allow-target-echo", action="store_true", help="Allow target fallback for explicit oracle diagnostics only")
     return p.parse_args()
 
 
