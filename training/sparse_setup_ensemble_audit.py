@@ -53,6 +53,11 @@ class EnsembleCfg:
     rolling_window_trades: int = 0
     rolling_loss_stop_pct: float = 0.0
     pause_bars: int = 288
+    min_recent_fold_trades: int = 0
+    min_active_folds: int = 0
+    setup_sizing: str = "fixed"  # fixed | prior_sharpe
+    min_position_scale: float = 0.25
+    max_position_scale: float = 1.0
 
 
 def _load_market(path: str) -> pd.DataFrame:
@@ -91,6 +96,9 @@ def _candidate_events(*, cand: dict[str, Any], report: dict[str, Any], dates: pd
         if int(active_train.sum()) <= 0:
             continue
         side = 1 if float(np.mean(fwd[active_train])) >= 0.0 else -1
+        prior_rets = fwd[active_train] * float(side)
+        prior_mean = float(np.mean(prior_rets)) if prior_rets.size else 0.0
+        prior_std = float(np.std(prior_rets, ddof=1)) if prior_rets.size > 1 else 0.0
         idx = np.flatnonzero(np.asarray((dates >= start) & (dates <= end), dtype=bool) & ma & mb)
         for pos in idx:
             events.append(
@@ -102,6 +110,9 @@ def _candidate_events(*, cand: dict[str, Any], report: dict[str, Any], dates: pd
                     "candidate_index": int(cand.get("_candidate_index", -1)),
                     "candidate_key": _candidate_key(cand),
                     "fold": fold["name"],
+                    "prior_mean_ret": prior_mean,
+                    "prior_std_ret": prior_std,
+                    "prior_n": int(prior_rets.size),
                     "thresholds": {fa["name"]: ta, fb["name"]: tb},
                 }
             )
@@ -133,6 +144,23 @@ def _recent_loss(trade_returns: list[float], n: int) -> float:
     for ret in trade_returns[-int(n):]:
         eq *= max(0.0, 1.0 + float(ret))
     return min(0.0, eq - 1.0)
+
+
+def _event_position_scale(ev: dict[str, Any], cfg: EnsembleCfg) -> float:
+    if str(cfg.setup_sizing) == "fixed":
+        return 1.0
+    if str(cfg.setup_sizing) != "prior_sharpe":
+        return 1.0
+    mean = float(ev.get("prior_mean_ret", 0.0) or 0.0)
+    std = float(ev.get("prior_std_ret", 0.0) or 0.0)
+    n = int(ev.get("prior_n", 0) or 0)
+    if n < 20 or std <= 1e-12 or mean <= 0.0:
+        return float(cfg.min_position_scale)
+    # Smoothly maps positive prior risk-adjusted edge to [min,max]. Conservative
+    # because prior labels are noisy and fold-local.
+    raw = mean / std
+    scale = float(cfg.min_position_scale) + (float(cfg.max_position_scale) - float(cfg.min_position_scale)) * min(1.0, max(0.0, raw / 0.35))
+    return float(min(float(cfg.max_position_scale), max(float(cfg.min_position_scale), scale)))
 
 
 def _simulate_events(events: list[dict[str, Any]], *, dates: pd.Series, market: pd.DataFrame, cfg: EnsembleCfg) -> dict[str, Any]:
@@ -174,8 +202,11 @@ def _simulate_events(events: list[dict[str, Any]], *, dates: pd.Series, market: 
             if entry_pos >= len(market) - 1 or exit_pos >= len(market):
                 continue
             side = int(ev["side"])
+            position_scale = _event_position_scale(ev, cfg)
+            trade_leverage = float(cfg.leverage) * position_scale
+            trade_cost = (float(cfg.fee_rate) + float(cfg.slippage_rate)) * trade_leverage
             entry_eq = eq
-            eq *= max(0.0, 1.0 - cost)
+            eq *= max(0.0, 1.0 - trade_cost)
             max_dd = max(max_dd, _drawdown_from_trough(peak, eq))
             position_start_eq = eq
             entry_price = float(opens[entry_pos])
@@ -203,9 +234,9 @@ def _simulate_events(events: list[dict[str, Any]], *, dates: pd.Series, market: 
                     from_entry_high = (entry_price - float(lows[j])) / entry_price if entry_price > 0.0 else 0.0
                     atr_stop_hit = atr_stop_price is not None and float(highs[j]) >= float(atr_stop_price)
                     atr_stop_ret = (entry_price - float(atr_stop_price)) / entry_price if atr_stop_hit and entry_price > 0.0 else 0.0
-                max_dd = max(max_dd, _drawdown_from_trough(peak, eq * (1.0 + float(cfg.leverage) * adverse_ret)))
-                stop_hit = float(cfg.trade_stop_loss_pct) > 0.0 and float(cfg.leverage) * from_entry_low * 100.0 <= -float(cfg.trade_stop_loss_pct)
-                take_hit = float(cfg.trade_take_profit_pct) > 0.0 and float(cfg.leverage) * from_entry_high * 100.0 >= float(cfg.trade_take_profit_pct)
+                max_dd = max(max_dd, _drawdown_from_trough(peak, eq * (1.0 + trade_leverage * adverse_ret)))
+                stop_hit = float(cfg.trade_stop_loss_pct) > 0.0 and trade_leverage * from_entry_low * 100.0 <= -float(cfg.trade_stop_loss_pct)
+                take_hit = float(cfg.trade_take_profit_pct) > 0.0 and trade_leverage * from_entry_high * 100.0 >= float(cfg.trade_take_profit_pct)
                 if stop_hit:
                     eq = position_start_eq * max(0.0, 1.0 - float(cfg.trade_stop_loss_pct) / 100.0)
                     max_dd = max(max_dd, _drawdown_from_trough(peak, eq))
@@ -213,7 +244,7 @@ def _simulate_events(events: list[dict[str, Any]], *, dates: pd.Series, market: 
                     exit_pos = j + 1
                     break
                 if atr_stop_hit:
-                    eq = position_start_eq * max(0.0, 1.0 + float(cfg.leverage) * atr_stop_ret)
+                    eq = position_start_eq * max(0.0, 1.0 + trade_leverage * atr_stop_ret)
                     max_dd = max(max_dd, _drawdown_from_trough(peak, eq))
                     exit_reason = "atr_trailing_stop"
                     exit_pos = j + 1
@@ -224,7 +255,7 @@ def _simulate_events(events: list[dict[str, Any]], *, dates: pd.Series, market: 
                     exit_reason = "take_profit"
                     exit_pos = j + 1
                     break
-                eq *= max(0.0, 1.0 + float(cfg.leverage) * close_ret)
+                eq *= max(0.0, 1.0 + trade_leverage * close_ret)
                 peak = max(peak, eq)
                 if atr_stop_price is not None and entry_price > 0.0:
                     if side > 0:
@@ -234,12 +265,12 @@ def _simulate_events(events: list[dict[str, Any]], *, dates: pd.Series, market: 
                 if eq <= 0.0:
                     exit_reason = "liquidation"
                     break
-            eq *= max(0.0, 1.0 - cost)
+            eq *= max(0.0, 1.0 - trade_cost)
             max_dd = max(max_dd, _drawdown_from_trough(peak, eq))
             peak = max(peak, eq)
             trade_returns.append(eq / entry_eq - 1.0)
             exit_reasons[exit_reason] = exit_reasons.get(exit_reason, 0) + 1
-            executed.append({**ev, "ret_pct": (eq / entry_eq - 1.0) * 100.0, "exit_reason": exit_reason})
+            executed.append({**ev, "ret_pct": (eq / entry_eq - 1.0) * 100.0, "exit_reason": exit_reason, "position_scale": position_scale})
             next_allowed = exit_pos + max(0, int(cfg.cooldown_bars))
             if eq <= 0.0:
                 break
@@ -276,6 +307,14 @@ def _score(result: dict[str, Any], cfg: EnsembleCfg) -> float:
     cagr = float(sim.get("cagr_pct", -100.0))
     mdd = float(sim.get("strict_mdd_pct", 100.0))
     ratio = float(sim.get("cagr_to_strict_mdd", -1.0))
+    fold_counts = result.get("fold_trade_counts", {}) or {}
+    active_folds = sum(1 for v in fold_counts.values() if int(v) > 0)
+    if int(cfg.min_active_folds) > 0 and active_folds < int(cfg.min_active_folds):
+        return -800.0 + active_folds + cagr / 100.0 - mdd / 100.0
+    if int(cfg.min_recent_fold_trades) > 0:
+        recent_keys = sorted(fold_counts)[-2:]
+        if any(int(fold_counts.get(k, 0)) < int(cfg.min_recent_fold_trades) for k in recent_keys):
+            return -700.0 + sum(int(fold_counts.get(k, 0)) for k in recent_keys) / 10.0 + cagr / 100.0 - mdd / 100.0
     if trades < int(cfg.min_trades) or cagr <= 0.0:
         return -1000.0 + trades / 1000.0 + cagr / 100.0 - mdd / 100.0
     return ratio * 10.0 + min(50.0, cagr) / 10.0 - max(0.0, mdd - 15.0) / 5.0 + min(2.0, trades / 100.0)
@@ -373,6 +412,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--rolling-window-trades", type=int, default=EnsembleCfg.rolling_window_trades)
     p.add_argument("--rolling-loss-stop-pct", type=float, default=EnsembleCfg.rolling_loss_stop_pct)
     p.add_argument("--pause-bars", type=int, default=EnsembleCfg.pause_bars)
+    p.add_argument("--min-recent-fold-trades", type=int, default=EnsembleCfg.min_recent_fold_trades)
+    p.add_argument("--min-active-folds", type=int, default=EnsembleCfg.min_active_folds)
+    p.add_argument("--setup-sizing", choices=["fixed", "prior_sharpe"], default=EnsembleCfg.setup_sizing)
+    p.add_argument("--min-position-scale", type=float, default=EnsembleCfg.min_position_scale)
+    p.add_argument("--max-position-scale", type=float, default=EnsembleCfg.max_position_scale)
     return p.parse_args()
 
 

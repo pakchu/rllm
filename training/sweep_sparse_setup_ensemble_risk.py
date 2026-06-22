@@ -79,6 +79,11 @@ def run_sweep(args: argparse.Namespace) -> dict[str, Any]:
         candidate_limit=args.candidate_limit,
         max_ensemble_size=args.max_ensemble_size,
         min_trades=args.min_trades,
+        min_recent_fold_trades=args.min_recent_fold_trades,
+        min_active_folds=args.min_active_folds,
+        setup_sizing=args.setup_sizing,
+        min_position_scale=args.min_position_scale,
+        max_position_scale=args.max_position_scale,
     )
     sparse = json.loads(Path(args.sparse_report).read_text())
     market = _load_market(args.market_csv)
@@ -115,6 +120,11 @@ def run_sweep(args: argparse.Namespace) -> dict[str, Any]:
                                 rolling_window_trades=int(rolling_window),
                                 rolling_loss_stop_pct=float(rolling_loss),
                                 pause_bars=int(args.pause_bars),
+                                min_recent_fold_trades=int(args.min_recent_fold_trades),
+                                min_active_folds=int(args.min_active_folds),
+                                setup_sizing=str(args.setup_sizing),
+                                min_position_scale=float(args.min_position_scale),
+                                max_position_scale=float(args.max_position_scale),
                             )
                             greedy = _run_greedy(individual=individual_meta, event_cache=event_cache, dates=dates, market=market, cfg=cfg)
                             final = greedy["final"] or {"sim": {"cagr_pct": -100, "strict_mdd_pct": 100, "cagr_to_strict_mdd": -1, "trade_entries": 0}, "trade_stats": {}}
@@ -145,6 +155,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--rolling-windows", default="0,8")
     p.add_argument("--rolling-losses", default="0,4")
     p.add_argument("--pause-bars", type=int, default=288)
+    p.add_argument("--min-recent-fold-trades", type=int, default=0)
+    p.add_argument("--min-active-folds", type=int, default=0)
+    p.add_argument("--setup-sizing", choices=["fixed", "prior_sharpe"], default="fixed")
+    p.add_argument("--min-position-scale", type=float, default=0.25)
+    p.add_argument("--max-position-scale", type=float, default=1.0)
     return p.parse_args()
 
 
