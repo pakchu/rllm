@@ -1,0 +1,127 @@
+{
+  "experiment": "multiasset_policy_bandit_3m",
+  "protocol": "At each eval month choose among candidate policies and cash using only previous 3 months candidate performance; each candidate model still trains only before that month.",
+  "sim": {
+    "ret_pct": 14.504498920640717,
+    "cagr_pct": 10.062018670971206,
+    "strict_mdd_pct": 15.421653395910074,
+    "cagr_to_strict_mdd": 0.6524604342125677,
+    "months": 17,
+    "month_t_stat_like": 1.2675651776189756,
+    "month_p_value_mean_ret_approx": 0.20495327404785613
+  },
+  "selection_counts": {
+    "utility3_inv": 2,
+    "excess_spread": 2,
+    "utility1_pos": 5,
+    "cash": 2,
+    "utility3_pos": 6
+  },
+  "decisions": [
+    {
+      "month": "2025-01-01",
+      "selected": "utility3_inv",
+      "ret_pct": 4.767798997143258,
+      "mdd_pct": 7.244164398344788
+    },
+    {
+      "month": "2025-02-01",
+      "selected": "utility3_inv",
+      "ret_pct": -4.0951708639587086,
+      "mdd_pct": 4.832552680478031
+    },
+    {
+      "month": "2025-03-01",
+      "selected": "excess_spread",
+      "ret_pct": -1.8216696079724315,
+      "mdd_pct": 6.200020220415903
+    },
+    {
+      "month": "2025-04-01",
+      "selected": "excess_spread",
+      "ret_pct": -0.337842593020643,
+      "mdd_pct": 4.662579774798637
+    },
+    {
+      "month": "2025-05-01",
+      "selected": "utility1_pos",
+      "ret_pct": -0.26714408336402373,
+      "mdd_pct": 9.869290748913729
+    },
+    {
+      "month": "2025-06-01",
+      "selected": "utility1_pos",
+      "ret_pct": 4.12188509514495,
+      "mdd_pct": 1.9480615378584476
+    },
+    {
+      "month": "2025-07-01",
+      "selected": "cash",
+      "ret_pct": 0.0,
+      "mdd_pct": 0.0
+    },
+    {
+      "month": "2025-08-01",
+      "selected": "utility3_pos",
+      "ret_pct": 2.9923418334879104,
+      "mdd_pct": 5.815983511216071
+    },
+    {
+      "month": "2025-09-01",
+      "selected": "utility3_pos",
+      "ret_pct": -3.6868285193275785,
+      "mdd_pct": 9.438030178775513
+    },
+    {
+      "month": "2025-10-01",
+      "selected": "cash",
+      "ret_pct": 0.0,
+      "mdd_pct": 0.0
+    },
+    {
+      "month": "2025-11-01",
+      "selected": "utility3_pos",
+      "ret_pct": 3.0514282245974966,
+      "mdd_pct": 1.1295685058997362
+    },
+    {
+      "month": "2025-12-01",
+      "selected": "utility3_pos",
+      "ret_pct": -1.4741347127229631,
+      "mdd_pct": 4.098067511241432
+    },
+    {
+      "month": "2026-01-01",
+      "selected": "utility3_pos",
+      "ret_pct": 4.774520114337877,
+      "mdd_pct": 5.8396727793620595
+    },
+    {
+      "month": "2026-02-01",
+      "selected": "utility3_pos",
+      "ret_pct": 2.511852705071682,
+      "mdd_pct": 5.807385553786637
+    },
+    {
+      "month": "2026-03-01",
+      "selected": "utility1_pos",
+      "ret_pct": 1.7879364097225015,
+      "mdd_pct": 2.5845072416185277
+    },
+    {
+      "month": "2026-04-01",
+      "selected": "utility1_pos",
+      "ret_pct": 1.838200045604177,
+      "mdd_pct": 2.4339287357658446
+    },
+    {
+      "month": "2026-05-01",
+      "selected": "utility1_pos",
+      "ret_pct": 0.022193093405320496,
+      "mdd_pct": 3.276464810281099
+    }
+  ],
+  "conclusion": "Online regime/sign switching improves over single policy but remains below target and statistically weak. It suggests regime selection helps, but the candidate alpha pool is still too weak/noisy.",
+  "leakage_guard": "monthly candidate chosen only from previous lookback months; each candidate month model trains only on data before that month",
+  "mdd_note": "combined MDD uses each selected month strict MDD embedded into chained monthly equity, not full 5m path across candidate switches"
+}
