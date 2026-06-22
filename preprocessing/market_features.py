@@ -40,6 +40,12 @@ EXTENDED_MARKET_FEATURE_COLUMNS = CORE_MARKET_FEATURE_COLUMNS + (
     "taker_imbalance",
     "funding_rate",
     "funding_zscore",
+    "funding_available",
+    "premium_index",
+    "premium_index_zscore",
+    "premium_index_change",
+    "premium_available",
+    "binance_aux_any_available",
     "oi_change",
     "oi_zscore",
     "dxy",
@@ -311,6 +317,22 @@ def build_market_feature_frame(
     else:
         feature_map["funding_rate"] = pd.Series(0.0, index=market_df.index)
         feature_map["funding_zscore"] = pd.Series(0.0, index=market_df.index)
+
+    optional_binance_aux_defaults = {
+        "funding_available": 0.0,
+        "premium_index": 0.0,
+        "premium_index_zscore": 0.0,
+        "premium_index_change": 0.0,
+        "premium_available": 0.0,
+        "binance_aux_any_available": 0.0,
+    }
+    for col, default in optional_binance_aux_defaults.items():
+        series = _optional_column(market_df, col)
+        feature_map[col] = (
+            _clean_series(series, clip=5.0)
+            if series is not None
+            else pd.Series(float(default), index=market_df.index)
+        )
 
     open_interest = _optional_column(market_df, "open_interest")
     if open_interest is not None:

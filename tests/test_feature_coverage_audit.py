@@ -11,6 +11,7 @@ class TestFeatureCoverageAudit(unittest.TestCase):
         self.assertEqual(_family("mkt__htf_1w_return_4"), "higher_timeframe")
         self.assertEqual(_family("wave__cvd_mom_55"), "flow_volume")
         self.assertEqual(_family("mkt__funding_rate"), "derivatives_aux")
+        self.assertEqual(_family("mkt__premium_index_zscore"), "derivatives_aux")
 
     def test_feature_stats_marks_constant_unusable(self):
         years = pd.Series(["2024", "2024", "2025"])

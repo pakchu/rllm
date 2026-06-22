@@ -18,6 +18,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from preprocessing.binance_aux_features import attach_binance_um_aux_features
 from preprocessing.external_features import attach_wave_trading_external_features
 from preprocessing.market_features import build_market_feature_frame
 from training.wave_feature_ridge_policy import build_wave_feature_frame
@@ -29,6 +30,10 @@ class FeatureCoverageConfig:
     output: str
     wave_trading_root: str = ""
     external_tolerance: str = "30min"
+    binance_funding_csv: str = ""
+    binance_premium_csv: str = ""
+    binance_funding_tolerance: str = "12h"
+    binance_premium_tolerance: str = "2h"
     window_size: int = 144
     include_wave_features: bool = True
     min_nonzero_fraction: float = 0.01
@@ -107,6 +112,14 @@ def run(cfg: FeatureCoverageConfig) -> dict[str, Any]:
             market = attach_wave_trading_external_features(market, wave_trading_root=cfg.wave_trading_root, tolerance=cfg.external_tolerance)
         except Exception as exc:  # keep audit useful even if external cache is absent
             attach_error = str(exc)
+    if cfg.binance_funding_csv or cfg.binance_premium_csv:
+        market = attach_binance_um_aux_features(
+            market,
+            funding_csv=cfg.binance_funding_csv or None,
+            premium_csv=cfg.binance_premium_csv or None,
+            funding_tolerance=cfg.binance_funding_tolerance,
+            premium_tolerance=cfg.binance_premium_tolerance,
+        )
     features = build_feature_frame(market, cfg)
     years = pd.to_datetime(market["date"]).dt.year.astype(str)
     feature_reports: dict[str, Any] = {}
@@ -118,7 +131,7 @@ def run(cfg: FeatureCoverageConfig) -> dict[str, Any]:
         fam_counts = family_counts.setdefault(fam, {"features": 0, "usable": 0})
         fam_counts["features"] += 1
         fam_counts["usable"] += int(bool(stats["usable"]))
-    critical = {k: v for k, v in feature_reports.items() if any(token in k for token in ("dxy", "usdkrw", "kimchi", "htf_", "weekly_", "funding", "taker", "trades_ratio"))}
+    critical = {k: v for k, v in feature_reports.items() if any(token in k for token in ("dxy", "usdkrw", "kimchi", "htf_", "weekly_", "funding", "premium", "taker", "trades_ratio"))}
     report = {
         "as_of": datetime.now(timezone.utc).isoformat(),
         "config": asdict(cfg),
@@ -131,6 +144,8 @@ def run(cfg: FeatureCoverageConfig) -> dict[str, Any]:
         "leakage_guard": {
             "uses_same_causal_feature_builders_as_alpha_scans": True,
             "external_join_is_backward_asof_when_enabled": True,
+            "binance_aux_join_is_backward_asof_when_enabled": True,
+            "premium_index_uses_close_time_when_available": True,
             "audit_does_not_use_future_returns": True,
         },
     }
@@ -145,6 +160,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output", required=True)
     p.add_argument("--wave-trading-root", default="")
     p.add_argument("--external-tolerance", default=FeatureCoverageConfig.external_tolerance)
+    p.add_argument("--binance-funding-csv", default="")
+    p.add_argument("--binance-premium-csv", default="")
+    p.add_argument("--binance-funding-tolerance", default=FeatureCoverageConfig.binance_funding_tolerance)
+    p.add_argument("--binance-premium-tolerance", default=FeatureCoverageConfig.binance_premium_tolerance)
     p.add_argument("--window-size", type=int, default=FeatureCoverageConfig.window_size)
     p.add_argument("--no-wave-features", action="store_true")
     p.add_argument("--min-nonzero-fraction", type=float, default=FeatureCoverageConfig.min_nonzero_fraction)
