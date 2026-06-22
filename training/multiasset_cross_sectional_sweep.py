@@ -21,7 +21,7 @@ MOM_WINDOWS = [48, 288, 576, 2016]
 VOL_WINDOWS = [288, 2016]
 STRIDES = [96, 288]
 TOP_KS = [1, 2]
-SCORE_MODES = ["mom", "vol_adj_mom", "dual_mom_reversal"]
+SCORE_MODES = ["mom", "vol_adj_mom", "dual_mom_reversal", "funding_contra", "premium_contra", "premium_mom"]
 PORTFOLIOS = ["long_top", "long_short"]
 REGIME_FILTERS = ["none", "market_mom_pos", "dispersion_high"]
 
@@ -30,6 +30,7 @@ REGIME_FILTERS = ["none", "market_mom_pos", "dispersion_high"]
 class Cfg:
     data_dir: str
     output: str
+    aux_dir: str = ""
     val_start: str = "2023-01-01"
     val_end: str = "2024-12-31 23:59:59"
     eval_start: str = "2025-01-01"
@@ -68,7 +69,36 @@ def load_close_matrix(data_dir: str) -> pd.DataFrame:
     return close
 
 
-def build_feature_cache(close: pd.DataFrame) -> dict[str, pd.DataFrame | pd.Series]:
+def _load_aux_matrix(aux_dir: str, close: pd.DataFrame, kind: str) -> pd.DataFrame | None:
+    if not aux_dir:
+        return None
+    frames: list[pd.Series] = []
+    base = Path(aux_dir)
+    for sym in close.columns:
+        if kind == "funding":
+            paths = sorted(base.glob(f"{sym}_funding_*.csv.gz"))
+            value_col = "funding_rate"
+            date_col = "date"
+        elif kind == "premium":
+            paths = sorted(base.glob(f"{sym}_premium_*.csv.gz"))
+            value_col = "close"
+            date_col = "close_time"
+        else:
+            raise ValueError(kind)
+        if not paths:
+            return None
+        df = pd.read_csv(paths[-1])
+        if kind == "premium":
+            idx = pd.to_datetime(df[date_col].astype("int64"), unit="ms", utc=True).dt.tz_convert(None)
+        else:
+            idx = pd.to_datetime(df[date_col])
+        ser = pd.Series(pd.to_numeric(df[value_col], errors="coerce").to_numpy(), index=idx, name=sym).sort_index()
+        frames.append(ser)
+    mat = pd.concat(frames, axis=1).sort_index()
+    return mat.reindex(close.index.union(mat.index)).sort_index().ffill().reindex(close.index).reindex(columns=close.columns)
+
+
+def build_feature_cache(close: pd.DataFrame, aux_dir: str = "") -> dict[str, pd.DataFrame | pd.Series]:
     returns = close.pct_change().replace([np.inf, -np.inf], np.nan).fillna(0.0)
     market = close.pct_change().mean(axis=1).add(1.0).cumprod()
     cache: dict[str, pd.DataFrame | pd.Series] = {"returns": returns, "market": market}
@@ -79,6 +109,17 @@ def build_feature_cache(close: pd.DataFrame) -> dict[str, pd.DataFrame | pd.Seri
         cache[f"vol_{w}"] = returns.rolling(w, min_periods=max(12, w // 4)).std()
     cache["dispersion_288"] = cache["mom_288"].std(axis=1)  # type: ignore[union-attr]
     cache["dispersion_2016"] = cache["mom_2016"].std(axis=1)  # type: ignore[union-attr]
+    funding = _load_aux_matrix(aux_dir, close, "funding")
+    if funding is not None:
+        cache["funding_raw"] = funding.fillna(0.0)
+        cache["funding_mean_1d"] = funding.rolling(288, min_periods=24).mean().fillna(0.0)
+        cache["funding_mean_7d"] = funding.rolling(2016, min_periods=288).mean().fillna(0.0)
+    premium = _load_aux_matrix(aux_dir, close, "premium")
+    if premium is not None:
+        prem = premium.fillna(0.0)
+        cache["premium_raw"] = prem
+        cache["premium_mean_1d"] = prem.rolling(288, min_periods=24).mean().fillna(0.0)
+        cache["premium_mom_1d"] = (prem - prem.shift(288)).fillna(0.0)
     return cache
 
 
@@ -100,6 +141,24 @@ def compute_score(cache: dict[str, pd.DataFrame | pd.Series], params: dict[str, 
         short = cache["mom_48"]
         assert isinstance(long_mom, pd.DataFrame) and isinstance(short, pd.DataFrame)
         return long_mom - short
+    if params["score_mode"] == "funding_contra":
+        funding = cache.get("funding_mean_7d")
+        if funding is None:
+            raise KeyError("funding_mean_7d requires --aux-dir")
+        assert isinstance(funding, pd.DataFrame)
+        return -funding
+    if params["score_mode"] == "premium_contra":
+        prem = cache.get("premium_mean_1d")
+        if prem is None:
+            raise KeyError("premium_mean_1d requires --aux-dir")
+        assert isinstance(prem, pd.DataFrame)
+        return -prem
+    if params["score_mode"] == "premium_mom":
+        prem_mom = cache.get("premium_mom_1d")
+        if prem_mom is None:
+            raise KeyError("premium_mom_1d requires --aux-dir")
+        assert isinstance(prem_mom, pd.DataFrame)
+        return prem_mom
     raise ValueError(f"unknown score_mode {params['score_mode']}")
 
 
@@ -319,6 +378,8 @@ def param_grid() -> list[dict[str, Any]]:
         for mom_window in MOM_WINDOWS:
             if score_mode in {"mom", "vol_adj_mom"} and mom_window == 48:
                 continue
+            if score_mode in {"funding_contra", "premium_contra", "premium_mom"} and mom_window != 288:
+                continue
             for vol_window in VOL_WINDOWS:
                 if score_mode != "vol_adj_mom" and vol_window != VOL_WINDOWS[0]:
                     continue
@@ -344,9 +405,11 @@ def param_grid() -> list[dict[str, Any]]:
 
 def run(cfg: Cfg) -> dict[str, Any]:
     close = load_close_matrix(cfg.data_dir)
-    cache = build_feature_cache(close)
+    cache = build_feature_cache(close, cfg.aux_dir)
     rows: list[dict[str, Any]] = []
     for params in param_grid():
+        if params["score_mode"] in {"funding_contra", "premium_contra", "premium_mom"} and not cfg.aux_dir:
+            continue
         res = backtest(close, cache, cfg.val_start, cfg.val_end, params, cfg)
         score = float(res["sim"]["cagr_to_strict_mdd"])
         if int(res["sim"]["rebalance_count"]) < cfg.min_val_rebalances:
@@ -380,6 +443,7 @@ def parse_args() -> Cfg:
     p = argparse.ArgumentParser()
     p.add_argument("--data-dir", required=True)
     p.add_argument("--output", required=True)
+    p.add_argument("--aux-dir", default=Cfg.aux_dir)
     p.add_argument("--val-start", default=Cfg.val_start)
     p.add_argument("--val-end", default=Cfg.val_end)
     p.add_argument("--eval-start", default=Cfg.eval_start)
