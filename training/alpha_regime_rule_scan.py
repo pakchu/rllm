@@ -20,6 +20,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from preprocessing.binance_aux_features import attach_binance_um_aux_features
 from preprocessing.external_features import attach_wave_trading_external_features
 from preprocessing.market_features import build_market_feature_frame
 from training.alpha_feature_backtest import FeatureRuleConfig, fit_rule, simulate_rule
@@ -45,6 +46,10 @@ class RegimeRuleScanConfig:
     slippage_rate: float = 0.0001
     wave_trading_root: str = ""
     external_tolerance: str = "30min"
+    binance_funding_csv: str = ""
+    binance_premium_csv: str = ""
+    binance_funding_tolerance: str = "12h"
+    binance_premium_tolerance: str = "2h"
     top_k: int = 50
 
 
@@ -81,7 +86,7 @@ def _default_regime_columns(cols: list[str]) -> list[str]:
     preferred = [
         "range_vol", "trend_96", "window_drawdown", "range_pos", "volume_zscore",
         "kimchi_premium_zscore", "kimchi_premium_change", "dxy_zscore", "dxy_momentum",
-        "funding_zscore", "oi_zscore",
+        "funding_zscore", "funding_rate", "premium_index_zscore", "premium_index_change",
     ]
     return [c for c in preferred if c in cols]
 
@@ -90,6 +95,14 @@ def run_scan(cfg: RegimeRuleScanConfig) -> dict[str, Any]:
     market = _load_market(cfg.input_csv)
     if cfg.wave_trading_root:
         market = attach_wave_trading_external_features(market, wave_trading_root=cfg.wave_trading_root, tolerance=cfg.external_tolerance)
+    if cfg.binance_funding_csv or cfg.binance_premium_csv:
+        market = attach_binance_um_aux_features(
+            market,
+            funding_csv=cfg.binance_funding_csv or None,
+            premium_csv=cfg.binance_premium_csv or None,
+            funding_tolerance=cfg.binance_funding_tolerance,
+            premium_tolerance=cfg.binance_premium_tolerance,
+        )
     features = build_market_feature_frame(market, window_size=cfg.window_size)
     dates = pd.to_datetime(market["date"])
     cols = _candidate_columns(features)
@@ -102,6 +115,8 @@ def run_scan(cfg: RegimeRuleScanConfig) -> dict[str, Any]:
         quantile=cfg.signal_quantile, window_size=cfg.window_size, entry_delay_bars=cfg.entry_delay_bars,
         leverage=cfg.leverage, fee_rate=cfg.fee_rate, slippage_rate=cfg.slippage_rate,
         wave_trading_root=cfg.wave_trading_root, external_tolerance=cfg.external_tolerance,
+        binance_funding_csv=cfg.binance_funding_csv, binance_premium_csv=cfg.binance_premium_csv,
+        binance_funding_tolerance=cfg.binance_funding_tolerance, binance_premium_tolerance=cfg.binance_premium_tolerance,
     )
     rows: list[dict[str, Any]] = []
     for horizon in _parse_ints(cfg.horizons):
@@ -155,6 +170,14 @@ def run_scan(cfg: RegimeRuleScanConfig) -> dict[str, Any]:
         "selection_protocol": "regime bucket, signal rule, direction, thresholds fit on train; rank by test; eval audit only",
         "top_by_test": ranked[: cfg.top_k],
         "all_count": len(rows),
+        "leakage_guard": {
+            "regime_bucket_signal_rule_and_direction_fit_on_train_only": True,
+            "test_used_for_selection_only": True,
+            "eval_not_used_for_selection": True,
+            "external_join": "backward_asof_no_future" if cfg.wave_trading_root else "disabled",
+            "binance_aux_join": "backward_asof_no_future" if (cfg.binance_funding_csv or cfg.binance_premium_csv) else "disabled",
+            "premium_index_uses_close_time_when_available": True,
+        },
     }
     Path(cfg.output).parent.mkdir(parents=True, exist_ok=True)
     Path(cfg.output).write_text(json.dumps(report, indent=2, ensure_ascii=False))
@@ -181,6 +204,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--slippage-rate", type=float, default=0.0001)
     p.add_argument("--wave-trading-root", default="")
     p.add_argument("--external-tolerance", default="30min")
+    p.add_argument("--binance-funding-csv", default="")
+    p.add_argument("--binance-premium-csv", default="")
+    p.add_argument("--binance-funding-tolerance", default=RegimeRuleScanConfig.binance_funding_tolerance)
+    p.add_argument("--binance-premium-tolerance", default=RegimeRuleScanConfig.binance_premium_tolerance)
     p.add_argument("--top-k", type=int, default=50)
     return p.parse_args()
 
