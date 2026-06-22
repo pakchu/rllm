@@ -1,0 +1,81 @@
+{
+  "as_of": "2026-06-22T10:58:12.377217+00:00",
+  "config": {
+    "train_jsonl": "data/event_rule_rationale_ext_c72_s2_train.jsonl",
+    "output": "results/event_rule_rationale_gemma4_preflight.json",
+    "output_dir": "checkpoints/event_rule_rationale_gemma4_dryrun",
+    "model_name": "gemma4-e4b",
+    "max_samples": 512,
+    "sample_mode": "balanced",
+    "max_seq_length": 2048
+  },
+  "python": {
+    "executable": "/home/pakchu/rllm/.venv/bin/python",
+    "version": "3.10.10 (main, Nov 10 2025, 22:11:24) [GCC 13.3.0]",
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39"
+  },
+  "modules": {
+    "numpy": true,
+    "torch": true,
+    "transformers": true,
+    "trl": true,
+    "peft": true,
+    "datasets": true,
+    "accelerate": true,
+    "bitsandbytes": true
+  },
+  "gpu": {
+    "available": true,
+    "gpus": [
+      "NVIDIA GeForce RTX 5090, 32607 MiB, 1440 MiB"
+    ]
+  },
+  "dry_run": {
+    "model_name": "google/gemma-4-E4B-it",
+    "train_jsonl": "/home/pakchu/rllm/data/event_rule_rationale_ext_c72_s2_train.jsonl",
+    "output_dir": "checkpoints/event_rule_rationale_gemma4_dryrun",
+    "rows": 512,
+    "tasks": {
+      "event_rule_rationale_sft": 512
+    },
+    "target_counts": {
+      "decision=ABSTAIN": 170,
+      "decision=TAKE_FULL": 172,
+      "decision=TAKE_SMALL": 170
+    },
+    "prompt_chars": {
+      "min": 1365,
+      "max": 1574,
+      "mean": 1410.126953125
+    },
+    "target_chars": {
+      "min": 313,
+      "max": 348,
+      "mean": 325.732421875
+    },
+    "config": {
+      "model_name": "gemma4-e4b",
+      "train_jsonl": "data/event_rule_rationale_ext_c72_s2_train.jsonl",
+      "output_dir": "checkpoints/event_rule_rationale_gemma4_dryrun",
+      "max_samples": 512,
+      "max_seq_length": 2048,
+      "sample_mode": "balanced",
+      "max_steps": 1,
+      "num_train_epochs": 1.0,
+      "learning_rate": 2e-05,
+      "per_device_train_batch_size": 1,
+      "gradient_accumulation_steps": 8,
+      "lora_r": 16,
+      "lora_alpha": 32,
+      "lora_dropout": 0.05,
+      "load_in_4bit": false,
+      "seed": 42,
+      "base_adapter_dir": ""
+    },
+    "dry_run": true,
+    "summary_path": "checkpoints/event_rule_rationale_gemma4_dryrun/sft_summary.json"
+  },
+  "can_train_now": true,
+  "missing_for_training": [],
+  "note": "dry_run validates data/model alias only; can_train_now requires local ML dependencies in this Python environment"
+}

@@ -115,11 +115,16 @@ def _convert(rows: list[dict[str, Any]], abstain_fraction: float, seed: int) -> 
         decision = str(row.get("target", {}).get("decision"))
         if decision == "ABSTAIN" and float(rng.random()) > abstain_fraction:
             continue
+        prompt = _prompt(row)
+        target = _completion(row)
         out.append({
+            "task": "event_rule_rationale_sft",
+            "prompt": prompt,
+            "target": target,
             "messages": [
                 {"role": "system", "content": "You emit compact no-leak trading analysis JSON for BTCUSDT futures."},
-                {"role": "user", "content": _prompt(row)},
-                {"role": "assistant", "content": _completion(row)},
+                {"role": "user", "content": prompt},
+                {"role": "assistant", "content": target},
             ],
             "metadata": {
                 "date": row.get("date"),
@@ -141,7 +146,7 @@ def _summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     decisions = Counter(r["metadata"]["decision"] for r in rows)
     sides = Counter(r["metadata"]["side"] for r in rows)
     setups = Counter(r["metadata"]["rule_analyzer"]["setup_family"] for r in rows)
-    chars = [sum(len(m["content"]) for m in r["messages"]) for r in rows]
+    chars = [len(str(r.get("prompt", ""))) + len(str(r.get("target", ""))) for r in rows]
     return {"rows": len(rows), "decisions": dict(decisions), "sides": dict(sides), "setups": dict(setups), "chars": {"min": min(chars) if chars else 0, "max": max(chars) if chars else 0, "mean": sum(chars)/max(1,len(chars))}}
 
 

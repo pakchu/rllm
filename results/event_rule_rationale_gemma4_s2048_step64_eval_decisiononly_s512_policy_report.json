@@ -1,0 +1,34 @@
+{
+  "config": {
+    "input_jsonl": "results/event_candidate_ranking_ext_c72_s2_eval.jsonl",
+    "output_predictions": "results/event_rule_rationale_gemma4_s2048_step64_eval_decisiononly_s512_predictions.jsonl",
+    "report_output": "results/event_rule_rationale_gemma4_s2048_step64_eval_decisiononly_s512_policy_report.json",
+    "model_name": "gemma4-e4b",
+    "adapter_dir": "checkpoints/event_rule_rationale_gemma4_s2048_step64",
+    "max_candidates": 512,
+    "batch_size": 4,
+    "score_normalization": "mean",
+    "small_scale": 0.5,
+    "full_scale": 1.0,
+    "decision_only": true
+  },
+  "model_name_resolved": "google/gemma-4-E4B-it",
+  "candidate_rows": 512,
+  "candidate_decision_accuracy": 0.177734375,
+  "overlay_summary": {
+    "signals": 256,
+    "counts": {
+      "TRADE": 256,
+      "NO_TRADE": 0,
+      "LONG": 49,
+      "SHORT": 207,
+      "FULL": 91,
+      "SMALL": 165
+    },
+    "best_candidate_decision_accuracy": 0.16796875
+  },
+  "leakage_guard": {
+    "analyzer_recomputed_from_signal_features": true,
+    "reward_target_not_used_for_prediction": true
+  }
+}
