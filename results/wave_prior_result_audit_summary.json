@@ -1,0 +1,396 @@
+{
+  "source": "results/wave_fold_consistency_2021_2024h1_to_2024h2_2026_report.json",
+  "audit_reason": "Earlier ranking by recursively scanning all sim blocks surfaced high ratio values from selection folds, not the frozen heldout aggregate.",
+  "selection_protocol": "rank policies by fold consistency only; eval replays best policy and top-k vote ensemble unchanged",
+  "selection_folds": "2021-01-01|2021-06-30 23:59:59,2021-07-01|2021-12-31 23:59:59,2022-01-01|2022-06-30 23:59:59,2022-07-01|2022-12-31 23:59:59,2023-01-01|2023-06-30 23:59:59,2023-07-01|2023-12-31 23:59:59,2024-01-01|2024-06-30 23:59:59",
+  "heldout_period": {
+    "eval_start": "2024-07-01",
+    "eval_end": "2026-06-01 00:00:00"
+  },
+  "selected_policies": [
+    {
+      "long_th": 0.66,
+      "short_th": 0.32,
+      "trend_window": 864,
+      "long_mode": "down",
+      "short_mode": "all"
+    },
+    {
+      "long_th": 0.69,
+      "short_th": 0.32,
+      "trend_window": 288,
+      "long_mode": "down",
+      "short_mode": "all"
+    },
+    {
+      "long_th": 0.69,
+      "short_th": 0.32,
+      "trend_window": 288,
+      "long_mode": "all",
+      "short_mode": "up"
+    },
+    {
+      "long_th": 0.66,
+      "short_th": 0.32,
+      "trend_window": 864,
+      "long_mode": "down",
+      "short_mode": "down"
+    },
+    {
+      "long_th": 0.66,
+      "short_th": 0.35,
+      "trend_window": 864,
+      "long_mode": "down",
+      "short_mode": "down"
+    }
+  ],
+  "heldout_eval": {
+    "best_policy": {
+      "prediction_summary": {
+        "rows": 67165,
+        "trade_rows": 84,
+        "long": 65,
+        "short": 19
+      },
+      "eval_sim": {
+        "ret_pct": 15.26564412052287,
+        "cagr_pct": 7.70606865626613,
+        "strict_mdd_pct": 8.068652707219536,
+        "cagr_to_strict_mdd": 0.9550626276640981,
+        "trade_entries": 42,
+        "turnover_legs": 84,
+        "samples": 67165,
+        "skipped_no_trade": 66965,
+        "skipped_cooldown": 158,
+        "skipped_overlay": 0,
+        "skipped_missing_bars": 0,
+        "invalid_actions": 0,
+        "forced_liquidations": 0,
+        "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+      },
+      "eval_trade_stats": {
+        "n_trades": 42,
+        "mean_trade_ret_pct": 0.35512664263954086,
+        "std_trade_ret_pct": 1.8468085810696007,
+        "t_stat_like": 1.2461950359306244,
+        "p_value_mean_ret_approx": 0.21269280106404986,
+        "ci95_mean_trade_ret_pct": [
+          -0.20341210892410197,
+          0.9136653942031836
+        ],
+        "effect_size_d": 0.19229206875022486,
+        "n_required_for_80pct_power_alpha5pct": 213,
+        "n_gap_to_power_rule": 171
+      }
+    },
+    "vote_ensemble": {
+      "prediction_summary": {
+        "rows": 67165,
+        "trade_rows": 87,
+        "long": 68,
+        "short": 19
+      },
+      "eval_sim": {
+        "ret_pct": 14.178960786259353,
+        "cagr_pct": 7.174282202547055,
+        "strict_mdd_pct": 8.068652707219536,
+        "cagr_to_strict_mdd": 0.8891549138219531,
+        "trade_entries": 44,
+        "turnover_legs": 88,
+        "samples": 67165,
+        "skipped_no_trade": 66955,
+        "skipped_cooldown": 166,
+        "skipped_overlay": 0,
+        "skipped_missing_bars": 0,
+        "invalid_actions": 0,
+        "forced_liquidations": 0,
+        "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+      },
+      "eval_trade_stats": {
+        "n_trades": 44,
+        "mean_trade_ret_pct": 0.31758187487860784,
+        "std_trade_ret_pct": 1.815938146332878,
+        "t_stat_like": 1.1600614495785342,
+        "p_value_mean_ret_approx": 0.2460237882423444,
+        "ci95_mean_trade_ret_pct": [
+          -0.21899355824885236,
+          0.854157308006068
+        ],
+        "effect_size_d": 0.1748858437276267,
+        "n_required_for_80pct_power_alpha5pct": 257,
+        "n_gap_to_power_rule": 213
+      }
+    }
+  },
+  "top_selection_fold_examples": [
+    {
+      "policy": {
+        "long_th": 0.66,
+        "short_th": 0.32,
+        "trend_window": 864,
+        "long_mode": "down",
+        "short_mode": "all"
+      },
+      "score": 54.206988227748106,
+      "fold_sims": [
+        {
+          "period": {
+            "start": "2021-01-01",
+            "end": "2021-06-30 23:59:59"
+          },
+          "cagr_pct": -34.51914481983426,
+          "strict_mdd_pct": 31.689462578248985,
+          "ratio": -1.0892941063483832,
+          "trades": 248,
+          "p_value": 0.5658638492132817
+        },
+        {
+          "period": {
+            "start": "2021-07-01",
+            "end": "2021-12-31 23:59:59"
+          },
+          "cagr_pct": 11.483126480758488,
+          "strict_mdd_pct": 2.5542099644631944,
+          "ratio": 4.495764498817089,
+          "trades": 6,
+          "p_value": 0.31420332491819236
+        },
+        {
+          "period": {
+            "start": "2022-01-01",
+            "end": "2022-06-30 23:59:59"
+          },
+          "cagr_pct": -18.4161055379364,
+          "strict_mdd_pct": 16.700517906658064,
+          "ratio": -1.1027266124839383,
+          "trades": 69,
+          "p_value": 0.550793754897835
+        },
+        {
+          "period": {
+            "start": "2022-07-01",
+            "end": "2022-12-31 23:59:59"
+          },
+          "cagr_pct": 19.877287373549724,
+          "strict_mdd_pct": 5.552646100564118,
+          "ratio": 3.579786468208428,
+          "trades": 14,
+          "p_value": 0.12705286065043975
+        },
+        {
+          "period": {
+            "start": "2023-01-01",
+            "end": "2023-06-30 23:59:59"
+          },
+          "cagr_pct": 16.96370931165312,
+          "strict_mdd_pct": 3.7194182619675997,
+          "ratio": 4.560850142914336,
+          "trades": 17,
+          "p_value": 0.1364519972403404
+        },
+        {
+          "period": {
+            "start": "2023-07-01",
+            "end": "2023-12-31 23:59:59"
+          },
+          "cagr_pct": 12.224950862610417,
+          "strict_mdd_pct": 2.9533272411277123,
+          "ratio": 4.139382420060699,
+          "trades": 25,
+          "p_value": 0.2073586382091568
+        },
+        {
+          "period": {
+            "start": "2024-01-01",
+            "end": "2024-06-30 23:59:59"
+          },
+          "cagr_pct": 22.485707915330554,
+          "strict_mdd_pct": 12.263385319887,
+          "ratio": 1.8335644953491315,
+          "trades": 102,
+          "p_value": 0.38098601370144203
+        }
+      ]
+    },
+    {
+      "policy": {
+        "long_th": 0.69,
+        "short_th": 0.32,
+        "trend_window": 288,
+        "long_mode": "down",
+        "short_mode": "all"
+      },
+      "score": 53.347783376930344,
+      "fold_sims": [
+        {
+          "period": {
+            "start": "2021-01-01",
+            "end": "2021-06-30 23:59:59"
+          },
+          "cagr_pct": 17.073729046207163,
+          "strict_mdd_pct": 23.35316855232272,
+          "ratio": 0.7311097424725691,
+          "trades": 219,
+          "p_value": 0.6814429363444523
+        },
+        {
+          "period": {
+            "start": "2021-07-01",
+            "end": "2021-12-31 23:59:59"
+          },
+          "cagr_pct": 8.903360565179774,
+          "strict_mdd_pct": 2.3411584904422966,
+          "ratio": 3.8029721616573395,
+          "trades": 4,
+          "p_value": 0.40225497385600884
+        },
+        {
+          "period": {
+            "start": "2022-01-01",
+            "end": "2022-06-30 23:59:59"
+          },
+          "cagr_pct": -12.930210094031713,
+          "strict_mdd_pct": 16.031833953560938,
+          "ratio": -0.8065334341340092,
+          "trades": 43,
+          "p_value": 0.6256869909427607
+        },
+        {
+          "period": {
+            "start": "2022-07-01",
+            "end": "2022-12-31 23:59:59"
+          },
+          "cagr_pct": 12.771140270962288,
+          "strict_mdd_pct": 6.162867517764448,
+          "ratio": 2.0722724014672576,
+          "trades": 10,
+          "p_value": 0.2900317821650913
+        },
+        {
+          "period": {
+            "start": "2023-01-01",
+            "end": "2023-06-30 23:59:59"
+          },
+          "cagr_pct": 8.5937068825098,
+          "strict_mdd_pct": 2.9582068640743198,
+          "ratio": 2.905039193463888,
+          "trades": 8,
+          "p_value": 0.34301865527657416
+        },
+        {
+          "period": {
+            "start": "2023-07-01",
+            "end": "2023-12-31 23:59:59"
+          },
+          "cagr_pct": 10.688107476211028,
+          "strict_mdd_pct": 1.7847283981928141,
+          "ratio": 5.98864650051718,
+          "trades": 18,
+          "p_value": 0.25837609366989667
+        },
+        {
+          "period": {
+            "start": "2024-01-01",
+            "end": "2024-06-30 23:59:59"
+          },
+          "cagr_pct": 6.80792967756596,
+          "strict_mdd_pct": 14.001294582048585,
+          "ratio": 0.48623572896570433,
+          "trades": 81,
+          "p_value": 0.7466289924403198
+        }
+      ]
+    },
+    {
+      "policy": {
+        "long_th": 0.69,
+        "short_th": 0.32,
+        "trend_window": 288,
+        "long_mode": "all",
+        "short_mode": "up"
+      },
+      "score": 52.963933515192565,
+      "fold_sims": [
+        {
+          "period": {
+            "start": "2021-01-01",
+            "end": "2021-06-30 23:59:59"
+          },
+          "cagr_pct": -17.69462141334237,
+          "strict_mdd_pct": 34.39681341444515,
+          "ratio": -0.5144261824530353,
+          "trades": 251,
+          "p_value": 0.8752858808723827
+        },
+        {
+          "period": {
+            "start": "2021-07-01",
+            "end": "2021-12-31 23:59:59"
+          },
+          "cagr_pct": 8.909207420693654,
+          "strict_mdd_pct": 2.341158490442319,
+          "ratio": 3.8054695814337727,
+          "trades": 5,
+          "p_value": 0.39747877871480086
+        },
+        {
+          "period": {
+            "start": "2022-01-01",
+            "end": "2022-06-30 23:59:59"
+          },
+          "cagr_pct": -15.19323660269386,
+          "strict_mdd_pct": 17.930656778831256,
+          "ratio": -0.8473329666669452,
+          "trades": 45,
+          "p_value": 0.551613802644161
+        },
+        {
+          "period": {
+            "start": "2022-07-01",
+            "end": "2022-12-31 23:59:59"
+          },
+          "cagr_pct": 11.526743099768378,
+          "strict_mdd_pct": 3.8324156136284593,
+          "ratio": 3.0076965188165157,
+          "trades": 9,
+          "p_value": 0.3303268011448741
+        },
+        {
+          "period": {
+            "start": "2023-01-01",
+            "end": "2023-06-30 23:59:59"
+          },
+          "cagr_pct": 16.6754701805659,
+          "strict_mdd_pct": 2.958206864074353,
+          "ratio": 5.637019636144949,
+          "trades": 10,
+          "p_value": 0.1393698003729682
+        },
+        {
+          "period": {
+            "start": "2023-07-01",
+            "end": "2023-12-31 23:59:59"
+          },
+          "cagr_pct": 10.852469550523857,
+          "strict_mdd_pct": 3.8473752943503747,
+          "ratio": 2.8207462803173935,
+          "trades": 29,
+          "p_value": 0.3128841924292174
+        },
+        {
+          "period": {
+            "start": "2024-01-01",
+            "end": "2024-06-30 23:59:59"
+          },
+          "cagr_pct": 0.4099295625762611,
+          "strict_mdd_pct": 15.639054826106747,
+          "ratio": 0.026211914155576287,
+          "trades": 92,
+          "p_value": 0.9366052290323665
+        }
+      ]
+    }
+  ],
+  "conclusion": "Wave fold-consistency report is not a target hit. Heldout best policy has CAGR 7.71 / MDD 8.07 / ratio 0.96 / 42 trades; high ratios belonged to individual selection folds and must not be reported as final eval performance.",
+  "next_direction": "Use wave teacher/features as candidate alpha inputs, but require frozen heldout or rolling validation summaries rather than recursive max fold scanning."
+}
