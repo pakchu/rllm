@@ -1,0 +1,40 @@
+{
+  "model_name": "google/gemma-4-E4B-it",
+  "train_jsonl": "/home/pakchu/rllm/data/event_signal_preference_ext_c72_s2_margin_all_train.jsonl",
+  "output_dir": "checkpoints/event_signal_preference_margin_all_gemma4_dpo_dryrun",
+  "rows": 512,
+  "chosen_counts": {
+    "gate=NO_TRADE,side=NONE,hold=0": 256,
+    "gate=TRADE,side=LONG,hold=288": 138,
+    "gate=TRADE,side=SHORT,hold=288": 118
+  },
+  "rejected_counts": {
+    "gate=NO_TRADE,side=NONE,hold=0": 123,
+    "gate=TRADE,side=LONG,hold=288": 201,
+    "gate=TRADE,side=SHORT,hold=288": 188
+  },
+  "prompt_chars": {
+    "min": 1239,
+    "max": 1447,
+    "mean": 1290.3203125
+  },
+  "config": {
+    "model_name": "gemma4-e4b",
+    "train_jsonl": "data/event_signal_preference_ext_c72_s2_margin_all_train.jsonl",
+    "output_dir": "checkpoints/event_signal_preference_margin_all_gemma4_dpo_dryrun",
+    "max_samples": 512,
+    "max_length": 2048,
+    "sample_mode": "gate_balanced",
+    "max_steps": 1,
+    "num_train_epochs": 1.0,
+    "learning_rate": 5e-07,
+    "beta": 0.1,
+    "per_device_train_batch_size": 1,
+    "gradient_accumulation_steps": 8,
+    "lora_r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05,
+    "seed": 42,
+    "init_adapter_dir": ""
+  }
+}

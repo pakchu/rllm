@@ -1,0 +1,61 @@
+{
+  "config": {
+    "train_candidates": "results/event_candidate_ranking_ext_c72_s2_train.jsonl",
+    "eval_candidates": "results/event_candidate_ranking_ext_c72_s2_eval.jsonl",
+    "train_output": "data/event_signal_preference_ext_c72_s2_margin_all_train.jsonl",
+    "eval_output": "data/event_signal_preference_ext_c72_s2_margin_all_eval.jsonl",
+    "summary_output": "results/event_signal_preference_ext_c72_s2_margin_all_summary.json",
+    "min_trade_net_pct": 0.25,
+    "min_trade_utility": 0.0,
+    "full_net_pct": 1.2,
+    "full_utility": 0.5,
+    "max_pairs_per_signal": 2,
+    "min_rank_margin": 0.5,
+    "require_chosen_positive": false
+  },
+  "train": {
+    "rows": 11471,
+    "chosen_counts": {
+      "TRADE:SHORT": 4620,
+      "NO_TRADE:NONE": 1619,
+      "TRADE:LONG": 5232
+    },
+    "rejected_counts": {
+      "NO_TRADE:NONE": 4411,
+      "TRADE:LONG": 3362,
+      "TRADE:SHORT": 3698
+    },
+    "prompt_chars": {
+      "min": 1230,
+      "max": 1471,
+      "mean": 1290.4733676227008
+    },
+    "rank_margin": {
+      "mean": 4.694363343792991,
+      "min": 0.5000696900353668
+    }
+  },
+  "eval": {
+    "rows": 3072,
+    "chosen_counts": {
+      "TRADE:LONG": 1362,
+      "NO_TRADE:NONE": 385,
+      "TRADE:SHORT": 1325
+    },
+    "rejected_counts": {
+      "NO_TRADE:NONE": 1168,
+      "TRADE:SHORT": 960,
+      "TRADE:LONG": 944
+    },
+    "prompt_chars": {
+      "min": 1235,
+      "max": 1455,
+      "mean": 1283.251953125
+    },
+    "rank_margin": {
+      "mean": 3.474091229461497,
+      "min": 0.5023481381473783
+    }
+  },
+  "contract": "same-prompt action preference pairs; prompt signal-time only; preference future-reward training label only"
+}

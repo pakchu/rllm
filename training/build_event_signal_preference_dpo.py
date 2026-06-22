@@ -29,6 +29,8 @@ class EventSignalPreferenceCfg:
     full_net_pct: float = 1.2
     full_utility: float = 0.5
     max_pairs_per_signal: int = 2
+    min_rank_margin: float = 0.0
+    require_chosen_positive: bool = False
 
 
 def _load(path: str) -> list[dict[str, Any]]:
@@ -118,8 +120,13 @@ def _pairs_for_signal(rows: list[dict[str, Any]], cfg: EventSignalPreferenceCfg)
         return []
     chosen = ranked[0]
     out = []
+    if cfg.require_chosen_positive and float(chosen.get("rank", 0.0)) <= 0.0:
+        return []
     for rejected in ranked[1 : 1 + max(1, int(cfg.max_pairs_per_signal))]:
         if chosen["text"] == rejected["text"]:
+            continue
+        margin = float(chosen["rank"]) - float(rejected["rank"])
+        if margin < float(cfg.min_rank_margin):
             continue
         out.append({
             "task": "event_signal_preference_dpo",
@@ -130,6 +137,7 @@ def _pairs_for_signal(rows: list[dict[str, Any]], cfg: EventSignalPreferenceCfg)
             "rejected": rejected["text"],
             "chosen_action": chosen,
             "rejected_action": rejected,
+            "rank_margin": margin,
             "leakage_guard": {"prompt_uses_future_reward": False, "preference_uses_future_reward_for_training_only": True, "same_prompt_action_ranking": True},
         })
     return out
@@ -178,6 +186,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--full-net-pct", type=float, default=EventSignalPreferenceCfg.full_net_pct)
     p.add_argument("--full-utility", type=float, default=EventSignalPreferenceCfg.full_utility)
     p.add_argument("--max-pairs-per-signal", type=int, default=EventSignalPreferenceCfg.max_pairs_per_signal)
+    p.add_argument("--min-rank-margin", type=float, default=EventSignalPreferenceCfg.min_rank_margin)
+    p.add_argument("--require-chosen-positive", action="store_true")
     return p.parse_args()
 
 
