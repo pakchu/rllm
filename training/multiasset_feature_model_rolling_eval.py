@@ -201,6 +201,9 @@ def weights_from_scores(score: np.ndarray, params: dict[str, Any], leverage: flo
     w = np.zeros(score.shape[0], dtype=float)
     if valid.sum() < 2:
         return w
+    vals = score[valid]
+    if float(vals.max() - vals.min()) < float(params.get("min_score_spread", 0.0)):
+        return w
     order = np.flatnonzero(valid)[np.argsort(score[valid])[::-1]]
     k = min(int(params["top_k"]), len(order) // 2 if params["portfolio"] == "long_short" else len(order))
     if k <= 0:
@@ -296,10 +299,16 @@ def rolling_eval(cfg: Cfg, params: dict[str, Any], train_days: int) -> dict[str,
 
 
 def run(cfg: Cfg) -> dict[str, Any]:
-    fixed_params = {"horizon": 288, "stride": 96, "target": "excess", "l2": 100.0, "top_k": 2, "portfolio": "long_short", "regime_filter": "market_mom_pos"}
-    rows = [rolling_eval(cfg, fixed_params, d) for d in [180, 365, 730, 1095]]
+    base_params = {"horizon": 288, "stride": 96, "target": "excess", "l2": 100.0, "top_k": 2, "portfolio": "long_short", "regime_filter": "market_mom_pos"}
+    rows = []
+    for d in [365]:
+        for spread in [0.0, 0.00025, 0.0005, 0.001, 0.002, 0.004]:
+            p = dict(base_params)
+            p["min_score_spread"] = spread
+            rows.append(rolling_eval(cfg, p, d))
+    fixed_params = base_params
     rows.sort(key=lambda r: r["eval"]["sim"]["cagr_to_strict_mdd"], reverse=True)
-    report = {"config": cfg.__dict__, "fixed_params_source": "selected on train2023/val2024 static validation; not tuned on eval", "fixed_params": fixed_params, "searched_train_days": [180, 365, 730, 1095], "rows": rows, "selected_by_eval_for_diagnosis_only": rows[0], "leakage_guard": "monthly models fit only on data before each eval month; hyperparams fixed from prior validation; selected_by_eval is diagnostic only and must not be treated as deployable selection", "accounting_note": "same bar-level turnover-cost strict-MDD evaluator as static model"}
+    report = {"config": cfg.__dict__, "fixed_params_source": "selected on train2023/val2024 static validation; not tuned on eval", "fixed_params": fixed_params, "searched_train_days": [365], "searched_min_score_spread": [0.0, 0.00025, 0.0005, 0.001, 0.002, 0.004], "rows": rows, "selected_by_eval_for_diagnosis_only": rows[0], "leakage_guard": "monthly models fit only on data before each eval month; hyperparams fixed from prior validation; selected_by_eval is diagnostic only and must not be treated as deployable selection", "accounting_note": "same bar-level turnover-cost strict-MDD evaluator as static model"}
     out = Path(cfg.output); out.parent.mkdir(parents=True, exist_ok=True); out.write_text(json.dumps(report, indent=2, ensure_ascii=False))
     return report
 
