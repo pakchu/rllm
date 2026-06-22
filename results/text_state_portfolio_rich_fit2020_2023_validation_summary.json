@@ -1,0 +1,225 @@
+{
+  "protocol": "Train rich Gemma4 adapter on 2020-2023 only, validate transform policies on 2024, then compare untouched 2025-2026 eval.",
+  "splits": {
+    "fit_2020_2023": 1461,
+    "val_2024": 366,
+    "eval_2025_2026": 515
+  },
+  "sft": {
+    "model_name": "google/gemma-4-E4B-it",
+    "train_jsonl": "/home/pakchu/rllm/results/text_state_portfolio_decision_rich_fit_2020_2023.jsonl",
+    "output_dir": "checkpoints/text_state_portfolio_rich_fit2020_2023_gemma4_e4b_step16",
+    "rows": 768,
+    "tasks": {
+      "text_state_portfolio_decision": 768
+    },
+    "target_counts": {
+      "SHORT": 256,
+      "LONG": 256,
+      "NO_TRADE": 256
+    },
+    "prompt_chars": {
+      "min": 1933,
+      "max": 2004,
+      "mean": 1960.0638020833333
+    },
+    "target_chars": {
+      "min": 4,
+      "max": 8,
+      "mean": 5.666666666666667
+    },
+    "config": {
+      "model_name": "gemma4-e4b",
+      "train_jsonl": "results/text_state_portfolio_decision_rich_fit_2020_2023.jsonl",
+      "output_dir": "checkpoints/text_state_portfolio_rich_fit2020_2023_gemma4_e4b_step16",
+      "max_samples": 768,
+      "max_seq_length": 3072,
+      "sample_mode": "balanced",
+      "max_steps": 16,
+      "num_train_epochs": 1.0,
+      "learning_rate": 2e-05,
+      "per_device_train_batch_size": 1,
+      "gradient_accumulation_steps": 4,
+      "lora_r": 8,
+      "lora_alpha": 16,
+      "lora_dropout": 0.05,
+      "load_in_4bit": false,
+      "seed": 42,
+      "base_adapter_dir": ""
+    }
+  },
+  "classification": {
+    "val_2024": {
+      "num_samples": 366,
+      "accuracy": 0.3251366120218579,
+      "target_counts": {
+        "LONG": 103,
+        "NO_TRADE": 173,
+        "SHORT": 90
+      },
+      "pred_counts": {
+        "LONG": 150,
+        "NO_TRADE": 108,
+        "SHORT": 108
+      },
+      "confusion": {
+        "target=LONG|pred=LONG": 43,
+        "target=LONG|pred=NO_TRADE": 25,
+        "target=LONG|pred=SHORT": 35,
+        "target=NO_TRADE|pred=LONG": 74,
+        "target=NO_TRADE|pred=NO_TRADE": 51,
+        "target=NO_TRADE|pred=SHORT": 48,
+        "target=SHORT|pred=LONG": 33,
+        "target=SHORT|pred=NO_TRADE": 32,
+        "target=SHORT|pred=SHORT": 25
+      }
+    },
+    "eval_2025_2026": {
+      "num_samples": 515,
+      "accuracy": 0.341747572815534,
+      "target_counts": {
+        "LONG": 117,
+        "NO_TRADE": 276,
+        "SHORT": 122
+      },
+      "pred_counts": {
+        "LONG": 150,
+        "NO_TRADE": 171,
+        "SHORT": 194
+      },
+      "confusion": {
+        "target=LONG|pred=LONG": 32,
+        "target=LONG|pred=NO_TRADE": 34,
+        "target=LONG|pred=SHORT": 51,
+        "target=NO_TRADE|pred=LONG": 85,
+        "target=NO_TRADE|pred=NO_TRADE": 96,
+        "target=NO_TRADE|pred=SHORT": 95,
+        "target=SHORT|pred=LONG": 33,
+        "target=SHORT|pred=NO_TRADE": 41,
+        "target=SHORT|pred=SHORT": 48
+      }
+    }
+  },
+  "identity_vs_inversion": {
+    "val2024": {
+      "identity": {
+        "cagr_pct": 8.681462013906206,
+        "strict_mdd_pct": 35.39028828263069,
+        "ratio": 0.2453063378454311,
+        "trades": 157,
+        "p_value": 0.6829197261027506
+      },
+      "invert_side": {
+        "cagr_pct": -41.27393376745964,
+        "strict_mdd_pct": 52.54580033266488,
+        "ratio": -0.7854849199394888,
+        "trades": 157,
+        "p_value": 0.19554015050180418
+      }
+    },
+    "eval2025_2026": {
+      "identity": {
+        "cagr_pct": -23.924461121247763,
+        "strict_mdd_pct": 50.3191172587821,
+        "ratio": -0.47545470637349607,
+        "trades": 208,
+        "p_value": 0.31194601592176996
+      },
+      "invert_side": {
+        "cagr_pct": -10.633029892039215,
+        "strict_mdd_pct": 43.459480565606626,
+        "ratio": -0.2446653699872815,
+        "trades": 208,
+        "p_value": 0.7500296679175606
+      }
+    }
+  },
+  "margin_sweep_top": {
+    "val2024": [
+      {
+        "tag": "margin_m0p1000",
+        "cagr_pct": 9.435203631084189,
+        "strict_mdd_pct": 32.1421581331943,
+        "ratio": 0.2935460522590153,
+        "trades": 154,
+        "p_value": 0.6694750091208457
+      },
+      {
+        "tag": "margin_m0p0500",
+        "cagr_pct": 9.435203631084189,
+        "strict_mdd_pct": 32.1421581331943,
+        "ratio": 0.2935460522590153,
+        "trades": 154,
+        "p_value": 0.6694750091208457
+      },
+      {
+        "tag": "margin_m0p0050",
+        "cagr_pct": 9.435203631084189,
+        "strict_mdd_pct": 32.1421581331943,
+        "ratio": 0.2935460522590153,
+        "trades": 154,
+        "p_value": 0.6694750091208457
+      },
+      {
+        "tag": "margin_m0p0200",
+        "cagr_pct": 9.435203631084189,
+        "strict_mdd_pct": 32.1421581331943,
+        "ratio": 0.2935460522590153,
+        "trades": 154,
+        "p_value": 0.6694750091208457
+      },
+      {
+        "tag": "margin_m0p0100",
+        "cagr_pct": 9.435203631084189,
+        "strict_mdd_pct": 32.1421581331943,
+        "ratio": 0.2935460522590153,
+        "trades": 154,
+        "p_value": 0.6694750091208457
+      }
+    ],
+    "eval2025_2026": [
+      {
+        "tag": "margin_m0p0000",
+        "cagr_pct": -23.924461121247763,
+        "strict_mdd_pct": 50.3191172587821,
+        "ratio": -0.47545470637349607,
+        "trades": 208,
+        "p_value": 0.31194601592176996
+      },
+      {
+        "tag": "margin_m0p1000",
+        "cagr_pct": -23.19576927715342,
+        "strict_mdd_pct": 48.56349704482895,
+        "ratio": -0.477637952138031,
+        "trades": 205,
+        "p_value": 0.3282392048016547
+      },
+      {
+        "tag": "margin_m0p0500",
+        "cagr_pct": -23.19576927715342,
+        "strict_mdd_pct": 48.56349704482895,
+        "ratio": -0.477637952138031,
+        "trades": 205,
+        "p_value": 0.3282392048016547
+      },
+      {
+        "tag": "margin_m0p0050",
+        "cagr_pct": -23.19576927715342,
+        "strict_mdd_pct": 48.56349704482895,
+        "ratio": -0.477637952138031,
+        "trades": 205,
+        "p_value": 0.3282392048016547
+      },
+      {
+        "tag": "margin_m0p0200",
+        "cagr_pct": -23.19576927715342,
+        "strict_mdd_pct": 48.56349704482895,
+        "ratio": -0.477637952138031,
+        "trades": 205,
+        "p_value": 0.3282392048016547
+      }
+    ]
+  },
+  "conclusion": "Rich Gemma negative eval result is not a stable invertible signal. 2024 validation prefers identity weakly, inversion is strongly negative; 2025-2026 identity and inversion are both negative. Score-margin abstention does not find a validation-significant or OOS-profitable slice.",
+  "next_direction": "Change label/objective away from direct oracle imitation. Need preference/ranking or reward-model objective that learns calibrated expected utility and abstains by validation, rather than forced 3-class SFT."
+}
