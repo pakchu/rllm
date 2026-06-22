@@ -1,0 +1,4437 @@
+{
+  "config": {
+    "wave_root": "/home/pakchu/workspace/wave_trading",
+    "market_5m_csv": "data/2020-01-01_2026-06-01_btcusdt_futures_5m.csv.gz",
+    "output": "results/rolling_wave_text_rule_validation_report.json",
+    "work_dir": "results/rolling_wave_text_rule",
+    "splits_json": "",
+    "top_k": 5,
+    "quantile": 0.5,
+    "leverages": "1.0,2.0,2.5,3.0"
+  },
+  "splits": [
+    {
+      "split": {
+        "name": "sel2021_2022_eval2023",
+        "selection_folds": "2021-01-01|2021-06-30 23:59:59,2021-07-01|2021-12-31 23:59:59,2022-01-01|2022-06-30 23:59:59,2022-07-01|2022-12-31 23:59:59",
+        "eval_start": "2023-01-01",
+        "eval_end": "2023-12-31 23:59:59"
+      },
+      "fold_consistency_top": [
+        {
+          "policy": {
+            "long_th": 0.66,
+            "short_th": 0.35,
+            "trend_window": 864,
+            "long_mode": "up",
+            "short_mode": "down"
+          },
+          "folds": [
+            {
+              "period": {
+                "start": "2021-01-01",
+                "end": "2021-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 352,
+                "long": 257,
+                "short": 95
+              },
+              "sim": {
+                "ret_pct": 2.008902464348661,
+                "cagr_pct": 4.142024497596131,
+                "strict_mdd_pct": 10.666001484487342,
+                "cagr_to_strict_mdd": 0.38833901379259145,
+                "trade_entries": 167,
+                "turnover_legs": 334,
+                "samples": 17280,
+                "skipped_no_trade": 16472,
+                "skipped_cooldown": 641,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 167,
+                "mean_trade_ret_pct": 0.023271646545680424,
+                "std_trade_ret_pct": 1.5137043910877783,
+                "t_stat_like": 0.19867548274420296,
+                "p_value_mean_ret_approx": 0.8425166036276481,
+                "ci95_mean_trade_ret_pct": [
+                  -0.2063109199568013,
+                  0.25285421304816214
+                ],
+                "effect_size_d": 0.015373970428239925,
+                "n_required_for_80pct_power_alpha5pct": 33208,
+                "n_gap_to_power_rule": 33041
+              }
+            },
+            {
+              "period": {
+                "start": "2021-07-01",
+                "end": "2021-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 2,
+                "long": 2,
+                "short": 0
+              },
+              "sim": {
+                "ret_pct": 0.09514078538881421,
+                "cagr_pct": 0.18998161139855974,
+                "strict_mdd_pct": 0.5800992541113992,
+                "cagr_to_strict_mdd": 0.32749845832774793,
+                "trade_entries": 2,
+                "turnover_legs": 4,
+                "samples": 17664,
+                "skipped_no_trade": 17654,
+                "skipped_cooldown": 8,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 2,
+                "mean_trade_ret_pct": 0.047569149309689696,
+                "std_trade_ret_pct": 0.0634688431007174,
+                "t_stat_like": 1.0599363848110464,
+                "p_value_mean_ret_approx": 0.28917354135089957,
+                "ci95_mean_trade_ret_pct": [
+                  -0.04039417941745159,
+                  0.13553247803683097
+                ],
+                "effect_size_d": 0.7494882053262448,
+                "n_required_for_80pct_power_alpha5pct": 14,
+                "n_gap_to_power_rule": 12
+              }
+            },
+            {
+              "period": {
+                "start": "2022-01-01",
+                "end": "2022-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 18,
+                "long": 1,
+                "short": 17
+              },
+              "sim": {
+                "ret_pct": 4.641339344205719,
+                "cagr_pct": 9.699492320183655,
+                "strict_mdd_pct": 3.372830479419664,
+                "cagr_to_strict_mdd": 2.875772256971708,
+                "trade_entries": 13,
+                "turnover_legs": 26,
+                "samples": 17280,
+                "skipped_no_trade": 17215,
+                "skipped_cooldown": 52,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 13,
+                "mean_trade_ret_pct": 0.35334872237568354,
+                "std_trade_ret_pct": 0.9030797290252693,
+                "t_stat_like": 1.4107469093789926,
+                "p_value_mean_ret_approx": 0.15831925385246182,
+                "ci95_mean_trade_ret_pct": [
+                  -0.13757101046371328,
+                  0.8442684552150803
+                ],
+                "effect_size_d": 0.39127079372833135,
+                "n_required_for_80pct_power_alpha5pct": 52,
+                "n_gap_to_power_rule": 39
+              }
+            },
+            {
+              "period": {
+                "start": "2022-07-01",
+                "end": "2022-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 28,
+                "long": 0,
+                "short": 28
+              },
+              "sim": {
+                "ret_pct": 6.1560814650420514,
+                "cagr_pct": 12.663548708311545,
+                "strict_mdd_pct": 2.901456478923514,
+                "cagr_to_strict_mdd": 4.364548908557098,
+                "trade_entries": 16,
+                "turnover_legs": 32,
+                "samples": 17664,
+                "skipped_no_trade": 17588,
+                "skipped_cooldown": 60,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 16,
+                "mean_trade_ret_pct": 0.38037684501588537,
+                "std_trade_ret_pct": 1.1621723780740576,
+                "t_stat_like": 1.3091925163330511,
+                "p_value_mean_ret_approx": 0.19046914658346736,
+                "ci95_mean_trade_ret_pct": [
+                  -0.18908762024040282,
+                  0.9498413102721734
+                ],
+                "effect_size_d": 0.3272981290832628,
+                "n_required_for_80pct_power_alpha5pct": 74,
+                "n_gap_to_power_rule": 58
+              }
+            }
+          ],
+          "score": 33.31114358311743
+        },
+        {
+          "policy": {
+            "long_th": 0.66,
+            "short_th": 0.32,
+            "trend_window": 864,
+            "long_mode": "up",
+            "short_mode": "down"
+          },
+          "folds": [
+            {
+              "period": {
+                "start": "2021-01-01",
+                "end": "2021-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 317,
+                "long": 257,
+                "short": 60
+              },
+              "sim": {
+                "ret_pct": 5.758405305720138,
+                "cagr_pct": 12.102322003992395,
+                "strict_mdd_pct": 12.071263520804687,
+                "cagr_to_strict_mdd": 1.0025729272775943,
+                "trade_entries": 153,
+                "turnover_legs": 306,
+                "samples": 17280,
+                "skipped_no_trade": 16541,
+                "skipped_cooldown": 586,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 153,
+                "mean_trade_ret_pct": 0.048390228355670147,
+                "std_trade_ret_pct": 1.5431221803080704,
+                "t_stat_like": 0.3878850786494849,
+                "p_value_mean_ret_approx": 0.6981010808481591,
+                "ci95_mean_trade_ret_pct": [
+                  -0.19612767861651503,
+                  0.29290813532785537
+                ],
+                "effect_size_d": 0.03135864999750666,
+                "n_required_for_80pct_power_alpha5pct": 7982,
+                "n_gap_to_power_rule": 7829
+              }
+            },
+            {
+              "period": {
+                "start": "2021-07-01",
+                "end": "2021-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 2,
+                "long": 2,
+                "short": 0
+              },
+              "sim": {
+                "ret_pct": 0.09514078538881421,
+                "cagr_pct": 0.18998161139855974,
+                "strict_mdd_pct": 0.5800992541113992,
+                "cagr_to_strict_mdd": 0.32749845832774793,
+                "trade_entries": 2,
+                "turnover_legs": 4,
+                "samples": 17664,
+                "skipped_no_trade": 17654,
+                "skipped_cooldown": 8,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 2,
+                "mean_trade_ret_pct": 0.047569149309689696,
+                "std_trade_ret_pct": 0.0634688431007174,
+                "t_stat_like": 1.0599363848110464,
+                "p_value_mean_ret_approx": 0.28917354135089957,
+                "ci95_mean_trade_ret_pct": [
+                  -0.04039417941745159,
+                  0.13553247803683097
+                ],
+                "effect_size_d": 0.7494882053262448,
+                "n_required_for_80pct_power_alpha5pct": 14,
+                "n_gap_to_power_rule": 12
+              }
+            },
+            {
+              "period": {
+                "start": "2022-01-01",
+                "end": "2022-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 10,
+                "long": 1,
+                "short": 9
+              },
+              "sim": {
+                "ret_pct": 0.5145314209455742,
+                "cagr_pct": 1.0527134362319224,
+                "strict_mdd_pct": 3.3592325587312066,
+                "cagr_to_strict_mdd": 0.31337914771507686,
+                "trade_entries": 9,
+                "turnover_legs": 18,
+                "samples": 17280,
+                "skipped_no_trade": 17235,
+                "skipped_cooldown": 36,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 9,
+                "mean_trade_ret_pct": 0.0605354768794296,
+                "std_trade_ret_pct": 0.8883711943600616,
+                "t_stat_like": 0.20442629363856066,
+                "p_value_mean_ret_approx": 0.8380203846560732,
+                "ci95_mean_trade_ret_pct": [
+                  -0.5198670367691439,
+                  0.6409379905280033
+                ],
+                "effect_size_d": 0.06814209787952022,
+                "n_required_for_80pct_power_alpha5pct": 1691,
+                "n_gap_to_power_rule": 1682
+              }
+            },
+            {
+              "period": {
+                "start": "2022-07-01",
+                "end": "2022-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 9,
+                "long": 0,
+                "short": 9
+              },
+              "sim": {
+                "ret_pct": 4.8732668151759695,
+                "cagr_pct": 9.962575026481812,
+                "strict_mdd_pct": 3.079480346416019,
+                "cagr_to_strict_mdd": 3.2351481112962843,
+                "trade_entries": 6,
+                "turnover_legs": 12,
+                "samples": 17664,
+                "skipped_no_trade": 17634,
+                "skipped_cooldown": 24,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 6,
+                "mean_trade_ret_pct": 0.8041538453648078,
+                "std_trade_ret_pct": 1.3922817178248976,
+                "t_stat_like": 1.4147758823681378,
+                "p_value_mean_ret_approx": 0.1571342175108077,
+                "ci95_mean_trade_ret_pct": [
+                  -0.30990355168155814,
+                  1.918211242411174
+                ],
+                "effect_size_d": 0.5775798353662958,
+                "n_required_for_80pct_power_alpha5pct": 24,
+                "n_gap_to_power_rule": 18
+              }
+            }
+          ],
+          "score": 31.924504829024755
+        },
+        {
+          "policy": {
+            "long_th": 0.69,
+            "short_th": 0.32,
+            "trend_window": 864,
+            "long_mode": "up",
+            "short_mode": "all"
+          },
+          "folds": [
+            {
+              "period": {
+                "start": "2021-01-01",
+                "end": "2021-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 293,
+                "long": 156,
+                "short": 137
+              },
+              "sim": {
+                "ret_pct": 5.480551271373213,
+                "cagr_pct": 11.50217226318011,
+                "strict_mdd_pct": 16.743367842782064,
+                "cagr_to_strict_mdd": 0.6869688566352921,
+                "trade_entries": 156,
+                "turnover_legs": 312,
+                "samples": 17280,
+                "skipped_no_trade": 16540,
+                "skipped_cooldown": 584,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 156,
+                "mean_trade_ret_pct": 0.04638503144458525,
+                "std_trade_ret_pct": 1.5674211774428828,
+                "t_stat_like": 0.36961913325639945,
+                "p_value_mean_ret_approx": 0.7116662929188478,
+                "ci95_mean_trade_ret_pct": [
+                  -0.19958346274676092,
+                  0.2923535256359315
+                ],
+                "effect_size_d": 0.02959321470969186,
+                "n_required_for_80pct_power_alpha5pct": 8963,
+                "n_gap_to_power_rule": 8807
+              }
+            },
+            {
+              "period": {
+                "start": "2021-07-01",
+                "end": "2021-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 1,
+                "long": 1,
+                "short": 0
+              },
+              "sim": {
+                "ret_pct": 0.0026898999590851957,
+                "cagr_pct": 0.0053688476494340165,
+                "strict_mdd_pct": 0.3095236480275876,
+                "cagr_to_strict_mdd": 0.017345516840624388,
+                "trade_entries": 1,
+                "turnover_legs": 2,
+                "samples": 17664,
+                "skipped_no_trade": 17659,
+                "skipped_cooldown": 4,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 1,
+                "mean_trade_ret_pct": 0.0026898999590851957,
+                "std_trade_ret_pct": 0.0,
+                "t_stat_like": 0.0,
+                "p_value_mean_ret_approx": 1.0,
+                "ci95_mean_trade_ret_pct": [
+                  0.0026898999590851957,
+                  0.0026898999590851957
+                ],
+                "effect_size_d": 0.0,
+                "n_required_for_80pct_power_alpha5pct": null,
+                "n_gap_to_power_rule": null
+              }
+            },
+            {
+              "period": {
+                "start": "2022-01-01",
+                "end": "2022-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 10,
+                "long": 0,
+                "short": 10
+              },
+              "sim": {
+                "ret_pct": 0.18929247768402213,
+                "cagr_pct": 0.38663221873063147,
+                "strict_mdd_pct": 3.3592325587311844,
+                "cagr_to_strict_mdd": 0.11509540109859685,
+                "trade_entries": 9,
+                "turnover_legs": 18,
+                "samples": 17280,
+                "skipped_no_trade": 17235,
+                "skipped_cooldown": 36,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 9,
+                "mean_trade_ret_pct": 0.024208222534580524,
+                "std_trade_ret_pct": 0.8490402518009744,
+                "t_stat_like": 0.0855373669854768,
+                "p_value_mean_ret_approx": 0.9318341897563465,
+                "ci95_mean_trade_ret_pct": [
+                  -0.5304980753087227,
+                  0.5789145203778838
+                ],
+                "effect_size_d": 0.0285124556618256,
+                "n_required_for_80pct_power_alpha5pct": 9655,
+                "n_gap_to_power_rule": 9646
+              }
+            },
+            {
+              "period": {
+                "start": "2022-07-01",
+                "end": "2022-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 10,
+                "long": 0,
+                "short": 10
+              },
+              "sim": {
+                "ret_pct": 4.831486769634941,
+                "cagr_pct": 9.875156801048313,
+                "strict_mdd_pct": 3.079480346416008,
+                "cagr_to_strict_mdd": 3.206760781097797,
+                "trade_entries": 7,
+                "turnover_legs": 14,
+                "samples": 17664,
+                "skipped_no_trade": 17629,
+                "skipped_cooldown": 28,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 7,
+                "mean_trade_ret_pct": 0.6835834954456531,
+                "std_trade_ret_pct": 1.3103946414910908,
+                "t_stat_like": 1.3801887401183706,
+                "p_value_mean_ret_approx": 0.16752853996200567,
+                "ci95_mean_trade_ret_pct": [
+                  -0.2871704399607257,
+                  1.654337430852032
+                ],
+                "effect_size_d": 0.5216623098121091,
+                "n_required_for_80pct_power_alpha5pct": 29,
+                "n_gap_to_power_rule": 22
+              }
+            }
+          ],
+          "score": 31.479583818306537
+        },
+        {
+          "policy": {
+            "long_th": 0.66,
+            "short_th": 0.32,
+            "trend_window": 288,
+            "long_mode": "up",
+            "short_mode": "down"
+          },
+          "folds": [
+            {
+              "period": {
+                "start": "2021-01-01",
+                "end": "2021-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 262,
+                "long": 207,
+                "short": 55
+              },
+              "sim": {
+                "ret_pct": 2.288591111603333,
+                "cagr_pct": 4.725495187637518,
+                "strict_mdd_pct": 16.988812644820385,
+                "cagr_to_strict_mdd": 0.27815335223431553,
+                "trade_entries": 126,
+                "turnover_legs": 252,
+                "samples": 17280,
+                "skipped_no_trade": 16669,
+                "skipped_cooldown": 485,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 126,
+                "mean_trade_ret_pct": 0.02847814444566472,
+                "std_trade_ret_pct": 1.4619119502070148,
+                "t_stat_like": 0.21866322286711154,
+                "p_value_mean_ret_approx": 0.8269123995768728,
+                "ci95_mean_trade_ret_pct": [
+                  -0.22678729242857676,
+                  0.2837435813199062
+                ],
+                "effect_size_d": 0.019480068168012486,
+                "n_required_for_80pct_power_alpha5pct": 20684,
+                "n_gap_to_power_rule": 20558
+              }
+            },
+            {
+              "period": {
+                "start": "2021-07-01",
+                "end": "2021-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 2,
+                "long": 2,
+                "short": 0
+              },
+              "sim": {
+                "ret_pct": 0.09514078538881421,
+                "cagr_pct": 0.18998161139855974,
+                "strict_mdd_pct": 0.5800992541113992,
+                "cagr_to_strict_mdd": 0.32749845832774793,
+                "trade_entries": 2,
+                "turnover_legs": 4,
+                "samples": 17664,
+                "skipped_no_trade": 17654,
+                "skipped_cooldown": 8,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 2,
+                "mean_trade_ret_pct": 0.047569149309689696,
+                "std_trade_ret_pct": 0.0634688431007174,
+                "t_stat_like": 1.0599363848110464,
+                "p_value_mean_ret_approx": 0.28917354135089957,
+                "ci95_mean_trade_ret_pct": [
+                  -0.04039417941745159,
+                  0.13553247803683097
+                ],
+                "effect_size_d": 0.7494882053262448,
+                "n_required_for_80pct_power_alpha5pct": 14,
+                "n_gap_to_power_rule": 12
+              }
+            },
+            {
+              "period": {
+                "start": "2022-01-01",
+                "end": "2022-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 26,
+                "long": 23,
+                "short": 3
+              },
+              "sim": {
+                "ret_pct": 0.2868997927569783,
+                "cagr_pct": 0.5862936600799395,
+                "strict_mdd_pct": 3.9086267545136333,
+                "cagr_to_strict_mdd": 0.14999990966210702,
+                "trade_entries": 15,
+                "turnover_legs": 30,
+                "samples": 17280,
+                "skipped_no_trade": 17205,
+                "skipped_cooldown": 60,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 15,
+                "mean_trade_ret_pct": 0.02491947157601408,
+                "std_trade_ret_pct": 1.1143936588577215,
+                "t_stat_like": 0.08660557034138125,
+                "p_value_mean_ret_approx": 0.9309850380481108,
+                "ci95_mean_trade_ret_pct": [
+                  -0.5390415311223329,
+                  0.5888804742743611
+                ],
+                "effect_size_d": 0.022361462108064303,
+                "n_required_for_80pct_power_alpha5pct": 15697,
+                "n_gap_to_power_rule": 15682
+              }
+            },
+            {
+              "period": {
+                "start": "2022-07-01",
+                "end": "2022-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 7,
+                "long": 2,
+                "short": 5
+              },
+              "sim": {
+                "ret_pct": 0.31474263354798193,
+                "cagr_pct": 0.6291798816793426,
+                "strict_mdd_pct": 3.079480346416008,
+                "cagr_to_strict_mdd": 0.20431365389670406,
+                "trade_entries": 5,
+                "turnover_legs": 10,
+                "samples": 17664,
+                "skipped_no_trade": 17639,
+                "skipped_cooldown": 20,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 5,
+                "mean_trade_ret_pct": 0.06428132779411788,
+                "std_trade_ret_pct": 0.5944803297685425,
+                "t_stat_like": 0.24178666885001485,
+                "p_value_mean_ret_approx": 0.8089454691972542,
+                "ci95_mean_trade_ret_pct": [
+                  -0.45680365623627156,
+                  0.5853663118245073
+                ],
+                "effect_size_d": 0.10813028552037281,
+                "n_required_for_80pct_power_alpha5pct": 672,
+                "n_gap_to_power_rule": 667
+              }
+            }
+          ],
+          "score": 31.013306758731023
+        },
+        {
+          "policy": {
+            "long_th": 0.66,
+            "short_th": 0.35,
+            "trend_window": 864,
+            "long_mode": "up",
+            "short_mode": "all"
+          },
+          "folds": [
+            {
+              "period": {
+                "start": "2021-01-01",
+                "end": "2021-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 486,
+                "long": 257,
+                "short": 229
+              },
+              "sim": {
+                "ret_pct": -15.750654009804588,
+                "cagr_pct": -29.511492781661996,
+                "strict_mdd_pct": 21.962806150491087,
+                "cagr_to_strict_mdd": -1.3437031943662683,
+                "trade_entries": 235,
+                "turnover_legs": 470,
+                "samples": 17280,
+                "skipped_no_trade": 16165,
+                "skipped_cooldown": 880,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 235,
+                "mean_trade_ret_pct": -0.062255415877202784,
+                "std_trade_ret_pct": 1.4618539655599199,
+                "t_stat_like": -0.6528404862437105,
+                "p_value_mean_ret_approx": 0.5138591197518543,
+                "ci95_mean_trade_ret_pct": [
+                  -0.24916265844329294,
+                  0.12465182668888738
+                ],
+                "effect_size_d": -0.0425866176402632,
+                "n_required_for_80pct_power_alpha5pct": 4328,
+                "n_gap_to_power_rule": 4093
+              }
+            },
+            {
+              "period": {
+                "start": "2021-07-01",
+                "end": "2021-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 4,
+                "long": 2,
+                "short": 2
+              },
+              "sim": {
+                "ret_pct": 0.42514595076414974,
+                "cagr_pct": 0.850345884018977,
+                "strict_mdd_pct": 0.7764390056937409,
+                "cagr_to_strict_mdd": 1.0951869725545293,
+                "trade_entries": 3,
+                "turnover_legs": 6,
+                "samples": 17664,
+                "skipped_no_trade": 17649,
+                "skipped_cooldown": 12,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 3,
+                "mean_trade_ret_pct": 0.1416099309725638,
+                "std_trade_ret_pct": 0.1689531084933436,
+                "t_stat_like": 1.4517376891616376,
+                "p_value_mean_ret_approx": 0.14657455546029574,
+                "ci95_mean_trade_ret_pct": [
+                  -0.04957850945878593,
+                  0.33279837140391355
+                ],
+                "effect_size_d": 0.8381611456301967,
+                "n_required_for_80pct_power_alpha5pct": 12,
+                "n_gap_to_power_rule": 9
+              }
+            },
+            {
+              "period": {
+                "start": "2022-01-01",
+                "end": "2022-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 20,
+                "long": 1,
+                "short": 19
+              },
+              "sim": {
+                "ret_pct": 5.829081060600627,
+                "cagr_pct": 12.255239906016469,
+                "strict_mdd_pct": 3.372830479419653,
+                "cagr_to_strict_mdd": 3.6335178956652365,
+                "trade_entries": 15,
+                "turnover_legs": 30,
+                "samples": 17280,
+                "skipped_no_trade": 17205,
+                "skipped_cooldown": 60,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 15,
+                "mean_trade_ret_pct": 0.3817073879244163,
+                "std_trade_ret_pct": 0.8413163014114261,
+                "t_stat_like": 1.7571825888497168,
+                "p_value_mean_ret_approx": 0.07888669200330689,
+                "ci95_mean_trade_ret_pct": [
+                  -0.044057404578795374,
+                  0.8074721804276279
+                ],
+                "effect_size_d": 0.4537025935240392,
+                "n_required_for_80pct_power_alpha5pct": 39,
+                "n_gap_to_power_rule": 24
+              }
+            },
+            {
+              "period": {
+                "start": "2022-07-01",
+                "end": "2022-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 35,
+                "long": 0,
+                "short": 35
+              },
+              "sim": {
+                "ret_pct": 7.4876505044248365,
+                "cagr_pct": 15.501765155959779,
+                "strict_mdd_pct": 4.41436799195456,
+                "cagr_to_strict_mdd": 3.5116612806663694,
+                "trade_entries": 21,
+                "turnover_legs": 42,
+                "samples": 17664,
+                "skipped_no_trade": 17563,
+                "skipped_cooldown": 80,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 21,
+                "mean_trade_ret_pct": 0.3511212580201996,
+                "std_trade_ret_pct": 1.1894860228838449,
+                "t_stat_like": 1.352718495241041,
+                "p_value_mean_ret_approx": 0.17614557947711296,
+                "ci95_mean_trade_ret_pct": [
+                  -0.15763031752247178,
+                  0.859872833562871
+                ],
+                "effect_size_d": 0.2951873761147063,
+                "n_required_for_80pct_power_alpha5pct": 91,
+                "n_gap_to_power_rule": 70
+              }
+            }
+          ],
+          "score": 23.943804953838377
+        }
+      ],
+      "dataset": {
+        "train": {
+          "rows": 963,
+          "mean_reward_pct": 0.04469772852619032,
+          "positive_rate": 0.5389408099688473,
+          "decisions": {
+            "ABSTAIN": 444,
+            "TAKE_SMALL": 220,
+            "TAKE_FULL": 299
+          },
+          "policy_ranks": {
+            "1": 198,
+            "2": 170,
+            "3": 173,
+            "4": 148,
+            "5": 274
+          }
+        },
+        "eval": {
+          "rows": 168,
+          "mean_reward_pct": 0.15737050918928364,
+          "positive_rate": 0.5476190476190477,
+          "decisions": {
+            "TAKE_SMALL": 66,
+            "TAKE_FULL": 26,
+            "ABSTAIN": 76
+          },
+          "policy_ranks": {
+            "1": 33,
+            "2": 33,
+            "3": 25,
+            "4": 28,
+            "5": 49
+          }
+        }
+      },
+      "leverage_results": [
+        {
+          "leverage": 2.0,
+          "sim": {
+            "ret_pct": 13.109130258694757,
+            "cagr_pct": 14.06031468986746,
+            "strict_mdd_pct": 13.531437761484554,
+            "cagr_to_strict_mdd": 1.0390850505101743,
+            "trade_entries": 27,
+            "turnover_legs": 54,
+            "samples": 62,
+            "skipped_no_trade": 30,
+            "skipped_cooldown": 5,
+            "skipped_overlay": 0,
+            "skipped_missing_bars": 0,
+            "invalid_actions": 0,
+            "forced_liquidations": 0,
+            "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+          },
+          "trade_stats": {
+            "n_trades": 27,
+            "mean_trade_ret_pct": 0.5005988752609055,
+            "std_trade_ret_pct": 3.018647192282015,
+            "t_stat_like": 0.8617065502526456,
+            "p_value_mean_ret_approx": 0.388849020154173,
+            "ci95_mean_trade_ret_pct": [
+              -0.6380414138534134,
+              1.6392391643752244
+            ],
+            "effect_size_d": 0.1658355029169429,
+            "n_required_for_80pct_power_alpha5pct": 286,
+            "n_gap_to_power_rule": 259
+          },
+          "score": 120.66881974088489,
+          "path": "results/rolling_wave_text_rule/sel2021_2022_eval2023/text_rule_q0p5_lev2p0.json"
+        },
+        {
+          "leverage": 1.0,
+          "sim": {
+            "ret_pct": 6.6984617451437245,
+            "cagr_pct": 7.169799714559599,
+            "strict_mdd_pct": 6.939818663668273,
+            "cagr_to_strict_mdd": 1.033139345858608,
+            "trade_entries": 27,
+            "turnover_legs": 54,
+            "samples": 62,
+            "skipped_no_trade": 30,
+            "skipped_cooldown": 5,
+            "skipped_overlay": 0,
+            "skipped_missing_bars": 0,
+            "invalid_actions": 0,
+            "forced_liquidations": 0,
+            "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+          },
+          "trade_stats": {
+            "n_trades": 27,
+            "mean_trade_ret_pct": 0.25129756383047874,
+            "std_trade_ret_pct": 1.5077365593366538,
+            "t_stat_like": 0.8660534474885385,
+            "p_value_mean_ret_approx": 0.38646085242151207,
+            "ci95_mean_trade_ret_pct": [
+              -0.31742394699089205,
+              0.8200190746518496
+            ],
+            "effect_size_d": 0.16667206368003704,
+            "n_required_for_80pct_power_alpha5pct": 283,
+            "n_gap_to_power_rule": 256
+          },
+          "score": 113.18373430042041,
+          "path": "results/rolling_wave_text_rule/sel2021_2022_eval2023/text_rule_q0p5_lev1p0.json"
+        },
+        {
+          "leverage": 3.0,
+          "sim": {
+            "ret_pct": 19.13905008431016,
+            "cagr_pct": 20.56589650892262,
+            "strict_mdd_pct": 19.7858612101504,
+            "cagr_to_strict_mdd": 1.039423873971786,
+            "trade_entries": 27,
+            "turnover_legs": 54,
+            "samples": 62,
+            "skipped_no_trade": 30,
+            "skipped_cooldown": 5,
+            "skipped_overlay": 0,
+            "skipped_missing_bars": 0,
+            "invalid_actions": 0,
+            "forced_liquidations": 0,
+            "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+          },
+          "trade_stats": {
+            "n_trades": 27,
+            "mean_trade_ret_pct": 0.7478567993293905,
+            "std_trade_ret_pct": 4.532939202032525,
+            "t_stat_like": 0.8572755438525641,
+            "p_value_mean_ret_approx": 0.39129262107893137,
+            "ci95_mean_trade_ret_pct": [
+              -0.9619777307662172,
+              2.4576913294249985
+            ],
+            "effect_size_d": 0.16498275533765355,
+            "n_required_for_80pct_power_alpha5pct": 289,
+            "n_gap_to_power_rule": 262
+          },
+          "score": -999.1929647012278,
+          "path": "results/rolling_wave_text_rule/sel2021_2022_eval2023/text_rule_q0p5_lev3p0.json"
+        },
+        {
+          "leverage": 2.5,
+          "sim": {
+            "ret_pct": 16.177484475467054,
+            "cagr_pct": 17.367842176559712,
+            "strict_mdd_pct": 16.70011710079502,
+            "cagr_to_strict_mdd": 1.039983257107395,
+            "trade_entries": 27,
+            "turnover_legs": 54,
+            "samples": 62,
+            "skipped_no_trade": 30,
+            "skipped_cooldown": 5,
+            "skipped_overlay": 0,
+            "skipped_missing_bars": 0,
+            "invalid_actions": 0,
+            "forced_liquidations": 0,
+            "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+          },
+          "trade_stats": {
+            "n_trades": 27,
+            "mean_trade_ret_pct": 0.6244861299331611,
+            "std_trade_ret_pct": 3.7753575736447242,
+            "t_stat_like": 0.8595013991922991,
+            "p_value_mean_ret_approx": 0.3900639483886783,
+            "ci95_mean_trade_ret_pct": [
+              -0.7995869615350096,
+              2.048559221401332
+            ],
+            "effect_size_d": 0.1654111213975113,
+            "n_required_for_80pct_power_alpha5pct": 287,
+            "n_gap_to_power_rule": 260
+          },
+          "score": -999.3052749242353,
+          "path": "results/rolling_wave_text_rule/sel2021_2022_eval2023/text_rule_q0p5_lev2p5.json"
+        }
+      ],
+      "best_by_rule": {
+        "leverage": 2.0,
+        "sim": {
+          "ret_pct": 13.109130258694757,
+          "cagr_pct": 14.06031468986746,
+          "strict_mdd_pct": 13.531437761484554,
+          "cagr_to_strict_mdd": 1.0390850505101743,
+          "trade_entries": 27,
+          "turnover_legs": 54,
+          "samples": 62,
+          "skipped_no_trade": 30,
+          "skipped_cooldown": 5,
+          "skipped_overlay": 0,
+          "skipped_missing_bars": 0,
+          "invalid_actions": 0,
+          "forced_liquidations": 0,
+          "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+        },
+        "trade_stats": {
+          "n_trades": 27,
+          "mean_trade_ret_pct": 0.5005988752609055,
+          "std_trade_ret_pct": 3.018647192282015,
+          "t_stat_like": 0.8617065502526456,
+          "p_value_mean_ret_approx": 0.388849020154173,
+          "ci95_mean_trade_ret_pct": [
+            -0.6380414138534134,
+            1.6392391643752244
+          ],
+          "effect_size_d": 0.1658355029169429,
+          "n_required_for_80pct_power_alpha5pct": 286,
+          "n_gap_to_power_rule": 259
+        },
+        "score": 120.66881974088489,
+        "path": "results/rolling_wave_text_rule/sel2021_2022_eval2023/text_rule_q0p5_lev2p0.json"
+      }
+    },
+    {
+      "split": {
+        "name": "sel2021_2023_eval2024h1",
+        "selection_folds": "2021-01-01|2021-06-30 23:59:59,2021-07-01|2021-12-31 23:59:59,2022-01-01|2022-06-30 23:59:59,2022-07-01|2022-12-31 23:59:59,2023-01-01|2023-06-30 23:59:59,2023-07-01|2023-12-31 23:59:59",
+        "eval_start": "2024-01-01",
+        "eval_end": "2024-06-30 23:59:59"
+      },
+      "fold_consistency_top": [
+        {
+          "policy": {
+            "long_th": 0.66,
+            "short_th": 0.32,
+            "trend_window": 288,
+            "long_mode": "down",
+            "short_mode": "all"
+          },
+          "folds": [
+            {
+              "period": {
+                "start": "2021-01-01",
+                "end": "2021-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 627,
+                "long": 490,
+                "short": 137
+              },
+              "sim": {
+                "ret_pct": -11.030828472176267,
+                "cagr_pct": -21.218698219912447,
+                "strict_mdd_pct": 22.215508424978815,
+                "cagr_to_strict_mdd": -0.9551299846036578,
+                "trade_entries": 277,
+                "turnover_legs": 554,
+                "samples": 17280,
+                "skipped_no_trade": 15976,
+                "skipped_cooldown": 1027,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 277,
+                "mean_trade_ret_pct": -0.025902048909338185,
+                "std_trade_ret_pct": 1.806478720059751,
+                "t_stat_like": -0.23863885334892218,
+                "p_value_mean_ret_approx": 0.8113856347672559,
+                "ci95_mean_trade_ret_pct": [
+                  -0.23864199108494505,
+                  0.18683789326626868
+                ],
+                "effect_size_d": -0.01433841905897538,
+                "n_required_for_80pct_power_alpha5pct": 38178,
+                "n_gap_to_power_rule": 37901
+              }
+            },
+            {
+              "period": {
+                "start": "2021-07-01",
+                "end": "2021-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 23,
+                "long": 23,
+                "short": 0
+              },
+              "sim": {
+                "ret_pct": 5.5973547770352905,
+                "cagr_pct": 11.483126480758488,
+                "strict_mdd_pct": 2.5542099644631944,
+                "cagr_to_strict_mdd": 4.495764498817089,
+                "trade_entries": 6,
+                "turnover_legs": 12,
+                "samples": 17664,
+                "skipped_no_trade": 17634,
+                "skipped_cooldown": 24,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 6,
+                "mean_trade_ret_pct": 0.9329232146015942,
+                "std_trade_ret_pct": 2.2705604355462943,
+                "t_stat_like": 1.0064413213564611,
+                "p_value_mean_ret_approx": 0.31420332491819236,
+                "ci95_mean_trade_ret_pct": [
+                  -0.8839035211634576,
+                  2.7497499503666463
+                ],
+                "effect_size_d": 0.4108779488959667,
+                "n_required_for_80pct_power_alpha5pct": 47,
+                "n_gap_to_power_rule": 41
+              }
+            },
+            {
+              "period": {
+                "start": "2022-01-01",
+                "end": "2022-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 135,
+                "long": 125,
+                "short": 10
+              },
+              "sim": {
+                "ret_pct": -9.266372734212636,
+                "cagr_pct": -17.997698196510925,
+                "strict_mdd_pct": 16.5188585733287,
+                "cagr_to_strict_mdd": -1.0895243225563995,
+                "trade_entries": 59,
+                "turnover_legs": 118,
+                "samples": 17280,
+                "skipped_no_trade": 17003,
+                "skipped_cooldown": 218,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 59,
+                "mean_trade_ret_pct": -0.147351179396306,
+                "std_trade_ret_pct": 1.881572919602172,
+                "t_stat_like": -0.601531768060664,
+                "p_value_mean_ret_approx": 0.5474858592575302,
+                "ci95_mean_trade_ret_pct": [
+                  -0.6274726408909774,
+                  0.3327702820983655
+                ],
+                "effect_size_d": -0.07831276580418738,
+                "n_required_for_80pct_power_alpha5pct": 1280,
+                "n_gap_to_power_rule": 1221
+              }
+            },
+            {
+              "period": {
+                "start": "2022-07-01",
+                "end": "2022-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 20,
+                "long": 10,
+                "short": 10
+              },
+              "sim": {
+                "ret_pct": 9.64128639904347,
+                "cagr_pct": 20.16677791628021,
+                "strict_mdd_pct": 5.552646100564118,
+                "cagr_to_strict_mdd": 3.631922069413244,
+                "trade_entries": 12,
+                "turnover_legs": 24,
+                "samples": 17664,
+                "skipped_no_trade": 17607,
+                "skipped_cooldown": 45,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 12,
+                "mean_trade_ret_pct": 0.7838069511366998,
+                "std_trade_ret_pct": 1.7362343604696344,
+                "t_stat_like": 1.5638366497103589,
+                "p_value_mean_ret_approx": 0.11785593494286539,
+                "ci95_mean_trade_ret_pct": [
+                  -0.198560116748853,
+                  1.7661740190222528
+                ],
+                "effect_size_d": 0.45144075533943917,
+                "n_required_for_80pct_power_alpha5pct": 39,
+                "n_gap_to_power_rule": 27
+              }
+            },
+            {
+              "period": {
+                "start": "2023-01-01",
+                "end": "2023-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 22,
+                "long": 18,
+                "short": 4
+              },
+              "sim": {
+                "ret_pct": 6.561067890091987,
+                "cagr_pct": 13.845258381440173,
+                "strict_mdd_pct": 3.9916100741808735,
+                "cagr_to_strict_mdd": 3.468589898346067,
+                "trade_entries": 17,
+                "turnover_legs": 34,
+                "samples": 17280,
+                "skipped_no_trade": 17198,
+                "skipped_cooldown": 65,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 17,
+                "mean_trade_ret_pct": 0.3825724385437464,
+                "std_trade_ret_pct": 1.3206889260340586,
+                "t_stat_like": 1.1943664722795664,
+                "p_value_mean_ret_approx": 0.23233464592644681,
+                "ci95_mean_trade_ret_pct": [
+                  -0.24524322519855157,
+                  1.0103881022860444
+                ],
+                "effect_size_d": 0.28967641887676465,
+                "n_required_for_80pct_power_alpha5pct": 94,
+                "n_gap_to_power_rule": 77
+              }
+            },
+            {
+              "period": {
+                "start": "2023-07-01",
+                "end": "2023-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 47,
+                "long": 44,
+                "short": 3
+              },
+              "sim": {
+                "ret_pct": 6.537127651228003,
+                "cagr_pct": 13.47214334867064,
+                "strict_mdd_pct": 2.8792258947485494,
+                "cagr_to_strict_mdd": 4.679085226776622,
+                "trade_entries": 28,
+                "turnover_legs": 56,
+                "samples": 17664,
+                "skipped_no_trade": 17534,
+                "skipped_cooldown": 102,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 28,
+                "mean_trade_ret_pct": 0.23038973505357146,
+                "std_trade_ret_pct": 0.9154247833110973,
+                "t_stat_like": 1.3317400941867663,
+                "p_value_mean_ret_approx": 0.18294560926633596,
+                "ci95_mean_trade_ret_pct": [
+                  -0.10868834983411815,
+                  0.5694678199412612
+                ],
+                "effect_size_d": 0.25167522144227983,
+                "n_required_for_80pct_power_alpha5pct": 124,
+                "n_gap_to_power_rule": 96
+              }
+            }
+          ],
+          "score": 45.08577965568249
+        },
+        {
+          "policy": {
+            "long_th": 0.66,
+            "short_th": 0.32,
+            "trend_window": 864,
+            "long_mode": "down",
+            "short_mode": "all"
+          },
+          "folds": [
+            {
+              "period": {
+                "start": "2021-01-01",
+                "end": "2021-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 577,
+                "long": 440,
+                "short": 137
+              },
+              "sim": {
+                "ret_pct": -18.738996159213205,
+                "cagr_pct": -34.51914481983426,
+                "strict_mdd_pct": 31.689462578248985,
+                "cagr_to_strict_mdd": -1.0892941063483832,
+                "trade_entries": 248,
+                "turnover_legs": 496,
+                "samples": 17280,
+                "skipped_no_trade": 16113,
+                "skipped_cooldown": 919,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 248,
+                "mean_trade_ret_pct": -0.06686898986168723,
+                "std_trade_ret_pct": 1.8340978141103181,
+                "t_stat_like": -0.5741536232663232,
+                "p_value_mean_ret_approx": 0.5658638492132817,
+                "ci95_mean_trade_ret_pct": [
+                  -0.2951410320780138,
+                  0.1614030523546393
+                ],
+                "effect_size_d": -0.03645879153622129,
+                "n_required_for_80pct_power_alpha5pct": 5905,
+                "n_gap_to_power_rule": 5657
+              }
+            },
+            {
+              "period": {
+                "start": "2021-07-01",
+                "end": "2021-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 23,
+                "long": 23,
+                "short": 0
+              },
+              "sim": {
+                "ret_pct": 5.5973547770352905,
+                "cagr_pct": 11.483126480758488,
+                "strict_mdd_pct": 2.5542099644631944,
+                "cagr_to_strict_mdd": 4.495764498817089,
+                "trade_entries": 6,
+                "turnover_legs": 12,
+                "samples": 17664,
+                "skipped_no_trade": 17634,
+                "skipped_cooldown": 24,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 6,
+                "mean_trade_ret_pct": 0.9329232146015942,
+                "std_trade_ret_pct": 2.2705604355462943,
+                "t_stat_like": 1.0064413213564611,
+                "p_value_mean_ret_approx": 0.31420332491819236,
+                "ci95_mean_trade_ret_pct": [
+                  -0.8839035211634576,
+                  2.7497499503666463
+                ],
+                "effect_size_d": 0.4108779488959667,
+                "n_required_for_80pct_power_alpha5pct": 47,
+                "n_gap_to_power_rule": 41
+              }
+            },
+            {
+              "period": {
+                "start": "2022-01-01",
+                "end": "2022-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 157,
+                "long": 147,
+                "short": 10
+              },
+              "sim": {
+                "ret_pct": -9.4935528934184,
+                "cagr_pct": -18.4161055379364,
+                "strict_mdd_pct": 16.700517906658064,
+                "cagr_to_strict_mdd": -1.1027266124839383,
+                "trade_entries": 69,
+                "turnover_legs": 138,
+                "samples": 17280,
+                "skipped_no_trade": 16953,
+                "skipped_cooldown": 258,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 69,
+                "mean_trade_ret_pct": -0.12869105759873556,
+                "std_trade_ret_pct": 1.7918872817527263,
+                "t_stat_like": -0.5965711241324261,
+                "p_value_mean_ret_approx": 0.550793754897835,
+                "ci95_mean_trade_ret_pct": [
+                  -0.5514981005315259,
+                  0.2941159853340548
+                ],
+                "effect_size_d": -0.07181872370501842,
+                "n_required_for_80pct_power_alpha5pct": 1522,
+                "n_gap_to_power_rule": 1453
+              }
+            },
+            {
+              "period": {
+                "start": "2022-07-01",
+                "end": "2022-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 22,
+                "long": 12,
+                "short": 10
+              },
+              "sim": {
+                "ret_pct": 9.50886864656415,
+                "cagr_pct": 19.877287373549724,
+                "strict_mdd_pct": 5.552646100564118,
+                "cagr_to_strict_mdd": 3.579786468208428,
+                "trade_entries": 14,
+                "turnover_legs": 28,
+                "samples": 17664,
+                "skipped_no_trade": 17597,
+                "skipped_cooldown": 53,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 14,
+                "mean_trade_ret_pct": 0.6632062223333608,
+                "std_trade_ret_pct": 1.6263245093664809,
+                "t_stat_like": 1.5258273772893587,
+                "p_value_mean_ret_approx": 0.12705286065043975,
+                "ci95_mean_trade_ret_pct": [
+                  -0.1887146535934031,
+                  1.5151270982601246
+                ],
+                "effect_size_d": 0.4077945197983313,
+                "n_required_for_80pct_power_alpha5pct": 48,
+                "n_gap_to_power_rule": 34
+              }
+            },
+            {
+              "period": {
+                "start": "2023-01-01",
+                "end": "2023-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 21,
+                "long": 17,
+                "short": 4
+              },
+              "sim": {
+                "ret_pct": 7.98170453075544,
+                "cagr_pct": 16.96370931165312,
+                "strict_mdd_pct": 3.7194182619675997,
+                "cagr_to_strict_mdd": 4.560850142914336,
+                "trade_entries": 17,
+                "turnover_legs": 34,
+                "samples": 17280,
+                "skipped_no_trade": 17197,
+                "skipped_cooldown": 66,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 17,
+                "mean_trade_ret_pct": 0.46023470654029475,
+                "std_trade_ret_pct": 1.2742949103856438,
+                "t_stat_like": 1.4891343378798452,
+                "p_value_mean_ret_approx": 0.1364519972403404,
+                "ci95_mean_trade_ret_pct": [
+                  -0.1455266420988653,
+                  1.0659960551794547
+                ],
+                "effect_size_d": 0.36116812740075416,
+                "n_required_for_80pct_power_alpha5pct": 61,
+                "n_gap_to_power_rule": 44
+              }
+            },
+            {
+              "period": {
+                "start": "2023-07-01",
+                "end": "2023-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 43,
+                "long": 40,
+                "short": 3
+              },
+              "sim": {
+                "ret_pct": 5.948823496726274,
+                "cagr_pct": 12.224950862610417,
+                "strict_mdd_pct": 2.9533272411277123,
+                "cagr_to_strict_mdd": 4.139382420060699,
+                "trade_entries": 25,
+                "turnover_legs": 50,
+                "samples": 17664,
+                "skipped_no_trade": 17548,
+                "skipped_cooldown": 91,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 25,
+                "mean_trade_ret_pct": 0.23553008999528613,
+                "std_trade_ret_pct": 0.9340043745057992,
+                "t_stat_like": 1.2608618140568661,
+                "p_value_mean_ret_approx": 0.2073586382091568,
+                "ci95_mean_trade_ret_pct": [
+                  -0.13059962481098714,
+                  0.6016598048015593
+                ],
+                "effect_size_d": 0.25217236281137323,
+                "n_required_for_80pct_power_alpha5pct": 124,
+                "n_gap_to_power_rule": 99
+              }
+            }
+          ],
+          "score": 44.49222450217163
+        },
+        {
+          "policy": {
+            "long_th": 0.66,
+            "short_th": 0.32,
+            "trend_window": 288,
+            "long_mode": "down",
+            "short_mode": "up"
+          },
+          "folds": [
+            {
+              "period": {
+                "start": "2021-01-01",
+                "end": "2021-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 572,
+                "long": 490,
+                "short": 82
+              },
+              "sim": {
+                "ret_pct": -18.519757443905494,
+                "cagr_pct": -34.158154314573906,
+                "strict_mdd_pct": 27.750173647614098,
+                "cagr_to_strict_mdd": -1.2309167772545002,
+                "trade_entries": 251,
+                "turnover_legs": 502,
+                "samples": 17280,
+                "skipped_no_trade": 16105,
+                "skipped_cooldown": 924,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 251,
+                "mean_trade_ret_pct": -0.06447701290956047,
+                "std_trade_ret_pct": 1.8503646676228054,
+                "t_stat_like": -0.5520576634250861,
+                "p_value_mean_ret_approx": 0.5809088468252752,
+                "ci95_mean_trade_ret_pct": [
+                  -0.2933932180006751,
+                  0.16443919218155412
+                ],
+                "effect_size_d": -0.03484557073411652,
+                "n_required_for_80pct_power_alpha5pct": 6465,
+                "n_gap_to_power_rule": 6214
+              }
+            },
+            {
+              "period": {
+                "start": "2021-07-01",
+                "end": "2021-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 23,
+                "long": 23,
+                "short": 0
+              },
+              "sim": {
+                "ret_pct": 5.5973547770352905,
+                "cagr_pct": 11.483126480758488,
+                "strict_mdd_pct": 2.5542099644631944,
+                "cagr_to_strict_mdd": 4.495764498817089,
+                "trade_entries": 6,
+                "turnover_legs": 12,
+                "samples": 17664,
+                "skipped_no_trade": 17634,
+                "skipped_cooldown": 24,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 6,
+                "mean_trade_ret_pct": 0.9329232146015942,
+                "std_trade_ret_pct": 2.2705604355462943,
+                "t_stat_like": 1.0064413213564611,
+                "p_value_mean_ret_approx": 0.31420332491819236,
+                "ci95_mean_trade_ret_pct": [
+                  -0.8839035211634576,
+                  2.7497499503666463
+                ],
+                "effect_size_d": 0.4108779488959667,
+                "n_required_for_80pct_power_alpha5pct": 47,
+                "n_gap_to_power_rule": 41
+              }
+            },
+            {
+              "period": {
+                "start": "2022-01-01",
+                "end": "2022-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 132,
+                "long": 125,
+                "short": 7
+              },
+              "sim": {
+                "ret_pct": -9.381510829650397,
+                "cagr_pct": -18.209889314813267,
+                "strict_mdd_pct": 16.92226616770257,
+                "cagr_to_strict_mdd": -1.0760904676921004,
+                "trade_entries": 56,
+                "turnover_legs": 112,
+                "samples": 17280,
+                "skipped_no_trade": 17018,
+                "skipped_cooldown": 206,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 56,
+                "mean_trade_ret_pct": -0.157784301529079,
+                "std_trade_ret_pct": 1.9172271038423894,
+                "t_stat_like": -0.6158631871519573,
+                "p_value_mean_ret_approx": 0.5379848197260566,
+                "ci95_mean_trade_ret_pct": [
+                  -0.659936788394135,
+                  0.3443681853359771
+                ],
+                "effect_size_d": -0.08229818012318799,
+                "n_required_for_80pct_power_alpha5pct": 1159,
+                "n_gap_to_power_rule": 1103
+              }
+            },
+            {
+              "period": {
+                "start": "2022-07-01",
+                "end": "2022-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 15,
+                "long": 10,
+                "short": 5
+              },
+              "sim": {
+                "ret_pct": 9.165278972605662,
+                "cagr_pct": 19.127759477422202,
+                "strict_mdd_pct": 5.546490406594806,
+                "cagr_to_strict_mdd": 3.4486239180508087,
+                "trade_entries": 9,
+                "turnover_legs": 18,
+                "samples": 17664,
+                "skipped_no_trade": 17622,
+                "skipped_cooldown": 33,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 9,
+                "mean_trade_ret_pct": 0.9959422748551537,
+                "std_trade_ret_pct": 1.9423087487803323,
+                "t_stat_like": 1.5382862412794358,
+                "p_value_mean_ret_approx": 0.12397864233169953,
+                "ci95_mean_trade_ret_pct": [
+                  -0.2730327743479966,
+                  2.2649173240583043
+                ],
+                "effect_size_d": 0.5127620804264785,
+                "n_required_for_80pct_power_alpha5pct": 30,
+                "n_gap_to_power_rule": 21
+              }
+            },
+            {
+              "period": {
+                "start": "2023-01-01",
+                "end": "2023-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 21,
+                "long": 18,
+                "short": 3
+              },
+              "sim": {
+                "ret_pct": 6.353191987941642,
+                "cagr_pct": 13.392551860284962,
+                "strict_mdd_pct": 3.9916100741807847,
+                "cagr_to_strict_mdd": 3.3551753832151485,
+                "trade_entries": 16,
+                "turnover_legs": 32,
+                "samples": 17280,
+                "skipped_no_trade": 17203,
+                "skipped_cooldown": 61,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 16,
+                "mean_trade_ret_pct": 0.3942670862423295,
+                "std_trade_ret_pct": 1.3630922641337733,
+                "t_stat_like": 1.1569784279947648,
+                "p_value_mean_ret_approx": 0.24728117392239568,
+                "ci95_mean_trade_ret_pct": [
+                  -0.27364812318321946,
+                  1.0621822956678784
+                ],
+                "effect_size_d": 0.2892446069986912,
+                "n_required_for_80pct_power_alpha5pct": 94,
+                "n_gap_to_power_rule": 78
+              }
+            },
+            {
+              "period": {
+                "start": "2023-07-01",
+                "end": "2023-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 46,
+                "long": 44,
+                "short": 2
+              },
+              "sim": {
+                "ret_pct": 6.852086198496199,
+                "cagr_pct": 14.142675586425991,
+                "strict_mdd_pct": 2.879225894748605,
+                "cagr_to_strict_mdd": 4.911971517143096,
+                "trade_entries": 27,
+                "turnover_legs": 54,
+                "samples": 17664,
+                "skipped_no_trade": 17539,
+                "skipped_cooldown": 98,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 27,
+                "mean_trade_ret_pct": 0.24983977161809273,
+                "std_trade_ret_pct": 0.9269484810594614,
+                "t_stat_like": 1.4005153049045749,
+                "p_value_mean_ret_approx": 0.16135906352810592,
+                "ci95_mean_trade_ret_pct": [
+                  -0.0998072123574425,
+                  0.599486755593628
+                ],
+                "effect_size_d": 0.26952929609694903,
+                "n_required_for_80pct_power_alpha5pct": 109,
+                "n_gap_to_power_rule": 82
+              }
+            }
+          ],
+          "score": 44.42364136570149
+        },
+        {
+          "policy": {
+            "long_th": 0.69,
+            "short_th": 0.32,
+            "trend_window": 288,
+            "long_mode": "down",
+            "short_mode": "all"
+          },
+          "folds": [
+            {
+              "period": {
+                "start": "2021-01-01",
+                "end": "2021-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 456,
+                "long": 319,
+                "short": 137
+              },
+              "sim": {
+                "ret_pct": 8.031470025612064,
+                "cagr_pct": 17.073729046207163,
+                "strict_mdd_pct": 23.35316855232272,
+                "cagr_to_strict_mdd": 0.7311097424725691,
+                "trade_entries": 219,
+                "turnover_legs": 438,
+                "samples": 17280,
+                "skipped_no_trade": 16252,
+                "skipped_cooldown": 809,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 219,
+                "mean_trade_ret_pct": 0.0544058604413414,
+                "std_trade_ret_pct": 1.9613719671968728,
+                "t_stat_like": 0.4104949103013116,
+                "p_value_mean_ret_approx": 0.6814429363444523,
+                "ci95_mean_trade_ret_pct": [
+                  -0.20536712038991065,
+                  0.31417884127259343
+                ],
+                "effect_size_d": 0.02773867545333404,
+                "n_required_for_80pct_power_alpha5pct": 10201,
+                "n_gap_to_power_rule": 9982
+              }
+            },
+            {
+              "period": {
+                "start": "2021-07-01",
+                "end": "2021-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 14,
+                "long": 14,
+                "short": 0
+              },
+              "sim": {
+                "ret_pct": 4.365911588035498,
+                "cagr_pct": 8.903360565179774,
+                "strict_mdd_pct": 2.3411584904422966,
+                "cagr_to_strict_mdd": 3.8029721616573395,
+                "trade_entries": 4,
+                "turnover_legs": 8,
+                "samples": 17664,
+                "skipped_no_trade": 17644,
+                "skipped_cooldown": 16,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 4,
+                "mean_trade_ret_pct": 1.0994101291462832,
+                "std_trade_ret_pct": 2.6251412374901926,
+                "t_stat_like": 0.837600745777314,
+                "p_value_mean_ret_approx": 0.40225497385600884,
+                "ci95_mean_trade_ret_pct": [
+                  -1.4732282835941055,
+                  3.6720485418866717
+                ],
+                "effect_size_d": 0.418800372888657,
+                "n_required_for_80pct_power_alpha5pct": 45,
+                "n_gap_to_power_rule": 41
+              }
+            },
+            {
+              "period": {
+                "start": "2022-01-01",
+                "end": "2022-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 81,
+                "long": 71,
+                "short": 10
+              },
+              "sim": {
+                "ret_pct": -6.5604913871044275,
+                "cagr_pct": -12.930210094031713,
+                "strict_mdd_pct": 16.031833953560938,
+                "cagr_to_strict_mdd": -0.8065334341340092,
+                "trade_entries": 43,
+                "turnover_legs": 86,
+                "samples": 17280,
+                "skipped_no_trade": 17081,
+                "skipped_cooldown": 156,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 43,
+                "mean_trade_ret_pct": -0.14033908589574004,
+                "std_trade_ret_pct": 1.8865372891018732,
+                "t_stat_like": -0.48780638137090054,
+                "p_value_mean_ret_approx": 0.6256869909427607,
+                "ci95_mean_trade_ret_pct": [
+                  -0.7042197952514194,
+                  0.4235416234599394
+                ],
+                "effect_size_d": -0.07438977575818366,
+                "n_required_for_80pct_power_alpha5pct": 1419,
+                "n_gap_to_power_rule": 1376
+              }
+            },
+            {
+              "period": {
+                "start": "2022-07-01",
+                "end": "2022-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 15,
+                "long": 5,
+                "short": 10
+              },
+              "sim": {
+                "ret_pct": 6.206861979561662,
+                "cagr_pct": 12.771140270962288,
+                "strict_mdd_pct": 6.162867517764448,
+                "cagr_to_strict_mdd": 2.0722724014672576,
+                "trade_entries": 10,
+                "turnover_legs": 20,
+                "samples": 17664,
+                "skipped_no_trade": 17617,
+                "skipped_cooldown": 37,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 10,
+                "mean_trade_ret_pct": 0.6194296363869789,
+                "std_trade_ret_pct": 1.8513349896277838,
+                "t_stat_like": 1.0580518988552092,
+                "p_value_mean_ret_approx": 0.2900317821650913,
+                "ci95_mean_trade_ret_pct": [
+                  -0.5280396783338689,
+                  1.7668989511078266
+                ],
+                "effect_size_d": 0.3345853883048561,
+                "n_required_for_80pct_power_alpha5pct": 71,
+                "n_gap_to_power_rule": 61
+              }
+            },
+            {
+              "period": {
+                "start": "2023-01-01",
+                "end": "2023-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 9,
+                "long": 5,
+                "short": 4
+              },
+              "sim": {
+                "ret_pct": 4.123073297813229,
+                "cagr_pct": 8.5937068825098,
+                "strict_mdd_pct": 2.9582068640743198,
+                "cagr_to_strict_mdd": 2.905039193463888,
+                "trade_entries": 8,
+                "turnover_legs": 16,
+                "samples": 17280,
+                "skipped_no_trade": 17240,
+                "skipped_cooldown": 32,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 8,
+                "mean_trade_ret_pct": 0.5164358034539338,
+                "std_trade_ret_pct": 1.5404701751989862,
+                "t_stat_like": 0.9482176663955966,
+                "p_value_mean_ret_approx": 0.34301865527657416,
+                "ci95_mean_trade_ret_pct": [
+                  -0.5510555655029216,
+                  1.583927172410789
+                ],
+                "effect_size_d": 0.3352455709746049,
+                "n_required_for_80pct_power_alpha5pct": 70,
+                "n_gap_to_power_rule": 62
+              }
+            },
+            {
+              "period": {
+                "start": "2023-07-01",
+                "end": "2023-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 27,
+                "long": 24,
+                "short": 3
+              },
+              "sim": {
+                "ret_pct": 5.219385039014557,
+                "cagr_pct": 10.688107476211028,
+                "strict_mdd_pct": 1.7847283981928141,
+                "cagr_to_strict_mdd": 5.98864650051718,
+                "trade_entries": 18,
+                "turnover_legs": 36,
+                "samples": 17664,
+                "skipped_no_trade": 17579,
+                "skipped_cooldown": 67,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 18,
+                "mean_trade_ret_pct": 0.28849691340674083,
+                "std_trade_ret_pct": 1.0829481118526652,
+                "t_stat_like": 1.1302376628496222,
+                "p_value_mean_ret_approx": 0.25837609366989667,
+                "ci95_mean_trade_ret_pct": [
+                  -0.21179958958852824,
+                  0.7887934164020098
+                ],
+                "effect_size_d": 0.2663995719178009,
+                "n_required_for_80pct_power_alpha5pct": 111,
+                "n_gap_to_power_rule": 93
+              }
+            }
+          ],
+          "score": 43.81782771039779
+        },
+        {
+          "policy": {
+            "long_th": 0.66,
+            "short_th": 0.32,
+            "trend_window": 864,
+            "long_mode": "down",
+            "short_mode": "down"
+          },
+          "folds": [
+            {
+              "period": {
+                "start": "2021-01-01",
+                "end": "2021-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 500,
+                "long": 440,
+                "short": 60
+              },
+              "sim": {
+                "ret_pct": -21.849965000577033,
+                "cagr_pct": -39.53254552719719,
+                "strict_mdd_pct": 34.16897539602599,
+                "cagr_to_strict_mdd": -1.1569719334280948,
+                "trade_entries": 204,
+                "turnover_legs": 408,
+                "samples": 17280,
+                "skipped_no_trade": 16312,
+                "skipped_cooldown": 764,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 204,
+                "mean_trade_ret_pct": -0.10279465587505562,
+                "std_trade_ret_pct": 1.8997249554121565,
+                "t_stat_like": -0.7728494334687878,
+                "p_value_mean_ret_approx": 0.4396114938329152,
+                "ci95_mean_trade_ret_pct": [
+                  -0.3634890638541305,
+                  0.15789975210401924
+                ],
+                "effect_size_d": -0.05411028348193369,
+                "n_required_for_80pct_power_alpha5pct": 2681,
+                "n_gap_to_power_rule": 2477
+              }
+            },
+            {
+              "period": {
+                "start": "2021-07-01",
+                "end": "2021-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 23,
+                "long": 23,
+                "short": 0
+              },
+              "sim": {
+                "ret_pct": 5.5973547770352905,
+                "cagr_pct": 11.483126480758488,
+                "strict_mdd_pct": 2.5542099644631944,
+                "cagr_to_strict_mdd": 4.495764498817089,
+                "trade_entries": 6,
+                "turnover_legs": 12,
+                "samples": 17664,
+                "skipped_no_trade": 17634,
+                "skipped_cooldown": 24,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 6,
+                "mean_trade_ret_pct": 0.9329232146015942,
+                "std_trade_ret_pct": 2.2705604355462943,
+                "t_stat_like": 1.0064413213564611,
+                "p_value_mean_ret_approx": 0.31420332491819236,
+                "ci95_mean_trade_ret_pct": [
+                  -0.8839035211634576,
+                  2.7497499503666463
+                ],
+                "effect_size_d": 0.4108779488959667,
+                "n_required_for_80pct_power_alpha5pct": 47,
+                "n_gap_to_power_rule": 41
+              }
+            },
+            {
+              "period": {
+                "start": "2022-01-01",
+                "end": "2022-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 156,
+                "long": 147,
+                "short": 9
+              },
+              "sim": {
+                "ret_pct": -10.136016888587985,
+                "cagr_pct": -19.59345185078091,
+                "strict_mdd_pct": 16.70051790665822,
+                "cagr_to_strict_mdd": -1.173224205398404,
+                "trade_entries": 68,
+                "turnover_legs": 136,
+                "samples": 17280,
+                "skipped_no_trade": 16958,
+                "skipped_cooldown": 254,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 68,
+                "mean_trade_ret_pct": -0.1410972401424156,
+                "std_trade_ret_pct": 1.8022221795728397,
+                "t_stat_like": -0.645601670187199,
+                "p_value_mean_ret_approx": 0.5185373554205426,
+                "ci95_mean_trade_ret_pct": [
+                  -0.5694582612639157,
+                  0.28726378097908456
+                ],
+                "effect_size_d": -0.07829070230167641,
+                "n_required_for_80pct_power_alpha5pct": 1281,
+                "n_gap_to_power_rule": 1213
+              }
+            },
+            {
+              "period": {
+                "start": "2022-07-01",
+                "end": "2022-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 21,
+                "long": 12,
+                "short": 9
+              },
+              "sim": {
+                "ret_pct": 9.552512838401528,
+                "cagr_pct": 19.9726634352275,
+                "strict_mdd_pct": 5.552646100564118,
+                "cagr_to_strict_mdd": 3.5969631547737912,
+                "trade_entries": 13,
+                "turnover_legs": 26,
+                "samples": 17664,
+                "skipped_no_trade": 17602,
+                "skipped_cooldown": 49,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 13,
+                "mean_trade_ret_pct": 0.7172865935950858,
+                "std_trade_ret_pct": 1.6795787014854588,
+                "t_stat_like": 1.539798992522752,
+                "p_value_mean_ret_approx": 0.1236093576000652,
+                "ci95_mean_trade_ret_pct": [
+                  -0.1957427889888198,
+                  1.6303159761789914
+                ],
+                "effect_size_d": 0.4270634016498903,
+                "n_required_for_80pct_power_alpha5pct": 44,
+                "n_gap_to_power_rule": 31
+              }
+            },
+            {
+              "period": {
+                "start": "2023-01-01",
+                "end": "2023-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 18,
+                "long": 17,
+                "short": 1
+              },
+              "sim": {
+                "ret_pct": 3.8040570835515597,
+                "cagr_pct": 7.915886137760686,
+                "strict_mdd_pct": 3.052939936950294,
+                "cagr_to_strict_mdd": 2.5928731980453525,
+                "trade_entries": 14,
+                "turnover_legs": 28,
+                "samples": 17280,
+                "skipped_no_trade": 17212,
+                "skipped_cooldown": 54,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 14,
+                "mean_trade_ret_pct": 0.2705319793845172,
+                "std_trade_ret_pct": 0.8712613652693003,
+                "t_stat_like": 1.161807488972932,
+                "p_value_mean_ret_approx": 0.24531367136720794,
+                "ci95_mean_trade_ret_pct": [
+                  -0.1858626338593706,
+                  0.726926592628405
+                ],
+                "effect_size_d": 0.3105061123660611,
+                "n_required_for_80pct_power_alpha5pct": 82,
+                "n_gap_to_power_rule": 68
+              }
+            },
+            {
+              "period": {
+                "start": "2023-07-01",
+                "end": "2023-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 42,
+                "long": 40,
+                "short": 2
+              },
+              "sim": {
+                "ret_pct": 5.559311804662204,
+                "cagr_pct": 11.40297865221427,
+                "strict_mdd_pct": 2.953327241127701,
+                "cagr_to_strict_mdd": 3.8610616844004544,
+                "trade_entries": 24,
+                "turnover_legs": 48,
+                "samples": 17664,
+                "skipped_no_trade": 17553,
+                "skipped_cooldown": 87,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 24,
+                "mean_trade_ret_pct": 0.22996892934053678,
+                "std_trade_ret_pct": 0.9536698958008503,
+                "t_stat_like": 1.1813448994432902,
+                "p_value_mean_ret_approx": 0.23746573748950017,
+                "ci95_mean_trade_ret_pct": [
+                  -0.15157849319445976,
+                  0.6115163518755333
+                ],
+                "effect_size_d": 0.24114101782296374,
+                "n_required_for_80pct_power_alpha5pct": 135,
+                "n_gap_to_power_rule": 111
+              }
+            }
+          ],
+          "score": 43.461491470652106
+        }
+      ],
+      "dataset": {
+        "train": {
+          "rows": 1774,
+          "mean_reward_pct": 0.02101295774535063,
+          "positive_rate": 0.5293122886133033,
+          "decisions": {
+            "TAKE_FULL": 498,
+            "ABSTAIN": 835,
+            "TAKE_SMALL": 441
+          },
+          "policy_ranks": {
+            "1": 399,
+            "2": 379,
+            "3": 365,
+            "4": 302,
+            "5": 329
+          }
+        },
+        "eval": {
+          "rows": 509,
+          "mean_reward_pct": 0.030205741821776124,
+          "positive_rate": 0.5009823182711198,
+          "decisions": {
+            "ABSTAIN": 254,
+            "TAKE_FULL": 113,
+            "TAKE_SMALL": 142
+          },
+          "policy_ranks": {
+            "1": 120,
+            "2": 102,
+            "3": 116,
+            "4": 81,
+            "5": 90
+          }
+        }
+      },
+      "leverage_results": [
+        {
+          "leverage": 1.0,
+          "sim": {
+            "ret_pct": 0.4195117237209889,
+            "cagr_pct": 0.9542518718249626,
+            "strict_mdd_pct": 11.895290723623352,
+            "cagr_to_strict_mdd": 0.08022097937714748,
+            "trade_entries": 77,
+            "turnover_legs": 154,
+            "samples": 152,
+            "skipped_no_trade": 62,
+            "skipped_cooldown": 13,
+            "skipped_overlay": 0,
+            "skipped_missing_bars": 0,
+            "invalid_actions": 0,
+            "forced_liquidations": 0,
+            "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+          },
+          "trade_stats": {
+            "n_trades": 77,
+            "mean_trade_ret_pct": 0.014705648148682337,
+            "std_trade_ret_pct": 1.3731735915670034,
+            "t_stat_like": 0.0939732161983614,
+            "p_value_mean_ret_approx": 0.925130432939888,
+            "ci95_mean_trade_ret_pct": [
+              -0.2920101538366068,
+              0.3214214501339715
+            ],
+            "effect_size_d": 0.010709241889731451,
+            "n_required_for_80pct_power_alpha5pct": 68437,
+            "n_gap_to_power_rule": 68360
+          },
+          "score": 16.67634980953971,
+          "path": "results/rolling_wave_text_rule/sel2021_2023_eval2024h1/text_rule_q0p5_lev1p0.json"
+        },
+        {
+          "leverage": 2.0,
+          "sim": {
+            "ret_pct": -0.7232564572216549,
+            "cagr_pct": -1.6332811621759258,
+            "strict_mdd_pct": 23.35848221386542,
+            "cagr_to_strict_mdd": -0.06992240108847579,
+            "trade_entries": 77,
+            "turnover_legs": 154,
+            "samples": 152,
+            "skipped_no_trade": 62,
+            "skipped_cooldown": 13,
+            "skipped_overlay": 0,
+            "skipped_missing_bars": 0,
+            "invalid_actions": 0,
+            "forced_liquidations": 0,
+            "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+          },
+          "trade_stats": {
+            "n_trades": 77,
+            "mean_trade_ret_pct": 0.02761579927717189,
+            "std_trade_ret_pct": 2.7496446463163,
+            "t_stat_like": 0.08813053552618115,
+            "p_value_mean_ret_approx": 0.9297729269567068,
+            "ci95_mean_trade_ret_pct": [
+              -0.5865523350714192,
+              0.641783933625763
+            ],
+            "effect_size_d": 0.010043406632260206,
+            "n_required_for_80pct_power_alpha5pct": 77812,
+            "n_gap_to_power_rule": 77735
+          },
+          "score": -1024.9147633760413,
+          "path": "results/rolling_wave_text_rule/sel2021_2023_eval2024h1/text_rule_q0p5_lev2p0.json"
+        },
+        {
+          "leverage": 2.5,
+          "sim": {
+            "ret_pct": -1.8672554025503496,
+            "cagr_pct": -4.186028499789041,
+            "strict_mdd_pct": 28.88457658811683,
+            "cagr_to_strict_mdd": -0.1449226194131293,
+            "trade_entries": 77,
+            "turnover_legs": 154,
+            "samples": 152,
+            "skipped_no_trade": 62,
+            "skipped_cooldown": 13,
+            "skipped_overlay": 0,
+            "skipped_missing_bars": 0,
+            "invalid_actions": 0,
+            "forced_liquidations": 0,
+            "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+          },
+          "trade_stats": {
+            "n_trades": 77,
+            "mean_trade_ret_pct": 0.0333925349324835,
+            "std_trade_ret_pct": 3.4391367159241737,
+            "t_stat_like": 0.08520112139785914,
+            "p_value_mean_ret_approx": 0.9321014990783587,
+            "ci95_mean_trade_ret_pct": [
+              -0.7347824303011574,
+              0.8015675001661244
+            ],
+            "effect_size_d": 0.009709568909507622,
+            "n_required_for_80pct_power_alpha5pct": 83255,
+            "n_gap_to_power_rule": 83178
+          },
+          "score": -1032.9936050879057,
+          "path": "results/rolling_wave_text_rule/sel2021_2023_eval2024h1/text_rule_q0p5_lev2p5.json"
+        },
+        {
+          "leverage": 3.0,
+          "sim": {
+            "ret_pct": -3.3779004580017924,
+            "cagr_pct": -7.499521399435527,
+            "strict_mdd_pct": 34.25290777521865,
+            "cagr_to_strict_mdd": -0.21894554029253227,
+            "trade_entries": 77,
+            "turnover_legs": 154,
+            "samples": 152,
+            "skipped_no_trade": 62,
+            "skipped_cooldown": 13,
+            "skipped_overlay": 0,
+            "skipped_missing_bars": 0,
+            "invalid_actions": 0,
+            "forced_liquidations": 0,
+            "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+          },
+          "trade_stats": {
+            "n_trades": 77,
+            "mean_trade_ret_pct": 0.03871441579247579,
+            "std_trade_ret_pct": 4.129476818049978,
+            "t_stat_like": 0.08226650368219954,
+            "p_value_mean_ret_approx": 0.9344347902943924,
+            "ci95_mean_trade_ret_pct": [
+              -0.8836567991844309,
+              0.9610856307693822
+            ],
+            "effect_size_d": 0.009375138182942387,
+            "n_required_for_80pct_power_alpha5pct": 89301,
+            "n_gap_to_power_rule": 89224
+          },
+          "score": -1041.675429174654,
+          "path": "results/rolling_wave_text_rule/sel2021_2023_eval2024h1/text_rule_q0p5_lev3p0.json"
+        }
+      ],
+      "best_by_rule": {
+        "leverage": 1.0,
+        "sim": {
+          "ret_pct": 0.4195117237209889,
+          "cagr_pct": 0.9542518718249626,
+          "strict_mdd_pct": 11.895290723623352,
+          "cagr_to_strict_mdd": 0.08022097937714748,
+          "trade_entries": 77,
+          "turnover_legs": 154,
+          "samples": 152,
+          "skipped_no_trade": 62,
+          "skipped_cooldown": 13,
+          "skipped_overlay": 0,
+          "skipped_missing_bars": 0,
+          "invalid_actions": 0,
+          "forced_liquidations": 0,
+          "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+        },
+        "trade_stats": {
+          "n_trades": 77,
+          "mean_trade_ret_pct": 0.014705648148682337,
+          "std_trade_ret_pct": 1.3731735915670034,
+          "t_stat_like": 0.0939732161983614,
+          "p_value_mean_ret_approx": 0.925130432939888,
+          "ci95_mean_trade_ret_pct": [
+            -0.2920101538366068,
+            0.3214214501339715
+          ],
+          "effect_size_d": 0.010709241889731451,
+          "n_required_for_80pct_power_alpha5pct": 68437,
+          "n_gap_to_power_rule": 68360
+        },
+        "score": 16.67634980953971,
+        "path": "results/rolling_wave_text_rule/sel2021_2023_eval2024h1/text_rule_q0p5_lev1p0.json"
+      }
+    },
+    {
+      "split": {
+        "name": "sel2021_2024h1_eval2024h2_2026",
+        "selection_folds": "2021-01-01|2021-06-30 23:59:59,2021-07-01|2021-12-31 23:59:59,2022-01-01|2022-06-30 23:59:59,2022-07-01|2022-12-31 23:59:59,2023-01-01|2023-06-30 23:59:59,2023-07-01|2023-12-31 23:59:59,2024-01-01|2024-06-30 23:59:59",
+        "eval_start": "2024-07-01",
+        "eval_end": "2026-06-01 00:00:00"
+      },
+      "fold_consistency_top": [
+        {
+          "policy": {
+            "long_th": 0.66,
+            "short_th": 0.32,
+            "trend_window": 864,
+            "long_mode": "down",
+            "short_mode": "all"
+          },
+          "folds": [
+            {
+              "period": {
+                "start": "2021-01-01",
+                "end": "2021-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 577,
+                "long": 440,
+                "short": 137
+              },
+              "sim": {
+                "ret_pct": -18.738996159213205,
+                "cagr_pct": -34.51914481983426,
+                "strict_mdd_pct": 31.689462578248985,
+                "cagr_to_strict_mdd": -1.0892941063483832,
+                "trade_entries": 248,
+                "turnover_legs": 496,
+                "samples": 17280,
+                "skipped_no_trade": 16113,
+                "skipped_cooldown": 919,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 248,
+                "mean_trade_ret_pct": -0.06686898986168723,
+                "std_trade_ret_pct": 1.8340978141103181,
+                "t_stat_like": -0.5741536232663232,
+                "p_value_mean_ret_approx": 0.5658638492132817,
+                "ci95_mean_trade_ret_pct": [
+                  -0.2951410320780138,
+                  0.1614030523546393
+                ],
+                "effect_size_d": -0.03645879153622129,
+                "n_required_for_80pct_power_alpha5pct": 5905,
+                "n_gap_to_power_rule": 5657
+              }
+            },
+            {
+              "period": {
+                "start": "2021-07-01",
+                "end": "2021-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 23,
+                "long": 23,
+                "short": 0
+              },
+              "sim": {
+                "ret_pct": 5.5973547770352905,
+                "cagr_pct": 11.483126480758488,
+                "strict_mdd_pct": 2.5542099644631944,
+                "cagr_to_strict_mdd": 4.495764498817089,
+                "trade_entries": 6,
+                "turnover_legs": 12,
+                "samples": 17664,
+                "skipped_no_trade": 17634,
+                "skipped_cooldown": 24,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 6,
+                "mean_trade_ret_pct": 0.9329232146015942,
+                "std_trade_ret_pct": 2.2705604355462943,
+                "t_stat_like": 1.0064413213564611,
+                "p_value_mean_ret_approx": 0.31420332491819236,
+                "ci95_mean_trade_ret_pct": [
+                  -0.8839035211634576,
+                  2.7497499503666463
+                ],
+                "effect_size_d": 0.4108779488959667,
+                "n_required_for_80pct_power_alpha5pct": 47,
+                "n_gap_to_power_rule": 41
+              }
+            },
+            {
+              "period": {
+                "start": "2022-01-01",
+                "end": "2022-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 157,
+                "long": 147,
+                "short": 10
+              },
+              "sim": {
+                "ret_pct": -9.4935528934184,
+                "cagr_pct": -18.4161055379364,
+                "strict_mdd_pct": 16.700517906658064,
+                "cagr_to_strict_mdd": -1.1027266124839383,
+                "trade_entries": 69,
+                "turnover_legs": 138,
+                "samples": 17280,
+                "skipped_no_trade": 16953,
+                "skipped_cooldown": 258,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 69,
+                "mean_trade_ret_pct": -0.12869105759873556,
+                "std_trade_ret_pct": 1.7918872817527263,
+                "t_stat_like": -0.5965711241324261,
+                "p_value_mean_ret_approx": 0.550793754897835,
+                "ci95_mean_trade_ret_pct": [
+                  -0.5514981005315259,
+                  0.2941159853340548
+                ],
+                "effect_size_d": -0.07181872370501842,
+                "n_required_for_80pct_power_alpha5pct": 1522,
+                "n_gap_to_power_rule": 1453
+              }
+            },
+            {
+              "period": {
+                "start": "2022-07-01",
+                "end": "2022-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 22,
+                "long": 12,
+                "short": 10
+              },
+              "sim": {
+                "ret_pct": 9.50886864656415,
+                "cagr_pct": 19.877287373549724,
+                "strict_mdd_pct": 5.552646100564118,
+                "cagr_to_strict_mdd": 3.579786468208428,
+                "trade_entries": 14,
+                "turnover_legs": 28,
+                "samples": 17664,
+                "skipped_no_trade": 17597,
+                "skipped_cooldown": 53,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 14,
+                "mean_trade_ret_pct": 0.6632062223333608,
+                "std_trade_ret_pct": 1.6263245093664809,
+                "t_stat_like": 1.5258273772893587,
+                "p_value_mean_ret_approx": 0.12705286065043975,
+                "ci95_mean_trade_ret_pct": [
+                  -0.1887146535934031,
+                  1.5151270982601246
+                ],
+                "effect_size_d": 0.4077945197983313,
+                "n_required_for_80pct_power_alpha5pct": 48,
+                "n_gap_to_power_rule": 34
+              }
+            },
+            {
+              "period": {
+                "start": "2023-01-01",
+                "end": "2023-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 21,
+                "long": 17,
+                "short": 4
+              },
+              "sim": {
+                "ret_pct": 7.98170453075544,
+                "cagr_pct": 16.96370931165312,
+                "strict_mdd_pct": 3.7194182619675997,
+                "cagr_to_strict_mdd": 4.560850142914336,
+                "trade_entries": 17,
+                "turnover_legs": 34,
+                "samples": 17280,
+                "skipped_no_trade": 17197,
+                "skipped_cooldown": 66,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 17,
+                "mean_trade_ret_pct": 0.46023470654029475,
+                "std_trade_ret_pct": 1.2742949103856438,
+                "t_stat_like": 1.4891343378798452,
+                "p_value_mean_ret_approx": 0.1364519972403404,
+                "ci95_mean_trade_ret_pct": [
+                  -0.1455266420988653,
+                  1.0659960551794547
+                ],
+                "effect_size_d": 0.36116812740075416,
+                "n_required_for_80pct_power_alpha5pct": 61,
+                "n_gap_to_power_rule": 44
+              }
+            },
+            {
+              "period": {
+                "start": "2023-07-01",
+                "end": "2023-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 43,
+                "long": 40,
+                "short": 3
+              },
+              "sim": {
+                "ret_pct": 5.948823496726274,
+                "cagr_pct": 12.224950862610417,
+                "strict_mdd_pct": 2.9533272411277123,
+                "cagr_to_strict_mdd": 4.139382420060699,
+                "trade_entries": 25,
+                "turnover_legs": 50,
+                "samples": 17664,
+                "skipped_no_trade": 17548,
+                "skipped_cooldown": 91,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 25,
+                "mean_trade_ret_pct": 0.23553008999528613,
+                "std_trade_ret_pct": 0.9340043745057992,
+                "t_stat_like": 1.2608618140568661,
+                "p_value_mean_ret_approx": 0.2073586382091568,
+                "ci95_mean_trade_ret_pct": [
+                  -0.13059962481098714,
+                  0.6016598048015593
+                ],
+                "effect_size_d": 0.25217236281137323,
+                "n_required_for_80pct_power_alpha5pct": 124,
+                "n_gap_to_power_rule": 99
+              }
+            },
+            {
+              "period": {
+                "start": "2024-01-01",
+                "end": "2024-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17472,
+                "trade_rows": 203,
+                "long": 180,
+                "short": 23
+              },
+              "sim": {
+                "ret_pct": 10.573438641466248,
+                "cagr_pct": 22.485707915330554,
+                "strict_mdd_pct": 12.263385319887,
+                "cagr_to_strict_mdd": 1.8335644953491315,
+                "trade_entries": 102,
+                "turnover_legs": 204,
+                "samples": 17472,
+                "skipped_no_trade": 17005,
+                "skipped_cooldown": 365,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 102,
+                "mean_trade_ret_pct": 0.10590852815393331,
+                "std_trade_ret_pct": 1.2209187639441195,
+                "t_stat_like": 0.8760809766326635,
+                "p_value_mean_ret_approx": 0.38098601370144203,
+                "ci95_mean_trade_ret_pct": [
+                  -0.13103385584757077,
+                  0.3428509121554374
+                ],
+                "effect_size_d": 0.0867449426461437,
+                "n_required_for_80pct_power_alpha5pct": 1044,
+                "n_gap_to_power_rule": 942
+              }
+            }
+          ],
+          "score": 54.206988227748106
+        },
+        {
+          "policy": {
+            "long_th": 0.69,
+            "short_th": 0.32,
+            "trend_window": 288,
+            "long_mode": "down",
+            "short_mode": "all"
+          },
+          "folds": [
+            {
+              "period": {
+                "start": "2021-01-01",
+                "end": "2021-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 456,
+                "long": 319,
+                "short": 137
+              },
+              "sim": {
+                "ret_pct": 8.031470025612064,
+                "cagr_pct": 17.073729046207163,
+                "strict_mdd_pct": 23.35316855232272,
+                "cagr_to_strict_mdd": 0.7311097424725691,
+                "trade_entries": 219,
+                "turnover_legs": 438,
+                "samples": 17280,
+                "skipped_no_trade": 16252,
+                "skipped_cooldown": 809,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 219,
+                "mean_trade_ret_pct": 0.0544058604413414,
+                "std_trade_ret_pct": 1.9613719671968728,
+                "t_stat_like": 0.4104949103013116,
+                "p_value_mean_ret_approx": 0.6814429363444523,
+                "ci95_mean_trade_ret_pct": [
+                  -0.20536712038991065,
+                  0.31417884127259343
+                ],
+                "effect_size_d": 0.02773867545333404,
+                "n_required_for_80pct_power_alpha5pct": 10201,
+                "n_gap_to_power_rule": 9982
+              }
+            },
+            {
+              "period": {
+                "start": "2021-07-01",
+                "end": "2021-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 14,
+                "long": 14,
+                "short": 0
+              },
+              "sim": {
+                "ret_pct": 4.365911588035498,
+                "cagr_pct": 8.903360565179774,
+                "strict_mdd_pct": 2.3411584904422966,
+                "cagr_to_strict_mdd": 3.8029721616573395,
+                "trade_entries": 4,
+                "turnover_legs": 8,
+                "samples": 17664,
+                "skipped_no_trade": 17644,
+                "skipped_cooldown": 16,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 4,
+                "mean_trade_ret_pct": 1.0994101291462832,
+                "std_trade_ret_pct": 2.6251412374901926,
+                "t_stat_like": 0.837600745777314,
+                "p_value_mean_ret_approx": 0.40225497385600884,
+                "ci95_mean_trade_ret_pct": [
+                  -1.4732282835941055,
+                  3.6720485418866717
+                ],
+                "effect_size_d": 0.418800372888657,
+                "n_required_for_80pct_power_alpha5pct": 45,
+                "n_gap_to_power_rule": 41
+              }
+            },
+            {
+              "period": {
+                "start": "2022-01-01",
+                "end": "2022-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 81,
+                "long": 71,
+                "short": 10
+              },
+              "sim": {
+                "ret_pct": -6.5604913871044275,
+                "cagr_pct": -12.930210094031713,
+                "strict_mdd_pct": 16.031833953560938,
+                "cagr_to_strict_mdd": -0.8065334341340092,
+                "trade_entries": 43,
+                "turnover_legs": 86,
+                "samples": 17280,
+                "skipped_no_trade": 17081,
+                "skipped_cooldown": 156,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 43,
+                "mean_trade_ret_pct": -0.14033908589574004,
+                "std_trade_ret_pct": 1.8865372891018732,
+                "t_stat_like": -0.48780638137090054,
+                "p_value_mean_ret_approx": 0.6256869909427607,
+                "ci95_mean_trade_ret_pct": [
+                  -0.7042197952514194,
+                  0.4235416234599394
+                ],
+                "effect_size_d": -0.07438977575818366,
+                "n_required_for_80pct_power_alpha5pct": 1419,
+                "n_gap_to_power_rule": 1376
+              }
+            },
+            {
+              "period": {
+                "start": "2022-07-01",
+                "end": "2022-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 15,
+                "long": 5,
+                "short": 10
+              },
+              "sim": {
+                "ret_pct": 6.206861979561662,
+                "cagr_pct": 12.771140270962288,
+                "strict_mdd_pct": 6.162867517764448,
+                "cagr_to_strict_mdd": 2.0722724014672576,
+                "trade_entries": 10,
+                "turnover_legs": 20,
+                "samples": 17664,
+                "skipped_no_trade": 17617,
+                "skipped_cooldown": 37,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 10,
+                "mean_trade_ret_pct": 0.6194296363869789,
+                "std_trade_ret_pct": 1.8513349896277838,
+                "t_stat_like": 1.0580518988552092,
+                "p_value_mean_ret_approx": 0.2900317821650913,
+                "ci95_mean_trade_ret_pct": [
+                  -0.5280396783338689,
+                  1.7668989511078266
+                ],
+                "effect_size_d": 0.3345853883048561,
+                "n_required_for_80pct_power_alpha5pct": 71,
+                "n_gap_to_power_rule": 61
+              }
+            },
+            {
+              "period": {
+                "start": "2023-01-01",
+                "end": "2023-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 9,
+                "long": 5,
+                "short": 4
+              },
+              "sim": {
+                "ret_pct": 4.123073297813229,
+                "cagr_pct": 8.5937068825098,
+                "strict_mdd_pct": 2.9582068640743198,
+                "cagr_to_strict_mdd": 2.905039193463888,
+                "trade_entries": 8,
+                "turnover_legs": 16,
+                "samples": 17280,
+                "skipped_no_trade": 17240,
+                "skipped_cooldown": 32,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 8,
+                "mean_trade_ret_pct": 0.5164358034539338,
+                "std_trade_ret_pct": 1.5404701751989862,
+                "t_stat_like": 0.9482176663955966,
+                "p_value_mean_ret_approx": 0.34301865527657416,
+                "ci95_mean_trade_ret_pct": [
+                  -0.5510555655029216,
+                  1.583927172410789
+                ],
+                "effect_size_d": 0.3352455709746049,
+                "n_required_for_80pct_power_alpha5pct": 70,
+                "n_gap_to_power_rule": 62
+              }
+            },
+            {
+              "period": {
+                "start": "2023-07-01",
+                "end": "2023-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 27,
+                "long": 24,
+                "short": 3
+              },
+              "sim": {
+                "ret_pct": 5.219385039014557,
+                "cagr_pct": 10.688107476211028,
+                "strict_mdd_pct": 1.7847283981928141,
+                "cagr_to_strict_mdd": 5.98864650051718,
+                "trade_entries": 18,
+                "turnover_legs": 36,
+                "samples": 17664,
+                "skipped_no_trade": 17579,
+                "skipped_cooldown": 67,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 18,
+                "mean_trade_ret_pct": 0.28849691340674083,
+                "std_trade_ret_pct": 1.0829481118526652,
+                "t_stat_like": 1.1302376628496222,
+                "p_value_mean_ret_approx": 0.25837609366989667,
+                "ci95_mean_trade_ret_pct": [
+                  -0.21179958958852824,
+                  0.7887934164020098
+                ],
+                "effect_size_d": 0.2663995719178009,
+                "n_required_for_80pct_power_alpha5pct": 111,
+                "n_gap_to_power_rule": 93
+              }
+            },
+            {
+              "period": {
+                "start": "2024-01-01",
+                "end": "2024-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17472,
+                "trade_rows": 153,
+                "long": 130,
+                "short": 23
+              },
+              "sim": {
+                "ret_pct": 3.3176433121137716,
+                "cagr_pct": 6.80792967756596,
+                "strict_mdd_pct": 14.001294582048585,
+                "cagr_to_strict_mdd": 0.48623572896570433,
+                "trade_entries": 81,
+                "turnover_legs": 162,
+                "samples": 17472,
+                "skipped_no_trade": 17101,
+                "skipped_cooldown": 290,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 81,
+                "mean_trade_ret_pct": 0.04975623292664434,
+                "std_trade_ret_pct": 1.386021202692422,
+                "t_stat_like": 0.32308747908755747,
+                "p_value_mean_ret_approx": 0.7466289924403198,
+                "ci95_mean_trade_ret_pct": [
+                  -0.25208838454859417,
+                  0.3516008504018829
+                ],
+                "effect_size_d": 0.035898608787506385,
+                "n_required_for_80pct_power_alpha5pct": 6091,
+                "n_gap_to_power_rule": 6010
+              }
+            }
+          ],
+          "score": 53.347783376930344
+        },
+        {
+          "policy": {
+            "long_th": 0.69,
+            "short_th": 0.32,
+            "trend_window": 288,
+            "long_mode": "all",
+            "short_mode": "up"
+          },
+          "folds": [
+            {
+              "period": {
+                "start": "2021-01-01",
+                "end": "2021-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 526,
+                "long": 444,
+                "short": 82
+              },
+              "sim": {
+                "ret_pct": -9.102181856619096,
+                "cagr_pct": -17.69462141334237,
+                "strict_mdd_pct": 34.39681341444515,
+                "cagr_to_strict_mdd": -0.5144261824530353,
+                "trade_entries": 251,
+                "turnover_legs": 502,
+                "samples": 17280,
+                "skipped_no_trade": 16100,
+                "skipped_cooldown": 929,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 251,
+                "mean_trade_ret_pct": -0.019246515535133162,
+                "std_trade_ret_pct": 1.9428235891458348,
+                "t_stat_like": -0.15694793552785968,
+                "p_value_mean_ret_approx": 0.8752858808723827,
+                "ci95_mean_trade_ret_pct": [
+                  -0.25960119316747954,
+                  0.2211081620972132
+                ],
+                "effect_size_d": -0.009906465848293989,
+                "n_required_for_80pct_power_alpha5pct": 79978,
+                "n_gap_to_power_rule": 79727
+              }
+            },
+            {
+              "period": {
+                "start": "2021-07-01",
+                "end": "2021-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 15,
+                "long": 15,
+                "short": 0
+              },
+              "sim": {
+                "ret_pct": 4.368718926648629,
+                "cagr_pct": 8.909207420693654,
+                "strict_mdd_pct": 2.341158490442319,
+                "cagr_to_strict_mdd": 3.8054695814337727,
+                "trade_entries": 5,
+                "turnover_legs": 10,
+                "samples": 17664,
+                "skipped_no_trade": 17639,
+                "skipped_cooldown": 20,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 5,
+                "mean_trade_ret_pct": 0.8800660833088503,
+                "std_trade_ret_pct": 2.3257437390650835,
+                "t_stat_like": 0.8461325957440374,
+                "p_value_mean_ret_approx": 0.39747877871480086,
+                "ci95_mean_trade_ret_pct": [
+                  -1.158538187418421,
+                  2.9186703540361214
+                ],
+                "effect_size_d": 0.3784020004124034,
+                "n_required_for_80pct_power_alpha5pct": 55,
+                "n_gap_to_power_rule": 50
+              }
+            },
+            {
+              "period": {
+                "start": "2022-01-01",
+                "end": "2022-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 89,
+                "long": 82,
+                "short": 7
+              },
+              "sim": {
+                "ret_pct": -7.758671116225857,
+                "cagr_pct": -15.19323660269386,
+                "strict_mdd_pct": 17.930656778831256,
+                "cagr_to_strict_mdd": -0.8473329666669452,
+                "trade_entries": 45,
+                "turnover_legs": 90,
+                "samples": 17280,
+                "skipped_no_trade": 17071,
+                "skipped_cooldown": 164,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 45,
+                "mean_trade_ret_pct": -0.16288123622090595,
+                "std_trade_ret_pct": 1.835310749749279,
+                "t_stat_like": -0.5953436220523991,
+                "p_value_mean_ret_approx": 0.551613802644161,
+                "ci95_mean_trade_ret_pct": [
+                  -0.6991215034675704,
+                  0.3733590310257584
+                ],
+                "effect_size_d": -0.08874858725867381,
+                "n_required_for_80pct_power_alpha5pct": 997,
+                "n_gap_to_power_rule": 952
+              }
+            },
+            {
+              "period": {
+                "start": "2022-07-01",
+                "end": "2022-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 12,
+                "long": 7,
+                "short": 5
+              },
+              "sim": {
+                "ret_pct": 5.618052109575911,
+                "cagr_pct": 11.526743099768378,
+                "strict_mdd_pct": 3.8324156136284593,
+                "cagr_to_strict_mdd": 3.0076965188165157,
+                "trade_entries": 9,
+                "turnover_legs": 18,
+                "samples": 17664,
+                "skipped_no_trade": 17622,
+                "skipped_cooldown": 33,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 9,
+                "mean_trade_ret_pct": 0.6256996803280167,
+                "std_trade_ret_pct": 1.9282837259802996,
+                "t_stat_like": 0.9734558331294175,
+                "p_value_mean_ret_approx": 0.3303268011448741,
+                "ci95_mean_trade_ret_pct": [
+                  -0.6341123539791124,
+                  1.8855117146351457
+                ],
+                "effect_size_d": 0.3244852777098059,
+                "n_required_for_80pct_power_alpha5pct": 75,
+                "n_gap_to_power_rule": 66
+              }
+            },
+            {
+              "period": {
+                "start": "2023-01-01",
+                "end": "2023-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 11,
+                "long": 8,
+                "short": 3
+              },
+              "sim": {
+                "ret_pct": 7.851211319303664,
+                "cagr_pct": 16.6754701805659,
+                "strict_mdd_pct": 2.958206864074353,
+                "cagr_to_strict_mdd": 5.637019636144949,
+                "trade_entries": 10,
+                "turnover_legs": 20,
+                "samples": 17280,
+                "skipped_no_trade": 17230,
+                "skipped_cooldown": 40,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 10,
+                "mean_trade_ret_pct": 0.770639164107092,
+                "std_trade_ret_pct": 1.6486746016753853,
+                "t_stat_like": 1.478141902732191,
+                "p_value_mean_ret_approx": 0.1393698003729682,
+                "ci95_mean_trade_ret_pct": [
+                  -0.251219940798862,
+                  1.7924982690130458
+                ],
+                "effect_size_d": 0.46742951175687886,
+                "n_required_for_80pct_power_alpha5pct": 36,
+                "n_gap_to_power_rule": 26
+              }
+            },
+            {
+              "period": {
+                "start": "2023-07-01",
+                "end": "2023-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 44,
+                "long": 42,
+                "short": 2
+              },
+              "sim": {
+                "ret_pct": 5.2976372242309555,
+                "cagr_pct": 10.852469550523857,
+                "strict_mdd_pct": 3.8473752943503747,
+                "cagr_to_strict_mdd": 2.8207462803173935,
+                "trade_entries": 29,
+                "turnover_legs": 58,
+                "samples": 17664,
+                "skipped_no_trade": 17528,
+                "skipped_cooldown": 107,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 29,
+                "mean_trade_ret_pct": 0.1827017109819209,
+                "std_trade_ret_pct": 0.9749206672738292,
+                "t_stat_like": 1.0091886008882347,
+                "p_value_mean_ret_approx": 0.3128841924292174,
+                "ci95_mean_trade_ret_pct": [
+                  -0.17213320610829225,
+                  0.5375366280721341
+                ],
+                "effect_size_d": 0.18740161852636658,
+                "n_required_for_80pct_power_alpha5pct": 224,
+                "n_gap_to_power_rule": 195
+              }
+            },
+            {
+              "period": {
+                "start": "2024-01-01",
+                "end": "2024-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17472,
+                "trade_rows": 180,
+                "long": 164,
+                "short": 16
+              },
+              "sim": {
+                "ret_pct": 0.2029313960728807,
+                "cagr_pct": 0.4099295625762611,
+                "strict_mdd_pct": 15.639054826106747,
+                "cagr_to_strict_mdd": 0.026211914155576287,
+                "trade_entries": 92,
+                "turnover_legs": 184,
+                "samples": 17472,
+                "skipped_no_trade": 17046,
+                "skipped_cooldown": 334,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 92,
+                "mean_trade_ret_pct": 0.011193349983744806,
+                "std_trade_ret_pct": 1.3498419140914528,
+                "t_stat_like": 0.07953734454844955,
+                "p_value_mean_ret_approx": 0.9366052290323665,
+                "ci95_mean_trade_ret_pct": [
+                  -0.2646389158869855,
+                  0.2870256158544751
+                ],
+                "effect_size_d": 0.008292341397087814,
+                "n_required_for_80pct_power_alpha5pct": 114145,
+                "n_gap_to_power_rule": 114053
+              }
+            }
+          ],
+          "score": 52.963933515192565
+        },
+        {
+          "policy": {
+            "long_th": 0.66,
+            "short_th": 0.32,
+            "trend_window": 864,
+            "long_mode": "down",
+            "short_mode": "down"
+          },
+          "folds": [
+            {
+              "period": {
+                "start": "2021-01-01",
+                "end": "2021-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 500,
+                "long": 440,
+                "short": 60
+              },
+              "sim": {
+                "ret_pct": -21.849965000577033,
+                "cagr_pct": -39.53254552719719,
+                "strict_mdd_pct": 34.16897539602599,
+                "cagr_to_strict_mdd": -1.1569719334280948,
+                "trade_entries": 204,
+                "turnover_legs": 408,
+                "samples": 17280,
+                "skipped_no_trade": 16312,
+                "skipped_cooldown": 764,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 204,
+                "mean_trade_ret_pct": -0.10279465587505562,
+                "std_trade_ret_pct": 1.8997249554121565,
+                "t_stat_like": -0.7728494334687878,
+                "p_value_mean_ret_approx": 0.4396114938329152,
+                "ci95_mean_trade_ret_pct": [
+                  -0.3634890638541305,
+                  0.15789975210401924
+                ],
+                "effect_size_d": -0.05411028348193369,
+                "n_required_for_80pct_power_alpha5pct": 2681,
+                "n_gap_to_power_rule": 2477
+              }
+            },
+            {
+              "period": {
+                "start": "2021-07-01",
+                "end": "2021-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 23,
+                "long": 23,
+                "short": 0
+              },
+              "sim": {
+                "ret_pct": 5.5973547770352905,
+                "cagr_pct": 11.483126480758488,
+                "strict_mdd_pct": 2.5542099644631944,
+                "cagr_to_strict_mdd": 4.495764498817089,
+                "trade_entries": 6,
+                "turnover_legs": 12,
+                "samples": 17664,
+                "skipped_no_trade": 17634,
+                "skipped_cooldown": 24,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 6,
+                "mean_trade_ret_pct": 0.9329232146015942,
+                "std_trade_ret_pct": 2.2705604355462943,
+                "t_stat_like": 1.0064413213564611,
+                "p_value_mean_ret_approx": 0.31420332491819236,
+                "ci95_mean_trade_ret_pct": [
+                  -0.8839035211634576,
+                  2.7497499503666463
+                ],
+                "effect_size_d": 0.4108779488959667,
+                "n_required_for_80pct_power_alpha5pct": 47,
+                "n_gap_to_power_rule": 41
+              }
+            },
+            {
+              "period": {
+                "start": "2022-01-01",
+                "end": "2022-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 156,
+                "long": 147,
+                "short": 9
+              },
+              "sim": {
+                "ret_pct": -10.136016888587985,
+                "cagr_pct": -19.59345185078091,
+                "strict_mdd_pct": 16.70051790665822,
+                "cagr_to_strict_mdd": -1.173224205398404,
+                "trade_entries": 68,
+                "turnover_legs": 136,
+                "samples": 17280,
+                "skipped_no_trade": 16958,
+                "skipped_cooldown": 254,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 68,
+                "mean_trade_ret_pct": -0.1410972401424156,
+                "std_trade_ret_pct": 1.8022221795728397,
+                "t_stat_like": -0.645601670187199,
+                "p_value_mean_ret_approx": 0.5185373554205426,
+                "ci95_mean_trade_ret_pct": [
+                  -0.5694582612639157,
+                  0.28726378097908456
+                ],
+                "effect_size_d": -0.07829070230167641,
+                "n_required_for_80pct_power_alpha5pct": 1281,
+                "n_gap_to_power_rule": 1213
+              }
+            },
+            {
+              "period": {
+                "start": "2022-07-01",
+                "end": "2022-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 21,
+                "long": 12,
+                "short": 9
+              },
+              "sim": {
+                "ret_pct": 9.552512838401528,
+                "cagr_pct": 19.9726634352275,
+                "strict_mdd_pct": 5.552646100564118,
+                "cagr_to_strict_mdd": 3.5969631547737912,
+                "trade_entries": 13,
+                "turnover_legs": 26,
+                "samples": 17664,
+                "skipped_no_trade": 17602,
+                "skipped_cooldown": 49,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 13,
+                "mean_trade_ret_pct": 0.7172865935950858,
+                "std_trade_ret_pct": 1.6795787014854588,
+                "t_stat_like": 1.539798992522752,
+                "p_value_mean_ret_approx": 0.1236093576000652,
+                "ci95_mean_trade_ret_pct": [
+                  -0.1957427889888198,
+                  1.6303159761789914
+                ],
+                "effect_size_d": 0.4270634016498903,
+                "n_required_for_80pct_power_alpha5pct": 44,
+                "n_gap_to_power_rule": 31
+              }
+            },
+            {
+              "period": {
+                "start": "2023-01-01",
+                "end": "2023-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 18,
+                "long": 17,
+                "short": 1
+              },
+              "sim": {
+                "ret_pct": 3.8040570835515597,
+                "cagr_pct": 7.915886137760686,
+                "strict_mdd_pct": 3.052939936950294,
+                "cagr_to_strict_mdd": 2.5928731980453525,
+                "trade_entries": 14,
+                "turnover_legs": 28,
+                "samples": 17280,
+                "skipped_no_trade": 17212,
+                "skipped_cooldown": 54,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 14,
+                "mean_trade_ret_pct": 0.2705319793845172,
+                "std_trade_ret_pct": 0.8712613652693003,
+                "t_stat_like": 1.161807488972932,
+                "p_value_mean_ret_approx": 0.24531367136720794,
+                "ci95_mean_trade_ret_pct": [
+                  -0.1858626338593706,
+                  0.726926592628405
+                ],
+                "effect_size_d": 0.3105061123660611,
+                "n_required_for_80pct_power_alpha5pct": 82,
+                "n_gap_to_power_rule": 68
+              }
+            },
+            {
+              "period": {
+                "start": "2023-07-01",
+                "end": "2023-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 42,
+                "long": 40,
+                "short": 2
+              },
+              "sim": {
+                "ret_pct": 5.559311804662204,
+                "cagr_pct": 11.40297865221427,
+                "strict_mdd_pct": 2.953327241127701,
+                "cagr_to_strict_mdd": 3.8610616844004544,
+                "trade_entries": 24,
+                "turnover_legs": 48,
+                "samples": 17664,
+                "skipped_no_trade": 17553,
+                "skipped_cooldown": 87,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 24,
+                "mean_trade_ret_pct": 0.22996892934053678,
+                "std_trade_ret_pct": 0.9536698958008503,
+                "t_stat_like": 1.1813448994432902,
+                "p_value_mean_ret_approx": 0.23746573748950017,
+                "ci95_mean_trade_ret_pct": [
+                  -0.15157849319445976,
+                  0.6115163518755333
+                ],
+                "effect_size_d": 0.24114101782296374,
+                "n_required_for_80pct_power_alpha5pct": 135,
+                "n_gap_to_power_rule": 111
+              }
+            },
+            {
+              "period": {
+                "start": "2024-01-01",
+                "end": "2024-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17472,
+                "trade_rows": 186,
+                "long": 180,
+                "short": 6
+              },
+              "sim": {
+                "ret_pct": 5.491094265019014,
+                "cagr_pct": 11.390576815538056,
+                "strict_mdd_pct": 11.242696563397525,
+                "cagr_to_strict_mdd": 1.0131534504472868,
+                "trade_entries": 90,
+                "turnover_legs": 180,
+                "samples": 17472,
+                "skipped_no_trade": 17054,
+                "skipped_cooldown": 328,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 90,
+                "mean_trade_ret_pct": 0.06589203694292253,
+                "std_trade_ret_pct": 1.1463408245524265,
+                "t_stat_like": 0.5453061915219194,
+                "p_value_mean_ret_approx": 0.5855429464848299,
+                "ci95_mean_trade_ret_pct": [
+                  -0.17094443111125845,
+                  0.3027285049971035
+                ],
+                "effect_size_d": 0.05748031958004219,
+                "n_required_for_80pct_power_alpha5pct": 2376,
+                "n_gap_to_power_rule": 2286
+              }
+            }
+          ],
+          "score": 52.937840871296245
+        },
+        {
+          "policy": {
+            "long_th": 0.66,
+            "short_th": 0.35,
+            "trend_window": 864,
+            "long_mode": "down",
+            "short_mode": "down"
+          },
+          "folds": [
+            {
+              "period": {
+                "start": "2021-01-01",
+                "end": "2021-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 535,
+                "long": 440,
+                "short": 95
+              },
+              "sim": {
+                "ret_pct": -26.842877182999114,
+                "cagr_pct": -47.153619487134726,
+                "strict_mdd_pct": 37.67723518692932,
+                "cagr_to_strict_mdd": -1.2515148538153051,
+                "trade_entries": 217,
+                "turnover_legs": 434,
+                "samples": 17280,
+                "skipped_no_trade": 16248,
+                "skipped_cooldown": 815,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 217,
+                "mean_trade_ret_pct": -0.12684355491430008,
+                "std_trade_ret_pct": 1.8511718495740963,
+                "t_stat_like": -1.0093726538499845,
+                "p_value_mean_ret_approx": 0.3127959481819622,
+                "ci95_mean_trade_ret_pct": [
+                  -0.3731483925614845,
+                  0.11946128273288437
+                ],
+                "effect_size_d": -0.06852068053189296,
+                "n_required_for_80pct_power_alpha5pct": 1672,
+                "n_gap_to_power_rule": 1455
+              }
+            },
+            {
+              "period": {
+                "start": "2021-07-01",
+                "end": "2021-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 23,
+                "long": 23,
+                "short": 0
+              },
+              "sim": {
+                "ret_pct": 5.5973547770352905,
+                "cagr_pct": 11.483126480758488,
+                "strict_mdd_pct": 2.5542099644631944,
+                "cagr_to_strict_mdd": 4.495764498817089,
+                "trade_entries": 6,
+                "turnover_legs": 12,
+                "samples": 17664,
+                "skipped_no_trade": 17634,
+                "skipped_cooldown": 24,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 6,
+                "mean_trade_ret_pct": 0.9329232146015942,
+                "std_trade_ret_pct": 2.2705604355462943,
+                "t_stat_like": 1.0064413213564611,
+                "p_value_mean_ret_approx": 0.31420332491819236,
+                "ci95_mean_trade_ret_pct": [
+                  -0.8839035211634576,
+                  2.7497499503666463
+                ],
+                "effect_size_d": 0.4108779488959667,
+                "n_required_for_80pct_power_alpha5pct": 47,
+                "n_gap_to_power_rule": 41
+              }
+            },
+            {
+              "period": {
+                "start": "2022-01-01",
+                "end": "2022-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 164,
+                "long": 147,
+                "short": 17
+              },
+              "sim": {
+                "ret_pct": -6.8522525902089075,
+                "cagr_pct": -13.484064539137108,
+                "strict_mdd_pct": 14.288896293418652,
+                "cagr_to_strict_mdd": -0.9436743232119165,
+                "trade_entries": 71,
+                "turnover_legs": 142,
+                "samples": 17280,
+                "skipped_no_trade": 16943,
+                "skipped_cooldown": 266,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 71,
+                "mean_trade_ret_pct": -0.08424667013347081,
+                "std_trade_ret_pct": 1.7862153035402322,
+                "t_stat_like": -0.397418530134108,
+                "p_value_mean_ret_approx": 0.6910588532022428,
+                "ci95_mean_trade_ret_pct": [
+                  -0.4997367918595067,
+                  0.3312434515925651
+                ],
+                "effect_size_d": -0.04716490221895205,
+                "n_required_for_80pct_power_alpha5pct": 3529,
+                "n_gap_to_power_rule": 3458
+              }
+            },
+            {
+              "period": {
+                "start": "2022-07-01",
+                "end": "2022-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 40,
+                "long": 12,
+                "short": 28
+              },
+              "sim": {
+                "ret_pct": 10.892564242029557,
+                "cagr_pct": 22.919511546046145,
+                "strict_mdd_pct": 5.552646100564129,
+                "cagr_to_strict_mdd": 4.127673748866798,
+                "trade_entries": 23,
+                "turnover_legs": 46,
+                "samples": 17664,
+                "skipped_no_trade": 17556,
+                "skipped_cooldown": 85,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 23,
+                "mean_trade_ret_pct": 0.46025357238266673,
+                "std_trade_ret_pct": 1.4249494560541918,
+                "t_stat_like": 1.5490364109210484,
+                "p_value_mean_ret_approx": 0.12137296749388282,
+                "ci95_mean_trade_ret_pct": [
+                  -0.12210652936190418,
+                  1.0426136741272376
+                ],
+                "effect_size_d": 0.3229964195762765,
+                "n_required_for_80pct_power_alpha5pct": 76,
+                "n_gap_to_power_rule": 53
+              }
+            },
+            {
+              "period": {
+                "start": "2023-01-01",
+                "end": "2023-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17280,
+                "trade_rows": 18,
+                "long": 17,
+                "short": 1
+              },
+              "sim": {
+                "ret_pct": 3.8040570835515597,
+                "cagr_pct": 7.915886137760686,
+                "strict_mdd_pct": 3.052939936950294,
+                "cagr_to_strict_mdd": 2.5928731980453525,
+                "trade_entries": 14,
+                "turnover_legs": 28,
+                "samples": 17280,
+                "skipped_no_trade": 17212,
+                "skipped_cooldown": 54,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 14,
+                "mean_trade_ret_pct": 0.2705319793845172,
+                "std_trade_ret_pct": 0.8712613652693003,
+                "t_stat_like": 1.161807488972932,
+                "p_value_mean_ret_approx": 0.24531367136720794,
+                "ci95_mean_trade_ret_pct": [
+                  -0.1858626338593706,
+                  0.726926592628405
+                ],
+                "effect_size_d": 0.3105061123660611,
+                "n_required_for_80pct_power_alpha5pct": 82,
+                "n_gap_to_power_rule": 68
+              }
+            },
+            {
+              "period": {
+                "start": "2023-07-01",
+                "end": "2023-12-31 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17664,
+                "trade_rows": 42,
+                "long": 40,
+                "short": 2
+              },
+              "sim": {
+                "ret_pct": 5.559311804662204,
+                "cagr_pct": 11.40297865221427,
+                "strict_mdd_pct": 2.953327241127701,
+                "cagr_to_strict_mdd": 3.8610616844004544,
+                "trade_entries": 24,
+                "turnover_legs": 48,
+                "samples": 17664,
+                "skipped_no_trade": 17553,
+                "skipped_cooldown": 87,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 24,
+                "mean_trade_ret_pct": 0.22996892934053678,
+                "std_trade_ret_pct": 0.9536698958008503,
+                "t_stat_like": 1.1813448994432902,
+                "p_value_mean_ret_approx": 0.23746573748950017,
+                "ci95_mean_trade_ret_pct": [
+                  -0.15157849319445976,
+                  0.6115163518755333
+                ],
+                "effect_size_d": 0.24114101782296374,
+                "n_required_for_80pct_power_alpha5pct": 135,
+                "n_gap_to_power_rule": 111
+              }
+            },
+            {
+              "period": {
+                "start": "2024-01-01",
+                "end": "2024-06-30 23:59:59"
+              },
+              "prediction_summary": {
+                "rows": 17472,
+                "trade_rows": 193,
+                "long": 180,
+                "short": 13
+              },
+              "sim": {
+                "ret_pct": 4.054509969581854,
+                "cagr_pct": 8.350707142944923,
+                "strict_mdd_pct": 11.242696563397525,
+                "cagr_to_strict_mdd": 0.7427672797051238,
+                "trade_entries": 94,
+                "turnover_legs": 188,
+                "samples": 17472,
+                "skipped_no_trade": 17040,
+                "skipped_cooldown": 338,
+                "skipped_overlay": 0,
+                "skipped_missing_bars": 0,
+                "invalid_actions": 0,
+                "forced_liquidations": 0,
+                "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+              },
+              "trade_stats": {
+                "n_trades": 94,
+                "mean_trade_ret_pct": 0.04943229190575969,
+                "std_trade_ret_pct": 1.203720058614317,
+                "t_stat_like": 0.3981522515348492,
+                "p_value_mean_ret_approx": 0.6905179602368423,
+                "ci95_mean_trade_ret_pct": [
+                  -0.1939100269227669,
+                  0.2927746107342863
+                ],
+                "effect_size_d": 0.04106626914788187,
+                "n_required_for_80pct_power_alpha5pct": 4655,
+                "n_gap_to_power_rule": 4561
+              }
+            }
+          ],
+          "score": 52.5354098275119
+        }
+      ],
+      "dataset": {
+        "train": {
+          "rows": 2173,
+          "mean_reward_pct": 0.023880059608248103,
+          "positive_rate": 0.5213989875747814,
+          "decisions": {
+            "TAKE_FULL": 581,
+            "ABSTAIN": 1040,
+            "TAKE_SMALL": 552
+          },
+          "policy_ranks": {
+            "1": 481,
+            "2": 383,
+            "3": 441,
+            "4": 419,
+            "5": 449
+          }
+        },
+        "eval": {
+          "rows": 181,
+          "mean_reward_pct": 0.2778497040955874,
+          "positive_rate": 0.4530386740331492,
+          "decisions": {
+            "ABSTAIN": 99,
+            "TAKE_SMALL": 43,
+            "TAKE_FULL": 39
+          },
+          "policy_ranks": {
+            "1": 42,
+            "2": 31,
+            "3": 32,
+            "4": 33,
+            "5": 43
+          }
+        }
+      },
+      "leverage_results": [
+        {
+          "leverage": 3.0,
+          "sim": {
+            "ret_pct": 80.72363999045903,
+            "cagr_pct": 45.06892144366466,
+            "strict_mdd_pct": 14.834612879337916,
+            "cagr_to_strict_mdd": 3.0380921841538564,
+            "trade_entries": 43,
+            "turnover_legs": 86,
+            "samples": 64,
+            "skipped_no_trade": 16,
+            "skipped_cooldown": 5,
+            "skipped_overlay": 0,
+            "skipped_missing_bars": 0,
+            "invalid_actions": 0,
+            "forced_liquidations": 0,
+            "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+          },
+          "trade_stats": {
+            "n_trades": 43,
+            "mean_trade_ret_pct": 1.5103735609533506,
+            "std_trade_ret_pct": 5.210867960474728,
+            "t_stat_like": 1.9006779388400379,
+            "p_value_mean_ret_approx": 0.05734420989399269,
+            "ci95_mean_trade_ret_pct": [
+              -0.047140270808817414,
+              3.067887392715519
+            ],
+            "effect_size_d": 0.2898506683358276,
+            "n_required_for_80pct_power_alpha5pct": 94,
+            "n_gap_to_power_rule": 51
+          },
+          "score": 353.1781398590503,
+          "path": "results/rolling_wave_text_rule/sel2021_2024h1_eval2024h2_2026/text_rule_q0p5_lev3p0.json"
+        },
+        {
+          "leverage": 2.5,
+          "sim": {
+            "ret_pct": 64.66275386978566,
+            "cagr_pct": 36.824636739144864,
+            "strict_mdd_pct": 12.51575760041307,
+            "cagr_to_strict_mdd": 2.9422619001449424,
+            "trade_entries": 43,
+            "turnover_legs": 86,
+            "samples": 64,
+            "skipped_no_trade": 16,
+            "skipped_cooldown": 5,
+            "skipped_overlay": 0,
+            "skipped_missing_bars": 0,
+            "invalid_actions": 0,
+            "forced_liquidations": 0,
+            "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+          },
+          "trade_stats": {
+            "n_trades": 43,
+            "mean_trade_ret_pct": 1.2529286986102097,
+            "std_trade_ret_pct": 4.315393943997506,
+            "t_stat_like": 1.903882478191406,
+            "p_value_mean_ret_approx": 0.05692549158390503,
+            "ci95_mean_trade_ret_pct": [
+              -0.03693045887772639,
+              2.542787856098146
+            ],
+            "effect_size_d": 0.2903393560054858,
+            "n_required_for_80pct_power_alpha5pct": 94,
+            "n_gap_to_power_rule": 51
+          },
+          "score": 335.3508267536391,
+          "path": "results/rolling_wave_text_rule/sel2021_2024h1_eval2024h2_2026/text_rule_q0p5_lev2p5.json"
+        },
+        {
+          "leverage": 2.0,
+          "sim": {
+            "ret_pct": 49.69667219598928,
+            "cagr_pct": 28.868990769915136,
+            "strict_mdd_pct": 10.138092515311525,
+            "cagr_to_strict_mdd": 2.8475761812505067,
+            "trade_entries": 43,
+            "turnover_legs": 86,
+            "samples": 64,
+            "skipped_no_trade": 16,
+            "skipped_cooldown": 5,
+            "skipped_overlay": 0,
+            "skipped_missing_bars": 0,
+            "invalid_actions": 0,
+            "forced_liquidations": 0,
+            "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+          },
+          "trade_stats": {
+            "n_trades": 43,
+            "mean_trade_ret_pct": 0.9977960171517499,
+            "std_trade_ret_pct": 3.4308713737970074,
+            "t_stat_like": 1.9070916188340643,
+            "p_value_mean_ret_approx": 0.056508724381633346,
+            "ci95_mean_trade_ret_pct": [
+              -0.02768182266649176,
+              2.0232738569699915
+            ],
+            "effect_size_d": 0.2908287453654875,
+            "n_required_for_80pct_power_alpha5pct": 93,
+            "n_gap_to_power_rule": 50
+          },
+          "score": 317.9266088949658,
+          "path": "results/rolling_wave_text_rule/sel2021_2024h1_eval2024h2_2026/text_rule_q0p5_lev2p0.json"
+        },
+        {
+          "leverage": 1.0,
+          "sim": {
+            "ret_pct": 22.898533090620155,
+            "cagr_pct": 13.839820659442935,
+            "strict_mdd_pct": 5.19862838571814,
+            "cagr_to_strict_mdd": 2.662206188360028,
+            "trade_entries": 43,
+            "turnover_legs": 86,
+            "samples": 64,
+            "skipped_no_trade": 16,
+            "skipped_cooldown": 5,
+            "skipped_overlay": 0,
+            "skipped_missing_bars": 0,
+            "invalid_actions": 0,
+            "forced_liquidations": 0,
+            "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+          },
+          "trade_stats": {
+            "n_trades": 43,
+            "mean_trade_ret_pct": 0.49439103254399436,
+            "std_trade_ret_pct": 1.694222408651461,
+            "t_stat_like": 1.913526102782395,
+            "p_value_mean_ret_approx": 0.05568073513421057,
+            "ci95_mean_trade_ret_pct": [
+              -0.012007297939832691,
+              1.0007893630278213
+            ],
+            "effect_size_d": 0.29180999496843596,
+            "n_required_for_80pct_power_alpha5pct": 93,
+            "n_gap_to_power_rule": 50
+          },
+          "score": 284.36043949544575,
+          "path": "results/rolling_wave_text_rule/sel2021_2024h1_eval2024h2_2026/text_rule_q0p5_lev1p0.json"
+        }
+      ],
+      "best_by_rule": {
+        "leverage": 3.0,
+        "sim": {
+          "ret_pct": 80.72363999045903,
+          "cagr_pct": 45.06892144366466,
+          "strict_mdd_pct": 14.834612879337916,
+          "cagr_to_strict_mdd": 3.0380921841538564,
+          "trade_entries": 43,
+          "turnover_legs": 86,
+          "samples": 64,
+          "skipped_no_trade": 16,
+          "skipped_cooldown": 5,
+          "skipped_overlay": 0,
+          "skipped_missing_bars": 0,
+          "invalid_actions": 0,
+          "forced_liquidations": 0,
+          "return_application": "generated_action_actual_ohlc_bar_by_bar_online_overlay"
+        },
+        "trade_stats": {
+          "n_trades": 43,
+          "mean_trade_ret_pct": 1.5103735609533506,
+          "std_trade_ret_pct": 5.210867960474728,
+          "t_stat_like": 1.9006779388400379,
+          "p_value_mean_ret_approx": 0.05734420989399269,
+          "ci95_mean_trade_ret_pct": [
+            -0.047140270808817414,
+            3.067887392715519
+          ],
+          "effect_size_d": 0.2898506683358276,
+          "n_required_for_80pct_power_alpha5pct": 94,
+          "n_gap_to_power_rule": 51
+        },
+        "score": 353.1781398590503,
+        "path": "results/rolling_wave_text_rule/sel2021_2024h1_eval2024h2_2026/text_rule_q0p5_lev3p0.json"
+      }
+    }
+  ],
+  "leakage_guard": {
+    "each_split_selects_policy_and_token_rule_before_eval": true,
+    "leverage_grid_reported_per_split_not_global_production_choice": true
+  }
+}
