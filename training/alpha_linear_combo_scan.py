@@ -20,6 +20,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from preprocessing.binance_aux_features import attach_binance_um_aux_features
 from preprocessing.external_features import attach_wave_trading_external_features
 from preprocessing.market_features import build_market_feature_frame
 from training.alpha_feature_backtest import FeatureRuleConfig, fit_rule, simulate_rule
@@ -44,6 +45,10 @@ class LinearComboScanConfig:
     slippage_rate: float = 0.0001
     wave_trading_root: str = ""
     external_tolerance: str = "30min"
+    binance_funding_csv: str = ""
+    binance_premium_csv: str = ""
+    binance_funding_tolerance: str = "12h"
+    binance_premium_tolerance: str = "2h"
     ridge_l2: float = 10.0
     top_k: int = 30
 
@@ -71,11 +76,13 @@ def _feature_groups(columns: list[str]) -> dict[str, list[str]]:
         "trend": ["trend_12", "trend_24", "trend_96", "sma12_ratio", "sma24_ratio", "sma48_ratio", "bb_z", "close_zscore_48", "return_zscore_48"],
         "range_reversion": ["range_vol", "range_pos", "window_drawdown", "rsi_norm", "mfi_norm"],
         "candle_flow": ["body_ratio", "upper_shadow", "lower_shadow", "candle_range", "body_to_range", "shadow_imbalance", "volume_ratio", "volume_zscore", "trades_ratio", "taker_buy_ratio", "taker_imbalance"],
-        "funding_oi": ["funding_rate", "funding_zscore", "oi_change", "oi_zscore"],
+        "derivatives_aux": ["funding_rate", "funding_zscore", "funding_available", "premium_index", "premium_index_zscore", "premium_index_change", "premium_available", "binance_aux_any_available"],
     }
     groups["kimchi_plus_trend"] = groups["kimchi_only"] + groups["trend"]
     groups["kimchi_plus_range"] = groups["kimchi_only"] + groups["range_reversion"]
     groups["external_plus_market"] = groups["external"] + groups["trend"] + groups["range_reversion"] + groups["candle_flow"]
+    groups["market_derivatives"] = groups["trend"] + groups["range_reversion"] + groups["candle_flow"] + groups.get("derivatives_aux", [])
+    groups["external_market_derivatives"] = groups["external_plus_market"] + groups.get("derivatives_aux", [])
     groups["all"] = columns
     return {k: [c for c in v if c in columns] for k, v in groups.items() if any(c in columns for c in v)}
 
@@ -122,6 +129,14 @@ def run_scan(cfg: LinearComboScanConfig) -> dict[str, Any]:
     market = _load_market(cfg.input_csv)
     if cfg.wave_trading_root:
         market = attach_wave_trading_external_features(market, wave_trading_root=cfg.wave_trading_root, tolerance=cfg.external_tolerance)
+    if cfg.binance_funding_csv or cfg.binance_premium_csv:
+        market = attach_binance_um_aux_features(
+            market,
+            funding_csv=cfg.binance_funding_csv or None,
+            premium_csv=cfg.binance_premium_csv or None,
+            funding_tolerance=cfg.binance_funding_tolerance,
+            premium_tolerance=cfg.binance_premium_tolerance,
+        )
     features = build_market_feature_frame(market, window_size=int(cfg.window_size))
     dates = pd.to_datetime(market["date"])
     columns = [c for c in features.columns if np.nanstd(features[c].to_numpy(dtype=float)) > 1e-12]
@@ -133,6 +148,8 @@ def run_scan(cfg: LinearComboScanConfig) -> dict[str, Any]:
         quantile=0.2, window_size=cfg.window_size, entry_delay_bars=cfg.entry_delay_bars,
         leverage=cfg.leverage, fee_rate=cfg.fee_rate, slippage_rate=cfg.slippage_rate,
         wave_trading_root=cfg.wave_trading_root, external_tolerance=cfg.external_tolerance,
+        binance_funding_csv=cfg.binance_funding_csv, binance_premium_csv=cfg.binance_premium_csv,
+        binance_funding_tolerance=cfg.binance_funding_tolerance, binance_premium_tolerance=cfg.binance_premium_tolerance,
     )
     rows: list[dict[str, Any]] = []
     for horizon in _parse_list(cfg.horizons, int):
@@ -200,6 +217,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--slippage-rate", type=float, default=0.0001)
     p.add_argument("--wave-trading-root", default="")
     p.add_argument("--external-tolerance", default="30min")
+    p.add_argument("--binance-funding-csv", default="")
+    p.add_argument("--binance-premium-csv", default="")
+    p.add_argument("--binance-funding-tolerance", default=LinearComboScanConfig.binance_funding_tolerance)
+    p.add_argument("--binance-premium-tolerance", default=LinearComboScanConfig.binance_premium_tolerance)
     p.add_argument("--ridge-l2", type=float, default=10.0)
     p.add_argument("--top-k", type=int, default=30)
     return p.parse_args()

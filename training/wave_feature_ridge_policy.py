@@ -17,6 +17,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from preprocessing.binance_aux_features import attach_binance_um_aux_features
 from preprocessing.external_features import attach_wave_trading_external_features
 from preprocessing.market_features import build_market_feature_frame
 from training.alpha_feature_backtest import _forward_return, _signal_for_value, fit_rule, FeatureRuleConfig
@@ -99,7 +100,7 @@ def build_wave_feature_frame(market: pd.DataFrame, *, window: int = 96) -> pd.Da
     out["body_to_range"] = _clean(body.abs() / candle_range, clip=10.0)
     out["vol_price_div"] = _clean(_ret(close, 24) * -_rolling_z(volume, 48), clip=5.0)
 
-    for col in ("dxy_zscore", "dxy_momentum", "kimchi_premium_zscore", "kimchi_premium_change", "usdkrw_zscore", "usdkrw_momentum", "dxy_available", "kimchi_available", "usdkrw_available", "external_any_available"):
+    for col in ("dxy_zscore", "dxy_momentum", "kimchi_premium_zscore", "kimchi_premium_change", "usdkrw_zscore", "usdkrw_momentum", "dxy_available", "kimchi_available", "usdkrw_available", "external_any_available", "funding_rate", "funding_zscore", "funding_available", "premium_index", "premium_index_zscore", "premium_index_change", "premium_available", "binance_aux_any_available"):
         if col in df.columns:
             out[col] = _clean(df[col].astype(float), clip=5.0)
     return out.replace([np.inf, -np.inf], 0.0).fillna(0.0)
@@ -109,11 +110,14 @@ def _groups(cols: list[str]) -> dict[str, list[str]]:
     wave_core = [c for c in cols if c.startswith(("mom_", "eff_", "gk_", "vwap_", "candle_", "body_", "vol_price_div"))]
     flow = [c for c in cols if c.startswith(("cvd_", "vol_", "flow_", "taker_", "trade_"))]
     external = [c for c in cols if c.startswith(("dxy", "kimchi", "usdkrw", "external"))]
+    derivatives = [c for c in cols if c.startswith(("funding", "premium", "binance_aux"))]
     return {
         "wave_core": wave_core,
         "wave_flow": flow,
         "wave_all": sorted(set(wave_core + flow)),
         "wave_external": sorted(set(wave_core + flow + external)),
+        "wave_derivatives": sorted(set(wave_core + flow + derivatives)),
+        "wave_external_derivatives": sorted(set(wave_core + flow + external + derivatives)),
     }
 
 
@@ -163,7 +167,7 @@ class WaveRidgeScanConfig:
     test_end: str = "2025-12-31 23:59:59"
     eval_start: str = "2026-01-01"
     eval_end: str = "2026-06-01 00:00:00"
-    groups: str = "wave_core,wave_flow,wave_all,wave_external"
+    groups: str = "wave_core,wave_flow,wave_all,wave_external,wave_derivatives,wave_external_derivatives"
     horizons: str = "72,144,288"
     quantiles: str = "0.10,0.20,0.30"
     leverages: str = "0.20,0.30"
@@ -172,6 +176,10 @@ class WaveRidgeScanConfig:
     window_size: int = 144
     wave_trading_root: str = ""
     external_tolerance: str = "30min"
+    binance_funding_csv: str = ""
+    binance_premium_csv: str = ""
+    binance_funding_tolerance: str = "12h"
+    binance_premium_tolerance: str = "2h"
     min_test_trades: int = 100
     max_test_mdd: float = 15.0
     top_k: int = 60
@@ -192,6 +200,14 @@ def run_scan(cfg: WaveRidgeScanConfig) -> dict[str, Any]:
     market = _load_market(cfg.input_csv)
     if cfg.wave_trading_root:
         market = attach_wave_trading_external_features(market, wave_trading_root=cfg.wave_trading_root, tolerance=cfg.external_tolerance)
+    if cfg.binance_funding_csv or cfg.binance_premium_csv:
+        market = attach_binance_um_aux_features(
+            market,
+            funding_csv=cfg.binance_funding_csv or None,
+            premium_csv=cfg.binance_premium_csv or None,
+            funding_tolerance=cfg.binance_funding_tolerance,
+            premium_tolerance=cfg.binance_premium_tolerance,
+        )
     # Include existing market feature frame too; wave features are compact but this
     # lets htf/external availability columns be reused when present.
     base = build_market_feature_frame(market, window_size=int(cfg.window_size))
@@ -219,7 +235,7 @@ def run_scan(cfg: WaveRidgeScanConfig) -> dict[str, Any]:
                 rows.append({"group": group, "horizon": horizon, "error": str(exc)})
                 continue
             for q in _parse_list(cfg.quantiles, float):
-                rule_cfg = FeatureRuleConfig(input_csv=cfg.input_csv, output="", feature="wave_ridge", horizon=int(horizon), fit_start=cfg.train_start, fit_end=cfg.train_end, eval_start=cfg.test_start, eval_end=cfg.test_end, quantile=float(q), window_size=int(cfg.window_size), entry_delay_bars=1, wave_trading_root=cfg.wave_trading_root, external_tolerance=cfg.external_tolerance)
+                rule_cfg = FeatureRuleConfig(input_csv=cfg.input_csv, output="", feature="wave_ridge", horizon=int(horizon), fit_start=cfg.train_start, fit_end=cfg.train_end, eval_start=cfg.test_start, eval_end=cfg.test_end, quantile=float(q), window_size=int(cfg.window_size), entry_delay_bars=1, wave_trading_root=cfg.wave_trading_root, external_tolerance=cfg.external_tolerance, binance_funding_csv=cfg.binance_funding_csv, binance_premium_csv=cfg.binance_premium_csv, binance_funding_tolerance=cfg.binance_funding_tolerance, binance_premium_tolerance=cfg.binance_premium_tolerance)
                 rule = fit_rule(dates=dates, feature_values=values, forward_returns=fwd, cfg=rule_cfg)
                 tag = f"{group}_h{horizon}_q{str(q).replace('.', 'p')}"
                 test_pred = _write_predictions(work / f"{tag}_test.jsonl", dates=dates, values=values, rule=rule, horizon=int(horizon), group=group, start=cfg.test_start, end=cfg.test_end)
@@ -233,7 +249,7 @@ def run_scan(cfg: WaveRidgeScanConfig) -> dict[str, Any]:
                             eval_bt = run_overlay(OnlineRiskOverlayConfig(predictions_jsonl=eval_pred["path"], market_csv=cfg.input_csv, output=str(work / f"{tag}_lev{lev}_pal{pal}_eval.bt.json"), leverage=float(lev), pause_after_losses=int(pal), pause_bars=288))
                         rows.append({"group": group, "features": cols, "horizon": int(horizon), "quantile": float(q), "fit_info": fit_info, "rule": rule, "overlay": {"leverage": float(lev), "pause_after_losses": int(pal)}, "test_signal": test_pred, "eval_signal": eval_pred, "test": {"period": test_bt["period"], "sim": test_bt["sim"], "trade_stats": test_bt["trade_stats"]}, "eval": None if eval_bt is None else {"period": eval_bt["period"], "sim": eval_bt["sim"], "trade_stats": eval_bt["trade_stats"]}, "selection_score": score})
     ranked = sorted(rows, key=lambda r: (float(r.get("selection_score", -1e9)), float((r.get("eval") or {"sim": {"cagr_to_strict_mdd": -999}})["sim"].get("cagr_to_strict_mdd", -999))), reverse=True)
-    report = {"config": asdict(cfg), "feature_columns": columns, "top_by_selection": ranked[: int(cfg.top_k)], "all_count": len(rows), "selection_protocol": "ridge fit and quantile rule on train; overlay-selected on test; eval reported only after test-like pass", "leakage_guard": {"train_fit_only": True, "test_selection_only": True, "eval_not_used_for_selection": True, "external_join": "backward_asof_no_future" if cfg.wave_trading_root else "disabled"}}
+    report = {"config": asdict(cfg), "feature_columns": columns, "top_by_selection": ranked[: int(cfg.top_k)], "all_count": len(rows), "selection_protocol": "ridge fit and quantile rule on train; overlay-selected on test; eval reported only after test-like pass", "leakage_guard": {"train_fit_only": True, "test_selection_only": True, "eval_not_used_for_selection": True, "external_join": "backward_asof_no_future" if cfg.wave_trading_root else "disabled", "binance_aux_join": "backward_asof_no_future" if (cfg.binance_funding_csv or cfg.binance_premium_csv) else "disabled", "premium_index_uses_close_time_when_available": True}}
     Path(cfg.output).parent.mkdir(parents=True, exist_ok=True)
     Path(cfg.output).write_text(json.dumps(report, indent=2, ensure_ascii=False))
     return report
@@ -250,6 +266,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--window-size", type=int, default=WaveRidgeScanConfig.window_size)
     p.add_argument("--wave-trading-root", default="")
     p.add_argument("--external-tolerance", default=WaveRidgeScanConfig.external_tolerance)
+    p.add_argument("--binance-funding-csv", default="")
+    p.add_argument("--binance-premium-csv", default="")
+    p.add_argument("--binance-funding-tolerance", default=WaveRidgeScanConfig.binance_funding_tolerance)
+    p.add_argument("--binance-premium-tolerance", default=WaveRidgeScanConfig.binance_premium_tolerance)
     p.add_argument("--min-test-trades", type=int, default=WaveRidgeScanConfig.min_test_trades)
     p.add_argument("--max-test-mdd", type=float, default=WaveRidgeScanConfig.max_test_mdd)
     p.add_argument("--top-k", type=int, default=WaveRidgeScanConfig.top_k)

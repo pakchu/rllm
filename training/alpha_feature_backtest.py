@@ -21,6 +21,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from preprocessing.binance_aux_features import attach_binance_um_aux_features
 from preprocessing.external_features import attach_wave_trading_external_features
 from preprocessing.market_features import build_market_feature_frame
 from training.strict_bar_backtest import BarExecutionConfig, _drawdown_from_trough, _trade_stats
@@ -45,6 +46,10 @@ class FeatureRuleConfig:
     slippage_rate: float = 0.0001
     wave_trading_root: str = ""
     external_tolerance: str = "30min"
+    binance_funding_csv: str = ""
+    binance_premium_csv: str = ""
+    binance_funding_tolerance: str = "12h"
+    binance_premium_tolerance: str = "2h"
 
 
 def _load_market(path: str) -> pd.DataFrame:
@@ -229,6 +234,14 @@ def run_feature_rule_backtest(cfg: FeatureRuleConfig) -> dict[str, Any]:
             wave_trading_root=cfg.wave_trading_root,
             tolerance=cfg.external_tolerance,
         )
+    if cfg.binance_funding_csv or cfg.binance_premium_csv:
+        market = attach_binance_um_aux_features(
+            market,
+            funding_csv=cfg.binance_funding_csv or None,
+            premium_csv=cfg.binance_premium_csv or None,
+            funding_tolerance=cfg.binance_funding_tolerance,
+            premium_tolerance=cfg.binance_premium_tolerance,
+        )
     features = build_market_feature_frame(market, window_size=int(cfg.window_size))
     if cfg.feature not in features.columns:
         raise ValueError(f"feature not found: {cfg.feature}")
@@ -247,6 +260,8 @@ def run_feature_rule_backtest(cfg: FeatureRuleConfig) -> dict[str, Any]:
             "rule_fit_uses_fit_window_only": True,
             "eval_window_after_fit_window": pd.Timestamp(cfg.eval_start) > pd.Timestamp(cfg.fit_end),
             "external_join": "backward_asof_no_future" if cfg.wave_trading_root else "disabled",
+            "binance_aux_join": "backward_asof_no_future" if (cfg.binance_funding_csv or cfg.binance_premium_csv) else "disabled",
+            "premium_index_uses_close_time_when_available": True,
             "entry_after_signal_by_bars": int(cfg.entry_delay_bars),
             "strict_mdd_includes_intrabar_adverse_excursion": True,
         },
@@ -275,6 +290,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--slippage-rate", type=float, default=0.0001)
     p.add_argument("--wave-trading-root", default="")
     p.add_argument("--external-tolerance", default="30min")
+    p.add_argument("--binance-funding-csv", default="")
+    p.add_argument("--binance-premium-csv", default="")
+    p.add_argument("--binance-funding-tolerance", default=FeatureRuleConfig.binance_funding_tolerance)
+    p.add_argument("--binance-premium-tolerance", default=FeatureRuleConfig.binance_premium_tolerance)
     return p.parse_args()
 
 

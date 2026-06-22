@@ -19,6 +19,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from preprocessing.binance_aux_features import attach_binance_um_aux_features
 from preprocessing.external_features import attach_wave_trading_external_features
 from preprocessing.market_features import EXTENDED_MARKET_FEATURE_COLUMNS, build_market_feature_frame
 
@@ -29,6 +30,10 @@ class ScanConfig:
     output: str
     wave_trading_root: str = ""
     external_tolerance: str = "30min"
+    binance_funding_csv: str = ""
+    binance_premium_csv: str = ""
+    binance_funding_tolerance: str = "12h"
+    binance_premium_tolerance: str = "2h"
     window_size: int = 144
     entry_delay_bars: int = 1
     horizons: tuple[int, ...] = (36, 72, 144, 288)
@@ -136,6 +141,14 @@ def scan_alpha_features(cfg: ScanConfig) -> dict[str, Any]:
             wave_trading_root=cfg.wave_trading_root,
             tolerance=cfg.external_tolerance,
         )
+    if cfg.binance_funding_csv or cfg.binance_premium_csv:
+        market = attach_binance_um_aux_features(
+            market,
+            funding_csv=cfg.binance_funding_csv or None,
+            premium_csv=cfg.binance_premium_csv or None,
+            funding_tolerance=cfg.binance_funding_tolerance,
+            premium_tolerance=cfg.binance_premium_tolerance,
+        )
     features = build_market_feature_frame(market, window_size=int(cfg.window_size))
     feature_cols = [c for c in EXTENDED_MARKET_FEATURE_COLUMNS if c in features.columns]
     dates = pd.to_datetime(market["date"])
@@ -211,6 +224,8 @@ def scan_alpha_features(cfg: ScanConfig) -> dict[str, Any]:
         "leakage_guard": {
             "features_use_rows_at_or_before_t": True,
             "external_join": "backward_asof_no_future" if cfg.wave_trading_root else "disabled",
+            "binance_aux_join": "backward_asof_no_future" if (cfg.binance_funding_csv or cfg.binance_premium_csv) else "disabled",
+            "premium_index_uses_close_time_when_available": True,
             "future_returns_used_for_diagnostic_labels_only": True,
             "entry_after_signal_by_bars": int(cfg.entry_delay_bars),
         },
@@ -230,6 +245,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output", required=True)
     p.add_argument("--wave-trading-root", default="")
     p.add_argument("--external-tolerance", default="30min")
+    p.add_argument("--binance-funding-csv", default="")
+    p.add_argument("--binance-premium-csv", default="")
+    p.add_argument("--binance-funding-tolerance", default=ScanConfig.binance_funding_tolerance)
+    p.add_argument("--binance-premium-tolerance", default=ScanConfig.binance_premium_tolerance)
     p.add_argument("--window-size", type=int, default=144)
     p.add_argument("--entry-delay-bars", type=int, default=1)
     p.add_argument("--horizons", default="36,72,144,288")
@@ -245,6 +264,10 @@ def main() -> None:
         output=args.output,
         wave_trading_root=args.wave_trading_root,
         external_tolerance=args.external_tolerance,
+        binance_funding_csv=args.binance_funding_csv,
+        binance_premium_csv=args.binance_premium_csv,
+        binance_funding_tolerance=args.binance_funding_tolerance,
+        binance_premium_tolerance=args.binance_premium_tolerance,
         window_size=int(args.window_size),
         entry_delay_bars=int(args.entry_delay_bars),
         horizons=_parse_horizons(args.horizons),

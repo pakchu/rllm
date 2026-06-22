@@ -18,6 +18,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from preprocessing.binance_aux_features import attach_binance_um_aux_features
 from preprocessing.external_features import attach_wave_trading_external_features
 from preprocessing.market_features import build_market_feature_frame
 from training.alpha_feature_backtest import FeatureRuleConfig, _forward_return, fit_rule, simulate_rule
@@ -31,6 +32,10 @@ class RollingAlphaCfg:
     output: str
     wave_trading_root: str = ""
     external_tolerance: str = "30min"
+    binance_funding_csv: str = ""
+    binance_premium_csv: str = ""
+    binance_funding_tolerance: str = "12h"
+    binance_premium_tolerance: str = "2h"
     window_size: int = 144
     horizons: str = "36,72,144,288"
     quantiles: str = "0.10,0.20,0.30"
@@ -132,6 +137,14 @@ def run(cfg: RollingAlphaCfg) -> dict[str, Any]:
     market = _load_market(cfg.input_csv)
     if cfg.wave_trading_root:
         market = attach_wave_trading_external_features(market, wave_trading_root=cfg.wave_trading_root, tolerance=cfg.external_tolerance)
+    if cfg.binance_funding_csv or cfg.binance_premium_csv:
+        market = attach_binance_um_aux_features(
+            market,
+            funding_csv=cfg.binance_funding_csv or None,
+            premium_csv=cfg.binance_premium_csv or None,
+            funding_tolerance=cfg.binance_funding_tolerance,
+            premium_tolerance=cfg.binance_premium_tolerance,
+        )
     base = build_market_feature_frame(market, window_size=int(cfg.window_size))
     wave = build_wave_feature_frame(market, window=int(cfg.window_size))
     features = pd.concat([base.add_prefix("mkt__"), wave.add_prefix("wave__")], axis=1)
@@ -237,6 +250,10 @@ def run(cfg: RollingAlphaCfg) -> dict[str, Any]:
                 leverage=float(cfg.leverage),
                 wave_trading_root=cfg.wave_trading_root,
                 external_tolerance=cfg.external_tolerance,
+                binance_funding_csv=cfg.binance_funding_csv,
+                binance_premium_csv=cfg.binance_premium_csv,
+                binance_funding_tolerance=cfg.binance_funding_tolerance,
+                binance_premium_tolerance=cfg.binance_premium_tolerance,
             )
             try:
                 rule = fit_rule(dates=dates, feature_values=values, forward_returns=fwd, cfg=fold_cfg)
@@ -264,6 +281,8 @@ def run(cfg: RollingAlphaCfg) -> dict[str, Any]:
             "each_fold_rule_fit_uses_only_dates_before_eval_start": True,
             "strict_replay_uses_actual_ohlc_bar_by_bar": True,
             "external_join": "backward_asof_no_future" if cfg.wave_trading_root else "disabled",
+            "binance_aux_join": "backward_asof_no_future" if (cfg.binance_funding_csv or cfg.binance_premium_csv) else "disabled",
+            "premium_index_uses_close_time_when_available": True,
         },
     }
     Path(cfg.output).parent.mkdir(parents=True, exist_ok=True)
@@ -277,6 +296,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output", required=True)
     p.add_argument("--wave-trading-root", default="")
     p.add_argument("--external-tolerance", default=RollingAlphaCfg.external_tolerance)
+    p.add_argument("--binance-funding-csv", default="")
+    p.add_argument("--binance-premium-csv", default="")
+    p.add_argument("--binance-funding-tolerance", default=RollingAlphaCfg.binance_funding_tolerance)
+    p.add_argument("--binance-premium-tolerance", default=RollingAlphaCfg.binance_premium_tolerance)
     p.add_argument("--window-size", type=int, default=RollingAlphaCfg.window_size)
     p.add_argument("--horizons", default=RollingAlphaCfg.horizons)
     p.add_argument("--quantiles", default=RollingAlphaCfg.quantiles)
