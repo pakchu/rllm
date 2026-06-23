@@ -98,3 +98,25 @@ The policy is not simply under/over-weighting the inactive class. The LLM can be
 3. side oversampling: SHORT recall returns but false-positive SHORTs destroy expectancy.
 
 The next useful fix is not more class balancing. The model needs a causal feature that distinguishes rejected SHORT contexts from valid SHORT contexts, or the target schema must expose that distinction explicitly. Candidate next experiment: add compact numeric/rank tokens for side-specific margin from Kimchi thresholds, DXY depth, and recent BTC trend/volatility interaction, then train a cost-sensitive abstention objective.
+
+## Follow-up: causal margin-token prompt
+
+A regenerated dataset added only causal, train-fitted bucket features to the prompt:
+
+- `dxy_low_depth_bucket`
+- `kimchi_signal_strength_bucket`
+- `prior_side_trend_alignment`
+
+The data split and target counts stayed unchanged. A side-bucket oversampled SFT80 adapter was trained on the margin-token dataset.
+
+| Adapter | Test60 smoke | Full test pred mix | Full test trades | CAGR | Strict MDD | CAGR/MDD | p approx |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| margin_os1 SFT80 | 95.0% action/activate; false-positive 1/60 | LONG 51 / SHORT 70 / NO_TRADE 733 | 104 | 1.99% | 8.45% | 0.24 | 0.786 |
+
+### Updated diagnosis
+
+The margin tokens improved balanced-sample decoding but did not solve chronological false positives. The chronological prior-present distribution is still different from the balanced smoke subset. This suggests the useful next unit is not another SFT rerun; it is an evaluation/data diagnostic that compares false-positive vs true-positive rows by the new margin buckets and regime tokens, then either:
+
+1. remove buckets that are non-discriminative;
+2. add genuinely discriminative causal features;
+3. or train a two-stage abstention classifier before letting the LLM emit side actions.
