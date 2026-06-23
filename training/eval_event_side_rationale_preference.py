@@ -22,6 +22,8 @@ class EvalEventSideRationalePreferenceCfg:
     adapter_dir: str = ""
     batch_size: int = 4
     score_normalization: str = "mean"
+    prior_json: str = ""
+    prior_weight: float = 1.0
 
 
 def _chat_prompt(tokenizer: Any, prompt: str) -> str:
@@ -64,11 +66,30 @@ def _score_batch(model: Any, input_ids: Any, attention_mask: Any, spans: list[tu
     return scores
 
 
+
+def _load_prior_scores(path: str) -> dict[int, dict[str, float]]:
+    if not path:
+        return {}
+    obj = json.loads(Path(path).read_text())
+    out: dict[int, dict[str, float]] = {}
+    for pred in obj.get("predictions", []):
+        idx = int(pred.get("index"))
+        raw_scores = pred.get("raw_scores", pred.get("scores", {}))
+        out[idx] = {str(k).lower(): float(v) for k, v in dict(raw_scores).items()}
+    return out
+
+
+def _adjust_scores(scores: dict[str, float], prior_scores: dict[str, float] | None, prior_weight: float) -> dict[str, float]:
+    if not prior_scores:
+        return dict(scores)
+    return {label: float(score) - float(prior_weight) * float(prior_scores.get(label, 0.0)) for label, score in scores.items()}
+
 def evaluate(cfg: EvalEventSideRationalePreferenceCfg) -> dict[str, Any]:
     normalize = str(cfg.score_normalization).strip().lower()
     if normalize not in {"mean", "sum"}:
         raise ValueError("score_normalization must be mean or sum")
     rows = [r for r in read_jsonl(cfg.eval_jsonl) if target_side_pair(r)]
+    prior_by_index = _load_prior_scores(cfg.prior_json)
     tokenizer, model, resolved = _load_model(cfg.model_name, cfg.adapter_dir)
     flat: list[tuple[int, str, list[int], int]] = []
     for i, row in enumerate(rows):
@@ -95,7 +116,8 @@ def evaluate(cfg: EvalEventSideRationalePreferenceCfg) -> dict[str, Any]:
     counts: dict[str, int] = {}
     confusion: dict[str, int] = {}
     for i, row in enumerate(rows):
-        scores = by_row[i]
+        raw_scores = by_row[i]
+        scores = _adjust_scores(raw_scores, prior_by_index.get(i), float(cfg.prior_weight))
         pred = max(CANDIDATES, key=lambda k: scores[k])
         target = target_side_pair(row)
         correct += int(pred == target)
@@ -108,6 +130,8 @@ def evaluate(cfg: EvalEventSideRationalePreferenceCfg) -> dict[str, Any]:
             "prediction": pred.upper(),
             "target": target.upper(),
             "scores": scores,
+            "raw_scores": raw_scores,
+            "prior_scores": prior_by_index.get(i, {}),
         })
     report = {
         "config": asdict(cfg),
@@ -122,6 +146,7 @@ def evaluate(cfg: EvalEventSideRationalePreferenceCfg) -> dict[str, Any]:
         "leakage_guard": {
             "candidate_rationales_recomputed_from_signal_time_tokens": True,
             "target_used_for_metrics_only": True,
+            "prior_scores_use_same_signal_time_candidates_when_provided": bool(cfg.prior_json),
         },
     }
     Path(cfg.output_json).parent.mkdir(parents=True, exist_ok=True)
@@ -137,6 +162,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--adapter-dir", default="")
     p.add_argument("--batch-size", type=int, default=4)
     p.add_argument("--score-normalization", choices=["mean", "sum"], default="mean")
+    p.add_argument("--prior-json", default="", help="Optional base/prior eval JSON whose candidate scores are subtracted by index")
+    p.add_argument("--prior-weight", type=float, default=1.0, help="Multiplier for prior score subtraction")
     return p.parse_args()
 
 
