@@ -92,6 +92,16 @@ FEATURES: tuple[str, ...] = (
     "window_drawdown",
     "volume_zscore",
     "taker_imbalance",
+    "htf_4h_return_4",
+    "htf_4h_range_pos",
+    "htf_1d_return_4",
+    "htf_1d_range_pos",
+    "htf_1d_drawdown_4",
+    "htf_3d_return_4",
+    "htf_3d_range_pos",
+    "htf_1w_return_4",
+    "htf_1w_range_pos",
+    "htf_1w_drawdown_4",
 )
 
 
@@ -211,6 +221,8 @@ def _state_tokens(features: pd.DataFrame, pos: int, edges: dict[str, list[float]
     tokens["binance_aux_availability"] = "available" if float(features["binance_aux_any_available"].iloc[pos]) > 0.5 else "missing_or_partial"
     tokens["trend_alignment"] = _trend_alignment(tokens.get("trend_96", "missing"), tokens.get("trend_288", "missing"))
     tokens["risk_state"] = _risk_state(tokens.get("window_drawdown", "missing"), tokens.get("range_pos", "missing"))
+    tokens["htf_trend_stack"] = _htf_trend_stack(tokens)
+    tokens["htf_risk_state"] = _htf_risk_state(tokens)
     tokens.update(_price_action_event_tokens(features, pos))
     return tokens
 
@@ -231,6 +243,32 @@ def _risk_state(drawdown: str, range_pos: str) -> str:
     if drawdown in {"very_low", "low"} and range_pos in {"high", "very_high"}:
         return "extended_near_highs"
     return "normal"
+
+
+def _htf_trend_stack(tokens: dict[str, str]) -> str:
+    up = {"mid_high", "high", "very_high"}
+    down = {"very_low", "low", "mid_low"}
+    vals = [tokens.get(k, "missing") for k in ("htf_4h_return_4", "htf_1d_return_4", "htf_3d_return_4", "htf_1w_return_4")]
+    up_n = sum(v in up for v in vals)
+    down_n = sum(v in down for v in vals)
+    if up_n >= 3:
+        return "htf_aligned_up"
+    if down_n >= 3:
+        return "htf_aligned_down"
+    if up_n >= 2 and down_n >= 2:
+        return "htf_conflicted"
+    return "htf_mixed"
+
+
+def _htf_risk_state(tokens: dict[str, str]) -> str:
+    high_dd = tokens.get("htf_1d_drawdown_4") in {"high", "very_high"} or tokens.get("htf_1w_drawdown_4") in {"high", "very_high"}
+    near_low = tokens.get("htf_1d_range_pos") in {"very_low", "low"} or tokens.get("htf_1w_range_pos") in {"very_low", "low"}
+    near_high = tokens.get("htf_1d_range_pos") in {"high", "very_high"} or tokens.get("htf_1w_range_pos") in {"high", "very_high"}
+    if high_dd and near_low:
+        return "htf_drawdown_near_lows"
+    if near_high and not high_dd:
+        return "htf_extended_near_highs"
+    return "htf_normal"
 
 
 def _path_audit(market: pd.DataFrame, pos: int, side: str, cfg: LlmContextRegimeMinerCfg) -> dict[str, float] | None:

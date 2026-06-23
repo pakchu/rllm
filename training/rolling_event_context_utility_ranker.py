@@ -101,7 +101,7 @@ def _candidate_tokens(row: dict[str, Any], side: str) -> list[str]:
     toks = list(_base_tokens(row))
     toks.append(f"action:side={side}")
     for tok in list(toks):
-        if tok.startswith("state:pa_") or tok.startswith("state:trend_alignment") or tok.startswith("state:risk_state") or tok.startswith("x:"):
+        if tok.startswith("state:pa_") or tok.startswith("state:trend_alignment") or tok.startswith("state:risk_state") or tok.startswith("state:htf_") or tok.startswith("x:"):
             toks.append(f"side_x:{side}|{tok}")
     return toks
 

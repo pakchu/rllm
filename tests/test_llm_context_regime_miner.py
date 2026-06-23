@@ -8,6 +8,7 @@ from training.llm_context_regime_miner import (
     _bucket_value,
     _fit_bucket_edges,
     _prompt,
+    _htf_trend_stack,
     _price_action_event_tokens,
     _state_tokens,
     _target,
@@ -57,6 +58,16 @@ class TestLlmContextRegimeMiner(unittest.TestCase):
         self.assertEqual(tokens["binance_aux_availability"], "missing_or_partial")
         self.assertIsInstance(tokens["trend_alignment"], str)
         self.assertIn("pa_event_pressure", tokens)
+        self.assertIn("htf_trend_stack", tokens)
+
+    def test_htf_trend_stack_compacts_multitimeframe_direction(self):
+        tokens = {
+            "htf_4h_return_4": "high",
+            "htf_1d_return_4": "mid_high",
+            "htf_3d_return_4": "very_high",
+            "htf_1w_return_4": "low",
+        }
+        self.assertEqual(_htf_trend_stack(tokens), "htf_aligned_up")
 
 
     def test_price_action_event_tokens_are_compact(self):

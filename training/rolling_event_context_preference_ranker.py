@@ -90,7 +90,7 @@ def _candidate_tokens(row: dict[str, Any], action: str) -> list[str]:
     toks = list(_state_tokens(row))
     toks.append(f"candidate:{action}")
     for tok in list(toks):
-        if tok.startswith("state:pa_") or tok.startswith("state:trend_alignment") or tok.startswith("state:risk_state") or tok.startswith("x:"):
+        if tok.startswith("state:pa_") or tok.startswith("state:trend_alignment") or tok.startswith("state:risk_state") or tok.startswith("state:htf_") or tok.startswith("x:"):
             toks.append(f"candidate_x:{action}|{tok}")
     return toks
 
