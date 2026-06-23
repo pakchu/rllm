@@ -12,9 +12,12 @@ class TestEvalTextJsonKey(unittest.TestCase):
         self.assertEqual(parse_key_json('{"gate":"TRADE"}', key="gate"), "TRADE")
         self.assertEqual(parse_key_json('bad', key="gate"), "NO_TRADE")
         self.assertEqual(parse_key_json('{"gate":"BAD"}', key="gate"), "NO_TRADE")
+        self.assertEqual(parse_key_json('{"action":"SHORT"}', key="action"), "SHORT")
+        self.assertEqual(parse_key_json('{"action":"BAD"}', key="action"), "NO_TRADE")
 
     def test_candidate_json_single_key_shape(self):
         self.assertEqual(_candidate_json("side", "LONG"), '{"side": "LONG"}')
+        self.assertEqual(_candidate_json("action", "SHORT"), '{"action": "SHORT"}')
 
     def test_target_echo_metrics(self):
         with tempfile.TemporaryDirectory() as td:
