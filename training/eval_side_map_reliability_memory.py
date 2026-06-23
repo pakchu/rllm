@@ -59,6 +59,17 @@ def _aux_signature(row: dict[str, Any]) -> str:
 def _combined_signature(row: dict[str, Any]) -> str:
     return f"score={_score_bucket(row)}|{_aux_signature(row)}"
 
+
+def _market_signature(row: dict[str, Any]) -> str:
+    src = row.get("source") if isinstance(row.get("source"), dict) else {}
+    toks = src.get("prior_market_structure_tokens") if isinstance(src.get("prior_market_structure_tokens"), dict) else {}
+    keys = ("prior_market_return", "prior_market_drawdown", "prior_market_close_pos")
+    return "|".join(f"{k}={toks.get(k, 'unknown')}" for k in keys)
+
+
+def _combined_market_signature(row: dict[str, Any]) -> str:
+    return f"score={_score_bucket(row)}|{_market_signature(row)}"
+
 def _majority(labels: list[str], default: str = "unreliable") -> str:
     if not labels:
         return default
@@ -75,13 +86,19 @@ def _predictors(train: list[dict[str, Any]], row: dict[str, Any]) -> dict[str, s
     by_bucket: dict[str, list[str]] = defaultdict(list)
     by_combined: dict[str, list[str]] = defaultdict(list)
     by_aux: dict[str, list[str]] = defaultdict(list)
+    by_market: dict[str, list[str]] = defaultdict(list)
+    by_market_combined: dict[str, list[str]] = defaultdict(list)
     for r in train:
         by_bucket[_score_bucket(r)].append(_target_label(r))
         by_aux[_aux_signature(r)].append(_target_label(r))
         by_combined[_combined_signature(r)].append(_target_label(r))
+        by_market[_market_signature(r)].append(_target_label(r))
+        by_market_combined[_combined_market_signature(r)].append(_target_label(r))
     bucket_majority = _majority(by_bucket.get(bucket, []), global_majority)
     aux_majority = _majority(by_aux.get(_aux_signature(row), []), bucket_majority)
     combined_majority = _majority(by_combined.get(_combined_signature(row), []), aux_majority)
+    market_majority = _majority(by_market.get(_market_signature(row), []), bucket_majority)
+    combined_market_majority = _majority(by_market_combined.get(_combined_market_signature(row), []), market_majority)
     return {
         "global_majority": global_majority,
         "last_history": last,
@@ -89,6 +106,8 @@ def _predictors(train: list[dict[str, Any]], row: dict[str, Any]) -> dict[str, s
         "bucket_majority": bucket_majority,
         "aux_majority": aux_majority,
         "combined_aux_bucket_majority": combined_majority,
+        "market_majority": market_majority,
+        "combined_market_bucket_majority": combined_market_majority,
     }
 
 
@@ -103,7 +122,7 @@ def run(cfg: SideMapReliabilityMemoryEvalCfg) -> dict[str, Any]:
     for row in eval_rows:
         truth = _target_label(row)
         preds = _predictors(train, row)
-        pred_rows.append({"month": row.get("month"), "truth": truth, "predictions": preds, "score_bucket": _score_bucket(row), "aux_signature": _aux_signature(row), "history": _history_labels(row)})
+        pred_rows.append({"month": row.get("month"), "truth": truth, "predictions": preds, "score_bucket": _score_bucket(row), "aux_signature": _aux_signature(row), "market_signature": _market_signature(row), "history": _history_labels(row)})
         for name, pred in preds.items():
             total[name] += 1
             correct[name] += int(pred == truth)
