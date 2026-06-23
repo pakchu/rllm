@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from training.export_dxy_kimchi_policy_sft import ExportDxyKimchiSftCfg, _balanced_train, _side_contrast_train, run
+from training.export_dxy_kimchi_policy_sft import ExportDxyKimchiSftCfg, _balanced_train, _side_contrast_oversample_train, _side_contrast_train, run
 
 
 def row(split, i, activate, reason="no_prior_signal", action="NO_TRADE", prior_side="NONE"):
@@ -33,6 +33,19 @@ class TestExportDxyKimchiPolicySft(unittest.TestCase):
         selected = _side_contrast_train(rows, no_prior_per_prior_row=0.5, seed=1)
         self.assertEqual(sum(1 for r in selected if r["prior_signal"]["side"] in {"LONG", "SHORT"}), 4)
         self.assertEqual(sum(1 for r in selected if r["prior_signal"]["side"] == "NONE"), 2)
+
+
+    def test_side_contrast_oversample_balances_sparse_active_short(self):
+        rows = [row("train", i, True, action="LONG", prior_side="LONG") for i in range(3)]
+        rows += [row("train", 10, True, action="SHORT", prior_side="SHORT")]
+        rows += [row("train", i + 20, False, reason="prior_signal_path_reward_rejected", prior_side="LONG") for i in range(3)]
+        rows += [row("train", i + 30, False, reason="prior_signal_path_reward_rejected", prior_side="SHORT") for i in range(2)]
+        rows += [row("train", i + 40, False, prior_side="NONE") for i in range(10)]
+        selected = _side_contrast_oversample_train(rows, no_prior_per_bucket=1.0, seed=1)
+        targets = [json.loads(r["target"]) for r in selected]
+        self.assertEqual(sum(t["action"] == "LONG" for t in targets), 3)
+        self.assertEqual(sum(t["action"] == "SHORT" for t in targets), 3)
+        self.assertEqual(sum(r["prior_signal"]["side"] == "NONE" for r in selected), 3)
 
     def test_run_writes_train_test_eval_messages(self):
         with tempfile.TemporaryDirectory() as td:

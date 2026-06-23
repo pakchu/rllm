@@ -121,6 +121,43 @@ def _side_contrast_train(rows: list[dict[str, Any]], *, no_prior_per_prior_row: 
     return sorted(selected, key=lambda r: (str(r.get("date")), int(r.get("signal_pos", 0) or 0)))
 
 
+
+def _side_bucket(row: dict[str, Any]) -> str:
+    target = _target_obj(row)
+    side = _prior_side(row)
+    if bool(target.get("activate")) and str(target.get("action")) in {"LONG", "SHORT"}:
+        return f"active_{target['action']}"
+    if side in {"LONG", "SHORT"} and str(target.get("reason_code")) == "prior_signal_path_reward_rejected":
+        return f"rejected_{side}"
+    return "no_prior"
+
+
+def _side_contrast_oversample_train(rows: list[dict[str, Any]], *, no_prior_per_bucket: float, seed: int) -> list[dict[str, Any]]:
+    """Balance accepted/rejected prior-side buckets with replacement.
+
+    The train split has fewer active SHORT rows than LONG/rejected rows. Without
+    replacement the adapter learned a conservative LONG-only policy. This mode
+    intentionally duplicates scarce train rows, while test/eval remain untouched.
+    """
+    rng = random.Random(int(seed))
+    buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        buckets[_side_bucket(row)].append(row)
+    side_keys = ["active_LONG", "active_SHORT", "rejected_LONG", "rejected_SHORT"]
+    target_n = max((len(buckets[k]) for k in side_keys), default=0)
+    selected: list[dict[str, Any]] = []
+    for key in side_keys:
+        pool = list(buckets.get(key, []))
+        if not pool:
+            continue
+        selected.extend(pool)
+        selected.extend(rng.choice(pool) for _ in range(max(0, target_n - len(pool))))
+    no_prior_pool = list(buckets.get("no_prior", []))
+    rng.shuffle(no_prior_pool)
+    no_prior_n = min(len(no_prior_pool), int(round(target_n * max(0.0, float(no_prior_per_bucket)))))
+    selected.extend(no_prior_pool[:no_prior_n])
+    return sorted(selected, key=lambda r: (str(r.get("date")), int(r.get("signal_pos", 0) or 0), json.dumps(_target_obj(r), sort_keys=True)))
+
 def _write(path: str, rows: list[dict[str, Any]]) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_text("\n".join(json.dumps(r, ensure_ascii=False, sort_keys=True) for r in rows) + ("\n" if rows else ""))
@@ -151,8 +188,10 @@ def run(cfg: ExportDxyKimchiSftCfg) -> dict[str, Any]:
         train_balanced = _balanced_train(train_raw, no_trade_per_activate=float(cfg.no_trade_per_activate), seed=int(cfg.seed))
     elif mode == "side_contrast":
         train_balanced = _side_contrast_train(train_raw, no_prior_per_prior_row=float(cfg.no_trade_per_activate), seed=int(cfg.seed))
+    elif mode == "side_contrast_oversample":
+        train_balanced = _side_contrast_oversample_train(train_raw, no_prior_per_bucket=float(cfg.no_trade_per_activate), seed=int(cfg.seed))
     else:
-        raise ValueError("balance_mode must be one of {'standard','side_contrast'}")
+        raise ValueError("balance_mode must be one of {'standard','side_contrast','side_contrast_oversample'}")
     train = [_message_row(r, cfg) for r in train_balanced]
     test = [_message_row(r, cfg) for r in test_raw]
     eval_rows = [_message_row(r, cfg) for r in eval_raw]
@@ -187,7 +226,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--summary-output", required=True)
     p.add_argument("--system-prompt", default=ExportDxyKimchiSftCfg.system_prompt)
     p.add_argument("--no-trade-per-activate", type=float, default=ExportDxyKimchiSftCfg.no_trade_per_activate)
-    p.add_argument("--balance-mode", choices=["standard", "side_contrast"], default=ExportDxyKimchiSftCfg.balance_mode)
+    p.add_argument("--balance-mode", choices=["standard", "side_contrast", "side_contrast_oversample"], default=ExportDxyKimchiSftCfg.balance_mode)
     p.add_argument("--seed", type=int, default=ExportDxyKimchiSftCfg.seed)
     return p.parse_args()
 
