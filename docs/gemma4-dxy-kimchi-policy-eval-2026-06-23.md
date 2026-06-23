@@ -55,3 +55,27 @@ Do not continue by gate-threshold tuning alone. The next useful change is to tra
 2. Make the output include a causal abstention rationale bucket, not just `activate`.
 3. Add validation objective that penalizes false-positive trades more than missed oracle trades.
 4. Evaluate with chronological full test/eval only; balanced samples are smoke tests, not performance evidence.
+
+## Follow-up: hard-negative 10:1 SFT128
+
+After the first evaluation showed deployment false positives, a train-only hard-negative export was generated with `NO_TRADE:ACTIVE = 10:1`:
+
+- Train rows: 550
+- Train targets: NO_TRADE 500, LONG 31, SHORT 19
+- Adapter: `checkpoints/dxy_kimchi_policy_gemma4_e4b_hardneg10_sft128_2026-06-23`
+- Training: 128 steps, effective batch 4, final train loss 0.2098
+
+### Chronological full test result
+
+| Model | Test trades | Pred mix | CAGR | Strict MDD | CAGR/MDD | p approx |
+| --- | ---: | --- | ---: | ---: | ---: | ---: |
+| SFT24 balanced 3:1 | 109 | LONG 59 / SHORT 70 / NO_TRADE 725 | 2.58% | 8.26% | 0.31 | 0.739 |
+| SFT128 hard-negative 10:1 | 26 | LONG 27 / SHORT 0 / NO_TRADE 827 | 3.78% | 4.83% | 0.78 | 0.385 |
+
+### Interpretation
+
+Hard-negative weighting reduced false positives and drawdown, but overcorrected into a LONG-only conservative policy and lost all SHORT recall. This confirms the next iteration needs side-specific abstention contrast, not just more NO_TRADE rows. The likely useful dataset shape is:
+
+- preserve `prior_signal_path_reward_rejected` rows separately for LONG and SHORT;
+- balance active LONG, active SHORT, rejected LONG-prior, rejected SHORT-prior, and no-prior rows;
+- add explicit `prior_side`/`abstain_reason` target fields or reason buckets so the model learns *why* a prior is rejected rather than treating abstention as one majority class.
