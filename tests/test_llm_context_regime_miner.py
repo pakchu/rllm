@@ -8,6 +8,7 @@ from training.llm_context_regime_miner import (
     _bucket_value,
     _fit_bucket_edges,
     _prompt,
+    _price_action_event_tokens,
     _state_tokens,
     _target,
 )
@@ -55,6 +56,19 @@ class TestLlmContextRegimeMiner(unittest.TestCase):
         self.assertEqual(tokens["external_availability"], "available")
         self.assertEqual(tokens["binance_aux_availability"], "missing_or_partial")
         self.assertIsInstance(tokens["trend_alignment"], str)
+        self.assertIn("pa_event_pressure", tokens)
+
+
+    def test_price_action_event_tokens_are_compact(self):
+        features = pd.DataFrame({
+            "pae_w36_break_below": [0.0, 1.0],
+            "pae_w576_failed_breakdown_long": [0.0, 1.0],
+            "pae_w2016_high_sweep_reject": [0.0, 0.0],
+        })
+        tokens = _price_action_event_tokens(features, 1)
+        self.assertEqual(tokens["pa_event_pressure"], "downside_break_or_reclaim")
+        self.assertEqual(tokens["pa_long_window_event"], "long_window_downside_reclaim_candidate")
+        self.assertEqual(tokens["pa_downside_reclaim"], "active_w576")
 
 
 if __name__ == "__main__":

@@ -29,8 +29,13 @@ from preprocessing.binance_aux_features import attach_binance_um_aux_features
 from preprocessing.external_features import attach_wave_trading_external_features
 from preprocessing.market_features import build_market_feature_frame
 from training.sparse_setup_ensemble_audit import _load_market
+from training.price_action_event_scan import build_price_action_event_features
 
 ACTIONS = {"NO_TRADE", "LONG", "SHORT"}
+
+
+def _parse_int_list(raw: str) -> list[int]:
+    return [int(x.strip()) for x in str(raw).split(",") if x.strip()]
 
 
 @dataclass(frozen=True)
@@ -62,6 +67,8 @@ class LlmContextRegimeMinerCfg:
     min_trade_edge_gap_pct: float = 0.15
     max_trade_mae_pct: float = 7.0
     max_rows: int = 0
+    include_price_action_events: bool = True
+    price_action_event_windows: str = "36,72,144,288,576,2016"
 
 
 FEATURES: tuple[str, ...] = (
@@ -101,6 +108,10 @@ def _load_market_with_features(cfg: LlmContextRegimeMinerCfg) -> tuple[pd.DataFr
             premium_tolerance=cfg.binance_premium_tolerance,
         )
     features = build_market_feature_frame(market, window_size=int(cfg.window_size))
+    if bool(cfg.include_price_action_events):
+        event_features = build_price_action_event_features(market, _parse_int_list(cfg.price_action_event_windows))
+        features = pd.concat([features, event_features], axis=1)
+        features = features.loc[:, ~features.columns.duplicated(keep="last")]
     for col in FEATURES + ("external_any_available", "binance_aux_any_available"):
         if col not in features.columns:
             features[col] = 0.0
@@ -144,12 +155,63 @@ def _bucket_value(value: float, edges: list[float]) -> str:
     return labels[min(max(idx, 0), len(labels) - 1)]
 
 
+def _event_active(features: pd.DataFrame, pos: int, window: int, names: tuple[str, ...]) -> bool:
+    for name in names:
+        col = f"pae_w{int(window)}_{name}"
+        if col in features.columns and float(features[col].iloc[pos]) > 0.5:
+            return True
+    return False
+
+
+def _price_action_event_tokens(features: pd.DataFrame, pos: int) -> dict[str, str]:
+    windows = sorted({int(c.split("_")[1][1:]) for c in features.columns if c.startswith("pae_w") and len(c.split("_")) > 1})
+    if not windows:
+        return {
+            "pa_event_pressure": "missing",
+            "pa_downside_reclaim": "missing",
+            "pa_upside_rejection": "missing",
+            "pa_long_window_event": "missing",
+        }
+    downside_names = ("break_below", "failed_breakdown_long", "low_sweep_reclaim", "low_sweep_reclaim_with_volume")
+    upside_names = ("break_above", "failed_breakout_short", "high_sweep_reject", "high_sweep_reject_with_volume")
+    downside = [w for w in windows if _event_active(features, pos, w, downside_names)]
+    upside = [w for w in windows if _event_active(features, pos, w, upside_names)]
+    low_sweep = [w for w in windows if _event_active(features, pos, w, ("low_sweep_reclaim", "low_sweep_reclaim_with_volume", "failed_breakdown_long"))]
+    high_sweep = [w for w in windows if _event_active(features, pos, w, ("high_sweep_reject", "high_sweep_reject_with_volume", "failed_breakout_short"))]
+    long_ws = [w for w in windows if w >= 576]
+    long_down = any(w in downside for w in long_ws)
+    long_up = any(w in upside for w in long_ws)
+    if downside and upside:
+        pressure = "two_sided_range_stress"
+    elif downside:
+        pressure = "downside_break_or_reclaim"
+    elif upside:
+        pressure = "upside_break_or_reject"
+    else:
+        pressure = "no_major_event"
+    if long_down and long_up:
+        long_event = "long_window_two_sided"
+    elif long_down:
+        long_event = "long_window_downside_reclaim_candidate"
+    elif long_up:
+        long_event = "long_window_upside_rejection_candidate"
+    else:
+        long_event = "none"
+    return {
+        "pa_event_pressure": pressure,
+        "pa_downside_reclaim": f"active_w{max(low_sweep)}" if low_sweep else "inactive",
+        "pa_upside_rejection": f"active_w{max(high_sweep)}" if high_sweep else "inactive",
+        "pa_long_window_event": long_event,
+    }
+
+
 def _state_tokens(features: pd.DataFrame, pos: int, edges: dict[str, list[float]]) -> dict[str, str]:
     tokens = {name: _bucket_value(float(features[name].iloc[pos]), edges[name]) for name in FEATURES}
     tokens["external_availability"] = "available" if float(features["external_any_available"].iloc[pos]) > 0.5 else "missing_or_partial"
     tokens["binance_aux_availability"] = "available" if float(features["binance_aux_any_available"].iloc[pos]) > 0.5 else "missing_or_partial"
     tokens["trend_alignment"] = _trend_alignment(tokens.get("trend_96", "missing"), tokens.get("trend_288", "missing"))
     tokens["risk_state"] = _risk_state(tokens.get("window_drawdown", "missing"), tokens.get("range_pos", "missing"))
+    tokens.update(_price_action_event_tokens(features, pos))
     return tokens
 
 
@@ -308,6 +370,7 @@ def _summarize(rows: list[dict[str, Any]], edges: dict[str, list[float]], cfg: L
             "targets_use_future_path_for_training_only": True,
             "not_a_backtest_result": True,
             "active_rllm_path": "single_policy_context_abstraction",
+            "price_action_event_tokens_are_causal": bool(cfg.include_price_action_events),
         },
     }
 
@@ -349,6 +412,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--min-trade-edge-gap-pct", type=float, default=LlmContextRegimeMinerCfg.min_trade_edge_gap_pct)
     p.add_argument("--max-trade-mae-pct", type=float, default=LlmContextRegimeMinerCfg.max_trade_mae_pct)
     p.add_argument("--max-rows", type=int, default=LlmContextRegimeMinerCfg.max_rows)
+    p.add_argument("--include-price-action-events", action=argparse.BooleanOptionalAction, default=LlmContextRegimeMinerCfg.include_price_action_events)
+    p.add_argument("--price-action-event-windows", default=LlmContextRegimeMinerCfg.price_action_event_windows)
     return p.parse_args()
 
 
