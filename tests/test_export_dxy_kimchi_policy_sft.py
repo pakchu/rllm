@@ -3,15 +3,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from training.export_dxy_kimchi_policy_sft import ExportDxyKimchiSftCfg, _balanced_train, run
+from training.export_dxy_kimchi_policy_sft import ExportDxyKimchiSftCfg, _balanced_train, _side_contrast_train, run
 
 
-def row(split, i, activate, reason="no_prior_signal", action="NO_TRADE"):
+def row(split, i, activate, reason="no_prior_signal", action="NO_TRADE", prior_side="NONE"):
     if activate:
         target = {"activate": True, "action": action, "exit_profile": "FAST", "confidence": "MEDIUM", "reason_code": "prior_signal_path_reward_ok"}
     else:
         target = {"activate": False, "action": "NO_TRADE", "exit_profile": "AVOID", "confidence": "LOW", "reason_code": reason}
-    return {"task": "dxy_kimchi_regime_policy_sft", "split": split, "date": f"2025-01-{i+1:02d}", "signal_pos": i, "prompt": "prompt", "target": json.dumps(target)}
+    return {"task": "dxy_kimchi_regime_policy_sft", "split": split, "date": f"2025-01-{i+1:02d}", "signal_pos": i, "prompt": "prompt", "target": json.dumps(target), "prior_signal": {"side": prior_side}}
 
 
 class TestExportDxyKimchiPolicySft(unittest.TestCase):
@@ -21,6 +21,18 @@ class TestExportDxyKimchiPolicySft(unittest.TestCase):
         active = sum(json.loads(r["target"])["activate"] for r in selected)
         self.assertEqual(active, 2)
         self.assertLessEqual(len(selected), 6)
+
+
+    def test_side_contrast_preserves_rejected_prior_by_side(self):
+        rows = [
+            row("train", 0, True, action="LONG", prior_side="LONG"),
+            row("train", 1, False, reason="prior_signal_path_reward_rejected", prior_side="LONG"),
+            row("train", 2, True, action="SHORT", prior_side="SHORT"),
+            row("train", 3, False, reason="prior_signal_path_reward_rejected", prior_side="SHORT"),
+        ] + [row("train", i + 10, False, prior_side="NONE") for i in range(10)]
+        selected = _side_contrast_train(rows, no_prior_per_prior_row=0.5, seed=1)
+        self.assertEqual(sum(1 for r in selected if r["prior_signal"]["side"] in {"LONG", "SHORT"}), 4)
+        self.assertEqual(sum(1 for r in selected if r["prior_signal"]["side"] == "NONE"), 2)
 
     def test_run_writes_train_test_eval_messages(self):
         with tempfile.TemporaryDirectory() as td:

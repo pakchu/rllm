@@ -19,6 +19,7 @@ class ExportDxyKimchiSftCfg:
     summary_output: str
     system_prompt: str = "You are a compact BTCUSDT futures RLLM policy. Return exactly one valid compact JSON object."
     no_trade_per_activate: float = 3.0
+    balance_mode: str = "standard"
     seed: int = 42
 
 
@@ -41,6 +42,15 @@ def _bucket(row: dict[str, Any]) -> str:
     if bool(obj.get("activate")):
         return f"activate_{obj.get('action')}"
     return str(obj.get("reason_code", "no_trade"))
+
+
+def _prior_side(row: dict[str, Any]) -> str:
+    signal = row.get("prior_signal", {})
+    if isinstance(signal, dict):
+        side = str(signal.get("side", "NONE")).upper()
+    else:
+        side = "NONE"
+    return side if side in {"LONG", "SHORT"} else "NONE"
 
 
 def _message_row(row: dict[str, Any], cfg: ExportDxyKimchiSftCfg) -> dict[str, Any]:
@@ -94,6 +104,23 @@ def _balanced_train(rows: list[dict[str, Any]], *, no_trade_per_activate: float,
     return sorted(selected, key=lambda r: (str(r.get("date")), int(r.get("signal_pos", 0) or 0)))
 
 
+def _side_contrast_train(rows: list[dict[str, Any]], *, no_prior_per_prior_row: float, seed: int) -> list[dict[str, Any]]:
+    """Keep side-specific prior examples and only subsample no-prior abstentions.
+
+    Plain NO_TRADE oversampling collapsed the policy into majority-class
+    abstention.  This selector preserves all rows where the train-fitted prior
+    fired (both accepted and rejected LONG/SHORT) so the model can learn
+    side-specific rejection boundaries.
+    """
+    rng = random.Random(int(seed))
+    prior_rows = [r for r in rows if _prior_side(r) in {"LONG", "SHORT"}]
+    no_prior_rows = [r for r in rows if _prior_side(r) == "NONE"]
+    rng.shuffle(no_prior_rows)
+    no_prior_budget = int(round(len(prior_rows) * max(0.0, float(no_prior_per_prior_row))))
+    selected = list(prior_rows) + no_prior_rows[: min(no_prior_budget, len(no_prior_rows))]
+    return sorted(selected, key=lambda r: (str(r.get("date")), int(r.get("signal_pos", 0) or 0)))
+
+
 def _write(path: str, rows: list[dict[str, Any]]) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_text("\n".join(json.dumps(r, ensure_ascii=False, sort_keys=True) for r in rows) + ("\n" if rows else ""))
@@ -119,7 +146,13 @@ def run(cfg: ExportDxyKimchiSftCfg) -> dict[str, Any]:
     train_raw = [r for r in rows if r.get("split") == "train"]
     test_raw = [r for r in rows if r.get("split") == "test"]
     eval_raw = [r for r in rows if r.get("split") == "eval"]
-    train_balanced = _balanced_train(train_raw, no_trade_per_activate=float(cfg.no_trade_per_activate), seed=int(cfg.seed))
+    mode = str(cfg.balance_mode).lower()
+    if mode == "standard":
+        train_balanced = _balanced_train(train_raw, no_trade_per_activate=float(cfg.no_trade_per_activate), seed=int(cfg.seed))
+    elif mode == "side_contrast":
+        train_balanced = _side_contrast_train(train_raw, no_prior_per_prior_row=float(cfg.no_trade_per_activate), seed=int(cfg.seed))
+    else:
+        raise ValueError("balance_mode must be one of {'standard','side_contrast'}")
     train = [_message_row(r, cfg) for r in train_balanced]
     test = [_message_row(r, cfg) for r in test_raw]
     eval_rows = [_message_row(r, cfg) for r in eval_raw]
@@ -129,6 +162,7 @@ def run(cfg: ExportDxyKimchiSftCfg) -> dict[str, Any]:
     report = {
         "config": asdict(cfg),
         "raw_counts": {"train": len(train_raw), "test": len(test_raw), "eval": len(eval_raw)},
+        "balance_mode": mode,
         "train": _summary(train),
         "test": _summary(test),
         "eval": _summary(eval_rows),
@@ -153,6 +187,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--summary-output", required=True)
     p.add_argument("--system-prompt", default=ExportDxyKimchiSftCfg.system_prompt)
     p.add_argument("--no-trade-per-activate", type=float, default=ExportDxyKimchiSftCfg.no_trade_per_activate)
+    p.add_argument("--balance-mode", choices=["standard", "side_contrast"], default=ExportDxyKimchiSftCfg.balance_mode)
     p.add_argument("--seed", type=int, default=ExportDxyKimchiSftCfg.seed)
     return p.parse_args()
 
