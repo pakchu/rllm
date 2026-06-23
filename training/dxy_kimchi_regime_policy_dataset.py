@@ -197,6 +197,40 @@ def _fmt(x: float) -> str:
     return f"{float(x):+.3f}"
 
 
+def _threshold_distance_bucket(value: float, threshold: float, *, direction: str) -> str:
+    if not np.isfinite(value) or not np.isfinite(threshold):
+        return "missing"
+    signed = (float(threshold) - float(value)) if direction == "below" else (float(value) - float(threshold))
+    if signed < 0.0:
+        return "not_triggered"
+    if signed < 0.25:
+        return "near"
+    if signed < 0.75:
+        return "medium"
+    return "deep"
+
+
+def _kimchi_signal_strength_bucket(kimchi_value: float, prior_side: str, rule: dict[str, Any]) -> str:
+    if prior_side not in {"LONG", "SHORT"} or not np.isfinite(kimchi_value):
+        return "none"
+    if prior_side == str(rule.get("high_side")):
+        return _threshold_distance_bucket(kimchi_value, float(rule["high_threshold"]), direction="above")
+    if prior_side == str(rule.get("low_side")):
+        return _threshold_distance_bucket(kimchi_value, float(rule["low_threshold"]), direction="below")
+    return "none"
+
+
+def _trend_alignment(prior_side: str, trend_token: str) -> str:
+    if prior_side not in {"LONG", "SHORT"}:
+        return "no_prior"
+    trend = str(trend_token)
+    if trend in {"flat", "missing"}:
+        return "flat_or_missing"
+    if prior_side == "LONG":
+        return "aligned" if trend in {"up", "strong_up"} else "opposed"
+    return "aligned" if trend in {"down", "strong_down"} else "opposed"
+
+
 def _prompt(*, date: str, tokens: dict[str, str], prior_side: str, dxy_value: float, kimchi_value: float, rule: dict[str, Any], dxy_low_threshold: float, cfg: DxyKimchiPolicyDatasetCfg) -> str:
     lines = [
         "You are a compact BTCUSDT futures RLLM policy.",
@@ -213,6 +247,9 @@ def _prompt(*, date: str, tokens: dict[str, str], prior_side: str, dxy_value: fl
         f"- dxy_regime_now: {'LOW_BUCKET' if dxy_value <= dxy_low_threshold else 'NOT_LOW_BUCKET'}",
         f"- kimchi_prior_signal: {prior_side}",
         f"- prior_direction_mapping: high_kimchi={rule['high_side']}; low_kimchi={rule['low_side']}",
+        f"- dxy_low_depth_bucket: {_threshold_distance_bucket(dxy_value, dxy_low_threshold, direction='below')}",
+        f"- kimchi_signal_strength_bucket: {_kimchi_signal_strength_bucket(kimchi_value, prior_side, rule)}",
+        f"- prior_side_trend_alignment: {_trend_alignment(prior_side, tokens.get('session_trend', 'missing'))}",
         "causal_state_tokens:",
     ]
     for k in sorted(tokens):
