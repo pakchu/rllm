@@ -41,6 +41,8 @@ def _action_bucket(text: str) -> str:
     except Exception:
         return str(text)[:80]
     if isinstance(obj, dict):
+        if "side_pair" in obj:
+            return f"side_pair={obj.get('side_pair')}"
         return f"gate={obj.get('gate')},side={obj.get('side')},hold={obj.get('hold_bars')}"
     return str(obj)[:80]
 
