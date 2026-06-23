@@ -79,3 +79,22 @@ Hard-negative weighting reduced false positives and drawdown, but overcorrected 
 - preserve `prior_signal_path_reward_rejected` rows separately for LONG and SHORT;
 - balance active LONG, active SHORT, rejected LONG-prior, rejected SHORT-prior, and no-prior rows;
 - add explicit `prior_side`/`abstain_reason` target fields or reason buckets so the model learns *why* a prior is rejected rather than treating abstention as one majority class.
+
+## Follow-up: side-specific contrast and oversampling
+
+Two side-aware train-only selectors were tested after hard-negative 10:1 collapsed SHORT recall.
+
+| Adapter | Train rows | Train mix | Test pred mix | Test trades | CAGR | Strict MDD | CAGR/MDD | Outcome |
+| --- | ---: | --- | --- | ---: | ---: | ---: | ---: | --- |
+| sidecontrast05 SFT80 | 209 | active 50 / rejected-prior 89 / no-prior 70 | smoke only: LONG 9 / SHORT 0 / NO_TRADE 51 | n/a | n/a | n/a | n/a | Still no SHORT recall |
+| sidecontrast_os1 SFT80 | 225 | LONG 45 / SHORT 45 / rejected 90 / no-prior 45 | full test: LONG 32 / SHORT 59 / NO_TRADE 763 | 83 | -8.31% | 11.63% | -0.71 | SHORT false positives dominate |
+
+### Updated diagnosis
+
+The policy is not simply under/over-weighting the inactive class. The LLM can be pushed between three bad regimes:
+
+1. balanced 3:1: both sides active but too many false positives;
+2. hard-negative 10:1: fewer false positives but LONG-only and low trade count;
+3. side oversampling: SHORT recall returns but false-positive SHORTs destroy expectancy.
+
+The next useful fix is not more class balancing. The model needs a causal feature that distinguishes rejected SHORT contexts from valid SHORT contexts, or the target schema must expose that distinction explicitly. Candidate next experiment: add compact numeric/rank tokens for side-specific margin from Kimchi thresholds, DXY depth, and recent BTC trend/volatility interaction, then train a cost-sensitive abstention objective.
