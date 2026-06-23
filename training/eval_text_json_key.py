@@ -19,8 +19,9 @@ VALID_VALUES = {
     "decision": {"ABSTAIN", "TAKE_FULL", "TAKE_SMALL"},
     "action": {"NO_TRADE", "LONG", "SHORT"},
     "side_map": {"NORMAL", "INVERSE", "UNRELIABLE"},
+    "side_pair": {"NORMAL", "INVERSE"},
 }
-DEFAULT_VALUES = {"gate": "NO_TRADE", "side": "LONG", "decision": "ABSTAIN", "action": "NO_TRADE", "side_map": "UNRELIABLE"}
+DEFAULT_VALUES = {"gate": "NO_TRADE", "side": "LONG", "decision": "ABSTAIN", "action": "NO_TRADE", "side_map": "UNRELIABLE", "side_pair": "NORMAL"}
 
 
 def parse_key_json(text: str, *, key: str) -> str:
@@ -86,7 +87,7 @@ def _candidate_values(key: str) -> list[str]:
 def _candidate_json(key: str, value: str) -> str:
     # side_map SFT targets are intentionally lowercase JSON values while
     # parse_key_json normalizes them to uppercase labels for metrics.
-    raw_value = str(value).lower() if str(key).lower() == "side_map" else value
+    raw_value = str(value).lower() if str(key).lower() in {"side_map", "side_pair"} else value
     return json.dumps({key: raw_value}, sort_keys=True, ensure_ascii=False)
 
 
@@ -201,7 +202,7 @@ def evaluate_text_json_key(
 ) -> dict[str, Any]:
     key = str(key).strip().lower()
     if key not in VALID_VALUES:
-        raise ValueError("key must be one of {'gate','side','decision','action','side_map'}")
+        raise ValueError("key must be one of {'gate','side','decision','action','side_map','side_pair'}")
     rows = load_jsonl(eval_jsonl, max_samples=max_samples, sample_mode=sample_mode, seed=seed)
     if prediction_mode == "target_echo":
         preds = [parse_key_json(str(r["target"]), key=key) for r in rows]
