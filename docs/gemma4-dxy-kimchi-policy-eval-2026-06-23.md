@@ -120,3 +120,30 @@ The margin tokens improved balanced-sample decoding but did not solve chronologi
 1. remove buckets that are non-discriminative;
 2. add genuinely discriminative causal features;
 3. or train a two-stage abstention classifier before letting the LLM emit side actions.
+
+## Follow-up: false-positive diagnostics and test-derived filter
+
+A diagnostic pass joined full-test predictions back to causal prompt buckets. For `margin_os1 SFT80` full test:
+
+- target: LONG 31 / SHORT 21 / NO_TRADE 802
+- prediction: LONG 51 / SHORT 70 / NO_TRADE 733
+- errors: false-positive LONG 24, false-positive SHORT 49, false-negative LONG 4
+
+Notable bucket result:
+
+| Bucket | n | FP | TP | FP rate | TP rate |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `kimchi_signal_strength_bucket=near` | 30 | 9 | 18 | 30.0% | 60.0% |
+| `kimchi_signal_strength_bucket=medium` | 50 | 35 | 10 | 70.0% | 20.0% |
+| `kimchi_signal_strength_bucket=deep` | 49 | 29 | 20 | 59.2% | 40.8% |
+
+A test-selected causal filter that only allowed generated trades when `kimchi_signal_strength_bucket=near` improved test but failed eval:
+
+| Split | Trades | CAGR | Strict MDD | CAGR/MDD | p approx |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| test | 26 | 6.85% | 2.37% | 2.89 | 0.080 |
+| eval | 19 | -0.97% | 2.50% | -0.39 | 0.777 |
+
+### Updated diagnosis
+
+Even the best test-derived causal filter does not generalize. The current DXY-low/Kimchi prior family has some local test edge but is not stable enough for the user's target. The next meaningful path is broader alpha discovery or a more structural target/policy redesign; continuing to tune this same prior is unlikely to reach CAGR/MDD >= 3 across untouched eval.
