@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from training.event_candidate_pairwise_walkforward import EventCandidatePairwiseWalkForwardCfg, _allowed_sides_from_validation, _no_trade_predictions, _side_scales_from_validation, _side_trade_stats, make_folds
+from training.event_candidate_pairwise_walkforward import EventCandidatePairwiseWalkForwardCfg, _feature_filter_values, _max_feature_names, _side_scales_from_validation, _side_trade_stats, _allowed_sides_from_validation, _no_trade_predictions, make_folds
 
 
 class TestEventCandidatePairwiseWalkForward(unittest.TestCase):
@@ -48,6 +48,15 @@ class TestEventCandidatePairwiseWalkForward(unittest.TestCase):
             input_jsonl="x", market_csv="m", output="o", side_min_val_trades=2, side_scale_val_mean_ret_pct=1.0
         )
         self.assertEqual(_side_scales_from_validation(stats, cfg), {"LONG": 0.5, "SHORT": 0.0})
+
+    def test_max_feature_names_prefers_multi_arg(self):
+        cfg = EventCandidatePairwiseWalkForwardCfg(input_jsonl="x", market_csv="m", output="o", max_feature_name="old", max_feature_names="a,b,a")
+        self.assertEqual(_max_feature_names(cfg), ["a", "b"])
+
+    def test_feature_filter_values_uses_selected_quantiles(self):
+        import numpy as np
+        values = {"a": np.asarray([1.0, 3.0, 5.0]), "b": np.asarray([2.0, 4.0, 6.0])}
+        self.assertEqual(_feature_filter_values(values, {"a": 0.5, "b": None}), {"a": 3.0})
 
 
 if __name__ == "__main__":

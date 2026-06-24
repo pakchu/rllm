@@ -68,6 +68,19 @@ class TestEventCandidatePairwiseRanker(unittest.TestCase):
         self.assertEqual(summary["counts"]["TRADE"], 1)
         self.assertEqual(summary["counts"]["NO_TRADE"], 1)
 
+    def test_write_policy_can_filter_multiple_max_features(self):
+        import tempfile
+        from pathlib import Path
+        best = [
+            {"row": {"date": "d", "signal_pos": 1, "side": "LONG", "candidate": {"hold_bars": 1}, "feature_snapshot": {"a": 2.0, "b": 2.0}}, "score": 2.0},
+            {"row": {"date": "d2", "signal_pos": 2, "side": "LONG", "candidate": {"hold_bars": 1}, "feature_snapshot": {"a": 2.0, "b": 5.0}}, "score": 2.0},
+            {"row": {"date": "d3", "signal_pos": 3, "side": "LONG", "candidate": {"hold_bars": 1}, "feature_snapshot": {"a": 5.0, "b": 2.0}}, "score": 2.0},
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = _write_policy(best, str(Path(tmp) / "p.jsonl"), threshold=1.0, full_margin=0.0, max_feature_filters={"a": 3.0, "b": 3.0})
+        self.assertEqual(summary["counts"]["TRADE"], 1)
+        self.assertEqual(summary["counts"]["NO_TRADE"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()
