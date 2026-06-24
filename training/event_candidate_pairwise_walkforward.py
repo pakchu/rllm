@@ -71,6 +71,8 @@ class EventCandidatePairwiseWalkForwardCfg:
     side_min_val_trades: int = 0
     side_min_val_mean_ret_pct: float = -999.0
     side_scale_val_mean_ret_pct: float = 0.0
+    trade_stop_loss_pct: float = 0.0
+    trade_take_profit_pct: float = 0.0
 
 
 def _parse_dt(value: str) -> datetime:
@@ -264,6 +266,8 @@ def _select_on_validation(
                     output=str(tmp / f"fold{fold_id:03d}_val_q{q}_m{margin}.bt.json"),
                     leverage=cfg.leverage,
                     entry_delay_bars=cfg.entry_delay_bars,
+                    trade_stop_loss_pct=cfg.trade_stop_loss_pct,
+                    trade_take_profit_pct=cfg.trade_take_profit_pct,
                 )
             )
             sim = bt["sim"]
@@ -317,6 +321,8 @@ def _trade_test_fold(
             output=str(fold_dir / f"fold{fold_id:03d}_test_backtest.json"),
             leverage=cfg.leverage,
             entry_delay_bars=cfg.entry_delay_bars,
+            trade_stop_loss_pct=cfg.trade_stop_loss_pct,
+            trade_take_profit_pct=cfg.trade_take_profit_pct,
         )
     )
     return {"prediction_path": str(pred_path), "prediction_summary": ps, "test_backtest": {"sim": bt["sim"], "trade_stats": bt["trade_stats"]}, "test_threshold": threshold, "side_allowlist": sorted(allowed_sides) if allowed_sides is not None else None, "side_scale_by_side": side_scales, "fit_meta": _compact_fit_meta(fit_meta)}
@@ -375,6 +381,8 @@ def run(cfg: EventCandidatePairwiseWalkForwardCfg) -> dict[str, Any]:
                 output=str(work_dir / "aggregate_backtest.json"),
                 leverage=cfg.leverage,
                 entry_delay_bars=cfg.entry_delay_bars,
+                trade_stop_loss_pct=cfg.trade_stop_loss_pct,
+                trade_take_profit_pct=cfg.trade_take_profit_pct,
             )
         )
         aggregate = {"prediction_files": pred_paths, "backtest": {"sim": bt["sim"], "trade_stats": bt["trade_stats"]}}
@@ -430,6 +438,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--side-min-val-trades", type=int, default=EventCandidatePairwiseWalkForwardCfg.side_min_val_trades)
     p.add_argument("--side-min-val-mean-ret-pct", type=float, default=EventCandidatePairwiseWalkForwardCfg.side_min_val_mean_ret_pct)
     p.add_argument("--side-scale-val-mean-ret-pct", type=float, default=EventCandidatePairwiseWalkForwardCfg.side_scale_val_mean_ret_pct)
+    p.add_argument("--trade-stop-loss-pct", type=float, default=EventCandidatePairwiseWalkForwardCfg.trade_stop_loss_pct)
+    p.add_argument("--trade-take-profit-pct", type=float, default=EventCandidatePairwiseWalkForwardCfg.trade_take_profit_pct)
     return p.parse_args()
 
 
