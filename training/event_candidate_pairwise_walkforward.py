@@ -67,6 +67,7 @@ class EventCandidatePairwiseWalkForwardCfg:
     max_val_power_gap: int = -1
     leverage: float = 1.0
     entry_delay_bars: int = 1
+    pair_half_life_days: float = 0.0
 
 
 def _parse_dt(value: str) -> datetime:
@@ -167,6 +168,7 @@ def _pairwise_cfg(cfg: EventCandidatePairwiseWalkForwardCfg, train_path: str, ev
         min_val_trades=cfg.min_val_trades,
         leverage=cfg.leverage,
         entry_delay_bars=cfg.entry_delay_bars,
+        pair_half_life_days=cfg.pair_half_life_days,
     )
 
 
@@ -376,6 +378,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-val-power-gap", type=int, default=EventCandidatePairwiseWalkForwardCfg.max_val_power_gap)
     p.add_argument("--leverage", type=float, default=EventCandidatePairwiseWalkForwardCfg.leverage)
     p.add_argument("--entry-delay-bars", type=int, default=EventCandidatePairwiseWalkForwardCfg.entry_delay_bars)
+    p.add_argument("--pair-half-life-days", type=float, default=EventCandidatePairwiseWalkForwardCfg.pair_half_life_days)
     return p.parse_args()
 
 

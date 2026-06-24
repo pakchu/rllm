@@ -33,6 +33,7 @@ class EventCandidatePairwiseRankerCfg:
     min_val_trades: int = 50
     leverage: float = 1.0
     entry_delay_bars: int = 1
+    pair_half_life_days: float = 0.0
 
 
 def _groups(rows: list[dict[str, Any]]) -> dict[tuple[str, int], list[int]]:
@@ -71,20 +72,39 @@ def _sigmoid(x: np.ndarray) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-np.clip(x, -40.0, 40.0)))
 
 
-def _fit_pairwise(x: np.ndarray, pairs: list[tuple[int, int]], *, lr: float, l2: float, epochs: int) -> np.ndarray:
+def _fit_pairwise(x: np.ndarray, pairs: list[tuple[int, int]], *, lr: float, l2: float, epochs: int, pair_weights: np.ndarray | None = None) -> np.ndarray:
     w = np.zeros(x.shape[1], dtype=np.float64)
     if not pairs or x.shape[1] == 0:
         return w
     win = np.asarray([a for a, _ in pairs], dtype=np.int64)
     lose = np.asarray([b for _, b in pairs], dtype=np.int64)
     diff = x[win] - x[lose]
-    n = float(len(pairs))
+    if pair_weights is None:
+        weights = np.ones(len(pairs), dtype=np.float64)
+    else:
+        weights = np.asarray(pair_weights, dtype=np.float64)
+        weights = np.where(np.isfinite(weights) & (weights > 0.0), weights, 1.0)
+        weights = weights / max(1e-12, float(np.mean(weights)))
+    n = float(np.sum(weights))
     for _ in range(int(epochs)):
         p = _sigmoid(diff @ w)
-        grad = -(diff.T @ (1.0 - p)) / n + float(l2) * w / n
+        grad = -(diff.T @ (weights * (1.0 - p))) / n + float(l2) * w / n
         w -= float(lr) * grad
     return w
 
+
+
+def _pair_time_weights(rows: list[dict[str, Any]], pairs: list[tuple[int, int]], half_life_days: float) -> np.ndarray | None:
+    if float(half_life_days) <= 0.0 or not pairs:
+        return None
+    dates = [np.datetime64(str(r.get("date"))) for r in rows]
+    max_date = max(dates)
+    half_life_seconds = float(half_life_days) * 86400.0
+    weights = []
+    for a, _ in pairs:
+        age_seconds = float((max_date - dates[a]) / np.timedelta64(1, "s"))
+        weights.append(0.5 ** (max(0.0, age_seconds) / half_life_seconds))
+    return np.asarray(weights, dtype=np.float64)
 
 def _fit_score(
     fit_rows: list[dict[str, Any]],
@@ -99,8 +119,9 @@ def _fit_score(
     x_score, _ = _xy(score_rows, num, cat)
     x_fit_z, x_score_z, scaler = _standardize(x_fit, x_score)
     pairs = build_pairs(fit_rows, max_pairs_per_signal=cfg.max_pairs_per_signal, min_utility_gap=cfg.min_utility_gap)
-    w = _fit_pairwise(x_fit_z, pairs, lr=cfg.lr, l2=cfg.l2, epochs=cfg.epochs)
-    meta = {"pairs": len(pairs), "features": x_fit_z.shape[1], "scaler": scaler, "weight_l2": float(np.sqrt(np.sum(w * w)))}
+    pair_weights = _pair_time_weights(fit_rows, pairs, cfg.pair_half_life_days)
+    w = _fit_pairwise(x_fit_z, pairs, lr=cfg.lr, l2=cfg.l2, epochs=cfg.epochs, pair_weights=pair_weights)
+    meta = {"pairs": len(pairs), "features": x_fit_z.shape[1], "scaler": scaler, "weight_l2": float(np.sqrt(np.sum(w * w))), "pair_half_life_days": float(cfg.pair_half_life_days), "pair_weight_min": float(np.min(pair_weights)) if pair_weights is not None and len(pair_weights) else 1.0, "pair_weight_max": float(np.max(pair_weights)) if pair_weights is not None and len(pair_weights) else 1.0}
     return x_fit_z @ w, x_score_z @ w, names, meta
 
 
@@ -177,6 +198,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--min-val-trades", type=int, default=EventCandidatePairwiseRankerCfg.min_val_trades)
     p.add_argument("--leverage", type=float, default=EventCandidatePairwiseRankerCfg.leverage)
     p.add_argument("--entry-delay-bars", type=int, default=EventCandidatePairwiseRankerCfg.entry_delay_bars)
+    p.add_argument("--pair-half-life-days", type=float, default=EventCandidatePairwiseRankerCfg.pair_half_life_days)
     return p.parse_args()
 
 
