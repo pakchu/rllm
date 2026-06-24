@@ -114,15 +114,19 @@ def _write_policy(
     max_feature_name: str = "",
     max_feature_value: float | None = None,
     max_feature_filters: dict[str, float] | None = None,
+    min_feature_filters: dict[str, float] | None = None,
 ) -> dict[str,Any]:
-    filters = dict(max_feature_filters or {})
+    max_filters = dict(max_feature_filters or {})
     if max_feature_name and max_feature_value is not None:
-        filters[max_feature_name] = float(max_feature_value)
+        max_filters[max_feature_name] = float(max_feature_value)
+    min_filters = dict(min_feature_filters or {})
     out=[]; counts={"TRADE":0,"NO_TRADE":0,"LONG":0,"SHORT":0,"FULL":0,"SMALL":0}
     for item in best_rows:
         r=item["row"]; score=float(item["score"]); side=str(r.get("side")); hold=int(r.get("candidate",{}).get("hold_bars",288) or 288)
         snap = r.get("feature_snapshot", {}) if isinstance(r.get("feature_snapshot"), dict) else {}
-        feature_ok = all(float(snap.get(name, 0.0) or 0.0) <= float(value) for name, value in filters.items())
+        feature_ok = all(float(snap.get(name, 0.0) or 0.0) <= float(value) for name, value in max_filters.items()) and all(
+            float(snap.get(name, 0.0) or 0.0) >= float(value) for name, value in min_filters.items()
+        )
         if score >= threshold and side in {"LONG","SHORT"} and (allowed_sides is None or side in allowed_sides) and feature_ok:
             scale=1.0 if score >= threshold + float(full_margin) else float(small_scale)
             if side_scale_by_side is not None:
@@ -134,7 +138,7 @@ def _write_policy(
         out.append({"date":r.get("date"),"signal_pos":r.get("signal_pos"),"prediction":pred,"position_scale":scale,"score":score,"side_candidate":side})
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_text("\n".join(json.dumps(r,ensure_ascii=False,sort_keys=True) for r in out)+"\n")
-    return {"rows":len(out),"counts":counts,"threshold":threshold,"full_margin":full_margin,"allowed_sides": sorted(allowed_sides) if allowed_sides is not None else None,"side_scale_by_side": side_scale_by_side,"max_feature_name": max_feature_name or None,"max_feature_value": max_feature_value,"max_feature_filters": filters or None,"output":output}
+    return {"rows":len(out),"counts":counts,"threshold":threshold,"full_margin":full_margin,"allowed_sides": sorted(allowed_sides) if allowed_sides is not None else None,"side_scale_by_side": side_scale_by_side,"max_feature_name": max_feature_name or None,"max_feature_value": max_feature_value,"max_feature_filters": max_filters or None,"min_feature_filters": min_filters or None,"output":output}
 
 
 def _fit_score(fit_rows: list[dict[str,Any]], score_rows: list[dict[str,Any]], alpha: float, names: tuple[list[str],list[str]]|None=None) -> tuple[np.ndarray, np.ndarray, tuple[list[str],list[str]]]:

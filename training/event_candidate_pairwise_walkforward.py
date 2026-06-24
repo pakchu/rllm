@@ -78,6 +78,8 @@ class EventCandidatePairwiseWalkForwardCfg:
     max_feature_name: str = ""
     max_feature_names: str = ""
     max_feature_quantiles: str = ""
+    min_feature_names: str = ""
+    min_feature_quantiles: str = ""
 
 
 def _parse_dt(value: str) -> datetime:
@@ -210,6 +212,15 @@ def _max_feature_names(cfg: EventCandidatePairwiseWalkForwardCfg) -> list[str]:
     return names
 
 
+def _min_feature_names(cfg: EventCandidatePairwiseWalkForwardCfg) -> list[str]:
+    names: list[str] = []
+    for name in str(cfg.min_feature_names).split(","):
+        clean = name.strip()
+        if clean and clean not in names:
+            names.append(clean)
+    return names
+
+
 def _best_feature_values_by_name(best_rows: list[dict[str, Any]], names: list[str]) -> dict[str, np.ndarray]:
     return {name: _best_feature_values(best_rows, name) for name in names}
 
@@ -306,21 +317,29 @@ def _select_on_validation(
 ) -> dict[str, Any]:
     qs = [float(x) for x in cfg.quantiles.split(",") if x.strip()]
     margins = [float(x) for x in cfg.full_margins.split(",") if x.strip()]
-    filter_names = _max_feature_names(cfg)
-    filter_grid = _feature_filter_grid(filter_names, cfg.max_feature_quantiles)
+    max_filter_names = _max_feature_names(cfg)
+    min_filter_names = _min_feature_names(cfg)
+    max_filter_grid = _feature_filter_grid(max_filter_names, cfg.max_feature_quantiles)
+    min_filter_grid = _feature_filter_grid(min_filter_names, cfg.min_feature_quantiles)
     pw_cfg = _pairwise_cfg(cfg, "", "")
     fit_scores, val_scores, names, fit_meta = _fit_score(fit_rows, val_rows, pw_cfg)
     fit_best = _best_by_signal(fit_rows, fit_scores)
     fit_best_scores = np.asarray([x["score"] for x in fit_best], dtype=float)
-    fit_filter_values = _best_feature_values_by_name(fit_best, filter_names)
+    fit_max_filter_values = _best_feature_values_by_name(fit_best, max_filter_names)
+    fit_min_filter_values = _best_feature_values_by_name(fit_best, min_filter_names)
     val_best = _best_by_signal(val_rows, val_scores)
     candidates: list[dict[str, Any]] = []
     for q in qs:
         threshold = float(np.quantile(fit_best_scores, q)) if len(fit_best_scores) else 999.0
         for margin in margins:
-            for filter_qs in filter_grid:
-                max_feature_filters = _feature_filter_values(fit_filter_values, filter_qs)
-                filter_tag = "_".join("none" if v is None else str(v) for v in filter_qs.values()) or "none"
+            for max_filter_qs, min_filter_qs in itertools.product(max_filter_grid, min_filter_grid):
+                max_feature_filters = _feature_filter_values(fit_max_filter_values, max_filter_qs)
+                min_feature_filters = _feature_filter_values(fit_min_filter_values, min_filter_qs)
+                filter_tag_parts = [
+                    "max-" + ("_".join("none" if v is None else str(v) for v in max_filter_qs.values()) or "none"),
+                    "min-" + ("_".join("none" if v is None else str(v) for v in min_filter_qs.values()) or "none"),
+                ]
+                filter_tag = "_".join(filter_tag_parts)
                 pred = tmp / f"fold{fold_id:03d}_val_q{q}_m{margin}_fq{filter_tag}.jsonl"
                 ps = _write_policy(
                     val_best,
@@ -328,6 +347,7 @@ def _select_on_validation(
                     threshold,
                     margin,
                     max_feature_filters=max_feature_filters,
+                    min_feature_filters=min_feature_filters,
                 )
                 bt = run_overlay(
                     OnlineRiskOverlayConfig(
@@ -351,11 +371,14 @@ def _select_on_validation(
                     {
                         "q": q,
                         "full_margin": margin,
-                        "filter_q": next(iter(filter_qs.values()), None) if len(filter_qs) == 1 else None,
-                        "filter_qs": filter_qs,
+                        "filter_q": next(iter(max_filter_qs.values()), None) if len(max_filter_qs) == 1 and not min_filter_qs else None,
+                        "filter_qs": max_filter_qs,
+                        "min_filter_qs": min_filter_qs,
                         "threshold": threshold,
-                        "max_feature_names": filter_names or None,
+                        "max_feature_names": max_filter_names or None,
                         "max_feature_filters": max_feature_filters or None,
+                        "min_feature_names": min_filter_names or None,
+                        "min_feature_filters": min_feature_filters or None,
                         "prediction_summary": ps,
                         "val_sim": sim,
                         "val_trade_stats": stats,
@@ -385,16 +408,20 @@ def _trade_test_fold(
     threshold = float(np.quantile(train_best_scores, float(selected["q"]))) if len(train_best_scores) else 999.0
     train_best = _best_by_signal(train_rows, train_scores)
     test_best = _best_by_signal(test_rows, test_scores)
-    filter_names = _max_feature_names(cfg)
-    train_filter_values = _best_feature_values_by_name(train_best, filter_names)
+    max_filter_names = _max_feature_names(cfg)
+    min_filter_names = _min_feature_names(cfg)
+    train_max_filter_values = _best_feature_values_by_name(train_best, max_filter_names)
+    train_min_filter_values = _best_feature_values_by_name(train_best, min_filter_names)
     selected_filter_qs = selected.get("filter_qs") or {}
-    if selected.get("filter_q") is not None and filter_names and not selected_filter_qs:
-        selected_filter_qs = {filter_names[0]: selected.get("filter_q")}
-    max_feature_filters = _feature_filter_values(train_filter_values, selected_filter_qs)
+    if selected.get("filter_q") is not None and max_filter_names and not selected_filter_qs:
+        selected_filter_qs = {max_filter_names[0]: selected.get("filter_q")}
+    selected_min_filter_qs = selected.get("min_filter_qs") or {}
+    max_feature_filters = _feature_filter_values(train_max_filter_values, selected_filter_qs)
+    min_feature_filters = _feature_filter_values(train_min_filter_values, selected_min_filter_qs)
     side_stats = selected.get("val_side_trade_stats", {})
     allowed_sides = _allowed_sides_from_validation(side_stats, cfg)
     side_scales = _side_scales_from_validation(side_stats, cfg)
-    ps = _write_policy(test_best, str(pred_path), threshold, float(selected["full_margin"]), allowed_sides=allowed_sides, side_scale_by_side=side_scales, max_feature_filters=max_feature_filters)
+    ps = _write_policy(test_best, str(pred_path), threshold, float(selected["full_margin"]), allowed_sides=allowed_sides, side_scale_by_side=side_scales, max_feature_filters=max_feature_filters, min_feature_filters=min_feature_filters)
     bt = run_overlay(
         OnlineRiskOverlayConfig(
             predictions_jsonl=str(pred_path),
@@ -406,7 +433,7 @@ def _trade_test_fold(
             trade_take_profit_pct=cfg.trade_take_profit_pct,
         )
     )
-    return {"prediction_path": str(pred_path), "prediction_summary": ps, "test_backtest": {"sim": bt["sim"], "trade_stats": bt["trade_stats"]}, "test_threshold": threshold, "side_allowlist": sorted(allowed_sides) if allowed_sides is not None else None, "side_scale_by_side": side_scales, "max_feature_names": filter_names or None, "max_feature_filters": max_feature_filters or None, "filter_q": selected.get("filter_q"), "filter_qs": selected_filter_qs or None, "fit_meta": _compact_fit_meta(fit_meta)}
+    return {"prediction_path": str(pred_path), "prediction_summary": ps, "test_backtest": {"sim": bt["sim"], "trade_stats": bt["trade_stats"]}, "test_threshold": threshold, "side_allowlist": sorted(allowed_sides) if allowed_sides is not None else None, "side_scale_by_side": side_scales, "max_feature_names": max_filter_names or None, "max_feature_filters": max_feature_filters or None, "min_feature_names": min_filter_names or None, "min_feature_filters": min_feature_filters or None, "filter_q": selected.get("filter_q"), "filter_qs": selected_filter_qs or None, "min_filter_qs": selected_min_filter_qs or None, "fit_meta": _compact_fit_meta(fit_meta)}
 
 
 def run(cfg: EventCandidatePairwiseWalkForwardCfg) -> dict[str, Any]:
@@ -525,6 +552,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-feature-name", default=EventCandidatePairwiseWalkForwardCfg.max_feature_name)
     p.add_argument("--max-feature-names", default=EventCandidatePairwiseWalkForwardCfg.max_feature_names)
     p.add_argument("--max-feature-quantiles", default=EventCandidatePairwiseWalkForwardCfg.max_feature_quantiles)
+    p.add_argument("--min-feature-names", default=EventCandidatePairwiseWalkForwardCfg.min_feature_names)
+    p.add_argument("--min-feature-quantiles", default=EventCandidatePairwiseWalkForwardCfg.min_feature_quantiles)
     return p.parse_args()
 
 
