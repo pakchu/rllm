@@ -1,6 +1,9 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
-from training.audit_label_priors import _summarize_scores, parse_labels
+from training.audit_label_priors import _resume_rows, _summarize_scores, parse_labels
 
 
 class TestAuditLabelPriors(unittest.TestCase):
@@ -23,6 +26,19 @@ class TestAuditLabelPriors(unittest.TestCase):
         self.assertEqual(out["prediction_counts"], {"X": 2})
         self.assertTrue(out["target_metrics"]["has_targets"])
         self.assertAlmostEqual(out["target_metrics"]["accuracy"], 0.5)
+
+    def test_resume_rows_loads_existing_score_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "audit.json"
+            path.write_text(json.dumps({"score_rows": [{"prediction": "X"}]}))
+            self.assertEqual(_resume_rows(path), [{"prediction": "X"}])
+
+    def test_resume_rows_rejects_missing_score_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "audit.json"
+            path.write_text(json.dumps({"score_rows": "omitted"}))
+            with self.assertRaises(ValueError):
+                _resume_rows(path)
 
 
 if __name__ == "__main__":

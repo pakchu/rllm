@@ -31,6 +31,8 @@ class LabelPriorAuditConfig:
     batch_size: int = 1
     score_key: str = "mean"
     progress_every: int = 64
+    checkpoint_every: int = 0
+    resume: bool = False
 
 
 def read_jsonl(path: str | Path) -> list[dict[str, Any]]:
@@ -113,6 +115,52 @@ def _summarize_scores(score_rows: list[dict[str, Any]], labels: tuple[str, ...],
     }
 
 
+def _report(
+    cfg: LabelPriorAuditConfig,
+    labels: tuple[str, ...],
+    tokenizer: Any,
+    score_rows: list[dict[str, Any]],
+    normalize: str,
+) -> dict[str, Any]:
+    return {
+        "config": asdict(cfg) | {"labels": list(labels)},
+        "model_name": resolve_vlm_model_alias(cfg.model_name, prefer_latest=True),
+        "adapter_dir": cfg.adapter_dir,
+        "rows_scored": len(score_rows),
+        "token_info": _token_info(tokenizer, labels),
+        "summary": _summarize_scores(score_rows, labels, normalize),
+        "score_rows": score_rows,
+        "leakage_guard": {"uses_prompt_only": True, "does_not_train_or_choose_strategy": True},
+        "partial": False,
+    }
+
+
+def _write_report(
+    cfg: LabelPriorAuditConfig,
+    labels: tuple[str, ...],
+    tokenizer: Any,
+    score_rows: list[dict[str, Any]],
+    normalize: str,
+    *,
+    partial: bool,
+) -> None:
+    report = _report(cfg, labels, tokenizer, score_rows, normalize)
+    report["partial"] = bool(partial)
+    Path(cfg.output).parent.mkdir(parents=True, exist_ok=True)
+    Path(cfg.output).write_text(json.dumps(report, indent=2, ensure_ascii=False))
+
+
+def _resume_rows(path: str | Path) -> list[dict[str, Any]]:
+    p = Path(path)
+    if not p.exists():
+        return []
+    payload = json.loads(p.read_text())
+    rows = payload.get("score_rows", [])
+    if not isinstance(rows, list):
+        raise ValueError(f"{path} has no reusable score_rows list")
+    return rows
+
+
 def run(cfg: LabelPriorAuditConfig) -> dict[str, Any]:
     labels = tuple(cfg.labels)
     normalize = str(cfg.score_key).strip().lower()
@@ -128,12 +176,19 @@ def run(cfg: LabelPriorAuditConfig) -> dict[str, Any]:
         if tokenizer.eos_token_id is not None:
             ids = ids + [int(tokenizer.eos_token_id)]
         label_ids[label] = ids
-    score_rows: list[dict[str, Any]] = []
+    score_rows: list[dict[str, Any]] = _resume_rows(cfg.output) if cfg.resume else []
+    if len(score_rows) > len(rows):
+        raise ValueError(f"resume output has {len(score_rows)} rows but input only has {len(rows)} rows")
     t0 = time.time()
     bs = max(1, int(cfg.batch_size))
     progress_every = max(0, int(cfg.progress_every))
-    next_progress = progress_every if progress_every > 0 else 0
-    for offset in range(0, len(rows), bs):
+    checkpoint_every = max(0, int(cfg.checkpoint_every))
+    next_progress = ((len(score_rows) // progress_every) + 1) * progress_every if progress_every > 0 else 0
+    next_checkpoint = ((len(score_rows) // checkpoint_every) + 1) * checkpoint_every if checkpoint_every > 0 else 0
+    start_offset = len(score_rows)
+    if start_offset:
+        print(json.dumps({"resumed_rows": start_offset, "rows": len(rows)}, ensure_ascii=False), flush=True)
+    for offset in range(start_offset, len(rows), bs):
         batch = rows[offset : offset + bs]
         batch_scores = _batched_label_scores(model, tokenizer, [str(row.get("prompt", "")) for row in batch], label_ids, normalize)
         for row, scores in zip(batch, batch_scores):
@@ -145,16 +200,11 @@ def run(cfg: LabelPriorAuditConfig) -> dict[str, Any]:
             print(json.dumps({"scored_rows": done, "rows": len(rows), "elapsed_sec": round(time.time() - t0, 2)}, ensure_ascii=False), flush=True)
             while next_progress <= done:
                 next_progress += progress_every
-    report = {
-        "config": asdict(cfg) | {"labels": list(labels)},
-        "model_name": resolve_vlm_model_alias(cfg.model_name, prefer_latest=True),
-        "adapter_dir": cfg.adapter_dir,
-        "rows_scored": len(score_rows),
-        "token_info": _token_info(tokenizer, labels),
-        "summary": _summarize_scores(score_rows, labels, normalize),
-        "score_rows": score_rows,
-        "leakage_guard": {"uses_prompt_only": True, "does_not_train_or_choose_strategy": True},
-    }
+        if checkpoint_every > 0 and done >= next_checkpoint:
+            _write_report(cfg, labels, tokenizer, score_rows, normalize, partial=True)
+            while next_checkpoint <= done:
+                next_checkpoint += checkpoint_every
+    report = _report(cfg, labels, tokenizer, score_rows, normalize)
     Path(cfg.output).parent.mkdir(parents=True, exist_ok=True)
     Path(cfg.output).write_text(json.dumps(report, indent=2, ensure_ascii=False))
     return report
@@ -171,6 +221,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--batch-size", type=int, default=1)
     p.add_argument("--score-key", choices=["mean", "sum"], default="mean")
     p.add_argument("--progress-every", type=int, default=64)
+    p.add_argument("--checkpoint-every", type=int, default=0, help="Write partial output every N scored rows")
+    p.add_argument("--resume", action="store_true", help="Resume from existing output score_rows")
     return p.parse_args()
 
 
@@ -189,6 +241,8 @@ def main() -> None:
                     batch_size=args.batch_size,
                     score_key=args.score_key,
                     progress_every=args.progress_every,
+                    checkpoint_every=args.checkpoint_every,
+                    resume=args.resume,
                 )
             )
             | {"score_rows": "omitted_in_stdout"},
