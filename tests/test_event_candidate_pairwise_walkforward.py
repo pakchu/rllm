@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from training.event_candidate_pairwise_walkforward import EventCandidatePairwiseWalkForwardCfg, _allowed_sides_from_validation, _no_trade_predictions, _side_trade_stats, make_folds
+from training.event_candidate_pairwise_walkforward import EventCandidatePairwiseWalkForwardCfg, _allowed_sides_from_validation, _no_trade_predictions, _side_scales_from_validation, _side_trade_stats, make_folds
 
 
 class TestEventCandidatePairwiseWalkForward(unittest.TestCase):
@@ -41,6 +41,13 @@ class TestEventCandidatePairwiseWalkForward(unittest.TestCase):
             input_jsonl="x", market_csv="m", output="o", side_min_val_trades=2, side_min_val_mean_ret_pct=0.0
         )
         self.assertEqual(_allowed_sides_from_validation(stats, cfg), {"LONG"})
+
+    def test_side_scales_use_validation_mean_strength(self):
+        stats = {"LONG": {"n": 3.0, "mean_trade_ret_pct": 0.5}, "SHORT": {"n": 3.0, "mean_trade_ret_pct": -0.1}}
+        cfg = EventCandidatePairwiseWalkForwardCfg(
+            input_jsonl="x", market_csv="m", output="o", side_min_val_trades=2, side_scale_val_mean_ret_pct=1.0
+        )
+        self.assertEqual(_side_scales_from_validation(stats, cfg), {"LONG": 0.5, "SHORT": 0.0})
 
 
 if __name__ == "__main__":

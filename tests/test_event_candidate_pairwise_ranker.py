@@ -41,6 +41,16 @@ class TestEventCandidatePairwiseRanker(unittest.TestCase):
         self.assertEqual(summary["counts"]["TRADE"], 1)
         self.assertEqual(summary["counts"]["NO_TRADE"], 1)
 
+    def test_write_policy_can_scale_sides(self):
+        import json, tempfile
+        from pathlib import Path
+        best = [{"row": {"date": "d", "signal_pos": 1, "side": "LONG", "candidate": {"hold_bars": 1}}, "score": 2.0}]
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "p.jsonl"
+            _write_policy(best, str(out), threshold=1.0, full_margin=0.0, side_scale_by_side={"LONG": 0.25})
+            row = json.loads(out.read_text().strip())
+        self.assertAlmostEqual(row["position_scale"], 0.25)
+
 
 if __name__ == "__main__":
     unittest.main()

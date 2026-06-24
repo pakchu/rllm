@@ -70,6 +70,7 @@ class EventCandidatePairwiseWalkForwardCfg:
     pair_half_life_days: float = 0.0
     side_min_val_trades: int = 0
     side_min_val_mean_ret_pct: float = -999.0
+    side_scale_val_mean_ret_pct: float = 0.0
 
 
 def _parse_dt(value: str) -> datetime:
@@ -223,6 +224,20 @@ def _allowed_sides_from_validation(side_stats: dict[str, dict[str, float]], cfg:
         allowed.add(side)
     return allowed
 
+
+def _side_scales_from_validation(side_stats: dict[str, dict[str, float]], cfg: EventCandidatePairwiseWalkForwardCfg) -> dict[str, float] | None:
+    denom = float(cfg.side_scale_val_mean_ret_pct)
+    if denom <= 0.0:
+        return None
+    scales: dict[str, float] = {}
+    for side, stats in side_stats.items():
+        if int(cfg.side_min_val_trades) > 0 and int(stats.get("n", 0.0)) < int(cfg.side_min_val_trades):
+            scales[side] = 0.0
+            continue
+        mean_ret = float(stats.get("mean_trade_ret_pct", 0.0))
+        scales[side] = min(1.0, max(0.0, mean_ret / denom))
+    return scales
+
 def _select_on_validation(
     fit_rows: list[dict[str, Any]],
     val_rows: list[dict[str, Any]],
@@ -291,8 +306,10 @@ def _trade_test_fold(
     train_best_scores = np.asarray([x["score"] for x in _best_by_signal(train_rows, train_scores)], dtype=float)
     threshold = float(np.quantile(train_best_scores, float(selected["q"]))) if len(train_best_scores) else 999.0
     test_best = _best_by_signal(test_rows, test_scores)
-    allowed_sides = _allowed_sides_from_validation(selected.get("val_side_trade_stats", {}), cfg)
-    ps = _write_policy(test_best, str(pred_path), threshold, float(selected["full_margin"]), allowed_sides=allowed_sides)
+    side_stats = selected.get("val_side_trade_stats", {})
+    allowed_sides = _allowed_sides_from_validation(side_stats, cfg)
+    side_scales = _side_scales_from_validation(side_stats, cfg)
+    ps = _write_policy(test_best, str(pred_path), threshold, float(selected["full_margin"]), allowed_sides=allowed_sides, side_scale_by_side=side_scales)
     bt = run_overlay(
         OnlineRiskOverlayConfig(
             predictions_jsonl=str(pred_path),
@@ -302,7 +319,7 @@ def _trade_test_fold(
             entry_delay_bars=cfg.entry_delay_bars,
         )
     )
-    return {"prediction_path": str(pred_path), "prediction_summary": ps, "test_backtest": {"sim": bt["sim"], "trade_stats": bt["trade_stats"]}, "test_threshold": threshold, "side_allowlist": sorted(allowed_sides) if allowed_sides is not None else None, "fit_meta": _compact_fit_meta(fit_meta)}
+    return {"prediction_path": str(pred_path), "prediction_summary": ps, "test_backtest": {"sim": bt["sim"], "trade_stats": bt["trade_stats"]}, "test_threshold": threshold, "side_allowlist": sorted(allowed_sides) if allowed_sides is not None else None, "side_scale_by_side": side_scales, "fit_meta": _compact_fit_meta(fit_meta)}
 
 
 def run(cfg: EventCandidatePairwiseWalkForwardCfg) -> dict[str, Any]:
@@ -412,6 +429,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--pair-half-life-days", type=float, default=EventCandidatePairwiseWalkForwardCfg.pair_half_life_days)
     p.add_argument("--side-min-val-trades", type=int, default=EventCandidatePairwiseWalkForwardCfg.side_min_val_trades)
     p.add_argument("--side-min-val-mean-ret-pct", type=float, default=EventCandidatePairwiseWalkForwardCfg.side_min_val_mean_ret_pct)
+    p.add_argument("--side-scale-val-mean-ret-pct", type=float, default=EventCandidatePairwiseWalkForwardCfg.side_scale_val_mean_ret_pct)
     return p.parse_args()
 
 

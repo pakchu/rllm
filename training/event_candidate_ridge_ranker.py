@@ -103,12 +103,14 @@ def _best_by_signal(rows: list[dict[str,Any]], scores: np.ndarray) -> list[dict[
     return [best[k] for k in sorted(best)]
 
 
-def _write_policy(best_rows: list[dict[str,Any]], output: str, threshold: float, full_margin: float, small_scale: float=0.5, allowed_sides: set[str] | None = None) -> dict[str,Any]:
+def _write_policy(best_rows: list[dict[str,Any]], output: str, threshold: float, full_margin: float, small_scale: float=0.5, allowed_sides: set[str] | None = None, side_scale_by_side: dict[str, float] | None = None) -> dict[str,Any]:
     out=[]; counts={"TRADE":0,"NO_TRADE":0,"LONG":0,"SHORT":0,"FULL":0,"SMALL":0}
     for item in best_rows:
         r=item["row"]; score=float(item["score"]); side=str(r.get("side")); hold=int(r.get("candidate",{}).get("hold_bars",288) or 288)
         if score >= threshold and side in {"LONG","SHORT"} and (allowed_sides is None or side in allowed_sides):
             scale=1.0 if score >= threshold + float(full_margin) else float(small_scale)
+            if side_scale_by_side is not None:
+                scale *= min(1.0, max(0.0, float(side_scale_by_side.get(side, 0.0))))
             pred={"gate":"TRADE","side":side,"hold_bars":hold,"confidence":"HIGH","family":"event_candidate_ridge"}
             counts["TRADE"]+=1; counts[side]+=1; counts["FULL" if scale>=1.0 else "SMALL"]+=1
         else:
@@ -116,7 +118,7 @@ def _write_policy(best_rows: list[dict[str,Any]], output: str, threshold: float,
         out.append({"date":r.get("date"),"signal_pos":r.get("signal_pos"),"prediction":pred,"position_scale":scale,"score":score,"side_candidate":side})
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_text("\n".join(json.dumps(r,ensure_ascii=False,sort_keys=True) for r in out)+"\n")
-    return {"rows":len(out),"counts":counts,"threshold":threshold,"full_margin":full_margin,"allowed_sides": sorted(allowed_sides) if allowed_sides is not None else None,"output":output}
+    return {"rows":len(out),"counts":counts,"threshold":threshold,"full_margin":full_margin,"allowed_sides": sorted(allowed_sides) if allowed_sides is not None else None,"side_scale_by_side": side_scale_by_side,"output":output}
 
 
 def _fit_score(fit_rows: list[dict[str,Any]], score_rows: list[dict[str,Any]], alpha: float, names: tuple[list[str],list[str]]|None=None) -> tuple[np.ndarray, np.ndarray, tuple[list[str],list[str]]]:
