@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from training.event_action_pairwise_rank_data import build_pairwise_jsonl, build_pairwise_rows
+from training.event_action_pairwise_rank_data import EventActionPairwiseRankConfig, build_pairwise_jsonl, build_pairwise_rows
 
 
 def row(date, pos, family, side, hold, utility, net=0.0):
@@ -34,7 +34,7 @@ class TestEventActionPairwiseRankData(unittest.TestCase):
         ]
         pairs = build_pairwise_rows(
             rows,
-            cfg=__import__("training.event_action_pairwise_rank_data", fromlist=["EventActionPairwiseRankConfig"]).EventActionPairwiseRankConfig(
+            cfg=EventActionPairwiseRankConfig(
                 input_jsonl="in.jsonl", output_jsonl="out.jsonl", min_utility_gap=0.005, max_pairs_per_signal=2
             ),
         )
@@ -45,6 +45,30 @@ class TestEventActionPairwiseRankData(unittest.TestCase):
         self.assertTrue(all("Candidate A:" in p["prompt"] and "Candidate B:" in p["prompt"] for p in pairs))
         self.assertGreater(pairs[0]["chosen_utility"], pairs[0]["rejected_utility"])
         self.assertTrue(pairs[0]["leakage_guard"]["chosen_rejected_use_future_utility_for_training_only"])
+
+    def test_swapped_duplicates_emit_both_orientations_for_same_pair(self):
+        rows = [
+            row("2025-01-01", 10, "breakout", "LONG", 72, 0.02),
+            row("2025-01-01", 10, "fade", "SHORT", 144, -0.01),
+        ]
+        pairs = build_pairwise_rows(
+            rows,
+            cfg=EventActionPairwiseRankConfig(
+                input_jsonl="in.jsonl",
+                output_jsonl="out.jsonl",
+                min_utility_gap=0.005,
+                max_pairs_per_signal=1,
+                emit_swapped_duplicates=True,
+            ),
+        )
+        self.assertEqual(len(pairs), 2)
+        self.assertEqual([p["target"] for p in pairs], ["A", "B"])
+        self.assertEqual({p["orientation_mode"] for p in pairs}, {"swapped_duplicate"})
+        self.assertTrue(all(p["leakage_guard"]["swapped_duplicate_pairing"] for p in pairs))
+        self.assertNotEqual(
+            pairs[0]["prompt"].split("Candidate A: ")[1].split("\n")[0],
+            pairs[1]["prompt"].split("Candidate A: ")[1].split("\n")[0],
+        )
 
     def test_cli_writes_jsonl_and_summary(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -26,6 +26,7 @@ class EventActionPairwiseRankConfig:
     max_pairs_per_signal: int = 6
     include_same_side_pairs: bool = True
     include_cross_side_pairs: bool = True
+    emit_swapped_duplicates: bool = False
 
 
 def read_jsonl(path: str | Path) -> list[dict[str, Any]]:
@@ -119,39 +120,46 @@ def build_pairwise_rows(rows: list[dict[str, Any]], cfg: EventActionPairwiseRank
                     continue
                 if not _allowed_pair(chosen, rejected, cfg):
                     continue
-                # Deterministic A/B balancing avoids a positional shortcut.
-                chosen_is_a = (made % 2 == 0)
                 cand_chosen = _candidate(chosen)
                 cand_rejected = _candidate(rejected)
-                cand_a = cand_chosen if chosen_is_a else cand_rejected
-                cand_b = cand_rejected if chosen_is_a else cand_chosen
-                pairs.append(
-                    {
-                        "task": "event_action_pairwise_rank",
-                        "date": key[0],
-                        "signal_pos": key[1],
-                        "prompt": _pair_prompt(str(chosen.get("prompt", "")), cand_a, cand_b),
-                        "target": "A" if chosen_is_a else "B",
-                        "chosen_action": cand_chosen,
-                        "rejected_action": cand_rejected,
-                        "chosen_utility": chosen_u,
-                        "rejected_utility": rejected_u,
-                        "utility_gap": gap,
-                        "chosen_action_audit": chosen.get("action_audit", {}),
-                        "rejected_action_audit": rejected.get("action_audit", {}),
-                        "leakage_guard": {
-                            "prompt_uses_future_path": False,
-                            "chosen_rejected_use_future_utility_for_training_only": True,
-                            "candidate_book_uses_past_only_features": True,
-                        },
-                    }
-                )
+                orientations = [(True, "deterministic_balanced")]
+                if bool(cfg.emit_swapped_duplicates):
+                    orientations = [(True, "swapped_duplicate"), (False, "swapped_duplicate")]
+                elif made % 2 != 0:
+                    orientations = [(False, "deterministic_balanced")]
+                for chosen_is_a, orientation_mode in orientations:
+                    cand_a = cand_chosen if chosen_is_a else cand_rejected
+                    cand_b = cand_rejected if chosen_is_a else cand_chosen
+                    pairs.append(
+                        {
+                            "task": "event_action_pairwise_rank",
+                            "date": key[0],
+                            "signal_pos": key[1],
+                            "prompt": _pair_prompt(str(chosen.get("prompt", "")), cand_a, cand_b),
+                            "target": "A" if chosen_is_a else "B",
+                            "chosen_action": cand_chosen,
+                            "rejected_action": cand_rejected,
+                            "chosen_utility": chosen_u,
+                            "rejected_utility": rejected_u,
+                            "utility_gap": gap,
+                            "orientation_mode": orientation_mode,
+                            "chosen_action_audit": chosen.get("action_audit", {}),
+                            "rejected_action_audit": rejected.get("action_audit", {}),
+                            "leakage_guard": {
+                                "prompt_uses_future_path": False,
+                                "chosen_rejected_use_future_utility_for_training_only": True,
+                                "candidate_book_uses_past_only_features": True,
+                                "swapped_duplicate_pairing": bool(cfg.emit_swapped_duplicates),
+                            },
+                        }
+                    )
                 made += 1
     return pairs
 
 
 def summarize_pairs(pairs: list[dict[str, Any]], cfg: EventActionPairwiseRankConfig) -> dict[str, Any]:
     targets = Counter(str(p["target"]) for p in pairs)
+    orientations = Counter(str(p.get("orientation_mode", "")) for p in pairs)
     chosen_sides = Counter(str(p.get("chosen_action", {}).get("side")) for p in pairs)
     rejected_sides = Counter(str(p.get("rejected_action", {}).get("side")) for p in pairs)
     gaps = [float(p.get("utility_gap", 0.0) or 0.0) for p in pairs]
@@ -163,6 +171,7 @@ def summarize_pairs(pairs: list[dict[str, Any]], cfg: EventActionPairwiseRankCon
         "pairs": len(pairs),
         "signals": len(signals),
         "target_counts": dict(sorted(targets.items())),
+        "orientation_counts": dict(sorted(orientations.items())),
         "chosen_side_counts": dict(sorted(chosen_sides.items())),
         "rejected_side_counts": dict(sorted(rejected_sides.items())),
         "utility_gap": {
@@ -204,6 +213,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-pairs-per-signal", type=int, default=6)
     p.add_argument("--same-side-only", action="store_true")
     p.add_argument("--cross-side-only", action="store_true")
+    p.add_argument("--emit-swapped-duplicates", action="store_true", help="Emit both A/B orientations for each selected semantic pair")
     return p.parse_args()
 
 
@@ -221,6 +231,7 @@ def main() -> None:
                 max_pairs_per_signal=a.max_pairs_per_signal,
                 include_same_side_pairs=not a.cross_side_only,
                 include_cross_side_pairs=not a.same_side_only,
+                emit_swapped_duplicates=bool(a.emit_swapped_duplicates),
             ),
             indent=2,
             ensure_ascii=False,
