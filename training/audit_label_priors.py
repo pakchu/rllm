@@ -139,7 +139,7 @@ def run(cfg: LabelPriorAuditConfig) -> dict[str, Any]:
         for row, scores in zip(batch, batch_scores):
             scalar = {label: float(scores[label][normalize]) for label in labels}
             pred = max(labels, key=lambda label: scalar[label])
-            score_rows.append({"date": row.get("date"), "signal_pos": row.get("signal_pos"), "target": row.get("target"), "prediction": pred, "score": scores})
+            score_rows.append({"date": row.get("date"), "signal_pos": row.get("signal_pos"), "target": row.get("target"), "prediction": pred, "score": scores, "action": row.get("action"), "action_audit": row.get("action_audit")})
         done = len(score_rows)
         if progress_every > 0 and done >= next_progress:
             print(json.dumps({"scored_rows": done, "rows": len(rows), "elapsed_sec": round(time.time() - t0, 2)}, ensure_ascii=False), flush=True)
