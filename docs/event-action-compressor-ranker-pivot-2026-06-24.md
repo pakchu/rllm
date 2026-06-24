@@ -82,3 +82,18 @@ Next experiments should focus on:
 2. Replace ridge with pairwise/listwise ranker trained per-signal, not global utility regression.
 3. Use rolling/continuous train windows so 2026 sees recent 2025 regimes without eval leakage.
 4. Add stricter statistical gates: eval/test trade count thresholds and no selection on eval utility.
+
+## IC-weighted ranker follow-up
+
+Report: `results/event_action_compressor_ic_ranker_eval2026_report_2026-06-24.json`
+
+Configuration used the same compressor/ranker train/eval split and selected quantile/full-margin on 2024-2025 validation only. IC feature selection used `min_abs_ic=0.005`, `min_sign_consistency=0.5`.
+
+| Split | Trades | CAGR | Strict MDD | CAGR/MDD | Mean trade | p approx |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| validation 2024-2025 | 114 | -0.41% | 7.63% | -0.05 | -0.0046% | 0.945 |
+| eval 2026 | 18 | -7.56% | 3.84% | -1.97 | -0.1765% | 0.176 |
+
+IC weighting is worse than ridge. Some feature ICs are visible, but they do not compose into a robust executable policy.
+
+Updated next step: implement a schema-native per-signal pairwise/listwise ranker. The target should be candidate ordering within each signal, not global utility regression or independent IC weighting.
