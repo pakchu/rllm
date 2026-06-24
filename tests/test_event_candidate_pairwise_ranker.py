@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from training.event_candidate_pairwise_ranker import _pair_time_weights, build_pairs
-from training.event_candidate_ridge_ranker import _write_policy
+from training.event_candidate_ridge_ranker import _feature_names, _write_policy
 
 
 class TestEventCandidatePairwiseRanker(unittest.TestCase):
@@ -50,6 +50,23 @@ class TestEventCandidatePairwiseRanker(unittest.TestCase):
             _write_policy(best, str(out), threshold=1.0, full_margin=0.0, side_scale_by_side={"LONG": 0.25})
             row = json.loads(out.read_text().strip())
         self.assertAlmostEqual(row["position_scale"], 0.25)
+
+    def test_feature_names_can_drop_prefixes(self):
+        rows = [{"feature_snapshot": {"a": 1.0, "rex_x": 2.0}, "state_tokens": {}}]
+        nums, _ = _feature_names(rows, drop_prefixes=("rex_",))
+        self.assertEqual(nums, ["a"])
+
+    def test_write_policy_can_filter_max_feature(self):
+        import tempfile
+        from pathlib import Path
+        best = [
+            {"row": {"date": "d", "signal_pos": 1, "side": "LONG", "candidate": {"hold_bars": 1}, "feature_snapshot": {"rex": 2.0}}, "score": 2.0},
+            {"row": {"date": "d2", "signal_pos": 2, "side": "LONG", "candidate": {"hold_bars": 1}, "feature_snapshot": {"rex": 5.0}}, "score": 2.0},
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = _write_policy(best, str(Path(tmp) / "p.jsonl"), threshold=1.0, full_margin=0.0, max_feature_name="rex", max_feature_value=3.0)
+        self.assertEqual(summary["counts"]["TRADE"], 1)
+        self.assertEqual(summary["counts"]["NO_TRADE"], 1)
 
 
 if __name__ == "__main__":

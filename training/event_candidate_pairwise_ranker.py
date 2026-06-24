@@ -34,6 +34,7 @@ class EventCandidatePairwiseRankerCfg:
     leverage: float = 1.0
     entry_delay_bars: int = 1
     pair_half_life_days: float = 0.0
+    ranker_drop_prefixes: str = ""
 
 
 def _groups(rows: list[dict[str, Any]]) -> dict[tuple[str, int], list[int]]:
@@ -113,7 +114,7 @@ def _fit_score(
     names: tuple[list[str], list[str]] | None = None,
 ) -> tuple[np.ndarray, np.ndarray, tuple[list[str], list[str]], dict[str, Any]]:
     if names is None:
-        names = _feature_names(fit_rows)
+        names = _feature_names(fit_rows, tuple(x.strip() for x in cfg.ranker_drop_prefixes.split(",") if x.strip()))
     num, cat = names
     x_fit, _ = _xy(fit_rows, num, cat)
     x_score, _ = _xy(score_rows, num, cat)
@@ -199,6 +200,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--leverage", type=float, default=EventCandidatePairwiseRankerCfg.leverage)
     p.add_argument("--entry-delay-bars", type=int, default=EventCandidatePairwiseRankerCfg.entry_delay_bars)
     p.add_argument("--pair-half-life-days", type=float, default=EventCandidatePairwiseRankerCfg.pair_half_life_days)
+    p.add_argument("--ranker-drop-prefixes", default=EventCandidatePairwiseRankerCfg.ranker_drop_prefixes)
     return p.parse_args()
 
 

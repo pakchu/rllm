@@ -73,6 +73,9 @@ class EventCandidatePairwiseWalkForwardCfg:
     side_scale_val_mean_ret_pct: float = 0.0
     trade_stop_loss_pct: float = 0.0
     trade_take_profit_pct: float = 0.0
+    ranker_drop_prefixes: str = ""
+    max_feature_name: str = ""
+    max_feature_quantiles: str = ""
 
 
 def _parse_dt(value: str) -> datetime:
@@ -174,12 +177,31 @@ def _pairwise_cfg(cfg: EventCandidatePairwiseWalkForwardCfg, train_path: str, ev
         leverage=cfg.leverage,
         entry_delay_bars=cfg.entry_delay_bars,
         pair_half_life_days=cfg.pair_half_life_days,
+        ranker_drop_prefixes=cfg.ranker_drop_prefixes,
     )
 
 
 
 def _compact_fit_meta(meta: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in meta.items() if k != "scaler"}
+
+
+def _best_feature_values(best_rows: list[dict[str, Any]], feature_name: str) -> np.ndarray:
+    vals: list[float] = []
+    if not feature_name:
+        return np.asarray(vals, dtype=float)
+    for item in best_rows:
+        row = item.get("row", {}) if isinstance(item, dict) else {}
+        snap = row.get("feature_snapshot", {}) if isinstance(row.get("feature_snapshot"), dict) else {}
+        if feature_name in snap:
+            vals.append(float(snap.get(feature_name, 0.0) or 0.0))
+    return np.asarray(vals, dtype=float)
+
+
+def _filter_quantiles(raw: str) -> list[float | None]:
+    vals: list[float | None] = [None]
+    vals.extend(float(x.strip()) for x in str(raw).split(",") if x.strip())
+    return vals
 
 def _passes_validation(sim: dict[str, Any], stats: dict[str, Any], cfg: EventCandidatePairwiseWalkForwardCfg) -> tuple[bool, list[str]]:
     reasons: list[str] = []
@@ -249,50 +271,67 @@ def _select_on_validation(
 ) -> dict[str, Any]:
     qs = [float(x) for x in cfg.quantiles.split(",") if x.strip()]
     margins = [float(x) for x in cfg.full_margins.split(",") if x.strip()]
+    filter_qs = _filter_quantiles(cfg.max_feature_quantiles) if cfg.max_feature_name else [None]
     pw_cfg = _pairwise_cfg(cfg, "", "")
     fit_scores, val_scores, names, fit_meta = _fit_score(fit_rows, val_rows, pw_cfg)
-    fit_best_scores = np.asarray([x["score"] for x in _best_by_signal(fit_rows, fit_scores)], dtype=float)
+    fit_best = _best_by_signal(fit_rows, fit_scores)
+    fit_best_scores = np.asarray([x["score"] for x in fit_best], dtype=float)
+    fit_filter_values = _best_feature_values(fit_best, cfg.max_feature_name)
     val_best = _best_by_signal(val_rows, val_scores)
     candidates: list[dict[str, Any]] = []
     for q in qs:
         threshold = float(np.quantile(fit_best_scores, q)) if len(fit_best_scores) else 999.0
         for margin in margins:
-            pred = tmp / f"fold{fold_id:03d}_val_q{q}_m{margin}.jsonl"
-            ps = _write_policy(val_best, str(pred), threshold, margin)
-            bt = run_overlay(
-                OnlineRiskOverlayConfig(
-                    predictions_jsonl=str(pred),
-                    market_csv=cfg.market_csv,
-                    output=str(tmp / f"fold{fold_id:03d}_val_q{q}_m{margin}.bt.json"),
-                    leverage=cfg.leverage,
-                    entry_delay_bars=cfg.entry_delay_bars,
-                    trade_stop_loss_pct=cfg.trade_stop_loss_pct,
-                    trade_take_profit_pct=cfg.trade_take_profit_pct,
+            for fq in filter_qs:
+                max_feature_value = None
+                if fq is not None and len(fit_filter_values):
+                    max_feature_value = float(np.quantile(fit_filter_values, float(fq)))
+                pred = tmp / f"fold{fold_id:03d}_val_q{q}_m{margin}_fq{fq}.jsonl"
+                ps = _write_policy(
+                    val_best,
+                    str(pred),
+                    threshold,
+                    margin,
+                    max_feature_name=cfg.max_feature_name,
+                    max_feature_value=max_feature_value,
                 )
-            )
-            sim = bt["sim"]
-            stats = bt["trade_stats"]
-            side_stats = _side_trade_stats(bt.get("executed", []))
-            passed, reasons = _passes_validation(sim, stats, cfg)
-            score = float(sim.get("cagr_to_strict_mdd", -999.0) or -999.0)
-            if not passed:
-                score -= 1000.0 + 10.0 * len(reasons)
-            candidates.append(
-                {
-                    "q": q,
-                    "full_margin": margin,
-                    "threshold": threshold,
-                    "prediction_summary": ps,
-                    "val_sim": sim,
-                    "val_trade_stats": stats,
-                    "val_side_trade_stats": side_stats,
-                    "validation_passed": passed,
-                    "validation_reject_reasons": reasons,
-                    "score": score,
-                }
-            )
+                bt = run_overlay(
+                    OnlineRiskOverlayConfig(
+                        predictions_jsonl=str(pred),
+                        market_csv=cfg.market_csv,
+                        output=str(tmp / f"fold{fold_id:03d}_val_q{q}_m{margin}_fq{fq}.bt.json"),
+                        leverage=cfg.leverage,
+                        entry_delay_bars=cfg.entry_delay_bars,
+                        trade_stop_loss_pct=cfg.trade_stop_loss_pct,
+                        trade_take_profit_pct=cfg.trade_take_profit_pct,
+                    )
+                )
+                sim = bt["sim"]
+                stats = bt["trade_stats"]
+                side_stats = _side_trade_stats(bt.get("executed", []))
+                passed, reasons = _passes_validation(sim, stats, cfg)
+                score = float(sim.get("cagr_to_strict_mdd", -999.0) or -999.0)
+                if not passed:
+                    score -= 1000.0 + 10.0 * len(reasons)
+                candidates.append(
+                    {
+                        "q": q,
+                        "full_margin": margin,
+                        "filter_q": fq,
+                        "threshold": threshold,
+                        "max_feature_name": cfg.max_feature_name or None,
+                        "max_feature_value": max_feature_value,
+                        "prediction_summary": ps,
+                        "val_sim": sim,
+                        "val_trade_stats": stats,
+                        "val_side_trade_stats": side_stats,
+                        "validation_passed": passed,
+                        "validation_reject_reasons": reasons,
+                        "score": score,
+                    }
+                )
     candidates.sort(key=lambda r: float(r["score"]), reverse=True)
-    selected = candidates[0] if candidates else {"validation_passed": False, "validation_reject_reasons": ["no_candidates"], "q": 1.0, "full_margin": 0.0, "score": -9999.0}
+    selected = candidates[0] if candidates else {"validation_passed": False, "validation_reject_reasons": ["no_candidates"], "q": 1.0, "full_margin": 0.0, "filter_q": None, "score": -9999.0}
     return {"selected": selected, "top5": candidates[:5], "fit_meta": _compact_fit_meta(fit_meta), "features": {"numeric": len(names[0]), "categorical": len(names[1]), "expanded": fit_meta["features"]}}
 
 
@@ -309,11 +348,16 @@ def _trade_test_fold(
     train_scores, test_scores, _names, fit_meta = _fit_score(train_rows, test_rows, pw_cfg)
     train_best_scores = np.asarray([x["score"] for x in _best_by_signal(train_rows, train_scores)], dtype=float)
     threshold = float(np.quantile(train_best_scores, float(selected["q"]))) if len(train_best_scores) else 999.0
+    train_best = _best_by_signal(train_rows, train_scores)
     test_best = _best_by_signal(test_rows, test_scores)
+    train_filter_values = _best_feature_values(train_best, cfg.max_feature_name)
+    max_feature_value = None
+    if selected.get("filter_q") is not None and len(train_filter_values):
+        max_feature_value = float(np.quantile(train_filter_values, float(selected["filter_q"])))
     side_stats = selected.get("val_side_trade_stats", {})
     allowed_sides = _allowed_sides_from_validation(side_stats, cfg)
     side_scales = _side_scales_from_validation(side_stats, cfg)
-    ps = _write_policy(test_best, str(pred_path), threshold, float(selected["full_margin"]), allowed_sides=allowed_sides, side_scale_by_side=side_scales)
+    ps = _write_policy(test_best, str(pred_path), threshold, float(selected["full_margin"]), allowed_sides=allowed_sides, side_scale_by_side=side_scales, max_feature_name=cfg.max_feature_name, max_feature_value=max_feature_value)
     bt = run_overlay(
         OnlineRiskOverlayConfig(
             predictions_jsonl=str(pred_path),
@@ -325,7 +369,7 @@ def _trade_test_fold(
             trade_take_profit_pct=cfg.trade_take_profit_pct,
         )
     )
-    return {"prediction_path": str(pred_path), "prediction_summary": ps, "test_backtest": {"sim": bt["sim"], "trade_stats": bt["trade_stats"]}, "test_threshold": threshold, "side_allowlist": sorted(allowed_sides) if allowed_sides is not None else None, "side_scale_by_side": side_scales, "fit_meta": _compact_fit_meta(fit_meta)}
+    return {"prediction_path": str(pred_path), "prediction_summary": ps, "test_backtest": {"sim": bt["sim"], "trade_stats": bt["trade_stats"]}, "test_threshold": threshold, "side_allowlist": sorted(allowed_sides) if allowed_sides is not None else None, "side_scale_by_side": side_scales, "max_feature_name": cfg.max_feature_name or None, "max_feature_value": max_feature_value, "filter_q": selected.get("filter_q"), "fit_meta": _compact_fit_meta(fit_meta)}
 
 
 def run(cfg: EventCandidatePairwiseWalkForwardCfg) -> dict[str, Any]:
@@ -440,6 +484,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--side-scale-val-mean-ret-pct", type=float, default=EventCandidatePairwiseWalkForwardCfg.side_scale_val_mean_ret_pct)
     p.add_argument("--trade-stop-loss-pct", type=float, default=EventCandidatePairwiseWalkForwardCfg.trade_stop_loss_pct)
     p.add_argument("--trade-take-profit-pct", type=float, default=EventCandidatePairwiseWalkForwardCfg.trade_take_profit_pct)
+    p.add_argument("--ranker-drop-prefixes", default=EventCandidatePairwiseWalkForwardCfg.ranker_drop_prefixes)
+    p.add_argument("--max-feature-name", default=EventCandidatePairwiseWalkForwardCfg.max_feature_name)
+    p.add_argument("--max-feature-quantiles", default=EventCandidatePairwiseWalkForwardCfg.max_feature_quantiles)
     return p.parse_args()
 
 
