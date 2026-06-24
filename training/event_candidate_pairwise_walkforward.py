@@ -68,6 +68,8 @@ class EventCandidatePairwiseWalkForwardCfg:
     leverage: float = 1.0
     entry_delay_bars: int = 1
     pair_half_life_days: float = 0.0
+    side_min_val_trades: int = 0
+    side_min_val_mean_ret_pct: float = -999.0
 
 
 def _parse_dt(value: str) -> datetime:
@@ -195,6 +197,32 @@ def _passes_validation(sim: dict[str, Any], stats: dict[str, Any], cfg: EventCan
     return not reasons, reasons
 
 
+
+def _side_trade_stats(executed: list[dict[str, Any]]) -> dict[str, dict[str, float]]:
+    out: dict[str, dict[str, float]] = {}
+    for side in ("LONG", "SHORT"):
+        vals = [float(t.get("trade_ret_pct", 0.0) or 0.0) for t in executed if str(t.get("side")) == side]
+        out[side] = {
+            "n": float(len(vals)),
+            "mean_trade_ret_pct": float(np.mean(vals)) if vals else 0.0,
+            "sum_trade_ret_pct": float(np.sum(vals)) if vals else 0.0,
+            "win_frac": float(np.mean(np.asarray(vals) > 0.0)) if vals else 0.0,
+        }
+    return out
+
+
+def _allowed_sides_from_validation(side_stats: dict[str, dict[str, float]], cfg: EventCandidatePairwiseWalkForwardCfg) -> set[str] | None:
+    if int(cfg.side_min_val_trades) <= 0 and float(cfg.side_min_val_mean_ret_pct) <= -998.0:
+        return None
+    allowed: set[str] = set()
+    for side, stats in side_stats.items():
+        if int(stats.get("n", 0.0)) < int(cfg.side_min_val_trades):
+            continue
+        if float(stats.get("mean_trade_ret_pct", 0.0)) < float(cfg.side_min_val_mean_ret_pct):
+            continue
+        allowed.add(side)
+    return allowed
+
 def _select_on_validation(
     fit_rows: list[dict[str, Any]],
     val_rows: list[dict[str, Any]],
@@ -225,6 +253,7 @@ def _select_on_validation(
             )
             sim = bt["sim"]
             stats = bt["trade_stats"]
+            side_stats = _side_trade_stats(bt.get("executed", []))
             passed, reasons = _passes_validation(sim, stats, cfg)
             score = float(sim.get("cagr_to_strict_mdd", -999.0) or -999.0)
             if not passed:
@@ -237,6 +266,7 @@ def _select_on_validation(
                     "prediction_summary": ps,
                     "val_sim": sim,
                     "val_trade_stats": stats,
+                    "val_side_trade_stats": side_stats,
                     "validation_passed": passed,
                     "validation_reject_reasons": reasons,
                     "score": score,
@@ -261,7 +291,8 @@ def _trade_test_fold(
     train_best_scores = np.asarray([x["score"] for x in _best_by_signal(train_rows, train_scores)], dtype=float)
     threshold = float(np.quantile(train_best_scores, float(selected["q"]))) if len(train_best_scores) else 999.0
     test_best = _best_by_signal(test_rows, test_scores)
-    ps = _write_policy(test_best, str(pred_path), threshold, float(selected["full_margin"]))
+    allowed_sides = _allowed_sides_from_validation(selected.get("val_side_trade_stats", {}), cfg)
+    ps = _write_policy(test_best, str(pred_path), threshold, float(selected["full_margin"]), allowed_sides=allowed_sides)
     bt = run_overlay(
         OnlineRiskOverlayConfig(
             predictions_jsonl=str(pred_path),
@@ -271,7 +302,7 @@ def _trade_test_fold(
             entry_delay_bars=cfg.entry_delay_bars,
         )
     )
-    return {"prediction_path": str(pred_path), "prediction_summary": ps, "test_backtest": {"sim": bt["sim"], "trade_stats": bt["trade_stats"]}, "test_threshold": threshold, "fit_meta": _compact_fit_meta(fit_meta)}
+    return {"prediction_path": str(pred_path), "prediction_summary": ps, "test_backtest": {"sim": bt["sim"], "trade_stats": bt["trade_stats"]}, "test_threshold": threshold, "side_allowlist": sorted(allowed_sides) if allowed_sides is not None else None, "fit_meta": _compact_fit_meta(fit_meta)}
 
 
 def run(cfg: EventCandidatePairwiseWalkForwardCfg) -> dict[str, Any]:
@@ -379,6 +410,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--leverage", type=float, default=EventCandidatePairwiseWalkForwardCfg.leverage)
     p.add_argument("--entry-delay-bars", type=int, default=EventCandidatePairwiseWalkForwardCfg.entry_delay_bars)
     p.add_argument("--pair-half-life-days", type=float, default=EventCandidatePairwiseWalkForwardCfg.pair_half_life_days)
+    p.add_argument("--side-min-val-trades", type=int, default=EventCandidatePairwiseWalkForwardCfg.side_min_val_trades)
+    p.add_argument("--side-min-val-mean-ret-pct", type=float, default=EventCandidatePairwiseWalkForwardCfg.side_min_val_mean_ret_pct)
     return p.parse_args()
 
 

@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 
 from training.event_candidate_pairwise_ranker import _pair_time_weights, build_pairs
+from training.event_candidate_ridge_ranker import _write_policy
 
 
 class TestEventCandidatePairwiseRanker(unittest.TestCase):
@@ -27,6 +28,18 @@ class TestEventCandidatePairwiseRanker(unittest.TestCase):
         weights = _pair_time_weights(rows, [(0, 1), (1, 0)], half_life_days=10)
         self.assertIsNotNone(weights)
         self.assertTrue(np.allclose(weights, [0.5, 1.0]))
+
+    def test_write_policy_can_filter_allowed_sides(self):
+        import tempfile
+        from pathlib import Path
+        best = [
+            {"row": {"date": "d", "signal_pos": 1, "side": "LONG", "candidate": {"hold_bars": 1}}, "score": 2.0},
+            {"row": {"date": "d2", "signal_pos": 2, "side": "SHORT", "candidate": {"hold_bars": 1}}, "score": 2.0},
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = _write_policy(best, str(Path(tmp) / "p.jsonl"), threshold=1.0, full_margin=0.0, allowed_sides={"LONG"})
+        self.assertEqual(summary["counts"]["TRADE"], 1)
+        self.assertEqual(summary["counts"]["NO_TRADE"], 1)
 
 
 if __name__ == "__main__":

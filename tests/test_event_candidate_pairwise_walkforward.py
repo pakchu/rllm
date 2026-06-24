@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from training.event_candidate_pairwise_walkforward import EventCandidatePairwiseWalkForwardCfg, _no_trade_predictions, make_folds
+from training.event_candidate_pairwise_walkforward import EventCandidatePairwiseWalkForwardCfg, _allowed_sides_from_validation, _no_trade_predictions, _side_trade_stats, make_folds
 
 
 class TestEventCandidatePairwiseWalkForward(unittest.TestCase):
@@ -30,6 +30,17 @@ class TestEventCandidatePairwiseWalkForward(unittest.TestCase):
         self.assertEqual(summary["rows"], 2)
         self.assertEqual([r["prediction"]["gate"] for r in loaded], ["NO_TRADE", "NO_TRADE"])
         self.assertEqual([r["signal_pos"] for r in loaded], [1, 2])
+
+    def test_side_allowlist_uses_validation_side_stats(self):
+        stats = _side_trade_stats([
+            {"side": "LONG", "trade_ret_pct": 1.0},
+            {"side": "LONG", "trade_ret_pct": -0.2},
+            {"side": "SHORT", "trade_ret_pct": -1.0},
+        ])
+        cfg = EventCandidatePairwiseWalkForwardCfg(
+            input_jsonl="x", market_csv="m", output="o", side_min_val_trades=2, side_min_val_mean_ret_pct=0.0
+        )
+        self.assertEqual(_allowed_sides_from_validation(stats, cfg), {"LONG"})
 
 
 if __name__ == "__main__":
