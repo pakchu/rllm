@@ -97,3 +97,20 @@ Configuration used the same compressor/ranker train/eval split and selected quan
 IC weighting is worse than ridge. Some feature ICs are visible, but they do not compose into a robust executable policy.
 
 Updated next step: implement a schema-native per-signal pairwise/listwise ranker. The target should be candidate ordering within each signal, not global utility regression or independent IC weighting.
+
+## Pairwise ranker follow-up
+
+Script: `training/event_candidate_pairwise_ranker.py`
+
+Report: `results/event_action_compressor_pairwise_ranker_eval2026_report_2026-06-24.json`
+
+This ranker directly trains within-signal winner-over-loser pairs, then uses validation-only threshold selection.
+
+| Split | Trades | CAGR | Strict MDD | CAGR/MDD | Mean trade | p approx |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| validation 2024-2025 | 131 | -4.39% | 29.53% | -0.15 | -0.046% | 0.803 |
+| eval 2026 | 23 | -26.14% | 20.99% | -1.25 | -0.504% | 0.340 |
+
+Pairwise ranking is worse than ridge on this feature/candidate pool. The failure is now unlikely to be just the loss objective. Current evidence points to the candidate pool and/or prompt-visible features not carrying stable 2026 edge, or the edge being regime-conditional and inverted across periods.
+
+Updated next step: audit feature/reward drift and candidate-family/side/hold performance by year before adding more model capacity.
