@@ -69,6 +69,28 @@ def _token_info(tokenizer: Any, labels: tuple[str, ...]) -> dict[str, Any]:
     return out
 
 
+def _target_metrics(score_rows: list[dict[str, Any]], labels: tuple[str, ...]) -> dict[str, Any]:
+    valid = [row for row in score_rows if str(row.get("target", "")).strip().upper() in labels]
+    if not valid:
+        return {"has_targets": False}
+    correct = 0
+    target_counts: Counter[str] = Counter()
+    confusion: Counter[str] = Counter()
+    for row in valid:
+        target = str(row.get("target", "")).strip().upper()
+        pred = str(row.get("prediction", "")).strip().upper()
+        correct += int(pred == target)
+        target_counts[target] += 1
+        confusion[f"target={target}|pred={pred}"] += 1
+    return {
+        "has_targets": True,
+        "num_targeted": len(valid),
+        "accuracy": correct / max(1, len(valid)),
+        "target_counts": dict(sorted(target_counts.items())),
+        "confusion": dict(sorted(confusion.items())),
+    }
+
+
 def _summarize_scores(score_rows: list[dict[str, Any]], labels: tuple[str, ...], score_key: str) -> dict[str, Any]:
     means: dict[str, float] = {}
     mins: dict[str, float] = {}
@@ -87,6 +109,7 @@ def _summarize_scores(score_rows: list[dict[str, Any]], labels: tuple[str, ...],
         "prediction_counts": dict(sorted(pred_counts.items())),
         "mean_score_spread": spread,
         "dominant_label": max(labels, key=lambda label: means[label]) if labels else None,
+        "target_metrics": _target_metrics(score_rows, labels),
     }
 
 
