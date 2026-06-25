@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -49,6 +50,8 @@ class SparseSetupCfg:
     slippage_rate: float = 0.0001
     entry_delay_bars: int = 1
     max_features: int = 0
+    include_external_components: bool = False
+    feature_include_regex: str = ""
 
 
 def _load_market(path: str) -> pd.DataFrame:
@@ -89,6 +92,7 @@ def _feature_columns(features: pd.DataFrame) -> list[str]:
     preferred_prefixes = (
         "mkt__htf_", "mkt__weekly_", "mkt__trend_", "mkt__range_", "mkt__window_", "mkt__volume_",
         "mkt__taker_", "mkt__dxy_", "mkt__kimchi_", "mkt__usdkrw_", "wave__eff_", "wave__gk_",
+        "mkt__btckrw_", "mkt__fx_", "wave__btckrw_", "wave__fx_",
         "wave__cvd_", "wave__flow_", "wave__taker_", "wave__vol_", "wave__vwap_", "wave__mom_",
     )
     preferred = [c for c in cols if c.startswith(preferred_prefixes)]
@@ -187,12 +191,20 @@ def _simulate_indices(*, market: pd.DataFrame, dates: pd.Series, indices: np.nda
 def run(cfg: SparseSetupCfg) -> dict[str, Any]:
     market = _load_market(cfg.input_csv)
     if cfg.wave_trading_root:
-        market = attach_wave_trading_external_features(market, wave_trading_root=cfg.wave_trading_root, tolerance=cfg.external_tolerance)
+        market = attach_wave_trading_external_features(
+            market,
+            wave_trading_root=cfg.wave_trading_root,
+            tolerance=cfg.external_tolerance,
+            include_forex_components=bool(cfg.include_external_components),
+        )
     base = build_market_feature_frame(market, window_size=int(cfg.window_size)).add_prefix("mkt__")
     wave = build_wave_feature_frame(market, window=int(cfg.window_size)).add_prefix("wave__")
     features = pd.concat([base, wave], axis=1).replace([np.inf, -np.inf], 0.0).fillna(0.0)
     features = features.loc[:, ~features.columns.duplicated(keep="last")]
     cols = _feature_columns(features)
+    if str(cfg.feature_include_regex).strip():
+        pattern = re.compile(str(cfg.feature_include_regex))
+        cols = [c for c in cols if pattern.search(c)]
     if int(cfg.max_features) > 0:
         cols = cols[: int(cfg.max_features)]
     X = {c: features[c].to_numpy(dtype=float) for c in cols}
@@ -292,6 +304,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--slippage-rate", type=float, default=SparseSetupCfg.slippage_rate)
     p.add_argument("--entry-delay-bars", type=int, default=SparseSetupCfg.entry_delay_bars)
     p.add_argument("--max-features", type=int, default=SparseSetupCfg.max_features)
+    p.add_argument("--include-external-components", action="store_true", default=SparseSetupCfg.include_external_components)
+    p.add_argument("--feature-include-regex", default=SparseSetupCfg.feature_include_regex)
     return p.parse_args()
 
 

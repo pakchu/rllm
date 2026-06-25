@@ -63,12 +63,14 @@ class WalkForwardCfg:
     execution_horizon_bars: int = 288
     min_history_folds: int = 1
     seed_candidates: str = "top_prior"  # top_prior | all_when_cold
+    include_external_components: bool = False
 
 
 def _ensemble_cfg(cfg: WalkForwardCfg) -> EnsembleCfg:
     data = asdict(cfg)
     data.pop("min_history_folds")
     data.pop("seed_candidates")
+    data.pop("include_external_components")
     return EnsembleCfg(**data)
 
 
@@ -146,7 +148,12 @@ def run(cfg: WalkForwardCfg) -> dict[str, Any]:
     sparse = json.loads(Path(cfg.sparse_report).read_text())
     market = _load_market(cfg.market_csv)
     if cfg.wave_trading_root:
-        market = attach_wave_trading_external_features(market, wave_trading_root=cfg.wave_trading_root, tolerance=cfg.external_tolerance)
+        market = attach_wave_trading_external_features(
+            market,
+            wave_trading_root=cfg.wave_trading_root,
+            tolerance=cfg.external_tolerance,
+            include_forex_components=bool(cfg.include_external_components),
+        )
     feats = _features(market, cfg)
     dates = pd.to_datetime(market["date"])
     base_cfg = _ensemble_cfg(cfg)
@@ -228,6 +235,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--execution-horizon-bars", type=int, default=WalkForwardCfg.execution_horizon_bars)
     p.add_argument("--min-history-folds", type=int, default=WalkForwardCfg.min_history_folds)
     p.add_argument("--seed-candidates", choices=["top_prior", "all_when_cold"], default=WalkForwardCfg.seed_candidates)
+    p.add_argument("--include-external-components", action="store_true", default=WalkForwardCfg.include_external_components)
     return p.parse_args()
 
 
