@@ -7,6 +7,7 @@ from training.regime_symbolic_monthly_selector import (
     _write_no_trade_month,
     _compact_policy_result,
     _safe_unlink,
+    _executed_month_stats,
 )
 
 
@@ -64,3 +65,17 @@ def test_safe_unlink_is_idempotent(tmp_path: Path):
     _safe_unlink(path)
     _safe_unlink(path)
     assert not path.exists()
+
+
+def test_executed_month_stats_summarizes_trade_returns():
+    stats = _executed_month_stats([
+        {"date": "2026-01-01", "trade_ret_pct": 1.0},
+        {"date": "2026-01-02", "trade_ret_pct": -0.25},
+        {"date": "2026-02-01", "trade_ret_pct": -2.0},
+    ])
+    assert stats["positive_months"] == 1
+    assert stats["worst_month_ret_pct"] == -2.0
+    assert stats["months"] == [
+        {"month": "2026-01", "trades": 2, "sum_trade_ret_pct": 0.75},
+        {"month": "2026-02", "trades": 1, "sum_trade_ret_pct": -2.0},
+    ]

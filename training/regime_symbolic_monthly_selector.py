@@ -48,6 +48,8 @@ class MonthlySymbolicSelectorCfg:
     max_val_mdd_pct: float = 20.0
     min_val_cagr_pct: float = 0.0
     max_val_p_value: float = 0.8
+    min_val_positive_months: int = 0
+    max_val_worst_month_ret_pct: float = -100.0
     keep_work_files: bool = False
 
 
@@ -111,7 +113,41 @@ def _run_policy(*, history_path: str, eval_path: str, start: str, end: str, targ
         min_train_rows=int(cfg.min_train_rows),
     )
     bt = run_overlay(OnlineRiskOverlayConfig(predictions_jsonl=str(pred), market_csv=cfg.market_csv, output=str(bt_path), leverage=float(cfg.leverage)))
-    return {"target": target, "threshold": threshold, "predictions": str(pred), "summary": summary, "backtest": {"period": bt["period"], "sim": bt["sim"], "trade_stats": bt["trade_stats"]}}
+    return {"target": target, "threshold": threshold, "predictions": str(pred), "summary": summary, "validation_month_stats": _executed_month_stats(bt.get("executed", [])), "backtest": {"period": bt["period"], "sim": bt["sim"], "trade_stats": bt["trade_stats"]}}
+
+
+def _executed_month_stats(executed: list[dict[str, Any]]) -> dict[str, Any]:
+    by: dict[str, dict[str, float]] = {}
+    for e in executed:
+        month = str(e.get("date", ""))[:7]
+        if not month:
+            continue
+        slot = by.setdefault(month, {"trades": 0.0, "sum_trade_ret_pct": 0.0})
+        slot["trades"] += 1.0
+        slot["sum_trade_ret_pct"] += float(e.get("trade_ret_pct", 0.0) or 0.0)
+    months = [
+        {"month": m, "trades": int(v["trades"]), "sum_trade_ret_pct": float(v["sum_trade_ret_pct"])}
+        for m, v in sorted(by.items())
+    ]
+    return {
+        "months": months,
+        "positive_months": sum(1 for m in months if float(m["sum_trade_ret_pct"]) > 0.0),
+        "worst_month_ret_pct": min((float(m["sum_trade_ret_pct"]) for m in months), default=0.0),
+    }
+
+
+def _monthly_candidate_score(row: dict[str, Any], gate_cfg: Any, cfg: MonthlySymbolicSelectorCfg) -> tuple[float, list[str]]:
+    score, reasons = _candidate_score(row["backtest"], gate_cfg)  # type: ignore[arg-type]
+    month_stats = row.get("validation_month_stats", {}) if isinstance(row.get("validation_month_stats"), dict) else {}
+    if int(cfg.min_val_positive_months) > 0 and int(month_stats.get("positive_months", 0) or 0) < int(cfg.min_val_positive_months):
+        reasons.append("val_positive_months_below_min")
+    if float(month_stats.get("worst_month_ret_pct", 0.0) or 0.0) < float(cfg.max_val_worst_month_ret_pct):
+        reasons.append("val_worst_month_below_min")
+    if reasons and score > -1000.0:
+        score -= 1000.0 + 10.0 * len(reasons)
+    elif len(reasons) > 0 and ("val_positive_months_below_min" in reasons or "val_worst_month_below_min" in reasons):
+        score -= 10.0 * len(reasons)
+    return score, reasons
 
 
 def _safe_unlink(path: str | Path) -> None:
@@ -130,6 +166,7 @@ def _compact_policy_result(row: dict[str, Any]) -> dict[str, Any]:
         "validation_reject_reasons": row.get("validation_reject_reasons"),
         "backtest": row.get("backtest"),
         "predictions": row.get("predictions"),
+        "validation_month_stats": row.get("validation_month_stats"),
     }
 
 
@@ -169,7 +206,7 @@ def run(cfg: MonthlySymbolicSelectorCfg) -> dict[str, Any]:
             for threshold in _parse_csv(cfg.thresholds, float):
                 tag = f"val_{target}_th{_tag_num(threshold)}"
                 row = _run_policy(history_path=str(hist_path), eval_path=str(val_path), start=str(val_start.date()), end=str(val_end.date()), target=target, threshold=float(threshold), cfg=cfg, out_dir=month_dir, tag=tag)
-                score, reasons = _candidate_score(row["backtest"], gate_cfg)  # type: ignore[arg-type]
+                score, reasons = _monthly_candidate_score(row, gate_cfg, cfg)
                 row["selection_score"] = score
                 row["validation_passed"] = not reasons
                 row["validation_reject_reasons"] = reasons
@@ -245,6 +282,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-val-mdd-pct", type=float, default=20.0)
     p.add_argument("--min-val-cagr-pct", type=float, default=0.0)
     p.add_argument("--max-val-p-value", type=float, default=0.8)
+    p.add_argument("--min-val-positive-months", type=int, default=0)
+    p.add_argument("--max-val-worst-month-ret-pct", type=float, default=-100.0)
     p.add_argument("--keep-work-files", action="store_true")
     return p.parse_args()
 
