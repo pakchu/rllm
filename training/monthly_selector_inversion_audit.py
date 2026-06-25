@@ -28,11 +28,13 @@ def _safe_get(d: dict[str, Any], path: list[str], default: Any = None) -> Any:
 
 def _month_row(report_path: str, month: dict[str, Any]) -> dict[str, Any] | None:
     selected = month.get("selected") or {}
-    eval_bt = (month.get("eval") or {}).get("backtest") or {}
-    val_sim = (selected.get("backtest") or {}).get("sim") or {}
-    val_stats = (selected.get("backtest") or {}).get("trade_stats") or {}
-    eval_sim = eval_bt.get("sim") or {}
-    eval_stats = eval_bt.get("trade_stats") or {}
+    eval_obj = month.get("eval") or {}
+    eval_bt = eval_obj.get("backtest") if isinstance(eval_obj.get("backtest"), dict) else eval_obj
+    val_obj = selected.get("backtest") if isinstance(selected.get("backtest"), dict) else selected.get("val", {})
+    val_sim = (val_obj or {}).get("sim") or {}
+    val_stats = (val_obj or {}).get("trade_stats") or {}
+    eval_sim = (eval_bt or {}).get("sim") or {}
+    eval_stats = (eval_bt or {}).get("trade_stats") or {}
     if not eval_sim:
         return None
     val_month_stats = selected.get("validation_month_stats") or {}

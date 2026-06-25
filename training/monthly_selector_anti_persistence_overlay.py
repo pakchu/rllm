@@ -43,8 +43,9 @@ def _blocked_months(report: dict[str, Any], cfg: AntiPersistenceCfg) -> dict[str
     out = {}
     for m in report.get("months", []):
         sel = m.get("selected") or {}
-        sim = (sel.get("backtest") or {}).get("sim") or {}
-        stats = (sel.get("backtest") or {}).get("trade_stats") or {}
+        val_obj = sel.get("backtest") if isinstance(sel.get("backtest"), dict) else sel.get("val", {})
+        sim = (val_obj or {}).get("sim") or {}
+        stats = (val_obj or {}).get("trade_stats") or {}
         ratio = float(sim.get("cagr_to_strict_mdd", 0.0) or 0.0)
         cagr = float(sim.get("cagr_pct", 0.0) or 0.0)
         t = float(stats.get("t_stat_like", 0.0) or 0.0)
