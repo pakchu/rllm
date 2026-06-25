@@ -44,6 +44,18 @@ class TestRollingSparseSetupMiner(unittest.TestCase):
         self.assertEqual(low["mask"].tolist(), [True, False, False, False])
         self.assertEqual(high["mask"].tolist(), [False, True, True, True])
 
+    def test_feature_columns_include_price_action_extreme_features(self):
+        features = pd.DataFrame({
+            "pa__pa_ext_144_to_max_high_pct": [-0.1, -0.2, -0.3],
+            "pa__pa_ext_144_range_pos": [0.1, 0.2, 0.3],
+            "mkt__external_any_available": [1.0, 1.0, 1.0],
+        })
+
+        cols = _feature_columns(features)
+
+        self.assertIn("pa__pa_ext_144_to_max_high_pct", cols)
+        self.assertIn("pa__pa_ext_144_range_pos", cols)
+
 
 if __name__ == "__main__":
     unittest.main()

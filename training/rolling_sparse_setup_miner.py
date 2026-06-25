@@ -27,6 +27,7 @@ from preprocessing.market_features import build_market_feature_frame
 from training.alpha_feature_backtest import _forward_return
 from training.strict_bar_backtest import _drawdown_from_trough, _trade_stats
 from training.wave_feature_ridge_policy import build_wave_feature_frame
+from training.price_action_extreme_feature_audit import build_extreme_bar_features
 
 
 @dataclass(frozen=True)
@@ -51,6 +52,8 @@ class SparseSetupCfg:
     entry_delay_bars: int = 1
     max_features: int = 0
     include_external_components: bool = False
+    include_price_action_extremes: bool = False
+    price_action_lookbacks: str = "36,72,144,288,576,2016"
     feature_include_regex: str = ""
 
 
@@ -94,6 +97,7 @@ def _feature_columns(features: pd.DataFrame) -> list[str]:
         "mkt__taker_", "mkt__dxy_", "mkt__kimchi_", "mkt__usdkrw_", "wave__eff_", "wave__gk_",
         "mkt__btckrw_", "mkt__fx_", "wave__btckrw_", "wave__fx_",
         "wave__cvd_", "wave__flow_", "wave__taker_", "wave__vol_", "wave__vwap_", "wave__mom_",
+        "pa__pa_ext_",
     )
     preferred = [c for c in cols if c.startswith(preferred_prefixes)]
     return preferred or cols
@@ -236,7 +240,10 @@ def run(cfg: SparseSetupCfg) -> dict[str, Any]:
         )
     base = build_market_feature_frame(market, window_size=int(cfg.window_size)).add_prefix("mkt__")
     wave = build_wave_feature_frame(market, window=int(cfg.window_size)).add_prefix("wave__")
-    features = pd.concat([base, wave], axis=1).replace([np.inf, -np.inf], 0.0).fillna(0.0)
+    parts = [base, wave]
+    if bool(cfg.include_price_action_extremes):
+        parts.append(build_extreme_bar_features(market, tuple(_parse_list(cfg.price_action_lookbacks, int))).add_prefix("pa__"))
+    features = pd.concat(parts, axis=1).replace([np.inf, -np.inf], 0.0).fillna(0.0)
     features = features.loc[:, ~features.columns.duplicated(keep="last")]
     cols = _feature_columns(features)
     if str(cfg.feature_include_regex).strip():
@@ -355,6 +362,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--entry-delay-bars", type=int, default=SparseSetupCfg.entry_delay_bars)
     p.add_argument("--max-features", type=int, default=SparseSetupCfg.max_features)
     p.add_argument("--include-external-components", action="store_true", default=SparseSetupCfg.include_external_components)
+    p.add_argument("--include-price-action-extremes", action="store_true", default=SparseSetupCfg.include_price_action_extremes)
+    p.add_argument("--price-action-lookbacks", default=SparseSetupCfg.price_action_lookbacks)
     p.add_argument("--feature-include-regex", default=SparseSetupCfg.feature_include_regex)
     return p.parse_args()
 

@@ -29,6 +29,7 @@ from training.sparse_setup_ensemble_audit import (
     _simulate_events,
 )
 from training.wave_feature_ridge_policy import build_wave_feature_frame
+from training.price_action_extreme_feature_audit import build_extreme_bar_features
 
 
 @dataclass(frozen=True)
@@ -64,6 +65,8 @@ class WalkForwardCfg:
     min_history_folds: int = 1
     seed_candidates: str = "top_prior"  # top_prior | all_when_cold
     include_external_components: bool = False
+    include_price_action_extremes: bool = False
+    price_action_lookbacks: str = "36,72,144,288,576,2016"
 
 
 def _ensemble_cfg(cfg: WalkForwardCfg) -> EnsembleCfg:
@@ -75,13 +78,14 @@ def _ensemble_cfg(cfg: WalkForwardCfg) -> EnsembleCfg:
 
 
 def _features(market: pd.DataFrame, cfg: WalkForwardCfg) -> pd.DataFrame:
-    return pd.concat(
-        [
-            build_market_feature_frame(market, window_size=int(cfg.window_size)).add_prefix("mkt__"),
-            build_wave_feature_frame(market, window=int(cfg.window_size)).add_prefix("wave__"),
-        ],
-        axis=1,
-    ).replace([np.inf, -np.inf], 0.0).fillna(0.0).loc[:, lambda df: ~df.columns.duplicated(keep="last")]
+    parts = [
+        build_market_feature_frame(market, window_size=int(cfg.window_size)).add_prefix("mkt__"),
+        build_wave_feature_frame(market, window=int(cfg.window_size)).add_prefix("wave__"),
+    ]
+    if bool(cfg.include_price_action_extremes):
+        lookbacks = tuple(int(x.strip()) for x in str(cfg.price_action_lookbacks).split(",") if x.strip())
+        parts.append(build_extreme_bar_features(market, lookbacks).add_prefix("pa__"))
+    return pd.concat(parts, axis=1).replace([np.inf, -np.inf], 0.0).fillna(0.0).loc[:, lambda df: ~df.columns.duplicated(keep="last")]
 
 
 def _fold_order(sparse: dict[str, Any]) -> list[str]:
@@ -236,6 +240,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--min-history-folds", type=int, default=WalkForwardCfg.min_history_folds)
     p.add_argument("--seed-candidates", choices=["top_prior", "all_when_cold"], default=WalkForwardCfg.seed_candidates)
     p.add_argument("--include-external-components", action="store_true", default=WalkForwardCfg.include_external_components)
+    p.add_argument("--include-price-action-extremes", action="store_true", default=WalkForwardCfg.include_price_action_extremes)
+    p.add_argument("--price-action-lookbacks", default=WalkForwardCfg.price_action_lookbacks)
     return p.parse_args()
 
 

@@ -27,6 +27,7 @@ from preprocessing.market_features import build_market_feature_frame
 from training.alpha_feature_backtest import _forward_return
 from training.strict_bar_backtest import _drawdown_from_trough, _trade_stats
 from training.wave_feature_ridge_policy import build_wave_feature_frame
+from training.price_action_extreme_feature_audit import build_extreme_bar_features
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,8 @@ class EnsembleCfg:
     min_position_scale: float = 0.25
     max_position_scale: float = 1.0
     execution_horizon_bars: int = 0  # 0 keeps candidate horizon
+    include_price_action_extremes: bool = False
+    price_action_lookbacks: str = "36,72,144,288,576,2016"
 
 
 def _load_market(path: str) -> pd.DataFrame:
@@ -327,13 +330,13 @@ def run(cfg: EnsembleCfg) -> dict[str, Any]:
     market = _load_market(cfg.market_csv)
     if cfg.wave_trading_root:
         market = attach_wave_trading_external_features(market, wave_trading_root=cfg.wave_trading_root, tolerance=cfg.external_tolerance)
-    features = pd.concat(
-        [
-            build_market_feature_frame(market, window_size=int(cfg.window_size)).add_prefix("mkt__"),
-            build_wave_feature_frame(market, window=int(cfg.window_size)).add_prefix("wave__"),
-        ],
-        axis=1,
-    ).replace([np.inf, -np.inf], 0.0).fillna(0.0)
+    feature_parts = [
+        build_market_feature_frame(market, window_size=int(cfg.window_size)).add_prefix("mkt__"),
+        build_wave_feature_frame(market, window=int(cfg.window_size)).add_prefix("wave__"),
+    ]
+    if bool(cfg.include_price_action_extremes):
+        feature_parts.append(build_extreme_bar_features(market, tuple(int(x.strip()) for x in str(cfg.price_action_lookbacks).split(",") if x.strip())).add_prefix("pa__"))
+    features = pd.concat(feature_parts, axis=1).replace([np.inf, -np.inf], 0.0).fillna(0.0)
     features = features.loc[:, ~features.columns.duplicated(keep="last")]
     dates = pd.to_datetime(market["date"])
     candidates = [dict(c, _candidate_index=i) for i, c in enumerate(sparse.get("top_strict", [])[: int(cfg.candidate_limit)])]
@@ -420,6 +423,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--min-position-scale", type=float, default=EnsembleCfg.min_position_scale)
     p.add_argument("--max-position-scale", type=float, default=EnsembleCfg.max_position_scale)
     p.add_argument("--execution-horizon-bars", type=int, default=EnsembleCfg.execution_horizon_bars)
+    p.add_argument("--include-price-action-extremes", action="store_true", default=EnsembleCfg.include_price_action_extremes)
+    p.add_argument("--price-action-lookbacks", default=EnsembleCfg.price_action_lookbacks)
     return p.parse_args()
 
 
