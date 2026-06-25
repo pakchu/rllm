@@ -55,6 +55,9 @@ class SparseSetupCfg:
     include_price_action_extremes: bool = False
     price_action_lookbacks: str = "36,72,144,288,576,2016"
     feature_include_regex: str = ""
+    min_deployment_ratio: float = -100.0
+    max_deployment_mdd_pct: float = 100.0
+    min_deployment_trades: int = 0
 
 
 def _load_market(path: str) -> pd.DataFrame:
@@ -230,6 +233,66 @@ def _simulate_indices(*, market: pd.DataFrame, dates: pd.Series, indices: np.nda
     return {"period": {"start": str(start_dt), "end": str(end_dt), "years": years}, "sim": {"ret_pct": ret_pct, "cagr_pct": cagr, "strict_mdd_pct": mdd, "cagr_to_strict_mdd": cagr / mdd if mdd > 1e-12 else float("inf"), "trade_entries": entries, "samples": int(len(indices)), "hold_bars": int(horizon), "side": "LONG" if side > 0 else "SHORT", "return_application": "sparse_setup_actual_ohlc_bar_by_bar"}, "trade_stats": _trade_stats(trade_returns)}
 
 
+def _simulate_signal_events(*, market: pd.DataFrame, dates: pd.Series, events: list[dict[str, int]], cfg: SparseSetupCfg) -> dict[str, Any]:
+    if not events:
+        return {"period": {"start": str(dates.iloc[0]), "end": str(dates.iloc[-1]), "years": 1.0 / 365.25}, "sim": {"ret_pct": 0.0, "cagr_pct": 0.0, "strict_mdd_pct": 0.0, "cagr_to_strict_mdd": float("inf"), "trade_entries": 0, "return_application": "continuous_sparse_setup_candidate_actual_ohlc"}, "trade_stats": _trade_stats([])}
+    opens = market["open"].to_numpy(dtype=float)
+    highs = market["high"].to_numpy(dtype=float)
+    lows = market["low"].to_numpy(dtype=float)
+    eq = peak = 1.0
+    max_dd = 0.0
+    next_allowed = 0
+    entries = 0
+    trade_returns: list[float] = []
+    cost = (float(cfg.fee_rate) + float(cfg.slippage_rate)) * float(cfg.leverage)
+    ordered = sorted(events, key=lambda e: int(e["signal_pos"]))
+    first_pos = int(ordered[0]["signal_pos"])
+    last_pos = int(ordered[-1]["signal_pos"])
+    for ev in ordered:
+        signal_pos = int(ev["signal_pos"])
+        if signal_pos < next_allowed:
+            continue
+        entry_pos = signal_pos + int(cfg.entry_delay_bars)
+        exit_pos = entry_pos + int(ev["horizon"])
+        if entry_pos >= len(market) - 1 or exit_pos >= len(market):
+            continue
+        side = int(ev["side"])
+        entry_eq = eq
+        entries += 1
+        eq *= max(0.0, 1.0 - cost)
+        max_dd = max(max_dd, _drawdown_from_trough(peak, eq))
+        for j in range(entry_pos, exit_pos):
+            open_j = float(opens[j])
+            if open_j <= 0.0:
+                continue
+            if side > 0:
+                adverse_ret = (float(lows[j]) - open_j) / open_j
+                close_ret = (float(opens[j + 1]) - open_j) / open_j
+            else:
+                adverse_ret = (open_j - float(highs[j])) / open_j
+                close_ret = (open_j - float(opens[j + 1])) / open_j
+            max_dd = max(max_dd, _drawdown_from_trough(peak, eq * (1.0 + float(cfg.leverage) * adverse_ret)))
+            eq *= max(0.0, 1.0 + float(cfg.leverage) * close_ret)
+            peak = max(peak, eq)
+            if eq <= 0.0:
+                break
+        eq *= max(0.0, 1.0 - cost)
+        max_dd = max(max_dd, _drawdown_from_trough(peak, eq))
+        peak = max(peak, eq)
+        trade_returns.append(eq / entry_eq - 1.0)
+        next_allowed = exit_pos
+        if eq <= 0.0:
+            break
+    start_dt = pd.Timestamp(dates.iloc[max(0, first_pos)]).to_pydatetime()
+    end_dt = pd.Timestamp(dates.iloc[min(len(dates) - 1, last_pos)]).to_pydatetime()
+    years = max(1.0 / 365.25, float((end_dt - start_dt).days) / 365.25)
+    ret_pct = (eq - 1.0) * 100.0
+    gross = 1.0 + ret_pct / 100.0
+    cagr = ((gross ** (1.0 / years) - 1.0) * 100.0) if gross > 0.0 else -100.0
+    mdd = max_dd * 100.0
+    return {"period": {"start": str(start_dt), "end": str(end_dt), "years": years}, "sim": {"ret_pct": ret_pct, "cagr_pct": cagr, "strict_mdd_pct": mdd, "cagr_to_strict_mdd": cagr / mdd if mdd > 1e-12 else float("inf"), "trade_entries": entries, "return_application": "continuous_sparse_setup_candidate_actual_ohlc"}, "trade_stats": _trade_stats(trade_returns)}
+
+
 def run(cfg: SparseSetupCfg) -> dict[str, Any]:
     market = _load_market(cfg.input_csv)
     if cfg.wave_trading_root:
@@ -312,6 +375,7 @@ def run(cfg: SparseSetupCfg) -> dict[str, Any]:
     strict_rows = []
     for cand in candidates[: int(cfg.max_strict_candidates)]:
         strict_folds = []
+        deployment_events: list[dict[str, int]] = []
         fa, fb = cand["features"][0], cand["features"][1]
         horizon = int(cand["horizon"])
         fwd = fwd_by_horizon[horizon]
@@ -324,16 +388,49 @@ def run(cfg: SparseSetupCfg) -> dict[str, Any]:
             mask_a = ca["mask"]
             mask_b = cb["mask"]
             active_train = train & mask_a & mask_b
+            if int(active_train.sum()) < int(cfg.min_fold_events):
+                result = _simulate_indices(market=market, dates=dates, indices=np.asarray([], dtype=int), side=1, horizon=horizon, cfg=cfg)
+                strict_folds.append({"fold": fm["fold"]["name"], "side": "SKIP", "skip": "not_enough_active_train", "thresholds": {fa["name"]: {"side": fa["side"], "threshold": ca["threshold"]}, fb["name"]: {"side": fb["side"], "threshold": cb["threshold"]}}, "result": result})
+                continue
             trade_side = 1 if float(np.mean(fwd[active_train])) >= 0.0 else -1
             idx = np.flatnonzero(fm["eval"] & mask_a & mask_b)
             result = _simulate_indices(market=market, dates=dates, indices=idx, side=trade_side, horizon=horizon, cfg=cfg)
+            deployment_events.extend({"signal_pos": int(pos), "side": int(trade_side), "horizon": int(horizon)} for pos in idx)
             strict_folds.append({"fold": fm["fold"]["name"], "side": "LONG" if trade_side > 0 else "SHORT", "thresholds": {fa["name"]: {"side": fa["side"], "threshold": ca["threshold"]}, fb["name"]: {"side": fb["side"], "threshold": cb["threshold"]}}, "result": result})
         row = dict(cand)
         row["strict_folds"] = strict_folds
         sims = [f["result"]["sim"] for f in strict_folds]
-        row["strict_summary"] = {"positive_folds": int(sum(float(s["cagr_pct"]) > 0 for s in sims)), "ratio3_mdd15_folds": int(sum(float(s["cagr_to_strict_mdd"]) >= 3 and float(s["strict_mdd_pct"]) <= 15 for s in sims)), "total_trades": int(sum(int(s["trade_entries"]) for s in sims)), "median_cagr_pct": float(np.median([float(s["cagr_pct"]) for s in sims])), "median_strict_mdd_pct": float(np.median([float(s["strict_mdd_pct"]) for s in sims])), "worst_cagr_pct": float(np.min([float(s["cagr_pct"]) for s in sims]))}
-        strict_rows.append(row)
-    strict_rows.sort(key=lambda r: (r["strict_summary"]["positive_folds"], r["strict_summary"]["ratio3_mdd15_folds"], r["strict_summary"]["median_cagr_pct"]), reverse=True)
+        deployment = _simulate_signal_events(market=market, dates=dates, events=deployment_events, cfg=cfg)
+        dep_sim = deployment["sim"]
+        row["strict_summary"] = {
+            "positive_folds": int(sum(float(s["cagr_pct"]) > 0 for s in sims)),
+            "ratio3_mdd15_folds": int(sum(float(s["cagr_to_strict_mdd"]) >= 3 and float(s["strict_mdd_pct"]) <= 15 for s in sims)),
+            "total_trades": int(sum(int(s["trade_entries"]) for s in sims)),
+            "median_cagr_pct": float(np.median([float(s["cagr_pct"]) for s in sims])),
+            "median_strict_mdd_pct": float(np.median([float(s["strict_mdd_pct"]) for s in sims])),
+            "worst_cagr_pct": float(np.min([float(s["cagr_pct"]) for s in sims])),
+            "deployment_cagr_pct": float(dep_sim["cagr_pct"]),
+            "deployment_strict_mdd_pct": float(dep_sim["strict_mdd_pct"]),
+            "deployment_cagr_to_strict_mdd": float(dep_sim["cagr_to_strict_mdd"]),
+            "deployment_trades": int(dep_sim["trade_entries"]),
+            "deployment_p_value_mean_ret_approx": float(deployment["trade_stats"].get("p_value_mean_ret_approx", 1.0)),
+        }
+        if (
+            float(row["strict_summary"]["deployment_cagr_to_strict_mdd"]) >= float(cfg.min_deployment_ratio)
+            and float(row["strict_summary"]["deployment_strict_mdd_pct"]) <= float(cfg.max_deployment_mdd_pct)
+            and int(row["strict_summary"]["deployment_trades"]) >= int(cfg.min_deployment_trades)
+        ):
+            strict_rows.append(row)
+    strict_rows.sort(
+        key=lambda r: (
+            r["strict_summary"]["deployment_cagr_to_strict_mdd"],
+            -r["strict_summary"]["deployment_strict_mdd_pct"],
+            r["strict_summary"]["positive_folds"],
+            r["strict_summary"]["ratio3_mdd15_folds"],
+            r["strict_summary"]["median_cagr_pct"],
+        ),
+        reverse=True,
+    )
 
     report = {"as_of": datetime.now(timezone.utc).isoformat(), "config": asdict(cfg), "input": {"rows": int(len(market)), "start": str(market["date"].iloc[0]), "end": str(market["date"].iloc[-1])}, "feature_count": len(cols), "folds": folds, "top_event": candidates[: int(cfg.top_event_candidates)], "top_strict": strict_rows, "leakage_guard": {"features_use_rows_at_or_before_t": True, "each_fold_thresholds_and_side_fit_before_eval_start": True, "strict_replay_uses_actual_ohlc_bar_by_bar": True, "external_join": "backward_asof_no_future" if cfg.wave_trading_root else "disabled"}}
     Path(cfg.output).parent.mkdir(parents=True, exist_ok=True)
@@ -366,6 +463,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--include-price-action-extremes", action="store_true", default=SparseSetupCfg.include_price_action_extremes)
     p.add_argument("--price-action-lookbacks", default=SparseSetupCfg.price_action_lookbacks)
     p.add_argument("--feature-include-regex", default=SparseSetupCfg.feature_include_regex)
+    p.add_argument("--min-deployment-ratio", type=float, default=SparseSetupCfg.min_deployment_ratio)
+    p.add_argument("--max-deployment-mdd-pct", type=float, default=SparseSetupCfg.max_deployment_mdd_pct)
+    p.add_argument("--min-deployment-trades", type=int, default=SparseSetupCfg.min_deployment_trades)
     return p.parse_args()
 
 

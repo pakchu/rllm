@@ -4,7 +4,7 @@ import pandas as pd
 
 import numpy as np
 
-from training.rolling_sparse_setup_miner import _build_predicate_cache, _feature_columns, SparseSetupCfg, run
+from training.rolling_sparse_setup_miner import _build_predicate_cache, _feature_columns, _simulate_signal_events, SparseSetupCfg, run
 
 
 class TestRollingSparseSetupMiner(unittest.TestCase):
@@ -68,6 +68,24 @@ class TestRollingSparseSetupMiner(unittest.TestCase):
         ]
 
         self.assertGreater(_score_event_folds(folds, cfg), 0.0)
+
+    def test_simulate_signal_events_tracks_continuous_drawdown(self):
+        market = pd.DataFrame({
+            "date": pd.date_range("2024-01-01", periods=8, freq="5min"),
+            "open": [100.0, 100.0, 90.0, 90.0, 90.0, 100.0, 110.0, 110.0],
+            "high": [101.0, 101.0, 91.0, 91.0, 91.0, 101.0, 111.0, 111.0],
+            "low": [99.0, 99.0, 89.0, 89.0, 89.0, 99.0, 109.0, 109.0],
+        })
+        events = [
+            {"signal_pos": 0, "side": 1, "horizon": 2},
+            {"signal_pos": 4, "side": 1, "horizon": 2},
+        ]
+
+        result = _simulate_signal_events(market=market, dates=pd.to_datetime(market["date"]), events=events, cfg=SparseSetupCfg(input_csv="i", output="o", fee_rate=0.0, slippage_rate=0.0))
+
+        self.assertEqual(result["sim"]["trade_entries"], 2)
+        self.assertGreater(result["sim"]["strict_mdd_pct"], 9.0)
+        self.assertEqual(result["sim"]["return_application"], "continuous_sparse_setup_candidate_actual_ohlc")
 
 
 if __name__ == "__main__":
