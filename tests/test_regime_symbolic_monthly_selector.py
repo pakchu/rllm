@@ -5,6 +5,8 @@ from training.regime_symbolic_monthly_selector import (
     _month_starts,
     _slice_rows,
     _write_no_trade_month,
+    _compact_policy_result,
+    _safe_unlink,
 )
 
 
@@ -37,3 +39,28 @@ def test_write_no_trade_month_deduplicates_signal_rows(tmp_path: Path):
     assert summary["rows"] == 2
     assert summary["trade_signals"] == 0
     assert path.read_text().count("NO_TRADE") == 2
+
+
+def test_compact_policy_result_drops_large_summary_and_keeps_evidence():
+    row = {
+        "target": "tail_risk",
+        "threshold": -0.1,
+        "summary": {"large": "drop"},
+        "backtest": {"sim": {"trade_entries": 1}},
+        "predictions": "pred.jsonl",
+        "selection_score": 1.2,
+        "validation_passed": False,
+        "validation_reject_reasons": ["bad"],
+    }
+    compact = _compact_policy_result(row)
+    assert "summary" not in compact
+    assert compact["backtest"] == row["backtest"]
+    assert compact["validation_reject_reasons"] == ["bad"]
+
+
+def test_safe_unlink_is_idempotent(tmp_path: Path):
+    path = tmp_path / "x.txt"
+    path.write_text("x")
+    _safe_unlink(path)
+    _safe_unlink(path)
+    assert not path.exists()

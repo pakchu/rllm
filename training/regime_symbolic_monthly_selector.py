@@ -48,6 +48,7 @@ class MonthlySymbolicSelectorCfg:
     max_val_mdd_pct: float = 20.0
     min_val_cagr_pct: float = 0.0
     max_val_p_value: float = 0.8
+    keep_work_files: bool = False
 
 
 def _date(row: dict[str, Any]) -> str:
@@ -113,6 +114,25 @@ def _run_policy(*, history_path: str, eval_path: str, start: str, end: str, targ
     return {"target": target, "threshold": threshold, "predictions": str(pred), "summary": summary, "backtest": {"period": bt["period"], "sim": bt["sim"], "trade_stats": bt["trade_stats"]}}
 
 
+def _safe_unlink(path: str | Path) -> None:
+    try:
+        Path(path).unlink()
+    except FileNotFoundError:
+        pass
+
+
+def _compact_policy_result(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "target": row.get("target"),
+        "threshold": row.get("threshold"),
+        "selection_score": row.get("selection_score"),
+        "validation_passed": row.get("validation_passed"),
+        "validation_reject_reasons": row.get("validation_reject_reasons"),
+        "backtest": row.get("backtest"),
+        "predictions": row.get("predictions"),
+    }
+
+
 def run(cfg: MonthlySymbolicSelectorCfg) -> dict[str, Any]:
     work = Path(cfg.work_dir)
     work.mkdir(parents=True, exist_ok=True)
@@ -153,7 +173,11 @@ def run(cfg: MonthlySymbolicSelectorCfg) -> dict[str, Any]:
                 row["selection_score"] = score
                 row["validation_passed"] = not reasons
                 row["validation_reject_reasons"] = reasons
-                candidates.append(row)
+                candidates.append(_compact_policy_result(row))
+                if not cfg.keep_work_files:
+                    _safe_unlink(row.get("predictions", ""))
+                    _safe_unlink(month_dir / f"{tag}_summary.json")
+                    _safe_unlink(month_dir / f"{tag}_backtest.json")
         candidates.sort(key=lambda r: float(r["selection_score"]), reverse=True)
         selected = candidates[0] if candidates else None
         if selected is None or not bool(selected.get("validation_passed")):
@@ -161,10 +185,16 @@ def run(cfg: MonthlySymbolicSelectorCfg) -> dict[str, Any]:
             no_trade = _write_no_trade_month(eval_rows, pred, "monthly_validation_gate_failed")
             pred_paths.append(str(pred))
             month_reports.append({"month": month, "status": "ABSTAIN", "validation_window": {"start": str(val_start.date()), "end": str(val_end.date())}, "rows": {"history": len(hist_rows), "validation": len(val_rows), "eval": len(eval_rows)}, "selected": selected, "top_validation": candidates[:5], "eval": no_trade})
+            if not cfg.keep_work_files:
+                _safe_unlink(hist_path); _safe_unlink(val_path); _safe_unlink(eval_path)
             continue
         eval_result = _run_policy(history_path=str(hist_path), eval_path=str(eval_path), start=str(mstart.date()), end=str(mend.date()), target=str(selected["target"]), threshold=float(selected["threshold"]), cfg=cfg, out_dir=month_dir, tag=f"eval_selected_{selected['target']}_th{_tag_num(float(selected['threshold']))}")
         pred_paths.append(str(eval_result["predictions"]))
-        month_reports.append({"month": month, "status": "TRADED", "validation_window": {"start": str(val_start.date()), "end": str(val_end.date())}, "rows": {"history": len(hist_rows), "validation": len(val_rows), "eval": len(eval_rows)}, "selected": selected, "eval": eval_result})
+        month_reports.append({"month": month, "status": "TRADED", "validation_window": {"start": str(val_start.date()), "end": str(val_end.date())}, "rows": {"history": len(hist_rows), "validation": len(val_rows), "eval": len(eval_rows)}, "selected": selected, "eval": _compact_policy_result(eval_result)})
+        if not cfg.keep_work_files:
+            _safe_unlink(hist_path); _safe_unlink(val_path); _safe_unlink(eval_path)
+            _safe_unlink(month_dir / f"eval_selected_{selected['target']}_th{_tag_num(float(selected['threshold']))}_summary.json")
+            _safe_unlink(month_dir / f"eval_selected_{selected['target']}_th{_tag_num(float(selected['threshold']))}_backtest.json")
 
     combined_pred = work / "combined_eval_predictions.jsonl"
     with combined_pred.open("w") as out:
@@ -175,6 +205,13 @@ def run(cfg: MonthlySymbolicSelectorCfg) -> dict[str, Any]:
                     if line.strip():
                         out.write(line + "\n")
     bt = run_overlay(OnlineRiskOverlayConfig(predictions_jsonl=str(combined_pred), market_csv=cfg.market_csv, output=str(work / "combined_eval_backtest.json"), leverage=float(cfg.leverage)))
+    if not cfg.keep_work_files:
+        for p in pred_paths:
+            if Path(p) != combined_pred:
+                _safe_unlink(p)
+        for child in work.iterdir():
+            if child.is_dir() and not any(child.iterdir()):
+                child.rmdir()
     report = {
         "config": asdict(cfg),
         "months": month_reports,
@@ -208,6 +245,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-val-mdd-pct", type=float, default=20.0)
     p.add_argument("--min-val-cagr-pct", type=float, default=0.0)
     p.add_argument("--max-val-p-value", type=float, default=0.8)
+    p.add_argument("--keep-work-files", action="store_true")
     return p.parse_args()
 
 
