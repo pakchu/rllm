@@ -1,0 +1,58 @@
+{
+  "name": "event_candidate_pairwise_rw_ge_cur2min_current",
+  "status": "research_candidate",
+  "version": "2026-06-25",
+  "description": "Pairwise event-candidate ranker with validation-selected rolling extrema filters: narrow 36-bar range and current price sufficiently above the 36-bar rolling low.",
+  "source_report": "results/event_candidate_pairwise_walkforward_filter_rw_ge_cur2min_6m3m3m_decay45_sidescale_d0p5_2026-06-25/report.json",
+  "baseline_report": "results/event_candidate_pairwise_walkforward_paext_rex_filter_rex36rw_6m3m3m_decay45_sidescale_d0p5_2026-06-24/report.json",
+  "performance": {
+    "cagr_pct": 29.346735470203654,
+    "strict_mdd_pct": 12.544280344521564,
+    "cagr_to_strict_mdd": 2.339451500142867,
+    "trade_entries": 157,
+    "p_value_mean_ret_approx": 0.001825163883966141,
+    "mean_trade_ret_pct": 0.6324564405751195
+  },
+  "risk_notes": [
+    "Below target CAGR/strict-MDD >= 3.",
+    "Recent 2026 relaxed-gate and monthly walk-forward diagnostics failed; do not route directly to live trading.",
+    "Strict validation gate abstains in much of 2026 and appears protective, not merely over-conservative.",
+    "Fine-grid expansion degraded performance, so keep the narrow validation grid unless an independent holdout says otherwise."
+  ],
+  "live_ready": false,
+  "paper_test_required": true,
+  "data": {
+    "input_jsonl": "data/event_action_compressor_ranker_all_2022_2026_paext_rex_2026-06-24.jsonl",
+    "market_csv": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz"
+  },
+  "walk_forward": {
+    "fit_months": 6,
+    "val_months": 3,
+    "test_months": 3,
+    "step_months": 3,
+    "quantiles": "0.85,0.90,0.95",
+    "full_margins": "0,0.5,1.0",
+    "min_fit_signals": 100,
+    "min_val_trades": 10,
+    "min_test_signals": 30,
+    "min_val_cagr_pct": 10.0,
+    "min_val_ratio": 1.0,
+    "max_val_strict_mdd_pct": 20.0,
+    "min_val_t_stat": 0.8,
+    "max_val_p_value": 0.45,
+    "max_val_power_gap": 500,
+    "epochs": 80,
+    "lr": 0.2,
+    "l2": 10.0,
+    "pair_half_life_days": 45.0,
+    "side_min_val_trades": 3,
+    "side_scale_val_mean_ret_pct": 0.5,
+    "ranker_drop_prefixes": "rex_",
+    "max_feature_names": "rex_36_range_width_pct",
+    "max_feature_quantiles": "0.60,0.70,0.80,0.90",
+    "min_feature_names": "rex_36_cur_to_min_pct",
+    "min_feature_quantiles": "0.50,0.60,0.70,0.80",
+    "leverage": 1.0,
+    "entry_delay_bars": 1
+  }
+}
