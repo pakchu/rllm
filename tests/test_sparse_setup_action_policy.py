@@ -6,6 +6,8 @@ from training.sparse_setup_action_policy import (
     SparseActionPolicyCfg,
     _action_outcomes,
     _actions_for_records,
+    _metrics_from_sparse_actions,
+    _select_fallback_risk_profile,
     fit_action_rules,
     walkforward_action_eval,
 )
@@ -117,6 +119,52 @@ class TestSparseSetupActionPolicy(unittest.TestCase):
         self.assertEqual(action["exit_reason"], "stop_loss")
         self.assertLessEqual(action["mae"], 0.0300001)
         self.assertLess(action["net_return"], -0.03)
+
+    def test_risk_profiles_expand_action_keys_and_metrics_use_action_key(self):
+        market = pd.DataFrame(
+            {
+                "date": pd.date_range("2024-01-01", periods=8, freq="5min"),
+                "open": [100, 100, 100, 100, 100, 100, 100, 100],
+                "high": [101, 101, 101, 101, 101, 101, 101, 101],
+                "low": [99, 95, 95, 95, 95, 95, 95, 95],
+                "close": [100] * 8,
+                "volume": [1] * 8,
+            }
+        )
+        cfg = SparseActionPolicyCfg("sparse.json", "m.csv", "o.jsonl", "r.json", hold_candidates=(3,), risk_profiles=("base", "sl3"))
+        actions = _action_outcomes(market, 0, "LONG", cfg)
+        self.assertIn("LONG_3_base", actions)
+        self.assertIn("LONG_3_sl3", actions)
+        records = [{"date": "2024-01-01", "signal_pos": 0, "key": "k", "actions": actions}]
+        metrics = _metrics_from_sparse_actions(records, [{"gate": "TRADE", "action_key": "LONG_3_sl3"}])
+        self.assertEqual(metrics["trades"], 1)
+        self.assertEqual(metrics["risk_profiles"], {"sl3": 1})
+
+    def test_select_fallback_risk_profile_from_recent_fold(self):
+        records = [
+            {
+                "date": "2024-01-01",
+                "signal_pos": 0,
+                "key": "k",
+                "source_action": {"side": "LONG", "hold_bars": 2},
+                "actions": {
+                    "LONG_2_base": {"side": "LONG", "hold_bars": 2, "net_return": -0.02, "mae": 0.02, "utility": -0.04, "risk_profile": "base"},
+                    "LONG_2_sl3": {"side": "LONG", "hold_bars": 2, "net_return": 0.02, "mae": 0.005, "utility": 0.015, "risk_profile": "sl3"},
+                },
+            }
+        ]
+        cfg = SparseActionPolicyCfg(
+            "sparse.json",
+            "m.csv",
+            "o.jsonl",
+            "r.json",
+            hold_candidates=(2,),
+            risk_profiles=("base", "sl3"),
+            fallback_risk_profile_mode="recent_fold_best",
+        )
+        profile, scored = _select_fallback_risk_profile(history_records=records, recent_records=records, cfg=cfg)
+        self.assertEqual(profile, "sl3")
+        self.assertGreater(scored[0]["score"], scored[1]["score"])
 
 
 if __name__ == "__main__":

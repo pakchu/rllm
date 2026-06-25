@@ -95,3 +95,41 @@ The 3% stop-only setting improved the recent 2026H1 fold sharply but hurt the fu
 - 2026H1: CAGR `53.42%`, strict MDD `10.93%`, CAGR/MDD `4.89`
 
 Interpretation: stop behavior is regime-dependent. A fixed global stop is not enough; the next useful action space is a regime-conditioned risk-profile selector, not a single global SL/TP constant.
+
+## Regime-conditioned risk-profile selector
+
+Added simultaneous risk-profile action keys, for example:
+
+- `LONG_36_base`
+- `LONG_36_sl3`
+- `LONG_36_sl3tp6`
+- `LONG_36_sl5`
+- `LONG_36_sl5tp8`
+
+The evaluator now uses `action_key` directly, so a past-only rule can select both direction/hold and risk profile. Source-action fallback can also choose a profile from previous evidence via:
+
+- `fallback_risk_profile_mode=base`
+- `fallback_risk_profile_mode=recent_fold_best`
+- `fallback_risk_profile_mode=history_best`
+
+Validation files:
+
+- `results/sparse_setup_action_policy_2026-06-25/top4_risk_profiles.json`
+- `results/sparse_setup_action_policy_2026-06-25/top4_risk_recent_fold_best.json`
+- `results/sparse_setup_action_policy_2026-06-25/top4_risk_history_best.json`
+
+Results:
+
+| mode | CAGR | strict MDD | CAGR/MDD | selected profiles |
+| --- | ---: | ---: | ---: | --- |
+| base selector with risk book | 19.79% | 14.51% | 1.36 | base 210, sl5tp8 8 |
+| recent_fold_best | 18.27% | 14.51% | 1.26 | base 95, sl5tp8 53, sl3 70 |
+| history_best | 18.34% | 14.51% | 1.26 | base 165, sl5tp8 53 |
+
+Important detail: `recent_fold_best` correctly chose `sl3` for 2026H1 and produced:
+
+- 2026H1 CAGR `53.42%`
+- 2026H1 strict MDD `10.93%`
+- 2026H1 CAGR/MDD `4.89`
+
+But it also chose weaker stop profiles in earlier folds, so full-period ratio dropped. This rejects naive recent-fold profile chasing. The useful next direction is a richer regime/context model that learns when stop-based risk control is appropriate, not a one-fold winner-take-all selector.

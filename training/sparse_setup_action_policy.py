@@ -21,7 +21,6 @@ import pandas as pd
 
 from preprocessing.external_features import attach_wave_trading_external_features
 from preprocessing.market_features import build_market_feature_frame
-from training.eval_calibrated_policy_model import _metrics_from_actions
 from training.path_outcome_dataset import PathOutcomeConfig, compute_trade_path_outcome
 from training.sparse_setup_ensemble_audit import EnsembleCfg, _candidate_events, _candidate_key, _load_market
 from training.wave_feature_ridge_policy import build_wave_feature_frame
@@ -47,6 +46,7 @@ class SparseActionPolicyCfg:
     mae_penalty: float = 1.0
     trade_stop_loss_pct: float = 0.0
     trade_take_profit_pct: float = 0.0
+    risk_profiles: tuple[str, ...] = ()
     min_history_folds: int = 1
     min_action_samples: int = 8
     min_action_mean_net: float = 0.0
@@ -56,6 +56,7 @@ class SparseActionPolicyCfg:
     cold_start_source_action: bool = True
     fallback_source_action: str = "cold_start"  # never | cold_start | always_when_no_rule
     rule_key_mode: str = "candidate"  # candidate | feature_sides | source_side
+    fallback_risk_profile_mode: str = "base"  # base | recent_fold_best | history_best
 
 
 def _parse_holds(csv: str | tuple[int, ...]) -> tuple[int, ...]:
@@ -149,7 +150,7 @@ def _candidate_tokens(cand: dict[str, Any], ev: dict[str, Any], feats: pd.DataFr
     return tokens
 
 
-def _stopped_path_outcome(market: pd.DataFrame, signal_pos: int, side: str, hold: int, cfg: SparseActionPolicyCfg) -> dict[str, Any] | None:
+def _stopped_path_outcome(market: pd.DataFrame, signal_pos: int, side: str, hold: int, cfg: SparseActionPolicyCfg, *, stop_loss_pct: float | None = None, take_profit_pct: float | None = None, risk_profile: str = "base") -> dict[str, Any] | None:
     pcfg = PathOutcomeConfig(
         hold_bars=int(hold),
         entry_delay_bars=int(cfg.entry_delay_bars),
@@ -161,8 +162,8 @@ def _stopped_path_outcome(market: pd.DataFrame, signal_pos: int, side: str, hold
     base = compute_trade_path_outcome(market, int(signal_pos), side, pcfg)
     if base is None:
         return None
-    stop_pct = float(cfg.trade_stop_loss_pct) / 100.0
-    take_pct = float(cfg.trade_take_profit_pct) / 100.0
+    stop_pct = float(cfg.trade_stop_loss_pct if stop_loss_pct is None else stop_loss_pct) / 100.0
+    take_pct = float(cfg.trade_take_profit_pct if take_profit_pct is None else take_profit_pct) / 100.0
     if stop_pct <= 0.0 and take_pct <= 0.0:
         return {
             "side": side,
@@ -174,6 +175,9 @@ def _stopped_path_outcome(market: pd.DataFrame, signal_pos: int, side: str, hold
             "entry_pos": int(base.entry_pos),
             "exit_pos": int(base.exit_pos),
             "exit_reason": "time",
+            "risk_profile": str(risk_profile),
+            "stop_loss_pct": float(cfg.trade_stop_loss_pct if stop_loss_pct is None else stop_loss_pct),
+            "take_profit_pct": float(cfg.trade_take_profit_pct if take_profit_pct is None else take_profit_pct),
         }
     entry_price = float(base.entry_price)
     lev = max(1e-12, float(cfg.leverage))
@@ -225,20 +229,61 @@ def _stopped_path_outcome(market: pd.DataFrame, signal_pos: int, side: str, hold
         "entry_pos": int(base.entry_pos),
         "exit_pos": int(exit_pos),
         "exit_reason": exit_reason,
+        "risk_profile": str(risk_profile),
+        "stop_loss_pct": float(cfg.trade_stop_loss_pct if stop_loss_pct is None else stop_loss_pct),
+        "take_profit_pct": float(cfg.trade_take_profit_pct if take_profit_pct is None else take_profit_pct),
     }
+
+
+def _parse_risk_profiles(specs: tuple[str, ...]) -> list[tuple[str, float, float]]:
+    if not specs:
+        return [("base", 0.0, 0.0)]
+    out: list[tuple[str, float, float]] = []
+    for raw in specs:
+        text = str(raw).strip()
+        if not text:
+            continue
+        if text == "base":
+            out.append(("base", 0.0, 0.0))
+            continue
+        parts = text.split(":")
+        if len(parts) == 3:
+            name, stop, take = parts
+            out.append((name, float(stop), float(take)))
+            continue
+        if text.startswith("sl") and "tp" in text:
+            left, right = text[2:].split("tp", 1)
+            out.append((text, float(left), float(right)))
+            continue
+        if text.startswith("sl"):
+            out.append((text, float(text[2:]), 0.0))
+            continue
+        if text.startswith("tp"):
+            out.append((text, 0.0, float(text[2:])))
+            continue
+        raise ValueError("risk profile must be base, slN, tpN, slNtpM, or name:stop_pct:take_pct")
+    return out or [("base", 0.0, 0.0)]
+
+
+def _action_key(side: str, hold: int, profile: str, *, multi_profile: bool) -> str:
+    base = f"{side}_{int(hold)}"
+    return base if not multi_profile and str(profile) == "base" else f"{base}_{profile}"
 
 
 def _action_outcomes(market: pd.DataFrame, signal_pos: int, source_side: str, cfg: SparseActionPolicyCfg) -> dict[str, dict[str, Any]]:
     sides = [source_side]
     if bool(cfg.include_opposite_side):
         sides.append(_opposite(source_side))
+    profiles = _parse_risk_profiles(cfg.risk_profiles) if cfg.risk_profiles else [("base", float(cfg.trade_stop_loss_pct), float(cfg.trade_take_profit_pct))]
+    multi_profile = bool(cfg.risk_profiles)
     actions: dict[str, dict[str, Any]] = {}
     for side in sides:
         for hold in cfg.hold_candidates:
-            out = _stopped_path_outcome(market, int(signal_pos), side, int(hold), cfg)
-            if out is None:
-                continue
-            actions[f"{side}_{int(hold)}"] = out
+            for profile, stop, take in profiles:
+                out = _stopped_path_outcome(market, int(signal_pos), side, int(hold), cfg, stop_loss_pct=stop, take_profit_pct=take, risk_profile=profile)
+                if out is None:
+                    continue
+                actions[_action_key(side, int(hold), profile, multi_profile=multi_profile)] = out
     return actions
 
 
@@ -300,6 +345,7 @@ def _aggregate_action(rows: list[dict[str, Any]], action_key: str) -> dict[str, 
     utils = [float(v["utility"]) for v in vals]
     return {
         "samples": len(vals),
+        "action_key": action_key,
         "side": str(vals[0]["side"]),
         "hold_bars": int(vals[0]["hold_bars"]),
         "mean_net_return": float(np.mean(nets)),
@@ -328,7 +374,7 @@ def fit_action_rules(train_records: list[dict[str, Any]], cfg: SparseActionPolic
     rules: dict[str, dict[str, Any]] = {}
     for key, rows in groups.items():
         action_keys = sorted({a for row in rows for a in row["actions"]})
-        aggs = [_aggregate_action(rows, a) | {"action_key": a} for a in action_keys]
+        aggs = [_aggregate_action(rows, a) for a in action_keys]
         qualified = [
             a
             for a in aggs
@@ -345,31 +391,70 @@ def fit_action_rules(train_records: list[dict[str, Any]], cfg: SparseActionPolic
     return rules
 
 
-def _source_or_no_trade(row: dict[str, Any], cfg: SparseActionPolicyCfg) -> dict[str, Any]:
+def _source_or_no_trade(row: dict[str, Any], cfg: SparseActionPolicyCfg, *, risk_profile: str = "base") -> dict[str, Any]:
     if not bool(cfg.cold_start_source_action):
         return {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0, "reason": "COLD_START_NO_HISTORY"}
     src = row.get("source_action", {})
     side = str(src.get("side", "NONE"))
     hold = int(src.get("hold_bars", 0) or 0)
-    if f"{side}_{hold}" in row.get("actions", {}):
-        return {"gate": "TRADE", "side": side, "hold_bars": hold, "reason": "COLD_START_SOURCE_ACTION"}
+    actions = row.get("actions", {})
+    base_key = f"{side}_{hold}"
+    profiled_key = f"{base_key}_{risk_profile}"
+    action_key = profiled_key if profiled_key in actions else (base_key if base_key in actions else next((k for k in actions if str(k).startswith(base_key + "_")), ""))
+    if action_key:
+        return {"gate": "TRADE", "side": side, "hold_bars": hold, "action_key": action_key, "reason": "COLD_START_SOURCE_ACTION"}
     return {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0, "reason": "COLD_START_SOURCE_ACTION_UNAVAILABLE"}
 
 
-def _actions_for_records(records: list[dict[str, Any]], rules: dict[str, dict[str, Any]], cfg: SparseActionPolicyCfg, *, allow_cold_start: bool) -> list[dict[str, Any]]:
+def _actions_for_records(records: list[dict[str, Any]], rules: dict[str, dict[str, Any]], cfg: SparseActionPolicyCfg, *, allow_cold_start: bool, fallback_risk_profile: str = "base") -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for row in records:
         rule = rules.get(_policy_key(row, cfg))
         if rule:
             a = rule["action"]
-            out.append({"gate": "TRADE", "side": str(a["side"]), "hold_bars": int(a["hold_bars"]), "reason": "HISTORY_ACTION_RULE"})
+            out.append({"gate": "TRADE", "side": str(a["side"]), "hold_bars": int(a["hold_bars"]), "action_key": str(a.get("action_key", "")), "reason": "HISTORY_ACTION_RULE"})
         elif str(cfg.fallback_source_action) == "always_when_no_rule" or (allow_cold_start and str(cfg.fallback_source_action) == "cold_start"):
-            out.append(_source_or_no_trade(row, cfg))
+            out.append(_source_or_no_trade(row, cfg, risk_profile=fallback_risk_profile))
         else:
             reason = "COLD_START_NO_HISTORY" if allow_cold_start else "NO_HISTORY_RULE"
             out.append({"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0, "reason": reason})
     return out
 
+
+
+def _metrics_from_sparse_actions(records: list[dict[str, Any]], actions: list[dict[str, Any]]) -> dict[str, Any]:
+    from training.calibrated_regime_policy import _metrics_from_trades
+
+    trades: list[dict[str, Any]] = []
+    next_available_pos = -1
+    invalid_or_missing = 0
+    overlap_skips = 0
+    for row, action in zip(records, actions):
+        signal_pos = int(row["signal_pos"])
+        if signal_pos <= next_available_pos:
+            overlap_skips += 1
+            continue
+        if str(action.get("gate", "NO_TRADE")).upper() != "TRADE":
+            continue
+        action_key = str(action.get("action_key", "") or "")
+        if not action_key:
+            side = str(action.get("side", "")).upper()
+            hold_bars = int(action.get("hold_bars", 0) or 0)
+            action_key = f"{side}_{hold_bars}"
+        outcome = row["actions"].get(action_key)
+        if outcome is None:
+            invalid_or_missing += 1
+            continue
+        hold_bars = int(outcome.get("hold_bars", action.get("hold_bars", 0)) or 0)
+        trades.append({"date": row["date"], "signal_pos": signal_pos, "key": row["key"], "action_key": action_key, **outcome})
+        next_available_pos = signal_pos + hold_bars
+    metrics = _metrics_from_trades(trades, records_count=len(records), include_intratrade_mdd=True)
+    metrics["non_overlapping"] = True
+    metrics["model_invalid_or_missing_action"] = invalid_or_missing
+    metrics["model_overlap_skips"] = overlap_skips
+    metrics["exit_reasons"] = dict(Counter(str(t.get("exit_reason", "")) for t in trades))
+    metrics["risk_profiles"] = dict(Counter(str(t.get("risk_profile", "")) for t in trades))
+    return metrics
 
 def _add_annualized(metrics: dict[str, Any], records: list[dict[str, Any]]) -> dict[str, Any]:
     out = dict(metrics)
@@ -385,6 +470,39 @@ def _add_annualized(metrics: dict[str, Any], records: list[dict[str, Any]]) -> d
     return out
 
 
+
+def _source_actions_for_profile(records: list[dict[str, Any]], cfg: SparseActionPolicyCfg, profile: str) -> list[dict[str, Any]]:
+    return [_source_or_no_trade(row, cfg, risk_profile=profile) for row in records]
+
+
+def _score_metrics(metrics: dict[str, Any]) -> float:
+    trades = int(metrics.get("trades", 0) or 0)
+    cagr = float(metrics.get("cagr_pct", 0.0) or 0.0)
+    mdd = float(metrics.get("strict_mdd_pct", 100.0) or 100.0)
+    ratio = float(metrics.get("cagr_to_strict_mdd", -999.0) or -999.0)
+    if trades <= 0 or cagr <= 0.0:
+        return -1000.0 + trades / 1000.0 + cagr / 100.0 - mdd / 100.0
+    return ratio * 10.0 + min(50.0, cagr) / 10.0 - max(0.0, mdd - 15.0) / 5.0 + min(2.0, trades / 100.0)
+
+
+def _select_fallback_risk_profile(*, history_records: list[dict[str, Any]], recent_records: list[dict[str, Any]], cfg: SparseActionPolicyCfg) -> tuple[str, list[dict[str, Any]]]:
+    mode = str(cfg.fallback_risk_profile_mode)
+    profiles = [p[0] for p in _parse_risk_profiles(cfg.risk_profiles)] if cfg.risk_profiles else ["base"]
+    if mode == "base" or len(profiles) <= 1:
+        return "base", []
+    if mode not in {"recent_fold_best", "history_best"}:
+        raise ValueError("fallback_risk_profile_mode must be one of {'base','recent_fold_best','history_best'}")
+    rows = recent_records if mode == "recent_fold_best" else history_records
+    if not rows:
+        return "base", []
+    scored: list[dict[str, Any]] = []
+    for profile in profiles:
+        actions = _source_actions_for_profile(rows, cfg, profile)
+        metrics = _add_annualized(_metrics_from_sparse_actions(rows, actions), rows)
+        scored.append({"profile": profile, "score": _score_metrics(metrics), "metrics": metrics})
+    scored.sort(key=lambda r: float(r["score"]), reverse=True)
+    return str(scored[0]["profile"]), scored
+
 def walkforward_action_eval(records: list[dict[str, Any]], sparse: dict[str, Any], cfg: SparseActionPolicyCfg) -> dict[str, Any]:
     folds = _fold_order(sparse)
     by_fold: dict[str, list[dict[str, Any]]] = {f: [r for r in records if str(r["fold"]) == f] for f in folds}
@@ -394,10 +512,12 @@ def walkforward_action_eval(records: list[dict[str, Any]], sparse: dict[str, Any
     for idx, fold in enumerate(folds):
         history_folds = folds[:idx]
         train = [r for hf in history_folds for r in by_fold.get(hf, [])]
+        recent = by_fold.get(history_folds[-1], []) if history_folds else []
         current = by_fold.get(fold, [])
         rules = fit_action_rules(train, cfg) if len(history_folds) >= int(cfg.min_history_folds) else {}
-        actions = _actions_for_records(current, rules, cfg, allow_cold_start=len(history_folds) < int(cfg.min_history_folds))
-        metrics = _add_annualized(_metrics_from_actions(current, actions), current)
+        fallback_profile, fallback_profile_scores = _select_fallback_risk_profile(history_records=train, recent_records=recent, cfg=cfg)
+        actions = _actions_for_records(current, rules, cfg, allow_cold_start=len(history_folds) < int(cfg.min_history_folds), fallback_risk_profile=fallback_profile)
+        metrics = _add_annualized(_metrics_from_sparse_actions(current, actions), current)
         fold_reports.append(
             {
                 "fold": fold,
@@ -406,6 +526,8 @@ def walkforward_action_eval(records: list[dict[str, Any]], sparse: dict[str, Any
                 "rules_count": len(rules),
                 "metrics": metrics,
                 "action_reasons": dict(Counter(str(a.get("reason", "")) for a in actions)),
+                "fallback_risk_profile": fallback_profile,
+                "fallback_risk_profile_scores": fallback_profile_scores[:8],
                 "rules_preview": list(rules.values())[:8],
             }
         )
@@ -413,13 +535,14 @@ def walkforward_action_eval(records: list[dict[str, Any]], sparse: dict[str, Any
         final_actions.extend(actions)
     return {
         "folds": fold_reports,
-        "final_metrics": _add_annualized(_metrics_from_actions(final_records, final_actions), final_records),
+        "final_metrics": _add_annualized(_metrics_from_sparse_actions(final_records, final_actions), final_records),
         "leakage_guard": {
             "action_rules_fit_on_previous_folds_only": True,
             "current_fold_rewards_not_used_for_current_action_selection": True,
             "fallback_source_action": str(cfg.fallback_source_action),
             "source_setup_action_is_fit_before_each_fold_start": True,
             "record_labels_use_future_ohlc_but_only_after_signal_for_training_audit": True,
+            "fallback_risk_profile_mode": str(cfg.fallback_risk_profile_mode),
         },
     }
 
@@ -439,7 +562,7 @@ def run(cfg: SparseActionPolicyCfg) -> dict[str, Any]:
     wf = walkforward_action_eval(records, sparse, cfg)
     report = {
         "as_of": datetime.now(timezone.utc).isoformat(),
-        "config": asdict(cfg) | {"hold_candidates": list(cfg.hold_candidates)},
+        "config": asdict(cfg) | {"hold_candidates": list(cfg.hold_candidates), "risk_profiles": list(cfg.risk_profiles)},
         "dataset": dataset_summary,
         "walkforward": wf,
         "source_sparse_report": cfg.sparse_report,
@@ -469,6 +592,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--mae-penalty", type=float, default=SparseActionPolicyCfg.mae_penalty)
     p.add_argument("--trade-stop-loss-pct", type=float, default=SparseActionPolicyCfg.trade_stop_loss_pct)
     p.add_argument("--trade-take-profit-pct", type=float, default=SparseActionPolicyCfg.trade_take_profit_pct)
+    p.add_argument("--risk-profiles", default="", help="Comma profiles: base,sl3,sl3tp6,name:stop:take")
     p.add_argument("--min-history-folds", type=int, default=SparseActionPolicyCfg.min_history_folds)
     p.add_argument("--min-action-samples", type=int, default=SparseActionPolicyCfg.min_action_samples)
     p.add_argument("--min-action-mean-net", type=float, default=SparseActionPolicyCfg.min_action_mean_net)
@@ -478,8 +602,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--cold-start-source-action", action=argparse.BooleanOptionalAction, default=SparseActionPolicyCfg.cold_start_source_action)
     p.add_argument("--fallback-source-action", choices=["never", "cold_start", "always_when_no_rule"], default=SparseActionPolicyCfg.fallback_source_action)
     p.add_argument("--rule-key-mode", choices=["candidate", "feature_sides", "source_side"], default=SparseActionPolicyCfg.rule_key_mode)
+    p.add_argument("--fallback-risk-profile-mode", choices=["base", "recent_fold_best", "history_best"], default=SparseActionPolicyCfg.fallback_risk_profile_mode)
     ns = p.parse_args()
     ns.hold_candidates = _parse_holds(ns.hold_candidates)
+    ns.risk_profiles = tuple(x.strip() for x in str(ns.risk_profiles).split(",") if x.strip())
     return ns
 
 
