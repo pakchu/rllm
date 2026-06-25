@@ -141,14 +141,35 @@ def _write_policy(
     return {"rows":len(out),"counts":counts,"threshold":threshold,"full_margin":full_margin,"allowed_sides": sorted(allowed_sides) if allowed_sides is not None else None,"side_scale_by_side": side_scale_by_side,"max_feature_name": max_feature_name or None,"max_feature_value": max_feature_value,"max_feature_filters": max_filters or None,"min_feature_filters": min_filters or None,"output":output}
 
 
-def _fit_score(fit_rows: list[dict[str,Any]], score_rows: list[dict[str,Any]], alpha: float, names: tuple[list[str],list[str]]|None=None) -> tuple[np.ndarray, np.ndarray, tuple[list[str],list[str]]]:
+def _expanded_feature_names(names: tuple[list[str], list[str]]) -> list[str]:
+    num, cat = names
+    return (
+        [f"raw:{n}" for n in num]
+        + [f"signed:{n}" for n in num]
+        + list(cat)
+        + ["side_is_long", "side_is_short", "side_sign"]
+    )
+
+
+def _coef_meta(w: np.ndarray, names: tuple[list[str], list[str]], top_k: int = 40) -> dict[str, Any]:
+    expanded = _expanded_feature_names(names)
+    coefs = w[1:]
+    rows = [
+        {"feature": name, "coef": float(coef), "abs_coef": float(abs(coef))}
+        for name, coef in zip(expanded, coefs)
+    ]
+    rows.sort(key=lambda r: float(r["abs_coef"]), reverse=True)
+    return {"intercept": float(w[0]), "top_coefficients": rows[: int(top_k)], "expanded_feature_count": len(expanded)}
+
+
+def _fit_score(fit_rows: list[dict[str,Any]], score_rows: list[dict[str,Any]], alpha: float, names: tuple[list[str],list[str]]|None=None) -> tuple[np.ndarray, np.ndarray, tuple[list[str],list[str]], dict[str, Any]]:
     if names is None:
         names=_feature_names(fit_rows)
     num,cat=names
     xtr,ytr=_xy(fit_rows,num,cat); xte,_=_xy(score_rows,num,cat)
     xtrz,xtez,_=_standardize(xtr,xte)
     w=_ridge(xtrz,ytr,alpha)
-    return _predict(xtrz,w), _predict(xtez,w), names
+    return _predict(xtrz,w), _predict(xtez,w), names, _coef_meta(w, names)
 
 
 def run(cfg: EventCandidateRidgeCfg) -> dict[str,Any]:
@@ -157,7 +178,7 @@ def run(cfg: EventCandidateRidgeCfg) -> dict[str,Any]:
     val=[r for r in train_all if cfg.validation_start <= _date(r) <= cfg.validation_end]
     qs=[float(x) for x in cfg.quantiles.split(',') if x.strip()]
     margins=[float(x) for x in cfg.full_margins.split(',') if x.strip()]
-    fit_scores,val_scores,names=_fit_score(fit,val,cfg.ridge_alpha)
+    fit_scores,val_scores,names,fit_coef_meta=_fit_score(fit,val,cfg.ridge_alpha)
     fit_best_scores=np.asarray([x["score"] for x in _best_by_signal(fit,fit_scores)], dtype=float)
     val_best=_best_by_signal(val,val_scores)
     Path(cfg.work_dir).mkdir(parents=True, exist_ok=True)
@@ -177,14 +198,14 @@ def run(cfg: EventCandidateRidgeCfg) -> dict[str,Any]:
                 candidates.append({"q":q,"full_margin":margin,"threshold":thr,"prediction_summary":ps,"val_sim":sim,"val_trade_stats":stats,"score":score})
     candidates.sort(key=lambda r:float(r["score"]), reverse=True)
     selected=candidates[0]
-    all_train_scores,eval_scores,names2=_fit_score(train_all,eval_rows,cfg.ridge_alpha,names)
+    all_train_scores,eval_scores,names2,final_coef_meta=_fit_score(train_all,eval_rows,cfg.ridge_alpha,names)
     train_best_scores=np.asarray([x["score"] for x in _best_by_signal(train_all,all_train_scores)], dtype=float)
     eval_thr=float(np.quantile(train_best_scores,float(selected["q"]))) if len(train_best_scores) else 999.0
     eval_best=_best_by_signal(eval_rows,eval_scores)
     eval_pred=str(Path(cfg.work_dir)/"selected_eval_predictions.jsonl")
     eval_ps=_write_policy(eval_best,eval_pred,eval_thr,float(selected["full_margin"]))
     eval_bt=run_overlay(OnlineRiskOverlayConfig(predictions_jsonl=eval_pred,market_csv=cfg.market_csv,output=str(Path(cfg.work_dir)/"selected_eval_backtest.json"),leverage=cfg.leverage,entry_delay_bars=cfg.entry_delay_bars))
-    report={"config":cfg.__dict__,"rows":{"fit":len(fit),"val":len(val),"train_all":len(train_all),"eval":len(eval_rows)},"features":{"numeric":len(names[0]),"categorical":len(names[1])},"selection_rule":"select q/full_margin on 2024 validation only; eval refits on all train and uses same q/full_margin","top10_val":candidates[:10],"selected":selected,"eval_threshold":eval_thr,"eval_prediction_summary":eval_ps,"eval_backtest":{"sim":eval_bt["sim"],"trade_stats":eval_bt["trade_stats"]},"leakage_guard":{"validation_only_selects_policy":True,"eval_not_used_for_fit_or_threshold_selection":True,"eval_threshold_uses_train_score_quantile":True}}
+    report={"config":cfg.__dict__,"rows":{"fit":len(fit),"val":len(val),"train_all":len(train_all),"eval":len(eval_rows)},"features":{"numeric":len(names[0]),"categorical":len(names[1]),"expanded":fit_coef_meta["expanded_feature_count"]},"fit_coefficients":fit_coef_meta,"final_coefficients":final_coef_meta,"selection_rule":"select q/full_margin on configured validation only; eval refits on all train and uses same q/full_margin","top10_val":candidates[:10],"selected":selected,"eval_threshold":eval_thr,"eval_prediction_summary":eval_ps,"eval_backtest":{"sim":eval_bt["sim"],"trade_stats":eval_bt["trade_stats"]},"leakage_guard":{"validation_only_selects_policy":True,"eval_not_used_for_fit_or_threshold_selection":True,"eval_threshold_uses_train_score_quantile":True}}
     Path(cfg.output).parent.mkdir(parents=True, exist_ok=True)
     Path(cfg.output).write_text(json.dumps(report,indent=2,ensure_ascii=False))
     return report
