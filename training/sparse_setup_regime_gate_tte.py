@@ -50,6 +50,7 @@ class RegimeGateTTECfg:
     feature_include_regex: str = ""
     max_features: int = 96
     target: str = "utility"  # net | utility
+    include_failure_regime_classes: bool = True
 
 
 def _parse_floats(raw: str) -> list[float]:
@@ -68,7 +69,61 @@ def _feature_frame(market: pd.DataFrame, cfg: RegimeGateTTECfg) -> pd.DataFrame:
     if bool(cfg.include_price_action_extremes):
         lookbacks = tuple(int(x.strip()) for x in str(cfg.price_action_lookbacks).split(",") if x.strip())
         parts.append(build_extreme_bar_features(market, lookbacks).add_prefix("pa__"))
-    return pd.concat(parts, axis=1).replace([np.inf, -np.inf], 0.0).fillna(0.0).loc[:, lambda df: ~df.columns.duplicated(keep="last")]
+    frame = pd.concat(parts, axis=1).replace([np.inf, -np.inf], 0.0).fillna(0.0).loc[:, lambda df: ~df.columns.duplicated(keep="last")]
+    if bool(cfg.include_failure_regime_classes):
+        frame = append_failure_regime_classes(frame)
+    return frame
+
+
+def _col(features: pd.DataFrame, name: str) -> pd.Series:
+    if name in features.columns:
+        return features[name].astype(float)
+    return pd.Series(np.zeros(len(features), dtype=float), index=features.index)
+
+
+def append_failure_regime_classes(features: pd.DataFrame) -> pd.DataFrame:
+    """Append explicit past-only failure regime class flags.
+
+    These are intentionally simple, fixed-threshold descriptors rather than
+    distribution-fitted gates so they do not learn from eval-period outcomes.
+    They expose nonlinear regimes to the ridge gate: chop/compression, macro
+    impulse, premium shock, volatility transition, and range-extreme pressure.
+    """
+    out = features.copy()
+    trend24 = _col(out, "mkt__trend_24")
+    trend96 = _col(out, "mkt__trend_96")
+    range_vol = _col(out, "mkt__range_vol")
+    range_pos = _col(out, "mkt__range_pos")
+    dxy_z = _col(out, "mkt__dxy_zscore")
+    dxy_mom = _col(out, "mkt__dxy_momentum")
+    kimchi_z = _col(out, "mkt__kimchi_premium_zscore")
+    kimchi_chg = _col(out, "mkt__kimchi_premium_change")
+    usdkrw_z = _col(out, "mkt__usdkrw_zscore")
+    usdkrw_mom = _col(out, "mkt__usdkrw_momentum")
+    vol_spike = _col(out, "wave__vol_spike")
+    vol_regime = _col(out, "wave__vol_regime")
+    flow_mom = _col(out, "wave__flow_mom")
+    pa144_pos = _col(out, "pa__pa_ext_144_range_pos")
+    pa288_pos = _col(out, "pa__pa_ext_288_range_pos")
+    pa144_to_high = _col(out, "pa__pa_ext_144_to_max_high_pct")
+    pa144_to_low = _col(out, "pa__pa_ext_144_to_min_low_pct")
+    pa288_overlap = _col(out, "pa__pa_ext_288_extreme_bar_overlap_pct")
+    out["fr__chop_compression"] = ((trend24.abs() < 0.0035) & (range_vol < 0.018)).astype(float)
+    out["fr__chop_midrange"] = ((trend24.abs() < 0.004) & (range_pos.abs() < 0.35)).astype(float)
+    out["fr__trend_conflict"] = ((np.sign(trend24) != np.sign(trend96)) & (trend24.abs() > 0.0025) & (trend96.abs() > 0.006)).astype(float)
+    out["fr__volatility_transition"] = ((vol_spike > 2.0) | (vol_regime > 3.0)).astype(float)
+    out["fr__dxy_impulse_up"] = ((dxy_z > 1.8) | (dxy_mom > 0.0032)).astype(float)
+    out["fr__dxy_impulse_down"] = ((dxy_z < -1.8) | (dxy_mom < -0.0032)).astype(float)
+    out["fr__usdkrw_impulse"] = ((usdkrw_z.abs() > 1.8) | (usdkrw_mom.abs() > 0.004)).astype(float)
+    out["fr__kimchi_shock"] = ((kimchi_z.abs() > 1.8) | (kimchi_chg.abs() > 0.007)).astype(float)
+    out["fr__flow_dislocation"] = (flow_mom.abs() > 0.065).astype(float)
+    out["fr__near_upper_extreme"] = ((pa144_pos > 0.90) | (pa288_pos > 0.90) | (pa144_to_high > -0.002)).astype(float)
+    out["fr__near_lower_extreme"] = ((pa144_pos < 0.10) | (pa288_pos < 0.10) | (pa144_to_low < 0.0025)).astype(float)
+    out["fr__extreme_overlap_compression"] = (pa288_overlap > -0.006).astype(float)
+    out["fr__macro_shock_cluster"] = ((out["fr__dxy_impulse_up"] + out["fr__usdkrw_impulse"] + out["fr__kimchi_shock"]) >= 2.0).astype(float)
+    out["fr__chop_or_conflict"] = ((out["fr__chop_compression"] + out["fr__chop_midrange"] + out["fr__trend_conflict"]) >= 1.0).astype(float)
+    out["fr__breakout_failure_risk"] = ((out["fr__volatility_transition"] > 0) & ((out["fr__near_upper_extreme"] > 0) | (out["fr__near_lower_extreme"] > 0))).astype(float)
+    return out
 
 
 def _feature_names(features: pd.DataFrame, cfg: RegimeGateTTECfg) -> list[str]:
@@ -83,7 +138,7 @@ def _feature_names(features: pd.DataFrame, cfg: RegimeGateTTECfg) -> list[str]:
     if str(cfg.feature_include_regex).strip():
         pat = re.compile(str(cfg.feature_include_regex))
         names = [n for n in names if pat.search(n)]
-    preferred = [n for n in names if n.startswith(("mkt__htf_", "mkt__dxy_", "mkt__kimchi_", "mkt__usdkrw_", "wave__mom_", "wave__flow_", "wave__cvd_", "pa__pa_ext_"))]
+    preferred = [n for n in names if n.startswith(("fr__", "mkt__htf_", "mkt__dxy_", "mkt__kimchi_", "mkt__usdkrw_", "wave__mom_", "wave__flow_", "wave__cvd_", "pa__pa_ext_"))]
     names = preferred or names
     return names[: max(1, int(cfg.max_features))]
 
@@ -340,6 +395,7 @@ def parse_args() -> argparse.Namespace:
     for k in floats:
         data[k] = float(data[k])
     data["include_price_action_extremes"] = str(data["include_price_action_extremes"]).lower() not in {"false", "0", "no"} if not isinstance(data["include_price_action_extremes"], bool) else data["include_price_action_extremes"]
+    data["include_failure_regime_classes"] = str(data["include_failure_regime_classes"]).lower() not in {"false", "0", "no"} if not isinstance(data["include_failure_regime_classes"], bool) else data["include_failure_regime_classes"]
     return argparse.Namespace(**data)
 
 

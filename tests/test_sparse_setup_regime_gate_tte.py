@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from training.sparse_setup_regime_gate_tte import RegimeGateTTECfg, _event_reward, _select_best_events, _selection_score, _standardize_apply, _standardize_fit
+from training.sparse_setup_regime_gate_tte import RegimeGateTTECfg, _event_reward, _select_best_events, _selection_score, _standardize_apply, _standardize_fit, append_failure_regime_classes
 
 
 class TestSparseSetupRegimeGateTTE(unittest.TestCase):
@@ -39,6 +39,31 @@ class TestSparseSetupRegimeGateTTE(unittest.TestCase):
     def test_selection_score_rejects_low_trade_cagr_explosion(self):
         sim = {"trade_entries": 1, "cagr_pct": 1e12, "strict_mdd_pct": 1.0, "cagr_to_strict_mdd": 1e12}
         self.assertLess(_selection_score(sim, min_trades=20), -998.0)
+
+    def test_append_failure_regime_classes_marks_macro_shock_cluster(self):
+        frame = pd.DataFrame({
+            "mkt__trend_24": [0.0],
+            "mkt__trend_96": [0.0],
+            "mkt__range_vol": [0.01],
+            "mkt__range_pos": [0.0],
+            "mkt__dxy_zscore": [2.1],
+            "mkt__dxy_momentum": [0.004],
+            "mkt__kimchi_premium_zscore": [2.0],
+            "mkt__kimchi_premium_change": [0.008],
+            "mkt__usdkrw_zscore": [0.0],
+            "mkt__usdkrw_momentum": [0.0],
+            "wave__vol_spike": [0.0],
+            "wave__vol_regime": [1.0],
+            "wave__flow_mom": [0.0],
+            "pa__pa_ext_144_range_pos": [0.5],
+            "pa__pa_ext_288_range_pos": [0.5],
+            "pa__pa_ext_144_to_max_high_pct": [-0.01],
+            "pa__pa_ext_144_to_min_low_pct": [0.01],
+            "pa__pa_ext_288_extreme_bar_overlap_pct": [-0.02],
+        })
+        out = append_failure_regime_classes(frame)
+        self.assertEqual(float(out["fr__macro_shock_cluster"].iloc[0]), 1.0)
+        self.assertEqual(float(out["fr__chop_compression"].iloc[0]), 1.0)
 
 
 if __name__ == "__main__":
