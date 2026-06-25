@@ -51,6 +51,8 @@ class LinearComboScanConfig:
     binance_premium_tolerance: str = "2h"
     ridge_l2: float = 10.0
     top_k: int = 30
+    include_external_components: bool = False
+    include_inverted_variants: bool = False
 
 
 def _load_market(path: str) -> pd.DataFrame:
@@ -71,16 +73,22 @@ def _parse_list(s: str, cast):
 
 def _feature_groups(columns: list[str]) -> dict[str, list[str]]:
     groups = {
-        "external": ["dxy_zscore", "dxy_momentum", "kimchi_premium_zscore", "kimchi_premium_change", "usdkrw_zscore", "usdkrw_momentum", "dxy_available", "kimchi_available", "usdkrw_available", "external_any_available"],
+        "external": ["dxy_zscore", "dxy_momentum", "kimchi_premium_zscore", "kimchi_premium_change", "usdkrw_zscore", "usdkrw_momentum", "btckrw_zscore", "btckrw_momentum", "dxy_available", "kimchi_available", "usdkrw_available", "external_any_available"],
         "kimchi_only": ["kimchi_premium_zscore", "kimchi_premium_change"],
         "trend": ["trend_12", "trend_24", "trend_96", "sma12_ratio", "sma24_ratio", "sma48_ratio", "bb_z", "close_zscore_48", "return_zscore_48"],
         "range_reversion": ["range_vol", "range_pos", "window_drawdown", "rsi_norm", "mfi_norm"],
         "candle_flow": ["body_ratio", "upper_shadow", "lower_shadow", "candle_range", "body_to_range", "shadow_imbalance", "volume_ratio", "volume_zscore", "trades_ratio", "taker_buy_ratio", "taker_imbalance"],
         "derivatives_aux": ["funding_rate", "funding_zscore", "funding_available", "premium_index", "premium_index_zscore", "premium_index_change", "premium_available", "binance_aux_any_available"],
     }
+    fx_components = [c for c in columns if c.startswith("fx_") and c.endswith(("_zscore", "_momentum"))]
+    if fx_components:
+        groups["fx_components"] = fx_components
+        groups["fx_plus_external"] = groups["external"] + fx_components
     groups["kimchi_plus_trend"] = groups["kimchi_only"] + groups["trend"]
     groups["kimchi_plus_range"] = groups["kimchi_only"] + groups["range_reversion"]
     groups["external_plus_market"] = groups["external"] + groups["trend"] + groups["range_reversion"] + groups["candle_flow"]
+    if fx_components:
+        groups["fx_external_plus_market"] = groups["fx_plus_external"] + groups["trend"] + groups["range_reversion"] + groups["candle_flow"]
     groups["market_derivatives"] = groups["trend"] + groups["range_reversion"] + groups["candle_flow"] + groups.get("derivatives_aux", [])
     groups["external_market_derivatives"] = groups["external_plus_market"] + groups.get("derivatives_aux", [])
     groups["all"] = columns
@@ -125,10 +133,22 @@ def _score_result(result: dict[str, Any]) -> float:
     return ratio + 0.02 * cagr + min(1.0, trades / 150.0) - p
 
 
+def _invert_rule(rule: dict[str, Any]) -> dict[str, Any]:
+    out = dict(rule)
+    out["high_side"] = "SHORT" if str(rule.get("high_side")).upper() == "LONG" else "LONG"
+    out["low_side"] = "SHORT" if str(rule.get("low_side")).upper() == "LONG" else "LONG"
+    return out
+
+
 def run_scan(cfg: LinearComboScanConfig) -> dict[str, Any]:
     market = _load_market(cfg.input_csv)
     if cfg.wave_trading_root:
-        market = attach_wave_trading_external_features(market, wave_trading_root=cfg.wave_trading_root, tolerance=cfg.external_tolerance)
+        market = attach_wave_trading_external_features(
+            market,
+            wave_trading_root=cfg.wave_trading_root,
+            tolerance=cfg.external_tolerance,
+            include_forex_components=bool(cfg.include_external_components),
+        )
     if cfg.binance_funding_csv or cfg.binance_premium_csv:
         market = attach_binance_um_aux_features(
             market,
@@ -167,23 +187,28 @@ def run_scan(cfg: LinearComboScanConfig) -> dict[str, Any]:
                 base.update({"horizon": horizon, "quantile": q, "eval_start": cfg.test_start, "eval_end": cfg.test_end})
                 test_cfg = FeatureRuleConfig(**base)
                 rule = fit_rule(dates=dates, feature_values=pred, forward_returns=fwd, cfg=test_cfg)
-                test_report = simulate_rule(market=market, feature_values=pred, dates=dates, rule=rule, cfg=test_cfg)
                 eval_base = dict(base)
                 eval_base.update({"eval_start": cfg.eval_start, "eval_end": cfg.eval_end})
                 eval_cfg = FeatureRuleConfig(**eval_base)
-                eval_report = simulate_rule(market=market, feature_values=pred, dates=dates, rule=rule, cfg=eval_cfg)
-                rows.append({
-                    "group": group_name,
-                    "features": cols,
-                    "n_features": len(cols),
-                    "horizon": horizon,
-                    "quantile": q,
-                    "fit_info": fit_info,
-                    "rule": rule,
-                    "test": test_report,
-                    "eval": eval_report,
-                    "test_score": _score_result(test_report),
-                })
+                variants = [("original", rule)]
+                if bool(cfg.include_inverted_variants):
+                    variants.append(("inverted", _invert_rule(rule)))
+                for variant, variant_rule in variants:
+                    test_report = simulate_rule(market=market, feature_values=pred, dates=dates, rule=variant_rule, cfg=test_cfg)
+                    eval_report = simulate_rule(market=market, feature_values=pred, dates=dates, rule=variant_rule, cfg=eval_cfg)
+                    rows.append({
+                        "group": group_name,
+                        "variant": variant,
+                        "features": cols,
+                        "n_features": len(cols),
+                        "horizon": horizon,
+                        "quantile": q,
+                        "fit_info": fit_info,
+                        "rule": variant_rule,
+                        "test": test_report,
+                        "eval": eval_report,
+                        "test_score": _score_result(test_report),
+                    })
     ranked = sorted(rows, key=lambda r: float(r.get("test_score", -1e9)), reverse=True)
     report = {
         "as_of": datetime.now(timezone.utc).isoformat(),
@@ -223,6 +248,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--binance-premium-tolerance", default=LinearComboScanConfig.binance_premium_tolerance)
     p.add_argument("--ridge-l2", type=float, default=10.0)
     p.add_argument("--top-k", type=int, default=30)
+    p.add_argument("--include-external-components", action="store_true", default=LinearComboScanConfig.include_external_components)
+    p.add_argument("--include-inverted-variants", action="store_true", default=LinearComboScanConfig.include_inverted_variants)
     return p.parse_args()
 
 
@@ -235,7 +262,7 @@ def main() -> None:
         ts, tt = row["test"]["sim"], row["test"]["trade_stats"]
         es, et = row["eval"]["sim"], row["eval"]["trade_stats"]
         print(json.dumps({
-            "group": row["group"], "h": row["horizon"], "q": row["quantile"], "n_features": row["n_features"],
+            "group": row["group"], "variant": row.get("variant", "original"), "h": row["horizon"], "q": row["quantile"], "n_features": row["n_features"],
             "test": {"cagr": ts["cagr_pct"], "mdd": ts["strict_mdd_pct"], "ratio": ts["cagr_to_strict_mdd"], "trades": ts["trade_entries"], "mean": tt["mean_trade_ret_pct"], "p": tt["p_value_mean_ret_approx"]},
             "eval": {"cagr": es["cagr_pct"], "mdd": es["strict_mdd_pct"], "ratio": es["cagr_to_strict_mdd"], "trades": es["trade_entries"], "mean": et["mean_trade_ret_pct"], "p": et["p_value_mean_ret_approx"]},
         }, ensure_ascii=False))
