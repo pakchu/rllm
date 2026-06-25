@@ -131,6 +131,43 @@ def _predicate_mask(values: np.ndarray, train_values: np.ndarray, side: str, q: 
     return values >= thr, thr
 
 
+
+
+def _build_predicate_cache(
+    *,
+    cols: list[str],
+    X: dict[str, np.ndarray],
+    fold_meta: list[dict[str, Any]],
+    finite_y: np.ndarray,
+    q: float,
+    min_train_rows: int,
+) -> dict[tuple[str, str, int], dict[str, Any]]:
+    """Precompute per-feature threshold masks for one horizon/quantile.
+
+    The original miner recomputed the same quantile thresholds and full-row
+    boolean comparisons for every feature pair.  This cache keeps pair scans
+    bounded by cheap mask intersections instead.  Feature frames are cleaned to
+    finite values before this point, but finite guards remain for defensive use.
+    """
+    cache: dict[tuple[str, str, int], dict[str, Any]] = {}
+    for fold_idx, fm in enumerate(fold_meta):
+        base_train = fm["train"] & finite_y
+        for feat in cols:
+            values = X[feat]
+            train = base_train & np.isfinite(values)
+            train_n = int(train.sum())
+            if train_n < int(min_train_rows):
+                for side in ("low", "high"):
+                    cache[(feat, side, fold_idx)] = {"mask": np.zeros_like(finite_y, dtype=bool), "threshold": 0.0, "train_n": train_n, "skip": "not_enough_train"}
+                continue
+            train_values = values[train]
+            low_thr = float(np.quantile(train_values, float(q)))
+            high_thr = float(np.quantile(train_values, 1.0 - float(q)))
+            cache[(feat, "low", fold_idx)] = {"mask": values <= low_thr, "threshold": low_thr, "train_n": train_n}
+            cache[(feat, "high", fold_idx)] = {"mask": values >= high_thr, "threshold": high_thr, "train_n": train_n}
+    return cache
+
+
 def _simulate_indices(*, market: pd.DataFrame, dates: pd.Series, indices: np.ndarray, side: int, horizon: int, cfg: SparseSetupCfg) -> dict[str, Any]:
     opens = market["open"].to_numpy(dtype=float)
     highs = market["high"].to_numpy(dtype=float)
@@ -226,29 +263,39 @@ def run(cfg: SparseSetupCfg) -> dict[str, Any]:
                 continue
             pairs.append((a, b))
 
+    predicate_caches: dict[tuple[int, float], dict[tuple[str, str, int], dict[str, Any]]] = {}
+    fwd_by_horizon: dict[int, np.ndarray] = {}
+    finite_by_horizon: dict[int, np.ndarray] = {}
     for horizon in _parse_list(cfg.horizons, int):
         fwd = _forward_return(market["open"].astype(float), horizon=int(horizon), entry_delay_bars=int(cfg.entry_delay_bars))
         finite_y = np.isfinite(fwd)
+        fwd_by_horizon[int(horizon)] = fwd
+        finite_by_horizon[int(horizon)] = finite_y
         for q in quantiles:
+            pred_cache = _build_predicate_cache(cols=cols, X=X, fold_meta=fold_meta, finite_y=finite_y, q=float(q), min_train_rows=int(cfg.min_train_rows))
+            predicate_caches[(int(horizon), float(q))] = pred_cache
             for (feat_a, side_a), (feat_b, side_b) in pairs:
                 fold_rows = []
-                for fm in fold_meta:
-                    train = fm["train"] & finite_y & np.isfinite(X[feat_a]) & np.isfinite(X[feat_b])
-                    if int(train.sum()) < int(cfg.min_train_rows):
-                        fold_rows.append({"fold": fm["fold"]["name"], "n": 0, "skip": "not_enough_train", "train_n": int(train.sum())})
+                for fold_idx, fm in enumerate(fold_meta):
+                    train = fm["train"] & finite_y
+                    train_n = int(train.sum())
+                    ca = pred_cache[(feat_a, side_a, fold_idx)]
+                    cb = pred_cache[(feat_b, side_b, fold_idx)]
+                    if ca.get("skip") or cb.get("skip") or train_n < int(cfg.min_train_rows):
+                        fold_rows.append({"fold": fm["fold"]["name"], "n": 0, "skip": "not_enough_train", "train_n": train_n})
                         continue
-                    mask_a, thr_a = _predicate_mask(X[feat_a], X[feat_a][train], side_a, float(q))
-                    mask_b, thr_b = _predicate_mask(X[feat_b], X[feat_b][train], side_b, float(q))
+                    mask_a = ca["mask"]
+                    mask_b = cb["mask"]
                     active_train = train & mask_a & mask_b
                     if int(active_train.sum()) < int(cfg.min_fold_events):
-                        fold_rows.append({"fold": fm["fold"]["name"], "n": 0, "skip": "not_enough_active_train", "train_n": int(train.sum()), "active_train_n": int(active_train.sum())})
+                        fold_rows.append({"fold": fm["fold"]["name"], "n": 0, "skip": "not_enough_active_train", "train_n": train_n, "active_train_n": int(active_train.sum())})
                         continue
                     train_mean = float(np.mean(fwd[active_train]))
                     trade_side = 1 if train_mean >= 0.0 else -1
                     active_eval = fm["eval"] & finite_y & mask_a & mask_b
                     raw = fwd[active_eval] * trade_side - (float(cfg.fee_rate) + float(cfg.slippage_rate)) * 2.0 * float(cfg.leverage)
                     st = _event_stats(raw.astype(float))
-                    st.update({"fold": fm["fold"]["name"], "train_n": int(train.sum()), "active_train_n": int(active_train.sum()), "side": "LONG" if trade_side > 0 else "SHORT", "thresholds": {feat_a: {"side": side_a, "threshold": thr_a}, feat_b: {"side": side_b, "threshold": thr_b}}})
+                    st.update({"fold": fm["fold"]["name"], "train_n": train_n, "active_train_n": int(active_train.sum()), "side": "LONG" if trade_side > 0 else "SHORT", "thresholds": {feat_a: {"side": side_a, "threshold": ca["threshold"]}, feat_b: {"side": side_b, "threshold": cb["threshold"]}}})
                     fold_rows.append(st)
                 score = _score_event_folds(fold_rows, cfg)
                 candidates.append({"features": [{"name": feat_a, "side": side_a}, {"name": feat_b, "side": side_b}], "horizon": int(horizon), "quantile": float(q), "event_score": float(score), "event_folds": fold_rows})
@@ -259,17 +306,20 @@ def run(cfg: SparseSetupCfg) -> dict[str, Any]:
         strict_folds = []
         fa, fb = cand["features"][0], cand["features"][1]
         horizon = int(cand["horizon"])
-        fwd = _forward_return(market["open"].astype(float), horizon=horizon, entry_delay_bars=int(cfg.entry_delay_bars))
-        finite_y = np.isfinite(fwd)
-        for fm in fold_meta:
-            train = fm["train"] & finite_y & np.isfinite(X[fa["name"]]) & np.isfinite(X[fb["name"]])
-            mask_a, thr_a = _predicate_mask(X[fa["name"]], X[fa["name"]][train], fa["side"], float(cand["quantile"]))
-            mask_b, thr_b = _predicate_mask(X[fb["name"]], X[fb["name"]][train], fb["side"], float(cand["quantile"]))
+        fwd = fwd_by_horizon[horizon]
+        finite_y = finite_by_horizon[horizon]
+        pred_cache = predicate_caches[(horizon, float(cand["quantile"]))]
+        for fold_idx, fm in enumerate(fold_meta):
+            train = fm["train"] & finite_y
+            ca = pred_cache[(fa["name"], fa["side"], fold_idx)]
+            cb = pred_cache[(fb["name"], fb["side"], fold_idx)]
+            mask_a = ca["mask"]
+            mask_b = cb["mask"]
             active_train = train & mask_a & mask_b
             trade_side = 1 if float(np.mean(fwd[active_train])) >= 0.0 else -1
             idx = np.flatnonzero(fm["eval"] & mask_a & mask_b)
             result = _simulate_indices(market=market, dates=dates, indices=idx, side=trade_side, horizon=horizon, cfg=cfg)
-            strict_folds.append({"fold": fm["fold"]["name"], "side": "LONG" if trade_side > 0 else "SHORT", "thresholds": {fa["name"]: {"side": fa["side"], "threshold": thr_a}, fb["name"]: {"side": fb["side"], "threshold": thr_b}}, "result": result})
+            strict_folds.append({"fold": fm["fold"]["name"], "side": "LONG" if trade_side > 0 else "SHORT", "thresholds": {fa["name"]: {"side": fa["side"], "threshold": ca["threshold"]}, fb["name"]: {"side": fb["side"], "threshold": cb["threshold"]}}, "result": result})
         row = dict(cand)
         row["strict_folds"] = strict_folds
         sims = [f["result"]["sim"] for f in strict_folds]
