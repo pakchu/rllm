@@ -114,7 +114,8 @@ def _event_stats(xs: np.ndarray) -> dict[str, Any]:
 
 def _score_event_folds(folds: list[dict[str, Any]], cfg: SparseSetupCfg) -> float:
     usable = [f for f in folds if int(f.get("n", 0)) >= int(cfg.min_fold_events)]
-    if len(usable) < 5:
+    required_usable = max(1, min(int(cfg.min_positive_folds), len(folds)))
+    if len(usable) < required_usable:
         return -1e9 + len(usable)
     means = np.asarray([float(f["mean_pct"]) for f in usable], dtype=float)
     ts = np.asarray([float(f["t_stat"]) for f in usable], dtype=float)

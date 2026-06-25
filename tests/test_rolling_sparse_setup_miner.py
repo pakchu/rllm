@@ -56,6 +56,19 @@ class TestRollingSparseSetupMiner(unittest.TestCase):
         self.assertIn("pa__pa_ext_144_to_max_high_pct", cols)
         self.assertIn("pa__pa_ext_144_range_pos", cols)
 
+    def test_score_event_folds_respects_train_split_min_positive_folds(self):
+        from training.rolling_sparse_setup_miner import _score_event_folds
+
+        cfg = SparseSetupCfg(input_csv="i", output="o", min_positive_folds=3, min_fold_events=1)
+        folds = [
+            {"n": 2, "mean_pct": 1.0, "t_stat": 1.0},
+            {"n": 2, "mean_pct": 1.0, "t_stat": 1.0},
+            {"n": 2, "mean_pct": 1.0, "t_stat": 1.0},
+            {"n": 2, "mean_pct": -0.5, "t_stat": -1.0},
+        ]
+
+        self.assertGreater(_score_event_folds(folds, cfg), 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()
