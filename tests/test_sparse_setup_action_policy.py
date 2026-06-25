@@ -101,6 +101,23 @@ class TestSparseSetupActionPolicy(unittest.TestCase):
         self.assertEqual(action["gate"], "TRADE")
         self.assertEqual(action["reason"], "COLD_START_SOURCE_ACTION")
 
+    def test_stop_loss_caps_action_mae_and_exit_reason(self):
+        market = pd.DataFrame(
+            {
+                "date": pd.date_range("2024-01-01", periods=8, freq="5min"),
+                "open": [100, 100, 100, 100, 100, 100, 100, 100],
+                "high": [101, 101, 101, 101, 101, 101, 101, 101],
+                "low": [99, 95, 95, 95, 95, 95, 95, 95],
+                "close": [100, 100, 100, 100, 100, 100, 100, 100],
+                "volume": [1] * 8,
+            }
+        )
+        cfg = SparseActionPolicyCfg("sparse.json", "m.csv", "o.jsonl", "r.json", hold_candidates=(3,), trade_stop_loss_pct=3.0)
+        action = _action_outcomes(market, 0, "LONG", cfg)["LONG_3"]
+        self.assertEqual(action["exit_reason"], "stop_loss")
+        self.assertLessEqual(action["mae"], 0.0300001)
+        self.assertLess(action["net_return"], -0.03)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -73,4 +73,25 @@ Top-4 fold detail:
 
 ## Next step
 
-Add stop/take-profit/ATR-trailing variants to the action book and evaluate past-only selection over `(side, hold, stop/tp/trailing)` actions. This directly targets the remaining weakness: recent and full-period drawdown.
+Move from a fixed global stop to a regime-conditioned risk-profile selector. The stop/take-profit follow-up below shows that a 3% stop helps 2026H1 but hurts the full period, so risk controls need to be selected from past regime evidence rather than globally fixed.
+
+
+## Stop/take-profit follow-up
+
+Added fixed `trade_stop_loss_pct` / `trade_take_profit_pct` execution labels to the action book. A top-4 sweep over stop/tp settings is stored at:
+
+- `results/sparse_setup_action_policy_2026-06-25/top4_stop_tp_sweep.json`
+
+Best full-period result remained no fixed stop/take-profit:
+
+- CAGR: `21.55%`
+- strict MDD: `14.51%`
+- CAGR/MDD: `1.49`
+- trades: `218`
+
+The 3% stop-only setting improved the recent 2026H1 fold sharply but hurt the full period:
+
+- Full period: CAGR `18.75%`, strict MDD `14.10%`, CAGR/MDD `1.33`
+- 2026H1: CAGR `53.42%`, strict MDD `10.93%`, CAGR/MDD `4.89`
+
+Interpretation: stop behavior is regime-dependent. A fixed global stop is not enough; the next useful action space is a regime-conditioned risk-profile selector, not a single global SL/TP constant.

@@ -45,6 +45,8 @@ class SparseActionPolicyCfg:
     slippage_rate: float = 0.0001
     entry_delay_bars: int = 1
     mae_penalty: float = 1.0
+    trade_stop_loss_pct: float = 0.0
+    trade_take_profit_pct: float = 0.0
     min_history_folds: int = 1
     min_action_samples: int = 8
     min_action_mean_net: float = 0.0
@@ -147,6 +149,85 @@ def _candidate_tokens(cand: dict[str, Any], ev: dict[str, Any], feats: pd.DataFr
     return tokens
 
 
+def _stopped_path_outcome(market: pd.DataFrame, signal_pos: int, side: str, hold: int, cfg: SparseActionPolicyCfg) -> dict[str, Any] | None:
+    pcfg = PathOutcomeConfig(
+        hold_bars=int(hold),
+        entry_delay_bars=int(cfg.entry_delay_bars),
+        fee_rate=float(cfg.fee_rate),
+        slippage_rate=float(cfg.slippage_rate),
+        leverage=float(cfg.leverage),
+        mae_penalty=float(cfg.mae_penalty),
+    )
+    base = compute_trade_path_outcome(market, int(signal_pos), side, pcfg)
+    if base is None:
+        return None
+    stop_pct = float(cfg.trade_stop_loss_pct) / 100.0
+    take_pct = float(cfg.trade_take_profit_pct) / 100.0
+    if stop_pct <= 0.0 and take_pct <= 0.0:
+        return {
+            "side": side,
+            "hold_bars": int(hold),
+            "net_return": float(base.net_return),
+            "mae": float(base.mae),
+            "mfe": float(base.mfe),
+            "utility": float(base.utility),
+            "entry_pos": int(base.entry_pos),
+            "exit_pos": int(base.exit_pos),
+            "exit_reason": "time",
+        }
+    entry_price = float(base.entry_price)
+    lev = max(1e-12, float(cfg.leverage))
+    cost = 2.0 * (float(cfg.fee_rate) + float(cfg.slippage_rate)) * lev
+    max_adverse = 0.0
+    max_favorable = 0.0
+    exit_reason = "time"
+    gross_return = float(base.gross_return)
+    exit_pos = int(base.exit_pos)
+    held = market.iloc[int(base.entry_pos) : int(base.exit_pos)]
+    for offset, row in enumerate(held.itertuples(index=False)):
+        high = float(getattr(row, "high"))
+        low = float(getattr(row, "low"))
+        if side == "LONG":
+            adverse = max(0.0, (entry_price - low) / entry_price)
+            favorable = max(0.0, (high - entry_price) / entry_price)
+            stop_hit = stop_pct > 0.0 and lev * adverse >= stop_pct
+            take_hit = take_pct > 0.0 and lev * favorable >= take_pct
+            if stop_hit:
+                gross_return = -stop_pct / lev
+            elif take_hit:
+                gross_return = take_pct / lev
+        else:
+            adverse = max(0.0, (high - entry_price) / entry_price)
+            favorable = max(0.0, (entry_price - low) / entry_price)
+            stop_hit = stop_pct > 0.0 and lev * adverse >= stop_pct
+            take_hit = take_pct > 0.0 and lev * favorable >= take_pct
+            if stop_hit:
+                gross_return = -stop_pct / lev
+            elif take_hit:
+                gross_return = take_pct / lev
+        max_adverse = max(max_adverse, adverse)
+        max_favorable = max(max_favorable, favorable)
+        if stop_hit or take_hit:
+            exit_reason = "stop_loss" if stop_hit else "take_profit"
+            exit_pos = int(base.entry_pos) + offset + 1
+            break
+    mae = min(max_adverse, stop_pct / lev) if stop_pct > 0.0 else max_adverse
+    mfe = max_favorable
+    net_return = lev * gross_return - cost
+    utility = net_return - lev * float(cfg.mae_penalty) * mae
+    return {
+        "side": side,
+        "hold_bars": int(hold),
+        "net_return": float(net_return),
+        "mae": float(mae),
+        "mfe": float(mfe),
+        "utility": float(utility),
+        "entry_pos": int(base.entry_pos),
+        "exit_pos": int(exit_pos),
+        "exit_reason": exit_reason,
+    }
+
+
 def _action_outcomes(market: pd.DataFrame, signal_pos: int, source_side: str, cfg: SparseActionPolicyCfg) -> dict[str, dict[str, Any]]:
     sides = [source_side]
     if bool(cfg.include_opposite_side):
@@ -154,27 +235,10 @@ def _action_outcomes(market: pd.DataFrame, signal_pos: int, source_side: str, cf
     actions: dict[str, dict[str, Any]] = {}
     for side in sides:
         for hold in cfg.hold_candidates:
-            pcfg = PathOutcomeConfig(
-                hold_bars=int(hold),
-                entry_delay_bars=int(cfg.entry_delay_bars),
-                fee_rate=float(cfg.fee_rate),
-                slippage_rate=float(cfg.slippage_rate),
-                leverage=float(cfg.leverage),
-                mae_penalty=float(cfg.mae_penalty),
-            )
-            out = compute_trade_path_outcome(market, int(signal_pos), side, pcfg)
+            out = _stopped_path_outcome(market, int(signal_pos), side, int(hold), cfg)
             if out is None:
                 continue
-            actions[f"{side}_{int(hold)}"] = {
-                "side": side,
-                "hold_bars": int(hold),
-                "net_return": float(out.net_return),
-                "mae": float(out.mae),
-                "mfe": float(out.mfe),
-                "utility": float(out.utility),
-                "entry_pos": int(out.entry_pos),
-                "exit_pos": int(out.exit_pos),
-            }
+            actions[f"{side}_{int(hold)}"] = out
     return actions
 
 
@@ -403,6 +467,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--slippage-rate", type=float, default=SparseActionPolicyCfg.slippage_rate)
     p.add_argument("--entry-delay-bars", type=int, default=SparseActionPolicyCfg.entry_delay_bars)
     p.add_argument("--mae-penalty", type=float, default=SparseActionPolicyCfg.mae_penalty)
+    p.add_argument("--trade-stop-loss-pct", type=float, default=SparseActionPolicyCfg.trade_stop_loss_pct)
+    p.add_argument("--trade-take-profit-pct", type=float, default=SparseActionPolicyCfg.trade_take_profit_pct)
     p.add_argument("--min-history-folds", type=int, default=SparseActionPolicyCfg.min_history_folds)
     p.add_argument("--min-action-samples", type=int, default=SparseActionPolicyCfg.min_action_samples)
     p.add_argument("--min-action-mean-net", type=float, default=SparseActionPolicyCfg.min_action_mean_net)
