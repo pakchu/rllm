@@ -71,3 +71,23 @@ Current status against target:
 - CAGR 50%: fail on full period, but several folds exceed it
 
 Next step: build a pre-fold / in-fold regime diagnostic for the selected candidates and test whether 2025H2 can be identified without looking at 2025H2 returns.
+
+## Candidate-limit / ensemble-size partial sweep
+
+A follow-up sweep started over candidate limits and ensemble sizes, but the naive loop was stopped after 18 completed configs because it recomputed the same feature frame for every config. Partial output:
+
+`results/sparse_setup_combined_pa_macro_2026-06-25/selector_sweep/partial_summary.json`
+
+Best completed partial variant:
+
+- candidate limit: `5` or `8`
+- ensemble size: `1`
+- trades: `170`
+- CAGR: `13.77%`
+- strict MDD: `9.28%`
+- CAGR/MDD: `1.48`
+- p-value: `0.0038`
+
+This is below the original combined selector ratio `1.56`. Reducing candidate count improves MDD but gives up too much CAGR. The bottleneck remains regime-specific, not simple over-expansion.
+
+Engineering note: repeated selector sweeps should cache feature/event construction. Current selector CLI is correct for one-off replay but inefficient for grid search.
