@@ -46,3 +46,18 @@ The symbolic monthly selector is structurally safer than eval threshold sweeps, 
 Keep the selector as a no-leak guardrail/research tool, but do not treat it as a live candidate. Future work should shift away from static symbolic thresholds toward either:
 1. faster regime-break detection from actual market path features, or
 2. a different alpha source before LLM/RL policy selection.
+
+## Exit overlay diagnostic
+After the monthly selector failed, the combined eval predictions were replayed with a small exit overlay sweep:
+
+- stop-loss: 0%, 1%, 2%
+- take-profit: 0%, 2%, 4%
+- ATR trailing stop: off / 2x
+
+Best observed variant among this small sweep was still negative:
+
+- baseline: CAGR -12.78%, strict MDD 15.67%, 122 trades
+- take-profit 2%, no stop/ATR: CAGR -11.98%, strict MDD 15.41%, 127 trades
+- stop-loss and ATR variants generally worsened results
+
+Conclusion: the monthly symbolic failure is not mainly an exit-overlay problem. The entry/ranking alpha is insufficient.
