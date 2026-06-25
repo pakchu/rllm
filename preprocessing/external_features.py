@@ -87,6 +87,24 @@ def calculate_dollar_index(forex_bars: pd.DataFrame, *, interval: str = "1min") 
     return pd.DataFrame({"date": dxy.index, "dxy": dxy.astype(float).values})
 
 
+def calculate_forex_component_features(forex_bars: pd.DataFrame, *, interval: str = "1min") -> pd.DataFrame:
+    """Return individual FX component closes for lead-lag feature mining.
+
+    Columns are point-in-time resampled closes named ``fx_<ticker>``.  They are
+    later joined with backward-asof semantics, so a market row never sees future
+    FX data.
+    """
+    bars = _resample_close_by_tic(forex_bars, interval)
+    if bars.empty:
+        return pd.DataFrame(columns=["date"])
+    pivot = bars.pivot(index="date", columns="tic", values="close").sort_index().ffill()
+    cols = [c for c in DXY_WEIGHTS if c in pivot.columns]
+    if not cols:
+        return pd.DataFrame(columns=["date"])
+    out = pivot.loc[:, cols].rename(columns={c: f"fx_{c.lower()}" for c in cols}).reset_index()
+    return out
+
+
 def calculate_kimchi_premium(
     btcusdt_bars: pd.DataFrame,
     btckrw_bars: pd.DataFrame,
@@ -158,6 +176,14 @@ def add_external_derived_features(market: pd.DataFrame, *, zscore_window: int = 
         usdkrw = out["usdkrw"].astype(float)
         out["usdkrw_zscore"] = _rolling_zscore(usdkrw, zscore_window)
         out["usdkrw_momentum"] = _pct_change(usdkrw, momentum_period)
+    if "btckrw" in out.columns:
+        btckrw = out["btckrw"].astype(float)
+        out["btckrw_zscore"] = _rolling_zscore(btckrw, zscore_window)
+        out["btckrw_momentum"] = _pct_change(btckrw, momentum_period)
+    for col in [c for c in out.columns if str(c).startswith("fx_") and not str(c).endswith(("_zscore", "_momentum", "_available"))]:
+        series = out[col].astype(float)
+        out[f"{col}_zscore"] = _rolling_zscore(series, zscore_window)
+        out[f"{col}_momentum"] = _pct_change(series, momentum_period)
     return out.replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
 
@@ -181,11 +207,14 @@ def build_external_feature_frame(
     btckrw_bars: pd.DataFrame | None = None,
     usdkrw_bars: pd.DataFrame | None = None,
     interval: str | None = None,
+    include_forex_components: bool = False,
 ) -> pd.DataFrame:
     interval = interval or _infer_interval(market)
     parts: list[pd.DataFrame] = []
     if forex_bars is not None and not forex_bars.empty:
         parts.append(calculate_dollar_index(forex_bars, interval=interval))
+        if include_forex_components:
+            parts.append(calculate_forex_component_features(forex_bars, interval=interval))
     if btckrw_bars is not None and usdkrw_bars is not None and not btckrw_bars.empty and not usdkrw_bars.empty:
         parts.append(calculate_kimchi_premium(market, btckrw_bars, usdkrw_bars, interval=interval))
     if not parts:
@@ -265,6 +294,7 @@ def attach_wave_trading_external_features(
     wave_trading_root: str | Path = "../workspace/wave_trading",
     tolerance: str | pd.Timedelta | None = None,
     interval: str | None = None,
+    include_forex_components: bool = False,
 ) -> pd.DataFrame:
     """Attach DXY/Kimchi features from wave_trading local caches."""
     forex = load_wave_trading_cached_bars(wave_trading_root, DXY_WEIGHTS.keys())
@@ -276,5 +306,6 @@ def attach_wave_trading_external_features(
         btckrw_bars=btckrw,
         usdkrw_bars=usdkrw,
         interval=interval,
+        include_forex_components=include_forex_components,
     )
     return attach_external_features(market, external, tolerance=tolerance)

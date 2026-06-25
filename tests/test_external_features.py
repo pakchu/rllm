@@ -9,6 +9,7 @@ import pandas as pd
 from preprocessing.external_features import (
     attach_external_features,
     attach_wave_trading_external_features,
+    calculate_forex_component_features,
     calculate_kimchi_premium,
 )
 from preprocessing.market_features import build_market_feature_frame
@@ -62,6 +63,25 @@ class TestExternalFeatures(unittest.TestCase):
         self.assertEqual(round(float(out.loc[0, "kimchi_premium"]), 6), 0.1)
         self.assertEqual(float(out.loc[0, "usdkrw"]), 1200.0)
 
+
+    def test_forex_component_features_are_optional_and_derived(self):
+        market = _market()
+        forex_rows = []
+        for tic in ["EURUSD", "USDJPY", "GBPUSD", "USDCAD", "USDSEK", "USDCHF"]:
+            for i, ts in enumerate(market["date"]):
+                forex_rows.append({"date": ts, "tic": tic, "close": 1.0 + i * 0.01})
+        forex = pd.DataFrame(forex_rows)
+
+        components = calculate_forex_component_features(forex, interval="1min")
+        enriched = attach_external_features(market, components, zscore_window=3, momentum_period=2)
+        features = build_market_feature_frame(enriched, window_size=6, zscore_window=6, volume_window=6)
+
+        self.assertIn("fx_eurusd", enriched.columns)
+        self.assertIn("fx_eurusd_zscore", enriched.columns)
+        self.assertIn("fx_usdjpy_momentum", enriched.columns)
+        self.assertIn("fx_eurusd_zscore", features.columns)
+        self.assertIn("fx_usdjpy_momentum", features.columns)
+
     def test_wave_trading_cache_loader_attaches_dxy_and_kimchi_features(self):
         market = _market()
         with tempfile.TemporaryDirectory() as tmp:
@@ -81,9 +101,9 @@ class TestExternalFeatures(unittest.TestCase):
                 data / "btckrw.csv.gz", compression="gzip"
             )
 
-            out = attach_wave_trading_external_features(market, wave_trading_root=root)
+            out = attach_wave_trading_external_features(market, wave_trading_root=root, include_forex_components=True)
 
-        for col in ["dxy", "dxy_zscore", "kimchi_premium", "kimchi_premium_zscore", "usdkrw"]:
+        for col in ["dxy", "dxy_zscore", "kimchi_premium", "kimchi_premium_zscore", "usdkrw", "fx_eurusd_zscore"]:
             self.assertIn(col, out.columns)
         self.assertEqual(round(float(out.loc[len(out) - 1, "kimchi_premium"]), 6), 0.02)
 

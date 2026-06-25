@@ -46,6 +46,7 @@ class RollingAlphaCfg:
     leverage: float = 1.0
     max_strict_candidates: int = 12
     max_features: int = 0
+    include_external_components: bool = False
 
 
 def _load_market(path: str) -> pd.DataFrame:
@@ -136,7 +137,12 @@ def _strict_score(row: dict[str, Any]) -> float:
 def run(cfg: RollingAlphaCfg) -> dict[str, Any]:
     market = _load_market(cfg.input_csv)
     if cfg.wave_trading_root:
-        market = attach_wave_trading_external_features(market, wave_trading_root=cfg.wave_trading_root, tolerance=cfg.external_tolerance)
+        market = attach_wave_trading_external_features(
+            market,
+            wave_trading_root=cfg.wave_trading_root,
+            tolerance=cfg.external_tolerance,
+            include_forex_components=bool(cfg.include_external_components),
+        )
     if cfg.binance_funding_csv or cfg.binance_premium_csv:
         market = attach_binance_um_aux_features(
             market,
@@ -310,6 +316,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--leverage", type=float, default=RollingAlphaCfg.leverage)
     p.add_argument("--max-strict-candidates", type=int, default=RollingAlphaCfg.max_strict_candidates)
     p.add_argument("--max-features", type=int, default=RollingAlphaCfg.max_features)
+    p.add_argument("--include-external-components", action="store_true", default=RollingAlphaCfg.include_external_components)
     return p.parse_args()
 
 

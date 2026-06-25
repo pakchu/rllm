@@ -353,6 +353,8 @@ def build_market_feature_frame(
         "kimchi_premium_change": 0.0,
         "usdkrw_zscore": 0.0,
         "usdkrw_momentum": 0.0,
+        "btckrw_zscore": 0.0,
+        "btckrw_momentum": 0.0,
         "dxy_available": 0.0,
         "kimchi_available": 0.0,
         "usdkrw_available": 0.0,
@@ -365,6 +367,13 @@ def build_market_feature_frame(
             if series is not None
             else pd.Series(float(default), index=market_df.index)
         )
+    for col in market_df.columns:
+        name = str(col)
+        if not name.startswith("fx_") or not name.endswith(("_zscore", "_momentum")):
+            continue
+        series = _optional_column(market_df, name)
+        if series is not None:
+            feature_map[name] = _clean_series(series, clip=5.0)
 
     feature_map.update(_completed_multitimeframe_features(market_df))
 
