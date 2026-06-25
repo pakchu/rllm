@@ -81,6 +81,19 @@ def _fit_mask(values: np.ndarray, train: np.ndarray, finite_y: np.ndarray, side:
     return values >= thr, thr
 
 
+def _mask_from_threshold(values: np.ndarray, side: str, threshold: float) -> np.ndarray:
+    if side == "low":
+        return values <= float(threshold)
+    return values >= float(threshold)
+
+
+def _stored_fold_spec(cand: dict[str, Any], fold_name: str) -> dict[str, Any] | None:
+    for row in cand.get("strict_folds", []):
+        if str(row.get("fold")) == str(fold_name):
+            return row
+    return None
+
+
 def _candidate_events(*, cand: dict[str, Any], report: dict[str, Any], dates: pd.Series, features: pd.DataFrame, market: pd.DataFrame, cfg: EnsembleCfg) -> list[dict[str, Any]]:
     horizon = int(cfg.execution_horizon_bars) if int(cfg.execution_horizon_bars) > 0 else int(cand["horizon"])
     q = float(cand["quantile"])
@@ -94,12 +107,33 @@ def _candidate_events(*, cand: dict[str, Any], report: dict[str, Any], dates: pd
         start = pd.Timestamp(fold["eval_start"])
         end = pd.Timestamp(fold["eval_end"])
         train = np.asarray(dates < start, dtype=bool)
-        ma, ta = _fit_mask(xa, train, finite_y, fa["side"], q)
-        mb, tb = _fit_mask(xb, train, finite_y, fb["side"], q)
+        stored = _stored_fold_spec(cand, str(fold["name"]))
+        if stored is not None:
+            stored_sim = stored.get("result", {}).get("sim", {})
+            if int(stored_sim.get("samples", stored_sim.get("trade_entries", 0)) or 0) <= 0:
+                continue
+            thresholds = stored.get("thresholds", {})
+            try:
+                ta = float(thresholds[fa["name"]]["threshold"])
+                tb = float(thresholds[fb["name"]]["threshold"])
+            except KeyError:
+                continue
+            ma = _mask_from_threshold(xa, fa["side"], ta)
+            mb = _mask_from_threshold(xb, fb["side"], tb)
+            side = 1 if str(stored.get("side", "LONG")).upper() == "LONG" else -1
+        else:
+            try:
+                ma, ta = _fit_mask(xa, train, finite_y, fa["side"], q)
+                mb, tb = _fit_mask(xb, train, finite_y, fb["side"], q)
+            except ValueError:
+                continue
+            active_train_for_side = train & ma & mb & finite_y
+            if int(active_train_for_side.sum()) <= 0:
+                continue
+            side = 1 if float(np.mean(fwd[active_train_for_side])) >= 0.0 else -1
         active_train = train & ma & mb & finite_y
         if int(active_train.sum()) <= 0:
             continue
-        side = 1 if float(np.mean(fwd[active_train])) >= 0.0 else -1
         prior_rets = fwd[active_train] * float(side)
         prior_mean = float(np.mean(prior_rets)) if prior_rets.size else 0.0
         prior_std = float(np.std(prior_rets, ddof=1)) if prior_rets.size > 1 else 0.0
