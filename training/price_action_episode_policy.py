@@ -52,6 +52,14 @@ class EpisodePolicyCfg:
 
 
 EPISODE_SIDES: dict[str, tuple[str, str]] = {
+    "lower_high_mid_reject": ("SHORT", "bearish_structure_reject"),
+    "lower_low_mid_fail": ("SHORT", "bearish_structure_continuation"),
+    "downtrend_pullback_reject": ("SHORT", "downtrend_pullback_reject"),
+    "failed_mid_reclaim_short": ("SHORT", "failed_reclaim_short"),
+    "higher_low_mid_reclaim": ("LONG", "bullish_structure_reclaim"),
+    "higher_high_mid_hold": ("LONG", "bullish_structure_continuation"),
+    "uptrend_pullback_reclaim": ("LONG", "uptrend_pullback_reclaim"),
+    "failed_mid_loss_long": ("LONG", "failed_loss_long"),
     "break_above": ("LONG", "breakout_continuation"),
     "break_above_with_volume": ("LONG", "breakout_continuation_volume"),
     "break_below": ("SHORT", "breakdown_continuation"),
@@ -65,6 +73,49 @@ EPISODE_SIDES: dict[str, tuple[str, str]] = {
     "reclaim_mid_from_below": ("LONG", "range_mid_reclaim"),
     "reject_mid_from_above": ("SHORT", "range_mid_reject"),
 }
+
+
+def build_episode_event_features(market: pd.DataFrame, windows: list[int]) -> pd.DataFrame:
+    """Build base PAE plus causal structure-transition episode events.
+
+    The additional events compare current OHLC against shifted prior ranges and
+    compare the prior range to an older prior range.  No future bar participates
+    in either the range level or structure-slope calculation.
+    """
+    base = build_price_action_event_features(market, windows)
+    high = market["high"].astype(float)
+    low = market["low"].astype(float)
+    open_ = market["open"].astype(float)
+    close = market["close"].astype(float)
+    extra: dict[str, np.ndarray] = {}
+    for w in windows:
+        w = int(w)
+        lag = max(2, w // 4)
+        prior_high = high.shift(1).rolling(w, min_periods=w).max()
+        prior_low = low.shift(1).rolling(w, min_periods=w).min()
+        prior_mid = (prior_high + prior_low) / 2.0
+        older_high = prior_high.shift(lag)
+        older_low = prior_low.shift(lag)
+        prior_range = (prior_high - prior_low).replace(0.0, np.nan)
+        valid = prior_high.notna() & prior_low.notna() & older_high.notna() & older_low.notna() & (prior_range > 0)
+        lower_high = valid & (prior_high < older_high)
+        lower_low = valid & (prior_low < older_low)
+        higher_high = valid & (prior_high > older_high)
+        higher_low = valid & (prior_low > older_low)
+        bearish_body = close < open_
+        bullish_body = close > open_
+        prefix = f"pae_w{w}"
+        extra[f"{prefix}_lower_high_mid_reject"] = (lower_high & (high >= prior_mid) & (close < prior_mid) & bearish_body).astype(float).to_numpy(dtype=float)
+        extra[f"{prefix}_lower_low_mid_fail"] = (lower_low & (close < prior_mid) & bearish_body).astype(float).to_numpy(dtype=float)
+        extra[f"{prefix}_downtrend_pullback_reject"] = (lower_high & lower_low & (high >= prior_mid) & (close < open_) & (close < prior_high)).astype(float).to_numpy(dtype=float)
+        extra[f"{prefix}_failed_mid_reclaim_short"] = (lower_high & (open_ < prior_mid) & (high > prior_mid) & (close < prior_mid)).astype(float).to_numpy(dtype=float)
+        extra[f"{prefix}_higher_low_mid_reclaim"] = (higher_low & (low <= prior_mid) & (close > prior_mid) & bullish_body).astype(float).to_numpy(dtype=float)
+        extra[f"{prefix}_higher_high_mid_hold"] = (higher_high & (close > prior_mid) & bullish_body).astype(float).to_numpy(dtype=float)
+        extra[f"{prefix}_uptrend_pullback_reclaim"] = (higher_high & higher_low & (low <= prior_mid) & (close > open_) & (close > prior_low)).astype(float).to_numpy(dtype=float)
+        extra[f"{prefix}_failed_mid_loss_long"] = (higher_low & (open_ > prior_mid) & (low < prior_mid) & (close > prior_mid)).astype(float).to_numpy(dtype=float)
+    if not extra:
+        return base
+    return pd.concat([base, pd.DataFrame(extra, index=market.index)], axis=1).replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
 
 def _period_mask(dates: pd.Series, start: str, end: str) -> np.ndarray:
@@ -196,7 +247,7 @@ def run(cfg: EpisodePolicyCfg) -> dict[str, Any]:
     dates = pd.to_datetime(market["date"])
     windows = _parse_list(cfg.windows, int)
     horizons = _parse_list(cfg.horizons, int)
-    features = build_price_action_event_features(market, windows)
+    features = build_episode_event_features(market, windows)
     candidates = []
     for template in build_templates(features, windows, horizons):
         triggers = template_triggers(template)

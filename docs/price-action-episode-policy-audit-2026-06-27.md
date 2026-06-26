@@ -79,3 +79,37 @@ The next alpha surface should explicitly model regime transition and short-side 
 - volatility expansion after long compression with direction confirmed by higher timeframe trend;
 - external macro/premium-conditioned short pressure tokens;
 - purged rolling selection that requires both long and short templates or abstains.
+
+## Run 3: structure-transition episode expansion
+
+Added causal structure-transition events inside `training/price_action_episode_policy.py`:
+
+- `lower_high_mid_reject` SHORT
+- `lower_low_mid_fail` SHORT
+- `downtrend_pullback_reject` SHORT
+- `failed_mid_reclaim_short` SHORT
+- bullish analogues for higher-low / higher-high reclaim
+
+Report: `results/price_action_episode_policy_wavefull_struct_train2023_2024_test2025_eval2026jm_2026-06-27/report.json`
+
+Portfolio result:
+
+| split | CAGR | strict MDD | ratio | trades | p-value | side |
+|---|---:|---:|---:|---:|---:|---|
+| train 2023-2024 | 34.34 | 13.57 | 2.53 | 289 | 0.0124 | LONG only |
+| test 2025 | 11.98 | 12.71 | 0.94 | 154 | 0.3558 | LONG only |
+| eval 2026 Jan-May | -24.50 | 15.39 | -1.59 | 67 | 0.3492 | LONG only |
+
+Short-side audit from the same run:
+
+- best SHORT candidates were mostly 8640-window `reject_mid_from_above`, `lower_high_mid_reject`, and `failed_mid_reclaim_short`.
+- they looked strong on 2025 test, e.g. `pae_w8640_reject_mid_from_above` SHORT h432 had test CAGR `26.06`, MDD `5.21`, ratio `5.01`, p `0.0013`.
+- but the same candidate failed train stability and lost in 2026 eval: eval CAGR `-5.25`, MDD `6.99`, trades `11`.
+
+Conclusion: the added short/regime-transition features are not enough. Current short candidates are validation-regime artifacts, not durable alpha.
+
+Updated next direction:
+
+- require side-diversity only after a genuinely train-stable short alpha exists; forcing shorts now would just add unstable losses.
+- short alpha likely needs richer context than prior-range shape alone: higher-timeframe trend phase, macro pressure, funding/OI stress, and failed bounce sequence over multiple events.
+- next implementation should build sequence-level episode tokens, not single-bar event triggers.
