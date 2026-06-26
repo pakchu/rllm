@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -28,6 +29,8 @@ class ValTokenVetoTTECfg:
     margin_thresholds: str = "0.00,0.03,0.06,0.10"
     side_modes: str = "normal"
     veto_sizes: str = "0,3,5,8,12"
+    veto_unit_mode: str = "token"  # token | semantic
+    exclude_veto_regex: str = ""
     min_token_trades: int = 12
     max_veto_mean_ret_pct: float = -0.05
     min_val_trades: int = 40
@@ -75,6 +78,26 @@ def _side_modes(raw: str) -> list[str]:
     return out or ["normal"]
 
 
+def _semantic_unit(tok: str) -> str:
+    raw = str(tok)
+    if "=" not in raw:
+        return raw
+    key, val = raw.split("=", 1)
+    key = re.sub(r"\.w\d+\.", ".", key)
+    key = re.sub(r"^augnum\.", "augnum.", key)
+    return f"{key}={val}"
+
+
+def _veto_units(row: dict[str, Any], cfg: ValTokenVetoTTECfg) -> set[str]:
+    toks = set(tokens_from_row(row))
+    pat = re.compile(str(cfg.exclude_veto_regex)) if str(cfg.exclude_veto_regex).strip() else None
+    out: set[str] = set()
+    for tok in toks:
+        if pat and pat.search(tok):
+            continue
+        out.add(_semantic_unit(tok) if str(cfg.veto_unit_mode) == "semantic" else tok)
+    return out
+
 def _write_jsonl(path: str | Path, rows: list[dict[str, Any]]) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     with Path(path).open("w") as f:
@@ -82,12 +105,12 @@ def _write_jsonl(path: str | Path, rows: list[dict[str, Any]]) -> None:
             f.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
 
 
-def _prediction_rows(rows: list[dict[str, Any]], preds: list[dict[str, Any]], *, prob_th: float, margin_th: float, side_mode: str, veto_tokens: set[str], hold_bars: int) -> list[dict[str, Any]]:
+def _prediction_rows(rows: list[dict[str, Any]], preds: list[dict[str, Any]], *, prob_th: float, margin_th: float, side_mode: str, veto_tokens: set[str], hold_bars: int, cfg: ValTokenVetoTTECfg) -> list[dict[str, Any]]:
     out = []
     for row, pred in zip(rows, preds):
         label = _maybe_invert(str(pred["label"]), side_mode)
-        toks = set(tokens_from_row(row))
-        vetoed = bool(veto_tokens.intersection(toks))
+        units = _veto_units(row, cfg)
+        vetoed = bool(veto_tokens.intersection(units))
         if vetoed or label == "NO_TRADE" or float(pred["prob"]) < prob_th or float(pred["margin"]) < margin_th:
             action = {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0}
         else:
@@ -115,7 +138,7 @@ def _bad_tokens(rows: list[dict[str, Any]], preds: list[dict[str, Any]], execute
         if key not in by_key:
             continue
         ret = by_key[key]
-        for tok in set(tokens_from_row(row)):
+        for tok in _veto_units(row, cfg):
             vals[tok].append(ret)
     out = []
     for tok, xs in vals.items():
@@ -137,7 +160,7 @@ def run(cfg: ValTokenVetoTTECfg) -> dict[str, Any]:
     candidates = []
     bad_by_mode: dict[str, list[dict[str, Any]]] = {}
     for mode in _side_modes(cfg.side_modes):
-        base_rows = _prediction_rows(val, val_preds, prob_th=0.0, margin_th=0.0, side_mode=mode, veto_tokens=set(), hold_bars=cfg.max_hold_bars)
+        base_rows = _prediction_rows(val, val_preds, prob_th=0.0, margin_th=0.0, side_mode=mode, veto_tokens=set(), hold_bars=cfg.max_hold_bars, cfg=cfg)
         base_pred = work / f"val_{mode}_base_for_veto.predictions.jsonl"
         _write_jsonl(base_pred, base_rows)
         base_bt = _bt(str(base_pred), cfg, str(work / f"val_{mode}_base_for_veto.bt.json"))
@@ -148,7 +171,7 @@ def run(cfg: ValTokenVetoTTECfg) -> dict[str, Any]:
             veto = {r["token"] for r in bad[: int(veto_size)]}
             for pth in _parse_floats(cfg.confidence_thresholds):
                 for mth in _parse_floats(cfg.margin_thresholds):
-                    pred_rows = _prediction_rows(val, val_preds, prob_th=pth, margin_th=mth, side_mode=mode, veto_tokens=veto, hold_bars=cfg.max_hold_bars)
+                    pred_rows = _prediction_rows(val, val_preds, prob_th=pth, margin_th=mth, side_mode=mode, veto_tokens=veto, hold_bars=cfg.max_hold_bars, cfg=cfg)
                     tag = f"val_{mode}_v{veto_size}_p{pth:.2f}_m{mth:.2f}"
                     pred_path = work / f"{tag}.predictions.jsonl"
                     _write_jsonl(pred_path, pred_rows)
@@ -156,7 +179,7 @@ def run(cfg: ValTokenVetoTTECfg) -> dict[str, Any]:
                     candidates.append({"side_mode": mode, "veto_size": veto_size, "veto_tokens": sorted(veto), "prob_threshold": pth, "margin_threshold": mth, "score": _score(bt["sim"], cfg.min_val_trades), "val_sim": bt["sim"], "val_trade_stats": bt["trade_stats"]})
     candidates.sort(key=lambda r: float(r["score"]), reverse=True)
     selected = candidates[0] if candidates else {"side_mode": "normal", "veto_size": 0, "veto_tokens": [], "prob_threshold": 1.0, "margin_threshold": 1.0}
-    eval_pred_rows = _prediction_rows(eval_rows, eval_preds, prob_th=float(selected["prob_threshold"]), margin_th=float(selected["margin_threshold"]), side_mode=str(selected["side_mode"]), veto_tokens=set(selected.get("veto_tokens", [])), hold_bars=cfg.max_hold_bars)
+    eval_pred_rows = _prediction_rows(eval_rows, eval_preds, prob_th=float(selected["prob_threshold"]), margin_th=float(selected["margin_threshold"]), side_mode=str(selected["side_mode"]), veto_tokens=set(selected.get("veto_tokens", [])), hold_bars=cfg.max_hold_bars, cfg=cfg)
     eval_pred = work / "selected_eval.predictions.jsonl"
     _write_jsonl(eval_pred, eval_pred_rows)
     eval_bt = _bt(str(eval_pred), cfg, str(work / "selected_eval.bt.json"))
@@ -181,6 +204,8 @@ def parse_args() -> argparse.Namespace:
         required = field.default.__class__.__name__ == "_MISSING_TYPE"
         p.add_argument(name, default=None if required else field.default, required=required)
     ns = vars(p.parse_args())
+    if ns["veto_unit_mode"] not in {"token", "semantic"}:
+        raise ValueError("veto_unit_mode must be token or semantic")
     for k in {"min_count", "top_k_tokens", "min_token_trades", "min_val_trades", "entry_delay_bars", "max_hold_bars"}:
         ns[k] = int(ns[k])
     for k in {"smoothing", "max_veto_mean_ret_pct", "leverage", "fee_rate", "slippage_rate", "trade_stop_loss_pct", "trade_take_profit_pct"}:
