@@ -250,11 +250,11 @@ def _parse_csv_targets(raw: str) -> list[str]:
     return out or ["utility"]
 
 
-def sweep(*, train_jsonl: str, val_jsonl: str, holdout_jsonl: str, market_csv: str, output: str, work_dir: str, min_trades: int = 30, targets: str = "utility,net_return,risk_adjusted", alphas: str = "1,10,100,1000,10000", thresholds: str = "-0.006,-0.003,-0.001,0,0.001,0.003,0.006", min_gaps: str = "0,0.0005,0.0015,0.003", min_val_cagr_pct: float = 0.0, min_val_ratio: float = -999.0, max_val_mdd_pct: float = 0.0, max_val_p_value: float = 1.0, abstain_on_validation_fail: bool = False) -> dict[str, Any]:
+def sweep(*, train_jsonl: str, val_jsonl: str, holdout_jsonl: str, market_csv: str, output: str, work_dir: str, min_trades: int = 30, targets: str = "utility,net_return,risk_adjusted", alphas: str = "1,10,100,1000,10000", thresholds: str = "-0.006,-0.003,-0.001,0,0.001,0.003,0.006", min_gaps: str = "0,0.0005,0.0015,0.003", min_val_cagr_pct: float = 0.0, min_val_ratio: float = -999.0, max_val_mdd_pct: float = 0.0, max_val_p_value: float = 1.0, abstain_on_validation_fail: bool = False, min_feature_count: int = 5) -> dict[str, Any]:
     train = load_jsonl(train_jsonl)
     val = load_jsonl(val_jsonl)
     hold = load_jsonl(holdout_jsonl)
-    fs = FeatureSpace.fit(train, min_count=5)
+    fs = FeatureSpace.fit(train, min_count=int(min_feature_count))
     x_train = fs.matrix(train)
     x_val = fs.matrix(val)
     x_hold = fs.matrix(hold)
@@ -319,7 +319,7 @@ def sweep(*, train_jsonl: str, val_jsonl: str, holdout_jsonl: str, market_csv: s
         "selected": selected,
         "holdout": {"sim": hold_bt["sim"], "trade_stats": hold_bt["trade_stats"], "path": hold_bt_path, "predictions_output": hold_pred, "abstained_due_to_validation_fail": holdout_abstained},
         "top": ranked[:20],
-        "sweep_space": {"configs": len(configs), "min_trades": min_trades, "targets": _parse_csv_targets(targets), "alphas": _parse_csv_floats(alphas), "thresholds": _parse_csv_floats(thresholds), "min_gaps": _parse_csv_floats(min_gaps), "min_val_cagr_pct": min_val_cagr_pct, "min_val_ratio": min_val_ratio, "max_val_mdd_pct": max_val_mdd_pct, "max_val_p_value": max_val_p_value, "abstain_on_validation_fail": abstain_on_validation_fail, "features": len(fs.vocab), "train_rows": len(train), "val_rows": len(val), "holdout_rows": len(hold)},
+        "sweep_space": {"configs": len(configs), "min_trades": min_trades, "targets": _parse_csv_targets(targets), "alphas": _parse_csv_floats(alphas), "thresholds": _parse_csv_floats(thresholds), "min_gaps": _parse_csv_floats(min_gaps), "min_val_cagr_pct": min_val_cagr_pct, "min_val_ratio": min_val_ratio, "max_val_mdd_pct": max_val_mdd_pct, "max_val_p_value": max_val_p_value, "abstain_on_validation_fail": abstain_on_validation_fail, "min_feature_count": min_feature_count, "features": len(fs.vocab), "train_rows": len(train), "val_rows": len(val), "holdout_rows": len(hold)},
         "leakage_guard": {"feature_vocab_and_ridge_fit_train_only": True, "config_selected_on_val_only": True, "holdout_uses_fixed_selected_config": True, "prompts_are_past_only_symbolic_text": True},
     }
     Path(output).parent.mkdir(parents=True, exist_ok=True)
@@ -343,6 +343,7 @@ def parse_args() -> argparse.Namespace:
     sw.add_argument("--max-val-mdd-pct", type=float, default=0.0)
     sw.add_argument("--max-val-p-value", type=float, default=1.0)
     sw.add_argument("--abstain-on-validation-fail", action="store_true")
+    sw.add_argument("--min-feature-count", type=int, default=5)
     return p.parse_args()
 
 
@@ -351,7 +352,7 @@ def main() -> None:
     if a.cmd == "train-predict":
         print(json.dumps(train_predict(train_jsonl=a.train_jsonl, eval_jsonl=a.eval_jsonl, predictions_output=a.predictions_output, alpha=a.alpha, threshold=a.threshold, min_gap=a.min_gap, target=a.target, min_feature_count=a.min_feature_count), indent=2, ensure_ascii=False))
     elif a.cmd == "sweep":
-        rep = sweep(train_jsonl=a.train_jsonl, val_jsonl=a.val_jsonl, holdout_jsonl=a.holdout_jsonl, market_csv=a.market_csv, output=a.output, work_dir=a.work_dir, min_trades=a.min_trades, targets=a.targets, alphas=a.alphas, thresholds=a.thresholds, min_gaps=a.min_gaps, min_val_cagr_pct=a.min_val_cagr_pct, min_val_ratio=a.min_val_ratio, max_val_mdd_pct=a.max_val_mdd_pct, max_val_p_value=a.max_val_p_value, abstain_on_validation_fail=a.abstain_on_validation_fail)
+        rep = sweep(train_jsonl=a.train_jsonl, val_jsonl=a.val_jsonl, holdout_jsonl=a.holdout_jsonl, market_csv=a.market_csv, output=a.output, work_dir=a.work_dir, min_trades=a.min_trades, targets=a.targets, alphas=a.alphas, thresholds=a.thresholds, min_gaps=a.min_gaps, min_val_cagr_pct=a.min_val_cagr_pct, min_val_ratio=a.min_val_ratio, max_val_mdd_pct=a.max_val_mdd_pct, max_val_p_value=a.max_val_p_value, abstain_on_validation_fail=a.abstain_on_validation_fail, min_feature_count=a.min_feature_count)
         print(json.dumps({"selected_config": rep["selected"]["config"], "val_sim": rep["selected"]["val"]["sim"], "holdout_sim": rep["holdout"]["sim"]}, indent=2, ensure_ascii=False))
 
 if __name__ == "__main__":
