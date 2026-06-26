@@ -35,6 +35,7 @@ class PathShapeTokenPolicyCfg:
     top_k_tokens: int = 24
     confidence_thresholds: str = "0.34,0.38,0.42,0.46,0.50,0.55,0.60"
     margin_thresholds: str = "0.00,0.03,0.06,0.10,0.15,0.20"
+    side_modes: str = "normal"  # normal | invert | normal,invert
     min_val_trades: int = 40
     leverage: float = 1.0
     fee_rate: float = 0.0004
@@ -123,6 +124,11 @@ def tokens_from_row(row: dict[str, Any]) -> list[str]:
     macro_nums = s.get("augmented_macro_features") if isinstance(s.get("augmented_macro_features"), dict) else {}
     for k, v in sorted(macro_nums.items()):
         toks.append(f"augnum.{k}={_bin_num(v)}")
+    micro = s.get("augmented_micro_path_tokens") if isinstance(s.get("augmented_micro_path_tokens"), list) else []
+    toks.extend(f"aug.{x}" for x in micro)
+    micro_nums = s.get("augmented_micro_path_features") if isinstance(s.get("augmented_micro_path_features"), dict) else {}
+    for k, v in sorted(micro_nums.items()):
+        toks.append(f"augnum.{k}={_bin_num(v)}")
     return toks
 
 
@@ -174,10 +180,28 @@ def _classification(rows: list[dict[str, Any]], preds: list[dict[str, Any]]) -> 
     return {"rows": len(rows), "accuracy": correct / max(1, len(rows)), "target_counts": dict(Counter(target_label(r) for r in rows)), "pred_counts": dict(Counter(p["label"] for p in preds))}
 
 
-def _prediction_rows(rows: list[dict[str, Any]], preds: list[dict[str, Any]], cfg: PathShapeTokenPolicyCfg, *, prob_th: float, margin_th: float) -> list[dict[str, Any]]:
+def _parse_side_modes(raw: str) -> list[str]:
+    modes = [x.strip() for x in str(raw).split(",") if x.strip()]
+    bad = [x for x in modes if x not in {"normal", "invert"}]
+    if bad:
+        raise ValueError(f"unsupported side_modes: {bad}")
+    return modes or ["normal"]
+
+
+def _maybe_invert(label: str, side_mode: str) -> str:
+    if side_mode != "invert":
+        return label
+    if label == "LONG":
+        return "SHORT"
+    if label == "SHORT":
+        return "LONG"
+    return label
+
+
+def _prediction_rows(rows: list[dict[str, Any]], preds: list[dict[str, Any]], cfg: PathShapeTokenPolicyCfg, *, prob_th: float, margin_th: float, side_mode: str = "normal") -> list[dict[str, Any]]:
     out = []
     for row, pred in zip(rows, preds):
-        label = str(pred["label"])
+        label = _maybe_invert(str(pred["label"]), side_mode)
         if label == "NO_TRADE" or float(pred["prob"]) < prob_th or float(pred["margin"]) < margin_th:
             action = {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0}
         else:
@@ -219,14 +243,15 @@ def run(cfg: PathShapeTokenPolicyCfg) -> dict[str, Any]:
     candidates = []
     for pth in _parse_floats(cfg.confidence_thresholds):
         for mth in _parse_floats(cfg.margin_thresholds):
-            pred_rows = _prediction_rows(val, val_preds, cfg, prob_th=pth, margin_th=mth)
-            pred_path = work / f"val_p{pth:.2f}_m{mth:.2f}.predictions.jsonl"
-            _write_jsonl(pred_path, pred_rows)
-            bt = _bt(str(pred_path), cfg, str(work / f"val_p{pth:.2f}_m{mth:.2f}.bt.json"))
-            candidates.append({"prob_threshold": pth, "margin_threshold": mth, "score": _score(bt["sim"], cfg.min_val_trades), "val_sim": bt["sim"], "val_trade_stats": bt["trade_stats"]})
+            for side_mode in _parse_side_modes(cfg.side_modes):
+                pred_rows = _prediction_rows(val, val_preds, cfg, prob_th=pth, margin_th=mth, side_mode=side_mode)
+                pred_path = work / f"val_{side_mode}_p{pth:.2f}_m{mth:.2f}.predictions.jsonl"
+                _write_jsonl(pred_path, pred_rows)
+                bt = _bt(str(pred_path), cfg, str(work / f"val_{side_mode}_p{pth:.2f}_m{mth:.2f}.bt.json"))
+                candidates.append({"prob_threshold": pth, "margin_threshold": mth, "side_mode": side_mode, "score": _score(bt["sim"], cfg.min_val_trades), "val_sim": bt["sim"], "val_trade_stats": bt["trade_stats"]})
     candidates.sort(key=lambda r: float(r["score"]), reverse=True)
     selected = candidates[0] if candidates else {"prob_threshold": 1.0, "margin_threshold": 1.0, "score": -1e9}
-    eval_pred_rows = _prediction_rows(eval_rows, eval_preds, cfg, prob_th=float(selected["prob_threshold"]), margin_th=float(selected["margin_threshold"]))
+    eval_pred_rows = _prediction_rows(eval_rows, eval_preds, cfg, prob_th=float(selected["prob_threshold"]), margin_th=float(selected["margin_threshold"]), side_mode=str(selected.get("side_mode", "normal")))
     eval_pred_path = work / "selected_eval.predictions.jsonl"
     _write_jsonl(eval_pred_path, eval_pred_rows)
     eval_bt = _bt(str(eval_pred_path), cfg, str(work / "selected_eval.bt.json"))

@@ -3,7 +3,7 @@ import unittest
 
 import pandas as pd
 
-from training.augment_path_shape_prompts_with_pa import _macro_by_date, augment_row, macro_tokens, price_action_tokens
+from training.augment_path_shape_prompts_with_pa import _macro_by_date, augment_row, macro_tokens, micro_path_tokens, price_action_tokens
 from training.path_shape_token_policy_tte import tokens_from_row
 
 
@@ -46,3 +46,30 @@ class TestMacroAugmentation(unittest.TestCase):
         row = {"signal_pos": 3, "prompt": 'Past-only analyzer summary: {"regime":"UPTREND"}\n\nAnalyzer path-shape output: {}'}
         out = augment_row(row, market, [3], {"dxy_zscore": 2.2})
         self.assertTrue(any(t.startswith("aug.macro.dxy.z=") for t in tokens_from_row(out)))
+
+
+class TestMicroPathAugmentation(unittest.TestCase):
+    def test_micro_path_tokens_capture_recent_trajectory(self):
+        market = pd.DataFrame({
+            "open": [100, 101, 102, 103, 102, 101, 103, 104],
+            "close": [101, 102, 103, 102, 101, 103, 104, 105],
+            "high": [102, 103, 104, 104, 103, 104, 105, 106],
+            "low": [99, 100, 101, 101, 100, 100, 102, 103],
+            "volume": [1, 1, 2, 3, 2, 2, 4, 5],
+        })
+        toks, nums = micro_path_tokens(market, 7, [6])
+        self.assertTrue(any(t.startswith("micro.w6.return=") for t in toks))
+        self.assertTrue(any(t.startswith("micro.w6.alternation=") for t in toks))
+        self.assertIn("micro.w6.body_efficiency", nums)
+
+    def test_augment_row_adds_micro_tokens_consumed_by_policy(self):
+        market = pd.DataFrame({
+            "open": [100, 101, 102, 103, 102, 101, 103, 104],
+            "close": [101, 102, 103, 102, 101, 103, 104, 105],
+            "high": [102, 103, 104, 104, 103, 104, 105, 106],
+            "low": [99, 100, 101, 101, 100, 100, 102, 103],
+            "volume": [1, 1, 2, 3, 2, 2, 4, 5],
+        })
+        row = {"signal_pos": 7, "prompt": 'Past-only analyzer summary: {"regime":"UPTREND"}\n\nAnalyzer path-shape output: {}'}
+        out = augment_row(row, market, [3], micro_windows=[6])
+        self.assertTrue(any(t.startswith("aug.micro.w6") for t in tokens_from_row(out)))

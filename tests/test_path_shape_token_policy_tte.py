@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from training.path_shape_token_policy_tte import _summary_from_prompt, target_label, tokens_from_row
+from training.path_shape_token_policy_tte import _maybe_invert, _parse_side_modes, _summary_from_prompt, target_label, tokens_from_row
 
 
 class TestPathShapeTokenPolicyTTE(unittest.TestCase):
@@ -23,3 +23,10 @@ class TestPathShapeTokenPolicyTTE(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSideMode(unittest.TestCase):
+    def test_parse_side_modes_and_invert(self):
+        self.assertEqual(_parse_side_modes("normal,invert"), ["normal", "invert"])
+        self.assertEqual(_maybe_invert("LONG", "invert"), "SHORT")
+        self.assertEqual(_maybe_invert("NO_TRADE", "invert"), "NO_TRADE")
