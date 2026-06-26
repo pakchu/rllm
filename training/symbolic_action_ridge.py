@@ -68,6 +68,16 @@ def row_tokens(row: dict[str, Any]) -> list[str]:
     family = str(action.get("family", "NONE"))
     hold = int(action.get("hold_bars", 0) or 0)
     toks.extend([f"raw_action:side={side}", f"raw_action:family={family}", f"raw_action:hold={hold}"])
+    state_tokens = row.get("state_tokens", {}) if isinstance(row.get("state_tokens"), dict) else {}
+    for key, val in sorted(state_tokens.items()):
+        tok = f"state:{key}={val}"
+        toks.append(tok)
+        # Side/action interactions let the ranker learn that the same market
+        # structure can mean different things for LONG/SHORT or trend/reversal
+        # action families.
+        toks.append(f"x:side={side}|{tok}")
+        toks.append(f"x:family={family}|{tok}")
+        toks.append(f"x:horizon={hold}|{tok}")
     return toks
 
 
