@@ -118,6 +118,11 @@ def tokens_from_row(row: dict[str, Any]) -> list[str]:
     aug_nums = s.get("augmented_price_action_features") if isinstance(s.get("augmented_price_action_features"), dict) else {}
     for k, v in sorted(aug_nums.items()):
         toks.append(f"augnum.{k}={_bin_num(v)}")
+    macro = s.get("augmented_macro_tokens") if isinstance(s.get("augmented_macro_tokens"), list) else []
+    toks.extend(f"aug.{x}" for x in macro)
+    macro_nums = s.get("augmented_macro_features") if isinstance(s.get("augmented_macro_features"), dict) else {}
+    for k, v in sorted(macro_nums.items()):
+        toks.append(f"augnum.{k}={_bin_num(v)}")
     return toks
 
 

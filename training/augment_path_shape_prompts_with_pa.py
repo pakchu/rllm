@@ -20,6 +20,7 @@ class AugmentPathShapePACfg:
     output_jsonl: str
     summary_output: str = ""
     windows: str = "36,144,576,2016"
+    context_market_csv: str = ""
 
 
 def _load_jsonl(path: str | Path) -> list[dict[str, Any]]:
@@ -81,6 +82,30 @@ def _bucket_dist_pct(x: float) -> str:
     if x < 5.0:
         return "FAR"
     return "VERY_FAR"
+
+
+def _bucket_z(x: float) -> str:
+    if x <= -2.0:
+        return "LOW_EXTREME"
+    if x <= -1.0:
+        return "LOW"
+    if x < 1.0:
+        return "NEUTRAL"
+    if x < 2.0:
+        return "HIGH"
+    return "HIGH_EXTREME"
+
+
+def _bucket_small_mom(x: float) -> str:
+    if x <= -0.01:
+        return "DOWN_EXTREME"
+    if x <= -0.003:
+        return "DOWN"
+    if x < 0.003:
+        return "FLAT"
+    if x < 0.01:
+        return "UP"
+    return "UP_EXTREME"
 
 
 def _bucket_age(x: float) -> str:
@@ -145,15 +170,60 @@ def price_action_tokens(market: pd.DataFrame, signal_pos: int, windows: list[int
     return toks, nums
 
 
-def augment_row(row: dict[str, Any], market: pd.DataFrame, windows: list[int]) -> dict[str, Any]:
+def _macro_by_date(context_market: pd.DataFrame | None, rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    if context_market is None or context_market.empty or "date" not in context_market.columns:
+        return {}
+    ctx = context_market.copy()
+    ctx["date"] = pd.to_datetime(ctx["date"], errors="coerce")
+    keep = [c for c in ["date", "dxy_zscore", "dxy_momentum", "kimchi_premium_zscore", "kimchi_premium_change", "usdkrw_zscore", "usdkrw_momentum", "dxy_available", "kimchi_available", "usdkrw_available"] if c in ctx.columns]
+    ctx = ctx[keep].dropna(subset=["date"]).sort_values("date")
+    req = pd.DataFrame({"_row": range(len(rows)), "date": pd.to_datetime([r.get("date") for r in rows], errors="coerce")}).sort_values("date")
+    merged = pd.merge_asof(req, ctx, on="date", direction="backward")
+    out: dict[str, dict[str, Any]] = {}
+    for rec in merged.to_dict("records"):
+        row_idx = int(rec["_row"])
+        vals = {k: v for k, v in rec.items() if k not in {"_row", "date"} and pd.notna(v)}
+        out[str(row_idx)] = vals
+    return out
+
+
+def macro_tokens(values: dict[str, Any]) -> tuple[list[str], dict[str, float]]:
+    toks: list[str] = []
+    nums: dict[str, float] = {}
+    for name in ("dxy", "kimchi", "usdkrw"):
+        avail_key = f"{name}_available" if name != "kimchi" else "kimchi_available"
+        if avail_key in values:
+            toks.append(f"macro.{name}.available={int(float(values.get(avail_key, 0.0) or 0.0) >= 0.5)}")
+    mapping = {
+        "dxy_zscore": ("macro.dxy.z", _bucket_z),
+        "dxy_momentum": ("macro.dxy.mom", _bucket_small_mom),
+        "kimchi_premium_zscore": ("macro.kimchi.z", _bucket_z),
+        "kimchi_premium_change": ("macro.kimchi.change", _bucket_small_mom),
+        "usdkrw_zscore": ("macro.usdkrw.z", _bucket_z),
+        "usdkrw_momentum": ("macro.usdkrw.mom", _bucket_small_mom),
+    }
+    for src, (tok_name, bucket_fn) in mapping.items():
+        if src not in values:
+            continue
+        val = float(values[src])
+        nums[tok_name] = val
+        toks.append(f"{tok_name}={bucket_fn(val)}")
+    return toks, nums
+
+
+def augment_row(row: dict[str, Any], market: pd.DataFrame, windows: list[int], macro_values: dict[str, Any] | None = None) -> dict[str, Any]:
     out = dict(row)
     summary, prefix, suffix = _summary_from_prompt(str(row.get("prompt", "")))
     toks, nums = price_action_tokens(market, int(row.get("signal_pos", -1)), windows)
+    mtoks, mnums = macro_tokens(macro_values or {})
     summary = dict(summary)
     summary["augmented_price_action_tokens"] = toks
     summary["augmented_price_action_features"] = nums
+    if mtoks or mnums:
+        summary["augmented_macro_tokens"] = mtoks
+        summary["augmented_macro_features"] = mnums
     out["prompt"] = prefix + json.dumps(summary, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + suffix
-    out["augmentation"] = {"price_action_windows": windows, "past_only": True, "token_count": len(toks)}
+    out["augmentation"] = {"price_action_windows": windows, "past_only": True, "token_count": len(toks) + len(mtoks), "price_action_token_count": len(toks), "macro_token_count": len(mtoks)}
     return out
 
 
@@ -161,13 +231,16 @@ def augment_file(cfg: AugmentPathShapePACfg) -> dict[str, Any]:
     rows = _load_jsonl(cfg.input_jsonl)
     market = pd.read_csv(cfg.market_csv, compression="infer")
     windows = _parse_windows(cfg.windows)
-    out = [augment_row(r, market, windows) for r in rows]
+    context_market = pd.read_csv(cfg.context_market_csv, compression="infer") if cfg.context_market_csv else None
+    macro_lookup = _macro_by_date(context_market, rows)
+    out = [augment_row(r, market, windows, macro_lookup.get(str(i), {})) for i, r in enumerate(rows)]
     Path(cfg.output_jsonl).parent.mkdir(parents=True, exist_ok=True)
     with Path(cfg.output_jsonl).open("w") as f:
         for row in out:
             f.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
     token_counts = Counter(int(r.get("augmentation", {}).get("token_count", 0)) for r in out)
-    report = {"as_of": datetime.now(timezone.utc).isoformat(), "config": asdict(cfg), "rows": len(out), "token_count_distribution": dict(sorted((str(k), v) for k, v in token_counts.items())), "leakage_guard": {"features_use_bars_at_or_before_signal_pos": True, "targets_unchanged": True}}
+    macro_rows = sum(1 for r in out if "augmented_macro_tokens" in json.loads(r["prompt"].split("Past-only analyzer summary: ", 1)[1].split("\n\nAnalyzer", 1)[0]))
+    report = {"as_of": datetime.now(timezone.utc).isoformat(), "config": asdict(cfg), "rows": len(out), "rows_with_macro": macro_rows, "token_count_distribution": dict(sorted((str(k), v) for k, v in token_counts.items())), "leakage_guard": {"features_use_bars_at_or_before_signal_pos": True, "macro_context_join_direction": "backward_asof_by_date", "targets_unchanged": True}}
     if cfg.summary_output:
         Path(cfg.summary_output).parent.mkdir(parents=True, exist_ok=True)
         Path(cfg.summary_output).write_text(json.dumps(report, indent=2, ensure_ascii=False))
@@ -181,6 +254,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output-jsonl", required=True)
     p.add_argument("--summary-output", default="")
     p.add_argument("--windows", default="36,144,576,2016")
+    p.add_argument("--context-market-csv", default="", help="Optional date-aligned macro/context market CSV for backward-asof DXY/kimchi/usdkrw tokens")
     return p.parse_args()
 
 
