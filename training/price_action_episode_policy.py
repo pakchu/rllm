@@ -48,10 +48,17 @@ class EpisodePolicyCfg:
     max_test_p_value: float = 0.40
     max_templates: int = 8
     max_trigger_overlap: float = 0.80
+    include_sequence_context: bool = True
     top_k_report: int = 50
 
 
 EPISODE_SIDES: dict[str, tuple[str, str]] = {
+    "seq_bear_reject_macro": ("SHORT", "sequence_bear_reject_macro"),
+    "seq_bear_breakdown_macro": ("SHORT", "sequence_bear_breakdown_macro"),
+    "seq_bear_failed_bounce": ("SHORT", "sequence_bear_failed_bounce"),
+    "seq_bull_reclaim_macro": ("LONG", "sequence_bull_reclaim_macro"),
+    "seq_bull_breakout_macro": ("LONG", "sequence_bull_breakout_macro"),
+    "seq_bull_failed_dump": ("LONG", "sequence_bull_failed_dump"),
     "lower_high_mid_reject": ("SHORT", "bearish_structure_reject"),
     "lower_low_mid_fail": ("SHORT", "bearish_structure_continuation"),
     "downtrend_pullback_reject": ("SHORT", "downtrend_pullback_reject"),
@@ -116,6 +123,57 @@ def build_episode_event_features(market: pd.DataFrame, windows: list[int]) -> pd
     if not extra:
         return base
     return pd.concat([base, pd.DataFrame(extra, index=market.index)], axis=1).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
+
+def _market_optional(market: pd.DataFrame, name: str) -> pd.Series:
+    if name in market.columns:
+        return market[name].astype(float).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    return pd.Series(0.0, index=market.index)
+
+
+def add_sequence_context_features(market: pd.DataFrame, features: pd.DataFrame, windows: list[int]) -> pd.DataFrame:
+    """Add causal multi-event sequence tokens with macro/derivatives context.
+
+    These are not optimized thresholds.  They encode interpretable regimes:
+    repeated bearish/bullish structure over recent bars plus external pressure.
+    Rolling sums are shifted where they aggregate prior events; current-bar
+    trigger still uses current completed OHLC only and entry is delayed.
+    """
+    dxy = _market_optional(market, "dxy_zscore")
+    usdkrw = _market_optional(market, "usdkrw_zscore")
+    kimchi = _market_optional(market, "kimchi_premium_zscore")
+    funding = _market_optional(market, "funding_zscore")
+    oi = _market_optional(market, "oi_zscore")
+    oi_change = _market_optional(market, "oi_change")
+    macro_short = ((dxy + 0.5 * usdkrw - 0.25 * kimchi) > 0.35) | ((funding + oi_change + 0.25 * oi) > 0.75)
+    macro_long = ((dxy + 0.5 * usdkrw - 0.25 * kimchi) < -0.35) | ((funding + oi_change + 0.25 * oi) < -0.75)
+    extra: dict[str, np.ndarray] = {}
+    for w in windows:
+        prefix = f"pae_w{int(w)}"
+        recent = max(3, min(24, int(w) // 12))
+        high_reject = features.get(f"{prefix}_high_sweep_reject", pd.Series(0.0, index=features.index)).astype(float)
+        low_reclaim = features.get(f"{prefix}_low_sweep_reclaim", pd.Series(0.0, index=features.index)).astype(float)
+        break_below = features.get(f"{prefix}_break_below", pd.Series(0.0, index=features.index)).astype(float)
+        break_above = features.get(f"{prefix}_break_above", pd.Series(0.0, index=features.index)).astype(float)
+        reject_mid = features.get(f"{prefix}_reject_mid_from_above", pd.Series(0.0, index=features.index)).astype(float)
+        reclaim_mid = features.get(f"{prefix}_reclaim_mid_from_below", pd.Series(0.0, index=features.index)).astype(float)
+        lower_high = features.get(f"{prefix}_lower_high_mid_reject", pd.Series(0.0, index=features.index)).astype(float)
+        lower_low = features.get(f"{prefix}_lower_low_mid_fail", pd.Series(0.0, index=features.index)).astype(float)
+        higher_low = features.get(f"{prefix}_higher_low_mid_reclaim", pd.Series(0.0, index=features.index)).astype(float)
+        higher_high = features.get(f"{prefix}_higher_high_mid_hold", pd.Series(0.0, index=features.index)).astype(float)
+        bear_prior = (high_reject + break_below + reject_mid + lower_high + lower_low).shift(1).rolling(recent, min_periods=1).sum()
+        bull_prior = (low_reclaim + break_above + reclaim_mid + higher_low + higher_high).shift(1).rolling(recent, min_periods=1).sum()
+        bear_now = (high_reject + break_below + reject_mid + lower_high + lower_low) > 0.5
+        bull_now = (low_reclaim + break_above + reclaim_mid + higher_low + higher_high) > 0.5
+        extra[f"{prefix}_seq_bear_reject_macro"] = ((bear_prior >= 2.0) & (high_reject.gt(0.5) | reject_mid.gt(0.5) | lower_high.gt(0.5)) & macro_short).astype(float).to_numpy(dtype=float)
+        extra[f"{prefix}_seq_bear_breakdown_macro"] = ((bear_prior >= 2.0) & (break_below.gt(0.5) | lower_low.gt(0.5)) & macro_short).astype(float).to_numpy(dtype=float)
+        extra[f"{prefix}_seq_bear_failed_bounce"] = ((bear_prior >= 1.0) & bull_prior.le(1.0) & bear_now & macro_short).astype(float).to_numpy(dtype=float)
+        extra[f"{prefix}_seq_bull_reclaim_macro"] = ((bull_prior >= 2.0) & (low_reclaim.gt(0.5) | reclaim_mid.gt(0.5) | higher_low.gt(0.5)) & macro_long).astype(float).to_numpy(dtype=float)
+        extra[f"{prefix}_seq_bull_breakout_macro"] = ((bull_prior >= 2.0) & (break_above.gt(0.5) | higher_high.gt(0.5)) & macro_long).astype(float).to_numpy(dtype=float)
+        extra[f"{prefix}_seq_bull_failed_dump"] = ((bull_prior >= 1.0) & bear_prior.le(1.0) & bull_now & macro_long).astype(float).to_numpy(dtype=float)
+    if not extra:
+        return features
+    return pd.concat([features, pd.DataFrame(extra, index=features.index)], axis=1).replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
 
 def _period_mask(dates: pd.Series, start: str, end: str) -> np.ndarray:
@@ -248,6 +306,8 @@ def run(cfg: EpisodePolicyCfg) -> dict[str, Any]:
     windows = _parse_list(cfg.windows, int)
     horizons = _parse_list(cfg.horizons, int)
     features = build_episode_event_features(market, windows)
+    if cfg.include_sequence_context:
+        features = add_sequence_context_features(market, features, windows)
     candidates = []
     for template in build_templates(features, windows, horizons):
         triggers = template_triggers(template)
@@ -351,6 +411,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-test-p-value", type=float, default=EpisodePolicyCfg.max_test_p_value)
     p.add_argument("--max-templates", type=int, default=EpisodePolicyCfg.max_templates)
     p.add_argument("--max-trigger-overlap", type=float, default=EpisodePolicyCfg.max_trigger_overlap)
+    p.add_argument("--no-sequence-context", dest="include_sequence_context", action="store_false")
+    p.set_defaults(include_sequence_context=EpisodePolicyCfg.include_sequence_context)
     p.add_argument("--top-k-report", type=int, default=EpisodePolicyCfg.top_k_report)
     return p.parse_args()
 

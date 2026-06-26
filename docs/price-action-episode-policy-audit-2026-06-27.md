@@ -113,3 +113,72 @@ Updated next direction:
 - require side-diversity only after a genuinely train-stable short alpha exists; forcing shorts now would just add unstable losses.
 - short alpha likely needs richer context than prior-range shape alone: higher-timeframe trend phase, macro pressure, funding/OI stress, and failed bounce sequence over multiple events.
 - next implementation should build sequence-level episode tokens, not single-bar event triggers.
+
+## Run 4: sequence-level macro/funding/OI episode expansion
+
+Added sequence-context events:
+
+- `seq_bear_reject_macro` SHORT
+- `seq_bear_breakdown_macro` SHORT
+- `seq_bear_failed_bounce` SHORT
+- `seq_bull_reclaim_macro` LONG
+- `seq_bull_breakout_macro` LONG
+- `seq_bull_failed_dump` LONG
+
+These combine recent prior event sequences with DXY/USDKRW/Kimchi/funding/OI pressure.  Event sequence windows use shifted rolling prior event counts; current event uses only the completed signal bar and entry is still delayed.
+
+### train 2023-2024 / test 2025 / eval 2026 Jan-May
+
+Report: `results/price_action_episode_policy_wavefull_seqmacro_train2023_2024_test2025_eval2026jm_2026-06-27/report.json`
+
+Portfolio:
+
+| split | CAGR | strict MDD | ratio | trades | p-value | side |
+|---|---:|---:|---:|---:|---:|---|
+| train 2023-2024 | 49.33 | 21.99 | 2.24 | 372 | 0.0041 | LONG only |
+| test 2025 | 11.00 | 16.78 | 0.66 | 184 | 0.4348 | LONG only |
+| eval 2026 Jan-May | -17.00 | 15.92 | -1.07 | 82 | 0.5983 | LONG only |
+
+Observation: sequence/macro features improved train but still selected long-only portfolios and failed eval.
+
+### train 2024 / test 2025 / eval 2026 Jan-May
+
+Report: `results/price_action_episode_policy_wavefull_seqmacro_train2024_test2025_eval2026jm_2026-06-27/report.json`
+
+Portfolio:
+
+| split | CAGR | strict MDD | ratio | trades | p-value | side |
+|---|---:|---:|---:|---:|---:|---|
+| train 2024 | 21.18 | 16.30 | 1.30 | 190 | 0.3059 | LONG 169 / SHORT 21 |
+| test 2025 | 17.62 | 16.03 | 1.10 | 198 | 0.2216 | LONG 168 / SHORT 30 |
+| eval 2026 Jan-May | -8.36 | 13.73 | -0.61 | 76 | 0.8370 | LONG 71 / SHORT 5 |
+
+This is the least bad recent split so far, but still not viable. Train/test significance is weak and eval remains negative.
+
+### Top4 prefix diagnostic
+
+Report: `results/price_action_episode_policy_wavefull_seqmacro_train2024_test2025_eval2026jm_top4_2026-06-27/report.json`
+
+Selected first four templates included two SHORT templates and two LONG templates. Test looked very strong, but eval broke harder:
+
+| split | CAGR | strict MDD | ratio | trades | p-value | side |
+|---|---:|---:|---:|---:|---:|---|
+| train 2024 | 15.46 | 15.49 | 1.00 | 106 | 0.3347 | LONG 79 / SHORT 27 |
+| test 2025 | 37.40 | 5.86 | 6.38 | 113 | 0.0014 | LONG 72 / SHORT 41 |
+| eval 2026 Jan-May | -24.49 | 16.75 | -1.46 | 39 | 0.1360 | LONG 29 / SHORT 10 |
+
+Conclusion: the apparently strong 2025 short/mixed setup is a regime artifact. It does not transfer to 2026.
+
+## Updated diagnosis
+
+Sequence-level context and macro/funding/OI conditioning helped expose short candidates, but not durable alpha. The main recurring failure mode is now clearer:
+
+- 2025 rewards both long dip-buying and 8640-window short mid-reject structures.
+- 2026 invalidates both, especially the 2025-strong 8640 short reject templates.
+- Selection on 2025, even with train filtering, is still too weak because the regime changed in 2026.
+
+Next work should move from static template selection to online regime adaptation / abstention:
+
+1. score templates only if their recent realized paper-trade performance remains positive;
+2. use purged rolling monthly re-selection with strict walk-forward state;
+3. feed the LLM a compact sequence of recent episode outcomes, not just current episode tokens.
