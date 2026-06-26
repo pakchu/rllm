@@ -227,7 +227,20 @@ def backtest(predictions_output: str, market_csv: str, output: str) -> dict[str,
     return run_overlay(OnlineRiskOverlayConfig(predictions_jsonl=predictions_output, market_csv=market_csv, output=output))
 
 
-def sweep(*, train_jsonl: str, val_jsonl: str, holdout_jsonl: str, market_csv: str, output: str, work_dir: str, min_trades: int = 30) -> dict[str, Any]:
+def _parse_csv_floats(raw: str) -> list[float]:
+    return [float(x.strip()) for x in str(raw).split(",") if x.strip()]
+
+
+def _parse_csv_targets(raw: str) -> list[str]:
+    allowed = {"utility", "net_return", "risk_adjusted", "tail_risk", "distributional_safety"}
+    out = [x.strip() for x in str(raw).split(",") if x.strip()]
+    bad = [x for x in out if x not in allowed]
+    if bad:
+        raise ValueError(f"unknown targets: {bad}")
+    return out or ["utility"]
+
+
+def sweep(*, train_jsonl: str, val_jsonl: str, holdout_jsonl: str, market_csv: str, output: str, work_dir: str, min_trades: int = 30, targets: str = "utility,net_return,risk_adjusted", alphas: str = "1,10,100,1000,10000", thresholds: str = "-0.006,-0.003,-0.001,0,0.001,0.003,0.006", min_gaps: str = "0,0.0005,0.0015,0.003", min_val_cagr_pct: float = 0.0, min_val_ratio: float = -999.0, max_val_mdd_pct: float = 0.0, max_val_p_value: float = 1.0, abstain_on_validation_fail: bool = False) -> dict[str, Any]:
     train = load_jsonl(train_jsonl)
     val = load_jsonl(val_jsonl)
     hold = load_jsonl(holdout_jsonl)
@@ -238,15 +251,15 @@ def sweep(*, train_jsonl: str, val_jsonl: str, holdout_jsonl: str, market_csv: s
     Path(work_dir).mkdir(parents=True, exist_ok=True)
 
     configs = []
-    for target in ["utility", "net_return", "risk_adjusted"]:
+    for target in _parse_csv_targets(targets):
         y = np.asarray([target_value(r, target=target) for r in train], dtype=np.float64)
-        for alpha in [1.0, 10.0, 100.0, 1000.0, 10000.0]:
+        for alpha in _parse_csv_floats(alphas):
             w = fit_ridge(x_train, y, alpha=float(alpha))
             val_preds = x_val @ w
             train_pred = x_train @ w
             corr = 0.0 if len(y) < 2 or np.std(y) < 1e-12 or np.std(train_pred) < 1e-12 else float(np.corrcoef(y, train_pred)[0, 1])
-            for threshold in [-0.006, -0.003, -0.001, 0.0, 0.001, 0.003, 0.006]:
-                for min_gap in [0.0, 0.0005, 0.0015, 0.003]:
+            for threshold in _parse_csv_floats(thresholds):
+                for min_gap in _parse_csv_floats(min_gaps):
                     configs.append({"target": target, "alpha": alpha, "threshold": threshold, "min_gap": min_gap, "w": w, "val_preds": val_preds, "fit": {"train_corr": corr, "train_rmse_pct": math.sqrt(float(np.mean((train_pred - y) ** 2))) * 100.0}})
 
     scored = []
@@ -258,23 +271,45 @@ def sweep(*, train_jsonl: str, val_jsonl: str, holdout_jsonl: str, market_csv: s
         sim = bt["sim"]
         trades = int(sim["trade_entries"])
         ratio = float(sim["cagr_to_strict_mdd"])
-        score = ratio if trades >= int(min_trades) and float(sim["cagr_pct"]) > 0 else -999.0 + trades / 1000.0
+        stats = bt["trade_stats"]
+        reject_reasons = []
+        if trades < int(min_trades):
+            reject_reasons.append("trades_below_min")
+        if float(sim["cagr_pct"]) < float(min_val_cagr_pct):
+            reject_reasons.append("cagr_below_min")
+        if ratio < float(min_val_ratio):
+            reject_reasons.append("ratio_below_min")
+        if float(max_val_mdd_pct) > 0.0 and float(sim["strict_mdd_pct"]) > float(max_val_mdd_pct):
+            reject_reasons.append("mdd_above_max")
+        if float(stats.get("p_value_mean_ret_approx", 1.0) or 1.0) > float(max_val_p_value):
+            reject_reasons.append("p_value_above_max")
+        score = ratio + trades / 1000.0 if not reject_reasons else -999.0 + trades / 1000.0 - len(reject_reasons)
+
         public_cfg = {k: cfg[k] for k in ("target", "alpha", "threshold", "min_gap")}
-        scored.append({"config": public_cfg, "fit": cfg["fit"], "val": {"sim": sim, "trade_stats": bt["trade_stats"], "path": btout}, "selection_score": score})
+        scored.append({"config": public_cfg, "fit": cfg["fit"], "val": {"sim": sim, "trade_stats": stats, "path": btout}, "validation_passed": not reject_reasons, "validation_reject_reasons": reject_reasons, "selection_score": score})
     ranked = sorted(scored, key=lambda r: (r["selection_score"], r["val"]["sim"]["trade_entries"], r["val"]["sim"]["cagr_pct"]), reverse=True)
     selected = ranked[0]
     # Recompute selected weights deterministically from train only.
     y_sel = np.asarray([target_value(r, target=selected["config"]["target"]) for r in train], dtype=np.float64)
     w_sel = fit_ridge(x_train, y_sel, alpha=float(selected["config"]["alpha"]))
-    hold_pred_values = x_hold @ w_sel
     hold_pred = str(Path(work_dir) / "holdout_selected_predictions.jsonl")
     hold_bt_path = str(Path(work_dir) / "holdout_selected.bt.json")
-    hold_bt = _write_and_backtest_candidate_preds(hold_pred_values, hold, threshold=float(selected["config"]["threshold"]), min_gap=float(selected["config"]["min_gap"]), predictions_output=hold_pred, market_csv=market_csv, bt_output=hold_bt_path)
+    holdout_abstained = bool(abstain_on_validation_fail and not selected.get("validation_passed", False))
+    if holdout_abstained:
+        # Strict deployment protocol: if validation found no acceptable config, do not trade untouched holdout.
+        pred_rows = []
+        for row in hold:
+            pred_rows.append({"date": row.get("date"), "signal_pos": int(row.get("signal_pos", -1) or -1), "prediction": dict(NO_TRADE), "predicted_utility": 0.0, "runner_up_gap": 0.0, "selected_action": None, "actual_utility": 0.0})
+        write_jsonl(hold_pred, pred_rows)
+        hold_bt = backtest(hold_pred, market_csv, hold_bt_path)
+    else:
+        hold_pred_values = x_hold @ w_sel
+        hold_bt = _write_and_backtest_candidate_preds(hold_pred_values, hold, threshold=float(selected["config"]["threshold"]), min_gap=float(selected["config"]["min_gap"]), predictions_output=hold_pred, market_csv=market_csv, bt_output=hold_bt_path)
     report = {
         "selected": selected,
-        "holdout": {"sim": hold_bt["sim"], "trade_stats": hold_bt["trade_stats"], "path": hold_bt_path, "predictions_output": hold_pred},
+        "holdout": {"sim": hold_bt["sim"], "trade_stats": hold_bt["trade_stats"], "path": hold_bt_path, "predictions_output": hold_pred, "abstained_due_to_validation_fail": holdout_abstained},
         "top": ranked[:20],
-        "sweep_space": {"configs": len(configs), "min_trades": min_trades, "features": len(fs.vocab), "train_rows": len(train), "val_rows": len(val), "holdout_rows": len(hold)},
+        "sweep_space": {"configs": len(configs), "min_trades": min_trades, "targets": _parse_csv_targets(targets), "alphas": _parse_csv_floats(alphas), "thresholds": _parse_csv_floats(thresholds), "min_gaps": _parse_csv_floats(min_gaps), "min_val_cagr_pct": min_val_cagr_pct, "min_val_ratio": min_val_ratio, "max_val_mdd_pct": max_val_mdd_pct, "max_val_p_value": max_val_p_value, "abstain_on_validation_fail": abstain_on_validation_fail, "features": len(fs.vocab), "train_rows": len(train), "val_rows": len(val), "holdout_rows": len(hold)},
         "leakage_guard": {"feature_vocab_and_ridge_fit_train_only": True, "config_selected_on_val_only": True, "holdout_uses_fixed_selected_config": True, "prompts_are_past_only_symbolic_text": True},
     }
     Path(output).parent.mkdir(parents=True, exist_ok=True)
@@ -289,6 +324,15 @@ def parse_args() -> argparse.Namespace:
     tr.add_argument("--alpha", type=float, default=100.0); tr.add_argument("--threshold", type=float, default=0.0); tr.add_argument("--min-gap", type=float, default=0.0); tr.add_argument("--target", choices=["utility", "net_return", "risk_adjusted", "tail_risk", "distributional_safety"], default="utility"); tr.add_argument("--min-feature-count", type=int, default=5)
     sw = sub.add_parser("sweep")
     sw.add_argument("--train-jsonl", required=True); sw.add_argument("--val-jsonl", required=True); sw.add_argument("--holdout-jsonl", required=True); sw.add_argument("--market-csv", required=True); sw.add_argument("--output", required=True); sw.add_argument("--work-dir", required=True); sw.add_argument("--min-trades", type=int, default=30)
+    sw.add_argument("--targets", default="utility,net_return,risk_adjusted")
+    sw.add_argument("--alphas", default="1,10,100,1000,10000")
+    sw.add_argument("--thresholds", default="-0.006,-0.003,-0.001,0,0.001,0.003,0.006")
+    sw.add_argument("--min-gaps", default="0,0.0005,0.0015,0.003")
+    sw.add_argument("--min-val-cagr-pct", type=float, default=0.0)
+    sw.add_argument("--min-val-ratio", type=float, default=-999.0)
+    sw.add_argument("--max-val-mdd-pct", type=float, default=0.0)
+    sw.add_argument("--max-val-p-value", type=float, default=1.0)
+    sw.add_argument("--abstain-on-validation-fail", action="store_true")
     return p.parse_args()
 
 
@@ -297,7 +341,7 @@ def main() -> None:
     if a.cmd == "train-predict":
         print(json.dumps(train_predict(train_jsonl=a.train_jsonl, eval_jsonl=a.eval_jsonl, predictions_output=a.predictions_output, alpha=a.alpha, threshold=a.threshold, min_gap=a.min_gap, target=a.target, min_feature_count=a.min_feature_count), indent=2, ensure_ascii=False))
     elif a.cmd == "sweep":
-        rep = sweep(train_jsonl=a.train_jsonl, val_jsonl=a.val_jsonl, holdout_jsonl=a.holdout_jsonl, market_csv=a.market_csv, output=a.output, work_dir=a.work_dir, min_trades=a.min_trades)
+        rep = sweep(train_jsonl=a.train_jsonl, val_jsonl=a.val_jsonl, holdout_jsonl=a.holdout_jsonl, market_csv=a.market_csv, output=a.output, work_dir=a.work_dir, min_trades=a.min_trades, targets=a.targets, alphas=a.alphas, thresholds=a.thresholds, min_gaps=a.min_gaps, min_val_cagr_pct=a.min_val_cagr_pct, min_val_ratio=a.min_val_ratio, max_val_mdd_pct=a.max_val_mdd_pct, max_val_p_value=a.max_val_p_value, abstain_on_validation_fail=a.abstain_on_validation_fail)
         print(json.dumps({"selected_config": rep["selected"]["config"], "val_sim": rep["selected"]["val"]["sim"], "holdout_sim": rep["holdout"]["sim"]}, indent=2, ensure_ascii=False))
 
 if __name__ == "__main__":
