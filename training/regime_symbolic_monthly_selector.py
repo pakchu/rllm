@@ -116,6 +116,30 @@ def _run_policy(*, history_path: str, eval_path: str, start: str, end: str, targ
     return {"target": target, "threshold": threshold, "predictions": str(pred), "summary": summary, "validation_month_stats": _executed_month_stats(bt.get("executed", [])), "backtest": {"period": bt["period"], "sim": bt["sim"], "trade_stats": bt["trade_stats"]}}
 
 
+
+
+def _threshold_policy_rows(base_rows: list[dict[str, Any]], threshold: float, reason: str = "monthly_threshold_gate_failed") -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for row in base_rows:
+        nr = dict(row)
+        pred = dict(row.get("prediction", {})) if isinstance(row.get("prediction"), dict) else {}
+        if pred.get("gate") != "TRADE" or float(row.get("predicted_utility", 0.0) or 0.0) < float(threshold):
+            nr["prediction"] = {**NO_TRADE, "reason": reason}
+        else:
+            nr["prediction"] = pred
+        nr["threshold_applied"] = float(threshold)
+        out.append(nr)
+    return out
+
+
+def _backtest_prediction_rows(rows: list[dict[str, Any]], cfg: MonthlySymbolicSelectorCfg, out_dir: Path, tag: str) -> dict[str, Any]:
+    pred = out_dir / f"{tag}_predictions.jsonl"
+    bt_path = out_dir / f"{tag}_backtest.json"
+    write_jsonl(pred, rows)
+    bt = run_overlay(OnlineRiskOverlayConfig(predictions_jsonl=str(pred), market_csv=cfg.market_csv, output=str(bt_path), leverage=float(cfg.leverage)))
+    return {"predictions": str(pred), "validation_month_stats": _executed_month_stats(bt.get("executed", [])), "backtest": {"period": bt["period"], "sim": bt["sim"], "trade_stats": bt["trade_stats"]}}
+
+
 def _executed_month_stats(executed: list[dict[str, Any]]) -> dict[str, Any]:
     by: dict[str, dict[str, float]] = {}
     for e in executed:
@@ -202,10 +226,16 @@ def run(cfg: MonthlySymbolicSelectorCfg) -> dict[str, Any]:
         write_jsonl(val_path, val_rows)
         write_jsonl(eval_path, eval_rows)
         candidates: list[dict[str, Any]] = []
+        thresholds = _parse_csv(cfg.thresholds, float)
+        base_threshold = min(thresholds) if thresholds else 0.0
         for target in _parse_csv(cfg.targets, str):
-            for threshold in _parse_csv(cfg.thresholds, float):
+            base_tag = f"val_{target}_base_th{_tag_num(base_threshold)}"
+            base_row = _run_policy(history_path=str(hist_path), eval_path=str(val_path), start=str(val_start.date()), end=str(val_end.date()), target=target, threshold=float(base_threshold), cfg=cfg, out_dir=month_dir, tag=base_tag)
+            base_predictions = load_jsonl(str(base_row["predictions"]))
+            for threshold in thresholds:
                 tag = f"val_{target}_th{_tag_num(threshold)}"
-                row = _run_policy(history_path=str(hist_path), eval_path=str(val_path), start=str(val_start.date()), end=str(val_end.date()), target=target, threshold=float(threshold), cfg=cfg, out_dir=month_dir, tag=tag)
+                threshold_rows = _threshold_policy_rows(base_predictions, float(threshold))
+                row = {"target": target, "threshold": threshold, "summary": base_row.get("summary"), **_backtest_prediction_rows(threshold_rows, cfg, month_dir, tag)}
                 score, reasons = _monthly_candidate_score(row, gate_cfg, cfg)
                 row["selection_score"] = score
                 row["validation_passed"] = not reasons
@@ -213,8 +243,11 @@ def run(cfg: MonthlySymbolicSelectorCfg) -> dict[str, Any]:
                 candidates.append(_compact_policy_result(row))
                 if not cfg.keep_work_files:
                     _safe_unlink(row.get("predictions", ""))
-                    _safe_unlink(month_dir / f"{tag}_summary.json")
                     _safe_unlink(month_dir / f"{tag}_backtest.json")
+            if not cfg.keep_work_files:
+                _safe_unlink(base_row.get("predictions", ""))
+                _safe_unlink(month_dir / f"{base_tag}_summary.json")
+                _safe_unlink(month_dir / f"{base_tag}_backtest.json")
         candidates.sort(key=lambda r: float(r["selection_score"]), reverse=True)
         selected = candidates[0] if candidates else None
         if selected is None or not bool(selected.get("validation_passed")):
