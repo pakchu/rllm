@@ -113,6 +113,11 @@ def tokens_from_row(row: dict[str, Any]) -> list[str]:
     recent = s.get("recent_bar_sequence") if isinstance(s.get("recent_bar_sequence"), list) else []
     for item in recent[-6:]:
         toks.append(f"recent={item}")
+    aug = s.get("augmented_price_action_tokens") if isinstance(s.get("augmented_price_action_tokens"), list) else []
+    toks.extend(f"aug.{x}" for x in aug)
+    aug_nums = s.get("augmented_price_action_features") if isinstance(s.get("augmented_price_action_features"), dict) else {}
+    for k, v in sorted(aug_nums.items()):
+        toks.append(f"augnum.{k}={_bin_num(v)}")
     return toks
 
 
