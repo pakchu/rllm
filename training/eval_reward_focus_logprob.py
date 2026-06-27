@@ -166,7 +166,27 @@ def run(cfg: RewardFocusEvalCfg) -> dict[str, Any]:
     Path(cfg.output).parent.mkdir(parents=True,exist_ok=True)
     Path(cfg.output).write_text(json.dumps(report,indent=2,ensure_ascii=False))
     if cfg.predictions_jsonl:
-        Path(cfg.predictions_jsonl).write_text("\n".join(json.dumps({"target":_target(r),"prediction":preds[i],"scores":raw[i]},ensure_ascii=False) for i,r in enumerate(rows))+"\n")
+        prediction_rows = []
+        for i, row in enumerate(rows):
+            target = _target(row)
+            prediction_rows.append(
+                {
+                    "date": row.get("date"),
+                    "signal_pos": row.get("signal_pos"),
+                    "candidate": row.get("candidate") or {},
+                    "target_audit": row.get("target_audit") or {},
+                    "focus_target": target,
+                    "focus_prediction": preds[i],
+                    "focus_scores": raw[i],
+                    # Backward-compatible aliases used by earlier diagnostics.
+                    "target": target,
+                    "prediction": preds[i],
+                    "scores": raw[i],
+                }
+            )
+        Path(cfg.predictions_jsonl).write_text(
+            "\n".join(json.dumps(r, ensure_ascii=False, sort_keys=True) for r in prediction_rows) + "\n"
+        )
     return report
 
 
