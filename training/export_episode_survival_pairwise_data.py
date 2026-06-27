@@ -34,6 +34,7 @@ class EpisodeSurvivalPairwiseCfg:
     max_rows_per_split: int = 50000
     seed: int = 42
     gzip_output: bool = True
+    prompt_style: str = "json"
 
 
 def _open(path: str, mode: str = "rt"):
@@ -163,7 +164,7 @@ def _competition_context(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]
     }
 
 
-def _pair_prompt(date: str, history: dict[str, Any], a: dict[str, Any], b: dict[str, Any]) -> str:
+def _pair_prompt_json(date: str, history: dict[str, Any], a: dict[str, Any], b: dict[str, Any]) -> str:
     return "\n".join(
         [
             "You are a BTCUSDT futures candidate ranker.",
@@ -176,6 +177,123 @@ def _pair_prompt(date: str, history: dict[str, Any], a: dict[str, Any], b: dict[
             f"competition_context: {json.dumps(_competition_context(a, b), sort_keys=True, separators=(',', ':'))}",
         ]
     )
+
+
+def _zone(v: float) -> str:
+    if v <= 0.2:
+        return "BOTTOM_QUINTILE"
+    if v <= 0.4:
+        return "LOWER_RANGE"
+    if v <= 0.6:
+        return "MIDDLE_RANGE"
+    if v <= 0.8:
+        return "UPPER_RANGE"
+    return "TOP_QUINTILE"
+
+
+def _move(v: float) -> str:
+    bps = float(v) * 10_000.0
+    if bps <= -250:
+        return "SHARP_DOWN"
+    if bps <= -80:
+        return "DOWN"
+    if bps < 80:
+        return "FLAT"
+    if bps < 250:
+        return "UP"
+    return "SHARP_UP"
+
+
+def _ratio(v: float, lo: float = 0.75, hi: float = 1.35) -> str:
+    if v < lo:
+        return "COMPRESSED"
+    if v > hi:
+        return "EXPANDED"
+    return "NORMAL"
+
+
+def _z(v: Any) -> str:
+    try:
+        x = float(v)
+    except Exception:
+        return "UNKNOWN"
+    if x <= -1.0:
+        return "LOW"
+    if x >= 1.0:
+        return "HIGH"
+    return "NEUTRAL"
+
+
+def _market_clauses(history: dict[str, Any]) -> list[str]:
+    clauses = [
+        f"trend_stack={history.get('trend_stack')} alignment={history.get('trend_alignment_score')}",
+        f"volatility short_vs_medium={_ratio(float(history.get('vol12_to_vol144', 1.0) or 1.0))} medium_vs_long={_ratio(float(history.get('vol48_to_vol576', 1.0) or 1.0))}",
+    ]
+    for w in (12, 48, 144, 576):
+        clauses.append(
+            " ".join(
+                [
+                    f"lookback_{w}:",
+                    f"return={_move(float(history.get(f'ret_{w}', 0.0) or 0.0))}",
+                    f"price_zone={_zone(float(history.get(f'range_pos_{w}', 0.5) or 0.5))}",
+                    f"drawdown={_move(float(history.get(f'drawdown_{w}', 0.0) or 0.0))}",
+                ]
+            )
+        )
+    clauses.append(f"sma48={history.get('sma48_side')} age_bucket={'LONG' if int(history.get('sma48_age', 0) or 0) >= 48 else 'SHORT'}")
+    clauses.append(f"sma144={history.get('sma144_side')} age_bucket={'LONG' if int(history.get('sma144_age', 0) or 0) >= 144 else 'SHORT'}")
+    return clauses
+
+
+def _candidate_clauses(label: str, view: dict[str, Any]) -> list[str]:
+    cand = view.get("candidate") or {}
+    setup = view.get("setup_quality") or {}
+    macro = view.get("macro_context") or {}
+    return [
+        f"{label}: side={cand.get('side')} event_type={cand.get('event_type')} episode={cand.get('episode')} horizon={cand.get('horizon')}",
+        f"{label}: setup close={setup.get('close_quality_bucket')} risk={setup.get('risk_bucket')} range={setup.get('range_bucket')} wick={setup.get('wick_bucket')} body={setup.get('body_bucket')}",
+        f"{label}: macro kimchi={_z(macro.get('kimchi_z'))} dxy={_z(macro.get('dxy_z'))} usdkrw={_z(macro.get('usdkrw_z'))} kimchi_change={'UP' if float(macro.get('kimchi_chg', 0.0) or 0.0) > 0 else 'DOWN_OR_FLAT'}",
+    ]
+
+
+def _competition_clauses(a: dict[str, Any], b: dict[str, Any]) -> list[str]:
+    ctx = _competition_context(a, b)
+    horizon_diff = int(ctx.get("horizon_diff", 0) or 0)
+    if horizon_diff > 0:
+        horizon = "A_LONGER"
+    elif horizon_diff < 0:
+        horizon = "B_LONGER"
+    else:
+        horizon = "SAME"
+    return [
+        f"competition: same_side={ctx.get('same_side')} same_event_type={ctx.get('same_event_type')} horizon={horizon}",
+        f"competition: A_minus_B risk={_move(float(ctx.get('risk_bps_diff_A_minus_B', 0.0) or 0.0) / 10_000.0)} close_quality={_move(float(ctx.get('close_quality_diff_A_minus_B', 0.0) or 0.0))} wick={_move(float(ctx.get('wick_frac_diff_A_minus_B', 0.0) or 0.0))}",
+    ]
+
+
+def _pair_prompt_clauses(date: str, history: dict[str, Any], a: dict[str, Any], b: dict[str, Any]) -> str:
+    lines = [
+        "You are a BTCUSDT futures candidate ranker.",
+        "Read the causal price-action clauses and choose the candidate with higher future path-risk-adjusted utility.",
+        "Do not use future returns. Return JSON with keys: choice, confidence, reason. choice must be A or B.",
+        f"date: {date}",
+        "market_regime:",
+    ]
+    lines.extend(f"- {clause}" for clause in _market_clauses(history))
+    lines.append("candidates:")
+    lines.extend(f"- {clause}" for clause in _candidate_clauses("A", a))
+    lines.extend(f"- {clause}" for clause in _candidate_clauses("B", b))
+    lines.append("comparison:")
+    lines.extend(f"- {clause}" for clause in _competition_clauses(a, b))
+    return "\n".join(lines)
+
+
+def _pair_prompt(date: str, history: dict[str, Any], a: dict[str, Any], b: dict[str, Any], style: str) -> str:
+    if style == "json":
+        return _pair_prompt_json(date, history, a, b)
+    if style == "clauses":
+        return _pair_prompt_clauses(date, history, a, b)
+    raise ValueError(f"unknown prompt_style={style!r}")
 
 
 def _group(rows: list[dict[str, Any]]) -> dict[int, list[dict[str, Any]]]:
@@ -209,7 +327,7 @@ def _build_split(rows: list[dict[str, Any]], market: pd.DataFrame, cfg: EpisodeS
                     "task": "episode_survival_pairwise_preference",
                     "date": date,
                     "signal_pos": pos,
-                    "prompt": _pair_prompt(date, _history_context(market, pos), a, b),
+                    "prompt": _pair_prompt(date, _history_context(market, pos), a, b, str(cfg.prompt_style)),
                     "target": json.dumps({"choice": choice, "confidence": "HIGH", "reason": "higher_future_path_utility"}, sort_keys=True, separators=(",", ":"), ensure_ascii=False),
                     "chosen_candidate": best.get("candidate"),
                     "rejected_candidate": loser.get("candidate"),
@@ -274,6 +392,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-rows-per-split", type=int, default=EpisodeSurvivalPairwiseCfg.max_rows_per_split)
     p.add_argument("--seed", type=int, default=EpisodeSurvivalPairwiseCfg.seed)
     p.add_argument("--no-gzip-output", dest="gzip_output", action="store_false")
+    p.add_argument("--prompt-style", choices=["json", "clauses"], default=EpisodeSurvivalPairwiseCfg.prompt_style)
     p.set_defaults(gzip_output=EpisodeSurvivalPairwiseCfg.gzip_output)
     return p.parse_args()
 
