@@ -43,30 +43,79 @@ def chat(tok: Any, prompt: str) -> str:
     return f"<|user|>\n{prompt}\n<|assistant|>\n"
 
 
-def _sequence_logprob(tok: Any, model: Any, prompt: str, completion: str) -> float:
+def _sequence_logprob_batch(
+    tok: Any,
+    model: Any,
+    prompts: list[str],
+    completions: list[str],
+    batch_size: int,
+) -> list[float]:
     """Return total log P(completion | prompt) using teacher forcing.
 
-    This is much faster and less format-sensitive than free generation for the
-    pairwise ranker because the valid answers are fixed JSON snippets.
+    The pairwise ranker has fixed valid JSON completions. Scoring them in
+    batches avoids thousands of single-row forward passes during PoC eval.
     """
     import torch
 
-    prefix = chat(tok, prompt)
-    full = prefix + completion
-    enc_full = tok(full, return_tensors="pt").to(model.device)
-    enc_prefix = tok(prefix, return_tensors="pt").to(model.device)
-    prefix_len = enc_prefix["input_ids"].shape[-1]
-    with torch.no_grad():
-        logits = model(**enc_full).logits[:, :-1, :]
-    target_ids = enc_full["input_ids"][:, 1:]
-    logp = torch.log_softmax(logits, dim=-1)
-    token_logp = logp.gather(-1, target_ids.unsqueeze(-1)).squeeze(-1)
-    # token at target_ids index i is original input token i+1.
-    completion_start = max(0, prefix_len - 1)
-    return float(token_logp[:, completion_start:].sum().detach().cpu())
+    scores: list[float] = []
+    prefixes = [chat(tok, prompt) for prompt in prompts]
+    prefix_lens = [
+        tok(prefix, return_tensors="pt", add_special_tokens=True)["input_ids"].shape[-1]
+        for prefix in prefixes
+    ]
+    full_texts = [prefix + completion for prefix, completion in zip(prefixes, completions)]
+    for start in range(0, len(full_texts), batch_size):
+        batch_texts = full_texts[start : start + batch_size]
+        batch_prefix_lens = prefix_lens[start : start + batch_size]
+        enc = tok(batch_texts, return_tensors="pt", padding=True).to(model.device)
+        lengths = enc["attention_mask"].sum(dim=1).detach().cpu().tolist()
+        with torch.no_grad():
+            logits = model(**enc).logits[:, :-1, :]
+        target_ids = enc["input_ids"][:, 1:]
+        logp = torch.log_softmax(logits, dim=-1)
+        token_logp = logp.gather(-1, target_ids.unsqueeze(-1)).squeeze(-1)
+        for row_idx, (prefix_len, length) in enumerate(zip(batch_prefix_lens, lengths)):
+            completion_start = max(0, int(prefix_len) - 1)
+            completion_end = max(completion_start, int(length) - 1)
+            scores.append(float(token_logp[row_idx, completion_start:completion_end].sum().detach().cpu()))
+    return scores
 
 
-def eval_rows(rows, mode, model_name, adapter_dir, max_new_tokens):
+def _choice_token_scores(
+    tok: Any,
+    model: Any,
+    prompts: list[str],
+    batch_size: int,
+) -> tuple[list[float], list[float]]:
+    """Score only the A/B token after the JSON choice prefix.
+
+    This is the fastest deterministic pairwise-choice probe. The model was
+    trained to emit JSON; for ranking quality we only need whether it assigns
+    higher probability to A or B at the decision token.
+    """
+    import torch
+
+    a_ids = tok("A", add_special_tokens=False)["input_ids"]
+    b_ids = tok("B", add_special_tokens=False)["input_ids"]
+    if len(a_ids) != 1 or len(b_ids) != 1:
+        raise ValueError(f"A/B must tokenize to one token, got A={a_ids}, B={b_ids}")
+    prefixes = [chat(tok, prompt) + '{"choice":"' for prompt in prompts]
+    score_a: list[float] = []
+    score_b: list[float] = []
+    for start in range(0, len(prefixes), batch_size):
+        enc = tok(prefixes[start : start + batch_size], return_tensors="pt", padding=True).to(model.device)
+        lengths = enc["attention_mask"].sum(dim=1) - 1
+        with torch.no_grad():
+            logits = model(**enc).logits
+        logp = torch.log_softmax(logits, dim=-1)
+        for row_idx, pos in enumerate(lengths.detach().cpu().tolist()):
+            row_logp = logp[row_idx, int(pos), :]
+            score_a.append(float(row_logp[a_ids[0]].detach().cpu()))
+            score_b.append(float(row_logp[b_ids[0]].detach().cpu()))
+    return score_a, score_b
+
+
+def eval_rows(rows, mode, model_name, adapter_dir, max_new_tokens, batch_size):
     raw=[]; preds=[]
     if mode in {'always_a','always_b'}:
         preds=['A' if mode=='always_a' else 'B' for _ in rows]; raw=['' for _ in rows]
@@ -80,11 +129,23 @@ def eval_rows(rows, mode, model_name, adapter_dir, max_new_tokens):
             raw.append(gen); preds.append(parse_choice(gen))
     elif mode=='model_logprob':
         tok,model=_load_model(model_name,adapter_dir)
-        cand_a='{"choice":"A","confidence":"HIGH"}'
-        cand_b='{"choice":"B","confidence":"HIGH"}'
+        cand_a='{"choice":"A","confidence":"HIGH","reason":"higher_future_path_utility"}'
+        cand_b='{"choice":"B","confidence":"HIGH","reason":"higher_future_path_utility"}'
+        prompts=[]; completions=[]
         for r in rows:
-            score_a=_sequence_logprob(tok,model,r['prompt'],cand_a)
-            score_b=_sequence_logprob(tok,model,r['prompt'],cand_b)
+            prompts.extend([r['prompt'], r['prompt']])
+            completions.extend([cand_a, cand_b])
+        scores=_sequence_logprob_batch(tok,model,prompts,completions,batch_size)
+        for i in range(0, len(scores), 2):
+            score_a=scores[i]
+            score_b=scores[i+1]
+            pred='A' if score_a>=score_b else 'B'
+            raw.append(json.dumps({'score_a':score_a,'score_b':score_b},ensure_ascii=False))
+            preds.append(pred)
+    elif mode=='model_choice_token':
+        tok,model=_load_model(model_name,adapter_dir)
+        scores_a,scores_b=_choice_token_scores(tok,model,[r['prompt'] for r in rows],batch_size)
+        for score_a,score_b in zip(scores_a,scores_b):
             pred='A' if score_a>=score_b else 'B'
             raw.append(json.dumps({'score_a':score_a,'score_b':score_b},ensure_ascii=False))
             preds.append(pred)
@@ -97,8 +158,13 @@ def eval_rows(rows, mode, model_name, adapter_dir, max_new_tokens):
 
 def main():
     p=argparse.ArgumentParser(); p.add_argument('--eval-jsonl',required=True); p.add_argument('--output',required=True); p.add_argument('--predictions-jsonl',default='')
-    p.add_argument('--mode',choices=['always_a','always_b','model','model_logprob'],default='always_a'); p.add_argument('--model-name',default=RECOMMENDED_VLM_MODEL); p.add_argument('--adapter-dir',default=''); p.add_argument('--max-new-tokens',type=int,default=32)
-    args=p.parse_args(); rows=load_jsonl(args.eval_jsonl); rep,preds,raw=eval_rows(rows,args.mode,args.model_name,args.adapter_dir,args.max_new_tokens)
+    p.add_argument('--mode',choices=['always_a','always_b','model','model_logprob','model_choice_token'],default='always_a'); p.add_argument('--model-name',default=RECOMMENDED_VLM_MODEL); p.add_argument('--adapter-dir',default=''); p.add_argument('--max-new-tokens',type=int,default=32)
+    p.add_argument('--max-samples',type=int,default=0,help='Evaluate only the first N rows; 0 means all rows.')
+    p.add_argument('--batch-size',type=int,default=8,help='Batch size for model_logprob candidate scoring.')
+    args=p.parse_args(); rows=load_jsonl(args.eval_jsonl)
+    if args.max_samples and args.max_samples > 0:
+        rows=rows[:args.max_samples]
+    rep,preds,raw=eval_rows(rows,args.mode,args.model_name,args.adapter_dir,args.max_new_tokens,args.batch_size)
     Path(args.output).write_text(json.dumps(rep,indent=2,ensure_ascii=False))
     if args.predictions_jsonl: Path(args.predictions_jsonl).write_text('\n'.join(json.dumps({'target':parse_choice(r['target']),'prediction':p,'raw':raw[i]},ensure_ascii=False) for i,(r,p) in enumerate(zip(rows,preds)))+'\n')
     print(json.dumps(rep,indent=2,ensure_ascii=False))
