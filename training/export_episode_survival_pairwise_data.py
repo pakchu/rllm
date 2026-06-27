@@ -35,6 +35,7 @@ class EpisodeSurvivalPairwiseCfg:
     seed: int = 42
     gzip_output: bool = True
     prompt_style: str = "json"
+    augment_swaps: bool = False
 
 
 def _open(path: str, mode: str = "rt"):
@@ -318,29 +319,42 @@ def _build_split(rows: list[dict[str, Any]], market: pd.DataFrame, cfg: EpisodeS
                 continue
             best_view = _candidate_view(best)
             loser_view = _candidate_view(loser)
-            flip = rng.random() < 0.5
-            a, b = (loser_view, best_view) if flip else (best_view, loser_view)
-            choice = "B" if flip else "A"
             date = str(best.get("date") or market.iloc[pos]["date"])
-            out.append(
-                {
-                    "task": "episode_survival_pairwise_preference",
-                    "date": date,
-                    "signal_pos": pos,
-                    "prompt": _pair_prompt(date, _history_context(market, pos), a, b, str(cfg.prompt_style)),
-                    "target": json.dumps({"choice": choice, "confidence": "HIGH", "reason": "higher_future_path_utility"}, sort_keys=True, separators=(",", ":"), ensure_ascii=False),
-                    "chosen_candidate": best.get("candidate"),
-                    "rejected_candidate": loser.get("candidate"),
-                    "chosen_audit": _target_audit(best),
-                    "rejected_audit": _target_audit(loser),
-                    "utility_gap_pct": round(gap, 6),
-                    "leakage_guard": {
-                        "prompt_uses_future_path": False,
-                        "chosen_rejected_use_future_path_for_training_only": True,
-                        "candidates_share_same_signal_timestamp": True,
-                    },
-                }
-            )
+            history = _history_context(market, pos)
+
+            def append_pair(a: dict[str, Any], b: dict[str, Any], choice: str, swap_index: int) -> None:
+                out.append(
+                    {
+                        "task": "episode_survival_pairwise_preference",
+                        "date": date,
+                        "signal_pos": pos,
+                        "prompt": _pair_prompt(date, history, a, b, str(cfg.prompt_style)),
+                        "target": json.dumps({"choice": choice, "confidence": "HIGH", "reason": "higher_future_path_utility"}, sort_keys=True, separators=(",", ":"), ensure_ascii=False),
+                        "chosen_candidate": best.get("candidate"),
+                        "rejected_candidate": loser.get("candidate"),
+                        "chosen_audit": _target_audit(best),
+                        "rejected_audit": _target_audit(loser),
+                        "utility_gap_pct": round(gap, 6),
+                        "pair_augmentation": {
+                            "swap_augmented": bool(cfg.augment_swaps),
+                            "swap_index": swap_index,
+                        },
+                        "leakage_guard": {
+                            "prompt_uses_future_path": False,
+                            "chosen_rejected_use_future_path_for_training_only": True,
+                            "candidates_share_same_signal_timestamp": True,
+                        },
+                    }
+                )
+
+            if bool(cfg.augment_swaps):
+                append_pair(best_view, loser_view, "A", 0)
+                append_pair(loser_view, best_view, "B", 1)
+            else:
+                flip = rng.random() < 0.5
+                a, b = (loser_view, best_view) if flip else (best_view, loser_view)
+                choice = "B" if flip else "A"
+                append_pair(a, b, choice, 0)
             pairs += 1
             if pairs >= int(cfg.max_pairs_per_signal):
                 break
@@ -393,6 +407,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=EpisodeSurvivalPairwiseCfg.seed)
     p.add_argument("--no-gzip-output", dest="gzip_output", action="store_false")
     p.add_argument("--prompt-style", choices=["json", "clauses"], default=EpisodeSurvivalPairwiseCfg.prompt_style)
+    p.add_argument("--augment-swaps", action="store_true", default=EpisodeSurvivalPairwiseCfg.augment_swaps)
     p.set_defaults(gzip_output=EpisodeSurvivalPairwiseCfg.gzip_output)
     return p.parse_args()
 
