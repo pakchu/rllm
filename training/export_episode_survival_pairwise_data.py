@@ -65,10 +65,13 @@ def _prompt_parts(prompt: str) -> dict[str, Any]:
 
 def _history_context(market: pd.DataFrame, pos: int) -> dict[str, Any]:
     close = market["close"].to_numpy(dtype=float)
+    open_ = market["open"].to_numpy(dtype=float)
     high = market["high"].to_numpy(dtype=float)
     low = market["low"].to_numpy(dtype=float)
     pos = int(pos)
     out: dict[str, Any] = {}
+    vols: dict[int, float] = {}
+    rets_by_w: dict[int, float] = {}
     for w in (12, 48, 144, 576):
         start = max(0, pos - int(w) + 1)
         c0 = float(close[start]) if close[start] > 0 else float(close[pos])
@@ -78,10 +81,46 @@ def _history_context(market: pd.DataFrame, pos: int) -> dict[str, Any]:
         hi = float(np.max(high[start : pos + 1]))
         lo = float(np.min(low[start : pos + 1]))
         rng = max(1e-12, hi - lo)
+        vol = float(np.std(rets))
+        vols[w] = vol
+        rets_by_w[w] = ret
         out[f"ret_{w}"] = round(ret, 5)
-        out[f"vol_{w}"] = round(float(np.std(rets)), 6)
+        out[f"vol_{w}"] = round(vol, 6)
         out[f"range_pos_{w}"] = round(float((close[pos] - lo) / rng), 4)
         out[f"drawdown_{w}"] = round(float(close[pos] / max(1e-12, hi) - 1.0), 5)
+        out[f"range_bps_{w}"] = round(float(rng / max(1e-12, close[pos]) * 10_000.0), 2)
+
+    # Causal compression / expansion descriptors.
+    out["vol12_to_vol144"] = round(vols.get(12, 0.0) / max(1e-9, vols.get(144, 0.0)), 4)
+    out["vol48_to_vol576"] = round(vols.get(48, 0.0) / max(1e-9, vols.get(576, 0.0)), 4)
+    out["trend_alignment_score"] = int(np.sign(rets_by_w.get(48, 0.0)) + np.sign(rets_by_w.get(144, 0.0)) + np.sign(rets_by_w.get(576, 0.0)))
+    out["trend_stack"] = "BULL" if out["trend_alignment_score"] >= 2 else "BEAR" if out["trend_alignment_score"] <= -2 else "MIXED"
+
+    # Consecutive bars above/below local SMA are a causal regime-age proxy.
+    for w in (48, 144):
+        start = max(0, pos - w + 1)
+        sma = float(np.mean(close[start : pos + 1]))
+        sign = 1 if close[pos] >= sma else -1
+        age = 0
+        for j in range(pos, max(-1, pos - 288), -1):
+            jj_start = max(0, j - w + 1)
+            jj_sma = float(np.mean(close[jj_start : j + 1]))
+            jj_sign = 1 if close[j] >= jj_sma else -1
+            if jj_sign != sign:
+                break
+            age += 1
+        out[f"sma{w}_side"] = "ABOVE" if sign > 0 else "BELOW"
+        out[f"sma{w}_age"] = age
+
+    # Prior realized adverse-risk proxies from completed bars only.
+    for w in (12, 48, 144):
+        start = max(0, pos - w + 1)
+        o = np.maximum(open_[start : pos + 1], 1e-12)
+        lower_adverse = np.maximum(0.0, (o - low[start : pos + 1]) / o)
+        upper_adverse = np.maximum(0.0, (high[start : pos + 1] - o) / o)
+        out[f"prior_long_mae_proxy_{w}"] = round(float(np.mean(lower_adverse) * 100.0), 4)
+        out[f"prior_short_mae_proxy_{w}"] = round(float(np.mean(upper_adverse) * 100.0), 4)
+        out[f"tail_risk_max_{w}"] = round(float(max(np.max(lower_adverse), np.max(upper_adverse)) * 100.0), 4)
     return out
 
 
@@ -103,6 +142,27 @@ def _target_audit(row: dict[str, Any]) -> dict[str, Any]:
     return {k: a.get(k) for k in ("net_pct", "mae_pct", "mfe_pct", "mfe_to_mae", "utility_pct", "decision", "reason")}
 
 
+def _competition_context(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
+    ca = a.get("candidate") or {}
+    cb = b.get("candidate") or {}
+    sa = a.get("setup_quality") or {}
+    sb = b.get("setup_quality") or {}
+    def f(obj: dict[str, Any], key: str) -> float:
+        try:
+            return float(obj.get(key, 0.0) or 0.0)
+        except Exception:
+            return 0.0
+    return {
+        "same_side": str(ca.get("side")) == str(cb.get("side")),
+        "same_event_type": str(ca.get("event_type")) == str(cb.get("event_type")),
+        "horizon_diff": int(ca.get("horizon", 0) or 0) - int(cb.get("horizon", 0) or 0),
+        "risk_bps_diff_A_minus_B": round(f(sa, "risk_bps") - f(sb, "risk_bps"), 3),
+        "range_bps_diff_A_minus_B": round(f(sa, "range_bps") - f(sb, "range_bps"), 3),
+        "close_quality_diff_A_minus_B": round(f(sa, "close_quality") - f(sb, "close_quality"), 4),
+        "wick_frac_diff_A_minus_B": round(f(sa, "wick_frac") - f(sb, "wick_frac"), 4),
+    }
+
+
 def _pair_prompt(date: str, history: dict[str, Any], a: dict[str, Any], b: dict[str, Any]) -> str:
     return "\n".join(
         [
@@ -113,6 +173,7 @@ def _pair_prompt(date: str, history: dict[str, Any], a: dict[str, Any], b: dict[
             f"causal_history: {json.dumps(history, sort_keys=True, separators=(',', ':'))}",
             f"candidate_A: {json.dumps(a, sort_keys=True, separators=(',', ':'))}",
             f"candidate_B: {json.dumps(b, sort_keys=True, separators=(',', ':'))}",
+            f"competition_context: {json.dumps(_competition_context(a, b), sort_keys=True, separators=(',', ':'))}",
         ]
     )
 
