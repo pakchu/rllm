@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -29,16 +30,25 @@ class RewardFocusEvalCfg:
     adapter_dir: str = ""
     max_samples: int = 0
     batch_size: int = 16
+    sample_mode: str = "sequential"
+    seed: int = 42
 
 
-def _load(path: str, max_samples: int = 0) -> list[dict[str, Any]]:
+def _load(path: str, max_samples: int = 0, sample_mode: str = "sequential", seed: int = 42) -> list[dict[str, Any]]:
     rows=[]
     with Path(path).open() as f:
         for line in f:
             if line.strip():
                 rows.append(json.loads(line))
-                if max_samples and len(rows) >= int(max_samples):
-                    break
+    if max_samples and int(max_samples) < len(rows):
+        if str(sample_mode).lower() == "random":
+            rng=random.Random(int(seed))
+            idx=sorted(rng.sample(range(len(rows)), int(max_samples)))
+            rows=[rows[i] for i in idx]
+        elif str(sample_mode).lower() == "sequential":
+            rows=rows[:int(max_samples)]
+        else:
+            raise ValueError("sample_mode must be sequential or random")
     return rows
 
 
@@ -141,7 +151,7 @@ def _metrics(rows: list[dict[str, Any]], preds: list[dict[str,str]]) -> dict[str
 
 
 def run(cfg: RewardFocusEvalCfg) -> dict[str, Any]:
-    rows=_load(cfg.eval_jsonl,int(cfg.max_samples))
+    rows=_load(cfg.eval_jsonl,int(cfg.max_samples),cfg.sample_mode,int(cfg.seed))
     if cfg.mode == "majority":
         if not cfg.train_jsonl:
             raise ValueError("--train-jsonl required for majority")
@@ -171,6 +181,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--adapter-dir",default="")
     p.add_argument("--max-samples",type=int,default=0)
     p.add_argument("--batch-size",type=int,default=16)
+    p.add_argument("--sample-mode",choices=["sequential","random"],default="sequential")
+    p.add_argument("--seed",type=int,default=42)
     return p.parse_args()
 
 
