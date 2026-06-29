@@ -12,7 +12,16 @@ from typing import Any
 from models.option_b_vlm import RECOMMENDED_VLM_MODEL, resolve_vlm_model_alias
 from utils import disable_transformers_allocator_warmup
 
-OPTIONS = ["A", "B", "C"]
+DEFAULT_OPTIONS = "A,B,C"
+
+
+def _parse_options(raw: str) -> list[str]:
+    opts = [x.strip() for x in str(raw).split(",") if x.strip()]
+    if not opts:
+        raise ValueError("at least one option is required")
+    if len(set(opts)) != len(opts):
+        raise ValueError(f"duplicate options are not allowed: {opts}")
+    return opts
 
 
 @dataclass(frozen=True)
@@ -27,6 +36,7 @@ class OptionChoiceEvalCfg:
     seed: int = 42
     batch_size: int = 16
     max_length: int = 2048
+    options: str = DEFAULT_OPTIONS
 
 
 def _load(path: str, max_samples: int, sample_mode: str, seed: int) -> list[dict[str, Any]]:
@@ -82,9 +92,9 @@ def _load_model(model_name: str, adapter_dir: str):
     return tokenizer, model, resolved
 
 
-def _option_token_ids(tokenizer: Any) -> dict[str, int]:
+def _option_token_ids(tokenizer: Any, options: list[str]) -> dict[str, int]:
     ids: dict[str, int] = {}
-    for opt in OPTIONS:
+    for opt in options:
         toks = tokenizer(opt, add_special_tokens=False).input_ids
         if len(toks) != 1:
             raise ValueError(f"option {opt!r} must tokenize to one token, got {toks}")
@@ -92,11 +102,11 @@ def _option_token_ids(tokenizer: Any) -> dict[str, int]:
     return ids
 
 
-def _score_options(tokenizer: Any, model: Any, prompts: list[str], batch_size: int, max_length: int) -> list[dict[str, float]]:
+def _score_options(tokenizer: Any, model: Any, prompts: list[str], batch_size: int, max_length: int, options: list[str]) -> list[dict[str, float]]:
     import torch
 
     prefixes = [_chat(tokenizer, p) for p in prompts]
-    option_ids = _option_token_ids(tokenizer)
+    option_ids = _option_token_ids(tokenizer, options)
     grouped: list[dict[str, float]] = []
     for start in range(0, len(prefixes), int(batch_size)):
         enc = tokenizer(
@@ -119,7 +129,8 @@ def _score_options(tokenizer: Any, model: Any, prompts: list[str], batch_size: i
 def run(cfg: OptionChoiceEvalCfg) -> dict[str, Any]:
     rows = _load(cfg.eval_jsonl, int(cfg.max_samples), cfg.sample_mode, int(cfg.seed))
     tokenizer, model, resolved = _load_model(cfg.model_name, cfg.adapter_dir)
-    scores = _score_options(tokenizer, model, [str(r["prompt"]) for r in rows], int(cfg.batch_size), int(cfg.max_length))
+    options = _parse_options(cfg.options)
+    scores = _score_options(tokenizer, model, [str(r["prompt"]) for r in rows], int(cfg.batch_size), int(cfg.max_length), options)
     pred_rows = []
     counts = Counter(str(r.get("target", "")) for r in rows)
     pred_counts: Counter[str] = Counter()
@@ -129,7 +140,22 @@ def run(cfg: OptionChoiceEvalCfg) -> dict[str, Any]:
         target = str(row.get("target", ""))
         pred_counts[pred] += 1
         correct_by_target[target] += int(pred == target)
-        pred_rows.append({"date": row.get("date"), "signal_pos": row.get("signal_pos"), "target": target, "prediction": pred, "scores": score, "correct": pred == target, "choice_utility": row.get("choice_utility")})
+        pred_rows.append(
+            {
+                "date": row.get("date"),
+                "signal_pos": row.get("signal_pos"),
+                "side": row.get("side"),
+                "hold_bars": row.get("hold_bars"),
+                "target": target,
+                "prediction": pred,
+                "scores": score,
+                "correct": pred == target,
+                "choice_utility": row.get("choice_utility"),
+                "candidate": row.get("candidate"),
+                "reward_audit": row.get("reward_audit"),
+                "source": row.get("source"),
+            }
+        )
     total_correct = sum(1 for r in pred_rows if r["correct"])
     n = max(1, len(rows))
     report = {
@@ -162,6 +188,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=OptionChoiceEvalCfg.seed)
     p.add_argument("--batch-size", type=int, default=OptionChoiceEvalCfg.batch_size)
     p.add_argument("--max-length", type=int, default=OptionChoiceEvalCfg.max_length)
+    p.add_argument("--options", default=OptionChoiceEvalCfg.options, help="Comma-separated answer options, e.g. A,B or A,B,C")
     return p.parse_args()
 
 
