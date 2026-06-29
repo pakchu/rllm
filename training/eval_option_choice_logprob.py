@@ -82,36 +82,37 @@ def _load_model(model_name: str, adapter_dir: str):
     return tokenizer, model, resolved
 
 
+def _option_token_ids(tokenizer: Any) -> dict[str, int]:
+    ids: dict[str, int] = {}
+    for opt in OPTIONS:
+        toks = tokenizer(opt, add_special_tokens=False).input_ids
+        if len(toks) != 1:
+            raise ValueError(f"option {opt!r} must tokenize to one token, got {toks}")
+        ids[opt] = int(toks[0])
+    return ids
+
+
 def _score_options(tokenizer: Any, model: Any, prompts: list[str], batch_size: int, max_length: int) -> list[dict[str, float]]:
     import torch
 
     prefixes = [_chat(tokenizer, p) for p in prompts]
-    texts: list[str] = []
-    prefix_lens: list[int] = []
-    opt_labels: list[str] = []
-    for prefix in prefixes:
-        prefix_len = tokenizer(prefix, return_tensors="pt", truncation=True, max_length=max_length)["input_ids"].shape[-1]
-        for opt in OPTIONS:
-            texts.append(prefix + opt)
-            prefix_lens.append(prefix_len)
-            opt_labels.append(opt)
-    scores_flat: list[float] = []
-    for start in range(0, len(texts), int(batch_size)):
-        enc = tokenizer(texts[start : start + int(batch_size)], return_tensors="pt", padding=True, truncation=True, max_length=int(max_length)).to(model.device)
-        pls = prefix_lens[start : start + int(batch_size)]
-        lengths = enc["attention_mask"].sum(dim=1).detach().cpu().tolist()
-        with torch.no_grad():
-            logits = model(**enc).logits[:, :-1, :]
-        target_ids = enc["input_ids"][:, 1:]
-        logp = torch.log_softmax(logits, dim=-1)
-        token_logp = logp.gather(-1, target_ids.unsqueeze(-1)).squeeze(-1)
-        for i, (prefix_len, length) in enumerate(zip(pls, lengths)):
-            a = max(0, int(prefix_len) - 1)
-            b = max(a, int(length) - 1)
-            scores_flat.append(float(token_logp[i, a:b].sum().detach().cpu()))
+    option_ids = _option_token_ids(tokenizer)
     grouped: list[dict[str, float]] = []
-    for i in range(0, len(scores_flat), len(OPTIONS)):
-        grouped.append({opt: scores_flat[i + j] for j, opt in enumerate(OPTIONS)})
+    for start in range(0, len(prefixes), int(batch_size)):
+        enc = tokenizer(
+            prefixes[start : start + int(batch_size)],
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=int(max_length),
+        ).to(model.device)
+        last_idx = enc["attention_mask"].sum(dim=1).clamp_min(1) - 1
+        with torch.no_grad():
+            logits = model(**enc).logits
+        next_logits = logits[torch.arange(logits.shape[0], device=logits.device), last_idx.to(logits.device), :]
+        logp = torch.log_softmax(next_logits, dim=-1)
+        for i in range(logp.shape[0]):
+            grouped.append({opt: float(logp[i, tok_id].detach().cpu()) for opt, tok_id in option_ids.items()})
     return grouped
 
 
