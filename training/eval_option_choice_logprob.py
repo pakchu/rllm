@@ -41,6 +41,8 @@ class OptionChoiceEvalCfg:
 
 def _load(path: str, max_samples: int, sample_mode: str, seed: int) -> list[dict[str, Any]]:
     rows = [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
+    for i, row in enumerate(rows):
+        row.setdefault("row_index", i)
     if max_samples and int(max_samples) < len(rows):
         rng = random.Random(int(seed))
         mode = str(sample_mode).lower()
@@ -142,16 +144,21 @@ def run(cfg: OptionChoiceEvalCfg) -> dict[str, Any]:
         correct_by_target[target] += int(pred == target)
         pred_rows.append(
             {
+                "row_index": row.get("row_index"),
                 "date": row.get("date"),
+                "month": row.get("month"),
                 "signal_pos": row.get("signal_pos"),
                 "side": row.get("side"),
                 "hold_bars": row.get("hold_bars"),
+                "group_key": row.get("group_key"),
                 "target": target,
                 "prediction": pred,
                 "scores": score,
                 "correct": pred == target,
                 "choice_utility": row.get("choice_utility"),
+                "utility_gap": row.get("utility_gap"),
                 "candidate": row.get("candidate"),
+                "candidates": row.get("candidates"),
                 "reward_audit": row.get("reward_audit"),
                 "source": row.get("source"),
             }
