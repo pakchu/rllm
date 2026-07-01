@@ -1125,3 +1125,25 @@ Readout:
 - Simple macro/flow conditioning does not solve short-side instability.
 - The short-side lead is likely regime-specific to 2025-2026 and should not be trained as unconditional alpha over 2020-2024.
 - Next promising direction is not more side filters; it is **entry timing/holding horizon adaptation** inside the robust `rex_htf_pullback_resume` family.
+
+## 2026-07-02 REX pullback horizon/stride sweep
+
+Purpose: test whether the robust `rex_htf_pullback_resume` family improves by changing hold horizon and event density instead of adding gates. Added `training/rex_horizon_sweep.py`, which computes features once and sweeps hold/stride/quantile while keeping selection train+2025-only and 2026 eval report-only.
+
+Core run: `results/rex_horizon_sweep_pullback_resume_core_2026-07-02.json`, family `rex_htf_pullback_resume`, train 2020-2024, validation 2025, eval 2026-01-01..2026-06-01, grid `hold={144,216,288,432}`, `stride={24,72}`, `q={0.80,0.85}`.
+
+Top by train+2025 score:
+
+| q / hold / stride | train | 2025 val | 2026 eval | verdict |
+| --- | --- | --- | --- | --- |
+| 0.85 / 288 / 72 | 10.29% CAGR / 23.58% MDD / 418 trades / p=0.171 | 29.75% / 4.93% / 49 / p=0.024 | 0.77% / 6.39% / 24 / p=0.948 | Validation trap; reject. |
+| 0.85 / 432 / 72 | 19.93% / 29.61% / 351 / p=0.026 | 21.71% / 4.55% / 38 / p=0.127 | 11.65% / 4.27% / 20 / p=0.572 | Positive but eval too thin. |
+| 0.85 / 288 / 24 | 20.90% / 20.11% / 573 / p=0.026 | 7.33% / 6.53% / 63 / p=0.581 | 14.71% / 6.72% / 33 / p=0.629 | Original stable narrow lead remains more balanced. |
+| 0.80 / 288 / 24 | 11.95% / 33.53% / 730 / p=0.174 | 2.69% / 14.30% / 111 / p=0.805 | 23.37% / 7.46% / 46 / p=0.486 | Wider but weak train/val. |
+| 0.80 / 432 / 72 | 13.91% / 32.14% / 452 / p=0.116 | 6.20% / 16.20% / 64 / p=0.607 | 27.08% / 4.03% / 28 / p=0.322 | Eval attractive, but val MDD high and train MDD high. |
+
+Readout:
+- Horizon adaptation alone does not solve the target. Some settings make 2025 look excellent but fail 2026, proving that 2025 validation is too easy to overfit even without explicit eval tuning.
+- Shorter holds (144/216) often reduce MDD but fail eval or lack return. Longer hold 432 can improve train/2025 but eval trade count becomes too thin.
+- The original q0.85/hold288/stride24 remains the most balanced standalone family lead; it is weak but less obviously a validation artifact.
+- Next change should make the verifier/ranker explicitly penalize validation-trap patterns: require balanced train+val, minimum trade count, and avoid selecting narrow stride72 spikes even if 2025 p-value is good.
