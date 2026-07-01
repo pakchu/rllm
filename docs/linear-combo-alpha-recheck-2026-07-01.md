@@ -444,3 +444,37 @@ Decision:
 - Higher margin reduces MDD but also cuts trades and remains statistically insignificant.
 - This closes the current linear-combo candidate-selection branch as non-promotable.
 - The useful lesson is architectural: LLM should not learn from noisy realized path labels directly; we need a stronger teacher/candidate source before distillation.
+
+## Deductive symbolic selector audit
+New selector: `training/linear_alpha_deductive_candidate_selector.py`
+
+Purpose: shift from numeric classification to explicit LLM-style deduction.  The selector converts signal-time candidate/state data into symbolic premises and applies transparent rules:
+- multi-timeframe trend alignment,
+- range/extrema location,
+- volatility and drawdown risk,
+- macro/kimchi pressure,
+- small candidate-source priors.
+
+No future labels are used by the selector.  It emits live-style predictions plus a compact deduction JSON containing premises and conclusion.
+
+Direct deductive rule eval on 2026H1 failed:
+
+| Min score | Eval rows | Trades | CAGR | Strict MDD | CAGR/MDD | Mean trade | p-value |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.5 | 3,996 | 74 | -15.24% | 10.26% | -1.48 | -0.087% | 0.382 |
+| 1.0 | 3,230 | 68 | -18.86% | 9.95% | -1.89 | -0.119% | 0.303 |
+| 1.5 | 1,497 | 50 | -23.64% | 10.63% | -2.22 | -0.210% | 0.164 |
+| 2.0 | 531 | 37 | -24.32% | 11.44% | -2.13 | -0.294% | 0.131 |
+
+Inverted-side audit on 2026H1 looked tempting but did not transfer:
+
+| Min score | Eval CAGR/MDD | Eval trades | Test CAGR/MDD | Test trades | Interpretation |
+| ---: | ---: | ---: | ---: | ---: | --- |
+| 1.0 | 1.17 | 68 | -0.65 | 266 | not stable |
+| 1.5 | 2.10 | 50 | -0.65 | 214 | not stable |
+| 2.0 | 3.93 | 37 | -0.62 | 170 | eval-only mirage; test significantly negative |
+
+Decision:
+- The user insight is correct: LLM should be used for explicit premise/rule/conclusion reasoning, not raw numeric classification.
+- But hand-written deductive rules are not yet valid alpha.  The direct rule is contra-profitable; the inverted rule is eval-only and fails badly on test.
+- Next direction should be rule discovery and rule validation: let LLM propose symbolic rules, but only accept rules that pass chronological walk-forward stability and strict backtest.  LLM is a hypothesis generator/reasoner; walk-forward tests are the judge.
