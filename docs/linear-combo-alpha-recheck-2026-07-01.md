@@ -934,3 +934,44 @@ Readout:
 - Rolling max/min location is useful: adding REX creates the first verifier baseline where selected test and eval are both positive with low MDD, but the trade count is too small.
 - Over-parameterized sparse linear composition overfits badly, even with REX. This argues against heavy numeric/classifier optimization as the next move.
 - Best next structure: keep conservative REX/token-style selection, widen statistically by generating more high-quality candidate opportunities and using LLM-style deductive filters (rule consistency, contradiction, side/horizon sanity), not by stronger gates alone.
+
+## 2026-07-01 REX candidate-family expansion
+
+Purpose: move REX/location alpha earlier into candidate generation instead of relying on a late verifier gate.
+
+Implementation: `training/event_candidate_pool_probe.py` now adds these past-only candidate families:
+- `rex_multiscale_extreme_fade`
+- `rex_extreme_breakout_follow`
+- `rex_compression_breakout`
+- `rex_compression_fakeout`
+- `rex_htf_pullback_resume`
+- `rex_multiscale_location_revert`
+
+Also fixed family ranking so 0-trade `Infinity` ratios no longer dominate `top_val` or fallback selection.
+
+Protocol:
+- Train threshold: 2020-2024 only.
+- Validation/family selection: 2025 only, after train-positive/trade-count filter.
+- Eval: 2026 Jan-May/Jun boundary only, not used for selection.
+- Candidate backtest is non-overlapping via `next_allowed=exit_pos`; stride controls candidate timing density, not overlapping execution.
+
+Key fixed-family readout for `rex_htf_pullback_resume`:
+
+| hold / q / stride | train | 2025 val | 2026 eval | readout |
+| --- | --- | --- | --- | --- |
+| h288 q0.85 s24 | 20.90% CAGR / 20.11% MDD / 573 trades / p=0.026 | 7.33% / 6.53% / 63 / p=0.581 | 14.71% / 6.72% / 33 / p=0.629 | Stable direction, thin stats. |
+| h288 q0.80 s24 | 11.95% / 33.53% / 730 / p=0.174 | 2.69% / 14.30% / 111 / p=0.805 | 23.37% / 7.46% / 46 / p=0.486 | Best eval ratio/trade balance; val weak but positive. |
+| h288 q0.75 s12 | 6.02% / 44.96% / 994 / p=0.423 | 12.49% / 11.96% / 165 / p=0.408 | 7.81% / 7.93% / 61 / p=0.758 | Wider opportunity, lower ratio. |
+| h288 q0.85 s12 | 17.13% / 30.85% / 645 / p=0.063 | 7.53% / 7.55% / 69 / p=0.558 | 21.95% / 7.93% / 37 / p=0.515 | Repeated positive, still thin. |
+| h144 / h432 variants | mixed | mixed | mixed | Not stable enough. |
+
+Rejected families:
+- `rex_multiscale_extreme_fade`: negative train/val/eval.
+- `rex_multiscale_location_revert`: negative train/val/eval.
+- `rex_compression_*`: inconsistent; eval or train fails.
+- `macro_kimchi_divergence` and `vol_compression_breakout`: strong 2025 validation but negative train/eval, likely regime overfit.
+
+Readout:
+- `rex_htf_pullback_resume` is now the most credible candidate-family lead: it repeats positive on train/val/eval under several h288 settings and includes both long/short actions.
+- It is not statistically sufficient yet: p-values remain weak and eval trades are mostly 33-61.
+- Next step: regenerate verifier/action-book rows after adding REX candidate families, then test whether the conservative verifier can pick a broader, cleaner subset from a better candidate book.

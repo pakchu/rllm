@@ -130,6 +130,56 @@ def _feature_candidates(features: pd.DataFrame) -> dict[str, tuple[np.ndarray, n
     funding_dir = -np.sign(arr("funding_zscore") + 0.5 * arr("oi_change"))
     out["derivatives_stress_fade"] = (funding_stress, funding_dir)
 
+    # Rolling-extrema / price-location families.  Prior experiments showed that
+    # rex range location is one of the few prompt surfaces that produced a
+    # positive no-leak test/eval verifier lead.  Expose that alpha earlier in
+    # candidate generation instead of relying on a later gate to rescue a weak
+    # book.  All rex_* features are built from rows <= current timestamp.
+    rex_windows = (36, 144, 576, 2016, 8640)
+    rex_pos_stack = np.vstack([arr(f"rex_{w}_range_pos") for w in rex_windows])
+    rex_width_stack = np.vstack([arr(f"rex_{w}_range_width_pct") for w in rex_windows])
+    rex_max_gap_stack = np.vstack([arr(f"rex_{w}_max_to_cur_pct") for w in rex_windows])
+    rex_min_gap_stack = np.vstack([arr(f"rex_{w}_cur_to_min_pct") for w in rex_windows])
+    rex_loc = np.nanmean(rex_pos_stack, axis=0)
+    rex_short_loc = np.nanmean(rex_pos_stack[:3], axis=0)
+    rex_long_loc = np.nanmean(rex_pos_stack[2:], axis=0)
+    rex_width = np.nanmean(rex_width_stack, axis=0)
+    rex_max_gap = np.nanmean(rex_max_gap_stack, axis=0)
+    rex_min_gap = np.nanmean(rex_min_gap_stack, axis=0)
+    local_trend = arr("trend_24") + 0.5 * arr("htf_4h_return_1")
+    higher_trend = arr("htf_1d_return_4") + arr("htf_3d_return_4") + arr("htf_1w_return_4")
+    vol_confirm = np.maximum(0.0, arr("volume_zscore")) + 0.5 * np.abs(arr("taker_imbalance"))
+
+    # Fade stretched multiscale range extremes: near upper range -> SHORT, near
+    # lower range -> LONG.  Strength rises only when several ranges agree.
+    rex_extreme = np.maximum(0.0, np.abs(rex_loc) - 0.55) * (1.0 + np.abs(rex_short_loc - rex_long_loc))
+    out["rex_multiscale_extreme_fade"] = (rex_extreme, -np.sign(rex_loc))
+
+    # Follow breakouts only when location and local trend agree near range
+    # extremes.  This is the opposite hypothesis to the fade family.
+    breakout_agree = np.sign(rex_loc) * np.sign(local_trend)
+    rex_breakout = np.maximum(0.0, np.abs(rex_short_loc) - 0.70) * np.maximum(0.0, breakout_agree) * (1.0 + vol_confirm)
+    out["rex_extreme_breakout_follow"] = (rex_breakout, np.sign(local_trend))
+
+    # Compression near the middle often precedes directional expansion; pair low
+    # width with local trend/flow.  Inverse width is clipped to avoid one-off
+    # numerical explosions.
+    compression = np.clip(0.04 / np.maximum(rex_width, 1e-4), 0.0, 8.0) * np.maximum(0.0, 0.55 - np.abs(rex_loc))
+    compression_dir = np.sign(local_trend + 0.25 * arr("taker_imbalance"))
+    out["rex_compression_breakout"] = (compression, compression_dir)
+    out["rex_compression_fakeout"] = (compression, -compression_dir)
+
+    # Higher timeframe pullback: trade with larger trend when current price is
+    # pulled back toward the opposite side of recent ranges.
+    pullback_alignment = -np.sign(rex_loc) * np.sign(higher_trend)
+    rex_pullback = np.maximum(0.0, pullback_alignment) * (np.abs(higher_trend) + 0.25 * np.abs(rex_max_gap - rex_min_gap))
+    out["rex_htf_pullback_resume"] = (rex_pullback, np.sign(higher_trend))
+
+    # Long-horizon range rejection: when short-term location diverges strongly
+    # from long-term location, test reversion toward the long-horizon center.
+    loc_divergence = np.abs(rex_short_loc - rex_long_loc)
+    out["rex_multiscale_location_revert"] = (loc_divergence * np.maximum(0.0, np.abs(rex_short_loc) - 0.45), -np.sign(rex_short_loc))
+
     return out
 
 
@@ -187,27 +237,31 @@ def _simulate_rows(rows: list[dict[str, Any]], market: pd.DataFrame, cfg: EventP
     return simulate_candidates(rows, market[["date", "open", "high", "low", "close"]].copy(), sim_cfg)
 
 
+def _trial_rank(split: dict[str, Any], *, min_trades: int = 1) -> tuple[float, float, int]:
+    sim = split.get("sim", {})
+    stats = split.get("trade_stats", {})
+    trades = int(sim.get("trade_entries", 0) or 0)
+    ratio = float(sim.get("cagr_to_strict_mdd", -1e9) or -1e9)
+    if not np.isfinite(ratio) or trades < int(min_trades):
+        ratio = -1e9
+    p_value = float(stats.get("p_value_mean_ret_approx", 1.0) or 1.0)
+    return (ratio, -p_value, trades)
+
+
 def _choose_family(train_trials: list[dict[str, Any]], val_trials: list[dict[str, Any]], cfg: EventPoolConfig) -> dict[str, Any]:
     train_ok = {
         t["family"]
         for t in train_trials
         if int(t["train"]["sim"]["trade_entries"]) >= int(cfg.min_train_trades)
-        and float(t["train"]["sim"]["cagr_to_strict_mdd"]) > 0.0
+        and _trial_rank(t["train"], min_trades=cfg.min_train_trades)[0] > 0.0
     }
     eligible = [
         v for v in val_trials
         if v["family"] in train_ok
         and int(v["val"]["sim"]["trade_entries"]) >= int(cfg.min_val_trades)
     ]
-    pool = eligible or val_trials
-    return max(
-        pool,
-        key=lambda r: (
-            float(r["val"]["sim"].get("cagr_to_strict_mdd", -1e9)),
-            -float(r["val"]["trade_stats"].get("p_value_mean_ret_approx", 1.0)),
-            int(r["val"]["sim"].get("trade_entries", 0)),
-        ),
-    )
+    pool = eligible or [v for v in val_trials if int(v["val"]["sim"].get("trade_entries", 0) or 0) > 0] or val_trials
+    return max(pool, key=lambda r: _trial_rank(r["val"], min_trades=cfg.min_val_trades))
 
 
 def run_event_pool_probe(cfg: EventPoolConfig) -> dict[str, Any]:
@@ -249,7 +303,7 @@ def run_event_pool_probe(cfg: EventPoolConfig) -> dict[str, Any]:
         "selected_family": selected["family"],
         "selected_validation": selected,
         "selected_eval": selected_eval,
-        "top_val": sorted(val_trials, key=lambda r: float(r["val"]["sim"].get("cagr_to_strict_mdd", -1e9)), reverse=True)[:20],
+        "top_val": sorted(val_trials, key=lambda r: _trial_rank(r["val"], min_trades=1), reverse=True)[:20],
         "train_trials": train_trials,
         "eval_by_family": eval_by_family,
         "leakage_guard": {
