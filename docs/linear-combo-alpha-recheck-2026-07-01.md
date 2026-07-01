@@ -841,3 +841,34 @@ Decision:
 - The verifier surface has a strong oracle ceiling and is much more promising than the binary-edge symbolic pool.
 - The right structure is a no-leak learned verifier/post-ranker: use LLM reasoning over categorical past-only prompt + exact action, then strict backtest accepted actions.
 - Next step should be a no-leak baseline verifier, then LLM distillation/fine-tuning only if the baseline can recover part of the oracle without leakage.
+
+## 2026-07-01 verifier-token structure/alpha baseline
+
+Purpose: test whether the LLM-friendly verifier prompt already contains usable no-leak categorical alpha before spending GPU time on Gemma fine-tuning.  The baseline trains only on train labels, then post-ranks exact candidate actions per signal timestamp and selects thresholds by 2025 test strict backtest.
+
+Implementation: `training/event_action_verifier_token_baseline.py`.
+
+Key structural fixes added:
+- Parse the actual prompt alpha surface (`Regime tokens`, `Candidate book tokens`, `Selected action tokens`, and `state_tokens`) instead of only action family/side/horizon.
+- Add low-cardinality family/side × regime interactions so weak alphas can combine conditionally.
+- For each signal timestamp, score all candidate actions and emit only the highest-scored candidate; this matches live post-ranker semantics and avoids first-row file-order bias.
+- Store compact scan reports by stripping bulky executed-trade arrays from result JSON.
+
+Strict no-leak protocol:
+- Fit token reliability on 2020-2024 train rows only.
+- Choose threshold by 2025 test score.
+- Report 2026 Jan-May eval untouched.
+- Backtest uses entry delay 1 bar and strict MDD including intrabar adverse excursion.
+
+Results:
+
+| run | scoring | selected threshold | train | test | eval | verdict |
+| --- | --- | ---: | --- | --- | --- | --- |
+| v3 prompt-token mean, first accepted row | mean | 0.09 | 5.51% CAGR / 55.55% MDD / 1505 trades | -5.81% / 14.75% / 301 trades | -26.86% / 17.45% / 132 trades | Reject: prompt tokens alone did not generalize and file-order action selection was structurally wrong. |
+| v4 prompt-token best-action | mean | 0.105 | 16.83% CAGR / 32.10% MDD / 231 trades | 0.86% / 10.08% / 35 trades | 18.89% / 8.35% / 14 trades | Weak lead: structure improved, but test/eval trade counts are too low and p-values are weak. |
+| v4 prompt-token best-action | max | 0.09 | 27.08% CAGR / 55.44% MDD / 1427 trades | 1.44% / 18.28% / 270 trades | -14.76% / 19.85% / 114 trades | Reject: statistically broader but eval fails. |
+
+Readout:
+- The verifier/candidate-book ceiling remains strong, but train-only token reliability is far too weak to recover it robustly.
+- The important structural gain is not the token score itself; it is the live-compatible `score all exact actions -> pick best action -> threshold gate` verifier shape.
+- Next useful move is a richer learned verifier over these same no-leak symbolic tokens (e.g. online logistic/FTRL or Gemma distillation), not more one-token gates.
