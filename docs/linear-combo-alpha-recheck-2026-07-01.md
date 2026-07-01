@@ -98,3 +98,15 @@ Generated smoke datasets for `external h288 q0.05`:
   - size buckets: FULL 2,522 / SMALL 1,080 / NONE 3,588
 
 Important caveat: these labels are per-candidate realized outcomes, not non-overlapping portfolio outcomes.  They are suitable for a Gemma meta-controller POC, but final selection must still be audited through `online_risk_overlay_backtest` with frozen predictions.
+
+## Compact conservative meta-controller variant
+Builder update: `training/build_linear_alpha_meta_sft.py` now supports:
+- `--target-schema decision_size` to remove free-form `risk_reason` from targets.
+- `--prompt-style conservative` to explicitly make `SKIP/NONE` the default unless signal-time evidence is strong.
+
+Generated compact split summaries:
+- train 2024H1: 4,430 rows; SKIP 2,732 / TAKE 1,698; FULL 1,245 / SMALL 453 / NONE 2,732.
+- test 2024H2-2025: 16,453 rows; SKIP 9,276 / TAKE 7,177; FULL 5,125 / SMALL 2,052 / NONE 9,276.
+- eval 2026 Jan-May: 7,190 rows; SKIP 3,588 / TAKE 3,602; FULL 2,522 / SMALL 1,080 / NONE 3,588.
+
+This variant is intended to reduce generation truncation and align with candidate-logprob scoring labels: `SKIP/NONE`, `TAKE/SMALL`, `TAKE/FULL`.

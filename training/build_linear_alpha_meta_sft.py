@@ -38,6 +38,8 @@ class LinearAlphaMetaSftConfig:
     take_full_ret_pct: float = 0.35
     take_small_ret_pct: float = 0.0
     include_no_trade_fraction: float = 0.03
+    target_schema: str = "decision_size_reason"
+    prompt_style: str = "default"
     seed: int = 17
 
 
@@ -155,8 +157,10 @@ def _state_card(row: dict[str, Any], features: pd.DataFrame) -> dict[str, Any]:
     return {"tokens": tokens, "numeric": numeric}
 
 
-def _prompt(row: dict[str, Any], card: dict[str, Any]) -> str:
+def _prompt(row: dict[str, Any], card: dict[str, Any], cfg: LinearAlphaMetaSftConfig) -> str:
     pred = _prediction(row)
+    if cfg.prompt_style not in {"default", "conservative"}:
+        raise ValueError("prompt_style must be default|conservative")
     lines = [
         "You are a single LLM meta-controller for a BTCUSDT futures bot.",
         "A frozen weak alpha already proposed a candidate trade. Do not invent a new side.",
@@ -164,14 +168,24 @@ def _prompt(row: dict[str, Any], card: dict[str, Any]) -> str:
         f"date: {row.get('date')}",
         f"candidate_side: {pred.get('side', 'NONE')}",
         f"candidate_hold_bars: {pred.get('hold_bars', 0)}",
-        "state_tokens:",
     ]
+    if cfg.prompt_style == "conservative":
+        lines.extend([
+            "Default to SKIP/NONE unless the signal-time evidence clearly supports the frozen alpha.",
+            "Use TAKE/FULL only for unusually strong evidence; use TAKE/SMALL for marginal positive evidence.",
+        ])
+    lines.append("state_tokens:")
     for key, value in sorted(card["tokens"].items()):
         lines.append(f"- {key}: {value}")
     lines.append("numeric_state:")
     for key, value in sorted(card["numeric"].items()):
         lines.append(f"- {key}: {value:+.6f}")
-    lines.append('Return compact JSON with keys: decision, size_bucket, risk_reason.')
+    if cfg.target_schema == "decision_size":
+        lines.append('Return compact JSON with exactly keys: decision, size_bucket.')
+    elif cfg.target_schema == "decision_size_reason":
+        lines.append('Return compact JSON with keys: decision, size_bucket, risk_reason.')
+    else:
+        raise ValueError("target_schema must be decision_size|decision_size_reason")
     return "\n".join(lines)
 
 
@@ -197,8 +211,14 @@ def _convert(rows: list[dict[str, Any]], market: pd.DataFrame, features: pd.Data
             )
         target = _label(ret_pct, cfg) if gate == "TRADE" else {"decision": "SKIP", "size_bucket": "NONE", "risk_reason": "alpha_did_not_trigger"}
         card = _state_card(row, features)
-        prompt = _prompt(row, card)
-        target_text = json.dumps(target, ensure_ascii=False, sort_keys=True)
+        prompt = _prompt(row, card, cfg)
+        if cfg.target_schema == "decision_size":
+            target_for_text = {"decision": target["decision"], "size_bucket": target["size_bucket"]}
+        elif cfg.target_schema == "decision_size_reason":
+            target_for_text = target
+        else:
+            raise ValueError("target_schema must be decision_size|decision_size_reason")
+        target_text = json.dumps(target_for_text, ensure_ascii=False, sort_keys=True)
         out.append({
             "task": "linear_alpha_meta_controller_sft",
             "prompt": prompt,
@@ -283,6 +303,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--take-full-ret-pct", type=float, default=LinearAlphaMetaSftConfig.take_full_ret_pct)
     parser.add_argument("--take-small-ret-pct", type=float, default=LinearAlphaMetaSftConfig.take_small_ret_pct)
     parser.add_argument("--include-no-trade-fraction", type=float, default=LinearAlphaMetaSftConfig.include_no_trade_fraction)
+    parser.add_argument("--target-schema", choices=["decision_size", "decision_size_reason"], default=LinearAlphaMetaSftConfig.target_schema)
+    parser.add_argument("--prompt-style", choices=["default", "conservative"], default=LinearAlphaMetaSftConfig.prompt_style)
     parser.add_argument("--seed", type=int, default=LinearAlphaMetaSftConfig.seed)
     return parser.parse_args()
 
