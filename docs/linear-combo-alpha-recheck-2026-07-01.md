@@ -1210,3 +1210,31 @@ Readout:
 - Still not enough for the target: recent fold trade counts are small and p-values are weak, and CAGR remains below the 50% target.
 - `q0.80/hold288/stride24` is the best “statistical breadth” candidate; `q0.85/hold432/stride72` is the best ratio candidate but too sparse.
 - Next step should expand the pool around the broad q0.80/hold288/stride24 setting, not add more gates: find complementary non-overlapping families that survive the same rolling validation.
+
+## 2026-07-02 multi-family rolling validation
+
+Purpose: broaden beyond the REX resume family while keeping the same anti-leak protocol. `training/rex_rolling_validation.py` now supports `--family-include`, fitting each candidate family's threshold only on that fold's expanding train window and reporting the next-year validation fold. The fold scorer now caps CAGR/MDD ratio and penalizes thin folds so single-trade annualization cannot dominate ranking.
+
+Run: `results/rolling_validation_all_families_core_v3_2026-07-02.json`, families matching `momentum,mean_reversion,vol_breakout,orderflow,macro,higher_tf,htf_pullback,derivatives,rex_htf_pullback_resume`, folds 2023/2024/2025/2026, q `{0.80,0.85}`, hold `288`, stride `24`.
+
+Top survivable candidates:
+
+| family / q / hold / stride | 2023 val | 2024 val | 2025 val | 2026 Jan-May val | readout |
+| --- | --- | --- | --- | --- | --- |
+| `rex_htf_pullback_reclaim` / 0.85 / 288 / 24 | 2.29% CAGR / 15.39% MDD / 120 trades / p=0.816 | 6.81% / 16.10% / 130 / p=0.613 | 14.63% / 12.34% / 103 / p=0.267 | 19.20% / 8.30% / 43 / p=0.514 | All folds positive, but early folds are weak and MDD slightly above target. Possible complement, not standalone production. |
+| `rex_htf_pullback_resume` / 0.80 / 288 / 24 | 13.08% / 10.22% / 97 / p=0.279 | 11.21% / 13.40% / 114 / p=0.416 | 2.69% / 14.30% / 111 / p=0.805 | 13.79% / 7.46% / 47 / p=0.608 | Best breadth: all folds positive with the largest robust trade count, but 2025 edge is very weak. |
+| `rex_htf_pullback_resume` / 0.85 / 288 / 24 | 17.56% / 7.66% / 76 / p=0.080 | 17.84% / 7.69% / 71 / p=0.181 | 7.33% / 6.53% / 63 / p=0.581 | 7.11% / 7.46% / 37 / p=0.792 | Cleaner drawdown than q0.80 but thinner and weaker recently. |
+
+Rejected broad-family examples:
+
+| family / q | 2023 val | 2024 val | 2025 val | 2026 Jan-May val | verdict |
+| --- | --- | --- | --- | --- | --- |
+| `macro_pressure` / 0.80 | -27.67% / 37.20% / 226 | 3.53% / 21.10% / 209 | 6.18% / 15.09% / 188 | 16.44% / 7.67% / 87 | Recency-only effect; reject due 2023 collapse. |
+| `vol_breakout` / 0.80 | 16.78% / 10.48% / 69 | 8.71% / 12.44% / 129 | -21.54% / 23.64% / 85 | -1.25% / 16.38% / 48 | Fails 2025/2026; reject. |
+| `orderflow_fade` / 0.85 | -30.78% / 36.66% / 248 | 31.52% / 11.88% / 246 | -15.82% / 19.77% / 248 | 43.81% / 7.17% / 93 | Alternating sign/regime instability; reject. |
+| `momentum_trend` / 0.85 | 9.14% / 13.32% / 55 | -1.38% / 13.82% / 106 | -14.23% / 17.14% / 76 | -11.60% / 19.11% / 35 | Deteriorates after 2023; reject. |
+
+Readout:
+- The broad scan did **not** find a stronger complementary non-REX alpha. Most non-REX families either reverse sign across years or fail 2025/2026.
+- The only repeatable cluster remains higher-timeframe REX pullback/reclaim/resume. That supports the earlier conclusion: current evidence is a weak price-action alpha, not a general model breakthrough.
+- Next step should combine `rex_htf_pullback_resume` q0.80 and `rex_htf_pullback_reclaim` q0.85 as a non-overlap portfolio/pool and measure whether trade count improves without raising strict MDD. If the combined pool cannot improve, we need new raw data/feature edges rather than more scoring tricks.
