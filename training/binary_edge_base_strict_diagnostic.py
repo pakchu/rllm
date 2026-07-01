@@ -120,7 +120,13 @@ def run(cfg: BinaryEdgeBaseDiagConfig) -> dict[str, Any]:
                     "test_score": _score({"sim": test_bt["sim"], "trade_stats": test_bt["trade_stats"]}),
                 })
                 idx += 1
+    for row in rows:
+        row["train_score"] = _score(row["train"])
+        row["eval_score"] = _score(row["eval"])
+        row["stable_score"] = min(float(row["train_score"]), float(row["test_score"]), float(row["eval_score"]))
     rows.sort(key=lambda r: float(r["test_score"]), reverse=True)
+    top_by_train = sorted(rows, key=lambda r: float(r["train_score"]), reverse=True)[: int(cfg.top_k)]
+    top_stable = sorted(rows, key=lambda r: float(r["stable_score"]), reverse=True)[: int(cfg.top_k)]
     report = {
         "as_of": datetime.now(timezone.utc).isoformat(),
         "config": asdict(cfg),
@@ -129,6 +135,8 @@ def run(cfg: BinaryEdgeBaseDiagConfig) -> dict[str, Any]:
         "evaluated_count": len(rows),
         "selection_protocol": "base singleton features; rank by strict test; eval reported untouched",
         "top_by_test": rows[: int(cfg.top_k)],
+        "top_by_train": top_by_train,
+        "top_stable": top_stable,
     }
     Path(cfg.output).parent.mkdir(parents=True, exist_ok=True)
     Path(cfg.output).write_text(json.dumps(report, indent=2, ensure_ascii=False))
@@ -161,7 +169,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     report = run(BinaryEdgeBaseDiagConfig(**vars(parse_args())))
-    print(json.dumps({"feature_count": report["feature_count"], "evaluated_count": report["evaluated_count"], "top_by_test": report["top_by_test"][:10]}, indent=2, ensure_ascii=False))
+    print(json.dumps({"feature_count": report["feature_count"], "evaluated_count": report["evaluated_count"], "top_by_test": report["top_by_test"][:5], "top_by_train": report["top_by_train"][:5], "top_stable": report["top_stable"][:5]}, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

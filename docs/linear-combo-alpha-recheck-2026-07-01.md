@@ -774,3 +774,25 @@ Decision:
 - The binary-edge candidate pool has repeated 2025 pockets but lacks stable positive base slices across 2022-2024 train.
 - The apparent eval-positive `kimchi_extreme_fade|h432|LONG` inverted slice is not promotable because it loses badly in train.
 - Further search should either change the candidate generation/reward design or require train-positive base slices before LLM/rule distillation.
+
+## Binary-edge base diagnostic v2: train/stable rankings
+Diagnostic update:
+- `training/binary_edge_base_strict_diagnostic.py` now stores `top_by_train` and `top_stable` in addition to `top_by_test`.
+
+Run: `results/binary_edge_base_strict_diagnostic_v2_ranked_2022_2026_2026-07-01.json`
+- base features: 133.
+- strict backtests: 266.
+
+Best train-ranked slice:
+- `id=orderflow_follow|h144`, action `invert`.
+- train positive, but test/eval fail; not stable.
+
+Best stable-ranked slice:
+- `id_side=orderflow_fade|h144|LONG`, action `follow`.
+- train: CAGR 4.85%, MDD 10.44%, ratio 0.46, 433 trades.
+- test: CAGR -0.71%, MDD 12.40%, ratio -0.06, 185 trades.
+- eval: CAGR 0.94%, MDD 6.55%, ratio 0.14, 62 trades.
+
+Decision:
+- Even the best stable singleton slice is economically too weak and fails the target by a wide margin.
+- The current binary-edge candidate pool lacks a base strict alpha.  Further LLM rule distillation on this pool is unlikely to reach CAGR/MDD >= 3 without changing candidate generation, reward shaping, or execution/risk overlay.
