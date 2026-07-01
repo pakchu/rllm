@@ -571,3 +571,29 @@ Decision:
 - Three-premise grammar finds more interpretable pockets, but still no stable alpha.
 - The current recurring failure mode is regime transfer: selected 2024H2-2025 rules lose edge in 2026.
 - Next scans should use deduplicated candidates and broader candidate budgets, but promotion requires positive eval with adequate trade count, strict MDD <= 15, and statistical support.
+
+## Strict symbolic scan v3: deduplicated broader search
+Run: `results/symbolic_rule_strict_backtest_scan_v3_dedupe_terms3_prefilter_2026-07-01.json`
+
+Protocol:
+- generated rules: 6,389.
+- test-prefiltered candidates: 12,008.
+- unique strict candidates: 24.
+- strict-scanned candidates: 24.
+- eval was not used for prefiltering or ranking.
+
+Best test-ranked rule:
+- rule: `id=market_derivatives|h576|original` + `rex_8640_range_pos=high` + `side_range_vol=mid`.
+- action: `follow`.
+
+| Split | CAGR | Strict MDD | CAGR/MDD | Trades | Mean trade | p-value |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| train 2024H1 | 1.39% | 11.74% | 0.12 | 32 | 0.043% | 0.914 |
+| test 2024H2-2025 | 21.77% | 7.09% | 3.07 | 64 | 0.390% | 0.034 |
+| eval 2026 Jan-May | 16.89% | 2.96% | 5.72 | 15 | 0.373% | 0.174 |
+
+Decision:
+- This is the first strict-symbolic candidate with positive test and positive untouched eval plus strict MDD below 15.
+- It is not promotable yet because eval has only 15 trades and p-value is not significant.
+- This is a useful lead: the premise is interpretable and price-action oriented (`market_derivatives`, long-horizon range high, side-adjusted volatility mid), but it needs longer-period validation and more trade count before being treated as alpha.
+- No candidate in this run met the full promotion gate: test positive, eval positive, eval strict MDD <= 15, and eval trades >= 20.
