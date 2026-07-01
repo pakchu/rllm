@@ -40,6 +40,12 @@ class LinearAlphaMetaSftConfig:
     include_no_trade_fraction: float = 0.03
     target_schema: str = "decision_size_reason"
     prompt_style: str = "default"
+    label_mode: str = "realized_return"
+    path_full_max_adverse_pct: float = 0.35
+    path_small_max_adverse_pct: float = 0.70
+    path_min_mfe_mae_ratio: float = 1.25
+    path_min_full_mfe_pct: float = 0.55
+    path_min_small_mfe_pct: float = 0.20
     seed: int = 17
 
 
@@ -66,7 +72,7 @@ def _side_signal(side: str) -> int:
     return 0
 
 
-def _trade_return_pct(
+def _trade_path_stats(
     *,
     market: pd.DataFrame,
     signal_pos: int,
@@ -76,7 +82,7 @@ def _trade_return_pct(
     fee_rate: float,
     slippage_rate: float,
     entry_delay_bars: int,
-) -> float | None:
+) -> dict[str, float] | None:
     signal = _side_signal(side)
     if signal == 0:
         return None
@@ -85,32 +91,80 @@ def _trade_return_pct(
     if entry_pos >= len(market) - 1 or exit_pos >= len(market):
         return None
     opens = market["open"].to_numpy(dtype=float)
+    highs = market["high"].to_numpy(dtype=float)
+    lows = market["low"].to_numpy(dtype=float)
+    entry_price = float(opens[entry_pos])
+    if entry_price <= 0.0:
+        return None
+
     eq = 1.0
     cost = (float(fee_rate) + float(slippage_rate)) * float(leverage)
     eq *= max(0.0, 1.0 - cost)
+    max_favorable_pct = 0.0
+    max_adverse_pct = 0.0
     for j in range(entry_pos, exit_pos):
         open_j = float(opens[j])
         if open_j <= 0.0:
             continue
         if signal > 0:
             close_ret = (float(opens[j + 1]) - open_j) / open_j
+            favorable = (float(highs[j]) - entry_price) / entry_price
+            adverse = (entry_price - float(lows[j])) / entry_price
         else:
             close_ret = (open_j - float(opens[j + 1])) / open_j
+            favorable = (entry_price - float(lows[j])) / entry_price
+            adverse = (float(highs[j]) - entry_price) / entry_price
+        max_favorable_pct = max(max_favorable_pct, 100.0 * float(leverage) * float(favorable))
+        max_adverse_pct = max(max_adverse_pct, 100.0 * float(leverage) * float(adverse))
         eq *= max(0.0, 1.0 + float(leverage) * close_ret)
         if eq <= 0.0:
             break
     eq *= max(0.0, 1.0 - cost)
-    return (eq - 1.0) * 100.0
+    ret_pct = (eq - 1.0) * 100.0
+    return {
+        "realized_return_pct": float(ret_pct),
+        "max_favorable_pct": float(max_favorable_pct),
+        "max_adverse_pct": float(max_adverse_pct),
+        "mfe_mae_ratio": float(max_favorable_pct / max(1e-9, max_adverse_pct)),
+    }
 
 
-def _label(ret_pct: float | None, cfg: LinearAlphaMetaSftConfig) -> dict[str, str]:
-    if ret_pct is None:
+def _trade_return_pct(**kwargs: Any) -> float | None:
+    stats = _trade_path_stats(**kwargs)
+    return None if stats is None else float(stats["realized_return_pct"])
+
+
+def _label(path_stats: dict[str, float] | None, cfg: LinearAlphaMetaSftConfig) -> dict[str, str]:
+    if path_stats is None:
         return {"decision": "SKIP", "size_bucket": "NONE", "risk_reason": "missing_future_bars"}
-    if ret_pct >= float(cfg.take_full_ret_pct):
-        return {"decision": "TAKE", "size_bucket": "FULL", "risk_reason": "realized_edge_strong"}
-    if ret_pct > float(cfg.take_small_ret_pct):
-        return {"decision": "TAKE", "size_bucket": "SMALL", "risk_reason": "realized_edge_positive_but_thin"}
-    return {"decision": "SKIP", "size_bucket": "NONE", "risk_reason": "realized_edge_negative_or_costly"}
+    ret_pct = float(path_stats["realized_return_pct"])
+    if cfg.label_mode == "realized_return":
+        if ret_pct >= float(cfg.take_full_ret_pct):
+            return {"decision": "TAKE", "size_bucket": "FULL", "risk_reason": "realized_edge_strong"}
+        if ret_pct > float(cfg.take_small_ret_pct):
+            return {"decision": "TAKE", "size_bucket": "SMALL", "risk_reason": "realized_edge_positive_but_thin"}
+        return {"decision": "SKIP", "size_bucket": "NONE", "risk_reason": "realized_edge_negative_or_costly"}
+    if cfg.label_mode != "path_quality":
+        raise ValueError("label_mode must be realized_return|path_quality")
+
+    adverse = float(path_stats["max_adverse_pct"])
+    favorable = float(path_stats["max_favorable_pct"])
+    ratio = float(path_stats["mfe_mae_ratio"])
+    if (
+        ret_pct >= float(cfg.take_full_ret_pct)
+        and adverse <= float(cfg.path_full_max_adverse_pct)
+        and favorable >= float(cfg.path_min_full_mfe_pct)
+        and ratio >= float(cfg.path_min_mfe_mae_ratio)
+    ):
+        return {"decision": "TAKE", "size_bucket": "FULL", "risk_reason": "path_quality_strong_low_adverse"}
+    if (
+        ret_pct > float(cfg.take_small_ret_pct)
+        and adverse <= float(cfg.path_small_max_adverse_pct)
+        and favorable >= float(cfg.path_min_small_mfe_pct)
+        and ratio >= 1.0
+    ):
+        return {"decision": "TAKE", "size_bucket": "SMALL", "risk_reason": "path_quality_positive_controlled_adverse"}
+    return {"decision": "SKIP", "size_bucket": "NONE", "risk_reason": "path_quality_failed_return_or_adverse"}
 
 
 def _bucket(value: float, cuts: tuple[float, float]) -> str:
@@ -140,9 +194,31 @@ def _state_card(row: dict[str, Any], features: pd.DataFrame) -> dict[str, Any]:
         "rsi_norm", "bb_z", "return_zscore_48", "volume_zscore", "taker_buy_ratio",
         "dxy_zscore", "dxy_momentum", "kimchi_premium_zscore", "kimchi_premium_change",
         "usdkrw_zscore", "usdkrw_momentum", "rex_144_range_pos", "rex_2016_range_pos",
+        "rex_576_range_width_pct", "rex_576_range_pos",
+        "rex_576_cur_to_max_pct", "rex_576_cur_to_min_pct",
+        "rex_2016_range_width_pct", "rex_2016_range_pos",
+        "rex_2016_cur_to_max_pct", "rex_2016_cur_to_min_pct",
+        "rex_8640_range_width_pct", "rex_8640_range_pos",
         "rex_8640_cur_to_max_pct", "rex_8640_cur_to_min_pct",
+        "htf_4h_return_4", "htf_4h_range_pos", "htf_4h_drawdown_4",
+        "htf_1d_return_4", "htf_1d_range_pos", "htf_1d_drawdown_4",
+        "htf_1w_return_4", "htf_1w_range_pos", "htf_1w_drawdown_4",
     ]
     numeric = {k: round(_feature_value(features, pos, k), 6) for k in keys if k in features.columns}
+    side_signal = _side_signal(str(pred.get("side", "NONE")))
+    numeric["candidate_side_signal"] = float(side_signal)
+    if side_signal != 0:
+        for key in ("trend_12", "trend_96", "range_pos", "rsi_norm", "bb_z", "return_zscore_48", "taker_buy_ratio", "rex_144_range_pos", "rex_576_range_pos", "rex_2016_range_pos", "rex_8640_range_pos", "htf_4h_return_4", "htf_1d_return_4", "htf_1w_return_4"):
+            if key in numeric:
+                numeric[f"side_{key}"] = round(float(side_signal) * float(numeric[key]), 6)
+        numeric["side_room_to_adverse_extreme_pct"] = round(
+            float(numeric.get("rex_8640_cur_to_min_pct", 0.0) if side_signal > 0 else numeric.get("rex_8640_cur_to_max_pct", 0.0)),
+            6,
+        )
+        numeric["side_room_to_favorable_extreme_pct"] = round(
+            float(numeric.get("rex_8640_cur_to_max_pct", 0.0) if side_signal > 0 else numeric.get("rex_8640_cur_to_min_pct", 0.0)),
+            6,
+        )
     tokens = {
         "alpha_group": str(row.get("group", "unknown")),
         "alpha_variant": str(row.get("variant", "unknown")),
@@ -153,6 +229,8 @@ def _state_card(row: dict[str, Any], features: pd.DataFrame) -> dict[str, Any]:
         "dxy_bucket": _bucket(numeric.get("dxy_zscore", 0.0), (-1.0, 1.0)),
         "kimchi_bucket": _bucket(numeric.get("kimchi_premium_zscore", 0.0), (-1.0, 1.0)),
         "drawdown_bucket": _bucket(numeric.get("window_drawdown", 0.0), (-0.08, -0.02)),
+        "range_vol_bucket": _bucket(numeric.get("range_vol", 0.0), (0.02, 0.08)),
+        "side_range_pos_bucket": _bucket(numeric.get("side_range_pos", 0.0), (-0.5, 0.5)),
     }
     return {"tokens": tokens, "numeric": numeric}
 
@@ -199,9 +277,9 @@ def _convert(rows: list[dict[str, Any]], market: pd.DataFrame, features: pd.Data
         gate = str(pred.get("gate", "NO_TRADE"))
         if gate != "TRADE" and float(rng.random()) > float(cfg.include_no_trade_fraction):
             continue
-        ret_pct = None
+        path_stats = None
         if gate == "TRADE":
-            ret_pct = _trade_return_pct(
+            path_stats = _trade_path_stats(
                 market=market,
                 signal_pos=int(row.get("signal_pos", -1) or -1),
                 side=str(pred.get("side", "NONE")),
@@ -211,7 +289,7 @@ def _convert(rows: list[dict[str, Any]], market: pd.DataFrame, features: pd.Data
                 slippage_rate=float(cfg.slippage_rate),
                 entry_delay_bars=int(cfg.entry_delay_bars),
             )
-        target = _label(ret_pct, cfg) if gate == "TRADE" else {"decision": "SKIP", "size_bucket": "NONE", "risk_reason": "alpha_did_not_trigger"}
+        target = _label(path_stats, cfg) if gate == "TRADE" else {"decision": "SKIP", "size_bucket": "NONE", "risk_reason": "alpha_did_not_trigger"}
         card = _state_card(row, features)
         prompt = _prompt(row, card, cfg)
         if cfg.target_schema == "decision":
@@ -238,7 +316,8 @@ def _convert(rows: list[dict[str, Any]], market: pd.DataFrame, features: pd.Data
                 "alpha_group": row.get("group"),
                 "candidate_side": pred.get("side", "NONE"),
                 "candidate_gate": gate,
-                "realized_trade_ret_pct": ret_pct,
+                "realized_trade_ret_pct": None if path_stats is None else path_stats["realized_return_pct"],
+                "trade_path_stats": path_stats,
                 "target_decision": target["decision"],
                 "target_size_bucket": target["size_bucket"],
                 "leakage_guard": "prompt is signal-time only; target uses future outcome for supervised label only",
@@ -257,6 +336,8 @@ def _summary(rows: list[dict[str, Any]], cfg: LinearAlphaMetaSftConfig) -> dict[
     sizes = Counter(row["metadata"]["target_size_bucket"] for row in rows)
     sides = Counter(row["metadata"]["candidate_side"] for row in rows)
     rets = [float(row["metadata"]["realized_trade_ret_pct"]) for row in rows if row["metadata"]["realized_trade_ret_pct"] is not None]
+    adverse = [float(row["metadata"]["trade_path_stats"]["max_adverse_pct"]) for row in rows if row["metadata"].get("trade_path_stats") is not None]
+    favorable = [float(row["metadata"]["trade_path_stats"]["max_favorable_pct"]) for row in rows if row["metadata"].get("trade_path_stats") is not None]
     chars = [len(row["prompt"]) + len(row["target"]) for row in rows]
     return {
         "config": asdict(cfg),
@@ -265,6 +346,12 @@ def _summary(rows: list[dict[str, Any]], cfg: LinearAlphaMetaSftConfig) -> dict[
         "target_size_buckets": dict(sorted(sizes.items())),
         "candidate_sides": dict(sorted(sides.items())),
         "trade_stats": _trade_stats([x / 100.0 for x in rets]),
+        "path_stats_pct": {
+            "max_adverse_mean": float(np.mean(adverse)) if adverse else 0.0,
+            "max_adverse_p90": float(np.quantile(adverse, 0.90)) if adverse else 0.0,
+            "max_favorable_mean": float(np.mean(favorable)) if favorable else 0.0,
+            "max_favorable_p90": float(np.quantile(favorable, 0.90)) if favorable else 0.0,
+        },
         "prompt_target_chars": {
             "min": min(chars) if chars else 0,
             "max": max(chars) if chars else 0,
@@ -309,6 +396,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--include-no-trade-fraction", type=float, default=LinearAlphaMetaSftConfig.include_no_trade_fraction)
     parser.add_argument("--target-schema", choices=["decision", "decision_size", "decision_size_reason"], default=LinearAlphaMetaSftConfig.target_schema)
     parser.add_argument("--prompt-style", choices=["default", "conservative"], default=LinearAlphaMetaSftConfig.prompt_style)
+    parser.add_argument("--label-mode", choices=["realized_return", "path_quality"], default=LinearAlphaMetaSftConfig.label_mode)
+    parser.add_argument("--path-full-max-adverse-pct", type=float, default=LinearAlphaMetaSftConfig.path_full_max_adverse_pct)
+    parser.add_argument("--path-small-max-adverse-pct", type=float, default=LinearAlphaMetaSftConfig.path_small_max_adverse_pct)
+    parser.add_argument("--path-min-mfe-mae-ratio", type=float, default=LinearAlphaMetaSftConfig.path_min_mfe_mae_ratio)
+    parser.add_argument("--path-min-full-mfe-pct", type=float, default=LinearAlphaMetaSftConfig.path_min_full_mfe_pct)
+    parser.add_argument("--path-min-small-mfe-pct", type=float, default=LinearAlphaMetaSftConfig.path_min_small_mfe_pct)
     parser.add_argument("--seed", type=int, default=LinearAlphaMetaSftConfig.seed)
     return parser.parse_args()
 

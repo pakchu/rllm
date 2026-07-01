@@ -182,3 +182,35 @@ Decision:
 - Current meta-controller state has only weak out-of-sample separability.  Test does not beat majority and eval beats majority only marginally.
 - More Gemma SFT steps on this same surface are not justified; the problem is not only model capacity.
 - Next work should redesign the state/label around price-action path quality: rolling extrema distance, range/volatility regime, side-conditioned adverse excursion, MFE/MAE, and strict path-risk labels.  The LLM should make a compact veto/position-quality decision over genuinely informative state, not memorize noisy realized-return labels.
+
+## Path-quality label/state redesign POC
+Builder update: `training/build_linear_alpha_meta_sft.py` now supports `--label-mode path_quality` and adds side-conditioned price-action context to the prompt state:
+- side-adjusted trend/range/RSI/BB/taker/rolling-extrema/higher-timeframe features.
+- rolling-extrema room-to-adverse/favorable extreme proxies.
+- future path labels record realized return, max favorable excursion, max adverse excursion, and MFE/MAE ratio in metadata only; prompts still use signal-time features only.
+
+Path-quality binary datasets for `external h288 q0.05` were generated with:
+- `TAKE/FULL`: realized return >= 0.35%, max adverse <= 0.35%, MFE >= 0.55%, MFE/MAE >= 1.25.
+- `TAKE/SMALL`: realized return > 0%, max adverse <= 0.70%, MFE >= 0.20%, MFE/MAE >= 1.0.
+- otherwise `SKIP`.
+
+Label distributions:
+
+| Split | Rows | SKIP | TAKE | FULL | SMALL | max adverse mean / p90 | max favorable mean / p90 |
+| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| train 2024H1 | 4,430 | 3,248 | 1,182 | 630 | 552 | 1.42% / 3.24% | 1.03% / 2.23% |
+| test 2024H2-2025 | 16,453 | 11,232 | 5,221 | 2,630 | 2,591 | 0.98% / 2.11% | 0.97% / 2.17% |
+| eval 2026 Jan-May | 7,190 | 4,687 | 2,503 | 1,377 | 1,126 | 0.98% / 2.15% | 0.97% / 2.55% |
+
+CPU separability diagnostic on this redesigned state/label surface (`results/linear_alpha_meta_feature_diagnostic_pathq_binary_2026-07-01.json`):
+
+| Split | Accuracy | Majority | Beats majority | Balanced recall | TAKE recall | SKIP recall |
+| --- | ---: | ---: | --- | ---: | ---: | ---: |
+| train 2024H1 | 91.8% | 73.3% | yes | 88.3% | 80.7% | 95.8% |
+| test 2024H2-2025 | 63.1% | 68.3% | no | 55.0% | 32.8% | 77.1% |
+| eval 2026 Jan-May | 59.4% | 65.2% | no | 57.0% | 48.7% | 65.2% |
+
+Interpretation:
+- The new labels are more risk-realistic and side-conditioned features reveal plausible clues (`side_htf_*`, `side_rex_*`, `side_trend_96`, `range_vol`).
+- However train/test drift is still severe: train is highly separable, while test/eval fail majority accuracy.  This is a better diagnostic surface, but not yet a deployable LLM target.
+- Next iteration should reduce overfit by using rolling/monthly train calibration or feature family stability filters before Gemma fine-tuning.
