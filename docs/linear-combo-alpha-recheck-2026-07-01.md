@@ -1008,3 +1008,21 @@ Readout:
 - The important structure is now: **train/val stable family selection → conservative verifier within the selected family → untouched eval**.
 - This avoids letting the verifier chase unstable REX subfamilies that looked good in 2025 but failed 2026.
 - Still not production-ready: eval has only 28 trades and p=0.565, so the next goal is to widen `rex_htf_pullback_resume` opportunities without losing the low-MDD profile.
+## 2026-07-02 REX whitelist low-threshold trade-count sweep
+
+Purpose: check whether the `rex_htf_pullback_resume` verifier lead can be widened by lowering the score threshold, while keeping the train/2025-selected family whitelist and leaving 2026 eval untouched.
+
+Run: `results/event_action_verifier_token_baseline_v8_rex_htf_whitelist_lowthr_2026-07-02.json` with `--allowed-families rex_htf_pullback_resume`, `--score-mode mean`, and thresholds `0.00..0.08`.
+
+| threshold | train | 2025 test | 2026 eval | readout |
+| ---: | --- | --- | --- | --- |
+| 0.070 | 17.16% CAGR / 32.04% MDD / 470 trades / p=0.061 | 19.16% / 8.34% / 62 / p=0.147 | 11.32% / 4.88% / 28 / p=0.565 | Selected by 2025 test score; clean MDD but eval too thin. |
+| 0.065 | 14.18% / 31.81% / 524 / p=0.112 | 21.22% / 9.91% / 81 / p=0.108 | 13.84% / 7.21% / 36 / p=0.529 | Better trade count, still weak significance. |
+| 0.060 | 11.55% / 35.23% / 543 / p=0.177 | 17.79% / 11.21% / 98 / p=0.181 | 23.77% / 7.21% / 38 / p=0.304 | Best eval CAGR/MDD among wider settings, but not statistically enough. |
+| 0.000-0.020 | 12.15% / 35.93% / 554 / p=0.161 | 16.40% / 11.48% / 99 / p=0.211 | 27.80% / 7.21% / 38 / p=0.242 | Score adds little once the family whitelist is loose. |
+
+Readout:
+- Lowering the threshold widens test/eval trades modestly and keeps all three splits positive, which supports `rex_htf_pullback_resume` as a real lead rather than a single threshold artifact.
+- The score threshold is not the main edge below about `0.06`; the family-level rule is carrying most of the signal.
+- Still not production-ready: train strict MDD is 31-36%, 2026 eval has only 28-38 trades, and all eval p-values remain weak.
+- Next work should target risk/exit/hold variants for the selected family, then rolling-fold validation. Adding more verifier capacity is lower priority because prior sparse/linear variants overfit.
