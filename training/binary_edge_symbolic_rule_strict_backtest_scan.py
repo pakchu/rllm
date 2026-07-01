@@ -32,6 +32,13 @@ class BinaryEdgeStrictScanConfig:
     max_state_features: int = 48
     max_prefilter_candidates: int = 500
     max_generated_rules: int = 3000
+    stage_train_gate: bool = False
+    min_stage_train_trades: int = 20
+    min_stage_train_cagr: float = 0.0
+    max_stage_train_mdd: float = 30.0
+    min_stage_train_ratio: float = 0.0
+    max_stage_train_p: float = 1.0
+    min_stage_train_effect: float = 0.0
     leverage: float = 0.5
     max_hold_bars: int = 576
     entry_delay_bars: int = 1
@@ -177,25 +184,39 @@ def run(cfg:BinaryEdgeStrictScanConfig)->dict[str,Any]:
         if sig in seen: continue
         seen.add(sig); unique.append(cand)
         if len(unique)>=cfg.max_rules: break
-    scanned=[]
+    scanned=[]; stage_rejected=[]
     with tempfile.TemporaryDirectory(prefix='binary_edge_strict_scan_') as td:
         tmp=Path(td)
         for i,(rule,action,tr,te,pf) in enumerate(unique):
             train_bt=_bt(_match_preds(splits['train'],rule,action),cfg,tmp,f'r{i}_train')
+            train_sim=train_bt.get('sim',{})
+            train_stats=train_bt.get('trade_stats',{})
+            train_gate_pass=(
+                int(train_sim.get('trade_entries',0) or 0) >= int(cfg.min_stage_train_trades)
+                and float(train_sim.get('cagr_pct',0.0) or 0.0) >= float(cfg.min_stage_train_cagr)
+                and float(train_sim.get('strict_mdd_pct',0.0) or 0.0) <= float(cfg.max_stage_train_mdd)
+                and float(train_sim.get('cagr_to_strict_mdd',0.0) or 0.0) >= float(cfg.min_stage_train_ratio)
+                and float(train_stats.get('p_value_mean_ret_approx',1.0) or 1.0) <= float(cfg.max_stage_train_p)
+                and abs(float(train_stats.get('effect_size_d',0.0) or 0.0)) >= float(cfg.min_stage_train_effect)
+            )
+            if bool(cfg.stage_train_gate) and not train_gate_pass:
+                stage_rejected.append({'rule':list(rule),'action':action,'support':{'train_candidates':tr,'test_candidates':te},'train':{'sim':train_bt['sim'],'trade_stats':train_bt['trade_stats']},'prefilter_score':pf,'stage_reject_reason':'train_strict_gate_failed'})
+                continue
             test_bt=_bt(_match_preds(splits['test'],rule,action),cfg,tmp,f'r{i}_test')
             eval_preds=_match_preds(splits['eval'],rule,action)
             eval_bt=_bt(eval_preds,cfg,tmp,f'r{i}_eval')
             scanned.append({'rule':list(rule),'action':action,'support':{'train_candidates':tr,'test_candidates':te,'eval_candidates':len(eval_preds)},'train':{'sim':train_bt['sim'],'trade_stats':train_bt['trade_stats']},'test':{'sim':test_bt['sim'],'trade_stats':test_bt['trade_stats']},'eval':{'sim':eval_bt['sim'],'trade_stats':eval_bt['trade_stats']},'prefilter_score':pf,'test_score':_score(test_bt,cfg.min_test_trades)})
     scanned.sort(key=lambda r:float(r['test_score']),reverse=True)
-    report={'as_of':datetime.now(timezone.utc).isoformat(),'config':asdict(cfg),'split_candidate_examples':{k:len(v) for k,v in splits.items()},'generated_rule_count':len(rules),'prefiltered_candidate_count':prefiltered,'dedupe_candidate_count':len(candidates),'unique_strict_candidate_count':len(unique),'strict_scanned_count':len(scanned),'selection_protocol':'binary-edge live-style candidates; train support; test-only prefilter; strict test rank; eval untouched','top_by_test':scanned[:cfg.top_k]}
+    report={'as_of':datetime.now(timezone.utc).isoformat(),'config':asdict(cfg),'split_candidate_examples':{k:len(v) for k,v in splits.items()},'generated_rule_count':len(rules),'prefiltered_candidate_count':prefiltered,'dedupe_candidate_count':len(candidates),'unique_strict_candidate_count':len(unique),'stage_rejected_count':len(stage_rejected),'strict_scanned_count':len(scanned),'selection_protocol':'binary-edge live-style candidates; train support; test-only prefilter; optional train strict gate; strict test rank; eval untouched','top_by_test':scanned[:cfg.top_k],'stage_rejected':stage_rejected[:cfg.top_k]}
     Path(cfg.output).parent.mkdir(parents=True,exist_ok=True); Path(cfg.output).write_text(json.dumps(report,indent=2,ensure_ascii=False)); return report
 
 def parse_args():
     p=argparse.ArgumentParser(description=__doc__)
     for f in ['inputs','market_csv','output']: p.add_argument('--'+f.replace('_','-'),required=True)
     for f in ['train_start','train_end','test_start','test_end','eval_start','eval_end']: p.add_argument('--'+f.replace('_','-'),default=getattr(BinaryEdgeStrictScanConfig,f))
-    for f in ['min_support_train','min_support_test','min_test_trades','max_rules','top_k','max_rule_terms','max_state_features','max_prefilter_candidates','max_generated_rules','max_hold_bars','entry_delay_bars']: p.add_argument('--'+f.replace('_','-'),type=int,default=getattr(BinaryEdgeStrictScanConfig,f))
-    for f in ['leverage','fee_rate','slippage_rate']: p.add_argument('--'+f.replace('_','-'),type=float,default=getattr(BinaryEdgeStrictScanConfig,f))
+    for f in ['min_support_train','min_support_test','min_test_trades','max_rules','top_k','max_rule_terms','max_state_features','max_prefilter_candidates','max_generated_rules','min_stage_train_trades','max_hold_bars','entry_delay_bars']: p.add_argument('--'+f.replace('_','-'),type=int,default=getattr(BinaryEdgeStrictScanConfig,f))
+    p.add_argument('--stage-train-gate', action='store_true', default=BinaryEdgeStrictScanConfig.stage_train_gate)
+    for f in ['leverage','fee_rate','slippage_rate','min_stage_train_cagr','max_stage_train_mdd','min_stage_train_ratio','max_stage_train_p','min_stage_train_effect']: p.add_argument('--'+f.replace('_','-'),type=float,default=getattr(BinaryEdgeStrictScanConfig,f))
     return p.parse_args()
 
 def main():

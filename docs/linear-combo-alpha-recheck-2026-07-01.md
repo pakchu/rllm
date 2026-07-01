@@ -692,3 +692,27 @@ Decision:
 - The binary-edge live-style surface is valid, but the current cheap prefilter is not aligned with strict overlay execution.
 - The failure mode is now clearer: isolated candidate reward and strict executed portfolio return diverge, especially for broad predicates and inverted actions.
 - Next step should add strict-aligned prefilter constraints or staged strict scoring that rejects candidates with negative train/test overlay before spending more batches.
+
+## Binary-edge staged strict train gate
+Scanner update: `training/binary_edge_symbolic_rule_strict_backtest_scan.py`
+
+Problem: cheap prefilter ranked isolated candidate rewards, but strict overlay showed the selected broad predicates were negative.  The scanner now supports an optional staged train strict gate:
+- run strict train overlay first,
+- reject candidates before test/eval if train strict evidence is weak,
+- configurable thresholds: train trades, CAGR, strict MDD, CAGR/MDD, mean-return p-value, and effect size.
+
+Strict-gate smoke:
+- generated rules: 400.
+- prefiltered candidates: 800.
+- dedupe candidates: 60.
+- unique candidates checked by train strict gate: 3.
+- strict-scanned test/eval candidates: 0.
+
+Rejected examples:
+- `hold=432` + `rex_144_range_width_pct=pos_large`, action `invert`: train CAGR 18.14%, MDD 36.60%, ratio 0.50, p=0.167, effect=0.056.
+- `hold=432` + `rex_2016_cur_to_min_pct=pos_large`, action `invert`: train CAGR 6.01%, MDD 22.71%, ratio 0.26, p=0.532, effect=0.025.
+- `hold=432` + `rex_8640_cur_to_min_pct=pos_large`, action `invert`: train CAGR 4.46%, MDD 47.61%, ratio 0.09, p=0.605, effect=0.021.
+
+Decision:
+- The staged strict gate correctly blocks weak broad predicates before eval exposure.
+- This should be used for subsequent binary-edge batches; otherwise isolated reward prefilter repeatedly wastes strict test/eval on non-robust candidates.
