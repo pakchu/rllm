@@ -78,3 +78,23 @@ The best next RLLM direction is not two-LLM analyzer/trader or wave-teacher imit
 5. Reject if test+eval both fail ratio/trade-count gates.
 
 The main lesson: **LLM should not invent alpha from noisy prices; it should compress multi-feature context and veto/sizing decisions around a separately verified weak edge.**
+
+## Meta-controller SFT surface
+New builder: `training/build_linear_alpha_meta_sft.py`
+
+This converts frozen alpha predictions into single-LLM SFT rows.  Prompts contain only signal-time context and explicitly prohibit side invention.  Targets use future realized trade outcomes only as supervised labels:
+- `TAKE/FULL` if realized return is at least +0.35%.
+- `TAKE/SMALL` if realized return is positive but below +0.35%.
+- `SKIP/NONE` otherwise or if the alpha did not trigger.
+
+Generated smoke datasets for `external h288 q0.05`:
+- `data/linear_alpha_external_h288_q005_meta_sft_test_2024h2_2025.jsonl`
+  - rows: 16,453
+  - target decisions: SKIP 9,276 / TAKE 7,177
+  - size buckets: FULL 5,125 / SMALL 2,052 / NONE 9,276
+- `data/linear_alpha_external_h288_q005_meta_sft_eval_2026_jan_may.jsonl`
+  - rows: 7,190
+  - target decisions: SKIP 3,588 / TAKE 3,602
+  - size buckets: FULL 2,522 / SMALL 1,080 / NONE 3,588
+
+Important caveat: these labels are per-candidate realized outcomes, not non-overlapping portfolio outcomes.  They are suitable for a Gemma meta-controller POC, but final selection must still be audited through `online_risk_overlay_backtest` with frozen predictions.
