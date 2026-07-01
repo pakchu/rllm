@@ -391,3 +391,23 @@ Decision:
 - Randomization fixed the misleading positional baseline, and state context is included, but Gemma still does not learn robust A/B ranking from 512-row smoke.  It remains A-biased and does not beat the random-sample baseline.
 - Failed v2 checkpoints were deleted.
 - The current bottleneck is likely that labels are too path-outcome/noisy for the sparse candidate prompt, and the candidate pool itself may not expose stable discriminative text patterns.  Next direction should add explicit path-quality bins from past-only analogs or use a non-LLM candidate selector as teacher before asking Gemma to imitate/compress it.
+
+## Past-only pairwise teacher diagnostic
+New diagnostic: `training/linear_alpha_candidate_pairwise_teacher.py`
+
+Purpose: before asking Gemma to infer noisy future path labels directly, test whether a simple past-only analog teacher can learn candidate-family/context win rates and select A/B for future periods.  The teacher uses only prior pairwise rows and simple context buckets from the no-leak prompt.
+
+Walk-forward half-year result on randomized state-context pairwise v2 rows:
+
+| Eval period | Train rows | Eval rows | Teacher acc | Always-A | Always-B | Pred A/B |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| 2024H2 | 14,488 | 12,916 | 50.0% | 49.4% | 50.6% | 6,566 / 6,350 |
+| 2025H1 | 27,404 | 13,025 | 53.2% | 50.8% | 49.2% | 6,439 / 6,586 |
+| 2025H2 | 40,429 | 15,950 | 57.5% | 50.3% | 49.7% | 8,044 / 7,906 |
+| 2026H1 | 56,379 | 10,045 | 54.9% | 50.0% | 50.0% | 5,045 / 5,000 |
+| aggregate | - | 51,936 | 54.0% | 50.2% | 49.8% | 26,094 / 25,842 |
+
+Decision:
+- A cheap past-only teacher outperforms positional baselines without A/B collapse, unlike Gemma direct SFT.
+- This is the first relatively stable signal in the pairwise branch, but still weak.
+- Next useful LLM role is not direct future-label prediction; it is distilling/compressing a stronger teacher or teacher+context rationale once the teacher is strengthened and connected to portfolio selection.
