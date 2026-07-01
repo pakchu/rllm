@@ -10,14 +10,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import tempfile
 from collections import Counter, defaultdict
-from itertools import combinations
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+from itertools import combinations
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 
 from training.linear_alpha_deductive_candidate_selector import _candidate_from_pair, _numeric_state
 from training.online_risk_overlay_backtest import OnlineRiskOverlayConfig, run_overlay
@@ -47,6 +49,7 @@ class StrictSymbolicScanConfig:
     max_rules: int = 250
     max_rule_terms: int = 2
     max_state_features: int = 24
+    prefilter_mode: str = "test_return"
 
 
 def _candidate_examples(rows: list[dict[str, Any]], cfg: StrictSymbolicScanConfig) -> dict[str, list[dict[str, Any]]]:
@@ -66,6 +69,7 @@ def _candidate_examples(rows: list[dict[str, Any]], cfg: StrictSymbolicScanConfi
                 continue
             seen.add(key)
             pred = cand["prediction"]
+            path = cand.get("path") if isinstance(cand.get("path"), dict) else {}
             ex = {
                 "date": str(row.get("date")),
                 "signal_pos": int(row.get("signal_pos", -1) or -1),
@@ -74,6 +78,7 @@ def _candidate_examples(rows: list[dict[str, Any]], cfg: StrictSymbolicScanConfi
                 "hold_bars": int(pred.get("hold_bars", 0) or 0),
                 "state": state,
                 "prediction": pred,
+                "ret_pct": float(path.get("realized_return_pct", 0.0) or 0.0),
                 "features": None,
             }
             ex["features"] = _features(ex)
@@ -172,6 +177,22 @@ def _backtest(rows: list[dict[str, Any]], cfg: StrictSymbolicScanConfig, tmpdir:
     )
 
 
+def _cheap_prefilter_score(examples: list[dict[str, Any]], rule: tuple[str, ...], action: str) -> float:
+    rule_set = set(rule)
+    vals: list[float] = []
+    for ex in examples:
+        if rule_set.issubset(ex["features"]):
+            sign = 1.0 if action == "follow" else -1.0
+            vals.append(sign * float(ex.get("ret_pct", 0.0) or 0.0))
+    if not vals:
+        return -1e9
+    arr = np.asarray(vals, dtype=float)
+    mean = float(np.mean(arr))
+    std = float(np.std(arr, ddof=1)) if arr.size > 1 else 0.0
+    t_like = mean / (std / math.sqrt(float(arr.size))) if std > 1e-12 else 0.0
+    return mean * min(3.0, math.sqrt(float(arr.size)) / 12.0) + 0.02 * t_like
+
+
 def _test_score(bt: dict[str, Any], min_trades: int) -> float:
     sim = bt.get("sim", {})
     stats = bt.get("trade_stats", {})
@@ -195,7 +216,7 @@ def run(cfg: StrictSymbolicScanConfig) -> dict[str, Any]:
         max_state_features=int(cfg.max_state_features),
     )
     # Cheap prefilter: require enough matching candidate rows on train/test.
-    candidates: list[tuple[tuple[str, ...], str, int, int]] = []
+    candidates: list[tuple[tuple[str, ...], str, int, int, float]] = []
     for rule in rules:
         rule_set = set(rule)
         train_n = sum(1 for ex in splits["train"] if rule_set.issubset(ex["features"]))
@@ -205,15 +226,20 @@ def run(cfg: StrictSymbolicScanConfig) -> dict[str, Any]:
         if test_n < int(cfg.min_support_test):
             continue
         for action in ("follow", "invert"):
-            candidates.append((rule, action, train_n, test_n))
-    # Limit by broad support first to keep strict backtests bounded.
-    candidates.sort(key=lambda x: (x[3], x[2]), reverse=True)
+            if cfg.prefilter_mode == "support":
+                prefilter_score = float(test_n) + 0.001 * float(train_n)
+            else:
+                prefilter_score = _cheap_prefilter_score(splits["test"], rule, action)
+            candidates.append((rule, action, train_n, test_n, prefilter_score))
+    # Use test only for prefiltering, then use strict backtest for final test ranking.
+    # Eval is never used before the final report.
+    candidates.sort(key=lambda x: (x[4], x[3], x[2]), reverse=True)
     candidates = candidates[: int(cfg.max_rules)]
 
     scanned: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix="strict_symbolic_scan_") as td:
         tmpdir = Path(td)
-        for idx, (rule, action, train_support, test_support) in enumerate(candidates):
+        for idx, (rule, action, train_support, test_support, prefilter_score) in enumerate(candidates):
             train_preds = _matching_predictions(splits["train"], rule, action)
             test_preds = _matching_predictions(splits["test"], rule, action)
             if len(test_preds) < int(cfg.min_support_test):
@@ -230,6 +256,7 @@ def run(cfg: StrictSymbolicScanConfig) -> dict[str, Any]:
                     "train": {"sim": train_bt["sim"], "trade_stats": train_bt["trade_stats"]},
                     "test": {"sim": test_bt["sim"], "trade_stats": test_bt["trade_stats"]},
                     "eval": {"sim": eval_bt["sim"], "trade_stats": eval_bt["trade_stats"]},
+                    "prefilter_score": prefilter_score,
                     "test_score": _test_score(test_bt, int(cfg.min_test_trades)),
                 }
             )
@@ -240,7 +267,7 @@ def run(cfg: StrictSymbolicScanConfig) -> dict[str, Any]:
         "split_candidate_examples": {k: len(v) for k, v in splits.items()},
         "generated_rule_count": len(rules),
         "strict_scanned_count": len(scanned),
-        "selection_protocol": "rules generated from train support; strict backtest rank on test only; eval untouched",
+        "selection_protocol": "rules generated from train support; optional test-only cheap prefilter; strict backtest rank on test only; eval untouched",
         "top_by_test": scanned[: int(cfg.top_k)],
     }
     Path(cfg.output).parent.mkdir(parents=True, exist_ok=True)
@@ -269,6 +296,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-rules", type=int, default=StrictSymbolicScanConfig.max_rules)
     p.add_argument("--max-rule-terms", type=int, default=StrictSymbolicScanConfig.max_rule_terms)
     p.add_argument("--max-state-features", type=int, default=StrictSymbolicScanConfig.max_state_features)
+    p.add_argument("--prefilter-mode", choices=("test_return", "support"), default=StrictSymbolicScanConfig.prefilter_mode)
     return p.parse_args()
 
 
