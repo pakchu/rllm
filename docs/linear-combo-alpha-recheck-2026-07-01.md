@@ -1238,3 +1238,25 @@ Readout:
 - The broad scan did **not** find a stronger complementary non-REX alpha. Most non-REX families either reverse sign across years or fail 2025/2026.
 - The only repeatable cluster remains higher-timeframe REX pullback/reclaim/resume. That supports the earlier conclusion: current evidence is a weak price-action alpha, not a general model breakthrough.
 - Next step should combine `rex_htf_pullback_resume` q0.80 and `rex_htf_pullback_reclaim` q0.85 as a non-overlap portfolio/pool and measure whether trade count improves without raising strict MDD. If the combined pool cannot improve, we need new raw data/feature edges rather than more scoring tricks.
+
+## 2026-07-02 REX combo rolling validation
+
+Purpose: test whether the two surviving REX sub-families combine into a wider non-overlapping pool. Added `training/rex_combo_rolling_validation.py`, which fits each family's quantile threshold on the fold train window, merges same-bar duplicates by threshold-excess priority, then runs the existing strict non-overlap simulator on the validation fold.
+
+Runs:
+- `results/rex_combo_rolling_resume080_reclaim085_2026-07-02.json`
+- `results/rex_combo_rolling_resume085_reclaim085_2026-07-02.json`
+- `results/rex_combo_rolling_resume085_reclaim080_2026-07-02.json`
+- `results/rex_combo_rolling_resume080_reclaim080_2026-07-02.json`
+
+| combo | 2023 val | 2024 val | 2025 val | 2026 Jan-May val | verdict |
+| --- | --- | --- | --- | --- | --- |
+| resume 0.85 + reclaim 0.85 | 6.55% CAGR / 13.30% MDD / 128 trades / p=0.568 | 7.73% / 14.31% / 134 / p=0.578 | 0.45% / 14.57% / 114 / p=0.920 | 17.39% / 8.07% / 49 / p=0.600 | Only combo with all folds positive; trade count improves, edge is diluted. |
+| resume 0.80 + reclaim 0.85 | 7.92% / 11.67% / 137 / p=0.518 | 13.29% / 15.36% / 152 / p=0.391 | -3.67% / 15.92% / 135 / p=0.866 | 16.05% / 7.56% / 54 / p=0.573 | Fails 2025; reject. |
+| resume 0.85 + reclaim 0.80 | 7.93% / 15.81% / 154 / p=0.525 | 3.20% / 24.26% / 161 / p=0.793 | -10.74% / 21.27% / 145 / p=0.535 | -5.80% / 11.23% / 59 / p=0.883 | Reclaim 0.80 is too loose; reject. |
+| resume 0.80 + reclaim 0.80 | 7.39% / 15.31% / 157 / p=0.547 | 8.36% / 23.08% / 176 / p=0.601 | -7.04% / 20.19% / 158 / p=0.715 | -3.66% / 10.73% / 60 / p=0.941 | Too loose and unstable; reject. |
+
+Readout:
+- Combining weak REX candidates increases trades, but loose thresholds admit enough bad trades to break 2025/2026.
+- The only survivable combo (`resume 0.85 + reclaim 0.85`) is more statistically broad than standalone `resume 0.85`, but CAGR drops hard in 2023-2025. It is a candidate for an LLM/ranker layer, not a final rule strategy.
+- This supports the current architecture direction: use the REX cluster as a candidate generator, then train a compact text/LLM ranker on interpretable price-action context to decide which candidates to skip rather than trying more hand-written gates.
