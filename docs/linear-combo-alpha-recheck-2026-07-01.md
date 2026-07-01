@@ -1189,3 +1189,24 @@ Readout:
 - `turn_resume` is especially dangerous: it improved 2025 validation at q0.80 but failed 2026.
 - The robust signal seems to come from higher-timeframe pullback location itself, not from simple 5m candle confirmation.
 - Next direction should be broader data/fold validation or a different alpha family, not more hand-built timing gates on the same REX pullback.
+
+## 2026-07-02 expanding rolling validation for REX resume
+
+Purpose: reduce dependence on one 2025 validation and one 2026 eval split. Added `training/rex_rolling_validation.py`, which uses expanding train windows, fits the quantile threshold only on each fold's train period, then reports the next validation period.
+
+Run: `results/rex_rolling_validation_resume_core_2026-07-02.json`, family `rex_htf_pullback_resume`, folds 2023/2024/2025/2026, grid q `{0.80,0.85}`, hold `{288,432}`, stride `{24,72}`.
+
+Top rolling candidates:
+
+| q / hold / stride | 2023 val | 2024 val | 2025 val | 2026 Jan-May val | readout |
+| --- | --- | --- | --- | --- | --- |
+| 0.85 / 432 / 72 | 18.12% CAGR / 5.47% MDD / 44 trades / p=0.032 | 16.75% / 9.23% / 45 / p=0.237 | 21.71% / 4.55% / 38 / p=0.127 | 14.90% / 4.86% / 23 / p=0.523 | Most consistent ratio, but too few recent trades. |
+| 0.80 / 288 / 24 | 13.08% / 10.22% / 97 / p=0.279 | 11.21% / 13.40% / 114 / p=0.416 | 2.69% / 14.30% / 111 / p=0.805 | 13.79% / 7.46% / 47 / p=0.608 | Best trade count and all folds positive, weak 2025. |
+| 0.85 / 288 / 24 | 17.56% / 7.66% / 76 / p=0.080 | 17.84% / 7.69% / 71 / p=0.181 | 7.33% / 6.53% / 63 / p=0.581 | 7.11% / 7.46% / 37 / p=0.792 | Balanced, but recent effect weak. |
+| 0.85 / 288 / 72 | 25.46% / 5.09% / 53 / p=0.015 | 9.18% / 8.86% / 51 / p=0.458 | 29.75% / 4.93% / 49 / p=0.024 | -5.42% / 6.91% / 28 / p=0.823 | Confirms stride72 validation trap. |
+
+Readout:
+- This is the strongest evidence so far that `rex_htf_pullback_resume` is not pure leakage: several fixed parameterizations are positive across 2023, 2024, 2025, and 2026 with thresholds fit only on prior data.
+- Still not enough for the target: recent fold trade counts are small and p-values are weak, and CAGR remains below the 50% target.
+- `q0.80/hold288/stride24` is the best “statistical breadth” candidate; `q0.85/hold432/stride72` is the best ratio candidate but too sparse.
+- Next step should expand the pool around the broad q0.80/hold288/stride24 setting, not add more gates: find complementary non-overlapping families that survive the same rolling validation.
