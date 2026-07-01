@@ -32,6 +32,7 @@ class BinaryEdgeStrictScanConfig:
     max_state_features: int = 48
     max_prefilter_candidates: int = 500
     max_generated_rules: int = 3000
+    actions: str = "follow,invert"
     stage_train_gate: bool = False
     min_stage_train_trades: int = 20
     min_stage_train_cagr: float = 0.0
@@ -172,7 +173,10 @@ def run(cfg:BinaryEdgeStrictScanConfig)->dict[str,Any]:
     for rule in rules:
         rs=set(rule); tr=sum(1 for ex in splits['train'] if rs.issubset(ex['features'])); te=sum(1 for ex in splits['test'] if rs.issubset(ex['features']))
         if tr<cfg.min_support_train or te<cfg.min_support_test: continue
-        for action in ('follow','invert'): candidates.append((rule,action,tr,te,_prefilter(splits['test'],rule,action)))
+        for action in [a.strip() for a in str(cfg.actions).split(',') if a.strip()]:
+            if action not in {'follow','invert'}:
+                continue
+            candidates.append((rule,action,tr,te,_prefilter(splits['test'],rule,action)))
     candidates.sort(key=lambda x:(x[4],x[3],x[2]),reverse=True)
     prefiltered=len(candidates)
     # Bound expensive signature deduplication.  The sorted list is already a
@@ -213,7 +217,7 @@ def run(cfg:BinaryEdgeStrictScanConfig)->dict[str,Any]:
 def parse_args():
     p=argparse.ArgumentParser(description=__doc__)
     for f in ['inputs','market_csv','output']: p.add_argument('--'+f.replace('_','-'),required=True)
-    for f in ['train_start','train_end','test_start','test_end','eval_start','eval_end']: p.add_argument('--'+f.replace('_','-'),default=getattr(BinaryEdgeStrictScanConfig,f))
+    for f in ['train_start','train_end','test_start','test_end','eval_start','eval_end','actions']: p.add_argument('--'+f.replace('_','-'),default=getattr(BinaryEdgeStrictScanConfig,f))
     for f in ['min_support_train','min_support_test','min_test_trades','max_rules','top_k','max_rule_terms','max_state_features','max_prefilter_candidates','max_generated_rules','min_stage_train_trades','max_hold_bars','entry_delay_bars']: p.add_argument('--'+f.replace('_','-'),type=int,default=getattr(BinaryEdgeStrictScanConfig,f))
     p.add_argument('--stage-train-gate', action='store_true', default=BinaryEdgeStrictScanConfig.stage_train_gate)
     for f in ['leverage','fee_rate','slippage_rate','min_stage_train_cagr','max_stage_train_mdd','min_stage_train_ratio','max_stage_train_p','min_stage_train_effect']: p.add_argument('--'+f.replace('_','-'),type=float,default=getattr(BinaryEdgeStrictScanConfig,f))

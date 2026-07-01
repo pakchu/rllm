@@ -736,3 +736,22 @@ Decision:
 - The staged gate is working: it prevented obviously bad train-strict candidates from consuming eval.
 - The current cheap prefilter is dominated by `invert` candidates that are contra-profitable in train strict execution.
 - Next search should separate actions and run follow-only / invert-only batches rather than letting broad invert candidates crowd out the candidate queue.
+
+## Binary-edge action-separated smoke
+Scanner update:
+- added `--actions follow,invert|follow|invert` so broad invert predicates cannot crowd out follow-only searches.
+
+Follow-only strict-gated smoke:
+- generated rules: 400.
+- prefiltered candidates: 400.
+- unique train-gated candidates: 3.
+- strict-scanned test/eval candidates: 0.
+
+Rejected follow-only examples:
+- `hold=72` + `rex_576_range_pos=pos_mid`, action `follow`: train CAGR -10.97%, MDD 42.92%, ratio -0.26, p=0.301.
+- `drawdown_state=low` + `hold=72`, action `follow`: train CAGR -21.74%, MDD 55.32%, ratio -0.39, p=0.019.
+- `hold=72` + `rex_144_range_pos=pos_mid`, action `follow`: train CAGR -31.96%, MDD 69.69%, ratio -0.46, p=0.001.
+
+Decision:
+- Action separation works mechanically, but the tested follow-only broad predicates are also not profitable in train strict execution.
+- Next step should diagnose the binary-edge candidate pool base profitability by family/hold/side before spending more search on combinations.
