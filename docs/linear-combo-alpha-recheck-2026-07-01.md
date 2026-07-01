@@ -819,3 +819,25 @@ Decision:
 - The candidate book has a very high oracle ceiling, unlike the binary-edge symbolic pool.
 - The next structure should focus on learning/verifying target-action selection from past-only prompts, not mining the previous binary-edge pool.
 - Treat this as a ceiling only; live validation still requires a no-leak selector trained only on prior periods.
+
+## Event action verifier oracle ceiling
+New diagnostic: `training/event_action_verifier_target_strict_backtest.py`
+
+Purpose: measure the post-ranker verifier surface.  Rows contain exact executable actions and ALLOW/BLOCK labels derived from future audit.  This is not live tradable, but it shows whether a verifier that could learn ALLOW decisions would have enough ceiling.
+
+Inputs:
+- train: `event_action_verifier_text_v3k8_train_2020_2024_wavefull_regen_pae_2026-06-27.jsonl`, filtered to 2022-2024.
+- test: `event_action_verifier_text_v3k8_2025_wavefull_regen_pae_2026-06-27.jsonl`.
+- eval: `event_action_verifier_text_v3k8_2026_jan_may_wavefull_regen_pae_2026-06-27.jsonl`.
+
+Oracle ALLOW strict results:
+| Split | Rows | CAGR | Strict MDD | CAGR/MDD | Trades | p-value |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| train 2022-2024 | 1,190 | 1630.08% | 3.74% | 435.52 | 411 | 0.0000 |
+| test 2025 | 362 | 1010.92% | 5.21% | 194.14 | 125 | 0.0000 |
+| eval 2026 Jan-May | 147 | 1256.69% | 2.92% | 430.77 | 53 | 0.0000 |
+
+Decision:
+- The verifier surface has a strong oracle ceiling and is much more promising than the binary-edge symbolic pool.
+- The right structure is a no-leak learned verifier/post-ranker: use LLM reasoning over categorical past-only prompt + exact action, then strict backtest accepted actions.
+- Next step should be a no-leak baseline verifier, then LLM distillation/fine-tuning only if the baseline can recover part of the oracle without leakage.
