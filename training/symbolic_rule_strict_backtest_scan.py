@@ -12,6 +12,7 @@ import argparse
 import json
 import tempfile
 from collections import Counter, defaultdict
+from itertools import combinations
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -44,6 +45,8 @@ class StrictSymbolicScanConfig:
     fee_rate: float = 0.0004
     slippage_rate: float = 0.0001
     max_rules: int = 250
+    max_rule_terms: int = 2
+    max_state_features: int = 24
 
 
 def _candidate_examples(rows: list[dict[str, Any]], cfg: StrictSymbolicScanConfig) -> dict[str, list[dict[str, Any]]]:
@@ -78,17 +81,34 @@ def _candidate_examples(rows: list[dict[str, Any]], cfg: StrictSymbolicScanConfi
     return splits
 
 
-def _rule_candidates(train: list[dict[str, Any]], *, min_support: int) -> list[tuple[str, ...]]:
+def _rule_candidates(
+    train: list[dict[str, Any]],
+    *,
+    min_support: int,
+    max_rule_terms: int,
+    max_state_features: int,
+) -> list[tuple[str, ...]]:
     counts: Counter[str] = Counter()
     for ex in train:
         counts.update(ex["features"])
     base = [f for f, n in counts.items() if n >= int(min_support)]
     rules: set[tuple[str, ...]] = {(f,) for f in base}
     anchors = [f for f in base if f.startswith(("id=", "side=", "id_side="))]
+    # Keep the most-supported state predicates so three-premise deductive rules do
+    # not explode combinatorially before strict backtest prefiltering.
     states = [f for f in base if not f.startswith(("id=", "side=", "id_side=", "hold="))]
+    states = sorted(states, key=lambda f: (-counts[f], f))[: int(max_state_features)]
     for a in anchors:
         for b in states:
             rules.add(tuple(sorted((a, b))))
+    if int(max_rule_terms) >= 2:
+        for pair in combinations(states, 2):
+            rules.add(tuple(sorted(pair)))
+    if int(max_rule_terms) >= 3:
+        state_pairs = list(combinations(states, 2))
+        for a in anchors:
+            for b, c in state_pairs:
+                rules.add(tuple(sorted((a, b, c))))
     return sorted(rules)
 
 
@@ -168,7 +188,12 @@ def _test_score(bt: dict[str, Any], min_trades: int) -> float:
 def run(cfg: StrictSymbolicScanConfig) -> dict[str, Any]:
     rows = _load(cfg.pairwise_inputs)
     splits = _candidate_examples(rows, cfg)
-    rules = _rule_candidates(splits["train"], min_support=int(cfg.min_support_train))
+    rules = _rule_candidates(
+        splits["train"],
+        min_support=int(cfg.min_support_train),
+        max_rule_terms=int(cfg.max_rule_terms),
+        max_state_features=int(cfg.max_state_features),
+    )
     # Cheap prefilter: require enough matching candidate rows on train/test.
     candidates: list[tuple[tuple[str, ...], str, int, int]] = []
     for rule in rules:
@@ -242,6 +267,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-hold-bars", type=int, default=StrictSymbolicScanConfig.max_hold_bars)
     p.add_argument("--entry-delay-bars", type=int, default=StrictSymbolicScanConfig.entry_delay_bars)
     p.add_argument("--max-rules", type=int, default=StrictSymbolicScanConfig.max_rules)
+    p.add_argument("--max-rule-terms", type=int, default=StrictSymbolicScanConfig.max_rule_terms)
+    p.add_argument("--max-state-features", type=int, default=StrictSymbolicScanConfig.max_state_features)
     return p.parse_args()
 
 
