@@ -282,3 +282,29 @@ DPO dry-run:
 Code note: `training/train_text_dpo.py` now buckets `{"decision": ...}` completions correctly for balanced sampling summaries.
 
 Next validation: run a small Gemma DPO adapter and score `TAKE` vs `SKIP` on balanced test rows.  Promote only if it stops all-TAKE/all-SKIP collapse and beats the SFT smoke baseline.
+
+## Gemma DPO preference smoke result
+Small DPO adapter:
+- train: `data/linear_alpha_external_h288_q005_meta_pref_train_2024h1_pathq_stablepa_binary.jsonl`
+- model: `gemma4-e4b` (`google/gemma-4-E4B-it`)
+- sample/steps: 512 balanced preference pairs, 16 steps, LoRA r8/alpha16, beta 0.1, lr 5e-6.
+- runtime: 151.8s.
+- train loss: 0.6938, reward margins unstable around zero.
+
+Balanced candidate-logprob test result:
+- test 128 rows: accuracy 60.2%, pred SKIP 13 / TAKE 115.
+- threshold audit on `TAKE_score - SKIP_score`:
+  - threshold 0.25: 65.6% accuracy, TP 59 / FP 39 / TN 25 / FN 5.
+  - threshold 0.50: 66.4% accuracy, TP 47 / FP 26 / TN 38 / FN 17.
+
+Balanced eval result:
+- eval 256 rows: accuracy 53.9%, pred SKIP 24 / TAKE 232.
+- threshold transferred from test does not hold:
+  - threshold 0.25: 55.5% accuracy, TP 107 / FP 93 / TN 35 / FN 21.
+  - threshold 0.50: 51.6% accuracy, TP 76 / FP 72 / TN 56 / FN 52.
+
+Decision:
+- DPO is better than binary SFT on test because it no longer predicts TAKE for every row, but the improvement does not transfer to eval.
+- This confirms the current issue is still regime/label instability, not merely output formatting or SFT vs DPO objective.
+- Failed DPO and dry-run checkpoints were deleted to keep disk usage bounded.
+- Next direction should be rolling calibration / regime-conditioned preference data, not a larger global adapter over 2024H1 only.
