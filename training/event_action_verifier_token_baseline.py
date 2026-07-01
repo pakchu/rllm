@@ -240,6 +240,32 @@ def _rank_score(bt: dict[str, Any]) -> float:
     return float(s.get('cagr_to_strict_mdd', 0.0) or 0.0) + 0.03 * float(s.get('cagr_pct', 0.0) or 0.0) - 0.25 * float(t.get('p_value_mean_ret_approx', 1.0) or 1.0)
 
 
+def _robust_rank_score(train_bt: dict[str, Any], test_bt: dict[str, Any]) -> float:
+    """Rank thresholds without eval, penalizing 2025-only spikes."""
+    tr = train_bt.get('sim', {})
+    te = test_bt.get('sim', {})
+    tt = test_bt.get('trade_stats', {})
+    train_trades = int(tr.get('trade_entries', 0) or 0)
+    test_trades = int(te.get('trade_entries', 0) or 0)
+    train_cagr = float(tr.get('cagr_pct', 0.0) or 0.0)
+    test_cagr = float(te.get('cagr_pct', 0.0) or 0.0)
+    train_mdd = float(tr.get('strict_mdd_pct', 0.0) or 0.0)
+    test_mdd = float(te.get('strict_mdd_pct', 0.0) or 0.0)
+    if train_trades < 120 or test_trades < 40 or train_cagr <= 0.0 or test_cagr <= 0.0:
+        return -1e9
+    if train_mdd > 40.0 or test_mdd > 18.0:
+        return -1e9
+    train_ratio = float(tr.get('cagr_to_strict_mdd', 0.0) or 0.0)
+    test_ratio = float(te.get('cagr_to_strict_mdd', 0.0) or 0.0)
+    p_value = float(tt.get('p_value_mean_ret_approx', 1.0) or 1.0)
+    # Prefer balanced evidence.  A high 2025 ratio with weak train support is a
+    # validation trap, so the minimum ratio is weighted more than the maximum.
+    balance = min(train_ratio, test_ratio) + 0.35 * max(0.0, min(3.0, test_ratio))
+    trade_bonus = min(test_trades, 160) / 250.0 + min(train_trades, 700) / 1400.0
+    mdd_penalty = 0.015 * max(0.0, train_mdd - 20.0) + 0.02 * max(0.0, test_mdd - 10.0)
+    return balance + trade_bonus - 0.25 * p_value - mdd_penalty
+
+
 def run(cfg: VerifierTokenBaselineConfig) -> dict[str, Any]:
     train = _load(cfg.train_inputs)
     test = _load(cfg.test_inputs)
@@ -259,8 +285,8 @@ def run(cfg: VerifierTokenBaselineConfig) -> dict[str, Any]:
             train_bt = _backtest(train_preds, cfg, tmp, f'th{th:.3f}_train')
             test_bt = _backtest(test_preds, cfg, tmp, f'th{th:.3f}_test')
             eval_bt = _backtest(eval_preds, cfg, tmp, f'th{th:.3f}_eval')
-            rows.append({'threshold': th, 'train_rows': len(train_preds), 'test_rows': len(test_preds), 'eval_rows': len(eval_preds), 'train': train_bt, 'test': test_bt, 'eval': eval_bt, 'test_score': _rank_score(test_bt)})
-    rows.sort(key=lambda r: float(r['test_score']), reverse=True)
+            rows.append({'threshold': th, 'train_rows': len(train_preds), 'test_rows': len(test_preds), 'eval_rows': len(eval_preds), 'train': train_bt, 'test': test_bt, 'eval': eval_bt, 'test_score': _rank_score(test_bt), 'robust_score': _robust_rank_score(train_bt, test_bt)})
+    rows.sort(key=lambda r: float(r['robust_score']), reverse=True)
     report = {
         'config': asdict(cfg),
         'rows': {'train': len(train), 'test': len(test), 'eval': len(eval_rows)},
@@ -268,8 +294,9 @@ def run(cfg: VerifierTokenBaselineConfig) -> dict[str, Any]:
         'token_count': len(model['reliability']),
         'scored_candidates': {'train': len(train_scored), 'test': len(test_scored), 'eval': len(eval_scored)},
         'score_mode': cfg.score_mode,
-        'selection_protocol': 'fit token reliability on train only; choose threshold by test strict score; report eval untouched',
-        'top_by_test': rows,
+        'selection_protocol': 'fit token reliability on train only; choose threshold by robust train+test strict score; report eval untouched',
+        'top_by_robust': rows,
+        'top_by_test': sorted(rows, key=lambda r: float(r['test_score']), reverse=True),
     }
     Path(cfg.output).parent.mkdir(parents=True, exist_ok=True)
     Path(cfg.output).write_text(json.dumps(report, indent=2, ensure_ascii=False))
@@ -300,7 +327,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     report = run(VerifierTokenBaselineConfig(**vars(parse_args())))
-    print(json.dumps({'rows': report['rows'], 'train_allow_rate': report['train_allow_rate'], 'token_count': report['token_count'], 'top_by_test': report['top_by_test'][:5]}, indent=2, ensure_ascii=False))
+    print(json.dumps({'rows': report['rows'], 'train_allow_rate': report['train_allow_rate'], 'token_count': report['token_count'], 'top_by_robust': report['top_by_robust'][:5]}, indent=2, ensure_ascii=False))
 
 
 if __name__ == '__main__':

@@ -1147,3 +1147,20 @@ Readout:
 - Shorter holds (144/216) often reduce MDD but fail eval or lack return. Longer hold 432 can improve train/2025 but eval trade count becomes too thin.
 - The original q0.85/hold288/stride24 remains the most balanced standalone family lead; it is weak but less obviously a validation artifact.
 - Next change should make the verifier/ranker explicitly penalize validation-trap patterns: require balanced train+val, minimum trade count, and avoid selecting narrow stride72 spikes even if 2025 p-value is good.
+
+## 2026-07-02 robust train+test verifier threshold score
+
+Purpose: avoid choosing thresholds from 2025-only spikes. `training/event_action_verifier_token_baseline.py` now emits both `test_score` and `robust_score`, and sorts `top_by_robust`. The robust score rejects too-few-trade thresholds, requires positive train/test CAGR, caps train/test MDD, and weights the weaker of train/test CAGR/MDD ratios more than the stronger one. Eval remains report-only.
+
+Re-run on the current best resume-only whitelist: `results/event_action_verifier_token_baseline_v10_robust_rex_htf_whitelist_2026-07-02.json`.
+
+| selected by robust score | train | 2025 test | 2026 eval | readout |
+| ---: | --- | --- | --- | --- |
+| threshold 0.070 | 17.16% CAGR / 32.04% MDD / 470 trades / p=0.061 | 19.16% / 8.34% / 62 / p=0.147 | 11.32% / 4.88% / 28 / p=0.565 | Same as previous test-score selection; still too few eval trades. |
+| threshold 0.065 | 14.18% / 31.81% / 524 / p=0.112 | 21.22% / 9.91% / 81 / p=0.108 | 13.84% / 7.21% / 36 / p=0.529 | More trades, slightly worse robust score due train/test balance. |
+| threshold 0.060 | 11.55% / 35.23% / 543 / p=0.177 | 17.79% / 11.21% / 98 / p=0.181 | 23.77% / 7.21% / 38 / p=0.304 | Wider but train MDD too high. |
+
+Readout:
+- Robust scoring did not change the best resume-only verifier threshold, so the current weakness is not just a bad threshold-selection metric.
+- The bottleneck remains alpha strength/trade count, especially eval sample size.
+- Keep robust scoring anyway because horizon sweep showed standalone family settings can overfit 2025 badly.
