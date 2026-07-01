@@ -411,3 +411,36 @@ Decision:
 - A cheap past-only teacher outperforms positional baselines without A/B collapse, unlike Gemma direct SFT.
 - This is the first relatively stable signal in the pairwise branch, but still weak.
 - Next useful LLM role is not direct future-label prediction; it is distilling/compressing a stronger teacher or teacher+context rationale once the teacher is strengthened and connected to portfolio selection.
+
+## Pairwise teacher portfolio backtest
+New exporter: `training/apply_pairwise_teacher_to_candidates.py`
+
+Purpose: convert the past-only pairwise teacher into live-style prediction rows by selecting one candidate per timestamp using only previous-period teacher stats, then audit the result with strict bar-by-bar backtest.
+
+Base teacher-selected predictions:
+- output rows: 37,508 from 2024H2 through 2026H1.
+- period selections: 2024H2 9,489; 2025H1 9,486; 2025H2 11,308; 2026H1 7,225.
+- strong long bias remains: 2026H1 selected LONG 6,714 / SHORT 511.
+
+Strict backtest at 0.5 leverage, max hold 576:
+
+| Period | CAGR | Strict MDD | CAGR/MDD | Trades | Mean trade | p-value |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2024H2-2026H1 | 4.55% | 27.28% | 0.17 | 477 | 0.026% | 0.658 |
+| test 2024H2-2025 | 6.45% | 17.00% | 0.38 | 380 | 0.033% | 0.621 |
+| eval 2026H1 | -1.77% | 19.21% | -0.09 | 97 | -0.001% | 0.994 |
+
+Vote-margin sweep on eval 2026H1:
+
+| Pair margin | Selected rows | Trades | CAGR | Strict MDD | CAGR/MDD | Mean trade | p-value |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.005 | 6,963 | 96 | -13.07% | 20.66% | -0.63 | -0.053% | 0.653 |
+| 0.010 | 6,963 | 96 | -13.07% | 20.66% | -0.63 | -0.053% | 0.653 |
+| 0.020 | 5,199 | 91 | 3.94% | 18.74% | 0.21 | 0.024% | 0.845 |
+| 0.030 | 4,073 | 49 | 6.23% | 8.01% | 0.78 | 0.054% | 0.726 |
+
+Decision:
+- The weak pairwise teacher improves classification above baseline but does not translate into a tradable portfolio edge.
+- Higher margin reduces MDD but also cuts trades and remains statistically insignificant.
+- This closes the current linear-combo candidate-selection branch as non-promotable.
+- The useful lesson is architectural: LLM should not learn from noisy realized path labels directly; we need a stronger teacher/candidate source before distillation.
