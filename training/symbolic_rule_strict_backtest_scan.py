@@ -234,7 +234,24 @@ def run(cfg: StrictSymbolicScanConfig) -> dict[str, Any]:
     # Use test only for prefiltering, then use strict backtest for final test ranking.
     # Eval is never used before the final report.
     candidates.sort(key=lambda x: (x[4], x[3], x[2]), reverse=True)
-    candidates = candidates[: int(cfg.max_rules)]
+    prefiltered_candidate_count = len(candidates)
+    # Many symbolic predicates are aliases for the same executed rows (for example
+    # side_* predicates can duplicate non-side predicates on one-sided rules).
+    # Deduplicate by the actual test prediction signature before spending strict
+    # overlay time.  This preserves the highest-prefilter representative.
+    unique_candidates: list[tuple[tuple[str, ...], str, int, int, float]] = []
+    seen_signatures: set[tuple[str, tuple[int, ...]]] = set()
+    for cand in candidates:
+        rule, action, _train_n, _test_n, _prefilter_score = cand
+        sig_rows = _matching_predictions(splits["test"], rule, action)
+        signature = (action, tuple(int(r["signal_pos"]) for r in sig_rows))
+        if signature in seen_signatures:
+            continue
+        seen_signatures.add(signature)
+        unique_candidates.append(cand)
+        if len(unique_candidates) >= int(cfg.max_rules):
+            break
+    candidates = unique_candidates
 
     scanned: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix="strict_symbolic_scan_") as td:
@@ -266,6 +283,8 @@ def run(cfg: StrictSymbolicScanConfig) -> dict[str, Any]:
         "config": asdict(cfg),
         "split_candidate_examples": {k: len(v) for k, v in splits.items()},
         "generated_rule_count": len(rules),
+        "prefiltered_candidate_count": prefiltered_candidate_count,
+        "unique_strict_candidate_count": len(candidates),
         "strict_scanned_count": len(scanned),
         "selection_protocol": "rules generated from train support; optional test-only cheap prefilter; strict backtest rank on test only; eval untouched",
         "top_by_test": scanned[: int(cfg.top_k)],

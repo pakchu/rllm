@@ -544,3 +544,30 @@ Decision:
 - The strict scanner is the correct validation surface for LLM-generated symbolic rules.
 - No rule from this first grammar is promotable: top rules fail eval, exceed the strict MDD target, or lack statistical significance.
 - The failure is useful: the previous strong-looking symbolic result was mostly objective mismatch, not alpha.  Future LLM work should propose richer price-action/regime rules, but promotion must stay strict-backtest-first with chronological train/test/eval separation.
+
+## Strict symbolic scan v2: three-premise grammar and test prefilter
+Scanner updates:
+- `--max-rule-terms 3` permits anchor + two state predicates so deductive LLM-style rules can express conjunctions.
+- `--prefilter-mode test_return` uses test-only isolated return as triage before expensive strict backtests; final ranking still uses strict test overlay.
+- duplicate predicate aliases are removed by actual test prediction signature before strict overlay.
+
+Completed v2 run before duplicate removal:
+- generated rules: 3,661.
+- strict-scanned rules: 16.
+- top rule: `htf_1w_return_4=mid` + `id_side=market_derivatives|h576|original|LONG` + `kimchi_premium_zscore=mid`, action `follow`.
+
+| Split | CAGR | Strict MDD | CAGR/MDD | Trades | Mean trade p-value |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| train 2024H1 | 6.06% | 8.81% | 0.69 | 34 | 0.764 |
+| test 2024H2-2025 | 13.52% | 10.48% | 1.29 | 88 | 0.249 |
+| eval 2026 Jan-May | -11.50% | 19.34% | -0.59 | 30 | 0.645 |
+
+Duplicate-removal smoke run:
+- strict-scanned unique rules: 3.
+- top rule remained the same and still failed eval.
+- one apparent eval blow-up had only one eval trade, so it is non-promotable regardless of CAGR arithmetic.
+
+Decision:
+- Three-premise grammar finds more interpretable pockets, but still no stable alpha.
+- The current recurring failure mode is regime transfer: selected 2024H2-2025 rules lose edge in 2026.
+- Next scans should use deduplicated candidates and broader candidate budgets, but promotion requires positive eval with adequate trade count, strict MDD <= 15, and statistical support.
