@@ -755,3 +755,22 @@ Rejected follow-only examples:
 Decision:
 - Action separation works mechanically, but the tested follow-only broad predicates are also not profitable in train strict execution.
 - Next step should diagnose the binary-edge candidate pool base profitability by family/hold/side before spending more search on combinations.
+
+## Binary-edge base strict diagnostic
+New diagnostic: `training/binary_edge_base_strict_diagnostic.py`
+
+Purpose: before adding more symbolic conjunctions, evaluate whether the live-style binary-edge candidate pool has any base tradable slice by singleton `family`, `hold`, `side`, `id`, and `id_side` rules.
+
+Run: `results/binary_edge_base_strict_diagnostic_v1_2022_2026_2026-07-01.json`
+- train 2022-2024, test 2025, eval 2026 Jan-May.
+- base features evaluated: 133 features x follow/invert = 266 strict backtests.
+
+Top test-ranked slices were not robust:
+- `id_side=macro_kimchi_divergence|h288|SHORT`, follow: train CAGR -26.40%, MDD 68.85%; test CAGR 17.92%, MDD 13.14%; eval CAGR -15.53%, MDD 18.94%.
+- `id_side=kimchi_extreme_fade|h432|LONG`, invert: train CAGR -17.85%, MDD 59.07%; test CAGR 19.67%, MDD 15.30%; eval CAGR 33.74%, MDD 7.23%, 58 trades, but invalidated by negative train.
+- `id_side=kimchi_extreme_fade|h288|LONG`, invert: train CAGR -20.57%, MDD 54.99%; test CAGR 15.29%, MDD 14.79%; eval CAGR -13.34%, MDD 15.78%.
+
+Decision:
+- The binary-edge candidate pool has repeated 2025 pockets but lacks stable positive base slices across 2022-2024 train.
+- The apparent eval-positive `kimchi_extreme_fade|h432|LONG` inverted slice is not promotable because it loses badly in train.
+- Further search should either change the candidate generation/reward design or require train-positive base slices before LLM/rule distillation.
