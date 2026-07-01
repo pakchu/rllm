@@ -128,3 +128,24 @@ Interpretation:
 - Conservative wording is too strong and collapses to SKIP.
 - Size-bucket balancing works at sampler level, but Gemma still prefers SMALL over FULL under constrained scoring.
 - Next POC should simplify the action space to binary `TAKE` vs `SKIP`, then handle size outside the LLM using calibrated score/volatility rules.
+
+## Binary TAKE/SKIP POC
+Because size buckets kept collapsing to either SMALL or SKIP, the next POC simplified Gemma output to binary `{"decision":"TAKE|SKIP"}` and moved sizing outside the LLM.
+
+Binary adapter:
+- train data: `data/linear_alpha_external_h288_q005_meta_sft_train_2024h1_binary.jsonl`
+- test data: `data/linear_alpha_external_h288_q005_meta_sft_test_2024h2_2025_binary.jsonl`
+- adapter: `checkpoints/linear_alpha_meta_binary_gemma4_sft_s512_step16_2026-07-01` (deleted after documenting failure)
+- training: 512 balanced TAKE/SKIP rows, 16 steps, train loss 0.9285.
+
+128-row balanced test logprob result:
+- target: SKIP 64 / TAKE 64
+- prediction: SKIP 17 / TAKE 111
+- decision accuracy: 57.0%
+- confusion: TP 60, FP 51, TN 13, FN 4
+
+Margin threshold audit on `TAKE_score - SKIP_score`:
+- best checked accuracy: 59.4% at threshold -0.5 / -0.25, but still FP 52 and TAKE 116/128.
+- high thresholds reduce false positives but miss nearly all true TAKE labels.
+
+Decision: binary simplification improves output form but not separability.  Current LLM prompt/state surface does not reliably distinguish TAKE from SKIP for this weak alpha.  The retained adapter is `compact_default` only for reproduction; failed smoke checkpoints were deleted to keep disk usage low.
