@@ -597,3 +597,22 @@ Decision:
 - It is not promotable yet because eval has only 15 trades and p-value is not significant.
 - This is a useful lead: the premise is interpretable and price-action oriented (`market_derivatives`, long-horizon range high, side-adjusted volatility mid), but it needs longer-period validation and more trade count before being treated as alpha.
 - No candidate in this run met the full promotion gate: test positive, eval positive, eval strict MDD <= 15, and eval trades >= 20.
+
+## Rejected: event pair strict scan on preference-pair data
+A temporary event-pair strict scanner was tested against:
+- `event_candidate_regime_pairwise_option_compact_paext_rex_train_2022_2024_2026-06-30.jsonl`
+- `event_candidate_regime_pairwise_option_compact_paext_rex_eval_2025_2026_2026-06-30.jsonl`
+
+Smoke result looked unrealistically strong, for example `drawdown_state=medium`, action `invert`, showed train/test/eval all highly profitable.  This is invalid as live-trading evidence.
+
+Root cause from `training/export_event_candidate_regime_pairwise_option.py`:
+- rows are grouped by month/side/hold/family,
+- sorted by future `_utility`,
+- the exporter pairs high-utility winners against low-utility losers,
+- `leakage_guard.target_uses_future_reward_for_training_only` is true.
+
+Decision:
+- These pairwise option files are valid for preference/fine-tuning tasks where reward is a label only.
+- They are not a live candidate stream and must not be materialized into backtest trades.
+- The temporary scanner was removed instead of committed to avoid future misuse.
+- Longer-period validation must use a live-style candidate stream where every candidate would have existed at signal time without future utility selection.
