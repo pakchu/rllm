@@ -149,3 +149,36 @@ Margin threshold audit on `TAKE_score - SKIP_score`:
 - high thresholds reduce false positives but miss nearly all true TAKE labels.
 
 Decision: binary simplification improves output form but not separability.  Current LLM prompt/state surface does not reliably distinguish TAKE from SKIP for this weak alpha.  The retained adapter is `compact_default` only for reproduction; failed smoke checkpoints were deleted to keep disk usage low.
+
+## Binary meta-state separability diagnostic
+New diagnostic: `training/linear_alpha_meta_feature_diagnostic.py`
+
+Purpose: before spending more GPU time on Gemma, test whether the current text/numeric state card contains enough signal for a simple train-only classifier to separate `TAKE` from `SKIP` without future leakage.
+
+Run configuration:
+- train: `data/linear_alpha_external_h288_q005_meta_sft_train_2024h1_binary.jsonl`
+- test: `data/linear_alpha_external_h288_q005_meta_sft_test_2024h2_2025_binary.jsonl`
+- eval: `data/linear_alpha_external_h288_q005_meta_sft_eval_2026_jan_may_binary.jsonl`
+- output: `results/linear_alpha_meta_feature_diagnostic_binary_2026-07-01.json`
+- model: simple numpy logistic baseline, train split only, 256 prompt-derived features, 800 steps, L2 0.02.
+
+Results:
+
+| Split | Rows | Accuracy | Majority | Beats majority | Balanced recall | TAKE recall | SKIP recall | Pred distribution |
+| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- |
+| train 2024H1 | 4,430 | 73.3% | 61.7% | yes | 69.4% | 52.8% | 86.1% | SKIP 3,154 / TAKE 1,276 |
+| test 2024H2-2025 | 16,453 | 55.6% | 56.4% | no | 53.3% | 34.5% | 72.0% | SKIP 11,374 / TAKE 5,079 |
+| eval 2026 Jan-May | 7,190 | 53.3% | 50.1% | weak yes | 53.4% | 33.8% | 72.9% | SKIP 5,002 / TAKE 2,188 |
+
+Top train-only univariate clues were weak but consistent with price-action/risk context being more useful than raw LLM phrasing:
+- `range_vol`: corr +0.223, effect +0.459 std.
+- `window_drawdown`: corr +0.088.
+- `dxy_momentum`: corr -0.087.
+- `usdkrw_zscore`: corr -0.076.
+- `dxy_zscore`: corr -0.069.
+- rolling-extrema context (`rex_*`) and range position also appear, but weakly.
+
+Decision:
+- Current meta-controller state has only weak out-of-sample separability.  Test does not beat majority and eval beats majority only marginally.
+- More Gemma SFT steps on this same surface are not justified; the problem is not only model capacity.
+- Next work should redesign the state/label around price-action path quality: rolling extrema distance, range/volatility regime, side-conditioned adverse excursion, MFE/MAE, and strict path-risk labels.  The LLM should make a compact veto/position-quality decision over genuinely informative state, not memorize noisy realized-return labels.
