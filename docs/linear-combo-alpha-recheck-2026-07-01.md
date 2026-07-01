@@ -646,3 +646,24 @@ Decision:
 - This is a valid longer-period live-style validation surface.
 - Smoke did not find a promotable rule, which is expected and much more believable than the rejected future-utility-selected event-pair scan.
 - Next step is a broader binary-edge scan with more unique strict candidates.
+
+## Binary-edge scanner runtime cap and capped smoke
+The broad binary-edge scan with 24 strict candidates was stopped after 32 minutes because candidate prefilter/signature work was too expensive.  The scanner now supports:
+- `--max-generated-rules` to cap support-ranked symbolic rules before exact prefilter scoring.
+- `--max-prefilter-candidates` to cap expensive signature deduplication.
+
+Capped smoke run:
+- `--max-generated-rules 400`
+- `--max-prefilter-candidates 60`
+- `--max-rules 3`
+- train 2022-2024, test 2025, eval 2026 Jan-May.
+
+Best capped rule:
+- rule: `hold=432` + `rex_2016_cur_to_min_pct=pos_large`, action `invert`.
+- test: CAGR 13.48%, strict MDD 10.54%, ratio 1.28, 204 trades, p=0.423.
+- eval: CAGR -13.23%, strict MDD 15.96%, ratio -0.83, 84 trades, p=0.714.
+
+Decision:
+- No promotable binary-edge symbolic rule in the capped smoke.
+- The longer live-style candidate stream is useful, but the first broad direction again shows 2025-only pockets that fail 2026.
+- Runtime caps are necessary for iterative exploration; larger scans should be staged in bounded batches, not one huge run.

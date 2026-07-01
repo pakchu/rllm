@@ -30,6 +30,8 @@ class BinaryEdgeStrictScanConfig:
     top_k: int = 30
     max_rule_terms: int = 3
     max_state_features: int = 48
+    max_prefilter_candidates: int = 500
+    max_generated_rules: int = 3000
     leverage: float = 0.5
     max_hold_bars: int = 576
     entry_delay_bars: int = 1
@@ -123,7 +125,10 @@ def _rules(train:list[dict[str,Any]],cfg:BinaryEdgeStrictScanConfig)->list[tuple
         pairs=list(combinations(states,2))
         for a in anchors:
             for b,c in pairs: rules.add(tuple(sorted((a,b,c))))
-    return sorted(rules)
+    def support_key(rule: tuple[str, ...]) -> tuple[int, int, str]:
+        return (min(counts.get(part, 0) for part in rule), sum(counts.get(part, 0) for part in rule), "|".join(rule))
+    ranked = sorted(rules, key=support_key, reverse=True)
+    return ranked[: int(cfg.max_generated_rules)]
 
 def _match_preds(examples:list[dict[str,Any]],rule:tuple[str,...],action:str)->list[dict[str,Any]]:
     rs=set(rule); out=[]; seen=set()
@@ -162,7 +167,11 @@ def run(cfg:BinaryEdgeStrictScanConfig)->dict[str,Any]:
         if tr<cfg.min_support_train or te<cfg.min_support_test: continue
         for action in ('follow','invert'): candidates.append((rule,action,tr,te,_prefilter(splits['test'],rule,action)))
     candidates.sort(key=lambda x:(x[4],x[3],x[2]),reverse=True)
-    prefiltered=len(candidates); unique=[]; seen=set()
+    prefiltered=len(candidates)
+    # Bound expensive signature deduplication.  The sorted list is already a
+    # test-only prefilter; scanning every symbolic variant can dominate runtime.
+    candidates = candidates[: int(cfg.max_prefilter_candidates)]
+    unique=[]; seen=set()
     for cand in candidates:
         rule,action,*_=cand; sig=(action,tuple(r['signal_pos'] for r in _match_preds(splits['test'],rule,action)))
         if sig in seen: continue
@@ -178,14 +187,14 @@ def run(cfg:BinaryEdgeStrictScanConfig)->dict[str,Any]:
             eval_bt=_bt(eval_preds,cfg,tmp,f'r{i}_eval')
             scanned.append({'rule':list(rule),'action':action,'support':{'train_candidates':tr,'test_candidates':te,'eval_candidates':len(eval_preds)},'train':{'sim':train_bt['sim'],'trade_stats':train_bt['trade_stats']},'test':{'sim':test_bt['sim'],'trade_stats':test_bt['trade_stats']},'eval':{'sim':eval_bt['sim'],'trade_stats':eval_bt['trade_stats']},'prefilter_score':pf,'test_score':_score(test_bt,cfg.min_test_trades)})
     scanned.sort(key=lambda r:float(r['test_score']),reverse=True)
-    report={'as_of':datetime.now(timezone.utc).isoformat(),'config':asdict(cfg),'split_candidate_examples':{k:len(v) for k,v in splits.items()},'generated_rule_count':len(rules),'prefiltered_candidate_count':prefiltered,'unique_strict_candidate_count':len(unique),'strict_scanned_count':len(scanned),'selection_protocol':'binary-edge live-style candidates; train support; test-only prefilter; strict test rank; eval untouched','top_by_test':scanned[:cfg.top_k]}
+    report={'as_of':datetime.now(timezone.utc).isoformat(),'config':asdict(cfg),'split_candidate_examples':{k:len(v) for k,v in splits.items()},'generated_rule_count':len(rules),'prefiltered_candidate_count':prefiltered,'dedupe_candidate_count':len(candidates),'unique_strict_candidate_count':len(unique),'strict_scanned_count':len(scanned),'selection_protocol':'binary-edge live-style candidates; train support; test-only prefilter; strict test rank; eval untouched','top_by_test':scanned[:cfg.top_k]}
     Path(cfg.output).parent.mkdir(parents=True,exist_ok=True); Path(cfg.output).write_text(json.dumps(report,indent=2,ensure_ascii=False)); return report
 
 def parse_args():
     p=argparse.ArgumentParser(description=__doc__)
     for f in ['inputs','market_csv','output']: p.add_argument('--'+f.replace('_','-'),required=True)
     for f in ['train_start','train_end','test_start','test_end','eval_start','eval_end']: p.add_argument('--'+f.replace('_','-'),default=getattr(BinaryEdgeStrictScanConfig,f))
-    for f in ['min_support_train','min_support_test','min_test_trades','max_rules','top_k','max_rule_terms','max_state_features','max_hold_bars','entry_delay_bars']: p.add_argument('--'+f.replace('_','-'),type=int,default=getattr(BinaryEdgeStrictScanConfig,f))
+    for f in ['min_support_train','min_support_test','min_test_trades','max_rules','top_k','max_rule_terms','max_state_features','max_prefilter_candidates','max_generated_rules','max_hold_bars','entry_delay_bars']: p.add_argument('--'+f.replace('_','-'),type=int,default=getattr(BinaryEdgeStrictScanConfig,f))
     for f in ['leverage','fee_rate','slippage_rate']: p.add_argument('--'+f.replace('_','-'),type=float,default=getattr(BinaryEdgeStrictScanConfig,f))
     return p.parse_args()
 
