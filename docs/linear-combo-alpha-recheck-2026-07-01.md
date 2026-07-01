@@ -237,3 +237,24 @@ Decision:
 - Stable alpha exists only as a weak-feature bundle; no single feature is strong enough.
 - Next prompt should be feature-family constrained: emphasize stable rolling-extrema/range/trend + macro availability/bucket context, and reduce unstable raw numeric dumps.
 - Another Gemma SFT should be gated by this audit and evaluated on trade-only candidate decisions before portfolio backtest.
+
+## Stable price-action prompt Gemma smoke
+Builder update: `--prompt-style stable_pa` filters the prompt down to stable price-action/macro families instead of dumping all numeric state.  The compact prompt keeps rolling-extrema/range/volatility/trend/macro bucket context and side-adjusted room/range features.
+
+CPU diagnostic on the stable prompt (`results/linear_alpha_meta_feature_diagnostic_pathq_stablepa_binary_2026-07-01.json`):
+- feature count: 159 vs 384 in the full path-quality prompt.
+- train: 82.98% accuracy, balanced recall 72.73%.
+- test: 64.47% accuracy vs 68.27% majority, balanced recall 53.43%.
+- eval: 64.73% accuracy vs 65.19% majority, balanced recall 58.44%.
+
+Interpretation: pruning reduced train overfit and improved eval accuracy materially, but still does not beat the majority baseline.  It is a better LLM prompt shape, not yet a valid alpha.
+
+Gemma-4-E4B smoke:
+- train data: `data/linear_alpha_external_h288_q005_meta_sft_train_2024h1_pathq_stablepa_binary.jsonl`
+- model: `gemma4-e4b` (`google/gemma-4-E4B-it`)
+- sample/steps: 512 balanced rows, 16 steps, LoRA r8/alpha16, runtime 112.4s, final train loss 0.1686.
+- test eval: 128 balanced rows, candidate-logprob binary scoring.
+- result: decision accuracy 50.0%; predicted TAKE for all 128 rows.
+- margin threshold audit: best checked accuracy 59.4% at threshold 0.25, but still FP 52 / TN 12 and no FN; threshold 0.5 flips to all SKIP.
+
+Decision: even with a cleaner stable prompt and path-quality labels, Gemma still learns label priors/margins rather than robust trade vetoes in this 16-step POC.  The failed checkpoint was deleted.  Next work should either use stronger preference/ranking formulation or a rolling calibration layer before another adapter run.

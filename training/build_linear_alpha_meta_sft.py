@@ -237,8 +237,28 @@ def _state_card(row: dict[str, Any], features: pd.DataFrame) -> dict[str, Any]:
 
 def _prompt(row: dict[str, Any], card: dict[str, Any], cfg: LinearAlphaMetaSftConfig) -> str:
     pred = _prediction(row)
-    if cfg.prompt_style not in {"default", "conservative"}:
-        raise ValueError("prompt_style must be default|conservative")
+    if cfg.prompt_style not in {"default", "conservative", "stable_pa"}:
+        raise ValueError("prompt_style must be default|conservative|stable_pa")
+    tokens = dict(card["tokens"])
+    numeric = dict(card["numeric"])
+    if cfg.prompt_style == "stable_pa":
+        token_keep = {
+            "alpha_group", "alpha_variant", "alpha_side", "alpha_hold_bars",
+            "range_pos_bucket", "range_vol_bucket", "side_range_pos_bucket",
+            "dxy_bucket", "kimchi_bucket", "drawdown_bucket",
+        }
+        numeric_keep = {
+            "trend_96", "range_vol", "window_drawdown", "range_pos",
+            "dxy_zscore", "dxy_momentum", "kimchi_premium_zscore", "kimchi_premium_change",
+            "usdkrw_zscore", "usdkrw_momentum",
+            "rex_2016_range_pos", "rex_2016_cur_to_max_pct", "rex_2016_cur_to_min_pct",
+            "rex_8640_range_pos", "rex_8640_cur_to_max_pct", "rex_8640_cur_to_min_pct",
+            "side_trend_96", "side_range_pos", "side_rex_2016_range_pos", "side_rex_8640_range_pos",
+            "side_room_to_adverse_extreme_pct", "side_room_to_favorable_extreme_pct",
+            "htf_4h_return_4", "htf_1d_return_4", "htf_1w_return_4",
+        }
+        tokens = {k: v for k, v in tokens.items() if k in token_keep}
+        numeric = {k: v for k, v in numeric.items() if k in numeric_keep}
     lines = [
         "You are a single LLM meta-controller for a BTCUSDT futures bot.",
         "A frozen weak alpha already proposed a candidate trade. Do not invent a new side.",
@@ -252,11 +272,16 @@ def _prompt(row: dict[str, Any], card: dict[str, Any], cfg: LinearAlphaMetaSftCo
             "Default to SKIP/NONE unless the signal-time evidence clearly supports the frozen alpha.",
             "Use TAKE/FULL only for unusually strong evidence; use TAKE/SMALL for marginal positive evidence.",
         ])
+    elif cfg.prompt_style == "stable_pa":
+        lines.extend([
+            "Use a compact stable price-action card: rolling-extrema, range/volatility, trend, and macro bucket context.",
+            "Ignore missing nuance; prefer robust TAKE only when multiple stable clues align with the frozen alpha side.",
+        ])
     lines.append("state_tokens:")
-    for key, value in sorted(card["tokens"].items()):
+    for key, value in sorted(tokens.items()):
         lines.append(f"- {key}: {value}")
     lines.append("numeric_state:")
-    for key, value in sorted(card["numeric"].items()):
+    for key, value in sorted(numeric.items()):
         lines.append(f"- {key}: {value:+.6f}")
     if cfg.target_schema == "decision":
         lines.append('Return compact JSON with exactly key: decision.')
@@ -395,7 +420,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--take-small-ret-pct", type=float, default=LinearAlphaMetaSftConfig.take_small_ret_pct)
     parser.add_argument("--include-no-trade-fraction", type=float, default=LinearAlphaMetaSftConfig.include_no_trade_fraction)
     parser.add_argument("--target-schema", choices=["decision", "decision_size", "decision_size_reason"], default=LinearAlphaMetaSftConfig.target_schema)
-    parser.add_argument("--prompt-style", choices=["default", "conservative"], default=LinearAlphaMetaSftConfig.prompt_style)
+    parser.add_argument("--prompt-style", choices=["default", "conservative", "stable_pa"], default=LinearAlphaMetaSftConfig.prompt_style)
     parser.add_argument("--label-mode", choices=["realized_return", "path_quality"], default=LinearAlphaMetaSftConfig.label_mode)
     parser.add_argument("--path-full-max-adverse-pct", type=float, default=LinearAlphaMetaSftConfig.path_full_max_adverse_pct)
     parser.add_argument("--path-small-max-adverse-pct", type=float, default=LinearAlphaMetaSftConfig.path_small_max_adverse_pct)
