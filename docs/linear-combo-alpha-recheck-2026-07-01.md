@@ -796,3 +796,26 @@ Best stable-ranked slice:
 Decision:
 - Even the best stable singleton slice is economically too weak and fails the target by a wide margin.
 - The current binary-edge candidate pool lacks a base strict alpha.  Further LLM rule distillation on this pool is unlikely to reach CAGR/MDD >= 3 without changing candidate generation, reward shaping, or execution/risk overlay.
+
+## Event action target oracle ceiling
+New diagnostic: `training/event_action_target_strict_backtest.py`
+
+Purpose: test whether the event-action candidate book contains profitable actions if an oracle target selector chooses the best future-utility-labeled action.  This is not live tradable because targets use future utility labels, but it measures candidate-book ceiling.
+
+Run filters:
+- `min_rank_utility=0.003`
+- `min_mfe_to_mae=0.8`
+- `allowed_confidence=MID,HIGH`
+- strict overlay with fees/slippage and 0.5 leverage.
+
+Results:
+| Split | Rows | CAGR | Strict MDD | CAGR/MDD | Trades | p-value |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| train 2022-2024 | 2,715 | 3738.36% | 5.81% | 643.07 | 684 | 0.0000 |
+| test 2025 | 901 | 2029.95% | 3.42% | 593.54 | 232 | 0.0000 |
+| eval 2026 Jan-May | 364 | 2433.44% | 2.56% | 950.66 | 89 | 0.0000 |
+
+Decision:
+- The candidate book has a very high oracle ceiling, unlike the binary-edge symbolic pool.
+- The next structure should focus on learning/verifying target-action selection from past-only prompts, not mining the previous binary-edge pool.
+- Treat this as a ceiling only; live validation still requires a no-leak selector trained only on prior periods.
