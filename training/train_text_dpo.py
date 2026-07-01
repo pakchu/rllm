@@ -43,6 +43,8 @@ def _action_bucket(text: str) -> str:
     if isinstance(obj, dict):
         if "side_pair" in obj:
             return f"side_pair={obj.get('side_pair')}"
+        if "decision" in obj:
+            return f"decision={obj.get('decision')},size={obj.get('size_bucket')}"
         return f"gate={obj.get('gate')},side={obj.get('side')},hold={obj.get('hold_bars')}"
     return str(obj)[:80]
 

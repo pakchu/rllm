@@ -258,3 +258,27 @@ Gemma-4-E4B smoke:
 - margin threshold audit: best checked accuracy 59.4% at threshold 0.25, but still FP 52 / TN 12 and no FN; threshold 0.5 flips to all SKIP.
 
 Decision: even with a cleaner stable prompt and path-quality labels, Gemma still learns label priors/margins rather than robust trade vetoes in this 16-step POC.  The failed checkpoint was deleted.  Next work should either use stronger preference/ranking formulation or a rolling calibration layer before another adapter run.
+
+## Preference/ranking formulation start
+New builder: `training/build_linear_alpha_meta_preference.py`
+
+Rationale: binary SFT repeatedly learned label priors or brittle logprob margins.  The next formulation turns the same stable no-leak prompt into DPO-style `chosen`/`rejected` completions, ranking the desired `TAKE` or `SKIP` answer above its opposite.  This better matches the LLM strength: comparative judgment over a compact state card.
+
+Trade-only DPO datasets from `stable_pa + path_quality` SFT rows:
+
+| Split | Pairs | Chosen SKIP | Chosen TAKE | Skipped non-trade |
+| --- | ---: | ---: | ---: | ---: |
+| train 2024H1 | 3,958 | 2,776 | 1,182 | 472 |
+| test 2024H2-2025 | 14,972 | 9,751 | 5,221 | 1,481 |
+| eval 2026 Jan-May | 6,838 | 4,335 | 2,503 | 352 |
+
+DPO dry-run:
+- model alias: `gemma4-e4b` -> `google/gemma-4-E4B-it`.
+- sample: 128 balanced rows.
+- prompt length mean: 1,645.9 chars.
+- chosen balance: SKIP 64 / TAKE 64.
+- output: `checkpoints/linear_alpha_meta_pref_pathq_stablepa_binary_dpo_dryrun_2026-07-01/dpo_summary.json`.
+
+Code note: `training/train_text_dpo.py` now buckets `{"decision": ...}` completions correctly for balanced sampling summaries.
+
+Next validation: run a small Gemma DPO adapter and score `TAKE` vs `SKIP` on balanced test rows.  Promote only if it stops all-TAKE/all-SKIP collapse and beats the SFT smoke baseline.
