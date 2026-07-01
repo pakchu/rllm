@@ -86,6 +86,8 @@ def _row_bucket(row: dict[str, Any]) -> str:
         return f"action={parsed.get('action_path')},horizon={parsed.get('horizon_policy')},risk={parsed.get('risk_budget')}"
     if isinstance(parsed, dict) and "direction_stability" in parsed:
         return f"stability={parsed.get('direction_stability')},risk={parsed.get('risk_profile')}"
+    if isinstance(parsed, dict) and "decision" in parsed and "size_bucket" in parsed:
+        return f"decision={parsed.get('decision')},size={parsed.get('size_bucket')}"
     if isinstance(parsed, dict) and "decision" in parsed:
         return f"decision={parsed.get('decision')},side={parsed.get('action_side')}"
     if isinstance(parsed, dict) and "edge_decay_label" in parsed:
@@ -198,7 +200,7 @@ def _target_counter(rows: list[dict[str, Any]]) -> dict[str, int]:
                     if key in parsed:
                         counts[f"{key}={parsed[key]}"] += 1
             elif isinstance(parsed, dict) and "decision" in parsed:
-                for key in ("decision", "action_side", "confidence", "rationale_class"):
+                for key in ("decision", "size_bucket", "action_side", "confidence", "rationale_class"):
                     if key in parsed:
                         counts[f"{key}={parsed[key]}"] += 1
             elif isinstance(parsed, dict) and "gate" in parsed:
