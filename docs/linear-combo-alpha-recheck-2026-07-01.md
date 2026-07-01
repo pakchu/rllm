@@ -368,3 +368,26 @@ Decision:
 - Multi-candidate ranking is a better problem formulation, but the current prompt is too sparse and the model mostly learns positional bias/noise.
 - Failed pairwise SFT and dry-run checkpoints were deleted.
 - Next attempt should randomize A/B order at data-build time more carefully across all splits, include stable state context around the timestamp, and evaluate with random/balanced sampling only.  No sequential first-N metric should be trusted for pairwise rows.
+
+## Pairwise ranking v2: randomized order + state context
+Builder update: `training/build_linear_alpha_candidate_pairwise.py` now defaults to:
+- randomizing A/B order with a seed, removing first-N positional leakage.
+- adding compact stable state context: trend/range/drawdown, DXY/kimchi/USDKRW, rolling-extrema position, and higher-timeframe returns.
+
+V2 dataset sizes:
+
+| Split | Rows | Choice A | Choice B | Always-A random baseline |
+| --- | ---: | ---: | ---: | ---: |
+| train 2024H1 | 14,488 | 7,218 | 7,270 | not used |
+| test 2024H2-2025 | 41,891 | 21,027 | 20,864 | 49.45% on random 2,000 |
+| eval 2026 Jan-May | 10,045 | 5,024 | 5,021 | 52.90% on random 2,000 |
+
+Gemma-4-E4B v2 pairwise SFT smoke:
+- train: 512 balanced A/B rows, 16 steps, LoRA r8/alpha16, runtime 113.4s, train loss 1.043.
+- random 2,000 test: 49.35%, pred A 1,438 / B 562.
+- random 2,000 eval: 52.30%, pred A 1,640 / B 360.
+
+Decision:
+- Randomization fixed the misleading positional baseline, and state context is included, but Gemma still does not learn robust A/B ranking from 512-row smoke.  It remains A-biased and does not beat the random-sample baseline.
+- Failed v2 checkpoints were deleted.
+- The current bottleneck is likely that labels are too path-outcome/noisy for the sparse candidate prompt, and the candidate pool itself may not expose stable discriminative text patterns.  Next direction should add explicit path-quality bins from past-only analogs or use a non-LLM candidate selector as teacher before asking Gemma to imitate/compress it.

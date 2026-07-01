@@ -19,7 +19,8 @@ from typing import Any
 
 import numpy as np
 
-from training.build_linear_alpha_meta_sft import _load_market, _trade_path_stats
+from preprocessing.market_features import build_market_feature_frame
+from training.build_linear_alpha_meta_sft import _feature_value, _load_market, _trade_path_stats
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,8 @@ class CandidatePairwiseConfig:
     slippage_rate: float = 0.0001
     entry_delay_bars: int = 1
     seed: int = 17
+    randomize_order: bool = True
+    include_state_context: bool = True
 
 
 def _read_jsonl(path: str | Path) -> list[dict[str, Any]]:
@@ -69,7 +72,22 @@ def _candidate_line(label: str, row: dict[str, Any]) -> str:
     )
 
 
-def _prompt(row_a: dict[str, Any], row_b: dict[str, Any]) -> str:
+def _state_lines(features: Any, pos: int) -> list[str]:
+    keys = [
+        "trend_96", "range_vol", "range_pos", "window_drawdown",
+        "dxy_zscore", "dxy_momentum", "kimchi_premium_zscore", "kimchi_premium_change",
+        "usdkrw_zscore", "usdkrw_momentum",
+        "rex_2016_range_pos", "rex_8640_range_pos",
+        "htf_4h_return_4", "htf_1d_return_4", "htf_1w_return_4",
+    ]
+    out = ["state_context:"]
+    for key in keys:
+        if key in features.columns:
+            out.append(f"- {key}: {_feature_value(features, pos, key):+.6f}")
+    return out
+
+
+def _prompt(row_a: dict[str, Any], row_b: dict[str, Any], state_lines: list[str] | None = None) -> str:
     return "\n".join(
         [
             "You are a BTCUSDT futures candidate ranker.",
@@ -78,6 +96,7 @@ def _prompt(row_a: dict[str, Any], row_b: dict[str, Any]) -> str:
             f"date: {row_a.get('date')}",
             _candidate_line("A", row_a),
             _candidate_line("B", row_b),
+            *(state_lines or []),
             'Return compact JSON with exactly keys: choice, confidence, reason.',
         ]
     )
@@ -89,6 +108,7 @@ def _target(choice: str, confidence: str, reason: str) -> str:
 
 def build(cfg: CandidatePairwiseConfig) -> dict[str, Any]:
     market = _load_market(cfg.market_csv)
+    features = build_market_feature_frame(market, window_size=144) if cfg.include_state_context else None
     grouped: dict[int, list[dict[str, Any]]] = defaultdict(list)
     for path in [p.strip() for p in cfg.predictions.split(",") if p.strip()]:
         for row in _read_jsonl(path):
@@ -133,6 +153,11 @@ def build(cfg: CandidatePairwiseConfig) -> dict[str, Any]:
             if abs(gap) < float(cfg.min_utility_gap_pct):
                 skipped["utility_gap_too_small"] += 1
                 continue
+            if cfg.randomize_order and float(rng.random()) < 0.5:
+                row_a, row_b = row_b, row_a
+                path_a, path_b = path_b, path_a
+                util_a, util_b = util_b, util_a
+                gap = -gap
             choice = "A" if gap > 0 else "B"
             winner_path = path_a if choice == "A" else path_b
             loser_path = path_b if choice == "A" else path_a
@@ -147,7 +172,7 @@ def build(cfg: CandidatePairwiseConfig) -> dict[str, Any]:
             rows_out.append(
                 {
                     "task": "linear_alpha_candidate_pairwise_choice",
-                    "prompt": _prompt(row_a, row_b),
+                    "prompt": _prompt(row_a, row_b, _state_lines(features, int(pos)) if features is not None else None),
                     "target": target,
                     "date": row_a.get("date"),
                     "signal_pos": int(pos),
@@ -198,11 +223,21 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--slippage-rate", type=float, default=CandidatePairwiseConfig.slippage_rate)
     p.add_argument("--entry-delay-bars", type=int, default=CandidatePairwiseConfig.entry_delay_bars)
     p.add_argument("--seed", type=int, default=CandidatePairwiseConfig.seed)
+    p.add_argument("--no-randomize-order", action="store_true")
+    p.add_argument("--no-state-context", action="store_true")
     return p.parse_args()
 
 
 def main() -> None:
-    print(json.dumps(build(CandidatePairwiseConfig(**vars(parse_args()))), indent=2, ensure_ascii=False))
+    args = parse_args()
+    cfg = CandidatePairwiseConfig(
+        predictions=args.predictions, market_csv=args.market_csv, output_jsonl=args.output_jsonl,
+        summary_output=args.summary_output, max_pairs_per_timestamp=args.max_pairs_per_timestamp,
+        min_utility_gap_pct=args.min_utility_gap_pct, leverage=args.leverage, fee_rate=args.fee_rate,
+        slippage_rate=args.slippage_rate, entry_delay_bars=args.entry_delay_bars, seed=args.seed,
+        randomize_order=not bool(args.no_randomize_order), include_state_context=not bool(args.no_state_context),
+    )
+    print(json.dumps(build(cfg), indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":
