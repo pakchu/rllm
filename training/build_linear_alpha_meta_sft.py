@@ -180,12 +180,14 @@ def _prompt(row: dict[str, Any], card: dict[str, Any], cfg: LinearAlphaMetaSftCo
     lines.append("numeric_state:")
     for key, value in sorted(card["numeric"].items()):
         lines.append(f"- {key}: {value:+.6f}")
-    if cfg.target_schema == "decision_size":
+    if cfg.target_schema == "decision":
+        lines.append('Return compact JSON with exactly key: decision.')
+    elif cfg.target_schema == "decision_size":
         lines.append('Return compact JSON with exactly keys: decision, size_bucket.')
     elif cfg.target_schema == "decision_size_reason":
         lines.append('Return compact JSON with keys: decision, size_bucket, risk_reason.')
     else:
-        raise ValueError("target_schema must be decision_size|decision_size_reason")
+        raise ValueError("target_schema must be decision|decision_size|decision_size_reason")
     return "\n".join(lines)
 
 
@@ -212,12 +214,14 @@ def _convert(rows: list[dict[str, Any]], market: pd.DataFrame, features: pd.Data
         target = _label(ret_pct, cfg) if gate == "TRADE" else {"decision": "SKIP", "size_bucket": "NONE", "risk_reason": "alpha_did_not_trigger"}
         card = _state_card(row, features)
         prompt = _prompt(row, card, cfg)
-        if cfg.target_schema == "decision_size":
+        if cfg.target_schema == "decision":
+            target_for_text = {"decision": target["decision"]}
+        elif cfg.target_schema == "decision_size":
             target_for_text = {"decision": target["decision"], "size_bucket": target["size_bucket"]}
         elif cfg.target_schema == "decision_size_reason":
             target_for_text = target
         else:
-            raise ValueError("target_schema must be decision_size|decision_size_reason")
+            raise ValueError("target_schema must be decision|decision_size|decision_size_reason")
         target_text = json.dumps(target_for_text, ensure_ascii=False, sort_keys=True)
         out.append({
             "task": "linear_alpha_meta_controller_sft",
@@ -303,7 +307,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--take-full-ret-pct", type=float, default=LinearAlphaMetaSftConfig.take_full_ret_pct)
     parser.add_argument("--take-small-ret-pct", type=float, default=LinearAlphaMetaSftConfig.take_small_ret_pct)
     parser.add_argument("--include-no-trade-fraction", type=float, default=LinearAlphaMetaSftConfig.include_no_trade_fraction)
-    parser.add_argument("--target-schema", choices=["decision_size", "decision_size_reason"], default=LinearAlphaMetaSftConfig.target_schema)
+    parser.add_argument("--target-schema", choices=["decision", "decision_size", "decision_size_reason"], default=LinearAlphaMetaSftConfig.target_schema)
     parser.add_argument("--prompt-style", choices=["default", "conservative"], default=LinearAlphaMetaSftConfig.prompt_style)
     parser.add_argument("--seed", type=int, default=LinearAlphaMetaSftConfig.seed)
     return parser.parse_args()

@@ -17,11 +17,23 @@ from training.train_text_sft import load_jsonl, resolve_vlm_model_alias
 from utils import disable_transformers_allocator_warmup
 
 SIZE_SCALE = {"FULL": 1.0, "SMALL": 0.5, "NONE": 0.0}
-CANDIDATE_LABELS = [
+SIZE_CANDIDATE_LABELS = [
     {"decision": "SKIP", "size_bucket": "NONE"},
     {"decision": "TAKE", "size_bucket": "SMALL"},
     {"decision": "TAKE", "size_bucket": "FULL"},
 ]
+BINARY_CANDIDATE_LABELS = [
+    {"decision": "SKIP"},
+    {"decision": "TAKE"},
+]
+
+
+def _candidate_labels(candidate_set: str) -> list[dict[str, str]]:
+    if candidate_set == "size":
+        return SIZE_CANDIDATE_LABELS
+    if candidate_set == "binary":
+        return BINARY_CANDIDATE_LABELS
+    raise ValueError("candidate_set must be size|binary")
 
 
 def parse_meta_json(text: str) -> dict[str, str]:
@@ -125,19 +137,20 @@ def _candidate_text(label: dict[str, str]) -> str:
     return json.dumps(label, ensure_ascii=False, sort_keys=True)
 
 
-def _candidate_logprob(rows: list[dict[str, Any]], model_name: str, adapter_dir: str, score_normalization: str) -> tuple[list[dict[str, str]], list[str]]:
+def _candidate_logprob(rows: list[dict[str, Any]], model_name: str, adapter_dir: str, score_normalization: str, candidate_set: str) -> tuple[list[dict[str, str]], list[str]]:
     import torch
 
     tokenizer, model = _load_text_model(model_name, adapter_dir)
     normalize = str(score_normalization).strip().lower()
     if normalize not in {"sum", "mean", "first_token"}:
         raise ValueError("score_normalization must be one of {'sum','mean','first_token'}")
+    labels = _candidate_labels(candidate_set)
     preds: list[dict[str, str]] = []
     raw_outputs: list[str] = []
     for row in rows:
         prompt_ids = tokenizer(_chat_prompt_text(tokenizer, str(row["prompt"])), add_special_tokens=False)["input_ids"]
         scores = []
-        for label in CANDIDATE_LABELS:
+        for label in labels:
             label_text = _candidate_text(label)
             label_ids = tokenizer(label_text, add_special_tokens=False)["input_ids"]
             if tokenizer.eos_token_id is not None:
@@ -162,9 +175,11 @@ def _candidate_logprob(rows: list[dict[str, Any]], model_name: str, adapter_dir:
                 score = token_scores.mean()
             scores.append(float(score.detach().cpu()))
         best = max(range(len(scores)), key=lambda i: scores[i])
-        pred = {**CANDIDATE_LABELS[best], "risk_reason": "candidate_logprob"}
+        pred = {**labels[best], "risk_reason": "candidate_logprob"}
+        if "size_bucket" not in pred:
+            pred["size_bucket"] = "SMALL" if pred.get("decision") == "TAKE" else "NONE"
         preds.append(pred)
-        raw_outputs.append(json.dumps({"scores": {_candidate_text(CANDIDATE_LABELS[i]): scores[i] for i in range(len(scores))}, "prediction": pred}, ensure_ascii=False, sort_keys=True))
+        raw_outputs.append(json.dumps({"scores": {_candidate_text(labels[i]): scores[i] for i in range(len(scores))}, "prediction": pred}, ensure_ascii=False, sort_keys=True))
     return preds, raw_outputs
 
 def _metrics(rows: list[dict[str, Any]], preds: list[dict[str, str]]) -> dict[str, Any]:
@@ -230,6 +245,7 @@ def evaluate(
     seed: int = 42,
     max_new_tokens: int = 96,
     score_normalization: str = "mean",
+    candidate_set: str = "size",
     predictions_output: str = "",
 ) -> dict[str, Any]:
     rows = load_jsonl(eval_jsonl, max_samples=int(max_samples), sample_mode=sample_mode, seed=int(seed))
@@ -243,7 +259,7 @@ def evaluate(
     elif prediction_mode == "candidate_logprob":
         if not adapter_dir:
             raise ValueError("adapter_dir is required for prediction_mode=candidate_logprob")
-        preds, raw_outputs = _candidate_logprob(rows, model_name, adapter_dir, score_normalization)
+        preds, raw_outputs = _candidate_logprob(rows, model_name, adapter_dir, score_normalization, candidate_set)
     else:
         raise ValueError("prediction_mode must be target_echo|model|candidate_logprob")
     report = {
@@ -254,6 +270,7 @@ def evaluate(
         "max_samples": int(max_samples),
         "sample_mode": sample_mode,
         "score_normalization": score_normalization if prediction_mode == "candidate_logprob" else None,
+        "candidate_set": candidate_set if prediction_mode == "candidate_logprob" else None,
         "metrics": _metrics(rows, preds),
         "predictions_output": predictions_output,
     }
@@ -277,6 +294,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--max-new-tokens", type=int, default=96)
     parser.add_argument("--score-normalization", choices=["sum", "mean", "first_token"], default="mean")
+    parser.add_argument("--candidate-set", choices=["size", "binary"], default="size")
     parser.add_argument("--predictions-output", default="")
     return parser.parse_args()
 
