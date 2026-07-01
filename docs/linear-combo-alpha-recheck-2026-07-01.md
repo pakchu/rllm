@@ -333,3 +333,38 @@ Decision:
 - Continuous/rolling refit alone does not solve the current alpha surface.  It mostly learns a conservative SKIP-biased classifier and misses profitable TAKE labels.
 - This weakens the case for rolling Gemma adapters on the same labels/features.
 - Next productive direction is to change candidate construction and labels: make the model compare higher-quality candidate alternatives or use stronger entry candidates, rather than only vetoing a weak external linear alpha.
+
+## Multi-candidate pairwise ranking pivot
+New builder: `training/build_linear_alpha_candidate_pairwise.py`
+
+Rationale: vetoing one weak alpha failed.  The next attempt expands the candidate pool and asks Gemma to compare two simultaneous frozen-alpha trade candidates.  This is closer to an LLM strength: comparative ranking over symbolic alternatives.
+
+Candidate pool exported from three frozen linear combo rules fit only on `2023-01-01` to `2024-06-30`:
+- `external h288 q0.05`
+- `market_derivatives h576 q0.20`
+- `kimchi_plus_range h576 q0.15`
+
+Pairwise dataset construction:
+- At each timestamp, keep candidate pairs where at least two rules fire.
+- Prompt includes only signal-time descriptors: source, side, hold bars, alpha score.
+- Target chooses A/B using future path utility only for offline label: `return + 0.25*MFE - 0.75*MAE`.
+- Pairs with utility gap below 0.15% are skipped.
+
+Dataset sizes:
+
+| Split | Rows | Choice A | Choice B | Always-A random baseline |
+| --- | ---: | ---: | ---: | ---: |
+| train 2024H1 | 14,488 | 8,092 | 6,396 | not used |
+| test 2024H2-2025 | 41,891 | 22,590 | 19,301 | 55.65% on random 2,000 |
+| eval 2026 Jan-May | 10,045 | 5,512 | 4,533 | 55.75% on random 2,000 |
+
+Gemma-4-E4B pairwise SFT smoke:
+- train: 512 balanced A/B rows, 16 steps, LoRA r8/alpha16, runtime 115.6s, train loss 1.003.
+- first-1000 eval initially looked high, but that was row-order/choice-position bias: always-A got 93.6% on the same first eval rows.
+- random 2,000 test: Gemma 54.3%, always-A 55.65%.
+- random 2,000 eval: Gemma 54.0%, always-A 55.75%.
+
+Decision:
+- Multi-candidate ranking is a better problem formulation, but the current prompt is too sparse and the model mostly learns positional bias/noise.
+- Failed pairwise SFT and dry-run checkpoints were deleted.
+- Next attempt should randomize A/B order at data-build time more carefully across all splits, include stable state context around the timestamp, and evaluate with random/balanced sampling only.  No sequential first-N metric should be trusted for pairwise rows.

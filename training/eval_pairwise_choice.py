@@ -1,7 +1,7 @@
 """Evaluate pairwise choice rows with baselines or Gemma LoRA scoring/generation."""
 from __future__ import annotations
 
-import argparse, json, re
+import argparse, json, random, re
 from pathlib import Path
 from typing import Any
 
@@ -159,11 +159,27 @@ def eval_rows(rows, mode, model_name, adapter_dir, max_new_tokens, batch_size):
 def main():
     p=argparse.ArgumentParser(); p.add_argument('--eval-jsonl',required=True); p.add_argument('--output',required=True); p.add_argument('--predictions-jsonl',default='')
     p.add_argument('--mode',choices=['always_a','always_b','model','model_logprob','model_choice_token'],default='always_a'); p.add_argument('--model-name',default=RECOMMENDED_VLM_MODEL); p.add_argument('--adapter-dir',default=''); p.add_argument('--max-new-tokens',type=int,default=32)
-    p.add_argument('--max-samples',type=int,default=0,help='Evaluate only the first N rows; 0 means all rows.')
+    p.add_argument('--max-samples',type=int,default=0,help='Evaluate only N rows; 0 means all rows.')
+    p.add_argument('--sample-mode',choices=['sequential','random','balanced'],default='sequential')
+    p.add_argument('--seed',type=int,default=42)
     p.add_argument('--batch-size',type=int,default=8,help='Batch size for model_logprob candidate scoring.')
     args=p.parse_args(); rows=load_jsonl(args.eval_jsonl)
-    if args.max_samples and args.max_samples > 0:
-        rows=rows[:args.max_samples]
+    if args.max_samples and args.max_samples > 0 and args.max_samples < len(rows):
+        rng=random.Random(int(args.seed))
+        if args.sample_mode == 'sequential':
+            rows=rows[:args.max_samples]
+        elif args.sample_mode == 'random':
+            idx=sorted(rng.sample(range(len(rows)), int(args.max_samples)))
+            rows=[rows[i] for i in idx]
+        else:
+            buckets={'A':[],'B':[]}
+            for i,r in enumerate(rows): buckets.setdefault(parse_choice(r.get('target','')),[]).append(i)
+            selected=[]; per=max(1,int(args.max_samples)//2)
+            for key in ['A','B']:
+                vals=list(buckets.get(key,[])); rng.shuffle(vals); selected.extend(vals[:per])
+            if len(selected)<int(args.max_samples):
+                used=set(selected); rest=[i for i in range(len(rows)) if i not in used]; rng.shuffle(rest); selected.extend(rest[:int(args.max_samples)-len(selected)])
+            rows=[rows[i] for i in sorted(selected[:int(args.max_samples)])]
     rep,preds,raw=eval_rows(rows,args.mode,args.model_name,args.adapter_dir,args.max_new_tokens,args.batch_size)
     Path(args.output).write_text(json.dumps(rep,indent=2,ensure_ascii=False))
     if args.predictions_jsonl: Path(args.predictions_jsonl).write_text('\n'.join(json.dumps({'target':parse_choice(r['target']),'prediction':p,'raw':raw[i]},ensure_ascii=False) for i,(r,p) in enumerate(zip(rows,preds)))+'\n')
