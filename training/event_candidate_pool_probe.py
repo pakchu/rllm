@@ -47,6 +47,7 @@ class EventPoolConfig:
     slippage_rate: float = 0.0001
     wave_trading_root: str = ""
     external_tolerance: str = "30min"
+    family_include: str = ""
 
 
 def _load_market(path: str) -> pd.DataFrame:
@@ -173,7 +174,22 @@ def _feature_candidates(features: pd.DataFrame) -> dict[str, tuple[np.ndarray, n
     # pulled back toward the opposite side of recent ranges.
     pullback_alignment = -np.sign(rex_loc) * np.sign(higher_trend)
     rex_pullback = np.maximum(0.0, pullback_alignment) * (np.abs(higher_trend) + 0.25 * np.abs(rex_max_gap - rex_min_gap))
-    out["rex_htf_pullback_resume"] = (rex_pullback, np.sign(higher_trend))
+    htf_dir = np.sign(higher_trend)
+    out["rex_htf_pullback_resume"] = (rex_pullback, htf_dir)
+
+    # Variants around the current best REX family.  The goal is not to gate on
+    # future outcomes, but to expose interpretable sub-hypotheses for
+    # train/validation selection: deep pullbacks, local reclaim, and side split.
+    local_reclaim = np.maximum(0.0, np.sign(local_trend) * htf_dir)
+    deep_pullback = np.maximum(0.0, np.abs(rex_loc) - 0.35) + 0.5 * np.maximum(0.0, np.abs(rex_short_loc) - 0.55)
+    long_range_agree = np.maximum(0.0, np.sign(rex_long_loc) * htf_dir)
+    trend_strength = np.abs(higher_trend) + 0.5 * np.abs(arr("htf_1d_return_4"))
+
+    out["rex_htf_pullback_reclaim"] = (rex_pullback * (0.5 + local_reclaim) * (1.0 + 0.25 * vol_confirm), htf_dir)
+    out["rex_htf_deep_pullback_resume"] = (rex_pullback * (0.5 + deep_pullback), htf_dir)
+    out["rex_htf_context_pullback_resume"] = (rex_pullback * (0.5 + long_range_agree) * (0.5 + trend_strength), htf_dir)
+    out["rex_htf_long_pullback_resume"] = (np.where(htf_dir > 0.0, rex_pullback * (0.5 + deep_pullback), 0.0), np.where(htf_dir > 0.0, 1.0, 0.0))
+    out["rex_htf_short_pullback_resume"] = (np.where(htf_dir < 0.0, rex_pullback * (0.5 + deep_pullback), 0.0), np.where(htf_dir < 0.0, -1.0, 0.0))
 
     # Long-horizon range rejection: when short-term location diverges strongly
     # from long-term location, test reversion toward the long-horizon center.
@@ -274,6 +290,11 @@ def run_event_pool_probe(cfg: EventPoolConfig) -> dict[str, Any]:
     val_mask = _split_mask(dates, cfg.val_start, cfg.val_end)
     eval_mask = _split_mask(dates, cfg.eval_start, cfg.eval_end)
     families = _feature_candidates(features)
+    if cfg.family_include:
+        needles = [x.strip() for x in str(cfg.family_include).split(",") if x.strip()]
+        families = {name: value for name, value in families.items() if any(needle in name for needle in needles)}
+        if not families:
+            raise ValueError(f"no candidate families matched --family-include={cfg.family_include!r}")
     q = float(np.clip(cfg.quantile, 0.5, 0.99))
 
     train_trials: list[dict[str, Any]] = []
@@ -341,6 +362,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--slippage-rate", type=float, default=0.0001)
     p.add_argument("--wave-trading-root", default="")
     p.add_argument("--external-tolerance", default="30min")
+    p.add_argument("--family-include", default="", help="Comma-separated substrings; when set, only matching families are probed")
     return p.parse_args()
 
 

@@ -1046,3 +1046,32 @@ Readout:
 - It does not create new alpha and does not fix the statistical weakness: eval remains only 36 trades and p-values are still weak.
 - Stop-loss settings were not selected in the mini grid; hard stops likely cut winners/losers symmetrically at this 5m/hold horizon.
 - Next structural work should improve entry/feature quality around `rex_htf_pullback_resume` rather than relying on gates. Candidate directions: HTF location buckets, multi-timeframe pullback depth, trend-strength/volatility context, and explicit short-side variants.
+
+## 2026-07-02 REX pullback feature-family variants
+
+Purpose: improve the actual alpha/entry structure instead of relying on gates. Added focused `rex_htf_*` variants to `training/event_candidate_pool_probe.py`:
+- `rex_htf_pullback_reclaim`: higher-timeframe pullback plus local trend reclaim.
+- `rex_htf_deep_pullback_resume`: emphasizes deeper range-location pullbacks.
+- `rex_htf_context_pullback_resume`: requires long-range location/trend context.
+- `rex_htf_long_pullback_resume` / `rex_htf_short_pullback_resume`: side-split diagnostics.
+
+Also added `--family-include` so focused probes do not waste time on unrelated families.
+
+Protocol: train 2020-2024, validation 2025, eval 2026-01-01..2026-06-01, hold 288, stride 24. Family/threshold selection uses train+validation only; eval is untouched.
+
+Key focused probe results:
+
+| q | family | train | 2025 val | 2026 eval | readout |
+| ---: | --- | --- | --- | --- | --- |
+| 0.80 | `rex_htf_pullback_resume` | 11.95% / 33.53% / 730 / p=0.174 | 2.69% / 14.30% / 111 / p=0.805 | 23.37% / 7.46% / 46 / p=0.486 | Original wider setting; positive eval but weak val. |
+| 0.80 | `rex_htf_context_pullback_resume` | 8.59% / 38.52% / 833 / p=0.286 | 9.46% / 10.24% / 146 / p=0.506 | -13.90% / 10.74% / 57 / p=0.622 | Validation trap; reject despite best val. |
+| 0.85 | `rex_htf_pullback_resume` | 20.90% / 20.11% / 573 / p=0.026 | 7.33% / 6.53% / 63 / p=0.581 | 14.71% / 6.72% / 33 / p=0.629 | Original stable narrow lead. |
+| 0.85 | `rex_htf_pullback_reclaim` | 8.21% / 40.30% / 759 / p=0.303 | 14.63% / 12.34% / 103 / p=0.267 | 13.79% / 7.37% / 39 / p=0.611 | More validation trades/return; train MDD too high. |
+| 0.85 | `rex_htf_deep_pullback_resume` | 11.88% / 29.93% / 628 / p=0.167 | 10.63% / 11.47% / 88 / p=0.405 | 8.24% / 7.60% / 38 / p=0.746 | Robustly positive but weak. |
+| 0.85 | `rex_htf_short_pullback_resume` | -6.37% / 44.88% / 472 / p=0.550 | 12.29% / 12.59% / 123 / p=0.392 | 10.74% / 7.46% / 34 / p=0.823 | Short-only 2025/2026 positive but train negative; not selectable. |
+
+Readout:
+- `reclaim` is a useful new hypothesis because it improves 2025 trade count and return while keeping eval positive, but it is not yet stable enough: train MDD is ~40% and train p-value is weak.
+- `context` demonstrates why eval must remain untouched: it looked best in 2025 but failed 2026.
+- Side split shows shorts can work in recent regimes but are not stable over 2020-2024, so short specialization needs regime conditioning rather than unconditional side filters.
+- Next: combine original `pullback_resume` and `pullback_reclaim` as candidate-book alternatives, then let the conservative verifier choose within that restricted pair. Do not promote `context`.
