@@ -897,3 +897,40 @@ Readout:
 - Sparse linear composition improved in-sample CAGR but exposed clear overfit/regime drift.
 - This strongly suggests the current event-action prompt tokens are not enough as a standalone alpha source, even though the oracle labels have a high ceiling.
 - Next structural/alpha move should change the candidate generator/feature surface, not merely the verifier optimizer: add price-action location/rolling-extrema semantics into candidate families and prompt tokens, then re-run the same verifier protocol.
+
+## 2026-07-01 rolling-extrema alpha surface expansion
+
+Purpose: improve both alpha and structure by adding rolling max/min price-action location tokens to the verifier rows, then replaying the same no-leak verifier protocol.
+
+Data augmentation:
+- Script used: `training.augment_event_candidate_rolling_extrema`.
+- Inputs: existing verifier train/test/eval rows with PAE tokens.
+- Outputs: `*_rex_2026-07-01.jsonl` generated under `data/` (ignored artifact).
+- Match rate: 100% for train/test/eval.
+- Added feature surface: rolling extrema windows `36,72,144,288,576,2016,4032,8640`; token windows `72,144,288,576,2016,4032,8640`.
+- Leakage guard: backward-asof market join; features use candles at or before signal timestamp; reward fields unchanged.
+
+### REX token verifier
+
+Run: `results/event_action_verifier_token_baseline_v5_rex_mean_2026-07-01.json`
+
+| selected threshold | train | test | eval | verdict |
+| ---: | --- | --- | --- | --- |
+| 0.115 | 21.76% CAGR / 23.84% MDD / 186 trades / p=0.0038 | 1.40% / 5.92% / 31 trades / p=0.803 | 29.69% / 3.86% / 12 trades / p=0.056 | Weak lead: both test/eval positive and MDD controlled, but trade counts are too low for promotion. |
+| 0.110 | 23.56% / 33.37% / 271 trades / p=0.0062 | 0.25% / 10.00% / 46 trades / p=0.941 | 17.20% / 7.19% / 14 trades / p=0.376 | Weak lead but statistically thin. |
+| 0.090 | 18.41% / 58.52% / 975 trades / p=0.103 | -1.46% / 17.65% / 178 trades / p=0.985 | -18.89% / 16.71% / 78 trades / p=0.490 | Reject. |
+
+### REX sparse linear verifier
+
+Run: `results/event_action_verifier_linear_baseline_v2_rex_2026-07-01.json`
+
+| selected threshold | train | test | eval | verdict |
+| ---: | --- | --- | --- | --- |
+| 0.70 | 18.76% CAGR / 19.31% MDD / 170 trades / p=0.00022 | -5.14% / 11.68% / 42 trades / p=0.576 | 22.68% / 6.36% / 20 trades / p=0.193 | Reject: threshold chosen by test is still negative. |
+| 0.40 | 21.69% / 36.00% / 506 trades / p=0.022 | -6.62% / 16.35% / 137 trades / p=0.710 | -16.48% / 14.07% / 56 trades / p=0.595 | Reject. |
+| 0.30 | 29.87% / 35.89% / 660 trades / p=0.0077 | -6.12% / 14.07% / 166 trades / p=0.741 | 3.21% / 14.66% / 69 trades / p=0.868 | Reject. |
+
+Readout:
+- Rolling max/min location is useful: adding REX creates the first verifier baseline where selected test and eval are both positive with low MDD, but the trade count is too small.
+- Over-parameterized sparse linear composition overfits badly, even with REX. This argues against heavy numeric/classifier optimization as the next move.
+- Best next structure: keep conservative REX/token-style selection, widen statistically by generating more high-quality candidate opportunities and using LLM-style deductive filters (rule consistency, contradiction, side/horizon sanity), not by stronger gates alone.
