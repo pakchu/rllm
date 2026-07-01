@@ -85,6 +85,31 @@ EXTENDED_MARKET_FEATURE_COLUMNS = CORE_MARKET_FEATURE_COLUMNS + (
     "htf_1w_range_1",
     "htf_1w_range_pos",
     "htf_1w_drawdown_4",
+    "rex_36_range_width_pct",
+    "rex_36_range_pos",
+    "rex_36_cur_to_max_pct",
+    "rex_36_cur_to_min_pct",
+    "rex_36_max_to_cur_pct",
+    "rex_144_range_width_pct",
+    "rex_144_range_pos",
+    "rex_144_cur_to_max_pct",
+    "rex_144_cur_to_min_pct",
+    "rex_144_max_to_cur_pct",
+    "rex_576_range_width_pct",
+    "rex_576_range_pos",
+    "rex_576_cur_to_max_pct",
+    "rex_576_cur_to_min_pct",
+    "rex_576_max_to_cur_pct",
+    "rex_2016_range_width_pct",
+    "rex_2016_range_pos",
+    "rex_2016_cur_to_max_pct",
+    "rex_2016_cur_to_min_pct",
+    "rex_2016_max_to_cur_pct",
+    "rex_8640_range_width_pct",
+    "rex_8640_range_pos",
+    "rex_8640_cur_to_max_pct",
+    "rex_8640_cur_to_min_pct",
+    "rex_8640_max_to_cur_pct",
 )
 
 
@@ -374,6 +399,18 @@ def build_market_feature_frame(
         series = _optional_column(market_df, name)
         if series is not None:
             feature_map[name] = _clean_series(series, clip=5.0)
+
+    for rex_window in (36, 144, 576, 2016, 8640):
+        min_periods = min(int(rex_window), max(12, int(rex_window) // 4))
+        rex_high = high.rolling(int(rex_window), min_periods=min_periods).max()
+        rex_low = low.rolling(int(rex_window), min_periods=min_periods).min()
+        rex_span = (rex_high - rex_low).replace(0.0, np.nan)
+        prefix = f"rex_{int(rex_window)}"
+        feature_map[f"{prefix}_range_width_pct"] = _clean_series(rex_span / close.replace(0.0, np.nan))
+        feature_map[f"{prefix}_range_pos"] = _clean_series(((close - rex_low) / rex_span) * 2.0 - 1.0)
+        feature_map[f"{prefix}_cur_to_max_pct"] = _clean_series(close / rex_high.replace(0.0, np.nan) - 1.0)
+        feature_map[f"{prefix}_cur_to_min_pct"] = _clean_series(close / rex_low.replace(0.0, np.nan) - 1.0)
+        feature_map[f"{prefix}_max_to_cur_pct"] = _clean_series(rex_high / close.replace(0.0, np.nan) - 1.0)
 
     feature_map.update(_completed_multitimeframe_features(market_df))
 
