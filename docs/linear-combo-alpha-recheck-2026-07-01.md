@@ -1026,3 +1026,23 @@ Readout:
 - The score threshold is not the main edge below about `0.06`; the family-level rule is carrying most of the signal.
 - Still not production-ready: train strict MDD is 31-36%, 2026 eval has only 28-38 trades, and all eval p-values remain weak.
 - Next work should target risk/exit/hold variants for the selected family, then rolling-fold validation. Adding more verifier capacity is lower priority because prior sparse/linear variants overfit.
+
+## 2026-07-02 REX whitelist risk-overlay mini sweep
+
+Purpose: test whether strict MDD can be reduced after the REX family/threshold lead, without using eval for selection. The first broad grid was too slow because ATR recomputation dominated, so this pass intentionally isolates fast live-usable overlays: per-trade take-profit, stop-loss, monthly loss stop, and cooldown.
+
+Run: `results/verifier_risk_overlay_sweep_v1_rex_htf_min_2026-07-02.json` from `training/verifier_risk_overlay_sweep.py`. Selection score uses train + 2025 test only; eval remains report-only.
+
+Best selected overlay: threshold `0.065`, take-profit `8%`, monthly-loss stop `6%`, no stop-loss, no cooldown.
+
+| split | result | delta vs no-overlay threshold 0.065 |
+| --- | --- | --- |
+| train | 13.33% CAGR / 23.52% MDD / 483 trades | MDD improved from 31.81%, CAGR slightly lower. |
+| 2025 test | 21.22% / 9.91% / 81 trades | Essentially unchanged. |
+| 2026 eval | 13.84% / 7.21% / 36 trades | Essentially unchanged. |
+
+Readout:
+- The overlay reduces some historical train tail risk, so it is useful as a risk-control layer.
+- It does not create new alpha and does not fix the statistical weakness: eval remains only 36 trades and p-values are still weak.
+- Stop-loss settings were not selected in the mini grid; hard stops likely cut winners/losers symmetrically at this 5m/hold horizon.
+- Next structural work should improve entry/feature quality around `rex_htf_pullback_resume` rather than relying on gates. Candidate directions: HTF location buckets, multi-timeframe pullback depth, trend-strength/volatility context, and explicit short-side variants.
