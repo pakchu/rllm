@@ -1075,3 +1075,36 @@ Readout:
 - `context` demonstrates why eval must remain untouched: it looked best in 2025 but failed 2026.
 - Side split shows shorts can work in recent regimes but are not stable over 2020-2024, so short specialization needs regime conditioning rather than unconditional side filters.
 - Next: combine original `pullback_resume` and `pullback_reclaim` as candidate-book alternatives, then let the conservative verifier choose within that restricted pair. Do not promote `context`.
+
+## 2026-07-02 v5 REX verifier with resume+reclaim book
+
+Purpose: test the next structural idea from the focused family probes: include both `rex_htf_pullback_resume` and `rex_htf_pullback_reclaim` in the verifier candidate book, then restrict the conservative token verifier to those two families.
+
+Data generated with `top_k_families=8`:
+- train 2020-2024: 233,856 rows, ALLOW 17,510, allow-rate 7.49%.
+- 2025 test: 46,720 rows, ALLOW 2,441, allow-rate 5.22%.
+- 2026 eval: 19,104 rows, ALLOW 1,072, allow-rate 5.61%.
+
+New family action appearances in v5 rows:
+- `rex_htf_pullback_resume`: train 6,240 / test 1,080 / eval 392 actions.
+- `rex_htf_pullback_reclaim`: train 2,372 / test 360 / eval 132 actions.
+
+Verifier run: `results/event_action_verifier_token_baseline_v9_rex_resume_reclaim_2026-07-02.json`, allowed families `rex_htf_pullback_resume,rex_htf_pullback_reclaim`, eval not used for selection.
+
+| threshold | train | 2025 test | 2026 eval | readout |
+| ---: | --- | --- | --- | --- |
+| 0.065 selected | 12.93% CAGR / 33.16% MDD / 554 trades / p=0.144 | 12.05% / 10.64% / 90 / p=0.316 | 24.97% / 6.26% / 39 / p=0.305 | Eval ratio improves, but train/test are weaker than resume-only v8. |
+| 0.060 | 11.25% / 33.59% / 559 / p=0.190 | 9.74% / 10.97% / 98 / p=0.411 | 26.18% / 6.26% / 42 / p=0.298 | More eval trades, weaker test. |
+| 0.075 | 15.87% / 29.92% / 496 / p=0.083 | 7.88% / 8.44% / 61 / p=0.460 | 19.31% / 6.81% / 32 / p=0.333 | Higher train quality, lower test. |
+
+Mini risk overlay on v9 (`results/verifier_risk_overlay_sweep_v2_rex_resume_reclaim_min_2026-07-02.json`) selected threshold `0.065`, TP `8%`, monthly loss stop `6%`:
+- train: 12.29% / 27.60% / 523 trades.
+- 2025 test: unchanged at 12.05% / 10.64% / 90 trades.
+- 2026 eval: unchanged at 24.97% / 6.26% / 39 trades.
+
+Readout:
+- Reclaim adds recent/eval upside but hurts the more important train+2025 selection profile versus resume-only.
+- The apparent eval ratio >3 is not promotable because it is not supported by test ratio/trade significance and uses only 39 eval trades.
+- Risk overlay lowers train MDD but still leaves train ratio far below target; it is not the bottleneck.
+- Current best robust family remains `rex_htf_pullback_resume`; `reclaim` should stay as an exploratory alternative, not a production family.
+- Next alpha work should target regime-conditioned short specialization and better entry timing, because unconditional side split showed recent shorts can work while long-run shorts fail.
