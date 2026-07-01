@@ -478,3 +478,39 @@ Decision:
 - The user insight is correct: LLM should be used for explicit premise/rule/conclusion reasoning, not raw numeric classification.
 - But hand-written deductive rules are not yet valid alpha.  The direct rule is contra-profitable; the inverted rule is eval-only and fails badly on test.
 - Next direction should be rule discovery and rule validation: let LLM propose symbolic rules, but only accept rules that pass chronological walk-forward stability and strict backtest.  LLM is a hypothesis generator/reasoner; walk-forward tests are the judge.
+
+## Symbolic rule discovery v1
+New scanner: `training/symbolic_candidate_rule_discovery.py`
+
+Purpose: instead of hand-writing deductive rules, generate explicit symbolic hypotheses of the form:
+- candidate/source/side premise,
+- state bucket premise,
+- action `follow` or `invert`.
+
+Protocol:
+- generate rule supports from train only,
+- rank rules on test only,
+- report eval untouched.
+
+Run result:
+- examples: train 24,379; test 71,150; eval 17,100.
+- candidate symbolic rules: 1,698 evaluated.
+- many top test rules looked excellent by isolated future-return labels, but most had tiny eval support or failed eval.
+
+Most interesting test-ranked rule:
+- rule: `id_side=market_derivatives|h576|original|SHORT` + `range_vol=high`
+- action: `invert` (take LONG instead of candidate SHORT)
+- offline isolated-label metrics:
+  - train n=238, mean +0.484%, win 58.8%.
+  - test n=295, mean +1.539%, win 99.7%.
+  - eval n=52, mean +1.248%, win 76.9%.
+
+Strict portfolio audit of that rule showed the offline label is misleading under actual bar-by-bar/cooldown execution:
+- train: CAGR 7.77%, MDD 6.20%, ratio 1.25, only 5 trades.
+- test: CAGR 8.08%, MDD 11.90%, ratio 0.68, 10 trades.
+- eval: CAGR -82.47%, MDD 11.90%, ratio -6.93, 4 trades.
+- all: CAGR 4.68%, MDD 11.90%, ratio 0.39, 19 trades.
+
+Decision:
+- Symbolic rule discovery is the right bridge for LLM deductive reasoning, but the scoring objective must be strict-backtest-aware, not isolated future-return labels.
+- Next scanner should evaluate candidate rules by constructing prediction rows and running strict overlay per split, then rank on test CAGR/MDD/trade-count and report eval.
