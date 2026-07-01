@@ -1164,3 +1164,28 @@ Readout:
 - Robust scoring did not change the best resume-only verifier threshold, so the current weakness is not just a bad threshold-selection metric.
 - The bottleneck remains alpha strength/trade count, especially eval sample size.
 - Keep robust scoring anyway because horizon sweep showed standalone family settings can overfit 2025 badly.
+
+## 2026-07-02 rejected REX entry-timing variants
+
+Purpose: test whether the robust `rex_htf_pullback_resume` alpha improves by adding current-bar entry timing conditions: local turn, exhaustion, flow confirmation, or low-vol compression. These variants were tested but not kept in code because they either failed validation or became 2025-only traps.
+
+Runs:
+- `results/event_candidate_pool_probe_rex_timing_h288_q080_s24_2026-07-02.json`
+- `results/event_candidate_pool_probe_rex_timing_h288_q085_s24_2026-07-02.json`
+
+Key results, hold 288 / stride 24:
+
+| q | family | train | 2025 val | 2026 eval | verdict |
+| ---: | --- | --- | --- | --- | --- |
+| 0.80 | `rex_htf_pullback_resume` baseline | 11.95% / 33.53% / 730 / p=0.174 | 2.69% / 14.30% / 111 / p=0.805 | 23.37% / 7.46% / 46 / p=0.486 | Weak but positive baseline. |
+| 0.80 | `rex_htf_pullback_turn_resume` | 7.69% / 37.26% / 858 / p=0.333 | 5.45% / 12.51% / 143 / p=0.683 | -8.94% / 7.46% / 54 / p=0.770 | Validation trap; reject. |
+| 0.80 | `rex_htf_pullback_lowvol_resume` | 13.26% / 27.41% / 770 / p=0.144 | -3.46% / 13.83% / 122 / p=0.871 | 21.93% / 7.46% / 50 / p=0.445 | Val negative; reject. |
+| 0.85 | `rex_htf_pullback_resume` baseline | 20.90% / 20.11% / 573 / p=0.026 | 7.33% / 6.53% / 63 / p=0.581 | 14.71% / 6.72% / 33 / p=0.629 | Best balanced baseline. |
+| 0.85 | `rex_htf_pullback_flow_resume` | 13.77% / 30.16% / 747 / p=0.116 | 0.85% / 11.61% / 121 / p=0.897 | 21.34% / 6.52% / 47 / p=0.455 | Val too weak; reject. |
+| 0.85 | `rex_htf_pullback_lowvol_resume` | 20.38% / 24.63% / 610 / p=0.029 | -8.82% / 13.65% / 75 / p=0.472 | -0.29% / 7.31% / 37 / p=0.976 | Reject. |
+
+Readout:
+- Naive current-bar timing features do not improve the alpha; they mainly add another overfit surface.
+- `turn_resume` is especially dangerous: it improved 2025 validation at q0.80 but failed 2026.
+- The robust signal seems to come from higher-timeframe pullback location itself, not from simple 5m candle confirmation.
+- Next direction should be broader data/fold validation or a different alpha family, not more hand-built timing gates on the same REX pullback.
