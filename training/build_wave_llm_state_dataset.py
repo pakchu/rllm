@@ -78,6 +78,33 @@ def _bucket_z(x: float) -> str:
     return _bucket_signed(float(x), small=0.75, large=1.75)
 
 
+def _bucket_range_pos(x: float) -> str:
+    if x <= -0.65:
+        return "near_low"
+    if x <= -0.25:
+        return "lower_half"
+    if x < 0.25:
+        return "middle"
+    if x < 0.65:
+        return "upper_half"
+    return "near_high"
+
+
+def _bucket_rex_width(x: float) -> str:
+    return _bucket_abs(float(x), low=0.025, high=0.08)
+
+
+def _bucket_rex_gap(x: float) -> str:
+    ax = abs(float(x))
+    if ax < 0.01:
+        return "touching"
+    if ax < 0.03:
+        return "near"
+    if ax < 0.08:
+        return "mid"
+    return "far"
+
+
 def _safe_feature(features: pd.DataFrame, pos: int, col: str) -> float:
     if col not in features.columns or pos < 0 or pos >= len(features):
         return 0.0
@@ -105,6 +132,13 @@ def _state_tokens(features: pd.DataFrame, pos: int, side: str) -> dict[str, str]
     usdkrw = _safe_feature(features, pos, "usdkrw_momentum")
     side_t12 = side_sign * t12
     side_d1 = side_sign * d1
+    rex_tokens: dict[str, str] = {}
+    for rex_window in (36, 144, 576, 2016, 8640):
+        prefix = f"rex_{rex_window}"
+        rex_tokens[f"{prefix}_loc"] = _bucket_range_pos(_safe_feature(features, pos, f"{prefix}_range_pos"))
+        rex_tokens[f"{prefix}_width"] = _bucket_rex_width(_safe_feature(features, pos, f"{prefix}_range_width_pct"))
+        rex_tokens[f"{prefix}_upper_gap"] = _bucket_rex_gap(_safe_feature(features, pos, f"{prefix}_max_to_cur_pct"))
+        rex_tokens[f"{prefix}_lower_gap"] = _bucket_rex_gap(_safe_feature(features, pos, f"{prefix}_cur_to_min_pct"))
     return {
         "short_trend": _bucket_signed(t12, small=0.003, large=0.01),
         "session_trend": _bucket_signed(t96, small=0.006, large=0.02),
@@ -120,6 +154,7 @@ def _state_tokens(features: pd.DataFrame, pos: int, side: str) -> dict[str, str]
         "kimchi_pressure": _bucket_z(kimchi),
         "usdkrw_pressure": _bucket_signed(usdkrw, small=0.001, large=0.004),
         "external_availability": "available" if _safe_feature(features, pos, "external_any_available") > 0.5 else "missing_or_partial",
+        **rex_tokens,
     }
 
 
