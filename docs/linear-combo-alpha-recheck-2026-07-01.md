@@ -214,3 +214,26 @@ Interpretation:
 - The new labels are more risk-realistic and side-conditioned features reveal plausible clues (`side_htf_*`, `side_rex_*`, `side_trend_96`, `range_vol`).
 - However train/test drift is still severe: train is highly separable, while test/eval fail majority accuracy.  This is a better diagnostic surface, but not yet a deployable LLM target.
 - Next iteration should reduce overfit by using rolling/monthly train calibration or feature family stability filters before Gemma fine-tuning.
+
+## Trade-only chronological feature stability audit
+New diagnostic: `training/linear_alpha_meta_stability_diagnostic.py`
+
+Purpose: identify prompt features whose TAKE/SKIP relation keeps the same sign across chronological regimes before using them in another Gemma run.  This avoids overfeeding the LLM unstable features that fit 2024H1 but invert later.
+
+Trade-only half-year audit:
+- inputs: path-quality binary train/test/eval SFT rows.
+- periods: 2024H1, 2024H2, 2025H1, 2025H2, 2026H1.
+- rows after `--trade-only`: 25,768.
+- output: `results/linear_alpha_meta_stability_pathq_binary_trade_only_halfyear_2026-07-01.json`.
+
+Most stable non-trivial clues are very weak:
+- `bucket:rex_2016_range_pos=neg_s`: same negative sign in all five periods, min abs corr 0.077, mean abs corr 0.111.
+- `num:trend_96`: same positive sign, min abs corr 0.021, mean abs corr 0.042.
+- `bucket:usdkrw_zscore=pos_m`: same negative sign, min abs corr 0.018, mean abs corr 0.048.
+- `bucket:kimchi_premium_zscore=zero` / `bucket:usdkrw_zscore=zero`: same positive sign, min abs corr 0.017, mean abs corr 0.052.
+- `tok:dxy_bucket=high`: same negative sign, but unstable magnitude, min abs corr 0.010.
+
+Decision:
+- Stable alpha exists only as a weak-feature bundle; no single feature is strong enough.
+- Next prompt should be feature-family constrained: emphasize stable rolling-extrema/range/trend + macro availability/bucket context, and reduce unstable raw numeric dumps.
+- Another Gemma SFT should be gated by this audit and evaluated on trade-only candidate decisions before portfolio backtest.
