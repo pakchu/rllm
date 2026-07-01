@@ -514,3 +514,33 @@ Strict portfolio audit of that rule showed the offline label is misleading under
 Decision:
 - Symbolic rule discovery is the right bridge for LLM deductive reasoning, but the scoring objective must be strict-backtest-aware, not isolated future-return labels.
 - Next scanner should evaluate candidate rules by constructing prediction rows and running strict overlay per split, then rank on test CAGR/MDD/trade-count and report eval.
+
+## Strict-backtest-aware symbolic rule scan
+New scanner: `training/symbolic_rule_strict_backtest_scan.py`
+
+Purpose: the first symbolic scanner ranked rules by isolated future-return labels and then failed under real portfolio mechanics.  This scanner instead materializes live-style prediction rows for every candidate rule and runs the same strict bar-by-bar online overlay on train/test/eval.  Rule generation uses train support, ranking uses test only, and eval remains untouched until final reporting.
+
+Run configuration:
+- inputs: pairwise state v2 train 2024H1, test 2024H2-2025, eval 2026 Jan-May.
+- market data: `data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz`.
+- rule budget: 160 strict-scanned rules from train-supported symbolic predicates.
+- minimum support: train 50 candidate rows, test 100 candidate rows, test 20 executed trades.
+- execution model: 0.5 leverage, 576-bar max hold, 1-bar entry delay, fee/slippage included.
+
+Top test-ranked rule:
+- rule: `kimchi_premium_zscore=mid` + `side=SHORT`.
+- action: `invert`.
+- support: train 7,177 candidates, test 26,868 candidates, eval 4,736 executed candidate rows before overlay/cooldown.
+
+| Split | CAGR | Strict MDD | CAGR/MDD | Trades | Mean trade p-value |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| train 2024H1 | 54.66% | 10.99% | 4.97 | 90 | 0.174 |
+| test 2024H2-2025 | 23.09% | 18.49% | 1.25 | 258 | 0.154 |
+| eval 2026 Jan-May | -9.94% | 20.60% | -0.48 | 67 | 0.840 |
+
+Other high-ranked rules showed the same pattern: acceptable-looking train/test pockets but negative 2026 eval transfer.  Example `dxy_zscore=mid` + `side=SHORT`, action `invert`, produced test CAGR 14.62% / MDD 21.42% / ratio 0.68, then eval CAGR -27.60% / MDD 23.51% / ratio -1.17.
+
+Decision:
+- The strict scanner is the correct validation surface for LLM-generated symbolic rules.
+- No rule from this first grammar is promotable: top rules fail eval, exceed the strict MDD target, or lack statistical significance.
+- The failure is useful: the previous strong-looking symbolic result was mostly objective mismatch, not alpha.  Future LLM work should propose richer price-action/regime rules, but promotion must stay strict-backtest-first with chronological train/test/eval separation.
