@@ -716,3 +716,23 @@ Rejected examples:
 Decision:
 - The staged strict gate correctly blocks weak broad predicates before eval exposure.
 - This should be used for subsequent binary-edge batches; otherwise isolated reward prefilter repeatedly wastes strict test/eval on non-robust candidates.
+
+## Binary-edge staged scan v3
+Run: `results/binary_edge_symbolic_rule_strict_scan_v3_stage_2022_2026_2026-07-01.json`
+
+Protocol:
+- generated rules: 3,000.
+- prefiltered candidates: 5,996.
+- dedupe candidates: 240.
+- unique train-gated candidates: 12.
+- strict-scanned test/eval candidates: 0.
+
+All top candidates were rejected by train strict gate.  The common failure was broad `invert` rules over large range-width predicates.  Examples:
+- `rex_144_range_width_pct=pos_large` + `rex_8640_range_width_pct=pos_large`, action `invert`: train CAGR -41.93%, MDD 82.49%, ratio -0.51, p=0.000.
+- `rex_2016_range_width_pct=pos_large` + `rex_8640_range_width_pct=pos_large`, action `invert`: train CAGR -38.81%, MDD 79.55%, ratio -0.49, p=0.000.
+- `rex_144_range_width_pct=pos_large` + `rex_8640_cur_to_min_pct=pos_large`, action `invert`: train CAGR -37.09%, MDD 77.74%, ratio -0.48, p=0.000.
+
+Decision:
+- The staged gate is working: it prevented obviously bad train-strict candidates from consuming eval.
+- The current cheap prefilter is dominated by `invert` candidates that are contra-profitable in train strict execution.
+- Next search should separate actions and run follow-only / invert-only batches rather than letting broad invert candidates crowd out the candidate queue.
