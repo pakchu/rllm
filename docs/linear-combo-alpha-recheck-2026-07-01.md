@@ -616,3 +616,33 @@ Decision:
 - They are not a live candidate stream and must not be materialized into backtest trades.
 - The temporary scanner was removed instead of committed to avoid future misuse.
 - Longer-period validation must use a live-style candidate stream where every candidate would have existed at signal time without future utility selection.
+
+## Live-style binary-edge symbolic scanner
+New scanner: `training/binary_edge_symbolic_rule_strict_backtest_scan.py`
+
+Purpose: validate symbolic LLM-style rules on a longer candidate stream without using future-utility-selected pair data.  Inputs are candidate-level binary-edge rows where every candidate row exists independently; future reward is label-only and is not part of the prompt.
+
+Chronological protocol:
+- train: 2022-2024 candidate rows.
+- test: 2025 candidate rows.
+- eval: 2026 Jan-May candidate rows.
+- rule generation: train support only.
+- candidate triage: test-only cheap prefilter.
+- final selection: strict test backtest.
+- final report: untouched eval.
+
+Smoke run:
+- inputs: `event_candidate_binary_edge_paext_rex_train_2022_2024_2026-06-30.jsonl`, `event_candidate_binary_edge_paext_rex_eval_2025_2026_2026-06-30.jsonl`.
+- strict-scanned unique rules: 3.
+- best smoke rule: `side_trend_96=strong_up`, action `invert`.
+
+| Split | CAGR | Strict MDD | CAGR/MDD | Trades | p-value |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| train 2022-2024 | -6.63% | 28.15% | -0.24 | 438 | 0.378 |
+| test 2025 | 7.34% | 7.76% | 0.95 | 101 | 0.371 |
+| eval 2026 Jan-May | -18.52% | 9.76% | -1.90 | 43 | 0.154 |
+
+Decision:
+- This is a valid longer-period live-style validation surface.
+- Smoke did not find a promotable rule, which is expected and much more believable than the rejected future-utility-selected event-pair scan.
+- Next step is a broader binary-edge scan with more unique strict candidates.
