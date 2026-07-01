@@ -667,3 +667,28 @@ Decision:
 - No promotable binary-edge symbolic rule in the capped smoke.
 - The longer live-style candidate stream is useful, but the first broad direction again shows 2025-only pockets that fail 2026.
 - Runtime caps are necessary for iterative exploration; larger scans should be staged in bounded batches, not one huge run.
+
+## Binary-edge capped scan v2
+Run: `results/binary_edge_symbolic_rule_strict_scan_v2_capped_2022_2026_2026-07-01.json`
+
+Protocol:
+- train 2022-2024, test 2025, eval 2026 Jan-May.
+- generated rules capped at 1,200.
+- test-prefiltered candidates: 2,400.
+- dedupe candidate cap: 120.
+- unique strict candidates: 6.
+
+Result:
+- No promotable rule.
+- All top strict-tested candidates were negative on test and/or eval despite high cheap prefilter scores.
+
+Top strict-ranked candidate:
+- rule: `rex_144_range_width_pct=pos_large` + `rex_8640_cur_to_min_pct=pos_large`, action `invert`.
+- train: CAGR -37.09%, strict MDD 77.74%, ratio -0.48, 2,021 trades.
+- test: CAGR -17.50%, strict MDD 26.57%, ratio -0.66, 655 trades.
+- eval: CAGR -28.29%, strict MDD 14.72%, ratio -1.92, 273 trades.
+
+Decision:
+- The binary-edge live-style surface is valid, but the current cheap prefilter is not aligned with strict overlay execution.
+- The failure mode is now clearer: isolated candidate reward and strict executed portfolio return diverge, especially for broad predicates and inverted actions.
+- Next step should add strict-aligned prefilter constraints or staged strict scoring that rejects candidates with negative train/test overlay before spending more batches.
