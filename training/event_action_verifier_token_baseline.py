@@ -33,6 +33,7 @@ class VerifierTokenBaselineConfig:
     top_token_count: int = 24
     threshold_grid: str = "0.10,0.12,0.14,0.16,0.18,0.20,0.22,0.25,0.30"
     score_mode: str = "mean"
+    allowed_families: str = ""
     leverage: float = 0.5
     max_hold_bars: int = 576
     entry_delay_bars: int = 1
@@ -175,13 +176,21 @@ def _score(row: dict[str, Any], model: dict[str, Any], cfg: VerifierTokenBaselin
     return {'score': score, 'tokens': use[:8]}
 
 
+def _allowed_family_set(cfg: VerifierTokenBaselineConfig) -> set[str]:
+    return {x.strip() for x in str(cfg.allowed_families).split(',') if x.strip()}
+
+
 def _scored_candidates(rows: list[dict[str, Any]], model: dict[str, Any], cfg: VerifierTokenBaselineConfig) -> list[dict[str, Any]]:
     # A signal timestamp can have many candidate actions.  Live execution must
     # choose the highest-scored candidate, not the first row in file order.
     # This is a structural verifier/post-ranker step and does not use labels.
+    allowed = _allowed_family_set(cfg)
     best_by_pos: dict[int, tuple[float, dict[str, Any], dict[str, Any]]] = {}
     for row in rows:
         action = row.get('action') if isinstance(row.get('action'), dict) else {}
+        family = str(action.get('family', ''))
+        if allowed and family not in allowed:
+            continue
         side = str(action.get('side', 'NONE')).upper()
         hold = int(action.get('hold_bars', 0) or 0)
         pos = int(row.get('signal_pos', -1) or -1)
@@ -280,6 +289,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument('--top-token-count', type=int, default=VerifierTokenBaselineConfig.top_token_count)
     p.add_argument('--threshold-grid', default=VerifierTokenBaselineConfig.threshold_grid)
     p.add_argument('--score-mode', choices=('mean','max','logit'), default=VerifierTokenBaselineConfig.score_mode)
+    p.add_argument('--allowed-families', default=VerifierTokenBaselineConfig.allowed_families, help='Comma-separated action families allowed before per-signal best-action selection')
     p.add_argument('--leverage', type=float, default=VerifierTokenBaselineConfig.leverage)
     p.add_argument('--max-hold-bars', type=int, default=VerifierTokenBaselineConfig.max_hold_bars)
     p.add_argument('--entry-delay-bars', type=int, default=VerifierTokenBaselineConfig.entry_delay_bars)

@@ -975,3 +975,36 @@ Readout:
 - `rex_htf_pullback_resume` is now the most credible candidate-family lead: it repeats positive on train/val/eval under several h288 settings and includes both long/short actions.
 - It is not statistically sufficient yet: p-values remain weak and eval trades are mostly 33-61.
 - Next step: regenerate verifier/action-book rows after adding REX candidate families, then test whether the conservative verifier can pick a broader, cleaner subset from a better candidate book.
+
+## 2026-07-01 REX family-selection → verifier structure
+
+After adding REX candidate families, v4rex verifier rows were regenerated:
+- train 2020-2024: 233,856 rows, ALLOW 17,478, allow-rate 7.47%.
+- test 2025: 46,720 rows, ALLOW 2,424, allow-rate 5.19%.
+- eval 2026 Jan-May: 19,104 rows, ALLOW 1,065, allow-rate 5.57%.
+
+The oracle ceiling stayed extremely high and roughly unchanged versus the prior verifier split:
+- train: 2893.12% CAGR / 11.71% MDD / 787 trades.
+- test: 1010.92% / 5.21% / 125 trades.
+- eval: 1256.69% / 2.92% / 53 trades.
+
+Distribution check:
+- REX families entered the candidate book often (`rex_htf_pullback_resume` book appearances: train 53,984; test 9,760; eval 3,296).
+- But unconstrained v6 verifier selected unstable REX families (`rex_extreme_breakout_follow`, `rex_multiscale_extreme_fade`) and failed eval:
+  - threshold 0.115 selected by 2025 test: train 22.74% / 24.48% / 309 trades; test 8.08% / 13.26% / 98 trades; eval -18.61% / 11.54% / 33 trades.
+
+Structural fix:
+- Add `--allowed-families` to `training/event_action_verifier_token_baseline.py` so a prior train/val family-selection layer can constrain the verifier's action universe before per-signal best-action selection.
+- Tested whitelist `rex_htf_pullback_resume`, the only REX family that repeated positive in train/2025/2026 standalone probes.
+
+Whitelist verifier result: `results/event_action_verifier_token_baseline_v7_rex_htf_whitelist_2026-07-01.json`
+
+| threshold selected by 2025 test | train | 2025 test | 2026 eval | verdict |
+| ---: | --- | --- | --- | --- |
+| 0.07 | 17.16% CAGR / 32.04% MDD / 470 trades / p=0.061 | 19.16% / 8.34% / 62 trades / p=0.147 | 11.32% / 4.88% / 28 trades / p=0.565 | Best structural lead so far, but eval trade count still too low. |
+| 0.08 | 16.32% / 25.52% / 296 trades / p=0.032 | -1.29% / 7.18% / 27 trades / p=0.883 | 55.36% / 4.55% / 12 trades / p=0.041 | Not selectable because 2025 test is negative. |
+
+Readout:
+- The important structure is now: **train/val stable family selection → conservative verifier within the selected family → untouched eval**.
+- This avoids letting the verifier chase unstable REX subfamilies that looked good in 2025 but failed 2026.
+- Still not production-ready: eval has only 28 trades and p=0.565, so the next goal is to widen `rex_htf_pullback_resume` opportunities without losing the low-MDD profile.
