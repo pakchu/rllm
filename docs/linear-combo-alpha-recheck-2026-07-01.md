@@ -308,3 +308,28 @@ Decision:
 - This confirms the current issue is still regime/label instability, not merely output formatting or SFT vs DPO objective.
 - Failed DPO and dry-run checkpoints were deleted to keep disk usage bounded.
 - Next direction should be rolling calibration / regime-conditioned preference data, not a larger global adapter over 2024H1 only.
+
+## Rolling continuous calibration preflight
+New diagnostic: `training/linear_alpha_meta_walkforward_diagnostic.py`
+
+Purpose: test the user's continuous-learning idea cheaply before launching rolling Gemma jobs.  For each half-year period, a logistic model is fit only on past periods using prompt-derived stable price-action features, then evaluated on the next period.  Feature space, standardization, weights, and threshold calibration use past rows only.
+
+Trade-only half-year walk-forward result (`results/linear_alpha_meta_walkforward_pathq_stablepa_trade_only_halfyear_2026-07-01.json`):
+
+| Eval period | Train periods | Eval rows | Fixed acc | Majority | Balanced recall | TAKE recall | SKIP recall |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2024H2 | 2024H1 | 4,903 | 62.4% | 65.3% | 52.8% | 21.6% | 84.0% |
+| 2025H1 | 2024H1-2024H2 | 6,927 | 62.4% | 67.7% | 50.8% | 18.0% | 83.5% |
+| 2025H2 | 2024H1-2025H1 | 3,142 | 51.8% | 59.1% | 46.0% | 14.6% | 77.5% |
+| 2026H1 | 2024H1-2025H2 | 6,838 | 61.5% | 63.4% | 51.4% | 13.8% | 89.0% |
+
+Aggregate over evaluated periods:
+- fixed threshold accuracy: 60.6% vs 64.6% majority.
+- balanced recall: 50.7%.
+- TAKE recall: 16.9%, SKIP recall: 84.5%.
+- train-calibrated thresholds increased TAKE attempts but did not beat majority or improve balanced recall consistently.
+
+Decision:
+- Continuous/rolling refit alone does not solve the current alpha surface.  It mostly learns a conservative SKIP-biased classifier and misses profitable TAKE labels.
+- This weakens the case for rolling Gemma adapters on the same labels/features.
+- Next productive direction is to change candidate construction and labels: make the model compare higher-quality candidate alternatives or use stronger entry candidates, rather than only vetoing a weak external linear alpha.
