@@ -1108,3 +1108,20 @@ Readout:
 - Risk overlay lowers train MDD but still leaves train ratio far below target; it is not the bottleneck.
 - Current best robust family remains `rex_htf_pullback_resume`; `reclaim` should stay as an exploratory alternative, not a production family.
 - Next alpha work should target regime-conditioned short specialization and better entry timing, because unconditional side split showed recent shorts can work while long-run shorts fail.
+
+## 2026-07-02 rejected short-regime REX variants
+
+Purpose: test whether the recent short-side improvement could be made robust by conditioning short pullbacks on macro risk-off or sell-flow confirmation. The variants were tested but not kept in code because they did not fix the long-run train failure.
+
+Run: `results/event_candidate_pool_probe_rex_short_regime_h288_q085_s24_2026-07-02.json`, train 2020-2024, validation 2025, eval 2026-01-01..2026-06-01, hold 288, stride 24, q=0.85.
+
+| family | train | 2025 val | 2026 eval | verdict |
+| --- | --- | --- | --- | --- |
+| `rex_htf_short_pullback_riskoff` | -6.15% CAGR / 45.54% MDD / 497 trades / p=0.586 | 12.10% / 8.55% / 136 / p=0.408 | 3.66% / 7.46% / 37 / p=0.887 | Reject: train negative, eval weak. |
+| `rex_htf_short_pullback_flow_confirm` | -6.51% / 46.44% / 480 / p=0.555 | 9.17% / 12.51% / 124 / p=0.505 | 9.41% / 7.46% / 36 / p=0.808 | Reject: train negative. |
+| `rex_htf_short_pullback_resume` baseline | -6.37% / 44.88% / 472 / p=0.550 | 12.29% / 12.59% / 123 / p=0.392 | 10.74% / 7.46% / 34 / p=0.823 | Recent-only short edge, not robust. |
+
+Readout:
+- Simple macro/flow conditioning does not solve short-side instability.
+- The short-side lead is likely regime-specific to 2025-2026 and should not be trained as unconditional alpha over 2020-2024.
+- Next promising direction is not more side filters; it is **entry timing/holding horizon adaptation** inside the robust `rex_htf_pullback_resume` family.
