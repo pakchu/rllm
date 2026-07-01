@@ -872,3 +872,28 @@ Readout:
 - The verifier/candidate-book ceiling remains strong, but train-only token reliability is far too weak to recover it robustly.
 - The important structural gain is not the token score itself; it is the live-compatible `score all exact actions -> pick best action -> threshold gate` verifier shape.
 - Next useful move is a richer learned verifier over these same no-leak symbolic tokens (e.g. online logistic/FTRL or Gemma distillation), not more one-token gates.
+
+## 2026-07-01 sparse linear verifier baseline
+
+Purpose: test whether multiple weak symbolic verifier features can combine into a generalizable no-leak verifier before moving to Gemma distillation.
+
+Implementation: `training/event_action_verifier_linear_baseline.py`.
+
+Structure:
+- Reuses the same no-leak prompt/action/state tokens as the token verifier.
+- Trains an online sparse logistic model on 2020-2024 only.
+- Uses live-compatible post-ranking: score all exact actions per signal, choose the highest-scored action, then threshold.
+- Chooses threshold on 2025 test and reports 2026 Jan-May eval untouched.
+
+Run: `results/event_action_verifier_linear_baseline_v1_2026-07-01.json`
+
+| selected threshold | train | test | eval | verdict |
+| ---: | --- | --- | --- | --- |
+| 0.20 | 22.77% CAGR / 40.59% MDD / 1007 trades / p=0.049 | 0.53% / 18.58% / 204 trades / p=0.906 | -33.68% / 22.32% / 84 trades / p=0.184 | Reject: train signal does not generalize. |
+| 0.25 | 27.42% / 32.63% / 982 trades / p=0.025 | -2.62% / 15.29% / 199 trades / p=0.953 | -47.03% / 26.58% / 82 trades / p=0.033 negative | Reject. |
+| 0.65 | 9.25% / 31.90% / 236 trades / p=0.155 | -3.59% / 15.61% / 58 trades / p=0.789 | -16.08% / 9.55% / 19 trades / p=0.297 | Reject. |
+
+Readout:
+- Sparse linear composition improved in-sample CAGR but exposed clear overfit/regime drift.
+- This strongly suggests the current event-action prompt tokens are not enough as a standalone alpha source, even though the oracle labels have a high ceiling.
+- Next structural/alpha move should change the candidate generator/feature surface, not merely the verifier optimizer: add price-action location/rolling-extrema semantics into candidate families and prompt tokens, then re-run the same verifier protocol.
