@@ -30,6 +30,9 @@ class DenseWaveProbOptionCfg:
     fee_rate: float = 0.0004
     slippage_rate: float = 0.0001
     max_rows_per_split: int = 0
+    exit_model: str = "fixed"
+    atr_trailing_stop_mult: float = 3.75
+    atr_period: int = 45
 
 
 def _read(path: str) -> list[dict[str, Any]]:
@@ -53,6 +56,20 @@ def _prob_bucket(p: float, side: str) -> str:
     return "extreme"
 
 
+def _rolling_atr(high: np.ndarray, low: np.ndarray, open_: np.ndarray, period: int) -> np.ndarray:
+    period = max(1, int(period))
+    prev_close = np.roll(open_, 1)
+    prev_close[0] = open_[0]
+    tr = np.maximum.reduce([high - low, np.abs(high - prev_close), np.abs(low - prev_close)])
+    out = np.empty_like(tr, dtype=float)
+    csum = np.cumsum(tr, dtype=float)
+    for i in range(len(tr)):
+        start = max(0, i - period + 1)
+        total = csum[i] - (csum[start - 1] if start > 0 else 0.0)
+        out[i] = total / float(i - start + 1)
+    return out
+
+
 def _fixed_hold_reward(market: pd.DataFrame, signal_pos: int, side: str, hold_bars: int, entry_delay_bars: int, cost: float) -> float | None:
     entry = int(signal_pos) + int(entry_delay_bars)
     exit_ = entry + int(hold_bars)
@@ -63,6 +80,37 @@ def _fixed_hold_reward(market: pd.DataFrame, signal_pos: int, side: str, hold_ba
     if ep <= 0 or xp <= 0:
         return None
     raw = (xp - ep) / ep if side == "LONG" else (ep - xp) / ep
+    return (raw - 2.0 * float(cost)) * 100.0
+
+
+def _atr_hold_reward(market: pd.DataFrame, atr: np.ndarray, signal_pos: int, side: str, hold_bars: int, entry_delay_bars: int, cost: float, atr_mult: float) -> float | None:
+    entry = int(signal_pos) + int(entry_delay_bars)
+    exit_ = entry + int(hold_bars)
+    if entry < 0 or exit_ >= len(market):
+        return None
+    opens = market["open"].to_numpy(dtype=float)
+    highs = market["high"].to_numpy(dtype=float)
+    lows = market["low"].to_numpy(dtype=float)
+    entry_price = float(opens[entry])
+    if entry_price <= 0.0:
+        return None
+    signal = 1 if side == "LONG" else -1
+    atr_ref = max(0, entry - 1)
+    atr_dist = float(atr[atr_ref]) * float(atr_mult)
+    stop = entry_price - atr_dist if signal > 0 else entry_price + atr_dist
+    exit_price = float(opens[exit_])
+    for j in range(entry, exit_):
+        if signal > 0:
+            if float(lows[j]) <= stop:
+                exit_price = stop
+                break
+            stop = max(stop, float(highs[j]) - atr_dist)
+        else:
+            if float(highs[j]) >= stop:
+                exit_price = stop
+                break
+            stop = min(stop, float(lows[j]) + atr_dist)
+    raw = (exit_price - entry_price) / entry_price if signal > 0 else (entry_price - exit_price) / entry_price
     return (raw - 2.0 * float(cost)) * 100.0
 
 
@@ -85,6 +133,7 @@ def _prompt(date: str, signal_pos: int, side: str, prob: float, tokens: dict[str
 def _rows(src: list[dict[str, Any]], market: pd.DataFrame, features: pd.DataFrame, cfg: DenseWaveProbOptionCfg, split: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     cost = float(cfg.fee_rate) + float(cfg.slippage_rate)
+    atr = _rolling_atr(market["high"].to_numpy(dtype=float), market["low"].to_numpy(dtype=float), market["open"].to_numpy(dtype=float), int(cfg.atr_period)) if str(cfg.exit_model).lower() == "atr" else None
     for r in src:
         pos = int(r.get("signal_pos", -1) or -1)
         prob = float(r.get("teacher_probability_long", 0.5) or 0.5)
@@ -94,7 +143,10 @@ def _rows(src: list[dict[str, Any]], market: pd.DataFrame, features: pd.DataFram
         if prob <= float(cfg.max_short_prob):
             candidates.append("SHORT")
         for side in candidates:
-            reward = _fixed_hold_reward(market, pos, side, int(cfg.hold_bars), int(cfg.entry_delay_bars), cost)
+            if atr is not None:
+                reward = _atr_hold_reward(market, atr, pos, side, int(cfg.hold_bars), int(cfg.entry_delay_bars), cost, float(cfg.atr_trailing_stop_mult))
+            else:
+                reward = _fixed_hold_reward(market, pos, side, int(cfg.hold_bars), int(cfg.entry_delay_bars), cost)
             if reward is None:
                 continue
             tokens = _state_tokens(features, pos, side)
@@ -161,6 +213,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--fee-rate", type=float, default=DenseWaveProbOptionCfg.fee_rate)
     p.add_argument("--slippage-rate", type=float, default=DenseWaveProbOptionCfg.slippage_rate)
     p.add_argument("--max-rows-per-split", type=int, default=DenseWaveProbOptionCfg.max_rows_per_split)
+    p.add_argument("--exit-model", choices=["fixed", "atr"], default=DenseWaveProbOptionCfg.exit_model)
+    p.add_argument("--atr-trailing-stop-mult", type=float, default=DenseWaveProbOptionCfg.atr_trailing_stop_mult)
+    p.add_argument("--atr-period", type=int, default=DenseWaveProbOptionCfg.atr_period)
     return p.parse_args()
 
 
