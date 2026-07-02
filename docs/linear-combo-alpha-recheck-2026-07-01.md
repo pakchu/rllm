@@ -1316,3 +1316,31 @@ SFT readiness:
 Readout:
 - The records are small enough for a compact Gemma4/Gemma E4B LoRA run and aligned with the user's preferred LLM direction.
 - The immediate next GPU job should be a very short LoRA sanity run, then candidate-logprob evaluation/backtest against the ridge floor. Do not run long fine-tunes until the short run beats or matches the ridge ranker sanity floor.
+
+## 2026-07-02 Gemma4 LoRA sanity adapter evaluation
+
+Purpose: test whether a very short Gemma4/Gemma E4B LoRA can beat the ridge sanity floor before committing to longer GPU runs. Added `training/eval_rex_candidate_ranker_adapter.py`, which scores `TAKE` vs `SKIP` by adapter logprob, selects a margin on 2025 validation only, and reports 2026 eval untouched.
+
+Training run:
+- Model alias: `gemma4-e4b` → `google/gemma-4-E4B-it`.
+- Adapter: `checkpoints/rex_candidate_ranker_gemma4_e4b_lora_sanity_2026-07-02`.
+- Samples: balanced 2,048 rows (`TAKE=1,024`, `SKIP=1,024`).
+- Steps: 20, runtime 146.9s, train loss 0.625.
+
+Evaluation run: `results/rex_candidate_gemma4_adapter_sanity_eval_2026-07-02.json`.
+
+| split | label accuracy | confusion summary |
+| --- | ---: | --- |
+| 2025 validation | 62.10% | SKIP→SKIP 420, SKIP→TAKE 122, TAKE→SKIP 160, TAKE→TAKE 42 |
+| 2026 eval | 55.87% | SKIP→SKIP 175, SKIP→TAKE 61, TAKE→SKIP 97, TAKE→TAKE 25 |
+
+Backtest selection:
+- Margin selected on 2025 validation: `0.0`.
+- 2025 validation at selected margin: 22.66% CAGR / 10.73% strict MDD / 63 trades / p=0.0529.
+- 2026 eval at same margin: **-6.73% CAGR / 7.17% strict MDD / 28 trades / p=0.839**.
+
+Readout:
+- The 20-step Gemma4 sanity adapter does **not** beat the ridge floor. It overfits or learns a validation-period classifier that fails 2026.
+- This is still useful: the pipeline is now wired end-to-end (records → Gemma4 LoRA → logprob ranker → validation-selected backtest → eval report).
+- Longer training is not automatically justified. Next improvement should target train objective/sampling: time-balanced folds, validation-aware early stopping, or pairwise/ranking loss rather than plain balanced TAKE/SKIP SFT.
+- The ridge baseline remains the current sanity floor: rolling 2025-04..2026-06 CAGR 8.95% / strict MDD 2.64% / ratio 3.39 / 39 trades / p≈0.051.
