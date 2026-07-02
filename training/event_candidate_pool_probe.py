@@ -214,7 +214,12 @@ def _candidate_rows_for_family(
     for pos in range(max(0, int(cfg.window_size) - 1), max(0, last_pos) + 1, max(1, int(cfg.stride_bars))):
         if not mask[pos]:
             continue
-        if not np.isfinite(strength[pos]) or float(strength[pos]) < float(threshold):
+        # A zero-strength event means the family condition is not actually active.
+        # Earlier probes allowed strength == threshold, so families whose train
+        # quantile collapsed to 0 effectively traded every stride and produced
+        # misleading validation wins.  Require a strictly positive, above-threshold
+        # signal before creating a candidate row.
+        if (not np.isfinite(strength[pos])) or float(strength[pos]) <= max(0.0, float(threshold)):
             continue
         side_dir = float(direction[pos])
         if side_dir == 0.0 or not np.isfinite(side_dir):
@@ -301,7 +306,7 @@ def run_event_pool_probe(cfg: EventPoolConfig) -> dict[str, Any]:
     val_trials: list[dict[str, Any]] = []
     eval_by_family: dict[str, dict[str, Any]] = {}
     for family, (strength, direction) in families.items():
-        x = strength[train_mask & np.isfinite(strength)]
+        x = strength[train_mask & np.isfinite(strength) & (strength > 0.0)]
         if x.size < 100:
             continue
         threshold = float(np.quantile(x, q))
