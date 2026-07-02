@@ -1452,3 +1452,33 @@ Readout:
 - This fails and worsens the long union baseline (7.26% / 6.13% / ratio 1.19 / 160 trades / p=0.0646).
 - Simple monthly single-feature gate selection is unstable: it frequently picks different filters month to month and overfits the tiny validation sample.
 - This supports the user's concern that gate optimization is the wrong core path. Regime/context should enter as richer model input or candidate-generation prior, not as a brittle post-hoc monthly veto.
+
+## 2026-07-02 REX listwise choice records for Gemma4
+
+Purpose: move away from brittle TAKE/SKIP classification and toward an LLM-friendly choice task. For each signal, the model sees the current/prior regime context plus available candidates (`NO_TRADE`, `resume`, `reclaim`) and must choose exactly one candidate id. This better matches the desired deductive role: compare alternatives and abstain when risk dominates.
+
+Added `training/build_rex_listwise_choice_records.py`:
+- Input: `data/rex_candidate_ranker_resume085_reclaim085_notrade_all_2020_2026h1.jsonl`
+- Train output: `data/rex_listwise_choice_resume085_reclaim085_notrade_train_2020_2025.jsonl`
+- Eval output: `data/rex_listwise_choice_resume085_reclaim085_notrade_eval_2026h1.jsonl`
+- Summary: `data/rex_listwise_choice_resume085_reclaim085_notrade_summary_2026-07-02.json`
+
+Dataset stats:
+
+| split | rows | choice count mix | prompt mean chars |
+| --- | ---: | --- | ---: |
+| train | 4,494 | 2 choices: 1,756 / 3 choices: 2,738 | 1,541 |
+| eval | 240 | 2 choices: 122 / 3 choices: 118 | 1,525 |
+
+Target distribution:
+- Train: `NO_TRADE=2,970`, `RECLAIM_LONG=761`, `RECLAIM_SHORT=462`, `RESUME_SHORT=193`, `RESUME_LONG=108`.
+- Eval: `NO_TRADE=144`, `RECLAIM_SHORT=54`, `RESUME_SHORT=18`, `RECLAIM_LONG=14`, `RESUME_LONG=10`.
+
+Leakage guard:
+- Prompt uses only signal-time/prior tokens and numeric context.
+- Target uses future utility only as supervised training/evaluation label.
+- Choices share the same signal time; `NO_TRADE` has explicit zero counterfactual reward.
+
+Readout:
+- This is the cleanest current format for Gemma4: a compact per-signal multiple-choice decision rather than independent numeric TAKE/SKIP rows.
+- Next step is a short Gemma4 LoRA sanity run on `rex_listwise_choice`, then logprob/choice evaluation against ridge/pairwise floors. If it cannot beat the fixed blend, longer training is not justified.
