@@ -1374,3 +1374,34 @@ Readout:
 - Adding `NO_TRADE` fixes the degenerate pairwise setup and produces statistically cleaner trades than the ridge floor, but it is too conservative and does not yet improve absolute CAGR.
 - Current best sanity floor remains the rolling ridge ranker: 8.95% CAGR / 2.64% strict MDD / ratio 3.39 / 39 trades / p≈0.051.
 - Pairwise should be used as a safety/preference signal, not as a full replacement yet. The next useful experiment is a ridge-score + pairwise-score blend or a Gemma4 listwise/pairwise preference model that ranks `[NO_TRADE, resume, reclaim]` candidates per signal instead of plain balanced TAKE/SKIP classification.
+
+## 2026-07-02 Ridge + pairwise fixed-rule blend
+
+Purpose: check whether the ridge ranker's broader participation and the NO_TRADE pairwise ranker's cleaner mean trade quality can be combined without fitting any new thresholds on the target period. Added `training/blend_prediction_sets.py`, a fixed logical combiner over already-generated walk-forward prediction streams.
+
+Inputs:
+- Base: `results/rex_candidate_ridge_walkforward_resume085_reclaim085_2025_2026h1_2026-07-02/combined_test_predictions.jsonl`
+- Guard: fold test predictions from `results/rex_candidate_pairwise_walkforward_notrade_relaxed_2025_2026h1_2026-07-02/`
+- Market: `data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz`
+- Output dir: `results/rex_candidate_blend_ridge_pairwise_2026-07-02/`
+
+Fixed-rule results over 2025-04..2026-06:
+
+| mode | CAGR | strict MDD | ratio | trades | p-value | readout |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| ridge floor | 8.95% | 2.64% | 3.39 | 39 | 0.0515 | previous sanity floor |
+| pairwise relaxed | 5.56% | 1.69% | 3.29 | 30 | 0.0258 | clean but too conservative |
+| intersection / guard veto | 7.91% | 2.93% | 2.70 | 22 | 0.0559 | too sparse; loses edge |
+| guard-priority union | 8.31% | 2.79% | 2.98 | 45 | 0.0211 | p improves, CAGR below ridge |
+| base-priority union | **10.36%** | 3.00% | **3.46** | **45** | **0.0244** | best fixed blend so far |
+
+Trade-quality readout for base-priority union:
+- Mean trade return: +0.253%.
+- Approx 95% CI of mean trade return: +0.033% to +0.474%.
+- Effect size: 0.336.
+- Power heuristic: 45 trades observed vs 70 suggested for 80% power at alpha 5%.
+
+Readout:
+- This is a real incremental improvement over the ridge floor: CAGR, ratio, trade count, and p-value all improve, with strict MDD still below 3% in the 2025-04..2026-06 window.
+- It is still far below the product target of 50% CAGR and needs more trades for robust significance.
+- The practical direction is now clearer: keep REX candidate generation, use a lightweight ridge scorer for breadth, and use pairwise/listwise preference (eventually Gemma4) as a complementary candidate/action preference signal rather than a standalone gate.
