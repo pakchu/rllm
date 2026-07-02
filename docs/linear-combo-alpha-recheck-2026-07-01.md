@@ -1659,3 +1659,33 @@ Result:
 Readout:
 - Removing C/decoy is not enough. The model learned the fixed label/position prior (`A` means abstain) instead of recognizing the trade case.
 - Next target construction should randomize neutral labels/order per signal (`A` and `B` assigned randomly to NO_TRADE/best_trade) while preserving `choice_map`. That prevents a static label prior and forces comparison of candidate descriptions.
+
+## 2026-07-02 Randomized binary neutral labels
+
+Purpose: remove the fixed-label prior discovered in the binary target (`A` always mapped to `NO_TRADE`). Added `--randomize-neutral-labels` and `--random-seed` to `training/build_rex_listwise_choice_records.py`; labels are deterministically shuffled per signal while `choice_map` preserves the real action mapping.
+
+Dataset:
+- Train: `data/rex_binary_choice_neutral_random_resume085_reclaim085_notrade_train_2020_2025.jsonl`
+- Eval: `data/rex_binary_choice_neutral_random_resume085_reclaim085_notrade_eval_2026h1.jsonl`
+- Summary: `data/rex_binary_choice_neutral_random_resume085_reclaim085_notrade_summary_2026-07-02.json`
+- Rows: train 4,494 / eval 240.
+- All rows have 2 choices.
+- Target label counts are now balanced by label: train `A=2,258`, `B=2,236`; eval `A=119`, `B=121`.
+- Semantic targets remain unchanged but split across labels: train `NO_TRADE` appears under both A and B (`A=1,485`, `B=1,485`).
+
+Gemma4 20-step sanity:
+- Adapter: `checkpoints/rex_binary_choice_neutral_random_gemma4_e4b_lora_sanity_2026-07-02`
+- Training sample: 2,048 balanced (`A=1,024`, `B=1,024`).
+- Eval report: `results/rex_binary_choice_neutral_random_gemma4_adapter_sanity_eval_2026-07-02.json`
+
+Result:
+- Validation choice accuracy: 64.14%, confusion `A→A=183`, `A→B=79`, `B→A=110`, `B→B=155`.
+- Eval choice accuracy: 58.75%, confusion `A→A=72`, `A→B=47`, `B→A=52`, `B→B=69`.
+- Selected confidence margin: `0.2` on validation.
+- Validation: 4.68% CAGR / 2.33% MDD / ratio 2.01 / 14 trades / p=0.422.
+- Eval: 5.34% CAGR / 1.20% MDD / ratio 4.46 / 4 trades / p=0.00046.
+
+Readout:
+- Random labels fixed the fixed-A collapse: the model now chooses both labels and resolves through `choice_map` correctly.
+- Economic result is still not usable because the validation-selected margin produces only 4 eval trades. The high eval ratio/p-value is a tiny-sample artifact.
+- The next issue is selection policy: validation ranking needs an explicit minimum trade count / power constraint, otherwise it over-selects sparse high-ratio thresholds.

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -30,6 +31,8 @@ class RexListwiseChoiceCfg:
     target_metric: str = "utility_pct"
     neutral_choice_labels: bool = False
     binary_best_trade_only: bool = False
+    randomize_neutral_labels: bool = False
+    random_seed: int = 42
 
 
 def _load(path: str) -> list[dict[str, Any]]:
@@ -129,6 +132,9 @@ def _make_record(rows: list[dict[str, Any]], cfg: RexListwiseChoiceCfg, split: s
     inverse_choice_map: dict[str, str] = {}
     if cfg.neutral_choice_labels:
         labels = [chr(ord("A") + i) for i in range(len(real_choices))]
+        if cfg.randomize_neutral_labels:
+            rng = random.Random(int(cfg.random_seed) + int(rows[0].get("signal_pos", 0) or 0))
+            rng.shuffle(labels)
         label_map = {cid: label for cid, label in zip(real_choices, labels)}
         inverse_choice_map = {label: cid for cid, label in label_map.items()}
     target_choice = _choice_id(best_row)
@@ -209,6 +215,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--target-metric", choices=["utility_pct", "net_return_pct"], default=RexListwiseChoiceCfg.target_metric)
     p.add_argument("--neutral-choice-labels", action="store_true", default=RexListwiseChoiceCfg.neutral_choice_labels)
     p.add_argument("--binary-best-trade-only", action="store_true", default=RexListwiseChoiceCfg.binary_best_trade_only)
+    p.add_argument("--randomize-neutral-labels", action="store_true", default=RexListwiseChoiceCfg.randomize_neutral_labels)
+    p.add_argument("--random-seed", type=int, default=RexListwiseChoiceCfg.random_seed)
     return p.parse_args()
 
 
