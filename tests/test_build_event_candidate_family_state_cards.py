@@ -58,3 +58,27 @@ def test_state_card_run_filters_fold_range(tmp_path):
     assert summary['rows'] == 1
     row = json.loads(output.read_text().strip())
     assert row['fold']['name'] == 'new'
+
+
+def test_randomize_options_moves_selected_family_off_a_when_seeded(tmp_path):
+    report = tmp_path / 'report.json'
+    report.write_text(json.dumps({
+        'folds': [{
+            'fold': {'name': 'eval_x', 'start': '2024-01-01', 'end': '2024-02-01'},
+            'selector_mode': 'x',
+            'selected_family': 'fam0',
+            'abstained': False,
+            'pre_fold_scoreboard': [
+                {'family': 'fam0', 'score': 3.0, 'threshold': 0.1, 'evidence': []},
+                {'family': 'fam1', 'score': 2.0, 'threshold': 0.1, 'evidence': []},
+                {'family': 'fam2', 'score': 1.0, 'threshold': 0.1, 'evidence': []},
+            ],
+        }]
+    }))
+
+    rows = build_records(FamilyStateCardConfig(selector_report=str(report), output_jsonl=str(tmp_path / 'out.jsonl'), randomize_options=True, random_seed=0))
+
+    assert {opt['id'] for opt in rows[0]['options']} >= {'A', 'B', 'C', 'ABSTAIN'}
+    assert rows[0]['target']['family'] == 'fam0'
+    assert rows[0]['completion'] in {'A', 'B', 'C'}
+    assert rows[0]['leakage_guard']['option_order_randomized'] is True

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,8 @@ class FamilyStateCardConfig:
     default_position_mode: str = "FLAT"
     fold_start: str = ""
     fold_end: str = ""
+    randomize_options: bool = False
+    random_seed: int = 17
 
 
 def _num(x: Any, ndigits: int = 3) -> float | None:
@@ -70,6 +73,20 @@ def _position_state(mode: str) -> dict[str, Any]:
     }
 
 
+def _assign_option_ids(options: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    out = []
+    letter_idx = 0
+    for opt in options:
+        opt = dict(opt)
+        if opt.get("family") == "ABSTAIN":
+            opt["id"] = "ABSTAIN"
+        else:
+            opt["id"] = chr(ord("A") + letter_idx)
+            letter_idx += 1
+        out.append(opt)
+    return out
+
+
 def _target_for_fold(fold: dict[str, Any], options: list[dict[str, Any]]) -> dict[str, Any]:
     if fold.get("abstained"):
         return {"choice_id": "ABSTAIN", "family": "ABSTAIN", "reason": "selector_abstained_pre_fold"}
@@ -113,6 +130,13 @@ def build_records(cfg: FamilyStateCardConfig) -> list[dict[str, Any]]:
         options = [_option_from_score(row, i) for i, row in enumerate(scoreboard)]
         if cfg.include_abstain:
             options.append({"id": "ABSTAIN", "family": "ABSTAIN", "pre_fold_score": 0.0, "threshold": None, "evidence_count": 0, "latest_evidence": {}})
+        if cfg.randomize_options:
+            rng = random.Random(int(cfg.random_seed) + len(records))
+            trade_options = [opt for opt in options if opt.get("family") != "ABSTAIN"]
+            abstain_options = [opt for opt in options if opt.get("family") == "ABSTAIN"]
+            rng.shuffle(trade_options)
+            options = trade_options + abstain_options
+        options = _assign_option_ids(options)
         card = {
             "split": cfg.split_name,
             "fold": fold.get("fold"),
@@ -125,6 +149,7 @@ def build_records(cfg: FamilyStateCardConfig) -> list[dict[str, Any]]:
                 "options_from_pre_fold_scoreboard": True,
                 "position_state_is_signal_time_input": True,
                 "target_fold_metrics_diagnostic_only": True,
+                "option_order_randomized": bool(cfg.randomize_options),
             },
         }
         records.append({**card, "prompt": _prompt(card), "completion": card["target"]["choice_id"]})
@@ -155,12 +180,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--default-position-mode", default=FamilyStateCardConfig.default_position_mode)
     p.add_argument("--fold-start", default=FamilyStateCardConfig.fold_start, help="Inclusive fold start date filter, e.g. 2025-01-01")
     p.add_argument("--fold-end", default=FamilyStateCardConfig.fold_end, help="Exclusive fold start date filter, e.g. 2026-01-01")
+    p.add_argument("--randomize-options", action="store_true", help="Shuffle non-ABSTAIN options and reassign letter ids to reduce position bias")
+    p.add_argument("--random-seed", type=int, default=FamilyStateCardConfig.random_seed)
     return p.parse_args()
 
 
 def main() -> None:
     a = parse_args()
-    print(json.dumps(run(FamilyStateCardConfig(selector_report=a.selector_report, output_jsonl=a.output_jsonl, max_options=a.max_options, include_abstain=not a.no_abstain, split_name=a.split_name, default_position_mode=a.default_position_mode, fold_start=a.fold_start, fold_end=a.fold_end)), indent=2, ensure_ascii=False))
+    print(json.dumps(run(FamilyStateCardConfig(selector_report=a.selector_report, output_jsonl=a.output_jsonl, max_options=a.max_options, include_abstain=not a.no_abstain, split_name=a.split_name, default_position_mode=a.default_position_mode, fold_start=a.fold_start, fold_end=a.fold_end, randomize_options=a.randomize_options, random_seed=a.random_seed)), indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":
