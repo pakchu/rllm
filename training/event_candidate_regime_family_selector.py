@@ -211,13 +211,16 @@ def run(cfg: RegimeFamilySelectorConfig) -> dict[str, Any]:
             fold_rows.append({"fold": fold, "selected_family": None, "skip": "no_family_results"})
             continue
 
+        scores: dict[str, float] = {}
+        score_evidence: dict[str, list[dict[str, Any]]] = {}
         if fold_idx == 0:
-            selected_family = max(
-                fold_family_results,
-                key=lambda fam: _safe_sim_score(initial_prior_results.get(fam, {}).get("train", {}), min_trades=int(cfg.min_train_trades)),
-            )
+            for fam in fold_family_results:
+                prior = initial_prior_results.get(fam, {}).get("train", {})
+                scores[fam] = _safe_sim_score(prior, min_trades=int(cfg.min_train_trades))
+                score_evidence[fam] = [{"fold": "prefold_train", "distance": 0.0, "raw_score": float(scores[fam]), "weighted_score": float(scores[fam]), "metrics": _metric_row(prior)}]
+            selected_family = max(scores, key=scores.get)
             selector_mode = "prefold_prior"
-            selector_evidence: list[dict[str, Any]] = []
+            selector_evidence: list[dict[str, Any]] = score_evidence.get(selected_family, [])
         else:
             current_regime = all_regimes[fold_idx]
             prev = []
@@ -226,8 +229,6 @@ def run(cfg: RegimeFamilySelectorConfig) -> dict[str, Any]:
                 prev.append((dist, folds[j]))
             prev.sort(key=lambda x: x[0])
             nearest = prev[: max(1, min(len(prev), int(cfg.memory_folds)))]
-            scores: dict[str, float] = {}
-            score_evidence: dict[str, list[dict[str, Any]]] = {}
             selector_evidence = []
             for fam in fold_family_results:
                 score, evidence = _history_family_score(fam, nearest=nearest, family_fold_results=family_fold_results, min_trades=int(cfg.min_fold_trades))
@@ -237,11 +238,16 @@ def run(cfg: RegimeFamilySelectorConfig) -> dict[str, Any]:
             selector_mode = "nearest_prior_regime_folds"
             selector_evidence = score_evidence.get(selected_family, [])
 
-        selected_score = (
-            _safe_sim_score(initial_prior_results.get(selected_family, {}).get("train", {}), min_trades=int(cfg.min_train_trades))
-            if fold_idx == 0
-            else scores.get(selected_family, -1e9)
-        )
+        selected_score = scores.get(selected_family, -1e9)
+        pre_fold_scoreboard = [
+            {
+                "family": fam,
+                "score": float(score),
+                "threshold": fold_family_results[fam]["threshold"],
+                "evidence": score_evidence.get(fam, []),
+            }
+            for fam, score in sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
+        ]
         abstained = bool(selected_score < float(cfg.min_selection_score))
         if not abstained:
             selected_events.extend(fold_family_rows.get(selected_family, []))
@@ -254,6 +260,7 @@ def run(cfg: RegimeFamilySelectorConfig) -> dict[str, Any]:
                 "selector_evidence": selector_evidence,
                 "selected_score": float(selected_score),
                 "abstained": abstained,
+                "pre_fold_scoreboard": pre_fold_scoreboard[:10],
                 "selected_threshold": fold_family_results[selected_family]["threshold"],
                 "selected_metrics": _metric_row(fold_family_results[selected_family]["fold"]),
                 "top_fold_diagnostic_not_for_selection": [
