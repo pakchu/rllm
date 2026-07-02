@@ -1482,3 +1482,17 @@ Leakage guard:
 Readout:
 - This is the cleanest current format for Gemma4: a compact per-signal multiple-choice decision rather than independent numeric TAKE/SKIP rows.
 - Next step is a short Gemma4 LoRA sanity run on `rex_listwise_choice`, then logprob/choice evaluation against ridge/pairwise floors. If it cannot beat the fixed blend, longer training is not justified.
+
+### Gemma4 listwise SFT dry-run
+
+Dry-run command used `training.train_text_sft` with `--model-name gemma4-e4b`, `--sample-mode balanced`, and 1,024 max samples over `data/rex_listwise_choice_resume085_reclaim085_notrade_train_2020_2025.jsonl`.
+
+Result:
+- Model alias resolves to `google/gemma-4-E4B-it`.
+- Rows: 1,024.
+- Task: `rex_listwise_choice` only.
+- Balanced target counts: `NO_TRADE=288`, `RECLAIM_LONG=223`, `RECLAIM_SHORT=212`, `RESUME_SHORT=193`, `RESUME_LONG=108`.
+- Prompt chars: min 1,429 / max 1,626 / mean 1,524.7.
+- Summary path: `checkpoints/dryrun_rex_listwise_choice_gemma4_e4b_2026-07-02/sft_summary.json`.
+
+Readout: the existing SFT path can ingest the listwise choice records. Next required piece is a listwise logprob evaluator that scores all candidate ids and converts the chosen id back into a trade/no-trade prediction for strict backtesting.
