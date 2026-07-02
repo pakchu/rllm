@@ -255,7 +255,7 @@ def _simulate_rows(rows: list[dict[str, Any]], market: pd.DataFrame, cfg: EventP
         fee_rate=float(cfg.fee_rate),
         slippage_rate=float(cfg.slippage_rate),
     )
-    return simulate_candidates(rows, market[["date", "open", "high", "low", "close"]].copy(), sim_cfg)
+    return simulate_candidates(rows, market, sim_cfg)
 
 
 def _trial_rank(split: dict[str, Any], *, min_trades: int = 1) -> tuple[float, float, int]:

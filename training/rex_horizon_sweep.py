@@ -96,7 +96,7 @@ def _fast_candidate_rows(
         if not mask[pos]:
             continue
         val = float(strength[pos])
-        if not np.isfinite(val) or val < float(threshold):
+        if (not np.isfinite(val)) or val <= max(0.0, float(threshold)):
             continue
         side_dir = float(direction[pos])
         if side_dir == 0.0 or not np.isfinite(side_dir):
@@ -161,7 +161,7 @@ def run(cfg: RexHorizonSweepConfig) -> dict[str, Any]:
 
     rows: list[dict[str, Any]] = []
     for family, (strength, direction) in families.items():
-        train_x = strength[masks["train"] & np.isfinite(strength)]
+        train_x = strength[masks["train"] & np.isfinite(strength) & (strength > 0.0)]
         if train_x.size < 100:
             continue
         for q in cfg.quantile_grid:

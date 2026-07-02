@@ -109,10 +109,19 @@ def simulate_candidates(candidates: list[dict[str, Any]], market: pd.DataFrame, 
         if float(c.get("score_mean", 0.0)) > float(cfg.score_threshold)
         and str(c.get("side", "")).upper() in {"LONG", "SHORT"}
     ]
-    date_to_pos = {ts.to_pydatetime().replace(tzinfo=None): int(i) for i, ts in enumerate(market["date"])}
-    opens = market["open"].to_numpy(float)
-    highs = market["high"].to_numpy(float)
-    lows = market["low"].to_numpy(float)
+    cache = market.attrs.get("_candidate_backtest_cache")
+    if cache is None:
+        cache = {
+            "date_to_pos": {ts.to_pydatetime().replace(tzinfo=None): int(i) for i, ts in enumerate(market["date"])},
+            "opens": market["open"].to_numpy(float),
+            "highs": market["high"].to_numpy(float),
+            "lows": market["low"].to_numpy(float),
+        }
+        market.attrs["_candidate_backtest_cache"] = cache
+    date_to_pos = cache["date_to_pos"]
+    opens = cache["opens"]
+    highs = cache["highs"]
+    lows = cache["lows"]
     eq = peak = 1.0
     max_dd = 0.0
     next_allowed = 0
