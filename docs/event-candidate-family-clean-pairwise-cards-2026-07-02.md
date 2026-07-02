@@ -8,12 +8,12 @@ The first randomized/listwise and pairwise family-card datasets still used the s
 
 Added `training/build_event_candidate_family_clean_pairwise_cards.py`.
 
-It builds DPO-compatible pairwise `A > B` training rows directly from the monthly selector report (with response fields `chosen` / `rejected` set to the preferred letter and option metadata stored separately as `chosen_option` / `rejected_option`):
+It builds SFT/DPO-compatible pairwise `A > B` training rows directly from the monthly selector report (with response fields `chosen` / `rejected` set to JSON choice responses such as `{"choice": "A"}` and option metadata stored separately as `chosen_option` / `rejected_option`):
 
 1. **Prompt/options**: only `pre_fold_scoreboard` evidence plus explicit `position_state`.
 2. **Label**: chosen from `top_fold_diagnostic_not_for_selection`, but only when the diagnostic family also existed in the pre-fold options and passed clean-label filters.
 3. **Leakage guard**: target-fold metrics are kept in metadata as `diagnostic_target`, never in the prompt.
-4. **DPO schema**: the trainable response is the letter only (`A` preferred over `B`), while option metadata is retained outside the response fields.
+4. **SFT/DPO response schema**: the trainable response is a small JSON choice object (`{"choice": "A"}` preferred over `{"choice": "B"}`), while option metadata is retained outside the response fields. This reduces raw A-token shortcutting and matches the existing JSON-aware evaluator.
 5. **Abstain**: if no diagnostic family passes filters, label is `ABSTAIN`.
 6. **Pair-local IDs**: inside pairwise prompts, `option_a.id` is always `A` and `option_b.id` is always `B`; the original listwise id is preserved only as `source_option_id`. This avoids contradictory prompts such as “answer A/B” while showing an option whose internal id is `C` or `ABSTAIN`.
 7. **Order augmentation**: every pair is emitted twice, once with the clean winner as A and once with the clean winner as B. This prevents the LLM from learning an A-position shortcut.
@@ -40,15 +40,15 @@ Generated files:
 - `data/event_candidate_family_clean_pairwise_cards_rex_core_1m_train_2023_2024_random_2026-07-02.jsonl`
   - 24 folds, 144 order-augmented pairs
   - target families: `ABSTAIN=48`, `rex_compression_breakout=36`, `rex_compression_fakeout=24`, `rex_multiscale_location_revert=18`, `rex_htf_context_pullback_resume=12`, `rex_htf_pullback_resume=6`
-  - chosen response balance: `A=72`, `B=72`
+  - chosen response balance: `choice=A=72`, `choice=B=72`
 - `data/event_candidate_family_clean_pairwise_cards_rex_core_1m_test_2025_random_2026-07-02.jsonl`
   - 12 folds, 72 order-augmented pairs
   - target families: `ABSTAIN=12`, `rex_multiscale_location_revert=24`, `rex_compression_breakout=24`, `rex_compression_fakeout=12`
-  - chosen response balance: `A=36`, `B=36`
+  - chosen response balance: `choice=A=36`, `choice=B=36`
 - `data/event_candidate_family_clean_pairwise_cards_rex_core_1m_eval_2026h1_random_2026-07-02.jsonl`
   - 5 folds, 30 order-augmented pairs
   - target families: `rex_compression_fakeout=12`, `rex_htf_pullback_reclaim=6`, `ABSTAIN=6`, `rex_compression_breakout=6`
-  - chosen response balance: `A=15`, `B=15`
+  - chosen response balance: `choice=A=15`, `choice=B=15`
 
 Compared with the previous pairwise labels, clean-label train distribution is less dominated by `location_revert` and contains more `ABSTAIN`/compression cases.  Test still has `location_revert`, so this is not a final alpha claim; it is a cleaner supervised target for the next Gemma/LLM preference-tuning stage.
 

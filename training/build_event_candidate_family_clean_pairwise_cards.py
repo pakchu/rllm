@@ -41,6 +41,7 @@ class CleanPairwiseFamilyCardConfig:
     trade_count_cap: int = 30
     include_abstain_pairs: bool = True
     augment_reverse_pairs: bool = True
+    response_format: str = "json_choice"
     label_source: str = "target_fold_diagnostic_not_for_prompt"
 
 
@@ -150,6 +151,15 @@ def choose_clean_target(fold: dict[str, Any], options: list[dict[str, Any]], cfg
     }
 
 
+def _response(choice: str, cfg: CleanPairwiseFamilyCardConfig) -> str:
+    choice = str(choice).upper()
+    if cfg.response_format == "letter":
+        return choice
+    if cfg.response_format == "json_choice":
+        return json.dumps({"choice": choice}, ensure_ascii=False, sort_keys=True)
+    raise ValueError("response_format must be 'json_choice' or 'letter'")
+
+
 def _prompt(row: dict[str, Any], option_a: dict[str, Any], option_b: dict[str, Any]) -> str:
     payload = {
         "fold": row.get("fold"),
@@ -221,12 +231,14 @@ def build_records(cfg: CleanPairwiseFamilyCardConfig) -> list[dict[str, Any]]:
             if cfg.augment_reverse_pairs:
                 variants.append((neg, chosen, "B", "A", "chosen_as_b"))
             for option_a, option_b, chosen_response, rejected_response, order_variant in variants:
+                chosen_text = _response(chosen_response, cfg)
+                rejected_text = _response(rejected_response, cfg)
                 records.append({
                     "split": row.get("split"),
                     "fold": row.get("fold"),
                     "position_state": row.get("position_state"),
-                    "chosen": chosen_response,
-                    "rejected": rejected_response,
+                    "chosen": chosen_text,
+                    "rejected": rejected_text,
                     "chosen_option": _pair_option_summary(chosen, chosen_response),
                     "rejected_option": _pair_option_summary(neg, rejected_response),
                     "option_a_family": option_a.get("family"),
@@ -238,8 +250,8 @@ def build_records(cfg: CleanPairwiseFamilyCardConfig) -> list[dict[str, Any]]:
                     "pair_index": idx,
                     "order_variant": order_variant,
                     "prompt": _prompt(row, option_a, option_b),
-                    "target": chosen_response,
-                    "completion": chosen_response,
+                    "target": chosen_text,
+                    "completion": chosen_text,
                     "chosen_response": chosen_response,
                     "rejected_response": rejected_response,
                     "leakage_guard": {**(row.get("leakage_guard") or {}), "order_augmented": bool(cfg.augment_reverse_pairs)},
@@ -284,6 +296,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--trade-count-cap", type=int, default=CleanPairwiseFamilyCardConfig.trade_count_cap)
     p.add_argument("--exclude-abstain-pairs", action="store_true")
     p.add_argument("--no-reverse-pairs", action="store_true", help="Disable A/B order augmentation")
+    p.add_argument("--response-format", choices=["json_choice", "letter"], default=CleanPairwiseFamilyCardConfig.response_format)
     p.add_argument("--label-source", default=CleanPairwiseFamilyCardConfig.label_source)
     return p.parse_args()
 
@@ -308,6 +321,7 @@ def main() -> None:
         trade_count_cap=a.trade_count_cap,
         include_abstain_pairs=not a.exclude_abstain_pairs,
         augment_reverse_pairs=not a.no_reverse_pairs,
+        response_format=a.response_format,
         label_source=a.label_source,
     )
     print(json.dumps(run(cfg), indent=2, ensure_ascii=False))
