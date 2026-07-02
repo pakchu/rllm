@@ -40,6 +40,7 @@ class RegimeFamilySelectorConfig:
     min_train_trades: int = 80
     min_fold_trades: int = 20
     memory_folds: int = 3
+    min_selection_score: float = 0.75
     leverage: float = 0.5
     fee_rate: float = 0.0004
     slippage_rate: float = 0.0001
@@ -115,6 +116,40 @@ def _distance(a: dict[str, float], b: dict[str, float], scale: dict[str, float])
         n += 1
     return math.sqrt(total / max(1, n))
 
+
+
+
+def _history_family_score(
+    fam: str,
+    *,
+    nearest: list[tuple[float, dict[str, str]]],
+    family_fold_results: dict[str, dict[str, Any]],
+    min_trades: int,
+) -> tuple[float, list[dict[str, Any]]]:
+    scored: list[dict[str, Any]] = []
+    vals: list[float] = []
+    for dist, pfold in nearest:
+        hist = family_fold_results.get(pfold["name"], {}).get(fam)
+        if hist is None:
+            continue
+        raw = _safe_sim_score(hist["fold"], min_trades=int(min_trades))
+        weighted = raw / (1.0 + float(dist))
+        scored.append({"fold": pfold["name"], "distance": float(dist), "raw_score": float(raw), "weighted_score": float(weighted), "metrics": _metric_row(hist["fold"])})
+        vals.append(float(raw))
+    if not vals:
+        return -1e9, scored
+    score = float(np.mean([r["weighted_score"] for r in scored]))
+    positive_rate = float(np.mean([v > 0.0 for v in vals]))
+    score += positive_rate - 0.5
+    if vals[-1] < 0.0:
+        score -= 2.0
+    if len(vals) >= 2:
+        delta = vals[-1] - vals[-2]
+        if delta < -1.0:
+            score += 0.75 * delta
+    if "location_revert" in fam and len(vals) >= 2 and vals[-1] < vals[-2]:
+        score -= 1.0
+    return score, scored
 
 def _metric_row(result: dict[str, Any]) -> dict[str, Any]:
     sim = result.get("sim", {})
@@ -192,23 +227,24 @@ def run(cfg: RegimeFamilySelectorConfig) -> dict[str, Any]:
             prev.sort(key=lambda x: x[0])
             nearest = prev[: max(1, min(len(prev), int(cfg.memory_folds)))]
             scores: dict[str, float] = {}
+            score_evidence: dict[str, list[dict[str, Any]]] = {}
             selector_evidence = []
             for fam in fold_family_results:
-                vals = []
-                for dist, pfold in nearest:
-                    hist = family_fold_results.get(pfold["name"], {}).get(fam)
-                    if hist is None:
-                        continue
-                    vals.append(_safe_sim_score(hist["fold"], min_trades=int(cfg.min_fold_trades)) / (1.0 + dist))
-                if vals:
-                    scores[fam] = float(np.mean(vals))
-                else:
-                    scores[fam] = -1e9
+                score, evidence = _history_family_score(fam, nearest=nearest, family_fold_results=family_fold_results, min_trades=int(cfg.min_fold_trades))
+                scores[fam] = score
+                score_evidence[fam] = evidence
             selected_family = max(scores, key=scores.get)
             selector_mode = "nearest_prior_regime_folds"
-            selector_evidence = [{"fold": pfold["name"], "distance": dist} for dist, pfold in nearest]
+            selector_evidence = score_evidence.get(selected_family, [])
 
-        selected_events.extend(fold_family_rows.get(selected_family, []))
+        selected_score = (
+            _safe_sim_score(initial_prior_results.get(selected_family, {}).get("train", {}), min_trades=int(cfg.min_train_trades))
+            if fold_idx == 0
+            else scores.get(selected_family, -1e9)
+        )
+        abstained = bool(selected_score < float(cfg.min_selection_score))
+        if not abstained:
+            selected_events.extend(fold_family_rows.get(selected_family, []))
         family_fold_results[fold["name"]] = fold_family_results
         fold_rows.append(
             {
@@ -216,6 +252,8 @@ def run(cfg: RegimeFamilySelectorConfig) -> dict[str, Any]:
                 "selector_mode": selector_mode,
                 "selected_family": selected_family,
                 "selector_evidence": selector_evidence,
+                "selected_score": float(selected_score),
+                "abstained": abstained,
                 "selected_threshold": fold_family_results[selected_family]["threshold"],
                 "selected_metrics": _metric_row(fold_family_results[selected_family]["fold"]),
                 "top_fold_diagnostic_not_for_selection": [
@@ -267,6 +305,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--min-train-trades", type=int, default=RegimeFamilySelectorConfig.min_train_trades)
     p.add_argument("--min-fold-trades", type=int, default=RegimeFamilySelectorConfig.min_fold_trades)
     p.add_argument("--memory-folds", type=int, default=RegimeFamilySelectorConfig.memory_folds)
+    p.add_argument("--min-selection-score", type=float, default=RegimeFamilySelectorConfig.min_selection_score)
     p.add_argument("--leverage", type=float, default=RegimeFamilySelectorConfig.leverage)
     p.add_argument("--fee-rate", type=float, default=RegimeFamilySelectorConfig.fee_rate)
     p.add_argument("--slippage-rate", type=float, default=RegimeFamilySelectorConfig.slippage_rate)

@@ -210,16 +210,24 @@ def _candidate_rows_for_family(
     cfg: EventPoolConfig,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    last_pos = len(market) - int(cfg.entry_delay_bars) - int(cfg.hold_bars) - 1
-    for pos in range(max(0, int(cfg.window_size) - 1), max(0, last_pos) + 1, max(1, int(cfg.stride_bars))):
+    dates = market.attrs.get("_candidate_date_strings")
+    if dates is None:
+        dates = [str(x) for x in market["date"].tolist()]
+        market.attrs["_candidate_date_strings"] = dates
+    last_pos = len(dates) - int(cfg.entry_delay_bars) - int(cfg.hold_bars) - 1
+    start = max(0, int(cfg.window_size) - 1)
+    step = max(1, int(cfg.stride_bars))
+    threshold_floor = max(0.0, float(threshold))
+    for pos in range(start, max(0, last_pos) + 1, step):
         if not mask[pos]:
             continue
+        val = float(strength[pos])
         # A zero-strength event means the family condition is not actually active.
         # Earlier probes allowed strength == threshold, so families whose train
         # quantile collapsed to 0 effectively traded every stride and produced
         # misleading validation wins.  Require a strictly positive, above-threshold
         # signal before creating a candidate row.
-        if (not np.isfinite(strength[pos])) or float(strength[pos]) <= max(0.0, float(threshold)):
+        if (not np.isfinite(val)) or val <= threshold_floor:
             continue
         side_dir = float(direction[pos])
         if side_dir == 0.0 or not np.isfinite(side_dir):
@@ -229,13 +237,13 @@ def _candidate_rows_for_family(
         side = "LONG" if side_dir > 0 else "SHORT"
         rows.append(
             {
-                "date": str(market.iloc[pos]["date"]),
-                "signal_date": str(market.iloc[pos]["date"]),
-                "entry_date": str(market.iloc[entry_pos]["date"]),
-                "exit_date": str(market.iloc[exit_pos]["date"]),
+                "date": dates[pos],
+                "signal_date": dates[pos],
+                "entry_date": dates[entry_pos],
+                "exit_date": dates[exit_pos],
                 "side": side,
                 "family": family,
-                "strength": float(strength[pos]),
+                "strength": val,
                 "score_mean": 1.0,
             }
         )
