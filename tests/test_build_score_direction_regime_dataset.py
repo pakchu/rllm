@@ -26,7 +26,8 @@ def test_direction_label_uses_clean_target_score_rank(tmp_path):
     with patch('training.build_score_direction_regime_dataset._load_market_features', return_value=fake_features):
         rows = build_records(ScoreDirectionRegimeConfig(selector_report=str(report), market_csv=str(market), output_jsonl=str(tmp_path / 'out.jsonl')))
 
-    assert rows[0]['target']['direction_regime'] == 'LOW_SCORE_WINS'
+    assert json.loads(rows[0]['target'])['direction_regime'] == 'LOW_SCORE_WINS'
+    assert rows[0]['completion'] == rows[0]['target']
     assert 'market_regime_features' in rows[0]['prompt']
     assert rows[0]['leakage_guard']['features_before_fold_start'] is True
 

@@ -23,7 +23,13 @@ def _load(path: str) -> list[dict[str, Any]]:
 
 
 def _label(row: dict[str, Any]) -> str:
-    return str((row.get("target") or {}).get("direction_regime", ""))
+    target = row.get("label", row.get("target"))
+    if isinstance(target, str):
+        try:
+            target = json.loads(target)
+        except Exception:
+            return ""
+    return str((target or {}).get("direction_regime", ""))
 
 
 def _binary_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:

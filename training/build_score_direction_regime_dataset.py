@@ -175,11 +175,12 @@ def build_records(cfg: ScoreDirectionRegimeConfig) -> list[dict[str, Any]]:
                 "max_score": max([o.get("pre_fold_score") for o in options], default=0.0),
                 "min_score": min([o.get("pre_fold_score") for o in options], default=0.0),
             },
-            "target": {"direction_regime": label},
+            "target": json.dumps({"direction_regime": label}, ensure_ascii=False, sort_keys=True),
+            "label": {"direction_regime": label},
             "label_meta": label_meta,
             "leakage_guard": {"features_before_fold_start": True, "target_diagnostic_not_in_prompt": True},
         }
-        rows.append({**rec, "prompt": _prompt(rec), "completion": json.dumps(rec["target"], ensure_ascii=False, sort_keys=True)})
+        rows.append({**rec, "prompt": _prompt(rec), "completion": rec["target"]})
     return rows
 
 
@@ -190,7 +191,7 @@ def run(cfg: ScoreDirectionRegimeConfig) -> dict[str, Any]:
     out.write_text("\n".join(json.dumps(r, ensure_ascii=False, sort_keys=True) for r in rows) + ("\n" if rows else ""))
     counts: dict[str, int] = {}
     for r in rows:
-        k = r["target"]["direction_regime"]
+        k = r["label"]["direction_regime"]
         counts[k] = counts.get(k, 0) + 1
     return {"config": asdict(cfg), "rows": len(rows), "targets": counts, "output_jsonl": str(out)}
 

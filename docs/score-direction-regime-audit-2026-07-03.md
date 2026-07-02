@@ -70,3 +70,24 @@ while preserving final splits, e.g. train 2020-2024, test 2025, eval 2026H1.
 
 Do not select parameters on 2026H1.  Use it only as final eval until a new final
 holdout is explicitly established.
+
+## Expanded 2021-2026 label pass
+
+After the initial audit, I regenerated the monthly selector from 2021-01-01 so
+train has more historical regimes without touching the 2026H1 final eval for
+selection:
+
+- selector report:
+  `results/event_candidate_regime_family_selector_rex_core_abstain_scoreboard_1m_2021_2026h1_2026-07-03.json`
+- train 2021-2024: 48 rows, ABSTAIN 23, HIGH 20, LOW 5
+- test 2025: 12 rows, ABSTAIN 3, HIGH 9, LOW 0
+- eval 2026H1: 5 rows, ABSTAIN 3, HIGH 1, LOW 1
+
+The extra history improved LOW examples from 3 to 5, but this is still too small
+for reliable fine-tuning.  The train-only threshold audit still mostly learns a
+HIGH prior because the 2025 test split has zero LOW examples; top rules show
+train 92%, test 100%, eval 50% on only two binary eval rows.
+
+Implementation note: the JSONL now keeps `target`/`completion` as JSON strings
+for compatibility with `training/train_text_sft.py`, while preserving parsed
+`label` for audits.
