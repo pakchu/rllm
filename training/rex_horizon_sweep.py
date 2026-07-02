@@ -56,16 +56,24 @@ def _parse_floats(raw: str) -> tuple[float, ...]:
     return tuple(float(x.strip()) for x in str(raw).split(",") if x.strip())
 
 
-def _rank(row: dict[str, Any]) -> float:
+def _base_rank_inputs(row: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]] | None:
     tr = row["train"]["sim"]
     va = row["val"]["sim"]
     vt = row["val"].get("trade_stats", {})
     if int(tr.get("trade_entries", 0)) <= 0 or int(va.get("trade_entries", 0)) <= 0:
-        return -1e9
+        return None
     if float(tr.get("cagr_pct", -1e9)) <= 0 or float(va.get("cagr_pct", -1e9)) <= 0:
-        return -1e9
+        return None
     if float(tr.get("strict_mdd_pct", 1e9)) > 45 or float(va.get("strict_mdd_pct", 1e9)) > 18:
+        return None
+    return tr, va, vt
+
+
+def _legacy_rank(row: dict[str, Any]) -> float:
+    parts = _base_rank_inputs(row)
+    if parts is None:
         return -1e9
+    tr, va, vt = parts
     p = float(vt.get("p_value_mean_ret_approx", 1.0) or 1.0)
     return (
         float(va.get("cagr_to_strict_mdd", 0.0) or 0.0)
@@ -73,6 +81,45 @@ def _rank(row: dict[str, Any]) -> float:
         + min(int(va.get("trade_entries", 0) or 0), 180) / 250.0
         - 0.25 * p
     )
+
+
+def _stability_rank(row: dict[str, Any]) -> float:
+    """Train/validation-only score that penalizes single-period spikes.
+
+    The earlier ranking over-selected families whose validation CAGR/MDD was far
+    above their train baseline.  That is exactly the shape that kept inverting in
+    the next chronological holdout.  This score still rewards validation quality,
+    but subtracts drift/spike penalties before eval is ever considered.
+    """
+    parts = _base_rank_inputs(row)
+    if parts is None:
+        return -1e9
+    tr, va, vt = parts
+    train_ratio = float(tr.get("cagr_to_strict_mdd", 0.0) or 0.0)
+    val_ratio = float(va.get("cagr_to_strict_mdd", 0.0) or 0.0)
+    p_value = float(vt.get("p_value_mean_ret_approx", 1.0) or 1.0)
+    val_trades = int(va.get("trade_entries", 0) or 0)
+    ratio_gap = abs(val_ratio - train_ratio)
+    spike = max(0.0, val_ratio / max(0.25, train_ratio) - 2.5)
+    low_trade_penalty = max(0.0, 45 - val_trades) / 45.0
+    weak_train_penalty = max(0.0, 0.75 - train_ratio)
+    family = str(row.get("family", ""))
+    reversion_spike_penalty = 1.5 if ("location_revert" in family and train_ratio < 0.5) else 0.0
+    return (
+        val_ratio
+        + 0.70 * train_ratio
+        + min(val_trades, 100) / 200.0
+        - 0.60 * ratio_gap
+        - 0.90 * spike
+        - 0.60 * low_trade_penalty
+        - 0.50 * weak_train_penalty
+        - 0.20 * p_value
+        - reversion_spike_penalty
+    )
+
+
+def _rank(row: dict[str, Any]) -> float:
+    return _stability_rank(row)
 
 
 def _fast_candidate_rows(
@@ -184,16 +231,20 @@ def run(cfg: RexHorizonSweepConfig) -> dict[str, Any]:
                         "stride_bars": int(stride),
                         **split_results,
                     }
+                    row["score_legacy_train_val_only"] = _legacy_rank(row)
+                    row["score_stability_train_val_only"] = _stability_rank(row)
                     row["score_train_val_only"] = _rank(row)
                     rows.append(row)
+    legacy_top = sorted(rows, key=lambda r: r["score_legacy_train_val_only"], reverse=True)[: int(cfg.top_k)]
     rows.sort(key=lambda r: r["score_train_val_only"], reverse=True)
     report = {
         "as_of": datetime.now(timezone.utc).isoformat(),
         "config": asdict(cfg) | {"hold_bars_grid": list(cfg.hold_bars_grid), "stride_bars_grid": list(cfg.stride_bars_grid), "quantile_grid": list(cfg.quantile_grid)},
         "inputs": {"rows": len(market), "start": str(market["date"].iloc[0]), "end": str(market["date"].iloc[-1])},
-        "selection_protocol": "score and ordering use train+2025 validation only; 2026 eval is report-only",
+        "selection_protocol": "stability score and ordering use train+validation only; eval is report-only",
         "trial_count": len(rows),
         "top": rows[: int(cfg.top_k)],
+        "top_legacy_validation_spike_score": legacy_top,
         "leakage_guard": {
             "thresholds_fit_on_train_only": True,
             "selection_uses_train_and_val_only": True,
