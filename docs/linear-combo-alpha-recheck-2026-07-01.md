@@ -1260,3 +1260,41 @@ Readout:
 - Combining weak REX candidates increases trades, but loose thresholds admit enough bad trades to break 2025/2026.
 - The only survivable combo (`resume 0.85 + reclaim 0.85`) is more statistically broad than standalone `resume 0.85`, but CAGR drops hard in 2023-2025. It is a candidate for an LLM/ranker layer, not a final rule strategy.
 - This supports the current architecture direction: use the REX cluster as a candidate generator, then train a compact text/LLM ranker on interpretable price-action context to decide which candidates to skip rather than trying more hand-written gates.
+
+## 2026-07-02 REX text/ranker records and ridge baseline
+
+Purpose: move from hand-written gates toward the intended RLLM shape. The REX pullback/reclaim cluster is now treated as a candidate generator, and a ranker decides which exact candidates to skip. Added `training/build_rex_candidate_ranker_records.py`, which emits prompt-ready text rows plus numeric/categorical features for a cheap baseline. Future path reward is stored only as the label; prompts use signal-time context only.
+
+Dataset run:
+- Train records: `data/rex_candidate_ranker_resume085_reclaim085_train_2020_2025.jsonl`
+- Eval records: `data/rex_candidate_ranker_resume085_reclaim085_eval_2026h1.jsonl`
+- Summary: `data/rex_candidate_ranker_resume085_reclaim085_summary_2026-07-02.json`
+- Candidate thresholds fitted only on `2020-01-01..2025-01-01`: resume q0.85 = `0.1866554014`, reclaim q0.85 = `0.1412145429`.
+
+Record counts:
+
+| split | rows | period | TAKE / SKIP | side mix | mean net return |
+| --- | ---: | --- | --- | --- | ---: |
+| train | 7,232 | 2020-01-09..2025-12-26 | 1,837 / 5,395 | LONG 4,079 / SHORT 3,153 | +0.1695% |
+| eval | 358 | 2026-02-02..2026-05-23 | 122 / 236 | LONG 95 / SHORT 263 | +0.1113% |
+
+Static ridge baseline (`results/rex_candidate_ridge_resume085_reclaim085_2026-07-02.json`):
+- 2025 validation-selected q0.70/full margin 0.0: 9.64% CAGR / 6.96% strict MDD / 35 trades / p=0.219.
+- 2026 eval: 16.71% CAGR / 4.25% strict MDD / 18 trades / p=0.364.
+- Readout: promising drawdown control, but eval trade count is too thin.
+
+Rolling ridge baseline (`results/rex_candidate_ridge_walkforward_resume085_reclaim085_2025_2026h1_2026-07-02.json`), 36m fit / 3m validation / 3m test, validation-gated:
+
+| aggregate test period | CAGR | strict MDD | ratio | trades | p-value | readout |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| 2025-04..2026-06 | 8.95% | 2.64% | 3.39 | 39 | 0.051 | Ranker strongly reduces MDD and is close to statistical significance, but absolute CAGR and trade count remain below target. |
+
+Fold-level notes:
+- The ranker passes validation gates and trades 5 quarterly folds.
+- Aggregate p-value improved to ~0.051 despite only 39 trades, suggesting the context features are learnable.
+- The result is **not** target-satisfying: CAGR is far below 50%, and trade count still needs expansion.
+- This is the first clean evidence that the RLLM-style decomposition is useful: candidate generator supplies weak alpha; ranker/context layer cuts drawdown and improves mean trade quality.
+
+Next direction:
+- Use the generated text records for Gemma/Gemma4-style small-model fine-tuning or a token/logprob verifier, but preserve the ridge baseline as the sanity floor.
+- Expand candidate pool cautiously around REX without loosening q0.80 reclaim failures; candidate breadth should come from additional high-quality price-action hypotheses, not lower thresholds.
