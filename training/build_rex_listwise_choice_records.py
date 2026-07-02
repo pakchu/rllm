@@ -29,6 +29,7 @@ class RexListwiseChoiceCfg:
     min_best_utility_gap_pct: float = 0.0
     target_metric: str = "utility_pct"
     neutral_choice_labels: bool = False
+    binary_best_trade_only: bool = False
 
 
 def _load(path: str) -> list[dict[str, Any]]:
@@ -106,6 +107,13 @@ def _prompt(date: str, rows: list[dict[str, Any]], label_map: dict[str, str] | N
 def _make_record(rows: list[dict[str, Any]], cfg: RexListwiseChoiceCfg, split: str) -> dict[str, Any] | None:
     rows = sorted(rows, key=lambda r: (_choice_id(r), str(r.get("family")), str(r.get("side"))))
     metric = cfg.target_metric
+    if cfg.binary_best_trade_only:
+        no_trade = next((r for r in rows if _choice_id(r) == "NO_TRADE"), None)
+        trade_rows = [r for r in rows if _choice_id(r) != "NO_TRADE"]
+        if no_trade is None or not trade_rows:
+            return None
+        best_trade = max(trade_rows, key=lambda r: float((r.get("reward") or {}).get(metric, 0.0) or 0.0))
+        rows = [no_trade, best_trade]
     scored = []
     for r in rows:
         reward = r.get("reward") or {}
@@ -200,6 +208,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--min-best-utility-gap-pct", type=float, default=RexListwiseChoiceCfg.min_best_utility_gap_pct)
     p.add_argument("--target-metric", choices=["utility_pct", "net_return_pct"], default=RexListwiseChoiceCfg.target_metric)
     p.add_argument("--neutral-choice-labels", action="store_true", default=RexListwiseChoiceCfg.neutral_choice_labels)
+    p.add_argument("--binary-best-trade-only", action="store_true", default=RexListwiseChoiceCfg.binary_best_trade_only)
     return p.parse_args()
 
 

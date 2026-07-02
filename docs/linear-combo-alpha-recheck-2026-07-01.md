@@ -1630,3 +1630,32 @@ Readout:
 - Strong-gap filtering alone does not fix the target problem.
 - Oversampling improves nominal class balance but worsens economic behavior; repeating the scarce B labels likely overfits idiosyncratic trade cases.
 - The model is struggling with a three-choice setup where C is usually a decoy and rarely/never target. Next target construction should collapse each signal to **binary neutral choice**: `A=NO_TRADE`, `B=best executable trade`, removing resume/reclaim decoy selection from the LLM and leaving family selection to the candidate generator/ranker.
+
+## 2026-07-02 Binary neutral choice sanity check
+
+Purpose: remove the same-signal resume/reclaim decoy from the LLM task. Each signal is collapsed to two choices only: `A=NO_TRADE`, `B=best executable trade`. This tests whether the LLM can focus on abstain-vs-trade instead of also choosing between near-duplicate trade families.
+
+Added `--binary-best-trade-only` to `training/build_rex_listwise_choice_records.py`.
+
+Dataset:
+- Train: `data/rex_binary_choice_neutral_resume085_reclaim085_notrade_train_2020_2025.jsonl`
+- Eval: `data/rex_binary_choice_neutral_resume085_reclaim085_notrade_eval_2026h1.jsonl`
+- Summary: `data/rex_binary_choice_neutral_resume085_reclaim085_notrade_summary_2026-07-02.json`
+- Rows: train 4,494 / eval 240.
+- All rows have exactly 2 choices.
+- Target counts: train `A=2,970`, `B=1,524`; eval `A=144`, `B=96`.
+
+Gemma4 20-step sanity:
+- Adapter: `checkpoints/rex_binary_choice_neutral_gemma4_e4b_lora_sanity_2026-07-02`
+- Training sample: balanced 2,048 (`A=1,024`, `B=1,024`).
+- Eval report: `results/rex_binary_choice_neutral_gemma4_adapter_sanity_eval_2026-07-02.json`
+
+Result:
+- Validation choice accuracy: 65.65%, but confusion is `A→A=346`, `B→A=181`.
+- Eval choice accuracy: 60.42%, confusion is `A→A=144`, `B→A=95`, `B→B=1`.
+- Validation backtest: 0 trades.
+- Eval backtest: 1 trade, 2.10% CAGR / 1.20% MDD / ratio 1.75 / p=1.0.
+
+Readout:
+- Removing C/decoy is not enough. The model learned the fixed label/position prior (`A` means abstain) instead of recognizing the trade case.
+- Next target construction should randomize neutral labels/order per signal (`A` and `B` assigned randomly to NO_TRADE/best_trade) while preserving `choice_map`. That prevents a static label prior and forces comparison of candidate descriptions.
