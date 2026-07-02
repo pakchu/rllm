@@ -8,13 +8,14 @@ The first randomized/listwise and pairwise family-card datasets still used the s
 
 Added `training/build_event_candidate_family_clean_pairwise_cards.py`.
 
-It builds pairwise `A > B` training rows directly from the monthly selector report:
+It builds DPO-compatible pairwise `A > B` training rows directly from the monthly selector report (`chosen="A"`, `rejected="B"`, with option metadata stored separately as `chosen_option` / `rejected_option`):
 
 1. **Prompt/options**: only `pre_fold_scoreboard` evidence plus explicit `position_state`.
 2. **Label**: chosen from `top_fold_diagnostic_not_for_selection`, but only when the diagnostic family also existed in the pre-fold options and passed clean-label filters.
 3. **Leakage guard**: target-fold metrics are kept in metadata as `diagnostic_target`, never in the prompt.
-4. **Abstain**: if no diagnostic family passes filters, label is `ABSTAIN`.
-5. **Randomization**: non-ABSTAIN option letters are shuffled per row to reduce option-position bias.
+4. **DPO schema**: the trainable response is the letter only (`A` preferred over `B`), while option metadata is retained outside the response fields.
+5. **Abstain**: if no diagnostic family passes filters, label is `ABSTAIN`.
+6. **Randomization**: non-ABSTAIN option letters are shuffled per row to reduce option-position bias.
 
 Default clean-label filters:
 
@@ -73,7 +74,7 @@ print('manual clean pairwise tests passed')
 PY
 ```
 
-`pytest` could not run because this venv currently does not have `pytest` installed.
+`pytest` could not run because this venv currently does not have `pytest` installed. After schema correction, generated JSONL was checked to confirm `chosen='A'`, `rejected='B'`, `chosen_option` exists, and `diagnostic_target` is absent from prompts.
 
 ## Remaining risk
 
