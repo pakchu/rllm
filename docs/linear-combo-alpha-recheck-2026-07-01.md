@@ -1496,3 +1496,39 @@ Result:
 - Summary path: `checkpoints/dryrun_rex_listwise_choice_gemma4_e4b_2026-07-02/sft_summary.json`.
 
 Readout: the existing SFT path can ingest the listwise choice records. Next required piece is a listwise logprob evaluator that scores all candidate ids and converts the chosen id back into a trade/no-trade prediction for strict backtesting.
+
+## 2026-07-02 Gemma4 listwise LoRA sanity evaluation
+
+Purpose: train a short Gemma4/Gemma E4B LoRA on the listwise choice records and evaluate it by candidate-id logprob, selecting only a confidence margin on 2025 validation before reporting 2026 eval.
+
+Added `training/eval_rex_listwise_choice_adapter.py`:
+- Scores every candidate id in each prompt by logprob.
+- Converts selected id into `TRADE` or `NO_TRADE` prediction.
+- Selects confidence margin on validation only.
+- Uses `logits_to_keep` plus left padding to score only label-tail logits; this reduced full eval from impractically slow full-sequence logits to a few minutes.
+- Supports `--torch-dtype bfloat16` and `--load-in-4bit`.
+
+Training:
+- Adapter: `checkpoints/rex_listwise_choice_gemma4_e4b_lora_sanity_2026-07-02`
+- Model alias: `gemma4-e4b` → `google/gemma-4-E4B-it`
+- Samples: 2,048 balanced-ish listwise rows.
+- Steps: 20.
+- Runtime: 263s wall, 146.4s trainer runtime.
+- Train loss: 0.5306.
+
+Evaluation:
+- Report: `results/rex_listwise_gemma4_adapter_sanity_eval_2026-07-02.json`
+- Validation rows: 527 from 2025.
+- Eval rows: 240 from 2026-H1.
+- Selected confidence margin: `0.5`, selected on validation only.
+
+| split | choice accuracy | CAGR | strict MDD | ratio | trades | p-value |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2025 validation | 33.97% | 4.87% | 14.18% | 0.34 | 92 | 0.663 |
+| 2026 eval | 39.58% | 16.25% | 6.95% | 2.34 | 31 | 0.539 |
+
+Critical readout:
+- This does **not** beat the ridge/pairwise floor and is not production-usable.
+- The model never chose `NO_TRADE` as its top candidate; all `NO_TRADE` targets were predicted as one of the trade ids. The margin threshold merely filters some low-confidence trade predictions after the fact.
+- Likely cause: target-id lexical/tokenization bias and class imbalance. Long semantic ids like `REX_HTF_PULLBACK_RECLAIM_SHORT` are not neutral choice labels, and `NO_TRADE` may be disadvantaged despite mean logprob scoring.
+- Next fix should rebuild listwise prompts with neutral short labels (`A`, `B`, `C`) mapped to candidate ids in the prompt, and train target as the short label. This better isolates reasoning over candidate descriptions from label-token priors.
