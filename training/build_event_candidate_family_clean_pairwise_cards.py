@@ -41,6 +41,7 @@ class CleanPairwiseFamilyCardConfig:
     max_diagnostic_mdd_pct: float = 25.0
     trade_count_cap: int = 30
     include_abstain_pairs: bool = True
+    augment_reverse_pairs: bool = True
     label_source: str = "target_fold_diagnostic_not_for_prompt"
 
 
@@ -138,12 +139,12 @@ def choose_clean_target(fold: dict[str, Any], options: list[dict[str, Any]], cfg
     }
 
 
-def _prompt(row: dict[str, Any], chosen: dict[str, Any], rejected: dict[str, Any]) -> str:
+def _prompt(row: dict[str, Any], option_a: dict[str, Any], option_b: dict[str, Any]) -> str:
     payload = {
         "fold": row.get("fold"),
         "position_state": row.get("position_state"),
-        "option_a": _option_summary(chosen),
-        "option_b": _option_summary(rejected),
+        "option_a": _option_summary(option_a),
+        "option_b": _option_summary(option_b),
     }
     return "\n".join([
         "Choose which family option is more valid for the next chronological fold.",
@@ -205,25 +206,32 @@ def build_records(cfg: CleanPairwiseFamilyCardConfig) -> list[dict[str, Any]]:
             rejected = [o for o in rejected if o.get("family") != "ABSTAIN"]
         rejected.sort(key=lambda o: float(o.get("pre_fold_score") or 0.0), reverse=True)
         for idx, neg in enumerate(rejected[: int(cfg.max_rejected_per_row)]):
-            records.append({
-                "split": row.get("split"),
-                "fold": row.get("fold"),
-                "position_state": row.get("position_state"),
-                "chosen": "A",
-                "rejected": "B",
-                "chosen_option": _option_summary(chosen),
-                "rejected_option": _option_summary(neg),
-                "target_family": (row.get("target") or {}).get("family"),
-                "target_reason": (row.get("target") or {}).get("reason"),
-                "label_source": (row.get("target") or {}).get("label_source"),
-                "diagnostic_target": (row.get("target") or {}).get("diagnostic_target"),
-                "pair_index": idx,
-                "prompt": _prompt(row, chosen, neg),
-                "completion": "A",
-                "chosen_response": "A",
-                "rejected_response": "B",
-                "leakage_guard": row.get("leakage_guard"),
-            })
+            variants = [(chosen, neg, "A", "B", "chosen_as_a")]
+            if cfg.augment_reverse_pairs:
+                variants.append((neg, chosen, "B", "A", "chosen_as_b"))
+            for option_a, option_b, chosen_response, rejected_response, order_variant in variants:
+                records.append({
+                    "split": row.get("split"),
+                    "fold": row.get("fold"),
+                    "position_state": row.get("position_state"),
+                    "chosen": chosen_response,
+                    "rejected": rejected_response,
+                    "chosen_option": _option_summary(chosen),
+                    "rejected_option": _option_summary(neg),
+                    "option_a_family": option_a.get("family"),
+                    "option_b_family": option_b.get("family"),
+                    "target_family": (row.get("target") or {}).get("family"),
+                    "target_reason": (row.get("target") or {}).get("reason"),
+                    "label_source": (row.get("target") or {}).get("label_source"),
+                    "diagnostic_target": (row.get("target") or {}).get("diagnostic_target"),
+                    "pair_index": idx,
+                    "order_variant": order_variant,
+                    "prompt": _prompt(row, option_a, option_b),
+                    "completion": chosen_response,
+                    "chosen_response": chosen_response,
+                    "rejected_response": rejected_response,
+                    "leakage_guard": {**(row.get("leakage_guard") or {}), "order_augmented": bool(cfg.augment_reverse_pairs)},
+                })
     return records
 
 
@@ -263,6 +271,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-diagnostic-mdd-pct", type=float, default=CleanPairwiseFamilyCardConfig.max_diagnostic_mdd_pct)
     p.add_argument("--trade-count-cap", type=int, default=CleanPairwiseFamilyCardConfig.trade_count_cap)
     p.add_argument("--exclude-abstain-pairs", action="store_true")
+    p.add_argument("--no-reverse-pairs", action="store_true", help="Disable A/B order augmentation")
     p.add_argument("--label-source", default=CleanPairwiseFamilyCardConfig.label_source)
     return p.parse_args()
 
@@ -286,6 +295,7 @@ def main() -> None:
         max_diagnostic_mdd_pct=a.max_diagnostic_mdd_pct,
         trade_count_cap=a.trade_count_cap,
         include_abstain_pairs=not a.exclude_abstain_pairs,
+        augment_reverse_pairs=not a.no_reverse_pairs,
         label_source=a.label_source,
     )
     print(json.dumps(run(cfg), indent=2, ensure_ascii=False))

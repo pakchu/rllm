@@ -8,14 +8,15 @@ The first randomized/listwise and pairwise family-card datasets still used the s
 
 Added `training/build_event_candidate_family_clean_pairwise_cards.py`.
 
-It builds DPO-compatible pairwise `A > B` training rows directly from the monthly selector report (`chosen="A"`, `rejected="B"`, with option metadata stored separately as `chosen_option` / `rejected_option`):
+It builds DPO-compatible pairwise `A > B` training rows directly from the monthly selector report (with response fields `chosen` / `rejected` set to the preferred letter and option metadata stored separately as `chosen_option` / `rejected_option`):
 
 1. **Prompt/options**: only `pre_fold_scoreboard` evidence plus explicit `position_state`.
 2. **Label**: chosen from `top_fold_diagnostic_not_for_selection`, but only when the diagnostic family also existed in the pre-fold options and passed clean-label filters.
 3. **Leakage guard**: target-fold metrics are kept in metadata as `diagnostic_target`, never in the prompt.
 4. **DPO schema**: the trainable response is the letter only (`A` preferred over `B`), while option metadata is retained outside the response fields.
 5. **Abstain**: if no diagnostic family passes filters, label is `ABSTAIN`.
-6. **Randomization**: non-ABSTAIN option letters are shuffled per row to reduce option-position bias.
+6. **Order augmentation**: every pair is emitted twice, once with the clean winner as A and once with the clean winner as B. This prevents the LLM from learning an A-position shortcut.
+7. **Randomization**: non-ABSTAIN option letters are shuffled per row to reduce option-position bias.
 
 Default clean-label filters:
 
@@ -36,14 +37,17 @@ Source report:
 Generated files:
 
 - `data/event_candidate_family_clean_pairwise_cards_rex_core_1m_train_2023_2024_random_2026-07-02.jsonl`
-  - 24 folds, 72 pairs
-  - target families: `ABSTAIN=24`, `rex_compression_breakout=18`, `rex_compression_fakeout=12`, `rex_multiscale_location_revert=9`, `rex_htf_context_pullback_resume=6`, `rex_htf_pullback_resume=3`
+  - 24 folds, 144 order-augmented pairs
+  - target families: `ABSTAIN=48`, `rex_compression_breakout=36`, `rex_compression_fakeout=24`, `rex_multiscale_location_revert=18`, `rex_htf_context_pullback_resume=12`, `rex_htf_pullback_resume=6`
+  - chosen response balance: `A=72`, `B=72`
 - `data/event_candidate_family_clean_pairwise_cards_rex_core_1m_test_2025_random_2026-07-02.jsonl`
-  - 12 folds, 36 pairs
-  - target families: `ABSTAIN=6`, `rex_multiscale_location_revert=12`, `rex_compression_breakout=12`, `rex_compression_fakeout=6`
+  - 12 folds, 72 order-augmented pairs
+  - target families: `ABSTAIN=12`, `rex_multiscale_location_revert=24`, `rex_compression_breakout=24`, `rex_compression_fakeout=12`
+  - chosen response balance: `A=36`, `B=36`
 - `data/event_candidate_family_clean_pairwise_cards_rex_core_1m_eval_2026h1_random_2026-07-02.jsonl`
-  - 5 folds, 15 pairs
-  - target families: `rex_compression_fakeout=6`, `rex_htf_pullback_reclaim=3`, `ABSTAIN=3`, `rex_compression_breakout=3`
+  - 5 folds, 30 order-augmented pairs
+  - target families: `rex_compression_fakeout=12`, `rex_htf_pullback_reclaim=6`, `ABSTAIN=6`, `rex_compression_breakout=6`
+  - chosen response balance: `A=15`, `B=15`
 
 Compared with the previous pairwise labels, clean-label train distribution is less dominated by `location_revert` and contains more `ABSTAIN`/compression cases.  Test still has `location_revert`, so this is not a final alpha claim; it is a cleaner supervised target for the next Gemma/LLM preference-tuning stage.
 
@@ -74,7 +78,7 @@ print('manual clean pairwise tests passed')
 PY
 ```
 
-`pytest` could not run because this venv currently does not have `pytest` installed. After schema correction, generated JSONL was checked to confirm `chosen='A'`, `rejected='B'`, `chosen_option` exists, and `diagnostic_target` is absent from prompts.
+`pytest` could not run because this venv currently does not have `pytest` installed. After schema/order correction, generated JSONL was checked to confirm balanced `chosen` responses, `chosen_option` exists, and `diagnostic_target` is absent from prompts.
 
 ## Remaining risk
 

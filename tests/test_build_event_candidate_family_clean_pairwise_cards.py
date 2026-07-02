@@ -59,9 +59,10 @@ def test_clean_pairwise_prompt_excludes_target_fold_metrics(tmp_path):
     records = build_records(CleanPairwiseFamilyCardConfig(selector_report=str(report), output_jsonl=str(tmp_path / 'out.jsonl'), fold_end='2024-02-01', max_rejected_per_row=2))
 
     assert records
-    assert records[0]['chosen'] == 'A'
-    assert records[0]['rejected'] == 'B'
+    assert {r['chosen'] for r in records[:2]} == {'A', 'B'}
     assert records[0]['chosen_option']['family'] == 'clean_diagnostic_winner'
+    assert records[1]['chosen_option']['family'] == 'clean_diagnostic_winner'
+    assert records[1]['order_variant'] == 'chosen_as_b'
     assert records[0]['diagnostic_target']['family'] == 'clean_diagnostic_winner'
     assert records[0]['leakage_guard']['target_fold_metrics_not_in_prompt'] is True
     assert 'diagnostic_target' not in records[0]['prompt']
@@ -75,7 +76,7 @@ def test_clean_pairwise_run_writes_summary(tmp_path):
     _report(report)
     summary = run(CleanPairwiseFamilyCardConfig(selector_report=str(report), output_jsonl=str(out), max_rejected_per_row=1))
 
-    assert summary['rows'] == 2
+    assert summary['rows'] == 4
     assert out.exists()
     written = [json.loads(line) for line in out.read_text().splitlines()]
     assert written[0]['completion'] == 'A'
