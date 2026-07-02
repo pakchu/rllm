@@ -50,6 +50,7 @@ class RexCandidateRankerRecordsCfg:
     fee_rate: float = 0.0004
     slippage_rate: float = 0.0001
     mae_penalty: float = 1.0
+    include_no_trade_candidate: bool = False
 
 
 def _bucket(x: float, cuts: tuple[float, ...], labels: tuple[str, ...]) -> str:
@@ -175,6 +176,55 @@ def _target(reward: dict[str, Any]) -> str:
     return "SKIP"
 
 
+def _no_trade_row(source: dict[str, Any], *, split: str, group_trade_rewards: list[float]) -> dict[str, Any]:
+    snap = dict(source.get("feature_snapshot", {}) if isinstance(source.get("feature_snapshot"), dict) else {})
+    for key in ("rex_candidate_strength", "rex_candidate_threshold", "rex_threshold_excess", "rex_threshold_ratio", "family_is_resume", "family_is_reclaim"):
+        snap[key] = 0.0
+    snap["candidate_side_sign"] = 0.0
+    tokens = dict(source.get("state_tokens", {}) if isinstance(source.get("state_tokens"), dict) else {})
+    tokens["candidate_family"] = "no_trade"
+    tokens["candidate_side"] = "none"
+    tokens["candidate_strength"] = "none"
+    reward = {
+        "net_return_pct": 0.0,
+        "mae_pct": 0.0,
+        "mfe_pct": 0.0,
+        "mfe_to_mae": 0.0,
+        "utility_pct": 0.0,
+        "net_return": 0.0,
+        "mae": 0.0,
+        "mfe": 0.0,
+        "utility": 0.0,
+    }
+    # For listwise/pairwise candidate selection, TAKE means this candidate is
+    # the preferred action.  NO_TRADE is preferred only when all executable
+    # candidates are non-positive.  Plain trade-verifier SFT should use the
+    # default dataset without these rows to avoid label ambiguity.
+    target = "TAKE" if max(group_trade_rewards or [-1.0]) <= 0.0 else "SKIP"
+    date = str(source["date"])
+    return {
+        "task": "rex_candidate_ranker",
+        "split": split,
+        "date": date,
+        "signal_pos": int(source["signal_pos"]),
+        "family": "NO_TRADE",
+        "side": "NONE",
+        "candidate": {"family": "NO_TRADE", "side": "NONE", "hold_bars": 0},
+        "prompt": _prompt(date, tokens, snap, family="NO_TRADE", side="NONE", hold_bars=0),
+        "target": target,
+        "reward": reward,
+        "state_tokens": tokens,
+        "feature_snapshot": snap,
+        "threshold_fit": source.get("threshold_fit", {}),
+        "leakage_guard": {
+            "prompt_uses_future_path": False,
+            "target_uses_future_path_for_training_only": True,
+            "no_trade_counterfactual_reward_is_zero": True,
+            "features_signal_time_or_prior": True,
+        },
+    }
+
+
 def _write_jsonl(path: str, rows: list[dict[str, Any]]) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -293,6 +343,15 @@ def run(cfg: RexCandidateRankerRecordsCfg) -> dict[str, Any]:
                         },
                     }
                 )
+        if cfg.include_no_trade_candidate:
+            grouped: dict[tuple[str, int], list[dict[str, Any]]] = {}
+            for row in all_rows:
+                grouped.setdefault((str(row["date"]), int(row["signal_pos"])), []).append(row)
+            no_trade_rows = []
+            for rows_for_signal in grouped.values():
+                rewards = [float((r.get("reward") or {}).get("net_return_pct", 0.0) or 0.0) for r in rows_for_signal]
+                no_trade_rows.append(_no_trade_row(rows_for_signal[0], split=split, group_trade_rewards=rewards))
+            all_rows.extend(no_trade_rows)
         all_rows.sort(key=lambda r: (str(r["date"]), int(r["signal_pos"]), str(r["family"]), str(r["side"])))
         outputs[split] = all_rows
 
@@ -331,6 +390,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--eval-end", default=RexCandidateRankerRecordsCfg.eval_end)
     p.add_argument("--hold-bars", type=int, default=RexCandidateRankerRecordsCfg.hold_bars)
     p.add_argument("--stride-bars", type=int, default=RexCandidateRankerRecordsCfg.stride_bars)
+    p.add_argument("--include-no-trade-candidate", action="store_true", default=RexCandidateRankerRecordsCfg.include_no_trade_candidate)
     return p.parse_args()
 
 

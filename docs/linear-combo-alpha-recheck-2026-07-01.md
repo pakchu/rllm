@@ -1344,3 +1344,33 @@ Readout:
 - This is still useful: the pipeline is now wired end-to-end (records → Gemma4 LoRA → logprob ranker → validation-selected backtest → eval report).
 - Longer training is not automatically justified. Next improvement should target train objective/sampling: time-balanced folds, validation-aware early stopping, or pairwise/ranking loss rather than plain balanced TAKE/SKIP SFT.
 - The ridge baseline remains the current sanity floor: rolling 2025-04..2026-06 CAGR 8.95% / strict MDD 2.64% / ratio 3.39 / 39 trades / p≈0.051.
+
+## 2026-07-02 NO_TRADE counterfactual pairwise ranker
+
+Purpose: test a ranking objective that better matches the live decision problem. The first pairwise attempt produced zero informative pairs because `resume` and `reclaim` candidates fired on the same signal with the same side/hold/future reward. I added `--include-no-trade-candidate` to `training/build_rex_candidate_ranker_records.py` so each signal can include an explicit `NO_TRADE` candidate with zero return and can form trade-vs-abstain preference pairs.
+
+Dataset run:
+- Train records: `data/rex_candidate_ranker_resume085_reclaim085_notrade_train_2020_2025.jsonl`
+- Eval records: `data/rex_candidate_ranker_resume085_reclaim085_notrade_eval_2026h1.jsonl`
+- Combined records: `data/rex_candidate_ranker_resume085_reclaim085_notrade_all_2020_2026h1.jsonl`
+- Train rows: 11,726 (`NO_TRADE=4,494`, `reclaim=3,596`, `resume=3,636`; `TAKE=3,862`, `SKIP=7,864`).
+- Eval rows: 598 (`NO_TRADE=240`, `reclaim=160`, `resume=198`; `TAKE=223`, `SKIP=375`).
+- Pair count check: fit 10,455 rows / 3,967 signals / 4,708 informative pairs; validation 1,271 rows / 527 signals / 568 informative pairs.
+
+Static pairwise baseline (`results/rex_candidate_pairwise_ranker_notrade_static_2026-07-02.json`):
+- 2025 validation-selected q0.85/full margin 0.25: 17.97% CAGR / 2.34% strict MDD / 43 trades / p=0.0186.
+- 2026 eval at the same settings: **-3.77% CAGR / 3.18% strict MDD / 11 trades / p=0.742**.
+- Readout: the objective can produce clean validation stats, but this static selection is a validation trap and is too sparse on untouched 2026.
+
+Rolling pairwise baseline with strict validation p-gate (`results/rex_candidate_pairwise_walkforward_notrade_2025_2026h1_2026-07-02.json`):
+- Aggregate 2025-04..2026-06: 0.73% CAGR / 0.96% strict MDD / ratio 0.76 / 8 trades / p=0.422.
+- It traded only one fold and abstained four folds, so it is safe but not useful.
+
+Rolling pairwise baseline with relaxed p-gate (`results/rex_candidate_pairwise_walkforward_notrade_relaxed_2025_2026h1_2026-07-02.json`):
+- Aggregate 2025-04..2026-06: **5.56% CAGR / 1.69% strict MDD / ratio 3.29 / 30 trades / p=0.0259**.
+- Fold behavior: trades 2025-Q2 and 2025-Q3, then abstains 2025-Q4 through 2026-05.
+
+Readout:
+- Adding `NO_TRADE` fixes the degenerate pairwise setup and produces statistically cleaner trades than the ridge floor, but it is too conservative and does not yet improve absolute CAGR.
+- Current best sanity floor remains the rolling ridge ranker: 8.95% CAGR / 2.64% strict MDD / ratio 3.39 / 39 trades / p≈0.051.
+- Pairwise should be used as a safety/preference signal, not as a full replacement yet. The next useful experiment is a ridge-score + pairwise-score blend or a Gemma4 listwise/pairwise preference model that ranks `[NO_TRADE, resume, reclaim]` candidates per signal instead of plain balanced TAKE/SKIP classification.
