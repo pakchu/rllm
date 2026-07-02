@@ -227,6 +227,7 @@ def build_records(cfg: CleanPairwiseFamilyCardConfig) -> list[dict[str, Any]]:
                     "pair_index": idx,
                     "order_variant": order_variant,
                     "prompt": _prompt(row, option_a, option_b),
+                    "target": chosen_response,
                     "completion": chosen_response,
                     "chosen_response": chosen_response,
                     "rejected_response": rejected_response,

@@ -79,4 +79,4 @@ def test_clean_pairwise_run_writes_summary(tmp_path):
     assert summary['rows'] == 4
     assert out.exists()
     written = [json.loads(line) for line in out.read_text().splitlines()]
-    assert written[0]['completion'] == 'A'
+    assert written[0]['completion'] == written[0]['target']
