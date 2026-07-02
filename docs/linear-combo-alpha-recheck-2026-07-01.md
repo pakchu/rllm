@@ -1298,3 +1298,21 @@ Fold-level notes:
 Next direction:
 - Use the generated text records for Gemma/Gemma4-style small-model fine-tuning or a token/logprob verifier, but preserve the ridge baseline as the sanity floor.
 - Expand candidate pool cautiously around REX without loosening q0.80 reclaim failures; candidate breadth should come from additional high-quality price-action hypotheses, not lower thresholds.
+
+## 2026-07-02 Gemma4 SFT dry-run for REX candidate ranker
+
+Purpose: verify that the new REX ranker records are directly usable by the existing text LoRA SFT path before spending GPU time.
+
+Dry-run command used `training.train_text_sft` with `--model-name gemma4-e4b`, resolving to `google/gemma-4-E4B-it`, over `data/rex_candidate_ranker_resume085_reclaim085_train_2020_2025.jsonl`.
+
+SFT readiness:
+- Rows: 7,232.
+- Task: `rex_candidate_ranker` only.
+- Target counts: `TAKE=1,837`, `SKIP=5,395`.
+- Prompt length: min 1,396 chars / max 1,476 / mean 1,430.7.
+- Target length: 4 chars for both labels.
+- Summary path: `checkpoints/dryrun_rex_candidate_ranker_gemma4_e4b_2026-07-02/sft_summary.json`.
+
+Readout:
+- The records are small enough for a compact Gemma4/Gemma E4B LoRA run and aligned with the user's preferred LLM direction.
+- The immediate next GPU job should be a very short LoRA sanity run, then candidate-logprob evaluation/backtest against the ridge floor. Do not run long fine-tunes until the short run beats or matches the ridge ranker sanity floor.
