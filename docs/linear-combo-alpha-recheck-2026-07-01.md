@@ -1431,3 +1431,24 @@ Readout:
 - The 2025-04..2026-06 union improvement is not enough evidence for production; extending to 2023-04 exposes regime instability.
 - Pairwise does improve mean-trade evidence over ridge, but it admits high-drawdown periods and does not provide sufficient regime awareness by itself.
 - Next work should not tune gates on this same long test. It should add a pre-declared regime-stability feature/filter learned only from fit/validation windows, or improve candidate generation so the ranker is not forced to rank weak candidates in bad regimes.
+
+## 2026-07-02 Monthly feature-filter walk-forward on long union
+
+Purpose: test whether a simple prior-validation feature veto can repair the long-window ridge+pairwise union instability without target-period tuning. Used `training/prediction_feature_filter_walkforward.py` on the 2023-04..2026-06 union predictions, selecting one feature threshold per eval month using the prior 3 months only.
+
+Implementation note:
+- Patched `training/prediction_feature_filter_walkforward.py` to skip empty eval months. The long union stream has months with no prediction rows, and passing an empty JSONL into `online_risk_overlay_backtest` raised `ValueError`.
+
+Run:
+- Predictions: `results/rex_candidate_blend_ridge_pairwise_2023_2026h1_2026-07-02/union_predictions.jsonl`
+- Output: `results/rex_candidate_union_feature_filter_walkforward_2023_2026h1_2026-07-02.json`
+- Validation: previous 3 months only.
+- Features: REX range position/width, HTF returns, DXY, kimchi, USDKRW, RSI/BB, taker imbalance, range features.
+
+Aggregate result:
+- 4.43% CAGR / 6.32% strict MDD / ratio 0.70 / 100 trades / p=0.170.
+
+Readout:
+- This fails and worsens the long union baseline (7.26% / 6.13% / ratio 1.19 / 160 trades / p=0.0646).
+- Simple monthly single-feature gate selection is unstable: it frequently picks different filters month to month and overfits the tiny validation sample.
+- This supports the user's concern that gate optimization is the wrong core path. Regime/context should enter as richer model input or candidate-generation prior, not as a brittle post-hoc monthly veto.

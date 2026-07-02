@@ -123,6 +123,9 @@ def run(cfg: PredictionFeatureFilterCfg) -> dict[str, Any]:
         month=str(mstart.date())[:7]
         val_rows=_slice(preds, str(vstart.date()), str(vend.date()))
         eval_rows=_slice(preds, str(mstart.date()), str(mend.date()))
+        if not eval_rows:
+            reports.append({"month": month, "status": "SKIPPED_EMPTY_EVAL", "selected": None, "eval": {"sim": {"trade_entries": 0}, "trade_stats": {"n_trades": 0}}, "top5": []})
+            continue
         candidates=[]
         for feature in features:
             if feature not in feats.columns: continue
