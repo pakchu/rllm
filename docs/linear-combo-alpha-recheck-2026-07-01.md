@@ -1689,3 +1689,22 @@ Readout:
 - Random labels fixed the fixed-A collapse: the model now chooses both labels and resolves through `choice_map` correctly.
 - Economic result is still not usable because the validation-selected margin produces only 4 eval trades. The high eval ratio/p-value is a tiny-sample artifact.
 - The next issue is selection policy: validation ranking needs an explicit minimum trade count / power constraint, otherwise it over-selects sparse high-ratio thresholds.
+
+## 2026-07-02 Trade-count-constrained random binary selection
+
+Purpose: the randomized binary adapter selected margin `0.2` because it had the best validation ratio, but it produced only 4 eval trades. Added `--min-selection-trades` to `training/eval_rex_listwise_choice_adapter.py` so validation margin selection can require a minimum trade count.
+
+Run:
+- Adapter: `checkpoints/rex_binary_choice_neutral_random_gemma4_e4b_lora_sanity_2026-07-02`
+- Report: `results/rex_binary_choice_neutral_random_gemma4_adapter_min20_eval_2026-07-02.json`
+- `--min-selection-trades 20`
+
+Result:
+- Selected margin: `-999` / no confidence cutoff, because stricter margins had fewer than 20 validation trades.
+- Validation: 6.51% CAGR / 3.91% MDD / ratio 1.67 / 22 trades / p=0.285.
+- Eval: 5.70% CAGR / 1.20% MDD / ratio 4.76 / 6 trades / p=0.218.
+
+Readout:
+- The selection policy fix behaves correctly, but the LLM classifier still does not produce enough eval trades.
+- Random labels solved label prior; min-trades solved sparse validation selection; remaining issue is target quality/model signal, not plumbing.
+- Raw future-utility supervised labels are likely too noisy. Next target should distill a more stable teacher, e.g. the ridge+pairwise fixed union or rolling ridge score, into the neutral binary prompt format.

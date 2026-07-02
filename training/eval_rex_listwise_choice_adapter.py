@@ -36,6 +36,7 @@ class RexListwiseAdapterEvalCfg:
     max_eval_rows: int = 0
     max_seq_length: int = 1024
     eval_batch_size: int = 4
+    min_selection_trades: int = 10
     torch_dtype: str = "bfloat16"
     load_in_4bit: bool = False
     leverage: float = 0.5
@@ -207,10 +208,10 @@ def _backtest(preds: list[dict[str, Any]], cfg: RexListwiseAdapterEvalCfg, name:
     return {"predictions": str(path), "sim": bt["sim"], "trade_stats": bt["trade_stats"]}
 
 
-def _rank(bt: dict[str, Any]) -> float:
+def _rank(bt: dict[str, Any], *, min_trades: int) -> float:
     sim = bt["sim"]
     trades = int(sim.get("trade_entries", 0) or 0)
-    if trades < 10:
+    if trades < int(min_trades):
         return -1e9
     return float(sim.get("cagr_to_strict_mdd", 0.0) or 0.0) + 0.02 * float(sim.get("cagr_pct", 0.0) or 0.0)
 
@@ -227,7 +228,7 @@ def run(cfg: RexListwiseAdapterEvalCfg) -> dict[str, Any]:
     candidates: list[dict[str, Any]] = []
     for margin in margins:
         bt = _backtest(_predictions(val_scored, margin), cfg, f"validation_conf_margin_{margin:g}")
-        candidates.append({"confidence_margin": margin, "backtest": bt, "score": _rank(bt)})
+        candidates.append({"confidence_margin": margin, "backtest": bt, "score": _rank(bt, min_trades=cfg.min_selection_trades)})
     candidates.sort(key=lambda r: float(r["score"]), reverse=True)
     selected = candidates[0] if candidates else {"confidence_margin": 999.0, "score": -1e9}
     eval_bt = _backtest(_predictions(eval_scored, float(selected["confidence_margin"])), cfg, "selected_eval")
@@ -264,6 +265,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-eval-rows", type=int, default=RexListwiseAdapterEvalCfg.max_eval_rows)
     p.add_argument("--max-seq-length", type=int, default=RexListwiseAdapterEvalCfg.max_seq_length)
     p.add_argument("--eval-batch-size", type=int, default=RexListwiseAdapterEvalCfg.eval_batch_size)
+    p.add_argument("--min-selection-trades", type=int, default=RexListwiseAdapterEvalCfg.min_selection_trades)
     p.add_argument("--torch-dtype", default=RexListwiseAdapterEvalCfg.torch_dtype)
     p.add_argument("--load-in-4bit", action="store_true", default=RexListwiseAdapterEvalCfg.load_in_4bit)
     p.add_argument("--leverage", type=float, default=RexListwiseAdapterEvalCfg.leverage)
