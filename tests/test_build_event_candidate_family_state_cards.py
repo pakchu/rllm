@@ -42,3 +42,19 @@ def test_state_card_run_writes_jsonl(tmp_path):
     assert summary['rows'] == 1
     written = [json.loads(line) for line in output.read_text().splitlines()]
     assert written[0]['position_state']['mode'] == 'FLAT'
+
+
+def test_state_card_run_filters_fold_range(tmp_path):
+    report = tmp_path / 'report.json'
+    output = tmp_path / 'out.jsonl'
+    report.write_text(json.dumps({
+        'folds': [
+            {'fold': {'name': 'old', 'start': '2024-01-01', 'end': '2024-02-01'}, 'selector_mode': 'x', 'selected_family': 'f', 'abstained': False, 'pre_fold_scoreboard': [{'family': 'f', 'score': 1.0, 'threshold': 0.1, 'evidence': []}]},
+            {'fold': {'name': 'new', 'start': '2025-01-01', 'end': '2025-02-01'}, 'selector_mode': 'x', 'selected_family': 'f', 'abstained': False, 'pre_fold_scoreboard': [{'family': 'f', 'score': 1.0, 'threshold': 0.1, 'evidence': []}]},
+        ]
+    }))
+    summary = run(FamilyStateCardConfig(selector_report=str(report), output_jsonl=str(output), fold_start='2025-01-01', fold_end='2026-01-01'))
+
+    assert summary['rows'] == 1
+    row = json.loads(output.read_text().strip())
+    assert row['fold']['name'] == 'new'

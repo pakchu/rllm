@@ -21,6 +21,8 @@ class FamilyStateCardConfig:
     include_abstain: bool = True
     split_name: str = "all"
     default_position_mode: str = "FLAT"
+    fold_start: str = ""
+    fold_end: str = ""
 
 
 def _num(x: Any, ndigits: int = 3) -> float | None:
@@ -92,10 +94,21 @@ def _prompt(card: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _in_fold_range(fold: dict[str, Any], cfg: FamilyStateCardConfig) -> bool:
+    start = str((fold.get("fold") or {}).get("start", ""))
+    if cfg.fold_start and start < str(cfg.fold_start):
+        return False
+    if cfg.fold_end and start >= str(cfg.fold_end):
+        return False
+    return True
+
+
 def build_records(cfg: FamilyStateCardConfig) -> list[dict[str, Any]]:
     report = json.loads(Path(cfg.selector_report).read_text())
     records: list[dict[str, Any]] = []
     for fold in report.get("folds", []):
+        if not _in_fold_range(fold, cfg):
+            continue
         scoreboard = list(fold.get("pre_fold_scoreboard") or [])[: int(cfg.max_options)]
         options = [_option_from_score(row, i) for i, row in enumerate(scoreboard)]
         if cfg.include_abstain:
@@ -140,12 +153,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--no-abstain", action="store_true")
     p.add_argument("--split-name", default=FamilyStateCardConfig.split_name)
     p.add_argument("--default-position-mode", default=FamilyStateCardConfig.default_position_mode)
+    p.add_argument("--fold-start", default=FamilyStateCardConfig.fold_start, help="Inclusive fold start date filter, e.g. 2025-01-01")
+    p.add_argument("--fold-end", default=FamilyStateCardConfig.fold_end, help="Exclusive fold start date filter, e.g. 2026-01-01")
     return p.parse_args()
 
 
 def main() -> None:
     a = parse_args()
-    print(json.dumps(run(FamilyStateCardConfig(selector_report=a.selector_report, output_jsonl=a.output_jsonl, max_options=a.max_options, include_abstain=not a.no_abstain, split_name=a.split_name, default_position_mode=a.default_position_mode)), indent=2, ensure_ascii=False))
+    print(json.dumps(run(FamilyStateCardConfig(selector_report=a.selector_report, output_jsonl=a.output_jsonl, max_options=a.max_options, include_abstain=not a.no_abstain, split_name=a.split_name, default_position_mode=a.default_position_mode, fold_start=a.fold_start, fold_end=a.fold_end)), indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":
