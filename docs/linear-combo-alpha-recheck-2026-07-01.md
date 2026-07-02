@@ -1532,3 +1532,30 @@ Critical readout:
 - The model never chose `NO_TRADE` as its top candidate; all `NO_TRADE` targets were predicted as one of the trade ids. The margin threshold merely filters some low-confidence trade predictions after the fact.
 - Likely cause: target-id lexical/tokenization bias and class imbalance. Long semantic ids like `REX_HTF_PULLBACK_RECLAIM_SHORT` are not neutral choice labels, and `NO_TRADE` may be disadvantaged despite mean logprob scoring.
 - Next fix should rebuild listwise prompts with neutral short labels (`A`, `B`, `C`) mapped to candidate ids in the prompt, and train target as the short label. This better isolates reasoning over candidate descriptions from label-token priors.
+
+## 2026-07-02 Neutral-label listwise choice records
+
+Purpose: fix the first listwise failure where Gemma4 never selected `NO_TRADE` as top choice. The likely issue was lexical/tokenization prior from long semantic target ids. Added `--neutral-choice-labels` to `training/build_rex_listwise_choice_records.py` so prompts show neutral ids (`A`, `B`, `C`) while storing `choice_map` to recover the real candidate id during evaluation.
+
+Code updates:
+- `training/build_rex_listwise_choice_records.py`: optional neutral labels, `choice_map`, `choice_ids`.
+- `training/eval_rex_listwise_choice_adapter.py`: resolves neutral label through `choice_map` before converting to trade/no-trade prediction.
+
+Generated records:
+- Train: `data/rex_listwise_choice_neutral_resume085_reclaim085_notrade_train_2020_2025.jsonl`
+- Eval: `data/rex_listwise_choice_neutral_resume085_reclaim085_notrade_eval_2026h1.jsonl`
+- Summary: `data/rex_listwise_choice_neutral_resume085_reclaim085_notrade_summary_2026-07-02.json`
+
+Dataset stats:
+- Train rows: 4,494. Eval rows: 240.
+- Prompt chars mean: train 1,489 / eval 1,476.
+- Target counts: train `A=2,970`, `B=1,524`; eval `A=144`, `B=96`.
+- `A` maps mostly to `NO_TRADE`; `B` maps to the best executable candidate. `C` can appear as a same-signal duplicate/decoy but is not the best target in this generated set.
+
+Gemma4 SFT dry-run:
+- Command used `training.train_text_sft` with `--model-name gemma4-e4b`, `--sample-mode balanced`, `--max-samples 1024`, `--max-seq-length 768`, and `--dry-run`.
+- Result: `A=512`, `B=512`, target chars mean 1.0.
+
+Readout:
+- This is a cleaner LLM task than long candidate-id prediction and should directly test whether Gemma4 can learn abstain-vs-trade from context.
+- Next step: short 20-step neutral-label LoRA, then the existing listwise evaluator with `choice_map` resolution.

@@ -160,6 +160,11 @@ def _accuracy(scored: list[dict[str, Any]]) -> dict[str, Any]:
     return {"rows": len(scored), "accuracy": correct / max(1, len(scored)), "confusion": dict(sorted(confusion.items()))}
 
 
+def _resolve_choice_id(row: dict[str, Any], choice: str) -> str:
+    cmap = row.get("choice_map") if isinstance(row.get("choice_map"), dict) else {}
+    return str(cmap.get(str(choice), choice))
+
+
 def _id_to_prediction(choice_id: str) -> tuple[dict[str, Any], float, str]:
     cid = str(choice_id).upper()
     if cid == "NO_TRADE" or cid.endswith("_NONE"):
@@ -175,11 +180,12 @@ def _predictions(scored: list[dict[str, Any]], min_confidence_margin: float) -> 
     for item in scored:
         row = item["row"]
         choice = str(item["prediction"])
+        resolved_choice = _resolve_choice_id(row, choice)
         margin = float(item.get("margin", 0.0) or 0.0)
-        pred, scale, side = _id_to_prediction(choice)
+        pred, scale, side = _id_to_prediction(resolved_choice)
         if pred.get("gate") == "TRADE" and margin < float(min_confidence_margin):
             pred, scale, side = {"gate": "NO_TRADE", "side": "NONE", "hold_bars": 0, "family": "rex_gemma_listwise", "reason": "confidence_margin"}, 0.0, "NONE"
-        preds.append({"date": row.get("date"), "signal_pos": int(row.get("signal_pos", -1) or -1), "prediction": pred, "position_scale": scale, "score": margin, "side_candidate": side, "target": row.get("target"), "choice_prediction": choice})
+        preds.append({"date": row.get("date"), "signal_pos": int(row.get("signal_pos", -1) or -1), "prediction": pred, "position_scale": scale, "score": margin, "side_candidate": side, "target": row.get("target"), "choice_prediction": choice, "resolved_choice_id": resolved_choice})
     return preds
 
 

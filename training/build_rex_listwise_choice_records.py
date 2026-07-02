@@ -28,6 +28,7 @@ class RexListwiseChoiceCfg:
     eval_end: str = "2026-06-01"
     min_best_utility_gap_pct: float = 0.0
     target_metric: str = "utility_pct"
+    neutral_choice_labels: bool = False
 
 
 def _load(path: str) -> list[dict[str, Any]]:
@@ -54,7 +55,7 @@ def _choice_id(row: dict[str, Any]) -> str:
     return f"{fam}_{side}"
 
 
-def _choice_line(i: int, row: dict[str, Any]) -> str:
+def _choice_line(i: int, row: dict[str, Any], display_id: str | None = None) -> str:
     fs = row.get("feature_snapshot") or {}
     reward = row.get("reward") or {}
     fam = str(row.get("family", ""))
@@ -64,7 +65,7 @@ def _choice_line(i: int, row: dict[str, Any]) -> str:
     excess = float(fs.get("rex_threshold_excess", 0.0) or 0.0)
     ratio = float(fs.get("rex_threshold_ratio", 0.0) or 0.0)
     return (
-        f"{i}. id={_choice_id(row)} family={fam} side={side} hold={hold} "
+        f"{i}. id={display_id or _choice_id(row)} family={fam} side={side} hold={hold} "
         f"strength={strength:.4f} threshold_excess={excess:.4f} threshold_ratio={ratio:.3f}"
     )
 
@@ -86,11 +87,11 @@ def _context(tokens: dict[str, Any], fs: dict[str, Any]) -> str:
     return f"Regime tokens: {token_text}\nNumeric context: {num_text}"
 
 
-def _prompt(date: str, rows: list[dict[str, Any]]) -> str:
+def _prompt(date: str, rows: list[dict[str, Any]], label_map: dict[str, str] | None = None) -> str:
     exemplar = next((r for r in rows if str(r.get("family")) != "NO_TRADE"), rows[0])
     tokens = exemplar.get("state_tokens") or {}
     fs = exemplar.get("feature_snapshot") or {}
-    choices = "\n".join(_choice_line(i + 1, r) for i, r in enumerate(rows))
+    choices = "\n".join(_choice_line(i + 1, r, (label_map or {}).get(_choice_id(r))) for i, r in enumerate(rows))
     return (
         "You are a BTC futures risk-aware action selector.\n"
         "Choose exactly one candidate id for the next action. Prefer NO_TRADE when the setup is low quality or drawdown risk dominates.\n"
@@ -115,15 +116,27 @@ def _make_record(rows: list[dict[str, Any]], cfg: RexListwiseChoiceCfg, split: s
     if float(cfg.min_best_utility_gap_pct) > 0 and (best_score - second_score) < float(cfg.min_best_utility_gap_pct):
         return None
     date = _date(rows[0])
+    real_choices = [_choice_id(r) for r in rows]
+    label_map: dict[str, str] = {}
+    inverse_choice_map: dict[str, str] = {}
+    if cfg.neutral_choice_labels:
+        labels = [chr(ord("A") + i) for i in range(len(real_choices))]
+        label_map = {cid: label for cid, label in zip(real_choices, labels)}
+        inverse_choice_map = {label: cid for cid, label in label_map.items()}
+    target_choice = _choice_id(best_row)
+    target = label_map.get(target_choice, target_choice)
+    display_choices = [label_map.get(cid, cid) for cid in real_choices]
     return {
         "task": "rex_listwise_choice",
         "split": split,
         "date": date,
         "signal_pos": int(rows[0].get("signal_pos", -1) or -1),
-        "prompt": _prompt(date, rows),
-        "target": _choice_id(best_row),
-        "choices": [_choice_id(r) for r in rows],
-        "choice_rewards": { _choice_id(r): float((r.get("reward") or {}).get(metric, 0.0) or 0.0) for r in rows },
+        "prompt": _prompt(date, rows, label_map if cfg.neutral_choice_labels else None),
+        "target": target,
+        "choices": display_choices,
+        "choice_map": inverse_choice_map,
+        "choice_ids": real_choices,
+        "choice_rewards": { (label_map.get(_choice_id(r), _choice_id(r))): float((r.get("reward") or {}).get(metric, 0.0) or 0.0) for r in rows },
         "best_margin_pct": best_score - second_score,
         "target_metric": metric,
         "leakage_guard": {
@@ -186,6 +199,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--eval-end", default=RexListwiseChoiceCfg.eval_end)
     p.add_argument("--min-best-utility-gap-pct", type=float, default=RexListwiseChoiceCfg.min_best_utility_gap_pct)
     p.add_argument("--target-metric", choices=["utility_pct", "net_return_pct"], default=RexListwiseChoiceCfg.target_metric)
+    p.add_argument("--neutral-choice-labels", action="store_true", default=RexListwiseChoiceCfg.neutral_choice_labels)
     return p.parse_args()
 
 
