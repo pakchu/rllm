@@ -1708,3 +1708,35 @@ Readout:
 - The selection policy fix behaves correctly, but the LLM classifier still does not produce enough eval trades.
 - Random labels solved label prior; min-trades solved sparse validation selection; remaining issue is target quality/model signal, not plumbing.
 - Raw future-utility supervised labels are likely too noisy. Next target should distill a more stable teacher, e.g. the ridge+pairwise fixed union or rolling ridge score, into the neutral binary prompt format.
+
+## 2026-07-02 Ridge+pairwise union teacher distillation check
+
+Purpose: replace noisy raw future-utility labels with a more stable teacher: the fixed ridge+pairwise union prediction stream from the long walk-forward run. Added `training/build_teacher_distilled_binary_choice_records.py`, which relabels randomized binary neutral-choice prompts from teacher predictions instead of future utility.
+
+Dataset:
+- Input prompts: `data/rex_binary_choice_neutral_random_resume085_reclaim085_notrade_all_2020_2026h1.jsonl`
+- Teacher: `results/rex_candidate_blend_ridge_pairwise_2023_2026h1_2026-07-02/union_predictions.jsonl`
+- Train: `data/rex_binary_choice_teacher_union_train_2023_2025.jsonl`
+- Eval: `data/rex_binary_choice_teacher_union_eval_2026h1.jsonl`
+- Summary: `data/rex_binary_choice_teacher_union_summary_2026-07-02.json`
+
+Dataset stats:
+- Train rows: 1,519; eval rows: 240.
+- Label counts: train `A=792`, `B=727`; eval `A=125`, `B=115`.
+- Semantic teacher targets: train `NO_TRADE=1,162`, executable trades=357; eval `NO_TRADE=166`, executable trades=74.
+
+Gemma4 20-step sanity:
+- Adapter: `checkpoints/rex_binary_choice_teacher_union_gemma4_e4b_lora_sanity_2026-07-02`
+- Training sample: 1,400 balanced labels (`A=700`, `B=700`).
+- Raw eval report before safe fallback: `results/rex_binary_choice_teacher_union_gemma4_adapter_sanity_eval_2026-07-02.json`
+  - Validation accuracy 93.55%, eval accuracy 68.33%.
+  - But validation produced only 8 trades, below the requested 20-trade threshold.
+- Patched evaluator fallback: if no validation margin satisfies `--min-selection-trades`, select a no-trade fallback instead of accidentally choosing a `-1e9` candidate.
+- Safe report: `results/rex_binary_choice_teacher_union_gemma4_adapter_min20_safe_eval_2026-07-02.json`
+  - Selection failed: `no_validation_margin_met_min_selection_trades`.
+  - Eval fallback: 0 trades.
+
+Readout:
+- Teacher distillation improves label imitation accuracy, but the short adapter still does not produce enough validation trades under the statistical/trade-count constraint.
+- The current bottleneck is no longer label plumbing; it is that the REX candidate pool and teacher both remain too sparse/unstable for the target. More LLM SFT alone is unlikely to bridge to CAGR 50 / strict MDD 15.
+- Next meaningful direction: expand candidate pool with genuinely different price-action setups, then use the now-clean randomized binary/teacher-distill LLM surface as a ranker on top.

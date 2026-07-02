@@ -231,6 +231,9 @@ def run(cfg: RexListwiseAdapterEvalCfg) -> dict[str, Any]:
         candidates.append({"confidence_margin": margin, "backtest": bt, "score": _rank(bt, min_trades=cfg.min_selection_trades)})
     candidates.sort(key=lambda r: float(r["score"]), reverse=True)
     selected = candidates[0] if candidates else {"confidence_margin": 999.0, "score": -1e9}
+    no_valid_selection = (not candidates) or float(selected.get("score", -1e9)) <= -1e8
+    if no_valid_selection:
+        selected = {"confidence_margin": 999.0, "score": -1e9, "selection_failed": True, "reason": "no_validation_margin_met_min_selection_trades", "min_selection_trades": int(cfg.min_selection_trades)}
     eval_bt = _backtest(_predictions(eval_scored, float(selected["confidence_margin"])), cfg, "selected_eval")
     report = {
         "config": asdict(cfg),
@@ -238,7 +241,7 @@ def run(cfg: RexListwiseAdapterEvalCfg) -> dict[str, Any]:
         "rows": {"validation": len(val_rows), "eval": len(eval_rows)},
         "validation_accuracy": _accuracy(val_scored),
         "eval_accuracy": _accuracy(eval_scored),
-        "selection_rule": "choose confidence margin on validation rows only; eval is report-only",
+        "selection_rule": "choose confidence margin on validation rows only; if no margin satisfies min_selection_trades, fall back to no-trade",
         "top_validation_margins": candidates[:10],
         "selected": selected,
         "eval_backtest": eval_bt,
