@@ -20,7 +20,6 @@ if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from training.build_event_candidate_family_state_cards import _assign_option_ids, _num, _option_from_score, _position_state
-from training.build_event_candidate_family_pairwise_cards import _option_summary
 
 
 @dataclass(frozen=True)
@@ -44,6 +43,18 @@ class CleanPairwiseFamilyCardConfig:
     augment_reverse_pairs: bool = True
     label_source: str = "target_fold_diagnostic_not_for_prompt"
 
+
+
+def _pair_option_summary(opt: dict[str, Any], pair_id: str) -> dict[str, Any]:
+    return {
+        "id": pair_id,
+        "source_option_id": opt.get("id"),
+        "family": opt.get("family"),
+        "pre_fold_score": opt.get("pre_fold_score"),
+        "threshold": opt.get("threshold"),
+        "evidence_count": opt.get("evidence_count"),
+        "latest_evidence": opt.get("latest_evidence", {}),
+    }
 
 def _load_report(path: str | Path) -> dict[str, Any]:
     return json.loads(Path(path).read_text())
@@ -143,8 +154,8 @@ def _prompt(row: dict[str, Any], option_a: dict[str, Any], option_b: dict[str, A
     payload = {
         "fold": row.get("fold"),
         "position_state": row.get("position_state"),
-        "option_a": _option_summary(option_a),
-        "option_b": _option_summary(option_b),
+        "option_a": _pair_option_summary(option_a, "A"),
+        "option_b": _pair_option_summary(option_b, "B"),
     }
     return "\n".join([
         "Choose which family option is more valid for the next chronological fold.",
@@ -216,8 +227,8 @@ def build_records(cfg: CleanPairwiseFamilyCardConfig) -> list[dict[str, Any]]:
                     "position_state": row.get("position_state"),
                     "chosen": chosen_response,
                     "rejected": rejected_response,
-                    "chosen_option": _option_summary(chosen),
-                    "rejected_option": _option_summary(neg),
+                    "chosen_option": _pair_option_summary(chosen, chosen_response),
+                    "rejected_option": _pair_option_summary(neg, rejected_response),
                     "option_a_family": option_a.get("family"),
                     "option_b_family": option_b.get("family"),
                     "target_family": (row.get("target") or {}).get("family"),

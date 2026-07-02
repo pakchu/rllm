@@ -68,6 +68,8 @@ def test_clean_pairwise_prompt_excludes_target_fold_metrics(tmp_path):
     assert 'diagnostic_target' not in records[0]['prompt']
     assert 'cagr_pct' not in records[0]['prompt']
     assert 'clean_diagnostic_winner' in records[0]['prompt']
+    assert '"id": "A"' in records[0]['prompt']
+    assert '"source_option_id"' in records[0]['prompt']
 
 
 def test_clean_pairwise_run_writes_summary(tmp_path):
@@ -80,3 +82,5 @@ def test_clean_pairwise_run_writes_summary(tmp_path):
     assert out.exists()
     written = [json.loads(line) for line in out.read_text().splitlines()]
     assert written[0]['completion'] == written[0]['target']
+    assert written[0]['chosen_option']['id'] in {'A', 'B'}
+    assert 'source_option_id' in written[0]['chosen_option']

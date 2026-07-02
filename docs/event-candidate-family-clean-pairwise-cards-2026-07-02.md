@@ -15,8 +15,9 @@ It builds DPO-compatible pairwise `A > B` training rows directly from the monthl
 3. **Leakage guard**: target-fold metrics are kept in metadata as `diagnostic_target`, never in the prompt.
 4. **DPO schema**: the trainable response is the letter only (`A` preferred over `B`), while option metadata is retained outside the response fields.
 5. **Abstain**: if no diagnostic family passes filters, label is `ABSTAIN`.
-6. **Order augmentation**: every pair is emitted twice, once with the clean winner as A and once with the clean winner as B. This prevents the LLM from learning an A-position shortcut.
-7. **Randomization**: non-ABSTAIN option letters are shuffled per row to reduce option-position bias.
+6. **Pair-local IDs**: inside pairwise prompts, `option_a.id` is always `A` and `option_b.id` is always `B`; the original listwise id is preserved only as `source_option_id`. This avoids contradictory prompts such as “answer A/B” while showing an option whose internal id is `C` or `ABSTAIN`.
+7. **Order augmentation**: every pair is emitted twice, once with the clean winner as A and once with the clean winner as B. This prevents the LLM from learning an A-position shortcut.
+8. **Randomization**: non-ABSTAIN option letters are shuffled per row to reduce option-position bias.
 
 Default clean-label filters:
 
@@ -78,7 +79,7 @@ print('manual clean pairwise tests passed')
 PY
 ```
 
-`pytest` could not run because this venv currently does not have `pytest` installed. After schema/order correction, generated JSONL was checked to confirm balanced `chosen` responses, `chosen_option` exists, and `diagnostic_target` is absent from prompts.
+`pytest` could not run because this venv currently does not have `pytest` installed. After schema/order correction, generated JSONL was checked to confirm balanced `chosen` responses, pair-local ids are only `A/B`, `source_option_id` preserves the original option id, and `diagnostic_target` is absent from prompts.
 
 ## Remaining risk
 
