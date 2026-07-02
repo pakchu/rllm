@@ -105,8 +105,8 @@ def _select_rows(rows: list[dict[str, Any]], *, max_samples: int, sample_mode: s
     if not max_samples or int(max_samples) >= len(rows):
         return rows
     mode = str(sample_mode).strip().lower()
-    if mode not in {"sequential", "random", "balanced", "gate_balanced"}:
-        raise ValueError("sample_mode must be one of {'sequential','random','balanced','gate_balanced'}")
+    if mode not in {"sequential", "random", "balanced", "balanced_oversample", "gate_balanced"}:
+        raise ValueError("sample_mode must be one of {'sequential','random','balanced','balanced_oversample','gate_balanced'}")
     rng = random.Random(int(seed))
     max_n = int(max_samples)
     if mode == "sequential":
@@ -144,11 +144,27 @@ def _select_rows(rows: list[dict[str, Any]], *, max_samples: int, sample_mode: s
     for bucket in sorted(buckets):
         idxs = list(buckets[bucket])
         rng.shuffle(idxs)
-        selected.extend(idxs[: min(per_bucket, len(idxs))])
+        if mode == "balanced_oversample" and idxs:
+            selected.extend(idxs[: min(len(idxs), per_bucket)])
+            while len([x for x in selected if x in set(idxs)]) < per_bucket:
+                selected.append(rng.choice(idxs))
+        else:
+            selected.extend(idxs[: min(per_bucket, len(idxs))])
     if len(selected) < max_n:
-        remaining = [i for i in range(len(rows)) if i not in set(selected)]
-        rng.shuffle(remaining)
-        selected.extend(remaining[: max_n - len(selected)])
+        if mode == "balanced_oversample" and buckets:
+            bucket_names = sorted(buckets)
+            while len(selected) < max_n:
+                idxs = buckets[bucket_names[len(selected) % len(bucket_names)]]
+                if idxs:
+                    selected.append(rng.choice(idxs))
+        else:
+            remaining = [i for i in range(len(rows)) if i not in set(selected)]
+            rng.shuffle(remaining)
+            selected.extend(remaining[: max_n - len(selected)])
+    if mode == "balanced_oversample":
+        rng.shuffle(selected)
+        selected = selected[:max_n]
+        return [rows[i] for i in selected]
     selected = sorted(selected[:max_n])
     return [rows[i] for i in selected]
 
@@ -340,7 +356,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output-dir", required=True)
     p.add_argument("--max-samples", type=int, default=0)
     p.add_argument("--max-seq-length", type=int, default=2048)
-    p.add_argument("--sample-mode", choices=["sequential", "random", "balanced", "gate_balanced"], default="sequential")
+    p.add_argument("--sample-mode", choices=["sequential", "random", "balanced", "balanced_oversample", "gate_balanced"], default="sequential")
     p.add_argument("--max-steps", type=int, default=50)
     p.add_argument("--num-train-epochs", type=float, default=1.0)
     p.add_argument("--learning-rate", type=float, default=2e-5)

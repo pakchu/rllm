@@ -1591,3 +1591,42 @@ Readout:
 - Neutral labels fixed the previous pathological behavior: the model now chooses `A`/NO_TRADE often.
 - But it over-abstains and still does not identify enough profitable B/trade cases. It underperforms ridge, pairwise, and the short-window fixed blend.
 - Conclusion: the LLM surface is now technically cleaner, but the current supervised target is too weak/noisy. Next improvement should focus on better target construction: require a stronger utility gap, train pairwise preference between `A` and best trade, or distill from the ridge+pairwise ensemble rather than raw future utility labels.
+
+## 2026-07-02 Strong-gap neutral listwise and oversampling checks
+
+Purpose: reduce label noise in the neutral listwise target by keeping only signals where the best candidate beats the runner-up by a minimum utility gap.
+
+Gap scan over neutral listwise records:
+
+| min utility gap | train rows | eval rows | train target mix | eval target mix | readout |
+| ---: | ---: | ---: | --- | --- | --- |
+| 0.05% | 3,422 | 183 | A=2,901 / B=521 | A=140 / B=43 | still enough rows |
+| 0.10% | 3,341 | 181 | A=2,840 / B=501 | A=139 / B=42 | similar |
+| 0.20% | 3,199 | 176 | A=2,735 / B=464 | A=135 / B=41 | selected sanity candidate |
+| 0.30% | 3,032 | 164 | A=2,613 / B=419 | A=129 / B=35 | fewer B labels |
+| 0.50% | 2,753 | 138 | A=2,398 / B=355 | A=107 / B=31 | sparse |
+| 0.75% | 2,457 | 108 | A=2,175 / B=282 | A=87 / B=21 | too sparse |
+| 1.00% | 2,170 | 96 | A=1,952 / B=218 | A=81 / B=15 | too sparse |
+
+Added `balanced_oversample` to `training/train_text_sft.py` so minority target buckets can be sampled with replacement. This was needed because gap0.20 has only 464 B/trade labels in train.
+
+Gap0.20 normal balanced-ish run:
+- Adapter: `checkpoints/rex_listwise_choice_neutral_gap0p20_gemma4_e4b_lora_sanity_2026-07-02`
+- Training sample mix: A=1,584 / B=464.
+- Eval report: `results/rex_listwise_neutral_gap0p20_gemma4_adapter_sanity_eval_2026-07-02.json`
+- Validation: -4.82% CAGR / 6.17% MDD / ratio -0.78 / 11 trades / p=0.0609.
+- Eval: -3.96% CAGR / 3.30% MDD / ratio -1.20 / 3 trades / p=0.295.
+- Confusion showed the model predicted nearly all B targets as A.
+
+Gap0.20 balanced_oversample run:
+- Adapter: `checkpoints/rex_listwise_choice_neutral_gap0p20_oversample_gemma4_e4b_lora_sanity_2026-07-02`
+- Training sample mix: A=1,024 / B=1,024.
+- Eval report: `results/rex_listwise_neutral_gap0p20_oversample_gemma4_adapter_sanity_eval_2026-07-02.json`
+- Validation: -9.23% CAGR / 9.57% MDD / ratio -0.97 / 12 trades / p=0.0083.
+- Eval: -16.00% CAGR / 7.06% MDD / ratio -2.27 / 7 trades / p=0.168.
+- Confusion still missed all B targets on eval (`B→A=41`) and even selected decoy C for a few A targets.
+
+Readout:
+- Strong-gap filtering alone does not fix the target problem.
+- Oversampling improves nominal class balance but worsens economic behavior; repeating the scarce B labels likely overfits idiosyncratic trade cases.
+- The model is struggling with a three-choice setup where C is usually a decoy and rarely/never target. Next target construction should collapse each signal to **binary neutral choice**: `A=NO_TRADE`, `B=best executable trade`, removing resume/reclaim decoy selection from the LLM and leaving family selection to the candidate generator/ranker.
