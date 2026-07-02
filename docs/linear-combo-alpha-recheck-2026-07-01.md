@@ -1559,3 +1559,35 @@ Gemma4 SFT dry-run:
 Readout:
 - This is a cleaner LLM task than long candidate-id prediction and should directly test whether Gemma4 can learn abstain-vs-trade from context.
 - Next step: short 20-step neutral-label LoRA, then the existing listwise evaluator with `choice_map` resolution.
+
+## 2026-07-02 Neutral-label Gemma4 listwise LoRA evaluation
+
+Purpose: verify whether neutral `A/B/C` labels fix the first listwise adapter's systematic failure to choose `NO_TRADE`.
+
+Training:
+- Adapter: `checkpoints/rex_listwise_choice_neutral_gemma4_e4b_lora_sanity_2026-07-02`
+- Data: `data/rex_listwise_choice_neutral_resume085_reclaim085_notrade_train_2020_2025.jsonl`
+- Samples: 2,048 balanced (`A=1,024`, `B=1,024`).
+- Steps: 20.
+- Runtime: 179s wall, 148.5s trainer runtime.
+- Train loss: 1.471.
+
+Evaluation:
+- Report: `results/rex_listwise_neutral_gemma4_adapter_sanity_eval_2026-07-02.json`
+- Validation rows: 527 from 2025.
+- Eval rows: 240 from 2026-H1.
+- Selected confidence margin: `0.3`, selected on validation only.
+
+| split | choice accuracy | CAGR | strict MDD | ratio | trades | p-value |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2025 validation | 59.58% | 7.33% | 4.73% | 1.55 | 28 | 0.323 |
+| 2026 eval | 55.00% | 6.66% | 5.31% | 1.25 | 16 | 0.694 |
+
+Confusion readout:
+- Validation: `A→A=268`, `A→B=78`, `B→A=135`, `B→B=46`.
+- Eval: `A→A=104`, `A→B=40`, `B→A=68`, `B→B=28`.
+
+Readout:
+- Neutral labels fixed the previous pathological behavior: the model now chooses `A`/NO_TRADE often.
+- But it over-abstains and still does not identify enough profitable B/trade cases. It underperforms ridge, pairwise, and the short-window fixed blend.
+- Conclusion: the LLM surface is now technically cleaner, but the current supervised target is too weak/noisy. Next improvement should focus on better target construction: require a stronger utility gap, train pairwise preference between `A` and best trade, or distill from the ridge+pairwise ensemble rather than raw future utility labels.
