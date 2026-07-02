@@ -1405,3 +1405,29 @@ Readout:
 - This is a real incremental improvement over the ridge floor: CAGR, ratio, trade count, and p-value all improve, with strict MDD still below 3% in the 2025-04..2026-06 window.
 - It is still far below the product target of 50% CAGR and needs more trades for robust significance.
 - The practical direction is now clearer: keep REX candidate generation, use a lightweight ridge scorer for breadth, and use pairwise/listwise preference (eventually Gemma4) as a complementary candidate/action preference signal rather than a standalone gate.
+
+## 2026-07-02 Longer 2023-04..2026-06 blend validation
+
+Purpose: check whether the 2025-04..2026-06 ridge+pairwise union improvement survives a longer no-leak walk-forward. Re-ran both streams from `start-date=2020-01-01`, using 36m fit / 3m validation / 3m test / 3m step, producing test coverage from 2023-04 through 2026-06.
+
+Inputs:
+- Ridge: `data/rex_candidate_ranker_resume085_reclaim085_all_2020_2026h1.jsonl`
+- Pairwise: `data/rex_candidate_ranker_resume085_reclaim085_notrade_all_2020_2026h1.jsonl`
+- Ridge output: `results/rex_candidate_ridge_walkforward_resume085_reclaim085_2023_2026h1_2026-07-02.json`
+- Pairwise output: `results/rex_candidate_pairwise_walkforward_notrade_2023_2026h1_relaxed_2026-07-02.json`
+- Blend output: `results/rex_candidate_blend_ridge_pairwise_2023_2026h1_2026-07-02/`
+
+Long-window results:
+
+| stream / mode | CAGR | strict MDD | ratio | trades | p-value | readout |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| ridge long | 2.01% | 6.64% | 0.30 | 63 | 0.471 | fails; 2024-Q1 damage dominates |
+| pairwise long | 7.04% | 5.42% | 1.30 | 114 | 0.034 | significant-ish mean, but drawdown too high |
+| intersection / guard veto | 1.21% | 3.81% | 0.32 | 14 | 0.477 | too sparse |
+| guard-priority union | 7.14% | 6.05% | 1.18 | 160 | 0.069 | breadth increases but drawdown remains |
+| base-priority union | 7.26% | 6.13% | 1.19 | 160 | 0.0646 | fails long validation |
+
+Readout:
+- The 2025-04..2026-06 union improvement is not enough evidence for production; extending to 2023-04 exposes regime instability.
+- Pairwise does improve mean-trade evidence over ridge, but it admits high-drawdown periods and does not provide sufficient regime awareness by itself.
+- Next work should not tune gates on this same long test. It should add a pre-declared regime-stability feature/filter learned only from fit/validation windows, or improve candidate generation so the ranker is not forced to rank weak candidates in bad regimes.
