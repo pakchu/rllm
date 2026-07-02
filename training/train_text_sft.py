@@ -90,6 +90,8 @@ def _row_bucket(row: dict[str, Any]) -> str:
         return f"decision={parsed.get('decision')},size={parsed.get('size_bucket')}"
     if isinstance(parsed, dict) and "decision" in parsed:
         return f"decision={parsed.get('decision')},side={parsed.get('action_side')}"
+    if isinstance(parsed, dict) and "direction_regime" in parsed:
+        return f"direction_regime={parsed.get('direction_regime')}"
     if isinstance(parsed, dict) and "edge_decay_label" in parsed:
         return f"edge={parsed.get('edge_decay_label')},hint={parsed.get('recommended_router_hint')}"
     if isinstance(parsed, dict) and "gate" in parsed:
@@ -102,11 +104,13 @@ def _row_bucket(row: dict[str, Any]) -> str:
 
 
 def _select_rows(rows: list[dict[str, Any]], *, max_samples: int, sample_mode: str, seed: int) -> list[dict[str, Any]]:
-    if not max_samples or int(max_samples) >= len(rows):
+    if not max_samples:
         return rows
     mode = str(sample_mode).strip().lower()
     if mode not in {"sequential", "random", "balanced", "balanced_oversample", "gate_balanced"}:
         raise ValueError("sample_mode must be one of {'sequential','random','balanced','balanced_oversample','gate_balanced'}")
+    if int(max_samples) >= len(rows) and mode != "balanced_oversample":
+        return rows
     rng = random.Random(int(seed))
     max_n = int(max_samples)
     if mode == "sequential":
@@ -230,7 +234,7 @@ def _target_counter(rows: list[dict[str, Any]]) -> dict[str, int]:
             elif isinstance(parsed, dict) and "side" in parsed:
                 counts[f"side={parsed.get('side')}"] += 1
             elif isinstance(parsed, dict):
-                for key in ("edge_decay_label", "transition_label", "risk_label", "recommended_router_hint", "regime", "risk_state", "trend_alignment", "location"):
+                for key in ("direction_regime", "edge_decay_label", "transition_label", "risk_label", "recommended_router_hint", "regime", "risk_state", "trend_alignment", "location"):
                     if key in parsed:
                         counts[f"{key}={parsed[key]}"] += 1
             else:

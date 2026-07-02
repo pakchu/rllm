@@ -99,6 +99,21 @@ class TestTrainTextSFT(unittest.TestCase):
             summary = train_text_sft(TextSFTConfig(model_name="gemma4", train_jsonl=str(data), output_dir=str(Path(td) / "out"), max_samples=6, sample_mode="balanced"), dry_run=True)
             self.assertIn("fade_warning=FADE_STRONG", summary["target_counts"])
 
+    def test_balanced_oversample_can_expand_tiny_direction_regime_dataset(self):
+        with tempfile.TemporaryDirectory() as td:
+            data = Path(td) / "direction.jsonl"
+            rows = [
+                {"task": "direction", "prompt": "P0", "target": json.dumps({"direction_regime": "HIGH_SCORE_WINS"})},
+                {"task": "direction", "prompt": "P1", "target": json.dumps({"direction_regime": "LOW_SCORE_WINS"})},
+                {"task": "direction", "prompt": "P2", "target": json.dumps({"direction_regime": "ABSTAIN"})},
+            ]
+            data.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+            sampled = load_jsonl(data, max_samples=9, sample_mode="balanced_oversample", seed=7)
+            self.assertEqual(len(sampled), 9)
+            summary = train_text_sft(TextSFTConfig(model_name="gemma4", train_jsonl=str(data), output_dir=str(Path(td) / "out"), max_samples=9, sample_mode="balanced_oversample"), dry_run=True)
+            self.assertEqual(summary["rows"], 9)
+            self.assertIn("direction_regime=LOW_SCORE_WINS", summary["target_counts"])
+
 
 if __name__ == "__main__":
     unittest.main()
