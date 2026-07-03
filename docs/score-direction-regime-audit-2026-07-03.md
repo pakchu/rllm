@@ -707,3 +707,68 @@ alpha, not numeric return prediction.
 Still unsolved: this does not retroactively fix 2022-2024.  The next required
 proof is a walk-forward or new-holdout validation where the label-first adapter
 or its distilled rule is frozen before the scored period.
+
+## Alternative split sanity check: no 2025 selection
+
+To test whether the range/Kimchi LLM policy was mainly a 2025-selected artifact,
+I regenerated the REX candidate surface with an earlier split:
+
+- candidate builder report:
+  `results/rex_pullback_reclaim_q075_h144_ranker_summary_train2021_2023_test2024_eval2025_2026h1_2026-07-03.json`
+- threshold fit: 2021-2023 only
+- train: 2021-2023
+- test: 2024
+- eval: 2025-2026H1
+
+A fresh two-feature gate sweep using train 2021-2023 + test 2024 did **not**
+produce a robust top-ranked selector.  The first two selected gates had strong
+2024 test stats but negative 2025-2026H1 eval, which is direct evidence that
+2024-only selection can overfit just like 2025-only selection.
+
+The previously frozen range/Kimchi gate, applied unchanged to this alternative
+split, gives:
+
+- report:
+  `results/rex_reclaim_range_kimchi_gate_alt_split_train2021_2023_test2024_eval2025_2026h1_2026-07-03.json`
+
+| period | CAGR | strict MDD | CAGR/MDD | trades | p-value approx |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| train 2021-2023 | 15.1 | 16.2 | 0.93 | 273 | 0.0586 |
+| test 2024 | 10.5 | 6.4 | 1.64 | 44 | 0.286 |
+| eval 2025-2026H1 | 14.7 | 3.5 | 4.24 | 45 | 0.00018 |
+| combined 2021-2026H1 | 13.4 | 16.2 | 0.83 | 362 | 0.0051 |
+
+A train-robust gate from the 2024 split used a different macro/HTF condition:
+
+- `rex_8640_range_width_pct >= 0.2836633876944003`
+- `usdkrw_zscore <= 0.2603593471820541`
+- report:
+  `results/rex_reclaim_rex8640_usdkrw_gate_alt_split_train2021_2023_test2024_eval2025_2026h1_2026-07-03.json`
+
+| period | CAGR | strict MDD | CAGR/MDD | trades | p-value approx |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| train 2021-2023 | 12.9 | 15.9 | 0.81 | 260 | 0.109 |
+| test 2024 | 25.9 | 4.7 | 5.52 | 40 | 0.0067 |
+| eval 2025-2026H1 | 28.5 | 3.1 | 9.08 | 30 | 0.163 |
+| combined 2021-2026H1 | 12.3 | 15.9 | 0.77 | 330 | 0.0115 |
+
+Unioning the range/Kimchi and HTF-width/USDKRW regimes improves recent OOS trade
+count but still does not solve the full 3+ year ratio:
+
+- report:
+  `results/rex_reclaim_dual_regime_or_alt_split_train2021_2023_test2024_eval2025_2026h1_2026-07-03.json`
+
+| period | CAGR | strict MDD | CAGR/MDD | trades | p-value approx |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| train 2021-2023 | 13.3 | 14.7 | 0.90 | 356 | 0.122 |
+| test 2024 | 21.6 | 5.8 | 3.74 | 62 | 0.058 |
+| eval 2025-2026H1 | 18.8 | 3.7 | 5.05 | 57 | 0.00032 |
+| combined 2021-2026H1 | 15.1 | 14.7 | 1.03 | 475 | 0.0048 |
+
+Interpretation: the recent OOS edge is not purely a 2025 selection artifact; it
+also appears when 2025-2026H1 is held out and 2024 is the test split.  But the
+original 3+ year CAGR/MDD>=3 target remains unsatisfied because 2021-2023 train
+still carries too much drawdown relative to CAGR.  The next honest step is not
+more threshold mining; it is a regime-level risk overlay or abstention model that
+specifically reduces early-history drawdowns while preserving the recent OOS
+edge.
