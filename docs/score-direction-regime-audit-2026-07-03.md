@@ -772,3 +772,60 @@ still carries too much drawdown relative to CAGR.  The next honest step is not
 more threshold mining; it is a regime-level risk overlay or abstention model that
 specifically reduces early-history drawdowns while preserving the recent OOS
 edge.
+
+## Online risk-overlay attempt
+
+I then tested whether the remaining multi-year failure is mostly a risk-management
+problem rather than an alpha problem.  The tested overlay uses only completed
+prior trades or current trade OHLC stops; it does not inspect future outcomes
+when deciding whether to allow the next entry.
+
+Inputs:
+
+- fixed dual-regime predictions:
+  - `results/rex_dual_regime_train_2021_2023_predictions_2026-07-03.jsonl`
+  - `results/rex_dual_regime_test_2024_predictions_2026-07-03.jsonl`
+  - `results/rex_dual_regime_eval_2025_2026h1_predictions_2026-07-03.jsonl`
+- exporter: `training/export_dual_regime_predictions.py`
+- train-only overlay sweep: `training/sweep_online_risk_overlay.py`
+- sweep report:
+  `results/rex_dual_regime_online_risk_overlay_sweep_train2021_2023_test2024_eval2025_2026h1_2026-07-03.json`
+
+Best train-selected online pause overlay:
+
+- pause after 2 consecutive losses
+- pause 288 bars
+- no rolling/monthly loss stop
+
+At 0.5x:
+
+| period | CAGR | strict MDD | CAGR/MDD | trades | skipped overlay | p-value approx |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| train 2021-2023 | 12.6 | 11.7 | 1.08 | 309 | 183 | 0.106 |
+| test 2024 | 10.7 | 10.5 | 1.02 | 56 | 24 | 0.217 |
+| eval 2025-2026H1 | 16.1 | 3.7 | 4.32 | 53 | 9 | 0.0010 |
+| all 2021-2026H1 | 12.8 | 11.7 | 1.10 | 418 | 216 | 0.0082 |
+
+This improves full-period MDD, but not enough: leverage scales MDD faster than
+CAGR and the full-period ratio stays near 1.1.
+
+I also ran a partial stop/take-profit/ATR grid on train.  The best completed
+simple exit was take-profit at 4% with no stop/ATR:
+
+- partial summary:
+  `results/rex_dual_regime_stop_grid_partial_summary_2026-07-03.json`
+
+TP 4% replay:
+
+| period | lev | CAGR | strict MDD | CAGR/MDD | trades | p-value approx |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| test 2024 | 0.5 | 18.1 | 5.8 | 3.13 | 62 | 0.059 |
+| eval 2025-2026H1 | 0.5 | 18.3 | 3.7 | 4.92 | 57 | 0.0003 |
+| eval 2025-2026H1 | 1.5 | 50.9 | 10.5 | 4.85 | 57 | 0.0006 |
+| all 2021-2026H1 | 0.5 | 17.3 | 14.7 | 1.18 | 477 | 0.0017 |
+
+Interpretation: simple online pause and TP overlays reduce some drawdown and keep
+recent OOS attractive, but they do **not** solve the 3+ year target.  The
+multi-year miss is therefore not just a missing stop-loss.  The next step needs a
+higher-level regime classifier that prevents entire bad historical regimes, or a
+portfolio diversification source outside this single REX BTC surface.
