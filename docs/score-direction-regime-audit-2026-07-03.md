@@ -91,3 +91,31 @@ train 92%, test 100%, eval 50% on only two binary eval rows.
 Implementation note: the JSONL now keeps `target`/`completion` as JSON strings
 for compatibility with `training/train_text_sft.py`, while preserving parsed
 `label` for audits.
+
+## Gemma 4 E4B SFT probe
+
+I ran one Gemma 4 E4B LoRA SFT probe on the expanded score-direction rows:
+
+- adapter: `checkpoints/score_direction_regime_gemma4_sft_s16_len3072_2026-07-03`
+- train stream: 96 balanced-oversampled rows (32 HIGH / 32 LOW / 32 ABSTAIN)
+- max sequence length: 3072 tokens. A previous 2048-token run produced zero loss
+  because the completion was truncated off the end of the prompt; the real
+  prompt+completion length is about 2.7k tokens.
+- training: 16 steps, effective batch 4, train loss fell from ~0.78 to ~0.07-0.15.
+
+Generation evaluation:
+
+| split | accuracy | confusion summary |
+| --- | ---: | --- |
+| test 2025 | 2/12 = 16.7% | mostly predicts LOW; misses HIGH-heavy 2025 |
+| eval 2026H1 | 4/5 = 80.0% | gets LOW + ABSTAIN, misses the lone HIGH |
+
+Candidate-logprob evaluation is worse because the adapter heavily ranks
+`LOW_SCORE_WINS`: test 0/12, eval 1/5.  So generation and logprob disagree, and
+the adapter is not usable as a selector yet.
+
+Conclusion: the LLM can learn the output format only when the target tokens are
+not truncated, but class-balanced oversampling over only 5 train LOW examples
+creates a LOW-biased generator.  The immediate next improvement should not be
+more steps; it should be a better prompt/target formulation and more real LOW
+regime labels, or a binary high-vs-not-high router with separate abstain logic.
