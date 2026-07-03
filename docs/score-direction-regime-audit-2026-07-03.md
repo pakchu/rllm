@@ -410,3 +410,28 @@ DPO dry-run:
 Next step: train a small Gemma 4 E4B DPO adapter on these preferences, then
 evaluate generation/logprob action choice on 2025 test.  Only if test selection
 improves without obvious leakage should the fixed policy be checked on 2026H1.
+
+## Aborted Gemma DPO run: too slow and not learning early
+
+I started a Gemma 4 E4B DPO POC from the base model on the pairwise REX
+preferences:
+
+- intended adapter: `checkpoints/rex_pair_reclaim075_deep085_h144_gemma4_dpo_s80_2026-07-03`
+- rows: 700 gate-balanced preference pairs
+- max steps: 80
+- learning rate: 5e-7, beta 0.1, effective batch 8
+
+I stopped it manually at ~27/80 steps because it was both slow and not showing a
+clear learning signal:
+
+- elapsed at interruption: ~14m
+- step time: often 25-45s, much slower than SFT
+- loss stayed around random-preference scale: mostly ~0.67-0.71
+- rewards/margins fluctuated and were often negative
+- no usable checkpoint was kept; the partial summary directory was deleted
+
+Conclusion: full Gemma DPO is not the next efficient path until we have a faster
+evaluation loop and stronger preference separability.  Prefer a cheaper
+ranker/verifier first: compute symbolic or small-model scores over the same
+pairwise DPO rows, verify that the prompt-visible features contain edge, then
+return to LLM DPO only if the rank target is learnable outside the LLM.
