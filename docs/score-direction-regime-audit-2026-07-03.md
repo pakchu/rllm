@@ -276,3 +276,46 @@ be another broad family selector; it should train a compact event-level LLM
 judge over this REX pullback surface to decide when to skip, size down, or flip
 based on pre-entry textual regime features.  The LLM should be asked for a
 reasoned trade thesis over price-action state, not raw numeric prediction.
+
+## Event-level LLM judge dataset for the REX pullback surface
+
+I converted the current best no-leak candidate surface into an LLM-friendly
+TAKE/SKIP verifier dataset.  This is the next RLLM-compatible structure: the
+base alpha generator proposes a candidate, then a small LLM judges the candidate
+from textual price-action/regime context.
+
+Builder changes:
+
+- `training/build_rex_candidate_ranker_records.py` now supports optional
+  train/test/eval output instead of train/eval only.
+- Threshold fitting now matches the no-leak candidate sweep: quantiles are fit
+  on positive train strengths only (`strength > 0`), avoiding zero-strength
+  dilution.  This fixed a discovered mismatch where q=0.75 produced 0.07118 in
+  the ranker builder but 0.21098 in the validated sweep.
+- Rows now include `action` as an alias of `candidate`, so existing LLM scoring
+  and action-backtest utilities can reuse the dataset.
+
+Generated dataset command used fixed, train/test-selected parameters:
+
+- family/threshold: `rex_htf_pullback_reclaim:0.75`
+- hold: 144 bars
+- threshold fit: 2021-01-01 to 2025-01-01, positive strengths only
+- train: 2021-2024
+- test: 2025
+- eval: 2026H1
+
+Outputs:
+
+| split | file | rows | TAKE/SKIP | side mix | mean candidate net |
+| --- | --- | ---: | --- | --- | ---: |
+| train | `data/rex_pullback_reclaim_q075_h144_ranker_train_2021_2024.jsonl` | 1615 | 354 / 1261 | LONG 967 / SHORT 648 | +0.0748% |
+| test | `data/rex_pullback_reclaim_q075_h144_ranker_test_2025.jsonl` | 132 | 21 / 111 | LONG 49 / SHORT 83 | +0.1241% |
+| eval | `data/rex_pullback_reclaim_q075_h144_ranker_eval_2026h1.jsonl` | 100 | 27 / 73 | LONG 28 / SHORT 72 | +0.1824% |
+
+Leakage guard: prompts are signal-time only; labels use future path only as
+supervised targets; eval is not used for threshold fitting or parameter choice.
+
+Next experiment: train Gemma 4 E4B LoRA on the train rows, select TAKE/SKIP
+threshold on 2025 test only, and run strict action backtest on 2026H1 eval.  The
+objective is not merely label accuracy; the LLM must improve the base
+`rex_htf_pullback_reclaim q=0.75 hold=144` eval profile without increasing MDD.

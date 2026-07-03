@@ -40,6 +40,9 @@ class RexCandidateRankerRecordsCfg:
     threshold_end: str = "2025-01-01"
     train_start: str = "2020-01-01"
     train_end: str = "2026-01-01"
+    test_output: str = ""
+    test_start: str = ""
+    test_end: str = ""
     eval_start: str = "2026-01-01"
     eval_end: str = "2026-06-01"
     hold_bars: int = 288
@@ -210,6 +213,7 @@ def _no_trade_row(source: dict[str, Any], *, split: str, group_trade_rewards: li
         "family": "NO_TRADE",
         "side": "NONE",
         "candidate": {"family": "NO_TRADE", "side": "NONE", "hold_bars": 0},
+        "action": {"family": "NO_TRADE", "side": "NONE", "hold_bars": 0},
         "prompt": _prompt(date, tokens, snap, family="NO_TRADE", side="NONE", hold_bars=0),
         "target": target,
         "reward": reward,
@@ -263,7 +267,7 @@ def run(cfg: RexCandidateRankerRecordsCfg) -> dict[str, Any]:
         if spec.family not in families:
             raise ValueError(f"family not found: {spec.family}")
         strength, _direction = families[spec.family]
-        train_x = strength[threshold_mask & np.isfinite(strength)]
+        train_x = strength[threshold_mask & np.isfinite(strength) & (strength > 0.0)]
         if train_x.size < 100:
             raise ValueError(f"too few threshold rows for {spec.family}: {train_x.size}")
         thresholds[spec.family] = float(np.quantile(train_x, float(spec.quantile)))
@@ -272,6 +276,14 @@ def run(cfg: RexCandidateRankerRecordsCfg) -> dict[str, Any]:
         "train": _date_mask(dates, cfg.train_start, cfg.train_end),
         "eval": _date_mask(dates, cfg.eval_start, cfg.eval_end),
     }
+    if cfg.test_output:
+        if not cfg.test_start or not cfg.test_end:
+            raise ValueError("--test-output requires --test-start and --test-end")
+        masks = {
+            "train": masks["train"],
+            "test": _date_mask(dates, cfg.test_start, cfg.test_end),
+            "eval": masks["eval"],
+        }
     pcfg = EventActionPolicyConfig(
         market_csv=cfg.input_csv,
         output=cfg.train_output,
@@ -284,7 +296,7 @@ def run(cfg: RexCandidateRankerRecordsCfg) -> dict[str, Any]:
         slippage_rate=cfg.slippage_rate,
         mae_penalty=cfg.mae_penalty,
     )
-    outputs: dict[str, list[dict[str, Any]]] = {"train": [], "eval": []}
+    outputs: dict[str, list[dict[str, Any]]] = {split: [] for split in masks}
     for split, mask in masks.items():
         all_rows: list[dict[str, Any]] = []
         for spec in specs:
@@ -329,6 +341,7 @@ def run(cfg: RexCandidateRankerRecordsCfg) -> dict[str, Any]:
                         "family": spec.family,
                         "side": str(row["side"]),
                         "candidate": {"family": spec.family, "side": str(row["side"]), "hold_bars": int(cfg.hold_bars)},
+                        "action": {"family": spec.family, "side": str(row["side"]), "hold_bars": int(cfg.hold_bars)},
                         "prompt": _prompt(str(row["signal_date"]), tokens, snap, family=spec.family, side=str(row["side"]), hold_bars=int(cfg.hold_bars)),
                         "target": _target(reward),
                         "reward": reward,
@@ -356,13 +369,16 @@ def run(cfg: RexCandidateRankerRecordsCfg) -> dict[str, Any]:
         outputs[split] = all_rows
 
     _write_jsonl(cfg.train_output, outputs["train"])
+    if cfg.test_output:
+        _write_jsonl(cfg.test_output, outputs.get("test", []))
     _write_jsonl(cfg.eval_output, outputs["eval"])
     summary = {
         "config": asdict(cfg),
         "thresholds": thresholds,
         "train": _summ(outputs["train"]),
+        "test": _summ(outputs.get("test", [])) if cfg.test_output else None,
         "eval": _summ(outputs["eval"]),
-        "outputs": {"train": cfg.train_output, "eval": cfg.eval_output},
+        "outputs": {"train": cfg.train_output, "test": cfg.test_output or None, "eval": cfg.eval_output},
         "leakage_guard": {
             "thresholds_fit_on_configured_history_only": True,
             "eval_not_used_for_thresholds": True,
@@ -386,6 +402,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--threshold-end", default=RexCandidateRankerRecordsCfg.threshold_end)
     p.add_argument("--train-start", default=RexCandidateRankerRecordsCfg.train_start)
     p.add_argument("--train-end", default=RexCandidateRankerRecordsCfg.train_end)
+    p.add_argument("--test-output", default=RexCandidateRankerRecordsCfg.test_output)
+    p.add_argument("--test-start", default=RexCandidateRankerRecordsCfg.test_start)
+    p.add_argument("--test-end", default=RexCandidateRankerRecordsCfg.test_end)
     p.add_argument("--eval-start", default=RexCandidateRankerRecordsCfg.eval_start)
     p.add_argument("--eval-end", default=RexCandidateRankerRecordsCfg.eval_end)
     p.add_argument("--hold-bars", type=int, default=RexCandidateRankerRecordsCfg.hold_bars)
