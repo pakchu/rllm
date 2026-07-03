@@ -85,6 +85,7 @@ class WaveExecutionConfig:
     require_bear_regime: bool = True
     allowed_signals: tuple[str, ...] = ("LONG", "SHORT")
     max_probability_age_sec: int = 600
+    require_flat_position: bool = True
     # Values consumed by wave_trading.TradingExecutor for position tracking if
     # caller chooses to use its trailing/max-holding helpers.
     atr_period: int = 15
@@ -109,6 +110,7 @@ class WaveExecutionConfig:
             require_bear_regime=_env_bool("RLLM_REQUIRE_BEAR_REGIME", True),
             allowed_signals=_split_allowed_signals(os.environ.get("RLLM_ALLOWED_SIGNALS", "LONG,SHORT")),
             max_probability_age_sec=int(os.environ.get("RLLM_MAX_PROBABILITY_AGE_SEC", "600")),
+            require_flat_position=_env_bool("RLLM_REQUIRE_FLAT_POSITION", True),
             atr_period=int(os.environ.get("RLLM_EXECUTION_ATR_PERIOD", "15")),
             pt_mult=float(os.environ.get("RLLM_EXECUTION_PT_MULT", "3.75")),
             max_holding_bars=int(os.environ.get("RLLM_EXECUTION_MAX_HOLDING_BARS", "144")),
@@ -390,6 +392,30 @@ class WaveExecutionBridge:
                 "decision": asdict(decision),
                 "config": _safe_config_dict(self.config),
             }
+
+        if self.config.require_flat_position:
+            sync_time = getattr(self.client, "sync_time", None)
+            if sync_time is not None:
+                await sync_time()
+            get_position = getattr(self.client, "get_position", None)
+            if get_position is None:
+                return {
+                    "dry_run": False,
+                    "action": "BLOCKED",
+                    "gate_reason": "require_flat_position=true but client has no get_position",
+                    "decision": asdict(decision),
+                    "config": _safe_config_dict(self.config),
+                }
+            position = await get_position(self.config.symbol)
+            if str(position.get("side", "NONE")).upper() != "NONE" or float(position.get("quantity", 0.0)) != 0.0:
+                return {
+                    "dry_run": False,
+                    "action": "BLOCKED",
+                    "gate_reason": "existing position present; require_flat_position=true",
+                    "position": position,
+                    "decision": asdict(decision),
+                    "config": _safe_config_dict(self.config),
+                }
 
         await self.initialize()
         await self.executor.handle_signal(

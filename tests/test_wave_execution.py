@@ -33,8 +33,14 @@ class DummyExecutor:
 
 
 class DummyClient:
+    def __init__(self, position=None):
+        self.position = position or {"symbol": "BTCUSDT", "side": "NONE", "quantity": 0.0}
+
     async def sync_time(self):
         return 0
+
+    async def get_position(self, symbol):
+        return self.position
 
     async def aclose(self):
         return None
@@ -95,6 +101,19 @@ class WaveExecutionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(args[:5], ("SHORT", 0.8, 100.0, 2.0, "sig-2"))
         self.assertEqual(args[5], 5)
         self.assertEqual(kwargs, {"ws_client": None})
+
+
+    async def test_live_mode_blocks_existing_position_by_default(self):
+        executor = DummyExecutor()
+        bridge = WaveExecutionBridge(
+            config=WaveExecutionConfig(dry_run=False, allow_live_orders=True, manual_regime="BEAR"),
+            client=DummyClient({"symbol": "BTCUSDT", "side": "LONG", "quantity": 0.01}),
+            executor=executor,
+        )
+        result = await bridge.execute_decision(ExecutionDecision("SHORT", 0.8, 100.0, 2.0, "sig-existing"))
+        self.assertEqual(result["action"], "BLOCKED")
+        self.assertIn("existing position", result["gate_reason"])
+        self.assertEqual(executor.calls, [])
 
     def test_policy_record_trade_maps_to_candidate_side(self):
         row = {
