@@ -144,3 +144,34 @@ prompts are ~1.7k chars instead of ~4.5k.  It still does not solve the real
 problem: there are only five real LOW train examples and no LOW examples in the
 2025 test split, so LOW recall cannot be validated without either older labels,
 additional assets/timeframes, or a different final holdout design.
+
+## Label expansion with all candidate families
+
+The core REX-only selector did not produce enough balanced LOW labels.  I ran a
+wider selector without `--family-include`, keeping the same chronological split
+and using 2026H1 only as eval:
+
+- selector report:
+  `results/event_candidate_regime_family_selector_allfamilies_scoreboard_1m_2021_2026h1_2026-07-03.json`
+- train 2021-2024: ABSTAIN 28, HIGH 11, LOW 9
+- test 2025: ABSTAIN 7, HIGH 2, LOW 3
+- eval 2026H1: ABSTAIN 2, HIGH 3, LOW 0
+- binary train rows: HIGH 11 / LOW 9
+- binary test rows: HIGH 2 / LOW 3
+- binary eval rows: HIGH 3 only
+
+Gemma 4 E4B binary compact adapter:
+
+- adapter: `checkpoints/score_direction_binary_allfamilies_gemma4_sft_s24_2026-07-03`
+- train stream: natural 20 binary rows, no oversampling
+- training: 24 steps, loss down to ~0.04-0.18 near the end
+- test 2025 generation: 4/5 = 80.0% (HIGH 2/2, LOW 2/3)
+- eval 2026H1 generation: 2/3 = 66.7% (all target HIGH, one false LOW)
+
+This is the first LLM probe that has both train and test LOW examples and does
+not collapse to a single side.  Caveat: the all-family selector itself has poor
+trading PnL, so this is not yet a trading strategy.  It is evidence that the
+LLM-shaped regime classifier becomes learnable when the candidate pool is broad
+enough to create balanced direction labels.  Next work should transfer this
+regime-router idea back into a profitable candidate subset instead of using the
+all-family selected trades directly.
