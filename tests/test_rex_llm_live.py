@@ -1,0 +1,122 @@
+import unittest
+
+import numpy as np
+import pandas as pd
+
+from execution.rex_llm_live import RexLivePolicyConfig, build_rex_live_policy_record
+from execution.wave_execution import WaveExecutionConfig, decision_from_policy_record, evaluate_execution_gate
+from preprocessing.market_features import EXTENDED_MARKET_FEATURE_COLUMNS
+
+
+def _base_features(n=120):
+    df = pd.DataFrame(0.0, index=range(n), columns=list(EXTENDED_MARKET_FEATURE_COLUMNS))
+    df["range_vol"] = 0.03
+    df["kimchi_premium_change"] = -0.001
+    df["trend_24"] = -0.01
+    df["htf_4h_return_1"] = -0.01
+    df["htf_1d_return_4"] = -0.10
+    df["htf_3d_return_4"] = -0.03
+    df["htf_1w_return_4"] = -0.02
+    df["rex_36_range_pos"] = 0.80
+    df["rex_144_range_pos"] = 0.75
+    df["rex_576_range_pos"] = 0.50
+    df["rex_2016_range_pos"] = 0.30
+    df["rex_8640_range_pos"] = 0.20
+    for w in (36, 144, 576, 2016, 8640):
+        df[f"rex_{w}_range_width_pct"] = 0.05
+        df[f"rex_{w}_max_to_cur_pct"] = 0.05
+        df[f"rex_{w}_cur_to_min_pct"] = 0.20
+    df["volume_zscore"] = 0.2
+    df["taker_imbalance"] = -0.1
+    # Make the final completed bar stronger than the historical 75% threshold.
+    df.loc[n - 1, "htf_1d_return_4"] = -0.30
+    df.loc[n - 1, "htf_3d_return_4"] = -0.10
+    df.loc[n - 1, "htf_1w_return_4"] = -0.10
+    return df
+
+
+def _enriched(n=120):
+    dates = pd.date_range("2026-01-01", periods=n, freq="5min")
+    close = 100.0 + np.linspace(0.0, 1.0, n)
+    return pd.DataFrame(
+        {
+            "date": dates,
+            "open": close - 0.1,
+            "high": close + 0.5,
+            "low": close - 0.5,
+            "close": close,
+            "dxy_available": 1.0,
+            "kimchi_available": 1.0,
+            "usdkrw_available": 1.0,
+            "premium_available": 1.0,
+            "funding_available": 1.0,
+            "external_any_available": 1.0,
+            "binance_aux_any_available": 1.0,
+        }
+    )
+
+
+class TestRexLlmLive(unittest.TestCase):
+    def test_builds_trade_record_and_execution_decision_for_short_candidate(self):
+        features = _base_features()
+        record = build_rex_live_policy_record(
+            _enriched(),
+            features,
+            policy_cfg=RexLivePolicyConfig(min_positive_strengths=5),
+        )
+        self.assertEqual(record["prediction"], "TRADE")
+        self.assertEqual(record["candidate_side"], "SHORT")
+        decision = decision_from_policy_record(record)
+        self.assertEqual(decision.signal, "SHORT")
+        self.assertGreater(decision.current_atr, 0.0)
+
+    def test_gate_blocks_when_core_external_quality_missing(self):
+        enriched = _enriched()
+        enriched.loc[len(enriched) - 1, "kimchi_available"] = 0.0
+        record = build_rex_live_policy_record(
+            enriched,
+            _base_features(),
+            policy_cfg=RexLivePolicyConfig(min_positive_strengths=5),
+        )
+        self.assertEqual(record["prediction"], "ABSTAIN")
+        self.assertIn("missing_quality", record["reason"])
+
+    def test_execution_config_still_blocks_live_candidate_without_bear_regime(self):
+        record = build_rex_live_policy_record(
+            _enriched(),
+            _base_features(),
+            policy_cfg=RexLivePolicyConfig(min_positive_strengths=5),
+        )
+        decision = decision_from_policy_record(record)
+        cfg = WaveExecutionConfig(dry_run=True, allowed_signals=("SHORT",), manual_regime="UNKNOWN", require_bear_regime=True)
+        gate = evaluate_execution_gate(cfg, decision)
+        self.assertFalse(gate.allowed)
+        self.assertIn("BEAR required", gate.reason)
+
+    def test_short_only_execution_config_blocks_long_candidate(self):
+        features = _base_features()
+        features["htf_1d_return_4"] = 0.10
+        features["htf_3d_return_4"] = 0.03
+        features["htf_1w_return_4"] = 0.02
+        features.loc[len(features) - 1, "htf_1d_return_4"] = 0.30
+        features.loc[len(features) - 1, "htf_3d_return_4"] = 0.10
+        features.loc[len(features) - 1, "htf_1w_return_4"] = 0.10
+        features["trend_24"] = 0.01
+        features["htf_4h_return_1"] = 0.01
+        features["rex_36_range_pos"] = -0.80
+        features["rex_144_range_pos"] = -0.75
+        record = build_rex_live_policy_record(
+            _enriched(),
+            features,
+            policy_cfg=RexLivePolicyConfig(min_positive_strengths=5),
+        )
+        self.assertEqual(record["candidate_side"], "LONG")
+        decision = decision_from_policy_record(record)
+        cfg = WaveExecutionConfig(dry_run=True, allowed_signals=("SHORT",), manual_regime="BEAR", require_bear_regime=True)
+        gate = evaluate_execution_gate(cfg, decision)
+        self.assertFalse(gate.allowed)
+        self.assertIn("not in allowed_signals", gate.reason)
+
+
+if __name__ == "__main__":
+    unittest.main()
