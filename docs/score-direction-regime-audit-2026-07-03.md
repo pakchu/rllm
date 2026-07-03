@@ -366,3 +366,47 @@ than the LLM-filtered variants on eval.  Next revision should change the target
 from hard TAKE/SKIP to a ranking/ordinal utility target or pairwise preference
 among candidates, because binary labels are sparse and appear to teach token
 priors more than robust reasoning.
+
+## Pairwise DPO dataset for LLM-style action choice
+
+Because binary TAKE/SKIP SFT produced an economically inverted margin, I moved
+the next LLM surface to same-prompt preferences.  The prompt asks the model to
+choose among `NO_TRADE`, `LONG`, and `SHORT`; chosen/rejected responses are
+ranked by future utility for training only.
+
+Builder changes:
+
+- `training/build_event_signal_preference_dpo.py` now supports optional
+  train/test/eval split outputs.
+- Added test coverage for ranking the best trade action against no-trade and a
+  losing side.
+
+Candidate source:
+
+- combo: `rex_htf_pullback_reclaim:0.75,rex_htf_deep_pullback_resume:0.85`
+- hold: 144 bars
+- threshold fit: 2021-2024, positive strengths only
+- train/test/eval candidate files:
+  - `data/rex_pair_reclaim075_deep085_h144_ranker_train_2021_2024.jsonl`
+  - `data/rex_pair_reclaim075_deep085_h144_ranker_test_2025.jsonl`
+  - `data/rex_pair_reclaim075_deep085_h144_ranker_eval_2026h1.jsonl`
+
+DPO preference outputs:
+
+| split | file | rows | chosen distribution | mean rank margin |
+| --- | --- | ---: | --- | ---: |
+| train | `data/rex_pair_reclaim075_deep085_h144_dpo_train_2021_2024.jsonl` | 702 | NO_TRADE 375 / LONG 200 / SHORT 127 | 0.115 |
+| test | `data/rex_pair_reclaim075_deep085_h144_dpo_test_2025.jsonl` | 48 | NO_TRADE 21 / LONG 7 / SHORT 20 | 0.081 |
+| eval | `data/rex_pair_reclaim075_deep085_h144_dpo_eval_2026h1.jsonl` | 37 | NO_TRADE 15 / LONG 2 / SHORT 20 | 0.080 |
+
+DPO dry-run:
+
+- model alias: `gemma4-e4b-it` => `google/gemma-4-E4B-it`
+- max samples: 700, gate-balanced
+- prompt chars: mean ~1244, max 1287
+- max length: 2048
+- dry-run passed; no training checkpoint kept for dry-run.
+
+Next step: train a small Gemma 4 E4B DPO adapter on these preferences, then
+evaluate generation/logprob action choice on 2025 test.  Only if test selection
+improves without obvious leakage should the fixed policy be checked on 2026H1.

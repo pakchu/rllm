@@ -24,6 +24,8 @@ class EventSignalPreferenceCfg:
     train_output: str
     eval_output: str
     summary_output: str
+    test_candidates: str = ""
+    test_output: str = ""
     min_trade_net_pct: float = 0.25
     min_trade_utility: float = 0.0
     full_net_pct: float = 1.2
@@ -165,10 +167,13 @@ def _summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 def run(cfg: EventSignalPreferenceCfg) -> dict[str, Any]:
     train = _build(_load(cfg.train_candidates), cfg)
+    test = _build(_load(cfg.test_candidates), cfg) if cfg.test_candidates else []
     ev = _build(_load(cfg.eval_candidates), cfg)
     _write(cfg.train_output, train)
+    if cfg.test_output:
+        _write(cfg.test_output, test)
     _write(cfg.eval_output, ev)
-    report = {"config": cfg.__dict__, "train": _summary(train), "eval": _summary(ev), "contract": "same-prompt action preference pairs; prompt signal-time only; preference future-reward training label only"}
+    report = {"config": cfg.__dict__, "train": _summary(train), "test": _summary(test) if cfg.test_output else None, "eval": _summary(ev), "contract": "same-prompt action preference pairs; prompt signal-time only; preference future-reward training label only"}
     Path(cfg.summary_output).parent.mkdir(parents=True, exist_ok=True)
     Path(cfg.summary_output).write_text(json.dumps(report, indent=2, ensure_ascii=False))
     return report
@@ -181,6 +186,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--train-output", required=True)
     p.add_argument("--eval-output", required=True)
     p.add_argument("--summary-output", required=True)
+    p.add_argument("--test-candidates", default="")
+    p.add_argument("--test-output", default="")
     p.add_argument("--min-trade-net-pct", type=float, default=EventSignalPreferenceCfg.min_trade_net_pct)
     p.add_argument("--min-trade-utility", type=float, default=EventSignalPreferenceCfg.min_trade_utility)
     p.add_argument("--full-net-pct", type=float, default=EventSignalPreferenceCfg.full_net_pct)
