@@ -573,3 +573,42 @@ recent 2025-2026 leveraged window looks strong.  The next LLM-relevant direction
 is therefore not analyzer/trader bloat or DPO; it is to let a single compact LLM
 or symbolic teacher express this regime rule as a causal trade thesis and abstain
 when the 2022-2024 style regime is detected, then validate on a new holdout.
+
+## Robust-gate selection attempt: range plus Kimchi premium
+
+After the first conjunctive sweep, I re-ranked stored candidates by robustness on
+train while requiring the same positive 2025 test behavior.  The strongest
+train-ratio candidate among the train/test-ranked gate set was:
+
+- `range_vol >= 0.023959233645008706`
+- `kimchi_premium_change <= 0.0`
+- report: `results/rex_reclaim_range_kimchi_gate_leverage_audit_2026-07-03.json`
+
+At 0.5x:
+
+| period | CAGR | strict MDD | CAGR/MDD | trades | p-value approx |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| train 2021-2024 | 16.3 | 12.7 | 1.28 | 346 | 0.0156 |
+| test 2025 | 19.0 | 2.5 | 7.47 | 27 | 0.0001 |
+| eval 2026H1 | 24.1 | 3.6 | 6.70 | 22 | 0.1667 |
+| combined 2021-2026H1 | 16.3 | 12.7 | 1.28 | 395 | 0.0017 |
+
+This is materially better than the ungated 2021-2024 history and is the first
+candidate with train/test/eval all positive plus a statistically meaningful
+combined trade count.  But it still misses the objective: leverage does not fix
+CAGR/MDD because the ratio stays ~1.3 while MDD scales up.  At 1.5x the recent
+periods look strong, but combined strict MDD rises to 38.3%.
+
+I also ran a width-3 conjunction expansion:
+
+- report: `results/rex_pullback_reclaim_conjunctive_gate_width3_sweep_2026-07-03.json`
+- result: top width-3 gates improve short-window 2025 ratios but generally lower
+  train robustness; several high eval CAGR rows have only 14-19 eval trades and
+  weak p-values.
+
+Conclusion: the best current robust candidate is not a moonshot high-ratio gate;
+it is the **range-volatility + non-positive Kimchi-premium-change regime**.  It
+is a plausible alpha/regime prior, but the 3+ year CAGR/MDD>=3 target remains
+unsolved.  Next work should build an LLM/rule hybrid that explains and abstains
+on this specific regime, then validate on a fresh chronological split rather than
+mining more narrow gates from the same 2026H1 holdout.
