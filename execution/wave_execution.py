@@ -374,6 +374,14 @@ class WaveExecutionBridge:
                 "decision": asdict(decision),
                 "config": _safe_config_dict(self.config),
             }
+        if gate.action == "NOOP":
+            return {
+                "dry_run": self.config.dry_run,
+                "action": gate.action,
+                "gate_reason": gate.reason,
+                "decision": asdict(decision),
+                "config": _safe_config_dict(self.config),
+            }
         if self.config.dry_run:
             return {
                 "dry_run": True,

@@ -68,6 +68,19 @@ class WaveExecutionTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("BEAR required", result["gate_reason"])
         self.assertEqual(executor.calls, [])
 
+
+    async def test_live_hold_does_not_initialize_executor(self):
+        executor = DummyExecutor()
+        bridge = WaveExecutionBridge(
+            config=WaveExecutionConfig(dry_run=False, allow_live_orders=True, manual_regime="BEAR"),
+            client=DummyClient(),
+            executor=executor,
+        )
+        result = await bridge.execute_decision(ExecutionDecision("HOLD", 0.5, 100.0, 2.0, "sig-hold"))
+        self.assertFalse(result["dry_run"])
+        self.assertEqual(result["action"], "NOOP")
+        self.assertEqual(executor.calls, [])
+
     async def test_live_mode_delegates_to_wave_executor(self):
         executor = DummyExecutor()
         bridge = WaveExecutionBridge(
