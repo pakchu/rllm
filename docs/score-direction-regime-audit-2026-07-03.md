@@ -319,3 +319,50 @@ Next experiment: train Gemma 4 E4B LoRA on the train rows, select TAKE/SKIP
 threshold on 2025 test only, and run strict action backtest on 2026H1 eval.  The
 objective is not merely label accuracy; the LLM must improve the base
 `rex_htf_pullback_reclaim q=0.75 hold=144` eval profile without increasing MDD.
+
+## Gemma 4 E4B event-judge POC on REX pullback/reclaim
+
+I trained a Gemma 4 E4B LoRA verifier on the `rex_htf_pullback_reclaim q=0.75
+hold=144` TAKE/SKIP rows.
+
+Training:
+
+- adapter: `checkpoints/rex_pullback_reclaim_q075_h144_gemma4_sft_s80_2026-07-03`
+- train rows sampled: 1600 via balanced oversampling, TAKE 800 / SKIP 800
+- prompt chars: mean ~1433, max 1479
+- max length: 2048
+- steps: 80, effective batch 8, bf16, no 4-bit
+- runtime: 566s (9m26s), ~7.1s/step on RTX 5090
+- train loss: 0.3106 overall; late-step loss ~0.18-0.21
+
+Scoring used TAKE minus SKIP logprob margin on 2025 test and 2026H1 eval.
+
+Important failure mode:
+
+- test margin vs reward correlation: -0.041
+- test margin vs TAKE label correlation: -0.121
+- eval margin vs reward correlation: -0.104
+- eval margin vs TAKE label correlation: -0.112
+
+So the learned logprob margin is weakly inverted relative to economic labels.
+This explains why a normal `high margin => trade` gate is not robust.
+
+Test-only threshold results:
+
+| route | selection rule | test 2025 | eval 2026H1 | read |
+| --- | --- | --- | --- | --- |
+| base candidate | no LLM filter | CAGR 20.4 / MDD 4.83 / ratio 4.22 / 76 trades | CAGR 24.0 / MDD 4.28 / ratio 5.60 / 43 trades | current baseline |
+| normal LLM gate | trade if margin >= test-selected threshold | CAGR 20.2 / MDD 4.39 / ratio 4.60 / 67 trades | CAGR 16.4 / MDD 5.86 / ratio 2.80 / 40 trades | overfit / worse eval |
+| inverted LLM gate | trade if margin <= test-selected threshold | CAGR 24.3 / MDD 4.83 / ratio 5.02 / 72 trades | CAGR 22.0 / MDD 4.28 / ratio 5.14 / 42 trades | closer but still below base |
+
+Reports:
+
+- `results/rex_pullback_reclaim_q075_h144_gemma4_s80_threshold_sweep_2026-07-03.json`
+- `results/rex_pullback_reclaim_q075_h144_gemma4_s80_margin_direction_sweep_2026-07-03.json`
+
+Conclusion: the LLM can fit the TAKE/SKIP token task, but this label design does
+not yet add economic edge.  The current base REX pullback surface remains better
+than the LLM-filtered variants on eval.  Next revision should change the target
+from hard TAKE/SKIP to a ranking/ordinal utility target or pairwise preference
+among candidates, because binary labels are sparse and appear to teach token
+priors more than robust reasoning.
