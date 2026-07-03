@@ -612,3 +612,68 @@ is a plausible alpha/regime prior, but the 3+ year CAGR/MDD>=3 target remains
 unsolved.  Next work should build an LLM/rule hybrid that explains and abstains
 on this specific regime, then validate on a fresh chronological split rather than
 mining more narrow gates from the same 2026H1 holdout.
+
+## Compact LLM regime-thesis policy: label-first fix
+
+I converted the robust range/Kimchi regime prior into a compact LLM policy
+surface instead of returning to the oversized analyzer/trader design.
+
+Exporter:
+
+- script: `training/build_rex_regime_thesis_sft.py`
+- gate prior: `range_vol >= 0.023959233645008706` AND
+  `kimchi_premium_change <= 0.0`
+- target mode used for the working run: `decision_label`
+- output labels: exactly `TRADE` or `ABSTAIN`
+- rationale/thesis is preserved in prompt and metadata, not generated as a long
+  JSON object.
+
+Why the label-first change mattered:
+
+- A first JSON-target SFT run trained, but candidate-logprob evaluation was not
+  meaningful because the completion began with JSON syntax/fields rather than
+  the decision token.
+- Greedy generation was too slow for the iteration loop.
+- Label-first completions make `TRADE` vs `ABSTAIN` candidate-logprob fast and
+  directly usable as a trading gate.
+
+Training run:
+
+- adapter: `checkpoints/rex_regime_thesis_range_kimchi_label_gemma4_s32_2026-07-03`
+- model: Gemma 4 E4B IT alias (`google/gemma-4-E4B-it`)
+- train rows sampled: 512 balanced rows, TRADE 256 / ABSTAIN 256
+- prompt length: ~872 chars mean
+- target length: 5-7 chars
+- steps: 32, runtime 232.7s, ~7.3s/step
+- final train loss: 0.4125; late token accuracy mostly 1.0
+
+Decision logprob evaluation using `score_normalization=sum`:
+
+| split | accuracy | confusion | read |
+| --- | ---: | --- | --- |
+| test 2025 | 91.7% | ABSTAIN 83/94, TRADE 38/38, false TRADE 11 | captures all target trades, slightly wider gate |
+| eval 2026H1 | 92.0% | ABSTAIN 53/61, TRADE 39/39, false TRADE 8 | captures all target trades, slightly wider gate |
+
+Backtest of the LLM-predicted decisions:
+
+| split | lev | CAGR | strict MDD | CAGR/MDD | trades | p-value approx |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| test 2025 | 0.5 | 23.2 | 2.55 | 9.09 | 33 | 0.000025 |
+| test 2025 | 1.0 | 51.3 | 5.06 | 10.12 | 33 | 0.000028 |
+| test 2025 | 1.5 | 85.1 | 7.54 | 11.29 | 33 | 0.000033 |
+| eval 2026H1 | 0.5 | 19.4 | 3.60 | 5.40 | 25 | 0.248 |
+| eval 2026H1 | 1.25 | 53.2 | 8.91 | 5.97 | 25 | 0.255 |
+| eval 2026H1 | 1.5 | 65.6 | 10.65 | 6.16 | 25 | 0.257 |
+
+Interpretation:
+
+- This is the first RLLM-shaped stage that does something operationally useful:
+  a small Gemma adapter learns a compact regime gate and can be scored quickly by
+  candidate logprob.
+- The learned gate slightly expands the symbolic gate.  On 2025 this improves
+  CAGR/MDD; on 2026H1 it still meets the leveraged CAGR/MDD profile but remains
+  underpowered statistically.
+- This still does **not** prove the original 3+ year target.  The right next
+  validation is to replay this exact label-first policy across the longer
+  2021-2026 span and/or create a new final holdout after freezing this adapter and
+  scoring rule.  Do not mine the 2026H1 false positives further.
