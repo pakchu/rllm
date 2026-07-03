@@ -214,6 +214,92 @@ def load_wave_execution_classes(wave_trading_path: str = DEFAULT_WAVE_TRADING_PA
     return client_cls, executor_cls
 
 
+def _nested_get(mapping: dict[str, Any], path: tuple[str, ...]) -> Any:
+    cur: Any = mapping
+    for key in path:
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(key)
+    return cur
+
+
+def _normalize_policy_label(value: Any) -> str:
+    if isinstance(value, dict):
+        for key in ("decision", "gate", "label", "prediction", "action"):
+            normalized = _normalize_policy_label(value.get(key))
+            if normalized != "UNKNOWN":
+                return normalized
+        return "UNKNOWN"
+    text = str(value or "").strip().upper()
+    if text in {"TRADE", "ALLOW", "TAKE", "EXECUTE", "LONG", "SHORT"}:
+        return "TRADE"
+    if text in {"ABSTAIN", "NO_TRADE", "NOTRADE", "BLOCK", "HOLD", "SKIP", "NONE"}:
+        return "ABSTAIN"
+    return "UNKNOWN"
+
+
+def _extract_policy_label(record: dict[str, Any]) -> str:
+    candidates = (
+        ("decision",),
+        ("prediction",),
+        ("label",),
+        ("target",),
+        ("output",),
+        ("metadata", "target"),
+        ("metadata", "prediction"),
+    )
+    for path in candidates:
+        label = _normalize_policy_label(_nested_get(record, path))
+        if label != "UNKNOWN":
+            return label
+    return "UNKNOWN"
+
+
+def _extract_candidate_side(record: dict[str, Any]) -> str:
+    candidates = (
+        ("candidate_side",),
+        ("side",),
+        ("action", "side"),
+        ("metadata", "action", "side"),
+        ("metadata", "target", "action_side"),
+    )
+    for path in candidates:
+        value = _nested_get(record, path)
+        side = str(value or "").strip().upper()
+        if side in {"LONG", "SHORT"}:
+            return side
+    return "NONE"
+
+
+def decision_from_policy_record(record: dict[str, Any], *, default_close: float = 1.0, default_atr: float = 0.0) -> ExecutionDecision:
+    """Convert a pre-scored REX+LLM policy record into an execution decision.
+
+    The LLM gate remains binary: TRADE maps to the candidate side, while
+    ABSTAIN/NO_TRADE/BLOCK maps to HOLD.  This preserves the current architecture
+    where REX chooses the side and the LLM decides whether that candidate is
+    allowed in the current regime.
+    """
+
+    label = _extract_policy_label(record)
+    side = _extract_candidate_side(record)
+    signal: TradeSignal = side if label == "TRADE" and side in {"LONG", "SHORT"} else "HOLD"  # type: ignore[assignment]
+    snap = record.get("feature_snapshot", {}) if isinstance(record.get("feature_snapshot"), dict) else {}
+    close = record.get("current_close", record.get("close", snap.get("close", default_close)))
+    atr = record.get("current_atr", record.get("atr", snap.get("atr", default_atr)))
+    signal_id = str(record.get("signal_id") or record.get("id") or f"{record.get('date', 'unknown')}:{record.get('signal_pos', 'na')}")
+    probability = float(record.get("probability", record.get("score", 0.5)))
+    age_sec = float(record.get("age_sec", 0.0))
+    return ExecutionDecision(
+        signal=signal,
+        probability=max(0.0, min(1.0, probability)),
+        current_close=float(close),
+        current_atr=float(atr),
+        signal_id=signal_id,
+        reason=f"policy_label={label};candidate_side={side}",
+        age_sec=age_sec,
+    )
+
+
 def evaluate_execution_gate(config: WaveExecutionConfig, decision: ExecutionDecision) -> ExecutionGateResult:
     """Decide whether a model decision may reach the Binance executor."""
 
@@ -391,15 +477,20 @@ async def _amain(args: argparse.Namespace) -> None:
         cfg = WaveExecutionConfig(**{**asdict(cfg), "dry_run": True})
     bridge = WaveExecutionBridge.from_env(config=cfg)
     try:
-        decision = ExecutionDecision(
-            signal=args.signal,
-            probability=args.probability,
-            current_close=args.current_close,
-            current_atr=args.current_atr,
-            signal_id=args.signal_id,
-            reason=args.reason,
-            age_sec=args.age_sec,
-        )
+        if args.policy_record_json:
+            decision = decision_from_policy_record(json.loads(args.policy_record_json))
+        elif args.policy_record_file:
+            decision = decision_from_policy_record(json.loads(Path(args.policy_record_file).read_text()))
+        else:
+            decision = ExecutionDecision(
+                signal=args.signal,
+                probability=args.probability,
+                current_close=args.current_close,
+                current_atr=args.current_atr,
+                signal_id=args.signal_id,
+                reason=args.reason,
+                age_sec=args.age_sec,
+            )
         result = await bridge.execute_decision(decision)
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
     finally:
@@ -409,11 +500,13 @@ async def _amain(args: argparse.Namespace) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Execute one RLLM signal via wave_trading Binance futures executor")
     parser.add_argument("--config", help="JSON config path; defaults to environment variables")
-    parser.add_argument("--signal", choices=["LONG", "SHORT", "HOLD"], required=True)
+    parser.add_argument("--policy-record-json", help="Pre-scored REX+LLM JSON object; TRADE executes candidate side")
+    parser.add_argument("--policy-record-file", help="Path to a pre-scored REX+LLM JSON object")
+    parser.add_argument("--signal", choices=["LONG", "SHORT", "HOLD"], required=False)
     parser.add_argument("--probability", type=float, default=0.5)
-    parser.add_argument("--current-close", type=float, required=True)
+    parser.add_argument("--current-close", type=float, default=1.0)
     parser.add_argument("--current-atr", type=float, default=0.0)
-    parser.add_argument("--signal-id", required=True)
+    parser.add_argument("--signal-id", default="manual-cli")
     parser.add_argument("--reason", default="manual-cli")
     parser.add_argument("--age-sec", type=float, default=0.0)
     mode = parser.add_mutually_exclusive_group()
@@ -423,7 +516,10 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    asyncio.run(_amain(parse_args()))
+    args = parse_args()
+    if not args.policy_record_json and not args.policy_record_file and not args.signal:
+        raise SystemExit("--signal is required unless --policy-record-json/--policy-record-file is provided")
+    asyncio.run(_amain(args))
 
 
 if __name__ == "__main__":

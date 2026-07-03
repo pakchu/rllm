@@ -58,3 +58,34 @@ The bridge can load `BINANCE_TESTNET_API_KEY` / `BINANCE_TESTNET_API_SECRET` fro
 2. Run `--dry-run` continuously for at least several days in manually confirmed BEAR regime.
 3. Compare dry-run signals with the offline backtest event definitions: no current candle leakage, no duplicate entries, no stale decisions.
 4. Only then enable testnet orders with `allow_live_orders=true` and keep `allowed_signals=["SHORT"]` for the first pilot.
+
+## Pre-scored REX+LLM record mapping
+
+The bridge now accepts a pre-scored policy JSON object.  This is the intended boundary for the next scorer step:
+
+```json
+{
+  "prediction": "TRADE",
+  "action": {"side": "SHORT"},
+  "current_close": 100000,
+  "current_atr": 500,
+  "signal_id": "latest-closed-candle",
+  "probability": 0.8
+}
+```
+
+Mapping contract:
+
+- `prediction/decision/target = TRADE` + candidate `side=SHORT` -> execution signal `SHORT`.
+- `prediction/decision/target = TRADE` + candidate `side=LONG` -> execution signal `LONG`, then still subject to `allowed_signals`.
+- `ABSTAIN`, `NO_TRADE`, `BLOCK`, `HOLD`, or unknown label -> execution signal `HOLD`.
+- The LLM does **not** choose long/short; it only allows or blocks the REX candidate side.
+
+Smoke command:
+
+```bash
+python -m execution.wave_execution \
+  --config /path/to/bear-config.json \
+  --policy-record-json '{"prediction":"TRADE","action":{"side":"SHORT"},"current_close":100000,"current_atr":500,"signal_id":"record-smoke","probability":0.8}' \
+  --dry-run
+```

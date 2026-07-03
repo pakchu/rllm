@@ -11,6 +11,7 @@ from execution.wave_execution import (
     _load_api_credentials,
     _validate_config,
     _validate_decision,
+    decision_from_policy_record,
     evaluate_execution_gate,
     load_env_file,
 )
@@ -81,6 +82,35 @@ class WaveExecutionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(args[:5], ("SHORT", 0.8, 100.0, 2.0, "sig-2"))
         self.assertEqual(args[5], 5)
         self.assertEqual(kwargs, {"ws_client": None})
+
+    def test_policy_record_trade_maps_to_candidate_side(self):
+        row = {
+            "date": "2026-01-01 00:00:00",
+            "signal_pos": 123,
+            "prediction": "TRADE",
+            "action": {"side": "SHORT"},
+            "feature_snapshot": {"close": 100.0, "atr": 2.5},
+            "probability": 0.8,
+        }
+        decision = decision_from_policy_record(row)
+        self.assertEqual(decision.signal, "SHORT")
+        self.assertEqual(decision.current_close, 100.0)
+        self.assertEqual(decision.current_atr, 2.5)
+        self.assertIn("policy_label=TRADE", decision.reason)
+
+    def test_policy_record_abstain_maps_to_hold_even_with_side(self):
+        row = {"prediction": "ABSTAIN", "action": {"side": "LONG"}, "current_close": 100.0, "signal_id": "x"}
+        decision = decision_from_policy_record(row)
+        self.assertEqual(decision.signal, "HOLD")
+
+    def test_policy_record_metadata_target_trade_uses_metadata_action_side(self):
+        row = {
+            "metadata": {"target": {"decision": "TRADE"}, "action": {"side": "LONG"}},
+            "current_close": 100.0,
+            "signal_id": "meta",
+        }
+        decision = decision_from_policy_record(row)
+        self.assertEqual(decision.signal, "LONG")
 
     def test_manual_bear_regime_gate_approves_trade(self):
         cfg = WaveExecutionConfig(dry_run=True, manual_regime="BEAR")
