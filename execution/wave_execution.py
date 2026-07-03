@@ -1,8 +1,9 @@
 """Bridge RLLM policy signals to the wave_trading Binance futures executor.
 
 This module intentionally keeps the boundary narrow: RLLM owns model inference,
-regime filtering, and risk-overlay decisions; wave_trading owns Binance REST
-client details and maker-order execution.  Live order placement is opt-in.
+manual long-regime filtering, and risk-overlay decisions; wave_trading owns
+Binance REST client details and maker-order execution.  Live order placement is
+opt-in and blocked unless multiple explicit safety gates are enabled.
 """
 
 from __future__ import annotations
@@ -10,14 +11,16 @@ from __future__ import annotations
 import argparse
 import asyncio
 import importlib
+import json
 import os
 import sys
 import types
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, fields
 from pathlib import Path
 from typing import Any, Literal, Optional
 
 TradeSignal = Literal["LONG", "SHORT", "HOLD"]
+ManualRegime = Literal["UNKNOWN", "BEAR", "BULL", "SIDEWAYS"]
 
 DEFAULT_WAVE_TRADING_PATH = "/home/pakchu/workspace/wave_trading"
 
@@ -49,46 +52,80 @@ def load_env_file(path: str | Path, *, override: bool = False) -> dict[str, str]
     return loaded
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    return os.environ.get(name, str(default)).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _split_allowed_signals(value: str) -> tuple[str, ...]:
+    out = tuple(part.strip().upper() for part in value.split(",") if part.strip())
+    return out or ("LONG", "SHORT")
+
+
 @dataclass(frozen=True)
 class WaveExecutionConfig:
-    """Configuration for the wave_trading execution bridge."""
+    """Configuration for the wave_trading execution bridge.
+
+    The default is intentionally safe: dry-run, testnet, manual regime UNKNOWN,
+    and live order placement disabled.  To place even testnet orders, caller must
+    set dry_run=false, allow_live_orders=true, and satisfy the regime/signal gates.
+    """
 
     wave_trading_path: str = DEFAULT_WAVE_TRADING_PATH
     symbol: str = "BTCUSDT"
     testnet: bool = True
     leverage: int = 1
-    position_size_pct: float = 0.10
+    position_size_pct: float = 0.02
     maker_offset_pct: float = 0.0001
     max_retries: int = 3
     order_timeout_sec: int = 60
     dry_run: bool = True
+    allow_live_orders: bool = False
     interval_minutes: int = 5
+    manual_regime: ManualRegime = "UNKNOWN"
+    require_bear_regime: bool = True
+    allowed_signals: tuple[str, ...] = ("LONG", "SHORT")
+    max_probability_age_sec: int = 600
     # Values consumed by wave_trading.TradingExecutor for position tracking if
     # caller chooses to use its trailing/max-holding helpers.
     atr_period: int = 15
     pt_mult: float = 3.75
-    max_holding_bars: int = 288
+    max_holding_bars: int = 144
 
     @classmethod
     def from_env(cls) -> "WaveExecutionConfig":
-        def env_bool(name: str, default: bool) -> bool:
-            return os.environ.get(name, str(default)).strip().lower() in {"1", "true", "yes", "y", "on"}
-
         return cls(
             wave_trading_path=os.environ.get("RLLM_WAVE_TRADING_PATH", DEFAULT_WAVE_TRADING_PATH),
             symbol=os.environ.get("TRADING_SYMBOL", "BTCUSDT"),
-            testnet=env_bool("BINANCE_TESTNET", True),
+            testnet=_env_bool("BINANCE_TESTNET", True),
             leverage=int(os.environ.get("TRADING_LEVERAGE", "1")),
-            position_size_pct=float(os.environ.get("POSITION_SIZE_PCT", "0.10")),
+            position_size_pct=float(os.environ.get("POSITION_SIZE_PCT", "0.02")),
             maker_offset_pct=float(os.environ.get("MAKER_OFFSET_PCT", "0.0001")),
             max_retries=int(os.environ.get("MAX_RETRIES", "3")),
             order_timeout_sec=int(os.environ.get("ORDER_TIMEOUT_SEC", "60")),
-            dry_run=env_bool("RLLM_EXECUTION_DRY_RUN", True),
+            dry_run=_env_bool("RLLM_EXECUTION_DRY_RUN", True),
+            allow_live_orders=_env_bool("RLLM_ALLOW_LIVE_ORDERS", False),
             interval_minutes=int(os.environ.get("INTERVAL_MINUTES", "5")),
+            manual_regime=os.environ.get("RLLM_MANUAL_REGIME", "UNKNOWN").strip().upper(),  # type: ignore[arg-type]
+            require_bear_regime=_env_bool("RLLM_REQUIRE_BEAR_REGIME", True),
+            allowed_signals=_split_allowed_signals(os.environ.get("RLLM_ALLOWED_SIGNALS", "LONG,SHORT")),
+            max_probability_age_sec=int(os.environ.get("RLLM_MAX_PROBABILITY_AGE_SEC", "600")),
             atr_period=int(os.environ.get("RLLM_EXECUTION_ATR_PERIOD", "15")),
             pt_mult=float(os.environ.get("RLLM_EXECUTION_PT_MULT", "3.75")),
-            max_holding_bars=int(os.environ.get("RLLM_EXECUTION_MAX_HOLDING_BARS", "288")),
+            max_holding_bars=int(os.environ.get("RLLM_EXECUTION_MAX_HOLDING_BARS", "144")),
         )
+
+    @classmethod
+    def from_json(cls, path: str | Path) -> "WaveExecutionConfig":
+        raw = json.loads(Path(path).expanduser().read_text())
+        if not isinstance(raw, dict):
+            raise ValueError("live config JSON must be an object")
+        field_names = {f.name for f in fields(cls)}
+        unknown = sorted(set(raw) - field_names)
+        if unknown:
+            raise ValueError(f"Unknown live config keys: {unknown}")
+        if "allowed_signals" in raw:
+            raw["allowed_signals"] = tuple(str(x).upper() for x in raw["allowed_signals"])
+        return cls(**raw)
 
 
 @dataclass(frozen=True)
@@ -101,6 +138,14 @@ class ExecutionDecision:
     current_atr: float
     signal_id: str
     reason: str = ""
+    age_sec: float = 0.0
+
+
+@dataclass(frozen=True)
+class ExecutionGateResult:
+    allowed: bool
+    reason: str
+    action: str
 
 
 class _StaticSignalGenerator:
@@ -142,6 +187,19 @@ def _install_signal_generator_stub() -> None:
     sys.modules[module_name] = stub
 
 
+class _DryRunClient:
+    async def aclose(self) -> None:
+        return None
+
+
+class _DryRunExecutor:
+    async def handle_signal(self, *args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("dry-run executor must not be called")
+
+    async def close_position(self, *args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("dry-run executor must not be called")
+
+
 def load_wave_execution_classes(wave_trading_path: str = DEFAULT_WAVE_TRADING_PATH) -> tuple[type, type]:
     """Load wave_trading BinanceFuturesClient and TradingExecutor classes."""
 
@@ -156,6 +214,24 @@ def load_wave_execution_classes(wave_trading_path: str = DEFAULT_WAVE_TRADING_PA
     return client_cls, executor_cls
 
 
+def evaluate_execution_gate(config: WaveExecutionConfig, decision: ExecutionDecision) -> ExecutionGateResult:
+    """Decide whether a model decision may reach the Binance executor."""
+
+    _validate_config(config)
+    _validate_decision(decision)
+    if decision.signal == "HOLD":
+        return ExecutionGateResult(True, "hold/noop", "NOOP")
+    if decision.signal not in set(config.allowed_signals):
+        return ExecutionGateResult(False, f"signal {decision.signal} not in allowed_signals", "BLOCKED")
+    if config.require_bear_regime and config.manual_regime != "BEAR":
+        return ExecutionGateResult(False, f"manual_regime={config.manual_regime}; BEAR required", "BLOCKED")
+    if decision.age_sec > config.max_probability_age_sec:
+        return ExecutionGateResult(False, f"decision too stale: {decision.age_sec:.1f}s", "BLOCKED")
+    if not config.dry_run and not config.allow_live_orders:
+        return ExecutionGateResult(False, "live orders require allow_live_orders=true", "BLOCKED")
+    return ExecutionGateResult(True, "approved", "EXECUTE_SIGNAL")
+
+
 class WaveExecutionBridge:
     """Execute RLLM decisions through wave_trading's Binance futures executor."""
 
@@ -168,7 +244,10 @@ class WaveExecutionBridge:
     @classmethod
     def from_env(cls, *, config: WaveExecutionConfig | None = None) -> "WaveExecutionBridge":
         cfg = config or WaveExecutionConfig.from_env()
-        api_key, api_secret = _load_api_credentials(cfg.testnet, cfg.wave_trading_path)
+        _validate_config(cfg)
+        if cfg.dry_run:
+            return cls(config=cfg, client=_DryRunClient(), executor=_DryRunExecutor())
+        api_key, api_secret = _load_api_credentials(cfg.testnet, cfg.wave_trading_path, dry_run=cfg.dry_run)
         client_cls, executor_cls = load_wave_execution_classes(cfg.wave_trading_path)
         client = client_cls(api_key=api_key, api_secret=api_secret, testnet=cfg.testnet)
         signal_generator = _StaticSignalGenerator(
@@ -200,13 +279,22 @@ class WaveExecutionBridge:
     async def execute_decision(self, decision: ExecutionDecision, *, ws_client: Any = None) -> dict[str, Any]:
         """Execute or dry-run one already-approved RLLM decision."""
 
-        _validate_decision(decision)
+        gate = evaluate_execution_gate(self.config, decision)
+        if not gate.allowed:
+            return {
+                "dry_run": self.config.dry_run,
+                "action": gate.action,
+                "gate_reason": gate.reason,
+                "decision": asdict(decision),
+                "config": _safe_config_dict(self.config),
+            }
         if self.config.dry_run:
             return {
                 "dry_run": True,
-                "action": "NOOP" if decision.signal == "HOLD" else "EXECUTE_SIGNAL",
+                "action": gate.action,
+                "gate_reason": gate.reason,
                 "decision": asdict(decision),
-                "config": asdict(self.config),
+                "config": _safe_config_dict(self.config),
             }
 
         await self.initialize()
@@ -219,11 +307,13 @@ class WaveExecutionBridge:
             self.config.interval_minutes,
             ws_client=ws_client,
         )
-        return {"dry_run": False, "action": "HANDLED", "decision": asdict(decision)}
+        return {"dry_run": False, "action": "HANDLED", "gate_reason": gate.reason, "decision": asdict(decision)}
 
     async def close_position(self, *, reason: str = "MANUAL_EXIT", ws_client: Any = None) -> dict[str, Any]:
         if self.config.dry_run:
-            return {"dry_run": True, "action": "CLOSE_POSITION", "reason": reason, "config": asdict(self.config)}
+            return {"dry_run": True, "action": "CLOSE_POSITION", "reason": reason, "config": _safe_config_dict(self.config)}
+        if not self.config.allow_live_orders:
+            return {"dry_run": False, "action": "BLOCKED", "gate_reason": "close requires allow_live_orders=true"}
         await self.initialize()
         order = await self.executor.close_position(ws_client=ws_client, signal_id=reason, order_type="EXIT")
         return {"dry_run": False, "action": "CLOSE_POSITION", "order": order, "reason": reason}
@@ -234,7 +324,12 @@ class WaveExecutionBridge:
             await close()
 
 
-def _load_api_credentials(testnet: bool, wave_trading_path: str = DEFAULT_WAVE_TRADING_PATH) -> tuple[str, str]:
+def _load_api_credentials(
+    testnet: bool,
+    wave_trading_path: str = DEFAULT_WAVE_TRADING_PATH,
+    *,
+    dry_run: Optional[bool] = None,
+) -> tuple[str, str]:
     load_env_file(Path(wave_trading_path) / ".env", override=False)
     if testnet:
         key = os.environ.get("BINANCE_TESTNET_API_KEY", "")
@@ -243,11 +338,28 @@ def _load_api_credentials(testnet: bool, wave_trading_path: str = DEFAULT_WAVE_T
         key = os.environ.get("BINANCE_LIVE_API_KEY", "")
         secret = os.environ.get("BINANCE_LIVE_API_SECRET", "")
     # Dry-run can be constructed without credentials, but live mode cannot.
-    if os.environ.get("RLLM_EXECUTION_DRY_RUN", "true").strip().lower() not in {"1", "true", "yes", "y", "on"}:
+    dry = _env_bool("RLLM_EXECUTION_DRY_RUN", True) if dry_run is None else dry_run
+    if not dry:
         if not key or not secret:
             venue = "testnet" if testnet else "live"
             raise ValueError(f"Missing Binance {venue} API credentials")
     return key, secret
+
+
+def _validate_config(config: WaveExecutionConfig) -> None:
+    if config.manual_regime not in {"UNKNOWN", "BEAR", "BULL", "SIDEWAYS"}:
+        raise ValueError(f"Unsupported manual_regime: {config.manual_regime}")
+    bad = set(config.allowed_signals) - {"LONG", "SHORT", "HOLD"}
+    if bad:
+        raise ValueError(f"Unsupported allowed_signals: {sorted(bad)}")
+    if config.leverage < 1 or config.leverage > 125:
+        raise ValueError("leverage must be in [1, 125]")
+    if not (0.0 < config.position_size_pct <= 1.0):
+        raise ValueError("position_size_pct must be in (0, 1]")
+    if config.interval_minutes <= 0:
+        raise ValueError("interval_minutes must be positive")
+    if config.max_probability_age_sec <= 0:
+        raise ValueError("max_probability_age_sec must be positive")
 
 
 def _validate_decision(decision: ExecutionDecision) -> None:
@@ -261,10 +373,18 @@ def _validate_decision(decision: ExecutionDecision) -> None:
         raise ValueError("current_atr must be non-negative")
     if not decision.signal_id:
         raise ValueError("signal_id is required for execution traceability")
+    if float(decision.age_sec) < 0.0:
+        raise ValueError("age_sec must be non-negative")
+
+
+def _safe_config_dict(config: WaveExecutionConfig) -> dict[str, Any]:
+    data = asdict(config)
+    # No secrets are stored here; keep helper explicit for future fields.
+    return data
 
 
 async def _amain(args: argparse.Namespace) -> None:
-    cfg = WaveExecutionConfig.from_env()
+    cfg = WaveExecutionConfig.from_json(args.config) if args.config else WaveExecutionConfig.from_env()
     if args.live:
         cfg = WaveExecutionConfig(**{**asdict(cfg), "dry_run": False})
     elif args.dry_run:
@@ -278,24 +398,27 @@ async def _amain(args: argparse.Namespace) -> None:
             current_atr=args.current_atr,
             signal_id=args.signal_id,
             reason=args.reason,
+            age_sec=args.age_sec,
         )
         result = await bridge.execute_decision(decision)
-        print(result)
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
     finally:
         await bridge.aclose()
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Execute one RLLM signal via wave_trading Binance futures executor")
+    parser.add_argument("--config", help="JSON config path; defaults to environment variables")
     parser.add_argument("--signal", choices=["LONG", "SHORT", "HOLD"], required=True)
     parser.add_argument("--probability", type=float, default=0.5)
     parser.add_argument("--current-close", type=float, required=True)
     parser.add_argument("--current-atr", type=float, default=0.0)
     parser.add_argument("--signal-id", required=True)
     parser.add_argument("--reason", default="manual-cli")
+    parser.add_argument("--age-sec", type=float, default=0.0)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--dry-run", action="store_true", default=False)
-    mode.add_argument("--live", action="store_true", default=False, help="Actually place/cancel orders; requires credentials")
+    mode.add_argument("--live", action="store_true", default=False, help="Actually place/cancel orders; requires credentials + allow_live_orders")
     return parser.parse_args()
 
 

@@ -9,7 +9,9 @@ from execution.wave_execution import (
     WaveExecutionConfig,
     _StaticSignalGenerator,
     _load_api_credentials,
+    _validate_config,
     _validate_decision,
+    evaluate_execution_gate,
     load_env_file,
 )
 
@@ -61,13 +63,14 @@ class WaveExecutionTests(unittest.IsolatedAsyncioTestCase):
         )
         result = await bridge.execute_decision(ExecutionDecision("LONG", 0.7, 100.0, 2.0, "sig-1"))
         self.assertTrue(result["dry_run"])
-        self.assertEqual(result["action"], "EXECUTE_SIGNAL")
+        self.assertEqual(result["action"], "BLOCKED")
+        self.assertIn("BEAR required", result["gate_reason"])
         self.assertEqual(executor.calls, [])
 
     async def test_live_mode_delegates_to_wave_executor(self):
         executor = DummyExecutor()
         bridge = WaveExecutionBridge(
-            config=WaveExecutionConfig(dry_run=False, interval_minutes=5),
+            config=WaveExecutionConfig(dry_run=False, allow_live_orders=True, manual_regime="BEAR", interval_minutes=5),
             client=DummyClient(),
             executor=executor,
         )
@@ -78,6 +81,38 @@ class WaveExecutionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(args[:5], ("SHORT", 0.8, 100.0, 2.0, "sig-2"))
         self.assertEqual(args[5], 5)
         self.assertEqual(kwargs, {"ws_client": None})
+
+    def test_manual_bear_regime_gate_approves_trade(self):
+        cfg = WaveExecutionConfig(dry_run=True, manual_regime="BEAR")
+        decision = ExecutionDecision("SHORT", 0.8, 100.0, 1.0, "sig-bear")
+        gate = evaluate_execution_gate(cfg, decision)
+        self.assertTrue(gate.allowed)
+        self.assertEqual(gate.action, "EXECUTE_SIGNAL")
+
+    def test_manual_regime_gate_blocks_non_bear_trade(self):
+        cfg = WaveExecutionConfig(dry_run=True, manual_regime="UNKNOWN")
+        decision = ExecutionDecision("SHORT", 0.8, 100.0, 1.0, "sig-unknown")
+        gate = evaluate_execution_gate(cfg, decision)
+        self.assertFalse(gate.allowed)
+        self.assertIn("BEAR required", gate.reason)
+
+    def test_allowed_signal_gate_can_make_bear_pilot_short_only(self):
+        cfg = WaveExecutionConfig(dry_run=True, manual_regime="BEAR", allowed_signals=("SHORT",))
+        decision = ExecutionDecision("LONG", 0.8, 100.0, 1.0, "sig-long")
+        gate = evaluate_execution_gate(cfg, decision)
+        self.assertFalse(gate.allowed)
+        self.assertIn("not in allowed_signals", gate.reason)
+
+    def test_live_orders_require_explicit_allow_flag(self):
+        cfg = WaveExecutionConfig(dry_run=False, manual_regime="BEAR", allow_live_orders=False)
+        decision = ExecutionDecision("SHORT", 0.8, 100.0, 1.0, "sig-live")
+        gate = evaluate_execution_gate(cfg, decision)
+        self.assertFalse(gate.allowed)
+        self.assertIn("allow_live_orders", gate.reason)
+
+    def test_config_rejects_invalid_regime(self):
+        with self.assertRaises(ValueError):
+            _validate_config(WaveExecutionConfig(manual_regime="CRAB"))  # type: ignore[arg-type]
 
     def test_loads_wave_trading_env_without_overriding_existing_values(self):
         with tempfile.TemporaryDirectory() as tmp:
