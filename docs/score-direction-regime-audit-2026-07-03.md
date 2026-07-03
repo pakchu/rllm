@@ -829,3 +829,53 @@ recent OOS attractive, but they do **not** solve the 3+ year target.  The
 multi-year miss is therefore not just a missing stop-loss.  The next step needs a
 higher-level regime classifier that prevents entire bad historical regimes, or a
 portfolio diversification source outside this single REX BTC surface.
+
+## Month-level bad-regime abstention attempt
+
+After simple trade-level overlays failed, I tested a higher-level abstention
+surface: decide once per calendar month whether to disable the fixed dual-regime
+REX policy.  Each candidate month rule uses only the first candidate row's
+signal-time feature snapshot for that month, then blocks all trades in matching
+months.
+
+Implementation:
+
+- script: `training/sweep_month_feature_abstain_gate.py`
+- test helper: `tests/test_sweep_month_feature_abstain_gate.py`
+- sweep report:
+  `results/rex_dual_regime_month_feature_abstain_sweep_train2021_2023_test2024_eval2025_2026h1_2026-07-03.json`
+- selection guard: month rules are ranked on train 2021-2023 only; test 2024 and
+  eval 2025-2026H1 are replayed after selection.
+
+Best train-selected month abstention rule:
+
+- block month when first candidate's `usdkrw_zscore <= -1.1786030781205512`
+- blocked months in full 2021-2026H1 replay: 2021-02, 2021-04, 2022-02,
+  2022-09, 2024-09, 2025-04
+
+At 0.5x by split:
+
+| period | CAGR | strict MDD | CAGR/MDD | trades | p-value approx |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| train 2021-2023 | 15.7 | 13.3 | 1.18 | 317 | 0.056 |
+| test 2024 | 17.5 | 5.8 | 3.02 | 61 | 0.073 |
+| eval 2025-2026H1 | 18.4 | 3.7 | 4.95 | 55 | 0.0003 |
+
+Full 2021-2026H1 replay:
+
+| leverage | CAGR | strict MDD | CAGR/MDD | trades | p-value approx |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.5 | 16.4 | 13.3 | 1.23 | 433 | 0.0015 |
+| 1.0 | 33.0 | 25.1 | 1.31 | 433 | 0.0017 |
+| 1.25 | 41.3 | 30.6 | 1.35 | 433 | 0.0019 |
+| 1.5 | 49.4 | 36.1 | 1.37 | 433 | 0.0020 |
+| 2.0 | 64.8 | 46.8 | 1.38 | 433 | 0.0024 |
+
+Interpretation: month-level abstention is better than trade-level pause/stop for
+this surface, and it preserves the 2024/2025-2026 held-out edge.  But it still
+misses the original 3+ year CAGR/MDD>=3 objective by a wide margin.  This is now
+strong evidence that a single BTC REX policy surface is not enough.  Next work
+should widen the portfolio: additional assets, independent non-REX alpha families,
+or capital allocation across uncorrelated strategies.  Continuing to mine
+single-feature abstention rules on the same BTC REX surface is unlikely to be the
+breakthrough.
