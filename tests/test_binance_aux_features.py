@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from preprocessing.binance_aux_features import attach_binance_um_aux_features
+from preprocessing.binance_aux_features import attach_binance_um_aux_features, attach_binance_um_aux_frames, normalise_premium_index_frame
 from preprocessing.market_features import build_market_feature_frame
 
 
@@ -79,6 +79,52 @@ class TestBinanceAuxFeatures(unittest.TestCase):
             out = attach_binance_um_aux_features(market, funding_csv=funding_path, funding_tolerance="2h")
         self.assertEqual(pd.to_datetime(out["date"]).tolist(), pd.to_datetime(market["date"]).tolist())
         self.assertEqual(out["funding_rate"].tolist(), [-0.002, 0.001])
+
+    def test_attach_aux_from_db_like_frames(self):
+        market = pd.DataFrame(
+            {
+                "date": pd.date_range("2026-01-01 00:00:00", periods=4, freq="1min"),
+                "open": [100.0, 101.0, 102.0, 103.0],
+                "high": [101.0, 102.0, 103.0, 104.0],
+                "low": [99.0, 100.0, 101.0, 102.0],
+                "close": [100.0, 101.0, 102.0, 103.0],
+                "volume": [10.0, 11.0, 12.0, 13.0],
+            }
+        )
+        funding = pd.DataFrame(
+            {
+                "funding_time": [pd.Timestamp("2026-01-01 00:00:00", tz="UTC")],
+                "funding_rate": [0.0001],
+            }
+        )
+        premium = pd.DataFrame(
+            {
+                "ts": [pd.Timestamp("2026-01-01 00:00:00", tz="UTC")],
+                "close_time": [pd.Timestamp("2026-01-01 00:00:59.999", tz="UTC")],
+                "close": [-0.0002],
+            }
+        )
+
+        out = attach_binance_um_aux_frames(
+            market,
+            funding_frame=funding,
+            premium_frame=premium,
+            funding_tolerance="12h",
+            premium_tolerance="5min",
+            zscore_window=2,
+        )
+
+        self.assertEqual(out["funding_available"].tolist(), [1.0, 1.0, 1.0, 1.0])
+        self.assertEqual(float(out.loc[0, "funding_rate"]), 0.0001)
+        self.assertTrue(np.isnan(out.loc[0, "premium_index"]))
+        self.assertEqual(float(out.loc[1, "premium_index"]), -0.0002)
+        self.assertEqual(out["premium_available"].tolist(), [0.0, 1.0, 1.0, 1.0])
+
+    def test_premium_normaliser_accepts_timestamp_close_time(self):
+        premium = pd.DataFrame({"close_time": [pd.Timestamp("2026-01-01 00:00:59.999", tz="UTC")], "close": ["-0.001"]})
+        out = normalise_premium_index_frame(premium)
+        self.assertEqual(str(out.loc[0, "date"]), "2026-01-01 00:00:59.999000")
+        self.assertEqual(float(out.loc[0, "premium_index"]), -0.001)
 
     def test_market_feature_frame_exposes_binance_aux_columns(self):
         n = 120

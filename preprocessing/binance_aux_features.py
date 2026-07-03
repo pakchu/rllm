@@ -28,10 +28,16 @@ def _read_csv(path: str | Path) -> pd.DataFrame:
 
 def load_funding_history(path: str | Path) -> pd.DataFrame:
     """Load downloader output as ``date, funding_rate`` rows."""
-    df = _read_csv(path)
+    return normalise_funding_history_frame(_read_csv(path))
+
+
+def normalise_funding_history_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalise funding rows from CSV or live DB query output."""
+    if "funding_time" in df.columns and "date" not in df.columns:
+        df = df.rename(columns={"funding_time": "date"})
     missing = {"date", "funding_rate"}.difference(df.columns)
     if missing:
-        raise ValueError(f"funding file lacks columns: {sorted(missing)}")
+        raise ValueError(f"funding frame lacks columns: {sorted(missing)}")
     out = df.loc[:, ["date", "funding_rate"]].copy()
     out["date"] = pd.to_datetime(out["date"], errors="raise", utc=True).dt.tz_convert(None)
     out["funding_rate"] = pd.to_numeric(out["funding_rate"], errors="coerce")
@@ -45,15 +51,36 @@ def load_premium_index_klines(path: str | Path) -> pd.DataFrame:
     as the availability timestamp for the row's ``close`` value; otherwise we
     fall back to ``date``.  This avoids exposing an hourly close at the hour open.
     """
-    df = _read_csv(path)
+    return normalise_premium_index_frame(_read_csv(path))
+
+
+def normalise_premium_index_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalise premium-index kline rows from CSV or live DB query output.
+
+    When ``close_time`` exists, it is used as the causal availability timestamp.
+    DB rows may store it as a timestamp, while downloader CSV rows may store it
+    as milliseconds since epoch.
+    """
+    if "premium_index" in df.columns and "date" in df.columns:
+        out = df.loc[:, ["date", "premium_index"]].copy()
+        out["date"] = pd.to_datetime(out["date"], errors="raise", utc=True).dt.tz_convert(None)
+        out["premium_index"] = pd.to_numeric(out["premium_index"], errors="coerce")
+        return out.dropna(subset=["date", "premium_index"]).sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
     if "close" not in df.columns:
-        raise ValueError("premium file lacks close column")
+        raise ValueError("premium frame lacks close column")
     if "close_time" in df.columns:
-        dates = pd.to_datetime(pd.to_numeric(df["close_time"], errors="coerce"), unit="ms", utc=True).dt.tz_convert(None)
+        if pd.api.types.is_datetime64_any_dtype(df["close_time"]):
+            dates = pd.to_datetime(df["close_time"], errors="raise", utc=True).dt.tz_convert(None)
+        else:
+            numeric_close_time = pd.to_numeric(df["close_time"], errors="coerce")
+            if numeric_close_time.notna().any():
+                dates = pd.to_datetime(numeric_close_time, unit="ms", utc=True).dt.tz_convert(None)
+            else:
+                dates = pd.to_datetime(df["close_time"], errors="raise", utc=True).dt.tz_convert(None)
     elif "date" in df.columns:
         dates = pd.to_datetime(df["date"], errors="raise", utc=True).dt.tz_convert(None)
     else:
-        raise ValueError("premium file lacks close_time/date column")
+        raise ValueError("premium frame lacks close_time/date column")
     out = pd.DataFrame(
         {
             "date": dates,
@@ -126,21 +153,41 @@ def attach_binance_um_aux_features(
     zscore_window: int = 96,
 ) -> pd.DataFrame:
     """Attach BTC/USDT futures auxiliary rows to market bars without lookahead."""
+    return attach_binance_um_aux_frames(
+        market,
+        funding_frame=load_funding_history(funding_csv) if funding_csv else None,
+        premium_frame=load_premium_index_klines(premium_csv) if premium_csv else None,
+        funding_tolerance=funding_tolerance,
+        premium_tolerance=premium_tolerance,
+        zscore_window=zscore_window,
+    )
+
+
+def attach_binance_um_aux_frames(
+    market: pd.DataFrame,
+    *,
+    funding_frame: pd.DataFrame | None = None,
+    premium_frame: pd.DataFrame | None = None,
+    funding_tolerance: str | pd.Timedelta | None = "12h",
+    premium_tolerance: str | pd.Timedelta | None = "2h",
+    zscore_window: int = 96,
+) -> pd.DataFrame:
+    """Attach DB/DataFrame-sourced Binance USD-M aux rows without lookahead."""
     out = market.copy()
     availability_cols: list[str] = []
-    if funding_csv:
+    if funding_frame is not None and not funding_frame.empty:
         out, available = _merge_aux(
             out,
-            load_funding_history(funding_csv),
+            normalise_funding_history_frame(funding_frame),
             value_cols=["funding_rate"],
             tolerance=funding_tolerance,
         )
         out["funding_available"] = available.to_numpy(dtype=float)
         availability_cols.append("funding_available")
-    if premium_csv:
+    if premium_frame is not None and not premium_frame.empty:
         out, available = _merge_aux(
             out,
-            load_premium_index_klines(premium_csv),
+            normalise_premium_index_frame(premium_frame),
             value_cols=["premium_index"],
             tolerance=premium_tolerance,
         )
