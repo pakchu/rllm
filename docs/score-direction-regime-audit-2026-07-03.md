@@ -491,3 +491,85 @@ while exceeding CAGR 50.  2.0x breaks the MDD cap.  This does not yet prove a
 3+ year live-ready strategy, but it does mean the current bottleneck is no longer
 raw CAGR on the 2025-2026 out-of-sample window; it is longer no-leak validation,
 trade-count confidence, and regime persistence.
+
+## Longer fixed-family validation and regime-gate follow-up
+
+Before another expensive Gemma run, I validated the current REX pullback/reclaim
+surface over a longer no-leak horizon.
+
+Monthly walk-forward threshold refit:
+
+- script: `training/backtest_fixed_event_family_walkforward.py`
+- report: `results/rex_pullback_reclaim_q075_h144_monthly_walkforward_2021_2026h1_2026-07-03.json`
+- fixed hypothesis: `rex_htf_pullback_reclaim`, q=0.75, hold=144
+- guard: each monthly threshold is fit only from rows before that fold start.
+
+Result at 0.5x:
+
+| period | CAGR | strict MDD | CAGR/MDD | trades | read |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 2021-2026H1 stitched | 2.4 | 30.6 | 0.08 | 624 | fails long-horizon objective |
+| 2021-2024 history OOS | -1.6 | 30.6 | -0.05 | 496 | main failure zone |
+| 2025 test | 20.1 | 4.8 | 4.15 | 83 | still good |
+| 2026H1 eval | 12.3 | 5.0 | 2.44 | 45 | positive but weaker than fixed-threshold eval |
+
+Fixed-threshold leverage check, with the threshold fit once on 2021-2024 and
+then held fixed for 2025+2026H1:
+
+- report: `results/rex_pullback_reclaim_fixed_threshold_combined_leverage_2026-07-03.json`
+- 2025+2026H1 at 1.25x: CAGR 52.0 / strict MDD 11.7 / ratio 4.44 / 119 trades
+- 2025+2026H1 at 1.5x: CAGR 64.5 / strict MDD 13.9 / ratio 4.64 / 119 trades
+- full 2021-2026H1 still fails because 2022-2024 drawdowns dominate.
+
+Yearly diagnosis at 0.5x confirms the regime problem:
+
+| year | CAGR | strict MDD | ratio | trades | read |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 2021 | 49.5 | 13.5 | 3.68 | 248 | strong |
+| 2022 | -8.7 | 18.2 | -0.48 | 157 | bad |
+| 2023 | -2.7 | 12.9 | -0.21 | 116 | bad/flat |
+| 2024 | 2.3 | 8.0 | 0.29 | 111 | weak |
+| 2025 | 20.4 | 4.8 | 4.22 | 76 | strong |
+| 2026H1 | 24.0 | 4.3 | 5.60 | 43 | strong but short |
+
+Interpretation: the REX pullback/reclaim alpha is not universally persistent.
+It works in 2021 and 2025-2026, but fails in the 2022-2024 regime.  The honest
+breakthrough path is a regime filter, not more LLM fine-tuning on the same weak
+binary labels.
+
+## Single-feature and conjunctive regime gates
+
+I added two cheap no-leak gate sweeps over the fixed REX candidate rows:
+
+- single feature: `training/sweep_single_feature_event_gate.py`
+- two-feature conjunctions: `training/sweep_conjunctive_event_gates.py`
+- reports:
+  - `results/rex_pullback_reclaim_single_feature_gate_sweep_script_2026-07-03.json`
+  - `results/rex_pullback_reclaim_conjunctive_gate_sweep_2026-07-03.json`
+- selection guard: thresholds are train-quantile based; gates are ranked using
+  train+2025 test only; 2026H1 eval is reported after ranking.
+
+Best single-feature gates:
+
+| gate | train 0.5x | test 0.5x | eval 0.5x | eval leverage read |
+| --- | --- | --- | --- | --- |
+| `range_vol >= 0.019835` | CAGR 11.6 / MDD 16.4 / 510 trades | 21.0 / 2.8 / 46 | 17.9 / 4.1 / 35 | 1.5x => CAGR 58.3 / MDD 12.0 |
+| `window_drawdown >= 0.010206` | 8.1 / 16.6 / 428 | 16.5 / 2.1 / 30 | 14.5 / 1.8 / 17 | high ratio, too few eval trades |
+| `rex_144_max_to_cur_pct >= 0.012498` | 8.7 / 13.7 / 424 | 14.8 / 2.1 / 29 | 14.5 / 1.8 / 17 | similar low-sample surface |
+
+Best conjunctive gates:
+
+| gates | train 0.5x | test 0.5x | eval 0.5x | eval leverage read |
+| --- | --- | --- | --- | --- |
+| `rex_2016_cur_to_min_pct >= 0.04867` AND `dxy_momentum >= -0.000254` | CAGR 4.3 / MDD 14.7 / 320 trades | 17.9 / 1.6 / 31 | 25.1 / 2.4 / 20 | 1.0x => CAGR 55.0 / MDD 4.8, but only 20 eval trades |
+| `range_vol >= 0.02396` AND `dxy_momentum >= -0.000254` | 12.1 / 14.4 / 346 | 17.2 / 1.6 / 26 | 20.2 / 4.2 / 23 | 1.25x => CAGR 55.9 / MDD 10.2 |
+| `rex_2016_cur_to_min_pct >= 0.04867` AND `dxy_momentum >= -0.001853` | 6.7 / 12.0 / 370 | 18.3 / 1.9 / 34 | 20.2 / 4.1 / 24 | 1.25x => CAGR 55.3 / MDD 10.1 |
+
+This confirms the useful feature family: high realized range / drawdown /
+distance-from-local-min, with a DXY momentum condition, filters the REX entries
+into much lower drawdown recent regimes.  However, it still does **not** solve
+the full 3+ year objective: train/history CAGR/MDD remains below 1 even when the
+recent 2025-2026 leveraged window looks strong.  The next LLM-relevant direction
+is therefore not analyzer/trader bloat or DPO; it is to let a single compact LLM
+or symbolic teacher express this regime rule as a causal trade thesis and abstain
+when the 2022-2024 style regime is detected, then validate on a new holdout.
