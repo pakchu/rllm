@@ -209,3 +209,17 @@ Interpretation: the LLM route is now connected to real PnL and can reduce the
 profitable trading surface.  The useful finding is structural: use LLM as a
 regime router over a candidate pool, but the pool itself must be filtered to
 families with positive out-of-sample expectancy before routing.
+
+## Rejected pool: orderflow + vol-compression only
+
+I tested a narrower pool suggested by the 2025 all-family router selections:
+`orderflow_*` plus `vol_compression_breakout`.
+
+- selector report:
+  `results/event_candidate_regime_family_selector_flow_vol_scoreboard_1m_2021_2026h1_2026-07-03.json`
+- final stitched selector result: CAGR -14.7%, strict MDD 47.8%, 342 trades
+
+This pool is not worth LLM routing yet.  It contains many high-turnover negative
+expectancy folds and worsens the base trading surface.  Keep the all-family
+label expansion as a learning probe, but do not promote this orderflow/vol pool
+as a candidate trading strategy.
