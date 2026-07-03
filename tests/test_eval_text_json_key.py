@@ -18,12 +18,14 @@ class TestEvalTextJsonKey(unittest.TestCase):
         self.assertEqual(parse_key_json('{"side_pair":"bad"}', key="side_pair"), "NORMAL")
         self.assertEqual(parse_key_json('{"direction_regime":"LOW_SCORE_WINS"}', key="direction_regime"), "LOW_SCORE_WINS")
         self.assertEqual(parse_key_json('{"direction_regime":"BAD"}', key="direction_regime"), "ABSTAIN")
+        self.assertEqual(parse_key_json('{"trust_score_rank":"LOW"}', key="trust_score_rank"), "LOW")
 
     def test_candidate_json_single_key_shape(self):
         self.assertEqual(_candidate_json("side", "LONG"), '{"side": "LONG"}')
         self.assertEqual(_candidate_json("action", "SHORT"), '{"action": "SHORT"}')
         self.assertEqual(_candidate_json("side_pair", "INVERSE"), '{"side_pair": "inverse"}')
         self.assertEqual(_candidate_json("direction_regime", "LOW_SCORE_WINS"), '{"direction_regime": "LOW_SCORE_WINS"}')
+        self.assertEqual(_candidate_json("trust_score_rank", "LOW"), '{"trust_score_rank": "LOW"}')
 
     def test_target_echo_metrics(self):
         with tempfile.TemporaryDirectory() as td:

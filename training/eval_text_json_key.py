@@ -21,8 +21,9 @@ VALID_VALUES = {
     "side_map": {"NORMAL", "INVERSE", "UNRELIABLE"},
     "side_pair": {"NORMAL", "INVERSE"},
     "direction_regime": {"HIGH_SCORE_WINS", "LOW_SCORE_WINS", "ABSTAIN"},
+    "trust_score_rank": {"HIGH", "LOW"},
 }
-DEFAULT_VALUES = {"gate": "NO_TRADE", "side": "LONG", "decision": "ABSTAIN", "action": "NO_TRADE", "side_map": "UNRELIABLE", "side_pair": "NORMAL", "direction_regime": "ABSTAIN"}
+DEFAULT_VALUES = {"gate": "NO_TRADE", "side": "LONG", "decision": "ABSTAIN", "action": "NO_TRADE", "side_map": "UNRELIABLE", "side_pair": "NORMAL", "direction_regime": "ABSTAIN", "trust_score_rank": "HIGH"}
 
 
 def parse_key_json(text: str, *, key: str) -> str:
