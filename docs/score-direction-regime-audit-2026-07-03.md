@@ -119,3 +119,28 @@ not truncated, but class-balanced oversampling over only 5 train LOW examples
 creates a LOW-biased generator.  The immediate next improvement should not be
 more steps; it should be a better prompt/target formulation and more real LOW
 regime labels, or a binary high-vs-not-high router with separate abstain logic.
+
+## Binary compact prompt probe
+
+I then removed the mixed abstain class and built a smaller binary SFT surface:
+
+- builder: `training/build_score_direction_binary_sft.py`
+- target: `{"trust_score_rank": "HIGH"}` vs `{"trust_score_rank": "LOW"}`
+- prompt: qualitative market buckets + pre-fold scoreboard, not the full 114-feature numeric JSON
+- train 2021-2024: 25 binary rows (HIGH 20 / LOW 5)
+- test 2025: 9 binary rows (HIGH 9 / LOW 0)
+- eval 2026H1: 2 binary rows (HIGH 1 / LOW 1)
+
+Gemma 4 E4B LoRA probes:
+
+| adapter | train stream | test 2025 | eval 2026H1 | read |
+| --- | --- | ---: | ---: | --- |
+| `score_direction_binary_gemma4_sft_s16_imbal_2026-07-03` | natural 20/5 class prior | 7/9 = 77.8% | 1/2 = 50.0% | best so far; keeps HIGH prior but misses LOW eval |
+| `score_direction_binary_gemma4_sft_s16_bal80_2026-07-03` | oversampled 40/40 | 5/9 = 55.6% | 1/2 = 50.0% | oversampling adds false LOW calls |
+
+The compact binary prompt is a clear improvement over the three-class numeric
+prompt on the HIGH-heavy 2025 test split, and it trains about 9x faster because
+prompts are ~1.7k chars instead of ~4.5k.  It still does not solve the real
+problem: there are only five real LOW train examples and no LOW examples in the
+2025 test split, so LOW recall cannot be validated without either older labels,
+additional assets/timeframes, or a different final holdout design.
