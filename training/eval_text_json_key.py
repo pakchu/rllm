@@ -235,7 +235,7 @@ def evaluate_text_json_key(
         "score_normalization": score_normalization if prediction_mode == "candidate_logprob" else None,
         "metrics": _metrics(rows, preds, key=key),
         "predictions": [
-            {"index": i, "prediction": pred, "target": parse_key_json(str(row["target"]), key=key)}
+            {"index": i, "fold": row.get("fold"), "prediction": pred, "target": parse_key_json(str(row["target"]), key=key)}
             for i, (row, pred) in enumerate(zip(rows, preds))
         ],
     }

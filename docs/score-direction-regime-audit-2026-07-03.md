@@ -175,3 +175,37 @@ LLM-shaped regime classifier becomes learnable when the candidate pool is broad
 enough to create balanced direction labels.  Next work should transfer this
 regime-router idea back into a profitable candidate subset instead of using the
 all-family selected trades directly.
+
+## Router-to-PnL bridge
+
+I added `training/backtest_score_direction_router.py` to connect the LLM regime
+router back to actual candidate events.  For each fold it takes the selector's
+pre-fold scoreboard and chooses:
+
+- `HIGH`: highest finite pre-fold score among visible options
+- `LOW`: lowest finite pre-fold score among visible options
+
+Then it recomputes that family's fold events from the original market data and
+runs the same strict-MDD simulator.  This uses external route labels/predictions
+only; target-fold diagnostics are not read by the backtester.
+
+All-family 2025 results:
+
+| route source | trades | CAGR | strict MDD | CAGR/MDD | note |
+| --- | ---: | ---: | ---: | ---: | --- |
+| always HIGH baseline | 258 | -32.4% | 35.6% | -0.91 | the raw all-family scoreboard is bad |
+| oracle HIGH/LOW target | 114 | 2.5% | 12.0% | 0.21 | direction label improves but not enough |
+| Gemma S24 prediction | 112 | 4.7% | 12.0% | 0.39 | slightly above oracle due one different fold |
+
+All-family 2026H1 eval:
+
+| route source | trades | CAGR | strict MDD | CAGR/MDD |
+| --- | ---: | ---: | ---: | ---: |
+| oracle HIGH/LOW target | 60 | -36.4% | 17.0% | -2.14 |
+| Gemma S24 prediction | 61 | -33.1% | 15.3% | -2.16 |
+
+Interpretation: the LLM route is now connected to real PnL and can reduce the
+2025 damage relative to always-high, but the widened all-family pool is not a
+profitable trading surface.  The useful finding is structural: use LLM as a
+regime router over a candidate pool, but the pool itself must be filtered to
+families with positive out-of-sample expectancy before routing.
