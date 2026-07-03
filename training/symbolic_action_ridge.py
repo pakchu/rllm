@@ -121,14 +121,19 @@ class FeatureSpace:
 
 def target_value(row: dict[str, Any], *, target: str = "utility") -> float:
     audit = row.get("action_audit", {}) if isinstance(row.get("action_audit"), dict) else {}
-    net = float(audit.get("net_return", 0.0) or 0.0)
-    mae = max(0.0, float(audit.get("mae", 0.0) or 0.0))
-    mfe = max(0.0, float(audit.get("mfe", 0.0) or 0.0))
+    # Newer REX ranker rows store the same path quantities under `reward`.
+    # Prefer action_audit for backwards compatibility, then fall back to reward
+    # so symbolic rankability can be tested before another expensive LLM run.
+    reward = row.get("reward", {}) if isinstance(row.get("reward"), dict) else {}
+    source = audit if audit else reward
+    net = float(source.get("net_return", 0.0) or 0.0)
+    mae = max(0.0, float(source.get("mae", 0.0) or 0.0))
+    mfe = max(0.0, float(source.get("mfe", 0.0) or 0.0))
     rr = mfe / max(mae, 1e-6)
     action = row.get("action", {}) if isinstance(row.get("action"), dict) else {}
-    hold = int(action.get("hold_bars", audit.get("hold_bars", 0)) or 0)
-    family = str(action.get("family", audit.get("family", "")))
-    side = str(action.get("side", audit.get("side", ""))).upper()
+    hold = int(action.get("hold_bars", source.get("hold_bars", 0)) or 0)
+    family = str(action.get("family", source.get("family", "")))
+    side = str(action.get("side", source.get("side", ""))).upper()
     long_tail_penalty = 0.0
     if hold >= 432:
         long_tail_penalty += 0.15 * mae
@@ -152,7 +157,7 @@ def target_value(row: dict[str, Any], *, target: str = "utility") -> float:
         asym_penalty = 0.004 if rr < 1.2 else 0.0
         loss_penalty = 0.5 * abs(min(0.0, net))
         return net + 0.25 * mfe - 1.25 * mae - long_tail_penalty - asym_penalty - loss_penalty
-    return float(audit.get("utility", audit.get("rank_utility", 0.0)) or 0.0)
+    return float(source.get("utility", source.get("rank_utility", 0.0)) or 0.0)
 
 
 def fit_ridge(x: np.ndarray, y: np.ndarray, alpha: float) -> np.ndarray:

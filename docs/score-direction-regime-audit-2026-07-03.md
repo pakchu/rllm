@@ -435,3 +435,59 @@ evaluation loop and stronger preference separability.  Prefer a cheaper
 ranker/verifier first: compute symbolic or small-model scores over the same
 pairwise DPO rows, verify that the prompt-visible features contain edge, then
 return to LLM DPO only if the rank target is learnable outside the LLM.
+
+## Cheap rankability and leverage-scaling check
+
+I completed the promised next-direction test before returning to expensive LLM
+training.  `training/symbolic_action_ridge.py` now reads REX ranker rows whose
+future path fields live under `reward`, so prompt-visible symbolic features can
+be tested as a cheap ranker before another Gemma run.
+
+Symbolic ridge setup:
+
+- train: `data/rex_pair_reclaim075_deep085_h144_ranker_train_2021_2024.jsonl`
+- validation/test: `data/rex_pair_reclaim075_deep085_h144_ranker_test_2025.jsonl`
+- holdout/eval: `data/rex_pair_reclaim075_deep085_h144_ranker_eval_2026h1.jsonl`
+- selection: 2025 only; 2026H1 not used for config selection
+- report: `results/rex_pair_reclaim075_deep085_h144_symbolic_ridge_sweep_2026-07-03.json`
+
+Selected symbolic config from 2025:
+
+- target: `net_return`
+- alpha: `0.1`
+- threshold: `-0.01`
+- min_gap: `0.0`
+
+Result at 0.5x leverage:
+
+| route | 2025 test | 2026H1 eval | read |
+| --- | --- | --- | --- |
+| base `reclaim q0.75 h144` | CAGR 20.4 / MDD 4.83 / ratio 4.22 / 76 trades | CAGR 24.0 / MDD 4.28 / ratio 5.60 / 43 trades | best current route |
+| symbolic pair ranker | CAGR 19.9 / MDD 4.92 / ratio 4.04 / 84 trades | CAGR 20.6 / MDD 4.61 / ratio 4.46 / 42 trades | valid but weaker than base |
+
+So the cheap ranker does **not** add edge over the base REX pullback/reclaim
+surface.  This also supports the DPO abort: if a simple symbolic ranker cannot
+beat base on the same prompt-visible data, a slow Gemma DPO run is unlikely to
+be the immediate breakthrough without a better target or more diverse candidate
+book.
+
+Leverage scaling check:
+
+- report: `results/rex_pullback_reclaim_leverage_scaling_check_2026-07-03.json`
+- this is a pure leverage re-run over fixed selected policies, not parameter
+  selection.
+
+| route | lev | 2025 test CAGR/MDD/ratio | 2026H1 eval CAGR/MDD/ratio |
+| --- | ---: | --- | --- |
+| base `reclaim q0.75 h144` | 0.5 | 20.4 / 4.83 / 4.22 | 24.0 / 4.28 / 5.60 |
+| base `reclaim q0.75 h144` | 1.0 | 44.2 / 9.46 / 4.67 | 51.8 / 8.46 / 6.12 |
+| base `reclaim q0.75 h144` | 1.5 | 71.7 / 13.89 / 5.16 | 83.6 / 12.67 / 6.59 |
+| base `reclaim q0.75 h144` | 2.0 | 103.3 / 18.14 / 5.69 | 119.2 / 16.87 / 7.07 |
+| symbolic ranker | 1.5 | 69.2 / 14.12 / 4.90 | 69.0 / 13.37 / 5.16 |
+
+Operational read: if the acceptable risk cap is strict MDD <= 15%, 1.5x is the
+highest tested leverage that keeps both 2025 test and 2026H1 eval under the cap
+while exceeding CAGR 50.  2.0x breaks the MDD cap.  This does not yet prove a
+3+ year live-ready strategy, but it does mean the current bottleneck is no longer
+raw CAGR on the 2025-2026 out-of-sample window; it is longer no-leak validation,
+trade-count confidence, and regime persistence.
