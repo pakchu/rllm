@@ -677,3 +677,33 @@ Interpretation:
   validation is to replay this exact label-first policy across the longer
   2021-2026 span and/or create a new final holdout after freezing this adapter and
   scoring rule.  Do not mine the 2026H1 false positives further.
+
+## Combined 2025-2026H1 frozen-adapter OOS read
+
+After freezing the label-first Gemma adapter and the `sum` logprob scoring rule,
+I concatenated the already-scored 2025 test and 2026H1 eval prediction files.
+This is not a new selection step; it is the combined OOS operating read for the
+same frozen policy.
+
+- report: `results/rex_regime_thesis_range_kimchi_label_gemma4_s32_oos_2025_2026h1_backtest_2026-07-03.json`
+- predicted decisions: TRADE 96 / ABSTAIN 136
+- executed strict trades after cooldown: 58
+
+| leverage | CAGR | strict MDD | CAGR/MDD | trades | p-value approx |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.5 | 19.7 | 3.60 | 5.46 | 58 | 0.000148 |
+| 1.0 | 42.6 | 7.15 | 5.95 | 58 | 0.000163 |
+| 1.25 | 55.4 | 8.91 | 6.22 | 58 | 0.000171 |
+| 1.5 | 69.2 | 10.65 | 6.49 | 58 | 0.000179 |
+| 2.0 | 99.9 | 14.10 | 7.09 | 58 | 0.000197 |
+
+Operational read: for the recent 18-month OOS window, the frozen compact LLM
+policy clears the leverage-adjusted target with strict MDD below 15 even at 2.0x.
+The most conservative target-clearing setting is 1.25x.  This is meaningfully
+better than the previous binary TAKE/SKIP and DPO attempts because the LLM stage
+is finally aligned with its useful role: a compact regime gate over a fixed weak
+alpha, not numeric return prediction.
+
+Still unsolved: this does not retroactively fix 2022-2024.  The next required
+proof is a walk-forward or new-holdout validation where the label-first adapter
+or its distilled rule is frozen before the scored period.
