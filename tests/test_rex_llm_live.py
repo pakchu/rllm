@@ -70,8 +70,9 @@ class TestRexLlmLive(unittest.TestCase):
         self.assertEqual(decision.signal, "SHORT")
         self.assertGreater(decision.current_atr, 0.0)
 
-    def test_gate_blocks_when_core_external_quality_missing(self):
+    def test_gate_blocks_when_core_external_quality_missing_on_weekday(self):
         enriched = _enriched()
+        enriched.loc[len(enriched) - 1, "date"] = pd.Timestamp("2026-01-02 12:00:00")  # Friday before FX close
         enriched.loc[len(enriched) - 1, "kimchi_available"] = 0.0
         record = build_rex_live_policy_record(
             enriched,
@@ -80,6 +81,19 @@ class TestRexLlmLive(unittest.TestCase):
         )
         self.assertEqual(record["prediction"], "ABSTAIN")
         self.assertIn("missing_quality", record["reason"])
+
+    def test_weekend_core_external_missing_matches_historical_neutral_fill(self):
+        enriched = _enriched()
+        enriched.loc[len(enriched) - 1, "date"] = pd.Timestamp("2026-01-03 12:00:00")  # Saturday FX closed
+        for col in ["dxy_available", "kimchi_available", "usdkrw_available", "external_any_available"]:
+            enriched.loc[len(enriched) - 1, col] = 0.0
+        record = build_rex_live_policy_record(
+            enriched,
+            _base_features(),
+            policy_cfg=RexLivePolicyConfig(min_positive_strengths=5),
+        )
+        self.assertEqual(record["prediction"], "TRADE")
+        self.assertNotIn("missing_quality", record["reason"])
 
     def test_execution_config_still_blocks_live_candidate_without_bear_regime(self):
         record = build_rex_live_policy_record(

@@ -75,6 +75,7 @@ class RexLivePolicyConfig:
         FrozenGate("kimchi_premium_change", "<=", 0.0),
     )
     require_core_external: bool = True
+    allow_missing_core_external_on_weekend: bool = True
     require_binance_aux: bool = False
 
 
@@ -114,9 +115,28 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
     return out if np.isfinite(out) else default
 
 
-def _quality_ok(data_quality: dict[str, Any], cfg: RexLivePolicyConfig) -> tuple[bool, list[str]]:
+def _is_weekend_or_fx_closed(date_value: Any) -> bool:
+    """Return True when historical train/eval would normally have stale/missing FX.
+
+    FX closes around Friday 22:00 UTC and reopens around Sunday 22:00 UTC.
+    Historical datasets used a short as-of tolerance and represented these rows
+    as availability=0 with neutral numeric external features, not as hard blocks.
+    """
+
+    ts = pd.Timestamp(date_value)
+    if ts.tzinfo is None:
+        ts = ts.tz_localize("UTC")
+    else:
+        ts = ts.tz_convert("UTC")
+    dow = int(ts.dayofweek)
+    hour = int(ts.hour)
+    return dow == 5 or (dow == 6 and hour < 22) or (dow == 4 and hour >= 22)
+
+
+def _quality_ok(data_quality: dict[str, Any], cfg: RexLivePolicyConfig, *, date_value: Any) -> tuple[bool, list[str]]:
     missing: list[str] = []
-    if cfg.require_core_external:
+    weekend_fx_closed = _is_weekend_or_fx_closed(date_value)
+    if cfg.require_core_external and not (cfg.allow_missing_core_external_on_weekend and weekend_fx_closed):
         for key in ("dxy_available", "kimchi_available", "usdkrw_available"):
             if _safe_float(data_quality.get(key)) < 1.0:
                 missing.append(key)
@@ -167,7 +187,7 @@ def build_rex_live_policy_record(
         }
     )
     data_quality = dict(snapshot["data_quality"])
-    quality_ok, missing_quality = _quality_ok(data_quality, policy_cfg)
+    quality_ok, missing_quality = _quality_ok(data_quality, policy_cfg, date_value=snapshot["date"])
     gate_results = [
         {
             "feature": gate.feature,
@@ -274,6 +294,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-positive-strengths", type=int, default=RexLivePolicyConfig.min_positive_strengths)
     parser.add_argument("--lookback-minutes", type=int, default=LiveDbFeatureConfig.lookback_minutes)
     parser.add_argument("--require-binance-aux", action="store_true", default=False)
+    parser.add_argument("--strict-core-external", action="store_true", default=False, help="Block missing DXY/kimchi/USDKRW even during FX weekend closures")
+    parser.add_argument("--allow-missing-core-external", action="store_true", default=False, help="Always allow missing DXY/kimchi/USDKRW like historical neutral-fill evaluation")
     parser.add_argument("--gate", action="append", type=_parse_gate, default=None, help="Override frozen gate, e.g. range_vol>=0.02")
     parser.add_argument("--manual-regime", choices=["UNKNOWN", "BEAR", "BULL", "SIDEWAYS"], help="Override config manual regime")
     parser.add_argument("--allow-live-orders", action="store_true", default=False, help="Set allow_live_orders=true; still needs --live")
@@ -300,6 +322,8 @@ async def _amain(args: argparse.Namespace) -> None:
         strength_quantile=args.strength_quantile,
         min_positive_strengths=args.min_positive_strengths,
         gates=tuple(args.gate) if args.gate else RexLivePolicyConfig.gates,
+        require_core_external=not bool(args.allow_missing_core_external),
+        allow_missing_core_external_on_weekend=not bool(args.strict_core_external),
         require_binance_aux=bool(args.require_binance_aux),
     )
     live_db_cfg = LiveDbFeatureConfig(lookback_minutes=int(args.lookback_minutes))
