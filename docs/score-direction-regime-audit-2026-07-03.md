@@ -223,3 +223,56 @@ This pool is not worth LLM routing yet.  It contains many high-turnover negative
 expectancy folds and worsens the base trading surface.  Keep the all-family
 label expansion as a learning probe, but do not promote this orderflow/vol pool
 as a candidate trading strategy.
+
+## Positive family sweep after all-family router failure
+
+The all-family LLM router proved the label format is learnable, but its trade
+surface was negative expectancy.  I therefore changed the search order: first
+find a no-leak positive candidate surface, then put the LLM on top.
+
+I selected the first whitelist from train/test diagnostics only; 2026H1 eval was
+not used to decide the pool.  A fold-safe selector over that whitelist still did
+not solve the objective:
+
+- report: `results/event_candidate_regime_family_selector_positive_probe_scoreboard_1m_2021_2026h1_2026-07-03.json`
+- stitched 2021-2026 result: CAGR -5.0%, strict MDD 27.1%, 114 trades
+- read: the family pool has useful components, but the monthly nearest-regime
+  selector is still too noisy and often chooses the wrong family.
+
+I then ran a simpler fixed-family no-leak probe with train=2021-2024,
+test=2025, eval=2026H1:
+
+- report: `results/event_candidate_pool_probe_positive_families_train2021_test2025_eval2026h1_2026-07-03.json`
+- selected by train/test: `rex_htf_deep_pullback_resume`, q=0.80, hold=288
+- test 2025: CAGR 15.2%, strict MDD 7.9%, ratio 1.91, 27 trades
+- eval 2026H1: CAGR 13.7%, strict MDD 5.3%, ratio 2.57, 18 trades
+
+This is positive but under-traded and below target CAGR, so I added a reusable
+no-leak parameter sweep script:
+
+- script: `training/sweep_event_family_params.py`
+- test helper: `tests/test_sweep_event_family_params.py`
+- report: `results/event_family_param_sweep_train2021_test2025_eval2026h1_script_2026-07-03.json`
+- leakage guard: thresholds fit on train only; family/hold/quantile ranked on
+  train+test only; eval is emitted after selection and not used for ranking.
+
+Best train/test-selected individual candidates from the sweep:
+
+| candidate | train | test 2025 | eval 2026H1 | read |
+| --- | --- | --- | --- | --- |
+| `rex_htf_deep_pullback_resume`, hold 216, q 0.85 | CAGR 13.6 / MDD 12.4 / 277 trades | CAGR 14.1 / MDD 1.8 / 20 trades | CAGR 26.9 / MDD 5.5 / 13 trades | high ratio but too few eval trades |
+| `rex_htf_pullback_reclaim`, hold 144, q 0.75 | CAGR 8.1 / MDD 23.2 / 632 trades | CAGR 20.4 / MDD 4.8 / 76 trades | CAGR 24.0 / MDD 4.3 / 43 trades | most useful current candidate; statistically still weak |
+| `rex_htf_deep_pullback_resume`, hold 144, q 0.85 | CAGR 11.2 / MDD 12.8 / 336 trades | CAGR 9.3 / MDD 2.2 / 22 trades | CAGR 26.3 / MDD 5.2 / 17 trades | strong ratio, low eval sample |
+
+Same-hold prefix ensemble was also checked for hold=144.  Test-only selection
+picked prefix size 1, i.e. no ensemble beats the single `rex_htf_pullback_reclaim`
+q=0.75 surface.  Adding more same-hold signals increases test/eval trade count
+but dilutes edge and worsens eval ratio.
+
+Current conclusion: the first credible alpha surface is higher-timeframe REX
+pullback/reclaim.  It meets the ratio target on the short final eval window but
+not the CAGR/statistical-confidence target.  The next LLM-shaped step should not
+be another broad family selector; it should train a compact event-level LLM
+judge over this REX pullback surface to decide when to skip, size down, or flip
+based on pre-entry textual regime features.  The LLM should be asked for a
+reasoned trade thesis over price-action state, not raw numeric prediction.
