@@ -33,14 +33,18 @@ class DummyExecutor:
 
 
 class DummyClient:
-    def __init__(self, position=None):
+    def __init__(self, position=None, open_orders=None):
         self.position = position or {"symbol": "BTCUSDT", "side": "NONE", "quantity": 0.0}
+        self.open_orders = open_orders or []
 
     async def sync_time(self):
         return 0
 
     async def get_position(self, symbol):
         return self.position
+
+    async def get_open_orders(self, symbol):
+        return self.open_orders
 
     async def aclose(self):
         return None
@@ -113,6 +117,20 @@ class WaveExecutionTests(unittest.IsolatedAsyncioTestCase):
         result = await bridge.execute_decision(ExecutionDecision("SHORT", 0.8, 100.0, 2.0, "sig-existing"))
         self.assertEqual(result["action"], "BLOCKED")
         self.assertIn("existing position", result["gate_reason"])
+        self.assertEqual(executor.calls, [])
+
+
+    async def test_live_mode_blocks_existing_open_orders_by_default(self):
+        executor = DummyExecutor()
+        bridge = WaveExecutionBridge(
+            config=WaveExecutionConfig(dry_run=False, allow_live_orders=True, manual_regime="BEAR"),
+            client=DummyClient(open_orders=[{"orderId": 1}]),
+            executor=executor,
+        )
+        result = await bridge.execute_decision(ExecutionDecision("SHORT", 0.8, 100.0, 2.0, "sig-open-order"))
+        self.assertEqual(result["action"], "BLOCKED")
+        self.assertIn("open orders", result["gate_reason"])
+        self.assertEqual(result["open_orders_count"], 1)
         self.assertEqual(executor.calls, [])
 
     def test_policy_record_trade_maps_to_candidate_side(self):

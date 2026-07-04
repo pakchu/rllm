@@ -95,6 +95,20 @@ class TestRexLlmLive(unittest.TestCase):
         self.assertEqual(record["prediction"], "TRADE")
         self.assertNotIn("missing_quality", record["reason"])
 
+
+    def test_policy_record_age_uses_scorer_asof(self):
+        enriched = _enriched()
+        enriched.loc[len(enriched) - 1, "date"] = pd.Timestamp("2026-01-01 09:55:00")
+        record = build_rex_live_policy_record(
+            enriched,
+            _base_features(),
+            policy_cfg=RexLivePolicyConfig(min_positive_strengths=5),
+            scorer_asof=pd.Timestamp("2026-01-01 10:10:00", tz="UTC"),
+        )
+        self.assertEqual(record["age_sec"], 900.0)
+        decision = decision_from_policy_record(record)
+        self.assertEqual(decision.age_sec, 900.0)
+
     def test_execution_config_still_blocks_live_candidate_without_bear_regime(self):
         record = build_rex_live_policy_record(
             _enriched(),

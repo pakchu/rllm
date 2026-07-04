@@ -86,6 +86,7 @@ class WaveExecutionConfig:
     allowed_signals: tuple[str, ...] = ("LONG", "SHORT")
     max_probability_age_sec: int = 600
     require_flat_position: bool = True
+    require_no_open_orders: bool = True
     # Values consumed by wave_trading.TradingExecutor for position tracking if
     # caller chooses to use its trailing/max-holding helpers.
     atr_period: int = 15
@@ -111,6 +112,7 @@ class WaveExecutionConfig:
             allowed_signals=_split_allowed_signals(os.environ.get("RLLM_ALLOWED_SIGNALS", "LONG,SHORT")),
             max_probability_age_sec=int(os.environ.get("RLLM_MAX_PROBABILITY_AGE_SEC", "600")),
             require_flat_position=_env_bool("RLLM_REQUIRE_FLAT_POSITION", True),
+            require_no_open_orders=_env_bool("RLLM_REQUIRE_NO_OPEN_ORDERS", True),
             atr_period=int(os.environ.get("RLLM_EXECUTION_ATR_PERIOD", "15")),
             pt_mult=float(os.environ.get("RLLM_EXECUTION_PT_MULT", "3.75")),
             max_holding_bars=int(os.environ.get("RLLM_EXECUTION_MAX_HOLDING_BARS", "144")),
@@ -393,10 +395,11 @@ class WaveExecutionBridge:
                 "config": _safe_config_dict(self.config),
             }
 
-        if self.config.require_flat_position:
-            sync_time = getattr(self.client, "sync_time", None)
+        sync_time = getattr(self.client, "sync_time", None)
+        if self.config.require_flat_position or self.config.require_no_open_orders:
             if sync_time is not None:
                 await sync_time()
+        if self.config.require_flat_position:
             get_position = getattr(self.client, "get_position", None)
             if get_position is None:
                 return {
@@ -413,6 +416,26 @@ class WaveExecutionBridge:
                     "action": "BLOCKED",
                     "gate_reason": "existing position present; require_flat_position=true",
                     "position": position,
+                    "decision": asdict(decision),
+                    "config": _safe_config_dict(self.config),
+                }
+        if self.config.require_no_open_orders:
+            get_open_orders = getattr(self.client, "get_open_orders", None)
+            if get_open_orders is None:
+                return {
+                    "dry_run": False,
+                    "action": "BLOCKED",
+                    "gate_reason": "require_no_open_orders=true but client has no get_open_orders",
+                    "decision": asdict(decision),
+                    "config": _safe_config_dict(self.config),
+                }
+            open_orders = await get_open_orders(self.config.symbol)
+            if open_orders:
+                return {
+                    "dry_run": False,
+                    "action": "BLOCKED",
+                    "gate_reason": "open orders present; require_no_open_orders=true",
+                    "open_orders_count": len(open_orders),
                     "decision": asdict(decision),
                     "config": _safe_config_dict(self.config),
                 }

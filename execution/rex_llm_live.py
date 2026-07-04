@@ -153,6 +153,7 @@ def build_rex_live_policy_record(
     *,
     policy_cfg: RexLivePolicyConfig = RexLivePolicyConfig(),
     execution_cfg: WaveExecutionConfig | None = None,
+    scorer_asof: str | pd.Timestamp | None = None,
 ) -> dict[str, Any]:
     """Build one leak-safe live policy record from completed feature rows."""
 
@@ -220,6 +221,20 @@ def build_rex_live_policy_record(
         reasons.append("rex_candidate_and_frozen_gate_pass")
 
     date = str(snapshot["date"])
+    if scorer_asof is None:
+        age_sec = 0.0
+    else:
+        snap_ts = pd.Timestamp(snapshot["date"])
+        asof_ts = pd.Timestamp(scorer_asof)
+        if snap_ts.tzinfo is None:
+            snap_ts = snap_ts.tz_localize("UTC")
+        else:
+            snap_ts = snap_ts.tz_convert("UTC")
+        if asof_ts.tzinfo is None:
+            asof_ts = asof_ts.tz_localize("UTC")
+        else:
+            asof_ts = asof_ts.tz_convert("UTC")
+        age_sec = max(0.0, float((asof_ts - snap_ts).total_seconds()))
     return {
         "date": date,
         "prediction": prediction,
@@ -239,6 +254,7 @@ def build_rex_live_policy_record(
         "current_close": close,
         "current_atr": current_atr,
         "probability": margin_prob,
+        "age_sec": age_sec,
         "signal_id": f"{policy_cfg.family}:{date}",
         "reason": ";".join(reasons),
         "policy_config": {
@@ -266,7 +282,7 @@ async def run_rex_live_once(
     engine = sqlalchemy_engine_from_env(env_path)
     frames = query_live_source_frames(engine, asof=asof_ts, cfg=live_db_cfg)
     enriched, features = build_live_feature_frame_from_frames(cfg=live_db_cfg, **frames)
-    record = build_rex_live_policy_record(enriched, features, policy_cfg=policy_cfg, execution_cfg=execution_cfg)
+    record = build_rex_live_policy_record(enriched, features, policy_cfg=policy_cfg, execution_cfg=execution_cfg, scorer_asof=asof_ts)
     decision = decision_from_policy_record(record)
     bridge = WaveExecutionBridge.from_env(config=execution_cfg)
     try:
