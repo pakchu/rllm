@@ -85,6 +85,17 @@ class RexLiveResult:
     execution_result: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class RexLiveLoopConfig:
+    """Runtime controls for repeated live scoring/execution."""
+
+    state_file: Path = Path(".omx/state/rex_llm_live_loop_state.json")
+    close_delay_sec: float = 15.0
+    run_immediately: bool = True
+    max_iterations: int | None = None
+    json_log: bool = False
+
+
 def _current_atr(enriched: pd.DataFrame, period: int = 15) -> float:
     if enriched.empty:
         return 0.0
@@ -274,6 +285,32 @@ async def run_rex_live_once(
 ) -> RexLiveResult:
     """Query DB, score the latest completed bar, and execute/dry-run once."""
 
+    record = await score_rex_live_once(
+        execution_cfg=execution_cfg,
+        policy_cfg=policy_cfg,
+        live_db_cfg=live_db_cfg,
+        asof=asof,
+        env_path=env_path,
+    )
+    decision = decision_from_policy_record(record)
+    bridge = WaveExecutionBridge.from_env(config=execution_cfg)
+    try:
+        execution_result = await bridge.execute_decision(decision)
+    finally:
+        await bridge.aclose()
+    return RexLiveResult(policy_record=record, execution_result=execution_result)
+
+
+async def score_rex_live_once(
+    *,
+    execution_cfg: WaveExecutionConfig,
+    policy_cfg: RexLivePolicyConfig = RexLivePolicyConfig(),
+    live_db_cfg: LiveDbFeatureConfig = LiveDbFeatureConfig(),
+    asof: str | pd.Timestamp | None = None,
+    env_path: str | Path = ".env",
+) -> dict[str, Any]:
+    """Query DB and score the latest completed bar without placing orders."""
+
     asof_ts = pd.Timestamp.utcnow() if asof is None else pd.Timestamp(asof)
     if asof_ts.tzinfo is None:
         asof_ts = asof_ts.tz_localize("UTC")
@@ -282,14 +319,172 @@ async def run_rex_live_once(
     engine = sqlalchemy_engine_from_env(env_path)
     frames = query_live_source_frames(engine, asof=asof_ts, cfg=live_db_cfg)
     enriched, features = build_live_feature_frame_from_frames(cfg=live_db_cfg, **frames)
-    record = build_rex_live_policy_record(enriched, features, policy_cfg=policy_cfg, execution_cfg=execution_cfg, scorer_asof=asof_ts)
-    decision = decision_from_policy_record(record)
-    bridge = WaveExecutionBridge.from_env(config=execution_cfg)
+    return build_rex_live_policy_record(
+        enriched,
+        features,
+        policy_cfg=policy_cfg,
+        execution_cfg=execution_cfg,
+        scorer_asof=asof_ts,
+    )
+
+
+def _load_loop_state(path: str | Path) -> dict[str, Any]:
+    state_path = Path(path)
+    if not state_path.exists():
+        return {}
     try:
-        execution_result = await bridge.execute_decision(decision)
-    finally:
-        await bridge.aclose()
-    return RexLiveResult(policy_record=record, execution_result=execution_result)
+        loaded = json.loads(state_path.read_text())
+    except json.JSONDecodeError:
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def _write_loop_state(path: str | Path, state: dict[str, Any]) -> None:
+    state_path = Path(path)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True, default=str) + "\n")
+
+
+def _seconds_until_next_interval(
+    now: pd.Timestamp,
+    *,
+    interval_minutes: int,
+    close_delay_sec: float,
+) -> float:
+    """Seconds until the next completed-candle decision time.
+
+    For a 5-minute interval and 15s close delay, decision times are
+    00:00:15, 00:05:15, 00:10:15, ... UTC.  If called exactly on or after one
+    decision time, this returns the following interval rather than 0 so a loop
+    never spins.
+    """
+
+    if interval_minutes <= 0:
+        raise ValueError("interval_minutes must be positive")
+    if close_delay_sec < 0:
+        raise ValueError("close_delay_sec must be non-negative")
+    ts = pd.Timestamp(now)
+    if ts.tzinfo is None:
+        ts = ts.tz_localize("UTC")
+    else:
+        ts = ts.tz_convert("UTC")
+    interval_sec = int(interval_minutes) * 60
+    current_sec = ts.hour * 3600 + ts.minute * 60 + ts.second + ts.microsecond / 1_000_000
+    shifted = current_sec - float(close_delay_sec)
+    intervals_elapsed = int(np.floor(shifted / interval_sec)) + 1
+    next_sec = intervals_elapsed * interval_sec + float(close_delay_sec)
+    wait = next_sec - current_sec
+    if wait <= 0:
+        wait += interval_sec
+    return float(wait)
+
+
+def _emit_loop_status(message: str, *, json_log: bool = False, payload: dict[str, Any] | None = None) -> None:
+    """Emit loop progress as either append-only JSON or a single updating line."""
+
+    if json_log:
+        print(json.dumps(payload or {"event": message}, ensure_ascii=False, sort_keys=True, default=str), flush=True)
+        return
+    # Clear the previous line after carriage return.  Keep it short enough for
+    # tmux/terminal status monitoring while avoiding append-only log spam.
+    print("\r" + message[:240].ljust(240), end="", flush=True)
+
+
+def _result_status(result: RexLiveResult) -> str:
+    record = result.policy_record
+    exec_result = result.execution_result
+    signal_id = str(record.get("signal_id", ""))
+    return (
+        f"[rex-live] {pd.Timestamp.utcnow().isoformat()} "
+        f"date={record.get('date')} pred={record.get('prediction')} side={record.get('candidate_side')} "
+        f"exec={exec_result.get('action')} gate={exec_result.get('gate_reason', exec_result.get('reason', ''))} "
+        f"signal={signal_id}"
+    )
+
+
+async def run_rex_live_loop(
+    *,
+    execution_cfg: WaveExecutionConfig,
+    policy_cfg: RexLivePolicyConfig = RexLivePolicyConfig(),
+    live_db_cfg: LiveDbFeatureConfig = LiveDbFeatureConfig(),
+    env_path: str | Path = ".env",
+    loop_cfg: RexLiveLoopConfig = RexLiveLoopConfig(),
+) -> None:
+    """Continuously execute one REX live decision per completed candle.
+
+    The loop stores the latest processed ``signal_id`` in ``loop_cfg.state_file``
+    and skips repeats.  This protects restarts near a candle boundary from
+    re-submitting the same completed-bar decision.
+    """
+
+    iterations = 0
+    first = True
+    while True:
+        if first and loop_cfg.run_immediately:
+            first = False
+        else:
+            first = False
+            wait_sec = _seconds_until_next_interval(
+                pd.Timestamp.utcnow(),
+                interval_minutes=execution_cfg.interval_minutes,
+                close_delay_sec=loop_cfg.close_delay_sec,
+            )
+            _emit_loop_status(
+                f"[rex-live] waiting {wait_sec:.1f}s for next {execution_cfg.interval_minutes}m close",
+                json_log=loop_cfg.json_log,
+                payload={"event": "sleep", "seconds": wait_sec},
+            )
+            await asyncio.sleep(wait_sec)
+
+        asof_ts = pd.Timestamp.utcnow()
+        record = await score_rex_live_once(
+            execution_cfg=execution_cfg,
+            policy_cfg=policy_cfg,
+            live_db_cfg=live_db_cfg,
+            asof=asof_ts,
+            env_path=env_path,
+        )
+        signal_id = str(record.get("signal_id", ""))
+        state = _load_loop_state(loop_cfg.state_file)
+        if signal_id and state.get("last_signal_id") == signal_id:
+            _emit_loop_status(
+                f"[rex-live] duplicate skipped asof={asof_ts} signal={signal_id}",
+                json_log=loop_cfg.json_log,
+                payload={
+                    "event": "duplicate_signal_skipped",
+                    "signal_id": signal_id,
+                    "asof": str(asof_ts),
+                },
+            )
+        else:
+            decision = decision_from_policy_record(record)
+            bridge = WaveExecutionBridge.from_env(config=execution_cfg)
+            try:
+                execution_result = await bridge.execute_decision(decision)
+            finally:
+                await bridge.aclose()
+            result = RexLiveResult(policy_record=record, execution_result=execution_result)
+            _write_loop_state(
+                loop_cfg.state_file,
+                {
+                    "last_signal_id": signal_id,
+                    "last_policy_date": record.get("date"),
+                    "last_prediction": record.get("prediction"),
+                    "last_execution_action": result.execution_result.get("action"),
+                    "updated_at": str(pd.Timestamp.utcnow()),
+                },
+            )
+            _emit_loop_status(
+                _result_status(result),
+                json_log=loop_cfg.json_log,
+                payload=asdict(result),
+            )
+
+        iterations += 1
+        if loop_cfg.max_iterations is not None and iterations >= loop_cfg.max_iterations:
+            if not loop_cfg.json_log:
+                print()
+            return
 
 
 def _parse_gate(raw: str) -> FrozenGate:
@@ -315,6 +510,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gate", action="append", type=_parse_gate, default=None, help="Override frozen gate, e.g. range_vol>=0.02")
     parser.add_argument("--manual-regime", choices=["UNKNOWN", "BEAR", "BULL", "SIDEWAYS"], help="Override config manual regime")
     parser.add_argument("--allow-live-orders", action="store_true", default=False, help="Set allow_live_orders=true; still needs --live")
+    parser.add_argument("--loop", action="store_true", default=False, help="Keep running and evaluate once per completed interval")
+    parser.add_argument("--loop-state-file", default=".omx/state/rex_llm_live_loop_state.json", help="State file used to skip already processed signal_id values")
+    parser.add_argument("--close-delay-sec", type=float, default=15.0, help="Seconds after each interval boundary before evaluating the closed candle")
+    parser.add_argument("--no-run-immediately", action="store_true", default=False, help="In --loop mode, wait for the next scheduled boundary before first evaluation")
+    parser.add_argument("--json-log", action="store_true", default=False, help="In --loop mode, print append-only JSON logs instead of updating one terminal line")
+    parser.add_argument("--max-iterations", type=int, default=None, help=argparse.SUPPRESS)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--dry-run", action="store_true", default=False)
     mode.add_argument("--live", action="store_true", default=False, help="Set dry_run=false; requires explicit allow_live_orders")
@@ -343,6 +544,24 @@ async def _amain(args: argparse.Namespace) -> None:
         require_binance_aux=bool(args.require_binance_aux),
     )
     live_db_cfg = LiveDbFeatureConfig(lookback_minutes=int(args.lookback_minutes))
+    if args.loop:
+        if args.asof:
+            raise SystemExit("--asof cannot be used with --loop because it would keep targeting the same timestamp")
+        loop_cfg = RexLiveLoopConfig(
+            state_file=Path(args.loop_state_file),
+            close_delay_sec=float(args.close_delay_sec),
+            run_immediately=not bool(args.no_run_immediately),
+            max_iterations=args.max_iterations,
+            json_log=bool(args.json_log),
+        )
+        await run_rex_live_loop(
+            execution_cfg=exec_cfg,
+            policy_cfg=policy_cfg,
+            live_db_cfg=live_db_cfg,
+            env_path=args.env,
+            loop_cfg=loop_cfg,
+        )
+        return
     result = await run_rex_live_once(
         execution_cfg=exec_cfg,
         policy_cfg=policy_cfg,

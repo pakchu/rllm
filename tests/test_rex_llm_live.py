@@ -1,9 +1,20 @@
 import unittest
+import asyncio
+import json
+import tempfile
+from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import numpy as np
 import pandas as pd
 
-from execution.rex_llm_live import RexLivePolicyConfig, build_rex_live_policy_record
+from execution.rex_llm_live import (
+    RexLiveLoopConfig,
+    RexLivePolicyConfig,
+    _seconds_until_next_interval,
+    run_rex_live_loop,
+    build_rex_live_policy_record,
+)
 from execution.wave_execution import WaveExecutionConfig, decision_from_policy_record, evaluate_execution_gate
 from preprocessing.market_features import EXTENDED_MARKET_FEATURE_COLUMNS
 
@@ -144,6 +155,45 @@ class TestRexLlmLive(unittest.TestCase):
         gate = evaluate_execution_gate(cfg, decision)
         self.assertFalse(gate.allowed)
         self.assertIn("not in allowed_signals", gate.reason)
+
+    def test_loop_sleep_aligns_to_next_interval_close_delay(self):
+        wait = _seconds_until_next_interval(
+            pd.Timestamp("2026-01-01 00:04:50", tz="UTC"),
+            interval_minutes=5,
+            close_delay_sec=15,
+        )
+        self.assertEqual(wait, 25.0)
+
+        wait_after_boundary = _seconds_until_next_interval(
+            pd.Timestamp("2026-01-01 00:05:16", tz="UTC"),
+            interval_minutes=5,
+            close_delay_sec=15,
+        )
+        self.assertEqual(wait_after_boundary, 299.0)
+
+    def test_loop_skips_duplicate_signal_before_execution(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_file = Path(tmpdir) / "state.json"
+            state_file.write_text(json.dumps({"last_signal_id": "same-signal"}))
+
+            async_score = AsyncMock(return_value={"signal_id": "same-signal", "date": "2026-01-01 00:00:00"})
+            with patch("execution.rex_llm_live.score_rex_live_once", async_score), patch(
+                "execution.rex_llm_live.WaveExecutionBridge.from_env",
+                side_effect=AssertionError("duplicate signal must not execute"),
+            ):
+                asyncio.run(
+                    run_rex_live_loop(
+                        execution_cfg=WaveExecutionConfig(dry_run=True, interval_minutes=5),
+                        policy_cfg=RexLivePolicyConfig(min_positive_strengths=5),
+                        loop_cfg=RexLiveLoopConfig(
+                            state_file=state_file,
+                            run_immediately=True,
+                            max_iterations=1,
+                        ),
+                    )
+                )
+
+            async_score.assert_awaited_once()
 
 
 if __name__ == "__main__":
