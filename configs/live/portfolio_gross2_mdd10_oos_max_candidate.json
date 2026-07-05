@@ -1,0 +1,61 @@
+{
+  "name": "portfolio_gross2_mdd10_oos_max_candidate",
+  "status": "paper_portfolio_candidate",
+  "as_of": "2026-07-06",
+  "objective": "Use flexible simultaneous sleeve leverage with gross weight <= 2.0 while keeping 2025 strict MDD <= 10%; maximize 2024/2025 OOS CAGR/MDD.",
+  "assumption": "Gross sleeve weight is the deployed leverage budget. Metrics are already at the listed gross weight, not pre-leverage unscaled metrics.",
+  "gross_weight": 2.0,
+  "weights": {
+    "pb30_base": 0.5,
+    "nonpb30_taker": 0.75,
+    "oi_low": 0.25,
+    "oi_high_sel": 0.25,
+    "bear_rex_short": 0.25
+  },
+  "metrics": {
+    "train_diagnostic": {
+      "total_return_pct": 51.83416661485938,
+      "cagr_pct": 13.353049294477604,
+      "strict_mdd_pct": 42.205269793525424,
+      "cagr_to_strict_mdd": 0.31638346016511076,
+      "trade_entries_sum": 1893,
+      "bar_sharpe_like": 1.009057210157763
+    },
+    "test2024": {
+      "total_return_pct": 74.60455200189537,
+      "cagr_pct": 74.40524685682051,
+      "strict_mdd_pct": 5.7249876864813976,
+      "cagr_to_strict_mdd": 12.996577622780933,
+      "trade_entries_sum": 324,
+      "bar_sharpe_like": 3.573279727131084
+    },
+    "eval2025": {
+      "total_return_pct": 71.94800500247756,
+      "cagr_pct": 72.01185219080092,
+      "strict_mdd_pct": 5.60935125737223,
+      "cagr_to_strict_mdd": 12.837821859730667,
+      "trade_entries_sum": 241,
+      "bar_sharpe_like": 3.9436260159096164
+    },
+    "ytd2026": {
+      "total_return_pct": 15.069798438341797,
+      "cagr_pct": 39.807441222813544,
+      "strict_mdd_pct": 16.77781226918329,
+      "cagr_to_strict_mdd": 2.372624069464051,
+      "trade_entries_sum": 115,
+      "bar_sharpe_like": 1.0533398260629572
+    }
+  },
+  "comparison": {
+    "robust_2026_candidate": "configs/live/portfolio_bull_bear_oi_rex_capital_efficient_candidate.json",
+    "robust_2026_with_portfolio_selector": "configs/live/portfolio_bull_bear_oi_rex_llm_selector_overlay.json"
+  },
+  "artifacts": {
+    "fine_grid_scan": "results/portfolio_mixer_mdd10_gross2_refine_2026-07-06.json"
+  },
+  "risk_notes": [
+    "This maximizes 2024/2025 under the 2025 MDD<=10 constraint, but 2026 YTD strict MDD is 16.78%; use the robust candidate if 2026 drawdown control is required.",
+    "Train diagnostic MDD remains poor, so this is paper only.",
+    "Revalidate in production backtester before live use."
+  ]
+}

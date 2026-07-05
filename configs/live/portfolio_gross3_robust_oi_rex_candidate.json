@@ -1,0 +1,156 @@
+{
+  "name": "portfolio_gross3_robust_oi_rex_candidate",
+  "status": "paper_portfolio_candidate",
+  "as_of": "2026-07-06",
+  "objective": "Gross 3.0 robust portfolio using independent medium-frequency bullish OI/non-PB30 alpha plus bearish REX sleeve; require 2025 strict MDD < 10 and prefer 2026 diagnostic strict MDD < 10.",
+  "assumption": "Simultaneous sleeve positions allowed; gross sleeve weight is the leverage budget. Metrics are already at gross 3.0, with full-period CAGR including cash/no-trade time, strict intraperiod/in-position MDD, and period-end forced close.",
+  "gross_weight": 3.0,
+  "weights": {
+    "nonpb30_taker": 0.5,
+    "oi_high_sel": 1.0,
+    "bear_rex_short": 1.5
+  },
+  "base_sleeves": [
+    {
+      "name": "nonpb30_taker_returnz_rangevol_htf4hrange_h72",
+      "source": "configs/live/nonpb30_taker_returnz_rangevol_htf4hrange_h72_candidate.json",
+      "side": "LONG",
+      "weight": 0.5
+    },
+    {
+      "name": "oi_divergence_sma24_highfreq_h30_s6_with_selector",
+      "source": "configs/live/oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay.json",
+      "side": "LONG",
+      "weight": 1.0
+    },
+    {
+      "name": "bear_rex_dual_regime_short",
+      "source_predictions": [
+        "results/rex_dual_regime_train_2021_2023_predictions_2026-07-03.jsonl",
+        "results/rex_dual_regime_test_2024_predictions_2026-07-03.jsonl",
+        "results/rex_dual_regime_eval_2025_2026h1_predictions_2026-07-03.jsonl"
+      ],
+      "side": "SHORT",
+      "weight": 1.5
+    }
+  ],
+  "metrics": {
+    "train_diagnostic": {
+      "total_return_pct": 17.13429705706744,
+      "cagr_pct": 4.860925934190052,
+      "strict_mdd_pct": 61.14921582531145,
+      "cagr_to_strict_mdd": 0.07949285806177048,
+      "trade_entries_sum": 1391,
+      "active_bars": 64650,
+      "bar_sharpe_like": 0.6054366714889439
+    },
+    "test2024": {
+      "total_return_pct": 80.42279374414734,
+      "cagr_pct": 80.20474241316677,
+      "strict_mdd_pct": 11.39401877546078,
+      "cagr_to_strict_mdd": 7.039196967614551,
+      "trade_entries_sum": 240,
+      "active_bars": 9782,
+      "bar_sharpe_like": 2.6758540666880553
+    },
+    "eval2025": {
+      "total_return_pct": 119.65135206580366,
+      "cagr_pct": 119.76976572175957,
+      "strict_mdd_pct": 6.684477140567868,
+      "cagr_to_strict_mdd": 17.917596724937674,
+      "trade_entries_sum": 181,
+      "active_bars": 9333,
+      "bar_sharpe_like": 3.8477234857830402
+    },
+    "ytd2026": {
+      "total_return_pct": 19.31307907768316,
+      "cagr_pct": 52.431222182183944,
+      "strict_mdd_pct": 8.470128599382654,
+      "cagr_to_strict_mdd": 6.190132955715146,
+      "trade_entries_sum": 81,
+      "active_bars": 5185,
+      "bar_sharpe_like": 1.1109401646078219
+    }
+  },
+  "comparison": {
+    "gross2_robust": "configs/live/portfolio_bull_bear_oi_rex_capital_efficient_candidate.json",
+    "gross2_oos_max_mdd10": "configs/live/portfolio_gross2_mdd10_oos_max_candidate.json",
+    "gross3_oos_max_but_2026_drawdown_high": "results/portfolio_mixer_gross3_coarse_2026-07-06.json#top[0]"
+  },
+  "artifacts": {
+    "coarse_grid_scan": "results/portfolio_mixer_gross3_coarse_2026-07-06.json"
+  },
+  "risk_notes": [
+    "Portfolio weights/constraints were selected after observing test/eval/2026 metrics; treat all reported metrics as research/discovery diagnostics, not clean OOS validation. See docs/portfolio-contamination-audit-2026-07-06.md.",
+    "Passes 2025 strict MDD < 10 and 2026 YTD diagnostic strict MDD < 10 at gross 3.0, but 2024 strict MDD is 11.39%.",
+    "Train diagnostic remains weak; do not use train CAGR/MDD as acceptance evidence.",
+    "Coarse 0.5-step grid result; production backtester and live bridge timing should be revalidated before actual deployment.",
+    "Bear REX sleeve is a SHORT hedge/alpha sleeve; sizing 1.5 dominates gross exposure and should be monitored for borrow/execution assumptions."
+  ],
+  "slippage_validation_1bp_each_side": {
+    "as_of": "2026-07-06",
+    "fee_each_side": 0.0005,
+    "additional_slippage_each_side": 0.0001,
+    "total_cost_each_side": 0.0006,
+    "artifact": "results/portfolio_mixer_gross3_slip1bp_coarse_2026-07-06.json",
+    "metrics": {
+      "train_diagnostic": {
+        "total_return_pct": -5.760523076394064,
+        "cagr_pct": -1.7649016766166037,
+        "strict_mdd_pct": 64.21745339508249,
+        "cagr_to_strict_mdd": -0.027483208743244135,
+        "trade_entries_sum": 1391,
+        "active_bars": 64650,
+        "bar_sharpe_like": 0.3431442079684311
+      },
+      "test2024": {
+        "total_return_pct": 73.03315488526012,
+        "cagr_pct": 72.8388453495327,
+        "strict_mdd_pct": 12.131107125977515,
+        "cagr_to_strict_mdd": 6.004303201111449,
+        "trade_entries_sum": 240,
+        "active_bars": 9782,
+        "bar_sharpe_like": 2.4934388023836176
+      },
+      "eval2025": {
+        "total_return_pct": 113.69102125464012,
+        "cagr_pct": 113.802193052656,
+        "strict_mdd_pct": 6.777797352851755,
+        "cagr_to_strict_mdd": 16.79043900667431,
+        "trade_entries_sum": 181,
+        "active_bars": 9333,
+        "bar_sharpe_like": 3.715866963596233
+      },
+      "ytd2026": {
+        "total_return_pct": 18.10179590032728,
+        "cagr_pct": 48.76291779504296,
+        "strict_mdd_pct": 8.4975810683654,
+        "cagr_to_strict_mdd": 5.738446906564555,
+        "trade_entries_sum": 81,
+        "active_bars": 5185,
+        "bar_sharpe_like": 1.0515833299564652
+      },
+      "oos_total_2024_2026ytd": {
+        "total_return_pct": 336.68884939512094,
+        "cagr_pct": 83.86772318152109,
+        "strict_mdd_pct": 12.131107125977515,
+        "cagr_to_strict_mdd": 6.913443456609744,
+        "trade_entries_sum": 502,
+        "active_bars": 24300,
+        "bar_sharpe_like": 4.31322001827203
+      },
+      "all_total_2020_2026ytd": {
+        "total_return_pct": 311.53328745367116,
+        "cagr_pct": 27.88267611994113,
+        "strict_mdd_pct": 64.21745339508249,
+        "cagr_to_strict_mdd": 0.434191557681362,
+        "trade_entries_sum": 1893,
+        "active_bars": 88950,
+        "bar_sharpe_like": 2.0189277577146765
+      }
+    },
+    "result": "Still passes 2025 strict MDD < 10 and 2026 YTD diagnostic strict MDD < 10; 2024 strict MDD remains above 10."
+  },
+  "validation_status": "research_discovery_candidate_not_clean_oos",
+  "contamination_audit": "docs/portfolio-contamination-audit-2026-07-06.md"
+}

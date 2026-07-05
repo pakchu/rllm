@@ -1,0 +1,63 @@
+{
+  "name": "oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay",
+  "status": "paper_selector_overlay",
+  "as_of": "2026-07-06",
+  "base_candidate": "configs/live/oi_divergence_sma24_highfreq_h30_s6_candidate.json",
+  "purpose": "Allow/block selector overlay for the fixed OI divergence high-frequency long alpha. The selector must not create entries, exits, sizing, TP, or SL; it only decides whether to allow an already-triggered base signal.",
+  "output_space": ["ALLOW", "BLOCK"],
+  "selector_type": "llm_state_card_with_symbolic_train_only_proxy",
+  "live_prompt_contract": {
+    "instruction": "Decide whether to allow this fixed OI-divergence long signal. Do not create a new trade; only ALLOW or BLOCK based on regime/context risk.",
+    "allowed_outputs": ["ALLOW", "BLOCK"],
+    "hard_rules": [
+      "Do not modify leverage.",
+      "Do not propose a new entry if the base signal is off.",
+      "Do not set TP/SL or holding period.",
+      "Return BLOCK only for context/regime risk; otherwise ALLOW."
+    ]
+  },
+  "symbolic_proxy": {
+    "fit_split": "train < 2024 only",
+    "context_keys": ["short_sma", "bb_location", "oi_ret_4h"],
+    "min_train_context_trades": 24,
+    "block_if_train_mean_ret_bps_lte": -10.0,
+    "block_if_train_win_rate_lte": 0.34,
+    "blocked_contexts": [
+      {
+        "context_id": "short_sma=below|bb_location=lower_extreme|oi_ret_4h=rising",
+        "train_n": 46,
+        "train_mean_ret_bps": -34.10471838753016,
+        "train_win_rate": 0.2826086956521739
+      },
+      {
+        "context_id": "short_sma=below_far|bb_location=lower|oi_ret_4h=surging",
+        "train_n": 27,
+        "train_mean_ret_bps": -11.16614416276689,
+        "train_win_rate": 0.4444444444444444
+      }
+    ]
+  },
+  "metrics": {
+    "baseline_no_selector": {
+      "test2024": {"total_return_pct": 60.8031539032732, "cagr_pct": 60.64670704002219, "strict_mdd_pct": 10.707393201291849, "cagr_to_strict_mdd": 5.664002983723915, "trade_entries": 197},
+      "eval2025": {"total_return_pct": 33.418231352576136, "cagr_pct": 33.44458118599341, "strict_mdd_pct": 5.910355566765424, "cagr_to_strict_mdd": 5.658641144038093, "trade_entries": 124},
+      "ytd2026": {"total_return_pct": -4.274485529999151, "cagr_pct": -9.903420045375688, "strict_mdd_pct": 9.803910916242952, "cagr_to_strict_mdd": -1.0101499421998898, "trade_entries": 45}
+    },
+    "with_selector_proxy": {
+      "test2024": {"total_return_pct": 60.04104199313141, "cagr_pct": 59.88689308542789, "strict_mdd_pct": 10.707393201291849, "cagr_to_strict_mdd": 5.593041364933019, "trade_entries": 190, "blocked_trades": 7},
+      "eval2025": {"total_return_pct": 32.94688389417166, "cagr_pct": 32.97281830437597, "strict_mdd_pct": 5.910355566765412, "cagr_to_strict_mdd": 5.578821431621779, "trade_entries": 118, "blocked_trades": 6},
+      "ytd2026": {"total_return_pct": -0.8885679569381133, "cagr_pct": -2.1081792910802033, "strict_mdd_pct": 6.824630204544269, "cagr_to_strict_mdd": -0.3089074759942956, "trade_entries": 41, "blocked_trades": 4}
+    }
+  },
+  "artifacts": {
+    "selector_eval": "results/oi_llm_selector_eval_2026-07-06.json",
+    "selector_cards_jsonl": "results/oi_llm_selector_cards_2026-07-06.jsonl",
+    "fast_sweep": "results/oi_llm_selector_fast_sweep_2026-07-06.json",
+    "evaluator_script": "training/evaluate_oi_llm_selector.py"
+  },
+  "risk_notes": [
+    "This is not yet a real LLM backtest; it is a symbolic proxy over the same compact state tokens intended for an LLM selector.",
+    "The selector preserves 2024/2025 CAGR/MDD > 5 and trade counts > 100, but 2026 remains slightly negative.",
+    "Live LLM output must be constrained to ALLOW/BLOCK and audited against the symbolic proxy before promotion."
+  ]
+}

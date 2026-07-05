@@ -1,0 +1,110 @@
+{
+  "name": "portfolio_gross3_return_priority_mdd25_ratio5_2026_candidate",
+  "status": "paper_portfolio_candidate",
+  "as_of": "2026-07-06",
+  "objective": "Return-priority gross 3.0 portfolio with strict MDD <25% and CAGR/strict MDD >=5 in 2024, 2025, and 2026YTD, including 1bp slippage each side.",
+  "assumption": "Simultaneous sleeve positions allowed; gross sleeve weight is leverage budget. Metrics include 5bp fee + 1bp slippage per side, full-period CAGR with cash/no-trade time, strict in-position/intrabar MDD, and period-end forced close.",
+  "gross_weight": 3.0,
+  "weights": {
+    "pb30_base": 0.5,
+    "nonpb30_taker": 0.5,
+    "oi_high_sel": 0.5,
+    "bear_rex_short": 1.5
+  },
+  "base_sleeves": [
+    {
+      "name": "bullish_pb30_base",
+      "source": "configs/live/bullish_pb30_addon_returnz_htf1w_candidate.json",
+      "side": "LONG",
+      "weight": 0.5
+    },
+    {
+      "name": "nonpb30_taker_returnz_rangevol_htf4hrange_h72",
+      "source": "configs/live/nonpb30_taker_returnz_rangevol_htf4hrange_h72_candidate.json",
+      "side": "LONG",
+      "weight": 0.5
+    },
+    {
+      "name": "oi_divergence_sma24_highfreq_h30_s6_with_selector",
+      "source": "configs/live/oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay.json",
+      "side": "LONG",
+      "weight": 0.5
+    },
+    {
+      "name": "bear_rex_dual_regime_short",
+      "source": "results/rex_dual_regime_*_predictions_2026-07-03.jsonl",
+      "side": "SHORT",
+      "weight": 1.5
+    }
+  ],
+  "selection_rule": "Maximize OOS total 2024-01-01~2026-06-03 total return among gross<=3.0 candidates satisfying strict MDD <25% for 2024/2025/2026YTD/OOS-total and CAGR/MDD >=5 for 2024/2025/2026YTD.",
+  "metrics": {
+    "train_diagnostic": {
+      "total_return_pct": 84.06762146145981,
+      "cagr_pct": 20.095263564617415,
+      "strict_mdd_pct": 45.37690772605831,
+      "cagr_to_strict_mdd": 0.44285220328218694,
+      "trade_entries_sum": 1580,
+      "active_bars": 89653,
+      "bar_sharpe_like": 1.213230699075766
+    },
+    "test2024": {
+      "total_return_pct": 63.35908031885684,
+      "cagr_pct": 63.19487303237166,
+      "strict_mdd_pct": 9.630181288472272,
+      "cagr_to_strict_mdd": 6.562168575997479,
+      "trade_entries_sum": 260,
+      "active_bars": 13468,
+      "bar_sharpe_like": 2.7822671705265165
+    },
+    "eval2025": {
+      "total_return_pct": 120.01549235358246,
+      "cagr_pct": 120.1343520694146,
+      "strict_mdd_pct": 6.159971764435356,
+      "cagr_to_strict_mdd": 19.502419274551094,
+      "trade_entries_sum": 201,
+      "active_bars": 12138,
+      "bar_sharpe_like": 4.316563308086305
+    },
+    "ytd2026": {
+      "total_return_pct": 25.562658046196063,
+      "cagr_pct": 72.18892512905657,
+      "strict_mdd_pct": 14.273390338734348,
+      "cagr_to_strict_mdd": 5.057587820123871,
+      "trade_entries_sum": 98,
+      "active_bars": 7145,
+      "bar_sharpe_like": 1.394797974852569
+    },
+    "oos_total_2024_2026ytd": {
+      "total_return_pct": 351.29138510433637,
+      "cagr_pct": 86.38361546719145,
+      "strict_mdd_pct": 15.063908960749517,
+      "cagr_to_strict_mdd": 5.734475406899523,
+      "trade_entries_sum": 559,
+      "active_bars": 32751,
+      "bar_sharpe_like": 4.960391498525424
+    },
+    "all_total_2020_2026ytd": {
+      "total_return_pct": 730.6813184220299,
+      "cagr_pct": 44.49067006721366,
+      "strict_mdd_pct": 45.37690772605831,
+      "cagr_to_strict_mdd": 0.9804694126758284,
+      "trade_entries_sum": 2139,
+      "active_bars": 122404,
+      "bar_sharpe_like": 3.111855149021844
+    }
+  },
+  "qualified_candidate_count": 2,
+  "artifacts": {
+    "full_grid_scan": "results/portfolio_mixer_gross3_slip1bp_all_2026-07-06.json"
+  },
+  "risk_notes": [
+    "Portfolio weights/constraints were selected after observing test/eval/2026 metrics; treat all reported metrics as research/discovery diagnostics, not clean OOS validation. See docs/portfolio-contamination-audit-2026-07-06.md.",
+    "Only 2 of 755 coarse-grid candidates satisfy the added 2026 CAGR/MDD >=5 condition.",
+    "The selected candidate adds pb30_base 0.5 versus the earlier robust candidate, improving OOS total return at the cost of higher 2026 MDD.",
+    "Train diagnostic remains weak and is not acceptance evidence.",
+    "Coarse 0.5-step grid; revalidate in production/live bridge before deployment."
+  ],
+  "validation_status": "research_discovery_candidate_not_clean_oos",
+  "contamination_audit": "docs/portfolio-contamination-audit-2026-07-06.md"
+}

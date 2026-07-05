@@ -1,0 +1,108 @@
+{
+  "name": "portfolio_gross6_mdd20_ratio5_return_best_candidate",
+  "status": "paper_portfolio_candidate",
+  "as_of": "2026-07-06",
+  "objective": "Return-priority gross<=6 portfolio with 2024/2025/2026YTD strict MDD <=20 and CAGR/MDD >=5, including 1bp slippage each side.",
+  "assumption": "Simultaneous sleeve positions allowed; gross sleeve weight is leverage budget. Metrics include 5bp fee + 1bp slippage per side, full-period CAGR with cash/no-trade time, strict in-position/intrabar MDD, and period-end forced close.",
+  "gross_weight": 4.949999999999999,
+  "weights": {
+    "nonpb30_taker": 0.825,
+    "oi_low": 0.825,
+    "oi_high_sel": 0.825,
+    "bear_rex_short": 2.475
+  },
+  "base_sleeves": [
+    {
+      "name": "nonpb30_taker_returnz_rangevol_htf4hrange_h72",
+      "source": "configs/live/nonpb30_taker_returnz_rangevol_htf4hrange_h72_candidate.json",
+      "side": "LONG",
+      "weight": 0.825
+    },
+    {
+      "name": "oi_divergence_pullback_range_rsi_h96_s6",
+      "source": "configs/live/oi_divergence_pullback_range_rsi_h96_s6_candidate.json",
+      "side": "LONG",
+      "weight": 0.825
+    },
+    {
+      "name": "oi_divergence_sma24_highfreq_h30_s6_with_selector",
+      "source": "configs/live/oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay.json",
+      "side": "LONG",
+      "weight": 0.825
+    },
+    {
+      "name": "bear_rex_dual_regime_short",
+      "source": "results/rex_dual_regime_*_predictions_2026-07-03.jsonl",
+      "side": "SHORT",
+      "weight": 2.475
+    }
+  ],
+  "selection_rule": "Ranked by OOS total return among scaled-top candidates satisfying period MDD<=20, combined OOS MDD<=20, and 2024/2025/2026 CAGR/MDD>=5.",
+  "metrics": {
+    "train_diagnostic": {
+      "total_return_pct": 22.014395849446778,
+      "cagr_pct": 6.15341561072047,
+      "strict_mdd_pct": 74.08989062555781,
+      "cagr_to_strict_mdd": 0.0830533769015689,
+      "trade_entries_sum": 1704,
+      "active_bars": 79944,
+      "bar_sharpe_like": 0.8013307898959354
+    },
+    "test2024": {
+      "total_return_pct": 129.17002608607748,
+      "cagr_pct": 128.7809114550922,
+      "strict_mdd_pct": 19.554469849369948,
+      "cagr_to_strict_mdd": 6.5857531524559105,
+      "trade_entries_sum": 304,
+      "active_bars": 13476,
+      "bar_sharpe_like": 2.5987758440108673
+    },
+    "eval2025": {
+      "total_return_pct": 256.40964938525883,
+      "cagr_pct": 256.7200343186275,
+      "strict_mdd_pct": 10.523183027882787,
+      "cagr_to_strict_mdd": 24.395663711104177,
+      "trade_entries_sum": 221,
+      "active_bars": 11339,
+      "bar_sharpe_like": 4.064806446462368
+    },
+    "ytd2026": {
+      "total_return_pct": 31.95818075831809,
+      "cagr_pct": 93.87070702541808,
+      "strict_mdd_pct": 17.60883583352706,
+      "cagr_to_strict_mdd": 5.330886602207349,
+      "trade_entries_sum": 98,
+      "active_bars": 5963,
+      "bar_sharpe_like": 1.1070865731111805
+    },
+    "oos_total_2024_2026ytd": {
+      "total_return_pct": 965.5446243891353,
+      "cagr_pct": 165.8096535029853,
+      "strict_mdd_pct": 19.554469849369948,
+      "cagr_to_strict_mdd": 8.47937350284788,
+      "trade_entries_sum": 624,
+      "active_bars": 30850,
+      "bar_sharpe_like": 4.553728021831855
+    },
+    "all_total_2020_2026ytd": {
+      "total_return_pct": 1200.1178359546739,
+      "cagr_pct": 56.192869209402765,
+      "strict_mdd_pct": 74.08989062555781,
+      "cagr_to_strict_mdd": 0.7584417892232473,
+      "trade_entries_sum": 2328,
+      "active_bars": 110794,
+      "bar_sharpe_like": 2.524706709938032
+    }
+  },
+  "artifacts": {
+    "rank_scan": "results/portfolio_mixer_gross6_slip1bp_mdd20_topscale_2026-07-06.json"
+  },
+  "risk_notes": [
+    "Portfolio weights/constraints were selected after observing test/eval/2026 metrics; treat all reported metrics as research/discovery diagnostics, not clean OOS validation. See docs/portfolio-contamination-audit-2026-07-06.md.",
+    "Search is scaled-top gross<=3 candidate scan, not exhaustive full 6x grid; exhaustive naive grid was too slow and should be optimized before final deployment.",
+    "Train diagnostic remains weak and is not acceptance evidence.",
+    "Revalidate in production/live bridge before deployment."
+  ],
+  "validation_status": "research_discovery_candidate_not_clean_oos",
+  "contamination_audit": "docs/portfolio-contamination-audit-2026-07-06.md"
+}

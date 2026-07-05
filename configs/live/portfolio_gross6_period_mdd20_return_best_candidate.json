@@ -1,0 +1,101 @@
+{
+  "name": "portfolio_gross6_period_mdd20_return_best_candidate",
+  "status": "paper_portfolio_candidate",
+  "as_of": "2026-07-06",
+  "objective": "Return-priority portfolio under gross<=6 with 2024/2025/2026YTD strict MDD <=20 each.",
+  "assumption": "Simultaneous sleeve positions allowed; gross sleeve weight is leverage budget. Metrics include 5bp fee + 1bp slippage per side, full-period CAGR with cash/no-trade time, strict in-position/intrabar MDD, and period-end forced close.",
+  "gross_weight": 5.1,
+  "weights": {
+    "pb30_base": 0.85,
+    "oi_high_sel": 1.7,
+    "bear_rex_short": 2.55
+  },
+  "base_sleeves": [
+    {
+      "name": "bullish_pb30_base",
+      "source": "configs/live/bullish_pb30_addon_returnz_htf1w_candidate.json",
+      "side": "LONG",
+      "weight": 0.85
+    },
+    {
+      "name": "oi_divergence_sma24_highfreq_h30_s6_with_selector",
+      "source": "configs/live/oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay.json",
+      "side": "LONG",
+      "weight": 1.7
+    },
+    {
+      "name": "bear_rex_dual_regime_short",
+      "source": "results/rex_dual_regime_*_predictions_2026-07-03.jsonl",
+      "side": "SHORT",
+      "weight": 2.55
+    }
+  ],
+  "selection_rule": "Ranked by OOS total return among scaled-top candidates satisfying period-level MDD<=20.",
+  "metrics": {
+    "train_diagnostic": {
+      "total_return_pct": 49.73084772123069,
+      "cagr_pct": 12.879478110115738,
+      "strict_mdd_pct": 73.45172245864308,
+      "cagr_to_strict_mdd": 0.17534616859893948,
+      "trade_entries_sum": 1338,
+      "active_bars": 78338,
+      "bar_sharpe_like": 0.9937501896821805
+    },
+    "test2024": {
+      "total_return_pct": 162.94348292332984,
+      "cagr_pct": 162.42308547590173,
+      "strict_mdd_pct": 19.99144193607192,
+      "cagr_to_strict_mdd": 8.124630829296546,
+      "trade_entries_sum": 226,
+      "active_bars": 11675,
+      "bar_sharpe_like": 2.5223210362279134
+    },
+    "eval2025": {
+      "total_return_pct": 287.0249208172099,
+      "cagr_pct": 287.3838324360265,
+      "strict_mdd_pct": 13.623797758497425,
+      "cagr_to_strict_mdd": 21.09425268418857,
+      "trade_entries_sum": 166,
+      "active_bars": 10648,
+      "bar_sharpe_like": 3.846598182620567
+    },
+    "ytd2026": {
+      "total_return_pct": 32.54290399748378,
+      "cagr_pct": 95.9278219854568,
+      "strict_mdd_pct": 19.68079448946315,
+      "cagr_to_strict_mdd": 4.874184425675262,
+      "trade_entries_sum": 84,
+      "active_bars": 6502,
+      "bar_sharpe_like": 1.0857706388045505
+    },
+    "oos_total_2024_2026ytd": {
+      "total_return_pct": 1248.83188416658,
+      "cagr_pct": 193.00466967948105,
+      "strict_mdd_pct": 21.187895635789378,
+      "cagr_to_strict_mdd": 9.109194843940454,
+      "trade_entries_sum": 476,
+      "active_bars": 28825,
+      "bar_sharpe_like": 4.420879345586266
+    },
+    "all_total_2020_2026ytd": {
+      "total_return_pct": 1919.617414496814,
+      "cagr_pct": 68.62250473340738,
+      "strict_mdd_pct": 73.45172245864308,
+      "cagr_to_strict_mdd": 0.9342531725113079,
+      "trade_entries_sum": 1814,
+      "active_bars": 107163,
+      "bar_sharpe_like": 2.711406312870928
+    }
+  },
+  "artifacts": {
+    "rank_scan": "results/portfolio_mixer_gross6_slip1bp_mdd20_topscale_2026-07-06.json"
+  },
+  "risk_notes": [
+    "Portfolio weights/constraints were selected after observing test/eval/2026 metrics; treat all reported metrics as research/discovery diagnostics, not clean OOS validation. See docs/portfolio-contamination-audit-2026-07-06.md.",
+    "Search is scaled-top gross<=3 candidate scan, not exhaustive full 6x grid; exhaustive naive grid was too slow and should be optimized before final deployment.",
+    "Train diagnostic remains weak and is not acceptance evidence.",
+    "Revalidate in production/live bridge before deployment."
+  ],
+  "validation_status": "research_discovery_candidate_not_clean_oos",
+  "contamination_audit": "docs/portfolio-contamination-audit-2026-07-06.md"
+}

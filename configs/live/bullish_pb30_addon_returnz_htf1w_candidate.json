@@ -1,0 +1,78 @@
+{
+  "name": "bullish_pb30_addon_returnz_htf1w_candidate",
+  "status": "dry_run_candidate",
+  "created_at": "2026-07-05",
+  "execution": {
+    "mode": "single_capital_sequential",
+    "base_priority_on_same_timestamp": true,
+    "allow_live_orders": false,
+    "reason_live_orders_disabled": "2026 YTD ratio remains weak despite 2024/2025 pass; paper/dry-run first"
+  },
+  "data_contract": {
+    "market_input_family": "5m wavefull/cache features",
+    "required_reference_input": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "warning": "Do not reproduce this candidate from lower-row/hourly cache; pb30 thresholds change materially."
+  },
+  "base_module": {
+    "name": "pb30_funding_activity_flow_htf_18h_1p7x",
+    "side": "long",
+    "leverage": 1.7,
+    "hold_bars_5m": 216,
+    "stride_bars_5m": 12,
+    "entry_delay_bars": 1,
+    "gates": [
+      {"feature": "rex_8640_max_to_cur_pct", "op": ">=", "threshold": 0.19382004699007754, "fit": "train<2024 q0.75"},
+      {"feature": "funding_zscore", "op": "<=", "threshold": 0.0, "fit": "train<2024 q0.75 funding_low"},
+      {"feature": "premium_index_zscore", "op": ">=", "threshold": 0.982120225254185, "fit": "train<2024 q0.80"},
+      {"feature": "funding_zscore", "op": ">=", "threshold": 0.0, "fit": "train<2024 q0.70"},
+      {"feature": "activity_flow_htf", "op": ">=", "threshold": -0.014521571823090329, "fit": "train<2024 q0.50"}
+    ]
+  },
+  "addon_module": {
+    "name": "pb30_activity_returnz_htf1w_lowpos_6h_1x",
+    "side": "long",
+    "leverage": 1.0,
+    "hold_bars_5m": 72,
+    "stride_bars_5m": 6,
+    "entry_delay_bars": 1,
+    "gates": [
+      {"feature": "rex_8640_max_to_cur_pct", "op": ">=", "threshold": 0.16914110380482186, "fit": "train<2024 q0.70"},
+      {"feature": "activity_flow_htf", "op": ">=", "threshold": -0.13969842891406745, "fit": "train<2024 q0.40"},
+      {"feature": "return_zscore_48", "op": "<=", "threshold": -0.9811529136901854, "fit": "train<2024 q0.20"},
+      {"feature": "htf_1w_range_pos", "op": "<=", "threshold": 0.20634652133561793, "fit": "train<2024 q0.20"}
+    ]
+  },
+  "verified_exact_metrics": {
+    "test_2024": {
+      "cagr_pct": 141.78621541886858,
+      "strict_mdd_pct": 12.624798253366798,
+      "cagr_to_strict_mdd": 11.230770787252528,
+      "trade_entries": 47,
+      "base_trades": 19,
+      "addon_trades": 28,
+      "p_value": 0.001798582803904436
+    },
+    "eval_2025": {
+      "cagr_pct": 85.56088502690228,
+      "strict_mdd_pct": 14.055581514389981,
+      "cagr_to_strict_mdd": 6.087324451094805,
+      "trade_entries": 34,
+      "base_trades": 18,
+      "addon_trades": 16,
+      "p_value": 0.0018281895633287526
+    },
+    "ytd_2026": {
+      "cagr_pct": 48.65900521737097,
+      "strict_mdd_pct": 28.20488663539806,
+      "cagr_to_strict_mdd": 1.7251976881304785,
+      "trade_entries": 32,
+      "base_trades": 13,
+      "addon_trades": 19,
+      "p_value": 0.4304965466735138
+    }
+  },
+  "artifacts": {
+    "scan": "results/pb30_live_addon_fast_scan_5m_2026-07-05.json",
+    "exact_verify": "results/pb30_live_addon_top_exact_verify_2026-07-05.json"
+  }
+}

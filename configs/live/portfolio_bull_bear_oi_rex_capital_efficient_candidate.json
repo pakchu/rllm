@@ -1,0 +1,77 @@
+{
+  "name": "portfolio_bull_bear_oi_rex_capital_efficient_candidate",
+  "status": "paper_portfolio_candidate",
+  "as_of": "2026-07-06",
+  "assumption": "Simultaneous sleeve positions allowed; leverage/margin is flexible. Each sleeve is internally non-overlapping, but different sleeves may overlap.",
+  "base_sleeves": [
+    {
+      "name": "nonpb30_taker_returnz_rangevol_htf4hrange_h72",
+      "source": "configs/live/nonpb30_taker_returnz_rangevol_htf4hrange_h72_candidate.json",
+      "side": "LONG",
+      "weight": 0.5
+    },
+    {
+      "name": "oi_divergence_sma24_highfreq_h30_s6_with_selector",
+      "source": "configs/live/oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay.json",
+      "side": "LONG",
+      "weight": 0.5
+    },
+    {
+      "name": "bear_rex_dual_regime_short",
+      "source_predictions": [
+        "results/rex_dual_regime_train_2021_2023_predictions_2026-07-03.jsonl",
+        "results/rex_dual_regime_test_2024_predictions_2026-07-03.jsonl",
+        "results/rex_dual_regime_eval_2025_2026h1_predictions_2026-07-03.jsonl"
+      ],
+      "side": "SHORT",
+      "weight": 1.0
+    }
+  ],
+  "gross_weight": 2.0,
+  "metrics": {
+    "test2024": {
+      "total_return_pct": 43.24768761442501,
+      "cagr_pct": 43.14222657934393,
+      "strict_mdd_pct": 7.794845060621358,
+      "cagr_to_strict_mdd": 5.534712523959378,
+      "trade_entries_sum": 240,
+      "active_bars": 9782,
+      "bar_sharpe_like": 2.749783233010768
+    },
+    "eval2025": {
+      "total_return_pct": 67.84406757902912,
+      "cagr_pct": 67.90361279668335,
+      "strict_mdd_pct": 4.073138002019072,
+      "cagr_to_strict_mdd": 16.671080813619188,
+      "trade_entries_sum": 181,
+      "active_bars": 9333,
+      "bar_sharpe_like": 4.0308441996021465
+    },
+    "ytd2026": {
+      "total_return_pct": 14.660784358368616,
+      "cagr_pct": 38.62403347229504,
+      "strict_mdd_pct": 6.097445152061864,
+      "cagr_to_strict_mdd": 6.334461812950337,
+      "trade_entries_sum": 81,
+      "active_bars": 5185,
+      "bar_sharpe_like": 1.2479312984581146
+    },
+    "train_diagnostic": {
+      "total_return_pct": 20.49059632911423,
+      "cagr_pct": 5.753785951363288,
+      "strict_mdd_pct": 44.69302345581584,
+      "cagr_to_strict_mdd": 0.12874013674755216,
+      "trade_entries_sum": 1391
+    }
+  },
+  "artifacts": {
+    "portfolio_scan": "results/portfolio_mixer_bull_bear_sleeves_fast_2026-07-06.json",
+    "scan_script_ephemeral": "/tmp/portfolio_mixer_coarse.py"
+  },
+  "risk_notes": [
+    "Train-period portfolio MDD is still very weak; this is a paper candidate, not live.",
+    "Bearish REX sleeve prediction coverage starts from its exported candidate rows and may not exactly match the live bridge timing without integration work.",
+    "Portfolio MDD uses weighted summed intrabar adverse moves; revalidate in production backtester before live use.",
+    "A second-stage LLM portfolio selector is promising but must be restricted to sleeve allow/block/allocation bands and shadow-logged first."
+  ]
+}

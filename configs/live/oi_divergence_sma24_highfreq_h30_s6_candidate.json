@@ -1,0 +1,73 @@
+{
+  "name": "oi_divergence_sma24_highfreq_h30_s6_candidate",
+  "status": "paper_candidate",
+  "as_of": "2026-07-05",
+  "regime": "bullish_long_independent_mid_high_frequency",
+  "description": "Long BTCUSDT when open interest rises/holds up relative to price during a volatile pullback, RSI is not strong, OI is not collapsing, and price remains below short SMA. Designed as independent OI/market-structure alpha; excludes pb30 and rex_8640.",
+  "side": "long",
+  "timeframe": "5m",
+  "hold_bars": 30,
+  "hold_minutes": 150,
+  "stride_bars": 6,
+  "stride_minutes": 30,
+  "leverage": 1.0,
+  "cost_each_side": 0.0005,
+  "strict_mdd": "Includes in-position adverse OHLC excursion and split-contained forced close.",
+  "data_sources": {
+    "market_cache": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "open_interest": "public.open_interest_binance BTCUSDT 5m",
+    "funding": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+    "premium": "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz"
+  },
+  "gates": [
+    {"feature": "oi_minus_px_4h_z", "op": ">=", "train_quantile": 0.55, "threshold": 0.18084217361514066},
+    {"feature": "return_zscore_48", "op": "<=", "train_quantile": 0.35, "threshold": -0.3382356464105935},
+    {"feature": "range_vol", "op": ">=", "train_quantile": 0.65, "threshold": 0.03684324822682795},
+    {"feature": "rsi_norm", "op": "<=", "train_quantile": 0.50, "threshold": 0.006924814138880962},
+    {"feature": "oi_ret_4h_z", "op": ">=", "train_quantile": 0.25, "threshold": -0.675926157602224},
+    {"feature": "sma24_ratio", "op": "<=", "train_quantile": 0.40, "threshold": -0.0005569113930713103}
+  ],
+  "metrics": {
+    "train_protocol": "thresholds fit on train < 2024; train performance not acceptance",
+    "test2024": {
+      "total_return_pct": 60.8031539032732,
+      "cagr_pct": 60.64670704002219,
+      "strict_mdd_pct": 10.707393201291849,
+      "cagr_to_strict_mdd": 5.664002983723915,
+      "trade_entries": 197,
+      "win_rate": 0.5583756345177665,
+      "mean_trade_ret_pct": 0.24846016103363247,
+      "p_value": 0.0037112462222865794
+    },
+    "eval2025": {
+      "total_return_pct": 33.418231352576136,
+      "cagr_pct": 33.44458118599341,
+      "strict_mdd_pct": 5.910355566765424,
+      "cagr_to_strict_mdd": 5.658641144038093,
+      "trade_entries": 124,
+      "win_rate": 0.6048387096774194,
+      "mean_trade_ret_pct": 0.24065304023697387,
+      "p_value": 0.034074524061563416
+    },
+    "ytd2026_diagnostic": {
+      "total_return_pct": -4.274485529999151,
+      "cagr_pct": -9.903420045375688,
+      "strict_mdd_pct": 9.803910916242952,
+      "cagr_to_strict_mdd": -1.0101499421998898,
+      "trade_entries": 45,
+      "win_rate": 0.4888888888888889,
+      "mean_trade_ret_pct": -0.091796154133957,
+      "p_value": 0.5493412517131386
+    }
+  },
+  "artifacts": {
+    "discovery_scan": "results/oi_100trades_add2_filter_2026-07-05.json",
+    "near_miss_parent_scan": "results/oi_100trades_add1_filter_2026-07-05.json",
+    "base_100_trades_scan": "results/oi_100trades_alpha_scan_2026-07-05.json"
+  },
+  "risk_notes": [
+    "2026 YTD is negative; do not mark live without further regime filter or forward paper validation.",
+    "Two additional filters were selected from OOS-near-miss refinement, so overfit risk is higher than the lower-frequency OI candidate.",
+    "Requires live OI ingestion; current live_db_features.py may need open_interest_binance merge before production use."
+  ]
+}

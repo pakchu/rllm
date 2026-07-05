@@ -1,0 +1,108 @@
+{
+  "name": "portfolio_gross6_oos_mdd20_return_best_candidate",
+  "status": "paper_portfolio_candidate",
+  "as_of": "2026-07-06",
+  "objective": "Return-priority portfolio under gross<=6 with 2024/2025/2026YTD strict MDD <=20 each and combined OOS strict MDD <=20.",
+  "assumption": "Simultaneous sleeve positions allowed; gross sleeve weight is leverage budget. Metrics include 5bp fee + 1bp slippage per side, full-period CAGR with cash/no-trade time, strict in-position/intrabar MDD, and period-end forced close.",
+  "gross_weight": 4.800000000000001,
+  "weights": {
+    "nonpb30_taker": 0.8,
+    "oi_low": 0.8,
+    "oi_high_sel": 1.6,
+    "bear_rex_short": 1.6
+  },
+  "base_sleeves": [
+    {
+      "name": "nonpb30_taker_returnz_rangevol_htf4hrange_h72",
+      "source": "configs/live/nonpb30_taker_returnz_rangevol_htf4hrange_h72_candidate.json",
+      "side": "LONG",
+      "weight": 0.8
+    },
+    {
+      "name": "oi_divergence_pullback_range_rsi_h96_s6",
+      "source": "configs/live/oi_divergence_pullback_range_rsi_h96_s6_candidate.json",
+      "side": "LONG",
+      "weight": 0.8
+    },
+    {
+      "name": "oi_divergence_sma24_highfreq_h30_s6_with_selector",
+      "source": "configs/live/oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay.json",
+      "side": "LONG",
+      "weight": 1.6
+    },
+    {
+      "name": "bear_rex_dual_regime_short",
+      "source": "results/rex_dual_regime_*_predictions_2026-07-03.jsonl",
+      "side": "SHORT",
+      "weight": 1.6
+    }
+  ],
+  "selection_rule": "Ranked by OOS total return among scaled-top candidates satisfying period-level and combined OOS MDD<=20.",
+  "metrics": {
+    "train_diagnostic": {
+      "total_return_pct": -39.02171881708403,
+      "cagr_pct": -13.796266506050781,
+      "strict_mdd_pct": 85.10581873023204,
+      "cagr_to_strict_mdd": -0.1621072062038685,
+      "trade_entries_sum": 1704,
+      "active_bars": 78124,
+      "bar_sharpe_like": 0.33910713768869905
+    },
+    "test2024": {
+      "total_return_pct": 210.6819521575028,
+      "cagr_pct": 209.96109114043247,
+      "strict_mdd_pct": 19.31162290375391,
+      "cagr_to_strict_mdd": 10.872265484203243,
+      "trade_entries_sum": 304,
+      "active_bars": 13401,
+      "bar_sharpe_like": 2.7935816452589552
+    },
+    "eval2025": {
+      "total_return_pct": 239.89884835303283,
+      "cagr_pct": 240.18380247388086,
+      "strict_mdd_pct": 13.701409086250127,
+      "cagr_to_strict_mdd": 17.529861415123662,
+      "trade_entries_sum": 221,
+      "active_bars": 11194,
+      "bar_sharpe_like": 3.534402206470513
+    },
+    "ytd2026": {
+      "total_return_pct": 19.797746331162692,
+      "cagr_pct": 53.91357281714162,
+      "strict_mdd_pct": 19.814113081922258,
+      "cagr_to_strict_mdd": 2.720968261068954,
+      "trade_entries_sum": 98,
+      "active_bars": 5871,
+      "bar_sharpe_like": 0.8059024991241495
+    },
+    "oos_total_2024_2026ytd": {
+      "total_return_pct": 1150.977611706553,
+      "cagr_pct": 184.0273577481408,
+      "strict_mdd_pct": 19.814113081922336,
+      "cagr_to_strict_mdd": 9.287690899273233,
+      "trade_entries_sum": 624,
+      "active_bars": 30538,
+      "bar_sharpe_like": 4.310257975750806
+    },
+    "all_total_2020_2026ytd": {
+      "total_return_pct": 662.8246456017454,
+      "cagr_pct": 42.36584816945823,
+      "strict_mdd_pct": 85.10581873023204,
+      "cagr_to_strict_mdd": 0.4978020163785659,
+      "trade_entries_sum": 2328,
+      "active_bars": 108662,
+      "bar_sharpe_like": 2.093451998109296
+    }
+  },
+  "artifacts": {
+    "rank_scan": "results/portfolio_mixer_gross6_slip1bp_mdd20_topscale_2026-07-06.json"
+  },
+  "risk_notes": [
+    "Portfolio weights/constraints were selected after observing test/eval/2026 metrics; treat all reported metrics as research/discovery diagnostics, not clean OOS validation. See docs/portfolio-contamination-audit-2026-07-06.md.",
+    "Search is scaled-top gross<=3 candidate scan, not exhaustive full 6x grid; exhaustive naive grid was too slow and should be optimized before final deployment.",
+    "Train diagnostic remains weak and is not acceptance evidence.",
+    "Revalidate in production/live bridge before deployment."
+  ],
+  "validation_status": "research_discovery_candidate_not_clean_oos",
+  "contamination_audit": "docs/portfolio-contamination-audit-2026-07-06.md"
+}

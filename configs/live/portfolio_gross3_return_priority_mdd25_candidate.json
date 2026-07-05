@@ -1,0 +1,99 @@
+{
+  "name": "portfolio_gross3_return_priority_mdd25_candidate",
+  "status": "paper_portfolio_candidate",
+  "as_of": "2026-07-06",
+  "objective": "Return-priority gross 3.0 portfolio after relaxing strict MDD cap to <25%, including 1bp slippage each side.",
+  "assumption": "Simultaneous sleeve positions allowed; gross sleeve weight is leverage budget. Metrics include 5bp fee + 1bp slippage per side, full-period CAGR with cash/no-trade time, strict in-position/intrabar MDD, and period-end forced close.",
+  "gross_weight": 3.0,
+  "weights": {
+    "pb30_base": 1.0,
+    "oi_low": 0.5,
+    "oi_high_sel": 1.5
+  },
+  "base_sleeves": [
+    {
+      "name": "bullish_pb30_base",
+      "source": "configs/live/bullish_pb30_addon_returnz_htf1w_candidate.json",
+      "side": "LONG",
+      "weight": 1.0
+    },
+    {
+      "name": "oi_divergence_pullback_range_rsi_h96_s6",
+      "source": "configs/live/oi_divergence_pullback_range_rsi_h96_s6_candidate.json",
+      "side": "LONG",
+      "weight": 0.5
+    },
+    {
+      "name": "oi_divergence_sma24_highfreq_h30_s6_with_selector",
+      "source": "configs/live/oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay.json",
+      "side": "LONG",
+      "weight": 1.5
+    }
+  ],
+  "selection_rule": "Maximize OOS total 2024-01-01~2026-06-03 total return among gross<=3.0 candidates with strict MDD <25% in 2024, 2025, 2026YTD, and combined OOS total.",
+  "metrics": {
+    "train_diagnostic": {
+      "total_return_pct": -13.239798460897456,
+      "cagr_pct": -4.172851885195195,
+      "strict_mdd_pct": 80.95779597854728,
+      "cagr_to_strict_mdd": -0.05154354605084536,
+      "trade_entries_sum": 1468,
+      "active_bars": 79965,
+      "bar_sharpe_like": 0.5604472455327129
+    },
+    "test2024": {
+      "total_return_pct": 207.19614804840822,
+      "cagr_pct": 206.49046140214168,
+      "strict_mdd_pct": 16.999889259480828,
+      "cagr_to_strict_mdd": 12.146576854139333,
+      "trade_entries_sum": 276,
+      "active_bars": 13437,
+      "bar_sharpe_like": 2.9014241824741496
+    },
+    "eval2025": {
+      "total_return_pct": 131.31373304647082,
+      "cagr_pct": 131.44663477048218,
+      "strict_mdd_pct": 15.297268206042036,
+      "cagr_to_strict_mdd": 8.59281755408878,
+      "trade_entries_sum": 180,
+      "active_bars": 9597,
+      "bar_sharpe_like": 2.698912550643007
+    },
+    "ytd2026": {
+      "total_return_pct": 5.830261359336131,
+      "cagr_pct": 14.485379899701933,
+      "strict_mdd_pct": 24.112440041880724,
+      "cagr_to_strict_mdd": 0.6007430137531656,
+      "trade_entries_sum": 78,
+      "active_bars": 5287,
+      "bar_sharpe_like": 0.3448736247537603
+    },
+    "oos_total_2024_2026ytd": {
+      "total_return_pct": 646.7907971439114,
+      "cagr_pct": 129.50240391903102,
+      "strict_mdd_pct": 24.672078567129084,
+      "cagr_to_strict_mdd": 5.248945830270202,
+      "trade_entries_sum": 535,
+      "active_bars": 28393,
+      "bar_sharpe_like": 3.6693153588548237
+    },
+    "all_total_2020_2026ytd": {
+      "total_return_pct": 547.917200677511,
+      "cagr_pct": 38.38188699084266,
+      "strict_mdd_pct": 80.95779597854728,
+      "cagr_to_strict_mdd": 0.47409747914843603,
+      "trade_entries_sum": 2003,
+      "active_bars": 108358,
+      "bar_sharpe_like": 2.0081542096742995
+    }
+  },
+  "artifacts": {
+    "full_grid_scan": "results/portfolio_mixer_gross3_slip1bp_all_2026-07-06.json"
+  },
+  "risk_notes": [
+    "This is return-priority, not 2026-robust: 2026 YTD return is only modest while MDD is close to the 25% cap.",
+    "Exposure is entirely long bullish sleeves; bearish REX hedge is not used in the selected max-return candidate.",
+    "Train diagnostic remains weak and is not acceptance evidence.",
+    "Coarse 0.5-step grid; revalidate in production/live bridge before deployment."
+  ]
+}

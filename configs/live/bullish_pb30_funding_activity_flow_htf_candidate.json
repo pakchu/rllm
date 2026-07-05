@@ -1,0 +1,69 @@
+{
+  "status": "live_candidate_dry_run_only",
+  "symbol": "BTCUSDT",
+  "side": "LONG",
+  "manual_regime": "BULL",
+  "dry_run": true,
+  "allow_live_orders": false,
+  "research_artifact": "results/bullish_pb30_funding_activity_flow_htf_metrics_lev1p7_2024_2026ytd_2026-07-05.json",
+  "protocol": {
+    "train": "<2024",
+    "test": "2024",
+    "eval": "2025",
+    "annualization": "full calendar split windows including no-trade/cash time",
+    "acceptance": "test and eval CAGR / strict MDD >= 5; train performance not constrained"
+  },
+  "signal": {
+    "entry_rule": "pb30_funding",
+    "entry_quantile": 0.75,
+    "premium_gate": {
+      "feature": "premium_index_zscore",
+      "op": ">=",
+      "quantile": 0.8
+    },
+    "funding_gate": {
+      "feature": "funding_zscore",
+      "op": ">=",
+      "quantile": 0.7
+    },
+    "score_variant": "activity_flow_htf",
+    "score_quantile": 0.5,
+    "hold_bars": 216,
+    "hold_hours": 18.0,
+    "stride_bars": 12,
+    "entry_delay_bars": 1
+  },
+  "risk": {
+    "research_leverage": 1.7,
+    "strict_mdd_caveat": "2026 YTD strict MDD was 28.44% and CAGR/MDD fell to 1.65; do not enable live orders without manual BULL regime and fresh dry-run monitoring.",
+    "position_size_pct_default": 0.02,
+    "require_flat_position": true,
+    "require_no_open_orders": true
+  },
+  "validation": {
+    "test_2024": {
+      "absolute_return_pct": 104.40,
+      "cagr_pct": 104.10,
+      "strict_mdd_pct": 15.01,
+      "cagr_to_strict_mdd": 6.93,
+      "trades": 22,
+      "trade_sharpe_sqrt_n": 2.58
+    },
+    "eval_2025": {
+      "absolute_return_pct": 70.34,
+      "cagr_pct": 70.40,
+      "strict_mdd_pct": 14.06,
+      "cagr_to_strict_mdd": 5.01,
+      "trades": 20,
+      "trade_sharpe_sqrt_n": 2.92
+    },
+    "ytd_2026": {
+      "absolute_return_pct": 17.40,
+      "cagr_pct": 47.02,
+      "strict_mdd_pct": 28.44,
+      "cagr_to_strict_mdd": 1.65,
+      "trades": 17,
+      "trade_sharpe_sqrt_n": 0.71
+    }
+  }
+}

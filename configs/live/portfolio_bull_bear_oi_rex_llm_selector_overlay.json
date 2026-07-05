@@ -1,0 +1,56 @@
+{
+  "name": "portfolio_bull_bear_oi_rex_llm_selector_overlay",
+  "status": "paper_portfolio_selector_overlay",
+  "as_of": "2026-07-06",
+  "base_portfolio": "configs/live/portfolio_bull_bear_oi_rex_capital_efficient_candidate.json",
+  "purpose": "Second-stage portfolio-level LLM selector for simultaneous bull/bear sleeves. It only allows or blocks newly triggered sleeve entries; it cannot create trades, change exits, or alter base weights.",
+  "output_space": ["ALLOW", "BLOCK_RISK"],
+  "portfolio_weights": {
+    "nonpb30_taker": 0.5,
+    "oi_high_sel": 0.5,
+    "bear_rex_short": 1.0
+  },
+  "symbolic_proxy": {
+    "fit_split": "train < 2024 only",
+    "context_keys": ["trend_1d", "range_pos_1d", "dxy", "kimchi"],
+    "min_train_context_events": 16,
+    "block_if_train_mean_weighted_ret_bps_lte": -8.0,
+    "block_if_train_win_rate_lte": 0.38,
+    "blocked_contexts": [
+      {
+        "context_id": "trend_1d=up|range_pos_1d=high|dxy=flat|kimchi=hot",
+        "train_n": 53,
+        "train_mean_weighted_ret_bps": -10.408032471099741,
+        "train_win_rate": 0.5094339622641509
+      },
+      {
+        "context_id": "trend_1d=flat_up|range_pos_1d=low|dxy=flat|kimchi=cold",
+        "train_n": 19,
+        "train_mean_weighted_ret_bps": -17.217990700108956,
+        "train_win_rate": 0.47368421052631576
+      }
+    ]
+  },
+  "metrics": {
+    "baseline_no_portfolio_selector": {
+      "test2024": {"total_return_pct": 43.24768761442501, "cagr_pct": 43.14222657934393, "strict_mdd_pct": 7.794845060621358, "cagr_to_strict_mdd": 5.534712523959378, "trade_entries": 240},
+      "eval2025": {"total_return_pct": 67.84406757902912, "cagr_pct": 67.90361279668335, "strict_mdd_pct": 4.073138002019072, "cagr_to_strict_mdd": 16.671080813619188, "trade_entries": 181},
+      "ytd2026": {"total_return_pct": 14.660784358368616, "cagr_pct": 38.62403347229504, "strict_mdd_pct": 6.097445152061864, "cagr_to_strict_mdd": 6.334461812950337, "trade_entries": 81}
+    },
+    "with_portfolio_selector_proxy": {
+      "test2024": {"total_return_pct": 42.40275665666786, "cagr_pct": 42.29964271114286, "strict_mdd_pct": 7.885102583173209, "cagr_to_strict_mdd": 5.364501256002706, "trade_entries": 228, "blocked_trades": 12},
+      "eval2025": {"total_return_pct": 61.72467242479938, "cagr_pct": 61.7779312728894, "strict_mdd_pct": 4.035068800012464, "cagr_to_strict_mdd": 15.310254752706712, "trade_entries": 171, "blocked_trades": 10},
+      "ytd2026": {"total_return_pct": 15.54593179121797, "cagr_pct": 41.19241538061485, "strict_mdd_pct": 6.097445152061864, "cagr_to_strict_mdd": 6.755684447064775, "trade_entries": 79, "blocked_trades": 2}
+    }
+  },
+  "artifacts": {
+    "selector_eval": "results/portfolio_llm_selector_eval_2026-07-06.json",
+    "selector_cards_jsonl": "results/portfolio_llm_selector_cards_2026-07-06.jsonl",
+    "evaluator_script": "training/evaluate_portfolio_llm_selector.py"
+  },
+  "risk_notes": [
+    "This is a symbolic proxy over LLM state-card tokens, not a real LLM backtest yet.",
+    "The selector slightly weakens 2024/2025 returns while preserving ratio floor and improves 2026 YTD.",
+    "Live LLM must be constrained to ALLOW/BLOCK_RISK and shadow-logged against this proxy before promotion."
+  ]
+}

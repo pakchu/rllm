@@ -1,0 +1,106 @@
+{
+    "name": "oi_divergence_pullback_range_rsi_h96_s6",
+    "status": "paper_candidate",
+    "created_at": "2026-07-05",
+    "symbol": "BTCUSDT",
+    "side": "LONG",
+    "allow_live_orders": false,
+    "reason_live_orders_disabled": "Tier 0 OI discovery: 2024/2025 pass but train weak and 2026 YTD ratio collapsed; paper monitoring first",
+    "data_contract": {
+        "market_input_family": "5m wavefull/cache features + DB OI",
+        "required_market_input": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+        "required_oi_source": "public.open_interest_binance BTCUSDT period=5m",
+        "oi_coverage_checked": "2020-09-01 00:00:00 UTC through 2026-07-05 14:00:00 UTC"
+    },
+    "protocol": {
+        "train": "2020-09-01 through <2024 thresholds only",
+        "test": "2024",
+        "eval": "2025",
+        "annualization": "full calendar split windows including no-trade/cash time",
+        "strict_mdd": "includes in-position 5m low adverse excursion and split-contained/forced period exit",
+        "fee_slippage": "0.0005 entry + 0.0005 exit, approximately 10bp round trip",
+        "acceptance": "test and eval CAGR / strict MDD >= 5; train performance not constrained"
+    },
+    "signal": {
+        "side": "long",
+        "leverage": 1.0,
+        "hold_bars_5m": 96,
+        "hold_hours": 8.0,
+        "stride_bars_5m": 6,
+        "stride_minutes": 30,
+        "entry_delay_bars": 1,
+        "gates": [
+            {
+                "feature": "oi_minus_px_4h_z",
+                "op": ">=",
+                "threshold": 0.8954018630586817,
+                "fit": "train<2024 q0.80"
+            },
+            {
+                "feature": "return_zscore_48",
+                "op": "<=",
+                "threshold": -0.7389570664259131,
+                "fit": "train<2024 q0.20"
+            },
+            {
+                "feature": "range_vol",
+                "op": ">=",
+                "threshold": 0.04008415457867338,
+                "fit": "train<2024 q0.70"
+            },
+            {
+                "feature": "rsi_norm",
+                "op": "<=",
+                "threshold": -0.04507656773717145,
+                "fit": "train<2024 q0.40"
+            }
+        ],
+        "feature_definition": {
+            "oi_minus_px_4h_z": "rolling z-score of 4h log(open_interest/open_interest_lag) minus 4h BTC close return; rolling window 288 bars, min 50"
+        },
+        "excluded_feature_families": [
+            "pb30",
+            "rex_8640"
+        ]
+    },
+    "validation": {
+        "train_pre2024": {
+            "return_pct": 42.7062700833547,
+            "cagr_pct": 11.263303983206029,
+            "strict_mdd_pct": 44.2859741452347,
+            "cagr_to_strict_mdd": 0.25433117822514906,
+            "trades": 313,
+            "p_value": 0.32849037978244944
+        },
+        "test_2024": {
+            "return_pct": 52.53849841120575,
+            "cagr_pct": 52.4065700510906,
+            "strict_mdd_pct": 6.338587931137207,
+            "cagr_to_strict_mdd": 8.267861962386364,
+            "trades": 64,
+            "p_value": 0.028515044300355896
+        },
+        "eval_2025": {
+            "return_pct": 36.59891260550321,
+            "cagr_pct": 36.628095383326254,
+            "strict_mdd_pct": 5.458067791615839,
+            "cagr_to_strict_mdd": 6.710817230887242,
+            "trades": 40,
+            "p_value": 0.04284215715596895
+        },
+        "ytd_2026": {
+            "return_pct": 0.6246305933853114,
+            "cagr_pct": 1.4976182310927566,
+            "strict_mdd_pct": 9.649785802176158,
+            "cagr_to_strict_mdd": 0.1551970439338688,
+            "trades": 17,
+            "p_value": 0.9054486036644509
+        }
+    },
+    "artifacts": {
+        "discovery": "results/oi_divergence_refine_scan_2026-07-05.json",
+        "exact_verify": "results/oi_divergence_candidate_exact_verify_2026-07-05.json",
+        "oi_broad_scan": "results/oi_custom_alpha_scan_2026-07-05.json",
+        "research_doc": "docs/bullish-long-alpha-target5-2026-07-05.md"
+    }
+}

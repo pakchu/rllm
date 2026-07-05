@@ -1,0 +1,99 @@
+{
+    "name": "nonpb30_taker_returnz_rangevol_htf4hrange_h72",
+    "status": "paper_candidate",
+    "created_at": "2026-07-05",
+    "symbol": "BTCUSDT",
+    "side": "LONG",
+    "allow_live_orders": false,
+    "reason_live_orders_disabled": "Tier 0 discovery: 2024/2025 pass, but train<2024 weak and 2026 YTD ratio below target; paper monitoring first",
+    "data_contract": {
+        "market_input_family": "5m wavefull/cache features",
+        "required_reference_input": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz"
+    },
+    "protocol": {
+        "train": "<2024 thresholds only",
+        "test": "2024",
+        "eval": "2025",
+        "annualization": "full calendar split windows including no-trade/cash time",
+        "strict_mdd": "includes in-position 5m low adverse excursion and split-contained/forced period exit",
+        "fee_slippage": "0.0005 entry + 0.0005 exit, approximately 10bp round trip",
+        "acceptance": "test and eval CAGR / strict MDD >= 5; train performance not constrained"
+    },
+    "signal": {
+        "side": "long",
+        "leverage": 1.0,
+        "hold_bars_5m": 72,
+        "hold_hours": 6.0,
+        "stride_bars_5m": 12,
+        "entry_delay_bars": 1,
+        "gates": [
+            {
+                "feature": "taker_imbalance",
+                "op": ">=",
+                "threshold": 0.053299460961426244,
+                "fit": "train<2024 q0.60"
+            },
+            {
+                "feature": "return_zscore_48",
+                "op": "<=",
+                "threshold": -0.0062564587941375364,
+                "fit": "train<2024 q0.50"
+            },
+            {
+                "feature": "range_vol",
+                "op": ">=",
+                "threshold": 0.04338694545519488,
+                "fit": "train<2024 q0.75"
+            },
+            {
+                "feature": "htf_4h_range_1",
+                "op": ">=",
+                "threshold": 0.020567028637044467,
+                "fit": "train<2024 q0.65"
+            }
+        ],
+        "excluded_feature_families": [
+            "pb30",
+            "rex_8640"
+        ]
+    },
+    "validation": {
+        "train_pre2024": {
+            "return_pct": 12.512487817932595,
+            "cagr_pct": 2.9912150760715184,
+            "strict_mdd_pct": 45.17113405022678,
+            "cagr_to_strict_mdd": 0.06621961433922646,
+            "trades": 296,
+            "p_value": 0.6288771492704373
+        },
+        "test_2024": {
+            "return_pct": 26.698775247680338,
+            "cagr_pct": 26.637351040825607,
+            "strict_mdd_pct": 4.339096034889966,
+            "cagr_to_strict_mdd": 6.138917144640034,
+            "trades": 34,
+            "p_value": 0.014440313016161
+        },
+        "eval_2025": {
+            "return_pct": 24.098043229801714,
+            "cagr_pct": 24.116395945150515,
+            "strict_mdd_pct": 4.415146420269,
+            "cagr_to_strict_mdd": 5.462196187749801,
+            "trades": 35,
+            "p_value": 0.038402957540347726
+        },
+        "ytd_2026": {
+            "return_pct": 8.910021286364866,
+            "cagr_pct": 22.59997728794092,
+            "strict_mdd_pct": 8.801702620553142,
+            "cagr_to_strict_mdd": 2.5676824430726595,
+            "trades": 14,
+            "p_value": 0.1615565125456182
+        }
+    },
+    "artifacts": {
+        "discovery": "results/seed_taker_returnz_second_gate_scan_2026-07-05.json",
+        "exact_verify": "results/nonpb30_midfreq_candidate_exact_verify_2026-07-05.json",
+        "research_doc": "docs/bullish-long-alpha-target5-2026-07-05.md"
+    }
+}
