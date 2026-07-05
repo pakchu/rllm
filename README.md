@@ -129,6 +129,129 @@ Rolling extrema 기반 위치 정보가 현재 가장 중요한 축입니다.
 - 여러 기간의 range 위치와 현재가의 max/min 상대 위치는 LLM이 해석하기 좋은 구조화된 price action 표현입니다.
 - 단일 피쳐는 약하지만, 여러 약한 알파가 결합될 때 유효할 수 있습니다.
 
+### REX에서 LLM selector가 필요한 이유
+
+REX는 최종 매매 모델이라기보다 **후보 생성기(candidate generator)** 로 봐야 합니다. `rex_htf_pullback_resume` /
+`rex_htf_pullback_reclaim` 같은 family는 rolling extrema 기반으로 “이 위치에서 반등/재개 후보가 있다”를 만들지만, 후보가
+많아질수록 validation spike와 regime mismatch가 섞입니다. 현재 레포의 취지도 원래의 자유형 analyzer/trader가 아니라,
+**deterministic 후보 생성 + LLM/RLLM gate/selector + 엄격한 OOS 검증 + 안전 실행**으로 수렴했습니다.
+
+운영 원칙:
+
+- LLM selector는 **새 방향을 창조하지 않습니다.** REX가 만든 `side`와 `hold_bars`를 받아 `TRADE/ABSTAIN`
+  또는 `TAKE/SKIP`만 결정합니다.
+- live에서는 raw REX 후보를 그대로 주문으로 보내지 않습니다. 최소한 frozen symbolic gate가 필요하고,
+  scale-up 전에는 frozen LLM selector를 shadow/live-dry-run으로 검증해야 합니다.
+- `family` label은 보조 설명값입니다. 최근 재생성 overlap 검증에서 `resume`/`reclaim` label만 다르고
+  `gate/side/hold/signal_pos`가 같은 row가 있었으므로, 실행 판단은 `gate`, `side`, `hold_bars`,
+  `signal_pos` 중심으로 고정합니다.
+- selector 학습/선택은 오염 방지를 위해 chronology를 고정합니다. 예: threshold/train은 과거 구간,
+  validation/test에서 margin 또는 adapter를 선택하고, eval/2026은 선택 후 보고 전용으로 둡니다.
+- REX dual-regime/live gate는 kimchi/USDKRW/DXY 같은 외부 피쳐를 쓰므로 live DB의 외부 데이터 freshness가
+  깨지면 거래를 차단하거나 historical neutral-fill 규칙과 동일하게 처리해야 합니다.
+
+#### 생성 방법: compact regime-thesis selector
+
+현재 live pilot에 가장 가까운 형태입니다. 검증된 symbolic thesis를 label-first SFT 데이터로 바꿔 작은 모델이
+`TRADE`/`ABSTAIN`을 빠르게 logprob scoring 하도록 만듭니다. 현재 표준 파일은 이미 생성되어 있습니다.
+
+| split | 파일 |
+|---|---|
+| train | `data/rex_regime_thesis_range_kimchi_label_train_2021_2024.jsonl` |
+| test | `data/rex_regime_thesis_range_kimchi_label_test_2025.jsonl` |
+| eval | `data/rex_regime_thesis_range_kimchi_label_eval_2026h1.jsonl` |
+
+새로 만들 때는 `training.build_rex_regime_thesis_sft`를 사용하되, `train-jsonl`, `test-jsonl`, `eval-jsonl`은
+이미 시간순으로 분리된 REX candidate/action record를 넣어야 합니다. 같은 파일을 test/eval에 중복 지정하지 않습니다.
+
+기본 gate prior:
+
+```text
+range_vol >= 0.023959233645008706
+AND kimchi_premium_change <= 0.0
+```
+
+학습 전 dry-run:
+
+```bash
+python -m training.train_text_sft \
+  --model-name gemma4-e4b \
+  --train-jsonl data/rex_regime_thesis_range_kimchi_label_train_2021_2024.jsonl \
+  --output-dir checkpoints/dryrun_rex_regime_thesis \
+  --max-samples 512 \
+  --sample-mode balanced \
+  --max-steps 1 \
+  --dry-run
+```
+
+짧은 LoRA sanity run:
+
+```bash
+python -m training.train_text_sft \
+  --model-name gemma4-e4b \
+  --train-jsonl data/rex_regime_thesis_range_kimchi_label_train_2021_2024.jsonl \
+  --output-dir checkpoints/rex_regime_thesis_gemma4_lora_sanity \
+  --max-samples 512 \
+  --sample-mode balanced \
+  --max-seq-length 1024 \
+  --max-steps 32 \
+  --per-device-train-batch-size 1 \
+  --gradient-accumulation-steps 8 \
+  --lora-r 16 \
+  --lora-alpha 32
+```
+
+평가는 greedy generation보다 `TRADE` vs `ABSTAIN` candidate logprob로 합니다. label-first 포맷을 쓰는 이유는
+첫 토큰/짧은 label logprob가 바로 trading gate score가 되기 때문입니다.
+
+```bash
+python -m training.eval_text_label \
+  --eval-jsonl data/rex_regime_thesis_range_kimchi_label_eval_2026h1.jsonl \
+  --output results/rex_regime_thesis_label_eval.json \
+  --key decision \
+  --model-name gemma4-e4b \
+  --adapter-dir checkpoints/rex_regime_thesis_gemma4_lora_sanity \
+  --prediction-mode candidate_logprob \
+  --score-normalization sum \
+  --predictions-output results/rex_regime_thesis_label_predictions.jsonl
+```
+
+#### 생성 방법: REX candidate TAKE/SKIP ranker
+
+더 RLLM다운 형태는 symbolic gate를 teacher로 복제하는 대신, REX 후보마다 signal-time feature prompt를 만들고
+미래 path reward는 **학습 label 생성에만** 사용해 `TAKE/SKIP` selector를 학습하는 것입니다.
+
+```bash
+python -m training.build_rex_candidate_ranker_records \
+  --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-07-05_dbappend.csv.gz \
+  --train-output data/rex_candidate_ranker_train.jsonl \
+  --test-output data/rex_candidate_ranker_test_2024.jsonl \
+  --eval-output data/rex_candidate_ranker_eval_2025.jsonl \
+  --summary-output data/rex_candidate_ranker_summary.json \
+  --combo rex_htf_pullback_resume:0.85,rex_htf_pullback_reclaim:0.85 \
+  --threshold-start 2020-01-01 \
+  --threshold-end 2024-01-01 \
+  --train-start 2020-01-01 \
+  --train-end 2024-01-01 \
+  --test-start 2024-01-01 \
+  --test-end 2025-01-01 \
+  --eval-start 2025-01-01 \
+  --eval-end 2026-01-01 \
+  --hold-bars 144 \
+  --stride-bars 24
+```
+
+절차:
+
+1. 먼저 ridge/logistic 같은 cheap baseline으로 `TAKE/SKIP`가 학습 가능한지 확인합니다.
+2. 그 다음 `training.train_text_sft`로 짧은 LoRA sanity run을 돌립니다.
+3. `training.eval_rex_candidate_ranker_adapter`로 validation에서 margin만 고르고 eval은 그대로 보고합니다.
+4. long run은 adapter가 ridge sanity floor를 이긴 뒤에만 진행합니다.
+
+과거 sanity 결과상 20-step Gemma4 candidate-ranker는 2025 validation은 좋아졌지만 2026에서 깨졌습니다. 따라서
+현재 live에 바로 쓸 수 있는 것은 **candidate-ranker 자체가 아니라 frozen symbolic/compact regime-thesis gate**이고,
+candidate-ranker는 shadow selector 후보로 취급합니다.
+
 ### Macro / Premium
 - synthetic DXY
 - USDKRW
