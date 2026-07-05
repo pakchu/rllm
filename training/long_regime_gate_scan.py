@@ -130,6 +130,11 @@ def run_scan(cfg: LongRegimeGateConfig) -> dict[str, Any]:
         "val": _split_mask(dates, cfg.val_start, cfg.val_end),
         "eval": _split_mask(dates, cfg.eval_start, cfg.eval_end),
     }
+    split_bounds = {
+        "train": (cfg.train_start, cfg.train_end),
+        "val": (cfg.val_start, cfg.val_end),
+        "eval": (cfg.eval_start, cfg.eval_end),
+    }
     max_hold = max(_parse_list(cfg.hold_bars, int))
     positions_by_stride = {
         s: np.arange(max(0, int(cfg.window_size) - 1), max(0, len(market) - max_hold - int(cfg.entry_delay_bars) - 1), s, dtype=np.int64)
@@ -174,6 +179,8 @@ def run_scan(cfg: LongRegimeGateConfig) -> dict[str, Any]:
                                     leverage=float(cfg.leverage),
                                     fee_rate=float(cfg.fee_rate),
                                     slippage_rate=float(cfg.slippage_rate),
+                                    annualization_start=split_bounds[split][0],
+                                    annualization_end=split_bounds[split][1],
                                 )
                                 row[split] = {"sim": sim, "trade_stats": _trade_stats(returns)}
                             row["selection_score"] = _score(row, cfg)

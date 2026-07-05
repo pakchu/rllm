@@ -90,6 +90,8 @@ def _strict_long_sim_variable_leverage(
     entry_delay_bars: int,
     fee_rate: float,
     slippage_rate: float,
+    annualization_start: str | None = None,
+    annualization_end: str | None = None,
 ) -> tuple[dict[str, Any], list[float]]:
     opens = market["open"].to_numpy(float)
     lows = market["low"].to_numpy(float)
@@ -139,17 +141,22 @@ def _strict_long_sim_variable_leverage(
         if eq <= 0.0:
             break
 
-    if first_signal is None or last_signal is None:
-        start_dt = end_dt = datetime.now()
-        years = 1.0 / 365.25
+    trade_start_dt = pd.Timestamp(dates[first_signal]).to_pydatetime() if first_signal is not None else None
+    trade_end_dt = pd.Timestamp(dates[last_signal]).to_pydatetime() if last_signal is not None else None
+    if annualization_start is not None and annualization_end is not None:
+        start_dt = pd.Timestamp(annualization_start).to_pydatetime()
+        end_dt = pd.Timestamp(annualization_end).to_pydatetime()
+    elif trade_start_dt is not None and trade_end_dt is not None:
+        start_dt = trade_start_dt
+        end_dt = trade_end_dt
     else:
-        start_dt = pd.Timestamp(dates[first_signal]).to_pydatetime()
-        end_dt = pd.Timestamp(dates[last_signal]).to_pydatetime()
-        years = max((end_dt - start_dt).total_seconds() / (365.25 * 24 * 3600), 1.0 / 365.25)
+        start_dt = end_dt = datetime.now()
+    years = max((end_dt - start_dt).total_seconds() / (365.25 * 24 * 3600), 1.0 / 365.25)
     total_return = eq - 1.0
     cagr = (eq ** (1.0 / years) - 1.0) if eq > 0.0 else -1.0
     sim = {
         "period": {"start": str(start_dt), "end": str(end_dt), "years": years},
+        "trade_period": {"start": str(trade_start_dt), "end": str(trade_end_dt)},
         "cagr_pct": float(cagr * 100.0),
         "strict_mdd_pct": float(max_dd * 100.0),
         "cagr_to_strict_mdd": float((cagr * 100.0) / (max_dd * 100.0)) if max_dd > 0.0 else float("inf"),
@@ -198,6 +205,7 @@ def _run_fold(
     funding_mask, funding_spec = funding
     active = entry_mask & premium_mask & funding_mask & (leverage_by_pos > 0.0)
     positions = np.arange(max(0, int(cfg.window_size) - 1), max(0, len(market) - hold - int(cfg.entry_delay_bars) - 1), stride, dtype=np.int64)
+    period_bounds = {"train": (train_start, train_end), "validation": (val_start, val_end)}
     rows = {}
     for split, mask in (("train", train_mask), ("validation", val_mask)):
         p = positions[active[positions] & mask[positions]]
@@ -209,6 +217,8 @@ def _run_fold(
             entry_delay_bars=int(cfg.entry_delay_bars),
             fee_rate=float(cfg.fee_rate),
             slippage_rate=float(cfg.slippage_rate),
+            annualization_start=period_bounds[split][0],
+            annualization_end=period_bounds[split][1],
         )
         rows[split] = {"sim": sim, "trade_stats": _trade_stats(returns), "candidate_count": int(len(p))}
     return {

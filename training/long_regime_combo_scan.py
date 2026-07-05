@@ -83,6 +83,8 @@ def _strict_long_sim(
     leverage: float,
     fee_rate: float,
     slippage_rate: float,
+    annualization_start: str | None = None,
+    annualization_end: str | None = None,
 ) -> tuple[dict[str, Any], list[float]]:
     """Strict long-only OHLC simulation with non-overlapping holds.
 
@@ -133,18 +135,23 @@ def _strict_long_sim(
         if eq <= 0.0:
             break
 
-    if first_signal is None or last_signal is None:
-        start_dt = end_dt = datetime.now()
-        years = 1.0 / 365.25
+    trade_start_dt = pd.Timestamp(dates[first_signal]).to_pydatetime() if first_signal is not None else None
+    trade_end_dt = pd.Timestamp(dates[last_signal]).to_pydatetime() if last_signal is not None else None
+    if annualization_start is not None and annualization_end is not None:
+        start_dt = pd.Timestamp(annualization_start).to_pydatetime()
+        end_dt = pd.Timestamp(annualization_end).to_pydatetime()
+    elif trade_start_dt is not None and trade_end_dt is not None:
+        start_dt = trade_start_dt
+        end_dt = trade_end_dt
     else:
-        start_dt = pd.Timestamp(dates[first_signal]).to_pydatetime()
-        end_dt = pd.Timestamp(dates[last_signal]).to_pydatetime()
-        years = max(1.0 / 365.25, float((end_dt - start_dt).days) / 365.25)
+        start_dt = end_dt = datetime.now()
+    years = max(1.0 / 365.25, (end_dt - start_dt).total_seconds() / (365.25 * 24 * 3600))
     ret_pct = (eq - 1.0) * 100.0
     cagr_pct = ((eq ** (1.0 / years) - 1.0) * 100.0) if eq > 0.0 else -100.0
     mdd_pct = max_dd * 100.0
     sim = {
         "period": {"start": str(start_dt), "end": str(end_dt), "years": years},
+        "trade_period": {"start": str(trade_start_dt), "end": str(trade_end_dt)},
         "cagr_pct": cagr_pct,
         "strict_mdd_pct": mdd_pct,
         "cagr_to_strict_mdd": cagr_pct / mdd_pct if mdd_pct > 1e-12 else float("inf"),
@@ -234,6 +241,11 @@ def run_scan(cfg: LongComboScanConfig) -> dict[str, Any]:
         "val": _split_mask(dates, cfg.val_start, cfg.val_end),
         "eval": _split_mask(dates, cfg.eval_start, cfg.eval_end),
     }
+    split_bounds = {
+        "train": (cfg.train_start, cfg.train_end),
+        "val": (cfg.val_start, cfg.val_end),
+        "eval": (cfg.eval_start, cfg.eval_end),
+    }
     max_hold = max(_parse_list(cfg.hold_bars, int))
     base_positions_by_stride = {
         s: np.arange(max(0, int(cfg.window_size) - 1), max(0, len(market) - max_hold - int(cfg.entry_delay_bars) - 1), s, dtype=np.int64)
@@ -273,6 +285,8 @@ def run_scan(cfg: LongComboScanConfig) -> dict[str, Any]:
                             leverage=float(cfg.leverage),
                             fee_rate=float(cfg.fee_rate),
                             slippage_rate=float(cfg.slippage_rate),
+                            annualization_start=split_bounds[split][0],
+                            annualization_end=split_bounds[split][1],
                         )
                         row[split] = {"sim": sim, "trade_stats": _trade_stats(trade_returns)}
                     row["selection_score"] = _score_trial(row, cfg)

@@ -114,10 +114,11 @@ def _run_fold(
     activity_mask, activity_spec = activity
     active = entry_mask & premium_mask & funding_mask & activity_mask
     positions = np.arange(max(0, int(cfg.window_size) - 1), max(0, len(market) - hold - int(cfg.entry_delay_bars) - 1), stride, dtype=np.int64)
+    period_bounds = {"train": (train_start, train_end), "validation": (val_start, val_end)}
     rows = {}
     for split, mask in (("train", train_mask), ("validation", val_mask)):
         p = positions[active[positions] & mask[positions]]
-        sim, returns = _strict_long_sim(p, market=market, hold_bars=hold, entry_delay_bars=int(cfg.entry_delay_bars), leverage=float(cfg.leverage), fee_rate=float(cfg.fee_rate), slippage_rate=float(cfg.slippage_rate))
+        sim, returns = _strict_long_sim(p, market=market, hold_bars=hold, entry_delay_bars=int(cfg.entry_delay_bars), leverage=float(cfg.leverage), fee_rate=float(cfg.fee_rate), slippage_rate=float(cfg.slippage_rate), annualization_start=period_bounds[split][0], annualization_end=period_bounds[split][1])
         rows[split] = {"sim": sim, "trade_stats": _trade_stats(returns), "candidate_count": int(len(p))}
     return {
         "fold": {"train_start": train_start, "train_end": train_end, "validation_start": val_start, "validation_end": val_end},
