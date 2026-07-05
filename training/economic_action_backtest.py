@@ -15,6 +15,8 @@ from training.strict_bar_backtest import _drawdown_from_trough, _trade_stats, lo
 
 @dataclass(frozen=True)
 class EconomicActionBacktestConfig:
+    annualization_start: str = ""
+    annualization_end: str = ""
     leverage: float = 0.5
     fee_rate: float = 0.0004
     slippage_rate: float = 0.0001
@@ -125,16 +127,19 @@ def strict_backtest_actions(rows: list[dict[str, Any]], market, cfg: EconomicAct
         if eq <= 0.0:
             break
 
-    start_dt = datetime.fromisoformat(str(rows[0]["date"]))
-    end_dt = datetime.fromisoformat(str(rows[-1]["date"]))
-    years = max(1.0 / 365.25, float((end_dt - start_dt).days) / 365.25)
+    trade_start_dt = datetime.fromisoformat(str(rows[0]["date"]))
+    trade_end_dt = datetime.fromisoformat(str(rows[-1]["date"]))
+    start_dt = datetime.fromisoformat(str(cfg.annualization_start)) if str(cfg.annualization_start).strip() else trade_start_dt
+    end_dt = datetime.fromisoformat(str(cfg.annualization_end)) if str(cfg.annualization_end).strip() else trade_end_dt
+    years = max(1.0 / 365.25, (end_dt - start_dt).total_seconds() / (365.25 * 24 * 3600))
     ret_pct = (eq - 1.0) * 100.0
     gross = 1.0 + ret_pct / 100.0
     cagr_pct = ((gross ** (1.0 / years) - 1.0) * 100.0) if gross > 0.0 else -100.0
     mdd_pct = max_dd * 100.0
     ratio = cagr_pct / mdd_pct if mdd_pct > 1e-12 else float("inf")
     return {
-        "period": {"start": str(rows[0]["date"]), "end": str(rows[-1]["date"]), "years": years},
+        "period": {"start": str(start_dt), "end": str(end_dt), "years": years},
+        "trade_period": {"start": str(trade_start_dt), "end": str(trade_end_dt)},
         "sim": {
             "ret_pct": ret_pct,
             "cagr_pct": cagr_pct,
@@ -166,8 +171,12 @@ def run_economic_action_backtest(
     entry_delay_bars: int = 1,
     cooldown_bars: int = 0,
     max_hold_bars: int = 432,
+    annualization_start: str = "",
+    annualization_end: str = "",
 ) -> dict[str, Any]:
     cfg = EconomicActionBacktestConfig(
+        annualization_start=str(annualization_start),
+        annualization_end=str(annualization_end),
         leverage=float(leverage),
         fee_rate=float(fee_rate),
         slippage_rate=float(slippage_rate),
@@ -208,6 +217,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--entry-delay-bars", type=int, default=1)
     p.add_argument("--cooldown-bars", type=int, default=0)
     p.add_argument("--max-hold-bars", type=int, default=432)
+    p.add_argument("--annualization-start", default="")
+    p.add_argument("--annualization-end", default="")
     return p.parse_args()
 
 

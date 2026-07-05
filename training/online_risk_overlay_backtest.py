@@ -37,6 +37,8 @@ class OnlineRiskOverlayConfig:
     predictions_jsonl: str
     market_csv: str
     output: str
+    annualization_start: str = ""
+    annualization_end: str = ""
     leverage: float = 0.5
     fee_rate: float = 0.0004
     slippage_rate: float = 0.0001
@@ -295,9 +297,11 @@ def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
         if eq <= 0.0:
             break
 
-    start_dt = datetime.fromisoformat(str(rows[0]["date"]))
-    end_dt = datetime.fromisoformat(str(rows[-1]["date"]))
-    years = max(1.0 / 365.25, float((end_dt - start_dt).days) / 365.25)
+    trade_start_dt = datetime.fromisoformat(str(rows[0]["date"]))
+    trade_end_dt = datetime.fromisoformat(str(rows[-1]["date"]))
+    start_dt = datetime.fromisoformat(str(cfg.annualization_start)) if str(cfg.annualization_start).strip() else trade_start_dt
+    end_dt = datetime.fromisoformat(str(cfg.annualization_end)) if str(cfg.annualization_end).strip() else trade_end_dt
+    years = max(1.0 / 365.25, (end_dt - start_dt).total_seconds() / (365.25 * 24 * 3600))
     ret_pct = (eq - 1.0) * 100.0
     gross = 1.0 + ret_pct / 100.0
     cagr_pct = ((gross ** (1.0 / years) - 1.0) * 100.0) if gross > 0.0 else -100.0
@@ -305,7 +309,8 @@ def run_overlay(cfg: OnlineRiskOverlayConfig) -> dict[str, Any]:
     out = {
         "as_of": datetime.now(timezone.utc).isoformat(),
         "config": asdict(cfg),
-        "period": {"start": str(rows[0]["date"]), "end": str(rows[-1]["date"]), "years": years},
+        "period": {"start": str(start_dt), "end": str(end_dt), "years": years},
+        "trade_period": {"start": str(trade_start_dt), "end": str(trade_end_dt)},
         "sim": {
             "ret_pct": ret_pct,
             "cagr_pct": cagr_pct,
@@ -342,6 +347,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--predictions-jsonl", required=True, help="Comma-separated prediction jsonl files")
     p.add_argument("--market-csv", required=True)
     p.add_argument("--output", required=True)
+    p.add_argument("--annualization-start", default="")
+    p.add_argument("--annualization-end", default="")
     p.add_argument("--leverage", type=float, default=0.5)
     p.add_argument("--fee-rate", type=float, default=0.0004)
     p.add_argument("--slippage-rate", type=float, default=0.0001)
