@@ -75,6 +75,7 @@ class PortfolioLiveConfig:
     rex_selector_model_name: str = "gemma4-e4b-it"
     rex_selector_score_normalization: str = "sum"
     rex_selector_fail_closed: bool = True
+    rex_selector_require_cuda: bool = True
 
 
 def _load_json(path: str | Path) -> dict[str, Any]:
@@ -846,6 +847,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
         model_name=str(cfg.rex_selector_model_name),
         score_normalization=str(cfg.rex_selector_score_normalization),
         fail_closed=bool(cfg.rex_selector_fail_closed),
+        require_cuda=bool(cfg.rex_selector_require_cuda),
     )
     exec_cfg_raw = WaveExecutionConfig.from_json(cfg.execution_config)
     exec_cfg = WaveExecutionConfig(
@@ -1067,6 +1069,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--rex-selector-model-name", default="gemma4-e4b-it")
     p.add_argument("--rex-selector-score-normalization", choices=["sum", "mean", "first_token"], default="sum")
     p.add_argument("--rex-selector-fail-open", action="store_true", default=False, help="If set, adapter errors do not block an otherwise valid REX candidate")
+    p.add_argument("--rex-selector-allow-cpu", action="store_true", default=False, help="Allow selector inference without CUDA; default is fail-closed when CUDA is unavailable")
     stale = p.add_mutually_exclusive_group()
     stale.add_argument("--cancel-stale-open-orders", dest="cancel_stale_open_orders", action="store_true", default=True)
     stale.add_argument("--no-cancel-stale-open-orders", dest="cancel_stale_open_orders", action="store_false")
@@ -1099,6 +1102,7 @@ def main() -> None:
                 rex_selector_model_name=str(a.rex_selector_model_name),
                 rex_selector_score_normalization=str(a.rex_selector_score_normalization),
                 rex_selector_fail_closed=not bool(a.rex_selector_fail_open),
+                rex_selector_require_cuda=not bool(a.rex_selector_allow_cpu),
             )
         )
     )

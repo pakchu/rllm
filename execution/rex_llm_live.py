@@ -96,6 +96,7 @@ class RexLlmSelectorConfig:
     model_name: str = "gemma4-e4b-it"
     score_normalization: str = "sum"
     fail_closed: bool = True
+    require_cuda: bool = True
 
 @dataclass(frozen=True)
 class RexLiveResult:
@@ -214,6 +215,8 @@ def _score_rex_llm_selector(record: dict[str, Any], *, gates: tuple[FrozenGate, 
 
     import torch
 
+    if cfg.require_cuda and not torch.cuda.is_available():
+        raise RuntimeError("REX selector requires CUDA, but torch.cuda.is_available() is false")
     if cfg.score_normalization not in {"sum", "mean", "first_token"}:
         raise ValueError("score_normalization must be one of {'sum','mean','first_token'}")
     tokenizer, model = _load_rex_selector_model(str(cfg.model_name), str(cfg.adapter_dir))
@@ -369,6 +372,7 @@ def build_rex_live_policy_record(
                 "decision": "ABSTAIN" if selector_cfg.fail_closed else "ERROR_ALLOW_FALLBACK",
                 "error": str(exc),
                 "fail_closed": bool(selector_cfg.fail_closed),
+                "require_cuda": bool(selector_cfg.require_cuda),
             }
             if selector_cfg.fail_closed:
                 prediction = "ABSTAIN"
@@ -666,6 +670,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rex-selector-model-name", default="gemma4-e4b-it")
     parser.add_argument("--rex-selector-score-normalization", choices=["sum", "mean", "first_token"], default="sum")
     parser.add_argument("--rex-selector-fail-open", action="store_true", default=False, help="If set, adapter errors do not block an otherwise valid candidate")
+    parser.add_argument("--rex-selector-allow-cpu", action="store_true", default=False, help="Allow selector inference without CUDA; default is fail-closed when CUDA is unavailable")
     parser.add_argument("--manual-regime", choices=["UNKNOWN", "BEAR", "BULL", "SIDEWAYS"], help="Override config manual regime")
     parser.add_argument("--allow-live-orders", action="store_true", default=False, help="Set allow_live_orders=true; still needs --live")
     parser.add_argument("--loop", action="store_true", default=False, help="Keep running and evaluate once per completed interval")
@@ -708,6 +713,7 @@ async def _amain(args: argparse.Namespace) -> None:
         model_name=str(args.rex_selector_model_name),
         score_normalization=str(args.rex_selector_score_normalization),
         fail_closed=not bool(args.rex_selector_fail_open),
+        require_cuda=not bool(args.rex_selector_allow_cpu),
     )
     if args.loop:
         if args.asof:
