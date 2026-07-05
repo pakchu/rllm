@@ -191,7 +191,11 @@ def live_source_sql(cfg: LiveDbFeatureConfig, *, asof_param: str = "asof", start
 
     return {
         "btcusdt_1m": f"""
-            SELECT ts AS date, open, high, low, close, volume, symbol AS tic
+            SELECT
+                ts AS date,
+                open, high, low, close, volume,
+                quote_asset_volume, number_of_trades, taker_buy_base, taker_buy_quote,
+                symbol AS tic
             FROM bars_binance
             WHERE symbol = '{cfg.symbol}' AND interval = '1m' AND ts >= :{start_param} AND ts <= :{asof_param}
             ORDER BY ts
