@@ -46,6 +46,11 @@ class LongRegimeScoreGateConfig(LongRegimeGateConfig):
         "2020-01-01:2025-01-01:2025-01-01:2026-01-01,"
         "2020-01-01:2026-01-01:2026-01-01:2026-06-02"
     )
+    fold_preset: str = "explicit"
+    rolling_train_start: str = "2020-01-01"
+    rolling_validation_start: str = "2023-01-01"
+    rolling_validation_end: str = "2026-06-02"
+    rolling_months: int = 6
 
 
 def _parse_list(raw: str, cast: Any) -> list[Any]:
@@ -57,6 +62,25 @@ def _parse_fold(raw: str) -> tuple[str, str, str, str]:
     if len(parts) != 4:
         raise ValueError(f"fold must be train_start:train_end:val_start:val_end, got {raw!r}")
     return tuple(parts)  # type: ignore[return-value]
+
+
+def _build_folds(cfg: LongRegimeScoreGateConfig) -> list[tuple[str, str, str, str]]:
+    if str(cfg.fold_preset).strip().lower() in ("", "explicit"):
+        return [_parse_fold(x) for x in _parse_list(cfg.folds, str)]
+    if str(cfg.fold_preset).strip().lower() != "anchored_rolling":
+        raise ValueError(f"unknown fold preset: {cfg.fold_preset!r}")
+    start = pd.Timestamp(cfg.rolling_validation_start)
+    end = pd.Timestamp(cfg.rolling_validation_end)
+    months = int(cfg.rolling_months)
+    if months <= 0:
+        raise ValueError("rolling_months must be positive")
+    folds: list[tuple[str, str, str, str]] = []
+    val_start = start
+    while val_start < end:
+        val_end = min(val_start + pd.DateOffset(months=months), end)
+        folds.append((str(pd.Timestamp(cfg.rolling_train_start).date()), str(val_start.date()), str(val_start.date()), str(val_end.date())))
+        val_start = val_end
+    return folds
 
 
 def _train_zscore(series: pd.Series, train_mask: np.ndarray) -> tuple[pd.Series, dict[str, float]] | None:
@@ -238,7 +262,7 @@ def run(cfg: LongRegimeScoreGateConfig) -> dict[str, Any]:
     features = build_market_feature_frame(market, window_size=int(cfg.window_size))
     interest = build_interest_features(market, features)
     score_raw = _build_score_frame(market, features, interest)
-    folds = [_parse_fold(x) for x in _parse_list(cfg.folds, str)]
+    folds = _build_folds(cfg)
     rows = []
     for variant in _parse_list(cfg.score_variants, str):
         for q in _parse_list(cfg.score_quantiles, float):
@@ -257,6 +281,7 @@ def run(cfg: LongRegimeScoreGateConfig) -> dict[str, Any]:
         "config": asdict(cfg),
         "input": {"rows": len(market), "start": str(market["date"].iloc[0]), "end": str(market["date"].iloc[-1])},
         "selection_protocol": "Each fold fits entry, premium/funding gates, score z-statistics, and score threshold on that fold train only; validation is report-only.",
+        "folds": [{"train_start": a, "train_end": b, "validation_start": c, "validation_end": d} for a, b, c, d in folds],
         "top": ranked[:50],
         "all_count": len(rows),
         "leakage_guard": {"fold_train_only_thresholds": True, "fold_train_only_score_standardization": True, "validation_not_used_for_thresholds": True, "features_past_only_rolling_or_pct_change": True},
@@ -272,13 +297,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output", required=True)
     p.add_argument("--funding-csv", default="")
     p.add_argument("--premium-csv", default="")
-    for field in ("score-quantiles", "score-variants", "hold-bars", "stride-bars", "folds", "exclude-from"):
+    for field in ("score-quantiles", "score-variants", "hold-bars", "stride-bars", "folds", "fold-preset", "rolling-train-start", "rolling-validation-start", "rolling-validation-end", "exclude-from"):
         p.add_argument(f"--{field}", default=getattr(LongRegimeScoreGateConfig, field.replace("-", "_")))
     p.add_argument("--entry-quantile", type=float, default=LongRegimeScoreGateConfig.entry_quantile)
     p.add_argument("--premium-quantile", type=float, default=LongRegimeScoreGateConfig.premium_quantile)
     p.add_argument("--funding-quantile", type=float, default=LongRegimeScoreGateConfig.funding_quantile)
     p.add_argument("--window-size", type=int, default=LongRegimeScoreGateConfig.window_size)
     p.add_argument("--entry-delay-bars", type=int, default=LongRegimeScoreGateConfig.entry_delay_bars)
+    p.add_argument("--rolling-months", type=int, default=LongRegimeScoreGateConfig.rolling_months)
     p.add_argument("--leverage", type=float, default=LongRegimeScoreGateConfig.leverage)
     p.add_argument("--fee-rate", type=float, default=LongRegimeScoreGateConfig.fee_rate)
     p.add_argument("--slippage-rate", type=float, default=LongRegimeScoreGateConfig.slippage_rate)
