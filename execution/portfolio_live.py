@@ -27,7 +27,7 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 
-from execution.rex_llm_live import RexLivePolicyConfig, build_rex_live_policy_record
+from execution.rex_llm_live import RexLivePolicyConfig, RexLlmSelectorConfig, build_rex_live_policy_record
 from execution.wave_execution import (
     WaveExecutionConfig,
     _StaticSignalGenerator,
@@ -45,6 +45,7 @@ from preprocessing.live_db_features import (
 )
 from preprocessing.market_features import build_market_feature_frame
 from training.evaluate_oi_llm_selector import _context_id, _tokens
+from training.evaluate_portfolio_llm_selector import _base_context_tokens
 from training.long_regime_interest_gate_validation import build_interest_features
 from training.long_regime_score_gate_validation import _build_score_frame, _score_variant
 
@@ -69,6 +70,11 @@ class PortfolioLiveConfig:
     entry_timeout_fraction: float = 0.25
     max_entry_wait_sec: int = 300
     cancel_stale_open_orders: bool = True
+    portfolio_selector_overlay: Path | None = None
+    rex_selector_adapter_dir: Path | None = None
+    rex_selector_model_name: str = "gemma4-e4b-it"
+    rex_selector_score_normalization: str = "sum"
+    rex_selector_fail_closed: bool = True
 
 
 def _load_json(path: str | Path) -> dict[str, Any]:
@@ -235,6 +241,84 @@ def _current_atr(enriched: pd.DataFrame, period: int = 15) -> float:
     return out if np.isfinite(out) else 0.0
 
 
+
+def _load_portfolio_selector_overlay(portfolio: dict[str, Any], explicit_path: Path | None) -> dict[str, Any] | None:
+    """Load a bounded portfolio-level selector overlay if configured.
+
+    The selector is intentionally constrained to ALLOW/BLOCK_RISK for already
+    triggered sleeves.  It cannot create signals, alter exits, resize sleeves,
+    or change leverage.
+    """
+
+    raw_path = explicit_path or portfolio.get("portfolio_selector_overlay") or portfolio.get("llm_selector_overlay")
+    if not raw_path:
+        return None
+    path = Path(raw_path).expanduser()
+    if not path.exists():
+        raise FileNotFoundError(f"portfolio selector overlay not found: {path}")
+    overlay = _load_json(path)
+    sel = overlay.get("symbolic_proxy")
+    if not isinstance(sel, dict):
+        raise ValueError(f"portfolio selector overlay missing symbolic_proxy: {path}")
+    keys = sel.get("context_keys")
+    if not isinstance(keys, list) or not keys:
+        raise ValueError(f"portfolio selector overlay missing context_keys: {path}")
+    return {**overlay, "_path": str(path)}
+
+
+def _apply_portfolio_selector_overlay(
+    sleeve_scores: list[dict[str, Any]],
+    *,
+    overlay: dict[str, Any] | None,
+    enriched: pd.DataFrame,
+    features: pd.DataFrame,
+) -> dict[str, Any] | None:
+    """Apply the bounded LLM-selector proxy to pending live entries.
+
+    This mirrors ``training.evaluate_portfolio_llm_selector``: build the same
+    compact state tokens from signal-time features, compute a context id, and
+    block only if that train-only bad context is in the frozen overlay. Existing
+    open sleeves are not force-closed; only new entries are suppressed.
+    """
+
+    active = [s for s in sleeve_scores if s.get("active")]
+    if not overlay or not active:
+        return None
+    sel = overlay.get("symbolic_proxy", {})
+    keys = tuple(str(k) for k in sel.get("context_keys", []))
+    blocked = {str(x.get("context_id")) for x in sel.get("blocked_contexts", []) if isinstance(x, dict)}
+    pos = len(features) - 1
+    tokens = _base_context_tokens(pos, market=enriched, feat=features)
+    cid = _context_id(tokens, keys) if keys else ""
+    allowed = cid not in blocked
+    action = "ALLOW" if allowed else "BLOCK_RISK"
+    pending = [str(s.get("name")) for s in active]
+    record = {
+        "selector": str(overlay.get("name") or overlay.get("_path") or "portfolio_selector_overlay"),
+        "overlay_path": overlay.get("_path"),
+        "output_space": overlay.get("output_space", ["ALLOW", "BLOCK_RISK"]),
+        "action": action,
+        "allowed": allowed,
+        "context_id": cid,
+        "context_keys": list(keys),
+        "pending_sleeves": pending,
+        "state_tokens": tokens,
+        "bounded_contract": {
+            "can_create_signals": False,
+            "can_change_side": False,
+            "can_change_size": False,
+            "can_change_exit": False,
+            "applies_to": "new_entries_only",
+        },
+    }
+    reason = f"portfolio_selector_context={cid}:{action}"
+    for sleeve in active:
+        sleeve.setdefault("reasons", []).append(reason)
+        sleeve["portfolio_selector"] = {k: v for k, v in record.items() if k != "state_tokens"}
+        if not allowed:
+            sleeve["active"] = False
+    return record
+
 def _score_sleeves(
     *,
     portfolio: dict[str, Any],
@@ -242,6 +326,7 @@ def _score_sleeves(
     features: pd.DataFrame,
     exec_cfg: WaveExecutionConfig,
     asof: pd.Timestamp,
+    rex_selector_cfg: RexLlmSelectorConfig | None = None,
 ) -> list[dict[str, Any]]:
     row = features.iloc[-1]
     ts = pd.Timestamp(enriched.iloc[-1]["date"])
@@ -292,6 +377,7 @@ def _score_sleeves(
                 policy_cfg=RexLivePolicyConfig(),
                 execution_cfg=exec_cfg,
                 scorer_asof=asof,
+                selector_cfg=rex_selector_cfg,
             )
             active = record.get("prediction") == "TRADE" and record.get("candidate_side") == "SHORT"
             hold = int(record.get("action", {}).get("hold_bars", 144))
@@ -753,6 +839,14 @@ async def _close_sleeve(*, executor: Any, sleeve_state: dict[str, Any], exec_cfg
 
 async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     portfolio = _load_json(cfg.portfolio_config)
+    selector_overlay = _load_portfolio_selector_overlay(portfolio, cfg.portfolio_selector_overlay)
+    rex_selector_cfg = RexLlmSelectorConfig(
+        enabled=bool(cfg.rex_selector_adapter_dir),
+        adapter_dir=str(cfg.rex_selector_adapter_dir or RexLlmSelectorConfig.adapter_dir),
+        model_name=str(cfg.rex_selector_model_name),
+        score_normalization=str(cfg.rex_selector_score_normalization),
+        fail_closed=bool(cfg.rex_selector_fail_closed),
+    )
     exec_cfg_raw = WaveExecutionConfig.from_json(cfg.execution_config)
     exec_cfg = WaveExecutionConfig(
         **{
@@ -795,8 +889,23 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 asof = asof.tz_localize("UTC")
             live_cfg = LiveDbFeatureConfig(lookback_minutes=int(cfg.lookback_minutes))
             enriched, features = await build_live_portfolio_frames(engine=engine, asof=asof, cfg=live_cfg)
-            sleeve_scores = _score_sleeves(portfolio=portfolio, enriched=enriched, features=features, exec_cfg=exec_cfg, asof=asof)
+            sleeve_scores = _score_sleeves(
+                portfolio=portfolio,
+                enriched=enriched,
+                features=features,
+                exec_cfg=exec_cfg,
+                asof=asof,
+                rex_selector_cfg=rex_selector_cfg,
+            )
+            portfolio_selector_record = _apply_portfolio_selector_overlay(
+                sleeve_scores,
+                overlay=selector_overlay,
+                enriched=enriched,
+                features=features,
+            )
             state = _load_state(cfg.state_file)
+            if portfolio_selector_record is not None:
+                state["last_portfolio_selector"] = portfolio_selector_record
             now = pd.Timestamp.utcnow()
             stale_cancelled: list[dict[str, Any]] = []
             if cfg.cancel_stale_open_orders and not exec_cfg.dry_run:
@@ -912,10 +1021,13 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             state["allocation_audit"] = audit
             _write_json(cfg.state_file, state)
             active = [s["name"] for s in sleeve_scores if s["active"]]
+            selector_status = "none"
+            if portfolio_selector_record is not None:
+                selector_status = f"{portfolio_selector_record.get('action')}:{portfolio_selector_record.get('context_id')}"
             _status(
                 f"[portfolio-live] {pd.Timestamp.utcnow().isoformat()} active={active} opened={opened} closed={closed} "
                 f"open={list(state['open_sleeves'])} stale_cancel={len(stale_cancelled)} repl={replaced_entry_orders} gross={total_weight:.3f} lev={exec_cfg.leverage} "
-                f"alloc={cfg.allocation_mode} live_gross={audit['live_gross_if_all_active']:.3f} dry_run={exec_cfg.dry_run}"
+                f"alloc={cfg.allocation_mode} live_gross={audit['live_gross_if_all_active']:.3f} selector={selector_status} dry_run={exec_cfg.dry_run}"
             )
             iterations += 1
             if cfg.max_iterations is not None and iterations >= cfg.max_iterations:
@@ -946,6 +1058,15 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--entry-timeout-fraction", type=float, default=0.25, help="Fraction of a sleeve stride cycle to wait for a post-only entry fill")
     p.add_argument("--max-entry-wait-sec", type=int, default=300, help="Hard cap for post-only entry wait/stale cancel age")
+    p.add_argument(
+        "--portfolio-selector-overlay",
+        default="",
+        help="Optional bounded portfolio LLM selector overlay; ALLOW/BLOCK_RISK only for new entries",
+    )
+    p.add_argument("--rex-selector-adapter-dir", default="", help="Optional bounded REX TRADE/ABSTAIN LoRA adapter directory")
+    p.add_argument("--rex-selector-model-name", default="gemma4-e4b-it")
+    p.add_argument("--rex-selector-score-normalization", choices=["sum", "mean", "first_token"], default="sum")
+    p.add_argument("--rex-selector-fail-open", action="store_true", default=False, help="If set, adapter errors do not block an otherwise valid REX candidate")
     stale = p.add_mutually_exclusive_group()
     stale.add_argument("--cancel-stale-open-orders", dest="cancel_stale_open_orders", action="store_true", default=True)
     stale.add_argument("--no-cancel-stale-open-orders", dest="cancel_stale_open_orders", action="store_false")
@@ -973,6 +1094,11 @@ def main() -> None:
                 entry_timeout_fraction=float(a.entry_timeout_fraction),
                 max_entry_wait_sec=int(a.max_entry_wait_sec),
                 cancel_stale_open_orders=bool(a.cancel_stale_open_orders),
+                portfolio_selector_overlay=Path(a.portfolio_selector_overlay) if a.portfolio_selector_overlay else None,
+                rex_selector_adapter_dir=Path(a.rex_selector_adapter_dir) if a.rex_selector_adapter_dir else None,
+                rex_selector_model_name=str(a.rex_selector_model_name),
+                rex_selector_score_normalization=str(a.rex_selector_score_normalization),
+                rex_selector_fail_closed=not bool(a.rex_selector_fail_open),
             )
         )
     )

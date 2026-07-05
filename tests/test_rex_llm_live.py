@@ -11,6 +11,7 @@ import pandas as pd
 from execution.rex_llm_live import (
     RexLiveLoopConfig,
     RexLivePolicyConfig,
+    RexLlmSelectorConfig,
     _seconds_until_next_interval,
     run_rex_live_loop,
     build_rex_live_policy_record,
@@ -80,6 +81,36 @@ class TestRexLlmLive(unittest.TestCase):
         decision = decision_from_policy_record(record)
         self.assertEqual(decision.signal, "SHORT")
         self.assertGreater(decision.current_atr, 0.0)
+
+
+    def test_adapter_selector_can_block_otherwise_valid_rex_candidate(self):
+        features = _base_features()
+        with patch(
+            "execution.rex_llm_live._score_rex_llm_selector",
+            return_value={"enabled": True, "decision": "ABSTAIN", "scores": {"ABSTAIN": -1.0, "TRADE": -2.0}},
+        ) as scorer:
+            record = build_rex_live_policy_record(
+                _enriched(),
+                features,
+                policy_cfg=RexLivePolicyConfig(min_positive_strengths=5),
+                selector_cfg=RexLlmSelectorConfig(enabled=True, adapter_dir="dummy"),
+            )
+        scorer.assert_called_once()
+        self.assertEqual(record["prediction"], "ABSTAIN")
+        self.assertIn("llm_selector_block", record["reason"])
+        self.assertEqual(record["llm_selector"]["decision"], "ABSTAIN")
+
+    def test_adapter_selector_fail_closed_blocks_on_error(self):
+        with patch("execution.rex_llm_live._score_rex_llm_selector", side_effect=RuntimeError("adapter missing")):
+            record = build_rex_live_policy_record(
+                _enriched(),
+                _base_features(),
+                policy_cfg=RexLivePolicyConfig(min_positive_strengths=5),
+                selector_cfg=RexLlmSelectorConfig(enabled=True, adapter_dir="dummy", fail_closed=True),
+            )
+        self.assertEqual(record["prediction"], "ABSTAIN")
+        self.assertIn("llm_selector_error_fail_closed", record["reason"])
+        self.assertIn("adapter missing", record["llm_selector"]["error"])
 
     def test_gate_blocks_when_core_external_quality_missing_on_weekday(self):
         enriched = _enriched()

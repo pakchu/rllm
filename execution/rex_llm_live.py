@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+from functools import lru_cache
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -78,6 +79,23 @@ class RexLivePolicyConfig:
     allow_missing_core_external_on_weekend: bool = True
     require_binance_aux: bool = False
 
+
+
+@dataclass(frozen=True)
+class RexLlmSelectorConfig:
+    """Bounded adapter selector for REX candidates.
+
+    The selector can only convert an already-active REX+frozen-gate candidate
+    from TRADE to ABSTAIN.  It cannot create a candidate, change side, change
+    hold bars, or alter sizing.  Fail-closed keeps live execution safe if the
+    adapter/model stack is unavailable at decision time.
+    """
+
+    enabled: bool = False
+    adapter_dir: str = "checkpoints/rex_regime_thesis_range_kimchi_label_gemma4_s32_2026-07-03"
+    model_name: str = "gemma4-e4b-it"
+    score_normalization: str = "sum"
+    fail_closed: bool = True
 
 @dataclass(frozen=True)
 class RexLiveResult:
@@ -158,6 +176,96 @@ def _quality_ok(data_quality: dict[str, Any], cfg: RexLivePolicyConfig, *, date_
     return not missing, missing
 
 
+
+def _selector_enabled(cfg: RexLlmSelectorConfig | None) -> bool:
+    return bool(cfg and cfg.enabled and str(cfg.adapter_dir).strip())
+
+
+@lru_cache(maxsize=2)
+def _load_rex_selector_model(model_name: str, adapter_dir: str):
+    from training.eval_text_label import _load_text_model
+
+    return _load_text_model(model_name, adapter_dir)
+
+
+def _chat_prompt_text(tokenizer: Any, prompt: str) -> str:
+    messages = [{"role": "user", "content": prompt}]
+    return (
+        tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        if getattr(tokenizer, "chat_template", None)
+        else f"<|user|>\n{prompt}\n<|assistant|>\n"
+    )
+
+
+def _selector_prompt_from_record(record: dict[str, Any], gates: tuple[FrozenGate, ...]) -> str:
+    from training.build_rex_regime_thesis_sft import Gate, _prompt
+
+    row = {
+        "date": record.get("date"),
+        "action": record.get("action", {}),
+        "feature_snapshot": record.get("feature_snapshot", {}),
+    }
+    gate_rows = tuple(Gate(feature=g.feature, op=g.op, threshold=float(g.value)) for g in gates if g.op in {">=", "<="})
+    return _prompt(row, gate_rows)
+
+
+def _score_rex_llm_selector(record: dict[str, Any], *, gates: tuple[FrozenGate, ...], cfg: RexLlmSelectorConfig) -> dict[str, Any]:
+    """Return bounded TRADE/ABSTAIN selector decision with label logprobs."""
+
+    import torch
+
+    if cfg.score_normalization not in {"sum", "mean", "first_token"}:
+        raise ValueError("score_normalization must be one of {'sum','mean','first_token'}")
+    tokenizer, model = _load_rex_selector_model(str(cfg.model_name), str(cfg.adapter_dir))
+    prompt = _selector_prompt_from_record(record, gates)
+    prompt_ids = tokenizer(_chat_prompt_text(tokenizer, prompt), add_special_tokens=False)["input_ids"]
+    labels = ["ABSTAIN", "TRADE"]
+    sequences: list[list[int]] = []
+    spans: list[tuple[int, int]] = []
+    for label in labels:
+        label_ids = tokenizer(label, add_special_tokens=False)["input_ids"]
+        if tokenizer.eos_token_id is not None:
+            label_ids = label_ids + [int(tokenizer.eos_token_id)]
+        start = len(prompt_ids)
+        end = start + len(label_ids)
+        sequences.append(prompt_ids + label_ids)
+        spans.append((start, end))
+    encoded = tokenizer.pad({"input_ids": sequences}, return_tensors="pt")
+    input_ids = encoded["input_ids"].to(model.device)
+    attention_mask = encoded["attention_mask"].to(model.device)
+    with torch.no_grad():
+        logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
+        log_probs = torch.log_softmax(logits[:, :-1, :], dim=-1)
+    scores: dict[str, float] = {}
+    for i, (start, end) in enumerate(spans):
+        positions = torch.arange(start - 1, end - 1, device=log_probs.device)
+        label_tensor = input_ids[i, start:end]
+        token_scores = log_probs[i, positions, label_tensor]
+        if cfg.score_normalization == "first_token":
+            score = token_scores[0]
+        elif cfg.score_normalization == "mean":
+            score = token_scores.mean()
+        else:
+            score = token_scores.sum()
+        scores[labels[i]] = float(score.detach().cpu())
+    decision = max(labels, key=lambda lab: scores[lab])
+    return {
+        "enabled": True,
+        "backend": "adapter_candidate_logprob",
+        "adapter_dir": str(cfg.adapter_dir),
+        "model_name": str(cfg.model_name),
+        "score_normalization": str(cfg.score_normalization),
+        "decision": decision,
+        "scores": scores,
+        "bounded_contract": {
+            "can_create_signal": False,
+            "can_change_side": False,
+            "can_change_hold": False,
+            "can_change_size": False,
+            "allowed_outputs": ["TRADE", "ABSTAIN"],
+        },
+    }
+
 def build_rex_live_policy_record(
     enriched: pd.DataFrame,
     features: pd.DataFrame,
@@ -165,6 +273,7 @@ def build_rex_live_policy_record(
     policy_cfg: RexLivePolicyConfig = RexLivePolicyConfig(),
     execution_cfg: WaveExecutionConfig | None = None,
     scorer_asof: str | pd.Timestamp | None = None,
+    selector_cfg: RexLlmSelectorConfig | None = None,
 ) -> dict[str, Any]:
     """Build one leak-safe live policy record from completed feature rows."""
 
@@ -228,7 +337,45 @@ def build_rex_live_policy_record(
         reasons.append("frozen_gate_block")
     if not quality_ok:
         reasons.append("missing_quality=" + ",".join(missing_quality))
-    if prediction == "TRADE":
+    selector_record: dict[str, Any] = {"enabled": False}
+    if prediction == "TRADE" and _selector_enabled(selector_cfg):
+        assert selector_cfg is not None
+        preview_record = {
+            "date": str(snapshot["date"]),
+            "action": {
+                "family": policy_cfg.family,
+                "side": side,
+                "strength": current_strength,
+                "threshold": threshold if np.isfinite(threshold) else None,
+                "strength_quantile": float(policy_cfg.strength_quantile),
+                "hold_bars": int(policy_cfg.hold_bars),
+                "entry_delay_bars": int(policy_cfg.entry_delay_bars),
+            },
+            "feature_snapshot": feature_snapshot,
+        }
+        try:
+            selector_record = _score_rex_llm_selector(preview_record, gates=policy_cfg.gates, cfg=selector_cfg)
+            if selector_record.get("decision") != "TRADE":
+                prediction = "ABSTAIN"
+                reasons.append("llm_selector_block")
+            else:
+                reasons.append("llm_selector_allow")
+        except Exception as exc:
+            selector_record = {
+                "enabled": True,
+                "backend": "adapter_candidate_logprob",
+                "adapter_dir": str(selector_cfg.adapter_dir),
+                "model_name": str(selector_cfg.model_name),
+                "decision": "ABSTAIN" if selector_cfg.fail_closed else "ERROR_ALLOW_FALLBACK",
+                "error": str(exc),
+                "fail_closed": bool(selector_cfg.fail_closed),
+            }
+            if selector_cfg.fail_closed:
+                prediction = "ABSTAIN"
+                reasons.append("llm_selector_error_fail_closed")
+            else:
+                reasons.append("llm_selector_error_allow_fallback")
+    elif prediction == "TRADE":
         reasons.append("rex_candidate_and_frozen_gate_pass")
 
     date = str(snapshot["date"])
@@ -262,6 +409,7 @@ def build_rex_live_policy_record(
         "feature_snapshot": feature_snapshot,
         "data_quality": data_quality,
         "gate_results": gate_results,
+        "llm_selector": selector_record,
         "current_close": close,
         "current_atr": current_atr,
         "probability": margin_prob,
@@ -282,6 +430,7 @@ async def run_rex_live_once(
     live_db_cfg: LiveDbFeatureConfig = LiveDbFeatureConfig(),
     asof: str | pd.Timestamp | None = None,
     env_path: str | Path = ".env",
+    selector_cfg: RexLlmSelectorConfig | None = None,
 ) -> RexLiveResult:
     """Query DB, score the latest completed bar, and execute/dry-run once."""
 
@@ -291,6 +440,7 @@ async def run_rex_live_once(
         live_db_cfg=live_db_cfg,
         asof=asof,
         env_path=env_path,
+        selector_cfg=selector_cfg,
     )
     decision = decision_from_policy_record(record)
     bridge = WaveExecutionBridge.from_env(config=execution_cfg)
@@ -308,6 +458,7 @@ async def score_rex_live_once(
     live_db_cfg: LiveDbFeatureConfig = LiveDbFeatureConfig(),
     asof: str | pd.Timestamp | None = None,
     env_path: str | Path = ".env",
+    selector_cfg: RexLlmSelectorConfig | None = None,
 ) -> dict[str, Any]:
     """Query DB and score the latest completed bar without placing orders."""
 
@@ -325,6 +476,7 @@ async def score_rex_live_once(
         policy_cfg=policy_cfg,
         execution_cfg=execution_cfg,
         scorer_asof=asof_ts,
+        selector_cfg=selector_cfg,
     )
 
 
@@ -409,6 +561,7 @@ async def run_rex_live_loop(
     live_db_cfg: LiveDbFeatureConfig = LiveDbFeatureConfig(),
     env_path: str | Path = ".env",
     loop_cfg: RexLiveLoopConfig = RexLiveLoopConfig(),
+    selector_cfg: RexLlmSelectorConfig | None = None,
 ) -> None:
     """Continuously execute one REX live decision per completed candle.
 
@@ -443,6 +596,7 @@ async def run_rex_live_loop(
             live_db_cfg=live_db_cfg,
             asof=asof_ts,
             env_path=env_path,
+            selector_cfg=selector_cfg,
         )
         signal_id = str(record.get("signal_id", ""))
         state = _load_loop_state(loop_cfg.state_file)
@@ -508,6 +662,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--strict-core-external", action="store_true", default=False, help="Block missing DXY/kimchi/USDKRW even during FX weekend closures")
     parser.add_argument("--allow-missing-core-external", action="store_true", default=False, help="Always allow missing DXY/kimchi/USDKRW like historical neutral-fill evaluation")
     parser.add_argument("--gate", action="append", type=_parse_gate, default=None, help="Override frozen gate, e.g. range_vol>=0.02")
+    parser.add_argument("--rex-selector-adapter-dir", default="", help="Optional bounded REX TRADE/ABSTAIN LoRA adapter directory")
+    parser.add_argument("--rex-selector-model-name", default="gemma4-e4b-it")
+    parser.add_argument("--rex-selector-score-normalization", choices=["sum", "mean", "first_token"], default="sum")
+    parser.add_argument("--rex-selector-fail-open", action="store_true", default=False, help="If set, adapter errors do not block an otherwise valid candidate")
     parser.add_argument("--manual-regime", choices=["UNKNOWN", "BEAR", "BULL", "SIDEWAYS"], help="Override config manual regime")
     parser.add_argument("--allow-live-orders", action="store_true", default=False, help="Set allow_live_orders=true; still needs --live")
     parser.add_argument("--loop", action="store_true", default=False, help="Keep running and evaluate once per completed interval")
@@ -544,6 +702,13 @@ async def _amain(args: argparse.Namespace) -> None:
         require_binance_aux=bool(args.require_binance_aux),
     )
     live_db_cfg = LiveDbFeatureConfig(lookback_minutes=int(args.lookback_minutes))
+    selector_cfg = RexLlmSelectorConfig(
+        enabled=bool(args.rex_selector_adapter_dir),
+        adapter_dir=str(args.rex_selector_adapter_dir or RexLlmSelectorConfig.adapter_dir),
+        model_name=str(args.rex_selector_model_name),
+        score_normalization=str(args.rex_selector_score_normalization),
+        fail_closed=not bool(args.rex_selector_fail_open),
+    )
     if args.loop:
         if args.asof:
             raise SystemExit("--asof cannot be used with --loop because it would keep targeting the same timestamp")
@@ -560,6 +725,7 @@ async def _amain(args: argparse.Namespace) -> None:
             live_db_cfg=live_db_cfg,
             env_path=args.env,
             loop_cfg=loop_cfg,
+            selector_cfg=selector_cfg,
         )
         return
     result = await run_rex_live_once(
@@ -568,6 +734,7 @@ async def _amain(args: argparse.Namespace) -> None:
         live_db_cfg=live_db_cfg,
         asof=args.asof,
         env_path=args.env,
+        selector_cfg=selector_cfg,
     )
     print(json.dumps(asdict(result), ensure_ascii=False, indent=2, sort_keys=True, default=str))
 
