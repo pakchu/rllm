@@ -60,7 +60,7 @@ class PortfolioLiveConfig:
     env_path: Path = Path(".env")
     state_file: Path = Path(".omx/state/portfolio_live_state.json")
     lookback_minutes: int = 45_000
-    close_delay_sec: float = 15.0
+    close_delay_sec: float = 5.0
     run_immediately: bool = False
     live: bool = False
     allow_live_orders: bool = False
@@ -1047,7 +1047,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--env", default=".env")
     p.add_argument("--state-file", default=".omx/state/portfolio_live_state.json")
     p.add_argument("--lookback-minutes", type=int, default=45_000)
-    p.add_argument("--close-delay-sec", type=float, default=15.0)
+    p.add_argument("--close-delay-sec", type=float, default=5.0)
     p.add_argument("--run-immediately", action="store_true", default=False)
     p.add_argument("--live", action="store_true", default=False)
     p.add_argument("--allow-live-orders", action="store_true", default=False)

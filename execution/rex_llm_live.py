@@ -109,7 +109,7 @@ class RexLiveLoopConfig:
     """Runtime controls for repeated live scoring/execution."""
 
     state_file: Path = Path(".omx/state/rex_llm_live_loop_state.json")
-    close_delay_sec: float = 15.0
+    close_delay_sec: float = 5.0
     run_immediately: bool = True
     max_iterations: int | None = None
     json_log: bool = False
@@ -675,7 +675,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--allow-live-orders", action="store_true", default=False, help="Set allow_live_orders=true; still needs --live")
     parser.add_argument("--loop", action="store_true", default=False, help="Keep running and evaluate once per completed interval")
     parser.add_argument("--loop-state-file", default=".omx/state/rex_llm_live_loop_state.json", help="State file used to skip already processed signal_id values")
-    parser.add_argument("--close-delay-sec", type=float, default=15.0, help="Seconds after each interval boundary before evaluating the closed candle")
+    parser.add_argument("--close-delay-sec", type=float, default=5.0, help="Seconds after each interval boundary before evaluating the closed candle")
     parser.add_argument("--no-run-immediately", action="store_true", default=False, help="In --loop mode, wait for the next scheduled boundary before first evaluation")
     parser.add_argument("--json-log", action="store_true", default=False, help="In --loop mode, print append-only JSON logs instead of updating one terminal line")
     parser.add_argument("--max-iterations", type=int, default=None, help=argparse.SUPPRESS)
