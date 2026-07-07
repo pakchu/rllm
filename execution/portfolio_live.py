@@ -473,6 +473,10 @@ class PortfolioLiveConfig:
     max_iterations: int | None = None
     entry_timeout_fraction: float = 0.25
     max_entry_wait_sec: int = 300
+    max_exit_wait_sec: int = 600
+    maker_refresh_interval_sec: int = 60
+    entry_maker_max_deviation_pct: float = 0.003
+    exit_maker_max_deviation_pct: float = 0.002
     cancel_stale_open_orders: bool = True
     portfolio_selector_overlay: Path | None = None
     rex_selector_adapter_dir: Path | None = None
@@ -706,7 +710,8 @@ def _score_sleeves(
         name = str(sleeve["name"])
         source = str(sleeve["source"])
         weight = float(sleeve["weight"])
-        side = str(sleeve["side"]).upper()
+        configured_side = str(sleeve["side"]).upper()
+        side = configured_side
         active = False
         reasons: list[str] = []
         hold = 0
@@ -739,7 +744,11 @@ def _score_sleeves(
                 active &= selector_ok
                 reasons.append(f"selector_context={cid}:{'ALLOW' if selector_ok else 'BLOCK'}")
         else:
-            # Bear REX short sleeve uses the frozen REX live policy path.
+            # REX sleeve uses the frozen REX live policy path.  Research treats
+            # this sleeve as a directional candidate selected by the REX rule
+            # itself, so live configs may set side=AUTO/BOTH to execute either
+            # LONG or SHORT.  Explicit LONG/SHORT configs remain directional
+            # filters for older short-only deployments.
             record = build_rex_live_policy_record(
                 enriched,
                 features,
@@ -748,10 +757,19 @@ def _score_sleeves(
                 scorer_asof=asof,
                 selector_cfg=rex_selector_cfg,
             )
-            active = record.get("prediction") == "TRADE" and record.get("candidate_side") == "SHORT"
+            candidate_side = str(record.get("candidate_side", "")).upper()
+            side_ok = candidate_side in {"LONG", "SHORT"}
+            side_filter_ok = configured_side in {"AUTO", "BOTH"} or candidate_side == configured_side
+            active = bool(record.get("prediction") == "TRADE" and side_ok and side_filter_ok)
+            if side_ok and configured_side in {"AUTO", "BOTH"}:
+                side = candidate_side
             hold = int(record.get("action", {}).get("hold_bars", 144))
             stride = 1
-            reasons = [str(record.get("reason", ""))]
+            reasons = [
+                str(record.get("reason", "")),
+                f"rex_candidate_side={candidate_side or 'NONE'}",
+                f"configured_side={configured_side}:{'pass' if side_filter_ok else 'fail'}",
+            ]
 
         out.append(
             {
@@ -765,7 +783,7 @@ def _score_sleeves(
                 "date": str(ts),
                 "current_close": close,
                 "current_atr": atr,
-                "signal_id": f"{name}:{ts.isoformat()}",
+                "signal_id": f"{name}:{side}:{ts.isoformat()}",
                 "reasons": reasons,
             }
         )
@@ -834,6 +852,237 @@ def _portfolio_client_order_id(signal_id: str, *, sleeve_name: str, now_sec: int
     sleeve_key = _portfolio_sleeve_key(sleeve_name)
     digest = hashlib.sha1(signal_id.encode("utf-8")).hexdigest()[:8]
     return f"{PORTFOLIO_ORDER_PREFIX}_{epoch}_{sleeve_key}_{digest}"
+
+
+def _portfolio_order_parts(client_order_id: str) -> dict[str, str] | None:
+    """Parse this runner's compact client order id.
+
+    Format: rpf_<epoch>_<sleeve_sha6>_<signal_sha8>.  The digest is enough to
+    recover the originating sleeve/signal from local config history after a
+    process restart, without storing secrets in the order id.
+    """
+
+    parts = str(client_order_id or "").split("_")
+    if len(parts) < 4 or parts[0] != PORTFOLIO_ORDER_PREFIX:
+        return None
+    return {"epoch": parts[1], "sleeve_key": parts[2], "signal_digest": parts[3]}
+
+
+def _load_sleeve_runtime_spec(sleeve: dict[str, Any]) -> dict[str, Any]:
+    """Best-effort runtime metadata for a configured sleeve."""
+
+    source = str(sleeve.get("source") or sleeve.get("source_predictions") or "")
+    hold = int(sleeve.get("hold_bars", sleeve.get("hold_bars_5m", 0)) or 0)
+    stride = int(sleeve.get("stride_bars", sleeve.get("stride_bars_5m", 1)) or 1)
+    if source.endswith(".json") and Path(source).exists():
+        try:
+            cfg = _load_json(source)
+            if "base_candidate" in cfg and "gates" not in cfg and "signal" not in cfg:
+                cfg = _load_json(str(cfg["base_candidate"]))
+            if "signal" in cfg:
+                hold = int(cfg["signal"].get("hold_bars_5m", cfg["signal"].get("hold_bars", hold)) or hold)
+                stride = int(cfg["signal"].get("stride_bars_5m", cfg["signal"].get("stride_bars", stride)) or stride)
+            else:
+                hold = int(cfg.get("hold_bars", cfg.get("hold_bars_5m", hold)) or hold)
+                stride = int(cfg.get("stride_bars", cfg.get("stride_bars_5m", stride)) or stride)
+        except Exception:
+            pass
+    return {"source": source, "hold_bars": hold, "stride_bars": stride}
+
+
+def _known_portfolio_sleeves(portfolio: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Index current and historical live portfolio sleeves by name.
+
+    This lets a newly-started process recover positions opened by the previous
+    gross/leverage mix, because Binance only retains the compact sleeve hash in
+    clientOrderId.
+    """
+
+    out: dict[str, dict[str, Any]] = {}
+
+    def add(sleeve: dict[str, Any]) -> None:
+        name = str(sleeve.get("name") or "")
+        if not name:
+            return
+        out.setdefault(
+            name,
+            {
+                "name": name,
+                "source": str(sleeve.get("source") or sleeve.get("source_predictions") or ""),
+                "side": str(sleeve.get("side", "")).upper(),
+                "weight": float(sleeve.get("weight", 0.0) or 0.0),
+                **_load_sleeve_runtime_spec(sleeve),
+            },
+        )
+
+    for sleeve in portfolio.get("base_sleeves", []):
+        add(sleeve)
+    for path in Path("configs/live").glob("portfolio*.json"):
+        try:
+            cfg = _load_json(path)
+        except Exception:
+            continue
+        for sleeve in cfg.get("base_sleeves", []):
+            add(sleeve)
+    return out
+
+
+def _infer_signal_id_from_digest(
+    *,
+    sleeve_name: str,
+    digest: str,
+    order_time_ms: int | None,
+    interval_minutes: int,
+    search_bars: int = 48,
+) -> tuple[str | None, pd.Timestamp | None]:
+    if not order_time_ms:
+        return None, None
+    order_ts = pd.Timestamp(int(order_time_ms), unit="ms", tz="UTC").floor(f"{int(interval_minutes)}min")
+    for offset in range(-search_bars, search_bars + 1):
+        ts = order_ts + pd.Timedelta(minutes=int(interval_minutes) * offset)
+        naive = ts.tz_convert(None)
+        for stamp in (naive.isoformat(), str(naive)):
+            signal_id = f"{sleeve_name}:{stamp}"
+            if hashlib.sha1(signal_id.encode("utf-8")).hexdigest()[:8] == digest:
+                return signal_id, ts
+            # New auto-direction signal ids include the effective side between
+            # name and timestamp.  Historical orders did not, but support both.
+            for side in ("LONG", "SHORT"):
+                signal_id = f"{sleeve_name}:{side}:{stamp}"
+                if hashlib.sha1(signal_id.encode("utf-8")).hexdigest()[:8] == digest:
+                    return signal_id, ts
+    return None, None
+
+
+async def _recover_exchange_positions_into_state(
+    *,
+    state: dict[str, Any],
+    client: Any,
+    exec_cfg: WaveExecutionConfig,
+    portfolio: dict[str, Any],
+    leverage_budget: float,
+    allocation_mode: str,
+) -> list[dict[str, Any]]:
+    """Import live Binance positions opened by this runner but missing in state.
+
+    State can be lost across reboots or strategy switches.  If an exchange
+    position remains open, reconstruct the sleeve from the rpf_* client order id
+    so normal exit-at handling continues instead of orphaning the position.
+    """
+
+    recovered: list[dict[str, Any]] = []
+    known_by_name = _known_portfolio_sleeves(portfolio)
+    known_by_key = {_portfolio_sleeve_key(name): spec for name, spec in known_by_name.items()}
+    open_sleeves = state.setdefault("open_sleeves", {})
+    try:
+        positions = await client.get_positions(exec_cfg.symbol)
+    except TypeError:
+        positions = await client.get_positions()
+    except Exception as exc:
+        state["last_position_recovery_error"] = str(exc)
+        return recovered
+    active_positions = []
+    for pos in positions:
+        try:
+            qty = abs(Decimal(str(pos.get("positionAmt", "0") or "0")))
+        except Exception:
+            qty = Decimal("0")
+        if qty <= Decimal("0"):
+            continue
+        side = str(pos.get("positionSide") or "").upper()
+        if side not in {"LONG", "SHORT"}:
+            try:
+                side = "LONG" if Decimal(str(pos.get("positionAmt", "0"))) > 0 else "SHORT"
+            except Exception:
+                side = "LONG"
+        active_positions.append((pos, side, qty))
+    if not active_positions:
+        return recovered
+    existing_sides = {str(v.get("side", "")).upper() for v in open_sleeves.values() if Decimal(str(v.get("quantity", "0") or "0")) > 0}
+    try:
+        trades = await client._private_request("GET", "/fapi/v1/userTrades", {"symbol": exec_cfg.symbol, "limit": 100})
+    except Exception:
+        trades = []
+    for pos, side, qty in active_positions:
+        if side in existing_sides:
+            continue
+        open_side = "BUY" if side == "LONG" else "SELL"
+        close_side = "SELL" if side == "LONG" else "BUY"
+        side_trades = [t for t in trades if str(t.get("positionSide", "")).upper() == side]
+        last_close_ms = max((int(t.get("time", 0) or 0) for t in side_trades if str(t.get("side", "")).upper() == close_side), default=0)
+        entries = [t for t in side_trades if str(t.get("side", "")).upper() == open_side and int(t.get("time", 0) or 0) >= last_close_ms]
+        if not entries:
+            continue
+        entry = max(entries, key=lambda t: int(t.get("time", 0) or 0))
+        order_id = entry.get("orderId")
+        order: dict[str, Any] = {}
+        if order_id is not None:
+            try:
+                order = await client.get_order(exec_cfg.symbol, order_id=order_id)
+            except Exception:
+                try:
+                    order = await client._private_request("GET", "/fapi/v1/order", {"symbol": exec_cfg.symbol, "orderId": order_id})
+                except Exception:
+                    order = {}
+        cid = str(order.get("clientOrderId") or "")
+        parts = _portfolio_order_parts(cid)
+        if parts is None:
+            continue
+        spec = known_by_key.get(parts["sleeve_key"])
+        if spec is None:
+            continue
+        name = str(spec["name"])
+        if name in open_sleeves:
+            continue
+        signal_id, signal_ts = _infer_signal_id_from_digest(
+            sleeve_name=name,
+            digest=parts["signal_digest"],
+            order_time_ms=int(order.get("time", entry.get("time", 0)) or 0),
+            interval_minutes=exec_cfg.interval_minutes,
+        )
+        if signal_ts is None:
+            signal_ts = pd.Timestamp(int(entry.get("time", 0) or 0), unit="ms", tz="UTC").floor(f"{int(exec_cfg.interval_minutes)}min")
+        if signal_id is None:
+            signal_id = f"{name}:{side}:recovered:{order_id}"
+        hold_bars = int(spec.get("hold_bars") or exec_cfg.max_holding_bars)
+        exit_at = signal_ts + pd.Timedelta(minutes=exec_cfg.interval_minutes * (1 + hold_bars))
+        total_weight = float(sum(float(s.get("weight", 0.0) or 0.0) for s in portfolio.get("base_sleeves", [])))
+        weight = float(spec.get("weight") or 0.0)
+        margin_fraction = _margin_fraction_for_weight(
+            weight=weight,
+            total_weight=total_weight,
+            leverage_budget=float(leverage_budget),
+            allocation_mode=allocation_mode,
+        ) if weight > 0 else 0.0
+        open_sleeves[name] = {
+            "name": name,
+            "side": side,
+            "signal_id": signal_id,
+            "signal_date": str(signal_ts.tz_convert(None)),
+            "exit_at": str(exit_at),
+            "weight": weight,
+            "margin_fraction": margin_fraction,
+            "allocation_mode": allocation_mode,
+            "quantity": str(qty),
+            "order_info": {
+                "status": "RECOVERED_FROM_EXCHANGE",
+                "order_id": order_id,
+                "client_order_id": cid,
+                "entry_trade_time": entry.get("time"),
+                "entry_price": entry.get("price", pos.get("entryPrice")),
+                "position": {k: pos.get(k) for k in ["symbol", "positionSide", "positionAmt", "entryPrice", "updateTime"]},
+            },
+            "recovered_from_exchange": True,
+        }
+        state.setdefault("processed_signals", {})[name] = signal_id
+        rec = {"name": name, "side": side, "quantity": str(qty), "signal_id": signal_id, "exit_at": str(exit_at), "order_id": order_id}
+        recovered.append(rec)
+    if recovered:
+        history = list(state.get("exchange_position_recovery_history", []))
+        history.extend({**r, "recovered_at": str(pd.Timestamp.utcnow())} for r in recovered)
+        state["exchange_position_recovery_history"] = history[-100:]
+        state["last_exchange_position_recovery"] = recovered
+    return recovered
 
 
 def _order_timestamp_ms(order: dict[str, Any]) -> int | None:
@@ -969,46 +1218,84 @@ async def _place_portfolio_maker_order_with_deadline(
     signal_id: str,
     sleeve_name: str,
     ttl_sec: int,
+    reduce_only: bool = False,
+    reference_price: float | None = None,
+    max_deviation_pct: float | None = None,
+    refresh_interval_sec: int = 60,
     poll_interval_sec: float = 1.0,
 ) -> dict[str, Any]:
-    """Place one post-only entry and cancel unfilled remainder by deadline."""
+    """Place a post-only order and refresh it on a bounded one-minute cadence."""
 
-    maker_price = await executor.get_maker_price(order_side, None)
-    client_order_id = _portfolio_client_order_id(signal_id, sleeve_name=sleeve_name)
     started = pd.Timestamp.utcnow()
-    try:
-        order = await client.place_order(
-            symbol=exec_cfg.symbol,
-            side=order_side,
-            order_type="LIMIT",
-            quantity=float(quantity),
-            price=float(maker_price),
-            time_in_force="GTX",
-            reduce_only=False,
-            client_order_id=client_order_id,
-            position_side=position_side,
-        )
-    except Exception as exc:
-        return {
-            "status": "REJECTED",
-            "client_order_id": client_order_id,
-            "requested_quantity": str(quantity),
-            "filled_quantity": "0",
-            "avg_price": str(maker_price),
-            "ttl_sec": int(ttl_sec),
-            "error": str(exc),
-        }
-
-    order_id = order.get("orderId")
     deadline = asyncio.get_event_loop().time() + max(0, int(ttl_sec))
-    last_status = dict(order)
-    filled_qty = Decimal("0")
-    avg_price = Decimal(str(maker_price))
+    remaining_qty = Decimal(str(quantity))
+    total_filled = Decimal("0")
+    avg_price = Decimal("0")
+    active_order_id: Any = None
+    active_client_order_id = ""
+    active_price = Decimal("0")
+    raw_orders: list[dict[str, Any]] = []
+    refresh_history: list[dict[str, Any]] = []
+    last_status: dict[str, Any] = {}
     terminal_statuses = {"FILLED", "CANCELED", "REJECTED", "EXPIRED"}
+    min_qty = Decimal("0.001")
 
-    while True:
+    def deviation_ok(price: float) -> tuple[bool, float | None]:
+        if reference_price is None or max_deviation_pct is None or max_deviation_pct <= 0:
+            return True, None
+        ref = float(reference_price)
+        if ref <= 0:
+            return True, None
+        deviation = abs(float(price) / ref - 1.0)
+        return deviation <= float(max_deviation_pct), deviation
+
+    async def place_new(reason: str) -> bool:
+        nonlocal active_order_id, active_client_order_id, active_price, last_status
+        maker_price = float(await executor.get_maker_price(order_side, None))
+        ok, deviation = deviation_ok(maker_price)
+        if not ok:
+            refresh_history.append({"action": "skip_place_deviation", "reason": reason, "price": maker_price, "reference_price": reference_price, "deviation_pct": deviation, "max_deviation_pct": max_deviation_pct, "at": str(pd.Timestamp.utcnow())})
+            return False
+        cid = _portfolio_client_order_id(signal_id, sleeve_name=sleeve_name)
         try:
-            last_status = await client.get_order(exec_cfg.symbol, order_id=order_id)
+            order = await client.place_order(
+                symbol=exec_cfg.symbol,
+                side=order_side,
+                order_type="LIMIT",
+                quantity=float(remaining_qty),
+                price=float(maker_price),
+                time_in_force="GTX",
+                reduce_only=bool(reduce_only),
+                client_order_id=cid,
+                position_side=position_side,
+            )
+        except Exception as exc:
+            refresh_history.append({"action": "place_rejected", "reason": reason, "client_order_id": cid, "price": maker_price, "reference_price": reference_price, "deviation_pct": deviation, "error": str(exc), "at": str(pd.Timestamp.utcnow())})
+            return False
+        active_order_id = order.get("orderId")
+        active_client_order_id = cid
+        active_price = Decimal(str(maker_price))
+        last_status = dict(order)
+        raw_orders.append(order)
+        refresh_history.append({"action": "placed" if reason == "initial" else "replaced", "reason": reason, "order_id": active_order_id, "client_order_id": cid, "price": str(active_price), "quantity": str(remaining_qty), "reference_price": reference_price, "deviation_pct": deviation, "at": str(pd.Timestamp.utcnow())})
+        return True
+
+    if not await place_new("initial"):
+        return {"status": "REJECTED_DEVIATION" if refresh_history and refresh_history[-1]["action"] == "skip_place_deviation" else "REJECTED", "client_order_id": active_client_order_id, "requested_quantity": str(quantity), "filled_quantity": "0", "avg_price": "0", "price": "0", "ttl_sec": int(ttl_sec), "started_at": str(started), "deadline_at": str(started + pd.Timedelta(seconds=int(ttl_sec))), "refresh_history": refresh_history}
+
+    last_refresh = asyncio.get_event_loop().time()
+    final_status = "UNKNOWN"
+    cancel_result: dict[str, Any] | None = None
+
+    while asyncio.get_event_loop().time() < deadline:
+        await asyncio.sleep(max(0.05, float(poll_interval_sec)))
+        if active_order_id is None:
+            if asyncio.get_event_loop().time() - last_refresh >= max(1, int(refresh_interval_sec)):
+                await place_new("refresh_after_deviation_skip")
+                last_refresh = asyncio.get_event_loop().time()
+            continue
+        try:
+            last_status = await client.get_order(exec_cfg.symbol, order_id=active_order_id)
         except Exception as exc:
             if "-2013" in str(exc):
                 last_status = {**last_status, "status": "UNKNOWN", "query_error": str(exc)}
@@ -1016,47 +1303,61 @@ async def _place_portfolio_maker_order_with_deadline(
             last_status = {**last_status, "query_error": str(exc)}
         status = str(last_status.get("status") or "UNKNOWN")
         try:
-            filled_qty = Decimal(str(last_status.get("executedQty", "0") or "0"))
+            executed = Decimal(str(last_status.get("executedQty", "0") or "0"))
         except Exception:
-            filled_qty = Decimal("0")
+            executed = Decimal("0")
         try:
             reported_avg = Decimal(str(last_status.get("avgPrice", "0") or "0"))
             if reported_avg > 0:
                 avg_price = reported_avg
         except Exception:
             pass
-        if status == "FILLED" or status in terminal_statuses or asyncio.get_event_loop().time() >= deadline:
+        if status == "FILLED":
+            total_filled += executed
+            final_status = "FILLED"
             break
-        await asyncio.sleep(max(0.05, float(poll_interval_sec)))
+        if status in terminal_statuses:
+            total_filled += executed
+            remaining_qty = max(Decimal("0"), remaining_qty - executed)
+            final_status = status
+            if remaining_qty < min_qty:
+                break
+            if asyncio.get_event_loop().time() < deadline:
+                await place_new(f"terminal_{status.lower()}")
+                last_refresh = asyncio.get_event_loop().time()
+                continue
+            break
 
-    final_status = str(last_status.get("status") or "UNKNOWN")
-    cancel_result: dict[str, Any] | None = None
-    if final_status not in terminal_statuses or final_status == "PARTIALLY_FILLED":
+        if asyncio.get_event_loop().time() - last_refresh >= max(1, int(refresh_interval_sec)):
+            total_filled += executed
+            remaining_qty = max(Decimal("0"), remaining_qty - executed)
+            if remaining_qty < min_qty:
+                final_status = "PARTIAL_FILLED_MIN_REMAINING" if total_filled > 0 else status
+                break
+            try:
+                cancel_result = await client.cancel_order(exec_cfg.symbol, client_order_id=active_client_order_id)
+                refresh_history.append({"action": "cancel_for_refresh", "order_id": active_order_id, "client_order_id": active_client_order_id, "executed_qty": str(executed), "remaining_qty": str(remaining_qty), "result": cancel_result, "at": str(pd.Timestamp.utcnow())})
+            except Exception as exc:
+                if "-2011" not in str(exc):
+                    refresh_history.append({"action": "cancel_for_refresh_failed", "order_id": active_order_id, "client_order_id": active_client_order_id, "error": str(exc), "at": str(pd.Timestamp.utcnow())})
+            active_order_id = None
+            active_client_order_id = ""
+            await place_new("refresh_60s")
+            last_refresh = asyncio.get_event_loop().time()
+
+    if final_status == "UNKNOWN":
+        final_status = str(last_status.get("status") or "UNKNOWN")
+    if active_client_order_id and final_status not in {"FILLED", "CANCELED", "REJECTED", "EXPIRED"}:
         try:
-            cancel_result = await client.cancel_order(exec_cfg.symbol, client_order_id=client_order_id)
-            if final_status not in {"FILLED", "PARTIALLY_FILLED"}:
-                final_status = "TIMEOUT_CANCELLED"
-            elif final_status == "PARTIALLY_FILLED":
-                final_status = "PARTIAL_CANCELLED"
+            cancel_result = await client.cancel_order(exec_cfg.symbol, client_order_id=active_client_order_id)
+            final_status = "TIMEOUT_CANCELLED" if total_filled <= 0 else "PARTIAL_CANCELLED"
         except Exception as exc:
             if "-2011" not in str(exc):
                 cancel_result = {"status": "cancel_failed", "error": str(exc)}
+    if avg_price <= 0 and active_price > 0:
+        avg_price = active_price
 
-    return {
-        "status": final_status,
-        "order_id": order_id,
-        "client_order_id": client_order_id,
-        "requested_quantity": str(quantity),
-        "filled_quantity": str(filled_qty),
-        "avg_price": str(avg_price),
-        "price": str(maker_price),
-        "ttl_sec": int(ttl_sec),
-        "started_at": str(started),
-        "deadline_at": str(started + pd.Timedelta(seconds=int(ttl_sec))),
-        "cancel_result": cancel_result,
-        "raw_order": order,
-        "last_status": last_status,
-    }
+    return {"status": final_status, "order_id": active_order_id, "client_order_id": active_client_order_id, "requested_quantity": str(quantity), "filled_quantity": str(total_filled), "avg_price": str(avg_price), "price": str(active_price), "ttl_sec": int(ttl_sec), "refresh_interval_sec": int(refresh_interval_sec), "reference_price": reference_price, "max_deviation_pct": max_deviation_pct, "started_at": str(started), "deadline_at": str(started + pd.Timedelta(seconds=int(ttl_sec))), "cancel_result": cancel_result, "raw_order": raw_orders[0] if raw_orders else {}, "raw_orders": raw_orders, "last_status": last_status, "refresh_history": refresh_history}
 
 
 def _margin_fraction_for_weight(
@@ -1179,6 +1480,9 @@ async def _open_sleeve(
         signal_id=sleeve["signal_id"],
         sleeve_name=str(sleeve["name"]),
         ttl_sec=entry_ttl_sec,
+        reference_price=float(sleeve.get("current_close", 0.0) or 0.0),
+        max_deviation_pct=float(sleeve.get("entry_maker_max_deviation_pct", 0.0) or 0.0),
+        refresh_interval_sec=int(sleeve.get("maker_refresh_interval_sec", 60) or 60),
     )
     return {
         "order": order,
@@ -1190,20 +1494,36 @@ async def _open_sleeve(
         "equity_basis": total_equity,
     }
 
-async def _close_sleeve(*, executor: Any, sleeve_state: dict[str, Any], exec_cfg: WaveExecutionConfig) -> dict[str, Any]:
+async def _close_sleeve(
+    *,
+    client: Any,
+    executor: Any,
+    sleeve_state: dict[str, Any],
+    exec_cfg: WaveExecutionConfig,
+    ttl_sec: int,
+    reference_price: float,
+    max_deviation_pct: float,
+    refresh_interval_sec: int,
+) -> dict[str, Any]:
     side: Side = sleeve_state["side"]
     close_side = "SELL" if side == "LONG" else "BUY"
     quantity = Decimal(str(sleeve_state["quantity"]))
-    order = await executor.place_maker_order_with_retry(
-        close_side,
-        quantity,
-        reduce_only=True,
-        max_retries=None,
-        signal_id=str(sleeve_state.get("signal_id", "portfolio-exit")),
+    order = await _place_portfolio_maker_order_with_deadline(
+        client=client,
+        executor=executor,
+        exec_cfg=exec_cfg,
+        order_side=close_side,
+        quantity=quantity,
         position_side=side,
-        order_type="EXIT",
+        signal_id=str(sleeve_state.get("signal_id", "portfolio-exit")),
+        sleeve_name=str(sleeve_state.get("name", "portfolio-exit")),
+        ttl_sec=int(ttl_sec),
+        reduce_only=True,
+        reference_price=float(reference_price),
+        max_deviation_pct=float(max_deviation_pct),
+        refresh_interval_sec=int(refresh_interval_sec),
     )
-    return {"order": order, "closed_quantity": str(quantity)}
+    return order
 
 
 
@@ -1437,12 +1757,43 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     history.extend(stale_cancelled)
                     state["stale_order_cancel_history"] = history[-200:]
 
+            recovered_positions: list[dict[str, Any]] = []
+            if not exec_cfg.dry_run:
+                assert client is not None
+                recovered_positions = await _recover_exchange_positions_into_state(
+                    state=state,
+                    client=client,
+                    exec_cfg=exec_cfg,
+                    portfolio=portfolio,
+                    leverage_budget=float(cfg.leverage),
+                    allocation_mode=cfg.allocation_mode,
+                )
+
             closed: list[str] = []
             for key, open_state in list(state["open_sleeves"].items()):
                 if pd.Timestamp(open_state["exit_at"]) <= now:
                     if not exec_cfg.dry_run:
-                        assert executor is not None
-                        await _close_sleeve(executor=executor, sleeve_state=open_state, exec_cfg=exec_cfg)
+                        assert client is not None and executor is not None
+                        close_reference_price = float(await client.get_ticker_price(exec_cfg.symbol))
+                        close_info = await _close_sleeve(
+                            client=client,
+                            executor=executor,
+                            sleeve_state=open_state,
+                            exec_cfg=exec_cfg,
+                            ttl_sec=int(cfg.max_exit_wait_sec),
+                            reference_price=close_reference_price,
+                            max_deviation_pct=float(cfg.exit_maker_max_deviation_pct),
+                            refresh_interval_sec=int(cfg.maker_refresh_interval_sec),
+                        )
+                        open_state["last_close_order_info"] = close_info
+                        try:
+                            close_filled = Decimal(str(close_info.get("filled_quantity", "0") or "0"))
+                        except Exception:
+                            close_filled = Decimal("0")
+                        if close_filled < Decimal(str(open_state.get("quantity", "0") or "0")):
+                            open_state["close_pending"] = True
+                            state["open_sleeves"][key] = open_state
+                            continue
                     closed.append(key)
                     state["open_sleeves"].pop(key, None)
 
@@ -1471,6 +1822,8 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     timeout_fraction=cfg.entry_timeout_fraction,
                     max_entry_wait_sec=cfg.max_entry_wait_sec,
                 )
+                sleeve["entry_maker_max_deviation_pct"] = float(cfg.entry_maker_max_deviation_pct)
+                sleeve["maker_refresh_interval_sec"] = int(cfg.maker_refresh_interval_sec)
                 if not exec_cfg.dry_run:
                     assert client is not None and executor is not None
                     replaced = await _cancel_portfolio_orders_for_sleeve(
@@ -1526,6 +1879,10 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     "margin_fraction": margin_fraction,
                     "allocation_mode": cfg.allocation_mode,
                     "quantity": quantity,
+                    "entry_reference_price": float(sleeve.get("current_close", 0.0) or 0.0),
+                    "maker_refresh_interval_sec": int(cfg.maker_refresh_interval_sec),
+                    "entry_maker_max_deviation_pct": float(cfg.entry_maker_max_deviation_pct),
+                    "exit_maker_max_deviation_pct": float(cfg.exit_maker_max_deviation_pct),
                     "order_info": order_info,
                 }
                 state["processed_signals"][name] = signal_id
@@ -1554,7 +1911,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 selector_status = f"{portfolio_selector_record.get('action')}:{portfolio_selector_record.get('context_id')}"
             _status(
                 f"[portfolio-live] {pd.Timestamp.utcnow().isoformat()} active={active} opened={opened} closed={closed} "
-                f"open={list(state['open_sleeves'])} stale_cancel={len(stale_cancelled)} repl={replaced_entry_orders} gross={total_weight:.3f} lev={exec_cfg.leverage} "
+                f"open={list(state['open_sleeves'])} recovered={len(recovered_positions)} stale_cancel={len(stale_cancelled)} repl={replaced_entry_orders} gross={total_weight:.3f} lev={exec_cfg.leverage} "
                 f"alloc={cfg.allocation_mode} live_gross={audit['live_gross_if_all_active']:.3f} selector={selector_status} "
                 f"fb={frame_build_sec:.2f}s fw={freshness_waited:.1f}s fm={freshness_mode} src={source_cache.last_query_mode} oi={oi_cache.last_query_mode} ext={external_cache.last_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
             )
@@ -1590,6 +1947,10 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--entry-timeout-fraction", type=float, default=0.25, help="Fraction of a sleeve stride cycle to wait for a post-only entry fill")
     p.add_argument("--max-entry-wait-sec", type=int, default=300, help="Hard cap for post-only entry wait/stale cancel age")
+    p.add_argument("--max-exit-wait-sec", type=int, default=600, help="Hard cap for one post-only exit refresh cycle; still retried next loop while exit is due")
+    p.add_argument("--maker-refresh-interval-sec", type=int, default=60, help="Refresh live post-only maker orders on this cadence")
+    p.add_argument("--entry-maker-max-deviation-pct", type=float, default=0.003, help="Entry maker refresh band as fraction of signal reference price; calibrated to 0.3%")
+    p.add_argument("--exit-maker-max-deviation-pct", type=float, default=0.002, help="Exit maker refresh band as fraction of exit reference price; calibrated to 0.2%")
     p.add_argument(
         "--portfolio-selector-overlay",
         default="",
@@ -1629,6 +1990,10 @@ def main() -> None:
                 max_iterations=a.max_iterations,
                 entry_timeout_fraction=float(a.entry_timeout_fraction),
                 max_entry_wait_sec=int(a.max_entry_wait_sec),
+                max_exit_wait_sec=int(a.max_exit_wait_sec),
+                maker_refresh_interval_sec=int(a.maker_refresh_interval_sec),
+                entry_maker_max_deviation_pct=float(a.entry_maker_max_deviation_pct),
+                exit_maker_max_deviation_pct=float(a.exit_maker_max_deviation_pct),
                 cancel_stale_open_orders=bool(a.cancel_stale_open_orders),
                 portfolio_selector_overlay=Path(a.portfolio_selector_overlay) if a.portfolio_selector_overlay else None,
                 rex_selector_adapter_dir=Path(a.rex_selector_adapter_dir) if a.rex_selector_adapter_dir else None,

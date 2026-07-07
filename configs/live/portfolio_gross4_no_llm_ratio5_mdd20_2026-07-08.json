@@ -1,0 +1,125 @@
+{
+  "name": "portfolio_gross4_no_llm_ratio5_mdd20_2026_07_08",
+  "status": "live_candidate",
+  "as_of": "2026-07-08",
+  "objective": "Latest no-LLM fixed sleeve portfolio at exact gross 4.0 with 2024/2025/2026YTD strict MDD <=20 and CAGR/MDD >=5.",
+  "assumption": "Simultaneous sleeve positions allowed; gross sleeve weight is the deployed leverage budget. No REX LoRA selector, no OI selector overlay, and no portfolio selector overlay are used.",
+  "gross_weight": 4.0,
+  "weights": {
+    "pb30_base": 0,
+    "pb30_addon": 0,
+    "nonpb30_taker": 1.0,
+    "oi_raw": 1.0,
+    "rex_rule": 2.0
+  },
+  "base_sleeves": [
+    {
+      "name": "nonpb30_taker_returnz_rangevol_htf4hrange_h72",
+      "source": "configs/live/nonpb30_taker_returnz_rangevol_htf4hrange_h72_candidate.json",
+      "side": "LONG",
+      "weight": 1.0
+    },
+    {
+      "name": "oi_divergence_sma24_highfreq_h30_s6_raw",
+      "source": "configs/live/oi_divergence_sma24_highfreq_h30_s6_candidate.json",
+      "side": "LONG",
+      "weight": 1.0
+    },
+    {
+      "name": "rex_dual_regime_auto",
+      "source": "results/rex_dual_regime_*_predictions_2026-07-03.jsonl",
+      "side": "AUTO",
+      "weight": 2.0
+    }
+  ],
+  "selection_rule": "Selected from results/portfolio_no_llm_fixed_sleeve_weight_refine_2026-07-08.json top_valid_return_ratio5_mdd20 exact gross=4.0, maximizing OOS return among exact-gross candidates.",
+  "metrics": {
+    "train": {
+      "total_return_pct": 22.934116896599257,
+      "cagr_pct": 6.392932680289287,
+      "strict_mdd_pct": 77.63410110096964,
+      "cagr_to_strict_mdd": 0.08234696595475155,
+      "trade_entries": 1610,
+      "win_rate": 0.5204968944099378,
+      "active_bars": 119041,
+      "sleeve_trade_counts": {
+        "pb30_base": 0,
+        "pb30_addon": 0,
+        "nonpb30_taker": 242,
+        "oi_raw": 1012,
+        "rex_rule": 356
+      },
+      "mean_weighted_trade_ret_pct": 0.07250336991374384,
+      "trade_t_like": 0.9566664697994682
+    },
+    "test2024": {
+      "total_return_pct": 273.02139541130003,
+      "cagr_pct": 272.0164608744275,
+      "strict_mdd_pct": 19.388271961769288,
+      "cagr_to_strict_mdd": 14.029948693251384,
+      "trade_entries": 293,
+      "win_rate": 0.5631399317406144,
+      "active_bars": 21290,
+      "sleeve_trade_counts": {
+        "pb30_base": 0,
+        "pb30_addon": 0,
+        "nonpb30_taker": 34,
+        "oi_raw": 197,
+        "rex_rule": 62
+      },
+      "mean_weighted_trade_ret_pct": 0.4851375193502045,
+      "trade_t_like": 3.405164557715461
+    },
+    "eval2025": {
+      "total_return_pct": 215.795708444148,
+      "cagr_pct": 216.044533464273,
+      "strict_mdd_pct": 8.028693620692163,
+      "cagr_to_strict_mdd": 26.909051916922888,
+      "trade_entries": 192,
+      "win_rate": 0.6197916666666666,
+      "active_bars": 14703,
+      "sleeve_trade_counts": {
+        "pb30_base": 0,
+        "pb30_addon": 0,
+        "nonpb30_taker": 35,
+        "oi_raw": 124,
+        "rex_rule": 33
+      },
+      "mean_weighted_trade_ret_pct": 0.6177463356145548,
+      "trade_t_like": 4.53291972097248
+    },
+    "ytd2026": {
+      "total_return_pct": 27.42116915335817,
+      "cagr_pct": 78.33578229053995,
+      "strict_mdd_pct": 15.60255458889792,
+      "cagr_to_strict_mdd": 5.020702337185232,
+      "trade_entries": 83,
+      "win_rate": 0.5542168674698795,
+      "active_bars": 8563,
+      "sleeve_trade_counts": {
+        "pb30_base": 0,
+        "pb30_addon": 0,
+        "nonpb30_taker": 14,
+        "oi_raw": 45,
+        "rex_rule": 24
+      },
+      "mean_weighted_trade_ret_pct": 0.31665728127838677,
+      "trade_t_like": 1.3222858363778345
+    }
+  },
+  "derived_metrics": {
+    "max_oos_mdd": 19.388271961769288,
+    "min_oos_ratio": 5.020702337185232,
+    "oos_return_sum": 516.2382730088062
+  },
+  "artifacts": {
+    "refine_scan": "results/portfolio_no_llm_fixed_sleeve_weight_refine_2026-07-08.json",
+    "coarse_scan": "results/portfolio_no_llm_fixed_sleeve_weight_opt_fast_coarse_2026-07-08.json"
+  },
+  "risk_notes": [
+    "This is a research-selected no-LLM mix; the reported OOS metrics are selection evidence, not a fresh untouched holdout.",
+    "REX uses the frozen rule policy path only and executes the candidate side (LONG or SHORT); do not pass --rex-selector-adapter-dir for this live setup.",
+    "Exchange leverage should be set to 4 so research_gross allocation consumes the full 4.0 gross budget without scaling.",
+    "OI sleeve intentionally uses the raw candidate config, not the LLM selector overlay config."
+  ]
+}
