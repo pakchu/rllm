@@ -57,6 +57,7 @@ Side = Literal["LONG", "SHORT"]
 SOURCE_FRAME_OVERLAP_MINUTES = 30
 FEATURE_TAIL_CONTEXT_BARS = 8_640
 FEATURE_TAIL_OUTPUT_BARS = 96
+EXTERNAL_TAIL_CONTEXT_BARS = 288
 
 
 def _frame_time_col(key: str) -> str:
@@ -237,6 +238,130 @@ class LiveOiFrameCache:
         out = pd.concat(pieces, ignore_index=True, copy=False)
         out["date"] = _to_naive_utc(out["date"])
         return out.sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
+
+
+def _filter_frame_since(frame: pd.DataFrame, *, col: str, start: pd.Timestamp) -> pd.DataFrame:
+    if frame.empty or col not in frame.columns:
+        return frame
+    ts = _as_utc_ts(frame[col])
+    return frame.loc[ts >= start].copy()
+
+
+def _build_external_from_frames(
+    *,
+    market: pd.DataFrame,
+    frames: dict[str, pd.DataFrame],
+    cfg: LiveDbFeatureConfig,
+) -> pd.DataFrame:
+    btckrw = _normalise_bar_frame(frames["btckrw_1m"], tic="KRW-BTC")
+    usdkrw = _normalise_bar_frame(frames["usdkrw_1m"], tic="USDKRW")
+    forex = _normalise_bar_frame(frames["forex_1m"])
+    return build_external_feature_frame(
+        market,
+        forex_bars=forex,
+        btckrw_bars=btckrw,
+        usdkrw_bars=usdkrw,
+        interval=cfg.decision_interval,
+        include_forex_components=cfg.include_forex_components,
+    )
+
+
+@dataclass
+class LiveExternalFrameCache:
+    """Tail cache for external/DXY/kimchi attachment.
+
+    DXY is a cumulative index, so tail recomputation rescales its level to the
+    previous cached overlap before derived zscore/momentum features are built.
+    """
+
+    enriched: pd.DataFrame | None = None
+    external: pd.DataFrame | None = None
+    context_bars: int = EXTERNAL_TAIL_CONTEXT_BARS
+    output_bars: int = FEATURE_TAIL_OUTPUT_BARS
+    last_mode: str = "cold"
+
+    def refresh(self, *, market: pd.DataFrame, frames: dict[str, pd.DataFrame], cfg: LiveDbFeatureConfig) -> pd.DataFrame:
+        if self.enriched is None or self.external is None or self.enriched.empty:
+            external = _build_external_from_frames(market=market, frames=frames, cfg=cfg)
+            enriched = attach_external_features(
+                market,
+                external,
+                tolerance=cfg.external_tolerance,
+                zscore_window=cfg.zscore_window,
+                momentum_period=cfg.zscore_window,
+            )
+            self.external = external.copy()
+            self.enriched = enriched.copy()
+            self.last_mode = "cold_full_external"
+            return enriched
+
+        output_start = max(0, len(market) - max(1, int(self.output_bars)))
+        context_start = max(0, output_start - max(1, int(self.context_bars)))
+        market_tail = market.iloc[context_start:].reset_index(drop=True)
+        tail_start = pd.Timestamp(market_tail["date"].iloc[0])
+        if tail_start.tzinfo is None:
+            tail_start = tail_start.tz_localize("UTC")
+        else:
+            tail_start = tail_start.tz_convert("UTC")
+        source_start = tail_start - pd.Timedelta(str(cfg.external_tolerance))
+        tail_frames = {
+            **frames,
+            "btckrw_1m": _filter_frame_since(frames["btckrw_1m"], col="date", start=source_start),
+            "usdkrw_1m": _filter_frame_since(frames["usdkrw_1m"], col="date", start=source_start),
+            "forex_1m": _filter_frame_since(frames["forex_1m"], col="date", start=source_start),
+        }
+        external_tail = _build_external_from_frames(market=market_tail, frames=tail_frames, cfg=cfg)
+        external_tail = self._rescale_tail_dxy(external_tail)
+        enriched_tail = attach_external_features(
+            market_tail,
+            external_tail,
+            tolerance=cfg.external_tolerance,
+            zscore_window=cfg.zscore_window,
+            momentum_period=cfg.zscore_window,
+        ).reset_index(drop=True)
+        replace_from_tail = output_start - context_start
+        replacement = enriched_tail.iloc[replace_from_tail:].copy()
+        replacement.index = range(output_start, output_start + len(replacement))
+        prefix = self.enriched.iloc[:output_start].copy()
+        enriched = pd.concat([prefix, replacement], axis=0).reindex(range(len(market)))
+        self.enriched = enriched
+
+        external_prefix = self.external
+        if external_prefix is not None and not external_prefix.empty and "date" in external_prefix.columns and not external_tail.empty:
+            cutoff = pd.Timestamp(external_tail["date"].min())
+            external_prefix = external_prefix.loc[pd.to_datetime(external_prefix["date"]) < cutoff]
+            self.external = (
+                pd.concat([external_prefix, external_tail], ignore_index=True, copy=False)
+                .sort_values("date")
+                .drop_duplicates("date", keep="last")
+                .reset_index(drop=True)
+            )
+        self.last_mode = f"tail_external_context={len(market_tail)} output={len(replacement)}"
+        return enriched
+
+    def _rescale_tail_dxy(self, external_tail: pd.DataFrame) -> pd.DataFrame:
+        if (
+            self.external is None
+            or self.external.empty
+            or external_tail.empty
+            or "dxy" not in external_tail.columns
+            or "dxy" not in self.external.columns
+        ):
+            return external_tail
+        old = self.external.loc[:, ["date", "dxy"]].dropna().copy()
+        new = external_tail.loc[:, ["date", "dxy"]].dropna().copy()
+        if old.empty or new.empty:
+            return external_tail
+        joined = new.merge(old, on="date", how="inner", suffixes=("_new", "_old"))
+        joined = joined[(joined["dxy_new"].abs() > 1e-12) & np.isfinite(joined["dxy_new"]) & np.isfinite(joined["dxy_old"])]
+        if joined.empty:
+            return external_tail
+        ratio = float(joined.iloc[0]["dxy_old"] / joined.iloc[0]["dxy_new"])
+        if not np.isfinite(ratio) or ratio <= 0.0:
+            return external_tail
+        out = external_tail.copy()
+        out["dxy"] = pd.to_numeric(out["dxy"], errors="coerce") * ratio
+        return out
 
 
 def _add_portfolio_oi_features(enriched: pd.DataFrame, features: pd.DataFrame) -> pd.DataFrame:
@@ -431,6 +556,7 @@ async def build_live_portfolio_frames(
     source_cache: LiveSourceFrameCache | None = None,
     feature_cache: LiveFeatureFrameCache | None = None,
     oi_cache: LiveOiFrameCache | None = None,
+    external_cache: LiveExternalFrameCache | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build enriched market and feature frame with live OI included."""
 
@@ -452,23 +578,16 @@ async def build_live_portfolio_frames(
         tolerance=pd.Timedelta("10min"),
     )
 
-    btckrw = _normalise_bar_frame(frames["btckrw_1m"], tic="KRW-BTC")
-    usdkrw = _normalise_bar_frame(frames["usdkrw_1m"], tic="USDKRW")
-    forex = _normalise_bar_frame(frames["forex_1m"])
-    external = build_external_feature_frame(
-        market,
-        forex_bars=forex,
-        btckrw_bars=btckrw,
-        usdkrw_bars=usdkrw,
-        interval=cfg.decision_interval,
-        include_forex_components=cfg.include_forex_components,
-    )
-    enriched = attach_external_features(
-        market,
-        external,
-        tolerance=cfg.external_tolerance,
-        zscore_window=cfg.zscore_window,
-        momentum_period=cfg.zscore_window,
+    enriched = (
+        external_cache.refresh(market=market, frames=frames, cfg=cfg)
+        if external_cache is not None
+        else attach_external_features(
+            market,
+            _build_external_from_frames(market=market, frames=frames, cfg=cfg),
+            tolerance=cfg.external_tolerance,
+            zscore_window=cfg.zscore_window,
+            momentum_period=cfg.zscore_window,
+        )
     )
     enriched = attach_binance_um_aux_frames(
         enriched,
@@ -1246,6 +1365,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     source_cache = LiveSourceFrameCache()
     feature_cache = LiveFeatureFrameCache()
     oi_cache = LiveOiFrameCache()
+    external_cache = LiveExternalFrameCache()
     client = executor = None
     if not exec_cfg.dry_run:
         client, executor = await _make_executor(exec_cfg)
@@ -1281,6 +1401,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 source_cache=source_cache,
                 feature_cache=feature_cache,
                 oi_cache=oi_cache,
+                external_cache=external_cache,
             )
             frame_build_sec = time.perf_counter() - frame_t0
             sleeve_scores = _score_sleeves(
@@ -1424,6 +1545,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 "source_cache_mode": source_cache.last_query_mode,
                 "feature_cache_mode": feature_cache.last_mode,
                 "oi_cache_mode": oi_cache.last_query_mode,
+                "external_cache_mode": external_cache.last_mode,
             }
             _write_json(cfg.state_file, state)
             active = [s["name"] for s in sleeve_scores if s["active"]]
@@ -1434,7 +1556,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 f"[portfolio-live] {pd.Timestamp.utcnow().isoformat()} active={active} opened={opened} closed={closed} "
                 f"open={list(state['open_sleeves'])} stale_cancel={len(stale_cancelled)} repl={replaced_entry_orders} gross={total_weight:.3f} lev={exec_cfg.leverage} "
                 f"alloc={cfg.allocation_mode} live_gross={audit['live_gross_if_all_active']:.3f} selector={selector_status} "
-                f"fb={frame_build_sec:.2f}s fw={freshness_waited:.1f}s fm={freshness_mode} src={source_cache.last_query_mode} oi={oi_cache.last_query_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
+                f"fb={frame_build_sec:.2f}s fw={freshness_waited:.1f}s fm={freshness_mode} src={source_cache.last_query_mode} oi={oi_cache.last_query_mode} ext={external_cache.last_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
             )
             iterations += 1
             if cfg.max_iterations is not None and iterations >= cfg.max_iterations:

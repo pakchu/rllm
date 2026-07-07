@@ -4,11 +4,14 @@ import numpy as np
 
 from execution.portfolio_live import (
     LiveFeatureFrameCache,
+    LiveExternalFrameCache,
     LiveOiFrameCache,
     LiveSourceFrameCache,
     _apply_portfolio_selector_overlay,
+    _build_external_from_frames,
     _build_portfolio_feature_frame,
 )
+from preprocessing.external_features import attach_external_features, DXY_WEIGHTS
 from preprocessing.live_db_features import LiveDbFeatureConfig
 
 
@@ -179,6 +182,98 @@ class TestLiveFeatureFrameCache(unittest.TestCase):
         full = _build_portfolio_feature_frame(enriched, cfg)
 
         cols = sorted(set(full.columns).intersection(cached.columns))
+        pd.testing.assert_frame_equal(
+            cached.loc[n - 64 :, cols].reset_index(drop=True),
+            full.loc[n - 64 :, cols].reset_index(drop=True),
+            check_dtype=False,
+            rtol=1e-8,
+            atol=1e-8,
+        )
+
+
+class TestLiveExternalFrameCache(unittest.TestCase):
+    def test_tail_external_matches_full_for_decision_features(self):
+        n = 720
+        rng = np.random.default_rng(11)
+        dates_5m = pd.date_range("2026-01-01", periods=n, freq="5min")
+        btc_close = 60_000 + np.cumsum(rng.normal(0, 15, n))
+        market = pd.DataFrame(
+            {
+                "date": dates_5m,
+                "open": btc_close,
+                "high": btc_close + 20,
+                "low": btc_close - 20,
+                "close": btc_close,
+                "volume": rng.uniform(10, 100, n),
+                "open_interest": 1_000_000 + np.cumsum(rng.normal(0, 100, n)),
+            }
+        )
+        dates_1m = pd.date_range("2026-01-01", periods=n * 5, freq="1min")
+        btckrw = pd.DataFrame(
+            {
+                "date": dates_1m,
+                "open": 90_000_000.0,
+                "high": 90_000_100.0,
+                "low": 89_999_900.0,
+                "close": 90_000_000 + np.cumsum(rng.normal(0, 5000, len(dates_1m))),
+                "volume": 1.0,
+                "tic": "KRW-BTC",
+            }
+        )
+        usdkrw = pd.DataFrame(
+            {
+                "date": dates_1m,
+                "open": 1400.0,
+                "high": 1401.0,
+                "low": 1399.0,
+                "close": 1400 + np.cumsum(rng.normal(0, 0.02, len(dates_1m))),
+                "volume": 1.0,
+                "tic": "USDKRW",
+            }
+        )
+        forex_parts = []
+        for i, tic in enumerate(DXY_WEIGHTS):
+            base = 1.0 + 0.1 * i
+            forex_parts.append(
+                pd.DataFrame(
+                    {
+                        "date": dates_1m,
+                        "open": base,
+                        "high": base + 0.001,
+                        "low": base - 0.001,
+                        "close": base + np.cumsum(rng.normal(0, 0.00001, len(dates_1m))),
+                        "volume": 1.0,
+                        "tic": tic,
+                    }
+                )
+            )
+        frames = {
+            "btckrw_1m": btckrw,
+            "usdkrw_1m": usdkrw,
+            "forex_1m": pd.concat(forex_parts, ignore_index=True),
+        }
+        cfg = LiveDbFeatureConfig()
+        cache = LiveExternalFrameCache(output_bars=64)
+        _ = cache.refresh(market=market.iloc[:-2].copy(), frames=frames, cfg=cfg)
+        cached = cache.refresh(market=market.copy(), frames=frames, cfg=cfg)
+        full_external = _build_external_from_frames(market=market, frames=frames, cfg=cfg)
+        full = attach_external_features(
+            market,
+            full_external,
+            tolerance=cfg.external_tolerance,
+            zscore_window=cfg.zscore_window,
+            momentum_period=cfg.zscore_window,
+        )
+        cols = [
+            "dxy_zscore",
+            "dxy_momentum",
+            "kimchi_premium_zscore",
+            "kimchi_premium_change",
+            "usdkrw_zscore",
+            "usdkrw_momentum",
+            "btckrw_zscore",
+            "btckrw_momentum",
+        ]
         pd.testing.assert_frame_equal(
             cached.loc[n - 64 :, cols].reset_index(drop=True),
             full.loc[n - 64 :, cols].reset_index(drop=True),
