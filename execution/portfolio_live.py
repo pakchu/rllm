@@ -18,6 +18,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import logging
 import select
 import time
 from dataclasses import dataclass, asdict, field
@@ -58,6 +59,8 @@ SOURCE_FRAME_OVERLAP_MINUTES = 30
 FEATURE_TAIL_CONTEXT_BARS = 8_640
 FEATURE_TAIL_OUTPUT_BARS = 96
 EXTERNAL_TAIL_CONTEXT_BARS = 288
+
+LOG = logging.getLogger("portfolio_live")
 
 
 def _frame_time_col(key: str) -> str:
@@ -961,7 +964,22 @@ def _seconds_until_next_interval(now: pd.Timestamp, *, interval_minutes: int, cl
 
 
 def _status(msg: str) -> None:
-    print("\r" + msg[:240].ljust(240), end="", flush=True)
+    LOG.info(msg)
+
+
+def _configure_logging(*, log_file: str | Path, log_level: str = "INFO") -> None:
+    path = Path(log_file).expanduser()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    level = getattr(logging, str(log_level).upper(), logging.INFO)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
+    file_handler = logging.FileHandler(path)
+    file_handler.setFormatter(formatter)
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.setLevel(level)
+    root.addHandler(file_handler)
+    for noisy in ("httpx", "httpcore", "urllib3", "websockets"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 
@@ -2227,7 +2245,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             )
             iterations += 1
             if cfg.max_iterations is not None and iterations >= cfg.max_iterations:
-                print()
+                LOG.info("portfolio_live.max_iterations_reached", extra={"iterations": iterations})
                 return
     finally:
         if client is not None:
@@ -2240,6 +2258,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--execution-config", default="configs/live/rex_llm_binance_mainnet_bear_pilot_lev6.local.json")
     p.add_argument("--env", default=".env")
     p.add_argument("--state-file", default=".omx/state/portfolio_live_state.json")
+    p.add_argument("--log-file", default="logs/portfolio_live/rllm.log")
+    p.add_argument("--log-level", default="INFO")
     p.add_argument("--strategy-name", default="rllm")
     p.add_argument("--exchange", default="binance")
     p.add_argument("--lookback-minutes", type=int, default=45_000)
@@ -2282,6 +2302,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     a = parse_args()
+    _configure_logging(log_file=a.log_file, log_level=a.log_level)
+    LOG.info("portfolio_live.start", extra={"log_file": str(a.log_file), "live": bool(a.live), "portfolio_config": str(a.portfolio_config)})
     asyncio.run(
         run_portfolio_loop(
             PortfolioLiveConfig(
