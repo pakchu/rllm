@@ -36,7 +36,7 @@ from execution.wave_execution import (
     load_wave_execution_classes,
 )
 from preprocessing.binance_aux_features import attach_binance_um_aux_frames
-from preprocessing.external_features import attach_external_features, build_external_feature_frame, DXY_WEIGHTS
+from preprocessing.external_features import attach_external_features, build_external_feature_frame
 from preprocessing.live_db_features import (
     LiveDbFeatureConfig,
     _normalise_bar_frame,
@@ -1798,44 +1798,12 @@ def _freshness_requirements_for_decision(
 ) -> list[FreshnessRequirement]:
     """Return source rows that must be current before opening a new live trade."""
 
-    requirements = [
+    return [
         FreshnessRequirement("bars_binance", symbol, "1m", required_1m, "binance_perp"),
         FreshnessRequirement("bars_binance_premium", symbol, "1m", required_1m, "binance_premium"),
         FreshnessRequirement("open_interest_binance", symbol, None, expected_bar, "binance_open_interest", period="5m"),
         FreshnessRequirement("bars_upbit", "KRW-BTC", "1m", required_1m, "upbit"),
     ]
-    if _is_fx_market_open(expected_bar):
-        requirements.extend(
-            [
-                FreshnessRequirement("bars_polygon", "USDKRW", "1m", required_1m, "polygon"),
-                *[
-                    FreshnessRequirement("bars_polygon", fx_symbol, "1m", required_1m, "polygon")
-                    for fx_symbol in DXY_WEIGHTS
-                ],
-            ]
-        )
-    return requirements
-
-
-def _is_fx_market_open(ts: pd.Timestamp) -> bool:
-    """Return whether minute FX updates should be expected around ``ts``.
-
-    Polygon FX aggregates normally follow the global 24/5 forex session.  Crypto
-    decisions continue while FX is closed, so stale FX rows must not block
-    entries from Friday close through Sunday open.
-    """
-
-    value = pd.Timestamp(ts)
-    value = value.tz_localize("UTC") if value.tzinfo is None else value.tz_convert("UTC")
-    weekday = value.weekday()  # Monday=0, Sunday=6.
-    hour = value.hour + value.minute / 60.0
-    if weekday < 4:
-        return True
-    if weekday == 4:
-        return hour < 22.0
-    if weekday == 6:
-        return hour >= 22.0
-    return False
 
 
 def _wait_for_source_updates_notify(
