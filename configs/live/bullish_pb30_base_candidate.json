@@ -1,0 +1,46 @@
+{
+  "name": "bullish_pb30_base",
+  "status": "live_candidate_wrapper",
+  "as_of": "2026-07-08",
+  "side": "LONG",
+  "base_candidate": "configs/live/bullish_pb30_addon_returnz_htf1w_candidate.json",
+  "objective": "Expose only the PB30 base module gates for fixed-weight portfolio live execution.",
+  "signal": {
+    "gates": [
+      {
+        "feature": "rex_8640_max_to_cur_pct",
+        "op": ">=",
+        "threshold": 0.19382004699007754,
+        "fit": "train<2024 q0.75"
+      },
+      {
+        "feature": "funding_zscore",
+        "op": "<=",
+        "threshold": 0.0,
+        "fit": "train<2024 q0.75 funding_low"
+      },
+      {
+        "feature": "premium_index_zscore",
+        "op": ">=",
+        "threshold": 0.982120225254185,
+        "fit": "train<2024 q0.80"
+      },
+      {
+        "feature": "funding_zscore",
+        "op": ">=",
+        "threshold": 0.0,
+        "fit": "train<2024 q0.70"
+      },
+      {
+        "feature": "activity_flow_htf",
+        "op": ">=",
+        "threshold": -0.014521571823090329,
+        "fit": "train<2024 q0.50"
+      }
+    ],
+    "hold_bars_5m": 216,
+    "stride_bars_5m": 12,
+    "entry_delay_bars": 1
+  },
+  "metrics_source": "configs/live/bullish_pb30_addon_returnz_htf1w_candidate.json#base_module"
+}

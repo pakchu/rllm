@@ -460,6 +460,8 @@ class PortfolioLiveConfig:
     execution_config: Path
     env_path: Path = Path(".env")
     state_file: Path = Path(".omx/state/portfolio_live_state.json")
+    strategy_name: str = "rllm"
+    exchange: str = "binance"
     lookback_minutes: int = 45_000
     close_delay_sec: float = 0.25
     max_freshness_wait_sec: float = 8.0
@@ -494,6 +496,141 @@ def _write_json(path: str | Path, payload: dict[str, Any]) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str) + "\n")
+
+
+def _ensure_trade_executions_table(engine: Any) -> None:
+    """Create the shared execution ledger table if it does not exist."""
+
+    from sqlalchemy import text
+
+    ddl = """
+        CREATE TABLE IF NOT EXISTS trade_executions (
+            id BIGSERIAL PRIMARY KEY,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            strategy_name TEXT NOT NULL,
+            sub_strategy_name TEXT,
+            exchange TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            quote_asset TEXT,
+            action TEXT NOT NULL,
+            side TEXT,
+            position_side TEXT,
+            order_type TEXT,
+            signal_id TEXT,
+            status TEXT,
+            execution_started_at TIMESTAMPTZ,
+            expires_at TIMESTAMPTZ,
+            execution_finished_at TIMESTAMPTZ,
+            computing_wall_time_sec DOUBLE PRECISION,
+            order_id TEXT,
+            client_order_id TEXT,
+            quantity_requested NUMERIC,
+            quantity_filled NUMERIC,
+            reference_price NUMERIC,
+            avg_price NUMERIC,
+            maker_max_deviation_pct DOUBLE PRECISION,
+            refresh_interval_sec INTEGER,
+            error TEXT,
+            payload JSONB NOT NULL DEFAULT '{}'::jsonb
+        )
+        """
+    indexes = [
+        "CREATE INDEX IF NOT EXISTS idx_trade_executions_strategy_created ON trade_executions(strategy_name, sub_strategy_name, created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_trade_executions_signal ON trade_executions(strategy_name, signal_id)",
+        "CREATE INDEX IF NOT EXISTS idx_trade_executions_order ON trade_executions(exchange, symbol, order_id, client_order_id)",
+    ]
+    with engine.begin() as conn:
+        conn.execute(text(ddl))
+        for stmt in indexes:
+            conn.execute(text(stmt))
+
+
+def _safe_decimal_value(value: Any) -> str | None:
+    if value in (None, ""):
+        return None
+    try:
+        return str(Decimal(str(value)))
+    except Exception:
+        return None
+
+
+def _log_trade_execution(
+    engine: Any,
+    *,
+    strategy_name: str,
+    sub_strategy_name: str | None,
+    exchange: str,
+    symbol: str,
+    action: str,
+    side: str | None = None,
+    position_side: str | None = None,
+    order_type: str | None = None,
+    signal_id: str | None = None,
+    status: str | None = None,
+    order_info: dict[str, Any] | None = None,
+    computing_wall_time_sec: float | None = None,
+    error: str | None = None,
+) -> None:
+    """Append one execution event to the shared DB ledger."""
+
+    from sqlalchemy import text
+
+    info = order_info or {}
+    payload = json.dumps(info, ensure_ascii=False, default=str)
+    sql = text(
+        """
+        INSERT INTO trade_executions (
+            strategy_name, sub_strategy_name, exchange, symbol, quote_asset,
+            action, side, position_side, order_type, signal_id, status,
+            execution_started_at, expires_at, execution_finished_at,
+            computing_wall_time_sec, order_id, client_order_id,
+            quantity_requested, quantity_filled, reference_price, avg_price,
+            maker_max_deviation_pct, refresh_interval_sec, error, payload
+        ) VALUES (
+            :strategy_name, :sub_strategy_name, :exchange, :symbol, :quote_asset,
+            :action, :side, :position_side, :order_type, :signal_id, :status,
+            :execution_started_at, :expires_at, :execution_finished_at,
+            :computing_wall_time_sec, :order_id, :client_order_id,
+            :quantity_requested, :quantity_filled, :reference_price, :avg_price,
+            :maker_max_deviation_pct, :refresh_interval_sec, :error, CAST(:payload AS jsonb)
+        )
+        """
+    )
+    raw_order = info.get("raw_order") if isinstance(info.get("raw_order"), dict) else {}
+    order_id = info.get("order_id") or raw_order.get("orderId")
+    client_order_id = info.get("client_order_id") or raw_order.get("clientOrderId")
+    with engine.begin() as conn:
+        conn.execute(
+            sql,
+            {
+                "strategy_name": strategy_name,
+                "sub_strategy_name": sub_strategy_name,
+                "exchange": exchange,
+                "symbol": symbol,
+                "quote_asset": "USDT" if symbol.endswith("USDT") else None,
+                "action": action,
+                "side": side,
+                "position_side": position_side,
+                "order_type": order_type,
+                "signal_id": signal_id,
+                "status": status or info.get("status"),
+                "execution_started_at": info.get("started_at"),
+                "expires_at": info.get("deadline_at"),
+                "execution_finished_at": info.get("finished_at"),
+                "computing_wall_time_sec": computing_wall_time_sec if computing_wall_time_sec is not None else info.get("wall_time_sec"),
+                "order_id": None if order_id is None else str(order_id),
+                "client_order_id": None if client_order_id is None else str(client_order_id),
+                "quantity_requested": _safe_decimal_value(info.get("requested_quantity")),
+                "quantity_filled": _safe_decimal_value(info.get("filled_quantity")),
+                "reference_price": _safe_decimal_value(info.get("reference_price")),
+                "avg_price": _safe_decimal_value(info.get("avg_price")),
+                "maker_max_deviation_pct": info.get("max_deviation_pct"),
+                "refresh_interval_sec": info.get("refresh_interval_sec"),
+                "error": error or info.get("error"),
+                "payload": payload,
+            },
+        )
 
 
 def _load_state(path: str | Path) -> dict[str, Any]:
@@ -1281,7 +1418,8 @@ async def _place_portfolio_maker_order_with_deadline(
         return True
 
     if not await place_new("initial"):
-        return {"status": "REJECTED_DEVIATION" if refresh_history and refresh_history[-1]["action"] == "skip_place_deviation" else "REJECTED", "client_order_id": active_client_order_id, "requested_quantity": str(quantity), "filled_quantity": "0", "avg_price": "0", "price": "0", "ttl_sec": int(ttl_sec), "started_at": str(started), "deadline_at": str(started + pd.Timedelta(seconds=int(ttl_sec))), "refresh_history": refresh_history}
+        finished = pd.Timestamp.utcnow()
+        return {"status": "REJECTED_DEVIATION" if refresh_history and refresh_history[-1]["action"] == "skip_place_deviation" else "REJECTED", "client_order_id": active_client_order_id, "requested_quantity": str(quantity), "filled_quantity": "0", "avg_price": "0", "price": "0", "ttl_sec": int(ttl_sec), "started_at": str(started), "deadline_at": str(started + pd.Timedelta(seconds=int(ttl_sec))), "finished_at": str(finished), "wall_time_sec": float((finished - started).total_seconds()), "refresh_history": refresh_history}
 
     last_refresh = asyncio.get_event_loop().time()
     final_status = "UNKNOWN"
@@ -1323,6 +1461,8 @@ async def _place_portfolio_maker_order_with_deadline(
             if remaining_qty < min_qty:
                 break
             if asyncio.get_event_loop().time() < deadline:
+                active_order_id = None
+                active_client_order_id = ""
                 await place_new(f"terminal_{status.lower()}")
                 last_refresh = asyncio.get_event_loop().time()
                 continue
@@ -1356,8 +1496,9 @@ async def _place_portfolio_maker_order_with_deadline(
                 cancel_result = {"status": "cancel_failed", "error": str(exc)}
     if avg_price <= 0 and active_price > 0:
         avg_price = active_price
+    finished = pd.Timestamp.utcnow()
 
-    return {"status": final_status, "order_id": active_order_id, "client_order_id": active_client_order_id, "requested_quantity": str(quantity), "filled_quantity": str(total_filled), "avg_price": str(avg_price), "price": str(active_price), "ttl_sec": int(ttl_sec), "refresh_interval_sec": int(refresh_interval_sec), "reference_price": reference_price, "max_deviation_pct": max_deviation_pct, "started_at": str(started), "deadline_at": str(started + pd.Timedelta(seconds=int(ttl_sec))), "cancel_result": cancel_result, "raw_order": raw_orders[0] if raw_orders else {}, "raw_orders": raw_orders, "last_status": last_status, "refresh_history": refresh_history}
+    return {"status": final_status, "order_id": active_order_id, "client_order_id": active_client_order_id, "requested_quantity": str(quantity), "filled_quantity": str(total_filled), "avg_price": str(avg_price), "price": str(active_price), "ttl_sec": int(ttl_sec), "refresh_interval_sec": int(refresh_interval_sec), "reference_price": reference_price, "max_deviation_pct": max_deviation_pct, "started_at": str(started), "deadline_at": str(started + pd.Timedelta(seconds=int(ttl_sec))), "finished_at": str(finished), "wall_time_sec": float((finished - started).total_seconds()), "cancel_result": cancel_result, "raw_order": raw_orders[0] if raw_orders else {}, "raw_orders": raw_orders, "last_status": last_status, "refresh_history": refresh_history}
 
 
 def _margin_fraction_for_weight(
@@ -1523,6 +1664,28 @@ async def _close_sleeve(
         max_deviation_pct=float(max_deviation_pct),
         refresh_interval_sec=int(refresh_interval_sec),
     )
+    try:
+        maker_filled = Decimal(str(order.get("filled_quantity", "0") or "0"))
+    except Exception:
+        maker_filled = Decimal("0")
+    remaining = max(Decimal("0"), quantity - maker_filled)
+    if remaining > Decimal("0"):
+        taker_started = pd.Timestamp.utcnow()
+        taker_order = await client.place_market(
+            symbol=exec_cfg.symbol,
+            side=close_side,
+            quantity=float(remaining),
+            reduce_only=True,
+            position_side=side,
+        )
+        taker_finished = pd.Timestamp.utcnow()
+        order["taker_fallback_order"] = taker_order
+        order["taker_fallback_started_at"] = str(taker_started)
+        order["taker_fallback_finished_at"] = str(taker_finished)
+        order["taker_fallback_wall_time_sec"] = float((taker_finished - taker_started).total_seconds())
+        order["taker_fallback_quantity"] = str(remaining)
+        order["filled_quantity"] = str(quantity)
+        order["status"] = "TAKER_FALLBACK_FILLED"
     return order
 
 
@@ -1682,6 +1845,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     audit = _allocation_audit(portfolio, leverage_budget=float(cfg.leverage), allocation_mode=cfg.allocation_mode)
 
     engine = sqlalchemy_engine_from_env(cfg.env_path)
+    _ensure_trade_executions_table(engine)
     source_cache = LiveSourceFrameCache()
     feature_cache = LiveFeatureFrameCache()
     oi_cache = LiveOiFrameCache()
@@ -1768,6 +1932,21 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     leverage_budget=float(cfg.leverage),
                     allocation_mode=cfg.allocation_mode,
                 )
+                for rec in recovered_positions:
+                    _log_trade_execution(
+                        engine,
+                        strategy_name=cfg.strategy_name,
+                        sub_strategy_name=str(rec.get("name")),
+                        exchange=cfg.exchange,
+                        symbol=exec_cfg.symbol,
+                        action="RECOVER_POSITION",
+                        side=str(rec.get("side")),
+                        position_side=str(rec.get("side")),
+                        order_type="RECOVERY",
+                        signal_id=str(rec.get("signal_id")),
+                        status="RECOVERED",
+                        order_info=rec,
+                    )
 
             closed: list[str] = []
             for key, open_state in list(state["open_sleeves"].items()):
@@ -1791,9 +1970,37 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         except Exception:
                             close_filled = Decimal("0")
                         if close_filled < Decimal(str(open_state.get("quantity", "0") or "0")):
+                            _log_trade_execution(
+                                engine,
+                                strategy_name=cfg.strategy_name,
+                                sub_strategy_name=str(open_state.get("name", key)),
+                                exchange=cfg.exchange,
+                                symbol=exec_cfg.symbol,
+                                action="CLOSE",
+                                side="SELL" if str(open_state.get("side")).upper() == "LONG" else "BUY",
+                                position_side=str(open_state.get("side")),
+                                order_type="POST_ONLY_EXIT",
+                                signal_id=str(open_state.get("signal_id")),
+                                status=str(close_info.get("status", "PARTIAL_OR_TIMEOUT")),
+                                order_info=close_info,
+                            )
                             open_state["close_pending"] = True
                             state["open_sleeves"][key] = open_state
                             continue
+                        _log_trade_execution(
+                            engine,
+                            strategy_name=cfg.strategy_name,
+                            sub_strategy_name=str(open_state.get("name", key)),
+                            exchange=cfg.exchange,
+                            symbol=exec_cfg.symbol,
+                            action="CLOSE",
+                            side="SELL" if str(open_state.get("side")).upper() == "LONG" else "BUY",
+                            position_side=str(open_state.get("side")),
+                            order_type="POST_ONLY_EXIT_WITH_TAKER_FALLBACK" if close_info.get("taker_fallback_order") else "POST_ONLY_EXIT",
+                            signal_id=str(open_state.get("signal_id")),
+                            status=str(close_info.get("status", "FILLED")),
+                            order_info=close_info,
+                        )
                     closed.append(key)
                     state["open_sleeves"].pop(key, None)
 
@@ -1845,6 +2052,21 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         sleeve=sleeve,
                         margin_fraction=margin_fraction,
                         entry_ttl_sec=entry_ttl_sec,
+                    )
+                    _log_trade_execution(
+                        engine,
+                        strategy_name=cfg.strategy_name,
+                        sub_strategy_name=name,
+                        exchange=cfg.exchange,
+                        symbol=exec_cfg.symbol,
+                        action="OPEN",
+                        side="BUY" if sleeve["side"] == "LONG" else "SELL",
+                        position_side=str(sleeve["side"]),
+                        order_type="POST_ONLY_ENTRY",
+                        signal_id=signal_id,
+                        status=str(order_info.get("order", {}).get("status", "")),
+                        order_info=order_info.get("order", order_info),
+                        computing_wall_time_sec=frame_build_sec,
                     )
                     quantity = str(order_info.get("filled_quantity") or "0")
                     if Decimal(str(quantity)) <= Decimal("0"):
@@ -1930,6 +2152,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--execution-config", default="configs/live/rex_llm_binance_mainnet_bear_pilot_lev6.local.json")
     p.add_argument("--env", default=".env")
     p.add_argument("--state-file", default=".omx/state/portfolio_live_state.json")
+    p.add_argument("--strategy-name", default="rllm")
+    p.add_argument("--exchange", default="binance")
     p.add_argument("--lookback-minutes", type=int, default=45_000)
     p.add_argument("--close-delay-sec", type=float, default=0.25)
     p.add_argument("--max-freshness-wait-sec", type=float, default=8.0)
@@ -1977,6 +2201,8 @@ def main() -> None:
                 execution_config=Path(a.execution_config),
                 env_path=Path(a.env),
                 state_file=Path(a.state_file),
+                strategy_name=str(a.strategy_name),
+                exchange=str(a.exchange),
                 lookback_minutes=int(a.lookback_minutes),
                 close_delay_sec=float(a.close_delay_sec),
                 max_freshness_wait_sec=float(a.max_freshness_wait_sec),

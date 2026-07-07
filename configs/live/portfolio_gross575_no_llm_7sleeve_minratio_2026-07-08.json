@@ -1,0 +1,146 @@
+{
+  "name": "portfolio_gross575_no_llm_7sleeve_minratio_2026_07_08",
+  "status": "live_candidate",
+  "as_of": "2026-07-08",
+  "objective": "Requested latest no-LLM 7-sleeve mix with new short premium sleeve, selected as top_min_ratio_mdd20[0].",
+  "assumption": "Simultaneous sleeve positions allowed; gross sleeve weight is deployed notional per equity. Run with leverage 6 under research_gross allocation; gross 5.75 leaves ~4.17% margin unused.",
+  "gross_weight": 5.75,
+  "weights": {
+    "pb30_base": 0.25,
+    "pb30_addon": 0,
+    "nonpb30_taker": 1.0,
+    "oi_raw": 0.5,
+    "rex_rule": 2.0,
+    "short_kimchi3d": 0,
+    "short_premium_panic": 2.0
+  },
+  "base_sleeves": [
+    {
+      "name": "bullish_pb30_base",
+      "source": "configs/live/bullish_pb30_base_candidate.json",
+      "side": "LONG",
+      "weight": 0.25
+    },
+    {
+      "name": "nonpb30_taker_returnz_rangevol_htf4hrange_h72",
+      "source": "configs/live/nonpb30_taker_returnz_rangevol_htf4hrange_h72_candidate.json",
+      "side": "LONG",
+      "weight": 1.0
+    },
+    {
+      "name": "oi_divergence_sma24_highfreq_h30_s6_raw",
+      "source": "configs/live/oi_divergence_sma24_highfreq_h30_s6_candidate.json",
+      "side": "LONG",
+      "weight": 0.5
+    },
+    {
+      "name": "rex_dual_regime_auto",
+      "source": "results/rex_dual_regime_*_predictions_2026-07-03.jsonl",
+      "side": "AUTO",
+      "weight": 2.0
+    },
+    {
+      "name": "short_premium_panic",
+      "source": "configs/live/short_premium_panic_candidate.json",
+      "side": "SHORT",
+      "weight": 2.0
+    }
+  ],
+  "selection_rule": "User-requested weights; found in top_min_ratio_mdd20[0] of results/portfolio_no_llm_7sleeve_with_new_shorts_limited_opt_2026-07-08.json.",
+  "metrics": {
+    "train": {
+      "total_return_pct": -5.415416208794122,
+      "cagr_pct": -1.6570737332905705,
+      "strict_mdd_pct": 82.13795891734715,
+      "cagr_to_strict_mdd": -0.020174274539230173,
+      "trade_entries": 1934,
+      "win_rate": 0.5248190279214064,
+      "active_bars": 136172,
+      "sleeve_trade_counts": {
+        "pb30_base": 189,
+        "pb30_addon": 0,
+        "nonpb30_taker": 242,
+        "oi_raw": 1012,
+        "rex_rule": 356,
+        "short_kimchi3d": 0,
+        "short_premium_panic": 135
+      },
+      "mean_weighted_trade_ret_pct": 0.06332528116111523,
+      "trade_t_like": 0.8277320656544179
+    },
+    "test2024": {
+      "total_return_pct": 430.7002038985162,
+      "cagr_pct": 428.8882365977992,
+      "strict_mdd_pct": 18.47087567213731,
+      "cagr_to_strict_mdd": 23.219702422920996,
+      "trade_entries": 340,
+      "win_rate": 0.5794117647058824,
+      "active_bars": 27402,
+      "sleeve_trade_counts": {
+        "pb30_base": 20,
+        "pb30_addon": 0,
+        "nonpb30_taker": 34,
+        "oi_raw": 197,
+        "rex_rule": 62,
+        "short_kimchi3d": 0,
+        "short_premium_panic": 27
+      },
+      "mean_weighted_trade_ret_pct": 0.5295193343346302,
+      "trade_t_like": 3.4672322209804554
+    },
+    "eval2025": {
+      "total_return_pct": 212.20250383677234,
+      "cagr_pct": 212.44604869933482,
+      "strict_mdd_pct": 9.096844946013427,
+      "cagr_to_strict_mdd": 23.353816621051294,
+      "trade_entries": 235,
+      "win_rate": 0.6382978723404256,
+      "active_bars": 19446,
+      "sleeve_trade_counts": {
+        "pb30_base": 20,
+        "pb30_addon": 0,
+        "nonpb30_taker": 35,
+        "oi_raw": 124,
+        "rex_rule": 33,
+        "short_kimchi3d": 0,
+        "short_premium_panic": 23
+      },
+      "mean_weighted_trade_ret_pct": 0.5032095183309714,
+      "trade_t_like": 3.948661252088878
+    },
+    "ytd2026": {
+      "total_return_pct": 56.24168300558732,
+      "cagr_pct": 190.16339211633934,
+      "strict_mdd_pct": 12.717777886948678,
+      "cagr_to_strict_mdd": 14.952564339992922,
+      "trade_entries": 114,
+      "win_rate": 0.5526315789473685,
+      "active_bars": 10535,
+      "sleeve_trade_counts": {
+        "pb30_base": 17,
+        "pb30_addon": 0,
+        "nonpb30_taker": 14,
+        "oi_raw": 45,
+        "rex_rule": 24,
+        "short_kimchi3d": 0,
+        "short_premium_panic": 14
+      },
+      "mean_weighted_trade_ret_pct": 0.4279362136478661,
+      "trade_t_like": 1.8038679911449214
+    }
+  },
+  "derived_metrics": {
+    "max_oos_mdd": 18.47087567213731,
+    "min_oos_ratio": 14.952564339992922,
+    "oos_return_sum": 699.1443907408758
+  },
+  "artifacts": {
+    "portfolio_scan": "results/portfolio_no_llm_7sleeve_with_new_shorts_limited_opt_2026-07-08.json",
+    "short_scan": "results/short_base_alpha_scan_fast2_2026-07-08.json"
+  },
+  "risk_notes": [
+    "Research-selected mix; not clean untouched OOS validation.",
+    "short_premium_panic uses fixed-hold gates from scan top[5], matching portfolio mix counts.",
+    "Run without REX LoRA selector; rex_rule executes frozen rule candidate side LONG or SHORT."
+  ]
+}
