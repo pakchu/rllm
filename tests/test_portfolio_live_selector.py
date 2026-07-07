@@ -1,7 +1,14 @@
 import pandas as pd
 import unittest
+import numpy as np
 
-from execution.portfolio_live import LiveSourceFrameCache, _apply_portfolio_selector_overlay
+from execution.portfolio_live import (
+    LiveFeatureFrameCache,
+    LiveSourceFrameCache,
+    _apply_portfolio_selector_overlay,
+    _build_portfolio_feature_frame,
+)
+from preprocessing.live_db_features import LiveDbFeatureConfig
 
 
 def _frames():
@@ -95,6 +102,64 @@ class TestLiveSourceFrameCache(unittest.TestCase):
         out = merged["btcusdt_1m"]
         self.assertEqual(out["date"].astype(str).tolist(), ["2026-01-01 00:01:00", "2026-01-01 00:02:00", "2026-01-01 00:03:00"])
         self.assertEqual(out["close"].tolist(), [2.0, 30.0, 4.0])
+
+
+class TestLiveFeatureFrameCache(unittest.TestCase):
+    def test_tail_refresh_matches_full_compute_for_latest_rows(self):
+        n = 8_900
+        rng = np.random.default_rng(7)
+        close = 60_000 + np.cumsum(rng.normal(0, 8, n))
+        open_ = close + rng.normal(0, 2, n)
+        high = np.maximum(open_, close) + rng.uniform(1, 10, n)
+        low = np.minimum(open_, close) - rng.uniform(1, 10, n)
+        volume = rng.uniform(10, 100, n)
+        enriched = pd.DataFrame(
+            {
+                "date": pd.date_range("2026-01-01", periods=n, freq="5min"),
+                "open": open_,
+                "high": high,
+                "low": low,
+                "close": close,
+                "volume": volume,
+                "quote_asset_volume": volume * close,
+                "number_of_trades": rng.integers(100, 500, n),
+                "taker_buy_base": volume * rng.uniform(0.35, 0.65, n),
+                "open_interest": 1_000_000 + np.cumsum(rng.normal(0, 100, n)),
+                "premium_index": rng.normal(0, 0.0001, n),
+                "funding_rate": rng.normal(0, 0.00005, n),
+                "premium_index_zscore": rng.normal(0, 1, n),
+                "premium_index_change": rng.normal(0, 0.0001, n),
+                "funding_available": 1.0,
+                "premium_available": 1.0,
+                "binance_aux_any_available": 1.0,
+                "dxy": 100 + np.cumsum(rng.normal(0, 0.01, n)),
+                "dxy_zscore": rng.normal(0, 1, n),
+                "dxy_momentum": rng.normal(0, 0.01, n),
+                "kimchi_premium": rng.normal(0, 0.001, n),
+                "kimchi_premium_zscore": rng.normal(0, 1, n),
+                "kimchi_premium_change": rng.normal(0, 0.001, n),
+                "usdkrw_zscore": rng.normal(0, 1, n),
+                "usdkrw_momentum": rng.normal(0, 0.01, n),
+                "dxy_available": 1.0,
+                "kimchi_available": 1.0,
+                "usdkrw_available": 1.0,
+                "external_any_available": 1.0,
+            }
+        )
+        cfg = LiveDbFeatureConfig()
+        cache = LiveFeatureFrameCache(output_bars=64)
+        _ = cache.refresh(enriched.iloc[:-2].copy(), cfg)
+        cached = cache.refresh(enriched.copy(), cfg)
+        full = _build_portfolio_feature_frame(enriched, cfg)
+
+        cols = sorted(set(full.columns).intersection(cached.columns))
+        pd.testing.assert_frame_equal(
+            cached.loc[n - 64 :, cols].reset_index(drop=True),
+            full.loc[n - 64 :, cols].reset_index(drop=True),
+            check_dtype=False,
+            rtol=1e-8,
+            atol=1e-8,
+        )
 
 
 if __name__ == "__main__":

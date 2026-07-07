@@ -55,6 +55,8 @@ Side = Literal["LONG", "SHORT"]
 
 
 SOURCE_FRAME_OVERLAP_MINUTES = 30
+FEATURE_TAIL_CONTEXT_BARS = 8_640
+FEATURE_TAIL_OUTPUT_BARS = 96
 
 
 def _frame_time_col(key: str) -> str:
@@ -151,6 +153,96 @@ class LiveSourceFrameCache:
                 merged = merged.sort_values(sort_cols)
             out[key] = merged.reset_index(drop=True)
         return out
+
+
+def _add_portfolio_oi_features(enriched: pd.DataFrame, features: pd.DataFrame) -> pd.DataFrame:
+    out = features.copy()
+    oi_s = pd.Series(enriched["open_interest"].astype(float).replace(0, np.nan).ffill(), index=enriched.index)
+    px = pd.Series(enriched["close"].astype(float), index=enriched.index)
+    for w, name in [(6, "30m"), (12, "1h"), (24, "2h"), (48, "4h"), (96, "8h")]:
+        oi_ret = np.log(oi_s / oi_s.shift(w)).replace([np.inf, -np.inf], np.nan)
+        px_ret = np.log(px / px.shift(w)).replace([np.inf, -np.inf], np.nan)
+        div = oi_ret - px_ret
+        for nm, series in [
+            (f"oi_ret_{name}", oi_ret),
+            (f"px_ret_{name}", px_ret),
+            (f"oi_minus_px_{name}", div),
+            (f"px_minus_oi_{name}", px_ret - oi_ret),
+        ]:
+            mu = series.rolling(288, min_periods=50).mean()
+            sd = series.rolling(288, min_periods=50).std(ddof=0)
+            out[nm] = series
+            out[nm + "_z"] = ((series - mu) / sd.replace(0, np.nan)).clip(-5, 5)
+    return out
+
+
+def _add_activity_flow_feature(enriched: pd.DataFrame, features: pd.DataFrame) -> pd.DataFrame:
+    out = features.copy()
+    try:
+        interest = build_interest_features(enriched, out)
+        raw = _build_score_frame(enriched, out, interest)
+        train_mask = np.ones(len(enriched), dtype=bool)
+        score, _ = _score_variant(raw, train_mask, "activity_flow_htf")
+        out["activity_flow_htf"] = score
+    except Exception:
+        pass
+    return out
+
+
+def _build_portfolio_feature_frame(enriched: pd.DataFrame, cfg: LiveDbFeatureConfig) -> pd.DataFrame:
+    features = build_market_feature_frame(
+        enriched,
+        window_size=cfg.feature_window_size,
+        zscore_window=cfg.zscore_window,
+        volume_window=cfg.volume_window,
+    ).copy()
+    features = _add_portfolio_oi_features(enriched, features)
+    features = _add_activity_flow_feature(enriched, features)
+    return features.replace([np.inf, -np.inf], np.nan)
+
+
+@dataclass
+class LiveFeatureFrameCache:
+    """Tail-only feature-frame cache with full-compute equivalence guardrails."""
+
+    enriched: pd.DataFrame | None = None
+    features: pd.DataFrame | None = None
+    context_bars: int = FEATURE_TAIL_CONTEXT_BARS
+    output_bars: int = FEATURE_TAIL_OUTPUT_BARS
+    last_mode: str = "cold"
+
+    def refresh(self, enriched: pd.DataFrame, cfg: LiveDbFeatureConfig) -> pd.DataFrame:
+        if self.enriched is None or self.features is None or self.features.empty:
+            self.enriched = enriched.copy()
+            self.features = _build_portfolio_feature_frame(enriched, cfg)
+            self.last_mode = "cold_full_features"
+            return self.features.copy()
+
+        if len(enriched) < max(10, int(self.context_bars) // 2):
+            self.enriched = enriched.copy()
+            self.features = _build_portfolio_feature_frame(enriched, cfg)
+            self.last_mode = "fallback_short_full_features"
+            return self.features.copy()
+
+        output_start = max(0, len(enriched) - max(1, int(self.output_bars)))
+        context_start = max(0, output_start - max(1, int(self.context_bars)))
+        tail_enriched = enriched.iloc[context_start:].reset_index(drop=True)
+        tail_features = _build_portfolio_feature_frame(tail_enriched, cfg).reset_index(drop=True)
+        replace_from_tail = output_start - context_start
+        replacement = tail_features.iloc[replace_from_tail:].copy()
+        replacement.index = range(output_start, output_start + len(replacement))
+
+        prefix = self.features.iloc[:output_start].copy()
+        spliced = pd.concat([prefix, replacement], axis=0)
+        spliced = spliced.reindex(range(len(enriched)))
+
+        # activity_flow_htf standardizes over the full available live window.
+        # Recompute it over the spliced cache so tail rows match full compute.
+        spliced = _add_activity_flow_feature(enriched, spliced)
+        self.enriched = enriched.copy()
+        self.features = spliced.replace([np.inf, -np.inf], np.nan)
+        self.last_mode = f"tail_features_context={len(tail_enriched)} output={len(replacement)}"
+        return self.features.copy()
 
 
 @dataclass(frozen=True)
@@ -253,6 +345,7 @@ async def build_live_portfolio_frames(
     asof: pd.Timestamp,
     cfg: LiveDbFeatureConfig,
     source_cache: LiveSourceFrameCache | None = None,
+    feature_cache: LiveFeatureFrameCache | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build enriched market and feature frame with live OI included."""
 
@@ -300,40 +393,7 @@ async def build_live_portfolio_frames(
         premium_tolerance=cfg.premium_tolerance,
         zscore_window=cfg.zscore_window,
     )
-    features = build_market_feature_frame(
-        enriched,
-        window_size=cfg.feature_window_size,
-        zscore_window=cfg.zscore_window,
-        volume_window=cfg.volume_window,
-    ).copy()
-
-    oi_s = pd.Series(enriched["open_interest"].astype(float).replace(0, np.nan).ffill(), index=enriched.index)
-    px = pd.Series(enriched["close"].astype(float), index=enriched.index)
-    for w, name in [(6, "30m"), (12, "1h"), (24, "2h"), (48, "4h"), (96, "8h")]:
-        oi_ret = np.log(oi_s / oi_s.shift(w)).replace([np.inf, -np.inf], np.nan)
-        px_ret = np.log(px / px.shift(w)).replace([np.inf, -np.inf], np.nan)
-        div = oi_ret - px_ret
-        for nm, series in [
-            (f"oi_ret_{name}", oi_ret),
-            (f"px_ret_{name}", px_ret),
-            (f"oi_minus_px_{name}", div),
-            (f"px_minus_oi_{name}", px_ret - oi_ret),
-        ]:
-            mu = series.rolling(288, min_periods=50).mean()
-            sd = series.rolling(288, min_periods=50).std(ddof=0)
-            features[nm] = series
-            features[nm + "_z"] = ((series - mu) / sd.replace(0, np.nan)).clip(-5, 5)
-
-    # Restore activity_flow_htf used by some portfolio selector experiments.
-    try:
-        interest = build_interest_features(enriched, features)
-        raw = _build_score_frame(enriched, features, interest)
-        train_mask = np.ones(len(enriched), dtype=bool)
-        score, _ = _score_variant(raw, train_mask, "activity_flow_htf")
-        features["activity_flow_htf"] = score
-    except Exception:
-        pass
-
+    features = feature_cache.refresh(enriched, cfg) if feature_cache is not None else _build_portfolio_feature_frame(enriched, cfg)
     return enriched, features.replace([np.inf, -np.inf], np.nan)
 
 
@@ -1099,6 +1159,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
 
     engine = sqlalchemy_engine_from_env(cfg.env_path)
     source_cache = LiveSourceFrameCache()
+    feature_cache = LiveFeatureFrameCache()
     client = executor = None
     if not exec_cfg.dry_run:
         client, executor = await _make_executor(exec_cfg)
@@ -1127,7 +1188,13 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 notify_channel=cfg.freshness_notify_channel,
             )
             frame_t0 = time.perf_counter()
-            enriched, features = await build_live_portfolio_frames(engine=engine, asof=asof, cfg=live_cfg, source_cache=source_cache)
+            enriched, features = await build_live_portfolio_frames(
+                engine=engine,
+                asof=asof,
+                cfg=live_cfg,
+                source_cache=source_cache,
+                feature_cache=feature_cache,
+            )
             frame_build_sec = time.perf_counter() - frame_t0
             sleeve_scores = _score_sleeves(
                 portfolio=portfolio,
@@ -1268,6 +1335,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 "asof": str(asof),
                 "freshness_mode": freshness_mode,
                 "source_cache_mode": source_cache.last_query_mode,
+                "feature_cache_mode": feature_cache.last_mode,
             }
             _write_json(cfg.state_file, state)
             active = [s["name"] for s in sleeve_scores if s["active"]]
@@ -1278,7 +1346,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 f"[portfolio-live] {pd.Timestamp.utcnow().isoformat()} active={active} opened={opened} closed={closed} "
                 f"open={list(state['open_sleeves'])} stale_cancel={len(stale_cancelled)} repl={replaced_entry_orders} gross={total_weight:.3f} lev={exec_cfg.leverage} "
                 f"alloc={cfg.allocation_mode} live_gross={audit['live_gross_if_all_active']:.3f} selector={selector_status} "
-                f"fb={frame_build_sec:.2f}s fw={freshness_waited:.1f}s fm={freshness_mode} cache={source_cache.last_query_mode} dry_run={exec_cfg.dry_run}"
+                f"fb={frame_build_sec:.2f}s fw={freshness_waited:.1f}s fm={freshness_mode} src={source_cache.last_query_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
             )
             iterations += 1
             if cfg.max_iterations is not None and iterations >= cfg.max_iterations:
