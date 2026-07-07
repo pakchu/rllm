@@ -488,6 +488,25 @@ class PortfolioLiveConfig:
     rex_selector_require_cuda: bool = True
 
 
+@dataclass(frozen=True)
+class FreshnessRequirement:
+    table: str
+    symbol: str
+    interval: str | None
+    required_ts: pd.Timestamp
+    source: str
+    period: str | None = None
+
+    @property
+    def key(self) -> str:
+        parts = [self.table, self.symbol]
+        if self.interval:
+            parts.append(self.interval)
+        if self.period:
+            parts.append(self.period)
+        return ":".join(parts)
+
+
 def _load_json(path: str | Path) -> dict[str, Any]:
     return json.loads(Path(path).expanduser().read_text())
 
@@ -1707,18 +1726,35 @@ def _validate_pg_notify_channel(channel: str) -> str:
     return name
 
 
-def _latest_binance_1m_ts(engine: Any, *, symbol: str) -> pd.Timestamp | None:
+def _latest_requirement_ts(engine_or_conn: Any, req: FreshnessRequirement) -> pd.Timestamp | None:
     from sqlalchemy import text
 
-    sql = text(
-        """
-        SELECT MAX(ts) AS max_ts
-        FROM bars_binance
-        WHERE symbol = :symbol AND interval = '1m'
-        """
-    )
-    with engine.connect() as conn:
-        row = conn.execute(sql, {"symbol": symbol}).mappings().one()
+    allowed_tables = {"bars_binance", "bars_upbit", "bars_polygon", "bars_binance_premium", "open_interest_binance"}
+    if req.table not in allowed_tables:
+        raise ValueError(f"unsupported freshness table: {req.table}")
+    if req.table == "open_interest_binance":
+        sql = text(
+            f"""
+            SELECT MAX(ts) AS max_ts
+            FROM {req.table}
+            WHERE symbol = :symbol AND period = :period
+            """
+        )
+        params = {"symbol": req.symbol, "period": req.period or "5m"}
+    else:
+        sql = text(
+            f"""
+            SELECT MAX(ts) AS max_ts
+            FROM {req.table}
+            WHERE symbol = :symbol AND interval = :interval
+            """
+        )
+        params = {"symbol": req.symbol, "interval": req.interval or "1m"}
+    if hasattr(engine_or_conn, "connect"):
+        with engine_or_conn.connect() as conn:
+            row = conn.execute(sql, params).mappings().one()
+    else:
+        row = engine_or_conn.execute(sql, params).mappings().one()
     value = row.get("max_ts")
     if value is None:
         return None
@@ -1726,18 +1762,70 @@ def _latest_binance_1m_ts(engine: Any, *, symbol: str) -> pd.Timestamp | None:
     return ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
 
 
-def _wait_for_bar_update_notify(
+def _latest_requirement_map(engine: Any, requirements: list[FreshnessRequirement]) -> dict[str, pd.Timestamp | None]:
+    with engine.connect() as conn:
+        return {req.key: _latest_requirement_ts(conn, req) for req in requirements}
+
+
+def _freshness_missing(
+    latest: dict[str, pd.Timestamp | None],
+    requirements: list[FreshnessRequirement],
+) -> list[dict[str, Any]]:
+    missing: list[dict[str, Any]] = []
+    for req in requirements:
+        value = latest.get(req.key)
+        if value is None or value < req.required_ts:
+            missing.append(
+                {
+                    "key": req.key,
+                    "table": req.table,
+                    "source": req.source,
+                    "symbol": req.symbol,
+                    "interval": req.interval,
+                    "period": req.period,
+                    "required_ts": str(req.required_ts),
+                    "latest_ts": None if value is None else str(value),
+                }
+            )
+    return missing
+
+
+def _freshness_requirements_for_decision(
+    *,
+    symbol: str,
+    expected_bar: pd.Timestamp,
+    required_1m: pd.Timestamp,
+) -> list[FreshnessRequirement]:
+    """Return source rows that must be current before opening a new live trade."""
+
+    return [
+        FreshnessRequirement("bars_binance", symbol, "1m", required_1m, "binance_perp"),
+        FreshnessRequirement("bars_binance_premium", symbol, "1m", required_1m, "binance_premium"),
+        FreshnessRequirement("open_interest_binance", symbol, None, expected_bar, "binance_open_interest", period="5m"),
+        FreshnessRequirement("bars_upbit", "KRW-BTC", "1m", required_1m, "upbit"),
+        FreshnessRequirement("bars_polygon", "USDKRW", "1m", required_1m, "polygon"),
+        *[
+            FreshnessRequirement("bars_polygon", fx_symbol, "1m", required_1m, "polygon")
+            for fx_symbol in DXY_WEIGHTS
+        ],
+    ]
+
+
+def _wait_for_source_updates_notify(
     engine: Any,
     *,
     symbol: str,
+    expected_bar: pd.Timestamp,
     required_1m: pd.Timestamp,
     max_wait_sec: float,
     channel: str,
-) -> tuple[float, pd.Timestamp | None, bool]:
-    """Block on Postgres LISTEN/NOTIFY until the required 1m bar is committed."""
+) -> tuple[float, dict[str, pd.Timestamp | None], list[dict[str, Any]]]:
+    """Block until all feature-source requirements for a decision bar are committed."""
 
     deadline = time.monotonic() + max(0.0, float(max_wait_sec))
-    latest: pd.Timestamp | None = None
+    started = deadline - max(0.0, float(max_wait_sec))
+    requirements = _freshness_requirements_for_decision(symbol=symbol, expected_bar=expected_bar, required_1m=required_1m)
+    latest: dict[str, pd.Timestamp | None] = {}
     raw = engine.raw_connection()
     try:
         dbapi_conn = getattr(raw, "driver_connection", None) or getattr(raw, "connection", raw)
@@ -1749,38 +1837,31 @@ def _wait_for_bar_update_notify(
 
         # Check after LISTEN to avoid missing a notification between the initial
         # schedule wake-up and listener registration.
-        latest = _latest_binance_1m_ts(engine, symbol=symbol)
-        if latest is not None and latest >= required_1m:
-            return 0.0, latest, True
+        latest = _latest_requirement_map(engine, requirements)
+        missing = _freshness_missing(latest, requirements)
+        if not missing:
+            return 0.0, latest, []
 
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 break
-            readable, _, _ = select.select([dbapi_conn], [], [], remaining)
-            if not readable:
-                break
-            dbapi_conn.poll()
-            while getattr(dbapi_conn, "notifies", []):
-                notify = dbapi_conn.notifies.pop(0)
-                try:
-                    payload = json.loads(notify.payload)
-                except Exception:
-                    continue
-                if (
-                    payload.get("table") != "bars_binance"
-                    or str(payload.get("symbol", "")).upper() != symbol.upper()
-                    or payload.get("interval") != "1m"
-                ):
-                    continue
-                ts = pd.Timestamp(payload.get("ts"))
-                ts = ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
-                latest = ts if latest is None or ts > latest else latest
-                if latest >= required_1m:
-                    return max(0.0, time.monotonic() - (deadline - max(0.0, float(max_wait_sec)))), latest, True
+            readable, _, _ = select.select([dbapi_conn], [], [], min(0.5, remaining))
+            if readable:
+                dbapi_conn.poll()
+                while getattr(dbapi_conn, "notifies", []):
+                    notify = dbapi_conn.notifies.pop(0)
+                    try:
+                        json.loads(notify.payload)
+                    except Exception:
+                        continue
+            latest = _latest_requirement_map(engine, requirements)
+            missing = _freshness_missing(latest, requirements)
+            if not missing:
+                return max(0.0, time.monotonic() - started), latest, []
 
-        latest = _latest_binance_1m_ts(engine, symbol=symbol)
-        return max(0.0, time.monotonic() - (deadline - max(0.0, float(max_wait_sec)))), latest, bool(latest is not None and latest >= required_1m)
+        latest = _latest_requirement_map(engine, requirements)
+        return max(0.0, time.monotonic() - started), latest, _freshness_missing(latest, requirements)
     finally:
         try:
             raw.close()
@@ -1796,20 +1877,22 @@ async def _wait_for_expected_1m_tail(
     interval_minutes: int,
     max_wait_sec: float,
     notify_channel: str,
-) -> tuple[float, pd.Timestamp | None, pd.Timestamp, str]:
+) -> tuple[float, pd.Timestamp | None, pd.Timestamp, str, dict[str, pd.Timestamp | None], list[dict[str, Any]]]:
     """Wait for ingest's Postgres notification for the expected decision bar."""
 
     expected_bar = _expected_decision_bar(asof, interval_minutes=interval_minutes)
     required_1m = expected_bar + pd.Timedelta(minutes=max(0, int(interval_minutes) - 1))
-    waited, latest, fresh = await asyncio.to_thread(
-        _wait_for_bar_update_notify,
+    waited, latest_map, missing = await asyncio.to_thread(
+        _wait_for_source_updates_notify,
         engine,
         symbol=symbol,
+        expected_bar=expected_bar,
         required_1m=required_1m,
         max_wait_sec=max_wait_sec,
         channel=notify_channel,
     )
-    return waited, latest, expected_bar, "notify" if fresh else "notify_timeout"
+    binance_key = f"bars_binance:{symbol}:1m"
+    return waited, latest_map.get(binance_key), expected_bar, "notify" if not missing else "notify_timeout", latest_map, missing
 
 
 async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
@@ -1869,7 +1952,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             if asof.tzinfo is None:
                 asof = asof.tz_localize("UTC")
             live_cfg = LiveDbFeatureConfig(lookback_minutes=int(cfg.lookback_minutes))
-            freshness_waited, latest_1m_ts, expected_bar, freshness_mode = await _wait_for_expected_1m_tail(
+            freshness_waited, latest_1m_ts, expected_bar, freshness_mode, latest_source_ts, freshness_missing = await _wait_for_expected_1m_tail(
                 engine=engine,
                 symbol=live_cfg.symbol,
                 asof=asof,
@@ -1896,6 +1979,13 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 asof=asof,
                 rex_selector_cfg=rex_selector_cfg,
             )
+            data_fresh = not freshness_missing
+            if not data_fresh:
+                for sleeve in sleeve_scores:
+                    sleeve["active"] = False
+                    sleeve.setdefault("reasons", []).append(
+                        "source_freshness=fail:" + ",".join(str(item["key"]) for item in freshness_missing[:5])
+                    )
             portfolio_selector_record = _apply_portfolio_selector_overlay(
                 sleeve_scores,
                 overlay=selector_overlay,
@@ -2121,6 +2211,8 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 "expected_bar": str(expected_bar),
                 "asof": str(asof),
                 "freshness_mode": freshness_mode,
+                "source_latest_ts": {k: None if v is None else str(v) for k, v in latest_source_ts.items()},
+                "source_freshness_missing": freshness_missing,
                 "source_cache_mode": source_cache.last_query_mode,
                 "feature_cache_mode": feature_cache.last_mode,
                 "oi_cache_mode": oi_cache.last_query_mode,
@@ -2135,7 +2227,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 f"[portfolio-live] {pd.Timestamp.utcnow().isoformat()} active={active} opened={opened} closed={closed} "
                 f"open={list(state['open_sleeves'])} recovered={len(recovered_positions)} stale_cancel={len(stale_cancelled)} repl={replaced_entry_orders} gross={total_weight:.3f} lev={exec_cfg.leverage} "
                 f"alloc={cfg.allocation_mode} live_gross={audit['live_gross_if_all_active']:.3f} selector={selector_status} "
-                f"fb={frame_build_sec:.2f}s fw={freshness_waited:.1f}s fm={freshness_mode} src={source_cache.last_query_mode} oi={oi_cache.last_query_mode} ext={external_cache.last_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
+                f"fb={frame_build_sec:.2f}s fw={freshness_waited:.1f}s fm={freshness_mode} miss={len(freshness_missing)} src={source_cache.last_query_mode} oi={oi_cache.last_query_mode} ext={external_cache.last_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
             )
             iterations += 1
             if cfg.max_iterations is not None and iterations >= cfg.max_iterations:
