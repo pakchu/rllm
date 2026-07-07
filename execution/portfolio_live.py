@@ -18,6 +18,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import select
 import time
 from dataclasses import dataclass, asdict
 from decimal import Decimal
@@ -60,7 +61,10 @@ class PortfolioLiveConfig:
     env_path: Path = Path(".env")
     state_file: Path = Path(".omx/state/portfolio_live_state.json")
     lookback_minutes: int = 45_000
-    close_delay_sec: float = 5.0
+    close_delay_sec: float = 0.25
+    max_freshness_wait_sec: float = 8.0
+    freshness_poll_sec: float = 0.5
+    freshness_notify_channel: str = "market_data_bar"
     run_immediately: bool = False
     live: bool = False
     allow_live_orders: bool = False
@@ -838,6 +842,129 @@ async def _close_sleeve(*, executor: Any, sleeve_state: dict[str, Any], exec_cfg
     return {"order": order, "closed_quantity": str(quantity)}
 
 
+
+def _expected_decision_bar(now: pd.Timestamp, *, interval_minutes: int) -> pd.Timestamp:
+    ts = pd.Timestamp(now)
+    if ts.tzinfo is None:
+        ts = ts.tz_localize("UTC")
+    else:
+        ts = ts.tz_convert("UTC")
+    interval = f"{int(interval_minutes)}min"
+    return ts.floor(interval) - pd.Timedelta(minutes=int(interval_minutes))
+
+
+def _validate_pg_notify_channel(channel: str) -> str:
+    name = str(channel or "").strip()
+    if not name or not name.replace("_", "a").isalnum() or not name[0].isalpha():
+        raise ValueError(f"invalid Postgres notify channel: {channel!r}")
+    return name
+
+
+def _latest_binance_1m_ts(engine: Any, *, symbol: str) -> pd.Timestamp | None:
+    from sqlalchemy import text
+
+    sql = text(
+        """
+        SELECT MAX(ts) AS max_ts
+        FROM bars_binance
+        WHERE symbol = :symbol AND interval = '1m'
+        """
+    )
+    with engine.connect() as conn:
+        row = conn.execute(sql, {"symbol": symbol}).mappings().one()
+    value = row.get("max_ts")
+    if value is None:
+        return None
+    ts = pd.Timestamp(value)
+    return ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+
+
+def _wait_for_bar_update_notify(
+    engine: Any,
+    *,
+    symbol: str,
+    required_1m: pd.Timestamp,
+    max_wait_sec: float,
+    channel: str,
+) -> tuple[float, pd.Timestamp | None, bool]:
+    """Block on Postgres LISTEN/NOTIFY until the required 1m bar is committed."""
+
+    deadline = time.monotonic() + max(0.0, float(max_wait_sec))
+    latest: pd.Timestamp | None = None
+    raw = engine.raw_connection()
+    try:
+        dbapi_conn = getattr(raw, "driver_connection", None) or getattr(raw, "connection", raw)
+        if hasattr(dbapi_conn, "autocommit"):
+            dbapi_conn.autocommit = True
+        cur = raw.cursor()
+        channel = _validate_pg_notify_channel(channel)
+        cur.execute(f"LISTEN {channel}")
+
+        # Check after LISTEN to avoid missing a notification between the initial
+        # schedule wake-up and listener registration.
+        latest = _latest_binance_1m_ts(engine, symbol=symbol)
+        if latest is not None and latest >= required_1m:
+            return 0.0, latest, True
+
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            readable, _, _ = select.select([dbapi_conn], [], [], remaining)
+            if not readable:
+                break
+            dbapi_conn.poll()
+            while getattr(dbapi_conn, "notifies", []):
+                notify = dbapi_conn.notifies.pop(0)
+                try:
+                    payload = json.loads(notify.payload)
+                except Exception:
+                    continue
+                if (
+                    payload.get("table") != "bars_binance"
+                    or str(payload.get("symbol", "")).upper() != symbol.upper()
+                    or payload.get("interval") != "1m"
+                ):
+                    continue
+                ts = pd.Timestamp(payload.get("ts"))
+                ts = ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+                latest = ts if latest is None or ts > latest else latest
+                if latest >= required_1m:
+                    return max(0.0, time.monotonic() - (deadline - max(0.0, float(max_wait_sec)))), latest, True
+
+        latest = _latest_binance_1m_ts(engine, symbol=symbol)
+        return max(0.0, time.monotonic() - (deadline - max(0.0, float(max_wait_sec)))), latest, bool(latest is not None and latest >= required_1m)
+    finally:
+        try:
+            raw.close()
+        except Exception:
+            pass
+
+
+async def _wait_for_expected_1m_tail(
+    *,
+    engine: Any,
+    symbol: str,
+    asof: pd.Timestamp,
+    interval_minutes: int,
+    max_wait_sec: float,
+    notify_channel: str,
+) -> tuple[float, pd.Timestamp | None, pd.Timestamp, str]:
+    """Wait for ingest's Postgres notification for the expected decision bar."""
+
+    expected_bar = _expected_decision_bar(asof, interval_minutes=interval_minutes)
+    required_1m = expected_bar + pd.Timedelta(minutes=max(0, int(interval_minutes) - 1))
+    waited, latest, fresh = await asyncio.to_thread(
+        _wait_for_bar_update_notify,
+        engine,
+        symbol=symbol,
+        required_1m=required_1m,
+        max_wait_sec=max_wait_sec,
+        channel=notify_channel,
+    )
+    return waited, latest, expected_bar, "notify" if fresh else "notify_timeout"
+
+
 async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     portfolio = _load_json(cfg.portfolio_config)
     selector_overlay = _load_portfolio_selector_overlay(portfolio, cfg.portfolio_selector_overlay)
@@ -890,7 +1017,17 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             if asof.tzinfo is None:
                 asof = asof.tz_localize("UTC")
             live_cfg = LiveDbFeatureConfig(lookback_minutes=int(cfg.lookback_minutes))
+            freshness_waited, latest_1m_ts, expected_bar, freshness_mode = await _wait_for_expected_1m_tail(
+                engine=engine,
+                symbol=live_cfg.symbol,
+                asof=asof,
+                interval_minutes=exec_cfg.interval_minutes,
+                max_wait_sec=cfg.max_freshness_wait_sec,
+                notify_channel=cfg.freshness_notify_channel,
+            )
+            frame_t0 = time.perf_counter()
             enriched, features = await build_live_portfolio_frames(engine=engine, asof=asof, cfg=live_cfg)
+            frame_build_sec = time.perf_counter() - frame_t0
             sleeve_scores = _score_sleeves(
                 portfolio=portfolio,
                 enriched=enriched,
@@ -1021,6 +1158,15 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             state["updated_at"] = str(pd.Timestamp.utcnow())
             state["last_scores"] = sleeve_scores
             state["allocation_audit"] = audit
+            state["last_timing"] = {
+                "frame_build_sec": round(frame_build_sec, 3),
+                "freshness_waited_sec": round(freshness_waited, 3),
+                "latest_bar": str(enriched.iloc[-1]["date"]),
+                "latest_1m_ts": str(latest_1m_ts),
+                "expected_bar": str(expected_bar),
+                "asof": str(asof),
+                "freshness_mode": freshness_mode,
+            }
             _write_json(cfg.state_file, state)
             active = [s["name"] for s in sleeve_scores if s["active"]]
             selector_status = "none"
@@ -1029,7 +1175,8 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             _status(
                 f"[portfolio-live] {pd.Timestamp.utcnow().isoformat()} active={active} opened={opened} closed={closed} "
                 f"open={list(state['open_sleeves'])} stale_cancel={len(stale_cancelled)} repl={replaced_entry_orders} gross={total_weight:.3f} lev={exec_cfg.leverage} "
-                f"alloc={cfg.allocation_mode} live_gross={audit['live_gross_if_all_active']:.3f} selector={selector_status} dry_run={exec_cfg.dry_run}"
+                f"alloc={cfg.allocation_mode} live_gross={audit['live_gross_if_all_active']:.3f} selector={selector_status} "
+                f"fb={frame_build_sec:.2f}s fw={freshness_waited:.1f}s fm={freshness_mode} dry_run={exec_cfg.dry_run}"
             )
             iterations += 1
             if cfg.max_iterations is not None and iterations >= cfg.max_iterations:
@@ -1047,7 +1194,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--env", default=".env")
     p.add_argument("--state-file", default=".omx/state/portfolio_live_state.json")
     p.add_argument("--lookback-minutes", type=int, default=45_000)
-    p.add_argument("--close-delay-sec", type=float, default=5.0)
+    p.add_argument("--close-delay-sec", type=float, default=0.25)
+    p.add_argument("--max-freshness-wait-sec", type=float, default=8.0)
+    p.add_argument("--freshness-poll-sec", type=float, default=0.5, help="Deprecated fallback knob; live freshness uses Postgres NOTIFY")
+    p.add_argument("--freshness-notify-channel", default="market_data_bar")
     p.add_argument("--run-immediately", action="store_true", default=False)
     p.add_argument("--live", action="store_true", default=False)
     p.add_argument("--allow-live-orders", action="store_true", default=False)
@@ -1088,6 +1238,9 @@ def main() -> None:
                 state_file=Path(a.state_file),
                 lookback_minutes=int(a.lookback_minutes),
                 close_delay_sec=float(a.close_delay_sec),
+                max_freshness_wait_sec=float(a.max_freshness_wait_sec),
+                freshness_poll_sec=float(a.freshness_poll_sec),
+                freshness_notify_channel=str(a.freshness_notify_channel),
                 run_immediately=bool(a.run_immediately),
                 live=bool(a.live),
                 allow_live_orders=bool(a.allow_live_orders),
