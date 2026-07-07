@@ -1,7 +1,7 @@
-import unittest
 import pandas as pd
+import unittest
 
-from execution.portfolio_live import _apply_portfolio_selector_overlay
+from execution.portfolio_live import LiveSourceFrameCache, _apply_portfolio_selector_overlay
 
 
 def _frames():
@@ -63,6 +63,38 @@ class TestPortfolioLiveSelector(unittest.TestCase):
         self.assertEqual(record["action"], "ALLOW")
         self.assertTrue(record["allowed"])
         self.assertTrue(sleeves[0]["active"])
+
+
+class TestLiveSourceFrameCache(unittest.TestCase):
+    def test_merge_trims_and_replaces_overlap_rows(self):
+        cache = LiveSourceFrameCache(
+            frames={
+                "btcusdt_1m": pd.DataFrame(
+                    {
+                        "date": pd.to_datetime(["2026-01-01 00:00", "2026-01-01 00:01", "2026-01-01 00:02"]),
+                        "close": [1.0, 2.0, 3.0],
+                        "tic": ["BTCUSDT", "BTCUSDT", "BTCUSDT"],
+                    }
+                )
+            }
+        )
+        merged = cache._merge_and_trim(
+            {
+                "btcusdt_1m": pd.DataFrame(
+                    {
+                        "date": pd.to_datetime(["2026-01-01 00:02", "2026-01-01 00:03"], utc=True),
+                        "close": [30.0, 4.0],
+                        "tic": ["BTCUSDT", "BTCUSDT"],
+                    }
+                )
+            },
+            lookback_start=pd.Timestamp("2026-01-01 00:01", tz="UTC"),
+            asof=pd.Timestamp("2026-01-01 00:03", tz="UTC"),
+        )
+
+        out = merged["btcusdt_1m"]
+        self.assertEqual(out["date"].astype(str).tolist(), ["2026-01-01 00:01:00", "2026-01-01 00:02:00", "2026-01-01 00:03:00"])
+        self.assertEqual(out["close"].tolist(), [2.0, 30.0, 4.0])
 
 
 if __name__ == "__main__":
