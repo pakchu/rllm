@@ -147,6 +147,14 @@ def _optional_column(df: pd.DataFrame, name: str) -> pd.Series | None:
     return df[name].astype(float)
 
 
+def _coerce_datetime(series: pd.Series) -> pd.Series:
+    if isinstance(series.dtype, pd.DatetimeTZDtype):
+        return series.dt.tz_convert(None)
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return series
+    return pd.to_datetime(series, errors="coerce")
+
+
 def _completed_timeframe_features(
     market_df: pd.DataFrame,
     *,
@@ -172,7 +180,7 @@ def _completed_timeframe_features(
         return defaults
 
     source = market_df[["date", "open", "high", "low", "close"]].copy()
-    source["date"] = pd.to_datetime(source["date"], errors="coerce")
+    source["date"] = _coerce_datetime(source["date"])
     source = source.dropna(subset=["date"]).sort_values("date")
     if source.empty:
         return defaults
@@ -202,7 +210,7 @@ def _completed_timeframe_features(
     features[f"{prefix}_drawdown_4"] = _clean_series(1.0 - prev["close"] / htf_peak_4.replace(0.0, np.nan))
     features = features.replace([np.inf, -np.inf], 0.0).fillna(0.0).reset_index(names="date")
 
-    target_dates = pd.DataFrame({"date": pd.to_datetime(market_df["date"], errors="coerce")})
+    target_dates = pd.DataFrame({"date": _coerce_datetime(market_df["date"])})
     target_dates["_row"] = np.arange(len(target_dates))
     aligned = pd.merge_asof(
         target_dates.sort_values("date"),

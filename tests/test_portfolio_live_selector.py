@@ -4,6 +4,7 @@ import numpy as np
 
 from execution.portfolio_live import (
     LiveFeatureFrameCache,
+    LiveOiFrameCache,
     LiveSourceFrameCache,
     _apply_portfolio_selector_overlay,
     _build_portfolio_feature_frame,
@@ -102,6 +103,31 @@ class TestLiveSourceFrameCache(unittest.TestCase):
         out = merged["btcusdt_1m"]
         self.assertEqual(out["date"].astype(str).tolist(), ["2026-01-01 00:01:00", "2026-01-01 00:02:00", "2026-01-01 00:03:00"])
         self.assertEqual(out["close"].tolist(), [2.0, 30.0, 4.0])
+
+
+class TestLiveOiFrameCache(unittest.TestCase):
+    def test_merge_replaces_overlap_and_trims(self):
+        cache = LiveOiFrameCache(
+            frame=pd.DataFrame(
+                {
+                    "date": pd.to_datetime(["2026-01-01 00:00", "2026-01-01 00:05", "2026-01-01 00:10"]),
+                    "open_interest": [1.0, 2.0, 3.0],
+                }
+            )
+        )
+        out = cache._merge(
+            pd.DataFrame(
+                {
+                    "date": pd.to_datetime(["2026-01-01 00:10", "2026-01-01 00:15"], utc=True),
+                    "open_interest": [30.0, 4.0],
+                }
+            ),
+            start=pd.Timestamp("2026-01-01 00:05", tz="UTC"),
+            asof=pd.Timestamp("2026-01-01 00:15", tz="UTC"),
+        )
+
+        self.assertEqual(out["date"].astype(str).tolist(), ["2026-01-01 00:05:00", "2026-01-01 00:10:00", "2026-01-01 00:15:00"])
+        self.assertEqual(out["open_interest"].tolist(), [2.0, 30.0, 4.0])
 
 
 class TestLiveFeatureFrameCache(unittest.TestCase):

@@ -25,9 +25,17 @@ DXY_WEIGHTS: dict[str, float] = {
 }
 
 
+def _coerce_naive_utc(series: pd.Series) -> pd.Series:
+    if isinstance(series.dtype, pd.DatetimeTZDtype):
+        return series.dt.tz_convert(None)
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return series
+    return pd.to_datetime(series, errors="raise", utc=True).dt.tz_convert(None)
+
+
 def _normalise_dates(df: pd.DataFrame, *, date_col: str = "date") -> pd.DataFrame:
     out = df.copy()
-    out[date_col] = pd.to_datetime(out[date_col], errors="raise", utc=True).dt.tz_convert(None)
+    out[date_col] = _coerce_naive_utc(out[date_col])
     return out.sort_values(date_col).drop_duplicates(date_col, keep="last").reset_index(drop=True)
 
 
@@ -51,7 +59,7 @@ def _resample_close_by_tic(df: pd.DataFrame, interval: str) -> pd.DataFrame:
         raise ValueError(f"external bar frame lacks columns: {sorted(missing)}")
     out = df.loc[:, ["date", "tic", "close"]].copy()
     out = out.dropna(subset=["date", "tic", "close"])
-    out["date"] = pd.to_datetime(out["date"], errors="raise", utc=True).dt.tz_convert(None)
+    out["date"] = _coerce_naive_utc(out["date"])
     out["close"] = out["close"].astype(float)
     freq = str(interval).replace("m", "min") if str(interval).endswith("m") and not str(interval).endswith("min") else str(interval)
     if freq in {"1m", "1min"}:

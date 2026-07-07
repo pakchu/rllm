@@ -72,6 +72,19 @@ def _frame_dedupe_cols(key: str, frame: pd.DataFrame) -> list[str]:
     return [time_col]
 
 
+def _as_utc_ts(series: pd.Series) -> pd.Series:
+    if isinstance(series.dtype, pd.DatetimeTZDtype):
+        return series.dt.tz_convert("UTC")
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return series.dt.tz_localize("UTC")
+    return pd.to_datetime(series, utc=True, errors="coerce")
+
+
+def _to_naive_utc(series: pd.Series) -> pd.Series:
+    ts = _as_utc_ts(series)
+    return ts.dt.tz_convert(None)
+
+
 @dataclass
 class LiveSourceFrameCache:
     """In-process DB source-frame cache for the live portfolio loop.
@@ -94,7 +107,7 @@ class LiveSourceFrameCache:
             col = _frame_time_col(key)
             if col not in frame.columns:
                 continue
-            value = pd.to_datetime(frame[col], utc=True, errors="coerce").max()
+            value = _as_utc_ts(frame[col]).max()
             if pd.notna(value):
                 latest.append(pd.Timestamp(value))
         return min(latest) if latest else None
@@ -127,32 +140,103 @@ class LiveSourceFrameCache:
     ) -> dict[str, pd.DataFrame]:
         out: dict[str, pd.DataFrame] = {}
         for key, new_frame in fresh.items():
-            pieces = []
             old = self.frames.get(key)
-            if old is not None and not old.empty:
-                pieces.append(old)
-            if new_frame is not None and not new_frame.empty:
-                pieces.append(new_frame)
+            if (old is None or old.empty) and (new_frame is None or new_frame.empty):
+                out[key] = pd.DataFrame()
+                continue
+            time_col = _frame_time_col(key)
+
+            old_keep = old
+            if old_keep is not None and not old_keep.empty and time_col in old_keep.columns:
+                old_ts = _as_utc_ts(old_keep[time_col])
+                if key != "funding":
+                    old_keep = old_keep.loc[(old_ts >= lookback_start) & (old_ts <= asof)]
+
+            new_keep = new_frame
+            if new_keep is not None and not new_keep.empty and time_col in new_keep.columns:
+                new_keep = new_keep.copy()
+                new_keep[time_col] = _to_naive_utc(new_keep[time_col])
+                new_ts = _as_utc_ts(new_keep[time_col])
+                if key != "funding":
+                    new_keep = new_keep.loc[(new_ts >= lookback_start) & (new_ts <= asof)]
+                    new_ts = new_ts.loc[new_keep.index]
+                # Incremental refreshes intentionally overlap.  Drop the old
+                # overlap before concat so we don't re-deduplicate the full
+                # history every cycle.
+                if old_keep is not None and not old_keep.empty and not new_keep.empty and time_col in old_keep.columns:
+                    cutoff = new_ts.min()
+                    if pd.notna(cutoff):
+                        old_keep = old_keep.loc[_as_utc_ts(old_keep[time_col]) < cutoff]
+
+            pieces = [
+                frame
+                for frame in (old_keep, new_keep)
+                if frame is not None and not frame.empty
+            ]
             if not pieces:
                 out[key] = pd.DataFrame()
                 continue
-            merged = pd.concat(pieces, ignore_index=True)
-            time_col = _frame_time_col(key)
-            if time_col in merged.columns:
-                ts = pd.to_datetime(merged[time_col], utc=True, errors="coerce")
-                if key != "funding":
-                    mask = (ts >= lookback_start) & (ts <= asof)
-                    merged = merged.loc[mask].copy()
-                    ts = ts.loc[mask]
-                merged[time_col] = ts.dt.tz_convert(None)
+            merged = pd.concat(pieces, ignore_index=True, copy=False)
             dedupe_cols = [c for c in _frame_dedupe_cols(key, merged) if c in merged.columns]
             if dedupe_cols:
                 merged = merged.drop_duplicates(dedupe_cols, keep="last")
             if time_col in merged.columns:
+                merged[time_col] = _to_naive_utc(merged[time_col])
                 sort_cols = [time_col] + (["tic"] if "tic" in merged.columns else [])
                 merged = merged.sort_values(sort_cols)
             out[key] = merged.reset_index(drop=True)
         return out
+
+
+@dataclass
+class LiveOiFrameCache:
+    frame: pd.DataFrame = field(default_factory=pd.DataFrame)
+    overlap_minutes: int = SOURCE_FRAME_OVERLAP_MINUTES
+    last_query_mode: str = "cold"
+
+    async def refresh(self, engine: Any, *, asof: pd.Timestamp, start: pd.Timestamp, symbol: str) -> pd.DataFrame:
+        latest: pd.Timestamp | None = None
+        if not self.frame.empty and "date" in self.frame.columns:
+            value = _as_utc_ts(self.frame["date"]).max()
+            if pd.notna(value):
+                latest = pd.Timestamp(value)
+
+        if latest is None:
+            query_start = start
+            self.last_query_mode = "cold_full_oi"
+        else:
+            query_start = max(start, latest - pd.Timedelta(minutes=max(1, int(self.overlap_minutes))))
+            minutes = max(1, int(np.ceil((pd.Timestamp(asof) - query_start).total_seconds() / 60.0)))
+            self.last_query_mode = f"incremental_oi_{minutes}m"
+
+        fresh = await _query_oi(engine, asof=asof, start=query_start, symbol=symbol)
+        self.frame = self._merge(fresh, start=start, asof=asof)
+        return self.frame
+
+    def _merge(self, fresh: pd.DataFrame, *, start: pd.Timestamp, asof: pd.Timestamp) -> pd.DataFrame:
+        old = self.frame
+        pieces = []
+        if old is not None and not old.empty:
+            old_ts = _as_utc_ts(old["date"])
+            if fresh is not None and not fresh.empty:
+                cutoff = _as_utc_ts(fresh["date"]).min()
+                old = old.loc[(old_ts >= start) & (old_ts <= asof) & (old_ts < cutoff)]
+            else:
+                old = old.loc[(old_ts >= start) & (old_ts <= asof)]
+            if not old.empty:
+                pieces.append(old)
+        if fresh is not None and not fresh.empty:
+            new = fresh.copy()
+            new["date"] = _to_naive_utc(new["date"])
+            ts = _as_utc_ts(new["date"])
+            new = new.loc[(ts >= start) & (ts <= asof)]
+            if not new.empty:
+                pieces.append(new)
+        if not pieces:
+            return pd.DataFrame(columns=["date", "open_interest"])
+        out = pd.concat(pieces, ignore_index=True, copy=False)
+        out["date"] = _to_naive_utc(out["date"])
+        return out.sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
 
 
 def _add_portfolio_oi_features(enriched: pd.DataFrame, features: pd.DataFrame) -> pd.DataFrame:
@@ -346,12 +430,13 @@ async def build_live_portfolio_frames(
     cfg: LiveDbFeatureConfig,
     source_cache: LiveSourceFrameCache | None = None,
     feature_cache: LiveFeatureFrameCache | None = None,
+    oi_cache: LiveOiFrameCache | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build enriched market and feature frame with live OI included."""
 
     start = asof - pd.Timedelta(minutes=int(cfg.lookback_minutes))
     frames = source_cache.refresh(engine, asof=asof, cfg=cfg) if source_cache is not None else query_live_source_frames(engine, asof=asof, cfg=cfg)
-    oi = await _query_oi(engine, asof=asof, start=start, symbol=cfg.symbol)
+    oi = await oi_cache.refresh(engine, asof=asof, start=start, symbol=cfg.symbol) if oi_cache is not None else await _query_oi(engine, asof=asof, start=start, symbol=cfg.symbol)
 
     market = resample_market_bars(frames["btcusdt_1m"], cfg.decision_interval)
     if oi.empty:
@@ -1160,6 +1245,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     engine = sqlalchemy_engine_from_env(cfg.env_path)
     source_cache = LiveSourceFrameCache()
     feature_cache = LiveFeatureFrameCache()
+    oi_cache = LiveOiFrameCache()
     client = executor = None
     if not exec_cfg.dry_run:
         client, executor = await _make_executor(exec_cfg)
@@ -1194,6 +1280,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 cfg=live_cfg,
                 source_cache=source_cache,
                 feature_cache=feature_cache,
+                oi_cache=oi_cache,
             )
             frame_build_sec = time.perf_counter() - frame_t0
             sleeve_scores = _score_sleeves(
@@ -1336,6 +1423,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 "freshness_mode": freshness_mode,
                 "source_cache_mode": source_cache.last_query_mode,
                 "feature_cache_mode": feature_cache.last_mode,
+                "oi_cache_mode": oi_cache.last_query_mode,
             }
             _write_json(cfg.state_file, state)
             active = [s["name"] for s in sleeve_scores if s["active"]]
@@ -1346,7 +1434,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 f"[portfolio-live] {pd.Timestamp.utcnow().isoformat()} active={active} opened={opened} closed={closed} "
                 f"open={list(state['open_sleeves'])} stale_cancel={len(stale_cancelled)} repl={replaced_entry_orders} gross={total_weight:.3f} lev={exec_cfg.leverage} "
                 f"alloc={cfg.allocation_mode} live_gross={audit['live_gross_if_all_active']:.3f} selector={selector_status} "
-                f"fb={frame_build_sec:.2f}s fw={freshness_waited:.1f}s fm={freshness_mode} src={source_cache.last_query_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
+                f"fb={frame_build_sec:.2f}s fw={freshness_waited:.1f}s fm={freshness_mode} src={source_cache.last_query_mode} oi={oi_cache.last_query_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
             )
             iterations += 1
             if cfg.max_iterations is not None and iterations >= cfg.max_iterations:

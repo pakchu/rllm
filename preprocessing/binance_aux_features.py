@@ -13,11 +13,19 @@ import numpy as np
 import pandas as pd
 
 
+def _coerce_naive_utc(series: pd.Series) -> pd.Series:
+    if isinstance(series.dtype, pd.DatetimeTZDtype):
+        return series.dt.tz_convert(None)
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return series
+    return pd.to_datetime(series, errors="raise", utc=True).dt.tz_convert(None)
+
+
 def _normalise_market_dates(market: pd.DataFrame) -> pd.DataFrame:
     if "date" not in market.columns:
         raise ValueError("market frame must contain a date column")
     out = market.copy()
-    out["date"] = pd.to_datetime(out["date"], errors="raise", utc=True).dt.tz_convert(None)
+    out["date"] = _coerce_naive_utc(out["date"])
     out["_row"] = np.arange(len(out))
     return out.sort_values("date").reset_index(drop=True)
 
@@ -39,7 +47,7 @@ def normalise_funding_history_frame(df: pd.DataFrame) -> pd.DataFrame:
     if missing:
         raise ValueError(f"funding frame lacks columns: {sorted(missing)}")
     out = df.loc[:, ["date", "funding_rate"]].copy()
-    out["date"] = pd.to_datetime(out["date"], errors="raise", utc=True).dt.tz_convert(None)
+    out["date"] = _coerce_naive_utc(out["date"])
     out["funding_rate"] = pd.to_numeric(out["funding_rate"], errors="coerce")
     return out.dropna(subset=["date", "funding_rate"]).sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
 
@@ -63,14 +71,14 @@ def normalise_premium_index_frame(df: pd.DataFrame) -> pd.DataFrame:
     """
     if "premium_index" in df.columns and "date" in df.columns:
         out = df.loc[:, ["date", "premium_index"]].copy()
-        out["date"] = pd.to_datetime(out["date"], errors="raise", utc=True).dt.tz_convert(None)
+        out["date"] = _coerce_naive_utc(out["date"])
         out["premium_index"] = pd.to_numeric(out["premium_index"], errors="coerce")
         return out.dropna(subset=["date", "premium_index"]).sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
     if "close" not in df.columns:
         raise ValueError("premium frame lacks close column")
     if "close_time" in df.columns:
         if pd.api.types.is_datetime64_any_dtype(df["close_time"]):
-            dates = pd.to_datetime(df["close_time"], errors="raise", utc=True).dt.tz_convert(None)
+            dates = _coerce_naive_utc(df["close_time"])
         else:
             numeric_close_time = pd.to_numeric(df["close_time"], errors="coerce")
             if numeric_close_time.notna().any():
