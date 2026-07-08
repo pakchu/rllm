@@ -8,6 +8,7 @@ import pandas as pd
 from execution.portfolio_live import (
     PORTFOLIO_ORDER_PREFIX,
     _cancel_portfolio_orders_for_sleeve,
+    _add_live_volume_wave_features,
     _cancel_stale_portfolio_orders,
     _entry_ttl_seconds,
     _margin_fraction_for_weight,
@@ -23,15 +24,16 @@ class FakeExecutor:
 
 
 class FakeClient:
-    def __init__(self, *, order_statuses=None, open_orders=None):
+    def __init__(self, *, order_statuses=None, open_orders=None, cancel_responses=None):
         self.order_statuses = list(order_statuses or [])
         self.open_orders = list(open_orders or [])
+        self.cancel_responses = list(cancel_responses or [])
         self.cancelled = []
         self.placed = []
 
     async def place_order(self, **kwargs):
         self.placed.append(kwargs)
-        return {"orderId": 101, "clientOrderId": kwargs["client_order_id"], "status": "NEW"}
+        return {"orderId": 100 + len(self.placed), "clientOrderId": kwargs["client_order_id"], "status": "NEW"}
 
     async def get_order(self, symbol, order_id=None, client_order_id=None):
         if self.order_statuses:
@@ -40,6 +42,10 @@ class FakeClient:
 
     async def cancel_order(self, symbol, order_id=None, client_order_id=None):
         self.cancelled.append({"symbol": symbol, "order_id": order_id, "client_order_id": client_order_id})
+        if self.cancel_responses:
+            response = dict(self.cancel_responses.pop(0))
+            response.setdefault("clientOrderId", client_order_id)
+            return response
         return {"status": "CANCELED", "clientOrderId": client_order_id}
 
     async def get_open_orders(self, symbol=None):
@@ -96,6 +102,61 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             self.assertTrue(client.cancelled[0]["client_order_id"].startswith(PORTFOLIO_ORDER_PREFIX + "_"))
 
         asyncio.run(run())
+
+    def test_post_only_refresh_reorders_only_uncancelled_remainder(self):
+        async def run():
+            client = FakeClient(
+                order_statuses=[{"orderId": 101, "status": "NEW", "executedQty": "0.004", "avgPrice": "100"}],
+                cancel_responses=[
+                    {"status": "CANCELED", "executedQty": "0.006", "avgPrice": "100"},
+                    {"status": "CANCELED", "executedQty": "0.004", "avgPrice": "100"},
+                ],
+            )
+            result = await _place_portfolio_maker_order_with_deadline(
+                client=client,
+                executor=FakeExecutor(),
+                exec_cfg=SimpleNamespace(symbol="BTCUSDT"),
+                order_side="BUY",
+                quantity=Decimal("0.01"),
+                position_side="LONG",
+                signal_id="sig-partial",
+                sleeve_name="rex_short",
+                ttl_sec=2,
+                refresh_interval_sec=1,
+                poll_interval_sec=0.05,
+            )
+            self.assertEqual(result["status"], "FILLED")
+            self.assertEqual(Decimal(result["filled_quantity"]), Decimal("0.010"))
+            self.assertGreaterEqual(len(client.placed), 2)
+            self.assertEqual(Decimal(str(client.placed[0]["quantity"])), Decimal("0.01"))
+            self.assertEqual(Decimal(str(client.placed[1]["quantity"])), Decimal("0.004"))
+
+        asyncio.run(run())
+
+
+    def test_live_alt_pool_volume_ratio_uses_ingested_pool(self):
+        dates = pd.date_range("2026-07-01", periods=320, freq="5min")
+        enriched = pd.DataFrame(
+            {
+                "date": dates,
+                "open": 100.0,
+                "high": 101.0,
+                "low": 99.0,
+                "close": 100.0,
+                "volume": 10.0,
+                "quote_asset_volume": 1000.0,
+            }
+        )
+        features = pd.DataFrame(index=enriched.index)
+        alt_rows = []
+        for i, ts in enumerate(dates):
+            for symbol in ("ETHUSDT", "SOLUSDT"):
+                alt_rows.append({"date": ts, "symbol": symbol, "quote_asset_volume": 1000.0 + i * 10.0})
+        out = _add_live_volume_wave_features(enriched, features, {}, pd.DataFrame(alt_rows))
+        self.assertIn("vg_alt_btc_qv_ratio_z_72", out.columns)
+        self.assertIn("vg_alt_btc_qv_ratio_z_288", out.columns)
+        self.assertNotEqual(float(out["vg_alt_btc_qv_ratio_z_72"].iloc[-1]), 0.0)
+        self.assertNotEqual(float(out["vg_alt_btc_qv_ratio_z_288"].iloc[-1]), 0.0)
 
     def test_cancel_stale_only_touches_portfolio_prefix(self):
         async def run():

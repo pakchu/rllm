@@ -60,6 +60,7 @@ SOURCE_FRAME_OVERLAP_MINUTES = 30
 FEATURE_TAIL_CONTEXT_BARS = 8_640
 FEATURE_TAIL_OUTPUT_BARS = 96
 EXTERNAL_TAIL_CONTEXT_BARS = 288
+ALT_POOL_SYMBOLS = ("ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "BNBUSDT", "ADAUSDT")
 
 LOG = logging.getLogger("portfolio_live")
 
@@ -244,6 +245,55 @@ class LiveOiFrameCache:
         return out.sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
 
 
+
+@dataclass
+class LiveAltPoolFrameCache:
+    frame: pd.DataFrame = field(default_factory=pd.DataFrame)
+    overlap_minutes: int = SOURCE_FRAME_OVERLAP_MINUTES
+    last_query_mode: str = "cold"
+
+    async def refresh(self, engine: Any, *, asof: pd.Timestamp, start: pd.Timestamp, symbols: tuple[str, ...] = ALT_POOL_SYMBOLS) -> pd.DataFrame:
+        latest: pd.Timestamp | None = None
+        if not self.frame.empty and "date" in self.frame.columns:
+            value = _as_utc_ts(self.frame["date"]).max()
+            if pd.notna(value):
+                latest = pd.Timestamp(value)
+        if latest is None:
+            query_start = start
+            self.last_query_mode = "cold_full_alt_pool"
+        else:
+            query_start = max(start, latest - pd.Timedelta(minutes=max(1, int(self.overlap_minutes))))
+            minutes = max(1, int(np.ceil((pd.Timestamp(asof) - query_start).total_seconds() / 60.0)))
+            self.last_query_mode = f"incremental_alt_pool_{minutes}m"
+        fresh = await _query_alt_pool(engine, asof=asof, start=query_start, symbols=symbols)
+        self.frame = self._merge(fresh, start=start, asof=asof)
+        return self.frame.copy()
+
+    def _merge(self, fresh: pd.DataFrame, *, start: pd.Timestamp, asof: pd.Timestamp) -> pd.DataFrame:
+        old = self.frame
+        pieces = []
+        if old is not None and not old.empty:
+            old_ts = _as_utc_ts(old["date"])
+            if fresh is not None and not fresh.empty:
+                cutoff = _as_utc_ts(fresh["date"]).min()
+                old = old.loc[(old_ts >= start) & (old_ts <= asof) & (old_ts < cutoff)]
+            else:
+                old = old.loc[(old_ts >= start) & (old_ts <= asof)]
+            if not old.empty:
+                pieces.append(old)
+        if fresh is not None and not fresh.empty:
+            new = fresh.copy()
+            new["date"] = _to_naive_utc(new["date"])
+            ts = _as_utc_ts(new["date"])
+            new = new.loc[(ts >= start) & (ts <= asof)]
+            if not new.empty:
+                pieces.append(new)
+        if not pieces:
+            return pd.DataFrame(columns=["date", "symbol", "quote_asset_volume"])
+        out = pd.concat(pieces, ignore_index=True, copy=False)
+        out["date"] = _to_naive_utc(out["date"])
+        return out.sort_values(["date", "symbol"]).drop_duplicates(["date", "symbol"], keep="last").reset_index(drop=True)
+
 def _filter_frame_since(frame: pd.DataFrame, *, col: str, start: pd.Timestamp) -> pd.DataFrame:
     if frame.empty or col not in frame.columns:
         return frame
@@ -415,7 +465,12 @@ def _momentum(series: pd.Series, window: int) -> pd.Series:
     return (values / values.shift(window).replace(0, np.nan) - 1.0).replace([np.inf, -np.inf], np.nan).clip(-10, 10).fillna(0.0)
 
 
-def _add_live_volume_wave_features(enriched: pd.DataFrame, features: pd.DataFrame, frames: dict[str, pd.DataFrame]) -> pd.DataFrame:
+def _add_live_volume_wave_features(
+    enriched: pd.DataFrame,
+    features: pd.DataFrame,
+    frames: dict[str, pd.DataFrame],
+    alt_pool: pd.DataFrame | None = None,
+) -> pd.DataFrame:
     """Add live-only wave/volume columns required by current portfolio scans."""
 
     out = features.copy()
@@ -430,11 +485,35 @@ def _add_live_volume_wave_features(enriched: pd.DataFrame, features: pd.DataFram
     out["vg_vol_mom_288"] = _momentum(volume + 1.0, 288).to_numpy(float)
     out["vg_qvol_mom_288"] = _momentum(quote_volume + 1.0, 288).to_numpy(float)
 
-    # The latest promoted dynamic sleeve used this diagnostic alt/BTC ratio with
-    # threshold 0.0.  Live ingest does not currently maintain the altcoin pool,
-    # so keep the feature neutral instead of fabricating stale alt data.
-    out["vg_alt_btc_qv_ratio_z_72"] = 0.0
-    out["vg_alt_btc_qv_ratio_z_288"] = 0.0
+    try:
+        if alt_pool is None or alt_pool.empty:
+            raise ValueError("alt_pool_empty")
+        pool = alt_pool[["date", "symbol", "quote_asset_volume"]].copy()
+        pool["date"] = _to_naive_utc(pool["date"])
+        pool["quote_asset_volume"] = pd.to_numeric(pool["quote_asset_volume"], errors="coerce").fillna(0.0)
+        alt_5m = (
+            pool.set_index("date")
+            .groupby("symbol")["quote_asset_volume"]
+            .resample("5min", label="left", closed="left")
+            .sum()
+            .reset_index()
+        )
+        alt_total = alt_5m.groupby("date", as_index=False)["quote_asset_volume"].sum().rename(columns={"quote_asset_volume": "alt_quote_volume"})
+        joined_alt = pd.merge_asof(
+            enriched[["date", "quote_asset_volume"]].sort_values("date"),
+            alt_total.sort_values("date"),
+            on="date",
+            direction="backward",
+            tolerance=pd.Timedelta("5min"),
+        ).sort_index()
+        alt_value = pd.to_numeric(joined_alt["alt_quote_volume"], errors="coerce")
+        btc_value = pd.to_numeric(joined_alt["quote_asset_volume"], errors="coerce")
+        alt_ratio = (alt_value / btc_value.replace(0, np.nan)).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        out["vg_alt_btc_qv_ratio_z_72"] = _rolling_z(alt_ratio, 72).to_numpy(float)
+        out["vg_alt_btc_qv_ratio_z_288"] = _rolling_z(alt_ratio, 288).to_numpy(float)
+    except Exception:
+        out["vg_alt_btc_qv_ratio_z_72"] = 0.0
+        out["vg_alt_btc_qv_ratio_z_288"] = 0.0
 
     try:
         upbit = resample_market_bars(frames["btckrw_1m"], "5min")
@@ -764,6 +843,27 @@ async def _query_oi(engine: Any, *, asof: pd.Timestamp, start: pd.Timestamp, sym
         return pd.read_sql_query(sql, conn, params={"symbol": symbol, "start": start.to_pydatetime(), "asof": asof.to_pydatetime()})
 
 
+
+async def _query_alt_pool(engine: Any, *, asof: pd.Timestamp, start: pd.Timestamp, symbols: tuple[str, ...]) -> pd.DataFrame:
+    from sqlalchemy import bindparam, text
+
+    if not symbols:
+        return pd.DataFrame(columns=["date", "symbol", "quote_asset_volume"])
+    sql = text(
+        """
+        SELECT ts AS date, symbol, quote_asset_volume
+        FROM bars_binance
+        WHERE symbol IN :symbols AND interval = '1m' AND ts >= :start AND ts <= :asof
+        ORDER BY ts, symbol
+        """
+    ).bindparams(bindparam("symbols", expanding=True))
+    with engine.connect() as conn:
+        return pd.read_sql_query(
+            sql,
+            conn,
+            params={"symbols": tuple(symbols), "start": start.to_pydatetime(), "asof": asof.to_pydatetime()},
+        )
+
 async def build_live_portfolio_frames(
     *,
     engine: Any,
@@ -773,12 +873,14 @@ async def build_live_portfolio_frames(
     feature_cache: LiveFeatureFrameCache | None = None,
     oi_cache: LiveOiFrameCache | None = None,
     external_cache: LiveExternalFrameCache | None = None,
+    alt_pool_cache: LiveAltPoolFrameCache | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build enriched market and feature frame with live OI included."""
 
     start = asof - pd.Timedelta(minutes=int(cfg.lookback_minutes))
     frames = source_cache.refresh(engine, asof=asof, cfg=cfg) if source_cache is not None else query_live_source_frames(engine, asof=asof, cfg=cfg)
     oi = await oi_cache.refresh(engine, asof=asof, start=start, symbol=cfg.symbol) if oi_cache is not None else await _query_oi(engine, asof=asof, start=start, symbol=cfg.symbol)
+    alt_pool = await alt_pool_cache.refresh(engine, asof=asof, start=start) if alt_pool_cache is not None else await _query_alt_pool(engine, asof=asof, start=start, symbols=ALT_POOL_SYMBOLS)
 
     market = resample_market_bars(frames["btcusdt_1m"], cfg.decision_interval)
     if oi.empty:
@@ -814,7 +916,7 @@ async def build_live_portfolio_frames(
         zscore_window=cfg.zscore_window,
     )
     features = feature_cache.refresh(enriched, cfg) if feature_cache is not None else _build_portfolio_feature_frame(enriched, cfg)
-    features = _add_live_volume_wave_features(enriched, features, frames)
+    features = _add_live_volume_wave_features(enriched, features, frames, alt_pool)
     return enriched, features.replace([np.inf, -np.inf], np.nan)
 
 
@@ -1497,8 +1599,72 @@ async def _place_portfolio_maker_order_with_deadline(
     raw_orders: list[dict[str, Any]] = []
     refresh_history: list[dict[str, Any]] = []
     last_status: dict[str, Any] = {}
+    active_counted_executed = Decimal("0")
     terminal_statuses = {"FILLED", "CANCELED", "REJECTED", "EXPIRED"}
     min_qty = Decimal("0.001")
+
+    def _order_executed_qty(order: dict[str, Any] | None) -> Decimal:
+        if not isinstance(order, dict):
+            return Decimal("0")
+        for key in ("executedQty", "cumQty", "filled_quantity", "filledQuantity"):
+            value = order.get(key)
+            if value in (None, ""):
+                continue
+            try:
+                return max(Decimal("0"), Decimal(str(value)))
+            except Exception:
+                continue
+        return Decimal("0")
+
+    def _order_avg_price(order: dict[str, Any] | None) -> Decimal:
+        if not isinstance(order, dict):
+            return Decimal("0")
+        for key in ("avgPrice", "avg_price", "price"):
+            value = order.get(key)
+            if value in (None, ""):
+                continue
+            try:
+                price = Decimal(str(value))
+            except Exception:
+                continue
+            if price > 0:
+                return price
+        return Decimal("0")
+
+    def reconcile_active_fill(order: dict[str, Any] | None, reason: str) -> Decimal:
+        """Apply newly filled quantity for the currently active order once.
+
+        Binance cancel responses can report a larger executedQty than the last
+        order-status poll when a maker order fills while it is being cancelled.
+        Refreshing with the pre-cancel remaining quantity would over-order, so
+        every terminal/cancel path reconciles the cumulative executed quantity
+        before placing the next chasing order.
+        """
+
+        nonlocal active_counted_executed, total_filled, remaining_qty, avg_price
+        observed = _order_executed_qty(order)
+        if observed <= active_counted_executed:
+            return Decimal("0")
+        delta = observed - active_counted_executed
+        active_counted_executed = observed
+        total_filled += delta
+        remaining_qty = max(Decimal("0"), remaining_qty - delta)
+        reported_avg = _order_avg_price(order)
+        if reported_avg > 0:
+            avg_price = reported_avg
+        refresh_history.append(
+            {
+                "action": "fill_reconciled",
+                "reason": reason,
+                "order_id": active_order_id,
+                "client_order_id": active_client_order_id,
+                "newly_filled_qty": str(delta),
+                "observed_executed_qty": str(observed),
+                "remaining_qty": str(remaining_qty),
+                "at": str(pd.Timestamp.utcnow()),
+            }
+        )
+        return delta
 
     def deviation_ok(price: float) -> tuple[bool, float | None]:
         if reference_price is None or max_deviation_pct is None or max_deviation_pct <= 0:
@@ -1510,7 +1676,10 @@ async def _place_portfolio_maker_order_with_deadline(
         return deviation <= float(max_deviation_pct), deviation
 
     async def place_new(reason: str) -> bool:
-        nonlocal active_order_id, active_client_order_id, active_price, last_status
+        nonlocal active_order_id, active_client_order_id, active_price, last_status, active_counted_executed
+        if remaining_qty < min_qty:
+            refresh_history.append({"action": "skip_place_min_remaining", "reason": reason, "remaining_qty": str(remaining_qty), "at": str(pd.Timestamp.utcnow())})
+            return False
         maker_price = float(await executor.get_maker_price(order_side, None))
         ok, deviation = deviation_ok(maker_price)
         if not ok:
@@ -1535,6 +1704,7 @@ async def _place_portfolio_maker_order_with_deadline(
         active_order_id = order.get("orderId")
         active_client_order_id = cid
         active_price = Decimal(str(maker_price))
+        active_counted_executed = Decimal("0")
         last_status = dict(order)
         raw_orders.append(order)
         refresh_history.append({"action": "placed" if reason == "initial" else "replaced", "reason": reason, "order_id": active_order_id, "client_order_id": cid, "price": str(active_price), "quantity": str(remaining_qty), "reference_price": reference_price, "deviation_pct": deviation, "at": str(pd.Timestamp.utcnow())})
@@ -1563,23 +1733,16 @@ async def _place_portfolio_maker_order_with_deadline(
                 break
             last_status = {**last_status, "query_error": str(exc)}
         status = str(last_status.get("status") or "UNKNOWN")
-        try:
-            executed = Decimal(str(last_status.get("executedQty", "0") or "0"))
-        except Exception:
-            executed = Decimal("0")
-        try:
-            reported_avg = Decimal(str(last_status.get("avgPrice", "0") or "0"))
-            if reported_avg > 0:
-                avg_price = reported_avg
-        except Exception:
-            pass
+        observed_executed = _order_executed_qty(last_status)
+        reported_avg = _order_avg_price(last_status)
+        if reported_avg > 0:
+            avg_price = reported_avg
         if status == "FILLED":
-            total_filled += executed
+            reconcile_active_fill(last_status, "status_filled")
             final_status = "FILLED"
             break
         if status in terminal_statuses:
-            total_filled += executed
-            remaining_qty = max(Decimal("0"), remaining_qty - executed)
+            reconcile_active_fill(last_status, f"terminal_{status.lower()}")
             final_status = status
             if remaining_qty < min_qty:
                 break
@@ -1592,28 +1755,36 @@ async def _place_portfolio_maker_order_with_deadline(
             break
 
         if asyncio.get_event_loop().time() - last_refresh >= max(1, int(refresh_interval_sec)):
-            total_filled += executed
-            remaining_qty = max(Decimal("0"), remaining_qty - executed)
+            reconcile_active_fill(last_status, "before_refresh_cancel")
             if remaining_qty < min_qty:
-                final_status = "PARTIAL_FILLED_MIN_REMAINING" if total_filled > 0 else status
+                final_status = "FILLED" if remaining_qty <= 0 else "PARTIAL_FILLED_MIN_REMAINING" if total_filled > 0 else status
                 break
             try:
                 cancel_result = await client.cancel_order(exec_cfg.symbol, client_order_id=active_client_order_id)
-                refresh_history.append({"action": "cancel_for_refresh", "order_id": active_order_id, "client_order_id": active_client_order_id, "executed_qty": str(executed), "remaining_qty": str(remaining_qty), "result": cancel_result, "at": str(pd.Timestamp.utcnow())})
+                reconcile_active_fill(cancel_result, "after_refresh_cancel")
+                refresh_history.append({"action": "cancel_for_refresh", "order_id": active_order_id, "client_order_id": active_client_order_id, "executed_qty_before_cancel": str(observed_executed), "executed_qty_after_cancel": str(_order_executed_qty(cancel_result)), "remaining_qty": str(remaining_qty), "result": cancel_result, "at": str(pd.Timestamp.utcnow())})
             except Exception as exc:
                 if "-2011" not in str(exc):
-                    refresh_history.append({"action": "cancel_for_refresh_failed", "order_id": active_order_id, "client_order_id": active_client_order_id, "error": str(exc), "at": str(pd.Timestamp.utcnow())})
+                    refresh_history.append({"action": "cancel_for_refresh_failed", "order_id": active_order_id, "client_order_id": active_client_order_id, "error": str(exc), "remaining_qty": str(remaining_qty), "at": str(pd.Timestamp.utcnow())})
             active_order_id = None
             active_client_order_id = ""
+            if remaining_qty < min_qty:
+                final_status = "FILLED" if remaining_qty <= 0 else "PARTIAL_FILLED_MIN_REMAINING" if total_filled > 0 else status
+                break
             await place_new("refresh_60s")
             last_refresh = asyncio.get_event_loop().time()
 
     if final_status == "UNKNOWN":
         final_status = str(last_status.get("status") or "UNKNOWN")
     if active_client_order_id and final_status not in {"FILLED", "CANCELED", "REJECTED", "EXPIRED"}:
+        reconcile_active_fill(last_status, "before_timeout_cancel")
         try:
             cancel_result = await client.cancel_order(exec_cfg.symbol, client_order_id=active_client_order_id)
-            final_status = "TIMEOUT_CANCELLED" if total_filled <= 0 else "PARTIAL_CANCELLED"
+            reconcile_active_fill(cancel_result, "after_timeout_cancel")
+            if remaining_qty < min_qty:
+                final_status = "FILLED"
+            else:
+                final_status = "TIMEOUT_CANCELLED" if total_filled <= 0 else "PARTIAL_CANCELLED"
         except Exception as exc:
             if "-2011" not in str(exc):
                 cancel_result = {"status": "cancel_failed", "error": str(exc)}
@@ -1902,13 +2073,18 @@ def _freshness_requirements_for_decision(
 ) -> list[FreshnessRequirement]:
     """Return source rows that must be current before opening a new live trade."""
 
-    return [
+    requirements = [
         FreshnessRequirement("bars_binance", symbol, "1m", required_1m, "binance_perp"),
         FreshnessRequirement("bars_binance_premium", symbol, "1m", required_1m, "binance_premium"),
         FreshnessRequirement("open_interest_binance", symbol, None, expected_bar, "binance_open_interest", period="5m"),
         FreshnessRequirement("bars_upbit", "KRW-BTC", "1m", required_1m, "upbit"),
         FreshnessRequirement("bars_polygon", "USDKRW", "1m", required_1m, "kimchi_usdkrw"),
     ]
+    requirements.extend(
+        FreshnessRequirement("bars_binance", alt_symbol, "1m", required_1m, "binance_alt_pool")
+        for alt_symbol in ALT_POOL_SYMBOLS
+    )
+    return requirements
 
 
 def _wait_for_source_updates_notify(
@@ -2033,6 +2209,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     feature_cache = LiveFeatureFrameCache()
     oi_cache = LiveOiFrameCache()
     external_cache = LiveExternalFrameCache()
+    alt_pool_cache = LiveAltPoolFrameCache()
     client = executor = None
     if not exec_cfg.dry_run:
         client, executor = await _make_executor(exec_cfg)
@@ -2069,6 +2246,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 feature_cache=feature_cache,
                 oi_cache=oi_cache,
                 external_cache=external_cache,
+                alt_pool_cache=alt_pool_cache,
             )
             frame_build_sec = time.perf_counter() - frame_t0
             sleeve_scores = _score_sleeves(
@@ -2346,7 +2524,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 f"[portfolio-live] {pd.Timestamp.utcnow().isoformat()} active={active} opened={opened} closed={closed} "
                 f"open={list(state['open_sleeves'])} recovered={len(recovered_positions)} stale_cancel={len(stale_cancelled)} repl={replaced_entry_orders} gross={total_weight:.3f} lev={exec_cfg.leverage} "
                 f"alloc={cfg.allocation_mode} live_gross={audit['live_gross_if_all_active']:.3f} selector={selector_status} "
-                f"fb={frame_build_sec:.2f}s fw={freshness_waited:.1f}s fm={freshness_mode} miss={len(freshness_missing)} src={source_cache.last_query_mode} oi={oi_cache.last_query_mode} ext={external_cache.last_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
+                f"fb={frame_build_sec:.2f}s fw={freshness_waited:.1f}s fm={freshness_mode} miss={len(freshness_missing)} src={source_cache.last_query_mode} oi={oi_cache.last_query_mode} ext={external_cache.last_mode} alt={alt_pool_cache.last_query_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
             )
             iterations += 1
             if cfg.max_iterations is not None and iterations >= cfg.max_iterations:

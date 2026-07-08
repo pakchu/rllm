@@ -381,6 +381,25 @@ candidate-ranker는 shadow selector 후보로 취급합니다.
 - mainnet은 API 권한/IP 문제가 해결되기 전까지 사용하지 않습니다.
 - `.env`는 절대 커밋하지 않습니다.
 
+### Portfolio live post-only refresh 주의
+
+`execution.portfolio_live`의 portfolio runner는 entry/exit 모두 maker/post-only 주문을 일정 주기로 취소하고 새 maker 가격으로 다시 거는 방식으로 추격합니다. 이때 반드시 **미체결 수량이 아니라 남은 수량**만 재주문해야 합니다.
+
+운영 규칙:
+- refresh 직전 `get_order.executedQty`를 먼저 반영합니다.
+- cancel 응답의 `executedQty`도 다시 반영합니다. cancel 중 체결되는 race가 있을 수 있기 때문입니다.
+- 새 post-only 주문 수량은 `requested_quantity - reconciled_filled_quantity`입니다.
+- 남은 수량이 Binance 최소 주문 수량보다 작으면 더 이상 추격 주문을 내지 않습니다.
+- timeout cancel도 동일하게 최종 체결량을 reconcile한 뒤 `FILLED`, `PARTIAL_CANCELLED`, `TIMEOUT_CANCELLED`를 판단합니다.
+
+회귀 테스트:
+
+```bash
+uv run python -m unittest tests/test_portfolio_live.py
+```
+
+특히 `test_post_only_refresh_reorders_only_uncancelled_remainder`는 첫 주문이 부분체결되고 cancel 중 추가 체결된 상황에서 다음 추격 주문이 최초 수량이 아니라 잔여 수량만 나가는지 검증합니다.
+
 ---
 
 ## 하드웨어 기준
