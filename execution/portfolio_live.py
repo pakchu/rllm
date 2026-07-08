@@ -50,6 +50,7 @@ from training.evaluate_oi_llm_selector import _context_id, _tokens
 from training.evaluate_portfolio_llm_selector import _base_context_tokens
 from training.long_regime_interest_gate_validation import build_interest_features
 from training.long_regime_score_gate_validation import _build_score_frame, _score_variant
+from training.wave_feature_ridge_policy import build_wave_feature_frame
 
 
 Side = Literal["LONG", "SHORT"]
@@ -400,6 +401,58 @@ def _add_activity_flow_feature(enriched: pd.DataFrame, features: pd.DataFrame) -
         pass
     return out
 
+
+
+def _rolling_z(series: pd.Series, window: int) -> pd.Series:
+    values = pd.to_numeric(series, errors="coerce").astype(float)
+    mean = values.rolling(window, min_periods=max(12, window // 4)).mean()
+    std = values.rolling(window, min_periods=max(12, window // 4)).std(ddof=0)
+    return ((values - mean) / std.replace(0, np.nan)).replace([np.inf, -np.inf], np.nan).clip(-8, 8).fillna(0.0)
+
+
+def _momentum(series: pd.Series, window: int) -> pd.Series:
+    values = pd.to_numeric(series, errors="coerce").astype(float)
+    return (values / values.shift(window).replace(0, np.nan) - 1.0).replace([np.inf, -np.inf], np.nan).clip(-10, 10).fillna(0.0)
+
+
+def _add_live_volume_wave_features(enriched: pd.DataFrame, features: pd.DataFrame, frames: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Add live-only wave/volume columns required by current portfolio scans."""
+
+    out = features.copy()
+    wave = build_wave_feature_frame(enriched, window=144).add_prefix("wr_")
+    for col in ["wr_vwap_dev_z"]:
+        if col in wave.columns:
+            out[col] = wave[col].to_numpy(float)
+
+    volume = pd.to_numeric(enriched.get("volume"), errors="coerce").astype(float)
+    close = pd.to_numeric(enriched.get("close"), errors="coerce").astype(float)
+    quote_volume = pd.to_numeric(enriched.get("quote_asset_volume", volume * close), errors="coerce").astype(float)
+    out["vg_vol_mom_288"] = _momentum(volume + 1.0, 288).to_numpy(float)
+    out["vg_qvol_mom_288"] = _momentum(quote_volume + 1.0, 288).to_numpy(float)
+
+    # The latest promoted dynamic sleeve used this diagnostic alt/BTC ratio with
+    # threshold 0.0.  Live ingest does not currently maintain the altcoin pool,
+    # so keep the feature neutral instead of fabricating stale alt data.
+    out["vg_alt_btc_qv_ratio_z_72"] = 0.0
+    out["vg_alt_btc_qv_ratio_z_288"] = 0.0
+
+    try:
+        upbit = resample_market_bars(frames["btckrw_1m"], "5min")
+        upbit = upbit.rename(columns={"close": "upbit_close", "volume": "upbit_volume"})
+        joined = pd.merge_asof(
+            enriched[["date", "quote_asset_volume", "usdkrw"]].sort_values("date"),
+            upbit[["date", "upbit_close", "upbit_volume"]].sort_values("date"),
+            on="date",
+            direction="backward",
+            tolerance=pd.Timedelta("7min"),
+        ).sort_index()
+        upbit_value_krw = pd.to_numeric(joined["upbit_volume"], errors="coerce") * pd.to_numeric(joined["upbit_close"], errors="coerce")
+        binance_value_krw = pd.to_numeric(joined["quote_asset_volume"], errors="coerce") * pd.to_numeric(joined["usdkrw"], errors="coerce")
+        upbit_ratio = (upbit_value_krw / binance_value_krw.replace(0, np.nan)).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        out["vg_upbit_binance_vol_ratio_z_288"] = _rolling_z(upbit_ratio, 288).to_numpy(float)
+    except Exception:
+        out["vg_upbit_binance_vol_ratio_z_288"] = 0.0
+    return out.replace([np.inf, -np.inf], np.nan)
 
 def _build_portfolio_feature_frame(enriched: pd.DataFrame, cfg: LiveDbFeatureConfig) -> pd.DataFrame:
     features = build_market_feature_frame(
@@ -761,6 +814,7 @@ async def build_live_portfolio_frames(
         zscore_window=cfg.zscore_window,
     )
     features = feature_cache.refresh(enriched, cfg) if feature_cache is not None else _build_portfolio_feature_frame(enriched, cfg)
+    features = _add_live_volume_wave_features(enriched, features, frames)
     return enriched, features.replace([np.inf, -np.inf], np.nan)
 
 
@@ -771,6 +825,35 @@ def _current_atr(enriched: pd.DataFrame, period: int = 15) -> float:
     tr = pd.concat([(high - low), (high - close.shift(1)).abs(), (low - close.shift(1)).abs()], axis=1).max(axis=1)
     out = float(tr.rolling(max(1, int(period)), min_periods=1).mean().iloc[-1])
     return out if np.isfinite(out) else 0.0
+
+
+def _dynamic_exit_due(
+    *,
+    open_state: dict[str, Any],
+    latest_feature_row: pd.Series,
+    latest_bar: pd.Timestamp,
+    interval_minutes: int,
+) -> tuple[bool, list[str]]:
+    dynamic = open_state.get("dynamic_exit")
+    if not isinstance(dynamic, dict):
+        return False, []
+    signal_ts = pd.Timestamp(open_state.get("signal_date"))
+    if signal_ts.tzinfo is None:
+        signal_ts = signal_ts.tz_localize("UTC")
+    latest = pd.Timestamp(latest_bar)
+    if latest.tzinfo is None:
+        latest = latest.tz_localize("UTC")
+    else:
+        latest = latest.tz_convert("UTC")
+    bars_elapsed = int(max(0, (latest - signal_ts).total_seconds() // (60 * max(1, int(interval_minutes)))))
+    min_bars = int(dynamic.get("min_bars", 0) or 0)
+    if bars_elapsed < min_bars:
+        return False, [f"dynamic_exit_min_bars={bars_elapsed}<{min_bars}:wait"]
+    gates = dynamic.get("gates", [])
+    if not isinstance(gates, list) or not gates:
+        return False, ["dynamic_exit_gates=missing:wait"]
+    ok, reasons = _gate_pass(latest_feature_row, gates)
+    return bool(ok), [f"dynamic_exit_bars={bars_elapsed}>=min{min_bars}:pass", *reasons]
 
 
 
@@ -875,6 +958,7 @@ def _score_sleeves(
         reasons: list[str] = []
         hold = 0
         stride = 1
+        dynamic_exit: dict[str, Any] | None = None
 
         if source.endswith(".json") and Path(source).exists():
             cfg = _load_json(source)
@@ -893,6 +977,7 @@ def _score_sleeves(
             stride_ok = _interval_slot(ts, stride, exec_cfg.interval_minutes)
             active = bool(gate_ok and stride_ok)
             reasons.append(f"stride={stride}:{'pass' if stride_ok else 'fail'}")
+            dynamic_exit = cfg.get("dynamic_exit") if isinstance(cfg.get("dynamic_exit"), dict) else None
 
             if overlay_cfg is not None:
                 sel = overlay_cfg.get("symbolic_proxy", {})
@@ -944,6 +1029,7 @@ def _score_sleeves(
                 "current_atr": atr,
                 "signal_id": f"{name}:{side}:{ts.isoformat()}",
                 "reasons": reasons,
+                "dynamic_exit": dynamic_exit,
             }
         )
     return out
@@ -2054,7 +2140,17 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
 
             closed: list[str] = []
             for key, open_state in list(state["open_sleeves"].items()):
-                if pd.Timestamp(open_state["exit_at"]) <= now:
+                time_exit_due = pd.Timestamp(open_state["exit_at"]) <= now
+                dynamic_exit_due, dynamic_exit_reasons = _dynamic_exit_due(
+                    open_state=open_state,
+                    latest_feature_row=features.iloc[-1],
+                    latest_bar=pd.Timestamp(enriched.iloc[-1]["date"]),
+                    interval_minutes=exec_cfg.interval_minutes,
+                )
+                if dynamic_exit_reasons:
+                    open_state["last_dynamic_exit_reasons"] = dynamic_exit_reasons
+                    state["open_sleeves"][key] = open_state
+                if time_exit_due or dynamic_exit_due:
                     if not exec_cfg.dry_run:
                         assert client is not None and executor is not None
                         close_reference_price = float(await client.get_ticker_price(exec_cfg.symbol))
@@ -2083,7 +2179,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                                 action="CLOSE",
                                 side="SELL" if str(open_state.get("side")).upper() == "LONG" else "BUY",
                                 position_side=str(open_state.get("side")),
-                                order_type="POST_ONLY_EXIT",
+                                order_type="POST_ONLY_DYNAMIC_EXIT" if dynamic_exit_due and not time_exit_due else "POST_ONLY_EXIT",
                                 signal_id=str(open_state.get("signal_id")),
                                 status=str(close_info.get("status", "PARTIAL_OR_TIMEOUT")),
                                 order_info=close_info,
@@ -2100,7 +2196,15 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                             action="CLOSE",
                             side="SELL" if str(open_state.get("side")).upper() == "LONG" else "BUY",
                             position_side=str(open_state.get("side")),
-                            order_type="POST_ONLY_EXIT_WITH_TAKER_FALLBACK" if close_info.get("taker_fallback_order") else "POST_ONLY_EXIT",
+                            order_type=(
+                                "POST_ONLY_DYNAMIC_EXIT_WITH_TAKER_FALLBACK"
+                                if dynamic_exit_due and close_info.get("taker_fallback_order")
+                                else "POST_ONLY_DYNAMIC_EXIT"
+                                if dynamic_exit_due
+                                else "POST_ONLY_EXIT_WITH_TAKER_FALLBACK"
+                                if close_info.get("taker_fallback_order")
+                                else "POST_ONLY_EXIT"
+                            ),
                             signal_id=str(open_state.get("signal_id")),
                             status=str(close_info.get("status", "FILLED")),
                             order_info=close_info,
@@ -2210,6 +2314,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     "entry_maker_max_deviation_pct": float(cfg.entry_maker_max_deviation_pct),
                     "exit_maker_max_deviation_pct": float(cfg.exit_maker_max_deviation_pct),
                     "order_info": order_info,
+                    "dynamic_exit": sleeve.get("dynamic_exit"),
                 }
                 state["processed_signals"][name] = signal_id
                 opened.append(name)

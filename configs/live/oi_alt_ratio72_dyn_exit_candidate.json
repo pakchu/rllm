@@ -1,0 +1,70 @@
+{
+  "name": "oi_alt_ratio72_dyn_exit",
+  "status": "live_candidate_dynamic_exit",
+  "as_of": "2026-07-08",
+  "side": "LONG",
+  "objective": "OI raw long with alt/BTC ratio diagnostic gate and dynamic VWAP-overheat exit from latest gross6.10 Top1 portfolio.",
+  "gates": [
+    {
+      "feature": "oi_minus_px_4h_z",
+      "op": ">=",
+      "train_quantile": 0.55,
+      "threshold": 0.18084217361514066
+    },
+    {
+      "feature": "return_zscore_48",
+      "op": "<=",
+      "train_quantile": 0.35,
+      "threshold": -0.3382356464105935
+    },
+    {
+      "feature": "range_vol",
+      "op": ">=",
+      "train_quantile": 0.65,
+      "threshold": 0.03684324822682795
+    },
+    {
+      "feature": "rsi_norm",
+      "op": "<=",
+      "train_quantile": 0.5,
+      "threshold": 0.006924814138880962
+    },
+    {
+      "feature": "oi_ret_4h_z",
+      "op": ">=",
+      "train_quantile": 0.25,
+      "threshold": -0.675926157602224
+    },
+    {
+      "feature": "sma24_ratio",
+      "op": "<=",
+      "train_quantile": 0.4,
+      "threshold": -0.0005569113930713103
+    },
+    {
+      "feature": "vg_alt_btc_qv_ratio_z_72",
+      "op": ">=",
+      "threshold": 0.0,
+      "train_q": 0.8
+    }
+  ],
+  "hold_bars": 288,
+  "stride_bars": 6,
+  "dynamic_exit": {
+    "name": "vwap_overheat",
+    "min_bars": 48,
+    "gates": [
+      {
+        "feature": "wr_vwap_dev_z",
+        "op": ">=",
+        "threshold": 0.7956140068365318,
+        "train_q_note": "q80 proxy; original dynamic scan used train q85 but artifact stores q80"
+      }
+    ]
+  },
+  "risk_notes": [
+    "Live altcoin pool volume is not ingested; vg_alt_btc_qv_ratio_z_72 is neutral 0.0 in live until alt pool ingest is added.",
+    "hold_bars is a safety max-hold fallback for live; research dynamic scan force-closed only at split end."
+  ],
+  "metrics_source": "results/portfolio_gross20_step005_cost6bp_mdd20_with_dynamic_2026-07-08.json#top_qualified[0]"
+}

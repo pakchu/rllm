@@ -1,0 +1,199 @@
+{
+  "name": "portfolio_gross610_dynamic_top1_2026_07_08",
+  "status": "live_candidate",
+  "as_of": "2026-07-08",
+  "objective": "Switch live portfolio to latest Top1 gross6.10 dynamic-exit research candidate requested by operator.",
+  "assumption": "Run with leverage 7 under research_gross allocation because gross 6.10 exceeds a 6x margin budget; live notional per sleeve matches research weights.",
+  "gross_weight": 6.1,
+  "weights": {
+    "nonpb30_taker": 0.65,
+    "oi_raw": 0.55,
+    "rex_rule": 2.0,
+    "oi_upbit_ratio288_low": 2.25,
+    "bear_rex_short": 0.3,
+    "oi_alt_ratio72_dyn_exit": 0.35
+  },
+  "base_sleeves": [
+    {
+      "name": "nonpb30_taker_returnz_rangevol_htf4hrange_h72",
+      "source": "configs/live/nonpb30_taker_returnz_rangevol_htf4hrange_h72_candidate.json",
+      "side": "LONG",
+      "weight": 0.65
+    },
+    {
+      "name": "oi_divergence_sma24_highfreq_h30_s6_raw",
+      "source": "configs/live/oi_divergence_sma24_highfreq_h30_s6_candidate.json",
+      "side": "LONG",
+      "weight": 0.55
+    },
+    {
+      "name": "rex_dual_regime_auto",
+      "source": "results/rex_dual_regime_*_predictions_2026-07-03.jsonl",
+      "side": "AUTO",
+      "weight": 2.0
+    },
+    {
+      "name": "oi_upbit_ratio288_low",
+      "source": "configs/live/oi_upbit_ratio288_low_candidate.json",
+      "side": "LONG",
+      "weight": 2.25
+    },
+    {
+      "name": "bear_rex_dual_regime_short",
+      "source": "results/rex_dual_regime_*_predictions_2026-07-03.jsonl",
+      "side": "SHORT",
+      "weight": 0.3
+    },
+    {
+      "name": "oi_alt_ratio72_dyn_exit",
+      "source": "configs/live/oi_alt_ratio72_dyn_exit_candidate.json",
+      "side": "LONG",
+      "weight": 0.35
+    }
+  ],
+  "selection_rule": "Top qualified candidate from portfolio_gross20_step005_cost6bp_mdd20_with_dynamic_2026-07-08.json.",
+  "metrics": {
+    "train": {
+      "total_return_pct": -50.00882849651944,
+      "cagr_pct": -18.786003638023796,
+      "strict_mdd_pct": 85.304004655828,
+      "cagr_to_strict_mdd": -0.220224170176052,
+      "trade_entries": 2950,
+      "win_rate": 0.5247457627118645,
+      "active_bars": 160780,
+      "bar_sharpe_like": 0.551715518565715,
+      "sleeve_trade_counts": {
+        "pb30_base": 0,
+        "pb30_addon": 0,
+        "nonpb30_taker": 242,
+        "oi_raw": 1012,
+        "rex_rule": 356,
+        "short_kimchi3d": 0,
+        "short_premium_panic": 0,
+        "oi_wave_lowpos144": 0,
+        "oi_wave_slope288_low": 0,
+        "rex_wave_pricez288_low": 0,
+        "rex_wave_vol144_high": 0,
+        "short_premium_wave_lowvol": 0,
+        "oi_vol_alt_ratio72": 0,
+        "oi_vol_volmom288": 0,
+        "oi_vol_alt_ratio288": 0,
+        "oi_upbit_ratio288_low": 344,
+        "oi_low": 0,
+        "oi_high_sel": 0,
+        "bear_rex_short": 183,
+        "rex_dyn_short_exit": 0,
+        "oi_alt_ratio72_dyn_exit": 813
+      }
+    },
+    "test2024": {
+      "total_return_pct": 390.7088424378278,
+      "cagr_pct": 389.1119359858271,
+      "strict_mdd_pct": 19.708691853804595,
+      "cagr_to_strict_mdd": 19.74316402489759,
+      "trade_entries": 489,
+      "win_rate": 0.5521472392638037,
+      "active_bars": 33860,
+      "bar_sharpe_like": 3.0708974246504583,
+      "sleeve_trade_counts": {
+        "pb30_base": 0,
+        "pb30_addon": 0,
+        "nonpb30_taker": 34,
+        "oi_raw": 197,
+        "rex_rule": 62,
+        "short_kimchi3d": 0,
+        "short_premium_panic": 0,
+        "oi_wave_lowpos144": 0,
+        "oi_wave_slope288_low": 0,
+        "rex_wave_pricez288_low": 0,
+        "rex_wave_vol144_high": 0,
+        "short_premium_wave_lowvol": 0,
+        "oi_vol_alt_ratio72": 0,
+        "oi_vol_volmom288": 0,
+        "oi_vol_alt_ratio288": 0,
+        "oi_upbit_ratio288_low": 79,
+        "oi_low": 0,
+        "oi_high_sel": 0,
+        "bear_rex_short": 14,
+        "rex_dyn_short_exit": 0,
+        "oi_alt_ratio72_dyn_exit": 103
+      }
+    },
+    "eval2025": {
+      "total_return_pct": 355.2024126625036,
+      "cagr_pct": 355.67518679212486,
+      "strict_mdd_pct": 13.190572994622007,
+      "cagr_to_strict_mdd": 26.964346957265533,
+      "trade_entries": 308,
+      "win_rate": 0.6201298701298701,
+      "active_bars": 22456,
+      "bar_sharpe_like": 4.43424700282085,
+      "sleeve_trade_counts": {
+        "pb30_base": 0,
+        "pb30_addon": 0,
+        "nonpb30_taker": 35,
+        "oi_raw": 124,
+        "rex_rule": 33,
+        "short_kimchi3d": 0,
+        "short_premium_panic": 0,
+        "oi_wave_lowpos144": 0,
+        "oi_wave_slope288_low": 0,
+        "rex_wave_pricez288_low": 0,
+        "rex_wave_vol144_high": 0,
+        "short_premium_wave_lowvol": 0,
+        "oi_vol_alt_ratio72": 0,
+        "oi_vol_volmom288": 0,
+        "oi_vol_alt_ratio288": 0,
+        "oi_upbit_ratio288_low": 38,
+        "oi_low": 0,
+        "oi_high_sel": 0,
+        "bear_rex_short": 26,
+        "rex_dyn_short_exit": 0,
+        "oi_alt_ratio72_dyn_exit": 52
+      }
+    },
+    "ytd2026": {
+      "total_return_pct": 30.963044650877002,
+      "cagr_pct": 90.39869128037583,
+      "strict_mdd_pct": 16.57585584240424,
+      "cagr_to_strict_mdd": 5.4536364299886415,
+      "trade_entries": 143,
+      "win_rate": 0.5664335664335665,
+      "active_bars": 11808,
+      "bar_sharpe_like": 1.1360755561866205,
+      "sleeve_trade_counts": {
+        "pb30_base": 0,
+        "pb30_addon": 0,
+        "nonpb30_taker": 14,
+        "oi_raw": 45,
+        "rex_rule": 24,
+        "short_kimchi3d": 0,
+        "short_premium_panic": 0,
+        "oi_wave_lowpos144": 0,
+        "oi_wave_slope288_low": 0,
+        "rex_wave_pricez288_low": 0,
+        "rex_wave_vol144_high": 0,
+        "short_premium_wave_lowvol": 0,
+        "oi_vol_alt_ratio72": 0,
+        "oi_vol_volmom288": 0,
+        "oi_vol_alt_ratio288": 0,
+        "oi_upbit_ratio288_low": 14,
+        "oi_low": 0,
+        "oi_high_sel": 0,
+        "bear_rex_short": 23,
+        "rex_dyn_short_exit": 0,
+        "oi_alt_ratio72_dyn_exit": 23
+      }
+    }
+  },
+  "passes_mdd20_ratio5": true,
+  "artifacts": {
+    "portfolio_scan": "results/portfolio_gross20_step005_cost6bp_mdd20_with_dynamic_2026-07-08.json",
+    "doc": "docs/portfolio-gross20-step005-cost6bp-mdd20-with-dynamic-2026-07-08.md"
+  },
+  "risk_notes": [
+    "Research gross is 6.10, so live command must use leverage 7 to avoid >100% margin in research_gross mode.",
+    "Dynamic exit live path uses a max-hold fallback and q80 VWAP threshold proxy due missing q85 threshold in saved artifact.",
+    "Alt pool volume is not live-ingested; oi_alt_ratio72 dynamic sleeve uses neutral alt ratio until ingestion support exists."
+  ]
+}
