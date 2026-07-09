@@ -1385,6 +1385,84 @@
         "protocol": "provenance-only; no trading signal generated",
         "notes": "Gamma demotion remains strict and cannot be inferred from this alias map."
       }
+    },
+    {
+      "id": "long_range_compression_funding_momentum_features_20260710",
+      "name": "Long range/compression/funding/momentum breakout feature set (2026-07-10)",
+      "status": "promoted",
+      "family": "long_breakout_union_context",
+      "scope": "btc_derivatives_macro",
+      "feature_tier": "alpha_feature",
+      "description": "Feature family behind the new long-regime union alpha: range expansion breakouts, compression breakouts, HTF momentum/range-position confirmation, low-funding trend squeeze, and weak-USDKRW macro relief.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "Binance UM funding_rate",
+        "Binance UM premium_index",
+        "USDKRW/DXY-derived macro fields already merged in market cache"
+      ],
+      "feature_examples": [
+        "rex_576_range_width_pct >= train q0.90",
+        "close_zscore_48 >= train q0.70",
+        "bb_z >= train q0.90",
+        "htf_1d_return_4 >= train q0.85",
+        "rex_8640_range_pos >= train q0.50",
+        "funding_rate <= train q0.10",
+        "trend_96 >= train q0.70",
+        "rex_2016_range_width_pct <= train q0.05",
+        "trend_24 >= train q0.80",
+        "usdkrw_momentum <= train q0.10"
+      ],
+      "feature_names": [
+        "rex_576_range_width_pct",
+        "close_zscore_48",
+        "bb_z",
+        "htf_1d_return_4",
+        "rex_8640_range_pos",
+        "funding_rate",
+        "trend_96",
+        "rex_2016_range_width_pct",
+        "trend_24",
+        "usdkrw_momentum",
+        "htf_1d_return_1"
+      ],
+      "usable_for": [
+        "long-regime union entry components",
+        "LLM/RLLM textual state summarization",
+        "selector features for long-only sleeves",
+        "live regime-specific risk-on breakout sleeve research"
+      ],
+      "known_failures": [
+        "Single sparse range-breakout components can clear CAGR/MDD but have too few eval/YTD trades for standalone confidence.",
+        "Macro/momentum-only variants improve trade count but often fall below CAGR/MDD >= 3 on eval windows."
+      ],
+      "evidence": "Union validation shows combo_A clears CAGR/strict_MDD >= 3 on 2024 test, 2025 eval, and 2026H1 with 146 combined trades; combo_B/D are cleaner low-MDD range/compression variants but sparse in 2026H1.",
+      "source_artifacts": [
+        "training/long_regime_alpha_family_scan.py",
+        "training/long_regime_alpha_holdout_validate.py",
+        "training/long_regime_alpha_union_validate.py",
+        "results/long_regime_alpha_family_scan_2024_2026h1_2026-07-10.json",
+        "results/long_regime_alpha_holdout_validate_2026-07-10.json",
+        "results/long_regime_alpha_union_validate_2026-07-10.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Component thresholds are train-window quantiles from train<2024, but union composition was selected after inspecting 2024~2026H1 discovery results. Treat as strong candidate requiring predeclared rolling validation before live sizing.",
+      "tier_rationale": "Alpha feature: the explicit feature family supports multiple combined strategies above test2024 CAGR/MDD 2.5 and a live-grade candidate above 3.0 on test/eval/YTD, with nontrivial trade counts for combo_A.",
+      "next_action": "Run predeclared rolling validation and then convert the best union candidate into a live config only if the ratio remains above 3 with sufficient trades.",
+      "generation_recipe": {
+        "scripts": [
+          "training/long_regime_alpha_family_scan.py",
+          "training/long_regime_alpha_holdout_validate.py",
+          "training/long_regime_alpha_union_validate.py"
+        ],
+        "inputs": [
+          "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+          "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+          "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz"
+        ],
+        "command": "PYTHONPATH=. .venv/bin/python training/long_regime_alpha_union_validate.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/long_regime_alpha_union_validate_2026-07-10.json",
+        "protocol": "train<2024 component thresholds; test=2024; eval=2025; ytd2026=2026-01-01..2026-06-02; 0.5x leverage; strict OHLC MDD; CAGR over full calendar window including idle time",
+        "notes": "Use as LLM state tokens describing market structure, not as raw numeric dumping only. Keep component identities explicit so RLLM can reason over setup type."
+      }
     }
   ]
 }

@@ -1331,6 +1331,102 @@
         ],
         "live_use_notes": "Candidate/source artifact for no-LLM short search."
       }
+    },
+    {
+      "id": "long_union_range_mom_funding_compress_20260710",
+      "name": "Long union range/momentum/funding/compression breakout",
+      "status": "candidate",
+      "family": "long_breakout_union",
+      "scope": "btc_derivatives_macro",
+      "side": "long",
+      "description": "Long-regime BTCUSDT union strategy that fires when any of four interpretable setup components are active: upper range breakout, HTF momentum with acceptable 30d position, low-funding trend squeeze, or compression breakout.",
+      "entry_logic": "OR union of range_bb90, mom85_pos50, funding10_trend70, compress05_trend80. range_bb90=(rex_576_range_width_pct>=0.1295981611 and bb_z>=1.6850824974); mom85_pos50=(htf_1d_return_4>=0.0691416467 and rex_8640_range_pos>=0.1127012517); funding10_trend70=(funding_rate<=-0.0000167 and trend_96>=0.0074852182); compress05_trend80=(rex_2016_range_width_pct<=0.0507431447 and trend_24>=0.0047972289).",
+      "exit_logic": "fixed hold 576 5m bars (48h), stride 12 bars, next-open entry, 0.5x leverage in validation; split/window-end forced close via strict simulator.",
+      "dependencies": [
+        "long_range_compression_funding_momentum_features_20260710",
+        "btc_ohlcv_taker_core",
+        "btc_funding_premium_basis",
+        "external_macro_kimchi_fx_features"
+      ],
+      "stats": {
+        "test_2024": {
+          "return_pct": 68.0901,
+          "cagr_pct": 67.9114,
+          "strict_mdd_pct": 5.8167,
+          "cagr_to_strict_mdd": 11.6752,
+          "trades": 53,
+          "signals": 1218,
+          "p_value_mean_ret_approx": 0.0001245
+        },
+        "eval_2025": {
+          "return_pct": 19.1351,
+          "cagr_pct": 19.1494,
+          "strict_mdd_pct": 5.5199,
+          "cagr_to_strict_mdd": 3.4692,
+          "trades": 60,
+          "signals": 725,
+          "p_value_mean_ret_approx": 0.0847302
+        },
+        "ytd_2026": {
+          "return_pct": 10.2605,
+          "cagr_pct": 26.4542,
+          "strict_mdd_pct": 6.4666,
+          "cagr_to_strict_mdd": 4.0909,
+          "trades": 33,
+          "signals": 400,
+          "p_value_mean_ret_approx": 0.196751
+        },
+        "combined_2024_2026h1": {
+          "return_pct": 120.8014,
+          "cagr_pct": 38.7699,
+          "strict_mdd_pct": 6.4666,
+          "cagr_to_strict_mdd": 5.9954,
+          "trades": 146,
+          "signals": 2343,
+          "p_value_mean_ret_approx": 2.662e-05
+        }
+      },
+      "evidence": "First long-regime candidate in this branch to clear CAGR/strict_MDD >=3 on 2024 test, 2025 eval, 2026H1, and combined 2024~2026H1 while keeping nontrivial trade count. Discovered after moving away from pullback-only gates to explicit alpha-family union.",
+      "source_artifacts": [
+        "training/long_regime_alpha_family_scan.py",
+        "training/long_regime_alpha_holdout_validate.py",
+        "training/long_regime_alpha_union_validate.py",
+        "results/long_regime_alpha_family_scan_2024_2026h1_2026-07-10.json",
+        "results/long_regime_alpha_holdout_validate_2026-07-10.json",
+        "results/long_regime_alpha_union_validate_2026-07-10.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Thresholds are train<2024 quantiles, but union composition was selected after inspecting discovery/validation tables through 2026H1. This is candidate-grade, not final clean unseen proof. Do not live-size without predeclared rolling validation or fresh out-of-sample data.",
+      "next_action": "Run rolling/month-block validation, ablation/marginal contribution checks, and live-sim conversion under long regime only. If stable, create configs/live candidate with the same fixed thresholds and hold semantics.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "long_range_compression_funding_momentum_features_20260710",
+          "btc_ohlcv_taker_core",
+          "btc_funding_premium_basis",
+          "external_macro_kimchi_fx_features"
+        ],
+        "entry_logic": "OR union of range_bb90, mom85_pos50, funding10_trend70, compress05_trend80 using fixed thresholds listed in this entry.",
+        "exit_logic": "fixed hold 576 bars; stride 12; next-open entry; long only; 0.5x validation leverage.",
+        "side": "long",
+        "script_or_config": "training/long_regime_alpha_union_validate.py",
+        "reproduce_command": "PYTHONPATH=. .venv/bin/python training/long_regime_alpha_union_validate.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/long_regime_alpha_union_validate_2026-07-10.json",
+        "source_artifacts": [
+          "training/long_regime_alpha_union_validate.py",
+          "results/long_regime_alpha_union_validate_2026-07-10.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024 thresholds, test=2024, eval=2025, ytd2026=2026-01-01..2026-06-02",
+          "cost": "fee_rate=0.0004 and slippage_rate=0.0001 per entry/exit side as implemented by strict simulator",
+          "mdd": "strict OHLC MDD includes in-position adverse excursion and full calendar idle time in CAGR denominator"
+        },
+        "promotion_guardrails": [
+          "No reselecting components on eval/2026 before rolling validation",
+          "Require ablation to show each component adds or diversifies",
+          "Use only when operator declares long/bullish regime",
+          "Keep short-regime strategy separate"
+        ],
+        "live_use_notes": "Candidate only. Promising enough to implement live-sim next, but not yet final production sizing."
+      }
     }
   ]
 }
