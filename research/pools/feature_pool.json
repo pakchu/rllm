@@ -1570,6 +1570,96 @@
         "command": "PYTHONPATH=. .venv/bin/python training/nonrex_short_bear_tp_refine.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/nonrex_short_bear_tp_refine_2026-07-10.json",
         "protocol": "manual bear regime; non-REX gates; 0.5x validation leverage; full calendar CAGR; strict short MDD; conservative same-bar SL-before-TP ordering"
       }
+    },
+    {
+      "id": "nonrex_premium_discount_short_features_20260710",
+      "name": "Non-REX premium-discount panic short feature set (2026-07-10)",
+      "status": "candidate",
+      "family": "premium_discount_panic_short_context",
+      "scope": "btc_derivatives_price_action",
+      "feature_tier": "alpha_feature",
+      "description": "Non-REX short feature family: BTC is already in the lower part of its 3-day HTF range while Binance premium/index context is deeply negative. In bearish regimes this behaves as discount/panic continuation rather than mean reversion.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "HTF BTC price-action range features",
+        "Binance UM premium_index"
+      ],
+      "feature_examples": [
+        "htf_3d_range_pos <= train q0.20",
+        "premium_index_zscore <= train q0.10",
+        "TP 2.5% / SL 1.5% short exit",
+        "hold cap 288 5m bars"
+      ],
+      "feature_names": [
+        "htf_3d_range_pos",
+        "premium_index_zscore"
+      ],
+      "usable_for": [
+        "bear-regime short-only sleeve independent of REX",
+        "derivatives-panic continuation token for RLLM",
+        "portfolio diversifier versus FX-stress and REX shorts"
+      ],
+      "known_failures": [
+        "Fixed-hold/no-TP variants are weaker or can fail 2024; short-specific TP/SL is part of the edge.",
+        "This is regime-conditional; do not treat as universal short without bear gate."
+      ],
+      "evidence": "TP/SL refine result: test2024 +8.41% return, CAGR/MDD 2.59, 52 trades; eval2025 +13.29%, ratio 4.40, 93 trades; ytd2026 +6.86%, ratio 5.97, 34 trades; bear_combined +21.07%, CAGR 14.46%, strict MDD 4.69%, ratio 3.08, 127 trades.",
+      "source_artifacts": [
+        "training/nonrex_short_bear_tp_refine.py",
+        "results/nonrex_short_bear_tp_refine_2026-07-10.json",
+        "results/short_base_alpha_scan_fast2_2026-07-08.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Candidate came from inspecting top non-REX refine variants; thresholds originate from train-quantile source scan but exit/variant selection used OOS windows. Requires rolling/fresh validation before live sizing.",
+      "tier_rationale": "Alpha feature for bear-regime use: clears bear_combined CAGR/strict_MDD >=3 with 127 trades and remains positive in test/eval/ytd.",
+      "next_action": "Compare marginal contribution against FX-stress and REX shorts; run predeclared rolling validation.",
+      "generation_recipe": {
+        "script": "training/nonrex_short_bear_tp_refine.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/nonrex_short_bear_tp_refine.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/nonrex_short_bear_tp_refine_2026-07-10.json",
+        "protocol": "manual bear regime; non-REX gates; TP/SL short exit; 0.5x validation leverage; full-window CAGR; strict short MDD"
+      }
+    },
+    {
+      "id": "nonrex_upper_shadow_bounce_rejection_features_20260710",
+      "name": "Non-REX upper-shadow bounce rejection short feature set (2026-07-10)",
+      "status": "candidate",
+      "family": "bear_bounce_rejection_short_context",
+      "scope": "btc_price_action",
+      "feature_tier": "beta_feature",
+      "description": "Potential bear-market short feature: large upper shadow after strong 4h rebound, interpreted as bounce rejection/exhaustion. It works in 2025~2026H1 bear window but has weak 2024 behavior, so it stays feature-only.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "HTF BTC price-action returns"
+      ],
+      "feature_examples": [
+        "upper_shadow >= train q0.90",
+        "htf_4h_return_4 >= train q0.80",
+        "fixed 144-bar short hold or TP/SL variants"
+      ],
+      "feature_names": [
+        "upper_shadow",
+        "htf_4h_return_4"
+      ],
+      "usable_for": [
+        "bear-regime bounce rejection selector",
+        "RLLM state token for failed rebound/exhaustion"
+      ],
+      "known_failures": [
+        "2024 test ratio is near zero/negative depending exit; do not promote to alpha until rolling validation identifies a robust regime filter."
+      ],
+      "evidence": "Best fixed-hold variant: bear_combined +16.69%, CAGR 11.52%, strict MDD 3.26%, ratio 3.54, 43 trades; but 2024 test only +1.05%, ratio 0.12.",
+      "source_artifacts": [
+        "training/nonrex_short_bear_tp_refine.py",
+        "results/nonrex_short_bear_tp_refine_2026-07-10.json"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Feature selected from OOS refine table and 2024 is weak. Use as beta selector only.",
+      "tier_rationale": "Beta feature: plausible independent price-action idea, but insufficient 2024 robustness for alpha_pool promotion.",
+      "next_action": "Test as a filter/selector layered on stronger bear shorts, not standalone.",
+      "generation_recipe": {
+        "script": "training/nonrex_short_bear_tp_refine.py",
+        "protocol": "non-REX candidate refinement; full-window CAGR; strict short MDD"
+      }
     }
   ]
 }
