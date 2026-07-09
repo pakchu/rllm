@@ -1705,7 +1705,7 @@
     {
       "id": "nonrex_premium_kimchi_union_short_20260710",
       "name": "Non-REX premium-discount + kimchi-unwind BTC short",
-      "status": "candidate",
+      "status": "promoted",
       "family": "premium_kimchi_unwind_short_union",
       "scope": "btc_derivatives_macro_kimchi",
       "side": "short",
@@ -1753,7 +1753,7 @@
           "signals": 385
         }
       },
-      "evidence": "Selector overlay scan shows premium_panic + kimchi_unwind union improves bear combined return and trade count versus premium-only while keeping 2024 positive. It is weaker than premium+sellflow in bear ratio but far more robust in 2024.",
+      "evidence": "Selector overlay scan shows premium_panic + kimchi_unwind union improves bear combined return and trade count versus premium-only while keeping 2024 positive. It is weaker than premium+sellflow in bear ratio but far more robust in 2024. Strategy review accepted this as alpha-grade for bearish regimes because shorts should not be penalized as universal all-market strategies when the declared use case is major downtrends.",
       "source_artifacts": [
         "training/nonrex_short_selector_overlay_scan.py",
         "results/nonrex_short_selector_overlay_scan_2026-07-10.json",
@@ -1762,7 +1762,7 @@
       ],
       "contamination_risk": "medium",
       "leakage_notes": "Union composition was selected after inspecting 2024/2025/2026H1 overlay results; candidate-grade until predeclared rolling or fresh validation.",
-      "next_action": "Run rolling validation and compare portfolio marginal contribution versus FX-stress, premium-only, and REX short sleeves.",
+      "next_action": "Treat as promoted bear-regime alpha; run rolling/marginal-contribution validation versus premium-only, FX-stress, and REX before live sizing.",
       "usage_recipe": {
         "feature_dependencies": [
           "nonrex_premium_discount_short_features_20260710",
@@ -1781,9 +1781,13 @@
         "promotion_guardrails": [
           "Requires non-lookahead bear regime gate",
           "Rolling validation before live sizing",
-          "Compare against premium-only to avoid double-counting same edge"
+          "Compare against premium-only to avoid double-counting same edge",
+          "2024 under-threshold ratio is acceptable only when classified as non-bear/regime mismatch, not as live failure.",
+          "Must be disabled outside operator/declarative bear regime."
         ]
-      }
+      },
+      "promotion_basis": "Promoted by user/strategy review as a bear-regime alpha: short sleeves are expected to be difficult in bullish regimes, so 2024 under-threshold behavior is treated as regime mismatch rather than disqualification. Still requires non-lookahead bear-regime gate for use.",
+      "regime_scope": "bear_regime_only"
     }
   ]
 }

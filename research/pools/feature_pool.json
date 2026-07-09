@@ -1662,52 +1662,6 @@
       }
     },
     {
-      "id": "nonrex_kimchi_unwind_short_features_20260710",
-      "name": "Non-REX kimchi unwind short feature set (2026-07-10)",
-      "status": "candidate",
-      "family": "kimchi_unwind_short_context",
-      "scope": "btc_macro_kimchi",
-      "feature_tier": "beta_feature",
-      "description": "Potential short feature family: BTC is weak on 3-day HTF return while kimchi premium change sharply falls. Interpreted as Korea-side risk appetite unwind / local premium compression during bearish regimes.",
-      "data_sources": [
-        "BTCUSDT 5m OHLCV/taker cache",
-        "Kimchi premium change from BTCKRW/USDKRW/BTCUSDT external cache"
-      ],
-      "feature_examples": [
-        "htf_3d_return_1 <= train q0.20",
-        "kimchi_premium_change <= train q0.10",
-        "TP 4% / SL 2.5% short exit",
-        "hold cap 216-288 5m bars"
-      ],
-      "feature_names": [
-        "htf_3d_return_1",
-        "kimchi_premium_change"
-      ],
-      "usable_for": [
-        "bear-regime short selector",
-        "RLLM macro-local risk-off state token",
-        "portfolio diversifier research versus FX-stress and premium-discount shorts"
-      ],
-      "known_failures": [
-        "Bear combined ratio is below live-grade threshold 3.0 (best 2.87).",
-        "2026H1 is strong but eval2025 ratio is only 1.92-2.23 depending hold."
-      ],
-      "evidence": "Best scan result: test2024 +7.64%, ratio 1.27, 40 trades; eval2025 +8.41%, ratio 1.92, 32 trades; ytd2026 +9.10%, ratio 6.15, 16 trades; bear_combined +18.28%, CAGR 12.59%, strict MDD 4.39%, ratio 2.87, 48 trades.",
-      "source_artifacts": [
-        "training/nonrex_short_manual_extra_scan.py",
-        "results/nonrex_short_manual_extra_scan_2026-07-10.json"
-      ],
-      "contamination_risk": "medium",
-      "leakage_notes": "Feature selected after inspecting bear-window scan; keep beta until rolling validation or combination improves ratio above 3 without sacrificing 2024.",
-      "tier_rationale": "Beta feature: close to alpha threshold and economically distinct, but not strong enough as standalone alpha.",
-      "next_action": "Test as selector/booster on FX-stress or premium-discount shorts, and check marginal contribution in bear portfolio.",
-      "generation_recipe": {
-        "script": "training/nonrex_short_manual_extra_scan.py",
-        "command": "PYTHONPATH=. .venv/bin/python training/nonrex_short_manual_extra_scan.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/nonrex_short_manual_extra_scan_2026-07-10.json",
-        "protocol": "manual non-REX idea scan; full-window CAGR; strict short MDD; conservative SL-before-TP"
-      }
-    },
-    {
       "id": "nonrex_sellflow_liquidation_short_features_20260710",
       "name": "Non-REX sell-flow liquidation short feature set (2026-07-10)",
       "status": "candidate",
@@ -1748,6 +1702,52 @@
       "generation_recipe": {
         "script": "training/nonrex_short_manual_extra_scan.py",
         "protocol": "manual non-REX idea scan; full-window CAGR; strict short MDD"
+      }
+    },
+    {
+      "id": "nonrex_kimchi_unwind_short_features_20260710",
+      "name": "Non-REX kimchi unwind short feature set (2026-07-10)",
+      "status": "promoted_component",
+      "family": "kimchi_unwind_short_context",
+      "scope": "btc_macro_kimchi",
+      "feature_tier": "alpha_component_feature",
+      "description": "Potential short feature family: BTC is weak on 3-day HTF return while kimchi premium change sharply falls. Interpreted as Korea-side risk appetite unwind / local premium compression during bearish regimes.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "Kimchi premium change from BTCKRW/USDKRW/BTCUSDT external cache"
+      ],
+      "feature_examples": [
+        "htf_3d_return_1 <= train q0.20",
+        "kimchi_premium_change <= train q0.10",
+        "TP 4% / SL 2.5% short exit",
+        "hold cap 216-288 5m bars"
+      ],
+      "feature_names": [
+        "htf_3d_return_1",
+        "kimchi_premium_change"
+      ],
+      "usable_for": [
+        "bear-regime short selector",
+        "RLLM macro-local risk-off state token",
+        "portfolio diversifier research versus FX-stress and premium-discount shorts"
+      ],
+      "known_failures": [
+        "Bear combined ratio is below live-grade threshold 3.0 (best 2.87).",
+        "2026H1 is strong but eval2025 ratio is only 1.92-2.23 depending hold."
+      ],
+      "evidence": "Best scan result: test2024 +7.64%, ratio 1.27, 40 trades; eval2025 +8.41%, ratio 1.92, 32 trades; ytd2026 +9.10%, ratio 6.15, 16 trades; bear_combined +18.28%, CAGR 12.59%, strict MDD 4.39%, ratio 2.87, 48 trades. Later selector overlay promoted premium+kimchi union: 2025~2026H1 bear return +37.16%, CAGR/MDD 3.90, 135 trades.",
+      "source_artifacts": [
+        "training/nonrex_short_manual_extra_scan.py",
+        "results/nonrex_short_manual_extra_scan_2026-07-10.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Feature selected after inspecting bear-window scan; keep beta until rolling validation or combination improves ratio above 3 without sacrificing 2024.",
+      "tier_rationale": "Alpha component feature: standalone kimchi unwind did not clear ratio>=3, but premium+kimchi union was promoted as bear-regime alpha and kimchi provided useful coverage expansion while keeping 2024 positive.",
+      "next_action": "Use as alpha component/coverage extender with premium-discount short, not as standalone entry unless future validation improves.",
+      "generation_recipe": {
+        "script": "training/nonrex_short_manual_extra_scan.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/nonrex_short_manual_extra_scan.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/nonrex_short_manual_extra_scan_2026-07-10.json",
+        "protocol": "manual non-REX idea scan; full-window CAGR; strict short MDD; conservative SL-before-TP"
       }
     }
   ]
