@@ -1701,6 +1701,89 @@
         ],
         "live_use_notes": "Candidate only; likely useful as separate derivatives-panic sleeve."
       }
+    },
+    {
+      "id": "nonrex_premium_kimchi_union_short_20260710",
+      "name": "Non-REX premium-discount + kimchi-unwind BTC short",
+      "status": "candidate",
+      "family": "premium_kimchi_unwind_short_union",
+      "scope": "btc_derivatives_macro_kimchi",
+      "side": "short",
+      "description": "Bear-regime short union combining premium-discount panic and kimchi-unwind weakness. This uses two independent non-REX short contexts: derivatives discount/panic plus Korea premium unwind.",
+      "entry_logic": "Manual/higher-level bear regime must be active. Enter short when either premium_panic=(htf_3d_range_pos <= -0.5114186851 and premium_index_zscore <= -1.47209312) OR kimchi_unwind=(htf_3d_return_1 <= -0.0303196833 and kimchi_premium_change <= -0.0046123752).",
+      "exit_logic": "Short TP 4%, SL 2.5%, max hold 288 5m bars (24h), next-open entry. Conservative same-bar assumption: SL before TP.",
+      "dependencies": [
+        "nonrex_premium_discount_short_features_20260710",
+        "nonrex_kimchi_unwind_short_features_20260710",
+        "btc_ohlcv_taker_core",
+        "btc_funding_premium_basis",
+        "external_macro_kimchi_fx_features"
+      ],
+      "stats": {
+        "test2024": {
+          "return_pct": 12.8248,
+          "cagr_pct": 12.7969,
+          "strict_mdd_pct": 6.8322,
+          "cagr_to_strict_mdd": 1.873,
+          "trades": 67,
+          "signals": 259
+        },
+        "eval2025": {
+          "return_pct": 19.2832,
+          "cagr_pct": 19.2976,
+          "strict_mdd_pct": 4.8217,
+          "cagr_to_strict_mdd": 4.0022,
+          "trades": 96,
+          "signals": 279
+        },
+        "ytd2026": {
+          "return_pct": 14.9884,
+          "cagr_pct": 39.8779,
+          "strict_mdd_pct": 4.2825,
+          "cagr_to_strict_mdd": 9.3117,
+          "trades": 39,
+          "signals": 106
+        },
+        "bear_combined_2025_2026h1": {
+          "return_pct": 37.1618,
+          "cagr_pct": 25.0122,
+          "strict_mdd_pct": 6.4059,
+          "cagr_to_strict_mdd": 3.9045,
+          "trades": 135,
+          "signals": 385
+        }
+      },
+      "evidence": "Selector overlay scan shows premium_panic + kimchi_unwind union improves bear combined return and trade count versus premium-only while keeping 2024 positive. It is weaker than premium+sellflow in bear ratio but far more robust in 2024.",
+      "source_artifacts": [
+        "training/nonrex_short_selector_overlay_scan.py",
+        "results/nonrex_short_selector_overlay_scan_2026-07-10.json",
+        "training/nonrex_short_bear_tp_refine.py",
+        "training/nonrex_short_manual_extra_scan.py"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Union composition was selected after inspecting 2024/2025/2026H1 overlay results; candidate-grade until predeclared rolling or fresh validation.",
+      "next_action": "Run rolling validation and compare portfolio marginal contribution versus FX-stress, premium-only, and REX short sleeves.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "nonrex_premium_discount_short_features_20260710",
+          "nonrex_kimchi_unwind_short_features_20260710"
+        ],
+        "entry_logic": "bear regime gate + (premium_panic OR kimchi_unwind)",
+        "exit_logic": "TP=4%, SL=2.5%, max_hold=288 5m bars",
+        "side": "short",
+        "script_or_config": "training/nonrex_short_selector_overlay_scan.py",
+        "reproduce_command": "PYTHONPATH=. .venv/bin/python training/nonrex_short_selector_overlay_scan.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/nonrex_short_selector_overlay_scan_2026-07-10.json",
+        "evaluation_protocol": {
+          "split": "test=2024, bear eval=2025, bear ytd=2026-01-01..2026-06-02",
+          "cost": "fee_rate=0.0004 and slippage_rate=0.0001 per side",
+          "mdd": "strict short MDD includes intrabar high adverse excursion; CAGR denominator includes idle time"
+        },
+        "promotion_guardrails": [
+          "Requires non-lookahead bear regime gate",
+          "Rolling validation before live sizing",
+          "Compare against premium-only to avoid double-counting same edge"
+        ]
+      }
     }
   ]
 }
