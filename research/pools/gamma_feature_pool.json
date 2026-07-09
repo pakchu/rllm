@@ -1,0 +1,224 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-07-10",
+  "protocol": {
+    "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+    "cost_default": "6bp/side unless source artifact says otherwise",
+    "strict_mdd": "includes in-position adverse excursion and period-contained forced exits",
+    "trading_target_asset": "BTCUSDT/BTC only unless explicitly changed by user",
+    "feature_inputs": "External explanatory variables are allowed if merged causally: DXY, kimchi, USDKRW, Upbit BTC, BTC derivatives, and optionally other-coin lead/lag. They do not imply changing the traded asset.",
+    "alpha_pool_threshold": "Feature/gate discoveries are promoted into alpha_pool only when a combined strategy clears test2024 CAGR/strict_MDD >=2.5; live-grade standalone requires >=3.0.",
+    "feature_tiers": {
+      "alpha_feature": "Strictly promoted feature family: directly tied to strategy-level edge. Requires a combined strategy using this feature to clear test2024 CAGR/strict_MDD >= 2.5, or a standalone/live-grade strategy using it to clear >=3.0, with nontrivial trades and reproducible recipe.",
+      "beta_feature": "Potential alpha-feature pool: plausible edge remains, but current evidence has not met alpha-feature promotion threshold. Use for selector/gate/exit experiments with strict contamination notes.",
+      "gamma_feature": "Strict noise/failure pool: only for feature families where evidence strongly shows the attempted usage is noise/invalid/repeatedly non-causal. Gamma means avoid similar retries unless the recorded disqualifying evidence is overturned."
+    },
+    "tier_transition_rules": {
+      "beta_to_alpha_feature": [
+        "A reproducible strategy using the feature clears test2024 CAGR/strict_MDD >= 2.5 after 6bp/side, strict in-position MDD, split-end forced close.",
+        "Trade support is not trivial: normally test2024 >=20 trades and eval2025 >=15 trades, unless explicitly marked sparse low-frequency and manually accepted.",
+        "Eval2025 is not clearly broken: positive CAGR and no obvious MDD explosion; live-grade standalone requires CAGR/strict_MDD >=3.0.",
+        "Feature contribution is identifiable versus baseline/no-feature variant or portfolio marginal contribution.",
+        "generation_recipe and usage evidence are complete."
+      ],
+      "beta_to_gamma_feature": [
+        "Requires strong evidence that the attempted feature family/usage is only noise, not merely below current alpha/live thresholds.",
+        "Acceptable evidence: repeated broad + targeted scans show no robust positive test/eval structure and no useful selector contribution; or leakage/no-op/causal invalidation; or consistent regime inversion/OOS collapse across independent variants.",
+        "Gamma entry must name the exact failed usage mode. If a different usage mode remains plausible, keep that feature family in beta and put only the failed search set/provenance in gamma.",
+        "Do not gamma-demote broad inventories or search sets just because they are not alpha features; they should be provenance unless they encode a failed/noisy usage mode.",
+        "Do not gamma-demote because live-grade is missing; beta is for remaining alpha-feature possibility."
+      ],
+      "gamma_to_beta_feature": [
+        "Only allowed if new data, corrected methodology, or a materially different usage mode removes the recorded failure reason.",
+        "Must show at least one reproducible combined strategy with test2024 CAGR/strict_MDD >=1.5 and positive eval2025, or strong portfolio-selector contribution before alpha threshold."
+      ]
+    }
+  },
+  "source_pool": "feature_pool.json",
+  "pool_kind": "gamma_feature",
+  "entries": [
+    {
+      "id": "alpha101_search_feature_set_20260709",
+      "name": "Alpha101 standalone search feature set (2026-07-09)",
+      "status": "weak",
+      "family": "search_feature_set_alpha101",
+      "scope": "btc_only",
+      "description": "Exact Alpha101-style primitives and composites used during standalone quantile scans.",
+      "data_sources": [
+        "training/search_alpha101_derivative_alphas.py",
+        "training/search_alpha101_quantile_combo.py",
+        "training/search_alpha101_random_quantile_standalone.py"
+      ],
+      "feature_examples": [
+        "a_ret_z_72",
+        "a_vwap_gap_z",
+        "a_ret_vol_corr_72",
+        "a_pos_288",
+        "a_early_session"
+      ],
+      "feature_names": [
+        "a_absret_vol",
+        "a_absret_vol_rank",
+        "a_break_high_288",
+        "a_break_low_288",
+        "a_clv",
+        "a_clv_rank_288",
+        "a_day_gap",
+        "a_early_session",
+        "a_intr",
+        "a_intr_rank_288",
+        "a_late_session",
+        "a_pos_288",
+        "a_range_compress_288",
+        "a_range_expand_72",
+        "a_ret_vol_corr_288",
+        "a_ret_vol_corr_72",
+        "a_ret_z_12",
+        "a_ret_z_24",
+        "a_ret_z_72",
+        "a_spread_z_144",
+        "a_spread_z_72",
+        "a_taker_72",
+        "a_taker_72_z",
+        "a_taker_z",
+        "a_vol_z_288",
+        "a_vwap_gap",
+        "a_vwap_gap_z",
+        "x101_clean_breakout_down",
+        "x101_clean_breakout_up",
+        "x101_gap_revert_down",
+        "x101_gap_revert_up",
+        "x101_lowvol_intraday_momo_down",
+        "x101_lowvol_intraday_momo_up",
+        "x101_volcorr_reversal_down",
+        "x101_volcorr_reversal_up",
+        "x101_vwap_exhaust_down",
+        "x101_vwap_exhaust_up"
+      ],
+      "usable_for": [
+        "Alpha101 regression scans",
+        "feature inspiration only"
+      ],
+      "known_failures": [
+        "After day_gap leakage fix, no target-level standalone survived",
+        "Random quantile combos produced weak candidates only",
+        "standalone Alpha101 quantile usage below alpha threshold",
+        "do not repeat standalone hard-quantile Alpha101 scan without materially new operators/data"
+      ],
+      "evidence": "Best all-positive candidates were below target; use as feature library, not proven alpha.",
+      "source_artifacts": [
+        "results/alpha101_quantile_combo_scan_2026-07-09.json",
+        "results/alpha101_random_quantile_standalone_2026-07-09.json",
+        "docs/alpha101-random-quantile-standalone-2026-07-09.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "a_day_gap previously leaked current day close; fixed to previous daily close. Ignore pre-fix results.",
+      "next_action": "Do not repeat standalone Alpha101 quantile scans; use alpha101_vpin_primitives beta entry only for selector/gate experiments.",
+      "generation_recipe": {
+        "script": "training/search_alpha101_derivative_alphas.py",
+        "functions": [
+          "add_features"
+        ],
+        "inputs": [
+          "BTC cache"
+        ],
+        "command": "python -m training.search_alpha101_random_quantile_standalone",
+        "outputs": [
+          "results/alpha101_random_quantile_standalone_2026-07-09.json"
+        ],
+        "protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "notes": [
+          "day_gap fix required."
+        ]
+      },
+      "feature_tier": "gamma_feature",
+      "tier_rationale": "Gamma applies specifically to Alpha101 standalone quantile usage: broad standalone scan stayed below alpha threshold and targeted post-REX use remains weak. Alpha101 primitives remain beta separately for selector use."
+    },
+    {
+      "id": "vpin_formulaic_search_feature_set_20260709",
+      "name": "VPIN/formulaic search feature set (2026-07-09)",
+      "status": "rejected",
+      "family": "search_feature_set_vpin_formulaic",
+      "scope": "btc_only",
+      "description": "Exact VPIN proxy and formulaic features used in standalone and dual-gate scans.",
+      "data_sources": [
+        "training/search_vpin_formulaic_alpha.py",
+        "BTC OHLCV/taker cache"
+      ],
+      "feature_examples": [
+        "vp_vpin_z_144",
+        "vp_imb_z_72",
+        "fq_vwap_revert_z",
+        "vx_toxic_selloff"
+      ],
+      "feature_names": [
+        "fq_abs_move_vol_rank",
+        "fq_intrabar_strength",
+        "fq_intrabar_strength_rank",
+        "fq_ret_vol_corr_288",
+        "fq_ret_vol_corr_72",
+        "fq_signed_vol_pressure",
+        "fq_signed_vol_pressure_rank",
+        "fq_spread_rank",
+        "fq_volume_delta_rank",
+        "fq_vwap_revert",
+        "fq_vwap_revert_z",
+        "vp_imb_z_72",
+        "vp_ret_24",
+        "vp_ret_72",
+        "vp_vpin_z_144",
+        "vx_lowtox_momo_long",
+        "vx_lowtox_momo_short",
+        "vx_toxic_rally",
+        "vx_toxic_selloff"
+      ],
+      "usable_for": [
+        "negative-control feature family",
+        "dual-gate experiments only if new data available"
+      ],
+      "known_failures": [
+        "Standalone VPIN/formulaic scan failed",
+        "Portfolio VPIN add-on judged noise",
+        "standalone VPIN/formulaic entries behaved like noise",
+        "additive VPIN sleeves not useful versus existing signal pool"
+      ],
+      "evidence": "No useful standalone alpha; user rejected additive VPIN sleeves as noise.",
+      "source_artifacts": [
+        "results/vpin_formulaic_alpha_scan_2026-07-09.json",
+        "results/vpin_dual_gate_signal_pool_2026-07-09.json",
+        "docs/vpin-formulaic-alpha-scan-2026-07-09.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "Bar-level VPIN is a proxy, not true volume-bucket VPIN; no known future leakage.",
+      "next_action": "Do not retry standalone/additive VPIN sleeves without real trade-print volume-bucket data or materially different usage.",
+      "generation_recipe": {
+        "script": "training/search_vpin_formulaic_alpha.py",
+        "functions": [
+          "add_vpin_formulaic_features",
+          "main"
+        ],
+        "inputs": [
+          "BTC cache"
+        ],
+        "command": "python -m training.search_vpin_formulaic_alpha",
+        "outputs": [
+          "results/vpin_formulaic_alpha_scan_2026-07-09.json"
+        ],
+        "protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "notes": [
+          "Rejected standalone but reproducible."
+        ]
+      },
+      "feature_tier": "gamma_feature",
+      "tier_rationale": "Gamma applies to VPIN/formulaic standalone usage: standalone and additive sleeves were judged noise; VPIN may still exist in beta via alpha101_vpin_primitives/post_rex_alphaization_feature_set for selector usage."
+    }
+  ]
+}

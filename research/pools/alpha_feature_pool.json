@@ -1,0 +1,322 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-07-10",
+  "protocol": {
+    "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+    "cost_default": "6bp/side unless source artifact says otherwise",
+    "strict_mdd": "includes in-position adverse excursion and period-contained forced exits",
+    "trading_target_asset": "BTCUSDT/BTC only unless explicitly changed by user",
+    "feature_inputs": "External explanatory variables are allowed if merged causally: DXY, kimchi, USDKRW, Upbit BTC, BTC derivatives, and optionally other-coin lead/lag. They do not imply changing the traded asset.",
+    "alpha_pool_threshold": "Feature/gate discoveries are promoted into alpha_pool only when a combined strategy clears test2024 CAGR/strict_MDD >=2.5; live-grade standalone requires >=3.0.",
+    "feature_tiers": {
+      "alpha_feature": "Strictly promoted feature family: directly tied to strategy-level edge. Requires a combined strategy using this feature to clear test2024 CAGR/strict_MDD >= 2.5, or a standalone/live-grade strategy using it to clear >=3.0, with nontrivial trades and reproducible recipe.",
+      "beta_feature": "Potential alpha-feature pool: plausible edge remains, but current evidence has not met alpha-feature promotion threshold. Use for selector/gate/exit experiments with strict contamination notes.",
+      "gamma_feature": "Strict noise/failure pool: only for feature families where evidence strongly shows the attempted usage is noise/invalid/repeatedly non-causal. Gamma means avoid similar retries unless the recorded disqualifying evidence is overturned."
+    },
+    "tier_transition_rules": {
+      "beta_to_alpha_feature": [
+        "A reproducible strategy using the feature clears test2024 CAGR/strict_MDD >= 2.5 after 6bp/side, strict in-position MDD, split-end forced close.",
+        "Trade support is not trivial: normally test2024 >=20 trades and eval2025 >=15 trades, unless explicitly marked sparse low-frequency and manually accepted.",
+        "Eval2025 is not clearly broken: positive CAGR and no obvious MDD explosion; live-grade standalone requires CAGR/strict_MDD >=3.0.",
+        "Feature contribution is identifiable versus baseline/no-feature variant or portfolio marginal contribution.",
+        "generation_recipe and usage evidence are complete."
+      ],
+      "beta_to_gamma_feature": [
+        "Requires strong evidence that the attempted feature family/usage is only noise, not merely below current alpha/live thresholds.",
+        "Acceptable evidence: repeated broad + targeted scans show no robust positive test/eval structure and no useful selector contribution; or leakage/no-op/causal invalidation; or consistent regime inversion/OOS collapse across independent variants.",
+        "Gamma entry must name the exact failed usage mode. If a different usage mode remains plausible, keep that feature family in beta and put only the failed search set/provenance in gamma.",
+        "Do not gamma-demote broad inventories or search sets just because they are not alpha features; they should be provenance unless they encode a failed/noisy usage mode.",
+        "Do not gamma-demote because live-grade is missing; beta is for remaining alpha-feature possibility."
+      ],
+      "gamma_to_beta_feature": [
+        "Only allowed if new data, corrected methodology, or a materially different usage mode removes the recorded failure reason.",
+        "Must show at least one reproducible combined strategy with test2024 CAGR/strict_MDD >=1.5 and positive eval2025, or strong portfolio-selector contribution before alpha threshold."
+      ]
+    }
+  },
+  "source_pool": "feature_pool.json",
+  "pool_kind": "alpha_feature",
+  "entries": [
+    {
+      "id": "btc_ohlcv_taker_core",
+      "name": "BTC OHLCV + taker core",
+      "status": "candidate",
+      "family": "market_microstructure",
+      "scope": "btc_only",
+      "description": "BTC 5m OHLCV, quote volume, taker buy quote/base, VWAP gap, range, realized vol, taker imbalance/CVD.",
+      "data_sources": [
+        "data/cache_market_ext_5m_wavefull_2020-01-01_2026-07-05_dbappend.csv.gz",
+        "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz"
+      ],
+      "feature_examples": [
+        "vwap_gap_z",
+        "rvol_z_24",
+        "taker_mean_z_24",
+        "taker_div_72",
+        "qv_z_72",
+        "pos_288"
+      ],
+      "usable_for": [
+        "BTC-only standalone mean reversion",
+        "volume/taker gates",
+        "dynamic exits"
+      ],
+      "known_failures": [
+        "single composite Alpha101/VPIN scores are too weak",
+        "eval-only threshold selection overfits"
+      ],
+      "evidence": "BTC-only VWAP/funding/Asia candidate has strong 2024 and positive 2026 but weak 2025 ratio; keep as research candidate, not live.",
+      "source_artifacts": [
+        "training/search_btc_only_quantile_standalone.py",
+        "results/btc_only_quantile_standalone_2026-07-09.json",
+        "docs/btc-only-quantile-standalone-2026-07-09.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Causal bars only; thresholds train quantiles. Verify any day/session feature does not use current-day future close.",
+      "next_action": "Explore BTC-only variants around VWAP dislocation + taker non-confirmation + funding/premium regime; require 2025 ratio improvement before promotion.",
+      "feature_names": [
+        "vwap_gap_z",
+        "rvol_z_24",
+        "rvol_z_72",
+        "qv_z_24",
+        "qv_z_72",
+        "spread_z_72",
+        "pos_288",
+        "range_compress_288",
+        "range_expand_72",
+        "px_ret_z_24",
+        "px_ret_z_72",
+        "px_ret_z_144",
+        "taker_mean_z_24",
+        "taker_mean_z_72",
+        "taker_div_72",
+        "taker_div_144",
+        "cvd_ret_z_72",
+        "cvd_ret_z_144",
+        "us_session",
+        "asia_session"
+      ],
+      "generation_recipe": {
+        "script": "training/search_vpin_formulaic_alpha.py",
+        "functions": [
+          "load_market_and_splits",
+          "trade_arrays",
+          "stats"
+        ],
+        "inputs": [
+          "data/cache_market_ext_5m_wavefull_2020-01-01_2026-07-05_dbappend.csv.gz"
+        ],
+        "command": "python - <<'PY'\nfrom training.search_vpin_formulaic_alpha import load_market_and_splits\nm,_,masks,years=load_market_and_splits(); print(m.columns.tolist()); print({k:int(v.sum()) for k,v in masks.items()})\nPY",
+        "outputs": [],
+        "protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "notes": [
+          "Derived features are implemented in individual search scripts: search_btc_only_quantile_standalone.add_features, search_alpha101_derivative_alphas.add_features."
+        ]
+      },
+      "feature_tier": "alpha_feature",
+      "tier_rationale": "Core dependency of promoted/candidate strategy sleeves with strategy-level edge evidence; retain but re-audit if exact sleeve evidence changes."
+    },
+    {
+      "id": "btc_oi_features",
+      "name": "BTC open interest features",
+      "status": "candidate",
+      "family": "derivatives_positioning",
+      "scope": "btc_derivatives",
+      "description": "BTCUSDT open interest returns and OI-vs-price z-score divergences.",
+      "data_sources": [
+        "/tmp/btcusdt_open_interest_5m_2020_2026.csv"
+      ],
+      "feature_examples": [
+        "oi_ret_z_72",
+        "oi_minus_px_z_72",
+        "px_minus_oi_z_72",
+        "btc_oi_unwind_long",
+        "btc_oi_squeeze_short"
+      ],
+      "usable_for": [
+        "OI squeeze/unwind alpha",
+        "short overheat detection",
+        "portfolio diversifier"
+      ],
+      "known_failures": [
+        "raw OI/taker standalone scans often fail train or eval",
+        "high frequency OI rules can become 2025-only artifacts"
+      ],
+      "evidence": "OI high/low sleeves are useful in portfolio; standalone OI/taker scans mostly weak or unstable.",
+      "source_artifacts": [
+        "training/evaluate_oi_llm_selector.py",
+        "training/search_alt_oi_taker_alpha.py",
+        "results/alt_oi_taker_alpha_search_2026-07-08.json",
+        "results/btc_only_quantile_standalone_2026-07-09.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "OI file begins 2020-09; quantiles must ignore unavailable/zero-filled periods for OI-specific thresholds.",
+      "next_action": "Keep OI as sleeve/selector feature; promote standalone only if train/test/eval all positive with adequate trade count.",
+      "feature_names": [
+        "oi_available",
+        "oi_ret_z_24",
+        "oi_ret_z_72",
+        "oi_minus_px_z_72",
+        "px_minus_oi_z_72",
+        "btc_oi_unwind_long",
+        "btc_oi_squeeze_short",
+        "btc_liq_revert_long",
+        "btc_cvd_absorb_long",
+        "btc_overheat_short",
+        "oi_ret_4h_z",
+        "oi_squeeze_long_ctx",
+        "oi_squeeze_short_ctx",
+        "oi_unwind_long_ctx",
+        "oi_unwind_short_ctx"
+      ],
+      "generation_recipe": {
+        "script": "training/search_btc_only_quantile_standalone.py",
+        "functions": [
+          "add_features",
+          "merge_asof_value"
+        ],
+        "inputs": [
+          "/tmp/btcusdt_open_interest_5m_2020_2026.csv",
+          "BTC 5m cache"
+        ],
+        "command": "python - <<'PY'\nfrom training.search_vpin_formulaic_alpha import load_market_and_splits\nfrom training.search_btc_only_quantile_standalone import add_features\nm,_,_,_=load_market_and_splits(); f=add_features(m); print([c for c in f.columns if 'oi' in c][:30])\nPY",
+        "outputs": [],
+        "protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "notes": [
+          "OI thresholds must ignore unavailable periods via oi_available."
+        ]
+      },
+      "feature_tier": "alpha_feature",
+      "tier_rationale": "Core dependency of promoted/candidate strategy sleeves with strategy-level edge evidence; retain but re-audit if exact sleeve evidence changes."
+    },
+    {
+      "id": "btc_funding_premium_basis",
+      "name": "BTC funding/premium/basis",
+      "status": "candidate",
+      "family": "derivatives_basis",
+      "scope": "btc_derivatives",
+      "description": "BTCUSDT funding rate and premium-index/basis z-scores.",
+      "data_sources": [
+        "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+        "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz"
+      ],
+      "feature_examples": [
+        "funding_z",
+        "premium_z",
+        "basis_stress_z",
+        "funding_zscore",
+        "premium_index_zscore"
+      ],
+      "usable_for": [
+        "pb30_funding family",
+        "BTC-only overheat/unwind gates",
+        "carry/regime context"
+      ],
+      "known_failures": [
+        "funding/premium alone has sparse/zero-trade failures in older scans"
+      ],
+      "evidence": "pb30_funding + activity_flow_htf remains a kept bullish-regime baseline; BTC-only funding gate helps VWAP reversion candidate but not enough for live.",
+      "source_artifacts": [
+        "docs/bullish-long-alpha-target5-2026-07-05.md",
+        "configs/live/bullish_pb30_funding_activity_flow_htf_candidate.json",
+        "training/search_btc_only_quantile_standalone.py"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "Funding/premium must be asof/backward merged; never use future funding print.",
+      "next_action": "Use as context/gate rather than standalone; preserve pb30_funding baseline.",
+      "feature_names": [
+        "funding_z",
+        "premium_z",
+        "basis_stress_z",
+        "funding_zscore",
+        "premium_index_zscore"
+      ],
+      "generation_recipe": {
+        "script": "training/search_btc_only_quantile_standalone.py",
+        "functions": [
+          "merge_asof_value",
+          "add_features"
+        ],
+        "inputs": [
+          "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+          "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz"
+        ],
+        "command": "python - <<'PY'\nfrom training.search_vpin_formulaic_alpha import load_market_and_splits\nfrom training.search_btc_only_quantile_standalone import add_features\nm,_,_,_=load_market_and_splits(); f=add_features(m); print(f[['funding_z','premium_z','basis_stress_z']].tail())\nPY",
+        "outputs": [],
+        "protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "notes": [
+          "Funding/premium are backward-asof merged."
+        ]
+      },
+      "feature_tier": "alpha_feature",
+      "tier_rationale": "Core dependency of promoted/candidate strategy sleeves with strategy-level edge evidence; retain but re-audit if exact sleeve evidence changes."
+    },
+    {
+      "id": "pb30_activity_flow_htf",
+      "name": "pb30 + activity_flow_htf feature family",
+      "status": "promoted",
+      "family": "bullish_regime_pullback_activity",
+      "scope": "btc_derivatives",
+      "description": "Bullish regime pullback/funding entry with high-timeframe activity flow score.",
+      "data_sources": [
+        "repo feature pipeline",
+        "configs/live/bullish_pb30_funding_activity_flow_htf_candidate.json"
+      ],
+      "feature_examples": [
+        "pb30_funding",
+        "activity_flow_htf",
+        "activity_flow",
+        "activity_flow_deriv_htf"
+      ],
+      "usable_for": [
+        "low-frequency bullish baseline",
+        "portfolio sleeve"
+      ],
+      "known_failures": [
+        "not well suited to high-frequency trading",
+        "additional selector/gates often reduce trades too much"
+      ],
+      "evidence": "Kept/promoted as live-capable baseline in prior workflow; target 5 ratio only via leverage-scaled variant, but leverage scaling is not alpha.",
+      "source_artifacts": [
+        "docs/bullish-long-alpha-target5-2026-07-05.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "User explicitly warned not to overinterpret CAGR; inactive periods count.",
+      "next_action": "Keep but do not use as template for medium-frequency alpha; separate alpha search from leverage scaling.",
+      "generation_recipe": {
+        "script": "repo feature pipeline / live candidate config",
+        "functions": [],
+        "inputs": [
+          "configs/live/bullish_pb30_funding_activity_flow_htf_candidate.json",
+          "docs/bullish-long-alpha-target5-2026-07-05.md"
+        ],
+        "command": null,
+        "outputs": [
+          "configs/live/bullish_pb30_funding_activity_flow_htf_candidate.json"
+        ],
+        "protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "notes": [
+          "Exact generation is from prior bullish-regime pipeline; source doc is authoritative."
+        ]
+      },
+      "feature_tier": "alpha_feature",
+      "tier_rationale": "Core dependency of promoted/candidate strategy sleeves with strategy-level edge evidence; retain but re-audit if exact sleeve evidence changes."
+    }
+  ]
+}

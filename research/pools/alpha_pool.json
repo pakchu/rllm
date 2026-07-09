@@ -1,0 +1,1336 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-07-10",
+  "protocol": {
+    "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+    "cost_default": "6bp/side for current scans; older alt_oi_taker artifact used 5bp/side",
+    "strict_mdd": "includes in-position adverse excursion and period-contained exits",
+    "promotion_rule": "Do not promote because leverage can lift CAGR/MDD; alpha itself must survive test and eval.",
+    "trading_target_asset": "BTC. External/cross-asset features may be used as inputs, but alpha entries here trade BTC unless explicitly stated otherwise.",
+    "alpha_pool_threshold": "A strategy may stay as alpha_pool candidate only if it exceeds CAGR/strict_MDD >= 2.5 on test2024 after being combined with other features/gates; otherwise record as weak/rejected feature/selector evidence.",
+    "live_grade_threshold": "Live-grade single strategy must exceed CAGR/strict_MDD >= 3.0 as a standalone strategy, with strict MDD and period-end forced close.",
+    "below_threshold_policy": "Rows below alpha_pool_threshold should not be treated as alpha candidates; keep them as feature/selector candidates unless portfolio marginal contribution later proves value."
+  },
+  "entries": [
+    {
+      "id": "pb30_funding_activity_flow_htf",
+      "name": "pb30_funding + activity_flow_htf",
+      "status": "promoted",
+      "family": "bullish_low_frequency",
+      "scope": "btc_derivatives",
+      "side": "long",
+      "description": "Bullish-regime PB30/funding pullback baseline scored by activity_flow_htf.",
+      "entry_logic": "pb30_funding entry with activity_flow_htf score quantile; prior live-capable candidate materialized.",
+      "exit_logic": "fixed hold / live candidate spec from prior workflow",
+      "dependencies": [
+        "pb30_activity_flow_htf",
+        "btc_funding_premium_basis"
+      ],
+      "stats": {
+        "note": "See source doc for exact lev and split tables; kept baseline because eval remained positive and useful, but not medium-frequency."
+      },
+      "evidence": "Kept by user even after target raised; base alpha near-miss, leverage-scaled variant hit target but leverage is not alpha.",
+      "source_artifacts": [
+        "configs/live/bullish_pb30_addon_returnz_htf1w_candidate.json",
+        "configs/live/bullish_pb30_base_candidate.json",
+        "docs/bullish-long-alpha-target5-2026-07-05.md",
+        "configs/live/bullish_pb30_funding_activity_flow_htf_candidate.json",
+        "research/pools/history_inventory.md",
+        "results/bullish_pb30_funding_activity_flow_htf_lev_sweep_trainlt2024_test2024_eval2025_2026-07-05.json",
+        "research/pools/history_inventory.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Use train<2024 thresholds; do not select variants using eval/2026 after the fact.",
+      "next_action": "Keep as low-frequency sleeve; do not use as basis for high-frequency standalone search.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "pb30_activity_flow_htf",
+          "btc_funding_premium_basis"
+        ],
+        "entry_logic": "pb30_funding entry with activity_flow_htf score quantile; prior live-capable candidate materialized.",
+        "exit_logic": "fixed hold / live candidate spec from prior workflow",
+        "side": "long",
+        "script_or_config": "configs/live/bullish_pb30_funding_activity_flow_htf_candidate.json",
+        "reproduce_command": "see docs/bullish-long-alpha-target5-2026-07-05.md",
+        "source_artifacts": [
+          "configs/live/bullish_pb30_addon_returnz_htf1w_candidate.json",
+          "configs/live/bullish_pb30_base_candidate.json",
+          "docs/bullish-long-alpha-target5-2026-07-05.md",
+          "configs/live/bullish_pb30_funding_activity_flow_htf_candidate.json",
+          "research/pools/history_inventory.md",
+          "results/bullish_pb30_funding_activity_flow_htf_lev_sweep_trainlt2024_test2024_eval2025_2026-07-05.json",
+          "research/pools/history_inventory.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "promotion_guardrails": [
+          "thresholds/gates must be train-derived",
+          "test/eval/2026 must be reported separately",
+          "do not promote leverage-only improvement",
+          "strict MDD must include in-position adverse excursion"
+        ],
+        "live_use_notes": "Keep as low-frequency sleeve; do not use as basis for high-frequency standalone search."
+      },
+      "aliases": [
+        "bullish_pb30_addon_returnz_htf1w_candidate",
+        "bullish_pb30_base",
+        "pb30_funding_activity_flow_htf_18h_1p7x"
+      ]
+    },
+    {
+      "id": "nonpb30_taker",
+      "name": "nonpb30_taker",
+      "status": "candidate",
+      "family": "taker_volume_pullback",
+      "scope": "btc_only",
+      "side": "long",
+      "description": "Medium-frequency BTC-only taker/volume pullback alpha discovered outside pb30 family.",
+      "entry_logic": "taker_imbalance >= q0.60, return_zscore_48 <= q0.50, range_vol >= q0.75, htf_4h_range >= q0.65 (train quantiles).",
+      "exit_logic": "fixed hold in sleeve scans; dynamic exit variants also tested in portfolios.",
+      "dependencies": [
+        "btc_ohlcv_taker_core",
+        "volume_upbit_features"
+      ],
+      "stats": {
+        "note": "Component of robust/live portfolio; exact per-split stats in prior docs/results."
+      },
+      "evidence": "One of the few useful non-pb30 medium-frequency long alphas and major portfolio sleeve.",
+      "source_artifacts": [
+        "docs/bullish-long-alpha-target5-2026-07-05.md",
+        "results/portfolio_gross20_step005_cost6bp_mdd20_with_dynamic_2026-07-08.json",
+        "configs/live/nonpb30_taker_returnz_rangevol_htf4hrange_h72_candidate.json",
+        "research/pools/history_inventory.md",
+        "docs/portfolio-gross20-step005-cost6bp-mdd20-with-dynamic-2026-07-08.md",
+        "research/pools/history_inventory.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Preserve train-only quantile thresholds; avoid adding eval-picked micro gates.",
+      "next_action": "Keep as core sleeve; search truly independent BTC-only alpha rather than slight gates on this.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "btc_ohlcv_taker_core",
+          "volume_upbit_features"
+        ],
+        "entry_logic": "taker_imbalance >= q0.60, return_zscore_48 <= q0.50, range_vol >= q0.75, htf_4h_range >= q0.65 (train quantiles).",
+        "exit_logic": "fixed hold in sleeve scans; dynamic exit variants also tested in portfolios.",
+        "side": "long",
+        "script_or_config": "portfolio/search docs",
+        "reproduce_command": "see docs/bullish-long-alpha-target5-2026-07-05.md and portfolio scans",
+        "source_artifacts": [
+          "docs/bullish-long-alpha-target5-2026-07-05.md",
+          "results/portfolio_gross20_step005_cost6bp_mdd20_with_dynamic_2026-07-08.json",
+          "configs/live/nonpb30_taker_returnz_rangevol_htf4hrange_h72_candidate.json",
+          "research/pools/history_inventory.md",
+          "docs/portfolio-gross20-step005-cost6bp-mdd20-with-dynamic-2026-07-08.md",
+          "research/pools/history_inventory.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "promotion_guardrails": [
+          "thresholds/gates must be train-derived",
+          "test/eval/2026 must be reported separately",
+          "do not promote leverage-only improvement",
+          "strict MDD must include in-position adverse excursion"
+        ],
+        "live_use_notes": "Keep as core sleeve; search truly independent BTC-only alpha rather than slight gates on this."
+      },
+      "aliases": [
+        "nonpb30_taker_returnz_rangevol_htf4hrange_h72"
+      ]
+    },
+    {
+      "id": "oi_high_sel",
+      "name": "OI high selector sleeve",
+      "status": "candidate",
+      "family": "oi_positioning",
+      "scope": "btc_derivatives",
+      "side": "long",
+      "description": "OI-vs-price/high-positioning quantile-gated long sleeve used in best portfolios.",
+      "entry_logic": "Combination of oi_minus_px_4h_z, return_zscore_48, range_vol, rsi_norm, oi_ret_4h_z, sma24_ratio train quantile gates.",
+      "exit_logic": "fixed hold in portfolio sleeve scans",
+      "dependencies": [
+        "btc_oi_features",
+        "btc_ohlcv_taker_core"
+      ],
+      "stats": {
+        "note": "Useful as portfolio sleeve; standalone OI variants less robust."
+      },
+      "evidence": "Appears in gross 5.75/5.80 best portfolio families with material weight.",
+      "source_artifacts": [
+        "research/pools/history_inventory.json",
+        "results/portfolio_gross20_step005_cost6bp_mdd20_with_dynamic_2026-07-08.json",
+        "configs/live/oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay.json",
+        "research/pools/history_inventory.md",
+        "docs/portfolio-gross20-step005-cost6bp-mdd20-with-dynamic-2026-07-08.md",
+        "configs/live/oi_divergence_sma24_highfreq_h30_s6_candidate.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "OI availability and asof merge must be causal.",
+      "next_action": "Keep in portfolio pool; standalone variants require train robustness.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "btc_oi_features",
+          "btc_ohlcv_taker_core"
+        ],
+        "entry_logic": "Combination of oi_minus_px_4h_z, return_zscore_48, range_vol, rsi_norm, oi_ret_4h_z, sma24_ratio train quantile gates.",
+        "exit_logic": "fixed hold in portfolio sleeve scans",
+        "side": "long",
+        "script_or_config": "portfolio/search docs",
+        "reproduce_command": "see portfolio_gross20 and bullish target docs",
+        "source_artifacts": [
+          "research/pools/history_inventory.json",
+          "results/portfolio_gross20_step005_cost6bp_mdd20_with_dynamic_2026-07-08.json",
+          "configs/live/oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay.json",
+          "research/pools/history_inventory.md",
+          "docs/portfolio-gross20-step005-cost6bp-mdd20-with-dynamic-2026-07-08.md",
+          "configs/live/oi_divergence_sma24_highfreq_h30_s6_candidate.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "promotion_guardrails": [
+          "thresholds/gates must be train-derived",
+          "test/eval/2026 must be reported separately",
+          "do not promote leverage-only improvement",
+          "strict MDD must include in-position adverse excursion"
+        ],
+        "live_use_notes": "Keep in portfolio pool; standalone variants require train robustness."
+      },
+      "aliases": [
+        "oi_divergence_sma24_highfreq_h30_s6_candidate",
+        "oi_divergence_sma24_highfreq_h30_s6_raw",
+        "oi_divergence_sma24_highfreq_h30_s6_with_selector"
+      ]
+    },
+    {
+      "id": "oi_upbit_ratio288_low",
+      "name": "OI/Upbit ratio low sleeve",
+      "status": "candidate",
+      "family": "venue_volume_oi",
+      "scope": "btc_only_external_venue",
+      "side": "long",
+      "description": "BTC OI/Upbit-volume ratio low regime sleeve used in no-LLM/VPIN portfolio scans.",
+      "entry_logic": "Low OI-vs-Upbit volume ratio context, train quantile selected in prior scans.",
+      "exit_logic": "fixed hold or portfolio sleeve accounting",
+      "dependencies": [
+        "btc_oi_features",
+        "volume_upbit_features"
+      ],
+      "stats": {
+        "note": "Portfolio component; not established as standalone."
+      },
+      "evidence": "Large weight in some 5.75 portfolio variants, but standalone confidence lower.",
+      "source_artifacts": [
+        "docs/portfolio-with-vpin-formulaic-sleeves-2026-07-09.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Upbit live DB data availability and backfill consistency must be checked before live use.",
+      "next_action": "Keep as diversifier candidate only; verify component stats before additional weight.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "btc_oi_features",
+          "volume_upbit_features"
+        ],
+        "entry_logic": "Low OI-vs-Upbit volume ratio context, train quantile selected in prior scans.",
+        "exit_logic": "fixed hold or portfolio sleeve accounting",
+        "side": "long",
+        "script_or_config": "portfolio/search docs",
+        "reproduce_command": "see portfolio_with_vpin_formulaic_sleeves docs",
+        "source_artifacts": [
+          "docs/portfolio-with-vpin-formulaic-sleeves-2026-07-09.md"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "promotion_guardrails": [
+          "thresholds/gates must be train-derived",
+          "test/eval/2026 must be reported separately",
+          "do not promote leverage-only improvement",
+          "strict MDD must include in-position adverse excursion"
+        ],
+        "live_use_notes": "Keep as diversifier candidate only; verify component stats before additional weight."
+      }
+    },
+    {
+      "id": "rex_rule",
+      "name": "REX rule long sleeve",
+      "status": "candidate",
+      "family": "rolling_extrema_rex",
+      "scope": "btc_only",
+      "side": "long",
+      "description": "Rolling-extrema / HTF pullback resume style long sleeve.",
+      "entry_logic": "REX HTF pullback/resume family, selected via prior verifier/selector workflows.",
+      "exit_logic": "fixed hold; period-end forced liquidation added in later reevaluation.",
+      "dependencies": [
+        "btc_ohlcv_taker_core"
+      ],
+      "stats": {
+        "note": "Useful but live may need LLM selector; June gaps traced to missing prediction regeneration."
+      },
+      "evidence": "Important component in best portfolios; direct selector/model work required for live parity.",
+      "source_artifacts": [
+        "docs/rex-horizon-stability-score-2026-07-02.md",
+        "docs/linear-combo-alpha-recheck-2026-07-01.md",
+        "execution/rex_llm_live.py"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "REX predictions must be regenerated identically for overlapping periods; forced close must be included.",
+      "next_action": "Keep; ensure live REX selector/predictions exist before relying on sleeve.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "btc_ohlcv_taker_core"
+        ],
+        "entry_logic": "REX HTF pullback/resume family, selected via prior verifier/selector workflows.",
+        "exit_logic": "fixed hold; period-end forced liquidation added in later reevaluation.",
+        "side": "long",
+        "script_or_config": "REX scripts/live",
+        "reproduce_command": "see execution/rex_llm_live.py and rex docs",
+        "source_artifacts": [
+          "docs/rex-horizon-stability-score-2026-07-02.md",
+          "docs/linear-combo-alpha-recheck-2026-07-01.md",
+          "execution/rex_llm_live.py"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "promotion_guardrails": [
+          "thresholds/gates must be train-derived",
+          "test/eval/2026 must be reported separately",
+          "do not promote leverage-only improvement",
+          "strict MDD must include in-position adverse excursion"
+        ],
+        "live_use_notes": "Keep; ensure live REX selector/predictions exist before relying on sleeve."
+      }
+    },
+    {
+      "id": "bear_rex_short",
+      "name": "Bear REX short sleeve",
+      "status": "candidate",
+      "family": "rolling_extrema_rex_short",
+      "scope": "btc_only",
+      "side": "short",
+      "description": "Bearish-regime short sleeve based on REX/HTF pullback short context.",
+      "entry_logic": "Bearish REX short family used to diversify bull/long sleeves.",
+      "exit_logic": "fixed hold / forced period close in reevaluation",
+      "dependencies": [
+        "btc_ohlcv_taker_core"
+      ],
+      "stats": {
+        "note": "Portfolio diversifier; standalone robustness mixed."
+      },
+      "evidence": "Included in robust gross 2 and gross 5.75/5.80 portfolios; helps 2026 risk behavior.",
+      "source_artifacts": [
+        "docs/bullish-long-alpha-target5-2026-07-05.md",
+        "configs/live/rex_llm_binance_testnet_bear_pilot.json",
+        "research/pools/history_inventory.md",
+        "docs/portfolio-gross20-step005-cost6bp-mdd20-with-dynamic-2026-07-08.md",
+        "research/pools/history_inventory.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Older bearish live stats changed after forced liquidation; always use forced-close evaluation.",
+      "next_action": "Keep as short diversifier; do not overfit short-side gates on 2025 only.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "btc_ohlcv_taker_core"
+        ],
+        "entry_logic": "Bearish REX short family used to diversify bull/long sleeves.",
+        "exit_logic": "fixed hold / forced period close in reevaluation",
+        "side": "short",
+        "script_or_config": "REX short docs",
+        "reproduce_command": "see bullish-long-alpha-target5 and portfolio-gross20 docs",
+        "source_artifacts": [
+          "docs/bullish-long-alpha-target5-2026-07-05.md",
+          "configs/live/rex_llm_binance_testnet_bear_pilot.json",
+          "research/pools/history_inventory.md",
+          "docs/portfolio-gross20-step005-cost6bp-mdd20-with-dynamic-2026-07-08.md",
+          "research/pools/history_inventory.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "promotion_guardrails": [
+          "thresholds/gates must be train-derived",
+          "test/eval/2026 must be reported separately",
+          "do not promote leverage-only improvement",
+          "strict MDD must include in-position adverse excursion"
+        ],
+        "live_use_notes": "Keep as short diversifier; do not overfit short-side gates on 2025 only."
+      },
+      "aliases": [
+        "bear_rex_dual_regime_short",
+        "rex_dual_regime_auto",
+        "rex_llm_binance_testnet_bear_pilot"
+      ]
+    },
+    {
+      "id": "oi_alt_ratio72_dynamic_exit",
+      "name": "OI alt ratio72 dynamic exit sleeve",
+      "status": "candidate",
+      "family": "dynamic_exit",
+      "scope": "btc_derivatives",
+      "side": "long",
+      "description": "Existing alpha candidate improved by heterogeneous exit rule rather than fixed holding period.",
+      "entry_logic": "oi_alt_ratio72 / related context entry from candidate pool.",
+      "exit_logic": "dynamic vwap_overheat-style exit; no fixed holding period only.",
+      "dependencies": [
+        "btc_oi_features",
+        "btc_ohlcv_taker_core"
+      ],
+      "stats": {
+        "note": "Dynamic exit scan showed useful candidates; many are add-ons rather than independent alphas."
+      },
+      "evidence": "Added to portfolio scans and appears in gross 5.80 candidate at weight 1.0.",
+      "source_artifacts": [
+        "docs/dynamic-exit-alpha-scan-2026-07-08.md",
+        "results/portfolio_gross20_step005_cost6bp_mdd20_with_dynamic_2026-07-08.json",
+        "research/pools/history_inventory.md",
+        "results/dynamic_exit_alpha_scan_2026-07-08.json",
+        "configs/live/oi_alt_ratio72_dyn_exit_candidate.json",
+        "research/pools/history_inventory.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Exit condition must be causal and intrabar ordering conservative.",
+      "next_action": "Keep in portfolio pool; test more heterogeneous exits only on train/test rules.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "btc_oi_features",
+          "btc_ohlcv_taker_core"
+        ],
+        "entry_logic": "oi_alt_ratio72 / related context entry from candidate pool.",
+        "exit_logic": "dynamic vwap_overheat-style exit; no fixed holding period only.",
+        "side": "long",
+        "script_or_config": "training/search_dynamic_exit_alpha.py",
+        "reproduce_command": "python -m training.search_dynamic_exit_alpha",
+        "source_artifacts": [
+          "docs/dynamic-exit-alpha-scan-2026-07-08.md",
+          "results/portfolio_gross20_step005_cost6bp_mdd20_with_dynamic_2026-07-08.json",
+          "research/pools/history_inventory.md",
+          "results/dynamic_exit_alpha_scan_2026-07-08.json",
+          "configs/live/oi_alt_ratio72_dyn_exit_candidate.json",
+          "research/pools/history_inventory.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "promotion_guardrails": [
+          "thresholds/gates must be train-derived",
+          "test/eval/2026 must be reported separately",
+          "do not promote leverage-only improvement",
+          "strict MDD must include in-position adverse excursion"
+        ],
+        "live_use_notes": "Keep in portfolio pool; test more heterogeneous exits only on train/test rules."
+      },
+      "aliases": [
+        "oi_alt_ratio72_dyn_exit"
+      ]
+    },
+    {
+      "id": "btc_only_vwap_funding_asia",
+      "name": "BTC-only VWAP/funding Asia mean reversion",
+      "status": "weak",
+      "family": "btc_only_mean_reversion",
+      "scope": "btc_only",
+      "side": "long",
+      "description": "BTC-only standalone candidate: VWAP dislocation lower tail, live volatility, taker not overheated, funding not positive, Asia session.",
+      "entry_logic": "vwap_gap_z<=q0.20; rvol_z_24>=q0.50; taker_mean_z_24<=q0.55; funding_z<=q0.50; asia_session.",
+      "exit_logic": "fixed hold 144/stride24; TP overlay tested.",
+      "dependencies": [
+        "btc_ohlcv_taker_core",
+        "btc_funding_premium_basis"
+      ],
+      "stats": {
+        "raw_hold144": {
+          "train": {
+            "return_pct": -20.94,
+            "cagr_pct": -5.7,
+            "strict_mdd_pct": 39.62,
+            "cagr_mdd": -0.14,
+            "trades": 205,
+            "win_rate": 0.49,
+            "sharpe_like": -0.15
+          },
+          "test2024": {
+            "return_pct": 35.69,
+            "cagr_pct": 35.6,
+            "strict_mdd_pct": 5.4,
+            "cagr_mdd": 6.59,
+            "trades": 35,
+            "win_rate": 0.71,
+            "sharpe_like": 2.41
+          },
+          "eval2025": {
+            "return_pct": 10.26,
+            "cagr_pct": 10.27,
+            "strict_mdd_pct": 8.33,
+            "cagr_mdd": 1.23,
+            "trades": 52,
+            "win_rate": 0.5,
+            "sharpe_like": 1.03
+          },
+          "ytd2026": {
+            "return_pct": 8.51,
+            "cagr_pct": 17.41,
+            "strict_mdd_pct": 5.73,
+            "cagr_mdd": 3.04,
+            "trades": 21,
+            "win_rate": 0.52,
+            "sharpe_like": 1.38
+          }
+        },
+        "tp3pct": {
+          "test2024": {
+            "return_pct": 27.87,
+            "cagr_mdd": 5.49,
+            "trades": 35
+          },
+          "eval2025": {
+            "return_pct": 11.39,
+            "cagr_mdd": 1.57,
+            "trades": 52
+          },
+          "ytd2026": {
+            "return_pct": 6.09,
+            "cagr_mdd": 2.3,
+            "trades": 21
+          }
+        }
+      },
+      "evidence": "Strong 2024 and positive 2026, but 2025 ratio only 1.2-1.6 and train is negative; not live-grade.",
+      "source_artifacts": [
+        "training/search_btc_only_quantile_standalone.py",
+        "training/evaluate_btc_only_standalone_risk_overlay.py",
+        "results/btc_only_quantile_standalone_2026-07-09.json",
+        "results/btc_only_standalone_risk_overlay_2026-07-09.json",
+        "docs/btc-only-quantile-standalone-2026-07-09.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "BTC-only, train quantiles; no cross-asset. Weak train is a robustness warning.",
+      "next_action": "Use as seed for BTC-only search but require 2025 ratio improvement and train non-negative before promotion.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "btc_ohlcv_taker_core",
+          "btc_funding_premium_basis"
+        ],
+        "entry_logic": "vwap_gap_z<=q0.20; rvol_z_24>=q0.50; taker_mean_z_24<=q0.55; funding_z<=q0.50; asia_session.",
+        "exit_logic": "fixed hold 144/stride24; TP overlay tested.",
+        "side": "long",
+        "script_or_config": "training/search_btc_only_quantile_standalone.py",
+        "reproduce_command": "python -m training.search_btc_only_quantile_standalone && python -m training.evaluate_btc_only_standalone_risk_overlay",
+        "source_artifacts": [
+          "training/search_btc_only_quantile_standalone.py",
+          "training/evaluate_btc_only_standalone_risk_overlay.py",
+          "results/btc_only_quantile_standalone_2026-07-09.json",
+          "results/btc_only_standalone_risk_overlay_2026-07-09.json",
+          "docs/btc-only-quantile-standalone-2026-07-09.md"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "promotion_guardrails": [
+          "thresholds/gates must be train-derived",
+          "test/eval/2026 must be reported separately",
+          "do not promote leverage-only improvement",
+          "strict MDD must include in-position adverse excursion"
+        ],
+        "live_use_notes": "Use as seed for BTC-only search but require 2025 ratio improvement and train non-negative before promotion."
+      }
+    },
+    {
+      "id": "btc_only_oi_overheat_short",
+      "name": "BTC-only OI overheat short",
+      "status": "weak",
+      "family": "btc_only_short_overheat",
+      "scope": "btc_derivatives",
+      "side": "short",
+      "description": "Short candidate from BTC OI squeeze + overheat + high position, with low volume context.",
+      "entry_logic": "btc_oi_squeeze_short>=q0.60; range_expand_72>=q0.55; btc_overheat_short>=q0.75; pos_288>=q0.55; qv_z_72<=q0.50.",
+      "exit_logic": "hold144/stride24 with TP/SL variants.",
+      "dependencies": [
+        "btc_oi_features",
+        "btc_ohlcv_taker_core",
+        "btc_funding_premium_basis"
+      ],
+      "stats": {
+        "tp2_sl1": {
+          "train": {
+            "return_pct": 7.48,
+            "cagr_mdd": 0.16,
+            "trades": 101
+          },
+          "test2024": {
+            "return_pct": 3.53,
+            "cagr_mdd": 0.82,
+            "trades": 26
+          },
+          "eval2025": {
+            "return_pct": 3.86,
+            "cagr_mdd": 0.98,
+            "trades": 23
+          },
+          "ytd2026": {
+            "return_pct": 4.02,
+            "cagr_mdd": 4.08,
+            "trades": 13
+          }
+        }
+      },
+      "evidence": "All periods positive with conservative overlay but returns/ratios too small except 2026; weak diversifier only.",
+      "source_artifacts": [
+        "results/btc_only_standalone_risk_overlay_2026-07-09.json",
+        "docs/btc-only-standalone-risk-overlay-2026-07-09.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "OI asof and train quantiles only.",
+      "next_action": "Do not promote; may seed short-side BTC-only search.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "btc_oi_features",
+          "btc_ohlcv_taker_core",
+          "btc_funding_premium_basis"
+        ],
+        "entry_logic": "btc_oi_squeeze_short>=q0.60; range_expand_72>=q0.55; btc_overheat_short>=q0.75; pos_288>=q0.55; qv_z_72<=q0.50.",
+        "exit_logic": "hold144/stride24 with TP/SL variants.",
+        "side": "short",
+        "script_or_config": "training/search_btc_only_quantile_standalone.py",
+        "reproduce_command": "python -m training.search_btc_only_quantile_standalone && python -m training.evaluate_btc_only_standalone_risk_overlay",
+        "source_artifacts": [
+          "results/btc_only_standalone_risk_overlay_2026-07-09.json",
+          "docs/btc-only-standalone-risk-overlay-2026-07-09.md"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "promotion_guardrails": [
+          "thresholds/gates must be train-derived",
+          "test/eval/2026 must be reported separately",
+          "do not promote leverage-only improvement",
+          "strict MDD must include in-position adverse excursion"
+        ],
+        "live_use_notes": "Do not promote; may seed short-side BTC-only search."
+      }
+    },
+    {
+      "id": "alpha101_standalone_quantile",
+      "name": "Alpha101 standalone quantile candidates",
+      "status": "weak",
+      "family": "alpha101_formulaic",
+      "scope": "btc_only",
+      "side": "both",
+      "description": "Alpha101-style hard quantile gates over BTC-only OHLCV/VWAP/taker primitives.",
+      "entry_logic": "2-5 train-quantile gates such as ret_z, vwap_gap_z, ret_vol_corr, CLV/range position, session.",
+      "exit_logic": "fixed hold and TP/SL overlays tested.",
+      "dependencies": [
+        "alpha101_vpin_primitives",
+        "btc_ohlcv_taker_core"
+      ],
+      "stats": {
+        "note": "Best all-positive candidates below target; train often weak/negative."
+      },
+      "evidence": "After fixing day_gap leakage, no strong standalone Alpha101 alpha remained. Best candidates positive but not live-grade.",
+      "source_artifacts": [
+        "training/search_alpha101_derivative_alphas.py",
+        "training/search_alpha101_quantile_combo.py",
+        "training/search_alpha101_random_quantile_standalone.py",
+        "training/evaluate_alpha101_standalone_risk_overlay.py",
+        "results/alpha101_random_quantile_standalone_2026-07-09.json",
+        "results/alpha101_standalone_risk_overlay_2026-07-09.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Earlier absurd day_gap results invalid; fixed previous daily close handling.",
+      "next_action": "Archive as weak; only revisit with materially new causal operators.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "alpha101_vpin_primitives",
+          "btc_ohlcv_taker_core"
+        ],
+        "entry_logic": "2-5 train-quantile gates such as ret_z, vwap_gap_z, ret_vol_corr, CLV/range position, session.",
+        "exit_logic": "fixed hold and TP/SL overlays tested.",
+        "side": "both",
+        "script_or_config": "training/search_alpha101_random_quantile_standalone.py",
+        "reproduce_command": "python -m training.search_alpha101_random_quantile_standalone && python -m training.evaluate_alpha101_standalone_risk_overlay",
+        "source_artifacts": [
+          "training/search_alpha101_derivative_alphas.py",
+          "training/search_alpha101_quantile_combo.py",
+          "training/search_alpha101_random_quantile_standalone.py",
+          "training/evaluate_alpha101_standalone_risk_overlay.py",
+          "results/alpha101_random_quantile_standalone_2026-07-09.json",
+          "results/alpha101_standalone_risk_overlay_2026-07-09.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "promotion_guardrails": [
+          "thresholds/gates must be train-derived",
+          "test/eval/2026 must be reported separately",
+          "do not promote leverage-only improvement",
+          "strict MDD must include in-position adverse excursion"
+        ],
+        "live_use_notes": "Archive as weak; only revisit with materially new causal operators."
+      }
+    },
+    {
+      "id": "vpin_formulaic_standalone",
+      "name": "VPIN/formulaic standalone",
+      "status": "rejected",
+      "family": "vpin_order_flow_toxicity",
+      "scope": "btc_only",
+      "side": "both",
+      "description": "Bar-level VPIN/order-flow toxicity and formulaic composites used as standalone entries.",
+      "entry_logic": "VPIN/taker/volume toxicity proxy quantile gates.",
+      "exit_logic": "fixed hold",
+      "dependencies": [
+        "alpha101_vpin_primitives"
+      ],
+      "stats": {
+        "note": "No useful standalone candidate."
+      },
+      "evidence": "User correctly judged additive VPIN sleeves/noise as not meaningful; dual-gate context only marginal.",
+      "source_artifacts": [
+        "training/search_vpin_formulaic_alpha.py",
+        "training/search_vpin_dual_gate_signal_pool.py",
+        "results/vpin_formulaic_alpha_scan_2026-07-09.json",
+        "results/vpin_dual_gate_signal_pool_2026-07-09.json",
+        "docs/vpin-formulaic-alpha-scan-2026-07-09.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "No specific leakage found; primary issue is weak/noisy signal.",
+      "next_action": "Do not spend more search budget on VPIN standalone without trade-print volume-bucket data.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "alpha101_vpin_primitives"
+        ],
+        "entry_logic": "VPIN/taker/volume toxicity proxy quantile gates.",
+        "exit_logic": "fixed hold",
+        "side": "both",
+        "script_or_config": "training/search_vpin_formulaic_alpha.py",
+        "reproduce_command": "python -m training.search_vpin_formulaic_alpha",
+        "source_artifacts": [
+          "training/search_vpin_formulaic_alpha.py",
+          "training/search_vpin_dual_gate_signal_pool.py",
+          "results/vpin_formulaic_alpha_scan_2026-07-09.json",
+          "results/vpin_dual_gate_signal_pool_2026-07-09.json",
+          "docs/vpin-formulaic-alpha-scan-2026-07-09.md"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "promotion_guardrails": [
+          "thresholds/gates must be train-derived",
+          "test/eval/2026 must be reported separately",
+          "do not promote leverage-only improvement",
+          "strict MDD must include in-position adverse excursion"
+        ],
+        "live_use_notes": "Do not spend more search budget on VPIN standalone without trade-print volume-bucket data."
+      }
+    },
+    {
+      "id": "wave_standalone",
+      "name": "Wave standalone alpha",
+      "status": "rejected",
+      "family": "wave_structure",
+      "scope": "btc_only",
+      "side": "both",
+      "description": "Wave trading features used as standalone alpha source.",
+      "entry_logic": "Wave structure/momentum/state thresholds and ridge/teacher variants.",
+      "exit_logic": "fixed hold / ATR label variants tested",
+      "dependencies": [
+        "wave_features"
+      ],
+      "stats": {
+        "note": "Mostly failed or too weak."
+      },
+      "evidence": "User assessed as near failure; ATR-aligned dense labels removed apparent fixed-hold edge.",
+      "source_artifacts": [
+        "docs/wave-alpha-search-2026-07-08.md",
+        "docs/wave-prob-dense-atr-label-check-2026-07-01.md",
+        "results/wave_structure_alpha_scan_2026-07-08.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Teacher/label generation must remain causal if reused as context.",
+      "next_action": "Do not treat wave as standalone alpha; use only as context/feature after stronger alpha exists.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "wave_features"
+        ],
+        "entry_logic": "Wave structure/momentum/state thresholds and ridge/teacher variants.",
+        "exit_logic": "fixed hold / ATR label variants tested",
+        "side": "both",
+        "script_or_config": "wave/search scripts",
+        "reproduce_command": "see docs/wave-alpha-search-2026-07-08.md and results/wave_*",
+        "source_artifacts": [
+          "docs/wave-alpha-search-2026-07-08.md",
+          "docs/wave-prob-dense-atr-label-check-2026-07-01.md",
+          "results/wave_structure_alpha_scan_2026-07-08.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "promotion_guardrails": [
+          "thresholds/gates must be train-derived",
+          "test/eval/2026 must be reported separately",
+          "do not promote leverage-only improvement",
+          "strict MDD must include in-position adverse excursion"
+        ],
+        "live_use_notes": "Do not treat wave as standalone alpha; use only as context/feature after stronger alpha exists."
+      }
+    },
+    {
+      "id": "cross_asset_sol_lead_lag",
+      "name": "SOL/alt cross-asset lead-lag",
+      "status": "weak",
+      "family": "cross_asset_rotation",
+      "scope": "btc_target_cross_asset_features",
+      "side": "long",
+      "description": "BTC long entries from SOL/alt relative strength/volume features; trading target remains BTC.",
+      "entry_logic": "Example: SOL qv/relative return high + US session or BTC premium/alt breadth gates.",
+      "exit_logic": "fixed hold and TP overlays tested",
+      "dependencies": [
+        "cross_asset_features"
+      ],
+      "stats": {
+        "note": "Some all-positive candidates, but excluded by user requirement not to change/use other assets."
+      },
+      "evidence": "Clarified: this did not trade SOL; it used SOL/alt data as features for BTC. Still not live-grade and shorter-train-support/high-caution.",
+      "source_artifacts": [
+        "training/search_cross_asset_quantile_standalone.py",
+        "results/cross_asset_quantile_standalone_2026-07-09.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Alt data starts 2023; cross_available guard required. Trading target remains BTC.",
+      "next_action": "Can be included in broad BTC-target feature pool, but compare against BTC-only and macro/kimchi features with contamination notes.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "cross_asset_features"
+        ],
+        "entry_logic": "Example: SOL qv/relative return high + US session or BTC premium/alt breadth gates.",
+        "exit_logic": "fixed hold and TP overlays tested",
+        "side": "long",
+        "script_or_config": "training/search_cross_asset_quantile_standalone.py",
+        "reproduce_command": "python -m training.search_cross_asset_quantile_standalone",
+        "source_artifacts": [
+          "training/search_cross_asset_quantile_standalone.py",
+          "results/cross_asset_quantile_standalone_2026-07-09.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "promotion_guardrails": [
+          "thresholds/gates must be train-derived",
+          "test/eval/2026 must be reported separately",
+          "do not promote leverage-only improvement",
+          "strict MDD must include in-position adverse excursion"
+        ],
+        "live_use_notes": "Can be included in broad BTC-target feature pool, but compare against BTC-only and macro/kimchi features with contamination notes."
+      }
+    },
+    {
+      "id": "oi_vpin_sell_toxic_reversal_gate",
+      "name": "OI setup + VPIN sell-toxic reversal gate",
+      "status": "weak",
+      "family": "post_rex_feature_alphaization",
+      "scope": "btc_derivatives",
+      "side": "long",
+      "description": "OI high-frequency/setup entry filtered by high sell-toxicity VPIN context; interprets sell-toxic flow as reboundable/liquidity-taking reversal context rather than standalone VPIN alpha.",
+      "entry_logic": "Base oi_raw entry from existing OI selector; allow only when ctx_vpin_sell_toxic >= train q0.80 (1.8343).",
+      "exit_logic": "fixed 72 bars in the current top coarse candidate; dynamic vpin_sell_toxic_exit variant also tested but lower 2024 ratio.",
+      "dependencies": [
+        "btc_oi_features",
+        "post_rex_alphaization_feature_set_20260710"
+      ],
+      "stats": {
+        "train": {
+          "return_pct": 11.33,
+          "cagr_pct": 3.27,
+          "strict_mdd_pct": 34.69,
+          "cagr_mdd": 0.09,
+          "trades": 238,
+          "win_rate": 0.54,
+          "sharpe_like": 0.27
+        },
+        "test2024": {
+          "return_pct": 18.87,
+          "cagr_pct": 18.83,
+          "strict_mdd_pct": 10.35,
+          "cagr_mdd": 1.82,
+          "trades": 34,
+          "win_rate": 0.59,
+          "sharpe_like": 1.91
+        },
+        "eval2025": {
+          "return_pct": 13.19,
+          "cagr_pct": 13.2,
+          "strict_mdd_pct": 5.52,
+          "cagr_mdd": 2.39,
+          "trades": 25,
+          "win_rate": 0.6,
+          "sharpe_like": 1.27
+        },
+        "ytd2026": {
+          "return_pct": 5.51,
+          "cagr_pct": 13.66,
+          "strict_mdd_pct": 2.7,
+          "cagr_mdd": 5.07,
+          "trades": 13,
+          "win_rate": 0.46,
+          "sharpe_like": 1.69
+        }
+      },
+      "evidence": "Below the new alpha_pool threshold: test2024 CAGR/MDD is 1.82 (<2.5), although eval2025 is 2.39 and ytd2026 is 5.07. Keep as feature/selector evidence, not alpha-pool candidate.",
+      "source_artifacts": [
+        "training/search_post_rex_feature_alphaization_fast.py",
+        "results/post_rex_feature_alphaization_fast_2026-07-10.json",
+        "docs/post-rex-feature-alphaization-fast-2026-07-10.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Gate threshold is train-derived; candidate selected after inspecting OOS rows, so use as research candidate only.",
+      "next_action": "Do not count as alpha_pool candidate until a feature/gate/exit combination clears test2024 CAGR/MDD >=2.5; use as selector feature in future scans.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "btc_oi_features",
+          "post_rex_alphaization_feature_set_20260710"
+        ],
+        "entry_logic": "oi_raw existing setup AND ctx_vpin_sell_toxic >= train q0.80=1.8343429287726627",
+        "exit_logic": "fixed_72 bars; compare against vpin_sell_toxic_exit and vwap_overheat variants",
+        "side": "long",
+        "script_or_config": "training/search_post_rex_feature_alphaization_fast.py",
+        "reproduce_command": "python -m training.search_post_rex_feature_alphaization_fast",
+        "source_artifacts": [
+          "training/search_post_rex_feature_alphaization_fast.py",
+          "results/post_rex_feature_alphaization_fast_2026-07-10.json",
+          "docs/post-rex-feature-alphaization-fast-2026-07-10.md"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "promotion_guardrails": [
+          "alpha_pool requires test2024 CAGR/strict_MDD >= 2.5 after feature/gate combination",
+          "live-grade standalone requires CAGR/strict_MDD >= 3.0",
+          "must improve portfolio after 6bp cost versus live_gross575_e39_reference",
+          "must be frozen before new forward data",
+          "do not treat 2024/2025/2026 ranking as clean OOS"
+        ],
+        "live_use_notes": "Candidate selector/gate, not live-ready standalone alpha."
+      }
+    },
+    {
+      "id": "alpha101_oi_vwap_washout_gate",
+      "name": "Alpha101 VWAP-washout gate on OI setup",
+      "status": "weak",
+      "family": "post_rex_feature_alphaization",
+      "scope": "btc_derivatives",
+      "side": "long",
+      "description": "Alpha101-derived VWAP/CLV washout context used as an allow gate on OI/alt-ratio setup entries.",
+      "entry_logic": "OI alt-ratio/setup entry plus ctx_a101_vwap_washout >= train q0.70.",
+      "exit_logic": "vwap_overheat dynamic exit in the best coarse row.",
+      "dependencies": [
+        "btc_oi_features",
+        "alpha101_vpin_primitives",
+        "post_rex_alphaization_feature_set_20260710"
+      ],
+      "stats": {
+        "note": "All-period positive but ratios too low: representative oi_alt_ratio72+a101_vwap_washout+vwap_overheat had 2024 ratio 1.06, 2025 0.62, 2026 1.96."
+      },
+      "evidence": "Below alpha_pool threshold; representative test2024 ratio about 1.06 and eval2025 about 0.62. Keep only as weak selector-feature evidence.",
+      "source_artifacts": [
+        "training/search_post_rex_feature_alphaization_fast.py",
+        "results/post_rex_feature_alphaization_fast_2026-07-10.json",
+        "docs/post-rex-feature-alphaization-fast-2026-07-10.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Train quantile gate, but OOS-ranked discovery.",
+      "next_action": "Do not count as alpha_pool candidate; use as weak feature/gate only unless a new combo clears test2024 CAGR/MDD >=2.5.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "alpha101_vpin_primitives",
+          "post_rex_alphaization_feature_set_20260710"
+        ],
+        "entry_logic": "existing OI setup AND ctx_a101_vwap_washout >= train q0.70=0.6125954185638721",
+        "exit_logic": "vwap_overheat dynamic exit",
+        "side": "long",
+        "script_or_config": "training/search_post_rex_feature_alphaization_fast.py",
+        "reproduce_command": "python -m training.search_post_rex_feature_alphaization_fast",
+        "source_artifacts": [
+          "training/search_post_rex_feature_alphaization_fast.py",
+          "results/post_rex_feature_alphaization_fast_2026-07-10.json",
+          "docs/post-rex-feature-alphaization-fast-2026-07-10.md"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "promotion_guardrails": [
+          "alpha_pool requires test2024 CAGR/strict_MDD >= 2.5 after feature/gate combination",
+          "live-grade standalone requires CAGR/strict_MDD >= 3.0",
+          "feature only unless portfolio marginal contribution is positive and stable"
+        ],
+        "live_use_notes": "Weak selector feature, not live alpha."
+      }
+    },
+    {
+      "id": "pb30_activity_returnz_htf1w_addon",
+      "name": "PB30 activity + return_zscore + HTF 1w addon",
+      "status": "candidate",
+      "family": "bullish_regime_pullback_activity",
+      "scope": "btc_derivatives",
+      "side": "long",
+      "description": "PB30-adjacent addon module discovered after pb30 base; uses activity_flow_htf, return_zscore_48 and htf_1w_range_pos to add shorter 6h long entries.",
+      "entry_logic": "rex_8640_max_to_cur_pct >= train q0.70, activity_flow_htf >= train q0.40, return_zscore_48 <= train q0.20, htf_1w_range_pos <= train q0.20.",
+      "exit_logic": "fixed hold 72 5m bars; stride 6; entry delay 1.",
+      "dependencies": [
+        "pb30_activity_flow_htf",
+        "btc_funding_premium_basis",
+        "btc_ohlcv_taker_core"
+      ],
+      "stats": {
+        "test_2024": {
+          "cagr_pct": 141.7862,
+          "strict_mdd_pct": 12.6248,
+          "cagr_to_strict_mdd": 11.2308,
+          "trades": 47
+        },
+        "eval_2025": {
+          "cagr_pct": 85.5609,
+          "strict_mdd_pct": 14.0556,
+          "cagr_to_strict_mdd": 6.0873,
+          "trades": 34
+        },
+        "ytd_2026": {
+          "cagr_pct": 48.659,
+          "strict_mdd_pct": 28.2049,
+          "cagr_to_strict_mdd": 1.7252,
+          "trades": 32
+        }
+      },
+      "evidence": "2024/2025 pass strongly as PB30 addon, but 2026 YTD MDD/risk ratio weak; config explicitly disables live orders for paper/dry-run first.",
+      "source_artifacts": [
+        "configs/live/bullish_pb30_addon_returnz_htf1w_candidate.json",
+        "results/pb30_live_addon_fast_scan_5m_2026-07-05.json",
+        "results/pb30_live_addon_top_exact_verify_2026-07-05.json",
+        "docs/bullish-long-alpha-target5-2026-07-05.md",
+        "research/pools/history_inventory.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Thresholds are train<2024 quantiles; 2026 weakness must not be optimized away using ytd2026.",
+      "next_action": "Keep as candidate/paper sleeve; re-evaluate under 6bp/side portfolio protocol before live promotion.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "pb30_activity_flow_htf",
+          "btc_funding_premium_basis",
+          "btc_ohlcv_taker_core"
+        ],
+        "entry_logic": "see entry_logic; all thresholds fit on train<2024",
+        "exit_logic": "fixed hold 72 5m bars",
+        "side": "long",
+        "script_or_config": "configs/live/bullish_pb30_addon_returnz_htf1w_candidate.json",
+        "reproduce_command": "Re-run pb30 live addon scan/exact verify artifacts listed in source_artifacts; preserve train<2024 threshold fitting.",
+        "source_artifacts": [
+          "configs/live/bullish_pb30_addon_returnz_htf1w_candidate.json",
+          "results/pb30_live_addon_fast_scan_5m_2026-07-05.json",
+          "results/pb30_live_addon_top_exact_verify_2026-07-05.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "artifact-specific; recent portfolio default 6bp/side, 2026-07-05 config uses about 5bp/side unless rechecked",
+          "mdd": "strict MDD includes in-position adverse excursion and split-end forced close"
+        },
+        "promotion_guardrails": [
+          "Do not promote leverage-only improvement",
+          "Report 2026 separately",
+          "Use strict MDD with forced close"
+        ],
+        "live_use_notes": "Paper/dry-run first due to weak 2026 YTD ratio."
+      }
+    },
+    {
+      "id": "oi_divergence_pullback_range_rsi_h96_s6",
+      "name": "OI divergence pullback range/RSI h96",
+      "status": "candidate",
+      "family": "oi_positioning",
+      "scope": "btc_derivatives",
+      "side": "long",
+      "description": "Lower-frequency OI divergence pullback long: OI rises versus price during volatile pullback with RSI not strong.",
+      "entry_logic": "oi_minus_px_4h_z >= q0.80, return_zscore_48 <= q0.20, range_vol >= q0.70, rsi_norm <= q0.40; train<2024 thresholds.",
+      "exit_logic": "fixed hold 96 5m bars; stride 6; entry delay 1.",
+      "dependencies": [
+        "btc_oi_features",
+        "btc_ohlcv_taker_core"
+      ],
+      "stats": {
+        "train_pre2024": {
+          "cagr_pct": 11.2633,
+          "strict_mdd_pct": 44.286,
+          "cagr_to_strict_mdd": 0.2543,
+          "trades": 313
+        },
+        "test_2024": {
+          "cagr_pct": 52.4066,
+          "strict_mdd_pct": 6.3386,
+          "cagr_to_strict_mdd": 8.2679,
+          "trades": 64
+        },
+        "eval_2025": {
+          "cagr_pct": 36.6281,
+          "strict_mdd_pct": 5.4581,
+          "cagr_to_strict_mdd": 6.7108,
+          "trades": 40
+        },
+        "ytd_2026": {
+          "cagr_pct": 1.4976,
+          "strict_mdd_pct": 9.6498,
+          "cagr_to_strict_mdd": 0.1552,
+          "trades": 17
+        }
+      },
+      "evidence": "2024/2025 standalone pass with test/eval ratio >5, but train weak and 2026 collapsed; paper candidate only.",
+      "source_artifacts": [
+        "configs/live/oi_divergence_pullback_range_rsi_h96_s6_candidate.json",
+        "results/oi_divergence_refine_scan_2026-07-05.json",
+        "results/oi_divergence_candidate_exact_verify_2026-07-05.json",
+        "results/oi_custom_alpha_scan_2026-07-05.json",
+        "docs/bullish-long-alpha-target5-2026-07-05.md",
+        "research/pools/history_inventory.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Requires causal OI asof merge; do not tune to 2026 collapse.",
+      "next_action": "Keep as candidate but not live; use as portfolio sleeve only if 2026 risk is handled by predeclared selector.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "btc_oi_features",
+          "btc_ohlcv_taker_core"
+        ],
+        "entry_logic": "see entry_logic; train<2024 quantiles",
+        "exit_logic": "fixed hold 96 5m bars",
+        "side": "long",
+        "script_or_config": "configs/live/oi_divergence_pullback_range_rsi_h96_s6_candidate.json",
+        "reproduce_command": "Use listed OI divergence scan/exact verify artifacts with causal open_interest_binance 5m data.",
+        "source_artifacts": [
+          "configs/live/oi_divergence_pullback_range_rsi_h96_s6_candidate.json",
+          "results/oi_divergence_candidate_exact_verify_2026-07-05.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "artifact-specific; recent portfolio default 6bp/side, 2026-07-05 config uses about 5bp/side unless rechecked",
+          "mdd": "strict MDD includes in-position adverse excursion and split-end forced close"
+        },
+        "promotion_guardrails": [
+          "Causal OI merge",
+          "No 2026-derived filters",
+          "Strict MDD/forced close"
+        ],
+        "live_use_notes": "Paper candidate; 2026 collapse blocks live-grade promotion."
+      }
+    },
+    {
+      "id": "oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay",
+      "name": "OI divergence high-frequency LLM selector overlay",
+      "status": "weak",
+      "family": "llm_selector_overlay",
+      "scope": "llm_selector",
+      "side": "long",
+      "description": "ALLOW/BLOCK selector overlay for OI divergence high-frequency long alpha; selector cannot create entries or alter exits/sizing.",
+      "entry_logic": "Base OI high-frequency signal from oi_high_sel; overlay blocks train-bad compact contexts only.",
+      "exit_logic": "inherits base fixed hold 30 5m bars; selector does not modify exit.",
+      "dependencies": [
+        "oi_high_sel",
+        "btc_oi_features",
+        "btc_ohlcv_taker_core"
+      ],
+      "stats": {
+        "with_selector_proxy": {
+          "test_2024": {
+            "cagr_pct": 59.8869,
+            "strict_mdd_pct": 10.7074,
+            "cagr_to_strict_mdd": 5.593,
+            "trades": 190
+          },
+          "eval_2025": {
+            "cagr_pct": 32.9728,
+            "strict_mdd_pct": 5.9104,
+            "cagr_to_strict_mdd": 5.5788,
+            "trades": 118
+          },
+          "ytd_2026": {
+            "cagr_pct": -2.1082,
+            "strict_mdd_pct": 6.8246,
+            "cagr_to_strict_mdd": -0.3089,
+            "trades": 41
+          }
+        }
+      },
+      "evidence": "Symbolic proxy preserves 2024/2025 but does not fix 2026; not a standalone alpha and not a real LLM backtest yet.",
+      "source_artifacts": [
+        "configs/live/oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay.json",
+        "results/oi_llm_selector_eval_2026-07-06.json",
+        "results/oi_llm_selector_cards_2026-07-06.jsonl",
+        "training/evaluate_oi_llm_selector.py",
+        "research/pools/history_inventory.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Overlay is train-derived symbolic proxy; live LLM ALLOW/BLOCK must be audited before use.",
+      "next_action": "Keep as beta selector evidence; do not count as separate alpha until real LLM selector proves incremental OOS contribution.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "oi_high_sel",
+          "btc_oi_features"
+        ],
+        "entry_logic": "ALLOW/BLOCK overlay on base signal only",
+        "exit_logic": "inherits base exit",
+        "side": "long",
+        "script_or_config": "training/evaluate_oi_llm_selector.py",
+        "reproduce_command": "python -m training.evaluate_oi_llm_selector",
+        "source_artifacts": [
+          "configs/live/oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay.json",
+          "results/oi_llm_selector_eval_2026-07-06.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "artifact-specific; recent portfolio default 6bp/side, 2026-07-05 config uses about 5bp/side unless rechecked",
+          "mdd": "strict MDD includes in-position adverse excursion and split-end forced close"
+        },
+        "promotion_guardrails": [
+          "Real LLM backtest required",
+          "No new entries from selector",
+          "No TP/SL/leverage changes"
+        ],
+        "live_use_notes": "Selector contract only; not standalone alpha."
+      }
+    },
+    {
+      "id": "short_kimchi3d",
+      "name": "Short kimchi 3d sleeve",
+      "status": "weak",
+      "family": "kimchi_dxy_macro_short",
+      "scope": "btc_target_external_features",
+      "side": "short",
+      "description": "Short-only kimchi/3d return sleeve candidate from no-LLM short search; zero weight in current mix at creation.",
+      "entry_logic": "htf_3d_return_1 <= q0.20 and kimchi_premium_change <= q0.10.",
+      "exit_logic": "fixed hold 144 5m bars; stride 12.",
+      "dependencies": [
+        "external_macro_kimchi_fx_features",
+        "btc_ohlcv_taker_core"
+      ],
+      "stats": {
+        "note": "Metrics referenced by short_base_alpha_scan_fast2_2026-07-08 top[1]; not promoted because current live mix assigned zero weight."
+      },
+      "evidence": "Appears as short sleeve candidate but zero-weight in current requested live mix; keep as weak/beta short-side evidence.",
+      "source_artifacts": [
+        "configs/live/short_kimchi3d_candidate.json",
+        "results/short_base_alpha_scan_fast2_2026-07-08.json",
+        "research/pools/history_inventory.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Kimchi/FX freshness and causal join required; do not infer gamma from zero weight alone.",
+      "next_action": "Retain as beta short candidate; only promote if test/eval split stats are recovered and pass thresholds.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "external_macro_kimchi_fx_features",
+          "btc_ohlcv_taker_core"
+        ],
+        "entry_logic": "htf_3d_return_1 <= q0.20 and kimchi_premium_change <= q0.10",
+        "exit_logic": "fixed hold 144 bars",
+        "side": "short",
+        "script_or_config": "configs/live/short_kimchi3d_candidate.json",
+        "reproduce_command": "Inspect results/short_base_alpha_scan_fast2_2026-07-08.json#top[1] and rerun short base alpha scan if needed.",
+        "source_artifacts": [
+          "configs/live/short_kimchi3d_candidate.json",
+          "results/short_base_alpha_scan_fast2_2026-07-08.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "artifact-specific; recent portfolio default 6bp/side, 2026-07-05 config uses about 5bp/side unless rechecked",
+          "mdd": "strict MDD includes in-position adverse excursion and split-end forced close"
+        },
+        "promotion_guardrails": [
+          "Recover exact split stats",
+          "Causal Kimchi source freshness",
+          "No eval/2026-picked reweighting"
+        ],
+        "live_use_notes": "Zero weight in current mix at creation."
+      }
+    },
+    {
+      "id": "short_premium_panic",
+      "name": "Short premium panic sleeve",
+      "status": "candidate",
+      "family": "funding_premium_basis_short",
+      "scope": "btc_derivatives",
+      "side": "short",
+      "description": "Short-only premium panic sleeve from no-LLM short search.",
+      "entry_logic": "htf_1d_return_4 <= q0.10 and premium_index_zscore <= q0.10.",
+      "exit_logic": "fixed hold 144 5m bars; stride 12; TP refinements researched separately but portfolio artifact assumes fixed hold/no TP.",
+      "dependencies": [
+        "btc_funding_premium_basis",
+        "btc_ohlcv_taker_core"
+      ],
+      "stats": {
+        "note": "Metrics referenced by short_base_alpha_scan_fast2_2026-07-08 top[5]; used as candidate/source artifact in no-LLM short search."
+      },
+      "evidence": "Live-candidate config exists as short diversifier; exact split stats should be re-materialized before promotion beyond candidate.",
+      "source_artifacts": [
+        "configs/live/short_premium_panic_candidate.json",
+        "results/short_base_alpha_scan_fast2_2026-07-08.json",
+        "research/pools/history_inventory.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Premium data must be causal/asof; fixed-hold/no-TP assumption differs from TP refine note.",
+      "next_action": "Keep as candidate short sleeve and recover exact train/test/eval/ytd stats into pool before further live sizing.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "btc_funding_premium_basis",
+          "btc_ohlcv_taker_core"
+        ],
+        "entry_logic": "htf_1d_return_4 <= q0.10 and premium_index_zscore <= q0.10",
+        "exit_logic": "fixed hold 144 bars; no TP in portfolio artifact",
+        "side": "short",
+        "script_or_config": "configs/live/short_premium_panic_candidate.json",
+        "reproduce_command": "Inspect results/short_base_alpha_scan_fast2_2026-07-08.json#top[5] and rerun short base alpha scan if needed.",
+        "source_artifacts": [
+          "configs/live/short_premium_panic_candidate.json",
+          "results/short_base_alpha_scan_fast2_2026-07-08.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "artifact-specific; recent portfolio default 6bp/side, 2026-07-05 config uses about 5bp/side unless rechecked",
+          "mdd": "strict MDD includes in-position adverse excursion and split-end forced close"
+        },
+        "promotion_guardrails": [
+          "Recover exact split stats",
+          "Causal premium data",
+          "Keep TP variant separate if used"
+        ],
+        "live_use_notes": "Candidate/source artifact for no-LLM short search."
+      }
+    }
+  ]
+}

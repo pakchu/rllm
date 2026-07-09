@@ -1,0 +1,546 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-07-10",
+  "protocol": {
+    "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+    "cost_default": "6bp/side",
+    "weight_constraints_current": "nonzero weights >=0.10, multiples of 0.05; leverage/gross can be high but MDD constraints dominate",
+    "strict_mdd": "weighted intrabar adverse move and period-contained exits",
+    "trading_target_asset": "BTC portfolio sleeves unless an entry explicitly says otherwise; external features do not change target asset."
+  },
+  "entries": [
+    {
+      "id": "live_gross575_e39_reference",
+      "name": "Current live/reference gross 5.75 combo from e39d8e66",
+      "status": "live",
+      "family": "multi_sleeve_reference",
+      "scope": "portfolio",
+      "description": "User stated current live uses gross/weight sum 5.75. This is the pre-wave reference to compare against.",
+      "gross": 5.75,
+      "weights": {
+        "note": "Exact e39d8e66 combo should be read from commit/artifact when needed; do not overwrite with wave/VPIN variants."
+      },
+      "component_alphas": [
+        "nonpb30_taker",
+        "rex_rule",
+        "oi_high_sel",
+        "bear_rex_short"
+      ],
+      "constraints": [
+        "6bp/side",
+        "MDD target historically <=20",
+        "weights min 0.10 step 0.05 in later scans"
+      ],
+      "stats": {
+        "note": "Reference live combo; compare all new portfolios against this, not only latest wave scans."
+      },
+      "evidence": "User corrected that live is the 6x/gross 5.75 combo and requested comparisons to e39d8e66.",
+      "source_artifacts": [
+        "docs/portfolio-gross20-step005-cost6bp-mdd20-with-dynamic-2026-07-08.md",
+        "results/portfolio_gross20_step005_cost6bp_mdd20_with_dynamic_2026-07-08.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Treat later scans using 2026 metrics as diagnostic unless candidate was frozen before 2026 inspection.",
+      "next_action": "Always include this as baseline in portfolio comparisons.",
+      "construction_recipe": {
+        "component_alphas": [
+          "nonpb30_taker",
+          "rex_rule",
+          "oi_high_sel",
+          "bear_rex_short"
+        ],
+        "weights": {
+          "note": "Exact e39d8e66 combo should be read from commit/artifact when needed; do not overwrite with wave/VPIN variants."
+        },
+        "gross": 5.75,
+        "constraints": [
+          "6bp/side",
+          "MDD target historically <=20",
+          "weights min 0.10 step 0.05 in later scans"
+        ],
+        "reproduce_command": "python -m training.search_portfolio_gross20_step005_mdd20_with_dynamic",
+        "source_artifacts": [
+          "docs/portfolio-gross20-step005-cost6bp-mdd20-with-dynamic-2026-07-08.md",
+          "results/portfolio_gross20_step005_cost6bp_mdd20_with_dynamic_2026-07-08.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "contamination_warning": "Treat later scans using 2026 metrics as diagnostic unless candidate was frozen before 2026 inspection.",
+        "baseline_required": "Compare against live_gross575_e39_reference unless entry itself is that reference."
+      }
+    },
+    {
+      "id": "gross580_dynamic_best",
+      "name": "Gross 5.80 dynamic-exit best candidate",
+      "status": "candidate",
+      "family": "multi_sleeve_dynamic_exit",
+      "scope": "portfolio",
+      "description": "Best later scan under gross<=20, MDD<=20, weight step constraints; not necessarily replacing live 5.75.",
+      "gross": 5.8,
+      "weights": {
+        "nonpb30_taker": 1.05,
+        "rex_rule": 1.4,
+        "oi_high_sel": 1.35,
+        "bear_rex_short": 1.0,
+        "oi_alt_ratio72_dyn_exit": 1.0
+      },
+      "component_alphas": [
+        "nonpb30_taker",
+        "rex_rule",
+        "oi_high_sel",
+        "bear_rex_short",
+        "oi_alt_ratio72_dynamic_exit"
+      ],
+      "constraints": [
+        "6bp/side",
+        "test/eval/ytd2026 MDD <=20",
+        "CAGR/MDD >=5 target in scan",
+        "nonzero weights >=0.10 step 0.05"
+      ],
+      "stats": {
+        "test2024": {
+          "return_pct": 314.21,
+          "cagr_pct": 313.0,
+          "strict_mdd_pct": 19.87,
+          "cagr_mdd": 15.75,
+          "trades": 405
+        },
+        "eval2025": {
+          "return_pct": 293.61,
+          "cagr_pct": 293.98,
+          "strict_mdd_pct": 14.48,
+          "cagr_mdd": 20.3,
+          "trades": 266
+        },
+        "ytd2026": {
+          "return_pct": 39.15,
+          "cagr_pct": 120.04,
+          "strict_mdd_pct": 18.15,
+          "cagr_mdd": 6.61,
+          "trades": 128
+        }
+      },
+      "evidence": "Rank 6 in gross20 scan; clears MDD and ratio constraints but selected after extensive OOS inspection, so needs contamination caution.",
+      "source_artifacts": [
+        "docs/portfolio-gross20-step005-cost6bp-mdd20-with-dynamic-2026-07-08.md",
+        "results/portfolio_gross20_step005_cost6bp_mdd20_with_dynamic_2026-07-08.json"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Portfolio weights were optimized with 2026 visible; use as research candidate, not clean OOS proof.",
+      "next_action": "If considered for live, freeze weights then validate on newly arriving data only.",
+      "construction_recipe": {
+        "component_alphas": [
+          "nonpb30_taker",
+          "rex_rule",
+          "oi_high_sel",
+          "bear_rex_short",
+          "oi_alt_ratio72_dynamic_exit"
+        ],
+        "weights": {
+          "nonpb30_taker": 1.05,
+          "rex_rule": 1.4,
+          "oi_high_sel": 1.35,
+          "bear_rex_short": 1.0,
+          "oi_alt_ratio72_dyn_exit": 1.0
+        },
+        "gross": 5.8,
+        "constraints": [
+          "6bp/side",
+          "test/eval/ytd2026 MDD <=20",
+          "CAGR/MDD >=5 target in scan",
+          "nonzero weights >=0.10 step 0.05"
+        ],
+        "reproduce_command": "python -m training.search_portfolio_gross20_step005_mdd20_with_dynamic",
+        "source_artifacts": [
+          "docs/portfolio-gross20-step005-cost6bp-mdd20-with-dynamic-2026-07-08.md",
+          "results/portfolio_gross20_step005_cost6bp_mdd20_with_dynamic_2026-07-08.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "contamination_warning": "Portfolio weights were optimized with 2026 visible; use as research candidate, not clean OOS proof.",
+        "baseline_required": "Compare against live_gross575_e39_reference unless entry itself is that reference."
+      }
+    },
+    {
+      "id": "gross515_dynamic_alt",
+      "name": "Gross 5.15 dynamic-exit alternative",
+      "status": "candidate",
+      "family": "multi_sleeve_dynamic_exit",
+      "scope": "portfolio",
+      "description": "Lower gross alternative from same scan with strong test/eval and 2026 ratio just above 5.",
+      "gross": 5.15,
+      "weights": {
+        "nonpb30_taker": 1.6,
+        "rex_rule": 1.5,
+        "oi_high_sel": 1.3,
+        "bear_rex_short": 0.1,
+        "oi_alt_ratio72_dyn_exit": 0.65
+      },
+      "component_alphas": [
+        "nonpb30_taker",
+        "rex_rule",
+        "oi_high_sel",
+        "bear_rex_short",
+        "oi_alt_ratio72_dynamic_exit"
+      ],
+      "constraints": [
+        "6bp/side",
+        "MDD <=20",
+        "weights min 0.10 step 0.05"
+      ],
+      "stats": {
+        "test2024": {
+          "return_pct": 345.37,
+          "cagr_pct": 344.01,
+          "strict_mdd_pct": 18.31,
+          "cagr_mdd": 18.79,
+          "trades": 405
+        },
+        "eval2025": {
+          "return_pct": 245.75,
+          "cagr_pct": 246.04,
+          "strict_mdd_pct": 11.42,
+          "cagr_mdd": 21.55,
+          "trades": 266
+        },
+        "ytd2026": {
+          "return_pct": 33.72,
+          "cagr_pct": 100.1,
+          "strict_mdd_pct": 19.59,
+          "cagr_mdd": 5.11,
+          "trades": 128
+        }
+      },
+      "evidence": "Good return with slightly lower gross; 2026 ratio barely over target.",
+      "source_artifacts": [
+        "docs/portfolio-gross20-step005-cost6bp-mdd20-with-dynamic-2026-07-08.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Same OOS-visible optimization caveat as gross580_dynamic_best.",
+      "next_action": "Keep as alternative; compare on forward data after freeze.",
+      "construction_recipe": {
+        "component_alphas": [
+          "nonpb30_taker",
+          "rex_rule",
+          "oi_high_sel",
+          "bear_rex_short",
+          "oi_alt_ratio72_dynamic_exit"
+        ],
+        "weights": {
+          "nonpb30_taker": 1.6,
+          "rex_rule": 1.5,
+          "oi_high_sel": 1.3,
+          "bear_rex_short": 0.1,
+          "oi_alt_ratio72_dyn_exit": 0.65
+        },
+        "gross": 5.15,
+        "constraints": [
+          "6bp/side",
+          "MDD <=20",
+          "weights min 0.10 step 0.05"
+        ],
+        "reproduce_command": "python -m training.search_portfolio_gross20_step005_mdd20_with_dynamic",
+        "source_artifacts": [
+          "docs/portfolio-gross20-step005-cost6bp-mdd20-with-dynamic-2026-07-08.md"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "contamination_warning": "Same OOS-visible optimization caveat as gross580_dynamic_best.",
+        "baseline_required": "Compare against live_gross575_e39_reference unless entry itself is that reference."
+      }
+    },
+    {
+      "id": "robust_gross2_no_pb30",
+      "name": "Robust gross 2 no-pb30 bull/bear/OI/REX portfolio",
+      "status": "candidate",
+      "family": "robust_diversified",
+      "scope": "portfolio",
+      "description": "Lower leverage robust portfolio deliberately excluding pb30; uses independent long/OI/bearish REX sleeves.",
+      "gross": 2.0,
+      "weights": {
+        "nonpb30_taker": 0.5,
+        "oi_high_sel": 0.5,
+        "bear_rex_short": 1.0
+      },
+      "component_alphas": [
+        "nonpb30_taker",
+        "oi_high_sel",
+        "bear_rex_short"
+      ],
+      "constraints": [
+        "approximately 2x",
+        "2025 MDD target <=10 considered",
+        "robustness over explosiveness"
+      ],
+      "stats": {
+        "summary_from_doc": "2025 CAGR/MDD around 5.53, MDD 16.67? Doc row also notes 2026 MDD 6.10; re-open source before trading."
+      },
+      "evidence": "Prior conclusion: less explosive than pb30-heavy mixes but better 2026 risk behavior.",
+      "source_artifacts": [
+        "docs/bullish-long-alpha-target5-2026-07-05.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Source doc row should be re-parsed before exact reporting; use as conceptual robust baseline.",
+      "next_action": "Keep as conservative benchmark and selector-training base.",
+      "construction_recipe": {
+        "component_alphas": [
+          "nonpb30_taker",
+          "oi_high_sel",
+          "bear_rex_short"
+        ],
+        "weights": {
+          "nonpb30_taker": 0.5,
+          "oi_high_sel": 0.5,
+          "bear_rex_short": 1.0
+        },
+        "gross": 2.0,
+        "constraints": [
+          "approximately 2x",
+          "2025 MDD target <=10 considered",
+          "robustness over explosiveness"
+        ],
+        "reproduce_command": "see source_artifacts; exact historical scan command may need source doc replay",
+        "source_artifacts": [
+          "docs/bullish-long-alpha-target5-2026-07-05.md"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "contamination_warning": "Source doc row should be re-parsed before exact reporting; use as conceptual robust baseline.",
+        "baseline_required": "Compare against live_gross575_e39_reference unless entry itself is that reference."
+      }
+    },
+    {
+      "id": "robust_gross2_with_selector",
+      "name": "Robust gross 2 + portfolio selector overlay",
+      "status": "candidate",
+      "family": "portfolio_selector",
+      "scope": "portfolio_llm_selector",
+      "description": "Same robust diversified portfolio with an additional selector overlay.",
+      "gross": 2.0,
+      "weights": {
+        "base": "robust_gross2_no_pb30",
+        "selector": "portfolio selector overlay"
+      },
+      "component_alphas": [
+        "nonpb30_taker",
+        "oi_high_sel",
+        "bear_rex_short"
+      ],
+      "constraints": [
+        "selector should reduce MDD without eval leakage"
+      ],
+      "stats": {
+        "summary_from_doc": "Doc mentions robust + selector around 5.36 ratio and 15.31 MDD in 2025; exact fields require source check."
+      },
+      "evidence": "Interesting but LLM/selector can overfit if trained/selected using eval.",
+      "source_artifacts": [
+        "docs/bullish-long-alpha-target5-2026-07-05.md",
+        "training/evaluate_portfolio_llm_selector.py"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Selector must be trained/thresholded without eval/2026 inspection.",
+      "next_action": "Use only with frozen protocol and forward validation.",
+      "construction_recipe": {
+        "component_alphas": [
+          "nonpb30_taker",
+          "oi_high_sel",
+          "bear_rex_short"
+        ],
+        "weights": {
+          "base": "robust_gross2_no_pb30",
+          "selector": "portfolio selector overlay"
+        },
+        "gross": 2.0,
+        "constraints": [
+          "selector should reduce MDD without eval leakage"
+        ],
+        "reproduce_command": "see source_artifacts; exact historical scan command may need source doc replay",
+        "source_artifacts": [
+          "docs/bullish-long-alpha-target5-2026-07-05.md",
+          "training/evaluate_portfolio_llm_selector.py"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "contamination_warning": "Selector must be trained/thresholded without eval/2026 inspection.",
+        "baseline_required": "Compare against live_gross575_e39_reference unless entry itself is that reference."
+      }
+    },
+    {
+      "id": "vpin_augmented_portfolio",
+      "name": "VPIN augmented portfolio scan",
+      "status": "rejected",
+      "family": "portfolio_noise_addon",
+      "scope": "portfolio",
+      "description": "Existing signal pool plus small VPIN/formulaic sleeves.",
+      "gross": 5.75,
+      "weights": {
+        "example": {
+          "nonpb30_taker": 0.6,
+          "oi_raw": 0.5,
+          "rex_rule": 1.8,
+          "oi_upbit_ratio288_low": 2.05,
+          "bear_rex_short": 0.25,
+          "oi_alt_ratio72_dyn_exit": 0.3,
+          "vpin_buy_pressure_short_h144_s12": 0.25
+        }
+      },
+      "component_alphas": [
+        "nonpb30_taker",
+        "rex_rule",
+        "oi_upbit_ratio288_low",
+        "bear_rex_short",
+        "oi_alt_ratio72_dynamic_exit",
+        "vpin_formulaic_standalone"
+      ],
+      "constraints": [
+        "diagnostic only"
+      ],
+      "stats": {
+        "test2024": {
+          "return_pct": 302.1,
+          "cagr_pct": 300.95,
+          "strict_mdd_pct": 19.57,
+          "cagr_mdd": 15.38,
+          "trades": 614
+        },
+        "eval2025": {
+          "return_pct": 300.48,
+          "cagr_pct": 300.86,
+          "strict_mdd_pct": 11.87,
+          "cagr_mdd": 25.36,
+          "trades": 428
+        },
+        "ytd2026": {
+          "return_pct": 27.19,
+          "cagr_pct": 77.55,
+          "strict_mdd_pct": 15.2,
+          "cagr_mdd": 5.1,
+          "trades": 188
+        }
+      },
+      "evidence": "User judged VPIN add-on as noise; keep only as a record of what not to chase.",
+      "source_artifacts": [
+        "docs/portfolio-with-vpin-formulaic-sleeves-2026-07-09.md",
+        "results/portfolio_with_vpin_formulaic_sleeves_2026-07-09.json"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Small VPIN weight discovered after OOS inspection; not alpha proof.",
+      "next_action": "Do not prefer over pre-VPIN live reference.",
+      "construction_recipe": {
+        "component_alphas": [
+          "nonpb30_taker",
+          "rex_rule",
+          "oi_upbit_ratio288_low",
+          "bear_rex_short",
+          "oi_alt_ratio72_dynamic_exit",
+          "vpin_formulaic_standalone"
+        ],
+        "weights": {
+          "example": {
+            "nonpb30_taker": 0.6,
+            "oi_raw": 0.5,
+            "rex_rule": 1.8,
+            "oi_upbit_ratio288_low": 2.05,
+            "bear_rex_short": 0.25,
+            "oi_alt_ratio72_dyn_exit": 0.3,
+            "vpin_buy_pressure_short_h144_s12": 0.25
+          }
+        },
+        "gross": 5.75,
+        "constraints": [
+          "diagnostic only"
+        ],
+        "reproduce_command": "python -m training.search_portfolio_with_vpin_formulaic_sleeves",
+        "source_artifacts": [
+          "docs/portfolio-with-vpin-formulaic-sleeves-2026-07-09.md",
+          "results/portfolio_with_vpin_formulaic_sleeves_2026-07-09.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "contamination_warning": "Small VPIN weight discovered after OOS inspection; not alpha proof.",
+        "baseline_required": "Compare against live_gross575_e39_reference unless entry itself is that reference."
+      }
+    },
+    {
+      "id": "wave_volume_combo_portfolios",
+      "name": "Wave/volume combo portfolios",
+      "status": "weak",
+      "family": "wave_volume_portfolio",
+      "scope": "portfolio",
+      "description": "Portfolios combining wave and volume alpha candidates with existing sleeves.",
+      "gross": null,
+      "weights": {
+        "note": "See source artifacts; no final replacement for live 5.75."
+      },
+      "component_alphas": [
+        "wave_standalone",
+        "nonpb30_taker",
+        "oi_high_sel",
+        "rex_rule"
+      ],
+      "constraints": [
+        "compared against pre-wave live reference",
+        "weight min/step constraints later applied"
+      ],
+      "stats": {
+        "note": "No clear improvement over existing pre-wave best under correct comparison."
+      },
+      "evidence": "Wave entered mainly through expanded universe; user clarified comparison should be to pre-wave e39 5.75 live combo.",
+      "source_artifacts": [
+        "results/all_alpha_volume_wave_portfolio_combo_2026-07-08.json",
+        "results/all_alpha_wave_feature_combo_scan_2026-07-08.json",
+        "results/all_alpha_with_wave_alpha_sleeves_combo_2026-07-08.json"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Avoid universe restriction that forces wave inclusion.",
+      "next_action": "Archive unless forward data shows independent contribution.",
+      "construction_recipe": {
+        "component_alphas": [
+          "wave_standalone",
+          "nonpb30_taker",
+          "oi_high_sel",
+          "rex_rule"
+        ],
+        "weights": {
+          "note": "See source artifacts; no final replacement for live 5.75."
+        },
+        "gross": null,
+        "constraints": [
+          "compared against pre-wave live reference",
+          "weight min/step constraints later applied"
+        ],
+        "reproduce_command": "python -m training.evaluate_volume_wave_portfolio_combo",
+        "source_artifacts": [
+          "results/all_alpha_volume_wave_portfolio_combo_2026-07-08.json",
+          "results/all_alpha_wave_feature_combo_scan_2026-07-08.json",
+          "results/all_alpha_with_wave_alpha_sleeves_combo_2026-07-08.json"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "contamination_warning": "Avoid universe restriction that forces wave inclusion.",
+        "baseline_required": "Compare against live_gross575_e39_reference unless entry itself is that reference."
+      }
+    }
+  ]
+}

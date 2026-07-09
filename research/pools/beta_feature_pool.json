@@ -1,0 +1,928 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-07-10",
+  "protocol": {
+    "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+    "cost_default": "6bp/side unless source artifact says otherwise",
+    "strict_mdd": "includes in-position adverse excursion and period-contained forced exits",
+    "trading_target_asset": "BTCUSDT/BTC only unless explicitly changed by user",
+    "feature_inputs": "External explanatory variables are allowed if merged causally: DXY, kimchi, USDKRW, Upbit BTC, BTC derivatives, and optionally other-coin lead/lag. They do not imply changing the traded asset.",
+    "alpha_pool_threshold": "Feature/gate discoveries are promoted into alpha_pool only when a combined strategy clears test2024 CAGR/strict_MDD >=2.5; live-grade standalone requires >=3.0.",
+    "feature_tiers": {
+      "alpha_feature": "Strictly promoted feature family: directly tied to strategy-level edge. Requires a combined strategy using this feature to clear test2024 CAGR/strict_MDD >= 2.5, or a standalone/live-grade strategy using it to clear >=3.0, with nontrivial trades and reproducible recipe.",
+      "beta_feature": "Potential alpha-feature pool: plausible edge remains, but current evidence has not met alpha-feature promotion threshold. Use for selector/gate/exit experiments with strict contamination notes.",
+      "gamma_feature": "Strict noise/failure pool: only for feature families where evidence strongly shows the attempted usage is noise/invalid/repeatedly non-causal. Gamma means avoid similar retries unless the recorded disqualifying evidence is overturned."
+    },
+    "tier_transition_rules": {
+      "beta_to_alpha_feature": [
+        "A reproducible strategy using the feature clears test2024 CAGR/strict_MDD >= 2.5 after 6bp/side, strict in-position MDD, split-end forced close.",
+        "Trade support is not trivial: normally test2024 >=20 trades and eval2025 >=15 trades, unless explicitly marked sparse low-frequency and manually accepted.",
+        "Eval2025 is not clearly broken: positive CAGR and no obvious MDD explosion; live-grade standalone requires CAGR/strict_MDD >=3.0.",
+        "Feature contribution is identifiable versus baseline/no-feature variant or portfolio marginal contribution.",
+        "generation_recipe and usage evidence are complete."
+      ],
+      "beta_to_gamma_feature": [
+        "Requires strong evidence that the attempted feature family/usage is only noise, not merely below current alpha/live thresholds.",
+        "Acceptable evidence: repeated broad + targeted scans show no robust positive test/eval structure and no useful selector contribution; or leakage/no-op/causal invalidation; or consistent regime inversion/OOS collapse across independent variants.",
+        "Gamma entry must name the exact failed usage mode. If a different usage mode remains plausible, keep that feature family in beta and put only the failed search set/provenance in gamma.",
+        "Do not gamma-demote broad inventories or search sets just because they are not alpha features; they should be provenance unless they encode a failed/noisy usage mode.",
+        "Do not gamma-demote because live-grade is missing; beta is for remaining alpha-feature possibility."
+      ],
+      "gamma_to_beta_feature": [
+        "Only allowed if new data, corrected methodology, or a materially different usage mode removes the recorded failure reason.",
+        "Must show at least one reproducible combined strategy with test2024 CAGR/strict_MDD >=1.5 and positive eval2025, or strong portfolio-selector contribution before alpha threshold."
+      ]
+    }
+  },
+  "source_pool": "feature_pool.json",
+  "pool_kind": "beta_feature",
+  "entries": [
+    {
+      "id": "all_alpha_research_feature_inventory",
+      "name": "All alpha-research feature inventory",
+      "status": "candidate",
+      "family": "generated_inventory",
+      "scope": "btc_target_all_feature_inputs",
+      "trading_target_asset": "BTC unless explicitly changed by user",
+      "description": "Generated exhaustive inventory of feature-like columns, gates, semantic market-state tokens, and cache columns used across prior alpha/portfolio research scripts. This is the recall layer; curated feature entries hold status/evidence.",
+      "data_sources": [
+        "research/pools/feature_inventory.json",
+        "training/build_research_feature_inventory.py"
+      ],
+      "feature_examples": [
+        "a_absret_vol",
+        "a_absret_vol_rank",
+        "a_clv",
+        "a_clv_rank_",
+        "a_clv_rank_288",
+        "a_day_gap",
+        "a_early_session",
+        "a_intr",
+        "a_intr_rank_",
+        "a_intr_rank_288",
+        "a_late_session",
+        "a_pos_288",
+        "a_range_compress_288",
+        "a_range_expand_72",
+        "a_ret_",
+        "a_ret_vol_corr_288",
+        "a_ret_vol_corr_72",
+        "a_ret_z_",
+        "a_ret_z_12",
+        "a_ret_z_24",
+        "a_ret_z_72",
+        "a_spread_z_",
+        "a_spread_z_144",
+        "a_spread_z_72",
+        "a_taker_72"
+      ],
+      "feature_names": [
+        "see research/pools/feature_inventory.json"
+      ],
+      "inventory_stats": {
+        "source_count": 43,
+        "feature_count": 610,
+        "semantic_token_count": 44
+      },
+      "usable_for": [
+        "exhaustive recall before new alpha search",
+        "preventing repeated feature omission",
+        "auditing whether a proposed feature family was already tried"
+      ],
+      "known_failures": [
+        "Generated inventory may include a few non-feature identifiers and dynamically built wildcard stems; curated pool entries remain authoritative for promotion/rejection status"
+      ],
+      "evidence": "Built from 43 alpha/portfolio/wave/REX/LLM research source files and market cache columns; includes DXY, kimchi, USDKRW, OI, taker, wave, REX, Alpha101, VPIN, volume, portfolio selector, and semantic state tokens.",
+      "source_artifacts": [
+        "research/pools/feature_inventory.json",
+        "research/pools/history_inventory.md",
+        "training/build_research_feature_inventory.py",
+        "training/build_research_history_inventory.py",
+        "research/pools/history_inventory.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Inventory records use, not safety. Each feature still needs causal/asof/leakage review before reuse.",
+      "next_action": "Use only as source map; promote/demote specific feature families, not the whole inventory.",
+      "generation_recipe": {
+        "script": "training/build_research_feature_inventory.py",
+        "functions": [
+          "main",
+          "regex_features",
+          "cache_columns"
+        ],
+        "inputs": [
+          "training/*.py alpha/portfolio research scripts",
+          "data/cache_market_ext_5m_wavefull_*.csv.gz"
+        ],
+        "command": "python -m training.build_research_feature_inventory",
+        "outputs": [
+          "research/pools/feature_inventory.json",
+          "research/pools/history_inventory.json",
+          "research/pools/history_inventory.md"
+        ],
+        "protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "notes": [
+          "Generated inventory is exhaustive recall, not a safety guarantee."
+        ]
+      },
+      "feature_tier": "beta_feature",
+      "tier_rationale": "Broad inventory/provenance is not evidence of noise; keep as beta-level searchable source map, not gamma failure."
+    },
+    {
+      "id": "wave_features",
+      "name": "Wave structure features",
+      "status": "weak",
+      "family": "wave_structure",
+      "scope": "btc_only",
+      "description": "Wave/momentum/structure derived state and wave feature ridge surfaces.",
+      "data_sources": [
+        "wave repo/results",
+        "results/wave_*",
+        "docs/wave-alpha-search-2026-07-08.md"
+      ],
+      "feature_examples": [
+        "wave momentum buckets",
+        "wave state top5",
+        "wave_feature_ridge"
+      ],
+      "usable_for": [
+        "state context",
+        "weak diversifier",
+        "LLM state card context"
+      ],
+      "known_failures": [
+        "standalone wave alpha mostly failed",
+        "ATR/dense wave labels removed apparent edge",
+        "portfolio inclusion did not beat pre-wave live 5.75 reference under constraints"
+      ],
+      "evidence": "Wave search was close to failure as standalone; useful mainly as context/feature injection, not core alpha.",
+      "source_artifacts": [
+        "docs/wave-alpha-search-2026-07-08.md",
+        "docs/wave-prob-dense-atr-label-check-2026-07-01.md",
+        "results/all_alpha_wave_feature_combo_scan_2026-07-08.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Ensure wave labels/teachers are generated only from causal state if reused.",
+      "next_action": "Use wave as context in LLM/state selector only after standalone alpha is established.",
+      "generation_recipe": {
+        "script": "wave feature / validation scripts",
+        "functions": [
+          "wave_feature_ridge_policy and wave_* scripts"
+        ],
+        "inputs": [
+          "results/wave_*",
+          "docs/wave-alpha-search-2026-07-08.md"
+        ],
+        "command": null,
+        "outputs": [
+          "results/wave_*"
+        ],
+        "protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "notes": [
+          "Wave repo/artifacts are required; not promoted standalone."
+        ]
+      },
+      "feature_tier": "beta_feature",
+      "tier_rationale": "Standalone wave failed, but wave location/exit context remains plausible as selector/gate input."
+    },
+    {
+      "id": "volume_upbit_features",
+      "name": "Volume and Upbit BTC volume features",
+      "status": "weak",
+      "family": "volume_venue",
+      "scope": "btc_only_external_venue",
+      "description": "BTC volume shocks, volume dry-up, Upbit KRW-BTC venue volume and ratios.",
+      "data_sources": [
+        "preprocessing/live_db_features.py",
+        "preprocessing/external_features.py",
+        "results/volume_*_2026-07-08.json"
+      ],
+      "feature_examples": [
+        "range_vol",
+        "upbit volume ratio",
+        "oi_upbit_ratio288_low",
+        "volume gate"
+      ],
+      "usable_for": [
+        "gates on existing alphas",
+        "portfolio diversifier",
+        "context selector"
+      ],
+      "known_failures": [
+        "standalone volume alphas are weak",
+        "some gates flip 2026 positive but trade count collapses"
+      ],
+      "evidence": "Existing-alpha volume gates can help certain sleeves but not enough as independent alpha.",
+      "source_artifacts": [
+        "docs/volume-alpha-search-2026-07-08.md",
+        "docs/existing-alpha-volume-gate-scan-2026-07-08.md",
+        "results/volume_upbit_alpha_scan_2026-07-08.json",
+        "results/volume_limited_alpha_scan_2026-07-08.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Live DB Upbit bars must be asof/backward merged; missing rows can create false low-volume regimes.",
+      "next_action": "Use as gate/portfolio feature, not standalone, unless trade count and train support improve.",
+      "feature_names": [
+        "range_vol",
+        "range_vol_z",
+        "volume gate",
+        "upbit volume ratio",
+        "oi_upbit_ratio288_low",
+        "alt_breadth24_pos",
+        "alt_breadth72_pos",
+        "alt_qvz_breadth_hi",
+        "alt_qvz_mean",
+        "alt_disp72",
+        "alt_rel72_mean",
+        "alt_rel72_topq",
+        "alt_rel72_botq",
+        "alt_rot_riskon",
+        "alt_rot_riskoff"
+      ],
+      "generation_recipe": {
+        "script": "preprocessing/live_db_features.py + volume scans",
+        "functions": [
+          "live_source_sql",
+          "build_live_feature_frame_from_frames"
+        ],
+        "inputs": [
+          "bars_upbit KRW-BTC in live DB",
+          "BTC cache"
+        ],
+        "command": "python -m training.build_research_feature_inventory",
+        "outputs": [
+          "research/pools/feature_inventory.json"
+        ],
+        "protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "notes": [
+          "Upbit/live DB availability must be checked before live reproduction."
+        ]
+      },
+      "feature_tier": "beta_feature",
+      "tier_rationale": "Direct volume standalone failed, but volume/venue state can improve existing setup selectors."
+    },
+    {
+      "id": "alpha101_vpin_primitives",
+      "name": "Alpha101 / VPIN primitives",
+      "status": "weak",
+      "family": "formulaic_microstructure",
+      "scope": "btc_only",
+      "description": "Alpha101-style ranks/correlations/VWAP dislocation and bar-level VPIN/order-flow toxicity proxies.",
+      "data_sources": [
+        "BTC OHLCV/taker cache"
+      ],
+      "feature_examples": [
+        "a_ret_z_*",
+        "a_vwap_gap_z",
+        "a_ret_vol_corr_*",
+        "vp_vpin_z_*",
+        "vx_toxic_*"
+      ],
+      "usable_for": [
+        "feature inspiration",
+        "dual gates",
+        "weak standalone candidates"
+      ],
+      "known_failures": [
+        "single-score VPIN/formulaic standalone scan failed",
+        "Alpha101 quantile combos only weak",
+        "day_gap leakage bug invalidated early absurd results"
+      ],
+      "evidence": "After leakage fix, Alpha101 standalone candidates are positive but below target and not live-grade.",
+      "source_artifacts": [
+        "training/search_vpin_formulaic_alpha.py",
+        "training/search_alpha101_derivative_alphas.py",
+        "training/search_alpha101_quantile_combo.py",
+        "training/search_alpha101_random_quantile_standalone.py",
+        "docs/alpha101-random-quantile-standalone-2026-07-09.md",
+        "docs/vpin-formulaic-alpha-scan-2026-07-09.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Fixed day_gap future-close leakage: use previous daily close via daily_close.shift(1). Ignore pre-fix extreme results.",
+      "next_action": "Do not tune the same weak primitives endlessly; only revisit with richer causal ts-rank/argmin/decay operators.",
+      "feature_names": [
+        "a_ret_z_12",
+        "a_ret_z_24",
+        "a_ret_z_72",
+        "a_vol_z_288",
+        "a_vwap_gap_z",
+        "a_vwap_gap",
+        "a_absret_vol",
+        "a_absret_vol_rank",
+        "a_clv",
+        "a_clv_rank_288",
+        "a_intr",
+        "a_intr_rank_288",
+        "a_pos_288",
+        "a_break_high_288",
+        "a_break_low_288",
+        "a_range_compress_288",
+        "a_range_expand_72",
+        "a_ret_vol_corr_72",
+        "a_ret_vol_corr_288",
+        "a_spread_z_72",
+        "a_spread_z_144",
+        "a_taker_z",
+        "a_taker_72",
+        "a_taker_72_z",
+        "a_day_gap",
+        "a_early_session",
+        "a_late_session",
+        "x101_vwap_exhaust_up",
+        "x101_vwap_exhaust_down",
+        "x101_clean_breakout_up",
+        "x101_clean_breakout_down",
+        "x101_lowvol_intraday_momo_up",
+        "x101_lowvol_intraday_momo_down",
+        "x101_volcorr_reversal_up",
+        "x101_volcorr_reversal_down",
+        "x101_gap_revert_up",
+        "x101_gap_revert_down",
+        "vp_vpin_z_144",
+        "vp_imb_z_72",
+        "vp_ret_24",
+        "vp_ret_72",
+        "fq_intrabar_strength",
+        "fq_intrabar_strength_rank",
+        "fq_vwap_revert",
+        "fq_vwap_revert_z",
+        "fq_ret_vol_corr_72",
+        "fq_ret_vol_corr_288",
+        "fq_volume_delta_rank",
+        "fq_abs_move_vol_rank",
+        "fq_spread_rank",
+        "fq_signed_vol_pressure",
+        "fq_signed_vol_pressure_rank",
+        "vx_toxic_selloff",
+        "vx_toxic_rally",
+        "vx_lowtox_momo_long",
+        "vx_lowtox_momo_short"
+      ],
+      "generation_recipe": {
+        "script": [
+          "training/search_alpha101_derivative_alphas.py",
+          "training/search_vpin_formulaic_alpha.py"
+        ],
+        "functions": [
+          "add_features",
+          "add_vpin_formulaic_features"
+        ],
+        "inputs": [
+          "BTC OHLCV/taker cache"
+        ],
+        "command": "python - <<'PY'\nfrom training.search_vpin_formulaic_alpha import load_market_and_splits, add_vpin_formulaic_features\nfrom training.search_alpha101_derivative_alphas import add_features\nm,base,_,_=load_market_and_splits(); a=add_features(m); v=add_vpin_formulaic_features(m, base); print(a.shape, v.shape)\nPY",
+        "outputs": [
+          "results/alpha101_*",
+          "results/vpin_*"
+        ],
+        "protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "notes": [
+          "Do not use pre-fix day_gap outputs."
+        ]
+      },
+      "feature_tier": "beta_feature",
+      "tier_rationale": "Standalone scans failed, but primitives may still be selector/gate/context inputs; gamma records the failed standalone search sets separately."
+    },
+    {
+      "id": "cross_asset_features",
+      "name": "Cross-asset lead/lag features",
+      "status": "weak",
+      "family": "cross_asset_rotation",
+      "scope": "btc_target_cross_asset_features",
+      "description": "Other-coin relative return/volume/dispersion features used as explanatory variables for BTC entries; trading target remains BTC.",
+      "data_sources": [
+        "data/binance_um_pool_5m_2023_2026/*.csv.gz"
+      ],
+      "feature_examples": [
+        "sol_relret_z_24",
+        "alt_mean_rel_z_72",
+        "alt_disp_z_48",
+        "alt_volume_breadth_z"
+      ],
+      "usable_for": [
+        "BTC target lead/lag context when cross-asset inputs are allowed",
+        "archived/restricted only if user asks BTC-only input surface"
+      ],
+      "known_failures": [
+        "Alt data starts 2023 so train support is shorter",
+        "SOL/alt lead-lag candidate was not live-grade standalone",
+        "Do not trade SOL/other coin from this pool; target remains BTC"
+      ],
+      "evidence": "Clarified 2026-07-10: asset-change restriction meant trading target asset, not feature inputs. Cross-asset features are allowed as BTC explanatory variables but remain weak/high-caution.",
+      "source_artifacts": [
+        "training/search_cross_asset_quantile_standalone.py",
+        "results/cross_asset_quantile_standalone_2026-07-09.json",
+        "docs/cross-asset-quantile-standalone-2026-07-09.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Alt data starts 2023; added cross_available guard after discovering quantile zero-fill risk.",
+      "next_action": "May be used as BTC-target feature input, but tag shorter train support and compare against BTC-only features.",
+      "feature_names": [
+        "eth_relret_z_*",
+        "sol_relret_z_*",
+        "bnb_relret_z_*",
+        "xrp_relret_z_*",
+        "ada_relret_z_*",
+        "doge_relret_z_*",
+        "alt_mean_rel_z_24",
+        "alt_mean_rel_z_72",
+        "alt_max_rel_z_*",
+        "alt_min_rel_z_*",
+        "alt_disp_z_48",
+        "alt_disp_z_144",
+        "alt_volume_breadth_z",
+        "sol_qv_z",
+        "doge_qv_z",
+        "btc_vs_altmean_z_48",
+        "cross_available"
+      ],
+      "generation_recipe": {
+        "script": "training/search_cross_asset_quantile_standalone.py",
+        "functions": [
+          "build_features",
+          "load_alt",
+          "add_aux_1h"
+        ],
+        "inputs": [
+          "data/binance_um_pool_5m_2023_2026/*_5m_*.csv.gz",
+          "BTC cache"
+        ],
+        "command": "python -m training.search_cross_asset_quantile_standalone",
+        "outputs": [
+          "results/cross_asset_quantile_standalone_2026-07-09.json",
+          "docs/cross-asset-quantile-standalone-2026-07-09.md"
+        ],
+        "protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "notes": [
+          "Trading target remains BTC; cross_available required due shorter alt history."
+        ]
+      },
+      "feature_tier": "beta_feature",
+      "tier_rationale": "Weak as standalone/shorter train, but allowed as BTC-target explanatory input with caution."
+    },
+    {
+      "id": "btc_only_search_feature_set_20260709",
+      "name": "BTC-only standalone search feature set (2026-07-09)",
+      "status": "candidate",
+      "family": "search_feature_set",
+      "scope": "btc_only",
+      "description": "Exact features used by the BTC-only standalone quantile search after the user disallowed other assets.",
+      "data_sources": [
+        "training/search_btc_only_quantile_standalone.py",
+        "data/cache_market_ext_5m_wavefull_2020-01-01_2026-07-05_dbappend.csv.gz",
+        "/tmp/btcusdt_open_interest_5m_2020_2026.csv",
+        "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+        "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz"
+      ],
+      "feature_examples": [
+        "vwap_gap_z",
+        "rvol_z_24",
+        "taker_mean_z_24",
+        "funding_z",
+        "asia_session",
+        "btc_oi_squeeze_short"
+      ],
+      "feature_names": [
+        "asia_session",
+        "basis_stress_z",
+        "btc_cvd_absorb_long",
+        "btc_liq_revert_long",
+        "btc_oi_squeeze_short",
+        "btc_oi_unwind_long",
+        "btc_overheat_short",
+        "cvd_ret_z_144",
+        "cvd_ret_z_72",
+        "funding_z",
+        "oi_available",
+        "oi_minus_px_z_72",
+        "oi_ret_z_24",
+        "oi_ret_z_72",
+        "pos_288",
+        "premium_z",
+        "px_ret_z_144",
+        "px_ret_z_24",
+        "px_ret_z_72",
+        "qv_z_24",
+        "qv_z_72",
+        "range_compress_288",
+        "range_expand_72",
+        "rvol_z_24",
+        "spread_z_72",
+        "taker_div_144",
+        "taker_div_72",
+        "taker_mean_z_24",
+        "taker_mean_z_72",
+        "us_session",
+        "vwap_gap_z"
+      ],
+      "usable_for": [
+        "BTC-only standalone alpha search",
+        "regression of current weak BTC-only candidates",
+        "future feature coverage audits"
+      ],
+      "known_failures": [
+        "Best candidate still weak in 2025 and negative train",
+        "Do not add cross-asset features to this set unless user allows it"
+      ],
+      "evidence": "Produced btc_only_vwap_funding_asia and btc_only_oi_overheat_short weak candidates; no live-grade standalone alpha yet.",
+      "source_artifacts": [
+        "training/search_btc_only_quantile_standalone.py",
+        "training/evaluate_btc_only_standalone_risk_overlay.py",
+        "results/btc_only_quantile_standalone_2026-07-09.json",
+        "results/btc_only_standalone_risk_overlay_2026-07-09.json",
+        "docs/btc-only-quantile-standalone-2026-07-09.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "All thresholds train quantiles; OI thresholds must ignore unavailable periods; aux data asof/backward merged.",
+      "next_action": "Use as beta feature universe; gamma-demote only specific failed usage modes with strong noise evidence.",
+      "generation_recipe": {
+        "script": "training/search_btc_only_quantile_standalone.py",
+        "functions": [
+          "add_features",
+          "main"
+        ],
+        "inputs": [
+          "BTC cache",
+          "/tmp/btcusdt_open_interest_5m_2020_2026.csv",
+          "BTC funding/premium aux"
+        ],
+        "command": "python -m training.search_btc_only_quantile_standalone",
+        "outputs": [
+          "results/btc_only_quantile_standalone_2026-07-09.json",
+          "docs/btc-only-quantile-standalone-2026-07-09.md"
+        ],
+        "protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "notes": [
+          "This script regenerates features and scans alpha candidates."
+        ]
+      },
+      "feature_tier": "beta_feature",
+      "tier_rationale": "BTC-only search set produced weak positive candidates; insufficient for alpha, but not proven pure noise. Keep as beta feature universe."
+    },
+    {
+      "id": "legacy_alt_oi_taker_search_feature_set_20260708",
+      "name": "Legacy alt/OI/taker search feature set (2026-07-08)",
+      "status": "archived",
+      "family": "search_feature_set_alt_oi_taker",
+      "scope": "mixed_cross_asset_btc_derivatives",
+      "description": "Feature set used in older alt/OI/taker scans; contains cross-asset breadth features and is archived for current same-asset constraint.",
+      "data_sources": [
+        "training/search_alt_oi_taker_alpha.py",
+        "data/binance_um_pool_5m_2023_2026/*.csv.gz",
+        "BTC OI/taker cache"
+      ],
+      "feature_examples": [
+        "alt_rot_riskon",
+        "alt_breadth72_pos",
+        "taker_cvd_z_72",
+        "oi_squeeze_long_ctx"
+      ],
+      "feature_names": [
+        "alt_breadth24_pos",
+        "alt_breadth72_pos",
+        "alt_disp72",
+        "alt_qvz_breadth_hi",
+        "alt_qvz_mean",
+        "alt_rel72_botq",
+        "alt_rel72_mean",
+        "alt_rel72_topq",
+        "alt_rot_riskoff",
+        "alt_rot_riskon",
+        "funding_zscore",
+        "oi_ret_4h_z",
+        "oi_squeeze_long_ctx",
+        "oi_squeeze_short_ctx",
+        "oi_unwind_long_ctx",
+        "oi_unwind_short_ctx",
+        "px_ret_24",
+        "px_ret_72",
+        "taker_cvd_z_72",
+        "taker_div_72"
+      ],
+      "usable_for": [
+        "historical reproducibility",
+        "portfolio component provenance"
+      ],
+      "known_failures": [
+        "Uses other coins for alt breadth; excluded by current user constraint",
+        "Many standalone OI/taker candidates failed eval or train"
+      ],
+      "evidence": "Some portfolio components originated here, but standalone results were unstable.",
+      "source_artifacts": [
+        "training/search_alt_oi_taker_alpha.py",
+        "results/alt_oi_taker_alpha_search_2026-07-08.json",
+        "results/alt_oi_taker_alpha_flip_search_2026-07-08.json"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Alt files start 2023; current same-asset search must not use these alt breadth features.",
+      "next_action": "Use only for provenance or to recover component definitions; do not use as default search universe.",
+      "generation_recipe": {
+        "script": "training/search_alt_oi_taker_alpha.py",
+        "functions": [
+          "add_alt_features",
+          "add_oi_taker_features",
+          "main"
+        ],
+        "inputs": [
+          "BTC cache",
+          "data/binance_um_pool_5m_2023_2026/*.csv.gz",
+          "OI/taker features"
+        ],
+        "command": "python -m training.search_alt_oi_taker_alpha",
+        "outputs": [
+          "results/alt_oi_taker_alpha_flip_search_2026-07-08.json"
+        ],
+        "protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "notes": [
+          "Legacy mixed feature surface."
+        ]
+      },
+      "feature_tier": "beta_feature",
+      "tier_rationale": "Legacy provenance with some useful portfolio components; not proven pure noise. Archived beta because current target/input rules supersede it."
+    },
+    {
+      "id": "external_macro_kimchi_fx_features",
+      "name": "External macro / Kimchi / FX features",
+      "status": "candidate",
+      "family": "external_macro_korea_fx",
+      "scope": "btc_target_external_features",
+      "trading_target_asset": "BTC",
+      "description": "DXY, USDKRW, KRW-BTC/kimchi premium and availability flags used as causal explanatory variables for BTC strategies. These do not change the traded asset.",
+      "data_sources": [
+        "data/cache_market_ext_5m_wavefull_2020-01-01_2026-07-05_dbappend.csv.gz",
+        "preprocessing/external_features.py",
+        "preprocessing/live_db_features.py",
+        "training/augment_event_candidates_with_cross_market.py"
+      ],
+      "feature_examples": [
+        "dxy_zscore",
+        "dxy_momentum",
+        "kimchi_premium_zscore",
+        "kimchi_premium_change",
+        "usdkrw_zscore",
+        "usdkrw_momentum"
+      ],
+      "feature_names": [
+        "dxy",
+        "dxy_available",
+        "dxy_zscore",
+        "dxy_momentum",
+        "kimchi_premium",
+        "kimchi_available",
+        "kimchi_premium_zscore",
+        "kimchi_premium_change",
+        "usdkrw",
+        "usdkrw_available",
+        "usdkrw_zscore",
+        "usdkrw_momentum",
+        "btckrw",
+        "external_any_available",
+        "xmk_kimchi_premium",
+        "xmk_kimchi_change_48",
+        "xmk_kimchi_z_*",
+        "xmk_usdkrw_ret_48",
+        "xmk_usdkrw_z_*",
+        "xmk_riskfx_gap_*"
+      ],
+      "usable_for": [
+        "BTC regime descriptor",
+        "LLM state cards",
+        "portfolio selector context",
+        "kimchi/FX risk-on-risk-off gates",
+        "short premium panic sleeve"
+      ],
+      "known_failures": [
+        "Standalone macro gates have been inconsistent; use as context/gate, not proof of alpha",
+        "External joins must be backward/asof with availability flags"
+      ],
+      "evidence": "Cache already contains dxy/kimchi/usdkrw/btckrw fields; multiple RLLM/context scripts use them. They were missing as explicit pool entry and are now registered.",
+      "source_artifacts": [
+        "training/evaluate_portfolio_llm_selector.py",
+        "training/build_linear_alpha_meta_sft.py",
+        "training/build_rex_candidate_ranker_records.py",
+        "training/evaluate_wave_alpha_sleeve_combo.py",
+        "training/augment_event_candidates_with_cross_market.py",
+        "preprocessing/external_features.py",
+        "preprocessing/live_db_features.py"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Use availability flags and backward/asof joins only. Kimchi derived from KRW-BTC and USDKRW must not use future FX/KRW bars.",
+      "next_action": "Include in future feature scans/pool summaries; distinguish target_asset=BTC from explanatory inputs.",
+      "generation_recipe": {
+        "script": "preprocessing/external_features.py / cache columns",
+        "functions": [
+          "attach_wave_trading_external_features",
+          "build_external_feature_frame"
+        ],
+        "inputs": [
+          "DXY",
+          "USDKRW",
+          "KRW-BTC / kimchi",
+          "data/cache_market_ext_5m_wavefull_2020-01-01_2026-07-05_dbappend.csv.gz"
+        ],
+        "command": "python - <<'PY'\nimport pandas as pd\np='data/cache_market_ext_5m_wavefull_2020-01-01_2026-07-05_dbappend.csv.gz'\ncols=[c for c in pd.read_csv(p,nrows=1).columns if any(k in c for k in ['dxy','kimchi','usdkrw','btckrw'])]\nprint(cols)\nPY",
+        "outputs": [],
+        "protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "notes": [
+          "Use availability flags and backward/asof joins."
+        ]
+      },
+      "feature_tier": "beta_feature",
+      "tier_rationale": "External context is not alpha by itself but remains plausible as selector/regime state."
+    },
+    {
+      "id": "post_rex_alphaization_feature_set_20260710",
+      "name": "Post-REX alphaization feature set (VPIN/Alpha101/wave/volume gates)",
+      "status": "candidate",
+      "family": "selector_gate_exit_features",
+      "scope": "btc_target_all_feature_inputs",
+      "description": "Feature family used after learning that VPIN/Alpha101/wave/volume should be alphaized as allow gates or exits on proven setup entries, not standalone entries.",
+      "data_sources": [
+        "BTC 5m OHLCV/taker cache",
+        "BTC OI/funding/premium/external cache via _prep",
+        "alt-volume breadth from dynamic-exit feature builder"
+      ],
+      "feature_examples": [
+        "ctx_vpin_sell_toxic",
+        "ctx_vpin_buy_toxic",
+        "ctx_a101_pullback_quality",
+        "ctx_a101_vwap_washout",
+        "ctx_volume_participation",
+        "dx_wave_pos_144",
+        "dx_alt_ratio_z72"
+      ],
+      "feature_names": [
+        "vp_vpin_z_144",
+        "vp_imb_z_72",
+        "ctx_vpin_sell_toxic",
+        "ctx_vpin_buy_toxic",
+        "ctx_a101_pullback_quality",
+        "ctx_a101_overheat_quality",
+        "ctx_a101_vwap_washout",
+        "ctx_a101_vwap_overheat",
+        "ctx_volume_participation",
+        "ctx_flow_absorption_long",
+        "ctx_flow_exhaust_short",
+        "dx_wave_pos_144",
+        "dx_alt_ratio_z72",
+        "wr_vwap_dev_z",
+        "dx_cvd_bear",
+        "dx_cvd_bull"
+      ],
+      "usable_for": [
+        "allow/block selector gates on existing setup alphas",
+        "heterogeneous exit triggers",
+        "LLM selector state"
+      ],
+      "known_failures": [
+        "VPIN/Alpha101 standalone scans failed or remained weak",
+        "Alpha101 gates alone mostly improve positivity but not CAGR/MDD enough",
+        "alt_ratio_high q0.80 currently thresholded at 0 in this cache and can be a no-op"
+      ],
+      "evidence": "Feature/gate set produced all-period-positive OI+VPIN candidate, but top non-REX test2024 ratio was 1.82, below alpha_pool threshold 2.5; keep as feature pool candidate.",
+      "source_artifacts": [
+        "training/search_post_rex_feature_alphaization_fast.py",
+        "results/post_rex_feature_alphaization_fast_2026-07-10.json",
+        "docs/post-rex-feature-alphaization-fast-2026-07-10.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Feature thresholds are train<2024 quantiles, but candidate ranking inspected 2024/2025/2026; discovery candidate only, not clean OOS proof.",
+      "next_action": "Search refinements that clear test2024 CAGR/MDD >=2.5 when combined with setup entries; only then promote to alpha_pool candidate.",
+      "generation_recipe": {
+        "script": "training/search_post_rex_feature_alphaization_fast.py",
+        "functions": [
+          "add_all",
+          "gates",
+          "exits"
+        ],
+        "inputs": [
+          "training.evaluate_portfolio_llm_selector._prep market/features",
+          "training.search_dynamic_exit_all_candidates.add_features",
+          "training.search_vpin_formulaic_alpha.add_vpin_formulaic_features",
+          "training.search_alpha101_derivative_alphas.add_features"
+        ],
+        "command": "python -m training.search_post_rex_feature_alphaization_fast",
+        "outputs": [
+          "results/post_rex_feature_alphaization_fast_2026-07-10.json",
+          "docs/post-rex-feature-alphaization-fast-2026-07-10.md"
+        ],
+        "protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side unless artifact explicitly says otherwise",
+          "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
+        },
+        "notes": [
+          "BTC remains target asset; non-BTC/venue/volume inputs are explanatory selector features only.",
+          "VPIN/Alpha101 are alphaized as gates/exits on setup entries, not standalone entries.",
+          "2026-07-10 threshold update: alpha_pool requires test2024 CAGR/MDD >=2.5; live-grade standalone requires >=3.0."
+        ]
+      },
+      "feature_tier": "beta_feature",
+      "tier_rationale": "Potential selector/gate family; current best test ratio 1.82 is below alpha-feature threshold, but VPIN-as-gate evidence remains plausible rather than terminal failure."
+    },
+    {
+      "id": "live_portfolio_sleeve_aliases_20260708",
+      "name": "Live portfolio sleeve aliases and source configs",
+      "status": "candidate",
+      "family": "portfolio_sleeve_provenance",
+      "scope": "portfolio",
+      "feature_tier": "beta_feature",
+      "description": "Alias/provenance feature set mapping live portfolio sleeve names to underlying alpha/feature configs so history scans do not miss renamed sleeves.",
+      "data_sources": [
+        "configs/live/*.json",
+        "research/pools/history_inventory.json",
+        "research/pools/history_inventory.md"
+      ],
+      "feature_examples": [
+        "bullish_pb30_base",
+        "pb30_activity_returnz_htf1w_lowpos_6h_1x",
+        "nonpb30_taker_returnz_rangevol_htf4hrange_h72",
+        "oi_divergence_sma24_highfreq_h30_s6_raw",
+        "oi_divergence_sma24_highfreq_h30_s6_with_selector",
+        "oi_alt_ratio72_dyn_exit",
+        "short_kimchi3d",
+        "short_premium_panic",
+        "rex_dual_regime_auto",
+        "bear_rex_dual_regime_short"
+      ],
+      "feature_names": [
+        "configs/live/* name/source/base_sleeves/weights fields"
+      ],
+      "usable_for": [
+        "history deduplication",
+        "portfolio reconstruction",
+        "alpha pool alias normalization"
+      ],
+      "known_failures": [
+        "Alias/provenance only; not an alpha feature by itself. Do not promote without underlying strategy evidence."
+      ],
+      "evidence": "Full-history audit found several live/portfolio sleeve aliases not directly searchable as pool ids; this beta entry prevents loss of provenance while keeping promotion tied to canonical alphas.",
+      "source_artifacts": [
+        "configs/live/portfolio_gross575_no_llm_7sleeve_minratio_2026-07-08.json",
+        "configs/live/portfolio_gross610_dynamic_top1_2026-07-08.json",
+        "configs/live/*.json",
+        "research/pools/history_inventory.json",
+        "research/pools/history_inventory.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "This is provenance metadata, not a signal; strategy entries must still enforce train/test/eval separation.",
+      "tier_rationale": "Beta feature/provenance map: possibility-preserving alias inventory, not alpha evidence and not noise-only failure.",
+      "next_action": "When new live configs are added, rerun full history inventory and normalize aliases to canonical alpha_pool ids.",
+      "generation_recipe": {
+        "script": "training/build_research_history_inventory.py",
+        "functions": [
+          "collect_artifacts",
+          "collect_history_hits",
+          "git_commits"
+        ],
+        "inputs": [
+          "configs/live/*.json",
+          "docs/*.md",
+          "results/*",
+          ".omx/** history/log/export files",
+          "git log --all"
+        ],
+        "command": "python -m training.build_research_history_inventory && python -m training.sync_feature_tier_pools",
+        "outputs": [
+          "research/pools/history_inventory.json",
+          "research/pools/history_inventory.md",
+          "research/pools/beta_feature_pool.json"
+        ],
+        "protocol": "provenance-only; no trading signal generated",
+        "notes": "Gamma demotion remains strict and cannot be inferred from this alias map."
+      }
+    }
+  ]
+}
