@@ -1515,6 +1515,99 @@
         ],
         "live_use_notes": "Candidate for bear-regime paper/live dry-run, not universal short."
       }
+    },
+    {
+      "id": "nonrex_fx_stress_short_20260710",
+      "name": "Non-REX FX-stress BTC short",
+      "status": "candidate",
+      "family": "macro_fx_stress_short",
+      "scope": "btc_macro_fx",
+      "side": "short",
+      "description": "Short-only BTCUSDT sleeve for persistent bearish regimes using BTC 3-day weakness plus USD/KRW stress. This is deliberately independent from REX state and is intended as a separate short alpha family.",
+      "entry_logic": "Manual/higher-level bear regime must be active. Enter short when htf_3d_return_1 <= -0.0325294973 (train q0.20) and usdkrw_zscore >= 1.3870063775 (train q0.90).",
+      "exit_logic": "Short TP 4%, SL 2.5%, maximum hold 288 5m bars (24h), next-open entry. Conservative same-bar assumption: SL before TP.",
+      "dependencies": [
+        "nonrex_fx_stress_short_features_20260710",
+        "btc_ohlcv_taker_core",
+        "external_macro_kimchi_fx_features"
+      ],
+      "stats": {
+        "test2024": {
+          "return_pct": 13.0687,
+          "cagr_pct": 13.0403,
+          "strict_mdd_pct": 5.0328,
+          "cagr_to_strict_mdd": 2.5911,
+          "trades": 40,
+          "signals": 131,
+          "p_value_mean_ret_approx": 0.12751
+        },
+        "eval2025": {
+          "return_pct": 14.5152,
+          "cagr_pct": 14.5258,
+          "strict_mdd_pct": 3.0603,
+          "cagr_to_strict_mdd": 4.7465,
+          "trades": 34,
+          "signals": 124,
+          "p_value_mean_ret_approx": 0.06954
+        },
+        "ytd2026": {
+          "return_pct": 9.0093,
+          "cagr_pct": 23.0336,
+          "strict_mdd_pct": 3.4533,
+          "cagr_to_strict_mdd": 6.67,
+          "trades": 22,
+          "signals": 80,
+          "p_value_mean_ret_approx": 0.11155
+        },
+        "bear_combined_2025_2026h1": {
+          "return_pct": 24.8322,
+          "cagr_pct": 16.9642,
+          "strict_mdd_pct": 5.1554,
+          "cagr_to_strict_mdd": 3.2906,
+          "trades": 56,
+          "signals": 204,
+          "p_value_mean_ret_approx": 0.01534
+        },
+        "aggressive_q030_variant_bear_combined": {
+          "return_pct": 36.1354,
+          "cagr_pct": 24.3506,
+          "strict_mdd_pct": 7.4318,
+          "cagr_to_strict_mdd": 3.2766,
+          "trades": 88,
+          "signals": 339,
+          "p_value_mean_ret_approx": 0.00267
+        }
+      },
+      "evidence": "Found after excluding REX: event/blowoff/liquidation shorts were weak, but FX-stress + BTC HTF weakness with short-specific TP/SL produced a bear-regime candidate with ratio >3 and nontrivial trades. Conservative q0.20 variant is preferred because 2024 remains positive and lower MDD than q0.30.",
+      "source_artifacts": [
+        "training/nonrex_short_bear_tp_refine.py",
+        "results/nonrex_short_bear_tp_refine_2026-07-10.json",
+        "results/short_base_alpha_scan_fast2_2026-07-08.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "This is not an unseen-proof final strategy: TP/SL and q variant were chosen after inspecting bear windows. Must be revalidated via rolling/fresh data before live sizing.",
+      "next_action": "Run predeclared rolling validation and then test portfolio marginal contribution against bear_rex_short_reclaim_20260710.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "nonrex_fx_stress_short_features_20260710"
+        ],
+        "entry_logic": "bear regime gate + htf_3d_return_1 <= -0.0325294973 + usdkrw_zscore >= 1.3870063775",
+        "exit_logic": "TP=4%, SL=2.5%, max_hold=288 5m bars, next-open entry",
+        "side": "short",
+        "script_or_config": "training/nonrex_short_bear_tp_refine.py",
+        "reproduce_command": "PYTHONPATH=. .venv/bin/python training/nonrex_short_bear_tp_refine.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/nonrex_short_bear_tp_refine_2026-07-10.json",
+        "evaluation_protocol": {
+          "split": "test=2024, bear eval=2025, bear ytd=2026-01-01..2026-06-02",
+          "cost": "fee_rate=0.0004 and slippage_rate=0.0001 per side",
+          "mdd": "strict short MDD includes intrabar high adverse excursion; CAGR denominator includes idle time"
+        },
+        "promotion_guardrails": [
+          "Requires non-lookahead bear regime gate",
+          "Keep separate from REX state to measure true diversification",
+          "Rolling validation before live sizing"
+        ],
+        "live_use_notes": "Candidate only; good next target for paper/live-sim after rolling validation."
+      }
     }
   ]
 }

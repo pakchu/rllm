@@ -1522,6 +1522,54 @@
         "command": "PYTHONPATH=. .venv/bin/python training/short_regime_rex_validate.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --predictions-jsonl results/rex_dual_regime_eval_2025_2026h1_predictions_2026-07-03.jsonl --exclude-from 2026-06-02 --output results/short_regime_rex_validate_2025_2026h1_2026-07-10.json",
         "protocol": "manual bear regime; SHORT TRADE predictions only; fixed 144-bar hold from prediction export; 0.5x validation leverage; full calendar CAGR; strict short MDD uses intrabar highs"
       }
+    },
+    {
+      "id": "nonrex_fx_stress_short_features_20260710",
+      "name": "Non-REX FX-stress short feature set (2026-07-10)",
+      "status": "candidate",
+      "family": "macro_fx_stress_short_context",
+      "scope": "btc_macro_fx",
+      "feature_tier": "alpha_feature",
+      "description": "Non-REX short feature family: BTC higher-timeframe weakness combined with USD/KRW stress. The thesis is that Korea/FX risk-off stress plus existing BTC weakness produces downside continuation in persistent bearish regimes.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "USDKRW macro field merged into market cache",
+        "HTF BTC price-action returns"
+      ],
+      "feature_examples": [
+        "htf_3d_return_1 <= train q0.20",
+        "usdkrw_zscore >= train q0.90",
+        "TP 4% / SL 2.5% short exit",
+        "hold cap 288 5m bars"
+      ],
+      "feature_names": [
+        "htf_3d_return_1",
+        "usdkrw_zscore"
+      ],
+      "usable_for": [
+        "bear-regime short-only sleeve independent of REX",
+        "macro risk-off state token for RLLM",
+        "portfolio diversifier against REX short"
+      ],
+      "known_failures": [
+        "Universal 2024 inclusion remains below target for the more aggressive q0.30 version; use as bear-regime conditional alpha, not all-market short.",
+        "Pure hand-built event/blowoff/liquidation scan did not find a strong standalone all-period short alpha."
+      ],
+      "evidence": "TP/SL refine found non-REX FX-stress short candidates. Conservative q0.20 version: test2024 +13.07% return, CAGR/MDD 2.59; eval2025 +14.52%, ratio 4.75; ytd2026 +9.01%, ratio 6.67; bear_combined +24.83%, CAGR 16.96%, strict MDD 5.16%, ratio 3.29, 56 trades.",
+      "source_artifacts": [
+        "training/nonrex_short_bear_tp_refine.py",
+        "results/nonrex_short_bear_tp_refine_2026-07-10.json",
+        "results/short_base_alpha_scan_fast2_2026-07-08.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Gate thresholds came from earlier train-quantile short-base scan artifacts, but TP/SL/variant selection inspected 2025/2026 bear windows. Candidate-grade until predeclared rolling validation or fresh future bear data.",
+      "tier_rationale": "Alpha feature for bear-regime use: non-REX q0.20 FX stress candidate clears CAGR/strict_MDD >=3 on 2025~2026H1 bear window and remains positive in 2024, though 2024 ratio is below live-grade threshold.",
+      "next_action": "Run rolling/month-block validation and compare marginal contribution versus REX short; if stable, create a separate live config with explicit bear-regime gate.",
+      "generation_recipe": {
+        "script": "training/nonrex_short_bear_tp_refine.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/nonrex_short_bear_tp_refine.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/nonrex_short_bear_tp_refine_2026-07-10.json",
+        "protocol": "manual bear regime; non-REX gates; 0.5x validation leverage; full calendar CAGR; strict short MDD; conservative same-bar SL-before-TP ordering"
+      }
     }
   ]
 }
