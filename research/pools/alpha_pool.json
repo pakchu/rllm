@@ -1788,6 +1788,176 @@
       },
       "promotion_basis": "Promoted by user/strategy review as a bear-regime alpha: short sleeves are expected to be difficult in bullish regimes, so 2024 under-threshold behavior is treated as regime mismatch rather than disqualification. Still requires non-lookahead bear-regime gate for use.",
       "regime_scope": "bear_regime_only"
+    },
+    {
+      "id": "long_range_funding_premium_squeeze_20260710",
+      "name": "Long range/funding/premium squeeze breakout",
+      "status": "candidate",
+      "family": "long_derivatives_squeeze_union",
+      "scope": "btc_derivatives_price_action",
+      "side": "long",
+      "description": "Long-regime BTCUSDT OR-union alpha combining derivatives under-positioning/discount with positive price-action continuation. It was found after expanding beyond the first long union into fixed component/TP/SL sweeps.",
+      "entry_logic": "OR union of range_bb90, funding10_trend70, premium20_mom90. range_bb90=(rex_576_range_width_pct>=0.1295981611 and bb_z>=1.6850824974); funding10_trend70=(funding_rate<=-0.0000167 and trend_96>=0.0074852182); premium20_mom90=(premium_index_change<=-0.00023471 and htf_1d_return_4>=0.0940403009).",
+      "exit_logic": "fixed hold 576 5m bars (48h), no TP/SL overlay, stride 12 bars, next-open entry, 0.5x validation leverage; split/window-end forced close via strict simulator.",
+      "dependencies": [
+        "long_derivatives_squeeze_union_features_20260710",
+        "btc_ohlcv_taker_core",
+        "btc_funding_premium_basis"
+      ],
+      "stats": {
+        "test_2024": {
+          "return_pct": 46.0128,
+          "cagr_pct": 45.8996,
+          "strict_mdd_pct": 5.7449,
+          "cagr_to_strict_mdd": 7.9896,
+          "trades": 36,
+          "signals": 282,
+          "p_value_mean_ret_approx": 3.8e-07
+        },
+        "eval_2025": {
+          "return_pct": 22.3415,
+          "cagr_pct": 22.3584,
+          "strict_mdd_pct": 4.7606,
+          "cagr_to_strict_mdd": 4.6966,
+          "trades": 27,
+          "signals": 195,
+          "p_value_mean_ret_approx": 0.01386034
+        },
+        "ytd_2026": {
+          "return_pct": 10.7688,
+          "cagr_pct": 27.8596,
+          "strict_mdd_pct": 5.214,
+          "cagr_to_strict_mdd": 5.3432,
+          "trades": 29,
+          "signals": 313,
+          "p_value_mean_ret_approx": 0.14467848
+        },
+        "combined_2024_2026h1": {
+          "return_pct": 97.8711,
+          "cagr_pct": 32.6165,
+          "strict_mdd_pct": 5.7449,
+          "cagr_to_strict_mdd": 5.6775,
+          "trades": 92,
+          "signals": 790,
+          "p_value_mean_ret_approx": 2.8e-07
+        }
+      },
+      "evidence": "Reusable scan rerun found this fixed component union clears CAGR/strict_MDD >= 3 on 2024 test, 2025 eval, 2026 YTD, and combined 2024~2026H1 while reporting absolute return and full-window CAGR. This adds a derivatives premium/funding squeeze family distinct from the earlier momentum-heavy long union.",
+      "source_artifacts": [
+        "training/long_component_tp_union_scan.py",
+        "results/long_component_tp_union_scan_2026-07-10_rerun.json",
+        "results/long_component_tp_union_scan_2026-07-10.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Component thresholds are fixed from prior train-window quantile discovery, but component union selection inspected 2024/2025/2026 tables. Treat as candidate-grade until predeclared rolling/fresh OOS validation. Market rows after 2026-06-02 are excluded before feature build.",
+      "next_action": "Run predeclared rolling/month-block validation and live-sim conversion under operator-declared long regime; do not reselect components on eval/2026 before the next validation pass.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "long_derivatives_squeeze_union_features_20260710",
+          "btc_ohlcv_taker_core",
+          "btc_funding_premium_basis"
+        ],
+        "entry_logic": "OR union of range_bb90, funding10_trend70, premium20_mom90 using fixed thresholds listed in this entry.",
+        "exit_logic": "fixed hold 576 bars; stride 12; next-open entry; long only; no TP/SL; 0.5x validation leverage.",
+        "side": "long",
+        "script_or_config": "training/long_component_tp_union_scan.py",
+        "reproduce_command": "PYTHONPATH=. python training/long_component_tp_union_scan.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --output results/long_component_tp_union_scan_2026-07-10_rerun.json",
+        "evaluation_protocol": {
+          "split": "test=2024, eval=2025, ytd2026=2026-01-01..2026-06-02; fixed thresholds discovered from train<2024",
+          "cost": "fee_rate=0.0004 and slippage_rate=0.0001 per entry/exit side as implemented by strict simulator",
+          "mdd": "strict OHLC MDD includes in-position adverse excursion; CAGR denominator is full calendar window including idle time"
+        },
+        "promotion_guardrails": [
+          "Require rolling validation without component reselection",
+          "Use only when operator declares long/bullish regime",
+          "Compare marginal contribution against existing long_union_range_mom_funding_compress_20260710"
+        ]
+      }
+    },
+    {
+      "id": "long_funding_compression_premium_squeeze_20260710",
+      "name": "Long funding/compression/premium squeeze breakout",
+      "status": "candidate",
+      "family": "long_derivatives_squeeze_union",
+      "scope": "btc_derivatives_price_action",
+      "side": "long",
+      "description": "Long-regime BTCUSDT OR-union alpha combining derivatives under-positioning/discount with positive price-action continuation. It was found after expanding beyond the first long union into fixed component/TP/SL sweeps.",
+      "entry_logic": "OR union of funding10_trend70, compress05_trend80, premium20_mom90. funding10_trend70=(funding_rate<=-0.0000167 and trend_96>=0.0074852182); compress05_trend80=(rex_2016_range_width_pct<=0.0507431447 and trend_24>=0.0047972289); premium20_mom90=(premium_index_change<=-0.00023471 and htf_1d_return_4>=0.0940403009).",
+      "exit_logic": "fixed hold 576 5m bars (48h), no TP/SL overlay, stride 12 bars, next-open entry, 0.5x validation leverage; split/window-end forced close via strict simulator.",
+      "dependencies": [
+        "long_derivatives_squeeze_union_features_20260710",
+        "btc_ohlcv_taker_core",
+        "btc_funding_premium_basis"
+      ],
+      "stats": {
+        "test_2024": {
+          "return_pct": 52.8396,
+          "cagr_pct": 52.7068,
+          "strict_mdd_pct": 5.8638,
+          "cagr_to_strict_mdd": 8.9885,
+          "trades": 35,
+          "signals": 289,
+          "p_value_mean_ret_approx": 0.00012322
+        },
+        "eval_2025": {
+          "return_pct": 17.5987,
+          "cagr_pct": 17.6118,
+          "strict_mdd_pct": 4.9712,
+          "cagr_to_strict_mdd": 3.5428,
+          "trades": 51,
+          "signals": 305,
+          "p_value_mean_ret_approx": 0.09156822
+        },
+        "ytd_2026": {
+          "return_pct": 16.3942,
+          "cagr_pct": 44.0226,
+          "strict_mdd_pct": 4.5506,
+          "cagr_to_strict_mdd": 9.6741,
+          "trades": 32,
+          "signals": 330,
+          "p_value_mean_ret_approx": 0.03701781
+        },
+        "combined_2024_2026h1": {
+          "return_pct": 109.204,
+          "cagr_pct": 35.7071,
+          "strict_mdd_pct": 5.8638,
+          "cagr_to_strict_mdd": 6.0894,
+          "trades": 118,
+          "signals": 924,
+          "p_value_mean_ret_approx": 1.063e-05
+        }
+      },
+      "evidence": "Reusable scan rerun found this fixed component union clears CAGR/strict_MDD >= 3 on 2024 test, 2025 eval, 2026 YTD, and combined 2024~2026H1 while reporting absolute return and full-window CAGR. This adds a derivatives premium/funding squeeze family distinct from the earlier momentum-heavy long union.",
+      "source_artifacts": [
+        "training/long_component_tp_union_scan.py",
+        "results/long_component_tp_union_scan_2026-07-10_rerun.json",
+        "results/long_component_tp_union_scan_2026-07-10.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Component thresholds are fixed from prior train-window quantile discovery, but component union selection inspected 2024/2025/2026 tables. Treat as candidate-grade until predeclared rolling/fresh OOS validation. Market rows after 2026-06-02 are excluded before feature build.",
+      "next_action": "Run predeclared rolling/month-block validation and live-sim conversion under operator-declared long regime; do not reselect components on eval/2026 before the next validation pass.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "long_derivatives_squeeze_union_features_20260710",
+          "btc_ohlcv_taker_core",
+          "btc_funding_premium_basis"
+        ],
+        "entry_logic": "OR union of funding10_trend70, compress05_trend80, premium20_mom90 using fixed thresholds listed in this entry.",
+        "exit_logic": "fixed hold 576 bars; stride 12; next-open entry; long only; no TP/SL; 0.5x validation leverage.",
+        "side": "long",
+        "script_or_config": "training/long_component_tp_union_scan.py",
+        "reproduce_command": "PYTHONPATH=. python training/long_component_tp_union_scan.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --output results/long_component_tp_union_scan_2026-07-10_rerun.json",
+        "evaluation_protocol": {
+          "split": "test=2024, eval=2025, ytd2026=2026-01-01..2026-06-02; fixed thresholds discovered from train<2024",
+          "cost": "fee_rate=0.0004 and slippage_rate=0.0001 per entry/exit side as implemented by strict simulator",
+          "mdd": "strict OHLC MDD includes in-position adverse excursion; CAGR denominator is full calendar window including idle time"
+        },
+        "promotion_guardrails": [
+          "Require rolling validation without component reselection",
+          "Use only when operator declares long/bullish regime",
+          "Compare marginal contribution against existing long_union_range_mom_funding_compress_20260710"
+        ]
+      }
     }
   ]
 }

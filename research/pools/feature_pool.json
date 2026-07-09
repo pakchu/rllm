@@ -1749,6 +1749,66 @@
         "command": "PYTHONPATH=. .venv/bin/python training/nonrex_short_manual_extra_scan.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/nonrex_short_manual_extra_scan_2026-07-10.json",
         "protocol": "manual non-REX idea scan; full-window CAGR; strict short MDD; conservative SL-before-TP"
       }
+    },
+    {
+      "id": "long_derivatives_squeeze_union_features_20260710",
+      "name": "Long derivatives squeeze union feature set (2026-07-10)",
+      "status": "promoted",
+      "family": "long_derivatives_squeeze_context",
+      "scope": "btc_derivatives_price_action",
+      "feature_tier": "alpha_feature",
+      "description": "Feature family behind the newly found long squeeze unions: upper range breakout, low-funding positive trend, negative premium change with HTF momentum, and compression breakout.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "Binance UM funding_rate",
+        "Binance UM premium_index"
+      ],
+      "feature_examples": [
+        "range_bb90: rex_576_range_width_pct >= 0.1295981611 and bb_z >= 1.6850824974",
+        "funding10_trend70: funding_rate <= -0.0000167 and trend_96 >= 0.0074852182",
+        "premium20_mom90: premium_index_change <= -0.00023471 and htf_1d_return_4 >= 0.0940403009",
+        "compress05_trend80: rex_2016_range_width_pct <= 0.0507431447 and trend_24 >= 0.0047972289"
+      ],
+      "feature_names": [
+        "rex_576_range_width_pct",
+        "bb_z",
+        "funding_rate",
+        "trend_96",
+        "premium_index_change",
+        "htf_1d_return_4",
+        "rex_2016_range_width_pct",
+        "trend_24"
+      ],
+      "usable_for": [
+        "long-regime derivatives squeeze entries",
+        "RLLM textual setup cards",
+        "long-only sleeve selector features",
+        "live-sim candidate conversion"
+      ],
+      "known_failures": [
+        "Component union was selected after inspecting 2024~2026H1 scan output, so it is not final clean unseen proof.",
+        "Sparse variants with ytd2026 trades below 10 should not be promoted despite high ratios."
+      ],
+      "evidence": "long_component_tp_union_scan rerun found multiple unions clearing CAGR/strict_MDD >=3 on 2024 test, 2025 eval, 2026 YTD, and combined 2024~2026H1. The strongest robust candidates were range_bb90+funding10_trend70+premium20_mom90 and funding10_trend70+compress05_trend80+premium20_mom90.",
+      "source_artifacts": [
+        "training/long_component_tp_union_scan.py",
+        "results/long_component_tp_union_scan_2026-07-10_rerun.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Thresholds are fixed from prior train-window quantile discovery; scan excludes rows after 2026-06-02 before feature build; CAGR uses full calendar windows and strict MDD includes intrabar adverse excursion.",
+      "tier_rationale": "Alpha feature: it supports at least two long candidate unions above CAGR/strict_MDD 3 on test/eval/YTD with combined trade counts of 92 and 118 respectively.",
+      "next_action": "Run rolling/month-block validation and live-sim conversion without reselecting component unions.",
+      "generation_recipe": {
+        "script": "training/long_component_tp_union_scan.py",
+        "inputs": [
+          "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+          "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+          "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz"
+        ],
+        "command": "PYTHONPATH=. python training/long_component_tp_union_scan.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --output results/long_component_tp_union_scan_2026-07-10_rerun.json",
+        "protocol": "fixed component thresholds; test2024/eval2025/ytd2026/combined windows; 0.5x leverage; fee=4bp and slippage=1bp per side; full-window CAGR; strict OHLC MDD",
+        "notes": "Use as explicit setup tokens for LLM/RLLM rather than raw numeric dumping: RANGE_BREAKOUT, LOW_FUNDING_TREND, PREMIUM_DISCOUNT_MOMENTUM, COMPRESSION_BREAKOUT."
+      }
     }
   ]
 }
