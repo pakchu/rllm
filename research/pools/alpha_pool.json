@@ -1427,6 +1427,94 @@
         ],
         "live_use_notes": "Candidate only. Promising enough to implement live-sim next, but not yet final production sizing."
       }
+    },
+    {
+      "id": "bear_rex_short_reclaim_20260710",
+      "name": "Bear-regime REX short reclaim/failure sleeve",
+      "status": "candidate",
+      "family": "rolling_extrema_rex_short",
+      "scope": "btc_price_action_derivatives_macro",
+      "side": "short",
+      "description": "Short-only REX/LLM sleeve for persistent bearish regimes. Executes exported prediction.gate=TRADE and prediction.side=SHORT from the rex_htf_pullback_reclaim family.",
+      "entry_logic": "Manual/higher-level bear regime must be active. Then execute prediction rows where gate=TRADE and side=SHORT from results/rex_dual_regime_eval_2025_2026h1_predictions_2026-07-03.jsonl.",
+      "exit_logic": "Fixed hold 144 5m bars, next-open entry, 0.5x validation leverage; live pilot config currently uses max_holding_bars=144 and allowed_signals=[SHORT].",
+      "dependencies": [
+        "bear_rex_short_regime_features_20260710",
+        "btc_ohlcv_taker_core",
+        "btc_funding_premium_basis",
+        "external_macro_kimchi_fx_features"
+      ],
+      "stats": {
+        "bear_eval_2025": {
+          "return_pct": 14.1277,
+          "cagr_pct": 14.138,
+          "strict_mdd_pct": 2.5386,
+          "cagr_to_strict_mdd": 5.5693,
+          "trades": 26,
+          "signals": 44,
+          "p_value_mean_ret_approx": 0.0011352
+        },
+        "bear_ytd_2026": {
+          "return_pct": 5.066,
+          "cagr_pct": 12.609,
+          "strict_mdd_pct": 3.7206,
+          "cagr_to_strict_mdd": 3.3889,
+          "trades": 23,
+          "signals": 48,
+          "p_value_mean_ret_approx": 0.2470341
+        },
+        "bear_combined_2025_2026h1": {
+          "return_pct": 19.9094,
+          "cagr_pct": 13.6863,
+          "strict_mdd_pct": 3.7206,
+          "cagr_to_strict_mdd": 3.6785,
+          "trades": 49,
+          "signals": 92,
+          "p_value_mean_ret_approx": 0.002215
+        },
+        "all_2024_2026h1": {
+          "return_pct": 19.9094,
+          "cagr_pct": 7.7997,
+          "strict_mdd_pct": 3.7206,
+          "cagr_to_strict_mdd": 2.0963,
+          "trades": 49,
+          "signals": 92,
+          "p_value_mean_ret_approx": 0.002215
+        }
+      },
+      "evidence": "Hand-built short rule families failed as universal short alphas, but the REX short prediction sleeve clears CAGR/strict_MDD >=3 in the intended bear-regime window 2025~2026H1 with 49 trades and low strict MDD.",
+      "source_artifacts": [
+        "training/short_regime_rex_validate.py",
+        "training/short_regime_alpha_family_scan.py",
+        "results/short_regime_rex_validate_2025_2026h1_2026-07-10.json",
+        "results/short_regime_alpha_family_scan_fast_2024_2026h1_2026-07-10.json",
+        "results/rex_dual_regime_eval_2025_2026h1_predictions_2026-07-03.jsonl",
+        "configs/live/rex_llm_binance_testnet_bear_pilot.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Candidate is regime-conditional and based on prior exported predictions. It should not be judged as all-market universal short; conversely, it must not be traded unless bearish regime is declared without looking ahead.",
+      "next_action": "Implement/verify live dry-run bridge for this sleeve under require_bear_regime=true, and regenerate train-only predictions for future rolling validation.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "bear_rex_short_regime_features_20260710"
+        ],
+        "entry_logic": "bear regime gate + REX prediction gate=TRADE side=SHORT",
+        "exit_logic": "fixed hold 144 bars; next-open entry; strict short MDD uses intrabar highs",
+        "side": "short",
+        "script_or_config": "training/short_regime_rex_validate.py; configs/live/rex_llm_binance_testnet_bear_pilot.json",
+        "reproduce_command": "PYTHONPATH=. .venv/bin/python training/short_regime_rex_validate.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --predictions-jsonl results/rex_dual_regime_eval_2025_2026h1_predictions_2026-07-03.jsonl --exclude-from 2026-06-02 --output results/short_regime_rex_validate_2025_2026h1_2026-07-10.json",
+        "evaluation_protocol": {
+          "split": "bear eval=2025, bear ytd=2026-01-01..2026-06-02; all-market 2024~2026H1 reported separately",
+          "cost": "fee_rate=0.0004 and slippage_rate=0.0001 per side as strict simulator params",
+          "mdd": "strict short MDD includes intrabar high adverse excursion and full calendar idle time in CAGR denominator"
+        },
+        "promotion_guardrails": [
+          "Require explicit non-lookahead bearish regime gate",
+          "Do not combine with long-regime sleeve unless portfolio allocator enforces regime separation",
+          "Regenerate prediction file from documented train-only process before production sizing"
+        ],
+        "live_use_notes": "Candidate for bear-regime paper/live dry-run, not universal short."
+      }
     }
   ]
 }
