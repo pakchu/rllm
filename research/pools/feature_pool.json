@@ -1660,6 +1660,95 @@
         "script": "training/nonrex_short_bear_tp_refine.py",
         "protocol": "non-REX candidate refinement; full-window CAGR; strict short MDD"
       }
+    },
+    {
+      "id": "nonrex_kimchi_unwind_short_features_20260710",
+      "name": "Non-REX kimchi unwind short feature set (2026-07-10)",
+      "status": "candidate",
+      "family": "kimchi_unwind_short_context",
+      "scope": "btc_macro_kimchi",
+      "feature_tier": "beta_feature",
+      "description": "Potential short feature family: BTC is weak on 3-day HTF return while kimchi premium change sharply falls. Interpreted as Korea-side risk appetite unwind / local premium compression during bearish regimes.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "Kimchi premium change from BTCKRW/USDKRW/BTCUSDT external cache"
+      ],
+      "feature_examples": [
+        "htf_3d_return_1 <= train q0.20",
+        "kimchi_premium_change <= train q0.10",
+        "TP 4% / SL 2.5% short exit",
+        "hold cap 216-288 5m bars"
+      ],
+      "feature_names": [
+        "htf_3d_return_1",
+        "kimchi_premium_change"
+      ],
+      "usable_for": [
+        "bear-regime short selector",
+        "RLLM macro-local risk-off state token",
+        "portfolio diversifier research versus FX-stress and premium-discount shorts"
+      ],
+      "known_failures": [
+        "Bear combined ratio is below live-grade threshold 3.0 (best 2.87).",
+        "2026H1 is strong but eval2025 ratio is only 1.92-2.23 depending hold."
+      ],
+      "evidence": "Best scan result: test2024 +7.64%, ratio 1.27, 40 trades; eval2025 +8.41%, ratio 1.92, 32 trades; ytd2026 +9.10%, ratio 6.15, 16 trades; bear_combined +18.28%, CAGR 12.59%, strict MDD 4.39%, ratio 2.87, 48 trades.",
+      "source_artifacts": [
+        "training/nonrex_short_manual_extra_scan.py",
+        "results/nonrex_short_manual_extra_scan_2026-07-10.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Feature selected after inspecting bear-window scan; keep beta until rolling validation or combination improves ratio above 3 without sacrificing 2024.",
+      "tier_rationale": "Beta feature: close to alpha threshold and economically distinct, but not strong enough as standalone alpha.",
+      "next_action": "Test as selector/booster on FX-stress or premium-discount shorts, and check marginal contribution in bear portfolio.",
+      "generation_recipe": {
+        "script": "training/nonrex_short_manual_extra_scan.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/nonrex_short_manual_extra_scan.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/nonrex_short_manual_extra_scan_2026-07-10.json",
+        "protocol": "manual non-REX idea scan; full-window CAGR; strict short MDD; conservative SL-before-TP"
+      }
+    },
+    {
+      "id": "nonrex_sellflow_liquidation_short_features_20260710",
+      "name": "Non-REX sell-flow liquidation short feature set (2026-07-10)",
+      "status": "candidate",
+      "family": "sellflow_liquidation_short_context",
+      "scope": "btc_orderflow_price_action",
+      "feature_tier": "beta_feature",
+      "description": "Potential bear-window feature: BTC 3-day weakness plus strong taker-sell imbalance and elevated 1d quote volume. Interpreted as liquidation/forced-selling continuation, but 2024 behavior is poor.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache"
+      ],
+      "feature_examples": [
+        "htf_3d_return_1 <= train q0.20",
+        "taker_imbalance <= train q0.20",
+        "quote_vol_z_1d >= train q0.70"
+      ],
+      "feature_names": [
+        "htf_3d_return_1",
+        "taker_imbalance",
+        "quote_vol_z_1d"
+      ],
+      "usable_for": [
+        "bear-market liquidation context token",
+        "possible filter for existing short sleeves"
+      ],
+      "known_failures": [
+        "2024 test is negative (-5.85%, ratio -0.58), so do not use standalone.",
+        "Bear combined ratio is below alpha threshold at 2.86 despite strong 2026H1."
+      ],
+      "evidence": "Bear_combined +19.20%, CAGR 13.21%, strict MDD 4.62%, ratio 2.86, 75 trades; ytd2026 +10.47%, ratio 8.50; but 2024 test -5.85%.",
+      "source_artifacts": [
+        "training/nonrex_short_manual_extra_scan.py",
+        "results/nonrex_short_manual_extra_scan_2026-07-10.json"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "OOS-selected and fails 2024; use only as a context/filter idea unless a robust regime guard is proven.",
+      "tier_rationale": "Beta feature only: economically plausible but standalone candidate fails robustness.",
+      "next_action": "Try as an exit accelerator or size reducer/increaser inside existing bear shorts rather than a new entry alpha.",
+      "generation_recipe": {
+        "script": "training/nonrex_short_manual_extra_scan.py",
+        "protocol": "manual non-REX idea scan; full-window CAGR; strict short MDD"
+      }
     }
   ]
 }
