@@ -2233,6 +2233,23 @@ def _expected_decision_bar(now: pd.Timestamp, *, interval_minutes: int) -> pd.Ti
     return ts.floor(interval) - pd.Timedelta(minutes=int(interval_minutes))
 
 
+def _completed_decision_data_asof(expected_bar: pd.Timestamp, *, interval_minutes: int) -> pd.Timestamp:
+    """Return the final 1m timestamp belonging to a completed decision bar.
+
+    At 12:05, for example, the 12:00 five-minute candle is complete only after
+    the 12:04 one-minute row commits.  Querying with wall-clock 12:05 may also
+    include an already-started 12:05 row, which resampling would turn into an
+    incomplete candle and accidentally score it.
+    """
+
+    bar = pd.Timestamp(expected_bar)
+    if bar.tzinfo is None:
+        bar = bar.tz_localize("UTC")
+    else:
+        bar = bar.tz_convert("UTC")
+    return bar + pd.Timedelta(minutes=max(0, int(interval_minutes) - 1))
+
+
 def _validate_pg_notify_channel(channel: str) -> str:
     name = str(channel or "").strip()
     if not name or not name.replace("_", "a").isalnum() or not name[0].isalpha():
@@ -2476,10 +2493,14 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 max_wait_sec=cfg.max_freshness_wait_sec,
                 notify_channel=cfg.freshness_notify_channel,
             )
+            decision_data_asof = _completed_decision_data_asof(
+                expected_bar,
+                interval_minutes=exec_cfg.interval_minutes,
+            )
             frame_t0 = time.perf_counter()
             enriched, features = await build_live_portfolio_frames(
                 engine=engine,
-                asof=asof,
+                asof=decision_data_asof,
                 cfg=live_cfg,
                 source_cache=source_cache,
                 feature_cache=feature_cache,
@@ -2493,16 +2514,27 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 enriched=enriched,
                 features=features,
                 exec_cfg=exec_cfg,
-                asof=asof,
+                asof=decision_data_asof,
                 rex_selector_cfg=rex_selector_cfg,
             )
-            data_fresh = not freshness_missing
+            latest_decision_bar = pd.Timestamp(enriched.iloc[-1]["date"])
+            if latest_decision_bar.tzinfo is None:
+                latest_decision_bar = latest_decision_bar.tz_localize("UTC")
+            else:
+                latest_decision_bar = latest_decision_bar.tz_convert("UTC")
+            decision_bar_complete = latest_decision_bar == expected_bar
+            data_fresh = not freshness_missing and decision_bar_complete
             if not data_fresh:
                 for sleeve in sleeve_scores:
                     sleeve["active"] = False
-                    sleeve.setdefault("reasons", []).append(
-                        "source_freshness=fail:" + ",".join(str(item["key"]) for item in freshness_missing[:5])
-                    )
+                    if freshness_missing:
+                        sleeve.setdefault("reasons", []).append(
+                            "source_freshness=fail:" + ",".join(str(item["key"]) for item in freshness_missing[:5])
+                        )
+                    if not decision_bar_complete:
+                        sleeve.setdefault("reasons", []).append(
+                            f"completed_decision_bar=fail:expected={expected_bar.isoformat()},actual={latest_decision_bar.isoformat()}"
+                        )
             portfolio_selector_record = _apply_portfolio_selector_overlay(
                 sleeve_scores,
                 overlay=selector_overlay,
@@ -2781,6 +2813,8 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 "latest_bar": str(enriched.iloc[-1]["date"]),
                 "latest_1m_ts": str(latest_1m_ts),
                 "expected_bar": str(expected_bar),
+                "decision_data_asof": str(decision_data_asof),
+                "decision_bar_complete": decision_bar_complete,
                 "asof": str(asof),
                 "freshness_mode": freshness_mode,
                 "source_latest_ts": {k: None if v is None else str(v) for k, v in latest_source_ts.items()},

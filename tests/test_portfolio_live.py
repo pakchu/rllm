@@ -13,6 +13,7 @@ from execution.portfolio_live import (
     _add_portfolio_oi_features,
     _cancel_stale_portfolio_orders,
     _entry_ttl_seconds,
+    _completed_decision_data_asof,
     _margin_fraction_for_weight,
     _load_sleeve_runtime_spec,
     _place_portfolio_maker_order_with_deadline,
@@ -60,6 +61,13 @@ class FakeClient:
 
 
 class PortfolioLiveSafetyTests(unittest.TestCase):
+    def test_completed_decision_cutoff_excludes_next_incomplete_candle(self):
+        expected = pd.Timestamp("2026-07-10T12:00:00Z")
+        self.assertEqual(
+            _completed_decision_data_asof(expected, interval_minutes=5),
+            pd.Timestamp("2026-07-10T12:04:00Z"),
+        )
+
     def test_runtime_spec_preserves_dynamic_exit_for_restart_recovery(self):
         spec = _load_sleeve_runtime_spec(
             {
