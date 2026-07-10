@@ -611,7 +611,7 @@ class PortfolioLiveConfig:
     exchange: str = "binance"
     lookback_minutes: int = 45_000
     close_delay_sec: float = 0.25
-    max_freshness_wait_sec: float = 8.0
+    max_freshness_wait_sec: float = 50.0
     freshness_poll_sec: float = 0.5
     freshness_notify_channel: str = "market_data_bar"
     run_immediately: bool = False
@@ -2856,7 +2856,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--exchange", default="binance")
     p.add_argument("--lookback-minutes", type=int, default=45_000)
     p.add_argument("--close-delay-sec", type=float, default=0.25)
-    p.add_argument("--max-freshness-wait-sec", type=float, default=8.0)
+    p.add_argument(
+        "--max-freshness-wait-sec",
+        type=float,
+        default=50.0,
+        help="Wait for all execution-critical completed-bar sources; 50s covers observed Upbit commit tail",
+    )
     p.add_argument("--freshness-poll-sec", type=float, default=0.5, help="Deprecated fallback knob; live freshness uses Postgres NOTIFY")
     p.add_argument("--freshness-notify-channel", default="market_data_bar")
     p.add_argument("--run-immediately", action="store_true", default=False)
