@@ -25,6 +25,14 @@ GEMMA4_E4B_IT_MODEL = "google/gemma-4-E4B-it"
 QWEN3_VL_MODEL = "Qwen/Qwen3-VL-8B-Instruct"
 FALLBACK_VLM_MODEL = "Qwen/Qwen2.5-VL-7B-Instruct"
 RECOMMENDED_VLM_MODEL = GEMMA4_E4B_IT_MODEL
+# Default text-only causal LM for bounded live selectors.  Keep this separate
+# from the historical VLM/Gemma4 alias because Gemma4 E4B loads as a
+# multimodal architecture in recent Transformers and is not reliable on 8GB
+# live hosts.
+QWEN25_1P5B_INSTRUCT_MODEL = "Qwen/Qwen2.5-1.5B-Instruct"
+QWEN25_3B_INSTRUCT_MODEL = "Qwen/Qwen2.5-3B-Instruct"
+GEMMA2_2B_IT_MODEL = "google/gemma-2-2b-it"
+RECOMMENDED_TEXT_CAUSAL_LM_MODEL = QWEN25_1P5B_INSTRUCT_MODEL
 
 
 def resolve_vlm_model_alias(model_name: str, *, prefer_latest: bool = True) -> str:
@@ -45,9 +53,39 @@ def resolve_vlm_model_alias(model_name: str, *, prefer_latest: bool = True) -> s
     return aliases.get(low, key)
 
 
+def resolve_text_causal_lm_alias(model_name: str, *, prefer_latest: bool = True) -> str:
+    """Resolve aliases for text-only causal LM selector/SFT workloads.
+
+    This intentionally does not map ``auto`` to Gemma4 E4B: that checkpoint is
+    exposed as a multimodal Gemma4 model in the current runtime and is unsuitable
+    for low-VRAM live selector inference.
+    """
+
+    key = str(model_name or "").strip()
+    low = key.lower()
+    if low in {"", "auto", "text-auto", "text-only", "selector-auto"}:
+        return RECOMMENDED_TEXT_CAUSAL_LM_MODEL if prefer_latest else GEMMA2_2B_IT_MODEL
+    aliases = {
+        "qwen2.5-1.5b": QWEN25_1P5B_INSTRUCT_MODEL,
+        "qwen2.5-1.5b-it": QWEN25_1P5B_INSTRUCT_MODEL,
+        "qwen2.5-1.5b-instruct": QWEN25_1P5B_INSTRUCT_MODEL,
+        "qwen25-1.5b": QWEN25_1P5B_INSTRUCT_MODEL,
+        "qwen25-1.5b-instruct": QWEN25_1P5B_INSTRUCT_MODEL,
+        "qwen2.5-3b": QWEN25_3B_INSTRUCT_MODEL,
+        "qwen2.5-3b-it": QWEN25_3B_INSTRUCT_MODEL,
+        "qwen2.5-3b-instruct": QWEN25_3B_INSTRUCT_MODEL,
+        "qwen25-3b": QWEN25_3B_INSTRUCT_MODEL,
+        "qwen25-3b-instruct": QWEN25_3B_INSTRUCT_MODEL,
+        "gemma2-2b": GEMMA2_2B_IT_MODEL,
+        "gemma2-2b-it": GEMMA2_2B_IT_MODEL,
+        "gemma-2-2b-it": GEMMA2_2B_IT_MODEL,
+    }
+    return aliases.get(low, key)
+
+
 @dataclass(frozen=True)
 class TextSFTConfig:
-    model_name: str = RECOMMENDED_VLM_MODEL
+    model_name: str = RECOMMENDED_TEXT_CAUSAL_LM_MODEL
     train_jsonl: str = "data/text_trader_sft.jsonl"
     output_dir: str = "checkpoints/text_sft"
     max_samples: int = 0
@@ -283,7 +321,7 @@ def summarize_rows(rows: list[dict[str, Any]], cfg: TextSFTConfig, resolved_mode
 
 
 def train_text_sft(cfg: TextSFTConfig, *, dry_run: bool = False) -> dict[str, Any]:
-    resolved_model = resolve_vlm_model_alias(cfg.model_name, prefer_latest=True)
+    resolved_model = resolve_text_causal_lm_alias(cfg.model_name, prefer_latest=True)
     rows = load_jsonl(cfg.train_jsonl, max_samples=cfg.max_samples, sample_mode=cfg.sample_mode, seed=cfg.seed)
     summary = summarize_rows(rows, cfg, resolved_model)
     Path(cfg.output_dir).mkdir(parents=True, exist_ok=True)
@@ -357,7 +395,7 @@ def train_text_sft(cfg: TextSFTConfig, *, dry_run: bool = False) -> dict[str, An
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Fine-tune Gemma/Qwen text policy datasets with LoRA SFT")
-    p.add_argument("--model-name", default=RECOMMENDED_VLM_MODEL)
+    p.add_argument("--model-name", default=RECOMMENDED_TEXT_CAUSAL_LM_MODEL)
     p.add_argument("--train-jsonl", required=True)
     p.add_argument("--output-dir", required=True)
     p.add_argument("--max-samples", type=int, default=0)

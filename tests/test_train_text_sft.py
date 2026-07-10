@@ -9,10 +9,16 @@ from training.train_text_sft import (
     build_training_text,
     load_jsonl,
     train_text_sft,
+    resolve_text_causal_lm_alias,
 )
 
 
 class TestTrainTextSFT(unittest.TestCase):
+
+    def test_text_causal_lm_aliases_do_not_default_to_multimodal_gemma4(self):
+        self.assertEqual(resolve_text_causal_lm_alias("auto"), "Qwen/Qwen2.5-1.5B-Instruct")
+        self.assertEqual(resolve_text_causal_lm_alias("qwen2.5-3b"), "Qwen/Qwen2.5-3B-Instruct")
+
     def test_dry_run_summarizes_trader_jsonl_without_loading_model(self):
         with tempfile.TemporaryDirectory() as td:
             data = Path(td) / "trader.jsonl"
@@ -22,9 +28,9 @@ class TestTrainTextSFT(unittest.TestCase):
                 {"task": "trader", "prompt": "Analyzer summary: {x}", "target": '{"gate":"TRADE","side":"LONG"}'},
             ]
             data.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
-            summary = train_text_sft(TextSFTConfig(model_name="gemma4", train_jsonl=str(data), output_dir=str(out)), dry_run=True)
+            summary = train_text_sft(TextSFTConfig(model_name="qwen2.5-1.5b-instruct", train_jsonl=str(data), output_dir=str(out)), dry_run=True)
             self.assertTrue(summary["dry_run"])
-            self.assertEqual(summary["model_name"], "google/gemma-4-E4B-it")
+            self.assertEqual(summary["model_name"], "Qwen/Qwen2.5-1.5B-Instruct")
             self.assertEqual(summary["rows"], 2)
             self.assertEqual(summary["tasks"], {"trader": 2})
             self.assertTrue((out / "sft_summary.json").exists())
@@ -80,7 +86,7 @@ class TestTrainTextSFT(unittest.TestCase):
             sampled = load_jsonl(data, max_samples=6, sample_mode="balanced", seed=7)
             actions = {json.loads(r["target"])["action_path"] for r in sampled}
             self.assertEqual(actions, {"NONE", "TREND", "FADE"})
-            summary = train_text_sft(TextSFTConfig(model_name="gemma4", train_jsonl=str(data), output_dir=str(Path(td) / "out"), max_samples=6, sample_mode="balanced"), dry_run=True)
+            summary = train_text_sft(TextSFTConfig(model_name="qwen2.5-1.5b-instruct", train_jsonl=str(data), output_dir=str(Path(td) / "out"), max_samples=6, sample_mode="balanced"), dry_run=True)
             self.assertIn("action_path=TREND", summary["target_counts"])
 
     def test_balanced_sampling_spreads_repaired_router_labels(self):
@@ -96,7 +102,7 @@ class TestTrainTextSFT(unittest.TestCase):
             sampled = load_jsonl(data, max_samples=6, sample_mode="balanced", seed=7)
             warnings = {json.loads(r["target"])["fade_warning"] for r in sampled}
             self.assertEqual(warnings, {"NO_FADE_WARNING", "FADE_STRONG", "FADE_WATCH"})
-            summary = train_text_sft(TextSFTConfig(model_name="gemma4", train_jsonl=str(data), output_dir=str(Path(td) / "out"), max_samples=6, sample_mode="balanced"), dry_run=True)
+            summary = train_text_sft(TextSFTConfig(model_name="qwen2.5-1.5b-instruct", train_jsonl=str(data), output_dir=str(Path(td) / "out"), max_samples=6, sample_mode="balanced"), dry_run=True)
             self.assertIn("fade_warning=FADE_STRONG", summary["target_counts"])
 
     def test_balanced_oversample_can_expand_tiny_direction_regime_dataset(self):
@@ -110,7 +116,7 @@ class TestTrainTextSFT(unittest.TestCase):
             data.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
             sampled = load_jsonl(data, max_samples=9, sample_mode="balanced_oversample", seed=7)
             self.assertEqual(len(sampled), 9)
-            summary = train_text_sft(TextSFTConfig(model_name="gemma4", train_jsonl=str(data), output_dir=str(Path(td) / "out"), max_samples=9, sample_mode="balanced_oversample"), dry_run=True)
+            summary = train_text_sft(TextSFTConfig(model_name="qwen2.5-1.5b-instruct", train_jsonl=str(data), output_dir=str(Path(td) / "out"), max_samples=9, sample_mode="balanced_oversample"), dry_run=True)
             self.assertEqual(summary["rows"], 9)
             self.assertIn("direction_regime=LOW_SCORE_WINS", summary["target_counts"])
 

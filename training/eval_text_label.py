@@ -8,8 +8,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from models.option_b_vlm import RECOMMENDED_VLM_MODEL, resolve_vlm_model_alias
-from training.train_text_sft import load_jsonl
+from training.train_text_sft import RECOMMENDED_TEXT_CAUSAL_LM_MODEL, load_jsonl, resolve_text_causal_lm_alias
 from utils import disable_transformers_allocator_warmup
 
 VALID_VALUES = {"gate": ("NO_TRADE", "TRADE"), "side": ("LONG", "SHORT"), "decision": ("ABSTAIN", "TRADE")}
@@ -39,11 +38,11 @@ def _metrics(rows: list[dict[str, Any]], predictions: list[str], *, key: str) ->
 
 
 def _generate_predictions(rows: list[dict[str, Any]], *, key: str, model_name: str, adapter_dir: str, max_new_tokens: int) -> list[str]:
+    resolved = _assert_adapter_matches_model(model_name, adapter_dir)
     disable_transformers_allocator_warmup()
     from peft import PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    resolved = resolve_vlm_model_alias(model_name, prefer_latest=True)
     tokenizer = AutoTokenizer.from_pretrained(resolved, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -62,12 +61,35 @@ def _generate_predictions(rows: list[dict[str, Any]], *, key: str, model_name: s
     return preds
 
 
+def _adapter_base_model(adapter_dir: str) -> str | None:
+    cfg = Path(adapter_dir) / "adapter_config.json"
+    if not cfg.exists():
+        return None
+    try:
+        data = json.loads(cfg.read_text())
+    except json.JSONDecodeError:
+        return None
+    base = data.get("base_model_name_or_path")
+    return str(base) if base else None
+
+
+def _assert_adapter_matches_model(model_name: str, adapter_dir: str) -> str:
+    resolved = resolve_text_causal_lm_alias(model_name, prefer_latest=True)
+    adapter_base = _adapter_base_model(adapter_dir)
+    if adapter_base and adapter_base != resolved:
+        raise ValueError(
+            f"adapter was trained on base_model_name_or_path={adapter_base!r}, "
+            f"but selector model resolved to {resolved!r}; retrain/export the adapter on the text-only base"
+        )
+    return resolved
+
+
 def _load_text_model(model_name: str, adapter_dir: str):
+    resolved = _assert_adapter_matches_model(model_name, adapter_dir)
     disable_transformers_allocator_warmup()
     from peft import PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    resolved = resolve_vlm_model_alias(model_name, prefer_latest=True)
     tokenizer = AutoTokenizer.from_pretrained(resolved, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -141,7 +163,7 @@ def _prediction_rows(rows: list[dict[str, Any]], preds: list[str], *, key: str) 
     return out
 
 
-def evaluate_text_label(*, eval_jsonl: str, output: str, key: str, model_name: str = RECOMMENDED_VLM_MODEL, adapter_dir: str = "", max_samples: int = 0, sample_mode: str = "sequential", seed: int = 42, prediction_mode: str = "target_echo", max_new_tokens: int = 8, score_normalization: str = "mean", predictions_output: str = "") -> dict[str, Any]:
+def evaluate_text_label(*, eval_jsonl: str, output: str, key: str, model_name: str = RECOMMENDED_TEXT_CAUSAL_LM_MODEL, adapter_dir: str = "", max_samples: int = 0, sample_mode: str = "sequential", seed: int = 42, prediction_mode: str = "target_echo", max_new_tokens: int = 8, score_normalization: str = "mean", predictions_output: str = "") -> dict[str, Any]:
     key = str(key).strip().lower()
     if key not in VALID_VALUES:
         raise ValueError("key must be one of {'gate','side','decision'}")
@@ -161,7 +183,7 @@ def evaluate_text_label(*, eval_jsonl: str, output: str, key: str, model_name: s
     report = {
         "eval_jsonl": str(Path(eval_jsonl).resolve()),
         "key": key,
-        "model_name": resolve_vlm_model_alias(model_name, prefer_latest=True),
+        "model_name": resolve_text_causal_lm_alias(model_name, prefer_latest=True),
         "adapter_dir": adapter_dir,
         "prediction_mode": prediction_mode,
         "predictions_output": predictions_output,
@@ -182,7 +204,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--eval-jsonl", required=True)
     p.add_argument("--output", required=True)
     p.add_argument("--key", choices=["gate", "side", "decision"], required=True)
-    p.add_argument("--model-name", default=RECOMMENDED_VLM_MODEL)
+    p.add_argument("--model-name", default=RECOMMENDED_TEXT_CAUSAL_LM_MODEL)
     p.add_argument("--adapter-dir", default="")
     p.add_argument("--max-samples", type=int, default=0)
     p.add_argument("--sample-mode", choices=["sequential", "random", "balanced"], default="sequential")

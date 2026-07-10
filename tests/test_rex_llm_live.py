@@ -82,6 +82,10 @@ class TestRexLlmLive(unittest.TestCase):
         self.assertEqual(decision.signal, "SHORT")
         self.assertGreater(decision.current_atr, 0.0)
 
+    def test_rex_selector_defaults_are_text_only(self):
+        cfg = RexLlmSelectorConfig()
+        self.assertEqual(cfg.model_name, "qwen2.5-1.5b-instruct")
+        self.assertIn("qwen25_1p5b_lora_s80_2026-07-07", cfg.adapter_dir)
 
     def test_adapter_selector_can_block_otherwise_valid_rex_candidate(self):
         features = _base_features()

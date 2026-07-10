@@ -92,8 +92,8 @@ class RexLlmSelectorConfig:
     """
 
     enabled: bool = False
-    adapter_dir: str = "checkpoints/rex_regime_thesis_range_kimchi_label_gemma4_s32_2026-07-03"
-    model_name: str = "gemma4-e4b-it"
+    adapter_dir: str = "checkpoints/rex_regime_thesis_qwen25_1p5b_lora_s80_2026-07-07"
+    model_name: str = "qwen2.5-1.5b-instruct"
     score_normalization: str = "sum"
     fail_closed: bool = True
     require_cuda: bool = True
@@ -667,7 +667,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--allow-missing-core-external", action="store_true", default=False, help="Always allow missing DXY/kimchi/USDKRW like historical neutral-fill evaluation")
     parser.add_argument("--gate", action="append", type=_parse_gate, default=None, help="Override frozen gate, e.g. range_vol>=0.02")
     parser.add_argument("--rex-selector-adapter-dir", default="", help="Optional bounded REX TRADE/ABSTAIN LoRA adapter directory")
-    parser.add_argument("--rex-selector-model-name", default="gemma4-e4b-it")
+    parser.add_argument("--rex-selector-model-name", default=RexLlmSelectorConfig.model_name)
     parser.add_argument("--rex-selector-score-normalization", choices=["sum", "mean", "first_token"], default="sum")
     parser.add_argument("--rex-selector-fail-open", action="store_true", default=False, help="If set, adapter errors do not block an otherwise valid candidate")
     parser.add_argument("--rex-selector-allow-cpu", action="store_true", default=False, help="Allow selector inference without CUDA; default is fail-closed when CUDA is unavailable")
