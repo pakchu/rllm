@@ -262,43 +262,96 @@
       }
     },
     {
-      "id": "rex_rule",
-      "name": "REX rule long sleeve",
+      "id": "rex_rule_gate",
+      "name": "REX dual-regime rule-gate sleeve",
       "status": "candidate",
       "family": "rolling_extrema_rex",
       "scope": "btc_only",
-      "side": "long",
-      "description": "Rolling-extrema / HTF pullback resume style long sleeve.",
-      "entry_logic": "REX HTF pullback/resume family, selected via prior verifier/selector workflows.",
-      "exit_logic": "fixed hold; period-end forced liquidation added in later reevaluation.",
+      "side": "auto",
+      "description": "No-LLM REX sleeve that executes only exported dual-regime rule-gate predictions. This replaces raw/source_all REX: source_action rows are ignored unless prediction.gate=TRADE.",
+      "entry_logic": "Load rex_dual_regime_*_predictions_2026-07-03.jsonl and execute only rows with prediction.gate=TRADE, using prediction.side and prediction.hold_bars. Do not execute source_action/source_all raw REX candidates.",
+      "exit_logic": "fixed hold from prediction.hold_bars; entry at signal_pos+1; period-end forced liquidation in strict evaluation.",
       "dependencies": [
-        "btc_ohlcv_taker_core"
+        "btc_ohlcv_taker_core",
+        "rex_dual_regime_prediction_artifacts"
       ],
       "stats": {
-        "note": "Useful but live may need LLM selector; June gaps traced to missing prediction regeneration."
+        "source_all_raw_rex_rejected": {
+          "eval2025": {
+            "return_pct": 19.48,
+            "cagr_pct": 19.49,
+            "strict_mdd_pct": 9.95,
+            "cagr_to_strict_mdd": 1.96,
+            "trades": 70
+          },
+          "ytd2026": {
+            "return_pct": 4.38,
+            "cagr_pct": 10.79,
+            "strict_mdd_pct": 9.14,
+            "cagr_to_strict_mdd": 1.18,
+            "trades": 40
+          }
+        },
+        "rule_gate": {
+          "test2024": {
+            "return_pct": 38.79,
+            "cagr_pct": 38.7,
+            "strict_mdd_pct": 11.28,
+            "cagr_to_strict_mdd": 3.43,
+            "trades": 62,
+            "win_rate": 0.565
+          },
+          "eval2025": {
+            "return_pct": 38.77,
+            "cagr_pct": 38.8,
+            "strict_mdd_pct": 5.12,
+            "cagr_to_strict_mdd": 7.57,
+            "trades": 33,
+            "win_rate": 0.697
+          },
+          "ytd2026": {
+            "return_pct": 11.02,
+            "cagr_pct": 28.33,
+            "strict_mdd_pct": 7.37,
+            "cagr_to_strict_mdd": 3.84,
+            "trades": 24,
+            "win_rate": 0.625
+          }
+        }
       },
-      "evidence": "Important component in best portfolios; direct selector/model work required for live parity.",
+      "evidence": "docs/rex-no-llm-standalone-check-2026-07-10.md shows raw/source_all REX is weak, while fixed rule_gate clears the intended 2025 and 2026YTD CAGR/MDD threshold. Portfolio append_rex paths already use prediction.gate=TRADE; alpha pool now records that raw REX is rejected.",
       "source_artifacts": [
-        "docs/rex-horizon-stability-score-2026-07-02.md",
-        "docs/linear-combo-alpha-recheck-2026-07-01.md",
-        "execution/rex_llm_live.py"
+        "docs/rex-no-llm-standalone-check-2026-07-10.md",
+        "results/rex_no_llm_standalone_check_2026-07-10.json",
+        "results/rex_dual_regime_train_2021_2023_predictions_2026-07-03.jsonl",
+        "results/rex_dual_regime_test_2024_predictions_2026-07-03.jsonl",
+        "results/rex_dual_regime_eval_2025_2026h1_predictions_2026-07-03.jsonl",
+        "training/evaluate_rex_no_llm_standalone.py",
+        "training/evaluate_wave_alpha_sleeve_combo.py",
+        "training/evaluate_volume_wave_portfolio_combo.py"
       ],
       "contamination_risk": "medium",
-      "leakage_notes": "REX predictions must be regenerated identically for overlapping periods; forced close must be included.",
-      "next_action": "Keep; ensure live REX selector/predictions exist before relying on sleeve.",
+      "leakage_notes": "Use exported prediction rows only; source_action/source_all is diagnostic raw REX and must not be promoted. Regime gates are fixed artifacts, not recalibrated on eval/ytd windows.",
+      "next_action": "Keep as rex_rule_gate / no-LLM rule-gated sleeve; do not use raw REX in portfolio searches or live configs.",
       "usage_recipe": {
         "feature_dependencies": [
-          "btc_ohlcv_taker_core"
+          "btc_ohlcv_taker_core",
+          "rex_dual_regime_prediction_artifacts"
         ],
-        "entry_logic": "REX HTF pullback/resume family, selected via prior verifier/selector workflows.",
-        "exit_logic": "fixed hold; period-end forced liquidation added in later reevaluation.",
-        "side": "long",
-        "script_or_config": "REX scripts/live",
-        "reproduce_command": "see execution/rex_llm_live.py and rex docs",
+        "entry_logic": "Load rex_dual_regime_*_predictions_2026-07-03.jsonl and execute only rows with prediction.gate=TRADE, using prediction.side and prediction.hold_bars. Do not execute source_action/source_all raw REX candidates.",
+        "exit_logic": "fixed hold from prediction.hold_bars; entry at signal_pos+1; period-end forced liquidation in strict evaluation.",
+        "side": "AUTO",
+        "script_or_config": "training/evaluate_rex_no_llm_standalone.py / append_rex rule-gate portfolio builders",
+        "reproduce_command": "python -m training.evaluate_rex_no_llm_standalone",
         "source_artifacts": [
-          "docs/rex-horizon-stability-score-2026-07-02.md",
-          "docs/linear-combo-alpha-recheck-2026-07-01.md",
-          "execution/rex_llm_live.py"
+          "docs/rex-no-llm-standalone-check-2026-07-10.md",
+          "results/rex_no_llm_standalone_check_2026-07-10.json",
+          "results/rex_dual_regime_train_2021_2023_predictions_2026-07-03.jsonl",
+          "results/rex_dual_regime_test_2024_predictions_2026-07-03.jsonl",
+          "results/rex_dual_regime_eval_2025_2026h1_predictions_2026-07-03.jsonl",
+          "training/evaluate_rex_no_llm_standalone.py",
+          "training/evaluate_wave_alpha_sleeve_combo.py",
+          "training/evaluate_volume_wave_portfolio_combo.py"
         ],
         "evaluation_protocol": {
           "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
