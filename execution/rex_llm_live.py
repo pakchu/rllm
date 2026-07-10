@@ -70,10 +70,18 @@ class RexLivePolicyConfig:
     min_positive_strengths: int = 50
     hold_bars: int = 144
     entry_delay_bars: int = 1
-    # Frozen RLLM thesis from the current best 2025+2026H1 OOS gate.
+    # Frozen dual-regime rule gate exported by
+    # training/export_dual_regime_predictions.py. A candidate may pass either
+    # the primary short-horizon regime or one of the alternate regimes.
     gates: tuple[FrozenGate, ...] = (
         FrozenGate("range_vol", ">=", 0.023959233645008706),
         FrozenGate("kimchi_premium_change", "<=", 0.0),
+    )
+    alternate_gate_sets: tuple[tuple[FrozenGate, ...], ...] = (
+        (
+            FrozenGate("rex_8640_range_width_pct", ">=", 0.2836633876944003),
+            FrozenGate("usdkrw_zscore", "<=", 0.2603593471820541),
+        ),
     )
     require_core_external: bool = True
     allow_missing_core_external_on_weekend: bool = True
@@ -312,17 +320,31 @@ def build_rex_live_policy_record(
     )
     data_quality = dict(snapshot["data_quality"])
     quality_ok, missing_quality = _quality_ok(data_quality, policy_cfg, date_value=snapshot["date"])
-    gate_results = [
-        {
-            "feature": gate.feature,
-            "op": gate.op,
-            "value": float(gate.value),
-            "actual": _safe_float(feature_snapshot.get(gate.feature)),
-            "passed": bool(gate.evaluate(feature_snapshot)),
-        }
-        for gate in policy_cfg.gates
-    ]
-    gates_pass = all(item["passed"] for item in gate_results)
+    gate_sets = (policy_cfg.gates, *policy_cfg.alternate_gate_sets)
+    gate_set_results = []
+    for index, gate_set in enumerate(gate_sets):
+        results = [
+            {
+                "feature": gate.feature,
+                "op": gate.op,
+                "value": float(gate.value),
+                "actual": _safe_float(feature_snapshot.get(gate.feature)),
+                "passed": bool(gate.evaluate(feature_snapshot)),
+            }
+            for gate in gate_set
+        ]
+        gate_set_results.append(
+            {
+                "index": index,
+                "passed": all(item["passed"] for item in results),
+                "gates": results,
+            }
+        )
+    matched_gate_set = next((item["index"] for item in gate_set_results if item["passed"]), None)
+    gates_pass = matched_gate_set is not None
+    # Preserve the historical primary-gate field for existing consumers while
+    # exposing every OR branch separately below.
+    gate_results = gate_set_results[0]["gates"] if gate_set_results else []
     prediction = "TRADE" if candidate_active and gates_pass and quality_ok else "ABSTAIN"
     close = _safe_float(enriched.iloc[-1].get("close"), 1.0)
     atr_period = execution_cfg.atr_period if execution_cfg is not None else 15
@@ -357,7 +379,11 @@ def build_rex_live_policy_record(
             "feature_snapshot": feature_snapshot,
         }
         try:
-            selector_record = _score_rex_llm_selector(preview_record, gates=policy_cfg.gates, cfg=selector_cfg)
+            selector_record = _score_rex_llm_selector(
+                preview_record,
+                gates=gate_sets[int(matched_gate_set)],
+                cfg=selector_cfg,
+            )
             if selector_record.get("decision") != "TRADE":
                 prediction = "ABSTAIN"
                 reasons.append("llm_selector_block")
@@ -413,6 +439,8 @@ def build_rex_live_policy_record(
         "feature_snapshot": feature_snapshot,
         "data_quality": data_quality,
         "gate_results": gate_results,
+        "gate_set_results": gate_set_results,
+        "matched_gate_set": matched_gate_set,
         "llm_selector": selector_record,
         "current_close": close,
         "current_atr": current_atr,
@@ -423,6 +451,10 @@ def build_rex_live_policy_record(
         "policy_config": {
             **asdict(policy_cfg),
             "gates": [asdict(gate) for gate in policy_cfg.gates],
+            "alternate_gate_sets": [
+                [asdict(gate) for gate in gate_set]
+                for gate_set in policy_cfg.alternate_gate_sets
+            ],
         },
     }
 
@@ -702,6 +734,7 @@ async def _amain(args: argparse.Namespace) -> None:
         strength_quantile=args.strength_quantile,
         min_positive_strengths=args.min_positive_strengths,
         gates=tuple(args.gate) if args.gate else RexLivePolicyConfig.gates,
+        alternate_gate_sets=() if args.gate else RexLivePolicyConfig.alternate_gate_sets,
         require_core_external=not bool(args.allow_missing_core_external),
         allow_missing_core_external_on_weekend=not bool(args.strict_core_external),
         require_binance_aux=bool(args.require_binance_aux),

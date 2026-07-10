@@ -82,6 +82,40 @@ class TestRexLlmLive(unittest.TestCase):
         self.assertEqual(decision.signal, "SHORT")
         self.assertGreater(decision.current_atr, 0.0)
 
+    def test_alternate_dual_regime_gate_matches_exported_rule(self):
+        features = _base_features()
+        features.loc[len(features) - 1, "range_vol"] = 0.01
+        features.loc[len(features) - 1, "kimchi_premium_change"] = 0.001
+        features.loc[len(features) - 1, "rex_8640_range_width_pct"] = 0.30
+        features.loc[len(features) - 1, "usdkrw_zscore"] = 0.0
+
+        record = build_rex_live_policy_record(
+            _enriched(),
+            features,
+            policy_cfg=RexLivePolicyConfig(min_positive_strengths=5),
+        )
+
+        self.assertEqual(record["prediction"], "TRADE")
+        self.assertEqual(record["matched_gate_set"], 1)
+        self.assertFalse(record["gate_set_results"][0]["passed"])
+        self.assertTrue(record["gate_set_results"][1]["passed"])
+
+    def test_dual_regime_gate_blocks_when_both_branches_fail(self):
+        features = _base_features()
+        features.loc[len(features) - 1, "range_vol"] = 0.01
+        features.loc[len(features) - 1, "kimchi_premium_change"] = 0.001
+        features.loc[len(features) - 1, "rex_8640_range_width_pct"] = 0.20
+
+        record = build_rex_live_policy_record(
+            _enriched(),
+            features,
+            policy_cfg=RexLivePolicyConfig(min_positive_strengths=5),
+        )
+
+        self.assertEqual(record["prediction"], "ABSTAIN")
+        self.assertIsNone(record["matched_gate_set"])
+        self.assertIn("frozen_gate_block", record["reason"])
+
     def test_rex_selector_defaults_are_text_only(self):
         cfg = RexLlmSelectorConfig()
         self.assertEqual(cfg.model_name, "qwen2.5-1.5b-instruct")
