@@ -63,7 +63,14 @@ def _pred_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [{"date": r["date"], "signal_pos": r["signal_pos"], "prediction": r["prediction"]} for r in rows]
 
 
-def backtest(rows: list[dict[str, Any]], market: Any, leverage: float) -> dict[str, Any] | None:
+def backtest(
+    rows: list[dict[str, Any]],
+    market: Any,
+    leverage: float,
+    *,
+    annualization_start: str = "",
+    annualization_end: str = "",
+) -> dict[str, Any] | None:
     if not rows:
         return None
     return strict_backtest_actions(
@@ -75,6 +82,8 @@ def backtest(rows: list[dict[str, Any]], market: Any, leverage: float) -> dict[s
             slippage_rate=0.0001,
             entry_delay_bars=1,
             max_hold_bars=144,
+            annualization_start=annualization_start,
+            annualization_end=annualization_end,
         ),
     )
 
@@ -118,11 +127,23 @@ def make_primitives(train_rows: list[dict[str, Any]], quantiles: tuple[float, ..
     return gates
 
 
-def evaluate_gate_set(gates: tuple[Gate, ...], sets: dict[str, list[dict[str, Any]]], market: Any, leverage: float) -> dict[str, Any] | None:
+def _period_bounds(rows: list[dict[str, Any]]) -> tuple[str, str]:
+    dates = sorted(str(row["date"]) for row in rows if str(row.get("date", "")).strip())
+    return (dates[0], dates[-1]) if dates else ("", "")
+
+
+def evaluate_gate_set(
+    gates: tuple[Gate, ...],
+    sets: dict[str, list[dict[str, Any]]],
+    market: Any,
+    leverage: float,
+    period_bounds: dict[str, tuple[str, str]],
+) -> dict[str, Any] | None:
     out: dict[str, Any] = {}
     for split, rows in sets.items():
         selected = filter_rows(rows, gates)
-        result = backtest(selected, market, leverage)
+        start, end = period_bounds.get(split, ("", ""))
+        result = backtest(selected, market, leverage, annualization_start=start, annualization_end=end)
         if result is None:
             return None
         out[split] = {"n_rows": len(selected), "sim": result["sim"], "trade_stats": result["trade_stats"]}
@@ -143,17 +164,38 @@ def run(
     max_primitives: int = 40,
     max_width: int = 2,
     leverage_grid: str = "0.5,1.0,1.25,1.5,2.0",
+    side_filter: str = "",
+    family_filter: str = "",
+    min_train_trades: int = 120,
+    min_test_trades: int = 20,
+    train_start: str = "",
+    train_end: str = "",
+    test_start: str = "",
+    test_end: str = "",
+    eval_start: str = "",
+    eval_end: str = "",
 ) -> dict[str, Any]:
     market = load_market_bars(market_csv)
     sets = {"train": load_rows(train_jsonl), "test": load_rows(test_jsonl), "eval": load_rows(eval_jsonl)}
+    side_filter = str(side_filter).strip().upper()
+    family_filter = str(family_filter).strip()
+    if side_filter:
+        sets = {split: [row for row in rows if str(row.get("action", {}).get("side", "")).upper() == side_filter] for split, rows in sets.items()}
+    if family_filter:
+        sets = {split: [row for row in rows if str(row.get("action", {}).get("family", "")) == family_filter] for split, rows in sets.items()}
+    period_bounds = {
+        "train": (train_start, train_end) if train_start and train_end else _period_bounds(sets["train"]),
+        "test": (test_start, test_end) if test_start and test_end else _period_bounds(sets["test"]),
+        "eval": (eval_start, eval_end) if eval_start and eval_end else _period_bounds(sets["eval"]),
+    }
     primitives = make_primitives(sets["train"], (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9))
 
     primitive_rows: list[dict[str, Any]] = []
     for gate in primitives:
-        metrics = evaluate_gate_set((gate,), sets, market, 0.5)
+        metrics = evaluate_gate_set((gate,), sets, market, 0.5, period_bounds)
         if metrics is None:
             continue
-        if metrics["train"]["sim"]["trade_entries"] < 120 or metrics["test"]["sim"]["trade_entries"] < 20:
+        if metrics["train"]["sim"]["trade_entries"] < int(min_train_trades) or metrics["test"]["sim"]["trade_entries"] < int(min_test_trades):
             continue
         if metrics["train"]["sim"]["cagr_pct"] <= 0 or metrics["test"]["sim"]["cagr_pct"] <= 0:
             continue
@@ -170,10 +212,10 @@ def run(
             if len({g.feature for g in combo}) != len(combo):
                 continue
             key = _gate_key(combo)
-            metrics = evaluate_gate_set(combo, sets, market, 0.5)
+            metrics = evaluate_gate_set(combo, sets, market, 0.5, period_bounds)
             if metrics is None:
                 continue
-            if metrics["train"]["sim"]["trade_entries"] < 120 or metrics["test"]["sim"]["trade_entries"] < 20:
+            if metrics["train"]["sim"]["trade_entries"] < int(min_train_trades) or metrics["test"]["sim"]["trade_entries"] < int(min_test_trades):
                 continue
             if metrics["train"]["sim"]["cagr_pct"] <= 0 or metrics["test"]["sim"]["cagr_pct"] <= 0:
                 continue
@@ -195,7 +237,8 @@ def run(
         grid = []
         for lev in leverages:
             eval_rows = filter_rows(sets["eval"], gates)
-            result = backtest(eval_rows, market, lev)
+            start, end = period_bounds.get("eval", ("", ""))
+            result = backtest(eval_rows, market, lev, annualization_start=start, annualization_end=end)
             grid.append({"leverage": lev, "eval": {"n_rows": len(eval_rows), "sim": result["sim"], "trade_stats": result["trade_stats"]}})
         row["eval_leverage_grid"] = grid
 
@@ -204,7 +247,11 @@ def run(
             "primitive_thresholds_fit_on_train_feature_quantiles_only": True,
             "gate_sets_ranked_on_train_and_test_only": True,
             "eval_not_used_for_selection": True,
+            "cagr_uses_full_configured_split_window_including_idle_time": True,
         },
+        "filters": {"side_filter": side_filter, "family_filter": family_filter},
+        "period_bounds": period_bounds,
+        "min_trade_rules": {"train": int(min_train_trades), "test": int(min_test_trades)},
         "primitive_count": len(primitives),
         "kept_primitive_count": len(kept_primitives),
         "candidate_count": len(rows),
@@ -225,6 +272,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-primitives", type=int, default=40)
     parser.add_argument("--max-width", type=int, default=2)
     parser.add_argument("--leverage-grid", default="0.5,1.0,1.25,1.5,2.0")
+    parser.add_argument("--side-filter", choices=["", "LONG", "SHORT"], default="")
+    parser.add_argument("--family-filter", default="")
+    parser.add_argument("--min-train-trades", type=int, default=120)
+    parser.add_argument("--min-test-trades", type=int, default=20)
+    parser.add_argument("--train-start", default="")
+    parser.add_argument("--train-end", default="")
+    parser.add_argument("--test-start", default="")
+    parser.add_argument("--test-end", default="")
+    parser.add_argument("--eval-start", default="")
+    parser.add_argument("--eval-end", default="")
     return parser.parse_args()
 
 

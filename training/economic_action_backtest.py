@@ -9,8 +9,53 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from training.eval_text_trader import parse_trader_json
 from training.strict_bar_backtest import _drawdown_from_trough, _trade_stats, load_market_bars
+
+
+VALID_GATES = {"TRADE", "NO_TRADE"}
+VALID_SIDES = {"LONG", "SHORT", "NONE"}
+
+
+def parse_trader_json(text: str) -> dict[str, Any]:
+    """Parse a trader action without importing model/inference dependencies.
+
+    The original parser lives in ``training.eval_text_trader`` but that module
+    imports VLM/model helpers and can require torch even for pure JSON
+    backtests.  Backtest tooling only needs this small validation routine, so
+    keep it local and dependency-light.
+    """
+
+    raw = str(text).strip()
+    try:
+        obj = json.loads(raw)
+    except Exception:
+        import re
+
+        obj = {}
+        for match in re.finditer(r"\{[^{}]*\}", raw, flags=re.DOTALL):
+            try:
+                candidate = json.loads(match.group(0))
+            except Exception:
+                continue
+            if isinstance(candidate, dict):
+                obj = candidate
+                break
+    gate = str(obj.get("gate", "NO_TRADE")).upper()
+    side = str(obj.get("side", "NONE")).upper()
+    if gate not in VALID_GATES:
+        gate = "NO_TRADE"
+    if side not in VALID_SIDES:
+        side = "NONE"
+    try:
+        hold_bars = int(obj.get("hold_bars", 0) or 0)
+    except Exception:
+        hold_bars = 0
+    if gate == "NO_TRADE":
+        side = "NONE"
+        hold_bars = 0
+    elif hold_bars <= 0:
+        hold_bars = 0
+    return {"gate": gate, "side": side, "hold_bars": hold_bars}
 
 
 @dataclass(frozen=True)
