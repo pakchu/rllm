@@ -99,6 +99,8 @@ class TextSFTConfig:
     lora_r: int = 16
     lora_alpha: int = 32
     lora_dropout: float = 0.05
+    lora_target_modules: str = "all-linear"
+    completion_only_loss: bool = True
     load_in_4bit: bool = False
     seed: int = 42
     base_adapter_dir: str = ""
@@ -363,7 +365,13 @@ def train_text_sft(cfg: TextSFTConfig, *, dry_run: bool = False) -> dict[str, An
             lora_dropout=float(cfg.lora_dropout),
             bias="none",
             task_type="CAUSAL_LM",
-            target_modules="all-linear",
+            target_modules=(
+                "all-linear"
+                if str(cfg.lora_target_modules).strip() == "all-linear"
+                else str(cfg.lora_target_modules).strip()[len("regex:") :]
+                if str(cfg.lora_target_modules).strip().startswith("regex:")
+                else [m.strip() for m in str(cfg.lora_target_modules).split(",") if m.strip()]
+            ),
         )
     args = SFTConfig(
         output_dir=cfg.output_dir,
@@ -379,7 +387,7 @@ def train_text_sft(cfg: TextSFTConfig, *, dry_run: bool = False) -> dict[str, An
         report_to=[],
         max_length=int(cfg.max_seq_length),
         packing=False,
-        completion_only_loss=True,
+        completion_only_loss=bool(cfg.completion_only_loss),
     )
     trainer = SFTTrainer(
         model=model,
@@ -409,6 +417,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--lora-r", type=int, default=16)
     p.add_argument("--lora-alpha", type=int, default=32)
     p.add_argument("--lora-dropout", type=float, default=0.05)
+    p.add_argument("--lora-target-modules", default="all-linear", help="Comma-separated PEFT LoRA target module names, all-linear, or regex:<pattern>")
+    p.add_argument("--completion-only-loss", action=argparse.BooleanOptionalAction, default=True)
     p.add_argument("--load-in-4bit", action="store_true")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--base-adapter-dir", default="", help="Optional existing LoRA adapter to continue fine-tuning")
@@ -433,6 +443,8 @@ def main() -> None:
         lora_r=args.lora_r,
         lora_alpha=args.lora_alpha,
         lora_dropout=args.lora_dropout,
+        lora_target_modules=args.lora_target_modules,
+        completion_only_loss=args.completion_only_loss,
         load_in_4bit=args.load_in_4bit,
         seed=args.seed,
         base_adapter_dir=args.base_adapter_dir,
