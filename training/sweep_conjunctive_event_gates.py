@@ -105,6 +105,51 @@ def metric_score(result: dict[str, Any]) -> float:
     )
 
 
+def robust_tte_score(metrics: dict[str, dict[str, Any]]) -> float:
+    """Train/test-only score that penalizes split instability.
+
+    The earlier score let a very strong test year dominate weak train behavior.
+    This score is intentionally conservative: it uses only train/test, rewards
+    the lower split ratio, penalizes train/test ratio gap, and rejects MDD above
+    the live target envelope before eval is opened.
+    """
+
+    train = metrics["train"]["sim"]
+    test = metrics["test"]["sim"]
+    train_stats = metrics["train"]["trade_stats"]
+    test_stats = metrics["test"]["trade_stats"]
+    train_ratio = float(train["cagr_to_strict_mdd"])
+    test_ratio = float(test["cagr_to_strict_mdd"])
+    train_cagr = float(train["cagr_pct"])
+    test_cagr = float(test["cagr_pct"])
+    train_mdd = float(train["strict_mdd_pct"])
+    test_mdd = float(test["strict_mdd_pct"])
+    train_trades = float(train["trade_entries"])
+    test_trades = float(test["trade_entries"])
+    train_p = float(train_stats.get("p_value_mean_ret_approx", 1.0) or 1.0)
+    test_p = float(test_stats.get("p_value_mean_ret_approx", 1.0) or 1.0)
+    lower_ratio = min(train_ratio, test_ratio)
+    lower_cagr = min(train_cagr, test_cagr)
+    ratio_gap = abs(train_ratio - test_ratio)
+    mdd_penalty = 1.5 * max(0.0, train_mdd - 15.0) + 2.0 * max(0.0, test_mdd - 15.0)
+    p_penalty = 0.75 * max(0.0, train_p - 0.2) + 0.5 * max(0.0, test_p - 0.2)
+    trade_bonus = min(1.0, train_trades / 400.0) + min(1.0, test_trades / 60.0)
+    return (
+        4.0 * lower_ratio
+        + 0.04 * lower_cagr
+        + trade_bonus
+        - 0.35 * ratio_gap
+        - mdd_penalty
+        - p_penalty
+    )
+
+
+def selection_score(metrics: dict[str, dict[str, Any]], mode: str) -> float:
+    if str(mode) == "robust":
+        return robust_tte_score(metrics)
+    return metric_score(metrics["train"]) + 2.0 * metric_score(metrics["test"])
+
+
 def _numeric_feature_names(rows: list[dict[str, Any]]) -> list[str]:
     names: set[str] = set()
     for row in rows:
@@ -174,6 +219,11 @@ def run(
     test_end: str = "",
     eval_start: str = "",
     eval_end: str = "",
+    selection_mode: str = "legacy",
+    max_train_mdd: float = 25.0,
+    max_test_mdd: float = 15.0,
+    min_train_ratio: float = -999.0,
+    min_test_ratio: float = -999.0,
 ) -> dict[str, Any]:
     market = load_market_bars(market_csv)
     sets = {"train": load_rows(train_jsonl), "test": load_rows(test_jsonl), "eval": load_rows(eval_jsonl)}
@@ -199,9 +249,11 @@ def run(
             continue
         if metrics["train"]["sim"]["cagr_pct"] <= 0 or metrics["test"]["sim"]["cagr_pct"] <= 0:
             continue
-        if metrics["train"]["sim"]["strict_mdd_pct"] > 25 or metrics["test"]["sim"]["strict_mdd_pct"] > 15:
+        if metrics["train"]["sim"]["strict_mdd_pct"] > float(max_train_mdd) or metrics["test"]["sim"]["strict_mdd_pct"] > float(max_test_mdd):
             continue
-        primitive_rows.append({"gates": (gate,), "metrics": metrics, "score": metric_score(metrics["train"]) + 2.0 * metric_score(metrics["test"])})
+        if metrics["train"]["sim"]["cagr_to_strict_mdd"] < float(min_train_ratio) or metrics["test"]["sim"]["cagr_to_strict_mdd"] < float(min_test_ratio):
+            continue
+        primitive_rows.append({"gates": (gate,), "metrics": metrics, "score": selection_score(metrics, selection_mode)})
     primitive_rows.sort(key=lambda row: row["score"], reverse=True)
     kept_primitives = [row["gates"][0] for row in primitive_rows[:max_primitives]]
 
@@ -219,7 +271,9 @@ def run(
                 continue
             if metrics["train"]["sim"]["cagr_pct"] <= 0 or metrics["test"]["sim"]["cagr_pct"] <= 0:
                 continue
-            if metrics["train"]["sim"]["strict_mdd_pct"] > 25 or metrics["test"]["sim"]["strict_mdd_pct"] > 15:
+            if metrics["train"]["sim"]["strict_mdd_pct"] > float(max_train_mdd) or metrics["test"]["sim"]["strict_mdd_pct"] > float(max_test_mdd):
+                continue
+            if metrics["train"]["sim"]["cagr_to_strict_mdd"] < float(min_train_ratio) or metrics["test"]["sim"]["cagr_to_strict_mdd"] < float(min_test_ratio):
                 continue
             candidates[key] = {
                 "gates": [g.as_dict() for g in combo],
@@ -227,7 +281,7 @@ def run(
                 "train": metrics["train"],
                 "test": metrics["test"],
                 "eval": metrics["eval"],
-                "selection_score": metric_score(metrics["train"]) + 2.0 * metric_score(metrics["test"]),
+                "selection_score": selection_score(metrics, selection_mode),
             }
 
     rows = sorted(candidates.values(), key=lambda row: row["selection_score"], reverse=True)
@@ -252,6 +306,13 @@ def run(
         "filters": {"side_filter": side_filter, "family_filter": family_filter},
         "period_bounds": period_bounds,
         "min_trade_rules": {"train": int(min_train_trades), "test": int(min_test_trades)},
+        "selection": {
+            "mode": str(selection_mode),
+            "max_train_mdd": float(max_train_mdd),
+            "max_test_mdd": float(max_test_mdd),
+            "min_train_ratio": float(min_train_ratio),
+            "min_test_ratio": float(min_test_ratio),
+        },
         "primitive_count": len(primitives),
         "kept_primitive_count": len(kept_primitives),
         "candidate_count": len(rows),
@@ -282,6 +343,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--test-end", default="")
     parser.add_argument("--eval-start", default="")
     parser.add_argument("--eval-end", default="")
+    parser.add_argument("--selection-mode", choices=["legacy", "robust"], default="legacy")
+    parser.add_argument("--max-train-mdd", type=float, default=25.0)
+    parser.add_argument("--max-test-mdd", type=float, default=15.0)
+    parser.add_argument("--min-train-ratio", type=float, default=-999.0)
+    parser.add_argument("--min-test-ratio", type=float, default=-999.0)
     return parser.parse_args()
 
 
