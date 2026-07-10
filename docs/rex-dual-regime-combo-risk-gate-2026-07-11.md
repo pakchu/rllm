@@ -115,3 +115,71 @@ However, the main top overlay still has test R 2.86, just below the target 3.0. 
 - Search path-aware exits around the January 2021 long cluster instead of more month filters.
 - Focus on reducing train strict MDD from 9-10% to <=7% without degrading 2024/2025-2026 too much.
 - Candidate directions: dynamic time-to-exit, intratrade adverse stop, side-specific long risk gate, and REX long/short split overlays.
+
+## Intratrade stop sweep addendum
+
+Artifact: `results/rex_dual_regime_intratrade_stop_sweep_2026-07-11.json`
+
+Tested fixed intratrade stop-loss and ATR-trailing families on top of `block_any__usd_low__h4_drop`.
+
+Best train/test minimum-ratio candidate:
+
+```json
+{
+  "pause_after_losses": 3,
+  "pause_bars": 288,
+  "monthly_loss_stop_pct": 4,
+  "trade_stop_loss_pct": 2.0,
+  "trade_take_profit_pct": 3.0,
+  "atr_trailing_stop_mult": 0
+}
+```
+
+| split | abs ret | CAGR | strict MDD | CAGR/MDD | trades | p |
+|---|---:|---:|---:|---:|---:|---:|
+| train | 71.87% | 19.80% | 9.20% | 2.15 | 274 | 0.013 |
+| test | 13.73% | 13.70% | 5.19% | 2.64 | 60 | 0.114 |
+| eval | 22.84% | 15.67% | 4.77% | 3.29 | 54 | 0.00058 |
+
+Best train-ratio candidate:
+
+```json
+{
+  "pause_after_losses": 2,
+  "pause_bars": 144,
+  "monthly_loss_stop_pct": 4,
+  "trade_stop_loss_pct": 3.0,
+  "trade_take_profit_pct": 3.0,
+  "atr_trailing_stop_mult": 0
+}
+```
+
+- train: ret 76.27%, CAGR 20.81%, strict MDD 8.91%, R 2.34, N 265
+- test: ret 12.62%, CAGR 12.60%, strict MDD 5.92%, R 2.13, N 57
+- eval: ret 21.13%, CAGR 14.53%, strict MDD 3.72%, R 3.91, N 53
+
+Best test/eval minimum-ratio candidate:
+
+```json
+{
+  "pause_after_losses": 3,
+  "pause_bars": 576,
+  "monthly_loss_stop_pct": 4,
+  "trade_stop_loss_pct": 2.0,
+  "trade_take_profit_pct": 2.5,
+  "atr_trailing_stop_mult": 0
+}
+```
+
+- train: ret 47.33%, CAGR 13.80%, strict MDD 10.77%, R 1.28, N 265
+- test: ret 15.94%, CAGR 15.91%, strict MDD 4.69%, R 3.39, N 60
+- eval: ret 23.86%, CAGR 16.35%, strict MDD 3.96%, R 4.13, N 53
+
+### Intratrade stop conclusion
+
+A fixed intratrade stop does reduce train MDD in some cases, but it also clips or reshapes the return distribution enough to damage 2024 test. It did not beat the earlier no-stop online overlay on train/test balance:
+
+- no intratrade SL overlay: train R 2.40, test R 2.86, eval R 3.91
+- best fixed SL train/test minimum: train R 2.15, test R 2.64, eval R 3.29
+
+So fixed intratrade stops are not the main unlock. The next likely path is side-specific or state-conditioned exits, especially targeting the January 2021 LONG drawdown cluster without applying the same stop bluntly to all trades.
