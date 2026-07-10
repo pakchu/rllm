@@ -9,12 +9,14 @@ from execution.portfolio_live import (
     PORTFOLIO_ORDER_PREFIX,
     _cancel_portfolio_orders_for_sleeve,
     _add_live_volume_wave_features,
+    _add_portfolio_oi_features,
     _cancel_stale_portfolio_orders,
     _entry_ttl_seconds,
     _margin_fraction_for_weight,
     _place_portfolio_maker_order_with_deadline,
     _portfolio_client_order_id,
     _portfolio_sleeve_key,
+    _gate_pass,
 )
 
 
@@ -157,6 +159,62 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
         self.assertIn("vg_alt_btc_qv_ratio_z_288", out.columns)
         self.assertNotEqual(float(out["vg_alt_btc_qv_ratio_z_72"].iloc[-1]), 0.0)
         self.assertNotEqual(float(out["vg_alt_btc_qv_ratio_z_288"].iloc[-1]), 0.0)
+
+
+    def test_gate_fails_closed_when_source_availability_missing(self):
+        cases = [
+            (
+                pd.Series({"premium_index_zscore": -3.0, "premium_available": 0.0}),
+                [{"feature": "premium_index_zscore", "op": "<=", "threshold": -2.0}],
+                "premium_available",
+            ),
+            (
+                pd.Series({"oi_minus_px_4h_z": 3.0, "open_interest_available": 0.0}),
+                [{"feature": "oi_minus_px_4h_z", "op": ">=", "threshold": 2.0}],
+                "open_interest_available",
+            ),
+            (
+                pd.Series({"vg_alt_btc_qv_ratio_z_72": 3.0, "alt_pool_available": 0.0}),
+                [{"feature": "vg_alt_btc_qv_ratio_z_72", "op": ">=", "threshold": 2.0}],
+                "alt_pool_available",
+            ),
+        ]
+        for row, gates, flag in cases:
+            ok, reasons = _gate_pass(row, gates)
+            self.assertFalse(ok)
+            self.assertTrue(any(flag in reason and reason.endswith(":fail") for reason in reasons), reasons)
+
+    def test_oi_features_do_not_forward_fill_unavailable_live_rows(self):
+        n = 70
+        enriched = pd.DataFrame(
+            {
+                "date": pd.date_range("2026-07-01", periods=n, freq="5min"),
+                "close": 100.0,
+                "open_interest": [1000.0] * (n - 1) + [float("nan")],
+                "open_interest_available": [1.0] * (n - 1) + [0.0],
+            }
+        )
+        features = pd.DataFrame(index=enriched.index)
+        out = _add_portfolio_oi_features(enriched, features)
+        self.assertEqual(float(out["open_interest_available"].iloc[-1]), 0.0)
+        self.assertTrue(pd.isna(out["oi_ret_30m"].iloc[-1]))
+
+    def test_live_volume_features_mark_missing_alt_pool_unavailable(self):
+        dates = pd.date_range("2026-07-01", periods=320, freq="5min")
+        enriched = pd.DataFrame(
+            {
+                "date": dates,
+                "open": 100.0,
+                "high": 101.0,
+                "low": 99.0,
+                "close": 100.0,
+                "volume": 10.0,
+                "quote_asset_volume": 1000.0,
+            }
+        )
+        out = _add_live_volume_wave_features(enriched, pd.DataFrame(index=enriched.index), {}, None)
+        self.assertIn("alt_pool_available", out.columns)
+        self.assertEqual(float(out["alt_pool_available"].iloc[-1]), 0.0)
 
     def test_cancel_stale_only_touches_portfolio_prefix(self):
         async def run():

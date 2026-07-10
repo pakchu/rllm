@@ -420,7 +420,13 @@ class LiveExternalFrameCache:
 
 def _add_portfolio_oi_features(enriched: pd.DataFrame, features: pd.DataFrame) -> pd.DataFrame:
     out = features.copy()
-    oi_s = pd.Series(enriched["open_interest"].astype(float).replace(0, np.nan).ffill(), index=enriched.index)
+    available = pd.to_numeric(
+        enriched.get("open_interest_available", enriched["open_interest"].notna().astype(float)),
+        errors="coerce",
+    ).fillna(0.0)
+    out["open_interest_available"] = available.to_numpy(dtype=float)
+    oi_raw = pd.to_numeric(enriched["open_interest"], errors="coerce").where(available > 0.5)
+    oi_s = pd.Series(oi_raw.astype(float).replace(0, np.nan), index=enriched.index)
     px = pd.Series(enriched["close"].astype(float), index=enriched.index)
     for w, name in [(6, "30m"), (12, "1h"), (24, "2h"), (48, "4h"), (96, "8h")]:
         oi_ret = np.log(oi_s / oi_s.shift(w)).replace([np.inf, -np.inf], np.nan)
@@ -508,12 +514,15 @@ def _add_live_volume_wave_features(
         ).sort_index()
         alt_value = pd.to_numeric(joined_alt["alt_quote_volume"], errors="coerce")
         btc_value = pd.to_numeric(joined_alt["quote_asset_volume"], errors="coerce")
+        alt_available = alt_value.notna() & btc_value.notna() & (btc_value != 0)
         alt_ratio = (alt_value / btc_value.replace(0, np.nan)).replace([np.inf, -np.inf], np.nan).fillna(0.0)
         out["vg_alt_btc_qv_ratio_z_72"] = _rolling_z(alt_ratio, 72).to_numpy(float)
         out["vg_alt_btc_qv_ratio_z_288"] = _rolling_z(alt_ratio, 288).to_numpy(float)
+        out["alt_pool_available"] = alt_available.to_numpy(dtype=float)
     except Exception:
         out["vg_alt_btc_qv_ratio_z_72"] = 0.0
         out["vg_alt_btc_qv_ratio_z_288"] = 0.0
+        out["alt_pool_available"] = 0.0
 
     try:
         upbit = resample_market_bars(frames["btckrw_1m"], "5min")
@@ -527,10 +536,13 @@ def _add_live_volume_wave_features(
         ).sort_index()
         upbit_value_krw = pd.to_numeric(joined["upbit_volume"], errors="coerce") * pd.to_numeric(joined["upbit_close"], errors="coerce")
         binance_value_krw = pd.to_numeric(joined["quote_asset_volume"], errors="coerce") * pd.to_numeric(joined["usdkrw"], errors="coerce")
+        upbit_available = upbit_value_krw.notna() & binance_value_krw.notna() & (binance_value_krw != 0)
         upbit_ratio = (upbit_value_krw / binance_value_krw.replace(0, np.nan)).replace([np.inf, -np.inf], np.nan).fillna(0.0)
         out["vg_upbit_binance_vol_ratio_z_288"] = _rolling_z(upbit_ratio, 288).to_numpy(float)
+        out["upbit_volume_available"] = upbit_available.to_numpy(dtype=float)
     except Exception:
         out["vg_upbit_binance_vol_ratio_z_288"] = 0.0
+        out["upbit_volume_available"] = 0.0
     return out.replace([np.inf, -np.inf], np.nan)
 
 def _build_portfolio_feature_frame(enriched: pd.DataFrame, cfg: LiveDbFeatureConfig) -> pd.DataFrame:
@@ -802,11 +814,46 @@ def _load_state(path: str | Path) -> dict[str, Any]:
     return data
 
 
+def _required_availability_flags(feature: str) -> tuple[str, ...]:
+    """Return live source flags required before a gate may use ``feature``.
+
+    Live feature construction intentionally uses backward as-of joins.  Numeric
+    values alone are therefore not enough proof that a gate is executable at the
+    decision timestamp; source-family availability flags must also be fresh.
+    """
+
+    name = str(feature)
+    if name == "open_interest" or name.startswith(("oi_", "oi_minus_px", "px_minus_oi")):
+        return ("open_interest_available",)
+    if name == "premium_index" or name.startswith("premium_"):
+        return ("premium_available",)
+    if name == "funding_rate" or name.startswith("funding_"):
+        return ("funding_available",)
+    if name.startswith("kimchi_"):
+        return ("kimchi_available",)
+    if name.startswith("usdkrw"):
+        return ("usdkrw_available",)
+    if name.startswith("dxy"):
+        return ("dxy_available",)
+    if name.startswith("fx_"):
+        return ("external_any_available",)
+    if name.startswith("vg_alt_"):
+        return ("alt_pool_available",)
+    if name.startswith("vg_upbit_"):
+        return ("upbit_volume_available", "usdkrw_available")
+    return ()
+
+
 def _gate_pass(row: pd.Series, gates: list[dict[str, Any]]) -> tuple[bool, list[str]]:
     reasons: list[str] = []
     ok = True
     for gate in gates:
         feature = str(gate["feature"])
+        for flag in _required_availability_flags(feature):
+            flag_value = float(row.get(flag, np.nan))
+            flag_passed = np.isfinite(flag_value) and flag_value > 0.5
+            reasons.append(f"{feature}_source={flag}:{'pass' if flag_passed else 'fail'}")
+            ok &= bool(flag_passed)
         op = str(gate["op"])
         threshold = float(gate["threshold"])
         value = float(row.get(feature, np.nan))
@@ -895,6 +942,7 @@ async def build_live_portfolio_frames(
         direction="backward",
         tolerance=pd.Timedelta("10min"),
     )
+    market["open_interest_available"] = market["open_interest"].notna().astype(float)
 
     enriched = (
         external_cache.refresh(market=market, frames=frames, cfg=cfg)
