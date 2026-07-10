@@ -51,10 +51,26 @@ class CombinedOptConfig:
     seed: int = 17
     selection_mdd_cap: float = 20.0
     min_test_trades: int = 80
+    min_nonzero_weight: float = 0.25
+    weight_step: float = 0.05
 
 
 def _clean(w: dict[str, float]) -> dict[str, float]:
     return {k: round(float(v), 6) for k, v in w.items() if float(v) > 1e-10}
+
+
+def _discretize_weights(w: dict[str, float], *, min_nonzero: float, step: float) -> dict[str, float]:
+    out: dict[str, float] = {}
+    if step <= 0:
+        step = 0.05
+    for k, v in w.items():
+        vv = max(0.0, float(v))
+        if vv <= 1e-12:
+            continue
+        q = round(vv / step) * step
+        if q + 1e-12 >= min_nonzero:
+            out[k] = round(float(q), 10)
+    return out
 
 
 def _split_starts_ends(masks: dict[str, np.ndarray]) -> tuple[dict[str, int], dict[str, int]]:
@@ -269,7 +285,8 @@ def candidate_weights(by: dict[str, Any], years: dict[str, float], cfg: Combined
     out: list[dict[str, float]] = []
     seen: set[tuple[float, ...]] = set()
     def add(w: dict[str, float]) -> None:
-        ww = {s: max(0.0, float(w.get(s, 0.0))) for s in SLEEVES}
+        ww = _discretize_weights({s: max(0.0, float(w.get(s, 0.0))) for s in SLEEVES}, min_nonzero=cfg.min_nonzero_weight, step=cfg.weight_step)
+        ww = {s: float(ww.get(s, 0.0)) for s in SLEEVES}
         gross = sum(ww.values())
         if gross <= 1e-12 or gross > cfg.gross_cap + 1e-9:
             return
@@ -369,8 +386,9 @@ def run(cfg: CombinedOptConfig) -> dict[str, Any]:
         "as_of": datetime.now(timezone.utc).isoformat(),
         "config": asdict(cfg),
         "input": {"rows": len(market), "start": str(market["date"].iloc[0]), "end": str(market["date"].iloc[-1])},
-        "selection_protocol": "Weights ranked on test2024 only; eval2025 and ytd2026 are report-only. Robust diagnostic is explicitly eval-influenced research, not clean selection.",
+        "selection_protocol": "Weights ranked on test2024 only; eval2025 and ytd2026 are report-only. Robust diagnostic is explicitly eval-influenced research, not clean selection. Nonzero weights are discretized to min 0.25 and 0.05 step.",
         "leverage_semantics": {"legacy_sleeves": "legacy event path at 1.0x per weight", "new_alpha_sleeves": f"event path pre-scaled to {cfg.new_alpha_unit_leverage}x, then portfolio weight applied"},
+        "leakage_caveat": "The table ranking uses test2024 only, but the candidate universe includes prior live configs/research artifacts and alpha definitions that may have been informed by 2025/2026 research. Therefore ytd2026 is report-only, not a pristine untouched eval.",
         "sleeves": SLEEVES,
         "new_alpha_prefix": NEW_PREFIX,
         "event_counts": {sp: dict(Counter(e["sleeve"] for e in events if e["split"] == sp)) for sp in masks},
@@ -396,7 +414,7 @@ def _write_doc(cfg: CombinedOptConfig, report: dict[str, Any]) -> None:
         "This reruns the portfolio search after restoring the legacy REX/OI-heavy sleeves that were omitted from the new-alpha-only scan.",
         "",
         f"Protocol: {report['selection_protocol']}",
-        f"Gross cap={cfg.gross_cap}; cost each side={cfg.cost_rate:.4%}; new alpha unit leverage={cfg.new_alpha_unit_leverage}.",
+        f"Gross cap={cfg.gross_cap}; cost each side={cfg.cost_rate:.4%}; new alpha unit leverage={cfg.new_alpha_unit_leverage}; nonzero weight min={cfg.min_nonzero_weight}, step={cfg.weight_step}.",
         "Metric cell format: `abs_return/CAGR/strict_MDD/CAGR_MDD/trades`.",
         "",
         "## Top selected by 2024 test only",
@@ -428,7 +446,7 @@ def _write_doc(cfg: CombinedOptConfig, report: dict[str, Any]) -> None:
         "## Interpretation",
         "",
         "- The previous new-alpha-only portfolio was not an apples-to-apples replacement for the gross 5.75/6.10 REX/OI portfolios because it omitted `rex_rule`, `bear_rex_short`, dynamic REX exits, and OI sleeves.",
-        "- Use the 2024-selected table as the clean selection protocol. Treat the robust table as research direction only because it ranks using 2025/YTD outcomes.",
+        "- Use the 2024-selected table as cleaner than the robust diagnostic, but do not call 2026 pristine: the candidate universe itself includes prior research artifacts that may have been influenced by later-period analysis.",
         "- Legacy and new sleeve leverage semantics differ; do not deploy a combined row without a live-size normalization pass.",
     ]
     Path(cfg.docs_output).parent.mkdir(parents=True, exist_ok=True)
@@ -446,6 +464,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=CombinedOptConfig.seed)
     p.add_argument("--selection-mdd-cap", type=float, default=CombinedOptConfig.selection_mdd_cap)
     p.add_argument("--min-test-trades", type=int, default=CombinedOptConfig.min_test_trades)
+    p.add_argument("--min-nonzero-weight", type=float, default=CombinedOptConfig.min_nonzero_weight)
+    p.add_argument("--weight-step", type=float, default=CombinedOptConfig.weight_step)
     return p.parse_args()
 
 
