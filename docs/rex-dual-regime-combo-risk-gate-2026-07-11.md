@@ -183,3 +183,43 @@ A fixed intratrade stop does reduce train MDD in some cases, but it also clips o
 - best fixed SL train/test minimum: train R 2.15, test R 2.64, eval R 3.29
 
 So fixed intratrade stops are not the main unlock. The next likely path is side-specific or state-conditioned exits, especially targeting the January 2021 LONG drawdown cluster without applying the same stop bluntly to all trades.
+
+## Side-specific exit narrow sweep
+
+Artifact: `results/rex_dual_regime_side_specific_exit_narrow_2026-07-11.json`
+
+The full side-specific grid was too slow, so a narrow sweep around the prior best no-stop overlay was run. The focus was whether LONG-specific stops could reduce the January 2021 LONG cluster without damaging 2024 test.
+
+Best narrow side-specific candidate:
+
+```json
+{
+  "long_sl": 0,
+  "long_tp": 2.5,
+  "short_sl": 0,
+  "short_tp": 3.0,
+  "pause_after_losses": 2,
+  "pause_bars": 144,
+  "monthly_loss_stop_pct": 4
+}
+```
+
+| split | abs ret | CAGR | strict MDD | CAGR/MDD | trades | p |
+|---|---:|---:|---:|---:|---:|---:|
+| train | 74.11% | 20.32% | 9.05% | 2.25 | 258 | 0.0092 |
+| test | 19.43% | 19.38% | 4.69% | 4.13 | 58 | 0.0174 |
+| eval | 21.13% | 14.53% | 3.72% | 3.91 | 53 | 0.0013 |
+
+Comparison to prior symmetric no-SL overlay:
+
+- Prior: train R 2.40, test R 2.86, eval R 3.91.
+- Side-specific: train R 2.25, test R 4.13, eval R 3.91.
+
+The best improvement came from asymmetric take-profit (`LONG TP 2.5`, `SHORT TP 3.0`), not from LONG stop-loss. LONG stop-loss candidates generally reduced train return and did not solve the global ratio target.
+
+### Updated interpretation
+
+- Fixed SL remains unattractive.
+- Side-specific TP is useful because it raises 2024 test robustness without hurting eval.
+- Remaining bottleneck is train R < 3, caused by MDD still around 9%.
+- Next likely unlock is not a stop-loss; it is side/state-conditioned entry suppression or dynamic TTE around LONG loss clusters.
