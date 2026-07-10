@@ -698,9 +698,19 @@ def _ensure_trade_executions_table(engine: Any) -> None:
             maker_max_deviation_pct DOUBLE PRECISION,
             refresh_interval_sec INTEGER,
             error TEXT,
+            realized_pnl NUMERIC,
+            commission NUMERIC,
+            commission_asset TEXT,
+            net_realized_pnl NUMERIC,
             payload JSONB NOT NULL DEFAULT '{}'::jsonb
         )
         """
+    migrations = [
+        "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS realized_pnl NUMERIC",
+        "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS commission NUMERIC",
+        "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS commission_asset TEXT",
+        "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS net_realized_pnl NUMERIC",
+    ]
     indexes = [
         "CREATE INDEX IF NOT EXISTS idx_trade_executions_strategy_created ON trade_executions(strategy_name, sub_strategy_name, created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_trade_executions_signal ON trade_executions(strategy_name, signal_id)",
@@ -708,6 +718,8 @@ def _ensure_trade_executions_table(engine: Any) -> None:
     ]
     with engine.begin() as conn:
         conn.execute(text(ddl))
+        for stmt in migrations:
+            conn.execute(text(stmt))
         for stmt in indexes:
             conn.execute(text(stmt))
 
@@ -752,18 +764,21 @@ def _log_trade_execution(
             execution_started_at, expires_at, execution_finished_at,
             computing_wall_time_sec, order_id, client_order_id,
             quantity_requested, quantity_filled, reference_price, avg_price,
-            maker_max_deviation_pct, refresh_interval_sec, error, payload
+            maker_max_deviation_pct, refresh_interval_sec, error,
+            realized_pnl, commission, commission_asset, net_realized_pnl, payload
         ) VALUES (
             :strategy_name, :sub_strategy_name, :exchange, :symbol, :quote_asset,
             :action, :side, :position_side, :order_type, :signal_id, :status,
             :execution_started_at, :expires_at, :execution_finished_at,
             :computing_wall_time_sec, :order_id, :client_order_id,
             :quantity_requested, :quantity_filled, :reference_price, :avg_price,
-            :maker_max_deviation_pct, :refresh_interval_sec, :error, CAST(:payload AS jsonb)
+            :maker_max_deviation_pct, :refresh_interval_sec, :error,
+            :realized_pnl, :commission, :commission_asset, :net_realized_pnl, CAST(:payload AS jsonb)
         )
         """
     )
     raw_order = info.get("raw_order") if isinstance(info.get("raw_order"), dict) else {}
+    trade_report = info.get("trade_report") if isinstance(info.get("trade_report"), dict) else {}
     order_id = info.get("order_id") or raw_order.get("orderId")
     client_order_id = info.get("client_order_id") or raw_order.get("clientOrderId")
     with engine.begin() as conn:
@@ -794,6 +809,10 @@ def _log_trade_execution(
                 "maker_max_deviation_pct": info.get("max_deviation_pct"),
                 "refresh_interval_sec": info.get("refresh_interval_sec"),
                 "error": error or info.get("error"),
+                "realized_pnl": _safe_decimal_value(trade_report.get("realized_pnl")),
+                "commission": _safe_decimal_value(trade_report.get("commission")),
+                "commission_asset": trade_report.get("commission_asset"),
+                "net_realized_pnl": _safe_decimal_value(trade_report.get("net_realized_pnl")),
                 "payload": payload,
             },
         )
@@ -1284,11 +1303,16 @@ def _load_sleeve_runtime_spec(sleeve: dict[str, Any]) -> dict[str, Any]:
     source = str(sleeve.get("source") or sleeve.get("source_predictions") or "")
     hold = int(sleeve.get("hold_bars", sleeve.get("hold_bars_5m", 0)) or 0)
     stride = int(sleeve.get("stride_bars", sleeve.get("stride_bars_5m", 1)) or 1)
+    dynamic_exit = sleeve.get("dynamic_exit") if isinstance(sleeve.get("dynamic_exit"), dict) else None
     if source.endswith(".json") and Path(source).exists():
         try:
             cfg = _load_json(source)
+            if isinstance(cfg.get("dynamic_exit"), dict):
+                dynamic_exit = cfg["dynamic_exit"]
             if "base_candidate" in cfg and "gates" not in cfg and "signal" not in cfg:
                 cfg = _load_json(str(cfg["base_candidate"]))
+                if dynamic_exit is None and isinstance(cfg.get("dynamic_exit"), dict):
+                    dynamic_exit = cfg["dynamic_exit"]
             if "signal" in cfg:
                 hold = int(cfg["signal"].get("hold_bars_5m", cfg["signal"].get("hold_bars", hold)) or hold)
                 stride = int(cfg["signal"].get("stride_bars_5m", cfg["signal"].get("stride_bars", stride)) or stride)
@@ -1297,7 +1321,7 @@ def _load_sleeve_runtime_spec(sleeve: dict[str, Any]) -> dict[str, Any]:
                 stride = int(cfg.get("stride_bars", cfg.get("stride_bars_5m", stride)) or stride)
         except Exception:
             pass
-    return {"source": source, "hold_bars": hold, "stride_bars": stride}
+    return {"source": source, "hold_bars": hold, "stride_bars": stride, "dynamic_exit": dynamic_exit}
 
 
 def _known_portfolio_sleeves(portfolio: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -1335,6 +1359,172 @@ def _known_portfolio_sleeves(portfolio: dict[str, Any]) -> dict[str, dict[str, A
         for sleeve in cfg.get("base_sleeves", []):
             add(sleeve)
     return out
+
+
+def _summarize_exchange_trade_fills(fills: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build a queryable close report from Binance user-trade fills."""
+
+    quantity = Decimal("0")
+    quote = Decimal("0")
+    realized = Decimal("0")
+    commission = Decimal("0")
+    commission_assets: set[str] = set()
+    order_ids: list[str] = []
+    times: list[int] = []
+    for fill in fills:
+        qty = Decimal(str(fill.get("qty", "0") or "0"))
+        price = Decimal(str(fill.get("price", "0") or "0"))
+        quantity += qty
+        quote += Decimal(str(fill.get("quoteQty", "0") or "0")) or qty * price
+        realized += Decimal(str(fill.get("realizedPnl", "0") or "0"))
+        fee = Decimal(str(fill.get("commission", "0") or "0"))
+        commission += fee
+        asset = str(fill.get("commissionAsset") or "")
+        if asset:
+            commission_assets.add(asset)
+        order_id = fill.get("orderId")
+        if order_id is not None and str(order_id) not in order_ids:
+            order_ids.append(str(order_id))
+        if fill.get("time") is not None:
+            times.append(int(fill["time"]))
+    avg_price = quote / quantity if quantity > 0 else Decimal("0")
+    commission_asset = ",".join(sorted(commission_assets)) or None
+    quote_fee = commission if not commission_assets or commission_assets <= {"USDT", "USDC", "BUSD"} else Decimal("0")
+    return {
+        "fill_count": len(fills),
+        "quantity": str(quantity),
+        "quote_quantity": str(quote),
+        "avg_price": str(avg_price),
+        "realized_pnl": str(realized),
+        "commission": str(commission),
+        "commission_asset": commission_asset,
+        "net_realized_pnl": str(realized - quote_fee),
+        "order_ids": order_ids,
+        "first_fill_at": None if not times else str(pd.Timestamp(min(times), unit="ms", tz="UTC")),
+        "last_fill_at": None if not times else str(pd.Timestamp(max(times), unit="ms", tz="UTC")),
+        "fills": fills,
+    }
+
+
+async def _attach_exchange_trade_report(
+    *, client: Any, symbol: str, order_info: dict[str, Any]
+) -> dict[str, Any]:
+    """Attach actual fill PnL/fees to a submitted close order result."""
+
+    order_ids = {
+        str(order_id)
+        for order_id in [order_info.get("order_id"), *(o.get("orderId") for o in (order_info.get("raw_orders") or []) if isinstance(o, dict))]
+        if order_id is not None
+    }
+    if not order_ids:
+        return order_info
+    fills: list[dict[str, Any]] = []
+    last_error: str | None = None
+    for attempt in range(5):
+        try:
+            trades = await client.get_trades(symbol, limit=1000)
+            fills = [t for t in trades if str(t.get("orderId")) in order_ids]
+        except Exception as exc:
+            last_error = str(exc)
+        if fills:
+            break
+        if attempt < 4:
+            await asyncio.sleep(0.2)
+    if not fills:
+        return {**order_info, "trade_report_error": last_error or "no_user_trade_fills_for_close_order"}
+    return {**order_info, "trade_report": _summarize_exchange_trade_fills(fills)}
+
+
+async def _reconcile_exchange_flat_sleeves(
+    *, state: dict[str, Any], client: Any, exec_cfg: WaveExecutionConfig
+) -> list[dict[str, Any]]:
+    """Report state-owned sleeves that became flat while the runner was down.
+
+    Reconciliation is deliberately limited to a completely flat Binance hedge
+    side.  A smaller aggregate position is ambiguous when multiple sleeves
+    share LONG or SHORT, so it must not silently close one sleeve in state.
+    """
+
+    try:
+        positions = await client.get_positions(exec_cfg.symbol)
+    except TypeError:
+        positions = await client.get_positions()
+    except Exception as exc:
+        state["last_position_reconcile_error"] = str(exc)
+        return []
+    active_sides: set[str] = set()
+    for pos in positions:
+        try:
+            qty = abs(Decimal(str(pos.get("positionAmt", "0") or "0")))
+        except Exception:
+            qty = Decimal("0")
+        if qty > 0:
+            side = str(pos.get("positionSide") or "").upper()
+            if side in {"LONG", "SHORT"}:
+                active_sides.add(side)
+    candidates = [
+        (name, sleeve)
+        for name, sleeve in state.setdefault("open_sleeves", {}).items()
+        if str(sleeve.get("side", "")).upper() in {"LONG", "SHORT"}
+        and str(sleeve.get("side", "")).upper() not in active_sides
+    ]
+    if not candidates:
+        return []
+    try:
+        trades = await client.get_trades(exec_cfg.symbol, limit=1000)
+    except Exception:
+        trades = []
+    reconciled: list[dict[str, Any]] = []
+    for name, sleeve in candidates:
+        side = str(sleeve["side"]).upper()
+        close_side = "SELL" if side == "LONG" else "BUY"
+        signal_id = str(sleeve.get("signal_id") or "")
+        signal_ts = pd.Timestamp(sleeve.get("signal_date") or 0)
+        if signal_ts.tzinfo is None:
+            signal_ts = signal_ts.tz_localize("UTC")
+        start_ms = int(signal_ts.timestamp() * 1000)
+        possible = [
+            t
+            for t in trades
+            if str(t.get("positionSide", "")).upper() == side
+            and str(t.get("side", "")).upper() == close_side
+            and int(t.get("time", 0) or 0) >= start_ms
+        ]
+        expected_key = _portfolio_sleeve_key(name)
+        expected_digest = hashlib.sha1(signal_id.encode("utf-8")).hexdigest()[:8]
+        attributed: list[dict[str, Any]] = []
+        client_order_ids: list[str] = []
+        for order_id in dict.fromkeys(t.get("orderId") for t in possible if t.get("orderId") is not None):
+            try:
+                order = await client.get_order(exec_cfg.symbol, order_id=order_id)
+            except Exception:
+                continue
+            cid = str(order.get("clientOrderId") or "")
+            parts = _portfolio_order_parts(cid)
+            if parts and parts["sleeve_key"] == expected_key and parts["signal_digest"] == expected_digest:
+                attributed.extend(t for t in possible if t.get("orderId") == order_id)
+                client_order_ids.append(cid)
+        report = _summarize_exchange_trade_fills(attributed) if attributed else None
+        requested = str(sleeve.get("quantity", "0") or "0")
+        order_info = {
+            "status": "FILLED_RECONCILED" if report else "EXCHANGE_FLAT_UNATTRIBUTED",
+            "requested_quantity": requested,
+            "filled_quantity": report["quantity"] if report else requested,
+            "avg_price": report["avg_price"] if report else None,
+            "order_id": ",".join(report["order_ids"]) if report else None,
+            "client_order_id": ",".join(client_order_ids) or None,
+            "started_at": report["first_fill_at"] if report else None,
+            "finished_at": report["last_fill_at"] if report else str(pd.Timestamp.utcnow()),
+            "trade_report": report,
+            "reconciliation": {
+                "reason": "state_open_but_exchange_side_flat",
+                "state_exit_at": sleeve.get("exit_at"),
+                "dynamic_exit": sleeve.get("dynamic_exit"),
+                "attributed_by_client_order_id": bool(report),
+            },
+        }
+        reconciled.append({"name": name, "side": side, "signal_id": signal_id, "order_info": order_info})
+    return reconciled
 
 
 def _infer_signal_id_from_digest(
@@ -1482,6 +1672,7 @@ async def _recover_exchange_positions_into_state(
                 "entry_price": entry.get("price", pos.get("entryPrice")),
                 "position": {k: pos.get(k) for k in ["symbol", "positionSide", "positionAmt", "entryPrice", "updateTime"]},
             },
+            "dynamic_exit": spec.get("dynamic_exit"),
             "recovered_from_exchange": True,
         }
         state.setdefault("processed_signals", {})[name] = signal_id
@@ -2338,6 +2529,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     state["stale_order_cancel_history"] = history[-200:]
 
             recovered_positions: list[dict[str, Any]] = []
+            reconciled_positions: list[dict[str, Any]] = []
             if not exec_cfg.dry_run:
                 assert client is not None
                 recovered_positions = await _recover_exchange_positions_into_state(
@@ -2363,6 +2555,36 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         status="RECOVERED",
                         order_info=rec,
                     )
+                reconciled_positions = await _reconcile_exchange_flat_sleeves(
+                    state=state,
+                    client=client,
+                    exec_cfg=exec_cfg,
+                )
+                for rec in reconciled_positions:
+                    info = rec["order_info"]
+                    _log_trade_execution(
+                        engine,
+                        strategy_name=cfg.strategy_name,
+                        sub_strategy_name=str(rec["name"]),
+                        exchange=cfg.exchange,
+                        symbol=exec_cfg.symbol,
+                        action="CLOSE",
+                        side="SELL" if str(rec["side"]).upper() == "LONG" else "BUY",
+                        position_side=str(rec["side"]),
+                        order_type="EXCHANGE_FLAT_RECONCILE",
+                        signal_id=str(rec["signal_id"]),
+                        status=str(info.get("status")),
+                        order_info=info,
+                    )
+                    state["open_sleeves"].pop(str(rec["name"]), None)
+                if reconciled_positions:
+                    history = list(state.get("exchange_flat_reconcile_history", []))
+                    history.extend(
+                        {**rec, "reconciled_at": str(pd.Timestamp.utcnow())}
+                        for rec in reconciled_positions
+                    )
+                    state["exchange_flat_reconcile_history"] = history[-100:]
+                    state["last_exchange_flat_reconcile"] = reconciled_positions
 
             closed: list[str] = []
             for key, open_state in list(state["open_sleeves"].items()):
@@ -2389,6 +2611,11 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                             reference_price=close_reference_price,
                             max_deviation_pct=float(cfg.exit_maker_max_deviation_pct),
                             refresh_interval_sec=int(cfg.maker_refresh_interval_sec),
+                        )
+                        close_info = await _attach_exchange_trade_report(
+                            client=client,
+                            symbol=exec_cfg.symbol,
+                            order_info=close_info,
                         )
                         open_state["last_close_order_info"] = close_info
                         try:
@@ -2570,7 +2797,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 selector_status = f"{portfolio_selector_record.get('action')}:{portfolio_selector_record.get('context_id')}"
             _status(
                 f"[portfolio-live] {pd.Timestamp.utcnow().isoformat()} active={active} opened={opened} closed={closed} "
-                f"open={list(state['open_sleeves'])} recovered={len(recovered_positions)} stale_cancel={len(stale_cancelled)} repl={replaced_entry_orders} gross={total_weight:.3f} lev={exec_cfg.leverage} "
+                f"open={list(state['open_sleeves'])} recovered={len(recovered_positions)} reconciled={len(reconciled_positions)} stale_cancel={len(stale_cancelled)} repl={replaced_entry_orders} gross={total_weight:.3f} lev={exec_cfg.leverage} "
                 f"alloc={cfg.allocation_mode} live_gross={audit['live_gross_if_all_active']:.3f} selector={selector_status} "
                 f"fb={frame_build_sec:.2f}s fw={freshness_waited:.1f}s fm={freshness_mode} miss={len(freshness_missing)} src={source_cache.last_query_mode} oi={oi_cache.last_query_mode} ext={external_cache.last_mode} alt={alt_pool_cache.last_query_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
             )

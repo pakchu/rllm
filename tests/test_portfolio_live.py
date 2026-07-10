@@ -14,9 +14,13 @@ from execution.portfolio_live import (
     _cancel_stale_portfolio_orders,
     _entry_ttl_seconds,
     _margin_fraction_for_weight,
+    _load_sleeve_runtime_spec,
     _place_portfolio_maker_order_with_deadline,
     _portfolio_client_order_id,
     _portfolio_sleeve_key,
+    _reconcile_exchange_flat_sleeves,
+    _recover_exchange_positions_into_state,
+    _summarize_exchange_trade_fills,
     _gate_pass,
 )
 
@@ -56,6 +60,130 @@ class FakeClient:
 
 
 class PortfolioLiveSafetyTests(unittest.TestCase):
+    def test_runtime_spec_preserves_dynamic_exit_for_restart_recovery(self):
+        spec = _load_sleeve_runtime_spec(
+            {
+                "source": "configs/live/oi_alt_ratio72_dyn_exit_candidate.json",
+            }
+        )
+        self.assertEqual(spec["hold_bars"], 288)
+        self.assertEqual(spec["dynamic_exit"]["name"], "vwap_overheat")
+        self.assertEqual(spec["dynamic_exit"]["min_bars"], 48)
+
+    def test_exchange_fill_summary_reports_realized_pnl_and_fees(self):
+        report = _summarize_exchange_trade_fills(
+            [
+                {
+                    "orderId": 7,
+                    "qty": "0.002",
+                    "price": "100",
+                    "quoteQty": "0.2",
+                    "realizedPnl": "-0.01",
+                    "commission": "0.00004",
+                    "commissionAsset": "USDT",
+                    "time": 1_000,
+                }
+            ]
+        )
+        self.assertEqual(report["quantity"], "0.002")
+        self.assertEqual(report["avg_price"], "1E+2")
+        self.assertEqual(report["realized_pnl"], "-0.01")
+        self.assertEqual(report["net_realized_pnl"], "-0.01004")
+
+    def test_restart_reconciles_exchange_flat_as_attributed_close(self):
+        async def run():
+            signal_id = "rex_dual_regime_auto:LONG:2026-07-08T11:55:00"
+            cid = _portfolio_client_order_id(signal_id, sleeve_name="rex_dual_regime_auto", now_sec=100)
+
+            class ReconcileClient:
+                async def get_positions(self, symbol=None):
+                    return [{"positionSide": "LONG", "positionAmt": "0"}]
+
+                async def get_trades(self, symbol, limit=1000):
+                    return [
+                        {
+                            "orderId": 77,
+                            "positionSide": "LONG",
+                            "side": "SELL",
+                            "qty": "0.003",
+                            "price": "101",
+                            "quoteQty": "0.303",
+                            "realizedPnl": "0.003",
+                            "commission": "0.00006",
+                            "commissionAsset": "USDT",
+                            "time": int(pd.Timestamp("2026-07-08T12:00:00Z").timestamp() * 1000),
+                        }
+                    ]
+
+                async def get_order(self, symbol, order_id=None):
+                    return {"orderId": order_id, "clientOrderId": cid}
+
+            state = {
+                "open_sleeves": {
+                    "rex_dual_regime_auto": {
+                        "name": "rex_dual_regime_auto",
+                        "side": "LONG",
+                        "signal_id": signal_id,
+                        "signal_date": "2026-07-08T11:55:00",
+                        "exit_at": "2026-07-09T00:00:00Z",
+                        "quantity": "0.003",
+                    }
+                }
+            }
+            rows = await _reconcile_exchange_flat_sleeves(
+                state=state,
+                client=ReconcileClient(),
+                exec_cfg=SimpleNamespace(symbol="BTCUSDT"),
+            )
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["order_info"]["status"], "FILLED_RECONCILED")
+            self.assertEqual(rows[0]["order_info"]["trade_report"]["realized_pnl"], "0.003")
+
+        asyncio.run(run())
+
+    def test_exchange_recovery_restores_dynamic_exit_spec(self):
+        async def run():
+            name = "oi_alt_ratio72_dyn_exit"
+            signal_id = f"{name}:LONG:2026-07-08T14:30:00"
+            cid = _portfolio_client_order_id(signal_id, sleeve_name=name, now_sec=100)
+            entry_ms = int(pd.Timestamp("2026-07-08T14:30:00Z").timestamp() * 1000)
+
+            class RecoveryClient:
+                async def get_positions(self, symbol=None):
+                    return [{"positionSide": "LONG", "positionAmt": "0.003", "entryPrice": "100"}]
+
+                async def _private_request(self, method, path, params):
+                    return [{"orderId": 88, "positionSide": "LONG", "side": "BUY", "time": entry_ms, "price": "100"}]
+
+                async def get_order(self, symbol, order_id=None):
+                    return {"orderId": order_id, "clientOrderId": cid, "time": entry_ms}
+
+            state = {"open_sleeves": {}, "processed_signals": {}}
+            portfolio = {
+                "base_sleeves": [
+                    {
+                        "name": name,
+                        "source": "configs/live/oi_alt_ratio72_dyn_exit_candidate.json",
+                        "side": "LONG",
+                        "weight": 0.35,
+                    }
+                ]
+            }
+            rows = await _recover_exchange_positions_into_state(
+                state=state,
+                client=RecoveryClient(),
+                exec_cfg=SimpleNamespace(symbol="BTCUSDT", interval_minutes=5, max_holding_bars=144),
+                portfolio=portfolio,
+                leverage_budget=7,
+                allocation_mode="research_gross",
+            )
+            self.assertEqual(len(rows), 1)
+            restored = state["open_sleeves"][name]
+            self.assertEqual(restored["exit_at"], "2026-07-09 14:35:00+00:00")
+            self.assertEqual(restored["dynamic_exit"]["name"], "vwap_overheat")
+
+        asyncio.run(run())
+
     def test_rex_selector_default_model_is_text_only(self):
         self.assertEqual(PortfolioLiveConfig(portfolio_config=__import__("pathlib").Path("p.json"), execution_config=__import__("pathlib").Path("e.json")).rex_selector_model_name, "qwen2.5-1.5b-instruct")
 
