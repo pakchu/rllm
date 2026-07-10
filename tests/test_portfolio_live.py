@@ -7,6 +7,7 @@ import pandas as pd
 
 from execution.portfolio_live import (
     PORTFOLIO_ORDER_PREFIX,
+    PortfolioLiveConfig,
     _cancel_portfolio_orders_for_sleeve,
     _add_live_volume_wave_features,
     _add_portfolio_oi_features,
@@ -55,6 +56,9 @@ class FakeClient:
 
 
 class PortfolioLiveSafetyTests(unittest.TestCase):
+    def test_rex_selector_default_model_is_text_only(self):
+        self.assertEqual(PortfolioLiveConfig(portfolio_config=__import__("pathlib").Path("p.json"), execution_config=__import__("pathlib").Path("e.json")).rex_selector_model_name, "qwen2.5-1.5b-instruct")
+
     def test_research_gross_margin_preserves_weight(self):
         margin = _margin_fraction_for_weight(
             weight=2.475,

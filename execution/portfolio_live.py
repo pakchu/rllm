@@ -629,7 +629,7 @@ class PortfolioLiveConfig:
     cancel_stale_open_orders: bool = True
     portfolio_selector_overlay: Path | None = None
     rex_selector_adapter_dir: Path | None = None
-    rex_selector_model_name: str = "gemma4-e4b-it"
+    rex_selector_model_name: str = RexLlmSelectorConfig.model_name
     rex_selector_score_normalization: str = "sum"
     rex_selector_fail_closed: bool = True
     rex_selector_require_cuda: bool = True
