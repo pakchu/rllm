@@ -98,3 +98,50 @@ This TTE optimization improves the measurement pipeline and produces some usable
 - SHORT-only rules show very strong 2025 test and weaker 2026H1 eval; this supports the idea that short REX is regime-dependent rather than universally stable.
 
 Next step should be to change the train+test selection objective, not to hand-pick eval winners: penalize weak train ratio more strongly, prefer cross-split lower-bound score, and require either train MDD <= 15 or train ratio >= 1 before eval is opened.
+
+## Robust train/test selection follow-up
+
+The first full-window sweep still ranked several candidates whose test year dominated weak train behavior. I added `--selection-mode robust`, which scores only train/test by:
+
+- lower train/test CAGR/MDD ratio,
+- lower train/test CAGR,
+- train/test ratio gap penalty,
+- train/test MDD target penalty,
+- approximate p-value penalty,
+- trade-count bonus capped by split.
+
+The robust run also supports hard train/test guards: `--max-train-mdd`, `--max-test-mdd`, `--min-train-ratio`, and `--min-test-ratio`.
+
+### Robust all-side result
+
+Artifact: `results/rex_pair_tte_gate_sweep_robust_fullwindow_2026-07-11.json`
+
+Command used `--selection-mode robust --max-train-mdd 15 --max-test-mdd 15 --min-train-ratio 0.75 --min-test-ratio 2.5`.
+
+| Rank | Gates | Train abs/CAGR/MDD/R/N/p | Test abs/CAGR/MDD/R/N/p | Eval abs/CAGR/MDD/R/N/p | Note |
+| ---: | --- | ---: | ---: | ---: | --- |
+| 1 | `taker_imbalance <= -0.0669288` & `rex_2016_range_pos <= 0.69971` | 108.40 / 20.15 / 13.12 / 1.54 / 379 / 0.0027 | 12.05 / 12.06 / 3.91 / 3.09 / 42 / 0.033 | 2.67 / 6.59 / 4.38 / 1.50 / 25 / 0.480 | selected by robust score, eval weak |
+| 2 | `kimchi_premium_change <= 0` & `rex_2016_range_pos <= 0.69971` | 88.52 / 17.18 / 12.46 / 1.38 / 461 / 0.016 | 13.58 / 13.59 / 5.42 / 2.51 / 65 / 0.066 | 5.62 / 14.15 / 5.01 / 2.82 / 37 / 0.307 | most balanced, near target but eval ratio < 3 |
+| 5 | `taker_imbalance <= -0.0669288` & `range_vol >= 0.0218777` | 95.35 / 18.22 / 12.64 / 1.44 / 306 / 0.0046 | 8.68 / 8.68 / 2.63 / 3.31 / 26 / 0.022 | 6.81 / 17.29 / 4.38 / 3.95 / 18 / 0.035 | best eval among robust-selected top rows, but test return/trades lower |
+| 7 | `taker_imbalance <= -0.0669288` & `rex_144_range_width_pct >= 0.0218772` | 90.78 / 17.53 / 12.64 / 1.39 / 306 / 0.0063 | 8.68 / 8.68 / 2.63 / 3.31 / 26 / 0.022 | 6.81 / 17.29 / 4.38 / 3.95 / 18 / 0.035 | same practical behavior as rank 5 |
+
+Interpretation: robust train/test scoring found a more credible all-side direction than the legacy selector. The `taker_imbalance low + range_vol high` family is the strongest current clue because it passes strict MDD, has train/test positive with p-values below 0.05, and eval also clears CAGR/MDD > 3. Weakness: eval has only 18 trades, so this is a candidate for rolling/month-block validation, not immediate live promotion.
+
+### Robust SHORT-only result
+
+Artifact: `results/rex_pair_short_tte_gate_sweep_robust_fullwindow_2026-07-11.json`
+
+Command used `--side-filter SHORT --selection-mode robust --max-train-mdd 15 --max-test-mdd 15 --min-train-ratio 0.25 --min-test-ratio 2.5`.
+
+| Rank | Gates | Train abs/CAGR/MDD/R/N/p | Test abs/CAGR/MDD/R/N/p | Eval abs/CAGR/MDD/R/N/p |
+| ---: | --- | ---: | ---: | ---: |
+| 1 | `htf_1w_range_pos >= -0.367826` & `rex_144_cur_to_min_pct <= 0.0507434` | 33.91 / 7.57 / 6.79 / 1.12 / 120 / 0.022 | 13.22 / 13.22 / 5.19 / 2.55 / 32 / 0.031 | -0.37 / -0.90 / 4.65 / -0.19 / 19 / 0.945 |
+| 3 | `rex_144_cur_to_min_pct <= 0.0507434` & `rex_8640_range_width_pct >= 0.275614` | 41.18 / 9.00 / 8.59 / 1.05 / 168 / 0.037 | 8.29 / 8.30 / 2.17 / 3.82 / 20 / 0.083 | 1.99 / 4.87 / 5.01 / 0.97 / 23 / 0.677 |
+
+Interpretation: robust SHORT-only REX still does not generalize into 2026H1. Use short-only REX as a manual bear-regime sleeve only; do not promote it as an unconditional short alpha.
+
+## Updated decision
+
+- Keep `taker_imbalance low + range_vol high` / equivalent `taker_imbalance low + rex_144_range_width_pct high` as the current best REX TTE candidate.
+- Do not deploy from this artifact yet because eval trade count is 18 and the top robust rank itself is weaker than rank 5/7 in eval.
+- Next validation must be rolling/month-block and should report whether the candidate survives without choosing among eval rows.
