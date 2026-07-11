@@ -77,6 +77,20 @@ class TestPortfolioLiveSelector(unittest.TestCase):
 
 
 class TestLiveSourceFrameCache(unittest.TestCase):
+    def test_stale_fx_does_not_widen_fresh_source_incremental_queries(self):
+        cache = LiveSourceFrameCache(overlap_minutes=30)
+        asof = pd.Timestamp("2026-07-11T03:10:00Z")
+        cache.frames = {
+            "btcusdt_1m": pd.DataFrame({"date": [asof - pd.Timedelta(minutes=1)]}),
+            "usdkrw_1m": pd.DataFrame({"date": [asof - pd.Timedelta(hours=6)]}),
+            "funding": pd.DataFrame({"funding_time": [asof - pd.Timedelta(hours=8)]}),
+        }
+
+        starts = cache._incremental_starts(asof=asof, lookback_start=asof - pd.Timedelta(days=30))
+
+        self.assertEqual(starts["btcusdt_1m"], asof - pd.Timedelta(minutes=31))
+        self.assertEqual(starts["usdkrw_1m"], asof - pd.Timedelta(minutes=30))
+
     def test_merge_trims_and_replaces_overlap_rows(self):
         cache = LiveSourceFrameCache(
             frames={

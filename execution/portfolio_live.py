@@ -105,35 +105,48 @@ class LiveSourceFrameCache:
     overlap_minutes: int = SOURCE_FRAME_OVERLAP_MINUTES
     last_query_mode: str = "cold"
 
-    def _latest_source_ts(self) -> pd.Timestamp | None:
-        latest: list[pd.Timestamp] = []
+    def _incremental_starts(
+        self,
+        *,
+        asof: pd.Timestamp,
+        lookback_start: pd.Timestamp,
+    ) -> dict[str, pd.Timestamp]:
+        """Query fresh sources from their own tail without stale FX widening all reads."""
+
+        overlap = pd.Timedelta(minutes=max(1, int(self.overlap_minutes)))
+        starts: dict[str, pd.Timestamp] = {}
         for key, frame in self.frames.items():
             if key == "funding" or frame.empty:
+                starts[key] = lookback_start
                 continue
             col = _frame_time_col(key)
             if col not in frame.columns:
+                starts[key] = max(lookback_start, asof - overlap)
                 continue
-            value = _as_utc_ts(frame[col]).max()
-            if pd.notna(value):
-                latest.append(pd.Timestamp(value))
-        return min(latest) if latest else None
+            latest = _as_utc_ts(frame[col]).max()
+            # A source idle outside its market hours (notably FX) must not
+            # force every other source through its entire stale interval.
+            starts[key] = (
+                max(lookback_start, pd.Timestamp(latest) - overlap)
+                if pd.notna(latest) and pd.Timestamp(latest) >= asof - overlap
+                else max(lookback_start, asof - overlap)
+            )
+        return starts
 
     def refresh(self, engine: Any, *, asof: pd.Timestamp, cfg: LiveDbFeatureConfig) -> dict[str, pd.DataFrame]:
         asof_ts = pd.Timestamp(asof)
         asof_ts = asof_ts.tz_localize("UTC") if asof_ts.tzinfo is None else asof_ts.tz_convert("UTC")
         lookback_start = asof_ts - pd.Timedelta(minutes=int(cfg.lookback_minutes))
 
-        latest = self._latest_source_ts()
-        if not self.frames or latest is None:
-            query_cfg = cfg
+        if not self.frames:
+            start_by_key = None
             self.last_query_mode = "cold_full"
         else:
-            query_start = max(lookback_start, latest - pd.Timedelta(minutes=max(1, int(self.overlap_minutes))))
-            query_minutes = max(1, int(np.ceil((asof_ts - query_start).total_seconds() / 60.0)))
-            query_cfg = LiveDbFeatureConfig(**{**asdict(cfg), "lookback_minutes": query_minutes})
-            self.last_query_mode = f"incremental_{query_minutes}m"
+            start_by_key = self._incremental_starts(asof=asof_ts, lookback_start=lookback_start)
+            widths = [max(1, int(np.ceil((asof_ts - start).total_seconds() / 60.0))) for key, start in start_by_key.items() if key != "funding"]
+            self.last_query_mode = f"incremental_per_source_max{max(widths, default=0)}m"
 
-        fresh = query_live_source_frames(engine, asof=asof_ts, cfg=query_cfg)
+        fresh = query_live_source_frames(engine, asof=asof_ts, cfg=cfg, start_by_key=start_by_key)
         self.frames = self._merge_and_trim(fresh, lookback_start=lookback_start, asof=asof_ts)
         return {key: value.copy() for key, value in self.frames.items()}
 
