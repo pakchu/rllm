@@ -2413,7 +2413,6 @@ def _freshness_requirements_for_decision(
         FreshnessRequirement("bars_binance", symbol, "1m", required_1m, "binance_perp"),
         FreshnessRequirement("bars_binance_premium", symbol, "1m", required_1m, "binance_premium"),
         FreshnessRequirement("bars_upbit", "KRW-BTC", "1m", required_1m, "upbit"),
-        FreshnessRequirement("bars_polygon", "USDKRW", "1m", required_1m, "kimchi_usdkrw"),
     ]
     requirements.extend(
         FreshnessRequirement("bars_binance", alt_symbol, "1m", required_1m, "binance_alt_pool")

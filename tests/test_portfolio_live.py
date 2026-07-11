@@ -23,6 +23,7 @@ from execution.portfolio_live import (
     _recover_exchange_positions_into_state,
     _summarize_exchange_trade_fills,
     _gate_pass,
+    _freshness_requirements_for_decision,
 )
 
 
@@ -61,6 +62,17 @@ class FakeClient:
 
 
 class PortfolioLiveSafetyTests(unittest.TestCase):
+    def test_freshness_wait_excludes_fx_and_uses_no_oi_boundary_gate(self):
+        requirements = _freshness_requirements_for_decision(
+            symbol="BTCUSDT",
+            expected_bar=pd.Timestamp("2026-07-10T12:00:00Z"),
+            required_1m=pd.Timestamp("2026-07-10T12:04:00Z"),
+        )
+
+        keys = {requirement.key for requirement in requirements}
+        self.assertNotIn("bars_polygon:USDKRW:1m", keys)
+        self.assertNotIn("open_interest_binance:BTCUSDT:1m", keys)
+
     def test_completed_decision_cutoff_excludes_next_incomplete_candle(self):
         expected = pd.Timestamp("2026-07-10T12:00:00Z")
         self.assertEqual(
