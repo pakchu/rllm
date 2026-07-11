@@ -200,7 +200,15 @@ class LiveOiFrameCache:
     overlap_minutes: int = SOURCE_FRAME_OVERLAP_MINUTES
     last_query_mode: str = "cold"
 
-    async def refresh(self, engine: Any, *, asof: pd.Timestamp, start: pd.Timestamp, symbol: str) -> pd.DataFrame:
+    async def refresh(
+        self,
+        engine: Any,
+        *,
+        asof: pd.Timestamp,
+        start: pd.Timestamp,
+        symbol: str,
+        live_snapshot_cutoff: pd.Timestamp | None = None,
+    ) -> pd.DataFrame:
         latest: pd.Timestamp | None = None
         if not self.frame.empty and "date" in self.frame.columns:
             value = _as_utc_ts(self.frame["date"]).max()
@@ -215,7 +223,13 @@ class LiveOiFrameCache:
             minutes = max(1, int(np.ceil((pd.Timestamp(asof) - query_start).total_seconds() / 60.0)))
             self.last_query_mode = f"incremental_oi_{minutes}m"
 
-        fresh = await _query_oi(engine, asof=asof, start=query_start, symbol=symbol)
+        fresh = await _query_oi(
+            engine,
+            asof=asof,
+            start=query_start,
+            symbol=symbol,
+            live_snapshot_cutoff=live_snapshot_cutoff,
+        )
         self.frame = self._merge(fresh, start=start, asof=asof)
         return self.frame
 
@@ -894,23 +908,44 @@ def _interval_slot(ts: pd.Timestamp, stride_bars: int, interval_minutes: int = 5
     return (minutes // int(interval_minutes)) % int(stride_bars) == 0
 
 
-async def _query_oi(engine: Any, *, asof: pd.Timestamp, start: pd.Timestamp, symbol: str) -> pd.DataFrame:
+async def _query_oi(
+    engine: Any,
+    *,
+    asof: pd.Timestamp,
+    start: pd.Timestamp,
+    symbol: str,
+    live_snapshot_cutoff: pd.Timestamp | None = None,
+) -> pd.DataFrame:
     from sqlalchemy import text
 
     sql = text(
         """
-        WITH ranked AS (
+        WITH historical AS (
             SELECT ts AS date,
                    sum_open_interest AS open_interest,
-                   ROW_NUMBER() OVER (
-                       PARTITION BY ts
-                       ORDER BY CASE period WHEN '1m' THEN 0 ELSE 1 END
-                   ) AS row_priority
+                   1 AS priority
             FROM open_interest_binance
             WHERE symbol = :symbol
-              AND period IN ('1m', '5m')
+              AND period = '5m'
               AND ts >= :start
               AND ts <= :asof
+        ), live_prior AS (
+            SELECT :live_date AS date,
+                   open_interest,
+                   0 AS priority
+            FROM open_interest_binance_live
+            WHERE symbol = :symbol
+              AND fetched_at < :live_snapshot_cutoff
+            ORDER BY fetched_at DESC
+            LIMIT 1
+        ), ranked AS (
+            SELECT date, open_interest,
+                   ROW_NUMBER() OVER (PARTITION BY date ORDER BY priority) AS row_priority
+            FROM (
+                SELECT * FROM historical
+                UNION ALL
+                SELECT * FROM live_prior
+            ) combined
         )
         SELECT date, open_interest
         FROM ranked
@@ -918,8 +953,23 @@ async def _query_oi(engine: Any, *, asof: pd.Timestamp, start: pd.Timestamp, sym
         ORDER BY date
         """
     )
+    asof_ts = pd.Timestamp(asof)
+    asof_ts = asof_ts.tz_localize("UTC") if asof_ts.tzinfo is None else asof_ts.tz_convert("UTC")
+    cutoff = pd.Timestamp(live_snapshot_cutoff) if live_snapshot_cutoff is not None else asof_ts + pd.Timedelta(minutes=1)
+    cutoff = cutoff.tz_localize("UTC") if cutoff.tzinfo is None else cutoff.tz_convert("UTC")
+    live_date = asof_ts.floor("5min")
     with engine.connect() as conn:
-        return pd.read_sql_query(sql, conn, params={"symbol": symbol, "start": start.to_pydatetime(), "asof": asof.to_pydatetime()})
+        return pd.read_sql_query(
+            sql,
+            conn,
+            params={
+                "symbol": symbol,
+                "start": start.to_pydatetime(),
+                "asof": asof_ts.to_pydatetime(),
+                "live_date": live_date.to_pydatetime(),
+                "live_snapshot_cutoff": cutoff.to_pydatetime(),
+            },
+        )
 
 
 
@@ -953,12 +1003,29 @@ async def build_live_portfolio_frames(
     oi_cache: LiveOiFrameCache | None = None,
     external_cache: LiveExternalFrameCache | None = None,
     alt_pool_cache: LiveAltPoolFrameCache | None = None,
+    live_oi_snapshot_cutoff: pd.Timestamp | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build enriched market and feature frame with live OI included."""
 
     start = asof - pd.Timedelta(minutes=int(cfg.lookback_minutes))
     frames = source_cache.refresh(engine, asof=asof, cfg=cfg) if source_cache is not None else query_live_source_frames(engine, asof=asof, cfg=cfg)
-    oi = await oi_cache.refresh(engine, asof=asof, start=start, symbol=cfg.symbol) if oi_cache is not None else await _query_oi(engine, asof=asof, start=start, symbol=cfg.symbol)
+    oi = (
+        await oi_cache.refresh(
+            engine,
+            asof=asof,
+            start=start,
+            symbol=cfg.symbol,
+            live_snapshot_cutoff=live_oi_snapshot_cutoff,
+        )
+        if oi_cache is not None
+        else await _query_oi(
+            engine,
+            asof=asof,
+            start=start,
+            symbol=cfg.symbol,
+            live_snapshot_cutoff=live_oi_snapshot_cutoff,
+        )
+    )
     alt_pool = await alt_pool_cache.refresh(engine, asof=asof, start=start) if alt_pool_cache is not None else await _query_alt_pool(engine, asof=asof, start=start, symbols=ALT_POOL_SYMBOLS)
 
     market = resample_market_bars(frames["btcusdt_1m"], cfg.decision_interval)
@@ -2345,7 +2412,6 @@ def _freshness_requirements_for_decision(
     requirements = [
         FreshnessRequirement("bars_binance", symbol, "1m", required_1m, "binance_perp"),
         FreshnessRequirement("bars_binance_premium", symbol, "1m", required_1m, "binance_premium"),
-        FreshnessRequirement("open_interest_binance", symbol, None, expected_bar, "binance_open_interest", period="1m"),
         FreshnessRequirement("bars_upbit", "KRW-BTC", "1m", required_1m, "upbit"),
         FreshnessRequirement("bars_polygon", "USDKRW", "1m", required_1m, "kimchi_usdkrw"),
     ]
@@ -2520,6 +2586,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 oi_cache=oi_cache,
                 external_cache=external_cache,
                 alt_pool_cache=alt_pool_cache,
+                live_oi_snapshot_cutoff=expected_bar + pd.Timedelta(minutes=exec_cfg.interval_minutes),
             )
             frame_build_sec = time.perf_counter() - frame_t0
             sleeve_scores = _score_sleeves(
