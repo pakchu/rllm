@@ -24,6 +24,7 @@ from execution.portfolio_live import (
     _summarize_exchange_trade_fills,
     _gate_pass,
     _freshness_requirements_for_decision,
+    _portfolio_uses_feature,
 )
 
 
@@ -72,6 +73,14 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
         keys = {requirement.key for requirement in requirements}
         self.assertNotIn("bars_polygon:USDKRW:1m", keys)
         self.assertNotIn("open_interest_binance:BTCUSDT:1m", keys)
+
+    def test_current_portfolio_skips_unused_activity_flow_feature(self):
+        import json
+
+        with open("configs/live/portfolio_gross610_dynamic_top1_2026-07-08.json") as handle:
+            portfolio = json.load(handle)
+
+        self.assertFalse(_portfolio_uses_feature(portfolio, "activity_flow_htf"))
 
     def test_completed_decision_cutoff_excludes_next_incomplete_candle(self):
         expected = pd.Timestamp("2026-07-10T12:00:00Z")

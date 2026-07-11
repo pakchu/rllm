@@ -190,6 +190,20 @@ class TestLiveFeatureFrameCache(unittest.TestCase):
             atol=1e-8,
         )
 
+        no_activity_cache = LiveFeatureFrameCache(output_bars=64)
+        _ = no_activity_cache.refresh(enriched.iloc[:-2].copy(), cfg, include_activity_flow=False)
+        no_activity = no_activity_cache.refresh(enriched.copy(), cfg, include_activity_flow=False)
+        no_activity_full = _build_portfolio_feature_frame(enriched, cfg, include_activity_flow=False)
+        self.assertNotIn("activity_flow_htf", no_activity.columns)
+        cols = sorted(set(no_activity_full.columns).intersection(no_activity.columns))
+        pd.testing.assert_frame_equal(
+            no_activity.loc[n - 64 :, cols].reset_index(drop=True),
+            no_activity_full.loc[n - 64 :, cols].reset_index(drop=True),
+            check_dtype=False,
+            rtol=1e-8,
+            atol=1e-8,
+        )
+
 
 class TestLiveExternalFrameCache(unittest.TestCase):
     def test_tail_external_matches_full_for_decision_features(self):

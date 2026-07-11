@@ -559,7 +559,12 @@ def _add_live_volume_wave_features(
         out["upbit_volume_available"] = 0.0
     return out.replace([np.inf, -np.inf], np.nan)
 
-def _build_portfolio_feature_frame(enriched: pd.DataFrame, cfg: LiveDbFeatureConfig) -> pd.DataFrame:
+def _build_portfolio_feature_frame(
+    enriched: pd.DataFrame,
+    cfg: LiveDbFeatureConfig,
+    *,
+    include_activity_flow: bool = True,
+) -> pd.DataFrame:
     features = build_market_feature_frame(
         enriched,
         window_size=cfg.feature_window_size,
@@ -567,7 +572,8 @@ def _build_portfolio_feature_frame(enriched: pd.DataFrame, cfg: LiveDbFeatureCon
         volume_window=cfg.volume_window,
     ).copy()
     features = _add_portfolio_oi_features(enriched, features)
-    features = _add_activity_flow_feature(enriched, features)
+    if include_activity_flow:
+        features = _add_activity_flow_feature(enriched, features)
     return features.replace([np.inf, -np.inf], np.nan)
 
 
@@ -580,24 +586,39 @@ class LiveFeatureFrameCache:
     context_bars: int = FEATURE_TAIL_CONTEXT_BARS
     output_bars: int = FEATURE_TAIL_OUTPUT_BARS
     last_mode: str = "cold"
+    include_activity_flow: bool | None = None
 
-    def refresh(self, enriched: pd.DataFrame, cfg: LiveDbFeatureConfig) -> pd.DataFrame:
+    def refresh(
+        self,
+        enriched: pd.DataFrame,
+        cfg: LiveDbFeatureConfig,
+        *,
+        include_activity_flow: bool = True,
+    ) -> pd.DataFrame:
+        if self.include_activity_flow is not None and self.include_activity_flow != include_activity_flow:
+            self.enriched = None
+            self.features = None
+        self.include_activity_flow = include_activity_flow
         if self.enriched is None or self.features is None or self.features.empty:
             self.enriched = enriched.copy()
-            self.features = _build_portfolio_feature_frame(enriched, cfg)
+            self.features = _build_portfolio_feature_frame(enriched, cfg, include_activity_flow=include_activity_flow)
             self.last_mode = "cold_full_features"
             return self.features.copy()
 
         if len(enriched) < max(10, int(self.context_bars) // 2):
             self.enriched = enriched.copy()
-            self.features = _build_portfolio_feature_frame(enriched, cfg)
+            self.features = _build_portfolio_feature_frame(enriched, cfg, include_activity_flow=include_activity_flow)
             self.last_mode = "fallback_short_full_features"
             return self.features.copy()
 
         output_start = max(0, len(enriched) - max(1, int(self.output_bars)))
         context_start = max(0, output_start - max(1, int(self.context_bars)))
         tail_enriched = enriched.iloc[context_start:].reset_index(drop=True)
-        tail_features = _build_portfolio_feature_frame(tail_enriched, cfg).reset_index(drop=True)
+        tail_features = _build_portfolio_feature_frame(
+            tail_enriched,
+            cfg,
+            include_activity_flow=include_activity_flow,
+        ).reset_index(drop=True)
         replace_from_tail = output_start - context_start
         replacement = tail_features.iloc[replace_from_tail:].copy()
         replacement.index = range(output_start, output_start + len(replacement))
@@ -607,8 +628,9 @@ class LiveFeatureFrameCache:
         spliced = spliced.reindex(range(len(enriched)))
 
         # activity_flow_htf standardizes over the full available live window.
-        # Recompute it over the spliced cache so tail rows match full compute.
-        spliced = _add_activity_flow_feature(enriched, spliced)
+        # Recompute it over the spliced cache only when a configured sleeve uses it.
+        if include_activity_flow:
+            spliced = _add_activity_flow_feature(enriched, spliced)
         self.enriched = enriched.copy()
         self.features = spliced.replace([np.inf, -np.inf], np.nan)
         self.last_mode = f"tail_features_context={len(tail_enriched)} output={len(replacement)}"
@@ -670,6 +692,29 @@ class FreshnessRequirement:
 
 def _load_json(path: str | Path) -> dict[str, Any]:
     return json.loads(Path(path).expanduser().read_text())
+
+
+def _portfolio_uses_feature(portfolio: dict[str, Any], feature: str) -> bool:
+    """Return whether any JSON-backed configured sleeve gates on ``feature``."""
+
+    for sleeve in portfolio.get("base_sleeves", []):
+        source = str(sleeve.get("source") or "")
+        if not source.endswith(".json") or not Path(source).exists():
+            continue
+        cfg = _load_json(source)
+        if "base_candidate" in cfg and "gates" not in cfg and "signal" not in cfg:
+            cfg = _load_json(str(cfg["base_candidate"]))
+        gates = cfg.get("signal", cfg).get("gates", [])
+        if any(str(gate.get("feature", "")) == feature for gate in gates if isinstance(gate, dict)):
+            return True
+        dynamic = cfg.get("dynamic_exit", {})
+        if isinstance(dynamic, dict) and any(
+            str(gate.get("feature", "")) == feature
+            for gate in dynamic.get("gates", [])
+            if isinstance(gate, dict)
+        ):
+            return True
+    return False
 
 
 def _write_json(path: str | Path, payload: dict[str, Any]) -> None:
@@ -1004,6 +1049,7 @@ async def build_live_portfolio_frames(
     external_cache: LiveExternalFrameCache | None = None,
     alt_pool_cache: LiveAltPoolFrameCache | None = None,
     live_oi_snapshot_cutoff: pd.Timestamp | None = None,
+    include_activity_flow: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build enriched market and feature frame with live OI included."""
 
@@ -1062,7 +1108,11 @@ async def build_live_portfolio_frames(
         premium_tolerance=cfg.premium_tolerance,
         zscore_window=cfg.zscore_window,
     )
-    features = feature_cache.refresh(enriched, cfg) if feature_cache is not None else _build_portfolio_feature_frame(enriched, cfg)
+    features = (
+        feature_cache.refresh(enriched, cfg, include_activity_flow=include_activity_flow)
+        if feature_cache is not None
+        else _build_portfolio_feature_frame(enriched, cfg, include_activity_flow=include_activity_flow)
+    )
     features = _add_live_volume_wave_features(enriched, features, frames, alt_pool)
     return enriched, features.replace([np.inf, -np.inf], np.nan)
 
@@ -2507,6 +2557,7 @@ async def _wait_for_expected_1m_tail(
 
 async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     portfolio = _load_json(cfg.portfolio_config)
+    include_activity_flow = _portfolio_uses_feature(portfolio, "activity_flow_htf")
     selector_overlay = _load_portfolio_selector_overlay(portfolio, cfg.portfolio_selector_overlay)
     rex_selector_cfg = RexLlmSelectorConfig(
         enabled=bool(cfg.rex_selector_adapter_dir),
@@ -2586,6 +2637,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 external_cache=external_cache,
                 alt_pool_cache=alt_pool_cache,
                 live_oi_snapshot_cutoff=expected_bar + pd.Timedelta(minutes=exec_cfg.interval_minutes),
+                include_activity_flow=include_activity_flow,
             )
             frame_build_sec = time.perf_counter() - frame_t0
             sleeve_scores = _score_sleeves(
