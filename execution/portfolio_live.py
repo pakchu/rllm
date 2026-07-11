@@ -899,10 +899,23 @@ async def _query_oi(engine: Any, *, asof: pd.Timestamp, start: pd.Timestamp, sym
 
     sql = text(
         """
-        SELECT ts AS date, sum_open_interest AS open_interest
-        FROM open_interest_binance
-        WHERE symbol = :symbol AND period = '5m' AND ts >= :start AND ts <= :asof
-        ORDER BY ts
+        WITH ranked AS (
+            SELECT ts AS date,
+                   sum_open_interest AS open_interest,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY ts
+                       ORDER BY CASE period WHEN '1m' THEN 0 ELSE 1 END
+                   ) AS row_priority
+            FROM open_interest_binance
+            WHERE symbol = :symbol
+              AND period IN ('1m', '5m')
+              AND ts >= :start
+              AND ts <= :asof
+        )
+        SELECT date, open_interest
+        FROM ranked
+        WHERE row_priority = 1
+        ORDER BY date
         """
     )
     with engine.connect() as conn:
@@ -2271,7 +2284,7 @@ def _latest_requirement_ts(engine_or_conn: Any, req: FreshnessRequirement) -> pd
             WHERE symbol = :symbol AND period = :period
             """
         )
-        params = {"symbol": req.symbol, "period": req.period or "5m"}
+        params = {"symbol": req.symbol, "period": req.period or "1m"}
     else:
         sql = text(
             f"""
@@ -2332,7 +2345,7 @@ def _freshness_requirements_for_decision(
     requirements = [
         FreshnessRequirement("bars_binance", symbol, "1m", required_1m, "binance_perp"),
         FreshnessRequirement("bars_binance_premium", symbol, "1m", required_1m, "binance_premium"),
-        FreshnessRequirement("open_interest_binance", symbol, None, expected_bar, "binance_open_interest", period="5m"),
+        FreshnessRequirement("open_interest_binance", symbol, None, expected_bar, "binance_open_interest", period="1m"),
         FreshnessRequirement("bars_upbit", "KRW-BTC", "1m", required_1m, "upbit"),
         FreshnessRequirement("bars_polygon", "USDKRW", "1m", required_1m, "kimchi_usdkrw"),
     ]
