@@ -164,6 +164,7 @@ class LiveSourceFrameCache:
                 out[key] = pd.DataFrame()
                 continue
             time_col = _frame_time_col(key)
+            dedupe_required = True
 
             old_keep = old
             if old_keep is not None and not old_keep.empty and time_col in old_keep.columns:
@@ -186,6 +187,15 @@ class LiveSourceFrameCache:
                     cutoff = new_ts.min()
                     if pd.notna(cutoff):
                         old_keep = old_keep.loc[_as_utc_ts(old_keep[time_col]) < cutoff]
+                        # SQL source tables are unique on their timestamp keys,
+                        # and the old overlap is now removed. Avoid re-deduping
+                        # the entire 30-day cached history on every cycle.
+                        dedupe_required = False
+
+            # No fresh rows means the already-normalized cached frame is
+            # unchanged; re-deduplicating its whole history is needless.
+            if old_keep is not None and not old_keep.empty and (new_keep is None or new_keep.empty):
+                dedupe_required = False
 
             pieces = [
                 frame
@@ -197,7 +207,7 @@ class LiveSourceFrameCache:
                 continue
             merged = pd.concat(pieces, ignore_index=True, copy=False)
             dedupe_cols = [c for c in _frame_dedupe_cols(key, merged) if c in merged.columns]
-            if dedupe_cols:
+            if dedupe_cols and dedupe_required:
                 merged = merged.drop_duplicates(dedupe_cols, keep="last")
             if time_col in merged.columns:
                 merged[time_col] = _to_naive_utc(merged[time_col])
