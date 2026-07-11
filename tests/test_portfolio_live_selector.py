@@ -121,6 +121,38 @@ class TestLiveSourceFrameCache(unittest.TestCase):
         self.assertEqual(out["date"].astype(str).tolist(), ["2026-01-01 00:01:00", "2026-01-01 00:02:00", "2026-01-01 00:03:00"])
         self.assertEqual(out["close"].tolist(), [2.0, 30.0, 4.0])
 
+    def test_fast_overlap_merge_matches_full_dedup_reference(self):
+        dates = pd.date_range("2026-01-01 00:00", periods=4, freq="1min")
+        cache = LiveSourceFrameCache(
+            frames={
+                "forex_1m": pd.DataFrame(
+                    {
+                        "date": dates[:3],
+                        "tic": ["EURUSD", "EURUSD", "USDJPY"],
+                        "close": [1.0, 1.1, 150.0],
+                    }
+                )
+            }
+        )
+        fresh = pd.DataFrame(
+            {
+                "date": pd.to_datetime([dates[1], dates[2], dates[3]], utc=True),
+                "tic": ["EURUSD", "USDJPY", "USDJPY"],
+                "close": [1.2, 151.0, 152.0],
+            }
+        )
+        out = cache._merge_and_trim(
+            {"forex_1m": fresh},
+            lookback_start=pd.Timestamp(dates[0], tz="UTC"),
+            asof=pd.Timestamp(dates[3], tz="UTC"),
+        )["forex_1m"]
+
+        reference = pd.concat([cache.frames["forex_1m"], fresh.assign(date=lambda x: x["date"].dt.tz_convert(None))])
+        reference = reference.loc[(reference["date"] >= dates[0]) & (reference["date"] <= dates[3])]
+        reference = reference.drop_duplicates(["date", "tic"], keep="last").sort_values(["date", "tic"]).reset_index(drop=True)
+        pd.testing.assert_frame_equal(out.reset_index(drop=True), reference)
+        self.assertFalse(out.duplicated(["date", "tic"]).any())
+
 
 class TestLiveOiFrameCache(unittest.TestCase):
     def test_merge_replaces_overlap_and_trims(self):
