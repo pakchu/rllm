@@ -1,0 +1,371 @@
+{
+  "created_at": "2026-07-12T18:13:47.970208+00:00",
+  "git_head_before_experiment_commit": "de72f1091912d9c25e87fae795f3dc11827e6302",
+  "source_manifest": "results/chronos2_zero_shot_top10_manifest_2026-07-13.json",
+  "selection_window": [
+    "2023-01-01",
+    "2024-01-01"
+  ],
+  "later_metrics_included": false,
+  "model": {
+    "id": "amazon/chronos-2",
+    "revision": "29ec3766d36d6f73f0696f85560a422f50e8498c",
+    "chronos_version": "2.3.1",
+    "parameters": "120M",
+    "fine_tuned_on_repo_data": false,
+    "cross_learning": false
+  },
+  "input": {
+    "frequency": "1h completed candles",
+    "context_hours": 720,
+    "prediction_hours": 48,
+    "target": "log_close",
+    "past_covariates": [
+      "log_quote_volume",
+      "taker_imbalance",
+      "hourly_range",
+      "funding_rate",
+      "premium_index",
+      "dxy_zscore",
+      "kimchi_premium_zscore",
+      "usdkrw_zscore"
+    ],
+    "anchor_count": 9362,
+    "forecasted_anchor_count": 9244
+  },
+  "orientation": {
+    "median_terminal": {
+      "fit_samples": 4258,
+      "fit_spearman_before_orientation": -0.02956189784092201,
+      "orientation": -1,
+      "fit_spearman_after_orientation": 0.02956189784092201
+    },
+    "central_terminal": {
+      "fit_samples": 4258,
+      "fit_spearman_before_orientation": -0.027080356783214573,
+      "orientation": -1,
+      "fit_spearman_after_orientation": 0.027080356783214573
+    },
+    "quantile_mean_terminal": {
+      "fit_samples": 4258,
+      "fit_spearman_before_orientation": -0.025999762517939687,
+      "orientation": -1,
+      "fit_spearman_after_orientation": 0.025999762517939687
+    },
+    "median_path_mean": {
+      "fit_samples": 4258,
+      "fit_spearman_before_orientation": -0.034231612046153014,
+      "orientation": -1,
+      "fit_spearman_after_orientation": 0.034231612046153014
+    },
+    "median_24h_48h_consensus": {
+      "fit_samples": 4258,
+      "fit_spearman_before_orientation": -0.030480072286810187,
+      "orientation": -1,
+      "fit_spearman_after_orientation": 0.030480072286810187
+    },
+    "terminal_interval_snr": {
+      "fit_samples": 4258,
+      "fit_spearman_before_orientation": -0.03550819106213674,
+      "orientation": -1,
+      "fit_spearman_after_orientation": 0.03550819106213674
+    }
+  },
+  "selection_policy": "orient each zero-shot score by fit2020-2022 Spearman sign only; shifted rolling percentiles; 2023 executed-path Top-10 freeze before 2024+ metrics",
+  "top10": [
+    {
+      "stream_name": "median_path_mean",
+      "fit_orientation": {
+        "fit_samples": 4258,
+        "fit_spearman_before_orientation": -0.034231612046153014,
+        "orientation": -1,
+        "fit_spearman_after_orientation": 0.034231612046153014
+      },
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.8,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 39.8694559259865,
+        "cagr_pct": 39.901604623828035,
+        "strict_mdd_pct": 8.369867445712242,
+        "ratio": 4.767292299744727,
+        "trades": 74,
+        "longs": 74,
+        "shorts": 0,
+        "win_rate": 0.5675675675675675,
+        "long_win_rate": 0.5675675675675675,
+        "short_win_rate": 0,
+        "sharpe_like": 2.0329650120632907
+      },
+      "signal_hash": "9eb7dd67f538f25b"
+    },
+    {
+      "stream_name": "quantile_mean_terminal",
+      "fit_orientation": {
+        "fit_samples": 4258,
+        "fit_spearman_before_orientation": -0.025999762517939687,
+        "orientation": -1,
+        "fit_spearman_after_orientation": 0.025999762517939687
+      },
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.9,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 27.76391105027356,
+        "cagr_pct": 27.785353902859057,
+        "strict_mdd_pct": 5.861541204234733,
+        "ratio": 4.740281256196789,
+        "trades": 44,
+        "longs": 44,
+        "shorts": 0,
+        "win_rate": 0.6363636363636364,
+        "long_win_rate": 0.6363636363636364,
+        "short_win_rate": 0,
+        "sharpe_like": 1.9750513715883866
+      },
+      "signal_hash": "d2741d56bfc1ba2c"
+    },
+    {
+      "stream_name": "median_24h_48h_consensus",
+      "fit_orientation": {
+        "fit_samples": 4258,
+        "fit_spearman_before_orientation": -0.030480072286810187,
+        "orientation": -1,
+        "fit_spearman_after_orientation": 0.030480072286810187
+      },
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.8,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 29.354600614777503,
+        "cagr_pct": 29.377406892129176,
+        "strict_mdd_pct": 6.249666232746609,
+        "ratio": 4.700636129686299,
+        "trades": 72,
+        "longs": 72,
+        "shorts": 0,
+        "win_rate": 0.5555555555555556,
+        "long_win_rate": 0.5555555555555556,
+        "short_win_rate": 0,
+        "sharpe_like": 1.7675427780509612
+      },
+      "signal_hash": "22cffde0eb457342"
+    },
+    {
+      "stream_name": "median_terminal",
+      "fit_orientation": {
+        "fit_samples": 4258,
+        "fit_spearman_before_orientation": -0.02956189784092201,
+        "orientation": -1,
+        "fit_spearman_after_orientation": 0.02956189784092201
+      },
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.7,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 46.75789416788165,
+        "cagr_pct": 46.79645977686941,
+        "strict_mdd_pct": 9.986178321528438,
+        "ratio": 4.686122986206295,
+        "trades": 91,
+        "longs": 91,
+        "shorts": 0,
+        "win_rate": 0.5714285714285714,
+        "long_win_rate": 0.5714285714285714,
+        "short_win_rate": 0,
+        "sharpe_like": 2.2497913792876054
+      },
+      "signal_hash": "a9ce5300d922fbfd"
+    },
+    {
+      "stream_name": "quantile_mean_terminal",
+      "fit_orientation": {
+        "fit_samples": 4258,
+        "fit_spearman_before_orientation": -0.025999762517939687,
+        "orientation": -1,
+        "fit_spearman_after_orientation": 0.025999762517939687
+      },
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.9,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 26.580522895288826,
+        "cagr_pct": 26.60096023037326,
+        "strict_mdd_pct": 6.052036677614159,
+        "ratio": 4.395373268104502,
+        "trades": 41,
+        "longs": 41,
+        "shorts": 0,
+        "win_rate": 0.6341463414634146,
+        "long_win_rate": 0.6341463414634146,
+        "short_win_rate": 0,
+        "sharpe_like": 1.8354800566698541
+      },
+      "signal_hash": "6ce64437e15c9512"
+    },
+    {
+      "stream_name": "terminal_interval_snr",
+      "fit_orientation": {
+        "fit_samples": 4258,
+        "fit_spearman_before_orientation": -0.03550819106213674,
+        "orientation": -1,
+        "fit_spearman_after_orientation": 0.03550819106213674
+      },
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.7,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 42.11229880784919,
+        "cagr_pct": 42.1465118277917,
+        "strict_mdd_pct": 9.986178321528449,
+        "ratio": 4.220484600893939,
+        "trades": 92,
+        "longs": 92,
+        "shorts": 0,
+        "win_rate": 0.5760869565217391,
+        "long_win_rate": 0.5760869565217391,
+        "short_win_rate": 0,
+        "sharpe_like": 2.081791834640365
+      },
+      "signal_hash": "913530a9321f22ba"
+    },
+    {
+      "stream_name": "median_path_mean",
+      "fit_orientation": {
+        "fit_samples": 4258,
+        "fit_spearman_before_orientation": -0.034231612046153014,
+        "orientation": -1,
+        "fit_spearman_after_orientation": 0.034231612046153014
+      },
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.8,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 31.79267610768173,
+        "cagr_pct": 31.817598099749755,
+        "strict_mdd_pct": 7.64969562337845,
+        "ratio": 4.159328640803838,
+        "trades": 75,
+        "longs": 75,
+        "shorts": 0,
+        "win_rate": 0.5866666666666667,
+        "long_win_rate": 0.5866666666666667,
+        "short_win_rate": 0,
+        "sharpe_like": 1.8053149977040228
+      },
+      "signal_hash": "436c3345ce2ad337"
+    },
+    {
+      "stream_name": "median_24h_48h_consensus",
+      "fit_orientation": {
+        "fit_samples": 4258,
+        "fit_spearman_before_orientation": -0.030480072286810187,
+        "orientation": -1,
+        "fit_spearman_after_orientation": 0.030480072286810187
+      },
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.7,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 42.799879657558805,
+        "cagr_pct": 42.8347304077684,
+        "strict_mdd_pct": 10.441065323626875,
+        "ratio": 4.102524893780576,
+        "trades": 95,
+        "longs": 95,
+        "shorts": 0,
+        "win_rate": 0.5684210526315789,
+        "long_win_rate": 0.5684210526315789,
+        "short_win_rate": 0,
+        "sharpe_like": 2.023827873986824
+      },
+      "signal_hash": "5e8a1e512050b2cd"
+    },
+    {
+      "stream_name": "median_path_mean",
+      "fit_orientation": {
+        "fit_samples": 4258,
+        "fit_spearman_before_orientation": -0.034231612046153014,
+        "orientation": -1,
+        "fit_spearman_after_orientation": 0.034231612046153014
+      },
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.7,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 40.454755021093945,
+        "cagr_pct": 40.48744006900944,
+        "strict_mdd_pct": 10.485375650390472,
+        "ratio": 3.861324707761109,
+        "trades": 92,
+        "longs": 92,
+        "shorts": 0,
+        "win_rate": 0.5978260869565217,
+        "long_win_rate": 0.5978260869565217,
+        "short_win_rate": 0,
+        "sharpe_like": 2.076702062510843
+      },
+      "signal_hash": "4f144dbc97f982a1"
+    },
+    {
+      "stream_name": "central_terminal",
+      "fit_orientation": {
+        "fit_samples": 4258,
+        "fit_spearman_before_orientation": -0.027080356783214573,
+        "orientation": -1,
+        "fit_spearman_after_orientation": 0.027080356783214573
+      },
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.95,
+      "side_policy": "both",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 18.60747660273494,
+        "cagr_pct": 18.621340623565487,
+        "strict_mdd_pct": 4.858480692130007,
+        "ratio": 3.8327497428834496,
+        "trades": 37,
+        "longs": 19,
+        "shorts": 18,
+        "win_rate": 0.5405405405405406,
+        "long_win_rate": 0.5789473684210527,
+        "short_win_rate": 0.5,
+        "sharpe_like": 1.625863673719046
+      },
+      "signal_hash": "03f80562f4248d0c"
+    }
+  ],
+  "trial_counts": {
+    "score_streams": 6,
+    "rolling_windows": 2,
+    "score_quantiles": 4,
+    "side_policies": 3,
+    "total_policy_specs": 144,
+    "eligible_holdout_candidates": 82,
+    "distinct_top10": 10
+  },
+  "data_sha256": {
+    "market": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+    "funding": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7",
+    "premium": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
+  }
+}
