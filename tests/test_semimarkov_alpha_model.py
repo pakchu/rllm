@@ -5,6 +5,7 @@ from training.search_semimarkov_duration_alpha import (
     causal_run_age,
     duration_key,
     map_hourly_key,
+    top_k_promotions,
 )
 
 
@@ -41,3 +42,11 @@ def test_semimarkov_hourly_mapping_never_uses_future_key():
     hourly_index = pd.DatetimeIndex(pd.to_datetime(["2026-01-01 00:00", "2026-01-01 01:00"]))
 
     np.testing.assert_array_equal(map_hourly_key(dates, hourly_index, np.array([11, 22])), [11, 22])
+
+
+def test_semimarkov_top10_later_winner_is_promoted_but_rank11_is_not():
+    loser = {"passes_alpha_pool": False, "passes_live_grade": False}
+    winner = {"passes_alpha_pool": True, "passes_live_grade": True}
+    selected = [loser, winner, *([loser] * 8), winner]
+
+    assert top_k_promotions(selected) == ([winner], [winner])

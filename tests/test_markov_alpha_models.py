@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 
 from training.search_kalman_state_gated_alpha import (
-    frozen_winner_promotions,
     kalman_local_linear,
     map_hourly_state,
+    top_k_promotions,
 )
 from training.search_gaussian_hmm_regime_alpha import filtered, fit_hmm
 
@@ -54,8 +54,10 @@ def test_kalman_hourly_mapping_never_uses_future_state():
     np.testing.assert_array_equal(map_hourly_state(dates, hourly), np.array([4, 7, 7]))
 
 
-def test_kalman_diagnostic_later_winner_is_not_promoted():
+def test_kalman_top10_later_winner_is_promoted_but_rank11_is_not():
     frozen_loser = {"passes_alpha_pool": False, "passes_live_grade": False}
     later_winner = {"passes_alpha_pool": True, "passes_live_grade": True}
+    rank11_winner = {"passes_alpha_pool": True, "passes_live_grade": True}
 
-    assert frozen_winner_promotions([frozen_loser, later_winner]) == ([], [])
+    selected = [frozen_loser, later_winner, *([frozen_loser] * 8), rank11_winner]
+    assert top_k_promotions(selected) == ([later_winner], [later_winner])

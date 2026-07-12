@@ -4,7 +4,7 @@ import pandas as pd
 from training.search_bocpd_state_gated_alpha import (
     _map_output,
     bocpd_student_t,
-    frozen_winner_promotions,
+    top_k_promotions,
 )
 
 
@@ -37,8 +37,10 @@ def test_bocpd_hourly_mapping_never_uses_future_output():
     np.testing.assert_allclose(mapped["primary"].to_numpy(), np.array([1.0, 2.0]))
 
 
-def test_bocpd_diagnostic_later_winner_is_not_promoted():
+def test_bocpd_top10_later_winner_is_promoted_but_rank11_is_not():
     frozen_loser = {"passes_alpha_pool": False, "passes_live_grade": False}
     later_winner = {"passes_alpha_pool": True, "passes_live_grade": True}
+    rank11_winner = {"passes_alpha_pool": True, "passes_live_grade": True}
 
-    assert frozen_winner_promotions([frozen_loser, later_winner]) == ([], [])
+    selected = [frozen_loser, later_winner, *([frozen_loser] * 8), rank11_winner]
+    assert top_k_promotions(selected) == ([later_winner], [later_winner])

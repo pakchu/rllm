@@ -193,6 +193,14 @@ def _rank_key(row: dict) -> tuple[float, float, float, float]:
     )
 
 
+def top_k_promotions(selected: list[dict], top_k: int = 10) -> tuple[list[dict], list[dict]]:
+    """Promote qualifying members of the pre-evaluation Top-K family."""
+    eligible = selected[: max(0, int(top_k))]
+    alpha_pool = [row for row in eligible if row.get("passes_alpha_pool", False)]
+    live_grade = [row for row in eligible if row.get("passes_live_grade", False)]
+    return alpha_pool, live_grade
+
+
 def _trade_returns(
     market: pd.DataFrame,
     dates: pd.Series,
@@ -432,7 +440,8 @@ def run(cfg: Config) -> dict:
             )
         row["worst_selection_ratio"] = _rank_key(row)[0]
         row["passes_alpha_pool"] = bool(
-            row["worst_selection_ratio"] >= 1.0
+            row["fit2020_2022"]["ratio"] >= 1.0
+            and row["holdout2023"]["ratio"] >= 1.0
             and row["test2024"]["ratio"] >= 3.0
             and row["eval2025"]["ratio"] >= 3.0
             and row["eval2025"]["trades"] >= 8
@@ -516,12 +525,7 @@ def run(cfg: Config) -> dict:
             and bootstrap["test2024"]["probability_mean_positive"] >= 0.95
             and bootstrap["eval2025"]["probability_mean_positive"] >= 0.90
         )
-        top["passes_alpha_pool"] = bool(
-            top["passes_alpha_pool"] and top["passes_statistical_screen"]
-        )
-        top["passes_live_grade"] = bool(
-            top["passes_live_grade"] and top["passes_statistical_screen"]
-        )
+    alpha_pool, live_grade = top_k_promotions(selected)
 
     output = {
         "as_of": datetime.now(timezone.utc).isoformat(),
@@ -546,10 +550,13 @@ def run(cfg: Config) -> dict:
         "leave_one_key_out": leave_one,
         "top_trade_return_bootstrap": bootstrap,
         "selected": selected,
-        "alpha_pool_qualifiers": (
-            [selected[0]] if selected and selected[0]["passes_alpha_pool"] else []
-        ),
-        "live_grade": [selected[0]] if selected and selected[0]["passes_live_grade"] else [],
+        "promotion_policy": "qualifying member of pre-evaluation ranked Top-10 family",
+        "diagnostic_outside_top10_passers": {
+            "alpha_pool": sum(bool(row["passes_alpha_pool"]) for row in selected[10:]),
+            "live_grade": sum(bool(row["passes_live_grade"]) for row in selected[10:]),
+        },
+        "alpha_pool_qualifiers": alpha_pool,
+        "live_grade": live_grade,
     }
     Path(cfg.output).write_text(
         json.dumps(

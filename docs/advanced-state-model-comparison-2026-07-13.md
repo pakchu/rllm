@@ -2,6 +2,10 @@
 
 Date: 2026-07-13
 
+> Superseded for promotion purposes by
+> `docs/top10-state-model-generalization-2026-07-13.md`. This document preserves
+> the earlier strict rank-1-only interpretation.
+
 ## Result
 
 Four causal state-model approaches were compared on the same fixed

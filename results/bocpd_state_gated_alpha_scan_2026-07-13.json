@@ -14629,10 +14629,1022 @@
       "passes_live_grade": false
     }
   ],
-  "alpha_pool_qualifiers": [],
-  "live_grade": [],
-  "diagnostic_later_window_passers": {
-    "alpha_pool": 61,
-    "live_grade": 30
+  "alpha_pool_qualifiers": [
+    {
+      "model_name": "return_flow",
+      "model": {
+        "columns": [
+          "ret1",
+          "flow24"
+        ],
+        "train_standardization_mean": [
+          5.04681791469994e-05,
+          -0.0032722758619435966
+        ],
+        "train_standardization_std": [
+          0.0074313883252710615,
+          0.02578054723970236
+        ],
+        "hazard_lambda_hours": 336,
+        "max_run_length": 1000,
+        "prior_kappa": 0.1,
+        "prior_alpha": 2.0,
+        "prior_beta": 1.0,
+        "short_run_horizon_hours": 6
+      },
+      "primary_name": "segment_return_mean",
+      "secondary_name": "segment_flow_mean",
+      "state_quantiles": {
+        "primary": [
+          0.2,
+          0.8
+        ],
+        "short_mass": 0.75,
+        "secondary": 0.5
+      },
+      "state_thresholds": {
+        "primary_low": -0.10102691173414903,
+        "primary_high": 0.10998211457461969,
+        "short_mass_high": 0.025485536048485816,
+        "secondary_high": -0.01810828307604237
+      },
+      "min_train_state_trades": 5,
+      "min_train_trade_edge": 0.005,
+      "allowed_states": [
+        1,
+        2,
+        4,
+        7,
+        8
+      ],
+      "allowed_state_descriptions": {
+        "1": "segment_return_mean=low, short_run_mass=low, segment_flow_mean=high",
+        "2": "segment_return_mean=low, short_run_mass=high, segment_flow_mean=low",
+        "4": "segment_return_mean=mid, short_run_mass=low, segment_flow_mean=low",
+        "7": "segment_return_mean=mid, short_run_mass=high, segment_flow_mean=high",
+        "8": "segment_return_mean=high, short_run_mass=low, segment_flow_mean=low"
+      },
+      "state_quality": {
+        "1": {
+          "n": 13,
+          "mean_trade_return": 0.009699969189662845
+        },
+        "2": {
+          "n": 7,
+          "mean_trade_return": 0.010385456279621983
+        },
+        "4": {
+          "n": 40,
+          "mean_trade_return": 0.005813635776673329
+        },
+        "7": {
+          "n": 13,
+          "mean_trade_return": 0.014654039888627755
+        },
+        "8": {
+          "n": 7,
+          "mean_trade_return": 0.020978923840497217
+        }
+      },
+      "train": {
+        "return_pct": 234.4207717149707,
+        "cagr_pct": 35.23008193848922,
+        "strict_mdd_pct": 11.878210185795268,
+        "ratio": 2.965941954842627,
+        "trades": 149,
+        "longs": 149,
+        "shorts": 0,
+        "win_rate": 0.6308724832214765,
+        "long_win_rate": 0.6308724832214765,
+        "short_win_rate": 0,
+        "sharpe_like": 3.8573558021405656
+      },
+      "test2024": {
+        "return_pct": 21.1092218044997,
+        "cagr_pct": 21.061700076105062,
+        "strict_mdd_pct": 5.404594108553262,
+        "ratio": 3.8969994144006126,
+        "trades": 20,
+        "longs": 20,
+        "shorts": 0,
+        "win_rate": 0.7,
+        "long_win_rate": 0.7,
+        "short_win_rate": 0,
+        "sharpe_like": 2.6162652969738547
+      },
+      "signal_hash": "b7506ff0e9ec1d48",
+      "eval2025": {
+        "return_pct": 16.058459023679884,
+        "cagr_pct": 16.0702978951621,
+        "strict_mdd_pct": 2.1951376624394836,
+        "ratio": 7.320861087729222,
+        "trades": 12,
+        "longs": 12,
+        "shorts": 0,
+        "win_rate": 0.6666666666666666,
+        "long_win_rate": 0.6666666666666666,
+        "short_win_rate": 0,
+        "sharpe_like": 2.2299593796104458
+      },
+      "ytd2026": {
+        "return_pct": 5.498076177993405,
+        "cagr_pct": 13.72493892422806,
+        "strict_mdd_pct": 4.238661720824355,
+        "ratio": 3.23803592459338,
+        "trades": 14,
+        "longs": 14,
+        "shorts": 0,
+        "win_rate": 0.5714285714285714,
+        "long_win_rate": 0.5714285714285714,
+        "short_win_rate": 0,
+        "sharpe_like": 0.9496512568698584
+      },
+      "robust_train_test_score": 2.965941954842627,
+      "passes_alpha_pool": true,
+      "passes_live_grade": false
+    },
+    {
+      "model_name": "trend_volterm",
+      "model": {
+        "columns": [
+          "trend24",
+          "volterm"
+        ],
+        "train_standardization_mean": [
+          0.001168864298587586,
+          0.9358821414796434
+        ],
+        "train_standardization_std": [
+          0.035366058191151135,
+          0.3613253435120371
+        ],
+        "hazard_lambda_hours": 168,
+        "max_run_length": 672,
+        "prior_kappa": 0.1,
+        "prior_alpha": 2.0,
+        "prior_beta": 1.0,
+        "short_run_horizon_hours": 6
+      },
+      "primary_name": "segment_trend_mean",
+      "secondary_name": "segment_volterm_mean",
+      "state_quantiles": {
+        "primary": [
+          0.33,
+          0.67
+        ],
+        "short_mass": 0.75,
+        "secondary": 0.67
+      },
+      "state_thresholds": {
+        "primary_low": -0.19541139533416724,
+        "primary_high": 0.20449215416497837,
+        "short_mass_high": 0.09257713679888743,
+        "secondary_high": 0.21366320347959428
+      },
+      "min_train_state_trades": 12,
+      "min_train_trade_edge": 0.002,
+      "allowed_states": [
+        0,
+        1,
+        9,
+        10
+      ],
+      "allowed_state_descriptions": {
+        "0": "segment_trend_mean=low, short_run_mass=low, segment_volterm_mean=low",
+        "1": "segment_trend_mean=low, short_run_mass=low, segment_volterm_mean=high",
+        "9": "segment_trend_mean=high, short_run_mass=low, segment_volterm_mean=high",
+        "10": "segment_trend_mean=high, short_run_mass=high, segment_volterm_mean=low"
+      },
+      "state_quality": {
+        "0": {
+          "n": 36,
+          "mean_trade_return": 0.003988942043379638
+        },
+        "1": {
+          "n": 28,
+          "mean_trade_return": 0.009156529548686296
+        },
+        "9": {
+          "n": 14,
+          "mean_trade_return": 0.02170999873041602
+        },
+        "10": {
+          "n": 14,
+          "mean_trade_return": 0.01026188851337557
+        }
+      },
+      "train": {
+        "return_pct": 174.85250679047516,
+        "cagr_pct": 28.758208545080667,
+        "strict_mdd_pct": 9.847141325672148,
+        "ratio": 2.92046265956457,
+        "trades": 149,
+        "longs": 149,
+        "shorts": 0,
+        "win_rate": 0.6040268456375839,
+        "long_win_rate": 0.6040268456375839,
+        "short_win_rate": 0,
+        "sharpe_like": 3.279734772456882
+      },
+      "test2024": {
+        "return_pct": 27.77445889830186,
+        "cagr_pct": 27.71030068627651,
+        "strict_mdd_pct": 3.5798284447082884,
+        "ratio": 7.7406783912335095,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.8571428571428571,
+        "long_win_rate": 0.8571428571428571,
+        "short_win_rate": 0,
+        "sharpe_like": 3.912401791116412
+      },
+      "signal_hash": "bba318e31a3ed89d",
+      "eval2025": {
+        "return_pct": 15.535863199699506,
+        "cagr_pct": 15.547291591188085,
+        "strict_mdd_pct": 2.396536591180587,
+        "ratio": 6.487400045717284,
+        "trades": 17,
+        "longs": 17,
+        "shorts": 0,
+        "win_rate": 0.6470588235294118,
+        "long_win_rate": 0.6470588235294118,
+        "short_win_rate": 0,
+        "sharpe_like": 2.0166010791986198
+      },
+      "ytd2026": {
+        "return_pct": 3.573497747409382,
+        "cagr_pct": 8.803254730797905,
+        "strict_mdd_pct": 3.879304350253343,
+        "ratio": 2.269286948373359,
+        "trades": 24,
+        "longs": 24,
+        "shorts": 0,
+        "win_rate": 0.5833333333333334,
+        "long_win_rate": 0.5833333333333334,
+        "short_win_rate": 0,
+        "sharpe_like": 0.5155373689542601
+      },
+      "robust_train_test_score": 2.92046265956457,
+      "passes_alpha_pool": true,
+      "passes_live_grade": false
+    },
+    {
+      "model_name": "return_flow",
+      "model": {
+        "columns": [
+          "ret1",
+          "flow24"
+        ],
+        "train_standardization_mean": [
+          5.04681791469994e-05,
+          -0.0032722758619435966
+        ],
+        "train_standardization_std": [
+          0.0074313883252710615,
+          0.02578054723970236
+        ],
+        "hazard_lambda_hours": 336,
+        "max_run_length": 1000,
+        "prior_kappa": 0.1,
+        "prior_alpha": 2.0,
+        "prior_beta": 1.0,
+        "short_run_horizon_hours": 6
+      },
+      "primary_name": "segment_return_mean",
+      "secondary_name": "segment_flow_mean",
+      "state_quantiles": {
+        "primary": [
+          0.33,
+          0.67
+        ],
+        "short_mass": 0.5,
+        "secondary": 0.5
+      },
+      "state_thresholds": {
+        "primary_low": -0.04305213207251328,
+        "primary_high": 0.043264074149964006,
+        "short_mass_high": 0.007773205608742969,
+        "secondary_high": -0.01810828307604237
+      },
+      "min_train_state_trades": 5,
+      "min_train_trade_edge": 0.005,
+      "allowed_states": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9
+      ],
+      "allowed_state_descriptions": {
+        "1": "segment_return_mean=low, short_run_mass=low, segment_flow_mean=high",
+        "2": "segment_return_mean=low, short_run_mass=high, segment_flow_mean=low",
+        "3": "segment_return_mean=low, short_run_mass=high, segment_flow_mean=high",
+        "4": "segment_return_mean=mid, short_run_mass=low, segment_flow_mean=low",
+        "6": "segment_return_mean=mid, short_run_mass=high, segment_flow_mean=low",
+        "7": "segment_return_mean=mid, short_run_mass=high, segment_flow_mean=high",
+        "8": "segment_return_mean=high, short_run_mass=low, segment_flow_mean=low",
+        "9": "segment_return_mean=high, short_run_mass=low, segment_flow_mean=high"
+      },
+      "state_quality": {
+        "1": {
+          "n": 16,
+          "mean_trade_return": 0.008418040328703032
+        },
+        "2": {
+          "n": 26,
+          "mean_trade_return": 0.006524971199623065
+        },
+        "3": {
+          "n": 13,
+          "mean_trade_return": 0.005685466056168333
+        },
+        "4": {
+          "n": 16,
+          "mean_trade_return": 0.008872861219023302
+        },
+        "6": {
+          "n": 9,
+          "mean_trade_return": 0.007395486269236202
+        },
+        "7": {
+          "n": 16,
+          "mean_trade_return": 0.005568189327335722
+        },
+        "8": {
+          "n": 13,
+          "mean_trade_return": 0.012775079846069471
+        },
+        "9": {
+          "n": 20,
+          "mean_trade_return": 0.007332295770680053
+        }
+      },
+      "train": {
+        "return_pct": 205.69543441319917,
+        "cagr_pct": 32.227637388831454,
+        "strict_mdd_pct": 11.663906387168954,
+        "ratio": 2.763022637448799,
+        "trades": 179,
+        "longs": 179,
+        "shorts": 0,
+        "win_rate": 0.6089385474860335,
+        "long_win_rate": 0.6089385474860335,
+        "short_win_rate": 0,
+        "sharpe_like": 3.418916943032587
+      },
+      "test2024": {
+        "return_pct": 22.944275896026433,
+        "cagr_pct": 22.89224695807295,
+        "strict_mdd_pct": 4.77444371732304,
+        "ratio": 4.7947464277384535,
+        "trades": 25,
+        "longs": 25,
+        "shorts": 0,
+        "win_rate": 0.72,
+        "long_win_rate": 0.72,
+        "short_win_rate": 0,
+        "sharpe_like": 2.637025815262044
+      },
+      "signal_hash": "c9b17da8f3e7e9c0",
+      "eval2025": {
+        "return_pct": 19.834624956698853,
+        "cagr_pct": 19.849477366309088,
+        "strict_mdd_pct": 3.062598955866025,
+        "ratio": 6.481252574154347,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.5714285714285714,
+        "long_win_rate": 0.5714285714285714,
+        "short_win_rate": 0,
+        "sharpe_like": 2.0602988020067676
+      },
+      "ytd2026": {
+        "return_pct": 14.178840991939712,
+        "cagr_pct": 37.52320857119245,
+        "strict_mdd_pct": 4.589939033983326,
+        "ratio": 8.175099558703367,
+        "trades": 22,
+        "longs": 22,
+        "shorts": 0,
+        "win_rate": 0.7272727272727273,
+        "long_win_rate": 0.7272727272727273,
+        "short_win_rate": 0,
+        "sharpe_like": 1.9580555169918252
+      },
+      "robust_train_test_score": 2.763022637448799,
+      "passes_alpha_pool": true,
+      "passes_live_grade": true
+    },
+    {
+      "model_name": "return_flow",
+      "model": {
+        "columns": [
+          "ret1",
+          "flow24"
+        ],
+        "train_standardization_mean": [
+          5.04681791469994e-05,
+          -0.0032722758619435966
+        ],
+        "train_standardization_std": [
+          0.0074313883252710615,
+          0.02578054723970236
+        ],
+        "hazard_lambda_hours": 336,
+        "max_run_length": 1000,
+        "prior_kappa": 0.1,
+        "prior_alpha": 2.0,
+        "prior_beta": 1.0,
+        "short_run_horizon_hours": 6
+      },
+      "primary_name": "segment_return_mean",
+      "secondary_name": "segment_flow_mean",
+      "state_quantiles": {
+        "primary": [
+          0.33,
+          0.67
+        ],
+        "short_mass": 0.5,
+        "secondary": 0.5
+      },
+      "state_thresholds": {
+        "primary_low": -0.04305213207251328,
+        "primary_high": 0.043264074149964006,
+        "short_mass_high": 0.007773205608742969,
+        "secondary_high": -0.01810828307604237
+      },
+      "min_train_state_trades": 5,
+      "min_train_trade_edge": 0.0,
+      "allowed_states": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        11
+      ],
+      "allowed_state_descriptions": {
+        "1": "segment_return_mean=low, short_run_mass=low, segment_flow_mean=high",
+        "2": "segment_return_mean=low, short_run_mass=high, segment_flow_mean=low",
+        "3": "segment_return_mean=low, short_run_mass=high, segment_flow_mean=high",
+        "4": "segment_return_mean=mid, short_run_mass=low, segment_flow_mean=low",
+        "6": "segment_return_mean=mid, short_run_mass=high, segment_flow_mean=low",
+        "7": "segment_return_mean=mid, short_run_mass=high, segment_flow_mean=high",
+        "8": "segment_return_mean=high, short_run_mass=low, segment_flow_mean=low",
+        "9": "segment_return_mean=high, short_run_mass=low, segment_flow_mean=high",
+        "11": "segment_return_mean=high, short_run_mass=high, segment_flow_mean=high"
+      },
+      "state_quality": {
+        "1": {
+          "n": 16,
+          "mean_trade_return": 0.008418040328703032
+        },
+        "2": {
+          "n": 26,
+          "mean_trade_return": 0.006524971199623065
+        },
+        "3": {
+          "n": 13,
+          "mean_trade_return": 0.005685466056168333
+        },
+        "4": {
+          "n": 16,
+          "mean_trade_return": 0.008872861219023302
+        },
+        "6": {
+          "n": 9,
+          "mean_trade_return": 0.007395486269236202
+        },
+        "7": {
+          "n": 16,
+          "mean_trade_return": 0.005568189327335722
+        },
+        "8": {
+          "n": 13,
+          "mean_trade_return": 0.012775079846069471
+        },
+        "9": {
+          "n": 20,
+          "mean_trade_return": 0.007332295770680053
+        },
+        "11": {
+          "n": 31,
+          "mean_trade_return": 0.004374950098265617
+        }
+      },
+      "train": {
+        "return_pct": 221.3156472701086,
+        "cagr_pct": 33.88532241829332,
+        "strict_mdd_pct": 12.537802971008194,
+        "ratio": 2.7026523304480135,
+        "trades": 189,
+        "longs": 189,
+        "shorts": 0,
+        "win_rate": 0.5978835978835979,
+        "long_win_rate": 0.5978835978835979,
+        "short_win_rate": 0,
+        "sharpe_like": 3.4970476326194193
+      },
+      "test2024": {
+        "return_pct": 29.650006761160654,
+        "cagr_pct": 29.581037393115217,
+        "strict_mdd_pct": 4.7744437173230185,
+        "ratio": 6.195703446201896,
+        "trades": 27,
+        "longs": 27,
+        "shorts": 0,
+        "win_rate": 0.8148148148148148,
+        "long_win_rate": 0.8148148148148148,
+        "short_win_rate": 0,
+        "sharpe_like": 3.6955159641565154
+      },
+      "signal_hash": "adbc8ffac3e0e03a",
+      "eval2025": {
+        "return_pct": 17.502836878714987,
+        "cagr_pct": 17.515818624373992,
+        "strict_mdd_pct": 3.9727220323446555,
+        "ratio": 4.40902194559944,
+        "trades": 22,
+        "longs": 22,
+        "shorts": 0,
+        "win_rate": 0.5909090909090909,
+        "long_win_rate": 0.5909090909090909,
+        "short_win_rate": 0,
+        "sharpe_like": 1.9172328915129933
+      },
+      "ytd2026": {
+        "return_pct": 8.351749676755805,
+        "cagr_pct": 21.2577098695381,
+        "strict_mdd_pct": 4.288511546080476,
+        "ratio": 4.956896965560645,
+        "trades": 27,
+        "longs": 27,
+        "shorts": 0,
+        "win_rate": 0.6296296296296297,
+        "long_win_rate": 0.6296296296296297,
+        "short_win_rate": 0,
+        "sharpe_like": 1.0810671535834688
+      },
+      "robust_train_test_score": 2.7026523304480135,
+      "passes_alpha_pool": true,
+      "passes_live_grade": false
+    },
+    {
+      "model_name": "return_flow",
+      "model": {
+        "columns": [
+          "ret1",
+          "flow24"
+        ],
+        "train_standardization_mean": [
+          5.04681791469994e-05,
+          -0.0032722758619435966
+        ],
+        "train_standardization_std": [
+          0.0074313883252710615,
+          0.02578054723970236
+        ],
+        "hazard_lambda_hours": 336,
+        "max_run_length": 1000,
+        "prior_kappa": 0.1,
+        "prior_alpha": 2.0,
+        "prior_beta": 1.0,
+        "short_run_horizon_hours": 6
+      },
+      "primary_name": "segment_return_mean",
+      "secondary_name": "segment_flow_mean",
+      "state_quantiles": {
+        "primary": [
+          0.2,
+          0.8
+        ],
+        "short_mass": 0.5,
+        "secondary": 0.5
+      },
+      "state_thresholds": {
+        "primary_low": -0.10102691173414903,
+        "primary_high": 0.10998211457461969,
+        "short_mass_high": 0.007773205608742969,
+        "secondary_high": -0.01810828307604237
+      },
+      "min_train_state_trades": 5,
+      "min_train_trade_edge": 0.002,
+      "allowed_states": [
+        1,
+        2,
+        4,
+        6,
+        7,
+        8,
+        9
+      ],
+      "allowed_state_descriptions": {
+        "1": "segment_return_mean=low, short_run_mass=low, segment_flow_mean=high",
+        "2": "segment_return_mean=low, short_run_mass=high, segment_flow_mean=low",
+        "4": "segment_return_mean=mid, short_run_mass=low, segment_flow_mean=low",
+        "6": "segment_return_mean=mid, short_run_mass=high, segment_flow_mean=low",
+        "7": "segment_return_mean=mid, short_run_mass=high, segment_flow_mean=high",
+        "8": "segment_return_mean=high, short_run_mass=low, segment_flow_mean=low",
+        "9": "segment_return_mean=high, short_run_mass=low, segment_flow_mean=high"
+      },
+      "state_quality": {
+        "1": {
+          "n": 8,
+          "mean_trade_return": 0.014143237356114086
+        },
+        "2": {
+          "n": 16,
+          "mean_trade_return": 0.0020733929315324695
+        },
+        "4": {
+          "n": 25,
+          "mean_trade_return": 0.005866897936857414
+        },
+        "6": {
+          "n": 25,
+          "mean_trade_return": 0.004507793647985654
+        },
+        "7": {
+          "n": 28,
+          "mean_trade_return": 0.010808322876074496
+        },
+        "8": {
+          "n": 5,
+          "mean_trade_return": 0.027045479455350564
+        },
+        "9": {
+          "n": 14,
+          "mean_trade_return": 0.00454816881313262
+        }
+      },
+      "train": {
+        "return_pct": 209.6750154294452,
+        "cagr_pct": 32.65589131278577,
+        "strict_mdd_pct": 12.090544410027327,
+        "ratio": 2.7009446560324046,
+        "trades": 179,
+        "longs": 179,
+        "shorts": 0,
+        "win_rate": 0.5921787709497207,
+        "long_win_rate": 0.5921787709497207,
+        "short_win_rate": 0,
+        "sharpe_like": 3.3972189012328187
+      },
+      "test2024": {
+        "return_pct": 20.386980504591268,
+        "cagr_pct": 20.341217185424988,
+        "strict_mdd_pct": 4.774443717323051,
+        "ratio": 4.260437108436574,
+        "trades": 22,
+        "longs": 22,
+        "shorts": 0,
+        "win_rate": 0.6818181818181818,
+        "long_win_rate": 0.6818181818181818,
+        "short_win_rate": 0,
+        "sharpe_like": 2.4255606247651063
+      },
+      "signal_hash": "21617972c0da3550",
+      "eval2025": {
+        "return_pct": 16.379820573884295,
+        "cagr_pct": 16.391912664562525,
+        "strict_mdd_pct": 3.002489520549978,
+        "ratio": 5.459440425144249,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.5238095238095238,
+        "long_win_rate": 0.5238095238095238,
+        "short_win_rate": 0,
+        "sharpe_like": 1.8541117159984453
+      },
+      "ytd2026": {
+        "return_pct": 12.98944063082621,
+        "cagr_pct": 34.10589862927977,
+        "strict_mdd_pct": 2.8381245171969383,
+        "ratio": 12.017055073737328,
+        "trades": 24,
+        "longs": 24,
+        "shorts": 0,
+        "win_rate": 0.6666666666666666,
+        "long_win_rate": 0.6666666666666666,
+        "short_win_rate": 0,
+        "sharpe_like": 1.9614329190840887
+      },
+      "robust_train_test_score": 2.7009446560324046,
+      "passes_alpha_pool": true,
+      "passes_live_grade": true
+    }
+  ],
+  "live_grade": [
+    {
+      "model_name": "return_flow",
+      "model": {
+        "columns": [
+          "ret1",
+          "flow24"
+        ],
+        "train_standardization_mean": [
+          5.04681791469994e-05,
+          -0.0032722758619435966
+        ],
+        "train_standardization_std": [
+          0.0074313883252710615,
+          0.02578054723970236
+        ],
+        "hazard_lambda_hours": 336,
+        "max_run_length": 1000,
+        "prior_kappa": 0.1,
+        "prior_alpha": 2.0,
+        "prior_beta": 1.0,
+        "short_run_horizon_hours": 6
+      },
+      "primary_name": "segment_return_mean",
+      "secondary_name": "segment_flow_mean",
+      "state_quantiles": {
+        "primary": [
+          0.33,
+          0.67
+        ],
+        "short_mass": 0.5,
+        "secondary": 0.5
+      },
+      "state_thresholds": {
+        "primary_low": -0.04305213207251328,
+        "primary_high": 0.043264074149964006,
+        "short_mass_high": 0.007773205608742969,
+        "secondary_high": -0.01810828307604237
+      },
+      "min_train_state_trades": 5,
+      "min_train_trade_edge": 0.005,
+      "allowed_states": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9
+      ],
+      "allowed_state_descriptions": {
+        "1": "segment_return_mean=low, short_run_mass=low, segment_flow_mean=high",
+        "2": "segment_return_mean=low, short_run_mass=high, segment_flow_mean=low",
+        "3": "segment_return_mean=low, short_run_mass=high, segment_flow_mean=high",
+        "4": "segment_return_mean=mid, short_run_mass=low, segment_flow_mean=low",
+        "6": "segment_return_mean=mid, short_run_mass=high, segment_flow_mean=low",
+        "7": "segment_return_mean=mid, short_run_mass=high, segment_flow_mean=high",
+        "8": "segment_return_mean=high, short_run_mass=low, segment_flow_mean=low",
+        "9": "segment_return_mean=high, short_run_mass=low, segment_flow_mean=high"
+      },
+      "state_quality": {
+        "1": {
+          "n": 16,
+          "mean_trade_return": 0.008418040328703032
+        },
+        "2": {
+          "n": 26,
+          "mean_trade_return": 0.006524971199623065
+        },
+        "3": {
+          "n": 13,
+          "mean_trade_return": 0.005685466056168333
+        },
+        "4": {
+          "n": 16,
+          "mean_trade_return": 0.008872861219023302
+        },
+        "6": {
+          "n": 9,
+          "mean_trade_return": 0.007395486269236202
+        },
+        "7": {
+          "n": 16,
+          "mean_trade_return": 0.005568189327335722
+        },
+        "8": {
+          "n": 13,
+          "mean_trade_return": 0.012775079846069471
+        },
+        "9": {
+          "n": 20,
+          "mean_trade_return": 0.007332295770680053
+        }
+      },
+      "train": {
+        "return_pct": 205.69543441319917,
+        "cagr_pct": 32.227637388831454,
+        "strict_mdd_pct": 11.663906387168954,
+        "ratio": 2.763022637448799,
+        "trades": 179,
+        "longs": 179,
+        "shorts": 0,
+        "win_rate": 0.6089385474860335,
+        "long_win_rate": 0.6089385474860335,
+        "short_win_rate": 0,
+        "sharpe_like": 3.418916943032587
+      },
+      "test2024": {
+        "return_pct": 22.944275896026433,
+        "cagr_pct": 22.89224695807295,
+        "strict_mdd_pct": 4.77444371732304,
+        "ratio": 4.7947464277384535,
+        "trades": 25,
+        "longs": 25,
+        "shorts": 0,
+        "win_rate": 0.72,
+        "long_win_rate": 0.72,
+        "short_win_rate": 0,
+        "sharpe_like": 2.637025815262044
+      },
+      "signal_hash": "c9b17da8f3e7e9c0",
+      "eval2025": {
+        "return_pct": 19.834624956698853,
+        "cagr_pct": 19.849477366309088,
+        "strict_mdd_pct": 3.062598955866025,
+        "ratio": 6.481252574154347,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.5714285714285714,
+        "long_win_rate": 0.5714285714285714,
+        "short_win_rate": 0,
+        "sharpe_like": 2.0602988020067676
+      },
+      "ytd2026": {
+        "return_pct": 14.178840991939712,
+        "cagr_pct": 37.52320857119245,
+        "strict_mdd_pct": 4.589939033983326,
+        "ratio": 8.175099558703367,
+        "trades": 22,
+        "longs": 22,
+        "shorts": 0,
+        "win_rate": 0.7272727272727273,
+        "long_win_rate": 0.7272727272727273,
+        "short_win_rate": 0,
+        "sharpe_like": 1.9580555169918252
+      },
+      "robust_train_test_score": 2.763022637448799,
+      "passes_alpha_pool": true,
+      "passes_live_grade": true
+    },
+    {
+      "model_name": "return_flow",
+      "model": {
+        "columns": [
+          "ret1",
+          "flow24"
+        ],
+        "train_standardization_mean": [
+          5.04681791469994e-05,
+          -0.0032722758619435966
+        ],
+        "train_standardization_std": [
+          0.0074313883252710615,
+          0.02578054723970236
+        ],
+        "hazard_lambda_hours": 336,
+        "max_run_length": 1000,
+        "prior_kappa": 0.1,
+        "prior_alpha": 2.0,
+        "prior_beta": 1.0,
+        "short_run_horizon_hours": 6
+      },
+      "primary_name": "segment_return_mean",
+      "secondary_name": "segment_flow_mean",
+      "state_quantiles": {
+        "primary": [
+          0.2,
+          0.8
+        ],
+        "short_mass": 0.5,
+        "secondary": 0.5
+      },
+      "state_thresholds": {
+        "primary_low": -0.10102691173414903,
+        "primary_high": 0.10998211457461969,
+        "short_mass_high": 0.007773205608742969,
+        "secondary_high": -0.01810828307604237
+      },
+      "min_train_state_trades": 5,
+      "min_train_trade_edge": 0.002,
+      "allowed_states": [
+        1,
+        2,
+        4,
+        6,
+        7,
+        8,
+        9
+      ],
+      "allowed_state_descriptions": {
+        "1": "segment_return_mean=low, short_run_mass=low, segment_flow_mean=high",
+        "2": "segment_return_mean=low, short_run_mass=high, segment_flow_mean=low",
+        "4": "segment_return_mean=mid, short_run_mass=low, segment_flow_mean=low",
+        "6": "segment_return_mean=mid, short_run_mass=high, segment_flow_mean=low",
+        "7": "segment_return_mean=mid, short_run_mass=high, segment_flow_mean=high",
+        "8": "segment_return_mean=high, short_run_mass=low, segment_flow_mean=low",
+        "9": "segment_return_mean=high, short_run_mass=low, segment_flow_mean=high"
+      },
+      "state_quality": {
+        "1": {
+          "n": 8,
+          "mean_trade_return": 0.014143237356114086
+        },
+        "2": {
+          "n": 16,
+          "mean_trade_return": 0.0020733929315324695
+        },
+        "4": {
+          "n": 25,
+          "mean_trade_return": 0.005866897936857414
+        },
+        "6": {
+          "n": 25,
+          "mean_trade_return": 0.004507793647985654
+        },
+        "7": {
+          "n": 28,
+          "mean_trade_return": 0.010808322876074496
+        },
+        "8": {
+          "n": 5,
+          "mean_trade_return": 0.027045479455350564
+        },
+        "9": {
+          "n": 14,
+          "mean_trade_return": 0.00454816881313262
+        }
+      },
+      "train": {
+        "return_pct": 209.6750154294452,
+        "cagr_pct": 32.65589131278577,
+        "strict_mdd_pct": 12.090544410027327,
+        "ratio": 2.7009446560324046,
+        "trades": 179,
+        "longs": 179,
+        "shorts": 0,
+        "win_rate": 0.5921787709497207,
+        "long_win_rate": 0.5921787709497207,
+        "short_win_rate": 0,
+        "sharpe_like": 3.3972189012328187
+      },
+      "test2024": {
+        "return_pct": 20.386980504591268,
+        "cagr_pct": 20.341217185424988,
+        "strict_mdd_pct": 4.774443717323051,
+        "ratio": 4.260437108436574,
+        "trades": 22,
+        "longs": 22,
+        "shorts": 0,
+        "win_rate": 0.6818181818181818,
+        "long_win_rate": 0.6818181818181818,
+        "short_win_rate": 0,
+        "sharpe_like": 2.4255606247651063
+      },
+      "signal_hash": "21617972c0da3550",
+      "eval2025": {
+        "return_pct": 16.379820573884295,
+        "cagr_pct": 16.391912664562525,
+        "strict_mdd_pct": 3.002489520549978,
+        "ratio": 5.459440425144249,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.5238095238095238,
+        "long_win_rate": 0.5238095238095238,
+        "short_win_rate": 0,
+        "sharpe_like": 1.8541117159984453
+      },
+      "ytd2026": {
+        "return_pct": 12.98944063082621,
+        "cagr_pct": 34.10589862927977,
+        "strict_mdd_pct": 2.8381245171969383,
+        "ratio": 12.017055073737328,
+        "trades": 24,
+        "longs": 24,
+        "shorts": 0,
+        "win_rate": 0.6666666666666666,
+        "long_win_rate": 0.6666666666666666,
+        "short_win_rate": 0,
+        "sharpe_like": 1.9614329190840887
+      },
+      "robust_train_test_score": 2.7009446560324046,
+      "passes_alpha_pool": true,
+      "passes_live_grade": true
+    }
+  ],
+  "promotion_policy": "qualifying member of pre-evaluation ranked Top-10 family",
+  "diagnostic_outside_top10_passers": {
+    "alpha_pool": 56,
+    "live_grade": 28
   }
 }

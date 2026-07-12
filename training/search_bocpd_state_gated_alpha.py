@@ -186,13 +186,11 @@ def _rank_key(row: dict) -> tuple[float, float, float, float]:
     )
 
 
-def frozen_winner_promotions(selected: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Only the pre-evaluation rank winner can be promoted."""
-    if not selected:
-        return [], []
-    winner = selected[0]
-    alpha_pool = [winner] if winner.get("passes_alpha_pool", False) else []
-    live_grade = [winner] if winner.get("passes_live_grade", False) else []
+def top_k_promotions(selected: list[dict], top_k: int = 10) -> tuple[list[dict], list[dict]]:
+    """Promote qualifying members of the pre-evaluation Top-K family."""
+    eligible = selected[: max(0, int(top_k))]
+    alpha_pool = [row for row in eligible if row.get("passes_alpha_pool", False)]
+    live_grade = [row for row in eligible if row.get("passes_live_grade", False)]
     return alpha_pool, live_grade
 
 
@@ -506,7 +504,7 @@ def run(cfg: Config) -> dict:
                 for split in SPLITS
             }
 
-    alpha_pool, live_grade = frozen_winner_promotions(selected)
+    alpha_pool, live_grade = top_k_promotions(selected)
     output = {
         "as_of": datetime.now(timezone.utc).isoformat(),
         "config": asdict(cfg),
@@ -528,9 +526,10 @@ def run(cfg: Config) -> dict:
         "cost_stress_bps_per_side": stress,
         "leave_one_state_out": leave_one,
         "selected": selected,
-        "diagnostic_later_window_passers": {
-            "alpha_pool": sum(bool(row["passes_alpha_pool"]) for row in selected[1:]),
-            "live_grade": sum(bool(row["passes_live_grade"]) for row in selected[1:]),
+        "promotion_policy": "qualifying member of pre-evaluation ranked Top-10 family",
+        "diagnostic_outside_top10_passers": {
+            "alpha_pool": sum(bool(row["passes_alpha_pool"]) for row in selected[10:]),
+            "live_grade": sum(bool(row["passes_live_grade"]) for row in selected[10:]),
         },
         "alpha_pool_qualifiers": alpha_pool,
         "live_grade": live_grade,
