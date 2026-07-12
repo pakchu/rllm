@@ -1,0 +1,76 @@
+{
+  "id": "calendar_oi_funding_friday_asia_long_20260712",
+  "name": "Calendar OI/funding Friday-Asia long alpha",
+  "status": "candidate_weak",
+  "family": "calendar_oi_funding_derivatives_state",
+  "scope": "btc_derivatives_calendar_long",
+  "side": "long",
+  "description": "Weak long-only BTC alpha combining funding flip, Asia session, Friday UTC, and negative basis context. It is not live-grade, but all train/test/eval/ytd splits are positive and it is orthogonal to REX price-location logic.",
+  "entry_logic": {
+    "side": "LONG",
+    "terms": [
+      {"feature": "cf_funding_flip_long", "op": ">=", "threshold": 1.4055940540679024, "train_q": 0.75},
+      {"feature": "cal_post_funding_1h", "op": ">=", "threshold": 0.5, "train_q": 0.5},
+      {"feature": "cal_asia", "op": ">=", "threshold": 0.5, "train_q": 0.5},
+      {"feature": "cf_basis_z", "op": "<=", "threshold": -0.5452289044223437, "train_q": 0.3}
+    ]
+  },
+  "exit_logic": {
+    "hold_bars_5m": 144,
+    "stride_bars": 12,
+    "evaluation_cost": "6bp/side in source scanner",
+    "mdd": "strict intrabar/in-position MDD"
+  },
+  "dependencies": [
+    "funding_rate",
+    "premium_index/basis features",
+    "open_interest unwind features",
+    "calendar session features"
+  ],
+  "stats": {
+    "train_pre2024": {
+      "return_pct": 30.66,
+      "cagr_pct": 8.36,
+      "strict_mdd_pct": 15.85,
+      "cagr_to_strict_mdd": 0.53,
+      "trades": 203,
+      "win_rate": 0.48
+    },
+    "test_2024": {
+      "return_pct": 11.96,
+      "cagr_pct": 11.94,
+      "strict_mdd_pct": 16.16,
+      "cagr_to_strict_mdd": 0.74,
+      "trades": 72,
+      "win_rate": 0.56
+    },
+    "eval_2025": {
+      "return_pct": 5.65,
+      "cagr_pct": 5.65,
+      "strict_mdd_pct": 10.62,
+      "cagr_to_strict_mdd": 0.53,
+      "trades": 63,
+      "win_rate": 0.52
+    },
+    "ytd_2026": {
+      "return_pct": 1.73,
+      "cagr_pct": 4.19,
+      "strict_mdd_pct": 9.64,
+      "cagr_to_strict_mdd": 0.43,
+      "trades": 33,
+      "win_rate": 0.52
+    }
+  },
+  "evidence": "All major splits are positive with adequate trade counts, but risk-adjusted efficiency is far below target. Use as weak orthogonal alpha/sleeve candidate or LLM context feature, not as standalone live strategy.",
+  "source_artifacts": [
+    "training/search_calendar_oi_funding_alpha.py",
+    "results/calendar_oi_funding_alpha_scan_2026-07-10.json",
+    "docs/calendar-oi-funding-alpha-scan-2026-07-10.md"
+  ],
+  "leakage_guard": "Scanner uses train quantile thresholds and reports train/test/eval/ytd splits. This candidate was selected as a weak all-positive filter after scan; do not promote without fresh OOS.",
+  "usage_recipe": {
+    "as_alpha_feature": "Emit +1 when all terms pass, else 0. Combine with portfolio/risk layer rather than trading alone.",
+    "as_trade_rule": "Long only; hold 144 bars; stride 12; no short leg.",
+    "promotion_status": "candidate_weak; below CAGR/strictMDD>=3 but useful as orthogonal derivatives/calendar signal."
+  }
+}
