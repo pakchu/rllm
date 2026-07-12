@@ -1,0 +1,76 @@
+{
+  "as_of": "2026-07-12T08:54:48.156975+00:00",
+  "config": {
+    "input_csv": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+    "output_jsonl": "data/rex_event_reasoning_policy_sft_20260712.jsonl",
+    "summary_output": "results/rex_event_reasoning_policy_sft_summary_2026-07-12.json",
+    "family": "rex_htf_pullback_reclaim",
+    "hold_bars": 144,
+    "quantile": 0.75,
+    "stride_bars": 24,
+    "threshold_train_start": "2020-01-01",
+    "threshold_train_end": "2025-01-01",
+    "dataset_start": "2020-01-01",
+    "dataset_end": "2026-06-01",
+    "train_end": "2025-01-01",
+    "test_end": "2026-01-01",
+    "entry_delay_bars": 1,
+    "leverage": 0.5,
+    "fee_rate": 0.0004,
+    "slippage_rate": 0.0001,
+    "mae_penalty": 1.0,
+    "no_trade_utility": 0.001,
+    "min_trade_net_return": 0.001,
+    "max_trade_mae": 0.035,
+    "skip_oracle": true
+  },
+  "threshold": 0.177552250256958,
+  "rows": 1444,
+  "split_summary": {
+    "train": {
+      "rows": 1259,
+      "target_actions": {
+        "LONG": 367,
+        "NO_TRADE": 589,
+        "SHORT": 303
+      },
+      "base_sides": {
+        "LONG": 713,
+        "SHORT": 546
+      },
+      "prompt_chars_mean": 1211.8792692613185
+    },
+    "test": {
+      "rows": 104,
+      "target_actions": {
+        "NO_TRADE": 51,
+        "LONG": 31,
+        "SHORT": 22
+      },
+      "base_sides": {
+        "LONG": 38,
+        "SHORT": 66
+      },
+      "prompt_chars_mean": 1211.3461538461538
+    },
+    "eval": {
+      "rows": 81,
+      "target_actions": {
+        "SHORT": 21,
+        "LONG": 21,
+        "NO_TRADE": 39
+      },
+      "base_sides": {
+        "SHORT": 65,
+        "LONG": 16
+      },
+      "prompt_chars_mean": 1212.5185185185185
+    }
+  },
+  "oracle_upper_bound": {},
+  "leakage_guard": {
+    "threshold_fit_on_train_only": true,
+    "prompts_are_symbolic_signal_time_only": true,
+    "oracle_upper_bound_is_not_deployable": true
+  }
+}
