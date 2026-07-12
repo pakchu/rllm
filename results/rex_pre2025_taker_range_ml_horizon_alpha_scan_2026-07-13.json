@@ -1,0 +1,765 @@
+{
+  "as_of": "2026-07-12T23:56:27.883294+00:00",
+  "config": {
+    "train_jsonl": "data/rex_pullback_reclaim_q075_h144_ranker_train_2021_2023.jsonl",
+    "selection_jsonl": "data/rex_pullback_reclaim_q075_h144_ranker_test_2024.jsonl",
+    "eval_jsonl": "data/rex_pullback_reclaim_q075_h144_ranker_eval_2025_2026h1.jsonl",
+    "market_csv": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "output": "results/rex_pre2025_taker_range_ml_horizon_alpha_scan_2026-07-13.json",
+    "manifest_output": "results/rex_pre2025_taker_range_ml_horizon_top10_manifest_2026-07-13.json",
+    "gates_json": "[{\"feature\":\"taker_imbalance\",\"op\":\"<=\",\"threshold\":-0.07073595391836504},{\"feature\":\"rex_2016_range_pos\",\"op\":\"<=\",\"threshold\":0.6865011402825759}]",
+    "top_n": 10,
+    "leverage": 0.5,
+    "fee_rate": 0.0005,
+    "slippage_rate": 0.0001,
+    "hold_bars": 144,
+    "random_state": 42,
+    "execution_holds": "48,72,96,144,216,288"
+  },
+  "protocol": {
+    "gate_selected_by_top10_rule": true,
+    "model_fit": "2021-2023 completed paths",
+    "selection": "2024 full/H1/H2",
+    "manifest_written_before_future": true,
+    "full_market_loaded_after_manifest": true,
+    "eval2025_and_holdout2026_not_used_for_selection": true,
+    "cagr": "full configured calendar window including idle time",
+    "strict_mdd": "worst-order favorable-to-adverse OHLC high-water path drawdown"
+  },
+  "input": {
+    "fit_rows": 449,
+    "selection_rows": 97,
+    "features": 47,
+    "tested": 347
+  },
+  "manifest_hash": "939e534367258089693e8900a78f947c1f1618ad85747870b5af3531c7df28e9",
+  "selected": [
+    {
+      "model": "ridge_u_a100",
+      "model_spec": {
+        "name": "ridge_u_a100",
+        "kind": "ridge",
+        "target": "utility",
+        "alpha": 100.0
+      },
+      "score_quantile": 0.7,
+      "score_threshold": -0.004585641881396018,
+      "side": "both",
+      "family": "both",
+      "execution_hold_bars": 48,
+      "selection2024": {
+        "return_pct": 6.538298181847391,
+        "cagr_pct": 6.524472167179485,
+        "strict_mdd_pct": 1.2256465698274654,
+        "ratio": 5.323290031397825,
+        "trades": 29,
+        "p_value": 1.669732099385257e-05
+      },
+      "selection2024_halves": [
+        {
+          "return_pct": 2.8462821206786337,
+          "cagr_pct": 5.793967922590437,
+          "strict_mdd_pct": 1.2256465698274654,
+          "ratio": 4.7272746199632865,
+          "trades": 7,
+          "p_value": 7.709586524740075e-08
+        },
+        {
+          "return_pct": 3.5898391123525553,
+          "cagr_pct": 7.2519981917333,
+          "strict_mdd_pct": 1.0822222129398318,
+          "ratio": 6.701025080637934,
+          "trades": 22,
+          "p_value": 0.005617796155055643
+        }
+      ],
+      "selection_score": {
+        "positive_halves": 2,
+        "min_half_ratio": 4.7272746199632865,
+        "full_ratio": 5.323290031397825,
+        "min_half_trades": 7
+      },
+      "eval2025": {
+        "return_pct": 2.741870369601873,
+        "cagr_pct": 2.743773894577206,
+        "strict_mdd_pct": 1.9713174264950784,
+        "ratio": 1.391847836223679,
+        "trades": 22,
+        "p_value": 0.2935578664401923
+      },
+      "holdout2026": {
+        "return_pct": 0.5169221883363218,
+        "cagr_pct": 1.2466508845177637,
+        "strict_mdd_pct": 1.509763334469294,
+        "ratio": 0.8257260300707869,
+        "trades": 15,
+        "p_value": 0.6015478560633158
+      },
+      "eval2025_2026": {
+        "return_pct": 3.2729658942543205,
+        "cagr_pct": 2.3013309468090215,
+        "strict_mdd_pct": 1.9713174264950784,
+        "ratio": 1.1674076005611607,
+        "trades": 37,
+        "p_value": 0.2400939894703853
+      },
+      "passes_alpha_target": false,
+      "passes_live_target": false
+    },
+    {
+      "model": "ridge_u_a100",
+      "model_spec": {
+        "name": "ridge_u_a100",
+        "kind": "ridge",
+        "target": "utility",
+        "alpha": 100.0
+      },
+      "score_quantile": 0.7,
+      "score_threshold": -0.0045638254382812105,
+      "side": "long",
+      "family": "both",
+      "execution_hold_bars": 48,
+      "selection2024": {
+        "return_pct": 5.40032297238402,
+        "cagr_pct": 5.3889637808374635,
+        "strict_mdd_pct": 1.2256465698274654,
+        "ratio": 4.396833404915472,
+        "trades": 25,
+        "p_value": 3.157516623852885e-05
+      },
+      "selection2024_halves": [
+        {
+          "return_pct": 2.8462821206786337,
+          "cagr_pct": 5.793967922590437,
+          "strict_mdd_pct": 1.2256465698274654,
+          "ratio": 4.7272746199632865,
+          "trades": 7,
+          "p_value": 7.709586524740075e-08
+        },
+        {
+          "return_pct": 2.483357491433824,
+          "cagr_pct": 4.989887142611704,
+          "strict_mdd_pct": 1.0822222129396541,
+          "ratio": 4.610778713419316,
+          "trades": 18,
+          "p_value": 0.014266668061384546
+        }
+      ],
+      "selection_score": {
+        "positive_halves": 2,
+        "min_half_ratio": 4.610778713419316,
+        "full_ratio": 4.396833404915472,
+        "min_half_trades": 7
+      },
+      "eval2025": {
+        "return_pct": 0.05156205850658235,
+        "cagr_pct": 0.0515973840946371,
+        "strict_mdd_pct": 0.8367029552448502,
+        "ratio": 0.061667505500249846,
+        "trades": 9,
+        "p_value": 0.9430330444129322
+      },
+      "holdout2026": {
+        "return_pct": -0.3770253930299172,
+        "cagr_pct": -0.9035822600523047,
+        "strict_mdd_pct": 0.9907181609039695,
+        "ratio": -0.9120477404268449,
+        "trades": 10,
+        "p_value": 0.34295340769993166
+      },
+      "eval2025_2026": {
+        "return_pct": -0.3256577365769342,
+        "cagr_pct": -0.2301806906056303,
+        "strict_mdd_pct": 1.2724196979032376,
+        "ratio": -0.18089997426551518,
+        "trades": 19,
+        "p_value": 0.6990409980281542
+      },
+      "passes_alpha_target": false,
+      "passes_live_target": false
+    },
+    {
+      "model": "extra_take_d4_l20",
+      "model_spec": {
+        "name": "extra_take_d4_l20",
+        "kind": "extra",
+        "target": "take",
+        "max_depth": 4,
+        "min_samples_leaf": 20
+      },
+      "score_quantile": 0.7,
+      "score_threshold": 0.2678664253706891,
+      "side": "both",
+      "family": "both",
+      "execution_hold_bars": 216,
+      "selection2024": {
+        "return_pct": 9.114983817163802,
+        "cagr_pct": 9.095480801374034,
+        "strict_mdd_pct": 4.6913800705686075,
+        "ratio": 1.93876442849612,
+        "trades": 20,
+        "p_value": 0.14123134738343968
+      },
+      "selection2024_halves": [
+        {
+          "return_pct": 4.3329436112304665,
+          "cagr_pct": 8.885347674885402,
+          "strict_mdd_pct": 4.306277467466546,
+          "ratio": 2.063347692296474,
+          "trades": 6,
+          "p_value": 0.3809692588296696
+        },
+        {
+          "return_pct": 4.583442238294166,
+          "cagr_pct": 9.303728808294975,
+          "strict_mdd_pct": 4.691380070568862,
+          "ratio": 1.983153926636951,
+          "trades": 14,
+          "p_value": 0.23348620414912014
+        }
+      ],
+      "selection_score": {
+        "positive_halves": 2,
+        "min_half_ratio": 1.983153926636951,
+        "full_ratio": 1.93876442849612,
+        "min_half_trades": 6
+      },
+      "eval2025": {
+        "return_pct": 4.336414777556663,
+        "cagr_pct": 4.339448456520545,
+        "strict_mdd_pct": 3.3605730275291346,
+        "ratio": 1.2912822964930863,
+        "trades": 10,
+        "p_value": 0.22229561203413972
+      },
+      "holdout2026": {
+        "return_pct": 4.433530237712824,
+        "cagr_pct": 10.98688891300117,
+        "strict_mdd_pct": 2.9728898023200334,
+        "ratio": 3.6956932962759126,
+        "trades": 10,
+        "p_value": 0.07683606548346855
+      },
+      "eval2025_2026": {
+        "return_pct": 8.96220127566567,
+        "cagr_pct": 6.25139578934768,
+        "strict_mdd_pct": 3.3605730275291346,
+        "ratio": 1.8602172124032152,
+        "trades": 20,
+        "p_value": 0.03847416338080012
+      },
+      "passes_alpha_target": false,
+      "passes_live_target": false
+    },
+    {
+      "model": "hgb_take_d2_l40",
+      "model_spec": {
+        "name": "hgb_take_d2_l40",
+        "kind": "hgb",
+        "target": "take",
+        "max_depth": 2,
+        "min_samples_leaf": 40,
+        "l2": 1.0
+      },
+      "score_quantile": 0.3,
+      "score_threshold": 0.14115341437156054,
+      "side": "both",
+      "family": "both",
+      "execution_hold_bars": 144,
+      "selection2024": {
+        "return_pct": 12.36744814772166,
+        "cagr_pct": 12.34060195885105,
+        "strict_mdd_pct": 6.339512087068888,
+        "ratio": 1.946616993447015,
+        "trades": 49,
+        "p_value": 0.11971369176365343
+      },
+      "selection2024_halves": [
+        {
+          "return_pct": 6.943995589424756,
+          "cagr_pct": 14.422929348859071,
+          "strict_mdd_pct": 4.022730905906203,
+          "ratio": 3.585357729915074,
+          "trades": 19,
+          "p_value": 0.2978374843124765
+        },
+        {
+          "return_pct": 5.071301598940581,
+          "cagr_pct": 10.318190678842853,
+          "strict_mdd_pct": 5.49363023683992,
+          "ratio": 1.8782098965543315,
+          "trades": 30,
+          "p_value": 0.20805457265126437
+        }
+      ],
+      "selection_score": {
+        "positive_halves": 2,
+        "min_half_ratio": 1.8782098965543315,
+        "full_ratio": 1.946616993447015,
+        "min_half_trades": 19
+      },
+      "eval2025": {
+        "return_pct": 3.8824987137607625,
+        "cagr_pct": 3.8852089619915375,
+        "strict_mdd_pct": 2.552689271069153,
+        "ratio": 1.5220062253657218,
+        "trades": 19,
+        "p_value": 0.22240720282659177
+      },
+      "holdout2026": {
+        "return_pct": 4.315315130547281,
+        "cagr_pct": 10.68523678097093,
+        "strict_mdd_pct": 1.8408132316079628,
+        "ratio": 5.804628409606391,
+        "trades": 18,
+        "p_value": 0.12443581604855192
+      },
+      "eval2025_2026": {
+        "return_pct": 8.365355898746696,
+        "cagr_pct": 5.83989554205584,
+        "strict_mdd_pct": 2.552689271069153,
+        "ratio": 2.287742424525447,
+        "trades": 37,
+        "p_value": 0.050330970279427234
+      },
+      "passes_alpha_target": false,
+      "passes_live_target": false
+    },
+    {
+      "model": "extra_take_d4_l20",
+      "model_spec": {
+        "name": "extra_take_d4_l20",
+        "kind": "extra",
+        "target": "take",
+        "max_depth": 4,
+        "min_samples_leaf": 20
+      },
+      "score_quantile": 0.3,
+      "score_threshold": 0.23080645979080655,
+      "side": "both",
+      "family": "both",
+      "execution_hold_bars": 144,
+      "selection2024": {
+        "return_pct": 11.419935460340724,
+        "cagr_pct": 11.395248615741572,
+        "strict_mdd_pct": 7.257335505596007,
+        "ratio": 1.570169741629678,
+        "trades": 44,
+        "p_value": 0.1347226094227223
+      },
+      "selection2024_halves": [
+        {
+          "return_pct": 5.935256638101283,
+          "cagr_pct": 12.267235271754263,
+          "strict_mdd_pct": 5.53362725611618,
+          "ratio": 2.216852473790242,
+          "trades": 19,
+          "p_value": 0.3520387379584049
+        },
+        {
+          "return_pct": 5.177387582093651,
+          "cagr_pct": 10.539403012873393,
+          "strict_mdd_pct": 5.8216755997363645,
+          "ratio": 1.8103727753828591,
+          "trades": 25,
+          "p_value": 0.18988399207127538
+        }
+      ],
+      "selection_score": {
+        "positive_halves": 2,
+        "min_half_ratio": 1.8103727753828591,
+        "full_ratio": 1.570169741629678,
+        "min_half_trades": 19
+      },
+      "eval2025": {
+        "return_pct": 4.8362875180749,
+        "cagr_pct": 4.839678939293046,
+        "strict_mdd_pct": 2.552689271069153,
+        "ratio": 1.8959138482475872,
+        "trades": 13,
+        "p_value": 0.09368889122371904
+      },
+      "holdout2026": {
+        "return_pct": 7.06639963596567,
+        "cagr_pct": 17.829888312102838,
+        "strict_mdd_pct": 1.7355604309126305,
+        "ratio": 10.273274266069281,
+        "trades": 13,
+        "p_value": 0.005257548239294696
+      },
+      "eval2025_2026": {
+        "return_pct": 12.244438557612082,
+        "cagr_pct": 8.502672412993096,
+        "strict_mdd_pct": 2.552689271069153,
+        "ratio": 3.330868550809511,
+        "trades": 26,
+        "p_value": 0.0017045296555813216
+      },
+      "passes_alpha_target": false,
+      "passes_live_target": false
+    },
+    {
+      "model": "ridge_u_a10",
+      "model_spec": {
+        "name": "ridge_u_a10",
+        "kind": "ridge",
+        "target": "utility",
+        "alpha": 10.0
+      },
+      "score_quantile": 0.3,
+      "score_threshold": -0.009695303624155247,
+      "side": "both",
+      "family": "both",
+      "execution_hold_bars": 288,
+      "selection2024": {
+        "return_pct": 11.019399703610366,
+        "cagr_pct": 10.995620718480525,
+        "strict_mdd_pct": 5.729550475558187,
+        "ratio": 1.9191070513100428,
+        "trades": 45,
+        "p_value": 0.1954459530939472
+      },
+      "selection2024_halves": [
+        {
+          "return_pct": 5.872683181326788,
+          "cagr_pct": 12.134192181117932,
+          "strict_mdd_pct": 4.3627075300891605,
+          "ratio": 2.7813444053789107,
+          "trades": 14,
+          "p_value": 0.38553530912573875
+        },
+        {
+          "return_pct": 4.8612317810712735,
+          "cagr_pct": 9.880798303404603,
+          "strict_mdd_pct": 5.729550475558465,
+          "ratio": 1.7245329010635013,
+          "trades": 31,
+          "p_value": 0.32795399895492716
+        }
+      ],
+      "selection_score": {
+        "positive_halves": 2,
+        "min_half_ratio": 1.7245329010635013,
+        "full_ratio": 1.9191070513100428,
+        "min_half_trades": 14
+      },
+      "eval2025": {
+        "return_pct": 1.3334948924333068,
+        "cagr_pct": 1.3344143121361451,
+        "strict_mdd_pct": 6.1841082666435065,
+        "ratio": 0.21578120152485838,
+        "trades": 28,
+        "p_value": 0.7951735472085186
+      },
+      "holdout2026": {
+        "return_pct": 3.3247783586782376,
+        "cagr_pct": 8.1764712183789,
+        "strict_mdd_pct": 3.6117146869313443,
+        "ratio": 2.2638751748483084,
+        "trades": 18,
+        "p_value": 0.26113284119776736
+      },
+      "eval2025_2026": {
+        "return_pct": 4.70260900070969,
+        "cagr_pct": 3.299821484496701,
+        "strict_mdd_pct": 6.1841082666435065,
+        "ratio": 0.5335969782895984,
+        "trades": 46,
+        "p_value": 0.45231192847353885
+      },
+      "passes_alpha_target": false,
+      "passes_live_target": false
+    },
+    {
+      "model": "ridge_u_a100",
+      "model_spec": {
+        "name": "ridge_u_a100",
+        "kind": "ridge",
+        "target": "utility",
+        "alpha": 100.0
+      },
+      "score_quantile": 0.3,
+      "score_threshold": -0.00885376335814808,
+      "side": "both",
+      "family": "both",
+      "execution_hold_bars": 288,
+      "selection2024": {
+        "return_pct": 7.475785304123583,
+        "cagr_pct": 7.4599083869345995,
+        "strict_mdd_pct": 5.729550475558353,
+        "ratio": 1.3020058761604016,
+        "trades": 46,
+        "p_value": 0.3480122532528762
+      },
+      "selection2024_halves": [
+        {
+          "return_pct": 3.647851917034939,
+          "cagr_pct": 7.45521115939658,
+          "strict_mdd_pct": 4.375344695419425,
+          "ratio": 1.7039140178376084,
+          "trades": 14,
+          "p_value": 0.5510797009063504
+        },
+        {
+          "return_pct": 4.8612317810712735,
+          "cagr_pct": 9.880798303404603,
+          "strict_mdd_pct": 5.729550475558465,
+          "ratio": 1.7245329010635013,
+          "trades": 31,
+          "p_value": 0.32795399895492716
+        }
+      ],
+      "selection_score": {
+        "positive_halves": 2,
+        "min_half_ratio": 1.7039140178376084,
+        "full_ratio": 1.3020058761604016,
+        "min_half_trades": 14
+      },
+      "eval2025": {
+        "return_pct": 1.2246678485289042,
+        "cagr_pct": 1.2255117811417415,
+        "strict_mdd_pct": 6.1841082666435065,
+        "ratio": 0.19817113936249076,
+        "trades": 29,
+        "p_value": 0.8096695717534481
+      },
+      "holdout2026": {
+        "return_pct": 3.9490299607341406,
+        "cagr_pct": 9.753620520335193,
+        "strict_mdd_pct": 3.6117146869313443,
+        "ratio": 2.7005512244994785,
+        "trades": 18,
+        "p_value": 0.16222366455005766
+      },
+      "eval2025_2026": {
+        "return_pct": 5.222060309520682,
+        "cagr_pct": 3.661623465514907,
+        "strict_mdd_pct": 6.1841082666435065,
+        "ratio": 0.592102095829298,
+        "trades": 47,
+        "p_value": 0.4033078833549788
+      },
+      "passes_alpha_target": false,
+      "passes_live_target": false
+    },
+    {
+      "model": "extra_u_d4_l20",
+      "model_spec": {
+        "name": "extra_u_d4_l20",
+        "kind": "extra",
+        "target": "utility",
+        "max_depth": 4,
+        "min_samples_leaf": 20
+      },
+      "score_quantile": 0.7,
+      "score_threshold": -0.004855541580626605,
+      "side": "both",
+      "family": "both",
+      "execution_hold_bars": 72,
+      "selection2024": {
+        "return_pct": 2.430486481143501,
+        "cagr_pct": 2.425446059306191,
+        "strict_mdd_pct": 1.4116563115241454,
+        "ratio": 1.718156210903397,
+        "trades": 29,
+        "p_value": 0.17465143779772263
+      },
+      "selection2024_halves": [
+        {
+          "return_pct": 0.9656720392589913,
+          "cagr_pct": 1.9473981643436389,
+          "strict_mdd_pct": 1.3128811826633946,
+          "ratio": 1.4833011471708526,
+          "trades": 6,
+          "p_value": 0.12004148101758028
+        },
+        {
+          "return_pct": 1.4508044291679845,
+          "cagr_pct": 2.90050297211375,
+          "strict_mdd_pct": 1.3478203181634063,
+          "ratio": 2.151995286779836,
+          "trades": 23,
+          "p_value": 0.3865201713250963
+        }
+      ],
+      "selection_score": {
+        "positive_halves": 2,
+        "min_half_ratio": 1.4833011471708526,
+        "full_ratio": 1.718156210903397,
+        "min_half_trades": 6
+      },
+      "eval2025": {
+        "return_pct": -1.8349760596362952,
+        "cagr_pct": -1.8362212821779078,
+        "strict_mdd_pct": 4.608006084631722,
+        "ratio": -0.39848499512662017,
+        "trades": 24,
+        "p_value": 0.5727531279510998
+      },
+      "holdout2026": {
+        "return_pct": 0.7059249887735541,
+        "cagr_pct": 1.7047178374795635,
+        "strict_mdd_pct": 1.4856572126940693,
+        "ratio": 1.1474503155329168,
+        "trades": 21,
+        "p_value": 0.7622113072956558
+      },
+      "eval2025_2026": {
+        "return_pct": -1.1420046254056015,
+        "cagr_pct": -0.808161984771627,
+        "strict_mdd_pct": 4.608006084631722,
+        "ratio": -0.17538214358417378,
+        "trades": 45,
+        "p_value": 0.7877296550770425
+      },
+      "passes_alpha_target": false,
+      "passes_live_target": false
+    },
+    {
+      "model": "ridge_u_a10",
+      "model_spec": {
+        "name": "ridge_u_a10",
+        "kind": "ridge",
+        "target": "utility",
+        "alpha": 10.0
+      },
+      "score_quantile": 0.3,
+      "score_threshold": -0.00946159317947958,
+      "side": "long",
+      "family": "both",
+      "execution_hold_bars": 288,
+      "selection2024": {
+        "return_pct": 9.981354379757112,
+        "cagr_pct": 9.95991446442066,
+        "strict_mdd_pct": 4.63500409607115,
+        "ratio": 2.1488469606452254,
+        "trades": 37,
+        "p_value": 0.2317349005616447
+      },
+      "selection2024_halves": [
+        {
+          "return_pct": 6.461192640505309,
+          "cagr_pct": 13.388603827721113,
+          "strict_mdd_pct": 4.3627075300891605,
+          "ratio": 3.068874944144489,
+          "trades": 12,
+          "p_value": 0.33409325136037804
+        },
+        {
+          "return_pct": 3.3065210448446347,
+          "cagr_pct": 6.670498508505318,
+          "strict_mdd_pct": 4.6350040960711825,
+          "ratio": 1.439156982441397,
+          "trades": 25,
+          "p_value": 0.49503094807936154
+        }
+      ],
+      "selection_score": {
+        "positive_halves": 2,
+        "min_half_ratio": 1.439156982441397,
+        "full_ratio": 2.1488469606452254,
+        "min_half_trades": 12
+      },
+      "eval2025": {
+        "return_pct": -1.4205036863598086,
+        "cagr_pct": -1.421469686022836,
+        "strict_mdd_pct": 3.1254719450432678,
+        "ratio": -0.45480161428969657,
+        "trades": 13,
+        "p_value": 0.645371391226838
+      },
+      "holdout2026": {
+        "return_pct": 0.534391240029497,
+        "cagr_pct": 1.2889382271221717,
+        "strict_mdd_pct": 2.0344261184039203,
+        "ratio": 0.6335635467231366,
+        "trades": 9,
+        "p_value": 0.7901644643292733
+      },
+      "eval2025_2026": {
+        "return_pct": -0.8937034935943666,
+        "cagr_pct": -0.6322146979435006,
+        "strict_mdd_pct": 3.1254719450432678,
+        "ratio": -0.20227815480671305,
+        "trades": 22,
+        "p_value": 0.8164783745186066
+      },
+      "passes_alpha_target": false,
+      "passes_live_target": false
+    },
+    {
+      "model": "ridge_u_a100",
+      "model_spec": {
+        "name": "ridge_u_a100",
+        "kind": "ridge",
+        "target": "utility",
+        "alpha": 100.0
+      },
+      "score_quantile": 0.3,
+      "score_threshold": -0.009267960897016187,
+      "side": "long",
+      "family": "both",
+      "execution_hold_bars": 288,
+      "selection2024": {
+        "return_pct": 9.578708380135348,
+        "cagr_pct": 9.558170381767761,
+        "strict_mdd_pct": 4.6350040960704835,
+        "ratio": 2.0621708597563257,
+        "trades": 37,
+        "p_value": 0.2030701903352219
+      },
+      "selection2024_halves": [
+        {
+          "return_pct": 6.071434089399408,
+          "cagr_pct": 12.557048035203945,
+          "strict_mdd_pct": 4.362640603101198,
+          "ratio": 2.878313658539217,
+          "trades": 12,
+          "p_value": 0.28012568157152096
+        },
+        {
+          "return_pct": 3.3065210448446347,
+          "cagr_pct": 6.670498508505318,
+          "strict_mdd_pct": 4.6350040960711825,
+          "ratio": 1.439156982441397,
+          "trades": 25,
+          "p_value": 0.49503094807936154
+        }
+      ],
+      "selection_score": {
+        "positive_halves": 2,
+        "min_half_ratio": 1.439156982441397,
+        "full_ratio": 2.0621708597563257,
+        "min_half_trades": 12
+      },
+      "eval2025": {
+        "return_pct": -1.4205036863598086,
+        "cagr_pct": -1.421469686022836,
+        "strict_mdd_pct": 3.1254719450432678,
+        "ratio": -0.45480161428969657,
+        "trades": 13,
+        "p_value": 0.645371391226838
+      },
+      "holdout2026": {
+        "return_pct": 1.1417843144714057,
+        "cagr_pct": 2.7656713505231023,
+        "strict_mdd_pct": 1.4425529258033865,
+        "ratio": 1.9172061565663838,
+        "trades": 9,
+        "p_value": 0.5403857073902085
+      },
+      "eval2025_2026": {
+        "return_pct": -0.2949384601659166,
+        "cagr_pct": -0.20845833950169368,
+        "strict_mdd_pct": 3.1254719450432678,
+        "ratio": -0.06669659595962486,
+        "trades": 22,
+        "p_value": 0.9465385425772044
+      },
+      "passes_alpha_target": false,
+      "passes_live_target": false
+    }
+  ],
+  "alpha_qualifiers": [],
+  "live_qualifiers": []
+}

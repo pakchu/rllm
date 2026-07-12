@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import MISSING, asdict, dataclass
+from dataclasses import MISSING, asdict, dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -64,14 +64,23 @@ class Pre2025GateMlConfig:
     slippage_rate: float = 0.0001
     hold_bars: int = 144
     random_state: int = 42
+    execution_holds: str = "144"
 
 
 def filter_gate_rows(rows: list[dict[str, Any]], gates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [row for row in rows if gate_match(row, gates)]
 
 
+def parse_execution_holds(raw: str) -> tuple[int, ...]:
+    holds = tuple(sorted({int(value.strip()) for value in str(raw).split(",") if value.strip()}))
+    if not holds or min(holds) <= 0:
+        raise ValueError("execution_holds must contain positive integers")
+    return holds
+
+
 def run(cfg: Pre2025GateMlConfig) -> dict[str, Any]:
     gates = parse_gates(cfg.gates_json)
+    execution_holds = parse_execution_holds(cfg.execution_holds)
     phase_market = load_market_before(cfg.market_csv, str(SELECT_END))
     train_rows = filter_gate_rows(read_jsonl(cfg.train_jsonl), gates)
     selection_rows = filter_gate_rows(read_jsonl(cfg.selection_jsonl), gates)
@@ -109,24 +118,27 @@ def run(cfg: Pre2025GateMlConfig) -> dict[str, Any]:
                     "side": side,
                     "family": "both",
                 }
-                full = score_window(selection_rows, scores, policy, phase_market, cfg, WINDOWS["selection2024"])
-                h1 = score_window(selection_rows, scores, policy, phase_market, cfg, WINDOWS["selection2024_h1"])
-                h2 = score_window(selection_rows, scores, policy, phase_market, cfg, WINDOWS["selection2024_h2"])
-                if full["trades"] < 16:
-                    continue
-                candidates.append(
-                    {
-                        **policy,
-                        "selection2024": full,
-                        "selection2024_halves": [h1, h2],
-                        "selection_score": {
-                            "positive_halves": int(h1["cagr_pct"] > 0) + int(h2["cagr_pct"] > 0),
-                            "min_half_ratio": min(float(h1["ratio"]), float(h2["ratio"])),
-                            "full_ratio": float(full["ratio"]),
-                            "min_half_trades": min(int(h1["trades"]), int(h2["trades"])),
-                        },
-                    }
-                )
+                for execution_hold in execution_holds:
+                    execution_cfg = replace(cfg, hold_bars=int(execution_hold))
+                    full = score_window(selection_rows, scores, policy, phase_market, execution_cfg, WINDOWS["selection2024"])
+                    h1 = score_window(selection_rows, scores, policy, phase_market, execution_cfg, WINDOWS["selection2024_h1"])
+                    h2 = score_window(selection_rows, scores, policy, phase_market, execution_cfg, WINDOWS["selection2024_h2"])
+                    if full["trades"] < 16:
+                        continue
+                    candidates.append(
+                        {
+                            **policy,
+                            "execution_hold_bars": int(execution_hold),
+                            "selection2024": full,
+                            "selection2024_halves": [h1, h2],
+                            "selection_score": {
+                                "positive_halves": int(h1["cagr_pct"] > 0) + int(h2["cagr_pct"] > 0),
+                                "min_half_ratio": min(float(h1["ratio"]), float(h2["ratio"])),
+                                "full_ratio": float(full["ratio"]),
+                                "min_half_trades": min(int(h1["trades"]), int(h2["trades"])),
+                            },
+                        }
+                    )
 
     def rank_key(row: dict[str, Any]) -> tuple[float, ...]:
         score = row["selection_score"]
@@ -152,7 +164,18 @@ def run(cfg: Pre2025GateMlConfig) -> dict[str, Any]:
         "feature_names": names,
         "phase_market_end": str(phase_market["date"].iloc[-1]),
         "policies": [
-            {key: row[key] for key in ("model", "model_spec", "score_quantile", "score_threshold", "side", "family")}
+            {
+                key: row[key]
+                for key in (
+                    "model",
+                    "model_spec",
+                    "score_quantile",
+                    "score_threshold",
+                    "side",
+                    "family",
+                    "execution_hold_bars",
+                )
+            }
             for row in selected
         ],
     }
@@ -171,8 +194,9 @@ def run(cfg: Pre2025GateMlConfig) -> dict[str, Any]:
     eval_score_bank = {name: np.asarray(model.predict(x_eval), dtype=np.float64) for name, model in models.items()}
     for row in selected:
         scores = eval_score_bank[str(row["model"])]
+        execution_cfg = replace(cfg, hold_bars=int(row["execution_hold_bars"]))
         for name in ("eval2025", "holdout2026", "eval2025_2026"):
-            row[name] = score_window(eval_rows, scores, row, market, cfg, WINDOWS[name])
+            row[name] = score_window(eval_rows, scores, row, market, execution_cfg, WINDOWS[name])
         row["passes_alpha_target"] = bool(
             row["eval2025"]["cagr_pct"] > 0
             and row["eval2025"]["ratio"] >= 3

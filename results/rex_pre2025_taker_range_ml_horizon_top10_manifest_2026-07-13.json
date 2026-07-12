@@ -1,0 +1,224 @@
+{
+  "created_at": "2026-07-12T23:56:25.513018+00:00",
+  "phase": "pre_future_manifest",
+  "gate_provenance": "Top-10 rank 8 from 2021-2023 train + 2024 selection corrected-MDD scan",
+  "fixed_gates": [
+    {
+      "feature": "taker_imbalance",
+      "op": "<=",
+      "threshold": -0.07073595391836504
+    },
+    {
+      "feature": "rex_2016_range_pos",
+      "op": "<=",
+      "threshold": 0.6865011402825759
+    }
+  ],
+  "fit_window": [
+    "2021-01-01",
+    "2024-01-01"
+  ],
+  "selection_window": [
+    "2024-01-01",
+    "2025-01-01"
+  ],
+  "feature_hash": "c325c7f86936865784544bb91b3b065e595d7cf89259b71d774f86fe00cbda96",
+  "feature_names": [
+    "bb_z",
+    "candidate_side_sign",
+    "dxy_momentum",
+    "dxy_zscore",
+    "family_is_reclaim",
+    "family_is_resume",
+    "funding_zscore",
+    "htf_1d_drawdown_4",
+    "htf_1d_return_1",
+    "htf_1d_return_4",
+    "htf_1w_drawdown_4",
+    "htf_1w_range_pos",
+    "htf_1w_return_4",
+    "htf_3d_return_4",
+    "htf_4h_return_1",
+    "htf_4h_return_4",
+    "kimchi_premium_change",
+    "kimchi_premium_zscore",
+    "oi_change",
+    "oi_zscore",
+    "range_pos",
+    "range_vol",
+    "rex_144_cur_to_min_pct",
+    "rex_144_max_to_cur_pct",
+    "rex_144_range_pos",
+    "rex_144_range_width_pct",
+    "rex_2016_cur_to_min_pct",
+    "rex_2016_max_to_cur_pct",
+    "rex_2016_range_pos",
+    "rex_2016_range_width_pct",
+    "rex_576_range_pos",
+    "rex_576_range_width_pct",
+    "rex_8640_range_pos",
+    "rex_8640_range_width_pct",
+    "rex_candidate_strength",
+    "rex_candidate_threshold",
+    "rex_threshold_excess",
+    "rex_threshold_ratio",
+    "rsi_norm",
+    "taker_imbalance",
+    "trend_12",
+    "trend_24",
+    "trend_96",
+    "usdkrw_momentum",
+    "usdkrw_zscore",
+    "volume_zscore",
+    "window_drawdown"
+  ],
+  "phase_market_end": "2024-12-31 23:55:00",
+  "policies": [
+    {
+      "model": "ridge_u_a100",
+      "model_spec": {
+        "name": "ridge_u_a100",
+        "kind": "ridge",
+        "target": "utility",
+        "alpha": 100.0
+      },
+      "score_quantile": 0.7,
+      "score_threshold": -0.004585641881396018,
+      "side": "both",
+      "family": "both",
+      "execution_hold_bars": 48
+    },
+    {
+      "model": "ridge_u_a100",
+      "model_spec": {
+        "name": "ridge_u_a100",
+        "kind": "ridge",
+        "target": "utility",
+        "alpha": 100.0
+      },
+      "score_quantile": 0.7,
+      "score_threshold": -0.0045638254382812105,
+      "side": "long",
+      "family": "both",
+      "execution_hold_bars": 48
+    },
+    {
+      "model": "extra_take_d4_l20",
+      "model_spec": {
+        "name": "extra_take_d4_l20",
+        "kind": "extra",
+        "target": "take",
+        "max_depth": 4,
+        "min_samples_leaf": 20
+      },
+      "score_quantile": 0.7,
+      "score_threshold": 0.2678664253706891,
+      "side": "both",
+      "family": "both",
+      "execution_hold_bars": 216
+    },
+    {
+      "model": "hgb_take_d2_l40",
+      "model_spec": {
+        "name": "hgb_take_d2_l40",
+        "kind": "hgb",
+        "target": "take",
+        "max_depth": 2,
+        "min_samples_leaf": 40,
+        "l2": 1.0
+      },
+      "score_quantile": 0.3,
+      "score_threshold": 0.14115341437156054,
+      "side": "both",
+      "family": "both",
+      "execution_hold_bars": 144
+    },
+    {
+      "model": "extra_take_d4_l20",
+      "model_spec": {
+        "name": "extra_take_d4_l20",
+        "kind": "extra",
+        "target": "take",
+        "max_depth": 4,
+        "min_samples_leaf": 20
+      },
+      "score_quantile": 0.3,
+      "score_threshold": 0.23080645979080655,
+      "side": "both",
+      "family": "both",
+      "execution_hold_bars": 144
+    },
+    {
+      "model": "ridge_u_a10",
+      "model_spec": {
+        "name": "ridge_u_a10",
+        "kind": "ridge",
+        "target": "utility",
+        "alpha": 10.0
+      },
+      "score_quantile": 0.3,
+      "score_threshold": -0.009695303624155247,
+      "side": "both",
+      "family": "both",
+      "execution_hold_bars": 288
+    },
+    {
+      "model": "ridge_u_a100",
+      "model_spec": {
+        "name": "ridge_u_a100",
+        "kind": "ridge",
+        "target": "utility",
+        "alpha": 100.0
+      },
+      "score_quantile": 0.3,
+      "score_threshold": -0.00885376335814808,
+      "side": "both",
+      "family": "both",
+      "execution_hold_bars": 288
+    },
+    {
+      "model": "extra_u_d4_l20",
+      "model_spec": {
+        "name": "extra_u_d4_l20",
+        "kind": "extra",
+        "target": "utility",
+        "max_depth": 4,
+        "min_samples_leaf": 20
+      },
+      "score_quantile": 0.7,
+      "score_threshold": -0.004855541580626605,
+      "side": "both",
+      "family": "both",
+      "execution_hold_bars": 72
+    },
+    {
+      "model": "ridge_u_a10",
+      "model_spec": {
+        "name": "ridge_u_a10",
+        "kind": "ridge",
+        "target": "utility",
+        "alpha": 10.0
+      },
+      "score_quantile": 0.3,
+      "score_threshold": -0.00946159317947958,
+      "side": "long",
+      "family": "both",
+      "execution_hold_bars": 288
+    },
+    {
+      "model": "ridge_u_a100",
+      "model_spec": {
+        "name": "ridge_u_a100",
+        "kind": "ridge",
+        "target": "utility",
+        "alpha": 100.0
+      },
+      "score_quantile": 0.3,
+      "score_threshold": -0.009267960897016187,
+      "side": "long",
+      "family": "both",
+      "execution_hold_bars": 288
+    }
+  ],
+  "manifest_hash": "939e534367258089693e8900a78f947c1f1618ad85747870b5af3531c7df28e9"
+}
