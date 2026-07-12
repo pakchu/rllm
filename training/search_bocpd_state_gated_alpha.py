@@ -186,6 +186,16 @@ def _rank_key(row: dict) -> tuple[float, float, float, float]:
     )
 
 
+def frozen_winner_promotions(selected: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Only the pre-evaluation rank winner can be promoted."""
+    if not selected:
+        return [], []
+    winner = selected[0]
+    alpha_pool = [winner] if winner.get("passes_alpha_pool", False) else []
+    live_grade = [winner] if winner.get("passes_live_grade", False) else []
+    return alpha_pool, live_grade
+
+
 def _describe_state(state: int, primary_name: str, secondary_name: str) -> str:
     tri = ("low", "mid", "high")
     primary = state // 4
@@ -496,6 +506,7 @@ def run(cfg: Config) -> dict:
                 for split in SPLITS
             }
 
+    alpha_pool, live_grade = frozen_winner_promotions(selected)
     output = {
         "as_of": datetime.now(timezone.utc).isoformat(),
         "config": asdict(cfg),
@@ -517,8 +528,12 @@ def run(cfg: Config) -> dict:
         "cost_stress_bps_per_side": stress,
         "leave_one_state_out": leave_one,
         "selected": selected,
-        "alpha_pool_qualifiers": [row for row in selected if row["passes_alpha_pool"]],
-        "live_grade": [row for row in selected if row["passes_live_grade"]],
+        "diagnostic_later_window_passers": {
+            "alpha_pool": sum(bool(row["passes_alpha_pool"]) for row in selected[1:]),
+            "live_grade": sum(bool(row["passes_live_grade"]) for row in selected[1:]),
+        },
+        "alpha_pool_qualifiers": alpha_pool,
+        "live_grade": live_grade,
     }
     Path(cfg.output).write_text(
         json.dumps(

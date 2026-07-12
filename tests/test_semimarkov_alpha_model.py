@@ -1,6 +1,11 @@
 import numpy as np
+import pandas as pd
 
-from training.search_semimarkov_duration_alpha import causal_run_age, duration_key
+from training.search_semimarkov_duration_alpha import (
+    causal_run_age,
+    duration_key,
+    map_hourly_key,
+)
 
 
 def test_run_age_is_prefix_causal_and_resets_on_state_change():
@@ -29,3 +34,10 @@ def test_duration_key_uses_fixed_causal_age_buckets():
 
     np.testing.assert_array_equal(age, np.array([1, 2, 3, 4, 5, 1]))
     np.testing.assert_array_equal(key, np.array([3, 4, 4, 5, 5, 6]))
+
+
+def test_semimarkov_hourly_mapping_never_uses_future_key():
+    dates = pd.Series(pd.to_datetime(["2026-01-01 00:30", "2026-01-01 01:00"]))
+    hourly_index = pd.DatetimeIndex(pd.to_datetime(["2026-01-01 00:00", "2026-01-01 01:00"]))
+
+    np.testing.assert_array_equal(map_hourly_key(dates, hourly_index, np.array([11, 22])), [11, 22])
