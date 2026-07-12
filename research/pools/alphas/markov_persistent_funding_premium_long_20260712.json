@@ -1,0 +1,44 @@
+{
+  "name": "markov_persistent_funding_premium_long_20260712",
+  "status": "candidate_strong_research_forward_shadow",
+  "side": "LONG",
+  "base_setup": "long_minimal_funding_premium",
+  "hold_bars": 576,
+  "stride_bars": 12,
+  "entry_delay_bars": 1,
+  "state_model": {
+    "type": "observable_first_order_markov_chain",
+    "bar_interval": "1h_completed",
+    "trend_low": -0.013423948209434771,
+    "trend_high": 0.01660670014424135,
+    "vol_median": 0.005235414594218263,
+    "flow_median": -0.003513404356897229,
+    "encoding": "trend_bucket*4 + volatility_bucket*2 + flow_bucket",
+    "allowed_transition_keys": [52, 143, 26, 39, 65],
+    "transition_key_encoding": "previous_state*12 + current_state"
+  },
+  "selection": {
+    "fit_window": "2020-01-01/2024-01-01",
+    "rank_window": "2024-01-01/2025-01-01",
+    "min_train_transition_trades": 8,
+    "min_train_mean_trade_return": 0.002,
+    "eval2025_and_2026_used_for_selection": false
+  },
+  "metrics": {
+    "train": {"total_return_pct": 194.7582392270958, "cagr_pct": 31.028716953894442, "strict_mdd_pct": 12.31009259940099, "cagr_to_strict_mdd": 2.520591677385457, "trades": 180},
+    "test2024": {"total_return_pct": 37.88297738703834, "cagr_pct": 37.79224319903294, "strict_mdd_pct": 3.2696659890562696, "cagr_to_strict_mdd": 11.558441542813672, "trades": 22},
+    "eval2025": {"total_return_pct": 18.32899998785735, "cagr_pct": 18.342640922140042, "strict_mdd_pct": 2.8327603568948034, "cagr_to_strict_mdd": 6.47518272327376, "trades": 19},
+    "ytd2026": {"total_return_pct": 8.816224324192534, "cagr_pct": 22.51052451269613, "strict_mdd_pct": 3.7350215766709383, "cagr_to_strict_mdd": 6.026879376895055, "trades": 23}
+  },
+  "risk_notes": [
+    "The Markov overlay uses only completed hourly observations and enters one 5-minute bar later.",
+    "The underlying base setup has prior research-history contamination, so this is not pristine final OOS.",
+    "2022 was profitable but weak: CAGR/MDD 0.63.",
+    "At 15bp/side the 2026YTD CAGR/MDD falls below 5."
+  ],
+  "artifacts": {
+    "result": "results/markov_transition_gated_alpha_scan_2026-07-12.json",
+    "report": "docs/markov-regime-alpha-search-2026-07-12.md",
+    "script": "training/search_markov_transition_gated_alpha.py"
+  }
+}
