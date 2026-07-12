@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-10",
+  "updated_at": "2026-07-12T00:00:00Z",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -922,6 +922,462 @@
         ],
         "protocol": "provenance-only; no trading signal generated",
         "notes": "Gamma demotion remains strict and cannot be inferred from this alias map."
+      }
+    },
+    {
+      "id": "calendar_oi_funding_features_20260710",
+      "name": "Calendar × OI/funding feature set (2026-07-10)",
+      "status": "candidate",
+      "family": "calendar_oi_funding_context",
+      "scope": "btc_derivatives",
+      "feature_tier": "beta_feature",
+      "description": "Schedule-aware BTC derivatives context features: pre/post funding windows, UTC session/day flags, OI-vs-price, funding/premium/basis stress and carry composites.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "open_interest",
+        "funding_rate",
+        "premium_index"
+      ],
+      "feature_examples": [
+        "cal_pre_funding_1h",
+        "cal_post_funding_1h",
+        "cal_friday_utc",
+        "cf_basis_z",
+        "cf_carry_stress_long",
+        "cf_oi_unwind_long",
+        "cf_funding_flip_long"
+      ],
+      "feature_names": [
+        "cal_*",
+        "cf_px_ret_z_*",
+        "cf_qv_z_*",
+        "cf_taker_mean_z_*",
+        "cf_cvd_ret_z_*",
+        "cf_oi_ret_z_*",
+        "cf_oi_minus_px_z_*",
+        "cf_px_minus_oi_z_*",
+        "cf_funding_z",
+        "cf_premium_z",
+        "cf_basis_z",
+        "cf_carry_stress_long",
+        "cf_carry_stress_short",
+        "cf_oi_unwind_long",
+        "cf_oi_squeeze_short",
+        "cf_funding_flip_long",
+        "cf_funding_flip_short"
+      ],
+      "usable_for": [
+        "calendar-aware gate",
+        "funding-window context",
+        "OI/funding/basis pullback candidates",
+        "portfolio diversifier research"
+      ],
+      "known_failures": [
+        "First qualifying alpha candidate is fragile: train negative, ablations weaker, ytd2026 ratio only 1.26. Do not promote feature family to alpha_feature without rolling validation."
+      ],
+      "evidence": "Scan found one alpha_pool-threshold candidate on 2024/2025, but robustness is insufficient for alpha_feature promotion; keep as beta feature family.",
+      "source_artifacts": [
+        "training/search_calendar_oi_funding_alpha.py",
+        "results/calendar_oi_funding_alpha_scan_2026-07-10.json",
+        "docs/calendar-oi-funding-alpha-scan-2026-07-10.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Calendar flags are deterministic schedule information; numeric thresholds fit train<2024. Candidate selection used OOS scan table, so future use requires predeclared validation.",
+      "tier_rationale": "Beta feature: produced one test/eval alpha-pool candidate, but feature contribution is fragile and not live-grade; not gamma because positive OOS candidate exists.",
+      "next_action": "Run rolling/month-block validation and portfolio marginal contribution tests before promotion.",
+      "generation_recipe": {
+        "script": "training/search_calendar_oi_funding_alpha.py",
+        "functions": [
+          "add_calendar_features",
+          "generate_specs",
+          "eval_rule"
+        ],
+        "inputs": [
+          "training.evaluate_portfolio_llm_selector._prep market/features",
+          "BTC OHLCV/taker",
+          "open_interest",
+          "funding_rate",
+          "premium_index"
+        ],
+        "command": "python -m training.search_calendar_oi_funding_alpha",
+        "outputs": [
+          "results/calendar_oi_funding_alpha_scan_2026-07-10.json",
+          "docs/calendar-oi-funding-alpha-scan-2026-07-10.md"
+        ],
+        "protocol": "train<2024 quantiles, test=2024, eval=2025, ytd2026, 6bp/side, strict MDD, forced split-end close",
+        "notes": "Gamma demotion not appropriate unless repeated future validation shows no useful selector/portfolio contribution."
+      }
+    },
+    {
+      "id": "nonrex_upper_shadow_bounce_rejection_features_20260710",
+      "name": "Non-REX upper-shadow bounce rejection short feature set (2026-07-10)",
+      "status": "candidate",
+      "family": "bear_bounce_rejection_short_context",
+      "scope": "btc_price_action",
+      "feature_tier": "beta_feature",
+      "description": "Potential bear-market short feature: large upper shadow after strong 4h rebound, interpreted as bounce rejection/exhaustion. It works in 2025~2026H1 bear window but has weak 2024 behavior, so it stays feature-only.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "HTF BTC price-action returns"
+      ],
+      "feature_examples": [
+        "upper_shadow >= train q0.90",
+        "htf_4h_return_4 >= train q0.80",
+        "fixed 144-bar short hold or TP/SL variants"
+      ],
+      "feature_names": [
+        "upper_shadow",
+        "htf_4h_return_4"
+      ],
+      "usable_for": [
+        "bear-regime bounce rejection selector",
+        "RLLM state token for failed rebound/exhaustion"
+      ],
+      "known_failures": [
+        "2024 test ratio is near zero/negative depending exit; do not promote to alpha until rolling validation identifies a robust regime filter."
+      ],
+      "evidence": "Best fixed-hold variant: bear_combined +16.69%, CAGR 11.52%, strict MDD 3.26%, ratio 3.54, 43 trades; but 2024 test only +1.05%, ratio 0.12.",
+      "source_artifacts": [
+        "training/nonrex_short_bear_tp_refine.py",
+        "results/nonrex_short_bear_tp_refine_2026-07-10.json"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Feature selected from OOS refine table and 2024 is weak. Use as beta selector only.",
+      "tier_rationale": "Beta feature: plausible independent price-action idea, but insufficient 2024 robustness for alpha_pool promotion.",
+      "next_action": "Test as a filter/selector layered on stronger bear shorts, not standalone.",
+      "generation_recipe": {
+        "script": "training/nonrex_short_bear_tp_refine.py",
+        "protocol": "non-REX candidate refinement; full-window CAGR; strict short MDD"
+      }
+    },
+    {
+      "id": "nonrex_sellflow_liquidation_short_features_20260710",
+      "name": "Non-REX sell-flow liquidation short feature set (2026-07-10)",
+      "status": "candidate",
+      "family": "sellflow_liquidation_short_context",
+      "scope": "btc_orderflow_price_action",
+      "feature_tier": "beta_feature",
+      "description": "Potential bear-window feature: BTC 3-day weakness plus strong taker-sell imbalance and elevated 1d quote volume. Interpreted as liquidation/forced-selling continuation, but 2024 behavior is poor.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache"
+      ],
+      "feature_examples": [
+        "htf_3d_return_1 <= train q0.20",
+        "taker_imbalance <= train q0.20",
+        "quote_vol_z_1d >= train q0.70"
+      ],
+      "feature_names": [
+        "htf_3d_return_1",
+        "taker_imbalance",
+        "quote_vol_z_1d"
+      ],
+      "usable_for": [
+        "bear-market liquidation context token",
+        "possible filter for existing short sleeves"
+      ],
+      "known_failures": [
+        "2024 test is negative (-5.85%, ratio -0.58), so do not use standalone.",
+        "Bear combined ratio is below alpha threshold at 2.86 despite strong 2026H1."
+      ],
+      "evidence": "Bear_combined +19.20%, CAGR 13.21%, strict MDD 4.62%, ratio 2.86, 75 trades; ytd2026 +10.47%, ratio 8.50; but 2024 test -5.85%.",
+      "source_artifacts": [
+        "training/nonrex_short_manual_extra_scan.py",
+        "results/nonrex_short_manual_extra_scan_2026-07-10.json"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "OOS-selected and fails 2024; use only as a context/filter idea unless a robust regime guard is proven.",
+      "tier_rationale": "Beta feature only: economically plausible but standalone candidate fails robustness.",
+      "next_action": "Try as an exit accelerator or size reducer/increaser inside existing bear shorts rather than a new entry alpha.",
+      "generation_recipe": {
+        "script": "training/nonrex_short_manual_extra_scan.py",
+        "protocol": "manual non-REX idea scan; full-window CAGR; strict short MDD"
+      }
+    },
+    {
+      "id": "state_transition_oi_flow_features_20260712",
+      "name": "OI/flow state-transition features (2026-07-12)",
+      "status": "candidate",
+      "family": "oi_taker_state_transition",
+      "scope": "btc_derivatives_orderflow",
+      "feature_tier": "beta_feature",
+      "description": "Past-only OI impulse, taker-flow acceleration, directional efficiency, volatility release and wick/flow divergence features tested as standalone BTC long entries under fixed bullish regimes.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker",
+        "BTCUSDT open interest"
+      ],
+      "feature_names": [
+        "oi_z_12",
+        "oi_price_gap",
+        "imb_12",
+        "imb_accel",
+        "flow_price_div",
+        "rv_12_144",
+        "rv_24_288",
+        "compression_144",
+        "eff_24",
+        "eff_72",
+        "eff_144"
+      ],
+      "usable_for": [
+        "context/filter research for existing sleeves",
+        "event-time state token research"
+      ],
+      "known_failures": [
+        "6,950 eligible variants produced zero candidates with CAGR/strict MDD >=2.5 on both test2024 and eval2025",
+        "top 2024 OI-squeeze variants collapsed in eval2025",
+        "best test/eval-min candidate failed ytd2026 with ratio -1.93"
+      ],
+      "evidence": "Standalone scan with train-only thresholds, test-only ranking, 6bp/side and strict MDD found no alpha-pool qualifier. Best test/eval minimum ratio was 1.78 on eval and failed 2026.",
+      "source_artifacts": [
+        "training/search_state_transition_alpha.py",
+        "results/state_transition_regime_alpha_scan_top400_2026-07-12.json",
+        "docs/state-transition-alpha-scan-2026-07-12.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Formulas/regimes were predeclared; thresholds fit on train; top candidates selected on 2024 only. 2025 and 2026 are now consumed for this family.",
+      "tier_rationale": "Beta, not gamma: several OI-flow confirmation variants remained positive in eval2025, so noise-only evidence is insufficient; not alpha because no candidate cleared the 2.5 test+eval rule.",
+      "next_action": "Do not retune thresholds. Revisit only with a materially different mechanism such as event-time normalization or independent path-dependent exit.",
+      "generation_recipe": {
+        "script": "training/search_state_transition_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_state_transition_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --output results/state_transition_regime_alpha_scan_top400_2026-07-12.json",
+        "protocol": "train<2024 thresholds; test2024 selection; sealed eval2025/ytd2026; 6bp/side; strict MDD; full-window CAGR"
+      }
+    },
+    {
+      "id": "crossasset_breadth_residual_features_20260712",
+      "name": "Cross-asset breadth and BTC residual features (2026-07-12)",
+      "status": "candidate",
+      "family": "crossasset_breadth_relative_value",
+      "scope": "btc_target_crossasset_features",
+      "feature_tier": "beta_feature",
+      "description": "Causal alt-market breadth, dispersion and BTC-minus-alt residual features using ETH/SOL/BNB/XRP/ADA/DOGE while trading BTCUSDT only.",
+      "data_sources": [
+        "BTCUSDT 5m",
+        "ETH/SOL/BNB/XRP/ADA/DOGE USDT 5m"
+      ],
+      "feature_names": [
+        "alt_breadth_ret_12",
+        "alt_breadth_ret_48",
+        "alt_breadth_ret_144",
+        "alt_positive_frac_12",
+        "alt_positive_frac_48",
+        "alt_positive_frac_144",
+        "btc_alt_residual_12",
+        "btc_alt_residual_48",
+        "btc_alt_residual_144",
+        "alt_dispersion_12",
+        "alt_dispersion_48",
+        "alt_dispersion_144"
+      ],
+      "usable_for": [
+        "low-correlation portfolio gate research",
+        "cross-market state tokens",
+        "relative-value event selector"
+      ],
+      "known_failures": [
+        "3,840 low-correlation standalone variants produced zero test/eval ratio>=2.5 qualifiers",
+        "best dispersion-reversion test/eval ratios were approximately 1.04/1.22"
+      ],
+      "evidence": "Feature activations were low-correlated (best stable family max phi about 0.10) but standalone edge was insufficient at 6bp/side.",
+      "source_artifacts": [
+        "training/search_lowcorr_crossasset_breadth_alpha.py",
+        "results/lowcorr_crossasset_breadth_alpha_scan_2026-07-12.json",
+        "docs/low-correlation-crossasset-breadth-scan-2026-07-12.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Only 2023 available as train for alt pool; 2024 selected and 2025/2026 consumed. Do not retune the same grid.",
+      "tier_rationale": "Beta, not gamma: dispersion-reversion remained positive in test/eval and low-correlated, but ratio was far below alpha threshold.",
+      "next_action": "Use only as a gate/selector or with a materially different event-time exit; do not retry fixed-hold quantile combinations.",
+      "generation_recipe": {
+        "script": "training/search_lowcorr_crossasset_breadth_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_lowcorr_crossasset_breadth_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --output results/lowcorr_crossasset_breadth_alpha_scan_2026-07-12.json",
+        "protocol": "train2023/test2024/eval2025/ytd2026; BTC target; 6bp/side; max phi .20"
+      }
+    },
+    {
+      "id": "funding_settlement_discount_recovery_long_20260712",
+      "name": "Funding-settlement discount recovery long features",
+      "status": "candidate",
+      "family": "funding_event_time_recovery",
+      "scope": "btc_derivatives_orderflow",
+      "feature_tier": "beta_feature",
+      "description": "Post-funding-settlement premium discount plus taker-flow recovery event feature for BTC long entries.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker",
+        "Binance UM funding/premium"
+      ],
+      "feature_names": [
+        "premium_index_zscore",
+        "funding_rate",
+        "fe_flow_recovery",
+        "fe_ret_24",
+        "fe_ret_48",
+        "funding_settlement_clock_utc"
+      ],
+      "usable_for": [
+        "low-correlation long selector",
+        "RLLM event-time state token",
+        "gate for an independently validated long setup"
+      ],
+      "known_failures": [
+        "2,708 standalone variants produced zero test/eval ratio>=2.5 qualifiers",
+        "closest candidate had test/eval ratios 1.88/1.69, negative train and negative 2026"
+      ],
+      "evidence": "Premium-discount flow recovery activation has max phi only 0.0192 versus existing long components and positive 2024/2025 returns, but is not standalone alpha.",
+      "source_artifacts": [
+        "training/search_lowcorr_funding_event_long_alpha.py",
+        "results/lowcorr_funding_event_long_alpha_scan_2026-07-12.json",
+        "docs/low-correlation-funding-event-long-scan-2026-07-12.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Event clock deterministic; thresholds train-fit; 2024 selected; 2025/2026 consumed. No settlement-window retuning.",
+      "tier_rationale": "Beta: low correlation and positive test/eval suggest information, but negative train/2026 and ratio below threshold prevent alpha status.",
+      "next_action": "Use only as a predeclared gate on a separate long alpha, not as a standalone entry or another threshold sweep.",
+      "generation_recipe": {
+        "script": "training/search_lowcorr_funding_event_long_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_lowcorr_funding_event_long_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --output results/lowcorr_funding_event_long_alpha_scan_2026-07-12.json",
+        "protocol": "long only; settlement event time; train/test/eval/2026; 6bp/side; strict MDD; max phi .20"
+      }
+    },
+    {
+      "id": "path_memory_entropy_variance_features_20260712",
+      "name": "Path-memory entropy and variance-ratio features",
+      "status": "candidate",
+      "family": "path_dependence_market_state",
+      "scope": "btc_price_path",
+      "feature_tier": "beta_feature",
+      "description": "Past-only return-sign autocorrelation, variance ratio, sign entropy, directional efficiency and semivolatility skew features.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV"
+      ],
+      "feature_names": [
+        "pm_sign_autocorr",
+        "pm_variance_ratio_12",
+        "pm_sign_entropy",
+        "pm_eff_72",
+        "pm_semivol_skew"
+      ],
+      "usable_for": [
+        "bidirectional state gate",
+        "RLLM path-regime token",
+        "entry filtering"
+      ],
+      "known_failures": [
+        "2,486 standalone bidirectional variants produced zero test/eval ratio>=2.5 candidates",
+        "best standalone variance-ratio reversion ratios were only 1.50/1.75"
+      ],
+      "evidence": "Not standalone alpha, but pm_eff_72 q0.10 gate concentrated the fixed bidirectional candidate to test/eval ratios 6.28/4.30.",
+      "source_artifacts": [
+        "training/search_path_memory_bidirectional_alpha.py",
+        "results/path_memory_bidirectional_alpha_scan_2026-07-12.json",
+        "training/search_bidirectional_path_gate_alpha.py",
+        "results/bidirectional_path_gate_alpha_scan_2026-07-12.json",
+        "docs/path-memory-bidirectional-alpha-search-2026-07-12.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Standalone family and gate table consumed test/eval/2026. No further threshold retuning.",
+      "tier_rationale": "Beta: standalone threshold failed, but a precomputed feature gate produced an alpha-pool candidate.",
+      "next_action": "Use only the fixed q0.10 gate as candidate evidence; require fresh data before promotion.",
+      "generation_recipe": {
+        "scripts": [
+          "training/search_path_memory_bidirectional_alpha.py",
+          "training/search_bidirectional_path_gate_alpha.py"
+        ],
+        "protocol": "train-fit features; test-only selection; sealed eval/2026; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "oi_liquidation_crowding_bidirectional_features_20260712",
+      "name": "OI liquidation and crowding bidirectional features",
+      "status": "candidate",
+      "family": "oi_price_flow_crowding",
+      "scope": "btc_derivatives_orderflow",
+      "feature_tier": "beta_feature",
+      "description": "Joint OI return, BTC return, OI-price divergence and taker-flow acceleration states for liquidation exhaustion and crowding reversal.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker",
+        "BTCUSDT open interest"
+      ],
+      "feature_names": [
+        "ol_px_z_48",
+        "ol_px_z_144",
+        "ol_px_z_288",
+        "ol_oi_z_48",
+        "ol_oi_z_144",
+        "ol_oi_z_288",
+        "ol_div_48",
+        "ol_div_144",
+        "ol_div_288",
+        "ol_flow_accel"
+      ],
+      "usable_for": [
+        "bidirectional crowding state gate",
+        "RLLM liquidation/crowding token"
+      ],
+      "known_failures": [
+        "7,188 standalone variants produced zero test/eval ratio>=2.5 qualifiers",
+        "best crowding reversal test/eval ratios were 1.45/1.33"
+      ],
+      "evidence": "Standalone alpha failed, but 288-bar crowding reversal reached 2026 ratio 3.36 and remains plausible as a beta gate.",
+      "source_artifacts": [
+        "training/search_oi_liquidation_bidirectional_alpha.py",
+        "results/oi_liquidation_bidirectional_alpha_scan_2026-07-12.json",
+        "docs/oi-liquidation-bidirectional-alpha-scan-2026-07-12.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Broad test-selected grid consumed eval/2026. Do not retry threshold variants.",
+      "tier_rationale": "Beta: some later-period signal but no standalone test/eval qualification.",
+      "next_action": "Only test as a predeclared gate on an independent alpha; do not promote standalone.",
+      "generation_recipe": {
+        "script": "training/search_oi_liquidation_bidirectional_alpha.py",
+        "protocol": "train thresholds; test selection; eval/2026 report; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "trade_size_price_impact_features_20260712",
+      "name": "Trade-size and signed price-impact features",
+      "status": "candidate",
+      "family": "trade_size_market_impact",
+      "scope": "btc_orderflow_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Average notional per trade, trade intensity, signed notional, price impact and absorption features derived from BTC 5m trade-count/taker data.",
+      "data_sources": [
+        "BTCUSDT 5m quote volume",
+        "number_of_trades",
+        "taker_buy_quote"
+      ],
+      "feature_names": [
+        "ti_signed_z_48",
+        "ti_signed_z_144",
+        "ti_signed_z_288",
+        "ti_avg_size_z_48",
+        "ti_avg_size_z_144",
+        "ti_avg_size_z_288",
+        "ti_intensity_z_48",
+        "ti_impact_48",
+        "ti_absorption_48"
+      ],
+      "usable_for": [
+        "large-flow continuation gate",
+        "microstructure RLLM token"
+      ],
+      "known_failures": [
+        "5,696 standalone variants produced zero test/eval ratio>=2.5 qualifiers",
+        "closest large-flow continuation had ratios 3.61/2.41 and failed 2026 at -1.55"
+      ],
+      "evidence": "Substantial 2024 and near-threshold 2025 edge, but 2026 sign reversal prevents alpha promotion.",
+      "source_artifacts": [
+        "training/search_trade_size_impact_bidirectional_alpha.py",
+        "results/trade_size_impact_bidirectional_alpha_scan_2026-07-12.json",
+        "docs/trade-size-impact-bidirectional-alpha-scan-2026-07-12.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Broad test-selected scan consumed eval/2026; do not retune the same formulas.",
+      "tier_rationale": "Beta: economically meaningful but temporally unstable edge.",
+      "next_action": "Use only as a fixed gate in fresh data; no alpha promotion.",
+      "generation_recipe": {
+        "script": "training/search_trade_size_impact_bidirectional_alpha.py",
+        "protocol": "train thresholds; test selection; eval/2026 report; 6bp/side; strict MDD"
       }
     }
   ]
