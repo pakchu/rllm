@@ -1,0 +1,1196 @@
+{
+  "as_of": "2026-07-12T18:56:24.405972+00:00",
+  "config": {
+    "input_csv": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "output": "results/moment_continual_probe_alpha_scan_2026-07-13.json",
+    "funding_csv": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+    "premium_csv": "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz",
+    "train_start": "2020-01-01",
+    "train_end": "2024-01-01",
+    "val_start": "2024-01-01",
+    "val_end": "2025-01-01",
+    "eval_start": "2025-01-01",
+    "eval_end": "2026-01-01",
+    "exclude_from": "2026-06-02",
+    "hold_bars": "72,144,216,288,432",
+    "stride_bars": "6,12,24,36",
+    "quantiles": "0.10,0.15,0.20,0.80,0.85,0.90",
+    "window_size": 144,
+    "entry_delay_bars": 1,
+    "leverage": 0.5,
+    "fee_rate": 0.0005,
+    "slippage_rate": 0.0001,
+    "min_train_trades": 80,
+    "min_val_trades": 25,
+    "min_eval_trades_for_robust": 20,
+    "min_test_trades": 30,
+    "min_each_side": 6,
+    "top_n": 250
+  },
+  "protocol": "frozen MOMENT PCA continual probes; fit-only 2020-2022; strict 48h delayed online updates; 2023 Top-10 frozen before 2024+ metrics",
+  "manifest": "results/moment_continual_probe_top10_manifest_2026-07-13.json",
+  "source_manifest": "/home/pakchu/rllm/results/moment_embedding_probe_top10_manifest_2026-07-13.json",
+  "model": {
+    "id": "AutonLab/MOMENT-1-small",
+    "revision": "411e288267f82cce86296dbe4d6c8bc533cc162f",
+    "loaded_commit_hash": null,
+    "source_urls": {
+      "huggingface": "https://huggingface.co/AutonLab/MOMENT-1-small",
+      "code": "https://github.com/moment-timeseries-foundation-model/moment",
+      "paper": "https://arxiv.org/abs/2402.03885"
+    },
+    "momentfm_version": "0.1.5"
+  },
+  "input": {
+    "frequency": "1h completed candles",
+    "context_hours": 512,
+    "embedding_variates": [
+      "log_close",
+      "log_quote_volume",
+      "taker_imbalance",
+      "hourly_range",
+      "funding_rate",
+      "premium_index",
+      "dxy_zscore",
+      "kimchi_premium_zscore",
+      "usdkrw_zscore"
+    ],
+    "raw_summary_dim": 9216,
+    "valid_anchor_count": 9278,
+    "summary_tokens": [
+      "per_channel_mean_over_patches_flattened_in_variate_order",
+      "per_channel_final_patch_flattened_in_variate_order"
+    ],
+    "embedding_shape_expected": "B,C,P,D from MOMENTPipeline.embed(reduction='none')",
+    "causal_context_rule": "for each completed-hour anchor end, use values[:, end-context:end] only"
+  },
+  "representation": {
+    "pca16": {
+      "components": 16,
+      "fit_samples": 4292,
+      "explained_variance_ratio_sum": 0.4376824794998069,
+      "components_sha256": "93a481e25363a7cd6c517339b0f28a99b48710783fecc3d14113d604110cdf7e"
+    },
+    "pca32": {
+      "components": 32,
+      "fit_samples": 4292,
+      "explained_variance_ratio_sum": 0.5520400102920383,
+      "components_sha256": "3339f8ce57784a24cdf9d0c857f53411bd2cc0b5b756c30a05e9f39a19748b11"
+    }
+  },
+  "phase1_model_diagnostics": {
+    "moment_pca16_linear_cls_fast": {
+      "representation": "pca16",
+      "standardizer_fit_samples": 4292,
+      "probe": {
+        "name": "linear_cls_fast",
+        "objective": "classification",
+        "hidden_dim": null,
+        "lr": 0.01,
+        "recent_replay": 32,
+        "initial_epochs": 200,
+        "optimizer": "AdamW",
+        "weight_decay": 0.01
+      },
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 1468,
+        "online_updates": 1459,
+        "pending_after_stop": 9,
+        "replay_capacity": 32,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      }
+    },
+    "moment_pca16_linear_cls_slow": {
+      "representation": "pca16",
+      "standardizer_fit_samples": 4292,
+      "probe": {
+        "name": "linear_cls_slow",
+        "objective": "classification",
+        "hidden_dim": null,
+        "lr": 0.003,
+        "recent_replay": 128,
+        "initial_epochs": 200,
+        "optimizer": "AdamW",
+        "weight_decay": 0.01
+      },
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 1468,
+        "online_updates": 1459,
+        "pending_after_stop": 9,
+        "replay_capacity": 128,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      }
+    },
+    "moment_pca16_mlp_cls_fast": {
+      "representation": "pca16",
+      "standardizer_fit_samples": 4292,
+      "probe": {
+        "name": "mlp_cls_fast",
+        "objective": "classification",
+        "hidden_dim": 32,
+        "lr": 0.001,
+        "recent_replay": 32,
+        "initial_epochs": 150,
+        "optimizer": "AdamW",
+        "weight_decay": 0.01
+      },
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 1468,
+        "online_updates": 1459,
+        "pending_after_stop": 9,
+        "replay_capacity": 32,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      }
+    },
+    "moment_pca16_mlp_cls_slow": {
+      "representation": "pca16",
+      "standardizer_fit_samples": 4292,
+      "probe": {
+        "name": "mlp_cls_slow",
+        "objective": "classification",
+        "hidden_dim": 32,
+        "lr": 0.0003,
+        "recent_replay": 128,
+        "initial_epochs": 150,
+        "optimizer": "AdamW",
+        "weight_decay": 0.01
+      },
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 1468,
+        "online_updates": 1459,
+        "pending_after_stop": 9,
+        "replay_capacity": 128,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      }
+    },
+    "moment_pca16_linear_reg_slow": {
+      "representation": "pca16",
+      "standardizer_fit_samples": 4292,
+      "probe": {
+        "name": "linear_reg_slow",
+        "objective": "regression",
+        "hidden_dim": null,
+        "lr": 0.003,
+        "recent_replay": 128,
+        "initial_epochs": 200,
+        "optimizer": "AdamW",
+        "weight_decay": 0.01
+      },
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 1468,
+        "online_updates": 1459,
+        "pending_after_stop": 9,
+        "replay_capacity": 128,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      }
+    },
+    "moment_pca16_mlp_reg_slow": {
+      "representation": "pca16",
+      "standardizer_fit_samples": 4292,
+      "probe": {
+        "name": "mlp_reg_slow",
+        "objective": "regression",
+        "hidden_dim": 32,
+        "lr": 0.0003,
+        "recent_replay": 128,
+        "initial_epochs": 150,
+        "optimizer": "AdamW",
+        "weight_decay": 0.01
+      },
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 1468,
+        "online_updates": 1459,
+        "pending_after_stop": 9,
+        "replay_capacity": 128,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      }
+    },
+    "moment_pca32_linear_cls_fast": {
+      "representation": "pca32",
+      "standardizer_fit_samples": 4292,
+      "probe": {
+        "name": "linear_cls_fast",
+        "objective": "classification",
+        "hidden_dim": null,
+        "lr": 0.01,
+        "recent_replay": 32,
+        "initial_epochs": 200,
+        "optimizer": "AdamW",
+        "weight_decay": 0.01
+      },
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 1468,
+        "online_updates": 1459,
+        "pending_after_stop": 9,
+        "replay_capacity": 32,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      }
+    },
+    "moment_pca32_linear_cls_slow": {
+      "representation": "pca32",
+      "standardizer_fit_samples": 4292,
+      "probe": {
+        "name": "linear_cls_slow",
+        "objective": "classification",
+        "hidden_dim": null,
+        "lr": 0.003,
+        "recent_replay": 128,
+        "initial_epochs": 200,
+        "optimizer": "AdamW",
+        "weight_decay": 0.01
+      },
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 1468,
+        "online_updates": 1459,
+        "pending_after_stop": 9,
+        "replay_capacity": 128,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      }
+    },
+    "moment_pca32_mlp_cls_fast": {
+      "representation": "pca32",
+      "standardizer_fit_samples": 4292,
+      "probe": {
+        "name": "mlp_cls_fast",
+        "objective": "classification",
+        "hidden_dim": 32,
+        "lr": 0.001,
+        "recent_replay": 32,
+        "initial_epochs": 150,
+        "optimizer": "AdamW",
+        "weight_decay": 0.01
+      },
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 1468,
+        "online_updates": 1459,
+        "pending_after_stop": 9,
+        "replay_capacity": 32,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      }
+    },
+    "moment_pca32_mlp_cls_slow": {
+      "representation": "pca32",
+      "standardizer_fit_samples": 4292,
+      "probe": {
+        "name": "mlp_cls_slow",
+        "objective": "classification",
+        "hidden_dim": 32,
+        "lr": 0.0003,
+        "recent_replay": 128,
+        "initial_epochs": 150,
+        "optimizer": "AdamW",
+        "weight_decay": 0.01
+      },
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 1468,
+        "online_updates": 1459,
+        "pending_after_stop": 9,
+        "replay_capacity": 128,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      }
+    },
+    "moment_pca32_linear_reg_slow": {
+      "representation": "pca32",
+      "standardizer_fit_samples": 4292,
+      "probe": {
+        "name": "linear_reg_slow",
+        "objective": "regression",
+        "hidden_dim": null,
+        "lr": 0.003,
+        "recent_replay": 128,
+        "initial_epochs": 200,
+        "optimizer": "AdamW",
+        "weight_decay": 0.01
+      },
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 1468,
+        "online_updates": 1459,
+        "pending_after_stop": 9,
+        "replay_capacity": 128,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      }
+    },
+    "moment_pca32_mlp_reg_slow": {
+      "representation": "pca32",
+      "standardizer_fit_samples": 4292,
+      "probe": {
+        "name": "mlp_reg_slow",
+        "objective": "regression",
+        "hidden_dim": 32,
+        "lr": 0.0003,
+        "recent_replay": 128,
+        "initial_epochs": 150,
+        "optimizer": "AdamW",
+        "weight_decay": 0.01
+      },
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 1468,
+        "online_updates": 1459,
+        "pending_after_stop": 9,
+        "replay_capacity": 128,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      }
+    }
+  },
+  "phase2_model_diagnostics": {
+    "moment_pca16_mlp_cls_fast": {
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 4986,
+        "online_updates": 4977,
+        "pending_after_stop": 9,
+        "replay_capacity": 32,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      },
+      "score_quality": {
+        "fit2020_2022": {
+          "samples": 0,
+          "spearman": null
+        },
+        "holdout2023": {
+          "samples": 1452,
+          "spearman": 0.027910955904400698
+        },
+        "test2024": {
+          "samples": 1456,
+          "spearman": -0.09029826282513274
+        },
+        "eval2025": {
+          "samples": 1452,
+          "spearman": 0.06326836134704444
+        },
+        "ytd2026": {
+          "samples": 594,
+          "spearman": 0.0014750077045484243
+        }
+      }
+    },
+    "moment_pca16_mlp_cls_slow": {
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 4986,
+        "online_updates": 4977,
+        "pending_after_stop": 9,
+        "replay_capacity": 128,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      },
+      "score_quality": {
+        "fit2020_2022": {
+          "samples": 0,
+          "spearman": null
+        },
+        "holdout2023": {
+          "samples": 1452,
+          "spearman": 0.018303228741843893
+        },
+        "test2024": {
+          "samples": 1456,
+          "spearman": -0.06678387557860277
+        },
+        "eval2025": {
+          "samples": 1452,
+          "spearman": 0.05317079209955484
+        },
+        "ytd2026": {
+          "samples": 594,
+          "spearman": 0.043068089313501465
+        }
+      }
+    },
+    "moment_pca32_mlp_cls_fast": {
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 4986,
+        "online_updates": 4977,
+        "pending_after_stop": 9,
+        "replay_capacity": 32,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      },
+      "score_quality": {
+        "fit2020_2022": {
+          "samples": 0,
+          "spearman": null
+        },
+        "holdout2023": {
+          "samples": 1452,
+          "spearman": -0.04218964433433347
+        },
+        "test2024": {
+          "samples": 1456,
+          "spearman": -0.06862374512467558
+        },
+        "eval2025": {
+          "samples": 1452,
+          "spearman": 0.0576514667628792
+        },
+        "ytd2026": {
+          "samples": 594,
+          "spearman": -0.029534880025902734
+        }
+      }
+    },
+    "moment_pca32_mlp_cls_slow": {
+      "stream": {
+        "stream_start_index": 4376,
+        "queued_samples": 4986,
+        "online_updates": 4977,
+        "pending_after_stop": 9,
+        "replay_capacity": 128,
+        "predict_before_current_label_queued": true,
+        "label_ready_offset_bars": 577
+      },
+      "score_quality": {
+        "fit2020_2022": {
+          "samples": 0,
+          "spearman": null
+        },
+        "holdout2023": {
+          "samples": 1452,
+          "spearman": -0.07253177100882707
+        },
+        "test2024": {
+          "samples": 1456,
+          "spearman": -0.02873411886954755
+        },
+        "eval2025": {
+          "samples": 1452,
+          "spearman": 0.03891583902564729
+        },
+        "ytd2026": {
+          "samples": 594,
+          "spearman": -0.007681187861725505
+        }
+      }
+    }
+  },
+  "sample_counts": {
+    "fit2020_2022": 4376,
+    "holdout2023": 1452,
+    "test2024": 1456,
+    "eval2025": 1452,
+    "ytd2026": 594
+  },
+  "tested_candidates": 80,
+  "selected": [
+    {
+      "stream_id": "moment_pca16_mlp_cls_slow",
+      "representation": "pca16",
+      "probe_spec": "mlp_cls_slow",
+      "objective": "classification",
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.8,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 24.93230494769112,
+        "cagr_pct": 24.951354455674203,
+        "strict_mdd_pct": 5.696338578573101,
+        "ratio": 4.380244276477745,
+        "trades": 61,
+        "longs": 61,
+        "shorts": 0,
+        "win_rate": 0.5573770491803278,
+        "long_win_rate": 0.5573770491803278,
+        "short_win_rate": 0,
+        "sharpe_like": 1.9836527445699434
+      },
+      "signal_hash": "87041a1097103e42",
+      "pre_evaluation_rank": 1,
+      "phase2_2023_hash_verified": true,
+      "test2024": {
+        "return_pct": 7.2453736007049185,
+        "cagr_pct": 7.230002301222593,
+        "strict_mdd_pct": 17.19461989619081,
+        "ratio": 0.4204804959267685,
+        "trades": 83,
+        "longs": 83,
+        "shorts": 0,
+        "win_rate": 0.5301204819277109,
+        "long_win_rate": 0.5301204819277109,
+        "short_win_rate": 0,
+        "sharpe_like": 0.5127771472100682
+      },
+      "eval2025": {
+        "return_pct": -2.6613802753535643,
+        "cagr_pct": -2.6631786471846053,
+        "strict_mdd_pct": 12.547845095312804,
+        "ratio": -0.21224191301018092,
+        "trades": 58,
+        "longs": 58,
+        "shorts": 0,
+        "win_rate": 0.4827586206896552,
+        "long_win_rate": 0.4827586206896552,
+        "short_win_rate": 0,
+        "sharpe_like": -0.17025273877944924
+      },
+      "ytd2026": {
+        "return_pct": 2.0155160984341336,
+        "cagr_pct": 4.911865859346887,
+        "strict_mdd_pct": 5.404277867329787,
+        "ratio": 0.9088847723838084,
+        "trades": 23,
+        "longs": 23,
+        "shorts": 0,
+        "win_rate": 0.5652173913043478,
+        "long_win_rate": 0.5652173913043478,
+        "short_win_rate": 0,
+        "sharpe_like": 0.30544984623171034
+      },
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "stream_id": "moment_pca16_mlp_cls_slow",
+      "representation": "pca16",
+      "probe_spec": "mlp_cls_slow",
+      "objective": "classification",
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.8,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 23.00606761627211,
+        "cagr_pct": 23.023514104563535,
+        "strict_mdd_pct": 5.696338578573101,
+        "ratio": 4.041809275727917,
+        "trades": 63,
+        "longs": 63,
+        "shorts": 0,
+        "win_rate": 0.5396825396825397,
+        "long_win_rate": 0.5396825396825397,
+        "short_win_rate": 0,
+        "sharpe_like": 1.7957385407748379
+      },
+      "signal_hash": "652e246076623045",
+      "pre_evaluation_rank": 2,
+      "phase2_2023_hash_verified": true,
+      "test2024": {
+        "return_pct": 22.195446162697465,
+        "cagr_pct": 22.145263289593608,
+        "strict_mdd_pct": 15.286733236691408,
+        "ratio": 1.4486589742038718,
+        "trades": 78,
+        "longs": 78,
+        "shorts": 0,
+        "win_rate": 0.5384615384615384,
+        "long_win_rate": 0.5384615384615384,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3392167519807334
+      },
+      "eval2025": {
+        "return_pct": -1.3331697210664295,
+        "cagr_pct": -1.3340767328266057,
+        "strict_mdd_pct": 12.241138920014894,
+        "ratio": -0.10898305635967592,
+        "trades": 64,
+        "longs": 64,
+        "shorts": 0,
+        "win_rate": 0.53125,
+        "long_win_rate": 0.53125,
+        "short_win_rate": 0,
+        "sharpe_like": -0.04489155493338036
+      },
+      "ytd2026": {
+        "return_pct": 4.477274557014721,
+        "cagr_pct": 11.098633788474533,
+        "strict_mdd_pct": 4.3458008907094055,
+        "ratio": 2.5538753540691554,
+        "trades": 28,
+        "longs": 28,
+        "shorts": 0,
+        "win_rate": 0.5714285714285714,
+        "long_win_rate": 0.5714285714285714,
+        "short_win_rate": 0,
+        "sharpe_like": 0.6317143857261833
+      },
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "stream_id": "moment_pca32_mlp_cls_slow",
+      "representation": "pca32",
+      "probe_spec": "mlp_cls_slow",
+      "objective": "classification",
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.8,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 28.608592525654664,
+        "cagr_pct": 28.630757698643894,
+        "strict_mdd_pct": 7.261990824686371,
+        "ratio": 3.9425494178974527,
+        "trades": 72,
+        "longs": 72,
+        "shorts": 0,
+        "win_rate": 0.5138888888888888,
+        "long_win_rate": 0.5138888888888888,
+        "short_win_rate": 0,
+        "sharpe_like": 1.824237340300914
+      },
+      "signal_hash": "1f7b597d5b1ca2f6",
+      "pre_evaluation_rank": 3,
+      "phase2_2023_hash_verified": true,
+      "test2024": {
+        "return_pct": 3.26176700923555,
+        "cagr_pct": 3.254975442610175,
+        "strict_mdd_pct": 10.917581424700295,
+        "ratio": 0.29814070680947813,
+        "trades": 87,
+        "longs": 87,
+        "shorts": 0,
+        "win_rate": 0.4827586206896552,
+        "long_win_rate": 0.4827586206896552,
+        "short_win_rate": 0,
+        "sharpe_like": 0.2754075438337342
+      },
+      "eval2025": {
+        "return_pct": -1.1880134964731837,
+        "cagr_pct": -1.1888223483019322,
+        "strict_mdd_pct": 16.94055200006499,
+        "ratio": -0.07017612816261072,
+        "trades": 74,
+        "longs": 74,
+        "shorts": 0,
+        "win_rate": 0.527027027027027,
+        "long_win_rate": 0.527027027027027,
+        "short_win_rate": 0,
+        "sharpe_like": -0.022886236541044887
+      },
+      "ytd2026": {
+        "return_pct": -19.035514792137555,
+        "cagr_pct": -39.79460017169648,
+        "strict_mdd_pct": 19.349252580673472,
+        "ratio": -2.0566479250699503,
+        "trades": 31,
+        "longs": 31,
+        "shorts": 0,
+        "win_rate": 0.3548387096774194,
+        "long_win_rate": 0.3548387096774194,
+        "short_win_rate": 0,
+        "sharpe_like": -2.5263947746672586
+      },
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "stream_id": "moment_pca32_mlp_cls_slow",
+      "representation": "pca32",
+      "probe_spec": "mlp_cls_slow",
+      "objective": "classification",
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.8,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 23.793318470134082,
+        "cagr_pct": 23.811417630312626,
+        "strict_mdd_pct": 7.261990824686371,
+        "ratio": 3.2789104537791793,
+        "trades": 70,
+        "longs": 70,
+        "shorts": 0,
+        "win_rate": 0.5,
+        "long_win_rate": 0.5,
+        "short_win_rate": 0,
+        "sharpe_like": 1.5532090045601523
+      },
+      "signal_hash": "1e7919f52c206d58",
+      "pre_evaluation_rank": 4,
+      "phase2_2023_hash_verified": true,
+      "test2024": {
+        "return_pct": 4.062995754284215,
+        "cagr_pct": 4.054503396447684,
+        "strict_mdd_pct": 11.119256592951299,
+        "ratio": 0.3646379919875136,
+        "trades": 97,
+        "longs": 97,
+        "shorts": 0,
+        "win_rate": 0.4948453608247423,
+        "long_win_rate": 0.4948453608247423,
+        "short_win_rate": 0,
+        "sharpe_like": 0.3147493304335348
+      },
+      "eval2025": {
+        "return_pct": -5.201098465579978,
+        "cagr_pct": -5.2045665072343095,
+        "strict_mdd_pct": 20.24522833830673,
+        "ratio": -0.25707620681099264,
+        "trades": 68,
+        "longs": 68,
+        "shorts": 0,
+        "win_rate": 0.5294117647058824,
+        "long_win_rate": 0.5294117647058824,
+        "short_win_rate": 0,
+        "sharpe_like": -0.3185525176834425
+      },
+      "ytd2026": {
+        "return_pct": -19.43762545078326,
+        "cagr_pct": -40.51060910068311,
+        "strict_mdd_pct": 19.65079295699461,
+        "ratio": -2.0615254147422863,
+        "trades": 30,
+        "longs": 30,
+        "shorts": 0,
+        "win_rate": 0.3333333333333333,
+        "long_win_rate": 0.3333333333333333,
+        "short_win_rate": 0,
+        "sharpe_like": -2.6721715882214685
+      },
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "stream_id": "moment_pca32_mlp_cls_slow",
+      "representation": "pca32",
+      "probe_spec": "mlp_cls_slow",
+      "objective": "classification",
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.7,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 32.33614421551509,
+        "cagr_pct": 32.36154205332049,
+        "strict_mdd_pct": 9.9463349399326,
+        "ratio": 3.2536147484230797,
+        "trades": 87,
+        "longs": 87,
+        "shorts": 0,
+        "win_rate": 0.5862068965517241,
+        "long_win_rate": 0.5862068965517241,
+        "short_win_rate": 0,
+        "sharpe_like": 1.932716918819113
+      },
+      "signal_hash": "1237e3c7c4498678",
+      "pre_evaluation_rank": 5,
+      "phase2_2023_hash_verified": true,
+      "test2024": {
+        "return_pct": 3.7318124945039832,
+        "cagr_pct": 3.724024683896099,
+        "strict_mdd_pct": 13.991688666649116,
+        "ratio": 0.26615977332119767,
+        "trades": 105,
+        "longs": 105,
+        "shorts": 0,
+        "win_rate": 0.5142857142857142,
+        "long_win_rate": 0.5142857142857142,
+        "short_win_rate": 0,
+        "sharpe_like": 0.29223241479419565
+      },
+      "eval2025": {
+        "return_pct": -21.63408456338962,
+        "cagr_pct": -21.64716849121655,
+        "strict_mdd_pct": 26.837131440631634,
+        "ratio": -0.8066126045961292,
+        "trades": 92,
+        "longs": 92,
+        "shorts": 0,
+        "win_rate": 0.4673913043478261,
+        "long_win_rate": 0.4673913043478261,
+        "short_win_rate": 0,
+        "sharpe_like": -1.4206395913190757
+      },
+      "ytd2026": {
+        "return_pct": -17.746478428382094,
+        "cagr_pct": -37.46550969188479,
+        "strict_mdd_pct": 19.3396069377191,
+        "ratio": -1.937242561988876,
+        "trades": 39,
+        "longs": 39,
+        "shorts": 0,
+        "win_rate": 0.4358974358974359,
+        "long_win_rate": 0.4358974358974359,
+        "short_win_rate": 0,
+        "sharpe_like": -1.9758529482294724
+      },
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "stream_id": "moment_pca32_mlp_cls_slow",
+      "representation": "pca32",
+      "probe_spec": "mlp_cls_slow",
+      "objective": "classification",
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.95,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 16.52709556448557,
+        "cagr_pct": 16.539303904934588,
+        "strict_mdd_pct": 5.270489144655066,
+        "ratio": 3.138096569595918,
+        "trades": 29,
+        "longs": 29,
+        "shorts": 0,
+        "win_rate": 0.6551724137931034,
+        "long_win_rate": 0.6551724137931034,
+        "short_win_rate": 0,
+        "sharpe_like": 1.8578416688385826
+      },
+      "signal_hash": "56f6a9db8105390d",
+      "pre_evaluation_rank": 6,
+      "phase2_2023_hash_verified": true,
+      "test2024": {
+        "return_pct": -1.1468338958901203,
+        "cagr_pct": -1.1444973263259106,
+        "strict_mdd_pct": 13.946638958146472,
+        "ratio": -0.08206259083357069,
+        "trades": 46,
+        "longs": 46,
+        "shorts": 0,
+        "win_rate": 0.4782608695652174,
+        "long_win_rate": 0.4782608695652174,
+        "short_win_rate": 0,
+        "sharpe_like": -0.028429679926884794
+      },
+      "eval2025": {
+        "return_pct": 0.5063404734646282,
+        "cagr_pct": 0.5066881591473171,
+        "strict_mdd_pct": 5.675389912014928,
+        "ratio": 0.08927812308977168,
+        "trades": 28,
+        "longs": 28,
+        "shorts": 0,
+        "win_rate": 0.6071428571428571,
+        "long_win_rate": 0.6071428571428571,
+        "short_win_rate": 0,
+        "sharpe_like": 0.10730176906395889
+      },
+      "ytd2026": {
+        "return_pct": -3.0380250722233604,
+        "cagr_pct": -7.145315305030497,
+        "strict_mdd_pct": 5.599780217838846,
+        "ratio": -1.2759992405180731,
+        "trades": 10,
+        "longs": 10,
+        "shorts": 0,
+        "win_rate": 0.6,
+        "long_win_rate": 0.6,
+        "short_win_rate": 0,
+        "sharpe_like": -0.5273339150022298
+      },
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "stream_id": "moment_pca32_mlp_cls_slow",
+      "representation": "pca32",
+      "probe_spec": "mlp_cls_slow",
+      "objective": "classification",
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.7,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 31.06174853785111,
+        "cagr_pct": 31.086032973599952,
+        "strict_mdd_pct": 9.9463349399326,
+        "ratio": 3.125375644529683,
+        "trades": 85,
+        "longs": 85,
+        "shorts": 0,
+        "win_rate": 0.5882352941176471,
+        "long_win_rate": 0.5882352941176471,
+        "short_win_rate": 0,
+        "sharpe_like": 1.8762919559931774
+      },
+      "signal_hash": "1954139ac3e2f1fb",
+      "pre_evaluation_rank": 7,
+      "phase2_2023_hash_verified": true,
+      "test2024": {
+        "return_pct": 7.349515444884602,
+        "cagr_pct": 7.333915740740893,
+        "strict_mdd_pct": 12.686886512396445,
+        "ratio": 0.5780705718124673,
+        "trades": 113,
+        "longs": 113,
+        "shorts": 0,
+        "win_rate": 0.504424778761062,
+        "long_win_rate": 0.504424778761062,
+        "short_win_rate": 0,
+        "sharpe_like": 0.45686101429578485
+      },
+      "eval2025": {
+        "return_pct": -16.705338491401744,
+        "cagr_pct": -16.715765972355122,
+        "strict_mdd_pct": 22.307683446455663,
+        "ratio": -0.7493277377939032,
+        "trades": 89,
+        "longs": 89,
+        "shorts": 0,
+        "win_rate": 0.449438202247191,
+        "long_win_rate": 0.449438202247191,
+        "short_win_rate": 0,
+        "sharpe_like": -1.2506424149844975
+      },
+      "ytd2026": {
+        "return_pct": -20.691705780986847,
+        "cagr_pct": -42.71161334939367,
+        "strict_mdd_pct": 20.999025821087734,
+        "ratio": -2.0339807052621284,
+        "trades": 35,
+        "longs": 35,
+        "shorts": 0,
+        "win_rate": 0.37142857142857144,
+        "long_win_rate": 0.37142857142857144,
+        "short_win_rate": 0,
+        "sharpe_like": -2.529035381537338
+      },
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "stream_id": "moment_pca32_mlp_cls_fast",
+      "representation": "pca32",
+      "probe_spec": "mlp_cls_fast",
+      "objective": "classification",
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.95,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 5.329553210360971,
+        "cagr_pct": 5.333299246857615,
+        "strict_mdd_pct": 1.9880494716778996,
+        "ratio": 2.68267934115158,
+        "trades": 10,
+        "longs": 10,
+        "shorts": 0,
+        "win_rate": 0.8,
+        "long_win_rate": 0.8,
+        "short_win_rate": 0,
+        "sharpe_like": 1.7112242003587101
+      },
+      "signal_hash": "079a5a8ad16542d8",
+      "pre_evaluation_rank": 8,
+      "phase2_2023_hash_verified": true,
+      "test2024": {
+        "return_pct": -10.730319870002491,
+        "cagr_pct": -10.709553421766682,
+        "strict_mdd_pct": 15.085784878119068,
+        "ratio": -0.7099102571255792,
+        "trades": 27,
+        "longs": 27,
+        "shorts": 0,
+        "win_rate": 0.48148148148148145,
+        "long_win_rate": 0.48148148148148145,
+        "short_win_rate": 0,
+        "sharpe_like": -1.0289968059675851
+      },
+      "eval2025": {
+        "return_pct": 0.7836258979916577,
+        "cagr_pct": 0.784164727005332,
+        "strict_mdd_pct": 5.0130190520568,
+        "ratio": 0.15642564268404202,
+        "trades": 17,
+        "longs": 17,
+        "shorts": 0,
+        "win_rate": 0.5294117647058824,
+        "long_win_rate": 0.5294117647058824,
+        "short_win_rate": 0,
+        "sharpe_like": 0.17173984779682896
+      },
+      "ytd2026": {
+        "return_pct": 1.315890185198909,
+        "cagr_pct": 3.1912714624925176,
+        "strict_mdd_pct": 1.3086239083088258,
+        "ratio": 2.4386467664469724,
+        "trades": 8,
+        "longs": 8,
+        "shorts": 0,
+        "win_rate": 0.5,
+        "long_win_rate": 0.5,
+        "short_win_rate": 0,
+        "sharpe_like": 0.5597802970636143
+      },
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "stream_id": "moment_pca32_mlp_cls_slow",
+      "representation": "pca32",
+      "probe_spec": "mlp_cls_slow",
+      "objective": "classification",
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.95,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 14.528633380418011,
+        "cagr_pct": 14.539275206983525,
+        "strict_mdd_pct": 6.784303507864786,
+        "ratio": 2.1430755847123724,
+        "trades": 26,
+        "longs": 26,
+        "shorts": 0,
+        "win_rate": 0.6153846153846154,
+        "long_win_rate": 0.6153846153846154,
+        "short_win_rate": 0,
+        "sharpe_like": 1.6678905010090297
+      },
+      "signal_hash": "4167ab2cbd1b329f",
+      "pre_evaluation_rank": 9,
+      "phase2_2023_hash_verified": true,
+      "test2024": {
+        "return_pct": -2.546969508725083,
+        "cagr_pct": -2.5418172100159397,
+        "strict_mdd_pct": 15.862490583363954,
+        "ratio": -0.16024073878295708,
+        "trades": 52,
+        "longs": 52,
+        "shorts": 0,
+        "win_rate": 0.4807692307692308,
+        "long_win_rate": 0.4807692307692308,
+        "short_win_rate": 0,
+        "sharpe_like": -0.10635057001738266
+      },
+      "eval2025": {
+        "return_pct": 1.186879941444241,
+        "cagr_pct": 1.1876976815019091,
+        "strict_mdd_pct": 5.675389912014928,
+        "ratio": 0.20927155665331937,
+        "trades": 23,
+        "longs": 23,
+        "shorts": 0,
+        "win_rate": 0.5652173913043478,
+        "long_win_rate": 0.5652173913043478,
+        "short_win_rate": 0,
+        "sharpe_like": 0.22594903273319217
+      },
+      "ytd2026": {
+        "return_pct": 1.0180894163325238,
+        "cagr_pct": 2.4639241866822648,
+        "strict_mdd_pct": 5.596159422137492,
+        "ratio": 0.44028841939980895,
+        "trades": 8,
+        "longs": 8,
+        "shorts": 0,
+        "win_rate": 0.75,
+        "long_win_rate": 0.75,
+        "short_win_rate": 0,
+        "sharpe_like": 0.1883785932571599
+      },
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "stream_id": "moment_pca16_mlp_cls_fast",
+      "representation": "pca16",
+      "probe_spec": "mlp_cls_fast",
+      "objective": "classification",
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.9,
+      "minimum_score_history": 200,
+      "side_policy": "short",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 7.640146241483414,
+        "cagr_pct": 7.645574353785123,
+        "strict_mdd_pct": 4.197444819389473,
+        "ratio": 1.8214829932885666,
+        "trades": 28,
+        "longs": 0,
+        "shorts": 28,
+        "win_rate": 0.6428571428571429,
+        "long_win_rate": 0,
+        "short_win_rate": 0.6428571428571429,
+        "sharpe_like": 1.3954036849381215
+      },
+      "signal_hash": "8b7159a07ac9302f",
+      "pre_evaluation_rank": 10,
+      "phase2_2023_hash_verified": true,
+      "test2024": {
+        "return_pct": -10.92324108729339,
+        "cagr_pct": -10.902124521927735,
+        "strict_mdd_pct": 14.168897426648009,
+        "ratio": -0.7694405706843269,
+        "trades": 37,
+        "longs": 0,
+        "shorts": 37,
+        "win_rate": 0.4594594594594595,
+        "long_win_rate": 0,
+        "short_win_rate": 0.4594594594594595,
+        "sharpe_like": -1.0875505217946977
+      },
+      "eval2025": {
+        "return_pct": 13.060606406424057,
+        "cagr_pct": 13.070112711756398,
+        "strict_mdd_pct": 6.279598652654839,
+        "ratio": 2.0813611561354675,
+        "trades": 42,
+        "longs": 0,
+        "shorts": 42,
+        "win_rate": 0.6428571428571429,
+        "long_win_rate": 0,
+        "short_win_rate": 0.6428571428571429,
+        "sharpe_like": 1.360487694551802
+      },
+      "ytd2026": {
+        "return_pct": 4.030380415448809,
+        "cagr_pct": 9.960131626923818,
+        "strict_mdd_pct": 3.946191570333901,
+        "ratio": 2.5239858353052678,
+        "trades": 20,
+        "longs": 0,
+        "shorts": 20,
+        "win_rate": 0.55,
+        "long_win_rate": 0,
+        "short_win_rate": 0.55,
+        "sharpe_like": 0.5568627463028026
+      },
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    }
+  ],
+  "alpha_pool_qualifiers": [],
+  "live_grade": [],
+  "cost_stress_bps_per_side": {}
+}
