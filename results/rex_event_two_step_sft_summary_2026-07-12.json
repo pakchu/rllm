@@ -1,0 +1,61 @@
+{
+  "config": {
+    "input_jsonl": "data/rex_event_reasoning_policy_sft_20260712.jsonl",
+    "output_jsonl": "data/rex_event_two_step_sft_20260712.jsonl",
+    "summary_output": "results/rex_event_two_step_sft_summary_2026-07-12.json",
+    "train_output_jsonl": "data/rex_event_two_step_sft_train_20260712.jsonl",
+    "gate_min_margin": 0.004,
+    "side_min_margin": 0.004,
+    "no_trade_utility": 0.001,
+    "min_trade_net_return": 0.001,
+    "max_trade_mae": 0.035,
+    "include_side_for_all_margin_rows": true
+  },
+  "source_rows": 1444,
+  "rows": 2698,
+  "train_rows": 2360,
+  "counts": {
+    "all:gate": {
+      "TRADE": 506,
+      "NO_TRADE": 938
+    },
+    "all:side": {
+      "LONG": 674,
+      "SHORT": 580
+    },
+    "eval:gate": {
+      "NO_TRADE": 56,
+      "TRADE": 25
+    },
+    "eval:side": {
+      "SHORT": 35,
+      "LONG": 33
+    },
+    "test:gate": {
+      "NO_TRADE": 76,
+      "TRADE": 28
+    },
+    "test:side": {
+      "LONG": 52,
+      "SHORT": 33
+    },
+    "train:gate": {
+      "TRADE": 453,
+      "NO_TRADE": 806
+    },
+    "train:side": {
+      "LONG": 589,
+      "SHORT": 512
+    }
+  },
+  "prompt_chars": {
+    "min": 1329,
+    "max": 1394,
+    "mean": 1359.6363973313566
+  },
+  "leakage_guard": {
+    "prompt_contains_only_signal_time_symbolic_context": true,
+    "future_path_used_only_to_create_offline_targets": true,
+    "train_output_contains_train_split_only": true
+  }
+}
