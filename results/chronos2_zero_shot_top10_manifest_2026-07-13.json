@@ -1,0 +1,272 @@
+{
+  "created_at": "2026-07-12T18:09:59.875343+00:00",
+  "git_head_before_experiment_commit": "29bf06fec3a994be84d00b4e9dddc1760e7fbed4",
+  "selection_window": [
+    "2023-01-01",
+    "2024-01-01"
+  ],
+  "later_metrics_included": false,
+  "model": {
+    "id": "amazon/chronos-2",
+    "revision": "29ec3766d36d6f73f0696f85560a422f50e8498c",
+    "chronos_version": "2.3.1",
+    "parameters": "120M",
+    "fine_tuned_on_repo_data": false,
+    "cross_learning": false
+  },
+  "input": {
+    "frequency": "1h completed candles",
+    "context_hours": 720,
+    "prediction_hours": 48,
+    "target": "log_close",
+    "past_covariates": [
+      "log_quote_volume",
+      "taker_imbalance",
+      "hourly_range",
+      "funding_rate",
+      "premium_index",
+      "dxy_zscore",
+      "kimchi_premium_zscore",
+      "usdkrw_zscore"
+    ],
+    "anchor_count": 9362,
+    "forecasted_anchor_count": 9244
+  },
+  "selection_policy": "zero-shot Chronos-2 fixed forecast transforms; shifted rolling score percentiles; 2023 executed-path Top-10 freeze before 2024+ metrics",
+  "top10": [
+    {
+      "stream_name": "median_24h_48h_consensus",
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.7,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 37.53766734548461,
+        "cagr_pct": 37.567696003804784,
+        "strict_mdd_pct": 8.880566863551575,
+        "ratio": 4.230326349773179,
+        "trades": 88,
+        "longs": 88,
+        "shorts": 0,
+        "win_rate": 0.5227272727272727,
+        "long_win_rate": 0.5227272727272727,
+        "short_win_rate": 0,
+        "sharpe_like": 1.9847794272144959
+      },
+      "signal_hash": "93769107e1beb7fd"
+    },
+    {
+      "stream_name": "median_path_mean",
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.7,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 32.76629924331145,
+        "cagr_pct": 32.79207479811181,
+        "strict_mdd_pct": 9.064764845684714,
+        "ratio": 3.617531767933561,
+        "trades": 88,
+        "longs": 88,
+        "shorts": 0,
+        "win_rate": 0.5113636363636364,
+        "long_win_rate": 0.5113636363636364,
+        "short_win_rate": 0,
+        "sharpe_like": 1.7872207743315687
+      },
+      "signal_hash": "0881fd13f43c3dbc"
+    },
+    {
+      "stream_name": "median_24h_48h_consensus",
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.8,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 22.159823693533376,
+        "cagr_pct": 22.176572454052778,
+        "strict_mdd_pct": 8.349351795751003,
+        "ratio": 2.656083130350127,
+        "trades": 73,
+        "longs": 73,
+        "shorts": 0,
+        "win_rate": 0.5205479452054794,
+        "long_win_rate": 0.5205479452054794,
+        "short_win_rate": 0,
+        "sharpe_like": 1.339532938804347
+      },
+      "signal_hash": "43bf8749274268de"
+    },
+    {
+      "stream_name": "central_terminal",
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.8,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 23.374274271998317,
+        "cagr_pct": 23.392025594157538,
+        "strict_mdd_pct": 8.860400123525025,
+        "ratio": 2.6400642485715697,
+        "trades": 68,
+        "longs": 68,
+        "shorts": 0,
+        "win_rate": 0.6029411764705882,
+        "long_win_rate": 0.6029411764705882,
+        "short_win_rate": 0,
+        "sharpe_like": 1.5624633715996497
+      },
+      "signal_hash": "cf52dd5fae78181f"
+    },
+    {
+      "stream_name": "central_terminal",
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.8,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 23.054546099661934,
+        "cagr_pct": 23.072032679566522,
+        "strict_mdd_pct": 9.197834842478558,
+        "ratio": 2.508419978690252,
+        "trades": 56,
+        "longs": 56,
+        "shorts": 0,
+        "win_rate": 0.6071428571428571,
+        "long_win_rate": 0.6071428571428571,
+        "short_win_rate": 0,
+        "sharpe_like": 1.59250509817481
+      },
+      "signal_hash": "22e7821e775cc916"
+    },
+    {
+      "stream_name": "quantile_mean_terminal",
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.7,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 23.995126531753684,
+        "cagr_pct": 24.013393554819864,
+        "strict_mdd_pct": 9.63363635550234,
+        "ratio": 2.4926614072477826,
+        "trades": 84,
+        "longs": 84,
+        "shorts": 0,
+        "win_rate": 0.5833333333333334,
+        "long_win_rate": 0.5833333333333334,
+        "short_win_rate": 0,
+        "sharpe_like": 1.4229092103014842
+      },
+      "signal_hash": "41496ddfb51a1a63"
+    },
+    {
+      "stream_name": "terminal_interval_snr",
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.8,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 20.936613062767307,
+        "cagr_pct": 20.952360396372384,
+        "strict_mdd_pct": 9.22165789167757,
+        "ratio": 2.2720817278725582,
+        "trades": 71,
+        "longs": 71,
+        "shorts": 0,
+        "win_rate": 0.5633802816901409,
+        "long_win_rate": 0.5633802816901409,
+        "short_win_rate": 0,
+        "sharpe_like": 1.335250440005317
+      },
+      "signal_hash": "b77d966df15fce88"
+    },
+    {
+      "stream_name": "median_path_mean",
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.9,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 15.637124938012569,
+        "cagr_pct": 15.648632740572378,
+        "strict_mdd_pct": 7.016228879992148,
+        "ratio": 2.2303480984203423,
+        "trades": 32,
+        "longs": 32,
+        "shorts": 0,
+        "win_rate": 0.75,
+        "long_win_rate": 0.75,
+        "short_win_rate": 0,
+        "sharpe_like": 1.5456537520671325
+      },
+      "signal_hash": "23429dee1478ece6"
+    },
+    {
+      "stream_name": "median_path_mean",
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.8,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 19.65201407634638,
+        "cagr_pct": 19.666718856979305,
+        "strict_mdd_pct": 9.227002076582547,
+        "ratio": 2.1314310643640137,
+        "trades": 72,
+        "longs": 72,
+        "shorts": 0,
+        "win_rate": 0.5138888888888888,
+        "long_win_rate": 0.5138888888888888,
+        "short_win_rate": 0,
+        "sharpe_like": 1.1961568173064867
+      },
+      "signal_hash": "4f682298d2c70b9a"
+    },
+    {
+      "stream_name": "central_terminal",
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.7,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 16.85297349700403,
+        "cagr_pct": 16.865439518623916,
+        "strict_mdd_pct": 8.749976016715255,
+        "ratio": 1.927484085259837,
+        "trades": 85,
+        "longs": 85,
+        "shorts": 0,
+        "win_rate": 0.5764705882352941,
+        "long_win_rate": 0.5764705882352941,
+        "short_win_rate": 0,
+        "sharpe_like": 1.1975091463062477
+      },
+      "signal_hash": "8e57f79ed2e8e546"
+    }
+  ],
+  "trial_counts": {
+    "score_streams": 6,
+    "rolling_windows": 2,
+    "score_quantiles": 4,
+    "side_policies": 3,
+    "total_policy_specs": 144,
+    "eligible_holdout_candidates": 42,
+    "distinct_top10": 10
+  },
+  "data_sha256": {
+    "market": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+    "funding": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7",
+    "premium": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
+  }
+}
