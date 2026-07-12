@@ -88,6 +88,43 @@ class Config(base.CombinedOptConfig):
     oos_mdd_cap: float = 20.0
     candidate_calendar_top_n: int = 250
     candidate_rex_top_n: int = 50
+    family_gross_cap: float = 2.0
+
+
+def sleeve_family(name: str) -> str:
+    if name.startswith("cand_calendar_"):
+        return "calendar"
+    if name.startswith("cand_rex_veto_"):
+        return "rex_veto"
+    if name.startswith("cand_jump_") or name.startswith("cand_jump_volume_") or name.startswith("cand_jump_same_"):
+        return "jump"
+    if name.startswith("cand_kimchi_"):
+        return "kimchi"
+    if name.startswith("cand_path_") or name.startswith("cand_state_"):
+        return "state_path"
+    if name.startswith("cand_macro_"):
+        return "macro"
+    if name.startswith("new_"):
+        return "new"
+    if name.startswith("cand_"):
+        return "other_candidate"
+    return "legacy"
+
+
+def exact_duplicate_map(by: dict[str, Any]) -> tuple[dict[str, str], list[list[str]]]:
+    """Map exact return/adverse paths to one canonical sleeve."""
+    import hashlib
+    buckets: dict[str, list[str]] = {}
+    for i, sleeve in enumerate(base.SLEEVES):
+        h = hashlib.sha256()
+        for split in ("train", "test2024", "eval2025", "ytd2026"):
+            for key in ("R", "A"):
+                values = np.round(np.nan_to_num(by[split][key][i], nan=0.0, posinf=0.0, neginf=0.0), 12)
+                h.update(values.tobytes())
+        buckets.setdefault(h.hexdigest(), []).append(sleeve)
+    groups = [names for names in buckets.values() if len(names) > 1]
+    canonical = {name: names[0] for names in groups for name in names}
+    return canonical, groups
 
 
 def load_json(path: str) -> dict[str, Any]:
@@ -392,14 +429,24 @@ def metric_fast(d: dict[str, Any], years: float, weights: dict[str, float]) -> d
 def metrics_fast(by: dict[str, Any], years: dict[str, float], weights: dict[str, float]) -> dict[str, Any]:
     return {sp: metric_fast(by[sp], years[sp], weights) for sp in ["train", "test2024", "eval2025", "ytd2026"]}
 
-def candidates(by: dict[str, Any], years: dict[str, float], cfg: Config) -> list[dict[str, float]]:
+def candidates(by: dict[str, Any], years: dict[str, float], cfg: Config, canonical_map: dict[str, str] | None = None) -> list[dict[str, float]]:
     out: list[dict[str, float]] = []
     seen: set[tuple[float, ...]] = set()
 
     def add(w: dict[str, float]) -> None:
-        q = base._discretize_weights({s: max(0.0, float(w.get(s, 0.0))) for s in base.SLEEVES}, min_nonzero=cfg.min_nonzero_weight, step=cfg.weight_step)
+        merged: dict[str, float] = {}
+        for sleeve, weight in w.items():
+            canonical = (canonical_map or {}).get(sleeve, sleeve)
+            merged[canonical] = merged.get(canonical, 0.0) + max(0.0, float(weight))
+        q = base._discretize_weights(merged, min_nonzero=cfg.min_nonzero_weight, step=cfg.weight_step)
         gross = sum(q.values())
         if not q or gross > cfg.gross_cap + 1e-9:
+            return
+        family_gross: dict[str, float] = {}
+        for sleeve, weight in q.items():
+            family = sleeve_family(sleeve)
+            family_gross[family] = family_gross.get(family, 0.0) + float(weight)
+        if any(weight > cfg.family_gross_cap + 1e-9 for weight in family_gross.values()):
             return
         key = tuple(round(q.get(s, 0.0), 4) for s in base.SLEEVES)
         if key not in seen:
@@ -468,8 +515,9 @@ def run(cfg: Config) -> dict[str, Any]:
     meta["rex_veto_candidate_counts"] = add_rex_veto_candidates(events, market, masks, cfg)
     events.sort(key=lambda e: (str(e["split"]), int(e["signal_pos"]), str(e["sleeve"])))
     by = arrays_agg(events, masks)
+    canonical_map, duplicate_groups = exact_duplicate_map(by)
     rows = []
-    for w in candidates(by, years, cfg):
+    for w in candidates(by, years, cfg, canonical_map):
         st = metrics_fast(by, years, w)
         rows.append({"weights": base._clean(w), "gross": round(sum(w.values()), 6), "stats": st, "score_test_only": base._score_test_only(st, cfg), "score_robust_diag": base._score_robust_diag(st, cfg), "score_train_sane": score_train_sane(st, cfg)})
     selected = sorted(rows, key=lambda r: r["score_test_only"], reverse=True)
@@ -487,6 +535,8 @@ def run(cfg: Config) -> dict[str, Any]:
         "event_counts": {sp: dict(Counter(e["sleeve"] for e in events if e["split"] == sp)) for sp in masks},
         "evaluated": len(rows),
         "build_meta": meta,
+        "exact_duplicate_groups": duplicate_groups,
+        "duplicate_aliases_removed": sum(len(group) - 1 for group in duplicate_groups),
         "top_selected_test2024": [strip(r) for r in selected[:100]],
         "top_robust_diagnostic": [strip(r) for r in robust[:100]],
         "top_train_sane": [strip(r) for r in train_sane[:100]],
@@ -523,7 +573,7 @@ def write_doc(cfg: Config, o: dict[str, Any]) -> None:
     for i, r in enumerate(o["top_robust_diagnostic"][:25], 1):
         s = r["stats"]
         lines.append(f"|{i}|{r['gross']:.2f}|`{r['weights']}`|{fmt(s['test2024'])}|{fmt(s['eval2025'])}|{fmt(s['ytd2026'])}|")
-    lines += ["", "## Train-sane diagnostic", "Ranks rows that also prefer train strict MDD<=20. Cell format is unchanged.", "|#|gross|weights|train|test2024|eval2025|2026YTD|", "|---:|---:|---|---:|---:|---:|---:|"]
+    lines += ["", "## Train-sane diagnostic", f"Requires train strict MDD<={cfg.train_mdd_cap:g}% and each OOS strict MDD<={cfg.oos_mdd_cap:g}%; ranks passing rows by train CAGR/MDD first. Cell format is unchanged.", "|#|gross|weights|train|test2024|eval2025|2026YTD|", "|---:|---:|---|---:|---:|---:|---:|"]
     for i, r in enumerate(o.get("top_train_sane", [])[:25], 1):
         s = r["stats"]
         lines.append(f"|{i}|{r['gross']:.2f}|`{r['weights']}`|{fmt(s['train'])}|{fmt(s['test2024'])}|{fmt(s['eval2025'])}|{fmt(s['ytd2026'])}|")
@@ -545,6 +595,7 @@ def main() -> None:
     p.add_argument("--candidate-rex-top-n", type=int, default=50)
     p.add_argument("--train-mdd-cap", type=float, default=20.0)
     p.add_argument("--oos-mdd-cap", type=float, default=20.0)
+    p.add_argument("--family-gross-cap", type=float, default=2.0)
     a = p.parse_args()
     o = run(Config(**vars(a)))
     print(json.dumps({"output": o["config"]["output"], "docs_output": o["config"]["docs_output"], "evaluated": o["evaluated"], "sleeves": len(o["sleeves"]), "extra_sleeves": len(o["extra_sleeves"]), "top_selected_test2024": o["top_selected_test2024"][:5], "top_robust_diagnostic": o["top_robust_diagnostic"][:5]}, indent=2, ensure_ascii=False))
