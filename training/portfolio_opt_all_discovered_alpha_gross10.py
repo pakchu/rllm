@@ -84,6 +84,8 @@ class Config(base.CombinedOptConfig):
     weight_step: float = 0.05
     min_test_trades: int = 80
     selection_mdd_cap: float = 20.0
+    train_mdd_cap: float = 20.0
+    oos_mdd_cap: float = 20.0
     candidate_calendar_top_n: int = 250
     candidate_rex_top_n: int = 50
 
@@ -445,13 +447,17 @@ def candidates(by: dict[str, Any], years: dict[str, float], cfg: Config) -> list
 
 
 def score_train_sane(st: dict[str, Any], cfg: Config) -> tuple[Any, ...]:
-    splits = ["train", "test2024", "eval2025", "ytd2026"]
-    ok = all(st[x]["total_return_pct"] > 0 and st[x]["strict_mdd_pct"] <= cfg.selection_mdd_cap for x in splits)
+    oos_splits = ["test2024", "eval2025", "ytd2026"]
+    ok = (
+        st["train"]["total_return_pct"] > 0
+        and st["train"]["strict_mdd_pct"] <= cfg.train_mdd_cap
+        and all(st[x]["total_return_pct"] > 0 and st[x]["strict_mdd_pct"] <= cfg.oos_mdd_cap for x in oos_splits)
+    )
     oos_ok = all(st[x]["cagr_to_strict_mdd"] >= 3.0 for x in ["test2024", "eval2025", "ytd2026"])
     train_ratio = st["train"]["cagr_to_strict_mdd"]
     min_oos = min(st[x]["cagr_to_strict_mdd"] for x in ["test2024", "eval2025", "ytd2026"])
-    max_mdd = max(st[x]["strict_mdd_pct"] for x in splits)
-    ret_sum = sum(st[x]["total_return_pct"] for x in splits)
+    max_mdd = max(st[x]["strict_mdd_pct"] for x in ["train", *oos_splits])
+    ret_sum = sum(st[x]["total_return_pct"] for x in ["train", *oos_splits])
     trades = min(st[x]["trade_entries"] for x in ["test2024", "eval2025", "ytd2026"])
     return (ok and oos_ok, train_ratio, min_oos, ret_sum, -max_mdd, trades)
 
@@ -474,7 +480,7 @@ def run(cfg: Config) -> dict[str, Any]:
         "as_of": datetime.now(timezone.utc).isoformat(),
         "config": asdict(cfg),
         "input": {"rows": len(market), "start": str(market.date.iloc[0]), "end": str(market.date.iloc[-1])},
-        "selection_protocol": "Weights ranked on test2024 only; eval2025/ytd2026 report-only. Gross<=10, nonzero weight>=0.25, step=0.05, cost=6bp/side, strict MDD includes adverse excursion.",
+        "selection_protocol": f"Weights ranked on test2024 only; eval2025/ytd2026 report-only. Train-sane diagnostic uses train strict MDD<={cfg.train_mdd_cap:g}% and each OOS strict MDD<={cfg.oos_mdd_cap:g}%. Gross<=10, nonzero weight>=0.25, step=0.05, cost=6bp/side, strict MDD includes adverse excursion.",
         "contamination_caveat": "This is a broad research portfolio: weight selection is test2024-only, but the alpha universe includes candidates discovered while examining later windows. Treat 2025/2026 as diagnostics, not pristine final eval.",
         "sleeves": base.SLEEVES,
         "extra_sleeves": EXTRA_SLEEVES,
@@ -537,6 +543,8 @@ def main() -> None:
     p.add_argument("--weight-step", type=float, default=.05)
     p.add_argument("--candidate-calendar-top-n", type=int, default=250)
     p.add_argument("--candidate-rex-top-n", type=int, default=50)
+    p.add_argument("--train-mdd-cap", type=float, default=20.0)
+    p.add_argument("--oos-mdd-cap", type=float, default=20.0)
     a = p.parse_args()
     o = run(Config(**vars(a)))
     print(json.dumps({"output": o["config"]["output"], "docs_output": o["config"]["docs_output"], "evaluated": o["evaluated"], "sleeves": len(o["sleeves"]), "extra_sleeves": len(o["extra_sleeves"]), "top_selected_test2024": o["top_selected_test2024"][:5], "top_robust_diagnostic": o["top_robust_diagnostic"][:5]}, indent=2, ensure_ascii=False))
