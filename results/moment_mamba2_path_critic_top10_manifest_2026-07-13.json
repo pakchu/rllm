@@ -1,0 +1,442 @@
+{
+  "created_at": "2026-07-12T19:26:28.821948+00:00",
+  "git_head_before_experiment_commit": "1f728d86297fb406babfdc69ff9f2bc5cf4fff33",
+  "selection_window": [
+    "2023-01-01",
+    "2024-01-01"
+  ],
+  "later_metrics_included": false,
+  "source_manifest": "/home/pakchu/rllm/results/moment_embedding_probe_top10_manifest_2026-07-13.json",
+  "source_manifest_required_provenance": "moment_embedding_probe_top10_manifest",
+  "source_manifest_sha256": "50d2225c8326c8399a8dbca0f5b5fa276058a0f1747a81d4590bf61ec4a754a1",
+  "model": {
+    "id": "AutonLab/MOMENT-1-small",
+    "revision": "411e288267f82cce86296dbe4d6c8bc533cc162f",
+    "loaded_commit_hash": null,
+    "source_urls": {
+      "huggingface": "https://huggingface.co/AutonLab/MOMENT-1-small",
+      "code": "https://github.com/moment-timeseries-foundation-model/moment",
+      "paper": "https://arxiv.org/abs/2402.03885"
+    },
+    "momentfm_version": "0.1.5",
+    "loader": "MOMENTPipeline.from_pretrained(model_kwargs={'task_name':'embedding'}); init(); cuda(); eval()"
+  },
+  "state_space_model": {
+    "library": "transformers",
+    "version": "5.7.0.dev0",
+    "git_version": null,
+    "mamba2_config": {
+      "transformers_version": "5.7.0.dev0",
+      "architectures": null,
+      "output_hidden_states": false,
+      "return_dict": true,
+      "dtype": null,
+      "chunk_size_feed_forward": 0,
+      "is_encoder_decoder": false,
+      "id2label": {
+        "0": "LABEL_0",
+        "1": "LABEL_1"
+      },
+      "label2id": {
+        "LABEL_0": 0,
+        "LABEL_1": 1
+      },
+      "problem_type": null,
+      "num_heads": 4,
+      "head_dim": 16,
+      "vocab_size": 1,
+      "hidden_size": 32,
+      "state_size": 16,
+      "num_hidden_layers": 1,
+      "layer_norm_epsilon": 1e-05,
+      "pad_token_id": 1,
+      "bos_token_id": 0,
+      "eos_token_id": 2,
+      "expand": 2,
+      "conv_kernel": 4,
+      "n_groups": 4,
+      "use_bias": false,
+      "use_conv_bias": true,
+      "hidden_act": "silu",
+      "initializer_range": 0.1,
+      "residual_in_fp32": true,
+      "time_step_rank": 2,
+      "time_step_min": 0.001,
+      "time_step_max": 0.1,
+      "time_step_floor": 0.0001,
+      "time_step_limit": [
+        0.0,
+        Infinity
+      ],
+      "rescale_prenorm_residual": false,
+      "use_cache": false,
+      "rms_norm": true,
+      "chunk_size": 64,
+      "tie_word_embeddings": false,
+      "_name_or_path": "",
+      "model_type": "mamba2",
+      "output_attentions": false
+    },
+    "input": "inputs_embeds: PCA32 anchor sequence length 32 ending at current anchor",
+    "head": "Linear(32, 3 components x 3 quantiles)",
+    "quantiles": [
+      0.25,
+      0.5,
+      0.75
+    ],
+    "components": [
+      "simple_return",
+      "long_mae",
+      "short_mae"
+    ]
+  },
+  "input": {
+    "frequency": "1h completed candles",
+    "context_hours": 512,
+    "embedding_variates": [
+      "log_close",
+      "log_quote_volume",
+      "taker_imbalance",
+      "hourly_range",
+      "funding_rate",
+      "premium_index",
+      "dxy_zscore",
+      "kimchi_premium_zscore",
+      "usdkrw_zscore"
+    ],
+    "anchor_stride_hours": 6,
+    "sequence_lengths": [
+      32
+    ],
+    "raw_summary_dim": 9216,
+    "valid_anchor_count": 5760,
+    "summary_tokens": [
+      "per_channel_mean_over_patches_flattened_in_variate_order",
+      "per_channel_final_patch_flattened_in_variate_order"
+    ],
+    "embedding_shape_expected": "B,C,P,D from MOMENTPipeline.embed(reduction='none')",
+    "causal_context_rule": "for each completed-hour anchor end, use values[:, end-context:end] only"
+  },
+  "representation": {
+    "pca32": {
+      "components": 32,
+      "fit_samples": 4292,
+      "explained_variance_ratio_sum": 0.5520400102920383,
+      "components_sha256": "3339f8ce57784a24cdf9d0c857f53411bd2cc0b5b756c30a05e9f39a19748b11"
+    }
+  },
+  "target": {
+    "components": [
+      "simple_return",
+      "long_mae",
+      "short_mae"
+    ],
+    "entry": "open[p+1]",
+    "exit": "open[p+1+576]",
+    "intratrade_bars": "range(p+1, p+1+576) exclusive exit",
+    "invalid_rows": "NaN when entry/exit/path is non-finite, non-positive entry, out-of-bounds, or exit not before cutoff",
+    "normalization": "divide each component by fit-only std; no mean subtraction; return clip +/-3std; MAE clip 0..3std",
+    "quantiles": [
+      0.25,
+      0.5,
+      0.75
+    ]
+  },
+  "strict_protocol": {
+    "phase1": "extract/embed and infer only signal dates <2024; generate only labels whose exit <2024; train only admissible 2020-2022 rows; policy scores remain NaN through fit prefix",
+    "selection": "2023 metrics only; positive return and >=8 trades; actual executable path hash de-dupe",
+    "phase2": "after manifest write, extract full anchors only for selected objectives, infer, assert frozen 2023 executable hashes unchanged, then compute OOS strict metrics/diagnostics/cost stress"
+  },
+  "utility": {
+    "specs": [
+      "median_lambda0.5",
+      "median_lambda1.0",
+      "conservative_lambda0.5",
+      "conservative_lambda1.0"
+    ],
+    "cost": {
+      "round_trip_unlevered": 0.0012000000000000001,
+      "formula": "2*(cfg.fee_rate+cfg.slippage_rate)",
+      "expected_default": 0.0012
+    }
+  },
+  "top10": [
+    {
+      "stream_id": "pathcritic_mamba2_seq32_vrex1_median_lambda0.5",
+      "sequence_length": 32,
+      "objective": "vrex1",
+      "utility_score": "median_lambda0.5",
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.95,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 9.718763681211694,
+        "cagr_pct": 9.72573406603967,
+        "strict_mdd_pct": 4.7541114300920455,
+        "ratio": 2.045752231316835,
+        "trades": 42,
+        "longs": 42,
+        "shorts": 0,
+        "win_rate": 0.5714285714285714,
+        "long_win_rate": 0.5714285714285714,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3565449465700492
+      },
+      "signal_hash": "fcb99d2a843f53e2"
+    },
+    {
+      "stream_id": "pathcritic_mamba2_seq32_erm_median_lambda0.5",
+      "sequence_length": 32,
+      "objective": "erm",
+      "utility_score": "median_lambda0.5",
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.95,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 9.3875027071334,
+        "cagr_pct": 9.394225484719287,
+        "strict_mdd_pct": 4.7541114300920455,
+        "ratio": 1.9760213076321191,
+        "trades": 41,
+        "longs": 41,
+        "shorts": 0,
+        "win_rate": 0.5609756097560976,
+        "long_win_rate": 0.5609756097560976,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3131066415238157
+      },
+      "signal_hash": "c9229a5ade6b8d05"
+    },
+    {
+      "stream_id": "pathcritic_mamba2_seq32_vrex1_median_lambda0.5",
+      "sequence_length": 32,
+      "objective": "vrex1",
+      "utility_score": "median_lambda0.5",
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.95,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 9.222650449385661,
+        "cagr_pct": 9.229250261164413,
+        "strict_mdd_pct": 4.7541114300920455,
+        "ratio": 1.941319718075208,
+        "trades": 44,
+        "longs": 44,
+        "shorts": 0,
+        "win_rate": 0.5454545454545454,
+        "long_win_rate": 0.5454545454545454,
+        "short_win_rate": 0,
+        "sharpe_like": 1.287201944508051
+      },
+      "signal_hash": "528698041a25157f"
+    },
+    {
+      "stream_id": "pathcritic_mamba2_seq32_erm_median_lambda0.5",
+      "sequence_length": 32,
+      "objective": "erm",
+      "utility_score": "median_lambda0.5",
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.95,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 8.309303121418221,
+        "cagr_pct": 8.315224750647099,
+        "strict_mdd_pct": 4.7541114300920455,
+        "ratio": 1.7490597081957975,
+        "trades": 43,
+        "longs": 43,
+        "shorts": 0,
+        "win_rate": 0.5581395348837209,
+        "long_win_rate": 0.5581395348837209,
+        "short_win_rate": 0,
+        "sharpe_like": 1.1476279197608652
+      },
+      "signal_hash": "4cceeea773364660"
+    },
+    {
+      "stream_id": "pathcritic_mamba2_seq32_groupdro_median_lambda0.5",
+      "sequence_length": 32,
+      "objective": "groupdro",
+      "utility_score": "median_lambda0.5",
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.95,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 7.587732259579871,
+        "cagr_pct": 7.593121835682637,
+        "strict_mdd_pct": 4.7541114300920455,
+        "ratio": 1.597169512607664,
+        "trades": 43,
+        "longs": 43,
+        "shorts": 0,
+        "win_rate": 0.5348837209302325,
+        "long_win_rate": 0.5348837209302325,
+        "short_win_rate": 0,
+        "sharpe_like": 1.0913366457130602
+      },
+      "signal_hash": "6954f104b3584d18"
+    },
+    {
+      "stream_id": "pathcritic_mamba2_seq32_erm_median_lambda0.5",
+      "sequence_length": 32,
+      "objective": "erm",
+      "utility_score": "median_lambda0.5",
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.7,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 7.044556636918919,
+        "cagr_pct": 7.0495478874871065,
+        "strict_mdd_pct": 5.310193652011009,
+        "ratio": 1.3275500573914836,
+        "trades": 60,
+        "longs": 60,
+        "shorts": 0,
+        "win_rate": 0.55,
+        "long_win_rate": 0.55,
+        "short_win_rate": 0,
+        "sharpe_like": 0.7765289218937337
+      },
+      "signal_hash": "d8914a5d97d5727e"
+    },
+    {
+      "stream_id": "pathcritic_mamba2_seq32_vrex1_median_lambda0.5",
+      "sequence_length": 32,
+      "objective": "vrex1",
+      "utility_score": "median_lambda0.5",
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.7,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 3.64522761004733,
+        "cagr_pct": 3.647769335153561,
+        "strict_mdd_pct": 6.828248399521064,
+        "ratio": 0.534217433479634,
+        "trades": 57,
+        "longs": 57,
+        "shorts": 0,
+        "win_rate": 0.543859649122807,
+        "long_win_rate": 0.543859649122807,
+        "short_win_rate": 0,
+        "sharpe_like": 0.44481457616989495
+      },
+      "signal_hash": "c414945ec02b752a"
+    },
+    {
+      "stream_id": "pathcritic_mamba2_seq32_vrex1_median_lambda0.5",
+      "sequence_length": 32,
+      "objective": "vrex1",
+      "utility_score": "median_lambda0.5",
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.95,
+      "minimum_score_history": 200,
+      "side_policy": "both",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 5.644911150188792,
+        "cagr_pct": 5.648884731896242,
+        "strict_mdd_pct": 15.586164171978279,
+        "ratio": 0.3624294386717765,
+        "trades": 66,
+        "longs": 35,
+        "shorts": 31,
+        "win_rate": 0.48484848484848486,
+        "long_win_rate": 0.5428571428571428,
+        "short_win_rate": 0.41935483870967744,
+        "sharpe_like": 0.5314283143049131
+      },
+      "signal_hash": "e37eff0482e13774"
+    },
+    {
+      "stream_id": "pathcritic_mamba2_seq32_vrex1_median_lambda0.5",
+      "sequence_length": 32,
+      "objective": "vrex1",
+      "utility_score": "median_lambda0.5",
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.95,
+      "minimum_score_history": 200,
+      "side_policy": "both",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 5.298876373211447,
+        "cagr_pct": 5.302600309471717,
+        "strict_mdd_pct": 15.586164171978279,
+        "ratio": 0.34021201438420895,
+        "trades": 67,
+        "longs": 36,
+        "shorts": 31,
+        "win_rate": 0.47761194029850745,
+        "long_win_rate": 0.5277777777777778,
+        "short_win_rate": 0.41935483870967744,
+        "sharpe_like": 0.5028992014819603
+      },
+      "signal_hash": "6264f8baa610c43a"
+    },
+    {
+      "stream_id": "pathcritic_mamba2_seq32_groupdro_median_lambda0.5",
+      "sequence_length": 32,
+      "objective": "groupdro",
+      "utility_score": "median_lambda0.5",
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.7,
+      "minimum_score_history": 200,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 2.3142355686231575,
+        "cagr_pct": 2.315838875558951,
+        "strict_mdd_pct": 6.828248399521064,
+        "ratio": 0.3391556282166573,
+        "trades": 56,
+        "longs": 56,
+        "shorts": 0,
+        "win_rate": 0.5357142857142857,
+        "long_win_rate": 0.5357142857142857,
+        "short_win_rate": 0,
+        "sharpe_like": 0.3021438665677257
+      },
+      "signal_hash": "5706a9fa8a1bf65e"
+    }
+  ],
+  "trial_counts": {
+    "sequence_lengths": 1,
+    "objectives": 3,
+    "utility_scores": 4,
+    "score_streams": 12,
+    "rolling_windows": 2,
+    "score_quantiles": 4,
+    "side_policies": 3,
+    "total_policy_specs": 288,
+    "eligible_holdout_candidates": 27,
+    "distinct_top10": 10
+  },
+  "data_sha256": {
+    "market": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+    "funding": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7",
+    "premium": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
+  }
+}
