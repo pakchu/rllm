@@ -1,0 +1,96 @@
+{
+  "config": {
+    "input_jsonl": "data/rex_event_reasoning_policy_sft_20260712.jsonl",
+    "output_jsonl": "data/rex_event_choice_preference_dpo_20260712.jsonl",
+    "summary_output": "results/rex_event_choice_preference_dpo_summary_2026-07-12.json",
+    "min_margin": 0.004,
+    "no_trade_utility": 0.001,
+    "min_trade_net_return": 0.001,
+    "max_trade_mae": 0.035,
+    "include_side_pairs": true,
+    "include_gate_pairs": true,
+    "train_only_output_jsonl": "data/rex_event_choice_preference_dpo_train_20260712.jsonl"
+  },
+  "source_rows": 1444,
+  "preference_rows": 3631,
+  "train_rows": 3194,
+  "counts": {
+    "all": {
+      "LONG>SHORT": 674,
+      "LONG>NO_TRADE": 274,
+      "NO_TRADE>SHORT": 995,
+      "NO_TRADE>LONG": 876,
+      "SHORT>LONG": 580,
+      "SHORT>NO_TRADE": 232
+    },
+    "eval": {
+      "SHORT>LONG": 35,
+      "NO_TRADE>LONG": 49,
+      "SHORT>NO_TRADE": 14,
+      "LONG>SHORT": 33,
+      "LONG>NO_TRADE": 11,
+      "NO_TRADE>SHORT": 53
+    },
+    "eval:gate": {
+      "NO_TRADE>LONG": 49,
+      "SHORT>NO_TRADE": 14,
+      "LONG>NO_TRADE": 11,
+      "NO_TRADE>SHORT": 53
+    },
+    "eval:side": {
+      "SHORT>LONG": 35,
+      "LONG>SHORT": 33
+    },
+    "test": {
+      "LONG>SHORT": 52,
+      "NO_TRADE>LONG": 55,
+      "NO_TRADE>SHORT": 74,
+      "LONG>NO_TRADE": 13,
+      "SHORT>LONG": 33,
+      "SHORT>NO_TRADE": 15
+    },
+    "test:gate": {
+      "NO_TRADE>LONG": 55,
+      "NO_TRADE>SHORT": 74,
+      "LONG>NO_TRADE": 13,
+      "SHORT>NO_TRADE": 15
+    },
+    "test:side": {
+      "LONG>SHORT": 52,
+      "SHORT>LONG": 33
+    },
+    "train": {
+      "LONG>SHORT": 589,
+      "LONG>NO_TRADE": 250,
+      "NO_TRADE>SHORT": 868,
+      "NO_TRADE>LONG": 772,
+      "SHORT>LONG": 512,
+      "SHORT>NO_TRADE": 203
+    },
+    "train:gate": {
+      "LONG>NO_TRADE": 250,
+      "NO_TRADE>SHORT": 868,
+      "NO_TRADE>LONG": 772,
+      "SHORT>NO_TRADE": 203
+    },
+    "train:side": {
+      "LONG>SHORT": 589,
+      "SHORT>LONG": 512
+    }
+  },
+  "margin": {
+    "min": 0.004,
+    "max": 0.24014687837190085,
+    "mean": 0.025239970078126662
+  },
+  "label_contract": {
+    "LONG": "CHOICE_A_LONG",
+    "SHORT": "CHOICE_B_SHORT",
+    "NO_TRADE": "CHOICE_C_SKIP"
+  },
+  "leakage_guard": {
+    "prompt_contains_only_signal_time_symbolic_context": true,
+    "future_path_used_only_to_rank_training_preferences": true,
+    "test_eval_rows_are_written_for_audit_only_not_training": true
+  }
+}
