@@ -124,3 +124,14 @@ Next work:
 1. Decompose train drawdown months for this alpha.
 2. Test regime filters that reduce train MDD without destroying 2024/2025/2026.
 3. Combine with REX side-specific candidate only after standalone robustness is improved.
+
+## Logical flaw audit before pool insertion (2026-07-12)
+
+Verdict: no fatal future-reference flaw found in the feature construction, but promotion stays `candidate` because threshold provenance is not fresh-unseen and train-window risk is below target.
+
+- `funding_rate`: loaded through `preprocessing/binance_aux_features.py::_merge_aux` with `pd.merge_asof(..., direction="backward")`; live usage must use only published funding history, not next scheduled funding estimates.
+- `premium_index` / `premium_index_change`: premium klines use `close_time` as the availability timestamp, then backward-asof merge; `premium_index_change` is `premium.diff(96)`, so it is past-only if the source rows are causal.
+- `trend_96`: computed by `_return_over(close, 95)` using `close.shift(95)`, so it uses current/past bars only.
+- `htf_1d_return_4`: higher-timeframe bars are resampled, shifted by one completed HTF candle, and backward-asof aligned; the daily candle containing the current row is deliberately excluded.
+- Execution caveat: the alpha is non-overlapping event logic (`hold=576`, `stride=12`). Live conversion must enforce the same no-overlap/next-allowed behavior and must not fire repeatedly every 5m while the condition remains true.
+- Statistical caveat: train 2020-2023 is profitable but below target (`CAGR/strict_MDD=1.60`, strict MDD `15.32%`), while 2024/2025/2026H1 pass. Treat it as a long-regime candidate/feature, not live-grade proof.

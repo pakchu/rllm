@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-10",
+  "updated_at": "2026-07-12T00:00:00Z",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1387,6 +1387,90 @@
       }
     },
     {
+      "id": "calendar_oi_funding_features_20260710",
+      "name": "Calendar × OI/funding feature set (2026-07-10)",
+      "status": "candidate",
+      "family": "calendar_oi_funding_context",
+      "scope": "btc_derivatives",
+      "feature_tier": "beta_feature",
+      "description": "Schedule-aware BTC derivatives context features: pre/post funding windows, UTC session/day flags, OI-vs-price, funding/premium/basis stress and carry composites.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "open_interest",
+        "funding_rate",
+        "premium_index"
+      ],
+      "feature_examples": [
+        "cal_pre_funding_1h",
+        "cal_post_funding_1h",
+        "cal_friday_utc",
+        "cf_basis_z",
+        "cf_carry_stress_long",
+        "cf_oi_unwind_long",
+        "cf_funding_flip_long"
+      ],
+      "feature_names": [
+        "cal_*",
+        "cf_px_ret_z_*",
+        "cf_qv_z_*",
+        "cf_taker_mean_z_*",
+        "cf_cvd_ret_z_*",
+        "cf_oi_ret_z_*",
+        "cf_oi_minus_px_z_*",
+        "cf_px_minus_oi_z_*",
+        "cf_funding_z",
+        "cf_premium_z",
+        "cf_basis_z",
+        "cf_carry_stress_long",
+        "cf_carry_stress_short",
+        "cf_oi_unwind_long",
+        "cf_oi_squeeze_short",
+        "cf_funding_flip_long",
+        "cf_funding_flip_short"
+      ],
+      "usable_for": [
+        "calendar-aware gate",
+        "funding-window context",
+        "OI/funding/basis pullback candidates",
+        "portfolio diversifier research"
+      ],
+      "known_failures": [
+        "First qualifying alpha candidate is fragile: train negative, ablations weaker, ytd2026 ratio only 1.26. Do not promote feature family to alpha_feature without rolling validation."
+      ],
+      "evidence": "Scan found one alpha_pool-threshold candidate on 2024/2025, but robustness is insufficient for alpha_feature promotion; keep as beta feature family.",
+      "source_artifacts": [
+        "training/search_calendar_oi_funding_alpha.py",
+        "results/calendar_oi_funding_alpha_scan_2026-07-10.json",
+        "docs/calendar-oi-funding-alpha-scan-2026-07-10.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Calendar flags are deterministic schedule information; numeric thresholds fit train<2024. Candidate selection used OOS scan table, so future use requires predeclared validation.",
+      "tier_rationale": "Beta feature: produced one test/eval alpha-pool candidate, but feature contribution is fragile and not live-grade; not gamma because positive OOS candidate exists.",
+      "next_action": "Run rolling/month-block validation and portfolio marginal contribution tests before promotion.",
+      "generation_recipe": {
+        "script": "training/search_calendar_oi_funding_alpha.py",
+        "functions": [
+          "add_calendar_features",
+          "generate_specs",
+          "eval_rule"
+        ],
+        "inputs": [
+          "training.evaluate_portfolio_llm_selector._prep market/features",
+          "BTC OHLCV/taker",
+          "open_interest",
+          "funding_rate",
+          "premium_index"
+        ],
+        "command": "python -m training.search_calendar_oi_funding_alpha",
+        "outputs": [
+          "results/calendar_oi_funding_alpha_scan_2026-07-10.json",
+          "docs/calendar-oi-funding-alpha-scan-2026-07-10.md"
+        ],
+        "protocol": "train<2024 quantiles, test=2024, eval=2025, ytd2026, 6bp/side, strict MDD, forced split-end close",
+        "notes": "Gamma demotion not appropriate unless repeated future validation shows no useful selector/portfolio contribution."
+      }
+    },
+    {
       "id": "long_range_compression_funding_momentum_features_20260710",
       "name": "Long range/compression/funding/momentum breakout feature set (2026-07-10)",
       "status": "promoted",
@@ -1460,7 +1544,7 @@
           "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz"
         ],
         "command": "PYTHONPATH=. .venv/bin/python training/long_regime_alpha_union_validate.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/long_regime_alpha_union_validate_2026-07-10.json",
-        "protocol": "train<2024 component thresholds; test=2024; eval=2025; ytd2026=2026-01-01..2026-06-02; 0.5x leverage; strict OHLC MDD; CAGR over full calendar window including idle time",
+        "protocol": "train<2024 component thresholds; test=2024; eval=2025; ytd2026=2026-01-01..2026-06-02; 0.5x leverage; 6bp round-trip assumption via fee/slippage params; strict OHLC MDD; CAGR over full calendar window including idle time",
         "notes": "Use as LLM state tokens describing market structure, not as raw numeric dumping only. Keep component identities explicit so RLLM can reason over setup type."
       }
     },
@@ -1662,49 +1746,6 @@
       }
     },
     {
-      "id": "nonrex_sellflow_liquidation_short_features_20260710",
-      "name": "Non-REX sell-flow liquidation short feature set (2026-07-10)",
-      "status": "candidate",
-      "family": "sellflow_liquidation_short_context",
-      "scope": "btc_orderflow_price_action",
-      "feature_tier": "beta_feature",
-      "description": "Potential bear-window feature: BTC 3-day weakness plus strong taker-sell imbalance and elevated 1d quote volume. Interpreted as liquidation/forced-selling continuation, but 2024 behavior is poor.",
-      "data_sources": [
-        "BTCUSDT 5m OHLCV/taker cache"
-      ],
-      "feature_examples": [
-        "htf_3d_return_1 <= train q0.20",
-        "taker_imbalance <= train q0.20",
-        "quote_vol_z_1d >= train q0.70"
-      ],
-      "feature_names": [
-        "htf_3d_return_1",
-        "taker_imbalance",
-        "quote_vol_z_1d"
-      ],
-      "usable_for": [
-        "bear-market liquidation context token",
-        "possible filter for existing short sleeves"
-      ],
-      "known_failures": [
-        "2024 test is negative (-5.85%, ratio -0.58), so do not use standalone.",
-        "Bear combined ratio is below alpha threshold at 2.86 despite strong 2026H1."
-      ],
-      "evidence": "Bear_combined +19.20%, CAGR 13.21%, strict MDD 4.62%, ratio 2.86, 75 trades; ytd2026 +10.47%, ratio 8.50; but 2024 test -5.85%.",
-      "source_artifacts": [
-        "training/nonrex_short_manual_extra_scan.py",
-        "results/nonrex_short_manual_extra_scan_2026-07-10.json"
-      ],
-      "contamination_risk": "high",
-      "leakage_notes": "OOS-selected and fails 2024; use only as a context/filter idea unless a robust regime guard is proven.",
-      "tier_rationale": "Beta feature only: economically plausible but standalone candidate fails robustness.",
-      "next_action": "Try as an exit accelerator or size reducer/increaser inside existing bear shorts rather than a new entry alpha.",
-      "generation_recipe": {
-        "script": "training/nonrex_short_manual_extra_scan.py",
-        "protocol": "manual non-REX idea scan; full-window CAGR; strict short MDD"
-      }
-    },
-    {
       "id": "nonrex_kimchi_unwind_short_features_20260710",
       "name": "Non-REX kimchi unwind short feature set (2026-07-10)",
       "status": "promoted_component",
@@ -1748,6 +1789,49 @@
         "script": "training/nonrex_short_manual_extra_scan.py",
         "command": "PYTHONPATH=. .venv/bin/python training/nonrex_short_manual_extra_scan.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/nonrex_short_manual_extra_scan_2026-07-10.json",
         "protocol": "manual non-REX idea scan; full-window CAGR; strict short MDD; conservative SL-before-TP"
+      }
+    },
+    {
+      "id": "nonrex_sellflow_liquidation_short_features_20260710",
+      "name": "Non-REX sell-flow liquidation short feature set (2026-07-10)",
+      "status": "candidate",
+      "family": "sellflow_liquidation_short_context",
+      "scope": "btc_orderflow_price_action",
+      "feature_tier": "beta_feature",
+      "description": "Potential bear-window feature: BTC 3-day weakness plus strong taker-sell imbalance and elevated 1d quote volume. Interpreted as liquidation/forced-selling continuation, but 2024 behavior is poor.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache"
+      ],
+      "feature_examples": [
+        "htf_3d_return_1 <= train q0.20",
+        "taker_imbalance <= train q0.20",
+        "quote_vol_z_1d >= train q0.70"
+      ],
+      "feature_names": [
+        "htf_3d_return_1",
+        "taker_imbalance",
+        "quote_vol_z_1d"
+      ],
+      "usable_for": [
+        "bear-market liquidation context token",
+        "possible filter for existing short sleeves"
+      ],
+      "known_failures": [
+        "2024 test is negative (-5.85%, ratio -0.58), so do not use standalone.",
+        "Bear combined ratio is below alpha threshold at 2.86 despite strong 2026H1."
+      ],
+      "evidence": "Bear_combined +19.20%, CAGR 13.21%, strict MDD 4.62%, ratio 2.86, 75 trades; ytd2026 +10.47%, ratio 8.50; but 2024 test -5.85%.",
+      "source_artifacts": [
+        "training/nonrex_short_manual_extra_scan.py",
+        "results/nonrex_short_manual_extra_scan_2026-07-10.json"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "OOS-selected and fails 2024; use only as a context/filter idea unless a robust regime guard is proven.",
+      "tier_rationale": "Beta feature only: economically plausible but standalone candidate fails robustness.",
+      "next_action": "Try as an exit accelerator or size reducer/increaser inside existing bear shorts rather than a new entry alpha.",
+      "generation_recipe": {
+        "script": "training/nonrex_short_manual_extra_scan.py",
+        "protocol": "manual non-REX idea scan; full-window CAGR; strict short MDD"
       }
     },
     {
@@ -1808,6 +1892,111 @@
         "command": "PYTHONPATH=. python training/long_component_tp_union_scan.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --output results/long_component_tp_union_scan_2026-07-10_rerun.json",
         "protocol": "fixed component thresholds; test2024/eval2025/ytd2026/combined windows; 0.5x leverage; fee=4bp and slippage=1bp per side; full-window CAGR; strict OHLC MDD",
         "notes": "Use as explicit setup tokens for LLM/RLLM rather than raw numeric dumping: RANGE_BREAKOUT, LOW_FUNDING_TREND, PREMIUM_DISCOUNT_MOMENTUM, COMPRESSION_BREAKOUT."
+      }
+    },
+    {
+      "id": "state_transition_oi_flow_features_20260712",
+      "name": "OI/flow state-transition features (2026-07-12)",
+      "status": "candidate",
+      "family": "oi_taker_state_transition",
+      "scope": "btc_derivatives_orderflow",
+      "feature_tier": "beta_feature",
+      "description": "Past-only OI impulse, taker-flow acceleration, directional efficiency, volatility release and wick/flow divergence features tested as standalone BTC long entries under fixed bullish regimes.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker",
+        "BTCUSDT open interest"
+      ],
+      "feature_names": [
+        "oi_z_12",
+        "oi_price_gap",
+        "imb_12",
+        "imb_accel",
+        "flow_price_div",
+        "rv_12_144",
+        "rv_24_288",
+        "compression_144",
+        "eff_24",
+        "eff_72",
+        "eff_144"
+      ],
+      "usable_for": [
+        "context/filter research for existing sleeves",
+        "event-time state token research"
+      ],
+      "known_failures": [
+        "6,950 eligible variants produced zero candidates with CAGR/strict MDD >=2.5 on both test2024 and eval2025",
+        "top 2024 OI-squeeze variants collapsed in eval2025",
+        "best test/eval-min candidate failed ytd2026 with ratio -1.93"
+      ],
+      "evidence": "Standalone scan with train-only thresholds, test-only ranking, 6bp/side and strict MDD found no alpha-pool qualifier. Best test/eval minimum ratio was 1.78 on eval and failed 2026.",
+      "source_artifacts": [
+        "training/search_state_transition_alpha.py",
+        "results/state_transition_regime_alpha_scan_top400_2026-07-12.json",
+        "docs/state-transition-alpha-scan-2026-07-12.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Formulas/regimes were predeclared; thresholds fit on train; top candidates selected on 2024 only. 2025 and 2026 are now consumed for this family.",
+      "tier_rationale": "Beta, not gamma: several OI-flow confirmation variants remained positive in eval2025, so noise-only evidence is insufficient; not alpha because no candidate cleared the 2.5 test+eval rule.",
+      "next_action": "Do not retune thresholds. Revisit only with a materially different mechanism such as event-time normalization or independent path-dependent exit.",
+      "generation_recipe": {
+        "script": "training/search_state_transition_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_state_transition_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --output results/state_transition_regime_alpha_scan_top400_2026-07-12.json",
+        "protocol": "train<2024 thresholds; test2024 selection; sealed eval2025/ytd2026; 6bp/side; strict MDD; full-window CAGR"
+      }
+    },
+    {
+      "id": "funding_premium_trend_squeeze_long_20260712",
+      "name": "Funding/premium trend squeeze alpha features (2026-07-12)",
+      "status": "candidate",
+      "family": "derivatives_basis_trend_squeeze",
+      "scope": "btc_derivatives_price_action",
+      "feature_tier": "alpha_feature",
+      "description": "Minimal feature subset behind the long_minimal_funding_premium alpha: combine derivatives crowding/compression with already-confirmed price momentum rather than raw numeric-only prompts.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV cache",
+        "Binance UM funding_rate history",
+        "Binance UM premium_index klines"
+      ],
+      "feature_examples": [
+        "LOW_FUNDING_UPTREND: funding_rate <= -0.0000167 and trend_96 >= 0.0074852182",
+        "PREMIUM_COMPRESSION_DAILY_MOMENTUM: premium_index_change <= -0.00023471 and htf_1d_return_4 >= 0.0940403009"
+      ],
+      "feature_names": [
+        "funding_rate",
+        "trend_96",
+        "premium_index_change",
+        "htf_1d_return_4"
+      ],
+      "usable_for": [
+        "long-regime alpha entries",
+        "RLLM setup-token features",
+        "portfolio sleeve selectors",
+        "rule gate context"
+      ],
+      "known_failures": [
+        "Standalone train 2020-2023 ratio is only 1.60 with strict MDD 15.32%, so this is not independently live-grade.",
+        "Threshold provenance is not fully clean unseen in this turn; keep contamination_risk medium until original scan provenance is re-audited."
+      ],
+      "evidence": "As a fixed long candidate, the feature pair cleared ratio >3 on test 2024, eval 2025, ytd 2026, and combined 2024-2026H1, but failed target ratio on train 2020-2023.",
+      "source_artifacts": [
+        "training/portfolio_opt_new_alpha_pool.py",
+        "results/new_alpha_pool_train_extended_2026-07-12.json",
+        "results/long_minimal_funding_premium_exit_sweep_fast_2026-07-12.json",
+        "docs/alpha-search-long-minimal-funding-premium-2026-07-12.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Causal construction depends on preprocessing/binance_aux_features.py backward-asof joins and preprocessing/market_features.py past-only returns/completed-HTF joins. Live code must reject stale/unavailable funding/premium rows rather than silently relying on default zeros or future estimate fields.",
+      "tier_rationale": "Alpha feature: the features directly define a candidate trading rule and are suitable as discrete RLLM setup tokens.",
+      "next_action": "Add availability/staleness assertions in live feature builder and evaluate month-block/rolling stability before promotion.",
+      "generation_recipe": {
+        "script": "training/portfolio_opt_new_alpha_pool.py",
+        "inputs": [
+          "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+          "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+          "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz"
+        ],
+        "protocol": "Past-only feature construction; full-window CAGR; strict OHLC MDD; non-overlapping long events with hold 576 and stride 12.",
+        "notes": "Prefer text tokens LOW_FUNDING_UPTREND and PREMIUM_COMPRESSION_DAILY_MOMENTUM for LLM/RLLM rather than unstructured floats."
       }
     }
   ]
