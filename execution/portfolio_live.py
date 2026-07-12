@@ -730,6 +730,15 @@ def _portfolio_uses_feature(portfolio: dict[str, Any], feature: str) -> bool:
         gates = cfg.get("signal", cfg).get("gates", [])
         if any(str(gate.get("feature", "")) == feature for gate in gates if isinstance(gate, dict)):
             return True
+        clauses = cfg.get("signal", cfg).get("gate_clauses", [])
+        if any(
+            str(gate.get("feature", "")) == feature
+            for clause in clauses
+            if isinstance(clause, list)
+            for gate in clause
+            if isinstance(gate, dict)
+        ):
+            return True
         dynamic = cfg.get("dynamic_exit", {})
         if isinstance(dynamic, dict) and any(
             str(gate.get("feature", "")) == feature
@@ -962,6 +971,23 @@ def _gate_pass(row: pd.Series, gates: list[dict[str, Any]]) -> tuple[bool, list[
         reasons.append(f"{feature}={value:.6g}{op}{threshold:.6g}:{'pass' if passed else 'fail'}")
         ok &= bool(passed)
     return ok, reasons
+
+
+def _gate_clauses_pass(
+    row: pd.Series,
+    clauses: list[list[dict[str, Any]]],
+) -> tuple[bool, list[str]]:
+    """Evaluate an OR of AND gate clauses without weakening source checks."""
+
+    clause_results: list[bool] = []
+    reasons: list[str] = []
+    for index, gates in enumerate(clauses):
+        passed, clause_reasons = _gate_pass(row, gates)
+        clause_results.append(passed)
+        reasons.extend(f"clause[{index}]:{reason}" for reason in clause_reasons)
+    passed = bool(clause_results and any(clause_results))
+    reasons.append(f"gate_clauses:any:{'pass' if passed else 'fail'}")
+    return passed, reasons
 
 
 def _interval_slot(ts: pd.Timestamp, stride_bars: int, interval_minutes: int = 5) -> bool:
@@ -1288,14 +1314,43 @@ def _score_sleeves(
             if "base_candidate" in cfg and "gates" not in cfg and "signal" not in cfg:
                 cfg = _load_json(str(cfg["base_candidate"]))
             if "signal" in cfg:
-                gates = cfg["signal"]["gates"]
+                signal_cfg = cfg["signal"]
+                gates = signal_cfg.get("gates", [])
+                gate_clauses = signal_cfg.get("gate_clauses")
                 hold = int(cfg["signal"].get("hold_bars_5m", cfg["signal"].get("hold_bars", 0)))
                 stride = int(cfg["signal"].get("stride_bars_5m", cfg["signal"].get("stride_bars", 1)))
             else:
-                gates = cfg["gates"]
+                gates = cfg.get("gates", [])
+                gate_clauses = cfg.get("gate_clauses")
                 hold = int(cfg.get("hold_bars", cfg.get("hold_bars_5m", 0)))
                 stride = int(cfg.get("stride_bars", cfg.get("stride_bars_5m", 1)))
-            gate_ok, reasons = _gate_pass(row, gates)
+            if gate_clauses is not None:
+                gate_ok, reasons = _gate_clauses_pass(row, gate_clauses)
+            else:
+                gate_ok, reasons = _gate_pass(row, gates)
+            base_policy = str(cfg.get("base_policy", "")).lower()
+            if base_policy == "rex":
+                record = build_rex_live_policy_record(
+                    enriched,
+                    features,
+                    policy_cfg=RexLivePolicyConfig(),
+                    execution_cfg=exec_cfg,
+                    scorer_asof=asof,
+                    selector_cfg=rex_selector_cfg,
+                )
+                candidate_side = str(record.get("candidate_side", "")).upper()
+                policy_ok = bool(record.get("prediction") == "TRADE" and candidate_side in {"LONG", "SHORT"})
+                side_filter_ok = configured_side in {"AUTO", "BOTH"} or candidate_side == configured_side
+                if policy_ok and configured_side in {"AUTO", "BOTH"}:
+                    side = candidate_side
+                gate_ok &= policy_ok and side_filter_ok
+                reasons.extend(
+                    [
+                        str(record.get("reason", "")),
+                        f"rex_candidate_side={candidate_side or 'NONE'}",
+                        f"configured_side={configured_side}:{'pass' if side_filter_ok else 'fail'}",
+                    ]
+                )
             stride_ok = _interval_slot(ts, stride, exec_cfg.interval_minutes)
             active = bool(gate_ok and stride_ok)
             reasons.append(f"stride={stride}:{'pass' if stride_ok else 'fail'}")

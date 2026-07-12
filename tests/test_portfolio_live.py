@@ -22,6 +22,7 @@ from execution.portfolio_live import (
     _reconcile_exchange_flat_sleeves,
     _recover_exchange_positions_into_state,
     _summarize_exchange_trade_fills,
+    _gate_clauses_pass,
     _gate_pass,
     _freshness_requirements_for_decision,
     _portfolio_uses_feature,
@@ -63,6 +64,24 @@ class FakeClient:
 
 
 class PortfolioLiveSafetyTests(unittest.TestCase):
+    def test_gate_clauses_are_or_of_and_groups(self):
+        row = pd.Series({"a": 2.0, "b": 0.0, "c": 3.0, "d": 4.0})
+        clauses = [
+            [{"feature": "a", "op": ">=", "threshold": 1.0}, {"feature": "b", "op": ">=", "threshold": 1.0}],
+            [{"feature": "c", "op": ">=", "threshold": 2.0}, {"feature": "d", "op": "<=", "threshold": 5.0}],
+        ]
+        passed, reasons = _gate_clauses_pass(row, clauses)
+        self.assertTrue(passed)
+        self.assertEqual(reasons[-1], "gate_clauses:any:pass")
+
+    def test_gross385_portfolio_discovers_clause_features(self):
+        import json
+
+        with open("configs/live/portfolio_gross385_trainmdd40_2026-07-12.json") as handle:
+            portfolio = json.load(handle)
+        self.assertTrue(_portfolio_uses_feature(portfolio, "funding_rate"))
+        self.assertTrue(_portfolio_uses_feature(portfolio, "premium_index_change"))
+
     def test_freshness_wait_excludes_fx_and_uses_no_oi_boundary_gate(self):
         requirements = _freshness_requirements_for_decision(
             symbol="BTCUSDT",
