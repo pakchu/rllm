@@ -1,0 +1,203 @@
+{
+  "config": {
+    "input_jsonl": "data/rex_event_reasoning_policy_sft_20260712.jsonl",
+    "market_csv": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+    "output": "results/rex_event_token_nb_policy_eval_2026-07-12.json",
+    "hold_bars": 144,
+    "entry_delay_bars": 1,
+    "leverage": 0.5,
+    "fee_rate": 0.0004,
+    "slippage_rate": 0.0001,
+    "alpha": 1.0
+  },
+  "model_info": {
+    "class_counts": {
+      "LONG": 367,
+      "NO_TRADE": 589,
+      "SHORT": 303
+    },
+    "vocab_size": 95,
+    "token_totals": {
+      "LONG": 9175,
+      "SHORT": 7575,
+      "NO_TRADE": 14725
+    }
+  },
+  "splits": {
+    "train": {
+      "rows": 1259,
+      "accuracy": 0.44241461477362987,
+      "target_counts": {
+        "LONG": 367,
+        "NO_TRADE": 589,
+        "SHORT": 303
+      },
+      "prediction_counts": {
+        "LONG": 258,
+        "NO_TRADE": 604,
+        "SHORT": 397
+      },
+      "confusion": {
+        "target=LONG|pred=LONG": 108,
+        "target=NO_TRADE|pred=NO_TRADE": 318,
+        "target=SHORT|pred=NO_TRADE": 121,
+        "target=LONG|pred=NO_TRADE": 165,
+        "target=NO_TRADE|pred=LONG": 99,
+        "target=SHORT|pred=LONG": 51,
+        "target=SHORT|pred=SHORT": 131,
+        "target=NO_TRADE|pred=SHORT": 172,
+        "target=LONG|pred=SHORT": 94
+      },
+      "backtest": {
+        "sim": {
+          "ret_pct": 42.83522456824749,
+          "cagr_pct": 7.652360437734873,
+          "strict_mdd_pct": 27.402322150203073,
+          "cagr_to_strict_mdd": 0.2792595604047434,
+          "trade_entries": 330,
+          "side_counts": {
+            "LONG": 152,
+            "SHORT": 178
+          },
+          "skipped_missing_bars": 0,
+          "hold_bars": 144,
+          "entry_delay_bars": 1,
+          "return_application": "candidate_score_selected_actual_ohlc_strict_mdd"
+        },
+        "trade_stats": {
+          "n_trades": 330,
+          "mean_trade_ret_pct": 0.11901901093185815,
+          "std_trade_ret_pct": 1.4797693835874675,
+          "t_stat_like": 1.4610977409948847,
+          "p_value_mean_ret_approx": 0.1439886200901077,
+          "ci95_mean_trade_ret_pct": [
+            -0.04063989133131268,
+            0.278677913195029
+          ],
+          "effect_size_d": 0.08043078350716741,
+          "n_required_for_80pct_power_alpha5pct": 1214,
+          "n_gap_to_power_rule": 884
+        },
+        "predicted_trade_rows": 655
+      }
+    },
+    "test": {
+      "rows": 104,
+      "accuracy": 0.47115384615384615,
+      "target_counts": {
+        "NO_TRADE": 51,
+        "LONG": 31,
+        "SHORT": 22
+      },
+      "prediction_counts": {
+        "NO_TRADE": 56,
+        "LONG": 12,
+        "SHORT": 36
+      },
+      "confusion": {
+        "target=NO_TRADE|pred=NO_TRADE": 31,
+        "target=LONG|pred=NO_TRADE": 15,
+        "target=LONG|pred=LONG": 6,
+        "target=SHORT|pred=NO_TRADE": 10,
+        "target=NO_TRADE|pred=SHORT": 14,
+        "target=SHORT|pred=SHORT": 12,
+        "target=LONG|pred=SHORT": 10,
+        "target=NO_TRADE|pred=LONG": 6
+      },
+      "backtest": {
+        "sim": {
+          "ret_pct": 7.495602519284406,
+          "cagr_pct": 8.800486878952984,
+          "strict_mdd_pct": 6.962499486851659,
+          "cagr_to_strict_mdd": 1.2639838459697232,
+          "trade_entries": 29,
+          "side_counts": {
+            "LONG": 9,
+            "SHORT": 20
+          },
+          "skipped_missing_bars": 0,
+          "hold_bars": 144,
+          "entry_delay_bars": 1,
+          "return_application": "candidate_score_selected_actual_ohlc_strict_mdd"
+        },
+        "trade_stats": {
+          "n_trades": 29,
+          "mean_trade_ret_pct": 0.2556699328722784,
+          "std_trade_ret_pct": 1.1283900644534095,
+          "t_stat_like": 1.2201673588939002,
+          "p_value_mean_ret_approx": 0.22240143790583078,
+          "ci95_mean_trade_ret_pct": [
+            -0.1550221453717521,
+            0.666362011116309
+          ],
+          "effect_size_d": 0.22657939034240304,
+          "n_required_for_80pct_power_alpha5pct": 153,
+          "n_gap_to_power_rule": 124
+        },
+        "predicted_trade_rows": 48
+      }
+    },
+    "eval": {
+      "rows": 81,
+      "accuracy": 0.38271604938271603,
+      "target_counts": {
+        "SHORT": 21,
+        "LONG": 21,
+        "NO_TRADE": 39
+      },
+      "prediction_counts": {
+        "SHORT": 43,
+        "NO_TRADE": 28,
+        "LONG": 10
+      },
+      "confusion": {
+        "target=SHORT|pred=SHORT": 14,
+        "target=LONG|pred=SHORT": 11,
+        "target=NO_TRADE|pred=NO_TRADE": 15,
+        "target=NO_TRADE|pred=SHORT": 18,
+        "target=LONG|pred=NO_TRADE": 8,
+        "target=NO_TRADE|pred=LONG": 6,
+        "target=SHORT|pred=NO_TRADE": 5,
+        "target=SHORT|pred=LONG": 2,
+        "target=LONG|pred=LONG": 2
+      },
+      "backtest": {
+        "sim": {
+          "ret_pct": -0.1214909230859651,
+          "cagr_pct": -0.4567017360054826,
+          "strict_mdd_pct": 5.207142139043008,
+          "cagr_to_strict_mdd": -0.08770679267253827,
+          "trade_entries": 22,
+          "side_counts": {
+            "LONG": 7,
+            "SHORT": 15
+          },
+          "skipped_missing_bars": 0,
+          "hold_bars": 144,
+          "entry_delay_bars": 1,
+          "return_application": "candidate_score_selected_actual_ohlc_strict_mdd"
+        },
+        "trade_stats": {
+          "n_trades": 22,
+          "mean_trade_ret_pct": -0.0008060198669839809,
+          "std_trade_ret_pct": 0.9917840209602726,
+          "t_stat_like": -0.0038118866677968833,
+          "p_value_mean_ret_approx": 0.996958561845829,
+          "ci95_mean_trade_ret_pct": [
+            -0.4152461847949887,
+            0.4136341450610207
+          ],
+          "effect_size_d": -0.0008126969682406964,
+          "n_required_for_80pct_power_alpha5pct": 11883665,
+          "n_gap_to_power_rule": 11883643
+        },
+        "predicted_trade_rows": 53
+      }
+    }
+  },
+  "leakage_guard": {
+    "trained_on_train_rows_only": true,
+    "test_eval_targets_used_for_metrics_only": true,
+    "predictions_use_state_tokens_only": true
+  }
+}
