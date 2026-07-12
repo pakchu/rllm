@@ -14,7 +14,9 @@ regime behavior that the global ranking had hidden: a long specialist worked in
 - 2023 ranks long and short specialists independently.
 - Manifest slots: five `side=long`, five `side=short`.
 - Pre-future manifest hash:
-  `9a11fa131ccdb73f55f16a35fc259ecc93180a9bb17adbc4c555d8e40a5dcf5a`
+  `b286354490bfb2f8e815b4c55d3cc2de5c7398224fd4d373c1128cfb51b8c456`
+- Pre-2024 candidates and OHLC are physically bounded before the manifest;
+  full OHLC and future candidate files are opened afterward.
 - 0.5x leverage and 6 bp per side total cost.
 - Full-window CAGR and corrected intraposition high-water strict MDD.
 

@@ -14,7 +14,9 @@ but missed `CAGR / strict MDD >= 3` in both 2024 and 2025.
   medium-trend, or 30-day range state.
 - Pair selection: 2023 full/H1/H2 only; 150 pairs tested.
 - Pre-future manifest hash:
-  `448327047a4de85a9a392189c00cac0103981d5ab1eb3465e72c2e70f3328e9f`
+  `714a6c75f7b89fbd9d4812f3354afd756d5eb65c3f133bfc23e485cef294f372`
+- Pre-2024 OHLC is physically bounded before pair selection; the full market
+  and future candidate files are opened only after the routed manifest write.
 - Costs: 0.5x and 6 bp per side.
 - MDD: corrected favorable-to-adverse intraposition high-water path.
 

@@ -24,6 +24,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from training.economic_action_backtest import EconomicActionBacktestConfig, strict_backtest_actions
+from training.search_positioning_hgb_path_alpha import _read_before
 from training.strict_bar_backtest import load_market_bars
 
 
@@ -70,6 +71,20 @@ MODEL_SPECS: tuple[dict[str, Any], ...] = (
 
 def read_jsonl(path: str) -> list[dict[str, Any]]:
     return [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
+
+
+def load_market_before(path: str, cutoff: str) -> pd.DataFrame:
+    market = _read_before(path, "date", cutoff)
+    required = {"date", "open", "high", "low", "close"}
+    missing = required.difference(market.columns)
+    if missing:
+        raise ValueError(f"market csv lacks required columns: {sorted(missing)}")
+    market = market[["date", "open", "high", "low", "close"]].copy()
+    market["date"] = pd.to_datetime(market["date"], errors="raise")
+    market = market.sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
+    for column in ("open", "high", "low", "close"):
+        market[column] = market[column].astype(float)
+    return market
 
 
 def feature_names(rows: list[dict[str, Any]]) -> list[str]:
@@ -282,14 +297,13 @@ def select_manifest_candidates(
 
 
 def run(cfg: RexPre2024MlConfig) -> dict[str, Any]:
-    market = load_market_bars(cfg.market_csv)
-
-    # Physical phase 1: only the pre-2024 JSONL is opened here.
+    # Physical phase 1: both candidates and OHLC are limited to pre-2024 rows.
+    phase_market = load_market_before(cfg.market_csv, str(SELECT_END))
     pre_rows = read_jsonl(cfg.train_jsonl)
     pre_dates = np.asarray([np.datetime64(str(row["date"])) for row in pre_rows])
     fit_mask = pre_dates < np.datetime64(FIT_END)
     select_mask = (pre_dates >= np.datetime64(FIT_END)) & (pre_dates < np.datetime64(SELECT_END))
-    fit_rows = [row for row, keep in zip(pre_rows, fit_mask) if keep and completed_before(row, market["date"], FIT_END, cfg.hold_bars)]
+    fit_rows = [row for row, keep in zip(pre_rows, fit_mask) if keep and completed_before(row, phase_market["date"], FIT_END, cfg.hold_bars)]
     select_rows = [row for row, keep in zip(pre_rows, select_mask) if keep]
     names = feature_names(fit_rows)
     medians = fit_medians(fit_rows, names)
@@ -330,9 +344,9 @@ def run(cfg: RexPre2024MlConfig) -> dict[str, Any]:
                         "side": side,
                         "family": family,
                     }
-                    full = score_window(select_rows, scores, policy, market, cfg, WINDOWS["select2023"])
-                    h1 = score_window(select_rows, scores, policy, market, cfg, WINDOWS["select2023_h1"])
-                    h2 = score_window(select_rows, scores, policy, market, cfg, WINDOWS["select2023_h2"])
+                    full = score_window(select_rows, scores, policy, phase_market, cfg, WINDOWS["select2023"])
+                    h1 = score_window(select_rows, scores, policy, phase_market, cfg, WINDOWS["select2023_h1"])
+                    h2 = score_window(select_rows, scores, policy, phase_market, cfg, WINDOWS["select2023_h2"])
                     positive_halves = int(h1["cagr_pct"] > 0.0) + int(h2["cagr_pct"] > 0.0)
                     candidate = {
                         **policy,
@@ -371,6 +385,7 @@ def run(cfg: RexPre2024MlConfig) -> dict[str, Any]:
         "fit_window": ["2021-01-01", "2023-01-01"],
         "selection_window": ["2023-01-01", "2024-01-01"],
         "selection_strategy": str(cfg.selection_strategy),
+        "phase_market_end": str(phase_market["date"].iloc[-1]),
         "feature_hash": phase1_hash,
         "feature_names": names,
         "policies": [
@@ -388,7 +403,11 @@ def run(cfg: RexPre2024MlConfig) -> dict[str, Any]:
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False))
 
-    # Physical phase 2: future files are opened only after the manifest exists.
+    # Physical phase 2: full OHLC and future candidates open after the manifest.
+    market = load_market_bars(cfg.market_csv)
+    prefix = market.iloc[: len(phase_market)].reset_index(drop=True)
+    if not prefix.equals(phase_market.reset_index(drop=True)):
+        raise RuntimeError("pre-2024 OHLC prefix changed after full load")
     future_sets = {
         "test2024": read_jsonl(cfg.test_jsonl),
         "eval2025_2026": read_jsonl(cfg.eval_jsonl),
@@ -426,6 +445,7 @@ def run(cfg: RexPre2024MlConfig) -> dict[str, Any]:
             "model_fit": "completed paths strictly before 2023-01-01",
             "selection": "2023 full/H1/H2 Top-10",
             "manifest_written_before_future": True,
+            "full_market_loaded_after_manifest": True,
             "future_windows": {name: [str(a), str(b)] for name, (a, b) in WINDOWS.items() if name in {"test2024", "eval2025", "ytd2026"}},
             "cagr": "full configured calendar window including idle time",
             "strict_mdd": "worst-order favorable-to-adverse OHLC high-water path drawdown",

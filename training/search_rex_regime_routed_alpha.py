@@ -23,6 +23,7 @@ from training.search_rex_pre2024_ml_alpha import (
     feature_matrix,
     feature_names,
     fit_medians,
+    load_market_before,
     manifest_hash,
     read_jsonl,
     select_highest_per_signal,
@@ -203,13 +204,13 @@ def run(cfg: RexRegimeRoutedConfig) -> dict[str, Any]:
     if not long_policies or not short_policies:
         raise ValueError("specialist manifest lacks long or short policies")
 
-    market = load_market_bars(cfg.market_csv)
+    phase_market = load_market_before(cfg.market_csv, str(SELECT_END))
     pre_rows = read_jsonl(cfg.train_jsonl)
     pre_dates = np.asarray([np.datetime64(str(row["date"])) for row in pre_rows])
     fit_rows = [
         row
         for row, date in zip(pre_rows, pre_dates)
-        if date < np.datetime64(FIT_END) and completed_before(row, market["date"], FIT_END, cfg.hold_bars)
+        if date < np.datetime64(FIT_END) and completed_before(row, phase_market["date"], FIT_END, cfg.hold_bars)
     ]
     select_rows = [row for row, date in zip(pre_rows, pre_dates) if np.datetime64(FIT_END) <= date < np.datetime64(SELECT_END)]
     names = feature_names(fit_rows)
@@ -239,9 +240,9 @@ def run(cfg: RexRegimeRoutedConfig) -> dict[str, Any]:
                     "short_policy": short_policy,
                     "router": dict(router),
                 }
-                full = score_window(select_rows, select_scores, pair, market, cfg, WINDOWS["select2023"])
-                h1 = score_window(select_rows, select_scores, pair, market, cfg, WINDOWS["select2023_h1"])
-                h2 = score_window(select_rows, select_scores, pair, market, cfg, WINDOWS["select2023_h2"])
+                full = score_window(select_rows, select_scores, pair, phase_market, cfg, WINDOWS["select2023"])
+                h1 = score_window(select_rows, select_scores, pair, phase_market, cfg, WINDOWS["select2023_h1"])
+                h2 = score_window(select_rows, select_scores, pair, phase_market, cfg, WINDOWS["select2023_h2"])
                 pair["select2023"] = full
                 pair["select2023_halves"] = [h1, h2]
                 pair["selection_score"] = {
@@ -269,6 +270,7 @@ def run(cfg: RexRegimeRoutedConfig) -> dict[str, Any]:
         "fit_window": ["2021-01-01", "2023-01-01"],
         "selection_window": ["2023-01-01", "2024-01-01"],
         "selection": "Top-10 long/short specialist pairs with fixed zero-sign routers",
+        "phase_market_end": str(phase_market["date"].iloc[-1]),
         "pairs": [
             {key: row[key] for key in ("long_policy", "short_policy", "router")}
             for row in selected
@@ -280,6 +282,10 @@ def run(cfg: RexRegimeRoutedConfig) -> dict[str, Any]:
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False))
 
+    market = load_market_bars(cfg.market_csv)
+    prefix = market.iloc[: len(phase_market)].reset_index(drop=True)
+    if not prefix.equals(phase_market.reset_index(drop=True)):
+        raise RuntimeError("pre-2024 OHLC prefix changed after full load")
     future_sets = {"test2024": read_jsonl(cfg.test_jsonl), "eval2025_2026": read_jsonl(cfg.eval_jsonl)}
     future_scores: dict[str, dict[str, np.ndarray]] = {}
     for split, rows in future_sets.items():
@@ -318,6 +324,7 @@ def run(cfg: RexRegimeRoutedConfig) -> dict[str, Any]:
             "specialists": "frozen side-balanced pre-2024 manifest",
             "routers": "fixed zero-sign rules over signal-time slow price state",
             "manifest_written_before_future": True,
+            "full_market_loaded_after_manifest": True,
             "cagr": "full configured calendar window including idle time",
             "strict_mdd": "worst-order favorable-to-adverse OHLC high-water path drawdown",
         },

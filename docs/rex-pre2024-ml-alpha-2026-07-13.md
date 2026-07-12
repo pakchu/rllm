@@ -17,7 +17,9 @@ candidate was promoted.
 - Selection: 2023 full/H1/H2, then physical Top-10 manifest write.
 - Future files: opened only after the manifest write.
 - Manifest hash:
-  `23c75d730c7276bf6a4a65074aa05584cb8cb7a604c2a4439dc69ad5eea2cf41`
+  `b395d02f86882e8aefd5a497ea0a922f7905b234c35726a7281aa7745955bd01`
+- Both the candidate JSONL and OHLC reader are physically cut at 2024 before
+  the manifest; the full market file is opened only after the write.
 - Costs: 0.5x, 5 bp fee plus 1 bp slippage per side.
 - CAGR: complete configured calendar window including idle time.
 - strict MDD: worst-order favorable-to-adverse OHLC high-water drawdown,
