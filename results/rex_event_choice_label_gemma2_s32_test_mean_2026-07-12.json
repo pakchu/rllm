@@ -1,0 +1,1220 @@
+{
+  "config": {
+    "eval_jsonl": "data/rex_event_choice_label_sft_test_20260712.jsonl",
+    "output_json": "results/rex_event_choice_label_gemma2_s32_test_mean_2026-07-12.json",
+    "market_csv": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+    "model_name": "gemma2-2b-it",
+    "adapter_dir": "checkpoints/rex_event_choice_label_gemma2_2b_lora_s32_20260712",
+    "max_samples": 0,
+    "sample_mode": "sequential",
+    "batch_size": 8,
+    "score_normalization": "mean",
+    "hold_bars": 144,
+    "entry_delay_bars": 1,
+    "leverage": 0.5,
+    "fee_rate": 0.0004,
+    "slippage_rate": 0.0001
+  },
+  "model_name_resolved": "google/gemma-2-2b-it",
+  "metrics": {
+    "num_samples": 104,
+    "accuracy": 0.20192307692307693,
+    "target_counts": {
+      "CHOICE_C_SKIP": 51,
+      "CHOICE_A_LONG": 31,
+      "CHOICE_B_SHORT": 22
+    },
+    "prediction_counts": {
+      "CHOICE_B_SHORT": 103,
+      "CHOICE_A_LONG": 1
+    },
+    "confusion": {
+      "target=CHOICE_C_SKIP|pred=CHOICE_B_SHORT": 51,
+      "target=CHOICE_A_LONG|pred=CHOICE_B_SHORT": 31,
+      "target=CHOICE_B_SHORT|pred=CHOICE_A_LONG": 1,
+      "target=CHOICE_B_SHORT|pred=CHOICE_B_SHORT": 21
+    }
+  },
+  "backtest": {
+    "predicted_trade_rows": 104,
+    "sim": {
+      "ret_pct": -4.0161897914633204,
+      "cagr_pct": -4.670735153569017,
+      "strict_mdd_pct": 9.362549565196598,
+      "cagr_to_strict_mdd": -0.4988742778923744,
+      "trade_entries": 49,
+      "side_counts": {
+        "LONG": 1,
+        "SHORT": 48
+      },
+      "skipped_missing_bars": 0,
+      "hold_bars": 144,
+      "entry_delay_bars": 1,
+      "return_application": "candidate_score_selected_actual_ohlc_strict_mdd"
+    },
+    "trade_stats": {
+      "n_trades": 49,
+      "mean_trade_ret_pct": -0.07897824341341353,
+      "std_trade_ret_pct": 0.9770739144629248,
+      "t_stat_like": -0.5658197355496717,
+      "p_value_mean_ret_approx": 0.5715163289835987,
+      "ci95_mean_trade_ret_pct": [
+        -0.3525589394630325,
+        0.19460245263620543
+      ],
+      "effect_size_d": -0.08083139079281025,
+      "n_required_for_80pct_power_alpha5pct": 1202,
+      "n_gap_to_power_rule": 1153
+    }
+  },
+  "score_rows": [
+    {
+      "date": "2025-01-21 02:55:00",
+      "signal_pos": 532079,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4713587760925293,
+        "CHOICE_B_SHORT": -2.3663415908813477,
+        "CHOICE_C_SKIP": -2.6267154216766357
+      }
+    },
+    {
+      "date": "2025-01-21 04:55:00",
+      "signal_pos": 532103,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4733986854553223,
+        "CHOICE_B_SHORT": -2.3424155712127686,
+        "CHOICE_C_SKIP": -2.633929967880249
+      }
+    },
+    {
+      "date": "2025-01-21 08:55:00",
+      "signal_pos": 532151,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4698448181152344,
+        "CHOICE_B_SHORT": -2.380772113800049,
+        "CHOICE_C_SKIP": -2.661972761154175
+      }
+    },
+    {
+      "date": "2025-01-23 08:55:00",
+      "signal_pos": 532727,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5383336544036865,
+        "CHOICE_B_SHORT": -2.3486523628234863,
+        "CHOICE_C_SKIP": -2.588197708129883
+      }
+    },
+    {
+      "date": "2025-01-25 04:55:00",
+      "signal_pos": 533255,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4875340461730957,
+        "CHOICE_B_SHORT": -2.351006507873535,
+        "CHOICE_C_SKIP": -2.600890874862671
+      }
+    },
+    {
+      "date": "2025-01-26 12:55:00",
+      "signal_pos": 533639,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_A_LONG",
+      "scores": {
+        "CHOICE_A_LONG": -2.376185894012451,
+        "CHOICE_B_SHORT": -2.417569160461426,
+        "CHOICE_C_SKIP": -2.6883416175842285
+      }
+    },
+    {
+      "date": "2025-01-27 12:55:00",
+      "signal_pos": 533927,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.505060911178589,
+        "CHOICE_B_SHORT": -2.3741939067840576,
+        "CHOICE_C_SKIP": -2.5720202922821045
+      }
+    },
+    {
+      "date": "2025-02-27 10:55:00",
+      "signal_pos": 542831,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.478142261505127,
+        "CHOICE_B_SHORT": -2.320225477218628,
+        "CHOICE_C_SKIP": -2.590959310531616
+      }
+    },
+    {
+      "date": "2025-02-28 16:55:00",
+      "signal_pos": 543191,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5171754360198975,
+        "CHOICE_B_SHORT": -2.317568778991699,
+        "CHOICE_C_SKIP": -2.5986745357513428
+      }
+    },
+    {
+      "date": "2025-02-28 18:55:00",
+      "signal_pos": 543215,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.50329852104187,
+        "CHOICE_B_SHORT": -2.293084144592285,
+        "CHOICE_C_SKIP": -2.6054885387420654
+      }
+    },
+    {
+      "date": "2025-02-28 20:55:00",
+      "signal_pos": 543239,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.549335479736328,
+        "CHOICE_B_SHORT": -2.3073692321777344,
+        "CHOICE_C_SKIP": -2.5989723205566406
+      }
+    },
+    {
+      "date": "2025-03-01 02:55:00",
+      "signal_pos": 543311,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4860284328460693,
+        "CHOICE_B_SHORT": -2.2866315841674805,
+        "CHOICE_C_SKIP": -2.547086238861084
+      }
+    },
+    {
+      "date": "2025-03-02 02:55:00",
+      "signal_pos": 543599,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5343732833862305,
+        "CHOICE_B_SHORT": -2.3029325008392334,
+        "CHOICE_C_SKIP": -2.5945651531219482
+      }
+    },
+    {
+      "date": "2025-03-02 04:55:00",
+      "signal_pos": 543623,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5225396156311035,
+        "CHOICE_B_SHORT": -2.290961265563965,
+        "CHOICE_C_SKIP": -2.5303943157196045
+      }
+    },
+    {
+      "date": "2025-03-04 20:55:00",
+      "signal_pos": 544391,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5030975341796875,
+        "CHOICE_B_SHORT": -2.303518772125244,
+        "CHOICE_C_SKIP": -2.6367287635803223
+      }
+    },
+    {
+      "date": "2025-03-05 00:55:00",
+      "signal_pos": 544439,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5135974884033203,
+        "CHOICE_B_SHORT": -2.324052572250366,
+        "CHOICE_C_SKIP": -2.6365275382995605
+      }
+    },
+    {
+      "date": "2025-03-05 14:55:00",
+      "signal_pos": 544607,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.50624418258667,
+        "CHOICE_B_SHORT": -2.306574821472168,
+        "CHOICE_C_SKIP": -2.650195837020874
+      }
+    },
+    {
+      "date": "2025-03-05 16:55:00",
+      "signal_pos": 544631,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.509594440460205,
+        "CHOICE_B_SHORT": -2.3208446502685547,
+        "CHOICE_C_SKIP": -2.6437277793884277
+      }
+    },
+    {
+      "date": "2025-03-06 12:55:00",
+      "signal_pos": 544871,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5223312377929688,
+        "CHOICE_B_SHORT": -2.3495070934295654,
+        "CHOICE_C_SKIP": -2.682828903198242
+      }
+    },
+    {
+      "date": "2025-03-12 00:55:00",
+      "signal_pos": 546455,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.538702964782715,
+        "CHOICE_B_SHORT": -2.327138662338257,
+        "CHOICE_C_SKIP": -2.577054977416992
+      }
+    },
+    {
+      "date": "2025-03-12 02:55:00",
+      "signal_pos": 546479,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5699586868286133,
+        "CHOICE_B_SHORT": -2.3174195289611816,
+        "CHOICE_C_SKIP": -2.588146924972534
+      }
+    },
+    {
+      "date": "2025-03-13 04:55:00",
+      "signal_pos": 546791,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.539398193359375,
+        "CHOICE_B_SHORT": -2.3075082302093506,
+        "CHOICE_C_SKIP": -2.599005699157715
+      }
+    },
+    {
+      "date": "2025-03-14 20:55:00",
+      "signal_pos": 547271,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5232858657836914,
+        "CHOICE_B_SHORT": -2.3238415718078613,
+        "CHOICE_C_SKIP": -2.6257858276367188
+      }
+    },
+    {
+      "date": "2025-03-15 00:55:00",
+      "signal_pos": 547319,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5269668102264404,
+        "CHOICE_B_SHORT": -2.3373732566833496,
+        "CHOICE_C_SKIP": -2.5560452938079834
+      }
+    },
+    {
+      "date": "2025-03-15 06:55:00",
+      "signal_pos": 547391,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5302553176879883,
+        "CHOICE_B_SHORT": -2.3624463081359863,
+        "CHOICE_C_SKIP": -2.6123404502868652
+      }
+    },
+    {
+      "date": "2025-03-15 08:55:00",
+      "signal_pos": 547415,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5374388694763184,
+        "CHOICE_B_SHORT": -2.3429765701293945,
+        "CHOICE_C_SKIP": -2.556332588195801
+      }
+    },
+    {
+      "date": "2025-03-15 10:55:00",
+      "signal_pos": 547439,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5030524730682373,
+        "CHOICE_B_SHORT": -2.334629535675049,
+        "CHOICE_C_SKIP": -2.5635592937469482
+      }
+    },
+    {
+      "date": "2025-03-15 18:55:00",
+      "signal_pos": 547535,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.527277946472168,
+        "CHOICE_B_SHORT": -2.327890157699585,
+        "CHOICE_C_SKIP": -2.5881755352020264
+      }
+    },
+    {
+      "date": "2025-03-16 00:55:00",
+      "signal_pos": 547607,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.503276824951172,
+        "CHOICE_B_SHORT": -2.3457632064819336,
+        "CHOICE_C_SKIP": -2.6060118675231934
+      }
+    },
+    {
+      "date": "2025-03-16 02:55:00",
+      "signal_pos": 547631,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5120840072631836,
+        "CHOICE_B_SHORT": -2.364340305328369,
+        "CHOICE_C_SKIP": -2.5726046562194824
+      }
+    },
+    {
+      "date": "2025-03-16 06:55:00",
+      "signal_pos": 547679,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4868578910827637,
+        "CHOICE_B_SHORT": -2.339937686920166,
+        "CHOICE_C_SKIP": -2.579404830932617
+      }
+    },
+    {
+      "date": "2025-03-16 18:55:00",
+      "signal_pos": 547823,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5498130321502686,
+        "CHOICE_B_SHORT": -2.318397283554077,
+        "CHOICE_C_SKIP": -2.610020637512207
+      }
+    },
+    {
+      "date": "2025-03-17 06:55:00",
+      "signal_pos": 547967,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.558866500854492,
+        "CHOICE_B_SHORT": -2.3163599967956543,
+        "CHOICE_C_SKIP": -2.5767035484313965
+      }
+    },
+    {
+      "date": "2025-03-17 10:55:00",
+      "signal_pos": 548015,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.530376434326172,
+        "CHOICE_B_SHORT": -2.320143461227417,
+        "CHOICE_C_SKIP": -2.601320266723633
+      }
+    },
+    {
+      "date": "2025-03-17 20:55:00",
+      "signal_pos": 548135,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5195319652557373,
+        "CHOICE_B_SHORT": -2.320079803466797,
+        "CHOICE_C_SKIP": -2.611691474914551
+      }
+    },
+    {
+      "date": "2025-03-17 22:55:00",
+      "signal_pos": 548159,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5173776149749756,
+        "CHOICE_B_SHORT": -2.3279056549072266,
+        "CHOICE_C_SKIP": -2.5882225036621094
+      }
+    },
+    {
+      "date": "2025-03-18 00:55:00",
+      "signal_pos": 548183,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5097806453704834,
+        "CHOICE_B_SHORT": -2.3203744888305664,
+        "CHOICE_C_SKIP": -2.5911214351654053
+      }
+    },
+    {
+      "date": "2025-03-19 04:55:00",
+      "signal_pos": 548519,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.548471450805664,
+        "CHOICE_B_SHORT": -2.327056884765625,
+        "CHOICE_C_SKIP": -2.576974630355835
+      }
+    },
+    {
+      "date": "2025-03-31 16:55:00",
+      "signal_pos": 552119,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5431087017059326,
+        "CHOICE_B_SHORT": -2.332606315612793,
+        "CHOICE_C_SKIP": -2.582521438598633
+      }
+    },
+    {
+      "date": "2025-03-31 18:55:00",
+      "signal_pos": 552143,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5428500175476074,
+        "CHOICE_B_SHORT": -2.311028003692627,
+        "CHOICE_C_SKIP": -2.581735134124756
+      }
+    },
+    {
+      "date": "2025-05-05 04:55:00",
+      "signal_pos": 562055,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4699790477752686,
+        "CHOICE_B_SHORT": -2.3342442512512207,
+        "CHOICE_C_SKIP": -2.604919195175171
+      }
+    },
+    {
+      "date": "2025-05-05 16:55:00",
+      "signal_pos": 562199,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4941089153289795,
+        "CHOICE_B_SHORT": -2.3789167404174805,
+        "CHOICE_C_SKIP": -2.597640037536621
+      }
+    },
+    {
+      "date": "2025-05-06 14:55:00",
+      "signal_pos": 562463,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4664065837860107,
+        "CHOICE_B_SHORT": -2.371912956237793,
+        "CHOICE_C_SKIP": -2.611377239227295
+      }
+    },
+    {
+      "date": "2025-05-12 14:55:00",
+      "signal_pos": 564191,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.417100429534912,
+        "CHOICE_B_SHORT": -2.3957290649414062,
+        "CHOICE_C_SKIP": -2.6873576641082764
+      }
+    },
+    {
+      "date": "2025-05-12 18:55:00",
+      "signal_pos": 564239,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5030219554901123,
+        "CHOICE_B_SHORT": -2.335296392440796,
+        "CHOICE_C_SKIP": -2.5747804641723633
+      }
+    },
+    {
+      "date": "2025-05-19 08:55:00",
+      "signal_pos": 566135,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4607577323913574,
+        "CHOICE_B_SHORT": -2.335153341293335,
+        "CHOICE_C_SKIP": -2.6266932487487793
+      }
+    },
+    {
+      "date": "2025-05-19 10:55:00",
+      "signal_pos": 566159,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.472975254058838,
+        "CHOICE_B_SHORT": -2.3263139724731445,
+        "CHOICE_C_SKIP": -2.544996738433838
+      }
+    },
+    {
+      "date": "2025-05-24 02:55:00",
+      "signal_pos": 567503,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.493793487548828,
+        "CHOICE_B_SHORT": -2.3580336570739746,
+        "CHOICE_C_SKIP": -2.5975520610809326
+      }
+    },
+    {
+      "date": "2025-05-25 02:55:00",
+      "signal_pos": 567791,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.473095655441284,
+        "CHOICE_B_SHORT": -2.36859130859375,
+        "CHOICE_C_SKIP": -2.608041763305664
+      }
+    },
+    {
+      "date": "2025-05-25 14:55:00",
+      "signal_pos": 567935,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4516334533691406,
+        "CHOICE_B_SHORT": -2.3521342277526855,
+        "CHOICE_C_SKIP": -2.6436142921447754
+      }
+    },
+    {
+      "date": "2025-05-28 22:55:00",
+      "signal_pos": 568895,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.493539333343506,
+        "CHOICE_B_SHORT": -2.362565517425537,
+        "CHOICE_C_SKIP": -2.560297966003418
+      }
+    },
+    {
+      "date": "2025-05-29 06:55:00",
+      "signal_pos": 568991,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.426295042037964,
+        "CHOICE_B_SHORT": -2.415792465209961,
+        "CHOICE_C_SKIP": -2.74896240234375
+      }
+    },
+    {
+      "date": "2025-06-12 06:55:00",
+      "signal_pos": 573023,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.513974905014038,
+        "CHOICE_B_SHORT": -2.362431049346924,
+        "CHOICE_C_SKIP": -2.5497703552246094
+      }
+    },
+    {
+      "date": "2025-07-04 20:55:00",
+      "signal_pos": 579527,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4778618812561035,
+        "CHOICE_B_SHORT": -2.3729958534240723,
+        "CHOICE_C_SKIP": -2.5292022228240967
+      }
+    },
+    {
+      "date": "2025-07-15 10:55:00",
+      "signal_pos": 582575,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4856858253479004,
+        "CHOICE_B_SHORT": -2.38612699508667,
+        "CHOICE_C_SKIP": -2.6361024379730225
+      }
+    },
+    {
+      "date": "2025-07-15 12:55:00",
+      "signal_pos": 582599,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4061789512634277,
+        "CHOICE_B_SHORT": -2.4057347774505615,
+        "CHOICE_C_SKIP": -2.718135356903076
+      }
+    },
+    {
+      "date": "2025-07-18 22:55:00",
+      "signal_pos": 583583,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4792113304138184,
+        "CHOICE_B_SHORT": -2.3737998008728027,
+        "CHOICE_C_SKIP": -2.592430591583252
+      }
+    },
+    {
+      "date": "2025-07-19 00:55:00",
+      "signal_pos": 583607,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.485767364501953,
+        "CHOICE_B_SHORT": -2.3493857383728027,
+        "CHOICE_C_SKIP": -2.5575919151306152
+      }
+    },
+    {
+      "date": "2025-07-19 16:55:00",
+      "signal_pos": 583799,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.493605136871338,
+        "CHOICE_B_SHORT": -2.3471696376800537,
+        "CHOICE_C_SKIP": -2.544956684112549
+      }
+    },
+    {
+      "date": "2025-07-19 18:55:00",
+      "signal_pos": 583823,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4882383346557617,
+        "CHOICE_B_SHORT": -2.362482786178589,
+        "CHOICE_C_SKIP": -2.5706756114959717
+      }
+    },
+    {
+      "date": "2025-07-19 20:55:00",
+      "signal_pos": 583847,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4441630840301514,
+        "CHOICE_B_SHORT": -2.359935760498047,
+        "CHOICE_C_SKIP": -2.5370101928710938
+      }
+    },
+    {
+      "date": "2025-07-19 22:55:00",
+      "signal_pos": 583871,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4351747035980225,
+        "CHOICE_B_SHORT": -2.387924909591675,
+        "CHOICE_C_SKIP": -2.606513738632202
+      }
+    },
+    {
+      "date": "2025-07-20 00:55:00",
+      "signal_pos": 583895,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4540367126464844,
+        "CHOICE_B_SHORT": -2.4278135299682617,
+        "CHOICE_C_SKIP": -2.729710340499878
+      }
+    },
+    {
+      "date": "2025-07-21 22:55:00",
+      "signal_pos": 584447,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.501882314682007,
+        "CHOICE_B_SHORT": -2.344637632369995,
+        "CHOICE_C_SKIP": -2.573686361312866
+      }
+    },
+    {
+      "date": "2025-07-22 00:55:00",
+      "signal_pos": 584471,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5143775939941406,
+        "CHOICE_B_SHORT": -2.355354070663452,
+        "CHOICE_C_SKIP": -2.5427987575531006
+      }
+    },
+    {
+      "date": "2025-10-07 20:55:00",
+      "signal_pos": 606887,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4998974800109863,
+        "CHOICE_B_SHORT": -2.3740668296813965,
+        "CHOICE_C_SKIP": -2.6135306358337402
+      }
+    },
+    {
+      "date": "2025-10-07 22:55:00",
+      "signal_pos": 606911,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4596469402313232,
+        "CHOICE_B_SHORT": -2.3860137462615967,
+        "CHOICE_C_SKIP": -2.6464014053344727
+      }
+    },
+    {
+      "date": "2025-10-08 00:55:00",
+      "signal_pos": 606935,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.497770071029663,
+        "CHOICE_B_SHORT": -2.3613061904907227,
+        "CHOICE_C_SKIP": -2.5904059410095215
+      }
+    },
+    {
+      "date": "2025-10-09 18:55:00",
+      "signal_pos": 607439,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5170836448669434,
+        "CHOICE_B_SHORT": -2.3490395545959473,
+        "CHOICE_C_SKIP": -2.5677287578582764
+      }
+    },
+    {
+      "date": "2025-10-09 20:55:00",
+      "signal_pos": 607463,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.477437734603882,
+        "CHOICE_B_SHORT": -2.3413028717041016,
+        "CHOICE_C_SKIP": -2.580787420272827
+      }
+    },
+    {
+      "date": "2025-10-10 06:55:00",
+      "signal_pos": 607583,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.514815330505371,
+        "CHOICE_B_SHORT": -2.3365514278411865,
+        "CHOICE_C_SKIP": -2.56553316116333
+      }
+    },
+    {
+      "date": "2025-10-19 20:55:00",
+      "signal_pos": 610343,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4994378089904785,
+        "CHOICE_B_SHORT": -2.3097083568573,
+        "CHOICE_C_SKIP": -2.6324987411499023
+      }
+    },
+    {
+      "date": "2025-10-20 10:55:00",
+      "signal_pos": 610511,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5384681224823,
+        "CHOICE_B_SHORT": -2.3384857177734375,
+        "CHOICE_C_SKIP": -2.6092822551727295
+      }
+    },
+    {
+      "date": "2025-11-01 06:55:00",
+      "signal_pos": 613919,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.511857509613037,
+        "CHOICE_B_SHORT": -2.3116931915283203,
+        "CHOICE_C_SKIP": -2.571944236755371
+      }
+    },
+    {
+      "date": "2025-11-10 04:55:00",
+      "signal_pos": 616487,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5129709243774414,
+        "CHOICE_B_SHORT": -2.365896701812744,
+        "CHOICE_C_SKIP": -2.5533416271209717
+      }
+    },
+    {
+      "date": "2025-11-10 06:55:00",
+      "signal_pos": 616511,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5693235397338867,
+        "CHOICE_B_SHORT": -2.3328003883361816,
+        "CHOICE_C_SKIP": -2.6087450981140137
+      }
+    },
+    {
+      "date": "2025-11-10 08:55:00",
+      "signal_pos": 616535,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.536484479904175,
+        "CHOICE_B_SHORT": -2.3058700561523438,
+        "CHOICE_C_SKIP": -2.5558314323425293
+      }
+    },
+    {
+      "date": "2025-11-20 04:55:00",
+      "signal_pos": 619367,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4713733196258545,
+        "CHOICE_B_SHORT": -2.3136184215545654,
+        "CHOICE_C_SKIP": -2.584397315979004
+      }
+    },
+    {
+      "date": "2025-11-23 02:55:00",
+      "signal_pos": 620207,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5589873790740967,
+        "CHOICE_B_SHORT": -2.3280930519104004,
+        "CHOICE_C_SKIP": -2.5988640785217285
+      }
+    },
+    {
+      "date": "2025-11-23 04:55:00",
+      "signal_pos": 620231,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5177512168884277,
+        "CHOICE_B_SHORT": -2.296940565109253,
+        "CHOICE_C_SKIP": -2.5988521575927734
+      }
+    },
+    {
+      "date": "2025-11-23 08:55:00",
+      "signal_pos": 620279,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.514653205871582,
+        "CHOICE_B_SHORT": -2.3415884971618652,
+        "CHOICE_C_SKIP": -2.6123204231262207
+      }
+    },
+    {
+      "date": "2025-11-23 10:55:00",
+      "signal_pos": 620303,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5538411140441895,
+        "CHOICE_B_SHORT": -2.333108425140381,
+        "CHOICE_C_SKIP": -2.5934853553771973
+      }
+    },
+    {
+      "date": "2025-11-23 12:55:00",
+      "signal_pos": 620327,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.542989730834961,
+        "CHOICE_B_SHORT": -2.3323655128479004,
+        "CHOICE_C_SKIP": -2.592710256576538
+      }
+    },
+    {
+      "date": "2025-11-23 14:55:00",
+      "signal_pos": 620351,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5379931926727295,
+        "CHOICE_B_SHORT": -2.3072762489318848,
+        "CHOICE_C_SKIP": -2.58842134475708
+      }
+    },
+    {
+      "date": "2025-11-23 18:55:00",
+      "signal_pos": 620399,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.538498640060425,
+        "CHOICE_B_SHORT": -2.307535171508789,
+        "CHOICE_C_SKIP": -2.609442710876465
+      }
+    },
+    {
+      "date": "2025-11-23 20:55:00",
+      "signal_pos": 620423,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5094316005706787,
+        "CHOICE_B_SHORT": -2.288814067840576,
+        "CHOICE_C_SKIP": -2.611675262451172
+      }
+    },
+    {
+      "date": "2025-11-23 22:55:00",
+      "signal_pos": 620447,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5280823707580566,
+        "CHOICE_B_SHORT": -2.307263135910034,
+        "CHOICE_C_SKIP": -2.609139919281006
+      }
+    },
+    {
+      "date": "2025-11-24 02:55:00",
+      "signal_pos": 620495,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.543907642364502,
+        "CHOICE_B_SHORT": -2.3132882118225098,
+        "CHOICE_C_SKIP": -2.6048789024353027
+      }
+    },
+    {
+      "date": "2025-11-24 16:55:00",
+      "signal_pos": 620663,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.527900218963623,
+        "CHOICE_B_SHORT": -2.3174853324890137,
+        "CHOICE_C_SKIP": -2.5882339477539062
+      }
+    },
+    {
+      "date": "2025-11-24 22:55:00",
+      "signal_pos": 620735,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.53985857963562,
+        "CHOICE_B_SHORT": -2.29764723777771,
+        "CHOICE_C_SKIP": -2.6308753490448
+      }
+    },
+    {
+      "date": "2025-11-25 00:55:00",
+      "signal_pos": 620759,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5241928100585938,
+        "CHOICE_B_SHORT": -2.3135290145874023,
+        "CHOICE_C_SKIP": -2.615481376647949
+      }
+    },
+    {
+      "date": "2025-11-25 02:55:00",
+      "signal_pos": 620783,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.498551845550537,
+        "CHOICE_B_SHORT": -2.2890372276306152,
+        "CHOICE_C_SKIP": -2.580599546432495
+      }
+    },
+    {
+      "date": "2025-11-25 22:55:00",
+      "signal_pos": 621023,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5246047973632812,
+        "CHOICE_B_SHORT": -2.3306941986083984,
+        "CHOICE_C_SKIP": -2.611751079559326
+      }
+    },
+    {
+      "date": "2025-11-27 06:55:00",
+      "signal_pos": 621407,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.530841827392578,
+        "CHOICE_B_SHORT": -2.3407530784606934,
+        "CHOICE_C_SKIP": -2.621945381164551
+      }
+    },
+    {
+      "date": "2025-11-27 12:55:00",
+      "signal_pos": 621479,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.518960475921631,
+        "CHOICE_B_SHORT": -2.3202152252197266,
+        "CHOICE_C_SKIP": -2.632591962814331
+      }
+    },
+    {
+      "date": "2025-11-27 14:55:00",
+      "signal_pos": 621503,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5279245376586914,
+        "CHOICE_B_SHORT": -2.359546661376953,
+        "CHOICE_C_SKIP": -2.6094045639038086
+      }
+    },
+    {
+      "date": "2025-11-27 20:55:00",
+      "signal_pos": 621575,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5149731636047363,
+        "CHOICE_B_SHORT": -2.3368775844573975,
+        "CHOICE_C_SKIP": -2.5763118267059326
+      }
+    },
+    {
+      "date": "2025-11-27 22:55:00",
+      "signal_pos": 621599,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.533616542816162,
+        "CHOICE_B_SHORT": -2.3032844066619873,
+        "CHOICE_C_SKIP": -2.6155614852905273
+      }
+    },
+    {
+      "date": "2025-11-28 00:55:00",
+      "signal_pos": 621623,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.538438320159912,
+        "CHOICE_B_SHORT": -2.3388171195983887,
+        "CHOICE_C_SKIP": -2.578338623046875
+      }
+    },
+    {
+      "date": "2025-11-28 02:55:00",
+      "signal_pos": 621647,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5337560176849365,
+        "CHOICE_B_SHORT": -2.313786029815674,
+        "CHOICE_C_SKIP": -2.584451198577881
+      }
+    },
+    {
+      "date": "2025-11-28 12:55:00",
+      "signal_pos": 621767,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.533618688583374,
+        "CHOICE_B_SHORT": -2.3031296730041504,
+        "CHOICE_C_SKIP": -2.605001926422119
+      }
+    },
+    {
+      "date": "2025-11-30 18:55:00",
+      "signal_pos": 622415,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5134599208831787,
+        "CHOICE_B_SHORT": -2.3351762294769287,
+        "CHOICE_C_SKIP": -2.6370866298675537
+      }
+    },
+    {
+      "date": "2025-11-30 20:55:00",
+      "signal_pos": 622439,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5173919200897217,
+        "CHOICE_B_SHORT": -2.3491199016571045,
+        "CHOICE_C_SKIP": -2.599031448364258
+      }
+    },
+    {
+      "date": "2025-11-30 22:55:00",
+      "signal_pos": 622463,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.527071952819824,
+        "CHOICE_B_SHORT": -2.326974391937256,
+        "CHOICE_C_SKIP": -2.5352656841278076
+      }
+    }
+  ],
+  "leakage_guard": {
+    "model_sees_prompt_only": true,
+    "targets_used_for_metrics_only": true
+  }
+}

@@ -1,0 +1,1220 @@
+{
+  "config": {
+    "eval_jsonl": "data/rex_event_choice_label_sft_test_20260712.jsonl",
+    "output_json": "results/rex_event_choice_label_gemma2_s32_test_sum_2026-07-12.json",
+    "market_csv": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+    "model_name": "gemma2-2b-it",
+    "adapter_dir": "checkpoints/rex_event_choice_label_gemma2_2b_lora_s32_20260712",
+    "max_samples": 0,
+    "sample_mode": "sequential",
+    "batch_size": 8,
+    "score_normalization": "sum",
+    "hold_bars": 144,
+    "entry_delay_bars": 1,
+    "leverage": 0.5,
+    "fee_rate": 0.0004,
+    "slippage_rate": 0.0001
+  },
+  "model_name_resolved": "google/gemma-2-2b-it",
+  "metrics": {
+    "num_samples": 104,
+    "accuracy": 0.20192307692307693,
+    "target_counts": {
+      "CHOICE_C_SKIP": 51,
+      "CHOICE_A_LONG": 31,
+      "CHOICE_B_SHORT": 22
+    },
+    "prediction_counts": {
+      "CHOICE_B_SHORT": 103,
+      "CHOICE_A_LONG": 1
+    },
+    "confusion": {
+      "target=CHOICE_C_SKIP|pred=CHOICE_B_SHORT": 51,
+      "target=CHOICE_A_LONG|pred=CHOICE_B_SHORT": 31,
+      "target=CHOICE_B_SHORT|pred=CHOICE_A_LONG": 1,
+      "target=CHOICE_B_SHORT|pred=CHOICE_B_SHORT": 21
+    }
+  },
+  "backtest": {
+    "predicted_trade_rows": 104,
+    "sim": {
+      "ret_pct": -4.0161897914633204,
+      "cagr_pct": -4.670735153569017,
+      "strict_mdd_pct": 9.362549565196598,
+      "cagr_to_strict_mdd": -0.4988742778923744,
+      "trade_entries": 49,
+      "side_counts": {
+        "LONG": 1,
+        "SHORT": 48
+      },
+      "skipped_missing_bars": 0,
+      "hold_bars": 144,
+      "entry_delay_bars": 1,
+      "return_application": "candidate_score_selected_actual_ohlc_strict_mdd"
+    },
+    "trade_stats": {
+      "n_trades": 49,
+      "mean_trade_ret_pct": -0.07897824341341353,
+      "std_trade_ret_pct": 0.9770739144629248,
+      "t_stat_like": -0.5658197355496717,
+      "p_value_mean_ret_approx": 0.5715163289835987,
+      "ci95_mean_trade_ret_pct": [
+        -0.3525589394630325,
+        0.19460245263620543
+      ],
+      "effect_size_d": -0.08083139079281025,
+      "n_required_for_80pct_power_alpha5pct": 1202,
+      "n_gap_to_power_rule": 1153
+    }
+  },
+  "score_rows": [
+    {
+      "date": "2025-01-21 02:55:00",
+      "signal_pos": 532079,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.82815170288086,
+        "CHOICE_B_SHORT": -14.198049545288086,
+        "CHOICE_C_SKIP": -15.760292053222656
+      }
+    },
+    {
+      "date": "2025-01-21 04:55:00",
+      "signal_pos": 532103,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.840391159057617,
+        "CHOICE_B_SHORT": -14.054492950439453,
+        "CHOICE_C_SKIP": -15.803579330444336
+      }
+    },
+    {
+      "date": "2025-01-21 08:55:00",
+      "signal_pos": 532151,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.819068908691406,
+        "CHOICE_B_SHORT": -14.284631729125977,
+        "CHOICE_C_SKIP": -15.97183609008789
+      }
+    },
+    {
+      "date": "2025-01-23 08:55:00",
+      "signal_pos": 532727,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.230001449584961,
+        "CHOICE_B_SHORT": -14.091913223266602,
+        "CHOICE_C_SKIP": -15.529186248779297
+      }
+    },
+    {
+      "date": "2025-01-25 04:55:00",
+      "signal_pos": 533255,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.925203323364258,
+        "CHOICE_B_SHORT": -14.106039047241211,
+        "CHOICE_C_SKIP": -15.605344772338867
+      }
+    },
+    {
+      "date": "2025-01-26 12:55:00",
+      "signal_pos": 533639,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_A_LONG",
+      "scores": {
+        "CHOICE_A_LONG": -14.25711441040039,
+        "CHOICE_B_SHORT": -14.505414962768555,
+        "CHOICE_C_SKIP": -16.130048751831055
+      }
+    },
+    {
+      "date": "2025-01-27 12:55:00",
+      "signal_pos": 533927,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.030364990234375,
+        "CHOICE_B_SHORT": -14.245162963867188,
+        "CHOICE_C_SKIP": -15.432121276855469
+      }
+    },
+    {
+      "date": "2025-02-27 10:55:00",
+      "signal_pos": 542831,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.868852615356445,
+        "CHOICE_B_SHORT": -13.92135238647461,
+        "CHOICE_C_SKIP": -15.545755386352539
+      }
+    },
+    {
+      "date": "2025-02-28 16:55:00",
+      "signal_pos": 543191,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.103052139282227,
+        "CHOICE_B_SHORT": -13.905412673950195,
+        "CHOICE_C_SKIP": -15.592046737670898
+      }
+    },
+    {
+      "date": "2025-02-28 18:55:00",
+      "signal_pos": 543215,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.019790649414062,
+        "CHOICE_B_SHORT": -13.758504867553711,
+        "CHOICE_C_SKIP": -15.632930755615234
+      }
+    },
+    {
+      "date": "2025-02-28 20:55:00",
+      "signal_pos": 543239,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.296012878417969,
+        "CHOICE_B_SHORT": -13.844215393066406,
+        "CHOICE_C_SKIP": -15.593833923339844
+      }
+    },
+    {
+      "date": "2025-03-01 02:55:00",
+      "signal_pos": 543311,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.916170120239258,
+        "CHOICE_B_SHORT": -13.719789505004883,
+        "CHOICE_C_SKIP": -15.282516479492188
+      }
+    },
+    {
+      "date": "2025-03-02 02:55:00",
+      "signal_pos": 543599,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.206239700317383,
+        "CHOICE_B_SHORT": -13.817594528198242,
+        "CHOICE_C_SKIP": -15.567390441894531
+      }
+    },
+    {
+      "date": "2025-03-02 04:55:00",
+      "signal_pos": 543623,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.135236740112305,
+        "CHOICE_B_SHORT": -13.745767593383789,
+        "CHOICE_C_SKIP": -15.182365417480469
+      }
+    },
+    {
+      "date": "2025-03-04 20:55:00",
+      "signal_pos": 544391,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.018585205078125,
+        "CHOICE_B_SHORT": -13.821111679077148,
+        "CHOICE_C_SKIP": -15.820371627807617
+      }
+    },
+    {
+      "date": "2025-03-05 00:55:00",
+      "signal_pos": 544439,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.081584930419922,
+        "CHOICE_B_SHORT": -13.944314956665039,
+        "CHOICE_C_SKIP": -15.819164276123047
+      }
+    },
+    {
+      "date": "2025-03-05 14:55:00",
+      "signal_pos": 544607,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.037464141845703,
+        "CHOICE_B_SHORT": -13.839448928833008,
+        "CHOICE_C_SKIP": -15.901174545288086
+      }
+    },
+    {
+      "date": "2025-03-05 16:55:00",
+      "signal_pos": 544631,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.057565689086914,
+        "CHOICE_B_SHORT": -13.925067901611328,
+        "CHOICE_C_SKIP": -15.86236572265625
+      }
+    },
+    {
+      "date": "2025-03-06 12:55:00",
+      "signal_pos": 544871,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.133987426757812,
+        "CHOICE_B_SHORT": -14.097042083740234,
+        "CHOICE_C_SKIP": -16.096973419189453
+      }
+    },
+    {
+      "date": "2025-03-12 00:55:00",
+      "signal_pos": 546455,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.232217788696289,
+        "CHOICE_B_SHORT": -13.962831497192383,
+        "CHOICE_C_SKIP": -15.462329864501953
+      }
+    },
+    {
+      "date": "2025-03-12 02:55:00",
+      "signal_pos": 546479,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.41975212097168,
+        "CHOICE_B_SHORT": -13.904516220092773,
+        "CHOICE_C_SKIP": -15.528881072998047
+      }
+    },
+    {
+      "date": "2025-03-13 04:55:00",
+      "signal_pos": 546791,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.23638916015625,
+        "CHOICE_B_SHORT": -13.845048904418945,
+        "CHOICE_C_SKIP": -15.594034194946289
+      }
+    },
+    {
+      "date": "2025-03-14 20:55:00",
+      "signal_pos": 547271,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.139715194702148,
+        "CHOICE_B_SHORT": -13.943048477172852,
+        "CHOICE_C_SKIP": -15.754714965820312
+      }
+    },
+    {
+      "date": "2025-03-15 00:55:00",
+      "signal_pos": 547319,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.161800384521484,
+        "CHOICE_B_SHORT": -14.024238586425781,
+        "CHOICE_C_SKIP": -15.336271286010742
+      }
+    },
+    {
+      "date": "2025-03-15 06:55:00",
+      "signal_pos": 547391,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.18153190612793,
+        "CHOICE_B_SHORT": -14.174676895141602,
+        "CHOICE_C_SKIP": -15.674041748046875
+      }
+    },
+    {
+      "date": "2025-03-15 08:55:00",
+      "signal_pos": 547415,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.224632263183594,
+        "CHOICE_B_SHORT": -14.057859420776367,
+        "CHOICE_C_SKIP": -15.337995529174805
+      }
+    },
+    {
+      "date": "2025-03-15 10:55:00",
+      "signal_pos": 547439,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.018314361572266,
+        "CHOICE_B_SHORT": -14.007776260375977,
+        "CHOICE_C_SKIP": -15.381355285644531
+      }
+    },
+    {
+      "date": "2025-03-15 18:55:00",
+      "signal_pos": 547535,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.163667678833008,
+        "CHOICE_B_SHORT": -13.967340469360352,
+        "CHOICE_C_SKIP": -15.529052734375
+      }
+    },
+    {
+      "date": "2025-03-16 00:55:00",
+      "signal_pos": 547607,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.019660949707031,
+        "CHOICE_B_SHORT": -14.074579238891602,
+        "CHOICE_C_SKIP": -15.636070251464844
+      }
+    },
+    {
+      "date": "2025-03-16 02:55:00",
+      "signal_pos": 547631,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.072504043579102,
+        "CHOICE_B_SHORT": -14.186040878295898,
+        "CHOICE_C_SKIP": -15.435626983642578
+      }
+    },
+    {
+      "date": "2025-03-16 06:55:00",
+      "signal_pos": 547679,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.921146392822266,
+        "CHOICE_B_SHORT": -14.03962516784668,
+        "CHOICE_C_SKIP": -15.476428985595703
+      }
+    },
+    {
+      "date": "2025-03-16 18:55:00",
+      "signal_pos": 547823,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.298877716064453,
+        "CHOICE_B_SHORT": -13.910383224487305,
+        "CHOICE_C_SKIP": -15.660123825073242
+      }
+    },
+    {
+      "date": "2025-03-17 06:55:00",
+      "signal_pos": 547967,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.353199005126953,
+        "CHOICE_B_SHORT": -13.89815902709961,
+        "CHOICE_C_SKIP": -15.460220336914062
+      }
+    },
+    {
+      "date": "2025-03-17 10:55:00",
+      "signal_pos": 548015,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.182258605957031,
+        "CHOICE_B_SHORT": -13.920860290527344,
+        "CHOICE_C_SKIP": -15.607921600341797
+      }
+    },
+    {
+      "date": "2025-03-17 20:55:00",
+      "signal_pos": 548135,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.117191314697266,
+        "CHOICE_B_SHORT": -13.920478820800781,
+        "CHOICE_C_SKIP": -15.670148849487305
+      }
+    },
+    {
+      "date": "2025-03-17 22:55:00",
+      "signal_pos": 548159,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.104265213012695,
+        "CHOICE_B_SHORT": -13.96743392944336,
+        "CHOICE_C_SKIP": -15.529335021972656
+      }
+    },
+    {
+      "date": "2025-03-18 00:55:00",
+      "signal_pos": 548183,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.058683395385742,
+        "CHOICE_B_SHORT": -13.922246932983398,
+        "CHOICE_C_SKIP": -15.546728134155273
+      }
+    },
+    {
+      "date": "2025-03-19 04:55:00",
+      "signal_pos": 548519,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.290828704833984,
+        "CHOICE_B_SHORT": -13.96234130859375,
+        "CHOICE_C_SKIP": -15.461847305297852
+      }
+    },
+    {
+      "date": "2025-03-31 16:55:00",
+      "signal_pos": 552119,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.258651733398438,
+        "CHOICE_B_SHORT": -13.995637893676758,
+        "CHOICE_C_SKIP": -15.495128631591797
+      }
+    },
+    {
+      "date": "2025-03-31 18:55:00",
+      "signal_pos": 552143,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.257099151611328,
+        "CHOICE_B_SHORT": -13.866167068481445,
+        "CHOICE_C_SKIP": -15.490409851074219
+      }
+    },
+    {
+      "date": "2025-05-05 04:55:00",
+      "signal_pos": 562055,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.819873809814453,
+        "CHOICE_B_SHORT": -14.005464553833008,
+        "CHOICE_C_SKIP": -15.629514694213867
+      }
+    },
+    {
+      "date": "2025-05-05 16:55:00",
+      "signal_pos": 562199,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.964653015136719,
+        "CHOICE_B_SHORT": -14.273500442504883,
+        "CHOICE_C_SKIP": -15.585840225219727
+      }
+    },
+    {
+      "date": "2025-05-06 14:55:00",
+      "signal_pos": 562463,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.798439025878906,
+        "CHOICE_B_SHORT": -14.231477737426758,
+        "CHOICE_C_SKIP": -15.668262481689453
+      }
+    },
+    {
+      "date": "2025-05-12 14:55:00",
+      "signal_pos": 564191,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.502601623535156,
+        "CHOICE_B_SHORT": -14.374374389648438,
+        "CHOICE_C_SKIP": -16.1241455078125
+      }
+    },
+    {
+      "date": "2025-05-12 18:55:00",
+      "signal_pos": 564239,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.018131256103516,
+        "CHOICE_B_SHORT": -14.011777877807617,
+        "CHOICE_C_SKIP": -15.44868278503418
+      }
+    },
+    {
+      "date": "2025-05-19 08:55:00",
+      "signal_pos": 566135,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.764545440673828,
+        "CHOICE_B_SHORT": -14.010919570922852,
+        "CHOICE_C_SKIP": -15.76015853881836
+      }
+    },
+    {
+      "date": "2025-05-19 10:55:00",
+      "signal_pos": 566159,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.837850570678711,
+        "CHOICE_B_SHORT": -13.957883834838867,
+        "CHOICE_C_SKIP": -15.269979476928711
+      }
+    },
+    {
+      "date": "2025-05-24 02:55:00",
+      "signal_pos": 567503,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.962760925292969,
+        "CHOICE_B_SHORT": -14.148200988769531,
+        "CHOICE_C_SKIP": -15.585311889648438
+      }
+    },
+    {
+      "date": "2025-05-25 02:55:00",
+      "signal_pos": 567791,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.838573455810547,
+        "CHOICE_B_SHORT": -14.2115478515625,
+        "CHOICE_C_SKIP": -15.648250579833984
+      }
+    },
+    {
+      "date": "2025-05-25 14:55:00",
+      "signal_pos": 567935,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.709800720214844,
+        "CHOICE_B_SHORT": -14.112804412841797,
+        "CHOICE_C_SKIP": -15.861684799194336
+      }
+    },
+    {
+      "date": "2025-05-28 22:55:00",
+      "signal_pos": 568895,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.961235046386719,
+        "CHOICE_B_SHORT": -14.175392150878906,
+        "CHOICE_C_SKIP": -15.361787796020508
+      }
+    },
+    {
+      "date": "2025-05-29 06:55:00",
+      "signal_pos": 568991,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.557769775390625,
+        "CHOICE_B_SHORT": -14.494754791259766,
+        "CHOICE_C_SKIP": -16.4937744140625
+      }
+    },
+    {
+      "date": "2025-06-12 06:55:00",
+      "signal_pos": 573023,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.08384895324707,
+        "CHOICE_B_SHORT": -14.174585342407227,
+        "CHOICE_C_SKIP": -15.298622131347656
+      }
+    },
+    {
+      "date": "2025-07-04 20:55:00",
+      "signal_pos": 579527,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.867170333862305,
+        "CHOICE_B_SHORT": -14.237974166870117,
+        "CHOICE_C_SKIP": -15.175212860107422
+      }
+    },
+    {
+      "date": "2025-07-15 10:55:00",
+      "signal_pos": 582575,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.914113998413086,
+        "CHOICE_B_SHORT": -14.316761016845703,
+        "CHOICE_C_SKIP": -15.816614151000977
+      }
+    },
+    {
+      "date": "2025-07-15 12:55:00",
+      "signal_pos": 582599,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.43707275390625,
+        "CHOICE_B_SHORT": -14.434408187866211,
+        "CHOICE_C_SKIP": -16.30881118774414
+      }
+    },
+    {
+      "date": "2025-07-18 22:55:00",
+      "signal_pos": 583583,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.875267028808594,
+        "CHOICE_B_SHORT": -14.2427978515625,
+        "CHOICE_C_SKIP": -15.554582595825195
+      }
+    },
+    {
+      "date": "2025-07-19 00:55:00",
+      "signal_pos": 583607,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.914604187011719,
+        "CHOICE_B_SHORT": -14.0963134765625,
+        "CHOICE_C_SKIP": -15.345550537109375
+      }
+    },
+    {
+      "date": "2025-07-19 16:55:00",
+      "signal_pos": 583799,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.961629867553711,
+        "CHOICE_B_SHORT": -14.083017349243164,
+        "CHOICE_C_SKIP": -15.269739151000977
+      }
+    },
+    {
+      "date": "2025-07-19 18:55:00",
+      "signal_pos": 583823,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.92943000793457,
+        "CHOICE_B_SHORT": -14.174896240234375,
+        "CHOICE_C_SKIP": -15.424053192138672
+      }
+    },
+    {
+      "date": "2025-07-19 20:55:00",
+      "signal_pos": 583847,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.66497802734375,
+        "CHOICE_B_SHORT": -14.159614562988281,
+        "CHOICE_C_SKIP": -15.222061157226562
+      }
+    },
+    {
+      "date": "2025-07-19 22:55:00",
+      "signal_pos": 583871,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.611047744750977,
+        "CHOICE_B_SHORT": -14.32754898071289,
+        "CHOICE_C_SKIP": -15.639081954956055
+      }
+    },
+    {
+      "date": "2025-07-20 00:55:00",
+      "signal_pos": 583895,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.724220275878906,
+        "CHOICE_B_SHORT": -14.56688117980957,
+        "CHOICE_C_SKIP": -16.37826156616211
+      }
+    },
+    {
+      "date": "2025-07-21 22:55:00",
+      "signal_pos": 584447,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.011293411254883,
+        "CHOICE_B_SHORT": -14.067825317382812,
+        "CHOICE_C_SKIP": -15.442117691040039
+      }
+    },
+    {
+      "date": "2025-07-22 00:55:00",
+      "signal_pos": 584471,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.086265563964844,
+        "CHOICE_B_SHORT": -14.132123947143555,
+        "CHOICE_C_SKIP": -15.256792068481445
+      }
+    },
+    {
+      "date": "2025-10-07 20:55:00",
+      "signal_pos": 606887,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.999383926391602,
+        "CHOICE_B_SHORT": -14.244400024414062,
+        "CHOICE_C_SKIP": -15.681182861328125
+      }
+    },
+    {
+      "date": "2025-10-07 22:55:00",
+      "signal_pos": 606911,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.757881164550781,
+        "CHOICE_B_SHORT": -14.316082000732422,
+        "CHOICE_C_SKIP": -15.878408432006836
+      }
+    },
+    {
+      "date": "2025-10-08 00:55:00",
+      "signal_pos": 606935,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.98661994934082,
+        "CHOICE_B_SHORT": -14.167837142944336,
+        "CHOICE_C_SKIP": -15.542434692382812
+      }
+    },
+    {
+      "date": "2025-10-09 18:55:00",
+      "signal_pos": 607439,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.102500915527344,
+        "CHOICE_B_SHORT": -14.094236373901367,
+        "CHOICE_C_SKIP": -15.4063720703125
+      }
+    },
+    {
+      "date": "2025-10-09 20:55:00",
+      "signal_pos": 607463,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.864625930786133,
+        "CHOICE_B_SHORT": -14.04781723022461,
+        "CHOICE_C_SKIP": -15.484724044799805
+      }
+    },
+    {
+      "date": "2025-10-10 06:55:00",
+      "signal_pos": 607583,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.088891983032227,
+        "CHOICE_B_SHORT": -14.019308090209961,
+        "CHOICE_C_SKIP": -15.393198013305664
+      }
+    },
+    {
+      "date": "2025-10-19 20:55:00",
+      "signal_pos": 610343,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.996625900268555,
+        "CHOICE_B_SHORT": -13.85824966430664,
+        "CHOICE_C_SKIP": -15.794992446899414
+      }
+    },
+    {
+      "date": "2025-10-20 10:55:00",
+      "signal_pos": 610511,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.23080825805664,
+        "CHOICE_B_SHORT": -14.030914306640625,
+        "CHOICE_C_SKIP": -15.655693054199219
+      }
+    },
+    {
+      "date": "2025-11-01 06:55:00",
+      "signal_pos": 613919,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.071144104003906,
+        "CHOICE_B_SHORT": -13.870159149169922,
+        "CHOICE_C_SKIP": -15.431665420532227
+      }
+    },
+    {
+      "date": "2025-11-10 04:55:00",
+      "signal_pos": 616487,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.077825546264648,
+        "CHOICE_B_SHORT": -14.195379257202148,
+        "CHOICE_C_SKIP": -15.320049285888672
+      }
+    },
+    {
+      "date": "2025-11-10 06:55:00",
+      "signal_pos": 616511,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.41594123840332,
+        "CHOICE_B_SHORT": -13.996801376342773,
+        "CHOICE_C_SKIP": -15.652469635009766
+      }
+    },
+    {
+      "date": "2025-11-10 08:55:00",
+      "signal_pos": 616535,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.21890640258789,
+        "CHOICE_B_SHORT": -13.835220336914062,
+        "CHOICE_C_SKIP": -15.33498764038086
+      }
+    },
+    {
+      "date": "2025-11-20 04:55:00",
+      "signal_pos": 619367,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.828239440917969,
+        "CHOICE_B_SHORT": -13.881710052490234,
+        "CHOICE_C_SKIP": -15.506383895874023
+      }
+    },
+    {
+      "date": "2025-11-23 02:55:00",
+      "signal_pos": 620207,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.353923797607422,
+        "CHOICE_B_SHORT": -13.968557357788086,
+        "CHOICE_C_SKIP": -15.593183517456055
+      }
+    },
+    {
+      "date": "2025-11-23 04:55:00",
+      "signal_pos": 620231,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.10650634765625,
+        "CHOICE_B_SHORT": -13.78164291381836,
+        "CHOICE_C_SKIP": -15.59311294555664
+      }
+    },
+    {
+      "date": "2025-11-23 08:55:00",
+      "signal_pos": 620279,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.087919235229492,
+        "CHOICE_B_SHORT": -14.049530029296875,
+        "CHOICE_C_SKIP": -15.673921585083008
+      }
+    },
+    {
+      "date": "2025-11-23 10:55:00",
+      "signal_pos": 620303,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.32304573059082,
+        "CHOICE_B_SHORT": -13.998649597167969,
+        "CHOICE_C_SKIP": -15.560911178588867
+      }
+    },
+    {
+      "date": "2025-11-23 12:55:00",
+      "signal_pos": 620327,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.257938385009766,
+        "CHOICE_B_SHORT": -13.994192123413086,
+        "CHOICE_C_SKIP": -15.55626106262207
+      }
+    },
+    {
+      "date": "2025-11-23 14:55:00",
+      "signal_pos": 620351,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.227958679199219,
+        "CHOICE_B_SHORT": -13.843656539916992,
+        "CHOICE_C_SKIP": -15.530527114868164
+      }
+    },
+    {
+      "date": "2025-11-23 18:55:00",
+      "signal_pos": 620399,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.23099136352539,
+        "CHOICE_B_SHORT": -13.845211029052734,
+        "CHOICE_C_SKIP": -15.656656265258789
+      }
+    },
+    {
+      "date": "2025-11-23 20:55:00",
+      "signal_pos": 620423,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.056589126586914,
+        "CHOICE_B_SHORT": -13.73288345336914,
+        "CHOICE_C_SKIP": -15.670051574707031
+      }
+    },
+    {
+      "date": "2025-11-23 22:55:00",
+      "signal_pos": 620447,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.168493270874023,
+        "CHOICE_B_SHORT": -13.843578338623047,
+        "CHOICE_C_SKIP": -15.654838562011719
+      }
+    },
+    {
+      "date": "2025-11-24 02:55:00",
+      "signal_pos": 620495,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.263444900512695,
+        "CHOICE_B_SHORT": -13.879728317260742,
+        "CHOICE_C_SKIP": -15.6292724609375
+      }
+    },
+    {
+      "date": "2025-11-24 16:55:00",
+      "signal_pos": 620663,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.167400360107422,
+        "CHOICE_B_SHORT": -13.904911041259766,
+        "CHOICE_C_SKIP": -15.529403686523438
+      }
+    },
+    {
+      "date": "2025-11-24 22:55:00",
+      "signal_pos": 620735,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.239151000976562,
+        "CHOICE_B_SHORT": -13.785882949829102,
+        "CHOICE_C_SKIP": -15.78525161743164
+      }
+    },
+    {
+      "date": "2025-11-25 00:55:00",
+      "signal_pos": 620759,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.145156860351562,
+        "CHOICE_B_SHORT": -13.881174087524414,
+        "CHOICE_C_SKIP": -15.692888259887695
+      }
+    },
+    {
+      "date": "2025-11-25 02:55:00",
+      "signal_pos": 620783,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -14.991310119628906,
+        "CHOICE_B_SHORT": -13.734222412109375,
+        "CHOICE_C_SKIP": -15.483596801757812
+      }
+    },
+    {
+      "date": "2025-11-25 22:55:00",
+      "signal_pos": 621023,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.147628784179688,
+        "CHOICE_B_SHORT": -13.98416519165039,
+        "CHOICE_C_SKIP": -15.67050552368164
+      }
+    },
+    {
+      "date": "2025-11-27 06:55:00",
+      "signal_pos": 621407,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.185050964355469,
+        "CHOICE_B_SHORT": -14.044517517089844,
+        "CHOICE_C_SKIP": -15.731672286987305
+      }
+    },
+    {
+      "date": "2025-11-27 12:55:00",
+      "signal_pos": 621479,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.113761901855469,
+        "CHOICE_B_SHORT": -13.92129135131836,
+        "CHOICE_C_SKIP": -15.795551300048828
+      }
+    },
+    {
+      "date": "2025-11-27 14:55:00",
+      "signal_pos": 621503,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.167547225952148,
+        "CHOICE_B_SHORT": -14.157279968261719,
+        "CHOICE_C_SKIP": -15.656427383422852
+      }
+    },
+    {
+      "date": "2025-11-27 20:55:00",
+      "signal_pos": 621575,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.089838027954102,
+        "CHOICE_B_SHORT": -14.021265029907227,
+        "CHOICE_C_SKIP": -15.457870483398438
+      }
+    },
+    {
+      "date": "2025-11-27 22:55:00",
+      "signal_pos": 621599,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.201698303222656,
+        "CHOICE_B_SHORT": -13.819705963134766,
+        "CHOICE_C_SKIP": -15.693368911743164
+      }
+    },
+    {
+      "date": "2025-11-28 00:55:00",
+      "signal_pos": 621623,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.230628967285156,
+        "CHOICE_B_SHORT": -14.032901763916016,
+        "CHOICE_C_SKIP": -15.47003173828125
+      }
+    },
+    {
+      "date": "2025-11-28 02:55:00",
+      "signal_pos": 621647,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.202535629272461,
+        "CHOICE_B_SHORT": -13.882715225219727,
+        "CHOICE_C_SKIP": -15.506706237792969
+      }
+    },
+    {
+      "date": "2025-11-28 12:55:00",
+      "signal_pos": 621767,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.201711654663086,
+        "CHOICE_B_SHORT": -13.818777084350586,
+        "CHOICE_C_SKIP": -15.630010604858398
+      }
+    },
+    {
+      "date": "2025-11-30 18:55:00",
+      "signal_pos": 622415,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.080759048461914,
+        "CHOICE_B_SHORT": -14.011056900024414,
+        "CHOICE_C_SKIP": -15.822519302368164
+      }
+    },
+    {
+      "date": "2025-11-30 20:55:00",
+      "signal_pos": 622439,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.104351043701172,
+        "CHOICE_B_SHORT": -14.094718933105469,
+        "CHOICE_C_SKIP": -15.594188690185547
+      }
+    },
+    {
+      "date": "2025-11-30 22:55:00",
+      "signal_pos": 622463,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -15.162431716918945,
+        "CHOICE_B_SHORT": -13.961845397949219,
+        "CHOICE_C_SKIP": -15.211593627929688
+      }
+    }
+  ],
+  "leakage_guard": {
+    "model_sees_prompt_only": true,
+    "targets_used_for_metrics_only": true
+  }
+}

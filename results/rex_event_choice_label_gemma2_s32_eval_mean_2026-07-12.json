@@ -1,0 +1,965 @@
+{
+  "config": {
+    "eval_jsonl": "data/rex_event_choice_label_sft_eval_20260712.jsonl",
+    "output_json": "results/rex_event_choice_label_gemma2_s32_eval_mean_2026-07-12.json",
+    "market_csv": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+    "model_name": "gemma2-2b-it",
+    "adapter_dir": "checkpoints/rex_event_choice_label_gemma2_2b_lora_s32_20260712",
+    "max_samples": 0,
+    "sample_mode": "sequential",
+    "batch_size": 8,
+    "score_normalization": "mean",
+    "hold_bars": 144,
+    "entry_delay_bars": 1,
+    "leverage": 0.5,
+    "fee_rate": 0.0004,
+    "slippage_rate": 0.0001
+  },
+  "model_name_resolved": "google/gemma-2-2b-it",
+  "metrics": {
+    "num_samples": 81,
+    "accuracy": 0.25925925925925924,
+    "target_counts": {
+      "CHOICE_B_SHORT": 21,
+      "CHOICE_A_LONG": 21,
+      "CHOICE_C_SKIP": 39
+    },
+    "prediction_counts": {
+      "CHOICE_B_SHORT": 81
+    },
+    "confusion": {
+      "target=CHOICE_B_SHORT|pred=CHOICE_B_SHORT": 21,
+      "target=CHOICE_A_LONG|pred=CHOICE_B_SHORT": 21,
+      "target=CHOICE_C_SKIP|pred=CHOICE_B_SHORT": 39
+    }
+  },
+  "backtest": {
+    "predicted_trade_rows": 81,
+    "sim": {
+      "ret_pct": 0.7809122519621736,
+      "cagr_pct": 2.941621974813602,
+      "strict_mdd_pct": 4.8743774259426775,
+      "cagr_to_strict_mdd": 0.6034867056370196,
+      "trade_entries": 28,
+      "side_counts": {
+        "LONG": 0,
+        "SHORT": 28
+      },
+      "skipped_missing_bars": 0,
+      "hold_bars": 144,
+      "entry_delay_bars": 1,
+      "return_application": "candidate_score_selected_actual_ohlc_strict_mdd"
+    },
+    "trade_stats": {
+      "n_trades": 28,
+      "mean_trade_ret_pct": 0.031830638660372355,
+      "std_trade_ret_pct": 0.9154622042607758,
+      "t_stat_like": 0.1839856491633245,
+      "p_value_mean_ret_approx": 0.8540247130484846,
+      "ci95_mean_trade_ret_pct": [
+        -0.30726130714105154,
+        0.3709225844617962
+      ],
+      "effect_size_d": 0.03477001946363825,
+      "n_required_for_80pct_power_alpha5pct": 6493,
+      "n_gap_to_power_rule": 6465
+    }
+  },
+  "score_rows": [
+    {
+      "date": "2026-02-02 22:55:00",
+      "signal_pos": 640895,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.52195405960083,
+        "CHOICE_B_SHORT": -2.3117170333862305,
+        "CHOICE_C_SKIP": -2.5823943614959717
+      }
+    },
+    {
+      "date": "2026-02-03 00:55:00",
+      "signal_pos": 640919,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4744791984558105,
+        "CHOICE_B_SHORT": -2.3067548274993896,
+        "CHOICE_C_SKIP": -2.587937355041504
+      }
+    },
+    {
+      "date": "2026-02-03 04:55:00",
+      "signal_pos": 640967,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.527474880218506,
+        "CHOICE_B_SHORT": -2.3385958671569824,
+        "CHOICE_C_SKIP": -2.557206153869629
+      }
+    },
+    {
+      "date": "2026-02-06 14:55:00",
+      "signal_pos": 641951,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.532233715057373,
+        "CHOICE_B_SHORT": -2.301240921020508,
+        "CHOICE_C_SKIP": -2.58233642578125
+      }
+    },
+    {
+      "date": "2026-02-06 16:55:00",
+      "signal_pos": 641975,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.51593017578125,
+        "CHOICE_B_SHORT": -2.274902105331421,
+        "CHOICE_C_SKIP": -2.5560264587402344
+      }
+    },
+    {
+      "date": "2026-02-06 18:55:00",
+      "signal_pos": 641999,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5428872108459473,
+        "CHOICE_B_SHORT": -2.3429408073425293,
+        "CHOICE_C_SKIP": -2.598050832748413
+      }
+    },
+    {
+      "date": "2026-02-06 20:55:00",
+      "signal_pos": 642023,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.547844409942627,
+        "CHOICE_B_SHORT": -2.2957544326782227,
+        "CHOICE_C_SKIP": -2.597662925720215
+      }
+    },
+    {
+      "date": "2026-02-06 22:55:00",
+      "signal_pos": 642047,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5010924339294434,
+        "CHOICE_B_SHORT": -2.270467758178711,
+        "CHOICE_C_SKIP": -2.5516209602355957
+      }
+    },
+    {
+      "date": "2026-02-07 00:55:00",
+      "signal_pos": 642071,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.543173313140869,
+        "CHOICE_B_SHORT": -2.2705724239349365,
+        "CHOICE_C_SKIP": -2.5725584030151367
+      }
+    },
+    {
+      "date": "2026-02-07 02:55:00",
+      "signal_pos": 642095,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5285096168518066,
+        "CHOICE_B_SHORT": -2.3177380561828613,
+        "CHOICE_C_SKIP": -2.5988831520080566
+      }
+    },
+    {
+      "date": "2026-02-07 04:55:00",
+      "signal_pos": 642119,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5231711864471436,
+        "CHOICE_B_SHORT": -2.3237123489379883,
+        "CHOICE_C_SKIP": -2.584125280380249
+      }
+    },
+    {
+      "date": "2026-02-07 18:55:00",
+      "signal_pos": 642287,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5241174697875977,
+        "CHOICE_B_SHORT": -2.2925853729248047,
+        "CHOICE_C_SKIP": -2.6257264614105225
+      }
+    },
+    {
+      "date": "2026-02-07 20:55:00",
+      "signal_pos": 642311,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5064876079559326,
+        "CHOICE_B_SHORT": -2.296687602996826,
+        "CHOICE_C_SKIP": -2.577787160873413
+      }
+    },
+    {
+      "date": "2026-02-07 22:55:00",
+      "signal_pos": 642335,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5282950401306152,
+        "CHOICE_B_SHORT": -2.2969260215759277,
+        "CHOICE_C_SKIP": -2.588508129119873
+      }
+    },
+    {
+      "date": "2026-02-08 02:55:00",
+      "signal_pos": 642383,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5002613067626953,
+        "CHOICE_B_SHORT": -2.3533215522766113,
+        "CHOICE_C_SKIP": -2.603161334991455
+      }
+    },
+    {
+      "date": "2026-02-08 04:55:00",
+      "signal_pos": 642407,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.479854106903076,
+        "CHOICE_B_SHORT": -2.3533294200897217,
+        "CHOICE_C_SKIP": -2.5927414894104004
+      }
+    },
+    {
+      "date": "2026-02-08 06:55:00",
+      "signal_pos": 642431,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.542532444000244,
+        "CHOICE_B_SHORT": -2.290630340576172,
+        "CHOICE_C_SKIP": -2.5821547508239746
+      }
+    },
+    {
+      "date": "2026-02-08 08:55:00",
+      "signal_pos": 642455,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.522219181060791,
+        "CHOICE_B_SHORT": -2.3175714015960693,
+        "CHOICE_C_SKIP": -2.588264226913452
+      }
+    },
+    {
+      "date": "2026-02-08 10:55:00",
+      "signal_pos": 642479,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5330939292907715,
+        "CHOICE_B_SHORT": -2.291080951690674,
+        "CHOICE_C_SKIP": -2.593048095703125
+      }
+    },
+    {
+      "date": "2026-02-08 12:55:00",
+      "signal_pos": 642503,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5131468772888184,
+        "CHOICE_B_SHORT": -2.282623291015625,
+        "CHOICE_C_SKIP": -2.5949645042419434
+      }
+    },
+    {
+      "date": "2026-02-08 14:55:00",
+      "signal_pos": 642527,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.492037534713745,
+        "CHOICE_B_SHORT": -2.3033416271209717,
+        "CHOICE_C_SKIP": -2.63653564453125
+      }
+    },
+    {
+      "date": "2026-02-08 16:55:00",
+      "signal_pos": 642551,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5383477210998535,
+        "CHOICE_B_SHORT": -2.307461738586426,
+        "CHOICE_C_SKIP": -2.6511635780334473
+      }
+    },
+    {
+      "date": "2026-02-08 18:55:00",
+      "signal_pos": 642575,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.517648458480835,
+        "CHOICE_B_SHORT": -2.29669189453125,
+        "CHOICE_C_SKIP": -2.6090610027313232
+      }
+    },
+    {
+      "date": "2026-02-08 20:55:00",
+      "signal_pos": 642599,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4991538524627686,
+        "CHOICE_B_SHORT": -2.320277214050293,
+        "CHOICE_C_SKIP": -2.6014161109924316
+      }
+    },
+    {
+      "date": "2026-02-08 22:55:00",
+      "signal_pos": 642623,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4949264526367188,
+        "CHOICE_B_SHORT": -2.3066048622131348,
+        "CHOICE_C_SKIP": -2.5980658531188965
+      }
+    },
+    {
+      "date": "2026-02-09 04:55:00",
+      "signal_pos": 642695,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.530986785888672,
+        "CHOICE_B_SHORT": -2.320627212524414,
+        "CHOICE_C_SKIP": -2.633030414581299
+      }
+    },
+    {
+      "date": "2026-02-09 18:55:00",
+      "signal_pos": 642863,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5178208351135254,
+        "CHOICE_B_SHORT": -2.370009422302246,
+        "CHOICE_C_SKIP": -2.599083423614502
+      }
+    },
+    {
+      "date": "2026-02-09 20:55:00",
+      "signal_pos": 642887,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5274534225463867,
+        "CHOICE_B_SHORT": -2.307253837585449,
+        "CHOICE_C_SKIP": -2.588322401046753
+      }
+    },
+    {
+      "date": "2026-02-09 22:55:00",
+      "signal_pos": 642911,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5546016693115234,
+        "CHOICE_B_SHORT": -2.3432421684265137,
+        "CHOICE_C_SKIP": -2.5931735038757324
+      }
+    },
+    {
+      "date": "2026-02-12 10:55:00",
+      "signal_pos": 643631,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5121116638183594,
+        "CHOICE_B_SHORT": -2.3222100734710693,
+        "CHOICE_C_SKIP": -2.5616557598114014
+      }
+    },
+    {
+      "date": "2026-02-12 12:55:00",
+      "signal_pos": 643655,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5508780479431152,
+        "CHOICE_B_SHORT": -2.3393263816833496,
+        "CHOICE_C_SKIP": -2.6101596355438232
+      }
+    },
+    {
+      "date": "2026-02-13 14:55:00",
+      "signal_pos": 643967,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.554326057434082,
+        "CHOICE_B_SHORT": -2.280956268310547,
+        "CHOICE_C_SKIP": -2.603701114654541
+      }
+    },
+    {
+      "date": "2026-02-13 16:55:00",
+      "signal_pos": 643991,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5215210914611816,
+        "CHOICE_B_SHORT": -2.3117079734802246,
+        "CHOICE_C_SKIP": -2.551203727722168
+      }
+    },
+    {
+      "date": "2026-02-13 18:55:00",
+      "signal_pos": 644015,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5369038581848145,
+        "CHOICE_B_SHORT": -2.305907726287842,
+        "CHOICE_C_SKIP": -2.5869672298431396
+      }
+    },
+    {
+      "date": "2026-02-13 20:55:00",
+      "signal_pos": 644039,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.539599895477295,
+        "CHOICE_B_SHORT": -2.2977683544158936,
+        "CHOICE_C_SKIP": -2.610146999359131
+      }
+    },
+    {
+      "date": "2026-02-13 22:55:00",
+      "signal_pos": 644063,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5482540130615234,
+        "CHOICE_B_SHORT": -2.307197093963623,
+        "CHOICE_C_SKIP": -2.609107732772827
+      }
+    },
+    {
+      "date": "2026-02-14 00:55:00",
+      "signal_pos": 644087,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.512749671936035,
+        "CHOICE_B_SHORT": -2.3134143352508545,
+        "CHOICE_C_SKIP": -2.6049747467041016
+      }
+    },
+    {
+      "date": "2026-02-14 02:55:00",
+      "signal_pos": 644111,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.543489933013916,
+        "CHOICE_B_SHORT": -2.311788320541382,
+        "CHOICE_C_SKIP": -2.582467555999756
+      }
+    },
+    {
+      "date": "2026-02-14 06:55:00",
+      "signal_pos": 644159,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4717319011688232,
+        "CHOICE_B_SHORT": -2.314552068710327,
+        "CHOICE_C_SKIP": -2.6268081665039062
+      }
+    },
+    {
+      "date": "2026-02-14 08:55:00",
+      "signal_pos": 644183,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.475579261779785,
+        "CHOICE_B_SHORT": -2.328094482421875,
+        "CHOICE_C_SKIP": -2.52588152885437
+      }
+    },
+    {
+      "date": "2026-02-14 10:55:00",
+      "signal_pos": 644207,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.501802921295166,
+        "CHOICE_B_SHORT": -2.333122968673706,
+        "CHOICE_C_SKIP": -2.5621657371520996
+      }
+    },
+    {
+      "date": "2026-02-14 12:55:00",
+      "signal_pos": 644231,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.536715030670166,
+        "CHOICE_B_SHORT": -2.285788059234619,
+        "CHOICE_C_SKIP": -2.6294403076171875
+      }
+    },
+    {
+      "date": "2026-02-14 14:55:00",
+      "signal_pos": 644255,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5020949840545654,
+        "CHOICE_B_SHORT": -2.3330764770507812,
+        "CHOICE_C_SKIP": -2.562159538269043
+      }
+    },
+    {
+      "date": "2026-02-14 16:55:00",
+      "signal_pos": 644279,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4988083839416504,
+        "CHOICE_B_SHORT": -2.299187183380127,
+        "CHOICE_C_SKIP": -2.6011483669281006
+      }
+    },
+    {
+      "date": "2026-02-14 18:55:00",
+      "signal_pos": 644303,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5262699127197266,
+        "CHOICE_B_SHORT": -2.2751636505126953,
+        "CHOICE_C_SKIP": -2.63956356048584
+      }
+    },
+    {
+      "date": "2026-02-14 20:55:00",
+      "signal_pos": 644327,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5023038387298584,
+        "CHOICE_B_SHORT": -2.313815116882324,
+        "CHOICE_C_SKIP": -2.5324437618255615
+      }
+    },
+    {
+      "date": "2026-02-14 22:55:00",
+      "signal_pos": 644351,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.503121852874756,
+        "CHOICE_B_SHORT": -2.313910961151123,
+        "CHOICE_C_SKIP": -2.532489776611328
+      }
+    },
+    {
+      "date": "2026-02-15 00:55:00",
+      "signal_pos": 644375,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.495471954345703,
+        "CHOICE_B_SHORT": -2.3066415786743164,
+        "CHOICE_C_SKIP": -2.5877785682678223
+      }
+    },
+    {
+      "date": "2026-02-15 10:55:00",
+      "signal_pos": 644495,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.533965587615967,
+        "CHOICE_B_SHORT": -2.3033270835876465,
+        "CHOICE_C_SKIP": -2.594844341278076
+      }
+    },
+    {
+      "date": "2026-02-16 12:55:00",
+      "signal_pos": 644807,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5230214595794678,
+        "CHOICE_B_SHORT": -2.3542404174804688,
+        "CHOICE_C_SKIP": -2.5624823570251465
+      }
+    },
+    {
+      "date": "2026-02-20 10:55:00",
+      "signal_pos": 645935,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.574298858642578,
+        "CHOICE_B_SHORT": -2.3226256370544434,
+        "CHOICE_C_SKIP": -2.614187717437744
+      }
+    },
+    {
+      "date": "2026-02-21 00:55:00",
+      "signal_pos": 646103,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.548072576522827,
+        "CHOICE_B_SHORT": -2.316420078277588,
+        "CHOICE_C_SKIP": -2.566256523132324
+      }
+    },
+    {
+      "date": "2026-02-21 08:55:00",
+      "signal_pos": 646199,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5098655223846436,
+        "CHOICE_B_SHORT": -2.3319995403289795,
+        "CHOICE_C_SKIP": -2.633967876434326
+      }
+    },
+    {
+      "date": "2026-02-21 16:55:00",
+      "signal_pos": 646295,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5222251415252686,
+        "CHOICE_B_SHORT": -2.3117175102233887,
+        "CHOICE_C_SKIP": -2.582416296005249
+      }
+    },
+    {
+      "date": "2026-02-25 10:55:00",
+      "signal_pos": 647375,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5421833992004395,
+        "CHOICE_B_SHORT": -2.3214194774627686,
+        "CHOICE_C_SKIP": -2.5712716579437256
+      }
+    },
+    {
+      "date": "2026-02-25 12:55:00",
+      "signal_pos": 647399,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.522919178009033,
+        "CHOICE_B_SHORT": -2.3121767044067383,
+        "CHOICE_C_SKIP": -2.6036956310272217
+      }
+    },
+    {
+      "date": "2026-02-25 14:55:00",
+      "signal_pos": 647423,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5227713584899902,
+        "CHOICE_B_SHORT": -2.2925972938537598,
+        "CHOICE_C_SKIP": -2.5841407775878906
+      }
+    },
+    {
+      "date": "2026-02-25 22:55:00",
+      "signal_pos": 647519,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4640684127807617,
+        "CHOICE_B_SHORT": -2.296434164047241,
+        "CHOICE_C_SKIP": -2.6087517738342285
+      }
+    },
+    {
+      "date": "2026-02-26 00:55:00",
+      "signal_pos": 647543,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.509187698364258,
+        "CHOICE_B_SHORT": -2.3097572326660156,
+        "CHOICE_C_SKIP": -2.601264476776123
+      }
+    },
+    {
+      "date": "2026-02-26 02:55:00",
+      "signal_pos": 647567,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.502567768096924,
+        "CHOICE_B_SHORT": -2.313563108444214,
+        "CHOICE_C_SKIP": -2.6050658226013184
+      }
+    },
+    {
+      "date": "2026-02-26 06:55:00",
+      "signal_pos": 647615,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.504138469696045,
+        "CHOICE_B_SHORT": -2.3347327709198,
+        "CHOICE_C_SKIP": -2.6159167289733887
+      }
+    },
+    {
+      "date": "2026-02-26 12:55:00",
+      "signal_pos": 647687,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.531938076019287,
+        "CHOICE_B_SHORT": -2.3220648765563965,
+        "CHOICE_C_SKIP": -2.582386016845703
+      }
+    },
+    {
+      "date": "2026-03-01 00:55:00",
+      "signal_pos": 648407,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5135600566864014,
+        "CHOICE_B_SHORT": -2.3135933876037598,
+        "CHOICE_C_SKIP": -2.6155052185058594
+      }
+    },
+    {
+      "date": "2026-03-01 04:55:00",
+      "signal_pos": 648455,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5219383239746094,
+        "CHOICE_B_SHORT": -2.3116633892059326,
+        "CHOICE_C_SKIP": -2.5719354152679443
+      }
+    },
+    {
+      "date": "2026-03-01 06:55:00",
+      "signal_pos": 648479,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5271072387695312,
+        "CHOICE_B_SHORT": -2.328031539916992,
+        "CHOICE_C_SKIP": -2.56756591796875
+      }
+    },
+    {
+      "date": "2026-03-06 08:55:00",
+      "signal_pos": 649943,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.490567207336426,
+        "CHOICE_B_SHORT": -2.401353359222412,
+        "CHOICE_C_SKIP": -2.578310012817383
+      }
+    },
+    {
+      "date": "2026-03-12 06:55:00",
+      "signal_pos": 651647,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4524247646331787,
+        "CHOICE_B_SHORT": -2.3684966564178467,
+        "CHOICE_C_SKIP": -2.6391425132751465
+      }
+    },
+    {
+      "date": "2026-03-12 08:55:00",
+      "signal_pos": 651671,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5198066234588623,
+        "CHOICE_B_SHORT": -2.3575587272644043,
+        "CHOICE_C_SKIP": -2.5657565593719482
+      }
+    },
+    {
+      "date": "2026-04-20 00:55:00",
+      "signal_pos": 662807,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.485197067260742,
+        "CHOICE_B_SHORT": -2.338747501373291,
+        "CHOICE_C_SKIP": -2.609419584274292
+      }
+    },
+    {
+      "date": "2026-04-20 02:55:00",
+      "signal_pos": 662831,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5067155361175537,
+        "CHOICE_B_SHORT": -2.359921932220459,
+        "CHOICE_C_SKIP": -2.5681493282318115
+      }
+    },
+    {
+      "date": "2026-04-20 04:55:00",
+      "signal_pos": 662855,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4711570739746094,
+        "CHOICE_B_SHORT": -2.3454642295837402,
+        "CHOICE_C_SKIP": -2.6265745162963867
+      }
+    },
+    {
+      "date": "2026-04-27 20:55:00",
+      "signal_pos": 665063,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4789586067199707,
+        "CHOICE_B_SHORT": -2.3793599605560303,
+        "CHOICE_C_SKIP": -2.6084744930267334
+      }
+    },
+    {
+      "date": "2026-04-27 22:55:00",
+      "signal_pos": 665087,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.456881284713745,
+        "CHOICE_B_SHORT": -2.351954460144043,
+        "CHOICE_C_SKIP": -2.6331634521484375
+      }
+    },
+    {
+      "date": "2026-04-28 08:55:00",
+      "signal_pos": 665207,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4548683166503906,
+        "CHOICE_B_SHORT": -2.397089719772339,
+        "CHOICE_C_SKIP": -2.6469924449920654
+      }
+    },
+    {
+      "date": "2026-04-28 18:55:00",
+      "signal_pos": 665327,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.470543384552002,
+        "CHOICE_B_SHORT": -2.3818507194519043,
+        "CHOICE_C_SKIP": -2.673208713531494
+      }
+    },
+    {
+      "date": "2026-04-28 20:55:00",
+      "signal_pos": 665351,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.5118656158447266,
+        "CHOICE_B_SHORT": -2.3808469772338867,
+        "CHOICE_C_SKIP": -2.5472874641418457
+      }
+    },
+    {
+      "date": "2026-04-30 10:55:00",
+      "signal_pos": 665807,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.518167495727539,
+        "CHOICE_B_SHORT": -2.3712308406829834,
+        "CHOICE_C_SKIP": -2.537792682647705
+      }
+    },
+    {
+      "date": "2026-05-07 18:55:00",
+      "signal_pos": 667919,
+      "target": "CHOICE_B_SHORT",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.476562976837158,
+        "CHOICE_B_SHORT": -2.387291669845581,
+        "CHOICE_C_SKIP": -2.6060404777526855
+      }
+    },
+    {
+      "date": "2026-05-08 04:55:00",
+      "signal_pos": 668039,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4427294731140137,
+        "CHOICE_B_SHORT": -2.3902883529663086,
+        "CHOICE_C_SKIP": -2.640172004699707
+      }
+    },
+    {
+      "date": "2026-05-11 10:55:00",
+      "signal_pos": 668975,
+      "target": "CHOICE_A_LONG",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.476640224456787,
+        "CHOICE_B_SHORT": -2.329989194869995,
+        "CHOICE_C_SKIP": -2.590273380279541
+      }
+    },
+    {
+      "date": "2026-05-12 12:55:00",
+      "signal_pos": 669287,
+      "target": "CHOICE_C_SKIP",
+      "prediction": "CHOICE_B_SHORT",
+      "scores": {
+        "CHOICE_A_LONG": -2.4444074630737305,
+        "CHOICE_B_SHORT": -2.392005443572998,
+        "CHOICE_C_SKIP": -2.6522912979125977
+      }
+    }
+  ],
+  "leakage_guard": {
+    "model_sees_prompt_only": true,
+    "targets_used_for_metrics_only": true
+  }
+}
