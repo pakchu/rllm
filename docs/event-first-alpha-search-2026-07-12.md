@@ -65,3 +65,26 @@ Verdict:
 - 핵심 edge는 여전히 REX/HTF pullback 계열에 집중되어 있다.
 - 완전한 새 독립 알파라기보다는 기존 REX thesis의 event-context 확장이다.
 - 다음 단계는 이 후보를 기존 portfolio/RLLM meta-controller의 입력으로 넣고, train에서 MDD가 커지는 구간을 설명하는 regime split을 먼저 찾아야 한다.
+
+## Year/side diagnosis for `rex_htf_pullback_reclaim@h144@q0.75`
+Artifact: `results/rex_htf_pullback_reclaim_yearly_breakdown_2026-07-12.json`
+
+Threshold remains fixed from train 2020-2024 (`0.2143444289`); no yearly retuning.
+
+| period | abs return | full-window CAGR | strict MDD | CAGR/MDD | trades | sides | p approx |
+|---|---:|---:|---:|---:|---:|---|---:|
+| 2020 | 2.09% | 2.08% | 15.47% | 0.13 | 147 | L92/S55 | 0.835 |
+| 2021 | 44.99% | 45.02% | 13.46% | 3.35 | 245 | L149/S96 | 0.116 |
+| 2022 | -9.30% | -9.31% | 18.45% | -0.50 | 154 | L37/S117 | 0.540 |
+| 2023 | -0.91% | -0.91% | 11.72% | -0.08 | 113 | L96/S17 | 0.945 |
+| 2024 | 1.73% | 1.73% | 7.96% | 0.22 | 109 | L84/S25 | 0.833 |
+| 2025 | 15.32% | 15.33% | 4.83% | 3.17 | 74 | L31/S43 | 0.037 |
+| 2026H1 | 5.34% | 13.40% | 4.40% | 3.04 | 43 | L15/S28 | 0.328 |
+
+Side split notes:
+- 2025 edge is mostly SHORT: short-only abs +13.71%, CAGR/MDD 2.84, 43 trades; long-only +1.42%.
+- 2026H1 edge is more LONG-efficient: long-only abs +3.57%, full-window CAGR/MDD 5.88, 15 trades; short-only +1.71%, CAGR/MDD 0.95.
+- 2022 loss is dominated by LONG (-10.31%) while SHORT is flat (+1.12%).
+- 2024 SHORT is negative (-6.28%) while LONG is positive (+8.54%).
+
+Implication: this event family needs an explicit regime/side controller. It should not be traded as a static mixed-direction alpha; it is useful as an RLLM prompt/context feature where the model reasons about whether pullback reclaim should be followed long, followed short, or skipped.
