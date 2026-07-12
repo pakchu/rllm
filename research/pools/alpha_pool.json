@@ -2581,6 +2581,66 @@
       "contamination_risk": "medium",
       "leakage_notes": "Thresholds fit on train only; test selected; eval post-selection. Features are rolling/current-row causal. Needs independent revalidation before live use.",
       "next_action": "Use as RLLM/portfolio event context and diagnose train high-MDD regime before promotion."
+    },
+    {
+      "id": "rex_event_side_controller_recent_20260712",
+      "name": "REX event side-controller recent candidate",
+      "status": "weak",
+      "family": "rex_event_context_side_controller",
+      "scope": "btc_price_action_rex_htf",
+      "side": "mixed",
+      "description": "Side-filtered REX HTF pullback reclaim event. Improves recent 2025/2026 performance by allowing LONG only in deep RSI pullback and SHORT only in high realized range, but fails broad 2025-2026 eval when selected on 2024, so it is an RLLM context prior rather than standalone alpha.",
+      "entry_logic": "Base event rex_htf_pullback_reclaim@h144@q0.75. Recent selected side rules: LONG if rsi_norm <= -0.3052479583; SHORT if range_vol >= 0.0215245647. All thresholds fit on train side-event distributions.",
+      "exit_logic": "Fixed hold 144 5m bars, 1-bar entry delay, stride 24, non-overlapping strict simulator.",
+      "dependencies": [
+        "rex_htf_pullback_reclaim_recent_event_20260712",
+        "rsi_norm",
+        "range_vol"
+      ],
+      "stats": {
+        "recent_train_2020_2024": {
+          "return_pct": 89.23,
+          "cagr_pct": 13.6,
+          "strict_mdd_pct": 15.04,
+          "cagr_to_strict_mdd": 0.9,
+          "trades": 432,
+          "p_approx": 0.019
+        },
+        "recent_test_2025": {
+          "return_pct": 17.99,
+          "cagr_pct": 18.01,
+          "strict_mdd_pct": 2.54,
+          "cagr_to_strict_mdd": 7.09,
+          "trades": 35,
+          "p_approx": 0.0003
+        },
+        "recent_eval_2026h1": {
+          "return_pct": 5.65,
+          "cagr_pct": 14.22,
+          "strict_mdd_pct": 4.11,
+          "cagr_to_strict_mdd": 3.46,
+          "trades": 28,
+          "p_approx": 0.233
+        },
+        "broad_eval_2025_2026h1_selected_on_2024": {
+          "return_pct": 4.7,
+          "cagr_pct": 3.31,
+          "strict_mdd_pct": 3.51,
+          "cagr_to_strict_mdd": 0.94,
+          "trades": 32,
+          "p_approx": 0.268
+        }
+      },
+      "evidence": "Recent split passes test/eval ratio, but broad split final eval fails. Do not promote to live-grade; use as prompt/context structure for RLLM side reasoning.",
+      "source_artifacts": [
+        "training/search_rex_event_side_controller.py",
+        "results/rex_event_side_controller_scan_2026-07-12.json",
+        "results/rex_event_side_controller_broad_2026-07-12.json",
+        "docs/rex-event-side-controller-scan-2026-07-12.md"
+      ],
+      "contamination_risk": "medium_high",
+      "leakage_notes": "Base event threshold and side-rule thresholds fit on train only. Test used for selection; eval was not used. Broad split failure is recorded as anti-overfit evidence.",
+      "next_action": "Feed event+side-context into RLLM meta-controller; do not trade statically."
     }
   ]
 }
