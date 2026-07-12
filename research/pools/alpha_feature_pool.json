@@ -724,6 +724,193 @@
         "protocol": "train-only low-correlation filter and train-only quantile thresholds; strict path MDD; full-window CAGR",
         "notes": "Prioritize semantic tokens EARLY_PULLBACK_LOW_ACTIVITY, RET_VOL_DECORRELATION, ORDERFLOW_TOXICITY, OI_PRICE_DIVERGENCE."
       }
+    },
+    {
+      "id": "kimchi_fx_local_impulse_features_20260712",
+      "name": "Kimchi/FX local impulse lead-lag features",
+      "status": "promoted",
+      "family": "kimchi_fx_leadlag",
+      "scope": "btc_target_crossmarket_features",
+      "feature_tier": "alpha_feature",
+      "description": "Causal Kimchi-premium changes normalized against USDKRW changes to measure Korea-local risk-appetite impulses relative to FX.",
+      "data_sources": [
+        "BTCUSDT 5m",
+        "BTCKRW-derived Kimchi premium",
+        "USDKRW"
+      ],
+      "feature_names": [
+        "kl_kimchi_delta_48",
+        "kl_kimchi_delta_144",
+        "kl_kimchi_delta_288",
+        "kl_kimchi_btc_gap_48",
+        "kl_kimchi_btc_gap_144",
+        "kl_kimchi_btc_gap_288",
+        "kl_local_impulse_48",
+        "kl_local_impulse_144",
+        "kl_local_impulse_288",
+        "kl_accel_48_144"
+      ],
+      "usable_for": [
+        "bidirectional long-leg gate",
+        "cross-market RLLM state token",
+        "Kimchi/FX relative impulse selector"
+      ],
+      "known_failures": [
+        "5,040 standalone bidirectional variants produced zero test/eval ratio>=2.5 candidates"
+      ],
+      "evidence": "kl_local_impulse_144 q0.10 long gate creates a bidirectional candidate with test/eval/2026 ratios 3.64/3.06/3.58.",
+      "source_artifacts": [
+        "training/search_kimchi_leadlag_bidirectional_alpha.py",
+        "results/kimchi_leadlag_bidirectional_alpha_scan_2026-07-12.json",
+        "training/search_bidirectional_kimchi_gate_alpha.py",
+        "results/bidirectional_kimchi_gate_alpha_scan_2026-07-12.json",
+        "docs/kimchi-leadlag-bidirectional-alpha-search-2026-07-12.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Feature formulas train-causal; gate selected on 2024; eval/2026 consumed. No further threshold tuning.",
+      "tier_rationale": "Alpha feature because a fixed q0.10 gate on an existing policy clears test/eval ratio>=3 and remains positive in 2026.",
+      "next_action": "Keep fixed q0.10 gate as candidate; require fresh data and portfolio marginal contribution before live sizing.",
+      "generation_recipe": {
+        "scripts": [
+          "training/search_kimchi_leadlag_bidirectional_alpha.py",
+          "training/search_bidirectional_kimchi_gate_alpha.py"
+        ],
+        "protocol": "train thresholds; test-only selection; eval/2026 reporting; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "jump_bipower_variation_features_20260712",
+      "name": "Realized jump and bipower variation features",
+      "status": "promoted",
+      "family": "realized_jump_variation",
+      "scope": "btc_price_orderflow",
+      "feature_tier": "alpha_feature",
+      "description": "Causal realized variance minus bipower variation, signed cubic jump variation and post-jump taker-flow recovery.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker"
+      ],
+      "feature_names": [
+        "jv_jump_ratio_24",
+        "jv_jump_ratio_72",
+        "jv_jump_ratio_144",
+        "jv_signed_jump_72",
+        "jv_flow_recovery",
+        "jv_vov"
+      ],
+      "usable_for": [
+        "bidirectional jump continuation",
+        "RLLM jump-state token"
+      ],
+      "known_failures": [
+        "Train performance of the qualifying candidate is negative",
+        "2026 ratio is only 0.45"
+      ],
+      "evidence": "Supports a reproducible alpha-pool candidate with test/eval ratios 2.54/3.09 and 52/36 trades.",
+      "source_artifacts": [
+        "training/search_jump_variation_bidirectional_alpha.py",
+        "results/jump_variation_bidirectional_alpha_scan_2026-07-12.json",
+        "docs/jump-variation-bidirectional-alpha-2026-07-12.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Train-fit thresholds; test-only selection; eval/2026 consumed after selection; exact rerun matched.",
+      "tier_rationale": "Alpha feature because a standalone bidirectional strategy clears project test/eval alpha threshold.",
+      "next_action": "Candidate research only; fresh OOS needed because train and 2026 are weak.",
+      "generation_recipe": {
+        "script": "training/search_jump_variation_bidirectional_alpha.py",
+        "validator": "training/validate_alpha_research_candidate.py",
+        "protocol": "6bp/side; strict MDD; train/test/eval/2026; exact reproducibility"
+      }
+    },
+    {
+      "id": "causal_volume_clock_flow_features_20260712",
+      "name": "Causal volume-clock flow-speed features",
+      "status": "promoted",
+      "family": "volume_clock_microstructure",
+      "scope": "btc_orderflow_volume_time",
+      "feature_tier": "alpha_feature",
+      "description": "Returns, duration and signed-flow speed measured over adaptive backward windows containing fixed fractions of the prior completed 24h quote volume.",
+      "data_sources": [
+        "BTCUSDT 5m quote volume/taker quote/close"
+      ],
+      "feature_names": [
+        "vc_ret_0p25",
+        "vc_duration_0p25",
+        "vc_imbalance_0p25",
+        "vc_speed_0p25",
+        "vc_flow_speed_0p25",
+        "vc_duration_1p0"
+      ],
+      "usable_for": [
+        "jump-alpha direction confirmation",
+        "volume-time RLLM state token"
+      ],
+      "known_failures": [
+        "5,844 standalone volume-clock variants produced zero test/eval ratio>=2.5 qualifiers",
+        "qualifying gated candidate has negative train and negligible 2026 edge"
+      ],
+      "evidence": "Direction-confirming vc_flow_speed_0p25 gate produces a reproducible test/eval ratio 3.15/4.70 jump alpha.",
+      "source_artifacts": [
+        "training/search_volume_clock_bidirectional_alpha.py",
+        "training/search_jump_volume_clock_gate_alpha.py",
+        "results/jump_volume_clock_same_direction_candidate_2026-07-12.json",
+        "docs/jump-volume-clock-bidirectional-alpha-2026-07-12.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Volume target uses shifted trailing 24h only; cumulative search is backward; gate selected on 2024 and exact rerun matched.",
+      "tier_rationale": "Alpha feature because it forms a standalone policy gate clearing test/eval ratio>=3.",
+      "next_action": "Candidate research only; fresh OOS required.",
+      "generation_recipe": {
+        "scripts": [
+          "training/search_volume_clock_bidirectional_alpha.py",
+          "training/search_jump_volume_clock_gate_alpha.py"
+        ],
+        "validator": "training/validate_alpha_research_candidate.py",
+        "protocol": "6bp/side, strict MDD, test-only gate selection, exact rerun"
+      }
+    },
+    {
+      "id": "liquidity_recovery_efficiency_features_20260712",
+      "name": "Price/liquidity recovery efficiency features",
+      "status": "promoted",
+      "family": "liquidity_recovery_efficiency",
+      "scope": "btc_price_orderflow",
+      "feature_tier": "alpha_feature",
+      "description": "Causal signed path efficiency, taker-flow imbalance, flow recovery, price impact and candle rejection features over completed BTCUSDT bars.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker"
+      ],
+      "feature_names": [
+        "lr_signed_eff_72",
+        "lr_eff_72",
+        "lr_flow_72",
+        "lr_flow_recovery",
+        "lr_impact_72",
+        "lr_lower_rejection",
+        "lr_upper_rejection"
+      ],
+      "usable_for": [
+        "standalone bidirectional continuation",
+        "liquidity-recovery RLLM state token"
+      ],
+      "known_failures": [
+        "The highest test-ratio variant collapsed in eval",
+        "Qualifying variant remains below live-grade ratio 3 and 2026 ratio 5"
+      ],
+      "evidence": "Supports a standalone alpha-pool candidate with test/eval ratios 2.77/2.83 and 107/114 balanced-direction trades.",
+      "source_artifacts": [
+        "training/search_liquidity_recovery_bidirectional_alpha.py",
+        "results/liquidity_recovery_bidirectional_alpha_scan_2026-07-12.json",
+        "docs/liquidity-recovery-bidirectional-alpha-2026-07-12.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Only trailing/current completed bars; train quantiles; test-only selection; eval/2026 attached after selection.",
+      "tier_rationale": "Alpha feature because a standalone combined strategy clears test/eval CAGR/strict-MDD 2.5 with substantial balanced trades.",
+      "next_action": "Freeze thresholds and seek fresh OOS or portfolio marginal contribution.",
+      "generation_recipe": {
+        "script": "training/search_liquidity_recovery_bidirectional_alpha.py",
+        "validator": "training/validate_alpha_research_candidate.py",
+        "protocol": "6bp/side; strict MDD; full-window CAGR; test-only selection"
+      }
     }
   ]
 }

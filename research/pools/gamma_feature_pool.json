@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-10",
+  "updated_at": "2026-07-12T00:00:00Z",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -219,6 +219,91 @@
       },
       "feature_tier": "gamma_feature",
       "tier_rationale": "Gamma applies to VPIN/formulaic standalone usage: standalone and additive sleeves were judged noise; VPIN may still exist in beta via alpha101_vpin_primitives/post_rex_alphaization_feature_set for selector usage."
+    },
+    {
+      "id": "raw_channel_atr_trailing_20260712",
+      "name": "Raw Donchian channel + ATR trailing (2026-07-12)",
+      "status": "rejected",
+      "family": "price_channel_trend_following",
+      "scope": "btc_price_action",
+      "feature_tier": "gamma_feature",
+      "description": "Raw shifted Donchian breakout-cross entries with path-dependent ATR/opposite-channel exits and no required holding period.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV"
+      ],
+      "feature_names": [
+        "shifted_donchian_upper",
+        "shifted_donchian_lower",
+        "wilder_atr",
+        "atr_trailing_stop"
+      ],
+      "usable_for": [
+        "failure guardrail",
+        "possible contextual feature only"
+      ],
+      "known_failures": [
+        "All 144 corrected variants failed to produce a profitable test2024 row at 6bp/side",
+        "zero test/eval ratio>=2.5 qualifiers",
+        "least-bad test row lost in test, eval and 2026"
+      ],
+      "evidence": "Full corrected event-driven scan was uniformly uneconomic; invalid repeated-entry and same-bar-trail runs were explicitly discarded.",
+      "source_artifacts": [
+        "training/search_channel_trailing_alpha.py",
+        "results/channel_trailing_alpha_corrected_scan_2026-07-12.json",
+        "docs/channel-trailing-alpha-scan-2026-07-12.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "Deterministic shifted indicators; selection on test2024 only; eval2025/2026 reporting after selection.",
+      "tier_rationale": "Gamma: broad corrected grid is uniformly negative, providing strong noise/cost-dominated evidence for this exact standalone mechanism.",
+      "next_action": "Do not retry raw 5m Donchian+ATR threshold grids. Only revisit with a materially different event such as trend-pullback recovery or slower execution horizon.",
+      "generation_recipe": {
+        "script": "training/search_channel_trailing_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_channel_trailing_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --output results/channel_trailing_alpha_corrected_scan_2026-07-12.json",
+        "protocol": "cross events only; shifted channels/ATR; 6bp/side; strict intrabar MDD; test-only selection"
+      }
+    },
+    {
+      "id": "extrema_arrival_first_passage_features_20260712",
+      "name": "Extrema-arrival and first-passage proxy features",
+      "status": "rejected",
+      "family": "causal_extrema_arrival",
+      "scope": "btc_price_path",
+      "feature_tier": "gamma_feature",
+      "description": "Bars since causal rolling-high/low events, hit intensity, range position and recovery/fade speed.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV"
+      ],
+      "feature_names": [
+        "ea_pos_144",
+        "ea_high_age_144",
+        "ea_low_age_144",
+        "ea_high_hits_576",
+        "ea_low_hits_576",
+        "ea_recovery_speed_576",
+        "ea_fade_speed_576",
+        "ea_hit_imbalance_2016"
+      ],
+      "usable_for": [
+        "failure guardrail"
+      ],
+      "known_failures": [
+        "5,616 standalone bidirectional variants produced zero test/eval ratio>=2.5 qualifiers",
+        "best balanced test/eval ratios only 0.94/0.72 and failed 2026"
+      ],
+      "evidence": "Broad causal grid is uniformly below alpha threshold across test/eval; sufficient evidence to reject this exact standalone mechanism.",
+      "source_artifacts": [
+        "training/search_extrema_arrival_bidirectional_alpha.py",
+        "results/extrema_arrival_bidirectional_alpha_scan_2026-07-12.json",
+        "docs/extrema-arrival-bidirectional-alpha-scan-2026-07-12.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "All extrema and ages are trailing/current only; no forward first-passage labels were used.",
+      "tier_rationale": "Gamma: broad corrected causal scan was consistently uneconomic and did not show a plausible near-threshold candidate.",
+      "next_action": "Do not repeat rolling-extrema age/hit quantile grids.",
+      "generation_recipe": {
+        "script": "training/search_extrema_arrival_bidirectional_alpha.py",
+        "protocol": "train thresholds; test selection; eval/2026 report; 6bp/side; strict MDD"
+      }
     }
   ]
 }

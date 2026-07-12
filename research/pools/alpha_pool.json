@@ -2641,6 +2641,599 @@
       "contamination_risk": "medium_high",
       "leakage_notes": "Base event threshold and side-rule thresholds fit on train only. Test used for selection; eval was not used. Broad split failure is recorded as anti-overfit evidence.",
       "next_action": "Feed event+side-context into RLLM meta-controller; do not trade statically."
+    },
+    {
+      "id": "funding_relief_fx_stress_bidirectional_20260712",
+      "name": "Funding-relief / FX-stress bidirectional BTC policy",
+      "status": "candidate",
+      "family": "bidirectional_derivatives_macro_state",
+      "scope": "btc_target_derivatives_fx",
+      "side": "long_short",
+      "description": "One-position-at-a-time BTC policy: long on negative-funding plus taker-flow recovery, short on USDKRW risk-off stress plus BTC daily weakness.",
+      "entry_logic": "LONG: funding_rate <= -0.0000167 and taker-flow acceleration >= 0.0408248038. SHORT: usdkrw_momentum >= 0.0026584831 and htf_1d_return_1 <= -0.0340374575.",
+      "exit_logic": "TP4%, SL2.5%, maximum 288 5m bars, stride 6, next-open entry.",
+      "dependencies": [
+        "btc_funding_premium_basis",
+        "btc_ohlcv_taker_core",
+        "external_macro_kimchi_fx_features"
+      ],
+      "stats": {
+        "train_pre2024": {
+          "return_pct": 28.904,
+          "cagr_pct": 6.5532,
+          "strict_mdd_pct": 17.0786,
+          "ratio": 0.3837,
+          "trades": 385,
+          "longs": 292,
+          "shorts": 93,
+          "sharpe_like": 1.1007
+        },
+        "test_2024": {
+          "return_pct": 19.1724,
+          "cagr_pct": 19.1296,
+          "strict_mdd_pct": 3.9991,
+          "ratio": 4.7834,
+          "trades": 56,
+          "longs": 34,
+          "shorts": 22,
+          "win_rate": 0.5714,
+          "sharpe_like": 1.9713
+        },
+        "eval_2025": {
+          "return_pct": 15.2716,
+          "cagr_pct": 15.2828,
+          "strict_mdd_pct": 5.767,
+          "ratio": 2.65,
+          "trades": 62,
+          "longs": 54,
+          "shorts": 8,
+          "win_rate": 0.5484,
+          "sharpe_like": 1.6879
+        },
+        "ytd_2026": {
+          "return_pct": -0.5384,
+          "cagr_pct": -1.289,
+          "strict_mdd_pct": 12.1687,
+          "ratio": -0.1059,
+          "trades": 80,
+          "longs": 74,
+          "shorts": 6,
+          "win_rate": 0.4875,
+          "sharpe_like": -0.0095
+        }
+      },
+      "evidence": "Only one of 2,456 bidirectional variants cleared test/eval ratio>=2.5. Direction ablation was positive in 2026 but combined opportunity blocking made the actual one-position policy negative.",
+      "source_artifacts": [
+        "training/search_bidirectional_state_alpha.py",
+        "results/bidirectional_state_alpha_scan_2026-07-12.json",
+        "results/bidirectional_state_alpha_direction_ablation_2026-07-12.json",
+        "docs/bidirectional-state-alpha-scan-2026-07-12.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Thresholds train-fit; variant selected on test2024; eval confirms mechanically. 2026 is consumed and failed; no overlap/priority retuning against 2026.",
+      "next_action": "Candidate-only. If revisited, predeclare simultaneous independent sleeve accounting instead of one-position opportunity blocking, then select priority rules on train/test only.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "funding_rate",
+          "taker flow acceleration",
+          "usdkrw_momentum",
+          "htf_1d_return_1"
+        ],
+        "entry_logic": "Long funding relief; short FX stress as listed",
+        "exit_logic": "TP4 SL2.5 cap288 stride6",
+        "side": "long_short",
+        "script_or_config": "training/search_bidirectional_state_alpha.py",
+        "reproduce_command": "PYTHONPATH=. .venv/bin/python training/search_bidirectional_state_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --output results/bidirectional_state_alpha_scan_2026-07-12.json",
+        "evaluation_protocol": {
+          "split": "train<2024/test2024/eval2025/ytd2026",
+          "cost": "6bp/side",
+          "leverage": "0.5x",
+          "mdd": "strict intrabar long/short MDD",
+          "position_model": "one position at a time"
+        }
+      }
+    },
+    {
+      "id": "funding_relief_fx_stress_independent_sleeves_20260712",
+      "name": "Funding-relief / FX-stress independent bidirectional sleeves",
+      "status": "candidate",
+      "family": "bidirectional_derivatives_macro_state",
+      "scope": "btc_target_derivatives_fx",
+      "side": "long_short_simultaneous",
+      "description": "Fixed funding-relief long and FX-stress short signals operated as independent simultaneous sleeves rather than a single opportunity-blocking position.",
+      "entry_logic": "LONG: funding_rate <= -0.0000167 and taker-flow acceleration >= 0.0408248038. SHORT: usdkrw_momentum >= 0.0026584831 and htf_1d_return_1 <= -0.0340374575.",
+      "exit_logic": "Each sleeve independently uses TP4%, SL2.5%, maximum 288 bars, stride 6, next-open entry.",
+      "dependencies": [
+        "btc_funding_premium_basis",
+        "btc_ohlcv_taker_core",
+        "external_macro_kimchi_fx_features"
+      ],
+      "stats": {
+        "train_pre2024": {
+          "return_pct": 28.5486,
+          "cagr_pct": 6.4797,
+          "strict_mdd_pct": 17.7764,
+          "ratio": 0.3645,
+          "trades": 414
+        },
+        "test_2024": {
+          "return_pct": 20.1331,
+          "cagr_pct": 20.088,
+          "strict_mdd_pct": 4.1259,
+          "ratio": 4.8688,
+          "trades": 61,
+          "longs": 37,
+          "shorts": 24,
+          "sharpe_like": 1.908
+        },
+        "eval_2025": {
+          "return_pct": 15.2708,
+          "cagr_pct": 15.282,
+          "strict_mdd_pct": 6.0063,
+          "ratio": 2.5443,
+          "trades": 62,
+          "longs": 54,
+          "shorts": 8,
+          "sharpe_like": 1.6861
+        },
+        "ytd_2026": {
+          "return_pct": 2.856,
+          "cagr_pct": 7.001,
+          "strict_mdd_pct": 10.607,
+          "ratio": 0.66,
+          "trades": 82,
+          "longs": 74,
+          "shorts": 8,
+          "sharpe_like": 0.3285
+        }
+      },
+      "evidence": "Removing opportunity blocking preserves test/eval alpha-pool qualification and turns 2026 positive, but 2026 risk-adjusted efficiency remains poor.",
+      "source_artifacts": [
+        "training/evaluate_bidirectional_independent_sleeves.py",
+        "results/bidirectional_independent_sleeves_eval_2026-07-12.json",
+        "results/bidirectional_independent_sleeves_weight_scan_2026-07-12.json",
+        "docs/bidirectional-independent-sleeves-eval-2026-07-12.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Signals/exits fixed from prior test-selected candidate. Simultaneous accounting is a structural execution correction, not 2026 tuning. Coarse weights selected on test only; 2026 remains diagnostic.",
+      "next_action": "Candidate-only. Keep 0.5x+0.5x baseline; do not increase gross or retune priority using 2026. Require fresh data before live use.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "funding_rate",
+          "taker flow acceleration",
+          "usdkrw_momentum",
+          "htf_1d_return_1"
+        ],
+        "entry_logic": "Fixed long/short conditions from funding_relief_vs_fx_stress",
+        "exit_logic": "independent TP4 SL2.5 cap288 stride6",
+        "side": "simultaneous long/short sleeves",
+        "script_or_config": "training/evaluate_bidirectional_independent_sleeves.py",
+        "reproduce_command": "PYTHONPATH=. .venv/bin/python training/evaluate_bidirectional_independent_sleeves.py --candidate-json results/bidirectional_state_alpha_scan_2026-07-12.json --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --output results/bidirectional_independent_sleeves_eval_2026-07-12.json",
+        "evaluation_protocol": {
+          "cost": "6bp/side",
+          "leverage": "0.5x per sleeve, gross 1.0 if simultaneous",
+          "mdd": "strict aggregate intrabar MDD"
+        }
+      }
+    },
+    {
+      "id": "funding_fx_bidirectional_path_eff_gate_20260712",
+      "name": "Funding/FX bidirectional with path-efficiency gate",
+      "status": "candidate",
+      "family": "bidirectional_derivatives_macro_path_state",
+      "scope": "btc_target_derivatives_fx_pricepath",
+      "side": "long_short",
+      "description": "Fixed funding-relief long / FX-stress short policy gated on extreme negative 72-bar directional efficiency.",
+      "entry_logic": "Base long/short entries from funding_relief_vs_fx_stress, both requiring pm_eff_72 <= -0.16331195830142176.",
+      "exit_logic": "TP4%, SL2.5%, maximum 288 bars, stride6, one position at a time.",
+      "dependencies": [
+        "path_memory_entropy_variance_features_20260712",
+        "btc_funding_premium_basis",
+        "external_macro_kimchi_fx_features"
+      ],
+      "stats": {
+        "train_pre2024": {
+          "return_pct": 0.3079,
+          "cagr_pct": 0.0769,
+          "strict_mdd_pct": 14.7248,
+          "ratio": 0.0052,
+          "trades": 91,
+          "longs": 57,
+          "shorts": 34,
+          "sharpe_like": 0.0869
+        },
+        "test_2024": {
+          "return_pct": 12.6626,
+          "cagr_pct": 12.635,
+          "strict_mdd_pct": 2.012,
+          "ratio": 6.2798,
+          "trades": 18,
+          "longs": 12,
+          "shorts": 6,
+          "sharpe_like": 2.3743
+        },
+        "eval_2025": {
+          "return_pct": 11.8241,
+          "cagr_pct": 11.8327,
+          "strict_mdd_pct": 2.7526,
+          "ratio": 4.2987,
+          "trades": 22,
+          "longs": 17,
+          "shorts": 5,
+          "sharpe_like": 2.0503
+        },
+        "ytd_2026": {
+          "return_pct": -1.444,
+          "cagr_pct": -3.4348,
+          "strict_mdd_pct": 4.3323,
+          "ratio": -0.7928,
+          "trades": 30,
+          "longs": 27,
+          "shorts": 3,
+          "sharpe_like": -0.2235
+        }
+      },
+      "evidence": "Clears test/eval live-grade ratios with both directions, but has essentially no train edge, sparse OOS trades and negative 2026.",
+      "source_artifacts": [
+        "training/search_bidirectional_path_gate_alpha.py",
+        "results/bidirectional_path_gate_alpha_scan_2026-07-12.json",
+        "docs/path-memory-bidirectional-alpha-search-2026-07-12.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Gate threshold train-fit but chosen on test2024; eval confirms historically; 2026 consumed and failed. Do not retune.",
+      "next_action": "Candidate-only, never live-promote without fresh OOS.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "pm_eff_72",
+          "funding_rate",
+          "taker flow acceleration",
+          "usdkrw_momentum",
+          "htf_1d_return_1"
+        ],
+        "entry_logic": "fixed base entries AND pm_eff_72 <= -0.16331195830142176",
+        "exit_logic": "TP4 SL2.5 cap288 stride6",
+        "side": "long_short",
+        "script_or_config": "training/search_bidirectional_path_gate_alpha.py",
+        "evaluation_protocol": {
+          "cost": "6bp/side",
+          "leverage": "0.5x",
+          "mdd": "strict intrabar"
+        }
+      }
+    },
+    {
+      "id": "funding_fx_bidirectional_kimchi_local_impulse_gate_20260712",
+      "name": "Funding/FX bidirectional with Kimchi-local-impulse long gate",
+      "status": "candidate",
+      "family": "bidirectional_derivatives_macro_kimchi",
+      "scope": "btc_target_derivatives_fx_kimchi",
+      "side": "long_short",
+      "description": "Fixed funding-relief long / FX-stress short policy; long entries require an extreme negative Kimchi-vs-FX local impulse.",
+      "entry_logic": "Base long entry AND kl_local_impulse_144 <= -2.2728671107514256; base short entry unchanged.",
+      "exit_logic": "TP4%, SL2.5%, max288 bars, stride6, one position at a time.",
+      "dependencies": [
+        "kimchi_fx_local_impulse_features_20260712",
+        "btc_funding_premium_basis",
+        "external_macro_kimchi_fx_features"
+      ],
+      "stats": {
+        "train_pre2024": {
+          "return_pct": 16.3038,
+          "cagr_pct": 3.8481,
+          "strict_mdd_pct": 11.3688,
+          "ratio": 0.3385,
+          "trades": 168,
+          "longs": 63,
+          "shorts": 105,
+          "sharpe_like": 0.9381
+        },
+        "test_2024": {
+          "return_pct": 11.9803,
+          "cagr_pct": 11.9543,
+          "strict_mdd_pct": 3.2875,
+          "ratio": 3.6363,
+          "trades": 32,
+          "longs": 9,
+          "shorts": 23,
+          "sharpe_like": 1.6262
+        },
+        "eval_2025": {
+          "return_pct": 10.4372,
+          "cagr_pct": 10.4447,
+          "strict_mdd_pct": 3.4129,
+          "ratio": 3.0603,
+          "trades": 23,
+          "longs": 15,
+          "shorts": 8,
+          "sharpe_like": 1.6985
+        },
+        "ytd_2026": {
+          "return_pct": 7.8632,
+          "cagr_pct": 19.9481,
+          "strict_mdd_pct": 5.5773,
+          "ratio": 3.5767,
+          "trades": 33,
+          "longs": 25,
+          "shorts": 8,
+          "sharpe_like": 1.0312
+        }
+      },
+      "evidence": "First new bidirectional gate in this branch to clear ratio>=3 in test/eval and remain strongly positive in 2026, though 2026 ratio remains below 5.",
+      "source_artifacts": [
+        "training/search_bidirectional_kimchi_gate_alpha.py",
+        "results/bidirectional_kimchi_gate_alpha_scan_2026-07-12.json",
+        "docs/kimchi-leadlag-bidirectional-alpha-search-2026-07-12.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Gate selected on test2024; eval/2026 consumed. Keep fixed and do not optimize to reach 2026 ratio5.",
+      "next_action": "Candidate-only until fresh OOS; then test marginal contribution against current portfolio.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "kl_local_impulse_144",
+          "funding_rate",
+          "taker flow acceleration",
+          "usdkrw_momentum",
+          "htf_1d_return_1"
+        ],
+        "entry_logic": "long base AND kl_local_impulse_144<=-2.2728671107514256; short base unchanged",
+        "exit_logic": "TP4 SL2.5 cap288 stride6",
+        "side": "long_short",
+        "script_or_config": "training/search_bidirectional_kimchi_gate_alpha.py",
+        "evaluation_protocol": {
+          "cost": "6bp/side",
+          "leverage": "0.5x",
+          "mdd": "strict intrabar"
+        }
+      }
+    },
+    {
+      "id": "jump_continuation_72_bidirectional_20260712",
+      "name": "72-bar jump-continuation bidirectional alpha",
+      "status": "candidate",
+      "family": "realized_jump_continuation",
+      "scope": "btc_price_orderflow",
+      "side": "long_short",
+      "description": "Trade in the direction of a large signed realized jump when bipower-adjusted jump share and taker-flow acceleration agree.",
+      "entry_logic": "LONG jv_jump_ratio_72>=0.3173447786, jv_signed_jump_72>=0.1509897808, flow recovery>=0.0251275091; symmetric SHORT lower-tail conditions.",
+      "exit_logic": "TP1.5%, SL1%, cap96 bars, stride6, next-open.",
+      "dependencies": [
+        "jump_bipower_variation_features_20260712"
+      ],
+      "stats": {
+        "train_pre2024": {
+          "return_pct": -15.3592,
+          "cagr_pct": -4.0831,
+          "strict_mdd_pct": 19.9612,
+          "ratio": -0.2046,
+          "trades": 437
+        },
+        "test_2024": {
+          "return_pct": 7.0474,
+          "cagr_pct": 7.0324,
+          "strict_mdd_pct": 2.7733,
+          "ratio": 2.5357,
+          "trades": 52,
+          "longs": 34,
+          "shorts": 18,
+          "sharpe_like": 1.7488
+        },
+        "eval_2025": {
+          "return_pct": 3.8838,
+          "cagr_pct": 3.8865,
+          "strict_mdd_pct": 1.258,
+          "ratio": 3.0894,
+          "trades": 36,
+          "longs": 28,
+          "shorts": 8,
+          "sharpe_like": 1.2919
+        },
+        "ytd_2026": {
+          "return_pct": 0.4421,
+          "cagr_pct": 1.0657,
+          "strict_mdd_pct": 2.3429,
+          "ratio": 0.4549,
+          "trades": 43,
+          "longs": 25,
+          "shorts": 18,
+          "sharpe_like": 0.147
+        }
+      },
+      "evidence": "Exact rerun reproduced all metrics and independent validator passed leak/cost/split/trade gates.",
+      "source_artifacts": [
+        "training/search_jump_variation_bidirectional_alpha.py",
+        "results/jump_variation_bidirectional_alpha_scan_2026-07-12.json",
+        "results/jump_variation_bidirectional_alpha_scan_repro_2026-07-12.json",
+        "training/validate_alpha_research_candidate.py",
+        "results/jump_variation_bidirectional_alpha_validator_2026-07-12.json",
+        "docs/jump-variation-bidirectional-alpha-2026-07-12.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "No future shift; train thresholds; 2024 selection; eval/2026 attached afterward. 2026 not tuned.",
+      "next_action": "Do not live-promote; require fresh OOS because train is negative and 2026 weak.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "jv_jump_ratio_72",
+          "jv_signed_jump_72",
+          "jv_flow_recovery"
+        ],
+        "entry_logic": "fixed thresholds listed above",
+        "exit_logic": "TP1.5 SL1 cap96 stride6",
+        "side": "long_short",
+        "script_or_config": "training/search_jump_variation_bidirectional_alpha.py",
+        "reproduce_command": "PYTHONPATH=. .venv/bin/python training/search_jump_variation_bidirectional_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --output results/jump_variation_bidirectional_alpha_scan_2026-07-12.json",
+        "evaluation_protocol": {
+          "cost": "6bp/side",
+          "leverage": "0.5x",
+          "mdd": "strict intrabar",
+          "selection": "test2024 only"
+        }
+      }
+    },
+    {
+      "id": "jump_continuation_volume_clock_gate_20260712",
+      "name": "Jump continuation with direction-confirming volume clock",
+      "status": "candidate",
+      "family": "jump_volume_clock_continuation",
+      "scope": "btc_price_orderflow_volume_time",
+      "side": "long_short",
+      "description": "Reproducible 72-bar jump continuation alpha gated by same-direction signed-flow speed in causal volume time.",
+      "entry_logic": "Base jump_continuation_72 conditions plus LONG vc_flow_speed_0p25>=0.0003536573 / SHORT <=-0.0004875875.",
+      "exit_logic": "TP1.5%, SL1%, cap96, stride6.",
+      "dependencies": [
+        "jump_bipower_variation_features_20260712",
+        "causal_volume_clock_flow_features_20260712"
+      ],
+      "stats": {
+        "train_pre2024": {
+          "return_pct": -11.8521,
+          "cagr_pct": -3.1046,
+          "strict_mdd_pct": 16.0913,
+          "ratio": -0.1929,
+          "trades": 310
+        },
+        "test_2024": {
+          "return_pct": 6.9045,
+          "cagr_pct": 6.8899,
+          "strict_mdd_pct": 2.1892,
+          "ratio": 3.1473,
+          "trades": 38,
+          "longs": 25,
+          "shorts": 13,
+          "sharpe_like": 1.9998
+        },
+        "eval_2025": {
+          "return_pct": 3.7861,
+          "cagr_pct": 3.7888,
+          "strict_mdd_pct": 0.8058,
+          "ratio": 4.7018,
+          "trades": 24,
+          "longs": 20,
+          "shorts": 4,
+          "sharpe_like": 1.6025
+        },
+        "ytd_2026": {
+          "return_pct": 0.239,
+          "cagr_pct": 0.5753,
+          "strict_mdd_pct": 2.9829,
+          "ratio": 0.1929,
+          "trades": 29,
+          "longs": 16,
+          "shorts": 13,
+          "sharpe_like": 0.0985
+        }
+      },
+      "evidence": "Exact rerun matched; independent validator passed. Test/eval both exceed 3 with both directions.",
+      "source_artifacts": [
+        "training/search_jump_volume_clock_gate_alpha.py",
+        "results/jump_volume_clock_same_direction_candidate_2026-07-12.json",
+        "results/jump_volume_clock_same_direction_validator_2026-07-12.json",
+        "results/jump_volume_clock_gate_alpha_scan_repro_2026-07-12.json",
+        "docs/jump-volume-clock-bidirectional-alpha-2026-07-12.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Train-fit causal thresholds, test-only gate choice, eval/2026 post-selection. No 2026 tuning.",
+      "next_action": "Do not live-promote; train negative and 2026 weak.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "jv_jump_ratio_72",
+          "jv_signed_jump_72",
+          "jv_flow_recovery",
+          "vc_flow_speed_0p25"
+        ],
+        "entry_logic": "fixed direction thresholds",
+        "exit_logic": "TP1.5 SL1 cap96 stride6",
+        "side": "long_short",
+        "script_or_config": "training/search_jump_volume_clock_gate_alpha.py",
+        "evaluation_protocol": {
+          "cost": "6bp/side",
+          "leverage": "0.5x",
+          "mdd": "strict intrabar",
+          "validation": "exact rerun + independent validator"
+        }
+      }
+    },
+    {
+      "id": "efficient_recovery_continuation_72_20260712",
+      "name": "72-bar efficient liquidity-recovery continuation",
+      "status": "candidate",
+      "family": "liquidity_recovery_continuation",
+      "scope": "btc_price_orderflow",
+      "side": "long_short",
+      "description": "Standalone bidirectional BTC alpha using signed path efficiency, aggregate taker flow and short-horizon flow recovery in the same direction.",
+      "entry_logic": "LONG lr_signed_eff_72>=0.1824548212, lr_flow_72>=0.0486957246, lr_flow_recovery>=0.0679438303; mirrored train-fit SHORT tails.",
+      "exit_logic": "TP2.5%, SL1.5%, cap144 bars, stride12, next-open.",
+      "dependencies": [
+        "liquidity_recovery_efficiency_features_20260712"
+      ],
+      "stats": {
+        "train_pre2024": {
+          "return_pct": 10.8324,
+          "cagr_pct": 2.6046,
+          "strict_mdd_pct": 9.7654,
+          "ratio": 0.2667,
+          "trades": 294,
+          "longs": 150,
+          "shorts": 144,
+          "sharpe_like": 0.8494
+        },
+        "test_2024": {
+          "return_pct": 14.3243,
+          "cagr_pct": 14.2929,
+          "strict_mdd_pct": 5.1609,
+          "ratio": 2.7694,
+          "trades": 107,
+          "longs": 58,
+          "shorts": 49,
+          "sharpe_like": 1.741
+        },
+        "eval_2025": {
+          "return_pct": 9.2187,
+          "cagr_pct": 9.2253,
+          "strict_mdd_pct": 3.2635,
+          "ratio": 2.8268,
+          "trades": 114,
+          "longs": 58,
+          "shorts": 56,
+          "sharpe_like": 1.33
+        },
+        "ytd_2026": {
+          "return_pct": 4.4989,
+          "cagr_pct": 11.1538,
+          "strict_mdd_pct": 6.6343,
+          "ratio": 1.6812,
+          "trades": 56,
+          "longs": 26,
+          "shorts": 30,
+          "sharpe_like": 0.8973
+        }
+      },
+      "evidence": "7,885 test-eligible variants scanned; one alpha-pool qualifier. Independent validator passed leak, cost, split and both-side checks.",
+      "source_artifacts": [
+        "training/search_liquidity_recovery_bidirectional_alpha.py",
+        "results/liquidity_recovery_bidirectional_alpha_scan_2026-07-12.json",
+        "results/liquidity_recovery_bidirectional_alpha_validator_2026-07-12.json",
+        "docs/liquidity-recovery-bidirectional-alpha-2026-07-12.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Train-fit thresholds, test-only ranking, sealed eval/2026. No future shift or centered rolling.",
+      "next_action": "Research candidate only; ratio is below live-grade 3 and fresh OOS is required.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "lr_signed_eff_72",
+          "lr_flow_72",
+          "lr_flow_recovery"
+        ],
+        "entry_logic": "fixed thresholds above",
+        "exit_logic": "TP2.5 SL1.5 cap144 stride12",
+        "side": "long_short",
+        "script_or_config": "training/search_liquidity_recovery_bidirectional_alpha.py",
+        "evaluation_protocol": {
+          "cost": "6bp/side",
+          "leverage": "0.5x",
+          "mdd": "strict intrabar",
+          "selection": "test2024 only"
+        }
+      }
     }
   ]
 }
