@@ -1,0 +1,70 @@
+{
+  "id": "rex_htf_range_veto_alpha_20260712",
+  "name": "REX HTF weekly range-location veto alpha",
+  "status": "candidate",
+  "family": "rex_price_action_failure_veto",
+  "scope": "btc_price_action_rex_htf_range",
+  "side": "long_short",
+  "description": "Weak but usable REX veto alpha: trade deterministic REX base side only when weekly higher-timeframe return is not deeply negative and the 144-bar range location is not too upper-stretched. Intended as an alpha feature / context filter, not a standalone live strategy.",
+  "entry_logic": {
+    "base_event": "rex_htf_pullback_reclaim",
+    "side": "base_event.base_side",
+    "keep_gates": [
+      {"feature": "htf_1w_return_4", "op": ">=", "threshold": -0.26588062806734514},
+      {"feature": "range_pos", "op": "<=", "threshold": 0.5519438499929247}
+    ],
+    "equivalent_feature_note": "range_pos is the same short-range location surface as rex_144_range_pos in this REX feature builder."
+  },
+  "exit_logic": {
+    "hold_bars_5m": 144,
+    "entry_delay_bars": 1,
+    "evaluation_leverage": 0.5,
+    "fee_rate": 0.0004,
+    "slippage_rate": 0.0001,
+    "mdd": "strict in-position adverse excursion"
+  },
+  "dependencies": [
+    "rex_htf_pullback_reclaim_recent_event_20260712",
+    "htf_1w_return_4",
+    "range_pos",
+    "rex_144_range_pos"
+  ],
+  "stats": {
+    "train_2020_2024": {
+      "return_pct": 45.3,
+      "cagr_pct": 8.0,
+      "strict_mdd_pct": 13.9,
+      "cagr_to_strict_mdd": 0.57,
+      "trades": 424,
+      "p_approx": 0.12
+    },
+    "test_2025": {
+      "return_pct": 9.1,
+      "cagr_pct": 10.8,
+      "strict_mdd_pct": 5.4,
+      "cagr_to_strict_mdd": 1.98,
+      "trades": 44,
+      "p_approx": 0.11
+    },
+    "eval_2026h1": {
+      "return_pct": 1.3,
+      "cagr_pct": 4.8,
+      "strict_mdd_pct": 2.5,
+      "cagr_to_strict_mdd": 1.88,
+      "trades": 22,
+      "p_approx": 0.67
+    }
+  },
+  "evidence": "All train/test/eval splits are positive with reduced strict MDD versus raw REX. However CAGR/MDD<3 and eval trade count/p-value are weak, so use as weak alpha feature or portfolio sleeve candidate rather than standalone live-grade strategy.",
+  "source_artifacts": [
+    "training/search_rex_failure_veto_alpha.py",
+    "results/rex_failure_veto_alpha_scan_2026-07-12.json",
+    "docs/rex-failure-veto-alpha-scan-2026-07-12.md"
+  ],
+  "leakage_guard": "Thresholds formed from train quantiles; diagnostic ranking used train+test only for the TTE table and eval remained holdout. Features are signal-time/past-only; entry occurs after signal.",
+  "usage_recipe": {
+    "as_alpha_feature": "Emit 1 when fixed REX event is active and both keep gates pass, else 0. Use as weak positive alpha / veto context.",
+    "as_trade_rule": "Only trade REX base side when gates pass; do not use standalone live without portfolio/risk overlay.",
+    "promotion_status": "candidate; useful but below live-grade target CAGR/strictMDD>=3 across statistically meaningful splits."
+  }
+}
