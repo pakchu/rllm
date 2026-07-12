@@ -1,0 +1,45 @@
+{
+  "model_name": "google/gemma-2-2b-it",
+  "train_jsonl": "/home/pakchu/rllm/data/rex_event_reasoning_policy_sft_20260712.jsonl",
+  "output_dir": "checkpoints/rex_event_reasoning_gemma2_2b_lora_s32_20260712",
+  "rows": 384,
+  "tasks": {
+    "rex_event_reasoning_policy_sft": 384
+  },
+  "target_counts": {
+    "action=SHORT": 128,
+    "action=LONG": 128,
+    "action=NO_TRADE": 128
+  },
+  "prompt_chars": {
+    "min": 1187,
+    "max": 1242,
+    "mean": 1211.3932291666667
+  },
+  "target_chars": {
+    "min": 90,
+    "max": 92,
+    "mean": 91.2421875
+  },
+  "config": {
+    "model_name": "gemma2-2b-it",
+    "train_jsonl": "data/rex_event_reasoning_policy_sft_20260712.jsonl",
+    "output_dir": "checkpoints/rex_event_reasoning_gemma2_2b_lora_s32_20260712",
+    "max_samples": 384,
+    "max_seq_length": 1536,
+    "sample_mode": "balanced",
+    "max_steps": 32,
+    "num_train_epochs": 1.0,
+    "learning_rate": 2e-05,
+    "per_device_train_batch_size": 1,
+    "gradient_accumulation_steps": 8,
+    "lora_r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05,
+    "lora_target_modules": "all-linear",
+    "completion_only_loss": true,
+    "load_in_4bit": false,
+    "seed": 42,
+    "base_adapter_dir": ""
+  }
+}
