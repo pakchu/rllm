@@ -1,0 +1,83 @@
+{
+  "as_of": "2026-07-12T08:56:48.248439+00:00",
+  "config": {
+    "train_jsonl": "data/rex_event_reasoning_policy_sft_20260712.jsonl",
+    "output": "results/rex_event_reasoning_sft_preflight_2026-07-12.json",
+    "output_dir": "checkpoints/rex_event_reasoning_sft_preflight",
+    "model_name": "gemma2-2b-it",
+    "max_samples": 192,
+    "sample_mode": "balanced",
+    "max_seq_length": 1536
+  },
+  "python": {
+    "executable": "/home/pakchu/rllm/.venv/bin/python",
+    "version": "3.10.10 (main, Nov 10 2025, 22:11:24) [GCC 13.3.0]",
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39"
+  },
+  "modules": {
+    "numpy": true,
+    "torch": true,
+    "transformers": true,
+    "trl": true,
+    "peft": true,
+    "datasets": true,
+    "accelerate": true,
+    "bitsandbytes": true
+  },
+  "gpu": {
+    "available": true,
+    "gpus": [
+      "NVIDIA GeForce RTX 5090, 32607 MiB, 709 MiB"
+    ]
+  },
+  "dry_run": {
+    "model_name": "google/gemma-2-2b-it",
+    "train_jsonl": "/home/pakchu/rllm/data/rex_event_reasoning_policy_sft_20260712.jsonl",
+    "output_dir": "checkpoints/rex_event_reasoning_sft_preflight",
+    "rows": 192,
+    "tasks": {
+      "rex_event_reasoning_policy_sft": 192
+    },
+    "target_counts": {
+      "action=LONG": 64,
+      "action=NO_TRADE": 64,
+      "action=SHORT": 64
+    },
+    "prompt_chars": {
+      "min": 1187,
+      "max": 1242,
+      "mean": 1211.5520833333333
+    },
+    "target_chars": {
+      "min": 90,
+      "max": 92,
+      "mean": 91.23958333333333
+    },
+    "config": {
+      "model_name": "gemma2-2b-it",
+      "train_jsonl": "data/rex_event_reasoning_policy_sft_20260712.jsonl",
+      "output_dir": "checkpoints/rex_event_reasoning_sft_preflight",
+      "max_samples": 192,
+      "max_seq_length": 1536,
+      "sample_mode": "balanced",
+      "max_steps": 1,
+      "num_train_epochs": 1.0,
+      "learning_rate": 2e-05,
+      "per_device_train_batch_size": 1,
+      "gradient_accumulation_steps": 8,
+      "lora_r": 16,
+      "lora_alpha": 32,
+      "lora_dropout": 0.05,
+      "lora_target_modules": "all-linear",
+      "completion_only_loss": true,
+      "load_in_4bit": false,
+      "seed": 42,
+      "base_adapter_dir": ""
+    },
+    "dry_run": true,
+    "summary_path": "checkpoints/rex_event_reasoning_sft_preflight/sft_summary.json"
+  },
+  "can_train_now": true,
+  "missing_for_training": [],
+  "note": "dry_run validates data/model alias only; can_train_now requires local ML dependencies in this Python environment"
+}
