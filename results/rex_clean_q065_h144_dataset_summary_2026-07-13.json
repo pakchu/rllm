@@ -1,0 +1,111 @@
+{
+  "config": {
+    "input_csv": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "train_output": "data/rex_clean_q065_h144_train_2021_2023.jsonl",
+    "eval_output": "data/rex_clean_q065_h144_eval_2025_2026h1.jsonl",
+    "summary_output": "results/rex_clean_q065_h144_dataset_summary_2026-07-13.json",
+    "combo": "rex_htf_pullback_resume:0.65,rex_htf_pullback_reclaim:0.65",
+    "threshold_start": "2021-01-01",
+    "threshold_end": "2023-01-01",
+    "train_start": "2021-01-01",
+    "train_end": "2024-01-01",
+    "test_output": "data/rex_clean_q065_h144_test_2024.jsonl",
+    "test_start": "2024-01-01",
+    "test_end": "2025-01-01",
+    "eval_start": "2025-01-01",
+    "eval_end": "2026-06-02",
+    "hold_bars": 144,
+    "stride_bars": 12,
+    "window_size": 144,
+    "entry_delay_bars": 1,
+    "leverage": 0.5,
+    "fee_rate": 0.0004,
+    "slippage_rate": 0.0001,
+    "mae_penalty": 1.0,
+    "include_no_trade_candidate": false
+  },
+  "thresholds": {
+    "rex_htf_pullback_resume": 0.25542342906137727,
+    "rex_htf_pullback_reclaim": 0.19338431558491537
+  },
+  "train": {
+    "rows": 6211,
+    "period": {
+      "start": "2021-01-02 20:55:00",
+      "end": "2023-12-30 23:55:00"
+    },
+    "target_counts": {
+      "SKIP": 4932,
+      "TAKE": 1279
+    },
+    "family_counts": {
+      "rex_htf_pullback_reclaim": 3056,
+      "rex_htf_pullback_resume": 3155
+    },
+    "side_counts": {
+      "LONG": 3588,
+      "SHORT": 2623
+    },
+    "net_return_pct": {
+      "mean": 0.05750295696827981,
+      "positive_rate": 0.5144099178876187
+    }
+  },
+  "test": {
+    "rows": 1130,
+    "period": {
+      "start": "2024-01-03 11:55:00",
+      "end": "2024-12-31 15:55:00"
+    },
+    "target_counts": {
+      "SKIP": 879,
+      "TAKE": 251
+    },
+    "family_counts": {
+      "rex_htf_pullback_reclaim": 634,
+      "rex_htf_pullback_resume": 496
+    },
+    "side_counts": {
+      "LONG": 988,
+      "SHORT": 142
+    },
+    "net_return_pct": {
+      "mean": 0.11582245563781907,
+      "positive_rate": 0.547787610619469
+    }
+  },
+  "eval": {
+    "rows": 1238,
+    "period": {
+      "start": "2025-01-02 06:55:00",
+      "end": "2026-05-20 13:55:00"
+    },
+    "target_counts": {
+      "SKIP": 986,
+      "TAKE": 252
+    },
+    "family_counts": {
+      "rex_htf_pullback_reclaim": 609,
+      "rex_htf_pullback_resume": 629
+    },
+    "side_counts": {
+      "LONG": 427,
+      "SHORT": 811
+    },
+    "net_return_pct": {
+      "mean": 0.0789624240630294,
+      "positive_rate": 0.5234248788368336
+    }
+  },
+  "outputs": {
+    "train": "data/rex_clean_q065_h144_train_2021_2023.jsonl",
+    "test": "data/rex_clean_q065_h144_test_2024.jsonl",
+    "eval": "data/rex_clean_q065_h144_eval_2025_2026h1.jsonl"
+  },
+  "leakage_guard": {
+    "thresholds_fit_on_configured_history_only": true,
+    "eval_not_used_for_thresholds": true,
+    "prompts_are_past_only": true,
+    "labels_are_future_path_only": true
+  }
+}
