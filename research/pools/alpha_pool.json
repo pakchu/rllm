@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-10",
+  "updated_at": "2026-07-12T00:00:00Z",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side for current scans; older alt_oi_taker artifact used 5bp/side",
@@ -359,13 +359,17 @@
           "mdd": "strict MDD includes in-position adverse excursion; period exits must remain inside split"
         },
         "promotion_guardrails": [
-          "thresholds/gates must be train-derived",
+          "never execute source_action/source_all raw REX as a promoted alpha",
+          "only prediction.gate=TRADE rows are actionable",
           "test/eval/2026 must be reported separately",
-          "do not promote leverage-only improvement",
-          "strict MDD must include in-position adverse excursion"
+          "strict MDD must include in-position adverse excursion and forced split close"
         ],
-        "live_use_notes": "Keep; ensure live REX selector/predictions exist before relying on sleeve."
-      }
+        "live_use_notes": "Keep as rex_rule_gate / no-LLM rule-gated sleeve; do not use raw REX in portfolio searches or live configs."
+      },
+      "aliases": [
+        "rex_dual_regime_auto",
+        "rex_rule"
+      ]
     },
     {
       "id": "bear_rex_short",
@@ -1386,6 +1390,99 @@
       }
     },
     {
+      "id": "friday_oi_basis_pullback_long",
+      "name": "Friday OI/basis pullback long",
+      "status": "weak",
+      "family": "calendar_oi_funding_pullback",
+      "scope": "btc_derivatives",
+      "side": "long",
+      "description": "Schedule-aware BTCUSDT long candidate: Friday UTC deep pullback with OI rising vs price, non-positive funding zscore, and mildly positive basis/premium context.",
+      "entry_logic": "return_zscore_48 <= train q0.10 (-1.17249), oi_minus_px_4h_z >= train q0.80 (0.89554), funding_zscore <= train q0.40 (0.0), cal_friday_utc, cf_basis_z >= train q0.55 (0.09725).",
+      "exit_logic": "fixed hold 144 5m bars; stride 6; entry delay via next open; split-end forced close.",
+      "dependencies": [
+        "btc_ohlcv_taker_core",
+        "btc_oi_features",
+        "btc_funding_premium_basis",
+        "calendar_oi_funding_features_20260710"
+      ],
+      "stats": {
+        "train_pre2024": {
+          "return_pct": -5.7799,
+          "cagr_pct": -1.771,
+          "strict_mdd_pct": 27.2819,
+          "cagr_to_strict_mdd": -0.0649,
+          "trades": 71,
+          "win_rate": 0.3803,
+          "sharpe_like": -0.0773
+        },
+        "test_2024": {
+          "return_pct": 15.7694,
+          "cagr_pct": 15.7347,
+          "strict_mdd_pct": 5.867,
+          "cagr_to_strict_mdd": 2.6819,
+          "trades": 25,
+          "win_rate": 0.6,
+          "sharpe_like": 1.4507
+        },
+        "eval_2025": {
+          "return_pct": 8.5444,
+          "cagr_pct": 8.5505,
+          "strict_mdd_pct": 2.9055,
+          "cagr_to_strict_mdd": 2.9429,
+          "trades": 22,
+          "win_rate": 0.5455,
+          "sharpe_like": 1.1353
+        },
+        "ytd_2026": {
+          "return_pct": 1.3286,
+          "cagr_pct": 3.201,
+          "strict_mdd_pct": 2.5402,
+          "cagr_to_strict_mdd": 1.2602,
+          "trades": 6,
+          "win_rate": 0.5,
+          "sharpe_like": 0.5371
+        }
+      },
+      "evidence": "Downgraded after review: although test2024/eval2025 pass the mechanical 2.5 ratio threshold, this is a sparse Friday-only OOS-selected candidate with negative train, weak ablations, and low 2026 ratio. Treat as weak feature evidence, not a useful alpha candidate.",
+      "source_artifacts": [
+        "training/search_calendar_oi_funding_alpha.py",
+        "results/calendar_oi_funding_alpha_scan_2026-07-10.json",
+        "docs/calendar-oi-funding-alpha-scan-2026-07-10.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "OOS scan-table selection risk is too high; candidate status would overstate evidence. Keep weak until predeclared rolling validation proves otherwise.",
+      "next_action": "Do not trade or optimize this directly. Use only as a cautionary beta-feature clue that calendar/funding/OI interaction may matter; require rolling/month-block validation before reconsidering.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "btc_ohlcv_taker_core",
+          "btc_oi_features",
+          "btc_funding_premium_basis",
+          "calendar_oi_funding_features_20260710"
+        ],
+        "entry_logic": "return_zscore_48 <= q0.10, oi_minus_px_4h_z >= q0.80, funding_zscore <= q0.40, Friday UTC, cf_basis_z >= q0.55; all numeric thresholds fit on train<2024.",
+        "exit_logic": "fixed hold 144 5m bars; stride 6; next-open entry; split-end forced close.",
+        "side": "long",
+        "script_or_config": "training/search_calendar_oi_funding_alpha.py",
+        "reproduce_command": "python -m training.search_calendar_oi_funding_alpha",
+        "source_artifacts": [
+          "training/search_calendar_oi_funding_alpha.py",
+          "results/calendar_oi_funding_alpha_scan_2026-07-10.json",
+          "docs/calendar-oi-funding-alpha-scan-2026-07-10.md"
+        ],
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
+          "cost": "6bp/side",
+          "mdd": "strict MDD includes in-position adverse excursion and forced period-contained exits"
+        },
+        "promotion_guardrails": [
+          "Requires rolling/month-block validation before live use",
+          "Do not optimize Friday/basis/funding thresholds on 2024/2025/2026",
+          "2026 ratio below target; keep tiny or paper only until new data confirms"
+        ],
+        "live_use_notes": "Not live-grade; alpha-pool candidate because test/eval threshold passes."
+      }
+    },
+    {
       "id": "long_union_range_mom_funding_compress_20260710",
       "name": "Long union range/momentum/funding/compression breakout",
       "status": "candidate",
@@ -2098,20 +2195,28 @@
     },
     {
       "id": "long_minimal_funding_premium_squeeze_20260710",
-      "name": "Long minimal funding/premium squeeze breakout",
+      "name": "Long minimal funding/premium squeeze (2026-07-10, audited 2026-07-12)",
       "status": "candidate",
-      "family": "long_derivatives_squeeze_union",
+      "family": "long_derivatives_squeeze_context",
       "scope": "btc_derivatives_price_action",
       "side": "long",
-      "description": "Minimal two-component long-regime BTCUSDT alpha using only low-funding positive trend and premium-discount momentum. It is weaker than three-component unions but simpler and more robust to price-action component overfit.",
-      "entry_logic": "OR union of funding10_trend70, premium20_mom90. funding10_trend70=(funding_rate<=-0.0000167 and trend_96>=0.0074852182); premium20_mom90=(premium_index_change<=-0.00023471 and htf_1d_return_4>=0.0940403009).",
-      "exit_logic": "fixed hold 576 5m bars (48h), no TP/SL overlay, stride 12 bars, next-open entry, 0.5x validation leverage; split/window-end forced close via strict simulator.",
+      "description": "BTCUSDT long alpha using low/negative funding with positive 96-bar trend, or premium-index compression with strong completed daily momentum.",
+      "entry_logic": "OR union of funding10_trend70 and premium20_mom90. funding10_trend70=(funding_rate<=-0.0000167 and trend_96>=0.0074852182); premium20_mom90=(premium_index_change<=-0.00023471 and htf_1d_return_4>=0.0940403009).",
+      "exit_logic": "Fixed hold 576 bars, stride 12, non-overlapping event execution. Exit sweep found no globally better TP/SL than no explicit TP/SL; 10% TP improves 2025 slightly but worsens train risk ratio.",
       "dependencies": [
+        "funding_premium_trend_squeeze_long_20260712",
         "long_derivatives_squeeze_union_features_20260710",
-        "btc_ohlcv_taker_core",
         "btc_funding_premium_basis"
       ],
       "stats": {
+        "train_2020_2023": {
+          "return_pct": 140.66,
+          "cagr_pct": 24.55,
+          "strict_mdd_pct": 15.32,
+          "cagr_to_strict_mdd": 1.6,
+          "trades": 206,
+          "win_rate": 0.58
+        },
         "test_2024": {
           "return_pct": 31.0408,
           "cagr_pct": 30.9682,
@@ -2119,7 +2224,8 @@
           "cagr_to_strict_mdd": 5.2812,
           "trades": 29,
           "signals": 254,
-          "p_value_mean_ret_approx": 0.00011152
+          "p_value_mean_ret_approx": 0.00011152,
+          "win_rate": 0.79
         },
         "eval_2025": {
           "return_pct": 18.3304,
@@ -2128,7 +2234,8 @@
           "cagr_to_strict_mdd": 3.6901,
           "trades": 26,
           "signals": 186,
-          "p_value_mean_ret_approx": 0.04573617
+          "p_value_mean_ret_approx": 0.04573617,
+          "win_rate": 0.58
         },
         "ytd_2026": {
           "return_pct": 12.1221,
@@ -2137,7 +2244,8 @@
           "cagr_to_strict_mdd": 6.9542,
           "trades": 29,
           "signals": 312,
-          "p_value_mean_ret_approx": 0.11893128
+          "p_value_mean_ret_approx": 0.11893128,
+          "win_rate": 0.66
         },
         "combined_2024_2026h1": {
           "return_pct": 73.8579,
@@ -2149,34 +2257,37 @@
           "p_value_mean_ret_approx": 2.818e-05
         }
       },
-      "evidence": "Filtered from reusable long_component_tp_union_scan rerun. This candidate clears CAGR/strict_MDD >= 3 on 2024 test, 2025 eval, 2026 YTD, and combined 2024~2026H1 with nontrivial eval/YTD trade counts. It is an additional candidate, not a final promotion.",
+      "evidence": "Extended validation keeps this as a candidate: train 2020-2023 abs +140.66%, CAGR 24.55%, strict MDD 15.32%, ratio 1.60, 206 trades; test 2024 +31.04%, ratio 5.28, 29 trades; eval 2025 +18.33%, ratio 3.69, 26 trades; ytd 2026 +12.12%, ratio 6.95, 29 trades.",
       "source_artifacts": [
+        "training/portfolio_opt_new_alpha_pool.py",
         "training/long_component_tp_union_scan.py",
-        "results/long_component_tp_union_scan_2026-07-10_rerun.json"
+        "results/new_alpha_pool_train_extended_2026-07-12.json",
+        "results/long_minimal_funding_premium_exit_sweep_fast_2026-07-12.json",
+        "docs/alpha-search-long-minimal-funding-premium-2026-07-12.md"
       ],
       "contamination_risk": "medium",
-      "leakage_notes": "Component thresholds are fixed from prior train-window quantile discovery, but this candidate is selected after inspecting 2024/2025/2026 scan tables. Treat as candidate-grade until predeclared rolling/fresh OOS validation. Rows after 2026-06-02 are excluded before feature build.",
-      "next_action": "Include in the next fixed rolling/month-block validation pass; compare marginal contribution versus existing long_range_funding_premium_squeeze and long_funding_compression_premium_squeeze.",
+      "leakage_notes": "Logical audit found no direct future-reference in feature construction: funding/premium are backward-asof joined; premium close_time is used as availability time; premium_index_change is a past 96-row diff; trend_96 uses close.shift(95); htf_1d_return_4 uses previous completed daily bars via htf.shift(1) then backward-asof. Caveat: thresholds come from earlier scan artifacts and should be treated as selected knowledge, not fresh unseen discovery; live must use only published funding history/premium closes, not next funding estimates.",
+      "next_action": "Use as long-regime candidate feature/alpha, but re-audit threshold provenance and run rolling/month-block validation before live promotion. Train-window MDD 15.32% and train ratio 1.60 are below target, so do not mark live-grade.",
       "usage_recipe": {
-        "feature_dependencies": [
-          "long_derivatives_squeeze_union_features_20260710",
-          "btc_ohlcv_taker_core",
-          "btc_funding_premium_basis"
-        ],
-        "entry_logic": "OR union of funding10_trend70, premium20_mom90 using fixed thresholds listed in this entry.",
-        "exit_logic": "fixed hold 576 bars; stride 12; next-open entry; long only; no TP/SL; 0.5x validation leverage.",
-        "side": "long",
-        "script_or_config": "training/long_component_tp_union_scan.py",
-        "reproduce_command": "PYTHONPATH=. python training/long_component_tp_union_scan.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --output results/long_component_tp_union_scan_2026-07-10_rerun.json",
-        "evaluation_protocol": {
-          "split": "test=2024, eval=2025, ytd2026=2026-01-01..2026-06-02; fixed thresholds discovered from train<2024",
-          "cost": "fee_rate=0.0004 and slippage_rate=0.0001 per entry/exit side as implemented by strict simulator",
-          "mdd": "strict OHLC MDD includes in-position adverse excursion; CAGR denominator is full calendar window including idle time"
+        "component_rules": {
+          "funding10_trend70": {
+            "funding_rate_lte": -1.67e-05,
+            "trend_96_gte": 0.0074852182
+          },
+          "premium20_mom90": {
+            "premium_index_change_lte": -0.00023471,
+            "htf_1d_return_4_gte": 0.0940403009
+          }
         },
-        "promotion_guardrails": [
-          "Require rolling validation without component reselection",
-          "Use only when operator declares long/bullish regime",
-          "Do not treat overlapping variants as independent portfolio sleeves without correlation/marginal tests"
+        "execution": {
+          "side": "long",
+          "hold_bars": 576,
+          "stride_bars": 12,
+          "allow_overlap": false
+        },
+        "llm_tokens": [
+          "LOW_FUNDING_UPTREND",
+          "PREMIUM_COMPRESSION_DAILY_MOMENTUM"
         ]
       }
     }

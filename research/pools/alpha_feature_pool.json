@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-10",
+  "updated_at": "2026-07-12T00:00:00Z",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -317,6 +317,354 @@
       },
       "feature_tier": "alpha_feature",
       "tier_rationale": "Core dependency of promoted/candidate strategy sleeves with strategy-level edge evidence; retain but re-audit if exact sleeve evidence changes."
+    },
+    {
+      "id": "long_range_compression_funding_momentum_features_20260710",
+      "name": "Long range/compression/funding/momentum breakout feature set (2026-07-10)",
+      "status": "promoted",
+      "family": "long_breakout_union_context",
+      "scope": "btc_derivatives_macro",
+      "feature_tier": "alpha_feature",
+      "description": "Feature family behind the new long-regime union alpha: range expansion breakouts, compression breakouts, HTF momentum/range-position confirmation, low-funding trend squeeze, and weak-USDKRW macro relief.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "Binance UM funding_rate",
+        "Binance UM premium_index",
+        "USDKRW/DXY-derived macro fields already merged in market cache"
+      ],
+      "feature_examples": [
+        "rex_576_range_width_pct >= train q0.90",
+        "close_zscore_48 >= train q0.70",
+        "bb_z >= train q0.90",
+        "htf_1d_return_4 >= train q0.85",
+        "rex_8640_range_pos >= train q0.50",
+        "funding_rate <= train q0.10",
+        "trend_96 >= train q0.70",
+        "rex_2016_range_width_pct <= train q0.05",
+        "trend_24 >= train q0.80",
+        "usdkrw_momentum <= train q0.10"
+      ],
+      "feature_names": [
+        "rex_576_range_width_pct",
+        "close_zscore_48",
+        "bb_z",
+        "htf_1d_return_4",
+        "rex_8640_range_pos",
+        "funding_rate",
+        "trend_96",
+        "rex_2016_range_width_pct",
+        "trend_24",
+        "usdkrw_momentum",
+        "htf_1d_return_1"
+      ],
+      "usable_for": [
+        "long-regime union entry components",
+        "LLM/RLLM textual state summarization",
+        "selector features for long-only sleeves",
+        "live regime-specific risk-on breakout sleeve research"
+      ],
+      "known_failures": [
+        "Single sparse range-breakout components can clear CAGR/MDD but have too few eval/YTD trades for standalone confidence.",
+        "Macro/momentum-only variants improve trade count but often fall below CAGR/MDD >= 3 on eval windows."
+      ],
+      "evidence": "Union validation shows combo_A clears CAGR/strict_MDD >= 3 on 2024 test, 2025 eval, and 2026H1 with 146 combined trades; combo_B/D are cleaner low-MDD range/compression variants but sparse in 2026H1.",
+      "source_artifacts": [
+        "training/long_regime_alpha_family_scan.py",
+        "training/long_regime_alpha_holdout_validate.py",
+        "training/long_regime_alpha_union_validate.py",
+        "results/long_regime_alpha_family_scan_2024_2026h1_2026-07-10.json",
+        "results/long_regime_alpha_holdout_validate_2026-07-10.json",
+        "results/long_regime_alpha_union_validate_2026-07-10.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Component thresholds are train-window quantiles from train<2024, but union composition was selected after inspecting 2024~2026H1 discovery results. Treat as strong candidate requiring predeclared rolling validation before live sizing.",
+      "tier_rationale": "Alpha feature: the explicit feature family supports multiple combined strategies above test2024 CAGR/MDD 2.5 and a live-grade candidate above 3.0 on test/eval/YTD, with nontrivial trade counts for combo_A.",
+      "next_action": "Run predeclared rolling validation and then convert the best union candidate into a live config only if the ratio remains above 3 with sufficient trades.",
+      "generation_recipe": {
+        "scripts": [
+          "training/long_regime_alpha_family_scan.py",
+          "training/long_regime_alpha_holdout_validate.py",
+          "training/long_regime_alpha_union_validate.py"
+        ],
+        "inputs": [
+          "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+          "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+          "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz"
+        ],
+        "command": "PYTHONPATH=. .venv/bin/python training/long_regime_alpha_union_validate.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/long_regime_alpha_union_validate_2026-07-10.json",
+        "protocol": "train<2024 component thresholds; test=2024; eval=2025; ytd2026=2026-01-01..2026-06-02; 0.5x leverage; 6bp round-trip assumption via fee/slippage params; strict OHLC MDD; CAGR over full calendar window including idle time",
+        "notes": "Use as LLM state tokens describing market structure, not as raw numeric dumping only. Keep component identities explicit so RLLM can reason over setup type."
+      }
+    },
+    {
+      "id": "bear_rex_short_regime_features_20260710",
+      "name": "Bear-regime REX short feature/state set (2026-07-10)",
+      "status": "candidate",
+      "family": "rex_symbolic_short_context",
+      "scope": "btc_price_action_derivatives_macro",
+      "feature_tier": "alpha_feature",
+      "description": "State/features used by the REX/LLM dual-regime short candidate. It is intended for manually declared persistent bearish regimes, not universal market use.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "REX rolling extrema / higher-timeframe price action features",
+        "Binance funding/premium context where included by source records",
+        "USDKRW stress context in dual-regime export"
+      ],
+      "feature_examples": [
+        "rex_htf_pullback_reclaim family state",
+        "rolling extrema position/range context",
+        "higher-timeframe pullback/reclaim tokens interpreted inversely for short",
+        "manual/higher-level bearish regime gate"
+      ],
+      "feature_names": [
+        "rex_*",
+        "htf_*",
+        "weekly_*",
+        "funding_rate",
+        "premium_index_*",
+        "usdkrw_*"
+      ],
+      "usable_for": [
+        "bear-regime short-only sleeve",
+        "RLLM textual state for downside continuation / failed reclaim setups",
+        "manual-regime live pilot with SHORT-only allowed signals"
+      ],
+      "known_failures": [
+        "Fast hand-built rule scan over downside momentum/range breakdown/funding/macro did not find a universal short alpha: best 2024~2026H1 ratio only 1.12.",
+        "The exported REX short signal is weak/negative in 2024 when treated as all-market/universal; use requires bearish regime gating."
+      ],
+      "evidence": "REX short predictions for 2025~2026H1 produce bear_combined return +19.91%, CAGR 13.69%, strict MDD 3.72%, ratio 3.68, 49 trades. 2025 ratio 5.57 and 2026H1 ratio 3.39, but all-2024~2026H1 ratio falls to 2.10 because 2024 is not treated as the target bear regime.",
+      "source_artifacts": [
+        "training/short_regime_alpha_family_scan.py",
+        "training/short_regime_rex_validate.py",
+        "results/short_regime_alpha_family_scan_fast_2024_2026h1_2026-07-10.json",
+        "results/short_regime_rex_validate_2025_2026h1_2026-07-10.json",
+        "results/rex_dual_regime_eval_2025_2026h1_predictions_2026-07-03.jsonl",
+        "configs/live/rex_llm_binance_testnet_bear_pilot.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "The 2025~2026H1 prediction file is an exported prior candidate, not newly fit here. Treat as candidate-grade until regenerated by a documented train-only pipeline and tested on fresh future bearish regime data.",
+      "tier_rationale": "Alpha feature for bear-regime use: clears target ratio inside intended bearish regime, while universal short scans failed. Promotion is conditional on explicit regime gate.",
+      "next_action": "Regenerate REX short predictions from train-only artifacts where possible, then run rolling/month-block validation and live dry-run with require_bear_regime=true.",
+      "generation_recipe": {
+        "scripts": [
+          "training/short_regime_rex_validate.py",
+          "training/short_regime_alpha_family_scan.py"
+        ],
+        "command": "PYTHONPATH=. .venv/bin/python training/short_regime_rex_validate.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --predictions-jsonl results/rex_dual_regime_eval_2025_2026h1_predictions_2026-07-03.jsonl --exclude-from 2026-06-02 --output results/short_regime_rex_validate_2025_2026h1_2026-07-10.json",
+        "protocol": "manual bear regime; SHORT TRADE predictions only; fixed 144-bar hold from prediction export; 0.5x validation leverage; full calendar CAGR; strict short MDD uses intrabar highs"
+      }
+    },
+    {
+      "id": "nonrex_fx_stress_short_features_20260710",
+      "name": "Non-REX FX-stress short feature set (2026-07-10)",
+      "status": "candidate",
+      "family": "macro_fx_stress_short_context",
+      "scope": "btc_macro_fx",
+      "feature_tier": "alpha_feature",
+      "description": "Non-REX short feature family: BTC higher-timeframe weakness combined with USD/KRW stress. The thesis is that Korea/FX risk-off stress plus existing BTC weakness produces downside continuation in persistent bearish regimes.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "USDKRW macro field merged into market cache",
+        "HTF BTC price-action returns"
+      ],
+      "feature_examples": [
+        "htf_3d_return_1 <= train q0.20",
+        "usdkrw_zscore >= train q0.90",
+        "TP 4% / SL 2.5% short exit",
+        "hold cap 288 5m bars"
+      ],
+      "feature_names": [
+        "htf_3d_return_1",
+        "usdkrw_zscore"
+      ],
+      "usable_for": [
+        "bear-regime short-only sleeve independent of REX",
+        "macro risk-off state token for RLLM",
+        "portfolio diversifier against REX short"
+      ],
+      "known_failures": [
+        "Universal 2024 inclusion remains below target for the more aggressive q0.30 version; use as bear-regime conditional alpha, not all-market short.",
+        "Pure hand-built event/blowoff/liquidation scan did not find a strong standalone all-period short alpha."
+      ],
+      "evidence": "TP/SL refine found non-REX FX-stress short candidates. Conservative q0.20 version: test2024 +13.07% return, CAGR/MDD 2.59; eval2025 +14.52%, ratio 4.75; ytd2026 +9.01%, ratio 6.67; bear_combined +24.83%, CAGR 16.96%, strict MDD 5.16%, ratio 3.29, 56 trades.",
+      "source_artifacts": [
+        "training/nonrex_short_bear_tp_refine.py",
+        "results/nonrex_short_bear_tp_refine_2026-07-10.json",
+        "results/short_base_alpha_scan_fast2_2026-07-08.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Gate thresholds came from earlier train-quantile short-base scan artifacts, but TP/SL/variant selection inspected 2025/2026 bear windows. Candidate-grade until predeclared rolling validation or fresh future bear data.",
+      "tier_rationale": "Alpha feature for bear-regime use: non-REX q0.20 FX stress candidate clears CAGR/strict_MDD >=3 on 2025~2026H1 bear window and remains positive in 2024, though 2024 ratio is below live-grade threshold.",
+      "next_action": "Run rolling/month-block validation and compare marginal contribution versus REX short; if stable, create a separate live config with explicit bear-regime gate.",
+      "generation_recipe": {
+        "script": "training/nonrex_short_bear_tp_refine.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/nonrex_short_bear_tp_refine.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/nonrex_short_bear_tp_refine_2026-07-10.json",
+        "protocol": "manual bear regime; non-REX gates; 0.5x validation leverage; full calendar CAGR; strict short MDD; conservative same-bar SL-before-TP ordering"
+      }
+    },
+    {
+      "id": "nonrex_premium_discount_short_features_20260710",
+      "name": "Non-REX premium-discount panic short feature set (2026-07-10)",
+      "status": "candidate",
+      "family": "premium_discount_panic_short_context",
+      "scope": "btc_derivatives_price_action",
+      "feature_tier": "alpha_feature",
+      "description": "Non-REX short feature family: BTC is already in the lower part of its 3-day HTF range while Binance premium/index context is deeply negative. In bearish regimes this behaves as discount/panic continuation rather than mean reversion.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "HTF BTC price-action range features",
+        "Binance UM premium_index"
+      ],
+      "feature_examples": [
+        "htf_3d_range_pos <= train q0.20",
+        "premium_index_zscore <= train q0.10",
+        "TP 2.5% / SL 1.5% short exit",
+        "hold cap 288 5m bars"
+      ],
+      "feature_names": [
+        "htf_3d_range_pos",
+        "premium_index_zscore"
+      ],
+      "usable_for": [
+        "bear-regime short-only sleeve independent of REX",
+        "derivatives-panic continuation token for RLLM",
+        "portfolio diversifier versus FX-stress and REX shorts"
+      ],
+      "known_failures": [
+        "Fixed-hold/no-TP variants are weaker or can fail 2024; short-specific TP/SL is part of the edge.",
+        "This is regime-conditional; do not treat as universal short without bear gate."
+      ],
+      "evidence": "TP/SL refine result: test2024 +8.41% return, CAGR/MDD 2.59, 52 trades; eval2025 +13.29%, ratio 4.40, 93 trades; ytd2026 +6.86%, ratio 5.97, 34 trades; bear_combined +21.07%, CAGR 14.46%, strict MDD 4.69%, ratio 3.08, 127 trades.",
+      "source_artifacts": [
+        "training/nonrex_short_bear_tp_refine.py",
+        "results/nonrex_short_bear_tp_refine_2026-07-10.json",
+        "results/short_base_alpha_scan_fast2_2026-07-08.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Candidate came from inspecting top non-REX refine variants; thresholds originate from train-quantile source scan but exit/variant selection used OOS windows. Requires rolling/fresh validation before live sizing.",
+      "tier_rationale": "Alpha feature for bear-regime use: clears bear_combined CAGR/strict_MDD >=3 with 127 trades and remains positive in test/eval/ytd.",
+      "next_action": "Compare marginal contribution against FX-stress and REX shorts; run predeclared rolling validation.",
+      "generation_recipe": {
+        "script": "training/nonrex_short_bear_tp_refine.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/nonrex_short_bear_tp_refine.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --output results/nonrex_short_bear_tp_refine_2026-07-10.json",
+        "protocol": "manual bear regime; non-REX gates; TP/SL short exit; 0.5x validation leverage; full-window CAGR; strict short MDD"
+      }
+    },
+    {
+      "id": "long_derivatives_squeeze_union_features_20260710",
+      "name": "Long derivatives squeeze union feature set (2026-07-10)",
+      "status": "promoted",
+      "family": "long_derivatives_squeeze_context",
+      "scope": "btc_derivatives_price_action",
+      "feature_tier": "alpha_feature",
+      "description": "Feature family behind the newly found long squeeze unions: upper range breakout, low-funding positive trend, negative premium change with HTF momentum, and compression breakout.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "Binance UM funding_rate",
+        "Binance UM premium_index"
+      ],
+      "feature_examples": [
+        "range_bb90: rex_576_range_width_pct >= 0.1295981611 and bb_z >= 1.6850824974",
+        "funding10_trend70: funding_rate <= -0.0000167 and trend_96 >= 0.0074852182",
+        "premium20_mom90: premium_index_change <= -0.00023471 and htf_1d_return_4 >= 0.0940403009",
+        "compress05_trend80: rex_2016_range_width_pct <= 0.0507431447 and trend_24 >= 0.0047972289"
+      ],
+      "feature_names": [
+        "rex_576_range_width_pct",
+        "bb_z",
+        "funding_rate",
+        "trend_96",
+        "premium_index_change",
+        "htf_1d_return_4",
+        "rex_2016_range_width_pct",
+        "trend_24"
+      ],
+      "usable_for": [
+        "long-regime derivatives squeeze entries",
+        "RLLM textual setup cards",
+        "long-only sleeve selector features",
+        "live-sim candidate conversion"
+      ],
+      "known_failures": [
+        "Component union was selected after inspecting 2024~2026H1 scan output, so it is not final clean unseen proof.",
+        "Sparse variants with ytd2026 trades below 10 should not be promoted despite high ratios."
+      ],
+      "evidence": "long_component_tp_union_scan rerun found multiple unions clearing CAGR/strict_MDD >=3 on 2024 test, 2025 eval, 2026 YTD, and combined 2024~2026H1. The strongest robust candidates were range_bb90+funding10_trend70+premium20_mom90 and funding10_trend70+compress05_trend80+premium20_mom90.",
+      "source_artifacts": [
+        "training/long_component_tp_union_scan.py",
+        "results/long_component_tp_union_scan_2026-07-10_rerun.json"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Thresholds are fixed from prior train-window quantile discovery; scan excludes rows after 2026-06-02 before feature build; CAGR uses full calendar windows and strict MDD includes intrabar adverse excursion.",
+      "tier_rationale": "Alpha feature: it supports at least two long candidate unions above CAGR/strict_MDD 3 on test/eval/YTD with combined trade counts of 92 and 118 respectively.",
+      "next_action": "Run rolling/month-block validation and live-sim conversion without reselecting component unions.",
+      "generation_recipe": {
+        "script": "training/long_component_tp_union_scan.py",
+        "inputs": [
+          "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+          "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+          "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz"
+        ],
+        "command": "PYTHONPATH=. python training/long_component_tp_union_scan.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --output results/long_component_tp_union_scan_2026-07-10_rerun.json",
+        "protocol": "fixed component thresholds; test2024/eval2025/ytd2026/combined windows; 0.5x leverage; fee=4bp and slippage=1bp per side; full-window CAGR; strict OHLC MDD",
+        "notes": "Use as explicit setup tokens for LLM/RLLM rather than raw numeric dumping: RANGE_BREAKOUT, LOW_FUNDING_TREND, PREMIUM_DISCOUNT_MOMENTUM, COMPRESSION_BREAKOUT."
+      }
+    },
+    {
+      "id": "funding_premium_trend_squeeze_long_20260712",
+      "name": "Funding/premium trend squeeze alpha features (2026-07-12)",
+      "status": "candidate",
+      "family": "derivatives_basis_trend_squeeze",
+      "scope": "btc_derivatives_price_action",
+      "feature_tier": "alpha_feature",
+      "description": "Minimal feature subset behind the long_minimal_funding_premium alpha: combine derivatives crowding/compression with already-confirmed price momentum rather than raw numeric-only prompts.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV cache",
+        "Binance UM funding_rate history",
+        "Binance UM premium_index klines"
+      ],
+      "feature_examples": [
+        "LOW_FUNDING_UPTREND: funding_rate <= -0.0000167 and trend_96 >= 0.0074852182",
+        "PREMIUM_COMPRESSION_DAILY_MOMENTUM: premium_index_change <= -0.00023471 and htf_1d_return_4 >= 0.0940403009"
+      ],
+      "feature_names": [
+        "funding_rate",
+        "trend_96",
+        "premium_index_change",
+        "htf_1d_return_4"
+      ],
+      "usable_for": [
+        "long-regime alpha entries",
+        "RLLM setup-token features",
+        "portfolio sleeve selectors",
+        "rule gate context"
+      ],
+      "known_failures": [
+        "Standalone train 2020-2023 ratio is only 1.60 with strict MDD 15.32%, so this is not independently live-grade.",
+        "Threshold provenance is not fully clean unseen in this turn; keep contamination_risk medium until original scan provenance is re-audited."
+      ],
+      "evidence": "As a fixed long candidate, the feature pair cleared ratio >3 on test 2024, eval 2025, ytd 2026, and combined 2024-2026H1, but failed target ratio on train 2020-2023.",
+      "source_artifacts": [
+        "training/portfolio_opt_new_alpha_pool.py",
+        "results/new_alpha_pool_train_extended_2026-07-12.json",
+        "results/long_minimal_funding_premium_exit_sweep_fast_2026-07-12.json",
+        "docs/alpha-search-long-minimal-funding-premium-2026-07-12.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Causal construction depends on preprocessing/binance_aux_features.py backward-asof joins and preprocessing/market_features.py past-only returns/completed-HTF joins. Live code must reject stale/unavailable funding/premium rows rather than silently relying on default zeros or future estimate fields.",
+      "tier_rationale": "Alpha feature: the features directly define a candidate trading rule and are suitable as discrete RLLM setup tokens.",
+      "next_action": "Add availability/staleness assertions in live feature builder and evaluate month-block/rolling stability before promotion.",
+      "generation_recipe": {
+        "script": "training/portfolio_opt_new_alpha_pool.py",
+        "inputs": [
+          "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+          "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+          "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz"
+        ],
+        "protocol": "Past-only feature construction; full-window CAGR; strict OHLC MDD; non-overlapping long events with hold 576 and stride 12.",
+        "notes": "Prefer text tokens LOW_FUNDING_UPTREND and PREMIUM_COMPRESSION_DAILY_MOMENTUM for LLM/RLLM rather than unstructured floats."
+      }
     }
   ]
 }
