@@ -1,0 +1,4128 @@
+{
+  "as_of": "2026-07-12T16:20:32.275422+00:00",
+  "config": {
+    "input_csv": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "output": "results/semimarkov_duration_alpha_scan_2026-07-13.json",
+    "funding_csv": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+    "premium_csv": "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz",
+    "train_start": "2020-01-01",
+    "train_end": "2024-01-01",
+    "val_start": "2024-01-01",
+    "val_end": "2025-01-01",
+    "eval_start": "2025-01-01",
+    "eval_end": "2026-01-01",
+    "exclude_from": "2026-06-02",
+    "hold_bars": "72,144,216,288,432",
+    "stride_bars": "6,12,24,36",
+    "quantiles": "0.10,0.15,0.20,0.80,0.85,0.90",
+    "window_size": 144,
+    "entry_delay_bars": 1,
+    "leverage": 0.5,
+    "fee_rate": 0.0005,
+    "slippage_rate": 0.0001,
+    "min_train_trades": 80,
+    "min_val_trades": 25,
+    "min_eval_trades_for_robust": 20,
+    "min_test_trades": 30,
+    "min_each_side": 6,
+    "top_n": 250
+  },
+  "base_setup": "long_minimal_funding_premium",
+  "protocol": "observable explicit-duration semi-Markov entry gate; one predeclared state binning and duration scheme; bins, duration-key quality, and exit hazards fit 2020-2022; rank by worst CAGR/strict-MDD across each fit year and 2023 holdout; Test2024 first untouched overlay test; Eval2025/2026 report-only; hold576; 6bp/side; strict MDD",
+  "source": "https://www.cs.ubc.ca/~murphyk/papers/segment.pdf",
+  "selection_caveat": "The semi-Markov overlay is frozen before Eval2025/2026, but the underlying base setup has prior research-history exposure. A passing composite remains research-forward shadow.",
+  "tested_variants": 21,
+  "distinct_signal_variants": 14,
+  "baseline": {
+    "fit2020_2022": {
+      "return_pct": 89.99281290036451,
+      "cagr_pct": 23.8486273007136,
+      "strict_mdd_pct": 14.987362374309132,
+      "ratio": 1.591249127437805,
+      "trades": 173,
+      "longs": 173,
+      "shorts": 0,
+      "win_rate": 0.5664739884393064,
+      "long_win_rate": 0.5664739884393064,
+      "short_win_rate": 0,
+      "sharpe_like": 2.047214082151663
+    },
+    "year2020": {
+      "return_pct": 19.612281608779746,
+      "cagr_pct": 19.568394567729896,
+      "strict_mdd_pct": 10.31888340169803,
+      "ratio": 1.896367446550448,
+      "trades": 59,
+      "longs": 59,
+      "shorts": 0,
+      "win_rate": 0.6440677966101694,
+      "long_win_rate": 0.6440677966101694,
+      "short_win_rate": 0,
+      "sharpe_like": 1.419419261718362
+    },
+    "year2021": {
+      "return_pct": 55.56997439690894,
+      "cagr_pct": 55.61707079108136,
+      "strict_mdd_pct": 13.482963367898826,
+      "ratio": 4.124988644818122,
+      "trades": 54,
+      "longs": 54,
+      "shorts": 0,
+      "win_rate": 0.5740740740740741,
+      "long_win_rate": 0.5740740740740741,
+      "short_win_rate": 0,
+      "sharpe_like": 1.9020563035358258
+    },
+    "year2022": {
+      "return_pct": -0.530112231941049,
+      "cagr_pct": -0.5304743577528304,
+      "strict_mdd_pct": 14.987362374309132,
+      "ratio": -0.03539477758022005,
+      "trades": 59,
+      "longs": 59,
+      "shorts": 0,
+      "win_rate": 0.4745762711864407,
+      "long_win_rate": 0.4745762711864407,
+      "short_win_rate": 0,
+      "sharpe_like": 0.06163603445897884
+    },
+    "holdout2023": {
+      "return_pct": 20.143029834084714,
+      "cagr_pct": 20.158132001871355,
+      "strict_mdd_pct": 6.486531365679493,
+      "ratio": 3.1076905152311247,
+      "trades": 33,
+      "longs": 33,
+      "shorts": 0,
+      "win_rate": 0.5454545454545454,
+      "long_win_rate": 0.5454545454545454,
+      "short_win_rate": 0,
+      "sharpe_like": 1.5097996181616504
+    },
+    "test2024": {
+      "return_pct": 30.362812383283533,
+      "cagr_pct": 30.29199993917695,
+      "strict_mdd_pct": 5.048755509945757,
+      "ratio": 5.9998944055626104,
+      "trades": 29,
+      "longs": 29,
+      "shorts": 0,
+      "win_rate": 0.7931034482758621,
+      "long_win_rate": 0.7931034482758621,
+      "short_win_rate": 0,
+      "sharpe_like": 3.7693374775071207
+    },
+    "eval2025": {
+      "return_pct": 18.0279242214729,
+      "cagr_pct": 18.04132447055453,
+      "strict_mdd_pct": 4.26077912217896,
+      "ratio": 4.2342782747508885,
+      "trades": 26,
+      "longs": 26,
+      "shorts": 0,
+      "win_rate": 0.5769230769230769,
+      "long_win_rate": 0.5769230769230769,
+      "short_win_rate": 0,
+      "sharpe_like": 1.949274528059734
+    },
+    "ytd2026": {
+      "return_pct": 11.567451311342069,
+      "cagr_pct": 30.08606141905934,
+      "strict_mdd_pct": 3.796012692488615,
+      "ratio": 7.925700954212385,
+      "trades": 29,
+      "longs": 29,
+      "shorts": 0,
+      "win_rate": 0.6551724137931034,
+      "long_win_rate": 0.6551724137931034,
+      "short_win_rate": 0,
+      "sharpe_like": 1.4937547695544213
+    }
+  },
+  "yearly_top_candidate": {
+    "2020": {
+      "return_pct": 36.082575827421316,
+      "cagr_pct": 35.996689190149226,
+      "strict_mdd_pct": 11.596614343833146,
+      "ratio": 3.104068836202315,
+      "trades": 47,
+      "longs": 47,
+      "shorts": 0,
+      "win_rate": 0.6382978723404256,
+      "long_win_rate": 0.6382978723404256,
+      "short_win_rate": 0,
+      "sharpe_like": 2.0709090193139383
+    },
+    "2021": {
+      "return_pct": 66.17275072543201,
+      "cagr_pct": 66.23056359884987,
+      "strict_mdd_pct": 11.039129713601103,
+      "ratio": 5.999618205160544,
+      "trades": 43,
+      "longs": 43,
+      "shorts": 0,
+      "win_rate": 0.6511627906976745,
+      "long_win_rate": 0.6511627906976745,
+      "short_win_rate": 0,
+      "sharpe_like": 2.261922937991691
+    },
+    "2022": {
+      "return_pct": 1.191598812988337,
+      "cagr_pct": 1.1924198233868255,
+      "strict_mdd_pct": 16.988271610432236,
+      "ratio": 0.07019076753250042,
+      "trades": 43,
+      "longs": 43,
+      "shorts": 0,
+      "win_rate": 0.4186046511627907,
+      "long_win_rate": 0.4186046511627907,
+      "short_win_rate": 0,
+      "sharpe_like": 0.15309864372732135
+    },
+    "2023": {
+      "return_pct": 17.81964730922876,
+      "cagr_pct": 17.83288136610843,
+      "strict_mdd_pct": 6.08872875605031,
+      "ratio": 2.9288349145768846,
+      "trades": 21,
+      "longs": 21,
+      "shorts": 0,
+      "win_rate": 0.42857142857142855,
+      "long_win_rate": 0.42857142857142855,
+      "short_win_rate": 0,
+      "sharpe_like": 1.3943437524045186
+    },
+    "2024": {
+      "return_pct": 27.842277678372174,
+      "cagr_pct": 27.77794647321801,
+      "strict_mdd_pct": 1.7761165886330588,
+      "ratio": 15.639708930705147,
+      "trades": 20,
+      "longs": 20,
+      "shorts": 0,
+      "win_rate": 0.8,
+      "long_win_rate": 0.8,
+      "short_win_rate": 0,
+      "sharpe_like": 4.489783375280844
+    },
+    "2025": {
+      "return_pct": 1.629581993378415,
+      "cagr_pct": 1.6307071969628328,
+      "strict_mdd_pct": 7.333794662257231,
+      "ratio": 0.2223551751939733,
+      "trades": 11,
+      "longs": 11,
+      "shorts": 0,
+      "win_rate": 0.5454545454545454,
+      "long_win_rate": 0.5454545454545454,
+      "short_win_rate": 0,
+      "sharpe_like": 0.2771877070215053
+    },
+    "2026": {
+      "return_pct": 3.612935304381515,
+      "cagr_pct": 8.90283329866961,
+      "strict_mdd_pct": 4.982671675981276,
+      "ratio": 1.7867589674000155,
+      "trades": 18,
+      "longs": 18,
+      "shorts": 0,
+      "win_rate": 0.6666666666666666,
+      "long_win_rate": 0.6666666666666666,
+      "short_win_rate": 0,
+      "sharpe_like": 0.680072684750436
+    }
+  },
+  "cost_stress_bps_per_side": {
+    "6": {
+      "fit2020_2022": {
+        "return_pct": 110.25070797432485,
+        "cagr_pct": 28.101618413808737,
+        "strict_mdd_pct": 16.988271610432204,
+        "ratio": 1.6541776031266193,
+        "trades": 134,
+        "longs": 134,
+        "shorts": 0,
+        "win_rate": 0.5671641791044776,
+        "long_win_rate": 0.5671641791044776,
+        "short_win_rate": 0,
+        "sharpe_like": 2.4343946041102744
+      },
+      "holdout2023": {
+        "return_pct": 17.81964730922876,
+        "cagr_pct": 17.83288136610843,
+        "strict_mdd_pct": 6.08872875605031,
+        "ratio": 2.9288349145768846,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.42857142857142855,
+        "long_win_rate": 0.42857142857142855,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3943437524045186
+      },
+      "test2024": {
+        "return_pct": 27.842277678372174,
+        "cagr_pct": 27.77794647321801,
+        "strict_mdd_pct": 1.7761165886330588,
+        "ratio": 15.639708930705147,
+        "trades": 20,
+        "longs": 20,
+        "shorts": 0,
+        "win_rate": 0.8,
+        "long_win_rate": 0.8,
+        "short_win_rate": 0,
+        "sharpe_like": 4.489783375280844
+      },
+      "eval2025": {
+        "return_pct": 1.629581993378415,
+        "cagr_pct": 1.6307071969628328,
+        "strict_mdd_pct": 7.333794662257231,
+        "ratio": 0.2223551751939733,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.5454545454545454,
+        "long_win_rate": 0.5454545454545454,
+        "short_win_rate": 0,
+        "sharpe_like": 0.2771877070215053
+      },
+      "ytd2026": {
+        "return_pct": 3.612935304381515,
+        "cagr_pct": 8.90283329866961,
+        "strict_mdd_pct": 4.982671675981276,
+        "ratio": 1.7867589674000155,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.6666666666666666,
+        "long_win_rate": 0.6666666666666666,
+        "short_win_rate": 0,
+        "sharpe_like": 0.680072684750436
+      }
+    },
+    "8": {
+      "fit2020_2022": {
+        "return_pct": 104.68890354882872,
+        "cagr_pct": 26.962202002732404,
+        "strict_mdd_pct": 17.27840617536398,
+        "ratio": 1.5604565449546985,
+        "trades": 134,
+        "longs": 134,
+        "shorts": 0,
+        "win_rate": 0.5597014925373134,
+        "long_win_rate": 0.5597014925373134,
+        "short_win_rate": 0,
+        "sharpe_like": 2.3525616464681605
+      },
+      "holdout2023": {
+        "return_pct": 17.325669976850676,
+        "cagr_pct": 17.338510880062664,
+        "strict_mdd_pct": 6.267053123277444,
+        "ratio": 2.7666130378986233,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.42857142857142855,
+        "long_win_rate": 0.42857142857142855,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3601967783199493
+      },
+      "test2024": {
+        "return_pct": 27.33175161617534,
+        "cagr_pct": 27.268720858815463,
+        "strict_mdd_pct": 1.8055896480717593,
+        "ratio": 15.102391004476853,
+        "trades": 20,
+        "longs": 20,
+        "shorts": 0,
+        "win_rate": 0.8,
+        "long_win_rate": 0.8,
+        "short_win_rate": 0,
+        "sharpe_like": 4.417502418028876
+      },
+      "eval2025": {
+        "return_pct": 1.406164566020518,
+        "cagr_pct": 1.4071344371262784,
+        "strict_mdd_pct": 7.398661003398099,
+        "ratio": 0.19018771592319228,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.5454545454545454,
+        "long_win_rate": 0.5454545454545454,
+        "short_win_rate": 0,
+        "sharpe_like": 0.24355372139468776
+      },
+      "ytd2026": {
+        "return_pct": 3.2404692152087744,
+        "cagr_pct": 7.9644882272867035,
+        "strict_mdd_pct": 5.030185090534134,
+        "ratio": 1.5833389992496256,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.6666666666666666,
+        "long_win_rate": 0.6666666666666666,
+        "short_win_rate": 0,
+        "sharpe_like": 0.6137294052869862
+      }
+    },
+    "10": {
+      "fit2020_2022": {
+        "return_pct": 99.27369217695691,
+        "cagr_pct": 25.832807803260206,
+        "strict_mdd_pct": 17.567555564479232,
+        "ratio": 1.4704839104361749,
+        "trades": 134,
+        "longs": 134,
+        "shorts": 0,
+        "win_rate": 0.5597014925373134,
+        "long_win_rate": 0.5597014925373134,
+        "short_win_rate": 0,
+        "sharpe_like": 2.270704125428968
+      },
+      "holdout2023": {
+        "return_pct": 16.83371461238885,
+        "cagr_pct": 16.846165388110634,
+        "strict_mdd_pct": 6.445056667146165,
+        "ratio": 2.6138118341122394,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.42857142857142855,
+        "long_win_rate": 0.42857142857142855,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3260395545058343
+      },
+      "test2024": {
+        "return_pct": 26.82321352168899,
+        "cagr_pct": 26.761473988824957,
+        "strict_mdd_pct": 1.8350568111297427,
+        "ratio": 14.58345803057149,
+        "trades": 20,
+        "longs": 20,
+        "shorts": 0,
+        "win_rate": 0.8,
+        "long_win_rate": 0.8,
+        "short_win_rate": 0,
+        "sharpe_like": 4.345199764556908
+      },
+      "eval2025": {
+        "return_pct": 1.1832160103137035,
+        "cagr_pct": 1.184031211244685,
+        "strict_mdd_pct": 7.463488420843179,
+        "ratio": 0.158643136356728,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.5454545454545454,
+        "long_win_rate": 0.5454545454545454,
+        "short_win_rate": 0,
+        "sharpe_like": 0.20990964001955778
+      },
+      "ytd2026": {
+        "return_pct": 2.869304998454969,
+        "cagr_pct": 7.034135600970237,
+        "strict_mdd_pct": 5.077679495919652,
+        "ratio": 1.3853051589063006,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.6111111111111112,
+        "long_win_rate": 0.6111111111111112,
+        "short_win_rate": 0,
+        "sharpe_like": 0.5473662118870869
+      }
+    },
+    "15": {
+      "fit2020_2022": {
+        "return_pct": 86.35199207790232,
+        "cagr_pct": 23.052599302775413,
+        "strict_mdd_pct": 18.35070281494121,
+        "ratio": 1.256224327495833,
+        "trades": 134,
+        "longs": 134,
+        "shorts": 0,
+        "win_rate": 0.5597014925373134,
+        "long_win_rate": 0.5597014925373134,
+        "short_win_rate": 0,
+        "sharpe_like": 2.0659527934357103
+      },
+      "holdout2023": {
+        "return_pct": 15.612619393788464,
+        "cagr_pct": 15.62410797313245,
+        "strict_mdd_pct": 6.888665500233026,
+        "ratio": 2.2680892217228323,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.42857142857142855,
+        "long_win_rate": 0.42857142857142855,
+        "short_win_rate": 0,
+        "sharpe_like": 1.2406016254756786
+      },
+      "test2024": {
+        "return_pct": 25.560516209671857,
+        "cagr_pct": 25.50196472125654,
+        "strict_mdd_pct": 1.9086989259798015,
+        "ratio": 13.360915319929514,
+        "trades": 20,
+        "longs": 20,
+        "shorts": 0,
+        "win_rate": 0.8,
+        "long_win_rate": 0.8,
+        "short_win_rate": 0,
+        "sharpe_like": 4.164348152913995
+      },
+      "eval2025": {
+        "return_pct": 0.6278897883439605,
+        "cagr_pct": 0.6283211981067183,
+        "strict_mdd_pct": 7.625386801011813,
+        "ratio": 0.08239860016325287,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.5454545454545454,
+        "long_win_rate": 0.5454545454545454,
+        "short_win_rate": 0,
+        "sharpe_like": 0.12575524115925102
+      },
+      "ytd2026": {
+        "return_pct": 1.947061172518283,
+        "cagr_pct": 4.742780788119538,
+        "strict_mdd_pct": 5.19633238170889,
+        "ratio": 0.9127169780005114,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.6111111111111112,
+        "long_win_rate": 0.6111111111111112,
+        "short_win_rate": 0,
+        "sharpe_like": 0.38137105259744203
+      }
+    }
+  },
+  "leave_one_key_out": {
+    "12": {
+      "fit2020_2022": {
+        "return_pct": 96.91799527842622,
+        "cagr_pct": 25.33511376023494,
+        "strict_mdd_pct": 20.871362454862,
+        "ratio": 1.213869665433993,
+        "trades": 125,
+        "longs": 125,
+        "shorts": 0,
+        "win_rate": 0.568,
+        "long_win_rate": 0.568,
+        "short_win_rate": 0,
+        "sharpe_like": 2.4509616554359344
+      },
+      "holdout2023": {
+        "return_pct": 15.86853915223536,
+        "cagr_pct": 15.880228661606676,
+        "strict_mdd_pct": 5.970290402520629,
+        "ratio": 2.659875414921545,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.3888888888888889,
+        "long_win_rate": 0.3888888888888889,
+        "short_win_rate": 0,
+        "sharpe_like": 1.2098706778645638
+      },
+      "test2024": {
+        "return_pct": 22.02134972822487,
+        "cagr_pct": 21.971594707382856,
+        "strict_mdd_pct": 2.5274505031420924,
+        "ratio": 8.693184962501961,
+        "trades": 19,
+        "longs": 19,
+        "shorts": 0,
+        "win_rate": 0.7894736842105263,
+        "long_win_rate": 0.7894736842105263,
+        "short_win_rate": 0,
+        "sharpe_like": 3.461626478436324
+      },
+      "eval2025": {
+        "return_pct": 1.629581993378415,
+        "cagr_pct": 1.6307071969628328,
+        "strict_mdd_pct": 7.333794662257231,
+        "ratio": 0.2223551751939733,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.5454545454545454,
+        "long_win_rate": 0.5454545454545454,
+        "short_win_rate": 0,
+        "sharpe_like": 0.2771877070215053
+      },
+      "ytd2026": {
+        "return_pct": -0.12856111766480494,
+        "cagr_pct": -0.3086487389199588,
+        "strict_mdd_pct": 7.4203061584178,
+        "ratio": -0.04159514881603897,
+        "trades": 17,
+        "longs": 17,
+        "shorts": 0,
+        "win_rate": 0.5882352941176471,
+        "long_win_rate": 0.5882352941176471,
+        "short_win_rate": 0,
+        "sharpe_like": 0.005235231259368501
+      }
+    },
+    "15": {
+      "fit2020_2022": {
+        "return_pct": 104.8289946476753,
+        "cagr_pct": 26.991153517769327,
+        "strict_mdd_pct": 15.820860658962433,
+        "ratio": 1.7060483686441537,
+        "trades": 131,
+        "longs": 131,
+        "shorts": 0,
+        "win_rate": 0.5725190839694656,
+        "long_win_rate": 0.5725190839694656,
+        "short_win_rate": 0,
+        "sharpe_like": 2.3862633484236953
+      },
+      "holdout2023": {
+        "return_pct": 17.81964730922876,
+        "cagr_pct": 17.83288136610843,
+        "strict_mdd_pct": 6.08872875605031,
+        "ratio": 2.9288349145768846,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.42857142857142855,
+        "long_win_rate": 0.42857142857142855,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3943437524045186
+      },
+      "test2024": {
+        "return_pct": 27.842277678372174,
+        "cagr_pct": 27.77794647321801,
+        "strict_mdd_pct": 1.7761165886330588,
+        "ratio": 15.639708930705147,
+        "trades": 20,
+        "longs": 20,
+        "shorts": 0,
+        "win_rate": 0.8,
+        "long_win_rate": 0.8,
+        "short_win_rate": 0,
+        "sharpe_like": 4.489783375280844
+      },
+      "eval2025": {
+        "return_pct": 1.629581993378415,
+        "cagr_pct": 1.6307071969628328,
+        "strict_mdd_pct": 7.333794662257231,
+        "ratio": 0.2223551751939733,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.5454545454545454,
+        "long_win_rate": 0.5454545454545454,
+        "short_win_rate": 0,
+        "sharpe_like": 0.2771877070215053
+      },
+      "ytd2026": {
+        "return_pct": 3.612935304381515,
+        "cagr_pct": 8.90283329866961,
+        "strict_mdd_pct": 4.982671675981276,
+        "ratio": 1.7867589674000155,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.6666666666666666,
+        "long_win_rate": 0.6666666666666666,
+        "short_win_rate": 0,
+        "sharpe_like": 0.680072684750436
+      }
+    },
+    "16": {
+      "fit2020_2022": {
+        "return_pct": 124.48638186238017,
+        "cagr_pct": 30.92923519998014,
+        "strict_mdd_pct": 20.121414689787454,
+        "ratio": 1.5371302503734072,
+        "trades": 132,
+        "longs": 132,
+        "shorts": 0,
+        "win_rate": 0.5833333333333334,
+        "long_win_rate": 0.5833333333333334,
+        "short_win_rate": 0,
+        "sharpe_like": 2.623894667076627
+      },
+      "holdout2023": {
+        "return_pct": 17.695144470865042,
+        "cagr_pct": 17.708279302613473,
+        "strict_mdd_pct": 6.0887287560503545,
+        "ratio": 2.9083705338354577,
+        "trades": 20,
+        "longs": 20,
+        "shorts": 0,
+        "win_rate": 0.4,
+        "long_win_rate": 0.4,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3865698327208449
+      },
+      "test2024": {
+        "return_pct": 27.842277678372174,
+        "cagr_pct": 27.77794647321801,
+        "strict_mdd_pct": 1.7761165886330588,
+        "ratio": 15.639708930705147,
+        "trades": 20,
+        "longs": 20,
+        "shorts": 0,
+        "win_rate": 0.8,
+        "long_win_rate": 0.8,
+        "short_win_rate": 0,
+        "sharpe_like": 4.489783375280844
+      },
+      "eval2025": {
+        "return_pct": 0.3894683199441751,
+        "cagr_pct": 0.3897355982212858,
+        "strict_mdd_pct": 7.276333731638774,
+        "ratio": 0.05356208395536438,
+        "trades": 10,
+        "longs": 10,
+        "shorts": 0,
+        "win_rate": 0.5,
+        "long_win_rate": 0.5,
+        "short_win_rate": 0,
+        "sharpe_like": 0.08915456811888761
+      },
+      "ytd2026": {
+        "return_pct": 3.6292506321002227,
+        "cagr_pct": 8.944044531788165,
+        "strict_mdd_pct": 4.982671675981276,
+        "ratio": 1.7950298782282792,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.6666666666666666,
+        "long_win_rate": 0.6666666666666666,
+        "short_win_rate": 0,
+        "sharpe_like": 0.6822999461761514
+      }
+    },
+    "17": {
+      "fit2020_2022": {
+        "return_pct": 87.26571230926142,
+        "cagr_pct": 23.253342632025344,
+        "strict_mdd_pct": 18.18206570414952,
+        "ratio": 1.2789164339406416,
+        "trades": 131,
+        "longs": 131,
+        "shorts": 0,
+        "win_rate": 0.549618320610687,
+        "long_win_rate": 0.549618320610687,
+        "short_win_rate": 0,
+        "sharpe_like": 2.0879358537972323
+      },
+      "holdout2023": {
+        "return_pct": 17.81964730922876,
+        "cagr_pct": 17.83288136610843,
+        "strict_mdd_pct": 6.08872875605031,
+        "ratio": 2.9288349145768846,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.42857142857142855,
+        "long_win_rate": 0.42857142857142855,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3943437524045186
+      },
+      "test2024": {
+        "return_pct": 27.842277678372174,
+        "cagr_pct": 27.77794647321801,
+        "strict_mdd_pct": 1.7761165886330588,
+        "ratio": 15.639708930705147,
+        "trades": 20,
+        "longs": 20,
+        "shorts": 0,
+        "win_rate": 0.8,
+        "long_win_rate": 0.8,
+        "short_win_rate": 0,
+        "sharpe_like": 4.489783375280844
+      },
+      "eval2025": {
+        "return_pct": 1.629581993378415,
+        "cagr_pct": 1.6307071969628328,
+        "strict_mdd_pct": 7.333794662257231,
+        "ratio": 0.2223551751939733,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.5454545454545454,
+        "long_win_rate": 0.5454545454545454,
+        "short_win_rate": 0,
+        "sharpe_like": 0.2771877070215053
+      },
+      "ytd2026": {
+        "return_pct": 3.5892505754042903,
+        "cagr_pct": 8.843023737624867,
+        "strict_mdd_pct": 5.004391547760756,
+        "ratio": 1.76705272823461,
+        "trades": 17,
+        "longs": 17,
+        "shorts": 0,
+        "win_rate": 0.6470588235294118,
+        "long_win_rate": 0.6470588235294118,
+        "short_win_rate": 0,
+        "sharpe_like": 0.675117327054427
+      }
+    },
+    "20": {
+      "fit2020_2022": {
+        "return_pct": 107.3299350817952,
+        "cagr_pct": 27.50579598959304,
+        "strict_mdd_pct": 18.114689925657878,
+        "ratio": 1.518424886237411,
+        "trades": 123,
+        "longs": 123,
+        "shorts": 0,
+        "win_rate": 0.5691056910569106,
+        "long_win_rate": 0.5691056910569106,
+        "short_win_rate": 0,
+        "sharpe_like": 2.417441610163194
+      },
+      "holdout2023": {
+        "return_pct": 18.216717734029753,
+        "cagr_pct": 18.230268846455,
+        "strict_mdd_pct": 5.113146673803248,
+        "ratio": 3.5653717777853235,
+        "trades": 12,
+        "longs": 12,
+        "shorts": 0,
+        "win_rate": 0.5,
+        "long_win_rate": 0.5,
+        "short_win_rate": 0,
+        "sharpe_like": 1.4991720906916584
+      },
+      "test2024": {
+        "return_pct": 18.693575382550918,
+        "cagr_pct": 18.651900097806728,
+        "strict_mdd_pct": 2.5274505031420813,
+        "ratio": 7.379729128075513,
+        "trades": 19,
+        "longs": 19,
+        "shorts": 0,
+        "win_rate": 0.7894736842105263,
+        "long_win_rate": 0.7894736842105263,
+        "short_win_rate": 0,
+        "sharpe_like": 3.008711792840136
+      },
+      "eval2025": {
+        "return_pct": -1.4297622657904685,
+        "cagr_pct": -1.4307345158594886,
+        "strict_mdd_pct": 7.333794662257231,
+        "ratio": -0.1950878885691531,
+        "trades": 8,
+        "longs": 8,
+        "shorts": 0,
+        "win_rate": 0.375,
+        "long_win_rate": 0.375,
+        "short_win_rate": 0,
+        "sharpe_like": -0.20143266924459247
+      },
+      "ytd2026": {
+        "return_pct": 5.340073685850588,
+        "cagr_pct": 13.31608767331649,
+        "strict_mdd_pct": 4.1920133419324435,
+        "ratio": 3.176537521986514,
+        "trades": 16,
+        "longs": 16,
+        "shorts": 0,
+        "win_rate": 0.75,
+        "long_win_rate": 0.75,
+        "short_win_rate": 0,
+        "sharpe_like": 1.0560882726986196
+      }
+    },
+    "31": {
+      "fit2020_2022": {
+        "return_pct": 92.96600235086767,
+        "cagr_pct": 24.49117336497515,
+        "strict_mdd_pct": 16.98827161043228,
+        "ratio": 1.441651859977058,
+        "trades": 125,
+        "longs": 125,
+        "shorts": 0,
+        "win_rate": 0.544,
+        "long_win_rate": 0.544,
+        "short_win_rate": 0,
+        "sharpe_like": 2.283793050433902
+      },
+      "holdout2023": {
+        "return_pct": 17.81964730922876,
+        "cagr_pct": 17.83288136610843,
+        "strict_mdd_pct": 6.08872875605031,
+        "ratio": 2.9288349145768846,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.42857142857142855,
+        "long_win_rate": 0.42857142857142855,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3943437524045186
+      },
+      "test2024": {
+        "return_pct": 26.65449944503344,
+        "cagr_pct": 26.593187372614892,
+        "strict_mdd_pct": 3.7797377612688643,
+        "ratio": 7.035722860224968,
+        "trades": 19,
+        "longs": 19,
+        "shorts": 0,
+        "win_rate": 0.7894736842105263,
+        "long_win_rate": 0.7894736842105263,
+        "short_win_rate": 0,
+        "sharpe_like": 3.1022020044706173
+      },
+      "eval2025": {
+        "return_pct": 1.629581993378415,
+        "cagr_pct": 1.6307071969628328,
+        "strict_mdd_pct": 7.333794662257231,
+        "ratio": 0.2223551751939733,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.5454545454545454,
+        "long_win_rate": 0.5454545454545454,
+        "short_win_rate": 0,
+        "sharpe_like": 0.2771877070215053
+      },
+      "ytd2026": {
+        "return_pct": 2.319185363054155,
+        "cagr_pct": 5.663855951120889,
+        "strict_mdd_pct": 4.982671675981276,
+        "ratio": 1.1367106483100677,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.6111111111111112,
+        "long_win_rate": 0.6111111111111112,
+        "short_win_rate": 0,
+        "sharpe_like": 0.4528983940238522
+      }
+    },
+    "35": {
+      "fit2020_2022": {
+        "return_pct": 110.05932530958079,
+        "cagr_pct": 28.06274691802857,
+        "strict_mdd_pct": 16.98827161043228,
+        "ratio": 1.6518894659534165,
+        "trades": 133,
+        "longs": 133,
+        "shorts": 0,
+        "win_rate": 0.5714285714285714,
+        "long_win_rate": 0.5714285714285714,
+        "short_win_rate": 0,
+        "sharpe_like": 2.416434192957209
+      },
+      "holdout2023": {
+        "return_pct": 17.62313110397833,
+        "cagr_pct": 17.636208584378643,
+        "strict_mdd_pct": 6.08872875605031,
+        "ratio": 2.8965337907118487,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.42857142857142855,
+        "long_win_rate": 0.42857142857142855,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3944626001923803
+      },
+      "test2024": {
+        "return_pct": 26.20915196809872,
+        "cagr_pct": 26.148966036809096,
+        "strict_mdd_pct": 2.2940077094730227,
+        "ratio": 11.398813495189174,
+        "trades": 19,
+        "longs": 19,
+        "shorts": 0,
+        "win_rate": 0.7894736842105263,
+        "long_win_rate": 0.7894736842105263,
+        "short_win_rate": 0,
+        "sharpe_like": 3.9939746959693077
+      },
+      "eval2025": {
+        "return_pct": 1.629581993378415,
+        "cagr_pct": 1.6307071969628328,
+        "strict_mdd_pct": 7.333794662257231,
+        "ratio": 0.2223551751939733,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.5454545454545454,
+        "long_win_rate": 0.5454545454545454,
+        "short_win_rate": 0,
+        "sharpe_like": 0.2771877070215053
+      },
+      "ytd2026": {
+        "return_pct": 0.37580088040145565,
+        "cagr_pct": 0.9054164343699433,
+        "strict_mdd_pct": 4.982671675981276,
+        "ratio": 0.1817130433727871,
+        "trades": 17,
+        "longs": 17,
+        "shorts": 0,
+        "win_rate": 0.5882352941176471,
+        "long_win_rate": 0.5882352941176471,
+        "short_win_rate": 0,
+        "sharpe_like": 0.09819713302488671
+      }
+    },
+    "47": {
+      "fit2020_2022": {
+        "return_pct": 103.91159697201284,
+        "cagr_pct": 26.801321734959792,
+        "strict_mdd_pct": 15.96686167446142,
+        "ratio": 1.6785591484034592,
+        "trades": 124,
+        "longs": 124,
+        "shorts": 0,
+        "win_rate": 0.5645161290322581,
+        "long_win_rate": 0.5645161290322581,
+        "short_win_rate": 0,
+        "sharpe_like": 2.395372776911224
+      },
+      "holdout2023": {
+        "return_pct": 13.00668576111681,
+        "cagr_pct": 13.016150606481226,
+        "strict_mdd_pct": 6.228153682553472,
+        "ratio": 2.089889118013021,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.4444444444444444,
+        "long_win_rate": 0.4444444444444444,
+        "short_win_rate": 0,
+        "sharpe_like": 1.1106655107083505
+      },
+      "test2024": {
+        "return_pct": 26.00018997984288,
+        "cagr_pct": 25.940531340020435,
+        "strict_mdd_pct": 2.102826275215053,
+        "ratio": 12.336031580814986,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.8333333333333334,
+        "long_win_rate": 0.8333333333333334,
+        "short_win_rate": 0,
+        "sharpe_like": 3.8777801406716446
+      },
+      "eval2025": {
+        "return_pct": 2.5214958188076952,
+        "cagr_pct": 2.523244478687059,
+        "strict_mdd_pct": 5.493969566338142,
+        "ratio": 0.45927529234000836,
+        "trades": 7,
+        "longs": 7,
+        "shorts": 0,
+        "win_rate": 0.7142857142857143,
+        "long_win_rate": 0.7142857142857143,
+        "short_win_rate": 0,
+        "sharpe_like": 0.423812387497419
+      },
+      "ytd2026": {
+        "return_pct": 6.471820804213024,
+        "cagr_pct": 16.263626049715786,
+        "strict_mdd_pct": 4.656451225240854,
+        "ratio": 3.492708344405466,
+        "trades": 13,
+        "longs": 13,
+        "shorts": 0,
+        "win_rate": 0.7692307692307693,
+        "long_win_rate": 0.7692307692307693,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3687820461943543
+      }
+    },
+    "52": {
+      "fit2020_2022": {
+        "return_pct": 109.10731829893558,
+        "cagr_pct": 27.869034266875037,
+        "strict_mdd_pct": 16.98827161043228,
+        "ratio": 1.640486737318293,
+        "trades": 134,
+        "longs": 134,
+        "shorts": 0,
+        "win_rate": 0.5671641791044776,
+        "long_win_rate": 0.5671641791044776,
+        "short_win_rate": 0,
+        "sharpe_like": 2.4222232504350036
+      },
+      "holdout2023": {
+        "return_pct": 17.81964730922876,
+        "cagr_pct": 17.83288136610843,
+        "strict_mdd_pct": 6.08872875605031,
+        "ratio": 2.9288349145768846,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.42857142857142855,
+        "long_win_rate": 0.42857142857142855,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3943437524045186
+      },
+      "test2024": {
+        "return_pct": 28.76665487996659,
+        "cagr_pct": 28.699958444536122,
+        "strict_mdd_pct": 2.4713724847085117,
+        "ratio": 11.61296349381391,
+        "trades": 20,
+        "longs": 20,
+        "shorts": 0,
+        "win_rate": 0.8,
+        "long_win_rate": 0.8,
+        "short_win_rate": 0,
+        "sharpe_like": 4.493864944258532
+      },
+      "eval2025": {
+        "return_pct": 1.629581993378415,
+        "cagr_pct": 1.6307071969628328,
+        "strict_mdd_pct": 7.333794662257231,
+        "ratio": 0.2223551751939733,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.5454545454545454,
+        "long_win_rate": 0.5454545454545454,
+        "short_win_rate": 0,
+        "sharpe_like": 0.2771877070215053
+      },
+      "ytd2026": {
+        "return_pct": 3.612935304381515,
+        "cagr_pct": 8.90283329866961,
+        "strict_mdd_pct": 4.982671675981276,
+        "ratio": 1.7867589674000155,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.6666666666666666,
+        "long_win_rate": 0.6666666666666666,
+        "short_win_rate": 0,
+        "sharpe_like": 0.680072684750436
+      }
+    },
+    "55": {
+      "fit2020_2022": {
+        "return_pct": 122.27038003751409,
+        "cagr_pct": 30.497088568933183,
+        "strict_mdd_pct": 15.630331378124273,
+        "ratio": 1.9511479207418445,
+        "trades": 125,
+        "longs": 125,
+        "shorts": 0,
+        "win_rate": 0.576,
+        "long_win_rate": 0.576,
+        "short_win_rate": 0,
+        "sharpe_like": 2.651490649998698
+      },
+      "holdout2023": {
+        "return_pct": 22.865116646874807,
+        "cagr_pct": 22.88244664340111,
+        "strict_mdd_pct": 2.600210724586005,
+        "ratio": 8.80022777655621,
+        "trades": 19,
+        "longs": 19,
+        "shorts": 0,
+        "win_rate": 0.47368421052631576,
+        "long_win_rate": 0.47368421052631576,
+        "short_win_rate": 0,
+        "sharpe_like": 1.8629209169321128
+      },
+      "test2024": {
+        "return_pct": 28.0730339812423,
+        "cagr_pct": 28.008113609020914,
+        "strict_mdd_pct": 1.7564711229068886,
+        "ratio": 15.945672686419472,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.8333333333333334,
+        "long_win_rate": 0.8333333333333334,
+        "short_win_rate": 0,
+        "sharpe_like": 4.87416582944795
+      },
+      "eval2025": {
+        "return_pct": 9.469750882697126,
+        "cagr_pct": 9.47653507414017,
+        "strict_mdd_pct": 3.213011278271638,
+        "ratio": 2.949424777381374,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.6363636363636364,
+        "long_win_rate": 0.6363636363636364,
+        "short_win_rate": 0,
+        "sharpe_like": 1.6477969214717414
+      },
+      "ytd2026": {
+        "return_pct": 2.2250693018367684,
+        "cagr_pct": 5.430456687703922,
+        "strict_mdd_pct": 5.996159399296886,
+        "ratio": 0.9056558250170437,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.6666666666666666,
+        "long_win_rate": 0.6666666666666666,
+        "short_win_rate": 0,
+        "sharpe_like": 0.3986682380210942
+      }
+    }
+  },
+  "top_trade_return_bootstrap": {
+    "holdout2023": {
+      "trades": 21,
+      "mean_trade_return_pct": 0.8170395904653891,
+      "ci95_low_pct": -0.1806286485883403,
+      "ci95_high_pct": 2.0383171146658725,
+      "probability_mean_positive": 0.93635
+    },
+    "test2024": {
+      "trades": 20,
+      "mean_trade_return_pct": 1.2428735996105955,
+      "ci95_low_pct": 0.7297383637778055,
+      "ci95_high_pct": 1.774848782542216,
+      "probability_mean_positive": 1.0
+    },
+    "eval2025": {
+      "trades": 11,
+      "mean_trade_return_pct": 0.16490016974406743,
+      "ci95_low_pct": -0.9927829542052778,
+      "ci95_high_pct": 1.1950900395882627,
+      "probability_mean_positive": 0.62745
+    },
+    "ytd2026": {
+      "trades": 18,
+      "mean_trade_return_pct": 0.20510859850021002,
+      "ci95_low_pct": -0.3816330045482646,
+      "ci95_high_pct": 0.7628820080233869,
+      "probability_mean_positive": 0.7544
+    }
+  },
+  "selected": [
+    {
+      "trend_quantiles": [
+        0.33,
+        0.67
+      ],
+      "state_thresholds": {
+        "trend_low": -0.009032168697422257,
+        "trend_high": 0.011791010683737543,
+        "vol_median": 0.005910899368064678,
+        "flow_median": -0.00295379329129606
+      },
+      "duration_cutpoints_hours": [
+        1,
+        6,
+        24,
+        72
+      ],
+      "min_fit_key_trades": 3,
+      "min_fit_mean_trade_return": 0.005,
+      "max_fit_exit_hazard": 0.5,
+      "allowed_keys": [
+        12,
+        15,
+        16,
+        17,
+        20,
+        31,
+        35,
+        47,
+        52,
+        55
+      ],
+      "allowed_key_descriptions": {
+        "12": "trend=low, volatility=high, flow=low, state_age=7-24h",
+        "15": "trend=low, volatility=high, flow=high, state_age=1-1h",
+        "16": "trend=low, volatility=high, flow=high, state_age=2-6h",
+        "17": "trend=low, volatility=high, flow=high, state_age=7-24h",
+        "20": "trend=mid, volatility=low, flow=low, state_age=1-1h",
+        "31": "trend=mid, volatility=high, flow=low, state_age=2-6h",
+        "35": "trend=mid, volatility=high, flow=high, state_age=1-1h",
+        "47": "trend=high, volatility=low, flow=high, state_age=7-24h",
+        "52": "trend=high, volatility=high, flow=low, state_age=7-24h",
+        "55": "trend=high, volatility=high, flow=high, state_age=1-1h"
+      },
+      "key_quality": {
+        "12": {
+          "n": 15,
+          "mean_trade_return": 0.00512639474592127,
+          "exposures": 1597,
+          "exits": 128,
+          "exit_hazard": 0.08067542213883677
+        },
+        "15": {
+          "n": 3,
+          "mean_trade_return": 0.013117007652232374,
+          "exposures": 385,
+          "exits": 148,
+          "exit_hazard": 0.3850129198966408
+        },
+        "16": {
+          "n": 10,
+          "mean_trade_return": 0.013399330053315927,
+          "exposures": 743,
+          "exits": 168,
+          "exit_hazard": 0.22684563758389262
+        },
+        "17": {
+          "n": 9,
+          "mean_trade_return": 0.007750551902789282,
+          "exposures": 480,
+          "exits": 67,
+          "exit_hazard": 0.14107883817427386
+        },
+        "20": {
+          "n": 4,
+          "mean_trade_return": 0.0077887733914781265,
+          "exposures": 698,
+          "exits": 224,
+          "exit_hazard": 0.32142857142857145
+        },
+        "31": {
+          "n": 6,
+          "mean_trade_return": 0.0154797475322039,
+          "exposures": 640,
+          "exits": 262,
+          "exit_hazard": 0.40965732087227413
+        },
+        "35": {
+          "n": 4,
+          "mean_trade_return": 0.013897025286285114,
+          "exposures": 538,
+          "exits": 241,
+          "exit_hazard": 0.44814814814814813
+        },
+        "47": {
+          "n": 5,
+          "mean_trade_return": 0.009235659306321664,
+          "exposures": 924,
+          "exits": 98,
+          "exit_hazard": 0.10691144708423327
+        },
+        "52": {
+          "n": 4,
+          "mean_trade_return": 0.033531247038880746,
+          "exposures": 480,
+          "exits": 70,
+          "exit_hazard": 0.14730290456431536
+        },
+        "55": {
+          "n": 6,
+          "mean_trade_return": 0.024824257142440003,
+          "exposures": 527,
+          "exits": 172,
+          "exit_hazard": 0.3270321361058601
+        }
+      },
+      "fit2020_2022": {
+        "return_pct": 110.25070797432485,
+        "cagr_pct": 28.101618413808737,
+        "strict_mdd_pct": 16.988271610432204,
+        "ratio": 1.6541776031266193,
+        "trades": 134,
+        "longs": 134,
+        "shorts": 0,
+        "win_rate": 0.5671641791044776,
+        "long_win_rate": 0.5671641791044776,
+        "short_win_rate": 0,
+        "sharpe_like": 2.4343946041102744
+      },
+      "holdout2023": {
+        "return_pct": 17.81964730922876,
+        "cagr_pct": 17.83288136610843,
+        "strict_mdd_pct": 6.08872875605031,
+        "ratio": 2.9288349145768846,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.42857142857142855,
+        "long_win_rate": 0.42857142857142855,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3943437524045186
+      },
+      "signal_hash": "3553b678981cb6f8",
+      "year2020": {
+        "return_pct": 36.082575827421316,
+        "cagr_pct": 35.996689190149226,
+        "strict_mdd_pct": 11.596614343833146,
+        "ratio": 3.104068836202315,
+        "trades": 47,
+        "longs": 47,
+        "shorts": 0,
+        "win_rate": 0.6382978723404256,
+        "long_win_rate": 0.6382978723404256,
+        "short_win_rate": 0,
+        "sharpe_like": 2.0709090193139383
+      },
+      "year2021": {
+        "return_pct": 66.17275072543201,
+        "cagr_pct": 66.23056359884987,
+        "strict_mdd_pct": 11.039129713601103,
+        "ratio": 5.999618205160544,
+        "trades": 43,
+        "longs": 43,
+        "shorts": 0,
+        "win_rate": 0.6511627906976745,
+        "long_win_rate": 0.6511627906976745,
+        "short_win_rate": 0,
+        "sharpe_like": 2.261922937991691
+      },
+      "year2022": {
+        "return_pct": 1.191598812988337,
+        "cagr_pct": 1.1924198233868255,
+        "strict_mdd_pct": 16.988271610432236,
+        "ratio": 0.07019076753250042,
+        "trades": 43,
+        "longs": 43,
+        "shorts": 0,
+        "win_rate": 0.4186046511627907,
+        "long_win_rate": 0.4186046511627907,
+        "short_win_rate": 0,
+        "sharpe_like": 0.15309864372732135
+      },
+      "test2024": {
+        "return_pct": 27.842277678372174,
+        "cagr_pct": 27.77794647321801,
+        "strict_mdd_pct": 1.7761165886330588,
+        "ratio": 15.639708930705147,
+        "trades": 20,
+        "longs": 20,
+        "shorts": 0,
+        "win_rate": 0.8,
+        "long_win_rate": 0.8,
+        "short_win_rate": 0,
+        "sharpe_like": 4.489783375280844
+      },
+      "eval2025": {
+        "return_pct": 1.629581993378415,
+        "cagr_pct": 1.6307071969628328,
+        "strict_mdd_pct": 7.333794662257231,
+        "ratio": 0.2223551751939733,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.5454545454545454,
+        "long_win_rate": 0.5454545454545454,
+        "short_win_rate": 0,
+        "sharpe_like": 0.2771877070215053
+      },
+      "ytd2026": {
+        "return_pct": 3.612935304381515,
+        "cagr_pct": 8.90283329866961,
+        "strict_mdd_pct": 4.982671675981276,
+        "ratio": 1.7867589674000155,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.6666666666666666,
+        "long_win_rate": 0.6666666666666666,
+        "short_win_rate": 0,
+        "sharpe_like": 0.680072684750436
+      },
+      "worst_selection_ratio": 0.07019076753250042,
+      "passes_alpha_pool": false,
+      "passes_live_grade": false,
+      "passes_statistical_screen": false
+    },
+    {
+      "trend_quantiles": [
+        0.33,
+        0.67
+      ],
+      "state_thresholds": {
+        "trend_low": -0.009032168697422257,
+        "trend_high": 0.011791010683737543,
+        "vol_median": 0.005910899368064678,
+        "flow_median": -0.00295379329129606
+      },
+      "duration_cutpoints_hours": [
+        1,
+        6,
+        24,
+        72
+      ],
+      "min_fit_key_trades": 3,
+      "min_fit_mean_trade_return": 0.005,
+      "max_fit_exit_hazard": 0.25,
+      "allowed_keys": [
+        12,
+        16,
+        17,
+        47,
+        52
+      ],
+      "allowed_key_descriptions": {
+        "12": "trend=low, volatility=high, flow=low, state_age=7-24h",
+        "16": "trend=low, volatility=high, flow=high, state_age=2-6h",
+        "17": "trend=low, volatility=high, flow=high, state_age=7-24h",
+        "47": "trend=high, volatility=low, flow=high, state_age=7-24h",
+        "52": "trend=high, volatility=high, flow=low, state_age=7-24h"
+      },
+      "key_quality": {
+        "12": {
+          "n": 15,
+          "mean_trade_return": 0.00512639474592127,
+          "exposures": 1597,
+          "exits": 128,
+          "exit_hazard": 0.08067542213883677
+        },
+        "16": {
+          "n": 10,
+          "mean_trade_return": 0.013399330053315927,
+          "exposures": 743,
+          "exits": 168,
+          "exit_hazard": 0.22684563758389262
+        },
+        "17": {
+          "n": 9,
+          "mean_trade_return": 0.007750551902789282,
+          "exposures": 480,
+          "exits": 67,
+          "exit_hazard": 0.14107883817427386
+        },
+        "47": {
+          "n": 5,
+          "mean_trade_return": 0.009235659306321664,
+          "exposures": 924,
+          "exits": 98,
+          "exit_hazard": 0.10691144708423327
+        },
+        "52": {
+          "n": 4,
+          "mean_trade_return": 0.033531247038880746,
+          "exposures": 480,
+          "exits": 70,
+          "exit_hazard": 0.14730290456431536
+        }
+      },
+      "fit2020_2022": {
+        "return_pct": 80.42352323041399,
+        "cagr_pct": 21.73390849607817,
+        "strict_mdd_pct": 14.189606485734352,
+        "ratio": 1.531678029121424,
+        "trades": 89,
+        "longs": 89,
+        "shorts": 0,
+        "win_rate": 0.5955056179775281,
+        "long_win_rate": 0.5955056179775281,
+        "short_win_rate": 0,
+        "sharpe_like": 2.1744251304722177
+      },
+      "holdout2023": {
+        "return_pct": 12.758692614431855,
+        "cagr_pct": 12.767967003305936,
+        "strict_mdd_pct": 1.144839136753062,
+        "ratio": 11.15262973933424,
+        "trades": 9,
+        "longs": 9,
+        "shorts": 0,
+        "win_rate": 0.5555555555555556,
+        "long_win_rate": 0.5555555555555556,
+        "short_win_rate": 0,
+        "sharpe_like": 1.945698210718801
+      },
+      "signal_hash": "61d290006b892e86",
+      "year2020": {
+        "return_pct": 33.11696242738653,
+        "cagr_pct": 33.03895421047294,
+        "strict_mdd_pct": 8.291556117672648,
+        "ratio": 3.984650618242046,
+        "trades": 32,
+        "longs": 32,
+        "shorts": 0,
+        "win_rate": 0.71875,
+        "long_win_rate": 0.71875,
+        "short_win_rate": 0,
+        "sharpe_like": 2.3259835261814836
+      },
+      "year2021": {
+        "return_pct": 44.24272028945484,
+        "cagr_pct": 44.27891663805079,
+        "strict_mdd_pct": 10.41453543259273,
+        "ratio": 4.251645877499062,
+        "trades": 26,
+        "longs": 26,
+        "shorts": 0,
+        "win_rate": 0.6538461538461539,
+        "long_win_rate": 0.6538461538461539,
+        "short_win_rate": 0,
+        "sharpe_like": 1.8738087393858618
+      },
+      "year2022": {
+        "return_pct": -7.261230312685562,
+        "cagr_pct": -7.266018531432749,
+        "strict_mdd_pct": 14.189606485734352,
+        "ratio": -0.5120662464274612,
+        "trades": 30,
+        "longs": 30,
+        "shorts": 0,
+        "win_rate": 0.4,
+        "long_win_rate": 0.4,
+        "short_win_rate": 0,
+        "sharpe_like": -0.4203429585250175
+      },
+      "test2024": {
+        "return_pct": 14.805969977987221,
+        "cagr_pct": 14.773491705816921,
+        "strict_mdd_pct": 2.28925910245551,
+        "ratio": 6.453394327435697,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.8181818181818182,
+        "long_win_rate": 0.8181818181818182,
+        "short_win_rate": 0,
+        "sharpe_like": 2.903379282263554
+      },
+      "eval2025": {
+        "return_pct": 6.4624552200839736,
+        "cagr_pct": 6.467021697176345,
+        "strict_mdd_pct": 3.213011278271638,
+        "ratio": 2.012760347562528,
+        "trades": 6,
+        "longs": 6,
+        "shorts": 0,
+        "win_rate": 0.5,
+        "long_win_rate": 0.5,
+        "short_win_rate": 0,
+        "sharpe_like": 1.1873271649137789
+      },
+      "ytd2026": {
+        "return_pct": 0.47289740793206025,
+        "cagr_pct": 1.140125803010883,
+        "strict_mdd_pct": 4.192013341932432,
+        "ratio": 0.2719757095251296,
+        "trades": 13,
+        "longs": 13,
+        "shorts": 0,
+        "win_rate": 0.6153846153846154,
+        "long_win_rate": 0.6153846153846154,
+        "short_win_rate": 0,
+        "sharpe_like": 0.1252310111232416
+      },
+      "worst_selection_ratio": 0.0,
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "trend_quantiles": [
+        0.33,
+        0.67
+      ],
+      "state_thresholds": {
+        "trend_low": -0.009032168697422257,
+        "trend_high": 0.011791010683737543,
+        "vol_median": 0.005910899368064678,
+        "flow_median": -0.00295379329129606
+      },
+      "duration_cutpoints_hours": [
+        1,
+        6,
+        24,
+        72
+      ],
+      "min_fit_key_trades": 5,
+      "min_fit_mean_trade_return": 0.005,
+      "max_fit_exit_hazard": 0.25,
+      "allowed_keys": [
+        12,
+        16,
+        17,
+        47
+      ],
+      "allowed_key_descriptions": {
+        "12": "trend=low, volatility=high, flow=low, state_age=7-24h",
+        "16": "trend=low, volatility=high, flow=high, state_age=2-6h",
+        "17": "trend=low, volatility=high, flow=high, state_age=7-24h",
+        "47": "trend=high, volatility=low, flow=high, state_age=7-24h"
+      },
+      "key_quality": {
+        "12": {
+          "n": 15,
+          "mean_trade_return": 0.00512639474592127,
+          "exposures": 1597,
+          "exits": 128,
+          "exit_hazard": 0.08067542213883677
+        },
+        "16": {
+          "n": 10,
+          "mean_trade_return": 0.013399330053315927,
+          "exposures": 743,
+          "exits": 168,
+          "exit_hazard": 0.22684563758389262
+        },
+        "17": {
+          "n": 9,
+          "mean_trade_return": 0.007750551902789282,
+          "exposures": 480,
+          "exits": 67,
+          "exit_hazard": 0.14107883817427386
+        },
+        "47": {
+          "n": 5,
+          "mean_trade_return": 0.009235659306321664,
+          "exposures": 924,
+          "exits": 98,
+          "exit_hazard": 0.10691144708423327
+        }
+      },
+      "fit2020_2022": {
+        "return_pct": 73.66056639017637,
+        "cagr_pct": 20.193831285581343,
+        "strict_mdd_pct": 14.18960648573433,
+        "ratio": 1.423142446260467,
+        "trades": 84,
+        "longs": 84,
+        "shorts": 0,
+        "win_rate": 0.5952380952380952,
+        "long_win_rate": 0.5952380952380952,
+        "short_win_rate": 0,
+        "sharpe_like": 2.092148903765844
+      },
+      "holdout2023": {
+        "return_pct": 12.758692614431855,
+        "cagr_pct": 12.767967003305936,
+        "strict_mdd_pct": 1.144839136753062,
+        "ratio": 11.15262973933424,
+        "trades": 9,
+        "longs": 9,
+        "shorts": 0,
+        "win_rate": 0.5555555555555556,
+        "long_win_rate": 0.5555555555555556,
+        "short_win_rate": 0,
+        "sharpe_like": 1.945698210718801
+      },
+      "signal_hash": "b8c4f332fbdb4e86",
+      "year2020": {
+        "return_pct": 34.84654291306206,
+        "cagr_pct": 34.76395612958287,
+        "strict_mdd_pct": 8.291556117672648,
+        "ratio": 4.192693824442299,
+        "trades": 30,
+        "longs": 30,
+        "shorts": 0,
+        "win_rate": 0.7666666666666667,
+        "long_win_rate": 0.7666666666666667,
+        "short_win_rate": 0,
+        "sharpe_like": 2.4665876766768156
+      },
+      "year2021": {
+        "return_pct": 38.86732386787295,
+        "cagr_pct": 38.89855814526315,
+        "strict_mdd_pct": 10.41453543259272,
+        "ratio": 3.7350257625057863,
+        "trades": 24,
+        "longs": 24,
+        "shorts": 0,
+        "win_rate": 0.625,
+        "long_win_rate": 0.625,
+        "short_win_rate": 0,
+        "sharpe_like": 1.7616741565186185
+      },
+      "year2022": {
+        "return_pct": -7.261230312685562,
+        "cagr_pct": -7.266018531432749,
+        "strict_mdd_pct": 14.189606485734352,
+        "ratio": -0.5120662464274612,
+        "trades": 30,
+        "longs": 30,
+        "shorts": 0,
+        "win_rate": 0.4,
+        "long_win_rate": 0.4,
+        "short_win_rate": 0,
+        "sharpe_like": -0.4203429585250175
+      },
+      "test2024": {
+        "return_pct": 9.524167499104163,
+        "cagr_pct": 9.503751438561348,
+        "strict_mdd_pct": 1.7564711229068664,
+        "ratio": 5.410707477406827,
+        "trades": 8,
+        "longs": 8,
+        "shorts": 0,
+        "win_rate": 0.75,
+        "long_win_rate": 0.75,
+        "short_win_rate": 0,
+        "sharpe_like": 2.0751804371010025
+      },
+      "eval2025": {
+        "return_pct": 6.4624552200839736,
+        "cagr_pct": 6.467021697176345,
+        "strict_mdd_pct": 3.213011278271638,
+        "ratio": 2.012760347562528,
+        "trades": 6,
+        "longs": 6,
+        "shorts": 0,
+        "win_rate": 0.5,
+        "long_win_rate": 0.5,
+        "short_win_rate": 0,
+        "sharpe_like": 1.1873271649137789
+      },
+      "ytd2026": {
+        "return_pct": 0.47289740793206025,
+        "cagr_pct": 1.140125803010883,
+        "strict_mdd_pct": 4.192013341932432,
+        "ratio": 0.2719757095251296,
+        "trades": 13,
+        "longs": 13,
+        "shorts": 0,
+        "win_rate": 0.6153846153846154,
+        "long_win_rate": 0.6153846153846154,
+        "short_win_rate": 0,
+        "sharpe_like": 0.1252310111232416
+      },
+      "worst_selection_ratio": 0.0,
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "trend_quantiles": [
+        0.33,
+        0.67
+      ],
+      "state_thresholds": {
+        "trend_low": -0.009032168697422257,
+        "trend_high": 0.011791010683737543,
+        "vol_median": 0.005910899368064678,
+        "flow_median": -0.00295379329129606
+      },
+      "duration_cutpoints_hours": [
+        1,
+        6,
+        24,
+        72
+      ],
+      "min_fit_key_trades": 5,
+      "min_fit_mean_trade_return": 0.002,
+      "max_fit_exit_hazard": 0.5,
+      "allowed_keys": [
+        10,
+        12,
+        16,
+        17,
+        31,
+        47,
+        55,
+        57
+      ],
+      "allowed_key_descriptions": {
+        "10": "trend=low, volatility=high, flow=low, state_age=1-1h",
+        "12": "trend=low, volatility=high, flow=low, state_age=7-24h",
+        "16": "trend=low, volatility=high, flow=high, state_age=2-6h",
+        "17": "trend=low, volatility=high, flow=high, state_age=7-24h",
+        "31": "trend=mid, volatility=high, flow=low, state_age=2-6h",
+        "47": "trend=high, volatility=low, flow=high, state_age=7-24h",
+        "55": "trend=high, volatility=high, flow=high, state_age=1-1h",
+        "57": "trend=high, volatility=high, flow=high, state_age=7-24h"
+      },
+      "key_quality": {
+        "10": {
+          "n": 10,
+          "mean_trade_return": 0.00484999034142124,
+          "exposures": 513,
+          "exits": 154,
+          "exit_hazard": 0.30097087378640774
+        },
+        "12": {
+          "n": 15,
+          "mean_trade_return": 0.00512639474592127,
+          "exposures": 1597,
+          "exits": 128,
+          "exit_hazard": 0.08067542213883677
+        },
+        "16": {
+          "n": 10,
+          "mean_trade_return": 0.013399330053315927,
+          "exposures": 743,
+          "exits": 168,
+          "exit_hazard": 0.22684563758389262
+        },
+        "17": {
+          "n": 9,
+          "mean_trade_return": 0.007750551902789282,
+          "exposures": 480,
+          "exits": 67,
+          "exit_hazard": 0.14107883817427386
+        },
+        "31": {
+          "n": 6,
+          "mean_trade_return": 0.0154797475322039,
+          "exposures": 640,
+          "exits": 262,
+          "exit_hazard": 0.40965732087227413
+        },
+        "47": {
+          "n": 5,
+          "mean_trade_return": 0.009235659306321664,
+          "exposures": 924,
+          "exits": 98,
+          "exit_hazard": 0.10691144708423327
+        },
+        "55": {
+          "n": 6,
+          "mean_trade_return": 0.024824257142440003,
+          "exposures": 527,
+          "exits": 172,
+          "exit_hazard": 0.3270321361058601
+        },
+        "57": {
+          "n": 11,
+          "mean_trade_return": 0.0023832007164989403,
+          "exposures": 1626,
+          "exits": 146,
+          "exit_hazard": 0.09029484029484029
+        }
+      },
+      "fit2020_2022": {
+        "return_pct": 80.3838407744792,
+        "cagr_pct": 21.724985135017462,
+        "strict_mdd_pct": 14.945318436088694,
+        "ratio": 1.4536314651254134,
+        "trades": 132,
+        "longs": 132,
+        "shorts": 0,
+        "win_rate": 0.5833333333333334,
+        "long_win_rate": 0.5833333333333334,
+        "short_win_rate": 0,
+        "sharpe_like": 1.9620456548227834
+      },
+      "holdout2023": {
+        "return_pct": 21.953002288783985,
+        "cagr_pct": 21.969581135155035,
+        "strict_mdd_pct": 5.113146673803259,
+        "ratio": 4.29668510150788,
+        "trades": 14,
+        "longs": 14,
+        "shorts": 0,
+        "win_rate": 0.5714285714285714,
+        "long_win_rate": 0.5714285714285714,
+        "short_win_rate": 0,
+        "sharpe_like": 1.7949710470287608
+      },
+      "signal_hash": "e4c4fe83938f58a7",
+      "year2020": {
+        "return_pct": 28.850935396385104,
+        "cagr_pct": 28.78402263383464,
+        "strict_mdd_pct": 7.923885569493061,
+        "ratio": 3.6325641481564364,
+        "trades": 44,
+        "longs": 44,
+        "shorts": 0,
+        "win_rate": 0.7045454545454546,
+        "long_win_rate": 0.7045454545454546,
+        "short_win_rate": 0,
+        "sharpe_like": 1.8201413023670237
+      },
+      "year2021": {
+        "return_pct": 70.186989800939,
+        "cagr_pct": 70.2489826762912,
+        "strict_mdd_pct": 12.095392066483878,
+        "ratio": 5.807912822516099,
+        "trades": 47,
+        "longs": 47,
+        "shorts": 0,
+        "win_rate": 0.6170212765957447,
+        "long_win_rate": 0.6170212765957447,
+        "short_win_rate": 0,
+        "sharpe_like": 2.2578050437656656
+      },
+      "year2022": {
+        "return_pct": -6.005984307105017,
+        "cagr_pct": -6.00997182648324,
+        "strict_mdd_pct": 14.945318436088717,
+        "ratio": -0.40213073091643586,
+        "trades": 40,
+        "longs": 40,
+        "shorts": 0,
+        "win_rate": 0.425,
+        "long_win_rate": 0.425,
+        "short_win_rate": 0,
+        "sharpe_like": -0.25137957479382844
+      },
+      "test2024": {
+        "return_pct": 19.86508030864833,
+        "cagr_pct": 19.820582127249864,
+        "strict_mdd_pct": 3.5276739360751264,
+        "ratio": 5.618598114910289,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.7777777777777778,
+        "long_win_rate": 0.7777777777777778,
+        "short_win_rate": 0,
+        "sharpe_like": 3.14064881250699
+      },
+      "eval2025": {
+        "return_pct": 14.054267279598642,
+        "cagr_pct": 14.064540764631928,
+        "strict_mdd_pct": 3.213011278271616,
+        "ratio": 4.377370493451148,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.6363636363636364,
+        "long_win_rate": 0.6363636363636364,
+        "short_win_rate": 0,
+        "sharpe_like": 2.131024321234243
+      },
+      "ytd2026": {
+        "return_pct": 2.004028509475675,
+        "cagr_pct": 4.883480160036213,
+        "strict_mdd_pct": 4.1920133419324435,
+        "ratio": 1.1649486205559203,
+        "trades": 17,
+        "longs": 17,
+        "shorts": 0,
+        "win_rate": 0.6470588235294118,
+        "long_win_rate": 0.6470588235294118,
+        "short_win_rate": 0,
+        "sharpe_like": 0.39474104969289747
+      },
+      "worst_selection_ratio": 0.0,
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "trend_quantiles": [
+        0.33,
+        0.67
+      ],
+      "state_thresholds": {
+        "trend_low": -0.009032168697422257,
+        "trend_high": 0.011791010683737543,
+        "vol_median": 0.005910899368064678,
+        "flow_median": -0.00295379329129606
+      },
+      "duration_cutpoints_hours": [
+        1,
+        6,
+        24,
+        72
+      ],
+      "min_fit_key_trades": 5,
+      "min_fit_mean_trade_return": 0.005,
+      "max_fit_exit_hazard": 0.5,
+      "allowed_keys": [
+        12,
+        16,
+        17,
+        31,
+        47,
+        55
+      ],
+      "allowed_key_descriptions": {
+        "12": "trend=low, volatility=high, flow=low, state_age=7-24h",
+        "16": "trend=low, volatility=high, flow=high, state_age=2-6h",
+        "17": "trend=low, volatility=high, flow=high, state_age=7-24h",
+        "31": "trend=mid, volatility=high, flow=low, state_age=2-6h",
+        "47": "trend=high, volatility=low, flow=high, state_age=7-24h",
+        "55": "trend=high, volatility=high, flow=high, state_age=1-1h"
+      },
+      "key_quality": {
+        "12": {
+          "n": 15,
+          "mean_trade_return": 0.00512639474592127,
+          "exposures": 1597,
+          "exits": 128,
+          "exit_hazard": 0.08067542213883677
+        },
+        "16": {
+          "n": 10,
+          "mean_trade_return": 0.013399330053315927,
+          "exposures": 743,
+          "exits": 168,
+          "exit_hazard": 0.22684563758389262
+        },
+        "17": {
+          "n": 9,
+          "mean_trade_return": 0.007750551902789282,
+          "exposures": 480,
+          "exits": 67,
+          "exit_hazard": 0.14107883817427386
+        },
+        "31": {
+          "n": 6,
+          "mean_trade_return": 0.0154797475322039,
+          "exposures": 640,
+          "exits": 262,
+          "exit_hazard": 0.40965732087227413
+        },
+        "47": {
+          "n": 5,
+          "mean_trade_return": 0.009235659306321664,
+          "exposures": 924,
+          "exits": 98,
+          "exit_hazard": 0.10691144708423327
+        },
+        "55": {
+          "n": 6,
+          "mean_trade_return": 0.024824257142440003,
+          "exposures": 527,
+          "exits": 172,
+          "exit_hazard": 0.3270321361058601
+        }
+      },
+      "fit2020_2022": {
+        "return_pct": 94.07011096853219,
+        "cagr_pct": 24.728104787171645,
+        "strict_mdd_pct": 16.96312002584004,
+        "ratio": 1.4577568719376592,
+        "trades": 119,
+        "longs": 119,
+        "shorts": 0,
+        "win_rate": 0.5798319327731093,
+        "long_win_rate": 0.5798319327731093,
+        "short_win_rate": 0,
+        "sharpe_like": 2.268155841619817
+      },
+      "holdout2023": {
+        "return_pct": 18.019539238788674,
+        "cagr_pct": 18.03293279229825,
+        "strict_mdd_pct": 5.113146673803282,
+        "ratio": 3.52677792027525,
+        "trades": 12,
+        "longs": 12,
+        "shorts": 0,
+        "win_rate": 0.5,
+        "long_win_rate": 0.5,
+        "short_win_rate": 0,
+        "sharpe_like": 1.5007748421075813
+      },
+      "signal_hash": "20d44c2970649e0d",
+      "year2020": {
+        "return_pct": 29.63733984900625,
+        "cagr_pct": 29.568403161039036,
+        "strict_mdd_pct": 11.079410934934064,
+        "ratio": 2.6687703285567324,
+        "trades": 42,
+        "longs": 42,
+        "shorts": 0,
+        "win_rate": 0.6666666666666666,
+        "long_win_rate": 0.6666666666666666,
+        "short_win_rate": 0,
+        "sharpe_like": 1.8898746275688036
+      },
+      "year2021": {
+        "return_pct": 84.59566026054677,
+        "cagr_pct": 84.67318112360837,
+        "strict_mdd_pct": 11.158348212126834,
+        "ratio": 7.588325755203266,
+        "trades": 41,
+        "longs": 41,
+        "shorts": 0,
+        "win_rate": 0.6585365853658537,
+        "long_win_rate": 0.6585365853658537,
+        "short_win_rate": 0,
+        "sharpe_like": 2.6956537534226004
+      },
+      "year2022": {
+        "return_pct": -6.731917447001168,
+        "cagr_pct": -6.7363694371818,
+        "strict_mdd_pct": 16.96312002584014,
+        "ratio": -0.3971185387428846,
+        "trades": 35,
+        "longs": 35,
+        "shorts": 0,
+        "win_rate": 0.4,
+        "long_win_rate": 0.4,
+        "short_win_rate": 0,
+        "sharpe_like": -0.332840926473991
+      },
+      "test2024": {
+        "return_pct": 19.349146794452476,
+        "cagr_pct": 19.30589472115063,
+        "strict_mdd_pct": 2.4713724847085006,
+        "ratio": 7.8118109838176695,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.7777777777777778,
+        "long_win_rate": 0.7777777777777778,
+        "short_win_rate": 0,
+        "sharpe_like": 3.056020067542767
+      },
+      "eval2025": {
+        "return_pct": -1.4297622657904685,
+        "cagr_pct": -1.4307345158594886,
+        "strict_mdd_pct": 7.333794662257231,
+        "ratio": -0.1950878885691531,
+        "trades": 8,
+        "longs": 8,
+        "shorts": 0,
+        "win_rate": 0.375,
+        "long_win_rate": 0.375,
+        "short_win_rate": 0,
+        "sharpe_like": -0.20143266924459247
+      },
+      "ytd2026": {
+        "return_pct": 3.8814339447240886,
+        "cagr_pct": 9.58219794463957,
+        "strict_mdd_pct": 4.1920133419324435,
+        "ratio": 2.285822387249929,
+        "trades": 16,
+        "longs": 16,
+        "shorts": 0,
+        "win_rate": 0.6875,
+        "long_win_rate": 0.6875,
+        "short_win_rate": 0,
+        "sharpe_like": 0.7894285316098741
+      },
+      "worst_selection_ratio": 0.0,
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "trend_quantiles": [
+        0.33,
+        0.67
+      ],
+      "state_thresholds": {
+        "trend_low": -0.009032168697422257,
+        "trend_high": 0.011791010683737543,
+        "vol_median": 0.005910899368064678,
+        "flow_median": -0.00295379329129606
+      },
+      "duration_cutpoints_hours": [
+        1,
+        6,
+        24,
+        72
+      ],
+      "min_fit_key_trades": 5,
+      "min_fit_mean_trade_return": 0.0,
+      "max_fit_exit_hazard": 0.5,
+      "allowed_keys": [
+        2,
+        10,
+        12,
+        16,
+        17,
+        27,
+        31,
+        47,
+        55,
+        57
+      ],
+      "allowed_key_descriptions": {
+        "2": "trend=low, volatility=low, flow=low, state_age=7-24h",
+        "10": "trend=low, volatility=high, flow=low, state_age=1-1h",
+        "12": "trend=low, volatility=high, flow=low, state_age=7-24h",
+        "16": "trend=low, volatility=high, flow=high, state_age=2-6h",
+        "17": "trend=low, volatility=high, flow=high, state_age=7-24h",
+        "27": "trend=mid, volatility=low, flow=high, state_age=7-24h",
+        "31": "trend=mid, volatility=high, flow=low, state_age=2-6h",
+        "47": "trend=high, volatility=low, flow=high, state_age=7-24h",
+        "55": "trend=high, volatility=high, flow=high, state_age=1-1h",
+        "57": "trend=high, volatility=high, flow=high, state_age=7-24h"
+      },
+      "key_quality": {
+        "2": {
+          "n": 5,
+          "mean_trade_return": 0.0017762898191073795,
+          "exposures": 930,
+          "exits": 101,
+          "exit_hazard": 0.10944206008583691
+        },
+        "10": {
+          "n": 10,
+          "mean_trade_return": 0.00484999034142124,
+          "exposures": 513,
+          "exits": 154,
+          "exit_hazard": 0.30097087378640774
+        },
+        "12": {
+          "n": 15,
+          "mean_trade_return": 0.00512639474592127,
+          "exposures": 1597,
+          "exits": 128,
+          "exit_hazard": 0.08067542213883677
+        },
+        "16": {
+          "n": 10,
+          "mean_trade_return": 0.013399330053315927,
+          "exposures": 743,
+          "exits": 168,
+          "exit_hazard": 0.22684563758389262
+        },
+        "17": {
+          "n": 9,
+          "mean_trade_return": 0.007750551902789282,
+          "exposures": 480,
+          "exits": 67,
+          "exit_hazard": 0.14107883817427386
+        },
+        "27": {
+          "n": 8,
+          "mean_trade_return": 0.0015258213925379294,
+          "exposures": 974,
+          "exits": 131,
+          "exit_hazard": 0.13524590163934427
+        },
+        "31": {
+          "n": 6,
+          "mean_trade_return": 0.0154797475322039,
+          "exposures": 640,
+          "exits": 262,
+          "exit_hazard": 0.40965732087227413
+        },
+        "47": {
+          "n": 5,
+          "mean_trade_return": 0.009235659306321664,
+          "exposures": 924,
+          "exits": 98,
+          "exit_hazard": 0.10691144708423327
+        },
+        "55": {
+          "n": 6,
+          "mean_trade_return": 0.024824257142440003,
+          "exposures": 527,
+          "exits": 172,
+          "exit_hazard": 0.3270321361058601
+        },
+        "57": {
+          "n": 11,
+          "mean_trade_return": 0.0023832007164989403,
+          "exposures": 1626,
+          "exits": 146,
+          "exit_hazard": 0.09029484029484029
+        }
+      },
+      "fit2020_2022": {
+        "return_pct": 75.87109495434738,
+        "cagr_pct": 20.701549682629828,
+        "strict_mdd_pct": 14.835129831578575,
+        "ratio": 1.3954410859663517,
+        "trades": 144,
+        "longs": 144,
+        "shorts": 0,
+        "win_rate": 0.5833333333333334,
+        "long_win_rate": 0.5833333333333334,
+        "short_win_rate": 0,
+        "sharpe_like": 1.8456733877249616
+      },
+      "holdout2023": {
+        "return_pct": 20.67759676752101,
+        "cagr_pct": 20.693133132985842,
+        "strict_mdd_pct": 5.406344053083534,
+        "ratio": 3.8275649736319344,
+        "trades": 16,
+        "longs": 16,
+        "shorts": 0,
+        "win_rate": 0.5,
+        "long_win_rate": 0.5,
+        "short_win_rate": 0,
+        "sharpe_like": 1.6643171286257663
+      },
+      "signal_hash": "ae3261f0ba596cfa",
+      "year2020": {
+        "return_pct": 33.92128682781399,
+        "cagr_pct": 33.8411550704828,
+        "strict_mdd_pct": 9.297657003740545,
+        "ratio": 3.6397508594765484,
+        "trades": 49,
+        "longs": 49,
+        "shorts": 0,
+        "win_rate": 0.7142857142857143,
+        "long_win_rate": 0.7142857142857143,
+        "short_win_rate": 0,
+        "sharpe_like": 1.9590634788799755
+      },
+      "year2021": {
+        "return_pct": 63.47166866088472,
+        "cagr_pct": 63.526706239388005,
+        "strict_mdd_pct": 12.636093619362631,
+        "ratio": 5.027400726284926,
+        "trades": 49,
+        "longs": 49,
+        "shorts": 0,
+        "win_rate": 0.5918367346938775,
+        "long_win_rate": 0.5918367346938775,
+        "short_win_rate": 0,
+        "sharpe_like": 2.0633965889418793
+      },
+      "year2022": {
+        "return_pct": -8.20503409439447,
+        "cagr_pct": -8.21041668822321,
+        "strict_mdd_pct": 14.835129831578575,
+        "ratio": -0.553444208539802,
+        "trades": 45,
+        "longs": 45,
+        "shorts": 0,
+        "win_rate": 0.4444444444444444,
+        "long_win_rate": 0.4444444444444444,
+        "short_win_rate": 0,
+        "sharpe_like": -0.37582348686465844
+      },
+      "test2024": {
+        "return_pct": 19.86508030864833,
+        "cagr_pct": 19.820582127249864,
+        "strict_mdd_pct": 3.5276739360751264,
+        "ratio": 5.618598114910289,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.7777777777777778,
+        "long_win_rate": 0.7777777777777778,
+        "short_win_rate": 0,
+        "sharpe_like": 3.14064881250699
+      },
+      "eval2025": {
+        "return_pct": 13.420330729771091,
+        "cagr_pct": 13.43011408035306,
+        "strict_mdd_pct": 4.38477313671034,
+        "ratio": 3.0628982758339363,
+        "trades": 15,
+        "longs": 15,
+        "shorts": 0,
+        "win_rate": 0.6,
+        "long_win_rate": 0.6,
+        "short_win_rate": 0,
+        "sharpe_like": 1.78229635650217
+      },
+      "ytd2026": {
+        "return_pct": 3.677283713288304,
+        "cagr_pct": 9.065425168983454,
+        "strict_mdd_pct": 4.192013341932455,
+        "ratio": 2.1625468312093754,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.6190476190476191,
+        "long_win_rate": 0.6190476190476191,
+        "short_win_rate": 0,
+        "sharpe_like": 0.7050053898370364
+      },
+      "worst_selection_ratio": 0.0,
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "trend_quantiles": [
+        0.33,
+        0.67
+      ],
+      "state_thresholds": {
+        "trend_low": -0.009032168697422257,
+        "trend_high": 0.011791010683737543,
+        "vol_median": 0.005910899368064678,
+        "flow_median": -0.00295379329129606
+      },
+      "duration_cutpoints_hours": [
+        1,
+        6,
+        24,
+        72
+      ],
+      "min_fit_key_trades": 3,
+      "min_fit_mean_trade_return": 0.002,
+      "max_fit_exit_hazard": 0.5,
+      "allowed_keys": [
+        10,
+        12,
+        15,
+        16,
+        17,
+        20,
+        26,
+        31,
+        35,
+        46,
+        47,
+        52,
+        55,
+        57
+      ],
+      "allowed_key_descriptions": {
+        "10": "trend=low, volatility=high, flow=low, state_age=1-1h",
+        "12": "trend=low, volatility=high, flow=low, state_age=7-24h",
+        "15": "trend=low, volatility=high, flow=high, state_age=1-1h",
+        "16": "trend=low, volatility=high, flow=high, state_age=2-6h",
+        "17": "trend=low, volatility=high, flow=high, state_age=7-24h",
+        "20": "trend=mid, volatility=low, flow=low, state_age=1-1h",
+        "26": "trend=mid, volatility=low, flow=high, state_age=2-6h",
+        "31": "trend=mid, volatility=high, flow=low, state_age=2-6h",
+        "35": "trend=mid, volatility=high, flow=high, state_age=1-1h",
+        "46": "trend=high, volatility=low, flow=high, state_age=2-6h",
+        "47": "trend=high, volatility=low, flow=high, state_age=7-24h",
+        "52": "trend=high, volatility=high, flow=low, state_age=7-24h",
+        "55": "trend=high, volatility=high, flow=high, state_age=1-1h",
+        "57": "trend=high, volatility=high, flow=high, state_age=7-24h"
+      },
+      "key_quality": {
+        "10": {
+          "n": 10,
+          "mean_trade_return": 0.00484999034142124,
+          "exposures": 513,
+          "exits": 154,
+          "exit_hazard": 0.30097087378640774
+        },
+        "12": {
+          "n": 15,
+          "mean_trade_return": 0.00512639474592127,
+          "exposures": 1597,
+          "exits": 128,
+          "exit_hazard": 0.08067542213883677
+        },
+        "15": {
+          "n": 3,
+          "mean_trade_return": 0.013117007652232374,
+          "exposures": 385,
+          "exits": 148,
+          "exit_hazard": 0.3850129198966408
+        },
+        "16": {
+          "n": 10,
+          "mean_trade_return": 0.013399330053315927,
+          "exposures": 743,
+          "exits": 168,
+          "exit_hazard": 0.22684563758389262
+        },
+        "17": {
+          "n": 9,
+          "mean_trade_return": 0.007750551902789282,
+          "exposures": 480,
+          "exits": 67,
+          "exit_hazard": 0.14107883817427386
+        },
+        "20": {
+          "n": 4,
+          "mean_trade_return": 0.0077887733914781265,
+          "exposures": 698,
+          "exits": 224,
+          "exit_hazard": 0.32142857142857145
+        },
+        "26": {
+          "n": 4,
+          "mean_trade_return": 0.004520226121130483,
+          "exposures": 1486,
+          "exits": 325,
+          "exit_hazard": 0.21908602150537634
+        },
+        "31": {
+          "n": 6,
+          "mean_trade_return": 0.0154797475322039,
+          "exposures": 640,
+          "exits": 262,
+          "exit_hazard": 0.40965732087227413
+        },
+        "35": {
+          "n": 4,
+          "mean_trade_return": 0.013897025286285114,
+          "exposures": 538,
+          "exits": 241,
+          "exit_hazard": 0.44814814814814813
+        },
+        "46": {
+          "n": 3,
+          "mean_trade_return": 0.004257137929604434,
+          "exposures": 975,
+          "exits": 180,
+          "exit_hazard": 0.18526100307062435
+        },
+        "47": {
+          "n": 5,
+          "mean_trade_return": 0.009235659306321664,
+          "exposures": 924,
+          "exits": 98,
+          "exit_hazard": 0.10691144708423327
+        },
+        "52": {
+          "n": 4,
+          "mean_trade_return": 0.033531247038880746,
+          "exposures": 480,
+          "exits": 70,
+          "exit_hazard": 0.14730290456431536
+        },
+        "55": {
+          "n": 6,
+          "mean_trade_return": 0.024824257142440003,
+          "exposures": 527,
+          "exits": 172,
+          "exit_hazard": 0.3270321361058601
+        },
+        "57": {
+          "n": 11,
+          "mean_trade_return": 0.0023832007164989403,
+          "exposures": 1626,
+          "exits": 146,
+          "exit_hazard": 0.09029484029484029
+        }
+      },
+      "fit2020_2022": {
+        "return_pct": 100.64066252921862,
+        "cagr_pct": 26.119814585221835,
+        "strict_mdd_pct": 17.5507498732124,
+        "ratio": 1.4882449339152366,
+        "trades": 150,
+        "longs": 150,
+        "shorts": 0,
+        "win_rate": 0.56,
+        "long_win_rate": 0.56,
+        "short_win_rate": 0,
+        "sharpe_like": 2.1655816135455526
+      },
+      "holdout2023": {
+        "return_pct": 19.607403601253214,
+        "cagr_pct": 19.62207234625353,
+        "strict_mdd_pct": 6.902371270421604,
+        "ratio": 2.8428016369300564,
+        "trades": 29,
+        "longs": 29,
+        "shorts": 0,
+        "win_rate": 0.5172413793103449,
+        "long_win_rate": 0.5172413793103449,
+        "short_win_rate": 0,
+        "sharpe_like": 1.4681845150622472
+      },
+      "signal_hash": "8023a85a94c484c4",
+      "year2020": {
+        "return_pct": 35.17724607895873,
+        "cagr_pct": 35.09377867281365,
+        "strict_mdd_pct": 7.096136272978882,
+        "ratio": 4.945476992380483,
+        "trades": 49,
+        "longs": 49,
+        "shorts": 0,
+        "win_rate": 0.6326530612244898,
+        "long_win_rate": 0.6326530612244898,
+        "short_win_rate": 0,
+        "sharpe_like": 2.15036018922845
+      },
+      "year2021": {
+        "return_pct": 58.72700349761493,
+        "cagr_pct": 58.77724045194779,
+        "strict_mdd_pct": 12.095392066483868,
+        "ratio": 4.859473767271965,
+        "trades": 48,
+        "longs": 48,
+        "shorts": 0,
+        "win_rate": 0.625,
+        "long_win_rate": 0.625,
+        "short_win_rate": 0,
+        "sharpe_like": 2.000877957714509
+      },
+      "year2022": {
+        "return_pct": -8.899543890179162,
+        "cagr_pct": -8.905359618495423,
+        "strict_mdd_pct": 17.550749873212222,
+        "ratio": -0.5074062181290446,
+        "trades": 52,
+        "longs": 52,
+        "shorts": 0,
+        "win_rate": 0.4230769230769231,
+        "long_win_rate": 0.4230769230769231,
+        "short_win_rate": 0,
+        "sharpe_like": -0.3970717352210328
+      },
+      "test2024": {
+        "return_pct": 37.09926822454512,
+        "cagr_pct": 37.01065010226592,
+        "strict_mdd_pct": 3.5276739360751153,
+        "ratio": 10.491516725449948,
+        "trades": 22,
+        "longs": 22,
+        "shorts": 0,
+        "win_rate": 0.8636363636363636,
+        "long_win_rate": 0.8636363636363636,
+        "short_win_rate": 0,
+        "sharpe_like": 4.853535741530725
+      },
+      "eval2025": {
+        "return_pct": 16.44232940374866,
+        "cagr_pct": 16.45447081943694,
+        "strict_mdd_pct": 3.4280809149032754,
+        "ratio": 4.799907361551064,
+        "trades": 17,
+        "longs": 17,
+        "shorts": 0,
+        "win_rate": 0.6470588235294118,
+        "long_win_rate": 0.6470588235294118,
+        "short_win_rate": 0,
+        "sharpe_like": 2.2227888196714316
+      },
+      "ytd2026": {
+        "return_pct": 8.658223191258596,
+        "cagr_pct": 22.08350856505095,
+        "strict_mdd_pct": 3.5637487621114405,
+        "ratio": 6.196707467101853,
+        "trades": 25,
+        "longs": 25,
+        "shorts": 0,
+        "win_rate": 0.68,
+        "long_win_rate": 0.68,
+        "short_win_rate": 0,
+        "sharpe_like": 1.29644452937439
+      },
+      "worst_selection_ratio": 0.0,
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "trend_quantiles": [
+        0.33,
+        0.67
+      ],
+      "state_thresholds": {
+        "trend_low": -0.009032168697422257,
+        "trend_high": 0.011791010683737543,
+        "vol_median": 0.005910899368064678,
+        "flow_median": -0.00295379329129606
+      },
+      "duration_cutpoints_hours": [
+        1,
+        6,
+        24,
+        72
+      ],
+      "min_fit_key_trades": 3,
+      "min_fit_mean_trade_return": 0.0,
+      "max_fit_exit_hazard": 0.25,
+      "allowed_keys": [
+        2,
+        12,
+        16,
+        17,
+        26,
+        27,
+        46,
+        47,
+        52,
+        57
+      ],
+      "allowed_key_descriptions": {
+        "2": "trend=low, volatility=low, flow=low, state_age=7-24h",
+        "12": "trend=low, volatility=high, flow=low, state_age=7-24h",
+        "16": "trend=low, volatility=high, flow=high, state_age=2-6h",
+        "17": "trend=low, volatility=high, flow=high, state_age=7-24h",
+        "26": "trend=mid, volatility=low, flow=high, state_age=2-6h",
+        "27": "trend=mid, volatility=low, flow=high, state_age=7-24h",
+        "46": "trend=high, volatility=low, flow=high, state_age=2-6h",
+        "47": "trend=high, volatility=low, flow=high, state_age=7-24h",
+        "52": "trend=high, volatility=high, flow=low, state_age=7-24h",
+        "57": "trend=high, volatility=high, flow=high, state_age=7-24h"
+      },
+      "key_quality": {
+        "2": {
+          "n": 5,
+          "mean_trade_return": 0.0017762898191073795,
+          "exposures": 930,
+          "exits": 101,
+          "exit_hazard": 0.10944206008583691
+        },
+        "12": {
+          "n": 15,
+          "mean_trade_return": 0.00512639474592127,
+          "exposures": 1597,
+          "exits": 128,
+          "exit_hazard": 0.08067542213883677
+        },
+        "16": {
+          "n": 10,
+          "mean_trade_return": 0.013399330053315927,
+          "exposures": 743,
+          "exits": 168,
+          "exit_hazard": 0.22684563758389262
+        },
+        "17": {
+          "n": 9,
+          "mean_trade_return": 0.007750551902789282,
+          "exposures": 480,
+          "exits": 67,
+          "exit_hazard": 0.14107883817427386
+        },
+        "26": {
+          "n": 4,
+          "mean_trade_return": 0.004520226121130483,
+          "exposures": 1486,
+          "exits": 325,
+          "exit_hazard": 0.21908602150537634
+        },
+        "27": {
+          "n": 8,
+          "mean_trade_return": 0.0015258213925379294,
+          "exposures": 974,
+          "exits": 131,
+          "exit_hazard": 0.13524590163934427
+        },
+        "46": {
+          "n": 3,
+          "mean_trade_return": 0.004257137929604434,
+          "exposures": 975,
+          "exits": 180,
+          "exit_hazard": 0.18526100307062435
+        },
+        "47": {
+          "n": 5,
+          "mean_trade_return": 0.009235659306321664,
+          "exposures": 924,
+          "exits": 98,
+          "exit_hazard": 0.10691144708423327
+        },
+        "52": {
+          "n": 4,
+          "mean_trade_return": 0.033531247038880746,
+          "exposures": 480,
+          "exits": 70,
+          "exit_hazard": 0.14730290456431536
+        },
+        "57": {
+          "n": 11,
+          "mean_trade_return": 0.0023832007164989403,
+          "exposures": 1626,
+          "exits": 146,
+          "exit_hazard": 0.09029484029484029
+        }
+      },
+      "fit2020_2022": {
+        "return_pct": 56.021960358020806,
+        "cagr_pct": 15.9793191059034,
+        "strict_mdd_pct": 18.259371819389948,
+        "ratio": 0.8751297286654013,
+        "trades": 131,
+        "longs": 131,
+        "shorts": 0,
+        "win_rate": 0.5725190839694656,
+        "long_win_rate": 0.5725190839694656,
+        "short_win_rate": 0,
+        "sharpe_like": 1.5845898415594344
+      },
+      "holdout2023": {
+        "return_pct": 24.46973521780982,
+        "cagr_pct": 24.488397904653247,
+        "strict_mdd_pct": 3.158595874493486,
+        "ratio": 7.752937975511102,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.6190476190476191,
+        "long_win_rate": 0.6190476190476191,
+        "short_win_rate": 0,
+        "sharpe_like": 1.679120276590871
+      },
+      "signal_hash": "73e076c53559b314",
+      "year2020": {
+        "return_pct": 24.70013788867127,
+        "cagr_pct": 24.64374382159913,
+        "strict_mdd_pct": 10.756958076906786,
+        "ratio": 2.290958433174963,
+        "trades": 45,
+        "longs": 45,
+        "shorts": 0,
+        "win_rate": 0.6222222222222222,
+        "long_win_rate": 0.6222222222222222,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3729368891863818
+      },
+      "year2021": {
+        "return_pct": 37.66713401032755,
+        "cagr_pct": 37.697279672079716,
+        "strict_mdd_pct": 10.477078780217964,
+        "ratio": 3.5980716059190945,
+        "trades": 37,
+        "longs": 37,
+        "shorts": 0,
+        "win_rate": 0.6486486486486487,
+        "long_win_rate": 0.6486486486486487,
+        "short_win_rate": 0,
+        "sharpe_like": 1.7690390658817174
+      },
+      "year2022": {
+        "return_pct": -10.301743961393617,
+        "cagr_pct": -10.30842309084341,
+        "strict_mdd_pct": 18.259371819389926,
+        "ratio": -0.5645551880320837,
+        "trades": 48,
+        "longs": 48,
+        "shorts": 0,
+        "win_rate": 0.4583333333333333,
+        "long_win_rate": 0.4583333333333333,
+        "short_win_rate": 0,
+        "sharpe_like": -0.5477819482370777
+      },
+      "test2024": {
+        "return_pct": 17.830488232491316,
+        "cagr_pct": 17.790877561667596,
+        "strict_mdd_pct": 3.872793116062778,
+        "ratio": 4.5938104692136115,
+        "trades": 16,
+        "longs": 16,
+        "shorts": 0,
+        "win_rate": 0.75,
+        "long_win_rate": 0.75,
+        "short_win_rate": 0,
+        "sharpe_like": 2.916956527127783
+      },
+      "eval2025": {
+        "return_pct": 9.907048445829524,
+        "cagr_pct": 9.914159873339745,
+        "strict_mdd_pct": 3.569560216143286,
+        "ratio": 2.777417741407778,
+        "trades": 16,
+        "longs": 16,
+        "shorts": 0,
+        "win_rate": 0.625,
+        "long_win_rate": 0.625,
+        "short_win_rate": 0,
+        "sharpe_like": 1.3399599231871415
+      },
+      "ytd2026": {
+        "return_pct": 3.6938225696462545,
+        "cagr_pct": 9.107237482192687,
+        "strict_mdd_pct": 3.563748762111474,
+        "ratio": 2.5555217525482266,
+        "trades": 24,
+        "longs": 24,
+        "shorts": 0,
+        "win_rate": 0.5833333333333334,
+        "long_win_rate": 0.5833333333333334,
+        "short_win_rate": 0,
+        "sharpe_like": 0.5955105937054428
+      },
+      "worst_selection_ratio": 0.0,
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "trend_quantiles": [
+        0.33,
+        0.67
+      ],
+      "state_thresholds": {
+        "trend_low": -0.009032168697422257,
+        "trend_high": 0.011791010683737543,
+        "vol_median": 0.005910899368064678,
+        "flow_median": -0.00295379329129606
+      },
+      "duration_cutpoints_hours": [
+        1,
+        6,
+        24,
+        72
+      ],
+      "min_fit_key_trades": 5,
+      "min_fit_mean_trade_return": 0.002,
+      "max_fit_exit_hazard": 0.25,
+      "allowed_keys": [
+        12,
+        16,
+        17,
+        47,
+        57
+      ],
+      "allowed_key_descriptions": {
+        "12": "trend=low, volatility=high, flow=low, state_age=7-24h",
+        "16": "trend=low, volatility=high, flow=high, state_age=2-6h",
+        "17": "trend=low, volatility=high, flow=high, state_age=7-24h",
+        "47": "trend=high, volatility=low, flow=high, state_age=7-24h",
+        "57": "trend=high, volatility=high, flow=high, state_age=7-24h"
+      },
+      "key_quality": {
+        "12": {
+          "n": 15,
+          "mean_trade_return": 0.00512639474592127,
+          "exposures": 1597,
+          "exits": 128,
+          "exit_hazard": 0.08067542213883677
+        },
+        "16": {
+          "n": 10,
+          "mean_trade_return": 0.013399330053315927,
+          "exposures": 743,
+          "exits": 168,
+          "exit_hazard": 0.22684563758389262
+        },
+        "17": {
+          "n": 9,
+          "mean_trade_return": 0.007750551902789282,
+          "exposures": 480,
+          "exits": 67,
+          "exit_hazard": 0.14107883817427386
+        },
+        "47": {
+          "n": 5,
+          "mean_trade_return": 0.009235659306321664,
+          "exposures": 924,
+          "exits": 98,
+          "exit_hazard": 0.10691144708423327
+        },
+        "57": {
+          "n": 11,
+          "mean_trade_return": 0.0023832007164989403,
+          "exposures": 1626,
+          "exits": 146,
+          "exit_hazard": 0.09029484029484029
+        }
+      },
+      "fit2020_2022": {
+        "return_pct": 54.1954854062654,
+        "cagr_pct": 15.525073358633335,
+        "strict_mdd_pct": 14.189606485734362,
+        "ratio": 1.0941158498117334,
+        "trades": 103,
+        "longs": 103,
+        "shorts": 0,
+        "win_rate": 0.5825242718446602,
+        "long_win_rate": 0.5825242718446602,
+        "short_win_rate": 0,
+        "sharpe_like": 1.6351703038323135
+      },
+      "holdout2023": {
+        "return_pct": 14.071558327738831,
+        "cagr_pct": 14.081845215419197,
+        "strict_mdd_pct": 1.7671093829512041,
+        "ratio": 7.968858833119582,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.6363636363636364,
+        "long_win_rate": 0.6363636363636364,
+        "short_win_rate": 0,
+        "sharpe_like": 2.113829006579288
+      },
+      "signal_hash": "9257b97df422c6a1",
+      "year2020": {
+        "return_pct": 28.20666149769262,
+        "cagr_pct": 28.14139955901378,
+        "strict_mdd_pct": 11.805673370085712,
+        "ratio": 2.383718291776648,
+        "trades": 34,
+        "longs": 34,
+        "shorts": 0,
+        "win_rate": 0.7058823529411765,
+        "long_win_rate": 0.7058823529411765,
+        "short_win_rate": 0,
+        "sharpe_like": 1.64267170838486
+      },
+      "year2021": {
+        "return_pct": 32.76330021369449,
+        "cagr_pct": 32.789073131750904,
+        "strict_mdd_pct": 10.477078780217997,
+        "ratio": 3.129600704507508,
+        "trades": 32,
+        "longs": 32,
+        "shorts": 0,
+        "win_rate": 0.625,
+        "long_win_rate": 0.625,
+        "short_win_rate": 0,
+        "sharpe_like": 1.7137561745177945
+      },
+      "year2022": {
+        "return_pct": -9.40942261912353,
+        "cagr_pct": -9.415554027451034,
+        "strict_mdd_pct": 14.189606485734352,
+        "ratio": -0.6635528643389121,
+        "trades": 37,
+        "longs": 37,
+        "shorts": 0,
+        "win_rate": 0.43243243243243246,
+        "long_win_rate": 0.43243243243243246,
+        "short_win_rate": 0,
+        "sharpe_like": -0.5137115785006424
+      },
+      "test2024": {
+        "return_pct": 11.010971285610927,
+        "cagr_pct": 10.987211372739104,
+        "strict_mdd_pct": 3.0939986772632766,
+        "ratio": 3.5511364156294927,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.7272727272727273,
+        "long_win_rate": 0.7272727272727273,
+        "short_win_rate": 0,
+        "sharpe_like": 2.3240179067013633
+      },
+      "eval2025": {
+        "return_pct": 10.573348856632103,
+        "cagr_pct": 10.580961177727533,
+        "strict_mdd_pct": 3.213011278271616,
+        "ratio": 3.293160297719023,
+        "trades": 8,
+        "longs": 8,
+        "shorts": 0,
+        "win_rate": 0.625,
+        "long_win_rate": 0.625,
+        "short_win_rate": 0,
+        "sharpe_like": 1.7308024541860831
+      },
+      "ytd2026": {
+        "return_pct": -2.1770875453719363,
+        "cagr_pct": -5.151795882243604,
+        "strict_mdd_pct": 4.192013341932455,
+        "ratio": -1.2289550299638845,
+        "trades": 14,
+        "longs": 14,
+        "shorts": 0,
+        "win_rate": 0.5,
+        "long_win_rate": 0.5,
+        "short_win_rate": 0,
+        "sharpe_like": -0.43374190944384944
+      },
+      "worst_selection_ratio": 0.0,
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "trend_quantiles": [
+        0.33,
+        0.67
+      ],
+      "state_thresholds": {
+        "trend_low": -0.009032168697422257,
+        "trend_high": 0.011791010683737543,
+        "vol_median": 0.005910899368064678,
+        "flow_median": -0.00295379329129606
+      },
+      "duration_cutpoints_hours": [
+        1,
+        6,
+        24,
+        72
+      ],
+      "min_fit_key_trades": 3,
+      "min_fit_mean_trade_return": 0.0,
+      "max_fit_exit_hazard": 0.5,
+      "allowed_keys": [
+        2,
+        10,
+        12,
+        15,
+        16,
+        17,
+        20,
+        26,
+        27,
+        31,
+        35,
+        46,
+        47,
+        52,
+        55,
+        57
+      ],
+      "allowed_key_descriptions": {
+        "2": "trend=low, volatility=low, flow=low, state_age=7-24h",
+        "10": "trend=low, volatility=high, flow=low, state_age=1-1h",
+        "12": "trend=low, volatility=high, flow=low, state_age=7-24h",
+        "15": "trend=low, volatility=high, flow=high, state_age=1-1h",
+        "16": "trend=low, volatility=high, flow=high, state_age=2-6h",
+        "17": "trend=low, volatility=high, flow=high, state_age=7-24h",
+        "20": "trend=mid, volatility=low, flow=low, state_age=1-1h",
+        "26": "trend=mid, volatility=low, flow=high, state_age=2-6h",
+        "27": "trend=mid, volatility=low, flow=high, state_age=7-24h",
+        "31": "trend=mid, volatility=high, flow=low, state_age=2-6h",
+        "35": "trend=mid, volatility=high, flow=high, state_age=1-1h",
+        "46": "trend=high, volatility=low, flow=high, state_age=2-6h",
+        "47": "trend=high, volatility=low, flow=high, state_age=7-24h",
+        "52": "trend=high, volatility=high, flow=low, state_age=7-24h",
+        "55": "trend=high, volatility=high, flow=high, state_age=1-1h",
+        "57": "trend=high, volatility=high, flow=high, state_age=7-24h"
+      },
+      "key_quality": {
+        "2": {
+          "n": 5,
+          "mean_trade_return": 0.0017762898191073795,
+          "exposures": 930,
+          "exits": 101,
+          "exit_hazard": 0.10944206008583691
+        },
+        "10": {
+          "n": 10,
+          "mean_trade_return": 0.00484999034142124,
+          "exposures": 513,
+          "exits": 154,
+          "exit_hazard": 0.30097087378640774
+        },
+        "12": {
+          "n": 15,
+          "mean_trade_return": 0.00512639474592127,
+          "exposures": 1597,
+          "exits": 128,
+          "exit_hazard": 0.08067542213883677
+        },
+        "15": {
+          "n": 3,
+          "mean_trade_return": 0.013117007652232374,
+          "exposures": 385,
+          "exits": 148,
+          "exit_hazard": 0.3850129198966408
+        },
+        "16": {
+          "n": 10,
+          "mean_trade_return": 0.013399330053315927,
+          "exposures": 743,
+          "exits": 168,
+          "exit_hazard": 0.22684563758389262
+        },
+        "17": {
+          "n": 9,
+          "mean_trade_return": 0.007750551902789282,
+          "exposures": 480,
+          "exits": 67,
+          "exit_hazard": 0.14107883817427386
+        },
+        "20": {
+          "n": 4,
+          "mean_trade_return": 0.0077887733914781265,
+          "exposures": 698,
+          "exits": 224,
+          "exit_hazard": 0.32142857142857145
+        },
+        "26": {
+          "n": 4,
+          "mean_trade_return": 0.004520226121130483,
+          "exposures": 1486,
+          "exits": 325,
+          "exit_hazard": 0.21908602150537634
+        },
+        "27": {
+          "n": 8,
+          "mean_trade_return": 0.0015258213925379294,
+          "exposures": 974,
+          "exits": 131,
+          "exit_hazard": 0.13524590163934427
+        },
+        "31": {
+          "n": 6,
+          "mean_trade_return": 0.0154797475322039,
+          "exposures": 640,
+          "exits": 262,
+          "exit_hazard": 0.40965732087227413
+        },
+        "35": {
+          "n": 4,
+          "mean_trade_return": 0.013897025286285114,
+          "exposures": 538,
+          "exits": 241,
+          "exit_hazard": 0.44814814814814813
+        },
+        "46": {
+          "n": 3,
+          "mean_trade_return": 0.004257137929604434,
+          "exposures": 975,
+          "exits": 180,
+          "exit_hazard": 0.18526100307062435
+        },
+        "47": {
+          "n": 5,
+          "mean_trade_return": 0.009235659306321664,
+          "exposures": 924,
+          "exits": 98,
+          "exit_hazard": 0.10691144708423327
+        },
+        "52": {
+          "n": 4,
+          "mean_trade_return": 0.033531247038880746,
+          "exposures": 480,
+          "exits": 70,
+          "exit_hazard": 0.14730290456431536
+        },
+        "55": {
+          "n": 6,
+          "mean_trade_return": 0.024824257142440003,
+          "exposures": 527,
+          "exits": 172,
+          "exit_hazard": 0.3270321361058601
+        },
+        "57": {
+          "n": 11,
+          "mean_trade_return": 0.0023832007164989403,
+          "exposures": 1626,
+          "exits": 146,
+          "exit_hazard": 0.09029484029484029
+        }
+      },
+      "fit2020_2022": {
+        "return_pct": 96.75025197556361,
+        "cagr_pct": 25.29952313756978,
+        "strict_mdd_pct": 17.05130336316756,
+        "ratio": 1.483729577659099,
+        "trades": 157,
+        "longs": 157,
+        "shorts": 0,
+        "win_rate": 0.5668789808917197,
+        "long_win_rate": 0.5668789808917197,
+        "short_win_rate": 0,
+        "sharpe_like": 2.081894652051424
+      },
+      "holdout2023": {
+        "return_pct": 20.876934986422224,
+        "cagr_pct": 20.892633678635498,
+        "strict_mdd_pct": 5.914218714656472,
+        "ratio": 3.5326109308165905,
+        "trades": 29,
+        "longs": 29,
+        "shorts": 0,
+        "win_rate": 0.5172413793103449,
+        "long_win_rate": 0.5172413793103449,
+        "short_win_rate": 0,
+        "sharpe_like": 1.5660215031784066
+      },
+      "signal_hash": "e160ad6feef83d11",
+      "year2020": {
+        "return_pct": 31.6468767653318,
+        "cagr_pct": 31.572724090479355,
+        "strict_mdd_pct": 9.297657003740545,
+        "ratio": 3.39577208298578,
+        "trades": 53,
+        "longs": 53,
+        "shorts": 0,
+        "win_rate": 0.6415094339622641,
+        "long_win_rate": 0.6415094339622641,
+        "short_win_rate": 0,
+        "sharpe_like": 1.8227906274669505
+      },
+      "year2021": {
+        "return_pct": 59.04783562865879,
+        "cagr_pct": 59.09839416581792,
+        "strict_mdd_pct": 12.095392066483868,
+        "ratio": 4.886025507976595,
+        "trades": 49,
+        "longs": 49,
+        "shorts": 0,
+        "win_rate": 0.6122448979591837,
+        "long_win_rate": 0.6122448979591837,
+        "short_win_rate": 0,
+        "sharpe_like": 2.0075911215467044
+      },
+      "year2022": {
+        "return_pct": -8.455346816400633,
+        "cagr_pct": -8.460885935509266,
+        "strict_mdd_pct": 17.05130336316758,
+        "ratio": -0.49620171287231774,
+        "trades": 54,
+        "longs": 54,
+        "shorts": 0,
+        "win_rate": 0.4444444444444444,
+        "long_win_rate": 0.4444444444444444,
+        "short_win_rate": 0,
+        "sharpe_like": -0.36997225298329306
+      },
+      "test2024": {
+        "return_pct": 37.09926822454512,
+        "cagr_pct": 37.01065010226592,
+        "strict_mdd_pct": 3.5276739360751153,
+        "ratio": 10.491516725449948,
+        "trades": 22,
+        "longs": 22,
+        "shorts": 0,
+        "win_rate": 0.8636363636363636,
+        "long_win_rate": 0.8636363636363636,
+        "short_win_rate": 0,
+        "sharpe_like": 4.853535741530725
+      },
+      "eval2025": {
+        "return_pct": 15.454065071860622,
+        "cagr_pct": 15.4654293603693,
+        "strict_mdd_pct": 5.559439722787085,
+        "ratio": 2.7818323664846027,
+        "trades": 19,
+        "longs": 19,
+        "shorts": 0,
+        "win_rate": 0.631578947368421,
+        "long_win_rate": 0.631578947368421,
+        "short_win_rate": 0,
+        "sharpe_like": 1.9144901982326195
+      },
+      "ytd2026": {
+        "return_pct": 7.26198064203587,
+        "cagr_pct": 18.347771568574167,
+        "strict_mdd_pct": 3.5637487621114516,
+        "ratio": 5.1484469847149015,
+        "trades": 27,
+        "longs": 27,
+        "shorts": 0,
+        "win_rate": 0.6296296296296297,
+        "long_win_rate": 0.6296296296296297,
+        "short_win_rate": 0,
+        "sharpe_like": 1.0699849143263487
+      },
+      "worst_selection_ratio": 0.0,
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "trend_quantiles": [
+        0.33,
+        0.67
+      ],
+      "state_thresholds": {
+        "trend_low": -0.009032168697422257,
+        "trend_high": 0.011791010683737543,
+        "vol_median": 0.005910899368064678,
+        "flow_median": -0.00295379329129606
+      },
+      "duration_cutpoints_hours": [
+        1,
+        6,
+        24,
+        72
+      ],
+      "min_fit_key_trades": 3,
+      "min_fit_mean_trade_return": 0.002,
+      "max_fit_exit_hazard": 0.25,
+      "allowed_keys": [
+        12,
+        16,
+        17,
+        26,
+        46,
+        47,
+        52,
+        57
+      ],
+      "allowed_key_descriptions": {
+        "12": "trend=low, volatility=high, flow=low, state_age=7-24h",
+        "16": "trend=low, volatility=high, flow=high, state_age=2-6h",
+        "17": "trend=low, volatility=high, flow=high, state_age=7-24h",
+        "26": "trend=mid, volatility=low, flow=high, state_age=2-6h",
+        "46": "trend=high, volatility=low, flow=high, state_age=2-6h",
+        "47": "trend=high, volatility=low, flow=high, state_age=7-24h",
+        "52": "trend=high, volatility=high, flow=low, state_age=7-24h",
+        "57": "trend=high, volatility=high, flow=high, state_age=7-24h"
+      },
+      "key_quality": {
+        "12": {
+          "n": 15,
+          "mean_trade_return": 0.00512639474592127,
+          "exposures": 1597,
+          "exits": 128,
+          "exit_hazard": 0.08067542213883677
+        },
+        "16": {
+          "n": 10,
+          "mean_trade_return": 0.013399330053315927,
+          "exposures": 743,
+          "exits": 168,
+          "exit_hazard": 0.22684563758389262
+        },
+        "17": {
+          "n": 9,
+          "mean_trade_return": 0.007750551902789282,
+          "exposures": 480,
+          "exits": 67,
+          "exit_hazard": 0.14107883817427386
+        },
+        "26": {
+          "n": 4,
+          "mean_trade_return": 0.004520226121130483,
+          "exposures": 1486,
+          "exits": 325,
+          "exit_hazard": 0.21908602150537634
+        },
+        "46": {
+          "n": 3,
+          "mean_trade_return": 0.004257137929604434,
+          "exposures": 975,
+          "exits": 180,
+          "exit_hazard": 0.18526100307062435
+        },
+        "47": {
+          "n": 5,
+          "mean_trade_return": 0.009235659306321664,
+          "exposures": 924,
+          "exits": 98,
+          "exit_hazard": 0.10691144708423327
+        },
+        "52": {
+          "n": 4,
+          "mean_trade_return": 0.033531247038880746,
+          "exposures": 480,
+          "exits": 70,
+          "exit_hazard": 0.14730290456431536
+        },
+        "57": {
+          "n": 11,
+          "mean_trade_return": 0.0023832007164989403,
+          "exposures": 1626,
+          "exits": 146,
+          "exit_hazard": 0.09029484029484029
+        }
+      },
+      "fit2020_2022": {
+        "return_pct": 55.140896677102134,
+        "cagr_pct": 15.760643074941715,
+        "strict_mdd_pct": 17.84941255256691,
+        "ratio": 0.8829782508822784,
+        "trades": 124,
+        "longs": 124,
+        "shorts": 0,
+        "win_rate": 0.5564516129032258,
+        "long_win_rate": 0.5564516129032258,
+        "short_win_rate": 0,
+        "sharpe_like": 1.5873065838908793
+      },
+      "holdout2023": {
+        "return_pct": 23.162469812871933,
+        "cagr_pct": 23.18004569248884,
+        "strict_mdd_pct": 3.158595874493486,
+        "ratio": 7.338718409554689,
+        "trades": 21,
+        "longs": 21,
+        "shorts": 0,
+        "win_rate": 0.6190476190476191,
+        "long_win_rate": 0.6190476190476191,
+        "short_win_rate": 0,
+        "sharpe_like": 1.584398109588066
+      },
+      "signal_hash": "287b7c28f6f11a3d",
+      "year2020": {
+        "return_pct": 26.92182342818814,
+        "cagr_pct": 26.85983384102353,
+        "strict_mdd_pct": 11.465656674033031,
+        "ratio": 2.3426337107977973,
+        "trades": 42,
+        "longs": 42,
+        "shorts": 0,
+        "win_rate": 0.5952380952380952,
+        "long_win_rate": 0.5952380952380952,
+        "short_win_rate": 0,
+        "sharpe_like": 1.564267491235655
+      },
+      "year2021": {
+        "return_pct": 33.94651251105656,
+        "cagr_pct": 33.9733293028661,
+        "strict_mdd_pct": 10.477078780217997,
+        "ratio": 3.242633754650379,
+        "trades": 35,
+        "longs": 35,
+        "shorts": 0,
+        "win_rate": 0.6571428571428571,
+        "long_win_rate": 0.6571428571428571,
+        "short_win_rate": 0,
+        "sharpe_like": 1.664506240356215
+      },
+      "year2022": {
+        "return_pct": -9.935413844539653,
+        "cagr_pct": -9.941868847399714,
+        "strict_mdd_pct": 17.849412552566967,
+        "ratio": -0.5569857729558696,
+        "trades": 46,
+        "longs": 46,
+        "shorts": 0,
+        "win_rate": 0.43478260869565216,
+        "long_win_rate": 0.43478260869565216,
+        "short_win_rate": 0,
+        "sharpe_like": -0.4964649997650293
+      },
+      "test2024": {
+        "return_pct": 17.830488232491316,
+        "cagr_pct": 17.790877561667596,
+        "strict_mdd_pct": 3.872793116062778,
+        "ratio": 4.5938104692136115,
+        "trades": 16,
+        "longs": 16,
+        "shorts": 0,
+        "win_rate": 0.75,
+        "long_win_rate": 0.75,
+        "short_win_rate": 0,
+        "sharpe_like": 2.916956527127783
+      },
+      "eval2025": {
+        "return_pct": 9.878547641024493,
+        "cagr_pct": 9.88563770458908,
+        "strict_mdd_pct": 3.213011278271616,
+        "ratio": 3.0767516352780713,
+        "trades": 13,
+        "longs": 13,
+        "shorts": 0,
+        "win_rate": 0.6153846153846154,
+        "long_win_rate": 0.6153846153846154,
+        "short_win_rate": 0,
+        "sharpe_like": 1.46507497401757
+      },
+      "ytd2026": {
+        "return_pct": 5.043617961234914,
+        "cagr_pct": 12.551290025331884,
+        "strict_mdd_pct": 3.5637487621114516,
+        "ratio": 3.521934587188882,
+        "trades": 22,
+        "longs": 22,
+        "shorts": 0,
+        "win_rate": 0.6363636363636364,
+        "long_win_rate": 0.6363636363636364,
+        "short_win_rate": 0,
+        "sharpe_like": 0.8167653646633604
+      },
+      "worst_selection_ratio": 0.0,
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "trend_quantiles": [
+        0.33,
+        0.67
+      ],
+      "state_thresholds": {
+        "trend_low": -0.009032168697422257,
+        "trend_high": 0.011791010683737543,
+        "vol_median": 0.005910899368064678,
+        "flow_median": -0.00295379329129606
+      },
+      "duration_cutpoints_hours": [
+        1,
+        6,
+        24,
+        72
+      ],
+      "min_fit_key_trades": 5,
+      "min_fit_mean_trade_return": 0.0,
+      "max_fit_exit_hazard": 0.25,
+      "allowed_keys": [
+        2,
+        12,
+        16,
+        17,
+        27,
+        47,
+        57
+      ],
+      "allowed_key_descriptions": {
+        "2": "trend=low, volatility=low, flow=low, state_age=7-24h",
+        "12": "trend=low, volatility=high, flow=low, state_age=7-24h",
+        "16": "trend=low, volatility=high, flow=high, state_age=2-6h",
+        "17": "trend=low, volatility=high, flow=high, state_age=7-24h",
+        "27": "trend=mid, volatility=low, flow=high, state_age=7-24h",
+        "47": "trend=high, volatility=low, flow=high, state_age=7-24h",
+        "57": "trend=high, volatility=high, flow=high, state_age=7-24h"
+      },
+      "key_quality": {
+        "2": {
+          "n": 5,
+          "mean_trade_return": 0.0017762898191073795,
+          "exposures": 930,
+          "exits": 101,
+          "exit_hazard": 0.10944206008583691
+        },
+        "12": {
+          "n": 15,
+          "mean_trade_return": 0.00512639474592127,
+          "exposures": 1597,
+          "exits": 128,
+          "exit_hazard": 0.08067542213883677
+        },
+        "16": {
+          "n": 10,
+          "mean_trade_return": 0.013399330053315927,
+          "exposures": 743,
+          "exits": 168,
+          "exit_hazard": 0.22684563758389262
+        },
+        "17": {
+          "n": 9,
+          "mean_trade_return": 0.007750551902789282,
+          "exposures": 480,
+          "exits": 67,
+          "exit_hazard": 0.14107883817427386
+        },
+        "27": {
+          "n": 8,
+          "mean_trade_return": 0.0015258213925379294,
+          "exposures": 974,
+          "exits": 131,
+          "exit_hazard": 0.13524590163934427
+        },
+        "47": {
+          "n": 5,
+          "mean_trade_return": 0.009235659306321664,
+          "exposures": 924,
+          "exits": 98,
+          "exit_hazard": 0.10691144708423327
+        },
+        "57": {
+          "n": 11,
+          "mean_trade_return": 0.0023832007164989403,
+          "exposures": 1626,
+          "exits": 146,
+          "exit_hazard": 0.09029484029484029
+        }
+      },
+      "fit2020_2022": {
+        "return_pct": 53.592058016589576,
+        "cagr_pct": 15.374212444728563,
+        "strict_mdd_pct": 15.171359418978735,
+        "ratio": 1.0133707876893396,
+        "trades": 116,
+        "longs": 116,
+        "shorts": 0,
+        "win_rate": 0.5862068965517241,
+        "long_win_rate": 0.5862068965517241,
+        "short_win_rate": 0,
+        "sharpe_like": 1.5834924501525929
+      },
+      "holdout2023": {
+        "return_pct": 12.87857830609287,
+        "cagr_pct": 12.887944719461686,
+        "strict_mdd_pct": 2.1292586596615592,
+        "ratio": 6.052784926332151,
+        "trades": 13,
+        "longs": 13,
+        "shorts": 0,
+        "win_rate": 0.5384615384615384,
+        "long_win_rate": 0.5384615384615384,
+        "short_win_rate": 0,
+        "sharpe_like": 1.8367805503576862
+      },
+      "signal_hash": "911401835d6e17bd",
+      "year2020": {
+        "return_pct": 31.620489607544066,
+        "cagr_pct": 31.546405831955916,
+        "strict_mdd_pct": 11.44298314322507,
+        "ratio": 2.75683407351983,
+        "trades": 39,
+        "longs": 39,
+        "shorts": 0,
+        "win_rate": 0.717948717948718,
+        "long_win_rate": 0.717948717948718,
+        "short_win_rate": 0,
+        "sharpe_like": 1.698969046644387
+      },
+      "year2021": {
+        "return_pct": 33.1969324434785,
+        "cagr_pct": 33.22308709216144,
+        "strict_mdd_pct": 10.477078780217974,
+        "ratio": 3.1710257972757403,
+        "trades": 35,
+        "longs": 35,
+        "shorts": 0,
+        "win_rate": 0.6,
+        "long_win_rate": 0.6,
+        "short_win_rate": 0,
+        "sharpe_like": 1.6603219433069576
+      },
+      "year2022": {
+        "return_pct": -12.390533715142539,
+        "cagr_pct": -12.398471081115447,
+        "strict_mdd_pct": 14.183881163697931,
+        "ratio": -0.8741240100662968,
+        "trades": 42,
+        "longs": 42,
+        "shorts": 0,
+        "win_rate": 0.4523809523809524,
+        "long_win_rate": 0.4523809523809524,
+        "short_win_rate": 0,
+        "sharpe_like": -0.7508304234663714
+      },
+      "test2024": {
+        "return_pct": 11.010971285610927,
+        "cagr_pct": 10.987211372739104,
+        "strict_mdd_pct": 3.0939986772632766,
+        "ratio": 3.5511364156294927,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.7272727272727273,
+        "long_win_rate": 0.7272727272727273,
+        "short_win_rate": 0,
+        "sharpe_like": 2.3240179067013633
+      },
+      "eval2025": {
+        "return_pct": 9.958759951289164,
+        "cagr_pct": 9.965910154209867,
+        "strict_mdd_pct": 3.213011278271616,
+        "ratio": 3.101735192031712,
+        "trades": 12,
+        "longs": 12,
+        "shorts": 0,
+        "win_rate": 0.5833333333333334,
+        "long_win_rate": 0.5833333333333334,
+        "short_win_rate": 0,
+        "sharpe_like": 1.4133996471449832
+      },
+      "ytd2026": {
+        "return_pct": -0.5724185954431249,
+        "cagr_pct": -1.369980355025957,
+        "strict_mdd_pct": 4.192013341932466,
+        "ratio": -0.32680725066452515,
+        "trades": 18,
+        "longs": 18,
+        "shorts": 0,
+        "win_rate": 0.5,
+        "long_win_rate": 0.5,
+        "short_win_rate": 0,
+        "sharpe_like": -0.09598242282248307
+      },
+      "worst_selection_ratio": 0.0,
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "trend_quantiles": [
+        0.33,
+        0.67
+      ],
+      "state_thresholds": {
+        "trend_low": -0.009032168697422257,
+        "trend_high": 0.011791010683737543,
+        "vol_median": 0.005910899368064678,
+        "flow_median": -0.00295379329129606
+      },
+      "duration_cutpoints_hours": [
+        1,
+        6,
+        24,
+        72
+      ],
+      "min_fit_key_trades": 8,
+      "min_fit_mean_trade_return": 0.0,
+      "max_fit_exit_hazard": 0.5,
+      "allowed_keys": [
+        10,
+        12,
+        16,
+        17,
+        27,
+        57
+      ],
+      "allowed_key_descriptions": {
+        "10": "trend=low, volatility=high, flow=low, state_age=1-1h",
+        "12": "trend=low, volatility=high, flow=low, state_age=7-24h",
+        "16": "trend=low, volatility=high, flow=high, state_age=2-6h",
+        "17": "trend=low, volatility=high, flow=high, state_age=7-24h",
+        "27": "trend=mid, volatility=low, flow=high, state_age=7-24h",
+        "57": "trend=high, volatility=high, flow=high, state_age=7-24h"
+      },
+      "key_quality": {
+        "10": {
+          "n": 10,
+          "mean_trade_return": 0.00484999034142124,
+          "exposures": 513,
+          "exits": 154,
+          "exit_hazard": 0.30097087378640774
+        },
+        "12": {
+          "n": 15,
+          "mean_trade_return": 0.00512639474592127,
+          "exposures": 1597,
+          "exits": 128,
+          "exit_hazard": 0.08067542213883677
+        },
+        "16": {
+          "n": 10,
+          "mean_trade_return": 0.013399330053315927,
+          "exposures": 743,
+          "exits": 168,
+          "exit_hazard": 0.22684563758389262
+        },
+        "17": {
+          "n": 9,
+          "mean_trade_return": 0.007750551902789282,
+          "exposures": 480,
+          "exits": 67,
+          "exit_hazard": 0.14107883817427386
+        },
+        "27": {
+          "n": 8,
+          "mean_trade_return": 0.0015258213925379294,
+          "exposures": 974,
+          "exits": 131,
+          "exit_hazard": 0.13524590163934427
+        },
+        "57": {
+          "n": 11,
+          "mean_trade_return": 0.0023832007164989403,
+          "exposures": 1626,
+          "exits": 146,
+          "exit_hazard": 0.09029484029484029
+        }
+      },
+      "fit2020_2022": {
+        "return_pct": 70.89729265408447,
+        "cagr_pct": 19.553060530966015,
+        "strict_mdd_pct": 12.901044895417558,
+        "ratio": 1.5156183618825518,
+        "trades": 109,
+        "longs": 109,
+        "shorts": 0,
+        "win_rate": 0.5504587155963303,
+        "long_win_rate": 0.5504587155963303,
+        "short_win_rate": 0,
+        "sharpe_like": 1.9182228532342989
+      },
+      "holdout2023": {
+        "return_pct": 10.744028440646813,
+        "cagr_pct": 10.751769514142184,
+        "strict_mdd_pct": 2.1292586596615592,
+        "ratio": 5.0495365912242685,
+        "trades": 9,
+        "longs": 9,
+        "shorts": 0,
+        "win_rate": 0.6666666666666666,
+        "long_win_rate": 0.6666666666666666,
+        "short_win_rate": 0,
+        "sharpe_like": 1.9697836347129054
+      },
+      "signal_hash": "2a7949d03410eac9",
+      "year2020": {
+        "return_pct": 34.625596721245635,
+        "cagr_pct": 34.543597367450765,
+        "strict_mdd_pct": 8.527676116628935,
+        "ratio": 4.050763290609839,
+        "trades": 33,
+        "longs": 33,
+        "shorts": 0,
+        "win_rate": 0.6363636363636364,
+        "long_win_rate": 0.6363636363636364,
+        "short_win_rate": 0,
+        "sharpe_like": 2.266312345363613
+      },
+      "year2021": {
+        "return_pct": 28.93636939847695,
+        "cagr_pct": 28.958815891983324,
+        "strict_mdd_pct": 12.095392066483878,
+        "ratio": 2.394202331996141,
+        "trades": 39,
+        "longs": 39,
+        "shorts": 0,
+        "win_rate": 0.5641025641025641,
+        "long_win_rate": 0.5641025641025641,
+        "short_win_rate": 0,
+        "sharpe_like": 1.353015657041849
+      },
+      "year2022": {
+        "return_pct": -1.5462858975492488,
+        "cagr_pct": -1.5473367609798228,
+        "strict_mdd_pct": 12.90104489541749,
+        "ratio": -0.11993887111651273,
+        "trades": 37,
+        "longs": 37,
+        "shorts": 0,
+        "win_rate": 0.4594594594594595,
+        "long_win_rate": 0.4594594594594595,
+        "short_win_rate": 0,
+        "sharpe_like": 0.000633369209376666
+      },
+      "test2024": {
+        "return_pct": 10.900762425172328,
+        "cagr_pct": 10.87725177814165,
+        "strict_mdd_pct": 3.0939986772632766,
+        "ratio": 3.515596777101038,
+        "trades": 9,
+        "longs": 9,
+        "shorts": 0,
+        "win_rate": 0.7777777777777778,
+        "long_win_rate": 0.7777777777777778,
+        "short_win_rate": 0,
+        "sharpe_like": 2.3804611312734627
+      },
+      "eval2025": {
+        "return_pct": 13.949841197144664,
+        "cagr_pct": 13.960033777577753,
+        "strict_mdd_pct": 1.7207122062103397,
+        "ratio": 8.112939355688676,
+        "trades": 8,
+        "longs": 8,
+        "shorts": 0,
+        "win_rate": 0.75,
+        "long_win_rate": 0.75,
+        "short_win_rate": 0,
+        "sharpe_like": 2.409371136587764
+      },
+      "ytd2026": {
+        "return_pct": 2.0726531749563737,
+        "cagr_pct": 5.053117545236274,
+        "strict_mdd_pct": 3.0793480102921156,
+        "ratio": 1.6409699482965945,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.5454545454545454,
+        "long_win_rate": 0.5454545454545454,
+        "short_win_rate": 0,
+        "sharpe_like": 0.5735389187453949
+      },
+      "worst_selection_ratio": 0.0,
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    },
+    {
+      "trend_quantiles": [
+        0.33,
+        0.67
+      ],
+      "state_thresholds": {
+        "trend_low": -0.009032168697422257,
+        "trend_high": 0.011791010683737543,
+        "vol_median": 0.005910899368064678,
+        "flow_median": -0.00295379329129606
+      },
+      "duration_cutpoints_hours": [
+        1,
+        6,
+        24,
+        72
+      ],
+      "min_fit_key_trades": 8,
+      "min_fit_mean_trade_return": 0.0,
+      "max_fit_exit_hazard": 0.25,
+      "allowed_keys": [
+        12,
+        16,
+        17,
+        27,
+        57
+      ],
+      "allowed_key_descriptions": {
+        "12": "trend=low, volatility=high, flow=low, state_age=7-24h",
+        "16": "trend=low, volatility=high, flow=high, state_age=2-6h",
+        "17": "trend=low, volatility=high, flow=high, state_age=7-24h",
+        "27": "trend=mid, volatility=low, flow=high, state_age=7-24h",
+        "57": "trend=high, volatility=high, flow=high, state_age=7-24h"
+      },
+      "key_quality": {
+        "12": {
+          "n": 15,
+          "mean_trade_return": 0.00512639474592127,
+          "exposures": 1597,
+          "exits": 128,
+          "exit_hazard": 0.08067542213883677
+        },
+        "16": {
+          "n": 10,
+          "mean_trade_return": 0.013399330053315927,
+          "exposures": 743,
+          "exits": 168,
+          "exit_hazard": 0.22684563758389262
+        },
+        "17": {
+          "n": 9,
+          "mean_trade_return": 0.007750551902789282,
+          "exposures": 480,
+          "exits": 67,
+          "exit_hazard": 0.14107883817427386
+        },
+        "27": {
+          "n": 8,
+          "mean_trade_return": 0.0015258213925379294,
+          "exposures": 974,
+          "exits": 131,
+          "exit_hazard": 0.13524590163934427
+        },
+        "57": {
+          "n": 11,
+          "mean_trade_return": 0.0023832007164989403,
+          "exposures": 1626,
+          "exits": 146,
+          "exit_hazard": 0.09029484029484029
+        }
+      },
+      "fit2020_2022": {
+        "return_pct": 43.39350713991119,
+        "cagr_pct": 12.762473577903677,
+        "strict_mdd_pct": 13.338668728443714,
+        "ratio": 0.9568026493295133,
+        "trades": 98,
+        "longs": 98,
+        "shorts": 0,
+        "win_rate": 0.5612244897959183,
+        "long_win_rate": 0.5612244897959183,
+        "short_win_rate": 0,
+        "sharpe_like": 1.4275701731408255
+      },
+      "holdout2023": {
+        "return_pct": 8.419918994194852,
+        "cagr_pct": 8.425922478303827,
+        "strict_mdd_pct": 2.1292586596615592,
+        "ratio": 3.9572094447384365,
+        "trades": 9,
+        "longs": 9,
+        "shorts": 0,
+        "win_rate": 0.6666666666666666,
+        "long_win_rate": 0.6666666666666666,
+        "short_win_rate": 0,
+        "sharpe_like": 1.581295244313376
+      },
+      "signal_hash": "3df5d2fdbffdf19b",
+      "year2020": {
+        "return_pct": 28.264414449211863,
+        "cagr_pct": 28.199004799588966,
+        "strict_mdd_pct": 12.384009033569289,
+        "ratio": 2.27704976015037,
+        "trades": 31,
+        "longs": 31,
+        "shorts": 0,
+        "win_rate": 0.6451612903225806,
+        "long_win_rate": 0.6451612903225806,
+        "short_win_rate": 0,
+        "sharpe_like": 1.7180798424923678
+      },
+      "year2021": {
+        "return_pct": 21.311134052139693,
+        "cagr_pct": 21.327187104415792,
+        "strict_mdd_pct": 10.477078780217997,
+        "ratio": 2.035604346574555,
+        "trades": 32,
+        "longs": 32,
+        "shorts": 0,
+        "win_rate": 0.59375,
+        "long_win_rate": 0.59375,
+        "short_win_rate": 0,
+        "sharpe_like": 1.2530234135523237
+      },
+      "year2022": {
+        "return_pct": -7.8442068252451485,
+        "cagr_pct": -7.849362964076445,
+        "strict_mdd_pct": 13.338668728443725,
+        "ratio": -0.5884667446113463,
+        "trades": 35,
+        "longs": 35,
+        "shorts": 0,
+        "win_rate": 0.45714285714285713,
+        "long_win_rate": 0.45714285714285713,
+        "short_win_rate": 0,
+        "sharpe_like": -0.4102755899186536
+      },
+      "test2024": {
+        "return_pct": 9.777075816827496,
+        "cagr_pct": 9.756093857718074,
+        "strict_mdd_pct": 3.0939986772632766,
+        "ratio": 3.1532314248911044,
+        "trades": 7,
+        "longs": 7,
+        "shorts": 0,
+        "win_rate": 0.8571428571428571,
+        "long_win_rate": 0.8571428571428571,
+        "short_win_rate": 0,
+        "sharpe_like": 2.2479213187319127
+      },
+      "eval2025": {
+        "return_pct": 11.240227603222896,
+        "cagr_pct": 11.248344008364807,
+        "strict_mdd_pct": 1.7207122062103397,
+        "ratio": 6.537028079284637,
+        "trades": 7,
+        "longs": 7,
+        "shorts": 0,
+        "win_rate": 0.7142857142857143,
+        "long_win_rate": 0.7142857142857143,
+        "short_win_rate": 0,
+        "sharpe_like": 1.973322295792357
+      },
+      "ytd2026": {
+        "return_pct": 2.0726531749563737,
+        "cagr_pct": 5.053117545236274,
+        "strict_mdd_pct": 3.0793480102921156,
+        "ratio": 1.6409699482965945,
+        "trades": 11,
+        "longs": 11,
+        "shorts": 0,
+        "win_rate": 0.5454545454545454,
+        "long_win_rate": 0.5454545454545454,
+        "short_win_rate": 0,
+        "sharpe_like": 0.5735389187453949
+      },
+      "worst_selection_ratio": 0.0,
+      "passes_alpha_pool": false,
+      "passes_live_grade": false
+    }
+  ],
+  "alpha_pool_qualifiers": [],
+  "live_grade": []
+}
