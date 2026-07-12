@@ -69,7 +69,23 @@ class TestStrictBarBacktest(unittest.TestCase):
         )
         self.assertEqual(out["sim"]["trade_entries"], 1)
         self.assertAlmostEqual(out["sim"]["ret_pct"], 1.0, places=6)
-        self.assertAlmostEqual(out["sim"]["strict_mdd_pct"], 10.0, places=6)
+        self.assertAlmostEqual(out["sim"]["strict_mdd_pct"], (1.0 - 0.9 / 1.01) * 100.0, places=6)
+
+    def test_strict_mdd_uses_intratrade_favorable_high_water(self):
+        market = _market(
+            [100, 100, 100, 100],
+            lows=[100, 90, 100, 100],
+            highs=[100, 200, 100, 100],
+        )
+        out = simulate_bar_by_bar(
+            _rows(1),
+            market,
+            HierSimConfig(False, 3.0, 1.0, hold_bars=1, cooldown_bars=0),
+            RegimeFilter("none"),
+            BarExecutionConfig(1.0, 0.0, 0.0, 1.0, 1, 1.0, entry_delay_bars=1),
+        )
+        self.assertAlmostEqual(out["sim"]["ret_pct"], 0.0, places=6)
+        self.assertAlmostEqual(out["sim"]["strict_mdd_pct"], 55.0, places=6)
 
 
 if __name__ == "__main__":

@@ -99,6 +99,39 @@ def _drawdown_from_trough(peak: float, trough_eq: float) -> float:
     return max(0.0, 1.0 - max(0.0, trough_eq) / peak)
 
 
+def _mark_worst_order_bar_path(
+    *,
+    equity_at_open: float,
+    peak: float,
+    open_price: float,
+    high_price: float,
+    low_price: float,
+    signal: int,
+    leverage: float,
+) -> tuple[float, float]:
+    """Mark a conservative intrabar high-water path.
+
+    OHLC bars do not reveal whether the favorable or adverse extreme happened
+    first.  Strict MDD therefore assumes the favorable extreme establishes a
+    new high-water mark before the adverse extreme is visited in the same bar.
+    This prevents a profitable held bar from hiding a large peak-to-trough
+    drawdown inside the position.
+    """
+
+    if open_price <= 0.0:
+        return peak, 0.0
+    if signal > 0:
+        favorable_ret = (high_price - open_price) / open_price
+        adverse_ret = (low_price - open_price) / open_price
+    else:
+        favorable_ret = (open_price - low_price) / open_price
+        adverse_ret = (open_price - high_price) / open_price
+    favorable_eq = equity_at_open * max(0.0, 1.0 + leverage * favorable_ret)
+    marked_peak = max(peak, favorable_eq)
+    adverse_eq = equity_at_open * max(0.0, 1.0 + leverage * adverse_ret)
+    return marked_peak, _drawdown_from_trough(marked_peak, adverse_eq)
+
+
 def simulate_bar_by_bar(
     rows: list[dict[str, Any]],
     market: pd.DataFrame,
@@ -175,14 +208,20 @@ def simulate_bar_by_bar(
             open_j = float(opens[j])
             if open_j <= 0.0:
                 continue
+            peak, bar_dd = _mark_worst_order_bar_path(
+                equity_at_open=eq,
+                peak=peak,
+                open_price=open_j,
+                high_price=float(highs[j]),
+                low_price=float(lows[j]),
+                signal=signal,
+                leverage=float(exec_cfg.leverage),
+            )
+            max_dd = max(max_dd, bar_dd)
             if signal > 0:
-                adverse_ret = (float(lows[j]) - open_j) / open_j
                 close_ret = (float(opens[j + 1]) - open_j) / open_j
             else:
-                adverse_ret = (open_j - float(highs[j])) / open_j
                 close_ret = (open_j - float(opens[j + 1])) / open_j
-            adverse_eq = eq * (1.0 + float(exec_cfg.leverage) * adverse_ret)
-            max_dd = max(max_dd, _drawdown_from_trough(peak, adverse_eq))
             eq *= max(0.0, 1.0 + float(exec_cfg.leverage) * close_ret)
             peak = max(peak, eq)
             if eq <= 0.0:

@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from training.strict_bar_backtest import _drawdown_from_trough, _trade_stats, load_market_bars
+from training.strict_bar_backtest import _drawdown_from_trough, _mark_worst_order_bar_path, _trade_stats, load_market_bars
 
 
 VALID_GATES = {"TRADE", "NO_TRADE"}
@@ -151,14 +151,20 @@ def strict_backtest_actions(rows: list[dict[str, Any]], market, cfg: EconomicAct
             open_j = float(opens[j])
             if open_j <= 0.0:
                 continue
+            peak, bar_dd = _mark_worst_order_bar_path(
+                equity_at_open=eq,
+                peak=peak,
+                open_price=open_j,
+                high_price=float(highs[j]),
+                low_price=float(lows[j]),
+                signal=signal,
+                leverage=float(cfg.leverage),
+            )
+            max_dd = max(max_dd, bar_dd)
             if signal > 0:
-                adverse_ret = (float(lows[j]) - open_j) / open_j
                 close_ret = (float(opens[j + 1]) - open_j) / open_j
             else:
-                adverse_ret = (open_j - float(highs[j])) / open_j
                 close_ret = (open_j - float(opens[j + 1])) / open_j
-            adverse_eq = eq * (1.0 + float(cfg.leverage) * adverse_ret)
-            max_dd = max(max_dd, _drawdown_from_trough(peak, adverse_eq))
             eq *= max(0.0, 1.0 + float(cfg.leverage) * close_ret)
             peak = max(peak, eq)
             if eq <= 0.0:
