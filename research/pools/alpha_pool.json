@@ -2434,6 +2434,153 @@
           "LOW_ABSRET_VOLUME_ACTIVITY"
         ]
       }
+    },
+    {
+      "id": "usdkrw_riskoff_weakness_short_20260712",
+      "name": "Low-correlation USDKRW risk-off weakness short",
+      "status": "candidate",
+      "family": "macro_fx_riskoff_short",
+      "scope": "btc_target_external_features",
+      "side": "short",
+      "description": "Short BTC when USDKRW momentum is in an extreme train-window upper tail while BTC 1d return is in an extreme lower tail. Uses tight TP/SL and has low activation correlation to existing alpha components.",
+      "entry_logic": "usdkrw_momentum >= 0.004131441075354866 and htf_1d_return_1 <= -0.019054256339467335.",
+      "exit_logic": "TP 2.5%, SL 1.5%, maximum 216 5m bars, stride 12, next-open entry.",
+      "dependencies": [
+        "external_macro_kimchi_fx_features",
+        "btc_ohlcv_taker_core"
+      ],
+      "stats": {
+        "train_pre2024": {
+          "return_pct": 17.8124,
+          "cagr_pct": 4.1832,
+          "strict_mdd_pct": 5.7318,
+          "cagr_to_strict_mdd": 0.7298,
+          "trades": 125,
+          "win_rate": 0.488,
+          "p_approx": 0.115
+        },
+        "test_2024": {
+          "return_pct": 8.7113,
+          "cagr_pct": 8.6927,
+          "strict_mdd_pct": 1.4832,
+          "cagr_to_strict_mdd": 5.8608,
+          "trades": 21,
+          "win_rate": 0.619,
+          "p_approx": 0.0444
+        },
+        "eval_2025": {
+          "return_pct": 4.6615,
+          "cagr_pct": 4.6648,
+          "strict_mdd_pct": 1.4616,
+          "cagr_to_strict_mdd": 3.1917,
+          "trades": 19,
+          "win_rate": 0.5789,
+          "p_approx": 0.2629
+        },
+        "ytd_2026": {
+          "return_pct": -1.1047,
+          "cagr_pct": -2.6341,
+          "strict_mdd_pct": 3.6423,
+          "cagr_to_strict_mdd": -0.7232,
+          "trades": 10,
+          "win_rate": 0.4,
+          "p_approx": 0.6686
+        }
+      },
+      "correlation": {
+        "metric": "test2024 binary activation phi",
+        "max_abs_phi": 0.128389,
+        "nearest_component": "short_kimchi_unwind"
+      },
+      "evidence": "Among 1,850 low-correlation macro-short variants, this test-selected candidate clears test/eval ratio>=3 at 6bp/side but fails 2026 and has sparse OOS trades.",
+      "source_artifacts": [
+        "training/search_lowcorr_macro_short_alpha.py",
+        "results/lowcorr_macro_short_alpha_scan_2026-07-12.json",
+        "docs/low-correlation-macro-short-alpha-scan-2026-07-12.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Thresholds fit on train; exit variant ranked on test2024; eval2025 confirms mechanically. YTD2026 is consumed and negative; no 2026 retuning allowed.",
+      "next_action": "Candidate-only. Test marginal portfolio contribution with weights selected on 2024, but reject live deployment unless fresh future data restores edge.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "usdkrw_momentum",
+          "htf_1d_return_1"
+        ],
+        "entry_logic": "usdkrw_momentum >= 0.004131441075354866 and htf_1d_return_1 <= -0.019054256339467335",
+        "exit_logic": "short TP2.5% SL1.5% cap216 stride12",
+        "side": "short",
+        "script_or_config": "training/search_lowcorr_macro_short_alpha.py",
+        "reproduce_command": "PYTHONPATH=. .venv/bin/python training/search_lowcorr_macro_short_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --output results/lowcorr_macro_short_alpha_scan_2026-07-12.json",
+        "evaluation_protocol": {
+          "split": "train<2024/test2024/eval2025/ytd2026",
+          "cost": "6bp/side",
+          "leverage": "0.5x",
+          "mdd": "strict short intrabar MDD"
+        }
+      }
+    },
+    {
+      "id": "rex_htf_pullback_reclaim_recent_event_20260712",
+      "name": "REX HTF pullback reclaim recent-regime event",
+      "status": "candidate",
+      "family": "rex_event_context",
+      "scope": "btc_price_action_rex_htf",
+      "side": "mixed",
+      "description": "Event-first REX candidate: trade multiscale higher-timeframe pullback reclaim events. Recent 2025/2026 holdout is promising, but long train is weak and high-MDD, so this is regime-context only, not standalone live-grade.",
+      "entry_logic": "family=rex_htf_pullback_reclaim, hold_bars=144, quantile=0.75. Threshold 0.2143444289 fit on train 2020-2024 only in recent split. Direction follows higher-timeframe pullback/reclaim event direction from causal REX/HTF features.",
+      "exit_logic": "Fixed hold 144 5m bars, entry delay 1 bar, stride 24 in scan, non-overlapping strict simulator, 0.5x validation leverage, 6bp side cost model.",
+      "dependencies": [
+        "btc_ohlcv_taker_core",
+        "rex_multiscale_price_location_features",
+        "higher_timeframe_price_action_features"
+      ],
+      "stats": {
+        "train_2020_2024": {
+          "return_pct": 35.32,
+          "cagr_pct": 6.23,
+          "strict_mdd_pct": 22.3,
+          "cagr_to_strict_mdd": 0.28,
+          "trades": 768,
+          "p_approx": 0.311,
+          "side_counts": {
+            "long": 458,
+            "short": 310
+          }
+        },
+        "test_2025": {
+          "return_pct": 15.32,
+          "cagr_pct": 15.33,
+          "strict_mdd_pct": 4.83,
+          "cagr_to_strict_mdd": 3.17,
+          "trades": 74,
+          "p_approx": 0.037,
+          "side_counts": {
+            "long": 31,
+            "short": 43
+          }
+        },
+        "eval_2026h1": {
+          "return_pct": 5.34,
+          "cagr_pct": 13.4,
+          "strict_mdd_pct": 4.4,
+          "cagr_to_strict_mdd": 3.04,
+          "trades": 43,
+          "p_approx": 0.328,
+          "side_counts": {
+            "long": 15,
+            "short": 28
+          }
+        }
+      },
+      "evidence": "Event-first scan selected this using train+test only; eval was not used for selection. Recent split clears ratio>=3 on 2025 and 2026H1 under full-window CAGR, but fails long train risk, so treat as regime-conditioned context feature rather than standalone alpha.",
+      "source_artifacts": [
+        "results/event_family_params_recent_rex_2026-07-12.json",
+        "results/event_family_params_broad_2026-07-12.json",
+        "docs/event-first-alpha-search-2026-07-12.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Thresholds fit on train only; test selected; eval post-selection. Features are rolling/current-row causal. Needs independent revalidation before live use.",
+      "next_action": "Use as RLLM/portfolio event context and diagnose train high-MDD regime before promotion."
     }
   ]
 }
