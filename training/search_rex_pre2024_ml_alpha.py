@@ -53,6 +53,7 @@ class RexPre2024MlConfig:
     slippage_rate: float = 0.0001
     hold_bars: int = 144
     random_state: int = 42
+    selection_strategy: str = "global"
 
 
 MODEL_SPECS: tuple[dict[str, Any], ...] = (
@@ -261,6 +262,25 @@ def manifest_hash(payload: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+def select_manifest_candidates(
+    candidates: list[dict[str, Any]],
+    *,
+    top_n: int,
+    strategy: str,
+    rank_key,
+) -> list[dict[str, Any]]:
+    ranked = sorted(candidates, key=rank_key, reverse=True)
+    if strategy == "global":
+        return ranked[: int(top_n)]
+    if strategy != "side_balanced":
+        raise ValueError(f"unknown selection strategy: {strategy}")
+    long_slots = (int(top_n) + 1) // 2
+    short_slots = int(top_n) - long_slots
+    longs = [row for row in ranked if row["side"] == "long"][:long_slots]
+    shorts = [row for row in ranked if row["side"] == "short"][:short_slots]
+    return longs + shorts
+
+
 def run(cfg: RexPre2024MlConfig) -> dict[str, Any]:
     market = load_market_bars(cfg.market_csv)
 
@@ -339,12 +359,18 @@ def run(cfg: RexPre2024MlConfig) -> dict[str, Any]:
             float(full["trades"]),
         )
 
-    selected = sorted(candidates, key=rank_key, reverse=True)[: int(cfg.top_n)]
+    selected = select_manifest_candidates(
+        candidates,
+        top_n=int(cfg.top_n),
+        strategy=str(cfg.selection_strategy),
+        rank_key=rank_key,
+    )
     phase1_hash = prefix_hash(pre_rows, names)
     manifest_core = {
         "phase": "pre_future_manifest",
         "fit_window": ["2021-01-01", "2023-01-01"],
         "selection_window": ["2023-01-01", "2024-01-01"],
+        "selection_strategy": str(cfg.selection_strategy),
         "feature_hash": phase1_hash,
         "feature_names": names,
         "policies": [

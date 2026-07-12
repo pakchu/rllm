@@ -9,6 +9,7 @@ from training.search_rex_pre2024_ml_alpha import (
     feature_names,
     fit_medians,
     prediction_rows,
+    select_manifest_candidates,
     select_highest_per_signal,
 )
 
@@ -55,6 +56,22 @@ class TestRexPre2024MlAlpha(unittest.TestCase):
             hold_bars=1,
         )
         self.assertEqual([row["signal_pos"] for row in selected], [1])
+
+    def test_side_balanced_manifest_reserves_short_slots(self):
+        rows = [
+            {"id": "l1", "side": "long", "score": 10},
+            {"id": "l2", "side": "long", "score": 9},
+            {"id": "l3", "side": "long", "score": 8},
+            {"id": "s1", "side": "short", "score": 3},
+            {"id": "s2", "side": "short", "score": 2},
+        ]
+        selected = select_manifest_candidates(
+            rows,
+            top_n=4,
+            strategy="side_balanced",
+            rank_key=lambda row: (row["score"],),
+        )
+        self.assertEqual([row["id"] for row in selected], ["l1", "l2", "s1", "s2"])
 
 
 if __name__ == "__main__":
