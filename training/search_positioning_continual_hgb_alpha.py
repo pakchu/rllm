@@ -18,12 +18,14 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor
 
+from training.search_deribit_dvol_alpha import attach_dvol, build_dvol_features
 from training.search_positioning_disagreement_alpha import WINDOWS, _future_extreme, _simulate_no_stop
 from training.search_positioning_hgb_path_alpha import (
     FIT_START,
     PositioningHgbConfig,
     _feature_hash,
     _load_attached,
+    _read_before,
     build_model_features,
     executable_path_utilities,
 )
@@ -52,6 +54,7 @@ class ContinualConfig:
     metrics_csv: str
     output: str
     manifest_output: str
+    dvol_csv: str = ""
     top_n: int = 10
     leverage: float = 0.5
     fee_rate: float = 0.0005
@@ -265,6 +268,26 @@ def _signal_hash(long_signal: np.ndarray, short_signal: np.ndarray) -> str:
     return digest.hexdigest()
 
 
+def _load_market(cfg: ContinualConfig, hgb_cfg: PositioningHgbConfig, *, cutoff: str | None = None) -> pd.DataFrame:
+    market = _load_attached(hgb_cfg, cutoff=cutoff)
+    if not cfg.dvol_csv:
+        return market
+    dvol = pd.read_csv(cfg.dvol_csv, compression="infer") if cutoff is None else _read_before(cfg.dvol_csv, "close_time", cutoff)
+    return attach_dvol(market, dvol, tolerance="65min")
+
+
+def build_continual_features(market: pd.DataFrame, *, include_dvol: bool) -> pd.DataFrame:
+    base = build_model_features(market)
+    if not include_dvol:
+        return base
+    dvol = build_dvol_features(market)
+    interactions = pd.DataFrame(index=market.index)
+    interactions["dvol_stress_x_trend"] = dvol["dvol_z25920"] * base["price_return_288"]
+    interactions["dvol_shock_x_oi_divergence"] = dvol["dvol_logchg2016"] * base["oi_price_divergence_288"]
+    interactions["dvol_stress_x_smart_retail"] = dvol["dvol_z25920"] * base["smart_retail_z2016"]
+    return pd.concat([base, dvol.add_prefix("option_"), interactions], axis=1).replace([np.inf, -np.inf], np.nan).astype(np.float32)
+
+
 def run(cfg: ContinualConfig) -> dict[str, Any]:
     hgb_cfg = PositioningHgbConfig(
         input_csv=cfg.input_csv,
@@ -278,9 +301,9 @@ def run(cfg: ContinualConfig) -> dict[str, Any]:
         source_delay_bars=cfg.source_delay_bars,
         random_state=cfg.random_state,
     )
-    phase1_market = _load_attached(hgb_cfg, cutoff=SELECTION_END)
+    phase1_market = _load_market(cfg, hgb_cfg, cutoff=SELECTION_END)
     phase1_dates = pd.to_datetime(phase1_market["date"])
-    phase1_features = build_model_features(phase1_market)
+    phase1_features = build_continual_features(phase1_market, include_dvol=bool(cfg.dvol_csv))
     phase1_hash = _feature_hash(phase1_features, phase1_dates)
     policy_grid = _policy_grid()
     signal_bank, phase1_fit_log = generate_prequential_signals(
@@ -366,9 +389,9 @@ def run(cfg: ContinualConfig) -> dict[str, Any]:
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False))
 
-    full_market = _load_attached(hgb_cfg)
+    full_market = _load_market(cfg, hgb_cfg)
     full_dates = pd.to_datetime(full_market["date"])
-    full_features = build_model_features(full_market)
+    full_features = build_continual_features(full_market, include_dvol=bool(cfg.dvol_csv))
     prefix_dates = full_dates.iloc[: len(phase1_dates)].reset_index(drop=True)
     if not prefix_dates.equals(phase1_dates.reset_index(drop=True)):
         raise RuntimeError("continual pre-2024 timestamp prefix changed")
@@ -445,6 +468,7 @@ def run(cfg: ContinualConfig) -> dict[str, Any]:
             "manifest_written_before_future": True,
             "future_windows": {name: WINDOWS[name] for name in ("test2024", "eval2025", "ytd2026")},
             "strict_mdd": "worst-order favorable-to-adverse OHLC high-water path drawdown",
+            "dvol_input": bool(cfg.dvol_csv),
         },
         "input": {"rows": int(len(full_market)), "features": int(full_features.shape[1])},
         "tested": int(len(candidates)),
@@ -466,6 +490,7 @@ def parse_args() -> ContinualConfig:
     parser.add_argument("--metrics-csv", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--manifest-output", required=True)
+    parser.add_argument("--dvol-csv", default=ContinualConfig.dvol_csv)
     parser.add_argument("--top-n", type=int, default=ContinualConfig.top_n)
     parser.add_argument("--leverage", type=float, default=ContinualConfig.leverage)
     parser.add_argument("--fee-rate", type=float, default=ContinualConfig.fee_rate)

@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from training.search_positioning_continual_hgb_alpha import eligible_fit_mask, monthly_ranges
+from training.search_positioning_continual_hgb_alpha import build_continual_features, eligible_fit_mask, monthly_ranges
 
 
 class TestPositioningContinualHgbAlpha(unittest.TestCase):
@@ -34,6 +34,32 @@ class TestPositioningContinualHgbAlpha(unittest.TestCase):
             train_days=730,
         )
         self.assertEqual(mask.tolist(), [False, True, True])
+
+    def test_dvol_feature_mode_adds_option_state_and_interactions(self):
+        n = 30_000
+        values = np.linspace(100.0, 120.0, n)
+        market = pd.DataFrame(
+            {
+                "date": pd.date_range("2021-01-01", periods=n, freq="5min"),
+                "open": values,
+                "high": values + 1,
+                "low": values - 1,
+                "close": values,
+                "quote_asset_volume": 1_000.0,
+                "taker_buy_quote": 500.0,
+                "sum_open_interest": 10_000.0,
+                "positioning_available": 1.0,
+                "count_toptrader_long_short_ratio": 1.1,
+                "sum_toptrader_long_short_ratio": 1.2,
+                "count_long_short_ratio": 1.0,
+                "sum_taker_long_short_vol_ratio": 1.0,
+                "dvol_close": np.linspace(60.0, 80.0, n),
+                "dvol_available": 1.0,
+            }
+        )
+        features = build_continual_features(market, include_dvol=True)
+        self.assertIn("option_dvol_z25920", features.columns)
+        self.assertIn("dvol_stress_x_trend", features.columns)
 
 
 if __name__ == "__main__":
