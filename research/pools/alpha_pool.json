@@ -2290,6 +2290,150 @@
           "PREMIUM_COMPRESSION_DAILY_MOMENTUM"
         ]
       }
+    },
+    {
+      "id": "nonrex_fx_stress_short_tight_exit_20260712",
+      "name": "Low-correlation FX-stress short with tight exit",
+      "status": "candidate",
+      "family": "macro_fx_stress_short",
+      "scope": "btc_target_external_features",
+      "side": "short",
+      "description": "BTC weakness plus elevated USDKRW stress, using a tight asymmetric TP/SL. Low activation correlation to the existing long-alpha complex and moderate correlation to the promoted premium+kimchi short union.",
+      "entry_logic": "htf_3d_return_1 <= -0.03252949727545951 and usdkrw_zscore >= 1.3870063774765273.",
+      "exit_logic": "TP 2.5%, SL 1.5%, maximum hold 288 5m bars; conservative same-bar stop-before-take ordering; next-open entry.",
+      "dependencies": [
+        "nonrex_fx_stress_short_features_20260710",
+        "external_macro_kimchi_fx_features",
+        "btc_ohlcv_taker_core"
+      ],
+      "stats": {
+        "test_2024": {
+          "return_pct": 11.9384,
+          "cagr_pct": 11.9125,
+          "strict_mdd_pct": 4.486,
+          "cagr_to_strict_mdd": 2.6555,
+          "trades": 50,
+          "win_rate": 0.54,
+          "p_approx": 0.0811
+        },
+        "eval_2025": {
+          "return_pct": 9.9333,
+          "cagr_pct": 9.9404,
+          "strict_mdd_pct": 3.268,
+          "cagr_to_strict_mdd": 3.0417,
+          "trades": 41,
+          "win_rate": 0.5366,
+          "p_approx": 0.0971
+        },
+        "ytd_2026": {
+          "return_pct": 2.2722,
+          "cagr_pct": 5.5472,
+          "strict_mdd_pct": 4.1383,
+          "cagr_to_strict_mdd": 1.3405,
+          "trades": 33,
+          "win_rate": 0.4242,
+          "p_approx": 0.6539
+        }
+      },
+      "correlation": {
+        "metric": "binary activation phi, 2024~2026H1",
+        "short_kimchi_unwind": 0.261541,
+        "short_premium_kimchi_union": 0.193797,
+        "mom85_pos50": -0.029902,
+        "short_premium_panic": 0.024311,
+        "long_component_range": "approximately -0.011 to +0.008"
+      },
+      "evidence": "At 6bp/side and 0.5x, clears alpha-pool test/eval ratio>=2.5 while staying nearly orthogonal to long alpha components. It is not live-grade and 2026 ratio is weak.",
+      "source_artifacts": [
+        "training/nonrex_short_bear_tp_refine.py",
+        "results/nonrex_short_bear_tp_refine_cost6bp_2026-07-12.json",
+        "docs/low-correlation-alpha-search-2026-07-12.md",
+        "results/alpha_feature_correlation_oi_2026-07-10/component_phi.csv"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Gate thresholds came from train quantiles. Exit variant selected on test2024; eval2025 confirms, while 2026 must not be used for retuning.",
+      "next_action": "Keep in alpha_pool as a diversifying candidate; run portfolio marginal-contribution test using test-only weights. Do not live-promote unless fresh data improves the weak 2026 behavior.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "htf_3d_return_1",
+          "usdkrw_zscore"
+        ],
+        "entry_logic": "htf_3d_return_1 <= -0.03252949727545951 and usdkrw_zscore >= 1.3870063774765273",
+        "exit_logic": "short TP 2.5%, SL 1.5%, cap 288 bars",
+        "side": "short",
+        "script_or_config": "training/nonrex_short_bear_tp_refine.py",
+        "reproduce_command": "PYTHONPATH=. .venv/bin/python training/nonrex_short_bear_tp_refine.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --exclude-from 2026-06-02 --fee-rate 0.0005 --slippage-rate 0.0001 --output results/nonrex_short_bear_tp_refine_cost6bp_2026-07-12.json",
+        "evaluation_protocol": {
+          "split": "train<2024, test=2024, eval=2025, ytd2026 through 2026-06-01",
+          "cost": "6bp/side",
+          "leverage": "0.5x",
+          "mdd": "strict intrabar short MDD"
+        }
+      }
+    },
+    {
+      "id": "low_corr_alpha101_early_pullback_long_20260712",
+      "name": "Low-corr Alpha101 early pullback long (2026-07-12)",
+      "status": "weak",
+      "family": "low_corr_alpha101_orderflow_context",
+      "scope": "btc_price_action_orderflow",
+      "side": "long",
+      "description": "Weak standalone long candidate using early-session short-term pullback, low return/volume correlation, and low absolute-return-volume rank. Its main value is low correlation to existing alpha components, not standalone strength.",
+      "entry_logic": "a_ret_z_12 <= -0.1039416971 AND a_early_session >= 0.5 AND a_ret_vol_corr_288 <= 0.0102425402 AND a_absret_vol_rank <= 0.4943800277.",
+      "exit_logic": "Fixed hold 144 bars, stride 24, non-overlapping. TP/SL refinement checked; TP=10% no-SL did not solve ratio bottleneck.",
+      "dependencies": [
+        "low_corr_alpha101_orderflow_primitives_20260712"
+      ],
+      "stats": {
+        "train_2020_2023": {
+          "return_pct": 77.76,
+          "cagr_pct": 15.47,
+          "strict_mdd_pct": 32.22,
+          "cagr_to_strict_mdd": 0.48,
+          "trades": 222
+        },
+        "test_2024": {
+          "return_pct": 21.93,
+          "cagr_pct": 21.88,
+          "strict_mdd_pct": 8.84,
+          "cagr_to_strict_mdd": 2.48,
+          "trades": 58
+        },
+        "eval_2025": {
+          "return_pct": 9.42,
+          "cagr_pct": 9.43,
+          "strict_mdd_pct": 7.98,
+          "cagr_to_strict_mdd": 1.18,
+          "trades": 55
+        },
+        "ytd_2026": {
+          "return_pct": 6.71,
+          "cagr_pct": 13.62,
+          "strict_mdd_pct": 4.46,
+          "cagr_to_strict_mdd": 3.06,
+          "trades": 26
+        }
+      },
+      "evidence": "Max absolute train correlation to existing alpha components is 0.116. All OOS windows are positive, but train/test/eval ratios are below target; status weak.",
+      "source_artifacts": [
+        "results/alpha101_random_quantile_standalone_2026-07-09.json",
+        "results/low_corr_a101_tpsl_refine_fast_2026-07-12.json",
+        "docs/low-corr-alpha-search-summary-2026-07-12.md"
+      ],
+      "contamination_risk": "medium_high",
+      "leakage_notes": "Thresholds are train quantiles and features are causal, but the candidate was selected after inspecting OOS diagnostics. Not live-grade.",
+      "next_action": "Use only as a low-correlation feature/gate candidate for RLLM or portfolio selector; do not allocate standalone live capital.",
+      "usage_recipe": {
+        "side": "long",
+        "hold_bars": 144,
+        "stride_bars": 24,
+        "allow_overlap": false,
+        "llm_tokens": [
+          "EARLY_SESSION_PULLBACK",
+          "LOW_RET_VOL_CORR",
+          "LOW_ABSRET_VOLUME_ACTIVITY"
+        ]
+      }
     }
   ]
 }

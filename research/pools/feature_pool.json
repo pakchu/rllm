@@ -1998,6 +1998,107 @@
         "protocol": "Past-only feature construction; full-window CAGR; strict OHLC MDD; non-overlapping long events with hold 576 and stride 12.",
         "notes": "Prefer text tokens LOW_FUNDING_UPTREND and PREMIUM_COMPRESSION_DAILY_MOMENTUM for LLM/RLLM rather than unstructured floats."
       }
+    },
+    {
+      "id": "raw_channel_atr_trailing_20260712",
+      "name": "Raw Donchian channel + ATR trailing (2026-07-12)",
+      "status": "rejected",
+      "family": "price_channel_trend_following",
+      "scope": "btc_price_action",
+      "feature_tier": "gamma_feature",
+      "description": "Raw shifted Donchian breakout-cross entries with path-dependent ATR/opposite-channel exits and no required holding period.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV"
+      ],
+      "feature_names": [
+        "shifted_donchian_upper",
+        "shifted_donchian_lower",
+        "wilder_atr",
+        "atr_trailing_stop"
+      ],
+      "usable_for": [
+        "failure guardrail",
+        "possible contextual feature only"
+      ],
+      "known_failures": [
+        "All 144 corrected variants failed to produce a profitable test2024 row at 6bp/side",
+        "zero test/eval ratio>=2.5 qualifiers",
+        "least-bad test row lost in test, eval and 2026"
+      ],
+      "evidence": "Full corrected event-driven scan was uniformly uneconomic; invalid repeated-entry and same-bar-trail runs were explicitly discarded.",
+      "source_artifacts": [
+        "training/search_channel_trailing_alpha.py",
+        "results/channel_trailing_alpha_corrected_scan_2026-07-12.json",
+        "docs/channel-trailing-alpha-scan-2026-07-12.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "Deterministic shifted indicators; selection on test2024 only; eval2025/2026 reporting after selection.",
+      "tier_rationale": "Gamma: broad corrected grid is uniformly negative, providing strong noise/cost-dominated evidence for this exact standalone mechanism.",
+      "next_action": "Do not retry raw 5m Donchian+ATR threshold grids. Only revisit with a materially different event such as trend-pullback recovery or slower execution horizon.",
+      "generation_recipe": {
+        "script": "training/search_channel_trailing_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_channel_trailing_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --output results/channel_trailing_alpha_corrected_scan_2026-07-12.json",
+        "protocol": "cross events only; shifted channels/ATR; 6bp/side; strict intrabar MDD; test-only selection"
+      }
+    },
+    {
+      "id": "low_corr_alpha101_orderflow_primitives_20260712",
+      "name": "Low-correlation Alpha101/orderflow primitive feature family (2026-07-12)",
+      "status": "candidate",
+      "family": "low_corr_alpha101_orderflow_context",
+      "scope": "btc_price_action_orderflow",
+      "feature_tier": "alpha_feature",
+      "description": "Alpha101-style intraday price/volume/VWAP/correlation primitives plus VPIN/OI divergence features with low train-window correlation to existing REX/funding/premium alpha components.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker cache",
+        "BTCUSDT open interest where available",
+        "derived Alpha101-style rolling primitives"
+      ],
+      "feature_examples": [
+        "a_ret_z_12 <= train q0.45 with early-session gate",
+        "a_ret_vol_corr_288 low/high extremes",
+        "a_absret_vol_rank low activity filter",
+        "vp_ret_rank_72 / vp_imb_z_144 / oi_minus_px_z_288 low-corr axes"
+      ],
+      "feature_names": [
+        "a_ret_z_12",
+        "a_early_session",
+        "a_ret_vol_corr_288",
+        "a_absret_vol_rank",
+        "a_vwap_gap_z",
+        "a_clv_rank_288",
+        "vp_ret_rank_72",
+        "vp_imb_z_144",
+        "oi_minus_px_z_288",
+        "px_minus_oi_z_288"
+      ],
+      "usable_for": [
+        "RLLM state tokens",
+        "portfolio meta-selector diversification features",
+        "future low-correlation alpha searches"
+      ],
+      "known_failures": [
+        "Standalone low-correlation scans did not reach CAGR/strict_MDD >= 3 across train/test/eval/ytd.",
+        "Best standalone candidate has train ratio 0.48, test2024 2.48, eval2025 1.18, ytd2026 3.06."
+      ],
+      "evidence": "Low-corr scans found 128 candidate source features; best weak Alpha101 early-pullback long max corr to existing alpha components was 0.116 with positive 2024/2025/2026 but below ratio target.",
+      "source_artifacts": [
+        "training/search_low_corr_feature_alpha.py",
+        "docs/low-corr-alpha-search-summary-2026-07-12.md",
+        "results/low_corr_feature_alpha_scan_a101_single_2026-07-12.json",
+        "results/low_corr_feature_alpha_scan_a101_pair12_2026-07-12.json",
+        "results/low_corr_a101_tpsl_refine_fast_2026-07-12.json",
+        "results/alpha101_random_quantile_standalone_2026-07-09.json"
+      ],
+      "contamination_risk": "medium_high",
+      "leakage_notes": "Feature construction is causal/past-only by code inspection: rolling/zscore/rank/correlation use past windows; a_day_gap maps previous daily close via shift(1); thresholds are train quantiles; low-corr filter uses train rows only. Candidate ranking is diagnostic because OOS columns were inspected.",
+      "tier_rationale": "Alpha feature, not promoted alpha: the family is low-correlation and sometimes OOS-positive, but standalone risk-adjusted performance is below target.",
+      "next_action": "Use these tokens as gates/context for existing stronger sleeves; avoid standalone live execution until a predeclared rolling validation clears target ratio.",
+      "generation_recipe": {
+        "script": "training/search_low_corr_feature_alpha.py",
+        "protocol": "train-only low-correlation filter and train-only quantile thresholds; strict path MDD; full-window CAGR",
+        "notes": "Prioritize semantic tokens EARLY_PULLBACK_LOW_ACTIVITY, RET_VOL_DECORRELATION, ORDERFLOW_TOXICITY, OI_PRICE_DIVERGENCE."
+      }
     }
   ]
 }
