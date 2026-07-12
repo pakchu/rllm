@@ -1,0 +1,162 @@
+{
+  "as_of": "2026-07-12T23:49:25.674715+00:00",
+  "config": {
+    "train_jsonl": "data/rex_pullback_reclaim_q075_h144_ranker_train_2021_2023.jsonl",
+    "test_jsonl": "data/rex_pullback_reclaim_q075_h144_ranker_test_2024.jsonl",
+    "eval_jsonl": "data/rex_pullback_reclaim_q075_h144_ranker_eval_2025_2026h1.jsonl",
+    "market_csv": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "output": "results/rex_taker_rangepos_gate_strict_audit_2026-07-13.json",
+    "gates_json": "[{\"feature\":\"taker_imbalance\",\"op\":\"<=\",\"threshold\":-0.07073595391836504},{\"feature\":\"rex_2016_range_pos\",\"op\":\"<=\",\"threshold\":0.6865011402825759}]",
+    "leverage": 0.5,
+    "fee_rate": 0.0005,
+    "slippage_rate": 0.0001,
+    "hold_bars": 144
+  },
+  "fixed_gates": [
+    {
+      "feature": "taker_imbalance",
+      "op": "<=",
+      "threshold": -0.07073595391836504
+    },
+    {
+      "feature": "rex_2016_range_pos",
+      "op": "<=",
+      "threshold": 0.6865011402825759
+    }
+  ],
+  "protocol": {
+    "provenance": "gate selected on 2021-2023 train plus 2024 selection; 2025-2026 replay only",
+    "selection2024_is_not_oos_evidence": true,
+    "eval2025_and_holdout2026_not_used_by_this_replay": true,
+    "cagr": "full configured calendar window including idle time",
+    "strict_mdd": "worst-order favorable-to-adverse OHLC high-water path drawdown"
+  },
+  "results": {
+    "both": {
+      "train2021_2023": {
+        "return_pct": 60.96957331482056,
+        "cagr_pct": 17.209226362343834,
+        "strict_mdd_pct": 14.354768331847179,
+        "ratio": 1.1988508601816872,
+        "trades": 274,
+        "p_value": 0.02974861823632935
+      },
+      "selection2024": {
+        "return_pct": 12.906070720446895,
+        "cagr_pct": 12.877989740809316,
+        "strict_mdd_pct": 6.215362818884252,
+        "ratio": 2.071961061015116,
+        "trades": 65,
+        "p_value": 0.13514596897040043
+      },
+      "eval2025": {
+        "return_pct": 4.508642553946607,
+        "cagr_pct": 4.511799305632258,
+        "strict_mdd_pct": 2.632540694404417,
+        "ratio": 1.7138573831820678,
+        "trades": 31,
+        "p_value": 0.24659983896695414
+      },
+      "holdout2026": {
+        "return_pct": 6.981095469947363,
+        "cagr_pct": 17.604424743206803,
+        "strict_mdd_pct": 1.7355604309126305,
+        "ratio": 10.143366044563287,
+        "trades": 23,
+        "p_value": 0.02374530929677854
+      },
+      "eval2025_2026": {
+        "return_pct": 11.804490664983636,
+        "cagr_pct": 8.202046302270706,
+        "strict_mdd_pct": 2.632540694404417,
+        "ratio": 3.1156389413863654,
+        "trades": 54,
+        "p_value": 0.02096079408217788
+      }
+    },
+    "long": {
+      "train2021_2023": {
+        "return_pct": 24.883655852093824,
+        "cagr_pct": 7.693766879112585,
+        "strict_mdd_pct": 14.354768331847179,
+        "ratio": 0.5359729046997825,
+        "trades": 184,
+        "p_value": 0.2138692926848862
+      },
+      "selection2024": {
+        "return_pct": 12.708105767556077,
+        "cagr_pct": 12.680479233939646,
+        "strict_mdd_pct": 6.379801021037002,
+        "ratio": 1.9875979191398832,
+        "trades": 54,
+        "p_value": 0.13005165425372645
+      },
+      "eval2025": {
+        "return_pct": 1.2887996204782315,
+        "cagr_pct": 1.2896880279308798,
+        "strict_mdd_pct": 2.461964048009657,
+        "ratio": 0.5238451913924216,
+        "trades": 14,
+        "p_value": 0.46812296522579544
+      },
+      "holdout2026": {
+        "return_pct": -0.07985395010844387,
+        "cagr_pct": -0.19177841476893942,
+        "strict_mdd_pct": 1.2950316743507218,
+        "ratio": -0.14808781790228384,
+        "trades": 11,
+        "p_value": 0.9537563137423619
+      },
+      "eval2025_2026": {
+        "return_pct": 1.2079165129637026,
+        "cagr_pct": 0.851863508537809,
+        "strict_mdd_pct": 2.461964048009657,
+        "ratio": 0.3460097271633544,
+        "trades": 25,
+        "p_value": 0.5700648960532515
+      }
+    },
+    "short": {
+      "train2021_2023": {
+        "return_pct": 28.89562866854496,
+        "cagr_pct": 8.835664086215832,
+        "strict_mdd_pct": 10.585254578569403,
+        "ratio": 0.8347143680515969,
+        "trades": 90,
+        "p_value": 0.0383216138546183
+      },
+      "selection2024": {
+        "return_pct": 0.17564393575977277,
+        "cagr_pct": 0.1752836944003633,
+        "strict_mdd_pct": 3.013986283602299,
+        "ratio": 0.05815676579352751,
+        "trades": 11,
+        "p_value": 0.9229958025804137
+      },
+      "eval2025": {
+        "return_pct": 3.1788736222887692,
+        "cagr_pct": 3.1810852026840086,
+        "strict_mdd_pct": 2.6655501837815843,
+        "ratio": 1.1934066077762007,
+        "trades": 17,
+        "p_value": 0.3609336934332861
+      },
+      "holdout2026": {
+        "return_pct": 7.066592373203728,
+        "cagr_pct": 17.830398012630976,
+        "strict_mdd_pct": 1.7355604309126305,
+        "ratio": 10.273567946726583,
+        "trades": 12,
+        "p_value": 0.004241141189986308
+      },
+      "eval2025_2026": {
+        "return_pct": 10.4701040364392,
+        "cagr_pct": 7.28809814516771,
+        "strict_mdd_pct": 2.6655501837815843,
+        "ratio": 2.7341815545292687,
+        "trades": 29,
+        "p_value": 0.01912865832693411
+      }
+    }
+  }
+}
