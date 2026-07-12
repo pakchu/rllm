@@ -63,18 +63,30 @@ def _attach_delayed_metrics(
 ) -> pd.DataFrame:
     left = market.copy()
     left["date"] = pd.to_datetime(left["date"], utc=True, errors="raise").dt.tz_convert(None)
+    left = left.sort_values("date").reset_index(drop=True)
+    if left["date"].duplicated().any():
+        raise ValueError("market rows must have unique timestamps before row-based source delay")
+    intervals = left["date"].diff().dropna()
+    if len(intervals) and not intervals.eq(pd.Timedelta("5min")).all():
+        raise ValueError("market rows must form a complete 5-minute grid before row-based source delay")
     right = metrics.copy()
     right["create_time"] = pd.to_datetime(right["create_time"], utc=True, errors="raise").dt.tz_convert(None)
     value_columns = [column for column in right.columns if column not in {"create_time", "symbol"}]
     joined = pd.merge_asof(
-        left.sort_values("date"),
+        left,
         right[["create_time", *value_columns]].sort_values("create_time"),
         left_on="date",
         right_on="create_time",
         direction="backward",
         tolerance=pd.Timedelta(tolerance),
     )
-    joined[value_columns] = joined[value_columns].shift(max(1, int(delay_bars)))
+    delay = max(1, int(delay_bars))
+    joined[value_columns] = joined[value_columns].shift(delay)
+    joined["positioning_source_time"] = joined["create_time"].shift(delay)
+    valid_source = joined["positioning_source_time"].notna()
+    latest_allowed = joined["date"] - pd.Timedelta("5min") * delay
+    if (joined.loc[valid_source, "positioning_source_time"] > latest_allowed.loc[valid_source]).any():
+        raise RuntimeError("positioning source delay is shorter than the configured complete-bar delay")
     joined["positioning_available"] = joined[value_columns].notna().all(axis=1).astype(float)
     return joined.drop(columns=["create_time"])
 
@@ -180,12 +192,23 @@ def _simulate_no_stop(
         entry_equity = equity
         equity *= 1.0 - cost
         strict_mdd = max(strict_mdd, 1.0 - equity / peak)
-        adverse = (
-            future_low[entry_position] / entry_price - 1.0
-            if side > 0
-            else 1.0 - future_high[entry_position] / entry_price
+        # OHLC cannot prove whether the favorable or adverse extreme occurred
+        # first. Strict MDD therefore uses the conservative worst ordering over
+        # the complete holding path: favorable high-water first, adverse
+        # extreme second. This cannot understate path drawdown.
+        favorable_price = future_high[entry_position] if side > 0 else future_low[entry_position]
+        adverse_price = future_low[entry_position] if side > 0 else future_high[entry_position]
+        favorable_equity = max(
+            0.0,
+            equity * (1.0 + leverage * side * (favorable_price / entry_price - 1.0)),
         )
-        strict_mdd = max(strict_mdd, 1.0 - max(0.0, equity * (1.0 + leverage * adverse)) / peak)
+        intratrade_peak = max(peak, favorable_equity)
+        adverse_equity = max(
+            0.0,
+            equity * (1.0 + leverage * side * (adverse_price / entry_price - 1.0)),
+        )
+        strict_mdd = max(strict_mdd, 1.0 - adverse_equity / intratrade_peak)
+        peak = max(peak, intratrade_peak)
         raw_return = side * (open_price[exit_position] / entry_price - 1.0)
         equity *= max(0.0, 1.0 + leverage * raw_return)
         equity *= 1.0 - cost

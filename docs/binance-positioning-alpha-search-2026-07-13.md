@@ -49,7 +49,7 @@ The experiment tested only economically interpretable positioning differences:
 
 All transforms are past-only rolling z-scores or changes.  The 2023 Top-10
 manifest was frozen as SHA-256
-`5b33c65106a4a2326a330b909130eba5ccf88ca8d344ffb68c0dd3b8cc45e73b`
+`bce0e6f5e50d408f06f4a05c9248138e799c4b03ff96fbab407a60e3a48d6282`
 before future statistics were computed.
 
 ## Selected evidence
@@ -60,18 +60,21 @@ MDD.
 
 | Candidate | Period | Absolute return | CAGR | strict MDD | CAGR/MDD | Trades |
 |---|---|---:|---:|---:|---:|---:|
-| global account z30d, tail 10%, 18h hold | 2023 Select | +39.80% | 39.83% | 3.50% | 11.37 | 138 |
-| same | 2024 Test | +13.13% | 13.10% | 8.73% | 1.50 | 126 |
-| same | 2025 Eval | -14.50% | -14.51% | 16.38% | -0.89 | 127 |
-| same | 2026 YTD | +4.01% | 9.90% | 3.47% | 2.86 | 59 |
-| top-account z30d, tail 10%, 12h hold | 2023 Select | +30.44% | 30.47% | 5.55% | 5.49 | 209 |
-| same | 2024 Test | -2.96% | -2.96% | 14.73% | -0.20 | 193 |
-| same | 2025 Eval | -19.42% | -19.44% | 20.69% | -0.94 | 210 |
-| same | 2026 YTD | -3.62% | -8.49% | 9.41% | -0.90 | 89 |
+| global account z30d, tail 10%, 18h hold | 2023 Select | +39.80% | 39.83% | 6.77% | 5.88 | 138 |
+| same | 2024 Test | +13.13% | 13.10% | 9.82% | 1.33 | 126 |
+| same | 2025 Eval | -14.50% | -14.51% | 17.13% | -0.85 | 127 |
+| same | 2026 YTD | +4.01% | 9.90% | 4.48% | 2.21 | 59 |
+| top-account z30d, tail 10%, 18h hold | 2023 Select | +36.74% | 36.76% | 10.05% | 3.66 | 156 |
+| same | 2024 Test | +5.13% | 5.12% | 15.37% | 0.33 | 146 |
+| same | 2025 Eval | -20.58% | -20.60% | 22.04% | -0.93 | 153 |
+| same | 2026 YTD | +0.42% | 1.02% | 6.62% | 0.15 | 68 |
 
 ## Failure diagnosis
 
-The positioning relation was exceptionally strong in 2020-2023 but changed
+The reported MDD was recomputed after fixing an audit finding: strict MDD now
+uses the conservative worst ordering of the favorable and adverse OHLC extremes
+over each complete holding path.  The positioning relation was exceptionally
+strong in 2020-2023 but changed
 afterward.  A pre-registered follow-up interaction that required positioning
 and 30-day price trend to agree reduced the 2025 loss, but still produced only
 weak ratios (best selected family: 2024 `0.13`, 2025 `0.53`, 2026 `0.74`).
