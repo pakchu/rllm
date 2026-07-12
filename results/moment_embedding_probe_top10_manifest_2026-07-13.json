@@ -1,0 +1,362 @@
+{
+  "created_at": "2026-07-12T18:40:15.108844+00:00",
+  "git_head_before_experiment_commit": "9915d58aa736011dd62b853d1637049dd8a386e1",
+  "selection_window": [
+    "2023-01-01",
+    "2024-01-01"
+  ],
+  "later_metrics_included": false,
+  "model": {
+    "id": "AutonLab/MOMENT-1-small",
+    "revision": "411e288267f82cce86296dbe4d6c8bc533cc162f",
+    "loaded_commit_hash": null,
+    "source_urls": {
+      "huggingface": "https://huggingface.co/AutonLab/MOMENT-1-small",
+      "code": "https://github.com/moment-timeseries-foundation-model/moment",
+      "paper": "https://arxiv.org/abs/2402.03885"
+    },
+    "loader": "MOMENTPipeline.from_pretrained(model_kwargs={'task_name':'embedding'}); init(); cuda(); eval()",
+    "momentfm_version": "0.1.5"
+  },
+  "input": {
+    "frequency": "1h completed candles",
+    "context_hours": 512,
+    "embedding_variates": [
+      "log_close",
+      "log_quote_volume",
+      "taker_imbalance",
+      "hourly_range",
+      "funding_rate",
+      "premium_index",
+      "dxy_zscore",
+      "kimchi_premium_zscore",
+      "usdkrw_zscore"
+    ],
+    "raw_summary_dim": 9216,
+    "valid_anchor_count": 9278,
+    "summary_tokens": [
+      "per_channel_mean_over_patches_flattened_in_variate_order",
+      "per_channel_final_patch_flattened_in_variate_order"
+    ],
+    "embedding_shape_expected": "B,C,P,D from MOMENTPipeline.embed(reduction='none')",
+    "causal_context_rule": "for each completed-hour anchor end, use values[:, end-context:end] only"
+  },
+  "representation": {
+    "pca16": {
+      "components": 16,
+      "fit_samples": 4292,
+      "explained_variance_ratio_sum": 0.4376824794998069,
+      "components_sha256": "93a481e25363a7cd6c517339b0f28a99b48710783fecc3d14113d604110cdf7e"
+    },
+    "pca32": {
+      "components": 32,
+      "fit_samples": 4292,
+      "explained_variance_ratio_sum": 0.5520400102920383,
+      "components_sha256": "3339f8ce57784a24cdf9d0c857f53411bd2cc0b5b756c30a05e9f39a19748b11"
+    },
+    "pca64": {
+      "components": 64,
+      "fit_samples": 4292,
+      "explained_variance_ratio_sum": 0.6651107566708543,
+      "components_sha256": "7930cc99d1b2516bf359df70ba51bb9f0cebcbc0306d697f88ec4ede405427c5"
+    }
+  },
+  "target": {
+    "name": "three_class_next_48h_return_tail",
+    "fit_quantiles": [
+      0.3,
+      0.7
+    ],
+    "fit_thresholds": [
+      -0.016633090372410345,
+      0.02192578379679879
+    ]
+  },
+  "strict_protocol": {
+    "fit_window": "fit2020_2022 only for PCA and probe fitting",
+    "selection_window": "holdout2023 only; positive return and >=8 trades required",
+    "future_diagnostics_before_manifest": false,
+    "future_metric_keys_allowed_in_manifest": false,
+    "dedupe": "executed-path signal_hash on holdout2023 actual long/short masks",
+    "promotion": "existing top10_promotions over frozen Top-10 after future metrics are computed"
+  },
+  "selection_policy": "frozen MOMENT-1-small embeddings; PCA fit on 2020-2022 only; fixed ERM/V-REx/Group-DRO probes; shifted rolling percentiles; 2023 executed-path Top-10 freeze before 2024+ metrics",
+  "top10": [
+    {
+      "stream_id": "moment_pca16_linear_groupdro",
+      "representation": "pca16",
+      "architecture": "linear",
+      "objective": "groupdro",
+      "vrex_penalty": 0.0,
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.9,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 66.64101596842748,
+        "cagr_pct": 66.69931304833827,
+        "strict_mdd_pct": 3.2483412381662524,
+        "ratio": 20.533345531761693,
+        "trades": 64,
+        "longs": 64,
+        "shorts": 0,
+        "win_rate": 0.703125,
+        "long_win_rate": 0.703125,
+        "short_win_rate": 0,
+        "sharpe_like": 3.9122423338713888
+      },
+      "signal_hash": "0e7fa043e0d7fe4e"
+    },
+    {
+      "stream_id": "moment_pca16_linear_vrex10",
+      "representation": "pca16",
+      "architecture": "linear",
+      "objective": "vrex",
+      "vrex_penalty": 10.0,
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.9,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 66.47317985706866,
+        "cagr_pct": 66.53130328332493,
+        "strict_mdd_pct": 3.248341238166297,
+        "ratio": 20.481623821295987,
+        "trades": 64,
+        "longs": 64,
+        "shorts": 0,
+        "win_rate": 0.703125,
+        "long_win_rate": 0.703125,
+        "short_win_rate": 0,
+        "sharpe_like": 3.90152932183173
+      },
+      "signal_hash": "7feca292dc0ebd82"
+    },
+    {
+      "stream_id": "moment_pca16_linear_vrex1",
+      "representation": "pca16",
+      "architecture": "linear",
+      "objective": "vrex",
+      "vrex_penalty": 1.0,
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.9,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 57.24759507275125,
+        "cagr_pct": 57.29635492314953,
+        "strict_mdd_pct": 4.89012097393553,
+        "ratio": 11.716756135183683,
+        "trades": 59,
+        "longs": 59,
+        "shorts": 0,
+        "win_rate": 0.6949152542372882,
+        "long_win_rate": 0.6949152542372882,
+        "short_win_rate": 0,
+        "sharpe_like": 3.5354570409621933
+      },
+      "signal_hash": "2f161080e9804ee6"
+    },
+    {
+      "stream_id": "moment_pca16_linear_groupdro",
+      "representation": "pca16",
+      "architecture": "linear",
+      "objective": "groupdro",
+      "vrex_penalty": 0.0,
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.7,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 59.6968854764407,
+        "cagr_pct": 59.748095938007694,
+        "strict_mdd_pct": 5.108296826138947,
+        "ratio": 11.696285077303871,
+        "trades": 106,
+        "longs": 106,
+        "shorts": 0,
+        "win_rate": 0.5566037735849056,
+        "long_win_rate": 0.5566037735849056,
+        "short_win_rate": 0,
+        "sharpe_like": 2.9411059599558222
+      },
+      "signal_hash": "fbf717d7b473f6e7"
+    },
+    {
+      "stream_id": "moment_pca32_linear_erm",
+      "representation": "pca32",
+      "architecture": "linear",
+      "objective": "erm",
+      "vrex_penalty": 0.0,
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.8,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 57.08631062332539,
+        "cagr_pct": 57.134910015784854,
+        "strict_mdd_pct": 4.990924305441602,
+        "ratio": 11.447761280108113,
+        "trades": 85,
+        "longs": 85,
+        "shorts": 0,
+        "win_rate": 0.6235294117647059,
+        "long_win_rate": 0.6235294117647059,
+        "short_win_rate": 0,
+        "sharpe_like": 3.0764377420021956
+      },
+      "signal_hash": "f9aa5d154762b8ab"
+    },
+    {
+      "stream_id": "moment_pca16_linear_erm",
+      "representation": "pca16",
+      "architecture": "linear",
+      "objective": "erm",
+      "vrex_penalty": 0.0,
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.9,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 48.51556638845309,
+        "cagr_pct": 48.555805274301456,
+        "strict_mdd_pct": 4.890120973935552,
+        "ratio": 9.929366887466571,
+        "trades": 58,
+        "longs": 58,
+        "shorts": 0,
+        "win_rate": 0.6724137931034483,
+        "long_win_rate": 0.6724137931034483,
+        "short_win_rate": 0,
+        "sharpe_like": 3.1983647408967792
+      },
+      "signal_hash": "ec49effeac154aad"
+    },
+    {
+      "stream_id": "moment_pca16_linear_groupdro",
+      "representation": "pca16",
+      "architecture": "linear",
+      "objective": "groupdro",
+      "vrex_penalty": 0.0,
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.9,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 48.60079741863632,
+        "cagr_pct": 48.64111780702347,
+        "strict_mdd_pct": 4.97080007386047,
+        "ratio": 9.785369977523022,
+        "trades": 57,
+        "longs": 57,
+        "shorts": 0,
+        "win_rate": 0.6491228070175439,
+        "long_win_rate": 0.6491228070175439,
+        "short_win_rate": 0,
+        "sharpe_like": 3.0822721087827234
+      },
+      "signal_hash": "e4c91be8c938b735"
+    },
+    {
+      "stream_id": "moment_pca32_mlp_vrex10",
+      "representation": "pca32",
+      "architecture": "mlp",
+      "objective": "vrex",
+      "vrex_penalty": 10.0,
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.9,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 53.549365696316165,
+        "cagr_pct": 53.594475020946696,
+        "strict_mdd_pct": 5.692419146811966,
+        "ratio": 9.41506126634442,
+        "trades": 81,
+        "longs": 81,
+        "shorts": 0,
+        "win_rate": 0.6049382716049383,
+        "long_win_rate": 0.6049382716049383,
+        "short_win_rate": 0,
+        "sharpe_like": 2.939364605710927
+      },
+      "signal_hash": "8b7562f2ded9a981"
+    },
+    {
+      "stream_id": "moment_pca16_linear_vrex10",
+      "representation": "pca16",
+      "architecture": "linear",
+      "objective": "vrex",
+      "vrex_penalty": 10.0,
+      "rolling_score_window_anchors": 720,
+      "score_quantile": 0.9,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 45.89262804915653,
+        "cagr_pct": 45.930375228580544,
+        "strict_mdd_pct": 4.97080007386046,
+        "ratio": 9.240036723687773,
+        "trades": 57,
+        "longs": 57,
+        "shorts": 0,
+        "win_rate": 0.6491228070175439,
+        "long_win_rate": 0.6491228070175439,
+        "short_win_rate": 0,
+        "sharpe_like": 2.860647473558664
+      },
+      "signal_hash": "85bda25a75b58eef"
+    },
+    {
+      "stream_id": "moment_pca16_mlp_vrex1",
+      "representation": "pca16",
+      "architecture": "mlp",
+      "objective": "vrex",
+      "vrex_penalty": 1.0,
+      "rolling_score_window_anchors": 1460,
+      "score_quantile": 0.9,
+      "side_policy": "long",
+      "hold_bars": 576,
+      "anchor_stride_bars": 72,
+      "holdout2023": {
+        "return_pct": 34.69222774100895,
+        "cagr_pct": 34.71970611542328,
+        "strict_mdd_pct": 3.8174389514000984,
+        "ratio": 9.095025894962733,
+        "trades": 74,
+        "longs": 74,
+        "shorts": 0,
+        "win_rate": 0.581081081081081,
+        "long_win_rate": 0.581081081081081,
+        "short_win_rate": 0,
+        "sharpe_like": 2.313437187428516
+      },
+      "signal_hash": "7412bfa7f2d9af94"
+    }
+  ],
+  "trial_counts": {
+    "representations": 3,
+    "probe_specs": 8,
+    "score_streams": 24,
+    "rolling_windows": 2,
+    "score_quantiles": 4,
+    "side_policies": 3,
+    "total_policy_specs": 576,
+    "eligible_holdout_candidates": 338,
+    "distinct_top10": 10
+  },
+  "data_sha256": {
+    "market": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+    "funding": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7",
+    "premium": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
+  }
+}
