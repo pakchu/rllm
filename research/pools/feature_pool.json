@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T00:49:51.195082+00:00",
+  "updated_at": "2026-07-13T01:03:50.125452+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1971,18 +1971,22 @@
         "long-regime alpha entries",
         "RLLM setup-token features",
         "portfolio sleeve selectors",
-        "rule gate context"
+        "rule gate context",
+        "funding-squeeze independent gate research"
       ],
       "known_failures": [
         "Standalone train 2020-2023 ratio is only 1.60 with strict MDD 15.32%, so this is not independently live-grade.",
         "Threshold provenance is not fully clean unseen in this turn; keep contamination_risk medium until original scan provenance is re-audited."
       ],
-      "evidence": "As a fixed long candidate, the feature pair cleared ratio >3 on test 2024, eval 2025, ytd 2026, and combined 2024-2026H1, but failed target ratio on train 2020-2023.",
+      "evidence": "As a fixed long candidate, the feature pair cleared ratio >3 on test 2024, eval 2025, ytd 2026, and combined 2024-2026H1, but failed target ratio on train 2020-2023. Adding the pre-2024-selected central lr_impact_72 gate yields a frozen candidate with test/eval/2026/combined ratios 4.31/3.42/4.10/3.03.",
       "source_artifacts": [
         "training/portfolio_opt_new_alpha_pool.py",
         "results/new_alpha_pool_train_extended_2026-07-12.json",
         "results/long_minimal_funding_premium_exit_sweep_fast_2026-07-12.json",
-        "docs/alpha-search-long-minimal-funding-premium-2026-07-12.md"
+        "docs/alpha-search-long-minimal-funding-premium-2026-07-12.md",
+        "training/search_funding_premium_independent_gate_alpha.py",
+        "results/funding_premium_independent_gate_alpha_scan_2026-07-13.json",
+        "docs/funding-premium-lr-impact-independent-alpha-2026-07-13.md"
       ],
       "contamination_risk": "medium",
       "leakage_notes": "Causal construction depends on preprocessing/binance_aux_features.py backward-asof joins and preprocessing/market_features.py past-only returns/completed-HTF joins. Live code must reject stale/unavailable funding/premium rows rather than silently relying on default zeros or future estimate fields.",
@@ -2545,17 +2549,21 @@
       ],
       "usable_for": [
         "standalone bidirectional continuation",
-        "liquidity-recovery RLLM state token"
+        "liquidity-recovery RLLM state token",
+        "funding-squeeze independent gate research"
       ],
       "known_failures": [
         "The highest test-ratio variant collapsed in eval",
         "Qualifying variant remains below live-grade ratio 3 and 2026 ratio 5"
       ],
-      "evidence": "Supports a standalone alpha-pool candidate with test/eval ratios 2.77/2.83 and 107/114 balanced-direction trades.",
+      "evidence": "Supports a standalone alpha-pool candidate with test/eval ratios 2.77/2.83 and 107/114 balanced-direction trades. The central lr_impact_72 funding gate also supports a frozen non-REX alpha with test/eval/2026/combined ratios 4.31/3.42/4.10/3.03.",
       "source_artifacts": [
         "training/search_liquidity_recovery_bidirectional_alpha.py",
         "results/liquidity_recovery_bidirectional_alpha_scan_2026-07-12.json",
-        "docs/liquidity-recovery-bidirectional-alpha-2026-07-12.md"
+        "docs/liquidity-recovery-bidirectional-alpha-2026-07-12.md",
+        "training/search_funding_premium_independent_gate_alpha.py",
+        "results/funding_premium_independent_gate_alpha_scan_2026-07-13.json",
+        "docs/funding-premium-lr-impact-independent-alpha-2026-07-13.md"
       ],
       "contamination_risk": "medium-high",
       "leakage_notes": "Only trailing/current completed bars; train quantiles; test-only selection; eval/2026 attached after selection.",

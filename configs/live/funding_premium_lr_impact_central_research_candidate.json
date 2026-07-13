@@ -1,0 +1,88 @@
+{
+  "name": "funding_premium_lr_impact_central_research_candidate",
+  "status": "research_alpha_candidate_not_live",
+  "as_of": "2026-07-13",
+  "side": "LONG",
+  "feature_dependencies": [
+    "funding_premium_trend_squeeze_long_20260712",
+    "liquidity_recovery_efficiency_features_20260712"
+  ],
+  "entry_logic": {
+    "funding_component": {
+      "funding_rate_lte": -1.67e-05,
+      "trend_96_gte": 0.007485218212390219,
+      "lr_impact_72_between": [
+        -0.20030301257467914,
+        0.24664964484849766
+      ]
+    },
+    "premium_component": {
+      "premium_index_change_lte": -0.00023471,
+      "htf_1d_return_4_gte": 0.0940403008961932
+    },
+    "combine": "funding_component OR premium_component"
+  },
+  "execution": {
+    "signal_bar": "completed 5m bar",
+    "entry": "next 5m open",
+    "exit": "fixed 576 bars",
+    "stride_bars": 12,
+    "max_concurrent_positions": 1,
+    "backtest_leverage": 0.5,
+    "fee_rate_each_side": 0.0005,
+    "slippage_rate_each_side": 0.0001
+  },
+  "selection": {
+    "feature_threshold_fit": "2020-01-01..2023-01-01",
+    "variant_selection": "2023 plus H1/H2 stability",
+    "manifest_rank": 8,
+    "manifest_sha256": "65cf6eabc836bf2d9ca8dcd2b1b5ef88114c98c2b05935aa3ae2045340ecdfd5",
+    "post_2023_rows_physically_excluded_before_manifest": true
+  },
+  "stats": {
+    "test_2024": {
+      "absolute_return_pct": 24.4845,
+      "cagr_pct": 24.4287,
+      "strict_mdd_pct": 5.666,
+      "cagr_to_strict_mdd": 4.3115,
+      "trades": 26,
+      "p_value_mean_return_approx": 0.0027
+    },
+    "eval_2025": {
+      "absolute_return_pct": 22.4423,
+      "cagr_pct": 22.4593,
+      "strict_mdd_pct": 6.561,
+      "cagr_to_strict_mdd": 3.4232,
+      "trades": 21,
+      "p_value_mean_return_approx": 0.0061
+    },
+    "holdout_2026_to_jun02": {
+      "absolute_return_pct": 10.8011,
+      "cagr_pct": 27.9493,
+      "strict_mdd_pct": 6.8154,
+      "cagr_to_strict_mdd": 4.1009,
+      "trades": 22,
+      "p_value_mean_return_approx": 0.0482
+    },
+    "combined_2024_2026_to_jun02": {
+      "absolute_return_pct": 68.885,
+      "cagr_pct": 24.2059,
+      "strict_mdd_pct": 7.9863,
+      "cagr_to_strict_mdd": 3.0309,
+      "trades": 69,
+      "p_value_mean_return_approx": 5.9e-06
+    }
+  },
+  "validation_status": "research_candidate_requires_fresh_shadow_oos",
+  "risk_notes": [
+    "The independent-gate manifest was cleanly frozen pre-2024, but the broader base-alpha research previously inspected later periods.",
+    "Rank 8 was identified as the only generalizer after replaying the frozen Top-10; treat later-window evidence as a 10-candidate family test, not a single pristine preregistration.",
+    "lr_impact_72 is a distinct liquidity-impact feature but remains correlated with trend_96 because both contain price displacement.",
+    "Do not retune thresholds on 2024-2026. Require live feature parity and new forward evidence before capital use."
+  ],
+  "artifacts": [
+    "results/funding_premium_independent_gate_top10_manifest_2026-07-13.json",
+    "results/funding_premium_independent_gate_alpha_scan_2026-07-13.json",
+    "docs/funding-premium-lr-impact-independent-alpha-2026-07-13.md"
+  ]
+}

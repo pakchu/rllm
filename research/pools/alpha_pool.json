@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T00:25:55.111634+00:00",
+  "updated_at": "2026-07-13T01:03:50.125452+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side for current scans; older alt_oi_taker artifact used 5bp/side",
@@ -3328,6 +3328,113 @@
           "p_value_approx": 0.002
         },
         "artifact": "results/rex_pre2025_taker_range_exit_overlay_scan_2026-07-13.json"
+      }
+    },
+    {
+      "id": "funding_premium_lr_impact_central_long_20260713",
+      "name": "Funding/premium squeeze with central liquidity-impact gate",
+      "status": "candidate",
+      "family": "long_derivatives_liquidity_impact",
+      "scope": "btc_derivatives_orderflow",
+      "side": "long",
+      "description": "Fixed non-REX funding/premium squeeze long alpha with a train-fit central lr_impact_72 gate applied only to the funding component.",
+      "entry_logic": "(funding_rate<=-0.0000167 AND trend_96>=0.007485218212390219 AND -0.20030301257467914<=lr_impact_72<=0.24664964484849766) OR (premium_index_change<=-0.00023471 AND htf_1d_return_4>=0.0940403008961932).",
+      "exit_logic": "Enter next 5m open; fixed 576 bars; stride 12; one non-overlapping position; no TP/SL.",
+      "dependencies": [
+        "funding_premium_trend_squeeze_long_20260712",
+        "liquidity_recovery_efficiency_features_20260712",
+        "btc_funding_premium_basis"
+      ],
+      "stats": {
+        "fit_2020_2022": {
+          "return_pct": 55.6247,
+          "cagr_pct": 15.8808,
+          "strict_mdd_pct": 20.0644,
+          "cagr_to_strict_mdd": 0.7915,
+          "trades": 144,
+          "p_value_mean_ret_approx": 0.1204
+        },
+        "selection_2023": {
+          "return_pct": 24.2969,
+          "cagr_pct": 24.3154,
+          "strict_mdd_pct": 10.2033,
+          "cagr_to_strict_mdd": 2.3831,
+          "trades": 25,
+          "p_value_mean_ret_approx": 0.0391
+        },
+        "test_2024": {
+          "return_pct": 24.4845,
+          "cagr_pct": 24.4287,
+          "strict_mdd_pct": 5.666,
+          "cagr_to_strict_mdd": 4.3115,
+          "trades": 26,
+          "p_value_mean_ret_approx": 0.0027
+        },
+        "eval_2025": {
+          "return_pct": 22.4423,
+          "cagr_pct": 22.4593,
+          "strict_mdd_pct": 6.561,
+          "cagr_to_strict_mdd": 3.4232,
+          "trades": 21,
+          "p_value_mean_ret_approx": 0.0061
+        },
+        "holdout_2026_to_jun02": {
+          "return_pct": 10.8011,
+          "cagr_pct": 27.9493,
+          "strict_mdd_pct": 6.8154,
+          "cagr_to_strict_mdd": 4.1009,
+          "trades": 22,
+          "p_value_mean_ret_approx": 0.0482
+        },
+        "oos_2024_2026_to_jun02": {
+          "return_pct": 68.885,
+          "cagr_pct": 24.2059,
+          "strict_mdd_pct": 7.9863,
+          "cagr_to_strict_mdd": 3.0309,
+          "trades": 69,
+          "p_value_mean_ret_approx": 5.9e-06
+        }
+      },
+      "evidence": "Pre-2024 frozen Top-10 manifest rank 8. Corrected strict-MDD replay clears ratio 3 in test2024 (4.31), eval2025 (3.42), 2026 holdout (4.10) and combined (3.03); 69 combined trades, approximate p=5.9e-6. Seven of ten OOS quarters are positive, two have no trades, one is -0.32%; combined approximate p is about 5.9e-5 after conservative Top-10 Bonferroni correction.",
+      "source_artifacts": [
+        "training/search_funding_premium_independent_gate_alpha.py",
+        "results/funding_premium_independent_gate_top10_manifest_2026-07-13.json",
+        "results/funding_premium_independent_gate_alpha_scan_2026-07-13.json",
+        "configs/live/funding_premium_lr_impact_central_research_candidate.json",
+        "docs/funding-premium-lr-impact-independent-alpha-2026-07-13.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Gate quantiles fit on 2020-2022; variants selected only on 2023/H1/H2 while 2024+ market rows were physically absent. Rank 8 was identified as the sole generalizer after replaying the frozen Top-10, so later evidence carries family multiplicity 10; combined approximate p remains about 5.9e-5 after Bonferroni. Broader base-alpha research had previously inspected later periods, so require fresh forward proof.",
+      "next_action": "Freeze every threshold. Shadow with live funding/premium availability parity and completed-bar lr_impact_72; do not tune on 2024-2026.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "funding_premium_trend_squeeze_long_20260712",
+          "liquidity_recovery_efficiency_features_20260712"
+        ],
+        "entry_logic": "fixed conditions listed above",
+        "exit_logic": "next-open fixed 576 bars; stride 12; no TP/SL",
+        "side": "long",
+        "script_or_config": "configs/live/funding_premium_lr_impact_central_research_candidate.json",
+        "reproduce_command": "PYTHONPATH=. .venv/bin/python training/search_funding_premium_independent_gate_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/funding_premium_independent_gate_top10_manifest_2026-07-13.json --output results/funding_premium_independent_gate_alpha_scan_2026-07-13.json",
+        "evaluation_protocol": {
+          "fit": "2020-2022",
+          "selection": "2023/H1/H2",
+          "test": "2024",
+          "eval": "2025",
+          "holdout": "2026 to Jun02",
+          "cost": "6bp/side",
+          "leverage": "0.5x",
+          "mdd": "corrected strict high-water/adverse-extreme",
+          "manifest_rank": 8,
+          "manifest_sha256": "65cf6eabc836bf2d9ca8dcd2b1b5ef88114c98c2b05935aa3ae2045340ecdfd5"
+        },
+        "promotion_guardrails": [
+          "fresh shadow OOS required",
+          "live/offline aux availability parity required",
+          "no threshold changes from 2024-2026",
+          "strict MDD and split-contained exits required"
+        ],
+        "live_use_notes": "Research candidate only; not live-enabled."
       }
     }
   ]
