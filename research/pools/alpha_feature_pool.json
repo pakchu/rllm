@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T01:03:50.125452+00:00",
+  "updated_at": "2026-07-13T02:05:31.829950+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -128,7 +128,8 @@
       "scope": "btc_derivatives",
       "description": "BTCUSDT open interest returns and OI-vs-price z-score divergences.",
       "data_sources": [
-        "/tmp/btcusdt_open_interest_5m_2020_2026.csv"
+        "/tmp/btcusdt_open_interest_5m_2020_2026.csv",
+        "data/binance_um_metrics_BTCUSDT_5m_2020-09-01_2026-06-01.csv.gz"
       ],
       "feature_examples": [
         "oi_ret_z_72",
@@ -146,15 +147,19 @@
         "raw OI/taker standalone scans often fail train or eval",
         "high frequency OI rules can become 2025-only artifacts"
       ],
-      "evidence": "OI high/low sleeves are useful in portfolio; standalone OI/taker scans mostly weak or unstable.",
+      "evidence": "OI is usually weak standalone, but delayed oi_logchg288 outer-q30/q70 materially improves the fixed funding/premium base: frozen Top-10 rank 7 reaches combined 2024-2026 CAGR/MDD 3.10 with 61 trades. Keep as a contextual gate feature; automatic strategy promotion remains short by one 2025 trade.",
       "source_artifacts": [
         "training/evaluate_oi_llm_selector.py",
         "training/search_alt_oi_taker_alpha.py",
         "results/alt_oi_taker_alpha_search_2026-07-08.json",
-        "results/btc_only_quantile_standalone_2026-07-09.json"
+        "results/btc_only_quantile_standalone_2026-07-09.json",
+        "training/search_funding_premium_external_state_gate_alpha.py",
+        "results/funding_premium_external_state_gate_top10_manifest_2026-07-13.json",
+        "results/funding_premium_external_state_gate_alpha_scan_2026-07-13.json",
+        "docs/funding-premium-oi-change-outer-watchlist-2026-07-13.md"
       ],
       "contamination_risk": "medium",
-      "leakage_notes": "OI file begins 2020-09; quantiles must ignore unavailable/zero-filled periods for OI-specific thresholds.",
+      "leakage_notes": "Binance UM metrics begin 2020-09. OI-specific thresholds must ignore unavailable periods. The validated gate uses backward-asof metrics shifted by one complete 5m bar and checks oi_available; no same/future source row is allowed.",
       "next_action": "Keep OI as sleeve/selector feature; promote standalone only if train/test/eval all positive with adequate trade count.",
       "feature_names": [
         "oi_available",
@@ -171,7 +176,13 @@
         "oi_squeeze_long_ctx",
         "oi_squeeze_short_ctx",
         "oi_unwind_long_ctx",
-        "oi_unwind_short_ctx"
+        "oi_unwind_short_ctx",
+        "oi_z288",
+        "oi_logchg288",
+        "oi_z2016",
+        "oi_logchg2016",
+        "oi_z8640",
+        "oi_logchg8640"
       ],
       "generation_recipe": {
         "script": "training/search_btc_only_quantile_standalone.py",

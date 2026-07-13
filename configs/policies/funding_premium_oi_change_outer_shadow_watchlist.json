@@ -1,0 +1,102 @@
+{
+  "name": "funding_premium_oi_change_outer_shadow_watchlist",
+  "status": "shadow_watchlist_not_alpha_pool_not_live",
+  "as_of": "2026-07-13",
+  "side": "LONG",
+  "feature_dependencies": [
+    "funding_premium_trend_squeeze_long_20260712",
+    "btc_oi_features"
+  ],
+  "entry_logic": {
+    "base_component": {
+      "funding": {
+        "funding_available_gt": 0.5,
+        "funding_rate_lte": -1.67e-05,
+        "trend_96_gte": 0.007485218212390219
+      },
+      "premium": {
+        "premium_available_gt": 0.5,
+        "premium_index_change_lte": -0.00023471,
+        "htf_1d_return_4_gte": 0.0940403008961932
+      },
+      "combine": "funding OR premium"
+    },
+    "oi_gate": {
+      "oi_available_gt": 0.5,
+      "source_delay_bars": 1,
+      "feature": "log(sum_open_interest[t-1]) - log(sum_open_interest[t-289])",
+      "bars": 288,
+      "seconds": 86400,
+      "outer_range": {
+        "lte": -0.01575477998703718,
+        "or_gte": 0.02278394401073455
+      }
+    },
+    "combine": "base_component AND oi_gate"
+  },
+  "execution": {
+    "signal_bar": "completed 5m bar",
+    "entry": "next 5m open",
+    "exit": "fixed 576 bars",
+    "stride_bars": 12,
+    "max_concurrent_positions": 1,
+    "backtest_leverage": 0.5,
+    "fee_rate_each_side": 0.0005,
+    "slippage_rate_each_side": 0.0001
+  },
+  "selection": {
+    "feature_threshold_fit": "2021-04-15..2023-01-01",
+    "variant_selection": "2023 plus H1/H2 stability",
+    "manifest_rank": 7,
+    "manifest_sha256": "e3579c1a9b979f7dc55309f15a2a55298833bffc280f9d3716411bcf6197e74b",
+    "all_post_2023_market_and_aux_rows_physically_excluded_before_manifest": true
+  },
+  "stats": {
+    "test_2024": {
+      "absolute_return_pct": 21.0333,
+      "cagr_pct": 20.9859,
+      "strict_mdd_pct": 6.7845,
+      "cagr_to_strict_mdd": 3.0932,
+      "trades": 22,
+      "p_value_mean_return_approx": 0.018
+    },
+    "eval_2025": {
+      "absolute_return_pct": 17.202,
+      "cagr_pct": 17.2148,
+      "strict_mdd_pct": 6.561,
+      "cagr_to_strict_mdd": 2.6238,
+      "trades": 19,
+      "p_value_mean_return_approx": 0.0381
+    },
+    "holdout_2026_to_jun02": {
+      "absolute_return_pct": 11.873,
+      "cagr_pct": 30.9438,
+      "strict_mdd_pct": 6.156,
+      "cagr_to_strict_mdd": 5.0266,
+      "trades": 20,
+      "p_value_mean_return_approx": 0.0771
+    },
+    "combined_2024_2026_to_jun02": {
+      "absolute_return_pct": 58.6957,
+      "cagr_pct": 21.0495,
+      "strict_mdd_pct": 6.7845,
+      "cagr_to_strict_mdd": 3.1026,
+      "trades": 61,
+      "p_value_mean_return_approx": 0.0002576,
+      "top10_bonferroni_p_approx": 0.0025758
+    }
+  },
+  "validation_status": "watchlist_only_failed_automatic_alpha_pool_by_one_eval_trade",
+  "risk_notes": [
+    "The watchlist observation is frozen manifest rank 7, not an OOS-retuned threshold.",
+    "Eval 2025 has 19 trades versus the predeclared automatic-promotion minimum of 20; do not label this live-grade.",
+    "The broader base-alpha program has inspected 2024-2026, so fresh shadow forward evidence remains mandatory.",
+    "Offline Binance sum_open_interest timing and live DB OI semantics must be proven identical before enabling the gate."
+  ],
+  "artifacts": [
+    "results/funding_premium_external_state_gate_top10_manifest_2026-07-13.json",
+    "results/funding_premium_external_state_gate_alpha_scan_2026-07-13.json",
+    "results/funding_premium_external_state_gate_replay_verification_2026-07-13.json",
+    "docs/funding-premium-oi-change-outer-watchlist-2026-07-13.md"
+  ]
+}
