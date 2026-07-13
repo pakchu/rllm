@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T12:06:00+00:00",
+  "updated_at": "2026-07-13T21:31:49+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1149,6 +1149,45 @@
       "generation_recipe": {
         "script": "training/search_liquidation_scar_first_passage_alpha.py",
         "protocol": "physical pre-2024 cutoff; 48 fixed policies; one-bar-delayed OI; query-before-deposit; 50bp departure; one-touch consume; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "orderflow_trophic_static_tail_usage_20260713",
+      "name": "Static order-flow trophic succession tail policies",
+      "status": "rejected",
+      "family": "orderflow_participant_succession_static_usage",
+      "scope": "btc_perpetual_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family applying q70/q80/q90/q95 sponsor, crowd and absorption score tails to one-shot continuation or absorption-reversal entries with fixed 24/72-bar holds.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT quote volume, trade count and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_trophic_tail_onset",
+        "continuation_mapping",
+        "absorption_reversal_mapping",
+        "fixed_hold_24_72"
+      ],
+      "usable_for": [
+        "failure provenance only; broader continuous role scores remain weak beta"
+      ],
+      "known_failures": [
+        "Zero of 96 policies passed pre-2024 admission.",
+        "The top fixed-cost policy lost 9.33% in fit with ratio -0.16.",
+        "The effect decayed to approximately zero at 3bp/side in fit and became negative at 6bp/side.",
+        "Sparse q95 absorption-reversal variants with positive fit and 2023 had only 28 and 8 trades, respectively, and were statistically invalid."
+      ],
+      "evidence": "A physical pre-2024 replay, all four role tails, both economic mappings, two holds, cost decomposition and exact direction/order/ticket/placebo controls rejected static one-shot usage before OOS.",
+      "source_artifacts": [
+        "training/search_orderflow_trophic_succession_alpha.py",
+        "results/orderflow_trophic_succession_alpha_scan_2026-07-13.json",
+        "docs/orderflow-trophic-succession-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune the static role tails, mappings or fixed holds further. Only a structurally different, turnover-reducing campaign representation is allowed one frozen pre-2024 follow-up.",
+      "generation_recipe": {
+        "script": "training/search_orderflow_trophic_succession_alpha.py",
+        "protocol": "physical pre-2024 cutoff; six profiles x four tails x two mappings x two holds = 96; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]

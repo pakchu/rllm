@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T12:06:00+00:00",
+  "updated_at": "2026-07-13T21:31:49+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1911,6 +1911,49 @@
       "generation_recipe": {
         "script": "training/search_liquidation_scar_field_alpha.py",
         "protocol": "physical pre-2024 cutoff; one-bar-delayed OI; query-before-deposit sparse log-price field; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "orderflow_trophic_role_scores_20260713",
+      "name": "Order-flow trophic sponsor/crowd/absorption role scores",
+      "status": "weak",
+      "family": "orderflow_participant_succession",
+      "scope": "btc_perpetual_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Continuous causal scores for a completed large-ticket sponsor phase, a later small-ticket high-intensity crowd phase, and a final flow-without-price-progress absorption phase over non-overlapping 5-minute windows.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT quote volume, trade count and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "sponsor_role_score",
+        "crowd_role_score",
+        "absorption_role_score",
+        "sponsor_to_crowd_impact_decay"
+      ],
+      "usable_for": [
+        "weak continuous context in a genuinely different campaign-aggregation learner",
+        "participant-succession episode clustering with turnover controls"
+      ],
+      "known_failures": [
+        "No one of 96 static tail/onset/hold policies passed pre-2024 admission at 6bp/side.",
+        "The selected policy returned -9.33% with CAGR -3.72%, strict MDD 23.70% and ratio -0.16 in fit.",
+        "Its positive 2023 result was only +5.80% return, +5.80% CAGR, 9.97% strict MDD and ratio 0.58.",
+        "Fit regime failures in 2021H1 and 2022H2 show instability despite positive gross results at low costs."
+      ],
+      "evidence": "At zero cost the frozen top role sequence was positive in both fit (+10.33%) and 2023 (+13.50%), while exact direction, phase-order, ticket-role and sponsor-only controls were materially worse at standard cost. The ordering representation therefore carries weak gross information but not a standalone tradable edge.",
+      "source_artifacts": [
+        "training/search_orderflow_trophic_succession_alpha.py",
+        "results/orderflow_trophic_succession_alpha_scan_2026-07-13.json",
+        "docs/orderflow-trophic-succession-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "All phases are completed and non-overlapping, standardization is prior-only, thresholds are fit-only through 2022, entry is next open, physical rows stop before 2024, and OOS was not opened.",
+      "tier_rationale": "Role order and timing survive structural controls as a weak gross effect, but realistic costs and fit regime instability prohibit alpha-tier promotion.",
+      "next_action": "Freeze role definitions and q95 continuation usage for one predeclared campaign-aggregation test that clusters repeated same-direction episodes and reduces turnover; do not retune on 2024+.",
+      "generation_recipe": {
+        "script": "training/search_orderflow_trophic_succession_alpha.py",
+        "protocol": "physical pre-2024 cutoff; 96 fixed role-score policies; completed non-overlapping phases; prior-only z-scores; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
