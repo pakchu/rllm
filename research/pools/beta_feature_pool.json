@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T05:19:12.580478+00:00",
+  "updated_at": "2026-07-13T05:49:05.781662+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1640,6 +1640,53 @@
         "script": "training/search_path_signature_leadlag_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python -m training.search_path_signature_leadlag_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/path_signature_leadlag_top6_manifest_2026-07-13.json --output results/path_signature_leadlag_alpha_scan_2026-07-13.json --docs-output docs/path-signature-leadlag-alpha-search-2026-07-13.md",
         "protocol": "prior-standardized return and imbalance-change path; 24/72/144-bar level-2 area; fit-only quantiles; pre-2024-only rejection; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "online_rls_dynamic_impact_context_20260713",
+      "name": "Causal online-RLS taker-flow impact state",
+      "status": "weak",
+      "family": "dynamic_price_impact_rls",
+      "scope": "btc_orderflow_dynamic_impact",
+      "feature_tier": "beta_feature",
+      "description": "Causal pre-update recursive least-squares slope for completed-bar BTC return versus taker quote imbalance, paired with the current completed-bar residual standardized only by prior residual history.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m close, quote_asset_volume and taker_buy_quote"
+      ],
+      "feature_names": [
+        "rls_slope_{576,2016}",
+        "rls_prediction_{576,2016}",
+        "rls_residual_{576,2016}",
+        "rls_residual_z_{576,2016}"
+      ],
+      "usable_for": [
+        "weak dynamic market-impact context for compact LLM/RLLM state",
+        "fresh-forward nonlinear interaction research",
+        "not a standalone static residual-direction signal"
+      ],
+      "known_failures": [
+        "Zero of eight fixed slope-state and residual-direction policies passed fit plus 2023/H1/H2 admission.",
+        "Fast/high/fade fit returned +9.83% but 2023 returned -0.06% with only four trades and no H2 trade.",
+        "Fast/low continuation returned -40.27% in 2023 across 483 trades; fast/low fade returned -10.65% across 216 trades.",
+        "Slow/low continuation and fade returned -11.99% and -23.24% in 2023."
+      ],
+      "evidence": "The dynamic slope materially changed across eras and created distinct high/low impact states, but every sufficiently populated fixed mapping was economically negative after 6bp/side. An independent pre-2024 rerun reproduced manifest 2a6257da... and diagnostics 17eb703e... exactly; 2024-2026 remained unopened.",
+      "source_artifacts": [
+        "training/search_online_rls_price_impact_alpha.py",
+        "tests/test_search_online_rls_price_impact_alpha.py",
+        "results/online_rls_price_impact_top8_manifest_2026-07-13.json",
+        "results/online_rls_price_impact_alpha_scan_2026-07-13.json",
+        "results/online_rls_price_impact_preflight_verification_2026-07-13.json",
+        "docs/online-rls-price-impact-alpha-preflight-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "The chunked reader can buffer a cutoff-crossing chunk, but no row at or after 2024 enters the selection frame, feature construction or metrics. At completed bar t, prediction and slope use coefficients through t-1; the residual z denominator uses moments through t-1; updates occur afterward. Execution starts at t+1 open.",
+      "tier_rationale": "Weak beta preserves only the causal dynamic impact representation. The fixed high/low-slope continuation/fade usage failed preflight and is separately gamma-rejected.",
+      "next_action": "Do not tune these thresholds or mappings on 2024-2026. Reuse only as continuous context in a materially different predeclared learner on fresh-forward evidence.",
+      "generation_recipe": {
+        "script": "training/search_online_rls_price_impact_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_online_rls_price_impact_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --manifest-output results/online_rls_price_impact_top8_manifest_2026-07-13.json --output results/online_rls_price_impact_alpha_scan_2026-07-13.json --docs-output docs/online-rls-price-impact-alpha-preflight-2026-07-13.md",
+        "protocol": "pre-update RLS; half-lives 576/2016; prior residual scale; fit-only slope q20/q80; eight fixed policies; pre-2024-only; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]

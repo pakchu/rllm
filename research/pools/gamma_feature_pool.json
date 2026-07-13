@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T05:19:12.580478+00:00",
+  "updated_at": "2026-07-13T05:47:42.392746+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -671,6 +671,51 @@
         "script": "training/search_path_signature_leadlag_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python -m training.search_path_signature_leadlag_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/path_signature_leadlag_top6_manifest_2026-07-13.json --output results/path_signature_leadlag_alpha_scan_2026-07-13.json --docs-output docs/path-signature-leadlag-alpha-search-2026-07-13.md",
         "protocol": "six fixed policies; physical pre-2024 preflight; no OOS opened after zero admission; exact deterministic rerun"
+      }
+    },
+    {
+      "id": "online_rls_impact_static_state_usage_20260713",
+      "name": "Static online-RLS impact-state residual mapping",
+      "status": "rejected",
+      "family": "dynamic_price_impact_rls",
+      "scope": "btc_orderflow_dynamic_impact",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed eight-policy mapping of fast/slow pre-update RLS impact-slope q20/q80 states and fixed 1.5-sigma residual shocks to continuation or fade directions with fixed strides and holds.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m close and taker quote flow"
+      ],
+      "feature_names": [
+        "rls_slope q20/q80 state",
+        "rls_residual_z absolute 1.5 trigger",
+        "fixed continuation/fade mapping",
+        "fixed 24/72/144-bar holds"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous RLS state remains weak beta"
+      ],
+      "known_failures": [
+        "All eight original policies failed pre-2024 admission.",
+        "The strongest fit policy, fast/high/fade, had +9.83% absolute return but only four losing 2023 trades and zero H2 trades.",
+        "Fast/low continuation lost 40.27% in 2023 over 483 trades; its direction flip also lost 7.04%.",
+        "The only positive 2023 direction flip was slow/low/fade at +3.15%, but the original fit was -5.82% and the mapping lacked train/selection stability."
+      ],
+      "evidence": "The pre-2024-only selection frame admitted 0/8 policies. Exact feature and diagnostic hashes reproduced independently, and no OOS metric was calculated. Failure spans both continuation/fade directions and both RLS half-lives.",
+      "source_artifacts": [
+        "training/search_online_rls_price_impact_alpha.py",
+        "tests/test_search_online_rls_price_impact_alpha.py",
+        "results/online_rls_price_impact_top8_manifest_2026-07-13.json",
+        "results/online_rls_price_impact_alpha_scan_2026-07-13.json",
+        "results/online_rls_price_impact_preflight_verification_2026-07-13.json",
+        "docs/online-rls-price-impact-alpha-preflight-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "Only fit 2020-06..2022 and selection 2023/H1/H2 rows entered features or metrics; the chunked reader may buffer its cutoff-crossing chunk. Current-bar target cannot update the emitted slope or its own residual scale. Trades are next-open and strict MDD includes intratrade OHLC adversity.",
+      "tier_rationale": "Gamma applies only to the exact q20/q80 slope states, 1.5-z residual trigger, fixed directions, strides and holds. It does not reject the continuous dynamic impact state in a materially different model.",
+      "next_action": "Do not retry or grid-search this static family on 2024-2026. A revisit must change the mechanism and use fresh forward data.",
+      "generation_recipe": {
+        "script": "training/search_online_rls_price_impact_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_online_rls_price_impact_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --manifest-output results/online_rls_price_impact_top8_manifest_2026-07-13.json --output results/online_rls_price_impact_alpha_scan_2026-07-13.json --docs-output docs/online-rls-price-impact-alpha-preflight-2026-07-13.md",
+        "protocol": "eight fixed policies; pre-2024-only selection frame; zero admission; no OOS metric calculated; exact deterministic rerun"
       }
     }
   ]
