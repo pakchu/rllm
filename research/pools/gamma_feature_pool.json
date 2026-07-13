@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T11:00:00+00:00",
+  "updated_at": "2026-07-13T11:05:00+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -838,6 +838,47 @@
       "generation_recipe": {
         "script": "training/search_funding_settlement_curl_alpha.py",
         "protocol": "physical cutoff before 2024; 144 fixed candidates; delayed OI; completed premium; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "inventory_conservation_q95_carry_fade_usage_20260713",
+      "name": "Static q95 inventory-residual carry-fade usage",
+      "status": "rejected",
+      "family": "inventory_accounting_residual_static_tail",
+      "scope": "btc_derivatives_inventory_ownership",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected mapping: 24h positive inventory-conservation residual above fit q95, absolute carry z at least one, fade carry sign and hold 48h.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m OHLCV",
+        "one-bar-delayed Binance UM open interest",
+        "Binance funding and completed premium index"
+      ],
+      "feature_names": [
+        "resid_z288 >= fit_q95",
+        "abs(carry_z) >= 1",
+        "fade sign(carry_z)",
+        "576-bar fixed hold"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous residual/carry fields remain weak beta"
+      ],
+      "known_failures": [
+        "Combined frozen OOS was -11.72% absolute, CAGR -5.03%, strict MDD 29.61%, ratio -0.17 over 134 trades.",
+        "The policy reversed from 2023 ratio 3.86 to 2025 ratio -0.52 and 2026 ratio -1.18.",
+        "10bp/side stress returned -16.33%."
+      ],
+      "evidence": "Manifest-frozen coefficients, thresholds and signals passed prefix verification before untouched 2024-2026 replay, then failed the target in every final OOS aggregate.",
+      "source_artifacts": [
+        "training/search_inventory_conservation_residual_alpha.py",
+        "results/inventory_conservation_residual_frozen_manifest_2026-07-13.json",
+        "results/inventory_conservation_residual_alpha_scan_2026-07-13.json",
+        "results/inventory_conservation_residual_replay_verification_2026-07-13.json",
+        "docs/inventory-conservation-residual-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Never retune this exact q95/carry/hold mapping on opened OOS. A retry requires new ownership information and a new untouched validation window.",
+      "generation_recipe": {
+        "script": "training/search_inventory_conservation_residual_alpha.py",
+        "protocol": "physical pre-2024 cutoff; frozen manifest and prefix hashes; untouched 2024/2025/2026 replay; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]

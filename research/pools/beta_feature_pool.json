@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T10:31:00+00:00",
+  "updated_at": "2026-07-13T11:05:00+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1783,6 +1783,48 @@
         "script": "training/search_hawkes_liquidation_cascade_alpha.py",
         "command": "PYTHONPATH=. python -m training.search_hawkes_liquidation_cascade_alpha",
         "protocol": "physical pre-2024 fit/selection; 144 fixed policies; frozen hash manifest; 2024/2025/2026 replay; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "inventory_conservation_residual_state_20260713",
+      "name": "Leveraged-inventory conservation residual and carry ownership state",
+      "status": "weak",
+      "family": "inventory_accounting_residual",
+      "scope": "btc_derivatives_inventory_ownership",
+      "feature_tier": "beta_feature",
+      "description": "Positive residual of delayed log-OI change after a pre-2023 linear conservation model conditions on completed price movement, funding and premium, paired with funding/premium carry sign as an ownership proxy.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m OHLCV",
+        "one-bar-delayed Binance UM open interest",
+        "Binance funding history",
+        "completed Binance premium-index closes"
+      ],
+      "feature_names": [
+        "resid_z48",
+        "resid_z144",
+        "resid_z288",
+        "carry_z"
+      ],
+      "usable_for": [
+        "weak continuous inventory-state token for a materially different predeclared learner",
+        "regime diagnostics that do not reuse the rejected static mapping"
+      ],
+      "known_failures": [
+        "The frozen q95 24h-residual/carry-fade/48h-hold mapping lost 11.72% combined OOS with ratio -0.17.",
+        "2025 returned -13.44% and 2026 through Jun 01 returned -9.30%.",
+        "Neither direction flip nor raw-OI control produced a positive combined OOS return."
+      ],
+      "evidence": "Residualization materially changed trade selection and beat carry-only combined OOS, while a physically frozen prefix-verified replay showed no persistent standalone edge.",
+      "source_artifacts": [
+        "training/search_inventory_conservation_residual_alpha.py",
+        "results/inventory_conservation_residual_frozen_manifest_2026-07-13.json",
+        "results/inventory_conservation_residual_alpha_scan_2026-07-13.json",
+        "docs/inventory-conservation-residual-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Use only as continuous weak context under a new mechanism and fresh forward validation; do not retune the inspected static policy.",
+      "generation_recipe": {
+        "script": "training/search_inventory_conservation_residual_alpha.py",
+        "protocol": "fit coefficients/thresholds through 2022; select 2023; freeze manifest; replay 2024-2026; delayed OI; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
