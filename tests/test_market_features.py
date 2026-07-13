@@ -1,4 +1,5 @@
 import unittest
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -29,6 +30,14 @@ def _market_df(n: int = 120) -> pd.DataFrame:
 
 
 class TestMarketFeatures(unittest.TestCase):
+    def test_zero_open_interest_does_not_emit_log_warning(self):
+        market = _market_df()
+        market.loc[10:20, "open_interest"] = 0.0
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error", message=".*divide by zero encountered in log.*")
+            frame = build_market_feature_frame(market, window_size=32)
+        self.assertTrue(np.isfinite(frame["oi_change"].to_numpy(dtype=np.float64)).all())
+
     def test_build_market_feature_frame_contains_expected_columns(self):
         frame = build_market_feature_frame(_market_df(), window_size=32)
         self.assertEqual(len(frame), 120)

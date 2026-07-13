@@ -464,7 +464,7 @@ def _add_portfolio_oi_features(enriched: pd.DataFrame, features: pd.DataFrame) -
     out["open_interest_available"] = available.to_numpy(dtype=float)
     oi_raw = pd.to_numeric(enriched["open_interest"], errors="coerce").where(available > 0.5)
     oi_s = pd.Series(oi_raw.astype(float).replace(0, np.nan), index=enriched.index)
-    px = pd.Series(enriched["close"].astype(float), index=enriched.index)
+    px = pd.Series(enriched["close"].astype(float), index=enriched.index).where(lambda x: x > 0.0)
     for w, name in [(6, "30m"), (12, "1h"), (24, "2h"), (48, "4h"), (96, "8h")]:
         oi_ret = np.log(oi_s / oi_s.shift(w)).replace([np.inf, -np.inf], np.nan)
         px_ret = np.log(px / px.shift(w)).replace([np.inf, -np.inf], np.nan)

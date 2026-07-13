@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import warnings
 from pathlib import Path
 
 import pandas as pd
@@ -9,6 +10,7 @@ import pandas as pd
 from preprocessing.external_features import (
     attach_external_features,
     attach_wave_trading_external_features,
+    calculate_dollar_index,
     calculate_forex_component_features,
     calculate_kimchi_premium,
 )
@@ -31,6 +33,20 @@ def _market() -> pd.DataFrame:
 
 
 class TestExternalFeatures(unittest.TestCase):
+    def test_zero_forex_close_does_not_emit_log_warning(self):
+        dates = pd.date_range("2024-01-01", periods=3, freq="1min")
+        forex = pd.DataFrame(
+            {
+                "date": dates,
+                "tic": ["EURUSD"] * 3,
+                "close": [1.0, 0.0, 1.1],
+            }
+        )
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error", message=".*divide by zero encountered in log.*")
+            out = calculate_dollar_index(forex)
+        self.assertTrue(out["dxy"].notna().all())
+
     def test_backward_asof_external_join_never_uses_future_rows(self):
         market = _market()
         external = pd.DataFrame(
