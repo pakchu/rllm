@@ -41,6 +41,19 @@ DAILY_MOMENTUM_THRESHOLD = 0.0940403008961932
 HOLD_BARS = 576
 STRIDE_BARS = 12
 
+QUARTER_WINDOWS = {
+    "2024Q1": ("2024-01-01", "2024-04-01"),
+    "2024Q2": ("2024-04-01", "2024-07-01"),
+    "2024Q3": ("2024-07-01", "2024-10-01"),
+    "2024Q4": ("2024-10-01", "2025-01-01"),
+    "2025Q1": ("2025-01-01", "2025-04-01"),
+    "2025Q2": ("2025-04-01", "2025-07-01"),
+    "2025Q3": ("2025-07-01", "2025-10-01"),
+    "2025Q4": ("2025-10-01", "2026-01-01"),
+    "2026Q1": ("2026-01-01", "2026-04-01"),
+    "2026Q2_to_Jun02": ("2026-04-01", "2026-06-02"),
+}
+
 GATE_FEATURES = (
     "vc_ret_0p25",
     "vc_duration_0p25",
@@ -196,6 +209,8 @@ def _simulate(
     cfg: IndependentGateConfig,
     window: str,
     extremes: tuple[np.ndarray, np.ndarray],
+    *,
+    windows: dict[str, tuple[str, str]] = WINDOWS,
 ) -> dict[str, Any]:
     return _simulate_no_stop(
         market,
@@ -209,7 +224,7 @@ def _simulate(
         fee_rate=cfg.fee_rate,
         slippage_rate=cfg.slippage_rate,
         extremes=extremes,
-        windows=WINDOWS,
+        windows=windows,
     )
 
 
@@ -333,6 +348,10 @@ def _replay(
     )
     base_active = funding_component | premium_component
     baseline = {window: _simulate(market, dates, base_active, cfg, window, extremes) for window in WINDOWS}
+    baseline_quarterly = {
+        window: _simulate(market, dates, base_active, cfg, window, extremes, windows=QUARTER_WINDOWS)
+        for window in QUARTER_WINDOWS
+    }
     reference_dates = _load_reference_dates(rex_reference_jsonl)
     selected: list[dict[str, Any]] = []
     for rank, frozen in enumerate(manifest["selected"], start=1):
@@ -340,6 +359,10 @@ def _replay(
         gate = _gate_mask(features[spec["feature"]].to_numpy(float), spec)
         active = _apply_gate(funding_component, premium_component, gate, spec["target_component"])
         stats = {window: _simulate(market, dates, active, cfg, window, extremes) for window in WINDOWS}
+        quarterly_stats = {
+            window: _simulate(market, dates, active, cfg, window, extremes, windows=QUARTER_WINDOWS)
+            for window in QUARTER_WINDOWS
+        }
         for window in ("fit_2020_2022", "select_2023", "select_2023_h1", "select_2023_h2"):
             if stats[window] != frozen["selection_stats"][window]:
                 raise RuntimeError(f"selection replay drift rank={rank} window={window}")
@@ -382,6 +405,17 @@ def _replay(
                 "manifest_rank": rank,
                 **frozen,
                 "stats": stats,
+                "quarterly_stats": quarterly_stats,
+                "quarterly_summary": {
+                    "positive_return_quarters": sum(
+                        value["return_pct"] > 0.0 for value in quarterly_stats.values()
+                    ),
+                    "flat_quarters": sum(value["trades"] == 0 for value in quarterly_stats.values()),
+                    "negative_return_quarters": sum(
+                        value["return_pct"] < 0.0 for value in quarterly_stats.values()
+                    ),
+                    "total_quarters": len(quarterly_stats),
+                },
                 "rex_activation_overlap": overlap,
                 "passes_alpha_pool": passes_alpha_pool,
                 "passes_live_grade": passes_live_grade,
@@ -394,6 +428,7 @@ def _replay(
         "manifest_sha256": manifest["sha256"],
         "protocol": manifest["protocol"],
         "baseline": baseline,
+        "baseline_quarterly": baseline_quarterly,
         "selected": selected,
         "alpha_pool_qualifiers": [row for row in selected if row["passes_alpha_pool"]],
         "live_grade": [row for row in selected if row["passes_live_grade"]],
