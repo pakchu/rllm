@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T21:59:17+09:00",
+  "updated_at": "2026-07-13T22:08:13+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2040,6 +2040,50 @@
       "generation_recipe": {
         "script": "training/search_orderflow_trophic_chirp_alpha.py",
         "protocol": "physical pre-2024 cutoff; frozen q95 parent; 48 max-gap/branch/hold policies; causal triplet intervals; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "nested_barrier_witness_state_20260713",
+      "name": "Nested rolling-extrema ancestry and witness-work state",
+      "status": "weak",
+      "family": "multiscale_barrier_origin_memory",
+      "scope": "btc_price_action_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Prior-only 12h/2d/1w rolling extrema retain their creation-bar indices; horizons that share an ancestor form a nested barrier, and current direction-specific taker work is compared with work at the longest-horizon witness.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "nested_high_ancestor_count",
+        "nested_low_ancestor_count",
+        "barrier_witness_age",
+        "current_to_witness_buy_work_ratio",
+        "current_to_witness_sell_work_ratio"
+      ],
+      "usable_for": [
+        "weak continuous price-topology and origin-state context in a fresh-forward learner",
+        "not another static touch width, work ratio or fixed-hold rule"
+      ],
+      "known_failures": [
+        "Zero of 16 static policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.43 despite +15.86% return.",
+        "Top fit lost 3.97% in 2022H2 and was directionally imbalanced at 67 longs versus 24 shorts.",
+        "The 6h variant exceeded ratio 3 in both 2023 halves but had fit ratio only 0.05 and three negative fit halves."
+      ],
+      "evidence": "Three-scale coalescence plus depleted-work continuation was positive in fit and both 2023 halves at 6bp/side; exact direction flip lost, while removing witness work or coalescence damaged fit materially. The representation is informative but not a standalone alpha.",
+      "source_artifacts": [
+        "training/search_nested_barrier_witness_alpha.py",
+        "results/nested_barrier_witness_alpha_scan_2026-07-13.json",
+        "docs/nested-barrier-witness-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Every rolling extreme excludes decision bar t; most-recent ties are causal; origin work is retrieved from a prior witness; current completed work enters next open; source rows physically stop before 2024; OOS was not opened.",
+      "tier_rationale": "Cross-scale ancestry and witness effort survive structural controls and costs, but fit regime instability and low risk efficiency prevent alpha promotion.",
+      "next_action": "Freeze static barrier policies. If reused, expose continuous ancestry, age and work-ratio tokens to a fresh-forward learner; do not tune widths, ratios or holds on pre-2024.",
+      "generation_recipe": {
+        "script": "training/search_nested_barrier_witness_alpha.py",
+        "protocol": "physical pre-2024 cutoff; prior-only 144/576/2016 extrema; 16 coalescence/width/mapping/hold policies; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T21:59:17+09:00",
+  "updated_at": "2026-07-13T22:08:13+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1305,6 +1305,45 @@
       "generation_recipe": {
         "script": "training/search_orderflow_trophic_chirp_alpha.py",
         "protocol": "six profiles x two max gaps x two cadence mappings x two holds = 48; frozen q95 parent; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "nested_barrier_witness_static_usage_20260713",
+      "name": "Static nested-barrier witness-work policies",
+      "status": "rejected",
+      "family": "multiscale_barrier_origin_memory_static_usage",
+      "scope": "btc_price_action_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family thresholding two/three-scale rolling-extrema ancestry at 10/20bp touches and fixed 0.75 depleted-continuation or 1.25 reinforced-fade work ratios with 6h/12h holds.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_nested_barrier_touch",
+        "static_depleted_work_continuation",
+        "static_reinforced_work_fade",
+        "fixed_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous ancestry and witness-work state remain weak beta"
+      ],
+      "known_failures": [
+        "No policy reached CAGR/MDD 3 in both fit and 2023.",
+        "Top 12h policy had fit ratio 0.43 and 2023 ratio 1.91.",
+        "Top 6h policy had 2023 ratio 3.42 but fit ratio 0.05 with three negative fit halves.",
+        "All static mappings showed regime or directional imbalance."
+      ],
+      "evidence": "A physical pre-2024 16-policy scan plus direction, witness, coalescence, timing and cost controls rejected fixed nested-barrier execution before OOS.",
+      "source_artifacts": [
+        "training/search_nested_barrier_witness_alpha.py",
+        "results/nested_barrier_witness_alpha_scan_2026-07-13.json",
+        "docs/nested-barrier-witness-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune touch widths, coalescence thresholds, work ratios or fixed holds on this sample.",
+      "generation_recipe": {
+        "script": "training/search_nested_barrier_witness_alpha.py",
+        "protocol": "2 coalescence x 2 widths x 2 mappings x 2 holds = 16; prior-only extrema; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
