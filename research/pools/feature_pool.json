@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T11:27:00+00:00",
+  "updated_at": "2026-07-13T11:31:00+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -3143,6 +3143,85 @@
       "generation_recipe": {
         "script": "training/search_funding_age_rollover_transfer_alpha.py",
         "protocol": "physical pre-2024 cutoff; 12 fixed candidates; exact funding clock; delayed OI; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "cme_offshore_debt_handoff_state_20260713",
+      "name": "CME–offshore leveraged-debt handoff state",
+      "status": "weak",
+      "family": "crossvenue_leverage_migration",
+      "scope": "cme_binance_debt_transfer",
+      "feature_tier": "beta_feature",
+      "description": "Product of conservatively released weekly CME leveraged-money net change and opposite Binance OI-growth/ownership-change state; preserves handoff sign and intensity.",
+      "data_sources": [
+        "CFTC CME Bitcoin TFF weekly report available at report date +8d",
+        "one-bar-delayed Binance UM OI/global-account ratio",
+        "BTCUSDT perpetual 5m taker flow"
+      ],
+      "feature_names": [
+        "cme_lev_money_change_z",
+        "offshore_oi_owner_transfer_z",
+        "cme_offshore_handoff"
+      ],
+      "usable_for": [
+        "weak cross-venue context for a fresh predeclared learner",
+        "low-frequency regime token, not standalone static alpha"
+      ],
+      "known_failures": [
+        "Strongest static policy had fit ratio 0.38 over only 22 trades.",
+        "Both 2022 half-years were negative.",
+        "A CFTC signal delayed four extra weeks nearly matched the 2023 result, weakening release-time specificity."
+      ],
+      "evidence": "The 2023 candidate was positive in both halves but failed fit robustness and sample-size requirements before OOS.",
+      "source_artifacts": [
+        "training/search_cme_offshore_debt_handoff_alpha.py",
+        "results/cme_offshore_debt_handoff_alpha_scan_2026-07-13.json",
+        "docs/cme-offshore-debt-handoff-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Use only as a continuous weekly context under fresh forward validation; require a longer event sample and timing-specific controls.",
+      "generation_recipe": {
+        "script": "training/search_cme_offshore_debt_handoff_alpha.py",
+        "protocol": "CFTC report+8d; physical pre-2024 cutoff; 16 candidates; delayed Binance metrics; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "cme_offshore_q80_fade_static_usage_20260713",
+      "name": "Static q80 CME–offshore receiver fade",
+      "status": "rejected",
+      "family": "crossvenue_leverage_migration_static_tail",
+      "scope": "cme_binance_debt_transfer",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected mapping of 7d offshore OI/ownership transfer, 104w CFTC leveraged-money change, q80 handoff threshold, receiver fade and 24h hold.",
+      "data_sources": [
+        "CFTC CME Bitcoin TFF weekly report available at report date +8d",
+        "one-bar-delayed Binance UM OI/global-account ratio",
+        "BTCUSDT perpetual 5m taker flow"
+      ],
+      "feature_names": [
+        "7d offshore transfer",
+        "104w CFTC z",
+        "handoff >= fit q80",
+        "fade offshore receiver",
+        "288-bar hold"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous handoff remains weak beta"
+      ],
+      "known_failures": [
+        "Fit ratio was 0.38 and fit trades only 22.",
+        "2022 H1 and H2 were both negative.",
+        "A four-week-extra-stale timing control produced similar 2023 performance."
+      ],
+      "evidence": "The candidate failed pre-2024 robustness and statistical gates despite positive 2023 halves, so OOS remained closed.",
+      "source_artifacts": [
+        "training/search_cme_offshore_debt_handoff_alpha.py",
+        "results/cme_offshore_debt_handoff_alpha_scan_2026-07-13.json",
+        "docs/cme-offshore-debt-handoff-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not retune the static q80/window/hold mapping; any retry needs longer data and stronger release-time specificity.",
+      "generation_recipe": {
+        "script": "training/search_cme_offshore_debt_handoff_alpha.py",
+        "protocol": "CFTC report+8d; physical pre-2024 cutoff; 16 candidates; delayed Binance metrics; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
