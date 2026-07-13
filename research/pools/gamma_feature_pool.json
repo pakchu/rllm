@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T02:05:00+09:00",
+  "updated_at": "2026-07-14T02:45:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1869,6 +1869,49 @@
         "training/search_rg_domain_wall_relaxation_alpha.py",
         "results/rg_domain_wall_relaxation_alpha_scan_2026-07-14.json",
         "docs/rg-domain-wall-relaxation-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "causal_cone_rupture_static_usage_20260714",
+      "name": "Static causal-cone rupture policies",
+      "status": "rejected",
+      "family": "price_diffusion_cone_ensemble_static_usage",
+      "scope": "btc_price_action_causal_geometry",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family continuing in the dominant high-tail rupture direction of two-day/seven-day hourly diffusion-cone ensembles.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV"
+      ],
+      "feature_names": [
+        "static_cone_width_2",
+        "static_anchor_horizon_576_2016",
+        "static_mass_tail_q80_q90",
+        "static_frozen_or_current_volatility",
+        "static_breach_fraction_variant",
+        "static_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous cone spectrum remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of eight primary policies passed fit-and-2023 admission.",
+        "Top primary fit ratio was 0.05 and strict MDD was 25.24%.",
+        "Breach-fraction and current-volatility controls reached 2023 ratios above 3 but fit ratios were only 0.03 and 0.91.",
+        "One-hour delayed execution improved 2023 ratio, so sharp timing was not identified."
+      ],
+      "evidence": "Physical pre-2024 scan plus flip, onset, fraction, current-volatility, single-z, lag and cost controls reject every static execution interpretation before OOS.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff, prior-only anchor scales, prior anchors only, fit-only tails, next-open execution, split-contained exits and sealed 2024+.",
+      "tier_rationale": "Static mappings are regime-sensitive and below fit risk-efficiency requirements despite meaningful directional ensemble information.",
+      "next_action": "Do not tune cone width, anchor history, volatility freeze semantics, mass/fraction tails, direction mapping or holds on this sample.",
+      "generation_recipe": {
+        "script": "training/search_frozen_causal_cone_rupture_alpha.py",
+        "protocol": "8 primary policies plus disclosed controls; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_frozen_causal_cone_rupture_alpha.py",
+        "results/frozen_causal_cone_rupture_alpha_scan_2026-07-14.json",
+        "docs/frozen-causal-cone-rupture-alpha-search-2026-07-14.md"
       ]
     }
   ]

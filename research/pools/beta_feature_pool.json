@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T01:35:00+09:00",
+  "updated_at": "2026-07-14T02:45:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2393,6 +2393,49 @@
       "generation_recipe": {
         "script": "training/search_wasserstein_flow_response_strain_alpha.py",
         "protocol": "physical pre-2024; 2 lookbacks x 2 fit-only tails x 2 holds = 8 final policies; disclosed 16 precursor probes; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "causal_cone_rupture_spectrum_state_20260714",
+      "name": "Multi-anchor causal-cone rupture spectrum",
+      "status": "weak",
+      "family": "price_diffusion_cone_ensemble",
+      "scope": "btc_price_action_causal_geometry",
+      "feature_tier": "beta_feature",
+      "description": "Hourly causal ensemble of prior price anchors projecting square-root-time volatility cones, summarized by directional excess mass, breached-anchor fraction and side.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV"
+      ],
+      "feature_names": [
+        "causal_cone_upper_excess_mass",
+        "causal_cone_lower_excess_mass",
+        "causal_cone_breach_fraction",
+        "causal_cone_rupture_side",
+        "causal_cone_anchor_count"
+      ],
+      "usable_for": [
+        "weak multi-anchor information-front context under a materially different learner",
+        "not replaying static frozen/current-volatility rules, histories, tails, mappings or holds"
+      ],
+      "known_failures": [
+        "Zero of eight static policies passed fit-and-2023 admission.",
+        "Top fit CAGR/MDD was 0.05 with 25.24% strict MDD; 2023 CAGR/MDD was 2.65.",
+        "The top policy lost -22.30% in 2021H1 and 2023H2 ratio was only 0.47.",
+        "Current-volatility and breach-fraction controls improved 2023 but still had fit ratios below 1, showing that the frozen-volatility interpretation is not uniquely supported."
+      ],
+      "evidence": "The top frozen-cone state returned +22.42% in 2023 with both halves positive. Exact direction flip lost -31.03%, and a single-horizon return-z control returned only +8.88%; multi-anchor geometry contains directional information but not stable executable alpha.",
+      "source_artifacts": [
+        "training/search_frozen_causal_cone_rupture_alpha.py",
+        "results/frozen_causal_cone_rupture_alpha_scan_2026-07-14.json",
+        "docs/frozen-causal-cone-rupture-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Physical pre-2024 cutoff; each anchor scale ends before anchor; all anchors precede decision; fit-only rupture thresholds; completed minute-55 signal; next-open execution; no future labels.",
+      "tier_rationale": "Strong direction/ensemble ablations and positive 2023 breadth justify weak beta, but low fit efficiency, 25.24% MDD, broad timing and regime loss prevent alpha promotion.",
+      "next_action": "Freeze static cone policies. Reuse only continuous mass/fraction/side/count tokens in a preregistered learner or on genuinely fresh-forward data.",
+      "generation_recipe": {
+        "script": "training/search_frozen_causal_cone_rupture_alpha.py",
+        "protocol": "physical pre-2024; 2 histories x 2 fit-only tails x 2 holds = 8; hourly frozen anchor cones; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
