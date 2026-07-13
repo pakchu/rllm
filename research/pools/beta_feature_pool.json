@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T11:31:00+00:00",
+  "updated_at": "2026-07-13T11:55:00+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1864,6 +1864,48 @@
       "generation_recipe": {
         "script": "training/search_cme_offshore_debt_handoff_alpha.py",
         "protocol": "CFTC report+8d; physical pre-2024 cutoff; 16 candidates; delayed Binance metrics; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "liquidation_scar_spatial_field_state_20260713",
+      "name": "Causal signed liquidation-scar log-price field",
+      "status": "weak",
+      "family": "spatial_inventory_clearance_memory",
+      "scope": "btc_derivatives_price_level_memory",
+      "feature_tier": "beta_feature",
+      "description": "One-bar-delayed OI-contraction and signed taker-flow events deposit decaying mass into absolute log-price bins; current price queries old signed mass ahead and below before the current event is deposited.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV/taker flow",
+        "Binance 5m open interest explicitly delayed one complete bar"
+      ],
+      "feature_names": [
+        "up_clearance_scar_ahead",
+        "down_clearance_scar_below",
+        "signed_spatial_scar_mass",
+        "scar_revisit_distance"
+      ],
+      "usable_for": [
+        "one-touch or first-passage revisit event under a fresh predeclared protocol",
+        "weak spatial-memory token only, not executable local-tail alpha"
+      ],
+      "known_failures": [
+        "All 48 repeated local-q80 policies lost after 6bp/side costs.",
+        "Selected local-tail policy lost 13.88% in 2023 even with zero cost.",
+        "The inferred event is not an observed liquidation label and may include voluntary closing."
+      ],
+      "evidence": "Price-bin relocation changed event paths and the exact direction flip was much worse in fit, so the representation is not a no-op; however no tested local-tail mapping generalized or survived costs.",
+      "source_artifacts": [
+        "training/search_liquidation_scar_field_alpha.py",
+        "results/liquidation_scar_field_alpha_scan_2026-07-13.json",
+        "docs/liquidation-scar-field-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "OI is shifted one complete bar; prior-only standardization is used; the field is queried before current-bar deposit; entry is next open; OOS was not opened.",
+      "tier_rationale": "Only the spatial representation remains a weak beta for one structurally different first-passage test. The repeated local-tail usage is separately gamma-rejected.",
+      "next_action": "Test a one-touch first-passage event that consumes each scar once and must beat scalar-collapse and relocated-bin placebos.",
+      "generation_recipe": {
+        "script": "training/search_liquidation_scar_field_alpha.py",
+        "protocol": "physical pre-2024 cutoff; one-bar-delayed OI; query-before-deposit sparse log-price field; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
