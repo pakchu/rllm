@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T02:27:50.367385+00:00",
+  "updated_at": "2026-07-13T09:56:14.367825+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2764,6 +2764,96 @@
         "script": "training/search_funding_premium_alt_crowding_gate_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python training/search_funding_premium_alt_crowding_gate_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --aux-dir data/binance_um_aux_2023_2026 --btc-funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --btc-premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/funding_premium_alt_crowding_gate_top10_manifest_2026-07-13.json --output results/funding_premium_alt_crowding_gate_alpha_scan_2026-07-13.json",
         "protocol": "fit 2023H1; select 2023H2; frozen Top-10; replay 2024/2025/2026; next-open; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "oi_cohort_cost_basis_pressure_features_20260713",
+      "name": "Path-dependent OI cohort cost-basis pressure features",
+      "status": "candidate",
+      "family": "oi_cohort_cost_basis_liquidation",
+      "scope": "btc_derivatives_positioning",
+      "feature_tier": "beta_feature",
+      "description": "One-bar-delayed Binance positioning attributes new OI to long/short cohorts, then maintains decayed cohort cost basis and measures underwater pressure before the current bar update.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker",
+        "Binance UM open interest and positioning metrics delayed by one complete 5m bar"
+      ],
+      "feature_names": [
+        "long_basis",
+        "short_basis",
+        "long_pressure_z",
+        "short_pressure_z",
+        "oi_unwind",
+        "flow_z"
+      ],
+      "usable_for": [
+        "path-dependent derivatives state token",
+        "liquidation-direction context for an independently validated alpha",
+        "RLLM compact cohort-stress state"
+      ],
+      "known_failures": [
+        "Best fixed standalone policy clears all 5 non-quarantined pre-2024 robustness segments but reaches only fit/select CAGR/strict-MDD 0.89/1.42.",
+        "The exact top policy is long-only and statistically weak: fit/select approximate mean-return p-values 0.286/0.248.",
+        "2022 is not usable for selection because top-trader fields are sparse; it is quarantined and the top policy is negative there."
+      ],
+      "evidence": "Top preflight policy records fit +7.94% absolute / CAGR 6.50% / strict MDD 7.33% / ratio 0.89 / 48 trades, and 2023 +8.09% / CAGR 8.09% / strict MDD 5.68% / ratio 1.42 / 46 trades. Component ablations and direction flip show the state is economically interpretable, but it fails the pre-2024 OOS admission gate.",
+      "source_artifacts": [
+        "training/search_oi_cost_basis_liquidation_alpha.py",
+        "tests/test_search_oi_cost_basis_liquidation_alpha.py",
+        "results/oi_cost_basis_liquidation_alpha_scan_2026-07-13.json",
+        "results/oi_cost_basis_liquidation_top_manifest_2026-07-13.json",
+        "results/oi_cost_basis_liquidation_preflight_verification_2026-07-13.json",
+        "docs/oi-cost-basis-liquidation-alpha-preflight-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "2024+ rows are physically excluded; positioning is delayed one complete bar; cohort pressure is emitted before current-bar OI is added; 2022 is quarantined; next-bar execution and strict OHLC MDD are used.",
+      "tier_rationale": "Beta: the path-dependent feature state has mechanism-specific preflight evidence and sign consistency, but no standalone policy clears the pre-2024 ratio>=3 admission threshold.",
+      "next_action": "Retain the continuous cohort state only as context for a materially different predeclared policy; do not open 2024+ for this static tail policy.",
+      "generation_recipe": {
+        "script": "training/search_oi_cost_basis_liquidation_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_oi_cost_basis_liquidation_alpha.py",
+        "protocol": "physical cutoff before 2024; 24 fixed candidates; one-bar delayed source; next-open; 0.5x; 6bp/side; fixed hold; strict high-water MDD"
+      }
+    },
+    {
+      "id": "oi_cost_basis_static_tail_usage_20260713",
+      "name": "OI cohort cost-basis static-tail standalone usage",
+      "status": "rejected",
+      "family": "oi_cohort_cost_basis_liquidation_static_tail",
+      "scope": "btc_derivatives_positioning",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed standalone usage: static fit-tail thresholds over cohort underwater pressure × OI contraction × taker flow, with fixed long/both/short modes and 6h/12h holds.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker",
+        "one-bar-delayed Binance UM OI and positioning metrics"
+      ],
+      "feature_names": [
+        "score",
+        "score_no_oi_contraction",
+        "score_no_taker_flow",
+        "score_no_cost_basis_pressure"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous cohort-state features remain beta under a materially different policy"
+      ],
+      "known_failures": [
+        "All 24 predeclared policies fail the pre-2024 fit/select CAGR/strict-MDD>=3 admission rule.",
+        "Top policy fit/select ratios are 0.89/1.42 despite 5/5 positive robustness segments.",
+        "OOS was deliberately never opened, so the exact static-tail policy must not be retuned against 2024+."
+      ],
+      "evidence": "The best exact mapping uses H288, 5% tail, long-only, 12h hold: fit +7.94% / CAGR 6.50% / strict MDD 7.33% / 48 trades; 2023 +8.09% / CAGR 8.09% / strict MDD 5.68% / 46 trades. It is below admission and therefore rejected before OOS.",
+      "source_artifacts": [
+        "training/search_oi_cost_basis_liquidation_alpha.py",
+        "results/oi_cost_basis_liquidation_alpha_scan_2026-07-13.json",
+        "docs/oi-cost-basis-liquidation-alpha-preflight-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "Clean pre-2024 rejection; no 2024+ rows or source timestamps were loaded.",
+      "tier_rationale": "Gamma exact-usage record: reject the fixed static-tail standalone mapping, not the underlying path-dependent cohort features.",
+      "next_action": "Do not repeat half-life/tail/hold sweeps for this formula. Any retry must change the decision mechanism and remain predeclared.",
+      "generation_recipe": {
+        "script": "training/search_oi_cost_basis_liquidation_alpha.py",
+        "protocol": "H{288,864} × tail{5%,10%} × mode{both,long,short} × hold{6h,12h}; pre-2024 only; strict MDD"
       }
     }
   ]

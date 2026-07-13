@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T05:49:05.781662+00:00",
+  "updated_at": "2026-07-13T09:56:14.367825+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1687,6 +1687,55 @@
         "script": "training/search_online_rls_price_impact_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python -m training.search_online_rls_price_impact_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --manifest-output results/online_rls_price_impact_top8_manifest_2026-07-13.json --output results/online_rls_price_impact_alpha_scan_2026-07-13.json --docs-output docs/online-rls-price-impact-alpha-preflight-2026-07-13.md",
         "protocol": "pre-update RLS; half-lives 576/2016; prior residual scale; fit-only slope q20/q80; eight fixed policies; pre-2024-only; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "oi_cohort_cost_basis_pressure_features_20260713",
+      "name": "Path-dependent OI cohort cost-basis pressure features",
+      "status": "candidate",
+      "family": "oi_cohort_cost_basis_liquidation",
+      "scope": "btc_derivatives_positioning",
+      "feature_tier": "beta_feature",
+      "description": "One-bar-delayed Binance positioning attributes new OI to long/short cohorts, then maintains decayed cohort cost basis and measures underwater pressure before the current bar update.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker",
+        "Binance UM open interest and positioning metrics delayed by one complete 5m bar"
+      ],
+      "feature_names": [
+        "long_basis",
+        "short_basis",
+        "long_pressure_z",
+        "short_pressure_z",
+        "oi_unwind",
+        "flow_z"
+      ],
+      "usable_for": [
+        "path-dependent derivatives state token",
+        "liquidation-direction context for an independently validated alpha",
+        "RLLM compact cohort-stress state"
+      ],
+      "known_failures": [
+        "Best fixed standalone policy clears all 5 non-quarantined pre-2024 robustness segments but reaches only fit/select CAGR/strict-MDD 0.89/1.42.",
+        "The exact top policy is long-only and statistically weak: fit/select approximate mean-return p-values 0.286/0.248.",
+        "2022 is not usable for selection because top-trader fields are sparse; it is quarantined and the top policy is negative there."
+      ],
+      "evidence": "Top preflight policy records fit +7.94% absolute / CAGR 6.50% / strict MDD 7.33% / ratio 0.89 / 48 trades, and 2023 +8.09% / CAGR 8.09% / strict MDD 5.68% / ratio 1.42 / 46 trades. Component ablations and direction flip show the state is economically interpretable, but it fails the pre-2024 OOS admission gate.",
+      "source_artifacts": [
+        "training/search_oi_cost_basis_liquidation_alpha.py",
+        "tests/test_search_oi_cost_basis_liquidation_alpha.py",
+        "results/oi_cost_basis_liquidation_alpha_scan_2026-07-13.json",
+        "results/oi_cost_basis_liquidation_top_manifest_2026-07-13.json",
+        "results/oi_cost_basis_liquidation_preflight_verification_2026-07-13.json",
+        "docs/oi-cost-basis-liquidation-alpha-preflight-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "2024+ rows are physically excluded; positioning is delayed one complete bar; cohort pressure is emitted before current-bar OI is added; 2022 is quarantined; next-bar execution and strict OHLC MDD are used.",
+      "tier_rationale": "Beta: the path-dependent feature state has mechanism-specific preflight evidence and sign consistency, but no standalone policy clears the pre-2024 ratio>=3 admission threshold.",
+      "next_action": "Retain the continuous cohort state only as context for a materially different predeclared policy; do not open 2024+ for this static tail policy.",
+      "generation_recipe": {
+        "script": "training/search_oi_cost_basis_liquidation_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_oi_cost_basis_liquidation_alpha.py",
+        "protocol": "physical cutoff before 2024; 24 fixed candidates; one-bar delayed source; next-open; 0.5x; 6bp/side; fixed hold; strict high-water MDD"
       }
     }
   ]

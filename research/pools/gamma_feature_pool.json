@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T05:47:42.392746+00:00",
+  "updated_at": "2026-07-13T09:56:14.367825+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -716,6 +716,47 @@
         "script": "training/search_online_rls_price_impact_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python -m training.search_online_rls_price_impact_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --manifest-output results/online_rls_price_impact_top8_manifest_2026-07-13.json --output results/online_rls_price_impact_alpha_scan_2026-07-13.json --docs-output docs/online-rls-price-impact-alpha-preflight-2026-07-13.md",
         "protocol": "eight fixed policies; pre-2024-only selection frame; zero admission; no OOS metric calculated; exact deterministic rerun"
+      }
+    },
+    {
+      "id": "oi_cost_basis_static_tail_usage_20260713",
+      "name": "OI cohort cost-basis static-tail standalone usage",
+      "status": "rejected",
+      "family": "oi_cohort_cost_basis_liquidation_static_tail",
+      "scope": "btc_derivatives_positioning",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed standalone usage: static fit-tail thresholds over cohort underwater pressure × OI contraction × taker flow, with fixed long/both/short modes and 6h/12h holds.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker",
+        "one-bar-delayed Binance UM OI and positioning metrics"
+      ],
+      "feature_names": [
+        "score",
+        "score_no_oi_contraction",
+        "score_no_taker_flow",
+        "score_no_cost_basis_pressure"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous cohort-state features remain beta under a materially different policy"
+      ],
+      "known_failures": [
+        "All 24 predeclared policies fail the pre-2024 fit/select CAGR/strict-MDD>=3 admission rule.",
+        "Top policy fit/select ratios are 0.89/1.42 despite 5/5 positive robustness segments.",
+        "OOS was deliberately never opened, so the exact static-tail policy must not be retuned against 2024+."
+      ],
+      "evidence": "The best exact mapping uses H288, 5% tail, long-only, 12h hold: fit +7.94% / CAGR 6.50% / strict MDD 7.33% / 48 trades; 2023 +8.09% / CAGR 8.09% / strict MDD 5.68% / 46 trades. It is below admission and therefore rejected before OOS.",
+      "source_artifacts": [
+        "training/search_oi_cost_basis_liquidation_alpha.py",
+        "results/oi_cost_basis_liquidation_alpha_scan_2026-07-13.json",
+        "docs/oi-cost-basis-liquidation-alpha-preflight-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "Clean pre-2024 rejection; no 2024+ rows or source timestamps were loaded.",
+      "tier_rationale": "Gamma exact-usage record: reject the fixed static-tail standalone mapping, not the underlying path-dependent cohort features.",
+      "next_action": "Do not repeat half-life/tail/hold sweeps for this formula. Any retry must change the decision mechanism and remain predeclared.",
+      "generation_recipe": {
+        "script": "training/search_oi_cost_basis_liquidation_alpha.py",
+        "protocol": "H{288,864} × tail{5%,10%} × mode{both,long,short} × hold{6h,12h}; pre-2024 only; strict MDD"
       }
     }
   ]
