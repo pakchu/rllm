@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T03:24:05.646508+00:00",
+  "updated_at": "2026-07-13T04:03:49.551641+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -489,6 +489,52 @@
         "script": "training/search_ordinal_complexity_bidirectional_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python training/search_ordinal_complexity_bidirectional_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --manifest-output results/ordinal_complexity_bidirectional_top10_manifest_2026-07-13.json --output results/ordinal_complexity_bidirectional_alpha_scan_2026-07-13.json",
         "protocol": "64 masks x 3 fixed holds; pre-2024 selection; frozen replay; 6bp/side plus 10bp stress; strict high-water MDD"
+      }
+    },
+    {
+      "id": "causal_online_completed_trade_expert_selector_usage_20260713",
+      "name": "Completed-trade causal online selector over fixed six-sleeve universe",
+      "status": "rejected",
+      "family": "online_expert_selection",
+      "scope": "btc_meta_alpha_selection",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed use of rolling completed counterfactual trade utility to rank and gate six existing long/short BTC sleeves online.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker",
+        "Binance USD-M BTCUSDT funding and premium index",
+        "DXY/USDKRW/BTCKRW-derived causal market fields"
+      ],
+      "feature_names": [
+        "expert rolling normalized mean return",
+        "expert rolling return-minus-MAE utility",
+        "causal Top-K expert rank"
+      ],
+      "usable_for": [
+        "failure provenance only; fixed expert signals remain independently usable"
+      ],
+      "known_failures": [
+        "Seven frozen Top-10 rows cleared standalone annual metric gates, but none added value versus the deterministic no-learning union on both combined return and CAGR/MDD.",
+        "Best post-replay selector member returned 107.68% with CAGR/MDD 4.93 over 2024-2026, versus 180.12% and 5.62 for the deterministic union.",
+        "The selector discarded profitable concurrent opportunities and therefore reduced both absolute return and risk efficiency.",
+        "The six source sleeves were defined after this programme had inspected 2024-2026, so the strong historical figures are not fresh-data OOS evidence."
+      ],
+      "evidence": "A 54-policy selector grid was ranked and path-deduplicated on physically pre-2024 inputs. Rewards entered history only after actual expert exits. Frozen replay was exact, but incremental comparison rejected every selector.",
+      "source_artifacts": [
+        "training/search_causal_online_expert_alpha.py",
+        "tests/test_search_causal_online_expert_alpha.py",
+        "results/causal_online_expert_top10_manifest_2026-07-13.json",
+        "results/causal_online_expert_alpha_scan_2026-07-13.json",
+        "results/causal_online_expert_replay_verification_2026-07-13.json",
+        "docs/causal-online-expert-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Selector hyperparameters and Top-10 paths used only pre-2024 source prefixes; current/future event outcomes were never released before exit. However, expert definitions themselves came from later-window-exposed research, and rank 8 was identified after replay.",
+      "tier_rationale": "Gamma applies only to completed-trade Top-K filtering of this six-sleeve universe. It does not demote the underlying sleeves or all possible portfolio sizing algorithms.",
+      "next_action": "Do not retune Top-K/lookback/MAE thresholds on 2024-2026. Search genuinely independent signals, or evaluate a predeclared allocation method only on fresh forward data.",
+      "generation_recipe": {
+        "script": "training/search_causal_online_expert_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_causal_online_expert_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/causal_online_expert_top10_manifest_2026-07-13.json --output results/causal_online_expert_alpha_scan_2026-07-13.json --docs-output docs/causal-online-expert-alpha-search-2026-07-13.md",
+        "protocol": "54 policies; select 2023/H1/H2 with physical pre-2024 sources; frozen Top-10 replay; completed-exit histories only; next-open; source sleeve hold/TP/SL; global non-overlap; 0.5x; 6bp/side plus 10bp stress; strict bar-adverse MDD"
       }
     }
   ]
