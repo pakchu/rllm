@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T22:48:19+09:00",
+  "updated_at": "2026-07-13T22:59:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1501,6 +1501,45 @@
       "generation_recipe": {
         "script": "training/search_positioning_lifecycle_hazard_alpha.py",
         "protocol": "2 disagreements x 2 ages x 2 resolution triggers x 2 holds = 16; one-bar delayed; 2022 quarantine; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "positioning_inventory_transfer_static_usage_20260713",
+      "name": "Static positioning inventory-transfer OI routing",
+      "status": "rejected",
+      "family": "positioning_disagreement_inventory_transfer_static_usage",
+      "scope": "btc_binance_derivatives_positioning",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected rule branching the first zero-cross after a fixed 36h top-position-minus-global disagreement episode by whether delayed open interest was preserved versus episode start.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "one-complete-bar-delayed Binance USD-M 5m positioning and open-interest metrics"
+      ],
+      "feature_names": [
+        "static_episode_start_to_resolution_oi_sign",
+        "static_inventory_conserved_follow_route",
+        "static_inventory_contracted_fade_route",
+        "fixed_hold_72_216"
+      ],
+      "usable_for": [
+        "failure provenance only; raw delayed OI and continuous lifecycle state remain beta under materially different mechanisms"
+      ],
+      "known_failures": [
+        "Zero of two fixed-hold policies passed pre-2024 admission.",
+        "The best 18h policy had fit CAGR/MDD 0.62 and 2023 CAGR/MDD -0.56.",
+        "The policy lost 10.07% in 2023 with 17.97% strict MDD on 24 trades.",
+        "Ignoring OI restored the positive parent, while inverted OI routing won only in 2023 and lost in fit, proving regime-dependent branch semantics."
+      ],
+      "evidence": "A physical pre-2024 two-hold test plus exact direction, parent-ablation, inverse-routing and cost controls rejected the fixed OI conservation law before OOS.",
+      "source_artifacts": [
+        "training/search_positioning_inventory_transfer_alpha.py",
+        "results/positioning_inventory_transfer_alpha_scan_2026-07-13.json",
+        "docs/positioning-inventory-transfer-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune OI change thresholds, episode ages, direction branches or fixed holds on this sample.",
+      "generation_recipe": {
+        "script": "training/search_positioning_inventory_transfer_alpha.py",
+        "protocol": "fixed 36h parent lifecycle zero-cross x 2 holds; one-bar-delayed OI; 2022 quarantine; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
