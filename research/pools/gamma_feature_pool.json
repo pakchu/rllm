@@ -1619,6 +1619,48 @@
         "script": "training/search_closed_excursion_holonomy_alpha.py",
         "protocol": "2 departures x 2 expiries x 3 scores x 2 fit tails x 2 holds = 48; first causal anchor recross; next-open; 0.5x; 6bp/side; strict MDD"
       }
+    },
+    {
+      "id": "oi_roundtrip_geometric_phase_static_usage_20260713",
+      "name": "Static OI round-trip geometric-phase policies",
+      "status": "rejected",
+      "family": "leveraged_inventory_roundtrip_geometry_static_usage",
+      "scope": "btc_binance_derivatives_positioning",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family continuing residual price phase or signed inventory work after a 2σ/3σ positive OI shock first returns to its fixed OI anchor within 12h/24h.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT completed-bar open interest and availability flag"
+      ],
+      "feature_names": [
+        "static_positive_oi_departure_z_2_3",
+        "static_oi_loop_expiry_144_288",
+        "static_geometric_phase_q80_q90",
+        "fixed_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous OI round-trip state remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of 48 policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.70 and 2023 CAGR/MDD was 1.03.",
+        "Top 2022H2 returned -4.35% and its one-hour lag was still positive.",
+        "Even zero-cost 2023 CAGR/MDD was only 1.50."
+      ],
+      "evidence": "A physical pre-2024 first-OI-reclosure scan plus exact direction, fixed-age, no-score, timing and cost controls rejected fixed geometric-phase threshold execution before OOS.",
+      "source_artifacts": [
+        "training/search_oi_roundtrip_geometric_phase_alpha.py",
+        "results/oi_roundtrip_geometric_phase_alpha_scan_2026-07-13.json",
+        "docs/oi-roundtrip-geometric-phase-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Prior-only scales, frozen anchors, first completed OI recross, fit-only thresholds, next-open execution and physical pre-2024 truncation; OOS remained sealed.",
+      "tier_rationale": "The exact static mappings are rejected; only the continuous event representation retains weak beta evidence.",
+      "next_action": "Do not tune OI departure widths, loop expiries, score tails, direction branches or fixed holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_oi_roundtrip_geometric_phase_alpha.py",
+        "protocol": "2 OI departures x 2 expiries x 3 scores x 2 fit tails x 2 holds = 48; first causal OI recross; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      }
     }
   ]
 }

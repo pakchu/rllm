@@ -2172,6 +2172,50 @@
         "script": "training/search_closed_excursion_holonomy_alpha.py",
         "protocol": "physical pre-2024 cutoff; 2 departures x 2 expiries x 3 loop scores x 2 fit tails x 2 holds = 48; next-open; 0.5x; 6bp/side; strict MDD"
       }
+    },
+    {
+      "id": "oi_roundtrip_geometric_phase_state_20260713",
+      "name": "OI round-trip geometric-phase state",
+      "status": "weak",
+      "family": "leveraged_inventory_roundtrip_geometry",
+      "scope": "btc_binance_derivatives_positioning",
+      "feature_tier": "beta_feature",
+      "description": "Causal positive-OI-shock episodes that freeze pre-shock OI/price anchors and emit episode age, residual price phase, terminal path persistence and signed price–OI geometric work at the first OI reclosure.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT completed-bar open interest and availability flag"
+      ],
+      "feature_names": [
+        "oi_roundtrip_episode_age",
+        "oi_roundtrip_residual_price_z",
+        "oi_roundtrip_terminal_persistence",
+        "oi_roundtrip_geometric_work",
+        "oi_roundtrip_max_price_displacement"
+      ],
+      "usable_for": [
+        "weak continuous leverage-neutral repricing context under a fresh-forward learner",
+        "not replaying static OI shock, expiry, tail or hold settings"
+      ],
+      "known_failures": [
+        "Zero of 48 static policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.70 and 2023 CAGR/MDD was 1.03.",
+        "Top 2022H2 returned -4.35% and 2021H1 was nearly flat with no long trade.",
+        "A one-hour delay remained positive, so timing is broad rather than sharply identified."
+      ],
+      "evidence": "The top q90 residual-phase policy returned +22.22% in fit and +6.19% in 2023 at 6bp/side with balanced residual directions. Exact direction flip lost, fixed-age and unfiltered-loop controls were weaker, and the cost curve was smooth, but risk efficiency and temporal breadth remained below alpha admission.",
+      "source_artifacts": [
+        "training/search_oi_roundtrip_geometric_phase_alpha.py",
+        "results/oi_roundtrip_geometric_phase_alpha_scan_2026-07-13.json",
+        "docs/oi-roundtrip-geometric-phase-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "OI and price scales use history through t-1; OI/price anchors and start scales freeze at departure; one episode emits on its first completed OI recross and enters next open; source rows stop before 2024; OOS was not opened.",
+      "tier_rationale": "The event topology, direction and residual tail survive structural controls and standard costs, but fit/select CAGR-MDD, one losing fit half and broad timing prevent alpha promotion.",
+      "next_action": "Freeze all static settings. Reuse only continuous OI-loop state under genuinely fresh forward data or a materially different sequential learner.",
+      "generation_recipe": {
+        "script": "training/search_oi_roundtrip_geometric_phase_alpha.py",
+        "protocol": "physical pre-2024 cutoff; 2 OI departures x 2 expiries x 3 geometric scores x 2 fit tails x 2 holds = 48; first causal OI recross; next-open; 0.5x; 6bp/side; strict MDD"
+      }
     }
   ]
 }
