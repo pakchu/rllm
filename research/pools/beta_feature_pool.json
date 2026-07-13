@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T04:57:04.034530+00:00",
+  "updated_at": "2026-07-13T05:19:12.580478+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1593,6 +1593,53 @@
         "script": "training/search_premium_intrabar_shape_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python -m training.search_premium_intrabar_shape_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --spot-csv data/cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/premium_intrabar_shape_top10_manifest_2026-07-13.json --output results/premium_intrabar_shape_alpha_scan_2026-07-13.json --docs-output docs/premium-intrabar-shape-alpha-search-2026-07-13.md",
         "protocol": "five complete 1m premium bars per 5m state; prior-history z-score; pre-2024 manifest; next-open; fixed holds; 0.5x; 6bp/side plus 10bp stress; strict MDD"
+      }
+    },
+    {
+      "id": "path_signature_price_flow_area_features_20260713",
+      "name": "Price/order-flow level-2 signed-area context",
+      "status": "weak",
+      "family": "price_flow_path_signature",
+      "scope": "btc_orderflow_path_geometry",
+      "feature_tier": "beta_feature",
+      "description": "Causal level-2 signed area and endpoint direction of trailing paths formed from prior-standardized BTC 5m log returns and changes in taker quote imbalance.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m close, quote_asset_volume and taker_buy_quote"
+      ],
+      "feature_names": [
+        "ps_area_{24,72,144}",
+        "ps_price_direction_{24,72,144}",
+        "ps_flow_direction_{24,72,144}",
+        "ps_price_step",
+        "ps_flow_step"
+      ],
+      "usable_for": [
+        "weak temporal-ordering context for compact LLM/RLLM state",
+        "materially different sparse-event research on fresh data",
+        "not a standalone static threshold signal"
+      ],
+      "known_failures": [
+        "Zero of six fixed policies passed fit plus 2023/H1/H2 admission.",
+        "Original 144-bar flow-led policy improved in 2023H2 but lost in fit and 2023H1.",
+        "Direction flips also lacked two-half stability; 2024-2026 were intentionally not opened."
+      ],
+      "evidence": "Signed-area filtering reduced losses versus flow-only in most preflight comparisons, showing that temporal ordering changes event selection, but every executable fixed mapping remained negative after 6bp/side. The strongest original fit result was still -1.38% for 144-bar price-led fade and its 2023 result was -32.42%.",
+      "source_artifacts": [
+        "training/search_path_signature_leadlag_alpha.py",
+        "tests/test_search_path_signature_leadlag_alpha.py",
+        "results/path_signature_leadlag_top6_manifest_2026-07-13.json",
+        "results/path_signature_leadlag_alpha_scan_2026-07-13.json",
+        "results/path_signature_leadlag_preflight_verification_2026-07-13.json",
+        "docs/path-signature-leadlag-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "Step standardizers use rolling moments through t-1; current completed price and imbalance-change increments enter the path endpoint at t; signals enter the next 5m open. Fit thresholds and all diagnostics used physically pre-2024 rows only. OOS replay was never opened.",
+      "tier_rationale": "Weak beta preserves the distinct continuous path-geometry representation, not an executable edge. Static fixed-quantile usage is separately gamma-rejected.",
+      "next_action": "Do not threshold-tune this feature on 2024-2026. Reuse only in a materially different predeclared sparse candidate/RLLM interaction and require fresh forward evidence.",
+      "generation_recipe": {
+        "script": "training/search_path_signature_leadlag_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_path_signature_leadlag_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/path_signature_leadlag_top6_manifest_2026-07-13.json --output results/path_signature_leadlag_alpha_scan_2026-07-13.json --docs-output docs/path-signature-leadlag-alpha-search-2026-07-13.md",
+        "protocol": "prior-standardized return and imbalance-change path; 24/72/144-bar level-2 area; fit-only quantiles; pre-2024-only rejection; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]

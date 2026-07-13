@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T04:57:04.034530+00:00",
+  "updated_at": "2026-07-13T05:19:12.580478+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -626,6 +626,51 @@
         "script": "training/search_premium_intrabar_shape_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python -m training.search_premium_intrabar_shape_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --spot-csv data/cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/premium_intrabar_shape_top10_manifest_2026-07-13.json --output results/premium_intrabar_shape_alpha_scan_2026-07-13.json --docs-output docs/premium-intrabar-shape-alpha-search-2026-07-13.md",
         "protocol": "192 fixed policies; fit 2020-06..2022; select 2023/H1/H2; frozen replay 2024/2025/2026; next-open; 0.5x; 6bp/side plus 10bp stress; strict MDD"
+      }
+    },
+    {
+      "id": "path_signature_static_quantile_usage_20260713",
+      "name": "Static price/flow signed-area quantile direction usage",
+      "status": "rejected",
+      "family": "price_flow_path_signature",
+      "scope": "btc_orderflow_path_geometry",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed six-policy mapping of signed-area q20/q80 and flow-direction q30/q70 states to flow-led continuation or price-led crowding fade with path-window holds.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m close and taker quote flow"
+      ],
+      "feature_names": [
+        "ps_area fixed q20/q80 tails",
+        "ps_flow_direction fixed q30/q70 tails",
+        "flow-led continuation / price-led fade direction",
+        "24/72/144-bar fixed hold"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous path-signature fields remain weak beta"
+      ],
+      "known_failures": [
+        "All six original policies failed pre-2024 admission.",
+        "24-bar original policies lost 37.99% to 43.18% in 2023 with hundreds of trades.",
+        "The best 144-bar original was split-unstable: -12.76% in 2023H1 and +9.59% in H2.",
+        "Direction-flip diagnostics were also split-unstable; none justified opening 2024-2026."
+      ],
+      "evidence": "A physically pre-2024 manifest admitted 0/6 policies and an exact second preflight reproduced the same manifest and diagnostics hashes. This rejects the static usage without consuming OOS evidence.",
+      "source_artifacts": [
+        "training/search_path_signature_leadlag_alpha.py",
+        "tests/test_search_path_signature_leadlag_alpha.py",
+        "results/path_signature_leadlag_top6_manifest_2026-07-13.json",
+        "results/path_signature_leadlag_alpha_scan_2026-07-13.json",
+        "results/path_signature_leadlag_preflight_verification_2026-07-13.json",
+        "docs/path-signature-leadlag-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "Only fit 2020-06..2022 and selection 2023/H1/H2 were read. A guarded empty-manifest branch prevented any OOS baseline or candidate replay. Current completed features execute next open.",
+      "tier_rationale": "Gamma applies only to these fixed q20/q80 area plus q30/q70 flow-direction mappings, hourly first-entry sampling and hold-equals-window exits.",
+      "next_action": "Do not retry these six policies or add threshold/hold grids on 2024-2026. A revisit must change both candidate mechanism and validation data.",
+      "generation_recipe": {
+        "script": "training/search_path_signature_leadlag_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_path_signature_leadlag_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/path_signature_leadlag_top6_manifest_2026-07-13.json --output results/path_signature_leadlag_alpha_scan_2026-07-13.json --docs-output docs/path-signature-leadlag-alpha-search-2026-07-13.md",
+        "protocol": "six fixed policies; physical pre-2024 preflight; no OOS opened after zero admission; exact deterministic rerun"
       }
     }
   ]
