@@ -82,6 +82,35 @@ class TestPositioningDisagreementAlpha(unittest.TestCase):
         )
         self.assertAlmostEqual(result["strict_mdd_pct"], 55.0, places=6)
 
+    def test_no_stop_sim_accepts_explicit_window_bounds(self):
+        dates = pd.Series(pd.date_range("2027-01-01", "2027-12-31 23:55", freq="5min"))
+        n = len(dates)
+        market = pd.DataFrame(
+            {
+                "open": np.full(n, 100.0),
+                "high": np.full(n, 100.0),
+                "low": np.full(n, 100.0),
+            }
+        )
+        market.loc[2, "open"] = 110.0
+        long_active = np.zeros(n, dtype=bool)
+        long_active[0] = True
+        result = _simulate_no_stop(
+            market,
+            dates,
+            long_active,
+            np.zeros(n, dtype=bool),
+            window="custom2027",
+            hold_bars=1,
+            stride_bars=1,
+            leverage=0.5,
+            fee_rate=0.0,
+            slippage_rate=0.0,
+            windows={"custom2027": ("2027-01-01", "2028-01-01")},
+        )
+        self.assertEqual(result["trades"], 1)
+        self.assertAlmostEqual(result["return_pct"], 5.0, places=6)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -159,8 +159,13 @@ def _simulate_no_stop(
     fee_rate: float,
     slippage_rate: float,
     extremes: tuple[np.ndarray, np.ndarray] | None = None,
+    windows: dict[str, tuple[str, str]] | None = None,
 ) -> dict[str, Any]:
-    period = _window_mask(dates, window)
+    window_map = WINDOWS if windows is None else windows
+    if window not in window_map:
+        raise KeyError(f"unknown simulation window: {window}")
+    start, end = window_map[window]
+    period = ((dates >= pd.Timestamp(start)) & (dates < pd.Timestamp(end))).to_numpy(bool)
     open_price = market["open"].to_numpy(float)
     high = market["high"].to_numpy(float)
     low = market["low"].to_numpy(float)
@@ -171,7 +176,6 @@ def _simulate_no_stop(
         future_low, future_high = extremes
     candidates = np.arange(0, len(market) - hold_bars - 2, stride_bars, dtype=np.int64)
     candidates = candidates[period[candidates] & (long_active[candidates] | short_active[candidates])]
-    start, end = WINDOWS[window]
     cost = (fee_rate + slippage_rate) * leverage
     equity = peak = 1.0
     strict_mdd = 0.0
