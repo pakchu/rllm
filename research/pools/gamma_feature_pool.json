@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T01:03:50.125452+00:00",
+  "updated_at": "2026-07-13T01:46:42.478919+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -351,6 +351,53 @@
         "script": "training/search_crossvenue_microstructure_consensus_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python training/search_crossvenue_microstructure_consensus_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --manifest-output results/crossvenue_microstructure_consensus_top10_manifest_2026-07-13.json --output results/crossvenue_microstructure_consensus_alpha_scan_2026-07-13.json",
         "protocol": "fit 2020-2022; select 2023 with H1/H2 stability; physically frozen Top-10; replay 2024/2025/2026; 0.5x; 6bp/side; next-open; fixed hold; strict high-water MDD"
+      }
+    },
+    {
+      "id": "alt_derivatives_crowding_static_tail_usage_20260713",
+      "name": "Alt-perpetual derivatives crowding static-tail usage",
+      "status": "rejected",
+      "family": "alt_derivatives_crowding",
+      "scope": "btc_crossasset_derivatives",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed standalone use of low-correlation ETH/SOL/BNB/XRP/ADA/DOGE funding and premium crowding tails as BTC directional entries.",
+      "data_sources": [
+        "Binance USD-M alt funding history",
+        "Binance USD-M alt premium-index 1h candles",
+        "BTCUSDT 5m OHLCV for execution only"
+      ],
+      "feature_names": [
+        "alt_funding_dispersion_z*",
+        "alt_funding_median_change288_z2016",
+        "alt_premium_median_z*",
+        "alt_premium_dispersion_z*",
+        "alt_premium_breadth_z2016",
+        "alt_crowding_disagreement"
+      ],
+      "usable_for": [
+        "failure provenance",
+        "possible external veto/state input only after a separately frozen protocol"
+      ],
+      "known_failures": [
+        "Frozen Top-10 produced zero alpha-pool and zero live-grade qualifiers.",
+        "All selected policies were long and broke in 2025 and 2026, exposing a 2023 directional-regime mapping.",
+        "Best combined 2024-2026 row returned 11.61% with 37.20% strict MDD and CAGR/MDD 0.12."
+      ],
+      "evidence": "138 low-correlation masks and 237 eligible policies were fit/selected in 2023 and frozen before 2024 replay; no annual OOS-stable candidate survived.",
+      "source_artifacts": [
+        "training/search_alt_derivatives_crowding_alpha.py",
+        "results/alt_derivatives_crowding_top10_manifest_2026-07-13.json",
+        "results/alt_derivatives_crowding_alpha_scan_2026-07-13.json",
+        "docs/alt-derivatives-crowding-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "2023H1 thresholds, 2023H2 policy selection, source/market truncation before manifest, causal bounded-staleness joins, 2024+ replay only. Later years are not pristine to the broader research program.",
+      "tier_rationale": "Gamma applies to the exact static standalone tail mapping, not necessarily to these raw external states as contextual inputs.",
+      "next_action": "Do not retry standalone alt funding/premium static tails. Only reuse as a predeclared gate/state input on a separately fixed alpha or with a new untouched forward period.",
+      "generation_recipe": {
+        "script": "training/search_alt_derivatives_crowding_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_alt_derivatives_crowding_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --aux-dir data/binance_um_aux_2023_2026 --btc-funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --btc-premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/alt_derivatives_crowding_top10_manifest_2026-07-13.json --output results/alt_derivatives_crowding_alpha_scan_2026-07-13.json",
+        "protocol": "fit thresholds 2023H1; select 2023H2; frozen Top-10; replay 2024/2025/2026; 0.5x; 6bp/side; next-open; fixed hold; strict high-water MDD"
       }
     }
   ]

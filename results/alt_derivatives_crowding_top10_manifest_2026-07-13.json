@@ -1,0 +1,807 @@
+{
+  "as_of": "2026-07-13T01:42:15.367439+00:00",
+  "sha256": "28d7ebd18b19b80ae321aafcfa4eccf39f3382483841112357b4ccf53a0c1e94",
+  "protocol": {
+    "feature_fit": [
+      "2023-02-15",
+      "2023-07-01"
+    ],
+    "policy_selection": [
+      "2023-07-01",
+      "2024-01-01"
+    ],
+    "future_market_and_source_rows_truncated_before_feature_construction": true,
+    "feature_family": "six-alt Binance USD-M funding and premium-index crowding only",
+    "feature_admission": "fit Spearman max |rho| < 0.3 versus ('btc_funding_rate', 'btc_premium_change', 'btc_trend_96', 'btc_daily_momentum_4', 'btc_lr_impact_72')",
+    "funding_availability": "backward-asof, max staleness 12h",
+    "premium_availability": "hourly close_time backward-asof, max staleness 65min",
+    "entry": "next 5m open",
+    "exit": "fixed hold, non-overlapping, no TP/SL",
+    "cost": "5bp fee + 1bp slippage per side at 0.5x",
+    "mdd": "strict favorable-high-water then adverse OHLC extreme",
+    "status_ceiling": "shadow research: broader program has inspected later years"
+  },
+  "source_hashes": {
+    "data/binance_um_aux_2023_2026/ETHUSDT_funding_2023-01-01_2026-06-01.csv.gz": "de7689a3499a9c1cf63331b214e28e1f67d4005ee06b7e1dc1218e2e50aba421",
+    "data/binance_um_aux_2023_2026/ETHUSDT_premium_1h_2023-01-01_2026-06-01.csv.gz": "88eb7d2e7413bf7066371c0f7ed4f8b549b1089b8339a29fdae3344bcfd2b8df",
+    "data/binance_um_aux_2023_2026/SOLUSDT_funding_2023-01-01_2026-06-01.csv.gz": "8de5adacb916ea9d31cdf42831ded7657dd68524772b12beecd28d4674a50c66",
+    "data/binance_um_aux_2023_2026/SOLUSDT_premium_1h_2023-01-01_2026-06-01.csv.gz": "72c2a0bb8d2db31ece6f41d636d262d52949711ee921a37c3f270b05153aaf54",
+    "data/binance_um_aux_2023_2026/BNBUSDT_funding_2023-01-01_2026-06-01.csv.gz": "81a9fd7fca76e9d00dc556d6e1ff05ec57c9e9964e17486b23a4110e91f9b2ac",
+    "data/binance_um_aux_2023_2026/BNBUSDT_premium_1h_2023-01-01_2026-06-01.csv.gz": "0d86c250f39bf38379622787e46ec06a23e350216221ecc71339c30c1c52a17d",
+    "data/binance_um_aux_2023_2026/XRPUSDT_funding_2023-01-01_2026-06-01.csv.gz": "90510d33736e6b36c4d1d7c4636e6cb3e800a243900222a19436b007c348d237",
+    "data/binance_um_aux_2023_2026/XRPUSDT_premium_1h_2023-01-01_2026-06-01.csv.gz": "1c62ffcbdf34f2922eaf54c8e955b2513361f9080be4dc9ae94e02304ab48bae",
+    "data/binance_um_aux_2023_2026/ADAUSDT_funding_2023-01-01_2026-06-01.csv.gz": "a4ec0eba25edeeace0f47b78af9ad45cd2b6028ca8e327e0980bc272a8944a1f",
+    "data/binance_um_aux_2023_2026/ADAUSDT_premium_1h_2023-01-01_2026-06-01.csv.gz": "fcdb8d4a8733e677740e2996aaffe665f129601c0228fef873794646bb994a28",
+    "data/binance_um_aux_2023_2026/DOGEUSDT_funding_2023-01-01_2026-06-01.csv.gz": "02f183578a8fb6bd06e10eb3e160a503e11d10a6cf9f8c49589bf33f61a7eced",
+    "data/binance_um_aux_2023_2026/DOGEUSDT_premium_1h_2023-01-01_2026-06-01.csv.gz": "9aceab02b1a3d25ba69acee09eba3e473ddd769b7795cc3a399928890de2b5d2",
+    "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7",
+    "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
+  },
+  "feature_hash": "fc284409c13c128551d0631b008b456fe06b854db0141e3374c730665d557271",
+  "feature_admission_audit": {
+    "alt_funding_median_z2016": {
+      "fit_observations": 38591,
+      "pair_counts": {
+        "btc_funding_rate": 38591,
+        "btc_premium_change": 38591,
+        "btc_trend_96": 38591,
+        "btc_daily_momentum_4": 38591,
+        "btc_lr_impact_72": 38591
+      },
+      "spearman": {
+        "btc_funding_rate": 0.49644120955123144,
+        "btc_premium_change": -0.03468913256175855,
+        "btc_trend_96": 0.03064929777320967,
+        "btc_daily_momentum_4": 0.24478627484923685,
+        "btc_lr_impact_72": -0.02843682316789915
+      },
+      "max_abs_spearman": 0.49644120955123144,
+      "passes": false
+    },
+    "alt_funding_median_z8640": {
+      "fit_observations": 39168,
+      "pair_counts": {
+        "btc_funding_rate": 39168,
+        "btc_premium_change": 39168,
+        "btc_trend_96": 39168,
+        "btc_daily_momentum_4": 39168,
+        "btc_lr_impact_72": 39168
+      },
+      "spearman": {
+        "btc_funding_rate": 0.47981489028354635,
+        "btc_premium_change": -0.03805924488145258,
+        "btc_trend_96": -0.06039858990702868,
+        "btc_daily_momentum_4": 0.2508928657248727,
+        "btc_lr_impact_72": -0.07316137814994433
+      },
+      "max_abs_spearman": 0.47981489028354635,
+      "passes": false
+    },
+    "alt_funding_dispersion_z2016": {
+      "fit_observations": 39168,
+      "pair_counts": {
+        "btc_funding_rate": 39168,
+        "btc_premium_change": 39168,
+        "btc_trend_96": 39168,
+        "btc_daily_momentum_4": 39168,
+        "btc_lr_impact_72": 39168
+      },
+      "spearman": {
+        "btc_funding_rate": -0.10500190273072933,
+        "btc_premium_change": 0.015288988800414297,
+        "btc_trend_96": -0.03242154169544549,
+        "btc_daily_momentum_4": -0.07272646181847808,
+        "btc_lr_impact_72": 0.01001808557939828
+      },
+      "max_abs_spearman": 0.10500190273072933,
+      "passes": true
+    },
+    "alt_funding_dispersion_z8640": {
+      "fit_observations": 39168,
+      "pair_counts": {
+        "btc_funding_rate": 39168,
+        "btc_premium_change": 39168,
+        "btc_trend_96": 39168,
+        "btc_daily_momentum_4": 39168,
+        "btc_lr_impact_72": 39168
+      },
+      "spearman": {
+        "btc_funding_rate": -0.10530881240850448,
+        "btc_premium_change": 0.017378991142160943,
+        "btc_trend_96": 0.0031954378859296926,
+        "btc_daily_momentum_4": 0.03469506084939517,
+        "btc_lr_impact_72": 0.02822967580507927
+      },
+      "max_abs_spearman": 0.10530881240850448,
+      "passes": true
+    },
+    "alt_funding_positive_breadth_z2016": {
+      "fit_observations": 38879,
+      "pair_counts": {
+        "btc_funding_rate": 38879,
+        "btc_premium_change": 38879,
+        "btc_trend_96": 38879,
+        "btc_daily_momentum_4": 38879,
+        "btc_lr_impact_72": 38879
+      },
+      "spearman": {
+        "btc_funding_rate": 0.32122964373146845,
+        "btc_premium_change": -0.044713884687263776,
+        "btc_trend_96": 0.03766944825122375,
+        "btc_daily_momentum_4": 0.2484692983913654,
+        "btc_lr_impact_72": 0.002559032257223108
+      },
+      "max_abs_spearman": 0.32122964373146845,
+      "passes": false
+    },
+    "alt_funding_negative_breadth_z2016": {
+      "fit_observations": 39168,
+      "pair_counts": {
+        "btc_funding_rate": 39168,
+        "btc_premium_change": 39168,
+        "btc_trend_96": 39168,
+        "btc_daily_momentum_4": 39168,
+        "btc_lr_impact_72": 39168
+      },
+      "spearman": {
+        "btc_funding_rate": -0.3079389762732792,
+        "btc_premium_change": 0.03166434307443234,
+        "btc_trend_96": -0.04029196916550718,
+        "btc_daily_momentum_4": -0.2236340814487572,
+        "btc_lr_impact_72": 0.00899814232538857
+      },
+      "max_abs_spearman": 0.3079389762732792,
+      "passes": false
+    },
+    "alt_funding_median_change288_z2016": {
+      "fit_observations": 38879,
+      "pair_counts": {
+        "btc_funding_rate": 38879,
+        "btc_premium_change": 38879,
+        "btc_trend_96": 38879,
+        "btc_daily_momentum_4": 38879,
+        "btc_lr_impact_72": 38879
+      },
+      "spearman": {
+        "btc_funding_rate": 0.1829161904193792,
+        "btc_premium_change": -0.025091436712463274,
+        "btc_trend_96": 0.04508104332742803,
+        "btc_daily_momentum_4": -0.19377359281899628,
+        "btc_lr_impact_72": -0.0210208822480099
+      },
+      "max_abs_spearman": 0.19377359281899628,
+      "passes": true
+    },
+    "alt_premium_median_z2016": {
+      "fit_observations": 39168,
+      "pair_counts": {
+        "btc_funding_rate": 39168,
+        "btc_premium_change": 39168,
+        "btc_trend_96": 39168,
+        "btc_daily_momentum_4": 39168,
+        "btc_lr_impact_72": 39168
+      },
+      "spearman": {
+        "btc_funding_rate": 0.2108073024654818,
+        "btc_premium_change": 0.1947430639653955,
+        "btc_trend_96": 0.13890456903657522,
+        "btc_daily_momentum_4": 0.19098100441022503,
+        "btc_lr_impact_72": 0.08592805923194724
+      },
+      "max_abs_spearman": 0.2108073024654818,
+      "passes": true
+    },
+    "alt_premium_median_z8640": {
+      "fit_observations": 39168,
+      "pair_counts": {
+        "btc_funding_rate": 39168,
+        "btc_premium_change": 39168,
+        "btc_trend_96": 39168,
+        "btc_daily_momentum_4": 39168,
+        "btc_lr_impact_72": 39168
+      },
+      "spearman": {
+        "btc_funding_rate": 0.3131017628829901,
+        "btc_premium_change": 0.16943638699503402,
+        "btc_trend_96": 0.0867138655135328,
+        "btc_daily_momentum_4": 0.24480627259438797,
+        "btc_lr_impact_72": 0.06094054695575074
+      },
+      "max_abs_spearman": 0.3131017628829901,
+      "passes": false
+    },
+    "alt_premium_dispersion_z2016": {
+      "fit_observations": 39168,
+      "pair_counts": {
+        "btc_funding_rate": 39168,
+        "btc_premium_change": 39168,
+        "btc_trend_96": 39168,
+        "btc_daily_momentum_4": 39168,
+        "btc_lr_impact_72": 39168
+      },
+      "spearman": {
+        "btc_funding_rate": 0.1668251809684971,
+        "btc_premium_change": -0.016733989254939925,
+        "btc_trend_96": 0.02903573674751331,
+        "btc_daily_momentum_4": 0.16903841058722022,
+        "btc_lr_impact_72": 0.021740757119740488
+      },
+      "max_abs_spearman": 0.16903841058722022,
+      "passes": true
+    },
+    "alt_premium_dispersion_z8640": {
+      "fit_observations": 39168,
+      "pair_counts": {
+        "btc_funding_rate": 39168,
+        "btc_premium_change": 39168,
+        "btc_trend_96": 39168,
+        "btc_daily_momentum_4": 39168,
+        "btc_lr_impact_72": 39168
+      },
+      "spearman": {
+        "btc_funding_rate": 0.24818088553725054,
+        "btc_premium_change": -0.018397888315570227,
+        "btc_trend_96": 0.022986306735823702,
+        "btc_daily_momentum_4": 0.25379658482378464,
+        "btc_lr_impact_72": 0.015566655439319736
+      },
+      "max_abs_spearman": 0.25379658482378464,
+      "passes": true
+    },
+    "alt_premium_positive_breadth_z2016": {
+      "fit_observations": 39168,
+      "pair_counts": {
+        "btc_funding_rate": 39168,
+        "btc_premium_change": 39168,
+        "btc_trend_96": 39168,
+        "btc_daily_momentum_4": 39168,
+        "btc_lr_impact_72": 39168
+      },
+      "spearman": {
+        "btc_funding_rate": 0.26047669442807975,
+        "btc_premium_change": 0.0950706933463778,
+        "btc_trend_96": 0.1103364944294574,
+        "btc_daily_momentum_4": 0.22323329455636967,
+        "btc_lr_impact_72": 0.07105662541311251
+      },
+      "max_abs_spearman": 0.26047669442807975,
+      "passes": true
+    },
+    "alt_premium_negative_breadth_z2016": {
+      "fit_observations": 39168,
+      "pair_counts": {
+        "btc_funding_rate": 39168,
+        "btc_premium_change": 39168,
+        "btc_trend_96": 39168,
+        "btc_daily_momentum_4": 39168,
+        "btc_lr_impact_72": 39168
+      },
+      "spearman": {
+        "btc_funding_rate": -0.28171208565757655,
+        "btc_premium_change": -0.12122518519422332,
+        "btc_trend_96": -0.12345677136455122,
+        "btc_daily_momentum_4": -0.20917476682305786,
+        "btc_lr_impact_72": -0.07291502944279578
+      },
+      "max_abs_spearman": 0.28171208565757655,
+      "passes": true
+    },
+    "alt_premium_median_change288_z2016": {
+      "fit_observations": 39168,
+      "pair_counts": {
+        "btc_funding_rate": 39168,
+        "btc_premium_change": 39168,
+        "btc_trend_96": 39168,
+        "btc_daily_momentum_4": 39168,
+        "btc_lr_impact_72": 39168
+      },
+      "spearman": {
+        "btc_funding_rate": 0.00738476807830034,
+        "btc_premium_change": 0.1742914564696589,
+        "btc_trend_96": 0.13166960333221847,
+        "btc_daily_momentum_4": -0.0648526264504685,
+        "btc_lr_impact_72": 0.060872992305477054
+      },
+      "max_abs_spearman": 0.1742914564696589,
+      "passes": true
+    },
+    "alt_crowding_concordance": {
+      "fit_observations": 38591,
+      "pair_counts": {
+        "btc_funding_rate": 38591,
+        "btc_premium_change": 38591,
+        "btc_trend_96": 38591,
+        "btc_daily_momentum_4": 38591,
+        "btc_lr_impact_72": 38591
+      },
+      "spearman": {
+        "btc_funding_rate": 0.42798990783943486,
+        "btc_premium_change": 0.09968393577695252,
+        "btc_trend_96": 0.10420213438065401,
+        "btc_daily_momentum_4": 0.24636159647089653,
+        "btc_lr_impact_72": 0.03449495301376634
+      },
+      "max_abs_spearman": 0.42798990783943486,
+      "passes": false
+    },
+    "alt_crowding_disagreement": {
+      "fit_observations": 38591,
+      "pair_counts": {
+        "btc_funding_rate": 38591,
+        "btc_premium_change": 38591,
+        "btc_trend_96": 38591,
+        "btc_daily_momentum_4": 38591,
+        "btc_lr_impact_72": 38591
+      },
+      "spearman": {
+        "btc_funding_rate": 0.220871373215559,
+        "btc_premium_change": -0.19749036907852513,
+        "btc_trend_96": -0.0888456880496954,
+        "btc_daily_momentum_4": 0.045770942399376555,
+        "btc_lr_impact_72": -0.09404889209681004
+      },
+      "max_abs_spearman": 0.220871373215559,
+      "passes": true
+    }
+  },
+  "search_space": {
+    "admitted_features": [
+      "alt_funding_dispersion_z2016",
+      "alt_funding_dispersion_z8640",
+      "alt_funding_median_change288_z2016",
+      "alt_premium_median_z2016",
+      "alt_premium_dispersion_z2016",
+      "alt_premium_dispersion_z8640",
+      "alt_premium_positive_breadth_z2016",
+      "alt_premium_negative_breadth_z2016",
+      "alt_premium_median_change288_z2016",
+      "alt_crowding_disagreement"
+    ],
+    "raw_specs": 138,
+    "effective_unique_masks": 138,
+    "eligible_policy_variants": 237,
+    "top_n": 10
+  },
+  "selected": [
+    {
+      "rule_name": "single_alt_funding_dispersion_z2016_le_0.10_long",
+      "side": "long",
+      "terms": [
+        {
+          "feature": "alt_funding_dispersion_z2016",
+          "op": "le",
+          "quantile": 0.1,
+          "threshold": -1.1025404095649718
+        }
+      ],
+      "activation_hash": "43be2799dd214c52a64a12f3a5d1eda02b313b8fe528e0613b7f9a68e612d1df",
+      "hold_bars": 576,
+      "stride_bars": 24,
+      "selection_score": 7.813394673559806,
+      "selection_stats": {
+        "fit_2023_h1": {
+          "return_pct": 20.390723286249933,
+          "cagr_pct": 64.60597747194245,
+          "strict_mdd_pct": 10.124298980717416,
+          "ratio": 6.381279098433383,
+          "trades": 21,
+          "longs": 21,
+          "shorts": 0,
+          "win_rate": 0.6666666666666666,
+          "mean_trade_return_pct": 0.9187027263484647,
+          "p_value_mean_return_approx": 0.10645256879996157,
+          "effect_size_d": 0.35227900592530403
+        },
+        "select_2023_h2": {
+          "return_pct": 11.260691056108474,
+          "cagr_pct": 23.59215318056549,
+          "strict_mdd_pct": 4.300014800263718,
+          "ratio": 5.486528367092735,
+          "trades": 30,
+          "longs": 30,
+          "shorts": 0,
+          "win_rate": 0.6333333333333333,
+          "mean_trade_return_pct": 0.36008282890262844,
+          "p_value_mean_return_approx": 0.025867411289156816,
+          "effect_size_d": 0.40681117031556535
+        }
+      }
+    },
+    {
+      "rule_name": "single_alt_funding_dispersion_z2016_le_0.10_long",
+      "side": "long",
+      "terms": [
+        {
+          "feature": "alt_funding_dispersion_z2016",
+          "op": "le",
+          "quantile": 0.1,
+          "threshold": -1.1025404095649718
+        }
+      ],
+      "activation_hash": "43be2799dd214c52a64a12f3a5d1eda02b313b8fe528e0613b7f9a68e612d1df",
+      "hold_bars": 576,
+      "stride_bars": 12,
+      "selection_score": 7.786576510249143,
+      "selection_stats": {
+        "fit_2023_h1": {
+          "return_pct": 17.72724225365987,
+          "cagr_pct": 55.007092642274415,
+          "strict_mdd_pct": 10.132205369626401,
+          "ratio": 5.428935817583281,
+          "trades": 21,
+          "longs": 21,
+          "shorts": 0,
+          "win_rate": 0.5714285714285714,
+          "mean_trade_return_pct": 0.8105700033434334,
+          "p_value_mean_return_approx": 0.14983344370095342,
+          "effect_size_d": 0.31425995418818303
+        },
+        "select_2023_h2": {
+          "return_pct": 13.445536429775018,
+          "cagr_pct": 28.456472680447042,
+          "strict_mdd_pct": 4.301988587797101,
+          "ratio": 6.614725283364503,
+          "trades": 31,
+          "longs": 31,
+          "shorts": 0,
+          "win_rate": 0.6451612903225806,
+          "mean_trade_return_pct": 0.4118799356737631,
+          "p_value_mean_return_approx": 0.013077510001649806,
+          "effect_size_d": 0.44571776986861966
+        }
+      }
+    },
+    {
+      "rule_name": "single_alt_funding_dispersion_z2016_le_0.30_long",
+      "side": "long",
+      "terms": [
+        {
+          "feature": "alt_funding_dispersion_z2016",
+          "op": "le",
+          "quantile": 0.3,
+          "threshold": -0.7415077030658722
+        }
+      ],
+      "activation_hash": "f952c4a3f5745bb447f4496eb7d2ff0a6bc1e947ae5c1a3077e720079ccf5317",
+      "hold_bars": 576,
+      "stride_bars": 24,
+      "selection_score": 7.305937527549836,
+      "selection_stats": {
+        "fit_2023_h1": {
+          "return_pct": 20.05438800081667,
+          "cagr_pct": 63.37385698305524,
+          "strict_mdd_pct": 10.124298980717416,
+          "ratio": 6.259579759917809,
+          "trades": 41,
+          "longs": 41,
+          "shorts": 0,
+          "win_rate": 0.5853658536585366,
+          "mean_trade_return_pct": 0.4736550416099539,
+          "p_value_mean_return_approx": 0.20303494244513764,
+          "effect_size_d": 0.19880176098906113
+        },
+        "select_2023_h2": {
+          "return_pct": 16.14370885935321,
+          "cagr_pct": 34.5922265916087,
+          "strict_mdd_pct": 6.8191914704575645,
+          "ratio": 5.072775378352527,
+          "trades": 52,
+          "longs": 52,
+          "shorts": 0,
+          "win_rate": 0.6153846153846154,
+          "mean_trade_return_pct": 0.29536523758722955,
+          "p_value_mean_return_approx": 0.07824416757337005,
+          "effect_size_d": 0.24420203844930027
+        }
+      }
+    },
+    {
+      "rule_name": "single_alt_funding_dispersion_z2016_le_0.30_long",
+      "side": "long",
+      "terms": [
+        {
+          "feature": "alt_funding_dispersion_z2016",
+          "op": "le",
+          "quantile": 0.3,
+          "threshold": -0.7415077030658722
+        }
+      ],
+      "activation_hash": "f952c4a3f5745bb447f4496eb7d2ff0a6bc1e947ae5c1a3077e720079ccf5317",
+      "hold_bars": 576,
+      "stride_bars": 12,
+      "selection_score": 7.191408449250373,
+      "selection_stats": {
+        "fit_2023_h1": {
+          "return_pct": 17.04898035666944,
+          "cagr_pct": 52.62031399697889,
+          "strict_mdd_pct": 10.324058557862237,
+          "ratio": 5.096863186319894,
+          "trades": 42,
+          "longs": 42,
+          "shorts": 0,
+          "win_rate": 0.5714285714285714,
+          "mean_trade_return_pct": 0.401760105672364,
+          "p_value_mean_return_approx": 0.26871637308229346,
+          "effect_size_d": 0.17066312224212704
+        },
+        "select_2023_h2": {
+          "return_pct": 17.241659148352095,
+          "cagr_pct": 37.129671802372854,
+          "strict_mdd_pct": 6.821049854278538,
+          "ratio": 5.443395458997133,
+          "trades": 52,
+          "longs": 52,
+          "shorts": 0,
+          "win_rate": 0.6346153846153846,
+          "mean_trade_return_pct": 0.3147041296366275,
+          "p_value_mean_return_approx": 0.08197287569558886,
+          "effect_size_d": 0.24120471614195393
+        }
+      }
+    },
+    {
+      "rule_name": "single_alt_premium_dispersion_z2016_ge_0.20_long",
+      "side": "long",
+      "terms": [
+        {
+          "feature": "alt_premium_dispersion_z2016",
+          "op": "ge",
+          "quantile": 0.8,
+          "threshold": 0.7729385614395143
+        }
+      ],
+      "activation_hash": "015676adaa7b0316bacd808d1206bb0afa5e0946c1bb87b1e5daa7d7e6d2745b",
+      "hold_bars": 576,
+      "stride_bars": 24,
+      "selection_score": 5.866043325214986,
+      "selection_stats": {
+        "fit_2023_h1": {
+          "return_pct": 15.191498430431661,
+          "cagr_pct": 46.20239741911796,
+          "strict_mdd_pct": 11.327643333473137,
+          "ratio": 4.078729887494786,
+          "trades": 45,
+          "longs": 45,
+          "shorts": 0,
+          "win_rate": 0.5333333333333333,
+          "mean_trade_return_pct": 0.3339622355110058,
+          "p_value_mean_return_approx": 0.2631698243056988,
+          "effect_size_d": 0.16680029867740548
+        },
+        "select_2023_h2": {
+          "return_pct": 20.1945268760092,
+          "cagr_pct": 44.07063014891275,
+          "strict_mdd_pct": 9.364937314409739,
+          "ratio": 4.705918328049211,
+          "trades": 66,
+          "longs": 66,
+          "shorts": 0,
+          "win_rate": 0.5606060606060606,
+          "mean_trade_return_pct": 0.28691676048142517,
+          "p_value_mean_return_approx": 0.06595602624631214,
+          "effect_size_d": 0.22633108233915689
+        }
+      }
+    },
+    {
+      "rule_name": "single_alt_premium_dispersion_z8640_ge_0.10_long",
+      "side": "long",
+      "terms": [
+        {
+          "feature": "alt_premium_dispersion_z8640",
+          "op": "ge",
+          "quantile": 0.9,
+          "threshold": 1.0886235952377323
+        }
+      ],
+      "activation_hash": "a2a13c1b0f10d7ca755219c7fd821f159065ef891de2f195ddf58de3ee79ec62",
+      "hold_bars": 576,
+      "stride_bars": 24,
+      "selection_score": 5.658146534400075,
+      "selection_stats": {
+        "fit_2023_h1": {
+          "return_pct": 14.883366101693586,
+          "cagr_pct": 45.15444151005175,
+          "strict_mdd_pct": 8.507816240826005,
+          "ratio": 5.307406769479991,
+          "trades": 26,
+          "longs": 26,
+          "shorts": 0,
+          "win_rate": 0.6538461538461539,
+          "mean_trade_return_pct": 0.5550825372973881,
+          "p_value_mean_return_approx": 0.16767707645133867,
+          "effect_size_d": 0.2705826773239106
+        },
+        "select_2023_h2": {
+          "return_pct": 14.988775062163562,
+          "cagr_pct": 31.94847037344426,
+          "strict_mdd_pct": 8.380557392874376,
+          "ratio": 3.812213063609427,
+          "trades": 49,
+          "longs": 49,
+          "shorts": 0,
+          "win_rate": 0.5510204081632653,
+          "mean_trade_return_pct": 0.2945690821464206,
+          "p_value_mean_return_approx": 0.1331185447150265,
+          "effect_size_d": 0.21455957194003733
+        }
+      }
+    },
+    {
+      "rule_name": "single_alt_premium_median_change288_z2016_le_0.10_long",
+      "side": "long",
+      "terms": [
+        {
+          "feature": "alt_premium_median_change288_z2016",
+          "op": "le",
+          "quantile": 0.1,
+          "threshold": -1.1220237612724304
+        }
+      ],
+      "activation_hash": "6f836c2dfe3e30dcb2bc4479275d1e8e10bbf3d75646d4b48cb1d7fe40f7a452",
+      "hold_bars": 576,
+      "stride_bars": 12,
+      "selection_score": 5.10907433187749,
+      "selection_stats": {
+        "fit_2023_h1": {
+          "return_pct": 12.017931786954318,
+          "cagr_pct": 35.63434932942498,
+          "strict_mdd_pct": 9.43139337453226,
+          "ratio": 3.778269860490495,
+          "trades": 50,
+          "longs": 50,
+          "shorts": 0,
+          "win_rate": 0.58,
+          "mean_trade_return_pct": 0.23915879015957575,
+          "p_value_mean_return_approx": 0.28044648138643824,
+          "effect_size_d": 0.1526384598752893
+        },
+        "select_2023_h2": {
+          "return_pct": 18.40530177562161,
+          "cagr_pct": 39.844605568130184,
+          "strict_mdd_pct": 11.152639859891188,
+          "ratio": 3.572661367056726,
+          "trades": 67,
+          "longs": 67,
+          "shorts": 0,
+          "win_rate": 0.5671641791044776,
+          "mean_trade_return_pct": 0.26275785877465774,
+          "p_value_mean_return_approx": 0.14012564450323306,
+          "effect_size_d": 0.18023942809154503
+        }
+      }
+    },
+    {
+      "rule_name": "single_alt_premium_dispersion_z8640_ge_0.10_long",
+      "side": "long",
+      "terms": [
+        {
+          "feature": "alt_premium_dispersion_z8640",
+          "op": "ge",
+          "quantile": 0.9,
+          "threshold": 1.0886235952377323
+        }
+      ],
+      "activation_hash": "a2a13c1b0f10d7ca755219c7fd821f159065ef891de2f195ddf58de3ee79ec62",
+      "hold_bars": 576,
+      "stride_bars": 12,
+      "selection_score": 5.050982147628961,
+      "selection_stats": {
+        "fit_2023_h1": {
+          "return_pct": 18.89307556336659,
+          "cagr_pct": 59.164094931323596,
+          "strict_mdd_pct": 9.178033718349333,
+          "ratio": 6.446271254488727,
+          "trades": 31,
+          "longs": 31,
+          "shorts": 0,
+          "win_rate": 0.6774193548387096,
+          "mean_trade_return_pct": 0.5781061113281988,
+          "p_value_mean_return_approx": 0.09877312447362696,
+          "effect_size_d": 0.2964979684991714
+        },
+        "select_2023_h2": {
+          "return_pct": 13.679414975895154,
+          "cagr_pct": 28.982698455874978,
+          "strict_mdd_pct": 9.271913950571031,
+          "ratio": 3.12585930050505,
+          "trades": 59,
+          "longs": 59,
+          "shorts": 0,
+          "win_rate": 0.4576271186440678,
+          "mean_trade_return_pct": 0.2263407628248058,
+          "p_value_mean_return_approx": 0.19801241677830084,
+          "effect_size_d": 0.1675837133670438
+        }
+      }
+    },
+    {
+      "rule_name": "single_alt_premium_dispersion_z2016_le_0.30_long",
+      "side": "long",
+      "terms": [
+        {
+          "feature": "alt_premium_dispersion_z2016",
+          "op": "le",
+          "quantile": 0.3,
+          "threshold": -0.5118902385234833
+        }
+      ],
+      "activation_hash": "9d68b93efac48b2d50624e83de5adfb238d133a20f86b4a4ee596d9fdea8ee40",
+      "hold_bars": 576,
+      "stride_bars": 24,
+      "selection_score": 4.843298500535038,
+      "selection_stats": {
+        "fit_2023_h1": {
+          "return_pct": 12.388218663963135,
+          "cagr_pct": 36.841832195845555,
+          "strict_mdd_pct": 10.397438837333528,
+          "ratio": 3.5433564719380275,
+          "trades": 53,
+          "longs": 53,
+          "shorts": 0,
+          "win_rate": 0.5283018867924528,
+          "mean_trade_return_pct": 0.2425349406178437,
+          "p_value_mean_return_approx": 0.4105063533725233,
+          "effect_size_d": 0.11304814028061458
+        },
+        "select_2023_h2": {
+          "return_pct": 18.285074545461065,
+          "cagr_pct": 39.56287591269791,
+          "strict_mdd_pct": 11.699951957612843,
+          "ratio": 3.381456270592241,
+          "trades": 77,
+          "longs": 77,
+          "shorts": 0,
+          "win_rate": 0.5454545454545454,
+          "mean_trade_return_pct": 0.2270756545645853,
+          "p_value_mean_return_approx": 0.13693617010140713,
+          "effect_size_d": 0.1694933169085271
+        }
+      }
+    },
+    {
+      "rule_name": "single_alt_funding_dispersion_z8640_le_0.10_long",
+      "side": "long",
+      "terms": [
+        {
+          "feature": "alt_funding_dispersion_z8640",
+          "op": "le",
+          "quantile": 0.1,
+          "threshold": -0.6950631380081177
+        }
+      ],
+      "activation_hash": "8d7a41450246c185c691489c0e88681c4abeddafe4e34449d3939b046d5c402d",
+      "hold_bars": 576,
+      "stride_bars": 12,
+      "selection_score": 4.794394639888157,
+      "selection_stats": {
+        "fit_2023_h1": {
+          "return_pct": 9.454127925699396,
+          "cagr_pct": 27.457170184705127,
+          "strict_mdd_pct": 10.132205369626412,
+          "ratio": 2.709890806893259,
+          "trades": 19,
+          "longs": 19,
+          "shorts": 0,
+          "win_rate": 0.5263157894736842,
+          "mean_trade_return_pct": 0.5097627238293709,
+          "p_value_mean_return_approx": 0.41084920233752853,
+          "effect_size_d": 0.18867153059400685
+        },
+        "select_2023_h2": {
+          "return_pct": 23.899486462703102,
+          "cagr_pct": 53.01994029351993,
+          "strict_mdd_pct": 6.821049854278516,
+          "ratio": 7.772988238791874,
+          "trades": 42,
+          "longs": 42,
+          "shorts": 0,
+          "win_rate": 0.6904761904761905,
+          "mean_trade_return_pct": 0.519607160375741,
+          "p_value_mean_return_approx": 0.00890596287506984,
+          "effect_size_d": 0.4036024719239706
+        }
+      }
+    }
+  ]
+}
