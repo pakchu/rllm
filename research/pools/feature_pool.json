@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T22:26:45+09:00",
+  "updated_at": "2026-07-13T22:39:23+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -3868,6 +3868,45 @@
       "generation_recipe": {
         "script": "training/search_dvol_orphan_convexity_alpha.py",
         "protocol": "2 residual histories x 2 tails x 2 independent direction proxies x 2 holds = 16; pre-2024 only; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "cftc_release_assimilation_static_usage_20260713",
+      "name": "Static CFTC publication-lag assimilation policies",
+      "status": "rejected",
+      "family": "cftc_release_assimilation_static_usage",
+      "scope": "cme_bitcoin_weekly_position_price_assimilation",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family comparing prior-only standardized leveraged-money/asset-manager net-share surprises with BTC price assimilation from report date to conservative report-date-plus-eight-day availability, then following unpriced or fading over-assimilated disclosures.",
+      "data_sources": [
+        "CFTC Traders in Financial Futures CME Bitcoin weekly reports",
+        "BTCUSDT perpetual completed 5m OHLCV for causal price assimilation and execution"
+      ],
+      "feature_names": [
+        "static_cftc_unpriced_surprise",
+        "static_cftc_over_assimilated_surprise",
+        "fixed_release_plus_8d",
+        "fixed_hold_576_1152"
+      ],
+      "usable_for": [
+        "failure provenance only"
+      ],
+      "known_failures": [
+        "Zero of 16 policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.22 on only seven trades.",
+        "Top 2023 CAGR/MDD was 1.01 on only three trades, with one trade in H1 and two in H2.",
+        "The positive aggregate sign was below every statistical support floor."
+      ],
+      "evidence": "A physical pre-2024 scan with conservative +8d availability, prior-only surprise/return normalization, direction/static/stale/participant controls and cost stress rejected the exact publication-lag policies before OOS.",
+      "source_artifacts": [
+        "training/search_cftc_release_assimilation_alpha.py",
+        "results/cftc_release_assimilation_alpha_scan_2026-07-13.json",
+        "docs/cftc-release-assimilation-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune assimilation fractions, surprise tails, participant mappings or fixed holds on this sample.",
+      "generation_recipe": {
+        "script": "training/search_cftc_release_assimilation_alpha.py",
+        "protocol": "2 participants x 2 surprise tails x 2 assimilation states x 2 holds = 16; report date +8d; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
