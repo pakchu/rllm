@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T03:24:05.646508+00:00",
+  "updated_at": "2026-07-13T04:38:49.821974+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1496,6 +1496,55 @@
         "script": "training/search_ordinal_complexity_bidirectional_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python training/search_ordinal_complexity_bidirectional_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --manifest-output results/ordinal_complexity_bidirectional_top10_manifest_2026-07-13.json --output results/ordinal_complexity_bidirectional_alpha_scan_2026-07-13.json",
         "protocol": "fit 2020-06..2022; select 2023/H1/H2; frozen replay 2024/2025/2026; completed-hour causal features; next-open; fixed holds; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "spot_perp_orthogonal_residual_features_20260713",
+      "name": "Orthogonal spot-perpetual basis residual and absorption context",
+      "status": "candidate",
+      "family": "spot_perp_residual_microstructure",
+      "scope": "btc_crossvenue_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Direct Binance BTC perpetual-versus-spot log basis residualized against the completed Binance premium index with a trailing shifted OLS, plus causal return-residual, futures-flow and spot-participation states.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m OHLCV/taker",
+        "Binance BTCUSDT spot 5m close/volume",
+        "Binance premium-index 1m bars aggregated to complete 5m"
+      ],
+      "feature_names": [
+        "spa_residual_{2016,8640}",
+        "spa_residual_z_{2016,8640}",
+        "spa_lead_residual_z_{2016,8640}",
+        "spa_flow_z_{2016,8640}",
+        "spa_spot_share_z_{2016,8640}"
+      ],
+      "usable_for": [
+        "independent continuous microstructure context for compact LLM/RLLM",
+        "fresh-forward state input after live spot data parity",
+        "research on nonlinear state-dependent usage, not static direction rules"
+      ],
+      "known_failures": [
+        "Both contraction directions produced zero eligible paths before OOS.",
+        "Frozen expansion-onset Top-7 inverted in every later year; rank 1 returned -0.92% in 2024, -4.13% in 2025 and -20.40% in 2026.",
+        "No candidate added value to the deterministic six-sleeve union."
+      ],
+      "evidence": "The direct basis had fit Pearson 0.902 with premium index, but shifted-OLS residual z had only Spearman 0.023 with premium. Thus the residual is distinct information even though the tested directional mappings failed.",
+      "source_artifacts": [
+        "training/search_spot_perp_absorption_alpha.py",
+        "tests/test_search_spot_perp_absorption_alpha.py",
+        "results/spot_perp_absorption_top10_manifest_2026-07-13.json",
+        "results/spot_perp_absorption_alpha_scan_2026-07-13.json",
+        "results/spot_perp_absorption_replay_verification_2026-07-13.json",
+        "docs/spot-perp-absorption-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "All rolling regressions and normalizers end at t-1; signal uses completed t bars and enters next open. Manifest selection used physically pre-2024 market/spot prefixes. Exact tested mappings are now later-window contaminated.",
+      "tier_rationale": "Beta applies to the low-correlation continuous residual and context fields. Static contraction/expansion directional transitions are gamma-rejected separately.",
+      "next_action": "Keep continuous values for a materially different predeclared model or LLM state token. Require fresh forward data; do not retune static onset thresholds on 2024-2026.",
+      "generation_recipe": {
+        "script": "training/search_spot_perp_absorption_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_spot_perp_absorption_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --spot-csv data/cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/spot_perp_absorption_top10_manifest_2026-07-13.json --output results/spot_perp_absorption_alpha_scan_2026-07-13.json --docs-output docs/spot-perp-absorption-alpha-search-2026-07-13.md",
+        "protocol": "shifted rolling OLS/std; complete 5m bars; pre-2024 Top-7; next-open; 0.5x; 6bp/side plus 10bp stress; strict MDD"
       }
     }
   ]

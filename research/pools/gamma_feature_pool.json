@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T04:03:49.551641+00:00",
+  "updated_at": "2026-07-13T04:38:49.823905+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -535,6 +535,51 @@
         "script": "training/search_causal_online_expert_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python -m training.search_causal_online_expert_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/causal_online_expert_top10_manifest_2026-07-13.json --output results/causal_online_expert_alpha_scan_2026-07-13.json --docs-output docs/causal-online-expert-alpha-search-2026-07-13.md",
         "protocol": "54 policies; select 2023/H1/H2 with physical pre-2024 sources; frozen Top-10 replay; completed-exit histories only; next-open; source sleeve hold/TP/SL; global non-overlap; 0.5x; 6bp/side plus 10bp stress; strict bar-adverse MDD"
+      }
+    },
+    {
+      "id": "spot_perp_residual_static_transition_usage_20260713",
+      "name": "Static spot-perp residual contraction/expansion directional usage",
+      "status": "rejected",
+      "family": "spot_perp_residual_microstructure",
+      "scope": "btc_crossvenue_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed mapping of orthogonal spot-perp basis residual contraction or expansion-onset states to fixed contra/continuation BTC trades.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m OHLCV/taker",
+        "Binance BTCUSDT spot 5m close/volume",
+        "Binance premium-index complete 5m state"
+      ],
+      "feature_names": [
+        "spa_residual_z static 2/3-sigma transitions",
+        "lead-residual/flow/spot-share fixed confirmations",
+        "contra/continuation fixed direction"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous residual features remain beta"
+      ],
+      "known_failures": [
+        "Initial 96 contra-contraction and symmetric 192 contraction preflight policies all lost before OOS.",
+        "Eight expansion-onset paths passed pre-2024 admission, but all frozen selected rows were negative in 2024, 2025 and 2026.",
+        "Rank 1 fell from 2023 +22.46% / ratio 2.74 to combined OOS -24.41% / strict MDD 37.00% / ratio -0.30 across 1,154 trades.",
+        "No row improved the six-sleeve union; best merged result was ratio 2.17 versus baseline 5.62."
+      ],
+      "evidence": "Physical pre-2024 Top-7 manifest and exact replay reject both absorption and expansion-onset fixed directional mappings with statistically ample OOS trade counts.",
+      "source_artifacts": [
+        "training/search_spot_perp_absorption_alpha.py",
+        "tests/test_search_spot_perp_absorption_alpha.py",
+        "results/spot_perp_absorption_top10_manifest_2026-07-13.json",
+        "results/spot_perp_absorption_alpha_scan_2026-07-13.json",
+        "results/spot_perp_absorption_replay_verification_2026-07-13.json",
+        "docs/spot-perp-absorption-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "low-medium",
+      "leakage_notes": "Preflight revisions were made only after zero/negative pre-2024 results and before opening later rows. Top paths were selected on fit plus 2023 H1/H2; replay was exact. These exact mappings are now contaminated by later inspection.",
+      "tier_rationale": "Gamma applies only to fixed contraction/expansion transition directions. The orthogonal continuous residual remains beta due its low premium-index correlation.",
+      "next_action": "Do not retry fixed 2/3-sigma onset/contraction direction rules or retune holds on 2024-2026. Use only a materially different mechanism with fresh forward proof.",
+      "generation_recipe": {
+        "script": "training/search_spot_perp_absorption_alpha.py",
+        "protocol": "384 final policies after documented pre-OOS revisions; physically pre-2024 selection; frozen replay; next-open; dynamic contraction/fixed expansion exit; 0.5x; 6bp/side plus 10bp stress; strict MDD"
       }
     }
   ]
