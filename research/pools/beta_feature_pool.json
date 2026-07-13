@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T07:15:00+09:00",
+  "updated_at": "2026-07-14T07:55:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2572,6 +2572,54 @@
       "generation_recipe": {
         "script": "training/search_occupation_saddle_escape_alpha.py",
         "protocol": "physical pre-2024; daily-frozen 30d/64-bin landscape; depth<=0.5; 2 holds; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "conformal_sr_leverage_pressure_state_20260714",
+      "name": "Conformal SR leverage-pressure evidence state",
+      "status": "weak",
+      "family": "sequential_conformal_leverage_pressure",
+      "scope": "btc_price_taker_flow_open_interest",
+      "feature_tier": "beta_feature",
+      "description": "Causal completed-hour flow/OI-build pressure minus price response, prior-only one-sided conformal ranks, and directional power-betting Shiryaev-Roberts restart evidence.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV, taker-buy quote volume and one-row-delayed open interest"
+      ],
+      "feature_names": [
+        "conformal_pressure_flow_z",
+        "conformal_pressure_price_z",
+        "conformal_pressure_oi_z",
+        "conformal_pressure_residual",
+        "conformal_upper_p",
+        "conformal_lower_p",
+        "conformal_log_sr_up",
+        "conformal_log_sr_down",
+        "conformal_pressure_side"
+      ],
+      "usable_for": [
+        "sequential pressure-state token under a materially different preregistered learner",
+        "RLLM reasoning over evidence build, OI contribution and release/fade uncertainty",
+        "not retuning 30d/180d windows, boundary, multiplier, mappings or 12h hold"
+      ],
+      "known_failures": [
+        "Neither exact static mapping passed fit-and-2023 CAGR/MDD 3.",
+        "Release fit/2023 ratios were only 1.02/0.91 and 2023H2 lost -1.86%.",
+        "Fade lost -41.17% fit and -11.88% in 2023.",
+        "The residual feature is highly correlated with its no-OI analogue (Spearman 0.922), although event overlap is low."
+      ],
+      "evidence": "Release returned +38.71% fit and +6.67% in 2023. Removing OI lost in both windows, a single-tail control fell to ratios 0.25/0.25, reversing flow lost sharply, and all fixed baseline event Jaccards were <=0.137, supporting a distinct sequential event representation without alpha-grade path stability.",
+      "source_artifacts": [
+        "training/search_conformal_sr_pressure_alpha.py",
+        "results/conformal_sr_pressure_alpha_scan_2026-07-14.json",
+        "docs/conformal-sr-pressure-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame hard-filtered pre-2024; parser crossing-chunk discard disclosed; one-row delayed OI; prior-only shifted 30d normalization and 180d ranks; plus-one conservative ties; completed minute55 to next open; no 2024+ computation.",
+      "tier_rationale": "Strong OI, sequential-memory, flow-orientation and timing ablations justify weak beta, but low risk efficiency and a losing 2023H2 prevent alpha promotion.",
+      "next_action": "Freeze all static settings. Reuse continuous evidence state only in a preregistered learner or genuinely fresh forward shadow evaluation.",
+      "generation_recipe": {
+        "script": "training/search_conformal_sr_pressure_alpha.py",
+        "protocol": "30d prior z; 180d/min90d conformal ranks; power 0.5; SR boundary 200; fade/release x 12h; next-open; 0.5x; 6bp/side; strict MDD; OOS excluded"
       }
     }
   ]

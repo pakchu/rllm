@@ -2128,6 +2128,50 @@
         "results/orderflow_campaign_terminal_absorption_alpha_scan_2026-07-14.json",
         "docs/orderflow-campaign-terminal-absorption-alpha-search-2026-07-14.md"
       ]
+    },
+    {
+      "id": "conformal_sr_pressure_static_usage_20260714",
+      "name": "Static conformal-SR pressure release/fade policies",
+      "status": "rejected",
+      "family": "sequential_conformal_leverage_pressure_static_usage",
+      "scope": "btc_price_taker_flow_open_interest",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected two-policy family mapping fixed-boundary conformal-SR leverage-pressure events to 12-hour fade or stored-pressure release trades.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV, taker-buy quote volume and one-row-delayed open interest"
+      ],
+      "feature_names": [
+        "static_normalization_720h",
+        "static_reference_4320h_min2160",
+        "static_oi_multiplier_clip_0_3",
+        "static_power_0p5",
+        "static_sr_boundary_200",
+        "static_fade_release_mapping",
+        "static_hold_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous residual/rank/evidence state remains weak beta"
+      ],
+      "known_failures": [
+        "Release fit/2023 CAGR/MDD was 1.02/0.91, below 3.",
+        "Release lost in 2023H2 and was weak in 2021H2.",
+        "Fade lost in every reported full/half window.",
+        "Even zero-cost release ratios were only 1.31 fit and 1.56 in 2023."
+      ],
+      "evidence": "A critic-approved two-map physical pre-2024 experiment with support and overlap preflight, exact OI/no-memory/flow/timing controls and cost stress rejects static execution while identifying representation-level sequential information.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; delayed OI; prior-only normalizers/ranks; completed signal to next open; split-contained exits; strict MDD; no 2024+ computation.",
+      "tier_rationale": "Direction is identified as release, but the exact static family lacks risk efficiency and temporal robustness; it cannot be rescued by costs or the opposite map.",
+      "next_action": "Do not tune normalization/reference windows, OI multiplier, power, boundary, fade/release mapping or hold on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_conformal_sr_pressure_alpha.py",
+        "protocol": "two co-primary mappings plus no-OI/single-tail/reversed-flow/delay/cost controls; next-open; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_conformal_sr_pressure_alpha.py",
+        "results/conformal_sr_pressure_alpha_scan_2026-07-14.json",
+        "docs/conformal-sr-pressure-alpha-search-2026-07-14.md"
+      ]
     }
   ]
 }
