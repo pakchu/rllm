@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T04:55:00+09:00",
+  "updated_at": "2026-07-14T07:15:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2042,6 +2042,49 @@
         "training/search_nonequilibrium_probability_current_alpha.py",
         "results/nonequilibrium_probability_current_alpha_scan_2026-07-14.json",
         "docs/nonequilibrium-probability-current-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "occupation_saddle_escape_static_usage_20260714",
+      "name": "Static occupation-saddle crossing continuation policies",
+      "status": "rejected",
+      "family": "price_occupation_landscape_static_usage",
+      "scope": "btc_price_action_quote_volume",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family continuing completed-hour crossings of deep saddles in a daily-frozen joint time/quote-volume log-price occupation profile.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m close and quote volume"
+      ],
+      "feature_names": [
+        "static_occupation_lookback_8640",
+        "static_profile_bins_64",
+        "static_smoothing_1_2_3_2_1",
+        "static_saddle_ratio_0p5",
+        "static_mode_separation_3",
+        "static_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous generic occupation geometry remains weak beta"
+      ],
+      "known_failures": [
+        "Neither 6h nor 12h hold passed fit-and-2023 admission.",
+        "Top fit ratio was 0.18 and 2023 ratio was 1.52 at 6bp/side.",
+        "Fit approximate mean-return p-value was 0.697 and multiple half-years lost or were flat.",
+        "Joint weighting was not superior to time-only, volume-only or reversed-volume controls."
+      ],
+      "evidence": "Physical pre-2024 scan of two primary holds plus direction, delay, weighting and cost controls rejects the exact static continuation mapping while preserving only weak generic saddle-state evidence.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff, prior-day frozen profiles, UTC-boundary regression test, next-open execution, split-contained exits, strict MDD and sealed 2024+.",
+      "tier_rationale": "The static policy misses CAGR/strict-MDD 3 even at zero cost, is regime-sensitive, statistically weak and does not identify the proposed joint time-volume mechanism.",
+      "next_action": "Do not tune 30d lookback, 64 bins, smoothing, depth ratio, mode spacing, joint weighting or 6h/12h holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_occupation_saddle_escape_alpha.py",
+        "protocol": "two primary policies plus exact flip, 1h/24h/7d delays, time/volume/reversed association and cost controls; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_occupation_saddle_escape_alpha.py",
+        "results/occupation_saddle_escape_alpha_scan_2026-07-14.json",
+        "docs/occupation-saddle-escape-alpha-search-2026-07-14.md"
       ]
     }
   ]

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T04:20:00+09:00",
+  "updated_at": "2026-07-14T07:15:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2529,6 +2529,49 @@
       "generation_recipe": {
         "script": "training/search_preisach_flow_scar_alpha.py",
         "protocol": "physical pre-2024; one fixed 12h-field q80 policy; 12-relay Preisach lattice; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "causal_occupation_saddle_state_20260714",
+      "name": "Daily-frozen price occupation-saddle state",
+      "status": "weak",
+      "family": "price_occupation_landscape_geometry",
+      "scope": "btc_price_action_quote_volume",
+      "feature_tier": "beta_feature",
+      "description": "Causal daily-frozen prior-30d log-price occupation landscape summarized at completed-hour decisions by crossing side, crossed-barrier depth, available-saddle count and decision activity.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m close and quote volume"
+      ],
+      "feature_names": [
+        "occupation_crossing_side",
+        "occupation_barrier_depth",
+        "occupation_saddle_count",
+        "occupation_crossing_active",
+        "occupation_decision"
+      ],
+      "usable_for": [
+        "weak causal market-memory geometry under a materially different learner",
+        "not replaying the fixed 30d/64-bin/depth<=0.5 continuation rule or 6h/12h holds"
+      ],
+      "known_failures": [
+        "Zero of two static policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.18 and 2023 CAGR/MDD was 1.52; fit/2023 approximate mean-return p-values were 0.697/0.207.",
+        "The top policy lost in 2020H2 and 2021H1, was nearly flat in 2021H2, and 2023H2 ratio was only 0.50.",
+        "Time-only, volume-only and reversed-volume profiles remained comparable; the joint time-volume weighting was not uniquely identified."
+      ],
+      "evidence": "The 12h crossing continuation returned +5.14% fit and +10.04% in 2023. Exact direction flip and 1h/24h/7d delays materially degraded both windows, supporting weak local information in frozen saddle crossings but not alpha-grade execution.",
+      "source_artifacts": [
+        "training/search_occupation_saddle_escape_alpha.py",
+        "results/occupation_saddle_escape_alpha_scan_2026-07-14.json",
+        "docs/occupation-saddle-escape-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Physical pre-2024 cutoff; each UTC-day profile uses only the preceding 8,640 bars; completed minute-55 crossing; next-open entry; no labels or future profile updates. A support-probe day-boundary bug was corrected before return evaluation and regression-tested.",
+      "tier_rationale": "Direction and time-locality controls justify retaining generic occupation geometry, but weak ratios, high p-values, regime losses and non-identifiable joint weighting prevent alpha promotion.",
+      "next_action": "Freeze static settings. Reuse only continuous mode/saddle/basin tokens in a preregistered learner or on genuinely fresh-forward data.",
+      "generation_recipe": {
+        "script": "training/search_occupation_saddle_escape_alpha.py",
+        "protocol": "physical pre-2024; daily-frozen 30d/64-bin landscape; depth<=0.5; 2 holds; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
