@@ -19,7 +19,7 @@ This is an information-direction hypothesis rather than a basis or correlation g
   than `t-1`; the current and future states are excluded.
 - Thresholds are fitted on `2020-06-01..2022-12-31` only.
 - `2023` is selection/robustness data; frozen `2024+` OOS remained unopened.
-- Hourly decision cadence, next-bar-open execution, 0.5x exposure, 6 bp round-trip
+- Hourly decision cadence, next-bar-open execution, 0.5x exposure, 6 bp/side
   implementation cost, split-contained forced exits, and conservative strict MDD.
 - Search: 96 preflight combinations across two state thresholds, two TE windows, two
   TE tails, two gap tails, three holds, and two direction-consistency modes.
