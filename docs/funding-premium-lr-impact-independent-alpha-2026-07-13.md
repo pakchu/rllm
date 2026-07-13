@@ -11,10 +11,12 @@ The frozen candidate is manifest rank 8 inside a predeclared Top-10 family. It w
 Long when either condition is true:
 
 1. Funding component with liquidity-impact gate:
+   - `funding_available > 0.5`
    - `funding_rate <= -0.0000167`
    - `trend_96 >= 0.007485218212390219`
    - `-0.20030301257467914 <= lr_impact_72 <= 0.24664964484849766`
 2. Premium component, unchanged:
+   - `premium_available > 0.5`
    - `premium_index_change <= -0.00023471`
    - `htf_1d_return_4 >= 0.0940403008961932`
 
@@ -91,4 +93,5 @@ Quarter samples remain small; annual and combined statistics are the primary evi
 - `training/search_funding_premium_independent_gate_alpha.py`
 - `results/funding_premium_independent_gate_top10_manifest_2026-07-13.json`
 - `results/funding_premium_independent_gate_alpha_scan_2026-07-13.json`
+- `results/funding_premium_independent_gate_replay_verification_2026-07-13.json`
 - `configs/live/funding_premium_lr_impact_central_research_candidate.json`

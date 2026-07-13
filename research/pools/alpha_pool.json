@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T01:03:50.125452+00:00",
+  "updated_at": "2026-07-13T01:11:30.566718+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side for current scans; older alt_oi_taker artifact used 5bp/side",
@@ -3338,7 +3338,7 @@
       "scope": "btc_derivatives_orderflow",
       "side": "long",
       "description": "Fixed non-REX funding/premium squeeze long alpha with a train-fit central lr_impact_72 gate applied only to the funding component.",
-      "entry_logic": "(funding_rate<=-0.0000167 AND trend_96>=0.007485218212390219 AND -0.20030301257467914<=lr_impact_72<=0.24664964484849766) OR (premium_index_change<=-0.00023471 AND htf_1d_return_4>=0.0940403008961932).",
+      "entry_logic": "(funding_available>0.5 AND funding_rate<=-0.0000167 AND trend_96>=0.007485218212390219 AND -0.20030301257467914<=lr_impact_72<=0.24664964484849766) OR (premium_available>0.5 AND premium_index_change<=-0.00023471 AND htf_1d_return_4>=0.0940403008961932).",
       "exit_logic": "Enter next 5m open; fixed 576 bars; stride 12; one non-overlapping position; no TP/SL.",
       "dependencies": [
         "funding_premium_trend_squeeze_long_20260712",
@@ -3401,7 +3401,8 @@
         "results/funding_premium_independent_gate_top10_manifest_2026-07-13.json",
         "results/funding_premium_independent_gate_alpha_scan_2026-07-13.json",
         "configs/live/funding_premium_lr_impact_central_research_candidate.json",
-        "docs/funding-premium-lr-impact-independent-alpha-2026-07-13.md"
+        "docs/funding-premium-lr-impact-independent-alpha-2026-07-13.md",
+        "results/funding_premium_independent_gate_replay_verification_2026-07-13.json"
       ],
       "contamination_risk": "medium-high",
       "leakage_notes": "Gate quantiles fit on 2020-2022; variants selected only on 2023/H1/H2 while 2024+ market rows were physically absent. Rank 8 was identified as the sole generalizer after replaying the frozen Top-10, so later evidence carries family multiplicity 10; combined approximate p remains about 5.9e-5 after Bonferroni. Broader base-alpha research had previously inspected later periods, so require fresh forward proof.",
@@ -3411,7 +3412,7 @@
           "funding_premium_trend_squeeze_long_20260712",
           "liquidity_recovery_efficiency_features_20260712"
         ],
-        "entry_logic": "fixed conditions listed above",
+        "entry_logic": "fixed conditions listed above, including funding_available>0.5 and premium_available>0.5 parity guards",
         "exit_logic": "next-open fixed 576 bars; stride 12; no TP/SL",
         "side": "long",
         "script_or_config": "configs/live/funding_premium_lr_impact_central_research_candidate.json",
