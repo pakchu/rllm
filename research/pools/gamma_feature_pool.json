@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T07:55:00+09:00",
+  "updated_at": "2026-07-13T23:23:38.197433+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2171,6 +2171,47 @@
         "training/search_conformal_sr_pressure_alpha.py",
         "results/conformal_sr_pressure_alpha_scan_2026-07-14.json",
         "docs/conformal-sr-pressure-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "aggressor_centroid_inversion_static_usage_20260714",
+      "name": "Static aggressor-centroid inversion settlement policy",
+      "status": "rejected",
+      "family": "aggressor_execution_centroid_topology_static_usage",
+      "scope": "btc_completed_kline_taker_base_quote_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Rejected threshold-free 12-hour continuation policy: long B<S<C and short C<B<S using completed-hour aggressor execution centroids.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m total/taker-buy base and quote volumes plus OHLC"
+      ],
+      "feature_names": [
+        "static_inverted_terminal_order",
+        "static_continuation_direction",
+        "static_hold_144"
+      ],
+      "usable_for": [
+        "failure provenance only; exact raw buyer/seller execution centroids retain weak-beta representation status"
+      ],
+      "known_failures": [
+        "Fit return/CAGR/strict MDD/ratio was -50.05%/-26.93%/54.86%/-0.49 over 914 trades.",
+        "2023 return/CAGR/strict MDD/ratio was -10.75%/-10.76%/24.96%/-0.43 over 472 trades.",
+        "Only 2021H1 was positive; all other fit/selection half-years lost.",
+        "The exact direction flip, structural ablations, matched momentum controls and every timing delay failed.",
+        "Zero-cost fit remained negative, while the apparent zero-cost 2023 return had ratio only 1.42 and disappeared by 6bp/side."
+      ],
+      "evidence": "A pre-outcome critic/verifier-approved one-cell experiment with exact accounting, full side-specific support, direct matched momentum controls, 5m live-latency control and 0-15bp cost stress rejects the static family without opening 2024+.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; completed minute55 hourly centroids; next-open and delayed controls; split-contained exits; strict MDD; no 2024+ computation.",
+      "tier_rationale": "The policy is unprofitable, directionally unstable, cost-sensitive and almost event-identical to simpler B<S momentum controls.",
+      "next_action": "Do not tune centroid-gap thresholds, ordinary/inverted topology transitions, OI/funding gates, directions, holds or delays on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_aggressor_centroid_inversion_alpha.py",
+        "protocol": "one inverted-terminal map plus flip/structural/matched-momentum/delay/cost controls; 12h; next-open; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_aggressor_centroid_inversion_alpha.py",
+        "results/aggressor_centroid_inversion_alpha_scan_2026-07-14.json",
+        "docs/aggressor-centroid-inversion-alpha-search-2026-07-14.md"
       ]
     }
   ]

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T07:55:00+09:00",
+  "updated_at": "2026-07-13T23:23:38.197433+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2620,6 +2620,49 @@
       "generation_recipe": {
         "script": "training/search_conformal_sr_pressure_alpha.py",
         "protocol": "30d prior z; 180d/min90d conformal ranks; power 0.5; SR boundary 200; fade/release x 12h; next-open; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      }
+    },
+    {
+      "id": "aggressor_execution_centroid_state_20260714",
+      "name": "Aggressor execution-centroid auction state",
+      "status": "weak",
+      "family": "aggressor_execution_centroid_topology",
+      "scope": "btc_completed_kline_taker_base_quote_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Exact completed-hour buyer- and seller-initiated average execution prices reconstructed from taker-buy and total base/quote kline volumes, plus their ordering and close-settlement geometry.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m total/taker-buy base and quote volumes plus OHLC"
+      ],
+      "feature_names": [
+        "aggressor_buy_centroid",
+        "aggressor_sell_centroid",
+        "aggressor_centroid_log_wedge",
+        "aggressor_close_midpoint_log_gap",
+        "aggressor_signed_inversion_settlement"
+      ],
+      "usable_for": [
+        "observable auction-ordering tokens in a materially different preregistered learner or RLLM",
+        "not replaying any inspected static ordering, direction, hold, gap threshold, OI gate or transition on pre-2024"
+      ],
+      "known_failures": [
+        "The fixed B<S<C long / C<B<S short policy lost 50.05% fit and 10.75% in 2023 at 6bp/side.",
+        "Zero-cost fit still lost 13.56%; 2023 zero-cost ratio was only 1.42.",
+        "The exact direction flip also lost in fit and 2023.",
+        "Primary event Jaccard was 0.976 versus direct B<S plus midpoint/VWAP/hourly-return controls, so the static transition collapses to a simple price-direction subset."
+      ],
+      "evidence": "All 35,073 completed hours reconstructed with max quote-accounting relative error 2.38e-16 and no high/low bound violations. Continuous signed-centroid Spearman was only 0.251/0.293/0.213 versus hourly return/close-VWAP/taker imbalance, preserving an observable low-linear-redundancy token despite no static trading edge.",
+      "source_artifacts": [
+        "training/search_aggressor_centroid_inversion_alpha.py",
+        "results/aggressor_centroid_inversion_alpha_scan_2026-07-14.json",
+        "docs/aggressor-centroid-inversion-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame hard-filtered pre-2024; cutoff-chunk discard disclosed; 12 completed 5m rows ending minute55; next-open entry; no future labels, centroids or 2024+ rows.",
+      "tier_rationale": "The centroids are exact observables and continuous geometry is not highly correlated with simple controls, but all static execution semantics fail and matched event controls are nearly identical; retain only as weak representation.",
+      "next_action": "Freeze this sample. Reuse raw centroids only under a separately preregistered learner or genuinely fresh-forward shadow period.",
+      "generation_recipe": {
+        "script": "training/search_aggressor_centroid_inversion_alpha.py",
+        "protocol": "completed-hour exact base/quote centroids; one B<S terminal map; 12h; next-open; 0.5x; 6bp/side; strict MDD; OOS excluded"
       }
     }
   ]
