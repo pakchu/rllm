@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T01:46:42.478919+00:00",
+  "updated_at": "2026-07-13T03:10:44.490752+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -398,6 +398,53 @@
         "script": "training/search_alt_derivatives_crowding_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python training/search_alt_derivatives_crowding_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --aux-dir data/binance_um_aux_2023_2026 --btc-funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --btc-premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/alt_derivatives_crowding_top10_manifest_2026-07-13.json --output results/alt_derivatives_crowding_alpha_scan_2026-07-13.json",
         "protocol": "fit thresholds 2023H1; select 2023H2; frozen Top-10; replay 2024/2025/2026; 0.5x; 6bp/side; next-open; fixed hold; strict high-water MDD"
+      }
+    },
+    {
+      "id": "funding_premium_oi_transition_veto_usage_20260713",
+      "name": "Funding/premium LR-impact long with hourly OI transition veto",
+      "status": "rejected",
+      "family": "oi_transition_gate",
+      "scope": "btc_derivatives_state",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed use of delayed completed-hour Binance BTC open-interest transition states as a negative-state veto on the fixed funding/premium + central lr_impact_72 long alpha.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker",
+        "Binance USD-M BTCUSDT funding and premium index",
+        "Binance USD-M BTCUSDT sum_open_interest metrics"
+      ],
+      "feature_names": [
+        "oi_logchg24",
+        "oi_z168",
+        "oi_transition3",
+        "oi_transition6"
+      ],
+      "usable_for": [
+        "failure provenance only; raw OI remains a beta feature and may be reconsidered only through a materially different mechanism with fresh forward data"
+      ],
+      "known_failures": [
+        "Both frozen pre-2024 policies failed alpha-pool qualification.",
+        "Best six-state veto achieved only 2024/2025/2026 ratios 2.59/1.52/2.00 with 17/15/18 trades.",
+        "Best combined ratio was 1.53 versus 3.03 for the unchanged base; the veto removed 19 of 69 base trades and reduced absolute return from 68.88% to 36.74%.",
+        "At 10bp/side the best combined ratio fell to 1.38."
+      ],
+      "evidence": "Pre-2024 thresholds and two eligible transition-veto policies were manifest-frozen and replayed exactly. OI inputs were low-correlated with base features (max |rho| 0.142), but neither transition representation added economic value.",
+      "source_artifacts": [
+        "training/search_funding_premium_oi_transition_gate_alpha.py",
+        "tests/test_search_funding_premium_oi_transition_gate_alpha.py",
+        "results/funding_premium_oi_transition_gate_top10_manifest_2026-07-13.json",
+        "results/funding_premium_oi_transition_gate_alpha_scan_2026-07-13.json",
+        "results/funding_premium_oi_transition_gate_replay_verification_2026-07-13.json",
+        "docs/funding-premium-oi-transition-gate-search-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "OI thresholds and state rankings used 2021-04-15..2022-12-31; policy selection used only 2023/H1/H2 while all source prefixes were physically pre-2024. Frozen policies were replay-only on 2024-2026. A pre-OOS zero-candidate floor correction is retained explicitly.",
+      "tier_rationale": "Gamma applies to the exact static first-order transition-veto usage. Raw delayed OI features remain beta because this test shows negative incremental value for one gate design, not universal absence of OI information.",
+      "next_action": "Do not retry three/six-state first-order OI vetoes on this base or retune their states on 2024-2026. Require a materially different mechanism and fresh forward evidence.",
+      "generation_recipe": {
+        "script": "training/search_funding_premium_oi_transition_gate_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_funding_premium_oi_transition_gate_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --metrics-csv data/binance_um_metrics_BTCUSDT_5m_2020-09-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/funding_premium_oi_transition_gate_top10_manifest_2026-07-13.json --output results/funding_premium_oi_transition_gate_alpha_scan_2026-07-13.json",
+        "protocol": "fit OI states 2021-04-15..2022; select policies 2023/H1/H2 with all sources pre-2024; frozen replay 2024/2025/2026; next-open; hold576; stride12; 0.5x; 6bp/side plus 10bp stress; strict high-water MDD"
       }
     }
   ]

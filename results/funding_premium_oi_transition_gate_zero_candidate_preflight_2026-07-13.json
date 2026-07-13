@@ -1,0 +1,148 @@
+{
+  "as_of": "2026-07-13T03:06:15.556571+00:00",
+  "sha256": "9242f155be9e9051a4f29d1e9af85f31e098062dbf209df104c51ea86ef28bd3",
+  "protocol": {
+    "base_alpha": "fixed funding/premium squeeze with funding-only central lr_impact_72 gate",
+    "state_fit": [
+      "2021-04-15",
+      "2023-01-01"
+    ],
+    "selection": {
+      "select_2023": [
+        "2023-01-01",
+        "2024-01-01"
+      ],
+      "select_2023_h1": [
+        "2023-01-01",
+        "2023-07-01"
+      ],
+      "select_2023_h2": [
+        "2023-07-01",
+        "2024-01-01"
+      ]
+    },
+    "all_market_and_aux_rows_physically_excluded_before_manifest": true,
+    "oi_source": "Binance USD-M BTCUSDT sum_open_interest delayed one complete 5m source bar",
+    "hourly_state": "last delayed OI from a complete 12-row hour; exposed from next hour only",
+    "state_formula": "3-state 24h OI change bucket; 6-state = 2*change_bucket + 7d OI-z level bucket; observable first-order transition",
+    "search_cap": "36 policies; K in {3,5,8}; target in {funding,all}; fixed execution",
+    "entry": "next 5m open",
+    "exit": "fixed 576 bars; stride 12; no TP/SL",
+    "cost": "6bp/side base and 10bp/side stress at 0.5x",
+    "mdd": "strict favorable-high-water then adverse OHLC extreme",
+    "status_ceiling": "shadow research; no retrospective live promotion"
+  },
+  "source_prefix_hashes": {
+    "market": "a7639b9bf7fe7eaf6f6885af758fc4273a6c76ef0d085f00a2a3067675e04b6c",
+    "metrics": "16d1964c4aae3d2af7ba94b04624aa8eed4bf6a9304c91fc4247f06705655f10",
+    "funding": "176afb9631ce5674bca3f375599deab5a6cbf39833edf6c5e26d7ccf33160485",
+    "premium": "fdaeda538c62bdc15bce35100430a5d3586cea37d3c4021c437c1c0d9e935529"
+  },
+  "state_thresholds": {
+    "oi_logchg24_q30": -0.015744523516136515,
+    "oi_logchg24_q70": 0.022633799389715922,
+    "oi_z168_median": 0.36480192149050933,
+    "change_observations": 14924,
+    "level_observations": 13015
+  },
+  "transition_feature_hash": "6ab98f64e0f298cd44439909f76206d4b8214b6a9f05f39acdf2babbb706ba29",
+  "base_feature_hash": "1202af675c8d887d77e75f3e5ca7efec71fd5aa69309160eb3e527c78b5338c4",
+  "correlation_audit": {
+    "oi_logchg24": {
+      "pair_counts": {
+        "btc_funding_rate": 179088,
+        "btc_premium_index_change": 179088,
+        "btc_trend_96": 179088,
+        "btc_daily_mom4": 179088,
+        "btc_lr_impact_72": 179088
+      },
+      "spearman": {
+        "btc_funding_rate": 0.05645221387051709,
+        "btc_premium_index_change": 0.002705524549081361,
+        "btc_trend_96": 0.026217753036060235,
+        "btc_daily_mom4": -0.01869467081382636,
+        "btc_lr_impact_72": 0.009751255537878735
+      },
+      "max_abs_spearman": 0.05645221387051709
+    },
+    "oi_z168": {
+      "pair_counts": {
+        "btc_funding_rate": 156180,
+        "btc_premium_index_change": 156180,
+        "btc_trend_96": 156180,
+        "btc_daily_mom4": 156180,
+        "btc_lr_impact_72": 156180
+      },
+      "spearman": {
+        "btc_funding_rate": 0.142017093165681,
+        "btc_premium_index_change": 0.004600639611422746,
+        "btc_trend_96": 0.014786661918228368,
+        "btc_daily_mom4": 0.05840431478140563,
+        "btc_lr_impact_72": 0.008523921126458037
+      },
+      "max_abs_spearman": 0.142017093165681
+    }
+  },
+  "search_space": {
+    "raw_specs": 2,
+    "effective_unique_masks": 2,
+    "eligible_variants": 0,
+    "top_n": 10,
+    "top_per_schema_mode": 2
+  },
+  "baseline_selection_stats": {
+    "fit": {
+      "return_pct": -6.394614839929047,
+      "cagr_pct": -3.7822936884154834,
+      "strict_mdd_pct": 20.06440939380737,
+      "ratio": -0.18850760140404837,
+      "trades": 71,
+      "longs": 71,
+      "shorts": 0,
+      "win_rate": 0.38028169014084506,
+      "mean_trade_return_pct": -0.06598204131904548,
+      "p_value_mean_return_approx": 0.8134484904984385,
+      "effect_size_d": -0.028005627557068837
+    },
+    "select_2023": {
+      "return_pct": 24.296923248698256,
+      "cagr_pct": 24.315441724703525,
+      "strict_mdd_pct": 10.20326224463246,
+      "ratio": 2.383104652386538,
+      "trades": 25,
+      "longs": 25,
+      "shorts": 0,
+      "win_rate": 0.76,
+      "mean_trade_return_pct": 0.895337643687871,
+      "p_value_mean_return_approx": 0.03908025163739626,
+      "effect_size_d": 0.4126681781208222
+    },
+    "select_2023_h1": {
+      "return_pct": 21.231943069883098,
+      "cagr_pct": 47.480819895423295,
+      "strict_mdd_pct": 10.20326224463246,
+      "ratio": 4.6534940254428045,
+      "trades": 15,
+      "longs": 15,
+      "shorts": 0,
+      "win_rate": 0.8,
+      "mean_trade_return_pct": 1.3238880600539111,
+      "p_value_mean_return_approx": 0.05629707069518086,
+      "effect_size_d": 0.49283168742422123
+    },
+    "select_2023_h2": {
+      "return_pct": 2.5281952109340367,
+      "cagr_pct": 5.081088985813986,
+      "strict_mdd_pct": 3.2033435302206814,
+      "ratio": 1.5861829797143066,
+      "trades": 10,
+      "longs": 10,
+      "shorts": 0,
+      "win_rate": 0.7,
+      "mean_trade_return_pct": 0.25251201913880306,
+      "p_value_mean_return_approx": 0.286997171810111,
+      "effect_size_d": 0.3366978587728554
+    }
+  },
+  "selected": []
+}
