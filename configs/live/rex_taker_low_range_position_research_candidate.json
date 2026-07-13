@@ -1,0 +1,52 @@
+{
+  "name": "rex_taker_low_range_position_research_candidate",
+  "status": "research_alpha_candidate_not_live",
+  "as_of": "2026-07-13",
+  "side": "LONG_SHORT",
+  "candidate_source": {
+    "family": "rex_htf_pullback_reclaim",
+    "quantile": 0.75,
+    "threshold_fit_end": "2024-01-01",
+    "hold_bars": 144
+  },
+  "entry_gate": [
+    {
+      "feature": "taker_imbalance",
+      "op": "<=",
+      "threshold": -0.07073595391836504
+    },
+    {
+      "feature": "rex_2016_range_pos",
+      "op": "<=",
+      "threshold": 0.6865011402825759
+    }
+  ],
+  "execution": {
+    "signal_bar": "completed 5m bar",
+    "entry": "next 5m open",
+    "exit": "fixed 144 bars",
+    "max_concurrent_positions": 1,
+    "backtest_leverage": 0.5,
+    "fee_rate_each_side": 0.0005,
+    "slippage_rate_each_side": 0.0001
+  },
+  "oos_2025_2026_to_jun02": {
+    "absolute_return_pct": 11.8,
+    "cagr_pct": 8.2,
+    "strict_mdd_pct": 2.63,
+    "cagr_to_strict_mdd": 3.12,
+    "trades": 54,
+    "p_value_mean_return_approx": 0.021
+  },
+  "validation_status": "research_candidate_requires_fresh_shadow_oos",
+  "risk_notes": [
+    "The candidate was rank 8 inside a train+2024-selected Top-10, not a pre-registered live strategy.",
+    "2025 alone has CAGR/strict-MDD 1.71; strength is concentrated in the combined later window and 2026.",
+    "Do not change thresholds using 2025-2026. Validate live feature parity and collect fresh OOS before capital use."
+  ],
+  "artifacts": [
+    "results/rex_pre2025_conjunctive_gate_corrected_scan_2026-07-13.json",
+    "results/rex_taker_rangepos_gate_strict_audit_2026-07-13.json",
+    "docs/rex-pre2025-corrected-gate-audit-2026-07-13.md"
+  ]
+}

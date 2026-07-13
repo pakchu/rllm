@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-12T00:00:00Z",
+  "updated_at": "2026-07-13T00:03:58.056701+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side for current scans; older alt_oi_taker artifact used 5bp/side",
@@ -3233,6 +3233,103 @@
           "mdd": "strict intrabar",
           "selection": "test2024 only"
         }
+      }
+    },
+    {
+      "id": "rex_taker_low_range_position_20260713",
+      "name": "REX taker-sell / non-high range-position alpha",
+      "status": "candidate",
+      "family": "rex_taker_range_regime",
+      "scope": "btc_price_orderflow",
+      "side": "long_short",
+      "description": "Trade fixed REX reclaim candidates when current taker imbalance is sell-heavy and the seven-day REX range position is not near the upper extreme.",
+      "entry_logic": "REX reclaim q75 candidate AND taker_imbalance<=-0.07073595391836504 AND rex_2016_range_pos<=0.6865011402825759.",
+      "exit_logic": "Enter next 5m open, fixed 144 bars (12h), one position at a time.",
+      "dependencies": [
+        "rex_htf_pullback_reclaim_q75",
+        "taker_imbalance",
+        "rex_2016_range_pos"
+      ],
+      "stats": {
+        "train_2021_2023": {
+          "return_pct": 60.97,
+          "cagr_pct": 17.21,
+          "strict_mdd_pct": 14.35,
+          "ratio": 1.2,
+          "trades": 274,
+          "p_value_approx": 0.03
+        },
+        "selection_2024": {
+          "return_pct": 12.91,
+          "cagr_pct": 12.88,
+          "strict_mdd_pct": 6.22,
+          "ratio": 2.07,
+          "trades": 65,
+          "p_value_approx": 0.135
+        },
+        "eval_2025": {
+          "return_pct": 4.51,
+          "cagr_pct": 4.51,
+          "strict_mdd_pct": 2.63,
+          "ratio": 1.71,
+          "trades": 31,
+          "p_value_approx": 0.247
+        },
+        "holdout_2026_to_jun02": {
+          "return_pct": 6.98,
+          "cagr_pct": 17.6,
+          "strict_mdd_pct": 1.74,
+          "ratio": 10.14,
+          "trades": 23,
+          "p_value_approx": 0.024
+        },
+        "oos_2025_2026_to_jun02": {
+          "return_pct": 11.8,
+          "cagr_pct": 8.2,
+          "strict_mdd_pct": 2.63,
+          "ratio": 3.12,
+          "trades": 54,
+          "p_value_approx": 0.021
+        }
+      },
+      "evidence": "Rank 8 inside the pre-2025 Top-10 corrected-MDD conjunction scan; fixed replay gives 54 later-window trades, CAGR/strict-MDD 3.12 and approximate p=0.021.",
+      "source_artifacts": [
+        "training/sweep_conjunctive_event_gates.py",
+        "results/rex_pre2025_conjunctive_gate_corrected_scan_2026-07-13.json",
+        "training/audit_rex8640_usdkrw_gate.py",
+        "results/rex_taker_rangepos_gate_strict_audit_2026-07-13.json",
+        "docs/rex-pre2025-corrected-gate-audit-2026-07-13.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Gate thresholds come from train quantiles and the candidate is Top-10 by train+2024 ranking; 2025-2026 are not in the ranking score. The broad research program is retrospective, so require fresh shadow/live OOS before capital deployment.",
+      "next_action": "Shadow only. Validate live feature parity, collect fresh OOS, and do not tune on 2025-2026 again.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "taker_imbalance",
+          "rex_2016_range_pos"
+        ],
+        "entry_logic": "fixed thresholds listed above",
+        "exit_logic": "fixed 144 bars, next-open, no stop/take",
+        "side": "long_short",
+        "script_or_config": "configs/live/rex_taker_low_range_position_research_candidate.json",
+        "evaluation_protocol": {
+          "cost": "6bp/side",
+          "leverage": "0.5x",
+          "mdd": "corrected strict intraposition high-water",
+          "selection": "Top-10 on train+2024; fixed replay on 2025/2026"
+        }
+      },
+      "optional_overlay": {
+        "description": "ExtraTrees TAKE q30 plus 4% take profit; higher combined ratio but only 26 later-window trades.",
+        "oos_2025_2026": {
+          "return_pct": 13.37,
+          "cagr_pct": 9.27,
+          "strict_mdd_pct": 2.55,
+          "ratio": 3.63,
+          "trades": 26,
+          "p_value_approx": 0.002
+        },
+        "artifact": "results/rex_pre2025_taker_range_exit_overlay_scan_2026-07-13.json"
       }
     }
   ]
