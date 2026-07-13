@@ -1,0 +1,33 @@
+{
+  "verified_at": "2026-07-13T10:44:19.517976+00:00",
+  "base_report_created_at": "2026-07-13T10:43:39.652826+00:00",
+  "base_manifest_created_at": "2026-07-13T10:43:35.013787+00:00",
+  "base_report_raw_sha256": "6913c49d8d08332111c9c888a035fb7201641d89022abfe5632dbb64b701d65c",
+  "base_manifest_raw_sha256": "a5841ef99dde168b96ea80246b1040e3960ba1bdd3f3419308542eda757ed5d5",
+  "replay_report_raw_sha256": "b93148411837b4908e80218fe182a704524638ea0909eaaa857beb4f3f8237bf",
+  "normalized_report_sha256": "c76ce9785d7f2e69fb9bd271d7f5227704911cc7ba387992b96f1220b813d3eb",
+  "replay_normalized_report_sha256": "c76ce9785d7f2e69fb9bd271d7f5227704911cc7ba387992b96f1220b813d3eb",
+  "normalization_recipe": [
+    "parse JSON",
+    "remove top-level as_of",
+    "remove manifest.created_at",
+    "replace config.manifest_output and config.output with <normalized>",
+    "serialize sort_keys=True,separators=(comma,colon)"
+  ],
+  "replay_command": "PYTHONPATH=. python -m training.search_hawkes_liquidation_cascade_alpha --manifest-output /tmp/hawkes_replay_manifest.json --output /tmp/hawkes_replay_report.json",
+  "assertions": {
+    "verification_after_base_report": true,
+    "verification_after_base_manifest": true,
+    "deterministic_replay_equal": true,
+    "pre2024_market_prefix_verified": true,
+    "pre2024_feature_prefix_verified": true,
+    "pre2024_signal_prefix_verified": true,
+    "selected_policy_unchanged_in_oos": true,
+    "selection_search_space_count": 144,
+    "decision": "reject_oos"
+  },
+  "targeted_tests": {
+    "command": "PYTHONPATH=. .venv/bin/pytest -q tests/test_search_hawkes_liquidation_cascade_alpha.py tests/test_search_positioning_disagreement_alpha.py",
+    "result": "9 passed"
+  }
+}

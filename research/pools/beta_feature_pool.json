@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T09:56:14.367825+00:00",
+  "updated_at": "2026-07-13T10:31:00+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1736,6 +1736,53 @@
         "script": "training/search_oi_cost_basis_liquidation_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python training/search_oi_cost_basis_liquidation_alpha.py",
         "protocol": "physical cutoff before 2024; 24 fixed candidates; one-bar delayed source; next-open; 0.5x; 6bp/side; fixed hold; strict high-water MDD"
+      }
+    },
+    {
+      "id": "hawkes_jump_excitation_oi_state_20260713",
+      "name": "Hawkes jump-excitation and delayed OI-build state",
+      "status": "weak",
+      "family": "self_exciting_jump_inventory",
+      "scope": "btc_derivatives_event_memory",
+      "feature_tier": "beta_feature",
+      "description": "Prior-volatility-standardized positive and negative jump arrivals feed separate exponentially decayed intensities; their normalized imbalance is paired with one-bar-delayed 24h open-interest change.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m OHLCV",
+        "Binance UM open interest delayed by one complete 5m bar"
+      ],
+      "feature_names": [
+        "hawkes_up_intensity",
+        "hawkes_down_intensity",
+        "hawkes_imbalance",
+        "hawkes_intensity",
+        "oi_change_288"
+      ],
+      "usable_for": [
+        "weak event-memory token for compact LLM/RLLM state",
+        "materially different causal learner with fresh-forward validation",
+        "not the rejected static q90/build-follow mapping"
+      ],
+      "known_failures": [
+        "The frozen q90, one-hour-half-life, OI-build-follow, 24h-hold policy collapsed from a 2023 ratio of 8.37 to a combined OOS ratio of 0.01.",
+        "2024 ratio was 0.06, 2025 was 0.90 and 2026H1 was -0.67.",
+        "At 10bp/side combined OOS return was -12.40% and ratio -0.22."
+      ],
+      "evidence": "Direction flip and removal of the OI gate were materially worse (-37.74% and -27.88% combined OOS), so the components affect selection, but the selected signal itself returned only +0.65% with 19.81% strict MDD over 347 OOS trades.",
+      "source_artifacts": [
+        "training/search_hawkes_liquidation_cascade_alpha.py",
+        "tests/test_search_hawkes_liquidation_cascade_alpha.py",
+        "results/hawkes_liquidation_cascade_frozen_manifest_2026-07-13.json",
+        "results/hawkes_liquidation_cascade_alpha_scan_2026-07-13.json",
+        "docs/hawkes-liquidation-cascade-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "The standardizer ends at t-1; the completed return at t updates intensity for a t+1-open decision. Binance OI is delayed one complete source bar. Policy, threshold and prefix hashes were frozen before 2024+ was loaded; the exact mapping is now OOS-contaminated.",
+      "tier_rationale": "Weak beta retains only continuous causal event-memory state because direction and OI controls are informative; it does not claim executable edge.",
+      "next_action": "Do not threshold/hold-retune on 2024-2026. Reuse only in a materially different predeclared model and require new forward evidence.",
+      "generation_recipe": {
+        "script": "training/search_hawkes_liquidation_cascade_alpha.py",
+        "command": "PYTHONPATH=. python -m training.search_hawkes_liquidation_cascade_alpha",
+        "protocol": "physical pre-2024 fit/selection; 144 fixed policies; frozen hash manifest; 2024/2025/2026 replay; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
