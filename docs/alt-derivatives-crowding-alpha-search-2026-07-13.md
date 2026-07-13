@@ -39,7 +39,10 @@ was `0.2817`; the rejected funding-median features reached roughly `0.50`.
 - Strict MDD uses the conservative favorable-high-water then adverse-OHLC
   ordering over the entire holding path.
 - Manifest SHA-256:
-  `28d7ebd18b19b80ae321aafcfa4eccf39f3382483841112357b4ccf53a0c1e94`.
+  `0e07d5afba762c116fb9dbd1acf52ef69cc0abbf94beee4cac00252ebbb3d0cf`.
+- Replay verifies hashes for the execution cache and all 14 auxiliary files,
+  validates both external and BTC admission-feature prefixes, and reuses an
+  existing manifest without mutation unless `--refresh-manifest` is explicit.
 
 ## Top-10 summary
 
