@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T02:05:31.829950+00:00",
+  "updated_at": "2026-07-13T02:27:50.367385+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -929,6 +929,69 @@
         "script": "training/search_liquidity_recovery_bidirectional_alpha.py",
         "validator": "training/validate_alpha_research_candidate.py",
         "protocol": "6bp/side; strict MDD; full-window CAGR; test-only selection"
+      }
+    },
+    {
+      "id": "alt_derivatives_crowding_features_20260713",
+      "name": "Six-alt derivatives crowding features",
+      "status": "candidate",
+      "family": "crossasset_derivatives_crowding",
+      "scope": "btc_crossasset_derivatives",
+      "feature_tier": "alpha_feature",
+      "description": "Causally available ETH/SOL/BNB/XRP/ADA/DOGE funding and premium-index cross-sectional median, dispersion, breadth, change, concordance and disagreement states.",
+      "data_sources": [
+        "data/binance_um_aux_2023_2026/*USDT_funding_2023-01-01_2026-06-01.csv.gz",
+        "data/binance_um_aux_2023_2026/*USDT_premium_1h_2023-01-01_2026-06-01.csv.gz"
+      ],
+      "feature_names": [
+        "alt_funding_median_z2016",
+        "alt_funding_median_z8640",
+        "alt_funding_dispersion_z2016",
+        "alt_funding_dispersion_z8640",
+        "alt_funding_positive_breadth_z2016",
+        "alt_funding_negative_breadth_z2016",
+        "alt_funding_median_change288_z2016",
+        "alt_premium_median_z2016",
+        "alt_premium_median_z8640",
+        "alt_premium_dispersion_z2016",
+        "alt_premium_dispersion_z8640",
+        "alt_premium_positive_breadth_z2016",
+        "alt_premium_negative_breadth_z2016",
+        "alt_premium_median_change288_z2016",
+        "alt_crowding_concordance",
+        "alt_crowding_disagreement"
+      ],
+      "feature_examples": [
+        "alt_premium_median_change288_z2016",
+        "alt_crowding_disagreement",
+        "alt_funding_dispersion_z2016"
+      ],
+      "usable_for": [
+        "external gate/state input on a separately fixed alpha",
+        "cross-venue crowding context",
+        "shadow portfolio diversification research"
+      ],
+      "known_failures": [
+        "Standalone static-tail directional use failed every frozen OOS qualifier.",
+        "History begins in 2023, leaving short fit/selection windows.",
+        "The promoted gate candidate fails live-grade 2026 and combined risk-adjusted thresholds."
+      ],
+      "evidence": "Standalone use is gamma, but contextual gate use has alpha-pool evidence: frozen rank 9 alt_premium_median_change288_z2016 outer gate reaches test2024 ratio 3.66 and eval2025 ratio 2.72 with 28/25 trades. It remains non-live because 2026/combined ratios are 1.56/1.75.",
+      "source_artifacts": [
+        "training/search_alt_derivatives_crowding_alpha.py",
+        "training/search_funding_premium_alt_crowding_gate_alpha.py",
+        "results/funding_premium_alt_crowding_gate_top10_manifest_2026-07-13.json",
+        "results/funding_premium_alt_crowding_gate_alpha_scan_2026-07-13.json",
+        "docs/funding-premium-alt-premium-change-gate-alpha-2026-07-13.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Hourly premium values are available only at close_time through backward-asof joins capped at 65 minutes; all six symbols are required. Fit H1/selection H2 and all source-prefix hashes were frozen before 2024 replay.",
+      "next_action": "Use only frozen contextual-gate recipes. Do not retry standalone static tails or tune on 2024-2026; require new forward proof before live use.",
+      "tier_rationale": "Alpha feature because it is a dependency of a clean frozen alpha-pool candidate; exact standalone directional usage remains separately rejected in gamma.",
+      "generation_recipe": {
+        "script": "training/search_funding_premium_alt_crowding_gate_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_funding_premium_alt_crowding_gate_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --aux-dir data/binance_um_aux_2023_2026 --btc-funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --btc-premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/funding_premium_alt_crowding_gate_top10_manifest_2026-07-13.json --output results/funding_premium_alt_crowding_gate_alpha_scan_2026-07-13.json",
+        "protocol": "fit 2023H1; select 2023H2; frozen Top-10; replay 2024/2025/2026; next-open; 6bp/side; strict MDD"
       }
     }
   ]

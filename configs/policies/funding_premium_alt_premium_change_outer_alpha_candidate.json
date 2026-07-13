@@ -1,0 +1,108 @@
+{
+  "name": "funding_premium_alt_premium_change_outer_alpha_candidate",
+  "status": "alpha_pool_candidate_not_live",
+  "as_of": "2026-07-13",
+  "side": "LONG",
+  "feature_dependencies": [
+    "funding_premium_trend_squeeze_long_20260712",
+    "alt_derivatives_crowding_features_20260713"
+  ],
+  "entry_logic": {
+    "funding_component": {
+      "funding_available_gt": 0.5,
+      "funding_rate_lte": -1.67e-05,
+      "trend_96_gte": 0.007485218212390219,
+      "alt_premium_available_gt": 0.5,
+      "alt_premium_median_change288_z2016_outer": {
+        "lte": -0.41777540743350977,
+        "or_gte": 0.4309560030698776
+      }
+    },
+    "premium_component": {
+      "premium_available_gt": 0.5,
+      "premium_index_change_lte": -0.00023471,
+      "htf_1d_return_4_gte": 0.0940403008961932
+    },
+    "combine": "funding_component OR premium_component"
+  },
+  "feature_definition": {
+    "symbols": [
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "ADAUSDT",
+      "DOGEUSDT"
+    ],
+    "source": "Binance USD-M premium-index 1h close",
+    "availability": "backward-asof close_time, max 65 minutes, all six symbols required",
+    "formula": "rolling_z2016(median_six_alt_premium[t] - median_six_alt_premium[t-288])",
+    "bars": 288,
+    "rolling_z_bars": 2016
+  },
+  "execution": {
+    "signal_bar": "completed 5m bar",
+    "entry": "next 5m open",
+    "exit": "fixed 576 bars",
+    "stride_bars": 12,
+    "max_concurrent_positions": 1,
+    "backtest_leverage": 0.5,
+    "fee_rate_each_side": 0.0005,
+    "slippage_rate_each_side": 0.0001
+  },
+  "selection": {
+    "feature_threshold_fit": "2023-02-15..2023-07-01",
+    "variant_selection": "2023-07-01..2024-01-01",
+    "manifest_rank": 9,
+    "manifest_sha256": "f2c92510f5a234c00577b9f2b006915e27926fa3433150688d821e92af9fa001",
+    "all_post_2023_market_and_aux_rows_physically_excluded_before_manifest": true
+  },
+  "stats": {
+    "test_2024": {
+      "absolute_return_pct": 23.213,
+      "cagr_pct": 23.1603,
+      "strict_mdd_pct": 6.3262,
+      "cagr_to_strict_mdd": 3.661,
+      "trades": 28,
+      "p_value_mean_return_approx": 0.00694
+    },
+    "eval_2025": {
+      "absolute_return_pct": 17.8364,
+      "cagr_pct": 17.8497,
+      "strict_mdd_pct": 6.561,
+      "cagr_to_strict_mdd": 2.7206,
+      "trades": 25,
+      "p_value_mean_return_approx": 0.06933
+    },
+    "holdout_2026_to_jun02": {
+      "absolute_return_pct": 6.8283,
+      "cagr_pct": 17.2013,
+      "strict_mdd_pct": 11.0093,
+      "cagr_to_strict_mdd": 1.5624,
+      "trades": 26,
+      "p_value_mean_return_approx": 0.33286
+    },
+    "combined_2024_2026_to_jun02": {
+      "absolute_return_pct": 55.1039,
+      "cagr_pct": 19.9086,
+      "strict_mdd_pct": 11.4084,
+      "cagr_to_strict_mdd": 1.7451,
+      "trades": 79,
+      "p_value_mean_return_approx": 0.001353,
+      "top10_bonferroni_p_approx": 0.013526
+    }
+  },
+  "validation_status": "alpha_pool_candidate_not_live_grade",
+  "risk_notes": [
+    "Rank 9 passes the predeclared test/eval alpha-pool gate but fails live-grade holdout and combined ratio thresholds.",
+    "The feature history begins in 2023; threshold fitting and selection each use only about half a year.",
+    "Do not tune on 2024-2026 or enable capital use. Require a new forward shadow period.",
+    "Live premium-index close_time and staleness parity for all six symbols must be proven first."
+  ],
+  "artifacts": [
+    "results/funding_premium_alt_crowding_gate_top10_manifest_2026-07-13.json",
+    "results/funding_premium_alt_crowding_gate_alpha_scan_2026-07-13.json",
+    "results/funding_premium_alt_crowding_gate_replay_verification_2026-07-13.json",
+    "docs/funding-premium-alt-premium-change-gate-alpha-2026-07-13.md"
+  ]
+}

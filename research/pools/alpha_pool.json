@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T01:11:30.566718+00:00",
+  "updated_at": "2026-07-13T02:27:50.367385+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side for current scans; older alt_oi_taker artifact used 5bp/side",
@@ -3436,6 +3436,112 @@
           "strict MDD and split-contained exits required"
         ],
         "live_use_notes": "Research candidate only; not live-enabled."
+      }
+    },
+    {
+      "id": "funding_premium_alt_premium_change_outer_long_20260713",
+      "name": "Funding/premium squeeze with six-alt premium-change outer gate",
+      "status": "candidate",
+      "family": "long_crossasset_derivatives_crowding",
+      "scope": "btc_crossasset_derivatives",
+      "side": "long",
+      "description": "Fixed BTC funding/premium squeeze with the six-alt premium median 24h-change outer gate applied only to the funding component.",
+      "entry_logic": "(funding_available>0.5 AND funding_rate<=-0.0000167 AND trend_96>=0.007485218212390219 AND alt_premium_available>0.5 AND (alt_premium_median_change288_z2016<=-0.41777540743350977 OR >=0.4309560030698776)) OR (premium_available>0.5 AND premium_index_change<=-0.00023471 AND htf_1d_return_4>=0.0940403008961932).",
+      "exit_logic": "Enter next 5m open; fixed 576 bars; stride 12; one non-overlapping position; no TP/SL.",
+      "dependencies": [
+        "funding_premium_trend_squeeze_long_20260712",
+        "alt_derivatives_crowding_features_20260713"
+      ],
+      "stats": {
+        "fit_2023_h1": {
+          "return_pct": 25.5004,
+          "cagr_pct": 84.0465,
+          "strict_mdd_pct": 9.8073,
+          "cagr_to_strict_mdd": 8.5698,
+          "trades": 13,
+          "p_value_mean_ret_approx": 0.0262
+        },
+        "selection_2023_h2": {
+          "return_pct": 0.4287,
+          "cagr_pct": 0.8529,
+          "strict_mdd_pct": 4.2377,
+          "cagr_to_strict_mdd": 0.2013,
+          "trades": 15,
+          "p_value_mean_ret_approx": 0.8678
+        },
+        "test_2024": {
+          "return_pct": 23.213,
+          "cagr_pct": 23.1603,
+          "strict_mdd_pct": 6.3262,
+          "cagr_to_strict_mdd": 3.661,
+          "trades": 28,
+          "p_value_mean_ret_approx": 0.00694
+        },
+        "eval_2025": {
+          "return_pct": 17.8364,
+          "cagr_pct": 17.8497,
+          "strict_mdd_pct": 6.561,
+          "cagr_to_strict_mdd": 2.7206,
+          "trades": 25,
+          "p_value_mean_ret_approx": 0.06933
+        },
+        "holdout_2026_to_jun02": {
+          "return_pct": 6.8283,
+          "cagr_pct": 17.2013,
+          "strict_mdd_pct": 11.0093,
+          "cagr_to_strict_mdd": 1.5624,
+          "trades": 26,
+          "p_value_mean_ret_approx": 0.33286
+        },
+        "oos_2024_2026_to_jun02": {
+          "return_pct": 55.1039,
+          "cagr_pct": 19.9086,
+          "strict_mdd_pct": 11.4084,
+          "cagr_to_strict_mdd": 1.7451,
+          "trades": 79,
+          "p_value_mean_ret_approx": 0.001353
+        }
+      },
+      "evidence": "Frozen pre-2024 Top-10 manifest rank 9. It passes the predeclared alpha-pool gate: test/eval ratios 3.66/2.72 with 28/25 trades. It fails live grade because 2026 and combined ratios are 1.56/1.75. Eight of ten OOS quarters are positive; Top-10 Bonferroni combined p is about 0.0135.",
+      "source_artifacts": [
+        "training/search_funding_premium_alt_crowding_gate_alpha.py",
+        "results/funding_premium_alt_crowding_gate_top10_manifest_2026-07-13.json",
+        "results/funding_premium_alt_crowding_gate_alpha_scan_2026-07-13.json",
+        "results/funding_premium_alt_crowding_gate_replay_verification_2026-07-13.json",
+        "configs/policies/funding_premium_alt_premium_change_outer_alpha_candidate.json",
+        "docs/funding-premium-alt-premium-change-gate-alpha-2026-07-13.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "All 15 source prefixes were physically truncated and hashed before manifest selection. Feature fit used 2023H1 and policy selection used only 2023H2. Rank 9 was identified after frozen Top-10 replay; apply multiplicity 10. Broader later-period research still requires fresh forward proof.",
+      "next_action": "Keep in alpha pool only. Do not enable live; freeze all thresholds and require a new forward period plus live six-alt premium close_time/staleness parity.",
+      "usage_recipe": {
+        "feature_dependencies": [
+          "funding_premium_trend_squeeze_long_20260712",
+          "alt_derivatives_crowding_features_20260713"
+        ],
+        "entry_logic": "fixed conditions listed above; alt gate applies only to funding component",
+        "exit_logic": "next-open fixed 576 bars; stride 12; no TP/SL",
+        "side": "long",
+        "script_or_config": "configs/policies/funding_premium_alt_premium_change_outer_alpha_candidate.json",
+        "evaluation_protocol": {
+          "fit": "2023H1",
+          "selection": "2023H2",
+          "test": "2024",
+          "eval": "2025",
+          "holdout": "2026 to Jun02",
+          "cost": "6bp/side",
+          "leverage": "0.5x",
+          "mdd": "corrected strict high-water/adverse-extreme",
+          "manifest_rank": 9,
+          "manifest_sha256": "f2c92510f5a234c00577b9f2b006915e27926fa3433150688d821e92af9fa001"
+        },
+        "promotion_guardrails": [
+          "alpha-pool only, not live",
+          "fresh shadow OOS required",
+          "all six live premium streams required",
+          "no threshold changes from later windows"
+        ],
+        "live_use_notes": "Not live-enabled; holdout and combined ratio blockers remain."
       }
     }
   ]
