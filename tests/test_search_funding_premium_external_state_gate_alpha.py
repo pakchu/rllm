@@ -6,6 +6,7 @@ from training.search_funding_premium_external_state_gate_alpha import (
     BASE_ADMISSION_FEATURES,
     ExternalStateGateConfig,
     _manifest_core_hash,
+    _read_premium_before,
     _select_top,
     _source_hashes,
     _validate_manifest,
@@ -86,6 +87,23 @@ def test_source_hashes_detect_input_mutation(tmp_path):
     assert before[str(paths["dvol"])] != after[str(paths["dvol"])]
     for key in ("input", "metrics", "funding", "premium"):
         assert before[str(paths[key])] == after[str(paths[key])]
+
+
+def test_premium_reader_physically_truncates_future_rows(tmp_path):
+    path = tmp_path / "premium.csv"
+    pd.DataFrame(
+        {
+            "close_time": [
+                int(pd.Timestamp("2023-12-31 23:59:59", tz="UTC").timestamp() * 1000),
+                int(pd.Timestamp("2024-01-01 00:59:59", tz="UTC").timestamp() * 1000),
+            ],
+            "close": [0.1, 99.0],
+        }
+    ).to_csv(path, index=False)
+
+    loaded = _read_premium_before(str(path), "2024-01-01")
+
+    assert loaded["close"].tolist() == [0.1]
 
 
 def test_selection_stability_is_deterministic_and_top_per_feature_bounded():

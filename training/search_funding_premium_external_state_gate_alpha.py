@@ -21,7 +21,11 @@ from typing import Any, Iterable
 import numpy as np
 import pandas as pd
 
-from preprocessing.binance_aux_features import attach_binance_um_aux_features
+from preprocessing.binance_aux_features import (
+    attach_binance_um_aux_frames,
+    normalise_funding_history_frame,
+    normalise_premium_index_frame,
+)
 from preprocessing.market_features import _completed_timeframe_features
 from training.search_deribit_dvol_alpha import attach_dvol, build_dvol_features
 from training.search_funding_premium_independent_gate_alpha import (
@@ -141,7 +145,7 @@ class ExternalStateGateConfig:
     min_select_trades: int = 24
     min_half_trades: int = 8
     max_abs_spearman: float = 0.30
-    metrics_tolerance: str = "10min"
+    metrics_tolerance: str = "5min"
     metrics_delay_bars: int = 1
     dvol_tolerance: str = "65min"
     funding_tolerance: str = "12h"
@@ -180,20 +184,62 @@ def _source_hashes(cfg: ExternalStateGateConfig) -> dict[str, str]:
     }
 
 
-def _load_bundle(cfg: ExternalStateGateConfig, *, cutoff: str) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.DataFrame, dict[str, str]]:
+def _frame_hash(frame: pd.DataFrame) -> str:
+    digest = hashlib.sha256()
+    digest.update("\n".join(map(str, frame.columns)).encode())
+    digest.update(pd.util.hash_pandas_object(frame, index=False).to_numpy(dtype="<u8").tobytes())
+    return digest.hexdigest()
+
+
+def _read_premium_before(path: str, cutoff: str) -> pd.DataFrame:
+    chunks: list[pd.DataFrame] = []
     boundary = pd.Timestamp(cutoff)
-    market = _read_before(cfg.input_csv, "date", cutoff)
+    for chunk in pd.read_csv(path, compression="infer", chunksize=100_000):
+        close_time = pd.to_datetime(
+            pd.to_numeric(chunk["close_time"], errors="raise"),
+            unit="ms",
+            utc=True,
+        ).dt.tz_convert(None)
+        keep = close_time < boundary
+        if keep.any():
+            chunks.append(chunk.loc[keep].copy())
+        if (~keep).any():
+            break
+    if not chunks:
+        raise ValueError(f"no premium rows before {cutoff} in {path}")
+    return pd.concat(chunks, ignore_index=True)
+
+
+def _load_bundle(
+    cfg: ExternalStateGateConfig,
+    *,
+    cutoff: str,
+) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.DataFrame, dict[str, str], dict[str, str]]:
+    boundary = pd.Timestamp(cutoff)
+    market_raw = _read_before(cfg.input_csv, "date", cutoff)
+    funding_raw = _read_before(cfg.funding_csv, "date", cutoff)
+    premium_raw = _read_premium_before(cfg.premium_csv, cutoff)
+    metrics = _read_before(cfg.metrics_csv, "create_time", cutoff)
+    dvol = _read_before(cfg.dvol_csv, "close_time", cutoff)
+    source_prefix_hashes = {
+        "market": _frame_hash(market_raw),
+        "funding": _frame_hash(funding_raw),
+        "premium": _frame_hash(premium_raw),
+        "metrics": _frame_hash(metrics),
+        "dvol": _frame_hash(dvol),
+    }
+
+    market = market_raw
     market["date"] = pd.to_datetime(market["date"], utc=True, errors="raise").dt.tz_convert(None)
     market = market.sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
-    market = attach_binance_um_aux_features(
+    market = attach_binance_um_aux_frames(
         market,
-        funding_csv=cfg.funding_csv,
-        premium_csv=cfg.premium_csv,
+        funding_frame=normalise_funding_history_frame(funding_raw),
+        premium_frame=normalise_premium_index_frame(premium_raw),
         funding_tolerance=cfg.funding_tolerance,
         premium_tolerance=cfg.premium_tolerance,
     )
 
-    metrics = _read_before(cfg.metrics_csv, "create_time", cutoff)
     metrics_times = pd.to_datetime(metrics["create_time"], utc=True, errors="raise").dt.tz_convert(None)
     if len(metrics_times) and metrics_times.max() >= boundary:
         raise RuntimeError("metrics source rows were not physically truncated before cutoff")
@@ -208,7 +254,6 @@ def _load_bundle(cfg: ExternalStateGateConfig, *, cutoff: str) -> tuple[pd.DataF
         & pd.to_datetime(market.get("positioning_source_time"), errors="coerce").notna()
     ).astype(float)
 
-    dvol = _read_before(cfg.dvol_csv, "close_time", cutoff)
     dvol_times = pd.to_datetime(dvol["close_time"], utc=True, errors="raise").dt.tz_convert(None)
     if len(dvol_times) and dvol_times.max() >= boundary:
         raise RuntimeError("DVOL source rows were not physically truncated before cutoff")
@@ -219,7 +264,7 @@ def _load_bundle(cfg: ExternalStateGateConfig, *, cutoff: str) -> tuple[pd.DataF
 
     features, availability = build_external_state_features(market)
     base_features = build_base_admission_features(market)
-    return market, dates, features, base_features, availability
+    return market, dates, features, base_features, availability, source_prefix_hashes
 
 
 def _build_base_components(market: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
@@ -459,7 +504,10 @@ def _validate_manifest(manifest: dict[str, Any]) -> None:
 
 
 def _select_manifest(cfg: ExternalStateGateConfig) -> dict[str, Any]:
-    market, dates, features, base_features, availability = _load_bundle(cfg, cutoff=SELECTION_END)
+    market, dates, features, base_features, availability, source_prefix_hashes = _load_bundle(
+        cfg,
+        cutoff=SELECTION_END,
+    )
     availability_frame = _availability_frame(market)
     fit_mask = _window_mask(dates, "fit")
     admitted, correlation_audit = feature_admission(
@@ -495,7 +543,7 @@ def _select_manifest(cfg: ExternalStateGateConfig) -> dict[str, Any]:
             "base_alpha": "fixed funding squeeze OR premium squeeze long; thresholds inherited from independent-gate search",
             "threshold_fit": (FIT_START, FIT_END),
             "selection": {name: WINDOWS[name] for name in ("select_2023", "select_2023_h1", "select_2023_h2")},
-            "future_market_metrics_and_dvol_rows_physically_excluded_before_manifest": True,
+            "all_future_market_and_aux_rows_physically_excluded_before_manifest": True,
             "external_feature_sources": "delayed Binance UM positioning/OI plus Deribit DVOL only",
             "feature_admission": f"fit Spearman max |rho| < {cfg.max_abs_spearman} versus {BASE_ADMISSION_FEATURES}; finite per-feature availability required",
             "included_feature_families": {"oi": OI_FEATURES, "positioning_disagreement": POSITIONING_DISAGREEMENT_FEATURES, "dvol": DVOL_FEATURES},
@@ -505,7 +553,7 @@ def _select_manifest(cfg: ExternalStateGateConfig) -> dict[str, Any]:
             "mdd": "strict favorable-high-water then adverse OHLC extreme",
             "status_ceiling": "shadow research: 2024+ has been inspected by the broader program",
         },
-        "source_hashes": _source_hashes(cfg),
+        "source_prefix_hashes": source_prefix_hashes,
         "external_feature_hash": _feature_hash(features, dates),
         "base_feature_hash": _feature_hash(base_features, dates),
         "availability_hash": _feature_hash(availability_frame, dates),
@@ -524,9 +572,10 @@ def _select_manifest(cfg: ExternalStateGateConfig) -> dict[str, Any]:
 
 def _replay(cfg: ExternalStateGateConfig, manifest: dict[str, Any]) -> dict[str, Any]:
     _validate_manifest(manifest)
-    if _source_hashes(cfg) != manifest["source_hashes"]:
-        raise RuntimeError("source files changed after manifest freeze")
-    market, dates, features, base_features, availability = _load_bundle(cfg, cutoff=cfg.exclude_from)
+    _, _, _, _, _, source_prefix_hashes = _load_bundle(cfg, cutoff=SELECTION_END)
+    if source_prefix_hashes != manifest["source_prefix_hashes"]:
+        raise RuntimeError("pre-2024 source prefixes changed after manifest freeze")
+    market, dates, features, base_features, availability, _ = _load_bundle(cfg, cutoff=cfg.exclude_from)
     availability_frame = _availability_frame(market)
     prefix = dates < pd.Timestamp(SELECTION_END)
     prefix_dates = dates.loc[prefix].reset_index(drop=True)
@@ -560,7 +609,7 @@ def _replay(cfg: ExternalStateGateConfig, manifest: dict[str, Any]) -> dict[str,
         passes_alpha_pool = enough and test["ratio"] >= 2.5 and evaluation["ratio"] >= 2.5
         passes_live_grade = passes_alpha_pool and holdout["ratio"] >= 3.0 and combined["ratio"] >= 3.0 and combined["p_value_mean_return_approx"] <= 0.05
         selected.append({"manifest_rank": rank, **frozen, "stats": stats, "quarterly_stats": quarterly, "quarterly_summary": {"positive_return_quarters": sum(row["return_pct"] > 0.0 for row in quarterly.values()), "flat_quarters": sum(row["trades"] == 0 for row in quarterly.values()), "negative_return_quarters": sum(row["return_pct"] < 0.0 for row in quarterly.values()), "total_quarters": len(quarterly)}, "passes_alpha_pool": bool(passes_alpha_pool), "passes_live_grade": bool(passes_live_grade)})
-    return {"as_of": datetime.now(timezone.utc).isoformat(), "config": asdict(cfg), "manifest": cfg.manifest_output, "manifest_sha256": manifest["sha256"], "protocol": manifest["protocol"], "feature_admission_audit": manifest["feature_admission_audit"], "baseline": baseline, "selected": selected, "alpha_pool_qualifiers": [row for row in selected if row["passes_alpha_pool"]], "live_grade": [row for row in selected if row["passes_live_grade"]]}
+    return {"as_of": datetime.now(timezone.utc).isoformat(), "config": asdict(cfg), "manifest": cfg.manifest_output, "manifest_sha256": manifest["sha256"], "protocol": manifest["protocol"], "source_file_hashes_after_manifest_freeze": _source_hashes(cfg), "feature_admission_audit": manifest["feature_admission_audit"], "baseline": baseline, "selected": selected, "alpha_pool_qualifiers": [row for row in selected if row["passes_alpha_pool"]], "live_grade": [row for row in selected if row["passes_live_grade"]]}
 
 
 def run(cfg: ExternalStateGateConfig) -> dict[str, Any]:
