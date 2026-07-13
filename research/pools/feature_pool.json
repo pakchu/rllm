@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T22:08:13+09:00",
+  "updated_at": "2026-07-13T22:15:26+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -3789,6 +3789,45 @@
       "generation_recipe": {
         "script": "training/search_nested_barrier_witness_alpha.py",
         "protocol": "2 coalescence x 2 widths x 2 mappings x 2 holds = 16; prior-only extrema; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "barrier_constitution_static_usage_20260713",
+      "name": "Static nested-barrier creation-constitution policies",
+      "status": "rejected",
+      "family": "multiscale_barrier_origin_constitution_static_usage",
+      "scope": "btc_price_action_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family routing a two/three-scale rolling-extrema revisit from the ancestor candle close-location value and a fixed current-to-origin direction-specific taker-work ratio, then holding for 6h/12h.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_barrier_origin_acceptance",
+        "static_barrier_origin_rejection",
+        "static_constitution_work_route",
+        "fixed_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous barrier ancestry remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of eight policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.46 and 2023 CAGR/MDD was 0.79.",
+        "Top 2023H1 return was only +0.53% with ratio 0.15.",
+        "The inverted-origin control lost 32.01% in fit but gained 14.61% in 2023, exposing regime-dependent semantics."
+      ],
+      "evidence": "The complete predeclared eight-policy scan plus direction, origin-semantics, origin-ablation and cost controls rejected static barrier-constitution execution before OOS.",
+      "source_artifacts": [
+        "training/search_barrier_constitution_alpha.py",
+        "results/barrier_constitution_alpha_scan_2026-07-13.json",
+        "docs/barrier-constitution-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune ancestor CLV thresholds, work ratios, touch widths or fixed holds on this sample.",
+      "generation_recipe": {
+        "script": "training/search_barrier_constitution_alpha.py",
+        "protocol": "2 coalescence x 2 widths x 2 holds = 8; fixed CLV/work routing; prior-only extrema; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
