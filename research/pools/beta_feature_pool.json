@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T00:03:45+09:00",
+  "updated_at": "2026-07-14T00:16:36+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2262,6 +2262,49 @@
       "generation_recipe": {
         "script": "training/search_market_braid_alpha.py",
         "protocol": "physical pre-2024 cutoff; 2 shocks x 2 price passages x 2 expiries x 2 topology mappings x 2 holds = 32; one-bar-delayed OI; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "persistent_barrier_annihilation_state_20260714",
+      "name": "Frozen persistent-barrier annihilation state",
+      "status": "weak",
+      "family": "price_topology_persistence_spectrum",
+      "scope": "btc_price_action_topology",
+      "feature_tier": "beta_feature",
+      "description": "Hourly causal state formed by freezing the prior 2d/7d local-extrema prominence spectrum and measuring the persistence mass, largest barrier, barrier count and mass density crossed during the next hour.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV"
+      ],
+      "feature_names": [
+        "persistent_barrier_mass",
+        "persistent_largest_barrier",
+        "persistent_barrier_count",
+        "persistent_mass_density",
+        "persistent_traversal_z"
+      ],
+      "usable_for": [
+        "weak multiscale price-topology representation under a materially different learner",
+        "not replaying static prominence tails, horizons, mappings or holds"
+      ],
+      "known_failures": [
+        "Zero of 144 transparent pre-2024 audit policies passed alpha admission.",
+        "Top fit CAGR/MDD was 0.28 and 2023 CAGR/MDD was 1.00.",
+        "Top strict MDD was 23.04% in fit and 2023H2 CAGR/MDD was only 0.46.",
+        "The audit expanded after an initial weak 24-policy scan, so all q80/q90/q95/q97.5 and 6h/12h/24h static interpretations are contaminated and frozen."
+      ],
+      "evidence": "The top seven-day q97.5 mass-density fade returned +14.95% in fit and +9.61% in 2023 with 6/7 positive half-years and balanced sides. Exact direction flip, no-tail and single-global-extrema controls were materially worse, while barrier count retained part of the effect.",
+      "source_artifacts": [
+        "training/search_persistent_barrier_annihilation_alpha.py",
+        "results/persistent_barrier_annihilation_alpha_scan_2026-07-14.json",
+        "docs/persistent-barrier-annihilation-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "For decision t, topology is frozen at t-12 from a window ending t-13; scales also end before freeze; current completed hourly endpoint enters next 5m open; source rows physically stop before 2024.",
+      "tier_rationale": "The full persistence spectrum has directional and ablation evidence but low risk efficiency, fit MDD above target, broad timing and internal search expansion prevent alpha promotion.",
+      "next_action": "Freeze every static setting. If reused, expose only continuous spectrum tokens to a fresh-forward learner or combine through a preregistered model using genuinely fresh data.",
+      "generation_recipe": {
+        "script": "training/search_persistent_barrier_annihilation_alpha.py",
+        "protocol": "physical pre-2024; 2 horizons x 3 scores x 4 tails x 3 holds x 2 mappings = 144; frozen prior-hour topology; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]

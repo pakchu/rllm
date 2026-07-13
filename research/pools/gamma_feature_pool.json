@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T00:03:45+09:00",
+  "updated_at": "2026-07-14T00:16:36+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1700,6 +1700,48 @@
         "script": "training/search_market_braid_alpha.py",
         "protocol": "32 fixed policies; one-bar-delayed OI; same-bar ties discarded; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
       }
+    },
+    {
+      "id": "persistent_barrier_annihilation_static_usage_20260714",
+      "name": "Static persistent-barrier annihilation policies",
+      "status": "rejected",
+      "family": "price_topology_persistence_spectrum_static_usage",
+      "scope": "btc_price_action_topology",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family continuing or fading hourly price traversals that cross high-tail mass, largest-barrier or mass-density values from a frozen 2d/7d local-extrema prominence spectrum.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV"
+      ],
+      "feature_names": [
+        "static_prominence_floor_0p5",
+        "static_topology_horizon_576_2016",
+        "static_persistence_tail_q80_q90_q95_q975",
+        "static_continue_fade_mapping",
+        "fixed_hold_72_144_288"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous persistence-spectrum representation remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of 144 policies passed pre-2024 admission.",
+        "Top fit/2023 CAGR-MDD were 0.28/1.00 and fit strict MDD was 23.04%.",
+        "Top 2023H2 CAGR/MDD was 0.46.",
+        "Researcher degrees of freedom were expanded and fully recorded before OOS, so no static reuse is valid."
+      ],
+      "evidence": "Physical pre-2024 audit plus exact flip, no-tail, barrier-count, single-global-extrema, timing and cost controls rejected static execution before OOS.",
+      "contamination_risk": "high",
+      "leakage_notes": "Topology and scale freeze before traversal; hourly completed signal enters next open; source physically stops before 2024; OOS sealed.",
+      "tier_rationale": "Static tail and mapping rules remain well below alpha standards despite non-random feature evidence.",
+      "next_action": "Do not tune topology horizons, prominence floors, tails, direction maps or holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_persistent_barrier_annihilation_alpha.py",
+        "protocol": "144 transparent audit policies; frozen prior-hour prominence spectrum; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_persistent_barrier_annihilation_alpha.py",
+        "results/persistent_barrier_annihilation_alpha_scan_2026-07-14.json",
+        "docs/persistent-barrier-annihilation-alpha-search-2026-07-14.md"
+      ]
     }
   ]
 }
