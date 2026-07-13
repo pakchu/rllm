@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T11:20:00+00:00",
+  "updated_at": "2026-07-13T11:27:00+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -918,6 +918,45 @@
       "generation_recipe": {
         "script": "training/search_debt_transfer_velocity_alpha.py",
         "protocol": "physical pre-2024 cutoff; 24 fixed candidates; delayed metrics; completed spot; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "funding_age_rollover_transfer_static_usage_20260713",
+      "name": "Static funding-age rollover transfer usage",
+      "status": "rejected",
+      "family": "funding_aged_inventory_transfer",
+      "scope": "btc_derivatives_cohort_burden",
+      "feature_tier": "gamma_feature",
+      "description": "Side-attributed OI cohorts track settlement age, cumulative funding burden, entry price and survival; ownership transfer away from burdened cohorts sets direction.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m OHLCV/taker",
+        "one-bar-delayed Binance UM OI/global-account ratio",
+        "exact Binance funding history"
+      ],
+      "feature_names": [
+        "funding_aged_long_burden",
+        "funding_aged_short_burden",
+        "signed_burden_transfer",
+        "eligible_cohort_weight"
+      ],
+      "usable_for": [
+        "failure provenance only; do not retune this proxy cohort lifecycle"
+      ],
+      "known_failures": [
+        "All 12 primary policies had negative full-fit returns.",
+        "Best populated policy fit return was -24.30% with strict MDD 48.21%.",
+        "2023 H2 was negative and carry-blind behavior was nearly identical."
+      ],
+      "evidence": "Physical pre-2024 cohort replay with exact funding timing, delayed OI and next-open execution failed before OOS.",
+      "source_artifacts": [
+        "training/search_funding_age_rollover_transfer_alpha.py",
+        "results/funding_age_rollover_transfer_alpha_scan_2026-07-13.json",
+        "docs/funding-age-rollover-transfer-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune ages/tails/holds; require directly observed ownership lifecycle data for any retry.",
+      "generation_recipe": {
+        "script": "training/search_funding_age_rollover_transfer_alpha.py",
+        "protocol": "physical pre-2024 cutoff; 12 fixed candidates; exact funding clock; delayed OI; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
