@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T22:15:26+09:00",
+  "updated_at": "2026-07-13T22:26:45+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1383,6 +1383,46 @@
       "generation_recipe": {
         "script": "training/search_barrier_constitution_alpha.py",
         "protocol": "2 coalescence x 2 widths x 2 holds = 8; fixed CLV/work routing; prior-only extrema; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "dvol_orphan_convexity_static_usage_20260713",
+      "name": "Static DVOL orphan-convexity residual policies",
+      "status": "rejected",
+      "family": "deribit_unexplained_convexity_static_usage",
+      "scope": "btc_options_spot_perpetual_information_flow",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family thresholding positive residuals from causal 30d/90d rolling models of completed hourly DVOL changes on realized variance, range, jump and premium change, then assigning direction from taker flow or spot-perp basis impulse.",
+      "data_sources": [
+        "Deribit BTC DVOL completed 1h candles",
+        "BTCUSDT perpetual completed 5m OHLCV and taker flow",
+        "Binance BTCUSDT spot and premium-index completed 1m aggregates"
+      ],
+      "feature_names": [
+        "static_dvol_orphan_q90_q95",
+        "static_taker_flow_direction",
+        "static_basis_impulse_direction",
+        "fixed_hold_144_288"
+      ],
+      "usable_for": [
+        "failure provenance only"
+      ],
+      "known_failures": [
+        "Zero of 16 policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.14 and 2023 CAGR/MDD was -0.72.",
+        "The selected policy lost 23.06% in 2023 and 23.55% in 2023H2.",
+        "Zero-cost 2023 still lost 13.76%, so costs were not the root failure."
+      ],
+      "evidence": "A physical pre-2024 16-policy scan with prior-only rolling OLS, pinned source hashes, direction/lag/raw-tail/proxy controls and cost stress rejected static unexplained-DVOL directional execution before OOS.",
+      "source_artifacts": [
+        "training/search_dvol_orphan_convexity_alpha.py",
+        "results/dvol_orphan_convexity_alpha_scan_2026-07-13.json",
+        "docs/dvol-orphan-convexity-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune residual histories, residual tails, direction mappings or fixed holds on this sample.",
+      "generation_recipe": {
+        "script": "training/search_dvol_orphan_convexity_alpha.py",
+        "protocol": "2 residual histories x 2 tails x 2 independent direction proxies x 2 holds = 16; pre-2024 only; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
