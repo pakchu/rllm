@@ -57,6 +57,8 @@ class TestPositioningDisagreementAlpha(unittest.TestCase):
         )
         self.assertEqual(result["trades"], 1)
         self.assertAlmostEqual(result["return_pct"], 5.0, places=6)
+        self.assertIn("p_value_mean_return_approx", result)
+        self.assertIn("effect_size_d", result)
         self.assertAlmostEqual(result["strict_mdd_pct"], 10.0, places=6)
         self.assertAlmostEqual(result["cagr_pct"], 5.0, delta=0.05)
 

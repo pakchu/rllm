@@ -20,6 +20,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from training.strict_bar_backtest import _trade_stats
+
 
 WINDOWS = {
     "fit": ("2020-10-15", "2022-01-01"),
@@ -226,6 +228,7 @@ def _simulate_no_stop(
     cagr = (equity ** (1.0 / years) - 1.0) * 100.0 if equity > 0.0 else -100.0
     mdd = strict_mdd * 100.0
     returns = np.asarray(trade_returns, dtype=float)
+    trade_stats = _trade_stats(trade_returns)
     return {
         "return_pct": float(absolute_return),
         "cagr_pct": float(cagr),
@@ -235,6 +238,9 @@ def _simulate_no_stop(
         "longs": int(sum(side > 0 for side in sides)),
         "shorts": int(sum(side < 0 for side in sides)),
         "win_rate": float((returns > 0.0).mean()) if len(returns) else 0.0,
+        "mean_trade_return_pct": float(trade_stats["mean_trade_ret_pct"]),
+        "p_value_mean_return_approx": float(trade_stats["p_value_mean_ret_approx"]),
+        "effect_size_d": float(trade_stats["effect_size_d"]),
     }
 
 
