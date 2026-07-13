@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T03:30:00+09:00",
+  "updated_at": "2026-07-14T04:20:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1956,6 +1956,49 @@
         "training/search_causal_cone_age_front_alpha.py",
         "results/causal_cone_age_front_alpha_scan_2026-07-14.json",
         "docs/causal-cone-age-front-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "preisach_flow_scar_static_usage_20260714",
+      "name": "Static Preisach flow-scar release policy",
+      "status": "rejected",
+      "family": "price_flow_hysteresis_memory_static_usage",
+      "scope": "btc_price_action_taker_flow",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected policy following coherent multi-relay price avalanches when their per-domain accumulated taker-flow scar opposed the new domain.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_price_field_144",
+        "static_preisach_12_relay_lattice",
+        "static_min_avalanche_3",
+        "static_coherence_0p67",
+        "static_opposing_scar_q80",
+        "static_hold_72"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous Preisach/scar state remains weak beta"
+      ],
+      "known_failures": [
+        "Primary fit CAGR/MDD was 0.07 and 2023 CAGR/MDD was -0.73.",
+        "Both 2023 halves lost with 57 supported full-year trades.",
+        "Zero-cost 2023 still lost -7.38%, so execution cost is not the root cause.",
+        "Direction flip and same-scar alternatives also failed robust admission."
+      ],
+      "evidence": "One physically truncated pre-2024 policy plus memory, scar, timing, flow-order and cost controls rejects the exact static mapping while confirming that the representation is not a simple breakout.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff, prior-only normalization, scar-before-current-flow ordering, next-open execution, split-contained exits, strict MDD and sealed 2024+.",
+      "tier_rationale": "The coherent novel mechanism is regime-sign unstable and materially below required fit/2023 risk efficiency.",
+      "next_action": "Do not tune field window, relay plane, avalanche size/coherence, scar normalization/direction, q80 tail or hold on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_preisach_flow_scar_alpha.py",
+        "protocol": "one primary policy plus exact direction, memory, scar, flow-delay, signal-delay and cost controls; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_preisach_flow_scar_alpha.py",
+        "results/preisach_flow_scar_alpha_scan_2026-07-14.json",
+        "docs/preisach-flow-scar-alpha-search-2026-07-14.md"
       ]
     }
   ]

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T03:30:00+09:00",
+  "updated_at": "2026-07-14T04:20:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2483,6 +2483,52 @@
       "generation_recipe": {
         "script": "training/search_causal_cone_age_front_alpha.py",
         "protocol": "physical pre-2024; fixed 2016-bar hourly-anchor width-2 geometry; 2 lags x 2 holds = 4; fit-only q80 positive-score tail; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "preisach_flow_scar_state_20260714",
+      "name": "Preisach relay flow-scar state",
+      "status": "weak",
+      "family": "price_flow_hysteresis_memory",
+      "scope": "btc_price_action_taker_flow",
+      "feature_tier": "beta_feature",
+      "description": "Causal persistent price-relay lattice carrying per-domain normalized aggressive-flow scars, relay ages, magnetization and coherent multi-relay Barkhausen avalanche state.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "preisach_relay_magnetization",
+        "preisach_relay_age_distribution",
+        "preisach_avalanche_count",
+        "preisach_avalanche_coherence",
+        "preisach_avalanche_direction",
+        "preisach_opposing_flow_scar",
+        "preisach_same_direction_flow_scar",
+        "preisach_current_flow_chase"
+      ],
+      "usable_for": [
+        "path-dependent price/flow memory tokens under a materially different learner",
+        "not replaying the 12h field, q80 static release mapping, scar direction rule or 6h hold"
+      ],
+      "known_failures": [
+        "The single primary static policy returned only +1.68% in fit and lost -10.49% in 2023.",
+        "Both 2023 halves lost and fit approximate mean-return p-value was 0.821.",
+        "Exact direction flip was positive in 2023 but ratio was only 0.65 and 2023H2 still lost.",
+        "Same-direction scar was positive in both full windows but ratios were only 0.04/0.24 and 2023H2 lost."
+      ],
+      "evidence": "Memory erasure (-64.30% fit), scar removal (-17.51%), and seven-day delayed flow (-14.57%) were dramatically worse than the primary +1.68% fit result, showing genuine path-dependent structure; nevertheless the primary side mapping inverted in 2023 and is not executable alpha.",
+      "source_artifacts": [
+        "training/search_preisach_flow_scar_alpha.py",
+        "results/preisach_flow_scar_alpha_scan_2026-07-14.json",
+        "docs/preisach-flow-scar-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Physical pre-2024 cutoff; prior-only price center/scale and quote denominator; relay scars scored through t-1 then reset before current flow is stored; completed-close signal enters next open; no outcome labels.",
+      "tier_rationale": "Strong memory/scar ablations justify preserving the representation, but sign instability, low significance, cost sensitivity and failed 2023 prevent alpha promotion.",
+      "next_action": "Freeze all static settings. Reuse only continuous relay/scar/avalanche tokens in a preregistered state learner or on genuinely fresh-forward data.",
+      "generation_recipe": {
+        "script": "training/search_preisach_flow_scar_alpha.py",
+        "protocol": "physical pre-2024; one fixed 12h-field q80 policy; 12-relay Preisach lattice; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
