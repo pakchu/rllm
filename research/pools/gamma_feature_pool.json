@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T21:40:49+09:00",
+  "updated_at": "2026-07-13T21:51:42+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1227,6 +1227,45 @@
       "generation_recipe": {
         "script": "training/search_orderflow_trophic_campaign_alpha.py",
         "protocol": "six profiles x two lookbacks x two event counts x two holds = 48; frozen q95 parent; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "cftc_concentration_topology_static_usage_20260713",
+      "name": "Static CFTC top-four/top-eight concentration-topology policies",
+      "status": "rejected",
+      "family": "cftc_rank_concentration_topology",
+      "scope": "cme_bitcoin_weekly_position_concentration",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family deriving long-minus-short top-four versus ranks-five-to-eight concentration odds/curvature, optionally amplified by falling trader breadth, then fading or following fit tails for fixed two/four-day holds.",
+      "data_sources": [
+        "CFTC Traders in Financial Futures CME Bitcoin weekly reports",
+        "BTCUSDT perpetual completed 5m OHLCV for causal execution only"
+      ],
+      "feature_names": [
+        "cftc_rank_odds_asymmetry",
+        "cftc_rank_curvature_asymmetry",
+        "cftc_trader_breadth_contraction",
+        "cftc_concentrated_side"
+      ],
+      "usable_for": [
+        "failure provenance only; do not use reconstructed stablecoin history as a causal companion"
+      ],
+      "known_failures": [
+        "No one of 32 policies passed pre-2024 admission or had at least three trades in each 2023 half.",
+        "The top policy had only one 2023H1 trade and was 64 shorts versus four longs in fit.",
+        "Top fit CAGR/MDD was 0.97 and 2023 CAGR/MDD was 0.86 despite positive aggregate returns.",
+        "Removing the breadth multiplier improved rather than weakened aggregate results, contradicting the convoy-breadth mechanism."
+      ],
+      "evidence": "A physical pre-2024 replay with report-date-plus-eight-day availability, prior-only weekly standardization, two topology formulas, both mappings, cost stress and side/release/breadth controls rejected the static family before OOS.",
+      "source_artifacts": [
+        "training/search_cftc_concentration_topology_alpha.py",
+        "results/cftc_concentration_topology_alpha_scan_2026-07-13.json",
+        "docs/cftc-concentration-topology-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune adjacent CFTC concentration tails, breadth windows or fixed holds. Any future CFTC use needs a different observable and fresh forward evidence.",
+      "generation_recipe": {
+        "script": "training/search_cftc_concentration_topology_alpha.py",
+        "protocol": "physical pre-2024 cutoff; report date +8d; 32 topology/breadth/tail/mapping/hold policies; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
