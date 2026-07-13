@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T22:48:19+09:00",
+  "updated_at": "2026-07-13T23:18:29+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2127,6 +2127,50 @@
       "generation_recipe": {
         "script": "training/search_positioning_lifecycle_hazard_alpha.py",
         "protocol": "physical pre-2024 cutoff; one-bar delayed metrics; 2022 quarantine; 16 disagreement/age/resolution/hold policies; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "closed_excursion_inventory_holonomy_state_20260713",
+      "name": "Closed-excursion inventory holonomy state",
+      "status": "weak",
+      "family": "closed_price_loop_inventory_holonomy",
+      "scope": "btc_perpetual_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Causal first-return episodes that freeze a pre-shock price anchor and retain episode age, maximum displacement, net same-side taker inventory, dissipative work and flow elasticity when the price loop closes.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "closed_excursion_age",
+        "closed_excursion_max_displacement_z",
+        "closed_loop_net_taker_flow",
+        "closed_loop_dissipative_work",
+        "closed_loop_flow_elasticity"
+      ],
+      "usable_for": [
+        "weak event-topology and trapped-inventory context under a genuinely new learner",
+        "not replaying static departure, tail, expiry or fixed-hold policies"
+      ],
+      "known_failures": [
+        "Zero of 48 static policies passed pre-2024 admission.",
+        "Top 2023 returned -1.07% with CAGR/MDD -0.29.",
+        "Top 2023H2 returned -1.76% with CAGR/MDD -1.00.",
+        "Top standard-cost policy was long-biased at 59/19 in fit and 15/9 in 2023."
+      ],
+      "evidence": "The top static policy returned +9.21% in fit with five positive half-year segments; exact direction flip and price-only first-return controls were materially worse. However 2023 standard-cost and zero-cost economics were too weak and final-half performance was negative.",
+      "source_artifacts": [
+        "training/search_closed_excursion_holonomy_alpha.py",
+        "results/closed_excursion_holonomy_alpha_scan_2026-07-13.json",
+        "docs/closed-excursion-holonomy-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Departure/activity scales are prior-only; anchor and start volatility freeze at departure; features update on completed bars; signal emits at first causal recross and enters next open; rows stop before 2024; OOS was not opened.",
+      "tier_rationale": "The event representation survives direction and price-loop ablations, but standard-cost selection loss, H2 failure, low ratio and side imbalance prevent alpha promotion.",
+      "next_action": "Freeze all static loop settings. Reuse only as continuous event context with genuinely fresh forward data, or move to an independent mechanism.",
+      "generation_recipe": {
+        "script": "training/search_closed_excursion_holonomy_alpha.py",
+        "protocol": "physical pre-2024 cutoff; 2 departures x 2 expiries x 3 loop scores x 2 fit tails x 2 holds = 48; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T23:10:22+09:00",
+  "updated_at": "2026-07-13T23:18:29+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1579,6 +1579,45 @@
       "generation_recipe": {
         "script": "training/search_propagator_impact_debt_alpha.py",
         "protocol": "2 kernels x 5 prior-z thresholds x 2 event modes x 2 holds = 40; fit-only AR/FIR; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      }
+    },
+    {
+      "id": "closed_excursion_holonomy_static_usage_20260713",
+      "name": "Static closed-excursion inventory-holonomy policies",
+      "status": "rejected",
+      "family": "closed_price_loop_inventory_holonomy_static_usage",
+      "scope": "btc_perpetual_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family fading same-side cumulative taker inventory, dissipative work or flow elasticity when a 2σ/3σ price excursion first recrosses its fixed anchor within 12h/24h.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_departure_z_2_3",
+        "static_loop_expiry_144_288",
+        "static_holonomy_q80_q90",
+        "fixed_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous closed-loop event state remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of 48 policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.41 and 2023 CAGR/MDD was -0.29.",
+        "Top 2023H2 returned -1.76% with CAGR/MDD -1.00.",
+        "Zero-cost 2023 CAGR/MDD was only 0.11 and H2 remained negative."
+      ],
+      "evidence": "A physical pre-2024 first-return loop scan plus exact direction, price-only, timing and cost controls rejected fixed holonomy threshold execution before OOS.",
+      "source_artifacts": [
+        "training/search_closed_excursion_holonomy_alpha.py",
+        "results/closed_excursion_holonomy_alpha_scan_2026-07-13.json",
+        "docs/closed-excursion-holonomy-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune departure widths, loop ages, score tails or holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_closed_excursion_holonomy_alpha.py",
+        "protocol": "2 departures x 2 expiries x 3 scores x 2 fit tails x 2 holds = 48; first causal anchor recross; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
