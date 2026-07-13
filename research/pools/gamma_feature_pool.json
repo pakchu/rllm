@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T10:31:00+00:00",
+  "updated_at": "2026-07-13T11:00:00+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -799,6 +799,45 @@
       "generation_recipe": {
         "script": "training/search_hawkes_liquidation_cascade_alpha.py",
         "protocol": "z{2,2.75} x half-life{12,48,144} x q{80,90} x four OI modes x hold{72,144,288}; pre-2024 selection then frozen OOS"
+      }
+    },
+    {
+      "id": "funding_settlement_curl_static_usage_20260713",
+      "name": "Static funding-settlement premium/OI curl usage",
+      "status": "rejected",
+      "family": "funding_settlement_path_order",
+      "scope": "btc_derivatives_settlement_memory",
+      "feature_tier": "gamma_feature",
+      "description": "Antisymmetric pre/post premium-index and delayed-OI response around exact funding settlements, aligned by funding sign and traded contrarian.",
+      "data_sources": [
+        "Binance BTCUSDT funding history",
+        "completed hourly premium-index closes",
+        "one-bar-delayed Binance UM open interest",
+        "BTCUSDT perpetual 5m OHLCV"
+      ],
+      "feature_names": [
+        "funding_settlement_curl",
+        "funding_aligned_trap_score",
+        "pre/post premium-OI response"
+      ],
+      "usable_for": [
+        "failure provenance only; do not reuse the static thresholds or hold mapping"
+      ],
+      "known_failures": [
+        "Best populated policy returned -2.55% in 2023 with ratio -0.33 over 65 trades.",
+        "2023 H2 returned -6.48% with ratio -1.61.",
+        "A fake settlement shifted four hours had a better 2023 result, invalidating settlement specificity."
+      ],
+      "evidence": "Physical pre-2024 search with prior-event standardization and next-open execution failed before any OOS was opened.",
+      "source_artifacts": [
+        "training/search_funding_settlement_curl_alpha.py",
+        "results/funding_settlement_curl_alpha_scan_2026-07-13.json",
+        "docs/funding-settlement-curl-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not retune this formula. Any retry must add new ownership/liquidation-transfer information and use a fresh predeclared protocol.",
+      "generation_recipe": {
+        "script": "training/search_funding_settlement_curl_alpha.py",
+        "protocol": "physical cutoff before 2024; 144 fixed candidates; delayed OI; completed premium; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
