@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T22:59:00+09:00",
+  "updated_at": "2026-07-13T23:10:22+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1540,6 +1540,45 @@
       "generation_recipe": {
         "script": "training/search_positioning_inventory_transfer_alpha.py",
         "protocol": "fixed 36h parent lifecycle zero-cross x 2 holds; one-bar-delayed OI; 2022 quarantine; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "propagator_impact_debt_static_usage_20260713",
+      "name": "Static flow-innovation propagator impact-debt policies",
+      "status": "rejected",
+      "family": "distributed_flow_impact_debt_static_usage",
+      "scope": "btc_perpetual_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family removing AR(12)-predictable signed taker flow, fitting 1h/3h finite response kernels, thresholding the causal unrealized kernel-tail debt, and holding for one or three kernel horizons.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_flow_innovation_ar12",
+        "static_response_kernel_12_36",
+        "static_impact_debt_z_1p5_to_3p5",
+        "fixed_hold_12_36_108"
+      ],
+      "usable_for": [
+        "failure provenance only; do not replay or tune this static propagator-debt construction on the inspected pre-2024 sample"
+      ],
+      "known_failures": [
+        "Zero of 40 policies passed pre-2024 admission.",
+        "Top standard-cost fit returned -12.40% with CAGR/MDD -0.22.",
+        "Top 2023 returned -2.85% with CAGR/MDD -0.48; 2023H1 ratio was -1.25.",
+        "Even at zero cost, fit returned -1.29% and 2023 CAGR/MDD was only 0.50."
+      ],
+      "evidence": "A physical pre-2024 AR-innovation/FIR-tail experiment with exact direction, innovation-only, timing and cost controls showed the measurable response is overwhelmingly immediate and the remaining tail is not tradable.",
+      "source_artifacts": [
+        "training/search_propagator_impact_debt_alpha.py",
+        "results/propagator_impact_debt_alpha_scan_2026-07-13.json",
+        "docs/propagator-impact-debt-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune AR orders, ridge penalties, debt thresholds, onset semantics or fixed holds on this sample; move to an independent economic mechanism.",
+      "generation_recipe": {
+        "script": "training/search_propagator_impact_debt_alpha.py",
+        "protocol": "2 kernels x 5 prior-z thresholds x 2 event modes x 2 holds = 40; fit-only AR/FIR; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
       }
     }
   ]
