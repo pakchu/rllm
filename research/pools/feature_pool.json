@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T22:39:23+09:00",
+  "updated_at": "2026-07-13T22:48:19+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -3907,6 +3907,88 @@
       "generation_recipe": {
         "script": "training/search_cftc_release_assimilation_alpha.py",
         "protocol": "2 participants x 2 surprise tails x 2 assimilation states x 2 holds = 16; report date +8d; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "positioning_disagreement_lifecycle_hazard_20260713",
+      "name": "Aged positioning-disagreement resolution hazard",
+      "status": "weak",
+      "family": "positioning_disagreement_lifecycle",
+      "scope": "btc_binance_derivatives_positioning",
+      "feature_tier": "beta_feature",
+      "description": "Causal episode age, peak memory, contraction fraction and first zero-cross/first-contraction hazard after top-trader position disagreement persists against global accounts.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "one-complete-bar-delayed Binance USD-M 5m positioning metrics"
+      ],
+      "feature_names": [
+        "positioning_disagreement_episode_age",
+        "positioning_disagreement_peak_abs_z",
+        "positioning_resolution_fraction",
+        "positioning_first_resolution_hazard"
+      ],
+      "usable_for": [
+        "weak continuous lifecycle context in a fresh-forward learner",
+        "not replaying static z/age/hold thresholds"
+      ],
+      "known_failures": [
+        "Zero of 16 static policies passed pre-2024 alpha admission.",
+        "Top 2023 CAGR/MDD was only 1.08 despite fit ratio 3.68.",
+        "Top 2023H2 returned only +0.04% with ratio 0.01.",
+        "A 12-hour lag remained positive in 2023, so timing is broad rather than sharply identified."
+      ],
+      "evidence": "The top 36h zero-cross lifecycle returned +30.96% in fit and +7.04% in 2023 at 6bp/side with balanced long/short counts. All fit segments were positive, exact direction flip lost, ignoring age weakened fit sharply, and a static tail onset was catastrophic.",
+      "source_artifacts": [
+        "training/search_positioning_lifecycle_hazard_alpha.py",
+        "results/positioning_lifecycle_hazard_alpha_scan_2026-07-13.json",
+        "docs/positioning-lifecycle-hazard-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Metrics are delayed by one complete 5m bar; z-scores use t-1 history; missing rows reset episodes; 2022 is forcibly quarantined; entry is next open; source rows stop before 2024; OOS was not opened.",
+      "tier_rationale": "Age and first-resolution structure survive direction, age and static-tail controls, but 2023 risk efficiency and H2 economics are below alpha standards.",
+      "next_action": "Freeze all static thresholds. Reuse only continuous lifecycle state under a genuinely new learner or an independently predeclared inventory-transfer mechanism with fresh-forward proof.",
+      "generation_recipe": {
+        "script": "training/search_positioning_lifecycle_hazard_alpha.py",
+        "protocol": "physical pre-2024 cutoff; one-bar delayed metrics; 2022 quarantine; 16 disagreement/age/resolution/hold policies; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "positioning_disagreement_lifecycle_static_usage_20260713",
+      "name": "Static positioning lifecycle hazard policies",
+      "status": "rejected",
+      "family": "positioning_disagreement_lifecycle_static_usage",
+      "scope": "btc_binance_derivatives_positioning",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family entering when prior-only top-versus-global disagreement first contracts 50% or crosses zero after fixed 12h/36h ages, then holding 6h/18h.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "one-complete-bar-delayed Binance USD-M 5m positioning metrics"
+      ],
+      "feature_names": [
+        "static_disagreement_z_1p5_episode",
+        "static_age_144_432",
+        "static_contraction_or_zero_cross",
+        "fixed_hold_72_216"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous lifecycle state remains weak beta"
+      ],
+      "known_failures": [
+        "No policy reached CAGR/MDD 3 in both fit and 2023.",
+        "Best fit ratio 3.68 fell to 1.08 in 2023.",
+        "Best 2023H2 ratio was 0.01 on 12 trades.",
+        "Selection mean-return evidence was not statistically significant."
+      ],
+      "evidence": "A physical pre-2024 16-policy scan plus exact direction, age, static-tail, timing and cost controls rejected fixed lifecycle execution before OOS.",
+      "source_artifacts": [
+        "training/search_positioning_lifecycle_hazard_alpha.py",
+        "results/positioning_lifecycle_hazard_alpha_scan_2026-07-13.json",
+        "docs/positioning-lifecycle-hazard-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune z thresholds, episode ages, contraction fractions, trigger types or fixed holds on this sample.",
+      "generation_recipe": {
+        "script": "training/search_positioning_lifecycle_hazard_alpha.py",
+        "protocol": "2 disagreements x 2 ages x 2 resolution triggers x 2 holds = 16; one-bar delayed; 2022 quarantine; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
