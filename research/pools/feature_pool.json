@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T21:51:42+09:00",
+  "updated_at": "2026-07-13T21:59:17+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -3624,6 +3624,88 @@
       "generation_recipe": {
         "script": "training/search_cftc_concentration_topology_alpha.py",
         "protocol": "physical pre-2024 cutoff; report date +8d; 32 topology/breadth/tail/mapping/hold policies; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "orderflow_trophic_chirp_event_grammar_20260713",
+      "name": "Order-flow trophic interarrival chirp grammar",
+      "status": "weak",
+      "family": "orderflow_participant_event_cadence",
+      "scope": "btc_perpetual_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Causal interval-ratio and opposite-event-quarantine features over triplets of same-direction q95 sponsor-to-crowd succession events; compressed intervals represent campaign acceleration and expanded intervals exhaustion.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT quote volume, trade count and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "trophic_event_gap_ratio",
+        "clean_same_direction_triplet",
+        "campaign_cadence_acceleration",
+        "campaign_cadence_deceleration"
+      ],
+      "usable_for": [
+        "weak continuous event-grammar context in a fresh-forward learner",
+        "not another static interval threshold, max-gap or hold policy"
+      ],
+      "known_failures": [
+        "Zero of 48 fixed chirp policies passed pre-2024 admission.",
+        "The top policy had only 26 fit trades and three 2023H2 trades.",
+        "Top fit CAGR/MDD was 0.92 and 2023 CAGR/MDD was 1.10.",
+        "A phase-order swap was negative in fit but stronger in 2023, showing regime dependence."
+      ],
+      "evidence": "The top acceleration chirp was positive in all seven pre-2024 half-years, survived 6bp/side costs, beat the any-triplet ablation, and had an exact direction flip that lost in both fit and 2023. Magnitude and support remain insufficient.",
+      "source_artifacts": [
+        "training/search_orderflow_trophic_chirp_alpha.py",
+        "results/orderflow_trophic_chirp_alpha_scan_2026-07-13.json",
+        "docs/orderflow-trophic-chirp-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Parent q95 thresholds are fit-only and frozen; interval ratios use current and prior event timestamps only; opposite-event quarantine is causal; entry is next open; physical rows stop before 2024; OOS was not opened.",
+      "tier_rationale": "Cadence has direction-specific, cost-surviving, temporally broad evidence, but sample support and risk efficiency are below alpha standards.",
+      "next_action": "Freeze static chirp parameters. Reuse only as a continuous representation under a genuinely new learner with untouched forward data, or move to an independent barrier/data mechanism.",
+      "generation_recipe": {
+        "script": "training/search_orderflow_trophic_chirp_alpha.py",
+        "protocol": "physical pre-2024 cutoff; frozen q95 parent; 48 max-gap/branch/hold policies; causal triplet intervals; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "orderflow_trophic_chirp_static_usage_20260713",
+      "name": "Static trophic-event chirp interval policies",
+      "status": "rejected",
+      "family": "orderflow_participant_event_cadence_static_usage",
+      "scope": "btc_perpetual_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family applying fixed 0.75 compression or 1.50 expansion mappings to clean q95 event triplets inside 144/288-bar maximum gaps and fixed 144/288-bar holds.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT quote volume, trade count and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_acceleration_continuation",
+        "static_deceleration_reversal",
+        "fixed_clean_triplet_gap",
+        "fixed_hold_144_288"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous cadence grammar remains weak beta"
+      ],
+      "known_failures": [
+        "No policy reached CAGR/MDD 3 in both fit and 2023.",
+        "Best ranked policy had fit ratio 0.92 and 2023 ratio 1.10.",
+        "Trade support was below the 50/16/5 requirement at 26/13/3.",
+        "Fit 2021H1 ratio was only 0.14 despite all half-years being positive."
+      ],
+      "evidence": "The complete 48-policy pre-2024 grid with direction, cadence, quarantine, phase-order, timing and cost controls rejected static chirp execution before OOS.",
+      "source_artifacts": [
+        "training/search_orderflow_trophic_chirp_alpha.py",
+        "results/orderflow_trophic_chirp_alpha_scan_2026-07-13.json",
+        "docs/orderflow-trophic-chirp-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune interval ratios, max gaps, branches or fixed holds on this sample.",
+      "generation_recipe": {
+        "script": "training/search_orderflow_trophic_chirp_alpha.py",
+        "protocol": "six profiles x two max gaps x two cadence mappings x two holds = 48; frozen q95 parent; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
