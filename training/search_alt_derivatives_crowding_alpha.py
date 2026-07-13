@@ -89,6 +89,7 @@ class AltCrowdingConfig:
     max_abs_spearman: float = 0.30
     funding_tolerance: str = "12h"
     premium_tolerance: str = "65min"
+    refresh_manifest: bool = False
 
 
 def _parse_csv(raw: str, cast: Any) -> list[Any]:
@@ -111,7 +112,12 @@ def _merge_source(
     milliseconds: bool = False,
 ) -> tuple[pd.Series, pd.Series]:
     """Backward-as-of one external source and retain its availability time."""
-    left = pd.DataFrame({"date": pd.to_datetime(dates).reset_index(drop=True)})
+    left = pd.DataFrame(
+        {
+            "date": pd.to_datetime(dates).reset_index(drop=True),
+            "_source_row": np.arange(len(dates), dtype=np.int64),
+        }
+    )
     right = source[[source_time, value_column]].copy()
     right["source_time"] = _naive_utc(right[source_time], milliseconds=milliseconds)
     right["source_value"] = pd.to_numeric(right[value_column], errors="coerce")
@@ -127,7 +133,8 @@ def _merge_source(
     available = joined["source_time"].notna()
     if (joined.loc[available, "source_time"] > joined.loc[available, "date"]).any():
         raise RuntimeError("external derivative value was visible before source_time")
-    return joined["source_value"].reset_index(drop=True), joined["source_time"].reset_index(drop=True)
+    joined = joined.sort_values("_source_row").reset_index(drop=True)
+    return joined["source_value"], joined["source_time"]
 
 
 def _latest_source(aux_dir: str, symbol: str, kind: str) -> Path:
@@ -144,6 +151,7 @@ def _source_hashes(cfg: AltCrowdingConfig) -> dict[str, str]:
         for symbol, kind in itertools.product(SYMBOLS, ("funding", "premium_1h"))
     ]
     paths.extend((Path(cfg.btc_funding_csv), Path(cfg.btc_premium_csv)))
+    paths.append(Path(cfg.input_csv))
     for path in paths:
         digest = hashlib.sha256()
         with path.open("rb") as handle:
@@ -166,8 +174,8 @@ def _load_market(cfg: AltCrowdingConfig, cutoff: str) -> pd.DataFrame:
         market,
         funding_frame=funding,
         premium_frame=premium,
-        funding_tolerance="12h",
-        premium_tolerance="2h",
+        funding_tolerance=cfg.funding_tolerance,
+        premium_tolerance=cfg.premium_tolerance,
     )
 
 
@@ -582,6 +590,7 @@ def _select_manifest(cfg: AltCrowdingConfig) -> dict[str, Any]:
         },
         "source_hashes": _source_hashes(cfg),
         "feature_hash": _feature_hash(features, dates),
+        "base_feature_hash": _feature_hash(base_features, dates),
         "feature_admission_audit": correlation_audit,
         "search_space": {
             "admitted_features": admitted,
@@ -604,13 +613,28 @@ def _select_manifest(cfg: AltCrowdingConfig) -> dict[str, Any]:
     return manifest
 
 
+def _validate_manifest(manifest: dict[str, Any]) -> None:
+    core = {key: value for key, value in manifest.items() if key not in {"as_of", "sha256"}}
+    canonical = json.dumps(core, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=True)
+    expected = hashlib.sha256(canonical.encode()).hexdigest()
+    if manifest.get("sha256") != expected:
+        raise RuntimeError("manifest content does not match its frozen SHA-256")
+
+
 def _replay(cfg: AltCrowdingConfig, manifest: dict[str, Any]) -> dict[str, Any]:
+    _validate_manifest(manifest)
+    current_source_hashes = _source_hashes(cfg)
+    if current_source_hashes != manifest["source_hashes"]:
+        raise RuntimeError("source files changed after manifest freeze")
     market, dates, features, base_features, _ = _load_feature_bundle(cfg, cutoff=cfg.exclude_from)
     prefix = dates < pd.Timestamp(SELECTION_END)
     prefix_dates = dates.loc[prefix].reset_index(drop=True)
     prefix_features = features.loc[prefix].reset_index(drop=True)
     if _feature_hash(prefix_features, prefix_dates) != manifest["feature_hash"]:
         raise RuntimeError("pre-2024 external feature prefix changed during full replay")
+    prefix_base = base_features.loc[prefix].reset_index(drop=True)
+    if _feature_hash(prefix_base, prefix_dates) != manifest["base_feature_hash"]:
+        raise RuntimeError("pre-2024 BTC admission-feature prefix changed during full replay")
     extremes = {
         hold: (
             _future_extreme(market["low"].to_numpy(float), hold, "min"),
@@ -698,7 +722,12 @@ def _replay(cfg: AltCrowdingConfig, manifest: dict[str, Any]) -> dict[str, Any]:
 
 
 def run(cfg: AltCrowdingConfig) -> dict[str, Any]:
-    manifest = _select_manifest(cfg)
+    manifest_path = Path(cfg.manifest_output)
+    if manifest_path.exists() and not cfg.refresh_manifest:
+        manifest = json.loads(manifest_path.read_text())
+        _validate_manifest(manifest)
+    else:
+        manifest = _select_manifest(cfg)
     report = _replay(cfg, manifest)
     output = Path(cfg.output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -719,6 +748,7 @@ def parse_args() -> AltCrowdingConfig:
     parser.add_argument("--top-n", type=int, default=AltCrowdingConfig.top_n)
     parser.add_argument("--top-per-rule", type=int, default=AltCrowdingConfig.top_per_rule)
     parser.add_argument("--max-abs-spearman", type=float, default=AltCrowdingConfig.max_abs_spearman)
+    parser.add_argument("--refresh-manifest", action="store_true")
     return AltCrowdingConfig(**vars(parser.parse_args()))
 
 

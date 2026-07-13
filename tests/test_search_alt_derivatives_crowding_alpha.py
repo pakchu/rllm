@@ -1,10 +1,12 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from training.search_alt_derivatives_crowding_alpha import (
     AltCrowdingConfig,
     _merge_source,
     _selection_score,
+    _validate_manifest,
     feature_admission,
     rule_mask,
 )
@@ -38,6 +40,24 @@ def test_external_merge_is_backward_only_and_staleness_bounded():
     assert np.isnan(values.iloc[4])
     valid = source_times.notna()
     assert (source_times.loc[valid].to_numpy() <= dates.loc[valid].to_numpy()).all()
+
+
+def test_external_merge_restores_unsorted_caller_order():
+    dates = pd.Series(pd.to_datetime(["2023-01-01 01:00", "2023-01-01 00:00"]))
+    source = pd.DataFrame(
+        {
+            "time": ["2023-01-01 00:00", "2023-01-01 01:00"],
+            "value": [1.0, 2.0],
+        }
+    )
+    values, _ = _merge_source(
+        dates,
+        source,
+        source_time="time",
+        value_column="value",
+        tolerance="65min",
+    )
+    assert values.tolist() == [2.0, 1.0]
 
 
 def test_feature_admission_rejects_correlated_input():
@@ -100,3 +120,16 @@ def test_selection_score_requires_positive_both_halves():
     unstable = {key: dict(value) for key, value in stable.items()}
     unstable["select_2023_h2"]["cagr_pct"] = -1.0
     assert _selection_score(unstable, cfg) <= -1e11
+
+
+def test_manifest_validation_detects_mutation():
+    import hashlib
+    import json
+
+    core = {"protocol": {"fit": "past"}, "selected": []}
+    canonical = json.dumps(core, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=True)
+    manifest = {"as_of": "now", "sha256": hashlib.sha256(canonical.encode()).hexdigest(), **core}
+    _validate_manifest(manifest)
+    manifest["selected"].append({"future": True})
+    with pytest.raises(RuntimeError, match="frozen SHA-256"):
+        _validate_manifest(manifest)
