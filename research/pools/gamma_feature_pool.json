@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T02:45:00+09:00",
+  "updated_at": "2026-07-14T03:30:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1912,6 +1912,50 @@
         "training/search_frozen_causal_cone_rupture_alpha.py",
         "results/frozen_causal_cone_rupture_alpha_scan_2026-07-14.json",
         "docs/frozen-causal-cone-rupture-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "causal_cone_age_front_static_usage_20260714",
+      "name": "Static causal-cone age-front policies",
+      "status": "rejected",
+      "family": "price_diffusion_cone_age_transport_static_usage",
+      "scope": "btc_price_action_causal_geometry",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family following a dominant-side breach wave when weighted q80 age, mean age and directional excess mass jointly expand over 1h/6h.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV"
+      ],
+      "feature_names": [
+        "static_cone_history_2016",
+        "static_cone_width_2",
+        "static_front_q80",
+        "static_positive_score_tail_q80",
+        "static_lag_12_72",
+        "static_hold_72_144",
+        "static_retreat_reversal"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous age-spectrum state remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of four policies passed pre-2024 admission.",
+        "Top fit ratio was 0.07 and 2023 ratio was 0.70.",
+        "Two policies lost in fit and one of the fit-positive policies lost in 2023.",
+        "The top policy was negative in 2021H1 and 2021H2 and failed approximate significance."
+      ],
+      "evidence": "Direction flip and seven-day delay controls destroyed returns, but mass-only and current-volatility controls showed that the exact age-front/frozen-scale interpretation was not uniquely supported. Zero-cost fit ratio was only 0.24.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff, prior anchors/scales, fit-only tail, next-open execution, split-contained exits, strict MDD and sealed 2024+.",
+      "tier_rationale": "The dynamic idea is coherent but the exact static mapping is weak, regime-sensitive, cost-sensitive and below admission on both fit and 2023.",
+      "next_action": "Do not tune cone history/width, age statistic, score tail, 1h/6h lags, propagation/retreat mapping or 6h/12h holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_causal_cone_age_front_alpha.py",
+        "protocol": "4 primary policies plus direction, decomposition, delay, current-volatility and age-order controls; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_causal_cone_age_front_alpha.py",
+        "results/causal_cone_age_front_alpha_scan_2026-07-14.json",
+        "docs/causal-cone-age-front-alpha-search-2026-07-14.md"
       ]
     }
   ]

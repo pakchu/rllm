@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T02:45:00+09:00",
+  "updated_at": "2026-07-14T03:30:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2436,6 +2436,53 @@
       "generation_recipe": {
         "script": "training/search_frozen_causal_cone_rupture_alpha.py",
         "protocol": "physical pre-2024; 2 histories x 2 fit-only tails x 2 holds = 8; hourly frozen anchor cones; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "causal_cone_age_front_state_20260714",
+      "name": "Causal-cone breach age-front state",
+      "status": "weak",
+      "family": "price_diffusion_cone_age_transport",
+      "scope": "btc_price_action_causal_geometry",
+      "feature_tier": "beta_feature",
+      "description": "Hourly causal dynamics of which prior-anchor generations are breached, including directional excess mass, weighted age front, age centroid, old-mass share and their lagged velocities.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV"
+      ],
+      "feature_names": [
+        "cone_upper_age_front",
+        "cone_lower_age_front",
+        "cone_upper_age_centroid",
+        "cone_lower_age_centroid",
+        "cone_upper_old_mass_share",
+        "cone_lower_old_mass_share",
+        "cone_directional_mass_growth",
+        "cone_age_front_velocity",
+        "cone_age_center_velocity"
+      ],
+      "usable_for": [
+        "weak dynamic expectation-invalidation context under a materially different learner",
+        "not replaying q80 score tails, lags, holds, propagation mapping or retreat controls"
+      ],
+      "known_failures": [
+        "Zero of four static age-front policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.07 with 17.17% strict MDD; 2023 CAGR/MDD was 0.70.",
+        "The top policy lost in 2021H1 and 2021H2, and approximate fit mean-return p-value was 0.797.",
+        "Mass-growth-only was stronger in 2023, while current-volatility rewriting was not weaker, so neither age ordering nor frozen-anchor semantics is uniquely identified."
+      ],
+      "evidence": "The top 6h-lag/12h-hold policy returned +2.82% fit and +5.16% in 2023 with both 2023 halves positive. Exact direction flip lost -14.39%/-9.29%, a seven-day delayed placebo lost -5.43%/-0.25%, and reversed age order became too sparse, indicating local directional information but not alpha-grade execution.",
+      "source_artifacts": [
+        "training/search_causal_cone_age_front_alpha.py",
+        "results/causal_cone_age_front_alpha_scan_2026-07-14.json",
+        "docs/causal-cone-age-front-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Physical pre-2024 cutoff; every anchor precedes decision; each anchor scale ends before that anchor; fit-only q80 positive-score threshold; completed minute-55 decision; next-open execution; no labels or future neighbors.",
+      "tier_rationale": "Direction and time-locality survive exact controls, but low fit/2023 risk efficiency, regime losses, weak significance and non-unique age/frozen-vol interpretations prevent alpha promotion.",
+      "next_action": "Freeze the entire static age-front family. Reuse only continuous age-spectrum tokens in a preregistered learner or on genuinely fresh-forward data.",
+      "generation_recipe": {
+        "script": "training/search_causal_cone_age_front_alpha.py",
+        "protocol": "physical pre-2024; fixed 2016-bar hourly-anchor width-2 geometry; 2 lags x 2 holds = 4; fit-only q80 positive-score tail; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
