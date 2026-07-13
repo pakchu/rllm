@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T11:37:00+00:00",
+  "updated_at": "2026-07-13T11:47:00+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -3260,6 +3260,44 @@
       "generation_recipe": {
         "script": "training/search_spot_perp_transfer_entropy_alpha.py",
         "protocol": "physical pre-2024 cutoff; 96 fixed candidates; prior-vol symbolic states; TE excludes current bar; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "spot_perp_phase_slip_relock_static_usage_20260713",
+      "name": "Static spot-led symbolic phase-slip relock continuation",
+      "status": "rejected",
+      "family": "crossvenue_symbolic_phase_relock_static_path",
+      "scope": "binance_spot_perp_price_discovery",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected event family requiring prior spot-perp symbolic lock, a spot-led directional slip and the first perpetual relock, followed by continuation in the relock direction.",
+      "data_sources": [
+        "Binance BTCUSDT spot completed 5m OHLCV",
+        "Binance BTCUSDT perpetual completed 5m OHLCV"
+      ],
+      "feature_names": [
+        "prior_symbolic_lock_count",
+        "spot_led_phase_excess",
+        "perp_relock_onset",
+        "phase_slip_direction"
+      ],
+      "usable_for": [
+        "failure provenance only; do not retune the same spot-led slip-to-relock continuation path"
+      ],
+      "known_failures": [
+        "No one of 72 preflight policies had positive returns in both fit and 2023 selection.",
+        "Strongest adequately populated policy returned -3.89% in fit and -5.49% in 2023.",
+        "Exact direction flip, no-relock and perp-led controls all lost; lagged-spot placebos produced no viable event set."
+      ],
+      "evidence": "Physical pre-2024 replay with prior-only volatility, disjoint lock/slip windows, next-open execution and timing controls rejected the event family before frozen OOS was opened.",
+      "source_artifacts": [
+        "training/search_spot_perp_phase_slip_alpha.py",
+        "results/spot_perp_phase_slip_alpha_scan_2026-07-13.json",
+        "docs/spot-perp-phase-slip-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Move to a different state representation such as causal price-level inventory memory; do not tune synchronization thresholds.",
+      "generation_recipe": {
+        "script": "training/search_spot_perp_phase_slip_alpha.py",
+        "protocol": "physical pre-2024 cutoff; 72 fixed policies; fixed 0.25 prior-vol symbols; disjoint lock/slip; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
