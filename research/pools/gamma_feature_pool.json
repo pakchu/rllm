@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T07:15:00+09:00",
+  "updated_at": "2026-07-14T07:55:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2085,6 +2085,48 @@
         "training/search_occupation_saddle_escape_alpha.py",
         "results/occupation_saddle_escape_alpha_scan_2026-07-14.json",
         "docs/occupation-saddle-escape-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "orderflow_campaign_terminal_absorption_static_usage_20260714",
+      "name": "Static campaign terminal-absorption transitions",
+      "status": "rejected",
+      "family": "orderflow_trophic_campaign_terminal_transition_static_usage",
+      "scope": "btc_orderflow_sequence_grammar",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family fading the first campaign-side terminal-absorption score after a frozen repeated trophic continuation campaign.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV, quote volume, trade count and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_parent_profile_12_24_6_q95",
+        "static_campaign_lookback_144_k2",
+        "static_terminal_absorption_score",
+        "static_wait_hold_72_144",
+        "static_campaign_fade_mapping"
+      ],
+      "usable_for": [
+        "failure provenance only; parent campaign density and role scores retain their prior weak-beta status"
+      ],
+      "known_failures": [
+        "Both 6h and 12h fade policies lost in fit and 2023.",
+        "The 6h fade lost in all five fit half-years; fit mean-return p-value 0.031 identifies a negative effect.",
+        "Exact terminal continuation was positive in fit but lost in 2023, so the event has no stable direction.",
+        "The 6h fade lost -15.11% in fit even at zero cost; costs are not the root cause."
+      ],
+      "evidence": "A critic-approved physical pre-2024 two-policy test with support preflight, exact transition controls, timing delays and cost stress rejects the new campaign-to-terminal transition without opening 2024+.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned analysis frame hard-filtered before 2024; the shared parser may read and discard later rows in the cutoff-crossing CSV chunk, but none enter features/outcomes; frozen parent thresholds; completed terminal bar j enters j+1 open; explicit inclusive pending state; split-contained exits; strict MDD.",
+      "tier_rationale": "The recombination adds no stable representation beyond two already-recorded weak-beta parents and fails strongly in both directions across time.",
+      "next_action": "Do not retune parent profile, campaign count/lookback, terminal score threshold, 6h/12h wait/hold or fade/continue mapping on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_orderflow_campaign_terminal_absorption_alpha.py",
+        "protocol": "frozen q95 (12,24,6) campaign; first campaign-side terminal score; two co-primary 6h/12h wait-holds; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_orderflow_campaign_terminal_absorption_alpha.py",
+        "results/orderflow_campaign_terminal_absorption_alpha_scan_2026-07-14.json",
+        "docs/orderflow-campaign-terminal-absorption-alpha-search-2026-07-14.md"
       ]
     }
   ]
