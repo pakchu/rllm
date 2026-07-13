@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T11:05:00+00:00",
+  "updated_at": "2026-07-13T11:20:00+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -3065,6 +3065,45 @@
       "generation_recipe": {
         "script": "training/search_inventory_conservation_residual_alpha.py",
         "protocol": "physical pre-2024 cutoff; frozen manifest and prefix hashes; untouched 2024/2025/2026 replay; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "debt_transfer_velocity_static_usage_20260713",
+      "name": "Static debt-transfer-velocity climax fade",
+      "status": "rejected",
+      "family": "debt_ownership_transfer_path_product",
+      "scope": "btc_crossvenue_leverage_transfer",
+      "feature_tier": "gamma_feature",
+      "description": "Signed EWMA of positive OI creation times global-account/taker ownership change, gated by futures-debt growth versus completed spot-notional growth and price acceptance, then faded.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m OHLCV/taker",
+        "one-bar-delayed Binance UM OI/OI value/global account ratio",
+        "completed Binance BTCUSDT spot 5m volume"
+      ],
+      "feature_names": [
+        "debt_transfer_velocity",
+        "transfer_intensity_z",
+        "spot_cash_gap",
+        "receiver_price_acceptance"
+      ],
+      "usable_for": [
+        "failure provenance only; do not retune the same path product"
+      ],
+      "known_failures": [
+        "Best adequately populated policy returned -3.71% in fit and -2.39% in 2023.",
+        "2023 H1 and H2 were both negative.",
+        "The exact direction flip also lost in fit and 2023."
+      ],
+      "evidence": "A 24-policy physically pre-2024 search with delayed metrics and completed spot inputs failed before any OOS was opened.",
+      "source_artifacts": [
+        "training/search_debt_transfer_velocity_alpha.py",
+        "results/debt_transfer_velocity_alpha_scan_2026-07-13.json",
+        "docs/debt-transfer-velocity-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not sweep more tails/memories. A retry requires actual cohort burden or a new ownership observable.",
+      "generation_recipe": {
+        "script": "training/search_debt_transfer_velocity_alpha.py",
+        "protocol": "physical pre-2024 cutoff; 24 fixed candidates; delayed metrics; completed spot; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
