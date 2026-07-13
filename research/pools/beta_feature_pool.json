@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T00:16:36+09:00",
+  "updated_at": "2026-07-14T00:45:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2305,6 +2305,50 @@
       "generation_recipe": {
         "script": "training/search_persistent_barrier_annihilation_alpha.py",
         "protocol": "physical pre-2024; 2 horizons x 3 scores x 4 tails x 3 holds x 2 mappings = 144; frozen prior-hour topology; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "dual_intrinsic_clock_impact_elasticity_state_20260714",
+      "name": "Dual intrinsic-clock impact-elasticity state",
+      "status": "weak",
+      "family": "price_flow_event_time_elasticity",
+      "scope": "btc_price_taker_flow_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Causal hourly state comparing frozen-threshold directional-change event clocks of log price and cumulative signed taker quote flow, with normalized path displacements.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "price_directional_change_count",
+        "flow_directional_change_count",
+        "intrinsic_clock_ratio",
+        "price_displacement_z",
+        "flow_displacement_z",
+        "impact_elasticity_state"
+      ],
+      "usable_for": [
+        "weak event-time impact-elasticity context under a materially different learner",
+        "not replaying static widths, windows, dominance ratios, entry mappings or holds"
+      ],
+      "known_failures": [
+        "Zero of 18 final static policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was -0.05 with 41.36% strict MDD; 2023 CAGR/MDD was 2.20.",
+        "At executable 6bp/side the top fit return was -4.83%; gross 0bp fit return was +31.20%, showing excessive turnover sensitivity.",
+        "More flexible pre-2024 quantile-tail, onset and recoupling probes were also inspected and weak; all static semantics are contaminated and frozen."
+      ],
+      "evidence": "The selected event-clock map returned +18.84% in 2023 with both halves positive. Its exact direction flip lost -36.94%, and a magnitude-only/no-clock control was almost flat, but fit lost -4.83% and varied sharply by regime.",
+      "source_artifacts": [
+        "training/search_dual_intrinsic_clock_alpha.py",
+        "results/dual_intrinsic_clock_alpha_scan_2026-07-14.json",
+        "docs/dual-intrinsic-clock-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Physical pre-2024 cutoff; minute-55 completed decision enters next minute-00 open; path scales are prior-only; flow uses previous completed-hour volume; directional-change thresholds freeze until transition; at most one event per bar.",
+      "tier_rationale": "Event clocks and direction survive strong ablations at gross level, but executable-cost fit loss, 41.36% strict MDD and regime instability prevent alpha promotion.",
+      "next_action": "Freeze all static settings. Reuse only continuous event-count/displacement/category tokens in a preregistered learner or on genuinely fresh-forward data.",
+      "generation_recipe": {
+        "script": "training/search_dual_intrinsic_clock_alpha.py",
+        "protocol": "physical pre-2024; 3 DC widths x 3 windows x 2 dominance ratios = 18; first-entry only; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
