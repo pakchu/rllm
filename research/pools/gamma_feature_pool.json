@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T00:25:55.111634+00:00",
+  "updated_at": "2026-07-13T00:49:51.195082+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -303,6 +303,54 @@
       "generation_recipe": {
         "script": "training/search_extrema_arrival_bidirectional_alpha.py",
         "protocol": "train thresholds; test selection; eval/2026 report; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "crossvenue_local_micro_consensus_usage_20260713",
+      "name": "Cross-venue local impulse × Binance microstructure symmetric consensus usage",
+      "status": "rejected",
+      "family": "crossvenue_microstructure_consensus",
+      "scope": "btc_crossvenue_orderflow",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed usage mode combining one Korean local/FX impulse feature with one Binance volume-clock, jump, or liquidity-recovery feature through fixed symmetric agreement/disagreement tails.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker",
+        "BTCKRW/USDKRW-derived causal kimchi premium fields"
+      ],
+      "feature_names": [
+        "kl_local_impulse_*",
+        "kl_kimchi_btc_gap_*",
+        "vc_flow_speed_*",
+        "vc_imbalance_*",
+        "lr_flow_recovery",
+        "lr_signed_eff_72",
+        "lr_flow_72",
+        "jv_signed_jump_72",
+        "jv_flow_recovery"
+      ],
+      "usable_for": [
+        "failure provenance only; underlying feature families may be reconsidered through a materially different dynamic regime model"
+      ],
+      "known_failures": [
+        "All pre-2024 Top-10 candidates failed alpha-pool qualification.",
+        "Rank 1 changed from +6.95% in 2023 to -13.29% in 2024, -3.17% in 2025 and -2.84% in 2026 YTD.",
+        "Several variants showed isolated 2025 strength but negative 2024 and/or 2026, demonstrating regime inversion rather than stable edge."
+      ],
+      "evidence": "320 unique masks and 26 eligible stable pre-2024 execution variants produced a frozen Top-10; zero passed test2024/eval2025 criteria. Exact activation Jaccard versus reference REX events was 0.0, confirming independence but not profitability.",
+      "source_artifacts": [
+        "training/search_crossvenue_microstructure_consensus_alpha.py",
+        "results/crossvenue_microstructure_consensus_top10_manifest_2026-07-13.json",
+        "results/crossvenue_microstructure_consensus_alpha_scan_2026-07-13.json",
+        "docs/crossvenue-microstructure-consensus-alpha-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "Thresholds used 2020-2022 only; 2023 and half-years selected the manifest while 2024+ rows were physically absent; 2024/2025/2026 were replay-only. This is clean failure evidence for the exact static symmetric usage.",
+      "tier_rationale": "Gamma usage record: broad agreement/disagreement combinations failed clean frozen OOS across all Top-10 candidates. This rejects the static symmetric usage, not the underlying raw features in other dynamic regimes.",
+      "next_action": "Do not retry fixed symmetric local-impulse × microstructure tails. A future retry must use a predeclared dynamic regime/state transition mechanism and a new untouched forward period.",
+      "generation_recipe": {
+        "script": "training/search_crossvenue_microstructure_consensus_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_crossvenue_microstructure_consensus_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --manifest-output results/crossvenue_microstructure_consensus_top10_manifest_2026-07-13.json --output results/crossvenue_microstructure_consensus_alpha_scan_2026-07-13.json",
+        "protocol": "fit 2020-2022; select 2023 with H1/H2 stability; physically frozen Top-10; replay 2024/2025/2026; 0.5x; 6bp/side; next-open; fixed hold; strict high-water MDD"
       }
     }
   ]
