@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T00:03:58.056701+00:00",
+  "updated_at": "2026-07-13T00:25:55.111634+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side for current scans; older alt_oi_taker artifact used 5bp/side",
@@ -3247,8 +3247,7 @@
       "exit_logic": "Enter next 5m open, fixed 144 bars (12h), one position at a time.",
       "dependencies": [
         "rex_htf_pullback_reclaim_q75",
-        "taker_imbalance",
-        "rex_2016_range_pos"
+        "rex_taker_sell_nonhigh_range_state_20260713"
       ],
       "stats": {
         "train_2021_2023": {
@@ -3305,8 +3304,7 @@
       "next_action": "Shadow only. Validate live feature parity, collect fresh OOS, and do not tune on 2025-2026 again.",
       "usage_recipe": {
         "feature_dependencies": [
-          "taker_imbalance",
-          "rex_2016_range_pos"
+          "rex_taker_sell_nonhigh_range_state_20260713"
         ],
         "entry_logic": "fixed thresholds listed above",
         "exit_logic": "fixed 144 bars, next-open, no stop/take",

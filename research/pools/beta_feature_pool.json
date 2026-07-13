@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-12T00:00:00Z",
+  "updated_at": "2026-07-13T00:25:55.111634+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1378,6 +1378,75 @@
       "generation_recipe": {
         "script": "training/search_trade_size_impact_bidirectional_alpha.py",
         "protocol": "train thresholds; test selection; eval/2026 report; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "rex_taker_sell_nonhigh_range_state_20260713",
+      "name": "REX taker-sell / non-high seven-day range state",
+      "status": "candidate",
+      "family": "rex_taker_range_regime",
+      "scope": "btc_price_orderflow",
+      "feature_tier": "beta_feature",
+      "description": "Joint REX selector state combining completed-bar taker sell pressure with BTC location below the upper extreme of its trailing 2,016-bar (seven-day) high/low range.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV with taker_buy_base"
+      ],
+      "feature_examples": [
+        "taker_imbalance <= -0.07073595391836504",
+        "rex_2016_range_pos <= 0.6865011402825759",
+        "joint state is evaluated only after a fixed REX reclaim q75 candidate fires"
+      ],
+      "feature_names": [
+        "taker_imbalance",
+        "rex_2016_range_pos"
+      ],
+      "usable_for": [
+        "conditional selector for REX reclaim candidates",
+        "order-flow plus long-range-location state token for compact LLM/RLLM policies",
+        "fresh-OOS shadow feature candidate with frozen thresholds"
+      ],
+      "known_failures": [
+        "The connected strategy reaches only 2.07 CAGR/strict-MDD in the 2024 selection window, below the 2.5 alpha-feature promotion threshold.",
+        "Eval 2025 is positive but weak at 1.71 CAGR/strict-MDD and approximate p=0.247.",
+        "The conjunction is not a standalone entry signal; it is conditional on a pre-existing REX reclaim candidate."
+      ],
+      "evidence": "With a fixed REX reclaim q75 candidate, next-open entry, 144-bar hold, 0.5x and 6bp/side, the frozen conjunction records 2024 +12.91% return / ratio 2.07 / 65 trades; 2025 +4.51% / ratio 1.71 / 31 trades; 2026 through Jun 02 +6.98% / ratio 10.14 / 23 trades; combined 2025-2026 +11.80% / CAGR 8.20% / strict MDD 2.63% / ratio 3.12 / 54 trades / approximate p=0.021.",
+      "source_artifacts": [
+        "preprocessing/market_features.py",
+        "training/build_rex_candidate_ranker_records.py",
+        "training/sweep_conjunctive_event_gates.py",
+        "results/rex_pre2025_conjunctive_gate_corrected_scan_2026-07-13.json",
+        "training/audit_rex8640_usdkrw_gate.py",
+        "results/rex_taker_rangepos_gate_strict_audit_2026-07-13.json",
+        "configs/live/rex_taker_low_range_position_research_candidate.json",
+        "docs/rex-pre2025-corrected-gate-audit-2026-07-13.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Both inputs use the signal-time completed 5m bar and trailing bars only; execution starts at the next 5m open. Primitive thresholds were fit from train feature quantiles and the conjunction was ranked on train plus 2024, not on 2025-2026. The broader research path remains retrospective, so later-window results are supporting evidence rather than clean final proof.",
+      "tier_rationale": "Beta feature candidate: the joint state has plausible and statistically encouraging later-window selector evidence, but the linked strategy misses the required 2024 CAGR/strict-MDD 2.5 promotion threshold.",
+      "next_action": "Freeze both thresholds, verify live/offline feature parity, and collect fresh shadow OOS without further 2025-2026 tuning; promote only after the documented beta-to-alpha criteria are met.",
+      "generation_recipe": {
+        "scripts": [
+          "preprocessing/market_features.py",
+          "training/build_rex_candidate_ranker_records.py",
+          "training/audit_rex8640_usdkrw_gate.py"
+        ],
+        "functions": [
+          "preprocessing.market_features.build_market_feature_frame",
+          "training.build_rex_candidate_ranker_records._feature_snapshot"
+        ],
+        "inputs": [
+          "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+          "data/rex_pullback_reclaim_q075_h144_ranker_train_2021_2023.jsonl",
+          "data/rex_pullback_reclaim_q075_h144_ranker_test_2024.jsonl",
+          "data/rex_pullback_reclaim_q075_h144_ranker_eval_2025_2026h1.jsonl"
+        ],
+        "command": "PYTHONPATH=. .venv/bin/python training/audit_rex8640_usdkrw_gate.py --train-jsonl data/rex_pullback_reclaim_q075_h144_ranker_train_2021_2023.jsonl --test-jsonl data/rex_pullback_reclaim_q075_h144_ranker_test_2024.jsonl --eval-jsonl data/rex_pullback_reclaim_q075_h144_ranker_eval_2025_2026h1.jsonl --market-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --gates-json '[{\"feature\":\"taker_imbalance\",\"op\":\"<=\",\"threshold\":-0.07073595391836504},{\"feature\":\"rex_2016_range_pos\",\"op\":\"<=\",\"threshold\":0.6865011402825759}]' --leverage 0.5 --fee-rate 0.0005 --slippage-rate 0.0001 --hold-bars 144 --output results/rex_taker_rangepos_gate_strict_audit_2026-07-13.json",
+        "outputs": [
+          "results/rex_taker_rangepos_gate_strict_audit_2026-07-13.json"
+        ],
+        "protocol": "Signal-time completed 5m features; next-open execution; one position; 144-bar hold; 0.5x; 6bp/side; corrected intraposition high-water strict MDD; full-calendar CAGR.",
+        "notes": "taker_imbalance = 2 * taker_buy_base / volume - 1. rex_2016_range_pos = 2 * (close - trailing_2016_low) / (trailing_2016_high - trailing_2016_low) - 1. Keep the continuous raw inputs available to the LLM/RLLM; the binary conjunction is a candidate state, not proof that information outside the thresholds is useless."
       }
     }
   ]
