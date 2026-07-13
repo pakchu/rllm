@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T23:23:38.197433+00:00",
+  "updated_at": "2026-07-13T23:43:38.215385+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2212,6 +2212,50 @@
         "training/search_aggressor_centroid_inversion_alpha.py",
         "results/aggressor_centroid_inversion_alpha_scan_2026-07-14.json",
         "docs/aggressor-centroid-inversion-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "positioning_simplex_curvature_static_usage_20260714",
+      "name": "Static positioning-simplex curvature exhaustion policy",
+      "status": "rejected",
+      "family": "positioning_simplex_replicator_geometry_static_usage",
+      "scope": "btc_binance_positioning_cohorts_open_interest",
+      "feature_tier": "gamma_feature",
+      "description": "Rejected fit-q80 12-hour policy fading net six-hour cohort migration when delayed positioning curvature, speed and positive OI change form a high-energy event.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLC",
+        "one-row-delayed Binance USD-M positioning ratios and open interest"
+      ],
+      "feature_names": [
+        "static_migration_6h",
+        "static_oi_curvature_speed_q80",
+        "static_fade_continuation_mapping",
+        "static_hold_144"
+      ],
+      "usable_for": [
+        "failure provenance only; raw cohort velocity and curvature retain weak-beta status"
+      ],
+      "known_failures": [
+        "Fit return/CAGR/strict MDD/ratio was -37.20%/-31.85%/53.28%/-0.60 over 456 trades.",
+        "2023 return/CAGR/strict MDD/ratio was -16.96%/-16.97%/24.17%/-0.70 over 294 trades.",
+        "Only 2020Q4 was positive; all 2021/2023 halves failed.",
+        "Exact flip, all structural ablations and every delay failed.",
+        "Zero-cost fit and 2023 remained negative.",
+        "Score-level novelty failed because OI-speed controls had Spearman about 0.95."
+      ],
+      "evidence": "A pre-outcome critic-approved one-cell experiment with delayed-source assertions, full support, 2022 quarantine, no-curvature/no-OI/speed/dispersion ablations, timing controls and cost stress rejects the static family without opening 2024+.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frames pre-2024; cutoff-chunk discard disclosed; one-row delayed metrics; completed minute55; next-open and delayed controls; split-contained exits; strict MDD; 2022 quarantined; no OOS computation.",
+      "tier_rationale": "Both directions and every cost regime fail, temporal behavior is unstable, and the proposed energy is largely a nonlinear restatement of OI expansion times cohort speed.",
+      "next_action": "Do not tune curvature projection, OI multiplier, q threshold, migration scale, direction, hold or timing on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_positioning_simplex_curvature_alpha.py",
+        "protocol": "one q80 fade map plus flip/no-curvature/no-OI/speed/dispersion/delay/cost controls; 12h; next-open; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_positioning_simplex_curvature_alpha.py",
+        "results/positioning_simplex_curvature_alpha_scan_2026-07-14.json",
+        "docs/positioning-simplex-curvature-alpha-search-2026-07-14.md"
       ]
     }
   ]

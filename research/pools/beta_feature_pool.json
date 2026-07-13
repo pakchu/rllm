@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T23:23:38.197433+00:00",
+  "updated_at": "2026-07-13T23:43:38.215385+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2663,6 +2663,51 @@
       "generation_recipe": {
         "script": "training/search_aggressor_centroid_inversion_alpha.py",
         "protocol": "completed-hour exact base/quote centroids; one B<S terminal map; 12h; next-open; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      }
+    },
+    {
+      "id": "positioning_simplex_curvature_state_20260714",
+      "name": "Delayed positioning-simplex migration curvature",
+      "status": "weak",
+      "family": "positioning_simplex_replicator_geometry",
+      "scope": "btc_binance_positioning_cohorts_open_interest",
+      "feature_tier": "beta_feature",
+      "description": "Causal six-hour migration vectors and normalized turning curvature across delayed top-position, global-account and taker-volume long/short log-ratio coordinates.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLC",
+        "one-row-delayed Binance USD-M top-position/global-account/taker-volume ratios and open interest"
+      ],
+      "feature_names": [
+        "simplex_cohort_velocity_top_position",
+        "simplex_cohort_velocity_global_account",
+        "simplex_cohort_velocity_taker_flow",
+        "simplex_migration_speed",
+        "simplex_migration_mean",
+        "simplex_curvature"
+      ],
+      "usable_for": [
+        "weak cohort-geometry tokens under a materially different preregistered learner or RLLM",
+        "not replaying the inspected OI-curvature energy, q80, direction, 6h scale or 12h hold"
+      ],
+      "known_failures": [
+        "Primary fit/2023 CAGR-MDD was -0.60/-0.70.",
+        "Exact continuation also lost in fit and 2023.",
+        "Only 2020Q4 was positive; both 2021 and 2023 halves failed.",
+        "Primary energy Spearman was 0.949 with OI-build x speed and 0.948 with OI-build x pairwise dispersion."
+      ],
+      "evidence": "Curvature changed event membership (all structural-control Jaccards <=0.483) and curvature-speed correlation with the primary score was only 0.230, but multiplication by OI build and speed destroyed score-level novelty and no static map had positive risk efficiency.",
+      "source_artifacts": [
+        "training/search_positioning_simplex_curvature_alpha.py",
+        "results/positioning_simplex_curvature_alpha_scan_2026-07-14.json",
+        "docs/positioning-simplex-curvature-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Market and metrics returned frames pre-2024; cutoff-chunk discard disclosed; positioning shifted one complete 5m row; completed minute55; next-open; 2022 coverage gap quarantined; no 2024+ computation.",
+      "tier_rationale": "Raw cohort turning is a distinct causal geometric token at event level, but the executable energy collapses toward OI-speed and is unprofitable in both directions.",
+      "next_action": "Freeze static semantics. Reuse only raw velocity/curvature tokens under a separately preregistered learner or genuinely fresh-forward shadow period.",
+      "generation_recipe": {
+        "script": "training/search_positioning_simplex_curvature_alpha.py",
+        "protocol": "delayed three-cohort log-ratio geometry; 6h vectors; OI x speed x abs curvature q80; fade; 12h; next-open; 0.5x; 6bp/side; 2022 quarantine; OOS excluded"
       }
     }
   ]
