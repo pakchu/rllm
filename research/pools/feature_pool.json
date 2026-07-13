@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T11:55:00+00:00",
+  "updated_at": "2026-07-13T12:06:00+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -3319,24 +3319,29 @@
         "scar_revisit_distance"
       ],
       "usable_for": [
-        "one-touch or first-passage revisit event under a fresh predeclared protocol",
-        "weak spatial-memory token only, not executable local-tail alpha"
+        "weak continuous regime-context token in a genuinely different learner",
+        "not another static scar threshold, revisit or hold policy"
       ],
       "known_failures": [
         "All 48 repeated local-q80 policies lost after 6bp/side costs.",
         "Selected local-tail policy lost 13.88% in 2023 even with zero cost.",
-        "The inferred event is not an observed liquidation label and may include voluntary closing."
+        "The inferred event is not an observed liquidation label and may include voluntary closing.",
+        "The one-touch first-passage retry had no policy positive in both fit and 2023.",
+        "Its top 2023-positive mapping lost 29.08% in zero-cost fit, showing regime inversion."
       ],
-      "evidence": "Price-bin relocation changed event paths and the exact direction flip was much worse in fit, so the representation is not a no-op; however no tested local-tail mapping generalized or survived costs.",
+      "evidence": "Spatial controls change paths and the q95 one-touch permeability mapping was positive in both 2023 halves before costs, but both repeated-local and first-passage static uses fail full-fit robustness and realistic costs.",
       "source_artifacts": [
         "training/search_liquidation_scar_field_alpha.py",
         "results/liquidation_scar_field_alpha_scan_2026-07-13.json",
-        "docs/liquidation-scar-field-alpha-search-2026-07-13.md"
+        "docs/liquidation-scar-field-alpha-search-2026-07-13.md",
+        "training/search_liquidation_scar_first_passage_alpha.py",
+        "results/liquidation_scar_first_passage_alpha_scan_2026-07-13.json",
+        "docs/liquidation-scar-first-passage-alpha-search-2026-07-13.md"
       ],
       "contamination_risk": "medium",
       "leakage_notes": "OI is shifted one complete bar; prior-only standardization is used; the field is queried before current-bar deposit; entry is next open; OOS was not opened.",
       "tier_rationale": "Only the spatial representation remains a weak beta for one structurally different first-passage test. The repeated local-tail usage is separately gamma-rejected.",
-      "next_action": "Test a one-touch first-passage event that consumes each scar once and must beat scalar-collapse and relocated-bin placebos.",
+      "next_action": "Freeze static scar searches. If retained, use only as continuous context with fresh-forward learner validation and no reuse of inspected mappings.",
       "generation_recipe": {
         "script": "training/search_liquidation_scar_field_alpha.py",
         "protocol": "physical pre-2024 cutoff; one-bar-delayed OI; query-before-deposit sparse log-price field; next-open; 0.5x; 6bp/side; strict MDD"
@@ -3378,6 +3383,44 @@
       "generation_recipe": {
         "script": "training/search_liquidation_scar_field_alpha.py",
         "protocol": "physical pre-2024 cutoff; 48 fixed policies; one-bar-delayed OI; query-before-deposit; fit q80 local tail; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "liquidation_scar_first_passage_static_usage_20260713",
+      "name": "Static liquidation-scar first-passage one-touch mapping",
+      "status": "rejected",
+      "family": "spatial_inventory_clearance_first_passage",
+      "scope": "btc_derivatives_price_level_memory",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family that arms each signed OI/taker scar after a 50bp departure, triggers once on the first 10/20bp-zone revisit, consumes it, and trades either fade or permeability direction.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV/taker flow",
+        "Binance 5m open interest explicitly delayed one complete bar"
+      ],
+      "feature_names": [
+        "scar_armed_after_departure",
+        "first_passage_touch_mass",
+        "touch_age",
+        "one_touch_consumption"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous spatial state remains weak regime beta"
+      ],
+      "known_failures": [
+        "No one of 48 policies was positive in both fit and 2023 selection.",
+        "Top ranked policy returned -64.60% in fit despite +1.90% in 2023.",
+        "The same policy remained -29.08% in zero-cost fit, proving structural regime inversion rather than only cost drag."
+      ],
+      "evidence": "A physical pre-2024 one-touch replay with delayed OI, query-before-deposit, exact mapping flip and spatial placebos failed admission before OOS.",
+      "source_artifacts": [
+        "training/search_liquidation_scar_first_passage_alpha.py",
+        "results/liquidation_scar_first_passage_alpha_scan_2026-07-13.json",
+        "docs/liquidation-scar-first-passage-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune departure, zone, expiry, tail or hold parameters; only continuous regime-context use under a genuinely different learner remains plausible.",
+      "generation_recipe": {
+        "script": "training/search_liquidation_scar_first_passage_alpha.py",
+        "protocol": "physical pre-2024 cutoff; 48 fixed policies; one-bar-delayed OI; query-before-deposit; 50bp departure; one-touch consume; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]

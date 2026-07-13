@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T11:55:00+00:00",
+  "updated_at": "2026-07-13T12:06:00+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1111,6 +1111,44 @@
       "generation_recipe": {
         "script": "training/search_liquidation_scar_field_alpha.py",
         "protocol": "physical pre-2024 cutoff; 48 fixed policies; one-bar-delayed OI; query-before-deposit; fit q80 local tail; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "liquidation_scar_first_passage_static_usage_20260713",
+      "name": "Static liquidation-scar first-passage one-touch mapping",
+      "status": "rejected",
+      "family": "spatial_inventory_clearance_first_passage",
+      "scope": "btc_derivatives_price_level_memory",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family that arms each signed OI/taker scar after a 50bp departure, triggers once on the first 10/20bp-zone revisit, consumes it, and trades either fade or permeability direction.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV/taker flow",
+        "Binance 5m open interest explicitly delayed one complete bar"
+      ],
+      "feature_names": [
+        "scar_armed_after_departure",
+        "first_passage_touch_mass",
+        "touch_age",
+        "one_touch_consumption"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous spatial state remains weak regime beta"
+      ],
+      "known_failures": [
+        "No one of 48 policies was positive in both fit and 2023 selection.",
+        "Top ranked policy returned -64.60% in fit despite +1.90% in 2023.",
+        "The same policy remained -29.08% in zero-cost fit, proving structural regime inversion rather than only cost drag."
+      ],
+      "evidence": "A physical pre-2024 one-touch replay with delayed OI, query-before-deposit, exact mapping flip and spatial placebos failed admission before OOS.",
+      "source_artifacts": [
+        "training/search_liquidation_scar_first_passage_alpha.py",
+        "results/liquidation_scar_first_passage_alpha_scan_2026-07-13.json",
+        "docs/liquidation-scar-first-passage-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune departure, zone, expiry, tail or hold parameters; only continuous regime-context use under a genuinely different learner remains plausible.",
+      "generation_recipe": {
+        "script": "training/search_liquidation_scar_first_passage_alpha.py",
+        "protocol": "physical pre-2024 cutoff; 48 fixed policies; one-bar-delayed OI; query-before-deposit; 50bp departure; one-touch consume; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
