@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T21:31:49+09:00",
+  "updated_at": "2026-07-13T21:40:49+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1954,6 +1954,49 @@
       "generation_recipe": {
         "script": "training/search_orderflow_trophic_succession_alpha.py",
         "protocol": "physical pre-2024 cutoff; 96 fixed role-score policies; completed non-overlapping phases; prior-only z-scores; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "orderflow_trophic_campaign_density_20260713",
+      "name": "Repeated order-flow trophic campaign density",
+      "status": "weak",
+      "family": "orderflow_participant_campaign_memory",
+      "scope": "btc_perpetual_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Causal trailing counts, directional purity and time-since-confirmation for repeated same-direction sponsor-to-crowd succession events, with each completed event treated as evidence of one latent participation campaign.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT quote volume, trade count and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "same_direction_trophic_event_count",
+        "opposite_direction_trophic_event_count",
+        "campaign_directional_purity",
+        "bars_since_campaign_confirmation"
+      ],
+      "usable_for": [
+        "weak continuous campaign-state context under a new economic state-transition model",
+        "independent learner input after fresh-forward validation, not a static threshold replay"
+      ],
+      "known_failures": [
+        "Zero of 48 frozen count/lookback/fixed-hold policies reached CAGR/MDD 3 in both fit and 2023.",
+        "The most temporally robust policy had fit ratio 0.73 and 2023 ratio 2.44.",
+        "Its 2023H2 return was only +0.06% with ratio 0.02, revealing strong H1 concentration.",
+        "The stronger minimum-full-window candidate had only 41 fit and 23 selection trades and 2023H2 ratio 0.28."
+      ],
+      "evidence": "Repeated campaign confirmation converted the cost-fragile parent into +24.31% fit and +14.18% 2023 returns at 6bp/side, with all seven pre-2024 half-years positive. Direction flip lost heavily and a one-event cooldown was much weaker, but risk efficiency remained below admission.",
+      "source_artifacts": [
+        "training/search_orderflow_trophic_campaign_alpha.py",
+        "results/orderflow_trophic_campaign_alpha_scan_2026-07-13.json",
+        "docs/orderflow-trophic-campaign-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "medium-high",
+      "leakage_notes": "Parent q95 thresholds are fit-only and frozen; campaign counts include only current and trailing completed events; entry is next open; source rows physically stop before 2024; 2024+ OOS was not opened.",
+      "tier_rationale": "Campaign aggregation produces real cost-surviving directional evidence and positive temporal breadth, but fails the required risk-efficiency target and has a nearly flat final selection half.",
+      "next_action": "Do not sweep nearby counts, lookbacks, cooldowns or holds. Reuse only as a continuous context under a genuinely different state transition with fresh-forward proof, or move to an independent data mechanism.",
+      "generation_recipe": {
+        "script": "training/search_orderflow_trophic_campaign_alpha.py",
+        "protocol": "physical pre-2024 cutoff; frozen q95 parent; 48 campaign policies; trailing current-and-prior counts; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
