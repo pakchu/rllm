@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T04:38:49.823905+00:00",
+  "updated_at": "2026-07-13T04:57:04.034530+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -580,6 +580,52 @@
       "generation_recipe": {
         "script": "training/search_spot_perp_absorption_alpha.py",
         "protocol": "384 final policies after documented pre-OOS revisions; physically pre-2024 selection; frozen replay; next-open; dynamic contraction/fixed expansion exit; 0.5x; 6bp/side plus 10bp stress; strict MDD"
+      }
+    },
+    {
+      "id": "premium_intrabar_extreme_onset_static_usage_20260713",
+      "name": "Static premium-index extreme-range onset directional usage",
+      "status": "rejected",
+      "family": "premium_index_intrabar_microstructure",
+      "scope": "btc_derivatives_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed mapping of 2/3-sigma premium-index 5m range onsets plus wick/close-location shape thresholds to fixed follow/fade directions and 24/48/96-bar holds.",
+      "data_sources": [
+        "Binance BTCUSDT premium-index complete 1m bars",
+        "BTCUSDT perpetual 5m execution OHLC"
+      ],
+      "feature_names": [
+        "psi_range_z static onset",
+        "psi_wick_imbalance static tails",
+        "psi_close_location static tails",
+        "fixed follow/fade and hold mapping"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous premium shape fields remain beta"
+      ],
+      "known_failures": [
+        "Only two unique paths from 192 policies passed pre-2024 fit/2023/H1/H2 admission.",
+        "Rank 1 returned -11.80% in 2024, -7.61% in 2025 and +2.34% in 2026; combined -16.61%, CAGR -7.24%, strict MDD 23.71%, 292 trades.",
+        "Rank 2 combined return was -20.50% with strict MDD 30.39% across 335 trades.",
+        "Rank-1 direction flip returned -17.82%; adding the original signal reduced the six-sleeve union from +180.12% / ratio 5.62 to +140.57% / ratio 3.32."
+      ],
+      "evidence": "A physically pre-2024 frozen manifest and byte-stable replay produced zero alpha-pool qualifiers. Ample trades, failure in both directions and negative portfolio contribution reject this exact static mapping rather than merely indicating low sample size.",
+      "source_artifacts": [
+        "training/search_premium_intrabar_shape_alpha.py",
+        "tests/test_search_premium_intrabar_shape_alpha.py",
+        "results/premium_intrabar_shape_top10_manifest_2026-07-13.json",
+        "results/premium_intrabar_shape_alpha_scan_2026-07-13.json",
+        "results/premium_intrabar_shape_replay_verification_2026-07-13.json",
+        "docs/premium-intrabar-shape-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "low-medium",
+      "leakage_notes": "Policy ranking used only fit 2020-06..2022 and selection 2023/H1/H2 after physical source truncation. Current completed premium shape enters only the next futures open. Manifest and selected replay hashes were exact. These exact mappings are now contaminated by OOS inspection.",
+      "tier_rationale": "Gamma applies to fixed extreme-range-onset shape thresholds, fixed direction and fixed hold. It does not reject continuous intrabar shape as input to a materially different model.",
+      "next_action": "Do not retry or retune this 192-policy family on 2024-2026. Any revisit must change the mechanism materially and rely on fresh forward data.",
+      "generation_recipe": {
+        "script": "training/search_premium_intrabar_shape_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_premium_intrabar_shape_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --spot-csv data/cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/premium_intrabar_shape_top10_manifest_2026-07-13.json --output results/premium_intrabar_shape_alpha_scan_2026-07-13.json --docs-output docs/premium-intrabar-shape-alpha-search-2026-07-13.md",
+        "protocol": "192 fixed policies; fit 2020-06..2022; select 2023/H1/H2; frozen replay 2024/2025/2026; next-open; 0.5x; 6bp/side plus 10bp stress; strict MDD"
       }
     }
   ]

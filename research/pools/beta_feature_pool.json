@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T04:38:49.821974+00:00",
+  "updated_at": "2026-07-13T04:57:04.034530+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1545,6 +1545,54 @@
         "script": "training/search_spot_perp_absorption_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python -m training.search_spot_perp_absorption_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --spot-csv data/cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/spot_perp_absorption_top10_manifest_2026-07-13.json --output results/spot_perp_absorption_alpha_scan_2026-07-13.json --docs-output docs/spot-perp-absorption-alpha-search-2026-07-13.md",
         "protocol": "shifted rolling OLS/std; complete 5m bars; pre-2024 Top-7; next-open; 0.5x; 6bp/side plus 10bp stress; strict MDD"
+      }
+    },
+    {
+      "id": "premium_intrabar_shape_context_20260713",
+      "name": "Completed premium-index intrabar range and shape context",
+      "status": "candidate",
+      "family": "premium_index_intrabar_microstructure",
+      "scope": "btc_derivatives_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Causal five-minute shape fields formed from exactly five completed Binance premium-index 1m bars: range, close location, upper/lower wick imbalance, body fraction and shifted-history range/body z-scores.",
+      "data_sources": [
+        "Binance BTCUSDT premium-index 1m high/low/close aggregated to complete 5m intervals"
+      ],
+      "feature_names": [
+        "psi_range",
+        "psi_wick_imbalance",
+        "psi_close_location",
+        "psi_body_fraction",
+        "psi_range_z_{2016,8640}",
+        "psi_body_z_{2016,8640}"
+      ],
+      "usable_for": [
+        "continuous derivatives microstructure state for compact LLM/RLLM",
+        "fresh-forward nonlinear interaction research",
+        "context only, not the rejected static onset rule"
+      ],
+      "known_failures": [
+        "Only two of 192 fixed static policies passed pre-2024 admission.",
+        "Both frozen policies lost in 2024 and 2025; rank 1 combined OOS return was -16.61% with strict MDD 23.71%.",
+        "Direction flip and higher-cost stress also lost, so no direct static directional mapping survived."
+      ],
+      "evidence": "On fit data, wick imbalance and close location had Spearman correlations of 0.119 and 0.215 with premium-index close, respectively, and the selected event paths had maximum OOS signal Jaccard 0.0026 versus six existing sleeves. This is a distinct data surface, but tested static usage was economically negative.",
+      "source_artifacts": [
+        "training/search_premium_intrabar_shape_alpha.py",
+        "tests/test_search_premium_intrabar_shape_alpha.py",
+        "results/premium_intrabar_shape_top10_manifest_2026-07-13.json",
+        "results/premium_intrabar_shape_alpha_scan_2026-07-13.json",
+        "results/premium_intrabar_shape_replay_verification_2026-07-13.json",
+        "docs/premium-intrabar-shape-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Each 5m feature requires premium_rows=5. Historical normalization ends at t-1; the current completed shape is observed at t and execution starts at t+1 open. Selection inputs were physically truncated before 2024. Exact tested static mappings are now later-window contaminated.",
+      "tier_rationale": "Beta applies only to continuous shape context because it is a new, weakly overlapping input surface. No strategy using it met alpha-feature thresholds; its exact static range-onset usage is separately gamma-rejected.",
+      "next_action": "Do not threshold-retune on 2024-2026. Use only in a materially different predeclared nonlinear/RLLM state model and require fresh forward evidence plus live premium-index aggregation parity.",
+      "generation_recipe": {
+        "script": "training/search_premium_intrabar_shape_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_premium_intrabar_shape_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --spot-csv data/cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/premium_intrabar_shape_top10_manifest_2026-07-13.json --output results/premium_intrabar_shape_alpha_scan_2026-07-13.json --docs-output docs/premium-intrabar-shape-alpha-search-2026-07-13.md",
+        "protocol": "five complete 1m premium bars per 5m state; prior-history z-score; pre-2024 manifest; next-open; fixed holds; 0.5x; 6bp/side plus 10bp stress; strict MDD"
       }
     }
   ]
