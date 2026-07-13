@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T04:20:00+09:00",
+  "updated_at": "2026-07-14T04:55:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1999,6 +1999,49 @@
         "training/search_preisach_flow_scar_alpha.py",
         "results/preisach_flow_scar_alpha_scan_2026-07-14.json",
         "docs/preisach-flow-scar-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "nonequilibrium_probability_current_static_usage_20260714",
+      "name": "Static nonequilibrium probability-current policies",
+      "status": "rejected",
+      "family": "observable_microstate_irreversible_current_static_usage",
+      "scope": "btc_price_flow_open_interest",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family projecting price direction from antisymmetric rolling transition current over hourly price/flow/OI sign microstates.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV, taker-buy quote volume and open interest"
+      ],
+      "feature_names": [
+        "static_eight_sign_microstates",
+        "static_transition_window_720h",
+        "static_dirichlet_prior_0p5",
+        "static_entropy_current_q80",
+        "static_directionality_0p5",
+        "static_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; no beta promotion"
+      ],
+      "known_failures": [
+        "Both 6h and 12h primary policies lost in fit and 2023 at executable cost.",
+        "The 12h top lost -52.32% fit and -8.09% in 2023 with 900/455 trades.",
+        "Exact flip, time reversal, ordinary Markov expectation, current-price side and OI ablation all lost.",
+        "Fit lost -18.17% even at zero cost; seven-day delay improved fit but remained negative in 2023."
+      ],
+      "evidence": "A physical pre-2024 scan with two primary holds and orientation, detailed-balance, state-ablation, delay and cost controls found no stable predictive current and no representation-level evidence worth beta retention.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff; transition graph at t ends at t-1; completed hourly state; fit-only score tail; next-open entry; split-contained exits; strict MDD; 2024+ sealed.",
+      "tier_rationale": "Every structural orientation fails with large supported samples, including zero-cost fit, so both static usage and the exact representation are rejected.",
+      "next_action": "Do not retune sign state definitions, graph window, smoothing, entropy/current projection, score tail or holds on this sample. A retry requires a different event source and genuinely fresh evidence.",
+      "generation_recipe": {
+        "script": "training/search_nonequilibrium_probability_current_alpha.py",
+        "protocol": "physical pre-2024; 8 observable microstates; one q80 current signal x 2 holds; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_nonequilibrium_probability_current_alpha.py",
+        "results/nonequilibrium_probability_current_alpha_scan_2026-07-14.json",
+        "docs/nonequilibrium-probability-current-alpha-search-2026-07-14.md"
       ]
     }
   ]
