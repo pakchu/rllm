@@ -182,7 +182,6 @@ def _load_pre2024(cfg: Config) -> tuple[pd.DataFrame, pd.Series, dict[str, Any]]
             'funding': _frame_hash(funding_raw),
             'premium': _frame_hash(premium_raw),
         },
-        'file_hashes_full_files_recorded_not_used_for_fit': {p: _sha256(p) for p in [cfg.market_csv, cfg.metrics_csv, cfg.funding_csv, cfg.premium_csv]},
         'causal_joins': {
             'metrics': f'backward asof, then shifted by {cfg.metrics_delay_bars} complete 5m source bar(s)',
             'funding': f'backward asof tolerance {cfg.funding_tolerance}',
@@ -529,7 +528,7 @@ def run() -> dict[str, Any]:
         'windows': WINDOWS,
         'leakage_audit': load_audit | {
             'fit_rule': 'all coefficients and quantile thresholds fit only on 2020-10-15 <= t < 2023-01-01',
-            'selection_rule': 'selection/reporting only on 2023, 2023H1, 2023H2 after physical pre-2024 cutoff',
+            'selection_rule': 'selection on 2023, 2023H1/H2 plus 2023-quarter stability gates after physical pre-2024 cutoff',
             'post_2024_rows_loaded_during_selection': False,
             'next_bar_open_execution': True,
             'costs': '0.5x leverage, 5bp fee + 1bp slippage per side = 6bp/side',
@@ -587,6 +586,10 @@ def run() -> dict[str, Any]:
         'report_sha256': _sha256(cfg.output_json),
         'prefix_verified': bool(report['oos'] and report['oos']['prefix_verified']),
         'decision': report['decision'],
+        'full_source_hashes_after_manifest_freeze': {
+            path: _sha256(path)
+            for path in [cfg.market_csv, cfg.metrics_csv, cfg.funding_csv, cfg.premium_csv]
+        } if report['manifest'] else {},
         'replay_command': 'PYTHONPATH=. .venv/bin/python -m training.search_inventory_conservation_residual_alpha',
     }
     verification_path = Path(cfg.verification_output)

@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-07-13T11:07:34.063748+00:00",
+  "as_of": "2026-07-13T11:12:26.015521+00:00",
   "hypothesis": {
     "name": "leveraged_inventory_conservation_residual",
     "logic": "Fit a pre-2023 conservation model for delayed open-interest change from contemporaneously completed price movement, funding, and premium. A large positive residual means leveraged inventory was created beyond what price/carry explain. Funding/premium sign proxies which side likely owns that excess inventory; fade positive-carry excess inventory as long-crowding unwind risk and fade negative-carry excess inventory as short-crowding squeeze risk.",
@@ -59,12 +59,6 @@
       "funding": "176afb9631ce5674bca3f375599deab5a6cbf39833edf6c5e26d7ccf33160485",
       "premium": "fdaeda538c62bdc15bce35100430a5d3586cea37d3c4021c437c1c0d9e935529"
     },
-    "file_hashes_full_files_recorded_not_used_for_fit": {
-      "/home/pakchu/rllm/data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192",
-      "/home/pakchu/rllm/data/binance_um_metrics_BTCUSDT_5m_2020-09-01_2026-06-01.csv.gz": "d391022352d5b14dea7ffd207a9d1f84f603d06ddae42da55dd792f722fc0106",
-      "/home/pakchu/rllm/data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7",
-      "/home/pakchu/rllm/data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
-    },
     "causal_joins": {
       "metrics": "backward asof, then shifted by 1 complete 5m source bar(s)",
       "funding": "backward asof tolerance 12h",
@@ -72,7 +66,7 @@
       "execution": "signal at completed bar t enters at next bar open t+1"
     },
     "fit_rule": "all coefficients and quantile thresholds fit only on 2020-10-15 <= t < 2023-01-01",
-    "selection_rule": "selection/reporting only on 2023, 2023H1, 2023H2 after physical pre-2024 cutoff",
+    "selection_rule": "selection on 2023, 2023H1/H2 plus 2023-quarter stability gates after physical pre-2024 cutoff",
     "post_2024_rows_loaded_during_selection": false,
     "next_bar_open_execution": true,
     "costs": "0.5x leverage, 5bp fee + 1bp slippage per side = 6bp/side",
@@ -2053,7 +2047,7 @@
   "merits_formalization": true,
   "formalization_rationale": "Passes provisional formalization gates.",
   "manifest": {
-    "created_at": "2026-07-13T11:07:34.064726+00:00",
+    "created_at": "2026-07-13T11:12:26.016428+00:00",
     "phase": "frozen_before_future_open",
     "selection_cutoff": "2024-01-01",
     "policy": {
@@ -2255,12 +2249,6 @@
         "metrics": "16d1964c4aae3d2af7ba94b04624aa8eed4bf6a9304c91fc4247f06705655f10",
         "funding": "176afb9631ce5674bca3f375599deab5a6cbf39833edf6c5e26d7ccf33160485",
         "premium": "fdaeda538c62bdc15bce35100430a5d3586cea37d3c4021c437c1c0d9e935529"
-      },
-      "file_hashes_full_files_recorded_not_used_for_fit": {
-        "/home/pakchu/rllm/data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192",
-        "/home/pakchu/rllm/data/binance_um_metrics_BTCUSDT_5m_2020-09-01_2026-06-01.csv.gz": "d391022352d5b14dea7ffd207a9d1f84f603d06ddae42da55dd792f722fc0106",
-        "/home/pakchu/rllm/data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7",
-        "/home/pakchu/rllm/data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
       },
       "causal_joins": {
         "metrics": "backward asof, then shifted by 1 complete 5m source bar(s)",

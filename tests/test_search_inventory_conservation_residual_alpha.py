@@ -130,8 +130,9 @@ def test_loader_physically_excludes_2024_and_delays_oi(tmp_path: Path) -> None:
         funding_csv=str(funding_path),
         premium_csv=str(premium_path),
     )
-    loaded, loaded_dates, _ = _load_pre2024(cfg)
+    loaded, loaded_dates, audit = _load_pre2024(cfg)
     assert loaded_dates.max() < pd.Timestamp("2024-01-01")
     source = pd.to_datetime(loaded["positioning_source_time"], errors="coerce")
     valid = source.notna()
     assert (source.loc[valid].to_numpy() <= (loaded_dates.loc[valid] - pd.Timedelta("5min")).to_numpy()).all()
+    assert "file_hashes_full_files_recorded_not_used_for_fit" not in audit
