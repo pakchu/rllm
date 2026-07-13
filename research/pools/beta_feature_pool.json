@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T23:18:29+09:00",
+  "updated_at": "2026-07-14T00:03:45+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2215,6 +2215,53 @@
       "generation_recipe": {
         "script": "training/search_oi_roundtrip_geometric_phase_alpha.py",
         "protocol": "physical pre-2024 cutoff; 2 OI departures x 2 expiries x 3 geometric scores x 2 fit tails x 2 holds = 48; first causal OI recross; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "market_braid_relative_order_state_20260713",
+      "name": "Three-strand spot/perp/leverage first-passage order state",
+      "status": "weak",
+      "family": "cross_market_first_passage_topology",
+      "scope": "btc_spot_perpetual_leverage_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Post-impulse causal episode state recording the first-passage permutation of spot price, perpetual price and a joint delayed-OI-expansion plus side-aligned-premium leverage witness.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT spot completed 5m closes",
+        "BTCUSDT completed 1m premium aggregates",
+        "one-complete-bar-delayed Binance USD-M open interest"
+      ],
+      "feature_names": [
+        "market_braid_impulse_side",
+        "market_braid_episode_age",
+        "market_braid_passage_permutation",
+        "market_braid_spot_before_leverage",
+        "market_braid_same_bar_tie_state"
+      ],
+      "usable_for": [
+        "weak cross-market diffusion-order context under a genuinely new learner",
+        "not replaying static passage widths, expiries, sequence mappings or holds"
+      ],
+      "known_failures": [
+        "Zero of 32 static policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.24 and 2023 CAGR/MDD was 1.94.",
+        "Top 2023H2 CAGR/MDD was only 0.83.",
+        "A one-hour signal lag improved both fit and 2023, so timing is broad rather than sharply identified.",
+        "2,848 of 3,966 top-state departures were discarded because multiple strands crossed within the same 5m bar."
+      ],
+      "evidence": "Top relative-order state returned +9.89% in fit and +8.28% in 2023 at 6bp/side; exact direction flip lost in both periods, order-blind and witness ablations were weaker, and the cost curve was smooth. Resolution, sample size and risk efficiency still prevent alpha promotion.",
+      "source_artifacts": [
+        "training/search_market_braid_alpha.py",
+        "results/market_braid_alpha_scan_2026-07-13.json",
+        "docs/market-braid-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "All source rows physically stop before 2024; OI is delayed one complete 5m bar; scales end at t-1 and freeze at departure; completed premium rows only; same-bar passage ties are discarded; completion enters next open.",
+      "tier_rationale": "Permutation direction survives strong controls and standard costs but low fit/select risk efficiency, coarse event-time resolution and improved delayed execution restrict it to weak beta context.",
+      "next_action": "Freeze all static settings. Reuse only the categorical permutation/age state with fresh-forward data or move to an independent mechanism.",
+      "generation_recipe": {
+        "script": "training/search_market_braid_alpha.py",
+        "protocol": "physical pre-2024 cutoff; 2 shocks x 2 price passages x 2 expiries x 2 topology mappings x 2 holds = 32; one-bar-delayed OI; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T23:18:29+09:00",
+  "updated_at": "2026-07-14T00:03:45+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1660,6 +1660,45 @@
       "generation_recipe": {
         "script": "training/search_oi_roundtrip_geometric_phase_alpha.py",
         "protocol": "2 OI departures x 2 expiries x 3 scores x 2 fit tails x 2 holds = 48; first causal OI recross; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      }
+    },
+    {
+      "id": "market_braid_static_usage_20260713",
+      "name": "Static three-strand market-braid policies",
+      "status": "rejected",
+      "family": "cross_market_first_passage_topology_static_usage",
+      "scope": "btc_spot_perpetual_leverage_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family mapping spot-before-leverage first-passage order to impulse continuation and leverage-before-spot order to impulse fading after a common spot/perp shock.",
+      "data_sources": [
+        "BTCUSDT perpetual and spot completed 5m prices",
+        "BTCUSDT completed premium aggregates",
+        "one-complete-bar-delayed Binance USD-M open interest"
+      ],
+      "feature_names": [
+        "static_common_impulse_z_2_3",
+        "static_price_passage_z_0p5_1",
+        "static_braid_expiry_72_144",
+        "static_relative_or_strict_chain_mapping",
+        "fixed_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; categorical permutation/episode state remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of 32 policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.24; 2023 was 1.94; 2023H2 was 0.83.",
+        "One-hour delayed execution improved both periods.",
+        "Most episodes had unknowable same-bar strand ordering at 5m resolution."
+      ],
+      "evidence": "Physical pre-2024 search plus exact flip, order-blind, no-witness, OI-only, premium-only, timing and cost controls rejected static braid execution before OOS.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff, one-bar-delayed OI, prior-only frozen scales, complete premium rows, same-bar tie discard, next-open execution and sealed 2024+.",
+      "tier_rationale": "Static ordering maps fail the required fit/select CAGR-MDD threshold despite non-random direction evidence.",
+      "next_action": "Do not tune shock widths, passage widths, expiries, mappings or holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_market_braid_alpha.py",
+        "protocol": "32 fixed policies; one-bar-delayed OI; same-bar ties discarded; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
       }
     }
   ]
