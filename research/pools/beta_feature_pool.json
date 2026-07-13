@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T00:45:00+09:00",
+  "updated_at": "2026-07-14T01:35:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2349,6 +2349,50 @@
       "generation_recipe": {
         "script": "training/search_dual_intrinsic_clock_alpha.py",
         "protocol": "physical pre-2024; 3 DC widths x 3 windows x 2 dominance ratios = 18; first-entry only; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "wasserstein_flow_response_strain_state_20260714",
+      "name": "Wasserstein flow-response strain state",
+      "status": "weak",
+      "family": "conditional_flow_response_optimal_transport",
+      "scope": "btc_taker_flow_distributional_liquidity",
+      "feature_tier": "beta_feature",
+      "description": "Causal hourly exact 1D monotone-transport state comparing volatility-normalized return-response distributions under strong aggressive buying versus side-aligned aggressive selling.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "wfrs_transport_location",
+        "wfrs_transport_shape",
+        "wfrs_signed_strain",
+        "wfrs_w1_magnitude",
+        "wfrs_buy_sample_count",
+        "wfrs_sell_sample_count"
+      ],
+      "usable_for": [
+        "weak distributional liquidity-asymmetry context under a materially different learner",
+        "not replaying static lookbacks, tails, mappings, onset semantics or holds"
+      ],
+      "known_failures": [
+        "Zero of eight final static policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.01 with 28.47% strict MDD; 2023 CAGR/MDD was 1.78.",
+        "Top policy lost in 2021H2, 2022H1 and 2022H2 despite both 2023 halves being positive.",
+        "Two earlier eight-policy pre-2024 flow-tercile/coherence and median-innovation probes were weak; all 24 related static policies are contaminated and frozen."
+      ],
+      "evidence": "The top state returned +12.54% in 2023 and +7.95% in 2023H2. Exact direction flip lost -23.23%; mean-only, moment-state and signed-W1 controls were much weaker in 2023. Fit nevertheless returned only +0.53% at 6bp/side.",
+      "source_artifacts": [
+        "training/search_wasserstein_flow_response_strain_alpha.py",
+        "results/wasserstein_flow_response_strain_alpha_scan_2026-07-14.json",
+        "docs/wasserstein-flow-response-strain-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Physical pre-2024 cutoff; fit-only flow and strain thresholds; prior-only volatility scale; completed minute-55 window enters next minute-00 open; no forward labels, neighbors or learned impact model.",
+      "tier_rationale": "Distribution shape, sign and timing survive strong controls, but near-zero fit risk efficiency, 28.47% strict MDD, cost sensitivity and regime losses prevent alpha promotion.",
+      "next_action": "Freeze static WFRS policies. Reuse only continuous transport tokens in a preregistered learner or with genuinely fresh-forward evidence.",
+      "generation_recipe": {
+        "script": "training/search_wasserstein_flow_response_strain_alpha.py",
+        "protocol": "physical pre-2024; 2 lookbacks x 2 fit-only tails x 2 holds = 8 final policies; disclosed 16 precursor probes; next-open; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]

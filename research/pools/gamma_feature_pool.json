@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T00:45:00+09:00",
+  "updated_at": "2026-07-14T01:35:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1783,6 +1783,49 @@
         "training/search_dual_intrinsic_clock_alpha.py",
         "results/dual_intrinsic_clock_alpha_scan_2026-07-14.json",
         "docs/dual-intrinsic-clock-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "wasserstein_flow_response_strain_static_usage_20260714",
+      "name": "Static Wasserstein flow-response strain policies",
+      "status": "rejected",
+      "family": "conditional_flow_response_optimal_transport_static_usage",
+      "scope": "btc_taker_flow_distributional_liquidity",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family trading the sign of high-tail quantile transport strain between strong-buy and side-aligned strong-sell return-response distributions.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_flow_tail_q70",
+        "static_response_lookback_288_2016",
+        "static_strain_tail_q80_q90",
+        "static_positive_long_negative_short",
+        "static_hold_72_144",
+        "static_onset_variant"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous signed transport state remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of eight final policies passed fit-and-2023 CAGR/MDD admission.",
+        "Top fit returned +0.53% with ratio 0.01 and strict MDD 28.47%.",
+        "Onset-only reached 2023 ratio 3.16 but lost -4.81% in fit.",
+        "All precursor tercile/coherence and median-innovation variants are contaminated."
+      ],
+      "evidence": "Physical pre-2024 audit plus direction flip, onset, mean-only, moment-state, signed-W1, timing and cost controls rejected static execution before OOS.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff, fit-only thresholds, prior-only scale, completed decision, next-open execution, split-contained exits and sealed 2024+.",
+      "tier_rationale": "Static transport-tail execution lacks fit risk efficiency and temporal stability despite non-random direction and distribution-shape evidence.",
+      "next_action": "Do not tune flow cutoffs, transport quantiles, shape weights, lookbacks, tails, onset rules, mappings or holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_wasserstein_flow_response_strain_alpha.py",
+        "protocol": "8 final policies plus 16 disclosed precursor probes; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_wasserstein_flow_response_strain_alpha.py",
+        "results/wasserstein_flow_response_strain_alpha_scan_2026-07-14.json",
+        "docs/wasserstein-flow-response-strain-alpha-search-2026-07-14.md"
       ]
     }
   ]
