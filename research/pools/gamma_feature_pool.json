@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T01:35:00+09:00",
+  "updated_at": "2026-07-14T02:05:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1826,6 +1826,49 @@
         "training/search_wasserstein_flow_response_strain_alpha.py",
         "results/wasserstein_flow_response_strain_alpha_scan_2026-07-14.json",
         "docs/wasserstein-flow-response-strain-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "rg_domain_wall_relaxation_static_usage_20260714",
+      "name": "Static RG domain-wall relaxation policies",
+      "status": "rejected",
+      "family": "price_scale_space_rg_domain_wall_static_usage",
+      "scope": "btc_price_action_scale_space",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family following a stable coarse directional fixed point when a fine-scale opposing domain wall curves monotonically back toward it across dyadic EWM scales.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV"
+      ],
+      "feature_names": [
+        "static_rg_base_scale_24_48",
+        "static_field_floor_0p25",
+        "static_fixed_point_tolerance_0p10",
+        "static_curvature_tail_q70_q80",
+        "static_coarse_side_mapping",
+        "static_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; no beta promotion"
+      ],
+      "known_failures": [
+        "Zero of eight final policies passed pre-2024 admission.",
+        "No policy reached 20 selection trades; the most-supported policy had only 16.",
+        "The most-supported policy lost -3.49% in fit and -2.52% in 2023.",
+        "A prior 16-policy hard-sign wall propagation/contraction probe was also weak and is frozen."
+      ],
+      "evidence": "Physical pre-2024 scan and exact direction flip found no supported directional edge. Base-24/base-48 candidate counts were only 283/243 before score tails over the entire pre-2024 period.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff, causal EWM fields, fit-only score thresholds, completed minute-55 signal, next-open execution, split-contained exits and sealed 2024+.",
+      "tier_rationale": "The coherent concept is too sparse and loses in the only policy with modest support, so neither static usage nor raw representation merits promotion.",
+      "next_action": "Do not weaken field floors, fixed-point tolerance, scale sets, score tails or holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_rg_domain_wall_relaxation_alpha.py",
+        "protocol": "8 final policies plus 16 disclosed precursor probes; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_rg_domain_wall_relaxation_alpha.py",
+        "results/rg_domain_wall_relaxation_alpha_scan_2026-07-14.json",
+        "docs/rg-domain-wall-relaxation-alpha-search-2026-07-14.md"
       ]
     }
   ]
