@@ -1,8 +1,8 @@
-"""Search a causal spot-perpetual residual absorption alpha.
+"""Search causal spot-perpetual residual transition alphas.
 
 The signal uses the residual between the directly observed Binance perpetual-
 spot basis and the Binance premium index after a trailing, shifted regression.
-It trades only when an extreme residual begins to contract.  Policies are
+It tests contraction and first expansion-onset transitions. Policies are
 selected with all sources physically truncated before 2024 and replayed on
 2024-2026 without modification.
 """
@@ -433,7 +433,7 @@ def _select_manifest(cfg: SpotPerpConfig) -> dict[str, Any]:
     selected = _select_top(rows, top_n=cfg.top_n, top_per_mode=cfg.top_per_mode)
     core = {
         "protocol": {
-            "hypothesis": "contra-dislocation trade after direct perp-spot basis residual begins absorbing toward zero",
+            "hypothesis": "trade fixed contra/continuation directions after direct perp-spot basis residual contraction or first expansion onset",
             "orthogonalization": "direct perp-spot log basis residualized against completed Binance premium-index close with trailing shifted OLS",
             "normalization": "current values compared with rolling mean/std fitted strictly through t-1",
             "selection": {name: WINDOWS[name] for name in ("fit", "select_2023", "select_2023_h1", "select_2023_h2")},
@@ -621,11 +621,13 @@ def _replay(cfg: SpotPerpConfig, manifest: dict[str, Any]) -> dict[str, Any]:
         "manifest": cfg.manifest_output,
         "manifest_sha256": manifest["sha256"],
         "protocol": manifest["protocol"],
+        "protocol_scope_correction": "Frozen manifest wording says absorption, but documented preflight added expansion_onset before OOS; contraction had zero eligible paths and every selected replay row is expansion_onset.",
         "source_file_hashes_after_manifest_freeze": _source_hashes(cfg),
         "feature_correlation_audit": {
             "direct_basis_vs_premium_index_fit_pearson": float(features.loc[_window_mask(dates, "fit"), "direct_basis"].corr(features.loc[_window_mask(dates, "fit"), "premium_index_5m_close"])),
             "residual_z2016_vs_premium_index_fit_spearman": float(features.loc[_window_mask(dates, "fit"), "spa_residual_z_2016"].corr(features.loc[_window_mask(dates, "fit"), "premium_index_5m_close"], method="spearman")),
         },
+        "selected_phase_scope": sorted({str(row["spec"]["phase"]) for row in rows}),
         "six_sleeve_union_baseline": baseline_stats,
         "selected": rows,
         "alpha_pool_qualifiers": [row for row in rows if row["passes_alpha_pool"]],
@@ -639,7 +641,7 @@ def _fmt(row: dict[str, Any]) -> str:
 
 def _write_doc(cfg: SpotPerpConfig, report: dict[str, Any]) -> None:
     lines = [
-        "# Spot–perpetual residual absorption alpha search (2026-07-13)",
+        "# Spot–perpetual residual transition alpha search (2026-07-13)",
         "",
         "Metric format: `absolute return / CAGR / strict MDD / CAGR-MDD / trades`.",
         "",
@@ -666,9 +668,11 @@ def _write_doc(cfg: SpotPerpConfig, report: dict[str, Any]) -> None:
         "## Interpretation",
         "",
         f"- Alpha-pool qualifiers: {len(report['alpha_pool_qualifiers'])}; live-grade: 0 by protocol.",
+        f"- Final frozen replay scope: `{report['selected_phase_scope']}`. Contraction policies produced zero eligible pre-2024 paths; all replayed Top candidates are expansion-onset policies.",
         "- Direct perp-spot basis is explicitly residualized against the completed premium index before event construction; current values never enter rolling fit statistics.",
         "- A standalone pass is insufficient: the seventh stream must improve the existing union on both absolute return and CAGR/MDD.",
-        "- All passes remain shadow-only because 2024-2026 are not fresh calendar windows for the broader programme.",
+        "- The rejection therefore applies to fixed contraction mappings at preflight and fixed expansion-onset mappings in OOS; it does not prove that every nonlinear use of the continuous residual is useless.",
+        "- Any future pass remains shadow-only because 2024-2026 are not fresh calendar windows for the broader programme.",
         "",
         "## Reproduction",
         "",

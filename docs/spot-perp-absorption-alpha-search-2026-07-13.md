@@ -1,4 +1,4 @@
-# Spot–perpetual residual absorption alpha search (2026-07-13)
+# Spot–perpetual residual transition alpha search (2026-07-13)
 
 Metric format: `absolute return / CAGR / strict MDD / CAGR-MDD / trades`.
 
@@ -21,9 +21,11 @@ Deterministic six-sleeve union combined: `180.12/53.12/9.45/5.62/291`.
 ## Interpretation
 
 - Alpha-pool qualifiers: 0; live-grade: 0 by protocol.
+- Final frozen replay scope: `['expansion_onset']`. Contraction policies produced zero eligible pre-2024 paths; all replayed Top candidates are expansion-onset policies.
 - Direct perp-spot basis is explicitly residualized against the completed premium index before event construction; current values never enter rolling fit statistics.
 - A standalone pass is insufficient: the seventh stream must improve the existing union on both absolute return and CAGR/MDD.
-- All passes remain shadow-only because 2024-2026 are not fresh calendar windows for the broader programme.
+- The rejection therefore applies to fixed contraction mappings at preflight and fixed expansion-onset mappings in OOS; it does not prove that every nonlinear use of the continuous residual is useless.
+- Any future pass remains shadow-only because 2024-2026 are not fresh calendar windows for the broader programme.
 
 ## Reproduction
 
