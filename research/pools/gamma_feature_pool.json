@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T03:10:44.490752+00:00",
+  "updated_at": "2026-07-13T03:24:05.646508+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -445,6 +445,50 @@
         "script": "training/search_funding_premium_oi_transition_gate_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python training/search_funding_premium_oi_transition_gate_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --metrics-csv data/binance_um_metrics_BTCUSDT_5m_2020-09-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/funding_premium_oi_transition_gate_top10_manifest_2026-07-13.json --output results/funding_premium_oi_transition_gate_alpha_scan_2026-07-13.json",
         "protocol": "fit OI states 2021-04-15..2022; select policies 2023/H1/H2 with all sources pre-2024; frozen replay 2024/2025/2026; next-open; hold576; stride12; 0.5x; 6bp/side plus 10bp stress; strict high-water MDD"
+      }
+    },
+    {
+      "id": "ordinal_complexity_static_directional_usage_20260713",
+      "name": "Static ordinal-complexity continuation/reversal usage",
+      "status": "rejected",
+      "family": "ordinal_price_complexity",
+      "scope": "btc_price_action",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed standalone mapping of low/high permutation entropy and high pattern/transition surprise to fixed continuation or reversal trades.",
+      "data_sources": [
+        "BTCUSDT completed hourly closes derived from 5m OHLC"
+      ],
+      "feature_names": [
+        "oc_*_entropy static tails",
+        "oc_*_pattern_surprise static upper tails",
+        "oc_*_transition_surprise static upper tails",
+        "oc_direction_{3,4} continuation/reversal mapping"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous raw ordinal features remain beta"
+      ],
+      "known_failures": [
+        "Only two of 192 pre-2024 policies met fit/selection stability.",
+        "Rank-1 low-entropy continuation fell from 2024 ratio 3.15 to 2025 ratio -0.47 and combined ratio 0.45.",
+        "Rank-2 high-entropy reversal was negative in 2024/2025 and inactive in 2026."
+      ],
+      "evidence": "A physically pre-2024 frozen manifest and exact replay produced zero alpha-pool and zero strong-shadow qualifiers. Rank 1 had 217 OOS trades but five positive and five negative quarters, showing regime inversion rather than sampling scarcity.",
+      "source_artifacts": [
+        "training/search_ordinal_complexity_bidirectional_alpha.py",
+        "tests/test_search_ordinal_complexity_bidirectional_alpha.py",
+        "results/ordinal_complexity_bidirectional_top10_manifest_2026-07-13.json",
+        "results/ordinal_complexity_bidirectional_alpha_scan_2026-07-13.json",
+        "results/ordinal_complexity_bidirectional_replay_verification_2026-07-13.json",
+        "docs/ordinal-complexity-bidirectional-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "Fit 2020-06..2022 and select 2023/H1/H2 only; all 2024+ rows absent before manifest; replay hashes exact. This cleanly rejects the exact static direction mappings.",
+      "tier_rationale": "Gamma applies only to static tail plus continuation/reversal usage. Raw entropy and surprise remain beta because they are low-correlation and showed a nontrivial 2024 effect.",
+      "next_action": "Do not retry static ordinal tail direction rules or retune them on 2024-2026. A retry must use a materially different causal state model and fresh forward data.",
+      "generation_recipe": {
+        "script": "training/search_ordinal_complexity_bidirectional_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_ordinal_complexity_bidirectional_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --manifest-output results/ordinal_complexity_bidirectional_top10_manifest_2026-07-13.json --output results/ordinal_complexity_bidirectional_alpha_scan_2026-07-13.json",
+        "protocol": "64 masks x 3 fixed holds; pre-2024 selection; frozen replay; 6bp/side plus 10bp stress; strict high-water MDD"
       }
     }
   ]

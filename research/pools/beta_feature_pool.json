@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T01:03:50.125452+00:00",
+  "updated_at": "2026-07-13T03:24:05.646508+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -1447,6 +1447,55 @@
         ],
         "protocol": "Signal-time completed 5m features; next-open execution; one position; 144-bar hold; 0.5x; 6bp/side; corrected intraposition high-water strict MDD; full-calendar CAGR.",
         "notes": "taker_imbalance = 2 * taker_buy_base / volume - 1. rex_2016_range_pos = 2 * (close - trailing_2016_low) / (trailing_2016_high - trailing_2016_low) - 1. Keep the continuous raw inputs available to the LLM/RLLM; the binary conjunction is a candidate state, not proof that information outside the thresholds is useless."
+      }
+    },
+    {
+      "id": "ordinal_complexity_features_20260713",
+      "name": "Completed-hour ordinal complexity and transition-surprise features",
+      "status": "candidate",
+      "family": "ordinal_price_complexity",
+      "scope": "btc_price_action",
+      "feature_tier": "beta_feature",
+      "description": "Causal order-3/order-4 hourly price permutation IDs, normalized permutation entropy, pattern surprise, conditional transition surprise and ordinal endpoint direction over 168h/720h histories.",
+      "data_sources": [
+        "BTCUSDT 5m OHLC; complete 12-row hours only"
+      ],
+      "feature_names": [
+        "oc_pattern_3",
+        "oc_pattern_4",
+        "oc_direction_3",
+        "oc_direction_4",
+        "oc_o{3,4}_w{168,720}_entropy",
+        "oc_o{3,4}_w{168,720}_pattern_surprise",
+        "oc_o{3,4}_w{168,720}_transition_surprise"
+      ],
+      "usable_for": [
+        "continuous regime/complexity token for compact LLM or RLLM",
+        "fresh-OOS state input in a separately frozen model",
+        "price-action context independent of magnitude-based momentum and realized volatility"
+      ],
+      "known_failures": [
+        "Static low-entropy continuation reversed from +30.16%/ratio 3.15 in 2024 to -10.49%/ratio -0.47 in 2025.",
+        "Static high-entropy reversal lost money in 2024 and 2025.",
+        "No standalone frozen policy passed alpha-pool or strong-shadow gates."
+      ],
+      "evidence": "All 12 continuous entropy/surprise variants had max pre-2023 |Spearman rho| <=0.1599 versus sign entropy, autocorrelation, variance ratio, path efficiency and vol-term references. The strongest static use had a genuine 2024 pocket (68 trades, p≈0.038) but failed temporal generalization.",
+      "source_artifacts": [
+        "training/search_ordinal_complexity_bidirectional_alpha.py",
+        "tests/test_search_ordinal_complexity_bidirectional_alpha.py",
+        "results/ordinal_complexity_bidirectional_top10_manifest_2026-07-13.json",
+        "results/ordinal_complexity_bidirectional_alpha_scan_2026-07-13.json",
+        "results/ordinal_complexity_bidirectional_replay_verification_2026-07-13.json",
+        "docs/ordinal-complexity-bidirectional-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "low-medium",
+      "leakage_notes": "Feature thresholds and policy selection were pre-2024 with physical row truncation; current patterns/transitions are excluded from their own historical probability estimates; completed hour H is exposed only at H+1h. Later-window evidence now contaminates these exact static mappings.",
+      "tier_rationale": "Beta: demonstrably distinct and economically active in one full OOS year, but temporally unstable and not alpha-grade. Preserve continuous features, not the failed binary policies.",
+      "next_action": "Use only in a materially different predeclared regime/RLLM mechanism and require fresh forward proof; do not tune static thresholds on 2024-2026.",
+      "generation_recipe": {
+        "script": "training/search_ordinal_complexity_bidirectional_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_ordinal_complexity_bidirectional_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --manifest-output results/ordinal_complexity_bidirectional_top10_manifest_2026-07-13.json --output results/ordinal_complexity_bidirectional_alpha_scan_2026-07-13.json",
+        "protocol": "fit 2020-06..2022; select 2023/H1/H2; frozen replay 2024/2025/2026; completed-hour causal features; next-open; fixed holds; 0.5x; 6bp/side; strict MDD"
       }
     }
   ]
