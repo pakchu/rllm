@@ -1,0 +1,137 @@
+{
+  "protocol": {
+    "name": "PDF-10 — Phantom Display Fracture, 10-minute hold",
+    "support_only": true,
+    "outcomes_opened_for_pdf10": false,
+    "support_rejected": false,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "event_clock": "each completed 5m bar whose current and previous raw display/firmness divergence states have the same side",
+    "signal_availability": "current completed 5m credibility bar; enter next 5m open",
+    "action_rule": "follow firmness, fade displayed percentage-band depth",
+    "candidate_clock": "every confirmed evidence bar; non-overlap scheduler may re-enter while a long divergence run persists",
+    "holding_rule": "2 completed 5m bars; exit at scheduled open t+3",
+    "support_parameters_searched": false,
+    "price_or_return_loaded": false,
+    "source_gap_policy": "both confirmation bars must be source-complete; future credibility gaps do not cancel an entered trade",
+    "sealed_windows": [
+      "test2024",
+      "eval2025",
+      "ytd2026"
+    ]
+  },
+  "config": {
+    "credibility_manifest": "results/binance_cross_collateral_book_credibility_btc_2023_manifest.json",
+    "output": "results/cross_collateral_liquidity_credibility_fracture_support_2026-07-14.json",
+    "robust_baseline_bars": 8640,
+    "robust_min_periods": 2016,
+    "credibility_entry_z": 0.75,
+    "display_entry_z": 1.0,
+    "confirmation_bars": 2,
+    "hold_bars": 2,
+    "minimum_nonoverlap_total": 500,
+    "minimum_nonoverlap_per_half": 180,
+    "minimum_nonoverlap_per_quarter": 75,
+    "minimum_side_share": 0.35,
+    "maximum_quarter_share": 0.4,
+    "short_overlap_tolerance_bars": 2,
+    "maximum_short_overlap_jaccard": 0.15,
+    "long_overlap_tolerance_bars": 12,
+    "maximum_long_overlap_jaccard": 0.3,
+    "maximum_geometry_correlation": 0.6
+  },
+  "frozen_artifacts": {
+    "preregistration_source": "training/preregister_cross_collateral_liquidity_credibility_fracture.py",
+    "preregistration_source_sha256": "8947050c990b5638f6d8b2e952f252289ddef6c92f85fb13f75001fe721e6e28",
+    "preregistration_document": "docs/cross-collateral-liquidity-credibility-fracture-preregistration-2026-07-14.md",
+    "preregistration_document_sha256": "e7bf6dc9b2c7bf1ec2d560ea4e1dff8018cb6c28177fa012b729d2e0a2ca1dfe",
+    "credibility_builder_source": "training/build_binance_cross_collateral_book_credibility_2023.py",
+    "credibility_builder_source_sha256": "c08d810b4197a464e00f78b7bd145cbead1e6bffa862f698f3d0caee9e5f043b",
+    "standardizer_source": "training/preregister_cross_collateral_liquidity_void_refill.py",
+    "standardizer_source_sha256": "8465af153f4e5a19299c7ee2b6104e7ea009feb8da80ad10d50cf49bddd7ad51",
+    "scheduler_source": "training/preregister_metaorder_fragmentation_impact_curvature.py",
+    "scheduler_source_sha256": "51e99dbdc5ba13e6b4ac15e3915ec5b30e36dff89c1e5b31a5f3f7f272f01a59",
+    "cclh_source": "training/preregister_cross_collateral_liquidity_hysteresis.py",
+    "cclh_source_sha256": "c555d2c567ecb2c5b4a2986a4a1a455521c79bdcf655f7c43a3dfc41187cbdd5",
+    "cclh_support": "results/cross_collateral_liquidity_hysteresis_support_2026-07-14.json",
+    "cclh_support_sha256": "6144cc8ce63635219b35ebba185d3653a5ce466f25fd65c33b2c1916a92bfdcf",
+    "credibility_manifest_sha256": "f530f472765c8cb56bf564efd346c734e2404e072b87e2ff8dc3b84e303c30f7"
+  },
+  "source": {
+    "credibility_manifest_sha256": "f530f472765c8cb56bf564efd346c734e2404e072b87e2ff8dc3b84e303c30f7",
+    "credibility_data_sha256": "45026cc02620d9a0c67f250804f2a06705bf0e824f72257d6c2414f40ab7d429",
+    "range_start": "2023-01-01 00:00:00",
+    "range_end": "2023-12-31 23:55:00",
+    "rows": 105120,
+    "source_complete_rows": 101649
+  },
+  "feature": {
+    "raw_bullish_rows": 2285,
+    "raw_bearish_rows": 2402,
+    "confirmed_bullish_rows": 334,
+    "confirmed_bearish_rows": 348,
+    "standardization": "each venue/statistic/side/level and each displayed-depth ratio uses a strictly lagged rolling median and recursive MAD"
+  },
+  "support_calibration": {
+    "outcomes_opened_for_pdf10": false,
+    "parameters_searched": false,
+    "all_parameters_fixed": true,
+    "further_support_repairs_allowed": false
+  },
+  "raw_candidate_count": 682,
+  "scheduled_side_counts": {
+    "long": 289,
+    "short": 302
+  },
+  "scheduled_branch_counts": {
+    "bearish_display_firmness_divergence": 302,
+    "bullish_display_firmness_divergence": 289
+  },
+  "independence": {
+    "cclh_frozen_support_replayed_exactly": true,
+    "cclh_event_clock_sha256": "e90079d95b111f95ce64459c42d17e4286636a1a2854ed948e8ada497a13dfa7",
+    "cclh_event_overlap_2_bars": {
+      "first_event_count": 591,
+      "second_event_count": 167,
+      "matched_event_count": 10,
+      "tolerance_bars": 2,
+      "jaccard": 0.013368983957219251,
+      "maximum_allowed_jaccard": 0.15,
+      "passes": true
+    },
+    "cclh_event_overlap_12_bars": {
+      "first_event_count": 591,
+      "second_event_count": 167,
+      "matched_event_count": 31,
+      "tolerance_bars": 12,
+      "jaccard": 0.04264099037138927,
+      "maximum_allowed_jaccard": 0.3,
+      "passes": true
+    },
+    "spearman_feature_correlations": {
+      "pdf_credibility__cclh_cross_pressure": -0.028675680661229955,
+      "pdf_credibility__cclh_cross_elasticity": -0.036380214192816805,
+      "pdf_display__cclh_cross_pressure": -0.4647538543114779,
+      "pdf_display__cclh_cross_elasticity": -0.15534714736835845
+    },
+    "maximum_absolute_geometry_correlation": 0.4647538543114779,
+    "maximum_allowed_geometry_correlation": 0.6,
+    "correlation_passes": true,
+    "passes_independence": true
+  },
+  "support": {
+    "nonoverlap_total": 591,
+    "by_quarter": {
+      "q1": 96,
+      "q2": 122,
+      "q3": 145,
+      "q4": 228
+    },
+    "h1": 218,
+    "h2": 373,
+    "long_share": 0.4890016920473773,
+    "short_share": 0.5109983079526227,
+    "maximum_observed_quarter_share": 0.38578680203045684,
+    "passes_support": true
+  },
+  "all_support_gates_pass": true
+}

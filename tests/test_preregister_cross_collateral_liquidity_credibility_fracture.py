@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -187,3 +190,44 @@ def test_empty_support_clock_fails_closed() -> None:
     assert result["nonoverlap_total"] == 0
     assert result["by_quarter"] == {"q1": 0, "q2": 0, "q3": 0, "q4": 0}
     assert result["passes_support"] is False
+
+
+def test_frozen_pdf10_support_keeps_returns_closed() -> None:
+    path = Path(
+        "results/cross_collateral_liquidity_credibility_fracture_"
+        "support_2026-07-14.json"
+    )
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == (
+        "9a3001db640ec8041d885645d33f11dd6075276685eb22f8ae3c618363d3099a"
+    )
+    result = json.loads(path.read_text())
+    assert result["protocol"]["outcomes_opened_for_pdf10"] is False
+    assert result["protocol"]["price_or_return_loaded"] is False
+    assert result["protocol"]["support_rejected"] is False
+    assert result["all_support_gates_pass"] is True
+    assert result["support"] == {
+        "nonoverlap_total": 591,
+        "by_quarter": {"q1": 96, "q2": 122, "q3": 145, "q4": 228},
+        "h1": 218,
+        "h2": 373,
+        "long_share": pytest.approx(0.4890016920473773),
+        "short_share": pytest.approx(0.5109983079526227),
+        "maximum_observed_quarter_share": pytest.approx(
+            0.38578680203045684
+        ),
+        "passes_support": True,
+    }
+    frozen = result["frozen_artifacts"]
+    assert frozen["preregistration_source_sha256"] == (
+        "8947050c990b5638f6d8b2e952f252289ddef6c92f85fb13f75001fe721e6e28"
+    )
+    assert frozen["preregistration_document_sha256"] == (
+        "e7bf6dc9b2c7bf1ec2d560ea4e1dff8018cb6c28177fa012b729d2e0a2ca1dfe"
+    )
+    independence = result["independence"]
+    assert independence["cclh_frozen_support_replayed_exactly"] is True
+    assert independence["cclh_event_clock_sha256"] == pdf.CCLH_EVENT_CLOCK_SHA256
+    assert independence["cclh_event_overlap_2_bars"]["jaccard"] == pytest.approx(
+        0.013368983957219251
+    )
+    assert independence["passes_independence"] is True
