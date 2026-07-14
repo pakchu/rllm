@@ -1,0 +1,1953 @@
+{
+  "protocol": {
+    "name": "CATCH-12 — Cash Auction Transfer & Catch-up Handoff",
+    "support_only": true,
+    "outcomes_opened": false,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "economic_claim": "completed-bar cash-flow discovery followed by an observable, not necessarily causal, perpetual catch-up handoff",
+    "entry": "next USD-M 5m open after the completed signal bar",
+    "hold": "fixed 12 bars",
+    "support_selection": "highest tested strictly-prior score quantile passing every count, era, side-balance, and novelty floor",
+    "control_side_rules": {
+      "primary": "sign(spot_flow_fraction)",
+      "direction_flip": "negative sign(spot_flow_fraction) on the primary clock",
+      "venue_swap": "sign(um_flow_fraction)",
+      "reverse_time": "sign(spot_flow_fraction)",
+      "simultaneous_only": "sign(spot_flow_fraction)",
+      "aggregate_only": "sign(spot_flow_fraction)",
+      "basis_only": "sign(spot_flow_fraction)",
+      "asymmetry_only": "sign(spot_flow_fraction)",
+      "no_basis_lag": "sign(spot_flow_fraction)",
+      "no_activity_order": "sign(spot_flow_fraction)",
+      "stale_1h": "primary side stale by 12 completed bars",
+      "stale_24h": "primary side stale by 288 completed bars",
+      "signal_delay_1bar": "primary side delayed by one completed bar"
+    }
+  },
+  "config": {
+    "features": "data/binance_cross_venue_minute_leadership_btc_2020_2023/BTCUSDT_cross_venue_minute_leadership_5m_2020-01_2023-12.csv.gz",
+    "feature_manifest": "data/binance_cross_venue_minute_leadership_btc_2020_2023/build_manifest.json",
+    "source_audit": "results/binance_cross_venue_minute_leadership_audit_2026-07-14.json",
+    "cspr_clock": "results/cash_sponsored_perp_rejection_clock_2026-07-14.csv",
+    "cspr_clock_manifest": "results/cash_sponsored_perp_rejection_clock_manifest_2026-07-14.json",
+    "rift_clock": "results/refill_inference_flow_topology_clock_2026-07-14.csv",
+    "rift_clock_manifest": "results/refill_inference_flow_topology_clock_manifest_2026-07-14.json",
+    "output": "results/cash_auction_transfer_catchup_handoff_support_2026-07-14.json",
+    "baseline_bars": 8640,
+    "baseline_min_periods": 2016,
+    "post_gap_quarantine_bars": 24,
+    "hold_bars": 12,
+    "minimum_nonoverlap_total": 2500,
+    "minimum_nonoverlap_per_year": 500,
+    "minimum_nonoverlap_per_2023_half": 200,
+    "minimum_nonoverlap_per_2023_quarter": 100,
+    "minimum_side_share": 0.35,
+    "minimum_side_events_per_year": 150,
+    "minimum_active_months": 42,
+    "minimum_events_per_active_month": 20,
+    "maximum_reverse_jaccard": 0.15,
+    "maximum_reverse_containment": 0.25,
+    "maximum_venue_swap_jaccard": 0.05,
+    "maximum_venue_swap_containment": 0.1,
+    "maximum_simultaneous_jaccard": 0.1,
+    "maximum_simultaneous_containment": 0.1,
+    "maximum_aggregate_jaccard": 0.1,
+    "maximum_aggregate_containment": 0.15,
+    "maximum_single_mechanism_jaccard": 0.15,
+    "maximum_single_mechanism_containment": 0.2,
+    "maximum_no_basis_retention": 0.65,
+    "maximum_no_activity_jaccard": 0.4,
+    "maximum_no_activity_containment": 0.4,
+    "maximum_stale_jaccard": 0.05,
+    "maximum_stale_containment": 0.1,
+    "maximum_prior_clock_jaccard": 0.01,
+    "maximum_prior_clock_containment": 0.01
+  },
+  "source": {
+    "feature_sha256": "00ab6a55fc7bfeb3012584db5bc97a7d7b98dd995491acfd3f865c6bd41f92cc",
+    "feature_manifest_sha256": "544c2945a2b56be478a1edc4abbb93b762bda5afc32cbd0658dd6822ff6b70fa",
+    "source_audit_sha256": "ffe0124ac9c5c0c3f1d1c284b672618cf910dc16cae36e65c1efe79710f039af",
+    "source_available_rows": 419855,
+    "quarantined_rows": 7068,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00",
+    "cspr_clock": {
+      "clock_sha256": "353e14cc09b79960938802c9882ba36527e9f4c4819f8a492312fdefffdf1c0f",
+      "manifest_sha256": "37132d281942ac8f0e72edf239358ac74b9622db6401581461dca4ae4494caa2",
+      "rows": 850
+    },
+    "rift_clock": {
+      "clock_sha256": "83becb88da83ce55e235f10c2e91ed3a2ad478c6aea2e9298d37c43b36cfff00",
+      "manifest_sha256": "47460778b45fe861c787e49a6f374c54e8155594350d1d30d54b4e54b0d63789",
+      "rows": 460
+    }
+  },
+  "support_grid": [
+    {
+      "quantile": 0.75,
+      "raw_primary": 27246,
+      "support": {
+        "nonoverlap_total": 15708,
+        "by_year": {
+          "2020": 4275,
+          "2021": 4102,
+          "2022": 3932,
+          "2023": 3399
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 1807,
+            "short": 2468
+          },
+          "2021": {
+            "long": 1848,
+            "short": 2254
+          },
+          "2022": {
+            "long": 1855,
+            "short": 2077
+          },
+          "2023": {
+            "long": 1492,
+            "short": 1907
+          }
+        },
+        "2023_h1": 1760,
+        "2023_h2": 1639,
+        "2023_quarters": {
+          "2023Q1": 899,
+          "2023Q2": 861,
+          "2023Q3": 719,
+          "2023Q4": 920
+        },
+        "long_share": 0.4457601222307105,
+        "short_share": 0.5542398777692895,
+        "active_months": 48,
+        "minimum_events_per_active_month": 20,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 27246,
+        "reverse_time": 28358,
+        "venue_swap": 30165,
+        "simultaneous_only": 47443,
+        "aggregate_only": 46635,
+        "basis_only": 76163,
+        "asymmetry_only": 38832,
+        "no_basis_lag": 51030,
+        "no_activity_order": 42971,
+        "stale_1h": 27147,
+        "stale_24h": 26908,
+        "signal_delay_1bar": 27239
+      },
+      "control_overlap": {
+        "reverse_time": {
+          "intersection": 11033,
+          "union": 44571,
+          "jaccard": 0.2475376365798389,
+          "primary_containment": 0.4049401747045438
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 57411,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "simultaneous_only": {
+          "intersection": 8295,
+          "union": 66394,
+          "jaccard": 0.12493598819170407,
+          "primary_containment": 0.3044483593922044
+        },
+        "aggregate_only": {
+          "intersection": 9616,
+          "union": 64265,
+          "jaccard": 0.14963043647397495,
+          "primary_containment": 0.35293254055641193
+        },
+        "basis_only": {
+          "intersection": 12684,
+          "union": 90725,
+          "jaccard": 0.13980710939652796,
+          "primary_containment": 0.465536225500991
+        },
+        "asymmetry_only": {
+          "intersection": 10905,
+          "union": 55173,
+          "jaccard": 0.19765102495785983,
+          "primary_containment": 0.4002422373926448
+        },
+        "no_basis_lag": {
+          "intersection": 27246,
+          "union": 51030,
+          "jaccard": 0.5339212228101117,
+          "primary_containment": 1.0
+        },
+        "no_activity_order": {
+          "intersection": 20889,
+          "union": 49328,
+          "jaccard": 0.423471456373662,
+          "primary_containment": 0.7666813477207663
+        },
+        "stale_1h": {
+          "intersection": 1861,
+          "union": 52532,
+          "jaccard": 0.035426026041270084,
+          "primary_containment": 0.06830360419878147
+        },
+        "stale_24h": {
+          "intersection": 1833,
+          "union": 52321,
+          "jaccard": 0.03503373406471589,
+          "primary_containment": 0.06727593041180356
+        },
+        "signal_delay_1bar": {
+          "intersection": 1661,
+          "union": 52824,
+          "jaccard": 0.031444040587611695,
+          "primary_containment": 0.060963077148939296
+        }
+      },
+      "control_scheduled_counts": {
+        "reverse_time": 15975,
+        "venue_swap": 16665,
+        "simultaneous_only": 20249,
+        "aggregate_only": 19435,
+        "basis_only": 24844,
+        "asymmetry_only": 18804,
+        "no_basis_lag": 21637,
+        "no_activity_order": 19869,
+        "stale_1h": 15652,
+        "stale_24h": 15522,
+        "signal_delay_1bar": 15704
+      },
+      "control_scheduled_overlap": {
+        "reverse_time": {
+          "intersection": 4220,
+          "union": 27463,
+          "jaccard": 0.1536612897352802,
+          "primary_containment": 0.2686529157117392
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 32373,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "simultaneous_only": {
+          "intersection": 2233,
+          "union": 33724,
+          "jaccard": 0.06621397224528526,
+          "primary_containment": 0.14215686274509803
+        },
+        "aggregate_only": {
+          "intersection": 2579,
+          "union": 32564,
+          "jaccard": 0.07919788723744012,
+          "primary_containment": 0.16418385536032595
+        },
+        "basis_only": {
+          "intersection": 2604,
+          "union": 37948,
+          "jaccard": 0.06862021713924317,
+          "primary_containment": 0.1657754010695187
+        },
+        "asymmetry_only": {
+          "intersection": 3450,
+          "union": 31062,
+          "jaccard": 0.1110681862082287,
+          "primary_containment": 0.219633307868602
+        },
+        "no_basis_lag": {
+          "intersection": 10175,
+          "union": 27170,
+          "jaccard": 0.37449392712550605,
+          "primary_containment": 0.6477591036414566
+        },
+        "no_activity_order": {
+          "intersection": 7658,
+          "union": 27919,
+          "jaccard": 0.2742934918872452,
+          "primary_containment": 0.4875222816399287
+        },
+        "stale_1h": {
+          "intersection": 1045,
+          "union": 30315,
+          "jaccard": 0.034471383803397655,
+          "primary_containment": 0.0665266106442577
+        },
+        "stale_24h": {
+          "intersection": 612,
+          "union": 30618,
+          "jaccard": 0.019988242210464434,
+          "primary_containment": 0.03896103896103896
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 31412,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "no_basis_retention": {
+        "raw": 0.5339212228101117,
+        "scheduled": 0.7259786476868327
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 42,
+          "union": 16516,
+          "jaccard": 0.002542988617098571,
+          "primary_containment": 0.00267379679144385
+        },
+        "rift": {
+          "intersection": 24,
+          "union": 16144,
+          "jaccard": 0.0014866204162537165,
+          "primary_containment": 0.0015278838808250573
+        },
+        "cspr_or_rift": {
+          "intersection": 66,
+          "union": 16952,
+          "jaccard": 0.003893345917885795,
+          "primary_containment": 0.004201680672268907
+        }
+      },
+      "passes_novelty": false,
+      "passes_support": false
+    },
+    {
+      "quantile": 0.8,
+      "raw_primary": 27246,
+      "support": {
+        "nonoverlap_total": 15708,
+        "by_year": {
+          "2020": 4275,
+          "2021": 4102,
+          "2022": 3932,
+          "2023": 3399
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 1807,
+            "short": 2468
+          },
+          "2021": {
+            "long": 1848,
+            "short": 2254
+          },
+          "2022": {
+            "long": 1855,
+            "short": 2077
+          },
+          "2023": {
+            "long": 1492,
+            "short": 1907
+          }
+        },
+        "2023_h1": 1760,
+        "2023_h2": 1639,
+        "2023_quarters": {
+          "2023Q1": 899,
+          "2023Q2": 861,
+          "2023Q3": 719,
+          "2023Q4": 920
+        },
+        "long_share": 0.4457601222307105,
+        "short_share": 0.5542398777692895,
+        "active_months": 48,
+        "minimum_events_per_active_month": 20,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 27246,
+        "reverse_time": 28175,
+        "venue_swap": 30061,
+        "simultaneous_only": 38316,
+        "aggregate_only": 37695,
+        "basis_only": 61137,
+        "asymmetry_only": 32311,
+        "no_basis_lag": 51030,
+        "no_activity_order": 34808,
+        "stale_1h": 27147,
+        "stale_24h": 26908,
+        "signal_delay_1bar": 27239
+      },
+      "control_overlap": {
+        "reverse_time": {
+          "intersection": 10958,
+          "union": 44463,
+          "jaccard": 0.24645210624564245,
+          "primary_containment": 0.40218747706085295
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 57307,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "simultaneous_only": {
+          "intersection": 6658,
+          "union": 58904,
+          "jaccard": 0.11303137308162434,
+          "primary_containment": 0.24436614548924612
+        },
+        "aggregate_only": {
+          "intersection": 7894,
+          "union": 57047,
+          "jaccard": 0.138377127631602,
+          "primary_containment": 0.2897306026572708
+        },
+        "basis_only": {
+          "intersection": 10085,
+          "union": 78298,
+          "jaccard": 0.1288027791259036,
+          "primary_containment": 0.37014607648829184
+        },
+        "asymmetry_only": {
+          "intersection": 9422,
+          "union": 50135,
+          "jaccard": 0.18793258202852298,
+          "primary_containment": 0.34581222931806505
+        },
+        "no_basis_lag": {
+          "intersection": 27246,
+          "union": 51030,
+          "jaccard": 0.5339212228101117,
+          "primary_containment": 1.0
+        },
+        "no_activity_order": {
+          "intersection": 17022,
+          "union": 45032,
+          "jaccard": 0.3779978681826257,
+          "primary_containment": 0.6247522572120678
+        },
+        "stale_1h": {
+          "intersection": 1861,
+          "union": 52532,
+          "jaccard": 0.035426026041270084,
+          "primary_containment": 0.06830360419878147
+        },
+        "stale_24h": {
+          "intersection": 1833,
+          "union": 52321,
+          "jaccard": 0.03503373406471589,
+          "primary_containment": 0.06727593041180356
+        },
+        "signal_delay_1bar": {
+          "intersection": 1661,
+          "union": 52824,
+          "jaccard": 0.031444040587611695,
+          "primary_containment": 0.060963077148939296
+        }
+      },
+      "control_scheduled_counts": {
+        "reverse_time": 15921,
+        "venue_swap": 16646,
+        "simultaneous_only": 18122,
+        "aggregate_only": 17275,
+        "basis_only": 22800,
+        "asymmetry_only": 17056,
+        "no_basis_lag": 21637,
+        "no_activity_order": 17866,
+        "stale_1h": 15652,
+        "stale_24h": 15522,
+        "signal_delay_1bar": 15704
+      },
+      "control_scheduled_overlap": {
+        "reverse_time": {
+          "intersection": 4212,
+          "union": 27417,
+          "jaccard": 0.15362731152204837,
+          "primary_containment": 0.26814362108479756
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 32354,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "simultaneous_only": {
+          "intersection": 1890,
+          "union": 31940,
+          "jaccard": 0.05917345021916093,
+          "primary_containment": 0.12032085561497326
+        },
+        "aggregate_only": {
+          "intersection": 2321,
+          "union": 30662,
+          "jaccard": 0.07569630161111474,
+          "primary_containment": 0.14775910364145659
+        },
+        "basis_only": {
+          "intersection": 2359,
+          "union": 36149,
+          "jaccard": 0.06525768347672135,
+          "primary_containment": 0.1501782531194296
+        },
+        "asymmetry_only": {
+          "intersection": 3227,
+          "union": 29537,
+          "jaccard": 0.10925280157091107,
+          "primary_containment": 0.2054367201426025
+        },
+        "no_basis_lag": {
+          "intersection": 10175,
+          "union": 27170,
+          "jaccard": 0.37449392712550605,
+          "primary_containment": 0.6477591036414566
+        },
+        "no_activity_order": {
+          "intersection": 6563,
+          "union": 27011,
+          "jaccard": 0.2429750842249454,
+          "primary_containment": 0.41781257957728546
+        },
+        "stale_1h": {
+          "intersection": 1045,
+          "union": 30315,
+          "jaccard": 0.034471383803397655,
+          "primary_containment": 0.0665266106442577
+        },
+        "stale_24h": {
+          "intersection": 612,
+          "union": 30618,
+          "jaccard": 0.019988242210464434,
+          "primary_containment": 0.03896103896103896
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 31412,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "no_basis_retention": {
+        "raw": 0.5339212228101117,
+        "scheduled": 0.7259786476868327
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 42,
+          "union": 16516,
+          "jaccard": 0.002542988617098571,
+          "primary_containment": 0.00267379679144385
+        },
+        "rift": {
+          "intersection": 24,
+          "union": 16144,
+          "jaccard": 0.0014866204162537165,
+          "primary_containment": 0.0015278838808250573
+        },
+        "cspr_or_rift": {
+          "intersection": 66,
+          "union": 16952,
+          "jaccard": 0.003893345917885795,
+          "primary_containment": 0.004201680672268907
+        }
+      },
+      "passes_novelty": false,
+      "passes_support": false
+    },
+    {
+      "quantile": 0.85,
+      "raw_primary": 25772,
+      "support": {
+        "nonoverlap_total": 15197,
+        "by_year": {
+          "2020": 4011,
+          "2021": 4043,
+          "2022": 3812,
+          "2023": 3331
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 1683,
+            "short": 2328
+          },
+          "2021": {
+            "long": 1814,
+            "short": 2229
+          },
+          "2022": {
+            "long": 1807,
+            "short": 2005
+          },
+          "2023": {
+            "long": 1460,
+            "short": 1871
+          }
+        },
+        "2023_h1": 1692,
+        "2023_h2": 1639,
+        "2023_quarters": {
+          "2023Q1": 831,
+          "2023Q2": 861,
+          "2023Q3": 719,
+          "2023Q4": 920
+        },
+        "long_share": 0.44508784628545106,
+        "short_share": 0.5549121537145489,
+        "active_months": 48,
+        "minimum_events_per_active_month": 20,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 25772,
+        "reverse_time": 25430,
+        "venue_swap": 25073,
+        "simultaneous_only": 29132,
+        "aggregate_only": 28525,
+        "basis_only": 46008,
+        "asymmetry_only": 24336,
+        "no_basis_lag": 48275,
+        "no_activity_order": 26364,
+        "stale_1h": 25673,
+        "stale_24h": 25455,
+        "signal_delay_1bar": 25765
+      },
+      "control_overlap": {
+        "reverse_time": {
+          "intersection": 9612,
+          "union": 41590,
+          "jaccard": 0.2311132483770137,
+          "primary_containment": 0.3729629054788142
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 50845,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "simultaneous_only": {
+          "intersection": 4676,
+          "union": 50228,
+          "jaccard": 0.09309548459026838,
+          "primary_containment": 0.18143721868694707
+        },
+        "aggregate_only": {
+          "intersection": 5878,
+          "union": 48419,
+          "jaccard": 0.12139862450690844,
+          "primary_containment": 0.2280769827720006
+        },
+        "basis_only": {
+          "intersection": 7111,
+          "union": 64669,
+          "jaccard": 0.10995994989871499,
+          "primary_containment": 0.2759196026695639
+        },
+        "asymmetry_only": {
+          "intersection": 7283,
+          "union": 42825,
+          "jaccard": 0.1700642148277875,
+          "primary_containment": 0.2825935123389725
+        },
+        "no_basis_lag": {
+          "intersection": 25772,
+          "union": 48275,
+          "jaccard": 0.5338581046090108,
+          "primary_containment": 1.0
+        },
+        "no_activity_order": {
+          "intersection": 13016,
+          "union": 39120,
+          "jaccard": 0.332719836400818,
+          "primary_containment": 0.50504423405246
+        },
+        "stale_1h": {
+          "intersection": 1661,
+          "union": 49784,
+          "jaccard": 0.03336413305479672,
+          "primary_containment": 0.06444979047027782
+        },
+        "stale_24h": {
+          "intersection": 1646,
+          "union": 49581,
+          "jaccard": 0.03319820092374095,
+          "primary_containment": 0.06386776346422474
+        },
+        "signal_delay_1bar": {
+          "intersection": 1485,
+          "union": 50052,
+          "jaccard": 0.02966914409014625,
+          "primary_containment": 0.057620673599255004
+        }
+      },
+      "control_scheduled_counts": {
+        "reverse_time": 15065,
+        "venue_swap": 15003,
+        "simultaneous_only": 15549,
+        "aggregate_only": 14593,
+        "basis_only": 20043,
+        "asymmetry_only": 14409,
+        "no_basis_lag": 21130,
+        "no_activity_order": 15292,
+        "stale_1h": 15141,
+        "stale_24h": 15013,
+        "signal_delay_1bar": 15193
+      },
+      "control_scheduled_overlap": {
+        "reverse_time": {
+          "intersection": 3906,
+          "union": 26356,
+          "jaccard": 0.14820154803460311,
+          "primary_containment": 0.25702441271303544
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 30200,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "simultaneous_only": {
+          "intersection": 1536,
+          "union": 29210,
+          "jaccard": 0.052584731256419034,
+          "primary_containment": 0.10107258011449628
+        },
+        "aggregate_only": {
+          "intersection": 1979,
+          "union": 27811,
+          "jaccard": 0.07115889396282046,
+          "primary_containment": 0.13022307034283082
+        },
+        "basis_only": {
+          "intersection": 1988,
+          "union": 33252,
+          "jaccard": 0.05978587754120053,
+          "primary_containment": 0.1308152924919392
+        },
+        "asymmetry_only": {
+          "intersection": 2798,
+          "union": 26808,
+          "jaccard": 0.10437182930468517,
+          "primary_containment": 0.1841152859116931
+        },
+        "no_basis_lag": {
+          "intersection": 10016,
+          "union": 26311,
+          "jaccard": 0.38067728326555433,
+          "primary_containment": 0.6590774494966112
+        },
+        "no_activity_order": {
+          "intersection": 5584,
+          "union": 24905,
+          "jaccard": 0.22421200562136118,
+          "primary_containment": 0.3674409422912417
+        },
+        "stale_1h": {
+          "intersection": 971,
+          "union": 29367,
+          "jaccard": 0.033064323900977285,
+          "primary_containment": 0.06389418964269264
+        },
+        "stale_24h": {
+          "intersection": 590,
+          "union": 29620,
+          "jaccard": 0.019918973666441592,
+          "primary_containment": 0.03882345199710469
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 30390,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "no_basis_retention": {
+        "raw": 0.5338581046090108,
+        "scheduled": 0.7192143871273071
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 40,
+          "union": 16007,
+          "jaccard": 0.002498906728306366,
+          "primary_containment": 0.002632098440481674
+        },
+        "rift": {
+          "intersection": 21,
+          "union": 15636,
+          "jaccard": 0.001343054489639294,
+          "primary_containment": 0.0013818516812528789
+        },
+        "cspr_or_rift": {
+          "intersection": 61,
+          "union": 16446,
+          "jaccard": 0.00370910859783534,
+          "primary_containment": 0.004013950121734553
+        }
+      },
+      "passes_novelty": false,
+      "passes_support": false
+    },
+    {
+      "quantile": 0.9,
+      "raw_primary": 17727,
+      "support": {
+        "nonoverlap_total": 11915,
+        "by_year": {
+          "2020": 3165,
+          "2021": 3188,
+          "2022": 2921,
+          "2023": 2641
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 1368,
+            "short": 1797
+          },
+          "2021": {
+            "long": 1399,
+            "short": 1789
+          },
+          "2022": {
+            "long": 1382,
+            "short": 1539
+          },
+          "2023": {
+            "long": 1137,
+            "short": 1504
+          }
+        },
+        "2023_h1": 1302,
+        "2023_h2": 1339,
+        "2023_quarters": {
+          "2023Q1": 606,
+          "2023Q2": 696,
+          "2023Q3": 604,
+          "2023Q4": 735
+        },
+        "long_share": 0.4436424674779689,
+        "short_share": 0.556357532522031,
+        "active_months": 48,
+        "minimum_events_per_active_month": 20,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 17727,
+        "reverse_time": 17466,
+        "venue_swap": 16865,
+        "simultaneous_only": 19539,
+        "aggregate_only": 19326,
+        "basis_only": 30669,
+        "asymmetry_only": 16280,
+        "no_basis_lag": 32903,
+        "no_activity_order": 17849,
+        "stale_1h": 17652,
+        "stale_24h": 17513,
+        "signal_delay_1bar": 17722
+      },
+      "control_overlap": {
+        "reverse_time": {
+          "intersection": 5646,
+          "union": 29547,
+          "jaccard": 0.19108538937963246,
+          "primary_containment": 0.31849720764934847
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 34592,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "simultaneous_only": {
+          "intersection": 2066,
+          "union": 35200,
+          "jaccard": 0.05869318181818182,
+          "primary_containment": 0.11654538274947819
+        },
+        "aggregate_only": {
+          "intersection": 3248,
+          "union": 33805,
+          "jaccard": 0.09608046147019672,
+          "primary_containment": 0.1832233316409996
+        },
+        "basis_only": {
+          "intersection": 3142,
+          "union": 45254,
+          "jaccard": 0.06943032660096345,
+          "primary_containment": 0.17724375246798668
+        },
+        "asymmetry_only": {
+          "intersection": 4201,
+          "union": 29806,
+          "jaccard": 0.14094477621955312,
+          "primary_containment": 0.23698313307384217
+        },
+        "no_basis_lag": {
+          "intersection": 17727,
+          "union": 32903,
+          "jaccard": 0.5387654621159165,
+          "primary_containment": 1.0
+        },
+        "no_activity_order": {
+          "intersection": 8293,
+          "union": 27283,
+          "jaccard": 0.30396217424770006,
+          "primary_containment": 0.4678174536018503
+        },
+        "stale_1h": {
+          "intersection": 814,
+          "union": 34565,
+          "jaccard": 0.023549833646752494,
+          "primary_containment": 0.04591865515879732
+        },
+        "stale_24h": {
+          "intersection": 771,
+          "union": 34469,
+          "jaccard": 0.022367924801995995,
+          "primary_containment": 0.04349297681502792
+        },
+        "signal_delay_1bar": {
+          "intersection": 701,
+          "union": 34748,
+          "jaccard": 0.02017382295383907,
+          "primary_containment": 0.03954419811586845
+        }
+      },
+      "control_scheduled_counts": {
+        "reverse_time": 11770,
+        "venue_swap": 11536,
+        "simultaneous_only": 12053,
+        "aggregate_only": 11341,
+        "basis_only": 15951,
+        "asymmetry_only": 11066,
+        "no_basis_lag": 17516,
+        "no_activity_order": 11864,
+        "stale_1h": 11863,
+        "stale_24h": 11770,
+        "signal_delay_1bar": 11912
+      },
+      "control_scheduled_overlap": {
+        "reverse_time": {
+          "intersection": 2850,
+          "union": 20835,
+          "jaccard": 0.13678905687544995,
+          "primary_containment": 0.23919429290809904
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 23451,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "simultaneous_only": {
+          "intersection": 861,
+          "union": 23107,
+          "jaccard": 0.03726143592850651,
+          "primary_containment": 0.07226185480486781
+        },
+        "aggregate_only": {
+          "intersection": 1402,
+          "union": 21854,
+          "jaccard": 0.06415301546627619,
+          "primary_containment": 0.11766680654637013
+        },
+        "basis_only": {
+          "intersection": 1209,
+          "union": 26657,
+          "jaccard": 0.045353940803541284,
+          "primary_containment": 0.1014687368862778
+        },
+        "asymmetry_only": {
+          "intersection": 2064,
+          "union": 20917,
+          "jaccard": 0.09867571831524598,
+          "primary_containment": 0.17322702475870752
+        },
+        "no_basis_lag": {
+          "intersection": 8787,
+          "union": 20644,
+          "jaccard": 0.42564425498934316,
+          "primary_containment": 0.7374737725556022
+        },
+        "no_activity_order": {
+          "intersection": 4424,
+          "union": 19355,
+          "jaccard": 0.22857142857142856,
+          "primary_containment": 0.3712966848510281
+        },
+        "stale_1h": {
+          "intersection": 540,
+          "union": 23238,
+          "jaccard": 0.023237800154918668,
+          "primary_containment": 0.04532102391942929
+        },
+        "stale_24h": {
+          "intersection": 337,
+          "union": 23348,
+          "jaccard": 0.014433784478327908,
+          "primary_containment": 0.0282836760386068
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 23827,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "no_basis_retention": {
+        "raw": 0.5387654621159165,
+        "scheduled": 0.6802352135190682
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 43,
+          "union": 12722,
+          "jaccard": 0.0033799717025624902,
+          "primary_containment": 0.00360889634913974
+        },
+        "rift": {
+          "intersection": 16,
+          "union": 12359,
+          "jaccard": 0.0012946031232300348,
+          "primary_containment": 0.0013428451531682752
+        },
+        "cspr_or_rift": {
+          "intersection": 59,
+          "union": 13166,
+          "jaccard": 0.004481239556433237,
+          "primary_containment": 0.0049517415023080154
+        }
+      },
+      "passes_novelty": false,
+      "passes_support": false
+    },
+    {
+      "quantile": 0.925,
+      "raw_primary": 13447,
+      "support": {
+        "nonoverlap_total": 9769,
+        "by_year": {
+          "2020": 2597,
+          "2021": 2639,
+          "2022": 2363,
+          "2023": 2170
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 1133,
+            "short": 1464
+          },
+          "2021": {
+            "long": 1148,
+            "short": 1491
+          },
+          "2022": {
+            "long": 1099,
+            "short": 1264
+          },
+          "2023": {
+            "long": 947,
+            "short": 1223
+          }
+        },
+        "2023_h1": 1078,
+        "2023_h2": 1092,
+        "2023_quarters": {
+          "2023Q1": 492,
+          "2023Q2": 586,
+          "2023Q3": 493,
+          "2023Q4": 599
+        },
+        "long_share": 0.4429317227966015,
+        "short_share": 0.5570682772033985,
+        "active_months": 48,
+        "minimum_events_per_active_month": 20,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 13447,
+        "reverse_time": 13225,
+        "venue_swap": 12741,
+        "simultaneous_only": 14796,
+        "aggregate_only": 14584,
+        "basis_only": 23131,
+        "asymmetry_only": 12230,
+        "no_basis_lag": 24848,
+        "no_activity_order": 13413,
+        "stale_1h": 13377,
+        "stale_24h": 13263,
+        "signal_delay_1bar": 13442
+      },
+      "control_overlap": {
+        "reverse_time": {
+          "intersection": 3874,
+          "union": 22798,
+          "jaccard": 0.1699271865953154,
+          "primary_containment": 0.28809399866141144
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 26188,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "simultaneous_only": {
+          "intersection": 1228,
+          "union": 27015,
+          "jaccard": 0.04545622802146956,
+          "primary_containment": 0.09132148434595078
+        },
+        "aggregate_only": {
+          "intersection": 2175,
+          "union": 25856,
+          "jaccard": 0.0841197400990099,
+          "primary_containment": 0.1617461143749535
+        },
+        "basis_only": {
+          "intersection": 1750,
+          "union": 34828,
+          "jaccard": 0.05024692775927415,
+          "primary_containment": 0.1301405517959396
+        },
+        "asymmetry_only": {
+          "intersection": 2741,
+          "union": 22936,
+          "jaccard": 0.11950645273805371,
+          "primary_containment": 0.20383728712724028
+        },
+        "no_basis_lag": {
+          "intersection": 13447,
+          "union": 24848,
+          "jaccard": 0.5411703155183516,
+          "primary_containment": 1.0
+        },
+        "no_activity_order": {
+          "intersection": 5850,
+          "union": 21010,
+          "jaccard": 0.27843883864826274,
+          "primary_containment": 0.4350412731464267
+        },
+        "stale_1h": {
+          "intersection": 491,
+          "union": 26333,
+          "jaccard": 0.018645805643109407,
+          "primary_containment": 0.03651372053246077
+        },
+        "stale_24h": {
+          "intersection": 449,
+          "union": 26261,
+          "jaccard": 0.017097597197364915,
+          "primary_containment": 0.03339034728935822
+        },
+        "signal_delay_1bar": {
+          "intersection": 430,
+          "union": 26459,
+          "jaccard": 0.01625155901583582,
+          "primary_containment": 0.031977392727002306
+        }
+      },
+      "control_scheduled_counts": {
+        "reverse_time": 9623,
+        "venue_swap": 9393,
+        "simultaneous_only": 9896,
+        "aggregate_only": 9263,
+        "basis_only": 13269,
+        "asymmetry_only": 8947,
+        "no_basis_lag": 14918,
+        "no_activity_order": 9615,
+        "stale_1h": 9724,
+        "stale_24h": 9639,
+        "signal_delay_1bar": 9766
+      },
+      "control_scheduled_overlap": {
+        "reverse_time": {
+          "intersection": 2263,
+          "union": 17129,
+          "jaccard": 0.13211512639383502,
+          "primary_containment": 0.23165114136554407
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 19162,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "simultaneous_only": {
+          "intersection": 597,
+          "union": 19068,
+          "jaccard": 0.03130899937067338,
+          "primary_containment": 0.061111679803459926
+        },
+        "aggregate_only": {
+          "intersection": 1080,
+          "union": 17952,
+          "jaccard": 0.06016042780748663,
+          "primary_containment": 0.11055379260927424
+        },
+        "basis_only": {
+          "intersection": 822,
+          "union": 22216,
+          "jaccard": 0.03700036010082823,
+          "primary_containment": 0.08414371993039206
+        },
+        "asymmetry_only": {
+          "intersection": 1539,
+          "union": 17177,
+          "jaccard": 0.08959655353088432,
+          "primary_containment": 0.1575391544682158
+        },
+        "no_basis_lag": {
+          "intersection": 7643,
+          "union": 17044,
+          "jaccard": 0.4484275991551279,
+          "primary_containment": 0.7823728119561879
+        },
+        "no_activity_order": {
+          "intersection": 3483,
+          "union": 15901,
+          "jaccard": 0.2190428274951261,
+          "primary_containment": 0.3565359811649094
+        },
+        "stale_1h": {
+          "intersection": 345,
+          "union": 19148,
+          "jaccard": 0.018017547524545645,
+          "primary_containment": 0.035315794861295935
+        },
+        "stale_24h": {
+          "intersection": 249,
+          "union": 19159,
+          "jaccard": 0.01299650294900569,
+          "primary_containment": 0.025488791073804893
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 19535,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "no_basis_retention": {
+        "raw": 0.5411703155183516,
+        "scheduled": 0.654846494168119
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 33,
+          "union": 10586,
+          "jaccard": 0.003117324768562252,
+          "primary_containment": 0.003378032551950046
+        },
+        "rift": {
+          "intersection": 15,
+          "union": 10214,
+          "jaccard": 0.0014685725474838456,
+          "primary_containment": 0.0015354693417954754
+        },
+        "cspr_or_rift": {
+          "intersection": 48,
+          "union": 11031,
+          "jaccard": 0.004351373402230079,
+          "primary_containment": 0.004913501893745522
+        }
+      },
+      "passes_novelty": false,
+      "passes_support": false
+    },
+    {
+      "quantile": 0.95,
+      "raw_primary": 9110,
+      "support": {
+        "nonoverlap_total": 7139,
+        "by_year": {
+          "2020": 1922,
+          "2021": 1952,
+          "2022": 1698,
+          "2023": 1567
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 858,
+            "short": 1064
+          },
+          "2021": {
+            "long": 834,
+            "short": 1118
+          },
+          "2022": {
+            "long": 794,
+            "short": 904
+          },
+          "2023": {
+            "long": 672,
+            "short": 895
+          }
+        },
+        "2023_h1": 771,
+        "2023_h2": 796,
+        "2023_quarters": {
+          "2023Q1": 336,
+          "2023Q2": 435,
+          "2023Q3": 367,
+          "2023Q4": 429
+        },
+        "long_share": 0.4423588737918476,
+        "short_share": 0.5576411262081524,
+        "active_months": 48,
+        "minimum_events_per_active_month": 20,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 9110,
+        "reverse_time": 8885,
+        "venue_swap": 8610,
+        "simultaneous_only": 9873,
+        "aggregate_only": 9782,
+        "basis_only": 15419,
+        "asymmetry_only": 8153,
+        "no_basis_lag": 16773,
+        "no_activity_order": 8986,
+        "stale_1h": 9057,
+        "stale_24h": 8958,
+        "signal_delay_1bar": 9107
+      },
+      "control_overlap": {
+        "reverse_time": {
+          "intersection": 2298,
+          "union": 15697,
+          "jaccard": 0.14639740077721858,
+          "primary_containment": 0.25225027442371023
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 17720,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "simultaneous_only": {
+          "intersection": 623,
+          "union": 18360,
+          "jaccard": 0.033932461873638346,
+          "primary_containment": 0.06838638858397365
+        },
+        "aggregate_only": {
+          "intersection": 1254,
+          "union": 17638,
+          "jaccard": 0.07109649620138338,
+          "primary_containment": 0.1376509330406147
+        },
+        "basis_only": {
+          "intersection": 764,
+          "union": 23765,
+          "jaccard": 0.032148116978750266,
+          "primary_containment": 0.08386388583973656
+        },
+        "asymmetry_only": {
+          "intersection": 1540,
+          "union": 15723,
+          "jaccard": 0.09794568466577624,
+          "primary_containment": 0.1690450054884742
+        },
+        "no_basis_lag": {
+          "intersection": 9110,
+          "union": 16773,
+          "jaccard": 0.5431347999761521,
+          "primary_containment": 1.0
+        },
+        "no_activity_order": {
+          "intersection": 3586,
+          "union": 14510,
+          "jaccard": 0.24713990351481738,
+          "primary_containment": 0.39363336992316134
+        },
+        "stale_1h": {
+          "intersection": 236,
+          "union": 17931,
+          "jaccard": 0.013161563772238023,
+          "primary_containment": 0.025905598243688256
+        },
+        "stale_24h": {
+          "intersection": 221,
+          "union": 17847,
+          "jaccard": 0.01238303356306382,
+          "primary_containment": 0.024259055982436883
+        },
+        "signal_delay_1bar": {
+          "intersection": 211,
+          "union": 18006,
+          "jaccard": 0.011718316116849939,
+          "primary_containment": 0.023161361141602634
+        }
+      },
+      "control_scheduled_counts": {
+        "reverse_time": 7038,
+        "venue_swap": 6867,
+        "simultaneous_only": 7234,
+        "aggregate_only": 6774,
+        "basis_only": 9948,
+        "asymmetry_only": 6446,
+        "no_basis_lag": 11438,
+        "no_activity_order": 6999,
+        "stale_1h": 7104,
+        "stale_24h": 7023,
+        "signal_delay_1bar": 7138
+      },
+      "control_scheduled_overlap": {
+        "reverse_time": {
+          "intersection": 1562,
+          "union": 12615,
+          "jaccard": 0.12382084819659137,
+          "primary_containment": 0.21879815100154082
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 14006,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "simultaneous_only": {
+          "intersection": 351,
+          "union": 14022,
+          "jaccard": 0.02503209242618742,
+          "primary_containment": 0.04916654993696596
+        },
+        "aggregate_only": {
+          "intersection": 728,
+          "union": 13185,
+          "jaccard": 0.05521425862722791,
+          "primary_containment": 0.1019750665359294
+        },
+        "basis_only": {
+          "intersection": 423,
+          "union": 16664,
+          "jaccard": 0.025384061449831973,
+          "primary_containment": 0.059251996077882056
+        },
+        "asymmetry_only": {
+          "intersection": 976,
+          "union": 12609,
+          "jaccard": 0.07740502815449282,
+          "primary_containment": 0.1367138254657515
+        },
+        "no_basis_lag": {
+          "intersection": 6021,
+          "union": 12556,
+          "jaccard": 0.4795316979929914,
+          "primary_containment": 0.8433954335341084
+        },
+        "no_activity_order": {
+          "intersection": 2413,
+          "union": 11725,
+          "jaccard": 0.20579957356076758,
+          "primary_containment": 0.33800252136153525
+        },
+        "stale_1h": {
+          "intersection": 178,
+          "union": 14065,
+          "jaccard": 0.012655527906150018,
+          "primary_containment": 0.024933464070598124
+        },
+        "stale_24h": {
+          "intersection": 146,
+          "union": 14016,
+          "jaccard": 0.010416666666666666,
+          "primary_containment": 0.020451043563524302
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 14277,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "no_basis_retention": {
+        "raw": 0.5431347999761521,
+        "scheduled": 0.6241475782479454
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 27,
+          "union": 7962,
+          "jaccard": 0.003391107761868877,
+          "primary_containment": 0.0037820423028435356
+        },
+        "rift": {
+          "intersection": 13,
+          "union": 7586,
+          "jaccard": 0.001713683100448194,
+          "primary_containment": 0.0018209833309987392
+        },
+        "cspr_or_rift": {
+          "intersection": 40,
+          "union": 8409,
+          "jaccard": 0.004756808181710073,
+          "primary_containment": 0.005603025633842275
+        }
+      },
+      "passes_novelty": false,
+      "passes_support": false
+    },
+    {
+      "quantile": 0.975,
+      "raw_primary": 4503,
+      "support": {
+        "nonoverlap_total": 3957,
+        "by_year": {
+          "2020": 1108,
+          "2021": 1075,
+          "2022": 919,
+          "2023": 855
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 490,
+            "short": 618
+          },
+          "2021": {
+            "long": 471,
+            "short": 604
+          },
+          "2022": {
+            "long": 408,
+            "short": 511
+          },
+          "2023": {
+            "long": 373,
+            "short": 482
+          }
+        },
+        "2023_h1": 415,
+        "2023_h2": 440,
+        "2023_quarters": {
+          "2023Q1": 181,
+          "2023Q2": 234,
+          "2023Q3": 211,
+          "2023Q4": 229
+        },
+        "long_share": 0.44023249936820824,
+        "short_share": 0.5597675006317918,
+        "active_months": 48,
+        "minimum_events_per_active_month": 20,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 4503,
+        "reverse_time": 4498,
+        "venue_swap": 4410,
+        "simultaneous_only": 5029,
+        "aggregate_only": 5012,
+        "basis_only": 7661,
+        "asymmetry_only": 4086,
+        "no_basis_lag": 8420,
+        "no_activity_order": 4495,
+        "stale_1h": 4476,
+        "stale_24h": 4426,
+        "signal_delay_1bar": 4502
+      },
+      "control_overlap": {
+        "reverse_time": {
+          "intersection": 974,
+          "union": 8027,
+          "jaccard": 0.12134047589385823,
+          "primary_containment": 0.21630024428159006
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 8913,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "simultaneous_only": {
+          "intersection": 190,
+          "union": 9342,
+          "jaccard": 0.020338257332476985,
+          "primary_containment": 0.04219409282700422
+        },
+        "aggregate_only": {
+          "intersection": 494,
+          "union": 9021,
+          "jaccard": 0.05476111295865203,
+          "primary_containment": 0.10970464135021098
+        },
+        "basis_only": {
+          "intersection": 150,
+          "union": 12014,
+          "jaccard": 0.012485433660729149,
+          "primary_containment": 0.033311125916055964
+        },
+        "asymmetry_only": {
+          "intersection": 560,
+          "union": 8029,
+          "jaccard": 0.06974716652136007,
+          "primary_containment": 0.12436153675327559
+        },
+        "no_basis_lag": {
+          "intersection": 4503,
+          "union": 8420,
+          "jaccard": 0.5347980997624703,
+          "primary_containment": 1.0
+        },
+        "no_activity_order": {
+          "intersection": 1581,
+          "union": 7417,
+          "jaccard": 0.21315895914790348,
+          "primary_containment": 0.3510992671552298
+        },
+        "stale_1h": {
+          "intersection": 62,
+          "union": 8917,
+          "jaccard": 0.006953011102388696,
+          "primary_containment": 0.013768598711969797
+        },
+        "stale_24h": {
+          "intersection": 50,
+          "union": 8879,
+          "jaccard": 0.005631264782070053,
+          "primary_containment": 0.01110370863868532
+        },
+        "signal_delay_1bar": {
+          "intersection": 64,
+          "union": 8941,
+          "jaccard": 0.007158036013868695,
+          "primary_containment": 0.014212747057517211
+        }
+      },
+      "control_scheduled_counts": {
+        "reverse_time": 3918,
+        "venue_swap": 3850,
+        "simultaneous_only": 4127,
+        "aggregate_only": 3908,
+        "basis_only": 5637,
+        "asymmetry_only": 3533,
+        "no_basis_lag": 6744,
+        "no_activity_order": 3858,
+        "stale_1h": 3935,
+        "stale_24h": 3890,
+        "signal_delay_1bar": 3956
+      },
+      "control_scheduled_overlap": {
+        "reverse_time": {
+          "intersection": 768,
+          "union": 7107,
+          "jaccard": 0.10806247361756015,
+          "primary_containment": 0.19408642911296436
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 7807,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "simultaneous_only": {
+          "intersection": 136,
+          "union": 7948,
+          "jaccard": 0.017111222949169603,
+          "primary_containment": 0.03436947182208744
+        },
+        "aggregate_only": {
+          "intersection": 346,
+          "union": 7519,
+          "jaccard": 0.046016757547546215,
+          "primary_containment": 0.08743997978266363
+        },
+        "basis_only": {
+          "intersection": 103,
+          "union": 9491,
+          "jaccard": 0.010852386471393952,
+          "primary_containment": 0.026029820571139752
+        },
+        "asymmetry_only": {
+          "intersection": 427,
+          "union": 7063,
+          "jaccard": 0.06045589692765114,
+          "primary_containment": 0.10791003285317159
+        },
+        "no_basis_lag": {
+          "intersection": 3585,
+          "union": 7116,
+          "jaccard": 0.5037942664418212,
+          "primary_containment": 0.9059893858984079
+        },
+        "no_activity_order": {
+          "intersection": 1251,
+          "union": 6564,
+          "jaccard": 0.1905850091407678,
+          "primary_containment": 0.3161485974222896
+        },
+        "stale_1h": {
+          "intersection": 54,
+          "union": 7838,
+          "jaccard": 0.006889512630773156,
+          "primary_containment": 0.013646702047005308
+        },
+        "stale_24h": {
+          "intersection": 35,
+          "union": 7812,
+          "jaccard": 0.004480286738351254,
+          "primary_containment": 0.008845084660096033
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 7913,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "no_basis_retention": {
+        "raw": 0.5347980997624703,
+        "scheduled": 0.5867437722419929
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 15,
+          "union": 4792,
+          "jaccard": 0.0031302170283806345,
+          "primary_containment": 0.0037907505686125853
+        },
+        "rift": {
+          "intersection": 8,
+          "union": 4409,
+          "jaccard": 0.0018144704014515763,
+          "primary_containment": 0.0020217336365933787
+        },
+        "cspr_or_rift": {
+          "intersection": 23,
+          "union": 5244,
+          "jaccard": 0.0043859649122807015,
+          "primary_containment": 0.005812484205205964
+        }
+      },
+      "passes_novelty": true,
+      "passes_support": true
+    }
+  ],
+  "support_decision": "pass",
+  "selected_quantile": 0.975,
+  "selected_support": {
+    "quantile": 0.975,
+    "raw_primary": 4503,
+    "support": {
+      "nonoverlap_total": 3957,
+      "by_year": {
+        "2020": 1108,
+        "2021": 1075,
+        "2022": 919,
+        "2023": 855
+      },
+      "by_year_side": {
+        "2020": {
+          "long": 490,
+          "short": 618
+        },
+        "2021": {
+          "long": 471,
+          "short": 604
+        },
+        "2022": {
+          "long": 408,
+          "short": 511
+        },
+        "2023": {
+          "long": 373,
+          "short": 482
+        }
+      },
+      "2023_h1": 415,
+      "2023_h2": 440,
+      "2023_quarters": {
+        "2023Q1": 181,
+        "2023Q2": 234,
+        "2023Q3": 211,
+        "2023Q4": 229
+      },
+      "long_share": 0.44023249936820824,
+      "short_share": 0.5597675006317918,
+      "active_months": 48,
+      "minimum_events_per_active_month": 20,
+      "passes_count_support": true
+    },
+    "control_raw_counts": {
+      "direction_flip": 4503,
+      "reverse_time": 4498,
+      "venue_swap": 4410,
+      "simultaneous_only": 5029,
+      "aggregate_only": 5012,
+      "basis_only": 7661,
+      "asymmetry_only": 4086,
+      "no_basis_lag": 8420,
+      "no_activity_order": 4495,
+      "stale_1h": 4476,
+      "stale_24h": 4426,
+      "signal_delay_1bar": 4502
+    },
+    "control_overlap": {
+      "reverse_time": {
+        "intersection": 974,
+        "union": 8027,
+        "jaccard": 0.12134047589385823,
+        "primary_containment": 0.21630024428159006
+      },
+      "venue_swap": {
+        "intersection": 0,
+        "union": 8913,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      },
+      "simultaneous_only": {
+        "intersection": 190,
+        "union": 9342,
+        "jaccard": 0.020338257332476985,
+        "primary_containment": 0.04219409282700422
+      },
+      "aggregate_only": {
+        "intersection": 494,
+        "union": 9021,
+        "jaccard": 0.05476111295865203,
+        "primary_containment": 0.10970464135021098
+      },
+      "basis_only": {
+        "intersection": 150,
+        "union": 12014,
+        "jaccard": 0.012485433660729149,
+        "primary_containment": 0.033311125916055964
+      },
+      "asymmetry_only": {
+        "intersection": 560,
+        "union": 8029,
+        "jaccard": 0.06974716652136007,
+        "primary_containment": 0.12436153675327559
+      },
+      "no_basis_lag": {
+        "intersection": 4503,
+        "union": 8420,
+        "jaccard": 0.5347980997624703,
+        "primary_containment": 1.0
+      },
+      "no_activity_order": {
+        "intersection": 1581,
+        "union": 7417,
+        "jaccard": 0.21315895914790348,
+        "primary_containment": 0.3510992671552298
+      },
+      "stale_1h": {
+        "intersection": 62,
+        "union": 8917,
+        "jaccard": 0.006953011102388696,
+        "primary_containment": 0.013768598711969797
+      },
+      "stale_24h": {
+        "intersection": 50,
+        "union": 8879,
+        "jaccard": 0.005631264782070053,
+        "primary_containment": 0.01110370863868532
+      },
+      "signal_delay_1bar": {
+        "intersection": 64,
+        "union": 8941,
+        "jaccard": 0.007158036013868695,
+        "primary_containment": 0.014212747057517211
+      }
+    },
+    "control_scheduled_counts": {
+      "reverse_time": 3918,
+      "venue_swap": 3850,
+      "simultaneous_only": 4127,
+      "aggregate_only": 3908,
+      "basis_only": 5637,
+      "asymmetry_only": 3533,
+      "no_basis_lag": 6744,
+      "no_activity_order": 3858,
+      "stale_1h": 3935,
+      "stale_24h": 3890,
+      "signal_delay_1bar": 3956
+    },
+    "control_scheduled_overlap": {
+      "reverse_time": {
+        "intersection": 768,
+        "union": 7107,
+        "jaccard": 0.10806247361756015,
+        "primary_containment": 0.19408642911296436
+      },
+      "venue_swap": {
+        "intersection": 0,
+        "union": 7807,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      },
+      "simultaneous_only": {
+        "intersection": 136,
+        "union": 7948,
+        "jaccard": 0.017111222949169603,
+        "primary_containment": 0.03436947182208744
+      },
+      "aggregate_only": {
+        "intersection": 346,
+        "union": 7519,
+        "jaccard": 0.046016757547546215,
+        "primary_containment": 0.08743997978266363
+      },
+      "basis_only": {
+        "intersection": 103,
+        "union": 9491,
+        "jaccard": 0.010852386471393952,
+        "primary_containment": 0.026029820571139752
+      },
+      "asymmetry_only": {
+        "intersection": 427,
+        "union": 7063,
+        "jaccard": 0.06045589692765114,
+        "primary_containment": 0.10791003285317159
+      },
+      "no_basis_lag": {
+        "intersection": 3585,
+        "union": 7116,
+        "jaccard": 0.5037942664418212,
+        "primary_containment": 0.9059893858984079
+      },
+      "no_activity_order": {
+        "intersection": 1251,
+        "union": 6564,
+        "jaccard": 0.1905850091407678,
+        "primary_containment": 0.3161485974222896
+      },
+      "stale_1h": {
+        "intersection": 54,
+        "union": 7838,
+        "jaccard": 0.006889512630773156,
+        "primary_containment": 0.013646702047005308
+      },
+      "stale_24h": {
+        "intersection": 35,
+        "union": 7812,
+        "jaccard": 0.004480286738351254,
+        "primary_containment": 0.008845084660096033
+      },
+      "signal_delay_1bar": {
+        "intersection": 0,
+        "union": 7913,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      }
+    },
+    "no_basis_retention": {
+      "raw": 0.5347980997624703,
+      "scheduled": 0.5867437722419929
+    },
+    "prior_clock_overlap": {
+      "cspr": {
+        "intersection": 15,
+        "union": 4792,
+        "jaccard": 0.0031302170283806345,
+        "primary_containment": 0.0037907505686125853
+      },
+      "rift": {
+        "intersection": 8,
+        "union": 4409,
+        "jaccard": 0.0018144704014515763,
+        "primary_containment": 0.0020217336365933787
+      },
+      "cspr_or_rift": {
+        "intersection": 23,
+        "union": 5244,
+        "jaccard": 0.0043859649122807015,
+        "primary_containment": 0.005812484205205964
+      }
+    },
+    "passes_novelty": true,
+    "passes_support": true
+  }
+}
