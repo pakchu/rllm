@@ -88,6 +88,28 @@ def test_archive_url_is_official_spot_monthly_path() -> None:
     )
 
 
+def test_contiguous_ranges_groups_only_adjacent_five_minute_slots() -> None:
+    timestamps = pd.DatetimeIndex(
+        [
+            "2023-01-01 00:00:00",
+            "2023-01-01 00:05:00",
+            "2023-01-01 00:20:00",
+        ]
+    )
+    assert builder._contiguous_ranges(timestamps) == [
+        {
+            "start": "2023-01-01 00:00:00",
+            "end": "2023-01-01 00:05:00",
+            "rows": 2,
+        },
+        {
+            "start": "2023-01-01 00:20:00",
+            "end": "2023-01-01 00:20:00",
+            "rows": 1,
+        },
+    ]
+
+
 def test_five_minute_aggregation_reconstructs_spot_auction_observables() -> None:
     frame = builder.read_archive(_archive(_rows(), header=True))
     output = builder.aggregate_five_minute(frame)
@@ -113,6 +135,22 @@ def test_incomplete_five_minute_group_fails_closed() -> None:
     frame = builder.read_archive(_archive(_rows()[:4], header=True))
     output = builder.aggregate_five_minute(frame)
     assert output.loc[0, "source_complete"] == np.bool_(False)
+    assert output.loc[0, "invalid_source_minute_count"] == 0
+
+
+def test_zero_activity_or_bad_close_time_is_preserved_but_quarantined() -> None:
+    rows = _rows()
+    rows[2][5] = 0.0
+    rows[2][7] = 0.0
+    rows[2][8] = 0
+    rows[2][9] = 0.0
+    rows[2][10] = 0.0
+    rows[2][6] = rows[2][0] - 1
+    frame = builder.read_archive(_archive(rows, header=True))
+    assert frame.loc[2, "source_row_valid"] == np.bool_(False)
+    output = builder.aggregate_five_minute(frame)
+    assert output.loc[0, "source_complete"] == np.bool_(False)
+    assert output.loc[0, "invalid_source_minute_count"] == 1
 
 
 def test_process_month_resume_rechecks_checksum_and_is_deterministic(tmp_path: Path) -> None:
@@ -129,7 +167,7 @@ def test_process_month_resume_rechecks_checksum_and_is_deterministic(tmp_path: P
     assert first["output_sha256"] == second["output_sha256"]
     assert first["archive_sha256"] == hashlib.sha256(payload).hexdigest()
     metadata_path = next((tmp_path / "monthly").glob("*.json"))
-    assert json.loads(metadata_path.read_text())["schema_version"] == 1
+    assert json.loads(metadata_path.read_text())["schema_version"] == builder.SCHEMA_VERSION
 
 
 def test_build_requires_month_boundaries() -> None:

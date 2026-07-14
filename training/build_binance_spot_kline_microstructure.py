@@ -31,7 +31,7 @@ from training.build_binance_aggtrade_microstructure import (
 
 BASE_URL = "https://data.binance.vision/data/spot/monthly/klines"
 INTERVAL = "1m"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 4
 RAW_COLUMNS = (
     "open_time",
     "open",
@@ -77,6 +77,7 @@ OUTPUT_COLUMNS = (
     "minute_flow_price_alignment",
     "minute_price_path_efficiency",
     "minute_flow_path_efficiency",
+    "invalid_source_minute_count",
     "source_complete",
 )
 
@@ -104,6 +105,21 @@ def _month_starts(start: date, end: date) -> list[date]:
             1,
         )
     return months
+
+
+def _contiguous_ranges(timestamps: pd.DatetimeIndex) -> list[dict[str, Any]]:
+    if len(timestamps) == 0:
+        return []
+    values = pd.Series(timestamps.sort_values())
+    groups = values.diff().ne(pd.Timedelta("5min")).cumsum()
+    return [
+        {
+            "start": str(group.iloc[0]),
+            "end": str(group.iloc[-1]),
+            "rows": int(len(group)),
+        }
+        for _, group in values.groupby(groups, sort=True)
+    ]
 
 
 def archive_url(symbol: str, month: date) -> str:
@@ -170,8 +186,14 @@ def read_archive(payload: bytes) -> pd.DataFrame:
         or (frame["taker_buy_quote"] > frame["quote_notional"] + tolerance).any()
     ):
         raise ValueError("spot kline taker-buy fields violate total-volume bounds")
-    if (frame["close_time"] < frame["open_time"]).any():
-        raise ValueError("spot kline close time precedes open time")
+    frame["source_row_valid"] = (
+        frame["close_time"].ge(frame["open_time"])
+        & frame["base_volume"].gt(0.0)
+        & frame["quote_notional"].gt(0.0)
+        & frame["trade_count"].gt(0)
+        & frame["high"].ge(frame[["open", "close", "low"]].max(axis=1))
+        & frame["low"].le(frame[["open", "close", "high"]].min(axis=1))
+    )
     return frame
 
 
@@ -216,6 +238,10 @@ def aggregate_five_minute(frame: pd.DataFrame) -> pd.DataFrame:
         ),
         minute_abs_flow_sum=("signed_quote", lambda x: float(np.abs(x).sum())),
         minute_flow_price_alignment=("minute_flow_price_relation", "mean"),
+        source_rows_valid=("source_row_valid", "all"),
+        invalid_source_minute_count=(
+            "source_row_valid", lambda x: int((~x.astype(bool)).sum())
+        ),
     )
     output["flow_coherence"] = _safe_divide(
         output["signed_quote_notional"].abs(), output["quote_notional"]
@@ -260,10 +286,18 @@ def aggregate_five_minute(frame: pd.DataFrame) -> pd.DataFrame:
 
     expected_span = (output["spot_rows"] - 1) * 60_000
     actual_span = grouped["open_time"].max() - grouped["open_time"].min()
-    centroid_ok = output[["buyer_execution_centroid", "seller_execution_centroid"]].gt(0.0).all(axis=1)
+    centroids = output[["buyer_execution_centroid", "seller_execution_centroid"]]
+    price_tolerance = output[["low", "high"]].abs().max(axis=1) * 1e-8 + 1e-10
+    centroid_ok = (
+        centroids.gt(0.0).all(axis=1)
+        & centroids.ge(output["low"] - price_tolerance, axis=0).all(axis=1)
+        & centroids.le(output["high"] + price_tolerance, axis=0).all(axis=1)
+    )
     output["source_complete"] = (
         output["spot_rows"].eq(5)
         & actual_span.eq(expected_span)
+        & output.pop("source_rows_valid").astype(bool)
+        & output["invalid_source_minute_count"].eq(0)
         & output["base_volume"].gt(0.0)
         & output["quote_notional"].gt(0.0)
         & output["trade_count"].gt(0)
@@ -401,6 +435,25 @@ def build(cfg: BuildConfig) -> dict[str, Any]:
         f"{start:%Y-%m}_{last_month:%Y-%m}.csv.gz"
     )
     _write_gzip_csv(combined, combined_path)
+    expected = pd.date_range(start, end, freq="5min", inclusive="left")
+    observed = pd.DatetimeIndex(combined["date"])
+    missing = expected.difference(observed)
+    source_complete = combined["source_complete"].astype(bool)
+    coverage_by_year: dict[str, dict[str, int]] = {}
+    for year in range(start.year, end.year + 1):
+        expected_rows = int((expected.year == year).sum())
+        if expected_rows == 0:
+            continue
+        year_mask = combined["date"].dt.year.eq(year)
+        year_rows = int(year_mask.sum())
+        year_complete = int((year_mask & source_complete).sum())
+        coverage_by_year[str(year)] = {
+            "expected_rows": expected_rows,
+            "observed_rows": year_rows,
+            "missing_rows": expected_rows - year_rows,
+            "incomplete_rows": year_rows - year_complete,
+            "complete_rows": year_complete,
+        }
     manifest = {
         "as_of": datetime.now(timezone.utc).isoformat(),
         "config": asdict(cfg),
@@ -418,6 +471,20 @@ def build(cfg: BuildConfig) -> dict[str, Any]:
         "combined_sha256": hashlib.sha256(combined_path.read_bytes()).hexdigest(),
         "rows": int(len(combined)),
         "complete_rows": int(combined["source_complete"].astype(bool).sum()),
+        "coverage": {
+            "expected_rows": int(len(expected)),
+            "missing_rows": int(len(missing)),
+            "missing_ranges": _contiguous_ranges(missing),
+            "incomplete_rows": int((~source_complete).sum()),
+            "invalid_source_minute_bins": int(
+                combined["invalid_source_minute_count"].gt(0).sum()
+            ),
+            "invalid_source_minutes": int(
+                combined["invalid_source_minute_count"].sum()
+            ),
+            "complete_fraction_of_expected": float(source_complete.sum() / len(expected)),
+            "by_year": coverage_by_year,
+        },
         "first_date": str(combined["date"].min()),
         "last_date": str(combined["date"].max()),
         "columns": list(combined.columns),
