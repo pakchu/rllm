@@ -342,3 +342,39 @@ def test_evaluation_freeze_rejects_source_mutation(
     source.write_text("mutated\n")
     with pytest.raises(ValueError, match="differs from pre-outcome freeze"):
         evaluator.verify_evaluation_freeze()
+
+
+def test_frozen_rcr_result_rejects_and_keeps_2024_sealed() -> None:
+    path = Path(
+        "results/radial_composition_rotation_selection_2026-07-14.json"
+    )
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == (
+        "e89883bc28bcf3d45f2daffe3f11506ab070ffc68d4d327567a9094fb07988b7"
+    )
+    result = json.loads(path.read_text())
+    assert result["selection"] == {
+        "selected_alpha": None,
+        "rejected": True,
+        "reason": "RCR-144 failed at least one frozen calendar-2023 gate",
+    }
+    assert result["protocol"]["outcomes_opened_for_rcr144"] is True
+    assert result["protocol"]["evaluation_source_sha256"] == (
+        "cdd9534a9002f699e903924a863901eadc2f57000b337c9cf2fdbf03acf0a680"
+    )
+    assert result["protocol"]["sealed_windows"] == [
+        "test2024",
+        "eval2025",
+        "ytd2026",
+    ]
+    h1 = result["windows"]["train2023_h1"]["rcr144"]
+    h2 = result["windows"]["select2023_h2"]["rcr144"]
+    assert h1["absolute_return_pct"] == pytest.approx(-4.111172557415355)
+    assert h1["strict_mdd_pct"] == pytest.approx(15.826133256768138)
+    assert h1["trade_count"] == 300
+    assert h2["absolute_return_pct"] == pytest.approx(-12.579577460870972)
+    assert h2["strict_mdd_pct"] == pytest.approx(21.45172016842035)
+    assert h2["trade_count"] == 346
+    assert result["windows"]["q1"]["rcr144"]["absolute_return_pct"] > 0.0
+    assert result["windows"]["q2"]["rcr144"]["absolute_return_pct"] < 0.0
+    assert result["windows"]["q3"]["rcr144"]["absolute_return_pct"] < 0.0
+    assert result["windows"]["q4"]["rcr144"]["absolute_return_pct"] > 0.0
