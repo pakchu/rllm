@@ -634,6 +634,12 @@ def simulate_funding_schedule(
             raise ValueError("scheduled side must be long or short")
         if not signal_position < entry_position < exit_position:
             raise ValueError("scheduled positions are not strictly ordered")
+        if entry_position != signal_position + 1:
+            raise ValueError("scheduled entry is not the next five-minute open")
+        if exit_position != entry_position + 48:
+            raise ValueError("scheduled exit does not match the frozen 48-bar hold")
+        if int(row.hold_bars) != 48:
+            raise ValueError("scheduled hold_bars does not match the frozen hold")
         if entry_position < previous_exit:
             raise ValueError("scheduled trades overlap")
         if exit_position >= len(frame):

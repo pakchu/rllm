@@ -164,9 +164,9 @@ def test_control_schedule_rejects_active_zero_side() -> None:
 
 
 def test_funding_endpoints_are_inclusive_and_direction_is_correct() -> None:
-    frame = _market_frame(4)
+    frame = _market_frame(52)
     entry_ms = int(frame.loc[1, "date"].value // 1_000_000)
-    exit_ms = int(frame.loc[2, "date"].value // 1_000_000)
+    exit_ms = int(frame.loc[49, "date"].value // 1_000_000)
     funding = _funding(
         [
             (entry_ms, 0.01),
@@ -182,7 +182,7 @@ def test_funding_endpoints_are_inclusive_and_direction_is_correct() -> None:
     result = evaluator.simulate_funding_schedule(
         frame,
         funding,
-        _schedule(side=1),
+        _schedule(side=1, exit_=49),
         start="2023-01-01",
         end="2023-01-02",
         cfg=cfg,
@@ -194,7 +194,7 @@ def test_funding_endpoints_are_inclusive_and_direction_is_correct() -> None:
     short = evaluator.simulate_funding_schedule(
         frame,
         funding.iloc[:2],
-        _schedule(side=-1),
+        _schedule(side=-1, exit_=49),
         start="2023-01-01",
         end="2023-01-02",
         cfg=cfg,
@@ -203,9 +203,9 @@ def test_funding_endpoints_are_inclusive_and_direction_is_correct() -> None:
 
 
 def test_funding_debits_precede_adverse_and_credits_do_not_hide_mdd() -> None:
-    frame = _market_frame(4)
+    frame = _market_frame(52)
     entry_ms = int(frame.loc[1, "date"].value // 1_000_000)
-    exit_ms = int(frame.loc[2, "date"].value // 1_000_000)
+    exit_ms = int(frame.loc[49, "date"].value // 1_000_000)
     funding = _funding([(entry_ms, 0.10), (exit_ms, -0.10)])
     cfg = evaluator.EvaluationConfig(
         fee_rate=0.0,
@@ -215,7 +215,7 @@ def test_funding_debits_precede_adverse_and_credits_do_not_hide_mdd() -> None:
     result = evaluator.simulate_funding_schedule(
         frame,
         funding,
-        _schedule(side=1),
+        _schedule(side=1, exit_=49),
         start="2023-01-01",
         end="2023-01-02",
         cfg=cfg,
@@ -225,13 +225,13 @@ def test_funding_debits_precede_adverse_and_credits_do_not_hide_mdd() -> None:
 
 
 def test_strict_mdd_uses_favorable_first_and_excludes_exit_bar() -> None:
-    frame = _market_frame(4)
+    frame = _market_frame(52)
     frame.loc[1, ["high", "low"]] = [110.0, 90.0]
-    frame.loc[2, ["high", "low"]] = [1_000.0, 1.0]
+    frame.loc[49, ["high", "low"]] = [1_000.0, 1.0]
     result = evaluator.simulate_funding_schedule(
         frame,
         _funding(),
-        _schedule(side=1),
+        _schedule(side=1, exit_=49),
         start="2023-01-01",
         end="2023-01-02",
         cfg=evaluator.EvaluationConfig(cluster_permutations=1),
@@ -242,18 +242,45 @@ def test_strict_mdd_uses_favorable_first_and_excludes_exit_bar() -> None:
 
 
 def test_mean_gross_move_is_direct_and_not_changed_by_funding() -> None:
-    frame = _market_frame(4)
-    frame.loc[2, "open"] = 100.2
+    frame = _market_frame(52)
+    frame.loc[49, "open"] = 100.2
     entry_ms = int(frame.loc[1, "date"].value // 1_000_000)
     result = evaluator.simulate_funding_schedule(
         frame,
         _funding([(entry_ms, 0.05)]),
-        _schedule(side=1),
+        _schedule(side=1, exit_=49),
         start="2023-01-01",
         end="2023-01-02",
         cfg=evaluator.EvaluationConfig(cluster_permutations=1),
     )
     assert np.isclose(result["mean_gross_underlying_move_bp"], 20.0)
+
+
+@pytest.mark.parametrize(
+    ("column", "value", "message"),
+    [
+        ("entry_position", 2, "next five-minute open"),
+        ("exit_position", 48, "frozen 48-bar hold"),
+        ("hold_bars", 47, "hold_bars"),
+    ],
+)
+def test_simulator_rejects_execution_clock_drift(
+    column: str,
+    value: int,
+    message: str,
+) -> None:
+    frame = _market_frame(52)
+    schedule = _schedule(side=1, exit_=49)
+    schedule.loc[0, column] = value
+    with pytest.raises(ValueError, match=message):
+        evaluator.simulate_funding_schedule(
+            frame,
+            _funding(),
+            schedule,
+            start="2023-01-01",
+            end="2023-01-02",
+            cfg=evaluator.EvaluationConfig(cluster_permutations=1),
+        )
 
 
 def test_slice_schedule_never_rebuilds_boundary_clock() -> None:
@@ -346,6 +373,18 @@ def test_load_funding_requires_exact_epoch_and_sealed_scope(
     with pytest.raises(ValueError, match="differ from epoch"):
         evaluator.load_realized_funding({"data": {"rows": 1}})
 
+    sealed_ms = 1_704_067_200_000
+    row["funding_time_ms"] = sealed_ms
+    row["funding_time_utc"] = "2024-01-01T00:00:00.000Z"
+    pd.DataFrame([row]).to_csv(path, index=False)
+    monkeypatch.setattr(
+        evaluator,
+        "FUNDING_DATA_SHA256",
+        hashlib.sha256(path.read_bytes()).hexdigest(),
+    )
+    with pytest.raises(ValueError, match="sealed interval"):
+        evaluator.load_realized_funding({"data": {"rows": 1}})
+
 
 def test_run_stops_at_freeze_guard_before_loading_any_frame(
     tmp_path: Path,
@@ -377,10 +416,11 @@ def test_run_reserves_all_clocks_before_loading_market_or_funding(
 
     def reserve_controls(*_args: object) -> dict[str, pd.DataFrame]:
         events.append("controls_reserved")
-        return {}
+        return {name: pd.DataFrame() for name in evaluator.POLICY_NAMES}
 
     def open_market(*_args: object) -> tuple[pd.DataFrame, dict[str, object]]:
         assert events == ["controls_reserved"]
+        assert set(reserved) == set(evaluator.POLICY_NAMES)
         events.append("market_opened")
         return frame, {}
 
@@ -389,7 +429,13 @@ def test_run_reserves_all_clocks_before_loading_market_or_funding(
         events.append("funding_opened")
         raise RuntimeError("stop after sequencing check")
 
-    monkeypatch.setattr(evaluator, "build_control_schedules", reserve_controls)
+    reserved = reserve_controls()
+    events.clear()
+    monkeypatch.setattr(
+        evaluator,
+        "build_control_schedules",
+        lambda *_args: (events.append("controls_reserved") or reserved),
+    )
     monkeypatch.setattr(evaluator, "load_execution_market", open_market)
     monkeypatch.setattr(evaluator, "load_realized_funding", open_funding)
     with pytest.raises(RuntimeError, match="sequencing check"):
