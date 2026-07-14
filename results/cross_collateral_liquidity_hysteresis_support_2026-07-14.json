@@ -1,0 +1,111 @@
+{
+  "protocol": {
+    "name": "CCLH — Cross-Collateral Liquidity Hysteresis",
+    "support_only": true,
+    "outcomes_opened_for_cclh": false,
+    "support_rejected": false,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "event_clock": "confirmed transition into a persistent cross-collateral full-depth geometry state",
+    "signal_availability": "current 5m depth median complete; enter next 5m open",
+    "action_rule": "positive pressure/elasticity state long; negative state short",
+    "candidate_clock": "one event on flat-to-active or confirmed opposite-state flip",
+    "holding_rule": "144 completed 5m bars; scheduled-open exit",
+    "support_parameters_searched": false,
+    "source_gap_policy": "missing current depth is unavailable state; future depth gaps do not cancel an already entered trade",
+    "sealed_windows": [
+      "test2024",
+      "eval2025",
+      "ytd2026"
+    ]
+  },
+  "config": {
+    "depth_manifest": "results/binance_cross_collateral_book_depth_btc_2023_manifest.json",
+    "market_manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+    "output": "results/cross_collateral_liquidity_hysteresis_support_2026-07-14.json",
+    "robust_baseline_bars": 8640,
+    "robust_min_periods": 2016,
+    "entry_z": 0.5,
+    "exit_z": 0.25,
+    "confirmation_bars": 12,
+    "exit_confirmation_bars": 12,
+    "hold_bars": 144,
+    "minimum_nonoverlap_total": 120,
+    "minimum_nonoverlap_per_half": 45,
+    "minimum_nonoverlap_per_quarter": 20,
+    "minimum_side_share": 0.35,
+    "maximum_quarter_share": 0.4,
+    "clv_overlap_tolerance_bars": 12,
+    "maximum_clv_event_jaccard": 0.35
+  },
+  "frozen_artifacts": {
+    "preregistration_source": "training/preregister_cross_collateral_liquidity_hysteresis.py",
+    "preregistration_source_sha256": "c555d2c567ecb2c5b4a2986a4a1a455521c79bdcf655f7c43a3dfc41187cbdd5",
+    "preregistration_document": "docs/cross-collateral-liquidity-hysteresis-preregistration-2026-07-14.md",
+    "preregistration_document_sha256": "eefc80011a16aaf6b76dc54934a7b9e3bfcff618c278ef3bd009e6d55e5a502d",
+    "feature_source": "training/preregister_cross_collateral_liquidity_void_refill.py",
+    "feature_source_sha256": "8465af153f4e5a19299c7ee2b6104e7ea009feb8da80ad10d50cf49bddd7ad51",
+    "clv_source": "training/preregister_cross_collateral_liquidity_vacuum.py",
+    "clv_source_sha256": "4ea113bb09cb9a00d295c49729c2c876bb6b7f90378fce1b63de6907d4a6b7d7",
+    "clv_support": "results/cross_collateral_liquidity_vacuum_support_2026-07-14.json",
+    "clv_support_sha256": "3c661a85e90a6191385b1b69fafac6f8dd146888b6937394493b3aa44096c8d9",
+    "scheduler_source": "training/preregister_metaorder_fragmentation_impact_curvature.py",
+    "scheduler_source_sha256": "51e99dbdc5ba13e6b4ac15e3915ec5b30e36dff89c1e5b31a5f3f7f272f01a59",
+    "depth_manifest_sha256": "95ec6e133dfcc7ed3c058538f380d24d98552c0a921fc24a679d247159a4f080",
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e"
+  },
+  "source": {
+    "depth_manifest_sha256": "95ec6e133dfcc7ed3c058538f380d24d98552c0a921fc24a679d247159a4f080",
+    "depth_sha256": "53e16cf71581f03c7b1cc3da6a13222923ce68aa9e869d89f02078221bb4eee4",
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "range_start": "2023-01-01 00:00:00",
+    "range_end": "2023-12-31 23:55:00",
+    "source_complete_rows": 101649
+  },
+  "feature": {
+    "provisional_bullish_rows": 11380,
+    "provisional_bearish_rows": 9721,
+    "raw_transition_count": 201,
+    "standardization": "strictly lagged rolling median and recursive MAD; clip [-12, 12]"
+  },
+  "support_calibration": {
+    "outcomes_opened_for_cclh": false,
+    "parameters_searched": false,
+    "all_parameters_fixed": true,
+    "further_support_repairs_allowed": false
+  },
+  "raw_candidate_count": 201,
+  "scheduled_side_counts": {
+    "long": 88,
+    "short": 79
+  },
+  "scheduled_branch_counts": {
+    "bullish_hysteresis": 88,
+    "bearish_hysteresis": 79
+  },
+  "clv_event_overlap": {
+    "first_event_count": 167,
+    "second_event_count": 521,
+    "matched_event_count": 34,
+    "tolerance_bars": 12,
+    "jaccard": 0.05198776758409786,
+    "maximum_allowed_jaccard": 0.35,
+    "passes_independence": true
+  },
+  "support": {
+    "nonoverlap_total": 167,
+    "by_quarter": {
+      "q1": 33,
+      "q2": 38,
+      "q3": 48,
+      "q4": 48
+    },
+    "h1": 71,
+    "h2": 96,
+    "long_share": 0.5269461077844312,
+    "short_share": 0.47305389221556887,
+    "maximum_observed_quarter_share": 0.2874251497005988,
+    "passes_support": true
+  },
+  "all_support_gates_pass": true
+}
