@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import io
+import json
 import zipfile
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -146,3 +149,37 @@ def test_builder_rejects_any_request_outside_calendar_2023() -> None:
 def test_unknown_shell_side_fails_closed() -> None:
     with pytest.raises(ValueError, match="side must be"):
         builder._snapshot_shells(_raw_snapshots(1), "x")
+
+
+def test_frozen_shell_manifest_keeps_outcomes_closed() -> None:
+    manifest_path = Path(
+        "results/binance_cross_collateral_book_shells_btc_2023_manifest.json"
+    )
+    assert hashlib.sha256(manifest_path.read_bytes()).hexdigest() == (
+        "1b5519143d58f62ef3e8b6d9e22f012f80197a59903509041aca24252ed04521"
+    )
+    manifest = json.loads(manifest_path.read_text())
+    protocol = manifest["protocol"]
+    assert protocol["outcomes_opened"] is False
+    assert protocol["post_2023_rows_requested"] is False
+    assert protocol["base_depth_replayed_exactly"] is True
+    assert protocol["raw_archives_retained"] is False
+    assert manifest["missing_archive_dates"] == {
+        "um": ["2023-02-08", "2023-02-09"],
+        "cm": ["2023-09-25"],
+    }
+    assert manifest["base_manifest_sha256"] == (
+        "95ec6e133dfcc7ed3c058538f380d24d98552c0a921fc24a679d247159a4f080"
+    )
+    assert manifest["credibility_manifest_sha256"] == (
+        "f530f472765c8cb56bf564efd346c734e2404e072b87e2ff8dc3b84e303c30f7"
+    )
+    item = manifest["file"]
+    assert item["rows"] == 105_120
+    assert item["columns"] == 148
+    assert item["source_complete_rows"] == 101_649
+    data_path = Path(item["path"])
+    assert hashlib.sha256(data_path.read_bytes()).hexdigest() == item["sha256"]
+    frame = pd.read_csv(data_path, compression="gzip", nrows=1)
+    assert len(frame.columns) == 148
+    assert not any(column.endswith(("_x", "_y")) for column in frame)
