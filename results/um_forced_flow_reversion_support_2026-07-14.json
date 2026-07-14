@@ -1,0 +1,1708 @@
+{
+  "protocol": {
+    "name": "UMFR-36 — USD-M Forced Flow Reversion",
+    "support_only": true,
+    "umfr_outcomes_opened": false,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "entry": "next Binance USD-M 5m open after completed signal bar",
+    "hold": "fixed 36 bars",
+    "economic_claim": "a late noisy USD-M flow impulse stretches basis beyond Spot validation and reverts",
+    "support_selection": "highest frozen causal event-score quantile passing every support and novelty floor",
+    "control_side_rules": {
+      "primary": "negative sign(um_flow_fraction)",
+      "direction_flip": "sign(um_flow_fraction) on the primary clock",
+      "no_late_um": "negative sign(um_flow_fraction)",
+      "no_ticket_surprise": "negative sign(um_flow_fraction)",
+      "no_path_excess": "negative sign(um_flow_fraction)",
+      "no_basis_stretch": "negative sign(um_flow_fraction)",
+      "no_spot_underresponse": "negative sign(um_flow_fraction)",
+      "early_um": "negative sign(um_flow_fraction)",
+      "venue_swap": "negative sign(spot_flow_fraction)",
+      "aggregate_only": "negative sign(um_flow_fraction)",
+      "stale_1h": "primary side stale by 12 completed bars",
+      "stale_24h": "primary side stale by 288 completed bars",
+      "signal_delay_1bar": "primary side delayed by one completed bar"
+    },
+    "ablation_retention_is_gate": false
+  },
+  "config": {
+    "output": "results/um_forced_flow_reversion_support_2026-07-14.json",
+    "cspr_clock": "results/cash_sponsored_perp_rejection_clock_2026-07-14.csv",
+    "cspr_clock_manifest": "results/cash_sponsored_perp_rejection_clock_manifest_2026-07-14.json",
+    "rift_clock": "results/refill_inference_flow_topology_clock_2026-07-14.csv",
+    "rift_clock_manifest": "results/refill_inference_flow_topology_clock_manifest_2026-07-14.json",
+    "catch_clock": "results/cash_auction_transfer_catchup_handoff_clock_2026-07-14.csv",
+    "catch_clock_manifest": "results/cash_auction_transfer_catchup_handoff_clock_manifest_2026-07-14.json",
+    "luri_clock": "results/leveraged_um_inventory_release_handoff_clock_2026-07-14.csv",
+    "luri_clock_manifest": "results/leveraged_um_inventory_release_handoff_clock_manifest_2026-07-14.json",
+    "clasp_clock": "results/cash_late_arrival_spillover_propagation_clock_2026-07-14.csv",
+    "clasp_clock_manifest": "results/cash_late_arrival_spillover_propagation_clock_manifest_2026-07-14.json",
+    "ticket_baseline_bars": 8640,
+    "ticket_min_periods": 2016,
+    "event_baseline_bars": 17280,
+    "event_min_periods": 64,
+    "hold_bars": 36,
+    "minimum_nonoverlap_total": 900,
+    "minimum_nonoverlap_per_year": 130,
+    "minimum_nonoverlap_per_2023_half": 100,
+    "minimum_nonoverlap_per_2023_quarter": 40,
+    "minimum_side_share": 0.4,
+    "minimum_side_events_per_year": 60,
+    "minimum_active_months": 44,
+    "minimum_events_per_active_month": 5,
+    "maximum_temporal_jaccard": 0.03,
+    "maximum_temporal_containment": 0.06,
+    "maximum_stale_jaccard": 0.03,
+    "maximum_stale_containment": 0.06,
+    "maximum_prior_clock_jaccard": 0.05,
+    "maximum_prior_clock_containment": 0.1
+  },
+  "source": {
+    "feature_sha256": "00ab6a55fc7bfeb3012584db5bc97a7d7b98dd995491acfd3f865c6bd41f92cc",
+    "feature_manifest_sha256": "544c2945a2b56be478a1edc4abbb93b762bda5afc32cbd0658dd6822ff6b70fa",
+    "source_audit_sha256": "ffe0124ac9c5c0c3f1d1c284b672618cf910dc16cae36e65c1efe79710f039af",
+    "source_available_rows": 419855,
+    "quarantined_rows": 7068,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00",
+    "prior_clocks": {
+      "cspr": {
+        "clock_sha256": "353e14cc09b79960938802c9882ba36527e9f4c4819f8a492312fdefffdf1c0f",
+        "manifest_sha256": "37132d281942ac8f0e72edf239358ac74b9622db6401581461dca4ae4494caa2",
+        "rows": 850
+      },
+      "rift": {
+        "clock_sha256": "83becb88da83ce55e235f10c2e91ed3a2ad478c6aea2e9298d37c43b36cfff00",
+        "manifest_sha256": "47460778b45fe861c787e49a6f374c54e8155594350d1d30d54b4e54b0d63789",
+        "rows": 460
+      },
+      "catch": {
+        "clock_sha256": "066bf8e08267a043cc191eb436f0aa33105ab948de9f9f1edfde4d9c30de46d1",
+        "manifest_sha256": "f461529e14539ea4aa6e4b498ef8738f918dfb095ebbfcefb43ed127fe272ca6",
+        "rows": 3957
+      },
+      "luri": {
+        "clock_sha256": "50765cfed0c3ec6a0d1df18857c4e0a3e574d1aa449538c9b89cfac1fff67095",
+        "manifest_sha256": "c4ce91ee395fcff8ffd5321ef94bfc2aabd8980f0778d7d4369d22bd81cbca68",
+        "rows": 432
+      },
+      "clasp": {
+        "clock_sha256": "e166f4bd24afd5a2f129bcc26393ad4293ad0bc5792686b3b0fc4a805d53f9d5",
+        "manifest_sha256": "ba32d90eacc3ce63d7723eeb0b3c5b078e81f9b8a5a5dbc6cdd9f6fceb5b6d02",
+        "rows": 615
+      }
+    }
+  },
+  "support_grid": [
+    {
+      "quantile": 0.5,
+      "eligible_primary": 5267,
+      "raw_primary": 2602,
+      "support": {
+        "nonoverlap_total": 1961,
+        "by_year": {
+          "2020": 332,
+          "2021": 481,
+          "2022": 543,
+          "2023": 605
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 155,
+            "short": 177
+          },
+          "2021": {
+            "long": 234,
+            "short": 247
+          },
+          "2022": {
+            "long": 263,
+            "short": 280
+          },
+          "2023": {
+            "long": 310,
+            "short": 295
+          }
+        },
+        "2023_h1": 255,
+        "2023_h2": 350,
+        "2023_quarters": {
+          "2023Q1": 100,
+          "2023Q2": 155,
+          "2023Q3": 188,
+          "2023Q4": 162
+        },
+        "long_share": 0.49056603773584906,
+        "short_share": 0.5094339622641509,
+        "active_months": 47,
+        "minimum_events_per_active_month": 5,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 2602,
+        "no_late_um": 19141,
+        "no_ticket_surprise": 5175,
+        "no_path_excess": 6082,
+        "no_basis_stretch": 2614,
+        "no_spot_underresponse": 2602,
+        "early_um": 2717,
+        "venue_swap": 2308,
+        "aggregate_only": 81763,
+        "stale_1h": 2569,
+        "stale_24h": 2524,
+        "signal_delay_1bar": 2599
+      },
+      "control_scheduled_counts": {
+        "no_late_um": 6083,
+        "no_ticket_surprise": 3536,
+        "no_path_excess": 3489,
+        "no_basis_stretch": 1948,
+        "no_spot_underresponse": 1961,
+        "early_um": 2039,
+        "venue_swap": 1787,
+        "aggregate_only": 10291,
+        "stale_1h": 1938,
+        "stale_24h": 1914,
+        "signal_delay_1bar": 1959
+      },
+      "control_overlap": {
+        "no_late_um": {
+          "intersection": 2175,
+          "union": 19568,
+          "jaccard": 0.11115085854456255,
+          "primary_containment": 0.8358954650269024
+        },
+        "no_ticket_surprise": {
+          "intersection": 2230,
+          "union": 5547,
+          "jaccard": 0.4020191094285199,
+          "primary_containment": 0.857033051498847
+        },
+        "no_path_excess": {
+          "intersection": 2064,
+          "union": 6620,
+          "jaccard": 0.31178247734138975,
+          "primary_containment": 0.7932359723289777
+        },
+        "no_basis_stretch": {
+          "intersection": 2292,
+          "union": 2924,
+          "jaccard": 0.7838577291381669,
+          "primary_containment": 0.8808608762490392
+        },
+        "no_spot_underresponse": {
+          "intersection": 2602,
+          "union": 2602,
+          "jaccard": 1.0,
+          "primary_containment": 1.0
+        },
+        "early_um": {
+          "intersection": 0,
+          "union": 5319,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 4910,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 1849,
+          "union": 82516,
+          "jaccard": 0.022407775461728636,
+          "primary_containment": 0.7106072252113759
+        },
+        "stale_1h": {
+          "intersection": 21,
+          "union": 5150,
+          "jaccard": 0.004077669902912621,
+          "primary_containment": 0.008070714834742506
+        },
+        "stale_24h": {
+          "intersection": 32,
+          "union": 5094,
+          "jaccard": 0.006281900274833137,
+          "primary_containment": 0.012298232129131437
+        },
+        "signal_delay_1bar": {
+          "intersection": 25,
+          "union": 5176,
+          "jaccard": 0.004829984544049459,
+          "primary_containment": 0.009607993850883935
+        }
+      },
+      "control_scheduled_overlap": {
+        "no_late_um": {
+          "intersection": 595,
+          "union": 7449,
+          "jaccard": 0.07987649348905894,
+          "primary_containment": 0.30341662417134113
+        },
+        "no_ticket_surprise": {
+          "intersection": 1393,
+          "union": 4104,
+          "jaccard": 0.3394249512670565,
+          "primary_containment": 0.7103518612952575
+        },
+        "no_path_excess": {
+          "intersection": 1068,
+          "union": 4382,
+          "jaccard": 0.24372432679141945,
+          "primary_containment": 0.5446200917899031
+        },
+        "no_basis_stretch": {
+          "intersection": 1645,
+          "union": 2264,
+          "jaccard": 0.7265901060070671,
+          "primary_containment": 0.8388577256501785
+        },
+        "no_spot_underresponse": {
+          "intersection": 1961,
+          "union": 1961,
+          "jaccard": 1.0,
+          "primary_containment": 1.0
+        },
+        "early_um": {
+          "intersection": 0,
+          "union": 4000,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 3748,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 187,
+          "union": 12065,
+          "jaccard": 0.015499378367177788,
+          "primary_containment": 0.09535951045385008
+        },
+        "stale_1h": {
+          "intersection": 0,
+          "union": 3899,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "stale_24h": {
+          "intersection": 17,
+          "union": 3858,
+          "jaccard": 0.0044064282011404875,
+          "primary_containment": 0.008669046404895462
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 3920,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "ablation_retention_diagnostic_only": {
+        "no_late_um": {
+          "raw": 0.13593856120369888,
+          "scheduled": 0.3223738287029426
+        },
+        "no_ticket_surprise": {
+          "raw": 0.5028019323671498,
+          "scheduled": 0.5545814479638009
+        },
+        "no_path_excess": {
+          "raw": 0.42781979611969745,
+          "scheduled": 0.5620521639438234
+        },
+        "no_basis_stretch": {
+          "raw": 0.9954093343534812,
+          "scheduled": 1.0066735112936345
+        },
+        "no_spot_underresponse": {
+          "raw": 1.0,
+          "scheduled": 1.0
+        },
+        "aggregate_only": {
+          "raw": 0.031823685530129764,
+          "scheduled": 0.19055485375570888
+        }
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 0,
+          "union": 2811,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "rift": {
+          "intersection": 6,
+          "union": 2415,
+          "jaccard": 0.002484472049689441,
+          "primary_containment": 0.0030596634370219276
+        },
+        "catch": {
+          "intersection": 4,
+          "union": 5914,
+          "jaccard": 0.0006763611768684477,
+          "primary_containment": 0.002039775624681285
+        },
+        "luri": {
+          "intersection": 0,
+          "union": 2393,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "clasp": {
+          "intersection": 0,
+          "union": 2576,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "passes_novelty": true,
+      "passes_support": true
+    },
+    {
+      "quantile": 0.65,
+      "eligible_primary": 5267,
+      "raw_primary": 1820,
+      "support": {
+        "nonoverlap_total": 1464,
+        "by_year": {
+          "2020": 246,
+          "2021": 351,
+          "2022": 421,
+          "2023": 446
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 115,
+            "short": 131
+          },
+          "2021": {
+            "long": 167,
+            "short": 184
+          },
+          "2022": {
+            "long": 212,
+            "short": 209
+          },
+          "2023": {
+            "long": 225,
+            "short": 221
+          }
+        },
+        "2023_h1": 187,
+        "2023_h2": 259,
+        "2023_quarters": {
+          "2023Q1": 71,
+          "2023Q2": 116,
+          "2023Q3": 143,
+          "2023Q4": 116
+        },
+        "long_share": 0.491120218579235,
+        "short_share": 0.5088797814207651,
+        "active_months": 47,
+        "minimum_events_per_active_month": 5,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 1820,
+        "no_late_um": 13417,
+        "no_ticket_surprise": 3624,
+        "no_path_excess": 4316,
+        "no_basis_stretch": 1830,
+        "no_spot_underresponse": 1820,
+        "early_um": 1919,
+        "venue_swap": 1596,
+        "aggregate_only": 57250,
+        "stale_1h": 1795,
+        "stale_24h": 1764,
+        "signal_delay_1bar": 1818
+      },
+      "control_scheduled_counts": {
+        "no_late_um": 5156,
+        "no_ticket_surprise": 2693,
+        "no_path_excess": 2753,
+        "no_basis_stretch": 1464,
+        "no_spot_underresponse": 1464,
+        "early_um": 1530,
+        "venue_swap": 1308,
+        "aggregate_only": 9639,
+        "stale_1h": 1445,
+        "stale_24h": 1426,
+        "signal_delay_1bar": 1463
+      },
+      "control_overlap": {
+        "no_late_um": {
+          "intersection": 1414,
+          "union": 13823,
+          "jaccard": 0.10229327931708022,
+          "primary_containment": 0.7769230769230769
+        },
+        "no_ticket_surprise": {
+          "intersection": 1487,
+          "union": 3957,
+          "jaccard": 0.3757897397017943,
+          "primary_containment": 0.817032967032967
+        },
+        "no_path_excess": {
+          "intersection": 1343,
+          "union": 4793,
+          "jaccard": 0.2802002920926351,
+          "primary_containment": 0.737912087912088
+        },
+        "no_basis_stretch": {
+          "intersection": 1523,
+          "union": 2127,
+          "jaccard": 0.7160319699106723,
+          "primary_containment": 0.8368131868131868
+        },
+        "no_spot_underresponse": {
+          "intersection": 1820,
+          "union": 1820,
+          "jaccard": 1.0,
+          "primary_containment": 1.0
+        },
+        "early_um": {
+          "intersection": 0,
+          "union": 3739,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 3416,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 1125,
+          "union": 57945,
+          "jaccard": 0.019414962464405904,
+          "primary_containment": 0.6181318681318682
+        },
+        "stale_1h": {
+          "intersection": 11,
+          "union": 3604,
+          "jaccard": 0.0030521642619311877,
+          "primary_containment": 0.006043956043956044
+        },
+        "stale_24h": {
+          "intersection": 19,
+          "union": 3565,
+          "jaccard": 0.005329593267882188,
+          "primary_containment": 0.010439560439560439
+        },
+        "signal_delay_1bar": {
+          "intersection": 10,
+          "union": 3628,
+          "jaccard": 0.0027563395810363835,
+          "primary_containment": 0.005494505494505495
+        }
+      },
+      "control_scheduled_overlap": {
+        "no_late_um": {
+          "intersection": 487,
+          "union": 6133,
+          "jaccard": 0.07940648948312408,
+          "primary_containment": 0.3326502732240437
+        },
+        "no_ticket_surprise": {
+          "intersection": 1022,
+          "union": 3135,
+          "jaccard": 0.3259968102073365,
+          "primary_containment": 0.6980874316939891
+        },
+        "no_path_excess": {
+          "intersection": 791,
+          "union": 3426,
+          "jaccard": 0.23088149445417397,
+          "primary_containment": 0.5403005464480874
+        },
+        "no_basis_stretch": {
+          "intersection": 1169,
+          "union": 1759,
+          "jaccard": 0.6645821489482661,
+          "primary_containment": 0.7984972677595629
+        },
+        "no_spot_underresponse": {
+          "intersection": 1464,
+          "union": 1464,
+          "jaccard": 1.0,
+          "primary_containment": 1.0
+        },
+        "early_um": {
+          "intersection": 0,
+          "union": 2994,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 2772,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 153,
+          "union": 10950,
+          "jaccard": 0.013972602739726028,
+          "primary_containment": 0.10450819672131148
+        },
+        "stale_1h": {
+          "intersection": 0,
+          "union": 2909,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "stale_24h": {
+          "intersection": 13,
+          "union": 2877,
+          "jaccard": 0.0045185957594716716,
+          "primary_containment": 0.008879781420765027
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 2927,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "ablation_retention_diagnostic_only": {
+        "no_late_um": {
+          "raw": 0.1356488037564284,
+          "scheduled": 0.2839410395655547
+        },
+        "no_ticket_surprise": {
+          "raw": 0.5022075055187638,
+          "scheduled": 0.5436316375789083
+        },
+        "no_path_excess": {
+          "raw": 0.42168674698795183,
+          "scheduled": 0.5317835088993825
+        },
+        "no_basis_stretch": {
+          "raw": 0.994535519125683,
+          "scheduled": 1.0
+        },
+        "no_spot_underresponse": {
+          "raw": 1.0,
+          "scheduled": 1.0
+        },
+        "aggregate_only": {
+          "raw": 0.03179039301310044,
+          "scheduled": 0.15188297541238718
+        }
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 0,
+          "union": 2314,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "rift": {
+          "intersection": 4,
+          "union": 1920,
+          "jaccard": 0.0020833333333333333,
+          "primary_containment": 0.00273224043715847
+        },
+        "catch": {
+          "intersection": 3,
+          "union": 5418,
+          "jaccard": 0.0005537098560354374,
+          "primary_containment": 0.0020491803278688526
+        },
+        "luri": {
+          "intersection": 0,
+          "union": 1896,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "clasp": {
+          "intersection": 0,
+          "union": 2079,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "passes_novelty": true,
+      "passes_support": true
+    },
+    {
+      "quantile": 0.75,
+      "eligible_primary": 5267,
+      "raw_primary": 1308,
+      "support": {
+        "nonoverlap_total": 1099,
+        "by_year": {
+          "2020": 173,
+          "2021": 267,
+          "2022": 326,
+          "2023": 333
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 84,
+            "short": 89
+          },
+          "2021": {
+            "long": 120,
+            "short": 147
+          },
+          "2022": {
+            "long": 162,
+            "short": 164
+          },
+          "2023": {
+            "long": 167,
+            "short": 166
+          }
+        },
+        "2023_h1": 139,
+        "2023_h2": 194,
+        "2023_quarters": {
+          "2023Q1": 54,
+          "2023Q2": 85,
+          "2023Q3": 116,
+          "2023Q4": 78
+        },
+        "long_share": 0.48498635122838946,
+        "short_share": 0.5150136487716106,
+        "active_months": 46,
+        "minimum_events_per_active_month": 5,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 1308,
+        "no_late_um": 9611,
+        "no_ticket_surprise": 2590,
+        "no_path_excess": 3096,
+        "no_basis_stretch": 1345,
+        "no_spot_underresponse": 1308,
+        "early_um": 1388,
+        "venue_swap": 1166,
+        "aggregate_only": 40936,
+        "stale_1h": 1291,
+        "stale_24h": 1265,
+        "signal_delay_1bar": 1306
+      },
+      "control_scheduled_counts": {
+        "no_late_um": 4262,
+        "no_ticket_surprise": 2063,
+        "no_path_excess": 2142,
+        "no_basis_stretch": 1133,
+        "no_spot_underresponse": 1099,
+        "early_um": 1132,
+        "venue_swap": 992,
+        "aggregate_only": 8886,
+        "stale_1h": 1086,
+        "stale_24h": 1065,
+        "signal_delay_1bar": 1098
+      },
+      "control_overlap": {
+        "no_late_um": {
+          "intersection": 965,
+          "union": 9954,
+          "jaccard": 0.09694595137633112,
+          "primary_containment": 0.7377675840978594
+        },
+        "no_ticket_surprise": {
+          "intersection": 1038,
+          "union": 2860,
+          "jaccard": 0.36293706293706296,
+          "primary_containment": 0.7935779816513762
+        },
+        "no_path_excess": {
+          "intersection": 900,
+          "union": 3504,
+          "jaccard": 0.2568493150684932,
+          "primary_containment": 0.6880733944954128
+        },
+        "no_basis_stretch": {
+          "intersection": 1066,
+          "union": 1587,
+          "jaccard": 0.6717076244486453,
+          "primary_containment": 0.8149847094801224
+        },
+        "no_spot_underresponse": {
+          "intersection": 1308,
+          "union": 1308,
+          "jaccard": 1.0,
+          "primary_containment": 1.0
+        },
+        "early_um": {
+          "intersection": 0,
+          "union": 2696,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 2474,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 725,
+          "union": 41519,
+          "jaccard": 0.017461884920157038,
+          "primary_containment": 0.5542813455657493
+        },
+        "stale_1h": {
+          "intersection": 9,
+          "union": 2590,
+          "jaccard": 0.0034749034749034747,
+          "primary_containment": 0.006880733944954129
+        },
+        "stale_24h": {
+          "intersection": 12,
+          "union": 2561,
+          "jaccard": 0.004685669660288949,
+          "primary_containment": 0.009174311926605505
+        },
+        "signal_delay_1bar": {
+          "intersection": 3,
+          "union": 2611,
+          "jaccard": 0.0011489850631941786,
+          "primary_containment": 0.0022935779816513763
+        }
+      },
+      "control_scheduled_overlap": {
+        "no_late_um": {
+          "intersection": 395,
+          "union": 4966,
+          "jaccard": 0.07954087797019734,
+          "primary_containment": 0.359417652411283
+        },
+        "no_ticket_surprise": {
+          "intersection": 780,
+          "union": 2382,
+          "jaccard": 0.327455919395466,
+          "primary_containment": 0.7097361237488626
+        },
+        "no_path_excess": {
+          "intersection": 588,
+          "union": 2653,
+          "jaccard": 0.22163588390501318,
+          "primary_containment": 0.535031847133758
+        },
+        "no_basis_stretch": {
+          "intersection": 862,
+          "union": 1370,
+          "jaccard": 0.6291970802919709,
+          "primary_containment": 0.7843494085532302
+        },
+        "no_spot_underresponse": {
+          "intersection": 1099,
+          "union": 1099,
+          "jaccard": 1.0,
+          "primary_containment": 1.0
+        },
+        "early_um": {
+          "intersection": 0,
+          "union": 2231,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 2091,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 135,
+          "union": 9850,
+          "jaccard": 0.013705583756345178,
+          "primary_containment": 0.12283894449499545
+        },
+        "stale_1h": {
+          "intersection": 0,
+          "union": 2185,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "stale_24h": {
+          "intersection": 10,
+          "union": 2154,
+          "jaccard": 0.004642525533890436,
+          "primary_containment": 0.009099181073703366
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 2197,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "ablation_retention_diagnostic_only": {
+        "no_late_um": {
+          "raw": 0.13609405889085424,
+          "scheduled": 0.25786015954950725
+        },
+        "no_ticket_surprise": {
+          "raw": 0.505019305019305,
+          "scheduled": 0.5327193407658749
+        },
+        "no_path_excess": {
+          "raw": 0.42248062015503873,
+          "scheduled": 0.5130718954248366
+        },
+        "no_basis_stretch": {
+          "raw": 0.9724907063197026,
+          "scheduled": 0.969991173874669
+        },
+        "no_spot_underresponse": {
+          "raw": 1.0,
+          "scheduled": 1.0
+        },
+        "aggregate_only": {
+          "raw": 0.03195231581004495,
+          "scheduled": 0.12367769525095657
+        }
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 0,
+          "union": 1949,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "rift": {
+          "intersection": 4,
+          "union": 1555,
+          "jaccard": 0.002572347266881029,
+          "primary_containment": 0.003639672429481347
+        },
+        "catch": {
+          "intersection": 2,
+          "union": 5054,
+          "jaccard": 0.0003957261574990107,
+          "primary_containment": 0.0018198362147406734
+        },
+        "luri": {
+          "intersection": 0,
+          "union": 1531,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "clasp": {
+          "intersection": 0,
+          "union": 1714,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "passes_novelty": true,
+      "passes_support": true
+    },
+    {
+      "quantile": 0.8,
+      "eligible_primary": 5267,
+      "raw_primary": 1070,
+      "support": {
+        "nonoverlap_total": 915,
+        "by_year": {
+          "2020": 144,
+          "2021": 222,
+          "2022": 270,
+          "2023": 279
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 68,
+            "short": 76
+          },
+          "2021": {
+            "long": 98,
+            "short": 124
+          },
+          "2022": {
+            "long": 136,
+            "short": 134
+          },
+          "2023": {
+            "long": 136,
+            "short": 143
+          }
+        },
+        "2023_h1": 116,
+        "2023_h2": 163,
+        "2023_quarters": {
+          "2023Q1": 45,
+          "2023Q2": 71,
+          "2023Q3": 99,
+          "2023Q4": 64
+        },
+        "long_share": 0.4786885245901639,
+        "short_share": 0.521311475409836,
+        "active_months": 46,
+        "minimum_events_per_active_month": 5,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 1070,
+        "no_late_um": 7694,
+        "no_ticket_surprise": 2060,
+        "no_path_excess": 2498,
+        "no_basis_stretch": 1063,
+        "no_spot_underresponse": 1070,
+        "early_um": 1098,
+        "venue_swap": 937,
+        "aggregate_only": 32757,
+        "stale_1h": 1054,
+        "stale_24h": 1033,
+        "signal_delay_1bar": 1068
+      },
+      "control_scheduled_counts": {
+        "no_late_um": 3736,
+        "no_ticket_surprise": 1705,
+        "no_path_excess": 1795,
+        "no_basis_stretch": 914,
+        "no_spot_underresponse": 915,
+        "early_um": 920,
+        "venue_swap": 814,
+        "aggregate_only": 8303,
+        "stale_1h": 900,
+        "stale_24h": 886,
+        "signal_delay_1bar": 913
+      },
+      "control_overlap": {
+        "no_late_um": {
+          "intersection": 759,
+          "union": 8005,
+          "jaccard": 0.0948157401623985,
+          "primary_containment": 0.7093457943925233
+        },
+        "no_ticket_surprise": {
+          "intersection": 813,
+          "union": 2317,
+          "jaccard": 0.3508847647820457,
+          "primary_containment": 0.7598130841121495
+        },
+        "no_path_excess": {
+          "intersection": 699,
+          "union": 2869,
+          "jaccard": 0.24363889857093063,
+          "primary_containment": 0.6532710280373831
+        },
+        "no_basis_stretch": {
+          "intersection": 829,
+          "union": 1304,
+          "jaccard": 0.6357361963190185,
+          "primary_containment": 0.7747663551401869
+        },
+        "no_spot_underresponse": {
+          "intersection": 1070,
+          "union": 1070,
+          "jaccard": 1.0,
+          "primary_containment": 1.0
+        },
+        "early_um": {
+          "intersection": 0,
+          "union": 2168,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 2007,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 543,
+          "union": 33284,
+          "jaccard": 0.016314144934503064,
+          "primary_containment": 0.5074766355140187
+        },
+        "stale_1h": {
+          "intersection": 5,
+          "union": 2119,
+          "jaccard": 0.0023596035865974517,
+          "primary_containment": 0.004672897196261682
+        },
+        "stale_24h": {
+          "intersection": 8,
+          "union": 2095,
+          "jaccard": 0.0038186157517899762,
+          "primary_containment": 0.007476635514018692
+        },
+        "signal_delay_1bar": {
+          "intersection": 2,
+          "union": 2136,
+          "jaccard": 0.0009363295880149813,
+          "primary_containment": 0.001869158878504673
+        }
+      },
+      "control_scheduled_overlap": {
+        "no_late_um": {
+          "intersection": 349,
+          "union": 4302,
+          "jaccard": 0.08112505811250581,
+          "primary_containment": 0.3814207650273224
+        },
+        "no_ticket_surprise": {
+          "intersection": 639,
+          "union": 1981,
+          "jaccard": 0.3225643614336194,
+          "primary_containment": 0.6983606557377049
+        },
+        "no_path_excess": {
+          "intersection": 480,
+          "union": 2230,
+          "jaccard": 0.21524663677130046,
+          "primary_containment": 0.5245901639344263
+        },
+        "no_basis_stretch": {
+          "intersection": 680,
+          "union": 1149,
+          "jaccard": 0.5918189730200174,
+          "primary_containment": 0.7431693989071039
+        },
+        "no_spot_underresponse": {
+          "intersection": 915,
+          "union": 915,
+          "jaccard": 1.0,
+          "primary_containment": 1.0
+        },
+        "early_um": {
+          "intersection": 0,
+          "union": 1835,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 1729,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 111,
+          "union": 9107,
+          "jaccard": 0.012188426485121336,
+          "primary_containment": 0.12131147540983607
+        },
+        "stale_1h": {
+          "intersection": 0,
+          "union": 1815,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "stale_24h": {
+          "intersection": 7,
+          "union": 1794,
+          "jaccard": 0.0039018952062430325,
+          "primary_containment": 0.007650273224043716
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 1828,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "ablation_retention_diagnostic_only": {
+        "no_late_um": {
+          "raw": 0.1390694047309592,
+          "scheduled": 0.24491434689507494
+        },
+        "no_ticket_surprise": {
+          "raw": 0.5194174757281553,
+          "scheduled": 0.5366568914956011
+        },
+        "no_path_excess": {
+          "raw": 0.42834267413931143,
+          "scheduled": 0.5097493036211699
+        },
+        "no_basis_stretch": {
+          "raw": 1.006585136406397,
+          "scheduled": 1.00109409190372
+        },
+        "no_spot_underresponse": {
+          "raw": 1.0,
+          "scheduled": 1.0
+        },
+        "aggregate_only": {
+          "raw": 0.03266477394144763,
+          "scheduled": 0.11020113212092016
+        }
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 0,
+          "union": 1765,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "rift": {
+          "intersection": 3,
+          "union": 1372,
+          "jaccard": 0.002186588921282799,
+          "primary_containment": 0.003278688524590164
+        },
+        "catch": {
+          "intersection": 2,
+          "union": 4870,
+          "jaccard": 0.0004106776180698152,
+          "primary_containment": 0.002185792349726776
+        },
+        "luri": {
+          "intersection": 0,
+          "union": 1347,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "clasp": {
+          "intersection": 0,
+          "union": 1530,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "passes_novelty": true,
+      "passes_support": true
+    },
+    {
+      "quantile": 0.85,
+      "eligible_primary": 5267,
+      "raw_primary": 805,
+      "support": {
+        "nonoverlap_total": 711,
+        "by_year": {
+          "2020": 111,
+          "2021": 165,
+          "2022": 206,
+          "2023": 229
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 52,
+            "short": 59
+          },
+          "2021": {
+            "long": 70,
+            "short": 95
+          },
+          "2022": {
+            "long": 99,
+            "short": 107
+          },
+          "2023": {
+            "long": 110,
+            "short": 119
+          }
+        },
+        "2023_h1": 103,
+        "2023_h2": 126,
+        "2023_quarters": {
+          "2023Q1": 39,
+          "2023Q2": 64,
+          "2023Q3": 76,
+          "2023Q4": 50
+        },
+        "long_share": 0.46554149085794655,
+        "short_share": 0.5344585091420534,
+        "active_months": 45,
+        "minimum_events_per_active_month": 5,
+        "passes_count_support": false
+      },
+      "control_raw_counts": {
+        "direction_flip": 805,
+        "no_late_um": 5782,
+        "no_ticket_surprise": 1564,
+        "no_path_excess": 1885,
+        "no_basis_stretch": 786,
+        "no_spot_underresponse": 805,
+        "early_um": 833,
+        "venue_swap": 724,
+        "aggregate_only": 24489,
+        "stale_1h": 793,
+        "stale_24h": 774,
+        "signal_delay_1bar": 804
+      },
+      "control_scheduled_counts": {
+        "no_late_um": 3126,
+        "no_ticket_surprise": 1356,
+        "no_path_excess": 1446,
+        "no_basis_stretch": 686,
+        "no_spot_underresponse": 711,
+        "early_um": 716,
+        "venue_swap": 646,
+        "aggregate_only": 7451,
+        "stale_1h": 700,
+        "stale_24h": 686,
+        "signal_delay_1bar": 710
+      },
+      "control_overlap": {
+        "no_late_um": {
+          "intersection": 531,
+          "union": 6056,
+          "jaccard": 0.08768163804491413,
+          "primary_containment": 0.6596273291925466
+        },
+        "no_ticket_surprise": {
+          "intersection": 594,
+          "union": 1775,
+          "jaccard": 0.3346478873239437,
+          "primary_containment": 0.737888198757764
+        },
+        "no_path_excess": {
+          "intersection": 493,
+          "union": 2197,
+          "jaccard": 0.22439690487027766,
+          "primary_containment": 0.6124223602484472
+        },
+        "no_basis_stretch": {
+          "intersection": 579,
+          "union": 1012,
+          "jaccard": 0.5721343873517787,
+          "primary_containment": 0.7192546583850932
+        },
+        "no_spot_underresponse": {
+          "intersection": 805,
+          "union": 805,
+          "jaccard": 1.0,
+          "primary_containment": 1.0
+        },
+        "early_um": {
+          "intersection": 0,
+          "union": 1638,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 1529,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 370,
+          "union": 24924,
+          "jaccard": 0.014845129192745948,
+          "primary_containment": 0.45962732919254656
+        },
+        "stale_1h": {
+          "intersection": 4,
+          "union": 1594,
+          "jaccard": 0.002509410288582183,
+          "primary_containment": 0.004968944099378882
+        },
+        "stale_24h": {
+          "intersection": 3,
+          "union": 1576,
+          "jaccard": 0.0019035532994923859,
+          "primary_containment": 0.0037267080745341614
+        },
+        "signal_delay_1bar": {
+          "intersection": 1,
+          "union": 1608,
+          "jaccard": 0.0006218905472636816,
+          "primary_containment": 0.0012422360248447205
+        }
+      },
+      "control_scheduled_overlap": {
+        "no_late_um": {
+          "intersection": 278,
+          "union": 3559,
+          "jaccard": 0.07811182916549593,
+          "primary_containment": 0.3909985935302391
+        },
+        "no_ticket_surprise": {
+          "intersection": 489,
+          "union": 1578,
+          "jaccard": 0.30988593155893535,
+          "primary_containment": 0.6877637130801688
+        },
+        "no_path_excess": {
+          "intersection": 351,
+          "union": 1806,
+          "jaccard": 0.19435215946843853,
+          "primary_containment": 0.4936708860759494
+        },
+        "no_basis_stretch": {
+          "intersection": 495,
+          "union": 902,
+          "jaccard": 0.5487804878048781,
+          "primary_containment": 0.6962025316455697
+        },
+        "no_spot_underresponse": {
+          "intersection": 711,
+          "union": 711,
+          "jaccard": 1.0,
+          "primary_containment": 1.0
+        },
+        "early_um": {
+          "intersection": 0,
+          "union": 1427,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 1357,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 91,
+          "union": 8071,
+          "jaccard": 0.011274934952298352,
+          "primary_containment": 0.1279887482419128
+        },
+        "stale_1h": {
+          "intersection": 0,
+          "union": 1411,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "stale_24h": {
+          "intersection": 3,
+          "union": 1394,
+          "jaccard": 0.002152080344332855,
+          "primary_containment": 0.004219409282700422
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 1421,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "ablation_retention_diagnostic_only": {
+        "no_late_um": {
+          "raw": 0.13922518159806296,
+          "scheduled": 0.22744721689059502
+        },
+        "no_ticket_surprise": {
+          "raw": 0.5147058823529411,
+          "scheduled": 0.5243362831858407
+        },
+        "no_path_excess": {
+          "raw": 0.4270557029177719,
+          "scheduled": 0.491701244813278
+        },
+        "no_basis_stretch": {
+          "raw": 1.0241730279898218,
+          "scheduled": 1.0364431486880465
+        },
+        "no_spot_underresponse": {
+          "raw": 1.0,
+          "scheduled": 1.0
+        },
+        "aggregate_only": {
+          "raw": 0.032871901670137614,
+          "scheduled": 0.0954234330962287
+        }
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 0,
+          "union": 1561,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "rift": {
+          "intersection": 3,
+          "union": 1168,
+          "jaccard": 0.0025684931506849314,
+          "primary_containment": 0.004219409282700422
+        },
+        "catch": {
+          "intersection": 2,
+          "union": 4666,
+          "jaccard": 0.0004286326618088298,
+          "primary_containment": 0.0028129395218002813
+        },
+        "luri": {
+          "intersection": 0,
+          "union": 1143,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "clasp": {
+          "intersection": 0,
+          "union": 1326,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "passes_novelty": true,
+      "passes_support": false
+    }
+  ],
+  "support_decision": "pass",
+  "selected_quantile": 0.8,
+  "selected_support": {
+    "quantile": 0.8,
+    "eligible_primary": 5267,
+    "raw_primary": 1070,
+    "support": {
+      "nonoverlap_total": 915,
+      "by_year": {
+        "2020": 144,
+        "2021": 222,
+        "2022": 270,
+        "2023": 279
+      },
+      "by_year_side": {
+        "2020": {
+          "long": 68,
+          "short": 76
+        },
+        "2021": {
+          "long": 98,
+          "short": 124
+        },
+        "2022": {
+          "long": 136,
+          "short": 134
+        },
+        "2023": {
+          "long": 136,
+          "short": 143
+        }
+      },
+      "2023_h1": 116,
+      "2023_h2": 163,
+      "2023_quarters": {
+        "2023Q1": 45,
+        "2023Q2": 71,
+        "2023Q3": 99,
+        "2023Q4": 64
+      },
+      "long_share": 0.4786885245901639,
+      "short_share": 0.521311475409836,
+      "active_months": 46,
+      "minimum_events_per_active_month": 5,
+      "passes_count_support": true
+    },
+    "control_raw_counts": {
+      "direction_flip": 1070,
+      "no_late_um": 7694,
+      "no_ticket_surprise": 2060,
+      "no_path_excess": 2498,
+      "no_basis_stretch": 1063,
+      "no_spot_underresponse": 1070,
+      "early_um": 1098,
+      "venue_swap": 937,
+      "aggregate_only": 32757,
+      "stale_1h": 1054,
+      "stale_24h": 1033,
+      "signal_delay_1bar": 1068
+    },
+    "control_scheduled_counts": {
+      "no_late_um": 3736,
+      "no_ticket_surprise": 1705,
+      "no_path_excess": 1795,
+      "no_basis_stretch": 914,
+      "no_spot_underresponse": 915,
+      "early_um": 920,
+      "venue_swap": 814,
+      "aggregate_only": 8303,
+      "stale_1h": 900,
+      "stale_24h": 886,
+      "signal_delay_1bar": 913
+    },
+    "control_overlap": {
+      "no_late_um": {
+        "intersection": 759,
+        "union": 8005,
+        "jaccard": 0.0948157401623985,
+        "primary_containment": 0.7093457943925233
+      },
+      "no_ticket_surprise": {
+        "intersection": 813,
+        "union": 2317,
+        "jaccard": 0.3508847647820457,
+        "primary_containment": 0.7598130841121495
+      },
+      "no_path_excess": {
+        "intersection": 699,
+        "union": 2869,
+        "jaccard": 0.24363889857093063,
+        "primary_containment": 0.6532710280373831
+      },
+      "no_basis_stretch": {
+        "intersection": 829,
+        "union": 1304,
+        "jaccard": 0.6357361963190185,
+        "primary_containment": 0.7747663551401869
+      },
+      "no_spot_underresponse": {
+        "intersection": 1070,
+        "union": 1070,
+        "jaccard": 1.0,
+        "primary_containment": 1.0
+      },
+      "early_um": {
+        "intersection": 0,
+        "union": 2168,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      },
+      "venue_swap": {
+        "intersection": 0,
+        "union": 2007,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      },
+      "aggregate_only": {
+        "intersection": 543,
+        "union": 33284,
+        "jaccard": 0.016314144934503064,
+        "primary_containment": 0.5074766355140187
+      },
+      "stale_1h": {
+        "intersection": 5,
+        "union": 2119,
+        "jaccard": 0.0023596035865974517,
+        "primary_containment": 0.004672897196261682
+      },
+      "stale_24h": {
+        "intersection": 8,
+        "union": 2095,
+        "jaccard": 0.0038186157517899762,
+        "primary_containment": 0.007476635514018692
+      },
+      "signal_delay_1bar": {
+        "intersection": 2,
+        "union": 2136,
+        "jaccard": 0.0009363295880149813,
+        "primary_containment": 0.001869158878504673
+      }
+    },
+    "control_scheduled_overlap": {
+      "no_late_um": {
+        "intersection": 349,
+        "union": 4302,
+        "jaccard": 0.08112505811250581,
+        "primary_containment": 0.3814207650273224
+      },
+      "no_ticket_surprise": {
+        "intersection": 639,
+        "union": 1981,
+        "jaccard": 0.3225643614336194,
+        "primary_containment": 0.6983606557377049
+      },
+      "no_path_excess": {
+        "intersection": 480,
+        "union": 2230,
+        "jaccard": 0.21524663677130046,
+        "primary_containment": 0.5245901639344263
+      },
+      "no_basis_stretch": {
+        "intersection": 680,
+        "union": 1149,
+        "jaccard": 0.5918189730200174,
+        "primary_containment": 0.7431693989071039
+      },
+      "no_spot_underresponse": {
+        "intersection": 915,
+        "union": 915,
+        "jaccard": 1.0,
+        "primary_containment": 1.0
+      },
+      "early_um": {
+        "intersection": 0,
+        "union": 1835,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      },
+      "venue_swap": {
+        "intersection": 0,
+        "union": 1729,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      },
+      "aggregate_only": {
+        "intersection": 111,
+        "union": 9107,
+        "jaccard": 0.012188426485121336,
+        "primary_containment": 0.12131147540983607
+      },
+      "stale_1h": {
+        "intersection": 0,
+        "union": 1815,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      },
+      "stale_24h": {
+        "intersection": 7,
+        "union": 1794,
+        "jaccard": 0.0039018952062430325,
+        "primary_containment": 0.007650273224043716
+      },
+      "signal_delay_1bar": {
+        "intersection": 0,
+        "union": 1828,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      }
+    },
+    "ablation_retention_diagnostic_only": {
+      "no_late_um": {
+        "raw": 0.1390694047309592,
+        "scheduled": 0.24491434689507494
+      },
+      "no_ticket_surprise": {
+        "raw": 0.5194174757281553,
+        "scheduled": 0.5366568914956011
+      },
+      "no_path_excess": {
+        "raw": 0.42834267413931143,
+        "scheduled": 0.5097493036211699
+      },
+      "no_basis_stretch": {
+        "raw": 1.006585136406397,
+        "scheduled": 1.00109409190372
+      },
+      "no_spot_underresponse": {
+        "raw": 1.0,
+        "scheduled": 1.0
+      },
+      "aggregate_only": {
+        "raw": 0.03266477394144763,
+        "scheduled": 0.11020113212092016
+      }
+    },
+    "prior_clock_overlap": {
+      "cspr": {
+        "intersection": 0,
+        "union": 1765,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      },
+      "rift": {
+        "intersection": 3,
+        "union": 1372,
+        "jaccard": 0.002186588921282799,
+        "primary_containment": 0.003278688524590164
+      },
+      "catch": {
+        "intersection": 2,
+        "union": 4870,
+        "jaccard": 0.0004106776180698152,
+        "primary_containment": 0.002185792349726776
+      },
+      "luri": {
+        "intersection": 0,
+        "union": 1347,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      },
+      "clasp": {
+        "intersection": 0,
+        "union": 1530,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      }
+    },
+    "passes_novelty": true,
+    "passes_support": true
+  }
+}
