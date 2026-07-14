@@ -69,6 +69,10 @@ EXECUTION_SOURCE = Path(
 EXECUTION_SOURCE_SHA256 = (
     "1589a52605386570485a7e6be3b8f3aa9439a498abb60eaa42272ac62d4cbed3"
 )
+TRADE_STATS_SOURCE = Path("training/strict_bar_backtest.py")
+TRADE_STATS_SOURCE_SHA256 = (
+    "3e95ad320d8869755afa1f4907d2d478200a3ebfc015e4eaeace0be0b15f9682"
+)
 DEPTH_MANIFEST = Path(
     "results/binance_cross_collateral_book_depth_btc_2023_manifest.json"
 )
@@ -127,6 +131,7 @@ def verify_preregistration() -> dict[str, Any]:
         (FEATURE_SOURCE, FEATURE_SOURCE_SHA256),
         (SCHEDULER_SOURCE, SCHEDULER_SOURCE_SHA256),
         (EXECUTION_SOURCE, EXECUTION_SOURCE_SHA256),
+        (TRADE_STATS_SOURCE, TRADE_STATS_SOURCE_SHA256),
         (DEPTH_MANIFEST, DEPTH_MANIFEST_SHA256),
         (MARKET_MANIFEST, MARKET_MANIFEST_SHA256),
     ):

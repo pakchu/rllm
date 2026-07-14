@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pandas as pd
 import pytest
 
@@ -98,6 +100,46 @@ def test_sign_permutation_is_reproducible_and_count_preserving() -> None:
     pd.testing.assert_frame_equal(first, second)
     assert sorted(first["side"].tolist()) == [-1, -1, 1, 1]
     assert first["entry_position"].tolist() == [1, 11, 21, 31]
+
+
+def test_clv_policy_uses_exact_costed_next_open_execution() -> None:
+    market = pd.DataFrame(
+        {
+            "date": pd.date_range("2023-01-01", periods=7, freq="5min"),
+            "open": [100.0, 100.0, 100.0, 100.0, 100.0, 110.0, 110.0],
+            "high": [100.0] * 7,
+            "low": [100.0] * 7,
+        }
+    )
+    schedule = pd.DataFrame(
+        {
+            "signal_position": [0],
+            "entry_position": [1],
+            "exit_position": [5],
+            "signal_date": ["2023-01-01 00:00:00"],
+            "entry_date": ["2023-01-01 00:05:00"],
+            "exit_date": ["2023-01-01 00:25:00"],
+            "side": [1],
+            "branch": ["vacuum"],
+            "hold_bars": [4],
+        }
+    )
+    cfg = replace(evaluator.EvaluationConfig(), cluster_permutations=16)
+    metrics = evaluator.evaluate_policy(
+        market,
+        schedule,
+        policy="clv",
+        start="2023-01-01",
+        end="2023-01-02",
+        cfg=cfg,
+    )
+    expected_equity = (1.0 - 0.0003) * (1.0 + 0.5 * 0.10) * (1.0 - 0.0003)
+    assert metrics["absolute_return_pct"] == pytest.approx(
+        (expected_equity - 1.0) * 100.0
+    )
+    assert metrics["trade_count"] == 1
+    assert metrics["reserved_candidate_count"] == 1
+    assert metrics["executed_candidate_count"] == 1
 
 
 def test_unknown_policy_branch_and_side_fail_closed() -> None:
