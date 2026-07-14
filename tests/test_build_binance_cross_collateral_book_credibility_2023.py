@@ -81,3 +81,21 @@ def test_builder_rejects_any_request_outside_calendar_2023() -> None:
         builder.build(replace(builder.Config(), end="2024-01-02"))
     with pytest.raises(ValueError, match="physically bounded"):
         builder.build(replace(builder.Config(), start="2022-12-31"))
+
+
+def test_base_replay_allows_only_csv_roundtrip_noise() -> None:
+    frozen = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2023-01-01"]),
+            "depth": [17_305.4065],
+            "source_complete": [True],
+        }
+    )
+    roundtripped = frozen.copy()
+    roundtripped.loc[0, "depth"] += 4e-12
+    builder._assert_base_frame_equal(roundtripped, frozen)
+
+    changed = frozen.copy()
+    changed.loc[0, "depth"] += 1e-6
+    with pytest.raises(AssertionError):
+        builder._assert_base_frame_equal(changed, frozen)

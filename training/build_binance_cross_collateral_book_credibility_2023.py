@@ -184,11 +184,24 @@ def _verify_base_panel_replay(
         raise ValueError("frozen base depth panel hash mismatch")
     frozen = pd.read_csv(path, compression="gzip", parse_dates=["date"])
     columns = frozen.columns.tolist()
-    pd.testing.assert_frame_equal(
+    _assert_base_frame_equal(
         panel[columns].reset_index(drop=True),
         frozen.reset_index(drop=True),
+    )
+
+
+def _assert_base_frame_equal(
+    replayed: pd.DataFrame,
+    frozen: pd.DataFrame,
+) -> None:
+    """Allow only decimal CSV round-trip noise, never a material replay drift."""
+    pd.testing.assert_frame_equal(
+        replayed,
+        frozen,
         check_dtype=False,
-        check_exact=True,
+        check_exact=False,
+        rtol=0.0,
+        atol=1e-10,
     )
 
 
