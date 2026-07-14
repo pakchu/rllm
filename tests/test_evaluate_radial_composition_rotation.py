@@ -73,6 +73,25 @@ def test_preregistration_hashes_and_support_are_frozen() -> None:
     assert result["independence"]["passes_independence"] is True
 
 
+def test_evaluator_source_is_frozen_before_outcomes() -> None:
+    path = Path(
+        "results/radial_composition_rotation_evaluator_freeze_2026-07-14.json"
+    )
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == (
+        "488fc9897387fd213ae9eac6ef6bbd1dc7555d7e27c367cc06165954dedcf07d"
+    )
+    freeze = evaluator.verify_evaluation_freeze()
+    assert freeze["outcomes_opened_for_rcr144"] is False
+    assert freeze["price_or_return_loaded"] is False
+    assert freeze["opened_windows"] == []
+    assert freeze["evaluation_source_commit"] == (
+        "0065788228f7b09d5d517edb57c914c8c51cbf92"
+    )
+    assert freeze["evaluation_source_sha256"] == (
+        "cdd9534a9002f699e903924a863901eadc2f57000b337c9cf2fdbf03acf0a680"
+    )
+
+
 def test_frozen_signal_replays_without_execution_prices() -> None:
     preregistration = evaluator.verify_preregistration()
     cfg = evaluator.SignalConfig()
