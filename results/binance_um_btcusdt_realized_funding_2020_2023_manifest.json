@@ -1,0 +1,49 @@
+{
+  "protocol": {
+    "name": "Binance BTCUSDT USD-M realized funding, 2020-2023",
+    "stage": "pre_outcome_funding_source_freeze",
+    "luri_outcomes_opened": false,
+    "selection_end_exclusive": "2024-01-01T00:00:00.000Z",
+    "endpoint_semantics": "startTime and endTime inclusive; ascending order",
+    "settlement_policy": "use exact returned fundingTime; do not infer cadence"
+  },
+  "config": {
+    "symbol": "BTCUSDT",
+    "start_ms": 1577836800000,
+    "end_ms": 1704067199999,
+    "limit": 1000,
+    "timeout_seconds": 30.0,
+    "retry_attempts": 5,
+    "retry_backoff_seconds": 1.0,
+    "output": "results/binance_um_btcusdt_realized_funding_2020_2023.csv",
+    "manifest": "results/binance_um_btcusdt_realized_funding_2020_2023_manifest.json"
+  },
+  "official_source": {
+    "api_endpoint": "https://fapi.binance.com/fapi/v1/fundingRate",
+    "api_documentation": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data#get-funding-rate-history",
+    "funding_explanation": "https://academy.binance.com/en/articles/what-are-funding-rates-in-crypto-markets",
+    "pages": 5
+  },
+  "data": {
+    "path": "results/binance_um_btcusdt_realized_funding_2020_2023.csv",
+    "sha256": "c19829fa085a50f29c13762373a2b6db1c62025d657be1f5a3fbb9ce254482f7",
+    "rows": 4383,
+    "columns": [
+      "funding_time_ms",
+      "funding_time_utc",
+      "symbol",
+      "funding_rate",
+      "mark_price"
+    ],
+    "first_funding_time_ms": 1577836800000,
+    "first_funding_time_utc": "2020-01-01T00:00:00.000Z",
+    "last_funding_time_ms": 1704038400000,
+    "last_funding_time_utc": "2023-12-31T16:00:00.000Z",
+    "rows_by_year": {
+      "2020": 1098,
+      "2021": 1095,
+      "2022": 1095,
+      "2023": 1095
+    }
+  }
+}
