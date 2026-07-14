@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -212,3 +215,25 @@ def test_support_schema_contains_no_price_or_outcome_column() -> None:
         for column in required
         for token in ("open", "high", "low", "close", "return", "pnl")
     )
+
+
+def test_frozen_rlwc_support_rejects_before_outcomes_open() -> None:
+    path = Path(
+        "results/radial_liquidity_wavefront_cascade_support_2026-07-14.json"
+    )
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == (
+        "59e162056a443ee78e6f51a99da446dd8871e55463fd78018a52cea4196bc1fa"
+    )
+    result = json.loads(path.read_text())
+    assert result["protocol"]["outcomes_opened_for_rlwc"] is False
+    assert result["protocol"]["price_or_return_loaded"] is False
+    assert result["protocol"]["support_rejected"] is True
+    assert result["feature"]["raw_candidate_count"] == 0
+    assert result["support"]["nonoverlap_total"] == 0
+    assert result["all_support_gates_pass"] is False
+    assert result["support_calibration"] == {
+        "outcomes_opened_for_rlwc": False,
+        "parameters_searched": False,
+        "all_parameters_fixed": True,
+        "further_support_repairs_allowed": False,
+    }

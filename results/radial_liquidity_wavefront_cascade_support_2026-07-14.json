@@ -1,0 +1,137 @@
+{
+  "protocol": {
+    "name": "RLWC-144 — Radial Liquidity Wavefront Cascade",
+    "support_only": true,
+    "outcomes_opened_for_rlwc": false,
+    "price_or_return_loaded": false,
+    "support_rejected": true,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "event_clock": "six completed 5m bars with ordered outer-to-middle-to-inner shell flow propagation",
+    "signal_availability": "terminal wave bar complete; enter next 5m open",
+    "action_rule": "ask withdrawal plus bid addition long; exact side symmetry short",
+    "holding_rule": "144 completed 5m bars; scheduled-open exit",
+    "quarter_boundary_policy": "four quarter-contained schedules concatenated; reset flat",
+    "support_parameters_searched": false,
+    "source_gap_policy": "decision bar and all six participating wave bars are source-complete; future shell gaps do not cancel an entered trade",
+    "sealed_windows": [
+      "test2024",
+      "eval2025",
+      "ytd2026"
+    ]
+  },
+  "config": {
+    "shell_manifest": "results/binance_cross_collateral_book_shells_btc_2023_manifest.json",
+    "output": "results/radial_liquidity_wavefront_cascade_support_2026-07-14.json",
+    "robust_baseline_bars": 8640,
+    "robust_min_periods": 2016,
+    "wave_lookback_bars": 6,
+    "outer_z": 1.25,
+    "middle_z": 1.0,
+    "inner_z": 1.25,
+    "early_inner_veto_z": 1.0,
+    "terminal_outer_veto_z": 1.0,
+    "minimum_stage_efficiency": 0.35,
+    "recent_wave_bars": 2,
+    "hold_bars": 144,
+    "minimum_nonoverlap_total": 120,
+    "minimum_nonoverlap_per_half": 45,
+    "minimum_nonoverlap_per_quarter": 20,
+    "minimum_side_share": 0.35,
+    "maximum_quarter_share": 0.4,
+    "overlap_tolerance_bars": 12,
+    "maximum_prior_event_jaccard": 0.35
+  },
+  "frozen_artifacts": {
+    "preregistration_source": "training/preregister_radial_liquidity_wavefront_cascade.py",
+    "preregistration_source_sha256": "9f94706ef05750bc08ce7ef56672512ff7d245a31f830ae1064d1d1c2b02a7a9",
+    "preregistration_document": "docs/radial-liquidity-wavefront-cascade-preregistration-2026-07-14.md",
+    "preregistration_document_sha256": "11542acad4f2a3be6b901dcc3da91d582963d57aee4a899c6cef054da76f9b9f",
+    "shell_builder_source": "training/build_binance_cross_collateral_book_shells_2023.py",
+    "shell_builder_source_sha256": "8d343830e4d51596e7b369f303a7ba3fc807dbecb5f19193028dcf43c8c67a1c",
+    "standardizer_source": "training/preregister_cross_collateral_liquidity_void_refill.py",
+    "standardizer_source_sha256": "8465af153f4e5a19299c7ee2b6104e7ea009feb8da80ad10d50cf49bddd7ad51",
+    "scheduler_source": "training/preregister_metaorder_fragmentation_impact_curvature.py",
+    "scheduler_source_sha256": "51e99dbdc5ba13e6b4ac15e3915ec5b30e36dff89c1e5b31a5f3f7f272f01a59",
+    "cclh_source": "training/preregister_cross_collateral_liquidity_hysteresis.py",
+    "cclh_source_sha256": "c555d2c567ecb2c5b4a2986a4a1a455521c79bdcf655f7c43a3dfc41187cbdd5",
+    "cclh_support": "results/cross_collateral_liquidity_hysteresis_support_2026-07-14.json",
+    "cclh_support_sha256": "6144cc8ce63635219b35ebba185d3653a5ce466f25fd65c33b2c1916a92bfdcf",
+    "pdf_source": "training/preregister_cross_collateral_liquidity_credibility_fracture.py",
+    "pdf_source_sha256": "8947050c990b5638f6d8b2e952f252289ddef6c92f85fb13f75001fe721e6e28",
+    "pdf_support": "results/cross_collateral_liquidity_credibility_fracture_support_2026-07-14.json",
+    "pdf_support_sha256": "9a3001db640ec8041d885645d33f11dd6075276685eb22f8ae3c618363d3099a",
+    "pdf_event_clock": "results/cross_collateral_liquidity_credibility_fracture_event_clock_2026-07-14.json",
+    "pdf_event_clock_sha256": "ab8209308619b97880277b95fcc1a2f825b050a603e24b3e2125ddd5bfb226f8",
+    "shell_manifest_sha256": "1b5519143d58f62ef3e8b6d9e22f012f80197a59903509041aca24252ed04521"
+  },
+  "source": {
+    "shell_manifest_sha256": "1b5519143d58f62ef3e8b6d9e22f012f80197a59903509041aca24252ed04521",
+    "shell_data_sha256": "ead931ec8ce2bbd73c946b8660e16d7750ce73051e60ce4989467a7c5bc68342",
+    "range_start": "2023-01-01 00:00:00",
+    "range_end": "2023-12-31 23:55:00",
+    "rows": 105120,
+    "source_complete_rows": 101649
+  },
+  "feature": {
+    "wave_counts": {
+      "um_m_add": 25,
+      "um_m_withdraw": 22,
+      "um_p_add": 27,
+      "um_p_withdraw": 16,
+      "cm_m_add": 8,
+      "cm_m_withdraw": 12,
+      "cm_p_add": 21,
+      "cm_p_withdraw": 12
+    },
+    "raw_candidate_count": 0,
+    "standardization": "each venue/side/shell flow_net uses strictly lagged rolling median and recursive MAD; clip [-12, 12]"
+  },
+  "support_calibration": {
+    "outcomes_opened_for_rlwc": false,
+    "parameters_searched": false,
+    "all_parameters_fixed": true,
+    "further_support_repairs_allowed": false
+  },
+  "scheduled_side_counts": {
+    "long": 0,
+    "short": 0
+  },
+  "scheduled_branch_counts": {},
+  "independence": {
+    "cclh": {
+      "first_event_count": 0,
+      "second_event_count": 167,
+      "matched_event_count": 0,
+      "tolerance_bars": 12,
+      "jaccard": 0.0,
+      "maximum_allowed_jaccard": 0.35,
+      "passes": true
+    },
+    "pdf10": {
+      "first_event_count": 0,
+      "second_event_count": 591,
+      "matched_event_count": 0,
+      "tolerance_bars": 12,
+      "jaccard": 0.0,
+      "maximum_allowed_jaccard": 0.35,
+      "passes": true
+    },
+    "passes_independence": true
+  },
+  "support": {
+    "nonoverlap_total": 0,
+    "by_quarter": {
+      "q1": 0,
+      "q2": 0,
+      "q3": 0,
+      "q4": 0
+    },
+    "h1": 0,
+    "h2": 0,
+    "long_share": 0.0,
+    "short_share": 0.0,
+    "maximum_observed_quarter_share": 1.0,
+    "passes_support": false
+  },
+  "all_support_gates_pass": false
+}
