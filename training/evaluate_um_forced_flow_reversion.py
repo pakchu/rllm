@@ -32,20 +32,16 @@ PREREGISTRATION_SOURCE_SHA256 = (
     "1106294cbf64619cdb60089e7e4efb446c09499b74218242612e721faf115c7f"
 )
 PREREGISTRATION_DOCUMENT = Path(
-    "docs/cash-late-arrival-spillover-propagation-preregistration-2026-07-14.md"
+    "docs/um-forced-flow-reversion-preregistration-2026-07-14.md"
 )
 PREREGISTRATION_DOCUMENT_SHA256 = (
     "20ab0b57c82cfce6b6cc3538fc93f6db4fbda1219601e1eca960a180e2494cf6"
 )
-SUPPORT_DOCUMENT = Path(
-    "docs/cash-late-arrival-spillover-propagation-support-decision-2026-07-14.md"
-)
+SUPPORT_DOCUMENT = Path("docs/um-forced-flow-reversion-support-decision-2026-07-14.md")
 SUPPORT_DOCUMENT_SHA256 = (
     "8f6a7f91eed954b45c586145a812f3fe822a52f9e1de6482aa7eb748fb8211f3"
 )
-CLOCK_DOCUMENT = Path(
-    "docs/cash-late-arrival-spillover-propagation-clock-freeze-2026-07-14.md"
-)
+CLOCK_DOCUMENT = Path("docs/um-forced-flow-reversion-clock-freeze-2026-07-14.md")
 CLOCK_DOCUMENT_SHA256 = (
     "fb5671d8d74d586a30ea9b3be52d0c95209ece3d78c98b5426d3ca20f81e5bf4"
 )
