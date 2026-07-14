@@ -10,6 +10,7 @@ from execution.portfolio_live import (
     _apply_portfolio_selector_overlay,
     _build_external_from_frames,
     _build_portfolio_feature_frame,
+    _interval_slot,
 )
 from preprocessing.external_features import attach_external_features, DXY_WEIGHTS
 from preprocessing.live_db_features import LiveDbFeatureConfig
@@ -29,6 +30,10 @@ def _frames():
 
 
 class TestPortfolioLiveSelector(unittest.TestCase):
+    def test_stride_grid_supports_frozen_research_offset(self):
+        self.assertTrue(_interval_slot(pd.Timestamp("2026-05-07 18:55:00"), 24, 5, 11))
+        self.assertFalse(_interval_slot(pd.Timestamp("2026-07-14 00:10:00"), 24, 5, 11))
+
     def test_portfolio_selector_blocks_bad_context_new_entries_only(self):
         enriched, features = _frames()
         sleeves = [
@@ -250,6 +255,23 @@ class TestLiveFeatureFrameCache(unittest.TestCase):
             atol=1e-8,
         )
 
+        # A live lookback is fixed-width: each cycle drops the oldest bar and
+        # appends a new one.  Prefix reuse must align by timestamp, not row
+        # number, or every cached feature drifts by one bar per cycle.
+        rolling_cache = LiveFeatureFrameCache(output_bars=64)
+        _ = rolling_cache.refresh(enriched.iloc[:-1].reset_index(drop=True), cfg)
+        shifted = enriched.iloc[1:].reset_index(drop=True)
+        shifted_cached = rolling_cache.refresh(shifted, cfg)
+        shifted_full = _build_portfolio_feature_frame(shifted, cfg)
+        cols = sorted(set(shifted_full.columns).intersection(shifted_cached.columns))
+        pd.testing.assert_frame_equal(
+            shifted_cached.loc[len(shifted) - 64 :, cols].reset_index(drop=True),
+            shifted_full.loc[len(shifted) - 64 :, cols].reset_index(drop=True),
+            check_dtype=False,
+            rtol=1e-8,
+            atol=1e-8,
+        )
+
 
 class TestLiveExternalFrameCache(unittest.TestCase):
     def test_tail_external_matches_full_for_decision_features(self):
@@ -337,6 +359,26 @@ class TestLiveExternalFrameCache(unittest.TestCase):
         pd.testing.assert_frame_equal(
             cached.loc[n - 64 :, cols].reset_index(drop=True),
             full.loc[n - 64 :, cols].reset_index(drop=True),
+            check_dtype=False,
+            rtol=1e-8,
+            atol=1e-8,
+        )
+
+        rolling_cache = LiveExternalFrameCache(output_bars=64)
+        _ = rolling_cache.refresh(market=market.iloc[:-1].reset_index(drop=True), frames=frames, cfg=cfg)
+        shifted_market = market.iloc[1:].reset_index(drop=True)
+        shifted_cached = rolling_cache.refresh(market=shifted_market, frames=frames, cfg=cfg)
+        shifted_external = _build_external_from_frames(market=shifted_market, frames=frames, cfg=cfg)
+        shifted_full = attach_external_features(
+            shifted_market,
+            shifted_external,
+            tolerance=cfg.external_tolerance,
+            zscore_window=cfg.zscore_window,
+            momentum_period=cfg.zscore_window,
+        )
+        pd.testing.assert_frame_equal(
+            shifted_cached.loc[len(shifted_market) - 64 :, cols].reset_index(drop=True),
+            shifted_full.loc[len(shifted_market) - 64 :, cols].reset_index(drop=True),
             check_dtype=False,
             rtol=1e-8,
             atol=1e-8,

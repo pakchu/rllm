@@ -67,6 +67,10 @@ class RexLivePolicyConfig:
 
     family: str = "rex_htf_pullback_reclaim"
     strength_quantile: float = 0.75
+    # Production policies exported from research must carry their train-only
+    # threshold.  Leaving this unset preserves the legacy expanding-quantile
+    # behavior for older callers, but it must not be used by frozen sleeves.
+    strength_threshold: float | None = None
     min_positive_strengths: int = 50
     hold_bars: int = 144
     entry_delay_bars: int = 1
@@ -86,6 +90,7 @@ class RexLivePolicyConfig:
     require_core_external: bool = True
     allow_missing_core_external_on_weekend: bool = True
     require_binance_aux: bool = False
+    feature_contract: Literal["market_features_v1", "rex_event_reasoning_20260712"] = "market_features_v1"
 
 
 
@@ -151,6 +156,94 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
     except Exception:
         return default
     return out if np.isfinite(out) else default
+
+
+def _rex_policy_features(
+    enriched: pd.DataFrame,
+    features: pd.DataFrame,
+    contract: str,
+) -> pd.DataFrame:
+    """Return the exact signal-time feature contract used to fit REX.
+
+    The July 12 REX veto artifact used rolling 5-minute returns for its named
+    HTF columns, not the later completed-calendar-candle implementation.  Keep
+    the override local to that frozen artifact so newer policies can use the
+    corrected shared market feature contract without silently changing this
+    sleeve's historical decision boundary.
+    """
+
+    if contract == "market_features_v1":
+        return features
+    if contract != "rex_event_reasoning_20260712":
+        raise ValueError(f"unsupported REX feature contract: {contract}")
+
+    out = features.copy()
+    close = pd.to_numeric(enriched["close"], errors="coerce")
+    for name, periods in {
+        "htf_4h_return_1": 48,
+        "htf_4h_return_4": 192,
+        "htf_1d_return_1": 288,
+        "htf_1d_return_4": 1152,
+        "htf_3d_return_4": 3456,
+        "htf_1w_return_4": 8064,
+    }.items():
+        out[name] = (close / close.shift(periods).replace(0.0, np.nan) - 1.0).replace(
+            [np.inf, -np.inf], np.nan
+        ).fillna(0.0).to_numpy(float)
+
+    # The frozen artifact used 48-bar standardisation for both volume and OI;
+    # the general live frame now defaults to 96.  Rebuild only these two cheap
+    # columns rather than recomputing the complete feature frame.
+    def rolling_z(values: pd.Series) -> np.ndarray:
+        numeric = pd.to_numeric(values, errors="coerce")
+        mean = numeric.rolling(48, min_periods=16).mean()
+        std = numeric.rolling(48, min_periods=16).std(ddof=0)
+        return (
+            ((numeric - mean) / std.replace(0.0, np.nan))
+            .replace([np.inf, -np.inf], np.nan)
+            .fillna(0.0)
+            .clip(-5.0, 5.0)
+            .to_numpy(float)
+        )
+
+    if "volume" in enriched:
+        out["volume_zscore"] = rolling_z(enriched["volume"])
+    if "open_interest" in enriched:
+        out["oi_zscore"] = rolling_z(enriched["open_interest"])
+    return out
+
+
+def rex_policy_config_from_candidate(candidate: dict[str, Any]) -> RexLivePolicyConfig:
+    """Load an explicitly frozen REX policy contract from a sleeve config."""
+
+    raw = candidate.get("rex_policy")
+    if not isinstance(raw, dict):
+        return RexLivePolicyConfig()
+
+    def gates(values: Any) -> tuple[FrozenGate, ...]:
+        if values is None:
+            return ()
+        return tuple(
+            FrozenGate(str(item["feature"]), str(item["op"]), float(item.get("value", item.get("threshold"))))
+            for item in values
+        )
+
+    alternate = tuple(gates(items) for items in raw.get("alternate_rule_gate_sets", []))
+    threshold = raw.get("strength_threshold")
+    return RexLivePolicyConfig(
+        family=str(raw.get("family", RexLivePolicyConfig.family)),
+        strength_quantile=float(raw.get("strength_quantile", RexLivePolicyConfig.strength_quantile)),
+        strength_threshold=None if threshold is None else float(threshold),
+        min_positive_strengths=int(raw.get("min_positive_strengths", RexLivePolicyConfig.min_positive_strengths)),
+        hold_bars=int(candidate.get("hold_bars", raw.get("hold_bars", RexLivePolicyConfig.hold_bars))),
+        entry_delay_bars=int(candidate.get("entry_delay_bars", raw.get("entry_delay_bars", RexLivePolicyConfig.entry_delay_bars))),
+        gates=gates(raw.get("rule_gates")),
+        alternate_gate_sets=alternate,
+        require_core_external=bool(raw.get("require_core_external", False)),
+        allow_missing_core_external_on_weekend=bool(raw.get("allow_missing_core_external_on_weekend", True)),
+        require_binance_aux=bool(raw.get("require_binance_aux", False)),
+        feature_contract=str(raw.get("feature_contract", "market_features_v1")),
+    )
 
 
 def _is_weekend_or_fx_closed(date_value: Any) -> bool:
@@ -295,27 +388,44 @@ def build_rex_live_policy_record(
     if not (0.0 < float(policy_cfg.strength_quantile) < 1.0):
         raise ValueError("strength_quantile must be in (0, 1)")
 
-    families = _feature_candidates(features)
-    if policy_cfg.family not in families:
-        raise ValueError(f"unknown REX family: {policy_cfg.family}")
-    strength, direction = families[policy_cfg.family]
+    policy_features = _rex_policy_features(enriched, features, policy_cfg.feature_contract)
+    if policy_cfg.feature_contract == "rex_event_reasoning_20260712":
+        if policy_cfg.family != "rex_htf_pullback_reclaim":
+            raise ValueError(f"unsupported family for {policy_cfg.feature_contract}: {policy_cfg.family}")
+        from training.build_rex_event_reasoning_policy_data import _rex_pullback_reclaim_arrays
+
+        strength, direction = _rex_pullback_reclaim_arrays(policy_features)
+    else:
+        families = _feature_candidates(policy_features)
+        if policy_cfg.family not in families:
+            raise ValueError(f"unknown REX family: {policy_cfg.family}")
+        strength, direction = families[policy_cfg.family]
     pos = len(features) - 1
     historical = np.asarray(strength[: pos + 1], dtype=float)
     positive = historical[np.isfinite(historical) & (historical > 0.0)]
-    enough_history = len(positive) >= int(policy_cfg.min_positive_strengths)
-    threshold = float(np.quantile(positive, float(policy_cfg.strength_quantile))) if enough_history else float("inf")
+    fixed_threshold = policy_cfg.strength_threshold
+    if fixed_threshold is not None and (not np.isfinite(float(fixed_threshold)) or float(fixed_threshold) < 0.0):
+        raise ValueError("strength_threshold must be finite and non-negative")
+    enough_history = fixed_threshold is not None or len(positive) >= int(policy_cfg.min_positive_strengths)
+    threshold = (
+        float(fixed_threshold)
+        if fixed_threshold is not None
+        else (float(np.quantile(positive, float(policy_cfg.strength_quantile))) if enough_history else float("inf"))
+    )
+    threshold_source = "fixed_train" if fixed_threshold is not None else "expanding_quantile"
     current_strength = _safe_float(strength[pos], 0.0)
     current_direction = _safe_float(direction[pos], 0.0)
     candidate_active = bool(enough_history and np.isfinite(threshold) and current_strength > threshold and current_direction != 0.0)
     side = _side_from_direction(current_direction) if candidate_active else "NONE"
 
-    snapshot = latest_live_feature_snapshot(enriched, features)
+    snapshot = latest_live_feature_snapshot(enriched, policy_features)
     feature_snapshot = dict(snapshot["feature_snapshot"])
     feature_snapshot.update(
         {
             "rex_candidate_strength": current_strength,
             "rex_candidate_threshold": threshold if np.isfinite(threshold) else 0.0,
             "rex_candidate_margin": current_strength - threshold if np.isfinite(threshold) else 0.0,
+            "rex_candidate_threshold_source": threshold_source,
         }
     )
     data_quality = dict(snapshot["data_quality"])

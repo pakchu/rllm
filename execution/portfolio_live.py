@@ -29,7 +29,12 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 
-from execution.rex_llm_live import RexLivePolicyConfig, RexLlmSelectorConfig, build_rex_live_policy_record
+from execution.rex_llm_live import (
+    RexLivePolicyConfig,
+    RexLlmSelectorConfig,
+    build_rex_live_policy_record,
+    rex_policy_config_from_candidate,
+)
 from execution.wave_execution import (
     WaveExecutionConfig,
     _StaticSignalGenerator,
@@ -413,7 +418,24 @@ class LiveExternalFrameCache:
         replace_from_tail = output_start - context_start
         replacement = enriched_tail.iloc[replace_from_tail:].copy()
         replacement.index = range(output_start, output_start + len(replacement))
-        prefix = self.enriched.iloc[:output_start].copy()
+        cached = self.enriched.copy()
+        cached["_cache_date"] = _to_naive_utc(cached["date"])
+        cached = cached.drop_duplicates("_cache_date", keep="last").set_index("_cache_date")
+        target_dates = _to_naive_utc(market.iloc[:output_start]["date"])
+        if not target_dates.isin(cached.index).all():
+            external = _build_external_from_frames(market=market, frames=frames, cfg=cfg)
+            enriched = attach_external_features(
+                market,
+                external,
+                tolerance=cfg.external_tolerance,
+                zscore_window=cfg.zscore_window,
+                momentum_period=cfg.zscore_window,
+            )
+            self.external = external.copy()
+            self.enriched = enriched.copy()
+            self.last_mode = "fallback_date_gap_full_external"
+            return enriched
+        prefix = cached.loc[target_dates].reset_index(drop=True)
         enriched = pd.concat([prefix, replacement], axis=0).reindex(range(len(market)))
         self.enriched = enriched
 
@@ -646,7 +668,16 @@ class LiveFeatureFrameCache:
         replacement = tail_features.iloc[replace_from_tail:].copy()
         replacement.index = range(output_start, output_start + len(replacement))
 
-        prefix = self.features.iloc[:output_start].copy()
+        cached = self.features.copy()
+        cached["_cache_date"] = _to_naive_utc(self.enriched["date"])
+        cached = cached.drop_duplicates("_cache_date", keep="last").set_index("_cache_date")
+        target_dates = _to_naive_utc(enriched.iloc[:output_start]["date"])
+        if not target_dates.isin(cached.index).all():
+            self.enriched = enriched.copy()
+            self.features = _build_portfolio_feature_frame(enriched, cfg, include_activity_flow=include_activity_flow)
+            self.last_mode = "fallback_date_gap_full_features"
+            return self.features.copy()
+        prefix = cached.loc[target_dates].reset_index(drop=True)
         spliced = pd.concat([prefix, replacement], axis=0)
         spliced = spliced.reindex(range(len(enriched)))
 
@@ -990,7 +1021,12 @@ def _gate_clauses_pass(
     return passed, reasons
 
 
-def _interval_slot(ts: pd.Timestamp, stride_bars: int, interval_minutes: int = 5) -> bool:
+def _interval_slot(
+    ts: pd.Timestamp,
+    stride_bars: int,
+    interval_minutes: int = 5,
+    stride_offset_bars: int = 0,
+) -> bool:
     """Return True when a timestamp is on the sleeve's stride grid."""
 
     t = pd.Timestamp(ts)
@@ -999,7 +1035,7 @@ def _interval_slot(ts: pd.Timestamp, stride_bars: int, interval_minutes: int = 5
     else:
         t = t.tz_convert("UTC")
     minutes = int(t.timestamp() // 60)
-    return (minutes // int(interval_minutes)) % int(stride_bars) == 0
+    return (minutes // int(interval_minutes)) % int(stride_bars) == int(stride_offset_bars) % int(stride_bars)
 
 
 async def _query_oi(
@@ -1023,15 +1059,21 @@ async def _query_oi(
               AND period = '5m'
               AND ts >= :start
               AND ts <= :asof
-        ), live_prior AS (
-            SELECT :live_date AS date,
+        ), live_ranked AS (
+            SELECT date_bin('5 minutes', fetched_at, TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,
                    open_interest,
-                   0 AS priority
+                   ROW_NUMBER() OVER (
+                       PARTITION BY date_bin('5 minutes', fetched_at, TIMESTAMPTZ '1970-01-01 00:00:00+00')
+                       ORDER BY fetched_at DESC
+                   ) AS snapshot_rank
             FROM open_interest_binance_live
             WHERE symbol = :symbol
+              AND fetched_at >= :start
               AND fetched_at < :live_snapshot_cutoff
-            ORDER BY fetched_at DESC
-            LIMIT 1
+        ), live_prior AS (
+            SELECT date, open_interest, 0 AS priority
+            FROM live_ranked
+            WHERE snapshot_rank = 1
         ), ranked AS (
             SELECT date, open_interest,
                    ROW_NUMBER() OVER (PARTITION BY date ORDER BY priority) AS row_priority
@@ -1051,7 +1093,6 @@ async def _query_oi(
     asof_ts = asof_ts.tz_localize("UTC") if asof_ts.tzinfo is None else asof_ts.tz_convert("UTC")
     cutoff = pd.Timestamp(live_snapshot_cutoff) if live_snapshot_cutoff is not None else asof_ts + pd.Timedelta(minutes=1)
     cutoff = cutoff.tz_localize("UTC") if cutoff.tzinfo is None else cutoff.tz_convert("UTC")
-    live_date = asof_ts.floor("5min")
     with engine.connect() as conn:
         return pd.read_sql_query(
             sql,
@@ -1060,7 +1101,6 @@ async def _query_oi(
                 "symbol": symbol,
                 "start": start.to_pydatetime(),
                 "asof": asof_ts.to_pydatetime(),
-                "live_date": live_date.to_pydatetime(),
                 "live_snapshot_cutoff": cutoff.to_pydatetime(),
             },
         )
@@ -1324,20 +1364,22 @@ def _score_sleeves(
                 gate_clauses = cfg.get("gate_clauses")
                 hold = int(cfg.get("hold_bars", cfg.get("hold_bars_5m", 0)))
                 stride = int(cfg.get("stride_bars", cfg.get("stride_bars_5m", 1)))
-            if gate_clauses is not None:
-                gate_ok, reasons = _gate_clauses_pass(row, gate_clauses)
-            else:
-                gate_ok, reasons = _gate_pass(row, gates)
+            stride_offset = int(cfg.get("stride_offset_bars", 0))
             base_policy = str(cfg.get("base_policy", "")).lower()
             if base_policy == "rex":
                 record = build_rex_live_policy_record(
                     enriched,
                     features,
-                    policy_cfg=RexLivePolicyConfig(),
+                    policy_cfg=rex_policy_config_from_candidate(cfg),
                     execution_cfg=exec_cfg,
                     scorer_asof=asof,
                     selector_cfg=rex_selector_cfg,
                 )
+                policy_row = pd.Series(record.get("feature_snapshot", {}))
+                if gate_clauses is not None:
+                    gate_ok, reasons = _gate_clauses_pass(policy_row, gate_clauses)
+                else:
+                    gate_ok, reasons = _gate_pass(policy_row, gates)
                 candidate_side = str(record.get("candidate_side", "")).upper()
                 policy_ok = bool(record.get("prediction") == "TRADE" and candidate_side in {"LONG", "SHORT"})
                 side_filter_ok = configured_side in {"AUTO", "BOTH"} or candidate_side == configured_side
@@ -1351,9 +1393,13 @@ def _score_sleeves(
                         f"configured_side={configured_side}:{'pass' if side_filter_ok else 'fail'}",
                     ]
                 )
-            stride_ok = _interval_slot(ts, stride, exec_cfg.interval_minutes)
+            elif gate_clauses is not None:
+                gate_ok, reasons = _gate_clauses_pass(row, gate_clauses)
+            else:
+                gate_ok, reasons = _gate_pass(row, gates)
+            stride_ok = _interval_slot(ts, stride, exec_cfg.interval_minutes, stride_offset)
             active = bool(gate_ok and stride_ok)
-            reasons.append(f"stride={stride}:{'pass' if stride_ok else 'fail'}")
+            reasons.append(f"stride={stride}@{stride_offset}:{'pass' if stride_ok else 'fail'}")
             dynamic_exit = cfg.get("dynamic_exit") if isinstance(cfg.get("dynamic_exit"), dict) else None
 
             if overlay_cfg is not None:
