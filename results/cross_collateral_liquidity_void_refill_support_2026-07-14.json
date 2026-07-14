@@ -1,0 +1,194 @@
+{
+  "protocol": {
+    "name": "CLVR — Cross-Collateral Liquidity Void-Refill",
+    "support_only": true,
+    "outcomes_opened_for_clvr": false,
+    "support_rejected": true,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "event_clock": "completed 5m USD-M/COIN-M depth bar after a 30m shock",
+    "signal_availability": "depth medians and market bar complete; enter next 5m open",
+    "branch_rule": {
+      "void": "coin-margined stress-side liquidity depletes relative to USD-M; follow shock",
+      "refill": "coin-margined stress-side liquidity replenishes relative to USD-M; fade shock"
+    },
+    "candidate_clock": "fixed before any outcome; both branches share one shock clock",
+    "holding_rule": "12 completed 5m bars; scheduled-open exit",
+    "source_gap_policy": "current and prior six depth bars must be complete; future depth gaps do not cancel an already entered trade",
+    "sealed_windows": [
+      "test2024",
+      "eval2025",
+      "ytd2026"
+    ]
+  },
+  "config": {
+    "depth_manifest": "results/binance_cross_collateral_book_depth_btc_2023_manifest.json",
+    "market_manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+    "output": "results/cross_collateral_liquidity_void_refill_support_2026-07-14.json",
+    "response_bars": 6,
+    "hold_bars": 12,
+    "robust_baseline_bars": 8640,
+    "robust_min_periods": 2016,
+    "score_baseline_bars": 17280,
+    "score_min_periods": 4032,
+    "score_quantile": 0.975,
+    "minimum_nonoverlap_total": 400,
+    "minimum_nonoverlap_per_half": 180,
+    "minimum_nonoverlap_per_quarter": 75,
+    "minimum_side_share": 0.25,
+    "minimum_branch_share": 0.25
+  },
+  "frozen_artifacts": {
+    "preregistration_source": "training/preregister_cross_collateral_liquidity_void_refill.py",
+    "preregistration_source_sha256": "8465af153f4e5a19299c7ee2b6104e7ea009feb8da80ad10d50cf49bddd7ad51",
+    "preregistration_document": "docs/cross-collateral-liquidity-void-refill-preregistration-2026-07-14.md",
+    "preregistration_document_sha256": "e83c4c290e2f84851d305dd09630d317606c40f76b4bfd4e8972d4c28e6662ab",
+    "scheduler_source": "training/preregister_metaorder_fragmentation_impact_curvature.py",
+    "scheduler_source_sha256": "51e99dbdc5ba13e6b4ac15e3915ec5b30e36dff89c1e5b31a5f3f7f272f01a59",
+    "depth_manifest_sha256": "95ec6e133dfcc7ed3c058538f380d24d98552c0a921fc24a679d247159a4f080",
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e"
+  },
+  "source": {
+    "depth_manifest_sha256": "95ec6e133dfcc7ed3c058538f380d24d98552c0a921fc24a679d247159a4f080",
+    "depth_sha256": "53e16cf71581f03c7b1cc3da6a13222923ce68aa9e869d89f02078221bb4eee4",
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "range_start": "2023-01-01 00:00:00",
+    "range_end": "2023-12-31 23:55:00",
+    "source_complete_rows": 101649
+  },
+  "feature": {
+    "response_window_bars": 6,
+    "clean_feature_rows": 100425,
+    "flow_aligned_rows": 82373,
+    "standardization": "strictly lagged rolling median and recursive MAD; clip [-12, 12]"
+  },
+  "support_calibration": {
+    "outcomes_opened_for_clvr": false,
+    "tested_score_quantiles": [
+      0.9,
+      0.925,
+      0.95,
+      0.975,
+      0.99,
+      0.995
+    ],
+    "all_other_parameters_fixed": true,
+    "stopping_rule": "highest tested quantile passing every frozen support floor",
+    "selected_score_quantile": null,
+    "further_support_repairs_allowed": false,
+    "trials": [
+      {
+        "score_quantile": 0.9,
+        "raw_candidate_count": 6689,
+        "nonoverlap_total": 1936,
+        "by_quarter": {
+          "q1": 325,
+          "q2": 475,
+          "q3": 574,
+          "q4": 562
+        },
+        "h1": 800,
+        "h2": 1136,
+        "long_share": 0.49741735537190085,
+        "short_share": 0.5025826446280992,
+        "void_share": 0.7742768595041323,
+        "refill_share": 0.22572314049586778,
+        "passes_support": false
+      },
+      {
+        "score_quantile": 0.925,
+        "raw_candidate_count": 5059,
+        "nonoverlap_total": 1535,
+        "by_quarter": {
+          "q1": 264,
+          "q2": 383,
+          "q3": 444,
+          "q4": 444
+        },
+        "h1": 647,
+        "h2": 888,
+        "long_share": 0.5087947882736157,
+        "short_share": 0.49120521172638437,
+        "void_share": 0.7921824104234527,
+        "refill_share": 0.20781758957654722,
+        "passes_support": false
+      },
+      {
+        "score_quantile": 0.95,
+        "raw_candidate_count": 3397,
+        "nonoverlap_total": 1089,
+        "by_quarter": {
+          "q1": 196,
+          "q2": 265,
+          "q3": 309,
+          "q4": 319
+        },
+        "h1": 461,
+        "h2": 628,
+        "long_share": 0.5004591368227732,
+        "short_share": 0.4995408631772268,
+        "void_share": 0.8044077134986226,
+        "refill_share": 0.19559228650137742,
+        "passes_support": false
+      },
+      {
+        "score_quantile": 0.975,
+        "raw_candidate_count": 1669,
+        "nonoverlap_total": 618,
+        "by_quarter": {
+          "q1": 114,
+          "q2": 152,
+          "q3": 172,
+          "q4": 180
+        },
+        "h1": 266,
+        "h2": 352,
+        "long_share": 0.5080906148867314,
+        "short_share": 0.4919093851132686,
+        "void_share": 0.7961165048543689,
+        "refill_share": 0.20388349514563106,
+        "passes_support": false
+      },
+      {
+        "score_quantile": 0.99,
+        "raw_candidate_count": 674,
+        "nonoverlap_total": 282,
+        "by_quarter": {
+          "q1": 60,
+          "q2": 63,
+          "q3": 76,
+          "q4": 83
+        },
+        "h1": 123,
+        "h2": 159,
+        "long_share": 0.4858156028368794,
+        "short_share": 0.5141843971631206,
+        "void_share": 0.7446808510638298,
+        "refill_share": 0.2553191489361702,
+        "passes_support": false
+      },
+      {
+        "score_quantile": 0.995,
+        "raw_candidate_count": 323,
+        "nonoverlap_total": 156,
+        "by_quarter": {
+          "q1": 34,
+          "q2": 39,
+          "q3": 40,
+          "q4": 43
+        },
+        "h1": 73,
+        "h2": 83,
+        "long_share": 0.47435897435897434,
+        "short_share": 0.5256410256410257,
+        "void_share": 0.7115384615384616,
+        "refill_share": 0.28846153846153844,
+        "passes_support": false
+      }
+    ]
+  },
+  "raw_candidate_count": null,
+  "scheduled_branch_counts": {},
+  "support": null,
+  "all_support_gates_pass": false
+}
