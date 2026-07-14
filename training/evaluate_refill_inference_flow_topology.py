@@ -180,6 +180,10 @@ def verify_evaluation_freeze() -> dict[str, Any]:
         raise ValueError("RIFT evaluator freeze event clock changed")
     if freeze.get("opened_windows") != []:
         raise ValueError("RIFT evaluator freeze already opened a window")
+    if freeze.get("returns_or_prices_loaded_during_freeze") is not False:
+        raise ValueError("RIFT evaluator freeze loaded returns or prices")
+    if freeze.get("mutable_parameters") != []:
+        raise ValueError("RIFT evaluator freeze permits mutable parameters")
     expected_sealed = [*WINDOWS, "test2024", "eval2025", "ytd2026"]
     if freeze.get("sealed_windows") != expected_sealed:
         raise ValueError("RIFT evaluator freeze sealed windows changed")

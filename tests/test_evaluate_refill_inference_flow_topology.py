@@ -180,3 +180,37 @@ def test_run_stops_at_freeze_guard_before_loading_price_frame(
     monkeypatch.setattr(rift, "load_causal_frame", forbidden_load)
     with pytest.raises(ValueError, match="freeze manifest is missing"):
         evaluator.run_evaluation(evaluator.EvaluationConfig())
+
+
+def test_freeze_manifest_rejects_price_loaded_claim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    freeze = tmp_path / "freeze.json"
+    freeze.write_text(
+        json.dumps(
+            {
+                "outcomes_opened_for_rift96": False,
+                "evaluation_source": str(evaluator.EVALUATION_SOURCE),
+                "evaluation_source_sha256": evaluator._sha256(
+                    evaluator.EVALUATION_SOURCE
+                ),
+                "evaluation_source_commit": "0" * 40,
+                "preregistration_commit": evaluator.PREREGISTRATION_COMMIT,
+                "support_commit": evaluator.SUPPORT_COMMIT,
+                "support_result_sha256": evaluator.PREREGISTRATION_RESULT_SHA256,
+                "event_clock_sha256": evaluator.EVENT_CLOCK_SHA256,
+                "opened_windows": [],
+                "returns_or_prices_loaded_during_freeze": True,
+                "mutable_parameters": [],
+                "sealed_windows": [
+                    *evaluator.WINDOWS,
+                    "test2024",
+                    "eval2025",
+                    "ytd2026",
+                ],
+            }
+        )
+    )
+    monkeypatch.setattr(evaluator, "EVALUATION_FREEZE", freeze)
+    with pytest.raises(ValueError, match="loaded returns or prices"):
+        evaluator.verify_evaluation_freeze()
