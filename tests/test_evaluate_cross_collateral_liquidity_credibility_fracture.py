@@ -72,6 +72,18 @@ def test_preregistration_hashes_and_support_are_frozen() -> None:
     assert result["independence"]["passes_independence"] is True
 
 
+def test_evaluator_source_is_frozen_before_outcomes() -> None:
+    freeze = evaluator.verify_evaluation_freeze()
+    assert freeze["outcomes_opened_for_pdf10"] is False
+    assert freeze["opened_windows"] == []
+    assert freeze["evaluation_source_commit"] == (
+        "4afbf158ff9f2e7cef80ed11d2219e65b843d93c"
+    )
+    assert freeze["evaluation_source_sha256"] == (
+        "513570e06529bd65966e505a2fc005f160417992fa52d36122401419cad9c252"
+    )
+
+
 def test_frozen_signal_replays_without_execution_prices() -> None:
     preregistration = evaluator.verify_preregistration()
     cfg = evaluator.SignalConfig()
