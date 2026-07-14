@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T02:43:40.279319+00:00",
+  "updated_at": "2026-07-14T03:16:08.279896+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2883,6 +2883,49 @@
       "generation_recipe": {
         "script": "training/search_crossmap_flow_causality_alpha.py",
         "protocol": "prior 120 completed 6h blocks; E3 simplex, four neighbors, Theiler radius1; strict prior q80; sign(asymmetry)*sign(current flow); 12h; next-open; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      }
+    },
+    {
+      "id": "visibility_layer_irreversibility_state_20260714",
+      "name": "Price/flow horizontal-visibility irreversibility state",
+      "status": "weak",
+      "family": "multiplex_visibility_graph_time_asymmetry",
+      "scope": "btc_completed_price_taker_flow_order_topology",
+      "feature_tier": "beta_feature",
+      "description": "Directed horizontal-visibility-graph in/out degree-law mismatch for completed six-hour price returns and aggressive flow, plus their log irreversibility ratio.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLC, quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "price_hvg_irreversibility",
+        "flow_hvg_irreversibility",
+        "hvg_layer_log_ratio",
+        "prior_only_hvg_layer_rank"
+      ],
+      "usable_for": [
+        "weak network-topology/time-asymmetry tokens under a materially different preregistered learner or RLLM",
+        "not replaying or tuning the inspected 168-block/q80 dominant-layer arbitration or fixed holds"
+      ],
+      "known_failures": [
+        "Primary fit return/CAGR/MDD/ratio was -15.56%/-6.33%/21.21%/-0.30 over 339 trades.",
+        "Primary 2023 return/CAGR/MDD/ratio was -15.08%/-15.09%/19.00%/-0.79 over 139 trades.",
+        "Both 2023 halves lost; exact flip and same-event price/flow controls failed.",
+        "Zero-cost 2023 remained -7.70%; all fixed entries and holds failed."
+      ],
+      "evidence": "Pre-outcome support passed at 339 fit and 139 2023 executable events. Score correlations versus cross-map, price volatility, mean absolute flow, trend and ordinal entropy were all <=0.188 in absolute value; event Jaccard versus cross-map was 0.157. Flow-HVG-only stayed positive fit/2023 but ratios were only 0.78/0.21.",
+      "source_artifacts": [
+        "training/search_visibility_layer_irreversibility_alpha.py",
+        "results/visibility_layer_irreversibility_alpha_scan_2026-07-14.json",
+        "docs/visibility-layer-irreversibility-alpha-design-2026-07-14.md",
+        "docs/visibility-layer-irreversibility-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; 168 completed six-hour blocks including current; shifted prior-only q80; minute05 next-open; strict MDD; no 2024+ computation.",
+      "tier_rationale": "HVG order topology is demonstrably distinct and the flow layer has a weak positive clue, but static arbitration loses while both standalone layers remain far below alpha risk efficiency.",
+      "next_action": "Freeze this sample. Reuse raw layer irreversibility/ratio only in a separately preregistered learner or genuinely fresh forward shadow period.",
+      "generation_recipe": {
+        "script": "training/search_visibility_layer_irreversibility_alpha.py",
+        "protocol": "directed HVG on 168 completed 6h price/flow blocks; symmetric degree KL with Jeffreys 0.5; prior q80 layer ratio; dominant-layer side; 12h; minute05; 0.5x; 6bp/side; strict MDD; OOS excluded"
       }
     }
   ]

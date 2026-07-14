@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T02:43:40.279319+00:00",
+  "updated_at": "2026-07-14T03:16:08.279896+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2430,6 +2430,50 @@
         "results/crossmap_flow_causality_alpha_scan_2026-07-14.json",
         "docs/crossmap-flow-causality-alpha-design-2026-07-14.md",
         "docs/crossmap-flow-causality-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "visibility_layer_arbitration_static_usage_20260714",
+      "name": "Static visibility-layer dominant-direction arbitration",
+      "status": "rejected",
+      "family": "multiplex_visibility_graph_time_asymmetry_static_usage",
+      "scope": "btc_completed_price_taker_flow_order_topology",
+      "feature_tier": "gamma_feature",
+      "description": "Rejected q80 policy following current flow when flow HVG irreversibility exceeds price HVG irreversibility, otherwise following current price return.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLC, quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_hvg_window168",
+        "static_symmetric_degree_kl",
+        "static_layer_ratio_q80",
+        "static_dominant_layer_follow",
+        "static_hold144"
+      ],
+      "usable_for": [
+        "failure provenance only; separate layer irreversibility values retain weak-beta representation status"
+      ],
+      "known_failures": [
+        "Fit return/CAGR/strict MDD/ratio was -15.56%/-6.33%/21.21%/-0.30 over 339 trades.",
+        "2023 return/CAGR/strict MDD/ratio was -15.08%/-15.09%/19.00%/-0.79 over 139 trades.",
+        "Both 2023 halves were negative; exact flip, same-event controls and 6h delay failed.",
+        "Zero-cost 2023 return was -7.70% with ratio -0.58.",
+        "Minute-05/10/15 and 6/12/24h diagnostics failed joint fit/2023 admission."
+      ],
+      "evidence": "A committed pre-outcome protocol, 19 tests, support/novelty preflight and independent critic GO preceded the one-shot run. No 2024+ outcome was opened and no parameter changed after 2023 access.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; completed current block only; prior-only gate; minute05 entry; split-contained non-overlap; strict MDD; no OOS computation.",
+      "tier_rationale": "The representation is novel, but selecting the currently more irreversible layer as the directional carrier is statistically and economically invalid on both inspected windows.",
+      "next_action": "Do not tune HVG window/support/prior, layer ratio, q gate, arbitration direction, delay or hold on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_visibility_layer_irreversibility_alpha.py",
+        "protocol": "one frozen dominant-layer q80 map plus component/flip/delay/cost/timing controls; 12h; minute05; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_visibility_layer_irreversibility_alpha.py",
+        "results/visibility_layer_irreversibility_alpha_scan_2026-07-14.json",
+        "docs/visibility-layer-irreversibility-alpha-design-2026-07-14.md",
+        "docs/visibility-layer-irreversibility-alpha-search-2026-07-14.md"
       ]
     }
   ]
