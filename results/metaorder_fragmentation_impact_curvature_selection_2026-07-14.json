@@ -1,0 +1,389 @@
+{
+  "protocol": {
+    "name": "MFIC frozen pre-2024 selection evaluation",
+    "preregistration_commit": "81ea71c",
+    "preregistration_source_sha256": "51e99dbdc5ba13e6b4ac15e3915ec5b30e36dff89c1e5b31a5f3f7f272f01a59",
+    "preregistration_document_sha256": "eb9ee988263fcd287e3a83b7404efcdc74557f8f8747b30683099e23c62a6373",
+    "preregistration_result_sha256": "03bc5b2f67f974efa04715511920701c0db875b8bb4251f2e4c734a591aa80c8",
+    "outcomes_opened": true,
+    "opened_windows": [
+      "train",
+      "select2023",
+      "select2023_h1",
+      "select2023_h2"
+    ],
+    "sealed_windows": [
+      "test2024",
+      "eval2025",
+      "ytd2026"
+    ],
+    "signal_parameters_mutable": false,
+    "entry": "next 5m open",
+    "exit": "scheduled future 5m open",
+    "strict_mdd": "complete held path, favorable extreme first then adverse extreme",
+    "cagr": "full wall-clock split including idle cash"
+  },
+  "evaluation_config": {
+    "output": "results/metaorder_fragmentation_impact_curvature_selection_2026-07-14.json",
+    "leverage": 0.5,
+    "fee_rate": 0.0005,
+    "slippage_rate": 0.0001,
+    "cluster_permutations": 100000,
+    "cluster_seed": 20260714
+  },
+  "signal_config": {
+    "features": "data/binance_um_aggtrade_microstructure_btc_2020_2023/BTCUSDT_aggtrade_5m_2020-01-01_2023-12-31.csv.gz",
+    "feature_manifest": "data/binance_um_aggtrade_microstructure_btc_2020_2023/build_manifest.json",
+    "market": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "market_manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+    "output": "results/metaorder_fragmentation_impact_curvature_support_2026-07-14.json",
+    "curvature_threshold": 0.002,
+    "persistence_floor": 0.6,
+    "coherence_floor": 0.2,
+    "hidden_metaorder_quantile": 0.95,
+    "hidden_metaorder_baseline_bars": 8640,
+    "hidden_metaorder_baseline_min_periods": 2016,
+    "minimum_agg_trade_count": 64,
+    "post_gap_quarantine_bars": 24,
+    "minimum_nonoverlap_total": 250,
+    "minimum_nonoverlap_per_year": 40,
+    "minimum_side_share": 0.25,
+    "minimum_branch_share": 0.2
+  },
+  "source": {
+    "feature_sha256": "c2bb0e6742f8cdc4e13315e7f0a13d6ab9cd536fb40d9cb4484b7a6ba30131cf",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "source_gap_days": [
+      "2020-04-15",
+      "2021-02-09",
+      "2021-02-24",
+      "2021-05-19",
+      "2022-09-06"
+    ],
+    "missing_feature_bars": 36,
+    "quarantined_bars": 1682,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00"
+  },
+  "candidates": [
+    {
+      "candidate": {
+        "name": "mfic_fast",
+        "window_bars": 12,
+        "segment_bars": 3,
+        "continuation_hold_bars": 3,
+        "fade_hold_bars": 6
+      },
+      "windows": {
+        "train": {
+          "absolute_return_pct": -60.66784070562636,
+          "cagr_pct": -26.7265327122978,
+          "strict_mdd_pct": 60.66784070562636,
+          "cagr_to_strict_mdd": -0.44053871707715436,
+          "trade_count": 1348,
+          "long_count": 660,
+          "short_count": 688,
+          "continuation_count": 845,
+          "fade_count": 503,
+          "wall_clock_years": 3.0006844626967832,
+          "trade_statistics": {
+            "n_trades": 1348,
+            "mean_trade_ret_pct": -0.06901494084480218,
+            "std_trade_ret_pct": 0.19193779585096082,
+            "t_stat_like": -13.201630190984202,
+            "p_value_mean_ret_approx": 0.0,
+            "ci95_mean_trade_ret_pct": [
+              -0.07926134845499201,
+              -0.05876853323461236
+            ],
+            "effect_size_d": -0.3595693101445851,
+            "n_required_for_80pct_power_alpha5pct": 61,
+            "n_gap_to_power_rule": 0
+          },
+          "weekly_cluster_sign_flip": {
+            "p_value_one_sided": 1.0,
+            "observed_mean_return": -0.0006901494084480219,
+            "cluster_count": 150,
+            "permutations": 100000,
+            "seed": 20260714
+          }
+        },
+        "select2023": {
+          "absolute_return_pct": -13.513746315870067,
+          "cagr_pct": -13.522346217677184,
+          "strict_mdd_pct": 13.622777737809644,
+          "cagr_to_strict_mdd": -0.9926276768170624,
+          "trade_count": 218,
+          "long_count": 106,
+          "short_count": 112,
+          "continuation_count": 154,
+          "fade_count": 64,
+          "wall_clock_years": 0.999315537303217,
+          "trade_statistics": {
+            "n_trades": 218,
+            "mean_trade_ret_pct": -0.06648498506534166,
+            "std_trade_ret_pct": 0.13556842691442936,
+            "t_stat_like": -7.240911936461719,
+            "p_value_mean_ret_approx": 4.4564352208453784e-13,
+            "ci95_mean_trade_ret_pct": [
+              -0.08448141588393633,
+              -0.048488554246747
+            ],
+            "effect_size_d": -0.49041643824123526,
+            "n_required_for_80pct_power_alpha5pct": 33,
+            "n_gap_to_power_rule": 0
+          },
+          "weekly_cluster_sign_flip": {
+            "p_value_one_sided": 1.0,
+            "observed_mean_return": -0.0006648498506534166,
+            "cluster_count": 48,
+            "permutations": 100000,
+            "seed": 20260714
+          }
+        },
+        "select2023_h1": {
+          "absolute_return_pct": -9.207366900110635,
+          "cagr_pct": -17.709824631589342,
+          "strict_mdd_pct": 9.4180041263345,
+          "cagr_to_strict_mdd": -1.8804222629367258,
+          "trade_count": 139,
+          "long_count": 69,
+          "short_count": 70,
+          "continuation_count": 96,
+          "fade_count": 43,
+          "wall_clock_years": 0.49555099247091033,
+          "trade_statistics": {
+            "n_trades": 139,
+            "mean_trade_ret_pct": -0.06935977577966052,
+            "std_trade_ret_pct": 0.1467832225596133,
+            "t_stat_like": -5.571070603857693,
+            "p_value_mean_ret_approx": 2.5317869578600494e-08,
+            "ci95_mean_trade_ret_pct": [
+              -0.09376175704947233,
+              -0.0449577945098487
+            ],
+            "effect_size_d": -0.47253204126576065,
+            "n_required_for_80pct_power_alpha5pct": 36,
+            "n_gap_to_power_rule": 0
+          },
+          "weekly_cluster_sign_flip": {
+            "p_value_one_sided": 1.0,
+            "observed_mean_return": -0.0006935977577966051,
+            "cluster_count": 25,
+            "permutations": 100000,
+            "seed": 20260714
+          }
+        },
+        "select2023_h2": {
+          "absolute_return_pct": -4.743093430302392,
+          "cagr_pct": -9.195294616481442,
+          "strict_mdd_pct": 4.867950694958356,
+          "cagr_to_strict_mdd": -1.8889457171381858,
+          "trade_count": 79,
+          "long_count": 37,
+          "short_count": 42,
+          "continuation_count": 58,
+          "fade_count": 21,
+          "wall_clock_years": 0.5037645448323066,
+          "trade_statistics": {
+            "n_trades": 79,
+            "mean_trade_ret_pct": -0.06142680899837477,
+            "std_trade_ret_pct": 0.11389242989865847,
+            "t_stat_like": -4.793763916519061,
+            "p_value_mean_ret_approx": 1.6368088331386588e-06,
+            "ci95_mean_trade_ret_pct": [
+              -0.08654205199603979,
+              -0.03631156600070976
+            ],
+            "effect_size_d": -0.5393405782371345,
+            "n_required_for_80pct_power_alpha5pct": 27,
+            "n_gap_to_power_rule": 0
+          },
+          "weekly_cluster_sign_flip": {
+            "p_value_one_sided": 0.999660003399966,
+            "observed_mean_return": -0.0006142680899837477,
+            "cluster_count": 23,
+            "permutations": 100000,
+            "seed": 20260714
+          }
+        }
+      },
+      "qualification": {
+        "qualifies": false,
+        "failures": [
+          "train: non-positive absolute return",
+          "train: CAGR/strict-MDD below 3",
+          "train: strict MDD above 15%",
+          "train: weekly-cluster p-value not below 0.10",
+          "select2023: non-positive absolute return",
+          "select2023: CAGR/strict-MDD below 3",
+          "select2023: weekly-cluster p-value not below 0.10",
+          "select2023_h1: non-positive absolute return",
+          "select2023_h2: non-positive absolute return"
+        ]
+      }
+    },
+    {
+      "candidate": {
+        "name": "mfic_slow",
+        "window_bars": 24,
+        "segment_bars": 6,
+        "continuation_hold_bars": 6,
+        "fade_hold_bars": 12
+      },
+      "windows": {
+        "train": {
+          "absolute_return_pct": -53.32565800010809,
+          "cagr_pct": -22.425694522816176,
+          "strict_mdd_pct": 54.91246771476925,
+          "cagr_to_strict_mdd": -0.4083898512684136,
+          "trade_count": 1392,
+          "long_count": 677,
+          "short_count": 715,
+          "continuation_count": 830,
+          "fade_count": 562,
+          "wall_clock_years": 3.0006844626967832,
+          "trade_statistics": {
+            "n_trades": 1392,
+            "mean_trade_ret_pct": -0.054333830619140974,
+            "std_trade_ret_pct": 0.2798913914647644,
+            "t_stat_like": -7.242698404389497,
+            "p_value_mean_ret_approx": 4.39870362356487e-13,
+            "ci95_mean_trade_ret_pct": [
+              -0.0690375090090867,
+              -0.03963015222919524
+            ],
+            "effect_size_d": -0.19412469363489188,
+            "n_required_for_80pct_power_alpha5pct": 209,
+            "n_gap_to_power_rule": 0
+          },
+          "weekly_cluster_sign_flip": {
+            "p_value_one_sided": 1.0,
+            "observed_mean_return": -0.0005433383061914098,
+            "cluster_count": 146,
+            "permutations": 100000,
+            "seed": 20260714
+          }
+        },
+        "select2023": {
+          "absolute_return_pct": -12.658633662337781,
+          "cagr_pct": -12.666730070653909,
+          "strict_mdd_pct": 13.166072073439782,
+          "cagr_to_strict_mdd": -0.9620735782091603,
+          "trade_count": 243,
+          "long_count": 129,
+          "short_count": 114,
+          "continuation_count": 159,
+          "fade_count": 84,
+          "wall_clock_years": 0.999315537303217,
+          "trade_statistics": {
+            "n_trades": 243,
+            "mean_trade_ret_pct": -0.05546852633883227,
+            "std_trade_ret_pct": 0.20786528286216582,
+            "t_stat_like": -4.159755494773153,
+            "p_value_mean_ret_approx": 3.185884620426904e-05,
+            "ci95_mean_trade_ret_pct": [
+              -0.08160427200001807,
+              -0.029332780677646466
+            ],
+            "effect_size_d": -0.2668484394078116,
+            "n_required_for_80pct_power_alpha5pct": 111,
+            "n_gap_to_power_rule": 0
+          },
+          "weekly_cluster_sign_flip": {
+            "p_value_one_sided": 1.0,
+            "observed_mean_return": -0.0005546852633883227,
+            "cluster_count": 47,
+            "permutations": 100000,
+            "seed": 20260714
+          }
+        },
+        "select2023_h1": {
+          "absolute_return_pct": -7.456299864549976,
+          "cagr_pct": -14.475715341070961,
+          "strict_mdd_pct": 7.916377302550204,
+          "cagr_to_strict_mdd": -1.828578248336864,
+          "trade_count": 164,
+          "long_count": 92,
+          "short_count": 72,
+          "continuation_count": 108,
+          "fade_count": 56,
+          "wall_clock_years": 0.49555099247091033,
+          "trade_statistics": {
+            "n_trades": 164,
+            "mean_trade_ret_pct": -0.04697101139173802,
+            "std_trade_ret_pct": 0.23275215278582692,
+            "t_stat_like": -2.584390459115758,
+            "p_value_mean_ret_approx": 0.0097551286723625,
+            "ci95_mean_trade_ret_pct": [
+              -0.08259379509420751,
+              -0.01134822768926851
+            ],
+            "effect_size_d": -0.20180699009456485,
+            "n_required_for_80pct_power_alpha5pct": 193,
+            "n_gap_to_power_rule": 29
+          },
+          "weekly_cluster_sign_flip": {
+            "p_value_one_sided": 0.99860001399986,
+            "observed_mean_return": -0.00046971011391738017,
+            "cluster_count": 25,
+            "permutations": 100000,
+            "seed": 20260714
+          }
+        },
+        "select2023_h2": {
+          "absolute_return_pct": -5.621488864367463,
+          "cagr_pct": -10.84991095115887,
+          "strict_mdd_pct": 5.834347243558746,
+          "cagr_to_strict_mdd": -1.8596615008024115,
+          "trade_count": 79,
+          "long_count": 37,
+          "short_count": 42,
+          "continuation_count": 51,
+          "fade_count": 28,
+          "wall_clock_years": 0.5037645448323066,
+          "trade_statistics": {
+            "n_trades": 79,
+            "mean_trade_ret_pct": -0.07310893711508082,
+            "std_trade_ret_pct": 0.14275734738811102,
+            "t_stat_like": -4.5518248875521925,
+            "p_value_mean_ret_approx": 5.318259308717543e-06,
+            "ci95_mean_trade_ret_pct": [
+              -0.1045893917207536,
+              -0.04162848250940804
+            ],
+            "effect_size_d": -0.5121203108118931,
+            "n_required_for_80pct_power_alpha5pct": 30,
+            "n_gap_to_power_rule": 0
+          },
+          "weekly_cluster_sign_flip": {
+            "p_value_one_sided": 0.999980000199998,
+            "observed_mean_return": -0.0007310893711508082,
+            "cluster_count": 22,
+            "permutations": 100000,
+            "seed": 20260714
+          }
+        }
+      },
+      "qualification": {
+        "qualifies": false,
+        "failures": [
+          "train: non-positive absolute return",
+          "train: CAGR/strict-MDD below 3",
+          "train: strict MDD above 15%",
+          "train: weekly-cluster p-value not below 0.10",
+          "select2023: non-positive absolute return",
+          "select2023: CAGR/strict-MDD below 3",
+          "select2023: weekly-cluster p-value not below 0.10",
+          "select2023_h1: non-positive absolute return",
+          "select2023_h2: non-positive absolute return"
+        ]
+      }
+    }
+  ],
+  "selection": {
+    "selected_candidate": null,
+    "rejected": true,
+    "reason": "no frozen MFIC candidate passed every selection gate"
+  }
+}
