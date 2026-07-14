@@ -101,6 +101,9 @@ MARKET_MANIFEST_SHA256 = (
 EVALUATION_SOURCE = Path(
     "training/evaluate_cross_collateral_liquidity_hysteresis.py"
 )
+EVALUATION_FREEZE = Path(
+    "results/cross_collateral_liquidity_hysteresis_evaluator_freeze_2026-07-14.json"
+)
 
 WINDOWS: dict[str, tuple[str, str]] = {
     "train2023_h1": ("2023-01-01", "2023-07-01"),
@@ -150,6 +153,21 @@ class EvaluationConfig:
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def verify_evaluation_freeze() -> dict[str, Any]:
+    if not EVALUATION_FREEZE.is_file():
+        raise ValueError("CCLH evaluator freeze manifest is missing")
+    freeze = json.loads(EVALUATION_FREEZE.read_text())
+    if freeze.get("outcomes_opened_for_cclh") is not False:
+        raise ValueError("CCLH evaluator was not frozen before outcomes")
+    if freeze.get("evaluation_source") != str(EVALUATION_SOURCE):
+        raise ValueError("CCLH evaluator freeze path changed")
+    if freeze.get("evaluation_source_sha256") != _sha256(EVALUATION_SOURCE):
+        raise ValueError("CCLH evaluator differs from pre-outcome freeze")
+    if not freeze.get("evaluation_freeze_commit"):
+        raise ValueError("CCLH evaluator freeze commit is missing")
+    return freeze
 
 
 def verify_preregistration() -> dict[str, Any]:
@@ -231,6 +249,15 @@ def verify_signal_replay(
         "raw_candidate_count"
     ):
         raise ValueError("CCLH raw candidate replay differs from artifact")
+    feature = preregistration.get("feature", {})
+    if int(signal["provisional_state"].gt(0).sum()) != feature.get(
+        "provisional_bullish_rows"
+    ):
+        raise ValueError("CCLH bullish state replay differs from artifact")
+    if int(signal["provisional_state"].lt(0).sum()) != feature.get(
+        "provisional_bearish_rows"
+    ):
+        raise ValueError("CCLH bearish state replay differs from artifact")
     schedule = _quarterly_schedule(signal, market)
     side_counts = {
         "long": int(schedule["side"].gt(0).sum()),
@@ -499,6 +526,7 @@ def _qualification(windows: dict[str, Any]) -> dict[str, Any]:
 
 
 def run_evaluation(cfg: EvaluationConfig) -> dict[str, Any]:
+    evaluation_freeze = verify_evaluation_freeze()
     preregistration = verify_preregistration()
     signal_cfg = SignalConfig()
     market, source = clvr.load_sources(signal_cfg)
@@ -569,6 +597,10 @@ def run_evaluation(cfg: EvaluationConfig) -> dict[str, Any]:
             "preregistration_document_sha256": PREREGISTRATION_DOCUMENT_SHA256,
             "preregistration_result_sha256": PREREGISTRATION_RESULT_SHA256,
             "evaluation_source_sha256": _sha256(EVALUATION_SOURCE),
+            "evaluation_freeze_manifest_sha256": _sha256(EVALUATION_FREEZE),
+            "evaluation_freeze_commit": evaluation_freeze[
+                "evaluation_freeze_commit"
+            ],
             "outcomes_opened_for_cclh": True,
             "opened_windows": list(WINDOWS),
             "sealed_windows": ["test2024", "eval2025", "ytd2026"],
