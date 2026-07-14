@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import io
+import json
 import zipfile
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -99,3 +102,29 @@ def test_base_replay_allows_only_csv_roundtrip_noise() -> None:
     changed.loc[0, "depth"] += 1e-6
     with pytest.raises(AssertionError):
         builder._assert_base_frame_equal(changed, frozen)
+
+
+def test_frozen_credibility_manifest_keeps_outcomes_closed() -> None:
+    manifest_path = Path(
+        "results/binance_cross_collateral_book_credibility_btc_2023_manifest.json"
+    )
+    assert hashlib.sha256(manifest_path.read_bytes()).hexdigest() == (
+        "f530f472765c8cb56bf564efd346c734e2404e072b87e2ff8dc3b84e303c30f7"
+    )
+    manifest = json.loads(manifest_path.read_text())
+    assert manifest["protocol"]["outcomes_opened"] is False
+    assert manifest["protocol"]["post_2023_rows_requested"] is False
+    assert manifest["protocol"]["base_depth_replayed_exactly"] is True
+    assert manifest["missing_archive_dates"] == {
+        "um": ["2023-02-08", "2023-02-09"],
+        "cm": ["2023-09-25"],
+    }
+    item = manifest["file"]
+    assert item["rows"] == 105_120
+    assert item["columns"] == 88
+    assert item["source_complete_rows"] == 101_649
+    data_path = Path(item["path"])
+    assert hashlib.sha256(data_path.read_bytes()).hexdigest() == item["sha256"]
+    frame = pd.read_csv(data_path, compression="gzip", nrows=1)
+    assert len(frame.columns) == 88
+    assert not any(column.endswith(("_x", "_y")) for column in frame)
