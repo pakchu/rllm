@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T02:01:13.992086+00:00",
+  "updated_at": "2026-07-14T02:21:22.182164+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2343,6 +2343,50 @@
         "training/search_execution_metronome_absorption_alpha.py",
         "results/execution_metronome_absorption_alpha_scan_2026-07-14.json",
         "docs/execution-metronome-absorption-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "weekend_fx_reconciliation_static_usage_20260714",
+      "name": "Static weekend FX reconciliation residual policy",
+      "status": "rejected",
+      "family": "weekend_closed_market_information_transfer_static_usage",
+      "scope": "btc_fx_weekend_reopen_cross_market",
+      "feature_tier": "gamma_feature",
+      "description": "Rejected weekly policy trading sign(fx reopen event z minus BTC weekend event z) for 24 hours after the first complete FX reopen hour.",
+      "data_sources": [
+        "BTCUSDT project 5m OHLC cache, treated as Binance USD-M perpetual bars with provenance caveat",
+        "Wave Trading one-minute EURUSD/GBPUSD/USDCAD/USDCHF/USDJPY/USDSEK stored closes"
+      ],
+      "feature_names": [
+        "static_fx_minus_btc_reconciliation_residual",
+        "static_weekend_reopen_side",
+        "static_minute05_entry",
+        "static_hold_288"
+      ],
+      "usable_for": [
+        "failure provenance only; raw closure-event inputs retain weak-beta representation status"
+      ],
+      "known_failures": [
+        "Fit return/CAGR/strict MDD/ratio was -45.36%/-20.85%/46.58%/-0.45 over 112 trades.",
+        "2023 return/CAGR/strict MDD/ratio was -12.18%/-12.19%/15.89%/-0.77 over 52 trades.",
+        "2023 H1 lost 13.07%; H2 gained only 1.02% with ratio 0.18.",
+        "Zero-cost fit/2023 remained -41.57%/-9.40%.",
+        "Exact flip, BTC-only, FX-only, schedule-only, entry-delay and hold diagnostics all failed joint admission."
+      ],
+      "evidence": "A committed pre-outcome design, 10 tests, support-only pass and independent critic GO preceded the one-shot result. No 2024+ outcomes were opened and no post-2023 parameter change was made.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frames pre-2024; cutoff-chunk discard disclosed; six minute59 FX closes required; 45-72h observed closure; shift(1) prior-event z; minute00 signal to minute05 open; split-contained exit; no 2024+ computation.",
+      "tier_rationale": "The declared causal catch-up direction is decisively unprofitable before costs and unstable by half-year; neither the inverse nor component policies form a valid alpha.",
+      "next_action": "Do not tune pair membership, closure range, z-state, residual sign, direction, delay or hold on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_weekend_fx_reconciliation_alpha.py",
+        "protocol": "first six-pair complete hour after 45-72h closure; prior-52/min26 event z; FX minus BTC residual; minute05; 24h; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_weekend_fx_reconciliation_alpha.py",
+        "results/weekend_fx_reconciliation_alpha_scan_2026-07-14.json",
+        "docs/weekend-fx-reconciliation-alpha-design-2026-07-14.md",
+        "docs/weekend-fx-reconciliation-alpha-search-2026-07-14.md"
       ]
     }
   ]
