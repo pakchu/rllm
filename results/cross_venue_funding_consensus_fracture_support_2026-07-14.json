@@ -1,0 +1,233 @@
+{
+  "protocol": {
+    "name": "CFCF — Cross-Venue Funding Consensus Fracture",
+    "support_only": true,
+    "outcomes_opened_for_cfcf": false,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "event_clock": "first completed premium hour after each synchronized 8h funding settlement",
+    "signal_availability": "the :55-labeled 5m slot is the completed premium hour's final slot; enter next 5m open",
+    "direction": "fade the venue-consensus crowding spread toward convergence",
+    "candidate_clock": "fixed before any outcome; both branches share one settlement clock",
+    "holding_rule": "84 completed 5m bars; exit at next funding boundary open",
+    "source_gap_policy": "every auxiliary and execution grid must be complete; any missing or duplicate timestamp fails closed, so no accepted row is quarantined",
+    "sealed_windows": [
+      "test2024",
+      "eval2025",
+      "ytd2026"
+    ]
+  },
+  "config": {
+    "binance_manifest": "results/binance_um_aux_btc_2021_2023_manifest.json",
+    "bybit_manifest": "results/bybit_linear_aux_btc_2021_2023_manifest.json",
+    "market_manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+    "output": "results/cross_venue_funding_consensus_fracture_support_2026-07-14.json",
+    "crowding_quantile": 0.9,
+    "premium_baseline_hours": 2160,
+    "premium_min_periods": 720,
+    "funding_baseline_events": 270,
+    "funding_min_periods": 90,
+    "crowding_baseline_events": 540,
+    "crowding_min_periods": 180,
+    "hold_bars": 84,
+    "minimum_nonoverlap_total": 200,
+    "minimum_nonoverlap_per_year": 40,
+    "minimum_nonoverlap_per_2023_half": 30,
+    "minimum_side_share": 0.25,
+    "minimum_branch_share": 0.25
+  },
+  "frozen_artifacts": {
+    "preregistration_source": "training/preregister_cross_venue_funding_consensus_fracture.py",
+    "preregistration_source_sha256": "a426174df6014b54a7a3966774c9eb08fb4c75997dfca561ba5023d110da3431",
+    "preregistration_document": "docs/cross-venue-funding-consensus-fracture-preregistration-2026-07-14.md",
+    "preregistration_document_sha256": "7b2f328e69dc6dc90ecef63ff567196472bc63f7fe89d769f17b151abf159448",
+    "scheduler_source": "training/preregister_metaorder_fragmentation_impact_curvature.py",
+    "scheduler_source_sha256": "51e99dbdc5ba13e6b4ac15e3915ec5b30e36dff89c1e5b31a5f3f7f272f01a59",
+    "binance_manifest_sha256": "80c77f461be54b77c7554837a304a187321a052dd05cb39b4e0a3c80de5d2bdc",
+    "bybit_manifest_sha256": "2d57d60b17bfed75f0c48c557e2a51edc2eb449bf3f48f996070290199d7ae64",
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e"
+  },
+  "source": {
+    "binance_manifest_sha256": "80c77f461be54b77c7554837a304a187321a052dd05cb39b4e0a3c80de5d2bdc",
+    "bybit_manifest_sha256": "2d57d60b17bfed75f0c48c557e2a51edc2eb449bf3f48f996070290199d7ae64",
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "range_start": "2021-01-01 00:00:00",
+    "range_end": "2023-12-31 23:55:00"
+  },
+  "support_calibration": {
+    "outcomes_opened_for_cfcf": false,
+    "tested_crowding_quantiles": [
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9,
+      0.925,
+      0.95,
+      0.975
+    ],
+    "all_other_parameters_fixed": true,
+    "stopping_rule": "highest tested quantile passing every frozen support floor",
+    "selected_crowding_quantile": 0.9,
+    "further_support_repairs_allowed": false,
+    "trials": [
+      {
+        "crowding_quantile": 0.5,
+        "raw_candidate_count": 903,
+        "nonoverlap_total": 902,
+        "by_year": {
+          "2021": 181,
+          "2022": 380,
+          "2023": 341
+        },
+        "2023_h1": 167,
+        "2023_h2": 173,
+        "long_share": 0.47671840354767187,
+        "short_share": 0.5232815964523282,
+        "bybit_rich_share": 0.5232815964523282,
+        "bybit_cheap_share": 0.47671840354767187,
+        "passes_support": true
+      },
+      {
+        "crowding_quantile": 0.6,
+        "raw_candidate_count": 741,
+        "nonoverlap_total": 740,
+        "by_year": {
+          "2021": 155,
+          "2022": 309,
+          "2023": 276
+        },
+        "2023_h1": 136,
+        "2023_h2": 139,
+        "long_share": 0.4905405405405405,
+        "short_share": 0.5094594594594595,
+        "bybit_rich_share": 0.5094594594594595,
+        "bybit_cheap_share": 0.4905405405405405,
+        "passes_support": true
+      },
+      {
+        "crowding_quantile": 0.7,
+        "raw_candidate_count": 580,
+        "nonoverlap_total": 579,
+        "by_year": {
+          "2021": 118,
+          "2022": 240,
+          "2023": 221
+        },
+        "2023_h1": 105,
+        "2023_h2": 115,
+        "long_share": 0.5181347150259067,
+        "short_share": 0.48186528497409326,
+        "bybit_rich_share": 0.48186528497409326,
+        "bybit_cheap_share": 0.5181347150259067,
+        "passes_support": true
+      },
+      {
+        "crowding_quantile": 0.8,
+        "raw_candidate_count": 403,
+        "nonoverlap_total": 402,
+        "by_year": {
+          "2021": 78,
+          "2022": 161,
+          "2023": 163
+        },
+        "2023_h1": 75,
+        "2023_h2": 88,
+        "long_share": 0.5074626865671642,
+        "short_share": 0.4925373134328358,
+        "bybit_rich_share": 0.4925373134328358,
+        "bybit_cheap_share": 0.5074626865671642,
+        "passes_support": true
+      },
+      {
+        "crowding_quantile": 0.9,
+        "raw_candidate_count": 224,
+        "nonoverlap_total": 223,
+        "by_year": {
+          "2021": 46,
+          "2022": 88,
+          "2023": 89
+        },
+        "2023_h1": 38,
+        "2023_h2": 51,
+        "long_share": 0.5381165919282511,
+        "short_share": 0.4618834080717489,
+        "bybit_rich_share": 0.4618834080717489,
+        "bybit_cheap_share": 0.5381165919282511,
+        "passes_support": true
+      },
+      {
+        "crowding_quantile": 0.925,
+        "raw_candidate_count": 172,
+        "nonoverlap_total": 171,
+        "by_year": {
+          "2021": 33,
+          "2022": 68,
+          "2023": 70
+        },
+        "2023_h1": 27,
+        "2023_h2": 43,
+        "long_share": 0.5380116959064327,
+        "short_share": 0.4619883040935672,
+        "bybit_rich_share": 0.4619883040935672,
+        "bybit_cheap_share": 0.5380116959064327,
+        "passes_support": false
+      },
+      {
+        "crowding_quantile": 0.95,
+        "raw_candidate_count": 119,
+        "nonoverlap_total": 118,
+        "by_year": {
+          "2021": 22,
+          "2022": 47,
+          "2023": 49
+        },
+        "2023_h1": 17,
+        "2023_h2": 32,
+        "long_share": 0.559322033898305,
+        "short_share": 0.4406779661016949,
+        "bybit_rich_share": 0.4406779661016949,
+        "bybit_cheap_share": 0.559322033898305,
+        "passes_support": false
+      },
+      {
+        "crowding_quantile": 0.975,
+        "raw_candidate_count": 69,
+        "nonoverlap_total": 68,
+        "by_year": {
+          "2021": 12,
+          "2022": 31,
+          "2023": 25
+        },
+        "2023_h1": 9,
+        "2023_h2": 16,
+        "long_share": 0.5588235294117647,
+        "short_share": 0.4411764705882353,
+        "bybit_rich_share": 0.4411764705882353,
+        "bybit_cheap_share": 0.5588235294117647,
+        "passes_support": false
+      }
+    ]
+  },
+  "raw_candidate_count": 224,
+  "scheduled_branch_counts": {
+    "bybit_cheap": 120,
+    "bybit_rich": 103
+  },
+  "support": {
+    "nonoverlap_total": 223,
+    "by_year": {
+      "2021": 46,
+      "2022": 88,
+      "2023": 89
+    },
+    "2023_h1": 38,
+    "2023_h2": 51,
+    "long_share": 0.5381165919282511,
+    "short_share": 0.4618834080717489,
+    "bybit_rich_share": 0.4618834080717489,
+    "bybit_cheap_share": 0.5381165919282511,
+    "passes_support": true
+  },
+  "all_support_gates_pass": true
+}
