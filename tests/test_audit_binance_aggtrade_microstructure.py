@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from training import build_binance_aggtrade_microstructure as builder
 
 def _fixture(tmp_path: Path) -> audit.AuditConfig:
     start = pd.Timestamp("2021-01-01")
-    timestamps = pd.date_range(start, start + pd.Timedelta("1d"), inclusive="left", freq="5min")
+    timestamps = pd.date_range(start, start + pd.Timedelta("2d"), inclusive="left", freq="5min")
     prices = 100.0 + np.arange(len(timestamps)) * 0.01
     raw = pd.DataFrame(
         {
@@ -36,18 +37,30 @@ def _fixture(tmp_path: Path) -> audit.AuditConfig:
     monthly_path = monthly_dir / "BTCUSDT_aggtrade_5m_2021-01.csv.gz"
     shutil.copyfile(features_path, monthly_path)
     monthly_hash = audit._sha256(monthly_path)
-    archive = {
-        "date": "2021-01-01",
-        "archive_sha256": "0" * 64,
-        "agg_trade_rows": len(raw),
-        "five_minute_rows": len(features),
-        "first_agg_trade_id": 1,
-        "last_agg_trade_id": len(raw),
-        "first_underlying_trade_id": 1_001,
-        "last_underlying_trade_id": 1_000 + len(raw),
-    }
+    archives = [
+        {
+            "date": "2021-01-01",
+            "archive_sha256": "0" * 64,
+            "agg_trade_rows": 288,
+            "five_minute_rows": 288,
+            "first_agg_trade_id": 1,
+            "last_agg_trade_id": 288,
+            "first_underlying_trade_id": 1_001,
+            "last_underlying_trade_id": 1_288,
+        },
+        {
+            "date": "2021-01-02",
+            "archive_sha256": "1" * 64,
+            "agg_trade_rows": 288,
+            "five_minute_rows": 288,
+            "first_agg_trade_id": 289,
+            "last_agg_trade_id": 576,
+            "first_underlying_trade_id": 1_289,
+            "last_underlying_trade_id": 1_576,
+        },
+    ]
     manifest = {
-        "config": {"symbol": "BTCUSDT", "start": "2021-01-01", "end": "2021-01-02"},
+        "config": {"symbol": "BTCUSDT", "start": "2021-01-01", "end": "2021-01-03"},
         "protocol": {"outcomes_opened": False},
         "combined_output": str(features_path),
         "combined_sha256": audit._sha256(features_path),
@@ -57,10 +70,10 @@ def _fixture(tmp_path: Path) -> audit.AuditConfig:
             {
                 "schema_version": 1,
                 "month": "2021-01",
-                "requested_dates": ["2021-01-01"],
+                "requested_dates": ["2021-01-01", "2021-01-02"],
                 "output": str(monthly_path),
                 "output_sha256": monthly_hash,
-                "archives": [archive],
+                "archives": archives,
             }
         ],
     }
@@ -87,7 +100,7 @@ def _fixture(tmp_path: Path) -> audit.AuditConfig:
         manifest=str(manifest_path),
         market=str(market_path),
         start="2021-01-01",
-        end="2021-01-02",
+        end="2021-01-03",
         output=str(tmp_path / "audit.json"),
     )
 
@@ -96,7 +109,7 @@ def test_exact_fixture_passes_all_structural_and_reconciliation_checks(tmp_path:
     result = audit.run_audit(_fixture(tmp_path))
     assert result["passed"] is True
     assert result["failed_checks"] == []
-    assert result["feature_diagnostics"]["rows"] == 288
+    assert result["feature_diagnostics"]["rows"] == 576
     assert result["reconciliation"]["daily"]["base_volume"]["max_relative_error"] == 0.0
 
 
@@ -112,8 +125,8 @@ def test_missing_feature_bin_fails_closed(tmp_path: Path) -> None:
 
     result = audit.run_audit(cfg)
     assert result["passed"] is False
-    assert result["checks"]["coverage.feature_rows_exact"] is False
-    assert result["checks"]["coverage.feature_index_exact"] is False
+    assert result["checks"]["coverage.feature_index_is_expected_subset"] is True
+    assert result["checks"]["coverage.feature_missing_bins_documented"] is False
 
 
 def test_signed_partition_corruption_is_detected(tmp_path: Path) -> None:
@@ -131,3 +144,28 @@ def test_signed_partition_corruption_is_detected(tmp_path: Path) -> None:
     assert result["passed"] is False
     assert result["checks"]["feature.signed_partition"] is False
     assert result["checks"]["feature.flow_coherence_identity"] is False
+
+
+def test_documented_source_gap_day_is_quarantined(tmp_path: Path) -> None:
+    cfg = replace(_fixture(tmp_path), maximum_missing_bin_fraction=0.01)
+    features_path = Path(cfg.features)
+    frame = pd.read_csv(features_path, compression="gzip", parse_dates=["date"])
+    frame = frame.drop(index=10).reset_index(drop=True)
+    builder._write_gzip_csv(frame, features_path)
+
+    manifest_path = Path(cfg.manifest)
+    manifest = json.loads(manifest_path.read_text())
+    monthly_path = Path(manifest["months"][0]["output"])
+    builder._write_gzip_csv(frame, monthly_path)
+    manifest["combined_sha256"] = audit._sha256(features_path)
+    manifest["rows"] = len(frame)
+    manifest["months"][0]["output_sha256"] = audit._sha256(monthly_path)
+    manifest["months"][0]["archives"][0]["agg_trade_rows"] = 287
+    manifest["months"][0]["archives"][0]["five_minute_rows"] = 287
+    manifest_path.write_text(json.dumps(manifest))
+
+    result = audit.run_audit(cfg)
+    assert result["passed"] is True
+    assert result["quarantine"]["source_gap_days"] == ["2021-01-01"]
+    assert result["quarantine"]["missing_bin_count"] == 1
+    assert result["quarantine"]["source_gap_missing_bin_count"] == 1

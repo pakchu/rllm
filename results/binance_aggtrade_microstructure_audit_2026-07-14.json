@@ -1,0 +1,640 @@
+{
+  "protocol": {
+    "outcomes_opened": false,
+    "interval": {
+      "start": "2020-01-01",
+      "end_exclusive": "2024-01-01"
+    },
+    "five_minute_discrepancy_policy": "diagnostic only: aggTrade events can straddle kline boundaries; daily value conservation is the hard integrity criterion",
+    "daily_value_relative_tolerance": 0.001,
+    "monthly_value_relative_tolerance": 5e-05,
+    "daily_trade_count_relative_tolerance": 0.006,
+    "source_gap_policy": "quarantine each UTC source-ID-gap day and the next configured bars; zero-volume missing bins reset sequential features",
+    "post_gap_quarantine_bars": 24
+  },
+  "config": {
+    "features": "data/binance_um_aggtrade_microstructure_btc_2020_2023/BTCUSDT_aggtrade_5m_2020-01-01_2023-12-31.csv.gz",
+    "manifest": "data/binance_um_aggtrade_microstructure_btc_2020_2023/build_manifest.json",
+    "market": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "start": "2020-01-01",
+    "end": "2024-01-01",
+    "output": "results/binance_aggtrade_microstructure_audit_2026-07-14.json",
+    "near_exact_relative_tolerance": 1e-09,
+    "minimum_near_exact_fraction": 0.8,
+    "value_p99_relative_tolerance": 0.002,
+    "value_p999_relative_tolerance": 0.01,
+    "daily_value_relative_tolerance": 0.001,
+    "monthly_value_relative_tolerance": 5e-05,
+    "trade_count_p99_relative_tolerance": 0.002,
+    "trade_count_p999_relative_tolerance": 0.01,
+    "daily_trade_count_relative_tolerance": 0.006,
+    "maximum_missing_bin_fraction": 0.001,
+    "post_gap_quarantine_bars": 24
+  },
+  "passed": true,
+  "failed_checks": [],
+  "checks": {
+    "feature.columns_exact": true,
+    "feature.timestamps_unique": true,
+    "feature.timestamps_monotonic": true,
+    "feature.all_numeric_finite": true,
+    "feature.counts_positive_integer": true,
+    "feature.volumes_positive": true,
+    "feature.buy_sell_partition": true,
+    "feature.signed_partition": true,
+    "feature.flow_coherence_identity": true,
+    "feature.underlying_per_event_identity": true,
+    "feature.micro_return_identity": true,
+    "feature.signed_response_identity": true,
+    "feature.transaction_times_inside_bins": true,
+    "feature.event_quantiles_ordered": true,
+    "feature.bounded_features": true,
+    "coverage.feature_index_is_expected_subset": true,
+    "coverage.feature_missing_fraction_bounded": true,
+    "coverage.feature_missing_bins_documented": true,
+    "coverage.market_rows_exact": true,
+    "coverage.market_index_exact": true,
+    "manifest.manifest_config_interval_exact": true,
+    "manifest.manifest_outcomes_unopened": true,
+    "manifest.manifest_combined_contract_exact": true,
+    "manifest.combined_hash_valid": true,
+    "manifest.monthly_hashes_valid": true,
+    "manifest.monthly_requested_dates_exact": true,
+    "manifest.archive_hashes_well_formed": true,
+    "manifest.archive_day_coverage_exact": true,
+    "manifest.aggregate_ids_cross_day_nonoverlapping": true,
+    "manifest.aggregate_ids_inside_days_nonoverlapping": true,
+    "manifest.underlying_ids_cross_day_nonoverlapping": true,
+    "manifest.daily_aggregate_row_counts_exact": true,
+    "manifest.manifest_is_sibling_of_features": true,
+    "reconciliation.all_feature_rows_joined": true,
+    "reconciliation.direct_join_beats_timezone_shifts": true,
+    "reconciliation.value_near_exact_fraction": true,
+    "reconciliation.value_p99_within_boundary_tolerance": true,
+    "reconciliation.value_p999_within_boundary_tolerance": true,
+    "reconciliation.daily_base_volume_conserved": true,
+    "reconciliation.daily_quote_notional_conserved": true,
+    "reconciliation.daily_buy_quote_conserved": true,
+    "reconciliation.monthly_values_conserved": true,
+    "reconciliation.trade_count_near_exact_fraction": true,
+    "reconciliation.trade_count_p99_within_tolerance": true,
+    "reconciliation.trade_count_p999_within_tolerance": true,
+    "reconciliation.daily_trade_count_close": true,
+    "reconciliation.first_price_matches_open": true,
+    "reconciliation.last_price_matches_close": true,
+    "reconciliation.trade_prices_inside_kline_envelope": true
+  },
+  "feature_diagnostics": {
+    "rows": 420732,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00",
+    "feature_minima": {
+      "agg_trade_count": 13.0,
+      "underlying_trade_count": 37.0,
+      "base_volume": 4.961,
+      "quote_notional": 52837.3518
+    },
+    "feature_maxima": {
+      "agg_trade_count": 379419.0,
+      "underlying_trade_count": 657634.0,
+      "flow_coherence": 0.938421460592,
+      "event_notional_hhi": 0.448900363394,
+      "normalized_effective_event_count": 0.458093132353
+    }
+  },
+  "manifest_diagnostics": {
+    "months": 48,
+    "archives": 1461,
+    "aggregate_id_gap_count": 0,
+    "aggregate_id_overlap_count": 0,
+    "aggregate_id_max_gap": 0,
+    "aggregate_id_internal_gap_days": 5,
+    "source_gap_days": [
+      "2020-04-15",
+      "2021-02-09",
+      "2021-02-24",
+      "2021-05-19",
+      "2022-09-06"
+    ],
+    "underlying_id_gap_count": 0,
+    "underlying_id_overlap_count": 0,
+    "underlying_id_max_gap": 0
+  },
+  "quarantine": {
+    "source_gap_days": [
+      "2020-04-15",
+      "2021-02-09",
+      "2021-02-24",
+      "2021-05-19",
+      "2022-09-06"
+    ],
+    "post_gap_bars": 24,
+    "missing_bins": [
+      {
+        "date": "2021-02-09 05:10:00",
+        "volume": 472.118,
+        "number_of_trades": 5213.0,
+        "source_gap_day": true,
+        "documented": true
+      },
+      {
+        "date": "2021-02-09 05:15:00",
+        "volume": 620.25,
+        "number_of_trades": 9370.0,
+        "source_gap_day": true,
+        "documented": true
+      },
+      {
+        "date": "2021-02-09 05:20:00",
+        "volume": 407.411,
+        "number_of_trades": 7391.0,
+        "source_gap_day": true,
+        "documented": true
+      },
+      {
+        "date": "2021-02-09 05:25:00",
+        "volume": 252.642,
+        "number_of_trades": 6388.0,
+        "source_gap_day": true,
+        "documented": true
+      },
+      {
+        "date": "2021-02-09 05:30:00",
+        "volume": 283.52,
+        "number_of_trades": 6581.0,
+        "source_gap_day": true,
+        "documented": true
+      },
+      {
+        "date": "2021-03-02 01:05:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2021-03-02 01:10:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2021-03-02 01:15:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2021-03-02 01:20:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2021-03-02 01:25:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2021-03-02 01:30:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2021-03-02 01:35:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2021-03-02 01:40:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2021-03-02 01:45:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2021-03-02 01:50:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2021-03-02 01:55:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2021-05-19 13:20:00",
+        "volume": 4623.09,
+        "number_of_trades": 222881.0,
+        "source_gap_day": true,
+        "documented": true
+      },
+      {
+        "date": "2021-05-19 13:25:00",
+        "volume": 3365.795,
+        "number_of_trades": 153923.0,
+        "source_gap_day": true,
+        "documented": true
+      },
+      {
+        "date": "2021-05-19 13:30:00",
+        "volume": 2454.543,
+        "number_of_trades": 114614.0,
+        "source_gap_day": true,
+        "documented": true
+      },
+      {
+        "date": "2021-05-19 13:35:00",
+        "volume": 2715.845,
+        "number_of_trades": 100090.0,
+        "source_gap_day": true,
+        "documented": true
+      },
+      {
+        "date": "2022-05-01 22:30:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2022-05-01 22:35:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2022-05-01 22:40:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2022-05-01 22:45:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2022-05-01 22:50:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2022-05-28 16:40:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2022-05-28 16:45:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2022-05-28 16:50:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2022-05-28 16:55:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2022-05-28 17:00:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2022-05-28 17:05:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2022-05-28 17:10:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2022-09-06 17:15:00",
+        "volume": 11865.191,
+        "number_of_trades": 71786.0,
+        "source_gap_day": true,
+        "documented": true
+      },
+      {
+        "date": "2023-09-12 08:35:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2023-09-12 08:40:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      },
+      {
+        "date": "2023-09-12 08:45:00",
+        "volume": 0.0,
+        "number_of_trades": 0.0,
+        "source_gap_day": false,
+        "documented": true
+      }
+    ],
+    "missing_bin_count": 36,
+    "zero_volume_missing_bin_count": 26,
+    "source_gap_missing_bin_count": 10
+  },
+  "reconciliation": {
+    "five_minute": {
+      "base_volume": {
+        "rows": 419302,
+        "exact_rows": 349619,
+        "exact_fraction": 0.8338119064540593,
+        "near_exact_relative_tolerance": 1e-09,
+        "near_exact_rows": 349619,
+        "near_exact_fraction": 0.8338119064540593,
+        "mean_absolute_error": 0.0638106996866225,
+        "max_absolute_error": 209.60700000000008,
+        "p95_relative_error": 0.00010910070349763135,
+        "p99_relative_error": 0.0010556638034699467,
+        "p999_relative_error": 0.006805973614146474,
+        "max_relative_error": 0.4067329914251287,
+        "total_actual": 571935574.0070002,
+        "total_reference": 571935139.155,
+        "total_relative_error": 7.60316984333187e-07
+      },
+      "quote_notional": {
+        "rows": 419302,
+        "exact_rows": 349093,
+        "exact_fraction": 0.8325574406990666,
+        "near_exact_relative_tolerance": 1e-09,
+        "near_exact_rows": 349534,
+        "near_exact_fraction": 0.833609188603918,
+        "mean_absolute_error": 1847.4789003041662,
+        "max_absolute_error": 7612301.899100002,
+        "p95_relative_error": 0.00010910875967071028,
+        "p99_relative_error": 0.0010563490886213289,
+        "p999_relative_error": 0.006802899436662749,
+        "max_relative_error": 0.40631144833176797,
+        "total_actual": 16317208501806.688,
+        "total_reference": 16317196230835.164,
+        "total_relative_error": 7.520269628337634e-07
+      },
+      "underlying_trade_count": {
+        "rows": 419302,
+        "exact_rows": 344330,
+        "exact_fraction": 0.8211980863434947,
+        "near_exact_relative_tolerance": 1e-09,
+        "near_exact_rows": 344330,
+        "near_exact_fraction": 0.8211980863434947,
+        "mean_absolute_error": 1.8814553710690625,
+        "max_absolute_error": 19481.0,
+        "p95_relative_error": 0.0002777777777777778,
+        "p99_relative_error": 0.0012417208264742779,
+        "p999_relative_error": 0.005644353124858712,
+        "max_relative_error": 0.47139973082099595,
+        "total_actual": 4371965816.0,
+        "total_reference": 4371393972.0,
+        "total_relative_error": 0.0001308150223161812
+      },
+      "buy_quote_notional": {
+        "rows": 419302,
+        "exact_rows": 382133,
+        "exact_fraction": 0.9113550615069806,
+        "near_exact_relative_tolerance": 1e-09,
+        "near_exact_rows": 382532,
+        "near_exact_fraction": 0.9123066429447033,
+        "mean_absolute_error": 981.0300266164949,
+        "max_absolute_error": 3545442.9103999995,
+        "p95_relative_error": 3.8213558657573986e-05,
+        "p99_relative_error": 0.0009843784094968329,
+        "p999_relative_error": 0.008652706318532476,
+        "max_relative_error": 0.4180281229078572,
+        "total_actual": 8127302364057.707,
+        "total_reference": 8127295377317.608,
+        "total_relative_error": 8.596636118495261e-07
+      },
+      "first_price": {
+        "rows": 419302,
+        "exact_rows": 393580,
+        "exact_fraction": 0.9386551936313207,
+        "near_exact_relative_tolerance": 1e-09,
+        "near_exact_rows": 393580,
+        "near_exact_fraction": 0.9386551936313207,
+        "mean_absolute_error": 0.019530815498133496,
+        "max_absolute_error": 67.65000000000146,
+        "p95_relative_error": 2.871080571100126e-07,
+        "p99_relative_error": 1.0249927094004605e-05,
+        "p999_relative_error": 7.9112097256228e-05,
+        "max_relative_error": 0.0011407865508264077,
+        "total_actual": 12093594444.6,
+        "total_reference": 12093594143.890001,
+        "total_relative_error": 2.4865229931368185e-08
+      },
+      "last_price": {
+        "rows": 419302,
+        "exact_rows": 419298,
+        "exact_fraction": 0.9999904603364639,
+        "near_exact_relative_tolerance": 1e-09,
+        "near_exact_rows": 419298,
+        "near_exact_fraction": 0.9999904603364639,
+        "mean_absolute_error": 0.00012640054185288017,
+        "max_absolute_error": 23.0,
+        "p95_relative_error": 0.0,
+        "p99_relative_error": 0.0,
+        "p999_relative_error": 0.0,
+        "max_relative_error": 0.0011655070715874713,
+        "total_actual": 12093635556.279997,
+        "total_reference": 12093635544.879997,
+        "total_relative_error": 9.426445485498872e-10
+      }
+    },
+    "daily": {
+      "base_volume": {
+        "rows": 1456,
+        "exact_rows": 1153,
+        "exact_fraction": 0.7918956043956044,
+        "near_exact_relative_tolerance": 1e-09,
+        "near_exact_rows": 1182,
+        "near_exact_fraction": 0.8118131868131868,
+        "mean_absolute_error": 0.383535714287888,
+        "max_absolute_error": 209.60700000001816,
+        "p95_relative_error": 8.176332084769781e-07,
+        "p99_relative_error": 5.190382087947341e-06,
+        "p999_relative_error": 0.00015034685450706007,
+        "max_relative_error": 0.0005279026084854901,
+        "total_actual": 571935574.007,
+        "total_reference": 571935139.155,
+        "total_relative_error": 7.60316983916324e-07
+      },
+      "quote_notional": {
+        "rows": 1456,
+        "exact_rows": 283,
+        "exact_fraction": 0.19436813186813187,
+        "near_exact_relative_tolerance": 1e-09,
+        "near_exact_rows": 1182,
+        "near_exact_fraction": 0.8118131868131868,
+        "mean_absolute_error": 10883.22379666051,
+        "max_absolute_error": 7612301.890300751,
+        "p95_relative_error": 8.181995996282797e-07,
+        "p99_relative_error": 5.1554467595962965e-06,
+        "p999_relative_error": 0.00015081334740011038,
+        "max_relative_error": 0.0005320653136114225,
+        "total_actual": 16317208501806.69,
+        "total_reference": 16317196230835.164,
+        "total_relative_error": 7.520269629534608e-07
+      },
+      "underlying_trade_count": {
+        "rows": 1456,
+        "exact_rows": 142,
+        "exact_fraction": 0.09752747252747253,
+        "near_exact_relative_tolerance": 1e-09,
+        "near_exact_rows": 142,
+        "near_exact_fraction": 0.09752747252747253,
+        "mean_absolute_error": 392.7967032967033,
+        "max_absolute_error": 29452.0,
+        "p95_relative_error": 0.000437631236313225,
+        "p99_relative_error": 0.0013543478583916972,
+        "p999_relative_error": 0.002711679247070614,
+        "max_relative_error": 0.005005345754132019,
+        "total_actual": 4371965816.0,
+        "total_reference": 4371393972.0,
+        "total_relative_error": 0.0001308150223161812
+      },
+      "buy_quote_notional": {
+        "rows": 1456,
+        "exact_rows": 573,
+        "exact_fraction": 0.39354395604395603,
+        "near_exact_relative_tolerance": 1e-09,
+        "near_exact_rows": 1317,
+        "near_exact_fraction": 0.904532967032967,
+        "mean_absolute_error": 6234.826148360231,
+        "max_absolute_error": 3545442.9093999863,
+        "p95_relative_error": 3.2266638150128386e-07,
+        "p99_relative_error": 8.903907409225898e-06,
+        "p999_relative_error": 0.00022597233246146237,
+        "max_relative_error": 0.0005230561656781781,
+        "total_actual": 8127302364057.708,
+        "total_reference": 8127295377317.608,
+        "total_relative_error": 8.596636119696845e-07
+      }
+    },
+    "monthly": {
+      "base_volume": {
+        "rows": 48,
+        "exact_rows": 28,
+        "exact_fraction": 0.5833333333333334,
+        "near_exact_relative_tolerance": 1e-09,
+        "near_exact_rows": 32,
+        "near_exact_fraction": 0.6666666666666666,
+        "mean_absolute_error": 9.291166666604113,
+        "max_absolute_error": 209.60699999891222,
+        "p95_relative_error": 2.633392610414672e-06,
+        "p99_relative_error": 1.5831498501099227e-05,
+        "p999_relative_error": 2.2940588779849654e-05,
+        "max_relative_error": 2.373048769971076e-05,
+        "total_actual": 571935574.007,
+        "total_reference": 571935139.155,
+        "total_relative_error": 7.60316983916324e-07
+      },
+      "quote_notional": {
+        "rows": 48,
+        "exact_rows": 1,
+        "exact_fraction": 0.020833333333333332,
+        "near_exact_relative_tolerance": 1e-09,
+        "near_exact_rows": 32,
+        "near_exact_fraction": 0.6666666666666666,
+        "mean_absolute_error": 264689.4870753288,
+        "max_absolute_error": 7612301.8963012695,
+        "p95_relative_error": 2.379289875763226e-06,
+        "p99_relative_error": 1.5549534245827586e-05,
+        "p999_relative_error": 2.2835713051863456e-05,
+        "max_relative_error": 2.3645288474756278e-05,
+        "total_actual": 16317208501806.69,
+        "total_reference": 16317196230835.166,
+        "total_relative_error": 7.520269628337633e-07
+      },
+      "underlying_trade_count": {
+        "rows": 48,
+        "exact_rows": 0,
+        "exact_fraction": 0.0,
+        "near_exact_relative_tolerance": 1e-09,
+        "near_exact_rows": 0,
+        "near_exact_fraction": 0.0,
+        "mean_absolute_error": 11913.416666666666,
+        "max_absolute_error": 51888.0,
+        "p95_relative_error": 0.0002672874762709111,
+        "p99_relative_error": 0.00045031793540332857,
+        "p999_relative_error": 0.0005404847150253491,
+        "max_relative_error": 0.0005505032460944618,
+        "total_actual": 4371965816.0,
+        "total_reference": 4371393972.0,
+        "total_relative_error": 0.0001308150223161812
+      },
+      "buy_quote_notional": {
+        "rows": 48,
+        "exact_rows": 0,
+        "exact_fraction": 0.0,
+        "near_exact_relative_tolerance": 1e-09,
+        "near_exact_rows": 34,
+        "near_exact_fraction": 0.7083333333333334,
+        "mean_absolute_error": 148473.2000632286,
+        "max_absolute_error": 3545442.911010742,
+        "p95_relative_error": 4.478900002441205e-06,
+        "p99_relative_error": 1.5312244942824285e-05,
+        "p999_relative_error": 2.1518734699062767e-05,
+        "max_relative_error": 2.2208344671978107e-05,
+        "total_actual": 8127302364057.708,
+        "total_reference": 8127295377317.609,
+        "total_relative_error": 8.59663611849526e-07
+      }
+    },
+    "shifted_quote_p99_relative_error": {
+      "-9h": 13.87227789011367,
+      "+9h": 15.071142368251998
+    }
+  }
+}
