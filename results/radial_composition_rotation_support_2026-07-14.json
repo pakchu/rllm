@@ -1,0 +1,182 @@
+{
+  "protocol": {
+    "name": "RCR-144 — Radial Composition Rotation",
+    "support_only": true,
+    "outcomes_opened_for_rcr144": false,
+    "price_or_return_loaded": false,
+    "support_rejected": false,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "signal_availability": "current and prior 5m shell composition complete; enter next 5m open",
+    "action_rule": "bid-inward minus ask-inward composition rotation; exact bid/ask sign symmetry",
+    "candidate_clock": "every completed bar with absolute standardized cross-venue score at least 2.0",
+    "holding_rule": "144 completed 5m bars; scheduled-open exit",
+    "quarter_boundary_policy": "four quarter-contained schedules concatenated; reset flat",
+    "support_parameters_searched": false,
+    "mechanisms_compared_outcome_blind": [
+      "DS-RTP",
+      "RCR-144"
+    ],
+    "source_gap_policy": "current and prior composition rows source-complete; future shell gaps do not cancel an entered trade",
+    "sealed_windows": [
+      "test2024",
+      "eval2025",
+      "ytd2026"
+    ]
+  },
+  "config": {
+    "shell_manifest": "results/binance_cross_collateral_book_shells_btc_2023_manifest.json",
+    "output": "results/radial_composition_rotation_support_2026-07-14.json",
+    "robust_baseline_bars": 8640,
+    "robust_min_periods": 2016,
+    "score_threshold": 2.0,
+    "hold_bars": 144,
+    "minimum_available_total": 90000,
+    "minimum_available_per_quarter": 15000,
+    "minimum_strong_per_quarter": 500,
+    "minimum_strong_side_share": 0.35,
+    "minimum_nonoverlap_total": 120,
+    "minimum_nonoverlap_per_half": 45,
+    "minimum_nonoverlap_per_quarter": 20,
+    "minimum_side_share": 0.35,
+    "maximum_quarter_share": 0.4,
+    "overlap_tolerance_bars": 12,
+    "maximum_prior_event_jaccard": 0.35,
+    "maximum_prior_event_match_share": 0.35,
+    "maximum_prior_feature_spearman": 0.6
+  },
+  "frozen_artifacts": {
+    "preregistration_source": "training/preregister_radial_composition_rotation.py",
+    "preregistration_source_sha256": "6ae77c65150c05b99782fb7ca376ed905424767366a4906c2bca690a094b3b65",
+    "preregistration_document": "docs/radial-composition-rotation-preregistration-2026-07-14.md",
+    "preregistration_document_sha256": "4e462518bacd2ea7e8464bcff9a968c6f906642907d92acd839aef7898d10c43",
+    "shell_builder_source": "training/build_binance_cross_collateral_book_shells_2023.py",
+    "shell_builder_source_sha256": "8d343830e4d51596e7b369f303a7ba3fc807dbecb5f19193028dcf43c8c67a1c",
+    "standardizer_source": "training/preregister_cross_collateral_liquidity_void_refill.py",
+    "standardizer_source_sha256": "8465af153f4e5a19299c7ee2b6104e7ea009feb8da80ad10d50cf49bddd7ad51",
+    "scheduler_source": "training/preregister_metaorder_fragmentation_impact_curvature.py",
+    "scheduler_source_sha256": "51e99dbdc5ba13e6b4ac15e3915ec5b30e36dff89c1e5b31a5f3f7f272f01a59",
+    "cclh_source": "training/preregister_cross_collateral_liquidity_hysteresis.py",
+    "cclh_source_sha256": "c555d2c567ecb2c5b4a2986a4a1a455521c79bdcf655f7c43a3dfc41187cbdd5",
+    "cclh_support": "results/cross_collateral_liquidity_hysteresis_support_2026-07-14.json",
+    "cclh_support_sha256": "6144cc8ce63635219b35ebba185d3653a5ce466f25fd65c33b2c1916a92bfdcf",
+    "pdf_source": "training/preregister_cross_collateral_liquidity_credibility_fracture.py",
+    "pdf_source_sha256": "8947050c990b5638f6d8b2e952f252289ddef6c92f85fb13f75001fe721e6e28",
+    "pdf_support": "results/cross_collateral_liquidity_credibility_fracture_support_2026-07-14.json",
+    "pdf_support_sha256": "9a3001db640ec8041d885645d33f11dd6075276685eb22f8ae3c618363d3099a",
+    "pdf_event_clock": "results/cross_collateral_liquidity_credibility_fracture_event_clock_2026-07-14.json",
+    "pdf_event_clock_sha256": "ab8209308619b97880277b95fcc1a2f825b050a603e24b3e2125ddd5bfb226f8",
+    "rlwc_source": "training/preregister_radial_liquidity_wavefront_cascade.py",
+    "rlwc_source_sha256": "9f94706ef05750bc08ce7ef56672512ff7d245a31f830ae1064d1d1c2b02a7a9",
+    "rlwc_support": "results/radial_liquidity_wavefront_cascade_support_2026-07-14.json",
+    "rlwc_support_sha256": "59e162056a443ee78e6f51a99da446dd8871e55463fd78018a52cea4196bc1fa",
+    "shell_manifest_sha256": "1b5519143d58f62ef3e8b6d9e22f012f80197a59903509041aca24252ed04521"
+  },
+  "source": {
+    "shell_manifest_sha256": "1b5519143d58f62ef3e8b6d9e22f012f80197a59903509041aca24252ed04521",
+    "shell_data_sha256": "ead931ec8ce2bbd73c946b8660e16d7750ce73051e60ce4989467a7c5bc68342",
+    "range_start": "2023-01-01 00:00:00",
+    "range_end": "2023-12-31 23:55:00",
+    "rows": 105120,
+    "source_complete_rows": 101649
+  },
+  "feature": {
+    "score_quantiles": {
+      "0.01": -4.644128585388441,
+      "0.05": -2.7862838320693184,
+      "0.25": -0.8745828922712445,
+      "0.5": -0.0010583219714039832,
+      "0.75": 0.8654459587999084,
+      "0.95": 2.7599534830606878,
+      "0.99": 4.633690486568834
+    },
+    "normalization": "venue-side median shell shares renormalized to a radial barycenter; one-bar bid/ask rotation standardized with strictly lagged rolling median and recursive MAD"
+  },
+  "support_calibration": {
+    "outcomes_opened_for_rcr144": false,
+    "parameters_searched": false,
+    "mechanism_selection_used_only_support_and_independence": true,
+    "rejected_predecessor": "DS-RTP max prior-feature Spearman 0.610049 exceeded 0.60",
+    "all_parameters_fixed": true,
+    "further_support_repairs_allowed": false
+  },
+  "availability": {
+    "available_total": 97414,
+    "available_by_quarter": {
+      "q1": 19073,
+      "q2": 25700,
+      "q3": 26179,
+      "q4": 26462
+    },
+    "strong_total": 18884,
+    "strong_by_quarter": {
+      "q1": 4254,
+      "q2": 4204,
+      "q3": 5131,
+      "q4": 5295
+    },
+    "strong_long_share": 0.495392925227706,
+    "strong_short_share": 0.504607074772294,
+    "passes_availability": true
+  },
+  "scheduled_side_counts": {
+    "long": 321,
+    "short": 325
+  },
+  "scheduled_branch_counts": {
+    "bearish_radial_composition_rotation": 325,
+    "bullish_radial_composition_rotation": 321
+  },
+  "independence": {
+    "event_overlap": {
+      "cclh": {
+        "first_event_count": 646,
+        "second_event_count": 167,
+        "matched_event_count": 28,
+        "tolerance_bars": 12,
+        "jaccard": 0.035668789808917196,
+        "current_event_match_share": 0.043343653250773995,
+        "maximum_allowed_jaccard": 0.35,
+        "maximum_allowed_current_event_match_share": 0.35,
+        "passes": true
+      },
+      "pdf10": {
+        "first_event_count": 646,
+        "second_event_count": 591,
+        "matched_event_count": 86,
+        "tolerance_bars": 12,
+        "jaccard": 0.07471763683753258,
+        "current_event_match_share": 0.13312693498452013,
+        "maximum_allowed_jaccard": 0.35,
+        "maximum_allowed_current_event_match_share": 0.35,
+        "passes": true
+      }
+    },
+    "feature_spearman": {
+      "cclh_cross_pressure": -0.01605911076908286,
+      "cclh_cross_elasticity": -0.014391479763214952,
+      "pdf10_credibility": 0.49938757742677087,
+      "pdf10_display": 0.0596383109156471
+    },
+    "maximum_absolute_feature_spearman": 0.49938757742677087,
+    "maximum_allowed_feature_spearman": 0.6,
+    "passes_event_independence": true,
+    "passes_feature_independence": true,
+    "passes_independence": true
+  },
+  "support": {
+    "nonoverlap_total": 646,
+    "by_quarter": {
+      "q1": 132,
+      "q2": 168,
+      "q3": 170,
+      "q4": 176
+    },
+    "h1": 300,
+    "h2": 346,
+    "long_share": 0.4969040247678019,
+    "short_share": 0.5030959752321982,
+    "maximum_observed_quarter_share": 0.2724458204334365,
+    "passes_support": true
+  },
+  "all_support_gates_pass": true
+}

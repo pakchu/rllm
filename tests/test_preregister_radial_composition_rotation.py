@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -323,3 +326,24 @@ def test_barycenter_requires_only_outcome_blind_share_columns() -> None:
     assert "market_manifest" not in source
     assert "future_return" not in source
     assert "raw_return" not in source
+
+
+def test_frozen_rcr_support_passes_without_opening_outcomes() -> None:
+    path = Path("results/radial_composition_rotation_support_2026-07-14.json")
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == (
+        "0e801542c29a964ea969ac4cc4317f98f89d95639683687fb605b9799fcd2d2e"
+    )
+    result = json.loads(path.read_text())
+    assert result["protocol"]["outcomes_opened_for_rcr144"] is False
+    assert result["protocol"]["price_or_return_loaded"] is False
+    assert result["protocol"]["support_rejected"] is False
+    assert result["availability"]["passes_availability"] is True
+    assert result["support"]["nonoverlap_total"] == 646
+    assert result["support"]["by_quarter"] == {
+        "q1": 132,
+        "q2": 168,
+        "q3": 170,
+        "q4": 176,
+    }
+    assert result["independence"]["passes_independence"] is True
+    assert result["all_support_gates_pass"] is True
