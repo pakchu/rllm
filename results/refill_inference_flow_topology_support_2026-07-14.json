@@ -1,0 +1,375 @@
+{
+  "protocol": {
+    "name": "RIFT-96 \u2014 Refill Inference from Flow Topology",
+    "support_only": true,
+    "outcomes_opened": false,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "economic_claim": "persistent completed-bar execution pressure consistent with, but not direct observation of, weak offer replenishment",
+    "entry": "next USD-M 5m open after setup plus one-bar confirmation",
+    "hold": "fixed 96 bars",
+    "support_selection": "highest tested setup-score quantile passing every frozen count and clock-novelty floor",
+    "control_actions": {
+      "primary": 1,
+      "direction_flip": -1,
+      "same_bar_static": 1,
+      "no_path_quality": 1,
+      "no_derivatives_crowd": 1,
+      "centroid_free_momentum": 1,
+      "spot_only": 1,
+      "stale_setup_1h": 1,
+      "stale_setup_24h": 1,
+      "signal_delay_1bar": 1,
+      "simple_two_bar_momentum": 1
+    }
+  },
+  "config": {
+    "spot_features": "data/binance_spot_kline_microstructure_btc_2020_2023/BTCUSDT_spot_kline_microstructure_5m_2020-01_2023-12.csv.gz",
+    "spot_manifest": "data/binance_spot_kline_microstructure_btc_2020_2023/build_manifest.json",
+    "perp_features": "data/binance_um_aggtrade_microstructure_btc_2020_2023/BTCUSDT_aggtrade_5m_2020-01-01_2023-12-31.csv.gz",
+    "perp_manifest": "data/binance_um_aggtrade_microstructure_btc_2020_2023/build_manifest.json",
+    "market": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "market_manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+    "output": "results/refill_inference_flow_topology_support_2026-07-14.json",
+    "baseline_bars": 8640,
+    "baseline_min_periods": 2016,
+    "post_gap_quarantine_bars": 24,
+    "hold_bars": 96,
+    "minimum_perp_agg_trade_count": 64,
+    "minimum_nonoverlap_total": 300,
+    "minimum_nonoverlap_per_year": 40,
+    "minimum_nonoverlap_per_2023_half": 30,
+    "maximum_same_bar_jaccard": 0.05,
+    "maximum_no_path_jaccard": 0.4,
+    "maximum_no_crowd_jaccard": 0.2,
+    "maximum_centroid_free_jaccard": 0.75,
+    "maximum_spot_only_jaccard": 0.2,
+    "maximum_stale_jaccard": 0.1,
+    "maximum_delay_jaccard": 0.05,
+    "maximum_cspr_jaccard": 0.01
+  },
+  "source": {
+    "feature_sha256": "c2bb0e6742f8cdc4e13315e7f0a13d6ab9cd536fb40d9cb4484b7a6ba30131cf",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "source_gap_days": [
+      "2020-04-15",
+      "2021-02-09",
+      "2021-02-24",
+      "2021-05-19",
+      "2022-09-06"
+    ],
+    "missing_feature_bars": 36,
+    "quarantined_bars": 1682,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00",
+    "spot_feature_sha256": "d558239fa7085083aa002b7898b632df0774425719467709680ecb99718035a9",
+    "spot_manifest_sha256": "69fbce64b4860eecbf1ce414ea719b5c4001852016fe439e61240e050b39b57b",
+    "spot_missing_or_incomplete_bars": 509,
+    "spot_quarantined_bars": 893,
+    "joint_quarantined_bars": 2575
+  },
+  "support_grid": [
+    {
+      "quantile": 0.8,
+      "raw_primary": 1317,
+      "support": {
+        "nonoverlap_total": 942,
+        "by_year": {
+          "2020": 220,
+          "2021": 287,
+          "2022": 250,
+          "2023": 185
+        },
+        "2023_h1": 87,
+        "2023_h2": 98,
+        "long_only": true,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 1317,
+        "same_bar_static": 55450,
+        "no_path_quality": 1972,
+        "no_derivatives_crowd": 11086,
+        "centroid_free_momentum": 1560,
+        "spot_only": 12923,
+        "stale_setup_1h": 1858,
+        "stale_setup_24h": 1847,
+        "signal_delay_1bar": 1317,
+        "simple_two_bar_momentum": 92020
+      },
+      "control_jaccard": {
+        "same_bar_static": 0.013370702274268984,
+        "no_path_quality": 0.3337388483373885,
+        "no_derivatives_crowd": 0.10810327883498615,
+        "centroid_free_momentum": 0.7176119402985075,
+        "spot_only": 0.09286262471220261,
+        "stale_setup_1h": 0.06045424181696727,
+        "stale_setup_24h": 0.05256154357950765,
+        "signal_delay_1bar": 0.009969325153374233,
+        "simple_two_bar_momentum": 0.014301083448343313,
+        "cspr_primary": 0.0004528985507246377
+      },
+      "passes_novelty": true,
+      "passes_support": true
+    },
+    {
+      "quantile": 0.85,
+      "raw_primary": 1032,
+      "support": {
+        "nonoverlap_total": 784,
+        "by_year": {
+          "2020": 185,
+          "2021": 245,
+          "2022": 205,
+          "2023": 149
+        },
+        "2023_h1": 72,
+        "2023_h2": 77,
+        "long_only": true,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 1032,
+        "same_bar_static": 45620,
+        "no_path_quality": 1484,
+        "no_derivatives_crowd": 8975,
+        "centroid_free_momentum": 1196,
+        "spot_only": 10192,
+        "stale_setup_1h": 1502,
+        "stale_setup_24h": 1496,
+        "signal_delay_1bar": 1032,
+        "simple_two_bar_momentum": 92020
+      },
+      "control_jaccard": {
+        "same_bar_static": 0.011074749138510219,
+        "no_path_quality": 0.28040712468193385,
+        "no_derivatives_crowd": 0.10015391380826737,
+        "centroid_free_momentum": 0.6866010598031794,
+        "spot_only": 0.08833511102492,
+        "stale_setup_1h": 0.047107438016528926,
+        "stale_setup_24h": 0.04247422680412371,
+        "signal_delay_1bar": 0.0078125,
+        "simple_two_bar_momentum": 0.011203964312493887,
+        "cspr_primary": 0.0
+      },
+      "passes_novelty": true,
+      "passes_support": true
+    },
+    {
+      "quantile": 0.9,
+      "raw_primary": 693,
+      "support": {
+        "nonoverlap_total": 582,
+        "by_year": {
+          "2020": 141,
+          "2021": 185,
+          "2022": 152,
+          "2023": 104
+        },
+        "2023_h1": 52,
+        "2023_h2": 52,
+        "long_only": true,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 693,
+        "same_bar_static": 33515,
+        "no_path_quality": 1000,
+        "no_derivatives_crowd": 6478,
+        "centroid_free_momentum": 814,
+        "spot_only": 7137,
+        "stale_setup_1h": 1105,
+        "stale_setup_24h": 1083,
+        "signal_delay_1bar": 693,
+        "simple_two_bar_momentum": 92020
+      },
+      "control_jaccard": {
+        "same_bar_static": 0.007718140576209274,
+        "no_path_quality": 0.22326589595375723,
+        "no_derivatives_crowd": 0.09081229084271372,
+        "centroid_free_momentum": 0.6451965065502183,
+        "spot_only": 0.08238871993364667,
+        "stale_setup_1h": 0.02919290211791643,
+        "stale_setup_24h": 0.0343622597553873,
+        "signal_delay_1bar": 0.003620564808110065,
+        "simple_two_bar_momentum": 0.007520022603536149,
+        "cspr_primary": 0.0
+      },
+      "passes_novelty": true,
+      "passes_support": true
+    },
+    {
+      "quantile": 0.925,
+      "raw_primary": 527,
+      "support": {
+        "nonoverlap_total": 460,
+        "by_year": {
+          "2020": 103,
+          "2021": 153,
+          "2022": 119,
+          "2023": 85
+        },
+        "2023_h1": 42,
+        "2023_h2": 43,
+        "long_only": true,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 527,
+        "same_bar_static": 26467,
+        "no_path_quality": 760,
+        "no_derivatives_crowd": 5079,
+        "centroid_free_momentum": 609,
+        "spot_only": 5506,
+        "stale_setup_1h": 861,
+        "stale_setup_24h": 861,
+        "signal_delay_1bar": 527,
+        "simple_two_bar_momentum": 92020
+      },
+      "control_jaccard": {
+        "same_bar_static": 0.005812653699977644,
+        "no_path_quality": 0.19166666666666668,
+        "no_derivatives_crowd": 0.08286652501448716,
+        "centroid_free_momentum": 0.6511627906976745,
+        "spot_only": 0.07636039250669045,
+        "stale_setup_1h": 0.022844509948415623,
+        "stale_setup_24h": 0.025868440502586843,
+        "signal_delay_1bar": 0.0038095238095238095,
+        "simple_two_bar_momentum": 0.005727015866116062,
+        "cspr_primary": 0.0
+      },
+      "passes_novelty": true,
+      "passes_support": true
+    },
+    {
+      "quantile": 0.95,
+      "raw_primary": 362,
+      "support": {
+        "nonoverlap_total": 329,
+        "by_year": {
+          "2020": 76,
+          "2021": 108,
+          "2022": 85,
+          "2023": 60
+        },
+        "2023_h1": 29,
+        "2023_h2": 31,
+        "long_only": true,
+        "passes_count_support": false
+      },
+      "control_raw_counts": {
+        "direction_flip": 362,
+        "same_bar_static": 18619,
+        "no_path_quality": 489,
+        "no_derivatives_crowd": 3556,
+        "centroid_free_momentum": 389,
+        "spot_only": 3789,
+        "stale_setup_1h": 596,
+        "stale_setup_24h": 617,
+        "signal_delay_1bar": 362,
+        "simple_two_bar_momentum": 92020
+      },
+      "control_jaccard": {
+        "same_bar_static": 0.004285714285714286,
+        "no_path_quality": 0.16575342465753426,
+        "no_derivatives_crowd": 0.0719562243502052,
+        "centroid_free_momentum": 0.6185344827586207,
+        "spot_only": 0.0676440329218107,
+        "stale_setup_1h": 0.016985138004246284,
+        "stale_setup_24h": 0.017671517671517672,
+        "signal_delay_1bar": 0.004160887656033287,
+        "simple_two_bar_momentum": 0.003933927407085416,
+        "cspr_primary": 0.0
+      },
+      "passes_novelty": true,
+      "passes_support": false
+    },
+    {
+      "quantile": 0.975,
+      "raw_primary": 151,
+      "support": {
+        "nonoverlap_total": 145,
+        "by_year": {
+          "2020": 35,
+          "2021": 45,
+          "2022": 42,
+          "2023": 23
+        },
+        "2023_h1": 10,
+        "2023_h2": 13,
+        "long_only": true,
+        "passes_count_support": false
+      },
+      "control_raw_counts": {
+        "direction_flip": 151,
+        "same_bar_static": 9810,
+        "no_path_quality": 225,
+        "no_derivatives_crowd": 1851,
+        "centroid_free_momentum": 166,
+        "spot_only": 1925,
+        "stale_setup_1h": 316,
+        "stale_setup_24h": 316,
+        "signal_delay_1bar": 151,
+        "simple_two_bar_momentum": 92020
+      },
+      "control_jaccard": {
+        "same_bar_static": 0.0017095736122284795,
+        "no_path_quality": 0.13253012048192772,
+        "no_derivatives_crowd": 0.05368421052631579,
+        "centroid_free_momentum": 0.5388349514563107,
+        "spot_only": 0.05167173252279635,
+        "stale_setup_1h": 0.008639308855291577,
+        "stale_setup_24h": 0.010822510822510822,
+        "signal_delay_1bar": 0.0,
+        "simple_two_bar_momentum": 0.0016409476200825908,
+        "cspr_primary": 0.0
+      },
+      "passes_novelty": true,
+      "passes_support": false
+    }
+  ],
+  "support_decision": "pass",
+  "selected_quantile": 0.925,
+  "selected_support": {
+    "quantile": 0.925,
+    "raw_primary": 527,
+    "support": {
+      "nonoverlap_total": 460,
+      "by_year": {
+        "2020": 103,
+        "2021": 153,
+        "2022": 119,
+        "2023": 85
+      },
+      "2023_h1": 42,
+      "2023_h2": 43,
+      "long_only": true,
+      "passes_count_support": true
+    },
+    "control_raw_counts": {
+      "direction_flip": 527,
+      "same_bar_static": 26467,
+      "no_path_quality": 760,
+      "no_derivatives_crowd": 5079,
+      "centroid_free_momentum": 609,
+      "spot_only": 5506,
+      "stale_setup_1h": 861,
+      "stale_setup_24h": 861,
+      "signal_delay_1bar": 527,
+      "simple_two_bar_momentum": 92020
+    },
+    "control_jaccard": {
+      "same_bar_static": 0.005812653699977644,
+      "no_path_quality": 0.19166666666666668,
+      "no_derivatives_crowd": 0.08286652501448716,
+      "centroid_free_momentum": 0.6511627906976745,
+      "spot_only": 0.07636039250669045,
+      "stale_setup_1h": 0.022844509948415623,
+      "stale_setup_24h": 0.025868440502586843,
+      "signal_delay_1bar": 0.0038095238095238095,
+      "simple_two_bar_momentum": 0.005727015866116062,
+      "cspr_primary": 0.0
+    },
+    "passes_novelty": true,
+    "passes_support": true
+  }
+}
