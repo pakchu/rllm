@@ -15,11 +15,11 @@ directional rule is profitable.
 - Combined source:
   `data/binance_cross_venue_minute_leadership_btc_2020_2023/BTCUSDT_cross_venue_minute_leadership_5m_2020-01_2023-12.csv.gz`
 - Combined SHA-256:
-  `a638b5b7702a59cf0007672f1d7564430f09b6e3ef895ba97410ad73b2069478`
+  `00ab6a55fc7bfeb3012584db5bc97a7d7b98dd995491acfd3f865c6bd41f92cc`
 - Audit result:
   `results/binance_cross_venue_minute_leadership_audit_2026-07-14.json`
 - Audit-result SHA-256:
-  `2a4010ad69ffb75ac3cbc743d82832c1185cd876817d8275014125fb3a95b734`
+  `ffe0124ac9c5c0c3f1d1c284b672618cf910dc16cae36e65c1efe79710f039af`
 - Official archive/checksum specification:
   <https://github.com/binance/binance-public-data>
 
@@ -30,15 +30,15 @@ official `.CHECKSUM` files. No raw ZIP remains on disk.
 
 | Year | Expected 5m rows | Source-complete | Feature-valid |
 |---:|---:|---:|---:|
-| 2020 | 105,408 | 105,146 | 105,145 |
+| 2020 | 105,408 | 105,146 | 105,144 |
 | 2021 | 105,120 | 104,889 | 104,889 |
-| 2022 | 105,120 | 105,107 | 105,100 |
-| 2023 | 105,120 | 105,063 | 104,765 |
-| **Total** | **420,768** | **420,205** | **419,899** |
+| 2022 | 105,120 | 105,107 | 105,093 |
+| 2023 | 105,120 | 105,063 | 104,729 |
+| **Total** | **420,768** | **420,205** | **419,855** |
 
 - Source-complete fraction: **99.8662%**
-- Feature-valid fraction: **99.7935%**
-- Quarantined rows: **869**
+- Feature-valid fraction: **99.7830%**
+- Quarantined rows: **913**
 - Interval: `2020-01-01 00:00:00` through `2023-12-31 23:55:00`
 
 The complete output grid has no missing five-minute timestamp. Source defects
@@ -54,6 +54,8 @@ All audit checks passed:
 - exact UTC five-minute grid, unique and monotonic;
 - `feature_available_time_utc = trade_earliest_time_utc = date + 5m`;
 - only within-bar lag edges `0→1`, `1→2`, `2→3`, `3→4` are accepted;
+- reverse-time `later→earlier` descriptors exist only as placebo controls and
+  also require four complete within-bar pairs;
 - accepted rows have exactly four lagged pairs and finite feature values;
 - quarantined rows contain no usable feature value and record explicit reasons;
 - antisymmetric leadership and sign-agreement fields remain within `[-1, 1]`;
@@ -68,9 +70,9 @@ they are intentionally failed closed rather than imputed.
 
 ## Resource footprint
 
-- Retained source directory: approximately **205 MiB**
-- Full rebuild: **1m 19s** wall time on this workstation
-- Peak resident memory: approximately **886 MiB**
+- Retained source directory: approximately **247 MiB**
+- Full rebuild: **1m 35s** wall time on this workstation
+- Peak resident memory: approximately **1.0 GiB**
 - WSL filesystem after build: approximately **295 GiB used**, below the user's
   300 GiB ceiling but close enough that redundant smoke/checkpoint artifacts
   should be removed.
