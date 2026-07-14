@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import replace
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -220,3 +223,33 @@ def test_qualification_rejects_control_that_generalizes_better() -> None:
         "clv: minimum train/select ratio does not beat always_long"
         in result["failures"]
     )
+
+
+def test_frozen_clv_result_records_rejection_and_keeps_2024_sealed() -> None:
+    path = Path(
+        "results/cross_collateral_liquidity_vacuum_selection_2026-07-14.json"
+    )
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == (
+        "a18e56b41045c7b83e2c9a5597fcbdea7380e1d31836cf3353c481b160ec6409"
+    )
+    result = json.loads(path.read_text())
+    assert result["selection"] == {
+        "selected_alpha": None,
+        "rejected": True,
+        "reason": "CLV v1 failed at least one frozen train/select gate",
+    }
+    assert result["protocol"]["opened_windows"] == list(evaluator.WINDOWS)
+    assert result["protocol"]["sealed_windows"] == [
+        "test2024",
+        "eval2025",
+        "ytd2026",
+    ]
+    assert result["protocol"]["evaluation_source_sha256"] == hashlib.sha256(
+        evaluator.EVALUATION_SOURCE.read_bytes()
+    ).hexdigest()
+    assert result["windows"]["train2023_h1"]["clv"][
+        "absolute_return_pct"
+    ] == pytest.approx(-3.6416454523952924)
+    assert result["windows"]["select2023_h2"]["clv"][
+        "absolute_return_pct"
+    ] == pytest.approx(-21.75873773570931)
