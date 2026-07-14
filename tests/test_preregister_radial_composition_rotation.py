@@ -347,3 +347,26 @@ def test_frozen_rcr_support_passes_without_opening_outcomes() -> None:
     }
     assert result["independence"]["passes_independence"] is True
     assert result["all_support_gates_pass"] is True
+
+
+def test_frozen_rcr_event_clock_binds_all_execution_fields() -> None:
+    path = Path(
+        "results/radial_composition_rotation_event_clock_2026-07-14.json"
+    )
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == (
+        "14924e4273f9cf54c406c4d69291e1a8315c6ea8fde2bcb102ef84cebbd1dbb0"
+    )
+    result = json.loads(path.read_text())
+    assert result["outcomes_opened_for_rcr144"] is False
+    assert result["price_or_return_loaded"] is False
+    assert result["event_count"] == 646
+    assert result["side_counts"] == {"long": 321, "short": 325}
+    assert result["quarter_counts"] == {
+        "q1": 132,
+        "q2": 168,
+        "q3": 170,
+        "q4": 176,
+    }
+    assert result["event_clock_sha256"] == (
+        "67a1223201078578fb0406faee1f954fcc0698060e588626c5b1928351685665"
+    )
