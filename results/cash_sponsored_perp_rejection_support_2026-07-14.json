@@ -1,0 +1,337 @@
+{
+  "protocol": {
+    "name": "CSPR-12 — Cash-Sponsored Perpetual Rejection",
+    "support_only": true,
+    "outcomes_opened": false,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "signal_availability": "completed spot/perpetual 5m bars; future evaluator enters next USD-M open",
+    "traded_instrument": "Binance USD-M BTCUSDT perpetual; spot determines cash direction only",
+    "hold": "fixed 12 bars",
+    "support_selection": "highest tested strength quantile passing every frozen count and novelty floor",
+    "control_action_semantics": {
+      "direction_flip": "same primary clock with action equal to negative primary side",
+      "signal_delay_1bar": "primary clock and action shifted by one completed 5m bar; entry remains next open"
+    }
+  },
+  "config": {
+    "spot_features": "data/binance_spot_kline_microstructure_btc_2020_2023/BTCUSDT_spot_kline_microstructure_5m_2020-01_2023-12.csv.gz",
+    "spot_manifest": "data/binance_spot_kline_microstructure_btc_2020_2023/build_manifest.json",
+    "perp_features": "data/binance_um_aggtrade_microstructure_btc_2020_2023/BTCUSDT_aggtrade_5m_2020-01-01_2023-12-31.csv.gz",
+    "perp_manifest": "data/binance_um_aggtrade_microstructure_btc_2020_2023/build_manifest.json",
+    "market": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "market_manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+    "output": "results/cash_sponsored_perp_rejection_support_2026-07-14.json",
+    "baseline_bars": 8640,
+    "baseline_min_periods": 2016,
+    "post_gap_quarantine_bars": 24,
+    "hold_bars": 12,
+    "minimum_perp_agg_trade_count": 64,
+    "minimum_nonoverlap_total": 300,
+    "minimum_nonoverlap_per_year": 40,
+    "minimum_nonoverlap_per_2023_half": 30,
+    "minimum_side_share": 0.25,
+    "maximum_centroid_ablation_retention": 0.8,
+    "maximum_perp_event_ablation_retention": 0.8,
+    "maximum_lag_placebo_jaccard": 0.25
+  },
+  "source": {
+    "feature_sha256": "c2bb0e6742f8cdc4e13315e7f0a13d6ab9cd536fb40d9cb4484b7a6ba30131cf",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "source_gap_days": [
+      "2020-04-15",
+      "2021-02-09",
+      "2021-02-24",
+      "2021-05-19",
+      "2022-09-06"
+    ],
+    "missing_feature_bars": 36,
+    "quarantined_bars": 1682,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00",
+    "spot_feature_sha256": "d558239fa7085083aa002b7898b632df0774425719467709680ecb99718035a9",
+    "spot_manifest_sha256": "69fbce64b4860eecbf1ce414ea719b5c4001852016fe439e61240e050b39b57b",
+    "spot_missing_or_incomplete_bars": 509,
+    "spot_quarantined_bars": 893,
+    "joint_quarantined_bars": 2575
+  },
+  "support_grid": [
+    {
+      "quantile": 0.5,
+      "raw_primary": 892,
+      "support": {
+        "nonoverlap_total": 850,
+        "by_year": {
+          "2020": 375,
+          "2021": 194,
+          "2022": 194,
+          "2023": 87
+        },
+        "2023_h1": 41,
+        "2023_h2": 46,
+        "long_share": 0.30823529411764705,
+        "short_share": 0.691764705882353,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 892,
+        "signal_delay_1bar": 892,
+        "no_centroid": 2124,
+        "no_perp_event_confirmation": 1372,
+        "spot_only": 67495,
+        "perp_only": 11921,
+        "role_swap": 172,
+        "spot_lag_1h": 971,
+        "spot_lag_24h": 936
+      },
+      "control_jaccard": {
+        "direction_flip": 1.0,
+        "signal_delay_1bar": 0.002810567734682406,
+        "no_centroid": 0.4199623352165725,
+        "no_perp_event_confirmation": 0.6501457725947521,
+        "spot_only": 0.013215793762500925,
+        "perp_only": 0.07482593742135726,
+        "role_swap": 0.0,
+        "spot_lag_1h": 0.059726962457337884,
+        "spot_lag_24h": 0.05725853094274147
+      },
+      "ablation_retention": {
+        "no_centroid": 0.4199623352165725,
+        "no_perp_event_confirmation": 0.6501457725947521
+      },
+      "passes_novelty": true,
+      "passes_support": true
+    },
+    {
+      "quantile": 0.6,
+      "raw_primary": 469,
+      "support": {
+        "nonoverlap_total": 454,
+        "by_year": {
+          "2020": 232,
+          "2021": 93,
+          "2022": 90,
+          "2023": 39
+        },
+        "2023_h1": 20,
+        "2023_h2": 19,
+        "long_share": 0.30837004405286345,
+        "short_share": 0.6916299559471366,
+        "passes_count_support": false
+      },
+      "control_raw_counts": {
+        "direction_flip": 469,
+        "signal_delay_1bar": 469,
+        "no_centroid": 1090,
+        "no_perp_event_confirmation": 677,
+        "spot_only": 55554,
+        "perp_only": 8056,
+        "role_swap": 96,
+        "spot_lag_1h": 571,
+        "spot_lag_24h": 500
+      },
+      "control_jaccard": {
+        "direction_flip": 1.0,
+        "signal_delay_1bar": 0.002136752136752137,
+        "no_centroid": 0.43027522935779816,
+        "no_perp_event_confirmation": 0.6927621861152142,
+        "spot_only": 0.008442236382618713,
+        "perp_only": 0.05821747765640516,
+        "role_swap": 0.0,
+        "spot_lag_1h": 0.06230847803881512,
+        "spot_lag_24h": 0.04643628509719223
+      },
+      "ablation_retention": {
+        "no_centroid": 0.43027522935779816,
+        "no_perp_event_confirmation": 0.6927621861152142
+      },
+      "passes_novelty": true,
+      "passes_support": false
+    },
+    {
+      "quantile": 0.7,
+      "raw_primary": 204,
+      "support": {
+        "nonoverlap_total": 199,
+        "by_year": {
+          "2020": 108,
+          "2021": 32,
+          "2022": 44,
+          "2023": 15
+        },
+        "2023_h1": 8,
+        "2023_h2": 7,
+        "long_share": 0.3015075376884422,
+        "short_share": 0.6984924623115578,
+        "passes_count_support": false
+      },
+      "control_raw_counts": {
+        "direction_flip": 204,
+        "signal_delay_1bar": 204,
+        "no_centroid": 459,
+        "no_perp_event_confirmation": 289,
+        "spot_only": 42820,
+        "perp_only": 4893,
+        "role_swap": 41,
+        "spot_lag_1h": 280,
+        "spot_lag_24h": 226
+      },
+      "control_jaccard": {
+        "direction_flip": 1.0,
+        "signal_delay_1bar": 0.002457002457002457,
+        "no_centroid": 0.4444444444444444,
+        "no_perp_event_confirmation": 0.7058823529411765,
+        "spot_only": 0.004764128911723494,
+        "perp_only": 0.041692213366033105,
+        "role_swap": 0.0,
+        "spot_lag_1h": 0.05217391304347826,
+        "spot_lag_24h": 0.023809523809523808
+      },
+      "ablation_retention": {
+        "no_centroid": 0.4444444444444444,
+        "no_perp_event_confirmation": 0.7058823529411765
+      },
+      "passes_novelty": true,
+      "passes_support": false
+    },
+    {
+      "quantile": 0.8,
+      "raw_primary": 73,
+      "support": {
+        "nonoverlap_total": 73,
+        "by_year": {
+          "2020": 43,
+          "2021": 10,
+          "2022": 18,
+          "2023": 2
+        },
+        "2023_h1": 2,
+        "2023_h2": 0,
+        "long_share": 0.2191780821917808,
+        "short_share": 0.7808219178082192,
+        "passes_count_support": false
+      },
+      "control_raw_counts": {
+        "direction_flip": 73,
+        "signal_delay_1bar": 73,
+        "no_centroid": 156,
+        "no_perp_event_confirmation": 94,
+        "spot_only": 29639,
+        "perp_only": 2555,
+        "role_swap": 18,
+        "spot_lag_1h": 112,
+        "spot_lag_24h": 73
+      },
+      "control_jaccard": {
+        "direction_flip": 1.0,
+        "signal_delay_1bar": 0.0,
+        "no_centroid": 0.46794871794871795,
+        "no_perp_event_confirmation": 0.776595744680851,
+        "spot_only": 0.002462971085394244,
+        "perp_only": 0.02857142857142857,
+        "role_swap": 0.0,
+        "spot_lag_1h": 0.03932584269662921,
+        "spot_lag_24h": 0.02097902097902098
+      },
+      "ablation_retention": {
+        "no_centroid": 0.46794871794871795,
+        "no_perp_event_confirmation": 0.776595744680851
+      },
+      "passes_novelty": true,
+      "passes_support": false
+    },
+    {
+      "quantile": 0.9,
+      "raw_primary": 11,
+      "support": {
+        "nonoverlap_total": 11,
+        "by_year": {
+          "2020": 9,
+          "2021": 1,
+          "2022": 1,
+          "2023": 0
+        },
+        "2023_h1": 0,
+        "2023_h2": 0,
+        "long_share": 0.2727272727272727,
+        "short_share": 0.7272727272727273,
+        "passes_count_support": false
+      },
+      "control_raw_counts": {
+        "direction_flip": 11,
+        "signal_delay_1bar": 11,
+        "no_centroid": 21,
+        "no_perp_event_confirmation": 14,
+        "spot_only": 15424,
+        "perp_only": 920,
+        "role_swap": 2,
+        "spot_lag_1h": 32,
+        "spot_lag_24h": 18
+      },
+      "control_jaccard": {
+        "direction_flip": 1.0,
+        "signal_delay_1bar": 0.0,
+        "no_centroid": 0.5238095238095238,
+        "no_perp_event_confirmation": 0.7857142857142857,
+        "spot_only": 0.0007131742738589211,
+        "perp_only": 0.011956521739130435,
+        "role_swap": 0.0,
+        "spot_lag_1h": 0.0,
+        "spot_lag_24h": 0.0
+      },
+      "ablation_retention": {
+        "no_centroid": 0.5238095238095238,
+        "no_perp_event_confirmation": 0.7857142857142857
+      },
+      "passes_novelty": true,
+      "passes_support": false
+    }
+  ],
+  "support_decision": "pass",
+  "selected_quantile": 0.5,
+  "selected_support": {
+    "quantile": 0.5,
+    "raw_primary": 892,
+    "support": {
+      "nonoverlap_total": 850,
+      "by_year": {
+        "2020": 375,
+        "2021": 194,
+        "2022": 194,
+        "2023": 87
+      },
+      "2023_h1": 41,
+      "2023_h2": 46,
+      "long_share": 0.30823529411764705,
+      "short_share": 0.691764705882353,
+      "passes_count_support": true
+    },
+    "control_raw_counts": {
+      "direction_flip": 892,
+      "signal_delay_1bar": 892,
+      "no_centroid": 2124,
+      "no_perp_event_confirmation": 1372,
+      "spot_only": 67495,
+      "perp_only": 11921,
+      "role_swap": 172,
+      "spot_lag_1h": 971,
+      "spot_lag_24h": 936
+    },
+    "control_jaccard": {
+      "direction_flip": 1.0,
+      "signal_delay_1bar": 0.002810567734682406,
+      "no_centroid": 0.4199623352165725,
+      "no_perp_event_confirmation": 0.6501457725947521,
+      "spot_only": 0.013215793762500925,
+      "perp_only": 0.07482593742135726,
+      "role_swap": 0.0,
+      "spot_lag_1h": 0.059726962457337884,
+      "spot_lag_24h": 0.05725853094274147
+    },
+    "ablation_retention": {
+      "no_centroid": 0.4199623352165725,
+      "no_perp_event_confirmation": 0.6501457725947521
+    },
+    "passes_novelty": true,
+    "passes_support": true
+  }
+}
