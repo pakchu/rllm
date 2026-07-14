@@ -85,6 +85,10 @@ P→S = sum(flow_frac[perp,i] * r[spot,i+1])
 
 - Price-order asymmetry uses the same antisymmetric construction with lagged
   minute returns instead of flow fractions.
+- Every lagged response and asymmetry also has a frozen reverse-time placebo.
+  It pairs actual minute `i` flow/return with actual minute `i-1` response,
+  equivalent to traversing the completed bar in reverse. These fields are
+  controls only and must never be promoted to a live signal.
 - Simultaneous flow-sign and return-sign agreement are controls, not evidence
   of leadership.
 - Open/close Spot–perpetual basis and basis change are retained to distinguish

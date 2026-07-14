@@ -33,7 +33,7 @@ from training.build_binance_aggtrade_microstructure import (
 SPOT_BASE_URL = "https://data.binance.vision/data/spot/monthly/klines"
 UM_BASE_URL = "https://data.binance.vision/data/futures/um/monthly/klines"
 INTERVAL = "1m"
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 SEALED_END_EXCLUSIVE = date(2024, 1, 1)
 
 RAW_COLUMNS = (
@@ -71,6 +71,7 @@ AUDIT_COLUMNS = (
     "spot_invalid_source_minutes",
     "um_invalid_source_minutes",
     "lagged_pair_count",
+    "reverse_lagged_pair_count",
     "simultaneous_flow_pair_count",
     "simultaneous_return_pair_count",
 )
@@ -107,6 +108,14 @@ FEATURE_COLUMNS = (
     "lagged_directional_alignment_diff",
     "flow_transfer_asymmetry",
     "return_leadership_asymmetry",
+    "reverse_spot_to_um_lagged_flow_response_bp",
+    "reverse_um_to_spot_lagged_flow_response_bp",
+    "reverse_lagged_flow_response_diff_bp",
+    "reverse_spot_to_um_lagged_directional_alignment",
+    "reverse_um_to_spot_lagged_directional_alignment",
+    "reverse_lagged_directional_alignment_diff",
+    "reverse_flow_transfer_asymmetry",
+    "reverse_return_leadership_asymmetry",
     "simultaneous_flow_sign_agreement",
     "simultaneous_return_sign_agreement",
     "open_basis_bp",
@@ -351,6 +360,13 @@ def aggregate_cross_venue_five_minute(
     work["next_um_return"] = work.groupby("date", sort=False, observed=True)[
         "um_path_return"
     ].shift(-1).where(inside_transition)
+    reverse_transition = work["minute_position"].gt(0.0)
+    work["previous_spot_return"] = work.groupby(
+        "date", sort=False, observed=True
+    )["spot_path_return"].shift().where(reverse_transition)
+    work["previous_um_return"] = work.groupby("date", sort=False, observed=True)[
+        "um_path_return"
+    ].shift().where(reverse_transition)
     groups = work["date"]
     grouped = work.groupby("date", sort=True, observed=True)
     output = pd.DataFrame(index=pd.DatetimeIndex(sorted(groups.unique()), name="date"))
@@ -482,6 +498,93 @@ def aggregate_cross_venue_five_minute(
         return_lead_denominator,
     )
 
+    reverse_lag_mask = (
+        reverse_transition
+        & work["spot_flow_fraction"].notna()
+        & work["um_flow_fraction"].notna()
+        & work["previous_spot_return"].notna()
+        & work["previous_um_return"].notna()
+    )
+    output["reverse_lagged_pair_count"] = (
+        reverse_lag_mask.groupby(groups, observed=True).sum().astype(int)
+    )
+    reverse_spot_to_um = (
+        work["spot_flow_fraction"] * work["previous_um_return"]
+    ).where(reverse_lag_mask)
+    reverse_um_to_spot = (
+        work["um_flow_fraction"] * work["previous_spot_return"]
+    ).where(reverse_lag_mask)
+    reverse_spot_flow_support = _group_sum(
+        work["spot_flow_fraction"].abs().where(reverse_lag_mask), groups
+    )
+    reverse_um_flow_support = _group_sum(
+        work["um_flow_fraction"].abs().where(reverse_lag_mask), groups
+    )
+    output["reverse_spot_to_um_lagged_flow_response_bp"] = (
+        _ratio(_group_sum(reverse_spot_to_um, groups), reverse_spot_flow_support)
+        * 10_000.0
+    )
+    output["reverse_um_to_spot_lagged_flow_response_bp"] = (
+        _ratio(_group_sum(reverse_um_to_spot, groups), reverse_um_flow_support)
+        * 10_000.0
+    )
+    output["reverse_lagged_flow_response_diff_bp"] = (
+        output["reverse_spot_to_um_lagged_flow_response_bp"]
+        - output["reverse_um_to_spot_lagged_flow_response_bp"]
+    )
+    reverse_spot_direction_mask = (
+        reverse_lag_mask & work["spot_flow_fraction"].ne(0.0)
+    )
+    reverse_um_direction_mask = reverse_lag_mask & work["um_flow_fraction"].ne(0.0)
+    reverse_spot_direction_numerator = _group_sum(
+        (
+            np.sign(work["spot_flow_fraction"]) * work["previous_um_return"]
+        ).where(reverse_spot_direction_mask),
+        groups,
+    )
+    reverse_um_direction_numerator = _group_sum(
+        (
+            np.sign(work["um_flow_fraction"]) * work["previous_spot_return"]
+        ).where(reverse_um_direction_mask),
+        groups,
+    )
+    reverse_spot_direction_denominator = _group_sum(
+        work["previous_um_return"].abs().where(reverse_spot_direction_mask), groups
+    )
+    reverse_um_direction_denominator = _group_sum(
+        work["previous_spot_return"].abs().where(reverse_um_direction_mask), groups
+    )
+    output["reverse_spot_to_um_lagged_directional_alignment"] = _ratio(
+        reverse_spot_direction_numerator, reverse_spot_direction_denominator
+    )
+    output["reverse_um_to_spot_lagged_directional_alignment"] = _ratio(
+        reverse_um_direction_numerator, reverse_um_direction_denominator
+    )
+    output["reverse_lagged_directional_alignment_diff"] = 0.5 * (
+        output["reverse_spot_to_um_lagged_directional_alignment"]
+        - output["reverse_um_to_spot_lagged_directional_alignment"]
+    )
+    reverse_flow_transfer_denominator = _group_sum(
+        reverse_spot_to_um.abs() + reverse_um_to_spot.abs(), groups
+    )
+    output["reverse_flow_transfer_asymmetry"] = _ratio(
+        _group_sum(reverse_spot_to_um - reverse_um_to_spot, groups),
+        reverse_flow_transfer_denominator,
+    )
+    reverse_spot_return_lead = (
+        work["spot_path_return"] * work["previous_um_return"]
+    ).where(reverse_lag_mask)
+    reverse_um_return_lead = (
+        work["um_path_return"] * work["previous_spot_return"]
+    ).where(reverse_lag_mask)
+    reverse_return_lead_denominator = _group_sum(
+        reverse_spot_return_lead.abs() + reverse_um_return_lead.abs(), groups
+    )
+    output["reverse_return_leadership_asymmetry"] = _ratio(
+        _group_sum(reverse_spot_return_lead - reverse_um_return_lead, groups),
+        reverse_return_lead_denominator,
+    )
+
     simultaneous_flow_mask = (
         work["spot_flow_fraction"].notna()
         & work["um_flow_fraction"].notna()
@@ -552,9 +655,19 @@ def aggregate_cross_venue_five_minute(
         ),
         "flow_transfer_support": flow_transfer_denominator.gt(0.0),
         "return_leadership_support": return_lead_denominator.gt(0.0),
+        "reverse_lagged_flow_support": (
+            reverse_spot_flow_support.gt(0.0) & reverse_um_flow_support.gt(0.0)
+        ),
+        "reverse_lagged_direction_support": (
+            reverse_spot_direction_denominator.gt(0.0)
+            & reverse_um_direction_denominator.gt(0.0)
+        ),
+        "reverse_flow_transfer_support": reverse_flow_transfer_denominator.gt(0.0),
+        "reverse_return_leadership_support": reverse_return_lead_denominator.gt(0.0),
         "simultaneous_flow_support": output["simultaneous_flow_pair_count"].gt(0),
         "simultaneous_return_support": output["simultaneous_return_pair_count"].gt(0),
         "four_lagged_pairs": output["lagged_pair_count"].eq(4),
+        "four_reverse_lagged_pairs": output["reverse_lagged_pair_count"].eq(4),
     }
     denominator_valid = pd.concat(support_checks, axis=1).all(axis=1)
     finite_features = pd.Series(

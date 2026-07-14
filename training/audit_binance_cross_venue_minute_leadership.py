@@ -172,6 +172,11 @@ def _feature_checks(
         "spot_to_um_lagged_directional_alignment",
         "um_to_spot_lagged_directional_alignment",
         "lagged_directional_alignment_diff",
+        "reverse_flow_transfer_asymmetry",
+        "reverse_return_leadership_asymmetry",
+        "reverse_spot_to_um_lagged_directional_alignment",
+        "reverse_um_to_spot_lagged_directional_alignment",
+        "reverse_lagged_directional_alignment_diff",
     )
     forbidden_tokens = (
         "future",
@@ -205,6 +210,9 @@ def _feature_checks(
         "valid_rows_have_four_lagged_pairs": bool(
             frame.loc[feature_valid, "lagged_pair_count"].eq(4).all()
         ),
+        "valid_rows_have_four_reverse_lagged_pairs": bool(
+            frame.loc[feature_valid, "reverse_lagged_pair_count"].eq(4).all()
+        ),
         "valid_rows_have_ok_reason": bool(
             frame.loc[feature_valid, "feature_invalid_reason"].eq("ok").all()
         ),
@@ -236,6 +244,23 @@ def _feature_checks(
             * (
                 valid_features["spot_to_um_lagged_directional_alignment"]
                 - valid_features["um_to_spot_lagged_directional_alignment"]
+            ),
+        ),
+        "reverse_lagged_flow_diff_identity": _allclose(
+            valid_features["reverse_lagged_flow_response_diff_bp"],
+            valid_features["reverse_spot_to_um_lagged_flow_response_bp"]
+            - valid_features["reverse_um_to_spot_lagged_flow_response_bp"],
+        ),
+        "reverse_directional_diff_identity": _allclose(
+            valid_features["reverse_lagged_directional_alignment_diff"],
+            0.5
+            * (
+                valid_features[
+                    "reverse_spot_to_um_lagged_directional_alignment"
+                ]
+                - valid_features[
+                    "reverse_um_to_spot_lagged_directional_alignment"
+                ]
             ),
         ),
         "basis_change_identity": _allclose(

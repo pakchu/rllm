@@ -213,6 +213,13 @@ def test_spot_leading_pattern_has_positive_flow_transfer_and_swap_antisymmetry()
     assert swapped["flow_transfer_asymmetry"] == pytest.approx(
         -original["flow_transfer_asymmetry"]
     )
+    assert swapped["reverse_flow_transfer_asymmetry"] == pytest.approx(
+        -original["reverse_flow_transfer_asymmetry"]
+    )
+    assert swapped["reverse_return_leadership_asymmetry"] == pytest.approx(
+        -original["reverse_return_leadership_asymmetry"]
+    )
+    assert original["reverse_lagged_pair_count"] == 4
     assert swapped["spot_to_um_lagged_flow_response_bp"] == pytest.approx(
         original["um_to_spot_lagged_flow_response_bp"]
     )
@@ -262,6 +269,12 @@ def test_positive_price_and_volume_scaling_preserves_normalized_ordering_fields(
         "spot_to_um_lagged_directional_alignment",
         "um_to_spot_lagged_directional_alignment",
         "return_leadership_asymmetry",
+        "reverse_spot_to_um_lagged_flow_response_bp",
+        "reverse_um_to_spot_lagged_flow_response_bp",
+        "reverse_flow_transfer_asymmetry",
+        "reverse_spot_to_um_lagged_directional_alignment",
+        "reverse_um_to_spot_lagged_directional_alignment",
+        "reverse_return_leadership_asymmetry",
         "simultaneous_flow_sign_agreement",
         "simultaneous_return_sign_agreement",
         "spot_activity_time_centroid",
