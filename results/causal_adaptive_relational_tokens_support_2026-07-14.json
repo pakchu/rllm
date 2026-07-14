@@ -1,0 +1,414 @@
+{
+  "protocol": {
+    "name": "CARTA — Causal Adaptive Relational Token Abstainer",
+    "support_only": true,
+    "outcomes_opened_for_carta": false,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "candidate_clock": "fixed before policy action; abstention does not release skipped candidates",
+    "signal_availability": "after 9 completed 5m transition bars; enter next 5m open",
+    "actions": [
+      "ABSTAIN",
+      "FOLLOW",
+      "FADE"
+    ],
+    "raw_timestamps_in_model_prompt": false,
+    "raw_numeric_values_in_model_prompt": false,
+    "future_rewards_in_model_prompt": false,
+    "source_gap_policy": "verified full-day/missing-slot plus 24-bar quarantine",
+    "sealed_windows": [
+      "test2024",
+      "eval2025",
+      "ytd2026"
+    ]
+  },
+  "config": {
+    "output": "results/causal_adaptive_relational_tokens_support_2026-07-14.json",
+    "setup_tension_quantile": 0.975,
+    "structure_quantile": 0.8,
+    "baseline_bars": 8640,
+    "baseline_min_periods": 2016,
+    "confirmation_bars": 9,
+    "hold_bars": 72,
+    "minimum_agg_trade_count": 64,
+    "minimum_nonoverlap_total": 500,
+    "minimum_nonoverlap_per_year": 50,
+    "minimum_nonoverlap_per_2023_half": 80,
+    "minimum_reference_side_share": 0.25
+  },
+  "source": {
+    "feature_sha256": "c2bb0e6742f8cdc4e13315e7f0a13d6ab9cd536fb40d9cb4484b7a6ba30131cf",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "source_gap_days": [
+      "2020-04-15",
+      "2021-02-09",
+      "2021-02-24",
+      "2021-05-19",
+      "2022-09-06"
+    ],
+    "missing_feature_bars": 36,
+    "quarantined_bars": 1682,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00"
+  },
+  "support_calibration": {
+    "outcomes_opened_for_carta": false,
+    "tested_setup_tension_quantiles": [
+      0.95,
+      0.96,
+      0.975,
+      0.98,
+      0.99
+    ],
+    "all_other_parameters_fixed": true,
+    "stopping_rule": "highest tested quantile passing every frozen support floor",
+    "selected_setup_tension_quantile": 0.975,
+    "further_support_repairs_allowed": false,
+    "trials": [
+      {
+        "setup_tension_quantile": 0.95,
+        "nonoverlap_total": 858,
+        "by_year": {
+          "2020": 320,
+          "2021": 116,
+          "2022": 102,
+          "2023": 320
+        },
+        "2023_h1": 128,
+        "2023_h2": 191,
+        "reference_long_share": 0.44522144522144524,
+        "reference_short_share": 0.5547785547785548,
+        "passes_support": true
+      },
+      {
+        "setup_tension_quantile": 0.96,
+        "nonoverlap_total": 765,
+        "by_year": {
+          "2020": 284,
+          "2021": 98,
+          "2022": 88,
+          "2023": 295
+        },
+        "2023_h1": 119,
+        "2023_h2": 175,
+        "reference_long_share": 0.4562091503267974,
+        "reference_short_share": 0.5437908496732026,
+        "passes_support": true
+      },
+      {
+        "setup_tension_quantile": 0.975,
+        "nonoverlap_total": 559,
+        "by_year": {
+          "2020": 205,
+          "2021": 60,
+          "2022": 58,
+          "2023": 236
+        },
+        "2023_h1": 91,
+        "2023_h2": 144,
+        "reference_long_share": 0.44543828264758495,
+        "reference_short_share": 0.554561717352415,
+        "passes_support": true
+      },
+      {
+        "setup_tension_quantile": 0.98,
+        "nonoverlap_total": 490,
+        "by_year": {
+          "2020": 176,
+          "2021": 50,
+          "2022": 48,
+          "2023": 216
+        },
+        "2023_h1": 85,
+        "2023_h2": 131,
+        "reference_long_share": 0.45510204081632655,
+        "reference_short_share": 0.5448979591836735,
+        "passes_support": false
+      },
+      {
+        "setup_tension_quantile": 0.99,
+        "nonoverlap_total": 330,
+        "by_year": {
+          "2020": 117,
+          "2021": 30,
+          "2022": 24,
+          "2023": 159
+        },
+        "2023_h1": 61,
+        "2023_h2": 98,
+        "reference_long_share": 0.4484848484848485,
+        "reference_short_share": 0.5515151515151515,
+        "passes_support": false
+      }
+    ]
+  },
+  "setup_count": 1426,
+  "raw_candidate_count": 1424,
+  "support": {
+    "nonoverlap_total": 559,
+    "by_year": {
+      "2020": 205,
+      "2021": 60,
+      "2022": 58,
+      "2023": 236
+    },
+    "2023_h1": 91,
+    "2023_h2": 144,
+    "reference_long_share": 0.44543828264758495,
+    "reference_short_share": 0.554561717352415,
+    "passes_support": true
+  },
+  "token_schema": [
+    "reference_side_token",
+    "origin_price_relation",
+    "capital_transition_relation",
+    "crowd_transition_relation",
+    "price_transition_relation",
+    "origin_trend_24h_relation",
+    "transition_path_balance",
+    "range_location_24h",
+    "origin_structure_bits",
+    "signal_structure_bits",
+    "transition_alignment_count",
+    "position_state",
+    "tension_rank",
+    "tension_transition",
+    "arrival_rank",
+    "arrival_transition",
+    "concentration_rank",
+    "concentration_transition",
+    "trade_span_rank",
+    "trade_span_transition",
+    "coherence_rank",
+    "coherence_transition",
+    "effective_events_rank",
+    "effective_events_transition",
+    "flip_rate_rank",
+    "flip_rate_transition",
+    "event_imbalance_rank",
+    "event_imbalance_transition",
+    "size_asymmetry_rank",
+    "size_asymmetry_transition",
+    "price_response_rank",
+    "price_response_transition",
+    "volatility_rank",
+    "volatility_transition",
+    "drawdown_rank",
+    "drawdown_transition"
+  ],
+  "observed_token_vocabulary": {
+    "reference_side_token": {
+      "LONG": 249,
+      "SHORT": 310
+    },
+    "origin_price_relation": {
+      "AGAINST_REFERENCE": 202,
+      "FLAT": 6,
+      "WITH_REFERENCE": 351
+    },
+    "capital_transition_relation": {
+      "AGAINST_REFERENCE": 282,
+      "WITH_REFERENCE": 277
+    },
+    "crowd_transition_relation": {
+      "AGAINST_REFERENCE": 425,
+      "WITH_REFERENCE": 134
+    },
+    "price_transition_relation": {
+      "AGAINST_REFERENCE": 307,
+      "FLAT": 1,
+      "WITH_REFERENCE": 251
+    },
+    "origin_trend_24h_relation": {
+      "AGAINST_REFERENCE": 225,
+      "WITH_REFERENCE": 334
+    },
+    "transition_path_balance": {
+      "OPPOSITE_DOMINANT": 301,
+      "REFERENCE_DOMINANT": 258
+    },
+    "range_location_24h": {
+      "LOWER_THIRD": 130,
+      "MIDDLE_THIRD": 227,
+      "UPPER_THIRD": 202
+    },
+    "origin_structure_bits": {
+      "001": 32,
+      "010": 397,
+      "011": 105,
+      "100": 9,
+      "110": 8,
+      "111": 8
+    },
+    "signal_structure_bits": {
+      "000": 178,
+      "001": 64,
+      "010": 213,
+      "011": 53,
+      "100": 30,
+      "101": 17,
+      "110": 2,
+      "111": 2
+    },
+    "transition_alignment_count": {
+      "0": 196,
+      "1": 137,
+      "2": 153,
+      "3": 73
+    },
+    "position_state": {
+      "FLAT": 559
+    },
+    "tension_rank": {
+      "0": 60,
+      "1": 85,
+      "2": 96,
+      "3": 121,
+      "4": 197
+    },
+    "tension_transition": {
+      "FALL": 362,
+      "STABLE": 197
+    },
+    "arrival_rank": {
+      "0": 232,
+      "1": 124,
+      "2": 88,
+      "3": 64,
+      "4": 51
+    },
+    "arrival_transition": {
+      "FALL": 85,
+      "RISE": 238,
+      "STABLE": 236
+    },
+    "concentration_rank": {
+      "0": 27,
+      "1": 39,
+      "2": 97,
+      "3": 126,
+      "4": 270
+    },
+    "concentration_transition": {
+      "FALL": 281,
+      "RISE": 22,
+      "STABLE": 256
+    },
+    "trade_span_rank": {
+      "0": 151,
+      "1": 85,
+      "2": 82,
+      "3": 105,
+      "4": 136
+    },
+    "trade_span_transition": {
+      "FALL": 146,
+      "RISE": 209,
+      "STABLE": 204
+    },
+    "coherence_rank": {
+      "0": 96,
+      "1": 100,
+      "2": 98,
+      "3": 98,
+      "4": 167
+    },
+    "coherence_transition": {
+      "FALL": 340,
+      "RISE": 79,
+      "STABLE": 140
+    },
+    "effective_events_rank": {
+      "0": 148,
+      "1": 137,
+      "2": 117,
+      "3": 82,
+      "4": 75
+    },
+    "effective_events_transition": {
+      "FALL": 90,
+      "RISE": 336,
+      "STABLE": 133
+    },
+    "flip_rate_rank": {
+      "0": 98,
+      "1": 79,
+      "2": 105,
+      "3": 114,
+      "4": 163
+    },
+    "flip_rate_transition": {
+      "FALL": 224,
+      "RISE": 180,
+      "STABLE": 155
+    },
+    "event_imbalance_rank": {
+      "0": 75,
+      "1": 74,
+      "2": 94,
+      "3": 100,
+      "4": 216
+    },
+    "event_imbalance_transition": {
+      "FALL": 276,
+      "RISE": 112,
+      "STABLE": 171
+    },
+    "size_asymmetry_rank": {
+      "0": 78,
+      "1": 73,
+      "2": 86,
+      "3": 123,
+      "4": 199
+    },
+    "size_asymmetry_transition": {
+      "FALL": 360,
+      "STABLE": 199
+    },
+    "price_response_rank": {
+      "0": 199,
+      "1": 127,
+      "2": 111,
+      "3": 83,
+      "4": 39
+    },
+    "price_response_transition": {
+      "FALL": 130,
+      "RISE": 276,
+      "STABLE": 153
+    },
+    "volatility_rank": {
+      "0": 298,
+      "1": 118,
+      "2": 67,
+      "3": 50,
+      "4": 26
+    },
+    "volatility_transition": {
+      "FALL": 12,
+      "RISE": 7,
+      "STABLE": 540
+    },
+    "drawdown_rank": {
+      "0": 177,
+      "1": 167,
+      "2": 97,
+      "3": 77,
+      "4": 41
+    },
+    "drawdown_transition": {
+      "FALL": 77,
+      "RISE": 65,
+      "STABLE": 417
+    }
+  },
+  "signature_support": {
+    "train_2020_2022_candidates": 323,
+    "train_unique_signatures": 323,
+    "select_2023_candidates": 236,
+    "select_unique_signatures": 236,
+    "select_exact_signature_seen_in_train": 0,
+    "select_unseen_signature_count": 236,
+    "select_unseen_signature_share": 1.0
+  },
+  "all_support_gates_pass": true
+}
