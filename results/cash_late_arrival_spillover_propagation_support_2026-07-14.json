@@ -1,0 +1,1665 @@
+{
+  "protocol": {
+    "name": "CLASP-24 — Cash Late-Arrival Spillover Propagation",
+    "support_only": true,
+    "clasp_outcomes_opened": false,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "entry": "next Binance USD-M 5m open after completed signal bar",
+    "hold": "fixed 24 bars",
+    "economic_claim": "a late, efficient, unusually large-ticket Spot impulse leaves a partially propagated USD-M response debt at the completed bar",
+    "support_selection": "highest frozen causal event-score quantile passing every count, era, side-balance, temporal-placebo, stale-clock, and prior-clock floor",
+    "control_side_rules": {
+      "primary": "sign(spot_flow_fraction)",
+      "direction_flip": "negative sign(spot_flow_fraction) on the primary clock",
+      "no_timing": "sign(spot_flow_fraction)",
+      "no_ticket_surprise": "sign(spot_flow_fraction)",
+      "no_efficiency_advantage": "sign(spot_flow_fraction)",
+      "no_basis_lag": "sign(spot_flow_fraction)",
+      "no_response_advantage": "sign(spot_flow_fraction)",
+      "early_cash": "sign(spot_flow_fraction)",
+      "venue_swap": "sign(um_flow_fraction)",
+      "aggregate_only": "sign(spot_flow_fraction)",
+      "stale_1h": "primary side stale by 12 completed bars",
+      "stale_24h": "primary side stale by 288 completed bars",
+      "signal_delay_1bar": "primary side delayed by one completed bar"
+    },
+    "ablation_retention_is_gate": false
+  },
+  "config": {
+    "output": "results/cash_late_arrival_spillover_propagation_support_2026-07-14.json",
+    "cspr_clock": "results/cash_sponsored_perp_rejection_clock_2026-07-14.csv",
+    "cspr_clock_manifest": "results/cash_sponsored_perp_rejection_clock_manifest_2026-07-14.json",
+    "rift_clock": "results/refill_inference_flow_topology_clock_2026-07-14.csv",
+    "rift_clock_manifest": "results/refill_inference_flow_topology_clock_manifest_2026-07-14.json",
+    "catch_clock": "results/cash_auction_transfer_catchup_handoff_clock_2026-07-14.csv",
+    "catch_clock_manifest": "results/cash_auction_transfer_catchup_handoff_clock_manifest_2026-07-14.json",
+    "luri_clock": "results/leveraged_um_inventory_release_handoff_clock_2026-07-14.csv",
+    "luri_clock_manifest": "results/leveraged_um_inventory_release_handoff_clock_manifest_2026-07-14.json",
+    "ticket_baseline_bars": 8640,
+    "ticket_min_periods": 2016,
+    "event_baseline_bars": 17280,
+    "event_min_periods": 64,
+    "hold_bars": 24,
+    "minimum_nonoverlap_total": 600,
+    "minimum_nonoverlap_per_year": 130,
+    "minimum_nonoverlap_per_2023_half": 65,
+    "minimum_nonoverlap_per_2023_quarter": 28,
+    "minimum_side_share": 0.4,
+    "minimum_side_events_per_year": 50,
+    "minimum_active_months": 42,
+    "minimum_events_per_active_month": 5,
+    "maximum_temporal_jaccard": 0.01,
+    "maximum_temporal_containment": 0.02,
+    "maximum_stale_jaccard": 0.01,
+    "maximum_stale_containment": 0.02,
+    "maximum_prior_clock_jaccard": 0.02,
+    "maximum_prior_clock_containment": 0.05
+  },
+  "source": {
+    "feature_sha256": "00ab6a55fc7bfeb3012584db5bc97a7d7b98dd995491acfd3f865c6bd41f92cc",
+    "feature_manifest_sha256": "544c2945a2b56be478a1edc4abbb93b762bda5afc32cbd0658dd6822ff6b70fa",
+    "source_audit_sha256": "ffe0124ac9c5c0c3f1d1c284b672618cf910dc16cae36e65c1efe79710f039af",
+    "source_available_rows": 419855,
+    "quarantined_rows": 7068,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00",
+    "prior_clocks": {
+      "cspr": {
+        "clock_sha256": "353e14cc09b79960938802c9882ba36527e9f4c4819f8a492312fdefffdf1c0f",
+        "manifest_sha256": "37132d281942ac8f0e72edf239358ac74b9622db6401581461dca4ae4494caa2",
+        "rows": 850
+      },
+      "rift": {
+        "clock_sha256": "83becb88da83ce55e235f10c2e91ed3a2ad478c6aea2e9298d37c43b36cfff00",
+        "manifest_sha256": "47460778b45fe861c787e49a6f374c54e8155594350d1d30d54b4e54b0d63789",
+        "rows": 460
+      },
+      "catch": {
+        "clock_sha256": "066bf8e08267a043cc191eb436f0aa33105ab948de9f9f1edfde4d9c30de46d1",
+        "manifest_sha256": "f461529e14539ea4aa6e4b498ef8738f918dfb095ebbfcefb43ed127fe272ca6",
+        "rows": 3957
+      },
+      "luri": {
+        "clock_sha256": "50765cfed0c3ec6a0d1df18857c4e0a3e574d1aa449538c9b89cfac1fff67095",
+        "manifest_sha256": "c4ce91ee395fcff8ffd5321ef94bfc2aabd8980f0778d7d4369d22bd81cbca68",
+        "rows": 432
+      }
+    }
+  },
+  "support_grid": [
+    {
+      "quantile": 0.5,
+      "eligible_primary": 2747,
+      "raw_primary": 1286,
+      "support": {
+        "nonoverlap_total": 1170,
+        "by_year": {
+          "2020": 272,
+          "2021": 348,
+          "2022": 282,
+          "2023": 268
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 100,
+            "short": 172
+          },
+          "2021": {
+            "long": 142,
+            "short": 206
+          },
+          "2022": {
+            "long": 145,
+            "short": 137
+          },
+          "2023": {
+            "long": 119,
+            "short": 149
+          }
+        },
+        "2023_h1": 143,
+        "2023_h2": 125,
+        "2023_quarters": {
+          "2023Q1": 63,
+          "2023Q2": 80,
+          "2023Q3": 53,
+          "2023Q4": 72
+        },
+        "long_share": 0.4324786324786325,
+        "short_share": 0.5675213675213675,
+        "active_months": 46,
+        "minimum_events_per_active_month": 5,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 1286,
+        "no_timing": 8655,
+        "no_ticket_surprise": 2599,
+        "no_efficiency_advantage": 1684,
+        "no_basis_lag": 1741,
+        "no_response_advantage": 4530,
+        "early_cash": 1233,
+        "venue_swap": 1138,
+        "aggregate_only": 74791,
+        "stale_1h": 1279,
+        "stale_24h": 1271,
+        "signal_delay_1bar": 1286
+      },
+      "control_scheduled_counts": {
+        "no_timing": 5211,
+        "no_ticket_surprise": 2262,
+        "no_efficiency_advantage": 1469,
+        "no_basis_lag": 1541,
+        "no_response_advantage": 3407,
+        "early_cash": 1119,
+        "venue_swap": 1030,
+        "aggregate_only": 14381,
+        "stale_1h": 1163,
+        "stale_24h": 1158,
+        "signal_delay_1bar": 1170
+      },
+      "control_overlap": {
+        "no_timing": {
+          "intersection": 1102,
+          "union": 8839,
+          "jaccard": 0.1246747369611947,
+          "primary_containment": 0.8569206842923794
+        },
+        "no_ticket_surprise": {
+          "intersection": 1113,
+          "union": 2772,
+          "jaccard": 0.4015151515151515,
+          "primary_containment": 0.8654743390357699
+        },
+        "no_efficiency_advantage": {
+          "intersection": 1166,
+          "union": 1804,
+          "jaccard": 0.6463414634146342,
+          "primary_containment": 0.9066874027993779
+        },
+        "no_basis_lag": {
+          "intersection": 1220,
+          "union": 1807,
+          "jaccard": 0.6751521859435529,
+          "primary_containment": 0.9486780715396579
+        },
+        "no_response_advantage": {
+          "intersection": 1192,
+          "union": 4624,
+          "jaccard": 0.2577854671280277,
+          "primary_containment": 0.926905132192846
+        },
+        "early_cash": {
+          "intersection": 0,
+          "union": 2519,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 2424,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 891,
+          "union": 75186,
+          "jaccard": 0.011850610485994733,
+          "primary_containment": 0.692846034214619
+        },
+        "stale_1h": {
+          "intersection": 6,
+          "union": 2559,
+          "jaccard": 0.0023446658851113715,
+          "primary_containment": 0.004665629860031105
+        },
+        "stale_24h": {
+          "intersection": 5,
+          "union": 2552,
+          "jaccard": 0.001959247648902821,
+          "primary_containment": 0.0038880248833592537
+        },
+        "signal_delay_1bar": {
+          "intersection": 5,
+          "union": 2567,
+          "jaccard": 0.0019477989871445266,
+          "primary_containment": 0.0038880248833592537
+        }
+      },
+      "control_scheduled_overlap": {
+        "no_timing": {
+          "intersection": 669,
+          "union": 5712,
+          "jaccard": 0.1171218487394958,
+          "primary_containment": 0.5717948717948718
+        },
+        "no_ticket_surprise": {
+          "intersection": 946,
+          "union": 2486,
+          "jaccard": 0.3805309734513274,
+          "primary_containment": 0.8085470085470086
+        },
+        "no_efficiency_advantage": {
+          "intersection": 1010,
+          "union": 1629,
+          "jaccard": 0.620012277470841,
+          "primary_containment": 0.8632478632478633
+        },
+        "no_basis_lag": {
+          "intersection": 1079,
+          "union": 1632,
+          "jaccard": 0.6611519607843137,
+          "primary_containment": 0.9222222222222223
+        },
+        "no_response_advantage": {
+          "intersection": 881,
+          "union": 3696,
+          "jaccard": 0.23836580086580086,
+          "primary_containment": 0.752991452991453
+        },
+        "early_cash": {
+          "intersection": 0,
+          "union": 2289,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 2200,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 155,
+          "union": 15396,
+          "jaccard": 0.010067550012990386,
+          "primary_containment": 0.13247863247863248
+        },
+        "stale_1h": {
+          "intersection": 0,
+          "union": 2333,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "stale_24h": {
+          "intersection": 3,
+          "union": 2325,
+          "jaccard": 0.0012903225806451613,
+          "primary_containment": 0.002564102564102564
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 2340,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "ablation_retention_diagnostic_only": {
+        "no_timing": {
+          "raw": 0.1485846331600231,
+          "scheduled": 0.22452504317789293
+        },
+        "no_ticket_surprise": {
+          "raw": 0.4948056944978838,
+          "scheduled": 0.5172413793103449
+        },
+        "no_efficiency_advantage": {
+          "raw": 0.7636579572446556,
+          "scheduled": 0.7964601769911505
+        },
+        "no_basis_lag": {
+          "raw": 0.7386559448592763,
+          "scheduled": 0.7592472420506164
+        },
+        "no_response_advantage": {
+          "raw": 0.2838852097130243,
+          "scheduled": 0.34341062518344584
+        },
+        "aggregate_only": {
+          "raw": 0.017194582235830515,
+          "scheduled": 0.08135734649885265
+        }
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 22,
+          "union": 1998,
+          "jaccard": 0.011011011011011011,
+          "primary_containment": 0.018803418803418803
+        },
+        "rift": {
+          "intersection": 3,
+          "union": 1627,
+          "jaccard": 0.0018438844499078057,
+          "primary_containment": 0.002564102564102564
+        },
+        "catch": {
+          "intersection": 0,
+          "union": 5127,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "luri": {
+          "intersection": 0,
+          "union": 1602,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "passes_novelty": true,
+      "passes_support": true
+    },
+    {
+      "quantile": 0.65,
+      "eligible_primary": 2747,
+      "raw_primary": 906,
+      "support": {
+        "nonoverlap_total": 844,
+        "by_year": {
+          "2020": 191,
+          "2021": 260,
+          "2022": 200,
+          "2023": 193
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 74,
+            "short": 117
+          },
+          "2021": {
+            "long": 114,
+            "short": 146
+          },
+          "2022": {
+            "long": 107,
+            "short": 93
+          },
+          "2023": {
+            "long": 81,
+            "short": 112
+          }
+        },
+        "2023_h1": 109,
+        "2023_h2": 84,
+        "2023_quarters": {
+          "2023Q1": 50,
+          "2023Q2": 59,
+          "2023Q3": 37,
+          "2023Q4": 47
+        },
+        "long_share": 0.44549763033175355,
+        "short_share": 0.5545023696682464,
+        "active_months": 45,
+        "minimum_events_per_active_month": 5,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 906,
+        "no_timing": 6075,
+        "no_ticket_surprise": 1813,
+        "no_efficiency_advantage": 1193,
+        "no_basis_lag": 1248,
+        "no_response_advantage": 3184,
+        "early_cash": 874,
+        "venue_swap": 798,
+        "aggregate_only": 52557,
+        "stale_1h": 904,
+        "stale_24h": 895,
+        "signal_delay_1bar": 906
+      },
+      "control_scheduled_counts": {
+        "no_timing": 4085,
+        "no_ticket_surprise": 1640,
+        "no_efficiency_advantage": 1062,
+        "no_basis_lag": 1135,
+        "no_response_advantage": 2537,
+        "early_cash": 811,
+        "venue_swap": 733,
+        "aggregate_only": 13042,
+        "stale_1h": 842,
+        "stale_24h": 834,
+        "signal_delay_1bar": 844
+      },
+      "control_overlap": {
+        "no_timing": {
+          "intersection": 736,
+          "union": 6245,
+          "jaccard": 0.1178542834267414,
+          "primary_containment": 0.8123620309050773
+        },
+        "no_ticket_surprise": {
+          "intersection": 741,
+          "union": 1978,
+          "jaccard": 0.3746208291203236,
+          "primary_containment": 0.8178807947019867
+        },
+        "no_efficiency_advantage": {
+          "intersection": 789,
+          "union": 1310,
+          "jaccard": 0.6022900763358778,
+          "primary_containment": 0.8708609271523179
+        },
+        "no_basis_lag": {
+          "intersection": 842,
+          "union": 1312,
+          "jaccard": 0.6417682926829268,
+          "primary_containment": 0.9293598233995585
+        },
+        "no_response_advantage": {
+          "intersection": 803,
+          "union": 3287,
+          "jaccard": 0.2442957103742014,
+          "primary_containment": 0.8863134657836644
+        },
+        "early_cash": {
+          "intersection": 0,
+          "union": 1780,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 1704,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 552,
+          "union": 52911,
+          "jaccard": 0.010432613256222713,
+          "primary_containment": 0.609271523178808
+        },
+        "stale_1h": {
+          "intersection": 2,
+          "union": 1808,
+          "jaccard": 0.0011061946902654867,
+          "primary_containment": 0.002207505518763797
+        },
+        "stale_24h": {
+          "intersection": 3,
+          "union": 1798,
+          "jaccard": 0.0016685205784204673,
+          "primary_containment": 0.0033112582781456954
+        },
+        "signal_delay_1bar": {
+          "intersection": 3,
+          "union": 1809,
+          "jaccard": 0.001658374792703151,
+          "primary_containment": 0.0033112582781456954
+        }
+      },
+      "control_scheduled_overlap": {
+        "no_timing": {
+          "intersection": 493,
+          "union": 4436,
+          "jaccard": 0.11113615870153291,
+          "primary_containment": 0.5841232227488151
+        },
+        "no_ticket_surprise": {
+          "intersection": 657,
+          "union": 1827,
+          "jaccard": 0.35960591133004927,
+          "primary_containment": 0.7784360189573459
+        },
+        "no_efficiency_advantage": {
+          "intersection": 710,
+          "union": 1196,
+          "jaccard": 0.5936454849498328,
+          "primary_containment": 0.8412322274881516
+        },
+        "no_basis_lag": {
+          "intersection": 763,
+          "union": 1216,
+          "jaccard": 0.6274671052631579,
+          "primary_containment": 0.9040284360189573
+        },
+        "no_response_advantage": {
+          "intersection": 631,
+          "union": 2750,
+          "jaccard": 0.22945454545454547,
+          "primary_containment": 0.7476303317535545
+        },
+        "early_cash": {
+          "intersection": 0,
+          "union": 1655,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 1577,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 138,
+          "union": 13748,
+          "jaccard": 0.010037823683444864,
+          "primary_containment": 0.16350710900473933
+        },
+        "stale_1h": {
+          "intersection": 0,
+          "union": 1686,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "stale_24h": {
+          "intersection": 1,
+          "union": 1677,
+          "jaccard": 0.0005963029218843172,
+          "primary_containment": 0.001184834123222749
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 1688,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "ablation_retention_diagnostic_only": {
+        "no_timing": {
+          "raw": 0.1491358024691358,
+          "scheduled": 0.206609547123623
+        },
+        "no_ticket_surprise": {
+          "raw": 0.4997242140099283,
+          "scheduled": 0.5146341463414634
+        },
+        "no_efficiency_advantage": {
+          "raw": 0.7594300083822296,
+          "scheduled": 0.7947269303201506
+        },
+        "no_basis_lag": {
+          "raw": 0.7259615384615384,
+          "scheduled": 0.7436123348017621
+        },
+        "no_response_advantage": {
+          "raw": 0.28454773869346733,
+          "scheduled": 0.33267638943634215
+        },
+        "aggregate_only": {
+          "raw": 0.01723842685084765,
+          "scheduled": 0.06471400092010428
+        }
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 18,
+          "union": 1676,
+          "jaccard": 0.010739856801909307,
+          "primary_containment": 0.02132701421800948
+        },
+        "rift": {
+          "intersection": 3,
+          "union": 1301,
+          "jaccard": 0.0023059185242121443,
+          "primary_containment": 0.0035545023696682463
+        },
+        "catch": {
+          "intersection": 0,
+          "union": 4801,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "luri": {
+          "intersection": 0,
+          "union": 1276,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "passes_novelty": true,
+      "passes_support": true
+    },
+    {
+      "quantile": 0.75,
+      "eligible_primary": 2747,
+      "raw_primary": 649,
+      "support": {
+        "nonoverlap_total": 615,
+        "by_year": {
+          "2020": 134,
+          "2021": 184,
+          "2022": 153,
+          "2023": 144
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 53,
+            "short": 81
+          },
+          "2021": {
+            "long": 82,
+            "short": 102
+          },
+          "2022": {
+            "long": 79,
+            "short": 74
+          },
+          "2023": {
+            "long": 63,
+            "short": 81
+          }
+        },
+        "2023_h1": 74,
+        "2023_h2": 70,
+        "2023_quarters": {
+          "2023Q1": 33,
+          "2023Q2": 41,
+          "2023Q3": 29,
+          "2023Q4": 41
+        },
+        "long_share": 0.4504065040650406,
+        "short_share": 0.5495934959349593,
+        "active_months": 44,
+        "minimum_events_per_active_month": 5,
+        "passes_count_support": true
+      },
+      "control_raw_counts": {
+        "direction_flip": 649,
+        "no_timing": 4361,
+        "no_ticket_surprise": 1310,
+        "no_efficiency_advantage": 848,
+        "no_basis_lag": 890,
+        "no_response_advantage": 2260,
+        "early_cash": 646,
+        "venue_swap": 578,
+        "aggregate_only": 37562,
+        "stale_1h": 647,
+        "stale_24h": 642,
+        "signal_delay_1bar": 649
+      },
+      "control_scheduled_counts": {
+        "no_timing": 3160,
+        "no_ticket_surprise": 1221,
+        "no_efficiency_advantage": 779,
+        "no_basis_lag": 823,
+        "no_response_advantage": 1925,
+        "early_cash": 614,
+        "venue_swap": 548,
+        "aggregate_only": 11623,
+        "stale_1h": 613,
+        "stale_24h": 609,
+        "signal_delay_1bar": 615
+      },
+      "control_overlap": {
+        "no_timing": {
+          "intersection": 492,
+          "union": 4518,
+          "jaccard": 0.10889774236387782,
+          "primary_containment": 0.7580893682588598
+        },
+        "no_ticket_surprise": {
+          "intersection": 524,
+          "union": 1435,
+          "jaccard": 0.3651567944250871,
+          "primary_containment": 0.8073959938366718
+        },
+        "no_efficiency_advantage": {
+          "intersection": 523,
+          "union": 974,
+          "jaccard": 0.5369609856262834,
+          "primary_containment": 0.8058551617873652
+        },
+        "no_basis_lag": {
+          "intersection": 590,
+          "union": 949,
+          "jaccard": 0.6217070600632244,
+          "primary_containment": 0.9090909090909091
+        },
+        "no_response_advantage": {
+          "intersection": 553,
+          "union": 2356,
+          "jaccard": 0.23471986417657045,
+          "primary_containment": 0.8520801232665639
+        },
+        "early_cash": {
+          "intersection": 0,
+          "union": 1295,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 1227,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 335,
+          "union": 37876,
+          "jaccard": 0.00884465096631112,
+          "primary_containment": 0.5161787365177196
+        },
+        "stale_1h": {
+          "intersection": 2,
+          "union": 1294,
+          "jaccard": 0.0015455950540958269,
+          "primary_containment": 0.0030816640986132513
+        },
+        "stale_24h": {
+          "intersection": 3,
+          "union": 1288,
+          "jaccard": 0.002329192546583851,
+          "primary_containment": 0.004622496147919877
+        },
+        "signal_delay_1bar": {
+          "intersection": 2,
+          "union": 1296,
+          "jaccard": 0.0015432098765432098,
+          "primary_containment": 0.0030816640986132513
+        }
+      },
+      "control_scheduled_overlap": {
+        "no_timing": {
+          "intersection": 354,
+          "union": 3421,
+          "jaccard": 0.10347851505407775,
+          "primary_containment": 0.5756097560975609
+        },
+        "no_ticket_surprise": {
+          "intersection": 484,
+          "union": 1352,
+          "jaccard": 0.35798816568047337,
+          "primary_containment": 0.7869918699186992
+        },
+        "no_efficiency_advantage": {
+          "intersection": 484,
+          "union": 910,
+          "jaccard": 0.5318681318681319,
+          "primary_containment": 0.7869918699186992
+        },
+        "no_basis_lag": {
+          "intersection": 544,
+          "union": 894,
+          "jaccard": 0.6085011185682326,
+          "primary_containment": 0.8845528455284553
+        },
+        "no_response_advantage": {
+          "intersection": 459,
+          "union": 2081,
+          "jaccard": 0.2205670350792888,
+          "primary_containment": 0.7463414634146341
+        },
+        "early_cash": {
+          "intersection": 0,
+          "union": 1229,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 1163,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 103,
+          "union": 12135,
+          "jaccard": 0.008487845076225794,
+          "primary_containment": 0.16747967479674797
+        },
+        "stale_1h": {
+          "intersection": 0,
+          "union": 1228,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "stale_24h": {
+          "intersection": 2,
+          "union": 1222,
+          "jaccard": 0.0016366612111292963,
+          "primary_containment": 0.0032520325203252032
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 1230,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "ablation_retention_diagnostic_only": {
+        "no_timing": {
+          "raw": 0.148819078193075,
+          "scheduled": 0.19462025316455697
+        },
+        "no_ticket_surprise": {
+          "raw": 0.4954198473282443,
+          "scheduled": 0.5036855036855037
+        },
+        "no_efficiency_advantage": {
+          "raw": 0.7653301886792453,
+          "scheduled": 0.7894736842105263
+        },
+        "no_basis_lag": {
+          "raw": 0.7292134831460674,
+          "scheduled": 0.74726609963548
+        },
+        "no_response_advantage": {
+          "raw": 0.28716814159292037,
+          "scheduled": 0.3194805194805195
+        },
+        "aggregate_only": {
+          "raw": 0.017278100207656674,
+          "scheduled": 0.052912329002839195
+        }
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 12,
+          "union": 1453,
+          "jaccard": 0.008258774948382657,
+          "primary_containment": 0.01951219512195122
+        },
+        "rift": {
+          "intersection": 2,
+          "union": 1073,
+          "jaccard": 0.001863932898415657,
+          "primary_containment": 0.0032520325203252032
+        },
+        "catch": {
+          "intersection": 0,
+          "union": 4572,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "luri": {
+          "intersection": 0,
+          "union": 1047,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "passes_novelty": true,
+      "passes_support": true
+    },
+    {
+      "quantile": 0.8,
+      "eligible_primary": 2747,
+      "raw_primary": 530,
+      "support": {
+        "nonoverlap_total": 509,
+        "by_year": {
+          "2020": 115,
+          "2021": 152,
+          "2022": 129,
+          "2023": 113
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 45,
+            "short": 70
+          },
+          "2021": {
+            "long": 69,
+            "short": 83
+          },
+          "2022": {
+            "long": 67,
+            "short": 62
+          },
+          "2023": {
+            "long": 49,
+            "short": 64
+          }
+        },
+        "2023_h1": 59,
+        "2023_h2": 54,
+        "2023_quarters": {
+          "2023Q1": 27,
+          "2023Q2": 32,
+          "2023Q3": 22,
+          "2023Q4": 32
+        },
+        "long_share": 0.4518664047151277,
+        "short_share": 0.5481335952848723,
+        "active_months": 43,
+        "minimum_events_per_active_month": 5,
+        "passes_count_support": false
+      },
+      "control_raw_counts": {
+        "direction_flip": 530,
+        "no_timing": 3506,
+        "no_ticket_surprise": 1050,
+        "no_efficiency_advantage": 696,
+        "no_basis_lag": 710,
+        "no_response_advantage": 1818,
+        "early_cash": 518,
+        "venue_swap": 477,
+        "aggregate_only": 30257,
+        "stale_1h": 528,
+        "stale_24h": 527,
+        "signal_delay_1bar": 530
+      },
+      "control_scheduled_counts": {
+        "no_timing": 2657,
+        "no_ticket_surprise": 984,
+        "no_efficiency_advantage": 650,
+        "no_basis_lag": 667,
+        "no_response_advantage": 1581,
+        "early_cash": 499,
+        "venue_swap": 453,
+        "aggregate_only": 10637,
+        "stale_1h": 507,
+        "stale_24h": 506,
+        "signal_delay_1bar": 509
+      },
+      "control_overlap": {
+        "no_timing": {
+          "intersection": 381,
+          "union": 3655,
+          "jaccard": 0.10424076607387141,
+          "primary_containment": 0.7188679245283018
+        },
+        "no_ticket_surprise": {
+          "intersection": 409,
+          "union": 1171,
+          "jaccard": 0.3492741246797609,
+          "primary_containment": 0.7716981132075472
+        },
+        "no_efficiency_advantage": {
+          "intersection": 416,
+          "union": 810,
+          "jaccard": 0.5135802469135803,
+          "primary_containment": 0.7849056603773585
+        },
+        "no_basis_lag": {
+          "intersection": 475,
+          "union": 765,
+          "jaccard": 0.6209150326797386,
+          "primary_containment": 0.8962264150943396
+        },
+        "no_response_advantage": {
+          "intersection": 429,
+          "union": 1919,
+          "jaccard": 0.2235539343408025,
+          "primary_containment": 0.809433962264151
+        },
+        "early_cash": {
+          "intersection": 0,
+          "union": 1048,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 1007,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 254,
+          "union": 30533,
+          "jaccard": 0.008318868109913863,
+          "primary_containment": 0.47924528301886793
+        },
+        "stale_1h": {
+          "intersection": 1,
+          "union": 1057,
+          "jaccard": 0.000946073793755913,
+          "primary_containment": 0.0018867924528301887
+        },
+        "stale_24h": {
+          "intersection": 2,
+          "union": 1055,
+          "jaccard": 0.0018957345971563982,
+          "primary_containment": 0.0037735849056603774
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 1060,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "control_scheduled_overlap": {
+        "no_timing": {
+          "intersection": 291,
+          "union": 2875,
+          "jaccard": 0.10121739130434783,
+          "primary_containment": 0.5717092337917485
+        },
+        "no_ticket_surprise": {
+          "intersection": 380,
+          "union": 1113,
+          "jaccard": 0.3414195867026056,
+          "primary_containment": 0.7465618860510805
+        },
+        "no_efficiency_advantage": {
+          "intersection": 386,
+          "union": 773,
+          "jaccard": 0.49935316946959896,
+          "primary_containment": 0.7583497053045186
+        },
+        "no_basis_lag": {
+          "intersection": 448,
+          "union": 728,
+          "jaccard": 0.6153846153846154,
+          "primary_containment": 0.8801571709233792
+        },
+        "no_response_advantage": {
+          "intersection": 362,
+          "union": 1728,
+          "jaccard": 0.20949074074074073,
+          "primary_containment": 0.7111984282907662
+        },
+        "early_cash": {
+          "intersection": 0,
+          "union": 1008,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 962,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 90,
+          "union": 11056,
+          "jaccard": 0.008140376266280752,
+          "primary_containment": 0.17681728880157171
+        },
+        "stale_1h": {
+          "intersection": 0,
+          "union": 1016,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "stale_24h": {
+          "intersection": 2,
+          "union": 1013,
+          "jaccard": 0.0019743336623889436,
+          "primary_containment": 0.003929273084479371
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 1018,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "ablation_retention_diagnostic_only": {
+        "no_timing": {
+          "raw": 0.15116942384483742,
+          "scheduled": 0.1915694392171622
+        },
+        "no_ticket_surprise": {
+          "raw": 0.5047619047619047,
+          "scheduled": 0.5172764227642277
+        },
+        "no_efficiency_advantage": {
+          "raw": 0.7614942528735632,
+          "scheduled": 0.7830769230769231
+        },
+        "no_basis_lag": {
+          "raw": 0.7464788732394366,
+          "scheduled": 0.7631184407796102
+        },
+        "no_response_advantage": {
+          "raw": 0.2915291529152915,
+          "scheduled": 0.3219481340923466
+        },
+        "aggregate_only": {
+          "raw": 0.01751660772713752,
+          "scheduled": 0.04785183792422676
+        }
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 7,
+          "union": 1352,
+          "jaccard": 0.005177514792899409,
+          "primary_containment": 0.0137524557956778
+        },
+        "rift": {
+          "intersection": 2,
+          "union": 967,
+          "jaccard": 0.002068252326783868,
+          "primary_containment": 0.003929273084479371
+        },
+        "catch": {
+          "intersection": 0,
+          "union": 4466,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "luri": {
+          "intersection": 0,
+          "union": 941,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "passes_novelty": true,
+      "passes_support": false
+    },
+    {
+      "quantile": 0.85,
+      "eligible_primary": 2747,
+      "raw_primary": 402,
+      "support": {
+        "nonoverlap_total": 388,
+        "by_year": {
+          "2020": 85,
+          "2021": 113,
+          "2022": 100,
+          "2023": 90
+        },
+        "by_year_side": {
+          "2020": {
+            "long": 34,
+            "short": 51
+          },
+          "2021": {
+            "long": 52,
+            "short": 61
+          },
+          "2022": {
+            "long": 57,
+            "short": 43
+          },
+          "2023": {
+            "long": 39,
+            "short": 51
+          }
+        },
+        "2023_h1": 48,
+        "2023_h2": 42,
+        "2023_quarters": {
+          "2023Q1": 23,
+          "2023Q2": 25,
+          "2023Q3": 21,
+          "2023Q4": 21
+        },
+        "long_share": 0.4690721649484536,
+        "short_share": 0.5309278350515464,
+        "active_months": 38,
+        "minimum_events_per_active_month": 5,
+        "passes_count_support": false
+      },
+      "control_raw_counts": {
+        "direction_flip": 402,
+        "no_timing": 2615,
+        "no_ticket_surprise": 811,
+        "no_efficiency_advantage": 549,
+        "no_basis_lag": 549,
+        "no_response_advantage": 1361,
+        "early_cash": 396,
+        "venue_swap": 351,
+        "aggregate_only": 22814,
+        "stale_1h": 400,
+        "stale_24h": 399,
+        "signal_delay_1bar": 402
+      },
+      "control_scheduled_counts": {
+        "no_timing": 2083,
+        "no_ticket_surprise": 769,
+        "no_efficiency_advantage": 519,
+        "no_basis_lag": 519,
+        "no_response_advantage": 1212,
+        "early_cash": 382,
+        "venue_swap": 338,
+        "aggregate_only": 9308,
+        "stale_1h": 386,
+        "stale_24h": 385,
+        "signal_delay_1bar": 388
+      },
+      "control_overlap": {
+        "no_timing": {
+          "intersection": 273,
+          "union": 2744,
+          "jaccard": 0.09948979591836735,
+          "primary_containment": 0.6791044776119403
+        },
+        "no_ticket_surprise": {
+          "intersection": 312,
+          "union": 901,
+          "jaccard": 0.3462819089900111,
+          "primary_containment": 0.7761194029850746
+        },
+        "no_efficiency_advantage": {
+          "intersection": 305,
+          "union": 646,
+          "jaccard": 0.47213622291021673,
+          "primary_containment": 0.7587064676616916
+        },
+        "no_basis_lag": {
+          "intersection": 350,
+          "union": 601,
+          "jaccard": 0.5823627287853578,
+          "primary_containment": 0.8706467661691543
+        },
+        "no_response_advantage": {
+          "intersection": 313,
+          "union": 1450,
+          "jaccard": 0.21586206896551724,
+          "primary_containment": 0.7786069651741293
+        },
+        "early_cash": {
+          "intersection": 0,
+          "union": 798,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 753,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 171,
+          "union": 23045,
+          "jaccard": 0.0074202646995009764,
+          "primary_containment": 0.4253731343283582
+        },
+        "stale_1h": {
+          "intersection": 0,
+          "union": 802,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "stale_24h": {
+          "intersection": 2,
+          "union": 799,
+          "jaccard": 0.0025031289111389237,
+          "primary_containment": 0.004975124378109453
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 804,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "control_scheduled_overlap": {
+        "no_timing": {
+          "intersection": 215,
+          "union": 2256,
+          "jaccard": 0.09530141843971632,
+          "primary_containment": 0.5541237113402062
+        },
+        "no_ticket_surprise": {
+          "intersection": 290,
+          "union": 867,
+          "jaccard": 0.3344867358708189,
+          "primary_containment": 0.7474226804123711
+        },
+        "no_efficiency_advantage": {
+          "intersection": 288,
+          "union": 619,
+          "jaccard": 0.46526655896607433,
+          "primary_containment": 0.7422680412371134
+        },
+        "no_basis_lag": {
+          "intersection": 332,
+          "union": 575,
+          "jaccard": 0.577391304347826,
+          "primary_containment": 0.8556701030927835
+        },
+        "no_response_advantage": {
+          "intersection": 275,
+          "union": 1325,
+          "jaccard": 0.20754716981132076,
+          "primary_containment": 0.7087628865979382
+        },
+        "early_cash": {
+          "intersection": 0,
+          "union": 770,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "venue_swap": {
+          "intersection": 0,
+          "union": 726,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "aggregate_only": {
+          "intersection": 74,
+          "union": 9622,
+          "jaccard": 0.007690708792350863,
+          "primary_containment": 0.19072164948453607
+        },
+        "stale_1h": {
+          "intersection": 0,
+          "union": 774,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "stale_24h": {
+          "intersection": 2,
+          "union": 771,
+          "jaccard": 0.0025940337224383916,
+          "primary_containment": 0.005154639175257732
+        },
+        "signal_delay_1bar": {
+          "intersection": 0,
+          "union": 776,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "ablation_retention_diagnostic_only": {
+        "no_timing": {
+          "raw": 0.15372848948374762,
+          "scheduled": 0.18626980316850697
+        },
+        "no_ticket_surprise": {
+          "raw": 0.4956843403205919,
+          "scheduled": 0.5045513654096229
+        },
+        "no_efficiency_advantage": {
+          "raw": 0.73224043715847,
+          "scheduled": 0.7475915221579962
+        },
+        "no_basis_lag": {
+          "raw": 0.73224043715847,
+          "scheduled": 0.7475915221579962
+        },
+        "no_response_advantage": {
+          "raw": 0.29537105069801617,
+          "scheduled": 0.3201320132013201
+        },
+        "aggregate_only": {
+          "raw": 0.017620759182957833,
+          "scheduled": 0.041684572410829394
+        }
+      },
+      "prior_clock_overlap": {
+        "cspr": {
+          "intersection": 7,
+          "union": 1231,
+          "jaccard": 0.005686433793663688,
+          "primary_containment": 0.01804123711340206
+        },
+        "rift": {
+          "intersection": 1,
+          "union": 847,
+          "jaccard": 0.0011806375442739079,
+          "primary_containment": 0.002577319587628866
+        },
+        "catch": {
+          "intersection": 0,
+          "union": 4345,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        },
+        "luri": {
+          "intersection": 0,
+          "union": 820,
+          "jaccard": 0.0,
+          "primary_containment": 0.0
+        }
+      },
+      "passes_novelty": true,
+      "passes_support": false
+    }
+  ],
+  "support_decision": "pass",
+  "selected_quantile": 0.75,
+  "selected_support": {
+    "quantile": 0.75,
+    "eligible_primary": 2747,
+    "raw_primary": 649,
+    "support": {
+      "nonoverlap_total": 615,
+      "by_year": {
+        "2020": 134,
+        "2021": 184,
+        "2022": 153,
+        "2023": 144
+      },
+      "by_year_side": {
+        "2020": {
+          "long": 53,
+          "short": 81
+        },
+        "2021": {
+          "long": 82,
+          "short": 102
+        },
+        "2022": {
+          "long": 79,
+          "short": 74
+        },
+        "2023": {
+          "long": 63,
+          "short": 81
+        }
+      },
+      "2023_h1": 74,
+      "2023_h2": 70,
+      "2023_quarters": {
+        "2023Q1": 33,
+        "2023Q2": 41,
+        "2023Q3": 29,
+        "2023Q4": 41
+      },
+      "long_share": 0.4504065040650406,
+      "short_share": 0.5495934959349593,
+      "active_months": 44,
+      "minimum_events_per_active_month": 5,
+      "passes_count_support": true
+    },
+    "control_raw_counts": {
+      "direction_flip": 649,
+      "no_timing": 4361,
+      "no_ticket_surprise": 1310,
+      "no_efficiency_advantage": 848,
+      "no_basis_lag": 890,
+      "no_response_advantage": 2260,
+      "early_cash": 646,
+      "venue_swap": 578,
+      "aggregate_only": 37562,
+      "stale_1h": 647,
+      "stale_24h": 642,
+      "signal_delay_1bar": 649
+    },
+    "control_scheduled_counts": {
+      "no_timing": 3160,
+      "no_ticket_surprise": 1221,
+      "no_efficiency_advantage": 779,
+      "no_basis_lag": 823,
+      "no_response_advantage": 1925,
+      "early_cash": 614,
+      "venue_swap": 548,
+      "aggregate_only": 11623,
+      "stale_1h": 613,
+      "stale_24h": 609,
+      "signal_delay_1bar": 615
+    },
+    "control_overlap": {
+      "no_timing": {
+        "intersection": 492,
+        "union": 4518,
+        "jaccard": 0.10889774236387782,
+        "primary_containment": 0.7580893682588598
+      },
+      "no_ticket_surprise": {
+        "intersection": 524,
+        "union": 1435,
+        "jaccard": 0.3651567944250871,
+        "primary_containment": 0.8073959938366718
+      },
+      "no_efficiency_advantage": {
+        "intersection": 523,
+        "union": 974,
+        "jaccard": 0.5369609856262834,
+        "primary_containment": 0.8058551617873652
+      },
+      "no_basis_lag": {
+        "intersection": 590,
+        "union": 949,
+        "jaccard": 0.6217070600632244,
+        "primary_containment": 0.9090909090909091
+      },
+      "no_response_advantage": {
+        "intersection": 553,
+        "union": 2356,
+        "jaccard": 0.23471986417657045,
+        "primary_containment": 0.8520801232665639
+      },
+      "early_cash": {
+        "intersection": 0,
+        "union": 1295,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      },
+      "venue_swap": {
+        "intersection": 0,
+        "union": 1227,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      },
+      "aggregate_only": {
+        "intersection": 335,
+        "union": 37876,
+        "jaccard": 0.00884465096631112,
+        "primary_containment": 0.5161787365177196
+      },
+      "stale_1h": {
+        "intersection": 2,
+        "union": 1294,
+        "jaccard": 0.0015455950540958269,
+        "primary_containment": 0.0030816640986132513
+      },
+      "stale_24h": {
+        "intersection": 3,
+        "union": 1288,
+        "jaccard": 0.002329192546583851,
+        "primary_containment": 0.004622496147919877
+      },
+      "signal_delay_1bar": {
+        "intersection": 2,
+        "union": 1296,
+        "jaccard": 0.0015432098765432098,
+        "primary_containment": 0.0030816640986132513
+      }
+    },
+    "control_scheduled_overlap": {
+      "no_timing": {
+        "intersection": 354,
+        "union": 3421,
+        "jaccard": 0.10347851505407775,
+        "primary_containment": 0.5756097560975609
+      },
+      "no_ticket_surprise": {
+        "intersection": 484,
+        "union": 1352,
+        "jaccard": 0.35798816568047337,
+        "primary_containment": 0.7869918699186992
+      },
+      "no_efficiency_advantage": {
+        "intersection": 484,
+        "union": 910,
+        "jaccard": 0.5318681318681319,
+        "primary_containment": 0.7869918699186992
+      },
+      "no_basis_lag": {
+        "intersection": 544,
+        "union": 894,
+        "jaccard": 0.6085011185682326,
+        "primary_containment": 0.8845528455284553
+      },
+      "no_response_advantage": {
+        "intersection": 459,
+        "union": 2081,
+        "jaccard": 0.2205670350792888,
+        "primary_containment": 0.7463414634146341
+      },
+      "early_cash": {
+        "intersection": 0,
+        "union": 1229,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      },
+      "venue_swap": {
+        "intersection": 0,
+        "union": 1163,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      },
+      "aggregate_only": {
+        "intersection": 103,
+        "union": 12135,
+        "jaccard": 0.008487845076225794,
+        "primary_containment": 0.16747967479674797
+      },
+      "stale_1h": {
+        "intersection": 0,
+        "union": 1228,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      },
+      "stale_24h": {
+        "intersection": 2,
+        "union": 1222,
+        "jaccard": 0.0016366612111292963,
+        "primary_containment": 0.0032520325203252032
+      },
+      "signal_delay_1bar": {
+        "intersection": 0,
+        "union": 1230,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      }
+    },
+    "ablation_retention_diagnostic_only": {
+      "no_timing": {
+        "raw": 0.148819078193075,
+        "scheduled": 0.19462025316455697
+      },
+      "no_ticket_surprise": {
+        "raw": 0.4954198473282443,
+        "scheduled": 0.5036855036855037
+      },
+      "no_efficiency_advantage": {
+        "raw": 0.7653301886792453,
+        "scheduled": 0.7894736842105263
+      },
+      "no_basis_lag": {
+        "raw": 0.7292134831460674,
+        "scheduled": 0.74726609963548
+      },
+      "no_response_advantage": {
+        "raw": 0.28716814159292037,
+        "scheduled": 0.3194805194805195
+      },
+      "aggregate_only": {
+        "raw": 0.017278100207656674,
+        "scheduled": 0.052912329002839195
+      }
+    },
+    "prior_clock_overlap": {
+      "cspr": {
+        "intersection": 12,
+        "union": 1453,
+        "jaccard": 0.008258774948382657,
+        "primary_containment": 0.01951219512195122
+      },
+      "rift": {
+        "intersection": 2,
+        "union": 1073,
+        "jaccard": 0.001863932898415657,
+        "primary_containment": 0.0032520325203252032
+      },
+      "catch": {
+        "intersection": 0,
+        "union": 4572,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      },
+      "luri": {
+        "intersection": 0,
+        "union": 1047,
+        "jaccard": 0.0,
+        "primary_containment": 0.0
+      }
+    },
+    "passes_novelty": true,
+    "passes_support": true
+  }
+}
