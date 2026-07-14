@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T01:44:09.786270+00:00",
+  "updated_at": "2026-07-14T02:01:13.992086+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2752,6 +2752,49 @@
       "generation_recipe": {
         "script": "training/search_hidden_safe_haven_cancellation_alpha.py",
         "protocol": "six FX pairs; continuous 6h returns scaled by prior 30d 1h volatility; same-sign FX/BTC residual; q90 fade; minute-05 entry; 12h; 0.5x; 6bp/side; OOS excluded"
+      }
+    },
+    {
+      "id": "execution_metronome_regularity_state_20260714",
+      "name": "Within-hour execution-ticket spectral regularity",
+      "status": "weak",
+      "family": "execution_ticket_frequency_structure",
+      "scope": "btc_completed_kline_trade_packet_rhythm",
+      "feature_tier": "beta_feature",
+      "description": "Causal within-hour rFFT entropy of linearly detrended log average-ticket size, with explicit near-zero-power invalidation and completed-bar timing.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5-minute quote volume, trade count, taker-buy quote and OHLC"
+      ],
+      "feature_names": [
+        "execution_ticket_spectral_regularity",
+        "execution_ticket_residual_power",
+        "execution_hour_ticket_level_z",
+        "execution_flow_coherence",
+        "execution_signed_price_acceptance"
+      ],
+      "usable_for": [
+        "weak execution-rhythm token under a materially different preregistered learner or RLLM",
+        "not replaying the inspected q90 multiplicative fade, q01 floors, minute-05 entry or 12-hour hold"
+      ],
+      "known_failures": [
+        "Primary fit/2023 CAGR-MDD was -0.40/-0.94 over 532/260 trades.",
+        "Primary remained negative at zero cost in fit and 2023.",
+        "Regularity ablation was not consistently weaker than primary.",
+        "Primary score Spearman with flow pressure was 0.782 and no-nonacceptance event Jaccard was 0.621."
+      ],
+      "evidence": "Legacy trophic/campaign/chirp event Jaccards were <=0.0025, so ticket frequency geometry is representationally distinct; the tested composite nevertheless collapses toward simple flow pressure and has no tradable edge.",
+      "source_artifacts": [
+        "training/search_execution_metronome_absorption_alpha.py",
+        "results/execution_metronome_absorption_alpha_scan_2026-07-14.json",
+        "docs/execution-metronome-absorption-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; 12 completed prior bars; minute-00 signal enters minute-05; prior-only ticket z and fit-only denominator floors; split-contained exits; no 2024+ computation.",
+      "tier_rationale": "Spectral ticket rhythm is distinct from older phase/campaign events, but its fixed interaction is dominated by flow pressure and regularity is not outcome-necessary.",
+      "next_action": "Freeze static semantics. Reuse only raw spectral entropy/power tokens under a separately preregistered learner or genuinely fresh-forward shadow sample.",
+      "generation_recipe": {
+        "script": "training/search_execution_metronome_absorption_alpha.py",
+        "protocol": "12-bar log-ticket detrended rFFT regularity; positive prior ticket z; flow pressure; nonacceptance; q90 fade; minute-05; 12h; 0.5x; 6bp/side; OOS excluded"
       }
     }
   ]

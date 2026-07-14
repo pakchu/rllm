@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T01:44:09.786270+00:00",
+  "updated_at": "2026-07-14T02:01:13.992086+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2299,6 +2299,50 @@
         "training/search_hidden_safe_haven_cancellation_alpha.py",
         "results/hidden_safe_haven_cancellation_alpha_scan_2026-07-14.json",
         "docs/hidden-safe-haven-cancellation-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "execution_metronome_absorption_static_usage_20260714",
+      "name": "Static execution-metronome absorption fade",
+      "status": "rejected",
+      "family": "execution_ticket_frequency_absorption_static_usage",
+      "scope": "btc_completed_kline_trade_packet_rhythm",
+      "feature_tier": "gamma_feature",
+      "description": "Rejected fit-q90 12-hour policy fading large, coherent taker flow when within-hour average-ticket spectra are concentrated and signed price acceptance is weak.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5-minute quote volume, trade count, taker-buy quote and OHLC"
+      ],
+      "feature_names": [
+        "static_ticket_regularity",
+        "static_positive_ticket_level_z",
+        "static_flow_pressure",
+        "static_price_nonacceptance",
+        "static_q90_fade_hold144"
+      ],
+      "usable_for": [
+        "failure provenance only; raw ticket spectral regularity retains weak-beta status"
+      ],
+      "known_failures": [
+        "Fit return/CAGR/strict MDD/ratio was -38.07%/-16.92%/42.46%/-0.40 over 532 trades.",
+        "2023 return/CAGR/strict MDD/ratio was -28.89%/-28.91%/30.70%/-0.94 over 260 trades.",
+        "Both 2023 halves failed and only 2022H2 was marginally positive among seven half-years.",
+        "Exact flip lost fit; component ablations and all delays failed joint robustness.",
+        "Zero-cost fit/2023 returns were -14.78%/-16.89%.",
+        "Novelty and regularity-necessity gates both failed."
+      ],
+      "evidence": "A critic-revised pre-outcome experiment passed support with 532 fit and 260 2023 trades, then failed direction, flip, component, delay, cost, novelty and regularity-necessity checks without opening 2024+.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; degenerate spectra invalid; fit-only q01 denominator floors; minute-05 next-open; strict MDD; OOS excluded.",
+      "tier_rationale": "The exact policy loses before costs and is largely a nonlinear restatement of flow pressure rather than a regularity-dependent edge.",
+      "next_action": "Do not tune FFT definition, detrending, denominator floors, component weights, q threshold, direction, lag or hold on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_execution_metronome_absorption_alpha.py",
+        "protocol": "single q90 fade plus component/legacy-overlap/flip/delay/cost controls; minute-05; 12h; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_execution_metronome_absorption_alpha.py",
+        "results/execution_metronome_absorption_alpha_scan_2026-07-14.json",
+        "docs/execution-metronome-absorption-alpha-search-2026-07-14.md"
       ]
     }
   ]
