@@ -336,6 +336,7 @@ def test_missing_minute_fails_closed_without_accepted_nonfinite_features() -> No
 
     assert row["source_complete"] == np.bool_(False)
     assert row["cross_venue_feature_valid"] == np.bool_(False)
+    assert "source_incomplete" in row["feature_invalid_reason"]
     accepted = output.loc[output["cross_venue_feature_valid"].astype(bool), builder.OUTPUT_COLUMNS[1:]]
     assert np.isfinite(accepted.select_dtypes(include=[np.number]).to_numpy(float)).all()
 

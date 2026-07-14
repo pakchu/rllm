@@ -33,7 +33,7 @@ from training.build_binance_aggtrade_microstructure import (
 SPOT_BASE_URL = "https://data.binance.vision/data/spot/monthly/klines"
 UM_BASE_URL = "https://data.binance.vision/data/futures/um/monthly/klines"
 INTERVAL = "1m"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 SEALED_END_EXCLUSIVE = date(2024, 1, 1)
 
 RAW_COLUMNS = (
@@ -123,6 +123,7 @@ OUTPUT_COLUMNS = (
     *FEATURE_COLUMNS,
     "source_complete",
     "cross_venue_feature_valid",
+    "feature_invalid_reason",
 )
 
 
@@ -298,6 +299,18 @@ def _weighted_centroid(
     denominator = _group_sum(weights, groups)
     numerator = _group_sum(weights * positions, groups)
     return _ratio(numerator, denominator).divide(4.0), denominator
+
+
+def _append_invalid_reason(
+    reasons: pd.Series,
+    mask: pd.Series,
+    label: str,
+) -> pd.Series:
+    addition = pd.Series(label, index=reasons.index)
+    prefix = reasons.where(reasons.ne("ok"), "")
+    prefix = prefix.where(prefix.eq(""), prefix + "|")
+    combined = prefix + addition
+    return reasons.where(~mask, combined)
 
 
 def aggregate_cross_venue_five_minute(
@@ -519,23 +532,30 @@ def aggregate_cross_venue_five_minute(
         & output["spot_invalid_source_minutes"].eq(0)
         & output["um_invalid_source_minutes"].eq(0)
     )
-    denominator_valid = (
-        output["_spot_activity_support"].gt(0.0)
-        & output["_um_activity_support"].gt(0.0)
-        & output["_spot_flow_support"].gt(0.0)
-        & output["_um_flow_support"].gt(0.0)
-        & output["_spot_return_support"].gt(0.0)
-        & output["_um_return_support"].gt(0.0)
-        & spot_flow_support.gt(0.0)
-        & um_flow_support.gt(0.0)
-        & spot_direction_denominator.gt(0.0)
-        & um_direction_denominator.gt(0.0)
-        & flow_transfer_denominator.gt(0.0)
-        & return_lead_denominator.gt(0.0)
-        & output["simultaneous_flow_pair_count"].gt(0)
-        & output["simultaneous_return_pair_count"].gt(0)
-        & output["lagged_pair_count"].eq(4)
-    )
+    support_checks = {
+        "activity_support": (
+            output["_spot_activity_support"].gt(0.0)
+            & output["_um_activity_support"].gt(0.0)
+        ),
+        "flow_timing_support": (
+            output["_spot_flow_support"].gt(0.0)
+            & output["_um_flow_support"].gt(0.0)
+        ),
+        "return_timing_support": (
+            output["_spot_return_support"].gt(0.0)
+            & output["_um_return_support"].gt(0.0)
+        ),
+        "lagged_flow_support": spot_flow_support.gt(0.0) & um_flow_support.gt(0.0),
+        "lagged_direction_support": (
+            spot_direction_denominator.gt(0.0) & um_direction_denominator.gt(0.0)
+        ),
+        "flow_transfer_support": flow_transfer_denominator.gt(0.0),
+        "return_leadership_support": return_lead_denominator.gt(0.0),
+        "simultaneous_flow_support": output["simultaneous_flow_pair_count"].gt(0),
+        "simultaneous_return_support": output["simultaneous_return_pair_count"].gt(0),
+        "four_lagged_pairs": output["lagged_pair_count"].eq(4),
+    }
+    denominator_valid = pd.concat(support_checks, axis=1).all(axis=1)
     finite_features = pd.Series(
         np.isfinite(output.loc[:, FEATURE_COLUMNS].to_numpy(float)).all(axis=1),
         index=output.index,
@@ -543,6 +563,14 @@ def aggregate_cross_venue_five_minute(
     output["cross_venue_feature_valid"] = (
         output["source_complete"] & denominator_valid & finite_features
     )
+    reasons = pd.Series("ok", index=output.index, dtype="object")
+    reasons = _append_invalid_reason(
+        reasons, ~output["source_complete"], "source_incomplete"
+    )
+    for label, check in support_checks.items():
+        reasons = _append_invalid_reason(reasons, ~check, label)
+    reasons = _append_invalid_reason(reasons, ~finite_features, "nonfinite_descriptor")
+    output["feature_invalid_reason"] = reasons
 
     invalid = ~output["cross_venue_feature_valid"]
     output.loc[invalid, FEATURE_COLUMNS] = np.nan
