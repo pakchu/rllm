@@ -10,6 +10,7 @@ from execution.portfolio_live import (
     _apply_portfolio_selector_overlay,
     _build_external_from_frames,
     _build_portfolio_feature_frame,
+    _interval_slot,
 )
 from preprocessing.external_features import attach_external_features, DXY_WEIGHTS
 from preprocessing.live_db_features import LiveDbFeatureConfig
@@ -29,6 +30,10 @@ def _frames():
 
 
 class TestPortfolioLiveSelector(unittest.TestCase):
+    def test_stride_grid_supports_frozen_research_offset(self):
+        self.assertTrue(_interval_slot(pd.Timestamp("2026-05-07 18:55:00"), 24, 5, 11))
+        self.assertFalse(_interval_slot(pd.Timestamp("2026-07-14 00:10:00"), 24, 5, 11))
+
     def test_portfolio_selector_blocks_bad_context_new_entries_only(self):
         enriched, features = _frames()
         sleeves = [
@@ -77,6 +82,20 @@ class TestPortfolioLiveSelector(unittest.TestCase):
 
 
 class TestLiveSourceFrameCache(unittest.TestCase):
+    def test_stale_fx_does_not_widen_fresh_source_incremental_queries(self):
+        cache = LiveSourceFrameCache(overlap_minutes=30)
+        asof = pd.Timestamp("2026-07-11T03:10:00Z")
+        cache.frames = {
+            "btcusdt_1m": pd.DataFrame({"date": [asof - pd.Timedelta(minutes=1)]}),
+            "usdkrw_1m": pd.DataFrame({"date": [asof - pd.Timedelta(hours=6)]}),
+            "funding": pd.DataFrame({"funding_time": [asof - pd.Timedelta(hours=8)]}),
+        }
+
+        starts = cache._incremental_starts(asof=asof, lookback_start=asof - pd.Timedelta(days=30))
+
+        self.assertEqual(starts["btcusdt_1m"], asof - pd.Timedelta(minutes=31))
+        self.assertEqual(starts["usdkrw_1m"], asof - pd.Timedelta(minutes=30))
+
     def test_merge_trims_and_replaces_overlap_rows(self):
         cache = LiveSourceFrameCache(
             frames={
@@ -106,6 +125,38 @@ class TestLiveSourceFrameCache(unittest.TestCase):
         out = merged["btcusdt_1m"]
         self.assertEqual(out["date"].astype(str).tolist(), ["2026-01-01 00:01:00", "2026-01-01 00:02:00", "2026-01-01 00:03:00"])
         self.assertEqual(out["close"].tolist(), [2.0, 30.0, 4.0])
+
+    def test_fast_overlap_merge_matches_full_dedup_reference(self):
+        dates = pd.date_range("2026-01-01 00:00", periods=4, freq="1min")
+        cache = LiveSourceFrameCache(
+            frames={
+                "forex_1m": pd.DataFrame(
+                    {
+                        "date": dates[:3],
+                        "tic": ["EURUSD", "EURUSD", "USDJPY"],
+                        "close": [1.0, 1.1, 150.0],
+                    }
+                )
+            }
+        )
+        fresh = pd.DataFrame(
+            {
+                "date": pd.to_datetime([dates[1], dates[2], dates[3]], utc=True),
+                "tic": ["EURUSD", "USDJPY", "USDJPY"],
+                "close": [1.2, 151.0, 152.0],
+            }
+        )
+        out = cache._merge_and_trim(
+            {"forex_1m": fresh},
+            lookback_start=pd.Timestamp(dates[0], tz="UTC"),
+            asof=pd.Timestamp(dates[3], tz="UTC"),
+        )["forex_1m"]
+
+        reference = pd.concat([cache.frames["forex_1m"], fresh.assign(date=lambda x: x["date"].dt.tz_convert(None))])
+        reference = reference.loc[(reference["date"] >= dates[0]) & (reference["date"] <= dates[3])]
+        reference = reference.drop_duplicates(["date", "tic"], keep="last").sort_values(["date", "tic"]).reset_index(drop=True)
+        pd.testing.assert_frame_equal(out.reset_index(drop=True), reference)
+        self.assertFalse(out.duplicated(["date", "tic"]).any())
 
 
 class TestLiveOiFrameCache(unittest.TestCase):
@@ -185,6 +236,37 @@ class TestLiveFeatureFrameCache(unittest.TestCase):
         pd.testing.assert_frame_equal(
             cached.loc[n - 64 :, cols].reset_index(drop=True),
             full.loc[n - 64 :, cols].reset_index(drop=True),
+            check_dtype=False,
+            rtol=1e-8,
+            atol=1e-8,
+        )
+
+        no_activity_cache = LiveFeatureFrameCache(output_bars=64)
+        _ = no_activity_cache.refresh(enriched.iloc[:-2].copy(), cfg, include_activity_flow=False)
+        no_activity = no_activity_cache.refresh(enriched.copy(), cfg, include_activity_flow=False)
+        no_activity_full = _build_portfolio_feature_frame(enriched, cfg, include_activity_flow=False)
+        self.assertNotIn("activity_flow_htf", no_activity.columns)
+        cols = sorted(set(no_activity_full.columns).intersection(no_activity.columns))
+        pd.testing.assert_frame_equal(
+            no_activity.loc[n - 64 :, cols].reset_index(drop=True),
+            no_activity_full.loc[n - 64 :, cols].reset_index(drop=True),
+            check_dtype=False,
+            rtol=1e-8,
+            atol=1e-8,
+        )
+
+        # A live lookback is fixed-width: each cycle drops the oldest bar and
+        # appends a new one.  Prefix reuse must align by timestamp, not row
+        # number, or every cached feature drifts by one bar per cycle.
+        rolling_cache = LiveFeatureFrameCache(output_bars=64)
+        _ = rolling_cache.refresh(enriched.iloc[:-1].reset_index(drop=True), cfg)
+        shifted = enriched.iloc[1:].reset_index(drop=True)
+        shifted_cached = rolling_cache.refresh(shifted, cfg)
+        shifted_full = _build_portfolio_feature_frame(shifted, cfg)
+        cols = sorted(set(shifted_full.columns).intersection(shifted_cached.columns))
+        pd.testing.assert_frame_equal(
+            shifted_cached.loc[len(shifted) - 64 :, cols].reset_index(drop=True),
+            shifted_full.loc[len(shifted) - 64 :, cols].reset_index(drop=True),
             check_dtype=False,
             rtol=1e-8,
             atol=1e-8,
@@ -277,6 +359,26 @@ class TestLiveExternalFrameCache(unittest.TestCase):
         pd.testing.assert_frame_equal(
             cached.loc[n - 64 :, cols].reset_index(drop=True),
             full.loc[n - 64 :, cols].reset_index(drop=True),
+            check_dtype=False,
+            rtol=1e-8,
+            atol=1e-8,
+        )
+
+        rolling_cache = LiveExternalFrameCache(output_bars=64)
+        _ = rolling_cache.refresh(market=market.iloc[:-1].reset_index(drop=True), frames=frames, cfg=cfg)
+        shifted_market = market.iloc[1:].reset_index(drop=True)
+        shifted_cached = rolling_cache.refresh(market=shifted_market, frames=frames, cfg=cfg)
+        shifted_external = _build_external_from_frames(market=shifted_market, frames=frames, cfg=cfg)
+        shifted_full = attach_external_features(
+            shifted_market,
+            shifted_external,
+            tolerance=cfg.external_tolerance,
+            zscore_window=cfg.zscore_window,
+            momentum_period=cfg.zscore_window,
+        )
+        pd.testing.assert_frame_equal(
+            shifted_cached.loc[len(shifted_market) - 64 :, cols].reset_index(drop=True),
+            shifted_full.loc[len(shifted_market) - 64 :, cols].reset_index(drop=True),
             check_dtype=False,
             rtol=1e-8,
             atol=1e-8,

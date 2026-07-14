@@ -88,7 +88,11 @@ def calculate_dollar_index(forex_bars: pd.DataFrame, *, interval: str = "1min") 
         if ticker not in pivot.columns:
             continue
         has_component = True
-        weighted_log_return = weighted_log_return.add(np.log(pivot[ticker] / pivot[ticker].shift(1)) * weight, fill_value=0.0)
+        positive_close = pivot[ticker].where(pivot[ticker] > 0.0)
+        weighted_log_return = weighted_log_return.add(
+            np.log(positive_close / positive_close.shift(1)) * weight,
+            fill_value=0.0,
+        )
     if not has_component:
         return pd.DataFrame(columns=["date", "dxy"])
     dxy = (1.0 + weighted_log_return.fillna(0.0)).cumprod() * 100.0

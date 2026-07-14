@@ -29,7 +29,12 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 
-from execution.rex_llm_live import RexLivePolicyConfig, RexLlmSelectorConfig, build_rex_live_policy_record
+from execution.rex_llm_live import (
+    RexLivePolicyConfig,
+    RexLlmSelectorConfig,
+    build_rex_live_policy_record,
+    rex_policy_config_from_candidate,
+)
 from execution.wave_execution import (
     WaveExecutionConfig,
     _StaticSignalGenerator,
@@ -105,35 +110,48 @@ class LiveSourceFrameCache:
     overlap_minutes: int = SOURCE_FRAME_OVERLAP_MINUTES
     last_query_mode: str = "cold"
 
-    def _latest_source_ts(self) -> pd.Timestamp | None:
-        latest: list[pd.Timestamp] = []
+    def _incremental_starts(
+        self,
+        *,
+        asof: pd.Timestamp,
+        lookback_start: pd.Timestamp,
+    ) -> dict[str, pd.Timestamp]:
+        """Query fresh sources from their own tail without stale FX widening all reads."""
+
+        overlap = pd.Timedelta(minutes=max(1, int(self.overlap_minutes)))
+        starts: dict[str, pd.Timestamp] = {}
         for key, frame in self.frames.items():
             if key == "funding" or frame.empty:
+                starts[key] = lookback_start
                 continue
             col = _frame_time_col(key)
             if col not in frame.columns:
+                starts[key] = max(lookback_start, asof - overlap)
                 continue
-            value = _as_utc_ts(frame[col]).max()
-            if pd.notna(value):
-                latest.append(pd.Timestamp(value))
-        return min(latest) if latest else None
+            latest = _as_utc_ts(frame[col]).max()
+            # A source idle outside its market hours (notably FX) must not
+            # force every other source through its entire stale interval.
+            starts[key] = (
+                max(lookback_start, pd.Timestamp(latest) - overlap)
+                if pd.notna(latest) and pd.Timestamp(latest) >= asof - overlap
+                else max(lookback_start, asof - overlap)
+            )
+        return starts
 
     def refresh(self, engine: Any, *, asof: pd.Timestamp, cfg: LiveDbFeatureConfig) -> dict[str, pd.DataFrame]:
         asof_ts = pd.Timestamp(asof)
         asof_ts = asof_ts.tz_localize("UTC") if asof_ts.tzinfo is None else asof_ts.tz_convert("UTC")
         lookback_start = asof_ts - pd.Timedelta(minutes=int(cfg.lookback_minutes))
 
-        latest = self._latest_source_ts()
-        if not self.frames or latest is None:
-            query_cfg = cfg
+        if not self.frames:
+            start_by_key = None
             self.last_query_mode = "cold_full"
         else:
-            query_start = max(lookback_start, latest - pd.Timedelta(minutes=max(1, int(self.overlap_minutes))))
-            query_minutes = max(1, int(np.ceil((asof_ts - query_start).total_seconds() / 60.0)))
-            query_cfg = LiveDbFeatureConfig(**{**asdict(cfg), "lookback_minutes": query_minutes})
-            self.last_query_mode = f"incremental_{query_minutes}m"
+            start_by_key = self._incremental_starts(asof=asof_ts, lookback_start=lookback_start)
+            widths = [max(1, int(np.ceil((asof_ts - start).total_seconds() / 60.0))) for key, start in start_by_key.items() if key != "funding"]
+            self.last_query_mode = f"incremental_per_source_max{max(widths, default=0)}m"
 
-        fresh = query_live_source_frames(engine, asof=asof_ts, cfg=query_cfg)
+        fresh = query_live_source_frames(engine, asof=asof_ts, cfg=cfg, start_by_key=start_by_key)
         self.frames = self._merge_and_trim(fresh, lookback_start=lookback_start, asof=asof_ts)
         return {key: value.copy() for key, value in self.frames.items()}
 
@@ -151,6 +169,7 @@ class LiveSourceFrameCache:
                 out[key] = pd.DataFrame()
                 continue
             time_col = _frame_time_col(key)
+            dedupe_required = True
 
             old_keep = old
             if old_keep is not None and not old_keep.empty and time_col in old_keep.columns:
@@ -173,6 +192,15 @@ class LiveSourceFrameCache:
                     cutoff = new_ts.min()
                     if pd.notna(cutoff):
                         old_keep = old_keep.loc[_as_utc_ts(old_keep[time_col]) < cutoff]
+                        # SQL source tables are unique on their timestamp keys,
+                        # and the old overlap is now removed. Avoid re-deduping
+                        # the entire 30-day cached history on every cycle.
+                        dedupe_required = False
+
+            # No fresh rows means the already-normalized cached frame is
+            # unchanged; re-deduplicating its whole history is needless.
+            if old_keep is not None and not old_keep.empty and (new_keep is None or new_keep.empty):
+                dedupe_required = False
 
             pieces = [
                 frame
@@ -184,7 +212,7 @@ class LiveSourceFrameCache:
                 continue
             merged = pd.concat(pieces, ignore_index=True, copy=False)
             dedupe_cols = [c for c in _frame_dedupe_cols(key, merged) if c in merged.columns]
-            if dedupe_cols:
+            if dedupe_cols and dedupe_required:
                 merged = merged.drop_duplicates(dedupe_cols, keep="last")
             if time_col in merged.columns:
                 merged[time_col] = _to_naive_utc(merged[time_col])
@@ -200,7 +228,15 @@ class LiveOiFrameCache:
     overlap_minutes: int = SOURCE_FRAME_OVERLAP_MINUTES
     last_query_mode: str = "cold"
 
-    async def refresh(self, engine: Any, *, asof: pd.Timestamp, start: pd.Timestamp, symbol: str) -> pd.DataFrame:
+    async def refresh(
+        self,
+        engine: Any,
+        *,
+        asof: pd.Timestamp,
+        start: pd.Timestamp,
+        symbol: str,
+        live_snapshot_cutoff: pd.Timestamp | None = None,
+    ) -> pd.DataFrame:
         latest: pd.Timestamp | None = None
         if not self.frame.empty and "date" in self.frame.columns:
             value = _as_utc_ts(self.frame["date"]).max()
@@ -215,7 +251,13 @@ class LiveOiFrameCache:
             minutes = max(1, int(np.ceil((pd.Timestamp(asof) - query_start).total_seconds() / 60.0)))
             self.last_query_mode = f"incremental_oi_{minutes}m"
 
-        fresh = await _query_oi(engine, asof=asof, start=query_start, symbol=symbol)
+        fresh = await _query_oi(
+            engine,
+            asof=asof,
+            start=query_start,
+            symbol=symbol,
+            live_snapshot_cutoff=live_snapshot_cutoff,
+        )
         self.frame = self._merge(fresh, start=start, asof=asof)
         return self.frame
 
@@ -376,7 +418,24 @@ class LiveExternalFrameCache:
         replace_from_tail = output_start - context_start
         replacement = enriched_tail.iloc[replace_from_tail:].copy()
         replacement.index = range(output_start, output_start + len(replacement))
-        prefix = self.enriched.iloc[:output_start].copy()
+        cached = self.enriched.copy()
+        cached["_cache_date"] = _to_naive_utc(cached["date"])
+        cached = cached.drop_duplicates("_cache_date", keep="last").set_index("_cache_date")
+        target_dates = _to_naive_utc(market.iloc[:output_start]["date"])
+        if not target_dates.isin(cached.index).all():
+            external = _build_external_from_frames(market=market, frames=frames, cfg=cfg)
+            enriched = attach_external_features(
+                market,
+                external,
+                tolerance=cfg.external_tolerance,
+                zscore_window=cfg.zscore_window,
+                momentum_period=cfg.zscore_window,
+            )
+            self.external = external.copy()
+            self.enriched = enriched.copy()
+            self.last_mode = "fallback_date_gap_full_external"
+            return enriched
+        prefix = cached.loc[target_dates].reset_index(drop=True)
         enriched = pd.concat([prefix, replacement], axis=0).reindex(range(len(market)))
         self.enriched = enriched
 
@@ -427,7 +486,7 @@ def _add_portfolio_oi_features(enriched: pd.DataFrame, features: pd.DataFrame) -
     out["open_interest_available"] = available.to_numpy(dtype=float)
     oi_raw = pd.to_numeric(enriched["open_interest"], errors="coerce").where(available > 0.5)
     oi_s = pd.Series(oi_raw.astype(float).replace(0, np.nan), index=enriched.index)
-    px = pd.Series(enriched["close"].astype(float), index=enriched.index)
+    px = pd.Series(enriched["close"].astype(float), index=enriched.index).where(lambda x: x > 0.0)
     for w, name in [(6, "30m"), (12, "1h"), (24, "2h"), (48, "4h"), (96, "8h")]:
         oi_ret = np.log(oi_s / oi_s.shift(w)).replace([np.inf, -np.inf], np.nan)
         px_ret = np.log(px / px.shift(w)).replace([np.inf, -np.inf], np.nan)
@@ -545,7 +604,12 @@ def _add_live_volume_wave_features(
         out["upbit_volume_available"] = 0.0
     return out.replace([np.inf, -np.inf], np.nan)
 
-def _build_portfolio_feature_frame(enriched: pd.DataFrame, cfg: LiveDbFeatureConfig) -> pd.DataFrame:
+def _build_portfolio_feature_frame(
+    enriched: pd.DataFrame,
+    cfg: LiveDbFeatureConfig,
+    *,
+    include_activity_flow: bool = True,
+) -> pd.DataFrame:
     features = build_market_feature_frame(
         enriched,
         window_size=cfg.feature_window_size,
@@ -553,7 +617,8 @@ def _build_portfolio_feature_frame(enriched: pd.DataFrame, cfg: LiveDbFeatureCon
         volume_window=cfg.volume_window,
     ).copy()
     features = _add_portfolio_oi_features(enriched, features)
-    features = _add_activity_flow_feature(enriched, features)
+    if include_activity_flow:
+        features = _add_activity_flow_feature(enriched, features)
     return features.replace([np.inf, -np.inf], np.nan)
 
 
@@ -566,35 +631,60 @@ class LiveFeatureFrameCache:
     context_bars: int = FEATURE_TAIL_CONTEXT_BARS
     output_bars: int = FEATURE_TAIL_OUTPUT_BARS
     last_mode: str = "cold"
+    include_activity_flow: bool | None = None
 
-    def refresh(self, enriched: pd.DataFrame, cfg: LiveDbFeatureConfig) -> pd.DataFrame:
+    def refresh(
+        self,
+        enriched: pd.DataFrame,
+        cfg: LiveDbFeatureConfig,
+        *,
+        include_activity_flow: bool = True,
+    ) -> pd.DataFrame:
+        if self.include_activity_flow is not None and self.include_activity_flow != include_activity_flow:
+            self.enriched = None
+            self.features = None
+        self.include_activity_flow = include_activity_flow
         if self.enriched is None or self.features is None or self.features.empty:
             self.enriched = enriched.copy()
-            self.features = _build_portfolio_feature_frame(enriched, cfg)
+            self.features = _build_portfolio_feature_frame(enriched, cfg, include_activity_flow=include_activity_flow)
             self.last_mode = "cold_full_features"
             return self.features.copy()
 
         if len(enriched) < max(10, int(self.context_bars) // 2):
             self.enriched = enriched.copy()
-            self.features = _build_portfolio_feature_frame(enriched, cfg)
+            self.features = _build_portfolio_feature_frame(enriched, cfg, include_activity_flow=include_activity_flow)
             self.last_mode = "fallback_short_full_features"
             return self.features.copy()
 
         output_start = max(0, len(enriched) - max(1, int(self.output_bars)))
         context_start = max(0, output_start - max(1, int(self.context_bars)))
         tail_enriched = enriched.iloc[context_start:].reset_index(drop=True)
-        tail_features = _build_portfolio_feature_frame(tail_enriched, cfg).reset_index(drop=True)
+        tail_features = _build_portfolio_feature_frame(
+            tail_enriched,
+            cfg,
+            include_activity_flow=include_activity_flow,
+        ).reset_index(drop=True)
         replace_from_tail = output_start - context_start
         replacement = tail_features.iloc[replace_from_tail:].copy()
         replacement.index = range(output_start, output_start + len(replacement))
 
-        prefix = self.features.iloc[:output_start].copy()
+        cached = self.features.copy()
+        cached["_cache_date"] = _to_naive_utc(self.enriched["date"])
+        cached = cached.drop_duplicates("_cache_date", keep="last").set_index("_cache_date")
+        target_dates = _to_naive_utc(enriched.iloc[:output_start]["date"])
+        if not target_dates.isin(cached.index).all():
+            self.enriched = enriched.copy()
+            self.features = _build_portfolio_feature_frame(enriched, cfg, include_activity_flow=include_activity_flow)
+            self.last_mode = "fallback_date_gap_full_features"
+            return self.features.copy()
+        prefix = cached.loc[target_dates].reset_index(drop=True)
         spliced = pd.concat([prefix, replacement], axis=0)
         spliced = spliced.reindex(range(len(enriched)))
 
         # activity_flow_htf standardizes over the full available live window.
-        # Recompute it over the spliced cache so tail rows match full compute.
-        spliced = _add_activity_flow_feature(enriched, spliced)
+        # Recompute it over the spliced cache only when a configured sleeve uses it.
+        if include_activity_flow:
+            spliced = _add_activity_flow_feature(enriched, spliced)
         self.enriched = enriched.copy()
         self.features = spliced.replace([np.inf, -np.inf], np.nan)
         self.last_mode = f"tail_features_context={len(tail_enriched)} output={len(replacement)}"
@@ -611,7 +701,7 @@ class PortfolioLiveConfig:
     exchange: str = "binance"
     lookback_minutes: int = 45_000
     close_delay_sec: float = 0.25
-    max_freshness_wait_sec: float = 8.0
+    max_freshness_wait_sec: float = 50.0
     freshness_poll_sec: float = 0.5
     freshness_notify_channel: str = "market_data_bar"
     run_immediately: bool = False
@@ -658,6 +748,38 @@ def _load_json(path: str | Path) -> dict[str, Any]:
     return json.loads(Path(path).expanduser().read_text())
 
 
+def _portfolio_uses_feature(portfolio: dict[str, Any], feature: str) -> bool:
+    """Return whether any JSON-backed configured sleeve gates on ``feature``."""
+
+    for sleeve in portfolio.get("base_sleeves", []):
+        source = str(sleeve.get("source") or "")
+        if not source.endswith(".json") or not Path(source).exists():
+            continue
+        cfg = _load_json(source)
+        if "base_candidate" in cfg and "gates" not in cfg and "signal" not in cfg:
+            cfg = _load_json(str(cfg["base_candidate"]))
+        gates = cfg.get("signal", cfg).get("gates", [])
+        if any(str(gate.get("feature", "")) == feature for gate in gates if isinstance(gate, dict)):
+            return True
+        clauses = cfg.get("signal", cfg).get("gate_clauses", [])
+        if any(
+            str(gate.get("feature", "")) == feature
+            for clause in clauses
+            if isinstance(clause, list)
+            for gate in clause
+            if isinstance(gate, dict)
+        ):
+            return True
+        dynamic = cfg.get("dynamic_exit", {})
+        if isinstance(dynamic, dict) and any(
+            str(gate.get("feature", "")) == feature
+            for gate in dynamic.get("gates", [])
+            if isinstance(gate, dict)
+        ):
+            return True
+    return False
+
+
 def _write_json(path: str | Path, payload: dict[str, Any]) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -698,9 +820,19 @@ def _ensure_trade_executions_table(engine: Any) -> None:
             maker_max_deviation_pct DOUBLE PRECISION,
             refresh_interval_sec INTEGER,
             error TEXT,
+            realized_pnl NUMERIC,
+            commission NUMERIC,
+            commission_asset TEXT,
+            net_realized_pnl NUMERIC,
             payload JSONB NOT NULL DEFAULT '{}'::jsonb
         )
         """
+    migrations = [
+        "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS realized_pnl NUMERIC",
+        "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS commission NUMERIC",
+        "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS commission_asset TEXT",
+        "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS net_realized_pnl NUMERIC",
+    ]
     indexes = [
         "CREATE INDEX IF NOT EXISTS idx_trade_executions_strategy_created ON trade_executions(strategy_name, sub_strategy_name, created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_trade_executions_signal ON trade_executions(strategy_name, signal_id)",
@@ -708,6 +840,8 @@ def _ensure_trade_executions_table(engine: Any) -> None:
     ]
     with engine.begin() as conn:
         conn.execute(text(ddl))
+        for stmt in migrations:
+            conn.execute(text(stmt))
         for stmt in indexes:
             conn.execute(text(stmt))
 
@@ -752,18 +886,21 @@ def _log_trade_execution(
             execution_started_at, expires_at, execution_finished_at,
             computing_wall_time_sec, order_id, client_order_id,
             quantity_requested, quantity_filled, reference_price, avg_price,
-            maker_max_deviation_pct, refresh_interval_sec, error, payload
+            maker_max_deviation_pct, refresh_interval_sec, error,
+            realized_pnl, commission, commission_asset, net_realized_pnl, payload
         ) VALUES (
             :strategy_name, :sub_strategy_name, :exchange, :symbol, :quote_asset,
             :action, :side, :position_side, :order_type, :signal_id, :status,
             :execution_started_at, :expires_at, :execution_finished_at,
             :computing_wall_time_sec, :order_id, :client_order_id,
             :quantity_requested, :quantity_filled, :reference_price, :avg_price,
-            :maker_max_deviation_pct, :refresh_interval_sec, :error, CAST(:payload AS jsonb)
+            :maker_max_deviation_pct, :refresh_interval_sec, :error,
+            :realized_pnl, :commission, :commission_asset, :net_realized_pnl, CAST(:payload AS jsonb)
         )
         """
     )
     raw_order = info.get("raw_order") if isinstance(info.get("raw_order"), dict) else {}
+    trade_report = info.get("trade_report") if isinstance(info.get("trade_report"), dict) else {}
     order_id = info.get("order_id") or raw_order.get("orderId")
     client_order_id = info.get("client_order_id") or raw_order.get("clientOrderId")
     with engine.begin() as conn:
@@ -794,6 +931,10 @@ def _log_trade_execution(
                 "maker_max_deviation_pct": info.get("max_deviation_pct"),
                 "refresh_interval_sec": info.get("refresh_interval_sec"),
                 "error": error or info.get("error"),
+                "realized_pnl": _safe_decimal_value(trade_report.get("realized_pnl")),
+                "commission": _safe_decimal_value(trade_report.get("commission")),
+                "commission_asset": trade_report.get("commission_asset"),
+                "net_realized_pnl": _safe_decimal_value(trade_report.get("net_realized_pnl")),
                 "payload": payload,
             },
         )
@@ -863,7 +1004,29 @@ def _gate_pass(row: pd.Series, gates: list[dict[str, Any]]) -> tuple[bool, list[
     return ok, reasons
 
 
-def _interval_slot(ts: pd.Timestamp, stride_bars: int, interval_minutes: int = 5) -> bool:
+def _gate_clauses_pass(
+    row: pd.Series,
+    clauses: list[list[dict[str, Any]]],
+) -> tuple[bool, list[str]]:
+    """Evaluate an OR of AND gate clauses without weakening source checks."""
+
+    clause_results: list[bool] = []
+    reasons: list[str] = []
+    for index, gates in enumerate(clauses):
+        passed, clause_reasons = _gate_pass(row, gates)
+        clause_results.append(passed)
+        reasons.extend(f"clause[{index}]:{reason}" for reason in clause_reasons)
+    passed = bool(clause_results and any(clause_results))
+    reasons.append(f"gate_clauses:any:{'pass' if passed else 'fail'}")
+    return passed, reasons
+
+
+def _interval_slot(
+    ts: pd.Timestamp,
+    stride_bars: int,
+    interval_minutes: int = 5,
+    stride_offset_bars: int = 0,
+) -> bool:
     """Return True when a timestamp is on the sleeve's stride grid."""
 
     t = pd.Timestamp(ts)
@@ -872,22 +1035,75 @@ def _interval_slot(ts: pd.Timestamp, stride_bars: int, interval_minutes: int = 5
     else:
         t = t.tz_convert("UTC")
     minutes = int(t.timestamp() // 60)
-    return (minutes // int(interval_minutes)) % int(stride_bars) == 0
+    return (minutes // int(interval_minutes)) % int(stride_bars) == int(stride_offset_bars) % int(stride_bars)
 
 
-async def _query_oi(engine: Any, *, asof: pd.Timestamp, start: pd.Timestamp, symbol: str) -> pd.DataFrame:
+async def _query_oi(
+    engine: Any,
+    *,
+    asof: pd.Timestamp,
+    start: pd.Timestamp,
+    symbol: str,
+    live_snapshot_cutoff: pd.Timestamp | None = None,
+) -> pd.DataFrame:
     from sqlalchemy import text
 
     sql = text(
         """
-        SELECT ts AS date, sum_open_interest AS open_interest
-        FROM open_interest_binance
-        WHERE symbol = :symbol AND period = '5m' AND ts >= :start AND ts <= :asof
-        ORDER BY ts
+        WITH historical AS (
+            SELECT ts AS date,
+                   sum_open_interest AS open_interest,
+                   1 AS priority
+            FROM open_interest_binance
+            WHERE symbol = :symbol
+              AND period = '5m'
+              AND ts >= :start
+              AND ts <= :asof
+        ), live_ranked AS (
+            SELECT date_bin('5 minutes', fetched_at, TIMESTAMPTZ '1970-01-01 00:00:00+00') AS date,
+                   open_interest,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY date_bin('5 minutes', fetched_at, TIMESTAMPTZ '1970-01-01 00:00:00+00')
+                       ORDER BY fetched_at DESC
+                   ) AS snapshot_rank
+            FROM open_interest_binance_live
+            WHERE symbol = :symbol
+              AND fetched_at >= :start
+              AND fetched_at < :live_snapshot_cutoff
+        ), live_prior AS (
+            SELECT date, open_interest, 0 AS priority
+            FROM live_ranked
+            WHERE snapshot_rank = 1
+        ), ranked AS (
+            SELECT date, open_interest,
+                   ROW_NUMBER() OVER (PARTITION BY date ORDER BY priority) AS row_priority
+            FROM (
+                SELECT * FROM historical
+                UNION ALL
+                SELECT * FROM live_prior
+            ) combined
+        )
+        SELECT date, open_interest
+        FROM ranked
+        WHERE row_priority = 1
+        ORDER BY date
         """
     )
+    asof_ts = pd.Timestamp(asof)
+    asof_ts = asof_ts.tz_localize("UTC") if asof_ts.tzinfo is None else asof_ts.tz_convert("UTC")
+    cutoff = pd.Timestamp(live_snapshot_cutoff) if live_snapshot_cutoff is not None else asof_ts + pd.Timedelta(minutes=1)
+    cutoff = cutoff.tz_localize("UTC") if cutoff.tzinfo is None else cutoff.tz_convert("UTC")
     with engine.connect() as conn:
-        return pd.read_sql_query(sql, conn, params={"symbol": symbol, "start": start.to_pydatetime(), "asof": asof.to_pydatetime()})
+        return pd.read_sql_query(
+            sql,
+            conn,
+            params={
+                "symbol": symbol,
+                "start": start.to_pydatetime(),
+                "asof": asof_ts.to_pydatetime(),
+                "live_snapshot_cutoff": cutoff.to_pydatetime(),
+            },
+        )
 
 
 
@@ -921,12 +1137,30 @@ async def build_live_portfolio_frames(
     oi_cache: LiveOiFrameCache | None = None,
     external_cache: LiveExternalFrameCache | None = None,
     alt_pool_cache: LiveAltPoolFrameCache | None = None,
+    live_oi_snapshot_cutoff: pd.Timestamp | None = None,
+    include_activity_flow: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build enriched market and feature frame with live OI included."""
 
     start = asof - pd.Timedelta(minutes=int(cfg.lookback_minutes))
     frames = source_cache.refresh(engine, asof=asof, cfg=cfg) if source_cache is not None else query_live_source_frames(engine, asof=asof, cfg=cfg)
-    oi = await oi_cache.refresh(engine, asof=asof, start=start, symbol=cfg.symbol) if oi_cache is not None else await _query_oi(engine, asof=asof, start=start, symbol=cfg.symbol)
+    oi = (
+        await oi_cache.refresh(
+            engine,
+            asof=asof,
+            start=start,
+            symbol=cfg.symbol,
+            live_snapshot_cutoff=live_oi_snapshot_cutoff,
+        )
+        if oi_cache is not None
+        else await _query_oi(
+            engine,
+            asof=asof,
+            start=start,
+            symbol=cfg.symbol,
+            live_snapshot_cutoff=live_oi_snapshot_cutoff,
+        )
+    )
     alt_pool = await alt_pool_cache.refresh(engine, asof=asof, start=start) if alt_pool_cache is not None else await _query_alt_pool(engine, asof=asof, start=start, symbols=ALT_POOL_SYMBOLS)
 
     market = resample_market_bars(frames["btcusdt_1m"], cfg.decision_interval)
@@ -963,7 +1197,11 @@ async def build_live_portfolio_frames(
         premium_tolerance=cfg.premium_tolerance,
         zscore_window=cfg.zscore_window,
     )
-    features = feature_cache.refresh(enriched, cfg) if feature_cache is not None else _build_portfolio_feature_frame(enriched, cfg)
+    features = (
+        feature_cache.refresh(enriched, cfg, include_activity_flow=include_activity_flow)
+        if feature_cache is not None
+        else _build_portfolio_feature_frame(enriched, cfg, include_activity_flow=include_activity_flow)
+    )
     features = _add_live_volume_wave_features(enriched, features, frames, alt_pool)
     return enriched, features.replace([np.inf, -np.inf], np.nan)
 
@@ -1116,17 +1354,52 @@ def _score_sleeves(
             if "base_candidate" in cfg and "gates" not in cfg and "signal" not in cfg:
                 cfg = _load_json(str(cfg["base_candidate"]))
             if "signal" in cfg:
-                gates = cfg["signal"]["gates"]
+                signal_cfg = cfg["signal"]
+                gates = signal_cfg.get("gates", [])
+                gate_clauses = signal_cfg.get("gate_clauses")
                 hold = int(cfg["signal"].get("hold_bars_5m", cfg["signal"].get("hold_bars", 0)))
                 stride = int(cfg["signal"].get("stride_bars_5m", cfg["signal"].get("stride_bars", 1)))
             else:
-                gates = cfg["gates"]
+                gates = cfg.get("gates", [])
+                gate_clauses = cfg.get("gate_clauses")
                 hold = int(cfg.get("hold_bars", cfg.get("hold_bars_5m", 0)))
                 stride = int(cfg.get("stride_bars", cfg.get("stride_bars_5m", 1)))
-            gate_ok, reasons = _gate_pass(row, gates)
-            stride_ok = _interval_slot(ts, stride, exec_cfg.interval_minutes)
+            stride_offset = int(cfg.get("stride_offset_bars", 0))
+            base_policy = str(cfg.get("base_policy", "")).lower()
+            if base_policy == "rex":
+                record = build_rex_live_policy_record(
+                    enriched,
+                    features,
+                    policy_cfg=rex_policy_config_from_candidate(cfg),
+                    execution_cfg=exec_cfg,
+                    scorer_asof=asof,
+                    selector_cfg=rex_selector_cfg,
+                )
+                policy_row = pd.Series(record.get("feature_snapshot", {}))
+                if gate_clauses is not None:
+                    gate_ok, reasons = _gate_clauses_pass(policy_row, gate_clauses)
+                else:
+                    gate_ok, reasons = _gate_pass(policy_row, gates)
+                candidate_side = str(record.get("candidate_side", "")).upper()
+                policy_ok = bool(record.get("prediction") == "TRADE" and candidate_side in {"LONG", "SHORT"})
+                side_filter_ok = configured_side in {"AUTO", "BOTH"} or candidate_side == configured_side
+                if policy_ok and configured_side in {"AUTO", "BOTH"}:
+                    side = candidate_side
+                gate_ok &= policy_ok and side_filter_ok
+                reasons.extend(
+                    [
+                        str(record.get("reason", "")),
+                        f"rex_candidate_side={candidate_side or 'NONE'}",
+                        f"configured_side={configured_side}:{'pass' if side_filter_ok else 'fail'}",
+                    ]
+                )
+            elif gate_clauses is not None:
+                gate_ok, reasons = _gate_clauses_pass(row, gate_clauses)
+            else:
+                gate_ok, reasons = _gate_pass(row, gates)
+            stride_ok = _interval_slot(ts, stride, exec_cfg.interval_minutes, stride_offset)
             active = bool(gate_ok and stride_ok)
-            reasons.append(f"stride={stride}:{'pass' if stride_ok else 'fail'}")
+            reasons.append(f"stride={stride}@{stride_offset}:{'pass' if stride_ok else 'fail'}")
             dynamic_exit = cfg.get("dynamic_exit") if isinstance(cfg.get("dynamic_exit"), dict) else None
 
             if overlay_cfg is not None:
@@ -1284,11 +1557,16 @@ def _load_sleeve_runtime_spec(sleeve: dict[str, Any]) -> dict[str, Any]:
     source = str(sleeve.get("source") or sleeve.get("source_predictions") or "")
     hold = int(sleeve.get("hold_bars", sleeve.get("hold_bars_5m", 0)) or 0)
     stride = int(sleeve.get("stride_bars", sleeve.get("stride_bars_5m", 1)) or 1)
+    dynamic_exit = sleeve.get("dynamic_exit") if isinstance(sleeve.get("dynamic_exit"), dict) else None
     if source.endswith(".json") and Path(source).exists():
         try:
             cfg = _load_json(source)
+            if isinstance(cfg.get("dynamic_exit"), dict):
+                dynamic_exit = cfg["dynamic_exit"]
             if "base_candidate" in cfg and "gates" not in cfg and "signal" not in cfg:
                 cfg = _load_json(str(cfg["base_candidate"]))
+                if dynamic_exit is None and isinstance(cfg.get("dynamic_exit"), dict):
+                    dynamic_exit = cfg["dynamic_exit"]
             if "signal" in cfg:
                 hold = int(cfg["signal"].get("hold_bars_5m", cfg["signal"].get("hold_bars", hold)) or hold)
                 stride = int(cfg["signal"].get("stride_bars_5m", cfg["signal"].get("stride_bars", stride)) or stride)
@@ -1297,7 +1575,7 @@ def _load_sleeve_runtime_spec(sleeve: dict[str, Any]) -> dict[str, Any]:
                 stride = int(cfg.get("stride_bars", cfg.get("stride_bars_5m", stride)) or stride)
         except Exception:
             pass
-    return {"source": source, "hold_bars": hold, "stride_bars": stride}
+    return {"source": source, "hold_bars": hold, "stride_bars": stride, "dynamic_exit": dynamic_exit}
 
 
 def _known_portfolio_sleeves(portfolio: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -1335,6 +1613,172 @@ def _known_portfolio_sleeves(portfolio: dict[str, Any]) -> dict[str, dict[str, A
         for sleeve in cfg.get("base_sleeves", []):
             add(sleeve)
     return out
+
+
+def _summarize_exchange_trade_fills(fills: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build a queryable close report from Binance user-trade fills."""
+
+    quantity = Decimal("0")
+    quote = Decimal("0")
+    realized = Decimal("0")
+    commission = Decimal("0")
+    commission_assets: set[str] = set()
+    order_ids: list[str] = []
+    times: list[int] = []
+    for fill in fills:
+        qty = Decimal(str(fill.get("qty", "0") or "0"))
+        price = Decimal(str(fill.get("price", "0") or "0"))
+        quantity += qty
+        quote += Decimal(str(fill.get("quoteQty", "0") or "0")) or qty * price
+        realized += Decimal(str(fill.get("realizedPnl", "0") or "0"))
+        fee = Decimal(str(fill.get("commission", "0") or "0"))
+        commission += fee
+        asset = str(fill.get("commissionAsset") or "")
+        if asset:
+            commission_assets.add(asset)
+        order_id = fill.get("orderId")
+        if order_id is not None and str(order_id) not in order_ids:
+            order_ids.append(str(order_id))
+        if fill.get("time") is not None:
+            times.append(int(fill["time"]))
+    avg_price = quote / quantity if quantity > 0 else Decimal("0")
+    commission_asset = ",".join(sorted(commission_assets)) or None
+    quote_fee = commission if not commission_assets or commission_assets <= {"USDT", "USDC", "BUSD"} else Decimal("0")
+    return {
+        "fill_count": len(fills),
+        "quantity": str(quantity),
+        "quote_quantity": str(quote),
+        "avg_price": str(avg_price),
+        "realized_pnl": str(realized),
+        "commission": str(commission),
+        "commission_asset": commission_asset,
+        "net_realized_pnl": str(realized - quote_fee),
+        "order_ids": order_ids,
+        "first_fill_at": None if not times else str(pd.Timestamp(min(times), unit="ms", tz="UTC")),
+        "last_fill_at": None if not times else str(pd.Timestamp(max(times), unit="ms", tz="UTC")),
+        "fills": fills,
+    }
+
+
+async def _attach_exchange_trade_report(
+    *, client: Any, symbol: str, order_info: dict[str, Any]
+) -> dict[str, Any]:
+    """Attach actual fill PnL/fees to a submitted close order result."""
+
+    order_ids = {
+        str(order_id)
+        for order_id in [order_info.get("order_id"), *(o.get("orderId") for o in (order_info.get("raw_orders") or []) if isinstance(o, dict))]
+        if order_id is not None
+    }
+    if not order_ids:
+        return order_info
+    fills: list[dict[str, Any]] = []
+    last_error: str | None = None
+    for attempt in range(5):
+        try:
+            trades = await client.get_trades(symbol, limit=1000)
+            fills = [t for t in trades if str(t.get("orderId")) in order_ids]
+        except Exception as exc:
+            last_error = str(exc)
+        if fills:
+            break
+        if attempt < 4:
+            await asyncio.sleep(0.2)
+    if not fills:
+        return {**order_info, "trade_report_error": last_error or "no_user_trade_fills_for_close_order"}
+    return {**order_info, "trade_report": _summarize_exchange_trade_fills(fills)}
+
+
+async def _reconcile_exchange_flat_sleeves(
+    *, state: dict[str, Any], client: Any, exec_cfg: WaveExecutionConfig
+) -> list[dict[str, Any]]:
+    """Report state-owned sleeves that became flat while the runner was down.
+
+    Reconciliation is deliberately limited to a completely flat Binance hedge
+    side.  A smaller aggregate position is ambiguous when multiple sleeves
+    share LONG or SHORT, so it must not silently close one sleeve in state.
+    """
+
+    try:
+        positions = await client.get_positions(exec_cfg.symbol)
+    except TypeError:
+        positions = await client.get_positions()
+    except Exception as exc:
+        state["last_position_reconcile_error"] = str(exc)
+        return []
+    active_sides: set[str] = set()
+    for pos in positions:
+        try:
+            qty = abs(Decimal(str(pos.get("positionAmt", "0") or "0")))
+        except Exception:
+            qty = Decimal("0")
+        if qty > 0:
+            side = str(pos.get("positionSide") or "").upper()
+            if side in {"LONG", "SHORT"}:
+                active_sides.add(side)
+    candidates = [
+        (name, sleeve)
+        for name, sleeve in state.setdefault("open_sleeves", {}).items()
+        if str(sleeve.get("side", "")).upper() in {"LONG", "SHORT"}
+        and str(sleeve.get("side", "")).upper() not in active_sides
+    ]
+    if not candidates:
+        return []
+    try:
+        trades = await client.get_trades(exec_cfg.symbol, limit=1000)
+    except Exception:
+        trades = []
+    reconciled: list[dict[str, Any]] = []
+    for name, sleeve in candidates:
+        side = str(sleeve["side"]).upper()
+        close_side = "SELL" if side == "LONG" else "BUY"
+        signal_id = str(sleeve.get("signal_id") or "")
+        signal_ts = pd.Timestamp(sleeve.get("signal_date") or 0)
+        if signal_ts.tzinfo is None:
+            signal_ts = signal_ts.tz_localize("UTC")
+        start_ms = int(signal_ts.timestamp() * 1000)
+        possible = [
+            t
+            for t in trades
+            if str(t.get("positionSide", "")).upper() == side
+            and str(t.get("side", "")).upper() == close_side
+            and int(t.get("time", 0) or 0) >= start_ms
+        ]
+        expected_key = _portfolio_sleeve_key(name)
+        expected_digest = hashlib.sha1(signal_id.encode("utf-8")).hexdigest()[:8]
+        attributed: list[dict[str, Any]] = []
+        client_order_ids: list[str] = []
+        for order_id in dict.fromkeys(t.get("orderId") for t in possible if t.get("orderId") is not None):
+            try:
+                order = await client.get_order(exec_cfg.symbol, order_id=order_id)
+            except Exception:
+                continue
+            cid = str(order.get("clientOrderId") or "")
+            parts = _portfolio_order_parts(cid)
+            if parts and parts["sleeve_key"] == expected_key and parts["signal_digest"] == expected_digest:
+                attributed.extend(t for t in possible if t.get("orderId") == order_id)
+                client_order_ids.append(cid)
+        report = _summarize_exchange_trade_fills(attributed) if attributed else None
+        requested = str(sleeve.get("quantity", "0") or "0")
+        order_info = {
+            "status": "FILLED_RECONCILED" if report else "EXCHANGE_FLAT_UNATTRIBUTED",
+            "requested_quantity": requested,
+            "filled_quantity": report["quantity"] if report else requested,
+            "avg_price": report["avg_price"] if report else None,
+            "order_id": ",".join(report["order_ids"]) if report else None,
+            "client_order_id": ",".join(client_order_ids) or None,
+            "started_at": report["first_fill_at"] if report else None,
+            "finished_at": report["last_fill_at"] if report else str(pd.Timestamp.utcnow()),
+            "trade_report": report,
+            "reconciliation": {
+                "reason": "state_open_but_exchange_side_flat",
+                "state_exit_at": sleeve.get("exit_at"),
+                "dynamic_exit": sleeve.get("dynamic_exit"),
+                "attributed_by_client_order_id": bool(report),
+            },
+        }
+        reconciled.append({"name": name, "side": side, "signal_id": signal_id, "order_info": order_info})
+    return reconciled
 
 
 def _infer_signal_id_from_digest(
@@ -1482,6 +1926,7 @@ async def _recover_exchange_positions_into_state(
                 "entry_price": entry.get("price", pos.get("entryPrice")),
                 "position": {k: pos.get(k) for k in ["symbol", "positionSide", "positionAmt", "entryPrice", "updateTime"]},
             },
+            "dynamic_exit": spec.get("dynamic_exit"),
             "recovered_from_exchange": True,
         }
         state.setdefault("processed_signals", {})[name] = signal_id
@@ -2042,6 +2487,23 @@ def _expected_decision_bar(now: pd.Timestamp, *, interval_minutes: int) -> pd.Ti
     return ts.floor(interval) - pd.Timedelta(minutes=int(interval_minutes))
 
 
+def _completed_decision_data_asof(expected_bar: pd.Timestamp, *, interval_minutes: int) -> pd.Timestamp:
+    """Return the final 1m timestamp belonging to a completed decision bar.
+
+    At 12:05, for example, the 12:00 five-minute candle is complete only after
+    the 12:04 one-minute row commits.  Querying with wall-clock 12:05 may also
+    include an already-started 12:05 row, which resampling would turn into an
+    incomplete candle and accidentally score it.
+    """
+
+    bar = pd.Timestamp(expected_bar)
+    if bar.tzinfo is None:
+        bar = bar.tz_localize("UTC")
+    else:
+        bar = bar.tz_convert("UTC")
+    return bar + pd.Timedelta(minutes=max(0, int(interval_minutes) - 1))
+
+
 def _validate_pg_notify_channel(channel: str) -> str:
     name = str(channel or "").strip()
     if not name or not name.replace("_", "a").isalnum() or not name[0].isalpha():
@@ -2063,7 +2525,7 @@ def _latest_requirement_ts(engine_or_conn: Any, req: FreshnessRequirement) -> pd
             WHERE symbol = :symbol AND period = :period
             """
         )
-        params = {"symbol": req.symbol, "period": req.period or "5m"}
+        params = {"symbol": req.symbol, "period": req.period or "1m"}
     else:
         sql = text(
             f"""
@@ -2124,9 +2586,7 @@ def _freshness_requirements_for_decision(
     requirements = [
         FreshnessRequirement("bars_binance", symbol, "1m", required_1m, "binance_perp"),
         FreshnessRequirement("bars_binance_premium", symbol, "1m", required_1m, "binance_premium"),
-        FreshnessRequirement("open_interest_binance", symbol, None, expected_bar, "binance_open_interest", period="5m"),
         FreshnessRequirement("bars_upbit", "KRW-BTC", "1m", required_1m, "upbit"),
-        FreshnessRequirement("bars_polygon", "USDKRW", "1m", required_1m, "kimchi_usdkrw"),
     ]
     requirements.extend(
         FreshnessRequirement("bars_binance", alt_symbol, "1m", required_1m, "binance_alt_pool")
@@ -2221,6 +2681,7 @@ async def _wait_for_expected_1m_tail(
 
 async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     portfolio = _load_json(cfg.portfolio_config)
+    include_activity_flow = _portfolio_uses_feature(portfolio, "activity_flow_htf")
     selector_overlay = _load_portfolio_selector_overlay(portfolio, cfg.portfolio_selector_overlay)
     rex_selector_cfg = RexLlmSelectorConfig(
         enabled=bool(cfg.rex_selector_adapter_dir),
@@ -2285,16 +2746,22 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 max_wait_sec=cfg.max_freshness_wait_sec,
                 notify_channel=cfg.freshness_notify_channel,
             )
+            decision_data_asof = _completed_decision_data_asof(
+                expected_bar,
+                interval_minutes=exec_cfg.interval_minutes,
+            )
             frame_t0 = time.perf_counter()
             enriched, features = await build_live_portfolio_frames(
                 engine=engine,
-                asof=asof,
+                asof=decision_data_asof,
                 cfg=live_cfg,
                 source_cache=source_cache,
                 feature_cache=feature_cache,
                 oi_cache=oi_cache,
                 external_cache=external_cache,
                 alt_pool_cache=alt_pool_cache,
+                live_oi_snapshot_cutoff=expected_bar + pd.Timedelta(minutes=exec_cfg.interval_minutes),
+                include_activity_flow=include_activity_flow,
             )
             frame_build_sec = time.perf_counter() - frame_t0
             sleeve_scores = _score_sleeves(
@@ -2302,16 +2769,27 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 enriched=enriched,
                 features=features,
                 exec_cfg=exec_cfg,
-                asof=asof,
+                asof=decision_data_asof,
                 rex_selector_cfg=rex_selector_cfg,
             )
-            data_fresh = not freshness_missing
+            latest_decision_bar = pd.Timestamp(enriched.iloc[-1]["date"])
+            if latest_decision_bar.tzinfo is None:
+                latest_decision_bar = latest_decision_bar.tz_localize("UTC")
+            else:
+                latest_decision_bar = latest_decision_bar.tz_convert("UTC")
+            decision_bar_complete = latest_decision_bar == expected_bar
+            data_fresh = not freshness_missing and decision_bar_complete
             if not data_fresh:
                 for sleeve in sleeve_scores:
                     sleeve["active"] = False
-                    sleeve.setdefault("reasons", []).append(
-                        "source_freshness=fail:" + ",".join(str(item["key"]) for item in freshness_missing[:5])
-                    )
+                    if freshness_missing:
+                        sleeve.setdefault("reasons", []).append(
+                            "source_freshness=fail:" + ",".join(str(item["key"]) for item in freshness_missing[:5])
+                        )
+                    if not decision_bar_complete:
+                        sleeve.setdefault("reasons", []).append(
+                            f"completed_decision_bar=fail:expected={expected_bar.isoformat()},actual={latest_decision_bar.isoformat()}"
+                        )
             portfolio_selector_record = _apply_portfolio_selector_overlay(
                 sleeve_scores,
                 overlay=selector_overlay,
@@ -2338,6 +2816,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     state["stale_order_cancel_history"] = history[-200:]
 
             recovered_positions: list[dict[str, Any]] = []
+            reconciled_positions: list[dict[str, Any]] = []
             if not exec_cfg.dry_run:
                 assert client is not None
                 recovered_positions = await _recover_exchange_positions_into_state(
@@ -2363,6 +2842,36 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         status="RECOVERED",
                         order_info=rec,
                     )
+                reconciled_positions = await _reconcile_exchange_flat_sleeves(
+                    state=state,
+                    client=client,
+                    exec_cfg=exec_cfg,
+                )
+                for rec in reconciled_positions:
+                    info = rec["order_info"]
+                    _log_trade_execution(
+                        engine,
+                        strategy_name=cfg.strategy_name,
+                        sub_strategy_name=str(rec["name"]),
+                        exchange=cfg.exchange,
+                        symbol=exec_cfg.symbol,
+                        action="CLOSE",
+                        side="SELL" if str(rec["side"]).upper() == "LONG" else "BUY",
+                        position_side=str(rec["side"]),
+                        order_type="EXCHANGE_FLAT_RECONCILE",
+                        signal_id=str(rec["signal_id"]),
+                        status=str(info.get("status")),
+                        order_info=info,
+                    )
+                    state["open_sleeves"].pop(str(rec["name"]), None)
+                if reconciled_positions:
+                    history = list(state.get("exchange_flat_reconcile_history", []))
+                    history.extend(
+                        {**rec, "reconciled_at": str(pd.Timestamp.utcnow())}
+                        for rec in reconciled_positions
+                    )
+                    state["exchange_flat_reconcile_history"] = history[-100:]
+                    state["last_exchange_flat_reconcile"] = reconciled_positions
 
             closed: list[str] = []
             for key, open_state in list(state["open_sleeves"].items()):
@@ -2389,6 +2898,11 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                             reference_price=close_reference_price,
                             max_deviation_pct=float(cfg.exit_maker_max_deviation_pct),
                             refresh_interval_sec=int(cfg.maker_refresh_interval_sec),
+                        )
+                        close_info = await _attach_exchange_trade_report(
+                            client=client,
+                            symbol=exec_cfg.symbol,
+                            order_info=close_info,
                         )
                         open_state["last_close_order_info"] = close_info
                         try:
@@ -2554,6 +3068,8 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 "latest_bar": str(enriched.iloc[-1]["date"]),
                 "latest_1m_ts": str(latest_1m_ts),
                 "expected_bar": str(expected_bar),
+                "decision_data_asof": str(decision_data_asof),
+                "decision_bar_complete": decision_bar_complete,
                 "asof": str(asof),
                 "freshness_mode": freshness_mode,
                 "source_latest_ts": {k: None if v is None else str(v) for k, v in latest_source_ts.items()},
@@ -2570,7 +3086,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 selector_status = f"{portfolio_selector_record.get('action')}:{portfolio_selector_record.get('context_id')}"
             _status(
                 f"[portfolio-live] {pd.Timestamp.utcnow().isoformat()} active={active} opened={opened} closed={closed} "
-                f"open={list(state['open_sleeves'])} recovered={len(recovered_positions)} stale_cancel={len(stale_cancelled)} repl={replaced_entry_orders} gross={total_weight:.3f} lev={exec_cfg.leverage} "
+                f"open={list(state['open_sleeves'])} recovered={len(recovered_positions)} reconciled={len(reconciled_positions)} stale_cancel={len(stale_cancelled)} repl={replaced_entry_orders} gross={total_weight:.3f} lev={exec_cfg.leverage} "
                 f"alloc={cfg.allocation_mode} live_gross={audit['live_gross_if_all_active']:.3f} selector={selector_status} "
                 f"fb={frame_build_sec:.2f}s fw={freshness_waited:.1f}s fm={freshness_mode} miss={len(freshness_missing)} src={source_cache.last_query_mode} oi={oi_cache.last_query_mode} ext={external_cache.last_mode} alt={alt_pool_cache.last_query_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
             )
@@ -2595,7 +3111,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--exchange", default="binance")
     p.add_argument("--lookback-minutes", type=int, default=45_000)
     p.add_argument("--close-delay-sec", type=float, default=0.25)
-    p.add_argument("--max-freshness-wait-sec", type=float, default=8.0)
+    p.add_argument(
+        "--max-freshness-wait-sec",
+        type=float,
+        default=50.0,
+        help="Wait for all execution-critical completed-bar sources; 50s covers observed Upbit commit tail",
+    )
     p.add_argument("--freshness-poll-sec", type=float, default=0.5, help="Deprecated fallback knob; live freshness uses Postgres NOTIFY")
     p.add_argument("--freshness-notify-channel", default="market_data_bar")
     p.add_argument("--run-immediately", action="store_true", default=False)

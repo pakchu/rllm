@@ -15,6 +15,8 @@ from execution.rex_llm_live import (
     _seconds_until_next_interval,
     run_rex_live_loop,
     build_rex_live_policy_record,
+    rex_policy_config_from_candidate,
+    _rex_policy_features,
 )
 from execution.wave_execution import WaveExecutionConfig, decision_from_policy_record, evaluate_execution_gate
 from preprocessing.market_features import EXTENDED_MARKET_FEATURE_COLUMNS
@@ -69,6 +71,50 @@ def _enriched(n=120):
 
 
 class TestRexLlmLive(unittest.TestCase):
+    def test_frozen_rex_threshold_is_invariant_to_frame_history_distribution(self):
+        features = _base_features()
+        cfg = RexLivePolicyConfig(strength_threshold=0.01, min_positive_strengths=10_000)
+        first = build_rex_live_policy_record(_enriched(), features, policy_cfg=cfg)
+
+        changed_history = features.copy()
+        changed_history.loc[: len(changed_history) - 2, "htf_1d_return_4"] *= 50.0
+        changed_history.loc[: len(changed_history) - 2, "htf_3d_return_4"] *= 50.0
+        changed_history.loc[: len(changed_history) - 2, "htf_1w_return_4"] *= 50.0
+        second = build_rex_live_policy_record(_enriched(), changed_history, policy_cfg=cfg)
+
+        self.assertEqual(first["action"]["threshold"], 0.01)
+        self.assertEqual(second["action"]["threshold"], 0.01)
+        self.assertEqual(first["feature_snapshot"]["rex_candidate_threshold_source"], "fixed_train")
+        self.assertEqual(first["prediction"], second["prediction"])
+
+    def test_rex_veto_candidate_loads_frozen_research_contract(self):
+        candidate = json.loads(Path("configs/live/rex_veto_7_candidate.json").read_text())
+        cfg = rex_policy_config_from_candidate(candidate)
+
+        self.assertEqual(cfg.family, "rex_htf_pullback_reclaim")
+        self.assertEqual(cfg.feature_contract, "rex_event_reasoning_20260712")
+        self.assertEqual(cfg.strength_threshold, 0.177552250256958)
+        self.assertEqual(cfg.gates, ())
+        self.assertFalse(cfg.require_core_external)
+        self.assertEqual(candidate["stride_bars"], 24)
+        self.assertEqual(candidate["stride_offset_bars"], 11)
+
+    def test_july_rex_contract_rebuilds_frozen_48_bar_oi_and_volume_zscores(self):
+        enriched = _enriched(120)
+        enriched["volume"] = np.linspace(1.0, 120.0, 120) ** 1.2
+        enriched["open_interest"] = np.linspace(1000.0, 1300.0, 120) ** 1.01
+        features = _base_features(120)
+        features["volume_zscore"] = -99.0
+        features["oi_zscore"] = -99.0
+
+        exact = _rex_policy_features(enriched, features, "rex_event_reasoning_20260712")
+
+        for source, column in ((enriched["volume"], "volume_zscore"), (enriched["open_interest"], "oi_zscore")):
+            expected = (source - source.rolling(48, min_periods=16).mean()) / source.rolling(
+                48, min_periods=16
+            ).std(ddof=0)
+            self.assertAlmostEqual(exact[column].iloc[-1], float(expected.iloc[-1]), places=12)
+
     def test_builds_trade_record_and_execution_decision_for_short_candidate(self):
         features = _base_features()
         record = build_rex_live_policy_record(
@@ -81,6 +127,40 @@ class TestRexLlmLive(unittest.TestCase):
         decision = decision_from_policy_record(record)
         self.assertEqual(decision.signal, "SHORT")
         self.assertGreater(decision.current_atr, 0.0)
+
+    def test_alternate_dual_regime_gate_matches_exported_rule(self):
+        features = _base_features()
+        features.loc[len(features) - 1, "range_vol"] = 0.01
+        features.loc[len(features) - 1, "kimchi_premium_change"] = 0.001
+        features.loc[len(features) - 1, "rex_8640_range_width_pct"] = 0.30
+        features.loc[len(features) - 1, "usdkrw_zscore"] = 0.0
+
+        record = build_rex_live_policy_record(
+            _enriched(),
+            features,
+            policy_cfg=RexLivePolicyConfig(min_positive_strengths=5),
+        )
+
+        self.assertEqual(record["prediction"], "TRADE")
+        self.assertEqual(record["matched_gate_set"], 1)
+        self.assertFalse(record["gate_set_results"][0]["passed"])
+        self.assertTrue(record["gate_set_results"][1]["passed"])
+
+    def test_dual_regime_gate_blocks_when_both_branches_fail(self):
+        features = _base_features()
+        features.loc[len(features) - 1, "range_vol"] = 0.01
+        features.loc[len(features) - 1, "kimchi_premium_change"] = 0.001
+        features.loc[len(features) - 1, "rex_8640_range_width_pct"] = 0.20
+
+        record = build_rex_live_policy_record(
+            _enriched(),
+            features,
+            policy_cfg=RexLivePolicyConfig(min_positive_strengths=5),
+        )
+
+        self.assertEqual(record["prediction"], "ABSTAIN")
+        self.assertIsNone(record["matched_gate_set"])
+        self.assertIn("frozen_gate_block", record["reason"])
 
     def test_rex_selector_defaults_are_text_only(self):
         cfg = RexLlmSelectorConfig()

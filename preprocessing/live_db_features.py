@@ -234,7 +234,13 @@ def live_source_sql(cfg: LiveDbFeatureConfig, *, asof_param: str = "asof", start
     }
 
 
-def query_live_source_frames(engine_or_conn: Any, *, asof: str | pd.Timestamp, cfg: LiveDbFeatureConfig = LiveDbFeatureConfig()) -> dict[str, pd.DataFrame]:
+def query_live_source_frames(
+    engine_or_conn: Any,
+    *,
+    asof: str | pd.Timestamp,
+    cfg: LiveDbFeatureConfig = LiveDbFeatureConfig(),
+    start_by_key: dict[str, pd.Timestamp] | None = None,
+) -> dict[str, pd.DataFrame]:
     """Query all DB source frames with SQLAlchemy-style named parameters."""
 
     try:
@@ -243,12 +249,17 @@ def query_live_source_frames(engine_or_conn: Any, *, asof: str | pd.Timestamp, c
         raise RuntimeError("SQLAlchemy is required for direct DB querying") from exc
     asof_ts = pd.Timestamp(asof, tz="UTC") if pd.Timestamp(asof).tzinfo is None else pd.Timestamp(asof).tz_convert("UTC")
     start_ts = asof_ts - pd.Timedelta(minutes=int(cfg.lookback_minutes))
-    params = {"asof": asof_ts.to_pydatetime(), "start": start_ts.to_pydatetime()}
     frames: dict[str, pd.DataFrame] = {}
     sql_map = live_source_sql(cfg)
     with engine_or_conn.connect() if hasattr(engine_or_conn, "connect") else engine_or_conn as conn:
         for key, sql in sql_map.items():
-            frames[key] = pd.read_sql_query(text(sql), conn, params=params)
+            key_start = pd.Timestamp((start_by_key or {}).get(key, start_ts))
+            key_start = key_start.tz_localize("UTC") if key_start.tzinfo is None else key_start.tz_convert("UTC")
+            frames[key] = pd.read_sql_query(
+                text(sql),
+                conn,
+                params={"asof": asof_ts.to_pydatetime(), "start": key_start.to_pydatetime()},
+            )
     return frames
 
 

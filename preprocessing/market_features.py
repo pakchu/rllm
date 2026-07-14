@@ -297,7 +297,8 @@ def build_market_feature_frame(
     feature_map["bb_z"] = _clean_series((close - bb_mean) / bb_std.replace(0.0, np.nan))
     feature_map["range_pos"] = _clean_series(((close - roll_low) / range_span) * 2.0 - 1.0)
 
-    log_return = np.log(close / close.shift(1).replace(0.0, np.nan))
+    positive_close = close.where(close > 0.0)
+    log_return = np.log(positive_close / positive_close.shift(1))
     feature_map["close_zscore_48"] = _rolling_zscore(close, zscore_window)
     feature_map["return_zscore_48"] = _rolling_zscore(log_return, zscore_window)
 
@@ -369,8 +370,9 @@ def build_market_feature_frame(
 
     open_interest = _optional_column(market_df, "open_interest")
     if open_interest is not None:
+        positive_open_interest = open_interest.where(open_interest > 0.0)
         feature_map["oi_change"] = _clean_series(
-            np.log(open_interest / open_interest.shift(1).replace(0.0, np.nan))
+            np.log(positive_open_interest / positive_open_interest.shift(1))
         )
         feature_map["oi_zscore"] = _rolling_zscore(open_interest, volume_window)
     else:
