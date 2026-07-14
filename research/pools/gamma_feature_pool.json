@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T02:21:22.182164+00:00",
+  "updated_at": "2026-07-14T02:43:40.279319+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2387,6 +2387,49 @@
         "results/weekend_fx_reconciliation_alpha_scan_2026-07-14.json",
         "docs/weekend-fx-reconciliation-alpha-design-2026-07-14.md",
         "docs/weekend-fx-reconciliation-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "nonlinear_crossmap_flow_static_usage_20260714",
+      "name": "Static nonlinear cross-map flow-direction policy",
+      "status": "rejected",
+      "family": "nonlinear_crossmap_price_flow_static_usage",
+      "scope": "btc_completed_price_taker_flow_dynamics",
+      "feature_tier": "gamma_feature",
+      "description": "Rejected q80 event policy trading sign(cross-map skill asymmetry) times sign(current completed six-hour aggressive flow) for 12 hours.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLC, quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_E3_library120_crossmap_dominance",
+        "static_q80_event_gate",
+        "static_dominance_times_flow_side",
+        "static_hold_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous reconstruction skills/asymmetry retain weak-beta representation status"
+      ],
+      "known_failures": [
+        "Fit return/CAGR/strict MDD/ratio was +4.89%/+1.86%/19.63%/0.09 over 348 trades.",
+        "2023 return/CAGR/strict MDD/ratio was -10.22%/-10.23%/15.06%/-0.68 over 130 trades.",
+        "Both 2023 halves were negative and approximate mean-return tests showed no fit edge.",
+        "Exact flip, matched flow/price controls, linear lead-lag, 6h/7d delays and all declared timing diagnostics failed.",
+        "Zero-cost 2023 return was -2.93% with ratio -0.26."
+      ],
+      "evidence": "A committed pre-outcome protocol, 11 tests, support/novelty preflight and independent critic GO preceded the one-shot run. No 2024+ outcomes were opened and no parameter changed after 2023 access.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; prior-only state and threshold; current block completed minute55; minute05 entry; split-contained non-overlap; strict MDD; no OOS computation.",
+      "tier_rationale": "The representation is novel but the exact static side semantics are statistically unsupported, cost-sensitive and negative in the complete 2023 selection year.",
+      "next_action": "Do not tune embedding, library, neighbor, Theiler, gate, sign map, delay or hold on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_crossmap_flow_causality_alpha.py",
+        "protocol": "one frozen cross-map q80 policy plus matched component/linear/flip/delay/cost controls; 12h; minute05; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_crossmap_flow_causality_alpha.py",
+        "results/crossmap_flow_causality_alpha_scan_2026-07-14.json",
+        "docs/crossmap-flow-causality-alpha-design-2026-07-14.md",
+        "docs/crossmap-flow-causality-alpha-search-2026-07-14.md"
       ]
     }
   ]

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-14T02:21:22.182164+00:00",
+  "updated_at": "2026-07-14T02:43:40.279319+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2840,6 +2840,49 @@
       "generation_recipe": {
         "script": "training/search_weekend_fx_reconciliation_alpha.py",
         "protocol": "first six-pair complete hour after 45-72h closure; prior-52/min26 event z; FX minus BTC residual; minute05; 24h; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      }
+    },
+    {
+      "id": "nonlinear_crossmap_price_flow_state_20260714",
+      "name": "Nonlinear price/flow cross-map asymmetry state",
+      "status": "weak",
+      "family": "nonlinear_crossmap_price_flow_geometry",
+      "scope": "btc_completed_price_taker_flow_dynamics",
+      "feature_tier": "beta_feature",
+      "description": "Leave-one-out simplex reconstruction skills and their directional asymmetry over strictly prior completed six-hour price-return and aggressive-flow blocks.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLC, quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "flow_to_price_crossmap_skill",
+        "price_to_flow_crossmap_skill",
+        "crossmap_dominance",
+        "prior_only_crossmap_dominance_rank"
+      ],
+      "usable_for": [
+        "weak nonlinear coupling token under a materially different preregistered learner or RLLM",
+        "not replaying or tuning the inspected sign-times-flow policy, E=3, 120-block library, q80 gate or fixed holds"
+      ],
+      "known_failures": [
+        "Primary fit return/CAGR/MDD/ratio was +4.89%/+1.86%/19.63%/0.09 over 348 trades.",
+        "Primary 2023 return/CAGR/MDD/ratio was -10.22%/-10.23%/15.06%/-0.68 over 130 trades.",
+        "Both 2023 halves lost and the exact direction flip also lost fit and 2023.",
+        "Zero-cost 2023 remained negative; minute-05/10/15 and 6/12/24h diagnostics all failed."
+      ],
+      "evidence": "Pre-outcome support passed at 348 fit and 130 2023 executable events. Dominance had Spearman -0.067/-0.118 versus linear lead-lag/same-time correlation and event Jaccard 0.143 versus the linear policy, showing a distinct but non-predictive representation.",
+      "source_artifacts": [
+        "training/search_crossmap_flow_causality_alpha.py",
+        "results/crossmap_flow_causality_alpha_scan_2026-07-14.json",
+        "docs/crossmap-flow-causality-alpha-design-2026-07-14.md",
+        "docs/crossmap-flow-causality-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; preceding 120 completed six-hour blocks only; current block excluded from state library; prior-only shifted q80; minute-05 next-open; strict MDD; no 2024+ computation.",
+      "tier_rationale": "Cross-map geometry is demonstrably unlike linear/correlation controls, but no fixed direction has risk-efficient fit or positive 2023 performance; retain only as weak representation.",
+      "next_action": "Freeze this sample. Reuse raw reconstruction skills/asymmetry only in a separately preregistered learner or genuinely fresh forward shadow period.",
+      "generation_recipe": {
+        "script": "training/search_crossmap_flow_causality_alpha.py",
+        "protocol": "prior 120 completed 6h blocks; E3 simplex, four neighbors, Theiler radius1; strict prior q80; sign(asymmetry)*sign(current flow); 12h; next-open; 0.5x; 6bp/side; strict MDD; OOS excluded"
       }
     }
   ]
