@@ -1,0 +1,151 @@
+{
+  "protocol": {
+    "name": "MFIC — Metaorder Fragmentation Impact Curvature",
+    "support_only": true,
+    "outcomes_opened": false,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "signal_availability": "completed 5m bar; any later evaluation enters at next open",
+    "source_gap_policy": "full gap day, missing slot, and next 24 bars quarantined"
+  },
+  "config": {
+    "features": "data/binance_um_aggtrade_microstructure_btc_2020_2023/BTCUSDT_aggtrade_5m_2020-01-01_2023-12-31.csv.gz",
+    "feature_manifest": "data/binance_um_aggtrade_microstructure_btc_2020_2023/build_manifest.json",
+    "market": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "market_manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+    "output": "results/metaorder_fragmentation_impact_curvature_support_2026-07-14.json",
+    "curvature_threshold": 0.002,
+    "persistence_floor": 0.6,
+    "coherence_floor": 0.2,
+    "hidden_metaorder_quantile": 0.95,
+    "hidden_metaorder_baseline_bars": 8640,
+    "hidden_metaorder_baseline_min_periods": 2016,
+    "minimum_agg_trade_count": 64,
+    "post_gap_quarantine_bars": 24,
+    "minimum_nonoverlap_total": 250,
+    "minimum_nonoverlap_per_year": 40,
+    "minimum_side_share": 0.25,
+    "minimum_branch_share": 0.2
+  },
+  "source": {
+    "feature_sha256": "c2bb0e6742f8cdc4e13315e7f0a13d6ab9cd536fb40d9cb4484b7a6ba30131cf",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "source_gap_days": [
+      "2020-04-15",
+      "2021-02-09",
+      "2021-02-24",
+      "2021-05-19",
+      "2022-09-06"
+    ],
+    "missing_feature_bars": 36,
+    "quarantined_bars": 1682,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00"
+  },
+  "candidates": [
+    {
+      "candidate": {
+        "name": "mfic_fast",
+        "window_bars": 12,
+        "segment_bars": 3,
+        "continuation_hold_bars": 3,
+        "fade_hold_bars": 6
+      },
+      "raw_signal_count": 2536,
+      "raw_continuation_count": 1658,
+      "raw_fade_count": 878,
+      "mechanism_count": 9196,
+      "mechanism_feature_quantiles": {
+        "hidden_metaorder": {
+          "0.01": 0.017412261296703688,
+          "0.1": 0.022456844308631485,
+          "0.5": 0.030364217507319068,
+          "0.9": 0.052844502097388404,
+          "0.99": 0.07417742274279825
+        },
+        "relative_hidden_metaorder_strength": {
+          "0.01": 1.0017199425152141,
+          "0.1": 1.0177906785306488,
+          "0.5": 1.1154721306108073,
+          "0.9": 1.3799718281467062,
+          "0.99": 1.7294827941927398
+        },
+        "curvature": {
+          "0.01": -0.008413689203200977,
+          "0.1": -0.002115375033917387,
+          "0.5": 0.00021602000303783678,
+          "0.9": 0.0033891185644666236,
+          "0.99": 0.012973831408547952
+        }
+      },
+      "support": {
+        "nonoverlap_total": 1566,
+        "by_year": {
+          "2020": 344,
+          "2021": 637,
+          "2022": 367,
+          "2023": 218
+        },
+        "2023_h1": 139,
+        "2023_h2": 79,
+        "long_share": 0.4891443167305236,
+        "short_share": 0.5108556832694764,
+        "continuation_share": 0.6379310344827587,
+        "fade_share": 0.3620689655172414,
+        "passes_support": true
+      }
+    },
+    {
+      "candidate": {
+        "name": "mfic_slow",
+        "window_bars": 24,
+        "segment_bars": 6,
+        "continuation_hold_bars": 6,
+        "fade_hold_bars": 12
+      },
+      "raw_signal_count": 4948,
+      "raw_continuation_count": 3036,
+      "raw_fade_count": 1912,
+      "mechanism_count": 17920,
+      "mechanism_feature_quantiles": {
+        "hidden_metaorder": {
+          "0.01": 0.015061649207022436,
+          "0.1": 0.01854619866296153,
+          "0.5": 0.024777624173354773,
+          "0.9": 0.04491968712779207,
+          "0.99": 0.061653986525377624
+        },
+        "relative_hidden_metaorder_strength": {
+          "0.01": 1.001401699611223,
+          "0.1": 1.0149761712084246,
+          "0.5": 1.0988361609087334,
+          "0.9": 1.3238208265909013,
+          "0.99": 1.6165841515863664
+        },
+        "curvature": {
+          "0.01": -0.009469473995858957,
+          "0.1": -0.0022568976723353973,
+          "0.5": 0.00014125200563331195,
+          "0.9": 0.003210665963897504,
+          "0.99": 0.013560855356747281
+        }
+      },
+      "support": {
+        "nonoverlap_total": 1635,
+        "by_year": {
+          "2020": 290,
+          "2021": 646,
+          "2022": 456,
+          "2023": 243
+        },
+        "2023_h1": 164,
+        "2023_h2": 79,
+        "long_share": 0.4929663608562691,
+        "short_share": 0.5070336391437309,
+        "continuation_share": 0.6048929663608563,
+        "fade_share": 0.39510703363914373,
+        "passes_support": true
+      }
+    }
+  ],
+  "all_candidates_pass_support": true
+}
