@@ -1,0 +1,1472 @@
+{
+  "protocol": {
+    "name": "CSPR-12 frozen pre-2024 selection evaluation",
+    "preregistration_commit": "b45fca0eeecc942df3f37b9f057697a117871cc1",
+    "support_commit": "f91661530bbe740dc7b6182ed321dadb3f4dc600",
+    "evaluation_source_commit": "04baee67f25c8d26301e5b50ec646444261ba3e9",
+    "evaluation_source_sha256": "3bedf229b600e293ccbcff2d5598bf971eefa48ea79b18f143263c3f26fedece",
+    "evaluation_freeze_manifest_sha256": "3fbe0ed6e5eb5c4f473575ef4affb64a658177ae42053f6669891bb535a712ff",
+    "outcomes_opened_for_cspr12": true,
+    "opened_windows": [
+      "train",
+      "select2023",
+      "select2023_h1",
+      "select2023_h2"
+    ],
+    "sealed_windows": [
+      "test2024",
+      "eval2025",
+      "ytd2026"
+    ],
+    "signal_parameters_mutable": false,
+    "primary_clock_replayed_from_freeze": true,
+    "control_clocks_reserved_before_return_slicing": true,
+    "entry": "next 5m open after completed Spot and USD-M bars",
+    "exit": "scheduled open 12 completed 5m bars after entry",
+    "cost_multiplier": "(1-0.0003)*(1+0.5*r)*(1-0.0003)",
+    "strict_mdd": "held path, favorable extreme first then adverse; exit-bar high/low excluded",
+    "cagr": "full wall-clock split including idle cash",
+    "control_actions": {
+      "direction_flip": "negative primary side on exact primary clock",
+      "signal_delay_1bar": "primary side and signal shifted one 5m bar",
+      "no_centroid": "Spot taker-flow side on no-centroid clock",
+      "no_perp_event_confirmation": "Spot taker-flow side without USD-M event-count confirmation",
+      "spot_only": "Spot taker-flow side using Spot-only quarantine",
+      "perp_only": "USD-M price-return side using USD-M-only quarantine",
+      "role_swap": "USD-M price-return side on role-swapped clock",
+      "spot_lag_1h": "Spot taker-flow side stale by 12 bars",
+      "spot_lag_24h": "Spot taker-flow side stale by 288 bars"
+    }
+  },
+  "evaluation_config": {
+    "output": "results/cash_sponsored_perp_rejection_selection_2026-07-14.json",
+    "leverage": 0.5,
+    "fee_rate": 0.0005,
+    "slippage_rate": 0.0001,
+    "cluster_permutations": 100000,
+    "cluster_seed": 20260714
+  },
+  "signal_config": {
+    "spot_features": "data/binance_spot_kline_microstructure_btc_2020_2023/BTCUSDT_spot_kline_microstructure_5m_2020-01_2023-12.csv.gz",
+    "spot_manifest": "data/binance_spot_kline_microstructure_btc_2020_2023/build_manifest.json",
+    "perp_features": "data/binance_um_aggtrade_microstructure_btc_2020_2023/BTCUSDT_aggtrade_5m_2020-01-01_2023-12-31.csv.gz",
+    "perp_manifest": "data/binance_um_aggtrade_microstructure_btc_2020_2023/build_manifest.json",
+    "market": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "market_manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+    "output": "results/cash_sponsored_perp_rejection_support_2026-07-14.json",
+    "baseline_bars": 8640,
+    "baseline_min_periods": 2016,
+    "post_gap_quarantine_bars": 24,
+    "hold_bars": 12,
+    "minimum_perp_agg_trade_count": 64,
+    "minimum_nonoverlap_total": 300,
+    "minimum_nonoverlap_per_year": 40,
+    "minimum_nonoverlap_per_2023_half": 30,
+    "minimum_side_share": 0.25,
+    "maximum_centroid_ablation_retention": 0.8,
+    "maximum_perp_event_ablation_retention": 0.8,
+    "maximum_lag_placebo_jaccard": 0.25
+  },
+  "source": {
+    "feature_sha256": "c2bb0e6742f8cdc4e13315e7f0a13d6ab9cd536fb40d9cb4484b7a6ba30131cf",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "source_gap_days": [
+      "2020-04-15",
+      "2021-02-09",
+      "2021-02-24",
+      "2021-05-19",
+      "2022-09-06"
+    ],
+    "missing_feature_bars": 36,
+    "quarantined_bars": 1682,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00",
+    "spot_feature_sha256": "d558239fa7085083aa002b7898b632df0774425719467709680ecb99718035a9",
+    "spot_manifest_sha256": "69fbce64b4860eecbf1ce414ea719b5c4001852016fe439e61240e050b39b57b",
+    "spot_missing_or_incomplete_bars": 509,
+    "spot_quarantined_bars": 893,
+    "joint_quarantined_bars": 2575
+  },
+  "global_clock_counts": {
+    "primary": 850,
+    "direction_flip": 850,
+    "signal_delay_1bar": 850,
+    "no_centroid": 1908,
+    "no_perp_event_confirmation": 1274,
+    "spot_only": 24017,
+    "perp_only": 8487,
+    "role_swap": 171,
+    "spot_lag_1h": 931,
+    "spot_lag_24h": 900
+  },
+  "windows": {
+    "train": {
+      "primary": {
+        "absolute_return_pct": -48.718889853254645,
+        "cagr_pct": -19.953712838834047,
+        "strict_mdd_pct": 48.78209503116755,
+        "cagr_to_strict_mdd": -0.409037636167232,
+        "trade_count": 763,
+        "long_count": 217,
+        "short_count": 546,
+        "wall_clock_years": 3.0006844626967832,
+        "trade_statistics": {
+          "n_trades": 763,
+          "mean_trade_ret_pct": -0.08699965781219836,
+          "std_trade_ret_pct": 0.3125571811919332,
+          "t_stat_like": -7.688654254926973,
+          "p_value_mean_ret_approx": 1.4876988529977098e-14,
+          "ci95_mean_trade_ret_pct": [
+            -0.10917770401614076,
+            -0.06482161160825596
+          ],
+          "effect_size_d": -0.2783479729386673,
+          "n_required_for_80pct_power_alpha5pct": 102,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0008699965781219836,
+          "cluster_count": 151,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 850,
+        "split_clock_count": 763
+      },
+      "direction_flip": {
+        "absolute_return_pct": -22.539333249588868,
+        "cagr_pct": -8.15923119608506,
+        "strict_mdd_pct": 28.941727291606256,
+        "cagr_to_strict_mdd": -0.28191928953913603,
+        "trade_count": 763,
+        "long_count": 546,
+        "short_count": 217,
+        "wall_clock_years": 3.0006844626967832,
+        "trade_statistics": {
+          "n_trades": 763,
+          "mean_trade_ret_pct": -0.03298234218778883,
+          "std_trade_ret_pct": 0.31255718119193265,
+          "t_stat_like": -2.9148370462216255,
+          "p_value_mean_ret_approx": 0.0035587430537260545,
+          "ci95_mean_trade_ret_pct": [
+            -0.05516038839173121,
+            -0.010804295983846466
+          ],
+          "effect_size_d": -0.10552418620494051,
+          "n_required_for_80pct_power_alpha5pct": 705,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.998690013099869,
+          "observed_mean_return": -0.00032982342187788834,
+          "cluster_count": 151,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 850,
+        "split_clock_count": 763
+      },
+      "signal_delay_1bar": {
+        "absolute_return_pct": -48.21979199894534,
+        "cagr_pct": -19.694924111736366,
+        "strict_mdd_pct": 48.29943958140988,
+        "cagr_to_strict_mdd": -0.4077671352384968,
+        "trade_count": 763,
+        "long_count": 217,
+        "short_count": 546,
+        "wall_clock_years": 3.0006844626967832,
+        "trade_statistics": {
+          "n_trades": 763,
+          "mean_trade_ret_pct": -0.08571823993648259,
+          "std_trade_ret_pct": 0.3165472682781507,
+          "t_stat_like": -7.479919845208737,
+          "p_value_mean_ret_approx": 7.438494264988549e-14,
+          "ci95_mean_trade_ret_pct": [
+            -0.10817940980892757,
+            -0.0632570700640376
+          ],
+          "effect_size_d": -0.2707912799334657,
+          "n_required_for_80pct_power_alpha5pct": 108,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0008571823993648259,
+          "cluster_count": 151,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 850,
+        "split_clock_count": 763
+      },
+      "no_centroid": {
+        "absolute_return_pct": -73.59868561240258,
+        "cagr_pct": -35.841752524171525,
+        "strict_mdd_pct": 73.7302542563651,
+        "cagr_to_strict_mdd": -0.4861200179718263,
+        "trade_count": 1699,
+        "long_count": 658,
+        "short_count": 1041,
+        "wall_clock_years": 3.0006844626967832,
+        "trade_statistics": {
+          "n_trades": 1699,
+          "mean_trade_ret_pct": -0.07784038031264584,
+          "std_trade_ret_pct": 0.31987017351779434,
+          "t_stat_like": -10.030622650011736,
+          "p_value_mean_ret_approx": 0.0,
+          "ci95_mean_trade_ret_pct": [
+            -0.09305051738350925,
+            -0.06263024324178242
+          ],
+          "effect_size_d": -0.2433499174261572,
+          "n_required_for_80pct_power_alpha5pct": 133,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0007784038031264572,
+          "cluster_count": 156,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 1908,
+        "split_clock_count": 1699
+      },
+      "no_perp_event_confirmation": {
+        "absolute_return_pct": -59.138938737271495,
+        "cagr_pct": -25.789372972197132,
+        "strict_mdd_pct": 59.192318834055826,
+        "cagr_to_strict_mdd": -0.43568783045139675,
+        "trade_count": 1070,
+        "long_count": 316,
+        "short_count": 754,
+        "wall_clock_years": 3.0006844626967832,
+        "trade_statistics": {
+          "n_trades": 1070,
+          "mean_trade_ret_pct": -0.08307680790870943,
+          "std_trade_ret_pct": 0.32556152419097273,
+          "t_stat_like": -8.347157668237942,
+          "p_value_mean_ret_approx": 0.0,
+          "ci95_mean_trade_ret_pct": [
+            -0.10258411206814355,
+            -0.0635695037492753
+          ],
+          "effect_size_d": -0.25518005579792347,
+          "n_required_for_80pct_power_alpha5pct": 121,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0008307680790870943,
+          "cluster_count": 154,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 1274,
+        "split_clock_count": 1070
+      },
+      "spot_only": {
+        "absolute_return_pct": -99.99964205666689,
+        "cagr_pct": -98.46884606462504,
+        "strict_mdd_pct": 99.99964761575045,
+        "cagr_to_strict_mdd": -0.9846919305455203,
+        "trade_count": 17789,
+        "long_count": 6550,
+        "short_count": 11239,
+        "wall_clock_years": 3.0006844626967832,
+        "trade_statistics": {
+          "n_trades": 17789,
+          "mean_trade_ret_pct": -0.0696690741698522,
+          "std_trade_ret_pct": 0.4005822760487042,
+          "t_stat_like": -23.196586292573752,
+          "p_value_mean_ret_approx": 0.0,
+          "ci95_mean_trade_ret_pct": [
+            -0.07555577593064647,
+            -0.06378237240905792
+          ],
+          "effect_size_d": -0.17391951250829077,
+          "n_required_for_80pct_power_alpha5pct": 260,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0006966907416985209,
+          "cluster_count": 156,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 24017,
+        "split_clock_count": 17789
+      },
+      "perp_only": {
+        "absolute_return_pct": -98.73603742392721,
+        "cagr_pct": -76.69822141134622,
+        "strict_mdd_pct": 98.74473124998683,
+        "cagr_to_strict_mdd": -0.7767322918442442,
+        "trade_count": 7105,
+        "long_count": 3639,
+        "short_count": 3466,
+        "wall_clock_years": 3.0006844626967832,
+        "trade_statistics": {
+          "n_trades": 7105,
+          "mean_trade_ret_pct": -0.06086538284571034,
+          "std_trade_ret_pct": 0.35613781184473503,
+          "t_stat_like": -14.405698238562389,
+          "p_value_mean_ret_approx": 0.0,
+          "ci95_mean_trade_ret_pct": [
+            -0.06914656077974829,
+            -0.05258420491167238
+          ],
+          "effect_size_d": -0.17090401754994144,
+          "n_required_for_80pct_power_alpha5pct": 269,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0006086538284571034,
+          "cluster_count": 156,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 8487,
+        "split_clock_count": 7105
+      },
+      "role_swap": {
+        "absolute_return_pct": -10.700869278896619,
+        "cagr_pct": -3.7015091606490413,
+        "strict_mdd_pct": 11.063644849772869,
+        "cagr_to_strict_mdd": -0.33456507425082715,
+        "trade_count": 153,
+        "long_count": 83,
+        "short_count": 70,
+        "wall_clock_years": 3.0006844626967832,
+        "trade_statistics": {
+          "n_trades": 153,
+          "mean_trade_ret_pct": -0.07346956752588962,
+          "std_trade_ret_pct": 0.30910374572196636,
+          "t_stat_like": -2.9400108349075067,
+          "p_value_mean_ret_approx": 0.0032820076993500535,
+          "ci95_mean_trade_ret_pct": [
+            -0.12244909870345885,
+            -0.024490036348320365
+          ],
+          "effect_size_d": -0.23768578848596114,
+          "n_required_for_80pct_power_alpha5pct": 139,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.99880001199988,
+          "observed_mean_return": -0.0007346956752588962,
+          "cluster_count": 84,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 171,
+        "split_clock_count": 153
+      },
+      "spot_lag_1h": {
+        "absolute_return_pct": -52.487907333929265,
+        "cagr_pct": -21.964426401226778,
+        "strict_mdd_pct": 52.68112293857017,
+        "cagr_to_strict_mdd": -0.41693162894114494,
+        "trade_count": 774,
+        "long_count": 283,
+        "short_count": 491,
+        "wall_clock_years": 3.0006844626967832,
+        "trade_statistics": {
+          "n_trades": 774,
+          "mean_trade_ret_pct": -0.09538818690444222,
+          "std_trade_ret_pct": 0.37703370094974226,
+          "t_stat_like": -7.038577602749236,
+          "p_value_mean_ret_approx": 1.942002114674324e-12,
+          "ci95_mean_trade_ret_pct": [
+            -0.12195049208662571,
+            -0.0688258817222587
+          ],
+          "effect_size_d": -0.25299644743735317,
+          "n_required_for_80pct_power_alpha5pct": 123,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0009538818690444221,
+          "cluster_count": 153,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 931,
+        "split_clock_count": 774
+      },
+      "spot_lag_24h": {
+        "absolute_return_pct": -38.468465015300325,
+        "cagr_pct": -14.94197674465676,
+        "strict_mdd_pct": 39.03601523172987,
+        "cagr_to_strict_mdd": -0.38277412937659133,
+        "trade_count": 754,
+        "long_count": 285,
+        "short_count": 469,
+        "wall_clock_years": 3.0006844626967832,
+        "trade_statistics": {
+          "n_trades": 754,
+          "mean_trade_ret_pct": -0.06372943203430366,
+          "std_trade_ret_pct": 0.3619474162992862,
+          "t_stat_like": -4.834819222200296,
+          "p_value_mean_ret_approx": 1.3326668806268316e-06,
+          "ci95_mean_trade_ret_pct": [
+            -0.08956487303976685,
+            -0.03789399102884047
+          ],
+          "effect_size_d": -0.1760737310571302,
+          "n_required_for_80pct_power_alpha5pct": 254,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0006372943203430365,
+          "cluster_count": 153,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 900,
+        "split_clock_count": 754
+      }
+    },
+    "select2023": {
+      "primary": {
+        "absolute_return_pct": -5.741354971807966,
+        "cagr_pct": -5.745172217234817,
+        "strict_mdd_pct": 5.741354971807966,
+        "cagr_to_strict_mdd": -1.000664868388315,
+        "trade_count": 87,
+        "long_count": 45,
+        "short_count": 42,
+        "wall_clock_years": 0.999315537303217,
+        "trade_statistics": {
+          "n_trades": 87,
+          "mean_trade_ret_pct": -0.06784524991336302,
+          "std_trade_ret_pct": 0.13821248864577218,
+          "t_stat_like": -4.578590322002972,
+          "p_value_mean_ret_approx": 4.681200215239656e-06,
+          "ci95_mean_trade_ret_pct": [
+            -0.09688840085682172,
+            -0.03880209896990432
+          ],
+          "effect_size_d": -0.4908764076106401,
+          "n_required_for_80pct_power_alpha5pct": 33,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.999990000099999,
+          "observed_mean_return": -0.0006784524991336302,
+          "cluster_count": 39,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 850,
+        "split_clock_count": 87
+      },
+      "direction_flip": {
+        "absolute_return_pct": -4.443552764251512,
+        "cagr_pct": -4.446527602372918,
+        "strict_mdd_pct": 5.1020780885022265,
+        "cagr_to_strict_mdd": -0.8715130433603864,
+        "trade_count": 87,
+        "long_count": 42,
+        "short_count": 45,
+        "wall_clock_years": 0.999315537303217,
+        "trade_statistics": {
+          "n_trades": 87,
+          "mean_trade_ret_pct": -0.05213675008662125,
+          "std_trade_ret_pct": 0.13821248864577276,
+          "t_stat_like": -3.518489793642472,
+          "p_value_mean_ret_approx": 0.0004340105101774405,
+          "ci95_mean_trade_ret_pct": [
+            -0.08117990103008008,
+            -0.023093599143162412
+          ],
+          "effect_size_d": -0.37722170114629394,
+          "n_required_for_80pct_power_alpha5pct": 56,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.997080029199708,
+          "observed_mean_return": -0.0005213675008662124,
+          "cluster_count": 39,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 850,
+        "split_clock_count": 87
+      },
+      "signal_delay_1bar": {
+        "absolute_return_pct": -5.130214146459233,
+        "cagr_pct": -5.1336362139984715,
+        "strict_mdd_pct": 5.142601125435298,
+        "cagr_to_strict_mdd": -0.998256735994459,
+        "trade_count": 87,
+        "long_count": 45,
+        "short_count": 42,
+        "wall_clock_years": 0.999315537303217,
+        "trade_statistics": {
+          "n_trades": 87,
+          "mean_trade_ret_pct": -0.060427735595544055,
+          "std_trade_ret_pct": 0.13365715997326535,
+          "t_stat_like": -4.2170011343365905,
+          "p_value_mean_ret_approx": 2.4757273027420368e-05,
+          "ci95_mean_trade_ret_pct": [
+            -0.08851365684486305,
+            -0.03234181434622506
+          ],
+          "effect_size_d": -0.45210997755474575,
+          "n_required_for_80pct_power_alpha5pct": 39,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.999980000199998,
+          "observed_mean_return": -0.0006042773559554405,
+          "cluster_count": 39,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 850,
+        "split_clock_count": 87
+      },
+      "no_centroid": {
+        "absolute_return_pct": -12.767976051643625,
+        "cagr_pct": -12.77613716227014,
+        "strict_mdd_pct": 12.795206032176642,
+        "cagr_to_strict_mdd": -0.9985096863732754,
+        "trade_count": 209,
+        "long_count": 88,
+        "short_count": 121,
+        "wall_clock_years": 0.999315537303217,
+        "trade_statistics": {
+          "n_trades": 209,
+          "mean_trade_ret_pct": -0.06523777028879439,
+          "std_trade_ret_pct": 0.1411685114954263,
+          "t_stat_like": -6.6808914704920275,
+          "p_value_mean_ret_approx": 2.37494468535715e-11,
+          "ci95_mean_trade_ret_pct": [
+            -0.08437683733258519,
+            -0.04609870324500359
+          ],
+          "effect_size_d": -0.46212692616588236,
+          "n_required_for_80pct_power_alpha5pct": 37,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0006523777028879439,
+          "cluster_count": 52,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 1908,
+        "split_clock_count": 209
+      },
+      "no_perp_event_confirmation": {
+        "absolute_return_pct": -13.969617483959663,
+        "cagr_pct": -13.97848344010596,
+        "strict_mdd_pct": 14.128404844753263,
+        "cagr_to_strict_mdd": -0.9893886531215179,
+        "trade_count": 204,
+        "long_count": 97,
+        "short_count": 107,
+        "wall_clock_years": 0.999315537303217,
+        "trade_statistics": {
+          "n_trades": 204,
+          "mean_trade_ret_pct": -0.07365643843162842,
+          "std_trade_ret_pct": 0.12352869434941735,
+          "t_stat_like": -8.516437191069985,
+          "p_value_mean_ret_approx": 0.0,
+          "ci95_mean_trade_ret_pct": [
+            -0.09060796594096872,
+            -0.05670491092228812
+          ],
+          "effect_size_d": -0.5962698692765372,
+          "n_required_for_80pct_power_alpha5pct": 23,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0007365643843162842,
+          "cluster_count": 50,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 1274,
+        "split_clock_count": 204
+      },
+      "spot_only": {
+        "absolute_return_pct": -97.60864272077563,
+        "cagr_pct": -97.6147497558891,
+        "strict_mdd_pct": 97.61404585640918,
+        "cagr_to_strict_mdd": -1.0000072110470757,
+        "trade_count": 6227,
+        "long_count": 3113,
+        "short_count": 3114,
+        "wall_clock_years": 0.999315537303217,
+        "trade_statistics": {
+          "n_trades": 6227,
+          "mean_trade_ret_pct": -0.05969987105205487,
+          "std_trade_ret_pct": 0.21720454351132906,
+          "t_stat_like": -21.68921931850841,
+          "p_value_mean_ret_approx": 0.0,
+          "ci95_mean_trade_ret_pct": [
+            -0.06509479769942277,
+            -0.05430494440468698
+          ],
+          "effect_size_d": -0.27485553518792305,
+          "n_required_for_80pct_power_alpha5pct": 104,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0005969987105205474,
+          "cluster_count": 53,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 24017,
+        "split_clock_count": 6227
+      },
+      "perp_only": {
+        "absolute_return_pct": -50.955475272512786,
+        "cagr_pct": -50.979401873484285,
+        "strict_mdd_pct": 51.020954531207664,
+        "cagr_to_strict_mdd": -0.9991855766301283,
+        "trade_count": 1382,
+        "long_count": 759,
+        "short_count": 623,
+        "wall_clock_years": 0.999315537303217,
+        "trade_statistics": {
+          "n_trades": 1382,
+          "mean_trade_ret_pct": -0.0513905051260761,
+          "std_trade_ret_pct": 0.1719739316202521,
+          "t_stat_like": -11.108982634516725,
+          "p_value_mean_ret_approx": 0.0,
+          "ci95_mean_trade_ret_pct": [
+            -0.06045752713528739,
+            -0.04232348311686481
+          ],
+          "effect_size_d": -0.2988272969158787,
+          "n_required_for_80pct_power_alpha5pct": 88,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.000513905051260761,
+          "cluster_count": 53,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 8487,
+        "split_clock_count": 1382
+      },
+      "role_swap": {
+        "absolute_return_pct": 0.03929336106831549,
+        "cagr_pct": 0.039320279619814436,
+        "strict_mdd_pct": 0.7707456390643963,
+        "cagr_to_strict_mdd": 0.05101589633065598,
+        "trade_count": 18,
+        "long_count": 9,
+        "short_count": 9,
+        "wall_clock_years": 0.999315537303217,
+        "trade_statistics": {
+          "n_trades": 18,
+          "mean_trade_ret_pct": 0.0022366105293140466,
+          "std_trade_ret_pct": 0.10701951092257533,
+          "t_stat_like": 0.08866733505979309,
+          "p_value_mean_ret_approx": 0.9293462931002372,
+          "ci95_mean_trade_ret_pct": [
+            -0.04720388110719821,
+            0.05167710216582631
+          ],
+          "effect_size_d": 0.020899091296839804,
+          "n_required_for_80pct_power_alpha5pct": 17971,
+          "n_gap_to_power_rule": 17953
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.46783532164678354,
+          "observed_mean_return": 2.2366105293140464e-05,
+          "cluster_count": 15,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 171,
+        "split_clock_count": 18
+      },
+      "spot_lag_1h": {
+        "absolute_return_pct": -7.828728793058315,
+        "cagr_pct": -7.833875196199691,
+        "strict_mdd_pct": 8.187131159651207,
+        "cagr_to_strict_mdd": -0.9568522897016144,
+        "trade_count": 157,
+        "long_count": 82,
+        "short_count": 75,
+        "wall_clock_years": 0.999315537303217,
+        "trade_statistics": {
+          "n_trades": 157,
+          "mean_trade_ret_pct": -0.051796232546011095,
+          "std_trade_ret_pct": 0.15226118682265116,
+          "t_stat_like": -4.262444994303774,
+          "p_value_mean_ret_approx": 2.022022805947543e-05,
+          "ci95_mean_trade_ret_pct": [
+            -0.075613693164471,
+            -0.02797877192755118
+          ],
+          "effect_size_d": -0.3401801445718511,
+          "n_required_for_80pct_power_alpha5pct": 68,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.999920000799992,
+          "observed_mean_return": -0.000517962325460111,
+          "cluster_count": 49,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 931,
+        "split_clock_count": 157
+      },
+      "spot_lag_24h": {
+        "absolute_return_pct": -8.53434507719747,
+        "cagr_pct": -8.539933498091424,
+        "strict_mdd_pct": 8.935059928220168,
+        "cagr_to_strict_mdd": -0.9557779764989833,
+        "trade_count": 146,
+        "long_count": 77,
+        "short_count": 69,
+        "wall_clock_years": 0.999315537303217,
+        "trade_statistics": {
+          "n_trades": 146,
+          "mean_trade_ret_pct": -0.06095762812897029,
+          "std_trade_ret_pct": 0.15814254817214807,
+          "t_stat_like": -4.657531016395693,
+          "p_value_mean_ret_approx": 3.2002422067911596e-06,
+          "ci95_mean_trade_ret_pct": [
+            -0.08661005013371754,
+            -0.03530520612422303
+          ],
+          "effect_size_d": -0.3854600095517248,
+          "n_required_for_80pct_power_alpha5pct": 53,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0006095762812897029,
+          "cluster_count": 51,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 900,
+        "split_clock_count": 146
+      }
+    },
+    "select2023_h1": {
+      "primary": {
+        "absolute_return_pct": -1.8101008304993171,
+        "cagr_pct": -3.6190547283743157,
+        "strict_mdd_pct": 2.04912759670528,
+        "cagr_to_strict_mdd": -1.7661441552948025,
+        "trade_count": 41,
+        "long_count": 20,
+        "short_count": 21,
+        "wall_clock_years": 0.49555099247091033,
+        "trade_statistics": {
+          "n_trades": 41,
+          "mean_trade_ret_pct": -0.04439838591092784,
+          "std_trade_ret_pct": 0.17235163662894232,
+          "t_stat_like": -1.649467254791474,
+          "p_value_mean_ret_approx": 0.09905194626383951,
+          "ci95_mean_trade_ret_pct": [
+            -0.09715532069252783,
+            0.008358548870672153
+          ],
+          "effect_size_d": -0.2576035062928564,
+          "n_required_for_80pct_power_alpha5pct": 119,
+          "n_gap_to_power_rule": 78
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.9684603153968461,
+          "observed_mean_return": -0.0004439838591092784,
+          "cluster_count": 22,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 850,
+        "split_clock_count": 41
+      },
+      "direction_flip": {
+        "absolute_return_pct": -3.0583086003783566,
+        "cagr_pct": -6.075482530436949,
+        "strict_mdd_pct": 3.4166006496673007,
+        "cagr_to_strict_mdd": -1.7782243678460234,
+        "trade_count": 41,
+        "long_count": 21,
+        "short_count": 20,
+        "wall_clock_years": 0.49555099247091033,
+        "trade_statistics": {
+          "n_trades": 41,
+          "mean_trade_ret_pct": -0.07558361408905542,
+          "std_trade_ret_pct": 0.1723516366289439,
+          "t_stat_like": -2.808045695373025,
+          "p_value_mean_ret_approx": 0.004984315373798731,
+          "ci95_mean_trade_ret_pct": [
+            -0.12834054887065588,
+            -0.022826679307454946
+          ],
+          "effect_size_d": -0.43854305980151204,
+          "n_required_for_80pct_power_alpha5pct": 41,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.986760132398676,
+          "observed_mean_return": -0.0007558361408905542,
+          "cluster_count": 22,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 850,
+        "split_clock_count": 41
+      },
+      "signal_delay_1bar": {
+        "absolute_return_pct": -1.2385620406787479,
+        "cagr_pct": -2.483608621702471,
+        "strict_mdd_pct": 1.5881470647317375,
+        "cagr_to_strict_mdd": -1.5638404508350685,
+        "trade_count": 41,
+        "long_count": 20,
+        "short_count": 21,
+        "wall_clock_years": 0.49555099247091033,
+        "trade_statistics": {
+          "n_trades": 41,
+          "mean_trade_ret_pct": -0.030268326609738133,
+          "std_trade_ret_pct": 0.15980205516487664,
+          "t_stat_like": -1.2128245506065705,
+          "p_value_mean_ret_approx": 0.22519690690345318,
+          "ci95_mean_trade_ret_pct": [
+            -0.07918382731049162,
+            0.018647174091015354
+          ],
+          "effect_size_d": -0.1894113725790862,
+          "n_required_for_80pct_power_alpha5pct": 219,
+          "n_gap_to_power_rule": 178
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.9399206007939921,
+          "observed_mean_return": -0.0003026832660973813,
+          "cluster_count": 22,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 850,
+        "split_clock_count": 41
+      },
+      "no_centroid": {
+        "absolute_return_pct": -5.266406660923284,
+        "cagr_pct": -10.342601675925845,
+        "strict_mdd_pct": 5.325420886584253,
+        "cagr_to_strict_mdd": -1.9421191106191857,
+        "trade_count": 93,
+        "long_count": 46,
+        "short_count": 47,
+        "wall_clock_years": 0.49555099247091033,
+        "trade_statistics": {
+          "n_trades": 93,
+          "mean_trade_ret_pct": -0.058053582026876833,
+          "std_trade_ret_pct": 0.14437622883831158,
+          "t_stat_like": -3.8777053189194866,
+          "p_value_mean_ret_approx": 0.00010544632842846013,
+          "ci95_mean_trade_ret_pct": [
+            -0.08739697236072111,
+            -0.028710191693032554
+          ],
+          "effect_size_d": -0.40209931021187456,
+          "n_required_for_80pct_power_alpha5pct": 49,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.998430015699843,
+          "observed_mean_return": -0.0005805358202687684,
+          "cluster_count": 27,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 1908,
+        "split_clock_count": 93
+      },
+      "no_perp_event_confirmation": {
+        "absolute_return_pct": -6.266464341012712,
+        "cagr_pct": -12.242276192140588,
+        "strict_mdd_pct": 6.433582570629815,
+        "cagr_to_strict_mdd": -1.90287076566457,
+        "trade_count": 101,
+        "long_count": 44,
+        "short_count": 57,
+        "wall_clock_years": 0.49555099247091033,
+        "trade_statistics": {
+          "n_trades": 101,
+          "mean_trade_ret_pct": -0.0639722094791786,
+          "std_trade_ret_pct": 0.12764793408403605,
+          "t_stat_like": -5.036609116217885,
+          "p_value_mean_ret_approx": 4.7385103751906854e-07,
+          "ci95_mean_trade_ret_pct": [
+            -0.08886704004592808,
+            -0.03907737891242913
+          ],
+          "effect_size_d": -0.5011613383187462,
+          "n_required_for_80pct_power_alpha5pct": 32,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.000639722094791786,
+          "cluster_count": 26,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 1274,
+        "split_clock_count": 101
+      },
+      "spot_only": {
+        "absolute_return_pct": -84.64983596720471,
+        "cagr_pct": -97.72169402696723,
+        "strict_mdd_pct": 84.75079152326805,
+        "cagr_to_strict_mdd": -1.1530475677048757,
+        "trade_count": 3158,
+        "long_count": 1273,
+        "short_count": 1885,
+        "wall_clock_years": 0.49555099247091033,
+        "trade_statistics": {
+          "n_trades": 3158,
+          "mean_trade_ret_pct": -0.05901935463511833,
+          "std_trade_ret_pct": 0.24732798030491576,
+          "t_stat_like": -13.40995338149056,
+          "p_value_mean_ret_approx": 0.0,
+          "ci95_mean_trade_ret_pct": [
+            -0.06764562885054547,
+            -0.0503930804196912
+          ],
+          "effect_size_d": -0.23862789225204897,
+          "n_required_for_80pct_power_alpha5pct": 138,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0005901935463511828,
+          "cluster_count": 27,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 24017,
+        "split_clock_count": 3158
+      },
+      "perp_only": {
+        "absolute_return_pct": -26.52314758040667,
+        "cagr_pct": -46.30946722918347,
+        "strict_mdd_pct": 26.86334300493837,
+        "cagr_to_strict_mdd": -1.7238907019379628,
+        "trade_count": 660,
+        "long_count": 371,
+        "short_count": 289,
+        "wall_clock_years": 0.49555099247091033,
+        "trade_statistics": {
+          "n_trades": 660,
+          "mean_trade_ret_pct": -0.04650953802758159,
+          "std_trade_ret_pct": 0.1879519653566687,
+          "t_stat_like": -6.357218260068155,
+          "p_value_mean_ret_approx": 2.0544010936873747e-10,
+          "ci95_mean_trade_ret_pct": [
+            -0.06084893787274007,
+            -0.03217013818242312
+          ],
+          "effect_size_d": -0.24745438516337065,
+          "n_required_for_80pct_power_alpha5pct": 129,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.00046509538027581594,
+          "cluster_count": 27,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 8487,
+        "split_clock_count": 660
+      },
+      "role_swap": {
+        "absolute_return_pct": 0.3184461923786852,
+        "cagr_pct": 0.6436519172584143,
+        "strict_mdd_pct": 0.6696477339761531,
+        "cagr_to_strict_mdd": 0.9611798630850522,
+        "trade_count": 9,
+        "long_count": 7,
+        "short_count": 2,
+        "wall_clock_years": 0.49555099247091033,
+        "trade_statistics": {
+          "n_trades": 9,
+          "mean_trade_ret_pct": 0.0353939649001964,
+          "std_trade_ret_pct": 0.1172495482852952,
+          "t_stat_like": 0.9056060023551147,
+          "p_value_mean_ret_approx": 0.36514443064208835,
+          "ci95_mean_trade_ret_pct": [
+            -0.04120907331286314,
+            0.11199700311325593
+          ],
+          "effect_size_d": 0.3018686674517049,
+          "n_required_for_80pct_power_alpha5pct": 87,
+          "n_gap_to_power_rule": 78
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.24958750412495875,
+          "observed_mean_return": 0.00035393964900196393,
+          "cluster_count": 6,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 171,
+        "split_clock_count": 9
+      },
+      "spot_lag_1h": {
+        "absolute_return_pct": -2.82382317096318,
+        "cagr_pct": -5.616463973695129,
+        "strict_mdd_pct": 3.083893646700908,
+        "cagr_to_strict_mdd": -1.8212249244404124,
+        "trade_count": 80,
+        "long_count": 38,
+        "short_count": 42,
+        "wall_clock_years": 0.49555099247091033,
+        "trade_statistics": {
+          "n_trades": 80,
+          "mean_trade_ret_pct": -0.035624228129202684,
+          "std_trade_ret_pct": 0.18859027866739653,
+          "t_stat_like": -1.689550411733469,
+          "p_value_mean_ret_approx": 0.09111399967108547,
+          "ci95_mean_trade_ret_pct": [
+            -0.07695089506280355,
+            0.0057024388043981685
+          ],
+          "effect_size_d": -0.18889747860243974,
+          "n_required_for_80pct_power_alpha5pct": 220,
+          "n_gap_to_power_rule": 140
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.952730472695273,
+          "observed_mean_return": -0.00035624228129202683,
+          "cluster_count": 24,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 931,
+        "split_clock_count": 80
+      },
+      "spot_lag_24h": {
+        "absolute_return_pct": -4.222219430477803,
+        "cagr_pct": -8.337197337568202,
+        "strict_mdd_pct": 4.495444809236371,
+        "cagr_to_strict_mdd": -1.8545878531171245,
+        "trade_count": 86,
+        "long_count": 34,
+        "short_count": 52,
+        "wall_clock_years": 0.49555099247091033,
+        "trade_statistics": {
+          "n_trades": 86,
+          "mean_trade_ret_pct": -0.05001672727119715,
+          "std_trade_ret_pct": 0.16405563423266123,
+          "t_stat_like": -2.8273094628894797,
+          "p_value_mean_ret_approx": 0.004694094069673138,
+          "ci95_mean_trade_ret_pct": [
+            -0.08469025230915248,
+            -0.01534320223324182
+          ],
+          "effect_size_d": -0.3048766200876965,
+          "n_required_for_80pct_power_alpha5pct": 85,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.997250027499725,
+          "observed_mean_return": -0.0005001672727119715,
+          "cluster_count": 26,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 900,
+        "split_clock_count": 86
+      }
+    },
+    "select2023_h2": {
+      "primary": {
+        "absolute_return_pct": -4.003725611859876,
+        "cagr_pct": -7.7908589010984075,
+        "strict_mdd_pct": 4.139371783917389,
+        "cagr_to_strict_mdd": -1.8821355770380572,
+        "trade_count": 46,
+        "long_count": 25,
+        "short_count": 21,
+        "wall_clock_years": 0.5037645448323066,
+        "trade_statistics": {
+          "n_trades": 46,
+          "mean_trade_ret_pct": -0.08874354174162144,
+          "std_trade_ret_pct": 0.09568444657268918,
+          "t_stat_like": -6.29034295041554,
+          "p_value_mean_ret_approx": 3.1676528067237086e-10,
+          "ci95_mean_trade_ret_pct": [
+            -0.11639502961512246,
+            -0.06109205386812041
+          ],
+          "effect_size_d": -0.9274604694944344,
+          "n_required_for_80pct_power_alpha5pct": 10,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0008874354174162143,
+          "cluster_count": 18,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 850,
+        "split_clock_count": 46
+      },
+      "direction_flip": {
+        "absolute_return_pct": -1.4289457341555512,
+        "cagr_pct": -2.816570136180374,
+        "strict_mdd_pct": 1.8684259459556651,
+        "cagr_to_strict_mdd": -1.507456124914681,
+        "trade_count": 46,
+        "long_count": 21,
+        "short_count": 25,
+        "wall_clock_years": 0.5037645448323066,
+        "trade_statistics": {
+          "n_trades": 46,
+          "mean_trade_ret_pct": -0.03123845825836517,
+          "std_trade_ret_pct": 0.09568444657268875,
+          "t_stat_like": -2.214252573550352,
+          "p_value_mean_ret_approx": 0.026811409125816255,
+          "ci95_mean_trade_ret_pct": [
+            -0.05888994613186607,
+            -0.0035869703848642677
+          ],
+          "effect_size_d": -0.32647373086527914,
+          "n_required_for_80pct_power_alpha5pct": 74,
+          "n_gap_to_power_rule": 28
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.9157108428915711,
+          "observed_mean_return": -0.0003123845825836517,
+          "cluster_count": 18,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 850,
+        "split_clock_count": 46
+      },
+      "signal_delay_1bar": {
+        "absolute_return_pct": -3.9404571117963694,
+        "cagr_pct": -7.670183016255261,
+        "strict_mdd_pct": 3.9557323844323533,
+        "cagr_to_strict_mdd": -1.9390045308527437,
+        "trade_count": 46,
+        "long_count": 25,
+        "short_count": 21,
+        "wall_clock_years": 0.5037645448323066,
+        "trade_statistics": {
+          "n_trades": 46,
+          "mean_trade_ret_pct": -0.0873089479524561,
+          "std_trade_ret_pct": 0.09936729726988344,
+          "t_stat_like": -5.959285517092752,
+          "p_value_mean_ret_approx": 2.5334312425684402e-09,
+          "ci95_mean_trade_ret_pct": [
+            -0.11602472897955779,
+            -0.05859316692535441
+          ],
+          "effect_size_d": -0.878648713925703,
+          "n_required_for_80pct_power_alpha5pct": 11,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.000873089479524561,
+          "cluster_count": 18,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 850,
+        "split_clock_count": 46
+      },
+      "no_centroid": {
+        "absolute_return_pct": -7.918594794425493,
+        "cagr_pct": -15.105540005302808,
+        "strict_mdd_pct": 7.923304583071933,
+        "cagr_to_strict_mdd": -1.9064696865971371,
+        "trade_count": 116,
+        "long_count": 42,
+        "short_count": 74,
+        "wall_clock_years": 0.5037645448323066,
+        "trade_statistics": {
+          "n_trades": 116,
+          "mean_trade_ret_pct": -0.0709975074298143,
+          "std_trade_ret_pct": 0.13890241543037465,
+          "t_stat_like": -5.505063064896124,
+          "p_value_mean_ret_approx": 3.690361394248498e-08,
+          "ci95_mean_trade_ret_pct": [
+            -0.09627516781662801,
+            -0.04571984704300059
+          ],
+          "effect_size_d": -0.5111322737609417,
+          "n_required_for_80pct_power_alpha5pct": 31,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.999960000399996,
+          "observed_mean_return": -0.000709975074298143,
+          "cluster_count": 26,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 1908,
+        "split_clock_count": 116
+      },
+      "no_perp_event_confirmation": {
+        "absolute_return_pct": -8.218139952569336,
+        "cagr_pct": -15.652865546909922,
+        "strict_mdd_pct": 8.553626263573577,
+        "cagr_to_strict_mdd": -1.8299683741817345,
+        "trade_count": 103,
+        "long_count": 53,
+        "short_count": 50,
+        "wall_clock_years": 0.5037645448323066,
+        "trade_statistics": {
+          "n_trades": 103,
+          "mean_trade_ret_pct": -0.08315262410344922,
+          "std_trade_ret_pct": 0.1192084051162231,
+          "t_stat_like": -7.079257243279167,
+          "p_value_mean_ret_approx": 1.4492851363456793e-12,
+          "ci95_mean_trade_ret_pct": [
+            -0.10617469232924903,
+            -0.06013055587764941
+          ],
+          "effect_size_d": -0.6975399429459606,
+          "n_required_for_80pct_power_alpha5pct": 17,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.999990000099999,
+          "observed_mean_return": -0.0008315262410344921,
+          "cluster_count": 25,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 1274,
+        "split_clock_count": 103
+      },
+      "spot_only": {
+        "absolute_return_pct": -84.41222171903722,
+        "cagr_pct": -97.50176777609573,
+        "strict_mdd_pct": 84.44377881297474,
+        "cagr_to_strict_mdd": -1.1546352987357624,
+        "trade_count": 3068,
+        "long_count": 1840,
+        "short_count": 1228,
+        "wall_clock_years": 0.5037645448323066,
+        "trade_statistics": {
+          "n_trades": 3068,
+          "mean_trade_ret_pct": -0.06040084375981622,
+          "std_trade_ret_pct": 0.18111781941705524,
+          "t_stat_like": -18.47181210493998,
+          "p_value_mean_ret_approx": 0.0,
+          "ci95_mean_trade_ret_pct": [
+            -0.06680983347326071,
+            -0.05399185404637173
+          ],
+          "effect_size_d": -0.33348923896180965,
+          "n_required_for_80pct_power_alpha5pct": 71,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0006040084375981617,
+          "cluster_count": 27,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 24017,
+        "split_clock_count": 3068
+      },
+      "perp_only": {
+        "absolute_return_pct": -33.25173423676894,
+        "cagr_pct": -55.176699523749114,
+        "strict_mdd_pct": 33.36418333150822,
+        "cagr_to_strict_mdd": -1.65377042127813,
+        "trade_count": 722,
+        "long_count": 388,
+        "short_count": 334,
+        "wall_clock_years": 0.5037645448323066,
+        "trade_statistics": {
+          "n_trades": 722,
+          "mean_trade_ret_pct": -0.05585233100558641,
+          "std_trade_ret_pct": 0.15594207579907815,
+          "t_stat_like": -9.623800044193414,
+          "p_value_mean_ret_approx": 0.0,
+          "ci95_mean_trade_ret_pct": [
+            -0.0672273147197378,
+            -0.044477347291435036
+          ],
+          "effect_size_d": -0.3581607511596084,
+          "n_required_for_80pct_power_alpha5pct": 62,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0005585233100558641,
+          "cluster_count": 27,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 8487,
+        "split_clock_count": 722
+      },
+      "role_swap": {
+        "absolute_return_pct": -0.2782667015944207,
+        "cagr_pct": -0.5516174644555782,
+        "strict_mdd_pct": 0.5006621779509834,
+        "cagr_to_strict_mdd": -1.101775785646791,
+        "trade_count": 9,
+        "long_count": 2,
+        "short_count": 7,
+        "wall_clock_years": 0.5037645448323066,
+        "trade_statistics": {
+          "n_trades": 9,
+          "mean_trade_ret_pct": -0.030920743841560898,
+          "std_trade_ret_pct": 0.09009366788459848,
+          "t_stat_like": -1.0296198800952625,
+          "p_value_mean_ret_approx": 0.3031884792555761,
+          "ci95_mean_trade_ret_pct": [
+            -0.08978194019283191,
+            0.027940452509710112
+          ],
+          "effect_size_d": -0.34320662669842084,
+          "n_required_for_80pct_power_alpha5pct": 67,
+          "n_gap_to_power_rule": 58
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.8348416515834841,
+          "observed_mean_return": -0.000309207438415609,
+          "cluster_count": 9,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 171,
+        "split_clock_count": 9
+      },
+      "spot_lag_1h": {
+        "absolute_return_pct": -5.150342177898526,
+        "cagr_pct": -9.964298561199636,
+        "strict_mdd_pct": 5.363980511319677,
+        "cagr_to_strict_mdd": -1.857631387767321,
+        "trade_count": 77,
+        "long_count": 44,
+        "short_count": 33,
+        "wall_clock_years": 0.5037645448323066,
+        "trade_statistics": {
+          "n_trades": 77,
+          "mean_trade_ret_pct": -0.06859831505698089,
+          "std_trade_ret_pct": 0.10027747268910242,
+          "t_stat_like": -6.002821526290104,
+          "p_value_mean_ret_approx": 1.9391772632104676e-09,
+          "ci95_mean_trade_ret_pct": [
+            -0.09099656510036969,
+            -0.046200065013592084
+          ],
+          "effect_size_d": -0.6840850015203439,
+          "n_required_for_80pct_power_alpha5pct": 17,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 0.999990000099999,
+          "observed_mean_return": -0.0006859831505698088,
+          "cluster_count": 26,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 931,
+        "split_clock_count": 77
+      },
+      "spot_lag_24h": {
+        "absolute_return_pct": -4.502219221492199,
+        "cagr_pct": -8.738926675453307,
+        "strict_mdd_pct": 4.827826905584487,
+        "cagr_to_strict_mdd": -1.8101159893170025,
+        "trade_count": 60,
+        "long_count": 43,
+        "short_count": 17,
+        "wall_clock_years": 0.5037645448323066,
+        "trade_statistics": {
+          "n_trades": 60,
+          "mean_trade_ret_pct": -0.07663958602511234,
+          "std_trade_ret_pct": 0.14920996724250493,
+          "t_stat_like": -3.9786060652781323,
+          "p_value_mean_ret_approx": 6.932048598007334e-05,
+          "ci95_mean_trade_ret_pct": [
+            -0.11439491694871287,
+            -0.03888425510151179
+          ],
+          "effect_size_d": -0.5136358343980675,
+          "n_required_for_80pct_power_alpha5pct": 30,
+          "n_gap_to_power_rule": 0
+        },
+        "weekly_cluster_sign_flip": {
+          "p_value_one_sided": 1.0,
+          "observed_mean_return": -0.0007663958602511234,
+          "cluster_count": 26,
+          "permutations": 100000,
+          "seed": 20260714
+        },
+        "global_clock_count": 900,
+        "split_clock_count": 60
+      }
+    }
+  },
+  "qualification": {
+    "qualifies": false,
+    "failures": [
+      "train: non-positive absolute return",
+      "train: CAGR/strict-MDD below 3",
+      "train: strict MDD above 15%",
+      "train: weekly-cluster p-value not below 0.10",
+      "select2023: non-positive absolute return",
+      "select2023: CAGR/strict-MDD below 3",
+      "select2023: weekly-cluster p-value not below 0.10",
+      "select2023_h1: non-positive absolute return",
+      "select2023_h2: non-positive absolute return",
+      "primary: minimum train/select ratio does not beat direction_flip",
+      "primary: minimum train/select ratio does not beat signal_delay_1bar",
+      "primary: minimum train/select ratio does not beat no_centroid",
+      "primary: minimum train/select ratio does not beat no_perp_event_confirmation",
+      "primary: minimum train/select ratio does not beat spot_only",
+      "primary: minimum train/select ratio does not beat perp_only",
+      "primary: minimum train/select ratio does not beat role_swap",
+      "primary: minimum train/select ratio does not beat spot_lag_1h",
+      "primary: minimum train/select ratio does not beat spot_lag_24h"
+    ],
+    "primary_min_train_select_ratio": -1.000664868388315,
+    "control_min_train_select_ratios": {
+      "direction_flip": -0.8715130433603864,
+      "signal_delay_1bar": -0.998256735994459,
+      "no_centroid": -0.9985096863732754,
+      "no_perp_event_confirmation": -0.9893886531215179,
+      "spot_only": -1.0000072110470757,
+      "perp_only": -0.9991855766301283,
+      "role_swap": -0.33456507425082715,
+      "spot_lag_1h": -0.9568522897016144,
+      "spot_lag_24h": -0.9557779764989833
+    }
+  },
+  "selection": {
+    "selected_alpha": null,
+    "rejected": true,
+    "reason": "CSPR-12 failed at least one frozen pre-2024 gate"
+  }
+}
