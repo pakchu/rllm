@@ -51,6 +51,13 @@ def test_preregistration_hashes_and_support_are_frozen() -> None:
     assert result["support"]["nonoverlap_total"] == 167
 
 
+def test_evaluator_source_is_frozen_before_outcomes() -> None:
+    freeze = evaluator.verify_evaluation_freeze()
+    assert freeze["outcomes_opened_for_cclh"] is False
+    assert freeze["opened_windows"] == []
+    assert freeze["evaluation_freeze_commit"].startswith("8ad4ebf")
+
+
 def test_frozen_signal_and_clv_overlap_replay_without_returns() -> None:
     preregistration = evaluator.verify_preregistration()
     cfg = evaluator.SignalConfig()
