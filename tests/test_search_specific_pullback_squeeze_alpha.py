@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from training.search_confirmed_pullback_squeeze_alpha import fit_confirmation_masks
 from training.search_specific_pullback_squeeze_alpha import fit_rule_masks, simulate_mask
 
 
@@ -117,3 +118,37 @@ def test_simulator_uses_next_bar_purges_period_exit_and_prevents_overlap() -> No
     assert result["trade_count"] == 2
     assert result["absolute_return_pct"] > 0.0
     assert result["strict_mdd_pct"] > 0.0
+
+
+def test_confirmation_thresholds_are_fit_only_on_candidate_history() -> None:
+    features, dates, decision = _feature_fixture()
+    features["bb_z"] = np.linspace(-2.0, 2.0, len(features))
+    features["quote_vol_z_1d"] = np.linspace(-1.0, 3.0, len(features))
+    base_active = np.ones(len(features), dtype=bool)
+    fit_end = dates.iloc[4_000]
+    original = fit_confirmation_masks(
+        features,
+        dates,
+        base_active,
+        fit_start=dates.iloc[0],
+        fit_end=fit_end,
+    )
+
+    changed = features.copy()
+    changed.loc[4_000:, ["bb_z", "quote_vol_z_1d"]] = 1_000_000.0
+    replay = fit_confirmation_masks(
+        changed,
+        dates,
+        base_active,
+        fit_start=dates.iloc[0],
+        fit_end=fit_end,
+    )
+
+    assert replay["thresholds"] == original["thresholds"]
+    np.testing.assert_array_equal(replay["active"][:4_000], original["active"][:4_000])
+    active_positions = np.flatnonzero(original["active"])
+    assert (features.loc[active_positions, "bb_z"] <= original["thresholds"]["bb_z_q"]).all()
+    assert (
+        features.loc[active_positions, "quote_vol_z_1d"]
+        <= original["thresholds"]["quote_vol_z_1d_q"]
+    ).all()
