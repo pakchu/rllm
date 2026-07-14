@@ -1,0 +1,212 @@
+{
+  "protocol": {
+    "name": "BIFT — Bayesian Impact-Flow Transition",
+    "support_only": true,
+    "outcomes_opened_for_bift": false,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "event_clock": "completed hourly BOCPD change event plus fixed 3h confirmation",
+    "signal_availability": "after the confirmation hour closes at :55; enter next 5m open",
+    "branch_rule": {
+      "propagation": "persistent flow and price alignment; follow reference flow",
+      "absorption": "persistent flow without price alignment; fade reference flow"
+    },
+    "candidate_clock": "fixed before any outcome; both branches share one event clock",
+    "holding_rule": "fixed 144 completed 5m bars; scheduled-open exit",
+    "source_gap_policy": "verified missing/full-gap day plus 24-bar quarantine; BOCPD posterior reset",
+    "sealed_windows": [
+      "test2024",
+      "eval2025",
+      "ytd2026"
+    ]
+  },
+  "config": {
+    "output": "results/bayesian_impact_flow_transition_support_2026-07-14.json",
+    "change_quantile": 0.925,
+    "minimum_abs_flow_imbalance": 0.02,
+    "robust_baseline_hours": 720,
+    "robust_min_periods": 168,
+    "change_baseline_hours": 4320,
+    "change_min_periods": 720,
+    "hazard_lambda_hours": 168.0,
+    "max_run_length_hours": 672,
+    "short_run_horizon_hours": 6,
+    "confirmation_hours": 3,
+    "hold_bars": 144,
+    "minimum_hour_bars": 12,
+    "minimum_nonoverlap_total": 250,
+    "minimum_nonoverlap_per_year": 40,
+    "minimum_nonoverlap_per_2023_half": 30,
+    "minimum_side_share": 0.25,
+    "minimum_branch_share": 0.25
+  },
+  "frozen_artifacts": {
+    "preregistration_source": "training/preregister_bayesian_impact_flow_transition.py",
+    "preregistration_source_sha256": "acd39e2c6b8bcf3cd6266b235c793c85b397ac646c10e52b7cb8d6404181cecc",
+    "preregistration_document": "docs/bayesian-impact-flow-transition-preregistration-2026-07-14.md",
+    "preregistration_document_sha256": "6b407f69081ebd74ad1b9c58f18736f8bb632e3e249d663045f010488246fa06",
+    "feature_manifest_sha256": "6eec40460a6146c58994e52f1af9ace4eecc0c085887d97af5ef17c30b9f7e73",
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e"
+  },
+  "source": {
+    "feature_sha256": "c2bb0e6742f8cdc4e13315e7f0a13d6ab9cd536fb40d9cb4484b7a6ba30131cf",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "source_gap_days": [
+      "2020-04-15",
+      "2021-02-09",
+      "2021-02-24",
+      "2021-05-19",
+      "2022-09-06"
+    ],
+    "missing_feature_bars": 36,
+    "quarantined_bars": 1682,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00"
+  },
+  "detector": {
+    "features": [
+      "flow_imbalance",
+      "impact_alignment",
+      "log_event_count"
+    ],
+    "hourly_rows": 35064,
+    "clean_hours": 34921,
+    "detector_available_hours": 34586,
+    "posterior_segment_count": 10,
+    "standardization": "strictly lagged rolling median and recursive MAD; clip [-12, 12]",
+    "bocpd": "multivariate independent-dimension Student-t predictive recursion"
+  },
+  "support_calibration": {
+    "outcomes_opened_for_bift": false,
+    "tested_change_quantiles": [
+      0.9,
+      0.925,
+      0.95,
+      0.975,
+      0.99
+    ],
+    "all_other_parameters_fixed": true,
+    "stopping_rule": "highest tested quantile passing every frozen support floor",
+    "selected_change_quantile": 0.925,
+    "further_support_repairs_allowed": false,
+    "trials": [
+      {
+        "change_quantile": 0.9,
+        "raw_setup_count": 706,
+        "raw_candidate_count": 366,
+        "nonoverlap_total": 323,
+        "by_year": {
+          "2020": 75,
+          "2021": 60,
+          "2022": 90,
+          "2023": 98
+        },
+        "2023_h1": 58,
+        "2023_h2": 39,
+        "long_share": 0.5356037151702786,
+        "short_share": 0.46439628482972134,
+        "propagation_share": 0.6842105263157895,
+        "absorption_share": 0.3157894736842105,
+        "passes_support": true
+      },
+      {
+        "change_quantile": 0.925,
+        "raw_setup_count": 571,
+        "raw_candidate_count": 299,
+        "nonoverlap_total": 272,
+        "by_year": {
+          "2020": 64,
+          "2021": 46,
+          "2022": 76,
+          "2023": 86
+        },
+        "2023_h1": 51,
+        "2023_h2": 34,
+        "long_share": 0.5367647058823529,
+        "short_share": 0.4632352941176471,
+        "propagation_share": 0.6985294117647058,
+        "absorption_share": 0.3014705882352941,
+        "passes_support": true
+      },
+      {
+        "change_quantile": 0.95,
+        "raw_setup_count": 420,
+        "raw_candidate_count": 226,
+        "nonoverlap_total": 216,
+        "by_year": {
+          "2020": 48,
+          "2021": 33,
+          "2022": 64,
+          "2023": 71
+        },
+        "2023_h1": 40,
+        "2023_h2": 30,
+        "long_share": 0.5694444444444444,
+        "short_share": 0.4305555555555556,
+        "propagation_share": 0.7037037037037037,
+        "absorption_share": 0.2962962962962963,
+        "passes_support": false
+      },
+      {
+        "change_quantile": 0.975,
+        "raw_setup_count": 254,
+        "raw_candidate_count": 146,
+        "nonoverlap_total": 143,
+        "by_year": {
+          "2020": 33,
+          "2021": 25,
+          "2022": 44,
+          "2023": 41
+        },
+        "2023_h1": 24,
+        "2023_h2": 16,
+        "long_share": 0.5594405594405595,
+        "short_share": 0.4405594405594406,
+        "propagation_share": 0.7272727272727273,
+        "absorption_share": 0.2727272727272727,
+        "passes_support": false
+      },
+      {
+        "change_quantile": 0.99,
+        "raw_setup_count": 109,
+        "raw_candidate_count": 63,
+        "nonoverlap_total": 62,
+        "by_year": {
+          "2020": 15,
+          "2021": 10,
+          "2022": 22,
+          "2023": 15
+        },
+        "2023_h1": 8,
+        "2023_h2": 6,
+        "long_share": 0.5645161290322581,
+        "short_share": 0.43548387096774194,
+        "propagation_share": 0.7580645161290323,
+        "absorption_share": 0.24193548387096775,
+        "passes_support": false
+      }
+    ]
+  },
+  "raw_setup_count": 571,
+  "raw_candidate_count": 299,
+  "scheduled_branch_counts": {
+    "propagation": 190,
+    "absorption": 82
+  },
+  "support": {
+    "nonoverlap_total": 272,
+    "by_year": {
+      "2020": 64,
+      "2021": 46,
+      "2022": 76,
+      "2023": 86
+    },
+    "2023_h1": 51,
+    "2023_h2": 34,
+    "long_share": 0.5367647058823529,
+    "short_share": 0.4632352941176471,
+    "propagation_share": 0.6985294117647058,
+    "absorption_share": 0.3014705882352941,
+    "passes_support": true
+  },
+  "all_support_gates_pass": true
+}
