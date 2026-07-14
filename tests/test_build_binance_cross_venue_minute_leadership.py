@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import warnings
 import zipfile
 from datetime import date
 from pathlib import Path
@@ -339,6 +340,20 @@ def test_missing_minute_fails_closed_without_accepted_nonfinite_features() -> No
     assert "source_incomplete" in row["feature_invalid_reason"]
     accepted = output.loc[output["cross_venue_feature_valid"].astype(bool), builder.OUTPUT_COLUMNS[1:]]
     assert np.isfinite(accepted.select_dtypes(include=[np.number]).to_numpy(float)).all()
+
+
+def test_zero_activity_group_is_quarantined_without_runtime_warning() -> None:
+    spot, perp = _spot_leads_rows()
+    spot.loc[:, ["base_volume", "quote_notional", "taker_buy_base", "taker_buy_quote"]] = 0.0
+    spot.loc[:, "source_row_valid"] = False
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        output = builder.aggregate_cross_venue_five_minute(spot, perp)
+
+    assert output.loc[0, "source_complete"] == np.bool_(False)
+    assert output.loc[0, "cross_venue_feature_valid"] == np.bool_(False)
+    assert "source_incomplete" in output.loc[0, "feature_invalid_reason"]
 
 
 def test_process_month_resume_rechecks_spot_and_um_checksums_and_is_deterministic(

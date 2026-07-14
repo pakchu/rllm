@@ -33,7 +33,7 @@ from training.build_binance_aggtrade_microstructure import (
 SPOT_BASE_URL = "https://data.binance.vision/data/spot/monthly/klines"
 UM_BASE_URL = "https://data.binance.vision/data/futures/um/monthly/klines"
 INTERVAL = "1m"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 SEALED_END_EXCLUSIVE = date(2024, 1, 1)
 
 RAW_COLUMNS = (
@@ -520,9 +520,10 @@ def aggregate_cross_venue_five_minute(
     output["open_basis_bp"] = np.log(um_open / spot_open) * 10_000.0
     output["close_basis_bp"] = np.log(um_close / spot_close) * 10_000.0
     output["basis_change_bp"] = output["close_basis_bp"] - output["open_basis_bp"]
-    output["log_spot_um_quote_ratio"] = np.log(
-        output["spot_quote_notional"] / output["um_quote_notional"]
+    quote_ratio = _ratio(
+        output["spot_quote_notional"], output["um_quote_notional"]
     )
+    output["log_spot_um_quote_ratio"] = np.log(quote_ratio.where(quote_ratio.gt(0.0)))
 
     output["source_complete"] = (
         output["spot_rows"].eq(5)
