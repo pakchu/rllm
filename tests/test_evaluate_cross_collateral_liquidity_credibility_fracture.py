@@ -319,3 +319,38 @@ def test_evaluation_freeze_rejects_source_mutation(
     source.write_text("mutated\n")
     with pytest.raises(ValueError, match="differs from pre-outcome freeze"):
         evaluator.verify_evaluation_freeze()
+
+
+def test_frozen_pdf10_result_rejects_and_keeps_2024_sealed() -> None:
+    path = Path(
+        "results/cross_collateral_liquidity_credibility_fracture_"
+        "selection_2026-07-14.json"
+    )
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == (
+        "663d1b4a832fd87cdc92de8569915d5441a6880736b6a46092615eea03822f24"
+    )
+    result = json.loads(path.read_text())
+    assert result["selection"] == {
+        "selected_alpha": None,
+        "rejected": True,
+        "reason": "PDF-10 failed at least one frozen calendar-2023 gate",
+    }
+    assert result["protocol"]["outcomes_opened_for_pdf10"] is True
+    assert result["protocol"]["evaluation_source_sha256"] == (
+        "513570e06529bd65966e505a2fc005f160417992fa52d36122401419cad9c252"
+    )
+    assert result["protocol"]["sealed_windows"] == [
+        "test2024",
+        "eval2025",
+        "ytd2026",
+    ]
+    assert result["windows"]["train2023_h1"]["pdf10"][
+        "absolute_return_pct"
+    ] == pytest.approx(-13.09033626874182)
+    assert result["windows"]["select2023_h2"]["pdf10"][
+        "absolute_return_pct"
+    ] == pytest.approx(-20.359545808646907)
+    assert all(
+        result["windows"][quarter]["pdf10"]["absolute_return_pct"] < 0.0
+        for quarter in ("q1", "q2", "q3", "q4")
+    )
