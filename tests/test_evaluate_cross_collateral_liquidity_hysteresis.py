@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -263,3 +266,32 @@ def test_structural_diagnostics_build_distinct_clocks_causally() -> None:
     diagnostics = evaluator.structural_signals(market, cfg)
     assert set(diagnostics) == set(evaluator.STRUCTURAL_DIAGNOSTICS)
     assert all(len(signal) == rows for signal in diagnostics.values())
+
+
+def test_frozen_cclh_result_rejects_and_keeps_2024_sealed() -> None:
+    path = Path(
+        "results/cross_collateral_liquidity_hysteresis_selection_2026-07-14.json"
+    )
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == (
+        "475c927b5440ff08fe75b2b1c095c06271e9e11a13fef965e710a0d5eda37582"
+    )
+    result = json.loads(path.read_text())
+    assert result["selection"] == {
+        "selected_alpha": None,
+        "rejected": True,
+        "reason": "CCLH v1 failed at least one frozen 2023 gate",
+    }
+    assert result["protocol"]["evaluation_source_sha256"] == (
+        "f44fb011fa229c84424143d6da5fed0c06f6d4adfedd71fdca51353c257a80f3"
+    )
+    assert result["protocol"]["sealed_windows"] == [
+        "test2024",
+        "eval2025",
+        "ytd2026",
+    ]
+    assert result["windows"]["train2023_h1"]["cclh"][
+        "absolute_return_pct"
+    ] == pytest.approx(7.506351684776402)
+    assert result["windows"]["select2023_h2"]["cclh"][
+        "absolute_return_pct"
+    ] == pytest.approx(-0.18411820214264685)
