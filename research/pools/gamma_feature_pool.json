@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T23:43:38.215385+00:00",
+  "updated_at": "2026-07-14T01:44:09.786270+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2256,6 +2256,49 @@
         "training/search_positioning_simplex_curvature_alpha.py",
         "results/positioning_simplex_curvature_alpha_scan_2026-07-14.json",
         "docs/positioning-simplex-curvature-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "hidden_safe_haven_cancellation_static_usage_20260714",
+      "name": "Static hidden safe-haven cancellation fade policy",
+      "status": "rejected",
+      "family": "fx_safe_haven_cross_sectional_cancellation_static_usage",
+      "scope": "btc_fx_components_risk_stress",
+      "feature_tier": "gamma_feature",
+      "description": "Rejected fit-q90 12-hour policy fading same-signed JPY/CHF hidden risk stress and BTC non-acceptance after explicit completed-hour FX alignment.",
+      "data_sources": [
+        "Wave Trading completed one-minute EURUSD/GBPUSD/USDCAD/USDCHF/USDJPY/USDSEK bars",
+        "BTCUSDT perpetual completed 5-minute OHLC"
+      ],
+      "feature_names": [
+        "static_safe_haven_minus_broad_usd_contrast",
+        "static_btc_nonacceptance_residual",
+        "static_same_sign_q90_fade",
+        "static_hold_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous cross-sectional FX cancellation remains weak-beta state"
+      ],
+      "known_failures": [
+        "Fit return/CAGR/strict MDD/ratio was -18.79%/-7.74%/24.92%/-0.31 over 271 trades.",
+        "2023 return/CAGR/strict MDD/ratio was -20.71%/-20.72%/24.88%/-0.83 over 128 trades.",
+        "Both 2023 halves were negative and only 2021H2 was positive among seven reported half-years.",
+        "Exact flip lost fit; all fixed component controls failed 2023; every delay failed joint robustness.",
+        "Zero-cost fit/2023 returns were -4.45%/-14.38%."
+      ],
+      "evidence": "A critic-revised and independently verified pre-outcome experiment passed support with 271 fit and 128 2023 trades, then failed declared direction, exact flip, component controls, delays and zero-cost checks without opening 2024+.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frames pre-2024; cutoff-chunk discard disclosed; all six minute-59 FX closes required; weekend gaps not bridged; 6h scaling uses prior 1h statistics; minute-05 next-open; strict MDD; OOS excluded.",
+      "tier_rationale": "The event surface is novel but economically unproductive in both inspected directions, and losses persist without costs.",
+      "next_action": "Do not tune currency membership, standardization, q threshold, residual sign, lag, direction or hold on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_hidden_safe_haven_cancellation_alpha.py",
+        "protocol": "single q90 same-sign fade plus component/flip/delay/cost controls; minute-05; 12h; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_hidden_safe_haven_cancellation_alpha.py",
+        "results/hidden_safe_haven_cancellation_alpha_scan_2026-07-14.json",
+        "docs/hidden-safe-haven-cancellation-alpha-search-2026-07-14.md"
       ]
     }
   ]

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T23:43:38.215385+00:00",
+  "updated_at": "2026-07-14T01:44:09.786270+00:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -2708,6 +2708,50 @@
       "generation_recipe": {
         "script": "training/search_positioning_simplex_curvature_alpha.py",
         "protocol": "delayed three-cohort log-ratio geometry; 6h vectors; OI x speed x abs curvature q80; fade; 12h; next-open; 0.5x; 6bp/side; 2022 quarantine; OOS excluded"
+      }
+    },
+    {
+      "id": "hidden_safe_haven_cancellation_state_20260714",
+      "name": "Cross-sectional hidden FX safe-haven cancellation state",
+      "status": "weak",
+      "family": "fx_safe_haven_cross_sectional_cancellation",
+      "scope": "btc_fx_components_risk_stress",
+      "feature_tier": "beta_feature",
+      "description": "Causal completed-hour JPY/CHF safe-haven strength relative to four other USD pairs, paired with BTC's standardized six-hour response to represent FX stress hidden by broad-dollar cancellation.",
+      "data_sources": [
+        "Wave Trading completed one-minute EURUSD/GBPUSD/USDCAD/USDCHF/USDJPY/USDSEK bars",
+        "BTCUSDT perpetual completed 5-minute OHLC"
+      ],
+      "feature_names": [
+        "fx_pair_usd_strength_6h_priorvol_z",
+        "fx_safe_haven_risk_stress",
+        "fx_broad_usd_strength",
+        "btc_6h_priorvol_response_z",
+        "fx_btc_unpriced_safe_haven_stress"
+      ],
+      "usable_for": [
+        "weak cross-market state token under a materially different preregistered learner or RLLM",
+        "not replaying the inspected same-sign q90 fade, six-hour scale, minute-05 entry or 12-hour hold"
+      ],
+      "known_failures": [
+        "Primary fit/2023 CAGR-MDD was -0.31/-0.83 over 271/128 trades.",
+        "Primary lost in six of seven reported fit/selection half-years.",
+        "Exact direction flip remained negative in fit and reached only 0.48 ratio in 2023.",
+        "Primary remained negative at zero implementation cost in fit and 2023."
+      ],
+      "evidence": "The maximum event Jaccard against FX-only, BTC-reversal, broad-USD and raw-contrast controls was 0.207, so the state is distinct; however neither declared direction generalized and zero-cost performance was negative.",
+      "source_artifacts": [
+        "training/search_hidden_safe_haven_cancellation_alpha.py",
+        "results/hidden_safe_haven_cancellation_alpha_scan_2026-07-14.json",
+        "docs/hidden-safe-haven-cancellation-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frames pre-2024; cutoff-chunk discard disclosed; explicit minute-59 completion; weekend gaps preserved; prior-only volatility; minute-00 signal enters minute-05; split-contained exits; no 2024+ computation.",
+      "tier_rationale": "The safe-haven cancellation representation is algebraically and event-level distinct from broad DXY and BTC reversal, but the fixed executable mapping has no positive pre-2024 edge.",
+      "next_action": "Freeze static semantics. Reuse only continuous stress/response tokens under a separately preregistered learner or genuinely fresh-forward shadow sample.",
+      "generation_recipe": {
+        "script": "training/search_hidden_safe_haven_cancellation_alpha.py",
+        "protocol": "six FX pairs; continuous 6h returns scaled by prior 30d 1h volatility; same-sign FX/BTC residual; q90 fade; minute-05 entry; 12h; 0.5x; 6bp/side; OOS excluded"
       }
     }
   ]
