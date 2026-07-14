@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -135,3 +137,31 @@ def test_qualification_enforces_economic_and_control_gates() -> None:
     rejected = evaluator._qualification(windows)
     assert rejected["qualifies"] is False
     assert "select2023: non-positive absolute return" in rejected["failures"]
+
+
+def test_frozen_selection_result_rejects_without_opening_2024() -> None:
+    result = json.loads(
+        Path(
+            "results/bayesian_impact_flow_transition_selection_2026-07-14.json"
+        ).read_text()
+    )
+    assert result["protocol"]["outcomes_opened_for_bift"] is True
+    assert result["protocol"]["opened_windows"] == [
+        "train",
+        "select2023",
+        "select2023_h1",
+        "select2023_h2",
+    ]
+    assert result["protocol"]["sealed_windows"] == [
+        "test2024",
+        "eval2025",
+        "ytd2026",
+    ]
+    assert result["selection"]["rejected"] is True
+    assert result["selection"]["selected_alpha"] is None
+    train = result["windows"]["train"]["bift"]
+    select = result["windows"]["select2023"]["bift"]
+    assert train["trade_count"] == 186
+    assert train["absolute_return_pct"] < 0.0
+    assert select["trade_count"] == 86
+    assert select["cagr_to_strict_mdd"] < 3.0
