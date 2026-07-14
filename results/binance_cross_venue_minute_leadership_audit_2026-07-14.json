@@ -1,0 +1,331 @@
+{
+  "config": {
+    "features": "data/binance_cross_venue_minute_leadership_btc_2020_2023/BTCUSDT_cross_venue_minute_leadership_5m_2020-01_2023-12.csv.gz",
+    "manifest": "data/binance_cross_venue_minute_leadership_btc_2020_2023/build_manifest.json",
+    "start": "2020-01-01",
+    "end": "2024-01-01",
+    "output": "results/binance_cross_venue_minute_leadership_audit_2026-07-14.json",
+    "minimum_source_complete_fraction": 0.995,
+    "minimum_feature_valid_fraction": 0.995
+  },
+  "passed": true,
+  "failed_checks": [],
+  "checks": {
+    "manifest.manifest_is_sibling_of_features": true,
+    "manifest.manifest_combined_path_exact": true,
+    "manifest.manifest_combined_hash_valid": true,
+    "manifest.manifest_columns_exact": true,
+    "manifest.manifest_row_counts_exact": true,
+    "manifest.manifest_config_interval_exact": true,
+    "manifest.manifest_months_exact": true,
+    "manifest.manifest_schema_versions_exact": true,
+    "manifest.manifest_monthly_hashes_valid": true,
+    "manifest.manifest_archive_hashes_well_formed": true,
+    "manifest.manifest_outcomes_unopened": true,
+    "manifest.manifest_raw_archives_not_persisted": true,
+    "manifest.manifest_seal_exact": true,
+    "feature.columns_exact": true,
+    "feature.grid_exact": true,
+    "feature.timestamps_unique_monotonic": true,
+    "feature.feature_availability_exact": true,
+    "feature.earliest_trade_exact": true,
+    "feature.sealed_interval_respected": true,
+    "feature.source_complete_identity": true,
+    "feature.feature_valid_requires_complete_source": true,
+    "feature.valid_rows_have_four_lagged_pairs": true,
+    "feature.valid_rows_have_ok_reason": true,
+    "feature.invalid_rows_have_reason": true,
+    "feature.valid_features_finite": true,
+    "feature.invalid_features_quarantined": true,
+    "feature.normalized_features_bounded": true,
+    "feature.timing_centroids_bounded": true,
+    "feature.lagged_flow_diff_identity": true,
+    "feature.directional_diff_identity": true,
+    "feature.basis_change_identity": true,
+    "feature.activity_timing_diff_identity": true,
+    "feature.flow_timing_diff_identity": true,
+    "feature.return_timing_diff_identity": true,
+    "feature.source_complete_fraction_sufficient": true,
+    "feature.feature_valid_fraction_sufficient": true,
+    "feature.no_outcome_columns": true,
+    "feature.audit_columns_present": true
+  },
+  "diagnostics": {
+    "rows": 420768,
+    "source_complete_rows": 420205,
+    "source_complete_fraction": 0.9986619704920526,
+    "feature_valid_rows": 419899,
+    "feature_valid_fraction": 0.9979347288767206,
+    "quarantined_rows": 869,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00",
+    "invalid_reason_counts": {
+      "source_incomplete|activity_support|flow_timing_support|return_timing_support|lagged_flow_support|lagged_direction_support|flow_transfer_support|return_leadership_support|simultaneous_flow_support|simultaneous_return_support|four_lagged_pairs|nonfinite_descriptor": 549,
+      "return_leadership_support|nonfinite_descriptor": 73,
+      "lagged_direction_support|nonfinite_descriptor": 67,
+      "simultaneous_return_support|nonfinite_descriptor": 63,
+      "return_timing_support|lagged_direction_support|return_leadership_support|simultaneous_return_support|nonfinite_descriptor": 57,
+      "lagged_direction_support|return_leadership_support|nonfinite_descriptor": 23,
+      "lagged_direction_support|simultaneous_return_support|nonfinite_descriptor": 10,
+      "source_incomplete|four_lagged_pairs": 7,
+      "return_leadership_support|simultaneous_return_support|nonfinite_descriptor": 6,
+      "lagged_direction_support|return_leadership_support|simultaneous_return_support|nonfinite_descriptor": 4,
+      "source_incomplete": 3,
+      "return_timing_support|lagged_direction_support|flow_transfer_support|return_leadership_support|simultaneous_return_support|nonfinite_descriptor": 3,
+      "source_incomplete|lagged_direction_support|four_lagged_pairs|nonfinite_descriptor": 2,
+      "source_incomplete|lagged_flow_support|lagged_direction_support|flow_transfer_support|return_leadership_support|four_lagged_pairs|nonfinite_descriptor": 2
+    },
+    "source_gap_totals": {
+      "spot_missing_minutes": 2325,
+      "um_missing_minutes": 0,
+      "spot_invalid_source_minutes": 216,
+      "um_invalid_source_minutes": 243
+    },
+    "by_year": {
+      "2020": {
+        "rows": 105408,
+        "source_complete_rows": 105146,
+        "feature_valid_rows": 105145
+      },
+      "2021": {
+        "rows": 105120,
+        "source_complete_rows": 104889,
+        "feature_valid_rows": 104889
+      },
+      "2022": {
+        "rows": 105120,
+        "source_complete_rows": 105107,
+        "feature_valid_rows": 105100
+      },
+      "2023": {
+        "rows": 105120,
+        "source_complete_rows": 105063,
+        "feature_valid_rows": 104765
+      }
+    },
+    "feature_bounds": {
+      "flow_transfer_asymmetry": {
+        "min": -1.0,
+        "max": 1.0
+      },
+      "return_leadership_asymmetry": {
+        "min": -1.0,
+        "max": 1.0
+      },
+      "simultaneous_flow_sign_agreement": {
+        "min": -1.0,
+        "max": 1.0
+      },
+      "simultaneous_return_sign_agreement": {
+        "min": -1.0,
+        "max": 1.0
+      },
+      "spot_to_um_lagged_directional_alignment": {
+        "min": -1.0,
+        "max": 1.0
+      },
+      "um_to_spot_lagged_directional_alignment": {
+        "min": -1.0,
+        "max": 1.0
+      },
+      "lagged_directional_alignment_diff": {
+        "min": -1.0,
+        "max": 1.0
+      }
+    },
+    "manifest": {
+      "months": 48,
+      "expected_months": [
+        "2020-01",
+        "2020-02",
+        "2020-03",
+        "2020-04",
+        "2020-05",
+        "2020-06",
+        "2020-07",
+        "2020-08",
+        "2020-09",
+        "2020-10",
+        "2020-11",
+        "2020-12",
+        "2021-01",
+        "2021-02",
+        "2021-03",
+        "2021-04",
+        "2021-05",
+        "2021-06",
+        "2021-07",
+        "2021-08",
+        "2021-09",
+        "2021-10",
+        "2021-11",
+        "2021-12",
+        "2022-01",
+        "2022-02",
+        "2022-03",
+        "2022-04",
+        "2022-05",
+        "2022-06",
+        "2022-07",
+        "2022-08",
+        "2022-09",
+        "2022-10",
+        "2022-11",
+        "2022-12",
+        "2023-01",
+        "2023-02",
+        "2023-03",
+        "2023-04",
+        "2023-05",
+        "2023-06",
+        "2023-07",
+        "2023-08",
+        "2023-09",
+        "2023-10",
+        "2023-11",
+        "2023-12"
+      ],
+      "combined_sha256": "a638b5b7702a59cf0007672f1d7564430f09b6e3ef895ba97410ad73b2069478",
+      "monthly_outputs_bytes": 107171718
+    }
+  },
+  "manifest_diagnostics": {
+    "months": 48,
+    "expected_months": [
+      "2020-01",
+      "2020-02",
+      "2020-03",
+      "2020-04",
+      "2020-05",
+      "2020-06",
+      "2020-07",
+      "2020-08",
+      "2020-09",
+      "2020-10",
+      "2020-11",
+      "2020-12",
+      "2021-01",
+      "2021-02",
+      "2021-03",
+      "2021-04",
+      "2021-05",
+      "2021-06",
+      "2021-07",
+      "2021-08",
+      "2021-09",
+      "2021-10",
+      "2021-11",
+      "2021-12",
+      "2022-01",
+      "2022-02",
+      "2022-03",
+      "2022-04",
+      "2022-05",
+      "2022-06",
+      "2022-07",
+      "2022-08",
+      "2022-09",
+      "2022-10",
+      "2022-11",
+      "2022-12",
+      "2023-01",
+      "2023-02",
+      "2023-03",
+      "2023-04",
+      "2023-05",
+      "2023-06",
+      "2023-07",
+      "2023-08",
+      "2023-09",
+      "2023-10",
+      "2023-11",
+      "2023-12"
+    ],
+    "combined_sha256": "a638b5b7702a59cf0007672f1d7564430f09b6e3ef895ba97410ad73b2069478",
+    "monthly_outputs_bytes": 107171718
+  },
+  "feature_diagnostics": {
+    "rows": 420768,
+    "source_complete_rows": 420205,
+    "source_complete_fraction": 0.9986619704920526,
+    "feature_valid_rows": 419899,
+    "feature_valid_fraction": 0.9979347288767206,
+    "quarantined_rows": 869,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00",
+    "invalid_reason_counts": {
+      "source_incomplete|activity_support|flow_timing_support|return_timing_support|lagged_flow_support|lagged_direction_support|flow_transfer_support|return_leadership_support|simultaneous_flow_support|simultaneous_return_support|four_lagged_pairs|nonfinite_descriptor": 549,
+      "return_leadership_support|nonfinite_descriptor": 73,
+      "lagged_direction_support|nonfinite_descriptor": 67,
+      "simultaneous_return_support|nonfinite_descriptor": 63,
+      "return_timing_support|lagged_direction_support|return_leadership_support|simultaneous_return_support|nonfinite_descriptor": 57,
+      "lagged_direction_support|return_leadership_support|nonfinite_descriptor": 23,
+      "lagged_direction_support|simultaneous_return_support|nonfinite_descriptor": 10,
+      "source_incomplete|four_lagged_pairs": 7,
+      "return_leadership_support|simultaneous_return_support|nonfinite_descriptor": 6,
+      "lagged_direction_support|return_leadership_support|simultaneous_return_support|nonfinite_descriptor": 4,
+      "source_incomplete": 3,
+      "return_timing_support|lagged_direction_support|flow_transfer_support|return_leadership_support|simultaneous_return_support|nonfinite_descriptor": 3,
+      "source_incomplete|lagged_direction_support|four_lagged_pairs|nonfinite_descriptor": 2,
+      "source_incomplete|lagged_flow_support|lagged_direction_support|flow_transfer_support|return_leadership_support|four_lagged_pairs|nonfinite_descriptor": 2
+    },
+    "source_gap_totals": {
+      "spot_missing_minutes": 2325,
+      "um_missing_minutes": 0,
+      "spot_invalid_source_minutes": 216,
+      "um_invalid_source_minutes": 243
+    },
+    "by_year": {
+      "2020": {
+        "rows": 105408,
+        "source_complete_rows": 105146,
+        "feature_valid_rows": 105145
+      },
+      "2021": {
+        "rows": 105120,
+        "source_complete_rows": 104889,
+        "feature_valid_rows": 104889
+      },
+      "2022": {
+        "rows": 105120,
+        "source_complete_rows": 105107,
+        "feature_valid_rows": 105100
+      },
+      "2023": {
+        "rows": 105120,
+        "source_complete_rows": 105063,
+        "feature_valid_rows": 104765
+      }
+    },
+    "feature_bounds": {
+      "flow_transfer_asymmetry": {
+        "min": -1.0,
+        "max": 1.0
+      },
+      "return_leadership_asymmetry": {
+        "min": -1.0,
+        "max": 1.0
+      },
+      "simultaneous_flow_sign_agreement": {
+        "min": -1.0,
+        "max": 1.0
+      },
+      "simultaneous_return_sign_agreement": {
+        "min": -1.0,
+        "max": 1.0
+      },
+      "spot_to_um_lagged_directional_alignment": {
+        "min": -1.0,
+        "max": 1.0
+      },
+      "um_to_spot_lagged_directional_alignment": {
+        "min": -1.0,
+        "max": 1.0
+      },
+      "lagged_directional_alignment_diff": {
+        "min": -1.0,
+        "max": 1.0
+      }
+    }
+  }
+}
