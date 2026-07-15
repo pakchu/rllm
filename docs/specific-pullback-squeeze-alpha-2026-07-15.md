@@ -1,5 +1,11 @@
 # Specific pullback-squeeze weak-signal alpha — 2026-07-15
 
+> **Historical result only.** The later confirmation report and its live-grade
+> interpretation are superseded by
+> `docs/confirmed-pullback-squeeze-live-parity-audit-2026-07-15.md`. Under the
+> current live freshness, realized-funding, and strict-MDD contract, the exact
+> strategy fails the full-history target.
+
 ## Verdict
 
 Promote the rule below to the **research/shadow alpha-candidate pool**. It is a

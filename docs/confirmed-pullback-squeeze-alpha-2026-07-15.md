@@ -1,5 +1,12 @@
 # Confirmed pullback-squeeze alpha — 2026-07-15
 
+> **Superseded / rejected under the current live-strict contract.** The original
+> report used a `:55` positional clock with a two-hour premium tolerance, omitted
+> realized funding, and used a less conservative MDD path. The live-parity audit
+> reduces the full-history 0.5x ratio from `3.56` to `1.97`; at 0.9x, strict MDD
+> rises to `21.14%`. See
+> `docs/confirmed-pullback-squeeze-live-parity-audit-2026-07-15.md`.
+
 ## Decision
 
 Promote this rule to the **research/shadow alpha pool**. This is the first weak-
