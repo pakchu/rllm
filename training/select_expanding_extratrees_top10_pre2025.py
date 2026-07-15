@@ -328,6 +328,36 @@ def selection_rank(stats: dict[str, Any]) -> list[float | int]:
     ]
 
 
+def semantic_tie_break(row: dict[str, Any]) -> tuple[float | int, ...]:
+    """Prefer simpler and more conservative cells when performance is identical."""
+    learner = row["learner"]
+    policy = row["selection"]
+    return (
+        -int(learner["max_depth"]),
+        int(learner["min_samples_leaf"]),
+        -float(learner["max_features"]),
+        float(policy["risk_lambda"]),
+        float(policy["funding_quantile"]),
+        float(policy["premium_quantile"]),
+        -float(policy["risk_quantile"]),
+    )
+
+
+def unique_schedule_rows(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    unique: list[dict[str, Any]] = []
+    seen: set[tuple[str, tuple[tuple[str, str], ...]]] = set()
+    for row in rows:
+        identity = (
+            str(row["activation_hash"]),
+            tuple(sorted((str(key), str(value)) for key, value in row["schedule_hashes"].items())),
+        )
+        if identity in seen:
+            continue
+        seen.add(identity)
+        unique.append(row)
+    return unique
+
+
 def _render_docs(payload: dict[str, Any], manifest: dict[str, Any]) -> str:
     lines = [
         "# Expanding ExtraTrees top-10 selection before 2025",
@@ -336,7 +366,9 @@ def _render_docs(payload: dict[str, Any], manifest: dict[str, Any]) -> str:
         "truncated at `2025-01-01`; ranking used only 2023 test and 2024 validation.",
         "",
         f"- Grid: `{payload['grid_cells']}` cells",
+        f"- Distinct schedules: `{payload['distinct_schedule_cells']}`",
         f"- Selection-pass cells: `{payload['selection_pass_cells']}`",
+        "- Top-10 contains distinct schedules; exact metric ties prefer the simpler/conservative cell.",
         f"- Models: five deterministic `{TREES}`-tree ExtraTrees ensembles",
         f"- Manifest hash: `{manifest['manifest_hash']}`",
         "",
@@ -408,9 +440,10 @@ def run(output: str, manifest_output: str, docs_output: str) -> dict[str, Any]:
                     "activation_hash": _json_hash(np.flatnonzero(active).tolist()),
                 }
             )
-    rows.sort(key=lambda row: row["rank"], reverse=True)
+    rows.sort(key=lambda row: (row["rank"], semantic_tie_break(row)), reverse=True)
+    distinct_rows = unique_schedule_rows(rows)
     top10 = []
-    for position, row in enumerate(rows[:10], start=1):
+    for position, row in enumerate(distinct_rows[:10], start=1):
         top10.append({"rank_position": position, **row})
     payload = {
         "schema_version": 1,
@@ -441,6 +474,7 @@ def run(output: str, manifest_output: str, docs_output: str) -> dict[str, Any]:
             "prediction_n_jobs": 1,
         },
         "grid_cells": len(rows),
+        "distinct_schedule_cells": len(distinct_rows),
         "selection_pass_cells": sum(row["selection_pass"] for row in rows),
         "source_hashes": base["context"]["source_hashes"],
         "feature_full_hash": base["context"]["feature_full_hash"],
