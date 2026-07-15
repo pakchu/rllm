@@ -277,6 +277,18 @@ candidate-ranker는 shadow selector 후보로 취급합니다.
 
 ## Live Trading 상태
 
+### ExtraTrees rank-7 운영 라이프사이클
+
+2026-07-15 연구에서 동결된 ExtraTrees rank-7은 OOS/stability 기준을 통과한
+신규 research champion 후보지만, 아직 현재 `execution/rex_llm_live.py`에 연결된
+live policy는 아닙니다. 학습 cutoff, 교체 주기, UTC 시간별 추론, 데이터 freshness,
+shadow/testnet/canary, 롤백 및 live enablement blocker는 다음 문서에 고정했습니다.
+
+- [`ExtraTrees rank-7 production lifecycle full battery`](docs/expanding-extratrees-rank7-production-lifecycle-full-battery-2026-07-16.md)
+
+운영 핵심은 **시간별 추론, 월별 challenger rehearsal, 연 1회 champion refit/교체**입니다.
+월별 live 자동 교체는 별도의 월 단위 walk-forward 검증 전까지 금지합니다.
+
 ### 구현됨
 - `execution/wave_execution.py`
   - RLLM policy record를 wave_trading Binance futures executor로 변환합니다.
@@ -348,6 +360,7 @@ candidate-ranker는 shadow selector 후보로 취급합니다.
 | `execution/rex_llm_live.py` | live REX+RLLM policy runner |
 | `execution/wave_execution.py` | wave_trading 실행 브릿지 및 안전 게이트 |
 | `configs/live/rex_llm_binance_testnet_bear_pilot.json` | testnet/live pilot 설정 |
+| `docs/expanding-extratrees-rank7-production-lifecycle-full-battery-2026-07-16.md` | rank-7 학습·교체·시간별 추론·승격/롤백 운영 계약 |
 | `.omx/plans/long-strategy-2025-eval-plan.md` | long-side 전략 탐색 계획 |
 
 ---
