@@ -799,6 +799,10 @@ def _write_docs(report: dict[str, Any], path: str) -> None:
         lines = [
             "# Inventory purge/reclaim alpha — frozen OOS replay (2026-07-15)",
             "",
+            "## Verdict",
+            "",
+            "**Rejected.** The pre-2024 champion lost money in 2024, 2025, and 2026. The positioning gate therefore captured development-period selection noise rather than a transferable interaction.",
+            "",
             "| split | absolute return | CAGR | strict MDD | CAGR/MDD | trades | L/S |",
             "|---|---:|---:|---:|---:|---:|---:|",
         ]
@@ -807,7 +811,12 @@ def _write_docs(report: dict[str, Any], path: str) -> None:
             lines.append(
                 f"| {name} | {row['absolute_return_pct']:.2f}% | {row['cagr_pct']:.2f}% | {row['strict_mdd_pct']:.2f}% | {row['cagr_to_strict_mdd']:.2f} | {row['trades']} | {row['longs']}/{row['shorts']} |"
             )
-        lines += ["", f"Frozen 2024/2025 live-grade pass: **{report['passes_live_grade_2024_2025']}**."]
+        lines += [
+            "",
+            f"Frozen 2024/2025 live-grade pass: **{report['passes_live_grade_2024_2025']}**.",
+            "",
+            "The negative result is selection evidence: 3,760 base variants followed by 1,248 context variants produced one pre-2024 qualifier, while its short gate had only seven 2023 shorts. This family must not be retuned against the opened OOS windows.",
+        ]
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_text("\n".join(lines) + "\n")
 
