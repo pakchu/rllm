@@ -2786,6 +2786,246 @@
       }
     },
     {
+      "id": "ordinal_complexity_features_20260713",
+      "name": "Completed-hour ordinal complexity and transition-surprise features",
+      "status": "candidate",
+      "family": "ordinal_price_complexity",
+      "scope": "btc_price_action",
+      "feature_tier": "beta_feature",
+      "description": "Causal order-3/order-4 hourly price permutation IDs, normalized permutation entropy, pattern surprise, conditional transition surprise and ordinal endpoint direction over 168h/720h histories.",
+      "data_sources": [
+        "BTCUSDT 5m OHLC; complete 12-row hours only"
+      ],
+      "feature_names": [
+        "oc_pattern_3",
+        "oc_pattern_4",
+        "oc_direction_3",
+        "oc_direction_4",
+        "oc_o{3,4}_w{168,720}_entropy",
+        "oc_o{3,4}_w{168,720}_pattern_surprise",
+        "oc_o{3,4}_w{168,720}_transition_surprise"
+      ],
+      "usable_for": [
+        "continuous regime/complexity token for compact LLM or RLLM",
+        "fresh-OOS state input in a separately frozen model",
+        "price-action context independent of magnitude-based momentum and realized volatility"
+      ],
+      "known_failures": [
+        "Static low-entropy continuation reversed from +30.16%/ratio 3.15 in 2024 to -10.49%/ratio -0.47 in 2025.",
+        "Static high-entropy reversal lost money in 2024 and 2025.",
+        "No standalone frozen policy passed alpha-pool or strong-shadow gates."
+      ],
+      "evidence": "All 12 continuous entropy/surprise variants had max pre-2023 |Spearman rho| <=0.1599 versus sign entropy, autocorrelation, variance ratio, path efficiency and vol-term references. The strongest static use had a genuine 2024 pocket (68 trades, p≈0.038) but failed temporal generalization.",
+      "source_artifacts": [
+        "training/search_ordinal_complexity_bidirectional_alpha.py",
+        "tests/test_search_ordinal_complexity_bidirectional_alpha.py",
+        "results/ordinal_complexity_bidirectional_top10_manifest_2026-07-13.json",
+        "results/ordinal_complexity_bidirectional_alpha_scan_2026-07-13.json",
+        "results/ordinal_complexity_bidirectional_replay_verification_2026-07-13.json",
+        "docs/ordinal-complexity-bidirectional-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "low-medium",
+      "leakage_notes": "Feature thresholds and policy selection were pre-2024 with physical row truncation; current patterns/transitions are excluded from their own historical probability estimates; completed hour H is exposed only at H+1h. Later-window evidence now contaminates these exact static mappings.",
+      "tier_rationale": "Beta: demonstrably distinct and economically active in one full OOS year, but temporally unstable and not alpha-grade. Preserve continuous features, not the failed binary policies.",
+      "next_action": "Use only in a materially different predeclared regime/RLLM mechanism and require fresh forward proof; do not tune static thresholds on 2024-2026.",
+      "generation_recipe": {
+        "script": "training/search_ordinal_complexity_bidirectional_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_ordinal_complexity_bidirectional_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --manifest-output results/ordinal_complexity_bidirectional_top10_manifest_2026-07-13.json --output results/ordinal_complexity_bidirectional_alpha_scan_2026-07-13.json",
+        "protocol": "fit 2020-06..2022; select 2023/H1/H2; frozen replay 2024/2025/2026; completed-hour causal features; next-open; fixed holds; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "spot_perp_orthogonal_residual_features_20260713",
+      "name": "Orthogonal spot-perpetual basis residual and absorption context",
+      "status": "candidate",
+      "family": "spot_perp_residual_microstructure",
+      "scope": "btc_crossvenue_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Direct Binance BTC perpetual-versus-spot log basis residualized against the completed Binance premium index with a trailing shifted OLS, plus causal return-residual, futures-flow and spot-participation states.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m OHLCV/taker",
+        "Binance BTCUSDT spot 5m close/volume",
+        "Binance premium-index 1m bars aggregated to complete 5m"
+      ],
+      "feature_names": [
+        "spa_residual_{2016,8640}",
+        "spa_residual_z_{2016,8640}",
+        "spa_lead_residual_z_{2016,8640}",
+        "spa_flow_z_{2016,8640}",
+        "spa_spot_share_z_{2016,8640}"
+      ],
+      "usable_for": [
+        "independent continuous microstructure context for compact LLM/RLLM",
+        "fresh-forward state input after live spot data parity",
+        "research on nonlinear state-dependent usage, not static direction rules"
+      ],
+      "known_failures": [
+        "Both contraction directions produced zero eligible paths before OOS.",
+        "Frozen expansion-onset Top-7 inverted in every later year; rank 1 returned -0.92% in 2024, -4.13% in 2025 and -20.40% in 2026.",
+        "No candidate added value to the deterministic six-sleeve union."
+      ],
+      "evidence": "The direct basis had fit Pearson 0.902 with premium index, but shifted-OLS residual z had only Spearman 0.023 with premium. Thus the residual is distinct information even though the tested directional mappings failed.",
+      "source_artifacts": [
+        "training/search_spot_perp_absorption_alpha.py",
+        "tests/test_search_spot_perp_absorption_alpha.py",
+        "results/spot_perp_absorption_top10_manifest_2026-07-13.json",
+        "results/spot_perp_absorption_alpha_scan_2026-07-13.json",
+        "results/spot_perp_absorption_replay_verification_2026-07-13.json",
+        "docs/spot-perp-absorption-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "All rolling regressions and normalizers end at t-1; signal uses completed t bars and enters next open. Manifest selection used physically pre-2024 market/spot prefixes. Exact tested mappings are now later-window contaminated.",
+      "tier_rationale": "Beta applies to the low-correlation continuous residual and context fields. Static contraction/expansion directional transitions are gamma-rejected separately.",
+      "next_action": "Keep continuous values for a materially different predeclared model or LLM state token. Require fresh forward data; do not retune static onset thresholds on 2024-2026.",
+      "generation_recipe": {
+        "script": "training/search_spot_perp_absorption_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_spot_perp_absorption_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --spot-csv data/cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/spot_perp_absorption_top10_manifest_2026-07-13.json --output results/spot_perp_absorption_alpha_scan_2026-07-13.json --docs-output docs/spot-perp-absorption-alpha-search-2026-07-13.md",
+        "protocol": "shifted rolling OLS/std; complete 5m bars; pre-2024 Top-7; next-open; 0.5x; 6bp/side plus 10bp stress; strict MDD"
+      }
+    },
+    {
+      "id": "premium_intrabar_shape_context_20260713",
+      "name": "Completed premium-index intrabar range and shape context",
+      "status": "candidate",
+      "family": "premium_index_intrabar_microstructure",
+      "scope": "btc_derivatives_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Causal five-minute shape fields formed from exactly five completed Binance premium-index 1m bars: range, close location, upper/lower wick imbalance, body fraction and shifted-history range/body z-scores.",
+      "data_sources": [
+        "Binance BTCUSDT premium-index 1m high/low/close aggregated to complete 5m intervals"
+      ],
+      "feature_names": [
+        "psi_range",
+        "psi_wick_imbalance",
+        "psi_close_location",
+        "psi_body_fraction",
+        "psi_range_z_{2016,8640}",
+        "psi_body_z_{2016,8640}"
+      ],
+      "usable_for": [
+        "continuous derivatives microstructure state for compact LLM/RLLM",
+        "fresh-forward nonlinear interaction research",
+        "context only, not the rejected static onset rule"
+      ],
+      "known_failures": [
+        "Only two of 192 fixed static policies passed pre-2024 admission.",
+        "Both frozen policies lost in 2024 and 2025; rank 1 combined OOS return was -16.61% with strict MDD 23.71%.",
+        "Direction flip and higher-cost stress also lost, so no direct static directional mapping survived."
+      ],
+      "evidence": "On fit data, wick imbalance and close location had Spearman correlations of 0.119 and 0.215 with premium-index close, respectively, and the selected event paths had maximum OOS signal Jaccard 0.0026 versus six existing sleeves. This is a distinct data surface, but tested static usage was economically negative.",
+      "source_artifacts": [
+        "training/search_premium_intrabar_shape_alpha.py",
+        "tests/test_search_premium_intrabar_shape_alpha.py",
+        "results/premium_intrabar_shape_top10_manifest_2026-07-13.json",
+        "results/premium_intrabar_shape_alpha_scan_2026-07-13.json",
+        "results/premium_intrabar_shape_replay_verification_2026-07-13.json",
+        "docs/premium-intrabar-shape-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "Each 5m feature requires premium_rows=5. Historical normalization ends at t-1; the current completed shape is observed at t and execution starts at t+1 open. Selection inputs were physically truncated before 2024. Exact tested static mappings are now later-window contaminated.",
+      "tier_rationale": "Beta applies only to continuous shape context because it is a new, weakly overlapping input surface. No strategy using it met alpha-feature thresholds; its exact static range-onset usage is separately gamma-rejected.",
+      "next_action": "Do not threshold-retune on 2024-2026. Use only in a materially different predeclared nonlinear/RLLM state model and require fresh forward evidence plus live premium-index aggregation parity.",
+      "generation_recipe": {
+        "script": "training/search_premium_intrabar_shape_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_premium_intrabar_shape_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --spot-csv data/cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/premium_intrabar_shape_top10_manifest_2026-07-13.json --output results/premium_intrabar_shape_alpha_scan_2026-07-13.json --docs-output docs/premium-intrabar-shape-alpha-search-2026-07-13.md",
+        "protocol": "five complete 1m premium bars per 5m state; prior-history z-score; pre-2024 manifest; next-open; fixed holds; 0.5x; 6bp/side plus 10bp stress; strict MDD"
+      }
+    },
+    {
+      "id": "path_signature_price_flow_area_features_20260713",
+      "name": "Price/order-flow level-2 signed-area context",
+      "status": "weak",
+      "family": "price_flow_path_signature",
+      "scope": "btc_orderflow_path_geometry",
+      "feature_tier": "beta_feature",
+      "description": "Causal level-2 signed area and endpoint direction of trailing paths formed from prior-standardized BTC 5m log returns and changes in taker quote imbalance.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m close, quote_asset_volume and taker_buy_quote"
+      ],
+      "feature_names": [
+        "ps_area_{24,72,144}",
+        "ps_price_direction_{24,72,144}",
+        "ps_flow_direction_{24,72,144}",
+        "ps_price_step",
+        "ps_flow_step"
+      ],
+      "usable_for": [
+        "weak temporal-ordering context for compact LLM/RLLM state",
+        "materially different sparse-event research on fresh data",
+        "not a standalone static threshold signal"
+      ],
+      "known_failures": [
+        "Zero of six fixed policies passed fit plus 2023/H1/H2 admission.",
+        "Original 144-bar flow-led policy improved in 2023H2 but lost in fit and 2023H1.",
+        "Direction flips also lacked two-half stability; 2024-2026 were intentionally not opened."
+      ],
+      "evidence": "Signed-area filtering reduced losses versus flow-only in most preflight comparisons, showing that temporal ordering changes event selection, but every executable fixed mapping remained negative after 6bp/side. The strongest original fit result was still -1.38% for 144-bar price-led fade and its 2023 result was -32.42%.",
+      "source_artifacts": [
+        "training/search_path_signature_leadlag_alpha.py",
+        "tests/test_search_path_signature_leadlag_alpha.py",
+        "results/path_signature_leadlag_top6_manifest_2026-07-13.json",
+        "results/path_signature_leadlag_alpha_scan_2026-07-13.json",
+        "results/path_signature_leadlag_preflight_verification_2026-07-13.json",
+        "docs/path-signature-leadlag-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "Step standardizers use rolling moments through t-1; current completed price and imbalance-change increments enter the path endpoint at t; signals enter the next 5m open. Fit thresholds and all diagnostics used physically pre-2024 rows only. OOS replay was never opened.",
+      "tier_rationale": "Weak beta preserves the distinct continuous path-geometry representation, not an executable edge. Static fixed-quantile usage is separately gamma-rejected.",
+      "next_action": "Do not threshold-tune this feature on 2024-2026. Reuse only in a materially different predeclared sparse candidate/RLLM interaction and require fresh forward evidence.",
+      "generation_recipe": {
+        "script": "training/search_path_signature_leadlag_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_path_signature_leadlag_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/path_signature_leadlag_top6_manifest_2026-07-13.json --output results/path_signature_leadlag_alpha_scan_2026-07-13.json --docs-output docs/path-signature-leadlag-alpha-search-2026-07-13.md",
+        "protocol": "prior-standardized return and imbalance-change path; 24/72/144-bar level-2 area; fit-only quantiles; pre-2024-only rejection; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "online_rls_dynamic_impact_context_20260713",
+      "name": "Causal online-RLS taker-flow impact state",
+      "status": "weak",
+      "family": "dynamic_price_impact_rls",
+      "scope": "btc_orderflow_dynamic_impact",
+      "feature_tier": "beta_feature",
+      "description": "Causal pre-update recursive least-squares slope for completed-bar BTC return versus taker quote imbalance, paired with the current completed-bar residual standardized only by prior residual history.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m close, quote_asset_volume and taker_buy_quote"
+      ],
+      "feature_names": [
+        "rls_slope_{576,2016}",
+        "rls_prediction_{576,2016}",
+        "rls_residual_{576,2016}",
+        "rls_residual_z_{576,2016}"
+      ],
+      "usable_for": [
+        "weak dynamic market-impact context for compact LLM/RLLM state",
+        "fresh-forward nonlinear interaction research",
+        "not a standalone static residual-direction signal"
+      ],
+      "known_failures": [
+        "Zero of eight fixed slope-state and residual-direction policies passed fit plus 2023/H1/H2 admission.",
+        "Fast/high/fade fit returned +9.83% but 2023 returned -0.06% with only four trades and no H2 trade.",
+        "Fast/low continuation returned -40.27% in 2023 across 483 trades; fast/low fade returned -10.65% across 216 trades.",
+        "Slow/low continuation and fade returned -11.99% and -23.24% in 2023."
+      ],
+      "evidence": "The dynamic slope materially changed across eras and created distinct high/low impact states, but every sufficiently populated fixed mapping was economically negative after 6bp/side. An independent pre-2024 rerun reproduced manifest 2a6257da... and diagnostics 17eb703e... exactly; 2024-2026 remained unopened.",
+      "source_artifacts": [
+        "training/search_online_rls_price_impact_alpha.py",
+        "tests/test_search_online_rls_price_impact_alpha.py",
+        "results/online_rls_price_impact_top8_manifest_2026-07-13.json",
+        "results/online_rls_price_impact_alpha_scan_2026-07-13.json",
+        "results/online_rls_price_impact_preflight_verification_2026-07-13.json",
+        "docs/online-rls-price-impact-alpha-preflight-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "The chunked reader can buffer a cutoff-crossing chunk, but no row at or after 2024 enters the selection frame, feature construction or metrics. At completed bar t, prediction and slope use coefficients through t-1; the residual z denominator uses moments through t-1; updates occur afterward. Execution starts at t+1 open.",
+      "tier_rationale": "Weak beta preserves only the causal dynamic impact representation. The fixed high/low-slope continuation/fade usage failed preflight and is separately gamma-rejected.",
+      "next_action": "Do not tune these thresholds or mappings on 2024-2026. Reuse only as continuous context in a materially different predeclared learner on fresh-forward evidence.",
+      "generation_recipe": {
+        "script": "training/search_online_rls_price_impact_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_online_rls_price_impact_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --manifest-output results/online_rls_price_impact_top8_manifest_2026-07-13.json --output results/online_rls_price_impact_alpha_scan_2026-07-13.json --docs-output docs/online-rls-price-impact-alpha-preflight-2026-07-13.md",
+        "protocol": "pre-update RLS; half-lives 576/2016; prior residual scale; fit-only slope q20/q80; eight fixed policies; pre-2024-only; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
       "id": "oi_cohort_cost_basis_pressure_features_20260713",
       "name": "Path-dependent OI cohort cost-basis pressure features",
       "status": "candidate",
@@ -2832,6 +3072,371 @@
         "script": "training/search_oi_cost_basis_liquidation_alpha.py",
         "command": "PYTHONPATH=. .venv/bin/python training/search_oi_cost_basis_liquidation_alpha.py",
         "protocol": "physical cutoff before 2024; 24 fixed candidates; one-bar delayed source; next-open; 0.5x; 6bp/side; fixed hold; strict high-water MDD"
+      }
+    },
+    {
+      "id": "alt_derivatives_crowding_static_tail_usage_20260713",
+      "name": "Alt-perpetual derivatives crowding static-tail usage",
+      "status": "rejected",
+      "family": "alt_derivatives_crowding",
+      "scope": "btc_crossasset_derivatives",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed standalone use of low-correlation ETH/SOL/BNB/XRP/ADA/DOGE funding and premium crowding tails as BTC directional entries.",
+      "data_sources": [
+        "Binance USD-M alt funding history",
+        "Binance USD-M alt premium-index 1h candles",
+        "BTCUSDT 5m OHLCV for execution only"
+      ],
+      "feature_names": [
+        "alt_funding_dispersion_z*",
+        "alt_funding_median_change288_z2016",
+        "alt_premium_median_z*",
+        "alt_premium_dispersion_z*",
+        "alt_premium_breadth_z2016",
+        "alt_crowding_disagreement"
+      ],
+      "usable_for": [
+        "failure provenance",
+        "possible external veto/state input only after a separately frozen protocol"
+      ],
+      "known_failures": [
+        "Frozen Top-10 produced zero alpha-pool and zero live-grade qualifiers.",
+        "All selected policies were long and broke in 2025 and 2026, exposing a 2023 directional-regime mapping.",
+        "Best combined 2024-2026 row returned 11.61% with 37.20% strict MDD and CAGR/MDD 0.12."
+      ],
+      "evidence": "138 low-correlation masks and 237 eligible policies were fit/selected in 2023 and frozen before 2024 replay; no annual OOS-stable candidate survived.",
+      "source_artifacts": [
+        "training/search_alt_derivatives_crowding_alpha.py",
+        "results/alt_derivatives_crowding_top10_manifest_2026-07-13.json",
+        "results/alt_derivatives_crowding_alpha_scan_2026-07-13.json",
+        "docs/alt-derivatives-crowding-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "medium",
+      "leakage_notes": "2023H1 thresholds, 2023H2 policy selection, source/market truncation before manifest, causal bounded-staleness joins, 2024+ replay only. Later years are not pristine to the broader research program.",
+      "tier_rationale": "Gamma applies to the exact static standalone tail mapping, not necessarily to these raw external states as contextual inputs.",
+      "next_action": "Do not retry standalone alt funding/premium static tails. Only reuse as a predeclared gate/state input on a separately fixed alpha or with a new untouched forward period.",
+      "generation_recipe": {
+        "script": "training/search_alt_derivatives_crowding_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_alt_derivatives_crowding_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --aux-dir data/binance_um_aux_2023_2026 --btc-funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --btc-premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/alt_derivatives_crowding_top10_manifest_2026-07-13.json --output results/alt_derivatives_crowding_alpha_scan_2026-07-13.json",
+        "protocol": "fit thresholds 2023H1; select 2023H2; frozen Top-10; replay 2024/2025/2026; 0.5x; 6bp/side; next-open; fixed hold; strict high-water MDD"
+      }
+    },
+    {
+      "id": "funding_premium_oi_transition_veto_usage_20260713",
+      "name": "Funding/premium LR-impact long with hourly OI transition veto",
+      "status": "rejected",
+      "family": "oi_transition_gate",
+      "scope": "btc_derivatives_state",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed use of delayed completed-hour Binance BTC open-interest transition states as a negative-state veto on the fixed funding/premium + central lr_impact_72 long alpha.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker",
+        "Binance USD-M BTCUSDT funding and premium index",
+        "Binance USD-M BTCUSDT sum_open_interest metrics"
+      ],
+      "feature_names": [
+        "oi_logchg24",
+        "oi_z168",
+        "oi_transition3",
+        "oi_transition6"
+      ],
+      "usable_for": [
+        "failure provenance only; raw OI remains a beta feature and may be reconsidered only through a materially different mechanism with fresh forward data"
+      ],
+      "known_failures": [
+        "Both frozen pre-2024 policies failed alpha-pool qualification.",
+        "Best six-state veto achieved only 2024/2025/2026 ratios 2.59/1.52/2.00 with 17/15/18 trades.",
+        "Best combined ratio was 1.53 versus 3.03 for the unchanged base; the veto removed 19 of 69 base trades and reduced absolute return from 68.88% to 36.74%.",
+        "At 10bp/side the best combined ratio fell to 1.38."
+      ],
+      "evidence": "Pre-2024 thresholds and two eligible transition-veto policies were manifest-frozen and replayed exactly. OI inputs were low-correlated with base features (max |rho| 0.142), but neither transition representation added economic value.",
+      "source_artifacts": [
+        "training/search_funding_premium_oi_transition_gate_alpha.py",
+        "tests/test_search_funding_premium_oi_transition_gate_alpha.py",
+        "results/funding_premium_oi_transition_gate_top10_manifest_2026-07-13.json",
+        "results/funding_premium_oi_transition_gate_alpha_scan_2026-07-13.json",
+        "results/funding_premium_oi_transition_gate_replay_verification_2026-07-13.json",
+        "docs/funding-premium-oi-transition-gate-search-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "OI thresholds and state rankings used 2021-04-15..2022-12-31; policy selection used only 2023/H1/H2 while all source prefixes were physically pre-2024. Frozen policies were replay-only on 2024-2026. A pre-OOS zero-candidate floor correction is retained explicitly.",
+      "tier_rationale": "Gamma applies to the exact static first-order transition-veto usage. Raw delayed OI features remain beta because this test shows negative incremental value for one gate design, not universal absence of OI information.",
+      "next_action": "Do not retry three/six-state first-order OI vetoes on this base or retune their states on 2024-2026. Require a materially different mechanism and fresh forward evidence.",
+      "generation_recipe": {
+        "script": "training/search_funding_premium_oi_transition_gate_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_funding_premium_oi_transition_gate_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --metrics-csv data/binance_um_metrics_BTCUSDT_5m_2020-09-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/funding_premium_oi_transition_gate_top10_manifest_2026-07-13.json --output results/funding_premium_oi_transition_gate_alpha_scan_2026-07-13.json",
+        "protocol": "fit OI states 2021-04-15..2022; select policies 2023/H1/H2 with all sources pre-2024; frozen replay 2024/2025/2026; next-open; hold576; stride12; 0.5x; 6bp/side plus 10bp stress; strict high-water MDD"
+      }
+    },
+    {
+      "id": "ordinal_complexity_static_directional_usage_20260713",
+      "name": "Static ordinal-complexity continuation/reversal usage",
+      "status": "rejected",
+      "family": "ordinal_price_complexity",
+      "scope": "btc_price_action",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed standalone mapping of low/high permutation entropy and high pattern/transition surprise to fixed continuation or reversal trades.",
+      "data_sources": [
+        "BTCUSDT completed hourly closes derived from 5m OHLC"
+      ],
+      "feature_names": [
+        "oc_*_entropy static tails",
+        "oc_*_pattern_surprise static upper tails",
+        "oc_*_transition_surprise static upper tails",
+        "oc_direction_{3,4} continuation/reversal mapping"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous raw ordinal features remain beta"
+      ],
+      "known_failures": [
+        "Only two of 192 pre-2024 policies met fit/selection stability.",
+        "Rank-1 low-entropy continuation fell from 2024 ratio 3.15 to 2025 ratio -0.47 and combined ratio 0.45.",
+        "Rank-2 high-entropy reversal was negative in 2024/2025 and inactive in 2026."
+      ],
+      "evidence": "A physically pre-2024 frozen manifest and exact replay produced zero alpha-pool and zero strong-shadow qualifiers. Rank 1 had 217 OOS trades but five positive and five negative quarters, showing regime inversion rather than sampling scarcity.",
+      "source_artifacts": [
+        "training/search_ordinal_complexity_bidirectional_alpha.py",
+        "tests/test_search_ordinal_complexity_bidirectional_alpha.py",
+        "results/ordinal_complexity_bidirectional_top10_manifest_2026-07-13.json",
+        "results/ordinal_complexity_bidirectional_alpha_scan_2026-07-13.json",
+        "results/ordinal_complexity_bidirectional_replay_verification_2026-07-13.json",
+        "docs/ordinal-complexity-bidirectional-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "Fit 2020-06..2022 and select 2023/H1/H2 only; all 2024+ rows absent before manifest; replay hashes exact. This cleanly rejects the exact static direction mappings.",
+      "tier_rationale": "Gamma applies only to static tail plus continuation/reversal usage. Raw entropy and surprise remain beta because they are low-correlation and showed a nontrivial 2024 effect.",
+      "next_action": "Do not retry static ordinal tail direction rules or retune them on 2024-2026. A retry must use a materially different causal state model and fresh forward data.",
+      "generation_recipe": {
+        "script": "training/search_ordinal_complexity_bidirectional_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python training/search_ordinal_complexity_bidirectional_alpha.py --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --manifest-output results/ordinal_complexity_bidirectional_top10_manifest_2026-07-13.json --output results/ordinal_complexity_bidirectional_alpha_scan_2026-07-13.json",
+        "protocol": "64 masks x 3 fixed holds; pre-2024 selection; frozen replay; 6bp/side plus 10bp stress; strict high-water MDD"
+      }
+    },
+    {
+      "id": "causal_online_completed_trade_expert_selector_usage_20260713",
+      "name": "Completed-trade causal online selector over fixed six-sleeve universe",
+      "status": "rejected",
+      "family": "online_expert_selection",
+      "scope": "btc_meta_alpha_selection",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed use of rolling completed counterfactual trade utility to rank and gate six existing long/short BTC sleeves online.",
+      "data_sources": [
+        "BTCUSDT 5m OHLCV/taker",
+        "Binance USD-M BTCUSDT funding and premium index",
+        "DXY/USDKRW/BTCKRW-derived causal market fields"
+      ],
+      "feature_names": [
+        "expert rolling normalized mean return",
+        "expert rolling return-minus-MAE utility",
+        "causal Top-K expert rank"
+      ],
+      "usable_for": [
+        "failure provenance only; fixed expert signals remain independently usable"
+      ],
+      "known_failures": [
+        "Seven frozen Top-10 rows cleared standalone annual metric gates, but none added value versus the deterministic no-learning union on both combined return and CAGR/MDD.",
+        "Best post-replay selector member returned 107.68% with CAGR/MDD 4.93 over 2024-2026, versus 180.12% and 5.62 for the deterministic union.",
+        "The selector discarded profitable concurrent opportunities and therefore reduced both absolute return and risk efficiency.",
+        "The six source sleeves were defined after this programme had inspected 2024-2026, so the strong historical figures are not fresh-data OOS evidence."
+      ],
+      "evidence": "A 54-policy selector grid was ranked and path-deduplicated on physically pre-2024 inputs. Rewards entered history only after actual expert exits. Frozen replay was exact, but incremental comparison rejected every selector.",
+      "source_artifacts": [
+        "training/search_causal_online_expert_alpha.py",
+        "tests/test_search_causal_online_expert_alpha.py",
+        "results/causal_online_expert_top10_manifest_2026-07-13.json",
+        "results/causal_online_expert_alpha_scan_2026-07-13.json",
+        "results/causal_online_expert_replay_verification_2026-07-13.json",
+        "docs/causal-online-expert-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Selector hyperparameters and Top-10 paths used only pre-2024 source prefixes; current/future event outcomes were never released before exit. However, expert definitions themselves came from later-window-exposed research, and rank 8 was identified after replay.",
+      "tier_rationale": "Gamma applies only to completed-trade Top-K filtering of this six-sleeve universe. It does not demote the underlying sleeves or all possible portfolio sizing algorithms.",
+      "next_action": "Do not retune Top-K/lookback/MAE thresholds on 2024-2026. Search genuinely independent signals, or evaluate a predeclared allocation method only on fresh forward data.",
+      "generation_recipe": {
+        "script": "training/search_causal_online_expert_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_causal_online_expert_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/causal_online_expert_top10_manifest_2026-07-13.json --output results/causal_online_expert_alpha_scan_2026-07-13.json --docs-output docs/causal-online-expert-alpha-search-2026-07-13.md",
+        "protocol": "54 policies; select 2023/H1/H2 with physical pre-2024 sources; frozen Top-10 replay; completed-exit histories only; next-open; source sleeve hold/TP/SL; global non-overlap; 0.5x; 6bp/side plus 10bp stress; strict bar-adverse MDD"
+      }
+    },
+    {
+      "id": "spot_perp_residual_static_transition_usage_20260713",
+      "name": "Static spot-perp residual contraction/expansion directional usage",
+      "status": "rejected",
+      "family": "spot_perp_residual_microstructure",
+      "scope": "btc_crossvenue_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed mapping of orthogonal spot-perp basis residual contraction or expansion-onset states to fixed contra/continuation BTC trades.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m OHLCV/taker",
+        "Binance BTCUSDT spot 5m close/volume",
+        "Binance premium-index complete 5m state"
+      ],
+      "feature_names": [
+        "spa_residual_z static 2/3-sigma transitions",
+        "lead-residual/flow/spot-share fixed confirmations",
+        "contra/continuation fixed direction"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous residual features remain beta"
+      ],
+      "known_failures": [
+        "Initial 96 contra-contraction and symmetric 192 contraction preflight policies all lost before OOS.",
+        "Eight expansion-onset paths passed pre-2024 admission, but all frozen selected rows were negative in 2024, 2025 and 2026.",
+        "Rank 1 fell from 2023 +22.46% / ratio 2.74 to combined OOS -24.41% / strict MDD 37.00% / ratio -0.30 across 1,154 trades.",
+        "No row improved the six-sleeve union; best merged result was ratio 2.17 versus baseline 5.62."
+      ],
+      "evidence": "Physical pre-2024 Top-7 manifest and exact replay reject both absorption and expansion-onset fixed directional mappings with statistically ample OOS trade counts.",
+      "source_artifacts": [
+        "training/search_spot_perp_absorption_alpha.py",
+        "tests/test_search_spot_perp_absorption_alpha.py",
+        "results/spot_perp_absorption_top10_manifest_2026-07-13.json",
+        "results/spot_perp_absorption_alpha_scan_2026-07-13.json",
+        "results/spot_perp_absorption_replay_verification_2026-07-13.json",
+        "docs/spot-perp-absorption-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "low-medium",
+      "leakage_notes": "Preflight revisions were made only after zero/negative pre-2024 results and before opening later rows. Top paths were selected on fit plus 2023 H1/H2; replay was exact. These exact mappings are now contaminated by later inspection.",
+      "tier_rationale": "Gamma applies only to fixed contraction/expansion transition directions. The orthogonal continuous residual remains beta due its low premium-index correlation.",
+      "next_action": "Do not retry fixed 2/3-sigma onset/contraction direction rules or retune holds on 2024-2026. Use only a materially different mechanism with fresh forward proof.",
+      "generation_recipe": {
+        "script": "training/search_spot_perp_absorption_alpha.py",
+        "protocol": "384 final policies after documented pre-OOS revisions; physically pre-2024 selection; frozen replay; next-open; dynamic contraction/fixed expansion exit; 0.5x; 6bp/side plus 10bp stress; strict MDD"
+      }
+    },
+    {
+      "id": "premium_intrabar_extreme_onset_static_usage_20260713",
+      "name": "Static premium-index extreme-range onset directional usage",
+      "status": "rejected",
+      "family": "premium_index_intrabar_microstructure",
+      "scope": "btc_derivatives_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed mapping of 2/3-sigma premium-index 5m range onsets plus wick/close-location shape thresholds to fixed follow/fade directions and 24/48/96-bar holds.",
+      "data_sources": [
+        "Binance BTCUSDT premium-index complete 1m bars",
+        "BTCUSDT perpetual 5m execution OHLC"
+      ],
+      "feature_names": [
+        "psi_range_z static onset",
+        "psi_wick_imbalance static tails",
+        "psi_close_location static tails",
+        "fixed follow/fade and hold mapping"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous premium shape fields remain beta"
+      ],
+      "known_failures": [
+        "Only two unique paths from 192 policies passed pre-2024 fit/2023/H1/H2 admission.",
+        "Rank 1 returned -11.80% in 2024, -7.61% in 2025 and +2.34% in 2026; combined -16.61%, CAGR -7.24%, strict MDD 23.71%, 292 trades.",
+        "Rank 2 combined return was -20.50% with strict MDD 30.39% across 335 trades.",
+        "Rank-1 direction flip returned -17.82%; adding the original signal reduced the six-sleeve union from +180.12% / ratio 5.62 to +140.57% / ratio 3.32."
+      ],
+      "evidence": "A physically pre-2024 frozen manifest and byte-stable replay produced zero alpha-pool qualifiers. Ample trades, failure in both directions and negative portfolio contribution reject this exact static mapping rather than merely indicating low sample size.",
+      "source_artifacts": [
+        "training/search_premium_intrabar_shape_alpha.py",
+        "tests/test_search_premium_intrabar_shape_alpha.py",
+        "results/premium_intrabar_shape_top10_manifest_2026-07-13.json",
+        "results/premium_intrabar_shape_alpha_scan_2026-07-13.json",
+        "results/premium_intrabar_shape_replay_verification_2026-07-13.json",
+        "docs/premium-intrabar-shape-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "low-medium",
+      "leakage_notes": "Policy ranking used only fit 2020-06..2022 and selection 2023/H1/H2 after physical source truncation. Current completed premium shape enters only the next futures open. Manifest and selected replay hashes were exact. These exact mappings are now contaminated by OOS inspection.",
+      "tier_rationale": "Gamma applies to fixed extreme-range-onset shape thresholds, fixed direction and fixed hold. It does not reject continuous intrabar shape as input to a materially different model.",
+      "next_action": "Do not retry or retune this 192-policy family on 2024-2026. Any revisit must change the mechanism materially and rely on fresh forward data.",
+      "generation_recipe": {
+        "script": "training/search_premium_intrabar_shape_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_premium_intrabar_shape_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --spot-csv data/cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/premium_intrabar_shape_top10_manifest_2026-07-13.json --output results/premium_intrabar_shape_alpha_scan_2026-07-13.json --docs-output docs/premium-intrabar-shape-alpha-search-2026-07-13.md",
+        "protocol": "192 fixed policies; fit 2020-06..2022; select 2023/H1/H2; frozen replay 2024/2025/2026; next-open; 0.5x; 6bp/side plus 10bp stress; strict MDD"
+      }
+    },
+    {
+      "id": "path_signature_static_quantile_usage_20260713",
+      "name": "Static price/flow signed-area quantile direction usage",
+      "status": "rejected",
+      "family": "price_flow_path_signature",
+      "scope": "btc_orderflow_path_geometry",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed six-policy mapping of signed-area q20/q80 and flow-direction q30/q70 states to flow-led continuation or price-led crowding fade with path-window holds.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m close and taker quote flow"
+      ],
+      "feature_names": [
+        "ps_area fixed q20/q80 tails",
+        "ps_flow_direction fixed q30/q70 tails",
+        "flow-led continuation / price-led fade direction",
+        "24/72/144-bar fixed hold"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous path-signature fields remain weak beta"
+      ],
+      "known_failures": [
+        "All six original policies failed pre-2024 admission.",
+        "24-bar original policies lost 37.99% to 43.18% in 2023 with hundreds of trades.",
+        "The best 144-bar original was split-unstable: -12.76% in 2023H1 and +9.59% in H2.",
+        "Direction-flip diagnostics were also split-unstable; none justified opening 2024-2026."
+      ],
+      "evidence": "A physically pre-2024 manifest admitted 0/6 policies and an exact second preflight reproduced the same manifest and diagnostics hashes. This rejects the static usage without consuming OOS evidence.",
+      "source_artifacts": [
+        "training/search_path_signature_leadlag_alpha.py",
+        "tests/test_search_path_signature_leadlag_alpha.py",
+        "results/path_signature_leadlag_top6_manifest_2026-07-13.json",
+        "results/path_signature_leadlag_alpha_scan_2026-07-13.json",
+        "results/path_signature_leadlag_preflight_verification_2026-07-13.json",
+        "docs/path-signature-leadlag-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "Only fit 2020-06..2022 and selection 2023/H1/H2 were read. A guarded empty-manifest branch prevented any OOS baseline or candidate replay. Current completed features execute next open.",
+      "tier_rationale": "Gamma applies only to these fixed q20/q80 area plus q30/q70 flow-direction mappings, hourly first-entry sampling and hold-equals-window exits.",
+      "next_action": "Do not retry these six policies or add threshold/hold grids on 2024-2026. A revisit must change both candidate mechanism and validation data.",
+      "generation_recipe": {
+        "script": "training/search_path_signature_leadlag_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_path_signature_leadlag_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --funding-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz --premium-csv data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz --manifest-output results/path_signature_leadlag_top6_manifest_2026-07-13.json --output results/path_signature_leadlag_alpha_scan_2026-07-13.json --docs-output docs/path-signature-leadlag-alpha-search-2026-07-13.md",
+        "protocol": "six fixed policies; physical pre-2024 preflight; no OOS opened after zero admission; exact deterministic rerun"
+      }
+    },
+    {
+      "id": "online_rls_impact_static_state_usage_20260713",
+      "name": "Static online-RLS impact-state residual mapping",
+      "status": "rejected",
+      "family": "dynamic_price_impact_rls",
+      "scope": "btc_orderflow_dynamic_impact",
+      "feature_tier": "gamma_feature",
+      "description": "Exact failed eight-policy mapping of fast/slow pre-update RLS impact-slope q20/q80 states and fixed 1.5-sigma residual shocks to continuation or fade directions with fixed strides and holds.",
+      "data_sources": [
+        "BTCUSDT perpetual 5m close and taker quote flow"
+      ],
+      "feature_names": [
+        "rls_slope q20/q80 state",
+        "rls_residual_z absolute 1.5 trigger",
+        "fixed continuation/fade mapping",
+        "fixed 24/72/144-bar holds"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous RLS state remains weak beta"
+      ],
+      "known_failures": [
+        "All eight original policies failed pre-2024 admission.",
+        "The strongest fit policy, fast/high/fade, had +9.83% absolute return but only four losing 2023 trades and zero H2 trades.",
+        "Fast/low continuation lost 40.27% in 2023 over 483 trades; its direction flip also lost 7.04%.",
+        "The only positive 2023 direction flip was slow/low/fade at +3.15%, but the original fit was -5.82% and the mapping lacked train/selection stability."
+      ],
+      "evidence": "The pre-2024-only selection frame admitted 0/8 policies. Exact feature and diagnostic hashes reproduced independently, and no OOS metric was calculated. Failure spans both continuation/fade directions and both RLS half-lives.",
+      "source_artifacts": [
+        "training/search_online_rls_price_impact_alpha.py",
+        "tests/test_search_online_rls_price_impact_alpha.py",
+        "results/online_rls_price_impact_top8_manifest_2026-07-13.json",
+        "results/online_rls_price_impact_alpha_scan_2026-07-13.json",
+        "results/online_rls_price_impact_preflight_verification_2026-07-13.json",
+        "docs/online-rls-price-impact-alpha-preflight-2026-07-13.md"
+      ],
+      "contamination_risk": "low",
+      "leakage_notes": "Only fit 2020-06..2022 and selection 2023/H1/H2 rows entered features or metrics; the chunked reader may buffer its cutoff-crossing chunk. Current-bar target cannot update the emitted slope or its own residual scale. Trades are next-open and strict MDD includes intratrade OHLC adversity.",
+      "tier_rationale": "Gamma applies only to the exact q20/q80 slope states, 1.5-z residual trigger, fixed directions, strides and holds. It does not reject the continuous dynamic impact state in a materially different model.",
+      "next_action": "Do not retry or grid-search this static family on 2024-2026. A revisit must change the mechanism and use fresh forward data.",
+      "generation_recipe": {
+        "script": "training/search_online_rls_price_impact_alpha.py",
+        "command": "PYTHONPATH=. .venv/bin/python -m training.search_online_rls_price_impact_alpha --input-csv data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz --manifest-output results/online_rls_price_impact_top8_manifest_2026-07-13.json --output results/online_rls_price_impact_alpha_scan_2026-07-13.json --docs-output docs/online-rls-price-impact-alpha-preflight-2026-07-13.md",
+        "protocol": "eight fixed policies; pre-2024-only selection frame; zero admission; no OOS metric calculated; exact deterministic rerun"
       }
     },
     {
@@ -4009,6 +4614,1778 @@
         "script": "training/search_positioning_lifecycle_hazard_alpha.py",
         "protocol": "2 disagreements x 2 ages x 2 resolution triggers x 2 holds = 16; one-bar delayed; 2022 quarantine; next-open; 0.5x; 6bp/side; strict MDD"
       }
+    },
+    {
+      "id": "closed_excursion_inventory_holonomy_state_20260713",
+      "name": "Closed-excursion inventory holonomy state",
+      "status": "weak",
+      "family": "closed_price_loop_inventory_holonomy",
+      "scope": "btc_perpetual_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Causal first-return episodes that freeze a pre-shock price anchor and retain episode age, maximum displacement, net same-side taker inventory, dissipative work and flow elasticity when the price loop closes.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "closed_excursion_age",
+        "closed_excursion_max_displacement_z",
+        "closed_loop_net_taker_flow",
+        "closed_loop_dissipative_work",
+        "closed_loop_flow_elasticity"
+      ],
+      "usable_for": [
+        "weak event-topology and trapped-inventory context under a genuinely new learner",
+        "not replaying static departure, tail, expiry or fixed-hold policies"
+      ],
+      "known_failures": [
+        "Zero of 48 static policies passed pre-2024 admission.",
+        "Top 2023 returned -1.07% with CAGR/MDD -0.29.",
+        "Top 2023H2 returned -1.76% with CAGR/MDD -1.00.",
+        "Top standard-cost policy was long-biased at 59/19 in fit and 15/9 in 2023."
+      ],
+      "evidence": "The top static policy returned +9.21% in fit with five positive half-year segments; exact direction flip and price-only first-return controls were materially worse. However 2023 standard-cost and zero-cost economics were too weak and final-half performance was negative.",
+      "source_artifacts": [
+        "training/search_closed_excursion_holonomy_alpha.py",
+        "results/closed_excursion_holonomy_alpha_scan_2026-07-13.json",
+        "docs/closed-excursion-holonomy-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Departure/activity scales are prior-only; anchor and start volatility freeze at departure; features update on completed bars; signal emits at first causal recross and enters next open; rows stop before 2024; OOS was not opened.",
+      "tier_rationale": "The event representation survives direction and price-loop ablations, but standard-cost selection loss, H2 failure, low ratio and side imbalance prevent alpha promotion.",
+      "next_action": "Freeze all static loop settings. Reuse only as continuous event context with genuinely fresh forward data, or move to an independent mechanism.",
+      "generation_recipe": {
+        "script": "training/search_closed_excursion_holonomy_alpha.py",
+        "protocol": "physical pre-2024 cutoff; 2 departures x 2 expiries x 3 loop scores x 2 fit tails x 2 holds = 48; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "oi_roundtrip_geometric_phase_state_20260713",
+      "name": "OI round-trip geometric-phase state",
+      "status": "weak",
+      "family": "leveraged_inventory_roundtrip_geometry",
+      "scope": "btc_binance_derivatives_positioning",
+      "feature_tier": "beta_feature",
+      "description": "Causal positive-OI-shock episodes that freeze pre-shock OI/price anchors and emit episode age, residual price phase, terminal path persistence and signed price–OI geometric work at the first OI reclosure.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT completed-bar open interest and availability flag"
+      ],
+      "feature_names": [
+        "oi_roundtrip_episode_age",
+        "oi_roundtrip_residual_price_z",
+        "oi_roundtrip_terminal_persistence",
+        "oi_roundtrip_geometric_work",
+        "oi_roundtrip_max_price_displacement"
+      ],
+      "usable_for": [
+        "weak continuous leverage-neutral repricing context under a fresh-forward learner",
+        "not replaying static OI shock, expiry, tail or hold settings"
+      ],
+      "known_failures": [
+        "Zero of 48 static policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.70 and 2023 CAGR/MDD was 1.03.",
+        "Top 2022H2 returned -4.35% and 2021H1 was nearly flat with no long trade.",
+        "A one-hour delay remained positive, so timing is broad rather than sharply identified."
+      ],
+      "evidence": "The top q90 residual-phase policy returned +22.22% in fit and +6.19% in 2023 at 6bp/side with balanced residual directions. Exact direction flip lost, fixed-age and unfiltered-loop controls were weaker, and the cost curve was smooth, but risk efficiency and temporal breadth remained below alpha admission.",
+      "source_artifacts": [
+        "training/search_oi_roundtrip_geometric_phase_alpha.py",
+        "results/oi_roundtrip_geometric_phase_alpha_scan_2026-07-13.json",
+        "docs/oi-roundtrip-geometric-phase-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "OI and price scales use history through t-1; OI/price anchors and start scales freeze at departure; one episode emits on its first completed OI recross and enters next open; source rows stop before 2024; OOS was not opened.",
+      "tier_rationale": "The event topology, direction and residual tail survive structural controls and standard costs, but fit/select CAGR-MDD, one losing fit half and broad timing prevent alpha promotion.",
+      "next_action": "Freeze all static settings. Reuse only continuous OI-loop state under genuinely fresh forward data or a materially different sequential learner.",
+      "generation_recipe": {
+        "script": "training/search_oi_roundtrip_geometric_phase_alpha.py",
+        "protocol": "physical pre-2024 cutoff; 2 OI departures x 2 expiries x 3 geometric scores x 2 fit tails x 2 holds = 48; first causal OI recross; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "market_braid_relative_order_state_20260713",
+      "name": "Three-strand spot/perp/leverage first-passage order state",
+      "status": "weak",
+      "family": "cross_market_first_passage_topology",
+      "scope": "btc_spot_perpetual_leverage_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Post-impulse causal episode state recording the first-passage permutation of spot price, perpetual price and a joint delayed-OI-expansion plus side-aligned-premium leverage witness.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT spot completed 5m closes",
+        "BTCUSDT completed 1m premium aggregates",
+        "one-complete-bar-delayed Binance USD-M open interest"
+      ],
+      "feature_names": [
+        "market_braid_impulse_side",
+        "market_braid_episode_age",
+        "market_braid_passage_permutation",
+        "market_braid_spot_before_leverage",
+        "market_braid_same_bar_tie_state"
+      ],
+      "usable_for": [
+        "weak cross-market diffusion-order context under a genuinely new learner",
+        "not replaying static passage widths, expiries, sequence mappings or holds"
+      ],
+      "known_failures": [
+        "Zero of 32 static policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.24 and 2023 CAGR/MDD was 1.94.",
+        "Top 2023H2 CAGR/MDD was only 0.83.",
+        "A one-hour signal lag improved both fit and 2023, so timing is broad rather than sharply identified.",
+        "2,848 of 3,966 top-state departures were discarded because multiple strands crossed within the same 5m bar."
+      ],
+      "evidence": "Top relative-order state returned +9.89% in fit and +8.28% in 2023 at 6bp/side; exact direction flip lost in both periods, order-blind and witness ablations were weaker, and the cost curve was smooth. Resolution, sample size and risk efficiency still prevent alpha promotion.",
+      "source_artifacts": [
+        "training/search_market_braid_alpha.py",
+        "results/market_braid_alpha_scan_2026-07-13.json",
+        "docs/market-braid-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "All source rows physically stop before 2024; OI is delayed one complete 5m bar; scales end at t-1 and freeze at departure; completed premium rows only; same-bar passage ties are discarded; completion enters next open.",
+      "tier_rationale": "Permutation direction survives strong controls and standard costs but low fit/select risk efficiency, coarse event-time resolution and improved delayed execution restrict it to weak beta context.",
+      "next_action": "Freeze all static settings. Reuse only the categorical permutation/age state with fresh-forward data or move to an independent mechanism.",
+      "generation_recipe": {
+        "script": "training/search_market_braid_alpha.py",
+        "protocol": "physical pre-2024 cutoff; 2 shocks x 2 price passages x 2 expiries x 2 topology mappings x 2 holds = 32; one-bar-delayed OI; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "persistent_barrier_annihilation_state_20260714",
+      "name": "Frozen persistent-barrier annihilation state",
+      "status": "weak",
+      "family": "price_topology_persistence_spectrum",
+      "scope": "btc_price_action_topology",
+      "feature_tier": "beta_feature",
+      "description": "Hourly causal state formed by freezing the prior 2d/7d local-extrema prominence spectrum and measuring the persistence mass, largest barrier, barrier count and mass density crossed during the next hour.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV"
+      ],
+      "feature_names": [
+        "persistent_barrier_mass",
+        "persistent_largest_barrier",
+        "persistent_barrier_count",
+        "persistent_mass_density",
+        "persistent_traversal_z"
+      ],
+      "usable_for": [
+        "weak multiscale price-topology representation under a materially different learner",
+        "not replaying static prominence tails, horizons, mappings or holds"
+      ],
+      "known_failures": [
+        "Zero of 144 transparent pre-2024 audit policies passed alpha admission.",
+        "Top fit CAGR/MDD was 0.28 and 2023 CAGR/MDD was 1.00.",
+        "Top strict MDD was 23.04% in fit and 2023H2 CAGR/MDD was only 0.46.",
+        "The audit expanded after an initial weak 24-policy scan, so all q80/q90/q95/q97.5 and 6h/12h/24h static interpretations are contaminated and frozen."
+      ],
+      "evidence": "The top seven-day q97.5 mass-density fade returned +14.95% in fit and +9.61% in 2023 with 6/7 positive half-years and balanced sides. Exact direction flip, no-tail and single-global-extrema controls were materially worse, while barrier count retained part of the effect.",
+      "source_artifacts": [
+        "training/search_persistent_barrier_annihilation_alpha.py",
+        "results/persistent_barrier_annihilation_alpha_scan_2026-07-14.json",
+        "docs/persistent-barrier-annihilation-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "For decision t, topology is frozen at t-12 from a window ending t-13; scales also end before freeze; current completed hourly endpoint enters next 5m open; source rows physically stop before 2024.",
+      "tier_rationale": "The full persistence spectrum has directional and ablation evidence but low risk efficiency, fit MDD above target, broad timing and internal search expansion prevent alpha promotion.",
+      "next_action": "Freeze every static setting. If reused, expose only continuous spectrum tokens to a fresh-forward learner or combine through a preregistered model using genuinely fresh data.",
+      "generation_recipe": {
+        "script": "training/search_persistent_barrier_annihilation_alpha.py",
+        "protocol": "physical pre-2024; 2 horizons x 3 scores x 4 tails x 3 holds x 2 mappings = 144; frozen prior-hour topology; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "dual_intrinsic_clock_impact_elasticity_state_20260714",
+      "name": "Dual intrinsic-clock impact-elasticity state",
+      "status": "weak",
+      "family": "price_flow_event_time_elasticity",
+      "scope": "btc_price_taker_flow_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Causal hourly state comparing frozen-threshold directional-change event clocks of log price and cumulative signed taker quote flow, with normalized path displacements.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "price_directional_change_count",
+        "flow_directional_change_count",
+        "intrinsic_clock_ratio",
+        "price_displacement_z",
+        "flow_displacement_z",
+        "impact_elasticity_state"
+      ],
+      "usable_for": [
+        "weak event-time impact-elasticity context under a materially different learner",
+        "not replaying static widths, windows, dominance ratios, entry mappings or holds"
+      ],
+      "known_failures": [
+        "Zero of 18 final static policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was -0.05 with 41.36% strict MDD; 2023 CAGR/MDD was 2.20.",
+        "At executable 6bp/side the top fit return was -4.83%; gross 0bp fit return was +31.20%, showing excessive turnover sensitivity.",
+        "More flexible pre-2024 quantile-tail, onset and recoupling probes were also inspected and weak; all static semantics are contaminated and frozen."
+      ],
+      "evidence": "The selected event-clock map returned +18.84% in 2023 with both halves positive. Its exact direction flip lost -36.94%, and a magnitude-only/no-clock control was almost flat, but fit lost -4.83% and varied sharply by regime.",
+      "source_artifacts": [
+        "training/search_dual_intrinsic_clock_alpha.py",
+        "results/dual_intrinsic_clock_alpha_scan_2026-07-14.json",
+        "docs/dual-intrinsic-clock-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Physical pre-2024 cutoff; minute-55 completed decision enters next minute-00 open; path scales are prior-only; flow uses previous completed-hour volume; directional-change thresholds freeze until transition; at most one event per bar.",
+      "tier_rationale": "Event clocks and direction survive strong ablations at gross level, but executable-cost fit loss, 41.36% strict MDD and regime instability prevent alpha promotion.",
+      "next_action": "Freeze all static settings. Reuse only continuous event-count/displacement/category tokens in a preregistered learner or on genuinely fresh-forward data.",
+      "generation_recipe": {
+        "script": "training/search_dual_intrinsic_clock_alpha.py",
+        "protocol": "physical pre-2024; 3 DC widths x 3 windows x 2 dominance ratios = 18; first-entry only; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "wasserstein_flow_response_strain_state_20260714",
+      "name": "Wasserstein flow-response strain state",
+      "status": "weak",
+      "family": "conditional_flow_response_optimal_transport",
+      "scope": "btc_taker_flow_distributional_liquidity",
+      "feature_tier": "beta_feature",
+      "description": "Causal hourly exact 1D monotone-transport state comparing volatility-normalized return-response distributions under strong aggressive buying versus side-aligned aggressive selling.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "wfrs_transport_location",
+        "wfrs_transport_shape",
+        "wfrs_signed_strain",
+        "wfrs_w1_magnitude",
+        "wfrs_buy_sample_count",
+        "wfrs_sell_sample_count"
+      ],
+      "usable_for": [
+        "weak distributional liquidity-asymmetry context under a materially different learner",
+        "not replaying static lookbacks, tails, mappings, onset semantics or holds"
+      ],
+      "known_failures": [
+        "Zero of eight final static policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.01 with 28.47% strict MDD; 2023 CAGR/MDD was 1.78.",
+        "Top policy lost in 2021H2, 2022H1 and 2022H2 despite both 2023 halves being positive.",
+        "Two earlier eight-policy pre-2024 flow-tercile/coherence and median-innovation probes were weak; all 24 related static policies are contaminated and frozen."
+      ],
+      "evidence": "The top state returned +12.54% in 2023 and +7.95% in 2023H2. Exact direction flip lost -23.23%; mean-only, moment-state and signed-W1 controls were much weaker in 2023. Fit nevertheless returned only +0.53% at 6bp/side.",
+      "source_artifacts": [
+        "training/search_wasserstein_flow_response_strain_alpha.py",
+        "results/wasserstein_flow_response_strain_alpha_scan_2026-07-14.json",
+        "docs/wasserstein-flow-response-strain-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Physical pre-2024 cutoff; fit-only flow and strain thresholds; prior-only volatility scale; completed minute-55 window enters next minute-00 open; no forward labels, neighbors or learned impact model.",
+      "tier_rationale": "Distribution shape, sign and timing survive strong controls, but near-zero fit risk efficiency, 28.47% strict MDD, cost sensitivity and regime losses prevent alpha promotion.",
+      "next_action": "Freeze static WFRS policies. Reuse only continuous transport tokens in a preregistered learner or with genuinely fresh-forward evidence.",
+      "generation_recipe": {
+        "script": "training/search_wasserstein_flow_response_strain_alpha.py",
+        "protocol": "physical pre-2024; 2 lookbacks x 2 fit-only tails x 2 holds = 8 final policies; disclosed 16 precursor probes; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "causal_cone_rupture_spectrum_state_20260714",
+      "name": "Multi-anchor causal-cone rupture spectrum",
+      "status": "weak",
+      "family": "price_diffusion_cone_ensemble",
+      "scope": "btc_price_action_causal_geometry",
+      "feature_tier": "beta_feature",
+      "description": "Hourly causal ensemble of prior price anchors projecting square-root-time volatility cones, summarized by directional excess mass, breached-anchor fraction and side.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV"
+      ],
+      "feature_names": [
+        "causal_cone_upper_excess_mass",
+        "causal_cone_lower_excess_mass",
+        "causal_cone_breach_fraction",
+        "causal_cone_rupture_side",
+        "causal_cone_anchor_count"
+      ],
+      "usable_for": [
+        "weak multi-anchor information-front context under a materially different learner",
+        "not replaying static frozen/current-volatility rules, histories, tails, mappings or holds"
+      ],
+      "known_failures": [
+        "Zero of eight static policies passed fit-and-2023 admission.",
+        "Top fit CAGR/MDD was 0.05 with 25.24% strict MDD; 2023 CAGR/MDD was 2.65.",
+        "The top policy lost -22.30% in 2021H1 and 2023H2 ratio was only 0.47.",
+        "Current-volatility and breach-fraction controls improved 2023 but still had fit ratios below 1, showing that the frozen-volatility interpretation is not uniquely supported."
+      ],
+      "evidence": "The top frozen-cone state returned +22.42% in 2023 with both halves positive. Exact direction flip lost -31.03%, and a single-horizon return-z control returned only +8.88%; multi-anchor geometry contains directional information but not stable executable alpha.",
+      "source_artifacts": [
+        "training/search_frozen_causal_cone_rupture_alpha.py",
+        "results/frozen_causal_cone_rupture_alpha_scan_2026-07-14.json",
+        "docs/frozen-causal-cone-rupture-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Physical pre-2024 cutoff; each anchor scale ends before anchor; all anchors precede decision; fit-only rupture thresholds; completed minute-55 signal; next-open execution; no future labels.",
+      "tier_rationale": "Strong direction/ensemble ablations and positive 2023 breadth justify weak beta, but low fit efficiency, 25.24% MDD, broad timing and regime loss prevent alpha promotion.",
+      "next_action": "Freeze static cone policies. Reuse only continuous mass/fraction/side/count tokens in a preregistered learner or on genuinely fresh-forward data.",
+      "generation_recipe": {
+        "script": "training/search_frozen_causal_cone_rupture_alpha.py",
+        "protocol": "physical pre-2024; 2 histories x 2 fit-only tails x 2 holds = 8; hourly frozen anchor cones; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "causal_cone_age_front_state_20260714",
+      "name": "Causal-cone breach age-front state",
+      "status": "weak",
+      "family": "price_diffusion_cone_age_transport",
+      "scope": "btc_price_action_causal_geometry",
+      "feature_tier": "beta_feature",
+      "description": "Hourly causal dynamics of which prior-anchor generations are breached, including directional excess mass, weighted age front, age centroid, old-mass share and their lagged velocities.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV"
+      ],
+      "feature_names": [
+        "cone_upper_age_front",
+        "cone_lower_age_front",
+        "cone_upper_age_centroid",
+        "cone_lower_age_centroid",
+        "cone_upper_old_mass_share",
+        "cone_lower_old_mass_share",
+        "cone_directional_mass_growth",
+        "cone_age_front_velocity",
+        "cone_age_center_velocity"
+      ],
+      "usable_for": [
+        "weak dynamic expectation-invalidation context under a materially different learner",
+        "not replaying q80 score tails, lags, holds, propagation mapping or retreat controls"
+      ],
+      "known_failures": [
+        "Zero of four static age-front policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.07 with 17.17% strict MDD; 2023 CAGR/MDD was 0.70.",
+        "The top policy lost in 2021H1 and 2021H2, and approximate fit mean-return p-value was 0.797.",
+        "Mass-growth-only was stronger in 2023, while current-volatility rewriting was not weaker, so neither age ordering nor frozen-anchor semantics is uniquely identified."
+      ],
+      "evidence": "The top 6h-lag/12h-hold policy returned +2.82% fit and +5.16% in 2023 with both 2023 halves positive. Exact direction flip lost -14.39%/-9.29%, a seven-day delayed placebo lost -5.43%/-0.25%, and reversed age order became too sparse, indicating local directional information but not alpha-grade execution.",
+      "source_artifacts": [
+        "training/search_causal_cone_age_front_alpha.py",
+        "results/causal_cone_age_front_alpha_scan_2026-07-14.json",
+        "docs/causal-cone-age-front-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Physical pre-2024 cutoff; every anchor precedes decision; each anchor scale ends before that anchor; fit-only q80 positive-score threshold; completed minute-55 decision; next-open execution; no labels or future neighbors.",
+      "tier_rationale": "Direction and time-locality survive exact controls, but low fit/2023 risk efficiency, regime losses, weak significance and non-unique age/frozen-vol interpretations prevent alpha promotion.",
+      "next_action": "Freeze the entire static age-front family. Reuse only continuous age-spectrum tokens in a preregistered learner or on genuinely fresh-forward data.",
+      "generation_recipe": {
+        "script": "training/search_causal_cone_age_front_alpha.py",
+        "protocol": "physical pre-2024; fixed 2016-bar hourly-anchor width-2 geometry; 2 lags x 2 holds = 4; fit-only q80 positive-score tail; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "preisach_flow_scar_state_20260714",
+      "name": "Preisach relay flow-scar state",
+      "status": "weak",
+      "family": "price_flow_hysteresis_memory",
+      "scope": "btc_price_action_taker_flow",
+      "feature_tier": "beta_feature",
+      "description": "Causal persistent price-relay lattice carrying per-domain normalized aggressive-flow scars, relay ages, magnetization and coherent multi-relay Barkhausen avalanche state.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "preisach_relay_magnetization",
+        "preisach_relay_age_distribution",
+        "preisach_avalanche_count",
+        "preisach_avalanche_coherence",
+        "preisach_avalanche_direction",
+        "preisach_opposing_flow_scar",
+        "preisach_same_direction_flow_scar",
+        "preisach_current_flow_chase"
+      ],
+      "usable_for": [
+        "path-dependent price/flow memory tokens under a materially different learner",
+        "not replaying the 12h field, q80 static release mapping, scar direction rule or 6h hold"
+      ],
+      "known_failures": [
+        "The single primary static policy returned only +1.68% in fit and lost -10.49% in 2023.",
+        "Both 2023 halves lost and fit approximate mean-return p-value was 0.821.",
+        "Exact direction flip was positive in 2023 but ratio was only 0.65 and 2023H2 still lost.",
+        "Same-direction scar was positive in both full windows but ratios were only 0.04/0.24 and 2023H2 lost."
+      ],
+      "evidence": "Memory erasure (-64.30% fit), scar removal (-17.51%), and seven-day delayed flow (-14.57%) were dramatically worse than the primary +1.68% fit result, showing genuine path-dependent structure; nevertheless the primary side mapping inverted in 2023 and is not executable alpha.",
+      "source_artifacts": [
+        "training/search_preisach_flow_scar_alpha.py",
+        "results/preisach_flow_scar_alpha_scan_2026-07-14.json",
+        "docs/preisach-flow-scar-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Physical pre-2024 cutoff; prior-only price center/scale and quote denominator; relay scars scored through t-1 then reset before current flow is stored; completed-close signal enters next open; no outcome labels.",
+      "tier_rationale": "Strong memory/scar ablations justify preserving the representation, but sign instability, low significance, cost sensitivity and failed 2023 prevent alpha promotion.",
+      "next_action": "Freeze all static settings. Reuse only continuous relay/scar/avalanche tokens in a preregistered state learner or on genuinely fresh-forward data.",
+      "generation_recipe": {
+        "script": "training/search_preisach_flow_scar_alpha.py",
+        "protocol": "physical pre-2024; one fixed 12h-field q80 policy; 12-relay Preisach lattice; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "causal_occupation_saddle_state_20260714",
+      "name": "Daily-frozen price occupation-saddle state",
+      "status": "weak",
+      "family": "price_occupation_landscape_geometry",
+      "scope": "btc_price_action_quote_volume",
+      "feature_tier": "beta_feature",
+      "description": "Causal daily-frozen prior-30d log-price occupation landscape summarized at completed-hour decisions by crossing side, crossed-barrier depth, available-saddle count and decision activity.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m close and quote volume"
+      ],
+      "feature_names": [
+        "occupation_crossing_side",
+        "occupation_barrier_depth",
+        "occupation_saddle_count",
+        "occupation_crossing_active",
+        "occupation_decision"
+      ],
+      "usable_for": [
+        "weak causal market-memory geometry under a materially different learner",
+        "not replaying the fixed 30d/64-bin/depth<=0.5 continuation rule or 6h/12h holds"
+      ],
+      "known_failures": [
+        "Zero of two static policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.18 and 2023 CAGR/MDD was 1.52; fit/2023 approximate mean-return p-values were 0.697/0.207.",
+        "The top policy lost in 2020H2 and 2021H1, was nearly flat in 2021H2, and 2023H2 ratio was only 0.50.",
+        "Time-only, volume-only and reversed-volume profiles remained comparable; the joint time-volume weighting was not uniquely identified."
+      ],
+      "evidence": "The 12h crossing continuation returned +5.14% fit and +10.04% in 2023. Exact direction flip and 1h/24h/7d delays materially degraded both windows, supporting weak local information in frozen saddle crossings but not alpha-grade execution.",
+      "source_artifacts": [
+        "training/search_occupation_saddle_escape_alpha.py",
+        "results/occupation_saddle_escape_alpha_scan_2026-07-14.json",
+        "docs/occupation-saddle-escape-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Physical pre-2024 cutoff; each UTC-day profile uses only the preceding 8,640 bars; completed minute-55 crossing; next-open entry; no labels or future profile updates. A support-probe day-boundary bug was corrected before return evaluation and regression-tested.",
+      "tier_rationale": "Direction and time-locality controls justify retaining generic occupation geometry, but weak ratios, high p-values, regime losses and non-identifiable joint weighting prevent alpha promotion.",
+      "next_action": "Freeze static settings. Reuse only continuous mode/saddle/basin tokens in a preregistered learner or on genuinely fresh-forward data.",
+      "generation_recipe": {
+        "script": "training/search_occupation_saddle_escape_alpha.py",
+        "protocol": "physical pre-2024; daily-frozen 30d/64-bin landscape; depth<=0.5; 2 holds; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "conformal_sr_leverage_pressure_state_20260714",
+      "name": "Conformal SR leverage-pressure evidence state",
+      "status": "weak",
+      "family": "sequential_conformal_leverage_pressure",
+      "scope": "btc_price_taker_flow_open_interest",
+      "feature_tier": "beta_feature",
+      "description": "Causal completed-hour flow/OI-build pressure minus price response, prior-only one-sided conformal ranks, and directional power-betting Shiryaev-Roberts restart evidence.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV, taker-buy quote volume and one-row-delayed open interest"
+      ],
+      "feature_names": [
+        "conformal_pressure_flow_z",
+        "conformal_pressure_price_z",
+        "conformal_pressure_oi_z",
+        "conformal_pressure_residual",
+        "conformal_upper_p",
+        "conformal_lower_p",
+        "conformal_log_sr_up",
+        "conformal_log_sr_down",
+        "conformal_pressure_side"
+      ],
+      "usable_for": [
+        "sequential pressure-state token under a materially different preregistered learner",
+        "RLLM reasoning over evidence build, OI contribution and release/fade uncertainty",
+        "not retuning 30d/180d windows, boundary, multiplier, mappings or 12h hold"
+      ],
+      "known_failures": [
+        "Neither exact static mapping passed fit-and-2023 CAGR/MDD 3.",
+        "Release fit/2023 ratios were only 1.02/0.91 and 2023H2 lost -1.86%.",
+        "Fade lost -41.17% fit and -11.88% in 2023.",
+        "The residual feature is highly correlated with its no-OI analogue (Spearman 0.922), although event overlap is low."
+      ],
+      "evidence": "Release returned +38.71% fit and +6.67% in 2023. Removing OI lost in both windows, a single-tail control fell to ratios 0.25/0.25, reversing flow lost sharply, and all fixed baseline event Jaccards were <=0.137, supporting a distinct sequential event representation without alpha-grade path stability.",
+      "source_artifacts": [
+        "training/search_conformal_sr_pressure_alpha.py",
+        "results/conformal_sr_pressure_alpha_scan_2026-07-14.json",
+        "docs/conformal-sr-pressure-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame hard-filtered pre-2024; parser crossing-chunk discard disclosed; one-row delayed OI; prior-only shifted 30d normalization and 180d ranks; plus-one conservative ties; completed minute55 to next open; no 2024+ computation.",
+      "tier_rationale": "Strong OI, sequential-memory, flow-orientation and timing ablations justify weak beta, but low risk efficiency and a losing 2023H2 prevent alpha promotion.",
+      "next_action": "Freeze all static settings. Reuse continuous evidence state only in a preregistered learner or genuinely fresh forward shadow evaluation.",
+      "generation_recipe": {
+        "script": "training/search_conformal_sr_pressure_alpha.py",
+        "protocol": "30d prior z; 180d/min90d conformal ranks; power 0.5; SR boundary 200; fade/release x 12h; next-open; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      }
+    },
+    {
+      "id": "aggressor_execution_centroid_state_20260714",
+      "name": "Aggressor execution-centroid auction state",
+      "status": "weak",
+      "family": "aggressor_execution_centroid_topology",
+      "scope": "btc_completed_kline_taker_base_quote_microstructure",
+      "feature_tier": "beta_feature",
+      "description": "Exact completed-hour buyer- and seller-initiated average execution prices reconstructed from taker-buy and total base/quote kline volumes, plus their ordering and close-settlement geometry.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m total/taker-buy base and quote volumes plus OHLC"
+      ],
+      "feature_names": [
+        "aggressor_buy_centroid",
+        "aggressor_sell_centroid",
+        "aggressor_centroid_log_wedge",
+        "aggressor_close_midpoint_log_gap",
+        "aggressor_signed_inversion_settlement"
+      ],
+      "usable_for": [
+        "observable auction-ordering tokens in a materially different preregistered learner or RLLM",
+        "not replaying any inspected static ordering, direction, hold, gap threshold, OI gate or transition on pre-2024"
+      ],
+      "known_failures": [
+        "The fixed B<S<C long / C<B<S short policy lost 50.05% fit and 10.75% in 2023 at 6bp/side.",
+        "Zero-cost fit still lost 13.56%; 2023 zero-cost ratio was only 1.42.",
+        "The exact direction flip also lost in fit and 2023.",
+        "Primary event Jaccard was 0.976 versus direct B<S plus midpoint/VWAP/hourly-return controls, so the static transition collapses to a simple price-direction subset."
+      ],
+      "evidence": "All 35,073 completed hours reconstructed with max quote-accounting relative error 2.38e-16 and no high/low bound violations. Continuous signed-centroid Spearman was only 0.251/0.293/0.213 versus hourly return/close-VWAP/taker imbalance, preserving an observable low-linear-redundancy token despite no static trading edge.",
+      "source_artifacts": [
+        "training/search_aggressor_centroid_inversion_alpha.py",
+        "results/aggressor_centroid_inversion_alpha_scan_2026-07-14.json",
+        "docs/aggressor-centroid-inversion-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame hard-filtered pre-2024; cutoff-chunk discard disclosed; 12 completed 5m rows ending minute55; next-open entry; no future labels, centroids or 2024+ rows.",
+      "tier_rationale": "The centroids are exact observables and continuous geometry is not highly correlated with simple controls, but all static execution semantics fail and matched event controls are nearly identical; retain only as weak representation.",
+      "next_action": "Freeze this sample. Reuse raw centroids only under a separately preregistered learner or genuinely fresh-forward shadow period.",
+      "generation_recipe": {
+        "script": "training/search_aggressor_centroid_inversion_alpha.py",
+        "protocol": "completed-hour exact base/quote centroids; one B<S terminal map; 12h; next-open; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      }
+    },
+    {
+      "id": "positioning_simplex_curvature_state_20260714",
+      "name": "Delayed positioning-simplex migration curvature",
+      "status": "weak",
+      "family": "positioning_simplex_replicator_geometry",
+      "scope": "btc_binance_positioning_cohorts_open_interest",
+      "feature_tier": "beta_feature",
+      "description": "Causal six-hour migration vectors and normalized turning curvature across delayed top-position, global-account and taker-volume long/short log-ratio coordinates.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLC",
+        "one-row-delayed Binance USD-M top-position/global-account/taker-volume ratios and open interest"
+      ],
+      "feature_names": [
+        "simplex_cohort_velocity_top_position",
+        "simplex_cohort_velocity_global_account",
+        "simplex_cohort_velocity_taker_flow",
+        "simplex_migration_speed",
+        "simplex_migration_mean",
+        "simplex_curvature"
+      ],
+      "usable_for": [
+        "weak cohort-geometry tokens under a materially different preregistered learner or RLLM",
+        "not replaying the inspected OI-curvature energy, q80, direction, 6h scale or 12h hold"
+      ],
+      "known_failures": [
+        "Primary fit/2023 CAGR-MDD was -0.60/-0.70.",
+        "Exact continuation also lost in fit and 2023.",
+        "Only 2020Q4 was positive; both 2021 and 2023 halves failed.",
+        "Primary energy Spearman was 0.949 with OI-build x speed and 0.948 with OI-build x pairwise dispersion."
+      ],
+      "evidence": "Curvature changed event membership (all structural-control Jaccards <=0.483) and curvature-speed correlation with the primary score was only 0.230, but multiplication by OI build and speed destroyed score-level novelty and no static map had positive risk efficiency.",
+      "source_artifacts": [
+        "training/search_positioning_simplex_curvature_alpha.py",
+        "results/positioning_simplex_curvature_alpha_scan_2026-07-14.json",
+        "docs/positioning-simplex-curvature-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Market and metrics returned frames pre-2024; cutoff-chunk discard disclosed; positioning shifted one complete 5m row; completed minute55; next-open; 2022 coverage gap quarantined; no 2024+ computation.",
+      "tier_rationale": "Raw cohort turning is a distinct causal geometric token at event level, but the executable energy collapses toward OI-speed and is unprofitable in both directions.",
+      "next_action": "Freeze static semantics. Reuse only raw velocity/curvature tokens under a separately preregistered learner or genuinely fresh-forward shadow period.",
+      "generation_recipe": {
+        "script": "training/search_positioning_simplex_curvature_alpha.py",
+        "protocol": "delayed three-cohort log-ratio geometry; 6h vectors; OI x speed x abs curvature q80; fade; 12h; next-open; 0.5x; 6bp/side; 2022 quarantine; OOS excluded"
+      }
+    },
+    {
+      "id": "hidden_safe_haven_cancellation_state_20260714",
+      "name": "Cross-sectional hidden FX safe-haven cancellation state",
+      "status": "weak",
+      "family": "fx_safe_haven_cross_sectional_cancellation",
+      "scope": "btc_fx_components_risk_stress",
+      "feature_tier": "beta_feature",
+      "description": "Causal completed-hour JPY/CHF safe-haven strength relative to four other USD pairs, paired with BTC's standardized six-hour response to represent FX stress hidden by broad-dollar cancellation.",
+      "data_sources": [
+        "Wave Trading completed one-minute EURUSD/GBPUSD/USDCAD/USDCHF/USDJPY/USDSEK bars",
+        "BTCUSDT perpetual completed 5-minute OHLC"
+      ],
+      "feature_names": [
+        "fx_pair_usd_strength_6h_priorvol_z",
+        "fx_safe_haven_risk_stress",
+        "fx_broad_usd_strength",
+        "btc_6h_priorvol_response_z",
+        "fx_btc_unpriced_safe_haven_stress"
+      ],
+      "usable_for": [
+        "weak cross-market state token under a materially different preregistered learner or RLLM",
+        "not replaying the inspected same-sign q90 fade, six-hour scale, minute-05 entry or 12-hour hold"
+      ],
+      "known_failures": [
+        "Primary fit/2023 CAGR-MDD was -0.31/-0.83 over 271/128 trades.",
+        "Primary lost in six of seven reported fit/selection half-years.",
+        "Exact direction flip remained negative in fit and reached only 0.48 ratio in 2023.",
+        "Primary remained negative at zero implementation cost in fit and 2023."
+      ],
+      "evidence": "The maximum event Jaccard against FX-only, BTC-reversal, broad-USD and raw-contrast controls was 0.207, so the state is distinct; however neither declared direction generalized and zero-cost performance was negative.",
+      "source_artifacts": [
+        "training/search_hidden_safe_haven_cancellation_alpha.py",
+        "results/hidden_safe_haven_cancellation_alpha_scan_2026-07-14.json",
+        "docs/hidden-safe-haven-cancellation-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frames pre-2024; cutoff-chunk discard disclosed; explicit minute-59 completion; weekend gaps preserved; prior-only volatility; minute-00 signal enters minute-05; split-contained exits; no 2024+ computation.",
+      "tier_rationale": "The safe-haven cancellation representation is algebraically and event-level distinct from broad DXY and BTC reversal, but the fixed executable mapping has no positive pre-2024 edge.",
+      "next_action": "Freeze static semantics. Reuse only continuous stress/response tokens under a separately preregistered learner or genuinely fresh-forward shadow sample.",
+      "generation_recipe": {
+        "script": "training/search_hidden_safe_haven_cancellation_alpha.py",
+        "protocol": "six FX pairs; continuous 6h returns scaled by prior 30d 1h volatility; same-sign FX/BTC residual; q90 fade; minute-05 entry; 12h; 0.5x; 6bp/side; OOS excluded"
+      }
+    },
+    {
+      "id": "execution_metronome_regularity_state_20260714",
+      "name": "Within-hour execution-ticket spectral regularity",
+      "status": "weak",
+      "family": "execution_ticket_frequency_structure",
+      "scope": "btc_completed_kline_trade_packet_rhythm",
+      "feature_tier": "beta_feature",
+      "description": "Causal within-hour rFFT entropy of linearly detrended log average-ticket size, with explicit near-zero-power invalidation and completed-bar timing.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5-minute quote volume, trade count, taker-buy quote and OHLC"
+      ],
+      "feature_names": [
+        "execution_ticket_spectral_regularity",
+        "execution_ticket_residual_power",
+        "execution_hour_ticket_level_z",
+        "execution_flow_coherence",
+        "execution_signed_price_acceptance"
+      ],
+      "usable_for": [
+        "weak execution-rhythm token under a materially different preregistered learner or RLLM",
+        "not replaying the inspected q90 multiplicative fade, q01 floors, minute-05 entry or 12-hour hold"
+      ],
+      "known_failures": [
+        "Primary fit/2023 CAGR-MDD was -0.40/-0.94 over 532/260 trades.",
+        "Primary remained negative at zero cost in fit and 2023.",
+        "Regularity ablation was not consistently weaker than primary.",
+        "Primary score Spearman with flow pressure was 0.782 and no-nonacceptance event Jaccard was 0.621."
+      ],
+      "evidence": "Legacy trophic/campaign/chirp event Jaccards were <=0.0025, so ticket frequency geometry is representationally distinct; the tested composite nevertheless collapses toward simple flow pressure and has no tradable edge.",
+      "source_artifacts": [
+        "training/search_execution_metronome_absorption_alpha.py",
+        "results/execution_metronome_absorption_alpha_scan_2026-07-14.json",
+        "docs/execution-metronome-absorption-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; 12 completed prior bars; minute-00 signal enters minute-05; prior-only ticket z and fit-only denominator floors; split-contained exits; no 2024+ computation.",
+      "tier_rationale": "Spectral ticket rhythm is distinct from older phase/campaign events, but its fixed interaction is dominated by flow pressure and regularity is not outcome-necessary.",
+      "next_action": "Freeze static semantics. Reuse only raw spectral entropy/power tokens under a separately preregistered learner or genuinely fresh-forward shadow sample.",
+      "generation_recipe": {
+        "script": "training/search_execution_metronome_absorption_alpha.py",
+        "protocol": "12-bar log-ticket detrended rFFT regularity; positive prior ticket z; flow pressure; nonacceptance; q90 fade; minute-05; 12h; 0.5x; 6bp/side; OOS excluded"
+      }
+    },
+    {
+      "id": "weekend_fx_reconciliation_state_20260714",
+      "name": "Weekend BTC/FX closed-market reconciliation state",
+      "status": "weak",
+      "family": "weekend_closed_market_information_transfer",
+      "scope": "btc_fx_weekend_reopen_cross_market",
+      "feature_tier": "beta_feature",
+      "description": "Causal weekly event state comparing BTC displacement while FX is closed with the first complete six-pair FX safe-haven differential after reopen, each normalized only by prior closure events.",
+      "data_sources": [
+        "BTCUSDT project 5m OHLC cache, treated as Binance USD-M perpetual bars with provenance caveat",
+        "Wave Trading one-minute EURUSD/GBPUSD/USDCAD/USDCHF/USDJPY/USDSEK stored closes"
+      ],
+      "feature_names": [
+        "weekend_closure_hours",
+        "btc_weekend_gap_event_z",
+        "fx_reopen_safe_haven_gap_event_z",
+        "weekend_fx_reconciliation_residual"
+      ],
+      "usable_for": [
+        "weak low-frequency closure-event context under a materially different preregistered learner or RLLM",
+        "not replaying the inspected residual sign, closure range, normalization, entry or holds"
+      ],
+      "known_failures": [
+        "Fixed residual fit return/CAGR/MDD/ratio was -45.36%/-20.85%/46.58%/-0.45 over 112 trades.",
+        "Fixed residual 2023 return/CAGR/MDD/ratio was -12.18%/-12.19%/15.89%/-0.77 over 52 trades.",
+        "Zero-cost fit and 2023 remained negative; minute-05/10/15 and 12/24/48h diagnostics all lost.",
+        "BTC continuation reached only 0.30 fit and 0.79 2023 ratio; FX-only and exact flip failed.",
+        "Historical FX quote basis/publication latency and perpetual funding are unavailable in this replay."
+      ],
+      "evidence": "Pre-outcome protocol commit and critic GO preceded one-shot fit/2023 access. Residual/component Spearman was -0.533/+0.688 and BTC-weekend/later-FX correlation only 0.120, so the state is not identical to either input, but every executable mapping missed promotion.",
+      "source_artifacts": [
+        "training/search_weekend_fx_reconciliation_alpha.py",
+        "results/weekend_fx_reconciliation_alpha_scan_2026-07-14.json",
+        "docs/weekend-fx-reconciliation-alpha-design-2026-07-14.md",
+        "docs/weekend-fx-reconciliation-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frames pre-2024; cutoff-chunk discard disclosed; six minute59 FX closes required; 45-72h observed closure; shift(1) prior-event z; minute00 signal to minute05 open; split-contained exit; no 2024+ computation.",
+      "tier_rationale": "The low-frequency cross-clock event is causally observable and not a one-component clone, but the fixed reconciliation direction is strongly negative and the mild BTC-continuation clue is below alpha strength.",
+      "next_action": "Freeze this sample. Reuse only raw event tokens under a separately preregistered learner or genuinely fresh-forward shadow sample after live FX source semantics are verified.",
+      "generation_recipe": {
+        "script": "training/search_weekend_fx_reconciliation_alpha.py",
+        "protocol": "first six-pair complete hour after 45-72h closure; prior-52/min26 event z; FX minus BTC residual; minute05; 24h; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      }
+    },
+    {
+      "id": "nonlinear_crossmap_price_flow_state_20260714",
+      "name": "Nonlinear price/flow cross-map asymmetry state",
+      "status": "weak",
+      "family": "nonlinear_crossmap_price_flow_geometry",
+      "scope": "btc_completed_price_taker_flow_dynamics",
+      "feature_tier": "beta_feature",
+      "description": "Leave-one-out simplex reconstruction skills and their directional asymmetry over strictly prior completed six-hour price-return and aggressive-flow blocks.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLC, quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "flow_to_price_crossmap_skill",
+        "price_to_flow_crossmap_skill",
+        "crossmap_dominance",
+        "prior_only_crossmap_dominance_rank"
+      ],
+      "usable_for": [
+        "weak nonlinear coupling token under a materially different preregistered learner or RLLM",
+        "not replaying or tuning the inspected sign-times-flow policy, E=3, 120-block library, q80 gate or fixed holds"
+      ],
+      "known_failures": [
+        "Primary fit return/CAGR/MDD/ratio was +4.89%/+1.86%/19.63%/0.09 over 348 trades.",
+        "Primary 2023 return/CAGR/MDD/ratio was -10.22%/-10.23%/15.06%/-0.68 over 130 trades.",
+        "Both 2023 halves lost and the exact direction flip also lost fit and 2023.",
+        "Zero-cost 2023 remained negative; minute-05/10/15 and 6/12/24h diagnostics all failed."
+      ],
+      "evidence": "Pre-outcome support passed at 348 fit and 130 2023 executable events. Dominance had Spearman -0.067/-0.118 versus linear lead-lag/same-time correlation and event Jaccard 0.143 versus the linear policy, showing a distinct but non-predictive representation.",
+      "source_artifacts": [
+        "training/search_crossmap_flow_causality_alpha.py",
+        "results/crossmap_flow_causality_alpha_scan_2026-07-14.json",
+        "docs/crossmap-flow-causality-alpha-design-2026-07-14.md",
+        "docs/crossmap-flow-causality-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; preceding 120 completed six-hour blocks only; current block excluded from state library; prior-only shifted q80; minute-05 next-open; strict MDD; no 2024+ computation.",
+      "tier_rationale": "Cross-map geometry is demonstrably unlike linear/correlation controls, but no fixed direction has risk-efficient fit or positive 2023 performance; retain only as weak representation.",
+      "next_action": "Freeze this sample. Reuse raw reconstruction skills/asymmetry only in a separately preregistered learner or genuinely fresh forward shadow period.",
+      "generation_recipe": {
+        "script": "training/search_crossmap_flow_causality_alpha.py",
+        "protocol": "prior 120 completed 6h blocks; E3 simplex, four neighbors, Theiler radius1; strict prior q80; sign(asymmetry)*sign(current flow); 12h; next-open; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      }
+    },
+    {
+      "id": "visibility_layer_irreversibility_state_20260714",
+      "name": "Price/flow horizontal-visibility irreversibility state",
+      "status": "weak",
+      "family": "multiplex_visibility_graph_time_asymmetry",
+      "scope": "btc_completed_price_taker_flow_order_topology",
+      "feature_tier": "beta_feature",
+      "description": "Directed horizontal-visibility-graph in/out degree-law mismatch for completed six-hour price returns and aggressive flow, plus their log irreversibility ratio.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLC, quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "price_hvg_irreversibility",
+        "flow_hvg_irreversibility",
+        "hvg_layer_log_ratio",
+        "prior_only_hvg_layer_rank"
+      ],
+      "usable_for": [
+        "weak network-topology/time-asymmetry tokens under a materially different preregistered learner or RLLM",
+        "not replaying or tuning the inspected 168-block/q80 dominant-layer arbitration or fixed holds"
+      ],
+      "known_failures": [
+        "Primary fit return/CAGR/MDD/ratio was -15.56%/-6.33%/21.21%/-0.30 over 339 trades.",
+        "Primary 2023 return/CAGR/MDD/ratio was -15.08%/-15.09%/19.00%/-0.79 over 139 trades.",
+        "Both 2023 halves lost; exact flip and same-event price/flow controls failed.",
+        "Zero-cost 2023 remained -7.70%; all fixed entries and holds failed."
+      ],
+      "evidence": "Pre-outcome support passed at 339 fit and 139 2023 executable events. Score correlations versus cross-map, price volatility, mean absolute flow, trend and ordinal entropy were all <=0.188 in absolute value; event Jaccard versus cross-map was 0.157. Flow-HVG-only stayed positive fit/2023 but ratios were only 0.78/0.21.",
+      "source_artifacts": [
+        "training/search_visibility_layer_irreversibility_alpha.py",
+        "results/visibility_layer_irreversibility_alpha_scan_2026-07-14.json",
+        "docs/visibility-layer-irreversibility-alpha-design-2026-07-14.md",
+        "docs/visibility-layer-irreversibility-alpha-search-2026-07-14.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; 168 completed six-hour blocks including current; shifted prior-only q80; minute05 next-open; strict MDD; no 2024+ computation.",
+      "tier_rationale": "HVG order topology is demonstrably distinct and the flow layer has a weak positive clue, but static arbitration loses while both standalone layers remain far below alpha risk efficiency.",
+      "next_action": "Freeze this sample. Reuse raw layer irreversibility/ratio only in a separately preregistered learner or genuinely fresh forward shadow period.",
+      "generation_recipe": {
+        "script": "training/search_visibility_layer_irreversibility_alpha.py",
+        "protocol": "directed HVG on 168 completed 6h price/flow blocks; symmetric degree KL with Jeffreys 0.5; prior q80 layer ratio; dominant-layer side; 12h; minute05; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      }
+    },
+    {
+      "id": "positioning_inventory_transfer_static_usage_20260713",
+      "name": "Static positioning inventory-transfer OI routing",
+      "status": "rejected",
+      "family": "positioning_disagreement_inventory_transfer_static_usage",
+      "scope": "btc_binance_derivatives_positioning",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected rule branching the first zero-cross after a fixed 36h top-position-minus-global disagreement episode by whether delayed open interest was preserved versus episode start.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "one-complete-bar-delayed Binance USD-M 5m positioning and open-interest metrics"
+      ],
+      "feature_names": [
+        "static_episode_start_to_resolution_oi_sign",
+        "static_inventory_conserved_follow_route",
+        "static_inventory_contracted_fade_route",
+        "fixed_hold_72_216"
+      ],
+      "usable_for": [
+        "failure provenance only; raw delayed OI and continuous lifecycle state remain beta under materially different mechanisms"
+      ],
+      "known_failures": [
+        "Zero of two fixed-hold policies passed pre-2024 admission.",
+        "The best 18h policy had fit CAGR/MDD 0.62 and 2023 CAGR/MDD -0.56.",
+        "The policy lost 10.07% in 2023 with 17.97% strict MDD on 24 trades.",
+        "Ignoring OI restored the positive parent, while inverted OI routing won only in 2023 and lost in fit, proving regime-dependent branch semantics."
+      ],
+      "evidence": "A physical pre-2024 two-hold test plus exact direction, parent-ablation, inverse-routing and cost controls rejected the fixed OI conservation law before OOS.",
+      "source_artifacts": [
+        "training/search_positioning_inventory_transfer_alpha.py",
+        "results/positioning_inventory_transfer_alpha_scan_2026-07-13.json",
+        "docs/positioning-inventory-transfer-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune OI change thresholds, episode ages, direction branches or fixed holds on this sample.",
+      "generation_recipe": {
+        "script": "training/search_positioning_inventory_transfer_alpha.py",
+        "protocol": "fixed 36h parent lifecycle zero-cross x 2 holds; one-bar-delayed OI; 2022 quarantine; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "propagator_impact_debt_static_usage_20260713",
+      "name": "Static flow-innovation propagator impact-debt policies",
+      "status": "rejected",
+      "family": "distributed_flow_impact_debt_static_usage",
+      "scope": "btc_perpetual_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family removing AR(12)-predictable signed taker flow, fitting 1h/3h finite response kernels, thresholding the causal unrealized kernel-tail debt, and holding for one or three kernel horizons.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_flow_innovation_ar12",
+        "static_response_kernel_12_36",
+        "static_impact_debt_z_1p5_to_3p5",
+        "fixed_hold_12_36_108"
+      ],
+      "usable_for": [
+        "failure provenance only; do not replay or tune this static propagator-debt construction on the inspected pre-2024 sample"
+      ],
+      "known_failures": [
+        "Zero of 40 policies passed pre-2024 admission.",
+        "Top standard-cost fit returned -12.40% with CAGR/MDD -0.22.",
+        "Top 2023 returned -2.85% with CAGR/MDD -0.48; 2023H1 ratio was -1.25.",
+        "Even at zero cost, fit returned -1.29% and 2023 CAGR/MDD was only 0.50."
+      ],
+      "evidence": "A physical pre-2024 AR-innovation/FIR-tail experiment with exact direction, innovation-only, timing and cost controls showed the measurable response is overwhelmingly immediate and the remaining tail is not tradable.",
+      "source_artifacts": [
+        "training/search_propagator_impact_debt_alpha.py",
+        "results/propagator_impact_debt_alpha_scan_2026-07-13.json",
+        "docs/propagator-impact-debt-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune AR orders, ridge penalties, debt thresholds, onset semantics or fixed holds on this sample; move to an independent economic mechanism.",
+      "generation_recipe": {
+        "script": "training/search_propagator_impact_debt_alpha.py",
+        "protocol": "2 kernels x 5 prior-z thresholds x 2 event modes x 2 holds = 40; fit-only AR/FIR; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      }
+    },
+    {
+      "id": "closed_excursion_holonomy_static_usage_20260713",
+      "name": "Static closed-excursion inventory-holonomy policies",
+      "status": "rejected",
+      "family": "closed_price_loop_inventory_holonomy_static_usage",
+      "scope": "btc_perpetual_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family fading same-side cumulative taker inventory, dissipative work or flow elasticity when a 2σ/3σ price excursion first recrosses its fixed anchor within 12h/24h.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_departure_z_2_3",
+        "static_loop_expiry_144_288",
+        "static_holonomy_q80_q90",
+        "fixed_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous closed-loop event state remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of 48 policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.41 and 2023 CAGR/MDD was -0.29.",
+        "Top 2023H2 returned -1.76% with CAGR/MDD -1.00.",
+        "Zero-cost 2023 CAGR/MDD was only 0.11 and H2 remained negative."
+      ],
+      "evidence": "A physical pre-2024 first-return loop scan plus exact direction, price-only, timing and cost controls rejected fixed holonomy threshold execution before OOS.",
+      "source_artifacts": [
+        "training/search_closed_excursion_holonomy_alpha.py",
+        "results/closed_excursion_holonomy_alpha_scan_2026-07-13.json",
+        "docs/closed-excursion-holonomy-alpha-search-2026-07-13.md"
+      ],
+      "next_action": "Do not tune departure widths, loop ages, score tails or holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_closed_excursion_holonomy_alpha.py",
+        "protocol": "2 departures x 2 expiries x 3 scores x 2 fit tails x 2 holds = 48; first causal anchor recross; next-open; 0.5x; 6bp/side; strict MDD"
+      }
+    },
+    {
+      "id": "oi_roundtrip_geometric_phase_static_usage_20260713",
+      "name": "Static OI round-trip geometric-phase policies",
+      "status": "rejected",
+      "family": "leveraged_inventory_roundtrip_geometry_static_usage",
+      "scope": "btc_binance_derivatives_positioning",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family continuing residual price phase or signed inventory work after a 2σ/3σ positive OI shock first returns to its fixed OI anchor within 12h/24h.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV",
+        "BTCUSDT completed-bar open interest and availability flag"
+      ],
+      "feature_names": [
+        "static_positive_oi_departure_z_2_3",
+        "static_oi_loop_expiry_144_288",
+        "static_geometric_phase_q80_q90",
+        "fixed_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous OI round-trip state remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of 48 policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.70 and 2023 CAGR/MDD was 1.03.",
+        "Top 2022H2 returned -4.35% and its one-hour lag was still positive.",
+        "Even zero-cost 2023 CAGR/MDD was only 1.50."
+      ],
+      "evidence": "A physical pre-2024 first-OI-reclosure scan plus exact direction, fixed-age, no-score, timing and cost controls rejected fixed geometric-phase threshold execution before OOS.",
+      "source_artifacts": [
+        "training/search_oi_roundtrip_geometric_phase_alpha.py",
+        "results/oi_roundtrip_geometric_phase_alpha_scan_2026-07-13.json",
+        "docs/oi-roundtrip-geometric-phase-alpha-search-2026-07-13.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Prior-only scales, frozen anchors, first completed OI recross, fit-only thresholds, next-open execution and physical pre-2024 truncation; OOS remained sealed.",
+      "tier_rationale": "The exact static mappings are rejected; only the continuous event representation retains weak beta evidence.",
+      "next_action": "Do not tune OI departure widths, loop expiries, score tails, direction branches or fixed holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_oi_roundtrip_geometric_phase_alpha.py",
+        "protocol": "2 OI departures x 2 expiries x 3 scores x 2 fit tails x 2 holds = 48; first causal OI recross; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      }
+    },
+    {
+      "id": "market_braid_static_usage_20260713",
+      "name": "Static three-strand market-braid policies",
+      "status": "rejected",
+      "family": "cross_market_first_passage_topology_static_usage",
+      "scope": "btc_spot_perpetual_leverage_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family mapping spot-before-leverage first-passage order to impulse continuation and leverage-before-spot order to impulse fading after a common spot/perp shock.",
+      "data_sources": [
+        "BTCUSDT perpetual and spot completed 5m prices",
+        "BTCUSDT completed premium aggregates",
+        "one-complete-bar-delayed Binance USD-M open interest"
+      ],
+      "feature_names": [
+        "static_common_impulse_z_2_3",
+        "static_price_passage_z_0p5_1",
+        "static_braid_expiry_72_144",
+        "static_relative_or_strict_chain_mapping",
+        "fixed_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; categorical permutation/episode state remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of 32 policies passed pre-2024 admission.",
+        "Top fit CAGR/MDD was 0.24; 2023 was 1.94; 2023H2 was 0.83.",
+        "One-hour delayed execution improved both periods.",
+        "Most episodes had unknowable same-bar strand ordering at 5m resolution."
+      ],
+      "evidence": "Physical pre-2024 search plus exact flip, order-blind, no-witness, OI-only, premium-only, timing and cost controls rejected static braid execution before OOS.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff, one-bar-delayed OI, prior-only frozen scales, complete premium rows, same-bar tie discard, next-open execution and sealed 2024+.",
+      "tier_rationale": "Static ordering maps fail the required fit/select CAGR-MDD threshold despite non-random direction evidence.",
+      "next_action": "Do not tune shock widths, passage widths, expiries, mappings or holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_market_braid_alpha.py",
+        "protocol": "32 fixed policies; one-bar-delayed OI; same-bar ties discarded; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      }
+    },
+    {
+      "id": "persistent_barrier_annihilation_static_usage_20260714",
+      "name": "Static persistent-barrier annihilation policies",
+      "status": "rejected",
+      "family": "price_topology_persistence_spectrum_static_usage",
+      "scope": "btc_price_action_topology",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family continuing or fading hourly price traversals that cross high-tail mass, largest-barrier or mass-density values from a frozen 2d/7d local-extrema prominence spectrum.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV"
+      ],
+      "feature_names": [
+        "static_prominence_floor_0p5",
+        "static_topology_horizon_576_2016",
+        "static_persistence_tail_q80_q90_q95_q975",
+        "static_continue_fade_mapping",
+        "fixed_hold_72_144_288"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous persistence-spectrum representation remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of 144 policies passed pre-2024 admission.",
+        "Top fit/2023 CAGR-MDD were 0.28/1.00 and fit strict MDD was 23.04%.",
+        "Top 2023H2 CAGR/MDD was 0.46.",
+        "Researcher degrees of freedom were expanded and fully recorded before OOS, so no static reuse is valid."
+      ],
+      "evidence": "Physical pre-2024 audit plus exact flip, no-tail, barrier-count, single-global-extrema, timing and cost controls rejected static execution before OOS.",
+      "contamination_risk": "high",
+      "leakage_notes": "Topology and scale freeze before traversal; hourly completed signal enters next open; source physically stops before 2024; OOS sealed.",
+      "tier_rationale": "Static tail and mapping rules remain well below alpha standards despite non-random feature evidence.",
+      "next_action": "Do not tune topology horizons, prominence floors, tails, direction maps or holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_persistent_barrier_annihilation_alpha.py",
+        "protocol": "144 transparent audit policies; frozen prior-hour prominence spectrum; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_persistent_barrier_annihilation_alpha.py",
+        "results/persistent_barrier_annihilation_alpha_scan_2026-07-14.json",
+        "docs/persistent-barrier-annihilation-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "dual_intrinsic_clock_static_usage_20260714",
+      "name": "Static dual intrinsic-clock impact policies",
+      "status": "rejected",
+      "family": "price_flow_event_time_elasticity_static_usage",
+      "scope": "btc_price_taker_flow_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family fading flow-fast/price-flat absorption states and continuing price-fast/non-opposing-flow vacuum states.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_dc_width_0p75_1_1p5",
+        "static_clock_window_72_144_288",
+        "static_dominance_ratio_1p5_2",
+        "static_absorption_vacuum_mapping",
+        "static_first_entry_and_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous event-clock representation remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of 18 policies passed fit-and-2023 admission.",
+        "Top fit returned -4.83% with CAGR/MDD -0.05 and 41.36% strict MDD.",
+        "Performance depended strongly on regime and transaction cost.",
+        "Earlier flexible pre-2024 probes contaminate all related static tail, onset and recoupling semantics."
+      ],
+      "evidence": "Physical pre-2024 scan plus exact flip, persistent-reentry, magnitude-only/no-clock, lag and cost controls rejected static execution before OOS.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff, frozen online DC thresholds, prior-only scales and volume denominator, minute-55 completed signal, next-open execution and sealed 2024+.",
+      "tier_rationale": "The static mappings fail executable-cost fit risk efficiency despite gross directional evidence.",
+      "next_action": "Do not tune directional-change widths, clock windows, dominance ratios, state mappings, re-entry rules or holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_dual_intrinsic_clock_alpha.py",
+        "protocol": "18 final policies; disclosed flexible precursor probes; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_dual_intrinsic_clock_alpha.py",
+        "results/dual_intrinsic_clock_alpha_scan_2026-07-14.json",
+        "docs/dual-intrinsic-clock-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "wasserstein_flow_response_strain_static_usage_20260714",
+      "name": "Static Wasserstein flow-response strain policies",
+      "status": "rejected",
+      "family": "conditional_flow_response_optimal_transport_static_usage",
+      "scope": "btc_taker_flow_distributional_liquidity",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family trading the sign of high-tail quantile transport strain between strong-buy and side-aligned strong-sell return-response distributions.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_flow_tail_q70",
+        "static_response_lookback_288_2016",
+        "static_strain_tail_q80_q90",
+        "static_positive_long_negative_short",
+        "static_hold_72_144",
+        "static_onset_variant"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous signed transport state remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of eight final policies passed fit-and-2023 CAGR/MDD admission.",
+        "Top fit returned +0.53% with ratio 0.01 and strict MDD 28.47%.",
+        "Onset-only reached 2023 ratio 3.16 but lost -4.81% in fit.",
+        "All precursor tercile/coherence and median-innovation variants are contaminated."
+      ],
+      "evidence": "Physical pre-2024 audit plus direction flip, onset, mean-only, moment-state, signed-W1, timing and cost controls rejected static execution before OOS.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff, fit-only thresholds, prior-only scale, completed decision, next-open execution, split-contained exits and sealed 2024+.",
+      "tier_rationale": "Static transport-tail execution lacks fit risk efficiency and temporal stability despite non-random direction and distribution-shape evidence.",
+      "next_action": "Do not tune flow cutoffs, transport quantiles, shape weights, lookbacks, tails, onset rules, mappings or holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_wasserstein_flow_response_strain_alpha.py",
+        "protocol": "8 final policies plus 16 disclosed precursor probes; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_wasserstein_flow_response_strain_alpha.py",
+        "results/wasserstein_flow_response_strain_alpha_scan_2026-07-14.json",
+        "docs/wasserstein-flow-response-strain-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "rg_domain_wall_relaxation_static_usage_20260714",
+      "name": "Static RG domain-wall relaxation policies",
+      "status": "rejected",
+      "family": "price_scale_space_rg_domain_wall_static_usage",
+      "scope": "btc_price_action_scale_space",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family following a stable coarse directional fixed point when a fine-scale opposing domain wall curves monotonically back toward it across dyadic EWM scales.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV"
+      ],
+      "feature_names": [
+        "static_rg_base_scale_24_48",
+        "static_field_floor_0p25",
+        "static_fixed_point_tolerance_0p10",
+        "static_curvature_tail_q70_q80",
+        "static_coarse_side_mapping",
+        "static_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; no beta promotion"
+      ],
+      "known_failures": [
+        "Zero of eight final policies passed pre-2024 admission.",
+        "No policy reached 20 selection trades; the most-supported policy had only 16.",
+        "The most-supported policy lost -3.49% in fit and -2.52% in 2023.",
+        "A prior 16-policy hard-sign wall propagation/contraction probe was also weak and is frozen."
+      ],
+      "evidence": "Physical pre-2024 scan and exact direction flip found no supported directional edge. Base-24/base-48 candidate counts were only 283/243 before score tails over the entire pre-2024 period.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff, causal EWM fields, fit-only score thresholds, completed minute-55 signal, next-open execution, split-contained exits and sealed 2024+.",
+      "tier_rationale": "The coherent concept is too sparse and loses in the only policy with modest support, so neither static usage nor raw representation merits promotion.",
+      "next_action": "Do not weaken field floors, fixed-point tolerance, scale sets, score tails or holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_rg_domain_wall_relaxation_alpha.py",
+        "protocol": "8 final policies plus 16 disclosed precursor probes; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_rg_domain_wall_relaxation_alpha.py",
+        "results/rg_domain_wall_relaxation_alpha_scan_2026-07-14.json",
+        "docs/rg-domain-wall-relaxation-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "causal_cone_rupture_static_usage_20260714",
+      "name": "Static causal-cone rupture policies",
+      "status": "rejected",
+      "family": "price_diffusion_cone_ensemble_static_usage",
+      "scope": "btc_price_action_causal_geometry",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family continuing in the dominant high-tail rupture direction of two-day/seven-day hourly diffusion-cone ensembles.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV"
+      ],
+      "feature_names": [
+        "static_cone_width_2",
+        "static_anchor_horizon_576_2016",
+        "static_mass_tail_q80_q90",
+        "static_frozen_or_current_volatility",
+        "static_breach_fraction_variant",
+        "static_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous cone spectrum remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of eight primary policies passed fit-and-2023 admission.",
+        "Top primary fit ratio was 0.05 and strict MDD was 25.24%.",
+        "Breach-fraction and current-volatility controls reached 2023 ratios above 3 but fit ratios were only 0.03 and 0.91.",
+        "One-hour delayed execution improved 2023 ratio, so sharp timing was not identified."
+      ],
+      "evidence": "Physical pre-2024 scan plus flip, onset, fraction, current-volatility, single-z, lag and cost controls reject every static execution interpretation before OOS.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff, prior-only anchor scales, prior anchors only, fit-only tails, next-open execution, split-contained exits and sealed 2024+.",
+      "tier_rationale": "Static mappings are regime-sensitive and below fit risk-efficiency requirements despite meaningful directional ensemble information.",
+      "next_action": "Do not tune cone width, anchor history, volatility freeze semantics, mass/fraction tails, direction mapping or holds on this sample.",
+      "generation_recipe": {
+        "script": "training/search_frozen_causal_cone_rupture_alpha.py",
+        "protocol": "8 primary policies plus disclosed controls; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_frozen_causal_cone_rupture_alpha.py",
+        "results/frozen_causal_cone_rupture_alpha_scan_2026-07-14.json",
+        "docs/frozen-causal-cone-rupture-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "causal_cone_age_front_static_usage_20260714",
+      "name": "Static causal-cone age-front policies",
+      "status": "rejected",
+      "family": "price_diffusion_cone_age_transport_static_usage",
+      "scope": "btc_price_action_causal_geometry",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family following a dominant-side breach wave when weighted q80 age, mean age and directional excess mass jointly expand over 1h/6h.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV"
+      ],
+      "feature_names": [
+        "static_cone_history_2016",
+        "static_cone_width_2",
+        "static_front_q80",
+        "static_positive_score_tail_q80",
+        "static_lag_12_72",
+        "static_hold_72_144",
+        "static_retreat_reversal"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous age-spectrum state remains weak beta"
+      ],
+      "known_failures": [
+        "Zero of four policies passed pre-2024 admission.",
+        "Top fit ratio was 0.07 and 2023 ratio was 0.70.",
+        "Two policies lost in fit and one of the fit-positive policies lost in 2023.",
+        "The top policy was negative in 2021H1 and 2021H2 and failed approximate significance."
+      ],
+      "evidence": "Direction flip and seven-day delay controls destroyed returns, but mass-only and current-volatility controls showed that the exact age-front/frozen-scale interpretation was not uniquely supported. Zero-cost fit ratio was only 0.24.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff, prior anchors/scales, fit-only tail, next-open execution, split-contained exits, strict MDD and sealed 2024+.",
+      "tier_rationale": "The dynamic idea is coherent but the exact static mapping is weak, regime-sensitive, cost-sensitive and below admission on both fit and 2023.",
+      "next_action": "Do not tune cone history/width, age statistic, score tail, 1h/6h lags, propagation/retreat mapping or 6h/12h holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_causal_cone_age_front_alpha.py",
+        "protocol": "4 primary policies plus direction, decomposition, delay, current-volatility and age-order controls; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_causal_cone_age_front_alpha.py",
+        "results/causal_cone_age_front_alpha_scan_2026-07-14.json",
+        "docs/causal-cone-age-front-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "preisach_flow_scar_static_usage_20260714",
+      "name": "Static Preisach flow-scar release policy",
+      "status": "rejected",
+      "family": "price_flow_hysteresis_memory_static_usage",
+      "scope": "btc_price_action_taker_flow",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected policy following coherent multi-relay price avalanches when their per-domain accumulated taker-flow scar opposed the new domain.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_price_field_144",
+        "static_preisach_12_relay_lattice",
+        "static_min_avalanche_3",
+        "static_coherence_0p67",
+        "static_opposing_scar_q80",
+        "static_hold_72"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous Preisach/scar state remains weak beta"
+      ],
+      "known_failures": [
+        "Primary fit CAGR/MDD was 0.07 and 2023 CAGR/MDD was -0.73.",
+        "Both 2023 halves lost with 57 supported full-year trades.",
+        "Zero-cost 2023 still lost -7.38%, so execution cost is not the root cause.",
+        "Direction flip and same-scar alternatives also failed robust admission."
+      ],
+      "evidence": "One physically truncated pre-2024 policy plus memory, scar, timing, flow-order and cost controls rejects the exact static mapping while confirming that the representation is not a simple breakout.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff, prior-only normalization, scar-before-current-flow ordering, next-open execution, split-contained exits, strict MDD and sealed 2024+.",
+      "tier_rationale": "The coherent novel mechanism is regime-sign unstable and materially below required fit/2023 risk efficiency.",
+      "next_action": "Do not tune field window, relay plane, avalanche size/coherence, scar normalization/direction, q80 tail or hold on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_preisach_flow_scar_alpha.py",
+        "protocol": "one primary policy plus exact direction, memory, scar, flow-delay, signal-delay and cost controls; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_preisach_flow_scar_alpha.py",
+        "results/preisach_flow_scar_alpha_scan_2026-07-14.json",
+        "docs/preisach-flow-scar-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "nonequilibrium_probability_current_static_usage_20260714",
+      "name": "Static nonequilibrium probability-current policies",
+      "status": "rejected",
+      "family": "observable_microstate_irreversible_current_static_usage",
+      "scope": "btc_price_flow_open_interest",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family projecting price direction from antisymmetric rolling transition current over hourly price/flow/OI sign microstates.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV, taker-buy quote volume and open interest"
+      ],
+      "feature_names": [
+        "static_eight_sign_microstates",
+        "static_transition_window_720h",
+        "static_dirichlet_prior_0p5",
+        "static_entropy_current_q80",
+        "static_directionality_0p5",
+        "static_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; no beta promotion"
+      ],
+      "known_failures": [
+        "Both 6h and 12h primary policies lost in fit and 2023 at executable cost.",
+        "The 12h top lost -52.32% fit and -8.09% in 2023 with 900/455 trades.",
+        "Exact flip, time reversal, ordinary Markov expectation, current-price side and OI ablation all lost.",
+        "Fit lost -18.17% even at zero cost; seven-day delay improved fit but remained negative in 2023."
+      ],
+      "evidence": "A physical pre-2024 scan with two primary holds and orientation, detailed-balance, state-ablation, delay and cost controls found no stable predictive current and no representation-level evidence worth beta retention.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff; transition graph at t ends at t-1; completed hourly state; fit-only score tail; next-open entry; split-contained exits; strict MDD; 2024+ sealed.",
+      "tier_rationale": "Every structural orientation fails with large supported samples, including zero-cost fit, so both static usage and the exact representation are rejected.",
+      "next_action": "Do not retune sign state definitions, graph window, smoothing, entropy/current projection, score tail or holds on this sample. A retry requires a different event source and genuinely fresh evidence.",
+      "generation_recipe": {
+        "script": "training/search_nonequilibrium_probability_current_alpha.py",
+        "protocol": "physical pre-2024; 8 observable microstates; one q80 current signal x 2 holds; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_nonequilibrium_probability_current_alpha.py",
+        "results/nonequilibrium_probability_current_alpha_scan_2026-07-14.json",
+        "docs/nonequilibrium-probability-current-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "occupation_saddle_escape_static_usage_20260714",
+      "name": "Static occupation-saddle crossing continuation policies",
+      "status": "rejected",
+      "family": "price_occupation_landscape_static_usage",
+      "scope": "btc_price_action_quote_volume",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family continuing completed-hour crossings of deep saddles in a daily-frozen joint time/quote-volume log-price occupation profile.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m close and quote volume"
+      ],
+      "feature_names": [
+        "static_occupation_lookback_8640",
+        "static_profile_bins_64",
+        "static_smoothing_1_2_3_2_1",
+        "static_saddle_ratio_0p5",
+        "static_mode_separation_3",
+        "static_hold_72_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous generic occupation geometry remains weak beta"
+      ],
+      "known_failures": [
+        "Neither 6h nor 12h hold passed fit-and-2023 admission.",
+        "Top fit ratio was 0.18 and 2023 ratio was 1.52 at 6bp/side.",
+        "Fit approximate mean-return p-value was 0.697 and multiple half-years lost or were flat.",
+        "Joint weighting was not superior to time-only, volume-only or reversed-volume controls."
+      ],
+      "evidence": "Physical pre-2024 scan of two primary holds plus direction, delay, weighting and cost controls rejects the exact static continuation mapping while preserving only weak generic saddle-state evidence.",
+      "contamination_risk": "high",
+      "leakage_notes": "Physical cutoff, prior-day frozen profiles, UTC-boundary regression test, next-open execution, split-contained exits, strict MDD and sealed 2024+.",
+      "tier_rationale": "The static policy misses CAGR/strict-MDD 3 even at zero cost, is regime-sensitive, statistically weak and does not identify the proposed joint time-volume mechanism.",
+      "next_action": "Do not tune 30d lookback, 64 bins, smoothing, depth ratio, mode spacing, joint weighting or 6h/12h holds on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_occupation_saddle_escape_alpha.py",
+        "protocol": "two primary policies plus exact flip, 1h/24h/7d delays, time/volume/reversed association and cost controls; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_occupation_saddle_escape_alpha.py",
+        "results/occupation_saddle_escape_alpha_scan_2026-07-14.json",
+        "docs/occupation-saddle-escape-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "orderflow_campaign_terminal_absorption_static_usage_20260714",
+      "name": "Static campaign terminal-absorption transitions",
+      "status": "rejected",
+      "family": "orderflow_trophic_campaign_terminal_transition_static_usage",
+      "scope": "btc_orderflow_sequence_grammar",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected family fading the first campaign-side terminal-absorption score after a frozen repeated trophic continuation campaign.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV, quote volume, trade count and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_parent_profile_12_24_6_q95",
+        "static_campaign_lookback_144_k2",
+        "static_terminal_absorption_score",
+        "static_wait_hold_72_144",
+        "static_campaign_fade_mapping"
+      ],
+      "usable_for": [
+        "failure provenance only; parent campaign density and role scores retain their prior weak-beta status"
+      ],
+      "known_failures": [
+        "Both 6h and 12h fade policies lost in fit and 2023.",
+        "The 6h fade lost in all five fit half-years; fit mean-return p-value 0.031 identifies a negative effect.",
+        "Exact terminal continuation was positive in fit but lost in 2023, so the event has no stable direction.",
+        "The 6h fade lost -15.11% in fit even at zero cost; costs are not the root cause."
+      ],
+      "evidence": "A critic-approved physical pre-2024 two-policy test with support preflight, exact transition controls, timing delays and cost stress rejects the new campaign-to-terminal transition without opening 2024+.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned analysis frame hard-filtered before 2024; the shared parser may read and discard later rows in the cutoff-crossing CSV chunk, but none enter features/outcomes; frozen parent thresholds; completed terminal bar j enters j+1 open; explicit inclusive pending state; split-contained exits; strict MDD.",
+      "tier_rationale": "The recombination adds no stable representation beyond two already-recorded weak-beta parents and fails strongly in both directions across time.",
+      "next_action": "Do not retune parent profile, campaign count/lookback, terminal score threshold, 6h/12h wait/hold or fade/continue mapping on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_orderflow_campaign_terminal_absorption_alpha.py",
+        "protocol": "frozen q95 (12,24,6) campaign; first campaign-side terminal score; two co-primary 6h/12h wait-holds; next-open; 0.5x; 6bp/side; strict MDD; OOS sealed"
+      },
+      "source_artifacts": [
+        "training/search_orderflow_campaign_terminal_absorption_alpha.py",
+        "results/orderflow_campaign_terminal_absorption_alpha_scan_2026-07-14.json",
+        "docs/orderflow-campaign-terminal-absorption-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "conformal_sr_pressure_static_usage_20260714",
+      "name": "Static conformal-SR pressure release/fade policies",
+      "status": "rejected",
+      "family": "sequential_conformal_leverage_pressure_static_usage",
+      "scope": "btc_price_taker_flow_open_interest",
+      "feature_tier": "gamma_feature",
+      "description": "Exact rejected two-policy family mapping fixed-boundary conformal-SR leverage-pressure events to 12-hour fade or stored-pressure release trades.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLCV, taker-buy quote volume and one-row-delayed open interest"
+      ],
+      "feature_names": [
+        "static_normalization_720h",
+        "static_reference_4320h_min2160",
+        "static_oi_multiplier_clip_0_3",
+        "static_power_0p5",
+        "static_sr_boundary_200",
+        "static_fade_release_mapping",
+        "static_hold_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous residual/rank/evidence state remains weak beta"
+      ],
+      "known_failures": [
+        "Release fit/2023 CAGR/MDD was 1.02/0.91, below 3.",
+        "Release lost in 2023H2 and was weak in 2021H2.",
+        "Fade lost in every reported full/half window.",
+        "Even zero-cost release ratios were only 1.31 fit and 1.56 in 2023."
+      ],
+      "evidence": "A critic-approved two-map physical pre-2024 experiment with support and overlap preflight, exact OI/no-memory/flow/timing controls and cost stress rejects static execution while identifying representation-level sequential information.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; delayed OI; prior-only normalizers/ranks; completed signal to next open; split-contained exits; strict MDD; no 2024+ computation.",
+      "tier_rationale": "Direction is identified as release, but the exact static family lacks risk efficiency and temporal robustness; it cannot be rescued by costs or the opposite map.",
+      "next_action": "Do not tune normalization/reference windows, OI multiplier, power, boundary, fade/release mapping or hold on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_conformal_sr_pressure_alpha.py",
+        "protocol": "two co-primary mappings plus no-OI/single-tail/reversed-flow/delay/cost controls; next-open; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_conformal_sr_pressure_alpha.py",
+        "results/conformal_sr_pressure_alpha_scan_2026-07-14.json",
+        "docs/conformal-sr-pressure-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "aggressor_centroid_inversion_static_usage_20260714",
+      "name": "Static aggressor-centroid inversion settlement policy",
+      "status": "rejected",
+      "family": "aggressor_execution_centroid_topology_static_usage",
+      "scope": "btc_completed_kline_taker_base_quote_microstructure",
+      "feature_tier": "gamma_feature",
+      "description": "Rejected threshold-free 12-hour continuation policy: long B<S<C and short C<B<S using completed-hour aggressor execution centroids.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m total/taker-buy base and quote volumes plus OHLC"
+      ],
+      "feature_names": [
+        "static_inverted_terminal_order",
+        "static_continuation_direction",
+        "static_hold_144"
+      ],
+      "usable_for": [
+        "failure provenance only; exact raw buyer/seller execution centroids retain weak-beta representation status"
+      ],
+      "known_failures": [
+        "Fit return/CAGR/strict MDD/ratio was -50.05%/-26.93%/54.86%/-0.49 over 914 trades.",
+        "2023 return/CAGR/strict MDD/ratio was -10.75%/-10.76%/24.96%/-0.43 over 472 trades.",
+        "Only 2021H1 was positive; all other fit/selection half-years lost.",
+        "The exact direction flip, structural ablations, matched momentum controls and every timing delay failed.",
+        "Zero-cost fit remained negative, while the apparent zero-cost 2023 return had ratio only 1.42 and disappeared by 6bp/side."
+      ],
+      "evidence": "A pre-outcome critic/verifier-approved one-cell experiment with exact accounting, full side-specific support, direct matched momentum controls, 5m live-latency control and 0-15bp cost stress rejects the static family without opening 2024+.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; completed minute55 hourly centroids; next-open and delayed controls; split-contained exits; strict MDD; no 2024+ computation.",
+      "tier_rationale": "The policy is unprofitable, directionally unstable, cost-sensitive and almost event-identical to simpler B<S momentum controls.",
+      "next_action": "Do not tune centroid-gap thresholds, ordinary/inverted topology transitions, OI/funding gates, directions, holds or delays on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_aggressor_centroid_inversion_alpha.py",
+        "protocol": "one inverted-terminal map plus flip/structural/matched-momentum/delay/cost controls; 12h; next-open; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_aggressor_centroid_inversion_alpha.py",
+        "results/aggressor_centroid_inversion_alpha_scan_2026-07-14.json",
+        "docs/aggressor-centroid-inversion-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "positioning_simplex_curvature_static_usage_20260714",
+      "name": "Static positioning-simplex curvature exhaustion policy",
+      "status": "rejected",
+      "family": "positioning_simplex_replicator_geometry_static_usage",
+      "scope": "btc_binance_positioning_cohorts_open_interest",
+      "feature_tier": "gamma_feature",
+      "description": "Rejected fit-q80 12-hour policy fading net six-hour cohort migration when delayed positioning curvature, speed and positive OI change form a high-energy event.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLC",
+        "one-row-delayed Binance USD-M positioning ratios and open interest"
+      ],
+      "feature_names": [
+        "static_migration_6h",
+        "static_oi_curvature_speed_q80",
+        "static_fade_continuation_mapping",
+        "static_hold_144"
+      ],
+      "usable_for": [
+        "failure provenance only; raw cohort velocity and curvature retain weak-beta status"
+      ],
+      "known_failures": [
+        "Fit return/CAGR/strict MDD/ratio was -37.20%/-31.85%/53.28%/-0.60 over 456 trades.",
+        "2023 return/CAGR/strict MDD/ratio was -16.96%/-16.97%/24.17%/-0.70 over 294 trades.",
+        "Only 2020Q4 was positive; all 2021/2023 halves failed.",
+        "Exact flip, all structural ablations and every delay failed.",
+        "Zero-cost fit and 2023 remained negative.",
+        "Score-level novelty failed because OI-speed controls had Spearman about 0.95."
+      ],
+      "evidence": "A pre-outcome critic-approved one-cell experiment with delayed-source assertions, full support, 2022 quarantine, no-curvature/no-OI/speed/dispersion ablations, timing controls and cost stress rejects the static family without opening 2024+.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frames pre-2024; cutoff-chunk discard disclosed; one-row delayed metrics; completed minute55; next-open and delayed controls; split-contained exits; strict MDD; 2022 quarantined; no OOS computation.",
+      "tier_rationale": "Both directions and every cost regime fail, temporal behavior is unstable, and the proposed energy is largely a nonlinear restatement of OI expansion times cohort speed.",
+      "next_action": "Do not tune curvature projection, OI multiplier, q threshold, migration scale, direction, hold or timing on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_positioning_simplex_curvature_alpha.py",
+        "protocol": "one q80 fade map plus flip/no-curvature/no-OI/speed/dispersion/delay/cost controls; 12h; next-open; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_positioning_simplex_curvature_alpha.py",
+        "results/positioning_simplex_curvature_alpha_scan_2026-07-14.json",
+        "docs/positioning-simplex-curvature-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "hidden_safe_haven_cancellation_static_usage_20260714",
+      "name": "Static hidden safe-haven cancellation fade policy",
+      "status": "rejected",
+      "family": "fx_safe_haven_cross_sectional_cancellation_static_usage",
+      "scope": "btc_fx_components_risk_stress",
+      "feature_tier": "gamma_feature",
+      "description": "Rejected fit-q90 12-hour policy fading same-signed JPY/CHF hidden risk stress and BTC non-acceptance after explicit completed-hour FX alignment.",
+      "data_sources": [
+        "Wave Trading completed one-minute EURUSD/GBPUSD/USDCAD/USDCHF/USDJPY/USDSEK bars",
+        "BTCUSDT perpetual completed 5-minute OHLC"
+      ],
+      "feature_names": [
+        "static_safe_haven_minus_broad_usd_contrast",
+        "static_btc_nonacceptance_residual",
+        "static_same_sign_q90_fade",
+        "static_hold_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous cross-sectional FX cancellation remains weak-beta state"
+      ],
+      "known_failures": [
+        "Fit return/CAGR/strict MDD/ratio was -18.79%/-7.74%/24.92%/-0.31 over 271 trades.",
+        "2023 return/CAGR/strict MDD/ratio was -20.71%/-20.72%/24.88%/-0.83 over 128 trades.",
+        "Both 2023 halves were negative and only 2021H2 was positive among seven reported half-years.",
+        "Exact flip lost fit; all fixed component controls failed 2023; every delay failed joint robustness.",
+        "Zero-cost fit/2023 returns were -4.45%/-14.38%."
+      ],
+      "evidence": "A critic-revised and independently verified pre-outcome experiment passed support with 271 fit and 128 2023 trades, then failed declared direction, exact flip, component controls, delays and zero-cost checks without opening 2024+.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frames pre-2024; cutoff-chunk discard disclosed; all six minute-59 FX closes required; weekend gaps not bridged; 6h scaling uses prior 1h statistics; minute-05 next-open; strict MDD; OOS excluded.",
+      "tier_rationale": "The event surface is novel but economically unproductive in both inspected directions, and losses persist without costs.",
+      "next_action": "Do not tune currency membership, standardization, q threshold, residual sign, lag, direction or hold on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_hidden_safe_haven_cancellation_alpha.py",
+        "protocol": "single q90 same-sign fade plus component/flip/delay/cost controls; minute-05; 12h; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_hidden_safe_haven_cancellation_alpha.py",
+        "results/hidden_safe_haven_cancellation_alpha_scan_2026-07-14.json",
+        "docs/hidden-safe-haven-cancellation-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "execution_metronome_absorption_static_usage_20260714",
+      "name": "Static execution-metronome absorption fade",
+      "status": "rejected",
+      "family": "execution_ticket_frequency_absorption_static_usage",
+      "scope": "btc_completed_kline_trade_packet_rhythm",
+      "feature_tier": "gamma_feature",
+      "description": "Rejected fit-q90 12-hour policy fading large, coherent taker flow when within-hour average-ticket spectra are concentrated and signed price acceptance is weak.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5-minute quote volume, trade count, taker-buy quote and OHLC"
+      ],
+      "feature_names": [
+        "static_ticket_regularity",
+        "static_positive_ticket_level_z",
+        "static_flow_pressure",
+        "static_price_nonacceptance",
+        "static_q90_fade_hold144"
+      ],
+      "usable_for": [
+        "failure provenance only; raw ticket spectral regularity retains weak-beta status"
+      ],
+      "known_failures": [
+        "Fit return/CAGR/strict MDD/ratio was -38.07%/-16.92%/42.46%/-0.40 over 532 trades.",
+        "2023 return/CAGR/strict MDD/ratio was -28.89%/-28.91%/30.70%/-0.94 over 260 trades.",
+        "Both 2023 halves failed and only 2022H2 was marginally positive among seven half-years.",
+        "Exact flip lost fit; component ablations and all delays failed joint robustness.",
+        "Zero-cost fit/2023 returns were -14.78%/-16.89%.",
+        "Novelty and regularity-necessity gates both failed."
+      ],
+      "evidence": "A critic-revised pre-outcome experiment passed support with 532 fit and 260 2023 trades, then failed direction, flip, component, delay, cost, novelty and regularity-necessity checks without opening 2024+.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; degenerate spectra invalid; fit-only q01 denominator floors; minute-05 next-open; strict MDD; OOS excluded.",
+      "tier_rationale": "The exact policy loses before costs and is largely a nonlinear restatement of flow pressure rather than a regularity-dependent edge.",
+      "next_action": "Do not tune FFT definition, detrending, denominator floors, component weights, q threshold, direction, lag or hold on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_execution_metronome_absorption_alpha.py",
+        "protocol": "single q90 fade plus component/legacy-overlap/flip/delay/cost controls; minute-05; 12h; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_execution_metronome_absorption_alpha.py",
+        "results/execution_metronome_absorption_alpha_scan_2026-07-14.json",
+        "docs/execution-metronome-absorption-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "weekend_fx_reconciliation_static_usage_20260714",
+      "name": "Static weekend FX reconciliation residual policy",
+      "status": "rejected",
+      "family": "weekend_closed_market_information_transfer_static_usage",
+      "scope": "btc_fx_weekend_reopen_cross_market",
+      "feature_tier": "gamma_feature",
+      "description": "Rejected weekly policy trading sign(fx reopen event z minus BTC weekend event z) for 24 hours after the first complete FX reopen hour.",
+      "data_sources": [
+        "BTCUSDT project 5m OHLC cache, treated as Binance USD-M perpetual bars with provenance caveat",
+        "Wave Trading one-minute EURUSD/GBPUSD/USDCAD/USDCHF/USDJPY/USDSEK stored closes"
+      ],
+      "feature_names": [
+        "static_fx_minus_btc_reconciliation_residual",
+        "static_weekend_reopen_side",
+        "static_minute05_entry",
+        "static_hold_288"
+      ],
+      "usable_for": [
+        "failure provenance only; raw closure-event inputs retain weak-beta representation status"
+      ],
+      "known_failures": [
+        "Fit return/CAGR/strict MDD/ratio was -45.36%/-20.85%/46.58%/-0.45 over 112 trades.",
+        "2023 return/CAGR/strict MDD/ratio was -12.18%/-12.19%/15.89%/-0.77 over 52 trades.",
+        "2023 H1 lost 13.07%; H2 gained only 1.02% with ratio 0.18.",
+        "Zero-cost fit/2023 remained -41.57%/-9.40%.",
+        "Exact flip, BTC-only, FX-only, schedule-only, entry-delay and hold diagnostics all failed joint admission."
+      ],
+      "evidence": "A committed pre-outcome design, 10 tests, support-only pass and independent critic GO preceded the one-shot result. No 2024+ outcomes were opened and no post-2023 parameter change was made.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frames pre-2024; cutoff-chunk discard disclosed; six minute59 FX closes required; 45-72h observed closure; shift(1) prior-event z; minute00 signal to minute05 open; split-contained exit; no 2024+ computation.",
+      "tier_rationale": "The declared causal catch-up direction is decisively unprofitable before costs and unstable by half-year; neither the inverse nor component policies form a valid alpha.",
+      "next_action": "Do not tune pair membership, closure range, z-state, residual sign, direction, delay or hold on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_weekend_fx_reconciliation_alpha.py",
+        "protocol": "first six-pair complete hour after 45-72h closure; prior-52/min26 event z; FX minus BTC residual; minute05; 24h; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_weekend_fx_reconciliation_alpha.py",
+        "results/weekend_fx_reconciliation_alpha_scan_2026-07-14.json",
+        "docs/weekend-fx-reconciliation-alpha-design-2026-07-14.md",
+        "docs/weekend-fx-reconciliation-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "nonlinear_crossmap_flow_static_usage_20260714",
+      "name": "Static nonlinear cross-map flow-direction policy",
+      "status": "rejected",
+      "family": "nonlinear_crossmap_price_flow_static_usage",
+      "scope": "btc_completed_price_taker_flow_dynamics",
+      "feature_tier": "gamma_feature",
+      "description": "Rejected q80 event policy trading sign(cross-map skill asymmetry) times sign(current completed six-hour aggressive flow) for 12 hours.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLC, quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_E3_library120_crossmap_dominance",
+        "static_q80_event_gate",
+        "static_dominance_times_flow_side",
+        "static_hold_144"
+      ],
+      "usable_for": [
+        "failure provenance only; continuous reconstruction skills/asymmetry retain weak-beta representation status"
+      ],
+      "known_failures": [
+        "Fit return/CAGR/strict MDD/ratio was +4.89%/+1.86%/19.63%/0.09 over 348 trades.",
+        "2023 return/CAGR/strict MDD/ratio was -10.22%/-10.23%/15.06%/-0.68 over 130 trades.",
+        "Both 2023 halves were negative and approximate mean-return tests showed no fit edge.",
+        "Exact flip, matched flow/price controls, linear lead-lag, 6h/7d delays and all declared timing diagnostics failed.",
+        "Zero-cost 2023 return was -2.93% with ratio -0.26."
+      ],
+      "evidence": "A committed pre-outcome protocol, 11 tests, support/novelty preflight and independent critic GO preceded the one-shot run. No 2024+ outcomes were opened and no parameter changed after 2023 access.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; prior-only state and threshold; current block completed minute55; minute05 entry; split-contained non-overlap; strict MDD; no OOS computation.",
+      "tier_rationale": "The representation is novel but the exact static side semantics are statistically unsupported, cost-sensitive and negative in the complete 2023 selection year.",
+      "next_action": "Do not tune embedding, library, neighbor, Theiler, gate, sign map, delay or hold on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_crossmap_flow_causality_alpha.py",
+        "protocol": "one frozen cross-map q80 policy plus matched component/linear/flip/delay/cost controls; 12h; minute05; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_crossmap_flow_causality_alpha.py",
+        "results/crossmap_flow_causality_alpha_scan_2026-07-14.json",
+        "docs/crossmap-flow-causality-alpha-design-2026-07-14.md",
+        "docs/crossmap-flow-causality-alpha-search-2026-07-14.md"
+      ]
+    },
+    {
+      "id": "visibility_layer_arbitration_static_usage_20260714",
+      "name": "Static visibility-layer dominant-direction arbitration",
+      "status": "rejected",
+      "family": "multiplex_visibility_graph_time_asymmetry_static_usage",
+      "scope": "btc_completed_price_taker_flow_order_topology",
+      "feature_tier": "gamma_feature",
+      "description": "Rejected q80 policy following current flow when flow HVG irreversibility exceeds price HVG irreversibility, otherwise following current price return.",
+      "data_sources": [
+        "BTCUSDT perpetual completed 5m OHLC, quote volume and taker-buy quote volume"
+      ],
+      "feature_names": [
+        "static_hvg_window168",
+        "static_symmetric_degree_kl",
+        "static_layer_ratio_q80",
+        "static_dominant_layer_follow",
+        "static_hold144"
+      ],
+      "usable_for": [
+        "failure provenance only; separate layer irreversibility values retain weak-beta representation status"
+      ],
+      "known_failures": [
+        "Fit return/CAGR/strict MDD/ratio was -15.56%/-6.33%/21.21%/-0.30 over 339 trades.",
+        "2023 return/CAGR/strict MDD/ratio was -15.08%/-15.09%/19.00%/-0.79 over 139 trades.",
+        "Both 2023 halves were negative; exact flip, same-event controls and 6h delay failed.",
+        "Zero-cost 2023 return was -7.70% with ratio -0.58.",
+        "Minute-05/10/15 and 6/12/24h diagnostics failed joint fit/2023 admission."
+      ],
+      "evidence": "A committed pre-outcome protocol, 19 tests, support/novelty preflight and independent critic GO preceded the one-shot run. No 2024+ outcome was opened and no parameter changed after 2023 access.",
+      "contamination_risk": "high",
+      "leakage_notes": "Returned frame pre-2024; cutoff-chunk discard disclosed; completed current block only; prior-only gate; minute05 entry; split-contained non-overlap; strict MDD; no OOS computation.",
+      "tier_rationale": "The representation is novel, but selecting the currently more irreversible layer as the directional carrier is statistically and economically invalid on both inspected windows.",
+      "next_action": "Do not tune HVG window/support/prior, layer ratio, q gate, arbitration direction, delay or hold on this inspected sample.",
+      "generation_recipe": {
+        "script": "training/search_visibility_layer_irreversibility_alpha.py",
+        "protocol": "one frozen dominant-layer q80 map plus component/flip/delay/cost/timing controls; 12h; minute05; 0.5x; 6bp/side; strict MDD; OOS excluded"
+      },
+      "source_artifacts": [
+        "training/search_visibility_layer_irreversibility_alpha.py",
+        "results/visibility_layer_irreversibility_alpha_scan_2026-07-14.json",
+        "docs/visibility-layer-irreversibility-alpha-design-2026-07-14.md",
+        "docs/visibility-layer-irreversibility-alpha-search-2026-07-14.md"
+      ]
     }
   ]
 }

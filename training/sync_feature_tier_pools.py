@@ -19,8 +19,39 @@ TIER_FILES = {
 }
 
 
+def orphaned_view_entries(data: dict[str, Any]) -> dict[str, list[str]]:
+    """Return tier-view entries missing from the canonical source registry.
+
+    Tier files are generated views, but older research occasionally edited a
+    view directly.  Silently rewriting such a view would delete that history.
+    Fail closed until the entries have been migrated into ``feature_pool``.
+    """
+
+    source_ids = {entry.get("id") for entry in data.get("entries", [])}
+    orphaned: dict[str, list[str]] = {}
+    for tier, path in TIER_FILES.items():
+        if not path.exists():
+            continue
+        current = json.loads(path.read_text())
+        missing = sorted(
+            entry.get("id", "<missing-id>")
+            for entry in current.get("entries", [])
+            if entry.get("id") not in source_ids
+        )
+        if missing:
+            orphaned[tier] = missing
+    return orphaned
+
+
 def materialize() -> dict[str, Any]:
     data = json.loads(SOURCE.read_text())
+    orphaned = orphaned_view_entries(data)
+    if orphaned:
+        details = "; ".join(f"{tier}: {', '.join(ids)}" for tier, ids in orphaned.items())
+        raise ValueError(
+            "tier views contain entries missing from research/pools/feature_pool.json; "
+            f"migrate them before synchronization ({details})"
+        )
     base = {k: v for k, v in data.items() if k != "entries"}
     base["source_pool"] = SOURCE.name
     counts = {}
