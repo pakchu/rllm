@@ -455,11 +455,22 @@ def run(cfg: Config) -> dict[str, Any]:
         and all(candidate_stats[name]["absolute_return_pct"] > 0.0 for name in ("test_2024", "eval_2025", "holdout_2026h1"))
     )
     independence_pass = all(row["passes_limits"] for row in orthogonality.values())
-    verdict = (
-        "Promoted as a low-correlation alpha candidate; retain frozen parameters and require forward shadow before live sizing."
-        if performance_pass and independence_pass
-        else "Rejected for live promotion; retain only as research evidence because the frozen OOS performance or independence gate failed."
-    )
+    if performance_pass and independence_pass:
+        verdict = (
+            "Promoted as a low-correlation alpha candidate; retain frozen parameters and require "
+            "forward shadow before live sizing."
+        )
+    elif independence_pass:
+        verdict = (
+            "The event clock passed every independence gate, but the frozen pressure-sign directional "
+            "policy failed OOS and is rejected. Retain only the event clock for a separately frozen "
+            "causal direction model."
+        )
+    else:
+        verdict = (
+            "Rejected for live promotion; the frozen candidate failed the OOS performance and/or "
+            "independence gate."
+        )
     payload = {
         "schema_version": 1,
         "mode": "cross_collateral_near_pressure_frozen_oos",
