@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import replace
 
 import numpy as np
@@ -67,6 +68,27 @@ def test_missing_archive_is_recorded_without_fabrication() -> None:
         "um", "BTCUSDT", pd.Timestamp("2024-01-01").date(), builder.Config(), fetcher=missing
     )
     assert result["available"] is False
+    assert result["frame"].empty
+
+
+def test_checksum_valid_malformed_archive_fails_closed(monkeypatch) -> None:
+    payload = b"checksum-valid-but-malformed"
+    checksum = hashlib.sha256(payload).hexdigest()
+    responses = iter([f"{checksum}  archive.zip\n".encode(), payload])
+
+    def fetch(*args, **kwargs):
+        del args, kwargs
+        return next(responses)
+
+    monkeypatch.setattr(builder.base, "read_archive", lambda _: (_ for _ in ()).throw(
+        ValueError("book-depth percentage is not integral")
+    ))
+    result = builder.process_day(
+        "um", "BTCUSDT", pd.Timestamp("2024-01-01").date(), builder.Config(), fetcher=fetch
+    )
+    assert result["available"] is False
+    assert result["archive_sha256"] == checksum
+    assert "checksum-verified archive rejected" in result["reason"]
     assert result["frame"].empty
 
 

@@ -84,7 +84,21 @@ def process_day(
     except FileNotFoundError:
         return base._empty_day(venue, symbol, day)
     archive_hash = base.verify_sha256(payload, checksum)
-    raw = base.read_archive(payload)
+    try:
+        raw = base.read_archive(payload)
+    except (ValueError, OSError) as exc:
+        # A checksum-valid archive can still contain malformed snapshots.  Do
+        # not repair, interpolate, or partially accept it: the whole venue-day
+        # is unavailable so downstream signals fail closed.
+        return {
+            "venue": venue,
+            "symbol": symbol,
+            "date": day.isoformat(),
+            "available": False,
+            "reason": f"checksum-verified archive rejected: {type(exc).__name__}: {exc}",
+            "archive_sha256": archive_hash,
+            "frame": pd.DataFrame(),
+        }
     day_start = pd.Timestamp(day)
     day_end = day_start + pd.Timedelta(days=1)
     if raw["timestamp"].lt(day_start).any() or raw["timestamp"].ge(day_end).any():
