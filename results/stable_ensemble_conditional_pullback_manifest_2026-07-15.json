@@ -1,0 +1,346 @@
+{
+  "created_at": "2026-07-15T11:18:08.419979+00:00",
+  "schema_version": 1,
+  "phase": "pre_oos_frozen",
+  "oos_opened": false,
+  "selection_end_exclusive": "2024-01-01",
+  "source_commits": {
+    "selection": "f9f60dbe19587b26658a9147caab34565bf39d0f",
+    "audit": "7d791489e60d5446baeaf5ee9a48b11f55c14047"
+  },
+  "source_artifacts": {
+    "selection": {
+      "path": "results/stable_ensemble_conditional_pullback_pre2024_2026-07-15.json",
+      "file_sha256": "ef89905d04dbceb1b4a6a8d4058831a704f8375d8f32e1060c821f1c205e7f4a",
+      "result_hash": "2e0c80328bf33c16a2784190964e6b5ca923cf122c4f52eff67a1a0d3900026f",
+      "search_spec_hash": "96bb7e857da80d1d6a9a7cfe845194451f4065db7b3568e525fed2e2e9f3fd9f"
+    },
+    "audit": {
+      "path": "results/stable_ensemble_conditional_pullback_audit_pre2024_2026-07-15.json",
+      "file_sha256": "5d42e8ec48ff4512732f86b334de503869420da939db8bdc88c7b9436343a412",
+      "audit_hash": "366a72719a1bc6c86012597548327a4446e8d852af21d8701d79bc4063ef35db",
+      "audit_spec_hash": "7e38321658358ea676a0f921dc5d50af05f86f05ca3ec3e7dab8752215244cb8"
+    }
+  },
+  "source_prefix_hashes": {
+    "market": "a7639b9bf7fe7eaf6f6885af758fc4273a6c76ef0d085f00a2a3067675e04b6c",
+    "funding": "176afb9631ce5674bca3f375599deab5a6cbf39833edf6c5e26d7ccf33160485",
+    "premium": "fdaeda538c62bdc15bce35100430a5d3586cea37d3c4021c437c1c0d9e935529"
+  },
+  "feature_prefix_hash": "b99fb393dcfd6006b0f3eaaa5f4425f56c35e5fe09e98d548f382f5d3eb33c65",
+  "model_spec": {
+    "family": "RandomForestRegressor responsibility ensemble",
+    "seeds": [
+      7,
+      71,
+      715,
+      2026,
+      71515
+    ],
+    "trees_per_seed": 2000,
+    "max_depth": 3,
+    "min_samples_leaf": 16,
+    "max_features": 0.7,
+    "target": "48h net trade return",
+    "fit_window": [
+      "2020-07-01",
+      "2023-01-01"
+    ],
+    "anchor_cooldown_bars": 144,
+    "prediction_reduction": "single-threaded fixed tree order after parallel deterministic fitting",
+    "feature_columns": [
+      "k_slope",
+      "k_innov",
+      "b_segment",
+      "b_reset",
+      "b_flow",
+      "s_trend",
+      "s_vol",
+      "s_flow",
+      "s_age",
+      "funding_leg",
+      "premium_leg",
+      "rex_144_range_pos",
+      "rex_576_range_pos",
+      "rex_2016_range_pos",
+      "rex_8640_range_pos",
+      "rex_2016_range_width_pct",
+      "htf_4h_return_4",
+      "htf_1d_return_4",
+      "htf_1w_return_1",
+      "htf_1d_range_pos",
+      "htf_1w_range_pos",
+      "dxy_momentum",
+      "usdkrw_zscore",
+      "kimchi_premium_change",
+      "taker_imbalance",
+      "volume_zscore",
+      "funding_zscore",
+      "premium_index_zscore",
+      "funding_rate",
+      "premium_index_change",
+      "nested_high_work_ratio",
+      "nested_low_work_ratio",
+      "nested_high_coalescence",
+      "nested_low_coalescence",
+      "nested_recent_24h_side",
+      "nested_recent_48h_side",
+      "nested_recent_age_capped",
+      "braid_recent_24h_side",
+      "braid_recent_48h_side",
+      "braid_recent_age_capped"
+    ]
+  },
+  "candidate_spec": {
+    "quantiles": {
+      "funding_q": 0.3,
+      "premium_q": 0.5,
+      "low_width_q": 0.2,
+      "pullback_q": 0.4
+    },
+    "thresholds": {
+      "funding_threshold": 0.0007196526726062128,
+      "premium_threshold": 0.004721956945345952,
+      "width_threshold": 0.09761263445456278,
+      "pullback_threshold": -0.24066869300911942
+    },
+    "interaction": "funding score passes and (28-day range width exceeds its train funding quantile or completed-daily range position is below its train funding quantile)",
+    "width_feature": "rex_2016_range_width_pct",
+    "pullback_feature": "htf_1d_range_pos",
+    "audit_spec": {
+      "name": "stable_ensemble_conditional_pullback_audit",
+      "candidate_quantiles": {
+        "funding_q": 0.3,
+        "premium_q": 0.5,
+        "low_width_q": 0.2,
+        "pullback_q": 0.4
+      },
+      "seeds": [
+        7,
+        71,
+        715,
+        2026,
+        71515
+      ],
+      "tree_counts": [
+        1000,
+        2000
+      ],
+      "ensemble_sizes": [
+        3,
+        5
+      ],
+      "minimum_individual_passes": {
+        "1000": 3,
+        "2000": 3
+      },
+      "delay_control": {
+        "bars": 12,
+        "duration": "1h",
+        "trees_per_seed": 1000,
+        "source_identity_columns_remain_current": [
+          "funding_leg",
+          "premium_leg"
+        ],
+        "minimum_individual_passes": 3,
+        "require_five_model_ensemble_pass": true
+      },
+      "ablations": [
+        "conditional",
+        "source_only",
+        "unconditional_pullback",
+        "width_only",
+        "reversed_pullback"
+      ],
+      "promotion_rule": "both forest sizes meet individual pass minimums; 3/5-model ensembles pass; the delayed five-model ensemble passes; exact interaction passes while every simplification fails",
+      "selection_end_exclusive": "2024-01-01",
+      "oos_policy": "2024+ remains sealed; a later freeze commit is mandatory"
+    }
+  },
+  "execution_spec": {
+    "decision_clock": ":00 after completed hour; current market 5m bar excluded",
+    "entry": "next 5m open",
+    "side": "long",
+    "leverage": 0.5,
+    "cost_per_notional_side": 0.0006,
+    "funding_leg_exit": {
+      "hold_bars": 576,
+      "take_bps": 400,
+      "stop_bps": 1000000
+    },
+    "premium_leg_exit": {
+      "hold_bars": 144,
+      "take_bps": 1000000,
+      "stop_bps": 300
+    },
+    "realized_funding": true,
+    "intrabar_priority": "stop before take",
+    "non_overlap": true,
+    "split_contained_exits": true,
+    "mdd": "strict global/pre-entry HWM with favorable-before-adverse path",
+    "cagr": "wall-clock including inactive periods"
+  },
+  "selected_activation_hash": "6c6b8c1ed9ea27b4b153b2294511b7209a6417e0943102487cabe5f1564c4680",
+  "selected_schedule_hashes": {
+    "train": "c32251ef0e8ef9d739763d78143ad9b7a97e78adbecccbceb10cd69b19dbffe4",
+    "train_2020h2": "f0ef7ef2c778227d661d9f2ef69d53c4c45dc72273630755c84f6d76f16791b7",
+    "train_2021": "e849bc9d45124260eda833d0d6f45185194f458e26f12366238bc890ee0e0ee8",
+    "train_2022": "91b77c9425489c69a166b3e2756248ecfd1a308761e82c8c9083d8695240df58",
+    "select_2023": "c210817e61414d2d3ea32dc044aeb7f63ed8a41b2465ae4e7e755bb15d552e22",
+    "select_2023_h1": "e210800cbde3ea40035af47ef862e2ae14610e0e9bfeb551cb91e3f35713cbc0",
+    "select_2023_h2": "5db6c114f33e1a58059cae8fdc55bf44ac9d96b7f3588743442b4854326a3d85",
+    "pre_2024": "f8ddb64d048644a8f8d4ab4bc1d5f7ce6a9779c2716688bb4338cd81d75d3c8c"
+  },
+  "selected_stats": {
+    "train": {
+      "absolute_return_pct": 104.15905243960215,
+      "cagr_pct": 33.00524257304116,
+      "strict_mdd_pct": 8.14837903808553,
+      "cagr_to_strict_mdd": 4.05052862891805,
+      "trades": 128,
+      "mean_net_bps": 57.0725075059678,
+      "win_rate": 0.6328125
+    },
+    "train_2020h2": {
+      "absolute_return_pct": 4.215517812880365,
+      "cagr_pct": 8.541737714340458,
+      "strict_mdd_pct": 4.34954646938105,
+      "cagr_to_strict_mdd": 1.9638226133392631,
+      "trades": 25,
+      "mean_net_bps": 17.087617345956474,
+      "win_rate": 0.56
+    },
+    "train_2021": {
+      "absolute_return_pct": 53.7442420095485,
+      "cagr_pct": 53.78954218531171,
+      "strict_mdd_pct": 7.841204663675572,
+      "cagr_to_strict_mdd": 6.859856934291244,
+      "trades": 62,
+      "mean_net_bps": 71.07842706767613,
+      "win_rate": 0.6612903225806451
+    },
+    "train_2022": {
+      "absolute_return_pct": 26.32408818565537,
+      "cagr_pct": 26.344308627124956,
+      "strict_mdd_pct": 8.148379038085551,
+      "cagr_to_strict_mdd": 3.2330735357292006,
+      "trades": 40,
+      "mean_net_bps": 59.61197339008878,
+      "win_rate": 0.625
+    },
+    "select_2023": {
+      "absolute_return_pct": 11.092189809025509,
+      "cagr_pct": 11.100194077308512,
+      "strict_mdd_pct": 3.117323102684766,
+      "cagr_to_strict_mdd": 3.560809615066392,
+      "trades": 19,
+      "mean_net_bps": 56.07591521255918,
+      "win_rate": 0.7368421052631579
+    },
+    "select_2023_h1": {
+      "absolute_return_pct": 8.902336098543962,
+      "cagr_pct": 18.778934355318945,
+      "strict_mdd_pct": 3.117323102684766,
+      "cagr_to_strict_mdd": 6.024057736955711,
+      "trades": 13,
+      "mean_net_bps": 66.5839147876438,
+      "win_rate": 0.6923076923076923
+    },
+    "select_2023_h2": {
+      "absolute_return_pct": 2.010841813806419,
+      "cagr_pct": 4.031159221271974,
+      "strict_mdd_pct": 2.301955963016322,
+      "cagr_to_strict_mdd": 1.7511886786877644,
+      "trades": 6,
+      "mean_net_bps": 33.30858279987599,
+      "win_rate": 0.8333333333333334
+    },
+    "pre_2024": {
+      "absolute_return_pct": 126.80476204851078,
+      "cagr_pct": 26.347091790517062,
+      "strict_mdd_pct": 8.14837903808553,
+      "cagr_to_strict_mdd": 3.2334150961032537,
+      "trades": 147,
+      "mean_net_bps": 56.9436962571599,
+      "win_rate": 0.6462585034013606
+    }
+  },
+  "stability_summary": {
+    "individual_passes": {
+      "1000": 4,
+      "2000": 3
+    },
+    "individual_cells": 5,
+    "ensemble_3_and_5_pass": {
+      "1000": true,
+      "2000": true
+    },
+    "delay_individual_passes": 5,
+    "delay_individual_cells": 5,
+    "delay_five_model_pass": true,
+    "ablation_passes": {
+      "conditional": true,
+      "source_only": false,
+      "unconditional_pullback": false,
+      "width_only": false,
+      "reversed_pullback": false
+    },
+    "promotable": true,
+    "decision": "promote_to_freeze"
+  },
+  "future_windows": {
+    "test_2024": [
+      "2024-01-01",
+      "2025-01-01"
+    ],
+    "eval_2025": [
+      "2025-01-01",
+      "2026-01-01"
+    ],
+    "holdout_2026h1": [
+      "2026-01-01",
+      "2026-06-02"
+    ],
+    "oos_2024_2025": [
+      "2024-01-01",
+      "2026-01-01"
+    ],
+    "oos_all": [
+      "2024-01-01",
+      "2026-06-02"
+    ]
+  },
+  "oos_gate": {
+    "test_2024": {
+      "positive": true,
+      "min_ratio": 3.0,
+      "max_mdd": 15.0,
+      "min_trades": 12
+    },
+    "eval_2025": {
+      "positive": true,
+      "min_ratio": 3.0,
+      "max_mdd": 15.0,
+      "min_trades": 12
+    },
+    "holdout_2026h1": {
+      "positive": true,
+      "min_ratio": 3.0,
+      "max_mdd": 15.0,
+      "min_trades": 6
+    },
+    "oos_2024_2025": {
+      "positive": true,
+      "min_ratio": 3.0,
+      "max_mdd": 15.0,
+      "min_trades": 30
+    },
+    "oos_all": {
+      "positive": true,
+      "min_ratio": 3.0,
+      "max_mdd": 15.0,
+      "min_trades": 36
+    }
+  },
+  "manifest_hash": "ebf5e4602ac1cfd18d4c98a8955839f88df0ad358ded0d37ae911cf0c4aa20be"
+}
