@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T02:27:50.367385+00:00",
+  "updated_at": "2026-07-16T00:00:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side unless source artifact says otherwise",
@@ -747,7 +747,7 @@
       "family": "kimchi_fx_leadlag",
       "scope": "btc_target_crossmarket_features",
       "feature_tier": "alpha_feature",
-      "description": "Causal Kimchi-premium changes normalized against USDKRW changes to measure Korea-local risk-appetite impulses relative to FX.",
+      "description": "Causal Kimchi-premium changes normalized against USDKRW changes. Any live/offline use must fail closed on current USDKRW and Kimchi availability; forward-filled values may remain historical context but cannot authorize an entry.",
       "data_sources": [
         "BTCUSDT 5m",
         "BTCKRW-derived Kimchi premium",
@@ -771,26 +771,45 @@
         "Kimchi/FX relative impulse selector"
       ],
       "known_failures": [
-        "5,040 standalone bidirectional variants produced zero test/eval ratio>=2.5 candidates"
+        "5,040 standalone bidirectional variants produced zero test/eval ratio>=2.5 candidates",
+        "Unguarded forward-fill allowed 484 stale long signal rows in the audited full source; never use this feature to authorize an entry without current-source flags."
       ],
-      "evidence": "kl_local_impulse_144 q0.10 long gate creates a bidirectional candidate with test/eval/2026 ratios 3.64/3.06/3.58.",
+      "evidence": "With current-source guards and realized funding, kl_local_impulse_144 q0.10 produces selection2024 ratio 2.8465 (30 trades), positive eval2025 ratio 2.3819 (17), and 2026H1 ratio 4.4049 (28). The resulting sleeve has 2025-2026H1 position Jaccard 0.1300 and daily PnL Pearson 0.2109 versus frozen rank-7.",
       "source_artifacts": [
         "training/search_kimchi_leadlag_bidirectional_alpha.py",
         "results/kimchi_leadlag_bidirectional_alpha_scan_2026-07-12.json",
         "training/search_bidirectional_kimchi_gate_alpha.py",
         "results/bidirectional_kimchi_gate_alpha_scan_2026-07-12.json",
-        "docs/kimchi-leadlag-bidirectional-alpha-search-2026-07-12.md"
+        "docs/kimchi-leadlag-bidirectional-alpha-search-2026-07-12.md",
+        "training/audit_fresh_kimchi_orthogonal_alpha.py",
+        "results/fresh_kimchi_orthogonal_alpha_audit_2026-07-16.json",
+        "docs/fresh-kimchi-orthogonal-alpha-audit-2026-07-16.md"
       ],
-      "contamination_risk": "medium-high",
-      "leakage_notes": "Feature formulas train-causal; gate selected on 2024; eval/2026 consumed. No further threshold tuning.",
-      "tier_rationale": "Alpha feature because a fixed q0.10 gate on an existing policy clears test/eval ratio>=3 and remains positive in 2026.",
-      "next_action": "Keep fixed q0.10 gate as candidate; require fresh data and portfolio marginal contribution before live sizing.",
+      "contamination_risk": "high",
+      "leakage_notes": "Formula is past-only, but the original implementation forward-filled weekend/gap values without availability gating. The repaired policy blocks 484 stale long signal rows. Gate selected on 2024; 2025/2026 consumed; no further threshold tuning.",
+      "tier_rationale": "Remains alpha_feature because the guarded connected strategy clears the alpha-feature selection threshold (2024 ratio 2.8465 with 30 trades) and remains positive later, but it no longer qualifies as live-grade standalone after realized-funding/strict-MDD correction.",
+      "next_action": "Use only with current-source availability guards. Freeze q0.10 and forward-shadow the low-correlation sleeve; no live sizing before untouched data.",
       "generation_recipe": {
         "scripts": [
           "training/search_kimchi_leadlag_bidirectional_alpha.py",
-          "training/search_bidirectional_kimchi_gate_alpha.py"
+          "training/audit_fresh_kimchi_orthogonal_alpha.py"
         ],
-        "protocol": "train thresholds; test-only selection; eval/2026 reporting; 6bp/side; strict MDD"
+        "functions": [
+          "features",
+          "fresh_candidate_masks"
+        ],
+        "inputs": [
+          "BTCUSDT 5m",
+          "BTCKRW-derived Kimchi premium",
+          "USDKRW",
+          "Binance funding history"
+        ],
+        "command": "PYTHONPATH=. .venv/bin/python training/audit_fresh_kimchi_orthogonal_alpha.py",
+        "outputs": [
+          "results/fresh_kimchi_orthogonal_alpha_audit_2026-07-16.json"
+        ],
+        "protocol": "past-only trailing transforms; current availability fail-closed; 2024-selected frozen threshold; realized funding; 6bp/side; strict MDD",
+        "notes": "Forward-filled history is context only; current unavailable source rows cannot trigger entries."
       }
     },
     {

@@ -1,5 +1,12 @@
 # Kimchi lead/lag bidirectional alpha search (2026-07-12)
 
+> **Superseded for live-parity statistics (2026-07-16):** the original search
+> allowed forward-filled unavailable FX/Kimchi rows to authorize entries and
+> did not include realized funding.  The frozen-threshold repair is audited in
+> `docs/fresh-kimchi-orthogonal-alpha-audit-2026-07-16.md`.  Its corrected
+> 2024/2025/2026H1 ratios are 2.85/2.38/4.40; this remains a forward-shadow
+> low-correlation candidate, not a live-grade standalone alpha.
+
 ## Standalone result
 - 5,040 symmetric Kimchi lead/lag variants tested.
 - No standalone candidate cleared test/eval ratio>=2.5.

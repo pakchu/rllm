@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-13T02:27:50.367385+00:00",
+  "updated_at": "2026-07-16T00:00:00+09:00",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side for current scans; older alt_oi_taker artifact used 5bp/side",
@@ -2903,87 +2903,148 @@
     },
     {
       "id": "funding_fx_bidirectional_kimchi_local_impulse_gate_20260712",
-      "name": "Funding/FX bidirectional with Kimchi-local-impulse long gate",
+      "name": "Freshness-safe funding/FX bidirectional Kimchi sleeve",
       "status": "candidate",
       "family": "bidirectional_derivatives_macro_kimchi",
       "scope": "btc_target_derivatives_fx_kimchi",
       "side": "long_short",
-      "description": "Fixed funding-relief long / FX-stress short policy; long entries require an extreme negative Kimchi-vs-FX local impulse.",
-      "entry_logic": "Base long entry AND kl_local_impulse_144 <= -2.2728671107514256; base short entry unchanged.",
-      "exit_logic": "TP4%, SL2.5%, max288 bars, stride6, one position at a time.",
+      "description": "Fixed funding-relief long / FX-stress short policy. Long entries require an extreme negative Kimchi-vs-FX local impulse and fail closed unless funding, USDKRW, and Kimchi sources are current; shorts require current USDKRW.",
+      "entry_logic": "LONG: funding_rate<=-1.67e-05, bd_flow_accel>=0.04082480376734276, kl_local_impulse_144<=-2.2728671107514256, and funding/usdkrw/kimchi availability. SHORT: usdkrw_momentum>=0.0026584830588613, htf_1d_return_1<=-0.03403745751424336, and usdkrw availability.",
+      "exit_logic": "Next-open TP4%, SL2.5%, maximum 288 bars, stride6, one position at a time; realized funding and 6bp/side included.",
       "dependencies": [
         "kimchi_fx_local_impulse_features_20260712",
         "btc_funding_premium_basis",
         "external_macro_kimchi_fx_features"
       ],
       "stats": {
-        "train_pre2024": {
-          "return_pct": 16.3038,
-          "cagr_pct": 3.8481,
-          "strict_mdd_pct": 11.3688,
-          "ratio": 0.3385,
-          "trades": 168,
-          "longs": 63,
-          "shorts": 105,
-          "sharpe_like": 0.9381
-        },
-        "test_2024": {
-          "return_pct": 11.9803,
-          "cagr_pct": 11.9543,
-          "strict_mdd_pct": 3.2875,
-          "ratio": 3.6363,
-          "trades": 32,
-          "longs": 9,
-          "shorts": 23,
-          "sharpe_like": 1.6262
+        "all_2023_2026h1": {
+          "return_pct": 38.71810732462786,
+          "cagr_pct": 10.051980963228235,
+          "strict_mdd_pct": 7.795134095720724,
+          "ratio": 1.289519954345166,
+          "trades": 87,
+          "longs": 44,
+          "shorts": 43
         },
         "eval_2025": {
-          "return_pct": 10.4372,
-          "cagr_pct": 10.4447,
-          "strict_mdd_pct": 3.4129,
-          "ratio": 3.0603,
-          "trades": 23,
-          "longs": 15,
-          "shorts": 8,
-          "sharpe_like": 1.6985
+          "return_pct": 11.921208015053697,
+          "cagr_pct": 11.929841991281931,
+          "strict_mdd_pct": 5.008554231254314,
+          "ratio": 2.381893344957211,
+          "trades": 17,
+          "longs": 9,
+          "shorts": 8
         },
-        "ytd_2026": {
-          "return_pct": 7.8632,
-          "cagr_pct": 19.9481,
-          "strict_mdd_pct": 5.5773,
-          "ratio": 3.5767,
-          "trades": 33,
-          "longs": 25,
-          "shorts": 8,
-          "sharpe_like": 1.0312
+        "future_2025_2026h1": {
+          "return_pct": 22.62052872122129,
+          "cagr_pct": 15.49630520458225,
+          "strict_mdd_pct": 5.569178936410335,
+          "ratio": 2.7825116379849226,
+          "trades": 45,
+          "longs": 29,
+          "shorts": 16
+        },
+        "holdout_2026h1": {
+          "return_pct": 9.559690156961542,
+          "cagr_pct": 24.531522031225194,
+          "strict_mdd_pct": 5.569178936410324,
+          "ratio": 4.404872300087606,
+          "trades": 28,
+          "longs": 20,
+          "shorts": 8
+        },
+        "oos_2024_2026h1": {
+          "return_pct": 35.637909732736794,
+          "cagr_pct": 13.438113358421266,
+          "strict_mdd_pct": 5.569178936410324,
+          "ratio": 2.412943364158263,
+          "trades": 75,
+          "longs": 36,
+          "shorts": 39
+        },
+        "fit_2023": {
+          "return_pct": 2.270897271979777,
+          "cagr_pct": 2.272470221848333,
+          "strict_mdd_pct": 4.903002379227939,
+          "ratio": 0.46348544138503395,
+          "trades": 12,
+          "longs": 8,
+          "shorts": 4
+        },
+        "fit_2020_2023": {
+          "return_pct": 11.164068915103243,
+          "cagr_pct": 2.681240954006503,
+          "strict_mdd_pct": 20.16841620411266,
+          "ratio": 0.13294256360396586,
+          "trades": 152,
+          "longs": 45,
+          "shorts": 107
+        },
+        "selection_2024": {
+          "return_pct": 10.615988323709423,
+          "cagr_pct": 10.593120729574634,
+          "strict_mdd_pct": 3.7215003425747017,
+          "ratio": 2.8464650690441253,
+          "trades": 30,
+          "longs": 7,
+          "shorts": 23
         }
       },
-      "evidence": "First new bidirectional gate in this branch to clear ratio>=3 in test/eval and remain strongly positive in 2026, though 2026 ratio remains below 5.",
+      "evidence": "Freshness-repaired, realized-funding replay: selection2024 ratio 2.8465 (30 trades), eval2025 2.3819 (17), 2026H1 4.4049 (28), combined 2025-2026H1 2.7825 (45). Versus frozen rank-7, exact-entry Jaccard is 0, position Jaccard 0.1300, and daily marked-PnL Pearson 0.2109 in 2025-2026H1. This is a low-correlation candidate sleeve, not live-grade standalone.",
       "source_artifacts": [
         "training/search_bidirectional_kimchi_gate_alpha.py",
         "results/bidirectional_kimchi_gate_alpha_scan_2026-07-12.json",
-        "docs/kimchi-leadlag-bidirectional-alpha-search-2026-07-12.md"
+        "docs/kimchi-leadlag-bidirectional-alpha-search-2026-07-12.md",
+        "training/audit_fresh_kimchi_orthogonal_alpha.py",
+        "results/fresh_kimchi_orthogonal_alpha_audit_2026-07-16.json",
+        "docs/fresh-kimchi-orthogonal-alpha-audit-2026-07-16.md"
       ],
-      "contamination_risk": "medium-high",
-      "leakage_notes": "Gate selected on test2024; eval/2026 consumed. Keep fixed and do not optimize to reach 2026 ratio5.",
-      "next_action": "Candidate-only until fresh OOS; then test marginal contribution against current portfolio.",
+      "contamination_risk": "high",
+      "leakage_notes": "Base/gate thresholds were fit before 2024 and the gate was selected on 2024. 2025/2026 had already been viewed in prior research, so they are not pristine discovery OOS. The audit changed no threshold, blocked 484 stale long signal rows, included realized funding, and reproduced frozen rank-7 hashes.",
+      "next_action": "Freeze as a low-correlation forward-shadow sleeve only. Do not retune on 2025/2026, replace rank-7, or enable live until a new untouched window confirms standalone and portfolio marginal value.",
       "usage_recipe": {
         "feature_dependencies": [
           "kl_local_impulse_144",
           "funding_rate",
           "taker flow acceleration",
           "usdkrw_momentum",
-          "htf_1d_return_1"
+          "htf_1d_return_1",
+          "funding_available",
+          "usdkrw_available",
+          "kimchi_available"
         ],
-        "entry_logic": "long base AND kl_local_impulse_144<=-2.2728671107514256; short base unchanged",
-        "exit_logic": "TP4 SL2.5 cap288 stride6",
+        "entry_logic": "LONG: funding_rate<=-1.67e-05, bd_flow_accel>=0.04082480376734276, kl_local_impulse_144<=-2.2728671107514256, and funding/usdkrw/kimchi availability. SHORT: usdkrw_momentum>=0.0026584830588613, htf_1d_return_1<=-0.03403745751424336, and usdkrw availability.",
+        "exit_logic": "Next-open TP4%, SL2.5%, maximum 288 bars, stride6, one position at a time; realized funding and 6bp/side included.",
         "side": "long_short",
-        "script_or_config": "training/search_bidirectional_kimchi_gate_alpha.py",
+        "script_or_config": "training/audit_fresh_kimchi_orthogonal_alpha.py",
+        "reproduce_command": "PYTHONPATH=. .venv/bin/python training/audit_fresh_kimchi_orthogonal_alpha.py",
+        "source_artifacts": [
+          "training/search_bidirectional_kimchi_gate_alpha.py",
+          "results/bidirectional_kimchi_gate_alpha_scan_2026-07-12.json",
+          "docs/kimchi-leadlag-bidirectional-alpha-search-2026-07-12.md",
+          "training/audit_fresh_kimchi_orthogonal_alpha.py",
+          "results/fresh_kimchi_orthogonal_alpha_audit_2026-07-16.json",
+          "docs/fresh-kimchi-orthogonal-alpha-audit-2026-07-16.md"
+        ],
         "evaluation_protocol": {
+          "fit": "2020-2023 thresholds",
+          "selection": "2024 Kimchi gate",
+          "eval": "2025 (previously viewed)",
+          "holdout": "2026H1 (previously viewed)",
           "cost": "6bp/side",
           "leverage": "0.5x",
-          "mdd": "strict intrabar"
-        }
+          "funding": "realized funding included",
+          "mdd": "strict intratrade OHLC/funding debit",
+          "position_model": "one position at a time; split-contained exits",
+          "orthogonality": "exact and near entries, occupied-bar Jaccard, zero-filled daily marked-PnL Pearson/Spearman versus frozen annual rank-7"
+        },
+        "promotion_guardrails": [
+          "new untouched forward period",
+          "current-source availability parity",
+          "no threshold changes",
+          "portfolio marginal-value audit"
+        ],
+        "live_use_notes": "Not live-enabled; forward-shadow candidate only."
       }
     },
     {
