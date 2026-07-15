@@ -32,6 +32,27 @@
         "Only allowed if new data, corrected methodology, or a materially different usage mode removes the recorded failure reason.",
         "Must show at least one reproducible combined strategy with test2024 CAGR/strict_MDD >=1.5 and positive eval2025, or strong portfolio-selector contribution before alpha threshold."
       ]
+    },
+    "trade_orthogonality": {
+      "decision_unit": "Actual executable trades, not raw feature activation.",
+      "required_metrics": [
+        "exact executed-entry Jaccard",
+        "candidate entry fraction within a preregistered near-time window of baseline entries",
+        "occupied-position-bar Jaccard",
+        "zero-filled daily marked-to-market PnL Pearson and Spearman correlations"
+      ],
+      "feature_correlation_role": "Feature Pearson/Spearman/phi is diagnostic only and cannot establish portfolio independence.",
+      "default_limits": {
+        "exact_entry_jaccard_max": 0.02,
+        "candidate_entries_near_6h_fraction_max": 0.25,
+        "strong_independence_target_near_6h_fraction_max": 0.1,
+        "position_jaccard_max": 0.15,
+        "absolute_daily_pnl_pearson_max": 0.3,
+        "minimum_nonzero_pnl_days": 10
+      },
+      "undefined_policy": "Fail closed when daily PnL correlation is undefined or support is below the declared minimum.",
+      "economic_gate": "Orthogonality is necessary for diversification but never sufficient for promotion; the candidate must independently pass return, full-calendar CAGR, strict MDD, trade-support, cost/funding, and causal execution checks.",
+      "selection_guard": "Freeze the policy and orthogonality limits before opening a future window. Do not rank or tune candidates on future-window correlation."
     }
   },
   "source_pool": "feature_pool.json",
@@ -2927,6 +2948,101 @@
         "script": "training/search_visibility_layer_irreversibility_alpha.py",
         "protocol": "directed HVG on 168 completed 6h price/flow blocks; symmetric degree KL with Jeffreys 0.5; prior q80 layer ratio; dominant-layer side; 12h; minute05; 0.5x; 6bp/side; strict MDD; OOS excluded"
       }
+    },
+    {
+      "id": "cross_collateral_near_pressure_event_clock_20260716",
+      "name": "Cross-collateral near-pressure event clock",
+      "status": "weak",
+      "family": "cross_collateral_orderbook",
+      "scope": "btc_cross_venue_derivatives",
+      "description": "A directionless BTC event clock triggered by extreme, causally observed disagreement between Binance USD-M and COIN-M near-book pressure. The clock is highly orthogonal to frozen annual rank-7 trades, but the pressure sign and two independent direction replacements failed economic validation.",
+      "data_sources": [
+        "Binance USD-M BTCUSDT bookDepth",
+        "Binance COIN-M BTCUSD_PERP bookDepth",
+        "causal 5-minute market execution cache"
+      ],
+      "feature_names": [
+        "um_near_pressure",
+        "cm_near_pressure",
+        "cross_collateral_near_pressure_score",
+        "cross_collateral_near_pressure_event_clock"
+      ],
+      "usable_for": [
+        "directionless volatility/event clock for a separately preregistered causal policy",
+        "portfolio research requiring entry and PnL independence from annual rank-7",
+        "forward-shadow experiments with a direction model frozen before the next untouched window"
+      ],
+      "known_failures": [
+        "The frozen pressure-sign policy lost 25.0844% over 2024-2026H1 with CAGR -11.2604%, strict MDD 32.9901%, ratio -0.3413, and 649 trades.",
+        "A generic causal direction battery failed on 2023 before future replay.",
+        "A fixed three-primary-vote ridge degenerated to all-long and failed 2023H2 ratio, MDD, short-support, Q3, and significance gates.",
+        "A fixed 30-minute delayed price-confirmation rule lost 7.8922% in 2023H2 and failed both quarter and significance gates."
+      ],
+      "evidence": "The event clock itself is genuinely distinct from frozen annual rank-7: over 2024-2026H1 exact-entry Jaccard=0, candidate-near-6h fraction=0.0431, position Jaccard=0.0692, daily marked-PnL Pearson=-0.0406 and Spearman=-0.0452. This proves timing independence, not directional edge.",
+      "orthogonality": {
+        "baseline": "frozen annual rank-7",
+        "window": "2024-01-01 through 2026H1 market-cache end",
+        "exact_entry_jaccard": 0.0,
+        "candidate_entries_near_6h_fraction": 0.04314329738058552,
+        "position_jaccard": 0.06915206640580637,
+        "daily_marked_pnl_pearson": -0.04055371994377356,
+        "daily_marked_pnl_spearman": -0.045216896603715626,
+        "passes_declared_limits": true
+      },
+      "source_artifacts": [
+        "training/select_cross_collateral_near_pressure_pre2024.py",
+        "results/cross_collateral_near_pressure_pre2024_selection_2026-07-16.json",
+        "results/cross_collateral_near_pressure_pre2024_manifest_2026-07-16.json",
+        "docs/cross-collateral-near-pressure-pre2024-selection-2026-07-16.md",
+        "training/build_binance_cross_collateral_near_pressure_2024_2026.py",
+        "results/binance_cross_collateral_near_pressure_btc_2024_2026_manifest.json",
+        "training/evaluate_cross_collateral_near_pressure_oos.py",
+        "results/cross_collateral_near_pressure_oos_2026-07-16.json",
+        "docs/cross-collateral-near-pressure-oos-2026-07-16.md",
+        "training/select_cross_collateral_event_direction_pre2024.py",
+        "results/cross_collateral_event_direction_pre2024_2026-07-16.json",
+        "docs/cross-collateral-event-direction-pre2024-2026-07-16.md",
+        "training/select_ccnear_primaryweak_ridge_pre2024.py",
+        "results/ccnear_primaryweak_ridge_pre2024_2026-07-16.json",
+        "docs/ccnear-primaryweak-ridge-pre2024-2026-07-16.md",
+        "training/select_ccnear_delayed_price_confirmation_pre2024.py",
+        "results/ccnear_delayed_price_confirmation_pre2024_2026-07-16.json",
+        "docs/ccnear-delayed-price-confirmation-pre2024-2026-07-16.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "The event threshold and original pressure-sign policy were fixed on 2023 before the 2024-2026H1 book outcomes were opened. Those future outcomes are now consumed. Any new directional policy must be fixed without tuning on the opened window and validated only by forward shadow or a genuinely untouched market period.",
+      "next_action": "Retain only as a beta event clock. Do not trade the pressure sign or tune another direction rule against opened 2024-2026H1 outcomes. Require a frozen direction policy plus a new untouched forward window before promotion.",
+      "generation_recipe": {
+        "script": "training/select_cross_collateral_near_pressure_pre2024.py + training/evaluate_cross_collateral_near_pressure_oos.py",
+        "functions": [
+          "causal lagged robust pressure score",
+          "frozen event-clock threshold",
+          "actual-entry/position/daily-PnL orthogonality audit"
+        ],
+        "inputs": [
+          "causal Binance USD-M/COIN-M bookDepth archives",
+          "causal 5-minute BTC execution cache",
+          "frozen annual rank-7 schedule"
+        ],
+        "command": "PYTHONPATH=. python training/evaluate_cross_collateral_near_pressure_oos.py",
+        "outputs": [
+          "results/cross_collateral_near_pressure_oos_2026-07-16.json",
+          "docs/cross-collateral-near-pressure-oos-2026-07-16.md"
+        ],
+        "protocol": {
+          "selection": "2023 only",
+          "oos": "2024 through 2026H1 market-cache end",
+          "cost": "6bp/side plus realized funding",
+          "mdd": "strict intratrade OHLC and split-contained exits",
+          "orthogonality": "actual entries, occupied bars, and zero-filled daily marked PnL versus frozen annual rank-7"
+        },
+        "notes": [
+          "The event clock passes independence but all tested direction policies are rejected.",
+          "Outcome-blind source validation rejects malformed or semantically invalid venue-days instead of imputing them."
+        ]
+      },
+      "feature_tier": "beta_feature",
+      "tier_rationale": "The clock supplies independently timed market events, but no validated directional or economic edge remains. It is a research event clock, not an alpha."
     }
   ]
 }

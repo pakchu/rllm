@@ -32,6 +32,27 @@
         "Only allowed if new data, corrected methodology, or a materially different usage mode removes the recorded failure reason.",
         "Must show at least one reproducible combined strategy with test2024 CAGR/strict_MDD >=1.5 and positive eval2025, or strong portfolio-selector contribution before alpha threshold."
       ]
+    },
+    "trade_orthogonality": {
+      "decision_unit": "Actual executable trades, not raw feature activation.",
+      "required_metrics": [
+        "exact executed-entry Jaccard",
+        "candidate entry fraction within a preregistered near-time window of baseline entries",
+        "occupied-position-bar Jaccard",
+        "zero-filled daily marked-to-market PnL Pearson and Spearman correlations"
+      ],
+      "feature_correlation_role": "Feature Pearson/Spearman/phi is diagnostic only and cannot establish portfolio independence.",
+      "default_limits": {
+        "exact_entry_jaccard_max": 0.02,
+        "candidate_entries_near_6h_fraction_max": 0.25,
+        "strong_independence_target_near_6h_fraction_max": 0.1,
+        "position_jaccard_max": 0.15,
+        "absolute_daily_pnl_pearson_max": 0.3,
+        "minimum_nonzero_pnl_days": 10
+      },
+      "undefined_policy": "Fail closed when daily PnL correlation is undefined or support is below the declared minimum.",
+      "economic_gate": "Orthogonality is necessary for diversification but never sufficient for promotion; the candidate must independently pass return, full-calendar CAGR, strict MDD, trade-support, cost/funding, and causal execution checks.",
+      "selection_guard": "Freeze the policy and orthogonality limits before opening a future window. Do not rank or tune candidates on future-window correlation."
     }
   },
   "source_pool": "feature_pool.json",

@@ -9,7 +9,28 @@
     "trading_target_asset": "BTC. External/cross-asset features may be used as inputs, but alpha entries here trade BTC unless explicitly stated otherwise.",
     "alpha_pool_threshold": "A strategy may stay as alpha_pool candidate only if it exceeds CAGR/strict_MDD >= 2.5 on test2024 after being combined with other features/gates; otherwise record as weak/rejected feature/selector evidence.",
     "live_grade_threshold": "Live-grade single strategy must exceed CAGR/strict_MDD >= 3.0 as a standalone strategy, with strict MDD and period-end forced close.",
-    "below_threshold_policy": "Rows below alpha_pool_threshold should not be treated as alpha candidates; keep them as feature/selector candidates unless portfolio marginal contribution later proves value."
+    "below_threshold_policy": "Rows below alpha_pool_threshold should not be treated as alpha candidates; keep them as feature/selector candidates unless portfolio marginal contribution later proves value.",
+    "trade_orthogonality": {
+      "decision_unit": "Actual executable trades, not raw feature activation.",
+      "required_metrics": [
+        "exact executed-entry Jaccard",
+        "candidate entry fraction within a preregistered near-time window of baseline entries",
+        "occupied-position-bar Jaccard",
+        "zero-filled daily marked-to-market PnL Pearson and Spearman correlations"
+      ],
+      "feature_correlation_role": "Feature Pearson/Spearman/phi is diagnostic only and cannot establish portfolio independence.",
+      "default_limits": {
+        "exact_entry_jaccard_max": 0.02,
+        "candidate_entries_near_6h_fraction_max": 0.25,
+        "strong_independence_target_near_6h_fraction_max": 0.1,
+        "position_jaccard_max": 0.15,
+        "absolute_daily_pnl_pearson_max": 0.3,
+        "minimum_nonzero_pnl_days": 10
+      },
+      "undefined_policy": "Fail closed when daily PnL correlation is undefined or support is below the declared minimum.",
+      "economic_gate": "Orthogonality is necessary for diversification but never sufficient for promotion; the candidate must independently pass return, full-calendar CAGR, strict MDD, trade-support, cost/funding, and causal execution checks.",
+      "selection_guard": "Freeze the policy and orthogonality limits before opening a future window. Do not rank or tune candidates on future-window correlation."
+    }
   },
   "entries": [
     {
@@ -3045,6 +3066,17 @@
           "portfolio marginal-value audit"
         ],
         "live_use_notes": "Not live-enabled; forward-shadow candidate only."
+      },
+      "trade_orthogonality": {
+        "baseline": "frozen annual rank-7",
+        "window": "2025 through 2026H1",
+        "exact_entry_jaccard": 0.0,
+        "candidate_entries_near_6h_fraction": 0.2222222222222222,
+        "position_jaccard": 0.1299849217490771,
+        "daily_marked_pnl_pearson": 0.2109271507000696,
+        "daily_marked_pnl_spearman": 0.16463714016368175,
+        "passes_declared_limits": true,
+        "interpretation": "Current best independent shadow sleeve; economically promising but below standalone live-grade ratio and evaluated on previously viewed future windows."
       }
     },
     {
