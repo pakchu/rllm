@@ -98,8 +98,6 @@ def _append_new_alpha_events(events: list[dict[str, Any]], market: pd.DataFrame,
             hold = int(spec["hold"])
             positions = np.arange(143, max(0, len(market) - hold - 2), 12, dtype=np.int64)
             for split, sm in masks.items():
-                if split == "train":
-                    continue
                 next_allowed = 0
                 for pos in positions[active[positions] & sm[positions]]:
                     ip = int(pos)
