@@ -93,7 +93,9 @@ SPLIT_BOUNDS = {
     "train": ("2020-09-01", "2024-01-01"),
     "test2024": ("2024-01-01", "2025-01-01"),
     "eval2025": ("2025-01-01", "2026-01-01"),
-    "ytd2026": ("2026-01-01", FULL_CUTOFF),
+    # Match the authoritative live portfolio clock.  The end is exclusive and
+    # intentionally counts the full no-trade calendar through June 2.
+    "ytd2026": ("2026-01-01", "2026-06-03"),
 }
 REX_GATES = (
     {"feature": "taker_imbalance", "op": "<=", "threshold": -0.07073595391836504},
@@ -674,8 +676,12 @@ def split_arrays(
             returns[index] += event["ret"][start:end]
             adverse[index] += event["adv"][start:end]
             favorable[index] += event["fav"][start:end]
-            counts[index] += int(event.get("trade_count", 1))
-            wins[index] += int(event.get("win_count", 0))
+            trade_count = int(event.get("trade_count", 1))
+            counts[index] += trade_count
+            if "win_count" in event:
+                wins[index] += int(event["win_count"])
+            elif trade_count == 1:
+                wins[index] += int(float(event.get("ret_bps", 0.0)) > 0.0)
         output[split] = {
             "R": returns,
             "A": adverse,

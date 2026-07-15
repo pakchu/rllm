@@ -11,6 +11,7 @@ from training.portfolio_opt_added_alpha_update import (
     quantize_weights,
     strict_metric,
     valid_weights,
+    years_for,
 )
 
 
@@ -71,6 +72,13 @@ def test_weight_contract_enforces_grid_min_gross_and_family_cap():
 def test_candidate_universe_contains_added_alpha_sleeves():
     assert set(NEW_SLEEVES).issubset(SLEEVES)
     assert set(LIVE_WEIGHTS).issubset(SLEEVES)
+
+
+def test_ytd_cagr_clock_counts_full_authoritative_calendar():
+    expected = (
+        np.datetime64("2026-06-03") - np.datetime64("2026-01-01")
+    ) / np.timedelta64(1, "D") / 365.25
+    assert np.isclose(years_for("ytd2026"), expected)
 
 
 def test_strict_metric_uses_same_bar_upper_before_adverse_lower():
