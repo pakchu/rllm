@@ -66,6 +66,27 @@ def test_read_archive_requires_complete_monotone_cumulative_levels() -> None:
         builder.read_archive(_archive(broken))
 
 
+def test_read_archive_ignores_additive_point_two_levels_without_feature_drift() -> None:
+    raw = _raw_snapshots()
+    optional = []
+    for timestamp in raw["timestamp"].drop_duplicates():
+        optional.extend(
+            [
+                {"timestamp": timestamp, "percentage": -0.2, "depth": 10.0, "notional": 100.0},
+                {"timestamp": timestamp, "percentage": 0.2, "depth": 11.0, "notional": 110.0},
+            ]
+        )
+    parsed = builder.read_archive(_archive(pd.concat([raw, pd.DataFrame(optional)], ignore_index=True)))
+    assert len(parsed) == len(raw)
+    assert sorted(parsed["percentage"].unique().tolist()) == list(builder.PERCENTAGES)
+
+    unknown = raw.copy()
+    unknown["percentage"] = unknown["percentage"].astype(float)
+    unknown.loc[unknown.index[0], "percentage"] = 0.5
+    with pytest.raises(ValueError, match="unsupported levels"):
+        builder.read_archive(_archive(unknown))
+
+
 def test_five_minute_aggregation_requires_broad_snapshot_coverage() -> None:
     cfg = builder.Config()
     accepted = builder.aggregate_five_minute(
@@ -134,6 +155,8 @@ def test_frozen_manifest_matches_pre2024_depth_panel() -> None:
     assert item["rows"] == 105_120
     assert item["source_complete_rows"] == 101_649
     path = Path(item["path"])
+    if not path.exists():
+        path = Path("/home/pakchu/rllm") / path
     assert hashlib.sha256(path.read_bytes()).hexdigest() == item["sha256"]
     frame = pd.read_csv(path, compression="gzip", nrows=1)
     assert len(frame.columns) == 28

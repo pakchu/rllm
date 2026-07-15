@@ -32,6 +32,7 @@ from training.build_binance_aggtrade_microstructure import (
 BASE_URL = "https://data.binance.vision/data/futures"
 RAW_COLUMNS = ("timestamp", "percentage", "depth", "notional")
 PERCENTAGES = (-5, -4, -3, -2, -1, 1, 2, 3, 4, 5)
+IGNORED_OPTIONAL_PERCENTAGES = (-0.2, 0.2)
 VENUES = {
     "um": "BTCUSDT",
     "cm": "BTCUSD_PERP",
@@ -92,9 +93,21 @@ def read_archive(payload: bytes) -> pd.DataFrame:
         errors="raise",
     ).dt.tz_localize(None)
     percentage = pd.to_numeric(frame["percentage"], errors="raise")
-    if not np.equal(percentage, np.floor(percentage)).all():
-        raise ValueError("book-depth percentage is not integral")
-    frame["percentage"] = percentage.astype(np.int8)
+    if not np.isfinite(percentage.to_numpy(float)).all():
+        raise ValueError("book-depth percentage is non-finite")
+    allowed = np.asarray(PERCENTAGES + IGNORED_OPTIONAL_PERCENTAGES, dtype=float)
+    recognized = np.isclose(
+        percentage.to_numpy(float)[:, None], allowed[None, :], rtol=0.0, atol=1e-12
+    ).any(axis=1)
+    if not recognized.all():
+        unexpected = sorted(set(percentage.loc[~recognized].astype(float).tolist()))
+        raise ValueError(f"book-depth percentage contains unsupported levels: {unexpected}")
+    # Binance added +/-0.2% snapshots to USD-M archives in January 2026.
+    # The frozen feature is defined only on +/-1..5%, so ignore the additive
+    # levels rather than changing the selected feature's meaning.
+    required = percentage.isin(PERCENTAGES)
+    frame = frame.loc[required].copy()
+    frame["percentage"] = percentage.loc[required].astype(np.int8)
     for column in ("depth", "notional"):
         frame[column] = pd.to_numeric(frame[column], errors="raise")
     if not np.isfinite(frame[["depth", "notional"]].to_numpy(float)).all():

@@ -173,7 +173,23 @@ def build(cfg: Config) -> dict[str, Any]:
     base._write_gzip_csv(panel, output)
     public = [base._public_record(item) for item in results]
     missing = {
-        venue: [item["date"] for item in public if item["venue"] == venue and not item["available"]]
+        venue: [
+            item["date"]
+            for item in public
+            if item["venue"] == venue
+            and not item["available"]
+            and item.get("reason") == "official archive or checksum not published"
+        ]
+        for venue in base.VENUES
+    }
+    rejected = {
+        venue: [
+            item["date"]
+            for item in public
+            if item["venue"] == venue
+            and not item["available"]
+            and item.get("reason") != "official archive or checksum not published"
+        ]
         for venue in base.VENUES
     }
     manifest = {
@@ -192,6 +208,7 @@ def build(cfg: Config) -> dict[str, Any]:
         "venues": base.VENUES,
         "formula": "(flow_net_bid1 + 0.5*flow_net_bid2) - (flow_net_ask1 + 0.5*flow_net_ask2)",
         "missing_archive_dates": missing,
+        "rejected_archive_dates": rejected,
         "archives": public,
         "file": {
             "path": str(output),
@@ -203,6 +220,10 @@ def build(cfg: Config) -> dict[str, Any]:
             "last_date": str(panel["date"].max()),
         },
         "builder_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "dependency_sha256": {
+            "book_depth_parser": hashlib.sha256(Path(base.__file__).read_bytes()).hexdigest(),
+            "shell_aggregator": hashlib.sha256(Path(shells.__file__).read_bytes()).hexdigest(),
+        },
         "built_at_utc": datetime.now(timezone.utc).isoformat(),
     }
     manifest_path = Path(cfg.manifest)
