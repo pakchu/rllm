@@ -237,12 +237,15 @@ def assert_selection_replay(
 
 def align_score(score_frame: pd.DataFrame, score: pd.Series, full_dates: pd.Series) -> pd.Series:
     mapped = pd.Series(score.to_numpy(float), index=pd.DatetimeIndex(score_frame["date"]), name="score")
-    aligned = mapped.reindex(pd.DatetimeIndex(full_dates))
-    if not np.array_equal(
-        aligned.loc[(aligned.index >= "2023-01-01") & (aligned.index < FULL_CUTOFF)].index.to_numpy(),
-        score_frame["date"].to_numpy(),
-    ):
-        raise RuntimeError("score alignment lost a book timestamp")
+    market_index = pd.DatetimeIndex(full_dates)
+    required = market_index[(market_index >= "2023-01-01") & (market_index < FULL_CUTOFF)]
+    missing = required.difference(mapped.index)
+    if len(missing):
+        raise RuntimeError(f"book score is missing {len(missing)} execution-market timestamps")
+    # The outcome-blind book source can extend beyond the frozen execution
+    # market's last available bar.  Those trailing observations are retained
+    # in its manifest but must not be mistaken for an alignment failure.
+    aligned = mapped.reindex(market_index)
     return aligned.reset_index(drop=True)
 
 

@@ -27,12 +27,21 @@ def test_tampered_selection_manifest_is_rejected(tmp_path) -> None:
 
 
 def test_align_score_preserves_book_clock_and_leaves_prehistory_empty() -> None:
-    book = pd.DataFrame({"date": pd.date_range("2023-01-01", periods=3, freq="5min")})
-    score = pd.Series([1.0, 2.0, 3.0])
+    book = pd.DataFrame({"date": pd.date_range("2023-01-01", periods=4, freq="5min")})
+    score = pd.Series([1.0, 2.0, 3.0, 4.0])
     full = pd.Series(pd.date_range("2022-12-31 23:55", periods=4, freq="5min"))
     aligned = evaluator.align_score(book, score, full)
     assert np.isnan(aligned.iloc[0])
     assert aligned.iloc[1:].tolist() == [1.0, 2.0, 3.0]
+
+
+def test_align_score_rejects_missing_execution_timestamp() -> None:
+    book = pd.DataFrame(
+        {"date": [pd.Timestamp("2023-01-01"), pd.Timestamp("2023-01-01 00:10")]}
+    )
+    full = pd.Series(pd.date_range("2023-01-01", periods=3, freq="5min"))
+    with pytest.raises(RuntimeError, match="missing 1 execution-market timestamps"):
+        evaluator.align_score(book, pd.Series([1.0, 3.0]), full)
 
 
 def test_future_manifest_rejects_outcome_bearing_panel(monkeypatch, tmp_path) -> None:
