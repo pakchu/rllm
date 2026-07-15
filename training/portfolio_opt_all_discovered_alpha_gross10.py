@@ -29,7 +29,6 @@ import numpy as np
 import pandas as pd
 
 import training.portfolio_opt_combined_rex_new_alpha as base
-import training.portfolio_opt_all_alpha_quantized_trainfit as prior
 import training.portfolio_opt_new_alpha_pool as na
 from preprocessing.market_features import build_market_feature_frame
 from training.build_rex_event_reasoning_policy_data import _build_light_rex_features
