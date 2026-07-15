@@ -3011,18 +3011,21 @@
           "shorts": 23
         }
       },
-      "evidence": "Freshness-repaired, realized-funding replay: selection2024 ratio 2.8465 (30 trades), eval2025 2.3819 (17), 2026H1 4.4049 (28), combined 2025-2026H1 2.7825 (45). Versus frozen rank-7, exact-entry Jaccard is 0, position Jaccard 0.1300, and daily marked-PnL Pearson 0.2109 in 2025-2026H1. This is a low-correlation candidate sleeve, not live-grade standalone.",
+      "evidence": "Freshness-repaired, realized-funding replay: selection2024 ratio 2.8465 (30 trades), eval2025 2.3819 (17), 2026H1 4.4049 (28), combined 2025-2026H1 2.7825 (45). Versus frozen rank-7, exact-entry Jaccard is 0, position Jaccard 0.1300, and daily marked-PnL Pearson 0.2109 in 2025-2026H1. This is a low-correlation candidate sleeve, not live-grade standalone. Fixed 75/25 subaccount replay improves synchronized CAGR/MDD versus frozen rank-7 in every reported 2024-2026H1 window. In 2025-2026H1, portfolio CAGR is 16.6176%, synchronized strict MDD 3.5393%, ratio 4.6951; versus rank-7 synchronized ratio 3.9534. Raw CAGR is diluted by 0.3728pp.",
       "source_artifacts": [
         "training/search_bidirectional_kimchi_gate_alpha.py",
         "results/bidirectional_kimchi_gate_alpha_scan_2026-07-12.json",
         "docs/kimchi-leadlag-bidirectional-alpha-search-2026-07-12.md",
         "training/audit_fresh_kimchi_orthogonal_alpha.py",
         "results/fresh_kimchi_orthogonal_alpha_audit_2026-07-16.json",
-        "docs/fresh-kimchi-orthogonal-alpha-audit-2026-07-16.md"
+        "docs/fresh-kimchi-orthogonal-alpha-audit-2026-07-16.md",
+        "training/audit_rank7_fresh_kimchi_fixed_portfolio.py",
+        "results/rank7_fresh_kimchi_fixed_portfolio_2026-07-16.json",
+        "docs/rank7-fresh-kimchi-fixed-portfolio-2026-07-16.md"
       ],
       "contamination_risk": "high",
       "leakage_notes": "Base/gate thresholds were fit before 2024 and the gate was selected on 2024. 2025/2026 had already been viewed in prior research, so they are not pristine discovery OOS. The audit changed no threshold, blocked 484 stale long signal rows, included realized funding, and reproduced frozen rank-7 hashes.",
-      "next_action": "Freeze as a low-correlation forward-shadow sleeve only. Do not retune on 2025/2026, replace rank-7, or enable live until a new untouched window confirms standalone and portfolio marginal value.",
+      "next_action": "Freeze as a 25% risk-budget forward-shadow sleeve beside 75% rank-7. Do not retune weights or enable live until a genuinely untouched period confirms lower synchronized MDD and positive marginal risk efficiency.",
       "usage_recipe": {
         "feature_dependencies": [
           "kl_local_impulse_144",
@@ -3045,7 +3048,10 @@
           "docs/kimchi-leadlag-bidirectional-alpha-search-2026-07-12.md",
           "training/audit_fresh_kimchi_orthogonal_alpha.py",
           "results/fresh_kimchi_orthogonal_alpha_audit_2026-07-16.json",
-          "docs/fresh-kimchi-orthogonal-alpha-audit-2026-07-16.md"
+          "docs/fresh-kimchi-orthogonal-alpha-audit-2026-07-16.md",
+          "training/audit_rank7_fresh_kimchi_fixed_portfolio.py",
+          "results/rank7_fresh_kimchi_fixed_portfolio_2026-07-16.json",
+          "docs/rank7-fresh-kimchi-fixed-portfolio-2026-07-16.md"
         ],
         "evaluation_protocol": {
           "fit": "2020-2023 thresholds",
@@ -3065,7 +3071,7 @@
           "no threshold changes",
           "portfolio marginal-value audit"
         ],
-        "live_use_notes": "Not live-enabled; forward-shadow candidate only."
+        "live_use_notes": "Not live-enabled. Fixed 25% risk-budget shadow candidate only; no weight grid or rebalancing."
       },
       "trade_orthogonality": {
         "baseline": "frozen annual rank-7",
@@ -3077,6 +3083,56 @@
         "daily_marked_pnl_spearman": 0.16463714016368175,
         "passes_declared_limits": true,
         "interpretation": "Current best independent shadow sleeve; economically promising but below standalone live-grade ratio and evaluated on previously viewed future windows."
+      },
+      "portfolio_marginal_audit": {
+        "allocation": {
+          "frozen_annual_rank7": 0.75,
+          "fresh_kimchi_fx": 0.25
+        },
+        "accounting": "fixed subaccounts, no rebalance, synchronized 5-minute same-BTC OHLC envelope",
+        "weight_grid_cells": 1,
+        "future_2025_2026h1": {
+          "absolute_return_pct": 24.308912123488135,
+          "bars_any_sleeve_active": 19262,
+          "bars_multiple_sleeves_active": 2509,
+          "cagr_pct": 16.61755492256973,
+          "cagr_to_synchronized_strict_mdd": 4.695091601355255,
+          "final_equity": 1.2430891212348814,
+          "synchronized_strict_mdd_pct": 3.539346264889276,
+          "trades": 78,
+          "trades_by_sleeve": {
+            "fresh_kimchi_fx": 45,
+            "frozen_annual_rank7": 33
+          }
+        },
+        "future_marginal_vs_rank7": {
+          "absolute_return_delta_pct": -0.5627944674223571,
+          "cagr_delta_pct": -0.37275465043862255,
+          "ratio_delta": 0.7417275191631809,
+          "strict_mdd_delta_pct": -0.7583377378417628
+        },
+        "oos_2024_2026h1": {
+          "absolute_return_pct": 42.91887086425123,
+          "bars_any_sleeve_active": 31350,
+          "bars_multiple_sleeves_active": 3455,
+          "cagr_pct": 15.918375208239045,
+          "cagr_to_synchronized_strict_mdd": 4.461096091302252,
+          "final_equity": 1.4291887086425124,
+          "synchronized_strict_mdd_pct": 3.5682654850844653,
+          "trades": 130,
+          "trades_by_sleeve": {
+            "fresh_kimchi_fx": 75,
+            "frozen_annual_rank7": 55
+          }
+        },
+        "oos_marginal_vs_rank7": {
+          "absolute_return_delta_pct": -2.426987043838153,
+          "cagr_delta_pct": -0.8102357641068814,
+          "ratio_delta": 0.568624945979471,
+          "strict_mdd_delta_pct": -0.729418517646585
+        },
+        "interpretation": "The 25% sleeve lowers synchronized strict MDD and raises CAGR/MDD in every reported window, but slightly dilutes combined raw CAGR outside 2026H1. Shadow risk-budget candidate only.",
+        "portfolio_spec_hash": "57c25f64b14d63cc700914bd8de9b4091bd6da7a020fc124eaf328fa92e9607c"
       }
     },
     {

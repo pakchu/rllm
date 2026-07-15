@@ -47,6 +47,25 @@ alpha merely because it is uncorrelated.
   replay: generic direction search, fixed primary-weak ridge, and delayed price
   confirmation.
 
+## Fixed-subaccount marginal-value audit
+
+A single, non-optimized allocation was replayed with 75% frozen annual rank-7
+and 25% Fresh Kimchi/FX. Both sleeves keep separate capital; their values are
+combined on the same five-minute BTC OHLC clock before strict MDD is measured.
+
+| Window | Absolute return | CAGR | Sync strict MDD | CAGR/MDD | Ratio delta vs rank-7 |
+|---|---:|---:|---:|---:|---:|
+| 2024 | 14.9511% | 14.9183% | 2.2856% | 6.5271 | +1.0623 |
+| 2025 | 15.2518% | 15.2630% | 3.0216% | 5.0513 | +0.6649 |
+| 2026H1 | 7.8748% | 19.9791% | 3.5167% | 5.6811 | +1.3803 |
+| 2025-2026H1 | 24.3089% | 16.6176% | 3.5393% | 4.6951 | +0.7417 |
+| 2024-2026H1 | 42.9189% | 15.9184% | 3.5683% | 4.4611 | +0.5686 |
+
+The diversification effect is real in this replay: synchronized strict MDD and
+CAGR/MDD improve in every window. Raw CAGR is slightly diluted versus rank-7
+outside 2026H1, so this is a **risk-budget shadow candidate**, not a replacement
+or pristine OOS promotion.
+
 ## Search rule going forward
 
 1. Build and freeze a causal candidate without future-window ranking.
@@ -70,3 +89,6 @@ validated direction edge exists.
 - `docs/cross-collateral-near-pressure-oos-2026-07-16.md`
 - `results/ccnear_primaryweak_ridge_pre2024_2026-07-16.json`
 - `results/ccnear_delayed_price_confirmation_pre2024_2026-07-16.json`
+- `training/audit_rank7_fresh_kimchi_fixed_portfolio.py`
+- `results/rank7_fresh_kimchi_fixed_portfolio_2026-07-16.json`
+- `docs/rank7-fresh-kimchi-fixed-portfolio-2026-07-16.md`

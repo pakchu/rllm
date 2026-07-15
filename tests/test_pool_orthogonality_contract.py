@@ -42,3 +42,26 @@ def test_orthogonal_but_unprofitable_book_clock_stays_beta_feature():
     assert candidate["orthogonality"]["passes_declared_limits"] is True
     assert "not an alpha" in candidate["tier_rationale"]
     assert any("lost 25.0844%" in failure for failure in candidate["known_failures"])
+
+
+def test_fixed_orthogonal_portfolio_is_shadow_candidate_not_live():
+    pool = load_pool("portfolio_pool.json")
+    candidate = by_id(pool, "rank7_75_fresh_kimchi_25_fixed_shadow_20260716")
+
+    assert candidate["status"] == "candidate"
+    assert candidate["weights"] == {
+        "expanding_extratrees_frozen_annual_rank7": 0.75,
+        "funding_fx_bidirectional_kimchi_local_impulse_gate_20260712": 0.25,
+    }
+    assert candidate["construction_recipe"]["evaluation_protocol"]["weights"] == (
+        "single hash-pinned 75/25 cell"
+    )
+    future = candidate["stats"]["future_2025_2026h1"]
+    assert future["cagr_mdd"] > 4.0
+    assert future["marginal_vs_rank7"]["ratio_delta"] > 0.0
+    assert future["marginal_vs_rank7"]["strict_mdd_delta_pct"] < 0.0
+    assert candidate["contamination_risk"] == "high"
+    result = json.loads(
+        Path("results/rank7_fresh_kimchi_fixed_portfolio_2026-07-16.json").read_text()
+    )
+    assert candidate["portfolio_spec_hash"] == result["portfolio_spec_hash"]

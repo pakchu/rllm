@@ -1,12 +1,14 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-10",
+  "updated_at": "2026-07-16",
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side",
     "weight_constraints_current": "nonzero weights >=0.10, multiples of 0.05; leverage/gross can be high but MDD constraints dominate",
     "strict_mdd": "weighted intrabar adverse move and period-contained exits",
-    "trading_target_asset": "BTC portfolio sleeves unless an entry explicitly says otherwise; external features do not change target asset."
+    "trading_target_asset": "BTC portfolio sleeves unless an entry explicitly says otherwise; external features do not change target asset.",
+    "trade_orthogonality": "Diversification claims require actual executed-entry, occupied-position, and zero-filled daily marked-PnL correlation; feature activation correlation is diagnostic only.",
+    "fixed_subaccount_mdd": "For overlapping BTC sleeves, combine independently funded subaccount values on one synchronized BTC OHLC clock before strict MDD; never serially merge trades or combine impossible independent favorable/adverse prices."
   },
   "entries": [
     {
@@ -541,6 +543,166 @@
         "contamination_warning": "Avoid universe restriction that forces wave inclusion.",
         "baseline_required": "Compare against live_gross575_e39_reference unless entry itself is that reference."
       }
+    },
+    {
+      "id": "rank7_75_fresh_kimchi_25_fixed_shadow_20260716",
+      "name": "Frozen rank-7 75% + Fresh Kimchi/FX 25% fixed shadow",
+      "status": "candidate",
+      "family": "orthogonal_fixed_subaccount",
+      "scope": "btc_portfolio_shadow",
+      "description": "One preregistered diagnostic capital split between frozen annual rank-7 and the freshness-safe bidirectional Kimchi/FX sleeve. No weight grid, no rebalance, and no future reranking.",
+      "gross": 0.5,
+      "weights": {
+        "expanding_extratrees_frozen_annual_rank7": 0.75,
+        "funding_fx_bidirectional_kimchi_local_impulse_gate_20260712": 0.25
+      },
+      "component_alphas": [
+        "expanding_extratrees_frozen_annual_rank7",
+        "funding_fx_bidirectional_kimchi_local_impulse_gate_20260712"
+      ],
+      "constraints": [
+        "fixed subaccounts",
+        "one weight cell only",
+        "6bp/side in each sleeve",
+        "realized funding",
+        "same-BTC synchronized 5-minute OHLC strict MDD",
+        "split-contained exits"
+      ],
+      "stats": {
+        "test2024": {
+          "return_pct": 14.95110897849299,
+          "cagr_pct": 14.918292127597766,
+          "synchronized_strict_mdd_pct": 2.2855950637929334,
+          "cagr_mdd": 6.527093256336027,
+          "trades": 52,
+          "trades_by_sleeve": {
+            "fresh_kimchi_fx": 30,
+            "frozen_annual_rank7": 22
+          },
+          "marginal_vs_rank7": {
+            "absolute_return_delta_pct": -1.4450402182611484,
+            "cagr_delta_pct": -1.4416488866674442,
+            "ratio_delta": 1.062302051210362,
+            "strict_mdd_delta_pct": -0.7081041280298961
+          }
+        },
+        "eval2025": {
+          "return_pct": 15.251771662539348,
+          "cagr_pct": 15.2629775898387,
+          "synchronized_strict_mdd_pct": 3.02162168286082,
+          "cagr_mdd": 5.0512536617052515,
+          "trades": 38,
+          "trades_by_sleeve": {
+            "fresh_kimchi_fx": 17,
+            "frozen_annual_rank7": 21
+          },
+          "marginal_vs_rank7": {
+            "absolute_return_delta_pct": -1.1101878824952394,
+            "cagr_delta_pct": -1.1110599561653824,
+            "ratio_delta": 0.6648780054790757,
+            "strict_mdd_delta_pct": -0.7113092900626228
+          }
+        },
+        "ytd2026": {
+          "return_pct": 7.874799477856076,
+          "cagr_pct": 19.97906246914245,
+          "synchronized_strict_mdd_pct": 3.5167333358588126,
+          "cagr_mdd": 5.6811422877655895,
+          "trades": 40,
+          "trades_by_sleeve": {
+            "fresh_kimchi_fx": 28,
+            "frozen_annual_rank7": 12
+          },
+          "marginal_vs_rank7": {
+            "absolute_return_delta_pct": 0.5616302263684814,
+            "cagr_delta_pct": 1.4955284670990814,
+            "ratio_delta": 1.3803295732203305,
+            "strict_mdd_delta_pct": -0.7809506668722155
+          }
+        },
+        "future_2025_2026h1": {
+          "return_pct": 24.308912123488135,
+          "cagr_pct": 16.61755492256973,
+          "synchronized_strict_mdd_pct": 3.539346264889276,
+          "cagr_mdd": 4.695091601355255,
+          "trades": 78,
+          "trades_by_sleeve": {
+            "fresh_kimchi_fx": 45,
+            "frozen_annual_rank7": 33
+          },
+          "marginal_vs_rank7": {
+            "absolute_return_delta_pct": -0.5627944674223571,
+            "cagr_delta_pct": -0.37275465043862255,
+            "ratio_delta": 0.7417275191631809,
+            "strict_mdd_delta_pct": -0.7583377378417628
+          }
+        },
+        "oos_2024_2026h1": {
+          "return_pct": 42.91887086425123,
+          "cagr_pct": 15.918375208239045,
+          "synchronized_strict_mdd_pct": 3.5682654850844653,
+          "cagr_mdd": 4.461096091302252,
+          "trades": 130,
+          "trades_by_sleeve": {
+            "fresh_kimchi_fx": 75,
+            "frozen_annual_rank7": 55
+          },
+          "marginal_vs_rank7": {
+            "absolute_return_delta_pct": -2.426987043838153,
+            "cagr_delta_pct": -0.8102357641068814,
+            "ratio_delta": 0.568624945979471,
+            "strict_mdd_delta_pct": -0.729418517646585
+          }
+        }
+      },
+      "evidence": "Risk efficiency improves in every reported window. Over 2025-2026H1, absolute return 24.3089%, CAGR 16.6176%, synchronized strict MDD 3.5393%, ratio 4.6951, 78 component trades; ratio is +0.7417 and MDD -0.7583pp versus rank-7 under the same synchronized method, while CAGR is -0.3728pp.",
+      "source_artifacts": [
+        "training/audit_rank7_fresh_kimchi_fixed_portfolio.py",
+        "results/rank7_fresh_kimchi_fixed_portfolio_2026-07-16.json",
+        "docs/rank7-fresh-kimchi-fixed-portfolio-2026-07-16.md",
+        "results/fresh_kimchi_orthogonal_alpha_audit_2026-07-16.json",
+        "docs/fresh-kimchi-orthogonal-alpha-audit-2026-07-16.md"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "This is not pristine OOS. The Kimchi gate used 2024 for selection and 2025/2026 had already been viewed. The 75/25 audit ran one fixed cell and did not rerank, but promotion requires newly arriving untouched data.",
+      "next_action": "Run exactly this spec in forward shadow. Do not optimize weights or replace the live baseline until an untouched period confirms the MDD and ratio gain.",
+      "construction_recipe": {
+        "component_alphas": [
+          "expanding_extratrees_frozen_annual_rank7",
+          "funding_fx_bidirectional_kimchi_local_impulse_gate_20260712"
+        ],
+        "weights": {
+          "expanding_extratrees_frozen_annual_rank7": 0.75,
+          "funding_fx_bidirectional_kimchi_local_impulse_gate_20260712": 0.25
+        },
+        "gross": 0.5,
+        "constraints": [
+          "fixed subaccounts",
+          "no rebalance",
+          "one weight cell",
+          "6bp/side",
+          "realized funding",
+          "same-BTC synchronized strict MDD"
+        ],
+        "reproduce_command": "PYTHONPATH=. python training/audit_rank7_fresh_kimchi_fixed_portfolio.py",
+        "source_artifacts": [
+          "training/audit_rank7_fresh_kimchi_fixed_portfolio.py",
+          "results/rank7_fresh_kimchi_fixed_portfolio_2026-07-16.json",
+          "docs/rank7-fresh-kimchi-fixed-portfolio-2026-07-16.md"
+        ],
+        "evaluation_protocol": {
+          "selection": "2024 was Kimchi gate selection",
+          "eval": "2025 previously viewed",
+          "holdout": "2026H1 previously viewed",
+          "cost": "6bp/side per sleeve",
+          "funding": "realized",
+          "mdd": "synchronized 5-minute fixed-subaccount same-BTC OHLC envelope",
+          "weights": "single hash-pinned 75/25 cell"
+        },
+        "contamination_warning": "Diagnostic marginal-value evidence only; require untouched forward confirmation.",
+        "baseline_required": "Compare against frozen annual rank-7 under the same synchronized accounting method."
+      },
+      "portfolio_spec_hash": "57c25f64b14d63cc700914bd8de9b4091bd6da7a020fc124eaf328fa92e9607c"
     }
   ]
 }
