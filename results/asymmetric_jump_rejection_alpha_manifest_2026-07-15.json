@@ -1,0 +1,230 @@
+{
+  "as_of": "2026-07-15T02:18:55.344549+00:00",
+  "phase": "pre_2024_freeze",
+  "oos_opened": false,
+  "selection_end": "2024-01-01",
+  "config": {
+    "input_csv": "/home/pakchu/rllm/data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "metrics_csv": "/home/pakchu/rllm/data/binance_um_metrics_BTCUSDT_5m_2020-09-01_2026-06-01.csv.gz",
+    "funding_csv": "/home/pakchu/rllm/data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+    "output": "/tmp/asymmetric_jump_rejection_selection.json",
+    "manifest_output": "/tmp/asymmetric_jump_rejection_manifest.json",
+    "docs_output": "/tmp/asymmetric_jump_rejection_candidate.md",
+    "exclude_from": "2026-06-02",
+    "metrics_tolerance": "10min",
+    "source_delay_bars": 1,
+    "leverage": 0.5,
+    "fee_rate": 0.0005,
+    "slippage_rate": 0.0001,
+    "open_oos": false
+  },
+  "frozen_execution_config": {
+    "input_csv": "/home/pakchu/rllm/data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "metrics_csv": "/home/pakchu/rllm/data/binance_um_metrics_BTCUSDT_5m_2020-09-01_2026-06-01.csv.gz",
+    "funding_csv": "/home/pakchu/rllm/data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+    "exclude_from": "2026-06-02",
+    "metrics_tolerance": "10min",
+    "source_delay_bars": 1,
+    "leverage": 0.5,
+    "fee_rate": 0.0005,
+    "slippage_rate": 0.0001
+  },
+  "spec": {
+    "anchor_stride_bars": 72,
+    "warmup_bars": 2016,
+    "hold_bars": 288,
+    "stop_loss": 0.03,
+    "take_profit": 0.04,
+    "witness_quantile": 0.7,
+    "long_rule": [
+      "signed_jump_72",
+      "oi_build_144",
+      "path_clean_72"
+    ],
+    "short_rule": [
+      "upper_rejection_12",
+      "dxy_strength",
+      "fast_volume_clock_0p25"
+    ],
+    "same_bar_policy": "stop_before_take",
+    "discovery_accounting": {
+      "symmetric_source_rules": 448,
+      "asymmetric_pairs": 625,
+      "unique_pair_stat_signatures": 460,
+      "hold_pairs": 36,
+      "slow_regime_variants": 45,
+      "barrier_variants": 40,
+      "barrier_variants_passing_contract": 10
+    }
+  },
+  "spec_hash": "6b989f9a710536019e34e4fc095284dab9f1420eae40624a6082d557daa47ec0",
+  "implementation_hash": "2f9d3fc0f2f260e21b4942df69ed434d8357ba40ae46ca4c9c294bd4da21a9f1",
+  "source_prefix_hashes": {
+    "market": "a7639b9bf7fe7eaf6f6885af758fc4273a6c76ef0d085f00a2a3067675e04b6c",
+    "metrics": "16d1964c4aae3d2af7ba94b04624aa8eed4bf6a9304c91fc4247f06705655f10",
+    "funding": "176afb9631ce5674bca3f375599deab5a6cbf39833edf6c5e26d7ccf33160485"
+  },
+  "feature_prefix_hash": "efb5891b945b06cc24bd369507bbcdde807b75ab7c0556680cde10b8a84c48c5",
+  "thresholds": {
+    "long": {
+      "long_signed_jump": 0.05666047515019314,
+      "long_oi_build": 0.018002504211628252,
+      "long_path_clean": 0.14172764641112068
+    },
+    "short": {
+      "short_upper_rejection": 0.08996245865638111,
+      "short_dxy_strength": 0.0003042694908799603,
+      "short_fast_volume_clock": -61.0
+    }
+  },
+  "activation_hash": "ccbe98e3b7d62174b722b4fb370ef89cc15ebe4efb212aaaad422c0326e5604c",
+  "selection_passed": true,
+  "selection_stats": {
+    "fit": {
+      "absolute_return_pct": 109.27898698897155,
+      "cagr_pct": 39.630880976659235,
+      "strict_mdd_pct": 7.904337455526589,
+      "cagr_to_strict_mdd": 5.0138144024898565,
+      "trades": 224,
+      "longs": 136,
+      "shorts": 88,
+      "mean_net_bps": 34.06682222170146,
+      "mean_gross_bps": 82.01530195184543,
+      "win_rate": 0.5714285714285714
+    },
+    "fit_2020q4": {
+      "absolute_return_pct": 11.030704035339944,
+      "cagr_pct": 63.22851329836312,
+      "strict_mdd_pct": 5.297266491966324,
+      "cagr_to_strict_mdd": 11.936064269043966,
+      "trades": 22,
+      "longs": 19,
+      "shorts": 3,
+      "mean_net_bps": 48.565057021323184,
+      "mean_gross_bps": 110.55025446431524,
+      "win_rate": 0.5909090909090909
+    },
+    "fit_2021": {
+      "absolute_return_pct": 52.00970434822256,
+      "cagr_pct": 52.053311792925804,
+      "strict_mdd_pct": 7.904337455526567,
+      "cagr_to_strict_mdd": 6.585411122159402,
+      "trades": 101,
+      "longs": 65,
+      "shorts": 36,
+      "mean_net_bps": 42.708362252076604,
+      "mean_gross_bps": 100.96151503750495,
+      "win_rate": 0.594059405940594
+    },
+    "fit_2021_h1": {
+      "absolute_return_pct": 39.0304346942608,
+      "cagr_pct": 94.441701959082,
+      "strict_mdd_pct": 7.904337455526567,
+      "cagr_to_strict_mdd": 11.948085780807613,
+      "trades": 52,
+      "longs": 37,
+      "shorts": 15,
+      "mean_net_bps": 64.86120764688235,
+      "mean_gross_bps": 148.1654239693808,
+      "win_rate": 0.6346153846153846
+    },
+    "fit_2021_h2": {
+      "absolute_return_pct": 9.33556000346556,
+      "cagr_pct": 19.383292568880762,
+      "strict_mdd_pct": 7.196240950069255,
+      "cagr_to_strict_mdd": 2.6935302338221767,
+      "trades": 49,
+      "longs": 28,
+      "shorts": 21,
+      "mean_net_bps": 19.199220200446035,
+      "mean_gross_bps": 50.86757086490196,
+      "win_rate": 0.5510204081632653
+    },
+    "fit_2022": {
+      "absolute_return_pct": 23.997011012656564,
+      "cagr_pct": 24.01527960428571,
+      "strict_mdd_pct": 6.597721207406293,
+      "cagr_to_strict_mdd": 3.639935494292678,
+      "trades": 101,
+      "longs": 52,
+      "shorts": 49,
+      "mean_net_bps": 22.267250848834294,
+      "mean_gross_bps": 56.85355465554888,
+      "win_rate": 0.5445544554455446
+    },
+    "fit_2022_h1": {
+      "absolute_return_pct": 13.989595622058971,
+      "cagr_pct": 30.242128901128986,
+      "strict_mdd_pct": 6.088439230703946,
+      "cagr_to_strict_mdd": 4.967139812879825,
+      "trades": 59,
+      "longs": 29,
+      "shorts": 30,
+      "mean_net_bps": 23.203519706865492,
+      "mean_gross_bps": 58.401283198872505,
+      "win_rate": 0.576271186440678
+    },
+    "fit_2022_h2": {
+      "absolute_return_pct": 8.779235803044605,
+      "cagr_pct": 18.18049456735691,
+      "strict_mdd_pct": 6.597721207406315,
+      "cagr_to_strict_mdd": 2.755571809695183,
+      "trades": 42,
+      "longs": 23,
+      "shorts": 19,
+      "mean_net_bps": 20.952016024456928,
+      "mean_gross_bps": 54.6793645589752,
+      "win_rate": 0.5
+    },
+    "select_2023": {
+      "absolute_return_pct": 32.301792153337395,
+      "cagr_pct": 32.3271598680563,
+      "strict_mdd_pct": 6.728446449979497,
+      "cagr_to_strict_mdd": 4.804550368109834,
+      "trades": 80,
+      "longs": 51,
+      "shorts": 29,
+      "mean_net_bps": 35.73320065693998,
+      "mean_gross_bps": 84.06365142467561,
+      "win_rate": 0.525
+    },
+    "select_2023_h1": {
+      "absolute_return_pct": 15.301908352983684,
+      "cagr_pct": 33.285625510178996,
+      "strict_mdd_pct": 4.023427755433373,
+      "cagr_to_strict_mdd": 8.272952202317779,
+      "trades": 42,
+      "longs": 27,
+      "shorts": 15,
+      "mean_net_bps": 34.756534058892925,
+      "mean_gross_bps": 82.03947067959275,
+      "win_rate": 0.5238095238095238
+    },
+    "select_2023_h2": {
+      "absolute_return_pct": 14.743800899036685,
+      "cagr_pct": 31.39104638774426,
+      "strict_mdd_pct": 6.7284464499794865,
+      "cagr_to_strict_mdd": 4.665422638213903,
+      "trades": 38,
+      "longs": 24,
+      "shorts": 14,
+      "mean_net_bps": 36.812674265307756,
+      "mean_gross_bps": 86.30090382713557,
+      "win_rate": 0.5263157894736842
+    }
+  },
+  "selection_schedule_hashes": {
+    "fit": "c0b8e43bf515088e0b99473aa806c0664c7880dc9a89a6b62a5b9f2eaa239731",
+    "fit_2020q4": "70c9453e149b84f6018491329e9e51f52f802b63aaa0dff15fdd5ff5c2e77c77",
+    "fit_2021": "4f817a7c14a5d0eac471eaa26abd554b7d1932db6aa6c444d9f4c8d438a20d5a",
+    "fit_2021_h1": "1a0630a9de177d15558e8682b5a484bd78a8401f8076b06fabf594e11f1f60b0",
+    "fit_2021_h2": "1c30bbadd419dd6835ce2d674f1e0cbad71290c2994a8490885a792421df6a58",
+    "fit_2022": "bb03b02092d71efc61b5175c4a9e8b809edfb56b39b8c1acc93cbb9067e73314",
+    "fit_2022_h1": "d02a479df745a678650d4e6a76468f132718e0c584aa259f559cf943336977df",
+    "fit_2022_h2": "d59a84711210bdff7025303624eeec12831d334236794837ae38c864abb713cc",
+    "select_2023": "29eb2ec9bcf4d1cb37dec05c1f391f7f8f7d254b722ba8586f04ef06b37eafe6",
+    "select_2023_h1": "d510a17031c319d702bafba44d8b40dd7263a62a4f44e845a4e02423ea614f1a",
+    "select_2023_h2": "d0c33e3a77fce6e58c8ba70fc5dc859abccb77fdad61708ef86233ef93360e7c"
+  },
+  "freeze_hash": "459bafa6bc4645e666276cea29707f5f3bccde2c052731047a6d62b00cee8cab"
+}
