@@ -33,10 +33,18 @@ The frozen research evidence remains authoritative for historical claims:
   `results/expanding_extratrees_top10_oos_2026-07-15.json`
 - Stability audit:
   `results/expanding_extratrees_rank7_stability_2026-07-15.json`
+- Pre-2025 refit-cadence selection:
+  `results/expanding_extratrees_rank7_refit_cadence_pre2025_2026-07-16.json`
+- Frozen refit-cadence manifest:
+  `results/expanding_extratrees_rank7_refit_cadence_pre2025_manifest_2026-07-16.json`
+- Refit-cadence OOS comparison:
+  `results/expanding_extratrees_rank7_refit_cadence_oos_2026-07-16.json`
 - Human-readable evidence:
   - `docs/expanding-extratrees-top10-pre2025-2026-07-15.md`
   - `docs/expanding-extratrees-top10-oos-2026-07-15.md`
   - `docs/expanding-extratrees-rank7-stability-2026-07-15.md`
+  - `docs/expanding-extratrees-rank7-refit-cadence-pre2025-2026-07-16.md`
+  - `docs/expanding-extratrees-rank7-refit-cadence-oos-2026-07-16.md`
 
 If this runbook conflicts with a frozen artifact, the frozen artifact wins for the
 already-reported experiment. Changing the production contract requires a new version,
@@ -155,24 +163,44 @@ The initial production policy is deliberately conservative:
 |---|---|---:|---|
 | Inference | Every UTC hour at `HH:00` | Yes, creates `TRADE/ABSTAIN` | OPERATING POLICY |
 | Data/decision reconciliation | Daily | No; may halt entries | OPERATING POLICY |
-| Offline challenger rehearsal | Monthly, after previous UTC month closes | No | PROPOSED |
+| Offline challenger rehearsal | Monthly, after previous UTC month closes | No | VERIFIED diagnostic; rejected for champion use |
 | Promotion review | Quarterly | Review only under current evidence | OPERATING POLICY |
 | Frozen-spec production refit | Annually | Yes, after full battery | VERIFIED shape / export BLOCKER |
 | Structural/hyperparameter search | At most annually, separately preregistered | Never without new manifest | OPERATING POLICY |
 | Drawdown/drift response | Event driven | Disable or rollback only | OPERATING POLICY |
 
-### 4.2 Why the champion is not replaced monthly yet
+### 4.2 Why the champion is not replaced monthly
 
-The committed evidence uses **annual expanding refits**. There is no committed
-monthly-cutoff evaluator proving that monthly retraining preserves leakage, purge,
-threshold, event-frequency, and execution behavior.
+Monthly expanding refit has now been compared directly against annual refit while
+holding the feature graph, rank-7 learner/policy, seeds, labels, purge, and execution
+constant. Cadence was selected with a manifest physically truncated before 2025; the
+separate 2025/2026H1 evaluator could not rerank it.
+
+| Cadence | 2023-2024 CAGR/MDD | 2025-2026H1 CAGR/MDD | 2023-2026H1 CAGR/MDD | Mean net, all | Result |
+|---|---:|---:|---:|---:|---|
+| Annual | 4.22 | 3.41 | 3.13 | 67.64 bps | PASS |
+| Monthly | 2.51 | 2.13 | 2.15 | 46.61 bps | FAIL |
+
+The failure mechanism is consistent with unstable partial-year weighting:
+
+- Source/year-balanced annual folds retained at least `66.2%` effective-fit fraction
+  and a maximum sample-weight multiple of `5.48`.
+- Monthly folds fell to `16.5%` effective-fit fraction and a maximum sample-weight
+  multiple of `38.88`, because a new partial-year/source group could contain only one
+  event while receiving the same total group weight as a mature group.
+- In 2025-2026H1, both cadences executed 33 trades and shared 28. The five annual-only
+  trades averaged `+136.80 bps`; the five monthly-only replacements averaged
+  `-8.89 bps`.
 
 Therefore:
 
-- A monthly job may build a **challenger** and generate shadow predictions.
+- A monthly job may still build a **diagnostic challenger** and generate shadow
+  predictions.
 - It may not move the production pointer automatically.
-- The production champion is replaced at most once per year until a separately
-  preregistered monthly walk-forward battery passes.
+- The production champion remains annual-refit.
+- A future monthly candidate must first change and preregister the sparse partial-year
+  weighting/update design, then pass a new clean cadence battery. Repeating the failed
+  implementation is not a promotion path.
 - Poor recent performance never authorizes emergency retuning. The safe response is
   exposure reduction, entry halt, or rollback.
 
@@ -588,6 +616,12 @@ uv run python -m training.evaluate_expanding_extratrees_top10_oos
 
 # Re-run rank-7 seed/tree-count/determinism stability evidence.
 uv run python -m training.audit_expanding_extratrees_rank7_stability
+
+# Reproduce pre-2025 annual-vs-monthly cadence selection.
+uv run python -m training.compare_expanding_extratrees_rank7_refit_cadence_pre2025
+
+# Evaluate the hash-frozen cadence family on 2025 and 2026H1.
+uv run python -m training.evaluate_expanding_extratrees_rank7_refit_cadence_oos
 ```
 
 The rank-7 audit currently writes canonical result paths directly. Run it only from a
@@ -623,7 +657,7 @@ It must not be relabeled as rank-7 live parity without completing these items.
 | Add newer rows, preserve expanding history/spec | Yes, after full battery | No |
 | Recompute source score/risk/interaction thresholds at annual cutoff | Yes | No |
 | Recompute preprocessing medians or causal-state bucket thresholds | No | Yes |
-| Monthly live replacement | No | Monthly walk-forward preregistration/evaluation required |
+| Current monthly live replacement implementation | No | Rejected; redesigned weighting/update rule plus new preregistration/evaluation required |
 | Change feature definition/order/delay | No | Yes |
 | Add or remove a feature, including availability flags | No | Yes |
 | Change seed count/tree count/depth/leaf/max-features | No | Yes |
