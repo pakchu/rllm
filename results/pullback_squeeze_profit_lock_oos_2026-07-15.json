@@ -1,0 +1,131 @@
+{
+  "as_of": "2026-07-15T03:50:06.561609+00:00",
+  "verdict": "REJECTED_OOS",
+  "config": {
+    "input_csv": "/home/pakchu/rllm/data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "funding_csv": "/home/pakchu/rllm/data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+    "premium_csv": "/home/pakchu/rllm/data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz",
+    "output": "results/pullback_squeeze_profit_lock_oos_2026-07-15.json",
+    "exclude_from": "2026-06-02",
+    "window_size": 144,
+    "leverage": 0.5,
+    "operating_leverage": 0.9,
+    "fee_rate": 0.0005,
+    "slippage_rate": 0.0001,
+    "funding_tolerance": "12h",
+    "offline_premium_tolerance": "2h",
+    "live_premium_tolerance": "10min",
+    "manifest_output": "results/pullback_squeeze_profit_lock_manifest_2026-07-15.json",
+    "open_oos": true
+  },
+  "manifest": "results/pullback_squeeze_profit_lock_manifest_2026-07-15.json",
+  "manifest_hash": "ca64871a079b5e7fe558417d6870bed63e0e39a9392137bb9392a9f8825c6325",
+  "frozen_spec": {
+    "name": "hold_576_tp_1000bps_no_stop",
+    "hold_bars": 576,
+    "hold_hours": 48.0,
+    "take_bps": 1000,
+    "stop_bps": 1000000
+  },
+  "protocol": {
+    "only_frozen_candidate_evaluated": true,
+    "future_windows": {
+      "test_2024": [
+        "2024-01-01",
+        "2025-01-01"
+      ],
+      "eval_2025": [
+        "2025-01-01",
+        "2026-01-01"
+      ],
+      "holdout_2026": [
+        "2026-01-01",
+        "2026-06-02"
+      ],
+      "oos_2024_2026": [
+        "2024-01-01",
+        "2026-06-02"
+      ]
+    },
+    "cost_per_side": 0.0006000000000000001,
+    "realized_funding": true,
+    "strict_mdd": "global/pre-entry HWM plus position-wide favorable envelope before adverse envelope"
+  },
+  "passes_oos_gate": false,
+  "stats": {
+    "test_2024": {
+      "absolute_return_pct": 20.175720610938974,
+      "cagr_pct": 20.13046996498811,
+      "strict_mdd_pct": 5.294558117815851,
+      "cagr_to_strict_mdd": 3.8021057691765363,
+      "trades": 17,
+      "mean_net_bps": 109.28188024189855,
+      "win_rate": 0.8235294117647058
+    },
+    "eval_2025": {
+      "absolute_return_pct": 7.199625083605876,
+      "cagr_pct": 7.204729857839309,
+      "strict_mdd_pct": 5.390416391750663,
+      "cagr_to_strict_mdd": 1.3365813202974854,
+      "trades": 11,
+      "mean_net_bps": 64.28517861644062,
+      "win_rate": 0.7272727272727273
+    },
+    "holdout_2026": {
+      "absolute_return_pct": 11.349282350814494,
+      "cagr_pct": 29.475630023799802,
+      "strict_mdd_pct": 4.986856350165314,
+      "cagr_to_strict_mdd": 5.910663543140297,
+      "trades": 19,
+      "mean_net_bps": 57.763093920359005,
+      "win_rate": 0.6842105263157895
+    },
+    "oos_2024_2026": {
+      "absolute_return_pct": 43.448966543702674,
+      "cagr_pct": 16.096029173467397,
+      "strict_mdd_pct": 5.716886250792774,
+      "cagr_to_strict_mdd": 2.8155237776919777,
+      "trades": 47,
+      "mean_net_bps": 77.92399390170098,
+      "win_rate": 0.7446808510638298
+    }
+  },
+  "cost_10bp_side": {
+    "test_2024": {
+      "absolute_return_pct": 19.360973091374145,
+      "cagr_pct": 19.317692505597694,
+      "strict_mdd_pct": 5.332447872140578,
+      "cagr_to_strict_mdd": 3.622668794668046,
+      "trades": 17,
+      "mean_net_bps": 105.2373586259407,
+      "win_rate": 0.8235294117647058
+    },
+    "eval_2025": {
+      "absolute_return_pct": 6.728794985753805,
+      "cagr_pct": 6.733555547400938,
+      "strict_mdd_pct": 5.503925177075486,
+      "cagr_to_strict_mdd": 1.2234097177496184,
+      "trades": 11,
+      "mean_net_bps": 60.258659281409166,
+      "win_rate": 0.7272727272727273
+    },
+    "holdout_2026": {
+      "absolute_return_pct": 10.505899365390325,
+      "cagr_pct": 27.131612697502348,
+      "strict_mdd_pct": 5.062866861283122,
+      "cagr_to_strict_mdd": 5.358942559794309,
+      "trades": 19,
+      "mean_net_bps": 53.73918394105042,
+      "win_rate": 0.631578947368421
+    },
+    "oos_2024_2026": {
+      "absolute_return_pct": 40.77625908210361,
+      "cagr_pct": 15.196344646019288,
+      "strict_mdd_pct": 5.942984737184986,
+      "cagr_to_strict_mdd": 2.557022324310619,
+      "trades": 47,
+      "mean_net_bps": 73.89201794928621,
+      "win_rate": 0.723404255319149
+    }
+  }
+}

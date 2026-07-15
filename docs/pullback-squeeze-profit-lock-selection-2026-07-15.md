@@ -1,5 +1,10 @@
 # Pullback-squeeze profit-lock selection — 2026-07-15
 
+> **Rejected in frozen OOS replay.** The pinned candidate passed 2024 and
+> 2026H1 but failed 2025 and the combined 2024–2026 ratio. See
+> `docs/pullback-squeeze-profit-lock-oos-2026-07-15.md`. No parameter was
+> retuned after opening OOS.
+
 ## Status
 
 **Pre-OOS candidate frozen; 2024 onward remains unopened by this experiment.**
