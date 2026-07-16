@@ -24,8 +24,10 @@ from training.preregister_alt_funding_carry_harvest import canonical_hash, proto
 
 START = pd.Timestamp("2023-01-01 00:00:00")
 END = pd.Timestamp("2024-01-01 00:00:00")
+MARK_START = START - pd.Timedelta(minutes=5)
 STEP_MS = 300_000
 LIMIT = 1_500
+MAX_PROXY_OVERLAP_ERROR_BP = 5.0
 BASE_URL = "https://fapi.binance.com"
 ENDPOINT = "/fapi/v1/markPriceKlines"
 EXPECTED_PROTOCOL_HASH = "15a7d0adbace0255e1ea4359e4869154dfb34ad891a2125239340ff70c4e2a09"
@@ -110,7 +112,11 @@ def download_mark_klines(
         raise RuntimeError(f"{symbol} empty AFCH mark-price history")
     frame = pd.DataFrame({
         "open_time": pd.to_datetime([int(row[0]) for row in rows], unit="ms"),
-        "mark_price": pd.to_numeric([row[1] for row in rows], errors="raise"),
+        "open": pd.to_numeric([row[1] for row in rows], errors="raise"),
+        "high": pd.to_numeric([row[2] for row in rows], errors="raise"),
+        "low": pd.to_numeric([row[3] for row in rows], errors="raise"),
+        "close": pd.to_numeric([row[4] for row in rows], errors="raise"),
+        "close_time": pd.to_datetime([int(row[6]) for row in rows], unit="ms"),
     }).drop_duplicates("open_time").sort_values("open_time").reset_index(drop=True)
     frame = frame.loc[(frame["open_time"] >= start) & (frame["open_time"] < end)].reset_index(drop=True)
     timestamps = pd.DatetimeIndex(frame["open_time"])
@@ -118,8 +124,16 @@ def download_mark_klines(
         raise RuntimeError(f"{symbol} AFCH mark-price timestamps are invalid")
     if ((timestamps.astype("int64") // 1_000_000) % STEP_MS != 0).any():
         raise RuntimeError(f"{symbol} AFCH mark-price timestamps are off-grid")
-    if not np.isfinite(frame["mark_price"].to_numpy(dtype=float)).all() or (frame["mark_price"] <= 0).any():
+    expected_close = timestamps + pd.Timedelta(minutes=5) - pd.Timedelta(milliseconds=1)
+    if not pd.DatetimeIndex(frame["close_time"]).equals(expected_close):
+        raise RuntimeError(f"{symbol} AFCH mark-price close times are invalid")
+    prices = frame[["open", "high", "low", "close"]].to_numpy(dtype=float)
+    if not np.isfinite(prices).all() or (prices <= 0).any():
         raise RuntimeError(f"{symbol} AFCH mark-price values are invalid")
+    if (frame["high"] < frame[["open", "close"]].max(axis=1)).any():
+        raise RuntimeError(f"{symbol} AFCH mark-price high is invalid")
+    if (frame["low"] > frame[["open", "close"]].min(axis=1)).any():
+        raise RuntimeError(f"{symbol} AFCH mark-price low is invalid")
     return frame
 
 
@@ -131,28 +145,38 @@ def compose_event_marks(funding: pd.DataFrame, mark_klines: pd.DataFrame) -> tup
     frame = frame.loc[(frame["event_time"] >= START) & (frame["event_time"] < END)].copy()
     if frame.empty or frame["event_time"].duplicated().any():
         raise RuntimeError("invalid AFCH funding events for mark freeze")
-    mark_map = mark_klines.set_index("open_time")["mark_price"]
-    frame["kline_open_mark"] = frame["mark_open_time"].map(mark_map)
-    if frame["kline_open_mark"].isna().any():
-        raise RuntimeError("AFCH funding event lacks exact mark-price kline open")
+    current_open = mark_klines.set_index("open_time")["open"]
+    prior_close = pd.Series(
+        mark_klines["close"].to_numpy(dtype=float),
+        index=pd.DatetimeIndex(mark_klines["open_time"]) + pd.Timedelta(minutes=5),
+    )
+    frame["current_interval_open"] = frame["mark_open_time"].map(current_open)
+    frame["prior_completed_mark"] = frame["mark_open_time"].map(prior_close)
+    if frame[["current_interval_open", "prior_completed_mark"]].isna().any().any():
+        raise RuntimeError("AFCH funding event lacks causal adjacent mark-price bars")
     recorded = frame["recorded_mark"].notna()
     if recorded.any():
-        error_bp = (
-            frame.loc[recorded, "kline_open_mark"] / frame.loc[recorded, "recorded_mark"] - 1.0
+        proxy_error_bp = (
+            frame.loc[recorded, "prior_completed_mark"] / frame.loc[recorded, "recorded_mark"] - 1.0
         ).abs() * 10_000.0
-        max_error_bp = float(error_bp.max())
-        if max_error_bp > 1e-6:
-            raise RuntimeError(f"recorded funding mark mismatch: {max_error_bp:.9f} bp")
+        open_error_bp = (
+            frame.loc[recorded, "current_interval_open"] / frame.loc[recorded, "recorded_mark"] - 1.0
+        ).abs() * 10_000.0
+        max_proxy_error_bp = float(proxy_error_bp.max())
+        max_open_error_bp = float(open_error_bp.max())
+        if max_proxy_error_bp > MAX_PROXY_OVERLAP_ERROR_BP:
+            raise RuntimeError(f"causal funding mark proxy mismatch: {max_proxy_error_bp:.9f} bp")
     else:
-        max_error_bp = 0.0
-    frame["exact_mark_price"] = frame["recorded_mark"].fillna(frame["kline_open_mark"])
-    frame["mark_source"] = np.where(recorded, "funding_record", "mark_price_kline_open")
-    output = frame[["funding_time", "event_time", "exact_mark_price", "mark_source"]].reset_index(drop=True)
+        max_proxy_error_bp = max_open_error_bp = 0.0
+    frame["causal_mark_price"] = frame["recorded_mark"].fillna(frame["prior_completed_mark"])
+    frame["mark_source"] = np.where(recorded, "funding_record", "prior_completed_mark_close")
+    output = frame[["funding_time", "event_time", "causal_mark_price", "mark_source"]].reset_index(drop=True)
     stats = {
         "events": int(len(output)),
         "recorded_mark_events": int(recorded.sum()),
         "backfilled_mark_events": int((~recorded).sum()),
-        "maximum_recorded_vs_kline_open_error_bp": max_error_bp,
+        "maximum_recorded_vs_prior_close_error_bp": max_proxy_error_bp,
+        "maximum_recorded_vs_current_open_error_bp": max_open_error_bp,
     }
     return output, stats
 
@@ -161,21 +185,21 @@ def _markdown(result: dict[str, Any]) -> str:
     rows = "\n".join(
         f"| {row['symbol']} | {row['events']} | {row['recorded_mark_events']} | "
         f"{row['backfilled_mark_events']} | {row['missing_non_event_5m_mark_rows']} | "
-        f"{row['maximum_recorded_vs_kline_open_error_bp']:.9f} |"
+        f"{row['maximum_recorded_vs_prior_close_error_bp']:.6f} |"
         for row in result["records"]
     )
-    return f"""# AFCH v1 exact funding marks — 2026-07-17
+    return f"""# AFCH v1 causal funding marks — 2026-07-17
 
 > Outcome-blind source freeze only. No position return, PnL, CAGR, MDD, or gate was calculated.
 
-Missing 2023 funding-record marks were filled from the open of the Binance
-USD-M 5m mark-price interval containing the funding event. Binance event
-timestamps can carry millisecond jitter around the scheduled boundary; where
-both sources exist, the floored kline open must agree within `1e-6 bp`.
-Official endpoint:
+Missing 2023 funding-record marks use the close of the last fully completed
+Binance USD-M 5m mark-price interval before the funding event. This is a
+causal proxy, not an exact settlement mark. On rows where the exact recorded
+mark exists, the proxy must remain within `{MAX_PROXY_OVERLAP_ERROR_BP:.1f} bp`;
+exact/proxy counts and the worst overlap error are frozen below. Official endpoint:
 <https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Mark-Price-Kline-Candlestick-Data>
 
-| Symbol | Events | Funding-record marks | Backfilled exact opens | Missing non-event 5m bars | Max overlap error bp |
+| Symbol | Events | Exact recorded marks | Causal proxy marks | Missing non-event 5m bars | Max proxy overlap error bp |
 |---|---:|---:|---:|---:|---:|
 {rows}
 
@@ -202,9 +226,9 @@ def run(
         if sha256_file(funding_path) != source_records[symbol]["output_funding_sha256"]:
             raise RuntimeError(f"{symbol} AFCH funding source changed before mark freeze")
         funding = pd.read_csv(funding_path, usecols=["funding_time", "mark_price"])
-        klines = download_mark_klines(symbol, START, END, sleep_sec=sleep_sec)
+        klines = download_mark_klines(symbol, MARK_START, END, sleep_sec=sleep_sec)
         event_marks, stats = compose_event_marks(funding, klines)
-        expected_grid = pd.date_range(START, END - pd.Timedelta(minutes=5), freq="5min")
+        expected_grid = pd.date_range(MARK_START, END - pd.Timedelta(minutes=5), freq="5min")
         missing_grid = expected_grid.difference(pd.DatetimeIndex(klines["open_time"]))
         output = target / f"{symbol}_funding_marks_2023.csv.gz"
         deterministic_csv_gz(event_marks, output)
@@ -218,7 +242,7 @@ def run(
             "output_sha256": sha256_file(output),
         })
     result: dict[str, Any] = {
-        "protocol_version": "afch_v1_exact_funding_marks_2023_2026-07-17",
+        "protocol_version": "afch_v1_causal_funding_marks_2023_2026-07-17",
         "preregistration_protocol_hash": EXPECTED_PROTOCOL_HASH,
         "source_manifest_hash": EXPECTED_SOURCE_MANIFEST_HASH,
         "source_endpoint": f"{BASE_URL}{ENDPOINT}",
@@ -227,6 +251,8 @@ def run(
             "market-data/rest-api/Mark-Price-Kline-Candlestick-Data"
         ),
         "interval": "5m",
+        "missing_mark_policy": "last fully completed mark-price 5m close before funding event",
+        "maximum_proxy_overlap_error_bp": MAX_PROXY_OVERLAP_ERROR_BP,
         "period": [str(START), str(END)],
         "outcomes_opened": False,
         "pre_download_attestation": attestation,

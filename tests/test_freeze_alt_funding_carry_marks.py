@@ -27,7 +27,7 @@ def test_download_mark_klines_paginates_to_exact_grid() -> None:
 
     frame = download_mark_klines("ETHUSDT", start, end, request_json=request, sleep_sec=0)
     assert calls == [base, base + 600_000]
-    assert frame["mark_price"].tolist() == [100.0, 101.0, 102.0]
+    assert frame["open"].tolist() == [100.0, 101.0, 102.0]
 
 
 def test_download_mark_klines_allows_exchange_gap_away_from_funding_event() -> None:
@@ -50,12 +50,19 @@ def test_compose_event_marks_backfills_missing_and_verifies_overlap() -> None:
         "funding_time": (times.astype("int64") // 1_000_000).astype("int64"),
         "mark_price": [None, 110.0],
     })
-    klines = pd.DataFrame({"open_time": times.floor("5min"), "mark_price": [100.0, 110.0]})
+    opens = pd.to_datetime([
+        "2022-12-31 23:55", "2023-01-01 00:00", "2023-01-01 07:55", "2023-01-01 08:00"
+    ])
+    klines = pd.DataFrame({
+        "open_time": opens,
+        "open": [99.0, 100.0, 109.0, 110.0],
+        "close": [100.0, 101.0, 110.0, 111.0],
+    })
     output, stats = compose_event_marks(funding, klines)
-    assert output["exact_mark_price"].tolist() == [100.0, 110.0]
-    assert output["mark_source"].tolist() == ["mark_price_kline_open", "funding_record"]
+    assert output["causal_mark_price"].tolist() == [100.0, 110.0]
+    assert output["mark_source"].tolist() == ["prior_completed_mark_close", "funding_record"]
     assert stats["backfilled_mark_events"] == 1
-    assert stats["maximum_recorded_vs_kline_open_error_bp"] == pytest.approx(0.0)
+    assert stats["maximum_recorded_vs_prior_close_error_bp"] == pytest.approx(0.0)
 
 
 def test_compose_event_marks_rejects_recorded_mark_mismatch() -> None:
@@ -64,8 +71,12 @@ def test_compose_event_marks_rejects_recorded_mark_mismatch() -> None:
         "funding_time": [int(event.tz_localize("UTC").timestamp() * 1_000)],
         "mark_price": [101.0],
     })
-    klines = pd.DataFrame({"open_time": [event], "mark_price": [100.0]})
-    with pytest.raises(RuntimeError, match="recorded funding mark mismatch"):
+    klines = pd.DataFrame({
+        "open_time": [event - pd.Timedelta(minutes=5), event],
+        "open": [100.0, 100.0],
+        "close": [100.0, 100.0],
+    })
+    with pytest.raises(RuntimeError, match="causal funding mark proxy mismatch"):
         compose_event_marks(funding, klines)
 
 
@@ -75,6 +86,10 @@ def test_compose_event_marks_rejects_gap_at_funding_event() -> None:
         "funding_time": [int(event.tz_localize("UTC").timestamp() * 1_000)],
         "mark_price": [None],
     })
-    klines = pd.DataFrame({"open_time": [pd.Timestamp("2023-01-01 07:55")], "mark_price": [100.0]})
-    with pytest.raises(RuntimeError, match="lacks exact mark-price kline open"):
+    klines = pd.DataFrame({
+        "open_time": [event],
+        "open": [100.0],
+        "close": [100.0],
+    })
+    with pytest.raises(RuntimeError, match="lacks causal adjacent mark-price bars"):
         compose_event_marks(funding, klines)
