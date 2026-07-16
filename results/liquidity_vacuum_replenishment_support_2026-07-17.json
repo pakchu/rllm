@@ -1,0 +1,125 @@
+{
+  "protocol": {
+    "name": "LVRT-R0 — Liquidity Vacuum Replenishment Transition",
+    "support_only": true,
+    "outcomes_opened": false,
+    "preregistration_commit": "625f8df32d1ea4a227f1e0322d82584c48eba290",
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "market_values_loaded": false,
+    "entry": "next 5m timestamp after two completed feature buckets",
+    "hold": "fixed 12 bars"
+  },
+  "policy": {
+    "policy_id": "LVRT-R0",
+    "baseline_bars": 8640,
+    "baseline_min_periods": 2016,
+    "setup_quantile": 0.8,
+    "minimum_agg_trade_count": 64,
+    "hold_bars": 12,
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.0008,
+    "post_gap_quarantine_bars": 24
+  },
+  "source": {
+    "feature_sha256": "c2bb0e6742f8cdc4e13315e7f0a13d6ab9cd536fb40d9cb4484b7a6ba30131cf",
+    "feature_manifest_sha256": "6eec40460a6146c58994e52f1af9ace4eecc0c085887d97af5ef17c30b9f7e73",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "audit_sha256": "5ac5a342d7f766ea0b6dcf9f97468ab70b9e1194775469ed0245d9208d0dc9c6",
+    "audit_passed": true,
+    "source_gap_days": [
+      "2020-04-15",
+      "2021-02-09",
+      "2021-02-24",
+      "2021-05-19",
+      "2022-09-06"
+    ],
+    "market_columns_loaded": [
+      "date"
+    ],
+    "feature_columns_loaded": [
+      "date",
+      "agg_trade_count",
+      "signed_quote_notional",
+      "signed_price_response",
+      "interarrival_burstiness",
+      "event_notional_hhi",
+      "micro_log_return"
+    ],
+    "price_or_outcome_columns_loaded": [],
+    "market_rows": 420768,
+    "feature_rows": 420732,
+    "missing_feature_bars": 36,
+    "quarantined_bars": 1682,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00"
+  },
+  "feature_support": {
+    "bars_with_both_prior_thresholds": 417070,
+    "raw_setup_count": 3572,
+    "raw_confirmation_count": 169819,
+    "raw_primary_count": 1440
+  },
+  "support": {
+    "nonoverlap_total": 1259,
+    "by_year": {
+      "2020": 427,
+      "2021": 368,
+      "2022": 317,
+      "2023": 147
+    },
+    "2023_h1": 74,
+    "2023_h2": 73,
+    "long_share": 0.48848292295472595,
+    "short_share": 0.511517077045274,
+    "maximum_single_month_share": 0.08975377283558379,
+    "passes_support": true
+  },
+  "controls": {
+    "direction_flip": {
+      "raw_signal_count": 1440,
+      "nonoverlap_count": 1259,
+      "entry_jaccard_with_primary": 1.0
+    },
+    "no_reversal_confirmation": {
+      "raw_signal_count": 3572,
+      "nonoverlap_count": 2756,
+      "entry_jaccard_with_primary": 0.0
+    },
+    "one_bar_extra_delay": {
+      "raw_signal_count": 1440,
+      "nonoverlap_count": 1259,
+      "entry_jaccard_with_primary": 0.0
+    },
+    "one_day_shifted_setup": {
+      "raw_signal_count": 1414,
+      "nonoverlap_count": 1235,
+      "entry_jaccard_with_primary": 0.0060508269463493344
+    },
+    "sign_permuted_confirmation": {
+      "raw_signal_count": 985,
+      "nonoverlap_count": 899,
+      "entry_jaccard_with_primary": 0.42724867724867727
+    }
+  },
+  "support_decision": "pass",
+  "clock": {
+    "path": "results/liquidity_vacuum_replenishment_clock_2026-07-17.csv",
+    "columns": [
+      "setup_position",
+      "signal_position",
+      "entry_position",
+      "exit_position",
+      "setup_date",
+      "signal_date",
+      "entry_date",
+      "exit_date",
+      "side",
+      "branch",
+      "hold_bars"
+    ],
+    "rows": 1259,
+    "sha256": "ed9dd6391df2118ac09d147a4e57c3cb3f6e105a13f6c0d973ee424cfedd54d2"
+  }
+}
