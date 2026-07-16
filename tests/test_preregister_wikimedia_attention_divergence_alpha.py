@@ -33,6 +33,9 @@ def test_availability_and_execution_are_delayed_and_fail_closed() -> None:
     assert manifest["source_contract"]["missing_day_policy"] == "fail_closed_no_imputation"
     assert manifest["source_contract"]["historical_snapshot_is_point_in_time"] is False
     assert manifest["source_contract"]["promotion_requires_retrieval_timestamped_forward_shadow"] is True
+    assert "aggregate" in manifest["source_contract"]["aggregate_endpoint_template"]
+    assert "2021-06-04" in manifest["source_contract"]["known_source_issue"]
+    assert "aggregate en.wikipedia user views" in manifest["feature_contract"]["normalization"]
 
 
 def test_selection_does_not_use_2023_or_future() -> None:

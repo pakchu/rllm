@@ -9,6 +9,7 @@
   "source_contract": {
     "api": "Wikimedia Analytics API REST v1 pageviews per-article",
     "endpoint_template": "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/{project}/{access}/{agent}/{article}/daily/{start}/{end}",
+    "aggregate_endpoint_template": "https://wikimedia.org/api/rest_v1/metrics/pageviews/aggregate/{project}/{access}/{agent}/daily/{start}/{end}",
     "official_reference": "https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html",
     "availability_reference": "https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/documentation/troubleshooting.html",
     "project": "en.wikipedia.org",
@@ -23,7 +24,9 @@
     "redirects_aggregated": false,
     "missing_day_policy": "fail_closed_no_imputation",
     "historical_snapshot_is_point_in_time": false,
-    "promotion_requires_retrieval_timestamped_forward_shadow": true
+    "promotion_requires_retrieval_timestamped_forward_shadow": true,
+    "known_source_issue": "official pageview_hourly history reports approximately 2.80% to 4.34% traffic loss between 2021-06-04 and 2022-01-26",
+    "known_source_issue_reference": "https://wikitech.wikimedia.org/wiki/Data_Platform/Data_Lake/Traffic/Pageview_hourly"
   },
   "availability_contract": {
     "observation": "UTC calendar day D pageviews and BTC 23:55 5m close",
@@ -34,8 +37,9 @@
     "reason": "official docs say daily data normally loads within hours but can take 24 hours or more; the conservative delay is still not a historical PIT proof"
   },
   "feature_contract": {
-    "article_transform": "log1p(daily user views)",
-    "broad_attention": "sum raw views across the four fixed articles",
+    "normalization": "each article's daily user views divided by same-day aggregate en.wikipedia user views, expressed per million project views",
+    "article_transform": "log1p(normalized daily views per million)",
+    "broad_attention": "sum normalized views-per-million across the four fixed articles",
     "broad_attention_z": "robust z of current log1p broad attention versus strictly prior 90 days, minimum 45; median and 1.4826*MAD",
     "bitcoin_share": "Bitcoin views / broad attention views",
     "bitcoin_share_z": "robust z of current share versus strictly prior 90 days, minimum 45",
@@ -220,6 +224,6 @@
     "undefined_metric": "fail_closed",
     "marginal_portfolio_improvement_required": true
   },
-  "manifest_hash": "f587c76a9315c2d90a2610a77da67f021992a382dfc42fc8e9aabf89f7466329",
-  "created_at": "2026-07-16T12:52:57.371403+00:00"
+  "manifest_hash": "90af33247befe4f0d7e64d15e318a8d14cf2ff661d97ee81e7e7d59f099b4647",
+  "created_at": "2026-07-16T12:54:36.062222+00:00"
 }

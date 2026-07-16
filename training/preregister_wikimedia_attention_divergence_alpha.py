@@ -91,6 +91,10 @@ def build_manifest() -> dict[str, Any]:
                 "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/"
                 "{project}/{access}/{agent}/{article}/daily/{start}/{end}"
             ),
+            "aggregate_endpoint_template": (
+                "https://wikimedia.org/api/rest_v1/metrics/pageviews/aggregate/"
+                "{project}/{access}/{agent}/daily/{start}/{end}"
+            ),
             "official_reference": (
                 "https://doc.wikimedia.org/generated-data-platform/aqs/"
                 "analytics-api/reference/page-views.html"
@@ -107,6 +111,14 @@ def build_manifest() -> dict[str, Any]:
             "missing_day_policy": "fail_closed_no_imputation",
             "historical_snapshot_is_point_in_time": False,
             "promotion_requires_retrieval_timestamped_forward_shadow": True,
+            "known_source_issue": (
+                "official pageview_hourly history reports approximately 2.80% to "
+                "4.34% traffic loss between 2021-06-04 and 2022-01-26"
+            ),
+            "known_source_issue_reference": (
+                "https://wikitech.wikimedia.org/wiki/"
+                "Data_Platform/Data_Lake/Traffic/Pageview_hourly"
+            ),
         },
         "availability_contract": {
             "observation": "UTC calendar day D pageviews and BTC 23:55 5m close",
@@ -121,8 +133,14 @@ def build_manifest() -> dict[str, Any]:
             ),
         },
         "feature_contract": {
-            "article_transform": "log1p(daily user views)",
-            "broad_attention": "sum raw views across the four fixed articles",
+            "normalization": (
+                "each article's daily user views divided by same-day aggregate "
+                "en.wikipedia user views, expressed per million project views"
+            ),
+            "article_transform": "log1p(normalized daily views per million)",
+            "broad_attention": (
+                "sum normalized views-per-million across the four fixed articles"
+            ),
             "broad_attention_z": (
                 "robust z of current log1p broad attention versus strictly prior "
                 "90 days, minimum 45; median and 1.4826*MAD"

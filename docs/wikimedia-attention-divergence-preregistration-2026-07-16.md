@@ -18,6 +18,12 @@
   허용하지 않는다.
 - 누락 일자는 0이나 보간값으로 바꾸지 않고 해당 신호를 차단한다.
 
+공식 [pageview_hourly 변경·장애 이력](https://wikitech.wikimedia.org/wiki/Data_Platform/Data_Lake/Traffic/Pageview_hourly)은
+2021-06-04~2022-01-26에 전체 webrequest/pageview가 평균 약 2.80~4.34%
+유실됐다고 기록한다. 이 공통 측정 충격과 Wikipedia 전체 계절성을 줄이기
+위해 각 문서 조회수를 **동일 일자의 en.wikipedia 전체 user pageviews**로
+나눈 백만 조회당 비율로 바꾼 뒤 특징을 만든다.
+
 공식 문서는 일별 데이터가 보통 수 시간 내 적재되지만 문제 시 24시간
 이상 걸릴 수 있다고 명시한다. 역사적 API 스냅샷에는 실제 적재 시각이
 없으므로 D일 값은 **D+2 12:05 UTC**에만 사용하고 다음 5분봉 시가인
@@ -35,7 +41,7 @@ D+2 12:10에 진입한다. 이 36시간 지연도 역사적 point-in-time 증명
 3. `silent_impulse_continuation`: 큰 가격 이동에도 외부 관심이 평범하거나
    낮으면 retail crowding보다 정보 주도 이동으로 보고 추세를 따른다.
 
-관심도와 Bitcoin 비중은 현재 D값을 **엄격히 이전 90일**의 median과
+정규화 관심도와 Bitcoin 비중은 현재 D값을 **엄격히 이전 90일**의 median과
 `1.4826 * MAD`로 표준화한다. 최소 45일이 없으면 신호를 만들지 않는다.
 
 ## 공개 순서
