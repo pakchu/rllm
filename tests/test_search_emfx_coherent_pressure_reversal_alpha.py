@@ -16,6 +16,7 @@ from training.search_emfx_coherent_pressure_reversal_alpha import (
     RISK_SYMBOLS,
     Config,
     build_daily_features,
+    complete_session_mask,
     execution_contract,
     fit_reference_mask,
     json_hash,
@@ -140,6 +141,17 @@ class TestEmfxCoherentPressureReversal(unittest.TestCase):
             source.to_csv(path, index=False)
             with self.assertRaisesRegex(RuntimeError, "duplicate EM-FX"):
                 load_emfx(str(path), cutoff="2020-01-01", allow_backfilled=True)
+
+    def test_complete_session_mask_enforces_every_fixed_symbol_threshold(self) -> None:
+        source = emfx_source(days=2)
+        loaded = source.copy()
+        loaded["backfilled_after_semantic_availability"] = True
+        complete = complete_session_mask(loaded)
+        self.assertEqual(complete.tolist(), [True, True])
+        target_day = loaded["observation_date"].min()
+        bad = (loaded["observation_date"] == target_day) & (loaded["symbol"] == "USDCNY")
+        loaded.loc[bad, "observations"] = MIN_OBSERVATIONS["USDCNY"] - 1
+        self.assertEqual(complete_session_mask(loaded).tolist(), [False, True])
 
     def test_fit_reference_uses_executable_anchor_clock(self) -> None:
         frame = pd.DataFrame(

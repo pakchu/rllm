@@ -678,22 +678,32 @@ def policy_identity(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def source_quality(source: pd.DataFrame) -> dict[str, Any]:
+def complete_session_mask(source: pd.DataFrame) -> pd.Series:
     counts = source.pivot(
         index="observation_date", columns="symbol", values="observations"
     )[list(SYMBOLS)]
     complete = counts.notna().all(axis=1)
     for symbol, minimum in MIN_OBSERVATIONS.items():
         complete &= counts[symbol] >= minimum
+    return complete
+
+
+def source_quality(source: pd.DataFrame) -> dict[str, Any]:
+    complete = complete_session_mask(source)
+    complete_dates = complete.index[complete]
     return {
         "fixed_symbols": list(SYMBOLS),
         "minimum_observations": MIN_OBSERVATIONS,
         "raw_rows": int(len(source)),
-        "complete_sessions": int(complete.sum()),
+        "complete_sessions": int(len(complete_dates)),
         "complete_session_range": [
-            str(counts.index[complete].min()),
-            str(counts.index[complete].max()),
+            str(complete_dates.min()),
+            str(complete_dates.max()),
         ],
+        "complete_sessions_by_year": {
+            str(year): int((complete_dates.year == year).sum())
+            for year in sorted(set(complete_dates.year))
+        },
         "max_database_updated_at": str(source["max_updated_at"].max()),
         "rows_backfilled_after_semantic_availability": int(
             source["backfilled_after_semantic_availability"].sum()
@@ -903,13 +913,29 @@ def run_oos(cfg: Config) -> dict[str, Any]:
     significance = {
         name: _trade_stats(net_trade_returns(trades, cfg)) for name, trades in schedules.items()
     }
-    raw_performance_pass = (
+    complete = complete_session_mask(emfx)
+    complete_dates = complete.index[complete]
+    source_coverage_pass = bool(
+        len(complete_dates) and complete_dates.max() >= pd.Timestamp("2026-05-29")
+    )
+    window_performance_pass = (
         stats["test_2024"]["absolute_return_pct"] > 0.0
         and stats["eval_2025"]["absolute_return_pct"] > 0.0
         and stats["holdout_2026h1"]["absolute_return_pct"] > 0.0
         and stats["oos_2024_2026h1"]["cagr_to_strict_mdd"] >= 3.0
         and stress["oos_2024_2026h1"]["absolute_return_pct"] > 0.0
     )
+    raw_performance_pass = source_coverage_pass and window_performance_pass
+    blockers: list[str] = []
+    if not source_coverage_pass:
+        blockers.append(
+            "complete fixed-panel FX sessions end before 2026-05-29; 2025/2026 statistics are partial"
+        )
+    if not window_performance_pass:
+        blockers.append("frozen OOS performance gate failed")
+    blockers.append("backfilled EM-FX snapshot requires live point-in-time forward validation")
+    if raw_performance_pass:
+        blockers.append("actual trade/PnL orthogonality has not been audited")
     payload = {
         "mode": "frozen_oos_replay",
         "config": asdict(cfg),
@@ -918,20 +944,15 @@ def run_oos(cfg: Config) -> dict[str, Any]:
         "globally_research_seen_future": True,
         "policy": manifest["policy"],
         "source_quality": source_quality(emfx),
+        "source_coverage_pass": source_coverage_pass,
+        "window_performance_pass": window_performance_pass,
         "stats": stats,
         "double_cost_stats": stress,
         "trade_statistics": significance,
         "raw_performance_pass": raw_performance_pass,
         "orthogonality_pass": None,
         "promotion_pass": False,
-        "promotion_blockers": (
-            [
-                "actual trade/PnL orthogonality has not been audited",
-                "backfilled EM-FX snapshot requires live point-in-time forward validation",
-            ]
-            if raw_performance_pass
-            else ["frozen OOS performance gate failed"]
-        ),
+        "promotion_blockers": blockers,
     }
     Path(cfg.output).parent.mkdir(parents=True, exist_ok=True)
     Path(cfg.output).write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
