@@ -756,6 +756,13 @@ class FreshnessRequirement:
         return ":".join(parts)
 
 
+@dataclass(frozen=True)
+class PortfolioDbLease:
+    connection: Any
+    lock_key: int
+    backend_pid: int
+
+
 def _load_json(path: str | Path) -> dict[str, Any]:
     return json.loads(Path(path).expanduser().read_text())
 
@@ -885,8 +892,50 @@ def _ensure_trade_executions_table(engine: Any) -> None:
             finished_at TIMESTAMPTZ,
             error TEXT,
             payload JSONB NOT NULL DEFAULT '{}'::jsonb,
-            PRIMARY KEY (strategy_name, sub_strategy_name, signal_id, action)
+            PRIMARY KEY (
+                strategy_name, sub_strategy_name, signal_id, action,
+                exchange, symbol
+            )
         )
+        """
+    reservation_key_migration = """
+        DO $migration$
+        DECLARE
+            current_pk_name TEXT;
+            current_pk_columns TEXT[];
+        BEGIN
+            SELECT constraint_row.conname,
+                   array_agg(attribute_row.attname::TEXT ORDER BY key_column.ordinality)
+              INTO current_pk_name, current_pk_columns
+              FROM pg_constraint AS constraint_row
+              CROSS JOIN LATERAL unnest(constraint_row.conkey)
+                  WITH ORDINALITY AS key_column(attnum, ordinality)
+              JOIN pg_attribute AS attribute_row
+                ON attribute_row.attrelid = constraint_row.conrelid
+               AND attribute_row.attnum = key_column.attnum
+             WHERE constraint_row.conrelid = 'trade_execution_reservations'::regclass
+               AND constraint_row.contype = 'p'
+             GROUP BY constraint_row.conname;
+
+            IF current_pk_columns IS DISTINCT FROM ARRAY[
+                'strategy_name', 'sub_strategy_name', 'signal_id', 'action',
+                'exchange', 'symbol'
+            ]::TEXT[] THEN
+                IF current_pk_name IS NOT NULL THEN
+                    EXECUTE format(
+                        'ALTER TABLE trade_execution_reservations DROP CONSTRAINT %I',
+                        current_pk_name
+                    );
+                END IF;
+                ALTER TABLE trade_execution_reservations
+                    ADD CONSTRAINT trade_execution_reservations_pkey
+                    PRIMARY KEY (
+                        strategy_name, sub_strategy_name, signal_id, action,
+                        exchange, symbol
+                    );
+            END IF;
+        END;
+        $migration$
         """
     migrations = [
         "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS realized_pnl NUMERIC",
@@ -902,6 +951,7 @@ def _ensure_trade_executions_table(engine: Any) -> None:
     with engine.begin() as conn:
         conn.execute(text(ddl))
         conn.execute(text(reservation_ddl))
+        conn.execute(text(reservation_key_migration))
         for stmt in migrations:
             conn.execute(text(stmt))
         for stmt in indexes:
@@ -1033,7 +1083,10 @@ def _reserve_trade_intents(
             :exchange, :symbol, 'RESERVED', :owner_id, :expires_at,
             CAST(:payload AS jsonb)
         )
-        ON CONFLICT (strategy_name, sub_strategy_name, signal_id, action)
+        ON CONFLICT (
+            strategy_name, sub_strategy_name, signal_id, action,
+            exchange, symbol
+        )
         DO NOTHING
         RETURNING sub_strategy_name, signal_id
         """
@@ -1079,6 +1132,8 @@ def _finish_trade_intents(
     engine: Any,
     *,
     strategy_name: str,
+    exchange: str,
+    symbol: str,
     owner_id: str,
     outcomes: list[dict[str, Any]],
 ) -> None:
@@ -1099,6 +1154,8 @@ def _finish_trade_intents(
           AND sub_strategy_name = :sub_strategy_name
           AND signal_id = :signal_id
           AND action = 'OPEN'
+          AND exchange = :exchange
+          AND symbol = :symbol
           AND owner_id = :owner_id
         """
     )
@@ -1122,6 +1179,8 @@ def _finish_trade_intents(
                     "strategy_name": strategy_name,
                     "sub_strategy_name": str(sleeve["name"]),
                     "signal_id": str(sleeve["signal_id"]),
+                    "exchange": exchange,
+                    "symbol": symbol,
                     "owner_id": owner_id,
                 },
             )
@@ -1172,6 +1231,86 @@ def _release_portfolio_runner_lock(handle: Any | None) -> None:
         fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
     finally:
         handle.close()
+
+
+def _portfolio_db_lease_key(*, strategy_name: str, exchange: str, symbol: str) -> int:
+    identity = f"{strategy_name}\x1f{exchange}\x1f{symbol}".encode("utf-8")
+    digest = hashlib.blake2b(identity, digest_size=8, person=b"rllm-pf").digest()
+    return int.from_bytes(digest, byteorder="big", signed=True)
+
+
+def _acquire_portfolio_db_lease(
+    engine: Any,
+    *,
+    strategy_name: str,
+    exchange: str,
+    symbol: str,
+) -> PortfolioDbLease:
+    """Acquire a cross-host coordinator lease on one dedicated DB session."""
+
+    from sqlalchemy import text
+
+    lock_key = _portfolio_db_lease_key(
+        strategy_name=strategy_name,
+        exchange=exchange,
+        symbol=symbol,
+    )
+    connection = engine.connect()
+    try:
+        acquired = bool(
+            connection.execute(
+                text("SELECT pg_try_advisory_lock(:lock_key)"),
+                {"lock_key": lock_key},
+            ).scalar_one()
+        )
+        backend_pid = int(connection.execute(text("SELECT pg_backend_pid()")).scalar_one())
+        if hasattr(connection, "commit"):
+            connection.commit()
+        if not acquired:
+            raise RuntimeError(
+                "portfolio runner DB lease is already owned: "
+                f"strategy={strategy_name} exchange={exchange} symbol={symbol}"
+            )
+        return PortfolioDbLease(
+            connection=connection,
+            lock_key=lock_key,
+            backend_pid=backend_pid,
+        )
+    except BaseException:
+        connection.close()
+        raise
+
+
+def _assert_portfolio_db_lease(lease: PortfolioDbLease) -> None:
+    """Fail closed if the dedicated advisory-lock DB session was replaced."""
+
+    from sqlalchemy import text
+
+    backend_pid = int(lease.connection.execute(text("SELECT pg_backend_pid()")).scalar_one())
+    if hasattr(lease.connection, "commit"):
+        lease.connection.commit()
+    if backend_pid != lease.backend_pid:
+        raise RuntimeError(
+            f"portfolio runner DB lease session changed: expected={lease.backend_pid} actual={backend_pid}"
+        )
+
+
+def _release_portfolio_db_lease(lease: PortfolioDbLease | None) -> None:
+    if lease is None:
+        return
+    try:
+        from sqlalchemy import text
+
+        lease.connection.execute(
+            text("SELECT pg_advisory_unlock(:lock_key)"),
+            {"lock_key": lease.lock_key},
+        )
+        if hasattr(lease.connection, "commit"):
+            lease.connection.commit()
+    except Exception:
+        LOG.exception("portfolio_live.db_lease_release_failed")
+    finally:
+        lease.connection.close()
 
 
 def _required_availability_flags(feature: str) -> tuple[str, ...]:
@@ -3440,11 +3579,19 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
 
     runner_id = f"pid-{os.getpid()}-{time.time_ns()}"
     runner_lock = _acquire_portfolio_runner_lock(cfg.state_file)
+    db_lease: PortfolioDbLease | None = None
     alpha_processes: AlphaProcessManager | None = None
     client = executor = None
     try:
         engine = sqlalchemy_engine_from_env(cfg.env_path)
         _ensure_trade_executions_table(engine)
+        if not exec_cfg.dry_run:
+            db_lease = _acquire_portfolio_db_lease(
+                engine,
+                strategy_name=cfg.strategy_name,
+                exchange=cfg.exchange,
+                symbol=exec_cfg.symbol,
+            )
         source_cache = LiveSourceFrameCache()
         feature_cache = LiveFeatureFrameCache()
         oi_cache = LiveOiFrameCache()
@@ -3466,6 +3613,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             await alpha_processes.shutdown()
         if client is not None:
             await client.aclose()
+        _release_portfolio_db_lease(db_lease)
         _release_portfolio_runner_lock(runner_lock)
         raise
     first = True
@@ -3481,6 +3629,8 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 await asyncio.sleep(wait)
 
             asof = pd.Timestamp.utcnow()
+            if db_lease is not None:
+                _assert_portfolio_db_lease(db_lease)
             if asof.tzinfo is None:
                 asof = asof.tz_localize("UTC")
             live_cfg = LiveDbFeatureConfig(lookback_minutes=int(cfg.lookback_minutes))
@@ -3558,6 +3708,8 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 enriched=enriched,
                 features=features,
             )
+            if db_lease is not None:
+                _assert_portfolio_db_lease(db_lease)
             state = _load_state(cfg.state_file)
             if portfolio_selector_record is not None:
                 state["last_portfolio_selector"] = portfolio_selector_record
@@ -3788,6 +3940,8 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         _finish_trade_intents,
                         engine,
                         strategy_name=cfg.strategy_name,
+                        exchange=cfg.exchange,
+                        symbol=exec_cfg.symbol,
                         owner_id=runner_id,
                         outcomes=entry_outcomes,
                     )
@@ -3945,6 +4099,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             await alpha_processes.shutdown()
         if client is not None:
             await client.aclose()
+        _release_portfolio_db_lease(db_lease)
         _release_portfolio_runner_lock(runner_lock)
 
 

@@ -19,6 +19,7 @@ from execution.portfolio_live import (
     AlphaProcessManager,
     PORTFOLIO_ORDER_PREFIX,
     PortfolioLiveConfig,
+    _acquire_portfolio_db_lease,
     _acquire_portfolio_runner_lock,
     _build_open_intents,
     _cancel_portfolio_orders_for_sleeve,
@@ -35,6 +36,7 @@ from execution.portfolio_live import (
     _load_sleeve_runtime_spec,
     _place_portfolio_maker_order_with_deadline,
     _portfolio_client_order_id,
+    _portfolio_db_lease_key,
     _portfolio_gate_features,
     _portfolio_sleeve_key,
     _reconcile_exchange_flat_sleeves,
@@ -48,7 +50,9 @@ from execution.portfolio_live import (
     _interval_slot,
     _portfolio_uses_feature,
     _release_portfolio_runner_lock,
+    _release_portfolio_db_lease,
     _reserve_trade_intents,
+    _assert_portfolio_db_lease,
     _validate_portfolio_mode,
 )
 
@@ -302,6 +306,87 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             second = _acquire_portfolio_runner_lock(state_file)
             _release_portfolio_runner_lock(second)
 
+    def test_db_lease_is_cross_host_and_scoped_by_exchange_symbol(self):
+        class FakeResult:
+            def __init__(self, value):
+                self.value = value
+
+            def scalar_one(self):
+                return self.value
+
+        class FakeConnection:
+            def __init__(self, acquired=True, backend_pid=1234):
+                self.acquired = acquired
+                self.backend_pid = backend_pid
+                self.closed = False
+                self.commits = 0
+                self.calls = []
+
+            def execute(self, statement, params=None):
+                sql = str(statement)
+                self.calls.append((sql, dict(params or {})))
+                if "pg_try_advisory_lock" in sql:
+                    return FakeResult(self.acquired)
+                if "pg_advisory_unlock" in sql:
+                    return FakeResult(True)
+                if "pg_backend_pid" in sql:
+                    return FakeResult(self.backend_pid)
+                raise AssertionError(sql)
+
+            def commit(self):
+                self.commits += 1
+
+            def close(self):
+                self.closed = True
+
+        class FakeEngine:
+            def __init__(self, connection):
+                self.connection = connection
+
+            def connect(self):
+                return self.connection
+
+        fake_sqlalchemy = SimpleNamespace(text=lambda statement: statement)
+        key = _portfolio_db_lease_key(
+            strategy_name="rllm", exchange="binance-mainnet", symbol="BTCUSDT"
+        )
+        self.assertEqual(
+            key,
+            _portfolio_db_lease_key(
+                strategy_name="rllm", exchange="binance-mainnet", symbol="BTCUSDT"
+            ),
+        )
+        self.assertNotEqual(
+            key,
+            _portfolio_db_lease_key(
+                strategy_name="rllm", exchange="binance-testnet", symbol="BTCUSDT"
+            ),
+        )
+
+        connection = FakeConnection()
+        with patch.dict(sys.modules, {"sqlalchemy": fake_sqlalchemy}):
+            lease = _acquire_portfolio_db_lease(
+                FakeEngine(connection),
+                strategy_name="rllm",
+                exchange="binance-mainnet",
+                symbol="BTCUSDT",
+            )
+            _assert_portfolio_db_lease(lease)
+            _release_portfolio_db_lease(lease)
+        self.assertTrue(connection.closed)
+        self.assertTrue(any("pg_advisory_unlock" in sql for sql, _ in connection.calls))
+
+        rejected = FakeConnection(acquired=False)
+        with patch.dict(sys.modules, {"sqlalchemy": fake_sqlalchemy}):
+            with self.assertRaisesRegex(RuntimeError, "already owned"):
+                _acquire_portfolio_db_lease(
+                    FakeEngine(rejected),
+                    strategy_name="rllm",
+                    exchange="binance-mainnet",
+                    symbol="BTCUSDT",
+                )
+        self.assertTrue(rejected.closed)
+
     def test_open_intent_builder_filters_state_without_mutating_scores(self):
         scores = [
             {"name": "new", "signal_id": "new:1", "active": True, "side": "LONG", "weight": 0.6, "current_close": 100.0, "hold_bars": 12, "stride_bars": 1},
@@ -545,7 +630,14 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
 
                     def execute(self, statement, params):
                         if str(statement).lstrip().startswith("INSERT"):
-                            key = (params["strategy_name"], params["sub_strategy_name"], params["signal_id"], "OPEN")
+                            key = (
+                                params["strategy_name"],
+                                params["sub_strategy_name"],
+                                params["signal_id"],
+                                "OPEN",
+                                params["exchange"],
+                                params["symbol"],
+                            )
                             if key in engine.keys:
                                 return FakeResult()
                             engine.keys.add(key)
@@ -580,8 +672,17 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
                 owner_id="owner-2",
                 intents=intents,
             )
+            other_symbol = _reserve_trade_intents(
+                engine,
+                strategy_name="rllm",
+                exchange="binance",
+                symbol="ETHUSDT",
+                owner_id="owner-3",
+                intents=intents,
+            )
         self.assertEqual(first, {("a", "a:1"), ("b", "b:1")})
         self.assertEqual(second, set())
+        self.assertEqual(other_symbol, {("a", "a:1"), ("b", "b:1")})
         outcomes = [
             {"intent": intents[0], "reservation_status": "FILLED", "order_status": "FILLED", "filled_quantity": "0.01", "error": None},
             {"intent": intents[1], "reservation_status": "ERROR", "order_status": "ERROR", "filled_quantity": "0", "error": "boom"},
@@ -590,10 +691,12 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             _finish_trade_intents(
                 engine,
                 strategy_name="rllm",
+                exchange="binance",
+                symbol="BTCUSDT",
                 owner_id="owner-1",
                 outcomes=outcomes,
             )
-        self.assertEqual(engine.begin_count, 3)
+        self.assertEqual(engine.begin_count, 4)
         self.assertEqual([update["status"] for update in engine.updates], ["FILLED", "ERROR"])
 
     def test_gate_clauses_are_or_of_and_groups(self):
