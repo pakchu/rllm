@@ -137,6 +137,73 @@ def test_strict_mdd_uses_aggregate_favorable_before_adverse_path() -> None:
     assert stats["strict_mdd_pct"] > 0.25
 
 
+def test_strict_mdd_exact_favorable_before_adverse_path() -> None:
+    bundle = synthetic_bundle([100] * 5, [100] * 5)
+    for symbol in selector.SYMBOLS:
+        for field in ("open", "high", "low", "close"):
+            bundle.market[symbol][field][:] = 100.0
+    bundle.market["ADAUSDT"]["high"][2] = 110.0
+    bundle.market["ADAUSDT"]["low"][2] = 90.0
+    bundle.market["ETHUSDT"]["high"][2] = 110.0
+    bundle.market["ETHUSDT"]["low"][2] = 90.0
+    stats = simulate(bundle, clock(), start="2023-01-01", end="2023-01-02", cost_bp=0)
+    expected = (1.0 - 0.975 / 1.025) * 100.0
+    assert stats["strict_mdd_pct"] == pytest.approx(expected)
+    assert stats["close_mdd_pct"] == pytest.approx(0.0)
+
+
+def test_strict_path_nets_opposite_symbol_quantities() -> None:
+    bundle = synthetic_bundle([100] * 5, [100] * 5)
+    for symbol in selector.SYMBOLS:
+        for field in ("open", "high", "low", "close"):
+            bundle.market[symbol][field][:] = 100.0
+    bundle.market["ADAUSDT"]["high"][2] = 120.0
+    bundle.market["ADAUSDT"]["low"][2] = 80.0
+    bundle.market["ETHUSDT"]["high"][2] = 120.0
+    bundle.market["ETHUSDT"]["low"][2] = 80.0
+    opposite = clock()
+    opposite[["long_symbol", "short_symbol"]] = opposite[["short_symbol", "long_symbol"]].to_numpy()
+    clocks = pd.concat([clock(), opposite], ignore_index=True)
+    stats = simulate(bundle, clocks, start="2023-01-01", end="2023-01-02", cost_bp=0)
+    assert stats["strict_mdd_pct"] == pytest.approx(0.0)
+
+
+def test_pre_entry_hwm_is_refreshed_before_overlapping_entry_cost() -> None:
+    bundle = synthetic_bundle([100, 100, 100, 200, 200, 200, 200, 200], [100] * 8)
+    for symbol in selector.SYMBOLS:
+        bundle.market[symbol]["high"][:] = bundle.market[symbol]["open"]
+        bundle.market[symbol]["low"][:] = bundle.market[symbol]["open"]
+        bundle.market[symbol]["close"][:] = bundle.market[symbol]["open"]
+    clocks = pd.concat([
+        clock(entry="2023-01-01 00:05", exit_time="2023-01-01 00:30", sleeve_gross=0.01),
+        clock(entry="2023-01-01 00:15", exit_time="2023-01-01 00:35", sleeve_gross=0.25),
+    ], ignore_index=True)
+    stats = simulate(bundle, clocks, start="2023-01-01", end="2023-01-02", cost_bp=6)
+    assert stats["strict_mdd_pct"] == pytest.approx(0.03, abs=0.001)
+
+
+def test_active_positive_funding_cannot_raise_hwm_at_partial_exit() -> None:
+    funding = {
+        "ADAUSDT": [(pd.Timestamp("2023-01-01 00:15"), -0.01)],
+        "ETHUSDT": [(pd.Timestamp("2023-01-01 00:15"), 0.01)],
+    }
+    bundle = synthetic_bundle([100] * 6, [100] * 6, funding)
+    for symbol in ("ADAUSDT", "ETHUSDT"):
+        bundle.funding[symbol]["mark_price"] = 100.0
+    for symbol in selector.SYMBOLS:
+        for field in ("open", "high", "low", "close"):
+            bundle.market[symbol][field][:] = 100.0
+    bundle.market["ADAUSDT"]["low"][4] = 99.6
+    bundle.market["ETHUSDT"]["high"][4] = 100.4
+    clocks = pd.concat([
+        clock(entry="2023-01-01 00:05", exit_time="2023-01-01 00:20"),
+        clock(entry="2023-01-01 00:10", exit_time="2023-01-01 00:25"),
+    ], ignore_index=True)
+    stats = simulate(bundle, clocks, start="2023-01-01", end="2023-01-02", cost_bp=0)
+    assert stats["funding_cash_pct_initial"] == pytest.approx(0.5)
+    assert stats["strict_mdd_pct"] == pytest.approx(0.0)
+
+
 def test_overlapping_sleeves_are_aggregated_in_one_cash_ledger() -> None:
     bundle = synthetic_bundle([100] * 8, [100] * 8)
     clocks = pd.concat([
@@ -146,6 +213,31 @@ def test_overlapping_sleeves_are_aggregated_in_one_cash_ledger() -> None:
     stats = simulate(bundle, clocks, start="2023-01-01", end="2023-01-02", cost_bp=6)
     assert stats["sleeves"] == 2
     assert stats["transaction_cost_pct_initial"] > 0.05
+
+
+def test_entry_exit_cost_and_liquidation_are_exact() -> None:
+    bundle = synthetic_bundle([100] * 5, [100] * 5)
+    for symbol in selector.SYMBOLS:
+        for field in ("open", "high", "low", "close"):
+            bundle.market[symbol][field][:] = 100.0
+    base = simulate(bundle, clock(), start="2023-01-01", end="2023-01-02", cost_bp=6)
+    stress = simulate(bundle, clock(), start="2023-01-01", end="2023-01-02", cost_bp=10)
+    assert base["transaction_cost_pct_initial"] == pytest.approx(0.03)
+    assert base["absolute_return_pct"] == pytest.approx(-0.03)
+    assert base["strict_mdd_pct"] == pytest.approx(0.03)
+    assert stress["transaction_cost_pct_initial"] == pytest.approx(0.05)
+    assert stress["absolute_return_pct"] == pytest.approx(-0.05)
+    assert stress["strict_mdd_pct"] == pytest.approx(0.05)
+
+
+def test_cagr_uses_full_declared_calendar_not_trade_span() -> None:
+    bundle = synthetic_bundle([100, 100, 102, 104, 104], [100, 100, 99, 98, 98])
+    stats = simulate(bundle, clock(), start="2023-01-01", end="2024-01-01", cost_bp=0)
+    years = 365.0 / 365.25
+    expected = (1.0075 ** (1.0 / years) - 1.0) * 100.0
+    assert stats["absolute_return_pct"] == pytest.approx(0.75)
+    assert stats["calendar_years"] == pytest.approx(years)
+    assert stats["cagr_pct"] == pytest.approx(expected)
 
 
 def test_simulation_refuses_2025_access() -> None:
@@ -163,6 +255,108 @@ def test_run_refuses_bad_support_before_attestation(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(selector, "_git_attestation", lambda: pytest.fail("must stop before outcomes"))
     with pytest.raises(RuntimeError, match="support freeze is not approved"):
         selector.run()
+
+
+def test_run_attests_clean_code_before_loading_outcomes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(
+        selector,
+        "_manifest",
+        lambda *args, **kwargs: {
+            "clock_sha256": selector.EXPECTED_CLOCK_HASH,
+            "support": {"passes_support": True},
+        },
+    )
+    monkeypatch.setattr(
+        selector, "_git_attestation", lambda: calls.append("attestation") or {"head": "frozen"}
+    )
+    monkeypatch.setattr(selector, "load_bundle", lambda: calls.append("bundle") or object())
+    monkeypatch.setattr(selector, "load_clock", lambda: calls.append("clock") or pd.DataFrame())
+    monkeypatch.setattr(
+        selector,
+        "evaluate",
+        lambda *args: calls.append("evaluate") or {"passes_2023_2024_selection": False},
+    )
+    monkeypatch.setattr(selector, "_markdown", lambda result: "safe\n")
+    selector.run(str(tmp_path / "result.json"), str(tmp_path / "result.md"))
+    assert calls == ["attestation", "bundle", "clock", "evaluate"]
+
+
+def test_evaluate_never_opens_clock_rows_entering_2025(monkeypatch: pytest.MonkeyPatch) -> None:
+    bundle = synthetic_bundle([100] * 1000, [100] * 1000)
+    future = clock(entry="2025-01-01 00:05", exit_time="2025-01-01 00:20")
+    clocks = pd.concat([clock(), future], ignore_index=True)
+    monkeypatch.setattr(
+        selector,
+        "weekly_cluster_signflip",
+        lambda *args, **kwargs: {"raw_p_value": 1.0, "weekly_clusters": 1},
+    )
+    evaluation = selector.evaluate(bundle, clocks)
+    assert evaluation["stats"]["combined_2023_2024"]["sleeves"] == 1
+    assert evaluation["stats"]["test_2024"]["sleeves"] == 0
+
+
+def test_selection_gate_thresholds_are_mapped_exactly(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(selector, "_transform_clock", lambda frozen, *args, **kwargs: frozen)
+
+    window_lookup = {window: name for name, window in selector.WINDOWS.items()}
+
+    def evaluate_case(failure: str | None) -> dict[str, object]:
+        def fake_simulate(bundle: object, frozen: pd.DataFrame, *, start: str, end: str, **kwargs: object) -> dict[str, object]:
+            name = window_lookup[(start, end)]
+            stats: dict[str, object] = {
+                "absolute_return_pct": 1.0,
+                "cagr_pct": 3.0,
+                "strict_mdd_pct": 1.0,
+                "cagr_to_strict_mdd": 3.0,
+                "sleeves": 40,
+                "funding_cash_pct_initial": 1.0,
+                "transaction_cost_pct_initial": 1.0,
+                "funding_to_cost_ratio": 1.0,
+                "sleeve_rows": [{"signal_time": "2023-01-02", "net_cash_initial": 0.01}],
+            }
+            if name in {"fit_2023", "test_2024"}:
+                stats["cagr_to_strict_mdd"] = 1.5
+            if name == "2024_h2":
+                stats["absolute_return_pct"] = 0.0
+            if kwargs.get("cost_bp") == selector.STRESS_COST_BP:
+                stats["absolute_return_pct"] = 0.0001
+            if failure == "each_year_absolute_return_positive" and name == "fit_2023":
+                stats["absolute_return_pct"] = 0.0
+            elif failure == "each_year_cagr_to_strict_mdd_at_least_1_5" and name == "test_2024":
+                stats["cagr_to_strict_mdd"] = 1.4999
+            elif failure == "positive_half_years_at_least_3" and name in {"2023_h1", "2023_h2"}:
+                stats["absolute_return_pct"] = 0.0
+            elif failure == "combined_cagr_to_strict_mdd_at_least_3" and name == "combined_2023_2024":
+                stats["cagr_to_strict_mdd"] = 2.9999
+            elif failure == "combined_strict_mdd_at_most_15" and name == "combined_2023_2024":
+                stats["strict_mdd_pct"] = 15.0001
+            elif failure == "ten_bp_cost_stress_absolute_return_positive" and kwargs.get("cost_bp") == selector.STRESS_COST_BP:
+                stats["absolute_return_pct"] = 0.0
+            elif failure == "realized_funding_cash_positive" and name == "combined_2023_2024":
+                stats["funding_cash_pct_initial"] = 0.0
+            elif failure == "realized_funding_cash_at_least_transaction_cost" and name == "combined_2023_2024":
+                stats["funding_to_cost_ratio"] = 0.9999
+            return stats
+
+        monkeypatch.setattr(selector, "simulate", fake_simulate)
+        p_value = 0.1001 if failure == "weekly_cluster_signflip_p_at_most_0_10" else 0.10
+        monkeypatch.setattr(
+            selector,
+            "weekly_cluster_signflip",
+            lambda *args, **kwargs: {"raw_p_value": p_value, "weekly_clusters": 10},
+        )
+        return selector.evaluate(object(), pd.DataFrame())
+
+    accepted = evaluate_case(None)
+    assert accepted["passes_2023_2024_selection"] is True
+    assert all(accepted["selection_gates"].values())
+    for gate in accepted["selection_gates"]:
+        rejected = evaluate_case(gate)
+        assert rejected["selection_gates"][gate] is False
+        assert rejected["passes_2023_2024_selection"] is False
 
 
 def test_frozen_clock_is_live_and_contains_no_2026_exit() -> None:

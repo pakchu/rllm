@@ -306,6 +306,17 @@ def simulate(
     def actual_equity_at_open(bar_index: int) -> float:
         return cash + _active_unrealized(active, bundle, bar_index, "open")
 
+    def strict_equity_at_open(bar_index: int, *, for_peak: bool) -> float:
+        net = _net_quantities(active)
+        liquidation = cost_rate * sum(
+            abs(quantity) * float(bundle.market[symbol]["open"][bar_index])
+            for symbol, quantity in net.items()
+        )
+        equity = actual_equity_at_open(bar_index) - liquidation
+        if for_peak:
+            equity -= sum(sleeve.positive_funding_credit for sleeve in active.values())
+        return equity
+
     def apply_funding(event: tuple[pd.Timestamp, str, float, float, bool]) -> None:
         nonlocal cash, total_funding, exact_mark_funding, proxy_mark_funding
         nonlocal exact_mark_applications, proxy_mark_applications
@@ -367,12 +378,15 @@ def simulate(
                 "net_cash_initial": float(net_cash),
                 "net_return_on_entry_equity": float(net_cash / sleeve.entry_equity),
             })
+            strict_equity_after_exit = strict_equity_at_open(bar_index, for_peak=False)
+            strict_mdd = max(strict_mdd, 1.0 - strict_equity_after_exit / peak)
+            strict_peak_after_exit = strict_equity_at_open(bar_index, for_peak=True)
+            peak = max(peak, strict_peak_after_exit)
             equity_after_exit = actual_equity_at_open(bar_index)
-            strict_mdd = max(strict_mdd, 1.0 - equity_after_exit / peak)
             close_peak = max(close_peak, equity_after_exit)
             close_mdd = max(close_mdd, 1.0 - equity_after_exit / close_peak)
-            peak = max(peak, equity_after_exit)
         for sleeve_id, row in entry_map.get(bar_index, []):
+            peak = max(peak, strict_equity_at_open(bar_index, for_peak=True))
             entry_equity = actual_equity_at_open(bar_index)
             gross_notional = max(entry_equity, 0.0) * float(row.sleeve_gross)
             long_entry = float(bundle.market[str(row.long_symbol)]["open"][bar_index])
@@ -396,8 +410,9 @@ def simulate(
                 entry_equity=entry_equity,
                 entry_cost=entry_cost,
             )
+            strict_equity_after_entry = strict_equity_at_open(bar_index, for_peak=False)
+            strict_mdd = max(strict_mdd, 1.0 - strict_equity_after_entry / peak)
             equity_after_entry = actual_equity_at_open(bar_index)
-            strict_mdd = max(strict_mdd, 1.0 - equity_after_entry / peak)
             close_peak = max(close_peak, equity_after_entry)
             close_mdd = max(close_mdd, 1.0 - equity_after_entry / close_peak)
         for event in events:
