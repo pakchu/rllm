@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import training.select_leave_one_out_residual_exhaustion_pre2025 as selector
 from training.select_leave_one_out_residual_exhaustion_pre2025 import (
     MarketBundle,
     _transform_same_clock,
@@ -146,3 +147,75 @@ def test_simulation_rejects_overlap() -> None:
     clocks = pd.concat([clock(), clock(entry="2023-01-01 00:15", exit_time="2023-01-01 00:30")], ignore_index=True)
     with pytest.raises(RuntimeError, match="overlaps"):
         simulate(bundle, clocks, start="2023-01-01", end="2023-01-02", cost_bp=0)
+
+
+def test_git_attestation_rejects_dirty_repository(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(selector.subprocess, "check_output", lambda *args, **kwargs: "?? opened-result.json\n")
+    with pytest.raises(RuntimeError, match="must be clean"):
+        selector._git_attestation()
+
+
+def test_git_attestation_records_committed_selector_and_test(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def fake_output(args, **kwargs):
+        if args[:2] == ["git", "status"]:
+            return ""
+        if args[:2] == ["git", "rev-parse"]:
+            return "frozen-head\n"
+        raise AssertionError(args)
+
+    def fake_call(args, **kwargs):
+        calls.append(tuple(args))
+        return 0
+
+    monkeypatch.setattr(selector.subprocess, "check_output", fake_output)
+    monkeypatch.setattr(selector.subprocess, "check_call", fake_call)
+    monkeypatch.setattr(selector, "_file_hash", lambda path: f"hash:{path}")
+    result = selector._git_attestation()
+    assert result == {
+        "head": "frozen-head",
+        "selector_sha256": f"hash:{selector.SELECTOR_PATH}",
+        "test_sha256": f"hash:{selector.TEST_PATH}",
+    }
+    assert len(calls) == 2
+    assert all(call[:3] == ("git", "ls-files", "--error-unmatch") for call in calls)
+
+
+def test_run_refuses_unapproved_support_before_git_or_outcome_access(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        selector,
+        "_load_json_with_body_hash",
+        lambda *args, **kwargs: {"clock_sha256": "wrong", "all_policies_pass_support": False},
+    )
+    monkeypatch.setattr(
+        selector,
+        "_git_attestation",
+        lambda: pytest.fail("git/outcome boundary must not be reached"),
+    )
+    with pytest.raises(RuntimeError, match="support freeze is not approved"):
+        selector.run()
+
+
+def test_load_bundle_refuses_source_hash_drift_before_reading_market(monkeypatch: pytest.MonkeyPatch) -> None:
+    manifest = {
+        "records": [
+            {
+                "symbol": symbol,
+                "output_market_sha256": "expected-market",
+                "output_funding_sha256": "expected-funding",
+            }
+            for symbol in selector.SYMBOLS
+        ]
+    }
+    monkeypatch.setattr(selector, "_load_json_with_body_hash", lambda *args, **kwargs: manifest)
+    monkeypatch.setattr(selector, "_file_hash", lambda path: "tampered")
+    with pytest.raises(RuntimeError, match="market source changed"):
+        selector.load_bundle(source_dir="unused")
+
+
+def test_frozen_clock_hash_and_temporal_contract_are_live() -> None:
+    frozen = selector.load_clock()
+    assert not frozen.empty
+    assert (frozen["entry_time"] == frozen["signal_time"] + pd.Timedelta(minutes=5)).all()
+    assert (frozen["exit_time"] < pd.Timestamp("2025-01-01")).all()
