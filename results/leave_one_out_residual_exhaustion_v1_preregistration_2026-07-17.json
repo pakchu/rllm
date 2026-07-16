@@ -1,0 +1,216 @@
+{
+  "protocol": {
+    "protocol_version": "lore_v1_2026-07-17",
+    "name": "LORE — Leave-One-Out Residual Exhaustion",
+    "claim": "A cross-sectional alt-perpetual residual extreme that is not confirmed by aggressor flow is transient; buy the residual loser and short the residual winner with ex-ante factor-beta-neutral weights.",
+    "evidence_boundary": {
+      "support_only_before_selector": true,
+      "post_entry_returns_opened": false,
+      "selection_source_end_exclusive": "2025-01-01T00:00:00Z",
+      "holdout_2025_opened": false,
+      "final_2026_opened": false,
+      "repository_wide_human_pristine_claim": false,
+      "exact_family_algorithmically_unopened_claim": true
+    },
+    "universe": {
+      "venue": "Binance USD-M perpetual futures",
+      "symbols": [
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "ADAUSDT",
+        "DOGEUSDT"
+      ],
+      "trading_target": "two-leg alt-perpetual pair; no BTC position",
+      "current_portfolio_exclusions": [
+        "BTC REX",
+        "BTC OI",
+        "BTC funding/premium",
+        "Kimchi/FX",
+        "BTC Markov",
+        "BTC ExtraTrees",
+        "Coinbase lead",
+        "CVTT",
+        "TAAR"
+      ]
+    },
+    "source_contract": {
+      "base_interval": "5m bar-open timestamps",
+      "required_columns": [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume",
+        "taker_buy_quote",
+        "tic"
+      ],
+      "completed_hour": "exactly 12 unique 5m bars in [hour_open, hour_open+1h); hourly feature becomes available at the right boundary",
+      "no_fill_or_nearest_join": true,
+      "all_six_symbols_required": true,
+      "funding": "exact symbol funding timestamps; no synthetic or forward-filled rate",
+      "physical_selection_prefix_required": true
+    },
+    "feature_formula": {
+      "hourly_return": "log(hour_close_t/hour_close_t-1)",
+      "leave_one_out_factor": "cross-sectional median hourly return of the other five symbols",
+      "beta": {
+        "formula": "rolling cov(asset_return, loo_factor) / rolling var(loo_factor)",
+        "lookback_hours": 720,
+        "minimum_hours": 336,
+        "shift_hours": 1,
+        "clip": [
+          0.25,
+          2.5
+        ]
+      },
+      "residual": "log(close_t/close_t-h) - beta_t * sum(loo_factor over the completed h hours)",
+      "residual_z": {
+        "lookback_hours": 2160,
+        "minimum_hours": 1080,
+        "history_shift_hours": 1
+      },
+      "flow": "2*sum(taker_buy_quote over h)/sum(quote_asset_volume over h)-1",
+      "flow_z": {
+        "lookback_hours": 2160,
+        "minimum_hours": 1080,
+        "history_shift_hours": 1
+      },
+      "winner": "argmax residual_z with lexical symbol tie-break",
+      "loser": "argmin residual_z with lexical symbol tie-break"
+    },
+    "signal": {
+      "winner_residual_z_at_least": 1.5,
+      "loser_residual_z_at_most": -1.5,
+      "winner_price_minus_flow_z_at_least": 1.0,
+      "loser_flow_minus_price_z_at_least": 1.0,
+      "long_leg": "loser",
+      "short_leg": "winner",
+      "weight_formula": {
+        "long_abs": "winner_beta/(winner_beta+loser_beta)",
+        "short_abs": "loser_beta/(winner_beta+loser_beta)",
+        "minimum_leg_weight": 0.25,
+        "gross": 1.0,
+        "target_factor_beta": 0.0
+      },
+      "ties": "lexicographically first symbol after sorting columns",
+      "reservation": "policy-local first eligible signal reserves through scheduled exit"
+    },
+    "policies": [
+      {
+        "policy_id": "L01",
+        "residual_horizon_hours": 6,
+        "hold_hours": 12
+      },
+      {
+        "policy_id": "L02",
+        "residual_horizon_hours": 6,
+        "hold_hours": 24
+      },
+      {
+        "policy_id": "L03",
+        "residual_horizon_hours": 12,
+        "hold_hours": 12
+      },
+      {
+        "policy_id": "L04",
+        "residual_horizon_hours": 12,
+        "hold_hours": 24
+      }
+    ],
+    "execution": {
+      "signal_time": "right edge of completed hourly bar",
+      "entry": "5m open at signal_time + 5m",
+      "exit": "5m open at entry_time + hold_hours",
+      "base_cost_bp_per_notional_side": 6.0,
+      "stress_cost_bp_per_notional_side": 10.0,
+      "funding_interval": "entry_time < funding_time <= exit_time",
+      "funding_cash": "-signed_leg_notional * funding_rate at each settlement",
+      "strict_mdd": "global/pre-entry HWM; entry cost first; each held bar marks simultaneous long-high/short-low favorable point before simultaneous long-low/short-high adverse point; funding debits before adverse, credits cannot raise intratrade peak; hypothetical liquidation cost at every mark; scheduled exit costs",
+      "cagr": "full declared wall-clock including idle time",
+      "tp_sl": null
+    },
+    "support_gate": {
+      "combined_events_at_least": 150,
+      "each_year_events_at_least": 60,
+      "unique_ordered_pairs_at_least": 10,
+      "maximum_ordered_pair_share": 0.15,
+      "symbols_seen_as_long_at_least": 5,
+      "symbols_seen_as_short_at_least": 5,
+      "monthly_source_quarantine_at_most": 0.01,
+      "outcome_columns_forbidden": true
+    },
+    "selection": {
+      "fit": [
+        "2023-01-01",
+        "2024-01-01"
+      ],
+      "test": [
+        "2024-01-01",
+        "2025-01-01"
+      ],
+      "combined": [
+        "2023-01-01",
+        "2025-01-01"
+      ],
+      "half_years": [
+        "2023H1",
+        "2023H2",
+        "2024H1",
+        "2024H2"
+      ],
+      "ranking": "passing policies only; maximize minimum annual CAGR/strict-MDD, then combined ratio, then lower MDD, then policy_id",
+      "gates": {
+        "each_year_absolute_return_positive": true,
+        "each_year_cagr_to_strict_mdd_at_least": 1.5,
+        "positive_half_years_at_least": 3,
+        "combined_cagr_to_strict_mdd_at_least": 3.0,
+        "combined_strict_mdd_at_most_pct": 12.0,
+        "combined_trades_at_least": 150,
+        "each_year_trades_at_least": 60,
+        "ten_bp_cost_stress_positive": true,
+        "bonferroni_weekly_signflip_p_at_most": 0.1
+      },
+      "multiple_testing_hypotheses": 4
+    },
+    "holdout_2025": {
+      "opened_only_after_policy_commit": true,
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_at_least": 3.0,
+      "strict_mdd_at_most_pct": 10.0,
+      "h1_h2_nonnegative": true,
+      "trades_at_least": 60,
+      "ten_bp_cost_stress_positive": true,
+      "entry_delay_plus_one_5m_bar_positive": true
+    },
+    "final_2026": {
+      "opened_only_after_2025_pass": true,
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_at_least": 3.0,
+      "strict_mdd_at_most_pct": 10.0,
+      "trades_at_least": 25,
+      "ten_bp_cost_stress_positive": true
+    },
+    "diagnostic_controls_not_selection_candidates": [
+      "exact direction flip on reserved clock",
+      "remove flow-disconfirmation but retain residual thresholds",
+      "raw-return winner/loser without leave-one-out residualization",
+      "equal 50/50 legs without beta neutrality",
+      "entry delayed one additional hour",
+      "candidate clock shifted by seven days",
+      "ordered-pair labels permuted within calendar month"
+    ],
+    "portfolio_orthogonality_after_holdout": {
+      "absolute_daily_pnl_pearson_at_most": 0.3,
+      "absolute_daily_btc_return_beta_at_most": 0.1,
+      "nonzero_pnl_days_at_least": 60,
+      "marginal_portfolio_improvement_required": true,
+      "comparison": "current live anchor and full frozen rank-1 shadow portfolio"
+    },
+    "stop_rule": "Reject before 2025 if no policy passes selection. Reject before 2026 if the single frozen policy fails 2025. No post-outcome sign flip, threshold repair, hold replacement, pair whitelist, or regime gate is allowed under LORE v1."
+  },
+  "protocol_hash": "18480ed99902cecc126fcd4e5d9f5df40c98e65878bfecfb547e2941084be840",
+  "created_at": "2026-07-16T15:33:48.638588+00:00"
+}
