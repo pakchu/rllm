@@ -1,0 +1,105 @@
+{
+  "protocol_version": "network_weak_signal_ensemble_v2_support_v1",
+  "outcomes_opened": false,
+  "policy": {
+    "policy_id": "NWE-8",
+    "reference_days": 180,
+    "reference_min_periods": 120,
+    "feature_change_days": 7,
+    "feature_clip": 5.0,
+    "decision_weekday": 0,
+    "decision_hour_utc": 12,
+    "decision_minute_utc": 0,
+    "maximum_observation_age_days": 3.0,
+    "fit_history_start": "2020-01-06",
+    "prediction_start": "2021-06-07",
+    "minimum_train_samples": 52,
+    "maximum_train_samples": 104,
+    "ridge_alpha": 10.0,
+    "abstain_quantile": 0.5,
+    "entry_delay_bars": 1,
+    "hold_bars": 2016,
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.001
+  },
+  "feature_columns": [
+    "fee_share_level_z",
+    "fee_share_change_z",
+    "transaction_density_level_z",
+    "transaction_density_change_z",
+    "breadth_level_z",
+    "breadth_change_z",
+    "fanout_level_z",
+    "fanout_change_z"
+  ],
+  "preregistration": "results/network_weak_signal_ensemble_v2_preregistration_2026-07-17.json",
+  "preregistration_sha256": "177fdb55aee96dd3849f45f71d7a845a09071aea357aaf21ac0de9b2538ed4c0",
+  "preregistration_manifest_hash": "0ee4b21197641cb328a10b2fe16ec16d4e570ba502a9c61baeb74e961a354691",
+  "source": {
+    "blockspace_manifest_rows": 1826,
+    "network_manifest_rows": 1461,
+    "common_rows": 1461,
+    "first_common_observation": "2020-01-01 00:00:00",
+    "last_common_observation": "2023-12-31 00:00:00",
+    "blockspace_sha256": "c94fd06ff695d673503a56064284cffbb36e6f1ac847bdc6b38819752a77985b",
+    "network_sha256": "97ab2ca9d0c347d85221b51734f98072763370072ca51f1c40e3214191159b42",
+    "columns_loaded": [
+      "observation_date",
+      "available_at",
+      "FeeTotNtv",
+      "IssTotNtv",
+      "BlkCnt",
+      "TxCnt",
+      "AdrActCnt",
+      "TxTfrCnt"
+    ],
+    "market_or_return_rows_loaded": 0
+  },
+  "daily_feature_frame": {
+    "rows": 1461,
+    "frame_hash": "1a0f407e9cfc87a4aa30bd0e5e0f2166f0c52945ff3daca7e39f209a23fd4f32",
+    "first_observation": "2020-01-01 00:00:00",
+    "last_observation": "2023-12-31 00:00:00"
+  },
+  "feature_clock": {
+    "path": "results/network_weak_signal_ensemble_v2_feature_clock_2026-07-17.csv",
+    "sha256": "3cc7eaa3b80944580651bf36541f0fde8edf4c66fd881d659f32396d1dda1c36",
+    "frame_hash": "c966213175bf908782990e0fe4edb77a173f97d75e7c5dbbcec493557dbdc193",
+    "rows": 208,
+    "prediction_eligible_rows": 133
+  },
+  "support_gate": {
+    "candidate_counts": {
+      "train_2021_2022": 82,
+      "train_2021": 30,
+      "train_2022": 52,
+      "selection_2023": 51,
+      "selection_2023_h1": 26,
+      "selection_2023_h2": 25
+    },
+    "initial_fully_available_training_samples": 55,
+    "first_prediction_decision": "2021-06-07 12:00:00",
+    "last_prediction_decision": "2023-12-18 12:00:00",
+    "checks": {
+      "train_total": true,
+      "train_2021": true,
+      "train_2022": true,
+      "selection_2023": true,
+      "selection_2023_h1": true,
+      "selection_2023_h2": true,
+      "initial_training_history": true,
+      "all_prediction_features_finite": true
+    },
+    "passed": true
+  },
+  "sealed": [
+    "all_return_labels",
+    "2024",
+    "2025",
+    "2026_ytd"
+  ],
+  "failure_action": "freeze this exact feature clock before implementing the evaluator",
+  "result_hash": "095a5451b8e5f416223f64df13a5fd334531027119d50e461deea31ac1416152",
+  "created_at": "2026-07-16T20:20:56.134243+00:00"
+}
