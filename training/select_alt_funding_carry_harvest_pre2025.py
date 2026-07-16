@@ -29,6 +29,9 @@ EXPECTED_LORE_SOURCE_MANIFEST_HASH = "1c54fddc45fcc516d8ce42741904e018e8d00e646e
 SUPPORT_MANIFEST = "results/alt_funding_carry_harvest_v1_support_manifest_2026-07-17.json"
 EXPECTED_SUPPORT_MANIFEST_HASH = "c92bfb7b0b3dc424758e6edca7614cdc4701f9d04e798bfaff9572ff003a3cd8"
 EXPECTED_CLOCK_HASH = "d0cc451e74a45d5ab9f08a8a7c3d8c3df756d35d2e020d1f70dc0198ebaf0ef9"
+FUNDING_MARK_MANIFEST = "results/alt_funding_carry_harvest_v1_funding_marks_2023_2026-07-17.json"
+EXPECTED_FUNDING_MARK_MANIFEST_HASH = "344eebba84e747313f062fcda9fa7fbf9960d234e75a2ea66bd507bbe5ad0667"
+FUNDING_MARK_DIR = Path("data/binance_um_afch_funding_marks_2023")
 DEFAULT_OUTPUT = "results/alt_funding_carry_harvest_v1_selection_2023_2024_2026-07-17.json"
 DEFAULT_DOCS = "docs/alt-funding-carry-harvest-v1-selection-2023-2024-2026-07-17.md"
 SELECTOR_PATH = "training/select_alt_funding_carry_harvest_pre2025.py"
@@ -91,9 +94,24 @@ def _manifest(path: str, expected: str) -> dict[str, Any]:
     return payload
 
 
+def _validate_funding_mark_manifest(payload: dict[str, Any]) -> None:
+    if payload.get("outcomes_opened") is not False:
+        raise RuntimeError("AFCH funding mark freeze opened outcomes")
+    limit = float(payload.get("maximum_proxy_funding_cash_error_bp_notional", float("nan")))
+    records = {str(row["symbol"]): row for row in payload.get("records", [])}
+    if not math.isfinite(limit) or limit != 0.1 or set(records) != set(SYMBOLS):
+        raise RuntimeError("AFCH funding mark freeze contract changed")
+    if any(float(row["maximum_proxy_funding_cash_error_bp_notional"]) > limit for row in records.values()):
+        raise RuntimeError("AFCH causal funding mark uncertainty exceeds freeze")
+    if any(int(row["events"]) != 1095 for row in records.values()):
+        raise RuntimeError("AFCH causal funding mark event support changed")
+
+
 def load_bundle() -> MarketBundle:
     source = _manifest(LORE_SOURCE_MANIFEST, EXPECTED_LORE_SOURCE_MANIFEST_HASH)
+    mark_source = _manifest(FUNDING_MARK_MANIFEST, EXPECTED_FUNDING_MARK_MANIFEST_HASH)
     records = {str(row["symbol"]): row for row in source["records"]}
+    mark_records = {str(row["symbol"]): row for row in mark_source["records"]}
     market: dict[str, dict[str, np.ndarray]] = {}
     funding: dict[str, pd.DataFrame] = {}
     dates: pd.DatetimeIndex | None = None
@@ -127,14 +145,38 @@ def load_bundle() -> MarketBundle:
         fund["event_time"] = pd.to_datetime(pd.to_numeric(fund["funding_time"], errors="raise"), unit="ms")
         fund["funding_rate"] = pd.to_numeric(fund["funding_rate"], errors="raise")
         fund["mark_price"] = pd.to_numeric(fund["mark_price"], errors="coerce")
+        fund["mark_is_recorded"] = fund["mark_price"].notna()
         if fund["event_time"].duplicated().any() or not fund["event_time"].is_monotonic_increasing:
             raise RuntimeError(f"{symbol} AFCH funding order failure")
         if not ((fund["event_time"] >= START) & (fund["event_time"] < END)).all():
             raise RuntimeError(f"{symbol} AFCH funding source escaped 2023-2024")
+        mark_path = FUNDING_MARK_DIR / f"{symbol}_funding_marks_2023.csv.gz"
+        if _file_hash(mark_path) != mark_records[symbol]["output_sha256"]:
+            raise RuntimeError(f"{symbol} AFCH causal funding marks changed")
+        marks = pd.read_csv(mark_path, parse_dates=["event_time"])
+        marks["funding_time"] = pd.to_numeric(marks["funding_time"], errors="raise").astype("int64")
+        marks["causal_mark_price"] = pd.to_numeric(marks["causal_mark_price"], errors="raise")
+        if marks["funding_time"].duplicated().any() or len(marks) != 1095:
+            raise RuntimeError(f"{symbol} AFCH causal funding mark identity failure")
+        expected_event = pd.to_datetime(marks["funding_time"], unit="ms")
+        if not pd.DatetimeIndex(marks["event_time"]).equals(pd.DatetimeIndex(expected_event)):
+            raise RuntimeError(f"{symbol} AFCH causal funding mark time mismatch")
+        if not set(marks["mark_source"]).issubset({"funding_record", "prior_completed_mark_close"}):
+            raise RuntimeError(f"{symbol} AFCH causal funding mark source mismatch")
+        mark_by_time = marks.set_index("funding_time")
+        year_2023 = fund["event_time"] < pd.Timestamp("2024-01-01")
+        frozen_marks = fund.loc[year_2023, "funding_time"].map(mark_by_time["causal_mark_price"])
+        frozen_sources = fund.loc[year_2023, "funding_time"].map(mark_by_time["mark_source"])
+        if frozen_marks.isna().any() or frozen_sources.isna().any():
+            raise RuntimeError(f"{symbol} AFCH causal funding mark coverage failure")
+        fund.loc[year_2023, "mark_price"] = frozen_marks.to_numpy(dtype=float)
+        fund.loc[year_2023, "mark_is_recorded"] = frozen_sources.eq("funding_record").to_numpy()
+        if fund["mark_price"].isna().any():
+            raise RuntimeError(f"{symbol} AFCH official selector would require an unfrozen mark proxy")
         finite_mark = np.isfinite(fund["mark_price"].to_numpy(dtype=float))
         if (fund.loc[finite_mark, "mark_price"] <= 0.0).any():
             raise RuntimeError(f"{symbol} AFCH non-positive exact funding mark")
-        funding[symbol] = fund[["event_time", "funding_rate", "mark_price"]].copy()
+        funding[symbol] = fund[["event_time", "funding_rate", "mark_price", "mark_is_recorded"]].copy()
     assert dates is not None
     expected = pd.date_range(START, END - pd.Timedelta(minutes=5), freq="5min")
     if not dates.equals(expected):
@@ -167,8 +209,10 @@ def _funding_events_by_bar(
             if bar_index < 0 or bar_index >= len(bundle.dates):
                 continue
             recorded_mark = float(getattr(row, "mark_price", float("nan")))
-            exact_mark = math.isfinite(recorded_mark) and recorded_mark > 0.0
-            if exact_mark:
+            mark_is_recorded = getattr(row, "mark_is_recorded", None)
+            mark_available = math.isfinite(recorded_mark) and recorded_mark > 0.0
+            exact_mark = mark_available if mark_is_recorded is None else bool(mark_is_recorded)
+            if mark_available:
                 mark = recorded_mark
             elif mark_index >= 0:
                 mark = float(bundle.market[symbol]["close"][mark_index])
@@ -590,7 +634,7 @@ def _markdown(result: dict[str, Any]) -> str:
         f"- failed gates: `{failed}`",
         f"- weekly cluster sign-flip p: `{evaluation['weekly_cluster_signflip']['raw_p_value']:.6f}`",
         "- Funding cash and transaction cost are reported as cash percentages of initial equity; price PnL is separated in the JSON artifact.",
-        "- Recorded settlement `mark_price` is used when present; missing historical marks use the last fully completed 5m futures close, with exact/proxy application counts and cash split in JSON.",
+        "- Recorded settlement `mark_price` is used when present; missing 2023 marks use the separately frozen last-completed 5m mark-price close, with exact/proxy application counts and cash split in JSON.",
         "- CAGR includes every idle day in the declared calendar.",
         "- strict MDD uses aggregate net-symbol favorable-before-adverse OHLC, global HWM, active funding-credit exclusion, and entry/exit/hypothetical liquidation costs.",
         "- Diagnostics cannot repair a failed AFCH01 policy.", "",
@@ -603,6 +647,8 @@ def run(output: str = DEFAULT_OUTPUT, docs_output: str = DEFAULT_DOCS) -> dict[s
     support = _manifest(SUPPORT_MANIFEST, EXPECTED_SUPPORT_MANIFEST_HASH)
     if support.get("clock_sha256") != EXPECTED_CLOCK_HASH or not support["support"].get("passes_support"):
         raise RuntimeError("AFCH support freeze is not approved")
+    funding_marks = _manifest(FUNDING_MARK_MANIFEST, EXPECTED_FUNDING_MARK_MANIFEST_HASH)
+    _validate_funding_mark_manifest(funding_marks)
     attestation = _git_attestation()
     bundle, clock = load_bundle(), load_clock()
     evaluation = evaluate(bundle, clock)
@@ -616,6 +662,7 @@ def run(output: str = DEFAULT_OUTPUT, docs_output: str = DEFAULT_DOCS) -> dict[s
         "preregistration_protocol_hash": EXPECTED_PROTOCOL_HASH,
         "source_manifest_hash": EXPECTED_LORE_SOURCE_MANIFEST_HASH,
         "support_manifest_hash": EXPECTED_SUPPORT_MANIFEST_HASH,
+        "funding_mark_manifest_hash": EXPECTED_FUNDING_MARK_MANIFEST_HASH,
         "clock_hash": EXPECTED_CLOCK_HASH,
         "single_policy_id": "AFCH01",
         "evaluation": evaluation,

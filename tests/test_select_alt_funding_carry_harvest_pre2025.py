@@ -118,6 +118,17 @@ def test_missing_funding_mark_uses_last_completed_close() -> None:
     assert stats["proxy_mark_funding_applications"] == 1
 
 
+def test_frozen_causal_proxy_mark_is_used_and_reported_as_proxy() -> None:
+    funding = {"ETHUSDT": [(pd.Timestamp("2023-01-01 00:10"), 0.01)]}
+    bundle = synthetic_bundle([100] * 5, [100] * 5, funding)
+    bundle.funding["ETHUSDT"]["mark_price"] = 200.0
+    bundle.funding["ETHUSDT"]["mark_is_recorded"] = False
+    stats = simulate(bundle, clock(), start="2023-01-01", end="2023-01-02", cost_bp=0)
+    assert stats["funding_cash_pct_initial"] == pytest.approx(0.25)
+    assert stats["exact_mark_funding_applications"] == 0
+    assert stats["proxy_mark_funding_applications"] == 1
+
+
 def test_funding_at_entry_is_excluded_and_at_exit_is_included() -> None:
     funding = {
         "ETHUSDT": [
@@ -261,13 +272,31 @@ def test_run_attests_clean_code_before_loading_outcomes(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
     calls: list[str] = []
+    def fake_manifest(path: str, expected: str) -> dict[str, object]:
+        if path == selector.SUPPORT_MANIFEST:
+            return {
+                "clock_sha256": selector.EXPECTED_CLOCK_HASH,
+                "support": {"passes_support": True},
+            }
+        if path == selector.FUNDING_MARK_MANIFEST:
+            return {
+                "outcomes_opened": False,
+                "maximum_proxy_funding_cash_error_bp_notional": 0.1,
+                "records": [
+                    {
+                        "symbol": symbol,
+                        "events": 1095,
+                        "maximum_proxy_funding_cash_error_bp_notional": 0.01,
+                    }
+                    for symbol in selector.SYMBOLS
+                ],
+            }
+        raise AssertionError(path)
+
     monkeypatch.setattr(
         selector,
         "_manifest",
-        lambda *args, **kwargs: {
-            "clock_sha256": selector.EXPECTED_CLOCK_HASH,
-            "support": {"passes_support": True},
-        },
+        fake_manifest,
     )
     monkeypatch.setattr(
         selector, "_git_attestation", lambda: calls.append("attestation") or {"head": "frozen"}
@@ -363,3 +392,11 @@ def test_frozen_clock_is_live_and_contains_no_2026_exit() -> None:
     frozen = selector.load_clock()
     assert len(frozen) == 127
     assert frozen["exit_time"].max() < pd.Timestamp("2026-01-01")
+
+
+def test_frozen_bundle_has_complete_causal_funding_marks() -> None:
+    bundle = selector.load_bundle()
+    for funding in bundle.funding.values():
+        assert funding["mark_price"].notna().all()
+        assert funding["mark_price"].gt(0).all()
+        assert int((~funding["mark_is_recorded"]).sum()) == 910
