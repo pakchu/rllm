@@ -3584,7 +3584,6 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     client = executor = None
     try:
         engine = sqlalchemy_engine_from_env(cfg.env_path)
-        _ensure_trade_executions_table(engine)
         if not exec_cfg.dry_run:
             db_lease = _acquire_portfolio_db_lease(
                 engine,
@@ -3592,6 +3591,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 exchange=cfg.exchange,
                 symbol=exec_cfg.symbol,
             )
+            _ensure_trade_executions_table(engine)
         source_cache = LiveSourceFrameCache()
         feature_cache = LiveFeatureFrameCache()
         oi_cache = LiveOiFrameCache()
