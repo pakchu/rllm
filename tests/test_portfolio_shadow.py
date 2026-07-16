@@ -59,11 +59,21 @@ def test_shadow_report_never_enables_orders_and_rank7_fails_closed():
         decision_asof=pd.Timestamp(market.iloc[-1]["date"], tz="UTC"),
     )
     assert report["orders_enabled"] is False
+    assert report["live_promotion_ready"] is False
     assert report["complete_portfolio_runtime_ready"] is False
     assert report["runtime_blocked_sleeves"] == ["frozen_annual_rank7"]
+    assert report["signal_scoring_ready_count"] == 4
+    assert set(report["signal_scoring_ready_sleeves"]) == {
+        "fresh_kimchi_fx",
+        "rex_taker_low_range_position",
+        "cand_rex_veto_7",
+        "markov_transition_long",
+    }
     rank7 = next(row for row in report["scores"] if row["name"] == "frozen_annual_rank7")
     assert rank7["active"] is False
     assert "runtime_bridge=missing:annual_extratrees_model_export_required" in rank7["reasons"]
+    assert "runtime_bridge=missing:exact_40_column_feature_graph_required" in rank7["reasons"]
+    assert "runtime_bridge=missing:source_specific_barrier_exits_required" in rank7["reasons"]
 
 
 def test_shadow_report_rejects_non_shadow_portfolio():

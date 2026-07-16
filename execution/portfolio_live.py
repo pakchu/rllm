@@ -1430,12 +1430,14 @@ def _score_sleeves(
                 )
             elif policy_type == "frozen_annual_rank7":
                 gate_ok = False
-                reasons.extend(
-                    [
-                        "runtime_bridge=missing:annual_extratrees_model_export_required",
-                        "shadow_fail_closed=pass",
-                    ]
+                requirements = cfg.get(
+                    "runtime_requirements",
+                    ["annual_extratrees_model_export_required"],
                 )
+                reasons.extend(
+                    [f"runtime_bridge=missing:{requirement}" for requirement in requirements]
+                )
+                reasons.append("shadow_fail_closed=pass")
             elif base_policy == "rex":
                 record = build_rex_live_policy_record(
                     enriched,

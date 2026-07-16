@@ -59,6 +59,7 @@ def build_shadow_report(
         for score in scores
         if any(str(reason).startswith("runtime_bridge=missing") for reason in score["reasons"])
     ]
+    scoreable = [score["name"] for score in scores if score["name"] not in blocked]
     return {
         "mode": "forward_shadow_score_only",
         "orders_enabled": False,
@@ -68,7 +69,10 @@ def build_shadow_report(
         "latest_completed_bar": str(enriched.iloc[-1]["date"]),
         "gross_weight": float(sum(float(row["weight"]) for row in portfolio["base_sleeves"])),
         "runtime_blocked_sleeves": blocked,
+        "signal_scoring_ready_sleeves": scoreable,
+        "signal_scoring_ready_count": len(scoreable),
         "complete_portfolio_runtime_ready": not blocked,
+        "live_promotion_ready": False,
         "scores": scores,
     }
 

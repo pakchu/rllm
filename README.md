@@ -71,6 +71,13 @@ best-found shadow 후보는 다음과 같습니다.
 새 데이터에서 실행 parity와 MDD를 확인해야 합니다. 상세 규약과 상위 배분은
 [`docs/portfolio-added-alpha-update-2026-07-16.md`](docs/portfolio-added-alpha-update-2026-07-16.md)에 있습니다.
 
+현재 no-order DB one-shot에서는 완료봉 freshness와 4/5 sleeve signal scoring이
+통과했습니다. `frozen_annual_rank7`은 모델보다 정확한 40-feature/state/threshold/exit
+bundle과 replay parity가 없어 fail-close하며, Fresh Kimchi의 TP/SL도 아직 portfolio
+lifecycle에 연결되지 않았습니다. 따라서 기존 live 설정은 그대로 유지합니다. 상세
+readiness와 재현 명령은
+[`docs/portfolio-added-alpha-shadow-readiness-2026-07-16.md`](docs/portfolio-added-alpha-shadow-readiness-2026-07-16.md)에 있습니다.
+
 ### 거래 빈도
 최근 eval 후보 기준:
 
