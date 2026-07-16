@@ -1,0 +1,369 @@
+{
+  "protocol_version": "coinbase_spot_leadership_support_v1",
+  "phase": "support_only_before_forward_returns",
+  "forward_trade_outcomes_opened": false,
+  "source_columns_read": {
+    "coinbase": [
+      "date",
+      "close",
+      "volume",
+      "source_complete"
+    ],
+    "binance": [
+      "date",
+      "close",
+      "quote_asset_volume"
+    ],
+    "explicitly_not_read": [
+      "Binance next open",
+      "Binance future high/low",
+      "funding realized after signal"
+    ]
+  },
+  "implementation_contract": {
+    "robust_window_bars": 8640,
+    "robust_minimum_finite_prior_bars": 4032,
+    "median_mad": "exact finite observations in strictly-prior rolling window",
+    "premium_prior_center_bars": 864,
+    "premium_prior_center_minimum": 1,
+    "activity_share_clip": 1e-12,
+    "missing_quarantine_bars_after_missing": 12,
+    "nonoverlap": "next signal index >= prior signal index + hold_bars"
+  },
+  "hashes": {
+    "preregistration_file_sha256": "9b802fe7a88f32ac2eec2dd419730bcbef79d2682b7db6f5ed911768feaa9837",
+    "preregistration_manifest_hash": "7fdb7d0c91d148d61aea06000326f164493a77517cf4b49a03f59db014882402",
+    "source_manifest_file_sha256": "3af321fdcafd0fe6680c4583341b6508124a979fefbf489f8d3376c7ec78a269",
+    "source_manifest_hash": "243ecba3b9e31548d682084dd5acc2e89c6a24423bce241dd6338a57dd6eefe9",
+    "support_code_sha256": "3c095dce3d699888a737d306555ad5b01e91597b183f940383bc3dcf2f7522c8"
+  },
+  "quality": {
+    "source_missing_rows": 120,
+    "missing_or_next_12_quarantined_rows": 290,
+    "global_missing_or_quarantined_fraction": 0.0009187449310624493,
+    "maximum_monthly_missing_or_quarantined_fraction": 0.00817652329749104,
+    "maximum_month": "2020-10",
+    "gates": {
+      "global_missing_or_quarantined_fraction_max_0_01": true,
+      "monthly_missing_or_quarantined_fraction_max_0_03": true
+    },
+    "pass": true
+  },
+  "support_groups": [
+    {
+      "support_group": "activity_confirmed_relative_h1",
+      "family": "activity_confirmed_relative",
+      "hold_bars": 1,
+      "policy_ids": [
+        "P09",
+        "P10"
+      ],
+      "nonoverlap_events": 368,
+      "events_by_year": {
+        "2020": 157,
+        "2021": 112,
+        "2022": 99
+      },
+      "events_by_side": {
+        "-1": 197,
+        "1": 171
+      },
+      "side_shares": {
+        "-1": 0.5353260869565217,
+        "1": 0.46467391304347827
+      },
+      "maximum_month_share": 0.15217391304347827,
+      "maximum_month": "2020-03",
+      "gates": {
+        "total_min_120": true,
+        "each_year_min_25": true,
+        "each_side_share_min_0_20": true,
+        "single_month_share_max_0_20": true
+      },
+      "pass": true
+    },
+    {
+      "support_group": "activity_confirmed_relative_h3",
+      "family": "activity_confirmed_relative",
+      "hold_bars": 3,
+      "policy_ids": [
+        "P11",
+        "P12"
+      ],
+      "nonoverlap_events": 335,
+      "events_by_year": {
+        "2020": 143,
+        "2021": 97,
+        "2022": 95
+      },
+      "events_by_side": {
+        "-1": 184,
+        "1": 151
+      },
+      "side_shares": {
+        "-1": 0.5492537313432836,
+        "1": 0.4507462686567164
+      },
+      "maximum_month_share": 0.13134328358208955,
+      "maximum_month": "2020-03",
+      "gates": {
+        "total_min_120": true,
+        "each_year_min_25": true,
+        "each_side_share_min_0_20": true,
+        "single_month_share_max_0_20": true
+      },
+      "pass": true
+    },
+    {
+      "support_group": "activity_premium_confluence_h3",
+      "family": "activity_premium_confluence",
+      "hold_bars": 3,
+      "policy_ids": [
+        "P13",
+        "P14"
+      ],
+      "nonoverlap_events": 3405,
+      "events_by_year": {
+        "2020": 1052,
+        "2021": 1178,
+        "2022": 1175
+      },
+      "events_by_side": {
+        "-1": 1758,
+        "1": 1647
+      },
+      "side_shares": {
+        "-1": 0.5162995594713656,
+        "1": 0.48370044052863437
+      },
+      "maximum_month_share": 0.0513950073421439,
+      "maximum_month": "2020-03",
+      "gates": {
+        "total_min_120": true,
+        "each_year_min_25": true,
+        "each_side_share_min_0_20": true,
+        "single_month_share_max_0_20": true
+      },
+      "pass": true
+    },
+    {
+      "support_group": "premium_shock_h1",
+      "family": "premium_shock",
+      "hold_bars": 1,
+      "policy_ids": [
+        "P05",
+        "P06"
+      ],
+      "nonoverlap_events": 11236,
+      "events_by_year": {
+        "2020": 3987,
+        "2021": 3716,
+        "2022": 3533
+      },
+      "events_by_side": {
+        "-1": 5675,
+        "1": 5561
+      },
+      "side_shares": {
+        "-1": 0.5050729797080812,
+        "1": 0.4949270202919188
+      },
+      "maximum_month_share": 0.06479174083303667,
+      "maximum_month": "2020-03",
+      "gates": {
+        "total_min_120": true,
+        "each_year_min_25": true,
+        "each_side_share_min_0_20": true,
+        "single_month_share_max_0_20": true
+      },
+      "pass": true
+    },
+    {
+      "support_group": "premium_shock_h3",
+      "family": "premium_shock",
+      "hold_bars": 3,
+      "policy_ids": [
+        "P07",
+        "P08"
+      ],
+      "nonoverlap_events": 9205,
+      "events_by_year": {
+        "2020": 3244,
+        "2021": 3035,
+        "2022": 2926
+      },
+      "events_by_side": {
+        "-1": 4730,
+        "1": 4475
+      },
+      "side_shares": {
+        "-1": 0.5138511678435633,
+        "1": 0.4861488321564367
+      },
+      "maximum_month_share": 0.05736013036393264,
+      "maximum_month": "2020-03",
+      "gates": {
+        "total_min_120": true,
+        "each_year_min_25": true,
+        "each_side_share_min_0_20": true,
+        "single_month_share_max_0_20": true
+      },
+      "pass": true
+    },
+    {
+      "support_group": "relative_return_lead_h1",
+      "family": "relative_return_lead",
+      "hold_bars": 1,
+      "policy_ids": [
+        "P01",
+        "P02"
+      ],
+      "nonoverlap_events": 3819,
+      "events_by_year": {
+        "2020": 1637,
+        "2021": 1174,
+        "2022": 1008
+      },
+      "events_by_side": {
+        "-1": 1956,
+        "1": 1863
+      },
+      "side_shares": {
+        "-1": 0.5121759622937941,
+        "1": 0.4878240377062058
+      },
+      "maximum_month_share": 0.064152919612464,
+      "maximum_month": "2020-03",
+      "gates": {
+        "total_min_120": true,
+        "each_year_min_25": true,
+        "each_side_share_min_0_20": true,
+        "single_month_share_max_0_20": true
+      },
+      "pass": true
+    },
+    {
+      "support_group": "relative_return_lead_h3",
+      "family": "relative_return_lead",
+      "hold_bars": 3,
+      "policy_ids": [
+        "P03",
+        "P04"
+      ],
+      "nonoverlap_events": 3584,
+      "events_by_year": {
+        "2020": 1521,
+        "2021": 1107,
+        "2022": 956
+      },
+      "events_by_side": {
+        "-1": 1837,
+        "1": 1747
+      },
+      "side_shares": {
+        "-1": 0.5125558035714286,
+        "1": 0.48744419642857145
+      },
+      "maximum_month_share": 0.06277901785714286,
+      "maximum_month": "2020-03",
+      "gates": {
+        "total_min_120": true,
+        "each_year_min_25": true,
+        "each_side_share_min_0_20": true,
+        "single_month_share_max_0_20": true
+      },
+      "pass": true
+    },
+    {
+      "support_group": "return_premium_confluence_h3",
+      "family": "return_premium_confluence",
+      "hold_bars": 3,
+      "policy_ids": [
+        "P15",
+        "P16"
+      ],
+      "nonoverlap_events": 31209,
+      "events_by_year": {
+        "2020": 10140,
+        "2021": 10529,
+        "2022": 10540
+      },
+      "events_by_side": {
+        "-1": 16314,
+        "1": 14895
+      },
+      "side_shares": {
+        "-1": 0.5227338267807363,
+        "1": 0.4772661732192637
+      },
+      "maximum_month_share": 0.03909128776955365,
+      "maximum_month": "2021-01",
+      "gates": {
+        "total_min_120": true,
+        "each_year_min_25": true,
+        "each_side_share_min_0_20": true,
+        "single_month_share_max_0_20": true
+      },
+      "pass": true
+    }
+  ],
+  "passing_policy_ids": [
+    "P01",
+    "P02",
+    "P03",
+    "P04",
+    "P05",
+    "P06",
+    "P07",
+    "P08",
+    "P09",
+    "P10",
+    "P11",
+    "P12",
+    "P13",
+    "P14",
+    "P15",
+    "P16"
+  ],
+  "all_support_groups_pass": true,
+  "clock_counts_by_policy": {
+    "P01": 1956,
+    "P02": 1863,
+    "P03": 1922,
+    "P04": 1838,
+    "P05": 5675,
+    "P06": 5561,
+    "P07": 5315,
+    "P08": 5225,
+    "P09": 197,
+    "P10": 171,
+    "P11": 192,
+    "P12": 162,
+    "P13": 1950,
+    "P14": 1825,
+    "P15": 20991,
+    "P16": 20668
+  },
+  "outputs": {
+    "features": {
+      "path": "data/coinbase_leadership_features_2020_2022.csv.gz",
+      "rows": 315648,
+      "bytes": 15605814,
+      "sha256": "f4685f111471b1da403f7e9afdbba41ec573957179724b5ab16f17685e206cb4"
+    },
+    "clocks": {
+      "path": "data/coinbase_leadership_support_clocks_2020_2022.csv.gz",
+      "rows": 75511,
+      "bytes": 491850,
+      "sha256": "6380258100c8452c5732971e0eaf36f0ed33aa446432c880c2b4d67040b74874"
+    }
+  },
+  "selection_may_open_forward_returns": true,
+  "sealed_holdout": [
+    "2023-01-01",
+    "2024-01-01"
+  ],
+  "future_2024_plus_sealed": true,
+  "manifest_hash": "b29d2b75550316cbb291bd2eeb4ed5b256557e60f407d43d0722ee81ecbee6ff",
+  "created_at": "2026-07-16T13:58:03.206727+00:00"
+}
