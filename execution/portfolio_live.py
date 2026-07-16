@@ -3034,22 +3034,92 @@ async def _close_sleeve(
     remaining = max(Decimal("0"), quantity - maker_filled)
     if remaining > Decimal("0"):
         taker_started = pd.Timestamp.utcnow()
-        taker_order = await client.place_market(
-            symbol=exec_cfg.symbol,
-            side=close_side,
-            quantity=float(remaining),
-            reduce_only=True,
-            position_side=side,
-        )
-        taker_finished = pd.Timestamp.utcnow()
-        order["taker_fallback_order"] = taker_order
+        try:
+            taker_order = await client.place_market(
+                symbol=exec_cfg.symbol,
+                side=close_side,
+                quantity=float(remaining),
+                reduce_only=True,
+                position_side=side,
+            )
+            taker_finished = pd.Timestamp.utcnow()
+            order["taker_fallback_order"] = taker_order
+            order["taker_fallback_finished_at"] = str(taker_finished)
+            order["taker_fallback_wall_time_sec"] = float((taker_finished - taker_started).total_seconds())
+            order["filled_quantity"] = str(quantity)
+            order["status"] = "TAKER_FALLBACK_FILLED"
+        except Exception as exc:
+            order["taker_fallback_error"] = f"{type(exc).__name__}: {exc}"
+            order["filled_quantity"] = str(maker_filled)
+            order["status"] = "PARTIAL_TAKER_FALLBACK_FAILED" if maker_filled > 0 else "TAKER_FALLBACK_FAILED"
         order["taker_fallback_started_at"] = str(taker_started)
-        order["taker_fallback_finished_at"] = str(taker_finished)
-        order["taker_fallback_wall_time_sec"] = float((taker_finished - taker_started).total_seconds())
         order["taker_fallback_quantity"] = str(remaining)
-        order["filled_quantity"] = str(quantity)
-        order["status"] = "TAKER_FALLBACK_FILLED"
     return order
+
+
+async def _execute_close_intents(
+    *,
+    intents: list[dict[str, Any]],
+    client: Any | None,
+    executor: Any | None,
+    exec_cfg: WaveExecutionConfig,
+    max_exit_wait_sec: int,
+    exit_maker_max_deviation_pct: float,
+    maker_refresh_interval_sec: int,
+) -> list[dict[str, Any]]:
+    """Close due sleeves concurrently while keeping state mutation in parent."""
+
+    async def execute_one(intent: dict[str, Any]) -> dict[str, Any]:
+        open_state = intent["open_state"]
+        try:
+            if exec_cfg.dry_run:
+                close_info: dict[str, Any] = {
+                    "status": "DRY_RUN",
+                    "filled_quantity": str(open_state.get("quantity", "0")),
+                }
+            else:
+                if client is None or executor is None:
+                    raise RuntimeError("live close intent requires exchange client and executor")
+                close_reference_price = float(await client.get_ticker_price(exec_cfg.symbol))
+                close_info = await _close_sleeve(
+                    client=client,
+                    executor=executor,
+                    sleeve_state=open_state,
+                    exec_cfg=exec_cfg,
+                    ttl_sec=int(max_exit_wait_sec),
+                    reference_price=close_reference_price,
+                    max_deviation_pct=float(exit_maker_max_deviation_pct),
+                    refresh_interval_sec=int(maker_refresh_interval_sec),
+                )
+                close_info = await _attach_exchange_trade_report(
+                    client=client,
+                    symbol=exec_cfg.symbol,
+                    order_info=close_info,
+                )
+            try:
+                filled = Decimal(str(close_info.get("filled_quantity", "0") or "0"))
+            except Exception:
+                filled = Decimal("0")
+            requested = Decimal(str(open_state.get("quantity", "0") or "0"))
+            return {
+                "intent": intent,
+                "ok": True,
+                "close_info": close_info,
+                "filled_quantity": str(filled),
+                "fully_closed": filled >= requested,
+                "error": None,
+            }
+        except Exception as exc:
+            return {
+                "intent": intent,
+                "ok": False,
+                "close_info": {},
+                "filled_quantity": "0",
+                "fully_closed": False,
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+
+    return list(await asyncio.gather(*(execute_one(intent) for intent in intents)))
 
 
 
@@ -3515,6 +3585,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     state["last_exchange_flat_reconcile"] = reconciled_positions
 
             closed: list[str] = []
+            close_intents: list[dict[str, Any]] = []
             for key, open_state in list(state["open_sleeves"].items()):
                 time_exit_due = pd.Timestamp(open_state["exit_at"]) <= now
                 dynamic_exit_due, dynamic_exit_reasons = _dynamic_exit_due(
@@ -3527,47 +3598,35 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     open_state["last_dynamic_exit_reasons"] = dynamic_exit_reasons
                     state["open_sleeves"][key] = open_state
                 if time_exit_due or dynamic_exit_due:
+                    close_intents.append(
+                        {
+                            "key": key,
+                            "open_state": dict(open_state),
+                            "time_exit_due": bool(time_exit_due),
+                            "dynamic_exit_due": bool(dynamic_exit_due),
+                        }
+                    )
+
+            close_outcomes = await _execute_close_intents(
+                intents=close_intents,
+                client=client,
+                executor=executor,
+                exec_cfg=exec_cfg,
+                max_exit_wait_sec=cfg.max_exit_wait_sec,
+                exit_maker_max_deviation_pct=cfg.exit_maker_max_deviation_pct,
+                maker_refresh_interval_sec=cfg.maker_refresh_interval_sec,
+            )
+            for outcome in close_outcomes:
+                intent = outcome["intent"]
+                key = str(intent["key"])
+                open_state = dict(intent["open_state"])
+                dynamic_exit_due = bool(intent["dynamic_exit_due"])
+                time_exit_due = bool(intent["time_exit_due"])
+                if not outcome.get("ok"):
+                    open_state["close_pending"] = True
+                    open_state["last_close_error"] = outcome.get("error")
+                    state["open_sleeves"][key] = open_state
                     if not exec_cfg.dry_run:
-                        assert client is not None and executor is not None
-                        close_reference_price = float(await client.get_ticker_price(exec_cfg.symbol))
-                        close_info = await _close_sleeve(
-                            client=client,
-                            executor=executor,
-                            sleeve_state=open_state,
-                            exec_cfg=exec_cfg,
-                            ttl_sec=int(cfg.max_exit_wait_sec),
-                            reference_price=close_reference_price,
-                            max_deviation_pct=float(cfg.exit_maker_max_deviation_pct),
-                            refresh_interval_sec=int(cfg.maker_refresh_interval_sec),
-                        )
-                        close_info = await _attach_exchange_trade_report(
-                            client=client,
-                            symbol=exec_cfg.symbol,
-                            order_info=close_info,
-                        )
-                        open_state["last_close_order_info"] = close_info
-                        try:
-                            close_filled = Decimal(str(close_info.get("filled_quantity", "0") or "0"))
-                        except Exception:
-                            close_filled = Decimal("0")
-                        if close_filled < Decimal(str(open_state.get("quantity", "0") or "0")):
-                            _log_trade_execution(
-                                engine,
-                                strategy_name=cfg.strategy_name,
-                                sub_strategy_name=str(open_state.get("name", key)),
-                                exchange=cfg.exchange,
-                                symbol=exec_cfg.symbol,
-                                action="CLOSE",
-                                side="SELL" if str(open_state.get("side")).upper() == "LONG" else "BUY",
-                                position_side=str(open_state.get("side")),
-                                order_type="POST_ONLY_DYNAMIC_EXIT" if dynamic_exit_due and not time_exit_due else "POST_ONLY_EXIT",
-                                signal_id=str(open_state.get("signal_id")),
-                                status=str(close_info.get("status", "PARTIAL_OR_TIMEOUT")),
-                                order_info=close_info,
-                            )
-                            open_state["close_pending"] = True
-                            state["open_sleeves"][key] = open_state
-                            continue
                         _log_trade_execution(
                             engine,
                             strategy_name=cfg.strategy_name,
@@ -3577,21 +3636,53 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                             action="CLOSE",
                             side="SELL" if str(open_state.get("side")).upper() == "LONG" else "BUY",
                             position_side=str(open_state.get("side")),
-                            order_type=(
-                                "POST_ONLY_DYNAMIC_EXIT_WITH_TAKER_FALLBACK"
-                                if dynamic_exit_due and close_info.get("taker_fallback_order")
-                                else "POST_ONLY_DYNAMIC_EXIT"
-                                if dynamic_exit_due
-                                else "POST_ONLY_EXIT_WITH_TAKER_FALLBACK"
-                                if close_info.get("taker_fallback_order")
-                                else "POST_ONLY_EXIT"
-                            ),
+                            order_type="POST_ONLY_DYNAMIC_EXIT" if dynamic_exit_due and not time_exit_due else "POST_ONLY_EXIT",
                             signal_id=str(open_state.get("signal_id")),
-                            status=str(close_info.get("status", "FILLED")),
-                            order_info=close_info,
+                            status="ERROR",
+                            order_info={},
+                            error=str(outcome.get("error")),
                         )
+                    continue
+
+                close_info = dict(outcome.get("close_info", {}))
+                open_state["last_close_order_info"] = close_info
+                fully_closed = bool(outcome.get("fully_closed"))
+                if not exec_cfg.dry_run:
+                    if fully_closed:
+                        order_type = (
+                            "POST_ONLY_DYNAMIC_EXIT_WITH_TAKER_FALLBACK"
+                            if dynamic_exit_due and close_info.get("taker_fallback_order")
+                            else "POST_ONLY_DYNAMIC_EXIT"
+                            if dynamic_exit_due
+                            else "POST_ONLY_EXIT_WITH_TAKER_FALLBACK"
+                            if close_info.get("taker_fallback_order")
+                            else "POST_ONLY_EXIT"
+                        )
+                    else:
+                        order_type = "POST_ONLY_DYNAMIC_EXIT" if dynamic_exit_due and not time_exit_due else "POST_ONLY_EXIT"
+                    _log_trade_execution(
+                        engine,
+                        strategy_name=cfg.strategy_name,
+                        sub_strategy_name=str(open_state.get("name", key)),
+                        exchange=cfg.exchange,
+                        symbol=exec_cfg.symbol,
+                        action="CLOSE",
+                        side="SELL" if str(open_state.get("side")).upper() == "LONG" else "BUY",
+                        position_side=str(open_state.get("side")),
+                        order_type=order_type,
+                        signal_id=str(open_state.get("signal_id")),
+                        status=str(close_info.get("status", "FILLED" if fully_closed else "PARTIAL_OR_TIMEOUT")),
+                        order_info=close_info,
+                    )
+                if fully_closed:
                     closed.append(key)
                     state["open_sleeves"].pop(key, None)
+                else:
+                    requested = Decimal(str(open_state.get("quantity", "0") or "0"))
+                    filled = Decimal(str(outcome.get("filled_quantity", "0") or "0"))
+                    open_state["quantity"] = str(max(Decimal("0"), requested - filled))
+                    open_state["close_pending"] = True
+                    state["open_sleeves"][key] = open_state
 
             opened: list[str] = []
             replaced_entry_orders = 0

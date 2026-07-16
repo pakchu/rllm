@@ -22,7 +22,9 @@ from execution.portfolio_live import (
     _add_live_volume_wave_features,
     _add_portfolio_oi_features,
     _cancel_stale_portfolio_orders,
+    _close_sleeve,
     _entry_ttl_seconds,
+    _execute_close_intents,
     _execute_open_intents,
     _finish_trade_intents,
     _completed_decision_data_asof,
@@ -330,6 +332,77 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             self.assertEqual([outcome["ok"] for outcome in outcomes], [True, False, True])
             self.assertLess(max(starts.values()) - min(starts.values()), 0.03)
             self.assertIn("exchange rejected", outcomes[1]["error"])
+
+        asyncio.run(run())
+
+    def test_close_order_tasks_run_concurrently_and_isolate_one_failure(self):
+        async def run():
+            starts = {}
+
+            class Client:
+                async def get_ticker_price(self, symbol):
+                    return 100.0
+
+            async def fake_close(*, sleeve_state, **kwargs):
+                starts[sleeve_state["name"]] = asyncio.get_running_loop().time()
+                await asyncio.sleep(0.05)
+                if sleeve_state["name"] == "bad":
+                    raise RuntimeError("close rejected")
+                return {"status": "FILLED", "filled_quantity": sleeve_state["quantity"]}
+
+            async def fake_report(**kwargs):
+                return kwargs["order_info"]
+
+            intents = [
+                {
+                    "key": name,
+                    "open_state": {"name": name, "signal_id": f"{name}:1", "side": "LONG", "quantity": "0.01"},
+                    "time_exit_due": True,
+                    "dynamic_exit_due": False,
+                }
+                for name in ("good_a", "bad", "good_b")
+            ]
+            with patch("execution.portfolio_live._close_sleeve", new=fake_close), patch(
+                "execution.portfolio_live._attach_exchange_trade_report", new=fake_report
+            ):
+                outcomes = await _execute_close_intents(
+                    intents=intents,
+                    client=Client(),
+                    executor=object(),
+                    exec_cfg=WaveExecutionConfig(dry_run=False, allow_live_orders=True),
+                    max_exit_wait_sec=30,
+                    exit_maker_max_deviation_pct=0.002,
+                    maker_refresh_interval_sec=60,
+                )
+            self.assertEqual([outcome["ok"] for outcome in outcomes], [True, False, True])
+            self.assertLess(max(starts.values()) - min(starts.values()), 0.03)
+            self.assertIn("close rejected", outcomes[1]["error"])
+
+        asyncio.run(run())
+
+    def test_close_preserves_partial_fill_when_taker_fallback_fails(self):
+        async def run():
+            class Client:
+                async def place_market(self, **kwargs):
+                    raise RuntimeError("market unavailable")
+
+            async def fake_maker(**kwargs):
+                return {"status": "PARTIAL_CANCELLED", "filled_quantity": "0.004"}
+
+            with patch("execution.portfolio_live._place_portfolio_maker_order_with_deadline", new=fake_maker):
+                result = await _close_sleeve(
+                    client=Client(),
+                    executor=object(),
+                    sleeve_state={"name": "alpha", "signal_id": "alpha:1", "side": "LONG", "quantity": "0.01"},
+                    exec_cfg=WaveExecutionConfig(),
+                    ttl_sec=30,
+                    reference_price=100.0,
+                    max_deviation_pct=0.002,
+                    refresh_interval_sec=60,
+                )
+            self.assertEqual(result["status"], "PARTIAL_TAKER_FALLBACK_FAILED")
+            self.assertEqual(result["filled_quantity"], "0.004")
+            self.assertIn("market unavailable", result["taker_fallback_error"])
 
         asyncio.run(run())
 
