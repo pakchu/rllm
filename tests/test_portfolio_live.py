@@ -25,6 +25,7 @@ from execution.portfolio_live import (
     _gate_clauses_pass,
     _gate_pass,
     _freshness_requirements_for_decision,
+    _interval_slot,
     _portfolio_uses_feature,
     _validate_portfolio_mode,
 )
@@ -80,6 +81,31 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
         with open("configs/live/portfolio_gross385_trainmdd40_2026-07-12.json") as handle:
             portfolio = json.load(handle)
         _validate_portfolio_mode(portfolio, live=True)
+
+    def test_live_alpha_stride_contract_matches_historical_grid(self):
+        import json
+
+        anchor = pd.Timestamp("2020-01-01T02:55:00Z")
+        cases = [
+            ("configs/live/oi_upbit_ratio288_low_candidate.json", 6, 5),
+            ("configs/live/new_long_minimal_funding_premium_candidate.json", 12, 11),
+            ("configs/live/rex_veto_7_candidate.json", 24, 11),
+        ]
+        for path, stride, offset in cases:
+            with self.subTest(path=path):
+                with open(path) as handle:
+                    candidate = json.load(handle)
+                self.assertEqual(candidate["stride_bars"], stride)
+                self.assertEqual(candidate["stride_offset_bars"], offset)
+                self.assertEqual(candidate["entry_delay_bars"], 1)
+                self.assertTrue(
+                    _interval_slot(
+                        anchor,
+                        stride_bars=stride,
+                        interval_minutes=5,
+                        stride_offset_bars=offset,
+                    )
+                )
 
     def test_gate_clauses_are_or_of_and_groups(self):
         row = pd.Series({"a": 2.0, "b": 0.0, "c": 3.0, "d": 4.0})
