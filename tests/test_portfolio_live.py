@@ -1,11 +1,13 @@
 import asyncio
 import json
 import os
+import sys
 import tempfile
 import unittest
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -14,11 +16,15 @@ from execution.portfolio_live import (
     AlphaProcessManager,
     PORTFOLIO_ORDER_PREFIX,
     PortfolioLiveConfig,
+    _acquire_portfolio_runner_lock,
+    _build_open_intents,
     _cancel_portfolio_orders_for_sleeve,
     _add_live_volume_wave_features,
     _add_portfolio_oi_features,
     _cancel_stale_portfolio_orders,
     _entry_ttl_seconds,
+    _execute_open_intents,
+    _finish_trade_intents,
     _completed_decision_data_asof,
     _margin_fraction_for_weight,
     _load_sleeve_runtime_spec,
@@ -34,6 +40,8 @@ from execution.portfolio_live import (
     _freshness_requirements_for_decision,
     _interval_slot,
     _portfolio_uses_feature,
+    _release_portfolio_runner_lock,
+    _reserve_trade_intents,
     _validate_portfolio_mode,
 )
 
@@ -251,6 +259,159 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             self.assertTrue(any("alpha_worker_error=JSONDecodeError" in reason for reason in scores[2]["reasons"]))
 
         asyncio.run(run())
+
+    def test_runner_lock_prevents_two_parent_coordinators(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_file = Path(tmp) / "state.json"
+            first = _acquire_portfolio_runner_lock(state_file)
+            try:
+                with self.assertRaisesRegex(RuntimeError, "already owns state lock"):
+                    _acquire_portfolio_runner_lock(state_file)
+            finally:
+                _release_portfolio_runner_lock(first)
+            second = _acquire_portfolio_runner_lock(state_file)
+            _release_portfolio_runner_lock(second)
+
+    def test_open_intent_builder_filters_state_without_mutating_scores(self):
+        scores = [
+            {"name": "new", "signal_id": "new:1", "active": True, "side": "LONG", "weight": 0.6, "current_close": 100.0, "hold_bars": 12, "stride_bars": 1},
+            {"name": "open", "signal_id": "open:1", "active": True, "side": "LONG", "weight": 0.2, "current_close": 100.0, "hold_bars": 12, "stride_bars": 1},
+            {"name": "done", "signal_id": "done:1", "active": True, "side": "SHORT", "weight": 0.2, "current_close": 100.0, "hold_bars": 12, "stride_bars": 1},
+        ]
+        before = json.loads(json.dumps(scores))
+        intents = _build_open_intents(
+            sleeve_scores=scores,
+            state={"open_sleeves": {"open": {}}, "processed_signals": {"done": "done:1"}},
+            total_weight=1.0,
+            leverage_budget=6.0,
+            allocation_mode="research_gross",
+            exec_cfg=WaveExecutionConfig(leverage=6),
+            entry_timeout_fraction=0.25,
+            max_entry_wait_sec=300,
+            entry_maker_max_deviation_pct=0.003,
+            maker_refresh_interval_sec=60,
+        )
+        self.assertEqual([intent["sleeve"]["name"] for intent in intents], ["new"])
+        self.assertAlmostEqual(intents[0]["margin_fraction"], 0.1)
+        self.assertEqual(scores, before)
+
+    def test_open_order_tasks_run_concurrently_and_isolate_one_failure(self):
+        async def run():
+            starts = {}
+
+            async def fake_cancel(**kwargs):
+                return []
+
+            async def fake_open(*, sleeve, **kwargs):
+                starts[sleeve["name"]] = asyncio.get_running_loop().time()
+                await asyncio.sleep(0.05)
+                if sleeve["name"] == "bad":
+                    raise RuntimeError("exchange rejected")
+                return {"filled_quantity": "0.01", "order": {"status": "FILLED"}}
+
+            intents = [
+                {
+                    "sleeve": {"name": name, "signal_id": f"{name}:1", "side": "LONG", "current_close": 100.0},
+                    "margin_fraction": 0.1,
+                    "entry_ttl_sec": 30,
+                }
+                for name in ("good_a", "bad", "good_b")
+            ]
+            with patch("execution.portfolio_live._cancel_portfolio_orders_for_sleeve", new=fake_cancel), patch(
+                "execution.portfolio_live._open_sleeve", new=fake_open
+            ):
+                outcomes = await _execute_open_intents(
+                    intents=intents,
+                    client=object(),
+                    executor=object(),
+                    exec_cfg=WaveExecutionConfig(dry_run=False, allow_live_orders=True),
+                )
+            self.assertEqual([outcome["ok"] for outcome in outcomes], [True, False, True])
+            self.assertLess(max(starts.values()) - min(starts.values()), 0.03)
+            self.assertIn("exchange rejected", outcomes[1]["error"])
+
+        asyncio.run(run())
+
+    def test_db_reservation_batch_is_atomic_and_duplicate_safe(self):
+        class FakeResult:
+            def __init__(self, row=None):
+                self.row = row
+
+            def mappings(self):
+                return self
+
+            def one_or_none(self):
+                return self.row
+
+        class FakeEngine:
+            def __init__(self):
+                self.keys = set()
+                self.begin_count = 0
+                self.updates = []
+
+            def begin(self):
+                engine = self
+
+                class Context:
+                    def __enter__(self):
+                        engine.begin_count += 1
+                        return self
+
+                    def __exit__(self, *args):
+                        return False
+
+                    def execute(self, statement, params):
+                        if str(statement).lstrip().startswith("INSERT"):
+                            key = (params["strategy_name"], params["sub_strategy_name"], params["signal_id"], "OPEN")
+                            if key in engine.keys:
+                                return FakeResult()
+                            engine.keys.add(key)
+                            return FakeResult(
+                                {"sub_strategy_name": params["sub_strategy_name"], "signal_id": params["signal_id"]}
+                            )
+                        engine.updates.append(dict(params))
+                        return FakeResult()
+
+                return Context()
+
+        intents = [
+            {"sleeve": {"name": name, "signal_id": f"{name}:1", "side": "LONG", "weight": 0.5}, "margin_fraction": 0.1, "entry_ttl_sec": 30}
+            for name in ("a", "b")
+        ]
+        engine = FakeEngine()
+        fake_sqlalchemy = SimpleNamespace(text=lambda statement: statement)
+        with patch.dict(sys.modules, {"sqlalchemy": fake_sqlalchemy}):
+            first = _reserve_trade_intents(
+                engine,
+                strategy_name="rllm",
+                exchange="binance",
+                symbol="BTCUSDT",
+                owner_id="owner-1",
+                intents=intents,
+            )
+            second = _reserve_trade_intents(
+                engine,
+                strategy_name="rllm",
+                exchange="binance",
+                symbol="BTCUSDT",
+                owner_id="owner-2",
+                intents=intents,
+            )
+        self.assertEqual(first, {("a", "a:1"), ("b", "b:1")})
+        self.assertEqual(second, set())
+        outcomes = [
+            {"intent": intents[0], "reservation_status": "FILLED", "order_status": "FILLED", "filled_quantity": "0.01", "error": None},
+            {"intent": intents[1], "reservation_status": "ERROR", "order_status": "ERROR", "filled_quantity": "0", "error": "boom"},
+        ]
+        with patch.dict(sys.modules, {"sqlalchemy": fake_sqlalchemy}):
+            _finish_trade_intents(
+                engine,
+                strategy_name="rllm",
+                owner_id="owner-1",
+                outcomes=outcomes,
+            )
+        self.assertEqual(engine.begin_count, 3)
+        self.assertEqual([update["status"] for update in engine.updates], ["FILLED", "ERROR"])
 
     def test_gate_clauses_are_or_of_and_groups(self):
         row = pd.Series({"a": 2.0, "b": 0.0, "c": 3.0, "d": 4.0})

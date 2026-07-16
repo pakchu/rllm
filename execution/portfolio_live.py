@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import fcntl
 import hashlib
 import json
 import logging
@@ -854,6 +855,24 @@ def _ensure_trade_executions_table(engine: Any) -> None:
             payload JSONB NOT NULL DEFAULT '{}'::jsonb
         )
         """
+    reservation_ddl = """
+        CREATE TABLE IF NOT EXISTS trade_execution_reservations (
+            strategy_name TEXT NOT NULL,
+            sub_strategy_name TEXT NOT NULL,
+            signal_id TEXT NOT NULL,
+            action TEXT NOT NULL,
+            exchange TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            status TEXT NOT NULL,
+            owner_id TEXT NOT NULL,
+            reserved_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            expires_at TIMESTAMPTZ,
+            finished_at TIMESTAMPTZ,
+            error TEXT,
+            payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+            PRIMARY KEY (strategy_name, sub_strategy_name, signal_id, action)
+        )
+        """
     migrations = [
         "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS realized_pnl NUMERIC",
         "ALTER TABLE trade_executions ADD COLUMN IF NOT EXISTS commission NUMERIC",
@@ -867,6 +886,7 @@ def _ensure_trade_executions_table(engine: Any) -> None:
     ]
     with engine.begin() as conn:
         conn.execute(text(ddl))
+        conn.execute(text(reservation_ddl))
         for stmt in migrations:
             conn.execute(text(stmt))
         for stmt in indexes:
@@ -967,6 +987,131 @@ def _log_trade_execution(
         )
 
 
+def _reserve_trade_intents(
+    engine: Any,
+    *,
+    strategy_name: str,
+    exchange: str,
+    symbol: str,
+    owner_id: str,
+    intents: list[dict[str, Any]],
+) -> set[tuple[str, str]]:
+    """Atomically reserve all entry intents in one DB transaction.
+
+    The unique key protects against a second portfolio runner or a restart
+    racing the same signal.  A reservation is deliberately not reclaimed
+    automatically: after an ambiguous exchange/network failure, retrying can
+    duplicate a filled order.
+    """
+
+    if not intents:
+        return set()
+    from sqlalchemy import text
+
+    sql = text(
+        """
+        INSERT INTO trade_execution_reservations (
+            strategy_name, sub_strategy_name, signal_id, action,
+            exchange, symbol, status, owner_id, expires_at, payload
+        ) VALUES (
+            :strategy_name, :sub_strategy_name, :signal_id, 'OPEN',
+            :exchange, :symbol, 'RESERVED', :owner_id, :expires_at,
+            CAST(:payload AS jsonb)
+        )
+        ON CONFLICT (strategy_name, sub_strategy_name, signal_id, action)
+        DO NOTHING
+        RETURNING sub_strategy_name, signal_id
+        """
+    )
+    reserved: set[tuple[str, str]] = set()
+    with engine.begin() as conn:
+        for intent in intents:
+            sleeve = intent["sleeve"]
+            name = str(sleeve["name"])
+            signal_id = str(sleeve["signal_id"])
+            expires_at = pd.Timestamp.utcnow() + pd.Timedelta(
+                seconds=max(60, int(intent["entry_ttl_sec"]) + 60)
+            )
+            result = conn.execute(
+                sql,
+                {
+                    "strategy_name": strategy_name,
+                    "sub_strategy_name": name,
+                    "signal_id": signal_id,
+                    "exchange": exchange,
+                    "symbol": symbol,
+                    "owner_id": owner_id,
+                    "expires_at": expires_at.to_pydatetime(),
+                    "payload": json.dumps(
+                        {
+                            "side": sleeve.get("side"),
+                            "weight": sleeve.get("weight"),
+                            "margin_fraction": intent.get("margin_fraction"),
+                            "entry_ttl_sec": intent.get("entry_ttl_sec"),
+                        },
+                        ensure_ascii=False,
+                        default=str,
+                    ),
+                },
+            )
+            row = result.mappings().one_or_none()
+            if row is not None:
+                reserved.add((str(row["sub_strategy_name"]), str(row["signal_id"])))
+    return reserved
+
+
+def _finish_trade_intents(
+    engine: Any,
+    *,
+    strategy_name: str,
+    owner_id: str,
+    outcomes: list[dict[str, Any]],
+) -> None:
+    """Finalize all reservations in one DB transaction after concurrent IO."""
+
+    if not outcomes:
+        return
+    from sqlalchemy import text
+
+    sql = text(
+        """
+        UPDATE trade_execution_reservations
+        SET status = :status,
+            finished_at = now(),
+            error = :error,
+            payload = payload || CAST(:payload AS jsonb)
+        WHERE strategy_name = :strategy_name
+          AND sub_strategy_name = :sub_strategy_name
+          AND signal_id = :signal_id
+          AND action = 'OPEN'
+          AND owner_id = :owner_id
+        """
+    )
+    with engine.begin() as conn:
+        for outcome in outcomes:
+            intent = outcome["intent"]
+            sleeve = intent["sleeve"]
+            conn.execute(
+                sql,
+                {
+                    "status": str(outcome.get("reservation_status", "ERROR")),
+                    "error": outcome.get("error"),
+                    "payload": json.dumps(
+                        {
+                            "order_status": outcome.get("order_status"),
+                            "filled_quantity": outcome.get("filled_quantity"),
+                        },
+                        ensure_ascii=False,
+                        default=str,
+                    ),
+                    "strategy_name": strategy_name,
+                    "sub_strategy_name": str(sleeve["name"]),
+                    "signal_id": str(sleeve["signal_id"]),
+                    "owner_id": owner_id,
+                },
+            )
+
+
 def _load_state(path: str | Path) -> dict[str, Any]:
     p = Path(path)
     if not p.exists():
@@ -980,6 +1125,38 @@ def _load_state(path: str | Path) -> dict[str, Any]:
     data.setdefault("open_sleeves", {})
     data.setdefault("processed_signals", {})
     return data
+
+
+def _acquire_portfolio_runner_lock(state_file: str | Path) -> Any:
+    """Hold one parent coordinator per state ledger.
+
+    Score workers never acquire this lock and cannot mutate the ledger.  The
+    lock prevents two local parents from concurrently reconciling positions or
+    writing the same JSON state.
+    """
+
+    lock_path = Path(f"{Path(state_file)}.lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = lock_path.open("a+")
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        handle.close()
+        raise RuntimeError(f"portfolio runner already owns state lock: {lock_path}") from exc
+    handle.seek(0)
+    handle.truncate()
+    handle.write(f"pid={os.getpid()} acquired_at={pd.Timestamp.utcnow()}\n")
+    handle.flush()
+    return handle
+
+
+def _release_portfolio_runner_lock(handle: Any | None) -> None:
+    if handle is None:
+        return
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    finally:
+        handle.close()
 
 
 def _required_availability_flags(feature: str) -> tuple[str, ...]:
@@ -2679,6 +2856,125 @@ async def _open_sleeve(
         "equity_basis": total_equity,
     }
 
+
+def _build_open_intents(
+    *,
+    sleeve_scores: list[dict[str, Any]],
+    state: dict[str, Any],
+    total_weight: float,
+    leverage_budget: float,
+    allocation_mode: str,
+    exec_cfg: WaveExecutionConfig,
+    entry_timeout_fraction: float,
+    max_entry_wait_sec: int,
+    entry_maker_max_deviation_pct: float,
+    maker_refresh_interval_sec: int,
+) -> list[dict[str, Any]]:
+    """Build immutable, de-duplicated order intents from score/state snapshots."""
+
+    open_sleeves = state.get("open_sleeves", {})
+    processed = state.get("processed_signals", {})
+    intents: list[dict[str, Any]] = []
+    for raw_sleeve in sleeve_scores:
+        name = str(raw_sleeve["name"])
+        signal_id = str(raw_sleeve["signal_id"])
+        if not raw_sleeve.get("active") or name in open_sleeves or processed.get(name) == signal_id:
+            continue
+        current_close = float(raw_sleeve.get("current_close", 0.0) or 0.0)
+        if not np.isfinite(current_close) or current_close <= 0.0:
+            continue
+        sleeve = dict(raw_sleeve)
+        sleeve["entry_maker_max_deviation_pct"] = float(entry_maker_max_deviation_pct)
+        sleeve["maker_refresh_interval_sec"] = int(maker_refresh_interval_sec)
+        margin_fraction = _margin_fraction_for_weight(
+            weight=float(sleeve["weight"]),
+            total_weight=float(total_weight),
+            leverage_budget=float(leverage_budget),
+            allocation_mode=allocation_mode,
+        )
+        intents.append(
+            {
+                "sleeve": sleeve,
+                "margin_fraction": margin_fraction,
+                "entry_ttl_sec": _entry_ttl_seconds(
+                    sleeve,
+                    interval_minutes=exec_cfg.interval_minutes,
+                    timeout_fraction=entry_timeout_fraction,
+                    max_entry_wait_sec=max_entry_wait_sec,
+                ),
+            }
+        )
+    return intents
+
+
+async def _execute_open_intents(
+    *,
+    intents: list[dict[str, Any]],
+    client: Any | None,
+    executor: Any | None,
+    exec_cfg: WaveExecutionConfig,
+) -> list[dict[str, Any]]:
+    """Submit independent sleeve orders concurrently and isolate failures."""
+
+    async def execute_one(intent: dict[str, Any]) -> dict[str, Any]:
+        sleeve = intent["sleeve"]
+        name = str(sleeve["name"])
+        try:
+            replaced: list[dict[str, Any]] = []
+            if exec_cfg.dry_run:
+                quantity = str(
+                    (100.0 * float(intent["margin_fraction"]) * exec_cfg.leverage)
+                    / float(sleeve["current_close"])
+                )
+                order_info: dict[str, Any] = {
+                    "status": "DRY_RUN",
+                    "entry_ttl_sec": int(intent["entry_ttl_sec"]),
+                    "filled_quantity": quantity,
+                }
+            else:
+                if client is None or executor is None:
+                    raise RuntimeError("live order intent requires exchange client and executor")
+                replaced = await _cancel_portfolio_orders_for_sleeve(
+                    client=client,
+                    symbol=exec_cfg.symbol,
+                    sleeve_name=name,
+                    reason="new_signal_replaces_stale_entry",
+                )
+                order_info = await _open_sleeve(
+                    client=client,
+                    executor=executor,
+                    exec_cfg=exec_cfg,
+                    sleeve=sleeve,
+                    margin_fraction=float(intent["margin_fraction"]),
+                    entry_ttl_sec=int(intent["entry_ttl_sec"]),
+                )
+                quantity = str(order_info.get("filled_quantity") or "0")
+            filled = Decimal(str(quantity or "0"))
+            order_payload = order_info.get("order", order_info)
+            return {
+                "intent": intent,
+                "ok": True,
+                "replaced": replaced,
+                "order_info": order_info,
+                "filled_quantity": str(filled),
+                "order_status": str(order_payload.get("status", "")),
+                "reservation_status": "FILLED" if filled > 0 else "MISSED",
+                "error": None,
+            }
+        except Exception as exc:
+            return {
+                "intent": intent,
+                "ok": False,
+                "replaced": [],
+                "order_info": {},
+                "filled_quantity": "0",
+                "order_status": "ERROR",
+                "reservation_status": "ERROR",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+
+    return list(await asyncio.gather(*(execute_one(intent) for intent in intents)))
+
 async def _close_sleeve(
     *,
     client: Any,
@@ -2970,25 +3266,36 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
         raise RuntimeError("portfolio weights sum to zero")
     audit = _allocation_audit(portfolio, leverage_budget=float(cfg.leverage), allocation_mode=cfg.allocation_mode)
 
-    engine = sqlalchemy_engine_from_env(cfg.env_path)
-    _ensure_trade_executions_table(engine)
-    source_cache = LiveSourceFrameCache()
-    feature_cache = LiveFeatureFrameCache()
-    oi_cache = LiveOiFrameCache()
-    external_cache = LiveExternalFrameCache()
-    alt_pool_cache = LiveAltPoolFrameCache()
-    alpha_processes = (
-        AlphaProcessManager(
-            portfolio["base_sleeves"],
-            timeout_sec=cfg.alpha_worker_timeout_sec,
-            start_method=cfg.alpha_worker_start_method,
-        )
-        if cfg.parallel_alpha_scoring
-        else None
-    )
+    runner_id = f"pid-{os.getpid()}-{time.time_ns()}"
+    runner_lock = _acquire_portfolio_runner_lock(cfg.state_file)
+    alpha_processes: AlphaProcessManager | None = None
     client = executor = None
-    if not exec_cfg.dry_run:
-        client, executor = await _make_executor(exec_cfg)
+    try:
+        engine = sqlalchemy_engine_from_env(cfg.env_path)
+        _ensure_trade_executions_table(engine)
+        source_cache = LiveSourceFrameCache()
+        feature_cache = LiveFeatureFrameCache()
+        oi_cache = LiveOiFrameCache()
+        external_cache = LiveExternalFrameCache()
+        alt_pool_cache = LiveAltPoolFrameCache()
+        alpha_processes = (
+            AlphaProcessManager(
+                portfolio["base_sleeves"],
+                timeout_sec=cfg.alpha_worker_timeout_sec,
+                start_method=cfg.alpha_worker_start_method,
+            )
+            if cfg.parallel_alpha_scoring
+            else None
+        )
+        if not exec_cfg.dry_run:
+            client, executor = await _make_executor(exec_cfg)
+    except BaseException:
+        if alpha_processes is not None:
+            await alpha_processes.shutdown()
+        if client is not None:
+            await client.aclose()
+        _release_portfolio_runner_lock(runner_lock)
+        raise
     first = True
     try:
         iterations = 0
@@ -3233,53 +3540,110 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
 
             opened: list[str] = []
             replaced_entry_orders = 0
-            for sleeve in sleeve_scores:
-                name = sleeve["name"]
-                signal_id = sleeve["signal_id"]
-                if not sleeve["active"]:
-                    continue
-                if name in state["open_sleeves"]:
-                    continue
-                if state["processed_signals"].get(name) == signal_id:
-                    continue
-                margin_fraction = _margin_fraction_for_weight(
-                    weight=float(sleeve["weight"]),
-                    total_weight=total_weight,
-                    leverage_budget=float(cfg.leverage),
-                    allocation_mode=cfg.allocation_mode,
+            entry_intents = _build_open_intents(
+                sleeve_scores=sleeve_scores,
+                state=state,
+                total_weight=total_weight,
+                leverage_budget=float(cfg.leverage),
+                allocation_mode=cfg.allocation_mode,
+                exec_cfg=exec_cfg,
+                entry_timeout_fraction=cfg.entry_timeout_fraction,
+                max_entry_wait_sec=cfg.max_entry_wait_sec,
+                entry_maker_max_deviation_pct=cfg.entry_maker_max_deviation_pct,
+                maker_refresh_interval_sec=cfg.maker_refresh_interval_sec,
+            )
+            reservation_conflicts: list[dict[str, Any]] = []
+            if not exec_cfg.dry_run:
+                reserved = await asyncio.to_thread(
+                    _reserve_trade_intents,
+                    engine,
+                    strategy_name=cfg.strategy_name,
+                    exchange=cfg.exchange,
+                    symbol=exec_cfg.symbol,
+                    owner_id=runner_id,
+                    intents=entry_intents,
                 )
-                quantity = "0"
-                order_info: dict[str, Any] = {}
-                entry_ttl_sec = _entry_ttl_seconds(
-                    sleeve,
-                    interval_minutes=exec_cfg.interval_minutes,
-                    timeout_fraction=cfg.entry_timeout_fraction,
-                    max_entry_wait_sec=cfg.max_entry_wait_sec,
-                )
-                sleeve["entry_maker_max_deviation_pct"] = float(cfg.entry_maker_max_deviation_pct)
-                sleeve["maker_refresh_interval_sec"] = int(cfg.maker_refresh_interval_sec)
+                accepted: list[dict[str, Any]] = []
+                for intent in entry_intents:
+                    sleeve = intent["sleeve"]
+                    key = (str(sleeve["name"]), str(sleeve["signal_id"]))
+                    if key in reserved:
+                        accepted.append(intent)
+                        continue
+                    conflict = {
+                        "name": key[0],
+                        "signal_id": key[1],
+                        "reason": "db_execution_reservation_conflict",
+                        "recorded_at": str(pd.Timestamp.utcnow()),
+                    }
+                    reservation_conflicts.append(conflict)
+                    state["processed_signals"][key[0]] = key[1]
+                entry_intents = accepted
+            entry_outcomes = await _execute_open_intents(
+                intents=entry_intents,
+                client=client,
+                executor=executor,
+                exec_cfg=exec_cfg,
+            )
+            if not exec_cfg.dry_run:
+                try:
+                    await asyncio.to_thread(
+                        _finish_trade_intents,
+                        engine,
+                        strategy_name=cfg.strategy_name,
+                        owner_id=runner_id,
+                        outcomes=entry_outcomes,
+                    )
+                except Exception as exc:
+                    state["last_reservation_finalize_error"] = f"{type(exc).__name__}: {exc}"
+
+            for outcome in entry_outcomes:
+                intent = outcome["intent"]
+                sleeve = intent["sleeve"]
+                name = str(sleeve["name"])
+                signal_id = str(sleeve["signal_id"])
+                margin_fraction = float(intent["margin_fraction"])
+                entry_ttl_sec = int(intent["entry_ttl_sec"])
+                replaced = list(outcome.get("replaced", []))
+                if replaced:
+                    replaced_entry_orders += len(replaced)
+                    state["last_replaced_entry_orders"] = replaced
+                    history = list(state.get("replaced_entry_order_history", []))
+                    history.extend(replaced)
+                    state["replaced_entry_order_history"] = history[-200:]
+                state["processed_signals"][name] = signal_id
+                if not outcome.get("ok"):
+                    errors = list(state.get("entry_order_errors", []))
+                    errors.append(
+                        {
+                            "name": name,
+                            "signal_id": signal_id,
+                            "error": outcome.get("error"),
+                            "recorded_at": str(pd.Timestamp.utcnow()),
+                        }
+                    )
+                    state["entry_order_errors"] = errors[-200:]
+                    if not exec_cfg.dry_run:
+                        _log_trade_execution(
+                            engine,
+                            strategy_name=cfg.strategy_name,
+                            sub_strategy_name=name,
+                            exchange=cfg.exchange,
+                            symbol=exec_cfg.symbol,
+                            action="OPEN",
+                            side="BUY" if sleeve["side"] == "LONG" else "SELL",
+                            position_side=str(sleeve["side"]),
+                            order_type="POST_ONLY_ENTRY",
+                            signal_id=signal_id,
+                            status="ERROR",
+                            order_info={},
+                            computing_wall_time_sec=frame_build_sec + alpha_score_sec,
+                            error=str(outcome.get("error")),
+                        )
+                    continue
+                order_info = dict(outcome.get("order_info", {}))
+                quantity = str(outcome.get("filled_quantity") or "0")
                 if not exec_cfg.dry_run:
-                    assert client is not None and executor is not None
-                    replaced = await _cancel_portfolio_orders_for_sleeve(
-                        client=client,
-                        symbol=exec_cfg.symbol,
-                        sleeve_name=name,
-                        reason="new_signal_replaces_stale_entry",
-                    )
-                    if replaced:
-                        replaced_entry_orders += len(replaced)
-                        state["last_replaced_entry_orders"] = replaced
-                        history = list(state.get("replaced_entry_order_history", []))
-                        history.extend(replaced)
-                        state["replaced_entry_order_history"] = history[-200:]
-                    order_info = await _open_sleeve(
-                        client=client,
-                        executor=executor,
-                        exec_cfg=exec_cfg,
-                        sleeve=sleeve,
-                        margin_fraction=margin_fraction,
-                        entry_ttl_sec=entry_ttl_sec,
-                    )
                     _log_trade_execution(
                         engine,
                         strategy_name=cfg.strategy_name,
@@ -3291,29 +3655,24 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         position_side=str(sleeve["side"]),
                         order_type="POST_ONLY_ENTRY",
                         signal_id=signal_id,
-                        status=str(order_info.get("order", {}).get("status", "")),
+                        status=str(outcome.get("order_status", "")),
                         order_info=order_info.get("order", order_info),
-                        computing_wall_time_sec=frame_build_sec,
+                        computing_wall_time_sec=frame_build_sec + alpha_score_sec,
                     )
-                    quantity = str(order_info.get("filled_quantity") or "0")
-                    if Decimal(str(quantity)) <= Decimal("0"):
-                        state["processed_signals"][name] = signal_id
-                        missed = list(state.get("missed_entries", []))
-                        missed.append(
-                            {
-                                "name": name,
-                                "signal_id": signal_id,
-                                "reason": "post_only_entry_not_filled",
-                                "entry_ttl_sec": entry_ttl_sec,
-                                "order_info": order_info,
-                                "recorded_at": str(pd.Timestamp.utcnow()),
-                            }
-                        )
-                        state["missed_entries"] = missed[-200:]
-                        continue
-                else:
-                    quantity = str((100.0 * margin_fraction * exec_cfg.leverage) / float(sleeve["current_close"]))
-                    order_info = {"status": "DRY_RUN", "entry_ttl_sec": entry_ttl_sec, "filled_quantity": quantity}
+                if Decimal(quantity) <= Decimal("0"):
+                    missed = list(state.get("missed_entries", []))
+                    missed.append(
+                        {
+                            "name": name,
+                            "signal_id": signal_id,
+                            "reason": "post_only_entry_not_filled",
+                            "entry_ttl_sec": entry_ttl_sec,
+                            "order_info": order_info,
+                            "recorded_at": str(pd.Timestamp.utcnow()),
+                        }
+                    )
+                    state["missed_entries"] = missed[-200:]
+                    continue
                 signal_ts = pd.Timestamp(sleeve["date"])
                 if signal_ts.tzinfo is None:
                     signal_ts = signal_ts.tz_localize("UTC")
@@ -3335,8 +3694,13 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     "order_info": order_info,
                     "dynamic_exit": sleeve.get("dynamic_exit"),
                 }
-                state["processed_signals"][name] = signal_id
                 opened.append(name)
+
+            if reservation_conflicts:
+                history = list(state.get("execution_reservation_conflicts", []))
+                history.extend(reservation_conflicts)
+                state["execution_reservation_conflicts"] = history[-200:]
+                state["last_execution_reservation_conflicts"] = reservation_conflicts
 
             state["updated_at"] = str(pd.Timestamp.utcnow())
             state["last_scores"] = sleeve_scores
@@ -3384,6 +3748,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             await alpha_processes.shutdown()
         if client is not None:
             await client.aclose()
+        _release_portfolio_runner_lock(runner_lock)
 
 
 def parse_args() -> argparse.Namespace:
