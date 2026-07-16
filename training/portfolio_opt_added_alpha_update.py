@@ -65,6 +65,7 @@ from training.search_gaussian_hmm_regime_alpha import hourly_features
 OUTPUT = "results/portfolio_added_alpha_update_2026-07-16.json"
 DOCS_OUTPUT = "docs/portfolio-added-alpha-update-2026-07-16.md"
 CANDIDATE_CONFIG = "configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json"
+ACCOUNTING_VERSION = "same_btc_low_high_v1"
 
 LIVE_WEIGHTS = {
     "oi_upbit_ratio288_low": 0.65,
@@ -1139,6 +1140,7 @@ def render_docs(report: dict[str, Any]) -> str:
         "",
         f"- Gross <= {report['config']['gross_cap']}; family gross <= {report['config']['family_gross_cap']}.",
         f"- Non-zero weight >= {report['config']['min_nonzero_weight']}; step = {report['config']['weight_step']}.",
+        f"- Accounting `{report['accounting_version']}`; protocol `{report['protocol_hash']}`.",
         "- Allocation ranking uses train and 2024 only.",
         "- Two deterministic seed pools plus exact 0.05-grid beam refinement (3 stalled rounds patience) are ranked on the shared 5-minute clock; there is no daily shortlist.",
         "- Exact score ties prefer lower gross, then lexicographically lower sleeve weights.",
@@ -1305,6 +1307,7 @@ def run(cfg: Config) -> dict[str, Any]:
     report = {
         "as_of": datetime.now(timezone.utc).isoformat(),
         "schema_version": 1,
+        "accounting_version": ACCOUNTING_VERSION,
         "mode": "frozen_pre2025_allocation_rank_future_veto_only",
         "config": asdict(cfg),
         "protocol_hash": json_hash(
@@ -1339,6 +1342,7 @@ def run(cfg: Config) -> dict[str, Any]:
                 "input_sha256": {
                     name: record["sha256"] for name, record in input_provenance.items()
                 },
+                "accounting_version": ACCOUNTING_VERSION,
                 "selection": (
                     "train+test2024 only; exact multi-seed beam refinement; "
                     "tie=lower gross then lexicographic weights; future veto cannot rerank"
@@ -1400,6 +1404,7 @@ def run(cfg: Config) -> dict[str, Any]:
         "research_contaminated": True,
         "source_result": cfg.output,
         "protocol_hash": report["protocol_hash"],
+        "accounting_version": ACCOUNTING_VERSION,
     }
     candidate_path = Path(cfg.candidate_config)
     candidate_path.parent.mkdir(parents=True, exist_ok=True)

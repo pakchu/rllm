@@ -4,8 +4,8 @@
   "protocol": {
     "split": "train<2024, test=2024, eval=2025, ytd2026=2026-01-01..data_end",
     "cost_default": "6bp/side",
-    "weight_constraints_current": "nonzero weights >=0.10, multiples of 0.05; leverage/gross can be high but MDD constraints dominate",
-    "strict_mdd": "weighted intrabar adverse move and period-contained exits",
+    "weight_constraints_current": "added-alpha update: nonzero weights >=0.25, step 0.05, gross <=10, family gross <=2",
+    "strict_mdd": "shared 5-minute same-BTC low/high marks; same-bar upper is applied before lower and the peak spans the full calendar split",
     "trading_target_asset": "BTC portfolio sleeves unless an entry explicitly says otherwise; external features do not change target asset.",
     "trade_orthogonality": "Diversification claims require actual executed-entry, occupied-position, and zero-filled daily marked-PnL correlation; feature activation correlation is diagnostic only.",
     "fixed_subaccount_mdd": "For overlapping BTC sleeves, combine independently funded subaccount values on one synchronized BTC OHLC clock before strict MDD; never serially merge trades or combine impossible independent favorable/adverse prices."
@@ -14,7 +14,7 @@
     {
       "id": "live_gross575_e39_reference",
       "name": "Current live/reference gross 5.75 combo from e39d8e66",
-      "status": "live",
+      "status": "superseded",
       "family": "multi_sleeve_reference",
       "scope": "portfolio",
       "description": "User stated current live uses gross/weight sum 5.75. This is the pre-wave reference to compare against.",
@@ -43,7 +43,7 @@
       ],
       "contamination_risk": "medium",
       "leakage_notes": "Treat later scans using 2026 metrics as diagnostic unless candidate was frozen before 2026 inspection.",
-      "next_action": "Always include this as baseline in portfolio comparisons.",
+      "next_action": "Historical reference only; authoritative live anchor moved to live_gross385_trainmdd40_20260712.",
       "construction_recipe": {
         "component_alphas": [
           "nonpb30_taker",
@@ -703,6 +703,255 @@
         "baseline_required": "Compare against frozen annual rank-7 under the same synchronized accounting method."
       },
       "portfolio_spec_hash": "57c25f64b14d63cc700914bd8de9b4091bd6da7a020fc124eaf328fa92e9607c"
+    },
+    {
+      "id": "live_gross385_trainmdd40_20260712",
+      "name": "Authoritative live gross 3.85 train-MDD-40 portfolio",
+      "status": "live",
+      "family": "multi_sleeve_live_anchor",
+      "scope": "btc_portfolio",
+      "description": "Current authoritative live allocation reproduced exactly by the added-alpha optimizer before comparison.",
+      "gross": 3.85,
+      "weights": {
+        "oi_upbit_ratio288_low": 0.65,
+        "new_long_minimal_funding_premium": 1.75,
+        "cand_rex_veto_7": 1.45
+      },
+      "component_alphas": [
+        "oi_upbit_ratio288_low",
+        "new_long_minimal_funding_premium",
+        "cand_rex_veto_7"
+      ],
+      "constraints": [
+        "6bp/side",
+        "nonzero weights >=0.25 on 0.05 grid",
+        "train strict MDD <=40",
+        "OOS strict MDD <=20"
+      ],
+      "stats": {
+        "train": {
+          "return_pct": 523.6041861154282,
+          "cagr_pct": 73.20909086661041,
+          "strict_mdd_pct": 32.20050372319518,
+          "cagr_mdd": 2.2735386842372676,
+          "trades": 818,
+          "trades_by_sleeve": {
+            "oi_upbit_ratio288_low": 344,
+            "new_long_minimal_funding_premium": 166,
+            "cand_rex_veto_7": 308
+          }
+        },
+        "test2024": {
+          "return_pct": 66.9367849572657,
+          "cagr_pct": 66.76157793978479,
+          "strict_mdd_pct": 13.938508411962369,
+          "cagr_mdd": 4.789721824358794,
+          "trades": 172,
+          "trades_by_sleeve": {
+            "oi_upbit_ratio288_low": 79,
+            "new_long_minimal_funding_premium": 29,
+            "cand_rex_veto_7": 64
+          }
+        },
+        "eval2025": {
+          "return_pct": 61.200914965134245,
+          "cagr_pct": 61.25364305644992,
+          "strict_mdd_pct": 10.11093097438691,
+          "cagr_mdd": 6.058160540470321,
+          "trades": 109,
+          "trades_by_sleeve": {
+            "oi_upbit_ratio288_low": 38,
+            "new_long_minimal_funding_premium": 26,
+            "cand_rex_veto_7": 45
+          }
+        },
+        "ytd2026": {
+          "return_pct": 24.89053385433926,
+          "cagr_pct": 69.99673279824314,
+          "strict_mdd_pct": 7.381287116217106,
+          "cagr_mdd": 9.48299824897156,
+          "trades": 65,
+          "trades_by_sleeve": {
+            "oi_upbit_ratio288_low": 14,
+            "new_long_minimal_funding_premium": 29,
+            "cand_rex_veto_7": 22
+          }
+        }
+      },
+      "evidence": "Legacy return/MDD/trade counts reproduce the live artifact exactly; corrected OHLC upper-before-lower MDD is reported here.",
+      "source_artifacts": [
+        "configs/live/portfolio_gross385_trainmdd40_2026-07-12.json",
+        "results/portfolio_all_discovered_alpha_trainmdd40_oosmdd20_2026-07-12.json",
+        "results/portfolio_added_alpha_update_2026-07-16.json"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "The alpha universe and later windows have prior research exposure; this is the operational anchor, not pristine alpha proof.",
+      "next_action": "Keep live unchanged while the added-alpha allocation accumulates untouched forward-shadow evidence.",
+      "construction_recipe": {
+        "component_alphas": [
+          "oi_upbit_ratio288_low",
+          "new_long_minimal_funding_premium",
+          "cand_rex_veto_7"
+        ],
+        "weights": {
+          "oi_upbit_ratio288_low": 0.65,
+          "new_long_minimal_funding_premium": 1.75,
+          "cand_rex_veto_7": 1.45
+        },
+        "gross": 3.85,
+        "reproduce_command": "PYTHONPATH=. python training/portfolio_opt_added_alpha_update.py",
+        "source_artifacts": [
+          "configs/live/portfolio_gross385_trainmdd40_2026-07-12.json",
+          "results/portfolio_added_alpha_update_2026-07-16.json"
+        ],
+        "evaluation_protocol": {
+          "selection": "historical live selection",
+          "cost": "6bp/side",
+          "mdd": "shared 5-minute same-BTC low/high upper-before-lower strict MDD"
+        },
+        "contamination_warning": "Operational reference only; do not reinterpret 2025/2026 as untouched validation."
+      }
+    },
+    {
+      "id": "added_alpha_gross800_shadow_20260716",
+      "name": "Added-alpha exact-allocation gross 8.00 forward shadow",
+      "status": "candidate",
+      "family": "multi_family_added_alpha_shadow",
+      "scope": "btc_portfolio_shadow",
+      "description": "Best-found train+2024 allocation after two deterministic seed pools and exact 0.05-grid beam refinement; 2025/2026 are veto/report only.",
+      "gross": 8.0,
+      "weights": {
+        "fresh_kimchi_fx": 2.0,
+        "frozen_annual_rank7": 2.0,
+        "rex_taker_low_range_position": 0.4,
+        "cand_rex_veto_7": 1.6,
+        "markov_transition_long": 2.0
+      },
+      "component_alphas": [
+        "fresh_kimchi_fx",
+        "frozen_annual_rank7",
+        "rex_taker_low_range_position",
+        "cand_rex_veto_7",
+        "markov_transition_long"
+      ],
+      "constraints": [
+        "gross <=10",
+        "family gross <=2",
+        "nonzero weights >=0.25 on 0.05 grid",
+        "train strict MDD <=40",
+        "2024/2025/2026 strict MDD <=20",
+        "2024 and future-veto CAGR/MDD >=3",
+        "6bp/side"
+      ],
+      "stats": {
+        "train": {
+          "return_pct": 2274.5325302101573,
+          "cagr_pct": 158.7277325639148,
+          "strict_mdd_pct": 36.5769674927924,
+          "cagr_mdd": 4.339554190630827,
+          "trades": 861,
+          "trades_by_sleeve": {
+            "cand_rex_veto_7": 308,
+            "frozen_annual_rank7": 19,
+            "fresh_kimchi_fx": 117,
+            "markov_transition_long": 143,
+            "rex_taker_low_range_position": 274
+          }
+        },
+        "test2024": {
+          "return_pct": 180.81491924567783,
+          "cagr_pct": 180.22139040848742,
+          "strict_mdd_pct": 16.053442290153864,
+          "cagr_mdd": 11.226339320322813,
+          "trades": 203,
+          "trades_by_sleeve": {
+            "cand_rex_veto_7": 64,
+            "frozen_annual_rank7": 22,
+            "fresh_kimchi_fx": 30,
+            "markov_transition_long": 22,
+            "rex_taker_low_range_position": 65
+          }
+        },
+        "eval2025": {
+          "return_pct": 148.35033340739412,
+          "cagr_pct": 148.50511922361935,
+          "strict_mdd_pct": 12.346468229986707,
+          "cagr_mdd": 12.02814573830392,
+          "trades": 133,
+          "trades_by_sleeve": {
+            "cand_rex_veto_7": 45,
+            "frozen_annual_rank7": 21,
+            "fresh_kimchi_fx": 17,
+            "markov_transition_long": 19,
+            "rex_taker_low_range_position": 31
+          }
+        },
+        "ytd2026": {
+          "return_pct": 69.23856158775162,
+          "cagr_pct": 251.14471377575347,
+          "strict_mdd_pct": 15.000969431408684,
+          "cagr_mdd": 16.74189891020726,
+          "trades": 108,
+          "trades_by_sleeve": {
+            "cand_rex_veto_7": 22,
+            "frozen_annual_rank7": 12,
+            "fresh_kimchi_fx": 28,
+            "markov_transition_long": 23,
+            "rex_taker_low_range_position": 23
+          }
+        }
+      },
+      "evidence": "39,040 exact pre-2025 allocations evaluated including refinement; 15 beam rounds ended after 3 consecutive no-improvement rounds. Future veto passed. Protocol f07c1f2990fe8b59fa306eb72224ac2d2fc8f9d44d8d771d6e66e81775395022.",
+      "source_artifacts": [
+        "training/portfolio_opt_added_alpha_update.py",
+        "results/portfolio_added_alpha_update_2026-07-16.json",
+        "docs/portfolio-added-alpha-update-2026-07-16.md",
+        "configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "Every reported future window has prior research exposure. The allocation ranking adds no new future reranking, but the alpha universe itself remains research-contaminated.",
+      "next_action": "Run this exact allocation in forward shadow only. Do not replace live until newly arriving untouched data confirms execution parity and strict-MDD behavior.",
+      "construction_recipe": {
+        "component_alphas": [
+          "fresh_kimchi_fx",
+          "frozen_annual_rank7",
+          "rex_taker_low_range_position",
+          "cand_rex_veto_7",
+          "markov_transition_long"
+        ],
+        "weights": {
+          "fresh_kimchi_fx": 2.0,
+          "frozen_annual_rank7": 2.0,
+          "rex_taker_low_range_position": 0.4,
+          "cand_rex_veto_7": 1.6,
+          "markov_transition_long": 2.0
+        },
+        "gross": 8.0,
+        "constraints": [
+          "gross <=10",
+          "family gross <=2",
+          "min 0.25 step 0.05",
+          "train MDD <=40",
+          "OOS MDD <=20"
+        ],
+        "reproduce_command": "PYTHONPATH=. python training/portfolio_opt_added_alpha_update.py",
+        "source_artifacts": [
+          "results/portfolio_added_alpha_update_2026-07-16.json",
+          "docs/portfolio-added-alpha-update-2026-07-16.md"
+        ],
+        "evaluation_protocol": {
+          "rank": "train+2024 only",
+          "future": "2025/2026 veto frozen top1 only; no reranking",
+          "cost": "6bp/side",
+          "mdd": "shared 5-minute same-BTC low/high upper-before-lower strict MDD",
+          "search": "two seeds plus exact beam refinement with 3-round patience",
+          "accounting_version": "same_btc_low_high_v1"
+        },
+        "contamination_warning": "Shadow-only: all reported future windows and parts of the alpha universe were previously inspected.",
+        "baseline_required": "live_gross385_trainmdd40_20260712"
+      },
+      "protocol_hash": "f07c1f2990fe8b59fa306eb72224ac2d2fc8f9d44d8d771d6e66e81775395022",
+      "accounting_version": "same_btc_low_high_v1"
     }
   ]
 }

@@ -45,6 +45,32 @@ RLLM은 BTCUSDT 선물 트레이딩에서 **LLM/RL의 장점을 실제 수익성
 - 전 기간 universal edge는 아직 부족합니다.
 - 따라서 현재 전략은 “항상 켜는 범용 봇”이 아니라 **수동 bearish regime pilot**으로 취급해야 합니다.
 
+### 2026-07-16 신규 알파 포트폴리오 배분 (forward shadow)
+
+현재 live gross 3.85 포트폴리오는 그대로 유지합니다. 새 알파를 포함한 배분은
+train+2024에서만 순위를 정하고, 이미 연구 노출된 2025/2026은 고정 1위의 veto에만
+사용했습니다. 39,040개 배분을 정확한 5분봉 same-BTC low/high strict MDD로 평가한
+best-found shadow 후보는 다음과 같습니다.
+
+- `fresh_kimchi_fx`: 2.00
+- `frozen_annual_rank7`: 2.00
+- `rex_taker_low_range_position`: 0.40
+- `cand_rex_veto_7`: 1.60
+- `markov_transition_long`: 2.00
+- 총 gross: **8.00**
+
+| 구간 | 절대수익 | CAGR | strict MDD | CAGR / MDD | 거래 수 |
+|---|---:|---:|---:|---:|---:|
+| Train (2020-09~2023) | 2,274.53% | 158.73% | 36.58% | 4.34 | 861 |
+| Test 2024 | 180.81% | 180.22% | 16.05% | 11.23 | 203 |
+| Eval 2025 (report/veto) | 148.35% | 148.51% | 12.35% | 12.03 | 133 |
+| 2026 YTD (report/veto) | 69.24% | 251.14% | 15.00% | 16.74 | 108 |
+
+이 수치는 강하지만 **pristine OOS가 아니며 live 승격 근거가 아닙니다**. 후보 universe와
+미래 구간에 과거 연구 노출이 있으므로 정확한 동일 배분을 forward shadow로만 운영해
+새 데이터에서 실행 parity와 MDD를 확인해야 합니다. 상세 규약과 상위 배분은
+[`docs/portfolio-added-alpha-update-2026-07-16.md`](docs/portfolio-added-alpha-update-2026-07-16.md)에 있습니다.
+
 ### 거래 빈도
 최근 eval 후보 기준:
 
