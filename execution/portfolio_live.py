@@ -948,7 +948,16 @@ def _ensure_trade_executions_table(engine: Any) -> None:
         "CREATE INDEX IF NOT EXISTS idx_trade_executions_signal ON trade_executions(strategy_name, signal_id)",
         "CREATE INDEX IF NOT EXISTS idx_trade_executions_order ON trade_executions(exchange, symbol, order_id, client_order_id)",
     ]
+    schema_lock_key = _portfolio_db_lease_key(
+        strategy_name="rllm-schema",
+        exchange="postgres",
+        symbol="trade-executions-v2",
+    )
     with engine.begin() as conn:
+        conn.execute(
+            text("SELECT pg_advisory_xact_lock(:lock_key)"),
+            {"lock_key": schema_lock_key},
+        )
         conn.execute(text(ddl))
         conn.execute(text(reservation_ddl))
         conn.execute(text(reservation_key_migration))

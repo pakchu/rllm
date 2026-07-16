@@ -28,6 +28,7 @@ from execution.portfolio_live import (
     _cancel_stale_portfolio_orders,
     _close_sleeve,
     _entry_ttl_seconds,
+    _ensure_trade_executions_table,
     _execute_close_intents,
     _execute_open_intents,
     _finish_trade_intents,
@@ -386,6 +387,35 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
                     symbol="BTCUSDT",
                 )
         self.assertTrue(rejected.closed)
+
+    def test_execution_schema_migration_takes_global_transaction_lock_first(self):
+        class FakeEngine:
+            def __init__(self):
+                self.calls = []
+
+            def begin(self):
+                engine = self
+
+                class Context:
+                    def __enter__(self):
+                        return self
+
+                    def __exit__(self, *args):
+                        return False
+
+                    def execute(self, statement, params=None):
+                        engine.calls.append((str(statement), dict(params or {})))
+
+                return Context()
+
+        engine = FakeEngine()
+        with patch.dict(sys.modules, {"sqlalchemy": SimpleNamespace(text=lambda statement: statement)}):
+            _ensure_trade_executions_table(engine)
+
+        self.assertIn("pg_advisory_xact_lock", engine.calls[0][0])
+        self.assertIn("lock_key", engine.calls[0][1])
+        self.assertTrue(any("CREATE TABLE IF NOT EXISTS trade_executions" in sql for sql, _ in engine.calls))
+        self.assertTrue(any("DO $migration$" in sql for sql, _ in engine.calls))
 
     def test_open_intent_builder_filters_state_without_mutating_scores(self):
         scores = [
