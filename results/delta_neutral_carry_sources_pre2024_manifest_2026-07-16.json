@@ -4,13 +4,14 @@
     "env_file": "<redacted>",
     "funding_output": "data/binance_funding_btc_2020_2023.csv.gz",
     "manifest": "results/delta_neutral_carry_sources_pre2024_manifest_2026-07-16.json",
+    "perp_output": "data/binance_perp_btc_1m_2020_2023.csv.gz",
     "psql_binary": "psql",
-    "spot_output": "data/binance_spot_btc_5m_2020_2023.csv.gz",
+    "spot_output": "data/binance_spot_btc_1m_2020_2023.csv.gz",
     "start": "2020-01-01"
   },
   "database_snapshot_is_point_in_time": false,
-  "exported_at": "2026-07-16T11:42:21.919625+00:00",
-  "missing_mark_price_policy": "preserve unavailable historical funding mark prices as empty; the simulator must use the last fully completed USD-M futures five-minute close strictly before funding_time",
+  "exported_at": "2026-07-16T12:01:53.130573+00:00",
+  "missing_mark_price_policy": "preserve unavailable historical funding mark prices as empty; the simulator must use the last fully completed USD-M futures one-minute close at or before funding_time",
   "outputs": {
     "funding": {
       "missing_mark_prices": 4198,
@@ -22,24 +23,34 @@
       "rows": 4383,
       "sha256": "f61e6bce5d1b4e3c4b47b1f5819c06cac2c41fb439b5d4d414412afb0b580e04"
     },
-    "spot": {
-      "partial_five_minute_bars": 5,
-      "path": "data/binance_spot_btc_5m_2020_2023.csv.gz",
+    "perp": {
+      "path": "data/binance_perp_btc_1m_2020_2023.csv.gz",
       "range": [
         "2020-01-01 00:00:00",
-        "2023-12-31 23:55:00"
+        "2023-12-31 23:59:00"
       ],
-      "rows": 420302,
-      "sha256": "867fa68c2b498c7460f22891bc1f5486d758257b03a3059f34d901d6689712d3"
+      "rows": 2103840,
+      "sha256": "0b55bb0c3b845a90da738e746c769b19c1de4ac230ca8f1fccb6c361c4a9a41f"
+    },
+    "spot": {
+      "path": "data/binance_spot_btc_1m_2020_2023.csv.gz",
+      "range": [
+        "2020-01-01 00:00:00",
+        "2023-12-31 23:59:00"
+      ],
+      "rows": 2101493,
+      "sha256": "bc6e0fd6b773ab6458a5de88fb9589161d1adf4ac1d0e7024f252515909f4a54"
     }
   },
   "query_sha256": {
     "funding": "b784d365399ab98f2724cb3b5087c30566436c18d294e8f7cd3949d54088f051",
-    "spot": "a18f040d53f4fc76d40309f7e82763a93d8df0bd11971fdfeeef1063ebb6523d"
+    "perp": "ac24662ce6bace598281e63a47da149391b43719635facd4da3a32fe96754e29",
+    "spot": "f06d3a8aa9b05b71cdf5a13988772d37cb616c061f83a55fe6efbdab4b4f9ed6"
   },
   "revision_note": "historical rows were backfilled into PostgreSQL; exchange timestamps define semantic availability, source-prefix hashes detect later revisions, and live forward proof is required",
   "sources": {
     "funding": "funding_rates_binance BTCUSDT",
-    "spot": "bars_binance_spot BTCUSDT 1m aggregated to 5m"
+    "perp": "bars_binance BTCUSDT 1m",
+    "spot": "bars_binance_spot BTCUSDT 1m"
   }
 }

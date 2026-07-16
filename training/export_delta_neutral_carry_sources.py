@@ -1,4 +1,4 @@
-"""Export deterministic Binance spot bars and funding for delta-neutral carry research."""
+"""Export deterministic Binance one-minute legs and funding for carry research."""
 from __future__ import annotations
 
 import argparse
@@ -11,21 +11,19 @@ import math
 import os
 import subprocess
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
 from training.export_emfx_daily_from_postgres import _parse_pg_timestamp, load_env_file
 
 
-SPOT_COLUMNS = (
+MARKET_COLUMNS = (
     "date",
     "open",
     "high",
     "low",
     "close",
-    "observations",
-    "last_ts",
     "max_updated_at",
 )
 FUNDING_COLUMNS = ("date", "funding_rate", "mark_price", "max_updated_at")
@@ -33,6 +31,7 @@ FUNDING_COLUMNS = ("date", "funding_rate", "mark_price", "max_updated_at")
 
 @dataclass(frozen=True)
 class CarrySourceExportConfig:
+    perp_output: str
     spot_output: str
     funding_output: str
     manifest: str
@@ -58,26 +57,35 @@ def _bounds(cfg: CarrySourceExportConfig) -> tuple[str, str]:
     return start, end
 
 
-def spot_query(cfg: CarrySourceExportConfig) -> str:
+def market_query(cfg: CarrySourceExportConfig, *, venue: str) -> str:
     start, end = _bounds(cfg)
+    tables = {"spot": "bars_binance_spot", "perp": "bars_binance"}
+    if venue not in tables:
+        raise ValueError("venue must be spot or perp")
+    table = tables[venue]
     return f"""COPY (
 SELECT
-    date_bin('5 minutes', ts, TIMESTAMPTZ '1970-01-01 00:00:00+00') AT TIME ZONE 'UTC' AS date,
-    (array_agg(open ORDER BY ts ASC))[1]::double precision AS open,
-    max(high)::double precision AS high,
-    min(low)::double precision AS low,
-    (array_agg(close ORDER BY ts DESC))[1]::double precision AS close,
-    count(*)::bigint AS observations,
-    max(ts) AT TIME ZONE 'UTC' AS last_ts,
-    max(updated_at) AT TIME ZONE 'UTC' AS max_updated_at
-FROM bars_binance_spot
+    ts AT TIME ZONE 'UTC' AS date,
+    open::double precision AS open,
+    high::double precision AS high,
+    low::double precision AS low,
+    close::double precision AS close,
+    updated_at AT TIME ZONE 'UTC' AS max_updated_at
+FROM {table}
 WHERE symbol = 'BTCUSDT'
   AND interval = '1m'
   AND ts >= TIMESTAMPTZ '{start} 00:00:00+00'
   AND ts < TIMESTAMPTZ '{end} 00:00:00+00'
-GROUP BY date_bin('5 minutes', ts, TIMESTAMPTZ '1970-01-01 00:00:00+00')
-ORDER BY date
+ORDER BY ts
 ) TO STDOUT WITH (FORMAT CSV, HEADER TRUE);"""
+
+
+def spot_query(cfg: CarrySourceExportConfig) -> str:
+    return market_query(cfg, venue="spot")
+
+
+def perp_query(cfg: CarrySourceExportConfig) -> str:
+    return market_query(cfg, venue="perp")
 
 
 def funding_query(cfg: CarrySourceExportConfig) -> str:
@@ -135,31 +143,25 @@ def _read_rows(text: str, columns: tuple[str, ...]) -> list[dict[str, str]]:
     return [dict(row) for row in reader]
 
 
-def normalise_spot_csv(text: str) -> list[dict[str, str]]:
+def normalise_market_csv(text: str, *, venue: str) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     seen: set[str] = set()
-    for raw in _read_rows(text, SPOT_COLUMNS):
+    for raw in _read_rows(text, MARKET_COLUMNS):
         date = _parse_pg_timestamp(raw["date"])
-        last_ts = _parse_pg_timestamp(raw["last_ts"])
         updated_at = _parse_pg_timestamp(raw["max_updated_at"])
-        if date.minute % 5 or date.second or date.microsecond:
-            raise ValueError(f"spot bar is not aligned to a five-minute boundary: {date}")
-        if not (date <= last_ts < date + timedelta(minutes=5)):
-            raise ValueError(f"last spot minute falls outside its five-minute bin: {date} {last_ts}")
+        if date.second or date.microsecond:
+            raise ValueError(f"{venue} bar is not aligned to a one-minute boundary: {date}")
         key = date.isoformat(sep=" ", timespec="seconds")
         if key in seen:
-            raise ValueError(f"duplicate spot five-minute bar: {key}")
+            raise ValueError(f"duplicate {venue} one-minute bar: {key}")
         seen.add(key)
         values = {name: float(raw[name]) for name in ("open", "high", "low", "close")}
         if not all(math.isfinite(value) and value > 0.0 for value in values.values()):
-            raise ValueError("spot OHLC must be positive and finite")
+            raise ValueError(f"{venue} OHLC must be positive and finite")
         if values["high"] < max(values["open"], values["close"], values["low"]):
-            raise ValueError("spot high is inconsistent with OHLC")
+            raise ValueError(f"{venue} high is inconsistent with OHLC")
         if values["low"] > min(values["open"], values["close"], values["high"]):
-            raise ValueError("spot low is inconsistent with OHLC")
-        observations = int(raw["observations"])
-        if observations < 1 or observations > 5:
-            raise ValueError("spot observations must be in [1, 5]")
+            raise ValueError(f"{venue} low is inconsistent with OHLC")
         rows.append(
             {
                 "date": key,
@@ -167,12 +169,14 @@ def normalise_spot_csv(text: str) -> list[dict[str, str]]:
                 "high": format(values["high"], ".15g"),
                 "low": format(values["low"], ".15g"),
                 "close": format(values["close"], ".15g"),
-                "observations": str(observations),
-                "last_ts": last_ts.isoformat(sep=" ", timespec="seconds"),
                 "max_updated_at": updated_at.isoformat(sep=" ", timespec="seconds"),
             }
         )
     return sorted(rows, key=lambda row: row["date"])
+
+
+def normalise_spot_csv(text: str) -> list[dict[str, str]]:
+    return normalise_market_csv(text, venue="spot")
 
 
 def normalise_funding_csv(text: str) -> list[dict[str, str]]:
@@ -226,33 +230,44 @@ def run(
     *,
     query_runner: Callable[[CarrySourceExportConfig, str], str] = run_psql_query,
 ) -> dict[str, object]:
+    perp_sql = perp_query(cfg)
     spot_sql = spot_query(cfg)
     funding_sql = funding_query(cfg)
+    perp_rows = normalise_market_csv(query_runner(cfg, perp_sql), venue="perp")
     spot_rows = normalise_spot_csv(query_runner(cfg, spot_sql))
     funding_rows = normalise_funding_csv(query_runner(cfg, funding_sql))
-    if not spot_rows or not funding_rows:
+    if not perp_rows or not spot_rows or not funding_rows:
         raise RuntimeError("carry source export is empty")
+    perp_path = Path(cfg.perp_output)
     spot_path = Path(cfg.spot_output)
     funding_path = Path(cfg.funding_output)
-    _write_csv_gz(spot_path, SPOT_COLUMNS, spot_rows)
+    _write_csv_gz(perp_path, MARKET_COLUMNS, perp_rows)
+    _write_csv_gz(spot_path, MARKET_COLUMNS, spot_rows)
     _write_csv_gz(funding_path, FUNDING_COLUMNS, funding_rows)
     manifest: dict[str, object] = {
         "config": {**asdict(cfg), "env_file": "<redacted>"},
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "sources": {
-            "spot": "bars_binance_spot BTCUSDT 1m aggregated to 5m",
+            "perp": "bars_binance BTCUSDT 1m",
+            "spot": "bars_binance_spot BTCUSDT 1m",
             "funding": "funding_rates_binance BTCUSDT",
         },
         "query_sha256": {
+            "perp": hashlib.sha256(perp_sql.encode()).hexdigest(),
             "spot": hashlib.sha256(spot_sql.encode()).hexdigest(),
             "funding": hashlib.sha256(funding_sql.encode()).hexdigest(),
         },
         "outputs": {
+            "perp": {
+                "path": str(perp_path),
+                "rows": len(perp_rows),
+                "range": [perp_rows[0]["date"], perp_rows[-1]["date"]],
+                "sha256": _sha256(perp_path),
+            },
             "spot": {
                 "path": str(spot_path),
                 "rows": len(spot_rows),
                 "range": [spot_rows[0]["date"], spot_rows[-1]["date"]],
-                "partial_five_minute_bars": sum(int(row["observations"]) < 5 for row in spot_rows),
                 "sha256": _sha256(spot_path),
             },
             "funding": {
@@ -270,7 +285,7 @@ def run(
         ),
         "missing_mark_price_policy": (
             "preserve unavailable historical funding mark prices as empty; the simulator must use "
-            "the last fully completed USD-M futures five-minute close strictly before funding_time"
+            "the last fully completed USD-M futures one-minute close at or before funding_time"
         ),
     }
     manifest_path = Path(cfg.manifest)
@@ -283,6 +298,7 @@ def run(
 
 def parse_args() -> CarrySourceExportConfig:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--perp-output", required=True)
     parser.add_argument("--spot-output", required=True)
     parser.add_argument("--funding-output", required=True)
     parser.add_argument("--manifest", required=True)
