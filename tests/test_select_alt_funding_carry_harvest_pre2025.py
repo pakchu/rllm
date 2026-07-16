@@ -60,6 +60,37 @@ def clock(
     }])
 
 
+def test_pre2025_source_composition_uses_recent_rows_from_handoff() -> None:
+    old_market = pd.DataFrame({
+        "date": ["2023-06-01", "2024-06-01"],
+        "open": [1.0, 2.0], "high": [1.0, 2.0], "low": [1.0, 2.0], "close": [1.0, 2.0],
+        "tic": ["ADAUSDT", "ADAUSDT"],
+    })
+    recent_market = pd.DataFrame({
+        "date": ["2024-06-01", "2025-06-01"],
+        "open": [3.0, 4.0], "high": [3.0, 4.0], "low": [3.0, 4.0], "close": [3.0, 4.0],
+        "tic": ["ADAUSDT", "ADAUSDT"],
+    })
+    market = selector.compose_pre2025_market(old_market, recent_market, "ADAUSDT")
+    assert market["date"].tolist() == [pd.Timestamp("2023-06-01"), pd.Timestamp("2024-06-01")]
+    assert market["open"].tolist() == [1.0, 3.0]
+
+    def funding_frame(dates: list[str], rates: list[float]) -> pd.DataFrame:
+        times = pd.to_datetime(dates)
+        return pd.DataFrame({
+            "symbol": ["ADAUSDT"] * len(times),
+            "funding_time": (times.astype("int64") // 1_000_000).astype("int64"),
+            "funding_rate": rates,
+            "mark_price": [100.0] * len(times),
+        })
+
+    old_funding = funding_frame(["2023-06-01", "2024-06-01"], [0.001, 0.002])
+    recent_funding = funding_frame(["2024-06-01", "2025-06-01"], [0.003, 0.004])
+    funding = selector.compose_pre2025_funding(old_funding, recent_funding, "ADAUSDT")
+    assert funding["event_time"].tolist() == [pd.Timestamp("2023-06-01"), pd.Timestamp("2024-06-01")]
+    assert funding["funding_rate"].tolist() == [0.001, 0.003]
+
+
 def test_pair_price_profit_is_scaled_by_sleeve_gross() -> None:
     bundle = synthetic_bundle([100, 100, 102, 104, 104], [100, 100, 99, 98, 98])
     stats = simulate(bundle, clock(), start="2023-01-01", end="2023-01-02", cost_bp=0)

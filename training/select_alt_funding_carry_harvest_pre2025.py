@@ -17,15 +17,15 @@ from training.build_alt_funding_carry_harvest_support import (
     DEFAULT_CLOCK,
     assert_clock_contract,
 )
-from training.compose_alt_funding_carry_sources import LORE_DIR, START, SYMBOLS
+from training.compose_alt_funding_carry_sources import HANDOFF, START, SYMBOLS
 from training.export_leave_one_out_residual_exhaustion_sources import sha256_file
 from training.preregister_alt_funding_carry_harvest import canonical_hash, protocol
 
 
 END = pd.Timestamp("2025-01-01 00:00:00")
 EXPECTED_PROTOCOL_HASH = "15a7d0adbace0255e1ea4359e4869154dfb34ad891a2125239340ff70c4e2a09"
-LORE_SOURCE_MANIFEST = "results/leave_one_out_residual_exhaustion_v1_source_manifest_2026-07-17.json"
-EXPECTED_LORE_SOURCE_MANIFEST_HASH = "1c54fddc45fcc516d8ce42741904e018e8d00e646eff40be514273cf10eee7ed"
+SOURCE_COMPOSITION_MANIFEST = "results/alt_funding_carry_harvest_v1_source_composition_2026-07-17.json"
+EXPECTED_SOURCE_COMPOSITION_MANIFEST_HASH = "18f5455ea248b6ab5e451d734c0d6849ed25a4e67aa19970e19617f95f67fb0d"
 SUPPORT_MANIFEST = "results/alt_funding_carry_harvest_v1_support_manifest_2026-07-17.json"
 EXPECTED_SUPPORT_MANIFEST_HASH = "c92bfb7b0b3dc424758e6edca7614cdc4701f9d04e798bfaff9572ff003a3cd8"
 EXPECTED_CLOCK_HASH = "d0cc451e74a45d5ab9f08a8a7c3d8c3df756d35d2e020d1f70dc0198ebaf0ef9"
@@ -107,8 +107,38 @@ def _validate_funding_mark_manifest(payload: dict[str, Any]) -> None:
         raise RuntimeError("AFCH causal funding mark event support changed")
 
 
+def compose_pre2025_market(old: pd.DataFrame, recent: pd.DataFrame, symbol: str) -> pd.DataFrame:
+    frames = []
+    for frame, start, end in ((old.copy(), START, HANDOFF), (recent.copy(), HANDOFF, END)):
+        frame["date"] = pd.to_datetime(frame["date"], errors="raise")
+        if not frame["tic"].astype(str).eq(symbol).all():
+            raise RuntimeError(f"{symbol} AFCH market identity failure")
+        frames.append(frame.loc[(frame["date"] >= start) & (frame["date"] < end)])
+    combined = pd.concat(frames, ignore_index=True).sort_values("date").reset_index(drop=True)
+    if combined["date"].duplicated().any() or not combined["date"].is_monotonic_increasing:
+        raise RuntimeError(f"{symbol} AFCH composite market order failure")
+    return combined
+
+
+def compose_pre2025_funding(old: pd.DataFrame, recent: pd.DataFrame, symbol: str) -> pd.DataFrame:
+    frames = []
+    for frame, start, end in ((old.copy(), START, HANDOFF), (recent.copy(), HANDOFF, END)):
+        if not frame["symbol"].astype(str).eq(symbol).all():
+            raise RuntimeError(f"{symbol} AFCH funding identity failure")
+        frame["funding_time"] = pd.to_numeric(frame["funding_time"], errors="raise").astype("int64")
+        frame["event_time"] = pd.to_datetime(frame["funding_time"], unit="ms")
+        frame["funding_rate"] = pd.to_numeric(frame["funding_rate"], errors="raise")
+        frame["mark_price"] = pd.to_numeric(frame["mark_price"], errors="coerce")
+        frames.append(frame.loc[(frame["event_time"] >= start) & (frame["event_time"] < end)])
+    combined = pd.concat(frames, ignore_index=True).sort_values("event_time").reset_index(drop=True)
+    combined["mark_is_recorded"] = combined["mark_price"].notna()
+    if combined["event_time"].duplicated().any() or not combined["event_time"].is_monotonic_increasing:
+        raise RuntimeError(f"{symbol} AFCH composite funding order failure")
+    return combined
+
+
 def load_bundle() -> MarketBundle:
-    source = _manifest(LORE_SOURCE_MANIFEST, EXPECTED_LORE_SOURCE_MANIFEST_HASH)
+    source = _manifest(SOURCE_COMPOSITION_MANIFEST, EXPECTED_SOURCE_COMPOSITION_MANIFEST_HASH)
     mark_source = _manifest(FUNDING_MARK_MANIFEST, EXPECTED_FUNDING_MARK_MANIFEST_HASH)
     records = {str(row["symbol"]): row for row in source["records"]}
     mark_records = {str(row["symbol"]): row for row in mark_source["records"]}
@@ -116,19 +146,24 @@ def load_bundle() -> MarketBundle:
     funding: dict[str, pd.DataFrame] = {}
     dates: pd.DatetimeIndex | None = None
     for symbol in sorted(SYMBOLS):
-        market_path = LORE_DIR / f"{symbol}_5m_2023_2024.csv.gz"
-        funding_path = LORE_DIR / f"{symbol}_funding_2023_2024.csv.gz"
-        if _file_hash(market_path) != records[symbol]["output_market_sha256"]:
-            raise RuntimeError(f"{symbol} AFCH market source changed")
-        if _file_hash(funding_path) != records[symbol]["output_funding_sha256"]:
-            raise RuntimeError(f"{symbol} AFCH funding source changed")
-        frame = pd.read_csv(
-            market_path,
+        record = records[symbol]
+        paths = {
+            "old_market": Path(record["old_market_path"]),
+            "recent_market": Path(record["recent_market_path"]),
+            "old_funding": Path(record["old_funding_path"]),
+            "recent_funding": Path(record["recent_funding_path"]),
+        }
+        if any(_file_hash(path) != record[f"{key}_sha256"] for key, path in paths.items()):
+            raise RuntimeError(f"{symbol} AFCH composite source changed")
+        old_market = pd.read_csv(
+            paths["old_market"],
             usecols=["date", "open", "high", "low", "close", "tic"],
-            parse_dates=["date"],
-        ).sort_values("date")
-        if frame["date"].duplicated().any() or not frame["tic"].astype(str).eq(symbol).all():
-            raise RuntimeError(f"{symbol} AFCH market identity failure")
+        )
+        recent_market = pd.read_csv(
+            paths["recent_market"],
+            usecols=["date", "open", "high", "low", "close", "tic"],
+        )
+        frame = compose_pre2025_market(old_market, recent_market, symbol)
         current_dates = pd.DatetimeIndex(frame["date"])
         if dates is None:
             dates = current_dates
@@ -141,15 +176,10 @@ def load_bundle() -> MarketBundle:
         if not np.isfinite(np.column_stack(list(arrays.values()))).all():
             raise RuntimeError(f"{symbol} AFCH non-finite market source")
         market[symbol] = arrays
-        fund = pd.read_csv(funding_path, usecols=["funding_time", "funding_rate", "mark_price"])
-        fund["event_time"] = pd.to_datetime(pd.to_numeric(fund["funding_time"], errors="raise"), unit="ms")
-        fund["funding_rate"] = pd.to_numeric(fund["funding_rate"], errors="raise")
-        fund["mark_price"] = pd.to_numeric(fund["mark_price"], errors="coerce")
-        fund["mark_is_recorded"] = fund["mark_price"].notna()
-        if fund["event_time"].duplicated().any() or not fund["event_time"].is_monotonic_increasing:
-            raise RuntimeError(f"{symbol} AFCH funding order failure")
-        if not ((fund["event_time"] >= START) & (fund["event_time"] < END)).all():
-            raise RuntimeError(f"{symbol} AFCH funding source escaped 2023-2024")
+        funding_columns = ["symbol", "funding_time", "funding_rate", "mark_price"]
+        old_funding = pd.read_csv(paths["old_funding"], usecols=funding_columns)
+        recent_funding = pd.read_csv(paths["recent_funding"], usecols=funding_columns)
+        fund = compose_pre2025_funding(old_funding, recent_funding, symbol)
         mark_path = FUNDING_MARK_DIR / f"{symbol}_funding_marks_2023.csv.gz"
         if _file_hash(mark_path) != mark_records[symbol]["output_sha256"]:
             raise RuntimeError(f"{symbol} AFCH causal funding marks changed")
@@ -660,7 +690,7 @@ def run(output: str = DEFAULT_OUTPUT, docs_output: str = DEFAULT_DOCS) -> dict[s
         "eval_2025_opened": False,
         "final_2026_opened": False,
         "preregistration_protocol_hash": EXPECTED_PROTOCOL_HASH,
-        "source_manifest_hash": EXPECTED_LORE_SOURCE_MANIFEST_HASH,
+        "source_composition_manifest_hash": EXPECTED_SOURCE_COMPOSITION_MANIFEST_HASH,
         "support_manifest_hash": EXPECTED_SUPPORT_MANIFEST_HASH,
         "funding_mark_manifest_hash": EXPECTED_FUNDING_MARK_MANIFEST_HASH,
         "clock_hash": EXPECTED_CLOCK_HASH,
