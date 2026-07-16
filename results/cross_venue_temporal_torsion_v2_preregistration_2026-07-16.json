@@ -1,0 +1,236 @@
+{
+  "protocol_version": "cross_venue_temporal_torsion_v2",
+  "outcomes_opened": false,
+  "research_tier": "mechanically_sealed_exact_policy_not_pristine_market_history",
+  "research_history_boundary": {
+    "2020_2022_market_returns_globally_seen": true,
+    "2023_market_returns_globally_seen_by_unrelated_repo_research": true,
+    "exact_cvtt_2023_outcome_opened": false,
+    "final_required_evidence": "untuned forward shadow/live observation"
+  },
+  "novelty_check": {
+    "repo_search_before_preregistration": {
+      "spot_return_centroid_minus_spot_flow_centroid_alpha_uses": 0,
+      "um_return_centroid_minus_um_flow_centroid_alpha_uses": 0,
+      "crossed_within_venue_flow_return_clock_alpha_uses": 0,
+      "temporal_torsion_alpha_uses": 0
+    },
+    "nearest_existing_families": [
+      "cash late-arrival spillover propagation",
+      "cash auction transfer catch-up",
+      "USD-M forced-flow reversion"
+    ],
+    "distinct_axis": "within-venue flow-to-return temporal order is crossed between Spot and USD-M; route is not selected by which venue is merely later, by basis magnitude, or by lagged flow-response magnitude",
+    "forbidden_signal_dependencies": [
+      "open interest",
+      "funding",
+      "premium index",
+      "kimchi premium",
+      "DXY/FX",
+      "REX",
+      "HHI/effective event count",
+      "event-notional tail/interarrival TAAR features",
+      "Coinbase venue leadership"
+    ]
+  },
+  "economic_hypothesis": {
+    "spot_preload_um_echo": "Spot aggressive flow occurs before Spot price response while USD-M price response occurs before same-bar USD-M flow; the crossed clock is consistent with cash information propagating into derivatives, so follow the Spot flow direction",
+    "um_preload_spot_echo": "USD-M aggressive flow occurs before USD-M price response while Spot price response occurs before same-bar Spot flow; follow the USD-M flow direction",
+    "not_claimed": [
+      "participant identity",
+      "causal proof of information transfer",
+      "order-book queue state",
+      "future price direction from centroid values alone"
+    ]
+  },
+  "source_contract": {
+    "feature_source": "data/binance_cross_venue_minute_leadership_btc_2020_2023/BTCUSDT_cross_venue_minute_leadership_5m_2020-01_2023-12.csv.gz",
+    "feature_sha256": "00ab6a55fc7bfeb3012584db5bc97a7d7b98dd995491acfd3f865c6bd41f92cc",
+    "feature_manifest": "data/binance_cross_venue_minute_leadership_btc_2020_2023/build_manifest.json",
+    "feature_manifest_sha256": "544c2945a2b56be478a1edc4abbb93b762bda5afc32cbd0658dd6822ff6b70fa",
+    "source_audit": "results/binance_cross_venue_minute_leadership_audit_2026-07-14.json",
+    "source_audit_sha256": "ffe0124ac9c5c0c3f1d1c284b672618cf910dc16cae36e65c1efe79710f039af",
+    "source_provenance": "official Binance Spot and USD-M monthly one-minute kline archives with archive checksums verified",
+    "selection_prefix": "physically stop before parsing any 2023 non-date feature value",
+    "source_gap_policy": "invalid current feature bucket and following 24 five-minute bars are quarantined; never impute",
+    "live_parity": "build each completed five-minute bucket from five complete Spot and USD-M one-minute candles, then compute the identical weighted flow/absolute-return centroids"
+  },
+  "feature_contract": {
+    "centroid_definition": "normalized weighted mean minute position in [0,1] inside the five-minute bucket; flow weights are absolute taker-flow imbalance and return weights are absolute one-minute log returns",
+    "spot_flow_to_return_delay": "spot_return_time_centroid - spot_flow_time_centroid",
+    "um_flow_to_return_delay": "um_return_time_centroid - um_flow_time_centroid",
+    "spot_preload": "max(spot_flow_to_return_delay, 0)",
+    "spot_echo": "max(-spot_flow_to_return_delay, 0)",
+    "um_preload": "max(um_flow_to_return_delay, 0)",
+    "um_echo": "max(-um_flow_to_return_delay, 0)",
+    "spot_to_um_score": "sqrt(spot_preload * um_echo)",
+    "um_to_spot_score": "sqrt(um_preload * spot_echo)",
+    "source_side": {
+      "spot_preload_um_echo": "sign(spot_flow_fraction)",
+      "um_preload_spot_echo": "sign(um_flow_fraction)"
+    },
+    "directional_confirmation": "source side is nonzero; destination flow has the same sign; and both completed-bar venue returns have the source-side sign",
+    "route_threshold": "route score at or above its strictly-prior rolling 30-day 95th percentile over clean directionally-confirmed crossed-clock bars; requires at least 2,016 clean prior calendar bars and 256 eligible prior route events in the window",
+    "rolling_window_bars": 8640,
+    "all_thresholds_shifted_bars": 1,
+    "episode_start": "current route active and no same-route active bar in the prior 12 completed buckets",
+    "rolling_minimum_clean_calendar_bars": 2016,
+    "rolling_minimum_prior_route_events": 256
+  },
+  "policies": [
+    {
+      "policy_id": "V01",
+      "route": "spot_preload_um_echo",
+      "hold_bars": 6
+    },
+    {
+      "policy_id": "V02",
+      "route": "spot_preload_um_echo",
+      "hold_bars": 18
+    },
+    {
+      "policy_id": "V03",
+      "route": "um_preload_spot_echo",
+      "hold_bars": 6
+    },
+    {
+      "policy_id": "V04",
+      "route": "um_preload_spot_echo",
+      "hold_bars": 18
+    }
+  ],
+  "route_rules": {
+    "spot_preload_um_echo": "clean, spot delay>0, UM delay<0, directional confirmation, and spot_to_um_score>=strictly-prior q95; side=Spot flow sign",
+    "um_preload_spot_echo": "clean, UM delay>0, Spot delay<0, directional confirmation, and um_to_spot_score>=strictly-prior q95; side=USD-M flow sign"
+  },
+  "support_freeze_before_returns": {
+    "nonoverlap_events_min_each_policy": 600,
+    "nonoverlap_events_min_each_year": 150,
+    "minimum_each_side_share": 0.35,
+    "maximum_single_month_share": 0.1,
+    "global_missing_or_quarantined_fraction_max": 0.01,
+    "monthly_missing_or_quarantined_fraction_max": 0.05,
+    "failure_action": "reject policy without computing forward trade returns"
+  },
+  "selection_protocol": {
+    "fit_windows": {
+      "fit_2020": [
+        "2020-01-01",
+        "2021-01-01"
+      ],
+      "fit_2021": [
+        "2021-01-01",
+        "2022-01-01"
+      ]
+    },
+    "selection": [
+      "2022-01-01",
+      "2023-01-01"
+    ],
+    "sealed_holdout": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "future_2024_plus_sealed": true,
+    "rank": [
+      "descending minimum annual CAGR/strict_MDD over 2020, 2021, 2022",
+      "descending combined 2020-2022 CAGR/strict_MDD",
+      "ascending policy_id"
+    ],
+    "selection_gates": {
+      "every_calendar_year_absolute_return_positive": true,
+      "positive_half_years_min_of_six": 5,
+      "strict_mdd_pct_max_each_year": 12.0,
+      "combined_cagr_to_strict_mdd_min": 2.0,
+      "combined_trades_min": 600,
+      "each_calendar_year_trades_min": 150,
+      "eight_bp_notional_side_cost_stress_absolute_return_positive": true,
+      "familywise_weekly_cluster_signflip_p_max": 0.1
+    },
+    "holdout_2023_gates": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_min": 3.0,
+      "strict_mdd_pct_max": 10.0,
+      "trades_min": 150,
+      "h1_absolute_return_nonnegative": true,
+      "h2_absolute_return_nonnegative": true,
+      "eight_bp_notional_side_cost_stress_absolute_return_positive": true,
+      "one_bar_delay_absolute_return_positive": true
+    },
+    "multiple_testing_hypotheses": 4,
+    "familywise_adjustment": "Bonferroni over all four frozen policies"
+  },
+  "execution_contract": {
+    "feature_bucket": "five complete Spot/USD-M one-minute candles in bucket t",
+    "feature_available": "t plus five minutes",
+    "entry_delay_bars_from_bucket_open": 2,
+    "entry": "Binance USD-M open at t+10 minutes, leaving one complete five-minute latency bucket after feature availability",
+    "holds_bars": [
+      6,
+      18
+    ],
+    "nonoverlap": true,
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.0008,
+    "realized_funding": true,
+    "strict_mdd": "global/pre-entry high-water plus held favorable-before-adverse OHLC, entry/hypothetical liquidation costs, slippage, and funding",
+    "cagr_clock": "full calendar including idle periods"
+  },
+  "controls": {
+    "direction_flip": true,
+    "route_side_swap": true,
+    "one_additional_bar_delay": true,
+    "twelve_additional_bar_delay": true,
+    "aggregate_flow_without_crossed_clock": true,
+    "same_venue_preload_only": true,
+    "same_venue_echo_only": true,
+    "time_of_week_matched_random_samples": 5000,
+    "weekly_cluster_signflip_samples": 5000,
+    "random_seed": 20260716
+  },
+  "orthogonality_after_holdout": {
+    "baseline": "full frozen portfolio, not a single representative alpha",
+    "exact_entry_jaccard_max": 0.02,
+    "candidate_entries_near_existing_6h_fraction_target": 0.1,
+    "candidate_entries_near_existing_6h_fraction_max": 0.25,
+    "position_jaccard_max": 0.15,
+    "absolute_daily_pnl_pearson_max": 0.3,
+    "minimum_nonzero_daily_pnl_days": 10,
+    "undefined_metric": "fail_closed",
+    "marginal_portfolio_improvement_required": true
+  },
+  "support_only_feasibility_repair": {
+    "parent_v1_support": "results/cross_venue_temporal_torsion_support_v1_2026-07-16.json",
+    "parent_v1_support_file_sha256": "f4dcb224fce534622a31c2139ebcf356e42dea50cd80ec04130f8e1fd450a8b6",
+    "parent_v1_support_manifest_hash": "bb4b3bfc6dd4c127c4429c14c0dc4bf21bd8f817ed768d0793051acd88dbed00",
+    "parent_v1_outcomes_opened": false,
+    "evidence_seen": {
+      "spot_preload_um_echo_confirmed_rows": 29176,
+      "spot_preload_um_echo_max_prior_30d_events": 1028,
+      "um_preload_spot_echo_confirmed_rows": 29701,
+      "um_preload_spot_echo_max_prior_30d_events": 979,
+      "global_quarantine_fraction": 0.004390967153284671,
+      "maximum_monthly_quarantine_fraction": 0.033602150537634407
+    },
+    "fields_changed_from_v1": [
+      "protocol_version",
+      "feature_contract.route_threshold",
+      "feature_contract.rolling_minimum_bars replaced by separate clean-calendar and eligible-event minima",
+      "support_freeze_before_returns.monthly_missing_or_quarantined_fraction_max",
+      "support_only_feasibility_repair added"
+    ],
+    "unchanged_fields": [
+      "economic hypothesis",
+      "source columns and hashes",
+      "route and direction rules",
+      "four policies and holds",
+      "execution delay, leverage, costs, funding, and strict MDD",
+      "selection and 2023 holdout gates",
+      "controls and orthogonality gates"
+    ],
+    "repair_limit": "one support-only feasibility repair; no further protocol change is allowed after any trade return is opened"
+  },
+  "manifest_hash": "8101737f5d0fb3041774941f5916e963f1ddaa31d34064f32563acc7e8bccf87",
+  "created_at": "2026-07-16T14:55:33.273327+00:00"
+}
