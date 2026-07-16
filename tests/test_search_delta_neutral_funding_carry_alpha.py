@@ -51,7 +51,9 @@ def source_bundle(market: pd.DataFrame, funding: pd.DataFrame | None = None) -> 
                 "funding_rate",
                 "reported_mark_price",
                 "exec_index",
+                "settlement_index",
                 "settlement_mark",
+                "settlement_mark_is_reported",
                 "fallback_index",
             ]
         )
@@ -71,6 +73,7 @@ def test_funding_mapping_is_strictly_after_event_and_mark_is_completed_before_ev
     )
     mapped, diagnostics = map_funding_to_market(market, funding)
     assert mapped.loc[0, "exec_index"] == 7  # 08:05, not same-timestamp 08:00
+    assert mapped.loc[0, "settlement_index"] == 2  # cash settles at 08:00
     assert mapped.loc[0, "fallback_index"] == 1  # 07:59 bar ends at 08:00
     assert mapped.loc[0, "settlement_mark"] == 100.0
     assert diagnostics["funding_missing_reported_mark"] == 1
@@ -84,7 +87,9 @@ def test_event_triggered_entry_does_not_capture_that_event_but_receives_next() -
             "funding_rate": [0.001, 0.001],
             "reported_mark_price": [np.nan, np.nan],
             "exec_index": [1, 3],
+            "settlement_index": [0, 2],
             "settlement_mark": [100.0, 100.0],
+            "settlement_mark_is_reported": [False, False],
             "fallback_index": [-1, 1],
         }
     )
@@ -135,7 +140,7 @@ def test_strict_mdd_combines_favorable_then_adverse_two_leg_extremes() -> None:
     )["stats"]
     assert result["absolute_return_pct"] == pytest.approx(0.0)
     assert result["close_mdd_pct"] == pytest.approx(0.0)
-    assert result["strict_mdd_pct"] == pytest.approx((1.0 - 0.975 / 1.025) * 100.0)
+    assert result["strict_mdd_pct"] == pytest.approx((1.0 - 0.925 / 1.075) * 100.0)
 
 
 def test_missing_spot_repair_uses_only_prior_complete_basis_and_widens_extrema() -> None:
@@ -160,6 +165,71 @@ def test_missing_spot_repair_uses_only_prior_complete_basis_and_widens_extrema()
     assert repaired.loc[1, "spot_low"] <= 99.0 * (1.02 - 0.0025)
     assert diagnostics["missing_spot_bars"] == 1
     assert diagnostics["proxy_spot_bars"] == 1
+
+
+def test_partial_spot_row_is_repaired_instead_of_treated_as_complete() -> None:
+    dates = pd.date_range("2023-01-01", periods=3, freq="1min")
+    futures = pd.DataFrame(
+        {"date": dates, "open": 100.0, "high": 101.0, "low": 99.0, "close": 100.0}
+    )
+    spot = pd.DataFrame(
+        {
+            "date": dates,
+            "open": [102.0, 999.0, 104.0],
+            "high": [103.0, 1_000.0, 105.0],
+            "low": [101.0, 998.0, 103.0],
+            "close": [102.0, np.nan, 104.0],
+        }
+    )
+    repaired, diagnostics = reconstruct_spot(futures, spot, cushion=0.0025)
+    assert repaired.loc[1, "spot_open"] == pytest.approx(102.0)
+    assert repaired.loc[1, "spot_close"] == pytest.approx(102.0)
+    assert repaired.loc[1, "spot_high"] == pytest.approx(1_000.0)
+    assert diagnostics["partial_spot_bars"] == 1
+
+
+def test_reported_funding_mark_is_used_for_accounting_when_available() -> None:
+    market = market_frame("2023-01-01 07:58:00", periods=8)
+    market["date"] = pd.date_range("2023-01-01 07:58:00", periods=8, freq="1min")
+    funding = pd.DataFrame(
+        {
+            "date": [pd.Timestamp("2023-01-01 08:00:00")],
+            "funding_rate": [0.001],
+            "reported_mark_price": [130.0],
+        }
+    )
+    mapped, diagnostics = map_funding_to_market(market, funding)
+    assert mapped.loc[0, "settlement_mark"] == 130.0
+    assert bool(mapped.loc[0, "settlement_mark_is_reported"])
+    assert diagnostics["funding_settlement_marks_reported"] == 1
+
+
+def test_funding_cash_posts_at_settlement_not_delayed_gate_execution() -> None:
+    market = market_frame("2023-01-01 07:58:00", periods=8)
+    market["date"] = pd.date_range("2023-01-01 07:58:00", periods=8, freq="1min")
+    funding = pd.DataFrame(
+        {
+            "date": [pd.Timestamp("2023-01-01 08:00:00")],
+            "funding_rate": [0.001],
+            "reported_mark_price": [100.0],
+            "exec_index": [7],
+            "settlement_index": [2],
+            "settlement_mark": [100.0],
+            "settlement_mark_is_reported": [True],
+            "fallback_index": [1],
+        }
+    )
+    simulation = simulate_window(
+        source_bundle(market, funding),
+        {},
+        start="2023-01-01 07:58:00",
+        end="2023-01-01 08:06:00",
+        cfg=Config(),
+        costs=CostModel(0.0, 0.0),
+        force_initial_active=True,
+    )
+    assert simulation["equity"][1] == pytest.approx(1.0)
+    assert simulation["equity"][2] == pytest.approx(1.0005)
 
 
 def test_gate_uses_current_settled_event_then_executes_at_precomputed_next_open() -> None:

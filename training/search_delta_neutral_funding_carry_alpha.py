@@ -162,10 +162,10 @@ def reconstruct_spot(
         raise ValueError("spot source contains duplicate one-minute timestamps")
 
     indexed = spot.set_index("date").reindex(futures["date"])
-    observations = indexed["open"].notna().astype(float).replace(0.0, np.nan)
-    full = observations.eq(1).to_numpy(bool)
-    partial = np.zeros(len(indexed), dtype=bool)
-    missing = observations.isna().to_numpy(bool)
+    observed_fields = indexed[["open", "high", "low", "close"]].notna()
+    full = observed_fields.all(axis=1).to_numpy(bool)
+    partial = (observed_fields.any(axis=1) & ~observed_fields.all(axis=1)).to_numpy(bool)
+    missing = (~observed_fields.any(axis=1)).to_numpy(bool)
     perp_close = futures["close"].to_numpy(float)
     raw_close = pd.to_numeric(indexed["close"], errors="coerce").to_numpy(float)
     complete_basis = np.where(full, raw_close / perp_close - 1.0, np.nan)
@@ -204,11 +204,11 @@ def reconstruct_spot(
         output.loc[repaired, "spot_high"] = widened_high[repaired]
         output.loc[repaired, "spot_low"] = widened_low[repaired]
     output["spot_proxy"] = repaired
-    output["spot_observations"] = observations.fillna(0).astype(int).to_numpy()
+    output["spot_observations"] = observed_fields.sum(axis=1).astype(int).to_numpy()
     _validate_ohlc(output, "spot_")
     diagnostics = {
         "complete_spot_bars": int(full.sum()),
-        "partial_spot_bars": 0,
+        "partial_spot_bars": int(partial.sum()),
         "missing_spot_bars": int(missing.sum()),
         "proxy_spot_bars": int(repaired.sum()),
         "max_consecutive_proxy_bars": _max_true_streak(repaired),
@@ -239,6 +239,7 @@ def map_funding_to_market(
     valid_slots = slots < len(execution_indices)
     exec_index[valid_slots] = execution_indices[slots[valid_slots]]
     output["exec_index"] = exec_index
+    output["settlement_index"] = np.searchsorted(bar_ns, event_ns, side="left")
     one_minute_ns = int(pd.Timedelta("1min").value)
     fallback_index = np.searchsorted(bar_ns + one_minute_ns, event_ns, side="right") - 1
     fallback_mark = np.full(len(output), np.nan, dtype=float)
@@ -246,14 +247,18 @@ def map_funding_to_market(
     fallback_mark[valid_fallback] = market["perp_close"].to_numpy(float)[
         fallback_index[valid_fallback]
     ]
-    output["settlement_mark"] = fallback_mark
-    output["fallback_index"] = fallback_index
     reported = output["reported_mark_price"].to_numpy(float)
+    use_reported = np.isfinite(reported) & (reported > 0.0)
+    output["settlement_mark"] = np.where(use_reported, reported, fallback_mark)
+    output["settlement_mark_is_reported"] = use_reported
+    output["fallback_index"] = fallback_index
     compare = np.isfinite(reported) & np.isfinite(fallback_mark) & (reported > 0.0)
     mark_error_bps = np.abs(reported[compare] / fallback_mark[compare] - 1.0) * 10_000.0
     diagnostics = {
         "funding_missing_reported_mark": int((~np.isfinite(reported) | (reported <= 0.0)).sum()),
         "funding_without_causal_fallback": int((~np.isfinite(fallback_mark)).sum()),
+        "funding_settlement_marks_reported": int(use_reported.sum()),
+        "funding_settlement_marks_fallback": int((~use_reported).sum()),
         "reported_vs_causal_mark_comparisons": int(compare.sum()),
         "reported_vs_causal_mark_median_abs_error_bps": (
             float(np.median(mark_error_bps)) if len(mark_error_bps) else None
@@ -262,8 +267,8 @@ def map_funding_to_market(
             float(np.quantile(mark_error_bps, 0.99)) if len(mark_error_bps) else None
         ),
         "funding_mark_policy": (
-            "always use last fully completed USD-M one-minute close whose end <= funding_time; "
-            "reported marks are diagnostic only"
+            "use actual reported funding mark when finite and positive; otherwise use the last "
+            "fully completed USD-M one-minute close whose end <= funding_time"
         ),
     }
     return output, diagnostics
@@ -502,13 +507,15 @@ def simulate_window(
     p_high = market["perp_high"].to_numpy(float)
     p_low = market["perp_low"].to_numpy(float)
     p_close = market["perp_close"].to_numpy(float)
-    event_exec = funding["exec_index"].to_numpy(int)
+    event_settlement = funding["settlement_index"].to_numpy(int)
     event_times = funding["date"].to_numpy(dtype="datetime64[ns]").astype(np.int64)
     event_rates = funding["funding_rate"].to_numpy(float)
     event_marks = funding["settlement_mark"].to_numpy(float)
 
     action_indices = [index for index in actions if left < index < right]
-    funding_indices = sorted(set(int(value) for value in event_exec if left <= value < right))
+    funding_indices = sorted(
+        set(int(value) for value in event_settlement if left <= value < right)
+    )
     date_slice = dates.iloc[left:right]
     rebalance_indices = (
         np.flatnonzero(
@@ -519,7 +526,7 @@ def simulate_window(
     ).tolist()
     boundaries = sorted(set([left, right, *action_indices, *funding_indices, *rebalance_indices]))
     events_at: dict[int, list[int]] = {}
-    for event_position, index in enumerate(event_exec):
+    for event_position, index in enumerate(event_settlement):
         if left <= int(index) < right:
             events_at.setdefault(int(index), []).append(event_position)
 
@@ -608,28 +615,30 @@ def simulate_window(
         local = slice(index - left, next_index - left)
         if active:
             base = equity
-            high_path = (
+            favorable = (
                 base
                 + q_spot * (s_high[segment] - s_open[index])
-                - q_perp * (p_high[segment] - p_open[index])
+                - q_perp * (p_low[segment] - p_open[index])
             )
-            low_path = (
+            adverse = (
                 base
                 + q_spot * (s_low[segment] - s_open[index])
-                - q_perp * (p_low[segment] - p_open[index])
+                - q_perp * (p_high[segment] - p_open[index])
             )
             closes = (
                 base
                 + q_spot * (s_close[segment] - s_open[index])
                 - q_perp * (p_close[segment] - p_open[index])
             )
-            opening = np.full(len(closes), base, dtype=float)
-            # Both BTC venues move in the same underlying direction. Pairing spot
-            # high with perp low creates an impossible synthetic directional move;
-            # paired high/high and low/low retain basis dislocation while marking
-            # the aggregate hedged position on a synchronized one-minute clock.
-            favorable = np.maximum.reduce([opening, high_path, low_path, closes])
-            adverse = np.minimum.reduce([opening, high_path, low_path, closes])
+            # Strict path: the cross-venue extrema can be asynchronous inside the
+            # minute, so first admit spot-high/perp-low into the global HWM and
+            # then mark spot-low/perp-high as the adverse held-position extreme.
+            favorable = np.maximum.reduce(
+                [np.full(len(closes), base, dtype=float), favorable, closes]
+            )
+            adverse = np.minimum.reduce(
+                [np.full(len(closes), base, dtype=float), adverse, closes]
+            )
             active_days.update(str(value.date()) for value in dates.iloc[index:next_index])
         else:
             size = next_index - index
@@ -842,7 +851,7 @@ def write_docs(result: dict[str, Any], path: str) -> None:
             "- funding event는 해당 시각보다 엄격히 뒤의 첫 5분봉 open에서만 gate를 바꾼다.",
             "- event 당시 이미 보유한 short만 funding을 받는다; 그 event로 진입한 포지션은 받지 않는다.",
             "- funding mark는 event 시각까지 완전히 끝난 마지막 선물 5분봉 close를 일관되게 사용한다.",
-            "- strict MDD는 동기화된 1분봉에서 high/high·low/low·open·close의 합산 두-leg equity envelope를 사용한다.",
+            "- strict MDD는 1분 내 비동시 basis dislocation까지 포함해 spot-high/perp-low HWM 뒤 spot-low/perp-high adverse를 적용한다.",
             "- 현물 누락/부분봉은 직전 완성 basis와 선물 OHLC로 복원하고 high/low를 고정 cushion만큼 확대한다.",
             "- 진입·청산·일일 리밸런싱 모두 두 leg의 실제 변경 notional에 fee+slippage를 부과한다.",
             "- CAGR 분모는 거래/보유일이 아니라 전체 달력 기간이다.",
@@ -980,6 +989,8 @@ def run(cfg: Config) -> dict[str, Any]:
                 "eligible first; maximize min(fit full ratio, 2023 ratio), then minimum "
                 "half-year absolute return, then combined full-window absolute return"
             ),
+            "pre2024_statistics_are_post_selection_descriptive_only": True,
+            "independent_validation_required": "single frozen 2024+ OOS plus live forward parity",
         },
         "config": asdict(cfg),
         "sources": {"hashes": sources.source_hashes, "diagnostics": sources.diagnostics},
@@ -1028,8 +1039,8 @@ def run(cfg: Config) -> dict[str, Any]:
             "funding_eligibility": "position entry time strictly before funding event",
             "funding_mark": sources.diagnostics["funding_mark_policy"],
             "strict_mdd": (
-                "global HWM over synchronized one-minute two-leg equity envelope from paired "
-                "high/high, low/low, open and close marks, plus all costs and funding debits"
+                "global HWM admits one-minute spot-high/perp-low favorable cross-venue extreme, "
+                "then spot-low/perp-high adverse cross-venue extreme, plus all costs/funding debits"
             ),
             "split_policy": "flat start with prior-only gate state; forced two-leg close inside end",
             "calendar_cagr": True,
