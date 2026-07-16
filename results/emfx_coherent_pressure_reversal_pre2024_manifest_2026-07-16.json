@@ -1,0 +1,111 @@
+{
+  "phase": "pre_2024_selection",
+  "selection_end": "2024-01-01",
+  "fixed_symbol_universe": [
+    "USDAUD",
+    "USDCNY",
+    "USDHKD",
+    "USDINR",
+    "USDMXN"
+  ],
+  "minimum_daily_observations": {
+    "USDAUD": 1000,
+    "USDCNY": 200,
+    "USDHKD": 700,
+    "USDINR": 600,
+    "USDMXN": 1000
+  },
+  "policy": {
+    "feature": "em_coherent_pressure_1d",
+    "tail": 0.2,
+    "lower_threshold": -0.2810186352413876,
+    "upper_threshold": 0.3957468533803206,
+    "rule": "price_reversal",
+    "hold_days": 7
+  },
+  "policy_hash": "9e580bc84fda42c14bc791fb7b09e8cc5205b32ade9b54956093a5eb5b696336",
+  "source_prefix_hashes": {
+    "market": "bf817b7f870972b61b6dfbf1b320391de070355788970ff56dfa413821660299",
+    "funding": "7dce0207b8e5d446fd4233b787709347d7c17236897353cc9c15696acc2d6edb",
+    "emfx": "25fc5a07a3101732c6c5fd9947a0c363334bf6ee55ed04956b9b93a088177ae2",
+    "features": "c551e7ab955b7768107109154121de0f74dbd8a8afc490f669691c760497fa41"
+  },
+  "schedule_hashes": {
+    "fit_2021": "4941fdc056eb93572775477372b75447245ec2e776305fa5f0e1737f175a6ffe",
+    "fit_2022": "dc86cfd2c4b4eccd7e93a2e0f789a175a898cdcb5888f2f823852c7ac5420b88",
+    "select_2023_h1": "87ff5cbbb5d2cc45234ae909f54e378829ef2cee00a85ba202479acbb95e140f",
+    "select_2023_h2": "03399a429036ed249743360ad99a2ef39ba12d112f82e4285161683aba59f1f0",
+    "select_2023": "28774c76cf13ce591500582a168fcc43e770c8793cfae111328002221cd510f3"
+  },
+  "execution_contract": {
+    "accounting_version": "emfx_coherent_pressure_execution_v1",
+    "leverage": 0.5,
+    "fee_rate": 0.0005,
+    "slippage_rate": 0.0001,
+    "stress_cost_rate": 0.0012,
+    "entry_delay_bars": 1,
+    "take_bps": 10000,
+    "stop_bps": 10000,
+    "realized_funding": true,
+    "strict_mdd": "intratrade_favorable_before_adverse_high_water",
+    "full_calendar_cagr": true
+  },
+  "source_vintage_contract": {
+    "allow_backfilled_emfx": true,
+    "semantic_availability": "UTC day d plus five minutes, then one completed 5m bar",
+    "database_snapshot_is_point_in_time": false,
+    "promotion_requires_live_forward_validation": true
+  },
+  "selection_stats_hash": "1ab769595805d65d4578f6fee7f524f83b43e4b5966059b4c8e3185bbc67961a",
+  "search_space": {
+    "features": [
+      "em_stress_1d",
+      "em_median_1d",
+      "em_coherence_1d",
+      "em_coherent_pressure_1d",
+      "em_breadth_1d_z",
+      "em_dispersion_1d",
+      "asia_stress_1d",
+      "carry_stress_1d",
+      "asia_carry_gap_1d",
+      "em_stress_5d",
+      "em_median_5d",
+      "em_coherence_5d",
+      "em_coherent_pressure_5d",
+      "em_breadth_5d_z",
+      "em_dispersion_5d",
+      "asia_stress_5d",
+      "carry_stress_5d",
+      "asia_carry_gap_5d",
+      "hkd_band_z"
+    ],
+    "tails": [
+      0.1,
+      0.2,
+      0.3
+    ],
+    "rules": [
+      "direct",
+      "risk_inverse",
+      "risk_confirm",
+      "risk_divergence",
+      "price_momentum",
+      "price_reversal",
+      "riskoff_short",
+      "riskon_long"
+    ],
+    "hold_days": [
+      1,
+      3,
+      7
+    ],
+    "eligibility": {
+      "minimum_trades_per_subperiod": 5,
+      "all_subperiod_absolute_returns_positive": true,
+      "minimum_select_2023_cagr_to_strict_mdd": 2.0
+    }
+  },
+  "tested_cells": 1368,
+  "manifest_hash": "3adb3d041f2096d51effc899319ee5653b28f4a49e003ba7544e8ba2a8b60910",
+  "created_at": "2026-07-16T11:14:08.773708+00:00"
+}
