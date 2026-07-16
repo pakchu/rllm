@@ -46,3 +46,10 @@ def test_freeze_requires_full_commit_hash() -> None:
             policy_clock_sha256=hashes,
             policy_clock_rows=rows,
         )
+
+
+def test_repository_freeze_verifies_before_outcomes() -> None:
+    payload = freeze.evaluate.verify_evaluation_freeze()
+    assert payload["outcomes_opened"] is False
+    assert payload["returns_or_prices_loaded_during_freeze"] is False
+    assert payload["policy_clock_rows"]["primary"] == 1_259
