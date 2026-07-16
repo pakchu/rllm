@@ -1,0 +1,204 @@
+{
+  "protocol": {
+    "protocol_version": "lorc_v1_2026-07-17",
+    "name": "LORC — Leave-One-Out Residual Continuation",
+    "claim": "An extreme cross-sectional alt-perpetual residual that is not confirmed by aggressor flow represents informed or inventory-driven repricing that continues for the next 12 hours; buy the residual winner and short the residual loser with ex-ante factor-beta-neutral weights.",
+    "evidence_boundary": {
+      "research_2023_2024_opened": true,
+      "research_2023_2024_contaminated_for_confirmation": true,
+      "holdout_2025_post_entry_returns_opened": false,
+      "final_2026_post_entry_returns_opened": false,
+      "single_policy_frozen_before_2025": true,
+      "repository_wide_human_pristine_claim": false
+    },
+    "hypothesis_origin": {
+      "parent_family": "LORE v1 mean reversion",
+      "parent_decision": "rejected_before_2025_holdout",
+      "parent_selection_result_hash": "67d3defc3f373d698012bfdeb3dbdf76539491a3c08ee4d5a0ef208794bc3e4b",
+      "origin_control": "preregistered exact direction flip on the frozen L03 clock",
+      "no_additional_2023_2024_threshold_or_pair_search": true,
+      "research_stats": {
+        "2023": {
+          "absolute_return_pct": 38.291954,
+          "cagr_pct": 38.322661,
+          "strict_mdd_pct": 22.933691,
+          "cagr_to_strict_mdd": 1.671022,
+          "trades": 107
+        },
+        "2024": {
+          "absolute_return_pct": 110.659103,
+          "cagr_pct": 110.337657,
+          "strict_mdd_pct": 11.773264,
+          "cagr_to_strict_mdd": 9.371882,
+          "trades": 117
+        },
+        "combined_2023_2024": {
+          "absolute_return_pct": 191.324663,
+          "cagr_pct": 70.619968,
+          "strict_mdd_pct": 22.933691,
+          "cagr_to_strict_mdd": 3.079311,
+          "trades": 224,
+          "weekly_cluster_signflip_raw_p": 0.002099895
+        },
+        "ten_bp_cost_stress": {
+          "absolute_return_pct": 143.589407,
+          "cagr_pct": 56.025989,
+          "strict_mdd_pct": 24.662704,
+          "cagr_to_strict_mdd": 2.27171
+        }
+      }
+    },
+    "universe": {
+      "venue": "Binance USD-M perpetual futures",
+      "symbols": [
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "ADAUSDT",
+        "DOGEUSDT"
+      ],
+      "trading_target": "two-leg alt-perpetual pair; no BTC position",
+      "benchmark_only": "BTCUSDT perpetual 5m bars for daily beta/correlation",
+      "structural_orthogonality": "cross-sectional market-neutral alt residual continuation; no BTC REX, BTC OI, funding/premium gate, Kimchi/FX, Markov state, tree model, or LLM prediction"
+    },
+    "source_contract": {
+      "physical_2025_prefix": [
+        "2024-01-01T00:00:00Z",
+        "2026-01-01T00:00:00Z"
+      ],
+      "warmup_before_holdout": "2024 only; no post-2025 row may be written",
+      "holdout": [
+        "2025-01-01T00:00:00Z",
+        "2026-01-01T00:00:00Z"
+      ],
+      "base_interval": "5m bar-open timestamps",
+      "required_columns": [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume",
+        "taker_buy_quote",
+        "tic"
+      ],
+      "completed_hour": "exactly 12 unique 5m bars in [hour_open, hour_open+1h); feature available only at the right boundary",
+      "all_six_symbols_required": true,
+      "no_fill_or_nearest_join": true,
+      "funding": "exact symbol funding timestamps; no synthetic or forward-filled rate"
+    },
+    "feature_formula": {
+      "hourly_return": "log(hour_close_t/hour_close_t-1)",
+      "leave_one_out_factor": "cross-sectional median hourly return of the other five symbols",
+      "beta": {
+        "formula": "rolling cov(asset_return, loo_factor) / rolling var(loo_factor)",
+        "lookback_hours": 720,
+        "minimum_hours": 336,
+        "shift_hours": 1,
+        "clip": [
+          0.25,
+          2.5
+        ]
+      },
+      "residual_horizon_hours": 12,
+      "residual": "log(close_t/close_t-12h) - beta_t * sum(loo_factor over completed 12h)",
+      "residual_z": {
+        "lookback_hours": 2160,
+        "minimum_hours": 1080,
+        "history_shift_hours": 1
+      },
+      "flow": "2*sum(taker_buy_quote over 12h)/sum(quote_asset_volume over 12h)-1",
+      "flow_z": {
+        "lookback_hours": 2160,
+        "minimum_hours": 1080,
+        "history_shift_hours": 1
+      },
+      "winner": "argmax residual_z with lexical symbol tie-break",
+      "loser": "argmin residual_z with lexical symbol tie-break"
+    },
+    "frozen_policy": {
+      "policy_id": "LORC01",
+      "residual_horizon_hours": 12,
+      "hold_hours": 12,
+      "winner_residual_z_at_least": 1.5,
+      "loser_residual_z_at_most": -1.5,
+      "winner_price_minus_flow_z_at_least": 1.0,
+      "loser_flow_minus_price_z_at_least": 1.0,
+      "long_leg": "winner",
+      "short_leg": "loser",
+      "weight_formula": {
+        "long_abs": "loser_beta/(winner_beta+loser_beta)",
+        "short_abs": "winner_beta/(winner_beta+loser_beta)",
+        "minimum_leg_weight": 0.25,
+        "gross": 1.0,
+        "target_factor_beta": 0.0
+      },
+      "reservation": "start flat at 2025-01-01; first eligible 2025 signal reserves through exit"
+    },
+    "execution": {
+      "signal_time": "right edge of completed hourly bar",
+      "entry": "5m open at signal_time + 5m",
+      "exit": "5m open at entry_time + 12h",
+      "base_cost_bp_per_notional_side": 6.0,
+      "stress_cost_bp_per_notional_side": 10.0,
+      "funding_interval": "entry_time < funding_time <= exit_time",
+      "funding_cash": "-signed_leg_notional * funding_rate at causal mark",
+      "strict_mdd": "global/pre-entry HWM; entry cost first; each held bar marks simultaneous long-high/short-low favorable before simultaneous long-low/short-high adverse; funding debits before adverse, credits cannot raise intratrade peak; hypothetical liquidation cost at every mark; scheduled exit cost",
+      "cagr": "full declared wall-clock including idle time",
+      "tp_sl": null
+    },
+    "support_gate_2025": {
+      "events_at_least": 60,
+      "h1_events_at_least": 25,
+      "h2_events_at_least": 25,
+      "unique_ordered_pairs_at_least": 10,
+      "maximum_ordered_pair_share": 0.15,
+      "symbols_seen_each_side_at_least": 5,
+      "monthly_source_quarantine_at_most": 0.01,
+      "outcome_columns_forbidden": true
+    },
+    "holdout_2025": {
+      "single_confirmatory_hypothesis": true,
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_at_least": 3.0,
+      "strict_mdd_at_most_pct": 15.0,
+      "h1_absolute_return_positive": true,
+      "h2_absolute_return_positive": true,
+      "trades_at_least": 60,
+      "ten_bp_cost_stress_absolute_return_positive": true,
+      "weekly_cluster_signflip_p_at_most": 0.1,
+      "entry_delay_plus_one_5m_bar_absolute_return_positive": true
+    },
+    "orthogonality_2025": {
+      "daily_mark_to_market_returns": "UTC calendar-day close-to-close strategy equity",
+      "absolute_pearson_to_btc_daily_return_at_most": 0.3,
+      "absolute_ols_beta_to_btc_daily_return_at_most": 0.15,
+      "nonzero_strategy_days_at_least": 60,
+      "comparison_to_current_portfolio_after_strategy_pass": true,
+      "marginal_portfolio_improvement_required_for_promotion": true
+    },
+    "final_2026": {
+      "opened_only_after_all_2025_strategy_gates_pass": true,
+      "available_window": [
+        "2026-01-01T00:00:00Z",
+        "2026-06-01T00:00:00Z"
+      ],
+      "absolute_return_positive": true,
+      "annualized_cagr_to_strict_mdd_at_least": 3.0,
+      "strict_mdd_at_most_pct": 15.0,
+      "trades_at_least": 25,
+      "ten_bp_cost_stress_absolute_return_positive": true
+    },
+    "diagnostics_not_repair_candidates": [
+      "mean-reversion direction on the same frozen clock",
+      "equal 50/50 legs",
+      "entry delayed one hour",
+      "seven-day clock shift",
+      "monthly ordered-pair permutation"
+    ],
+    "stop_rule": "Reject before 2026 if the exact single LORC01 policy fails any strategy gate in calendar 2025. No threshold, direction, hold, pair whitelist, leverage, or regime repair is allowed after 2025 is opened. Orthogonality is reported independently and is required for portfolio promotion."
+  },
+  "protocol_hash": "151f7905b64a2eca471f56edf377a7b141f9ad8cb58fb7646c1f0b96a4a344ee",
+  "created_at": "2026-07-16T16:07:30.801069+00:00"
+}
