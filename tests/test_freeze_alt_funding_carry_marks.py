@@ -30,6 +30,20 @@ def test_download_mark_klines_paginates_to_exact_grid() -> None:
     assert frame["mark_price"].tolist() == [100.0, 101.0, 102.0]
 
 
+def test_download_mark_klines_allows_exchange_gap_away_from_funding_event() -> None:
+    start = pd.Timestamp("2023-01-01 00:00")
+    end = pd.Timestamp("2023-01-01 00:15")
+    base = int(start.tz_localize("UTC").timestamp() * 1_000)
+
+    def request(path: str, params: dict[str, object]) -> list[list[object]]:
+        if int(params["startTime"]) == base:
+            return [kline(base, "100"), kline(base + 600_000, "102")]
+        return []
+
+    frame = download_mark_klines("ETHUSDT", start, end, request_json=request, sleep_sec=0)
+    assert frame["open_time"].tolist() == [start, start + pd.Timedelta(minutes=10)]
+
+
 def test_compose_event_marks_backfills_missing_and_verifies_overlap() -> None:
     times = pd.to_datetime(["2023-01-01 00:00", "2023-01-01 08:00"])
     funding = pd.DataFrame({
@@ -52,4 +66,15 @@ def test_compose_event_marks_rejects_recorded_mark_mismatch() -> None:
     })
     klines = pd.DataFrame({"open_time": [event], "mark_price": [100.0]})
     with pytest.raises(RuntimeError, match="recorded funding mark mismatch"):
+        compose_event_marks(funding, klines)
+
+
+def test_compose_event_marks_rejects_gap_at_funding_event() -> None:
+    event = pd.Timestamp("2023-01-01 08:00")
+    funding = pd.DataFrame({
+        "funding_time": [int(event.tz_localize("UTC").timestamp() * 1_000)],
+        "mark_price": [None],
+    })
+    klines = pd.DataFrame({"open_time": [pd.Timestamp("2023-01-01 07:55")], "mark_price": [100.0]})
+    with pytest.raises(RuntimeError, match="lacks exact mark-price kline open"):
         compose_event_marks(funding, klines)

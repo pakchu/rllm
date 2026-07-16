@@ -113,9 +113,11 @@ def download_mark_klines(
         "mark_price": pd.to_numeric([row[1] for row in rows], errors="raise"),
     }).drop_duplicates("open_time").sort_values("open_time").reset_index(drop=True)
     frame = frame.loc[(frame["open_time"] >= start) & (frame["open_time"] < end)].reset_index(drop=True)
-    expected = pd.date_range(start, end - pd.Timedelta(minutes=5), freq="5min")
-    if not pd.DatetimeIndex(frame["open_time"]).equals(expected):
-        raise RuntimeError(f"{symbol} AFCH mark-price grid is incomplete")
+    timestamps = pd.DatetimeIndex(frame["open_time"])
+    if timestamps.duplicated().any() or not timestamps.is_monotonic_increasing:
+        raise RuntimeError(f"{symbol} AFCH mark-price timestamps are invalid")
+    if ((timestamps.astype("int64") // 1_000_000) % STEP_MS != 0).any():
+        raise RuntimeError(f"{symbol} AFCH mark-price timestamps are off-grid")
     if not np.isfinite(frame["mark_price"].to_numpy(dtype=float)).all() or (frame["mark_price"] <= 0).any():
         raise RuntimeError(f"{symbol} AFCH mark-price values are invalid")
     return frame
@@ -157,7 +159,8 @@ def compose_event_marks(funding: pd.DataFrame, mark_klines: pd.DataFrame) -> tup
 def _markdown(result: dict[str, Any]) -> str:
     rows = "\n".join(
         f"| {row['symbol']} | {row['events']} | {row['recorded_mark_events']} | "
-        f"{row['backfilled_mark_events']} | {row['maximum_recorded_vs_kline_open_error_bp']:.9f} |"
+        f"{row['backfilled_mark_events']} | {row['missing_non_event_5m_mark_rows']} | "
+        f"{row['maximum_recorded_vs_kline_open_error_bp']:.9f} |"
         for row in result["records"]
     )
     return f"""# AFCH v1 exact funding marks — 2026-07-17
@@ -169,8 +172,8 @@ Missing 2023 funding-record marks were filled from the open of Binance USD-M
 they must agree within `1e-6 bp`. Official endpoint:
 <https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Mark-Price-Kline-Candlestick-Data>
 
-| Symbol | Events | Funding-record marks | Backfilled exact opens | Max overlap error bp |
-|---|---:|---:|---:|---:|
+| Symbol | Events | Funding-record marks | Backfilled exact opens | Missing non-event 5m bars | Max overlap error bp |
+|---|---:|---:|---:|---:|---:|
 {rows}
 
 Manifest hash: `{result['manifest_hash']}`
@@ -198,12 +201,16 @@ def run(
         funding = pd.read_csv(funding_path, usecols=["funding_time", "mark_price"])
         klines = download_mark_klines(symbol, START, END, sleep_sec=sleep_sec)
         event_marks, stats = compose_event_marks(funding, klines)
+        expected_grid = pd.date_range(START, END - pd.Timedelta(minutes=5), freq="5min")
+        missing_grid = expected_grid.difference(pd.DatetimeIndex(klines["open_time"]))
         output = target / f"{symbol}_funding_marks_2023.csv.gz"
         deterministic_csv_gz(event_marks, output)
         records.append({
             "symbol": symbol,
             **stats,
             "downloaded_5m_mark_rows": int(len(klines)),
+            "missing_non_event_5m_mark_rows": int(len(missing_grid)),
+            "downloaded_5m_mark_grid_coverage": float(len(klines) / len(expected_grid)),
             "output_path": str(output),
             "output_sha256": sha256_file(output),
         })
