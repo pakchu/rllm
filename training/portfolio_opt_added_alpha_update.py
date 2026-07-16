@@ -131,8 +131,9 @@ class Config:
     exact_batch_size: int = 16
     seed: int = 71616
     seed_count: int = 2
-    refinement_rounds: int = 4
+    refinement_rounds: int = 20
     refinement_top_n: int = 20
+    refinement_patience: int = 3
     cost_rate: float = 0.0006
 
 
@@ -1009,6 +1010,7 @@ def refine_pre2025_rows(
     rounds: list[dict[str, Any]] = []
     total_evaluated = 0
     frontier = ranked[: int(cfg.refinement_top_n)]
+    stalled_rounds = 0
     for round_index in range(int(cfg.refinement_rounds)):
         neighbors: list[dict[str, float]] = []
         for row in frontier:
@@ -1031,6 +1033,7 @@ def refine_pre2025_rows(
             : int(cfg.refinement_top_n)
         ]
         improved = ranked[0]["selection_key"] > previous_key
+        stalled_rounds = 0 if improved else stalled_rounds + 1
         rounds.append(
             {
                 "round": round_index + 1,
@@ -1038,9 +1041,17 @@ def refine_pre2025_rows(
                 "passed": len(new_rows),
                 "top_improved": improved,
                 "top_weights": ranked[0]["weights"],
+                "stalled_rounds": stalled_rounds,
             }
         )
-    return ranked, {"evaluated": total_evaluated, "rounds": rounds}
+        if stalled_rounds >= int(cfg.refinement_patience):
+            break
+    return ranked, {
+        "evaluated": total_evaluated,
+        "rounds": rounds,
+        "stopped_after_stalled_rounds": stalled_rounds,
+        "patience": int(cfg.refinement_patience),
+    }
 
 
 def _format_metric(metric: dict[str, Any]) -> str:
@@ -1064,7 +1075,7 @@ def render_docs(report: dict[str, Any]) -> str:
         f"- Gross <= {report['config']['gross_cap']}; family gross <= {report['config']['family_gross_cap']}.",
         f"- Non-zero weight >= {report['config']['min_nonzero_weight']}; step = {report['config']['weight_step']}.",
         "- Allocation ranking uses train and 2024 only.",
-        "- Two deterministic seed pools plus exact 0.05-grid local refinement are ranked on the shared 5-minute clock; there is no daily shortlist.",
+        "- Two deterministic seed pools plus exact 0.05-grid beam refinement (3 stalled rounds patience) are ranked on the shared 5-minute clock; there is no daily shortlist.",
         "- Exact score ties prefer lower gross, then lexicographically lower sleeve weights.",
         "- 2025 and 2026 may veto frozen rank 1, but never rerank or select rank 2+.",
         "- All future windows have prior research exposure; result is shadow-only.",
@@ -1256,6 +1267,7 @@ def run(cfg: Config) -> dict[str, Any]:
                         "seed_count",
                         "refinement_rounds",
                         "refinement_top_n",
+                        "refinement_patience",
                         "cost_rate",
                     }
                 },
