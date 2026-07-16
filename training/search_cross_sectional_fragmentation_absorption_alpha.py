@@ -129,16 +129,22 @@ def _load_hourly_symbol(
             .resample("1h", closed="left", label="right")
             .sum(),
             "bar_count": raw["close"].resample("1h", closed="left", label="right").count(),
+            "positive_activity_count": (
+                raw["quote_asset_volume"].gt(0) & raw["number_of_trades"].gt(0)
+            )
+            .resample("1h", closed="left", label="right")
+            .sum(),
         }
     )
     expected_hourly = pd.date_range(start + pd.Timedelta(hours=1), end, freq="1h")
     if not hourly.index.equals(expected_hourly) or not hourly["bar_count"].eq(12).all():
         raise RuntimeError(f"{symbol} XFA completed-hour grid failure")
-    numeric = hourly.drop(columns="bar_count").to_numpy(dtype=float)
+    hourly["quality"] = hourly["positive_activity_count"].eq(12)
+    numeric = hourly.drop(columns=["bar_count", "quality"]).to_numpy(dtype=float)
     if not np.isfinite(numeric).all():
         raise RuntimeError(f"{symbol} XFA non-finite source")
-    if (hourly[["open", "high", "low", "close", "quote_volume", "trade_count"]] <= 0).any().any():
-        raise RuntimeError(f"{symbol} XFA non-positive source")
+    if (hourly[["open", "high", "low", "close"]] <= 0).any().any():
+        raise RuntimeError(f"{symbol} XFA non-positive price source")
     return hourly
 
 
@@ -153,7 +159,7 @@ def build_features(
     }
     returns = pd.DataFrame(
         {
-            symbol: np.log(frame["close"] / frame["open"])
+            symbol: np.log(frame["close"] / frame["open"]).where(frame["quality"])
             for symbol, frame in hourly.items()
         }
     )
@@ -182,12 +188,16 @@ def build_features(
         flow = (2.0 * frame["taker_buy_quote"] - frame["quote_volume"]) / frame[
             "quote_volume"
         ]
+        flow = flow.where(frame["quality"])
         flow_z = _prior_zscore(flow, ROLLING_HOURS, MINIMUM_ROLLING_HOURS)
-        average_trade_size = frame["quote_volume"] / frame["trade_count"]
+        average_trade_size = (frame["quote_volume"] / frame["trade_count"]).where(
+            frame["quality"]
+        )
         average_trade_size_z = _prior_zscore(
             np.log(average_trade_size), ROLLING_HOURS, MINIMUM_ROLLING_HOURS
         )
-        range_rms = np.log(frame["high"] / frame["low"]).rolling(
+        log_range = np.log(frame["high"] / frame["low"]).where(frame["quality"])
+        range_rms = log_range.rolling(
             3 * 24, min_periods=24
         ).apply(lambda values: float(np.sqrt(np.mean(values**2))), raw=True).shift(1)
         rows.append(
