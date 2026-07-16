@@ -27,6 +27,9 @@ def test_market_prefix_rejects_any_timestamp_at_2024(monkeypatch) -> None:
 
 def test_funding_prefix_requires_exact_8h_grid() -> None:
     event_time = pd.date_range(export.START, export.END - pd.Timedelta(hours=8), freq="8h")
+    event_time = event_time + pd.to_timedelta(
+        [index % 19 for index in range(len(event_time))], unit="ms"
+    )
     frame = pd.DataFrame({"event_time": event_time, "funding_rate": 0.0001})
     validated = export.validate_funding_prefix(frame, "ETHUSDT")
     assert len(validated) == export.FUNDING_ROWS

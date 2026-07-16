@@ -83,7 +83,13 @@ def validate_funding_prefix(frame: pd.DataFrame, symbol: str) -> pd.DataFrame:
         raise ValueError(f"{symbol} missing funding timestamp")
     rate = pd.to_numeric(frame["funding_rate"], errors="raise")
     expected = pd.date_range(START, END - pd.Timedelta(hours=8), freq="8h")
-    if not pd.DatetimeIndex(event_time).equals(expected):
+    actual = pd.DatetimeIndex(event_time)
+    if (
+        len(actual) != len(expected)
+        or actual.duplicated().any()
+        or not actual.is_monotonic_increasing
+        or ((actual - expected).to_series(index=expected).abs() > pd.Timedelta(seconds=1)).any()
+    ):
         raise ValueError(f"{symbol} 2023 funding prefix/grid changed")
     if not np.isfinite(rate).all():
         raise ValueError(f"{symbol} invalid 2023 funding rate")
