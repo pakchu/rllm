@@ -1,0 +1,39 @@
+{
+  "availability_rule": "AssetEODCompletionTime must be >= observation time + 1 day; timestamps are naive UTC",
+  "columns": [
+    "observation_date",
+    "available_at",
+    "FeeTotNtv",
+    "IssTotNtv",
+    "BlkCnt",
+    "TxCnt"
+  ],
+  "config": {
+    "base_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics",
+    "end": "2023-12-31",
+    "manifest": "results/coinmetrics_btc_blockspace_security_daily_2019_2023_manifest_2026-07-17.json",
+    "output": "data/coinmetrics_btc_blockspace_security_daily_2019_2023.csv.gz",
+    "page_size": 10000,
+    "start": "2019-01-01",
+    "timeout_sec": 30.0
+  },
+  "excluded_on_purpose": {
+    "exchange_flow_metrics": "address-tagging history can change and is not admitted without a point-in-time tag-vintage archive",
+    "price_or_market_cap_metrics": "preserve a price-independent signal source"
+  },
+  "official_catalog_url": "https://community-api.coinmetrics.io/v4/catalog/metrics?metrics=FeeTotNtv%2CIssTotNtv%2CBlkCnt%2CTxCnt%2CAssetEODCompletionTime",
+  "output": "data/coinmetrics_btc_blockspace_security_daily_2019_2023.csv.gz",
+  "row_range": {
+    "end": "2023-12-31 00:00:00",
+    "start": "2019-01-01 00:00:00"
+  },
+  "rows": 1826,
+  "sha256": "c94fd06ff695d673503a56064284cffbb36e6f1ac847bdc6b38819752a77985b",
+  "source_semantics": {
+    "BlkCnt": "main-chain blocks created in the interval",
+    "FeeTotNtv": "sum of transactor-paid fees; excludes new issuance",
+    "IssTotNtv": "sum of newly issued native units",
+    "TxCnt": "ledger transactions in the interval"
+  },
+  "source_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=FeeTotNtv%2CIssTotNtv%2CBlkCnt%2CTxCnt%2CAssetEODCompletionTime&frequency=1d&start_time=2019-01-01&end_time=2023-12-31&page_size=10000"
+}
