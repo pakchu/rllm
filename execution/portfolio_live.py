@@ -19,8 +19,11 @@ import asyncio
 import hashlib
 import json
 import logging
+import multiprocessing as mp
+import os
 import select
 import time
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, asdict, field
 from decimal import Decimal
 from pathlib import Path
@@ -728,6 +731,9 @@ class PortfolioLiveConfig:
     rex_selector_score_normalization: str = "sum"
     rex_selector_fail_closed: bool = True
     rex_selector_require_cuda: bool = True
+    parallel_alpha_scoring: bool = True
+    alpha_worker_timeout_sec: float = 240.0
+    alpha_worker_start_method: Literal["spawn", "forkserver", "fork"] = "spawn"
 
 
 @dataclass(frozen=True)
@@ -1343,49 +1349,49 @@ def _apply_portfolio_selector_overlay(
             sleeve["active"] = False
     return record
 
-def _score_sleeves(
+def _score_sleeve(
     *,
-    portfolio: dict[str, Any],
+    sleeve: dict[str, Any],
     enriched: pd.DataFrame,
     features: pd.DataFrame,
     exec_cfg: WaveExecutionConfig,
     asof: pd.Timestamp,
     rex_selector_cfg: RexLlmSelectorConfig | None = None,
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
+    """Score one sleeve without DB, exchange, or shared-state side effects."""
+
     row = features.iloc[-1]
     ts = pd.Timestamp(enriched.iloc[-1]["date"])
     close = float(enriched.iloc[-1]["close"])
     atr = _current_atr(enriched, exec_cfg.atr_period)
-    out: list[dict[str, Any]] = []
-    for sleeve in portfolio["base_sleeves"]:
-        name = str(sleeve["name"])
-        source = str(sleeve["source"])
-        weight = float(sleeve["weight"])
-        configured_side = str(sleeve["side"]).upper()
-        side = configured_side
-        active = False
-        reasons: list[str] = []
-        hold = 0
-        stride = 1
-        dynamic_exit: dict[str, Any] | None = None
+    name = str(sleeve["name"])
+    source = str(sleeve.get("source", ""))
+    weight = float(sleeve["weight"])
+    configured_side = str(sleeve["side"]).upper()
+    side = configured_side
+    active = False
+    reasons: list[str] = []
+    hold = 0
+    stride = 1
+    stride_offset = 0
+    entry_delay = 1
+    dynamic_exit: dict[str, Any] | None = None
 
-        if source.endswith(".json") and Path(source).exists():
+    if source.endswith(".json"):
+        if not Path(source).exists():
+            reasons.append(f"source_config=missing:{source}")
+        else:
             cfg = _load_json(source)
             overlay_cfg = cfg if "selector_overlay" in source else None
             if "base_candidate" in cfg and "gates" not in cfg and "signal" not in cfg:
                 cfg = _load_json(str(cfg["base_candidate"]))
-            if "signal" in cfg:
-                signal_cfg = cfg["signal"]
-                gates = signal_cfg.get("gates", [])
-                gate_clauses = signal_cfg.get("gate_clauses")
-                hold = int(cfg["signal"].get("hold_bars_5m", cfg["signal"].get("hold_bars", 0)))
-                stride = int(cfg["signal"].get("stride_bars_5m", cfg["signal"].get("stride_bars", 1)))
-            else:
-                gates = cfg.get("gates", [])
-                gate_clauses = cfg.get("gate_clauses")
-                hold = int(cfg.get("hold_bars", cfg.get("hold_bars_5m", 0)))
-                stride = int(cfg.get("stride_bars", cfg.get("stride_bars_5m", 1)))
-            stride_offset = int(cfg.get("stride_offset_bars", 0))
+            signal_cfg = cfg["signal"] if "signal" in cfg else cfg
+            gates = signal_cfg.get("gates", [])
+            gate_clauses = signal_cfg.get("gate_clauses")
+            hold = int(signal_cfg.get("hold_bars_5m", signal_cfg.get("hold_bars", 0)))
+            stride = int(signal_cfg.get("stride_bars_5m", signal_cfg.get("stride_bars", 1)))
+            stride_offset = int(signal_cfg.get("stride_offset_bars", cfg.get("stride_offset_bars", 0)))
+            entry_delay = int(signal_cfg.get("entry_delay_bars", cfg.get("entry_delay_bars", 1)))
             base_policy = str(cfg.get("base_policy", "")).lower()
             policy_type = str(cfg.get("policy_type", "")).lower()
             if policy_type == "bidirectional_gate":
@@ -1423,9 +1429,7 @@ def _score_sleeves(
                 else:
                     base_ok, base_reasons = _gate_pass(policy_row, gates)
                 reasons.extend(base_reasons)
-                transition = int(
-                    observable_markov_transition_keys(enriched, cfg["state_model"])[-1]
-                )
+                transition = int(observable_markov_transition_keys(enriched, cfg["state_model"])[-1])
                 allowed = {int(value) for value in cfg["state_model"]["allowed_transition_keys"]}
                 transition_ok = transition in allowed
                 side = "LONG"
@@ -1433,20 +1437,14 @@ def _score_sleeves(
                 gate_ok = bool(base_ok and transition_ok and side_filter_ok)
                 reasons.extend(
                     [
-                        f"markov_transition={transition}:"
-                        f"{'pass' if transition_ok else 'fail'}",
+                        f"markov_transition={transition}:{'pass' if transition_ok else 'fail'}",
                         f"configured_side={configured_side}:{'pass' if side_filter_ok else 'fail'}",
                     ]
                 )
             elif policy_type == "frozen_annual_rank7":
                 gate_ok = False
-                requirements = cfg.get(
-                    "runtime_requirements",
-                    ["annual_extratrees_model_export_required"],
-                )
-                reasons.extend(
-                    [f"runtime_bridge=missing:{requirement}" for requirement in requirements]
-                )
+                requirements = cfg.get("runtime_requirements", ["annual_extratrees_model_export_required"])
+                reasons.extend(f"runtime_bridge=missing:{requirement}" for requirement in requirements)
                 reasons.append("shadow_fail_closed=pass")
             elif base_policy == "rex":
                 record = build_rex_live_policy_record(
@@ -1479,6 +1477,7 @@ def _score_sleeves(
                 gate_ok, reasons = _gate_clauses_pass(row, gate_clauses)
             else:
                 gate_ok, reasons = _gate_pass(row, gates)
+
             stride_ok = _interval_slot(ts, stride, exec_cfg.interval_minutes, stride_offset)
             active_from = cfg.get("active_from")
             if active_from:
@@ -1487,14 +1486,17 @@ def _score_sleeves(
                 if active_from_ts.tzinfo is not None:
                     active_from_ts = active_from_ts.tz_convert("UTC").tz_localize(None)
                 activation_ok = bool(comparison_ts >= active_from_ts)
-                reasons.append(
-                    f"active_from={active_from_ts.isoformat()}:"
-                    f"{'pass' if activation_ok else 'fail'}"
-                )
+                reasons.append(f"active_from={active_from_ts.isoformat()}:{'pass' if activation_ok else 'fail'}")
             else:
                 activation_ok = True
-            active = bool(gate_ok and stride_ok and activation_ok)
-            reasons.append(f"stride={stride}@{stride_offset}:{'pass' if stride_ok else 'fail'}")
+            entry_delay_ok = entry_delay == 1
+            active = bool(gate_ok and stride_ok and activation_ok and entry_delay_ok)
+            reasons.extend(
+                [
+                    f"stride={stride}@{stride_offset}:{'pass' if stride_ok else 'fail'}",
+                    f"entry_delay_bars={entry_delay}:{'pass' if entry_delay_ok else 'unsupported_fail_closed'}",
+                ]
+            )
             dynamic_exit = cfg.get("dynamic_exit") if isinstance(cfg.get("dynamic_exit"), dict) else None
 
             if overlay_cfg is not None:
@@ -1505,52 +1507,212 @@ def _score_sleeves(
                 selector_ok = cid not in blocked
                 active &= selector_ok
                 reasons.append(f"selector_context={cid}:{'ALLOW' if selector_ok else 'BLOCK'}")
-        else:
-            # REX sleeve uses the frozen REX live policy path.  Research treats
-            # this sleeve as a directional candidate selected by the REX rule
-            # itself, so live configs may set side=AUTO/BOTH to execute either
-            # LONG or SHORT.  Explicit LONG/SHORT configs remain directional
-            # filters for older short-only deployments.
-            record = build_rex_live_policy_record(
-                enriched,
-                features,
-                policy_cfg=RexLivePolicyConfig(),
-                execution_cfg=exec_cfg,
-                scorer_asof=asof,
-                selector_cfg=rex_selector_cfg,
-            )
-            candidate_side = str(record.get("candidate_side", "")).upper()
-            side_ok = candidate_side in {"LONG", "SHORT"}
-            side_filter_ok = configured_side in {"AUTO", "BOTH"} or candidate_side == configured_side
-            active = bool(record.get("prediction") == "TRADE" and side_ok and side_filter_ok)
-            if side_ok and configured_side in {"AUTO", "BOTH"}:
-                side = candidate_side
-            hold = int(record.get("action", {}).get("hold_bars", 144))
-            stride = 1
-            reasons = [
-                str(record.get("reason", "")),
-                f"rex_candidate_side={candidate_side or 'NONE'}",
-                f"configured_side={configured_side}:{'pass' if side_filter_ok else 'fail'}",
-            ]
-
-        out.append(
-            {
-                "name": name,
-                "source": source,
-                "side": side,
-                "weight": weight,
-                "active": active,
-                "hold_bars": hold,
-                "stride_bars": stride,
-                "date": str(ts),
-                "current_close": close,
-                "current_atr": atr,
-                "signal_id": f"{name}:{side}:{ts.isoformat()}",
-                "reasons": reasons,
-                "dynamic_exit": dynamic_exit,
-            }
+    else:
+        # Legacy REX portfolios point at historical JSONL globs (or an empty
+        # source) and intentionally rebuild the frozen rule from live data.
+        record = build_rex_live_policy_record(
+            enriched,
+            features,
+            policy_cfg=RexLivePolicyConfig(),
+            execution_cfg=exec_cfg,
+            scorer_asof=asof,
+            selector_cfg=rex_selector_cfg,
         )
-    return out
+        candidate_side = str(record.get("candidate_side", "")).upper()
+        side_ok = candidate_side in {"LONG", "SHORT"}
+        side_filter_ok = configured_side in {"AUTO", "BOTH"} or candidate_side == configured_side
+        active = bool(record.get("prediction") == "TRADE" and side_ok and side_filter_ok)
+        if side_ok and configured_side in {"AUTO", "BOTH"}:
+            side = candidate_side
+        action = record.get("action", {})
+        hold = int(action.get("hold_bars", 144))
+        entry_delay = int(action.get("entry_delay_bars", 1))
+        stride = 1
+        reasons = [
+            str(record.get("reason", "")),
+            f"rex_candidate_side={candidate_side or 'NONE'}",
+            f"configured_side={configured_side}:{'pass' if side_filter_ok else 'fail'}",
+            f"entry_delay_bars={entry_delay}:{'pass' if entry_delay == 1 else 'unsupported_fail_closed'}",
+        ]
+        active &= entry_delay == 1
+
+    return {
+        "name": name,
+        "source": source,
+        "side": side,
+        "weight": weight,
+        "active": active,
+        "hold_bars": hold,
+        "stride_bars": stride,
+        "stride_offset_bars": stride_offset,
+        "entry_delay_bars": entry_delay,
+        "date": str(ts),
+        "current_close": close,
+        "current_atr": atr,
+        "signal_id": f"{name}:{side}:{ts.isoformat()}",
+        "reasons": reasons,
+        "dynamic_exit": dynamic_exit,
+    }
+
+
+def _score_sleeves(
+    *,
+    portfolio: dict[str, Any],
+    enriched: pd.DataFrame,
+    features: pd.DataFrame,
+    exec_cfg: WaveExecutionConfig,
+    asof: pd.Timestamp,
+    rex_selector_cfg: RexLlmSelectorConfig | None = None,
+) -> list[dict[str, Any]]:
+    """Serial compatibility scorer used by tests and explicit fallback mode."""
+
+    return [
+        _score_sleeve(
+            sleeve=sleeve,
+            enriched=enriched,
+            features=features,
+            exec_cfg=exec_cfg,
+            asof=asof,
+            rex_selector_cfg=rex_selector_cfg,
+        )
+        for sleeve in portfolio["base_sleeves"]
+    ]
+
+
+def _score_sleeve_worker(payload: dict[str, Any]) -> dict[str, Any]:
+    """Process entrypoint: pure score plus process/timing diagnostics."""
+
+    started = time.perf_counter()
+    result = _score_sleeve(**payload)
+    result["worker_pid"] = os.getpid()
+    result["score_wall_time_sec"] = round(time.perf_counter() - started, 6)
+    result["scoring_mode"] = "process"
+    return result
+
+
+def _worker_failure_score(
+    *,
+    sleeve: dict[str, Any],
+    enriched: pd.DataFrame,
+    exec_cfg: WaveExecutionConfig,
+    reason: str,
+) -> dict[str, Any]:
+    ts = pd.Timestamp(enriched.iloc[-1]["date"])
+    side = str(sleeve.get("side", "LONG")).upper()
+    name = str(sleeve.get("name", "unknown"))
+    return {
+        "name": name,
+        "source": str(sleeve.get("source", "")),
+        "side": side,
+        "weight": float(sleeve.get("weight", 0.0)),
+        "active": False,
+        "hold_bars": 0,
+        "stride_bars": 1,
+        "stride_offset_bars": 0,
+        "entry_delay_bars": 1,
+        "date": str(ts),
+        "current_close": float(enriched.iloc[-1]["close"]),
+        "current_atr": _current_atr(enriched, exec_cfg.atr_period),
+        "signal_id": f"{name}:{side}:{ts.isoformat()}",
+        "reasons": [reason],
+        "dynamic_exit": None,
+        "worker_pid": None,
+        "score_wall_time_sec": None,
+        "scoring_mode": "process_fail_closed",
+    }
+
+
+def _shutdown_process_executor(executor: ProcessPoolExecutor, *, wait: bool) -> None:
+    executor.shutdown(wait=wait, cancel_futures=True)
+
+
+class AlphaProcessManager:
+    """Keep one isolated long-lived process per sleeve.
+
+    Workers only receive immutable DataFrame snapshots and return score/order
+    intent metadata.  They never inherit exchange clients, SQLAlchemy engines,
+    local state, or DB ledger ownership.
+    """
+
+    def __init__(
+        self,
+        sleeves: list[dict[str, Any]],
+        *,
+        timeout_sec: float = 240.0,
+        start_method: str = "spawn",
+    ) -> None:
+        names = [str(sleeve["name"]) for sleeve in sleeves]
+        if len(set(names)) != len(names):
+            raise ValueError("portfolio sleeve names must be unique for process isolation")
+        if start_method not in mp.get_all_start_methods():
+            raise ValueError(f"unsupported multiprocessing start method: {start_method}")
+        self.timeout_sec = max(1.0, float(timeout_sec))
+        self._context = mp.get_context(start_method)
+        self._executors: dict[str, ProcessPoolExecutor] = {}
+
+    def _executor_for(self, name: str) -> ProcessPoolExecutor:
+        executor = self._executors.get(name)
+        if executor is None:
+            executor = ProcessPoolExecutor(max_workers=1, mp_context=self._context)
+            self._executors[name] = executor
+        return executor
+
+    def _discard_executor(self, name: str) -> None:
+        executor = self._executors.pop(name, None)
+        if executor is not None:
+            _shutdown_process_executor(executor, wait=False)
+
+    async def score(
+        self,
+        *,
+        portfolio: dict[str, Any],
+        enriched: pd.DataFrame,
+        features: pd.DataFrame,
+        exec_cfg: WaveExecutionConfig,
+        asof: pd.Timestamp,
+        rex_selector_cfg: RexLlmSelectorConfig | None = None,
+    ) -> list[dict[str, Any]]:
+        loop = asyncio.get_running_loop()
+
+        async def score_one(sleeve: dict[str, Any]) -> dict[str, Any]:
+            name = str(sleeve["name"])
+            payload = {
+                "sleeve": dict(sleeve),
+                "enriched": enriched,
+                "features": features,
+                "exec_cfg": exec_cfg,
+                "asof": asof,
+                "rex_selector_cfg": rex_selector_cfg,
+            }
+            try:
+                future = loop.run_in_executor(self._executor_for(name), _score_sleeve_worker, payload)
+                return await asyncio.wait_for(future, timeout=self.timeout_sec)
+            except asyncio.TimeoutError:
+                self._discard_executor(name)
+                return _worker_failure_score(
+                    sleeve=sleeve,
+                    enriched=enriched,
+                    exec_cfg=exec_cfg,
+                    reason=f"alpha_worker_timeout={self.timeout_sec:.1f}s:fail_closed",
+                )
+            except Exception as exc:
+                self._discard_executor(name)
+                return _worker_failure_score(
+                    sleeve=sleeve,
+                    enriched=enriched,
+                    exec_cfg=exec_cfg,
+                    reason=f"alpha_worker_error={type(exc).__name__}:{exc}:fail_closed",
+                )
+
+        return list(await asyncio.gather(*(score_one(sleeve) for sleeve in portfolio["base_sleeves"])))
+
+    async def shutdown(self) -> None:
+        executors = list(self._executors.values())
+        self._executors.clear()
+        if executors:
+            await asyncio.gather(
+                *(asyncio.to_thread(_shutdown_process_executor, executor, wait=True) for executor in executors)
+            )
 
 
 def _seconds_until_next_interval(now: pd.Timestamp, *, interval_minutes: int, close_delay_sec: float) -> float:
@@ -2815,6 +2977,15 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     oi_cache = LiveOiFrameCache()
     external_cache = LiveExternalFrameCache()
     alt_pool_cache = LiveAltPoolFrameCache()
+    alpha_processes = (
+        AlphaProcessManager(
+            portfolio["base_sleeves"],
+            timeout_sec=cfg.alpha_worker_timeout_sec,
+            start_method=cfg.alpha_worker_start_method,
+        )
+        if cfg.parallel_alpha_scoring
+        else None
+    )
     client = executor = None
     if not exec_cfg.dry_run:
         client, executor = await _make_executor(exec_cfg)
@@ -2860,14 +3031,26 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 include_activity_flow=include_activity_flow,
             )
             frame_build_sec = time.perf_counter() - frame_t0
-            sleeve_scores = _score_sleeves(
-                portfolio=portfolio,
-                enriched=enriched,
-                features=features,
-                exec_cfg=exec_cfg,
-                asof=decision_data_asof,
-                rex_selector_cfg=rex_selector_cfg,
-            )
+            score_t0 = time.perf_counter()
+            if alpha_processes is not None:
+                sleeve_scores = await alpha_processes.score(
+                    portfolio=portfolio,
+                    enriched=enriched,
+                    features=features,
+                    exec_cfg=exec_cfg,
+                    asof=decision_data_asof,
+                    rex_selector_cfg=rex_selector_cfg,
+                )
+            else:
+                sleeve_scores = _score_sleeves(
+                    portfolio=portfolio,
+                    enriched=enriched,
+                    features=features,
+                    exec_cfg=exec_cfg,
+                    asof=decision_data_asof,
+                    rex_selector_cfg=rex_selector_cfg,
+                )
+            alpha_score_sec = time.perf_counter() - score_t0
             latest_decision_bar = pd.Timestamp(enriched.iloc[-1]["date"])
             if latest_decision_bar.tzinfo is None:
                 latest_decision_bar = latest_decision_bar.tz_localize("UTC")
@@ -3160,6 +3343,11 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             state["allocation_audit"] = audit
             state["last_timing"] = {
                 "frame_build_sec": round(frame_build_sec, 3),
+                "alpha_score_sec": round(alpha_score_sec, 3),
+                "alpha_scoring_mode": "process_per_sleeve" if alpha_processes is not None else "serial",
+                "alpha_worker_pids": {
+                    str(score["name"]): score.get("worker_pid") for score in sleeve_scores
+                },
                 "freshness_waited_sec": round(freshness_waited, 3),
                 "latest_bar": str(enriched.iloc[-1]["date"]),
                 "latest_1m_ts": str(latest_1m_ts),
@@ -3184,13 +3372,16 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 f"[portfolio-live] {pd.Timestamp.utcnow().isoformat()} active={active} opened={opened} closed={closed} "
                 f"open={list(state['open_sleeves'])} recovered={len(recovered_positions)} reconciled={len(reconciled_positions)} stale_cancel={len(stale_cancelled)} repl={replaced_entry_orders} gross={total_weight:.3f} lev={exec_cfg.leverage} "
                 f"alloc={cfg.allocation_mode} live_gross={audit['live_gross_if_all_active']:.3f} selector={selector_status} "
-                f"fb={frame_build_sec:.2f}s fw={freshness_waited:.1f}s fm={freshness_mode} miss={len(freshness_missing)} src={source_cache.last_query_mode} oi={oi_cache.last_query_mode} ext={external_cache.last_mode} alt={alt_pool_cache.last_query_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
+                f"fb={frame_build_sec:.2f}s score={alpha_score_sec:.2f}s workers={len({s.get('worker_pid') for s in sleeve_scores if s.get('worker_pid')})} "
+                f"fw={freshness_waited:.1f}s fm={freshness_mode} miss={len(freshness_missing)} src={source_cache.last_query_mode} oi={oi_cache.last_query_mode} ext={external_cache.last_mode} alt={alt_pool_cache.last_query_mode} feat={feature_cache.last_mode} dry_run={exec_cfg.dry_run}"
             )
             iterations += 1
             if cfg.max_iterations is not None and iterations >= cfg.max_iterations:
                 LOG.info("portfolio_live.max_iterations_reached", extra={"iterations": iterations})
                 return
     finally:
+        if alpha_processes is not None:
+            await alpha_processes.shutdown()
         if client is not None:
             await client.aclose()
 
@@ -3241,6 +3432,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--rex-selector-score-normalization", choices=["sum", "mean", "first_token"], default="sum")
     p.add_argument("--rex-selector-fail-open", action="store_true", default=False, help="If set, adapter errors do not block an otherwise valid REX candidate")
     p.add_argument("--rex-selector-allow-cpu", action="store_true", default=False, help="Allow selector inference without CUDA; default is fail-closed when CUDA is unavailable")
+    scoring = p.add_mutually_exclusive_group()
+    scoring.add_argument("--parallel-alpha-scoring", dest="parallel_alpha_scoring", action="store_true", default=True)
+    scoring.add_argument("--serial-alpha-scoring", dest="parallel_alpha_scoring", action="store_false")
+    p.add_argument("--alpha-worker-timeout-sec", type=float, default=240.0)
+    p.add_argument("--alpha-worker-start-method", choices=["spawn", "forkserver", "fork"], default="spawn")
     stale = p.add_mutually_exclusive_group()
     stale.add_argument("--cancel-stale-open-orders", dest="cancel_stale_open_orders", action="store_true", default=True)
     stale.add_argument("--no-cancel-stale-open-orders", dest="cancel_stale_open_orders", action="store_false")
@@ -3285,6 +3481,9 @@ def main() -> None:
                 rex_selector_score_normalization=str(a.rex_selector_score_normalization),
                 rex_selector_fail_closed=not bool(a.rex_selector_fail_open),
                 rex_selector_require_cuda=not bool(a.rex_selector_allow_cpu),
+                parallel_alpha_scoring=bool(a.parallel_alpha_scoring),
+                alpha_worker_timeout_sec=float(a.alpha_worker_timeout_sec),
+                alpha_worker_start_method=str(a.alpha_worker_start_method),
             )
         )
     )

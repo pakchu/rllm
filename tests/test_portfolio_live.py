@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import tempfile
 import unittest
 from decimal import Decimal
@@ -10,6 +11,7 @@ import pandas as pd
 
 from execution.wave_execution import WaveExecutionConfig
 from execution.portfolio_live import (
+    AlphaProcessManager,
     PORTFOLIO_ORDER_PREFIX,
     PortfolioLiveConfig,
     _cancel_portfolio_orders_for_sleeve,
@@ -162,6 +164,93 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
         self.assertEqual([score["active"] for score in scores], [False, True])
         pd.testing.assert_frame_equal(enriched, enriched_before)
         pd.testing.assert_frame_equal(features, features_before)
+
+    def test_scorer_fails_closed_for_missing_config_and_unsupported_entry_delay(self):
+        dates = pd.date_range("2026-07-16T00:00:00Z", periods=20, freq="5min")
+        enriched = pd.DataFrame(
+            {"date": dates, "open": 100.0, "high": 101.0, "low": 99.0, "close": 100.0}
+        )
+        features = pd.DataFrame({"alpha_x": [2.0] * len(dates)})
+        with tempfile.TemporaryDirectory() as tmp:
+            delayed = Path(tmp) / "delayed.json"
+            delayed.write_text(
+                json.dumps(
+                    {
+                        "gates": [{"feature": "alpha_x", "op": ">=", "threshold": 1.0}],
+                        "hold_bars": 12,
+                        "stride_bars": 1,
+                        "entry_delay_bars": 2,
+                    }
+                )
+            )
+            portfolio = {
+                "base_sleeves": [
+                    {"name": "missing", "source": str(Path(tmp) / "missing.json"), "side": "LONG", "weight": 0.5},
+                    {"name": "delayed", "source": str(delayed), "side": "LONG", "weight": 0.5},
+                ]
+            }
+            scores = _score_sleeves(
+                portfolio=portfolio,
+                enriched=enriched,
+                features=features,
+                exec_cfg=WaveExecutionConfig(),
+                asof=dates[-1],
+            )
+
+        self.assertFalse(scores[0]["active"])
+        self.assertTrue(any(reason.startswith("source_config=missing:") for reason in scores[0]["reasons"]))
+        self.assertFalse(scores[1]["active"])
+        self.assertIn("entry_delay_bars=2:unsupported_fail_closed", scores[1]["reasons"])
+
+    def test_process_manager_uses_one_worker_per_sleeve_and_isolates_failure(self):
+        async def run():
+            dates = pd.date_range("2026-07-16T00:00:00Z", periods=20, freq="5min")
+            enriched = pd.DataFrame(
+                {"date": dates, "open": 100.0, "high": 101.0, "low": 99.0, "close": 100.0}
+            )
+            features = pd.DataFrame({"alpha_x": [0.0] * 19 + [2.0]})
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                sleeves = []
+                for name in ("alpha_a", "alpha_b"):
+                    source = root / f"{name}.json"
+                    source.write_text(
+                        json.dumps(
+                            {
+                                "gates": [{"feature": "alpha_x", "op": ">=", "threshold": 1.0}],
+                                "hold_bars": 12,
+                                "stride_bars": 1,
+                                "stride_offset_bars": 0,
+                                "entry_delay_bars": 1,
+                            }
+                        )
+                    )
+                    sleeves.append({"name": name, "source": str(source), "side": "LONG", "weight": 0.4})
+                broken = root / "broken.json"
+                broken.write_text("{not-json")
+                sleeves.append({"name": "broken", "source": str(broken), "side": "SHORT", "weight": 0.2})
+                portfolio = {"base_sleeves": sleeves}
+                manager = AlphaProcessManager(sleeves, timeout_sec=30.0)
+                try:
+                    scores = await manager.score(
+                        portfolio=portfolio,
+                        enriched=enriched,
+                        features=features,
+                        exec_cfg=WaveExecutionConfig(),
+                        asof=dates[-1],
+                    )
+                finally:
+                    await manager.shutdown()
+
+            self.assertEqual([score["name"] for score in scores], ["alpha_a", "alpha_b", "broken"])
+            self.assertEqual([score["active"] for score in scores], [True, True, False])
+            worker_pids = [scores[0]["worker_pid"], scores[1]["worker_pid"]]
+            self.assertEqual(len(set(worker_pids)), 2)
+            self.assertNotIn(os.getpid(), worker_pids)
+            self.assertEqual(scores[2]["scoring_mode"], "process_fail_closed")
+            self.assertTrue(any("alpha_worker_error=JSONDecodeError" in reason for reason in scores[2]["reasons"]))
+
+        asyncio.run(run())
 
     def test_gate_clauses_are_or_of_and_groups(self):
         row = pd.Series({"a": 2.0, "b": 0.0, "c": 3.0, "d": 4.0})
