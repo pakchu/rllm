@@ -1,4 +1,5 @@
 import asyncio
+import io
 import json
 import multiprocessing as mp
 import os
@@ -7,6 +8,7 @@ import tempfile
 import time
 import unittest
 from concurrent.futures import ProcessPoolExecutor
+from contextlib import redirect_stdout
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
@@ -28,12 +30,14 @@ from execution.portfolio_live import (
     _cancel_stale_portfolio_orders,
     _close_sleeve,
     _entry_ttl_seconds,
+    _execution_exchange_scope,
     _ensure_trade_executions_table,
     _execute_close_intents,
     _execute_open_intents,
     _finish_trade_intents,
     _completed_decision_data_asof,
     _margin_fraction_for_weight,
+    _make_executor,
     _load_sleeve_runtime_spec,
     _place_portfolio_maker_order_with_deadline,
     _portfolio_client_order_id,
@@ -55,6 +59,7 @@ from execution.portfolio_live import (
     _reserve_trade_intents,
     _assert_portfolio_db_lease,
     _validate_portfolio_mode,
+    parse_args,
 )
 
 
@@ -98,6 +103,64 @@ class FakeClient:
 
 
 class PortfolioLiveSafetyTests(unittest.TestCase):
+    def test_cli_help_renders_percent_literals(self):
+        output = io.StringIO()
+        with patch.object(sys, "argv", ["portfolio_live", "--help"]), redirect_stdout(output):
+            with self.assertRaises(SystemExit) as raised:
+                parse_args()
+        self.assertEqual(raised.exception.code, 0)
+        self.assertIn("100% margin budget", output.getvalue())
+        self.assertIn("calibrated to 0.3%", output.getvalue())
+
+    def test_exchange_scope_separates_testnet_and_rejects_network_mismatch(self):
+        self.assertEqual(_execution_exchange_scope("binance", testnet=False), "binance")
+        self.assertEqual(_execution_exchange_scope("binance", testnet=True), "binance-testnet")
+        self.assertEqual(
+            _execution_exchange_scope("binance-testnet", testnet=True),
+            "binance-testnet",
+        )
+        with self.assertRaisesRegex(ValueError, "cannot use mainnet"):
+            _execution_exchange_scope("binance-mainnet", testnet=True)
+        with self.assertRaisesRegex(ValueError, "cannot use testnet"):
+            _execution_exchange_scope("binance-testnet", testnet=False)
+
+    def test_executor_initialization_failure_closes_exchange_client(self):
+        async def run():
+            instances = []
+
+            class Client:
+                def __init__(self, **kwargs):
+                    self.closed = False
+                    instances.append(self)
+
+                async def sync_time(self):
+                    return 0
+
+                async def is_hedge_mode(self, force_refresh=False):
+                    return False
+
+                async def aclose(self):
+                    self.closed = True
+
+            class Executor:
+                def __init__(self, **kwargs):
+                    pass
+
+            cfg = WaveExecutionConfig(dry_run=False, allow_live_orders=True, testnet=True)
+            with patch(
+                "execution.portfolio_live._load_api_credentials",
+                return_value=("key", "secret"),
+            ), patch(
+                "execution.portfolio_live.load_wave_execution_classes",
+                return_value=(Client, Executor),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "hedge mode"):
+                    await _make_executor(cfg)
+            self.assertEqual(len(instances), 1)
+            self.assertTrue(instances[0].closed)
+
+        asyncio.run(run())
+
     def test_shadow_candidate_is_hard_blocked_from_live_orders(self):
         import json
 

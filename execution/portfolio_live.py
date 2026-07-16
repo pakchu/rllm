@@ -1248,6 +1248,22 @@ def _portfolio_db_lease_key(*, strategy_name: str, exchange: str, symbol: str) -
     return int.from_bytes(digest, byteorder="big", signed=True)
 
 
+def _execution_exchange_scope(exchange: str, *, testnet: bool) -> str:
+    """Return a network-specific ledger/lease identity and reject mismatches."""
+
+    value = str(exchange).strip()
+    if not value:
+        raise ValueError("exchange identity must not be empty")
+    lower = value.lower()
+    if testnet:
+        if lower.endswith("-mainnet"):
+            raise ValueError(f"testnet execution cannot use mainnet exchange scope: {value}")
+        return value if lower.endswith("-testnet") else f"{value}-testnet"
+    if lower.endswith("-testnet"):
+        raise ValueError(f"mainnet execution cannot use testnet exchange scope: {value}")
+    return value
+
+
 def _acquire_portfolio_db_lease(
     engine: Any,
     *,
@@ -3021,11 +3037,15 @@ async def _make_executor(exec_cfg: WaveExecutionConfig):
         max_retries=exec_cfg.max_retries,
         order_timeout_sec=exec_cfg.order_timeout_sec,
     )
-    await client.sync_time()
-    if not await client.is_hedge_mode(force_refresh=True):
-        raise RuntimeError("Binance account must be in hedge mode for distributed LONG/SHORT portfolio execution")
-    await client.set_leverage(exec_cfg.symbol, exec_cfg.leverage)
-    return client, executor
+    try:
+        await client.sync_time()
+        if not await client.is_hedge_mode(force_refresh=True):
+            raise RuntimeError("Binance account must be in hedge mode for distributed LONG/SHORT portfolio execution")
+        await client.set_leverage(exec_cfg.symbol, exec_cfg.leverage)
+        return client, executor
+    except BaseException:
+        await client.aclose()
+        raise
 
 
 async def _open_sleeve(
@@ -3578,6 +3598,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             "require_no_open_orders": True,
         }
     )
+    execution_exchange = _execution_exchange_scope(cfg.exchange, testnet=exec_cfg.testnet)
     if cfg.live and not cfg.allow_live_orders:
         raise SystemExit("--live requires --allow-live-orders")
     weights = {str(s["name"]): float(s["weight"]) for s in portfolio["base_sleeves"]}
@@ -3597,7 +3618,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             db_lease = _acquire_portfolio_db_lease(
                 engine,
                 strategy_name=cfg.strategy_name,
-                exchange=cfg.exchange,
+                exchange=execution_exchange,
                 symbol=exec_cfg.symbol,
             )
             _ensure_trade_executions_table(engine)
@@ -3755,7 +3776,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         engine,
                         strategy_name=cfg.strategy_name,
                         sub_strategy_name=str(rec.get("name")),
-                        exchange=cfg.exchange,
+                        exchange=execution_exchange,
                         symbol=exec_cfg.symbol,
                         action="RECOVER_POSITION",
                         side=str(rec.get("side")),
@@ -3776,7 +3797,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         engine,
                         strategy_name=cfg.strategy_name,
                         sub_strategy_name=str(rec["name"]),
-                        exchange=cfg.exchange,
+                        exchange=execution_exchange,
                         symbol=exec_cfg.symbol,
                         action="CLOSE",
                         side="SELL" if str(rec["side"]).upper() == "LONG" else "BUY",
@@ -3843,7 +3864,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                             engine,
                             strategy_name=cfg.strategy_name,
                             sub_strategy_name=str(open_state.get("name", key)),
-                            exchange=cfg.exchange,
+                            exchange=execution_exchange,
                             symbol=exec_cfg.symbol,
                             action="CLOSE",
                             side="SELL" if str(open_state.get("side")).upper() == "LONG" else "BUY",
@@ -3876,7 +3897,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         engine,
                         strategy_name=cfg.strategy_name,
                         sub_strategy_name=str(open_state.get("name", key)),
-                        exchange=cfg.exchange,
+                        exchange=execution_exchange,
                         symbol=exec_cfg.symbol,
                         action="CLOSE",
                         side="SELL" if str(open_state.get("side")).upper() == "LONG" else "BUY",
@@ -3916,7 +3937,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     _reserve_trade_intents,
                     engine,
                     strategy_name=cfg.strategy_name,
-                    exchange=cfg.exchange,
+                    exchange=execution_exchange,
                     symbol=exec_cfg.symbol,
                     owner_id=runner_id,
                     intents=entry_intents,
@@ -3949,7 +3970,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         _finish_trade_intents,
                         engine,
                         strategy_name=cfg.strategy_name,
-                        exchange=cfg.exchange,
+                        exchange=execution_exchange,
                         symbol=exec_cfg.symbol,
                         owner_id=runner_id,
                         outcomes=entry_outcomes,
@@ -3988,7 +4009,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                             engine,
                             strategy_name=cfg.strategy_name,
                             sub_strategy_name=name,
-                            exchange=cfg.exchange,
+                            exchange=execution_exchange,
                             symbol=exec_cfg.symbol,
                             action="OPEN",
                             side="BUY" if sleeve["side"] == "LONG" else "SELL",
@@ -4008,7 +4029,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         engine,
                         strategy_name=cfg.strategy_name,
                         sub_strategy_name=name,
-                        exchange=cfg.exchange,
+                        exchange=execution_exchange,
                         symbol=exec_cfg.symbol,
                         action="OPEN",
                         side="BUY" if sleeve["side"] == "LONG" else "SELL",
@@ -4069,6 +4090,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 "frame_build_sec": round(frame_build_sec, 3),
                 "alpha_score_sec": round(alpha_score_sec, 3),
                 "alpha_scoring_mode": "process_per_sleeve" if alpha_processes is not None else "serial",
+                "execution_exchange_scope": execution_exchange,
                 "alpha_worker_pids": {
                     str(score["name"]): score.get("worker_pid") for score in sleeve_scores
                 },
@@ -4140,14 +4162,14 @@ def parse_args() -> argparse.Namespace:
         "--allocation-mode",
         choices=["research_gross", "normalize_weights"],
         default="research_gross",
-        help="research_gross matches saved weights as notional exposure; normalize_weights uses 100% margin budget",
+        help="research_gross matches saved weights as notional exposure; normalize_weights uses 100%% margin budget",
     )
     p.add_argument("--entry-timeout-fraction", type=float, default=0.25, help="Fraction of a sleeve stride cycle to wait for a post-only entry fill")
     p.add_argument("--max-entry-wait-sec", type=int, default=300, help="Hard cap for post-only entry wait/stale cancel age")
     p.add_argument("--max-exit-wait-sec", type=int, default=600, help="Hard cap for one post-only exit refresh cycle; still retried next loop while exit is due")
     p.add_argument("--maker-refresh-interval-sec", type=int, default=60, help="Refresh live post-only maker orders on this cadence")
-    p.add_argument("--entry-maker-max-deviation-pct", type=float, default=0.003, help="Entry maker refresh band as fraction of signal reference price; calibrated to 0.3%")
-    p.add_argument("--exit-maker-max-deviation-pct", type=float, default=0.002, help="Exit maker refresh band as fraction of exit reference price; calibrated to 0.2%")
+    p.add_argument("--entry-maker-max-deviation-pct", type=float, default=0.003, help="Entry maker refresh band as fraction of signal reference price; calibrated to 0.3%%")
+    p.add_argument("--exit-maker-max-deviation-pct", type=float, default=0.002, help="Exit maker refresh band as fraction of exit reference price; calibrated to 0.2%%")
     p.add_argument(
         "--portfolio-selector-overlay",
         default="",
