@@ -463,6 +463,18 @@ def _trade_cost(
     )
 
 
+def target_delta_neutral_quantities(
+    equity: float,
+    spot_price: float,
+    perp_price: float,
+    gross_exposure: float,
+) -> tuple[float, float]:
+    if min(equity, spot_price, perp_price, gross_exposure) <= 0.0:
+        raise ValueError("delta-neutral target inputs must be positive")
+    quantity = gross_exposure * equity / (spot_price + perp_price)
+    return float(quantity), float(quantity)
+
+
 def _daily_returns(equity: np.ndarray, dates: pd.Series, initial: float) -> pd.Series:
     series = pd.Series(equity, index=pd.DatetimeIndex(dates))
     closes = series.resample("1D").last().dropna()
@@ -582,8 +594,12 @@ def simulate_window(
         rebalance = bool(active and dates.iloc[index].hour == 0 and dates.iloc[index].minute == 5)
         if changed or rebalance:
             if bool(desired):
-                target_spot = 0.5 * cfg.gross_exposure * equity / s_open[index]
-                target_perp = 0.5 * cfg.gross_exposure * equity / p_open[index]
+                target_spot, target_perp = target_delta_neutral_quantities(
+                    equity,
+                    s_open[index],
+                    p_open[index],
+                    cfg.gross_exposure,
+                )
             else:
                 target_spot = target_perp = 0.0
             cost, traded = _trade_cost(
@@ -823,7 +839,7 @@ def write_docs(result: dict[str, Any], path: str) -> None:
         "",
         f"- 상태: **{result['decision']['status']}**",
         "- 2024년 이후 행은 열지 않았다(`oos_rows_opened=0`).",
-        "- 구조: Binance BTCUSDT 현물 0.5 gross 롱 + USD-M 무기한 0.5 gross 숏.",
+        "- 구조: Binance BTCUSDT 현물 롱 + USD-M 무기한 숏의 BTC 수량을 정확히 동일하게 맞추고 합산 gross를 1배로 유지.",
         "- 정책 입력: 이미 정산된 funding-rate의 trailing mean만 사용하고 다음 5분봉 open에 집행.",
         "- DB 과거 현물/펀딩은 backfill된 비-PIT 스냅샷이므로 live forward proof 전에는 운영 승격 금지.",
         "- 분리 지갑에서 선물 담보가 고갈될 수 있으므로 통합마진/자동 담보이체 없이는 운영 승격 금지.",
@@ -1030,8 +1046,8 @@ def run(cfg: Config) -> dict[str, Any]:
         "source_diagnostics": sources.diagnostics,
         "execution_contract": {
             "gross_exposure": cfg.gross_exposure,
-            "spot_fraction": 0.5,
-            "perp_short_fraction": 0.5,
+            "quantity_contract": "spot BTC quantity == absolute perp-short BTC quantity",
+            "notional_contract": "spot notional + absolute perp notional == gross_exposure * equity at rebalance",
             "spot_cost_rate": base_costs.spot_rate,
             "perp_cost_rate": base_costs.perp_rate,
             "rebalance": "daily at 00:05 UTC after funding settlement accounting",

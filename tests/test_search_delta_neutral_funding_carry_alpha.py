@@ -13,6 +13,7 @@ from training.search_delta_neutral_funding_carry_alpha import (
     map_funding_to_market,
     reconstruct_spot,
     simulate_window,
+    target_delta_neutral_quantities,
 )
 
 
@@ -256,3 +257,9 @@ def test_policy_grid_and_ranking_are_fixed_before_oos() -> None:
     assert len(grid) == 96
     assert {row.lookback_events for row in grid} == {3, 9, 21, 42}
     assert {row.entry_threshold for row in grid} == {0.0, 1e-5, 2e-5, 5e-5}
+
+
+def test_target_quantities_are_exactly_delta_neutral_at_unequal_leg_prices() -> None:
+    spot_q, perp_q = target_delta_neutral_quantities(1.0, 100.0, 110.0, 1.0)
+    assert spot_q == perp_q
+    assert spot_q * 100.0 + perp_q * 110.0 == pytest.approx(1.0)
