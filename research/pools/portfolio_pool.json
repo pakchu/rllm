@@ -952,6 +952,126 @@
       },
       "protocol_hash": "f07c1f2990fe8b59fa306eb72224ac2d2fc8f9d44d8d771d6e66e81775395022",
       "accounting_version": "same_btc_low_high_v1"
+    },
+    {
+      "id": "state_ensemble_update_rejected_20260716",
+      "name": "Pre-2025 Top-10 state-ensemble allocation update",
+      "status": "rejected",
+      "family": "funding_premium_state_ensemble_portfolio",
+      "scope": "btc_portfolio_research",
+      "description": "Leak-safe six-of-ten Kalman/BOCPD/Semi-Markov family ensembles were added to the previous allocation universe. The frozen train+2024 rank-1 used BOCPD, then failed the later-window veto, so it does not replace the previous shadow candidate.",
+      "gross": 6.15,
+      "weights": {
+        "bocpd_top10_strict_majority_long": 1.75,
+        "frozen_annual_rank7": 2.0,
+        "cand_rex_veto_7": 1.25,
+        "rex_taker_low_range_position": 0.55,
+        "markov_transition_long": 0.25,
+        "fresh_kimchi_fx": 0.35
+      },
+      "component_alphas": [
+        "bocpd_top10_strict_majority_long",
+        "frozen_annual_rank7",
+        "cand_rex_veto_7",
+        "rex_taker_low_range_position",
+        "markov_transition_long",
+        "fresh_kimchi_fx"
+      ],
+      "constraints": [
+        "gross <=10",
+        "family gross <=2",
+        "nonzero weights >=0.25 on 0.05 grid",
+        "train strict MDD <=40",
+        "2024/2025/2026 strict MDD <=20",
+        "2024 and future-veto CAGR/MDD >=3",
+        "6bp/side"
+      ],
+      "stats": {
+        "train": {
+          "return_pct": 2271.880691760347,
+          "cagr_pct": 158.64098019007696,
+          "strict_mdd_pct": 24.840934223712953,
+          "cagr_mdd": 6.386272704616704,
+          "trades": 971,
+          "trades_by_sleeve": {
+            "cand_rex_veto_7": 308,
+            "frozen_annual_rank7": 19,
+            "fresh_kimchi_fx": 117,
+            "markov_transition_long": 143,
+            "rex_taker_low_range_position": 274,
+            "bocpd_top10_strict_majority_long": 110
+          }
+        },
+        "test2024": {
+          "return_pct": 88.94077897971566,
+          "cagr_pct": 88.69459501603305,
+          "strict_mdd_pct": 13.460481071328356,
+          "cagr_mdd": 6.589258923661943,
+          "trades": 221,
+          "trades_by_sleeve": {
+            "cand_rex_veto_7": 64,
+            "frozen_annual_rank7": 22,
+            "fresh_kimchi_fx": 30,
+            "markov_transition_long": 22,
+            "rex_taker_low_range_position": 65,
+            "bocpd_top10_strict_majority_long": 18
+          }
+        },
+        "eval2025": {
+          "return_pct": 48.12283014570264,
+          "cagr_pct": 48.16269390940149,
+          "strict_mdd_pct": 21.99797131331205,
+          "cagr_mdd": 2.1894152521353587,
+          "trades": 144,
+          "trades_by_sleeve": {
+            "cand_rex_veto_7": 45,
+            "frozen_annual_rank7": 21,
+            "fresh_kimchi_fx": 17,
+            "markov_transition_long": 19,
+            "rex_taker_low_range_position": 31,
+            "bocpd_top10_strict_majority_long": 11
+          }
+        },
+        "ytd2026": {
+          "return_pct": 47.46685452746211,
+          "cagr_pct": 152.7647880700096,
+          "strict_mdd_pct": 12.600871248106237,
+          "cagr_mdd": 12.12335123993655,
+          "trades": 125,
+          "trades_by_sleeve": {
+            "cand_rex_veto_7": 22,
+            "frozen_annual_rank7": 12,
+            "fresh_kimchi_fx": 28,
+            "markov_transition_long": 23,
+            "rex_taker_low_range_position": 23,
+            "bocpd_top10_strict_majority_long": 17
+          }
+        }
+      },
+      "evidence": "Pre-2025 frozen rank-1 improved the worst train/2024 ratio to 6.3863, but Eval-2025 returned 48.1228%, CAGR 48.1627%, strict MDD 21.9980%, ratio 2.1894 and therefore failed both future thresholds. No lower row was selected after seeing future data.",
+      "source_artifacts": [
+        "training/state_model_top10_ensemble.py",
+        "training/portfolio_opt_state_ensemble_update.py",
+        "results/portfolio_state_ensemble_update_2026-07-16.json",
+        "docs/portfolio-state-ensemble-update-2026-07-16.md",
+        "configs/shadow/portfolio_state_ensemble_candidate_2026-07-16.json"
+      ],
+      "contamination_risk": "high",
+      "leakage_notes": "State ensemble definitions and allocation ranking use pre-2025 ordering/metrics only. 2025/2026 can veto frozen rank 1 but cannot rerank. Reported later windows nevertheless have prior research exposure.",
+      "next_action": "Retain added_alpha_gross800_shadow_20260716 unchanged; do not remove BOCPD post hoc and rerank on the same future windows.",
+      "construction_recipe": {
+        "state_ensemble_rule": "strict majority >=6 of each pre-evaluation Top-10 family",
+        "reproduce_command": "PYTHONPATH=. python training/portfolio_opt_state_ensemble_update.py",
+        "evaluation_protocol": {
+          "rank": "train+2024 only",
+          "future": "2025/2026 veto frozen top1 only; no reranking",
+          "mdd": "shared 5-minute same-BTC low/high upper-before-lower strict MDD",
+          "accounting_version": "same_btc_low_high_v1"
+        },
+        "retained_portfolio": "added_alpha_gross800_shadow_20260716"
+      },
+      "protocol_hash": "99acb351cbd5d48111e76c87428e5035c5a981ffd41cd556207555c9dda138a8",
+      "accounting_version": "same_btc_low_high_v1"
     }
   ]
 }
