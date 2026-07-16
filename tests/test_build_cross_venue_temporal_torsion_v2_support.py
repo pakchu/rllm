@@ -53,6 +53,37 @@ def test_route_side_uses_source_venue() -> None:
     assert um_side.tolist() == [-1, -1]
 
 
+def test_build_features_freezes_control_confirmation_without_outcomes(monkeypatch) -> None:
+    dates = pd.date_range("2020-01-01", periods=3, freq="5min")
+    raw = pd.DataFrame(
+        {
+            "date": dates,
+            "feature_available_time_utc": dates + pd.Timedelta("5min"),
+            "strategy_entry_earliest_time_utc": dates + pd.Timedelta("10min"),
+            "source_valid_current": [1, 1, 1],
+            "source_quarantined": [0, 0, 0],
+            "source_available": [1, 1, 1],
+            "spot_flow_fraction": [0.2, 0.2, -0.2],
+            "um_flow_fraction": [0.1, -0.1, -0.1],
+            "spot_log_return_5m": [0.001, 0.001, -0.001],
+            "um_log_return_5m": [0.001, 0.001, -0.001],
+            "spot_flow_time_centroid": [0.2, 0.2, 0.8],
+            "spot_return_time_centroid": [0.8, 0.8, 0.2],
+            "um_flow_time_centroid": [0.8, 0.8, 0.2],
+            "um_return_time_centroid": [0.2, 0.2, 0.8],
+        }
+    )
+
+    def fake_quantile(score, route_eligible, clean):
+        zeros = pd.Series(0.0, index=score.index)
+        return zeros, zeros, zeros
+
+    monkeypatch.setattr(support, "lagged_route_quantile", fake_quantile)
+    features = support.build_features(raw)
+    assert features["spot_direction_confirmed"].tolist() == [1, 0, 1]
+    assert features["um_direction_confirmed"].tolist() == [1, 0, 1]
+
+
 def test_nonoverlap_reserves_ten_minute_entry_and_exit_open() -> None:
     mask = np.ones(12, dtype=bool)
     assert support.schedule_nonoverlap(mask, 3).tolist() == [0, 3, 6]

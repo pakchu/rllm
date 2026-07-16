@@ -247,6 +247,8 @@ def build_features(raw: pd.DataFrame) -> pd.DataFrame:
             "um_to_spot_prior_30d_events": um_prior_events,
             "spot_to_um_q95": spot_threshold,
             "um_to_spot_q95": um_threshold,
+            "spot_direction_confirmed": spot_confirmed.astype(np.int8),
+            "um_direction_confirmed": um_confirmed.astype(np.int8),
             "spot_to_um_eligible": spot_route_eligible.astype(np.int8),
             "um_to_spot_eligible": um_route_eligible.astype(np.int8),
             "spot_to_um_active": spot_active.astype(np.int8),
