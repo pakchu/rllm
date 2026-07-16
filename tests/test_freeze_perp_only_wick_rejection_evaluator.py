@@ -52,8 +52,6 @@ def test_freeze_requires_full_commit_hash() -> None:
 
 
 def test_repository_freeze_verifies_before_outcomes() -> None:
-    if not freeze.evaluate.EVALUATION_FREEZE.exists():
-        pytest.skip("evaluator implementation is not frozen yet")
     payload = freeze.evaluate.verify_evaluation_freeze()
     assert payload["outcomes_opened"] is False
     assert payload["post_signal_returns_computed_during_freeze"] is False
