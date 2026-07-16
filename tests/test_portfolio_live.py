@@ -1,10 +1,14 @@
 import asyncio
+import json
+import tempfile
 import unittest
 from decimal import Decimal
+from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
 
+from execution.wave_execution import WaveExecutionConfig
 from execution.portfolio_live import (
     PORTFOLIO_ORDER_PREFIX,
     PortfolioLiveConfig,
@@ -21,6 +25,7 @@ from execution.portfolio_live import (
     _portfolio_sleeve_key,
     _reconcile_exchange_flat_sleeves,
     _recover_exchange_positions_into_state,
+    _score_sleeves,
     _summarize_exchange_trade_fills,
     _gate_clauses_pass,
     _gate_pass,
@@ -83,8 +88,6 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
         _validate_portfolio_mode(portfolio, live=True)
 
     def test_live_alpha_stride_contract_matches_historical_grid(self):
-        import json
-
         anchor = pd.Timestamp("2020-01-01T02:55:00Z")
         cases = [
             ("configs/live/oi_upbit_ratio288_low_candidate.json", 6, 5),
@@ -106,6 +109,59 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
                         stride_offset_bars=offset,
                     )
                 )
+
+    def test_serial_scorer_preserves_sleeve_order_and_does_not_mutate_snapshot(self):
+        dates = pd.date_range("2026-07-16T00:00:00Z", periods=20, freq="5min")
+        enriched = pd.DataFrame(
+            {
+                "date": dates,
+                "open": 100.0,
+                "high": 101.0,
+                "low": 99.0,
+                "close": 100.0,
+            }
+        )
+        features = pd.DataFrame({"alpha_x": [0.0] * 19 + [2.0]})
+        enriched_before = enriched.copy(deep=True)
+        features_before = features.copy(deep=True)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sources = []
+            for name, threshold in (("second", 3.0), ("first", 1.0)):
+                source = root / f"{name}.json"
+                source.write_text(
+                    json.dumps(
+                        {
+                            "name": name,
+                            "gates": [{"feature": "alpha_x", "op": ">=", "threshold": threshold}],
+                            "hold_bars": 12,
+                            "stride_bars": 1,
+                            "stride_offset_bars": 0,
+                            "entry_delay_bars": 1,
+                        }
+                    )
+                )
+                sources.append(source)
+
+            portfolio = {
+                "base_sleeves": [
+                    {"name": "second", "source": str(sources[0]), "side": "LONG", "weight": 0.5},
+                    {"name": "first", "source": str(sources[1]), "side": "LONG", "weight": 0.5},
+                ]
+            }
+            scores = _score_sleeves(
+                portfolio=portfolio,
+                enriched=enriched,
+                features=features,
+                exec_cfg=WaveExecutionConfig(),
+                asof=dates[-1],
+            )
+
+        self.assertEqual([score["name"] for score in scores], ["second", "first"])
+        self.assertEqual([score["active"] for score in scores], [False, True])
+        pd.testing.assert_frame_equal(enriched, enriched_before)
+        pd.testing.assert_frame_equal(features, features_before)
 
     def test_gate_clauses_are_or_of_and_groups(self):
         row = pd.Series({"a": 2.0, "b": 0.0, "c": 3.0, "d": 4.0})
