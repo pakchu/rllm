@@ -1,9 +1,12 @@
 import asyncio
 import json
+import multiprocessing as mp
 import os
 import sys
 import tempfile
+import time
 import unittest
+from concurrent.futures import ProcessPoolExecutor
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
@@ -38,6 +41,7 @@ from execution.portfolio_live import (
     _recover_exchange_positions_into_state,
     _score_sleeves,
     _summarize_exchange_trade_fills,
+    _terminate_process_executor,
     _gate_clauses_pass,
     _gate_pass,
     _freshness_requirements_for_decision,
@@ -47,6 +51,11 @@ from execution.portfolio_live import (
     _reserve_trade_intents,
     _validate_portfolio_mode,
 )
+
+
+def _sleeping_process_worker(seconds):
+    time.sleep(seconds)
+    return seconds
 
 
 class FakeExecutor:
@@ -262,6 +271,24 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             self.assertTrue(any("alpha_worker_error=JSONDecodeError" in reason for reason in scores[2]["reasons"]))
 
         asyncio.run(run())
+
+    def test_timed_out_worker_pool_is_terminated_before_replacement(self):
+        executor = ProcessPoolExecutor(max_workers=1, mp_context=mp.get_context("spawn"))
+        future = executor.submit(_sleeping_process_worker, 60.0)
+        deadline = time.monotonic() + 10.0
+        processes = []
+        while time.monotonic() < deadline:
+            processes = list((getattr(executor, "_processes", None) or {}).values())
+            if processes and all(process.is_alive() for process in processes):
+                break
+            time.sleep(0.01)
+        self.assertTrue(processes)
+        self.assertTrue(all(process.is_alive() for process in processes))
+
+        _terminate_process_executor(executor, terminate_grace_sec=0.2)
+
+        self.assertTrue(all(not process.is_alive() for process in processes))
+        self.assertTrue(future.done())
 
     def test_runner_lock_prevents_two_parent_coordinators(self):
         with tempfile.TemporaryDirectory() as tmp:

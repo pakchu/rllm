@@ -1826,6 +1826,41 @@ def _shutdown_process_executor(executor: ProcessPoolExecutor, *, wait: bool) -> 
     executor.shutdown(wait=wait, cancel_futures=True)
 
 
+def _terminate_process_executor(
+    executor: ProcessPoolExecutor,
+    *,
+    terminate_grace_sec: float = 1.0,
+) -> None:
+    """Boundedly stop a pool whose active scorer timed out.
+
+    Python 3.10 has no public ``terminate_workers`` API.  Capture the owned
+    processes before shutdown, send TERM, then KILL any survivor.  This avoids
+    accumulating a new process on every retry of a hung alpha.
+    """
+
+    terminate_workers = getattr(executor, "terminate_workers", None)
+    if callable(terminate_workers):
+        terminate_workers()
+        return
+
+    processes = tuple((getattr(executor, "_processes", None) or {}).values())
+    for process in processes:
+        if process.is_alive():
+            process.terminate()
+
+    deadline = time.monotonic() + max(0.0, float(terminate_grace_sec))
+    for process in processes:
+        process.join(timeout=max(0.0, deadline - time.monotonic()))
+    for process in processes:
+        if process.is_alive():
+            process.kill()
+    for process in processes:
+        if process.is_alive():
+            process.join(timeout=1.0)
+
+    executor.shutdown(wait=True, cancel_futures=True)
+
+
 class AlphaProcessManager:
     """Keep one isolated long-lived process per sleeve.
 
@@ -1857,10 +1892,13 @@ class AlphaProcessManager:
             self._executors[name] = executor
         return executor
 
-    def _discard_executor(self, name: str) -> None:
+    async def _discard_executor(self, name: str) -> None:
         executor = self._executors.pop(name, None)
         if executor is not None:
-            _shutdown_process_executor(executor, wait=False)
+            try:
+                await asyncio.to_thread(_terminate_process_executor, executor)
+            except Exception:
+                LOG.exception("portfolio_live.alpha_worker_termination_failed", extra={"sleeve": name})
 
     async def score(
         self,
@@ -1888,15 +1926,18 @@ class AlphaProcessManager:
                 future = loop.run_in_executor(self._executor_for(name), _score_sleeve_worker, payload)
                 return await asyncio.wait_for(future, timeout=self.timeout_sec)
             except asyncio.TimeoutError:
-                self._discard_executor(name)
+                await self._discard_executor(name)
                 return _worker_failure_score(
                     sleeve=sleeve,
                     enriched=enriched,
                     exec_cfg=exec_cfg,
                     reason=f"alpha_worker_timeout={self.timeout_sec:.1f}s:fail_closed",
                 )
+            except asyncio.CancelledError:
+                await self._discard_executor(name)
+                raise
             except Exception as exc:
-                self._discard_executor(name)
+                await self._discard_executor(name)
                 return _worker_failure_score(
                     sleeve=sleeve,
                     enriched=enriched,
