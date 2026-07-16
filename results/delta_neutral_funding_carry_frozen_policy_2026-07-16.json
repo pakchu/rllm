@@ -1,0 +1,414 @@
+{
+  "decision": {
+    "blockers": [
+      "2024+ one-shot OOS not yet opened",
+      "historical DB spot/funding source is backfilled rather than PIT",
+      "requires live forward parity proof",
+      "requires unified margin or automated collateral transfer/liquidation guard"
+    ],
+    "double_cost_positive": true,
+    "eligible": false,
+    "live_promotion_blocked": true,
+    "status": "reject_pre2024"
+  },
+  "double_cost_stats": {
+    "fit_2020_2022": {
+      "absolute_return_pct": 19.42276423023994,
+      "active_days": 874,
+      "cagr_pct": 6.093760974282092,
+      "cagr_to_strict_mdd": 0.5400871866574736,
+      "calendar_years": 3.0006844626967832,
+      "close_mdd_pct": 2.8396448864410284,
+      "daily_btc_beta": -0.0025699758336571537,
+      "entry_times": [
+        "2020-01-08 00:05:00",
+        "2020-04-29 08:05:00",
+        "2020-09-28 08:05:00",
+        "2020-11-07 08:05:00",
+        "2021-05-29 00:05:00",
+        "2021-08-02 00:05:00",
+        "2022-02-10 00:05:00",
+        "2022-03-07 00:05:00",
+        "2022-05-04 08:05:00",
+        "2022-05-20 00:05:00",
+        "2022-07-08 08:05:00",
+        "2022-09-12 16:05:00",
+        "2022-12-18 00:05:00"
+      ],
+      "episodes": 13,
+      "exit_times": [
+        "2020-03-13 16:05:00",
+        "2020-09-19 16:05:00",
+        "2020-11-01 00:05:00",
+        "2021-05-26 08:05:00",
+        "2021-06-23 16:05:00",
+        "2022-02-01 00:05:00",
+        "2022-02-24 08:05:00",
+        "2022-04-18 08:05:00",
+        "2022-05-12 16:05:00",
+        "2022-06-17 08:05:00",
+        "2022-08-24 16:05:00",
+        "2022-11-10 00:05:00",
+        "2023-01-01 00:00:00"
+      ],
+      "funding_cash_pct_initial": 28.991046761126466,
+      "funding_events_received": 2592,
+      "gross_turnover_x_initial": 55.820899161505395,
+      "nonzero_daily_pnl_days": 874,
+      "strict_mdd_pct": 11.282920840976718,
+      "transaction_cost_pct_initial": 9.4898097673606
+    },
+    "select_2023": {
+      "absolute_return_pct": 2.2697483016146602,
+      "active_days": 304,
+      "cagr_pct": 2.27132044683811,
+      "cagr_to_strict_mdd": 0.49645585242820356,
+      "calendar_years": 0.999315537303217,
+      "close_mdd_pct": 1.5278431444200158,
+      "daily_btc_beta": -0.0011056101328937573,
+      "entry_times": [
+        "2023-01-01 00:00:00",
+        "2023-10-26 16:05:00"
+      ],
+      "episodes": 2,
+      "exit_times": [
+        "2023-08-25 00:05:00",
+        "2024-01-01 00:00:00"
+      ],
+      "funding_cash_pct_initial": 3.7911189829925704,
+      "funding_events_received": 906,
+      "gross_turnover_x_initial": 8.860969378018556,
+      "nonzero_daily_pnl_days": 304,
+      "strict_mdd_pct": 4.575070342567034,
+      "transaction_cost_pct_initial": 1.5063838295203222
+    }
+  },
+  "execution_contract": {
+    "calendar_cagr": true,
+    "funding_eligibility": "position entry time strictly before funding event",
+    "funding_mark": "use actual reported funding mark when finite and positive; otherwise use the last fully completed USD-M one-minute close whose end <= funding_time",
+    "gate_availability": "next 5m open strictly after realized funding timestamp",
+    "gross_exposure": 1.0,
+    "notional_contract": "spot notional + absolute perp notional == gross_exposure * equity at rebalance",
+    "perp_cost_rate": 0.0006000000000000001,
+    "quantity_contract": "spot BTC quantity == absolute perp-short BTC quantity",
+    "rebalance": "daily at 00:05 UTC after funding settlement accounting",
+    "split_policy": "flat start with prior-only gate state; forced two-leg close inside end",
+    "spot_cost_rate": 0.0011,
+    "strict_mdd": "global HWM admits one-minute spot-high/perp-low favorable cross-venue extreme, then spot-low/perp-high adverse cross-venue extreme, plus all costs/funding debits"
+  },
+  "manifest_hash_without_self": "f07145a46b24fc5e4c2a36c836612cf8e11cd51c6d62cce714ad708b7782f717",
+  "policy": {
+    "entry_threshold": 5e-05,
+    "exit_threshold": 0.0,
+    "lookback_events": 21,
+    "min_hold_events": 3
+  },
+  "pre2024_stats": {
+    "fit_2020_2022": {
+      "absolute_return_pct": 24.4777004176459,
+      "active_days": 874,
+      "cagr_pct": 7.569699484289982,
+      "cagr_to_strict_mdd": 0.6711135067445142,
+      "calendar_years": 3.0006844626967832,
+      "close_mdd_pct": 2.7438947099800326,
+      "daily_btc_beta": -0.0023482908538114827,
+      "entry_times": [
+        "2020-01-08 00:05:00",
+        "2020-04-29 08:05:00",
+        "2020-09-28 08:05:00",
+        "2020-11-07 08:05:00",
+        "2021-05-29 00:05:00",
+        "2021-08-02 00:05:00",
+        "2022-02-10 00:05:00",
+        "2022-03-07 00:05:00",
+        "2022-05-04 08:05:00",
+        "2022-05-20 00:05:00",
+        "2022-07-08 08:05:00",
+        "2022-09-12 16:05:00",
+        "2022-12-18 00:05:00"
+      ],
+      "episodes": 13,
+      "exit_times": [
+        "2020-03-13 16:05:00",
+        "2020-09-19 16:05:00",
+        "2020-11-01 00:05:00",
+        "2021-05-26 08:05:00",
+        "2021-06-23 16:05:00",
+        "2022-02-01 00:05:00",
+        "2022-02-24 08:05:00",
+        "2022-04-18 08:05:00",
+        "2022-05-12 16:05:00",
+        "2022-06-17 08:05:00",
+        "2022-08-24 16:05:00",
+        "2022-11-10 00:05:00",
+        "2023-01-01 00:00:00"
+      ],
+      "funding_cash_pct_initial": 29.398540521736315,
+      "funding_events_received": 2592,
+      "gross_turnover_x_initial": 57.02329828291721,
+      "nonzero_daily_pnl_days": 874,
+      "strict_mdd_pct": 11.27931327296574,
+      "transaction_cost_pct_initial": 4.847112579978377
+    },
+    "fit_2020h1": {
+      "absolute_return_pct": 3.391068556569765,
+      "active_days": 129,
+      "cagr_pct": 6.921617220966514,
+      "cagr_to_strict_mdd": 0.6136559073641696,
+      "calendar_years": 0.49828884325804246,
+      "close_mdd_pct": 2.7438947099800326,
+      "daily_btc_beta": -0.008003468961060224,
+      "entry_times": [
+        "2020-01-08 00:05:00",
+        "2020-04-29 08:05:00"
+      ],
+      "episodes": 2,
+      "exit_times": [
+        "2020-03-13 16:05:00",
+        "2020-07-01 00:00:00"
+      ],
+      "funding_cash_pct_initial": 4.281278631475802,
+      "funding_events_received": 384,
+      "gross_turnover_x_initial": 7.564368895389734,
+      "nonzero_daily_pnl_days": 129,
+      "strict_mdd_pct": 11.27931327296574,
+      "transaction_cost_pct_initial": 0.6430544469149121
+    },
+    "fit_2020h2": {
+      "absolute_return_pct": 4.067562707687866,
+      "active_days": 171,
+      "cagr_pct": 8.236060581844917,
+      "cagr_to_strict_mdd": 1.7298387763947174,
+      "calendar_years": 0.5037645448323066,
+      "close_mdd_pct": 0.6604123270857909,
+      "daily_btc_beta": -0.0026543386038969793,
+      "entry_times": [
+        "2020-07-01 00:00:00",
+        "2020-09-28 08:05:00",
+        "2020-11-07 08:05:00"
+      ],
+      "episodes": 3,
+      "exit_times": [
+        "2020-09-19 16:05:00",
+        "2020-11-01 00:05:00",
+        "2021-01-01 00:00:00"
+      ],
+      "funding_cash_pct_initial": 4.868609344393562,
+      "funding_events_received": 507,
+      "gross_turnover_x_initial": 9.802051679221488,
+      "nonzero_daily_pnl_days": 171,
+      "strict_mdd_pct": 4.761172367178801,
+      "transaction_cost_pct_initial": 0.8331382747290341
+    },
+    "fit_2021h1": {
+      "absolute_return_pct": 11.485195074279698,
+      "active_days": 172,
+      "cagr_pct": 24.532360110320738,
+      "cagr_to_strict_mdd": 2.5328606099803195,
+      "calendar_years": 0.49555099247091033,
+      "close_mdd_pct": 2.3545001744341265,
+      "daily_btc_beta": 0.0005376512429586169,
+      "entry_times": [
+        "2021-01-01 00:00:00",
+        "2021-05-29 00:05:00"
+      ],
+      "episodes": 2,
+      "exit_times": [
+        "2021-05-26 08:05:00",
+        "2021-06-23 16:05:00"
+      ],
+      "funding_cash_pct_initial": 12.475564329903682,
+      "funding_events_received": 514,
+      "gross_turnover_x_initial": 11.527129340589577,
+      "nonzero_daily_pnl_days": 172,
+      "strict_mdd_pct": 9.685633711407181,
+      "transaction_cost_pct_initial": 0.9797348018103811
+    },
+    "fit_2021h2": {
+      "absolute_return_pct": 3.235543745732583,
+      "active_days": 152,
+      "cagr_pct": 6.5250660080061085,
+      "cagr_to_strict_mdd": 1.0092441114778203,
+      "calendar_years": 0.5037645448323066,
+      "close_mdd_pct": 0.9742013669634009,
+      "daily_btc_beta": -0.0009954252743396414,
+      "entry_times": [
+        "2021-08-02 00:05:00"
+      ],
+      "episodes": 1,
+      "exit_times": [
+        "2022-01-01 00:00:00"
+      ],
+      "funding_cash_pct_initial": 3.7388078340004953,
+      "funding_events_received": 455,
+      "gross_turnover_x_initial": 6.05930656820753,
+      "nonzero_daily_pnl_days": 152,
+      "strict_mdd_pct": 6.465300053573319,
+      "transaction_cost_pct_initial": 0.5150295045202713
+    },
+    "fit_2022h1": {
+      "absolute_return_pct": -0.21615830424072113,
+      "active_days": 128,
+      "cagr_pct": -0.4357180061506427,
+      "cagr_to_strict_mdd": -0.09251832288929776,
+      "calendar_years": 0.49555099247091033,
+      "close_mdd_pct": 0.691275993231899,
+      "daily_btc_beta": -0.0011888830471144794,
+      "entry_times": [
+        "2022-01-01 00:00:00",
+        "2022-02-10 00:05:00",
+        "2022-03-07 00:05:00",
+        "2022-05-04 08:05:00",
+        "2022-05-20 00:05:00"
+      ],
+      "episodes": 5,
+      "exit_times": [
+        "2022-02-01 00:05:00",
+        "2022-02-24 08:05:00",
+        "2022-04-18 08:05:00",
+        "2022-05-12 16:05:00",
+        "2022-06-17 08:05:00"
+      ],
+      "funding_cash_pct_initial": 0.8547353026855873,
+      "funding_events_received": 374,
+      "gross_turnover_x_initial": 13.101724117508391,
+      "nonzero_daily_pnl_days": 128,
+      "strict_mdd_pct": 4.709532042339315,
+      "transaction_cost_pct_initial": 1.113718276304115
+    },
+    "fit_2022h2": {
+      "absolute_return_pct": 0.22566060412521072,
+      "active_days": 122,
+      "cagr_pct": 0.4484464256178322,
+      "cagr_to_strict_mdd": 0.05744839442051788,
+      "calendar_years": 0.5037645448323066,
+      "close_mdd_pct": 0.8913340441471185,
+      "daily_btc_beta": -0.0008607171315208684,
+      "entry_times": [
+        "2022-07-08 08:05:00",
+        "2022-09-12 16:05:00",
+        "2022-12-18 00:05:00"
+      ],
+      "episodes": 3,
+      "exit_times": [
+        "2022-08-24 16:05:00",
+        "2022-11-10 00:05:00",
+        "2023-01-01 00:00:00"
+      ],
+      "funding_cash_pct_initial": 0.8391489035713555,
+      "funding_events_received": 358,
+      "gross_turnover_x_initial": 7.978670135069786,
+      "nonzero_daily_pnl_days": 122,
+      "strict_mdd_pct": 7.8060741321200116,
+      "transaction_cost_pct_initial": 0.6782403221973262
+    },
+    "select_2023": {
+      "absolute_return_pct": 3.0352318460202588,
+      "active_days": 304,
+      "cagr_pct": 3.0373420292127307,
+      "cagr_to_strict_mdd": 0.6911745811720451,
+      "calendar_years": 0.999315537303217,
+      "close_mdd_pct": 1.3333317779190557,
+      "daily_btc_beta": -0.0011507340741578628,
+      "entry_times": [
+        "2023-01-01 00:00:00",
+        "2023-10-26 16:05:00"
+      ],
+      "episodes": 2,
+      "exit_times": [
+        "2023-08-25 00:05:00",
+        "2024-01-01 00:00:00"
+      ],
+      "funding_cash_pct_initial": 3.806048956046503,
+      "funding_events_received": 906,
+      "gross_turnover_x_initial": 8.890458343084795,
+      "nonzero_daily_pnl_days": 304,
+      "strict_mdd_pct": 4.394464310394952,
+      "transaction_cost_pct_initial": 0.7556984493242013
+    },
+    "select_2023h1": {
+      "absolute_return_pct": 1.374824253034146,
+      "active_days": 181,
+      "cagr_pct": 2.79374971843942,
+      "cagr_to_strict_mdd": 0.8541498457465392,
+      "calendar_years": 0.49555099247091033,
+      "close_mdd_pct": 1.1753659365930536,
+      "daily_btc_beta": -0.0010408420247004346,
+      "entry_times": [
+        "2023-01-01 00:00:00"
+      ],
+      "episodes": 1,
+      "exit_times": [
+        "2023-07-01 00:00:00"
+      ],
+      "funding_cash_pct_initial": 1.8137991017734933,
+      "funding_events_received": 542,
+      "gross_turnover_x_initial": 5.266930750900796,
+      "nonzero_daily_pnl_days": 181,
+      "strict_mdd_pct": 3.2707957887619155,
+      "transaction_cost_pct_initial": 0.4477090847926164
+    },
+    "select_2023h2": {
+      "absolute_return_pct": 1.460031740836909,
+      "active_days": 123,
+      "cagr_pct": 2.9190822593411214,
+      "cagr_to_strict_mdd": 0.6642635036166097,
+      "calendar_years": 0.5037645448323066,
+      "close_mdd_pct": 1.333331777918978,
+      "daily_btc_beta": -0.0013051548204397743,
+      "entry_times": [
+        "2023-07-01 00:00:00",
+        "2023-10-26 16:05:00"
+      ],
+      "episodes": 2,
+      "exit_times": [
+        "2023-08-25 00:05:00",
+        "2024-01-01 00:00:00"
+      ],
+      "funding_cash_pct_initial": 1.9567947992429466,
+      "funding_events_received": 363,
+      "gross_turnover_x_initial": 5.568131558872106,
+      "nonzero_daily_pnl_days": 123,
+      "strict_mdd_pct": 4.394464310394985,
+      "transaction_cost_pct_initial": 0.4732905405486404
+    }
+  },
+  "protocol": {
+    "database_snapshot_is_point_in_time": false,
+    "future_research_already_viewed_globally": true,
+    "independent_validation_required": "single frozen 2024+ OOS plus live forward parity",
+    "name": "delta-neutral BTC spot/perpetual realized-funding carry",
+    "oos_opened": false,
+    "pre2024_statistics_are_post_selection_descriptive_only": true,
+    "ranking": "eligible first; maximize min(fit full ratio, 2023 ratio), then minimum half-year absolute return, then combined full-window absolute return",
+    "selection_end_exclusive": "2024-01-01",
+    "stage": "pre2024_bounded_search_and_freeze"
+  },
+  "schedule_hash": "b46d35444d744b4033a34d4e18db416a3b5d0c53f2495f0e1145df5dec51f844",
+  "source_diagnostics": {
+    "complete_spot_bars": 2101493,
+    "funding_events": 4383,
+    "funding_mark_policy": "use actual reported funding mark when finite and positive; otherwise use the last fully completed USD-M one-minute close whose end <= funding_time",
+    "funding_missing_reported_mark": 4198,
+    "funding_settlement_marks_fallback": 4198,
+    "funding_settlement_marks_reported": 185,
+    "funding_without_causal_fallback": 1,
+    "market_rows": 2103840,
+    "max_consecutive_proxy_bars": 354,
+    "missing_spot_bars": 2347,
+    "oos_rows_opened": 0,
+    "partial_spot_bars": 0,
+    "proxy_rule": "last complete prior one-minute spot/perp close basis; futures OHLC; high/low widened by 0.002500; observed partial points retained in extrema",
+    "proxy_spot_bars": 2347,
+    "reported_vs_causal_mark_comparisons": 185,
+    "reported_vs_causal_mark_median_abs_error_bps": 0.2092908144935013,
+    "reported_vs_causal_mark_p99_abs_error_bps": 2.442995094408084
+  },
+  "source_hashes": {
+    "funding": "f61e6bce5d1b4e3c4b47b1f5819c06cac2c41fb439b5d4d414412afb0b580e04",
+    "futures": "0b55bb0c3b845a90da738e746c769b19c1de4ac230ca8f1fccb6c361c4a9a41f",
+    "source_manifest": "6f732c2ba8a158e82cecdd954b2d14310dd564bddc4d04dbd04f8672b545844d",
+    "spot": "bc6e0fd6b773ab6458a5de88fb9589161d1adf4ac1d0e7024f252515909f4a54"
+  }
+}
