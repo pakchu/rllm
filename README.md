@@ -470,6 +470,8 @@ python -m execution.portfolio_live ... --alpha-worker-timeout-sec 240
 
 상세 설계, 현재 알파별 논리 감사, 잔여 위험은
 [`docs/portfolio-live-parallelization-and-alpha-audit-2026-07-16.md`](docs/portfolio-live-parallelization-and-alpha-audit-2026-07-16.md)를 참조합니다.
+실제 Binance Futures testnet 주문 및 1-cycle 검증 결과는
+[`docs/portfolio-live-testnet-smoke-2026-07-16.md`](docs/portfolio-live-testnet-smoke-2026-07-16.md)에 기록했습니다.
 
 운영 규칙:
 - refresh 직전 `get_order.executedQty`를 먼저 반영합니다.
