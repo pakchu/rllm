@@ -167,6 +167,8 @@ def test_strict_metric_uses_same_bar_upper_before_adverse_lower():
         "R": returns,
         "A": adverse,
         "U": np.maximum(returns, 0.0),
+        "L": adverse,
+        "H": np.maximum(returns, 0.0),
         "counts": np.eye(1, len(SLEEVES), index, dtype=int).ravel(),
         "wins": np.eye(1, len(SLEEVES), index, dtype=int).ravel(),
     }
@@ -186,11 +188,39 @@ def test_strict_metric_retains_intrabar_favorable_peak():
         "R": returns,
         "A": adverse,
         "U": favorable,
+        "L": adverse,
+        "H": favorable,
         "counts": np.zeros(len(SLEEVES), dtype=int),
         "wins": np.zeros(len(SLEEVES), dtype=int),
     }
     result = strict_metric(data, 1.0, {"fresh_kimchi_fx": 1.0})
     assert np.isclose(result["strict_mdd_pct"], 25.0)
+
+
+def test_strict_metric_offsets_opposite_sleeves_at_same_btc_price():
+    shape = (len(SLEEVES), 1)
+    returns = np.zeros(shape)
+    market_low = np.zeros(shape)
+    market_high = np.zeros(shape)
+    long_index = SLEEVES.index("frozen_annual_rank7")
+    short_index = SLEEVES.index("fresh_kimchi_fx")
+    market_low[long_index, 0], market_high[long_index, 0] = -0.10, 0.10
+    market_low[short_index, 0], market_high[short_index, 0] = 0.10, -0.10
+    data = {
+        "R": returns,
+        "A": np.minimum(market_low, market_high),
+        "U": np.maximum(market_low, market_high),
+        "L": market_low,
+        "H": market_high,
+        "counts": np.zeros(len(SLEEVES), dtype=int),
+        "wins": np.zeros(len(SLEEVES), dtype=int),
+    }
+    result = strict_metric(
+        data,
+        1.0,
+        {"frozen_annual_rank7": 1.0, "fresh_kimchi_fx": 1.0},
+    )
+    assert np.isclose(result["strict_mdd_pct"], 0.0)
 
 
 def test_exact_pre2025_ranks_every_generated_candidate_on_bar_clock():
@@ -207,6 +237,8 @@ def test_exact_pre2025_ranks_every_generated_candidate_on_bar_clock():
         "R": returns,
         "A": adverse,
         "U": favorable,
+        "L": adverse,
+        "H": favorable,
         "counts": np.full(len(SLEEVES), 100, dtype=int),
         "wins": np.zeros(len(SLEEVES), dtype=int),
     }

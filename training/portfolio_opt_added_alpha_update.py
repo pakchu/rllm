@@ -228,6 +228,8 @@ def append_mask_policy(
         returns = np.zeros(len(market), dtype=np.float64)
         adverse = np.zeros(len(market), dtype=np.float64)
         favorable = np.zeros(len(market), dtype=np.float64)
+        market_low = np.zeros(len(market), dtype=np.float64)
+        market_high = np.zeros(len(market), dtype=np.float64)
         next_allowed = 0
         trades = wins = 0
         first_signal: int | None = None
@@ -265,13 +267,20 @@ def append_mask_policy(
                 continue
             returns += event_return
             adverse += event_adverse
-            favorable += favorable_path(
+            event_favorable = favorable_path(
                 market,
                 signal_position=position,
                 exit_position=exit_position,
                 side=side,
                 leverage=0.5,
             )
+            favorable += event_favorable
+            if side == "long":
+                market_low += event_adverse
+                market_high += event_favorable
+            else:
+                market_low += event_favorable
+                market_high += event_adverse
             trades += 1
             wins += int(float(realized) > 0.0)
             first_signal = position if first_signal is None else first_signal
@@ -288,6 +297,8 @@ def append_mask_policy(
                     "ret": returns,
                     "adv": adverse,
                     "fav": favorable,
+                    "low": market_low,
+                    "high": market_high,
                     "trade_count": trades,
                     "win_count": wins,
                 }
@@ -380,6 +391,8 @@ def append_rex_taker_policy(
         returns = np.zeros(len(market), dtype=np.float64)
         adverse = np.zeros(len(market), dtype=np.float64)
         favorable = np.zeros(len(market), dtype=np.float64)
+        market_low = np.zeros(len(market), dtype=np.float64)
+        market_high = np.zeros(len(market), dtype=np.float64)
         next_allowed = 0
         trades = wins = 0
         first_signal: int | None = None
@@ -411,13 +424,20 @@ def append_rex_taker_policy(
                 continue
             returns += event_return
             adverse += event_adverse
-            favorable += favorable_path(
+            event_favorable = favorable_path(
                 market,
                 signal_position=position,
                 exit_position=exit_position,
                 side=side,
                 leverage=0.5,
             )
+            favorable += event_favorable
+            if side == "long":
+                market_low += event_adverse
+                market_high += event_favorable
+            else:
+                market_low += event_favorable
+                market_high += event_adverse
             trades += 1
             wins += int(float(realized) > 0.0)
             first_signal = position if first_signal is None else first_signal
@@ -434,6 +454,8 @@ def append_rex_taker_policy(
                     "ret": returns,
                     "adv": adverse,
                     "fav": favorable,
+                    "low": market_low,
+                    "high": market_high,
                     "trade_count": trades,
                     "win_count": wins,
                 }
@@ -441,13 +463,13 @@ def append_rex_taker_policy(
     return counts
 
 
-def attach_live_rex_favorable(
+def attach_live_rex_ohlc(
     events: list[dict[str, Any]],
     market: pd.DataFrame,
     masks: dict[str, np.ndarray],
     cfg: Config,
 ) -> None:
-    """Rebuild the live aggregated REX sleeve's favorable OHLC envelope."""
+    """Rebuild the live aggregated REX sleeve at shared BTC low/high prices."""
     report = legacy_all.load_json(legacy_all.SCAN_FILES["rex_veto"])
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -470,6 +492,8 @@ def attach_live_rex_favorable(
     dates = pd.to_datetime(market["date"])
     for split, split_mask in masks.items():
         favorable = np.zeros(len(market), dtype=np.float64)
+        market_low = np.zeros(len(market), dtype=np.float64)
+        market_high = np.zeros(len(market), dtype=np.float64)
         next_allowed = 0
         trades = 0
         for source_row in source:
@@ -491,13 +515,32 @@ def attach_live_rex_favorable(
             exit_position = position + 145
             if exit_position >= len(market) or not split_mask[exit_position]:
                 continue
-            favorable += favorable_path(
+            path = new_alpha._event_path(
+                market,
+                position,
+                side=side,
+                hold=144,
+                cost_rate=cfg.cost_rate,
+                entry_delay=1,
+                leverage=0.5,
+            )
+            if path is None:
+                continue
+            _, event_adverse, _ = path
+            event_favorable = favorable_path(
                 market,
                 signal_position=position,
                 exit_position=exit_position,
                 side=side,
                 leverage=0.5,
             )
+            favorable += event_favorable
+            if side == "long":
+                market_low += event_adverse
+                market_high += event_favorable
+            else:
+                market_low += event_favorable
+                market_high += event_adverse
             trades += 1
             next_allowed = exit_position + 1
         matches = [
@@ -506,8 +549,10 @@ def attach_live_rex_favorable(
             if event["split"] == split and event["sleeve"] == "cand_rex_veto_7"
         ]
         if len(matches) != 1 or int(matches[0].get("trade_count", 0)) != trades:
-            raise RuntimeError(f"live REX favorable replay drifted in {split}")
+            raise RuntimeError(f"live REX OHLC replay drifted in {split}")
         matches[0]["fav"] = favorable
+        matches[0]["low"] = market_low
+        matches[0]["high"] = market_high
 
 
 def attach_default_favorable(events: list[dict[str, Any]], market: pd.DataFrame) -> None:
@@ -525,6 +570,8 @@ def attach_default_favorable(events: list[dict[str, Any]], market: pd.DataFrame)
         nonzero = np.flatnonzero(np.abs(event["ret"]) > 1e-15)
         if not len(nonzero):
             event["fav"] = np.zeros(len(market), dtype=np.float64)
+            event["low"] = np.zeros(len(market), dtype=np.float64)
+            event["high"] = np.zeros(len(market), dtype=np.float64)
             continue
         event["fav"] = favorable_path(
             market,
@@ -533,6 +580,12 @@ def attach_default_favorable(events: list[dict[str, Any]], market: pd.DataFrame)
             side=side,
             leverage=leverage_by_sleeve[event["sleeve"]],
         )
+        if side == "long":
+            event["low"] = event["adv"]
+            event["high"] = event["fav"]
+        else:
+            event["low"] = event["fav"]
+            event["high"] = event["adv"]
 
 
 def path_event(
@@ -565,12 +618,18 @@ def path_event(
     )
     local_adverse = np.minimum(0.0, local_adverse)
     local_favorable = np.maximum(0.0, local_favorable)
+    local_market_low = path.market_low_value / previous_close - 1.0
+    local_market_high = path.market_high_value / previous_close - 1.0
     returns = np.zeros(len(market), dtype=np.float64)
     adverse = np.zeros(len(market), dtype=np.float64)
     favorable = np.zeros(len(market), dtype=np.float64)
+    market_low = np.zeros(len(market), dtype=np.float64)
+    market_high = np.zeros(len(market), dtype=np.float64)
     returns[positions] = local_return
     adverse[positions] = local_adverse
     favorable[positions] = local_favorable
+    market_low[positions] = local_market_low
+    market_high[positions] = local_market_high
     trades = list(trades)
     return {
         "split": split,
@@ -581,6 +640,8 @@ def path_event(
         "ret": returns,
         "adv": adverse,
         "fav": favorable,
+        "low": market_low,
+        "high": market_high,
         "trade_count": len(trades),
         "win_count": sum(
             float(trade.price_factor) * float(trade.funding_factor) > 1.0 for trade in trades
@@ -671,6 +732,8 @@ def split_arrays(
         returns = np.zeros((len(SLEEVES), end - start), dtype=np.float64)
         adverse = np.zeros_like(returns)
         favorable = np.zeros_like(returns)
+        market_low = np.zeros_like(returns)
+        market_high = np.zeros_like(returns)
         counts = np.zeros(len(SLEEVES), dtype=np.int64)
         wins = np.zeros(len(SLEEVES), dtype=np.int64)
         for event in events:
@@ -680,6 +743,8 @@ def split_arrays(
             returns[index] += event["ret"][start:end]
             adverse[index] += event["adv"][start:end]
             favorable[index] += event["fav"][start:end]
+            market_low[index] += event["low"][start:end]
+            market_high[index] += event["high"][start:end]
             trade_count = int(event.get("trade_count", 1))
             counts[index] += trade_count
             if "win_count" in event:
@@ -690,6 +755,8 @@ def split_arrays(
             "R": returns,
             "A": adverse,
             "U": favorable,
+            "L": market_low,
+            "H": market_high,
             "counts": counts,
             "wins": wins,
             "dates": pd.DatetimeIndex(dates.iloc[start:end]),
@@ -726,21 +793,20 @@ def legacy_metric(data: dict[str, Any], years: float, weights: dict[str, float])
 
 
 def strict_metric(data: dict[str, Any], years: float, weights: dict[str, float]) -> dict[str, Any]:
-    """Conservative OHLC upper-before-lower MDD on the shared portfolio clock."""
+    """Same-BTC OHLC upper-before-lower MDD on the shared portfolio clock."""
     vector = np.asarray([weights.get(name, 0.0) for name in SLEEVES], dtype=float)
     returns = vector @ data["R"]
-    adverse = vector @ data["A"]
-    favorable = vector @ data["U"]
+    market_low = vector @ data["L"]
+    market_high = vector @ data["H"]
     equity_after = np.cumprod(np.maximum(0.0, 1.0 + returns))
     equity_before = np.r_[1.0, equity_after[:-1]]
+    low_value = equity_before * np.maximum(0.0, 1.0 + market_low)
+    high_value = equity_before * np.maximum(0.0, 1.0 + market_high)
     upper = np.maximum.reduce(
-        [equity_before, equity_after, equity_before * np.maximum(0.0, 1.0 + favorable)]
+        [equity_before, equity_after, low_value, high_value]
     )
     peak = np.maximum.accumulate(upper)
-    lower = np.minimum(
-        equity_after,
-        equity_before * np.maximum(0.0, 1.0 + adverse),
-    )
+    lower = np.minimum.reduce([equity_before, equity_after, low_value, high_value])
     mdd = float(np.max(1.0 - lower / np.maximum(peak, 1e-12))) * 100.0
     final = float(equity_after[-1])
     total_return = (final - 1.0) * 100.0
@@ -878,18 +944,17 @@ def weight_neighbors(weights: dict[str, float], cfg: Config) -> list[dict[str, f
 
 def batch_metrics(data: dict[str, Any], years: float, weight_matrix: np.ndarray) -> dict[str, np.ndarray]:
     returns = weight_matrix @ data["R"]
-    adverse = weight_matrix @ data["A"]
-    favorable = weight_matrix @ data["U"]
+    market_low = weight_matrix @ data["L"]
+    market_high = weight_matrix @ data["H"]
     equity_after = np.cumprod(np.maximum(0.0, 1.0 + returns), axis=1)
     equity_before = np.concatenate([np.ones((len(weight_matrix), 1)), equity_after[:, :-1]], axis=1)
+    low_value = equity_before * np.maximum(0.0, 1.0 + market_low)
+    high_value = equity_before * np.maximum(0.0, 1.0 + market_high)
     upper = np.maximum.reduce(
-        [equity_before, equity_after, equity_before * np.maximum(0.0, 1.0 + favorable)]
+        [equity_before, equity_after, low_value, high_value]
     )
     peak = np.maximum.accumulate(upper, axis=1)
-    lower = np.minimum(
-        equity_after,
-        equity_before * np.maximum(0.0, 1.0 + adverse),
-    )
+    lower = np.minimum.reduce([equity_before, equity_after, low_value, high_value])
     mdd = np.max(1.0 - lower / np.maximum(peak, 1e-12), axis=1) * 100.0
     final = equity_after[:, -1]
     total_return = (final - 1.0) * 100.0
@@ -1110,7 +1175,7 @@ def render_docs(report: dict[str, Any]) -> str:
         "",
         "- The old live row is reproduced exactly under its legacy MDD engine before comparison.",
         "- Selection uses the corrected same-bar upper-before-lower strict MDD clock.",
-        "- OHLC favorable and adverse envelopes are both retained; upper is applied before lower on each bar.",
+        "- Every sleeve is marked at the same underlying BTC low/high price points; upper is applied before lower on each bar.",
         "- The reported row is the best found in a deterministic seeded candidate search, not a proof of the global discrete-grid optimum.",
         "- Rank7 and Fresh Kimchi retain their canonical execution/funding schedules.",
         "- Advanced-state representatives selected by inspecting future passers were excluded.",
@@ -1153,7 +1218,7 @@ def run(cfg: Config) -> dict[str, Any]:
     market, _, masks, _, events, _ = legacy_base.build_combined_events(legacy_cfg)
     legacy_all.add_rex_veto_candidates(events, market, masks, legacy_cfg)
     events = [event for event in events if event["sleeve"] in LIVE_WEIGHTS]
-    attach_live_rex_favorable(events, market, masks, cfg)
+    attach_live_rex_ohlc(events, market, masks, cfg)
     attach_default_favorable(events, market)
     features = feature_frame(market)
     markov = markov_active(market, features)
@@ -1311,7 +1376,7 @@ def run(cfg: Config) -> dict[str, Any]:
             "exact_pre2025_passed": len(ranked_pre2025),
             "refinement": refinement_meta,
             "search_scope": "deterministic seeded/random candidate set; not a proof of global grid optimum",
-            "selection_clock": "shared 5-minute OHLC upper-before-lower strict MDD",
+            "selection_clock": "shared 5-minute same-BTC low/high upper-before-lower strict MDD",
         },
         "source_validation": source_validation,
         "frozen_pre2025_top1": selected,
