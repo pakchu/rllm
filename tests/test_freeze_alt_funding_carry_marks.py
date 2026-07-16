@@ -45,12 +45,12 @@ def test_download_mark_klines_allows_exchange_gap_away_from_funding_event() -> N
 
 
 def test_compose_event_marks_backfills_missing_and_verifies_overlap() -> None:
-    times = pd.to_datetime(["2023-01-01 00:00", "2023-01-01 08:00"])
+    times = pd.to_datetime(["2023-01-01 00:00:00.008", "2023-01-01 08:00:00.001"])
     funding = pd.DataFrame({
         "funding_time": (times.astype("int64") // 1_000_000).astype("int64"),
         "mark_price": [None, 110.0],
     })
-    klines = pd.DataFrame({"open_time": times, "mark_price": [100.0, 110.0]})
+    klines = pd.DataFrame({"open_time": times.floor("5min"), "mark_price": [100.0, 110.0]})
     output, stats = compose_event_marks(funding, klines)
     assert output["exact_mark_price"].tolist() == [100.0, 110.0]
     assert output["mark_source"].tolist() == ["mark_price_kline_open", "funding_record"]

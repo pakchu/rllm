@@ -126,12 +126,13 @@ def download_mark_klines(
 def compose_event_marks(funding: pd.DataFrame, mark_klines: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
     frame = funding.copy()
     frame["event_time"] = pd.to_datetime(pd.to_numeric(frame["funding_time"], errors="raise"), unit="ms")
+    frame["mark_open_time"] = frame["event_time"].dt.floor("5min")
     frame["recorded_mark"] = pd.to_numeric(frame["mark_price"], errors="coerce")
     frame = frame.loc[(frame["event_time"] >= START) & (frame["event_time"] < END)].copy()
     if frame.empty or frame["event_time"].duplicated().any():
         raise RuntimeError("invalid AFCH funding events for mark freeze")
     mark_map = mark_klines.set_index("open_time")["mark_price"]
-    frame["kline_open_mark"] = frame["event_time"].map(mark_map)
+    frame["kline_open_mark"] = frame["mark_open_time"].map(mark_map)
     if frame["kline_open_mark"].isna().any():
         raise RuntimeError("AFCH funding event lacks exact mark-price kline open")
     recorded = frame["recorded_mark"].notna()
@@ -167,9 +168,11 @@ def _markdown(result: dict[str, Any]) -> str:
 
 > Outcome-blind source freeze only. No position return, PnL, CAGR, MDD, or gate was calculated.
 
-Missing 2023 funding-record marks were filled from the open of Binance USD-M
-5m mark-price klines at the exact funding timestamp. Where both sources exist,
-they must agree within `1e-6 bp`. Official endpoint:
+Missing 2023 funding-record marks were filled from the open of the Binance
+USD-M 5m mark-price interval containing the funding event. Binance event
+timestamps can carry millisecond jitter around the scheduled boundary; where
+both sources exist, the floored kline open must agree within `1e-6 bp`.
+Official endpoint:
 <https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Mark-Price-Kline-Candlestick-Data>
 
 | Symbol | Events | Funding-record marks | Backfilled exact opens | Missing non-event 5m bars | Max overlap error bp |
