@@ -1,0 +1,156 @@
+{
+  "protocol_version": "liquidity_vacuum_replenishment_r0_v1",
+  "outcomes_opened": false,
+  "policy": {
+    "policy_id": "LVRT-R0",
+    "baseline_bars": 8640,
+    "baseline_min_periods": 2016,
+    "setup_quantile": 0.8,
+    "minimum_agg_trade_count": 64,
+    "hold_bars": 12,
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.0008,
+    "post_gap_quarantine_bars": 24
+  },
+  "research_history_boundary": {
+    "2020_2023_market_returns_seen_by_unrelated_repo_research": true,
+    "exact_lvrt_r0_outcomes_opened": false,
+    "claim": "mechanically frozen exact-policy evaluation, not a globally pristine historical market holdout; forward shadow/live remains the final generalization test"
+  },
+  "novelty_boundary": {
+    "excluded_feature_families": [
+      "open_interest",
+      "funding_or_premium",
+      "kimchi_or_fx",
+      "REX_or_HTF_price_regime",
+      "Markov_state",
+      "spot_perp_basis"
+    ],
+    "nearest_failed_families": {
+      "MFIC": "same-window impact curvature",
+      "NETF": "breadth/notional disagreement then capital revelation",
+      "RIFT": "persistent spot/perp/path/crowding pressure",
+      "TAAR": "same-bar tail-arrival absorption or release"
+    },
+    "distinct_axis": "a completed bursty/concentrated aggressive-flow vacuum followed by a separate completed bar with opposite aggressive flow and price reversal"
+  },
+  "source_contract": {
+    "features": "data/binance_um_aggtrade_microstructure_btc_2020_2023/BTCUSDT_aggtrade_5m_2020-01-01_2023-12-31.csv.gz",
+    "feature_manifest": "data/binance_um_aggtrade_microstructure_btc_2020_2023/build_manifest.json",
+    "feature_sha256": "c2bb0e6742f8cdc4e13315e7f0a13d6ab9cd536fb40d9cb4484b7a6ba30131cf",
+    "feature_manifest_sha256": "6eec40460a6146c58994e52f1af9ace4eecc0c085887d97af5ef17c30b9f7e73",
+    "market": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "market_manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "source_audit": "results/binance_aggtrade_microstructure_audit_2026-07-14.json",
+    "source_audit_sha256": "5ac5a342d7f766ea0b6dcf9f97468ab70b9e1194775469ed0245d9208d0dc9c6",
+    "audit_must_pass": true,
+    "available_end_exclusive": "2024-01-01",
+    "source_gap_policy": "quarantine each source-ID-gap UTC day, every missing feature bucket, and the following 24 five-minute bars; never impute"
+  },
+  "claim_boundary": {
+    "claim": "opposite aggressive flow plus price reversal after a concentrated aggressive-flow vacuum can proxy a short-lived refill transition",
+    "not_claimed": [
+      "direct observation of passive depth",
+      "queue replenishment",
+      "participant identity",
+      "hidden orders"
+    ]
+  },
+  "causal_feature_contract": {
+    "setup_bucket": "completed five-minute bucket t0",
+    "setup_direction": "s0 = sign(signed_quote_notional[t0]); s0 != 0",
+    "setup_response": "signed_price_response[t0] > 0",
+    "setup_burst": "interarrival_burstiness[t0] >= strictly-prior q80 over the last 8,640 clean observations, requiring 2,016",
+    "setup_concentration": "event_notional_hhi[t0] >= strictly-prior q80 over the last 8,640 clean observations, requiring 2,016",
+    "activity": "agg_trade_count >= 64 on setup and confirmation",
+    "confirmation_bucket": "the immediately following completed bucket t1",
+    "confirmation_flow": "sign(signed_quote_notional[t1]) == -s0",
+    "confirmation_price": "s0 * micro_log_return[t1] < 0",
+    "decision_time": "after t1 closes",
+    "side": "-s0"
+  },
+  "execution_contract": {
+    "entry": "next five-minute open t2 after t1 closes",
+    "exit": "scheduled open after 12 held five-minute bars",
+    "nonoverlap": true,
+    "position_size": "0.5x account gross",
+    "base_cost": "6 bp/notional/side",
+    "stress_cost": "8 bp/notional/side",
+    "stop_or_take_profit": null,
+    "funding": "realized settlement cash is accounting-only if present; funding is never a signal input",
+    "strict_mdd": "global/pre-entry high-water; held favorable-before-adverse OHLC; entry, hypothetical liquidation, and exit costs",
+    "cagr_clock": "full wall-clock split including idle cash"
+  },
+  "support_freeze_before_returns": {
+    "minimum_nonoverlap_total": 250,
+    "minimum_nonoverlap_each_year_2020_2023": 40,
+    "minimum_nonoverlap_each_2023_half": 20,
+    "minimum_each_side_share": 0.25,
+    "maximum_each_side_share": 0.75,
+    "maximum_single_month_share": 0.2,
+    "required_path": "setup, confirmation, entry, every held bucket, and exit must be inside the split and outside quarantine",
+    "failure_action": "reject without opening price outcomes"
+  },
+  "selection_protocol": {
+    "train": [
+      "2020-01-01",
+      "2023-01-01"
+    ],
+    "selection": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "selection_halves": {
+      "h1": [
+        "2023-01-01",
+        "2023-07-01"
+      ],
+      "h2": [
+        "2023-07-01",
+        "2024-01-01"
+      ]
+    },
+    "sealed": [
+      "2024",
+      "2025",
+      "2026_ytd"
+    ],
+    "candidate_count": 1,
+    "no_parameter_repair": true,
+    "gates": {
+      "train_and_2023_absolute_return_positive": true,
+      "train_and_2023_cagr_to_strict_mdd_min": 3.0,
+      "train_and_2023_strict_mdd_pct_max": 15.0,
+      "train_and_2023_weekly_cluster_signflip_p_max": 0.1,
+      "train_trades_min": 120,
+      "2023_trades_min": 80,
+      "2023_h1_and_h2_absolute_return_positive": true,
+      "2023_h1_and_h2_trades_min": 20,
+      "train_and_2023_mean_gross_underlying_bp_min": 12.0,
+      "train_and_2023_eight_bp_stress_absolute_return_positive": true
+    }
+  },
+  "falsification_controls": {
+    "direction_flip": "same clock, opposite action",
+    "no_reversal_confirmation": "setup bucket itself becomes the signal bucket; next-open entry",
+    "one_bar_extra_delay": "same action and hold, entry one bar later",
+    "one_day_shifted_setup": "confirmation paired with setup features exactly 288 bars earlier",
+    "sign_permuted_confirmation": "fixed-seed 20260717 permutation of confirmation flow signs; rejection control",
+    "placebo_rule": "reject if a time-shift or sign-permutation placebo independently passes all primary train/selection performance gates"
+  },
+  "orthogonality_after_outcomes": {
+    "compare_against": "all live/shadow portfolio anchors with reproducible entry clocks",
+    "exact_entry_jaccard_max": 0.05,
+    "position_time_jaccard_max": 0.15,
+    "absolute_daily_pnl_pearson_max": 0.3,
+    "minimum_nonzero_daily_pnl_days": 20,
+    "undefined_metric": "fail_closed",
+    "marginal_portfolio_improvement_required": true
+  },
+  "rejection_contract": "any support or pre-2024 performance failure rejects LVRT-R0; do not change quantile, confirmation, side, hold, costs, or gates",
+  "manifest_hash": "ec8784837501fe1a16c83942b3d8d083e587dec121da18bd958be20c242d174d",
+  "created_at": "2026-07-16T17:56:15.830635+00:00"
+}
