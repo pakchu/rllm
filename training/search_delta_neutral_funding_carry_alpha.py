@@ -868,7 +868,7 @@ def write_docs(result: dict[str, Any], path: str) -> None:
             "- 모든 창은 flat equity=1로 시작하며 과거 funding gate 상태만 전달한다.",
             "- funding event는 해당 시각보다 엄격히 뒤의 첫 5분봉 open에서만 gate를 바꾼다.",
             "- event 당시 이미 보유한 short만 funding을 받는다; 그 event로 진입한 포지션은 받지 않는다.",
-            "- funding mark는 event 시각까지 완전히 끝난 마지막 선물 5분봉 close를 일관되게 사용한다.",
+            "- 실제 funding mark가 없을 때만 event 시각까지 완전히 끝난 마지막 선물 1분봉 close를 사용한다.",
             "- strict MDD는 1분 내 비동시 basis dislocation까지 포함해 spot-high/perp-low HWM 뒤 spot-low/perp-high adverse를 적용한다.",
             "- 현물 누락/부분봉은 직전 완성 basis와 선물 OHLC로 복원하고 high/low를 고정 cushion만큼 확대한다.",
             "- 진입·청산·일일 리밸런싱 모두 두 leg의 실제 변경 notional에 fee+slippage를 부과한다.",
