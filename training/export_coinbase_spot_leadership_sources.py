@@ -6,6 +6,8 @@ import csv
 import gzip
 import hashlib
 import json
+import subprocess
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -32,7 +34,7 @@ from training.preregister_coinbase_spot_leadership_alpha import (
 
 DEFAULT_BINANCE_INPUT = "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz"
 DEFAULT_FUNDING_INPUT = (
-    "data/binance_um_aux_btc_2020_2026/"
+    "/home/pakchu/rllm/data/binance_um_aux_btc_2020_2026/"
     "BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz"
 )
 DEFAULT_COINBASE_OUTPUT = "data/coinbase_btcusd_5m_2020_2022.csv.gz"
@@ -61,16 +63,43 @@ class Config:
     timeout_seconds: float = 30.0
     retries: int = 5
     requests_per_second: float = 8.0
+    attest_existing: bool = False
 
 
 def resolve_existing(path: str | Path) -> Path:
     candidate = Path(path).expanduser()
     if candidate.exists():
         return candidate.resolve()
-    fallback = Path("/home/pakchu/rllm") / candidate
-    if fallback.exists():
-        return fallback.resolve()
     raise FileNotFoundError(path)
+
+
+def raw_input_metadata(supplied_path: str | Path) -> dict[str, Any]:
+    supplied = Path(supplied_path).expanduser()
+    resolved = resolve_existing(supplied)
+    return {
+        "supplied_path": str(supplied),
+        "resolved_path": str(resolved),
+        "supplied_is_symlink": supplied.is_symlink(),
+        "bytes": resolved.stat().st_size,
+        "sha256": sha256_file(resolved),
+    }
+
+
+def git_commit_for(path: str | Path) -> str:
+    candidate = Path(path)
+    try:
+        pathspec = str(candidate.resolve().relative_to(Path.cwd().resolve()))
+    except ValueError:
+        pathspec = str(candidate)
+    result = subprocess.run(
+        ["git", "log", "-1", "--format=%H", "--", pathspec],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    if len(result) != 40:
+        raise RuntimeError(f"no Git commit anchor found for {path}")
+    return result
 
 
 def expected_grid(start: str, end: str) -> pd.DatetimeIndex:
@@ -219,12 +248,16 @@ def range_frame(
     sentinel: pd.Timestamp | None = None
     opener = gzip.open if source.suffix == ".gz" else Path.open
     with opener(source, "rt", encoding="utf-8", newline="") as handle:
-        reader = csv.DictReader(handle)
-        missing = set(usecols) - set(reader.fieldnames or [])
-        if reader.fieldnames is None or missing:
+        header_line = handle.readline()
+        fieldnames = next(csv.reader([header_line]))
+        missing = set(usecols) - set(fieldnames)
+        if missing:
             raise ValueError(f"source columns missing: {sorted(missing)}")
-        for raw in reader:
-            timestamp = pd.Timestamp(raw[date_column])
+        if not fieldnames or fieldnames[0] != date_column:
+            raise ValueError("date column must be first to enforce the cutoff audit boundary")
+        for raw_line in handle:
+            date_token = raw_line.split(",", 1)[0]
+            timestamp = pd.Timestamp(date_token)
             if timestamp.tzinfo is not None:
                 timestamp = timestamp.tz_convert("UTC").tz_localize(None)
             if previous is not None and timestamp < previous:
@@ -235,6 +268,10 @@ def range_frame(
                 break
             if timestamp < start_ts:
                 continue
+            values = next(csv.reader([raw_line]))
+            if len(values) != len(fieldnames):
+                raise ValueError("malformed CSV row inside frozen range")
+            raw = dict(zip(fieldnames, values))
             row = {column: raw[column] for column in usecols}
             row[date_column] = timestamp
             rows.append(row)
@@ -242,11 +279,12 @@ def range_frame(
         raise ValueError(f"no source rows in frozen range: {path}")
     frame = pd.DataFrame(rows, columns=usecols)
     frame.attrs["cutoff_sentinel_date"] = str(sentinel) if sentinel is not None else None
-    frame.attrs["future_value_rows_parsed"] = 0
+    frame.attrs["future_non_date_fields_csv_parsed"] = 0
     return frame
 
 
 def validate_binance(frame: pd.DataFrame, expected: pd.DatetimeIndex) -> pd.DataFrame:
+    source_attrs = dict(frame.attrs)
     frame = frame.sort_values("date").reset_index(drop=True)
     if frame["date"].duplicated().any() or not frame["date"].equals(pd.Series(expected)):
         raise RuntimeError("Binance prefix is not the exact complete five-minute grid")
@@ -263,10 +301,12 @@ def validate_binance(frame: pd.DataFrame, expected: pd.DatetimeIndex) -> pd.Data
         raise ValueError("Binance low is incoherent")
     if (frame["high"] < frame[["open", "close"]].max(axis=1)).any():
         raise ValueError("Binance high is incoherent")
+    frame.attrs.update(source_attrs)
     return frame
 
 
 def validate_funding(frame: pd.DataFrame) -> pd.DataFrame:
+    source_attrs = dict(frame.attrs)
     frame = frame.sort_values("date").reset_index(drop=True)
     frame["funding_rate"] = pd.to_numeric(frame["funding_rate"], errors="raise")
     if not np.isfinite(frame["funding_rate"]).all():
@@ -277,6 +317,17 @@ def validate_funding(frame: pd.DataFrame) -> pd.DataFrame:
         if (distinct > 1).any():
             raise RuntimeError("funding prefix has conflicting duplicate timestamps")
         frame = frame.drop_duplicates("date", keep="first").reset_index(drop=True)
+    timestamps_ns = frame["date"].astype("int64").to_numpy()
+    period_ns = 8 * 60 * 60 * 1_000_000_000
+    remainder = timestamps_ns % period_ns
+    grid_distance_seconds = np.minimum(remainder, period_ns - remainder) / 1e9
+    if (grid_distance_seconds > 1.0).any():
+        raise RuntimeError("funding timestamp is more than one second from the 8h grid")
+    spacing = frame["date"].diff().dropna().dt.total_seconds()
+    if (np.abs(spacing - 8 * 60 * 60) > 2.0).any():
+        raise RuntimeError("funding prefix is not a complete approximate 8h sequence")
+    frame.attrs.update(source_attrs)
+    frame.attrs["maximum_grid_offset_seconds"] = float(grid_distance_seconds.max())
     return frame
 
 
@@ -287,6 +338,35 @@ def validate_config(cfg: Config) -> None:
         raise RuntimeError("selection source freezer is locked to start at 2020")
     if cfg.retries < 1 or not (0 < cfg.requests_per_second <= 8.0):
         raise ValueError("invalid retry or Coinbase request-rate configuration")
+
+
+def audit_fields(cfg: Config, binance: pd.DataFrame, funding: pd.DataFrame) -> dict[str, Any]:
+    return {
+        "raw_inputs": {
+            "binance_market": raw_input_metadata(cfg.binance_input),
+            "binance_funding": raw_input_metadata(cfg.funding_input),
+        },
+        "git_anchors": {
+            "preregistration_manifest_commit": git_commit_for(cfg.preregistration),
+            "source_freezer_code_commit": git_commit_for(__file__),
+        },
+        "source_freezer_code_sha256": sha256_file(__file__),
+        "prefix_materialization_contract": {
+            "reader": "chronological raw-line stream with first date field parsed alone",
+            "stop": "before CSV parsing any non-date field at or after 2023-01-01",
+            "future_non_date_fields_csv_parsed": 0,
+            "binance_cutoff_sentinel_date": binance.attrs.get("cutoff_sentinel_date"),
+            "funding_cutoff_sentinel_date": funding.attrs.get("cutoff_sentinel_date"),
+        },
+        "funding_timestamp_contract": {
+            "normalization": "none; preserve exact source milliseconds",
+            "maximum_distance_from_8h_grid_seconds": funding.attrs.get(
+                "maximum_grid_offset_seconds"
+            ),
+            "application": "causal as-of; funding timestamp <= event/position timestamp",
+            "exact_timestamp_join_forbidden": True,
+        },
+    }
 
 
 def run(cfg: Config) -> dict[str, Any]:
@@ -328,8 +408,10 @@ def run(cfg: Config) -> dict[str, Any]:
         )
 
     coinbase = coinbase_frame(grid, candles)
+    binance_input = resolve_existing(cfg.binance_input)
+    funding_input = resolve_existing(cfg.funding_input)
     binance_raw = range_frame(
-        resolve_existing(cfg.binance_input),
+        binance_input,
         date_column="date",
         start=cfg.start,
         end=cfg.end,
@@ -337,7 +419,7 @@ def run(cfg: Config) -> dict[str, Any]:
     )
     binance = validate_binance(binance_raw, grid)
     funding_raw = range_frame(
-        resolve_existing(cfg.funding_input),
+        funding_input,
         date_column="date",
         start=cfg.start,
         end=cfg.end,
@@ -379,13 +461,7 @@ def run(cfg: Config) -> dict[str, Any]:
             "binance_complete_rows": int(len(binance)),
             "funding_rows": int(len(funding)),
         },
-        "prefix_materialization_contract": {
-            "reader": "chronological CSV row stream",
-            "stop": "before parsing non-date values at or after 2023-01-01",
-            "future_value_rows_parsed": 0,
-            "binance_cutoff_sentinel_date": binance_raw.attrs.get("cutoff_sentinel_date"),
-            "funding_cutoff_sentinel_date": funding_raw.attrs.get("cutoff_sentinel_date"),
-        },
+        **audit_fields(cfg, binance, funding),
         "outputs": {
             "coinbase": {
                 "path": cfg.coinbase_output,
@@ -417,10 +493,81 @@ def run(cfg: Config) -> dict[str, Any]:
     return manifest
 
 
+def attest_existing(cfg: Config) -> dict[str, Any]:
+    """Rebuild local prefixes with hardened cutoff parsing and anchor existing download."""
+    manifest_path = Path(cfg.manifest_output)
+    existing = json.loads(manifest_path.read_text())
+    existing_core = {
+        key: value
+        for key, value in existing.items()
+        if key not in {"manifest_hash", "retrieved_at"}
+    }
+    if canonical_hash(existing_core) != existing.get("manifest_hash"):
+        raise RuntimeError("existing source manifest hash mismatch")
+    if existing.get("forward_trade_outcomes_opened") is not False:
+        raise RuntimeError("cannot attest after forward outcomes were opened")
+    prereg = json.loads(Path(cfg.preregistration).read_text())
+    validate_preregistration(prereg)
+    if prereg["manifest_hash"] != existing["preregistration_manifest_hash"]:
+        raise RuntimeError("existing source freeze points at a different preregistration")
+
+    grid = expected_grid(cfg.start, cfg.end)
+    binance_raw = range_frame(
+        resolve_existing(cfg.binance_input),
+        date_column="date",
+        start=cfg.start,
+        end=cfg.end,
+        usecols=["date", "open", "high", "low", "close", "quote_asset_volume"],
+    )
+    binance = validate_binance(binance_raw, grid)
+    funding_raw = range_frame(
+        resolve_existing(cfg.funding_input),
+        date_column="date",
+        start=cfg.start,
+        end=cfg.end,
+        usecols=["date", "funding_rate"],
+    )
+    funding = validate_funding(funding_raw)
+    with tempfile.TemporaryDirectory(prefix="coinbase-source-attest-") as directory:
+        rebuilt_binance = Path(directory) / "binance.csv.gz"
+        rebuilt_funding = Path(directory) / "funding.csv.gz"
+        deterministic_gzip_csv(binance, rebuilt_binance)
+        deterministic_gzip_csv(funding, rebuilt_funding)
+        if sha256_file(rebuilt_binance) != existing["outputs"]["binance"]["sha256"]:
+            raise RuntimeError("hardened Binance prefix differs from frozen output")
+        if sha256_file(rebuilt_funding) != existing["outputs"]["funding"]["sha256"]:
+            raise RuntimeError("hardened funding prefix differs from frozen output")
+    for metadata in existing["outputs"].values():
+        if sha256_file(metadata["path"]) != metadata["sha256"]:
+            raise RuntimeError("frozen source output failed attestation hash check")
+
+    core = dict(existing_core)
+    core.update(audit_fields(cfg, binance, funding))
+    core["audit_amendment"] = {
+        "after_source_download": True,
+        "before_forward_trade_outcomes": True,
+        "changed_source_values": False,
+        "reason": (
+            "remove implicit external fallback, hash raw inputs, enforce date-only "
+            "cutoff parsing, and preserve funding milliseconds under causal as-of"
+        ),
+    }
+    payload = {
+        **core,
+        "manifest_hash": canonical_hash(core),
+        "retrieved_at": existing["retrieved_at"],
+    }
+    manifest_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
+    return payload
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     defaults = Config()
+    parser.add_argument("--attest-existing", action="store_true")
     for name in asdict(defaults):
+        if name == "attest_existing":
+            continue
         option = f"--{name.replace('_', '-')}"
         value = getattr(defaults, name)
         parser.add_argument(option, type=type(value), default=value)
@@ -428,7 +575,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    manifest = run(Config(**vars(parse_args())))
+    args = parse_args()
+    manifest = attest_existing(Config(**vars(args))) if args.attest_existing else run(Config(**vars(args)))
     print(
         json.dumps(
             {

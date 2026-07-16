@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import json
+
+import pytest
+
 from training import preregister_coinbase_spot_leadership_alpha as csl
 
 
@@ -71,3 +75,15 @@ def test_selection_requires_annual_halfyear_and_adjusted_significance() -> None:
     assert gates["strict_mdd_pct_max_each_year"] == 10.0
     assert gates["familywise_weekly_cluster_signflip_p_max"] == 0.10
     assert selection["familywise_adjustment"].startswith("Bonferroni")
+
+
+def test_preregistration_is_append_only(tmp_path) -> None:
+    path = tmp_path / "prereg.json"
+    payload = csl.build_manifest()
+    assert csl.write_manifest_once(path, payload) == "created"
+    assert csl.write_manifest_once(path, csl.build_manifest()) == "verified_existing"
+    changed = json.loads(path.read_text())
+    changed["manifest_hash"] = "0" * 64
+    path.write_text(json.dumps(changed))
+    with pytest.raises(RuntimeError, match="hash mismatch"):
+        csl.write_manifest_once(path, payload)

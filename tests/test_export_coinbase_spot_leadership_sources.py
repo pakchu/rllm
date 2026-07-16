@@ -67,7 +67,7 @@ def test_range_frame_stops_before_future_non_date_values(tmp_path: Path) -> None
         usecols=["date", "close"],
     )
     assert frame["close"].tolist() == ["100"]
-    assert frame.attrs["future_value_rows_parsed"] == 0
+    assert frame.attrs["future_non_date_fields_csv_parsed"] == 0
     assert frame.attrs["cutoff_sentinel_date"] == "2023-01-01 00:00:00"
 
 
@@ -75,3 +75,23 @@ def test_config_refuses_to_open_2023() -> None:
     cfg = source.Config(end="2024-01-01")
     with pytest.raises(RuntimeError, match="before 2023"):
         source.validate_config(cfg)
+
+
+def test_funding_preserves_small_source_offset_for_asof() -> None:
+    frame = pd.DataFrame(
+        {
+            "date": pd.to_datetime(
+                ["2020-01-01 00:00:00", "2020-01-01 08:00:00.047"],
+                format="mixed",
+            ),
+            "funding_rate": [0.0001, 0.0002],
+        }
+    )
+    checked = source.validate_funding(frame)
+    assert checked.loc[1, "date"] == pd.Timestamp("2020-01-01 08:00:00.047")
+    assert checked.attrs["maximum_grid_offset_seconds"] == 0.047
+
+
+def test_no_silent_fallback_for_missing_raw_input(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        source.resolve_existing(tmp_path / "missing.csv")

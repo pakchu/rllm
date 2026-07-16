@@ -293,19 +293,33 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def write_manifest_once(path: str | Path, payload: dict[str, Any]) -> str:
+    """Create a preregistration once; later runs may only verify it byte-semantically."""
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if output.exists():
+        existing = json.loads(output.read_text())
+        validate_manifest(existing)
+        if existing.get("manifest_hash") != payload.get("manifest_hash"):
+            raise RuntimeError("refusing to overwrite an anchored preregistration")
+        return "verified_existing"
+    with output.open("x", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
+    return "created"
+
+
 def main() -> None:
     args = parse_args()
     payload = build_manifest()
     validate_manifest(payload)
-    output = Path(args.output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
+    status = write_manifest_once(args.output, payload)
     print(
         json.dumps(
             {
-                "output": str(output),
+                "output": str(args.output),
                 "manifest_hash": payload["manifest_hash"],
                 "policies": len(payload["policies"]),
+                "status": status,
             },
             indent=2,
         )
