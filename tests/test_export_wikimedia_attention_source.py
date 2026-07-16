@@ -66,6 +66,12 @@ def test_build_frame_normalizes_by_same_day_project_total() -> None:
     assert frame["source_complete"].tolist() == [1, 1]
 
 
+def test_article_payload_rejects_wrong_title() -> None:
+    payload = _article_payload("Ethereum", (100, 200))
+    with pytest.raises(ValueError, match="article title mismatch"):
+        source.parse_article_payload(payload, "Bitcoin")
+
+
 def test_missing_article_day_is_explicit_and_fail_closed() -> None:
     series = {
         article: source.parse_article_payload(_article_payload(article, (100, 200)), article)

@@ -123,6 +123,8 @@ def parse_article_payload(payload: dict[str, Any], article: str) -> pd.Series:
             raise ValueError("Wikimedia article item must be an object")
         if str(item.get("project")) != expected_project:
             raise ValueError(f"article project mismatch: {item.get('project')}")
+        if str(item.get("article")).replace("_", " ") != article.replace("_", " "):
+            raise ValueError(f"article title mismatch: {item.get('article')} != {article}")
         if str(item.get("access")) != ACCESS or str(item.get("agent")) != AGENT:
             raise ValueError("article access/agent mismatch")
         if str(item.get("granularity")) != "daily":
@@ -268,7 +270,10 @@ def run(cfg: Config) -> dict[str, Any]:
         "output_bytes": Path(cfg.output).stat().st_size,
         "output_sha256": sha256_file(cfg.output),
         "historical_snapshot_is_point_in_time": False,
-        "known_traffic_loss_is_normalized_by_project_total": True,
+        "known_traffic_loss_mitigation": (
+            "same-day project-total normalization reduces common loss but does "
+            "not prove article and aggregate traffic were lost proportionally"
+        ),
         "future_data_requested": False,
     }
     manifest = {
