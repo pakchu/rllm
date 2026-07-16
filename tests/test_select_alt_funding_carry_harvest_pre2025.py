@@ -85,6 +85,39 @@ def test_exact_funding_cash_is_the_direct_payoff() -> None:
     assert removed["absolute_return_pct"] == pytest.approx(0.0)
 
 
+def test_recorded_funding_mark_is_used_before_causal_close_proxy() -> None:
+    funding = {
+        "ADAUSDT": [(pd.Timestamp("2023-01-01 00:10"), -0.01)],
+        "ETHUSDT": [(pd.Timestamp("2023-01-01 00:10"), 0.01)],
+    }
+    bundle = synthetic_bundle([100] * 5, [100] * 5, funding)
+    for symbol in ("ADAUSDT", "ETHUSDT"):
+        bundle.funding[symbol]["mark_price"] = 200.0
+        bundle.market[symbol]["high"][:] = 100.0
+        bundle.market[symbol]["low"][:] = 100.0
+    stats = simulate(bundle, clock(), start="2023-01-01", end="2023-01-02", cost_bp=0)
+    assert stats["funding_cash_pct_initial"] == pytest.approx(0.5)
+    assert stats["exact_mark_funding_applications"] == 2
+    assert stats["proxy_mark_funding_applications"] == 0
+
+
+def test_missing_funding_mark_uses_last_completed_close() -> None:
+    funding = {"ETHUSDT": [(pd.Timestamp("2023-01-01 00:10"), 0.01)]}
+    bundle = synthetic_bundle([100] * 5, [100, 200, 300, 400, 500], funding)
+    bundle.market["ETHUSDT"]["open"][:] = 100.0
+    bundle.market["ETHUSDT"]["high"][:] = np.maximum(
+        bundle.market["ETHUSDT"]["open"], bundle.market["ETHUSDT"]["close"]
+    )
+    bundle.market["ETHUSDT"]["low"][:] = np.minimum(
+        bundle.market["ETHUSDT"]["open"], bundle.market["ETHUSDT"]["close"]
+    )
+    stats = simulate(bundle, clock(), start="2023-01-01", end="2023-01-02", cost_bp=0)
+    # At 00:10, only the 00:05 bar close is complete, so the proxy mark is 200.
+    assert stats["funding_cash_pct_initial"] == pytest.approx(0.25)
+    assert stats["exact_mark_funding_applications"] == 0
+    assert stats["proxy_mark_funding_applications"] == 1
+
+
 def test_funding_at_entry_is_excluded_and_at_exit_is_included() -> None:
     funding = {
         "ETHUSDT": [

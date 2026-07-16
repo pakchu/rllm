@@ -123,12 +123,18 @@ def load_bundle() -> MarketBundle:
         if not np.isfinite(np.column_stack(list(arrays.values()))).all():
             raise RuntimeError(f"{symbol} AFCH non-finite market source")
         market[symbol] = arrays
-        fund = pd.read_csv(funding_path)
+        fund = pd.read_csv(funding_path, usecols=["funding_time", "funding_rate", "mark_price"])
         fund["event_time"] = pd.to_datetime(pd.to_numeric(fund["funding_time"], errors="raise"), unit="ms")
         fund["funding_rate"] = pd.to_numeric(fund["funding_rate"], errors="raise")
+        fund["mark_price"] = pd.to_numeric(fund["mark_price"], errors="coerce")
         if fund["event_time"].duplicated().any() or not fund["event_time"].is_monotonic_increasing:
             raise RuntimeError(f"{symbol} AFCH funding order failure")
-        funding[symbol] = fund[["event_time", "funding_rate"]].copy()
+        if not ((fund["event_time"] >= START) & (fund["event_time"] < END)).all():
+            raise RuntimeError(f"{symbol} AFCH funding source escaped 2023-2024")
+        finite_mark = np.isfinite(fund["mark_price"].to_numpy(dtype=float))
+        if (fund.loc[finite_mark, "mark_price"] <= 0.0).any():
+            raise RuntimeError(f"{symbol} AFCH non-positive exact funding mark")
+        funding[symbol] = fund[["event_time", "funding_rate", "mark_price"]].copy()
     assert dates is not None
     expected = pd.date_range(START, END - pd.Timedelta(minutes=5), freq="5min")
     if not dates.equals(expected):
@@ -146,8 +152,10 @@ def load_clock(path: str = DEFAULT_CLOCK) -> pd.DataFrame:
     return clock
 
 
-def _funding_events_by_bar(bundle: MarketBundle) -> dict[int, list[tuple[pd.Timestamp, str, float, float]]]:
-    out: dict[int, list[tuple[pd.Timestamp, str, float, float]]] = {}
+def _funding_events_by_bar(
+    bundle: MarketBundle,
+) -> dict[int, list[tuple[pd.Timestamp, str, float, float, bool]]]:
+    out: dict[int, list[tuple[pd.Timestamp, str, float, float, bool]]] = {}
     dates_ns = bundle.dates.to_numpy(dtype="datetime64[ns]")
     completed_ns = (bundle.dates + pd.Timedelta(minutes=5)).to_numpy(dtype="datetime64[ns]")
     for symbol, frame in bundle.funding.items():
@@ -156,10 +164,19 @@ def _funding_events_by_bar(bundle: MarketBundle) -> dict[int, list[tuple[pd.Time
             event64 = event.to_datetime64()
             bar_index = int(np.searchsorted(dates_ns, event64, side="right") - 1)
             mark_index = int(np.searchsorted(completed_ns, event64, side="right") - 1)
-            if bar_index < 0 or mark_index < 0 or bar_index >= len(bundle.dates):
+            if bar_index < 0 or bar_index >= len(bundle.dates):
                 continue
-            mark = float(bundle.market[symbol]["close"][mark_index])
-            out.setdefault(bar_index, []).append((event, symbol, float(row.funding_rate), mark))
+            recorded_mark = float(getattr(row, "mark_price", float("nan")))
+            exact_mark = math.isfinite(recorded_mark) and recorded_mark > 0.0
+            if exact_mark:
+                mark = recorded_mark
+            elif mark_index >= 0:
+                mark = float(bundle.market[symbol]["close"][mark_index])
+            else:
+                continue
+            out.setdefault(bar_index, []).append(
+                (event, symbol, float(row.funding_rate), mark, exact_mark)
+            )
     for events in out.values():
         events.sort(key=lambda item: (item[0], item[1]))
     return out
@@ -265,7 +282,9 @@ def simulate(
             "close_mdd_pct": 0.0, "cagr_to_strict_mdd": 0.0, "sleeves": 0,
             "mean_sleeve_net_bps": 0.0, "win_rate": 0.0, "funding_cash_pct_initial": 0.0,
             "price_pnl_pct_initial": 0.0, "transaction_cost_pct_initial": 0.0,
-            "funding_to_cost_ratio": 0.0, "calendar_start": str(start_ts.date()),
+            "funding_to_cost_ratio": 0.0, "exact_mark_funding_applications": 0,
+            "proxy_mark_funding_applications": 0, "exact_mark_funding_cash_pct_initial": 0.0,
+            "proxy_mark_funding_cash_pct_initial": 0.0, "calendar_start": str(start_ts.date()),
             "calendar_end_exclusive": str(end_ts.date()), "sleeve_rows": [], "calendar_years": years,
         }
     entry_map: dict[int, list[tuple[int, Any]]] = {}
@@ -280,14 +299,17 @@ def simulate(
     peak = close_peak = 1.0
     strict_mdd = close_mdd = 0.0
     total_funding = total_price_pnl = total_cost = 0.0
+    exact_mark_funding = proxy_mark_funding = 0.0
+    exact_mark_applications = proxy_mark_applications = 0
     sleeve_rows: list[dict[str, Any]] = []
 
     def actual_equity_at_open(bar_index: int) -> float:
         return cash + _active_unrealized(active, bundle, bar_index, "open")
 
-    def apply_funding(event: tuple[pd.Timestamp, str, float, float]) -> None:
-        nonlocal cash, total_funding
-        event_time, symbol, funding_rate, mark = event
+    def apply_funding(event: tuple[pd.Timestamp, str, float, float, bool]) -> None:
+        nonlocal cash, total_funding, exact_mark_funding, proxy_mark_funding
+        nonlocal exact_mark_applications, proxy_mark_applications
+        event_time, symbol, funding_rate, mark, exact_mark = event
         if not include_funding:
             return
         for sleeve in active.values():
@@ -305,6 +327,12 @@ def simulate(
             sleeve.positive_funding_credit += max(funding_cash, 0.0)
             cash += funding_cash
             total_funding += funding_cash
+            if exact_mark:
+                exact_mark_funding += funding_cash
+                exact_mark_applications += 1
+            else:
+                proxy_mark_funding += funding_cash
+                proxy_mark_applications += 1
 
     first_index = min(entry_map)
     last_index = max(exit_map)
@@ -425,6 +453,10 @@ def simulate(
         "price_pnl_pct_initial": float(total_price_pnl * 100.0),
         "transaction_cost_pct_initial": float(total_cost * 100.0),
         "funding_to_cost_ratio": float(total_funding / total_cost) if total_cost > 1e-15 else 0.0,
+        "exact_mark_funding_applications": exact_mark_applications,
+        "proxy_mark_funding_applications": proxy_mark_applications,
+        "exact_mark_funding_cash_pct_initial": float(exact_mark_funding * 100.0),
+        "proxy_mark_funding_cash_pct_initial": float(proxy_mark_funding * 100.0),
         "calendar_start": str(start_ts.date()),
         "calendar_end_exclusive": str(end_ts.date()),
         "calendar_years": years,
@@ -543,6 +575,7 @@ def _markdown(result: dict[str, Any]) -> str:
         f"- failed gates: `{failed}`",
         f"- weekly cluster sign-flip p: `{evaluation['weekly_cluster_signflip']['raw_p_value']:.6f}`",
         "- Funding cash and transaction cost are reported as cash percentages of initial equity; price PnL is separated in the JSON artifact.",
+        "- Recorded settlement `mark_price` is used when present; missing historical marks use the last fully completed 5m futures close, with exact/proxy application counts and cash split in JSON.",
         "- CAGR includes every idle day in the declared calendar.",
         "- strict MDD uses aggregate net-symbol favorable-before-adverse OHLC, global HWM, active funding-credit exclusion, and entry/exit/hypothetical liquidation costs.",
         "- Diagnostics cannot repair a failed AFCH01 policy.", "",
