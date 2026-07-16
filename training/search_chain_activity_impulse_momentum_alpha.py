@@ -65,6 +65,7 @@ EXPECTED_POLICY = {
     "rule": "momentum",
     "hold_days": 7,
 }
+ACCOUNTING_VERSION = "chain_activity_execution_engine_v1"
 
 
 @dataclass(frozen=True)
@@ -80,7 +81,7 @@ class Config:
     slippage_rate: float = 0.0001
     stress_cost_rate: float = 0.0012
     open_oos: bool = False
-    random_control_count: int = 200
+    random_control_count: int = 2_000
     random_seed: int = 20260716
 
 
@@ -117,6 +118,28 @@ def rolling_z(values: pd.Series, window: int = 180) -> pd.Series:
     mean = values.rolling(window, min_periods=minimum).mean()
     std = values.rolling(window, min_periods=minimum).std(ddof=0).replace(0.0, np.nan)
     return (values - mean) / std
+
+
+def fit_reference_mask(frame: pd.DataFrame) -> np.ndarray:
+    """Use the actual executable signal clock, never the source-label date."""
+    anchor_date = pd.to_datetime(frame["anchor_date"])
+    return ((anchor_date >= pd.Timestamp(FIT_START)) & (anchor_date < pd.Timestamp(FIT_END))).to_numpy(bool)
+
+
+def execution_contract(cfg: Config) -> dict[str, Any]:
+    return {
+        "accounting_version": ACCOUNTING_VERSION,
+        "leverage": cfg.leverage,
+        "fee_rate": cfg.fee_rate,
+        "slippage_rate": cfg.slippage_rate,
+        "stress_cost_rate": cfg.stress_cost_rate,
+        "entry_delay_bars": 1,
+        "take_bps": 10_000,
+        "stop_bps": 10_000,
+        "realized_funding": True,
+        "strict_mdd": "intratrade_favorable_before_adverse_high_water",
+        "full_calendar_cagr": True,
+    }
 
 
 def load_network(path: str, *, cutoff: str) -> pd.DataFrame:
@@ -326,10 +349,7 @@ def search_selection(
     frame: pd.DataFrame,
     cfg: Config,
 ) -> list[dict[str, Any]]:
-    fit = (
-        (frame["observation_date"] >= pd.Timestamp(FIT_START))
-        & (frame["observation_date"] < pd.Timestamp(FIT_END))
-    ).to_numpy(bool)
+    fit = fit_reference_mask(frame)
     rows: list[dict[str, Any]] = []
     select_windows = ("fit_2021", "fit_2022", "select_2023_h1", "select_2023_h2", "select_2023")
     for event in EVENT_FEATURES:
@@ -442,6 +462,13 @@ def selection_controls(
         random_min_ratios.append(min(stats[name]["cagr_to_strict_mdd"] for name in blocks))
         random_sum_returns.append(sum(stats[name]["absolute_return_pct"] for name in blocks))
         random_all_positive.append(all(stats[name]["absolute_return_pct"] > 0.0 for name in blocks))
+    candidate_schedules = policy_schedules(engine, frame, policy, windows=blocks)
+    candidate_stats = schedule_stats(candidate_schedules, cfg)
+    candidate_min_ratio = min(candidate_stats[name]["cagr_to_strict_mdd"] for name in blocks)
+    candidate_sum_return = sum(candidate_stats[name]["absolute_return_pct"] for name in blocks)
+    random_min = np.asarray(random_min_ratios, dtype=float)
+    random_sum = np.asarray(random_sum_returns, dtype=float)
+    random_positive = np.asarray(random_all_positive, dtype=bool)
     return {
         "price_only": price_only,
         "event_day_shifts": shifts,
@@ -449,6 +476,12 @@ def selection_controls(
             "count": cfg.random_control_count,
             "seed": cfg.random_seed,
             "all_blocks_positive_fraction": float(np.mean(random_all_positive)),
+            "candidate_minimum_block_ratio": float(candidate_min_ratio),
+            "candidate_sum_block_return_pct": float(candidate_sum_return),
+            "empirical_p_minimum_block_ratio": float((1 + np.sum(random_min >= candidate_min_ratio)) / (1 + len(random_min))),
+            "empirical_p_positive_and_sum_return": float(
+                (1 + np.sum(random_positive & (random_sum >= candidate_sum_return))) / (1 + len(random_sum))
+            ),
             "minimum_block_ratio_quantiles": {
                 str(q): float(np.quantile(random_min_ratios, q)) for q in (0.5, 0.9, 0.95, 0.99)
             },
@@ -502,15 +535,18 @@ def render_selection_docs(payload: dict[str, Any]) -> str:
             f"- ±7/14/28-day event-clock shifts are reported; none is used to alter the frozen rule.",
             f"- `{random['count']}` year-stratified matched random clocks: all-block-positive fraction "
             f"`{random['all_blocks_positive_fraction']:.4f}`; q99 minimum-block ratio "
-            f"`{random['minimum_block_ratio_quantiles']['0.99']:.4f}`.",
+            f"`{random['minimum_block_ratio_quantiles']['0.99']:.4f}`; empirical p(minimum-block ratio) "
+            f"`{random['empirical_p_minimum_block_ratio']:.6f}`; empirical p(positive blocks and summed return) "
+            f"`{random['empirical_p_positive_and_sum_return']:.6f}`.",
             "",
             "## Integrity boundary",
             "",
             "- No exchange-address-labelled metric is used.",
-            "- The formal search opened 180 pre-2024 cells, so the family still has multiple-testing risk. Earlier exploratory prototypes also inspected other network transforms.",
+            "- The formal search opened 180 pre-2024 cells, so the family still has multiple-testing risk. Earlier exploratory prototypes also inspected other network transforms; random-clock p-values are diagnostics, not a full family-wise correction.",
             "- 2024+ BTC outcomes are globally research-seen in this repository; they are not pristine human holdout. "
             "The manifest still prevents this new data family from being re-ranked after its 2024+ replay.",
             "- Promotion requires positive test/eval/holdout performance, doubled-cost survival, and measured trade/PnL orthogonality.",
+            "- OOS replay intentionally uses a separate full-horizon network file produced by the same downloader; the pre-2024 prefix must reproduce the frozen network hash.",
             "",
             "Official source: https://gitbook-docs.coinmetrics.io/access-our-data/api",
             "",
@@ -550,6 +586,8 @@ def run_selection(cfg: Config) -> dict[str, Any]:
             "features": frame_hash(features),
         },
         "schedule_hashes": {name: _schedule_hash(trades) for name, trades in selected_schedules.items()},
+        "execution_contract": execution_contract(cfg),
+        "selection_stats_hash": json_hash(selected["stats"]),
         "tested_cells": len(rows),
     }
     manifest = {
@@ -572,6 +610,8 @@ def run_selection(cfg: Config) -> dict[str, Any]:
             "strict_mdd": "intratrade favorable-before-adverse high-water path",
             "full_calendar_cagr": True,
             "globally_research_seen_future": True,
+            "selection_network_csv": cfg.network_csv,
+            "oos_network_csv_requirement": "same Coin Metrics downloader, 2020-01-01 through at least 2026-05-31; frozen pre-2024 canonical prefix must match",
         },
         "tested_cells": len(rows),
         "eligible_cells": sum(row["eligible"] for row in rows),
@@ -594,6 +634,8 @@ def run_oos(cfg: Config) -> dict[str, Any]:
     manifest_core = {key: value for key, value in manifest.items() if key not in {"manifest_hash", "created_at"}}
     if json_hash(manifest_core) != expected_hash:
         raise RuntimeError("selection manifest hash mismatch")
+    if manifest.get("execution_contract") != execution_contract(cfg):
+        raise RuntimeError("OOS execution economics differ from the frozen manifest")
 
     selection_market, selection_funding = load_market_and_funding(cfg, cutoff=SELECTION_END)
     selection_network = load_network(cfg.network_csv, cutoff=SELECTION_END)
@@ -616,6 +658,9 @@ def run_oos(cfg: Config) -> dict[str, Any]:
     replay_hashes = {name: _schedule_hash(trades) for name, trades in replay.items()}
     if replay_hashes != manifest["schedule_hashes"]:
         raise RuntimeError("pre-2024 schedule changed before OOS replay")
+    replay_stats = schedule_stats(replay, cfg)
+    if json_hash(replay_stats) != manifest["selection_stats_hash"]:
+        raise RuntimeError("pre-2024 performance accounting changed before OOS replay")
 
     market, funding = load_market_and_funding(cfg, cutoff=FULL_CUTOFF)
     network = load_network(cfg.network_csv, cutoff=FULL_CUTOFF)

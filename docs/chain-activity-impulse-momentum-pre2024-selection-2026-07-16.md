@@ -25,13 +25,14 @@ A completed BTC network day is converted into the mean one-day log change of act
 
 - price-only seven-day momentum is reported separately and does not reproduce the candidate's all-block result.
 - ±7/14/28-day event-clock shifts are reported; none is used to alter the frozen rule.
-- `200` year-stratified matched random clocks: all-block-positive fraction `0.0550`; q99 minimum-block ratio `0.8106`.
+- `2000` year-stratified matched random clocks: all-block-positive fraction `0.0535`; q99 minimum-block ratio `0.6664`; empirical p(minimum-block ratio) `0.007996`; empirical p(positive blocks and summed return) `0.004998`.
 
 ## Integrity boundary
 
 - No exchange-address-labelled metric is used.
-- The formal search opened 180 pre-2024 cells, so the family still has multiple-testing risk. Earlier exploratory prototypes also inspected other network transforms.
+- The formal search opened 180 pre-2024 cells, so the family still has multiple-testing risk. Earlier exploratory prototypes also inspected other network transforms; random-clock p-values are diagnostics, not a full family-wise correction.
 - 2024+ BTC outcomes are globally research-seen in this repository; they are not pristine human holdout. The manifest still prevents this new data family from being re-ranked after its 2024+ replay.
 - Promotion requires positive test/eval/holdout performance, doubled-cost survival, and measured trade/PnL orthogonality.
+- OOS replay intentionally uses a separate full-horizon network file produced by the same downloader; the pre-2024 prefix must reproduce the frozen network hash.
 
 Official source: https://gitbook-docs.coinmetrics.io/access-our-data/api

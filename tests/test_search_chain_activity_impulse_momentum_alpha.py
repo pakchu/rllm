@@ -11,6 +11,8 @@ from training.search_chain_activity_impulse_momentum_alpha import (
     Config,
     build_daily_features,
     event_onset,
+    execution_contract,
+    fit_reference_mask,
     load_network,
     policy_masks,
     rolling_z,
@@ -68,6 +70,20 @@ class TestChainActivityImpulseMomentum(unittest.TestCase):
         self.assertTrue((features["anchor_date"] >= features["available_at"]).all())
         # The first usable activity shock needs a causal rolling warmup.
         self.assertTrue(features["activity_shock_1d"].iloc[:80].isna().all())
+
+    def test_fit_reference_uses_anchor_availability_not_observation_label(self) -> None:
+        frame = pd.DataFrame(
+            {
+                "observation_date": pd.to_datetime(["2022-12-30", "2022-12-31"]),
+                "anchor_date": pd.to_datetime(["2022-12-31 05:00", "2023-01-01 05:00"]),
+            }
+        )
+        np.testing.assert_array_equal(fit_reference_mask(frame), [True, False])
+
+    def test_execution_contract_binds_costs(self) -> None:
+        base = Config("m", "f", "n", "o", "x")
+        expensive = Config("m", "f", "n", "o", "x", fee_rate=0.001)
+        self.assertNotEqual(execution_contract(base), execution_contract(expensive))
 
     def test_policy_masks_trigger_only_on_state_onset_and_use_completed_momentum(self) -> None:
         frame = pd.DataFrame(
