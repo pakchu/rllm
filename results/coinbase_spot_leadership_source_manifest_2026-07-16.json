@@ -10588,9 +10588,9 @@
     "funding_rows": 3288
   },
   "prefix_materialization_contract": {
-    "reader": "chronological CSV row stream",
-    "stop": "before parsing non-date values at or after 2023-01-01",
-    "future_value_rows_parsed": 0,
+    "reader": "chronological raw-line stream with first date field parsed alone",
+    "stop": "before CSV parsing any non-date field at or after 2023-01-01",
+    "future_non_date_fields_csv_parsed": 0,
     "binance_cutoff_sentinel_date": "2023-01-01 00:00:00",
     "funding_cutoff_sentinel_date": "2023-01-01 00:00:00"
   },
@@ -10613,6 +10613,39 @@
   },
   "historical_snapshot_is_point_in_time": false,
   "future_data_requested": false,
-  "manifest_hash": "40072ecd59cb26770127b5461d6ad8f040a09adea7e78198a792700da992be2b",
+  "raw_inputs": {
+    "binance_market": {
+      "supplied_path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "resolved_path": "/home/pakchu/rllm/data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "supplied_is_symlink": true,
+      "bytes": 66696659,
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "binance_funding": {
+      "supplied_path": "/home/pakchu/rllm/data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+      "resolved_path": "/home/pakchu/rllm/data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+      "supplied_is_symlink": false,
+      "bytes": 89326,
+      "sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+    }
+  },
+  "git_anchors": {
+    "preregistration_manifest_commit": "040e7737d32ac21f0bc651cab42f55ab0b0d5638",
+    "source_freezer_code_commit": "ad6875ea06d613a10d7b171f29961e92e16242d6"
+  },
+  "source_freezer_code_sha256": "67a8090604aca84614de39fc0b43626694a6240cd5451625b71c41fede74614f",
+  "funding_timestamp_contract": {
+    "normalization": "none; preserve exact source milliseconds",
+    "maximum_distance_from_8h_grid_seconds": 0.047,
+    "application": "causal as-of; funding timestamp <= event/position timestamp",
+    "exact_timestamp_join_forbidden": true
+  },
+  "audit_amendment": {
+    "after_source_download": true,
+    "before_forward_trade_outcomes": true,
+    "changed_source_values": false,
+    "reason": "remove implicit external fallback, hash raw inputs, enforce date-only cutoff parsing, and preserve funding milliseconds under causal as-of"
+  },
+  "manifest_hash": "243ecba3b9e31548d682084dd5acc2e89c6a24423bce241dd6338a57dd6eefe9",
   "retrieved_at": "2026-07-16T13:39:43.944617+00:00"
 }
