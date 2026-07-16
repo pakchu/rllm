@@ -335,6 +335,88 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
 
         asyncio.run(run())
 
+    def test_open_order_fails_closed_when_stale_order_scan_fails(self):
+        async def run():
+            opened = []
+
+            async def fake_cancel(**kwargs):
+                return [{"status": "scan_failed", "error": "exchange unavailable"}]
+
+            async def fake_open(**kwargs):
+                opened.append(kwargs)
+                return {"filled_quantity": "0.01", "order": {"status": "FILLED"}}
+
+            intent = {
+                "sleeve": {
+                    "name": "alpha",
+                    "signal_id": "alpha:1",
+                    "side": "LONG",
+                    "current_close": 100.0,
+                },
+                "margin_fraction": 0.1,
+                "entry_ttl_sec": 30,
+            }
+            with patch("execution.portfolio_live._cancel_portfolio_orders_for_sleeve", new=fake_cancel), patch(
+                "execution.portfolio_live._open_sleeve", new=fake_open
+            ):
+                outcomes = await _execute_open_intents(
+                    intents=[intent],
+                    client=object(),
+                    executor=object(),
+                    exec_cfg=WaveExecutionConfig(dry_run=False, allow_live_orders=True),
+                )
+
+            self.assertEqual(opened, [])
+            self.assertFalse(outcomes[0]["ok"])
+            self.assertEqual(outcomes[0]["replaced"][0]["status"], "scan_failed")
+            self.assertIn("cancellation not confirmed", outcomes[0]["error"])
+
+        asyncio.run(run())
+
+    def test_open_order_fails_closed_when_stale_order_cancel_fails(self):
+        async def run():
+            opened = []
+
+            async def fake_cancel(**kwargs):
+                return [
+                    {
+                        "status": "cancel_failed",
+                        "client_order_id": "rllm_pf_alpha_old",
+                        "error": "timeout",
+                    }
+                ]
+
+            async def fake_open(**kwargs):
+                opened.append(kwargs)
+                return {"filled_quantity": "0.01", "order": {"status": "FILLED"}}
+
+            intent = {
+                "sleeve": {
+                    "name": "alpha",
+                    "signal_id": "alpha:1",
+                    "side": "LONG",
+                    "current_close": 100.0,
+                },
+                "margin_fraction": 0.1,
+                "entry_ttl_sec": 30,
+            }
+            with patch("execution.portfolio_live._cancel_portfolio_orders_for_sleeve", new=fake_cancel), patch(
+                "execution.portfolio_live._open_sleeve", new=fake_open
+            ):
+                outcomes = await _execute_open_intents(
+                    intents=[intent],
+                    client=object(),
+                    executor=object(),
+                    exec_cfg=WaveExecutionConfig(dry_run=False, allow_live_orders=True),
+                )
+
+            self.assertEqual(opened, [])
+            self.assertFalse(outcomes[0]["ok"])
+            self.assertEqual(outcomes[0]["replaced"][0]["status"], "cancel_failed")
+            self.assertIn("cancellation not confirmed", outcomes[0]["error"])
+
+        asyncio.run(run())
+
     def test_close_order_tasks_run_concurrently_and_isolate_one_failure(self):
         async def run():
             starts = {}

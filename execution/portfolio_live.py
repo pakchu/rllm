@@ -2942,8 +2942,8 @@ async def _execute_open_intents(
     async def execute_one(intent: dict[str, Any]) -> dict[str, Any]:
         sleeve = intent["sleeve"]
         name = str(sleeve["name"])
+        replaced: list[dict[str, Any]] = []
         try:
-            replaced: list[dict[str, Any]] = []
             if exec_cfg.dry_run:
                 quantity = str(
                     (100.0 * float(intent["margin_fraction"]) * exec_cfg.leverage)
@@ -2963,6 +2963,16 @@ async def _execute_open_intents(
                     sleeve_name=name,
                     reason="new_signal_replaces_stale_entry",
                 )
+                cancel_errors = [
+                    item
+                    for item in replaced
+                    if str(item.get("status")) in {"scan_failed", "cancel_failed"}
+                ]
+                if cancel_errors:
+                    statuses = ",".join(str(item.get("status")) for item in cancel_errors)
+                    raise RuntimeError(
+                        f"stale entry cancellation not confirmed for sleeve={name}: {statuses}"
+                    )
                 order_info = await _open_sleeve(
                     client=client,
                     executor=executor,
@@ -2988,7 +2998,7 @@ async def _execute_open_intents(
             return {
                 "intent": intent,
                 "ok": False,
-                "replaced": [],
+                "replaced": replaced,
                 "order_info": {},
                 "filled_quantity": "0",
                 "order_status": "ERROR",
