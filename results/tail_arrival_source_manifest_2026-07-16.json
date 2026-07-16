@@ -1,0 +1,98 @@
+{
+  "protocol_version": "tail_arrival_selection_source_v1",
+  "phase": "selection_inputs_only_2020_2022",
+  "forward_trade_outcomes_opened": false,
+  "start_inclusive": "2020-01-01",
+  "end_exclusive": "2023-01-01",
+  "preregistration": {
+    "path": "/tmp/rllm-push-merge-20260715/results/tail_arrival_absorption_preregistration_2026-07-16.json",
+    "file_sha256": "6592ae8f425cbd5f9d17064b9576ce7adba71118d5f3926213cff722df24e040",
+    "manifest_hash": "3bef720d13ad8736ed661a26cdc5a09eecfa1da823f5522b78245fec5dac1242",
+    "git_commit": "71acf65b1fd4a6cfcfa77f5422f330ef20e5f3f3"
+  },
+  "upstream_manifests": {
+    "feature": {
+      "path": "data/binance_um_aggtrade_microstructure_btc_2020_2023/build_manifest.json",
+      "sha256": "6eec40460a6146c58994e52f1af9ace4eecc0c085887d97af5ef17c30b9f7e73",
+      "combined_sha256": "c2bb0e6742f8cdc4e13315e7f0a13d6ab9cd536fb40d9cb4484b7a6ba30131cf"
+    },
+    "market": {
+      "path": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+      "sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+      "combined_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d"
+    }
+  },
+  "raw_inputs": {
+    "features": {
+      "supplied_path": "data/binance_um_aggtrade_microstructure_btc_2020_2023/BTCUSDT_aggtrade_5m_2020-01-01_2023-12-31.csv.gz",
+      "resolved_path": "/home/pakchu/rllm/data/binance_um_aggtrade_microstructure_btc_2020_2023/BTCUSDT_aggtrade_5m_2020-01-01_2023-12-31.csv.gz",
+      "supplied_is_symlink": false,
+      "bytes": 81362070,
+      "sha256": "c2bb0e6742f8cdc4e13315e7f0a13d6ab9cd536fb40d9cb4484b7a6ba30131cf"
+    },
+    "market": {
+      "supplied_path": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+      "resolved_path": "/home/pakchu/rllm/data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+      "supplied_is_symlink": false,
+      "bytes": 17137491,
+      "sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d"
+    },
+    "funding": {
+      "supplied_path": "/home/pakchu/rllm/data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+      "resolved_path": "/home/pakchu/rllm/data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+      "supplied_is_symlink": false,
+      "bytes": 89326,
+      "sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+    }
+  },
+  "prefix_materialization_contract": {
+    "reader": "chronological raw-line stream with first date field parsed alone",
+    "stop": "before CSV parsing any non-date field at or after 2023-01-01",
+    "future_non_date_fields_csv_parsed": 0,
+    "feature_cutoff_sentinel_date": "2023-01-01 00:00:00",
+    "market_cutoff_sentinel_date": "2023-01-01 00:00:00",
+    "funding_cutoff_sentinel_date": "2023-01-01 00:00:00"
+  },
+  "quality": {
+    "expected_five_minute_rows": 315648,
+    "feature_complete_rows": 315615,
+    "feature_missing_rows": 33,
+    "source_gap_days": [
+      "2020-04-15",
+      "2021-02-09",
+      "2021-02-24",
+      "2021-05-19",
+      "2022-09-06"
+    ],
+    "market_complete_rows": 315648,
+    "funding_rows": 3288,
+    "funding_maximum_grid_offset_seconds": 0.047
+  },
+  "outputs": {
+    "features": {
+      "path": "data/tail_arrival_features_2020_2022.csv.gz",
+      "rows": 315648,
+      "bytes": 23435287,
+      "sha256": "12bae343afb48aa62e8dc31b21d7f19f21bd6fffd3c31d68faf50cfe9eeb7368"
+    },
+    "market": {
+      "path": "data/tail_arrival_market_2020_2022.csv.gz",
+      "rows": 315648,
+      "bytes": 4680535,
+      "sha256": "368f3c96e44b810ef55c1242bb27c856893e010a29a83d1411f952587b265d33"
+    },
+    "funding": {
+      "path": "data/tail_arrival_funding_2020_2022.csv.gz",
+      "rows": 3288,
+      "bytes": 18445,
+      "sha256": "0ff7952a83a38e8e1b2cbeb4eaad3e23aacf0c68920164bdfb83a13c3c2bfa36"
+    }
+  },
+  "source_freezer": {
+    "code_sha256": "653d2d12b11323c8a5e628e304421f2f2b04113cd790034725e0b8579bcdc134",
+    "git_commit": "d63c24781c614431671c7493a823ce2cf0f140fc"
+  },
+  "future_data_requested": false,
+  "manifest_hash": "ed3bf1078927fd242957d0a5662ad937a33d8380def5931f6ab6f29404840d11",
+  "created_at": "2026-07-16T14:23:20.443286+00:00"
+}
