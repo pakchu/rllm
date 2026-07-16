@@ -35,6 +35,10 @@ from execution.rex_llm_live import (
     build_rex_live_policy_record,
     rex_policy_config_from_candidate,
 )
+from execution.portfolio_shadow_policies import (
+    build_fresh_kimchi_feature_frame,
+    observable_markov_transition_keys,
+)
 from execution.wave_execution import (
     WaveExecutionConfig,
     _StaticSignalGenerator,
@@ -748,6 +752,22 @@ def _load_json(path: str | Path) -> dict[str, Any]:
     return json.loads(Path(path).expanduser().read_text())
 
 
+def _validate_portfolio_mode(portfolio: dict[str, Any], *, live: bool) -> None:
+    """Fail closed when a research/shadow artifact is pointed at live orders."""
+
+    sleeves = portfolio.get("base_sleeves")
+    if not isinstance(sleeves, list) or not sleeves:
+        raise RuntimeError("portfolio config must define a non-empty base_sleeves list")
+    if not live:
+        return
+    status = str(portfolio.get("status", "")).strip().lower()
+    shadow_only = bool(portfolio.get("shadow_only")) or "shadow" in status or "not_live" in status
+    if status != "live" or shadow_only:
+        raise RuntimeError(
+            f"portfolio status={status or 'missing'} is not authorized for live orders"
+        )
+
+
 def _portfolio_uses_feature(portfolio: dict[str, Any], feature: str) -> bool:
     """Return whether any JSON-backed configured sleeve gates on ``feature``."""
 
@@ -1366,7 +1386,57 @@ def _score_sleeves(
                 stride = int(cfg.get("stride_bars", cfg.get("stride_bars_5m", 1)))
             stride_offset = int(cfg.get("stride_offset_bars", 0))
             base_policy = str(cfg.get("base_policy", "")).lower()
-            if base_policy == "rex":
+            policy_type = str(cfg.get("policy_type", "")).lower()
+            if policy_type == "bidirectional_gate":
+                policy_features = build_fresh_kimchi_feature_frame(enriched, features)
+                policy_row = policy_features.iloc[-1]
+                long_ok, long_reasons = _gate_pass(policy_row, cfg.get("long_gates", []))
+                short_ok, short_reasons = _gate_pass(policy_row, cfg.get("short_gates", []))
+                reasons.extend(f"long:{reason}" for reason in long_reasons)
+                reasons.extend(f"short:{reason}" for reason in short_reasons)
+                directional_ok = bool(long_ok) ^ bool(short_ok)
+                if long_ok and not short_ok:
+                    side = "LONG"
+                elif short_ok and not long_ok:
+                    side = "SHORT"
+                side_filter_ok = configured_side in {"AUTO", "BOTH"} or side == configured_side
+                gate_ok = directional_ok and side_filter_ok
+                reasons.extend(
+                    [
+                        f"bidirectional_xor={'pass' if directional_ok else 'fail'}",
+                        f"configured_side={configured_side}:{'pass' if side_filter_ok else 'fail'}",
+                    ]
+                )
+            elif policy_type == "markov_transition_long":
+                if gate_clauses is not None:
+                    base_ok, base_reasons = _gate_clauses_pass(row, gate_clauses)
+                else:
+                    base_ok, base_reasons = _gate_pass(row, gates)
+                reasons.extend(base_reasons)
+                transition = int(
+                    observable_markov_transition_keys(enriched, cfg["state_model"])[-1]
+                )
+                allowed = {int(value) for value in cfg["state_model"]["allowed_transition_keys"]}
+                transition_ok = transition in allowed
+                side = "LONG"
+                side_filter_ok = configured_side in {"AUTO", "BOTH", "LONG"}
+                gate_ok = bool(base_ok and transition_ok and side_filter_ok)
+                reasons.extend(
+                    [
+                        f"markov_transition={transition}:"
+                        f"{'pass' if transition_ok else 'fail'}",
+                        f"configured_side={configured_side}:{'pass' if side_filter_ok else 'fail'}",
+                    ]
+                )
+            elif policy_type == "frozen_annual_rank7":
+                gate_ok = False
+                reasons.extend(
+                    [
+                        "runtime_bridge=missing:annual_extratrees_model_export_required",
+                        "shadow_fail_closed=pass",
+                    ]
+                )
+            elif base_policy == "rex":
                 record = build_rex_live_policy_record(
                     enriched,
                     features,
@@ -2681,6 +2751,7 @@ async def _wait_for_expected_1m_tail(
 
 async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     portfolio = _load_json(cfg.portfolio_config)
+    _validate_portfolio_mode(portfolio, live=cfg.live)
     include_activity_flow = _portfolio_uses_feature(portfolio, "activity_flow_htf")
     selector_overlay = _load_portfolio_selector_overlay(portfolio, cfg.portfolio_selector_overlay)
     rex_selector_cfg = RexLlmSelectorConfig(

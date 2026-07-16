@@ -1,0 +1,25 @@
+{
+  "name": "rex_taker_low_range_position",
+  "status": "forward_shadow_only",
+  "side": "AUTO",
+  "base_policy": "rex",
+  "rex_policy": {
+    "family": "rex_htf_pullback_reclaim",
+    "feature_contract": "rex_event_reasoning_20260712",
+    "strength_quantile": 0.75,
+    "strength_threshold": 0.22191715221805985,
+    "threshold_fit": "2020-01-01 <= date < 2025-01-01",
+    "rule_gates": [],
+    "alternate_rule_gate_sets": [],
+    "require_core_external": false,
+    "require_binance_aux": false
+  },
+  "gates": [
+    {"feature": "taker_imbalance", "op": "<=", "threshold": -0.07073595391836504},
+    {"feature": "rex_2016_range_pos", "op": "<=", "threshold": 0.6865011402825759}
+  ],
+  "hold_bars": 144,
+  "stride_bars": 24,
+  "stride_offset_bars": 11,
+  "entry_delay_bars": 1
+}

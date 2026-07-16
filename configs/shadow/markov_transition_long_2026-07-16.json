@@ -1,0 +1,30 @@
+{
+  "name": "markov_transition_long",
+  "status": "forward_shadow_only",
+  "policy_type": "markov_transition_long",
+  "side": "LONG",
+  "gate_clauses": [
+    [
+      {"feature": "funding_rate", "op": "<=", "threshold": -0.0000167},
+      {"feature": "trend_96", "op": ">=", "threshold": 0.007485218212390219}
+    ],
+    [
+      {"feature": "premium_index_change", "op": "<=", "threshold": -0.00023471},
+      {"feature": "htf_1d_return_4", "op": ">=", "threshold": 0.0940403008961932}
+    ]
+  ],
+  "state_model": {
+    "type": "observable_first_order_markov_chain",
+    "bar_interval": "1h_completed",
+    "trend_low": -0.013423948209434771,
+    "trend_high": 0.01660670014424135,
+    "vol_median": 0.005235414594218263,
+    "flow_median": -0.003513404356897229,
+    "allowed_transition_keys": [52, 143, 26, 39, 65]
+  },
+  "hold_bars": 576,
+  "stride_bars": 12,
+  "stride_offset_bars": 11,
+  "entry_delay_bars": 1,
+  "execution_fidelity": "fixed-hold signal parity"
+}

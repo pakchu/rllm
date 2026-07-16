@@ -1,0 +1,24 @@
+{
+  "name": "fresh_kimchi_fx",
+  "status": "forward_shadow_only",
+  "policy_type": "bidirectional_gate",
+  "side": "AUTO",
+  "long_gates": [
+    {"feature": "funding_rate", "op": "<=", "threshold": -0.0000167},
+    {"feature": "bd_flow_accel", "op": ">=", "threshold": 0.04082480376734276},
+    {"feature": "kl_local_impulse_144", "op": "<=", "threshold": -2.2728671107514256},
+    {"feature": "usdkrw_available", "op": ">=", "threshold": 0.5},
+    {"feature": "kimchi_available", "op": ">=", "threshold": 0.5}
+  ],
+  "short_gates": [
+    {"feature": "usdkrw_momentum", "op": ">=", "threshold": 0.0026584830588613},
+    {"feature": "htf_1d_return_1", "op": "<=", "threshold": -0.03403745751424336}
+  ],
+  "hold_bars": 288,
+  "stride_bars": 6,
+  "stride_offset_bars": 5,
+  "entry_delay_bars": 1,
+  "take_bps": 400,
+  "stop_bps": 250,
+  "execution_fidelity": "signal_score_only; barrier exits are not wired"
+}

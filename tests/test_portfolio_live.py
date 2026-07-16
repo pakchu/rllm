@@ -26,6 +26,7 @@ from execution.portfolio_live import (
     _gate_pass,
     _freshness_requirements_for_decision,
     _portfolio_uses_feature,
+    _validate_portfolio_mode,
 )
 
 
@@ -64,6 +65,22 @@ class FakeClient:
 
 
 class PortfolioLiveSafetyTests(unittest.TestCase):
+    def test_shadow_candidate_is_hard_blocked_from_live_orders(self):
+        import json
+
+        with open("configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json") as handle:
+            portfolio = json.load(handle)
+        _validate_portfolio_mode(portfolio, live=False)
+        with self.assertRaisesRegex(RuntimeError, "not authorized for live orders"):
+            _validate_portfolio_mode(portfolio, live=True)
+
+    def test_live_anchor_remains_authorized(self):
+        import json
+
+        with open("configs/live/portfolio_gross385_trainmdd40_2026-07-12.json") as handle:
+            portfolio = json.load(handle)
+        _validate_portfolio_mode(portfolio, live=True)
+
     def test_gate_clauses_are_or_of_and_groups(self):
         row = pd.Series({"a": 2.0, "b": 0.0, "c": 3.0, "d": 4.0})
         clauses = [
