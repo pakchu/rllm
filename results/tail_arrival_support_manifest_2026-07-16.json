@@ -1,0 +1,218 @@
+{
+  "protocol_version": "tail_arrival_support_v1",
+  "phase": "support_only_before_forward_returns",
+  "forward_trade_outcomes_opened": false,
+  "source_columns_read": {
+    "features": [
+      "date",
+      "source_complete",
+      "source_gap_day",
+      "agg_trade_count",
+      "event_notional_mean",
+      "event_notional_std",
+      "event_notional_p50",
+      "event_notional_p99",
+      "event_notional_max",
+      "interarrival_mean_ms",
+      "interarrival_std_ms",
+      "buy_sell_event_size_log_ratio",
+      "micro_log_return"
+    ],
+    "explicitly_not_read": [
+      "market open/high/low/close",
+      "future price return",
+      "funding after signal",
+      "sealed 2023 feature values"
+    ]
+  },
+  "implementation_contract": {
+    "rolling_window_bars": 8640,
+    "rolling_minimum_finite_prior_bars": 2016,
+    "all_thresholds_shifted_bars": 1,
+    "minimum_agg_trade_count": 64,
+    "source_quarantine_current_plus_following_bars": 24,
+    "episode_prior_active_lookback_bars": 12,
+    "entry_delay_bars_reserved_for_tail_bound": 2,
+    "nonoverlap": "next signal row >= prior signal row + hold_bars"
+  },
+  "hashes": {
+    "preregistration_file_sha256": "6592ae8f425cbd5f9d17064b9576ce7adba71118d5f3926213cff722df24e040",
+    "preregistration_manifest_hash": "3bef720d13ad8736ed661a26cdc5a09eecfa1da823f5522b78245fec5dac1242",
+    "source_manifest_file_sha256": "0550679d229fd495dbeb6673382e75257d7e93bd0939d30356e49f3798968c9a",
+    "source_manifest_hash": "ed3bf1078927fd242957d0a5662ad937a33d8380def5931f6ab6f29404840d11"
+  },
+  "git_anchors": {
+    "preregistration": {
+      "path": "results/tail_arrival_absorption_preregistration_2026-07-16.json",
+      "commit": "71acf65b1fd4a6cfcfa77f5422f330ef20e5f3f3",
+      "sha256": "6592ae8f425cbd5f9d17064b9576ce7adba71118d5f3926213cff722df24e040"
+    },
+    "source_freezer": {
+      "path": "training/export_tail_arrival_selection_prefix.py",
+      "commit": "d63c24781c614431671c7493a823ce2cf0f140fc",
+      "sha256": "653d2d12b11323c8a5e628e304421f2f2b04113cd790034725e0b8579bcdc134"
+    },
+    "support_builder": {
+      "path": "training/build_tail_arrival_support.py",
+      "commit": "5b2c26ec7c5a52f469e50e090feefc5b28a564f2",
+      "sha256": "b06191cc72cb3004e9491a248750a4113f31a81b3b7683231b4b557b95749662"
+    }
+  },
+  "quality": {
+    "source_missing_rows": 33,
+    "source_gap_day_rows": 1440,
+    "missing_gap_or_following_24_quarantined_rows": 1655,
+    "global_missing_or_quarantined_fraction": 0.005243182278994323,
+    "maximum_monthly_missing_or_quarantined_fraction": 0.07738095238095238,
+    "maximum_month": "2021-02",
+    "gates": {
+      "global_missing_or_quarantined_fraction_max_0_02": true,
+      "monthly_missing_or_quarantined_fraction_max_0_05": false
+    },
+    "pass": false
+  },
+  "support_policies": [
+    {
+      "policy_id": "T01",
+      "branch": "tail_absorption_fade",
+      "hold_bars": 12,
+      "nonoverlap_events": 230,
+      "events_by_year": {
+        "2020": 80,
+        "2021": 83,
+        "2022": 67
+      },
+      "events_by_side": {
+        "-1": 121,
+        "1": 109
+      },
+      "side_shares": {
+        "-1": 0.5260869565217391,
+        "1": 0.47391304347826085
+      },
+      "maximum_month_share": 0.06086956521739131,
+      "maximum_month": "2021-05",
+      "gates": {
+        "total_min_120": true,
+        "each_year_min_25": true,
+        "each_side_share_min_0_20": true,
+        "single_month_share_max_0_20": true
+      },
+      "pass": true
+    },
+    {
+      "policy_id": "T02",
+      "branch": "tail_absorption_fade",
+      "hold_bars": 36,
+      "nonoverlap_events": 220,
+      "events_by_year": {
+        "2020": 77,
+        "2021": 81,
+        "2022": 62
+      },
+      "events_by_side": {
+        "-1": 114,
+        "1": 106
+      },
+      "side_shares": {
+        "-1": 0.5181818181818182,
+        "1": 0.4818181818181818
+      },
+      "maximum_month_share": 0.06363636363636363,
+      "maximum_month": "2021-05",
+      "gates": {
+        "total_min_120": true,
+        "each_year_min_25": true,
+        "each_side_share_min_0_20": true,
+        "single_month_share_max_0_20": true
+      },
+      "pass": true
+    },
+    {
+      "policy_id": "T03",
+      "branch": "tail_release_follow",
+      "hold_bars": 12,
+      "nonoverlap_events": 978,
+      "events_by_year": {
+        "2020": 142,
+        "2021": 560,
+        "2022": 276
+      },
+      "events_by_side": {
+        "-1": 536,
+        "1": 442
+      },
+      "side_shares": {
+        "-1": 0.5480572597137015,
+        "1": 0.45194274028629855
+      },
+      "maximum_month_share": 0.0787321063394683,
+      "maximum_month": "2021-06",
+      "gates": {
+        "total_min_120": true,
+        "each_year_min_25": true,
+        "each_side_share_min_0_20": true,
+        "single_month_share_max_0_20": true
+      },
+      "pass": true
+    },
+    {
+      "policy_id": "T04",
+      "branch": "tail_release_follow",
+      "hold_bars": 36,
+      "nonoverlap_events": 846,
+      "events_by_year": {
+        "2020": 130,
+        "2021": 474,
+        "2022": 242
+      },
+      "events_by_side": {
+        "-1": 466,
+        "1": 380
+      },
+      "side_shares": {
+        "-1": 0.5508274231678487,
+        "1": 0.4491725768321513
+      },
+      "maximum_month_share": 0.07210401891252956,
+      "maximum_month": "2021-07",
+      "gates": {
+        "total_min_120": true,
+        "each_year_min_25": true,
+        "each_side_share_min_0_20": true,
+        "single_month_share_max_0_20": true
+      },
+      "pass": true
+    }
+  ],
+  "passing_policy_ids": [],
+  "all_support_policies_pass": false,
+  "clock_counts_by_policy": {
+    "T01": 230,
+    "T02": 220,
+    "T03": 978,
+    "T04": 846
+  },
+  "outputs": {
+    "features": {
+      "path": "data/tail_arrival_support_features_2020_2022.csv.gz",
+      "rows": 315648,
+      "bytes": 19145814,
+      "sha256": "b70285291a176f55109a16cee8501b5f27ff2d539428ef336019c18442a6ece8"
+    },
+    "clocks": {
+      "path": "data/tail_arrival_support_clocks_2020_2022.csv.gz",
+      "rows": 2274,
+      "bytes": 18229,
+      "sha256": "b3ff6f36f7d59a18c32cd18100352661f34879f7987973ca0906345aac164582"
+    }
+  },
+  "selection_may_open_forward_returns": false,
+  "sealed_holdout": [
+    "2023-01-01",
+    "2024-01-01"
+  ],
+  "future_2024_plus_sealed": true,
+  "manifest_hash": "d3cae30912a532394e0f68eee9af19b3d0e870b135b49c26c367ee535ca22793",
+  "created_at": "2026-07-16T14:34:11.606581+00:00"
+}
