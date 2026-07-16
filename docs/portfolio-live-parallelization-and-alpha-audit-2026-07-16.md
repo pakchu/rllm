@@ -117,9 +117,9 @@ Postgres NOTIFY / completed-bar barrier (cycle당 1회)
 
 ### 테스트 증거
 
-- 병렬/주문 단위 회귀: **40 passed, 3 subtests passed**
-- 병렬/주문/REX/feature 관련 묶음: **114 passed, 3 subtests passed**
-- 전체 suite: **1907 passed**, 12 failed. 실패 중 11건은 정리된 대용량 frozen dataset 부재, 1건은 이번 변경과 무관한 기존 `prediction_trade_feature_audit` key 불일치다.
+- 병렬/주문 단위 회귀: **43 passed, 3 subtests passed**
+- 병렬/주문/REX/feature 관련 묶음: **117 passed, 3 subtests passed**
+- 전체 suite: **1910 passed**, 12 failed. 실패 중 11건은 정리된 대용량 frozen dataset 부재, 1건은 이번 변경과 무관한 기존 `prediction_trade_feature_audit` key 불일치다.
 - active portfolio anchor SHA256: `86f255ca3967245b8b0676b00025b955d7f33668ab1ef9d813623191b4ecd1e7` (변경 없음)
 - 의도적으로 수정한 참조 candidate: `oi_upbit_ratio288_low_candidate.json`, `new_long_minimal_funding_premium_candidate.json`
 - 실제 라이브·테스트넷 주문: 실행하지 않음
