@@ -1,0 +1,153 @@
+{
+  "protocol": {
+    "protocol_version": "pfcr_v2_episode_onset_2026-07-17",
+    "name": "PFCR-2 — Post-Funding Crowding Release Episode Onset",
+    "claim": "The first extreme cross-sectional funding-spread settlement after a 36-hour quiet period identifies a new crowding episode; over the next four hours, the highest-funding alt underperforms the lowest-funding alt.",
+    "evidence_boundary": {
+      "underlying_alt_market_and_funding_rows_seen_elsewhere": true,
+      "pfcr1_outcome_blind_support_clock_opened": true,
+      "pfcr1_or_pfcr2_post_entry_returns_opened": false,
+      "exact_pfcr2_clock_opened": false,
+      "2023_fit_opened": false,
+      "2024_test_opened": false,
+      "2025_eval_opened": false,
+      "2026_holdout_opened": false,
+      "historical_results_can_promote_live": false,
+      "forward_shadow_required": true
+    },
+    "novelty_boundary": {
+      "versus_afch": "post-settlement four-hour price release, not 28-day pre-settlement carry harvest",
+      "versus_lore_lorc_cres": "funding-settlement event and current funding-rank pair, not residual/flow extremes",
+      "versus_btc_funding_settlement_families": "factor-beta-neutral cross-alt pair with no BTC directional position",
+      "versus_current_portfolio": "no BTC, REX, OI, premium, Kimchi/FX, tree, Markov, or LLM direction",
+      "versus_pfcr1": "episode-onset clock accepts only the first eligible settlement at least 36 hours after the previous accepted settlement; PFCR-1 accepted every non-overlapping event"
+    },
+    "universe": {
+      "venue": "Binance USD-M perpetual futures",
+      "symbols": [
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "ADAUSDT",
+        "DOGEUSDT"
+      ],
+      "position": "one long alt and one short alt; no BTC leg",
+      "maximum_active_pairs": 1,
+      "maximum_gross": 1.0
+    },
+    "source_contract": {
+      "market": "exact completed Binance USD-M 5m OHLC",
+      "funding": "exact reported rate and millisecond settlement timestamp per symbol",
+      "common_settlement": "all six symbols have exactly one row at the same timestamp",
+      "selection_source": "physically frozen 2023-2024 LORE prefix",
+      "no_2025_source_before_selection_pass": true
+    },
+    "feature_formula": {
+      "current_spread": "max current settled rate minus min current settled rate",
+      "spread_reference": {
+        "lookback_common_settlements": 180,
+        "minimum_prior_settlements": 90,
+        "quantile": 0.9,
+        "current_event_excluded": true
+      },
+      "eligible": "current spread > strictly-prior rolling q90 and spread > 0",
+      "short_symbol": "lexically tie-broken current maximum funding rate",
+      "long_symbol": "lexically tie-broken current minimum funding rate",
+      "factor": "median completed hourly return of the other five alts",
+      "beta": {
+        "lookback_hours": 720,
+        "minimum_hours": 336,
+        "shift_hours": 1,
+        "clip": [
+          0.25,
+          2.5
+        ]
+      },
+      "weights": "positive gross-one weights solving long_beta*w_long = short_beta*w_short"
+    },
+    "clock": {
+      "feature_available_time": "settlement timestamp + 5 minutes",
+      "entry_time": "settlement timestamp + 10 minutes",
+      "hold_hours": 4,
+      "nonoverlap": true,
+      "same_timestamp_funding": "current settlement is not earned or paid because entry is later",
+      "episode_onset": "scan eligible settlements chronologically and accept only when no prior accepted settlement exists or settlement_time >= prior accepted settlement_time + 36 hours",
+      "episode_cooldown_hours": 36,
+      "cooldown_anchor": "previous accepted settlement timestamp"
+    },
+    "execution": {
+      "base_cost_bp_per_notional_side": 6.0,
+      "stress_cost_bp_per_notional_side": 10.0,
+      "funding_interval": "entry_time < funding_time <= exit_time",
+      "strict_mdd": "global/pre-entry HWM, entry/exit and hypothetical liquidation cost, funding cash, and held favorable-before-adverse two-leg OHLC",
+      "cagr": "full declared wall-clock including idle time",
+      "tp_sl": null
+    },
+    "support_gate": {
+      "events_2023_2024_at_least": 60,
+      "events_each_year_at_least": 25,
+      "unique_ordered_pairs_at_least": 8,
+      "maximum_ordered_pair_share_at_most": 0.25,
+      "long_symbols_at_least": 4,
+      "short_symbols_at_least": 4,
+      "maximum_month_share_at_most": 0.2,
+      "outcome_columns_forbidden": true
+    },
+    "selection_2023_2024": {
+      "singleton_no_parameter_ranking": true,
+      "each_year_absolute_return_positive": true,
+      "each_year_cagr_to_strict_mdd_at_least": 1.5,
+      "combined_cagr_to_strict_mdd_at_least": 3.0,
+      "combined_strict_mdd_at_most_pct": 15.0,
+      "combined_trades_at_least": 60,
+      "ten_bp_stress_absolute_return_positive": true,
+      "entry_delay_plus_5m_absolute_return_positive": true,
+      "direction_flip_cagr_lower": true,
+      "weekly_cluster_signflip_p_at_most": 0.1
+    },
+    "sequential_oos": {
+      "2025_opened_only_after_2023_2024_pass": true,
+      "2026_opened_only_after_2025_pass": true,
+      "no_threshold_sign_hold_pair_or_beta_repair": true,
+      "minimum_forward_shadow_days_for_promotion": 90
+    },
+    "orthogonality_after_standalone_pass": {
+      "exact_entry_jaccard_at_most": 0.02,
+      "candidate_entries_near_6h_at_most": 0.25,
+      "position_jaccard_at_most": 0.15,
+      "absolute_daily_pnl_pearson_at_most": 0.3,
+      "synchronized_portfolio_marginal_improvement_required": true
+    },
+    "controls_not_repair_candidates": [
+      "exact long-short direction flip",
+      "entry and exit delayed five minutes",
+      "ten basis points per notional side",
+      "event clock shifted four hours"
+    ],
+    "stop_rule": "Reject before outcomes if the frozen 36-hour episode clock fails support. Reject before 2025 if the singleton fails 2023-2024. Reject before 2026 if it fails 2025. Never alter cooldown, sign, threshold, hold, pair, or beta after an outcome window opens.",
+    "protocol_derivation": {
+      "parent_protocol": "PFCR-1",
+      "parent_support_gate_result": "rejected for monthly concentration",
+      "parent_post_entry_returns_calculated": false,
+      "information_used": "event timestamps, symbols, and support concentration only",
+      "outcome_or_post_entry_price_used": false,
+      "support_only_candidates_inspected": [
+        "first eligible event per UTC week",
+        "maximum-spread eligible event per UTC week",
+        "accepted-settlement cooldown 36h",
+        "accepted-settlement cooldown 48h",
+        "accepted-settlement cooldown 60h",
+        "accepted-settlement cooldown 66h",
+        "accepted-settlement cooldown 72h",
+        "accepted-settlement cooldown 84h",
+        "accepted-settlement cooldown 96h"
+      ],
+      "selection_rule": "choose the shortest inspected deterministic cooldown satisfying all unchanged PFCR-1 support gates",
+      "selected_cooldown_hours": 36,
+      "new_protocol_not_parent_repair": true
+    }
+  },
+  "protocol_hash": "7dc7d51af83f4d4ce9822439799277d39ddd87a181b8728b468beedc5080d3d1",
+  "created_at": "2026-07-16T22:20:59.381174+00:00"
+}
