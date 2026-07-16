@@ -1,0 +1,199 @@
+{
+  "protocol_version": "network_weak_signal_ensemble_v1",
+  "outcomes_opened": false,
+  "policy": {
+    "policy_id": "NWE-7",
+    "reference_days": 180,
+    "reference_min_periods": 120,
+    "feature_change_days": 7,
+    "feature_clip": 5.0,
+    "decision_weekday": 0,
+    "decision_hour_utc": 12,
+    "decision_minute_utc": 0,
+    "maximum_observation_age_days": 3.0,
+    "fit_history_start": "2020-01-06",
+    "prediction_start": "2021-03-01",
+    "minimum_train_samples": 52,
+    "maximum_train_samples": 104,
+    "ridge_alpha": 10.0,
+    "abstain_quantile": 0.5,
+    "entry_delay_bars": 1,
+    "hold_bars": 2016,
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.001
+  },
+  "feature_columns": [
+    "fee_share_level_z",
+    "fee_share_change_z",
+    "transaction_density_level_z",
+    "transaction_density_change_z",
+    "breadth_level_z",
+    "breadth_change_z",
+    "fanout_level_z",
+    "fanout_change_z"
+  ],
+  "research_history_boundary": {
+    "2020_2023_market_returns_seen_by_unrelated_repo_research": true,
+    "exact_nwe7_model_outcomes_opened": false,
+    "predecessor_support_only_failures": [
+      "NTB-7",
+      "BFC-3"
+    ],
+    "predecessor_pnl_opened": false,
+    "claim": "NWE-7 is a new continuous weak-signal model, not a threshold repair; 2024+ remains sealed until all pre-2024 gates pass"
+  },
+  "novelty_boundary": {
+    "economic_axis": "weekly price-independent network economics decoder combining weak blockspace-demand and ledger-topology states",
+    "not": [
+      "tail-event threshold repair of NTB-7 or BFC-3",
+      "BTC price, return, volatility, extrema, wick, or volume as model input",
+      "exchange-address flow tagging",
+      "funding, premium, basis, OI, Kimchi, DXY, FX, REX, or Markov input",
+      "spot/perp/aggTrade microstructure",
+      "unconditional long drift"
+    ]
+  },
+  "source_contract": {
+    "blockspace": "data/coinmetrics_btc_blockspace_security_daily_2019_2023.csv.gz",
+    "blockspace_sha256": "c94fd06ff695d673503a56064284cffbb36e6f1ac847bdc6b38819752a77985b",
+    "blockspace_manifest": "results/coinmetrics_btc_blockspace_security_daily_2019_2023_manifest_2026-07-17.json",
+    "blockspace_manifest_sha256": "eb70f5cd38d0895b9c04ca142ce15645696769f10866072b8f8ef64ec7a49cf1",
+    "network": "data/coinmetrics_btc_network_daily_2020_2023.csv.gz",
+    "network_sha256": "97ab2ca9d0c347d85221b51734f98072763370072ca51f1c40e3214191159b42",
+    "network_manifest": "results/coinmetrics_btc_network_daily_pre2024_manifest_2026-07-16.json",
+    "network_manifest_sha256": "66b185769800c4732cf748b40ca9cb48c5eee239abf0425ff193c0688111c372",
+    "market": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "market_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+    "market_columns_allowed": [
+      "date",
+      "open",
+      "high",
+      "low",
+      "close"
+    ],
+    "market_physical_read_boundary": "date < 2024-01-01",
+    "funding": "data/binance_funding_btc_2020_2023.csv.gz",
+    "funding_sha256": "f61e6bce5d1b4e3c4b47b1f5819c06cac2c41fb439b5d4d414412afb0b580e04",
+    "funding_physical_read_boundary": "date < 2024-01-01",
+    "database_snapshot_is_point_in_time": false,
+    "revision_boundary": "raw on-chain values use AssetEODCompletionTime and frozen hashes, but are not a full historical revision-vintage archive; live promotion requires forward-vintage parity",
+    "excluded_for_leakage_risk": "Coin Metrics exchange-tag flows are excluded without point-in-time tags"
+  },
+  "causal_feature_contract": {
+    "raw_states": {
+      "fee_share": "log(FeeTotNtv / IssTotNtv)",
+      "transaction_density": "log(TxCnt / BlkCnt)",
+      "breadth": "log(AdrActCnt / TxTfrCnt)",
+      "fanout": "log(TxTfrCnt / TxCnt)"
+    },
+    "level_features": "strictly-prior 180-observation z-score of each raw state; require 120",
+    "change_features": "strictly-prior 180-observation z-score of each raw state's seven-day change",
+    "availability": "merge sources by observation date, use max available_at, and include only reference observations published strictly before the current row",
+    "weekly_snapshot": "each Monday 12:00 UTC uses the latest common observation whose available_at is not later than the decision and whose age is <=3 days",
+    "clip": "each z feature clipped to [-5, 5] before model fitting",
+    "price_or_derivative_feature_columns_loaded": []
+  },
+  "online_model_contract": {
+    "target": "unlevered log return from scheduled weekly entry open to exit open",
+    "label_availability": "a historical sample enters a refit only when both source available_at and scheduled label exit are <= current weekly decision",
+    "training_window": "most recent 104 fully labelled samples; require 52",
+    "feature_standardization": "mean and sample standard deviation fit on training samples only; zero-variance columns become zero",
+    "target_centering": "subtract training target mean and do not add it back to the forecast; this removes unconditional BTC drift",
+    "estimator": "closed-form L2 ridge beta=(X'X+10I)^-1 X'(y-mean(y)); no intercept",
+    "abstention": "trade only when abs(out-of-sample forecast) >= median absolute in-sample fitted centered forecast for that refit",
+    "side": "long for positive forecast, short for negative forecast, else flat",
+    "refit": "every Monday; no hyperparameter or feature selection"
+  },
+  "execution_contract": {
+    "decision": "Monday 12:00 UTC after feature snapshot is fixed",
+    "entry": "Monday 12:05 UTC open (one complete five-minute latency bar)",
+    "exit": "scheduled open 2,016 five-minute bars/seven days after entry",
+    "nonoverlap": true,
+    "stop_or_take_profit": null,
+    "leverage": 0.5,
+    "base_cost": "6bp/notional/side",
+    "stress_cost": "10bp/notional/side",
+    "funding_interval": "entry_time <= funding_time < exit_time",
+    "cagr": "full wall-clock split including idle/abstained cash",
+    "strict_mdd": "global/pre-entry HWM, favorable-before-adverse held OHLC, funding, entry/exit/hypothetical liquidation costs"
+  },
+  "support_freeze_before_labels": {
+    "train_2021_2022_candidate_weeks_min": 90,
+    "train_2021_candidate_weeks_min": 42,
+    "train_2022_candidate_weeks_min": 50,
+    "selection_2023_candidate_weeks_min": 50,
+    "selection_2023_h1_candidate_weeks_min": 25,
+    "selection_2023_h2_candidate_weeks_min": 25,
+    "all_feature_values_finite": true,
+    "market_or_return_rows_loaded": 0,
+    "failure_action": "reject without building return labels"
+  },
+  "selection_protocol": {
+    "train": [
+      "2021-03-01",
+      "2023-01-01"
+    ],
+    "selection": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "selection_halves": {
+      "h1": [
+        "2023-01-01",
+        "2023-07-01"
+      ],
+      "h2": [
+        "2023-07-01",
+        "2024-01-01"
+      ]
+    },
+    "sealed": [
+      "2024",
+      "2025",
+      "2026_ytd"
+    ],
+    "candidate_count": 1,
+    "no_parameter_repair": true,
+    "performance_gates": {
+      "train_trade_count_min": 35,
+      "selection_trade_count_min": 18,
+      "each_selection_half_trade_count_min": 8,
+      "each_side_share_range": [
+        0.25,
+        0.75
+      ],
+      "train_and_2023_absolute_return_positive": true,
+      "train_and_2023_cagr_to_strict_mdd_min": 3.0,
+      "train_and_2023_strict_mdd_pct_max": 15.0,
+      "train_and_2023_weekly_cluster_signflip_p_max": 0.1,
+      "train_and_2023_mean_gross_underlying_bp_min": 20.0,
+      "train_and_2023_ten_bp_stress_positive": true,
+      "2023_h1_and_h2_absolute_return_positive": true,
+      "one_bar_delayed_entry_train_and_2023_positive": true
+    }
+  },
+  "controls": {
+    "direction_flip": "same forecasts, opposite side; diagnostic-only",
+    "fee_family_only": "same online model using the four fee/density features",
+    "topology_family_only": "same online model using the four breadth/fanout features",
+    "no_abstention": "same forecasts traded every week",
+    "stale_features_7d": "all eight inputs delayed seven observations",
+    "year_stratified_feature_permutation": "permute feature rows within year before each deterministic refit",
+    "constant_long": "weekly long with the same execution clock",
+    "one_bar_delayed_entry": "same side one extra five-minute bar later",
+    "mechanism_rejection_rule": "reject NWE-7 if stale or permuted features independently pass every primary gate; component-only results are attribution, not replacements"
+  },
+  "orthogonality_after_performance": {
+    "comparison_set": "all promoted/live/shadow sleeves frozen before NWE-7",
+    "exact_entry_jaccard_max": 0.05,
+    "position_time_jaccard_max": 0.2,
+    "absolute_daily_pnl_pearson_max": 0.3,
+    "minimum_nonzero_daily_pnl_days": 20,
+    "marginal_portfolio_improvement_required": true,
+    "undefined_metric": "fail_closed"
+  },
+  "rejection_contract": "any support, performance, mechanism, or orthogonality failure rejects NWE-7 without changing features, ridge, window, abstention, side, or hold",
+  "manifest_hash": "19774e32cef371011e4fd753d92cb97c4464abcd35f196c66f67ef23192667c7",
+  "created_at": "2026-07-16T20:09:44.282351+00:00"
+}
