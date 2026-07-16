@@ -94,13 +94,15 @@ def validate_market(
         raise ValueError(f"{symbol} high below open/close")
     if (out["low"] > out[["open", "close"]].min(axis=1)).any():
         raise ValueError(f"{symbol} low above open/close")
-    if (out["quote_asset_volume"] <= 0).any():
-        raise ValueError(f"{symbol} non-positive quote volume")
+    if (out["quote_asset_volume"] < 0).any():
+        raise ValueError(f"{symbol} negative quote volume")
     tolerance = np.maximum(1e-6, out["quote_asset_volume"].to_numpy(dtype=float) * 1e-10)
     buy = out["taker_buy_quote"].to_numpy(dtype=float)
     quote = out["quote_asset_volume"].to_numpy(dtype=float)
     if (buy < -tolerance).any() or (buy > quote + tolerance).any():
         raise ValueError(f"{symbol} taker buy outside quote volume")
+    if ((quote == 0.0) & (np.abs(buy) > tolerance)).any():
+        raise ValueError(f"{symbol} nonzero taker buy on zero-volume bar")
     if exact_grid:
         expected = pd.date_range(start, end - pd.Timedelta(minutes=5), freq="5min")
         actual = pd.DatetimeIndex(out["date"])
@@ -175,6 +177,7 @@ def run(
             "output_market": str(market_output),
             "output_market_sha256": sha256_file(market_output),
             "market_rows": len(reread_market),
+            "zero_quote_volume_bars": int((reread_market["quote_asset_volume"] == 0).sum()),
             "market_min": str(reread_market["date"].min()),
             "market_max": str(reread_market["date"].max()),
             "input_funding": str(funding_input),

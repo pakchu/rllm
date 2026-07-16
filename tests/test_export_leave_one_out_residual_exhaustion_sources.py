@@ -62,6 +62,14 @@ def test_market_validation_rejects_bad_ohlc_and_taker_volume() -> None:
         validate_market(bad_buy, "ETHUSDT", exact_grid=False)
 
 
+def test_market_validation_preserves_valid_zero_volume_bar() -> None:
+    frame = market_frame()
+    frame.loc[0, "quote_asset_volume"] = 0.0
+    frame.loc[0, "taker_buy_quote"] = 0.0
+    got = validate_market(frame, "ETHUSDT", exact_grid=False)
+    assert got.loc[0, "quote_asset_volume"] == 0.0
+
+
 def test_funding_validation_uses_exact_event_time_and_cutoff() -> None:
     times = pd.to_datetime(
         ["2023-01-01", "2023-01-01 08:00:00.008", "2025-01-01"],
