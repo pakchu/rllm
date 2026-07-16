@@ -1,4 +1,5 @@
 import numpy as np
+import training.portfolio_opt_added_alpha_update as portfolio_update
 
 from training.portfolio_opt_added_alpha_update import (
     Config,
@@ -7,10 +8,13 @@ from training.portfolio_opt_added_alpha_update import (
     SLEEVES,
     exact_pre2025_rows,
     pre2025_passes,
+    pre2025_row_sort_key,
     pre2025_selection_key,
     quantize_weights,
+    refine_pre2025_rows,
     strict_metric,
     valid_weights,
+    weight_neighbors,
     years_for,
 )
 
@@ -67,6 +71,78 @@ def test_weight_contract_enforces_grid_min_gross_and_family_cap():
         },
         cfg,
     )
+
+
+def test_refinement_neighbors_remain_on_valid_grid():
+    cfg = Config()
+    neighbors = weight_neighbors(
+        {
+            "cand_rex_veto_7": 1.0,
+            "rex_taker_low_range_position": 1.0,
+            "markov_transition_long": 1.5,
+        },
+        cfg,
+    )
+    assert neighbors
+    assert all(valid_weights(weights, cfg) for weights in neighbors)
+    assert {
+        "cand_rex_veto_7": 0.95,
+        "rex_taker_low_range_position": 1.05,
+        "markov_transition_long": 1.5,
+    } in neighbors
+
+
+def test_pre2025_ties_prefer_lower_gross_then_weights():
+    score = (True, 3.0, 3.0, 3.0, 10.0, -5.0)
+    rows = [
+        {
+            "weights": {"fresh_kimchi_fx": 1.0},
+            "gross": 1.0,
+            "selection_key": score,
+        },
+        {
+            "weights": {"fresh_kimchi_fx": 0.5},
+            "gross": 0.5,
+            "selection_key": score,
+        },
+    ]
+    ranked = sorted(rows, key=pre2025_row_sort_key, reverse=True)
+    assert ranked[0]["gross"] == 0.5
+
+
+def test_refinement_can_cross_non_improving_first_hop(monkeypatch):
+    first = {"frozen_annual_rank7": 0.25}
+    second = {"frozen_annual_rank7": 0.30}
+    third = {"frozen_annual_rank7": 0.35}
+
+    def row(weights, score):
+        return {
+            "weights": weights,
+            "gross": sum(weights.values()),
+            "stats": {},
+            "selection_key": (True, score, score, score, score, -1.0),
+        }
+
+    monkeypatch.setattr(
+        portfolio_update,
+        "weight_neighbors",
+        lambda weights, _cfg: [second] if weights == first else [third] if weights == second else [],
+    )
+    monkeypatch.setattr(
+        portfolio_update,
+        "exact_pre2025_rows",
+        lambda _arrays, candidates, _cfg: [
+            row(weights, 2.0 if weights == second else 4.0) for weights in candidates
+        ],
+    )
+    ranked, meta = refine_pre2025_rows(
+        {},
+        [first],
+        [row(first, 3.0)],
+        Config(refinement_rounds=2, refinement_top_n=1),
+    )
+    assert ranked[0]["weights"] == third
+    assert len(meta["rounds"]) == 2
 
 
 def test_candidate_universe_contains_added_alpha_sleeves():

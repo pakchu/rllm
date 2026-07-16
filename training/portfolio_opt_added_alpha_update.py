@@ -130,6 +130,9 @@ class Config:
     random_samples: int = 60_000
     exact_batch_size: int = 16
     seed: int = 71616
+    seed_count: int = 2
+    refinement_rounds: int = 4
+    refinement_top_n: int = 20
     cost_rate: float = 0.0006
 
 
@@ -819,14 +822,57 @@ def weight_candidates(cfg: Config) -> list[dict[str, float]]:
                     add({**LIVE_WEIGHTS, left: left_weight, right: right_weight})
                     add({left: left_weight, right: right_weight})
 
-    rng = random.Random(cfg.seed)
-    for _ in range(cfg.random_samples):
-        chosen = rng.sample(list(SLEEVES), rng.randint(2, min(7, len(SLEEVES))))
-        gross = rng.choice(np.arange(2.0, cfg.gross_cap + 0.001, 0.5).tolist())
-        raw = np.asarray([rng.random() ** 1.35 for _ in chosen], dtype=float)
-        raw *= float(gross) / raw.sum()
-        add({name: float(value) for name, value in zip(chosen, raw, strict=True)})
+    for seed in range(int(cfg.seed), int(cfg.seed) + int(cfg.seed_count)):
+        rng = random.Random(seed)
+        for _ in range(cfg.random_samples):
+            chosen = rng.sample(list(SLEEVES), rng.randint(2, min(7, len(SLEEVES))))
+            gross = rng.choice(np.arange(2.0, cfg.gross_cap + 0.001, 0.5).tolist())
+            raw = np.asarray([rng.random() ** 1.35 for _ in chosen], dtype=float)
+            raw *= float(gross) / raw.sum()
+            add({name: float(value) for name, value in zip(chosen, raw, strict=True)})
     return candidates
+
+
+def weight_neighbors(weights: dict[str, float], cfg: Config) -> list[dict[str, float]]:
+    """Generate deterministic one-step and capital-transfer grid neighbors."""
+    output: list[dict[str, float]] = []
+    seen: set[tuple[float, ...]] = set()
+
+    def add(raw: dict[str, float]) -> None:
+        candidate = quantize_weights(raw, cfg)
+        if not valid_weights(candidate, cfg):
+            return
+        key = tuple(candidate.get(name, 0.0) for name in SLEEVES)
+        if key not in seen:
+            seen.add(key)
+            output.append(candidate)
+
+    for name in SLEEVES:
+        current = float(weights.get(name, 0.0))
+        if current <= 0.0:
+            for value in (cfg.min_nonzero_weight, 0.5):
+                add({**weights, name: value})
+            continue
+        removed = dict(weights)
+        removed.pop(name, None)
+        add(removed)
+        for delta in (-0.25, -cfg.weight_step, cfg.weight_step, 0.25):
+            add({**weights, name: current + delta})
+
+    for left in SLEEVES:
+        left_weight = float(weights.get(left, 0.0))
+        if left_weight <= 0.0:
+            continue
+        for right in SLEEVES:
+            if right == left:
+                continue
+            right_weight = float(weights.get(right, 0.0))
+            for delta in (cfg.weight_step, 0.25):
+                moved = dict(weights)
+                moved[left] = left_weight - delta
+                moved[right] = right_weight + delta
+                add(moved)
+    return output
 
 
 def batch_metrics(data: dict[str, Any], years: float, weight_matrix: np.ndarray) -> dict[str, np.ndarray]:
@@ -937,8 +983,64 @@ def exact_pre2025_rows(
                     "selection_key": pre2025_selection_key(stats, cfg),
                 }
             )
-    rows.sort(key=lambda row: row["selection_key"], reverse=True)
+    rows.sort(key=pre2025_row_sort_key, reverse=True)
     return rows
+
+
+def _weight_key(weights: dict[str, float]) -> tuple[float, ...]:
+    return tuple(round(float(weights.get(name, 0.0)), 10) for name in SLEEVES)
+
+
+def pre2025_row_sort_key(row: dict[str, Any]) -> tuple[Any, ...]:
+    """Prefer lower gross/lexicographic weights when performance is exactly tied."""
+    weights = _weight_key(row["weights"])
+    return (row["selection_key"], -float(row["gross"]), tuple(-value for value in weights))
+
+
+def refine_pre2025_rows(
+    arrays: dict[str, dict[str, Any]],
+    initial_candidates: list[dict[str, float]],
+    initial_rows: list[dict[str, Any]],
+    cfg: Config,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Climb the exact 0.05 grid without ever reading future windows."""
+    ranked = list(initial_rows)
+    seen = {_weight_key(weights) for weights in initial_candidates}
+    rounds: list[dict[str, Any]] = []
+    total_evaluated = 0
+    frontier = ranked[: int(cfg.refinement_top_n)]
+    for round_index in range(int(cfg.refinement_rounds)):
+        neighbors: list[dict[str, float]] = []
+        for row in frontier:
+            for candidate in weight_neighbors(row["weights"], cfg):
+                key = _weight_key(candidate)
+                if key not in seen:
+                    seen.add(key)
+                    neighbors.append(candidate)
+        if not neighbors:
+            break
+        previous_key = ranked[0]["selection_key"]
+        new_rows = exact_pre2025_rows(arrays, neighbors, cfg)
+        total_evaluated += len(neighbors)
+        by_weight = {_weight_key(row["weights"]): row for row in ranked}
+        by_weight.update({_weight_key(row["weights"]): row for row in new_rows})
+        ranked = sorted(
+            by_weight.values(), key=pre2025_row_sort_key, reverse=True
+        )
+        frontier = sorted(new_rows, key=pre2025_row_sort_key, reverse=True)[
+            : int(cfg.refinement_top_n)
+        ]
+        improved = ranked[0]["selection_key"] > previous_key
+        rounds.append(
+            {
+                "round": round_index + 1,
+                "evaluated": len(neighbors),
+                "passed": len(new_rows),
+                "top_improved": improved,
+                "top_weights": ranked[0]["weights"],
+            }
+        )
+    return ranked, {"evaluated": total_evaluated, "rounds": rounds}
 
 
 def _format_metric(metric: dict[str, Any]) -> str:
@@ -962,7 +1064,8 @@ def render_docs(report: dict[str, Any]) -> str:
         f"- Gross <= {report['config']['gross_cap']}; family gross <= {report['config']['family_gross_cap']}.",
         f"- Non-zero weight >= {report['config']['min_nonzero_weight']}; step = {report['config']['weight_step']}.",
         "- Allocation ranking uses train and 2024 only.",
-        "- Every generated allocation is ranked on the exact shared 5-minute clock; there is no daily shortlist.",
+        "- Two deterministic seed pools plus exact 0.05-grid local refinement are ranked on the shared 5-minute clock; there is no daily shortlist.",
+        "- Exact score ties prefer lower gross, then lexicographically lower sleeve weights.",
         "- 2025 and 2026 may veto frozen rank 1, but never rerank or select rank 2+.",
         "- All future windows have prior research exposure; result is shadow-only.",
         "",
@@ -1090,6 +1193,9 @@ def run(cfg: Config) -> dict[str, Any]:
     ranked_pre2025 = exact_pre2025_rows(arrays, candidates, cfg)
     if not ranked_pre2025:
         raise RuntimeError("no exact allocation passed the frozen pre-2025 constraints")
+    ranked_pre2025, refinement_meta = refine_pre2025_rows(
+        arrays, candidates, ranked_pre2025, cfg
+    )
     rows = ranked_pre2025[:100]
     # Freeze ordering first. Future windows are read only after this list is fixed.
     frozen_weight_order = [tuple(row["weights"].get(name, 0.0) for name in SLEEVES) for row in rows]
@@ -1147,13 +1253,19 @@ def run(cfg: Config) -> dict[str, Any]:
                         "min_future_ratio",
                         "random_samples",
                         "seed",
+                        "seed_count",
+                        "refinement_rounds",
+                        "refinement_top_n",
                         "cost_rate",
                     }
                 },
                 "input_sha256": {
                     name: record["sha256"] for name, record in input_provenance.items()
                 },
-                "selection": "train+test2024 only; future veto cannot rerank",
+                "selection": (
+                    "train+test2024 only; exact multi-seed beam refinement; "
+                    "tie=lower gross then lexicographic weights; future veto cannot rerank"
+                ),
             }
         ),
         "future_used_for_allocation_ranking": False,
@@ -1181,9 +1293,11 @@ def run(cfg: Config) -> dict[str, Any]:
             "corrected_strict": strict_baseline,
         },
         "candidate_generation": {
-            "generated": len(candidates),
-            "exact_pre2025_evaluated": len(candidates),
+            "generated_initial": len(candidates),
+            "seed_range": [cfg.seed, cfg.seed + cfg.seed_count - 1],
+            "exact_pre2025_evaluated": len(candidates) + refinement_meta["evaluated"],
             "exact_pre2025_passed": len(ranked_pre2025),
+            "refinement": refinement_meta,
             "search_scope": "deterministic seeded/random candidate set; not a proof of global grid optimum",
             "selection_clock": "shared 5-minute OHLC upper-before-lower strict MDD",
         },
