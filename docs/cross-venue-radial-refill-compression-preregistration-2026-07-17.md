@@ -22,6 +22,11 @@ withdrawal, and net quantiles in order, then minimized the flicker quantile.
 It selected `(0.85, 0.75, 0.55, 0.85)` with 156 scheduled events. No outcome
 was used.
 
+Before any outcome was opened, a canonical replay corrected eight scratch
+incidence counts for looser cells whose earlier temporary scheduler was not
+the frozen `t+10m`, quarter-contained clock. The selected cell and its 156
+events were unchanged.
+
 ## Novelty boundary
 
 This is distinct from REX, OI/funding/premium/Kimchi signals and differs from
@@ -52,4 +57,4 @@ quantiles, and clock. Official references:
 - https://github.com/binance/binance-public-data
 - https://developers.binance.com/en/docs/products/derivatives-trading/usds-futures/websocket-market-streams/How-to-manage-a-local-order-book-correctly
 
-Protocol hash: `8ef29416e22eb98fcce3d0b9747099dac7ca079e5cefc614a146700a8adcade7`
+Protocol hash: `205e0df485b202ea9ad67fee677c4796e9a65a6fbee04fd87b9ba8a4ba4321b0`

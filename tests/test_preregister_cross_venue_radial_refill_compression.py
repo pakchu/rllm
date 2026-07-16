@@ -16,6 +16,9 @@ def test_support_selection_is_outcome_blind_and_deterministic() -> None:
     selection = frozen["support_selection"]
     assert selection["candidate_cells_inspected"] == 14
     assert selection["selection_used_outcomes"] is False
+    assert "selected cell" in frozen["evidence_boundary"][
+        "incidence_correction_before_outcomes"
+    ]
     assert selection["selected_cell"] == {
         "q_add": 0.85,
         "q_withdraw": 0.75,

@@ -39,13 +39,13 @@ SUPPORT_GRID: tuple[dict[str, float | int], ...] = (
     {"q_add": 0.90, "q_withdraw": 0.80, "q_net": 0.60, "q_flicker": 0.75, "events": 4},
     {"q_add": 0.85, "q_withdraw": 0.80, "q_net": 0.55, "q_flicker": 0.75, "events": 22},
     {"q_add": 0.85, "q_withdraw": 0.75, "q_net": 0.55, "q_flicker": 0.80, "events": 77},
-    {"q_add": 0.80, "q_withdraw": 0.70, "q_net": 0.50, "q_flicker": 0.85, "events": 351},
-    {"q_add": 0.80, "q_withdraw": 0.75, "q_net": 0.50, "q_flicker": 0.80, "events": 169},
-    {"q_add": 0.80, "q_withdraw": 0.75, "q_net": 0.55, "q_flicker": 0.80, "events": 165},
-    {"q_add": 0.80, "q_withdraw": 0.75, "q_net": 0.50, "q_flicker": 0.85, "events": 303},
-    {"q_add": 0.80, "q_withdraw": 0.70, "q_net": 0.55, "q_flicker": 0.85, "events": 339},
-    {"q_add": 0.85, "q_withdraw": 0.70, "q_net": 0.50, "q_flicker": 0.85, "events": 194},
-    {"q_add": 0.85, "q_withdraw": 0.75, "q_net": 0.50, "q_flicker": 0.85, "events": 161},
+    {"q_add": 0.80, "q_withdraw": 0.70, "q_net": 0.50, "q_flicker": 0.85, "events": 338},
+    {"q_add": 0.80, "q_withdraw": 0.75, "q_net": 0.50, "q_flicker": 0.80, "events": 162},
+    {"q_add": 0.80, "q_withdraw": 0.75, "q_net": 0.55, "q_flicker": 0.80, "events": 164},
+    {"q_add": 0.80, "q_withdraw": 0.75, "q_net": 0.50, "q_flicker": 0.85, "events": 292},
+    {"q_add": 0.80, "q_withdraw": 0.70, "q_net": 0.55, "q_flicker": 0.85, "events": 338},
+    {"q_add": 0.85, "q_withdraw": 0.70, "q_net": 0.50, "q_flicker": 0.85, "events": 188},
+    {"q_add": 0.85, "q_withdraw": 0.75, "q_net": 0.50, "q_flicker": 0.85, "events": 158},
     {"q_add": 0.85, "q_withdraw": 0.70, "q_net": 0.55, "q_flicker": 0.85, "events": 187},
     {"q_add": 0.85, "q_withdraw": 0.75, "q_net": 0.55, "q_flicker": 0.85, "events": 156},
 )
@@ -76,6 +76,11 @@ def protocol() -> dict[str, Any]:
         "evidence_boundary": {
             "book_feature_rows_inspected": True,
             "support_incidence_grid_inspected": True,
+            "incidence_correction_before_outcomes": (
+                "eight looser-cell scratch counts were replaced by the canonical "
+                "quarter-contained t+10m scheduler replay; the selected cell and its "
+                "156-event count did not change"
+            ),
             "post_entry_price_return_or_equity_opened": False,
             "2023_selection_outcomes_opened": False,
             "2024_test_outcomes_opened": False,
@@ -348,6 +353,11 @@ sides, and concentration gates, the deterministic rule maximized add,
 withdrawal, and net quantiles in order, then minimized the flicker quantile.
 It selected `(0.85, 0.75, 0.55, 0.85)` with 156 scheduled events. No outcome
 was used.
+
+Before any outcome was opened, a canonical replay corrected eight scratch
+incidence counts for looser cells whose earlier temporary scheduler was not
+the frozen `t+10m`, quarter-contained clock. The selected cell and its 156
+events were unchanged.
 
 ## Novelty boundary
 
