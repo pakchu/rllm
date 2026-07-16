@@ -7,6 +7,7 @@
 - 계정이 One-way mode였으므로 포지션/주문이 없는 상태에서 Hedge mode로 전환했다.
 - 체결 가능성을 낮추기 위해 현재가에서 ±2% 떨어진 `GTX` post-only 주문을 사용했다.
 - 테스트 종료 시 포지션과 미체결 주문이 모두 0인지 다시 확인했다.
+- portfolio cycle에서 사용한 BTCUSDT leverage 6은 테스트 종료 후 config 기본값 1로 복원했다. Hedge mode는 포트폴리오 실행 필수 조건이므로 유지했다.
 
 ## 결과
 
