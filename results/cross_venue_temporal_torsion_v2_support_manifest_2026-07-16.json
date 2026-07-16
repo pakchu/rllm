@@ -1,0 +1,220 @@
+{
+  "protocol_version": "cross_venue_temporal_torsion_support_v2",
+  "phase": "support_only_before_forward_returns",
+  "forward_trade_outcomes_opened": false,
+  "source_columns_read": [
+    "date",
+    "feature_available_time_utc",
+    "spot_flow_fraction",
+    "um_flow_fraction",
+    "spot_log_return_5m",
+    "um_log_return_5m",
+    "spot_flow_time_centroid",
+    "um_flow_time_centroid",
+    "spot_return_time_centroid",
+    "um_return_time_centroid",
+    "source_valid_current",
+    "source_quarantined",
+    "source_available",
+    "strategy_entry_earliest_time_utc"
+  ],
+  "explicitly_not_read": [
+    "market open/high/low/close",
+    "future return",
+    "realized funding after signal",
+    "sealed 2023 features"
+  ],
+  "implementation_contract": {
+    "rolling_window_bars": 8640,
+    "minimum_clean_prior_calendar_bars": 2016,
+    "minimum_prior_route_events": 256,
+    "route_quantile": 0.95,
+    "all_thresholds_shifted_bars": 1,
+    "episode_prior_active_lookback_bars": 12,
+    "entry_delay_bars_from_bucket_open": 2,
+    "nonoverlap": "next signal row >= prior signal row + hold_bars"
+  },
+  "hashes": {
+    "preregistration_file_sha256": "aeca38504bad1c67d94bb1cf2144021c098f78c54229a81d3c19ca62c8a1a8d6",
+    "preregistration_manifest_hash": "8101737f5d0fb3041774941f5916e963f1ddaa31d34064f32563acc7e8bccf87",
+    "source_manifest_file_sha256": "3a498f5f7a8e0984030af6b0a2f94fdbaece9013eb2a047f41c97c4b7d382ac8",
+    "source_manifest_hash": "ed3a974c9e8056ab2120004db81f6f65704e826e2fa3757195c853f59efd1b1a"
+  },
+  "git_anchors": {
+    "preregistration": {
+      "path": "results/cross_venue_temporal_torsion_v2_preregistration_2026-07-16.json",
+      "commit": "21f66ee316abef1275929ad7641402d9f3782fe6",
+      "sha256": "aeca38504bad1c67d94bb1cf2144021c098f78c54229a81d3c19ca62c8a1a8d6"
+    },
+    "source_freezer": {
+      "path": "training/export_cross_venue_temporal_torsion_prefix.py",
+      "commit": "6f06a2c57ec1fb7ba4ef1033baffb5bc176b0791",
+      "sha256": "168bc1f2cd3b9acfc772b50abbd79e2a7a4f4470f97b8a1166366dd662c7d2ce"
+    },
+    "support_builder": {
+      "path": "training/build_cross_venue_temporal_torsion_v2_support.py",
+      "commit": "d862c0b1f81e110e1b51b59308cc6e770e94c0c5",
+      "sha256": "3f305c9e7c178b076ad4d45785ec970d91531565cbca5a7a4ab9398224b37535"
+    }
+  },
+  "quality": {
+    "raw_invalid_rows": 522,
+    "quarantined_rows": 1386,
+    "global_fraction": 0.004390967153284671,
+    "maximum_monthly_fraction": 0.033602150537634407,
+    "maximum_month": "2022-12",
+    "gates": {
+      "global_missing_or_quarantined_fraction_max_0_01": true,
+      "monthly_missing_or_quarantined_fraction_max_0_05": true
+    },
+    "pass": true
+  },
+  "support_policies": [
+    {
+      "policy_id": "V01",
+      "route": "spot_preload_um_echo",
+      "hold_bars": 6,
+      "nonoverlap_events": 1393,
+      "events_by_year": {
+        "2020": 387,
+        "2021": 494,
+        "2022": 512
+      },
+      "events_by_side": {
+        "-1": 745,
+        "1": 648
+      },
+      "side_shares": {
+        "-1": 0.5348169418521177,
+        "1": 0.46518305814788224
+      },
+      "maximum_month_share": 0.03804737975592247,
+      "maximum_month": "2022-11",
+      "gates": {
+        "total_min_600": true,
+        "each_year_min_150": true,
+        "each_side_share_min_0_35": true,
+        "single_month_share_max_0_10": true
+      },
+      "pass": true
+    },
+    {
+      "policy_id": "V02",
+      "route": "spot_preload_um_echo",
+      "hold_bars": 18,
+      "nonoverlap_events": 1360,
+      "events_by_year": {
+        "2020": 380,
+        "2021": 478,
+        "2022": 502
+      },
+      "events_by_side": {
+        "-1": 727,
+        "1": 633
+      },
+      "side_shares": {
+        "-1": 0.5345588235294118,
+        "1": 0.46544117647058825
+      },
+      "maximum_month_share": 0.03897058823529412,
+      "maximum_month": "2022-11",
+      "gates": {
+        "total_min_600": true,
+        "each_year_min_150": true,
+        "each_side_share_min_0_35": true,
+        "single_month_share_max_0_10": true
+      },
+      "pass": true
+    },
+    {
+      "policy_id": "V03",
+      "route": "um_preload_spot_echo",
+      "hold_bars": 6,
+      "nonoverlap_events": 1403,
+      "events_by_year": {
+        "2020": 429,
+        "2021": 487,
+        "2022": 487
+      },
+      "events_by_side": {
+        "-1": 717,
+        "1": 686
+      },
+      "side_shares": {
+        "-1": 0.5110477548111191,
+        "1": 0.488952245188881
+      },
+      "maximum_month_share": 0.03706343549536707,
+      "maximum_month": "2022-03",
+      "gates": {
+        "total_min_600": true,
+        "each_year_min_150": true,
+        "each_side_share_min_0_35": true,
+        "single_month_share_max_0_10": true
+      },
+      "pass": true
+    },
+    {
+      "policy_id": "V04",
+      "route": "um_preload_spot_echo",
+      "hold_bars": 18,
+      "nonoverlap_events": 1372,
+      "events_by_year": {
+        "2020": 426,
+        "2021": 471,
+        "2022": 475
+      },
+      "events_by_side": {
+        "-1": 702,
+        "1": 670
+      },
+      "side_shares": {
+        "-1": 0.5116618075801749,
+        "1": 0.48833819241982507
+      },
+      "maximum_month_share": 0.037900874635568516,
+      "maximum_month": "2022-03",
+      "gates": {
+        "total_min_600": true,
+        "each_year_min_150": true,
+        "each_side_share_min_0_35": true,
+        "single_month_share_max_0_10": true
+      },
+      "pass": true
+    }
+  ],
+  "passing_policy_ids": [
+    "V01",
+    "V02",
+    "V03",
+    "V04"
+  ],
+  "all_support_policies_pass": true,
+  "clock_counts_by_policy": {
+    "V01": 1393,
+    "V02": 1360,
+    "V03": 1403,
+    "V04": 1372
+  },
+  "outputs": {
+    "features": {
+      "path": "data/cross_venue_temporal_torsion_v2_support_features_2020_2022.csv.gz",
+      "rows": 315648,
+      "bytes": 10276273,
+      "sha256": "c7c22c33320611e8a65d0ffaa5c7fdf89bc8ff7cbb98d5e1d5df378442e2b914"
+    },
+    "clocks": {
+      "path": "data/cross_venue_temporal_torsion_v2_support_clocks_2020_2022.csv.gz",
+      "rows": 5528,
+      "bytes": 60802,
+      "sha256": "8f933b9d387fbcb764645a7002a5eefa9ee159c9c1ce7e007dca0dc4c16ebe33"
+    }
+  },
+  "selection_may_open_forward_returns": true,
+  "sealed_holdout": [
+    "2023-01-01",
+    "2024-01-01"
+  ],
+  "manifest_hash": "47f01b47179b37fac37204e42dd0acba15ea196e52337062a014c4565ab983c3",
+  "created_at": "2026-07-16T14:59:32.790981+00:00"
+}
