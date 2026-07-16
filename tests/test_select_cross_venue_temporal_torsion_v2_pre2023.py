@@ -159,6 +159,36 @@ def test_generated_control_clock_uses_source_route_and_nonoverlap() -> None:
     assert sides.tolist() == [1]
 
 
+def test_time_random_fails_instead_of_returning_partial_sample() -> None:
+    engine = _engine([100] * 20, [100] * 20, [100] * 20)
+    cfg = selector.Config(random_control_samples=2)
+    policy = Policy("V", "spot_preload_um_echo", 1)
+    with pytest.raises(RuntimeError, match="preregistered 2 valid samples"):
+        selector.time_of_week_block_random(
+            engine,
+            np.asarray([0, 0]),
+            np.asarray([1, 1]),
+            policy,
+            cfg,
+            1,
+        )
+
+
+def test_route_side_swap_is_reported_as_identity_not_fake_control() -> None:
+    features = pd.DataFrame(
+        {"spot_source_side": [1, -1], "um_source_side": [1, -1]}
+    )
+    result = selector.route_side_swap_identity(
+        features,
+        np.asarray([0, 1]),
+        np.asarray([1, -1]),
+        Policy("V", "spot_preload_um_echo", 6),
+    )
+    assert result["status"] == "identity_control_unavailable"
+    assert result["identical_side_fraction"] == 1.0
+    assert result["trade_stats_computed"] is False
+
+
 def test_overlapping_positions_fail_strict_stats() -> None:
     base = dict(
         signal_position=0,

@@ -579,6 +579,12 @@ def time_of_week_block_random(
                 ).sum()
             )
         )
+    if len(samples) != cfg.random_control_samples:
+        raise RuntimeError(
+            "CVTT v2 time-of-week control could not produce the preregistered "
+            f"{cfg.random_control_samples} valid samples after {attempts} attempts; "
+            f"accepted={len(samples)}"
+        )
     values = np.asarray(samples)
     return {
         "samples": int(len(values)),
@@ -629,6 +635,35 @@ def selection_gates(
     }
 
 
+def route_side_swap_identity(
+    features: pd.DataFrame,
+    signals: np.ndarray,
+    sides: np.ndarray,
+    policy: Policy,
+) -> dict[str, Any]:
+    other_side_column = (
+        "um_source_side"
+        if policy.route == "spot_preload_um_echo"
+        else "spot_source_side"
+    )
+    swapped_sides = features.loc[signals, other_side_column].to_numpy(np.int8)
+    identical_fraction = float(np.mean(swapped_sides == sides)) if len(sides) else 1.0
+    if not np.array_equal(swapped_sides, sides):
+        raise RuntimeError(
+            "CVTT v2 directional confirmation no longer makes route-side swap identity"
+        )
+    return {
+        "status": "identity_control_unavailable",
+        "reason": (
+            "directional confirmation requires source and destination flow signs "
+            "to agree, so swapping the side source is mathematically identical"
+        ),
+        "events": int(len(sides)),
+        "identical_side_fraction": identical_fraction,
+        "trade_stats_computed": False,
+    }
+
+
 def evaluate_policy(
     engine: ExecutionEngine,
     features: pd.DataFrame,
@@ -649,18 +684,10 @@ def evaluate_policy(
         cost_notional_per_side=cfg.stress_cost_notional_per_side,
     )
     controls: dict[str, Any] = {}
-    other_side_column = (
-        "um_source_side" if policy.route == "spot_preload_um_echo" else "spot_source_side"
-    )
+    route_swap = route_side_swap_identity(features, signals, sides, policy)
     primary_controls = {
         "direction_flip": trades_from_arrays(
             engine, signals, -sides, hold_bars=policy.hold_bars
-        ),
-        "route_side_swap": trades_from_arrays(
-            engine,
-            signals,
-            features.loc[signals, other_side_column].to_numpy(np.int8),
-            hold_bars=policy.hold_bars,
         ),
         "delay_1_bar": trades_from_arrays(
             engine, signals, sides, hold_bars=policy.hold_bars, extra_delay_bars=1
@@ -686,6 +713,7 @@ def evaluate_policy(
             leverage=cfg.leverage,
             cost_notional_per_side=cfg.base_cost_notional_per_side,
         )
+    controls["route_side_swap"] = route_swap
     significance = weekly_cluster_signflip(combined, cfg, policy_number)
     random_control = time_of_week_block_random(
         engine, signals, sides, policy, cfg, policy_number
