@@ -494,6 +494,7 @@ def simulate_window(
     costs: CostModel | None = None,
     include_funding: bool = True,
     force_initial_active: bool | None = None,
+    daily_rebalance: bool = True,
 ) -> dict[str, Any]:
     market = sources.market
     funding = sources.funding
@@ -593,7 +594,12 @@ def simulate_window(
 
         desired = initial_target if index == left else actions.get(index, active)
         changed = bool(desired) != active
-        rebalance = bool(active and dates.iloc[index].hour == 0 and dates.iloc[index].minute == 5)
+        rebalance = bool(
+            daily_rebalance
+            and active
+            and dates.iloc[index].hour == 0
+            and dates.iloc[index].minute == 5
+        )
         if changed or rebalance:
             if bool(desired):
                 target_spot, target_perp = target_delta_neutral_quantities(

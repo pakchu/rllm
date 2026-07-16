@@ -265,5 +265,21 @@ def test_target_quantities_are_exactly_delta_neutral_at_unequal_leg_prices() -> 
     assert spot_q * 100.0 + perp_q * 110.0 == pytest.approx(1.0)
 
 
+def test_short_horizon_relative_value_can_disable_daily_rebalance() -> None:
+    market = market_frame("2023-01-01 00:00:00", periods=4)
+    result = simulate_window(
+        source_bundle(market),
+        {},
+        start="2023-01-01 00:00:00",
+        end="2023-01-01 00:20:00",
+        cfg=Config(),
+        costs=CostModel(0.001, 0.001),
+        force_initial_active=True,
+        daily_rebalance=False,
+    )["stats"]
+    # Exactly one two-leg entry and one two-leg forced exit, no 00:05 rebalance.
+    assert result["gross_turnover_x_initial"] == pytest.approx(2.0)
+
+
 def test_search_worker_bound_is_fail_closed() -> None:
     assert Config(search_workers=1).search_workers == 1
