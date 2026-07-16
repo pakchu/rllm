@@ -10,6 +10,7 @@ source and writes a standalone frozen-policy manifest for a later one-shot
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import hashlib
 import itertools
 import json
@@ -70,6 +71,7 @@ class Config:
     incomplete_spot_cushion: float = 0.0025
     bootstrap_samples: int = 5_000
     bootstrap_seed: int = 271_828
+    search_workers: int = 4
 
 
 @dataclass(frozen=True, order=True)
@@ -890,6 +892,8 @@ def write_docs(result: dict[str, Any], path: str) -> None:
 
 
 def run(cfg: Config) -> dict[str, Any]:
+    if cfg.search_workers < 1 or cfg.search_workers > 16:
+        raise ValueError("search_workers must be in [1, 16]")
     sources = load_sources(cfg)
     base_costs = CostModel(
         cfg.spot_fee_rate + cfg.spot_slippage_rate,
@@ -904,21 +908,26 @@ def run(cfg: Config) -> dict[str, Any]:
             unique[key] = {"policy": policy, "actions": actions, "trace": trace, "aliases": []}
         unique[key]["aliases"].append(_policy_dict(policy))
 
-    searched: list[dict[str, Any]] = []
-    for key, candidate in unique.items():
+    def evaluate_candidate(item: tuple[str, dict[str, Any]]) -> dict[str, Any]:
+        key, candidate = item
         stats = _window_stats(sources, candidate["actions"], cfg)
         eligible, failures = _eligibility(stats)
-        searched.append(
-            {
-                "schedule_hash": key,
-                "policy": _policy_dict(candidate["policy"]),
-                "aliases": candidate["aliases"],
-                "actions": int(len(candidate["actions"])),
-                "stats": stats,
-                "eligible": eligible,
-                "eligibility_failures": failures,
-            }
-        )
+        return {
+            "schedule_hash": key,
+            "policy": _policy_dict(candidate["policy"]),
+            "aliases": candidate["aliases"],
+            "actions": int(len(candidate["actions"])),
+            "stats": stats,
+            "eligible": eligible,
+            "eligibility_failures": failures,
+        }
+
+    items = list(unique.items())
+    if cfg.search_workers == 1:
+        searched = [evaluate_candidate(item) for item in items]
+    else:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=cfg.search_workers) as executor:
+            searched = list(executor.map(evaluate_candidate, items))
     searched.sort(key=lambda row: (row["eligible"], *_rank_key(row)), reverse=True)
     eligible_rows = [row for row in searched if row["eligible"]]
     # Stress is a preregistered eligibility criterion, not a post-selection
@@ -1088,6 +1097,7 @@ def parse_args() -> Config:
     parser.add_argument("--cutoff", default=SELECTION_END)
     parser.add_argument("--gross-exposure", type=float, default=1.0)
     parser.add_argument("--incomplete-spot-cushion", type=float, default=0.0025)
+    parser.add_argument("--search-workers", type=int, default=4)
     args = vars(parser.parse_args())
     return Config(**args)
 

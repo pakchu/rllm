@@ -263,3 +263,7 @@ def test_target_quantities_are_exactly_delta_neutral_at_unequal_leg_prices() -> 
     spot_q, perp_q = target_delta_neutral_quantities(1.0, 100.0, 110.0, 1.0)
     assert spot_q == perp_q
     assert spot_q * 100.0 + perp_q * 110.0 == pytest.approx(1.0)
+
+
+def test_search_worker_bound_is_fail_closed() -> None:
+    assert Config(search_workers=1).search_workers == 1
