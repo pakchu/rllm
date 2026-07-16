@@ -131,7 +131,7 @@ def source_quality(frame: pd.DataFrame) -> dict[str, Any]:
         "monthly_missing_or_quarantined_fraction_max_0_03": max_month_fraction <= 0.03,
     }
     return {
-        "raw_unavailable_rows": int(frame["source_available"].eq(0).sum()),
+        "raw_unavailable_rows": int(frame["source_valid_current"].eq(0).sum()),
         "unavailable_or_following_24_rows": int(unavailable.sum()),
         "global_fraction": global_fraction,
         "maximum_monthly_fraction": max_month_fraction,
@@ -144,6 +144,8 @@ def source_quality(frame: pd.DataFrame) -> dict[str, Any]:
 def load_features(source: dict[str, Any]) -> pd.DataFrame:
     columns = [
         "date",
+        "source_valid_current",
+        "source_quarantined",
         "source_available",
         "spot_flow_fraction",
         "um_flow_fraction",
@@ -161,8 +163,6 @@ def load_features(source: dict[str, Any]) -> pd.DataFrame:
     )
     if frame.empty or frame["date"].max() >= pd.Timestamp("2023-01-01"):
         raise RuntimeError("CVTT support preflight refuses the sealed 2023 holdout")
-    unavailable = frame["source_available"].eq(0)
-    frame["source_quarantined"] = quarantine(unavailable).astype(np.int8)
     return frame
 
 

@@ -65,6 +65,7 @@ DEFAULT_MANIFEST = (
     "results/cross_venue_temporal_torsion_source_manifest_2026-07-16.json"
 )
 DEFAULT_START = "2020-01-01"
+QUARANTINE_FOLLOWING_BARS = 24
 FEATURE_COLUMNS = [
     "date",
     "feature_available_time_utc",
@@ -118,6 +119,18 @@ def parse_bool(values: pd.Series, column: str) -> pd.Series:
     return normalized.map(mapping).astype(bool)
 
 
+def blank_or_na(value: object) -> bool:
+    if pd.isna(value):
+        return True
+    return str(value).strip().lower() in {"", "na", "nan", "none", "null"}
+
+
+def quarantine(invalid: pd.Series) -> pd.Series:
+    return invalid.astype(bool).rolling(
+        QUARANTINE_FOLLOWING_BARS + 1, min_periods=1
+    ).max().astype(bool)
+
+
 def validate_features(raw: pd.DataFrame, grid: pd.DatetimeIndex) -> pd.DataFrame:
     attrs = dict(raw.attrs)
     frame = raw.sort_values("date").reset_index(drop=True)
@@ -129,40 +142,61 @@ def validate_features(raw: pd.DataFrame, grid: pd.DatetimeIndex) -> pd.DataFrame
     if not frame["feature_available_time_utc"].equals(expected_available):
         raise RuntimeError("CVTT feature availability is not bucket close time")
     if not frame["trade_earliest_time_utc"].equals(expected_available):
-        raise RuntimeError("CVTT earliest-trade timestamp differs from availability")
+        raise RuntimeError("upstream CVTT earliest-trade timestamp differs from availability")
 
     frame["source_complete"] = parse_bool(frame["source_complete"], "source_complete")
     frame["cross_venue_feature_valid"] = parse_bool(
         frame["cross_venue_feature_valid"], "cross_venue_feature_valid"
     )
-    valid = (
+    valid_current = (
         frame["source_complete"]
         & frame["cross_venue_feature_valid"]
         & frame["feature_invalid_reason"].eq("ok")
     )
+    raw_invalid = frame.loc[~valid_current, SIGNAL_COLUMNS]
+    if not raw_invalid.apply(lambda values: values.map(blank_or_na)).all().all():
+        raise ValueError("invalid CVTT source row retained a raw signal descriptor")
+    numeric = pd.DataFrame(np.nan, index=frame.index, columns=SIGNAL_COLUMNS)
     for column in SIGNAL_COLUMNS:
-        frame[column] = pd.to_numeric(frame[column], errors="coerce")
-    valid_values = frame.loc[valid, SIGNAL_COLUMNS]
+        numeric.loc[valid_current, column] = pd.to_numeric(
+            frame.loc[valid_current, column], errors="raise"
+        )
+    frame.loc[:, SIGNAL_COLUMNS] = numeric
+    valid_values = frame.loc[valid_current, SIGNAL_COLUMNS]
     if not np.isfinite(valid_values.to_numpy(float)).all():
         raise ValueError("valid CVTT source row contains a non-finite descriptor")
     centroid_columns = [column for column in SIGNAL_COLUMNS if "centroid" in column]
-    if not frame.loc[valid, centroid_columns].apply(
+    if not frame.loc[valid_current, centroid_columns].apply(
         lambda values: values.between(0.0, 1.0)
     ).all().all():
         raise ValueError("CVTT centroid lies outside [0,1]")
     flow_columns = ["spot_flow_fraction", "um_flow_fraction"]
-    if not frame.loc[valid, flow_columns].apply(
+    if not frame.loc[valid_current, flow_columns].apply(
         lambda values: values.between(-1.0, 1.0)
     ).all().all():
         raise ValueError("CVTT flow fraction lies outside [-1,1]")
-    if frame.loc[~valid, SIGNAL_COLUMNS].notna().any().any():
-        raise ValueError("invalid CVTT source row retained a signal descriptor")
 
-    frame["source_available"] = valid.astype(np.int8)
+    quarantined = quarantine(~valid_current)
+    frame.loc[quarantined, SIGNAL_COLUMNS] = np.nan
+    frame["source_valid_current"] = valid_current.astype(np.int8)
+    frame["source_quarantined"] = quarantined.astype(np.int8)
+    frame["source_available"] = (~quarantined).astype(np.int8)
+    selection_reason = pd.Series("ok", index=frame.index, dtype="object")
+    selection_reason.loc[~valid_current] = (
+        "upstream:" + frame.loc[~valid_current, "feature_invalid_reason"].astype(str)
+    )
+    selection_reason.loc[quarantined & valid_current] = (
+        "post_invalid_24bar_quarantine"
+    )
+    frame["selection_invalid_reason"] = selection_reason
     frame["source_complete"] = frame["source_complete"].astype(np.int8)
     frame["cross_venue_feature_valid"] = frame[
         "cross_venue_feature_valid"
     ].astype(np.int8)
+    frame["strategy_entry_earliest_time_utc"] = frame["date"] + pd.Timedelta(
+        "10min"
+    )
+    frame = frame.drop(columns=["trade_earliest_time_utc"])
     frame.attrs.update(attrs)
     return frame
 
@@ -302,6 +336,8 @@ def run(cfg: Config) -> dict[str, Any]:
         },
         "quality": {
             "expected_five_minute_rows": len(grid),
+            "source_valid_current_rows": int(features["source_valid_current"].sum()),
+            "source_quarantined_rows": int(features["source_quarantined"].sum()),
             "source_available_rows": int(availability.sum()),
             "source_unavailable_rows": int((~availability).sum()),
             "source_available_by_year": {

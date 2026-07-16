@@ -63,10 +63,12 @@ def test_source_quality_enforces_monthly_gate() -> None:
     frame = pd.DataFrame(
         {
             "date": dates,
+            "source_valid_current": np.ones(1000, dtype=np.int8),
             "source_available": np.ones(1000, dtype=np.int8),
             "source_quarantined": np.zeros(1000, dtype=np.int8),
         }
     )
+    frame.loc[:39, "source_valid_current"] = 0
     frame.loc[:39, "source_available"] = 0
     frame.loc[:39, "source_quarantined"] = 1
     metrics = support.source_quality(frame)
