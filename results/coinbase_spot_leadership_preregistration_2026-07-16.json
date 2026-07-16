@@ -1,0 +1,285 @@
+{
+  "protocol_version": "coinbase_spot_leadership_v2",
+  "outcomes_opened": false,
+  "claim_boundary": {
+    "claim": "completed Coinbase BTC-USD candle activity and price changes can proxy a venue-leadership state before the next Binance-perpetual bar",
+    "not_claimed": [
+      "true price discovery",
+      "taker-side order-flow imbalance",
+      "order-book pressure",
+      "a pure Coinbase premium"
+    ],
+    "reason": "the public historical candle source has no aggressor side or book state, and the cross-venue comparison mixes USD spot with USDT futures"
+  },
+  "novelty_check": {
+    "repo_coinbase_family_found": false,
+    "nearest_existing_family": "Binance spot-perpetual internal leadership",
+    "distinct_axis": "US-regulated USD spot venue versus Binance USDT perpetual"
+  },
+  "source_contract": {
+    "coinbase_endpoint": "https://api.exchange.coinbase.com/products/BTC-USD/candles",
+    "coinbase_official_reference": "https://docs.cdp.coinbase.com/api-reference/exchange-api/rest-api/products/get-product-candles",
+    "coinbase_rate_limit_reference": "https://docs.cdp.coinbase.com/exchange/rest-api/rate-limits",
+    "coinbase_live_reference": "https://docs.cdp.coinbase.com/exchange/websocket-feed/overview",
+    "coinbase_product": "BTC-USD",
+    "coinbase_granularity_seconds": 300,
+    "coinbase_max_candles_per_request": 300,
+    "coinbase_schema": [
+      "time",
+      "low",
+      "high",
+      "open",
+      "close",
+      "volume"
+    ],
+    "historical_interval_filter": "sort, deduplicate, and exact-filter returned bucket starts because the endpoint may return rows outside the requested interval",
+    "coinbase_no_tick_intervals": "missing; never forward-filled",
+    "binance_signal_leg": "BTCUSDT perpetual completed 5m OHLC and quote_asset_volume",
+    "execution_leg": "Binance BTCUSDT perpetual",
+    "historical_snapshot_is_point_in_time": false,
+    "live_parity": "synthesize 5m Coinbase candles from matches, monitor heartbeat and trade IDs, and recover detected gaps with the public REST trades API",
+    "promotion_requires_forward_websocket_parity": true
+  },
+  "currency_contract": {
+    "coinbase_quote": "USD",
+    "binance_quote": "USDT",
+    "raw_cross_venue_ratio_is_not_pure_coinbase_alpha": true,
+    "interpretation": "the ratio includes Coinbase pressure, Binance futures basis, and USD/USDT variation; no claim isolates those components",
+    "no_premium_control": "a return/activity-only control must remain viable without the raw cross-currency price ratio"
+  },
+  "availability_contract": {
+    "candle_timestamp": "bucket start",
+    "feature_time": "only after both venues complete the 5m bucket",
+    "execution": "next 5m Binance-perpetual open",
+    "missing_coinbase_bar": "quarantine the missing bucket and the next 12 signal buckets; do not impute",
+    "partial_or_stale": "fail closed"
+  },
+  "feature_contract": {
+    "coinbase_return": "log(Coinbase close_t / Coinbase close_t-1)",
+    "binance_return": "log(Binance close_t / Binance close_t-1)",
+    "relative_return": "coinbase_return - binance_return",
+    "coinbase_quote_notional": "Coinbase BTC volume * Coinbase close",
+    "binance_quote_notional": "Binance quote_asset_volume",
+    "activity_share": "coinbase_quote_notional / (coinbase_quote_notional + binance_quote_notional)",
+    "logit_activity_share": "log(clipped activity_share / (1 - clipped activity_share))",
+    "premium": "log(Coinbase close / Binance-perpetual close)",
+    "premium_residual": "premium minus strictly-prior 3d median(premium)",
+    "premium_residual_change": "premium_residual_t - premium_residual_t-1",
+    "robust_z": "(x - strictly-prior 30d median) / (1.4826 * strictly-prior MAD); minimum 14d observations, rolling references shifted one bar",
+    "tokens": {
+      "ZR": "robust_z(relative_return)",
+      "ZP": "robust_z(premium_residual_change)",
+      "ZV": "robust_z(logit_activity_share)",
+      "ZCB": "robust_z(coinbase_return)",
+      "ZBN": "robust_z(binance_return)"
+    },
+    "causal": "all bars completed and all distribution references strictly prior"
+  },
+  "policies": [
+    {
+      "policy_id": "P01",
+      "family": "relative_return_lead",
+      "side": -1,
+      "hold_bars": 1
+    },
+    {
+      "policy_id": "P02",
+      "family": "relative_return_lead",
+      "side": 1,
+      "hold_bars": 1
+    },
+    {
+      "policy_id": "P03",
+      "family": "relative_return_lead",
+      "side": -1,
+      "hold_bars": 3
+    },
+    {
+      "policy_id": "P04",
+      "family": "relative_return_lead",
+      "side": 1,
+      "hold_bars": 3
+    },
+    {
+      "policy_id": "P05",
+      "family": "premium_shock",
+      "side": -1,
+      "hold_bars": 1
+    },
+    {
+      "policy_id": "P06",
+      "family": "premium_shock",
+      "side": 1,
+      "hold_bars": 1
+    },
+    {
+      "policy_id": "P07",
+      "family": "premium_shock",
+      "side": -1,
+      "hold_bars": 3
+    },
+    {
+      "policy_id": "P08",
+      "family": "premium_shock",
+      "side": 1,
+      "hold_bars": 3
+    },
+    {
+      "policy_id": "P09",
+      "family": "activity_confirmed_relative",
+      "side": -1,
+      "hold_bars": 1
+    },
+    {
+      "policy_id": "P10",
+      "family": "activity_confirmed_relative",
+      "side": 1,
+      "hold_bars": 1
+    },
+    {
+      "policy_id": "P11",
+      "family": "activity_confirmed_relative",
+      "side": -1,
+      "hold_bars": 3
+    },
+    {
+      "policy_id": "P12",
+      "family": "activity_confirmed_relative",
+      "side": 1,
+      "hold_bars": 3
+    },
+    {
+      "policy_id": "P13",
+      "family": "activity_premium_confluence",
+      "side": -1,
+      "hold_bars": 3
+    },
+    {
+      "policy_id": "P14",
+      "family": "activity_premium_confluence",
+      "side": 1,
+      "hold_bars": 3
+    },
+    {
+      "policy_id": "P15",
+      "family": "return_premium_confluence",
+      "side": -1,
+      "hold_bars": 3
+    },
+    {
+      "policy_id": "P16",
+      "family": "return_premium_confluence",
+      "side": 1,
+      "hold_bars": 3
+    }
+  ],
+  "family_rules": {
+    "relative_return_lead": "side*ZR >= 2, side*ZCB >= 1, side*ZBN < 1.5",
+    "premium_shock": "side*ZP >= 2, side*ZCB >= 0.5",
+    "activity_confirmed_relative": "ZV >= 2, side*ZCB >= 1.5, side*ZR >= 1",
+    "activity_premium_confluence": "ZV >= 1.5, side*ZP >= 1.5",
+    "return_premium_confluence": "side*ZR >= 1.5, side*ZP >= 1.5"
+  },
+  "support_freeze_before_returns": {
+    "paired_family_nonoverlap_events_min_total": 120,
+    "paired_family_nonoverlap_events_min_each_year": 25,
+    "minimum_each_side_share": 0.2,
+    "maximum_single_month_share": 0.2,
+    "global_missing_or_quarantined_fraction_max": 0.01,
+    "monthly_missing_or_quarantined_fraction_max": 0.03,
+    "failure_action": "reject family without computing forward trade returns"
+  },
+  "selection_protocol": {
+    "fit": [
+      "2020-01-01",
+      "2022-01-01"
+    ],
+    "fit_windows": {
+      "fit_2020": [
+        "2020-01-01",
+        "2021-01-01"
+      ],
+      "fit_2021": [
+        "2021-01-01",
+        "2022-01-01"
+      ]
+    },
+    "selection": [
+      "2022-01-01",
+      "2023-01-01"
+    ],
+    "sealed_holdout": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "future_2024_plus_sealed": true,
+    "selection_inputs_physically_end_before": "2023-01-01",
+    "rank": [
+      "descending minimum(fit_2020, fit_2021, selection_2022) CAGR/strict_MDD",
+      "descending combined_2020_2022 CAGR/strict_MDD",
+      "ascending policy_id"
+    ],
+    "selection_gates": {
+      "every_calendar_year_absolute_return_positive": true,
+      "positive_half_years_min_of_six": 5,
+      "strict_mdd_pct_max_each_year": 10.0,
+      "combined_cagr_to_strict_mdd_min": 2.0,
+      "combined_trades_min": 120,
+      "each_calendar_year_trades_min": 25,
+      "eight_bp_notional_side_cost_stress_absolute_return_positive": true,
+      "familywise_weekly_cluster_signflip_p_max": 0.1
+    },
+    "holdout_2023_gates": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_min": 3.0,
+      "strict_mdd_pct_max": 10.0,
+      "trades_min": 20,
+      "h1_absolute_return_nonnegative": true,
+      "h2_absolute_return_nonnegative": true,
+      "eight_bp_notional_side_cost_stress_absolute_return_positive": true,
+      "one_bar_delay_absolute_return_positive": true,
+      "familywise_weekly_cluster_signflip_p_max": 0.1
+    },
+    "multiple_testing_hypotheses": 16,
+    "familywise_adjustment": "Bonferroni over all 16 preregistered policies"
+  },
+  "execution_contract": {
+    "entry_delay_bars": 1,
+    "nonoverlap": true,
+    "leverage": 0.5,
+    "fee_rate_notional_per_side": 0.0005,
+    "slippage_rate_notional_per_side": 0.0001,
+    "base_cost_notional_per_side": 0.0006,
+    "base_cost_account_per_side_at_half_leverage": 0.0003,
+    "stress_cost_notional_per_side": 0.0008,
+    "realized_funding": true,
+    "take_stop": "none; fixed time exit",
+    "strict_mdd": "global/pre-entry high-water plus intratrade favorable-before-adverse OHLC extremes, entry and hypothetical liquidation cost/slippage, and realized funding debit",
+    "cagr_clock": "full calendar including idle time"
+  },
+  "controls": {
+    "direction_flip": true,
+    "one_bar_delay": true,
+    "twelve_bar_delay": true,
+    "binance_leader_role_swap": true,
+    "relative_return_ablation": true,
+    "premium_ablation": true,
+    "activity_ablation": true,
+    "no_premium_currency_control": true,
+    "time_of_week_matched_random_samples": 5000,
+    "weekly_cluster_signflip_samples": 5000,
+    "random_seed": 20260716
+  },
+  "orthogonality_after_holdout": {
+    "exact_entry_jaccard_max": 0.02,
+    "candidate_entries_near_existing_6h_fraction_target": 0.1,
+    "candidate_entries_near_existing_6h_fraction_max": 0.25,
+    "position_jaccard_max": 0.15,
+    "absolute_daily_pnl_pearson_max": 0.3,
+    "minimum_nonzero_daily_pnl_days": 10,
+    "undefined_metric": "fail_closed",
+    "marginal_portfolio_improvement_required": true
+  },
+  "manifest_hash": "7fdb7d0c91d148d61aea06000326f164493a77517cf4b49a03f59db014882402",
+  "created_at": "2026-07-16T13:30:09.459703+00:00"
+}
