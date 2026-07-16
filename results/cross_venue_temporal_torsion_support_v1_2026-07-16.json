@@ -1,0 +1,126 @@
+{
+  "protocol_version": "cross_venue_temporal_torsion_support_v1",
+  "phase": "support_only_before_forward_returns",
+  "forward_trade_outcomes_opened": false,
+  "source_columns_read": [
+    "date",
+    "spot_flow_fraction",
+    "um_flow_fraction",
+    "spot_log_return_5m",
+    "um_log_return_5m",
+    "spot_flow_time_centroid",
+    "um_flow_time_centroid",
+    "spot_return_time_centroid",
+    "um_return_time_centroid",
+    "source_available",
+    "source_quarantined"
+  ],
+  "explicitly_not_read": [
+    "market open/high/low/close",
+    "future return",
+    "realized funding after signal",
+    "sealed 2023 features"
+  ],
+  "implementation_contract": {
+    "rolling_window_bars": 8640,
+    "required_strictly_prior_eligible_rows": 2016,
+    "source_quarantine_current_plus_following_bars": 24,
+    "thresholds_or_returns_computed": false,
+    "short_circuit": "route q95 cannot exist anywhere, so clocks and outcomes remain unopened"
+  },
+  "hashes": {
+    "preregistration_file_sha256": "5a3ce40d7ae57550ac8093e9487e80b231fea0733a2d2a265971d84e62d2fdc0",
+    "preregistration_manifest_hash": "c7544be37bab7c93c4fb045d2e5da9169ffc1272a2b8800adf87a175cbef5ef4",
+    "source_manifest_file_sha256": "330924cbf85ea054c2e58ab116b747f678c1069776e6bf37e1da28ecf639a63a",
+    "source_manifest_hash": "f0b769cf7dfe1d2ec0519f915c83915b39b4ca55f833175e7b9410b7bcfe8bc9"
+  },
+  "git_anchors": {
+    "preregistration": {
+      "path": "results/cross_venue_temporal_torsion_preregistration_2026-07-16.json",
+      "commit": "c00b0ecf2729332715192e4b15bfd3fde8b0fd22",
+      "sha256": "5a3ce40d7ae57550ac8093e9487e80b231fea0733a2d2a265971d84e62d2fdc0"
+    },
+    "source_freezer": {
+      "path": "training/export_cross_venue_temporal_torsion_prefix.py",
+      "commit": "b1f51b73eddb71d6736df5cb2f83ed4ebca27d21",
+      "sha256": "2c252d9806ac3eb01554c02ed859061c7da724a9e1ffd3f70297085565b19c5f"
+    },
+    "support_checker": {
+      "path": "training/check_cross_venue_temporal_torsion_support.py",
+      "commit": "e3b84db5f26061c22b5269902956443e812d7a7b",
+      "sha256": "d8feddaf634bc6d7fd7a911cbdd3c7b6507450000e95f3d475c3f8ce5a48b370"
+    }
+  },
+  "quality": {
+    "raw_unavailable_rows": 522,
+    "unavailable_or_following_24_rows": 1386,
+    "global_fraction": 0.004390967153284671,
+    "maximum_monthly_fraction": 0.033602150537634407,
+    "maximum_month": "2022-12",
+    "gates": {
+      "global_missing_or_quarantined_fraction_max_0_01": true,
+      "monthly_missing_or_quarantined_fraction_max_0_03": false
+    },
+    "pass": false
+  },
+  "route_support": {
+    "spot_preload_um_echo": {
+      "directionally_confirmed_crossed_clock_rows": 29176,
+      "maximum_strictly_prior_30d_eligible_rows": 1028,
+      "rows_where_q95_is_estimable": 0,
+      "required_prior_eligible_rows": 2016,
+      "pass": false
+    },
+    "um_preload_spot_echo": {
+      "directionally_confirmed_crossed_clock_rows": 29701,
+      "maximum_strictly_prior_30d_eligible_rows": 979,
+      "rows_where_q95_is_estimable": 0,
+      "required_prior_eligible_rows": 2016,
+      "pass": false
+    }
+  },
+  "policy_support": [
+    {
+      "policy_id": "V01",
+      "route": "spot_preload_um_echo",
+      "hold_bars": 6,
+      "nonoverlap_events": 0,
+      "pass": false,
+      "reason": "preregistered q95 threshold is nowhere estimable"
+    },
+    {
+      "policy_id": "V02",
+      "route": "spot_preload_um_echo",
+      "hold_bars": 18,
+      "nonoverlap_events": 0,
+      "pass": false,
+      "reason": "preregistered q95 threshold is nowhere estimable"
+    },
+    {
+      "policy_id": "V03",
+      "route": "um_preload_spot_echo",
+      "hold_bars": 6,
+      "nonoverlap_events": 0,
+      "pass": false,
+      "reason": "preregistered q95 threshold is nowhere estimable"
+    },
+    {
+      "policy_id": "V04",
+      "route": "um_preload_spot_echo",
+      "hold_bars": 18,
+      "nonoverlap_events": 0,
+      "pass": false,
+      "reason": "preregistered q95 threshold is nowhere estimable"
+    }
+  ],
+  "passing_policy_ids": [],
+  "selection_may_open_forward_returns": false,
+  "decision": "reject_v1_support_infeasible",
+  "repair_boundary": "a new version may repair event-count feasibility using support-only evidence, but v1 stays rejected and no return-dependent field may change",
+  "sealed_holdout": [
+    "2023-01-01",
+    "2024-01-01"
+  ],
+  "manifest_hash": "7c64bc87687ee44128408c5d3b5a25d2b7f9304ee5cebea999c8a111c676a9f3",
+  "created_at": "2026-07-16T14:49:10.026207+00:00"
+}
