@@ -776,9 +776,10 @@ def _validate_portfolio_mode(portfolio: dict[str, Any], *, live: bool) -> None:
         )
 
 
-def _portfolio_uses_feature(portfolio: dict[str, Any], feature: str) -> bool:
-    """Return whether any JSON-backed configured sleeve gates on ``feature``."""
+def _portfolio_gate_features(portfolio: dict[str, Any]) -> set[str]:
+    """Collect explicit entry/exit gate features from JSON-backed sleeves."""
 
+    features: set[str] = set()
     for sleeve in portfolio.get("base_sleeves", []):
         source = str(sleeve.get("source") or "")
         if not source.endswith(".json") or not Path(source).exists():
@@ -786,26 +787,40 @@ def _portfolio_uses_feature(portfolio: dict[str, Any], feature: str) -> bool:
         cfg = _load_json(source)
         if "base_candidate" in cfg and "gates" not in cfg and "signal" not in cfg:
             cfg = _load_json(str(cfg["base_candidate"]))
-        gates = cfg.get("signal", cfg).get("gates", [])
-        if any(str(gate.get("feature", "")) == feature for gate in gates if isinstance(gate, dict)):
-            return True
-        clauses = cfg.get("signal", cfg).get("gate_clauses", [])
-        if any(
-            str(gate.get("feature", "")) == feature
+        signal_cfg = cfg.get("signal", cfg)
+        gate_lists = [
+            signal_cfg.get("gates", []),
+            cfg.get("long_gates", []),
+            cfg.get("short_gates", []),
+        ]
+        for gates in gate_lists:
+            features.update(
+                str(gate.get("feature"))
+                for gate in gates
+                if isinstance(gate, dict) and gate.get("feature")
+            )
+        clauses = signal_cfg.get("gate_clauses", [])
+        features.update(
+            str(gate.get("feature"))
             for clause in clauses
             if isinstance(clause, list)
             for gate in clause
-            if isinstance(gate, dict)
-        ):
-            return True
+            if isinstance(gate, dict) and gate.get("feature")
+        )
         dynamic = cfg.get("dynamic_exit", {})
-        if isinstance(dynamic, dict) and any(
-            str(gate.get("feature", "")) == feature
-            for gate in dynamic.get("gates", [])
-            if isinstance(gate, dict)
-        ):
-            return True
-    return False
+        if isinstance(dynamic, dict):
+            features.update(
+                str(gate.get("feature"))
+                for gate in dynamic.get("gates", [])
+                if isinstance(gate, dict) and gate.get("feature")
+            )
+    return features
+
+
+def _portfolio_uses_feature(portfolio: dict[str, Any], feature: str) -> bool:
+    """Return whether any JSON-backed configured sleeve gates on ``feature``."""
+
+    return str(feature) in _portfolio_gate_features(portfolio)
 
 
 def _write_json(path: str | Path, payload: dict[str, Any]) -> None:
@@ -1343,6 +1358,7 @@ async def build_live_portfolio_frames(
     alt_pool_cache: LiveAltPoolFrameCache | None = None,
     live_oi_snapshot_cutoff: pd.Timestamp | None = None,
     include_activity_flow: bool = True,
+    include_alt_pool: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build enriched market and feature frame with live OI included."""
 
@@ -1365,7 +1381,14 @@ async def build_live_portfolio_frames(
             live_snapshot_cutoff=live_oi_snapshot_cutoff,
         )
     )
-    alt_pool = await alt_pool_cache.refresh(engine, asof=asof, start=start) if alt_pool_cache is not None else await _query_alt_pool(engine, asof=asof, start=start, symbols=ALT_POOL_SYMBOLS)
+    if include_alt_pool:
+        alt_pool = (
+            await alt_pool_cache.refresh(engine, asof=asof, start=start)
+            if alt_pool_cache is not None
+            else await _query_alt_pool(engine, asof=asof, start=start, symbols=ALT_POOL_SYMBOLS)
+        )
+    else:
+        alt_pool = None
 
     market = resample_market_bars(frames["btcusdt_1m"], cfg.decision_interval)
     if oi.empty:
@@ -3133,18 +3156,24 @@ def _freshness_requirements_for_decision(
     symbol: str,
     expected_bar: pd.Timestamp,
     required_1m: pd.Timestamp,
+    include_premium: bool = True,
+    include_upbit: bool = True,
+    include_alt_pool: bool = True,
 ) -> list[FreshnessRequirement]:
     """Return source rows that must be current before opening a new live trade."""
 
-    requirements = [
-        FreshnessRequirement("bars_binance", symbol, "1m", required_1m, "binance_perp"),
-        FreshnessRequirement("bars_binance_premium", symbol, "1m", required_1m, "binance_premium"),
-        FreshnessRequirement("bars_upbit", "KRW-BTC", "1m", required_1m, "upbit"),
-    ]
-    requirements.extend(
-        FreshnessRequirement("bars_binance", alt_symbol, "1m", required_1m, "binance_alt_pool")
-        for alt_symbol in ALT_POOL_SYMBOLS
-    )
+    requirements = [FreshnessRequirement("bars_binance", symbol, "1m", required_1m, "binance_perp")]
+    if include_premium:
+        requirements.append(
+            FreshnessRequirement("bars_binance_premium", symbol, "1m", required_1m, "binance_premium")
+        )
+    if include_upbit:
+        requirements.append(FreshnessRequirement("bars_upbit", "KRW-BTC", "1m", required_1m, "upbit"))
+    if include_alt_pool:
+        requirements.extend(
+            FreshnessRequirement("bars_binance", alt_symbol, "1m", required_1m, "binance_alt_pool")
+            for alt_symbol in ALT_POOL_SYMBOLS
+        )
     return requirements
 
 
@@ -3156,12 +3185,22 @@ def _wait_for_source_updates_notify(
     required_1m: pd.Timestamp,
     max_wait_sec: float,
     channel: str,
+    include_premium: bool = True,
+    include_upbit: bool = True,
+    include_alt_pool: bool = True,
 ) -> tuple[float, dict[str, pd.Timestamp | None], list[dict[str, Any]]]:
     """Block until all feature-source requirements for a decision bar are committed."""
 
     deadline = time.monotonic() + max(0.0, float(max_wait_sec))
     started = deadline - max(0.0, float(max_wait_sec))
-    requirements = _freshness_requirements_for_decision(symbol=symbol, expected_bar=expected_bar, required_1m=required_1m)
+    requirements = _freshness_requirements_for_decision(
+        symbol=symbol,
+        expected_bar=expected_bar,
+        required_1m=required_1m,
+        include_premium=include_premium,
+        include_upbit=include_upbit,
+        include_alt_pool=include_alt_pool,
+    )
     latest: dict[str, pd.Timestamp | None] = {}
     raw = engine.raw_connection()
     try:
@@ -3214,6 +3253,9 @@ async def _wait_for_expected_1m_tail(
     interval_minutes: int,
     max_wait_sec: float,
     notify_channel: str,
+    include_premium: bool = True,
+    include_upbit: bool = True,
+    include_alt_pool: bool = True,
 ) -> tuple[float, pd.Timestamp | None, pd.Timestamp, str, dict[str, pd.Timestamp | None], list[dict[str, Any]]]:
     """Wait for ingest's Postgres notification for the expected decision bar."""
 
@@ -3227,6 +3269,9 @@ async def _wait_for_expected_1m_tail(
         required_1m=required_1m,
         max_wait_sec=max_wait_sec,
         channel=notify_channel,
+        include_premium=include_premium,
+        include_upbit=include_upbit,
+        include_alt_pool=include_alt_pool,
     )
     binance_key = f"bars_binance:{symbol}:1m"
     return waited, latest_map.get(binance_key), expected_bar, "notify" if not missing else "notify_timeout", latest_map, missing
@@ -3235,7 +3280,13 @@ async def _wait_for_expected_1m_tail(
 async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     portfolio = _load_json(cfg.portfolio_config)
     _validate_portfolio_mode(portfolio, live=cfg.live)
-    include_activity_flow = _portfolio_uses_feature(portfolio, "activity_flow_htf")
+    gate_features = _portfolio_gate_features(portfolio)
+    include_activity_flow = "activity_flow_htf" in gate_features
+    include_premium_freshness = any(feature.startswith("premium_") for feature in gate_features)
+    include_upbit_freshness = any(
+        feature.startswith(("vg_upbit_", "kimchi_")) for feature in gate_features
+    )
+    include_alt_pool = any(feature.startswith("vg_alt_") for feature in gate_features)
     selector_overlay = _load_portfolio_selector_overlay(portfolio, cfg.portfolio_selector_overlay)
     rex_selector_cfg = RexLlmSelectorConfig(
         enabled=bool(cfg.rex_selector_adapter_dir),
@@ -3319,6 +3370,9 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 interval_minutes=exec_cfg.interval_minutes,
                 max_wait_sec=cfg.max_freshness_wait_sec,
                 notify_channel=cfg.freshness_notify_channel,
+                include_premium=include_premium_freshness,
+                include_upbit=include_upbit_freshness,
+                include_alt_pool=include_alt_pool,
             )
             decision_data_asof = _completed_decision_data_asof(
                 expected_bar,
@@ -3336,6 +3390,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 alt_pool_cache=alt_pool_cache,
                 live_oi_snapshot_cutoff=expected_bar + pd.Timedelta(minutes=exec_cfg.interval_minutes),
                 include_activity_flow=include_activity_flow,
+                include_alt_pool=include_alt_pool,
             )
             frame_build_sec = time.perf_counter() - frame_t0
             score_t0 = time.perf_counter()

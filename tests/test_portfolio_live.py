@@ -30,6 +30,7 @@ from execution.portfolio_live import (
     _load_sleeve_runtime_spec,
     _place_portfolio_maker_order_with_deadline,
     _portfolio_client_order_id,
+    _portfolio_gate_features,
     _portfolio_sleeve_key,
     _reconcile_exchange_flat_sleeves,
     _recover_exchange_positions_into_state,
@@ -430,6 +431,24 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             portfolio = json.load(handle)
         self.assertTrue(_portfolio_uses_feature(portfolio, "funding_rate"))
         self.assertTrue(_portfolio_uses_feature(portfolio, "premium_index_change"))
+
+    def test_live_anchor_waits_only_for_sources_used_by_its_alpha_gates(self):
+        with open("configs/live/portfolio_gross385_trainmdd40_2026-07-12.json") as handle:
+            portfolio = json.load(handle)
+        features = _portfolio_gate_features(portfolio)
+        requirements = _freshness_requirements_for_decision(
+            symbol="BTCUSDT",
+            expected_bar=pd.Timestamp("2026-07-10T12:00:00Z"),
+            required_1m=pd.Timestamp("2026-07-10T12:04:00Z"),
+            include_premium=any(feature.startswith("premium_") for feature in features),
+            include_upbit=any(feature.startswith(("vg_upbit_", "kimchi_")) for feature in features),
+            include_alt_pool=any(feature.startswith("vg_alt_") for feature in features),
+        )
+        keys = {requirement.key for requirement in requirements}
+        self.assertIn("bars_binance:BTCUSDT:1m", keys)
+        self.assertIn("bars_binance_premium:BTCUSDT:1m", keys)
+        self.assertIn("bars_upbit:KRW-BTC:1m", keys)
+        self.assertFalse(any(requirement.source == "binance_alt_pool" for requirement in requirements))
 
     def test_freshness_wait_excludes_fx_and_uses_no_oi_boundary_gate(self):
         requirements = _freshness_requirements_for_decision(
