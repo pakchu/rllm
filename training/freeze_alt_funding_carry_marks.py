@@ -27,7 +27,7 @@ END = pd.Timestamp("2024-01-01 00:00:00")
 MARK_START = START - pd.Timedelta(minutes=5)
 STEP_MS = 300_000
 LIMIT = 1_500
-MAX_PROXY_OVERLAP_ERROR_BP = 5.0
+MAX_PROXY_FUNDING_CASH_ERROR_BP_NOTIONAL = 0.1
 BASE_URL = "https://fapi.binance.com"
 ENDPOINT = "/fapi/v1/markPriceKlines"
 EXPECTED_PROTOCOL_HASH = "15a7d0adbace0255e1ea4359e4869154dfb34ad891a2125239340ff70c4e2a09"
@@ -142,9 +142,12 @@ def compose_event_marks(funding: pd.DataFrame, mark_klines: pd.DataFrame) -> tup
     frame["event_time"] = pd.to_datetime(pd.to_numeric(frame["funding_time"], errors="raise"), unit="ms")
     frame["mark_open_time"] = frame["event_time"].dt.floor("5min")
     frame["recorded_mark"] = pd.to_numeric(frame["mark_price"], errors="coerce")
+    frame["funding_rate"] = pd.to_numeric(frame["funding_rate"], errors="raise")
     frame = frame.loc[(frame["event_time"] >= START) & (frame["event_time"] < END)].copy()
     if frame.empty or frame["event_time"].duplicated().any():
         raise RuntimeError("invalid AFCH funding events for mark freeze")
+    if not np.isfinite(frame["funding_rate"].to_numpy(dtype=float)).all():
+        raise RuntimeError("invalid AFCH funding rates for mark freeze")
     current_open = mark_klines.set_index("open_time")["open"]
     prior_close = pd.Series(
         mark_klines["close"].to_numpy(dtype=float),
@@ -164,10 +167,14 @@ def compose_event_marks(funding: pd.DataFrame, mark_klines: pd.DataFrame) -> tup
         ).abs() * 10_000.0
         max_proxy_error_bp = float(proxy_error_bp.max())
         max_open_error_bp = float(open_error_bp.max())
-        if max_proxy_error_bp > MAX_PROXY_OVERLAP_ERROR_BP:
-            raise RuntimeError(f"causal funding mark proxy mismatch: {max_proxy_error_bp:.9f} bp")
+        funding_cash_error_bp = proxy_error_bp * frame.loc[recorded, "funding_rate"].abs()
+        max_funding_cash_error_bp = float(funding_cash_error_bp.max())
+        if max_funding_cash_error_bp > MAX_PROXY_FUNDING_CASH_ERROR_BP_NOTIONAL:
+            raise RuntimeError(
+                f"causal funding cash proxy uncertainty: {max_funding_cash_error_bp:.9f} bp"
+            )
     else:
-        max_proxy_error_bp = max_open_error_bp = 0.0
+        max_proxy_error_bp = max_open_error_bp = max_funding_cash_error_bp = 0.0
     frame["causal_mark_price"] = frame["recorded_mark"].fillna(frame["prior_completed_mark"])
     frame["mark_source"] = np.where(recorded, "funding_record", "prior_completed_mark_close")
     output = frame[["funding_time", "event_time", "causal_mark_price", "mark_source"]].reset_index(drop=True)
@@ -177,6 +184,7 @@ def compose_event_marks(funding: pd.DataFrame, mark_klines: pd.DataFrame) -> tup
         "backfilled_mark_events": int((~recorded).sum()),
         "maximum_recorded_vs_prior_close_error_bp": max_proxy_error_bp,
         "maximum_recorded_vs_current_open_error_bp": max_open_error_bp,
+        "maximum_proxy_funding_cash_error_bp_notional": max_funding_cash_error_bp,
     }
     return output, stats
 
@@ -185,7 +193,8 @@ def _markdown(result: dict[str, Any]) -> str:
     rows = "\n".join(
         f"| {row['symbol']} | {row['events']} | {row['recorded_mark_events']} | "
         f"{row['backfilled_mark_events']} | {row['missing_non_event_5m_mark_rows']} | "
-        f"{row['maximum_recorded_vs_prior_close_error_bp']:.6f} |"
+        f"{row['maximum_recorded_vs_prior_close_error_bp']:.6f} | "
+        f"{row['maximum_proxy_funding_cash_error_bp_notional']:.9f} |"
         for row in result["records"]
     )
     return f"""# AFCH v1 causal funding marks — 2026-07-17
@@ -195,12 +204,13 @@ def _markdown(result: dict[str, Any]) -> str:
 Missing 2023 funding-record marks use the close of the last fully completed
 Binance USD-M 5m mark-price interval before the funding event. This is a
 causal proxy, not an exact settlement mark. On rows where the exact recorded
-mark exists, the proxy must remain within `{MAX_PROXY_OVERLAP_ERROR_BP:.1f} bp`;
-exact/proxy counts and the worst overlap error are frozen below. Official endpoint:
+mark exists, mark error times absolute funding rate must imply no more than
+`{MAX_PROXY_FUNDING_CASH_ERROR_BP_NOTIONAL:.1f} bp/notional` funding-cash error;
+exact/proxy counts and worst overlap errors are frozen below. Official endpoint:
 <https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Mark-Price-Kline-Candlestick-Data>
 
-| Symbol | Events | Exact recorded marks | Causal proxy marks | Missing non-event 5m bars | Max proxy overlap error bp |
-|---|---:|---:|---:|---:|---:|
+| Symbol | Events | Exact recorded marks | Causal proxy marks | Missing non-event 5m bars | Max mark error bp | Max funding-cash error bp/notional |
+|---|---:|---:|---:|---:|---:|---:|
 {rows}
 
 Manifest hash: `{result['manifest_hash']}`
@@ -225,7 +235,7 @@ def run(
         funding_path = LORE_DIR / f"{symbol}_funding_2023_2024.csv.gz"
         if sha256_file(funding_path) != source_records[symbol]["output_funding_sha256"]:
             raise RuntimeError(f"{symbol} AFCH funding source changed before mark freeze")
-        funding = pd.read_csv(funding_path, usecols=["funding_time", "mark_price"])
+        funding = pd.read_csv(funding_path, usecols=["funding_time", "funding_rate", "mark_price"])
         klines = download_mark_klines(symbol, MARK_START, END, sleep_sec=sleep_sec)
         event_marks, stats = compose_event_marks(funding, klines)
         expected_grid = pd.date_range(MARK_START, END - pd.Timedelta(minutes=5), freq="5min")
@@ -252,7 +262,7 @@ def run(
         ),
         "interval": "5m",
         "missing_mark_policy": "last fully completed mark-price 5m close before funding event",
-        "maximum_proxy_overlap_error_bp": MAX_PROXY_OVERLAP_ERROR_BP,
+        "maximum_proxy_funding_cash_error_bp_notional": MAX_PROXY_FUNDING_CASH_ERROR_BP_NOTIONAL,
         "period": [str(START), str(END)],
         "outcomes_opened": False,
         "pre_download_attestation": attestation,

@@ -48,6 +48,7 @@ def test_compose_event_marks_backfills_missing_and_verifies_overlap() -> None:
     times = pd.to_datetime(["2023-01-01 00:00:00.008", "2023-01-01 08:00:00.001"])
     funding = pd.DataFrame({
         "funding_time": (times.astype("int64") // 1_000_000).astype("int64"),
+        "funding_rate": [0.001, 0.001],
         "mark_price": [None, 110.0],
     })
     opens = pd.to_datetime([
@@ -69,6 +70,7 @@ def test_compose_event_marks_rejects_recorded_mark_mismatch() -> None:
     event = pd.Timestamp("2023-01-01 00:00")
     funding = pd.DataFrame({
         "funding_time": [int(event.tz_localize("UTC").timestamp() * 1_000)],
+        "funding_rate": [0.02],
         "mark_price": [101.0],
     })
     klines = pd.DataFrame({
@@ -76,7 +78,7 @@ def test_compose_event_marks_rejects_recorded_mark_mismatch() -> None:
         "open": [100.0, 100.0],
         "close": [100.0, 100.0],
     })
-    with pytest.raises(RuntimeError, match="causal funding mark proxy mismatch"):
+    with pytest.raises(RuntimeError, match="causal funding cash proxy uncertainty"):
         compose_event_marks(funding, klines)
 
 
@@ -84,6 +86,7 @@ def test_compose_event_marks_rejects_gap_at_funding_event() -> None:
     event = pd.Timestamp("2023-01-01 08:00")
     funding = pd.DataFrame({
         "funding_time": [int(event.tz_localize("UTC").timestamp() * 1_000)],
+        "funding_rate": [0.001],
         "mark_price": [None],
     })
     klines = pd.DataFrame({
