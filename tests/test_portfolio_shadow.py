@@ -1,10 +1,12 @@
 import json
+import asyncio
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from execution.portfolio_shadow import build_shadow_report
+from execution.portfolio_shadow import PortfolioShadowConfig, build_shadow_report, score_shadow_once
 from execution.wave_execution import WaveExecutionConfig
 from preprocessing.market_features import build_market_feature_frame
 
@@ -88,4 +90,40 @@ def test_shadow_report_rejects_non_shadow_portfolio():
             features=features,
             execution_cfg=WaveExecutionConfig(),
             decision_asof=pd.Timestamp(market.iloc[-1]["date"], tz="UTC"),
+        )
+
+
+def test_rex_taker_is_inactive_before_frozen_active_from():
+    portfolio = json.loads(
+        open("configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json").read()
+    )
+    portfolio["base_sleeves"] = [
+        row for row in portfolio["base_sleeves"] if row["name"] == "rex_taker_low_range_position"
+    ]
+    market, features = _frames()
+    market["date"] = pd.date_range("2020-01-01", periods=len(market), freq="5min")
+    report = build_shadow_report(
+        portfolio=portfolio,
+        enriched=market,
+        features=features,
+        execution_cfg=WaveExecutionConfig(),
+        decision_asof=pd.Timestamp(market.iloc[-1]["date"], tz="UTC"),
+    )
+    score = report["scores"][0]
+    assert score["active"] is False
+    assert "active_from=2021-01-01T00:00:00:fail" in score["reasons"]
+
+
+def test_shadow_runner_rejects_lookback_shorter_than_feature_contract():
+    with pytest.raises(RuntimeError, match="shorter than the portfolio feature-history contract"):
+        asyncio.run(
+            score_shadow_once(
+                PortfolioShadowConfig(
+                    portfolio_config=Path(
+                        "configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json"
+                    ),
+                    output=None,
+                    lookback_minutes=45_000,
+                )
+            )
         )

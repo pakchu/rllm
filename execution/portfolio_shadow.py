@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -30,7 +31,7 @@ class PortfolioShadowConfig:
     execution_config: Path = Path("configs/live/rex_llm_binance_testnet_bear_pilot.json")
     env_path: Path = Path(".env")
     output: Path | None = Path(".omx/state/portfolio_added_alpha_shadow_score.json")
-    lookback_minutes: int = 45_000
+    lookback_minutes: int = 90_000
     asof: str | None = None
 
 
@@ -82,6 +83,12 @@ async def score_shadow_once(cfg: PortfolioShadowConfig) -> dict[str, Any]:
     _validate_portfolio_mode(portfolio, live=False)
     if not bool(portfolio.get("shadow_only")):
         raise RuntimeError("portfolio_shadow requires shadow_only=true")
+    minimum_history = int(portfolio.get("minimum_feature_history_minutes", 0))
+    if int(cfg.lookback_minutes) < minimum_history:
+        raise RuntimeError(
+            "shadow lookback is shorter than the portfolio feature-history contract: "
+            f"{cfg.lookback_minutes} < {minimum_history} minutes"
+        )
     execution_cfg = WaveExecutionConfig.from_json(cfg.execution_config)
     wall_clock = pd.Timestamp.utcnow() if cfg.asof is None else pd.Timestamp(cfg.asof)
     if wall_clock.tzinfo is None:
@@ -105,6 +112,14 @@ async def score_shadow_once(cfg: PortfolioShadowConfig) -> dict[str, Any]:
         live_oi_snapshot_cutoff=expected_bar + pd.Timedelta(minutes=execution_cfg.interval_minutes),
         include_activity_flow=False,
     )
+    required_rows = int(
+        math.ceil(minimum_history / max(1, int(execution_cfg.interval_minutes)))
+    )
+    if len(enriched) < required_rows:
+        raise RuntimeError(
+            "shadow market history is shorter than the portfolio feature-history contract: "
+            f"{len(enriched)} < {required_rows} completed bars"
+        )
     report = build_shadow_report(
         portfolio=portfolio,
         enriched=enriched,
@@ -119,6 +134,9 @@ async def score_shadow_once(cfg: PortfolioShadowConfig) -> dict[str, Any]:
         latest = latest.tz_convert("UTC")
     report["expected_completed_bar"] = str(expected_bar)
     report["completed_bar_fresh"] = bool(latest == expected_bar)
+    report["feature_history_rows"] = len(enriched)
+    report["required_feature_history_rows"] = required_rows
+    report["feature_history_ready"] = True
     if latest != expected_bar:
         for score in report["scores"]:
             score["active"] = False

@@ -90,7 +90,11 @@ class RexLivePolicyConfig:
     require_core_external: bool = True
     allow_missing_core_external_on_weekend: bool = True
     require_binance_aux: bool = False
-    feature_contract: Literal["market_features_v1", "rex_event_reasoning_20260712"] = "market_features_v1"
+    feature_contract: Literal[
+        "market_features_v1",
+        "rex_candidate_ranker_20260703",
+        "rex_event_reasoning_20260712",
+    ] = "market_features_v1"
 
 
 
@@ -174,6 +178,26 @@ def _rex_policy_features(
 
     if contract == "market_features_v1":
         return features
+    if contract == "rex_candidate_ranker_20260703":
+        # build_rex_candidate_ranker_records used the shared feature builder
+        # with these exact defaults.  The generic live portfolio frame uses a
+        # 288/96/96 contract, so returning it directly changes trend_96,
+        # range_pos, volume_zscore, and the resulting REX side/strength.
+        from preprocessing.market_features import build_market_feature_frame
+
+        out = build_market_feature_frame(
+            enriched,
+            window_size=144,
+            zscore_window=48,
+            volume_window=48,
+        )
+        # Availability flags are execution metadata, not predictor inputs.
+        # Preserve them from the live frame so downstream gates remain
+        # fail-closed when a source is absent.
+        for column in features.columns:
+            if str(column).endswith("_available"):
+                out[column] = features[column].to_numpy(copy=False)
+        return out
     if contract != "rex_event_reasoning_20260712":
         raise ValueError(f"unsupported REX feature contract: {contract}")
 

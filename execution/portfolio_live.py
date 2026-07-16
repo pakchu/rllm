@@ -37,6 +37,7 @@ from execution.rex_llm_live import (
 )
 from execution.portfolio_shadow_policies import (
     build_fresh_kimchi_feature_frame,
+    build_markov_feature_frame,
     observable_markov_transition_keys,
 )
 from execution.wave_execution import (
@@ -1408,10 +1409,19 @@ def _score_sleeves(
                     ]
                 )
             elif policy_type == "markov_transition_long":
+                contract = cfg.get("feature_contract", {})
+                policy_features = build_markov_feature_frame(
+                    enriched,
+                    features,
+                    window_size=int(contract.get("window_size", 144)),
+                    zscore_window=int(contract.get("zscore_window", 48)),
+                    volume_window=int(contract.get("volume_window", 48)),
+                )
+                policy_row = policy_features.iloc[-1]
                 if gate_clauses is not None:
-                    base_ok, base_reasons = _gate_clauses_pass(row, gate_clauses)
+                    base_ok, base_reasons = _gate_clauses_pass(policy_row, gate_clauses)
                 else:
-                    base_ok, base_reasons = _gate_pass(row, gates)
+                    base_ok, base_reasons = _gate_pass(policy_row, gates)
                 reasons.extend(base_reasons)
                 transition = int(
                     observable_markov_transition_keys(enriched, cfg["state_model"])[-1]
@@ -1470,7 +1480,20 @@ def _score_sleeves(
             else:
                 gate_ok, reasons = _gate_pass(row, gates)
             stride_ok = _interval_slot(ts, stride, exec_cfg.interval_minutes, stride_offset)
-            active = bool(gate_ok and stride_ok)
+            active_from = cfg.get("active_from")
+            if active_from:
+                comparison_ts = ts.tz_localize(None) if ts.tzinfo is not None else ts
+                active_from_ts = pd.Timestamp(str(active_from))
+                if active_from_ts.tzinfo is not None:
+                    active_from_ts = active_from_ts.tz_convert("UTC").tz_localize(None)
+                activation_ok = bool(comparison_ts >= active_from_ts)
+                reasons.append(
+                    f"active_from={active_from_ts.isoformat()}:"
+                    f"{'pass' if activation_ok else 'fail'}"
+                )
+            else:
+                activation_ok = True
+            active = bool(gate_ok and stride_ok and activation_ok)
             reasons.append(f"stride={stride}@{stride_offset}:{'pass' if stride_ok else 'fail'}")
             dynamic_exit = cfg.get("dynamic_exit") if isinstance(cfg.get("dynamic_exit"), dict) else None
 

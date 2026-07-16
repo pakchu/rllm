@@ -71,12 +71,18 @@ best-found shadow 후보는 다음과 같습니다.
 새 데이터에서 실행 parity와 MDD를 확인해야 합니다. 상세 규약과 상위 배분은
 [`docs/portfolio-added-alpha-update-2026-07-16.md`](docs/portfolio-added-alpha-update-2026-07-16.md)에 있습니다.
 
-현재 no-order DB one-shot에서는 완료봉 freshness와 4/5 sleeve signal scoring이
-통과했습니다. `frozen_annual_rank7`은 모델보다 정확한 40-feature/state/threshold/exit
-bundle과 replay parity가 없어 fail-close하며, Fresh Kimchi의 TP/SL도 아직 portfolio
-lifecycle에 연결되지 않았습니다. 따라서 기존 live 설정은 그대로 유지합니다. 상세
-readiness와 재현 명령은
-[`docs/portfolio-added-alpha-shadow-readiness-2026-07-16.md`](docs/portfolio-added-alpha-shadow-readiness-2026-07-16.md)에 있습니다.
+현재 no-order DB one-shot에서는 완료봉 freshness, 90,000분/18,000봉 history contract,
+4/5 sleeve signal scoring이 통과했습니다. scoreable 4개 sleeve는 동결 source와
+전체 포트폴리오 평가 시작 구간에서 candidate-side decision hash mismatch 0을
+확인했습니다. REX-taker는 `active_from=2021-01-01`을 실행 계약으로 고정해 이전
+후보를 차단했습니다. 이는 체결/exit/PnL 패리티를 뜻하지 않습니다.
+`frozen_annual_rank7`은 정확한
+40-feature/state/threshold/exit bundle이 없어 fail-close하고 Fresh Kimchi TP/SL도 아직
+portfolio lifecycle에 연결되지 않았습니다. 따라서 기존 live 설정은 그대로 유지합니다.
+상세 readiness는
+[`docs/portfolio-added-alpha-shadow-readiness-2026-07-16.md`](docs/portfolio-added-alpha-shadow-readiness-2026-07-16.md),
+신호 감사는
+[`docs/portfolio-added-alpha-shadow-signal-parity-2026-07-16.md`](docs/portfolio-added-alpha-shadow-signal-parity-2026-07-16.md)에 있습니다.
 
 ### 거래 빈도
 최근 eval 후보 기준:

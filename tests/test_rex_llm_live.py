@@ -19,7 +19,7 @@ from execution.rex_llm_live import (
     _rex_policy_features,
 )
 from execution.wave_execution import WaveExecutionConfig, decision_from_policy_record, evaluate_execution_gate
-from preprocessing.market_features import EXTENDED_MARKET_FEATURE_COLUMNS
+from preprocessing.market_features import EXTENDED_MARKET_FEATURE_COLUMNS, build_market_feature_frame
 
 
 def _base_features(n=120):
@@ -114,6 +114,64 @@ class TestRexLlmLive(unittest.TestCase):
                 48, min_periods=16
             ).std(ddof=0)
             self.assertAlmostEqual(exact[column].iloc[-1], float(expected.iloc[-1]), places=12)
+
+    def test_july3_candidate_ranker_contract_rebuilds_144_48_48_features(self):
+        enriched = _enriched(400)
+        enriched["volume"] = np.linspace(1.0, 400.0, 400) ** 1.2
+        enriched["quote_asset_volume"] = enriched["volume"] * enriched["close"]
+        enriched["number_of_trades"] = 100.0
+        enriched["taker_buy_base"] = enriched["volume"] * 0.45
+        enriched["taker_buy_quote"] = enriched["quote_asset_volume"] * 0.45
+        enriched["open_interest"] = np.linspace(1_000.0, 1_300.0, 400)
+        features = _base_features(400)
+        features["open_interest_available"] = 1.0
+
+        exact = _rex_policy_features(enriched, features, "rex_candidate_ranker_20260703")
+        expected = build_market_feature_frame(
+            enriched,
+            window_size=144,
+            zscore_window=48,
+            volume_window=48,
+        )
+
+        for column in ("trend_96", "range_pos", "volume_zscore", "htf_1d_return_4"):
+            np.testing.assert_allclose(exact[column], expected[column], rtol=0.0, atol=0.0)
+        self.assertEqual(exact["open_interest_available"].iloc[-1], 1.0)
+
+    def test_july3_candidate_ranker_contract_is_prefix_causal(self):
+        enriched = _enriched(1_200)
+        enriched["volume"] = np.linspace(1.0, 1_200.0, 1_200) ** 1.2
+        enriched["quote_asset_volume"] = enriched["volume"] * enriched["close"]
+        enriched["number_of_trades"] = 100.0
+        enriched["taker_buy_base"] = enriched["volume"] * 0.45
+        enriched["taker_buy_quote"] = enriched["quote_asset_volume"] * 0.45
+        enriched["open_interest"] = np.linspace(1_000.0, 1_500.0, 1_200)
+        prefix_rows = 1_000
+
+        full = _rex_policy_features(
+            enriched,
+            _base_features(1_200),
+            "rex_candidate_ranker_20260703",
+        )
+        prefix = _rex_policy_features(
+            enriched.iloc[:prefix_rows].reset_index(drop=True),
+            _base_features(prefix_rows),
+            "rex_candidate_ranker_20260703",
+        )
+        for column in (
+            "trend_96",
+            "range_pos",
+            "volume_zscore",
+            "htf_4h_return_4",
+            "rex_576_range_pos",
+        ):
+            np.testing.assert_allclose(
+                full[column].iloc[:prefix_rows],
+                prefix[column],
+                rtol=0.0,
+                atol=0.0,
+                equal_nan=True,
+            )
 
     def test_builds_trade_record_and_execution_decision_for_short_candidate(self):
         features = _base_features()

@@ -1,0 +1,508 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-07-16T03:44:13.267873+00:00",
+  "passed": true,
+  "source_contract_signal_parity_passed": true,
+  "full_portfolio_interval_signal_parity_passed": true,
+  "candidate_signal_parity_passed_count": 4,
+  "candidate_signal_parity_total": 4,
+  "market": {
+    "rows": 674785,
+    "start": "2019-12-31 15:00:00",
+    "end": "2026-05-31 15:00:00",
+    "portfolio_evaluation_start": "2020-09-01 00:00:00"
+  },
+  "scope": {
+    "proved": "historical/live feature, stride, candidate-side, and frozen gate parity in each declared source domain",
+    "not_proved": [
+      "fills, slippage, order lifecycle, position netting, and portfolio PnL parity",
+      "Fresh Kimchi TP/SL barrier exits",
+      "frozen_annual_rank7 scoring or exits",
+      "absence of research contamination or alpha generalization"
+    ],
+    "active_window_contract": "rex_taker_low_range_position active_from=2021-01-01 suppresses every 2020-09-01..2020-12-31 pre-source candidate",
+    "orders_enabled": false
+  },
+  "live_history_contract": {
+    "required_history_bars_5m": 17280,
+    "required_lookback_minutes": 86400,
+    "configured_minimum_feature_history_minutes": 90000,
+    "reason": "market_features_v1 htf_3d completed-bar guard requires 17,280 source rows",
+    "passed": true
+  },
+  "sleeves": {
+    "fresh_kimchi_fx": {
+      "passed": true,
+      "scope": "scheduled candidate side only; TP/SL and non-overlap lifecycle excluded",
+      "historical_diagnostics": {
+        "raw_long_rows": 1511,
+        "raw_short_rows": 5475,
+        "fresh_long_rows": 1027,
+        "fresh_short_rows": 5475,
+        "blocked_stale_long_rows": 484,
+        "blocked_stale_short_rows": 0,
+        "fresh_long_availability_violations": 0,
+        "fresh_short_availability_violations": 0
+      },
+      "feature_parity": {
+        "passed": true,
+        "columns": {
+          "bd_flow_accel": {
+            "passed": true,
+            "mismatch_count": 0,
+            "max_abs_diff": 0.0
+          },
+          "funding_available": {
+            "passed": true,
+            "mismatch_count": 0,
+            "max_abs_diff": 0.0
+          },
+          "funding_rate": {
+            "passed": true,
+            "mismatch_count": 0,
+            "max_abs_diff": 0.0
+          },
+          "htf_1d_return_1": {
+            "passed": true,
+            "mismatch_count": 0,
+            "max_abs_diff": 0.0
+          },
+          "kimchi_available": {
+            "passed": true,
+            "mismatch_count": 0,
+            "max_abs_diff": 0.0
+          },
+          "kl_local_impulse_144": {
+            "passed": true,
+            "mismatch_count": 0,
+            "max_abs_diff": 0.0
+          },
+          "usdkrw_available": {
+            "passed": true,
+            "mismatch_count": 0,
+            "max_abs_diff": 0.0
+          },
+          "usdkrw_momentum": {
+            "passed": true,
+            "mismatch_count": 0,
+            "max_abs_diff": 0.0
+          }
+        }
+      },
+      "candidate_mask_parity": {
+        "long": {
+          "passed": true,
+          "domain_rows": 674785,
+          "mismatch_count": 0,
+          "expected": {
+            "active_count": 1027,
+            "long_count": 1027,
+            "short_count": 0,
+            "sha256": "59328dd96fc25278fcc1dc1e8a8c0ceac919b1b79fd5301d3eff0da976bd7d3b"
+          },
+          "actual": {
+            "active_count": 1027,
+            "long_count": 1027,
+            "short_count": 0,
+            "sha256": "59328dd96fc25278fcc1dc1e8a8c0ceac919b1b79fd5301d3eff0da976bd7d3b"
+          },
+          "first_mismatches": []
+        },
+        "short": {
+          "passed": true,
+          "domain_rows": 674785,
+          "mismatch_count": 0,
+          "expected": {
+            "active_count": 5475,
+            "long_count": 0,
+            "short_count": 5475,
+            "sha256": "3b13eb6926cd2354f4b718f80acbd07760bae40d38787102d11a479513a2b7fa"
+          },
+          "actual": {
+            "active_count": 5475,
+            "long_count": 0,
+            "short_count": 5475,
+            "sha256": "3b13eb6926cd2354f4b718f80acbd07760bae40d38787102d11a479513a2b7fa"
+          },
+          "first_mismatches": []
+        }
+      },
+      "schedule_parity": {
+        "passed": true,
+        "domain_rows": 674352,
+        "mismatch_count": 0,
+        "expected": {
+          "active_count": 112392,
+          "long_count": 112392,
+          "short_count": 0,
+          "sha256": "b8682d274e4df105a1d5b0357477c95218513e988e5c5636fdc3b96b1066021f"
+        },
+        "actual": {
+          "active_count": 112392,
+          "long_count": 112392,
+          "short_count": 0,
+          "sha256": "b8682d274e4df105a1d5b0357477c95218513e988e5c5636fdc3b96b1066021f"
+        },
+        "first_mismatches": [],
+        "runtime_slots_outside_historical_eligibility": 72
+      },
+      "decision_parity": {
+        "passed": true,
+        "domain_rows": 674352,
+        "mismatch_count": 0,
+        "expected": {
+          "active_count": 1081,
+          "long_count": 163,
+          "short_count": 918,
+          "sha256": "2c8f177f541d8a080c60932a4345e852e1d05d441af3bed6226d1747eec9ff52"
+        },
+        "actual": {
+          "active_count": 1081,
+          "long_count": 163,
+          "short_count": 918,
+          "sha256": "2c8f177f541d8a080c60932a4345e852e1d05d441af3bed6226d1747eec9ff52"
+        },
+        "first_mismatches": []
+      }
+    },
+    "markov_transition_long": {
+      "passed": true,
+      "scope": "scheduled candidate side only; fixed-hold lifecycle and non-overlap excluded",
+      "historical_reference_self_check": {
+        "passed": true,
+        "domain_rows": 674785,
+        "mismatch_count": 0,
+        "expected": {
+          "active_count": 18464,
+          "long_count": 18464,
+          "short_count": 0,
+          "sha256": "0f75f2857f97a56894cf41891314c79fc943dceefaabbba629232a1e6e099779"
+        },
+        "actual": {
+          "active_count": 18464,
+          "long_count": 18464,
+          "short_count": 0,
+          "sha256": "0f75f2857f97a56894cf41891314c79fc943dceefaabbba629232a1e6e099779"
+        },
+        "first_mismatches": []
+      },
+      "feature_parity": {
+        "passed": true,
+        "columns": {
+          "funding_available": {
+            "passed": true,
+            "mismatch_count": 0,
+            "max_abs_diff": 0.0
+          },
+          "funding_rate": {
+            "passed": true,
+            "mismatch_count": 0,
+            "max_abs_diff": 0.0
+          },
+          "htf_1d_return_4": {
+            "passed": true,
+            "mismatch_count": 0,
+            "max_abs_diff": 0.0
+          },
+          "premium_available": {
+            "passed": true,
+            "mismatch_count": 0,
+            "max_abs_diff": 0.0
+          },
+          "premium_index_change": {
+            "passed": true,
+            "mismatch_count": 0,
+            "max_abs_diff": 0.0
+          },
+          "trend_96": {
+            "passed": true,
+            "mismatch_count": 0,
+            "max_abs_diff": 0.0
+          }
+        }
+      },
+      "base_gate_parity": {
+        "passed": true,
+        "domain_rows": 674785,
+        "mismatch_count": 0,
+        "expected": {
+          "active_count": 36242,
+          "long_count": 36242,
+          "short_count": 0,
+          "sha256": "bfbbb716b7485d12ca364e616a334a44fc01ffad6863018f4e1657c7691e6593"
+        },
+        "actual": {
+          "active_count": 36242,
+          "long_count": 36242,
+          "short_count": 0,
+          "sha256": "bfbbb716b7485d12ca364e616a334a44fc01ffad6863018f4e1657c7691e6593"
+        },
+        "first_mismatches": []
+      },
+      "transition_parity": {
+        "passed": true,
+        "domain_rows": 674785,
+        "mismatch_count": 0,
+        "expected_sha256": "67205c91024b17d8fcbba01ddfb6400120838838581fa423ca020d4f537c3f38",
+        "actual_sha256": "67205c91024b17d8fcbba01ddfb6400120838838581fa423ca020d4f537c3f38",
+        "first_mismatches": []
+      },
+      "schedule_parity": {
+        "passed": true,
+        "domain_rows": 674064,
+        "mismatch_count": 0,
+        "expected": {
+          "active_count": 56172,
+          "long_count": 56172,
+          "short_count": 0,
+          "sha256": "e42941960548f4697ece5ba053ee85941d63352da667d9f6da886a6b5853c286"
+        },
+        "actual": {
+          "active_count": 56172,
+          "long_count": 56172,
+          "short_count": 0,
+          "sha256": "e42941960548f4697ece5ba053ee85941d63352da667d9f6da886a6b5853c286"
+        },
+        "first_mismatches": [],
+        "runtime_slots_outside_historical_eligibility": 60
+      },
+      "decision_parity": {
+        "passed": true,
+        "domain_rows": 674064,
+        "mismatch_count": 0,
+        "expected": {
+          "active_count": 1534,
+          "long_count": 1534,
+          "short_count": 0,
+          "sha256": "224a0e7e3bd36319b65bb0698dd8d243508da38fa8d926713d5bdd7d219ddc40"
+        },
+        "actual": {
+          "active_count": 1534,
+          "long_count": 1534,
+          "short_count": 0,
+          "sha256": "224a0e7e3bd36319b65bb0698dd8d243508da38fa8d926713d5bdd7d219ddc40"
+        },
+        "first_mismatches": []
+      }
+    },
+    "rex_taker_low_range_position": {
+      "passed": true,
+      "scope": "scheduled REX candidate and frozen gate only; non-overlap/fixed-hold lifecycle excluded",
+      "feature_contract": "rex_candidate_ranker_20260703",
+      "source_rows": 1689,
+      "source_coverage": {
+        "portfolio_start": "2020-09-01 00:00:00",
+        "source_contract_start": "2021-01-01 00:00:00",
+        "runtime_active_from": "2021-01-01 00:00:00",
+        "source_first_signal": "2021-01-02 20:55:00",
+        "source_last_signal": "2026-05-20 00:55:00",
+        "pre_source_domain_rows": 35136,
+        "runtime_gated_signals_in_pre_source_gap": 0,
+        "note": "runtime active_from must suppress every pre-source candidate"
+      },
+      "frozen_gate_identity": true,
+      "strength_side_parity": {
+        "passed": true,
+        "rows": 1689,
+        "strength_mismatch_count": 0,
+        "side_mismatch_count": 0,
+        "max_abs_strength_diff": 0.0,
+        "first_strength_mismatches": [],
+        "first_side_mismatches": []
+      },
+      "base_candidate_parity": {
+        "passed": true,
+        "domain_rows": 604259,
+        "mismatch_count": 0,
+        "expected": {
+          "active_count": 1689,
+          "long_count": 974,
+          "short_count": 715,
+          "sha256": "4338e1f344844be58790c3daa8361ea76c74bc55cdfba0f2df9ecef42ef1d8a0"
+        },
+        "actual": {
+          "active_count": 1689,
+          "long_count": 974,
+          "short_count": 715,
+          "sha256": "4338e1f344844be58790c3daa8361ea76c74bc55cdfba0f2df9ecef42ef1d8a0"
+        },
+        "first_mismatches": []
+      },
+      "gate_parity": {
+        "passed_in_portfolio_scope": true,
+        "historical_pass_count": 615,
+        "runtime_pass_count": 615,
+        "in_scope_mismatch_count": 0,
+        "prehistory_fail_closed_mismatch_count": 0,
+        "prehistory_availability_exception_valid": true,
+        "prehistory_first_positions": []
+      },
+      "decision_parity": {
+        "passed": true,
+        "domain_rows": 604259,
+        "mismatch_count": 0,
+        "expected": {
+          "active_count": 615,
+          "long_count": 438,
+          "short_count": 177,
+          "sha256": "0c1df0e5ad89ee10caf9978ca23c46084932c5f33e1caaffcbbf0dfa839b9ff7"
+        },
+        "actual": {
+          "active_count": 615,
+          "long_count": 438,
+          "short_count": 177,
+          "sha256": "0c1df0e5ad89ee10caf9978ca23c46084932c5f33e1caaffcbbf0dfa839b9ff7"
+        },
+        "first_mismatches": []
+      }
+    },
+    "cand_rex_veto_7": {
+      "passed": true,
+      "scope": "scheduled REX candidate and frozen gate only; non-overlap/fixed-hold lifecycle excluded",
+      "feature_contract": "rex_event_reasoning_20260712",
+      "source_rows": 1444,
+      "source_coverage": {
+        "portfolio_start": "2020-09-01 00:00:00",
+        "source_contract_start": "2020-09-01 00:00:00",
+        "runtime_active_from": "2020-09-01 00:00:00",
+        "source_first_signal": "2020-01-31 14:55:00",
+        "source_last_signal": "2026-05-12 12:55:00",
+        "pre_source_domain_rows": 0,
+        "runtime_gated_signals_in_pre_source_gap": 0,
+        "note": "runtime active_from must suppress every pre-source candidate"
+      },
+      "frozen_gate_identity": true,
+      "strength_side_parity": {
+        "passed": true,
+        "rows": 1444,
+        "strength_mismatch_count": 0,
+        "side_mismatch_count": 0,
+        "max_abs_strength_diff": 0.0,
+        "first_strength_mismatches": [],
+        "first_side_mismatches": []
+      },
+      "base_candidate_parity": {
+        "passed": true,
+        "domain_rows": 604259,
+        "mismatch_count": 0,
+        "expected": {
+          "active_count": 1270,
+          "long_count": 667,
+          "short_count": 603,
+          "sha256": "3b0a81054539836b2338b57ea6fe50c22e325175c3a13e4d2180497c977a59bf"
+        },
+        "actual": {
+          "active_count": 1270,
+          "long_count": 667,
+          "short_count": 603,
+          "sha256": "3b0a81054539836b2338b57ea6fe50c22e325175c3a13e4d2180497c977a59bf"
+        },
+        "first_mismatches": []
+      },
+      "gate_parity": {
+        "passed_in_portfolio_scope": true,
+        "historical_pass_count": 1062,
+        "runtime_pass_count": 949,
+        "in_scope_mismatch_count": 0,
+        "prehistory_fail_closed_mismatch_count": 113,
+        "prehistory_availability_exception_valid": true,
+        "prehistory_first_positions": [
+          8927,
+          9743,
+          9983,
+          10079,
+          10175,
+          11999,
+          13343,
+          13367,
+          13583,
+          13607
+        ]
+      },
+      "decision_parity": {
+        "passed": true,
+        "domain_rows": 604259,
+        "mismatch_count": 0,
+        "expected": {
+          "active_count": 949,
+          "long_count": 558,
+          "short_count": 391,
+          "sha256": "841c7d0eeb8689ee4a164b10ea8b82d2e5218345d439829166bc3a6167c28f43"
+        },
+        "actual": {
+          "active_count": 949,
+          "long_count": 558,
+          "short_count": 391,
+          "sha256": "841c7d0eeb8689ee4a164b10ea8b82d2e5218345d439829166bc3a6167c28f43"
+        },
+        "first_mismatches": []
+      }
+    }
+  },
+  "source_artifacts": [
+    {
+      "name": "market_5m",
+      "logical_path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+      "rows": null,
+      "resolved_outside_checkout": true
+    },
+    {
+      "name": "funding",
+      "logical_path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7",
+      "rows": null,
+      "resolved_outside_checkout": true
+    },
+    {
+      "name": "premium",
+      "logical_path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7",
+      "rows": null,
+      "resolved_outside_checkout": true
+    },
+    {
+      "name": "open_interest",
+      "logical_path": "/tmp/btcusdt_open_interest_5m_2020_2026.csv",
+      "sha256": "e08f93033e56959e8e7a9c1e21f27c5f01efc8d06fa6b4fbbfe7354697122b31",
+      "rows": null,
+      "resolved_outside_checkout": true
+    },
+    {
+      "name": "rex_taker_train",
+      "logical_path": "data/rex_pullback_reclaim_q075_h144_ranker_train_2021_2023.jsonl",
+      "sha256": "07f6c4bb43ac92b341ce1a1b54ea6a429983611000148ad6966b81ea4a086df0",
+      "rows": 1230,
+      "resolved_outside_checkout": true
+    },
+    {
+      "name": "rex_taker_test",
+      "logical_path": "data/rex_pullback_reclaim_q075_h144_ranker_test_2024.jsonl",
+      "sha256": "b1f5abf59c901ac109823a50063665ef455e75e70e90135acda77755ab8e5371",
+      "rows": 252,
+      "resolved_outside_checkout": true
+    },
+    {
+      "name": "rex_taker_eval",
+      "logical_path": "data/rex_pullback_reclaim_q075_h144_ranker_eval_2025_2026h1.jsonl",
+      "sha256": "bbe13d845d8dffcbb3e6c9b0f348390bd9d089c2d7b7bd6bccbafb91e75d9ce7",
+      "rows": 207,
+      "resolved_outside_checkout": true
+    },
+    {
+      "name": "rex_veto_source",
+      "logical_path": "data/rex_event_reasoning_policy_sft_20260712.jsonl",
+      "sha256": "2f5f477ed7ffd6063bd25b1fdbcb6cbaa804685be43b4522b7105dfba1b75d48",
+      "rows": 1444,
+      "resolved_outside_checkout": false
+    }
+  ],
+  "artifact_hashes": {
+    "configs/shadow/portfolio_added_alpha_signal_parity_sources_2026-07-16.json": "27a5095b18acaf10c9f5aa68c2ddac1ab1ebe4f506828e1fcfec34c414eb3ba6",
+    "configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json": "608fa11f3ba593f93dc80b19fe37059dd6849df412304ab907488946de652b65",
+    "configs/shadow/fresh_kimchi_fx_2026-07-16.json": "918a1dad9d208cf225029a13119d91f630e256b12ec8919cac9ae30c745cec48",
+    "configs/shadow/markov_transition_long_2026-07-16.json": "ebfec66715428b2fffead13e17229fb4369816daeeeab2c02cf0115e7110b755",
+    "configs/shadow/rex_taker_low_range_position_2026-07-16.json": "d4c56a6f1659189876c1d3f2e519a3dbc2608c754720c5cd1f65a02adb5589e4",
+    "configs/live/rex_veto_7_candidate.json": "36df47c4737eb99f4ca5e2b257d9bd2fbf130df9d731b9ac02fcfe5192acd4db"
+  }
+}

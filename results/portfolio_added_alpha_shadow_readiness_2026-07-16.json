@@ -1,13 +1,16 @@
 {
   "artifact_hashes": {
-    "configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json": "fb8b7bae730615cf0241070ee6e26b77496633e9bc1743a2f73ca2e1469fbd7f",
+    "configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json": "608fa11f3ba593f93dc80b19fe37059dd6849df412304ab907488946de652b65",
     "configs/shadow/fresh_kimchi_fx_2026-07-16.json": "918a1dad9d208cf225029a13119d91f630e256b12ec8919cac9ae30c745cec48",
     "configs/shadow/frozen_annual_rank7_2026-07-16.json": "0b91c4e4ce473092ecd36571da9a151693e9c532c07ccc591606a043eb87ebfb",
-    "configs/shadow/markov_transition_long_2026-07-16.json": "9c4fad1d3e7234e8138cf3c5ee630754ecb9f5be23b142206be5337319d516ac",
-    "configs/shadow/rex_taker_low_range_position_2026-07-16.json": "8de85c83bb652fa8bd9ec4f3f43066b9d628242afd162152931a0751680f68d5",
-    "execution/portfolio_live.py": "0e097e3214330999c2b2c307f459e2e441eb99530ccaa7144e2e8e2a993f833c",
-    "execution/portfolio_shadow.py": "317551349f7265ecc33612cebe0648400ec748e6ad1d34b552b107888706e342",
-    "execution/portfolio_shadow_policies.py": "66f26964de95ac7d496d21395fd1e904698b5f439259ef3f178109f982538663"
+    "configs/shadow/markov_transition_long_2026-07-16.json": "ebfec66715428b2fffead13e17229fb4369816daeeeab2c02cf0115e7110b755",
+    "configs/shadow/portfolio_added_alpha_signal_parity_sources_2026-07-16.json": "27a5095b18acaf10c9f5aa68c2ddac1ab1ebe4f506828e1fcfec34c414eb3ba6",
+    "configs/shadow/rex_taker_low_range_position_2026-07-16.json": "d4c56a6f1659189876c1d3f2e519a3dbc2608c754720c5cd1f65a02adb5589e4",
+    "execution/portfolio_live.py": "67480114fba9ec3fb5e73b318d8acc60b45c97ff3a25a8449737737af594d25e",
+    "execution/portfolio_shadow.py": "cc4108c38adcb225267cc457ded4e4aa4d3773548aab2bb38a862109019dde35",
+    "execution/portfolio_shadow_policies.py": "71c3866d3d73358b36652349816e008cda45736472512248ab2fefb398388d27",
+    "execution/rex_llm_live.py": "2e0de376e967b237afb711dd44503ec45dbb9b6548f575219c1cf93cc2de9c48",
+    "training/audit_portfolio_shadow_signal_parity.py": "3c3c933cb7d13493993c65252987bb934f417e833c2ada96bb2a5e95231879e1"
   },
   "as_of": "2026-07-16",
   "candidate": "configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json",
@@ -17,14 +20,17 @@
   },
   "db_smoke": {
     "completed_bar_fresh": true,
-    "elapsed_seconds": 8.24,
-    "max_rss_kb": 449924,
+    "elapsed_seconds": 13.24,
+    "feature_history_ready": true,
+    "feature_history_rows": 18000,
+    "max_rss_kb": 708996,
     "orders_enabled": false,
     "path": "results/portfolio_added_alpha_shadow_db_smoke_2026-07-16.json",
+    "required_feature_history_rows": 18000,
     "runtime_blocked_sleeves": [
       "frozen_annual_rank7"
     ],
-    "sha256": "1a5acd11438e1cd78d8eb563f9ebaa1c7e4944d16afee601032b6383da118108",
+    "sha256": "0e222152b889de42a176f96846b63a947cfdb45a7571ea908bbeccb3c93c0c06",
     "signal_scoring_ready_count": 4
   },
   "disposition": "forward_shadow_candidate_not_live",
@@ -44,9 +50,11 @@
       "trees_per_seed": 300
     },
     "lookback_assessment": {
-      "conclusion": "core_window_likely_sufficient_but_full_state_and_weak_feature_warm_start_not_proven",
-      "largest_explicit_core_rolling_window_minutes": 43200,
-      "shadow_tail_minutes": 45000
+      "conclusion": "shadow_rex_htf_contract_satisfied_but_rank7_full_state_and_weak_feature_warm_start_not_proven",
+      "largest_completed_htf_feature_guard_minutes": 86400,
+      "largest_explicit_rex_extrema_window_minutes": 43200,
+      "shadow_tail_completed_5m_rows": 18000,
+      "shadow_tail_minutes": 90000
     },
     "model_size_probe": {
       "conclusion": "model_bytes_are_not_the_blocker_feature_and_execution_parity_are",
@@ -67,24 +75,41 @@
   "readiness": {
     "complete_signal_scoring": "blocked_4_of_5",
     "complete_trade_lifecycle_parity": "blocked",
+    "full_portfolio_interval_signal_parity": "pass_4_of_4_scoreable_sleeves",
     "live_promotion": "forbidden",
-    "no_order_scoring": "pass"
+    "no_order_scoring": "pass",
+    "source_contract_candidate_signal_parity": "pass_4_of_4_scoreable_sleeves"
   },
-  "schema_version": 1,
+  "schema_version": 2,
+  "signal_parity_audit": {
+    "cand_rex_veto_pre_eval_oi_fail_closed_rows": 113,
+    "elapsed_seconds": 27.66,
+    "external_artifact_root_was_explicit": true,
+    "full_portfolio_interval_signal_parity": "pass_4_of_4",
+    "input_manifest": "configs/shadow/portfolio_added_alpha_signal_parity_sources_2026-07-16.json",
+    "input_manifest_sha256": "27a5095b18acaf10c9f5aa68c2ddac1ab1ebe4f506828e1fcfec34c414eb3ba6",
+    "max_rss_kb": 6600028,
+    "orders_enabled": false,
+    "path": "results/portfolio_added_alpha_shadow_signal_parity_2026-07-16.json",
+    "sha256": "d265cc049d20958fd5a2886b745ed135241e79146ea127238b05984a0610081a",
+    "source_contract_candidate_signal_parity": "pass_4_of_4",
+    "strict_passed": true
+  },
   "sleeves": {
     "cand_rex_veto_7": {
       "blockers": [
-        "historical_live_trade_schedule_parity_not_proven"
+        "historical_live_trade_lifecycle_parity_not_proven"
       ],
-      "signal_scoring": "ready",
+      "pre_portfolio_history_note": "113 numeric-only OI gate rows are intentionally live fail-closed before 2020-09-01",
+      "signal_scoring": "ready_portfolio_scope_hash_matched",
       "trade_lifecycle": "fixed_hold_runtime_path_present_not_parity_certified"
     },
     "fresh_kimchi_fx": {
       "blockers": [
         "take_profit_and_stop_loss_barrier_exits_not_wired",
-        "historical_live_trade_schedule_parity_not_proven"
+        "historical_live_trade_lifecycle_parity_not_proven"
       ],
-      "signal_scoring": "ready",
+      "signal_scoring": "ready_source_contract_hash_matched",
       "trade_lifecycle": "blocked"
     },
     "frozen_annual_rank7": {
@@ -101,23 +126,24 @@
     },
     "markov_transition_long": {
       "blockers": [
-        "historical_live_trade_schedule_parity_not_proven"
+        "historical_live_trade_lifecycle_parity_not_proven"
       ],
-      "signal_scoring": "ready",
+      "signal_scoring": "ready_source_contract_signal_and_transition_hash_matched",
       "trade_lifecycle": "fixed_hold_runtime_path_present_not_parity_certified"
     },
     "rex_taker_low_range_position": {
       "blockers": [
-        "historical_live_trade_schedule_parity_not_proven"
+        "historical_live_trade_lifecycle_parity_not_proven"
       ],
-      "signal_scoring": "ready",
+      "signal_scoring": "ready_full_portfolio_interval_hash_matched_active_from_2021_01_01",
       "trade_lifecycle": "fixed_hold_runtime_path_present_not_parity_certified"
     }
   },
   "verification": {
-    "db_smoke_command": "env PYTHONPATH=<worktree> <wave-venv-python> -m execution.portfolio_shadow --env <env-path> --output <output>",
+    "db_smoke_command": "env PYTHONPATH=<worktree> <wave-venv-python> -m execution.portfolio_shadow --env <env-path> --lookback-minutes 90000 --output <output>",
     "disk_ceiling_gb": 300,
     "disk_used_gb": 295,
-    "targeted_tests": "40 passed in 5.11s"
+    "signal_parity_command": "PYTHONPATH=<worktree> <research-venv-python> -m training.audit_portfolio_shadow_signal_parity --artifact-root <artifact-root>",
+    "targeted_tests": "67 passed in 5.84s"
   }
 }

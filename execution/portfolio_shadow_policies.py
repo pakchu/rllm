@@ -12,6 +12,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from preprocessing.market_features import build_market_feature_frame
+
 
 def build_fresh_kimchi_feature_frame(
     market: pd.DataFrame,
@@ -62,6 +64,35 @@ def build_fresh_kimchi_feature_frame(
         out[f"kl_kimchi_btc_gap_{window}"] = rolling_z(kimchi_delta) - rolling_z(btc_return)
         out[f"kl_local_impulse_{window}"] = rolling_z(kimchi_delta) - rolling_z(fx_delta)
     out["kl_accel_48_144"] = out["kl_kimchi_delta_48"] - out["kl_kimchi_delta_144"] / 3.0
+    return out.replace([np.inf, -np.inf], np.nan)
+
+
+def build_markov_feature_frame(
+    market: pd.DataFrame,
+    base_features: pd.DataFrame,
+    *,
+    window_size: int = 144,
+    zscore_window: int = 48,
+    volume_window: int = 48,
+) -> pd.DataFrame:
+    """Rebuild the frozen Markov base-setup feature contract.
+
+    The research policy called ``build_market_feature_frame(...,
+    window_size=144)``.  In that builder ``trend_96`` intentionally uses
+    ``window_size - 1`` bars, so the generic live 288-window frame is not
+    interchangeable.  Source availability remains runtime metadata and is
+    copied from the live frame for fail-closed gates.
+    """
+
+    out = build_market_feature_frame(
+        market,
+        window_size=int(window_size),
+        zscore_window=int(zscore_window),
+        volume_window=int(volume_window),
+    )
+    for column in base_features.columns:
+        if str(column).endswith("_available"):
+            out[column] = base_features[column].to_numpy(copy=False)
     return out.replace([np.inf, -np.inf], np.nan)
 
 
