@@ -896,18 +896,33 @@ def run(cfg: Config) -> dict[str, Any]:
         )
     searched.sort(key=lambda row: (row["eligible"], *_rank_key(row)), reverse=True)
     eligible_rows = [row for row in searched if row["eligible"]]
-    selected = eligible_rows[0] if eligible_rows else searched[0]
+    # Stress is a preregistered eligibility criterion, not a post-selection
+    # report. Walk the already-fixed rank order and take the first candidate
+    # that remains profitable under doubled execution costs.
+    selection_pool = eligible_rows if eligible_rows else [searched[0]]
+    selected = selection_pool[0]
+    stress_stats: dict[str, dict[str, Any]] = {}
+    stress_positive = False
+    for candidate in selection_pool:
+        candidate_policy = Policy(**candidate["policy"])
+        candidate_actions, _ = gate_actions(sources.funding, candidate_policy)
+        candidate_stress = _window_stats(
+            sources,
+            candidate_actions,
+            cfg,
+            costs=CostModel(base_costs.spot_rate * 2.0, base_costs.perp_rate * 2.0),
+            windows=("fit_2020_2022", "select_2023"),
+        )
+        candidate_stress_positive = all(
+            row["absolute_return_pct"] > 0.0 for row in candidate_stress.values()
+        )
+        if candidate_stress_positive or not eligible_rows:
+            selected = candidate
+            stress_stats = candidate_stress
+            stress_positive = candidate_stress_positive
+            break
     selected_policy = Policy(**selected["policy"])
     selected_actions, selected_trace = gate_actions(sources.funding, selected_policy)
-
-    stress_stats = _window_stats(
-        sources,
-        selected_actions,
-        cfg,
-        costs=CostModel(base_costs.spot_rate * 2.0, base_costs.perp_rate * 2.0),
-        windows=("fit_2020_2022", "select_2023"),
-    )
-    stress_positive = all(row["absolute_return_pct"] > 0.0 for row in stress_stats.values())
     selected["double_cost_stats"] = stress_stats
     selected["double_cost_positive"] = stress_positive
 

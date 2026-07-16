@@ -177,3 +177,12 @@ def test_gate_uses_current_settled_event_then_executes_at_precomputed_next_open(
     assert actions == {3: True}
     assert trace[0]["funding_position"] == 2
     assert trace[0]["execution_index"] == 3
+
+
+def test_policy_grid_and_ranking_are_fixed_before_oos() -> None:
+    from training.search_delta_neutral_funding_carry_alpha import policy_grid
+
+    grid = policy_grid()
+    assert len(grid) == 96
+    assert {row.lookback_events for row in grid} == {3, 9, 21, 42}
+    assert {row.entry_threshold for row in grid} == {0.0, 1e-5, 2e-5, 5e-5}
