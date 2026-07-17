@@ -1,0 +1,194 @@
+{
+  "protocol_version": "cftc_institutional_transfer_absorption_evaluator_v1",
+  "policy_id": "CITA-1",
+  "as_of_date": "2026-07-17",
+  "support_commit": "a6fe858",
+  "preregistration_manifest_hash": "4c5e9911524125f960d3da06bd6c6caa7e83b124d77ab643e2614751d7573038",
+  "support_manifest_hash": "78a621bd88be679d1df9166d18c1fcd3abe957ccec01ed0b8ad1b0f0035410aa",
+  "evaluator_source": "training/evaluate_cftc_institutional_transfer_absorption.py",
+  "evaluator_source_sha256": "39cabad32e5374b2f918d640c78d00c30a204959366db28ce5bd519c5f6bcff3",
+  "strict_engine_sha256": "e309f5217f033d57d2eadfec936843e736ce287f5c47f957c0ac6f0c71879c23",
+  "evaluation_config": {
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.001,
+    "cluster_draws": 20000,
+    "cluster_seed": 20260717,
+    "mdd_denominator_floor": 1e-09
+  },
+  "execution_source_contract": {
+    "market_path": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "market_manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+    "market_data_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "funding_path": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+    "funding_manifest": "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json",
+    "funding_data_sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+  },
+  "static_inputs": {
+    "training/preregister_cftc_institutional_transfer_absorption.py": "8c119147155c17c9f59fd51387fb549b547ca7bfa97c0ef89b9a74e666ffe2ea",
+    "training/cftc_institutional_transfer_absorption_clock.py": "c5dcdd38451130b4e1efccf0251d65ff6c2b96a08a69495b1f7784998297dae1",
+    "docs/cftc-institutional-transfer-absorption-preregistration-2026-07-17.md": "b911bed21cc3502aa08854509d383617f6d3d0b2f1348b31b4deb89863652cd6",
+    "results/cftc_institutional_transfer_absorption_preregistration_2026-07-17.json": "3315cb85bc9235e686be1d848e3a319da94663472703ad34d52e4e7bd1b7a1aa",
+    "results/cftc_institutional_transfer_absorption_preregistered_clock_2026-07-17.csv.gz": "65f64544ff8d45ab20882b770907cc958d96c5bd8982f731e09941de2e1a28d2",
+    "training/build_cftc_institutional_transfer_absorption_support.py": "83c38289564199f4f1d5c041d5948336f163ee537f938c34031e0cc7a1bcdd78",
+    "results/cftc_institutional_transfer_absorption_support_2026-07-17.json": "21067592f5774bbcd59ee0bf20b8dcd57a3f68a5adff73d7e2f5b4b8dff57e94",
+    "results/cftc_institutional_transfer_absorption_clocks_2026-07-17.csv.gz": "8fb23176461d73c8be4e4069552e1920dfaec20a6e833bc37d6f108d8382da2d",
+    "training/evaluate_fiat_quote_participation_rotation.py": "e309f5217f033d57d2eadfec936843e736ce287f5c47f957c0ac6f0c71879c23",
+    "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
+    "data/cftc_institutional_transfer_absorption_2018_2023/cftc_institutional_transfer_absorption_2018_2023.csv.gz": "064eed3fa340b1701f4686d1176de2a10f39128abc5ebf846e8b6319b8144ee6",
+    "data/cftc_institutional_transfer_absorption_2018_2023/build_manifest.json": "e9d4ca15da671c086265557e5d302518fd4b9a9ad59fe9d0ff1181d772d60406",
+    "data/cftc_institutional_transfer_absorption_2018_2023/source_manifest.json": "a594b02d1191c32f905c13be3faaa74ec2f3f0e04723d3b11b76ee8b454d6897"
+  },
+  "control_schedules": {
+    "primary": {
+      "events": 181,
+      "schedule_hash": "013ffd088370e452a0168f682a723ff5c61d429a7af372acbf93fb18c663e5f5",
+      "first_entry": "2018-05-09T00:05:00+00:00",
+      "last_exit": "2024-01-10T00:05:00+00:00",
+      "entry_delay_exact": true,
+      "hold_exact": true,
+      "globally_nonoverlapping": true,
+      "stage1_distribution": {
+        "trades": 98,
+        "longs": 51,
+        "shorts": 47,
+        "max_single_month_count": 5,
+        "max_single_month_share": 0.05102040816326531
+      },
+      "sealed_2023_distribution": {
+        "trades": 23,
+        "longs": 16,
+        "shorts": 7,
+        "max_single_month_count": 3,
+        "max_single_month_share": 0.13043478260869565
+      }
+    },
+    "asset_manager_only": {
+      "events": 288,
+      "schedule_hash": "7629efb742a94c65fb5665f6af78130258907eda5a3ccab172154e072dafbc78",
+      "first_entry": "2018-05-02T00:05:00+00:00",
+      "last_exit": "2024-01-10T00:05:00+00:00",
+      "entry_delay_exact": true,
+      "hold_exact": true,
+      "globally_nonoverlapping": true,
+      "stage1_distribution": {
+        "trades": 154,
+        "longs": 78,
+        "shorts": 76,
+        "max_single_month_count": 5,
+        "max_single_month_share": 0.032467532467532464
+      },
+      "sealed_2023_distribution": {
+        "trades": 47,
+        "longs": 27,
+        "shorts": 20,
+        "max_single_month_count": 5,
+        "max_single_month_share": 0.10638297872340426
+      }
+    },
+    "leveraged_contrarian_only": {
+      "events": 292,
+      "schedule_hash": "06da4671159c5b0b3d134d7be6e8b10af8188aaa1ad25b224cfe1a380b7e91f0",
+      "first_entry": "2018-04-25T00:05:00+00:00",
+      "last_exit": "2024-01-10T00:05:00+00:00",
+      "entry_delay_exact": true,
+      "hold_exact": true,
+      "globally_nonoverlapping": true,
+      "stage1_distribution": {
+        "trades": 155,
+        "longs": 81,
+        "shorts": 74,
+        "max_single_month_count": 5,
+        "max_single_month_share": 0.03225806451612903
+      },
+      "sealed_2023_distribution": {
+        "trades": 47,
+        "longs": 29,
+        "shorts": 18,
+        "max_single_month_count": 5,
+        "max_single_month_share": 0.10638297872340426
+      }
+    },
+    "direction_flip": {
+      "events": 181,
+      "schedule_hash": "271504fb07d478ca72b17cc4d0557a0d75dfbaa17cd7cf7e0da10e1b634fb88f",
+      "first_entry": "2018-05-09T00:05:00+00:00",
+      "last_exit": "2024-01-10T00:05:00+00:00",
+      "entry_delay_exact": true,
+      "hold_exact": true,
+      "globally_nonoverlapping": true,
+      "stage1_distribution": {
+        "trades": 98,
+        "longs": 47,
+        "shorts": 51,
+        "max_single_month_count": 5,
+        "max_single_month_share": 0.05102040816326531
+      },
+      "sealed_2023_distribution": {
+        "trades": 23,
+        "longs": 7,
+        "shorts": 16,
+        "max_single_month_count": 3,
+        "max_single_month_share": 0.13043478260869565
+      }
+    },
+    "one_release_delay": {
+      "events": 181,
+      "schedule_hash": "298973f8f745f0519c15745af95e6ee746db0d4436adca846d8fb221d02f935f",
+      "first_entry": "2018-05-16T00:05:00+00:00",
+      "last_exit": "2024-01-10T00:05:00+00:00",
+      "entry_delay_exact": true,
+      "hold_exact": true,
+      "globally_nonoverlapping": true,
+      "stage1_distribution": {
+        "trades": 99,
+        "longs": 52,
+        "shorts": 47,
+        "max_single_month_count": 5,
+        "max_single_month_share": 0.050505050505050504
+      },
+      "sealed_2023_distribution": {
+        "trades": 23,
+        "longs": 16,
+        "shorts": 7,
+        "max_single_month_count": 4,
+        "max_single_month_share": 0.17391304347826086
+      }
+    },
+    "deterministic_random_side": {
+      "events": 181,
+      "schedule_hash": "ea35877e20975dbb87ec5a7076f384dc4b1dc8bb684ca7eb56fed6e3743b68e8",
+      "first_entry": "2018-05-09T00:05:00+00:00",
+      "last_exit": "2024-01-10T00:05:00+00:00",
+      "entry_delay_exact": true,
+      "hold_exact": true,
+      "globally_nonoverlapping": true,
+      "stage1_distribution": {
+        "trades": 98,
+        "longs": 51,
+        "shorts": 47,
+        "max_single_month_count": 5,
+        "max_single_month_share": 0.05102040816326531
+      },
+      "sealed_2023_distribution": {
+        "trades": 23,
+        "longs": 6,
+        "shorts": 17,
+        "max_single_month_count": 3,
+        "max_single_month_share": 0.13043478260869565
+      }
+    }
+  },
+  "opened_windows": [],
+  "sealed_windows": [
+    "stage1_2020_2022",
+    "stage2_2023",
+    "2024_plus"
+  ],
+  "execution_ohlc_rows_parsed_during_freeze": 0,
+  "funding_rows_parsed_during_freeze": 0,
+  "simulation_run_during_freeze": false,
+  "mutable_parameters": [],
+  "manifest_hash": "b39eaf4a90be809642bb6b094fc97d82a43a40b3aa76a84b228c4ff9390594c6"
+}
