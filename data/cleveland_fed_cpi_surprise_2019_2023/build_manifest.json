@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "source_snapshot_date": "2026-07-18",
+  "builder": "training/build_cleveland_fed_cpi_surprise_panel.py",
+  "config": {
+    "output_dir": "data/cleveland_fed_cpi_surprise_2019_2023",
+    "retries": 5,
+    "timeout_seconds": 60,
+    "from_snapshot": true,
+    "import_json": null
+  },
+  "official_sources": {
+    "indicator_page": "https://www.clevelandfed.org/indicators-and-data/inflation-nowcasting",
+    "monthly_chart_json": "https://www.clevelandfed.org/-/media/files/webcharts/inflationnowcasting/nowcast_month.json?sc_lang=en",
+    "bls_release_panel": "data/bls_cpi_release_breadth_2019_2023/bls_cpi_release_breadth_2019_2023.csv.gz"
+  },
+  "source_contract": {
+    "provider": "Federal Reserve Bank of Cleveland",
+    "chart": "Inflation Nowcasting monthly month-over-month",
+    "first_available_actual_release": true,
+    "latest_nowcast_strictly_precedes_release": true,
+    "network_read": false,
+    "response_sha256": "b2e1f0fb174be417eb417488c93bf9dbcb619c4ebcaef06ed35b18b704968cd9",
+    "raw_snapshot": "data/cleveland_fed_cpi_surprise_2019_2023/source/nowcast_month_2026-07-18.json.gz",
+    "raw_snapshot_sha256": "c53ccc1a64aca61e3bcfe309d91a564f4c257f2e81a91140d64bba9dc3247709",
+    "bls_panel_sha256": "d199f409952d8cb83218864d0a96573bed82b59e649067b22fc97580a06d1059",
+    "bls_manifest_sha256": "fb546580e64a01a4247318c8d4dad87028686d190f51559a9162d3efa3235171",
+    "market_or_funding_rows_read": 0
+  },
+  "panel": {
+    "path": "data/cleveland_fed_cpi_surprise_2019_2023/cleveland_fed_cpi_surprise_2019_2023.csv.gz",
+    "sha256": "e8755bfd15ec135b2a85cedada8880bf5d4518ed07f4eef43b4b3820211d508e",
+    "rows": 60,
+    "first_release": "2019-01-11 13:30:00+00:00",
+    "last_release": "2023-12-12 13:30:00+00:00",
+    "columns": [
+      "reference_month",
+      "release_time_utc",
+      "latest_nowcast_date",
+      "headline_nowcast_mom_pct",
+      "core_nowcast_mom_pct",
+      "headline_actual_mom_pct",
+      "core_actual_mom_pct",
+      "headline_surprise_pct",
+      "core_surprise_pct",
+      "composite_surprise_pct",
+      "surprise_sign_concordant"
+    ]
+  },
+  "manifest_hash": "fa2efe8d08f0368e44a0583b6b39caf818defdec60db0b352c4307f3f4ebfba2"
+}
