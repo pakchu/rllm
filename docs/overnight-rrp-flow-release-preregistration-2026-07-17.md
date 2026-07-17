@@ -119,8 +119,11 @@ Required gates include:
 ### Stage2 — sealed 2023
 
 It may open only after an exact, hash-bound unchanged Stage1 replay passes all
-gates. Only ORFR-1 can run; there is no fallback or repair. 2024 and later
-remain sealed. Any Stage1 failure retires ORFR-1 unchanged.
+gates. It independently requires at least 60 trades, 20 trades in each half,
+15 trades per side, positive return in each half, CAGR/strict-MDD at least 3,
+strict MDD at most 15%, `p <= 0.10`, stress-cost profitability, and the same
+mechanism-control margin. Only ORFR-1 can run; there is no fallback or repair.
+2024 and later remain sealed. Any Stage1 failure retires ORFR-1 unchanged.
 
 ## Orthogonality gate after standalone pass
 
@@ -136,6 +139,6 @@ after an outcome is viewed.
 
 - source commit: `f90cc3a`;
 - manifest hash:
-  `b162fc72bfc020220863cce9cc7cb1d747563acd87b8d832c0999b182f11f0a7`;
+  `76db178758a33057ef396c9c268246e6cbf6c9ce8ab9ba2739eb422cf6458d4a`;
 - preregistration JSON SHA-256:
-  `56f89228a05364ee9ebd8211cbb75478590bef0d8e2710311047c25d4267d2a8`.
+  `5ff8ffbe448a76dfdf6dde6aefbd83194f90429e55c75f1c6fc4e9749d3f09dd`.

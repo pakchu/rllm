@@ -53,9 +53,9 @@ primary entries inside the evaluator, so their entry Jaccard is 1 by design.
 - Support JSON:
   `results/overnight_rrp_flow_release_support_2026-07-17.json`
 - Support manifest hash:
-  `d5ed494c2955a7d49bf67535c160e5837e3d43609b608c797001d805c1d211c0`
+  `ce84c78e94ce213a3c3635511c64579a87498970a13319cf32bf0f50a42f3d0a`
 - Support JSON SHA-256:
-  `308969a3331d4f47b74d433925be4a180932c5004fe829c5994f9b3f394e7830`
+  `7ac6b888bc993015951f09ee1f0ef3c19b47faa8d92e99864a87b139ec57dd6a`
 
 The next work unit may freeze the evaluator, but still may not open an outcome.
 Only the subsequent Stage1 command may physically parse `[2021, 2023)`.

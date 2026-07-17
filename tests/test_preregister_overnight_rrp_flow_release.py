@@ -36,3 +36,10 @@ def test_stage2_is_conditional_and_orthogonality_is_deferred() -> None:
     assert manifest["orthogonality_after_standalone_pass"][
         "not_allowed_before_pass"
     ] is True
+    assert manifest["selection_protocol"]["stage2_gates"]["minimum_trades"] == 60
+    assert (
+        manifest["selection_protocol"]["stage2_gates"][
+            "each_subperiod_minimum_trades"
+        ]
+        == 20
+    )
