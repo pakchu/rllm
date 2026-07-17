@@ -118,8 +118,8 @@ class ExecutionPolicy:
     base_cost_notional_per_side: float = 0.0006
     stress_cost_notional_per_side: float = 0.0010
     strict_mdd_denominator_floor: float = 1e-9
-    weekly_cluster_draws: int = 100_000
-    weekly_cluster_seed: int = 41_170_617
+    weekly_cluster_draws: int = 20_000
+    weekly_cluster_seed: int = 20_260_717
 
 
 def _sha256(path: str | Path) -> str:
