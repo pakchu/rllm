@@ -1,0 +1,465 @@
+{
+  "as_of_date": "2026-07-17",
+  "candidate_class": "source-only-screened four-candidate family",
+  "execution_contract": {
+    "cagr_clock": "full wall-clock split including warm-up and idle cash",
+    "entry": "one complete five-minute bar later, at signal+5 minutes",
+    "exit": "scheduled open after 1,440 five-minute bars / five calendar days",
+    "funding": "exact BTCUSDT funding settlements on [entry, exit)",
+    "nonoverlap": "reserve globally per candidate and clock; ignore rather than queue an event whose entry precedes the active scheduled exit",
+    "signal": "H.4.1 available_at_utc, already 5 minutes after official release",
+    "strict_mdd": "global/pre-entry high-water; entry cost; favorable-before-adverse held OHLC; exact funding; hypothetical liquidation; exit cost"
+  },
+  "execution_policy": {
+    "base_cost_notional_per_side": 0.0006,
+    "execution_delay_bars": 1,
+    "hold_bars": 1440,
+    "leverage": 0.5,
+    "stress_cost_notional_per_side": 0.001,
+    "strict_mdd_denominator_floor": 1e-09,
+    "weekly_cluster_draws": 100000,
+    "weekly_cluster_seed": 41170617
+  },
+  "falsification_controls": {
+    "component_concordance_only": "2-of-3 component tails in the net direction without requiring net tail",
+    "direction_flip": "same primary entries with every action reversed",
+    "net_only": "same net tail without the 2-of-3 breadth requirement",
+    "one_release_delay": "same feature and side executed at the next H.4.1 release",
+    "random_side": "hash-fixed random side on the same primary entries"
+  },
+  "family_id": "FLCC-1",
+  "feature_contract": {
+    "action": "positive net-liquidity tail -> LONG; negative tail -> SHORT",
+    "breadth": "at least two of asset, TGA-release, and RRP-release centered ranks must have the same sign as the net-liquidity centered rank",
+    "component_contributions": {
+      "asset": "A[t]-A[t-h]",
+      "net": "N[t]-N[t-h]",
+      "rrp_release": "-(RRP[t]-RRP[t-h])",
+      "tga_release": "-(TGA[t]-TGA[t-h])"
+    },
+    "family": [
+      {
+        "candidate_id": "FLCC-H4-Q60",
+        "horizon_releases": 4,
+        "lower_rank_numerator": 83,
+        "upper_rank_numerator": 125
+      },
+      {
+        "candidate_id": "FLCC-H4-Q65",
+        "horizon_releases": 4,
+        "lower_rank_numerator": 72,
+        "upper_rank_numerator": 136
+      },
+      {
+        "candidate_id": "FLCC-H8-Q60",
+        "horizon_releases": 8,
+        "lower_rank_numerator": 83,
+        "upper_rank_numerator": 125
+      },
+      {
+        "candidate_id": "FLCC-H8-Q65",
+        "horizon_releases": 8,
+        "lower_rank_numerator": 72,
+        "upper_rank_numerator": 136
+      }
+    ],
+    "net_liquidity": "N=A-TGA-RRP, all from the same archived H.4.1 release",
+    "strict_prior_midrank": "For each component current impulse x[t], R=2*count(prior<x[t]) + count(prior==x[t]) over exactly 104 preceding impulse observations; current and future observations are excluded; denominator is 208"
+  },
+  "forbidden_repairs_after_outcomes": [
+    "reverse the action mapping",
+    "change horizon rank tails breadth or rank lookback",
+    "add BTC trend volatility carry OI kimchi FX or another macro gate",
+    "change entry delay hold leverage costs nonoverlap or split boundaries",
+    "select a Stage1 runner-up after seeing 2023"
+  ],
+  "manifest_hash": "24e705d7854502ec3fb9b7a8722f8673ae8a8d13665de4d0d0e14d564e087ebb",
+  "novelty_boundary": {
+    "allowed_source_columns": [
+      "release_date",
+      "available_at_utc",
+      "total_assets_usd_millions",
+      "treasury_general_account_usd_millions",
+      "reverse_repurchase_agreements_usd_millions",
+      "net_liquidity_usd_millions"
+    ],
+    "distinct_axis": "archived Federal Reserve weekly balance-sheet liquidity, independent of exchange OI, perpetual carry, crypto price structure, and KRW FX",
+    "excluded_inputs": [
+      "OHLC_or_price_return",
+      "crypto_volume_or_taker_flow",
+      "open_interest_or_long_short_ratio",
+      "perpetual_funding_premium_or_basis",
+      "kimchi_BTCKRW_USDKRW_or_DXY",
+      "REX_or_rolling_price_extrema",
+      "existing_alpha_state_or_portfolio_PnL"
+    ]
+  },
+  "outcomes_opened": false,
+  "protocol_version": "federal_liquidity_component_concordance_v1",
+  "research_history_boundary": {
+    "density_screen_disclosure": "Without opening a crypto market field, horizons 4, 8, and 13; midrank tails 0.55 through 0.85 in 0.05 increments; and component breadth 2 or 3 were inspected for support. Horizons 4/8, tails 0.60/0.65, and breadth 2 were frozen because every family member retained at least 90 train entries, 20 2023 entries, both 2023 directions, and both 2023 halves. No direction PnL, hold return, CAGR, drawdown, or market value was compared.",
+    "exact_FLCC_post_entry_outcomes_opened": false,
+    "interpretation": "2023 event density is in-sample support screening; 2023 BTC outcomes remain sealed and can only pass or reject the Stage-1-selected member",
+    "source_only_density_seen_through_2023": true,
+    "unrelated_repo_market_history_seen_through_2023": true
+  },
+  "sealed": [
+    "2023_outcomes_until_stage1_pass",
+    "2024",
+    "2025",
+    "2026_ytd"
+  ],
+  "selection_protocol": {
+    "failure_action": "reject FLCC-1 without opening 2023 outcomes",
+    "family_size": 4,
+    "selection_order": [
+      "minimum 2020/2021/2022 CAGR-to-strict-MDD",
+      "overall Stage1 CAGR-to-strict-MDD",
+      "10bp stress absolute return",
+      "lexical candidate_id ascending"
+    ],
+    "stage1_gates": {
+      "CAGR_to_strict_MDD_min": 3.0,
+      "absolute_return_positive": true,
+      "direction_flip_random_or_delay_full_qualification_rejects": true,
+      "each_side_trades_min": 40,
+      "each_year_absolute_return_positive": true,
+      "each_year_trades_min": 20,
+      "mean_gross_underlying_bp_min": 35.0,
+      "primary_ratio_strictly_beats_net_and_component_controls": true,
+      "single_entry_month_share_max": 0.08,
+      "strict_MDD_pct_max": 15.0,
+      "ten_bp_stress_absolute_return_positive": true,
+      "trades_min": 90,
+      "weekly_cluster_signflip_p_max_bonferroni": 0.025
+    },
+    "stage1_subperiods": [
+      "2020",
+      "2021",
+      "2022"
+    ],
+    "stage1_window": [
+      "2020-01-01",
+      "2023-01-01"
+    ],
+    "stage2_candidate": "exact Stage1 winner only; no fallback or repair",
+    "stage2_gates": {
+      "CAGR_to_strict_MDD_min": 3.0,
+      "absolute_return_positive": true,
+      "both_halves_absolute_return_positive": true,
+      "each_side_trades_min": 7,
+      "h1_trades_min": 14,
+      "h2_trades_min": 6,
+      "mean_gross_underlying_bp_min": 35.0,
+      "minimum_train_2023_primary_ratio_strictly_beats_controls": true,
+      "random_or_delay_full_qualification_both_splits_rejects": true,
+      "single_entry_month_share_max": 0.2,
+      "strict_MDD_pct_max": 15.0,
+      "ten_bp_stress_absolute_return_positive": true,
+      "trades_min": 20,
+      "weekly_cluster_signflip_p_max": 0.1
+    },
+    "stage2_window": [
+      "2023-01-01",
+      "2024-01-01"
+    ]
+  },
+  "source_commit": "447a9ade6ab5fab0ebc8ae974765b46ae79c28ce",
+  "source_contract": {
+    "clock_ledger": "results/federal_liquidity_component_concordance_preregistered_clock_2026-07-17.csv.gz",
+    "clock_ledger_sha256": "03fa41d6bc60bab89af856efe6aaf167f08602b3f688cf3bf1cdb3d84b62eaa3",
+    "funding": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+    "funding_manifest": "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json",
+    "funding_manifest_sha256": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
+    "funding_sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6",
+    "h41_audit": "results/federal_reserve_h41_net_liquidity_source_freeze_2026-07-17.json",
+    "h41_audit_sha256": "765fbc6d37799c9c642fa1b956d717c3a6f917aa384f0516c2f949e3dffdbc8c",
+    "h41_build_manifest": "data/federal_reserve_h41_net_liquidity_2018_2023/build_manifest.json",
+    "h41_build_manifest_sha256": "1ec212a85de0e49c5a0c2d35b8b22be86eb7d62989f7a0098be1bb1274b2a99b",
+    "h41_panel": "data/federal_reserve_h41_net_liquidity_2018_2023/federal_reserve_h41_net_liquidity_2018-01-04_2023-12-28.csv.gz",
+    "h41_panel_sha256": "224883dad01b9d7f17d52eb87f3d7ef9890c8dd055a6c36577a534d2afe69621",
+    "h41_raw_manifest": "data/federal_reserve_h41_net_liquidity_2018_2023/source_manifest.json",
+    "h41_raw_manifest_sha256": "61dca0ae9e29c2c96307a3442037e43aedae15e21d3aedc9ee209c7ebbcac271",
+    "market": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "market_manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d"
+  },
+  "source_only_support": {
+    "FLCC-H4-Q60": {
+      "full_source_primary_events": 137,
+      "spec": {
+        "candidate_id": "FLCC-H4-Q60",
+        "horizon_releases": 4,
+        "lower_rank_numerator": 83,
+        "upper_rank_numerator": 125
+      },
+      "windows": {
+        "2020": {
+          "count": 34,
+          "long": 29,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.14705882352941177,
+          "short": 5
+        },
+        "2021": {
+          "count": 33,
+          "long": 19,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.12121212121212122,
+          "short": 14
+        },
+        "2022": {
+          "count": 40,
+          "long": 11,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.125,
+          "short": 29
+        },
+        "2023": {
+          "count": 27,
+          "long": 13,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.14814814814814814,
+          "short": 14
+        },
+        "2023_h1": {
+          "count": 19,
+          "long": 8,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.21052631578947367,
+          "short": 11
+        },
+        "2023_h2": {
+          "count": 8,
+          "long": 5,
+          "max_single_month_count": 2,
+          "max_single_month_share": 0.25,
+          "short": 3
+        },
+        "train": {
+          "count": 108,
+          "long": 59,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.046296296296296294,
+          "short": 49
+        }
+      }
+    },
+    "FLCC-H4-Q65": {
+      "full_source_primary_events": 123,
+      "spec": {
+        "candidate_id": "FLCC-H4-Q65",
+        "horizon_releases": 4,
+        "lower_rank_numerator": 72,
+        "upper_rank_numerator": 136
+      },
+      "windows": {
+        "2020": {
+          "count": 33,
+          "long": 28,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.15151515151515152,
+          "short": 5
+        },
+        "2021": {
+          "count": 31,
+          "long": 18,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.12903225806451613,
+          "short": 13
+        },
+        "2022": {
+          "count": 34,
+          "long": 7,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.14705882352941177,
+          "short": 27
+        },
+        "2023": {
+          "count": 23,
+          "long": 13,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.17391304347826086,
+          "short": 10
+        },
+        "2023_h1": {
+          "count": 16,
+          "long": 8,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.25,
+          "short": 8
+        },
+        "2023_h2": {
+          "count": 7,
+          "long": 5,
+          "max_single_month_count": 2,
+          "max_single_month_share": 0.2857142857142857,
+          "short": 2
+        },
+        "train": {
+          "count": 99,
+          "long": 53,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.050505050505050504,
+          "short": 46
+        }
+      }
+    },
+    "FLCC-H8-Q60": {
+      "full_source_primary_events": 126,
+      "spec": {
+        "candidate_id": "FLCC-H8-Q60",
+        "horizon_releases": 8,
+        "lower_rank_numerator": 83,
+        "upper_rank_numerator": 125
+      },
+      "windows": {
+        "2020": {
+          "count": 32,
+          "long": 26,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.15625,
+          "short": 6
+        },
+        "2021": {
+          "count": 22,
+          "long": 17,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.22727272727272727,
+          "short": 5
+        },
+        "2022": {
+          "count": 41,
+          "long": 6,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.12195121951219512,
+          "short": 35
+        },
+        "2023": {
+          "count": 28,
+          "long": 13,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.17857142857142858,
+          "short": 15
+        },
+        "2023_h1": {
+          "count": 18,
+          "long": 9,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.2777777777777778,
+          "short": 9
+        },
+        "2023_h2": {
+          "count": 10,
+          "long": 4,
+          "max_single_month_count": 3,
+          "max_single_month_share": 0.3,
+          "short": 6
+        },
+        "train": {
+          "count": 97,
+          "long": 50,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.05154639175257732,
+          "short": 47
+        }
+      }
+    },
+    "FLCC-H8-Q65": {
+      "full_source_primary_events": 117,
+      "spec": {
+        "candidate_id": "FLCC-H8-Q65",
+        "horizon_releases": 8,
+        "lower_rank_numerator": 72,
+        "upper_rank_numerator": 136
+      },
+      "windows": {
+        "2020": {
+          "count": 31,
+          "long": 25,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.12903225806451613,
+          "short": 6
+        },
+        "2021": {
+          "count": 21,
+          "long": 17,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.23809523809523808,
+          "short": 4
+        },
+        "2022": {
+          "count": 40,
+          "long": 6,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.125,
+          "short": 34
+        },
+        "2023": {
+          "count": 22,
+          "long": 13,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.18181818181818182,
+          "short": 9
+        },
+        "2023_h1": {
+          "count": 15,
+          "long": 9,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.26666666666666666,
+          "short": 6
+        },
+        "2023_h2": {
+          "count": 7,
+          "long": 4,
+          "max_single_month_count": 3,
+          "max_single_month_share": 0.42857142857142855,
+          "short": 3
+        },
+        "train": {
+          "count": 94,
+          "long": 49,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.05319148936170213,
+          "short": 45
+        }
+      }
+    }
+  },
+  "support_gates": {
+    "FLCC-H4-Q60_2023_count": true,
+    "FLCC-H4-Q60_2023_each_side": true,
+    "FLCC-H4-Q60_2023_halves": true,
+    "FLCC-H4-Q60_2023_month_concentration": true,
+    "FLCC-H4-Q60_each_train_year": true,
+    "FLCC-H4-Q60_train_count": true,
+    "FLCC-H4-Q60_train_each_side": true,
+    "FLCC-H4-Q60_train_month_concentration": true,
+    "FLCC-H4-Q65_2023_count": true,
+    "FLCC-H4-Q65_2023_each_side": true,
+    "FLCC-H4-Q65_2023_halves": true,
+    "FLCC-H4-Q65_2023_month_concentration": true,
+    "FLCC-H4-Q65_each_train_year": true,
+    "FLCC-H4-Q65_train_count": true,
+    "FLCC-H4-Q65_train_each_side": true,
+    "FLCC-H4-Q65_train_month_concentration": true,
+    "FLCC-H8-Q60_2023_count": true,
+    "FLCC-H8-Q60_2023_each_side": true,
+    "FLCC-H8-Q60_2023_halves": true,
+    "FLCC-H8-Q60_2023_month_concentration": true,
+    "FLCC-H8-Q60_each_train_year": true,
+    "FLCC-H8-Q60_train_count": true,
+    "FLCC-H8-Q60_train_each_side": true,
+    "FLCC-H8-Q60_train_month_concentration": true,
+    "FLCC-H8-Q65_2023_count": true,
+    "FLCC-H8-Q65_2023_each_side": true,
+    "FLCC-H8-Q65_2023_halves": true,
+    "FLCC-H8-Q65_2023_month_concentration": true,
+    "FLCC-H8-Q65_each_train_year": true,
+    "FLCC-H8-Q65_train_count": true,
+    "FLCC-H8-Q65_train_each_side": true,
+    "FLCC-H8-Q65_train_month_concentration": true
+  },
+  "support_passed": true
+}
