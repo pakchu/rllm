@@ -1,0 +1,181 @@
+{
+  "protocol_version": "miner_cadence_recovery_v1",
+  "outcomes_opened": false,
+  "policy": {
+    "policy_id": "MCR-7",
+    "hash_change_days": 7,
+    "reference_days": 180,
+    "reference_min_periods": 120,
+    "stress_z_max": -1.0,
+    "stress_lookback_days": 14,
+    "recovery_z_min": 0.0,
+    "cadence_short_days": 3,
+    "cadence_reference_days": 30,
+    "maximum_source_lag_days": 3.0,
+    "entry_delay_bars": 1,
+    "hold_bars": 2016,
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.001
+  },
+  "claim": "A causal recovery in seven-day Bitcoin hash-rate growth after a recent miner-security contraction, confirmed by restored block cadence, marks an easing of miner operating pressure that supports the following seven-day BTC return.",
+  "evidence_boundary": {
+    "source_distribution_and_support_shape_seen": true,
+    "exact_mcr7_post_entry_returns_opened": false,
+    "repository_has_seen_2021_2023_btc_returns_for_other_families": true,
+    "2021_2022_label": "development train; not globally pristine",
+    "2023_label": "single-policy selection; not globally pristine",
+    "2024_label": "first exact-policy code-frozen source-and-outcome-unopened OOS",
+    "2024_or_later_miner_source_opened": false
+  },
+  "source_contract": {
+    "miner_security": "data/coinmetrics_btc_miner_security_daily_2019_2023.csv.gz",
+    "miner_security_sha256": "448a101834df33f69abaeafe9aadfccd8ce9c3d6ad7816c1c2448189a12b8379",
+    "miner_security_manifest": "results/coinmetrics_btc_miner_security_daily_2019_2023_manifest_2026-07-17.json",
+    "miner_security_manifest_sha256": "045ccd1e8c842b7d0d56bdb9fb60873ed24e90a4c31b67bbcf47645121622149",
+    "rows": 1826,
+    "interval": [
+      "2019-01-01",
+      "2024-01-01"
+    ],
+    "columns_allowed": [
+      "observation_date",
+      "available_at",
+      "HashRate",
+      "BlkCnt"
+    ],
+    "columns_forbidden_for_signal": [
+      "BTC price",
+      "FeeTotNtv",
+      "IssTotNtv",
+      "TxCnt",
+      "address or exchange-tag flows",
+      "funding",
+      "premium",
+      "open interest",
+      "Kimchi",
+      "FX",
+      "DXY"
+    ],
+    "availability": "the current observation and every reference observation are usable only according to recorded AssetEODCompletionTime",
+    "stale_backfill": "rows with source lag above three days may seed later strictly causal references after publication but may never emit a signal",
+    "revision_boundary": "file hashes freeze this downloaded vintage; live promotion additionally requires forward-vintage parity",
+    "official_docs": [
+      "https://gitbook-docs.coinmetrics.io/network-data/network-data-overview/mining/hash-rate",
+      "https://gitbook-docs.coinmetrics.io/network-data/network-data-overview/network-usage/blocks",
+      "https://gitbook-docs.coinmetrics.io/network-data/network-data-overview/availability/asseteodcompletiontime"
+    ]
+  },
+  "causal_feature_contract": {
+    "hash_change": "log(HashRate[t]) - log(HashRate[t-7 observations])",
+    "hash_change_z": "current hash_change standardized against at most the last 180 earlier finite hash_change observations whose available_at is strictly earlier; require 120",
+    "recent_stress": "at least one of the prior 14 observation-date hash_change_z values, causally available before the current row, is <= -1.0",
+    "recovery_cross": "current hash_change_z >= 0 and the immediately prior observation-date hash_change_z < 0, with that prior row already available",
+    "cadence_short": "mean(log(BlkCnt)) over t-2 through t",
+    "cadence_reference": "mean(log(BlkCnt)) over t-30 through t-1",
+    "cadence_recovered": "cadence_short >= cadence_reference",
+    "eligible": "finite causal features, source lag <=3 days, recent_stress, recovery_cross, and cadence_recovered",
+    "event": "every eligible recovery cross; the cross itself prevents state repeats",
+    "direction": "long only",
+    "price_or_derivative_feature_columns_loaded": []
+  },
+  "support_freeze_before_returns": {
+    "train_2021_2022_nonoverlap_min": 35,
+    "each_train_year_min": 14,
+    "selection_2023_min": 24,
+    "selection_2023_h1_min": 10,
+    "selection_2023_h2_min": 10,
+    "maximum_single_month_share": 0.15,
+    "market_or_funding_rows_loaded": 0,
+    "future_hold_availability_used_to_filter": false,
+    "failure_action": "reject without loading any post-entry market outcome"
+  },
+  "execution_contract": {
+    "decision": "only after the source row available_at and causal features are fixed",
+    "earliest_tradable_open": "first UTC five-minute open >= available_at",
+    "entry": "one complete five-minute latency bar after earliest_tradable_open",
+    "exit": "scheduled open 2,016 five-minute bars (seven days) after entry",
+    "nonoverlap": "one active trade; ignored overlapping recovery events never delay-enter",
+    "side": "long BTCUSDT USD-M perpetual",
+    "leverage": 0.5,
+    "base_cost": "6 bp/notional/side",
+    "stress_cost": "10 bp/notional/side",
+    "funding_interval": "entry_time <= funding_time < exit_time",
+    "stop_or_take_profit": null,
+    "cagr": "full wall-clock split including warm-up and idle cash",
+    "strict_mdd": "global/pre-entry HWM, favorable-before-adverse held OHLC, funding, entry/exit/hypothetical-liquidation costs",
+    "absolute_return_always_reported": true
+  },
+  "selection_protocol": {
+    "candidate_count": 1,
+    "train": [
+      "2021-03-01",
+      "2023-01-01"
+    ],
+    "selection": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "selection_halves": {
+      "h1": [
+        "2023-01-01",
+        "2023-07-01"
+      ],
+      "h2": [
+        "2023-07-01",
+        "2024-01-01"
+      ]
+    },
+    "sealed": [
+      "2024",
+      "2025",
+      "2026_ytd"
+    ],
+    "no_parameter_repair": true,
+    "gates": {
+      "train_and_2023_absolute_return_positive": true,
+      "each_train_year_absolute_return_positive": true,
+      "2023_h1_and_h2_absolute_return_positive": true,
+      "train_and_2023_cagr_to_strict_mdd_min": 3.0,
+      "train_and_2023_strict_mdd_pct_max": 15.0,
+      "train_and_2023_ten_bp_stress_positive": true,
+      "train_and_2023_mean_gross_underlying_bp_min": 40.0,
+      "train_and_2023_monthly_cluster_signflip_p_max": 0.1,
+      "one_bar_additional_delay_train_and_2023_positive": true
+    }
+  },
+  "controls": {
+    "direction_flip": "same clock, short side; diagnostic only",
+    "cadence_confirmation_removed": "hash recovery cross without block-cadence check",
+    "stale_hash_state_7d": "all hash recovery inputs delayed seven observations",
+    "random_clock": "same yearly trade counts and seven-day hold",
+    "constant_long": "nonoverlapping weekly long exposure on the same calendar",
+    "mechanism_rule": "reject if cadence-removed or stale-hash control independently passes all primary gates; controls can never replace the frozen primary"
+  },
+  "orthogonality_gate_after_performance": {
+    "comparison_set": "gross-3.85 live anchor plus all previously promoted sleeves",
+    "anchor_weights": {
+      "oi_upbit_ratio288_low": 0.65,
+      "new_long_minimal_funding_premium": 1.75,
+      "cand_rex_veto_7": 1.45
+    },
+    "exact_entry_jaccard_max": 0.05,
+    "position_time_jaccard_max": 0.2,
+    "absolute_daily_pnl_pearson_max": 0.3,
+    "minimum_nonzero_daily_pnl_days": 20,
+    "fixed_weight_increment": 0.25,
+    "marginal_portfolio_absolute_return_and_ratio_must_improve": true,
+    "undefined_metric": "fail_closed"
+  },
+  "post_selection_sequence": {
+    "open_2024_only_after_pre2024_pass": true,
+    "open_2025_only_after_2024_pass": true,
+    "open_2026_only_after_2025_pass": true,
+    "terminal_failure": "write rejection artifact and keep every later period sealed",
+    "live_promotion_requires_forward_vintage_parity": true,
+    "minimum_forward_shadow_days": 90
+  },
+  "rejection_contract": "any support, performance, mechanism, or orthogonality failure rejects MCR-7 without changing lookbacks, thresholds, side, latency, hold, or costs",
+  "manifest_hash": "20c5aa201e36169c775d64c2882361e3e21bb30c9b0ea88b2888d1b7281d14a1",
+  "created_at": "2026-07-17T01:57:28.391435+00:00"
+}
