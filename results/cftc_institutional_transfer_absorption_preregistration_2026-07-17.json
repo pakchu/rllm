@@ -1,0 +1,152 @@
+{
+  "as_of_date": "2026-07-17",
+  "clock_output": "results/cftc_institutional_transfer_absorption_preregistered_clock_2026-07-17.csv.gz",
+  "clock_sha256": "65f64544ff8d45ab20882b770907cc958d96c5bd8982f731e09941de2e1a28d2",
+  "controls": {
+    "falsification": [
+      "direction_flip",
+      "one_complete_report_delay",
+      "deterministic_random_side"
+    ],
+    "mechanism": [
+      "asset_manager_only",
+      "leveraged_contrarian_only"
+    ]
+  },
+  "hypothesis": "Opposite weekly net-position changes between asset managers and leveraged funds identify an ownership transfer. Institutional accumulation against leveraged selling is persistent absorption and supports BTC; institutional distribution into leveraged buying opposes BTC.",
+  "manifest_hash": "4c5e9911524125f960d3da06bd6c6caa7e83b124d77ab643e2614751d7573038",
+  "opened_outcome_windows": [],
+  "policy": {
+    "action": "asset change >0 and leveraged change <0 -> LONG; asset change <0 and leveraged change >0 -> SHORT; otherwise abstain",
+    "base_cost_notional_per_side": 0.0006,
+    "entry": "signal+5m exact five-minute boundary",
+    "features": {
+      "asset_manager_net_change": "published asset-manager long change minus short change",
+      "leveraged_money_net_change": "published leveraged-money long change minus short change"
+    },
+    "funding": "exact realized funding on [entry, exit)",
+    "hold": "7 days",
+    "leverage": 0.5,
+    "mutable_parameters": [],
+    "overlap_rule": "source-time first admissible signal; skip a signal whose entry would overlap the prior accepted seven-day hold",
+    "signal_time": "frozen conservative source availability clock",
+    "stress_cost_notional_per_side": 0.001,
+    "strict_mdd": "full-calendar/global HWM plus favorable-before-adverse held OHLC and costs"
+  },
+  "policy_id": "CITA-1",
+  "protocol_version": "cftc_institutional_transfer_absorption_preregistration_v1",
+  "sealed_outcome_windows": [
+    "stage1_2020_2022",
+    "stage2_2023",
+    "2024_plus"
+  ],
+  "simulation_run": false,
+  "source_commit": "27823e7",
+  "source_contract": {
+    "availability": "report+8d 00:00 UTC, with exact conservative overrides for the seven documented 2023 ION catch-up publications",
+    "build_manifest": "data/cftc_institutional_transfer_absorption_2018_2023/build_manifest.json",
+    "build_manifest_sha256": "e9d4ca15da671c086265557e5d302518fd4b9a9ad59fe9d0ff1181d772d60406",
+    "market_or_funding_rows_loaded": 0,
+    "official_report": "CFTC TFF futures-only, CME Bitcoin contract 133741",
+    "panel": "data/cftc_institutional_transfer_absorption_2018_2023/cftc_institutional_transfer_absorption_2018_2023.csv.gz",
+    "panel_sha256": "064eed3fa340b1701f4686d1176de2a10f39128abc5ebf846e8b6319b8144ee6",
+    "source_complete_rows": 298,
+    "source_manifest": "data/cftc_institutional_transfer_absorption_2018_2023/source_manifest.json",
+    "source_manifest_sha256": "a594b02d1191c32f905c13be3faaa74ec2f3f0e04723d3b11b76ee8b454d6897",
+    "source_quarantined_rows": 1,
+    "source_rows": 299
+  },
+  "source_only_distributions": {
+    "2019_source_history": {
+      "longs": 17,
+      "max_single_month_count": 4,
+      "max_single_month_share": 0.12903225806451613,
+      "shorts": 14,
+      "special_publication_overrides": 0,
+      "trades": 31
+    },
+    "2020": {
+      "longs": 17,
+      "max_single_month_count": 5,
+      "max_single_month_share": 0.14705882352941177,
+      "shorts": 17,
+      "special_publication_overrides": 0,
+      "trades": 34
+    },
+    "2021": {
+      "longs": 20,
+      "max_single_month_count": 4,
+      "max_single_month_share": 0.1111111111111111,
+      "shorts": 16,
+      "special_publication_overrides": 0,
+      "trades": 36
+    },
+    "2022": {
+      "longs": 14,
+      "max_single_month_count": 4,
+      "max_single_month_share": 0.14285714285714285,
+      "shorts": 14,
+      "special_publication_overrides": 0,
+      "trades": 28
+    },
+    "2023_h1": {
+      "longs": 7,
+      "max_single_month_count": 3,
+      "max_single_month_share": 0.25,
+      "shorts": 5,
+      "special_publication_overrides": 2,
+      "trades": 12
+    },
+    "2023_h2": {
+      "longs": 9,
+      "max_single_month_count": 3,
+      "max_single_month_share": 0.2727272727272727,
+      "shorts": 2,
+      "special_publication_overrides": 0,
+      "trades": 11
+    },
+    "stage1_2020_2022": {
+      "longs": 51,
+      "max_single_month_count": 5,
+      "max_single_month_share": 0.05102040816326531,
+      "shorts": 47,
+      "special_publication_overrides": 0,
+      "trades": 98
+    },
+    "stage2_2023": {
+      "longs": 16,
+      "max_single_month_count": 3,
+      "max_single_month_share": 0.13043478260869565,
+      "shorts": 7,
+      "special_publication_overrides": 2,
+      "trades": 23
+    }
+  },
+  "stage_contract": {
+    "2024_plus": "sealed",
+    "stage1": "[2020-01-01, 2023-01-01)",
+    "stage1_gates": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_at_least": 3.0,
+      "each_calendar_year_absolute_return_positive": true,
+      "each_calendar_year_minimum_trades": 20,
+      "mean_gross_underlying_bp_at_least": 35.0,
+      "mechanism_control_ratio_margin_at_least": 0.25,
+      "minimum_trades": 75,
+      "stress_cost_absolute_return_positive": true,
+      "strict_mdd_pct_at_most": 15.0,
+      "weekly_cluster_signflip_p_at_most": 0.1
+    },
+    "stage2": "[2023-01-01, 2024-01-01), opened only after exact Stage1 pass replay",
+    "stage2_gates": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_at_least": 3.0,
+      "each_half_minimum_trades": 5,
+      "h1_and_h2_absolute_return_nonnegative": true,
+      "minimum_trades": 15,
+      "stress_cost_absolute_return_positive": true,
+      "strict_mdd_pct_at_most": 15.0,
+      "weekly_cluster_signflip_p_at_most": 0.2
+    }
+  }
+}
