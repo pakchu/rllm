@@ -1,0 +1,125 @@
+{
+  "as_of_date": "2026-07-17",
+  "clock_output": "results/inflation_breadth_release_drift_preregistered_clock_2026-07-17.csv.gz",
+  "clock_sha256": "5938d851a17bf4dbd29e8cfecc3053f06bf1c764d11b595081e12ea7ae77a99e",
+  "controls": {
+    "falsification": [
+      "direction_flip",
+      "one_complete_release_delay",
+      "deterministic_random_side"
+    ],
+    "mechanism": [
+      "headline_only",
+      "core_only"
+    ]
+  },
+  "hypothesis": "Concordant deceleration in published headline and core CPI creates a broad disinflation impulse that supports BTC for seven days; concordant reacceleration creates the opposite policy/liquidity impulse.",
+  "manifest_hash": "b493c5f290aebd31a4e19bd6b8f1e508d669edf28861191f999e8929299ff1e6",
+  "opened_outcome_windows": [],
+  "policy": {
+    "action": "both changes <0 -> LONG; both >0 -> SHORT; mixed or zero -> no trade",
+    "base_cost_notional_per_side": 0.0006,
+    "entry": "first exact 5-minute boundary at release+5m",
+    "features": {
+      "core_change": "core_yoy[t] - core_yoy[t-1 release]",
+      "headline_change": "headline_yoy[t] - headline_yoy[t-1 release]"
+    },
+    "funding": "exact realized funding on [entry, exit)",
+    "hold": "7 calendar days",
+    "leverage": 0.5,
+    "mutable_parameters": [],
+    "signal_time": "BLS release timestamp",
+    "stress_cost_notional_per_side": 0.001,
+    "strict_mdd": "full-calendar/global HWM plus favorable-before-adverse held OHLC and costs"
+  },
+  "policy_id": "IBRD-7",
+  "protocol_version": "inflation_breadth_release_drift_preregistration_v1",
+  "sealed_outcome_windows": [
+    "stage1_2020_2022",
+    "stage2_2023",
+    "2024_plus"
+  ],
+  "simulation_run": false,
+  "source_commit": "2e98c92",
+  "source_contract": {
+    "availability": "official 08:30 America/New_York release clock",
+    "build_manifest": "data/bls_cpi_release_breadth_2019_2023/build_manifest.json",
+    "build_manifest_sha256": "fb546580e64a01a4247318c8d4dad87028686d190f51559a9162d3efa3235171",
+    "market_or_funding_rows_loaded": 0,
+    "panel": "data/bls_cpi_release_breadth_2019_2023/bls_cpi_release_breadth_2019_2023.csv.gz",
+    "panel_sha256": "d199f409952d8cb83218864d0a96573bed82b59e649067b22fc97580a06d1059",
+    "point_in_time_values": "archived BLS release headline/core unadjusted 12-month values",
+    "source_manifest": "data/bls_cpi_release_breadth_2019_2023/source_manifest.json",
+    "source_manifest_sha256": "7f889310707e4c490124ac2ce6817add7a227d6b0fa6d495c00405aba456aadc"
+  },
+  "source_only_distributions": {
+    "2019_source_history": {
+      "longs": 2,
+      "max_single_month_count": 1,
+      "max_single_month_share": 0.25,
+      "shorts": 2,
+      "trades": 4
+    },
+    "2020": {
+      "longs": 4,
+      "max_single_month_count": 1,
+      "max_single_month_share": 0.16666666666666666,
+      "shorts": 2,
+      "trades": 6
+    },
+    "2021": {
+      "longs": 1,
+      "max_single_month_count": 1,
+      "max_single_month_share": 0.14285714285714285,
+      "shorts": 6,
+      "trades": 7
+    },
+    "2022": {
+      "longs": 3,
+      "max_single_month_count": 1,
+      "max_single_month_share": 0.14285714285714285,
+      "shorts": 4,
+      "trades": 7
+    },
+    "stage1_2020_2022": {
+      "longs": 8,
+      "max_single_month_count": 1,
+      "max_single_month_share": 0.05,
+      "shorts": 12,
+      "trades": 20
+    },
+    "stage2_2023": {
+      "longs": 7,
+      "max_single_month_count": 1,
+      "max_single_month_share": 0.14285714285714285,
+      "shorts": 0,
+      "trades": 7
+    }
+  },
+  "stage_contract": {
+    "2024_plus": "sealed",
+    "stage1": "[2020-01-01, 2023-01-01)",
+    "stage1_gates": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_at_least": 3.0,
+      "each_calendar_year_absolute_return_positive": true,
+      "each_calendar_year_minimum_trades": 4,
+      "mean_gross_underlying_bp_at_least": 35.0,
+      "mechanism_control_ratio_margin_at_least": 0.25,
+      "minimum_trades": 20,
+      "stress_cost_absolute_return_positive": true,
+      "strict_mdd_pct_at_most": 15.0,
+      "weekly_cluster_signflip_p_at_most": 0.1
+    },
+    "stage2": "[2023-01-01, 2024-01-01), opened only after exact Stage1 pass replay",
+    "stage2_gates": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_at_least": 3.0,
+      "h1_and_h2_absolute_return_nonnegative": true,
+      "minimum_trades": 6,
+      "stress_cost_absolute_return_positive": true,
+      "strict_mdd_pct_at_most": 15.0,
+      "weekly_cluster_signflip_p_at_most": 0.2
+    }
+  }
+}
