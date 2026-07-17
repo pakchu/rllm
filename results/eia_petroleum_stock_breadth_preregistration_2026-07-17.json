@@ -1,0 +1,129 @@
+{
+  "as_of_date": "2026-07-17",
+  "clock_output": "results/eia_petroleum_stock_breadth_preregistered_clock_2026-07-17.csv.gz",
+  "clock_sha256": "4f9735a3de7506e85f657217c8358608000d823927b6875c6cc236b94c39cedd",
+  "controls": {
+    "falsification": [
+      "direction_flip",
+      "one_complete_release_delay",
+      "deterministic_random_side"
+    ],
+    "mechanism": [
+      "crude_only",
+      "refined_products_only"
+    ]
+  },
+  "hypothesis": "Concordant builds across commercial crude, gasoline, and distillate stocks are a broad physical-glut/disinflation impulse that supports BTC; concordant draws are a scarcity/reflation impulse that opposes BTC.",
+  "manifest_hash": "050491adcc58735fd13a0ee949f0d79886203e2d3a5569468ce676b9f34a9e30",
+  "opened_outcome_windows": [],
+  "policy": {
+    "action": "all three >0 -> LONG; all three <0 -> SHORT; mixed, zero, or quarantined -> no trade",
+    "base_cost_notional_per_side": 0.0006,
+    "entry": "signal+5m exact five-minute boundary",
+    "features": {
+      "commercial_crude_change": "published issue-local Difference",
+      "distillate_change": "published issue-local Difference",
+      "gasoline_change": "published issue-local Difference"
+    },
+    "funding": "exact realized funding on [entry, exit)",
+    "hold": "72 hours",
+    "leverage": 0.5,
+    "mutable_parameters": [],
+    "signal_time": "conservative source availability clock",
+    "stress_cost_notional_per_side": 0.001,
+    "strict_mdd": "full-calendar/global HWM plus favorable-before-adverse held OHLC and costs"
+  },
+  "policy_id": "EPSB-1",
+  "protocol_version": "eia_petroleum_stock_breadth_preregistration_v1",
+  "sealed_outcome_windows": [
+    "stage1_2020_2022",
+    "stage2_2023",
+    "2024_plus"
+  ],
+  "simulation_run": false,
+  "source_commit": "c45dda1",
+  "source_contract": {
+    "availability": "next UTC day 13:00 after official release date",
+    "build_manifest": "data/eia_petroleum_stock_breadth_2019_2023/build_manifest.json",
+    "build_manifest_sha256": "d6813b1a5677c9222a1197343900d6b03381f35ff9db8688892b77e4cd9c0661",
+    "market_or_funding_rows_loaded": 0,
+    "panel": "data/eia_petroleum_stock_breadth_2019_2023/eia_petroleum_stock_breadth_2019_2023.csv.gz",
+    "panel_sha256": "26cbe6a91079a64fd9bbcb1cb5e1f81e15df25e45ed2171f7c464d048b34757b",
+    "point_in_time_values": "each archived EIA WPSR issue's Table 1",
+    "source_complete_rows": 258,
+    "source_manifest": "data/eia_petroleum_stock_breadth_2019_2023/source_manifest.json",
+    "source_manifest_sha256": "3969288900528d103016cdb0870a11269c1b352b9077faffdc61427f7fce29fb",
+    "source_quarantined_rows": 1,
+    "source_rows": 259
+  },
+  "source_only_distributions": {
+    "2019_source_history": {
+      "longs": 8,
+      "max_single_month_count": 3,
+      "max_single_month_share": 0.15789473684210525,
+      "shorts": 11,
+      "trades": 19
+    },
+    "2020": {
+      "longs": 6,
+      "max_single_month_count": 3,
+      "max_single_month_share": 0.25,
+      "shorts": 6,
+      "trades": 12
+    },
+    "2021": {
+      "longs": 3,
+      "max_single_month_count": 3,
+      "max_single_month_share": 0.2727272727272727,
+      "shorts": 8,
+      "trades": 11
+    },
+    "2022": {
+      "longs": 4,
+      "max_single_month_count": 3,
+      "max_single_month_share": 0.21428571428571427,
+      "shorts": 10,
+      "trades": 14
+    },
+    "stage1_2020_2022": {
+      "longs": 13,
+      "max_single_month_count": 3,
+      "max_single_month_share": 0.08108108108108109,
+      "shorts": 24,
+      "trades": 37
+    },
+    "stage2_2023": {
+      "longs": 6,
+      "max_single_month_count": 2,
+      "max_single_month_share": 0.15384615384615385,
+      "shorts": 7,
+      "trades": 13
+    }
+  },
+  "stage_contract": {
+    "2024_plus": "sealed",
+    "stage1": "[2020-01-01, 2023-01-01)",
+    "stage1_gates": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_at_least": 3.0,
+      "each_calendar_year_absolute_return_positive": true,
+      "each_calendar_year_minimum_trades": 8,
+      "mean_gross_underlying_bp_at_least": 35.0,
+      "mechanism_control_ratio_margin_at_least": 0.25,
+      "minimum_trades": 30,
+      "stress_cost_absolute_return_positive": true,
+      "strict_mdd_pct_at_most": 15.0,
+      "weekly_cluster_signflip_p_at_most": 0.1
+    },
+    "stage2": "[2023-01-01, 2024-01-01), opened only after exact Stage1 pass replay",
+    "stage2_gates": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_at_least": 3.0,
+      "h1_and_h2_absolute_return_nonnegative": true,
+      "minimum_trades": 10,
+      "stress_cost_absolute_return_positive": true,
+      "strict_mdd_pct_at_most": 15.0,
+      "weekly_cluster_signflip_p_at_most": 0.2
+    }
+  }
+}
