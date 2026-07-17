@@ -3,12 +3,13 @@
 ## Decision
 
 Freeze a source-only daily panel for a new, orthogonal alpha family based on
-regional fiat BTC spot participation:
+BTC participation in three fiat-quote books. Pair activity does not establish
+trader geography or an external fiat deposit:
 
 - `BTCUSDT` — global stablecoin reference market,
-- `BTCEUR` — euro on-ramp,
-- `BTCTRY` — Turkish-lira on-ramp,
-- `BTCBRL` — Brazilian-real on-ramp.
+- `BTCEUR` — EUR quote book,
+- `BTCTRY` — TRY quote book,
+- `BTCBRL` — BRL quote book.
 
 This work unit opens **no BTC return, forward label, funding, futures OI, REX,
 Kimchi, FX, volatility, or portfolio outcome**. It only establishes whether an
@@ -131,7 +132,7 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python \
 
 ## Scope boundary for the next work unit
 
-The next commit may preregister exactly one regional-fiat breadth hypothesis.
+The next commit may preregister exactly one fiat-quote breadth hypothesis.
 No post-entry return may be opened before that preregistration freezes:
 
 - the strictly-prior normalization window,

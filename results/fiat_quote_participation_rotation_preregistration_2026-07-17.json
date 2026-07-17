@@ -1,0 +1,314 @@
+{
+  "protocol_version": "fiat_quote_participation_rotation_v1",
+  "as_of_date": "2026-07-17",
+  "outcomes_opened": false,
+  "policy": {
+    "policy_id": "FQPR-3",
+    "fiat_quote_symbols": [
+      "BTCEUR",
+      "BTCTRY",
+      "BTCBRL"
+    ],
+    "reference_symbol": "BTCUSDT",
+    "baseline_days": 180,
+    "baseline_min_periods": 180,
+    "participation_quantiles": [
+      0.5,
+      0.55,
+      0.6,
+      0.65,
+      0.7
+    ],
+    "minimum_breadth": 2,
+    "execution_delay_bars": 1,
+    "hold_bars": 864,
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.001
+  },
+  "research_history_boundary": {
+    "market_history_seen_by_unrelated_repo_research": true,
+    "fiat_quote_flow_source_values_seen": true,
+    "source_only_density_preflight_seen": true,
+    "full_2021_2023_source_support_seen_before_freeze": true,
+    "density_preflight_disclosure": "a stricter draft requiring per-book positive buy odds and min(volume-rank,ticket-rank) was retired before freeze because it produced only 12 train clocks at Q=0.65; source-only counts, composition, and control overlap for the revised definition were seen through 2023, but no OHLC, return, funding, CAGR, or drawdown outcome was opened",
+    "consequence": "2023 is support-seen but outcome-sealed; it may reject the frozen train-selected Q and may never reselect or repair it",
+    "exact_fqpr_3_post_entry_outcomes_opened": false,
+    "support_only_access_allowed": "current and past source rows, causal feature distributions, event counts, timestamps, composition, and clock overlap only",
+    "forbidden_before_evaluator_freeze": [
+      "entry_to_exit_return",
+      "post_entry_OHLC",
+      "funding_PnL",
+      "win_rate",
+      "absolute_return",
+      "CAGR",
+      "drawdown"
+    ]
+  },
+  "novelty_boundary": {
+    "distinct_axis": "breadth of BTC-denominated spot participation in the BTCEUR, BTCTRY, and BTCBRL fiat-quote books relative to BTCUSDT, with cross-book relative taker pressure and no price confirmation",
+    "excluded_inputs": [
+      "OHLC_or_price_return",
+      "REX_or_rolling_extrema",
+      "funding_premium_basis_or_open_interest",
+      "kimchi_BTCKRW_USDKRW_or_DXY",
+      "orderbook_or_aggregate_trade_tail_shape",
+      "cross_venue_price_lead_lag",
+      "volatility_options_CFTC_or_onchain",
+      "existing_alpha_state_or_portfolio_PnL"
+    ],
+    "nearest_existing_families": {
+      "kimchi_fx": "uses a single KRW price premium and FX state; FQPR excludes KRW and all price/FX fields and requires three-book flow breadth",
+      "spot_perp_flow": "uses BTCUSDT execution microstructure; FQPR uses relative daily participation and taker alignment from three fiat-quote books",
+      "ticket_migration": "uses derivatives ticket topology; FQPR uses spot trade-count share only as one of two fiat-quote participation dimensions"
+    },
+    "forbidden_repairs_after_outcomes": [
+      "reverse direction",
+      "add a price or regime gate",
+      "change fiat-quote symbols or reference symbol",
+      "change the participation quantile grid",
+      "change rolling history or rank definition",
+      "change minimum breadth",
+      "change execution delay or hold",
+      "remove volume ticket or taker alignment"
+    ]
+  },
+  "source_contract": {
+    "source_commit": "9b21dedb51818d649fc4bdd68207190f836bd176",
+    "flow": "data/binance_regional_fiat_flow_btc_2021_2023/BTC_regional_fiat_flow_1d_2021-01-01_2023-12-31.csv.gz",
+    "flow_sha256": "c10ab68e9926c5e30a7ea70d3b54ee7468549b18513b67fc6c86eefa9f0a82c2",
+    "flow_manifest": "data/binance_regional_fiat_flow_btc_2021_2023/build_manifest.json",
+    "flow_manifest_sha256": "772bd166f26f5f0047f71e89a83a65704640b44dbd3648ea0d6dfbb0210ee217",
+    "flow_audit": "docs/binance-regional-fiat-flow-source-audit-2026-07-17.md",
+    "market": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "market_manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "funding": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+    "funding_sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6",
+    "funding_manifest": "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json",
+    "funding_manifest_sha256": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
+    "available_start": "2021-01-01",
+    "available_end_exclusive": "2024-01-01",
+    "gap_policy": "never fill or carry stale fiat-quote data; current day and all strictly prior rank lookbacks must be complete for all four symbols; zero taker-buy or taker-sell volume is unavailable, not clipped or repaired with a pseudocount"
+  },
+  "causal_feature_contract": {
+    "availability": "source day d is usable only after its close_time; signal at d close waits one complete five-minute bucket and enters at d+1 00:05 UTC",
+    "source_only_columns": [
+      "base_volume_btc",
+      "trade_count",
+      "taker_buy_base_btc",
+      "taker_sell_base_btc"
+    ],
+    "fiat_quote_features": {
+      "volume_share": "V_r[d]=log(base_volume_btc_r[d]/base_volume_btc_BTCUSDT[d])",
+      "ticket_share": "N_r[d]=log(trade_count_r[d]/trade_count_BTCUSDT[d])",
+      "fiat_quote_buy_odds": "O_r[d]=log(taker_buy_base_btc_r[d]/taker_sell_base_btc_r[d])",
+      "reference_buy_odds": "O_u[d]=log(taker_buy_base_btc_BTCUSDT[d]/taker_sell_base_btc_BTCUSDT[d])"
+    },
+    "lagged_ranks": "R_V and R_N are empirical mid-ranks (count(prior<current) + 0.5*count(prior==current))/180 against exactly complete source days d-180..d-1; current d is excluded and no fallback is allowed",
+    "participation_score": "P_r[d]=(R_V_r[d]+R_N_r[d])/2",
+    "relative_taker_pressure": "E_r[d]=O_r[d]-O_u[d]; F[d]=median(E_EUR[d],E_TRY[d],E_BRL[d])",
+    "breadth": "B[d]=sum_r 1[P_r[d]>=Q] across BTCEUR, BTCTRY, BTCBRL",
+    "setup": "B[d]>=2 AND F[d]>0 on a false-to-true transition; continuous true runs create one episode only",
+    "action": "fixed LONG BTCUSDT USD-M perpetual",
+    "price_signal_columns": []
+  },
+  "support_calibration": {
+    "vary_only": "participation quantile Q in the frozen policy grid",
+    "selection_rule": "select the highest Q passing every 2021-2022 support, composition, and novelty floor; 2023 may only pass or reject that frozen Q and cannot select a fallback",
+    "train_window": [
+      "2021-01-01",
+      "2023-01-01"
+    ],
+    "support_seen_outcome_sealed_window": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "minimum_nonoverlap_train": 40,
+    "minimum_2021_after_warmup": 20,
+    "minimum_2022": 18,
+    "minimum_2023": 20,
+    "minimum_each_2023_half": 8,
+    "maximum_single_month_share": 0.25,
+    "minimum_each_book_involvement_share": 0.3,
+    "maximum_single_pair_share": 0.8,
+    "book_involvement_definition": "fraction of non-overlapping primary entries whose signal day has that fiat-quote book has P_r>=Q, separately in train and 2023",
+    "pair_share_definition": "largest exact participating-book set count divided by primary entries, separately in train and 2023",
+    "jaccard_definition": "Jaccard of primary and control non-overlapping entry timestamps, calculated separately in train and 2023",
+    "maximum_signal_jaccard": {
+      "no_ticket": 0.7,
+      "no_taker": 0.75,
+      "volume_only": 0.4,
+      "flow_only": 0.35,
+      "single_book_eur": 0.5,
+      "single_book_try": 0.5,
+      "single_book_brl": 0.5,
+      "usdt_only": 0.1,
+      "reference_suppression": 0.35,
+      "absolute_book_participation": 0.35,
+      "one_day_signal_delay": 0.05
+    },
+    "failure_action": "reject FQPR-3 before opening any outcome; never fall back to a lower Q after the train-selected Q sees 2023 support"
+  },
+  "execution_contract": {
+    "decision_time": "after source day d closes at 23:59:59.999 UTC",
+    "entry": "d+1 00:05 UTC open, after the complete 00:00-00:05 availability bar",
+    "exit": "scheduled open after 864 held five-minute bars (72 hours)",
+    "nonoverlap": true,
+    "clock_reservation": "reserve each policy globally over the complete pre-2024 clock, then slice only trades whose signal, entry, and exit are fully contained inside the requested evaluation window; causal rank history may precede a split start but never the source start or signal day",
+    "position_size": "0.5x fixed account gross",
+    "base_cost": "6 bp/notional/side",
+    "stress_cost": "10 bp/notional/side",
+    "funding": "exact realized BTCUSDT settlements on [entry, exit)",
+    "strict_mdd": "global/pre-entry high-water; entry cost; favorable-before-adverse held OHLC; exact funding; hypothetical liquidation and exit cost",
+    "cagr_clock": "full wall-clock split including warm-up and idle cash"
+  },
+  "falsification_controls": {
+    "direction_flip": "same primary clock, exact SHORT side",
+    "no_ticket": "own clock with breadth sum(1[R_V>=Q])>=2 and F>0, omitting R_N",
+    "no_taker": "own clock with breadth sum(1[P_r>=Q])>=2, omitting F>0",
+    "volume_only": "own clock with breadth sum(1[R_V>=Q])>=2, omitting ticket and taker",
+    "flow_only": "own episode clock requiring F>0 only",
+    "single_book_eur": "own clock from P_EUR>=Q AND E_EUR>0 transitions",
+    "single_book_try": "own clock from P_TRY>=Q AND E_TRY>0 transitions",
+    "single_book_brl": "own clock from P_BRL>=Q AND E_BRL>0 transitions",
+    "usdt_only": "own clock where U=(own prior-180 raw-volume rank + own raw-trade rank)/2>=Q and O_u>0",
+    "reference_suppression": "own clock where U<=1-Q and F>0, testing whether a quiet BTCUSDT denominator alone explains the relative-share signal",
+    "absolute_book_participation": "own clock requiring at least two fiat-quote books whose mean own raw-volume and raw-trade prior-180 ranks are >=Q, plus F>0",
+    "one_day_signal_delay": "same primary signal shifted one full UTC day",
+    "random_side": "same primary clock with seed-20260717 Rademacher side"
+  },
+  "selection_protocol": {
+    "stage1_train": [
+      "2021-01-01",
+      "2023-01-01"
+    ],
+    "stage1_subperiods": {
+      "2021_after_warmup": [
+        "2021-06-30",
+        "2022-01-01"
+      ],
+      "2022": [
+        "2022-01-01",
+        "2023-01-01"
+      ]
+    },
+    "stage2_selection": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "stage2_halves": {
+      "h1": [
+        "2023-01-01",
+        "2023-07-01"
+      ],
+      "h2": [
+        "2023-07-01",
+        "2024-01-01"
+      ]
+    },
+    "sealed": [
+      "2024",
+      "2025",
+      "2026_ytd"
+    ],
+    "candidate_count": 1,
+    "stage2_requires_unchanged_stage1_pass": true,
+    "stage2_support_cannot_reselect_q": true,
+    "no_parameter_repair": true,
+    "gates": {
+      "train_and_2023_absolute_return_positive": true,
+      "train_and_2023_cagr_to_strict_mdd_min": 3.0,
+      "train_and_2023_strict_mdd_pct_max": 15.0,
+      "train_and_2023_weekly_cluster_signflip_p_max": 0.1,
+      "train_trades_min": 40,
+      "2023_trades_min": 20,
+      "2021_after_warmup_and_2022_absolute_return_positive": true,
+      "2021_after_warmup_trades_min": 20,
+      "2022_trades_min": 18,
+      "2023_h1_and_h2_absolute_return_positive": true,
+      "2023_h1_and_h2_trades_min": 8,
+      "train_and_2023_mean_gross_underlying_bp_min": 35.0,
+      "train_and_2023_ten_bp_stress_absolute_return_positive": true,
+      "stage1_primary_ratio_strictly_beats_each_mechanism_control": true,
+      "minimum_train_2023_primary_ratio_strictly_beats_each_control": true,
+      "one_day_delay_or_random_full_qualification_rejects": true
+    },
+    "statistical_test_contract": {
+      "cluster": "UTC ISO week of entry",
+      "null": "independent Rademacher sign applied to each weekly cluster",
+      "statistic": "mean net account return per trade",
+      "alternative": "primary statistic greater than zero",
+      "draws": 20000,
+      "seed": 20260717,
+      "p_value": "(1 + null statistics >= observed)/(20000 + 1)"
+    },
+    "control_comparison_contract": {
+      "mechanism_controls": [
+        "no_ticket",
+        "no_taker",
+        "volume_only",
+        "flow_only",
+        "usdt_only",
+        "reference_suppression",
+        "absolute_book_participation"
+      ],
+      "ratio": "full-clock CAGR / max(strict MDD, 1e-9)",
+      "stage1": "primary train ratio must be strictly greater than every mechanism-control train ratio; equality rejects",
+      "stage2": "min(primary train ratio, primary 2023 ratio) must be strictly greater than min(control train ratio, control 2023 ratio) for every mechanism control; equality rejects",
+      "promotion": "no control may replace the singleton primary"
+    }
+  },
+  "orthogonality_after_standalone_pass": {
+    "economic_gate_first": true,
+    "comparator_universe": {
+      "deduplicated_universe_audit": {
+        "path": "results/all_discovered_alpha_universe_audit_2026-07-12.json",
+        "sha256": "5bd45f5949cfae7308dfadd3966112e06c7c09dbb92365796237c3b94be85a3e"
+      },
+      "family_capped_portfolio": {
+        "path": "results/portfolio_all_discovered_dedup_familycap2_trainmdd40_oosmdd20_2026-07-12.json",
+        "sha256": "3becd1ac54e2b12b345036e64652eec14df3e69b216700d9d19e31732396d7a2"
+      },
+      "added_alpha_shadow": {
+        "path": "results/portfolio_added_alpha_update_2026-07-16.json",
+        "sha256": "e188917265d986b64b65fc854725f14d5a26372597f0923621d6bd721a468e0c"
+      },
+      "current_live_config": {
+        "path": "configs/live/portfolio_gross385_trainmdd40_2026-07-12.json",
+        "sha256": "86f255ca3967245b8b0676b00025b955d7f33668ab1ef9d813623191b4ecd1e7"
+      }
+    },
+    "duplicate_policy": "collapse exact PnL hashes and compare against every canonical family representative plus the synchronized selected portfolios",
+    "exact_entry_jaccard_max": 0.02,
+    "near_six_hour_entry_fraction_max": 0.2,
+    "position_time_jaccard_max": 0.15,
+    "absolute_daily_pnl_pearson_max": 0.3,
+    "minimum_nonzero_pnl_days": 20,
+    "marginal_portfolio_improvement_required": true
+  },
+  "rllm_boundary": {
+    "enabled_only_after_deterministic_standalone_pass": true,
+    "allowed_tokens": [
+      "fiat_quote_volume_share_ranks",
+      "fiat_quote_ticket_share_ranks",
+      "fiat_quote_relative_taker_pressure",
+      "reference_taker_buy_odds",
+      "breadth",
+      "participating_book_set",
+      "current_position",
+      "time_to_exit"
+    ],
+    "allowed_actions": [
+      "abstain",
+      "size_fixed_long"
+    ],
+    "forbidden_actions": [
+      "reverse_short",
+      "change_base_event"
+    ]
+  },
+  "rejection_contract": "any support or staged performance failure retires FQPR-3 without threshold, side, symbol, feature, delay, hold, or gate repair",
+  "manifest_hash": "7f74b6458fff701cd9d456c4bca1053831b14a2a6972e987658f4503ac4e09bc"
+}
