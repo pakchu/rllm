@@ -1,0 +1,90 @@
+{
+  "builder_sha256": "f7510fdd1775d0daef7074928049fc7f797e71ca8e310e579bac5e47da984dda",
+  "columns": [
+    "auction_date",
+    "result_available_at_utc",
+    "security_type",
+    "original_security_term",
+    "cusip",
+    "bid_to_cover_ratio",
+    "competitive_accepted_usd",
+    "primary_dealer_accepted_usd",
+    "direct_bidder_accepted_usd",
+    "indirect_bidder_accepted_usd",
+    "indirect_competitive_share",
+    "closing_time_competitive_et",
+    "updated_timestamp_et",
+    "competitive_results_pdf_url",
+    "competitive_results_xml_url",
+    "source_complete"
+  ],
+  "config": {
+    "end_date": "2023-12-31",
+    "output_dir": "data/us_treasury_auction_demand_2016_2023",
+    "retries": 5,
+    "start_date": "2016-01-01",
+    "timeout_seconds": 60
+  },
+  "coverage": {
+    "complete_rows": 440,
+    "first_auction_date": "2016-02-24",
+    "incomplete_rows": 5,
+    "last_auction_date": "2023-12-28",
+    "rows": 445,
+    "term_counts": {
+      "10-Year": 31,
+      "2-Year": 90,
+      "20-Year": 15,
+      "3-Year": 93,
+      "30-Year": 31,
+      "5-Year": 90,
+      "7-Year": 95
+    },
+    "year_counts": {
+      "2016": 48,
+      "2017": 52,
+      "2018": 56,
+      "2019": 51,
+      "2020": 59,
+      "2021": 60,
+      "2022": 59,
+      "2023": 60
+    }
+  },
+  "output": "data/us_treasury_auction_demand_2016_2023/us_treasury_nominal_original_auctions_2016_2023.csv.gz",
+  "output_sha256": "34a19163630c015a4f9d2671c95ca7cf7cc8a8ada024b3ef985405704fe0e4c1",
+  "protocol": {
+    "availability": "22:00 UTC on auction date; conservative after-17:00-ET guard",
+    "crypto_market_fields_opened": false,
+    "future_source_rows_used": false,
+    "outcomes_opened": false,
+    "source": "U.S. Treasury Bureau of the Fiscal Service / TreasuryDirect",
+    "source_measure": "official competitive auction results",
+    "universe": "original-issue nominal fixed-rate 2y/3y/5y/7y/10y/20y/30y coupon auctions"
+  },
+  "schema_version": 1,
+  "source_snapshot_date": "2026-07-17",
+  "source_total_results_count": 11046,
+  "sources": [
+    {
+      "first_auction_date": "2021-11-09",
+      "last_auction_date": "2026-07-23",
+      "page": 0,
+      "raw_gzip_sha256": "6e609bdf4e6e859d3d957c638244070e999c343acf7793dc5e9b32988915564b",
+      "raw_path": "data/us_treasury_auction_demand_2016_2023/raw/auction_query_page_0.json.gz",
+      "response_sha256": "c3b3ec599a5d8e94e41ba2588433b4fb899cd3bdd8172ce04bb515dba9977b2d",
+      "rows": 2000,
+      "url": "https://www.treasurydirect.gov/TA_WS/securities/jqsearch?format=json&pagenum=0&pagesize=2000"
+    },
+    {
+      "first_auction_date": "2016-02-18",
+      "last_auction_date": "2021-11-08",
+      "page": 1,
+      "raw_gzip_sha256": "b20370eacc2c6f030483e49d7e6cf6db6d4dbfa89c8142a3b3e0b5540840d221",
+      "raw_path": "data/us_treasury_auction_demand_2016_2023/raw/auction_query_page_1.json.gz",
+      "response_sha256": "1be85936b3fb04321665d4980f1b7f7191529a6f7b08a9355ee459b4bb94886f",
+      "rows": 2000,
+      "url": "https://www.treasurydirect.gov/TA_WS/securities/jqsearch?format=json&pagenum=1&pagesize=2000"
+    }
+  ]
+}
