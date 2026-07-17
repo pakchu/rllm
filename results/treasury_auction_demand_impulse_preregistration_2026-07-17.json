@@ -1,0 +1,623 @@
+{
+  "as_of_date": "2026-07-17",
+  "causal_feature_contract": {
+    "available_at": "22:00 UTC on auction date",
+    "bid_to_cover_change": "B[t]=BTCover[t]-BTCover[previous complete same-tenor auction]",
+    "economic_direction": "concordant positive auction demand impulse implies easier global duration absorption and LONG BTC; concordant negative impulse implies SHORT",
+    "indirect_share": "I[t]=indirectAccepted/(primary+direct+indirect accepted)",
+    "indirect_share_change": "J[t]=I[t]-I[previous complete same-tenor auction]",
+    "price_signal_columns": [],
+    "setup": "LONG iff both ranks >=0.75; SHORT iff both ranks <=0.25; otherwise none",
+    "strict_prior_ranks": "mid-rank B[t] and J[t] against exactly 12 prior valid same-tenor changes; current t is excluded and added only after emission",
+    "universe": "original nominal fixed-rate 2y/3y/5y/7y/10y/20y/30y auctions"
+  },
+  "execution_contract": {
+    "base_cost": "6 bp/notional/side",
+    "cagr_clock": "full wall-clock split including warm-up and idle cash",
+    "decision_time": "22:00 UTC auction date",
+    "entry": "first 5m open after decision (+5m)",
+    "exit": "scheduled 5m open exactly 24h after entry",
+    "funding": "exact realized BTCUSDT funding settlements on [entry, exit)",
+    "nonoverlap": "global chronological reservation; same-timestamp conflicts use shortest-tenor-first priority",
+    "position_size": "0.5x fixed account gross",
+    "stress_cost": "10 bp/notional/side",
+    "strict_mdd": "global/pre-entry high-water; entry cost; favorable-before-adverse held OHLC; exact funding; hypothetical liquidation and exit cost"
+  },
+  "falsification_controls": {
+    "bid_to_cover_only": "same strict-prior clock using only B rank tails",
+    "deterministic_random_side": "same primary entries; SHA256('TADI-1-random-side-20260717|' + entry_time), first byte <128 => LONG",
+    "direction_flip": "same primary entries with LONG/SHORT swapped",
+    "indirect_only": "same strict-prior clock using only J rank tails",
+    "one_auction_delay": "same primary side at next complete same-tenor result clock"
+  },
+  "manifest_hash": "974ab2f6d32233c35380561b75d787e27d47f2d87f90e5118c60ab3cc213a523",
+  "novelty_boundary": {
+    "distinct_axis": "official U.S. Treasury auction demand change and bidder composition; no crypto-internal state enters the signal",
+    "excluded_inputs": [
+      "BTC_OHLC_or_return",
+      "REX_or_rolling_extrema",
+      "open_interest_or_taker_flow",
+      "funding_premium_basis",
+      "kimchi_BTCKRW_USDKRW_DXY_or_EMFX",
+      "spot_volume_or_cross_venue_price",
+      "options_onchain_attention_or_existing_alpha_state"
+    ],
+    "forbidden_repairs_after_outcomes": [
+      "reverse primary direction",
+      "change the 12-change strict-prior window",
+      "change the quartile threshold",
+      "add yield price FX crypto or regime gates",
+      "change the conservative 22:00 UTC clock",
+      "change the 24h hold or 0.5x size",
+      "include reopenings TIPS FRNs or bills",
+      "bridge across source_complete=false rows"
+    ]
+  },
+  "orthogonality_after_standalone_pass": {
+    "comparator_universe": {
+      "added_alpha_shadow": {
+        "path": "results/portfolio_added_alpha_update_2026-07-16.json",
+        "sha256": "e188917265d986b64b65fc854725f14d5a26372597f0923621d6bd721a468e0c"
+      },
+      "current_live_config": {
+        "path": "configs/live/portfolio_gross385_trainmdd40_2026-07-12.json",
+        "sha256": "86f255ca3967245b8b0676b00025b955d7f33668ab1ef9d813623191b4ecd1e7"
+      },
+      "deduplicated_universe": {
+        "path": "results/all_discovered_alpha_universe_audit_2026-07-12.json",
+        "sha256": "5bd45f5949cfae7308dfadd3966112e06c7c09dbb92365796237c3b94be85a3e"
+      },
+      "family_capped_portfolio": {
+        "path": "results/portfolio_all_discovered_dedup_familycap2_trainmdd40_oosmdd20_2026-07-12.json",
+        "sha256": "3becd1ac54e2b12b345036e64652eec14df3e69b216700d9d19e31732396d7a2"
+      }
+    },
+    "not_allowed_before_pass": true,
+    "required": true,
+    "tests": [
+      "entry-clock Jaccard",
+      "daily return correlation",
+      "trade-source overlap",
+      "marginal portfolio CAGR/MDD under frozen allocation rules"
+    ]
+  },
+  "outcomes_opened": false,
+  "policy": {
+    "base_cost_notional_per_side": 0.0006,
+    "concordant_tail_threshold": 0.75,
+    "execution_delay_minutes": 5,
+    "hold_hours": 24,
+    "leverage": 0.5,
+    "policy_id": "TADI-1",
+    "prior_same_tenor_changes": 12,
+    "result_available_hour_utc": 22,
+    "stress_cost_notional_per_side": 0.001
+  },
+  "protocol_version": "treasury_auction_demand_impulse_v1",
+  "research_history_boundary": {
+    "auction_source_values_seen": true,
+    "density_preflight_disclosure": {
+      "bid_to_cover_only": {
+        "2021": {
+          "events": 27,
+          "max_single_month_count": 3,
+          "max_single_month_share": 0.1111111111111111,
+          "months": 12,
+          "side_counts": {
+            "LONG": 16,
+            "SHORT": 11
+          },
+          "term_counts": {
+            "10-Year": 2,
+            "2-Year": 6,
+            "3-Year": 5,
+            "5-Year": 5,
+            "7-Year": 9
+          }
+        },
+        "2022": {
+          "events": 28,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.14285714285714285,
+          "months": 11,
+          "side_counts": {
+            "LONG": 16,
+            "SHORT": 12
+          },
+          "term_counts": {
+            "10-Year": 3,
+            "2-Year": 2,
+            "3-Year": 5,
+            "30-Year": 4,
+            "5-Year": 6,
+            "7-Year": 8
+          }
+        },
+        "2023": {
+          "events": 34,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.14705882352941177,
+          "months": 11,
+          "side_counts": {
+            "LONG": 17,
+            "SHORT": 17
+          },
+          "term_counts": {
+            "10-Year": 3,
+            "2-Year": 9,
+            "3-Year": 9,
+            "30-Year": 3,
+            "5-Year": 3,
+            "7-Year": 7
+          }
+        },
+        "2023_h1": {
+          "events": 15,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.3333333333333333,
+          "months": 5,
+          "side_counts": {
+            "LONG": 10,
+            "SHORT": 5
+          },
+          "term_counts": {
+            "10-Year": 2,
+            "2-Year": 4,
+            "3-Year": 4,
+            "30-Year": 2,
+            "5-Year": 1,
+            "7-Year": 2
+          }
+        },
+        "2023_h2": {
+          "events": 19,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.21052631578947367,
+          "months": 6,
+          "side_counts": {
+            "LONG": 7,
+            "SHORT": 12
+          },
+          "term_counts": {
+            "10-Year": 1,
+            "2-Year": 5,
+            "3-Year": 5,
+            "30-Year": 1,
+            "5-Year": 2,
+            "7-Year": 5
+          }
+        },
+        "train": {
+          "events": 55,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.07272727272727272,
+          "months": 23,
+          "side_counts": {
+            "LONG": 32,
+            "SHORT": 23
+          },
+          "term_counts": {
+            "10-Year": 5,
+            "2-Year": 8,
+            "3-Year": 10,
+            "30-Year": 4,
+            "5-Year": 11,
+            "7-Year": 17
+          }
+        }
+      },
+      "definition": "source rows, strict-prior changes/ranks, timestamps, sides and counts only",
+      "indirect_only": {
+        "2021": {
+          "events": 30,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.13333333333333333,
+          "months": 11,
+          "side_counts": {
+            "LONG": 17,
+            "SHORT": 13
+          },
+          "term_counts": {
+            "10-Year": 3,
+            "2-Year": 10,
+            "3-Year": 7,
+            "5-Year": 6,
+            "7-Year": 4
+          }
+        },
+        "2022": {
+          "events": 29,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.13793103448275862,
+          "months": 12,
+          "side_counts": {
+            "LONG": 18,
+            "SHORT": 11
+          },
+          "term_counts": {
+            "10-Year": 3,
+            "2-Year": 5,
+            "3-Year": 9,
+            "30-Year": 1,
+            "5-Year": 2,
+            "7-Year": 9
+          }
+        },
+        "2023": {
+          "events": 27,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.18518518518518517,
+          "months": 11,
+          "side_counts": {
+            "LONG": 10,
+            "SHORT": 17
+          },
+          "term_counts": {
+            "10-Year": 2,
+            "2-Year": 5,
+            "3-Year": 6,
+            "30-Year": 4,
+            "5-Year": 5,
+            "7-Year": 5
+          }
+        },
+        "2023_h1": {
+          "events": 13,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.38461538461538464,
+          "months": 5,
+          "side_counts": {
+            "LONG": 8,
+            "SHORT": 5
+          },
+          "term_counts": {
+            "10-Year": 2,
+            "2-Year": 2,
+            "3-Year": 3,
+            "30-Year": 2,
+            "5-Year": 2,
+            "7-Year": 2
+          }
+        },
+        "2023_h2": {
+          "events": 14,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.2857142857142857,
+          "months": 6,
+          "side_counts": {
+            "LONG": 2,
+            "SHORT": 12
+          },
+          "term_counts": {
+            "2-Year": 3,
+            "3-Year": 3,
+            "30-Year": 2,
+            "5-Year": 3,
+            "7-Year": 3
+          }
+        },
+        "train": {
+          "events": 59,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.06779661016949153,
+          "months": 23,
+          "side_counts": {
+            "LONG": 35,
+            "SHORT": 24
+          },
+          "term_counts": {
+            "10-Year": 6,
+            "2-Year": 15,
+            "3-Year": 16,
+            "30-Year": 1,
+            "5-Year": 8,
+            "7-Year": 13
+          }
+        }
+      },
+      "outcomes_joined": false,
+      "primary": {
+        "2021": {
+          "events": 13,
+          "max_single_month_count": 2,
+          "max_single_month_share": 0.15384615384615385,
+          "months": 9,
+          "side_counts": {
+            "LONG": 8,
+            "SHORT": 5
+          },
+          "term_counts": {
+            "10-Year": 2,
+            "2-Year": 5,
+            "5-Year": 4,
+            "7-Year": 2
+          }
+        },
+        "2022": {
+          "events": 15,
+          "max_single_month_count": 3,
+          "max_single_month_share": 0.2,
+          "months": 10,
+          "side_counts": {
+            "LONG": 10,
+            "SHORT": 5
+          },
+          "term_counts": {
+            "10-Year": 3,
+            "2-Year": 1,
+            "3-Year": 2,
+            "30-Year": 1,
+            "5-Year": 2,
+            "7-Year": 6
+          }
+        },
+        "2023": {
+          "events": 23,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.21739130434782608,
+          "months": 10,
+          "side_counts": {
+            "LONG": 9,
+            "SHORT": 14
+          },
+          "term_counts": {
+            "10-Year": 2,
+            "2-Year": 5,
+            "3-Year": 6,
+            "30-Year": 3,
+            "5-Year": 2,
+            "7-Year": 5
+          }
+        },
+        "2023_h1": {
+          "events": 12,
+          "max_single_month_count": 5,
+          "max_single_month_share": 0.4166666666666667,
+          "months": 5,
+          "side_counts": {
+            "LONG": 8,
+            "SHORT": 4
+          },
+          "term_counts": {
+            "10-Year": 2,
+            "2-Year": 2,
+            "3-Year": 3,
+            "30-Year": 2,
+            "5-Year": 1,
+            "7-Year": 2
+          }
+        },
+        "2023_h2": {
+          "events": 11,
+          "max_single_month_count": 4,
+          "max_single_month_share": 0.36363636363636365,
+          "months": 5,
+          "side_counts": {
+            "LONG": 1,
+            "SHORT": 10
+          },
+          "term_counts": {
+            "2-Year": 3,
+            "3-Year": 3,
+            "30-Year": 1,
+            "5-Year": 1,
+            "7-Year": 3
+          }
+        },
+        "train": {
+          "events": 28,
+          "max_single_month_count": 3,
+          "max_single_month_share": 0.10714285714285714,
+          "months": 19,
+          "side_counts": {
+            "LONG": 18,
+            "SHORT": 10
+          },
+          "term_counts": {
+            "10-Year": 5,
+            "2-Year": 6,
+            "3-Year": 2,
+            "30-Year": 1,
+            "5-Year": 6,
+            "7-Year": 8
+          }
+        }
+      }
+    },
+    "exact_post_entry_btc_outcomes_opened": false,
+    "forbidden_before_evaluator_freeze": [
+      "entry_to_exit_return",
+      "post_entry_OHLC",
+      "funding_PnL",
+      "win_rate",
+      "absolute_return",
+      "CAGR",
+      "drawdown",
+      "existing_alpha_return_overlap"
+    ],
+    "source_only_density_preflight_seen": true,
+    "support_only_access_allowed": "source values, causal source-only features, event timestamps, side/term/month counts, and source-clock overlap"
+  },
+  "selection_protocol": {
+    "candidate_count": 1,
+    "gates": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_min": 3.0,
+      "each_subperiod_absolute_return_positive": true,
+      "each_subperiod_minimum_trades": 12,
+      "mean_gross_underlying_bp_min": 35.0,
+      "mechanism_margin_ratio_min": 0.25,
+      "minimum_trades": 25,
+      "stress_cost_absolute_return_positive": true,
+      "strict_mdd_pct_max": 15.0,
+      "weekly_cluster_signflip_p_max": 0.1
+    },
+    "no_parameter_repair": true,
+    "stage1_subperiods": {
+      "2021": [
+        "2021-01-01",
+        "2022-01-01"
+      ],
+      "2022": [
+        "2022-01-01",
+        "2023-01-01"
+      ]
+    },
+    "stage1_train": [
+      "2021-01-01",
+      "2023-01-01"
+    ],
+    "stage2_halves": {
+      "h1": [
+        "2023-01-01",
+        "2023-07-01"
+      ],
+      "h2": [
+        "2023-07-01",
+        "2024-01-01"
+      ]
+    },
+    "stage2_requires_unchanged_stage1_pass": true,
+    "stage2_selection": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "statistical_test": "exact two-sided weekly-cluster Rademacher sign-flip; enumerate when feasible, otherwise deterministic 20000 draws"
+  },
+  "source_contract": {
+    "auction_manifest": "data/us_treasury_auction_demand_2016_2023/build_manifest.json",
+    "auction_manifest_sha256": "6da6a3848e89c3418efcbf0d836fda34b537a2da87a8777b74670f3912ad94f2",
+    "auction_panel": "data/us_treasury_auction_demand_2016_2023/us_treasury_nominal_original_auctions_2016_2023.csv.gz",
+    "auction_panel_sha256": "34a19163630c015a4f9d2671c95ca7cf7cc8a8ada024b3ef985405704fe0e4c1",
+    "funding": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+    "funding_manifest": "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json",
+    "funding_manifest_sha256": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
+    "funding_sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6",
+    "market": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "market_manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "source_audit": "docs/us-treasury-auction-demand-source-audit-2026-07-17.md",
+    "source_commit": "e13ed6e",
+    "source_incomplete_policy": "blank demand values, reset previous same-tenor observation, and never bridge a change across the quarantined auction"
+  },
+  "support_gates": {
+    "expected_counts": {
+      "2021": {
+        "events": 13,
+        "max_single_month_count": 2,
+        "max_single_month_share": 0.15384615384615385,
+        "months": 9,
+        "side_counts": {
+          "LONG": 8,
+          "SHORT": 5
+        },
+        "term_counts": {
+          "10-Year": 2,
+          "2-Year": 5,
+          "5-Year": 4,
+          "7-Year": 2
+        }
+      },
+      "2022": {
+        "events": 15,
+        "max_single_month_count": 3,
+        "max_single_month_share": 0.2,
+        "months": 10,
+        "side_counts": {
+          "LONG": 10,
+          "SHORT": 5
+        },
+        "term_counts": {
+          "10-Year": 3,
+          "2-Year": 1,
+          "3-Year": 2,
+          "30-Year": 1,
+          "5-Year": 2,
+          "7-Year": 6
+        }
+      },
+      "2023": {
+        "events": 23,
+        "max_single_month_count": 5,
+        "max_single_month_share": 0.21739130434782608,
+        "months": 10,
+        "side_counts": {
+          "LONG": 9,
+          "SHORT": 14
+        },
+        "term_counts": {
+          "10-Year": 2,
+          "2-Year": 5,
+          "3-Year": 6,
+          "30-Year": 3,
+          "5-Year": 2,
+          "7-Year": 5
+        }
+      },
+      "2023_h1": {
+        "events": 12,
+        "max_single_month_count": 5,
+        "max_single_month_share": 0.4166666666666667,
+        "months": 5,
+        "side_counts": {
+          "LONG": 8,
+          "SHORT": 4
+        },
+        "term_counts": {
+          "10-Year": 2,
+          "2-Year": 2,
+          "3-Year": 3,
+          "30-Year": 2,
+          "5-Year": 1,
+          "7-Year": 2
+        }
+      },
+      "2023_h2": {
+        "events": 11,
+        "max_single_month_count": 4,
+        "max_single_month_share": 0.36363636363636365,
+        "months": 5,
+        "side_counts": {
+          "LONG": 1,
+          "SHORT": 10
+        },
+        "term_counts": {
+          "2-Year": 3,
+          "3-Year": 3,
+          "30-Year": 1,
+          "5-Year": 1,
+          "7-Year": 3
+        }
+      },
+      "train": {
+        "events": 28,
+        "max_single_month_count": 3,
+        "max_single_month_share": 0.10714285714285714,
+        "months": 19,
+        "side_counts": {
+          "LONG": 18,
+          "SHORT": 10
+        },
+        "term_counts": {
+          "10-Year": 5,
+          "2-Year": 6,
+          "3-Year": 2,
+          "30-Year": 1,
+          "5-Year": 6,
+          "7-Year": 8
+        }
+      }
+    },
+    "failure_action": "retire TADI-1 before loading any BTC outcome",
+    "maximum_single_month_share": 0.25,
+    "minimum_2021_events": 12,
+    "minimum_2022_events": 12,
+    "minimum_2023_each_side": 8,
+    "minimum_2023_events": 20,
+    "minimum_each_2023_half": 10,
+    "minimum_train_each_side": 8,
+    "minimum_train_events": 25,
+    "month_share_scope": "train and full 2023 only; halves are density diagnostics"
+  }
+}
