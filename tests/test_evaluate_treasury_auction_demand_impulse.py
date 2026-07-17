@@ -67,3 +67,16 @@ def test_stage2_refuses_a_failed_or_missing_stage1(
     monkeypatch.setattr(evaluator, "STAGE1_OUTPUT", missing)
     with pytest.raises(ValueError, match="has not been run"):
         evaluator._verified_passing_stage1("irrelevant")
+
+
+def test_frozen_stage1_is_rejected_and_keeps_2023_sealed() -> None:
+    stored = json.loads(Path(evaluator.STAGE1_OUTPUT).read_text())
+    assert stored["manifest_hash"] == (
+        "4d1525e039745619826e4ae0c8a5716730e7857a83b237e4386bdaacfb54b921"
+    )
+    assert stored["gate_passed"] is False
+    assert stored["disposition"] == "REJECT_KEEP_2023_SEALED"
+    assert stored["opened_windows"] == ["stage1_2021_2022"]
+    assert stored["sealed_windows"] == ["stage2_2023", "2024_plus"]
+    with pytest.raises(ValueError, match="Stage1 failed; 2023 remains sealed"):
+        evaluator._verified_passing_stage1(stored["evaluator_freeze_manifest_hash"])
