@@ -1,0 +1,41 @@
+{
+  "availability_rule": "AssetEODCompletionTime must be >= observation time + 1 day; timestamps are naive UTC",
+  "columns": [
+    "observation_date",
+    "available_at",
+    "HashRate",
+    "IssTotNtv",
+    "FeeTotNtv",
+    "BlkCnt"
+  ],
+  "config": {
+    "base_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics",
+    "end": "2023-12-31",
+    "manifest": "results/coinmetrics_btc_miner_security_daily_2019_2023_manifest_2026-07-17.json",
+    "output": "data/coinmetrics_btc_miner_security_daily_2019_2023.csv.gz",
+    "page_size": 10000,
+    "start": "2019-01-01",
+    "timeout_sec": 30.0
+  },
+  "excluded_on_purpose": {
+    "exchange_flow_metrics": "address-tag history can change and is inadmissible without point-in-time tags",
+    "post_2023_rows": "preserve 2024 and later source and outcome windows",
+    "price_or_market_cap_metrics": "keep the source independent from BTC market outcomes"
+  },
+  "official_catalog_url": "https://community-api.coinmetrics.io/v4/catalog/metrics?metrics=HashRate%2CIssTotNtv%2CFeeTotNtv%2CBlkCnt%2CAssetEODCompletionTime",
+  "output": "data/coinmetrics_btc_miner_security_daily_2019_2023.csv.gz",
+  "revision_boundary": "AssetEODCompletionTime freezes semantic publication latency and the file hash freezes this downloaded vintage; it is not a historical revision-vintage archive",
+  "row_range": {
+    "end": "2023-12-31 00:00:00",
+    "start": "2019-01-01 00:00:00"
+  },
+  "rows": 1826,
+  "sha256": "448a101834df33f69abaeafe9aadfccd8ce9c3d6ad7816c1c2448189a12b8379",
+  "source_semantics": {
+    "BlkCnt": "main-chain blocks created in the interval",
+    "FeeTotNtv": "transactor-paid fees excluding new issuance",
+    "HashRate": "Coin Metrics mean estimated network hash-solving rate",
+    "IssTotNtv": "new native units issued in the interval"
+  },
+  "source_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=HashRate%2CIssTotNtv%2CFeeTotNtv%2CBlkCnt%2CAssetEODCompletionTime&frequency=1d&start_time=2019-01-01&end_time=2023-12-31&page_size=10000"
+}
