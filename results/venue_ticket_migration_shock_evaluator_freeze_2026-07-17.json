@@ -1,0 +1,93 @@
+{
+  "candidate_id": "VTMS-288",
+  "support_commit": "206494b689c397f6e8dabf7ec3a6337f813a1f28",
+  "evaluation_source": "training/evaluate_venue_ticket_migration_shock.py",
+  "evaluation_source_commit": "315418a24e76cfe81dda7e39cbe5829a097592d2",
+  "evaluation_source_sha256": "9456e3f51b21cdce11d42860cd6ec9d1dce3ce4889fd007b11ee541c6b70cd27",
+  "evaluation_config": {
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.001,
+    "cluster_permutations": 100000,
+    "cluster_seed": 20260717,
+    "minimum_cagr_to_strict_mdd": 3.0,
+    "maximum_strict_mdd_pct": 15.0,
+    "maximum_cluster_p_value": 0.1,
+    "minimum_mean_gross_underlying_bp": 20.0,
+    "minimum_train_trades": 250,
+    "minimum_selection_trades": 75,
+    "minimum_selection_half_trades": 35
+  },
+  "control_names": [
+    "primary",
+    "direction_flip",
+    "no_ticket_level",
+    "no_ticket_shock",
+    "no_coherence",
+    "no_price_acceptance",
+    "other_venue_side",
+    "one_hour_signal_delay",
+    "one_day_shifted_clock",
+    "random_side"
+  ],
+  "control_schedules": {
+    "primary": {
+      "rows": 437,
+      "clock_sha256": "7baf6f7de33e66417061dbea6f51efc6ea4993b2b5f2b9e0c09627a68adc57e2"
+    },
+    "direction_flip": {
+      "rows": 437,
+      "clock_sha256": "41c82dba9b5f6d17aa4bc97a5efd8b03ae91f1207f4ab607b081c934c02f90dd"
+    },
+    "no_ticket_level": {
+      "rows": 747,
+      "clock_sha256": "b4d0b1637133d38fd3c4e4f202fc5f761ecf3a36e749a3bfb3ea00597c43a853"
+    },
+    "no_ticket_shock": {
+      "rows": 951,
+      "clock_sha256": "b554433f0a2f06eb475fd9ad54c9d7929960c688b4a8af88b3d3c5af3b3e834e"
+    },
+    "no_coherence": {
+      "rows": 580,
+      "clock_sha256": "9304c0c3234419ca31ce5fa6cecfa3c87938da777807fb173a1432f110666299"
+    },
+    "no_price_acceptance": {
+      "rows": 942,
+      "clock_sha256": "e03933f9e5940c7d748c9448497505e1c43f1cb849e0a63895cdaa762aa28d77"
+    },
+    "other_venue_side": {
+      "rows": 437,
+      "clock_sha256": "48f0ef2dbfaec94bf36cd41632dd2c3fb32eda1014a2976064c462e45aaa91f9"
+    },
+    "one_hour_signal_delay": {
+      "rows": 437,
+      "clock_sha256": "b047a2c1f637a73afbff9a4c2a741abb8c10ad0fbe4e042dfab65bcf3272bef8"
+    },
+    "one_day_shifted_clock": {
+      "rows": 434,
+      "clock_sha256": "4cde710368ac9e098818210afae442e9aac4e1d932563b90c3433b61cb156d50"
+    },
+    "random_side": {
+      "rows": 437,
+      "clock_sha256": "240bf45d68f2d0a4c3d95e34ab4f5228606942c13950bf3d75e2e9bb334d793d"
+    }
+  },
+  "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+  "funding_data_sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6",
+  "funding_manifest_sha256": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
+  "opened_windows": [],
+  "sealed_windows": [
+    "stage1_2020_2022",
+    "stage2_2023",
+    "2024",
+    "2025",
+    "2026_ytd"
+  ],
+  "mutable_parameters": [],
+  "execution_ohlc_rows_parsed_during_freeze": 0,
+  "funding_settlement_marks_loaded_during_freeze": 0,
+  "execution_simulation_run_during_freeze": false,
+  "stage1_physical_boundary": "stop before parsing any 2023 OHLC or funding value",
+  "causal_quarantine_contract": "origin/signal inputs must be clean at decision time; a source gap that occurs after entry never censors an already scheduled trade",
+  "manifest_hash": "1eeb879d38d4757a3c01b2bccdb25d33798630b65763c6d96dc5af3e0fda1239"
+}
