@@ -83,3 +83,23 @@ def test_stage2_refuses_a_missing_stage1(
     with pytest.raises(ValueError, match="has not been run"):
         evaluator._verified_passing_stage1("irrelevant")
 
+
+def test_frozen_stage1_is_rejected_and_keeps_2023_sealed() -> None:
+    stored = json.loads(Path(evaluator.STAGE1_OUTPUT).read_text())
+    assert stored["manifest_hash"] == (
+        "10cbd385ef3118f70a43f2cf2488624a5dce578834954264389251c4abcdc65b"
+    )
+    assert stored["gate_passed"] is False
+    assert stored["disposition"] == "REJECT_KEEP_2023_SEALED"
+    assert stored["opened_windows"] == ["stage1_2020_2022"]
+    assert stored["sealed_windows"] == ["stage2_2023", "2024_plus"]
+    primary = stored["headline_by_clock"]["primary"]
+    assert primary["absolute_return_pct"] == pytest.approx(32.363254444030474)
+    assert primary["cagr_pct"] == pytest.approx(9.794323488814527)
+    assert primary["strict_mdd_pct"] == pytest.approx(45.28913671017073)
+    assert primary["cagr_to_strict_mdd"] == pytest.approx(0.21626209286111173)
+    assert primary["trades"] == 98
+    with pytest.raises(ValueError, match="Stage1 failed; 2023 remains sealed"):
+        evaluator._verified_passing_stage1(
+            stored["evaluator_freeze_manifest_hash"]
+        )
