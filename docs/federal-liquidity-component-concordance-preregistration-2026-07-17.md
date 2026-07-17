@@ -19,7 +19,7 @@ kimchi premium, FX, REX, or existing alpha state.
 
 - Source audit: `docs/federal-reserve-h41-net-liquidity-source-audit-2026-07-17.md`
 - Frozen panel SHA-256: `224883dad01b9d7f17d52eb87f3d7ef9890c8dd055a6c36577a534d2afe69621`
-- Clock ledger SHA-256: `03fa41d6bc60bab89af856efe6aaf167f08602b3f688cf3bf1cdb3d84b62eaa3`
+- Clock ledger SHA-256: `7ebb0450422d9265e46c596e0b6415b6a8816c66f5e0cbb9ccda14ca6cb4c67c`
 - Official release archive: <https://www.federalreserve.gov/releases/h41/>
 
 The source panel already delays availability to 16:35 America/New_York, five

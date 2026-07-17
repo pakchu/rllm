@@ -142,6 +142,7 @@ def test_event_ledger_is_byte_deterministic(tmp_path: Path) -> None:
     assert second == first
     assert path.read_bytes() == first_bytes
     assert clock.read_event_ledger(path) == events
+    assert all(clock._parse_utc(event.exit_time) < clock.RESEARCH_END for event in events)
 
 
 def test_read_source_rejects_identity_failure_and_2024(tmp_path: Path) -> None:

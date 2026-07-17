@@ -28,6 +28,7 @@ PRIOR_LOOKBACK = 104
 MINIMUM_COMPONENT_BREADTH = 2
 ENTRY_DELAY = timedelta(minutes=5)
 HOLD = timedelta(days=5)
+RESEARCH_END = datetime(2024, 1, 1, tzinfo=timezone.utc)
 
 CLOCK_NAMES = (
     "primary",
@@ -364,6 +365,8 @@ def reserve_nonoverlap(events: Iterable[Event]) -> list[Event]:
     for event in sorted(events, key=lambda item: _parse_utc(item.entry_time)):
         entry = _parse_utc(event.entry_time)
         exit_time = _parse_utc(event.exit_time)
+        if exit_time >= RESEARCH_END:
+            continue
         if active_until is not None and entry < active_until:
             continue
         reserved.append(event)
