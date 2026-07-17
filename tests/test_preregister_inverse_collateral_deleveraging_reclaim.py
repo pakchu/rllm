@@ -36,6 +36,11 @@ def test_policy_freezes_causal_delay_units_and_only_support_grid() -> None:
     assert manifest["support_calibration"]["vary_only"].startswith(
         "relative purge quantile"
     )
+    assert "2021-2022" in manifest["support_calibration"]["selection_rule"]
+    assert (
+        "cannot select a fallback" in manifest["support_calibration"]["selection_rule"]
+    )
+    assert manifest["selection_protocol"]["stage2_support_cannot_reselect_q"] is True
     units = manifest["causal_feature_contract"]["unit_safe_open_interest"]
     assert "um_sum_open_interest_value" in units["um"]
     assert "cm_sum_open_interest" in units["cm"]

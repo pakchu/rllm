@@ -104,13 +104,22 @@ does not read that open or any post-entry OHLC.
 
 ## Outcome-blind support gate
 
-Choose the highest frozen `Q` passing every gate:
+Using **only 2021-07-08 through 2022-12-31 support information**, choose the
+highest frozen `Q` passing every train support and novelty gate. Then expose
+2023 support for that one frozen `Q`. The 2023 support check may pass or reject
+the candidate; it cannot select a fallback `Q`. Thus 2023 never chooses a
+threshold, even from outcome-blind feature distributions.
+
+The frozen gates are:
 
 - at least 100 non-overlapping train events;
 - at least 20 in 2021 partial and 50 in 2022;
 - at least 75 in 2023 and 30 in each 2023 half;
-- confirmation rate between 5% and 80%;
-- no month above 15% of selected events;
+- confirmation rate between 5% and 80% separately in train and 2023. Its
+  denominator is accepted false-to-true setup episodes before position
+  non-overlap, and its numerator is episodes with a valid confirmation;
+- no UTC month above 15% of non-overlapping primary entries, calculated
+  separately in train and 2023;
 - signal Jaccard no greater than:
   - CM-only OI `0.75`,
   - no taker gap `0.80`,
@@ -120,16 +129,27 @@ Choose the highest frozen `Q` passing every gate:
   - one-hour delayed signal `0.05`,
   - one-day shifted signal `0.02`.
 
+Each Jaccard is computed on non-overlapping entry timestamps separately in
+train and 2023. Each policy first reserves its own globally non-overlapping
+pre-2024 clock. A split count includes only trades whose setup, signal, entry,
+and exit all remain inside that split.
+
 Support failure rejects ICDR without loading a strategy return.
 
 ## Frozen falsification controls
 
 1. exact short flip on the primary clock;
-2. CM-only OI contraction instead of the relative purge;
-3. remove the cross-collateral taker-gap threshold;
-4. enter from the setup without reclaim confirmation;
-5. remove the nonnegative one-bar COIN-M OI confirmation;
-6. matched USD-M contraction/sell/reclaim sequence;
+2. CM-only OI: use `dC < 0` and prior-`Q` extreme `-dC` instead of `P`,
+   retaining `S`, `G`, and all three CM reclaim clauses;
+3. no taker gap: remove only `G >= prior_q90(G)` and retain the other setup and
+   reclaim clauses;
+4. no reclaim: enter two bars after the accepted primary setup onset without a
+   confirmation scan;
+5. no OI stop: retain the primary setup but confirm on only
+   `cm_taker_ratio >= 1` and `cm_taker_ratio >= um_taker_ratio`;
+6. matched USD-M: require `dU < 0`, prior-`Q` extreme `-dU`, and
+   prior-q90 `-TU`, then confirm on `um_taker_ratio >= 1` and nonnegative
+   one-bar `dU`;
 7. primary signal delayed one hour;
 8. primary signal shifted one day;
 9. fixed-seed random side on the primary clock.

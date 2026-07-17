@@ -219,9 +219,13 @@ def build_manifest() -> dict[str, Any]:
         },
         "support_calibration": {
             "vary_only": "relative purge quantile Q in the frozen policy grid",
-            "selection_rule": "highest Q passing every support and novelty floor",
+            "selection_rule": (
+                "select the highest Q passing every 2021-2022 support and novelty "
+                "floor; 2023 may only pass or reject that frozen Q and cannot select "
+                "a fallback"
+            ),
             "train_window": ["2021-07-08", "2023-01-01"],
-            "selection_window": ["2023-01-01", "2024-01-01"],
+            "outcome_blind_validation_window": ["2023-01-01", "2024-01-01"],
             "minimum_nonoverlap_train": 100,
             "minimum_2021_partial": 20,
             "minimum_2022": 50,
@@ -229,7 +233,20 @@ def build_manifest() -> dict[str, Any]:
             "minimum_each_2023_half": 30,
             "minimum_confirmation_rate": 0.05,
             "maximum_confirmation_rate": 0.80,
+            "confirmation_rate_definition": (
+                "confirmed setup episodes divided by accepted false-to-true setup "
+                "episodes before position non-overlap, calculated separately in "
+                "train and 2023"
+            ),
             "maximum_single_month_share": 0.15,
+            "month_share_definition": (
+                "largest UTC entry-month count divided by non-overlapping primary "
+                "entries, calculated separately in train and 2023"
+            ),
+            "jaccard_definition": (
+                "Jaccard of primary and control non-overlapping entry timestamps, "
+                "calculated separately in train and 2023"
+            ),
             "maximum_signal_jaccard": {
                 "cm_only_oi": 0.75,
                 "no_taker_gap": 0.80,
@@ -239,13 +256,21 @@ def build_manifest() -> dict[str, Any]:
                 "one_hour_signal_delay": 0.05,
                 "one_day_shifted_clock": 0.02,
             },
-            "failure_action": "reject ICDR-144 before opening any outcome",
+            "failure_action": (
+                "reject ICDR-144 before opening any outcome; never fall back to a "
+                "lower Q after the frozen train-selected Q sees 2023 support"
+            ),
         },
         "execution_contract": {
             "decision_time": "after the reclaim-confirmation metrics row is complete",
             "entry": "confirmation row + 2 five-minute opens",
             "exit": "scheduled open after 144 held five-minute bars (12 hours)",
             "nonoverlap": True,
+            "clock_reservation": (
+                "reserve each policy globally over the complete pre-2024 clock, then "
+                "slice only trades whose setup, signal, entry, and exit are contained "
+                "inside the requested evaluation window"
+            ),
             "position_size": "0.5x fixed account gross",
             "base_cost": "6 bp/notional/side",
             "stress_cost": "10 bp/notional/side",
@@ -259,14 +284,24 @@ def build_manifest() -> dict[str, Any]:
         "falsification_controls": {
             "direction_flip": "same primary clock, exact SHORT side",
             "cm_only_oi": (
-                "own clock using extreme -dC instead of relative P, with the same "
-                "CM sell and reclaim requirements"
+                "own setup clock using dC<0 and prior-Q extreme -dC instead of P, "
+                "with the same S, G, and three-part CM reclaim requirements"
             ),
-            "no_taker_gap": "own clock with G threshold removed",
-            "no_reclaim": "own clock entering from setup without confirmation",
-            "no_oi_stop": "own clock dropping nonnegative one-bar COIN-M OI change",
+            "no_taker_gap": (
+                "own setup clock with only the G>=prior-q90(G) clause removed and "
+                "the same three-part CM reclaim"
+            ),
+            "no_reclaim": (
+                "own clock entering two bars after the accepted primary setup onset, "
+                "without scanning a confirmation window"
+            ),
+            "no_oi_stop": (
+                "own primary setup clock whose first confirmation requires only "
+                "cm_taker_ratio>=1 and cm_taker_ratio>=um_taker_ratio"
+            ),
             "um_matched": (
-                "matched USD-M OI contraction, USD-M sell stress, and USD-M reclaim"
+                "own clock with dU<0, prior-Q extreme -dU, prior-q90(-TU), and the "
+                "first clean confirmation where um_taker_ratio>=1 and one-bar dU>=0"
             ),
             "one_hour_signal_delay": "same primary confirmation shifted 12 bars",
             "one_day_shifted_clock": "same primary confirmation shifted 288 bars",
@@ -286,6 +321,7 @@ def build_manifest() -> dict[str, Any]:
             "sealed": ["2024", "2025", "2026_ytd"],
             "candidate_count": 1,
             "stage2_requires_unchanged_stage1_pass": True,
+            "stage2_support_cannot_reselect_q": True,
             "no_parameter_repair": True,
             "gates": {
                 "train_and_2023_absolute_return_positive": True,
