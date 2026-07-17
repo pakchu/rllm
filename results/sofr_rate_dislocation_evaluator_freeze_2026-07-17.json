@@ -1,0 +1,495 @@
+{
+  "protocol_version": "sofr_rate_dislocation_evaluator_v1",
+  "policy_id": "SFRD-1",
+  "candidate_class": "source-only-screened exploratory singleton",
+  "as_of_date": "2026-07-17",
+  "support_commit": "216f3e95b8e7c9b10441560cf93deac54b374b03",
+  "support_preregistration_manifest_hash": "fb842630c06f63f3bdb7899a663d287d96a77048856cdab83e27774d9d02f0d4",
+  "evaluator_source": "training/evaluate_sofr_rate_dislocation.py",
+  "evaluator_source_sha256": "658c92629616410f76c3231db154f6998cbc37c936ff60235af89686a3ae1914",
+  "strict_engine_source": "training/evaluate_fiat_quote_participation_rotation.py",
+  "strict_engine_source_sha256": "e309f5217f033d57d2eadfec936843e736ce287f5c47f957c0ac6f0c71879c23",
+  "evaluation_config": {
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.001,
+    "cluster_draws": 20000,
+    "cluster_seed": 20260717,
+    "mdd_denominator_floor": 1e-09
+  },
+  "selection_protocol": {
+    "stage1_train": [
+      "2021-01-01",
+      "2023-01-01"
+    ],
+    "stage1_subperiods": {
+      "2021": [
+        "2021-01-01",
+        "2022-01-01"
+      ],
+      "2022": [
+        "2022-01-01",
+        "2023-01-01"
+      ]
+    },
+    "stage2_selection": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "stage2_halves": {
+      "h1": [
+        "2023-01-01",
+        "2023-07-01"
+      ],
+      "h2": [
+        "2023-07-01",
+        "2024-01-01"
+      ]
+    },
+    "sealed": [
+      "2024",
+      "2025",
+      "2026_ytd"
+    ],
+    "candidate_count": 1,
+    "stage2_requires_unchanged_stage1_pass": true,
+    "no_parameter_repair": true,
+    "gates": {
+      "train_and_2023_absolute_return_positive": true,
+      "train_and_2023_cagr_to_strict_mdd_min": 3.0,
+      "train_and_2023_strict_mdd_pct_max": 15.0,
+      "train_and_2023_weekly_cluster_signflip_p_max": 0.1,
+      "train_trades_min": 45,
+      "train_each_side_trades_min": 15,
+      "train_single_month_share_max": 0.15,
+      "2021_trades_min": 10,
+      "2022_trades_min": 35,
+      "2023_trades_min": 35,
+      "2023_each_side_trades_min": 18,
+      "2023_single_month_share_max": 0.15,
+      "2023_h1_trades_min": 15,
+      "2023_h2_trades_min": 18,
+      "2021_2022_and_2023_halves_absolute_return_positive": true,
+      "train_and_2023_mean_gross_underlying_bp_min": 35.0,
+      "train_and_2023_ten_bp_stress_absolute_return_positive": true,
+      "stage1_primary_ratio_strictly_beats_mechanism_controls": true,
+      "minimum_train_2023_primary_ratio_strictly_beats_controls": true,
+      "one_observation_delay_or_random_full_qualification_rejects": true
+    },
+    "statistical_test_contract": {
+      "cluster": "UTC ISO week of entry",
+      "null": "independent Rademacher sign applied to each weekly cluster",
+      "statistic": "mean net account return per trade",
+      "alternative": "primary statistic greater than zero",
+      "draws": 20000,
+      "seed": 20260717,
+      "p_value": "(1 + null statistics >= observed)/(20000 + 1)"
+    },
+    "control_comparison_contract": {
+      "mechanism_controls": [
+        "level_tail",
+        "five_observation_change_tail",
+        "month_turn"
+      ],
+      "ratio": "full-clock CAGR / max(strict MDD, 1e-9)",
+      "stage1": "primary train ratio must be strictly greater than each mechanism-control train ratio; equality rejects",
+      "stage2": "min(primary train ratio, primary 2023 ratio) must be strictly greater than the same minimum for each control; equality rejects",
+      "promotion": "no control may replace the singleton primary"
+    }
+  },
+  "static_inputs": {
+    "training/preregister_sofr_rate_dislocation.py": "1d315d9d9d4f62a3c6441068dd3bdd03577adc6f1619955ebe9e6bf985e367e1",
+    "training/sofr_rate_dislocation_clock.py": "df44bc26f3d6e523df8ecd8619db97b6deb6078d4af14b6c89baabaef171f36d",
+    "training/build_sofr_rate_dislocation_support.py": "99adc74e13bc6173e633906e15998cec831f3d8d022d1ce8dfaba455ae46e712",
+    "training/evaluate_fiat_quote_participation_rotation.py": "e309f5217f033d57d2eadfec936843e736ce287f5c47f957c0ac6f0c71879c23",
+    "docs/sofr-rate-dislocation-preregistration-2026-07-17.md": "81cb715a58100c1c4090bab3a06806787294bed52971ff0857dc7976136f7f85",
+    "docs/sofr-rate-dislocation-support-2026-07-17.md": "5e31f2709fd6323c87d1a2dfc763bbc535b42f30e4bf51bd5ba2417c648e12d3",
+    "results/sofr_rate_dislocation_preregistration_2026-07-17.json": "cbb80c25e4b4c627b95d1992ce4ad00043acfff586e0fe3fcd086af5b4e80b06",
+    "results/sofr_rate_dislocation_preregistered_clock_2026-07-17.csv.gz": "391c42dd2b0d5b87ffcd73058dd9fa0c4d18fd2f535597effff5a4c8edea2e69",
+    "results/sofr_rate_dislocation_support_2026-07-17.json": "477286e74987c2371d92bc91eeef6546ba0d3796e6f03239b75e880ec05a29e8",
+    "data/new_york_fed_sofr_distribution_2018_2023/new_york_fed_sofr_distribution_2018-04-02_2023-12-28.csv.gz": "4993eda2b659e346b4d7b6e3aa0e2ff31cacf868f0e1fe2e1a5a76a03d1b5852",
+    "data/new_york_fed_sofr_distribution_2018_2023/build_manifest.json": "873afb5234fd013e3bc454a83713abf34d9f4a4bffc9895683add7891c636598",
+    "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b"
+  },
+  "execution_source_contract": {
+    "market": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "market_expected_sha256_copied_without_read": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "funding": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+    "funding_expected_sha256_copied_without_read": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6",
+    "stage1_physical_window": [
+      "2021-01-01T00:00:00+00:00",
+      "2023-01-01T00:00:00+00:00"
+    ],
+    "stage2_physical_window": [
+      "2023-01-01T00:00:00+00:00",
+      "2024-01-01T00:00:00+00:00"
+    ]
+  },
+  "control_schedules": {
+    "primary": {
+      "all_pre2024": 158,
+      "stage1_2021_2022": 48,
+      "stage2_2023": 40,
+      "stage1_entry_distribution": {
+        "trades": 48,
+        "long_trades": 31,
+        "short_trades": 17,
+        "entry_month_counts": {
+          "2021-01": 3,
+          "2021-02": 4,
+          "2021-03": 1,
+          "2021-06": 1,
+          "2021-10": 2,
+          "2021-12": 1,
+          "2022-01": 3,
+          "2022-02": 1,
+          "2022-03": 2,
+          "2022-04": 3,
+          "2022-05": 4,
+          "2022-06": 5,
+          "2022-07": 4,
+          "2022-08": 4,
+          "2022-09": 4,
+          "2022-10": 3,
+          "2022-11": 1,
+          "2022-12": 2
+        },
+        "max_single_entry_month_count": 5,
+        "max_single_entry_month_share": 0.10416666666666667
+      },
+      "stage2_entry_distribution": {
+        "trades": 40,
+        "long_trades": 20,
+        "short_trades": 20,
+        "entry_month_counts": {
+          "2023-01": 4,
+          "2023-02": 2,
+          "2023-03": 3,
+          "2023-04": 3,
+          "2023-05": 4,
+          "2023-06": 3,
+          "2023-07": 5,
+          "2023-09": 4,
+          "2023-10": 4,
+          "2023-11": 4,
+          "2023-12": 4
+        },
+        "max_single_entry_month_count": 5,
+        "max_single_entry_month_share": 0.125
+      },
+      "schedule_hash": "6fe93c40d8204cbf9c3504c311c368304a75b36a1920b49643ff9d2c4fa41deb"
+    },
+    "direction_flip": {
+      "all_pre2024": 158,
+      "stage1_2021_2022": 48,
+      "stage2_2023": 40,
+      "stage1_entry_distribution": {
+        "trades": 48,
+        "long_trades": 17,
+        "short_trades": 31,
+        "entry_month_counts": {
+          "2021-01": 3,
+          "2021-02": 4,
+          "2021-03": 1,
+          "2021-06": 1,
+          "2021-10": 2,
+          "2021-12": 1,
+          "2022-01": 3,
+          "2022-02": 1,
+          "2022-03": 2,
+          "2022-04": 3,
+          "2022-05": 4,
+          "2022-06": 5,
+          "2022-07": 4,
+          "2022-08": 4,
+          "2022-09": 4,
+          "2022-10": 3,
+          "2022-11": 1,
+          "2022-12": 2
+        },
+        "max_single_entry_month_count": 5,
+        "max_single_entry_month_share": 0.10416666666666667
+      },
+      "stage2_entry_distribution": {
+        "trades": 40,
+        "long_trades": 20,
+        "short_trades": 20,
+        "entry_month_counts": {
+          "2023-01": 4,
+          "2023-02": 2,
+          "2023-03": 3,
+          "2023-04": 3,
+          "2023-05": 4,
+          "2023-06": 3,
+          "2023-07": 5,
+          "2023-09": 4,
+          "2023-10": 4,
+          "2023-11": 4,
+          "2023-12": 4
+        },
+        "max_single_entry_month_count": 5,
+        "max_single_entry_month_share": 0.125
+      },
+      "schedule_hash": "276e93f6700d64440d1f12d9c436ed789e3b5e9f84411db571c681b3c9e6b5bd"
+    },
+    "level_tail": {
+      "all_pre2024": 56,
+      "stage1_2021_2022": 12,
+      "stage2_2023": 10,
+      "stage1_entry_distribution": {
+        "trades": 12,
+        "long_trades": 7,
+        "short_trades": 5,
+        "entry_month_counts": {
+          "2021-01": 2,
+          "2021-02": 1,
+          "2021-12": 1,
+          "2022-01": 2,
+          "2022-02": 1,
+          "2022-03": 1,
+          "2022-04": 1,
+          "2022-05": 1,
+          "2022-06": 1,
+          "2022-09": 1
+        },
+        "max_single_entry_month_count": 2,
+        "max_single_entry_month_share": 0.16666666666666666
+      },
+      "stage2_entry_distribution": {
+        "trades": 10,
+        "long_trades": 0,
+        "short_trades": 10,
+        "entry_month_counts": {
+          "2023-02": 1,
+          "2023-06": 2,
+          "2023-07": 3,
+          "2023-09": 2,
+          "2023-10": 1,
+          "2023-11": 1
+        },
+        "max_single_entry_month_count": 3,
+        "max_single_entry_month_share": 0.3
+      },
+      "schedule_hash": "f9e3f12a9b75f7848ec656fc78e8892c3c9b58e23932dcc470ebb5e2efca178b"
+    },
+    "five_observation_change_tail": {
+      "all_pre2024": 125,
+      "stage1_2021_2022": 41,
+      "stage2_2023": 24,
+      "stage1_entry_distribution": {
+        "trades": 41,
+        "long_trades": 22,
+        "short_trades": 19,
+        "entry_month_counts": {
+          "2021-01": 3,
+          "2021-02": 4,
+          "2021-03": 1,
+          "2021-06": 1,
+          "2021-10": 2,
+          "2021-11": 1,
+          "2021-12": 2,
+          "2022-01": 2,
+          "2022-02": 3,
+          "2022-03": 2,
+          "2022-04": 3,
+          "2022-05": 2,
+          "2022-06": 4,
+          "2022-07": 1,
+          "2022-08": 1,
+          "2022-09": 2,
+          "2022-10": 1,
+          "2022-11": 3,
+          "2022-12": 3
+        },
+        "max_single_entry_month_count": 4,
+        "max_single_entry_month_share": 0.0975609756097561
+      },
+      "stage2_entry_distribution": {
+        "trades": 24,
+        "long_trades": 17,
+        "short_trades": 7,
+        "entry_month_counts": {
+          "2023-02": 1,
+          "2023-03": 1,
+          "2023-04": 2,
+          "2023-05": 4,
+          "2023-06": 2,
+          "2023-07": 4,
+          "2023-08": 1,
+          "2023-09": 1,
+          "2023-10": 3,
+          "2023-11": 3,
+          "2023-12": 2
+        },
+        "max_single_entry_month_count": 4,
+        "max_single_entry_month_share": 0.16666666666666666
+      },
+      "schedule_hash": "ffcfbb9908e2304f6844c5fbaf9275bcb63adbb0803b47245bb17f2fcf1ffe06"
+    },
+    "month_turn": {
+      "all_pre2024": 49,
+      "stage1_2021_2022": 10,
+      "stage2_2023": 10,
+      "stage1_entry_distribution": {
+        "trades": 10,
+        "long_trades": 4,
+        "short_trades": 6,
+        "entry_month_counts": {
+          "2021-01": 1,
+          "2021-02": 1,
+          "2021-03": 1,
+          "2022-04": 1,
+          "2022-05": 1,
+          "2022-06": 1,
+          "2022-07": 1,
+          "2022-08": 1,
+          "2022-10": 1,
+          "2022-12": 1
+        },
+        "max_single_entry_month_count": 1,
+        "max_single_entry_month_share": 0.1
+      },
+      "stage2_entry_distribution": {
+        "trades": 10,
+        "long_trades": 0,
+        "short_trades": 10,
+        "entry_month_counts": {
+          "2023-01": 1,
+          "2023-02": 1,
+          "2023-04": 1,
+          "2023-06": 1,
+          "2023-07": 1,
+          "2023-08": 1,
+          "2023-09": 1,
+          "2023-10": 1,
+          "2023-11": 1,
+          "2023-12": 1
+        },
+        "max_single_entry_month_count": 1,
+        "max_single_entry_month_share": 0.1
+      },
+      "schedule_hash": "874c07dc0e0538a06fafbe61346cb4a9d563a2bb57754400ac0a1e852a70f0f2"
+    },
+    "one_observation_delay": {
+      "all_pre2024": 146,
+      "stage1_2021_2022": 43,
+      "stage2_2023": 34,
+      "stage1_entry_distribution": {
+        "trades": 43,
+        "long_trades": 27,
+        "short_trades": 16,
+        "entry_month_counts": {
+          "2021-01": 2,
+          "2021-02": 3,
+          "2021-03": 1,
+          "2021-06": 1,
+          "2021-10": 2,
+          "2021-12": 1,
+          "2022-01": 1,
+          "2022-02": 2,
+          "2022-03": 2,
+          "2022-04": 3,
+          "2022-05": 4,
+          "2022-06": 4,
+          "2022-07": 4,
+          "2022-08": 3,
+          "2022-09": 4,
+          "2022-10": 3,
+          "2022-11": 1,
+          "2022-12": 2
+        },
+        "max_single_entry_month_count": 4,
+        "max_single_entry_month_share": 0.09302325581395349
+      },
+      "stage2_entry_distribution": {
+        "trades": 34,
+        "long_trades": 17,
+        "short_trades": 17,
+        "entry_month_counts": {
+          "2023-01": 4,
+          "2023-02": 2,
+          "2023-03": 2,
+          "2023-04": 2,
+          "2023-05": 4,
+          "2023-06": 2,
+          "2023-07": 4,
+          "2023-08": 1,
+          "2023-09": 3,
+          "2023-10": 4,
+          "2023-11": 3,
+          "2023-12": 3
+        },
+        "max_single_entry_month_count": 4,
+        "max_single_entry_month_share": 0.11764705882352941
+      },
+      "schedule_hash": "ca88d15f40bc8ad901d015ac922f7b1c6fa19e37d63636e4b8b8263c6a5febc3"
+    },
+    "random_side": {
+      "all_pre2024": 158,
+      "stage1_2021_2022": 48,
+      "stage2_2023": 40,
+      "stage1_entry_distribution": {
+        "trades": 48,
+        "long_trades": 25,
+        "short_trades": 23,
+        "entry_month_counts": {
+          "2021-01": 3,
+          "2021-02": 4,
+          "2021-03": 1,
+          "2021-06": 1,
+          "2021-10": 2,
+          "2021-12": 1,
+          "2022-01": 3,
+          "2022-02": 1,
+          "2022-03": 2,
+          "2022-04": 3,
+          "2022-05": 4,
+          "2022-06": 5,
+          "2022-07": 4,
+          "2022-08": 4,
+          "2022-09": 4,
+          "2022-10": 3,
+          "2022-11": 1,
+          "2022-12": 2
+        },
+        "max_single_entry_month_count": 5,
+        "max_single_entry_month_share": 0.10416666666666667
+      },
+      "stage2_entry_distribution": {
+        "trades": 40,
+        "long_trades": 27,
+        "short_trades": 13,
+        "entry_month_counts": {
+          "2023-01": 4,
+          "2023-02": 2,
+          "2023-03": 3,
+          "2023-04": 3,
+          "2023-05": 4,
+          "2023-06": 3,
+          "2023-07": 5,
+          "2023-09": 4,
+          "2023-10": 4,
+          "2023-11": 4,
+          "2023-12": 4
+        },
+        "max_single_entry_month_count": 5,
+        "max_single_entry_month_share": 0.125
+      },
+      "schedule_hash": "e9e959feaeb54fe464ca1384a4d3e5e8ddc0d324efb130e25fa5587bcfad3c5d"
+    }
+  },
+  "opened_windows": [],
+  "sealed_windows": [
+    "stage1_2021_2022",
+    "stage2_2023",
+    "2024",
+    "2025",
+    "2026_ytd"
+  ],
+  "mutable_parameters": [],
+  "execution_ohlc_rows_parsed_during_freeze": 0,
+  "funding_rows_parsed_during_freeze": 0,
+  "simulation_run_during_freeze": false,
+  "manifest_hash": "a4f5eac7bfd433cbc311c23ee2de594116c5e989bfebf5d3d419f82f294e782e"
+}
