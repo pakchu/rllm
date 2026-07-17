@@ -1,0 +1,460 @@
+{
+  "protocol": {
+    "version": "inverse_collateral_deleveraging_reclaim_support_v1",
+    "outcomes_opened": false,
+    "price_return_funding_loaded": false,
+    "preregistration_commit": "a46e13c86daa706e01c28c6c186e57ca9ff93866",
+    "selection_uses_only_2021_2022_support": true,
+    "2023_can_reselect_or_fallback_q": false,
+    "sealed_2024_plus_opened": false
+  },
+  "policy": {
+    "policy_id": "ICDR-144",
+    "baseline_bars": 8640,
+    "baseline_min_periods": 2016,
+    "oi_change_bars": 12,
+    "taker_smoothing_bars": 3,
+    "purge_quantiles": [
+      0.8,
+      0.85,
+      0.9,
+      0.925,
+      0.95
+    ],
+    "sell_stress_quantile": 0.9,
+    "sell_gap_quantile": 0.9,
+    "confirmation_window_bars": 12,
+    "post_gap_quarantine_bars": 24,
+    "execution_delay_bars": 2,
+    "hold_bars": 144,
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.001
+  },
+  "source": {
+    "metrics_sha256": "ab9f18ba7745f21b17ac1124c45bb755245d404d66100c595bb77631f4bc1757",
+    "metrics_manifest_sha256": "c0732ca47451209a9bb519545b0e349550994d870d476ee66ecbae81588fb159",
+    "market_expected_sha256_not_opened": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "market_manifest_expected_sha256_not_opened": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "funding_expected_sha256_not_opened": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6",
+    "funding_manifest_expected_sha256_not_opened": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
+    "columns_loaded": [
+      "date",
+      "um_sum_open_interest_value",
+      "um_sum_taker_long_short_vol_ratio",
+      "cm_sum_open_interest",
+      "cm_sum_taker_long_short_vol_ratio",
+      "source_complete"
+    ],
+    "price_or_outcome_columns_loaded": [],
+    "rows": 261216,
+    "source_available_rows": 220370,
+    "unavailable_rows": 40846,
+    "quarantined_rows": 48522,
+    "first_date": "2021-07-08 00:00:00",
+    "last_date": "2023-12-31 23:55:00"
+  },
+  "feature_contract": {
+    "thresholds_strictly_lagged": true,
+    "threshold_window_bars": 8640,
+    "threshold_minimum_prior_bars": 2016,
+    "current_plus_following_gap_quarantine_bars": 24,
+    "entry_delay_bars": 2,
+    "hold_bars": 144,
+    "price_signal_columns": []
+  },
+  "threshold_availability": {
+    "cm_sell_q90": 225856,
+    "taker_gap_q90": 225856,
+    "um_sell_q90": 225856,
+    "purge_q800": 225856,
+    "cm_contraction_q800": 225856,
+    "um_contraction_q800": 225856,
+    "purge_q850": 225856,
+    "cm_contraction_q850": 225856,
+    "um_contraction_q850": 225856,
+    "purge_q900": 225856,
+    "cm_contraction_q900": 225856,
+    "um_contraction_q900": 225856,
+    "purge_q925": 225856,
+    "cm_contraction_q925": 225856,
+    "um_contraction_q925": 225856,
+    "purge_q950": 225856,
+    "cm_contraction_q950": 225856,
+    "um_contraction_q950": 225856
+  },
+  "train_selection_candidates_descending_q": [
+    {
+      "purge_quantile": 0.95,
+      "raw_counts": {
+        "primary_active_bars": 72,
+        "primary_setup_onsets": 56,
+        "primary_accepted_setups": 52,
+        "primary_confirmed_setups": 43,
+        "cm_only_accepted_setups": 100,
+        "no_taker_gap_accepted_setups": 115,
+        "um_matched_accepted_setups": 403
+      },
+      "train_support": {
+        "start": "2021-07-08 00:00:00",
+        "end_exclusive": "2023-01-01 00:00:00",
+        "primary_nonoverlap_events": 38,
+        "control_nonoverlap_events": {
+          "direction_flip": 38,
+          "cm_only_oi": 64,
+          "no_taker_gap": 80,
+          "no_reclaim": 44,
+          "no_oi_stop": 44,
+          "um_matched": 242,
+          "one_hour_signal_delay": 38,
+          "one_day_shifted_clock": 38,
+          "random_side": 38
+        },
+        "confirmation": {
+          "accepted_setups_with_full_confirmation_window": 52,
+          "confirmed_setups": 43,
+          "confirmation_rate": 0.8269230769230769
+        },
+        "maximum_single_month_share": 0.23684210526315788,
+        "maximum_month": "2022-12",
+        "entry_jaccard": {
+          "cm_only_oi": 0.14606741573033707,
+          "no_taker_gap": 0.40476190476190477,
+          "no_reclaim": 0.0,
+          "no_oi_stop": 0.28125,
+          "um_matched": 0.0,
+          "one_hour_signal_delay": 0.0,
+          "one_day_shifted_clock": 0.0
+        },
+        "subperiod_counts": {
+          "2021_partial": 14,
+          "2022": 24
+        },
+        "gates": {
+          "train_events_at_least_100": false,
+          "2021_partial_events_at_least_20": false,
+          "2022_events_at_least_50": false,
+          "confirmation_rate_between_0_05_and_0_80": false,
+          "maximum_month_share_at_most_0_15": false,
+          "cm_only_oi_entry_jaccard_at_most_0.75": true,
+          "no_taker_gap_entry_jaccard_at_most_0.8": true,
+          "no_reclaim_entry_jaccard_at_most_0.25": true,
+          "no_oi_stop_entry_jaccard_at_most_0.8": true,
+          "um_matched_entry_jaccard_at_most_0.2": true,
+          "one_hour_signal_delay_entry_jaccard_at_most_0.05": true,
+          "one_day_shifted_clock_entry_jaccard_at_most_0.02": true,
+          "frozen_delay": true,
+          "frozen_hold": true
+        },
+        "passes": false
+      }
+    },
+    {
+      "purge_quantile": 0.925,
+      "raw_counts": {
+        "primary_active_bars": 150,
+        "primary_setup_onsets": 112,
+        "primary_accepted_setups": 100,
+        "primary_confirmed_setups": 79,
+        "cm_only_accepted_setups": 163,
+        "no_taker_gap_accepted_setups": 198,
+        "um_matched_accepted_setups": 620
+      },
+      "train_support": {
+        "start": "2021-07-08 00:00:00",
+        "end_exclusive": "2023-01-01 00:00:00",
+        "primary_nonoverlap_events": 66,
+        "control_nonoverlap_events": {
+          "direction_flip": 66,
+          "cm_only_oi": 99,
+          "no_taker_gap": 128,
+          "no_reclaim": 80,
+          "no_oi_stop": 80,
+          "um_matched": 312,
+          "one_hour_signal_delay": 66,
+          "one_day_shifted_clock": 65,
+          "random_side": 66
+        },
+        "confirmation": {
+          "accepted_setups_with_full_confirmation_window": 100,
+          "confirmed_setups": 79,
+          "confirmation_rate": 0.79
+        },
+        "maximum_single_month_share": 0.18181818181818182,
+        "maximum_month": "2022-12",
+        "entry_jaccard": {
+          "cm_only_oi": 0.1619718309859155,
+          "no_taker_gap": 0.45864661654135336,
+          "no_reclaim": 0.0,
+          "no_oi_stop": 0.2807017543859649,
+          "um_matched": 0.0,
+          "one_hour_signal_delay": 0.0,
+          "one_day_shifted_clock": 0.0
+        },
+        "subperiod_counts": {
+          "2021_partial": 26,
+          "2022": 40
+        },
+        "gates": {
+          "train_events_at_least_100": false,
+          "2021_partial_events_at_least_20": true,
+          "2022_events_at_least_50": false,
+          "confirmation_rate_between_0_05_and_0_80": true,
+          "maximum_month_share_at_most_0_15": false,
+          "cm_only_oi_entry_jaccard_at_most_0.75": true,
+          "no_taker_gap_entry_jaccard_at_most_0.8": true,
+          "no_reclaim_entry_jaccard_at_most_0.25": true,
+          "no_oi_stop_entry_jaccard_at_most_0.8": true,
+          "um_matched_entry_jaccard_at_most_0.2": true,
+          "one_hour_signal_delay_entry_jaccard_at_most_0.05": true,
+          "one_day_shifted_clock_entry_jaccard_at_most_0.02": true,
+          "frozen_delay": true,
+          "frozen_hold": true
+        },
+        "passes": false
+      }
+    },
+    {
+      "purge_quantile": 0.9,
+      "raw_counts": {
+        "primary_active_bars": 217,
+        "primary_setup_onsets": 153,
+        "primary_accepted_setups": 139,
+        "primary_confirmed_setups": 112,
+        "cm_only_accepted_setups": 228,
+        "no_taker_gap_accepted_setups": 285,
+        "um_matched_accepted_setups": 833
+      },
+      "train_support": {
+        "start": "2021-07-08 00:00:00",
+        "end_exclusive": "2023-01-01 00:00:00",
+        "primary_nonoverlap_events": 89,
+        "control_nonoverlap_events": {
+          "direction_flip": 89,
+          "cm_only_oi": 128,
+          "no_taker_gap": 172,
+          "no_reclaim": 107,
+          "no_oi_stop": 107,
+          "um_matched": 373,
+          "one_hour_signal_delay": 89,
+          "one_day_shifted_clock": 88,
+          "random_side": 89
+        },
+        "confirmation": {
+          "accepted_setups_with_full_confirmation_window": 139,
+          "confirmed_setups": 112,
+          "confirmation_rate": 0.8057553956834532
+        },
+        "maximum_single_month_share": 0.19101123595505617,
+        "maximum_month": "2022-12",
+        "entry_jaccard": {
+          "cm_only_oi": 0.16666666666666666,
+          "no_taker_gap": 0.4340659340659341,
+          "no_reclaim": 0.0,
+          "no_oi_stop": 0.28104575163398693,
+          "um_matched": 0.0,
+          "one_hour_signal_delay": 0.0,
+          "one_day_shifted_clock": 0.0
+        },
+        "subperiod_counts": {
+          "2021_partial": 33,
+          "2022": 56
+        },
+        "gates": {
+          "train_events_at_least_100": false,
+          "2021_partial_events_at_least_20": true,
+          "2022_events_at_least_50": true,
+          "confirmation_rate_between_0_05_and_0_80": false,
+          "maximum_month_share_at_most_0_15": false,
+          "cm_only_oi_entry_jaccard_at_most_0.75": true,
+          "no_taker_gap_entry_jaccard_at_most_0.8": true,
+          "no_reclaim_entry_jaccard_at_most_0.25": true,
+          "no_oi_stop_entry_jaccard_at_most_0.8": true,
+          "um_matched_entry_jaccard_at_most_0.2": true,
+          "one_hour_signal_delay_entry_jaccard_at_most_0.05": true,
+          "one_day_shifted_clock_entry_jaccard_at_most_0.02": true,
+          "frozen_delay": true,
+          "frozen_hold": true
+        },
+        "passes": false
+      }
+    },
+    {
+      "purge_quantile": 0.85,
+      "raw_counts": {
+        "primary_active_bars": 408,
+        "primary_setup_onsets": 294,
+        "primary_accepted_setups": 261,
+        "primary_confirmed_setups": 209,
+        "cm_only_accepted_setups": 366,
+        "no_taker_gap_accepted_setups": 497,
+        "um_matched_accepted_setups": 1270
+      },
+      "train_support": {
+        "start": "2021-07-08 00:00:00",
+        "end_exclusive": "2023-01-01 00:00:00",
+        "primary_nonoverlap_events": 143,
+        "control_nonoverlap_events": {
+          "direction_flip": 143,
+          "cm_only_oi": 187,
+          "no_taker_gap": 260,
+          "no_reclaim": 173,
+          "no_oi_stop": 173,
+          "um_matched": 456,
+          "one_hour_signal_delay": 143,
+          "one_day_shifted_clock": 142,
+          "random_side": 143
+        },
+        "confirmation": {
+          "accepted_setups_with_full_confirmation_window": 261,
+          "confirmed_setups": 209,
+          "confirmation_rate": 0.8007662835249042
+        },
+        "maximum_single_month_share": 0.15384615384615385,
+        "maximum_month": "2022-12",
+        "entry_jaccard": {
+          "cm_only_oi": 0.2177121771217712,
+          "no_taker_gap": 0.37542662116040953,
+          "no_reclaim": 0.0,
+          "no_oi_stop": 0.23921568627450981,
+          "um_matched": 0.0016722408026755853,
+          "one_hour_signal_delay": 0.0,
+          "one_day_shifted_clock": 0.0035211267605633804
+        },
+        "subperiod_counts": {
+          "2021_partial": 57,
+          "2022": 86
+        },
+        "gates": {
+          "train_events_at_least_100": true,
+          "2021_partial_events_at_least_20": true,
+          "2022_events_at_least_50": true,
+          "confirmation_rate_between_0_05_and_0_80": false,
+          "maximum_month_share_at_most_0_15": false,
+          "cm_only_oi_entry_jaccard_at_most_0.75": true,
+          "no_taker_gap_entry_jaccard_at_most_0.8": true,
+          "no_reclaim_entry_jaccard_at_most_0.25": true,
+          "no_oi_stop_entry_jaccard_at_most_0.8": true,
+          "um_matched_entry_jaccard_at_most_0.2": true,
+          "one_hour_signal_delay_entry_jaccard_at_most_0.05": true,
+          "one_day_shifted_clock_entry_jaccard_at_most_0.02": true,
+          "frozen_delay": true,
+          "frozen_hold": true
+        },
+        "passes": false
+      }
+    },
+    {
+      "purge_quantile": 0.8,
+      "raw_counts": {
+        "primary_active_bars": 602,
+        "primary_setup_onsets": 424,
+        "primary_accepted_setups": 376,
+        "primary_confirmed_setups": 310,
+        "cm_only_accepted_setups": 539,
+        "no_taker_gap_accepted_setups": 688,
+        "um_matched_accepted_setups": 1688
+      },
+      "train_support": {
+        "start": "2021-07-08 00:00:00",
+        "end_exclusive": "2023-01-01 00:00:00",
+        "primary_nonoverlap_events": 193,
+        "control_nonoverlap_events": {
+          "direction_flip": 193,
+          "cm_only_oi": 247,
+          "no_taker_gap": 311,
+          "no_reclaim": 226,
+          "no_oi_stop": 225,
+          "um_matched": 511,
+          "one_hour_signal_delay": 193,
+          "one_day_shifted_clock": 192,
+          "random_side": 193
+        },
+        "confirmation": {
+          "accepted_setups_with_full_confirmation_window": 376,
+          "confirmed_setups": 310,
+          "confirmation_rate": 0.824468085106383
+        },
+        "maximum_single_month_share": 0.15025906735751296,
+        "maximum_month": "2022-12",
+        "entry_jaccard": {
+          "cm_only_oi": 0.22562674094707522,
+          "no_taker_gap": 0.3961218836565097,
+          "no_reclaim": 0.0,
+          "no_oi_stop": 0.25149700598802394,
+          "um_matched": 0.001422475106685633,
+          "one_hour_signal_delay": 0.0,
+          "one_day_shifted_clock": 0.0026041666666666665
+        },
+        "subperiod_counts": {
+          "2021_partial": 73,
+          "2022": 120
+        },
+        "gates": {
+          "train_events_at_least_100": true,
+          "2021_partial_events_at_least_20": true,
+          "2022_events_at_least_50": true,
+          "confirmation_rate_between_0_05_and_0_80": false,
+          "maximum_month_share_at_most_0_15": false,
+          "cm_only_oi_entry_jaccard_at_most_0.75": true,
+          "no_taker_gap_entry_jaccard_at_most_0.8": true,
+          "no_reclaim_entry_jaccard_at_most_0.25": true,
+          "no_oi_stop_entry_jaccard_at_most_0.8": true,
+          "um_matched_entry_jaccard_at_most_0.2": true,
+          "one_hour_signal_delay_entry_jaccard_at_most_0.05": true,
+          "one_day_shifted_clock_entry_jaccard_at_most_0.02": true,
+          "frozen_delay": true,
+          "frozen_hold": true
+        },
+        "passes": false
+      }
+    }
+  ],
+  "selected_purge_quantile": null,
+  "selected_train_support": null,
+  "selected_q_2023_support_validation": null,
+  "support_decision": "reject_before_returns_no_train_support_q",
+  "rejection_reasons": [
+    "Q=0.95:train_events_at_least_100,2021_partial_events_at_least_20,2022_events_at_least_50,confirmation_rate_between_0_05_and_0_80,maximum_month_share_at_most_0_15",
+    "Q=0.925:train_events_at_least_100,2022_events_at_least_50,maximum_month_share_at_most_0_15",
+    "Q=0.9:train_events_at_least_100,confirmation_rate_between_0_05_and_0_80,maximum_month_share_at_most_0_15",
+    "Q=0.85:confirmation_rate_between_0_05_and_0_80,maximum_month_share_at_most_0_15",
+    "Q=0.8:confirmation_rate_between_0_05_and_0_80,maximum_month_share_at_most_0_15"
+  ],
+  "clock": {
+    "path": "results/inverse_collateral_deleveraging_reclaim_clocks_2026-07-17.csv",
+    "sha256": "457399d0b1500cc18264eec4187b9d35e95e54fef3aa91f147551d57f26d26ca",
+    "rows": 0,
+    "columns": [
+      "policy_name",
+      "purge_quantile",
+      "setup_position",
+      "confirmation_position",
+      "signal_position",
+      "entry_position",
+      "exit_position",
+      "setup_date",
+      "confirmation_date",
+      "signal_date",
+      "entry_date",
+      "exit_date",
+      "side",
+      "branch",
+      "delay_bars",
+      "hold_bars"
+    ],
+    "counts_by_policy": {
+      "primary": 0,
+      "direction_flip": 0,
+      "cm_only_oi": 0,
+      "no_taker_gap": 0,
+      "no_reclaim": 0,
+      "no_oi_stop": 0,
+      "um_matched": 0,
+      "one_hour_signal_delay": 0,
+      "one_day_shifted_clock": 0,
+      "random_side": 0
+    }
+  },
+  "manifest_hash": "5edbeaa0e269dccf7432efd4a6b5579ff82c7a0e2fdd7c04fe675a01992f4e5b"
+}
