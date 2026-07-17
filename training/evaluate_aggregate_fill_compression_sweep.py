@@ -6,6 +6,7 @@ The evaluator uses a fixed-quantity linear USD-M ledger, exact funding rates
 with the frozen settlement-mark proxy, full-clock CAGR, and global
 favorable-before-adverse held-path strict MDD.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -40,13 +41,9 @@ SUPPORT_RESULT_SHA256 = (
     "48bfc85e7dc8fe18cd0d961928097f2741e4c8272ee89eb305474b28526fa9ab"
 )
 EVENT_CLOCK = Path(support.DEFAULT_CLOCK)
-EVENT_CLOCK_SHA256 = (
-    "bf1611554604c1930ba2212e674ea434f7c9793377b3f33ef531b3b4e0381688"
-)
+EVENT_CLOCK_SHA256 = "bf1611554604c1930ba2212e674ea434f7c9793377b3f33ef531b3b4e0381688"
 FUNDING_DATA = Path("data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz")
-FUNDING_DATA_SHA256 = (
-    "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
-)
+FUNDING_DATA_SHA256 = "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
 FUNDING_MANIFEST = Path(
     "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json"
 )
@@ -68,7 +65,15 @@ STAGE1_END = pd.Timestamp("2023-01-01")
 STAGE2_START = pd.Timestamp("2023-01-01")
 STAGE2_END = pd.Timestamp("2024-01-01")
 COMPONENT_CONTROLS = ("no_compression", "no_coherence", "no_aligned_response")
-REJECTION_PLACEBOS = ("one_day_shifted_clock", "random_side")
+REJECTION_PLACEBOS = (
+    "one_hour_signal_delay",
+    "one_day_shifted_clock",
+    "random_side",
+)
+STAGE2_HALF_WINDOWS = {
+    "2023_h1": (pd.Timestamp("2023-01-01"), pd.Timestamp("2023-07-01")),
+    "2023_h2": (pd.Timestamp("2023-07-01"), pd.Timestamp("2024-01-01")),
+}
 
 
 @dataclass(frozen=True)
@@ -97,9 +102,11 @@ def _seal(core: dict[str, Any]) -> dict[str, Any]:
 
 
 def _clock_sha256(schedule: pd.DataFrame) -> str:
-    content = schedule[list(support.CLOCK_COLUMNS)].to_csv(
-        index=False, lineterminator="\n"
-    ).encode("utf-8")
+    content = (
+        schedule[list(support.CLOCK_COLUMNS)]
+        .to_csv(index=False, lineterminator="\n")
+        .encode("utf-8")
+    )
     return hashlib.sha256(content).hexdigest()
 
 
@@ -125,7 +132,9 @@ def _canonical_clock(schedule: pd.DataFrame) -> list[dict[str, Any]]:
     return rows
 
 
-def verify_support_and_replay() -> tuple[pd.DataFrame, dict[str, pd.DataFrame], dict[str, Any]]:
+def verify_support_and_replay() -> tuple[
+    pd.DataFrame, dict[str, pd.DataFrame], dict[str, Any]
+]:
     for path, expected in (
         (Path(support.__file__), SUPPORT_SOURCE_SHA256),
         (SUPPORT_DOCUMENT, SUPPORT_DOCUMENT_SHA256),
@@ -186,7 +195,13 @@ def build_freeze_manifest(evaluation_source_commit: str) -> dict[str, Any]:
         "funding_data_sha256": FUNDING_DATA_SHA256,
         "funding_manifest_sha256": FUNDING_MANIFEST_SHA256,
         "opened_windows": [],
-        "sealed_windows": ["stage1_2020_2022", "stage2_2023", "2024", "2025", "2026_ytd"],
+        "sealed_windows": [
+            "stage1_2020_2022",
+            "stage2_2023",
+            "2024",
+            "2025",
+            "2026_ytd",
+        ],
         "mutable_parameters": [],
         "execution_ohlc_rows_parsed_during_freeze": 0,
         "funding_settlement_marks_loaded_during_freeze": 0,
@@ -220,7 +235,9 @@ def verify_evaluation_freeze() -> dict[str, Any]:
     _, schedules, _ = verify_support_and_replay()
     for name, schedule in schedules.items():
         expected = payload["control_schedules"][name]
-        if expected["rows"] != len(schedule) or expected["clock_sha256"] != _clock_sha256(schedule):
+        if expected["rows"] != len(schedule) or expected[
+            "clock_sha256"
+        ] != _clock_sha256(schedule):
             raise ValueError(f"AFCS-144 frozen clock drifted: {name}")
     return payload
 
@@ -312,7 +329,9 @@ def load_execution_inputs(
         raise ValueError("AFCS-144 funding mark source opened outcomes")
     market = _parse_market_before(Path(prereg.MARKET_PATH), cutoff)
     funding = _parse_funding_before(FUNDING_DATA, cutoff)
-    expected_dates = signal_frame.loc[signal_frame["date"].lt(cutoff), "date"].reset_index(drop=True)
+    expected_dates = signal_frame.loc[
+        signal_frame["date"].lt(cutoff), "date"
+    ].reset_index(drop=True)
     if not market["date"].equals(expected_dates):
         raise ValueError("AFCS-144 execution prefix is not aligned to the signal clock")
     values = market[["open", "high", "low", "close"]].to_numpy(float)
@@ -326,18 +345,27 @@ def load_execution_inputs(
     ):
         raise ValueError("AFCS-144 market violates OHLC invariants")
     funding_values = funding[["funding_rate", "settlement_mark_price"]].to_numpy(float)
-    if not np.isfinite(funding_values).all() or (funding["settlement_mark_price"] <= 0.0).any():
+    if (
+        not np.isfinite(funding_values).all()
+        or (funding["settlement_mark_price"] <= 0.0).any()
+    ):
         raise ValueError("AFCS-144 funding source has invalid values")
     if len(funding) and funding["funding_time"].max() >= cutoff:
         raise ValueError("AFCS-144 funding parser crossed cutoff")
-    return market, funding, {
-        "cutoff": cutoff.isoformat(),
-        "market_rows_parsed": int(len(market)),
-        "funding_rows_parsed": int(len(funding)),
-        "physical_parse_boundary": f"stopped before parsing execution values at {cutoff.isoformat()}",
-        "last_market_time": str(market["date"].iloc[-1]),
-        "last_funding_time": str(funding["funding_time"].iloc[-1]) if len(funding) else None,
-    }
+    return (
+        market,
+        funding,
+        {
+            "cutoff": cutoff.isoformat(),
+            "market_rows_parsed": int(len(market)),
+            "funding_rows_parsed": int(len(funding)),
+            "physical_parse_boundary": f"stopped before parsing execution values at {cutoff.isoformat()}",
+            "last_market_time": str(market["date"].iloc[-1]),
+            "last_funding_time": str(funding["funding_time"].iloc[-1])
+            if len(funding)
+            else None,
+        },
+    )
 
 
 def linear_pnl(*, side: int, quantity: float, entry: float, mark: float) -> float:
@@ -360,12 +388,15 @@ def weekly_cluster_signflip(
     values = np.asarray(trade_returns, dtype=float)
     dates = pd.to_datetime(pd.Series(entry_dates), errors="raise")
     monday = (dates - pd.to_timedelta(dates.dt.weekday, unit="D")).dt.floor("D")
-    weekly = pd.DataFrame({"week": monday, "return": values}).groupby("week")["return"].sum()
+    weekly = (
+        pd.DataFrame({"week": monday, "return": values}).groupby("week")["return"].sum()
+    )
     cluster_values = weekly.to_numpy(float)
     observed = float(values.mean())
     if len(cluster_values) <= 20:
         exceed = sum(
-            float(np.dot(np.asarray(signs), cluster_values) / len(values)) >= observed - 1e-15
+            float(np.dot(np.asarray(signs), cluster_values) / len(values))
+            >= observed - 1e-15
             for signs in product((-1.0, 1.0), repeat=len(cluster_values))
         )
         total = 2 ** len(cluster_values)
@@ -378,7 +409,9 @@ def weekly_cluster_signflip(
         while remaining:
             batch = min(4_096, remaining)
             signs = rng.choice((-1.0, 1.0), size=(batch, len(cluster_values)))
-            exceed += int((signs.dot(cluster_values) / len(values) >= observed - 1e-15).sum())
+            exceed += int(
+                (signs.dot(cluster_values) / len(values) >= observed - 1e-15).sum()
+            )
             remaining -= batch
         p_value = (1 + exceed) / (permutations + 1)
         method = "monte_carlo"
@@ -458,7 +491,10 @@ def simulate_schedule(
             raise ValueError("AFCS-144 entry differs from frozen t+2 delay")
         if exit_position != entry_position + policy.hold_bars:
             raise ValueError("AFCS-144 exit differs from frozen hold")
-        if int(event.delay_bars) != policy.execution_delay_bars or int(event.hold_bars) != policy.hold_bars:
+        if (
+            int(event.delay_bars) != policy.execution_delay_bars
+            or int(event.hold_bars) != policy.hold_bars
+        ):
             raise ValueError("AFCS-144 schedule metadata differs from freeze")
         if not origin_position <= signal_position < entry_position < exit_position:
             raise ValueError("AFCS-144 scheduled positions are invalid")
@@ -474,8 +510,17 @@ def simulate_schedule(
             and period_start <= dates.iloc[exit_position] < period_end
         ):
             raise ValueError("AFCS-144 trade crosses simulation split")
-        if str(dates.iloc[entry_position]) != str(event.entry_date):
-            raise ValueError("AFCS-144 entry timestamp differs from frozen clock")
+        frozen_times = {
+            "origin": (origin_position, event.origin_date),
+            "signal": (signal_position, event.signal_date),
+            "entry": (entry_position, event.entry_date),
+            "exit": (exit_position, event.exit_date),
+        }
+        for label, (position, frozen_time) in frozen_times.items():
+            if pd.Timestamp(dates.iloc[position]) != pd.Timestamp(frozen_time):
+                raise ValueError(
+                    f"AFCS-144 {label} timestamp differs from frozen clock"
+                )
 
         entry_price = float(market.loc[entry_position, "open"])
         exit_price = float(market.loc[exit_position, "open"])
@@ -628,8 +673,14 @@ def _stage_gate(metrics: dict[str, Any], stress: dict[str, Any]) -> dict[str, bo
         "absolute_return_positive": metrics["absolute_return_pct"] > 0.0,
         "cagr_to_strict_mdd_at_least_3": metrics["cagr_to_strict_mdd"] >= 3.0,
         "strict_mdd_at_most_15pct": metrics["strict_mdd_pct"] <= 15.0,
-        "weekly_cluster_p_at_most_0p10": metrics["weekly_cluster_signflip"]["p_value_one_sided"] <= 0.10,
-        "mean_gross_underlying_move_above_20bp": metrics["mean_gross_underlying_move_bp"] > cfg.minimum_mean_gross_underlying_bp,
+        "weekly_cluster_p_at_most_0p10": metrics["weekly_cluster_signflip"][
+            "p_value_one_sided"
+        ]
+        <= 0.10,
+        "mean_gross_underlying_move_above_20bp": metrics[
+            "mean_gross_underlying_move_bp"
+        ]
+        > cfg.minimum_mean_gross_underlying_bp,
         "stress_absolute_return_positive": stress["absolute_return_pct"] > 0.0,
     }
 
@@ -644,6 +695,57 @@ def _passes_stage_gate(
         all(_stage_gate(metrics, stress).values())
         and metrics["trade_count"] >= minimum_trades
     )
+
+
+def _passes_stage2_gate(
+    metrics: dict[str, Any],
+    stress: dict[str, Any],
+    halves: dict[str, dict[str, Any]],
+) -> bool:
+    return (
+        set(halves) == set(STAGE2_HALF_WINDOWS)
+        and _passes_stage_gate(metrics, stress, minimum_trades=60)
+        and all(
+            value["absolute_return_pct"] > 0.0 and value["trade_count"] >= 25
+            for value in halves.values()
+        )
+    )
+
+
+def verify_stage1_output() -> tuple[dict[str, Any], dict[str, Any]]:
+    if not STAGE1_OUTPUT.is_file():
+        raise ValueError("AFCS-144 stage 1 result is missing")
+    stage1 = json.loads(STAGE1_OUTPUT.read_text())
+    core = {key: value for key, value in stage1.items() if key != "manifest_hash"}
+    if _canonical_hash(core) != stage1.get("manifest_hash"):
+        raise ValueError("AFCS-144 stage 1 manifest hash mismatch")
+    if stage1.get("candidate_id") != "AFCS-144":
+        raise ValueError("AFCS-144 stage 1 candidate differs")
+    if stage1.get("stage") != "stage1_2020_2022":
+        raise ValueError("AFCS-144 stage 1 label differs")
+    gate = stage1.get("gate")
+    if (
+        not isinstance(gate, dict)
+        or not gate
+        or not all(isinstance(value, bool) for value in gate.values())
+        or not all(gate.values())
+        or stage1.get("stage1_qualifies") is not True
+        or stage1.get("next_action") != "open_2023"
+    ):
+        raise ValueError("AFCS-144 stage 1 did not authorize 2023")
+    freeze = verify_evaluation_freeze()
+    if stage1.get("evaluation_freeze_sha256") != _sha256(EVALUATION_FREEZE):
+        raise ValueError("AFCS-144 stage 1 used a different evaluator freeze")
+    if stage1.get("evaluation_source_commit") != freeze["evaluation_source_commit"]:
+        raise ValueError("AFCS-144 stage 1 used a different evaluator source")
+    source = stage1.get("source")
+    if not isinstance(source, dict) or source.get("cutoff") != STAGE1_END.isoformat():
+        raise ValueError("AFCS-144 stage 1 physical cutoff differs")
+    for key in ("last_market_time", "last_funding_time"):
+        value = source.get(key)
+        if value is not None and pd.Timestamp(value) >= STAGE1_END:
+            raise ValueError(f"AFCS-144 stage 1 {key} crossed 2023")
+    return stage1, freeze
 
 
 def evaluate_stage1() -> dict[str, Any]:
@@ -766,19 +868,18 @@ def evaluate_stage1() -> dict[str, Any]:
         "gate": gate,
         "passing_rejection_placebos": passing_placebos,
         "stage1_qualifies": qualifies,
-        "next_action": "open_2023" if qualifies else "reject_keep_2023_and_2024plus_sealed",
-        "sealed_after_run": ["2023", "2024", "2025", "2026_ytd"] if not qualifies else ["2024", "2025", "2026_ytd"],
+        "next_action": "open_2023"
+        if qualifies
+        else "reject_keep_2023_and_2024plus_sealed",
+        "sealed_after_run": ["2023", "2024", "2025", "2026_ytd"]
+        if not qualifies
+        else ["2024", "2025", "2026_ytd"],
     }
     return _seal(core)
 
 
 def evaluate_stage2() -> dict[str, Any]:
-    if not STAGE1_OUTPUT.is_file():
-        raise ValueError("AFCS-144 stage 1 result is missing")
-    stage1 = json.loads(STAGE1_OUTPUT.read_text())
-    if stage1.get("stage1_qualifies") is not True:
-        raise ValueError("AFCS-144 stage 1 failed; 2023 must remain sealed")
-    freeze = verify_evaluation_freeze()
+    _, freeze = verify_stage1_output()
     signal_frame, schedules, _ = verify_support_and_replay()
     market, funding, source = load_execution_inputs(STAGE2_END, signal_frame)
     cfg = EvaluationConfig()
@@ -819,10 +920,7 @@ def evaluate_stage2() -> dict[str, Any]:
         if name != "primary"
     }
     halves = {}
-    for name, (start, end) in {
-        "2023_h1": (pd.Timestamp("2023-01-01"), pd.Timestamp("2023-07-01")),
-        "2023_h2": (pd.Timestamp("2023-07-01"), pd.Timestamp("2024-01-01")),
-    }.items():
+    for name, (start, end) in STAGE2_HALF_WINDOWS.items():
         halves[name] = simulate_schedule(
             market,
             funding,
@@ -844,21 +942,39 @@ def evaluate_stage2() -> dict[str, Any]:
         primary_ratio > controls[name]["cagr_to_strict_mdd"]
         for name in COMPONENT_CONTROLS
     )
+    placebo_stress = {
+        name: simulate_schedule(
+            market,
+            funding,
+            stage_schedules[name],
+            period_start=STAGE2_START,
+            period_end=STAGE2_END,
+            cost_rate=cfg.stress_cost_notional_per_side,
+            cfg=cfg,
+        )
+        for name in REJECTION_PLACEBOS
+    }
+    placebo_halves = {
+        name: {
+            half: simulate_schedule(
+                market,
+                funding,
+                _window_schedule(stage_schedules[name], start, end),
+                period_start=start,
+                period_end=end,
+                cost_rate=cfg.base_cost_notional_per_side,
+                cfg=cfg,
+                compute_cluster=False,
+            )
+            for half, (start, end) in STAGE2_HALF_WINDOWS.items()
+        }
+        for name in REJECTION_PLACEBOS
+    }
     passing_placebos = [
         name
         for name in REJECTION_PLACEBOS
-        if _passes_stage_gate(
-            controls[name],
-            simulate_schedule(
-                market,
-                funding,
-                stage_schedules[name],
-                period_start=STAGE2_START,
-                period_end=STAGE2_END,
-                cost_rate=cfg.stress_cost_notional_per_side,
-                cfg=cfg,
-            ),
-            minimum_trades=60,
+        if _passes_stage2_gate(
+            controls[name], placebo_stress[name], placebo_halves[name]
         )
     ]
     gate["no_passing_rejection_placebo"] = not passing_placebos
@@ -873,6 +989,8 @@ def evaluate_stage2() -> dict[str, Any]:
             "stress_10bp": stress,
             "halves": halves,
             "controls": controls,
+            "rejection_placebo_stress_10bp": placebo_stress,
+            "rejection_placebo_halves": placebo_halves,
             "gate": gate,
             "passing_rejection_placebos": passing_placebos,
             "stage2_qualifies": qualifies,
@@ -916,7 +1034,9 @@ def main() -> None:
                 "strict_mdd_pct": primary["strict_mdd_pct"],
                 "cagr_to_strict_mdd": primary["cagr_to_strict_mdd"],
                 "trade_count": primary["trade_count"],
-                "qualifies": payload.get("stage1_qualifies", payload.get("stage2_qualifies")),
+                "qualifies": payload.get(
+                    "stage1_qualifies", payload.get("stage2_qualifies")
+                ),
                 "next_action": payload["next_action"],
                 "output": str(output),
                 "manifest_hash": payload["manifest_hash"],

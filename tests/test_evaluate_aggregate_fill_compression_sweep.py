@@ -46,7 +46,9 @@ def _schedule(*, side: int = 1, entry: int = 4, exit_: int = 148) -> pd.DataFram
     )
 
 
-def _funding(rows: list[tuple[pd.Timestamp, float, float]] | None = None) -> pd.DataFrame:
+def _funding(
+    rows: list[tuple[pd.Timestamp, float, float]] | None = None,
+) -> pd.DataFrame:
     rows = [] if rows is None else rows
     return pd.DataFrame(
         [
@@ -78,7 +80,9 @@ def test_market_parser_stops_before_sentinel_values(tmp_path) -> None:
     with gzip.open(path, "wt") as handle:
         handle.write("date,open,high,low,close\n")
         handle.write("2022-12-31 23:55:00,100,101,99,100\n")
-        handle.write("2023-01-01 00:00:00,DO_NOT_PARSE,DO_NOT_PARSE,DO_NOT_PARSE,DO_NOT_PARSE\n")
+        handle.write(
+            "2023-01-01 00:00:00,DO_NOT_PARSE,DO_NOT_PARSE,DO_NOT_PARSE,DO_NOT_PARSE\n"
+        )
     frame = evaluate._parse_market_before(path, pd.Timestamp("2023-01-01"))
     assert len(frame) == 1
     assert frame.loc[0, "close"] == 100.0
@@ -89,7 +93,9 @@ def test_funding_parser_stops_before_sentinel_values(tmp_path) -> None:
     cutoff = pd.Timestamp("2023-01-01")
     cutoff_ms = int(cutoff.timestamp() * 1_000)
     with gzip.open(path, "wt") as handle:
-        handle.write("funding_time_ms,funding_time_utc,funding_rate,settlement_mark_price\n")
+        handle.write(
+            "funding_time_ms,funding_time_utc,funding_rate,settlement_mark_price\n"
+        )
         handle.write(f"{cutoff_ms - 1},2022-12-31T23:59:59.999Z,0.001,100\n")
         handle.write(f"{cutoff_ms},DO_NOT_PARSE,DO_NOT_PARSE,DO_NOT_PARSE\n")
     frame = evaluate._parse_funding_before(path, cutoff)
@@ -165,6 +171,23 @@ def test_schedule_rejects_delay_or_hold_mutation() -> None:
         )
 
 
+def test_schedule_rejects_any_frozen_timestamp_mutation() -> None:
+    changed = _schedule()
+    changed.loc[0, "exit_date"] = str(
+        pd.Timestamp(changed.loc[0, "exit_date"]) + pd.Timedelta(minutes=5)
+    )
+    with pytest.raises(ValueError, match="exit timestamp differs"):
+        evaluate.simulate_schedule(
+            _market(),
+            _funding(),
+            changed,
+            period_start=pd.Timestamp("2020-01-01"),
+            period_end=pd.Timestamp("2020-01-02"),
+            cost_rate=0.0,
+            cfg=_cfg(),
+        )
+
+
 def test_weekly_cluster_signflip_is_deterministic() -> None:
     args = ([0.01, 0.02, -0.01], ["2020-01-01", "2020-01-08", "2020-01-15"])
     first = evaluate.weekly_cluster_signflip(*args, permutations=1_000, seed=7)
@@ -191,3 +214,46 @@ def test_freeze_manifest_hash_detects_mutation(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(evaluate, "EVALUATION_FREEZE", path)
     with pytest.raises(ValueError, match="manifest hash mismatch"):
         evaluate.verify_evaluation_freeze()
+
+
+def test_stage1_tampering_cannot_unlock_stage2(monkeypatch, tmp_path) -> None:
+    payload = {
+        "candidate_id": "AFCS-144",
+        "stage": "stage1_2020_2022",
+        "stage1_qualifies": True,
+        "gate": {"forged": True},
+        "next_action": "open_2023",
+        "manifest_hash": "forged",
+    }
+    path = tmp_path / "stage1.json"
+    path.write_text(json.dumps(payload))
+    monkeypatch.setattr(evaluate, "STAGE1_OUTPUT", path)
+    with pytest.raises(ValueError, match="manifest hash mismatch"):
+        evaluate.verify_stage1_output()
+
+
+def test_all_time_shift_and_random_side_placebos_are_gate_enforced() -> None:
+    assert evaluate.REJECTION_PLACEBOS == (
+        "one_hour_signal_delay",
+        "one_day_shifted_clock",
+        "random_side",
+    )
+
+
+def test_stage2_placebo_full_gate_requires_both_halves() -> None:
+    metrics = {
+        "absolute_return_pct": 1.0,
+        "cagr_to_strict_mdd": 4.0,
+        "strict_mdd_pct": 10.0,
+        "weekly_cluster_signflip": {"p_value_one_sided": 0.05},
+        "mean_gross_underlying_move_bp": 21.0,
+        "trade_count": 60,
+    }
+    stress = {"absolute_return_pct": 0.1}
+    halves = {
+        "2023_h1": {"absolute_return_pct": 1.0, "trade_count": 25},
+        "2023_h2": {"absolute_return_pct": -0.1, "trade_count": 25},
+    }
+    assert not evaluate._passes_stage2_gate(metrics, stress, halves)
+    halves["2023_h2"]["absolute_return_pct"] = 0.1
+    assert evaluate._passes_stage2_gate(metrics, stress, halves)
