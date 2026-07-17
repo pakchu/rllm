@@ -1,0 +1,115 @@
+{
+  "builder_sha256": "353dbd99a5b546655532f89ce8df99425d5fe833398bf1477599e0150d160b45",
+  "columns": [
+    "effective_date",
+    "publication_date",
+    "sofr_available_at_utc",
+    "summary_available_at_utc",
+    "sofr_percent",
+    "percentile_1_percent",
+    "percentile_25_percent",
+    "percentile_75_percent",
+    "percentile_99_percent",
+    "volume_usd_billions",
+    "revision_indicator",
+    "source_complete"
+  ],
+  "complete_rows": 1434,
+  "config": {
+    "end_year": 2023,
+    "output_dir": "data/new_york_fed_sofr_distribution_2018_2023",
+    "retries": 5,
+    "start_year": 2018,
+    "timeout_seconds": 60
+  },
+  "dropped_without_bounded_publication_date": 1,
+  "fetched_rows": 1437,
+  "first_effective_date": "2018-04-02",
+  "first_sofr_available_at_utc": "2018-04-03T19:00:00+00:00",
+  "first_summary_available_at_utc": "2018-10-01T21:00:00+00:00",
+  "incomplete_rows": 2,
+  "last_effective_date": "2023-12-28",
+  "last_sofr_available_at_utc": "2023-12-29T20:00:00+00:00",
+  "last_summary_available_at_utc": "2024-04-01T21:00:00+00:00",
+  "output": "data/new_york_fed_sofr_distribution_2018_2023/new_york_fed_sofr_distribution_2018-04-02_2023-12-28.csv.gz",
+  "output_sha256": "4993eda2b659e346b4d7b6e3aa0e2ff31cacf868f0e1fe2e1a5a76a03d1b5852",
+  "protocol": {
+    "crypto_market_fields_opened": false,
+    "effective_date_semantics": "date of underlying repo transactions",
+    "future_year_guard": "2024+ fetches are rejected",
+    "last_fetched_row_emitted": false,
+    "measure": "SOFR rate distribution and transaction volume",
+    "missing_distribution_policy": "retain row as source_complete=false; never fill",
+    "outcomes_opened": false,
+    "publication_date_rule": "next observed SOFR effective date",
+    "sofr_rate_availability_rule": "15:00 America/New_York on publication_date, after the documented same-day 14:30 ET revision window",
+    "source": "Federal Reserve Bank of New York Markets Data API",
+    "summary_availability_rule": "21:00 UTC on the first day of the second quarter after the effective quarter; this is a conservative vintage guard for the NY Fed's quarterly-updated percentiles and volume"
+  },
+  "revised_rows": 0,
+  "rows": 1436,
+  "schema_version": 1,
+  "source_snapshot_date": "2026-07-17",
+  "sources": [
+    {
+      "first_effective_date": "2018-04-02",
+      "last_effective_date": "2018-12-31",
+      "raw_path": "data/new_york_fed_sofr_distribution_2018_2023/raw/new_york_fed_sofr_2018.json",
+      "response_sha256": "0652bd78da1372b5a4a89eb10b54148b6cc0dabf528a139a2ac23b0f7052e46f",
+      "rows": 188,
+      "snapshot_date": "2026-07-17",
+      "url": "https://markets.newyorkfed.org/api/rates/secured/sofr/search.json?startDate=2018-01-01&endDate=2018-12-31",
+      "year": 2018
+    },
+    {
+      "first_effective_date": "2019-01-02",
+      "last_effective_date": "2019-12-31",
+      "raw_path": "data/new_york_fed_sofr_distribution_2018_2023/raw/new_york_fed_sofr_2019.json",
+      "response_sha256": "8ef5f77a6bcf145b83ffc3600beffc1f96ee7d3be17ce16d892a7bcb78926c60",
+      "rows": 250,
+      "snapshot_date": "2026-07-17",
+      "url": "https://markets.newyorkfed.org/api/rates/secured/sofr/search.json?startDate=2019-01-01&endDate=2019-12-31",
+      "year": 2019
+    },
+    {
+      "first_effective_date": "2020-01-02",
+      "last_effective_date": "2020-12-31",
+      "raw_path": "data/new_york_fed_sofr_distribution_2018_2023/raw/new_york_fed_sofr_2020.json",
+      "response_sha256": "6303924b8ba2eb14fb35c84586cc7ccfa9b62227307f145492902ccdcd86f1d5",
+      "rows": 251,
+      "snapshot_date": "2026-07-17",
+      "url": "https://markets.newyorkfed.org/api/rates/secured/sofr/search.json?startDate=2020-01-01&endDate=2020-12-31",
+      "year": 2020
+    },
+    {
+      "first_effective_date": "2021-01-04",
+      "last_effective_date": "2021-12-31",
+      "raw_path": "data/new_york_fed_sofr_distribution_2018_2023/raw/new_york_fed_sofr_2021.json",
+      "response_sha256": "1d81e7212f3791a9691e77d552bc933b17b1aacdf11a0200a056961e60c3f8cd",
+      "rows": 250,
+      "snapshot_date": "2026-07-17",
+      "url": "https://markets.newyorkfed.org/api/rates/secured/sofr/search.json?startDate=2021-01-01&endDate=2021-12-31",
+      "year": 2021
+    },
+    {
+      "first_effective_date": "2022-01-03",
+      "last_effective_date": "2022-12-30",
+      "raw_path": "data/new_york_fed_sofr_distribution_2018_2023/raw/new_york_fed_sofr_2022.json",
+      "response_sha256": "db885b1e5fcb68859e56428441835e8b37e2ebbe227ddc06cc95f62fd1fddd0c",
+      "rows": 249,
+      "snapshot_date": "2026-07-17",
+      "url": "https://markets.newyorkfed.org/api/rates/secured/sofr/search.json?startDate=2022-01-01&endDate=2022-12-31",
+      "year": 2022
+    },
+    {
+      "first_effective_date": "2023-01-03",
+      "last_effective_date": "2023-12-29",
+      "raw_path": "data/new_york_fed_sofr_distribution_2018_2023/raw/new_york_fed_sofr_2023.json",
+      "response_sha256": "e2fcdcea3fbf9dd6b160d8e2ae5ce27463a9fba0642bfdcfbbe38b415c0e461c",
+      "rows": 249,
+      "snapshot_date": "2026-07-17",
+      "url": "https://markets.newyorkfed.org/api/rates/secured/sofr/search.json?startDate=2023-01-01&endDate=2023-12-31",
+      "year": 2023
+    }
+  ]
+}
