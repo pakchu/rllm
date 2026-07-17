@@ -1,0 +1,78 @@
+{
+  "protocol_version": "btc_um_funding_settlement_marks_2020_2023_v1",
+  "outcomes_opened": false,
+  "strategy_outcomes_calculated": [],
+  "selection_end_exclusive": "2024-01-01 00:00:00",
+  "config": {
+    "symbol": "BTCUSDT",
+    "interval": "8h",
+    "start": "2020-01-01 00:00:00",
+    "end": "2024-01-01 00:00:00",
+    "limit": 1500,
+    "timeout_seconds": 30.0,
+    "retry_attempts": 5,
+    "retry_backoff_seconds": 1.0,
+    "sleep_seconds": 0.05,
+    "output": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+    "manifest": "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json",
+    "docs": "docs/binance-um-btcusdt-funding-marks-2020-2023-2026-07-17.md"
+  },
+  "implementation": {
+    "freezer_path": "training/freeze_binance_um_btcusdt_funding_marks_2020_2023.py",
+    "freezer_sha256": "c8a2c1f9cd9bd19563a2721483e52f0f09e8bf83826f4c3d9feccb5da5882db3",
+    "test_path": "tests/test_freeze_binance_um_btcusdt_funding_marks_2020_2023.py",
+    "test_sha256": "244589af42780089d6cc7376f084b69fa677c96c8e9f86aeda1670da4b5acf4d"
+  },
+  "parent": {
+    "funding_path": "results/binance_um_btcusdt_realized_funding_2020_2023.csv",
+    "funding_sha256": "c19829fa085a50f29c13762373a2b6db1c62025d657be1f5a3fbb9ce254482f7",
+    "manifest_path": "results/binance_um_btcusdt_realized_funding_2020_2023_manifest.json",
+    "manifest_sha256": "c70280e46bcbc2410cc59c2bcc93780c40997dbc5d0edb82d82127b59593250c"
+  },
+  "official_source": {
+    "endpoint": "https://fapi.binance.com/fapi/v1/markPriceKlines",
+    "documentation": "https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Mark-Price-Kline-Candlestick-Data",
+    "interval": "8h",
+    "pages": 3
+  },
+  "mapping": {
+    "funding_time": "exact returned fundingTime retained",
+    "mark": "open of floor(fundingTime, 8h) official mark-price kline",
+    "maximum_allowed_timestamp_offset_ms": 60000,
+    "maximum_allowed_proxy_funding_cash_error_bp_notional": 0.1
+  },
+  "quality": {
+    "events": 4383,
+    "recorded_mark_overlap_events": 185,
+    "backfilled_events": 4198,
+    "maximum_funding_time_offset_ms": 47,
+    "maximum_recorded_vs_8h_open_mark_error_bp": 13.484319911147846,
+    "maximum_proxy_funding_cash_error_bp_notional": 0.0013484319911147846
+  },
+  "data": {
+    "path": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+    "sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6",
+    "rows": 4383,
+    "columns": [
+      "funding_time_ms",
+      "funding_time_utc",
+      "symbol",
+      "funding_rate",
+      "settlement_mark_price",
+      "mark_open_time_ms",
+      "mark_open_time_utc",
+      "funding_time_offset_ms",
+      "mark_source"
+    ],
+    "first_funding_time_ms": 1577836800000,
+    "last_funding_time_ms": 1704038400000
+  },
+  "sealed": [
+    "all_strategy_returns",
+    "2024",
+    "2025",
+    "2026_ytd"
+  ],
+  "manifest_hash": "3b447e94d9dbb6ba4994713df565b7d6ec5b38c26c4b568ad7f4e102fefc299c",
+  "created_at": "2026-07-17T02:29:09.037837+00:00"
+}
