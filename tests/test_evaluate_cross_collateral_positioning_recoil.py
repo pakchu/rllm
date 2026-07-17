@@ -160,3 +160,32 @@ def test_written_freeze_replays_after_generation() -> None:
     assert report["evaluator_source_sha256"] == evaluator._sha256(
         evaluator.EVALUATOR_SOURCE
     )
+
+
+def test_written_stage1_is_hash_valid_and_physically_stops_before_2023() -> None:
+    report = evaluator._load_json(evaluator.STAGE1_OUTPUT)
+    evaluator._validate_stored_stage1_structure(report)
+    assert report["stage1_passed"] is False
+    assert report["selected_candidate_id"] is None
+    assert report["sealed_windows"] == ["stage2_2023", "2024_plus"]
+    diagnostics = report["execution_diagnostics"]
+    assert diagnostics["physical_window"] == [
+        "2021-07-08T00:00:00+00:00",
+        "2023-01-01T00:00:00+00:00",
+    ]
+    assert diagnostics["market"]["rows"] == 156_096
+    assert diagnostics["market"]["last_timestamp"] == "2022-12-31T23:55:00+00:00"
+    assert diagnostics["funding"]["rows"] == 1_626
+    assert diagnostics["funding"]["last_timestamp"] == "2022-12-31T16:00:00+00:00"
+
+
+def test_failed_real_stage1_blocks_stage2_before_execution_loader(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def forbidden(*args: object, **kwargs: object) -> None:
+        raise AssertionError("2023 execution loader reached")
+
+    monkeypatch.setattr(evaluator, "load_execution_window", forbidden)
+    freeze = evaluator.verify_evaluator_freeze()
+    with pytest.raises(ValueError, match="Stage1 failed; 2023 remains sealed"):
+        evaluator._verified_passing_stage1(expected_freeze_hash=freeze["manifest_hash"])
