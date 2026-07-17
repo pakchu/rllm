@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "source_snapshot_date": "2026-07-18",
+  "builder": "training/build_cboe_tail_risk_panel.py",
+  "config": {
+    "output_dir": "data/cboe_tail_risk_2018_2023",
+    "retries": 5,
+    "timeout_seconds": 60,
+    "from_snapshot": false
+  },
+  "official_sources": {
+    "SKEW": {
+      "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/SKEW_History.csv",
+      "full_response_sha256": "c2434fa12ceaa749273aa8ef13f8cc192a98e92aad2d11a8df10db26135a49ac",
+      "network_read": true,
+      "path": "data/cboe_tail_risk_2018_2023/source/SKEW_History_2018_2023.csv.gz",
+      "sha256": "1fd9fac7b8401ee5b67eedfaa4baad0faa7f43b2cd629e07261e18bbf7685338",
+      "coverage": {
+        "rows": 1507,
+        "first": "2018-01-02",
+        "last": "2023-12-29"
+      }
+    },
+    "VVIX": {
+      "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VVIX_History.csv",
+      "full_response_sha256": "3b0b34f514d5bbf78759538062015250c0f0127b54e9f1005a77fba8632e9bb6",
+      "network_read": true,
+      "path": "data/cboe_tail_risk_2018_2023/source/VVIX_History_2018_2023.csv.gz",
+      "sha256": "fc6fea738e016baa6cbcb40bfc93d7ce0546199eeaa8153f4d84e92b7f0604e5",
+      "coverage": {
+        "rows": 1509,
+        "first": "2018-01-02",
+        "last": "2023-12-29"
+      }
+    },
+    "VIX": {
+      "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
+      "full_response_sha256": "fc6b8872599fde02d2ab0dc04ce1f9bd2a4cb07f1883a4fb45cf284b7cbda283",
+      "network_read": true,
+      "path": "data/cboe_tail_risk_2018_2023/source/VIX_History_2018_2023.csv.gz",
+      "sha256": "5015e6f5e6a9ae5e1bef3be9c972b76b8a841d1cd1aa584e7e50342039d63cbd",
+      "coverage": {
+        "rows": 1521,
+        "first": "2018-01-02",
+        "last": "2023-12-29"
+      }
+    }
+  },
+  "source_contract": {
+    "provider": "Cboe Global Indices",
+    "indices": [
+      "SKEW",
+      "VVIX",
+      "VIX"
+    ],
+    "research_horizon": [
+      "2018-01-01",
+      "2024-01-01"
+    ],
+    "market_or_label_rows_read": 0,
+    "future_source_rows_retained": 0
+  },
+  "panel": {
+    "path": "data/cboe_tail_risk_2018_2023/cboe_tail_risk_2018-01-01_2023-12-31.csv.gz",
+    "sha256": "cdde3f8d4bb1e23d00b192f5f9ef759aefba9087be5fd60653e9c02479dfa41a",
+    "rows": 1507,
+    "first": "2018-01-02",
+    "last": "2023-12-29",
+    "columns": [
+      "observation_date",
+      "SKEW_close",
+      "VVIX_close",
+      "VIX_close"
+    ]
+  },
+  "created_at": "2026-07-17T15:30:00+00:00",
+  "manifest_hash": "091ddf3050035156814fe168e1edcac193e23cca9f39a3ef0140bcb5f8265d72"
+}
