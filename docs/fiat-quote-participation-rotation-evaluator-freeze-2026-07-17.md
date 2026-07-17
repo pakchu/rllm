@@ -6,11 +6,11 @@ The sequential evaluator for `FQPR-3 — Fiat-Quote Participation Rotation` is
 frozen **before opening any price, funding, or strategy outcome**.
 
 - Evaluator source SHA-256:
-  `db7d57c17eac9194ad6c38006dee6a3e888acde1a72bf3d950201e2e951f6548`
+  `e309f5217f033d57d2eadfec936843e736ce287f5c47f957c0ac6f0c71879c23`
 - Freeze manifest hash:
-  `041b1dbc95392d7b181d9921696953093ba9e4cee69728709f5ff263daf83d42`
+  `35131ea4975abe6800aa66b784f97c7cb4e493e96c25c38ec1172c857603df1b`
 - Freeze JSON SHA-256:
-  `b0c34a63e5b9928a074d380c6c17b21fab5e818e4a1cd4d0a24cbf418063e3fa`
+  `76345fef5cfa85dc06afd894863a73991b50a487eccd729b4143b5fb87d7e472`
 - Mutable parameters after freeze: none
 - Opened outcome windows: none
 - Still sealed: 2021–2022 Stage 1, 2023 Stage 2, and every 2024+ window
@@ -77,6 +77,9 @@ The generated freeze also records:
 
 - 6 bp/notional/side base cost; 10 bp/notional/side stress cost
 - exact funding settlements while the position is open
+- exact Binance funding timestamps may differ from the nominal eight-hour grid
+  by at most the source contract's 60-second bound; each event is assigned to
+  its containing five-minute execution bar without rounding away eligibility
 - favorable-before-adverse held-bar ordering
 - global high-water strict MDD including entry fee, hypothetical adverse exit
   fee, realized exit fee, and funding
@@ -93,6 +96,18 @@ The generated freeze also records:
 - Ruff: passed
 - Independent code review found one high-severity Stage-2 freeze-binding gap;
   the interlock and regression test were added before this freeze was finalized.
+
+## Pre-outcome timing amendment
+
+The first Stage-1 invocation stopped in source validation before any strategy
+simulation or result file was produced. The parser had incorrectly required
+Binance's retained funding timestamps to equal the nominal eight-hour grid to
+the nanosecond, while the frozen source records legitimate offsets of at most
+47 ms. The parser now validates one ordered event per nominal slot within the
+already-frozen 60-second bound, and the simulator applies each exact timestamp
+inside its containing five-minute bar. A regression covers a `+2 ms` event and
+both long and short funding signs. The evaluator and freeze hashes above were
+regenerated after this amendment; no performance statistic had been observed.
 
 No Stage-1 or Stage-2 performance statistic was calculated while producing this
 document.

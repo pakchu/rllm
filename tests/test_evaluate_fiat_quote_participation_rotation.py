@@ -65,8 +65,8 @@ def _write_market(path: Path) -> None:
 
 def _write_funding(path: Path) -> None:
     rows = [
-        ["2022-01-01T00:00:00.000000Z", "BTCUSDT", 0.001, 100.0],
-        ["2022-01-01T08:00:00.000000Z", "BTCUSDT", 0.001, 999.0],
+        ["2022-01-01T00:00:00.002000Z", "BTCUSDT", 0.001, 100.0],
+        ["2022-01-01T08:00:00.006000Z", "BTCUSDT", 0.001, 999.0],
     ]
     with gzip.open(path, "wt", newline="") as handle:
         pd.DataFrame(
@@ -99,6 +99,7 @@ def test_physical_parsers_stop_before_end_boundary(tmp_path: Path) -> None:
     assert len(funding) == 1
     assert funding["settlement_mark_price"].max() == 100.0
     assert funding_diag["stopped_before_parsing_end_boundary"] is True
+    assert funding_diag["maximum_absolute_grid_offset_ms"] == pytest.approx(2.0)
 
 
 def test_strict_simulator_uses_favorable_then_adverse_cost_and_funding() -> None:
@@ -114,7 +115,7 @@ def test_strict_simulator_uses_favorable_then_adverse_cost_and_funding() -> None
     )
     funding = pd.DataFrame(
         {
-            "funding_time": [dates[0]],
+            "funding_time": [dates[0] + pd.Timedelta(milliseconds=2)],
             "funding_rate": [0.001],
             "settlement_mark_price": [100.0],
         }
@@ -140,6 +141,20 @@ def test_strict_simulator_uses_favorable_then_adverse_cost_and_funding() -> None
     assert result["funding_cash_pct_initial"] < 0.0
     assert result["absolute_return_pct"] < 0.0
     assert result["strict_mdd_pct"] > 9.0
+    assert result["trade_details"][0]["funding_events"] == 1
+
+    short_schedule = schedule.copy()
+    short_schedule["side"] = -1
+    short_result = evaluator.simulate_schedule(
+        market,
+        funding,
+        short_schedule,
+        period_start=dates[0],
+        period_end=dates[3],
+        cost_rate=0.001,
+    )
+    assert short_result["funding_cash_pct_initial"] > 0.0
+    assert short_result["trade_details"][0]["funding_events"] == 1
 
 
 def test_weekly_cluster_signflip_is_deterministic_and_trade_based() -> None:

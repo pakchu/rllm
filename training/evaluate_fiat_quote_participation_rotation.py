@@ -475,8 +475,12 @@ def _parse_funding_window(
     frame = frame.rename(columns={"funding_time_utc": "funding_time"})
     frame["funding_time"] = pd.to_datetime(frame["funding_time"], utc=True, errors="raise")
     expected = pd.date_range(start, end, freq="8h", inclusive="left")
-    if not pd.DatetimeIndex(frame["funding_time"]).equals(expected):
-        raise ValueError("FQPR-3 funding window does not match the exact eight-hour grid")
+    actual = pd.DatetimeIndex(frame["funding_time"])
+    if len(actual) != len(expected) or not actual.is_monotonic_increasing:
+        raise ValueError("FQPR-3 funding window does not match the eight-hour grid")
+    offsets_ms = (actual - expected).total_seconds().to_numpy(float) * 1_000.0
+    if np.abs(offsets_ms).max(initial=0.0) > 60_000.0:
+        raise ValueError("FQPR-3 funding timestamp exceeds the frozen offset bound")
     if not frame["symbol"].eq("BTCUSDT").all():
         raise ValueError("FQPR-3 funding source changed symbol")
     values = frame[["funding_rate", "settlement_mark_price"]].to_numpy(float)
@@ -488,6 +492,10 @@ def _parse_funding_window(
         "last_timestamp": frame["funding_time"].max().isoformat(),
         "window_line_sha256": window_hash.hexdigest(),
         "stopped_before_parsing_end_boundary": boundary_seen,
+        "maximum_absolute_grid_offset_ms": float(
+            np.abs(offsets_ms).max(initial=0.0)
+        ),
+        "nonzero_grid_offset_events": int(np.count_nonzero(offsets_ms)),
     }
 
 
@@ -564,13 +572,17 @@ def simulate_schedule(
     indexed = market.set_index("date", drop=False)
     if not indexed.index.is_unique:
         raise ValueError("FQPR-3 market timestamps are not unique")
-    funding_at = {
-        pd.Timestamp(row.funding_time): (
-            float(row.funding_rate),
-            float(row.settlement_mark_price),
+    funding_at: dict[pd.Timestamp, list[tuple[pd.Timestamp, float, float]]] = {}
+    for row in funding.itertuples(index=False):
+        funding_time = pd.Timestamp(row.funding_time)
+        funding_bar = funding_time.floor("5min")
+        funding_at.setdefault(funding_bar, []).append(
+            (
+                funding_time,
+                float(row.funding_rate),
+                float(row.settlement_mark_price),
+            )
         )
-        for row in funding.itertuples(index=False)
-    }
     equity = 1.0
     high_water = 1.0
     strict_mdd = 0.0
@@ -608,18 +620,23 @@ def simulate_schedule(
         marks[entry_time] = equity_after_entry
         strict_mdd = max(strict_mdd, 1.0 - equity_after_entry / max(high_water, 1e-15))
         cumulative_funding = 0.0
+        funding_events = 0
 
         for bar in held.itertuples(index=False):
             timestamp = pd.Timestamp(bar.date)
-            if timestamp in funding_at:
-                rate, settlement_mark = funding_at[timestamp]
-                cumulative_funding += -side * quantity * rate * settlement_mark
+            bar_funding = 0.0
+            for funding_time, rate, settlement_mark in funding_at.get(timestamp, []):
+                if entry_time <= funding_time < exit_time:
+                    bar_funding += -side * quantity * rate * settlement_mark
+                    funding_events += 1
+            favorable_funding = cumulative_funding + max(bar_funding, 0.0)
+            adverse_funding = cumulative_funding + min(bar_funding, 0.0)
             favorable = float(bar.high if side > 0 else bar.low)
             favorable_equity = (
                 pre_equity
                 - entry_fee
                 + side * quantity * (favorable - entry_price)
-                + cumulative_funding
+                + favorable_funding
             )
             high_water = max(high_water, favorable_equity)
             adverse = float(bar.low if side > 0 else bar.high)
@@ -628,13 +645,14 @@ def simulate_schedule(
                 pre_equity
                 - entry_fee
                 + side * quantity * (adverse - entry_price)
-                + cumulative_funding
+                + adverse_funding
                 - hypothetical_exit_fee
             )
             strict_mdd = max(
                 strict_mdd,
                 1.0 - adverse_equity / max(high_water, 1e-15),
             )
+            cumulative_funding += bar_funding
             close_equity = (
                 pre_equity
                 - entry_fee
@@ -670,9 +688,7 @@ def simulate_schedule(
                 "exit_fee": exit_fee,
                 "net_pnl": equity - pre_equity,
                 "net_return": equity / pre_equity - 1.0,
-                "funding_events": int(
-                    sum(entry_time <= time < exit_time for time in funding_at)
-                ),
+                "funding_events": funding_events,
             }
         )
 
