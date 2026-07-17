@@ -1,0 +1,83 @@
+{
+  "protocol": {
+    "name": "Binance cross-collateral current-quarter five-minute panel",
+    "outcomes_opened": false,
+    "requested_start_inclusive": "2021-01-01T00:00:00+00:00",
+    "requested_end_exclusive": "2024-01-01T00:00:00+00:00",
+    "post_2023_rows_requested": false,
+    "source": "official public Binance USD-M Futures REST market data",
+    "endpoint": "https://fapi.binance.com/fapi/v1/continuousKlines",
+    "availability": "each row becomes usable only after close_time",
+    "execution_contracts": "USD-M BTCUSDT CURRENT_QUARTER and COIN-M BTCUSD CURRENT_QUARTER; do not cross a delivery roll"
+  },
+  "config": {
+    "start": "2021-01-01",
+    "end": "2024-01-01",
+    "contract_type": "CURRENT_QUARTER",
+    "interval": "5m",
+    "limit": 1500,
+    "output_dir": "data/binance_cross_collateral_quarterly_curve_2021_2023",
+    "manifest": "results/binance_cross_collateral_quarterly_curve_2021_2023_manifest.json",
+    "retries": 5,
+    "timeout_seconds": 60,
+    "request_pause_seconds": 0.015
+  },
+  "source_mode": "offline_official_api_snapshot",
+  "pairs": {
+    "um": {
+      "pair": "BTCUSDT",
+      "rows": 305756,
+      "first_open_time": "2021-02-03T08:20:00+00:00",
+      "last_open_time": "2023-12-31T23:55:00+00:00",
+      "requests": 0,
+      "invalid_ohlc_rows": 1,
+      "invalid_ohlc_timestamps": [
+        "2021-02-03T08:40:00+00:00"
+      ],
+      "staged_input_sha256": "259d5c8c627797c8c3651517219e4d2aff52d81a8e2e450985ff6d21a42caed1",
+      "staged_input_bytes": 12174061,
+      "staged_uncompressed_json_sha256": "2a25ce595f8f24b9d3ef74285ab2c7907c5dabef5b57f02dca310c9bceccf5c1",
+      "raw_snapshot": {
+        "path": "data/binance_cross_collateral_quarterly_curve_2021_2023/BTCUSDT_CURRENT_QUARTER_5m_2021_2023.raw.json.gz",
+        "sha256": "259d5c8c627797c8c3651517219e4d2aff52d81a8e2e450985ff6d21a42caed1",
+        "bytes": 12174061,
+        "uncompressed_json_sha256": "2a25ce595f8f24b9d3ef74285ab2c7907c5dabef5b57f02dca310c9bceccf5c1"
+      }
+    },
+    "cm": {
+      "pair": "BTCUSD",
+      "rows": 315360,
+      "first_open_time": "2021-01-01T00:00:00+00:00",
+      "last_open_time": "2023-12-31T23:55:00+00:00",
+      "requests": 0,
+      "invalid_ohlc_rows": 0,
+      "invalid_ohlc_timestamps": [],
+      "staged_input_sha256": "7de18164d4367fbcf951779f848a247e5b6d536135cba800bdbb008b27a09397",
+      "staged_input_bytes": 12197628,
+      "staged_uncompressed_json_sha256": "473948efc9fc9c09c9b0ff6aed34c7858f3a8db1a439212bbacd067180973689",
+      "raw_snapshot": {
+        "path": "data/binance_cross_collateral_quarterly_curve_2021_2023/BTCUSD_CURRENT_QUARTER_5m_2021_2023.raw.json.gz",
+        "sha256": "7de18164d4367fbcf951779f848a247e5b6d536135cba800bdbb008b27a09397",
+        "bytes": 12197628,
+        "uncompressed_json_sha256": "473948efc9fc9c09c9b0ff6aed34c7858f3a8db1a439212bbacd067180973689"
+      }
+    }
+  },
+  "combined": {
+    "rows": 305756,
+    "first_open_time": "2021-02-03T08:20:00+00:00",
+    "last_open_time": "2023-12-31T23:55:00+00:00",
+    "source_complete_rows": 305755,
+    "incomplete_rows": 1,
+    "contract_segments": 13,
+    "roll_boundary_rows": 12,
+    "pre_roll_final_rows": 12
+  },
+  "file": {
+    "path": "data/binance_cross_collateral_quarterly_curve_2021_2023/BTCUSDT_BTCUSD_CURRENT_QUARTER_5m_2021_2023.csv.gz",
+    "sha256": "54addc04b997cfb077197cd845f2aa286a219bdae4a29b49c2086667007046f7",
+    "bytes": 11445573
+  },
+  "manifest_hash": "197755f0ce6823eea7d0fd47e6db5cbec2ddb1a18542fc47b57ab7f02f69321b",
+  "created_at": "2026-07-17T00:51:27.490439+00:00"
+}
