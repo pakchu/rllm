@@ -1,0 +1,142 @@
+{
+  "protocol_version": "fiat_quote_participation_rotation_evaluator_v1",
+  "policy_id": "FQPR-3",
+  "as_of_date": "2026-07-17",
+  "support_commit": "4c0a3166ee576ee45981f28e3ab11be4af7ccd19",
+  "support_manifest_hash": "7f74b6458fff701cd9d456c4bca1053831b14a2a6972e987658f4503ac4e09bc",
+  "selected_q": 0.65,
+  "evaluator_source": "training/evaluate_fiat_quote_participation_rotation.py",
+  "evaluator_source_sha256": "db7d57c17eac9194ad6c38006dee6a3e888acde1a72bf3d950201e2e951f6548",
+  "evaluation_config": {
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.001,
+    "cluster_draws": 20000,
+    "cluster_seed": 20260717,
+    "mdd_denominator_floor": 1e-09
+  },
+  "static_inputs": {
+    "training/preregister_fiat_quote_participation_rotation.py": "63bc5bcfbf258d9d845b70904b34e47923b9afd468f977080cc7bb17eff45555",
+    "training/build_fiat_quote_participation_rotation_support.py": "f3976d936b8ca538aaecf21bdf1fd26639452b016679ff9785a019cd083ad3af",
+    "docs/fiat-quote-participation-rotation-preregistration-2026-07-17.md": "d02371e103de7ca380d44277bec1b92d3ea078f5d12a36d9308abde08736cb00",
+    "docs/fiat-quote-participation-rotation-support-2026-07-17.md": "2dc51dda5207c6c686133bb2a2d5b739bda085235e1e609c7af0783798bc987b",
+    "results/fiat_quote_participation_rotation_preregistration_2026-07-17.json": "c9e7a3fde7ca421b2efb341da80a1f173c7e15d6b6d920978af5966e63ead21c",
+    "results/fiat_quote_participation_rotation_support_2026-07-17.json": "635bfa69b0d10d6766bf65f8673e573e0b9614c8585723f90b32193fd7343d4b",
+    "results/fiat_quote_participation_rotation_clocks_2026-07-17.csv": "54a70cce565d4f1727d095707471235f01345b94179a6c37df9f4c37d1a458a2",
+    "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b"
+  },
+  "execution_source_contract": {
+    "market": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "market_expected_sha256_copied_without_read": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "funding": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+    "funding_expected_sha256_copied_without_read": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6",
+    "stage1_physical_window": [
+      "2021-01-01T00:00:00+00:00",
+      "2023-01-01T00:00:00+00:00"
+    ],
+    "stage2_physical_window": [
+      "2023-01-01T00:00:00+00:00",
+      "2024-01-01T00:00:00+00:00"
+    ]
+  },
+  "control_schedules": {
+    "primary": {
+      "all_pre2024": 72,
+      "stage1_2021_2022": 44,
+      "stage2_2023": 28,
+      "schedule_hash": "9e875977c4c034762dd63699f76fa2192436b12189a22f3dd31f498a3212adef"
+    },
+    "direction_flip": {
+      "all_pre2024": 72,
+      "stage1_2021_2022": 44,
+      "stage2_2023": 28,
+      "schedule_hash": "24830c566bfdbab054fb8614b38e321b35613909ce6a0be1627973ac05e8915f"
+    },
+    "no_ticket": {
+      "all_pre2024": 85,
+      "stage1_2021_2022": 52,
+      "stage2_2023": 33,
+      "schedule_hash": "a1cd39a3edd7694ab457f040f3abbf903f92e5465c04597f90386a297279e1cf"
+    },
+    "no_taker": {
+      "all_pre2024": 62,
+      "stage1_2021_2022": 42,
+      "stage2_2023": 20,
+      "schedule_hash": "0bae0fc97ebf9dc133d980c4d0df9a8c2f94d7fe1baf4db9dc6a5cf240f3583f"
+    },
+    "volume_only": {
+      "all_pre2024": 74,
+      "stage1_2021_2022": 49,
+      "stage2_2023": 25,
+      "schedule_hash": "7b655706033732f5ff39475d8e7af0914d5720062fcd4d45ab6bfbdcf86377dc"
+    },
+    "flow_only": {
+      "all_pre2024": 153,
+      "stage1_2021_2022": 118,
+      "stage2_2023": 34,
+      "schedule_hash": "063ce2af2a343913b527d069e8a10da65fc26a9c5aba78fb901f07999e912cc2"
+    },
+    "single_book_eur": {
+      "all_pre2024": 64,
+      "stage1_2021_2022": 36,
+      "stage2_2023": 28,
+      "schedule_hash": "6e4b5e72465ada763bdc6b98469d2d0c01163369e79a62e2c7a9c0beac7fbe6e"
+    },
+    "single_book_try": {
+      "all_pre2024": 74,
+      "stage1_2021_2022": 41,
+      "stage2_2023": 33,
+      "schedule_hash": "bcfa77abdd9d4cf1f7168f59d0870dffc89ca1b6df6e681829343fcc316e7076"
+    },
+    "single_book_brl": {
+      "all_pre2024": 72,
+      "stage1_2021_2022": 44,
+      "stage2_2023": 28,
+      "schedule_hash": "f3cc09185634a6357f36d837d00d03947344f10722c494c0344e0cb203ff98f7"
+    },
+    "usdt_only": {
+      "all_pre2024": 64,
+      "stage1_2021_2022": 42,
+      "stage2_2023": 22,
+      "schedule_hash": "97ae708c167d56cd54408f039b07585da9f0503d48a7d21b31ecef8bb2e9b88d"
+    },
+    "reference_suppression": {
+      "all_pre2024": 99,
+      "stage1_2021_2022": 56,
+      "stage2_2023": 42,
+      "schedule_hash": "b7cadac753a437d23ecc12200cd652f852d03d82a696762c182e15d7dae9af63"
+    },
+    "absolute_book_participation": {
+      "all_pre2024": 92,
+      "stage1_2021_2022": 64,
+      "stage2_2023": 28,
+      "schedule_hash": "9f6be5483acb2309bf1723a0b721cb4573defe40950047ae507cc1c320d98de5"
+    },
+    "one_day_signal_delay": {
+      "all_pre2024": 72,
+      "stage1_2021_2022": 44,
+      "stage2_2023": 28,
+      "schedule_hash": "b34508c4e284584f2f256763b9d5999768e5ac3b6615925a417fb1e660c65893"
+    },
+    "random_side": {
+      "all_pre2024": 72,
+      "stage1_2021_2022": 44,
+      "stage2_2023": 28,
+      "schedule_hash": "5bfd0c784dbfb6ccd2ef36af164baf98affc7d7d8d301705dd046ea8b0725bd3"
+    }
+  },
+  "opened_windows": [],
+  "sealed_windows": [
+    "stage1_2021_2022",
+    "stage2_2023",
+    "2024",
+    "2025",
+    "2026_ytd"
+  ],
+  "mutable_parameters": [],
+  "execution_ohlc_rows_parsed_during_freeze": 0,
+  "funding_rows_parsed_during_freeze": 0,
+  "simulation_run_during_freeze": false,
+  "manifest_hash": "041b1dbc95392d7b181d9921696953093ba9e4cee69728709f5ff263daf83d42"
+}
