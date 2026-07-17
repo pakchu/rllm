@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "source_snapshot_date": "2026-07-17",
+  "builder": "training/build_cboe_volatility_term_structure.py",
+  "config": {
+    "output_dir": "data/cboe_volatility_term_structure_2018_2023",
+    "retries": 5,
+    "timeout_seconds": 60,
+    "from_snapshot": false
+  },
+  "official_sources": {
+    "VIX9D": {
+      "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX9D_History.csv",
+      "full_response_sha256": "efd8cbe751e9fc221604324530d3365d3bccc2b72e7ef869e538318799b969e6",
+      "network_read": true,
+      "path": "data/cboe_volatility_term_structure_2018_2023/source/VIX9D_History_2018_2023.csv.gz",
+      "sha256": "e5f15622ae9fe65bde898dfdab2c4061a0aaceb0dd7e28865f6db28bbf973d6c",
+      "coverage": {
+        "rows": 1509,
+        "first": "2018-01-02",
+        "last": "2023-12-29"
+      }
+    },
+    "VIX": {
+      "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv",
+      "full_response_sha256": "fc6b8872599fde02d2ab0dc04ce1f9bd2a4cb07f1883a4fb45cf284b7cbda283",
+      "network_read": true,
+      "path": "data/cboe_volatility_term_structure_2018_2023/source/VIX_History_2018_2023.csv.gz",
+      "sha256": "f57273e856406ef86550c0555f330e7cf0ac18651dbfe4f3bad327ff4492b420",
+      "coverage": {
+        "rows": 1521,
+        "first": "2018-01-02",
+        "last": "2023-12-29"
+      }
+    },
+    "VIX3M": {
+      "url": "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX3M_History.csv",
+      "full_response_sha256": "bff0015354ad4507424c2d03c0d9709737779e87e4ed840492532deedc76880a",
+      "network_read": true,
+      "path": "data/cboe_volatility_term_structure_2018_2023/source/VIX3M_History_2018_2023.csv.gz",
+      "sha256": "9d8442ab8d20b87e915d666e3aab3bd0a6dc4dae8774dd554e5ce47d78e39be7",
+      "coverage": {
+        "rows": 1509,
+        "first": "2018-01-02",
+        "last": "2023-12-29"
+      }
+    }
+  },
+  "source_contract": {
+    "provider": "Cboe Global Indices",
+    "indices": [
+      "VIX9D",
+      "VIX",
+      "VIX3M"
+    ],
+    "research_horizon": [
+      "2018-01-01",
+      "2024-01-01"
+    ],
+    "market_or_label_rows_read": 0,
+    "future_source_rows_retained": 0
+  },
+  "panel": {
+    "path": "data/cboe_volatility_term_structure_2018_2023/cboe_vix_term_structure_2018-01-01_2023-12-31.csv.gz",
+    "sha256": "6f1b2f7f3a5b1e4d5001d673e6ff54374791879c278248ce27b3d610e4f75dc7",
+    "rows": 1509,
+    "first": "2018-01-02",
+    "last": "2023-12-29",
+    "columns": [
+      "observation_date",
+      "VIX9D_close",
+      "VIX_close",
+      "VIX3M_close"
+    ]
+  },
+  "created_at": "2026-07-17T15:00:00+00:00",
+  "manifest_hash": "d10f798e26cceca76c3a998cfaf97af068d443431121ed19e80a986a08ad4ce3"
+}
