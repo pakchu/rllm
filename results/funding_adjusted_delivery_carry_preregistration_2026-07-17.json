@@ -1,0 +1,145 @@
+{
+  "as_of": "2026-07-17T02:56:27.259902+00:00",
+  "protocol": {
+    "candidate_id": "FADC-21",
+    "name": "funding-adjusted USD-M delivery carry",
+    "hypothesis": "The BTCUSDT current-quarter/perpetual carry gap contains a persistent, same-collateral relative-value premium. A delta-matched long/short pair can earn delivery convergence plus perpetual funding without taking an explicit BTC direction.",
+    "novelty_boundary": {
+      "not_ccbs": "CCBS-12 traded USD-M versus inverse COIN-M same-maturity dislocations for twelve-hour snapback. FADC-21 trades two linear USD-M instruments, uses the delivery-versus-perpetual term structure, and holds a carry state rather than a cross-collateral z-score.",
+      "not_spot_perp_basis_compression": "The rejected spot/perpetual compression family traded a short-horizon basis z-score. FADC-21 compares delivery-implied annualized basis with strictly prior settled funding and has a deterministic delivery anchor.",
+      "portfolio_relation": "No REX, price-direction, OI, kimchi/FX, Markov, tree, LLM, or manual regime gate is permitted. Orthogonality is judged on executed daily PnL, not merely on feature correlation."
+    },
+    "source_contract": {
+      "physical_outcome_boundary": "all inputs end strictly before 2024-01-01",
+      "quarterly_leg": {
+        "instrument": "Binance USD-M BTCUSDT CURRENT_QUARTER continuous contract",
+        "columns_allowed_for_signal": [
+          "open_time",
+          "available_time",
+          "um_close",
+          "um_ohlc_valid",
+          "source_complete",
+          "delivery_time",
+          "contract_segment"
+        ],
+        "execution_columns_open_only_after_evaluator_freeze": [
+          "um_open",
+          "um_high",
+          "um_low"
+        ]
+      },
+      "perpetual_leg": {
+        "instrument": "Binance USD-M BTCUSDT perpetual",
+        "aggregation": "resample immutable one-minute OHLC to left-labeled five-minute OHLC; require exactly five rows and never fill a missing minute"
+      },
+      "funding": {
+        "instrument": "Binance USD-M BTCUSDT perpetual funding history",
+        "settlement_mark": "uniform frozen official eight-hour mark-price-kline open proxy mapped to the exact funding timestamp"
+      },
+      "source_sha256": {
+        "data/binance_cross_collateral_quarterly_curve_2021_2023/BTCUSDT_BTCUSD_CURRENT_QUARTER_5m_2021_2023.csv.gz": "54addc04b997cfb077197cd845f2aa286a219bdae4a29b49c2086667007046f7",
+        "data/binance_perp_btc_1m_2020_2023.csv.gz": "0b55bb0c3b845a90da738e746c769b19c1de4ac230ca8f1fccb6c361c4a9a41f",
+        "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+      },
+      "historical_point_in_time_limit": "market/funding rows are immutable official or DB-backfilled history, not a retrieval-timestamped PIT archive; a passing backtest still requires forward source-parity shadowing"
+    },
+    "signal": {
+      "decision_clock": "after each settled funding timestamp t, require the complete quarterly and perpetual five-minute candle [t,t+5m); signal is available at t+5m",
+      "entry_clock": "enter both legs at the t+10m open",
+      "funding_forecast": "arithmetic mean of the 21 funding rates with timestamps <= t, including the just-settled rate; require all 21; annualize as mean*3*365",
+      "annualized_basis": "log(quarterly_close/perpetual_close)*365/days_to_delivery measured at signal availability",
+      "carry_gap": "annualized_basis - annualized_funding_forecast",
+      "edge_to_scheduled_exit": "abs(carry_gap)*days_between_signal_and_(delivery-24h)/365",
+      "entry_requirements": {
+        "minimum_days_to_delivery": 14.0,
+        "maximum_days_to_delivery": 80.0,
+        "minimum_expected_edge_fraction": 0.003,
+        "rationale": "30 bp expected carry exceeds the frozen 20 bp account-level round trip at the 10 bp/notional-side stress cost"
+      },
+      "direction": {
+        "carry_gap_positive": "long perpetual, short current-quarter",
+        "carry_gap_negative": "short perpetual, long current-quarter"
+      },
+      "exit": {
+        "minimum_hold_hours": 24,
+        "normalization_edge_fraction": 0.0005,
+        "normalization_rule": "after minimum hold, exit at the next t+10m open when expected edge is <=5 bp or carry-gap sign differs from entry",
+        "mandatory_exit": "delivery_time-24h open, strictly before delivery",
+        "cooldown_hours": 24
+      },
+      "overlap": "one FADC position at a time; no pyramiding or overlapping segment"
+    },
+    "ledger": {
+      "initial_gross": 1.0,
+      "quantity": "freeze identical BTC quantity q=pre_entry_equity/(quarterly_entry+perpetual_entry), so combined entry gross is exactly 1x",
+      "entry_cost_does_not_resize_quantity": true,
+      "base_cost_per_notional_side": 0.0006,
+      "stress_cost_per_notional_side": 0.001,
+      "funding_interval": "entry_time <= funding_time < exit_time",
+      "funding_cash": "-perpetual_side*q*funding_rate*frozen_settlement_mark_price",
+      "strict_mdd": "global/pre-entry HWM; on every held five-minute bar combine independent favorable leg extrema before independent adverse extrema, apply funding in timestamp order, and include hypothetical two-leg liquidation costs",
+      "cagr": "full wall-clock evaluation period including warm-up and idle time",
+      "reporting": "always report absolute return with CAGR, strict MDD, ratio, trades",
+      "execution_limit": "historical continuous-contract OHLC is a research proxy; live promotion requires current symbol resolution, tick/step rounding, two-leg atomicity, margin/liquidation modeling, and forward slippage evidence"
+    },
+    "support_gates_before_pnl": {
+      "selection_period": "2021-02-03 through 2022-12-31",
+      "minimum_entries_total": 24,
+      "minimum_entries_each_year": 10,
+      "minimum_entries_each_half": 5,
+      "minimum_each_direction_share": 0.25,
+      "maximum_entry_month_share": 0.15,
+      "2023_diagnostic_only": {
+        "minimum_entries": 8,
+        "minimum_entries_each_half": 3,
+        "minimum_each_direction_share": 0.25,
+        "maximum_entry_month_share": 0.25
+      },
+      "forbidden": "support code may load current/past closes, settled funding and clocks but must not load future entry/exit prices, held OHLC paths, returns or PnL"
+    },
+    "sequential_outcome_gates": {
+      "stage_1_2021_2022": {
+        "combined_absolute_return_positive": true,
+        "each_calendar_year_absolute_return_positive": true,
+        "at_least_three_of_four_halves_positive": true,
+        "combined_cagr_to_strict_mdd_minimum": 2.0,
+        "strict_mdd_maximum_pct": 15.0,
+        "stress_cost_absolute_return_positive": true,
+        "both_carry_gap_directions_positive": true,
+        "weekly_cluster_signflip_pvalue_maximum": 0.1
+      },
+      "stage_2_2023_holdout": {
+        "opened_only_if_stage_1_passes": true,
+        "absolute_return_positive": true,
+        "cagr_to_strict_mdd_minimum": 3.0,
+        "strict_mdd_maximum_pct": 15.0,
+        "minimum_trades": 8,
+        "h1_and_h2_absolute_return_positive": true,
+        "stress_cost_absolute_return_positive": true,
+        "both_carry_gap_directions_positive": true,
+        "weekly_cluster_signflip_pvalue_maximum": 0.1
+      },
+      "controls": [
+        "zero funding cashflow",
+        "carry direction flip",
+        "one funding-event decision delay",
+        "basis-only sign using zero funding forecast",
+        "constant long-perpetual/short-quarterly while eligible"
+      ],
+      "no_repair": "After any outcome opens, do not change lookback, edge threshold, DTE, direction, exit, cooldown, costs, sizing, side filter or control mapping.",
+      "future_boundary": "2024 is the first source-and-outcome-unopened OOS year and stays sealed unless both pre-2024 stages and later orthogonality gates pass."
+    },
+    "orthogonality_gate_after_economic_pass": {
+      "daily_pnl_pearson_abs_maximum": 0.3,
+      "daily_pnl_spearman_abs_maximum": 0.3,
+      "minimum_nonzero_pnl_days": 20,
+      "fixed_incremental_weight": 0.25,
+      "require_synchronized_portfolio_ratio_improvement": true,
+      "btc_beta_diagnostic": "report zero-filled daily PnL beta to BTC daily close return"
+    }
+  },
+  "protocol_hash": "39dc96a719c4fe001eb547f1a3c8be8134a391934997efae049cf06bb487b2f0",
+  "outcome_columns_loaded": [],
+  "pnl_opened": false,
+  "oos_2024_plus_opened": false
+}
