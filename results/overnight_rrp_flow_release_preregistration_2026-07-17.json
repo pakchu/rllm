@@ -1,0 +1,373 @@
+{
+  "as_of_date": "2026-07-17",
+  "causal_feature_contract": {
+    "amount": "A[t]=log1p(total accepted USD / 1e9)",
+    "economic_direction": "an unusually large accepted ON RRP amount shifts more cash from reserves into the Fed RRP liability and maps to SHORT BTC; an unusually small amount releases relative liquidity and maps LONG",
+    "innovation": "X[t]=A[t]-M[t]",
+    "local_baseline": "M[t]=median(A[t-5:t]); current t excluded",
+    "price_signal_columns": [],
+    "rank": "strict-prior midrank of X[t] against exactly the previous 104 valid innovations; current t is appended only after ranking",
+    "setup": "LONG iff rank<=0.125; SHORT iff rank>=0.875; otherwise abstain"
+  },
+  "execution_contract": {
+    "base_cost": "6 bp/notional/side",
+    "cagr": "full wall-clock split including warm-up and idle cash",
+    "decision": "frozen source result_available_at_utc (close+15m ET)",
+    "entry": "decision + one complete 5m bucket",
+    "exit": "next normal ON RRP result availability + one complete 5m bucket",
+    "funding": "exact realized BTCUSDT funding on [entry, exit)",
+    "nonoverlap": "event exits no later than the next candidate entry",
+    "position_size": "0.5x fixed account gross",
+    "stress_cost": "10 bp/notional/side",
+    "strict_mdd": "global/pre-entry high-water, costs, funding, favorable-before-adverse held OHLC, hypothetical liquidation and realized exit"
+  },
+  "falsification_controls": {
+    "deterministic_random_side": "same primary entries; SHA256('ORFR-1-random-side-20260717|' + entry_time), first byte <128 => LONG",
+    "direction_flip": "same primary entries with LONG/SHORT swapped",
+    "one_day_delta_tail": "replace five-operation residual with one-operation log amount change; retain the same 104-observation rank and 1/8 tails",
+    "one_release_delay": "same primary side one complete ON RRP operation later"
+  },
+  "manifest_hash": "b162fc72bfc020220863cce9cc7cb1d747563acd87b8d832c0999b182f11f0a7",
+  "novelty_boundary": {
+    "distinct_axis": "official daily New York Fed ON RRP cash absorption/release; no crypto-internal or existing-alpha state enters the signal",
+    "excluded_inputs": [
+      "BTC_OHLC_or_return",
+      "REX_or_rolling_extrema",
+      "open_interest_or_taker_flow",
+      "funding_premium_basis",
+      "kimchi_BTCKRW_USDKRW_DXY_or_EMFX",
+      "spot_volume_cross_venue_options_onchain_or_existing_alpha_state"
+    ],
+    "forbidden_repairs_after_outcomes": [
+      "reverse direction",
+      "change 5-operation baseline or 104-operation rank window",
+      "change 1/8 tails",
+      "add calendar price FX crypto or regime gates",
+      "change publication buffer execution delay exit clock or size",
+      "use quarantined values or bridge a baseline across them"
+    ]
+  },
+  "orthogonality_after_standalone_pass": {
+    "absolute_daily_pnl_pearson_max": 0.3,
+    "comparator_universe": {
+      "added_alpha_shadow": {
+        "path": "results/portfolio_added_alpha_update_2026-07-16.json",
+        "sha256": "e188917265d986b64b65fc854725f14d5a26372597f0923621d6bd721a468e0c"
+      },
+      "current_live_config": {
+        "path": "configs/live/portfolio_gross385_trainmdd40_2026-07-12.json",
+        "sha256": "86f255ca3967245b8b0676b00025b955d7f33668ab1ef9d813623191b4ecd1e7"
+      },
+      "deduplicated_universe": {
+        "path": "results/all_discovered_alpha_universe_audit_2026-07-12.json",
+        "sha256": "5bd45f5949cfae7308dfadd3966112e06c7c09dbb92365796237c3b94be85a3e"
+      }
+    },
+    "entry_jaccard_max": 0.02,
+    "entry_near_6h_fraction_max": 0.25,
+    "not_allowed_before_pass": true,
+    "position_jaccard_max": 0.15,
+    "required": true
+  },
+  "outcomes_opened": false,
+  "policy": {
+    "base_cost_notional_per_side": 0.0006,
+    "baseline_operations": 5,
+    "execution_delay_minutes": 5,
+    "exit_clock": "next normal ON RRP result availability plus 5 minutes",
+    "leverage": 0.5,
+    "lower_tail_rank": 0.125,
+    "policy_id": "ORFR-1",
+    "rank_operations": 104,
+    "source_publication_buffer_minutes": 15,
+    "stress_cost_notional_per_side": 0.001
+  },
+  "protocol_version": "overnight_rrp_flow_release_v1",
+  "research_history_boundary": {
+    "density_thresholds_inspected_without_outcomes": [
+      0.05,
+      0.075,
+      0.1,
+      0.125,
+      0.15,
+      0.2
+    ],
+    "disclosure": {
+      "definition": "source rows, strict-prior transforms, timestamps, sides and counts only",
+      "one_day_delta": {
+        "2021": {
+          "events": 52,
+          "max_single_month_count": 14,
+          "max_single_month_share": 0.2692307692307692,
+          "months": 9,
+          "side_counts": {
+            "LONG": 31,
+            "SHORT": 21
+          }
+        },
+        "2022": {
+          "events": 47,
+          "max_single_month_count": 7,
+          "max_single_month_share": 0.14893617021276595,
+          "months": 12,
+          "side_counts": {
+            "LONG": 26,
+            "SHORT": 21
+          }
+        },
+        "2023": {
+          "events": 83,
+          "max_single_month_count": 10,
+          "max_single_month_share": 0.12048192771084337,
+          "months": 12,
+          "side_counts": {
+            "LONG": 45,
+            "SHORT": 38
+          }
+        },
+        "2023_h1": {
+          "events": 36,
+          "max_single_month_count": 10,
+          "max_single_month_share": 0.2777777777777778,
+          "months": 6,
+          "side_counts": {
+            "LONG": 18,
+            "SHORT": 18
+          }
+        },
+        "2023_h2": {
+          "events": 47,
+          "max_single_month_count": 10,
+          "max_single_month_share": 0.2127659574468085,
+          "months": 6,
+          "side_counts": {
+            "LONG": 27,
+            "SHORT": 20
+          }
+        },
+        "train": {
+          "events": 99,
+          "max_single_month_count": 14,
+          "max_single_month_share": 0.1414141414141414,
+          "months": 21,
+          "side_counts": {
+            "LONG": 57,
+            "SHORT": 42
+          }
+        }
+      },
+      "outcomes_joined": false,
+      "primary": {
+        "2021": {
+          "events": 59,
+          "max_single_month_count": 16,
+          "max_single_month_share": 0.2711864406779661,
+          "months": 8,
+          "side_counts": {
+            "LONG": 36,
+            "SHORT": 23
+          }
+        },
+        "2022": {
+          "events": 53,
+          "max_single_month_count": 10,
+          "max_single_month_share": 0.18867924528301888,
+          "months": 12,
+          "side_counts": {
+            "LONG": 27,
+            "SHORT": 26
+          }
+        },
+        "2023": {
+          "events": 74,
+          "max_single_month_count": 14,
+          "max_single_month_share": 0.1891891891891892,
+          "months": 12,
+          "side_counts": {
+            "LONG": 50,
+            "SHORT": 24
+          }
+        },
+        "2023_h1": {
+          "events": 27,
+          "max_single_month_count": 8,
+          "max_single_month_share": 0.2962962962962963,
+          "months": 6,
+          "side_counts": {
+            "LONG": 17,
+            "SHORT": 10
+          }
+        },
+        "2023_h2": {
+          "events": 47,
+          "max_single_month_count": 14,
+          "max_single_month_share": 0.2978723404255319,
+          "months": 6,
+          "side_counts": {
+            "LONG": 33,
+            "SHORT": 14
+          }
+        },
+        "train": {
+          "events": 112,
+          "max_single_month_count": 16,
+          "max_single_month_share": 0.14285714285714285,
+          "months": 20,
+          "side_counts": {
+            "LONG": 63,
+            "SHORT": 49
+          }
+        }
+      }
+    },
+    "exact_post_entry_btc_outcomes_opened": false,
+    "forbidden_before_evaluator_freeze": [
+      "entry_to_exit_return",
+      "post_entry_OHLC",
+      "funding_PnL",
+      "win_rate",
+      "absolute_return",
+      "CAGR",
+      "drawdown",
+      "existing_alpha_return_overlap"
+    ],
+    "rrp_source_values_seen": true,
+    "source_only_density_preflight_seen": true,
+    "threshold_choice_rule": "freeze the sparsest inspected symmetric tail with at least 100 Stage1 events, 45 events in each Stage1 year, 35 events per side, 60 sealed-2023 source events, 15 sealed-2023 events per side, 20 events per half, and <=20% full-window month concentration"
+  },
+  "selection_protocol": {
+    "candidate_count": 1,
+    "gates": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_min": 3.0,
+      "each_subperiod_absolute_return_positive": true,
+      "each_subperiod_minimum_trades": 45,
+      "mean_gross_underlying_bp_min": 35.0,
+      "mechanism_margin_ratio_min": 0.25,
+      "minimum_each_side_trades": 35,
+      "minimum_trades": 100,
+      "stress_cost_absolute_return_positive": true,
+      "strict_mdd_pct_max": 15.0,
+      "weekly_cluster_signflip_p_max": 0.1
+    },
+    "no_parameter_repair": true,
+    "stage1": [
+      "2021-01-01",
+      "2023-01-01"
+    ],
+    "stage1_subperiods": {
+      "2021": [
+        "2021-01-01",
+        "2022-01-01"
+      ],
+      "2022": [
+        "2022-01-01",
+        "2023-01-01"
+      ]
+    },
+    "stage2": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "stage2_requires_exact_unchanged_stage1_pass": true,
+    "stage2_subperiods": {
+      "2023_h1": [
+        "2023-01-01",
+        "2023-07-01"
+      ],
+      "2023_h2": [
+        "2023-07-01",
+        "2024-01-01"
+      ]
+    }
+  },
+  "source_contract": {
+    "funding": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+    "funding_manifest": "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json",
+    "funding_manifest_sha256": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
+    "funding_sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6",
+    "incomplete_policy": "blank value, reset local 5-operation baseline and previous-day state, emit no signal, and never bridge across the row",
+    "market": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "market_manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "rrp_manifest": "data/new_york_fed_overnight_rrp_2018_2023/build_manifest.json",
+    "rrp_manifest_sha256": "4f87e2219da71c94832c8708086ba01387efc145e3488b62cd3b3d07c62d8fee",
+    "rrp_panel": "data/new_york_fed_overnight_rrp_2018_2023/new_york_fed_overnight_rrp_2018-01-01_2023-12-31.csv.gz",
+    "rrp_panel_sha256": "49f67ed44b7eb81fd35c17a8209cf14d6a8019d7e9f77fce8c343d1a7fb66b27",
+    "source_audit": "docs/new-york-fed-overnight-rrp-source-audit-2026-07-17.md",
+    "source_commit": "f90cc3a"
+  },
+  "support_gates": {
+    "expected_counts": {
+      "2021": {
+        "events": 59,
+        "max_single_month_count": 16,
+        "max_single_month_share": 0.2711864406779661,
+        "months": 8,
+        "side_counts": {
+          "LONG": 36,
+          "SHORT": 23
+        }
+      },
+      "2022": {
+        "events": 53,
+        "max_single_month_count": 10,
+        "max_single_month_share": 0.18867924528301888,
+        "months": 12,
+        "side_counts": {
+          "LONG": 27,
+          "SHORT": 26
+        }
+      },
+      "2023": {
+        "events": 74,
+        "max_single_month_count": 14,
+        "max_single_month_share": 0.1891891891891892,
+        "months": 12,
+        "side_counts": {
+          "LONG": 50,
+          "SHORT": 24
+        }
+      },
+      "2023_h1": {
+        "events": 27,
+        "max_single_month_count": 8,
+        "max_single_month_share": 0.2962962962962963,
+        "months": 6,
+        "side_counts": {
+          "LONG": 17,
+          "SHORT": 10
+        }
+      },
+      "2023_h2": {
+        "events": 47,
+        "max_single_month_count": 14,
+        "max_single_month_share": 0.2978723404255319,
+        "months": 6,
+        "side_counts": {
+          "LONG": 33,
+          "SHORT": 14
+        }
+      },
+      "train": {
+        "events": 112,
+        "max_single_month_count": 16,
+        "max_single_month_share": 0.14285714285714285,
+        "months": 20,
+        "side_counts": {
+          "LONG": 63,
+          "SHORT": 49
+        }
+      }
+    },
+    "failure_action": "retire ORFR-1 before loading any BTC outcome",
+    "maximum_single_month_share": 0.2,
+    "minimum_2023_each_side": 15,
+    "minimum_2023_events": 60,
+    "minimum_each_2023_half": 20,
+    "minimum_each_stage1_year": 45,
+    "minimum_train_each_side": 35,
+    "minimum_train_events": 100
+  }
+}
