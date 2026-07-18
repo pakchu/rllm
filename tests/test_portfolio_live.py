@@ -185,6 +185,18 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "requires testnet"):
             _validate_portfolio_execution_network(portfolio, testnet=False)
 
+    def test_gross8_mainnet_portfolio_is_explicitly_authorized_and_network_locked(self):
+        portfolio = json.loads(
+            Path("configs/live/portfolio_added_alpha_mainnet_live_2026-07-18.json").read_text()
+        )
+        self.assertEqual(portfolio["gross_weight"], 8.0)
+        self.assertEqual(sum(portfolio["weights"].values()), 8.0)
+        self.assertTrue(portfolio["mainnet_promotion_authorized"])
+        _validate_portfolio_mode(portfolio, live=True)
+        _validate_portfolio_execution_network(portfolio, testnet=False)
+        with self.assertRaisesRegex(RuntimeError, "requires mainnet"):
+            _validate_portfolio_execution_network(portfolio, testnet=True)
+
     def test_live_anchor_remains_authorized(self):
         import json
 
