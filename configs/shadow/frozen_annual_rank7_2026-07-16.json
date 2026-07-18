@@ -1,19 +1,26 @@
 {
   "name": "frozen_annual_rank7",
-  "status": "forward_shadow_blocked",
+  "status": "forward_shadow_runtime_ready",
   "policy_type": "frozen_annual_rank7",
   "side": "LONG",
   "hold_bars": 576,
   "stride_bars": 1,
   "entry_delay_bars": 1,
-  "runtime_ready": false,
-  "runtime_requirements": [
-    "annual_extratrees_model_export_required",
-    "source_specific_score_risk_interaction_thresholds_required",
-    "exact_40_column_feature_graph_required",
-    "causal_state_and_weak_feature_warm_start_required",
-    "historical_live_prefix_and_schedule_parity_required",
-    "source_specific_barrier_exits_required"
-  ],
-  "blocker": "The model bundle is small enough to deploy, but the five-seed annual ExtraTrees ensemble, train-derived thresholds, exact 40-column causal feature graph, state warm start, source-specific exits, and historical/live replay parity are not yet packaged as one bounded runtime artifact. Fail closed until all requirements pass."
+  "runtime_ready": true,
+  "bundle_path": "artifacts/rank7/frozen_annual_rank7_2026",
+  "bundle_manifest_hash": "06211697e4717f15db2c796da606c3785bfc25cac8ffa417fb3274063cb6ac8d",
+  "model_version": "rank7-annual-2026-v1",
+  "minimum_feature_history_bars": 18000,
+  "decision_clock": "top-of-hour completed boundary bar; enter next 5m open",
+  "runtime_contract": {
+    "feature_columns": 40,
+    "predictor_delay_bars": 12,
+    "source_identity_current": true,
+    "prediction_n_jobs": 1,
+    "anchor_cooldown_bars": 144,
+    "no_overlap": true,
+    "source_specific_barrier_exits": true,
+    "historical_feature_prediction_schedule_parity": "passed"
+  },
+  "promotion_state": "shadow_and_testnet_canary_only_until_operational_soak_passes"
 }

@@ -4,7 +4,6 @@ import hashlib
 import json
 from pathlib import Path
 
-import joblib
 import numpy as np
 import pandas as pd
 import pytest
@@ -16,7 +15,10 @@ from execution.rank7_runtime import (
     Rank7BundleError,
     Rank7FeatureError,
     apply_rank7_delay,
+    load_frozen_extra_trees,
+    rank7_manifest_hash,
     rebuild_rank7_feature_context,
+    save_frozen_extra_trees,
     score_rank7_row,
 )
 
@@ -38,6 +40,7 @@ def _write_bundle(root: Path) -> Path:
         [np.full(len(x), 0.02, dtype=float), np.full(len(x), 0.01, dtype=float)]
     )
     model_rows = []
+    fitted_models = []
     for seed in SEEDS:
         model = ExtraTreesRegressor(
             n_estimators=300,
@@ -48,9 +51,20 @@ def _write_bundle(root: Path) -> Path:
             random_state=seed,
             n_jobs=-1,
         ).fit(x, y)
-        path = models / f"seed_{seed}.joblib"
-        joblib.dump(model, path)
-        model_rows.append({"seed": seed, "path": str(path.relative_to(bundle)), "sha256": _sha256(path)})
+        fitted_models.append(model)
+        path = models / f"seed_{seed}.npz"
+        save_frozen_extra_trees(model, path)
+        model_rows.append(
+            {
+                "seed": seed,
+                "path": str(path.relative_to(bundle)),
+                "sha256": _sha256(path),
+                "format": "extra_trees_npz_v1",
+                "n_estimators": 300,
+                "n_features": len(FEATURE_COLUMNS),
+                "n_outputs": 2,
+            }
+        )
 
     manifest = {
         "schema_version": 1,
@@ -63,6 +77,7 @@ def _write_bundle(root: Path) -> Path:
         "valid_until": "2027-01-01T00:00:00Z",
         "seeds": list(SEEDS),
         "trees_per_seed": 300,
+        "model_format": "extra_trees_npz_v1",
         "extra_trees_params": {
             "max_depth": 2,
             "min_samples_leaf": 32,
@@ -93,6 +108,12 @@ def _write_bundle(root: Path) -> Path:
         "anchor_cooldown_bars": 144,
         "no_overlap": True,
         "models": model_rows,
+        "runtime_prediction_fixture": {
+            "rows": [x[0].tolist(), x[-1].tolist()],
+            "expected": np.mean(
+                np.stack([model.predict(x[[0, -1]]) for model in fitted_models]), axis=0
+            ).tolist(),
+        },
         "parity": {
             "status": "passed",
             "feature_parity": True,
@@ -100,6 +121,7 @@ def _write_bundle(root: Path) -> Path:
             "schedule_parity": True,
         },
     }
+    manifest["bundle_manifest_hash"] = rank7_manifest_hash(manifest)
     (bundle / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     return bundle
 
@@ -126,11 +148,42 @@ def test_rank7_bundle_loads_exact_contract_and_forces_serial_prediction(tmp_path
 
 def test_rank7_bundle_rejects_tampered_model(tmp_path: Path) -> None:
     path = _write_bundle(tmp_path)
-    model_path = path / "models" / "seed_7.joblib"
+    model_path = path / "models" / "seed_7.npz"
     model_path.write_bytes(model_path.read_bytes() + b"tampered")
 
     with pytest.raises(Rank7BundleError, match="checksum"):
         Rank7Bundle.load(path)
+
+
+def test_rank7_bundle_rejects_tampered_threshold_contract(tmp_path: Path) -> None:
+    path = _write_bundle(tmp_path)
+    manifest_path = path / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["thresholds"]["funding_score"] = -999.0
+    manifest_path.write_text(json.dumps(manifest))
+
+    with pytest.raises(Rank7BundleError, match="manifest hash"):
+        Rank7Bundle.load(path)
+
+
+def test_portable_extra_trees_prediction_is_bit_exact(tmp_path: Path) -> None:
+    x = np.arange(96 * len(FEATURE_COLUMNS), dtype=float).reshape(96, -1) / 1000.0
+    y = np.column_stack([np.sin(x[:, 0]), np.cos(x[:, 1])])
+    model = ExtraTreesRegressor(
+        n_estimators=300,
+        max_depth=2,
+        min_samples_leaf=32,
+        max_features=0.8,
+        bootstrap=False,
+        random_state=7,
+        n_jobs=1,
+    ).fit(x, y)
+    path = tmp_path / "model.npz"
+
+    save_frozen_extra_trees(model, path)
+    frozen = load_frozen_extra_trees(path, seed=7)
+
+    np.testing.assert_array_equal(frozen.predict(x[:8]), model.predict(x[:8]))
 
 
 def test_rank7_delay_matches_research_and_restores_current_source_columns() -> None:

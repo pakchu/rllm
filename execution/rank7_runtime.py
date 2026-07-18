@@ -7,15 +7,15 @@ an error; callers are expected to catch it and fail the sleeve closed.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
 
-import joblib
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import ExtraTreesRegressor
 
 import training.search_market_braid_alpha as market_braid
 import training.search_nested_barrier_witness_alpha as nested_barrier
@@ -64,6 +64,154 @@ class Rank7FeatureError(RuntimeError):
     """Raised when live inputs cannot reproduce the frozen Rank7 feature graph."""
 
 
+@dataclass(frozen=True)
+class FrozenExtraTreesModel:
+    """Portable, inference-only ExtraTrees snapshot with no pickle dependency."""
+
+    tree_offsets: np.ndarray
+    children_left: np.ndarray
+    children_right: np.ndarray
+    feature: np.ndarray
+    threshold: np.ndarray
+    value: np.ndarray
+    seed: int
+    n_jobs: int = 1
+
+    @property
+    def n_estimators(self) -> int:
+        return int(len(self.tree_offsets) - 1)
+
+    @property
+    def n_features_in_(self) -> int:
+        used = self.feature[self.feature >= 0]
+        return 0 if not len(used) else int(used.max()) + 1
+
+    @property
+    def n_outputs_(self) -> int:
+        return int(self.value.shape[1])
+
+    def predict(self, matrix: np.ndarray) -> np.ndarray:
+        rows = np.asarray(matrix, dtype=float)
+        if rows.ndim == 1:
+            rows = rows.reshape(1, -1)
+        if rows.ndim != 2 or rows.shape[1] < self.n_features_in_:
+            raise Rank7BundleError("portable Rank7 model input shape mismatch")
+        output = np.zeros((len(rows), self.n_outputs_), dtype=float)
+        for tree_index in range(self.n_estimators):
+            start = int(self.tree_offsets[tree_index])
+            stop = int(self.tree_offsets[tree_index + 1])
+            for row_index, row in enumerate(rows):
+                node = 0
+                while True:
+                    global_node = start + node
+                    feature_index = int(self.feature[global_node])
+                    if feature_index < 0:
+                        output[row_index] += self.value[global_node]
+                        break
+                    node = int(
+                        self.children_left[global_node]
+                        if row[feature_index] <= self.threshold[global_node]
+                        else self.children_right[global_node]
+                    )
+                    if node < 0 or start + node >= stop:
+                        raise Rank7BundleError("portable Rank7 tree has an invalid child index")
+        return output / float(self.n_estimators)
+
+
+def _write_deterministic_npz(path: Path, arrays: dict[str, np.ndarray]) -> None:
+    """Write compressed NumPy arrays with fixed ZIP metadata."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        for name in sorted(arrays):
+            buffer = io.BytesIO()
+            np.save(buffer, np.asarray(arrays[name]), allow_pickle=False)
+            info = zipfile.ZipInfo(f"{name}.npy", date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o600 << 16
+            archive.writestr(info, buffer.getvalue())
+
+
+def save_frozen_extra_trees(model: Any, path: str | Path) -> None:
+    """Serialize a fitted sklearn ExtraTreesRegressor into portable arrays."""
+
+    estimators = list(getattr(model, "estimators_", ()))
+    if not estimators:
+        raise ValueError("ExtraTrees model is not fitted")
+    offsets = [0]
+    left: list[np.ndarray] = []
+    right: list[np.ndarray] = []
+    feature: list[np.ndarray] = []
+    threshold: list[np.ndarray] = []
+    values: list[np.ndarray] = []
+    for estimator in estimators:
+        tree = estimator.tree_
+        left.append(np.asarray(tree.children_left, dtype=np.int32))
+        right.append(np.asarray(tree.children_right, dtype=np.int32))
+        feature.append(np.asarray(tree.feature, dtype=np.int32))
+        threshold.append(np.asarray(tree.threshold, dtype=np.float64))
+        value = np.asarray(tree.value, dtype=np.float64).reshape(tree.node_count, -1)
+        values.append(value)
+        offsets.append(offsets[-1] + int(tree.node_count))
+    _write_deterministic_npz(
+        Path(path),
+        {
+            "tree_offsets": np.asarray(offsets, dtype=np.int32),
+            "children_left": np.concatenate(left),
+            "children_right": np.concatenate(right),
+            "feature": np.concatenate(feature),
+            "threshold": np.concatenate(threshold),
+            "value": np.concatenate(values, axis=0),
+        },
+    )
+
+
+def load_frozen_extra_trees(path: str | Path, *, seed: int) -> FrozenExtraTreesModel:
+    try:
+        with np.load(Path(path), allow_pickle=False) as payload:
+            names = {
+                "tree_offsets",
+                "children_left",
+                "children_right",
+                "feature",
+                "threshold",
+                "value",
+            }
+            if set(payload.files) != names:
+                raise Rank7BundleError("portable Rank7 model array set mismatch")
+            arrays = {name: np.asarray(payload[name]) for name in names}
+    except Rank7BundleError:
+        raise
+    except Exception as exc:
+        raise Rank7BundleError(f"portable Rank7 model unreadable: {exc}") from exc
+    offsets = arrays["tree_offsets"].astype(np.int64, copy=False)
+    node_count = len(arrays["feature"])
+    if (
+        offsets.ndim != 1
+        or len(offsets) != 301
+        or offsets[0] != 0
+        or offsets[-1] != node_count
+        or np.any(np.diff(offsets) <= 0)
+    ):
+        raise Rank7BundleError("portable Rank7 tree offsets invalid")
+    for name in ("children_left", "children_right", "threshold"):
+        if arrays[name].shape != (node_count,):
+            raise Rank7BundleError(f"portable Rank7 {name} shape invalid")
+    if arrays["value"].shape != (node_count, 2):
+        raise Rank7BundleError("portable Rank7 value shape invalid")
+    if not np.isfinite(arrays["threshold"]).all() or not np.isfinite(arrays["value"]).all():
+        raise Rank7BundleError("portable Rank7 model contains non-finite values")
+    return FrozenExtraTreesModel(
+        tree_offsets=offsets,
+        children_left=arrays["children_left"].astype(np.int32, copy=False),
+        children_right=arrays["children_right"].astype(np.int32, copy=False),
+        feature=arrays["feature"].astype(np.int32, copy=False),
+        threshold=arrays["threshold"].astype(np.float64, copy=False),
+        value=arrays["value"].astype(np.float64, copy=False),
+        seed=int(seed),
+    )
+
+
 def _utc_timestamp(value: Any) -> pd.Timestamp:
     ts = pd.Timestamp(value)
     return ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
@@ -71,6 +219,15 @@ def _utc_timestamp(value: Any) -> pd.Timestamp:
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def rank7_manifest_hash(manifest: dict[str, Any]) -> str:
+    payload = dict(manifest)
+    payload.pop("bundle_manifest_hash", None)
+    blob = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")
+    return hashlib.sha256(blob).hexdigest()
 
 
 def _require(condition: bool, message: str) -> None:
@@ -153,7 +310,7 @@ class Rank7Decision:
 class Rank7Bundle:
     root: Path
     manifest: dict[str, Any]
-    models: tuple[ExtraTreesRegressor, ...]
+    models: tuple[FrozenExtraTreesModel, ...]
     feature_columns: tuple[str, ...]
     medians: np.ndarray
     clip: tuple[float, float]
@@ -179,6 +336,10 @@ class Rank7Bundle:
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         except Exception as exc:
             raise Rank7BundleError(f"Rank7 manifest unreadable: {exc}") from exc
+        _require(
+            str(manifest.get("bundle_manifest_hash", "")) == rank7_manifest_hash(manifest),
+            "Rank7 bundle manifest hash mismatch",
+        )
 
         _require(int(manifest.get("schema_version", -1)) == 1, "unsupported Rank7 schema_version")
         _require(manifest.get("policy_type") == "frozen_annual_rank7", "Rank7 policy_type mismatch")
@@ -240,27 +401,46 @@ class Rank7Bundle:
         model_rows = manifest.get("models")
         _require(isinstance(model_rows, list) and len(model_rows) == len(EXPECTED_SEEDS), "Rank7 model list mismatch")
         _require(tuple(int(row.get("seed", -1)) for row in model_rows) == EXPECTED_SEEDS, "Rank7 model seed order mismatch")
-        loaded: list[ExtraTreesRegressor] = []
+        _require(
+            manifest.get("model_format") == "extra_trees_npz_v1",
+            "Rank7 model_format mismatch",
+        )
+        loaded: list[FrozenExtraTreesModel] = []
         for row, seed in zip(model_rows, EXPECTED_SEEDS, strict=True):
             relative = Path(str(row.get("path", "")))
             model_path = (root / relative).resolve()
             _require(model_path.is_relative_to(root), "Rank7 model path escapes bundle")
             _require(model_path.is_file(), f"Rank7 model missing: {relative}")
             _require(_sha256(model_path) == str(row.get("sha256", "")), f"Rank7 model checksum mismatch: {relative}")
-            try:
-                model = joblib.load(model_path)
-            except Exception as exc:
-                raise Rank7BundleError(f"Rank7 model unreadable: {relative}: {exc}") from exc
-            _require(isinstance(model, ExtraTreesRegressor), f"Rank7 model type mismatch: {relative}")
-            params = model.get_params(deep=False)
-            _require(int(params["n_estimators"]) == 300, f"Rank7 tree count mismatch: {relative}")
-            _require(int(params["random_state"]) == seed, f"Rank7 random_state mismatch: {relative}")
-            for key, expected in EXPECTED_MODEL_PARAMS.items():
-                _require(params[key] == expected, f"Rank7 loaded model parameter mismatch: {relative}:{key}")
-            _require(int(model.n_features_in_) == len(FEATURE_COLUMNS), f"Rank7 model feature width mismatch: {relative}")
-            _require(int(model.n_outputs_) == 2, f"Rank7 model output width mismatch: {relative}")
-            model.n_jobs = 1
+            _require(row.get("format") == "extra_trees_npz_v1", f"Rank7 model format mismatch: {relative}")
+            _require(int(row.get("n_estimators", 0)) == 300, f"Rank7 tree count mismatch: {relative}")
+            _require(int(row.get("n_features", 0)) == len(FEATURE_COLUMNS), f"Rank7 feature width mismatch: {relative}")
+            _require(int(row.get("n_outputs", 0)) == 2, f"Rank7 output width mismatch: {relative}")
+            model = load_frozen_extra_trees(model_path, seed=seed)
+            _require(model.n_estimators == 300, f"Rank7 portable tree count mismatch: {relative}")
+            _require(model.n_features_in_ <= len(FEATURE_COLUMNS), f"Rank7 portable feature width mismatch: {relative}")
+            _require(model.n_outputs_ == 2, f"Rank7 portable output width mismatch: {relative}")
             loaded.append(model)
+
+        fixture = manifest.get("runtime_prediction_fixture")
+        _require(isinstance(fixture, dict), "Rank7 runtime prediction fixture missing")
+        fixture_rows = np.asarray(fixture.get("rows", []), dtype=float)
+        fixture_expected = np.asarray(fixture.get("expected", []), dtype=float)
+        _require(
+            fixture_rows.ndim == 2 and fixture_rows.shape[1] == len(FEATURE_COLUMNS),
+            "Rank7 runtime fixture row shape mismatch",
+        )
+        _require(
+            fixture_expected.shape == (len(fixture_rows), 2),
+            "Rank7 runtime fixture prediction shape mismatch",
+        )
+        fixture_actual = np.mean(
+            np.stack([model.predict(fixture_rows) for model in loaded]), axis=0
+        )
+        _require(
+            np.array_equal(fixture_actual, fixture_expected),
+            "Rank7 portable prediction fixture mismatch",
+        )
 
         hourly_history: pd.DataFrame | None = None
         history_row = manifest.get("hourly_history")
@@ -319,7 +499,6 @@ class Rank7Bundle:
         _require(np.isfinite(values).all(), "Rank7 score row contains non-finite values")
         predictions = []
         for model in self.models:
-            model.n_jobs = 1
             prediction = np.asarray(model.predict(values.reshape(1, -1)), dtype=float)
             _require(prediction.shape == (1, 2), "Rank7 prediction shape mismatch")
             predictions.append(prediction[0])
@@ -341,6 +520,8 @@ def _normalise_rank7_market(market: pd.DataFrame) -> pd.DataFrame:
         "taker_buy_quote",
         "open_interest",
         "open_interest_available",
+        "funding_available",
+        "premium_available",
         "spot_close",
         "spot_rows",
         "premium_index_1m_close",
@@ -360,9 +541,16 @@ def _normalise_rank7_market(market: pd.DataFrame) -> pd.DataFrame:
     for column in required - {"date"}:
         out[column] = pd.to_numeric(out[column], errors="coerce")
     for column in ("spot_rows", "premium_rows"):
-        value = out.iloc[-1][column]
-        if not np.isfinite(value) or int(value) != 5:
-            raise Rank7FeatureError(f"latest {column} must equal 5")
+        counts = pd.to_numeric(out[column], errors="coerce").tail(3_000).to_numpy(float)
+        if not np.isfinite(counts).all() or not np.equal(counts, 5.0).all():
+            raise Rank7FeatureError(f"recent Rank7 {column} values must equal 5")
+    latest = out.iloc[-1]
+    for column in ("open_interest_available", "funding_available", "premium_available"):
+        value = float(latest[column])
+        if not np.isfinite(value) or value <= 0.5:
+            raise Rank7FeatureError(f"latest {column} must be available")
+    if not np.isfinite(float(latest["open_interest"])) or float(latest["open_interest"]) <= 0.0:
+        raise Rank7FeatureError("latest open_interest must be positive")
     return out
 
 
@@ -512,7 +700,7 @@ def build_rank7_feature_context(market: pd.DataFrame, bundle: Rank7Bundle) -> di
     )
 
 
-def _barrier_contract(spec: dict[str, Any]) -> dict[str, Any]:
+def rank7_barrier_contract(spec: dict[str, Any]) -> dict[str, Any]:
     def bps(key: str) -> float | None:
         value = float(spec[key])
         return None if value >= NO_BARRIER_BPS else value
@@ -584,7 +772,7 @@ def score_rank7_row(
     active = bool(validity_ok and clock_ok and is_anchor and source is not None and model_ok and interaction_ok)
     exit_spec = bundle.manifest["exits_by_source"].get(source) if source else None
     hold = int(exit_spec["hold_bars"]) if exit_spec else 0
-    barrier = _barrier_contract(exit_spec) if exit_spec else None
+    barrier = rank7_barrier_contract(exit_spec) if exit_spec else None
     signal_id = f"frozen_annual_rank7:{bundle.model_version}:{source or 'none'}:{ts.isoformat()}"
     return Rank7Decision(
         active=active,

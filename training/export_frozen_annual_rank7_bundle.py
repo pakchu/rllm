@@ -17,9 +17,9 @@ os.environ.setdefault("MKL_NUM_THREADS", "1")
 os.environ.setdefault("VECLIB_MAXIMUM_THREADS", "1")
 os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 
-import joblib
 import numpy as np
 import pandas as pd
+import sklearn
 from sklearn.ensemble import ExtraTreesRegressor
 
 if __package__ in (None, ""):
@@ -32,7 +32,9 @@ from execution.rank7_runtime import (
     FEATURE_COLUMNS,
     Rank7Bundle,
     build_rank7_feature_context,
+    rank7_manifest_hash,
     rebuild_rank7_feature_context,
+    save_frozen_extra_trees,
 )
 from training.audit_expanding_extratrees_rank7_stability import (
     FOLDS,
@@ -294,13 +296,17 @@ def export_bundle(output: Path) -> dict[str, Any]:
         model_dir.mkdir(parents=True)
         model_rows: list[dict[str, Any]] = []
         for seed, model in zip(SEEDS, models, strict=True):
-            path = model_dir / f"seed_{seed}.joblib"
-            joblib.dump(model, path, compress=3)
+            path = model_dir / f"seed_{seed}.npz"
+            save_frozen_extra_trees(model, path)
             model_rows.append(
                 {
                     "seed": int(seed),
                     "path": str(path.relative_to(root)),
                     "sha256": _sha256(path),
+                    "format": "extra_trees_npz_v1",
+                    "n_estimators": TREES_PER_SEED,
+                    "n_features": len(FEATURE_COLUMNS),
+                    "n_outputs": 2,
                 }
             )
         hourly_history = _write_hourly_history(root, context["market"])
@@ -321,6 +327,7 @@ def export_bundle(output: Path) -> dict[str, Any]:
             "snapshot_end": pd.Timestamp(context["dates"].iloc[-1]).tz_localize("UTC").isoformat(),
             "seeds": list(map(int, SEEDS)),
             "trees_per_seed": TREES_PER_SEED,
+            "model_format": "extra_trees_npz_v1",
             "extra_trees_params": EXPECTED_MODEL_PARAMS,
             "prediction_n_jobs": 1,
             "feature_columns": list(FEATURE_COLUMNS),
@@ -336,6 +343,24 @@ def export_bundle(output: Path) -> dict[str, Any]:
             "anchor_cooldown_bars": 144,
             "no_overlap": True,
             "models": model_rows,
+            "runtime_prediction_fixture": {
+                "rows": np.asarray(context["matrix"], dtype=float)[
+                    np.asarray(base["signals"], dtype=int)[-3:]
+                ].tolist(),
+                "expected": np.mean(
+                    np.stack(
+                        [
+                            model.predict(
+                                np.asarray(context["matrix"], dtype=float)[
+                                    np.asarray(base["signals"], dtype=int)[-3:]
+                                ]
+                            )
+                            for model in models
+                        ]
+                    ),
+                    axis=0,
+                ).tolist(),
+            },
             "hourly_history": hourly_history,
             "parity": {
                 "status": "passed",
@@ -356,7 +381,14 @@ def export_bundle(output: Path) -> dict[str, Any]:
                 "folds": [list(row) for row in FOLDS],
                 "stats": expected["stats"],
             },
+            "export_software": {
+                "python": f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}",
+                "numpy": np.__version__,
+                "pandas": pd.__version__,
+                "scikit_learn": sklearn.__version__,
+            },
         }
+        manifest["bundle_manifest_hash"] = rank7_manifest_hash(manifest)
         (root / "manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False) + "\n",
             encoding="utf-8",
