@@ -3,7 +3,11 @@ import pandas as pd
 import pytest
 
 from training.search_liveparity_state_feature_interactions import (
+    _clear_bocpd_runtime_cache,
+    _runtime_bocpd_output,
+    _runtime_kalman_frame,
     completed_hourly_features,
+    hourly_state_features,
     immutable_anchors,
     state_bank,
     state_bank_from_hourly,
@@ -68,3 +72,55 @@ def test_state_bank_hourly_warm_start_path_matches_batch_builder():
 
     for key in ("kalman", "bocpd", "semimarkov"):
         np.testing.assert_array_equal(warm[key], batch[key])
+
+
+def test_incremental_state_filters_match_clean_full_rebuild():
+    rows = 45 * 24
+    index = pd.date_range("2020-07-01 01:00", periods=rows, freq="1h")
+    phase = np.linspace(0.0, 20.0, rows)
+    close = 10_000.0 * np.exp(0.0002 * np.arange(rows) + 0.003 * np.sin(phase))
+    hourly = pd.DataFrame(
+        {
+            "open": close,
+            "high": close * 1.001,
+            "low": close * 0.999,
+            "close": close,
+            "quote": 1_000_000.0 * (1.0 + 0.1 * np.cos(phase)),
+            "buy": 500_000.0 * (1.0 + 0.1 * np.sin(phase)),
+        },
+        index=index,
+    )
+    features = hourly_state_features(hourly)
+    fit = np.zeros(rows, dtype=bool)
+    fit[: 30 * 24] = True
+
+    _clear_bocpd_runtime_cache()
+    _runtime_kalman_frame(hourly.iloc[:-1], fit[:-1])
+    resumed_kalman = _runtime_kalman_frame(hourly, fit).copy()
+    _runtime_bocpd_output(
+        features.iloc[:-1],
+        fit[:-1],
+        columns=("ret1", "flow24"),
+        secondary_index=1,
+        hazard_lambda=336,
+    )
+    resumed_bocpd = _runtime_bocpd_output(
+        features,
+        fit,
+        columns=("ret1", "flow24"),
+        secondary_index=1,
+        hazard_lambda=336,
+    ).copy()
+
+    _clear_bocpd_runtime_cache()
+    rebuilt_kalman = _runtime_kalman_frame(hourly, fit)
+    rebuilt_bocpd = _runtime_bocpd_output(
+        features,
+        fit,
+        columns=("ret1", "flow24"),
+        secondary_index=1,
+        hazard_lambda=336,
+    )
+
+    pd.testing.assert_frame_equal(resumed_kalman, rebuilt_kalman, check_exact=True)
+    pd.testing.assert_frame_equal(resumed_bocpd, rebuilt_bocpd, check_exact=True)

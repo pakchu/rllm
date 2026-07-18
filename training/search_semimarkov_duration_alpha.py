@@ -59,14 +59,20 @@ def causal_run_age(
     times = pd.DatetimeIndex(timestamps) if timestamps is not None else None
     if times is not None and len(times) != len(values):
         raise ValueError("timestamps and state must have the same length")
+    time_ns = (
+        times.to_numpy(dtype="datetime64[ns]").astype(np.int64, copy=False)
+        if times is not None
+        else None
+    )
+    continuity_ns = pd.Timedelta("90min").value
     age = np.zeros(len(values), dtype=int)
     for idx, current in enumerate(values):
         if current < 0:
             continue
         continuous = (
-            times is None
+            time_ns is None
             or idx == 0
-            or times[idx] - times[idx - 1] <= pd.Timedelta("90min")
+            or time_ns[idx] - time_ns[idx - 1] <= continuity_ns
         )
         if (
             idx > 0

@@ -34,9 +34,18 @@ from training.audit_confirmed_pullback_squeeze_live_parity import (
     selection_passes,
 )
 from training.long_component_tp_union_scan import _component_mask
-from training.search_bocpd_state_gated_alpha import _map_output, _model_output, _state_from_mapped
+from training.search_bocpd_state_gated_alpha import (
+    BocpdStudentTState,
+    _map_output,
+    _state_from_mapped,
+    bocpd_student_t_checkpointed,
+)
 from training.search_inventory_purge_reclaim_alpha import ExecutionEngine, Trade, equity_stats
-from training.search_kalman_state_gated_alpha import kalman_hourly_state, map_hourly_state
+from training.search_kalman_state_gated_alpha import (
+    KalmanLocalLinearState,
+    kalman_local_linear_checkpointed,
+    map_hourly_state,
+)
 from training.search_semimarkov_duration_alpha import duration_key, map_hourly_key, observable_state
 
 FIT_START = "2020-07-01"
@@ -107,6 +116,233 @@ GROUPS: dict[str, list[str]] = {
         "premium_index_zscore",
     ],
 }
+
+
+@dataclass
+class _BocpdRuntimeCache:
+    index: pd.DatetimeIndex
+    raw_values: np.ndarray
+    mean: np.ndarray
+    std: np.ndarray
+    output: pd.DataFrame
+    state: BocpdStudentTState
+    columns: tuple[str, ...]
+    secondary_index: int | None
+    hazard_lambda: int
+
+
+_BOCPD_RUNTIME_CACHE: _BocpdRuntimeCache | None = None
+
+
+@dataclass
+class _KalmanRuntimeCache:
+    index: pd.DatetimeIndex
+    log_price: np.ndarray
+    train_var: float
+    frame: pd.DataFrame
+    state: KalmanLocalLinearState
+    thresholds: dict[str, float]
+    fit_mask: np.ndarray
+
+
+_KALMAN_RUNTIME_CACHE: _KalmanRuntimeCache | None = None
+
+
+def _index_nanoseconds(index: pd.DatetimeIndex) -> np.ndarray:
+    return index.to_numpy(dtype="datetime64[ns]").astype(np.int64, copy=False)
+
+
+def _clear_bocpd_runtime_cache() -> None:
+    global _BOCPD_RUNTIME_CACHE, _KALMAN_RUNTIME_CACHE
+    _BOCPD_RUNTIME_CACHE = None
+    _KALMAN_RUNTIME_CACHE = None
+
+
+def _runtime_kalman_frame(hourly: pd.DataFrame, train_mask: np.ndarray) -> pd.DataFrame:
+    """Resume the fixed Rank7 Kalman filter for append-only hourly history."""
+
+    global _KALMAN_RUNTIME_CACHE
+    index = pd.DatetimeIndex(hourly.index)
+    log_price = np.log(hourly["close"].to_numpy(float))
+    fit = np.asarray(train_mask, dtype=bool)
+    train_var = float(np.nanvar(np.diff(log_price)[fit[1:]]))
+    cached = _KALMAN_RUNTIME_CACHE
+    prefix = len(cached.index) if cached is not None else 0
+    can_resume = bool(
+        cached is not None
+        and prefix <= len(index)
+        and cached.train_var == train_var
+        and np.array_equal(cached.fit_mask, fit[:prefix])
+        and not fit[prefix:].any()
+        and np.array_equal(_index_nanoseconds(cached.index), _index_nanoseconds(index)[:prefix])
+        and np.array_equal(cached.log_price, log_price[:prefix])
+    )
+    if can_resume and prefix == len(index):
+        return cached.frame.copy()
+
+    if can_resume:
+        filtered, state = kalman_local_linear_checkpointed(
+            log_price[prefix:],
+            q_level=0.1,
+            q_slope=0.001,
+            r_obs=0.5,
+            train_var=train_var,
+            checkpoint=cached.state,
+        )
+        suffix = pd.DataFrame(
+            {
+                "date": index[prefix:].to_numpy(),
+                "slope_z": filtered[:, 3],
+                "innovation_z": filtered[:, 2],
+            }
+        )
+        frame = pd.concat([cached.frame, suffix], ignore_index=True)
+        thresholds = cached.thresholds
+    else:
+        filtered, state = kalman_local_linear_checkpointed(
+            log_price,
+            q_level=0.1,
+            q_slope=0.001,
+            r_obs=0.5,
+            train_var=train_var,
+        )
+        frame = pd.DataFrame(
+            {
+                "date": index.to_numpy(),
+                "slope_z": filtered[:, 3],
+                "innovation_z": filtered[:, 2],
+            }
+        )
+        fit_frame = frame.loc[fit]
+        thresholds = {
+            "slope_low": float(fit_frame["slope_z"].quantile(0.25)),
+            "slope_high": float(fit_frame["slope_z"].quantile(0.75)),
+            "innovation_low": float(fit_frame["innovation_z"].quantile(0.25)),
+            "innovation_high": float(fit_frame["innovation_z"].quantile(0.75)),
+        }
+
+    frame["state"] = (
+        np.where(
+            frame["slope_z"] <= thresholds["slope_low"],
+            0,
+            np.where(frame["slope_z"] >= thresholds["slope_high"], 2, 1),
+        )
+        * 3
+        + np.where(
+            frame["innovation_z"] <= thresholds["innovation_low"],
+            0,
+            np.where(frame["innovation_z"] >= thresholds["innovation_high"], 2, 1),
+        )
+    )
+    _KALMAN_RUNTIME_CACHE = _KalmanRuntimeCache(
+        index=index.copy(),
+        log_price=log_price.copy(),
+        train_var=train_var,
+        frame=frame,
+        state=state,
+        thresholds=thresholds,
+        fit_mask=fit.copy(),
+    )
+    return frame
+
+
+def _runtime_bocpd_output(
+    feature_frame: pd.DataFrame,
+    train_mask: np.ndarray,
+    *,
+    columns: tuple[str, ...],
+    secondary_index: int | None,
+    hazard_lambda: int,
+) -> pd.DataFrame:
+    """Resume the fixed live BOCPD model when history only appended.
+
+    Prefix timestamps, raw values, and frozen fit statistics are all checked
+    before a checkpoint is accepted. Any revision falls back to the canonical
+    full-history path and replaces the cache.
+    """
+
+    global _BOCPD_RUNTIME_CACHE
+    good = feature_frame[list(columns)].notna().all(axis=1).to_numpy()
+    fit_mask = good & np.asarray(train_mask, dtype=bool)
+    raw_train = feature_frame.loc[fit_mask, list(columns)].to_numpy(float)
+    mean = raw_train.mean(axis=0)
+    std = raw_train.std(axis=0)
+    std[std < 1e-8] = 1.0
+    index = pd.DatetimeIndex(feature_frame.index[good])
+    raw_values = feature_frame.loc[good, list(columns)].to_numpy(float)
+
+    cached = _BOCPD_RUNTIME_CACHE
+    prefix = len(cached.index) if cached is not None else 0
+    can_resume = bool(
+        cached is not None
+        and prefix <= len(index)
+        and cached.columns == columns
+        and cached.secondary_index == secondary_index
+        and cached.hazard_lambda == hazard_lambda
+        and np.array_equal(_index_nanoseconds(cached.index), _index_nanoseconds(index)[:prefix])
+        and np.array_equal(cached.raw_values, raw_values[:prefix])
+        and np.array_equal(cached.mean, mean)
+        and np.array_equal(cached.std, std)
+    )
+    if can_resume and prefix == len(index):
+        return cached.output.copy()
+
+    if can_resume:
+        standardized = np.clip((raw_values[prefix:] - mean) / std, -12, 12)
+        posterior, state = bocpd_student_t_checkpointed(standardized, state=cached.state)
+        primary = posterior["posterior_mean"][:, 0]
+        secondary = (
+            posterior["surprise"]
+            if secondary_index is None
+            else posterior["posterior_mean"][:, secondary_index]
+        )
+        suffix = pd.DataFrame(
+            {
+                "date": index[prefix:].to_numpy(),
+                "primary": primary,
+                "short_mass": posterior["short_mass"],
+                "run_drop": posterior["run_drop"],
+                "secondary": secondary,
+                "surprise": posterior["surprise"],
+            }
+        )
+        output = pd.concat([cached.output, suffix], ignore_index=True)
+    else:
+        standardized = np.clip((raw_values - mean) / std, -12, 12)
+        posterior, state = bocpd_student_t_checkpointed(
+            standardized,
+            hazard_lambda=hazard_lambda,
+            max_run_length=min(1000, hazard_lambda * 4),
+        )
+        primary = posterior["posterior_mean"][:, 0]
+        secondary = (
+            posterior["surprise"]
+            if secondary_index is None
+            else posterior["posterior_mean"][:, secondary_index]
+        )
+        output = pd.DataFrame(
+            {
+                "date": index.to_numpy(),
+                "primary": primary,
+                "short_mass": posterior["short_mass"],
+                "run_drop": posterior["run_drop"],
+                "secondary": secondary,
+                "surprise": posterior["surprise"],
+            }
+        )
+
+    _BOCPD_RUNTIME_CACHE = _BocpdRuntimeCache(
+        index=index.copy(),
+        raw_values=raw_values.copy(),
+        mean=mean.copy(),
+        std=std.copy(),
+        output=output,
+        state=state,
+        columns=columns,
+        secondary_index=secondary_index,
+        hazard_lambda=hazard_lambda,
+    )
+    return output
 
 
 @dataclass(frozen=True)
@@ -195,18 +431,13 @@ def state_bank_from_hourly(
     fit_hour = np.asarray((hourly_features.index >= FIT_START) & (hourly_features.index < FIT_END), dtype=bool)
     if not fit_hour.any():
         raise ValueError("completed hourly history does not cover the frozen Rank7 fit window")
-    kalman_frame, _ = kalman_hourly_state(
+    kalman_frame = _runtime_kalman_frame(
         hourly,
         np.asarray((hourly.index >= FIT_START) & (hourly.index < FIT_END), dtype=bool),
-        q_level=0.1,
-        q_slope=0.001,
-        r_obs=0.5,
-        low_quantile=0.25,
-        high_quantile=0.75,
     )
     kalman = map_hourly_state(dates, kalman_frame)
 
-    bocpd_output, _ = _model_output(
+    bocpd_output = _runtime_bocpd_output(
         hourly_features,
         fit_hour,
         columns=("ret1", "flow24"),

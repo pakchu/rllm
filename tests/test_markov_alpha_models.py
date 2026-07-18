@@ -3,6 +3,7 @@ import pandas as pd
 
 from training.search_kalman_state_gated_alpha import (
     kalman_local_linear,
+    kalman_local_linear_checkpointed,
     map_hourly_state,
     top_k_promotions,
 )
@@ -40,6 +41,34 @@ def test_kalman_filter_is_prefix_causal():
     )
 
     np.testing.assert_allclose(full[:173], prefix, rtol=0, atol=1e-12)
+
+
+def test_kalman_checkpoint_resume_is_exactly_batch_equivalent():
+    rng = np.random.default_rng(715)
+    log_price = 8.0 + np.cumsum(rng.normal(0.0, 0.01, 480))
+    full = kalman_local_linear(
+        log_price, q_level=1.0, q_slope=0.01, r_obs=0.5, train_var=1e-4
+    )
+    first, checkpoint = kalman_local_linear_checkpointed(
+        log_price[:173], q_level=1.0, q_slope=0.01, r_obs=0.5, train_var=1e-4
+    )
+    second, checkpoint = kalman_local_linear_checkpointed(
+        log_price[173:311],
+        q_level=1.0,
+        q_slope=0.01,
+        r_obs=0.5,
+        train_var=1e-4,
+        checkpoint=checkpoint,
+    )
+    third, _ = kalman_local_linear_checkpointed(
+        log_price[311:],
+        q_level=1.0,
+        q_slope=0.01,
+        r_obs=0.5,
+        train_var=1e-4,
+        checkpoint=checkpoint,
+    )
+    np.testing.assert_array_equal(np.vstack([first, second, third]), full)
 
 
 def test_kalman_hourly_mapping_never_uses_future_state():

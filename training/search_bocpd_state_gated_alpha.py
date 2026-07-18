@@ -11,7 +11,7 @@ import hashlib
 import itertools
 import json
 import sys
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -66,22 +66,51 @@ def _posterior_update(
     return next_mean, next_kappa, next_alpha, next_beta
 
 
-def bocpd_student_t(
-    observations: np.ndarray,
+@dataclass(frozen=True)
+class BocpdStudentTState:
+    """Minimal posterior checkpoint required to resume the causal filter."""
+
+    weights: np.ndarray
+    mean: np.ndarray
+    kappa: np.ndarray
+    alpha: np.ndarray
+    beta: np.ndarray
+    previous_expected: float
+    hazard_lambda: float
+    max_run_length: int
+    prior_kappa: float
+    prior_alpha: float
+    prior_beta: float
+    short_run_horizon: int
+
+
+def _initial_bocpd_state(
+    dimensions: int,
     *,
     hazard_lambda: float,
-    max_run_length: int = 1000,
-    prior_kappa: float = 0.1,
-    prior_alpha: float = 2.0,
-    prior_beta: float = 1.0,
-    short_run_horizon: int = 6,
-) -> dict[str, np.ndarray]:
-    """Return causal BOCPD diagnostics for standardized observations.
+    max_run_length: int,
+    prior_kappa: float,
+    prior_alpha: float,
+    prior_beta: float,
+    short_run_horizon: int,
+) -> BocpdStudentTState:
+    return BocpdStudentTState(
+        weights=np.array([1.0]),
+        mean=np.zeros((1, dimensions), dtype=float),
+        kappa=np.array([prior_kappa], dtype=float),
+        alpha=np.full((1, dimensions), prior_alpha, dtype=float),
+        beta=np.full((1, dimensions), prior_beta, dtype=float),
+        previous_expected=0.0,
+        hazard_lambda=float(hazard_lambda),
+        max_run_length=int(max_run_length),
+        prior_kappa=float(prior_kappa),
+        prior_alpha=float(prior_alpha),
+        prior_beta=float(prior_beta),
+        short_run_horizon=int(short_run_horizon),
+    )
 
-    The run-length tail is truncated at ``max_run_length``.  ``short_mass`` is
-    used instead of P(r_t=0), because a constant hazard makes the latter nearly
-    constant and therefore uninformative as a market-state feature.
-    """
+
+def _validate_bocpd_values(observations: np.ndarray) -> np.ndarray:
     values = np.asarray(observations, dtype=float)
     if values.ndim == 1:
         values = values[:, None]
@@ -89,16 +118,22 @@ def bocpd_student_t(
         raise ValueError("observations must be a non-empty 1-D or 2-D array")
     if not np.isfinite(values).all():
         raise ValueError("observations must be finite")
-    if hazard_lambda <= 1.0 or max_run_length < 2:
-        raise ValueError("invalid BOCPD hazard or run-length cap")
+    return values
 
+
+def _bocpd_student_t_from_state(
+    values: np.ndarray,
+    state: BocpdStudentTState,
+) -> tuple[dict[str, np.ndarray], BocpdStudentTState]:
     dimensions = values.shape[1]
-    hazard = 1.0 / float(hazard_lambda)
-    weights = np.array([1.0])
-    mean = np.zeros((1, dimensions), dtype=float)
-    kappa = np.array([prior_kappa], dtype=float)
-    alpha = np.full((1, dimensions), prior_alpha, dtype=float)
-    beta = np.full((1, dimensions), prior_beta, dtype=float)
+    if state.mean.shape[1] != dimensions:
+        raise ValueError("BOCPD checkpoint dimension mismatch")
+    hazard = 1.0 / state.hazard_lambda
+    weights = state.weights.copy()
+    mean = state.mean.copy()
+    kappa = state.kappa.copy()
+    alpha = state.alpha.copy()
+    beta = state.beta.copy()
 
     expected_run = np.empty(len(values), dtype=float)
     map_run = np.empty(len(values), dtype=float)
@@ -106,12 +141,12 @@ def bocpd_student_t(
     run_drop = np.empty(len(values), dtype=float)
     surprise = np.empty(len(values), dtype=float)
     posterior_mean = np.empty((len(values), dimensions), dtype=float)
-    previous_expected = 0.0
+    previous_expected = float(state.previous_expected)
 
     prior_mean = np.zeros((1, dimensions), dtype=float)
-    prior_kappa_array = np.array([prior_kappa], dtype=float)
-    prior_alpha_array = np.full((1, dimensions), prior_alpha, dtype=float)
-    prior_beta_array = np.full((1, dimensions), prior_beta, dtype=float)
+    prior_kappa_array = np.array([state.prior_kappa], dtype=float)
+    prior_alpha_array = np.full((1, dimensions), state.prior_alpha, dtype=float)
+    prior_beta_array = np.full((1, dimensions), state.prior_beta, dtype=float)
 
     for idx, observation in enumerate(values):
         log_predictive = _student_t_log_predictive(observation, mean, kappa, alpha, beta)
@@ -137,7 +172,7 @@ def bocpd_student_t(
         next_alpha = np.vstack([reset_params[2], growth_params[2]])
         next_beta = np.vstack([reset_params[3], growth_params[3]])
 
-        keep = min(len(next_weights), max_run_length + 1)
+        keep = min(len(next_weights), state.max_run_length + 1)
         weights = next_weights[:keep]
         weights /= np.sum(weights)
         mean = next_mean[:keep]
@@ -149,7 +184,7 @@ def bocpd_student_t(
         current_expected = float(weights @ run_axis)
         expected_run[idx] = current_expected
         map_run[idx] = float(np.argmax(weights))
-        short_mass[idx] = float(weights[: min(short_run_horizon + 1, keep)].sum())
+        short_mass[idx] = float(weights[: min(state.short_run_horizon + 1, keep)].sum())
         expected_without_reset = previous_expected + 1.0
         run_drop[idx] = max(0.0, expected_without_reset - current_expected) / max(
             expected_without_reset, 1.0
@@ -157,6 +192,15 @@ def bocpd_student_t(
         posterior_mean[idx] = weights @ mean
         previous_expected = current_expected
 
+    final_state = replace(
+        state,
+        weights=weights,
+        mean=mean,
+        kappa=kappa,
+        alpha=alpha,
+        beta=beta,
+        previous_expected=previous_expected,
+    )
     return {
         "expected_run": expected_run,
         "map_run": map_run,
@@ -164,7 +208,86 @@ def bocpd_student_t(
         "run_drop": run_drop,
         "surprise": surprise,
         "posterior_mean": posterior_mean,
-    }
+    }, final_state
+
+
+def bocpd_student_t(
+    observations: np.ndarray,
+    *,
+    hazard_lambda: float,
+    max_run_length: int = 1000,
+    prior_kappa: float = 0.1,
+    prior_alpha: float = 2.0,
+    prior_beta: float = 1.0,
+    short_run_horizon: int = 6,
+) -> dict[str, np.ndarray]:
+    """Return causal BOCPD diagnostics for standardized observations.
+
+    The run-length tail is truncated at ``max_run_length``.  ``short_mass`` is
+    used instead of P(r_t=0), because a constant hazard makes the latter nearly
+    constant and therefore uninformative as a market-state feature.
+    """
+    values = _validate_bocpd_values(observations)
+    if hazard_lambda <= 1.0 or max_run_length < 2:
+        raise ValueError("invalid BOCPD hazard or run-length cap")
+    state = _initial_bocpd_state(
+        values.shape[1],
+        hazard_lambda=hazard_lambda,
+        max_run_length=max_run_length,
+        prior_kappa=prior_kappa,
+        prior_alpha=prior_alpha,
+        prior_beta=prior_beta,
+        short_run_horizon=short_run_horizon,
+    )
+    output, _ = _bocpd_student_t_from_state(values, state)
+    return output
+
+
+def bocpd_student_t_checkpointed(
+    observations: np.ndarray,
+    *,
+    state: BocpdStudentTState | None = None,
+    hazard_lambda: float | None = None,
+    max_run_length: int | None = None,
+    prior_kappa: float | None = None,
+    prior_alpha: float | None = None,
+    prior_beta: float | None = None,
+    short_run_horizon: int | None = None,
+) -> tuple[dict[str, np.ndarray], BocpdStudentTState]:
+    """Filter a non-empty chunk and return an exact resumable checkpoint."""
+
+    values = _validate_bocpd_values(observations)
+    if state is None:
+        hazard_lambda = 336.0 if hazard_lambda is None else float(hazard_lambda)
+        max_run_length = 1000 if max_run_length is None else int(max_run_length)
+        prior_kappa = 0.1 if prior_kappa is None else float(prior_kappa)
+        prior_alpha = 2.0 if prior_alpha is None else float(prior_alpha)
+        prior_beta = 1.0 if prior_beta is None else float(prior_beta)
+        short_run_horizon = 6 if short_run_horizon is None else int(short_run_horizon)
+        if hazard_lambda <= 1.0 or max_run_length < 2:
+            raise ValueError("invalid BOCPD hazard or run-length cap")
+        state = _initial_bocpd_state(
+            values.shape[1],
+            hazard_lambda=hazard_lambda,
+            max_run_length=max_run_length,
+            prior_kappa=prior_kappa,
+            prior_alpha=prior_alpha,
+            prior_beta=prior_beta,
+            short_run_horizon=short_run_horizon,
+        )
+    else:
+        supplied = {
+            "hazard_lambda": hazard_lambda,
+            "max_run_length": max_run_length,
+            "prior_kappa": prior_kappa,
+            "prior_alpha": prior_alpha,
+            "prior_beta": prior_beta,
+            "short_run_horizon": short_run_horizon,
+        }
+        for name, value in supplied.items():
+            if value is not None and value != getattr(state, name):
+                raise ValueError(f"BOCPD checkpoint {name} mismatch")
+    return _bocpd_student_t_from_state(values, state)
 
 
 def _bucket3(values: np.ndarray, low: float, high: float) -> np.ndarray:

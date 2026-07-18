@@ -13,7 +13,7 @@ import hashlib
 import itertools
 import json
 import sys
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -32,14 +32,27 @@ from training.search_bidirectional_state_alpha import Config, sim
 from training.search_gaussian_hmm_regime_alpha import SPLITS, hourly_features
 
 
-def kalman_local_linear(
+@dataclass(frozen=True)
+class KalmanLocalLinearState:
+    state: np.ndarray
+    covariance: np.ndarray
+    q_level: float
+    q_slope: float
+    r_obs: float
+    train_var: float
+
+
+def kalman_local_linear_checkpointed(
     log_price: np.ndarray,
     q_level: float,
     q_slope: float,
     r_obs: float,
     train_var: float,
-) -> np.ndarray:
-    """Return causal [level, slope, innovation_z, slope_z] filter outputs."""
+    *,
+    checkpoint: KalmanLocalLinearState | None = None,
+) -> tuple[np.ndarray, KalmanLocalLinearState]:
+    """Filter a non-empty chunk and return the exact final recursion state."""
+
     values = np.asarray(log_price, dtype=float)
     if values.ndim != 1 or len(values) == 0:
         raise ValueError("log_price must be a non-empty 1-D array")
@@ -48,10 +61,24 @@ def kalman_local_linear(
     observation = np.array([1.0, 0.0])
     process_cov = np.diag([q_level * train_var, q_slope * train_var])
     observation_var = max(r_obs * train_var, 1e-12)
-    state = np.array([values[0], 0.0])
-    covariance = np.eye(2) * train_var * 100.0
+    if checkpoint is None:
+        state = np.array([values[0], 0.0])
+        covariance = np.eye(2) * train_var * 100.0
+    else:
+        expected = (q_level, q_slope, r_obs, train_var)
+        actual = (
+            checkpoint.q_level,
+            checkpoint.q_slope,
+            checkpoint.r_obs,
+            checkpoint.train_var,
+        )
+        if actual != expected:
+            raise ValueError("Kalman checkpoint parameter mismatch")
+        state = checkpoint.state.copy()
+        covariance = checkpoint.covariance.copy()
     output = np.empty((len(values), 4), dtype=float)
 
+    identity = np.eye(2)
     for idx, observed in enumerate(values):
         predicted_state = transition @ state
         predicted_cov = transition @ covariance @ transition.T + process_cov
@@ -59,13 +86,38 @@ def kalman_local_linear(
         innovation_var = float(observation @ predicted_cov @ observation + observation_var)
         gain = (predicted_cov @ observation) / innovation_var
         state = predicted_state + gain * innovation
-        covariance = (np.eye(2) - np.outer(gain, observation)) @ predicted_cov
+        covariance = (identity - np.outer(gain, observation)) @ predicted_cov
         output[idx] = (
             state[0],
             state[1],
             innovation / np.sqrt(innovation_var),
             state[1] / np.sqrt(max(covariance[1, 1], 1e-12)),
         )
+    return output, KalmanLocalLinearState(
+        state=state,
+        covariance=covariance,
+        q_level=float(q_level),
+        q_slope=float(q_slope),
+        r_obs=float(r_obs),
+        train_var=float(train_var),
+    )
+
+
+def kalman_local_linear(
+    log_price: np.ndarray,
+    q_level: float,
+    q_slope: float,
+    r_obs: float,
+    train_var: float,
+) -> np.ndarray:
+    """Return causal [level, slope, innovation_z, slope_z] filter outputs."""
+    output, _ = kalman_local_linear_checkpointed(
+        log_price,
+        q_level,
+        q_slope,
+        r_obs,
+        train_var,
+    )
     return output
 
 
