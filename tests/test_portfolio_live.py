@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import io
 import json
 import multiprocessing as mp
@@ -16,6 +17,7 @@ from unittest.mock import patch
 
 import pandas as pd
 
+from execution.rank7_runtime import Rank7BundleError, Rank7Decision
 from execution.wave_execution import WaveExecutionConfig
 from execution.portfolio_live import (
     AlphaProcessManager,
@@ -43,6 +45,8 @@ from execution.portfolio_live import (
     _portfolio_client_order_id,
     _portfolio_db_lease_key,
     _portfolio_gate_features,
+    _portfolio_has_barrier_exits,
+    _portfolio_uses_policy_type,
     _portfolio_sleeve_key,
     _reconcile_exchange_flat_sleeves,
     _recover_exchange_positions_into_state,
@@ -52,6 +56,7 @@ from execution.portfolio_live import (
     _gate_clauses_pass,
     _gate_pass,
     _freshness_requirements_for_decision,
+    _infer_signal_id_from_digest,
     _interval_slot,
     _portfolio_uses_feature,
     _release_portfolio_runner_lock,
@@ -59,6 +64,7 @@ from execution.portfolio_live import (
     _reserve_trade_intents,
     _assert_portfolio_db_lease,
     _validate_portfolio_mode,
+    _validate_portfolio_execution_network,
     parse_args,
 )
 
@@ -170,6 +176,15 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "not authorized for live orders"):
             _validate_portfolio_mode(portfolio, live=True)
 
+    def test_testnet_canary_portfolio_is_network_locked(self):
+        portfolio = json.loads(
+            Path("configs/live/portfolio_added_alpha_testnet_canary_2026-07-18.json").read_text()
+        )
+        _validate_portfolio_mode(portfolio, live=True)
+        _validate_portfolio_execution_network(portfolio, testnet=True)
+        with self.assertRaisesRegex(RuntimeError, "requires testnet"):
+            _validate_portfolio_execution_network(portfolio, testnet=False)
+
     def test_live_anchor_remains_authorized(self):
         import json
 
@@ -252,6 +267,95 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
         self.assertEqual([score["active"] for score in scores], [False, True])
         pd.testing.assert_frame_equal(enriched, enriched_before)
         pd.testing.assert_frame_equal(features, features_before)
+
+    def test_rank7_scorer_applies_source_owned_lifecycle(self):
+        dates = pd.date_range("2026-07-18T11:00:00Z", periods=13, freq="5min")
+        enriched = pd.DataFrame(
+            {"date": dates, "open": 100.0, "high": 101.0, "low": 99.0, "close": 100.0}
+        )
+        features = pd.DataFrame({"unused": [0.0] * len(dates)})
+        decision = Rank7Decision(
+            active=True,
+            source="funding",
+            decision_ts=pd.Timestamp("2026-07-18T12:00:00Z"),
+            signal_id="frozen_annual_rank7:rank7-annual-2026-v1:funding:2026-07-18T12:00:00+00:00",
+            hold_bars=576,
+            barrier_exit={
+                "type": "fixed_bps",
+                "take_bps": 400.0,
+                "stop_bps": None,
+                "entry_price_source": "actual_fill_avg",
+                "entry_execution": "market",
+                "price_source": "last_trade",
+                "same_bar_policy": "stop_before_take",
+                "live_touch_policy": "first_aggtrade_touch",
+                "stream_gap_policy": "market_close_fail_safe",
+                "execution": "market",
+                "monitor_interval_sec": 1.0,
+            },
+            prediction_net=0.02,
+            prediction_adverse=0.01,
+            score=0.0175,
+            reasons=("bundle_validity=pass", "decision_clock=pass", "immutable_anchor=pass"),
+            model_version="rank7-annual-2026-v1",
+        )
+        sleeve = {
+            "name": "frozen_annual_rank7",
+            "source": "configs/shadow/frozen_annual_rank7_2026-07-16.json",
+            "side": "LONG",
+            "weight": 2.0,
+        }
+
+        with patch("execution.portfolio_live._rank7_score_from_config", return_value=decision):
+            score = _score_sleeves(
+                portfolio={"base_sleeves": [sleeve]},
+                enriched=enriched,
+                features=features,
+                exec_cfg=WaveExecutionConfig(),
+                asof=dates[-1],
+            )[0]
+
+        self.assertTrue(score["active"])
+        self.assertEqual(score["hold_bars"], 576)
+        self.assertEqual(score["signal_id"], decision.signal_id)
+        self.assertEqual(score["barrier_exit"]["take_bps"], 400.0)
+        self.assertIsNone(score["barrier_exit"]["stop_bps"])
+        self.assertEqual(score["policy_metadata"]["source"], "funding")
+
+    def test_rank7_portfolio_declares_spot_freshness_and_barrier_runtime(self):
+        portfolio = json.loads(
+            Path("configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json").read_text()
+        )
+        self.assertTrue(_portfolio_uses_policy_type(portfolio, "frozen_annual_rank7"))
+        self.assertTrue(_portfolio_has_barrier_exits(portfolio))
+        requirements = _freshness_requirements_for_decision(
+            symbol="BTCUSDT",
+            expected_bar=pd.Timestamp("2026-07-18T12:00:00Z"),
+            required_1m=pd.Timestamp("2026-07-18T12:04:00Z"),
+            include_premium=True,
+            include_spot=True,
+            include_upbit=False,
+            include_alt_pool=False,
+        )
+        self.assertIn("bars_binance_spot:BTCUSDT:1m", {row.key for row in requirements})
+
+    def test_rank7_signal_digest_is_recoverable_with_source_identity(self):
+        signal_id = (
+            "frozen_annual_rank7:rank7-annual-2026-v1:premium:"
+            "2026-07-18T12:00:00+00:00"
+        )
+        digest = hashlib.sha1(signal_id.encode()).hexdigest()[:8]
+
+        recovered, signal_ts = _infer_signal_id_from_digest(
+            sleeve_name="frozen_annual_rank7",
+            digest=digest,
+            order_time_ms=int(pd.Timestamp("2026-07-18T12:05:10Z").timestamp() * 1000),
+            interval_minutes=5,
+            rank7_model_version="rank7-annual-2026-v1",
+        )
+
+        self.assertEqual(recovered, signal_id)
+        self.assertEqual(signal_ts, pd.Timestamp("2026-07-18T12:00:00Z"))
 
     def test_scorer_fails_closed_for_missing_config_and_unsupported_entry_delay(self):
         dates = pd.date_range("2026-07-16T00:00:00Z", periods=20, freq="5min")
@@ -978,6 +1082,148 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             self.assertEqual(restored["entry_fill_price"], 100.0)
 
         asyncio.run(run())
+
+    def test_exchange_recovery_restores_rank7_source_specific_lifecycle(self):
+        async def run(source_name, expected_hold, expected_take, expected_stop):
+            name = "frozen_annual_rank7"
+            signal_ts = pd.Timestamp("2026-07-18T12:00:00Z")
+            signal_id = (
+                f"{name}:rank7-annual-2026-v1:{source_name}:{signal_ts.isoformat()}"
+            )
+            cid = _portfolio_client_order_id(signal_id, sleeve_name=name, now_sec=100)
+            entry_ms = int(signal_ts.timestamp() * 1000)
+
+            class RecoveryClient:
+                async def get_positions(self, symbol=None):
+                    return [
+                        {
+                            "positionSide": "LONG",
+                            "positionAmt": "0.003",
+                            "entryPrice": "100",
+                        }
+                    ]
+
+                async def _private_request(self, method, path, params):
+                    return [
+                        {
+                            "orderId": 88,
+                            "positionSide": "LONG",
+                            "side": "BUY",
+                            "time": entry_ms,
+                            "price": "99",
+                        }
+                    ]
+
+                async def get_order(self, symbol, order_id=None):
+                    return {
+                        "orderId": order_id,
+                        "clientOrderId": cid,
+                        "time": entry_ms,
+                    }
+
+            state = {"open_sleeves": {}, "processed_signals": {}}
+            portfolio = {
+                "base_sleeves": [
+                    {
+                        "name": name,
+                        "source": "configs/shadow/frozen_annual_rank7_2026-07-16.json",
+                        "side": "LONG",
+                        "weight": 2.0,
+                    }
+                ]
+            }
+            rows = await _recover_exchange_positions_into_state(
+                state=state,
+                client=RecoveryClient(),
+                exec_cfg=SimpleNamespace(
+                    symbol="BTCUSDT", interval_minutes=5, max_holding_bars=144
+                ),
+                portfolio=portfolio,
+                leverage_budget=8,
+                allocation_mode="research_gross",
+            )
+            self.assertEqual(len(rows), 1)
+            restored = state["open_sleeves"][name]
+            self.assertEqual(restored["policy_metadata"]["source"], source_name)
+            self.assertEqual(restored["barrier_exit"]["take_bps"], expected_take)
+            self.assertEqual(restored["barrier_exit"]["stop_bps"], expected_stop)
+            self.assertEqual(
+                restored["exit_at"],
+                str(signal_ts + pd.Timedelta(minutes=5 * (1 + expected_hold))),
+            )
+
+        for source_name, hold, take, stop in (
+            ("funding", 576, 400.0, None),
+            ("premium", 144, None, 300.0),
+        ):
+            with self.subTest(source_name=source_name):
+                asyncio.run(run(source_name, hold, take, stop))
+
+    def test_exchange_recovery_halts_when_rank7_runtime_contract_is_missing(self):
+        async def run():
+            portfolio = {
+                "base_sleeves": [
+                    {
+                        "name": "frozen_annual_rank7",
+                        "source": "/tmp/definitely-missing-rank7-config.json",
+                        "side": "LONG",
+                        "weight": 2.0,
+                    }
+                ]
+            }
+            with self.assertRaisesRegex(Rank7BundleError, "runtime config is missing"):
+                await _recover_exchange_positions_into_state(
+                    state={"open_sleeves": {}, "processed_signals": {}},
+                    client=object(),
+                    exec_cfg=SimpleNamespace(
+                        symbol="BTCUSDT", interval_minutes=5, max_holding_bars=144
+                    ),
+                    portfolio=portfolio,
+                    leverage_budget=8,
+                    allocation_mode="research_gross",
+                )
+
+        asyncio.run(run())
+
+    def test_exchange_recovery_halts_when_rank7_bundle_is_corrupt(self):
+        async def run(source):
+            portfolio = {
+                "base_sleeves": [
+                    {
+                        "name": "frozen_annual_rank7",
+                        "source": source,
+                        "side": "LONG",
+                        "weight": 2.0,
+                    }
+                ]
+            }
+            with self.assertRaisesRegex(Rank7BundleError, "manifest hash mismatch"):
+                await _recover_exchange_positions_into_state(
+                    state={"open_sleeves": {}, "processed_signals": {}},
+                    client=object(),
+                    exec_cfg=SimpleNamespace(
+                        symbol="BTCUSDT", interval_minutes=5, max_holding_bars=144
+                    ),
+                    portfolio=portfolio,
+                    leverage_budget=8,
+                    allocation_mode="research_gross",
+                )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bundle = root / "bundle"
+            bundle.mkdir()
+            (bundle / "manifest.json").write_text("{}")
+            source = root / "rank7.json"
+            source.write_text(
+                json.dumps(
+                    {
+                        "policy_type": "frozen_annual_rank7",
+                        "bundle_path": str(bundle),
+                    }
+                )
+            )
+            asyncio.run(run(str(source)))
 
     def test_rex_selector_default_model_is_text_only(self):
         self.assertEqual(PortfolioLiveConfig(portfolio_config=__import__("pathlib").Path("p.json"), execution_config=__import__("pathlib").Path("e.json")).rex_selector_model_name, "qwen2.5-1.5b-instruct")

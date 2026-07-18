@@ -21,6 +21,7 @@ import hashlib
 import inspect
 import json
 import logging
+import math
 import multiprocessing as mp
 import os
 import select
@@ -41,6 +42,15 @@ from execution.rex_llm_live import (
     rex_policy_config_from_candidate,
 )
 from execution.binance_aggtrade_stream import BinanceAggTradeStream
+from execution.rank7_runtime import (
+    Rank7Bundle,
+    Rank7BundleError,
+    Rank7Decision,
+    Rank7FeatureError,
+    build_rank7_feature_context,
+    rank7_barrier_contract,
+    score_rank7_row,
+)
 from execution.portfolio_shadow_policies import (
     build_fresh_kimchi_feature_frame,
     build_markov_feature_frame,
@@ -56,6 +66,7 @@ from preprocessing.binance_aux_features import attach_binance_um_aux_frames
 from preprocessing.external_features import attach_external_features, build_external_feature_frame
 from preprocessing.live_db_features import (
     LiveDbFeatureConfig,
+    _attach_1m_decision_close_and_rows,
     _normalise_bar_frame,
     query_live_source_frames,
     resample_market_bars,
@@ -786,6 +797,21 @@ def _validate_portfolio_mode(portfolio: dict[str, Any], *, live: bool) -> None:
         )
 
 
+def _validate_portfolio_execution_network(
+    portfolio: dict[str, Any], *, testnet: bool
+) -> None:
+    """Prevent a canary portfolio from being reused on the wrong exchange network."""
+
+    required = str(portfolio.get("execution_network", "any")).strip().lower()
+    if required in {"", "any"}:
+        return
+    actual = "testnet" if testnet else "mainnet"
+    if required not in {"testnet", "mainnet"}:
+        raise RuntimeError(f"unsupported portfolio execution_network={required}")
+    if actual != required:
+        raise RuntimeError(f"portfolio requires {required}, actual execution network is {actual}")
+
+
 def _portfolio_gate_features(portfolio: dict[str, Any]) -> set[str]:
     """Collect explicit entry/exit gate features from JSON-backed sleeves."""
 
@@ -831,6 +857,25 @@ def _portfolio_uses_feature(portfolio: dict[str, Any], feature: str) -> bool:
     """Return whether any JSON-backed configured sleeve gates on ``feature``."""
 
     return str(feature) in _portfolio_gate_features(portfolio)
+
+
+def _portfolio_uses_policy_type(portfolio: dict[str, Any], policy_type: str) -> bool:
+    """Return whether any configured JSON sleeve declares ``policy_type``."""
+
+    expected = str(policy_type).strip().lower()
+    for sleeve in portfolio.get("base_sleeves", []):
+        source = str(sleeve.get("source") or "")
+        if not source.endswith(".json") or not Path(source).exists():
+            continue
+        try:
+            cfg = _load_json(source)
+            if "base_candidate" in cfg and "policy_type" not in cfg:
+                cfg = _load_json(str(cfg["base_candidate"]))
+        except Exception:
+            continue
+        if str(cfg.get("policy_type", "")).strip().lower() == expected:
+            return True
+    return False
 
 
 def _write_json(path: str | Path, payload: dict[str, Any]) -> None:
@@ -1600,6 +1645,21 @@ async def build_live_portfolio_frames(
         premium_tolerance=cfg.premium_tolerance,
         zscore_window=cfg.zscore_window,
     )
+    enriched = _attach_1m_decision_close_and_rows(
+        enriched,
+        frames["premium_1m"],
+        close_col="premium_index_1m_close",
+        rows_col="premium_rows",
+        interval=cfg.decision_interval,
+    )
+    if "spot_1m" in frames:
+        enriched = _attach_1m_decision_close_and_rows(
+            enriched,
+            frames["spot_1m"],
+            close_col="spot_close",
+            rows_col="spot_rows",
+            interval=cfg.decision_interval,
+        )
     features = (
         feature_cache.refresh(enriched, cfg, include_activity_flow=include_activity_flow)
         if feature_cache is not None
@@ -2034,6 +2094,48 @@ def _apply_portfolio_selector_overlay(
             sleeve["active"] = False
     return record
 
+
+_RANK7_BUNDLE_CACHE: dict[str, Rank7Bundle] = {}
+
+
+def _load_rank7_bundle_cached(path: str | Path) -> Rank7Bundle:
+    resolved = str(Path(path).expanduser().resolve())
+    bundle = _RANK7_BUNDLE_CACHE.get(resolved)
+    if bundle is None:
+        bundle = Rank7Bundle.load(resolved)
+        _RANK7_BUNDLE_CACHE[resolved] = bundle
+    return bundle
+
+
+def _rank7_score_from_config(config: dict[str, Any], enriched: pd.DataFrame) -> Rank7Decision:
+    """Build and score the latest Rank7 decision under its frozen bundle."""
+
+    if config.get("runtime_ready") is not True:
+        raise Rank7BundleError("Rank7 config runtime_ready is not true")
+    bundle_path = config.get("bundle_path")
+    if not bundle_path:
+        raise Rank7BundleError("Rank7 config bundle_path is missing")
+    bundle = _load_rank7_bundle_cached(str(bundle_path))
+    expected_version = config.get("model_version")
+    if expected_version and str(expected_version) != bundle.model_version:
+        raise Rank7BundleError("Rank7 config model_version differs from bundle")
+    expected_hash = config.get("bundle_manifest_hash")
+    if expected_hash and str(expected_hash) != str(bundle.manifest["bundle_manifest_hash"]):
+        raise Rank7BundleError("Rank7 config manifest hash differs from bundle")
+    minimum_bars = int(config.get("minimum_feature_history_bars", 18_000))
+    if len(enriched) < minimum_bars:
+        raise Rank7FeatureError(
+            f"Rank7 live history is too short: {len(enriched)} < {minimum_bars} bars"
+        )
+    context = build_rank7_feature_context(enriched, bundle)
+    position = len(context["matrix"]) - 1
+    return score_rank7_row(
+        bundle,
+        context["matrix"][position],
+        decision_ts=pd.Timestamp(context["dates"].iloc[position]),
+        is_anchor=bool(context["anchors"][position]),
+    )
+
 def _score_sleeve(
     *,
     sleeve: dict[str, Any],
@@ -2060,6 +2162,8 @@ def _score_sleeve(
     stride = 1
     stride_offset = 0
     entry_delay = 1
+    signal_id: str | None = None
+    policy_metadata: dict[str, Any] | None = None
     dynamic_exit: dict[str, Any] | None = None
     barrier_exit: dict[str, Any] | None = None
 
@@ -2128,10 +2232,24 @@ def _score_sleeve(
                     ]
                 )
             elif policy_type == "frozen_annual_rank7":
-                gate_ok = False
-                requirements = cfg.get("runtime_requirements", ["annual_extratrees_model_export_required"])
-                reasons.extend(f"runtime_bridge=missing:{requirement}" for requirement in requirements)
-                reasons.append("shadow_fail_closed=pass")
+                try:
+                    decision = _rank7_score_from_config(cfg, enriched)
+                except (Rank7BundleError, Rank7FeatureError, ValueError, KeyError) as exc:
+                    gate_ok = False
+                    reasons.append(f"runtime_bridge=error:{type(exc).__name__}:{exc}")
+                    reasons.append("rank7_fail_closed=pass")
+                else:
+                    gate_ok = bool(decision.active)
+                    side = "LONG"
+                    hold = int(decision.hold_bars)
+                    stride = 1
+                    stride_offset = 0
+                    entry_delay = 1
+                    barrier_exit = decision.barrier_exit
+                    signal_id = decision.signal_id
+                    policy_metadata = decision.metadata()
+                    reasons.extend(decision.reasons)
+                    reasons.append("runtime_bridge=ready:rank7-annual-bundle")
             elif base_policy == "rex":
                 record = build_rex_live_policy_record(
                     enriched,
@@ -2184,7 +2302,9 @@ def _score_sleeve(
                 ]
             )
             dynamic_exit = cfg.get("dynamic_exit") if isinstance(cfg.get("dynamic_exit"), dict) else None
-            barrier_exit = _barrier_exit_from_config(cfg)
+            configured_barrier = _barrier_exit_from_config(cfg)
+            if barrier_exit is None:
+                barrier_exit = configured_barrier
 
             if overlay_cfg is not None:
                 sel = overlay_cfg.get("symbolic_proxy", {})
@@ -2248,10 +2368,11 @@ def _score_sleeve(
         "date": str(ts),
         "current_close": close,
         "current_atr": atr,
-        "signal_id": f"{name}:{side}:{ts.isoformat()}",
+        "signal_id": signal_id or f"{name}:{side}:{ts.isoformat()}",
         "reasons": reasons,
         "dynamic_exit": dynamic_exit,
         "barrier_exit": barrier_exit,
+        "policy_metadata": policy_metadata,
     }
 
 
@@ -2553,11 +2674,22 @@ def _load_sleeve_runtime_spec(sleeve: dict[str, Any]) -> dict[str, Any]:
     """Best-effort runtime metadata for a configured sleeve."""
 
     source = str(sleeve.get("source") or sleeve.get("source_predictions") or "")
+    rank7_expected = (
+        str(sleeve.get("policy_type", "")).lower() == "frozen_annual_rank7"
+        or str(sleeve.get("name", "")).lower() == "frozen_annual_rank7"
+    )
     hold = int(sleeve.get("hold_bars", sleeve.get("hold_bars_5m", 0)) or 0)
     stride = int(sleeve.get("stride_bars", sleeve.get("stride_bars_5m", 1)) or 1)
     dynamic_exit = sleeve.get("dynamic_exit") if isinstance(sleeve.get("dynamic_exit"), dict) else None
     barrier_exit = _barrier_exit_from_config(sleeve)
-    if source.endswith(".json") and Path(source).exists():
+    rank7_model_version: str | None = None
+    rank7_source_lifecycles: dict[str, dict[str, Any]] | None = None
+    if rank7_expected and not source.endswith(".json"):
+        raise Rank7BundleError("Rank7 sleeve runtime source must be a JSON config")
+    if source.endswith(".json") and not Path(source).exists():
+        if rank7_expected:
+            raise Rank7BundleError(f"Rank7 sleeve runtime config is missing: {source}")
+    elif source.endswith(".json"):
         try:
             cfg = _load_json(source)
             if isinstance(cfg.get("dynamic_exit"), dict):
@@ -2571,20 +2703,38 @@ def _load_sleeve_runtime_spec(sleeve: dict[str, Any]) -> dict[str, Any]:
                     dynamic_exit = cfg["dynamic_exit"]
                 if barrier_exit is None:
                     barrier_exit = _barrier_exit_from_config(cfg)
+            if str(cfg.get("policy_type", "")).lower() == "frozen_annual_rank7":
+                rank7_expected = True
+                bundle = _load_rank7_bundle_cached(str(cfg["bundle_path"]))
+                rank7_model_version = bundle.model_version
+                rank7_source_lifecycles = {
+                    source_name: {
+                        "hold_bars": int(exit_spec["hold_bars"]),
+                        "barrier_exit": rank7_barrier_contract(exit_spec),
+                    }
+                    for source_name, exit_spec in bundle.manifest["exits_by_source"].items()
+                }
             if "signal" in cfg:
                 hold = int(cfg["signal"].get("hold_bars_5m", cfg["signal"].get("hold_bars", hold)) or hold)
                 stride = int(cfg["signal"].get("stride_bars_5m", cfg["signal"].get("stride_bars", stride)) or stride)
             else:
                 hold = int(cfg.get("hold_bars", cfg.get("hold_bars_5m", hold)) or hold)
                 stride = int(cfg.get("stride_bars", cfg.get("stride_bars_5m", stride)) or stride)
-        except Exception:
-            pass
+        except Exception as exc:
+            if rank7_expected:
+                if isinstance(exc, Rank7BundleError):
+                    raise
+                raise Rank7BundleError(
+                    f"cannot load Rank7 sleeve runtime contract from {source}: {exc}"
+                ) from exc
     return {
         "source": source,
         "hold_bars": hold,
         "stride_bars": stride,
         "dynamic_exit": dynamic_exit,
         "barrier_exit": barrier_exit,
+        "rank7_model_version": rank7_model_version,
+        "rank7_source_lifecycles": rank7_source_lifecycles,
     }
 
 
@@ -2798,6 +2948,7 @@ def _infer_signal_id_from_digest(
     order_time_ms: int | None,
     interval_minutes: int,
     search_bars: int = 48,
+    rank7_model_version: str | None = None,
 ) -> tuple[str | None, pd.Timestamp | None]:
     if not order_time_ms:
         return None, None
@@ -2813,6 +2964,13 @@ def _infer_signal_id_from_digest(
             # name and timestamp.  Historical orders did not, but support both.
             for side in ("LONG", "SHORT"):
                 signal_id = f"{sleeve_name}:{side}:{stamp}"
+                if hashlib.sha1(signal_id.encode("utf-8")).hexdigest()[:8] == digest:
+                    return signal_id, ts
+        if rank7_model_version:
+            for source in ("funding", "premium"):
+                signal_id = (
+                    f"frozen_annual_rank7:{rank7_model_version}:{source}:{ts.isoformat()}"
+                )
                 if hashlib.sha1(signal_id.encode("utf-8")).hexdigest()[:8] == digest:
                     return signal_id, ts
     return None, None
@@ -2903,14 +3061,33 @@ async def _recover_exchange_positions_into_state(
             digest=parts["signal_digest"],
             order_time_ms=int(order.get("time", entry.get("time", 0)) or 0),
             interval_minutes=exec_cfg.interval_minutes,
+            rank7_model_version=spec.get("rank7_model_version"),
         )
         if signal_ts is None:
             signal_ts = pd.Timestamp(int(entry.get("time", 0) or 0), unit="ms", tz="UTC").floor(f"{int(exec_cfg.interval_minutes)}min")
+        if signal_id is None and spec.get("rank7_model_version"):
+            raise RuntimeError(
+                f"cannot recover Rank7 source lifecycle from exchange order digest for sleeve={name}"
+            )
         if signal_id is None:
             signal_id = f"{name}:{side}:recovered:{order_id}"
         recovered_entry_price = float(pos.get("entryPrice") or entry.get("price") or 0.0)
         recovered_fill_at = pd.Timestamp(int(entry.get("time", 0) or 0), unit="ms", tz="UTC")
-        hold_bars = int(spec.get("hold_bars") or exec_cfg.max_holding_bars)
+        recovered_lifecycle: dict[str, Any] | None = None
+        rank7_lifecycles = spec.get("rank7_source_lifecycles")
+        if isinstance(rank7_lifecycles, dict) and signal_id.startswith("frozen_annual_rank7:"):
+            parts = signal_id.split(":", 3)
+            source_name = parts[2] if len(parts) == 4 else ""
+            candidate_lifecycle = rank7_lifecycles.get(source_name)
+            if isinstance(candidate_lifecycle, dict):
+                recovered_lifecycle = candidate_lifecycle
+            else:
+                raise RuntimeError(f"unknown recovered Rank7 source lifecycle: {source_name}")
+        hold_bars = int(
+            (recovered_lifecycle or {}).get("hold_bars")
+            or spec.get("hold_bars")
+            or exec_cfg.max_holding_bars
+        )
         exit_at = signal_ts + pd.Timedelta(minutes=exec_cfg.interval_minutes * (1 + hold_bars))
         total_weight = float(sum(float(s.get("weight", 0.0) or 0.0) for s in portfolio.get("base_sleeves", [])))
         weight = float(spec.get("weight") or 0.0)
@@ -2942,7 +3119,20 @@ async def _recover_exchange_positions_into_state(
                 "position": {k: pos.get(k) for k in ["symbol", "positionSide", "positionAmt", "entryPrice", "updateTime"]},
             },
             "dynamic_exit": spec.get("dynamic_exit"),
-            "barrier_exit": spec.get("barrier_exit"),
+            "barrier_exit": (
+                (recovered_lifecycle or {}).get("barrier_exit")
+                if recovered_lifecycle is not None
+                else spec.get("barrier_exit")
+            ),
+            "policy_metadata": (
+                {
+                    "model_version": spec.get("rank7_model_version"),
+                    "source": signal_id.split(":", 3)[2],
+                    "recovered_from_signal_digest": True,
+                }
+                if recovered_lifecycle is not None
+                else None
+            ),
             "recovered_from_exchange": True,
         }
         state.setdefault("processed_signals", {})[name] = signal_id
@@ -4155,7 +4345,14 @@ def _validate_pg_notify_channel(channel: str) -> str:
 def _latest_requirement_ts(engine_or_conn: Any, req: FreshnessRequirement) -> pd.Timestamp | None:
     from sqlalchemy import text
 
-    allowed_tables = {"bars_binance", "bars_upbit", "bars_polygon", "bars_binance_premium", "open_interest_binance"}
+    allowed_tables = {
+        "bars_binance",
+        "bars_binance_spot",
+        "bars_upbit",
+        "bars_polygon",
+        "bars_binance_premium",
+        "open_interest_binance",
+    }
     if req.table not in allowed_tables:
         raise ValueError(f"unsupported freshness table: {req.table}")
     if req.table == "open_interest_binance":
@@ -4222,6 +4419,7 @@ def _freshness_requirements_for_decision(
     expected_bar: pd.Timestamp,
     required_1m: pd.Timestamp,
     include_premium: bool = True,
+    include_spot: bool = False,
     include_upbit: bool = True,
     include_alt_pool: bool = True,
 ) -> list[FreshnessRequirement]:
@@ -4231,6 +4429,10 @@ def _freshness_requirements_for_decision(
     if include_premium:
         requirements.append(
             FreshnessRequirement("bars_binance_premium", symbol, "1m", required_1m, "binance_premium")
+        )
+    if include_spot:
+        requirements.append(
+            FreshnessRequirement("bars_binance_spot", symbol, "1m", required_1m, "binance_spot")
         )
     if include_upbit:
         requirements.append(FreshnessRequirement("bars_upbit", "KRW-BTC", "1m", required_1m, "upbit"))
@@ -4251,6 +4453,7 @@ def _wait_for_source_updates_notify(
     max_wait_sec: float,
     channel: str,
     include_premium: bool = True,
+    include_spot: bool = False,
     include_upbit: bool = True,
     include_alt_pool: bool = True,
 ) -> tuple[float, dict[str, pd.Timestamp | None], list[dict[str, Any]]]:
@@ -4263,6 +4466,7 @@ def _wait_for_source_updates_notify(
         expected_bar=expected_bar,
         required_1m=required_1m,
         include_premium=include_premium,
+        include_spot=include_spot,
         include_upbit=include_upbit,
         include_alt_pool=include_alt_pool,
     )
@@ -4319,6 +4523,7 @@ async def _wait_for_expected_1m_tail(
     max_wait_sec: float,
     notify_channel: str,
     include_premium: bool = True,
+    include_spot: bool = False,
     include_upbit: bool = True,
     include_alt_pool: bool = True,
 ) -> tuple[float, pd.Timestamp | None, pd.Timestamp, str, dict[str, pd.Timestamp | None], list[dict[str, Any]]]:
@@ -4335,6 +4540,7 @@ async def _wait_for_expected_1m_tail(
         max_wait_sec=max_wait_sec,
         channel=notify_channel,
         include_premium=include_premium,
+        include_spot=include_spot,
         include_upbit=include_upbit,
         include_alt_pool=include_alt_pool,
     )
@@ -4343,10 +4549,11 @@ async def _wait_for_expected_1m_tail(
 
 
 def _portfolio_has_barrier_exits(portfolio: dict[str, Any]) -> bool:
-    return any(
+    configured = any(
         isinstance(_load_sleeve_runtime_spec(sleeve).get("barrier_exit"), dict)
         for sleeve in portfolio.get("base_sleeves", [])
     )
+    return configured or _portfolio_uses_policy_type(portfolio, "frozen_annual_rank7")
 
 
 def _portfolio_barrier_poll_sec(portfolio: dict[str, Any], configured_poll_sec: float) -> float:
@@ -4607,10 +4814,20 @@ async def _wait_with_barrier_monitor(
 async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     portfolio = _load_json(cfg.portfolio_config)
     _validate_portfolio_mode(portfolio, live=cfg.live)
+    minimum_history = int(portfolio.get("minimum_feature_history_minutes", 0) or 0)
+    if int(cfg.lookback_minutes) < minimum_history:
+        raise RuntimeError(
+            "live lookback is shorter than the portfolio feature-history contract: "
+            f"{cfg.lookback_minutes} < {minimum_history} minutes"
+        )
     gate_features = _portfolio_gate_features(portfolio)
+    include_rank7 = _portfolio_uses_policy_type(portfolio, "frozen_annual_rank7")
     include_activity_flow = "activity_flow_htf" in gate_features
-    include_premium_freshness = any(feature.startswith("premium_") for feature in gate_features)
-    include_upbit_freshness = any(
+    include_premium_freshness = include_rank7 or any(
+        feature.startswith("premium_") for feature in gate_features
+    )
+    include_spot_freshness = include_rank7
+    include_upbit_freshness = include_rank7 or any(
         feature.startswith(("vg_upbit_", "kimchi_")) for feature in gate_features
     )
     include_alt_pool = any(feature.startswith("vg_alt_") for feature in gate_features)
@@ -4638,6 +4855,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
             "require_no_open_orders": True,
         }
     )
+    _validate_portfolio_execution_network(portfolio, testnet=bool(exec_cfg.testnet))
     execution_exchange = _execution_exchange_scope(cfg.exchange, testnet=exec_cfg.testnet)
     if cfg.live and not cfg.allow_live_orders:
         raise SystemExit("--live requires --allow-live-orders")
@@ -4729,7 +4947,10 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 _assert_portfolio_db_lease(db_lease)
             if asof.tzinfo is None:
                 asof = asof.tz_localize("UTC")
-            live_cfg = LiveDbFeatureConfig(lookback_minutes=int(cfg.lookback_minutes))
+            live_cfg = LiveDbFeatureConfig(
+                lookback_minutes=int(cfg.lookback_minutes),
+                include_spot_source=include_rank7,
+            )
             freshness_waited, latest_1m_ts, expected_bar, freshness_mode, latest_source_ts, freshness_missing = await _wait_for_expected_1m_tail(
                 engine=engine,
                 symbol=live_cfg.symbol,
@@ -4738,6 +4959,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 max_wait_sec=cfg.max_freshness_wait_sec,
                 notify_channel=cfg.freshness_notify_channel,
                 include_premium=include_premium_freshness,
+                include_spot=include_spot_freshness,
                 include_upbit=include_upbit_freshness,
                 include_alt_pool=include_alt_pool,
             )
@@ -4760,6 +4982,14 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 include_alt_pool=include_alt_pool,
             )
             frame_build_sec = time.perf_counter() - frame_t0
+            required_rows = int(
+                math.ceil(minimum_history / max(1, int(exec_cfg.interval_minutes)))
+            )
+            if required_rows and len(enriched) < required_rows:
+                raise RuntimeError(
+                    "live market history is shorter than the portfolio feature-history contract: "
+                    f"{len(enriched)} < {required_rows} completed bars"
+                )
             score_t0 = time.perf_counter()
             if alpha_processes is not None:
                 sleeve_scores = await alpha_processes.score(
@@ -5219,6 +5449,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     "order_info": order_info,
                     "dynamic_exit": sleeve.get("dynamic_exit"),
                     "barrier_exit": sleeve.get("barrier_exit"),
+                    "policy_metadata": sleeve.get("policy_metadata"),
                     "barrier_stream_session_id": sleeve.get("barrier_stream_session_id"),
                     "barrier_stream_gap_count": sleeve.get("barrier_stream_gap_count"),
                 }

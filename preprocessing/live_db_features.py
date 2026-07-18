@@ -33,6 +33,7 @@ class LiveDbFeatureConfig:
     feature_window_size: int = 288
     volume_window: int = 96
     include_forex_components: bool = True
+    include_spot_source: bool = False
 
 
 def load_env_file(path: str | Path = ".env", *, override: bool = False) -> dict[str, str]:
@@ -307,6 +308,8 @@ def query_live_source_frames(
     start_ts = asof_ts - pd.Timedelta(minutes=int(cfg.lookback_minutes))
     frames: dict[str, pd.DataFrame] = {}
     sql_map = live_source_sql(cfg)
+    if not cfg.include_spot_source:
+        sql_map.pop("spot_1m", None)
     with engine_or_conn.connect() if hasattr(engine_or_conn, "connect") else engine_or_conn as conn:
         for key, sql in sql_map.items():
             key_start = pd.Timestamp((start_by_key or {}).get(key, start_ts))

@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from unittest.mock import patch
 
 from execution.portfolio_shadow import PortfolioShadowConfig, build_shadow_report, score_shadow_once
 from execution.wave_execution import WaveExecutionConfig
@@ -48,7 +49,7 @@ def _frames(rows: int = 2_500):
     return market, features
 
 
-def test_shadow_report_never_enables_orders_and_rank7_fails_closed():
+def test_shadow_report_never_enables_orders_and_rank7_bridge_is_ready_but_data_fails_closed():
     portfolio = json.loads(
         open("configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json").read()
     )
@@ -62,20 +63,48 @@ def test_shadow_report_never_enables_orders_and_rank7_fails_closed():
     )
     assert report["orders_enabled"] is False
     assert report["live_promotion_ready"] is False
-    assert report["complete_portfolio_runtime_ready"] is False
-    assert report["runtime_blocked_sleeves"] == ["frozen_annual_rank7"]
-    assert report["signal_scoring_ready_count"] == 4
+    assert report["complete_portfolio_runtime_ready"] is True
+    assert report["runtime_blocked_sleeves"] == []
+    assert report["signal_scoring_ready_count"] == 5
     assert set(report["signal_scoring_ready_sleeves"]) == {
         "fresh_kimchi_fx",
         "rex_taker_low_range_position",
         "cand_rex_veto_7",
         "markov_transition_long",
+        "frozen_annual_rank7",
     }
     rank7 = next(row for row in report["scores"] if row["name"] == "frozen_annual_rank7")
     assert rank7["active"] is False
-    assert "runtime_bridge=missing:annual_extratrees_model_export_required" in rank7["reasons"]
-    assert "runtime_bridge=missing:exact_40_column_feature_graph_required" in rank7["reasons"]
-    assert "runtime_bridge=missing:source_specific_barrier_exits_required" in rank7["reasons"]
+    assert any(reason.startswith("runtime_bridge=error:Rank7FeatureError") for reason in rank7["reasons"])
+    assert "rank7_fail_closed=pass" in rank7["reasons"]
+
+
+def test_shadow_report_blocks_rank7_bundle_contract_errors():
+    portfolio = json.loads(
+        open("configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json").read()
+    )
+    market, features = _frames()
+    scores = [
+        {
+            "name": "frozen_annual_rank7",
+            "reasons": [
+                "runtime_bridge=error:Rank7BundleError:manifest checksum mismatch",
+                "rank7_fail_closed=pass",
+            ],
+        }
+    ]
+    with patch("execution.portfolio_shadow._score_sleeves", return_value=scores):
+        report = build_shadow_report(
+            portfolio=portfolio,
+            enriched=market,
+            features=features,
+            execution_cfg=WaveExecutionConfig(),
+            decision_asof=pd.Timestamp(market.iloc[-1]["date"], tz="UTC"),
+        )
+
+    assert report["complete_portfolio_runtime_ready"] is False
+    assert report["runtime_blocked_sleeves"] == ["frozen_annual_rank7"]
+    assert report["signal_scoring_ready_sleeves"] == []
 
 
 def test_shadow_report_rejects_non_shadow_portfolio():

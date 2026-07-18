@@ -5,7 +5,7 @@ import argparse
 import asyncio
 import json
 import math
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -15,12 +15,25 @@ from execution.portfolio_live import (
     _completed_decision_data_asof,
     _expected_decision_bar,
     _load_json,
+    _portfolio_uses_policy_type,
     _score_sleeves,
     _validate_portfolio_mode,
     build_live_portfolio_frames,
 )
 from execution.wave_execution import WaveExecutionConfig
 from preprocessing.live_db_features import LiveDbFeatureConfig, sqlalchemy_engine_from_env
+
+
+def _runtime_bridge_is_blocked(reasons: list[Any]) -> bool:
+    """Separate broken runtime contracts from ordinary fail-closed market data."""
+
+    for reason in reasons:
+        value = str(reason)
+        if value.startswith("runtime_bridge=missing"):
+            return True
+        if value.startswith("runtime_bridge=error:Rank7BundleError"):
+            return True
+    return False
 
 
 @dataclass(frozen=True)
@@ -58,7 +71,7 @@ def build_shadow_report(
     blocked = [
         score["name"]
         for score in scores
-        if any(str(reason).startswith("runtime_bridge=missing") for reason in score["reasons"])
+        if _runtime_bridge_is_blocked(score["reasons"])
     ]
     scoreable = [score["name"] for score in scores if score["name"] not in blocked]
     return {
@@ -104,7 +117,10 @@ async def score_shadow_once(cfg: PortfolioShadowConfig) -> dict[str, Any]:
         interval_minutes=int(execution_cfg.interval_minutes),
     )
     engine = sqlalchemy_engine_from_env(cfg.env_path)
-    live_cfg = LiveDbFeatureConfig(lookback_minutes=int(cfg.lookback_minutes))
+    live_cfg = LiveDbFeatureConfig(
+        lookback_minutes=int(cfg.lookback_minutes),
+        include_spot_source=_portfolio_uses_policy_type(portfolio, "frozen_annual_rank7"),
+    )
     enriched, features = await build_live_portfolio_frames(
         engine=engine,
         asof=decision_asof,
