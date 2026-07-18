@@ -90,3 +90,6 @@ def test_quarterly_schedule_delays_entry_and_prevents_overlap() -> None:
     ]
     assert schedule["entry_position"].eq(schedule["signal_position"] + 2).all()
     assert schedule["exit_position"].eq(schedule["entry_position"] + 72).all()
+    payload = cld._event_clock_payload(schedule)
+    assert payload["events"][0]["entry_date"] == "2023-02-01 01:05:00"
+    assert len(payload["event_clock_sha256"]) == 64

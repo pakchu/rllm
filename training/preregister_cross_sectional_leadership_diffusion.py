@@ -654,6 +654,8 @@ def _event_clock_payload(schedule: pd.DataFrame) -> dict[str, Any]:
     for event in events:
         for key in ("signal_position", "entry_position", "exit_position", "side", "hold_bars"):
             event[key] = int(event[key])
+        for key in ("signal_date", "feature_boundary", "entry_date", "exit_date"):
+            event[key] = str(pd.Timestamp(event[key]))
     return {
         "protocol": "CLD-72 canonical outcome-blind event-clock freeze",
         "post_entry_outcomes_opened": False,
