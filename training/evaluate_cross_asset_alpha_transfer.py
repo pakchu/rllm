@@ -616,6 +616,12 @@ def render_docs(report: dict[str, Any]) -> str:
     lines += [
         "",
         "No test/eval row selected or repaired another policy. Raw provider payloads remain local; source URL, SHA256, row range, and timezone are recorded in the JSON result.",
+        "",
+        "## Data limitation",
+        "",
+        "This battery uses the Yahoo Finance chart API as one common adjusted-OHLCV source. It is not an official exchange feed.",
+        "Before production claims, reproduce QQQ against [Nasdaq history](https://www.nasdaq.com/market-activity/etf/qqq/historical), KODEX 200 against [KRX Data Marketplace](https://data.krx.co.kr/contents/MDC/MAIN/main/index.cmd?locale=en), and GLD against an independent exchange series.",
+        "[SSGA](https://www.ssga.com/us/en/intermediary/etfs/spdr-gold-shares-gld) provides official fund/NAV information but not the exchange OHLCV used here.",
     ]
     return "\n".join(lines) + "\n"
 
@@ -676,6 +682,15 @@ def run(
             "stress_cost_bps_per_side": 10.0,
             "cagr_uses_full_split_calendar": True,
             "strict_mdd_uses_held_daily_high_low": True,
+            "data_source_limit": (
+                "Yahoo Finance chart API is a practical common adjusted-OHLCV source, not an official "
+                "exchange feed. Production use requires independent QQQ/GLD and KODEX200 source parity."
+            ),
+            "production_replication_targets": {
+                "QQQ": "https://www.nasdaq.com/market-activity/etf/qqq/historical",
+                "069500.KS": "https://data.krx.co.kr/contents/MDC/MAIN/main/index.cmd?locale=en",
+                "GLD": "https://www.ssga.com/us/en/intermediary/etfs/spdr-gold-shares-gld",
+            },
         },
         "splits": SPLITS,
         "calendar_reference": {
