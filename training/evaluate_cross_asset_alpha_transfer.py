@@ -117,16 +117,46 @@ def parse_yahoo_payload(raw: bytes, symbol: str) -> tuple[pd.DataFrame, dict[str
     valid = np.isfinite(frame[["open", "high", "low", "close", "volume"]]).all(axis=1)
     valid &= (frame[["open", "high", "low", "close"]] > 0.0).all(axis=1)
     valid &= frame["volume"] >= 0.0
-    frame = frame.loc[valid].sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
+    frame["source_valid"] = np.asarray(valid, dtype=bool)
+
+    # Yahoo's KODEX history contains a short valid prefix followed by a 549-row
+    # null quote block (2007-02-08 through 2009-04-16).  Treat a long null block
+    # as an unusable listing prefix, retain the first valid suffix, and preserve
+    # all later null rows as explicit gaps.  No price or return value influences
+    # this date/availability-only recovery rule.
+    invalid = ~frame["source_valid"].to_numpy(bool)
+    runs: list[tuple[int, int]] = []
+    run_start: int | None = None
+    for index, is_invalid in enumerate(invalid):
+        if is_invalid and run_start is None:
+            run_start = index
+        if run_start is not None and (not is_invalid or index == len(invalid) - 1):
+            stop = index if not is_invalid else index + 1
+            runs.append((run_start, stop))
+            run_start = None
+    longest = max(runs, key=lambda row: row[1] - row[0], default=(0, 0))
+    discarded_prefix_rows = 0
+    discarded_prefix_through: str | None = None
+    if longest[1] - longest[0] >= 20:
+        suffix = frame.index[(frame.index >= longest[1]) & frame["source_valid"]]
+        if not len(suffix):
+            raise RuntimeError(f"Yahoo source has no valid suffix after long null block for {symbol}")
+        start_index = int(suffix[0])
+        discarded_prefix_rows = start_index
+        discarded_prefix_through = frame["date"].iloc[start_index - 1].strftime("%Y-%m-%d")
+        frame = frame.iloc[start_index:].copy()
+    frame = frame.sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
     if frame.empty or not frame["date"].is_monotonic_increasing or frame["date"].duplicated().any():
         raise RuntimeError(f"normalized Yahoo frame order/uniqueness failed for {symbol}")
-    high_floor = frame[["open", "close"]].max(axis=1)
-    low_ceiling = frame[["open", "close"]].min(axis=1)
-    if not ((frame["high"] >= high_floor) & (frame["low"] <= low_ceiling)).all():
+    clean = frame.loc[frame["source_valid"]]
+    high_floor = clean[["open", "close"]].max(axis=1)
+    low_ceiling = clean[["open", "close"]].min(axis=1)
+    if not ((clean["high"] >= high_floor) & (clean["low"] <= low_ceiling)).all():
         raise RuntimeError(f"normalized Yahoo OHLC geometry failed for {symbol}")
     gaps = frame["date"].diff().dropna()
-    if len(gaps) and gaps.max() > pd.Timedelta(days=10):
+    if len(gaps) and gaps.max() > pd.Timedelta(days=14):
         raise RuntimeError(f"unexpected daily source gap for {symbol}: {gaps.max()}")
+    invalid_dates = frame.loc[~frame["source_valid"], "date"].dt.strftime("%Y-%m-%d").tolist()
     meta = {
         "symbol": symbol,
         "source_url": yahoo_url(symbol),
@@ -134,6 +164,11 @@ def parse_yahoo_payload(raw: bytes, symbol: str) -> tuple[pd.DataFrame, dict[str
         "raw_sha256": _sha256(raw),
         "exchange_timezone": timezone,
         "rows": len(frame),
+        "valid_rows": int(frame["source_valid"].sum()),
+        "invalid_rows_quarantined": int((~frame["source_valid"]).sum()),
+        "invalid_dates_sha256": _sha256(json.dumps(invalid_dates, separators=(",", ":")).encode()),
+        "discarded_unusable_prefix_rows": discarded_prefix_rows,
+        "discarded_unusable_prefix_through": discarded_prefix_through,
         "start": frame["date"].iloc[0].strftime("%Y-%m-%d"),
         "end": frame["date"].iloc[-1].strftime("%Y-%m-%d"),
         "max_calendar_gap_days": int(gaps.max().days) if len(gaps) else 0,
@@ -176,8 +211,8 @@ def rex_signal_bank(frame: pd.DataFrame) -> dict[str, tuple[np.ndarray, np.ndarr
     rex_max_gap = np.mean(np.vstack(max_gaps), axis=0)
     rex_min_gap = np.mean(np.vstack(min_gaps), axis=0)
     close = frame["close"].astype(float)
-    higher_trend = sum(close.pct_change(period).to_numpy(float) for period in (4, 12, 20))
-    local_trend = close.pct_change(1).to_numpy(float)
+    higher_trend = sum(close.pct_change(period, fill_method=None).to_numpy(float) for period in (4, 12, 20))
+    local_trend = close.pct_change(1, fill_method=None).to_numpy(float)
     volume = frame["volume"].astype(float)
     volume_mean = volume.rolling(20, min_periods=20).mean()
     volume_std = volume.rolling(20, min_periods=20).std(ddof=0).replace(0.0, np.nan)
@@ -194,6 +229,12 @@ def rex_signal_bank(frame: pd.DataFrame) -> dict[str, tuple[np.ndarray, np.ndarr
 
     extreme = np.maximum(0.0, np.abs(rex_loc) - 0.55) * (1.0 + np.abs(rex_short_loc - rex_long_loc))
     extreme_side = -np.nan_to_num(np.sign(rex_loc), nan=0.0).astype(np.int8)
+    source_valid = frame.get("source_valid", pd.Series(True, index=frame.index)).astype(bool)
+    full_context = source_valid.rolling(111, min_periods=111).sum().to_numpy(float) == 111.0
+    reclaim = np.where(full_context, reclaim, np.nan)
+    extreme = np.where(full_context, extreme, np.nan)
+    htf_side = np.where(full_context, htf_side, 0).astype(np.int8)
+    extreme_side = np.where(full_context, extreme_side, 0).astype(np.int8)
     return {
         "rex_pullback_reclaim_session": (reclaim, htf_side),
         "rex_multiscale_extreme_fade_session": (extreme, extreme_side),
@@ -207,8 +248,11 @@ def barrier_signal(frame: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
     scale = daily_return.shift(1).rolling(26, min_periods=13).std(ddof=0).to_numpy(float)
     score = np.full(len(frame), np.nan, dtype=float)
     traversal_side = np.zeros(len(frame), dtype=np.int8)
+    source_valid = frame.get("source_valid", pd.Series(True, index=frame.index)).to_numpy(bool)
     for position in range(horizon + 1, len(frame)):
         freeze = position - 1
+        if not source_valid[freeze - horizon : position + 1].all():
+            continue
         if not np.isfinite(scale[freeze]) or scale[freeze] <= 0.0:
             continue
         window = log_price[freeze - horizon : freeze]
@@ -262,17 +306,23 @@ def build_trades(
     *,
     split: str,
     hold_sessions: int,
+    source_valid: np.ndarray | None = None,
 ) -> list[Trade]:
     start, end = SPLITS[split]
     start_ts, end_ts = pd.Timestamp(start), pd.Timestamp(end)
     trades: list[Trade] = []
     next_free = -1
+    clean = np.ones(len(dates), dtype=bool) if source_valid is None else np.asarray(source_valid, dtype=bool)
+    if len(clean) != len(dates):
+        raise ValueError("source_valid length mismatch")
     for signal_index in np.flatnonzero(active):
         if signal_index < next_free or not (start_ts <= dates.iloc[signal_index] < end_ts):
             continue
         entry_index = int(signal_index) + 1
         exit_index = entry_index + int(hold_sessions)
         if exit_index >= len(dates) or dates.iloc[exit_index] >= end_ts:
+            continue
+        if not clean[signal_index : exit_index + 1].all():
             continue
         trades.append(
             Trade(
@@ -387,6 +437,7 @@ def _policy_inputs(frame: pd.DataFrame) -> dict[str, tuple[np.ndarray, np.ndarra
 
 def evaluate_instrument(frame: pd.DataFrame) -> dict[str, Any]:
     dates = pd.to_datetime(frame["date"])
+    source_valid = frame.get("source_valid", pd.Series(True, index=frame.index)).to_numpy(bool)
     output: dict[str, Any] = {}
     for policy, (strength, side, quantile, hold) in _policy_inputs(frame).items():
         threshold, train_positive_support = fit_threshold(strength, dates, quantile)
@@ -404,7 +455,14 @@ def evaluate_instrument(frame: pd.DataFrame) -> dict[str, Any]:
         }
         windows: dict[str, Any] = {}
         for split in SPLITS:
-            trades = build_trades(active, directions, dates, split=split, hold_sessions=hold)
+            trades = build_trades(
+                active,
+                directions,
+                dates,
+                split=split,
+                hold_sessions=hold,
+                source_valid=source_valid,
+            )
             flipped = [Trade(t.signal_index, t.entry_index, t.exit_index, -t.side) for t in trades]
             windows[split] = {
                 "base_5bp": simulate(frame, trades, split=split, cost_bps_per_side=5.0),

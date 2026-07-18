@@ -52,7 +52,41 @@ def test_yahoo_parser_adjusts_ohlc_and_uses_exchange_date() -> None:
     assert frame["date"].dt.strftime("%Y-%m-%d").tolist() == ["2021-01-04", "2021-01-05"]
     assert frame["open"].tolist() == [50.0, 102.0]
     assert frame["close"].tolist() == [51.0, 103.0]
+    assert frame["source_valid"].tolist() == [True, True]
     assert meta["rows"] == 2
+
+
+def test_yahoo_parser_discards_long_null_prefix_and_quarantines_later_gap() -> None:
+    timestamps = [1609770600 + 86400 * index for index in range(35)]
+    values = [100.0] * 3 + [None] * 20 + [100.0] * 7 + [None] + [100.0] * 4
+    payload = {
+        "chart": {
+            "error": None,
+            "result": [
+                {
+                    "meta": {"exchangeTimezoneName": "UTC"},
+                    "timestamp": timestamps,
+                    "indicators": {
+                        "quote": [
+                            {
+                                "open": values,
+                                "high": values,
+                                "low": values,
+                                "close": values,
+                                "volume": values,
+                            }
+                        ],
+                        "adjclose": [{"adjclose": values}],
+                    },
+                }
+            ],
+        }
+    }
+    frame, meta = evaluator.parse_yahoo_payload(json.dumps(payload).encode(), "GAPPED")
+    assert meta["discarded_unusable_prefix_rows"] == 23
+    assert len(frame) == 12
+    assert frame["source_valid"].sum() == 11
+    assert meta["invalid_rows_quarantined"] == 1
 
 
 def test_rex_features_do_not_change_when_only_future_rows_change() -> None:
@@ -87,6 +121,23 @@ def test_build_trades_enters_next_open_and_skips_overlap(monkeypatch) -> None:
     side = np.ones(10, dtype=np.int8)
     trades = evaluator.build_trades(active, side, dates, split="eval", hold_sessions=2)
     assert [(t.signal_index, t.entry_index, t.exit_index) for t in trades] == [(0, 1, 3), (4, 5, 7)]
+
+
+def test_build_trades_skips_any_signal_whose_hold_crosses_a_source_gap(monkeypatch) -> None:
+    monkeypatch.setattr(evaluator, "SPLITS", {"eval": ("2022-01-01", "2023-01-01")})
+    dates = pd.Series(pd.bdate_range("2022-01-03", periods=8))
+    active = np.array([True, False, False, False, True, False, False, False])
+    side = np.ones(8, dtype=np.int8)
+    source_valid = np.array([True, True, False, True, True, True, True, True])
+    trades = evaluator.build_trades(
+        active,
+        side,
+        dates,
+        split="eval",
+        hold_sessions=2,
+        source_valid=source_valid,
+    )
+    assert [(t.signal_index, t.entry_index, t.exit_index) for t in trades] == [(4, 5, 7)]
 
 
 def test_strict_mdd_uses_intrahold_extremes(monkeypatch) -> None:
