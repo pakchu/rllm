@@ -32,6 +32,7 @@ CACHE_DIR = "data/cache_cross_asset_alpha_transfer"
 PERIOD1 = 946684800  # 2000-01-01T00:00:00Z
 PERIOD2 = 1784419200  # 2026-07-19T00:00:00Z, exclusive
 INSTRUMENTS = ("QQQ", "069500.KS", "GLD")
+KRX_CALENDAR_REFERENCE = "^KS11"
 POLICIES = (
     "rex_pullback_reclaim_session",
     "rex_multiscale_extreme_fade_session",
@@ -119,6 +120,10 @@ def parse_yahoo_payload(raw: bytes, symbol: str) -> tuple[pd.DataFrame, dict[str
     valid &= frame["volume"] >= 0.0
     frame["source_valid"] = np.asarray(valid, dtype=bool)
 
+    if frame["date"].duplicated().any():
+        duplicates = frame.loc[frame["date"].duplicated(keep=False), "date"].dt.strftime("%Y-%m-%d").tolist()
+        raise RuntimeError(f"Yahoo source has duplicate sessions for {symbol}: {duplicates[:5]}")
+
     # Yahoo's KODEX history contains a short valid prefix followed by a 549-row
     # null quote block (2007-02-08 through 2009-04-16).  Treat a long null block
     # as an unusable listing prefix, retain the first valid suffix, and preserve
@@ -138,6 +143,14 @@ def parse_yahoo_payload(raw: bytes, symbol: str) -> tuple[pd.DataFrame, dict[str
     discarded_prefix_rows = 0
     discarded_prefix_through: str | None = None
     if longest[1] - longest[0] >= 20:
+        valid_before = int(frame["source_valid"].iloc[: longest[0]].sum())
+        starts_near_listing = (
+            longest[0] < len(frame)
+            and frame["date"].iloc[longest[0]] - frame["date"].iloc[0] <= pd.Timedelta(days=31)
+            and valid_before <= 20
+        )
+        if not starts_near_listing:
+            raise RuntimeError(f"long Yahoo null block is not an unusable listing prefix for {symbol}")
         suffix = frame.index[(frame.index >= longest[1]) & frame["source_valid"]]
         if not len(suffix):
             raise RuntimeError(f"Yahoo source has no valid suffix after long null block for {symbol}")
@@ -145,7 +158,7 @@ def parse_yahoo_payload(raw: bytes, symbol: str) -> tuple[pd.DataFrame, dict[str
         discarded_prefix_rows = start_index
         discarded_prefix_through = frame["date"].iloc[start_index - 1].strftime("%Y-%m-%d")
         frame = frame.iloc[start_index:].copy()
-    frame = frame.sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
+    frame = frame.sort_values("date").reset_index(drop=True)
     if frame.empty or not frame["date"].is_monotonic_increasing or frame["date"].duplicated().any():
         raise RuntimeError(f"normalized Yahoo frame order/uniqueness failed for {symbol}")
     clean = frame.loc[frame["source_valid"]]
@@ -180,6 +193,36 @@ def load_market(symbol: str, cache_dir: str = CACHE_DIR, *, refresh: bool = Fals
     raw, _mode = download_payload(symbol, cache_dir, refresh=refresh)
     frame, meta = parse_yahoo_payload(raw, symbol)
     return frame, meta
+
+
+def align_to_reference_calendar(
+    frame: pd.DataFrame,
+    reference_dates: pd.DatetimeIndex,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Insert explicit invalid rows for sessions present on a reference clock."""
+
+    if frame.empty:
+        raise ValueError("cannot align an empty frame")
+    start, end = frame["date"].iloc[0], frame["date"].iloc[-1]
+    reference = pd.DatetimeIndex(reference_dates).sort_values().unique()
+    reference = reference[(reference >= start) & (reference <= end)]
+    own = pd.DatetimeIndex(frame["date"])
+    expected = own.union(reference).sort_values()
+    inserted = expected.difference(own)
+    aligned = frame.set_index("date").reindex(expected)
+    aligned.index.name = "date"
+    aligned["source_valid"] = aligned["source_valid"].eq(True).astype(bool)
+    aligned = aligned.reset_index()
+    if aligned["date"].duplicated().any() or not aligned["date"].is_monotonic_increasing:
+        raise RuntimeError("calendar alignment order/uniqueness failed")
+    inserted_strings = inserted.strftime("%Y-%m-%d").tolist()
+    return aligned, {
+        "calendar_reference_rows": len(reference),
+        "calendar_missing_rows_inserted": len(inserted),
+        "calendar_missing_dates_sha256": _sha256(
+            json.dumps(inserted_strings, separators=(",", ":")).encode()
+        ),
+    }
 
 
 def _range_location(frame: pd.DataFrame, window: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -590,10 +633,32 @@ def run(
         raise RuntimeError("cross-asset preregistration artifact mismatch")
     instruments: dict[str, Any] = {}
     policy_matrix: dict[str, dict[str, Any]] = {policy: {} for policy in POLICIES}
+    frames: dict[str, pd.DataFrame] = {}
+    source_rows: dict[str, dict[str, Any]] = {}
     for symbol in INSTRUMENTS:
         frame, source = load_market(symbol, cache_dir, refresh=refresh)
-        policies = evaluate_instrument(frame)
-        instruments[symbol] = {"source": source, "policies": policies}
+        frames[symbol] = frame
+        source_rows[symbol] = source
+
+    # QQQ and GLD trade on the same US exchange-session calendar.  Their union
+    # exposes instrument-specific missing timestamps without adding a new price
+    # input.  KODEX uses a KRX index timestamp feed only as a calendar reference;
+    # no index OHLC, feature, signal, or return enters the strategy evaluation.
+    us_reference = pd.DatetimeIndex(frames["QQQ"]["date"]).union(pd.DatetimeIndex(frames["GLD"]["date"]))
+    for symbol in ("QQQ", "GLD"):
+        frames[symbol], parity = align_to_reference_calendar(frames[symbol], us_reference)
+        source_rows[symbol]["calendar_reference"] = "QQQ/GLD provider-session union"
+        source_rows[symbol].update(parity)
+    krx_reference, krx_reference_meta = load_market(KRX_CALENDAR_REFERENCE, cache_dir, refresh=refresh)
+    frames["069500.KS"], parity = align_to_reference_calendar(
+        frames["069500.KS"], pd.DatetimeIndex(krx_reference["date"])
+    )
+    source_rows["069500.KS"]["calendar_reference"] = KRX_CALENDAR_REFERENCE
+    source_rows["069500.KS"].update(parity)
+
+    for symbol in INSTRUMENTS:
+        policies = evaluate_instrument(frames[symbol])
+        instruments[symbol] = {"source": source_rows[symbol], "policies": policies}
         for policy in POLICIES:
             policy_matrix[policy][symbol] = policies[policy]
     decision = {policy: transfer_gate(policy_matrix[policy]) for policy in POLICIES}
@@ -613,6 +678,11 @@ def run(
             "strict_mdd_uses_held_daily_high_low": True,
         },
         "splits": SPLITS,
+        "calendar_reference": {
+            "symbol": KRX_CALENDAR_REFERENCE,
+            "purpose": "KRX provider-session dates only; no OHLC, feature, signal, return, or selection use",
+            "source": krx_reference_meta,
+        },
         "instruments": instruments,
         "transfer_decision": decision,
     }
