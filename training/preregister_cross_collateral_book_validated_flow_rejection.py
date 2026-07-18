@@ -372,6 +372,11 @@ def build_signal(
 
 
 def quarterly_schedule(signal: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFrame:
+    scheduler_frame = frame.copy()
+    # ``nonoverlapping_schedule`` reads quarantine state from its frame rather
+    # than the signal table.  Current-row validity has already determined the
+    # signal, so clear this column to prevent future availability lookahead.
+    scheduler_frame["quarantined"] = False
     schedules: list[pd.DataFrame] = []
     for quarter, start, end in (
         ("q1", "2023-01-01", "2023-04-01"),
@@ -379,7 +384,12 @@ def quarterly_schedule(signal: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFram
         ("q3", "2023-07-01", "2023-10-01"),
         ("q4", "2023-10-01", "2024-01-01"),
     ):
-        scheduled = nonoverlapping_schedule(signal, frame, start=start, end=end)
+        scheduled = nonoverlapping_schedule(
+            signal,
+            scheduler_frame,
+            start=start,
+            end=end,
+        )
         if not scheduled.empty:
             scheduled.insert(0, "quarter", quarter)
             schedules.append(scheduled)
