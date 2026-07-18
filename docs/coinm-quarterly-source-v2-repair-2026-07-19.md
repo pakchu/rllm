@@ -23,9 +23,10 @@ v1 실행에서는 candidate return, CAGR, MDD, p-value가 하나도 생성되�
 1. 공식 checksum 검증 일별 contract-specific 5분봉을 primary로 사용한다.
 2. 고정 front/next 달력에 필요한 `(symbol, timestamp)`가 일별 raw에 없을 때만
    해당 symbol/month의 공식 월별 ZIP을 받는다.
-3. 일별과 월별이 겹치는 키는 모든 파싱 열이 일치해야 한다. 다르면 전체 build를
-   중단한다.
-4. 겹치는 행은 항상 일별이 우선하고, 월별은 오직 absent key만 추가한다.
+3. 공식 월별 archive에는 일별 archive를 사후 정정한 소수 행이 실제 존재한다.
+   겹치는 행은 항상 일별을 유지하고, 불일치 행의 개수·비율·전체 차이 payload
+   SHA-256을 manifest에 기록한다. 월별 중첩 값은 출력에 사용하지 않는다.
+4. 월별은 오직 absent key만 추가한다.
 5. invalid 일별 행을 월별 행으로 교체하지 않는다.
 6. 2024 이후 봉은 계속 열지 않는다.
 

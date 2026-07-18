@@ -291,14 +291,17 @@ def test_monthly_fallback_adds_only_missing_daily_keys() -> None:
         start=pd.Timestamp("2023-01-01"),
         end=pd.Timestamp("2023-01-02"),
     )
-    combined, added = strip.merge_daily_with_monthly_fallback(daily, monthly)
+    combined, added, diagnostics = strip.merge_daily_with_monthly_fallback(
+        daily, monthly
+    )
     assert added == 1
+    assert diagnostics["conflict_rows"] == 0
     assert combined["date"].tolist() == list(
         pd.date_range("2023-01-01", periods=2, freq="5min")
     )
 
 
-def test_monthly_fallback_rejects_overlap_disagreement() -> None:
+def test_monthly_fallback_records_overlap_disagreement_and_keeps_daily() -> None:
     symbol = "BTCUSD_231229"
     daily = strip.read_archive(
         _archive(symbol, [_row("2023-01-01 00:00")]),
@@ -308,8 +311,14 @@ def test_monthly_fallback_rejects_overlap_disagreement() -> None:
     )
     monthly = daily.copy()
     monthly.loc[0, "close"] += 1.0
-    with pytest.raises(ValueError, match="archives disagree"):
-        strip.merge_daily_with_monthly_fallback(daily, monthly)
+    combined, added, diagnostics = strip.merge_daily_with_monthly_fallback(
+        daily, monthly
+    )
+    assert added == 0
+    assert diagnostics["conflict_rows"] == 1
+    assert diagnostics["conflict_fraction"] == 1.0
+    assert len(diagnostics["conflict_sha256"]) == 64
+    assert combined.loc[0, "close"] == daily.loc[0, "close"]
 
 
 def test_download_archive_rejects_checksum_mismatch(tmp_path, monkeypatch) -> None:
@@ -417,6 +426,7 @@ def test_build_monthly_fallback_covers_both_legs_and_records_provenance(
         {"symbol": contracts[1], "month": "2023-01"},
     ]
     assert len(first["monthly_fallback_archives"]) == 2
+    assert first["monthly_overlap_diagnostics"]["conflict_rows"] == 0
     assert all(
         len(row["archive_sha256"]) == 64
         for row in first["monthly_fallback_archives"]
