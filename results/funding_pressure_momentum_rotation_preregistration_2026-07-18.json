@@ -1,0 +1,138 @@
+{
+  "protocol": {
+    "protocol_version": "fpmr_v1_2026-07-18",
+    "name": "FPMR-1 — Funding-Pressure Momentum Rotation",
+    "claim": "A cross-alt residual trend is more persistent when its relative funding pressure is easing, while a weak residual trend with worsening funding pressure continues to underperform over the following week.",
+    "evidence_boundary": {
+      "dcrm_and_other_cross_alt_outcomes_seen": true,
+      "exact_fpmr_score_or_post_entry_return_opened": false,
+      "support_selection_uses_only_clock_density_and_concentration": true,
+      "selection_2023_outcomes_opened": false,
+      "test_2024_outcomes_opened": false,
+      "eval_2025_outcomes_opened": false,
+      "holdout_2026_outcomes_opened": false,
+      "historical_pass_can_promote_live": false,
+      "minimum_forward_shadow_days": 90
+    },
+    "novelty_boundary": {
+      "versus_dcrm": "combines cross-sectional residual level, one-week residual rotation, and the change in a 28-day realized-funding burden; DCRM used only a 30-day residual level plus dispersion sizing",
+      "versus_afch": "funding is a crowding-change predictor, not the harvested payoff; the pair is selected by price/funding interaction and held seven days",
+      "versus_current_portfolio": "one beta-neutral alt pair, no BTC leg, REX, OI, Kimchi, FX, DXY, premium-index gate, tree, Markov state, LLM, or manual regime"
+    },
+    "universe": {
+      "venue": "Binance USD-M perpetual futures",
+      "symbols": [
+        "ETHUSDT",
+        "SOLUSDT",
+        "BNBUSDT",
+        "XRPUSDT",
+        "ADAUSDT",
+        "DOGEUSDT"
+      ],
+      "position": "one long alt and one short alt; no BTC leg",
+      "maximum_active_pairs": 1,
+      "maximum_gross": 1.0
+    },
+    "source_contract": {
+      "market": "completed Binance USD-M 5m OHLC",
+      "funding": "exact reported funding rate and settlement timestamp",
+      "required_complete_symbols": 6,
+      "support_prefix": "2023-01-01 through 2024-12-31",
+      "no_forward_fill": true,
+      "no_post_decision_row_in_signal": true
+    },
+    "feature_formula": {
+      "weekly_boundary": "Monday 00:00 UTC",
+      "price_cutoff": "Sunday 23:55 UTC completed 5m close",
+      "funding_cutoff": "Monday 00:00 UTC settlement, observed by 00:05",
+      "momentum": "log(close[t-5m] / close[t-30d-5m])",
+      "leave_one_out_factor": "per-symbol median completed hourly return of the other five alts",
+      "beta": {
+        "lookback_completed_hours": 720,
+        "minimum_completed_hours": 336,
+        "shift_completed_hours": 1,
+        "clip": [
+          0.25,
+          2.5
+        ]
+      },
+      "residual_30d": "30-day return minus clipped beta times 30-day factor return",
+      "residual_level_z": "same-boundary six-symbol population z-score",
+      "residual_rotation": "current residual_level_z minus its value seven days earlier",
+      "funding_current_28d": "sum for t-28d < settlement_time <= t",
+      "funding_prior_28d": "sum for t-35d < settlement_time <= t-7d",
+      "funding_pressure_change_z": "same-boundary population z-score of current_28d minus prior_28d",
+      "score": "residual_level_z + residual_rotation - funding_pressure_change_z",
+      "long_symbol": "lexically tie-broken maximum score",
+      "short_symbol": "lexically tie-broken minimum score",
+      "weights": "positive gross-one weights satisfying long_beta*w_long = short_beta*w_short"
+    },
+    "clock": {
+      "decision_time": "Monday 00:05 UTC after the 00:00 funding settlement",
+      "entry_time": "Monday 00:10 UTC open",
+      "exit_time": "next Monday 00:10 UTC open",
+      "hold_days": 7,
+      "nonoverlap": true,
+      "same_boundary_order": "close old pair before opening the new pair"
+    },
+    "execution": {
+      "base_cost_bp_per_notional_side": 6.0,
+      "stress_cost_bp_per_notional_side": 10.0,
+      "cost_applied": "entry and exit on both legs by absolute notional",
+      "funding_interval": "entry_time < funding_time <= exit_time",
+      "strict_mdd": "global/pre-entry HWM; entry, exit, and hypothetical liquidation costs; exact funding; favorable-before-adverse two-leg OHLC",
+      "cagr": "full declared calendar including warm-up and idle cash",
+      "tp_sl": null
+    },
+    "support_gate": {
+      "events_2023_2024_at_least": 90,
+      "events_each_year_at_least": 45,
+      "events_each_half_at_least": 20,
+      "unique_ordered_pairs_at_least": 15,
+      "maximum_ordered_pair_share_at_most": 0.15,
+      "maximum_symbol_side_share_at_most": 0.4,
+      "all_six_symbols_long_and_short_required": true,
+      "outcome_columns_forbidden": true
+    },
+    "selection_2023": {
+      "singleton_no_parameter_ranking": true,
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_at_least": 3.0,
+      "strict_mdd_at_most_pct": 15.0,
+      "trades_at_least": 40,
+      "each_half_absolute_return_positive": true,
+      "each_half_trades_at_least": 18,
+      "ten_bp_stress_absolute_return_positive": true,
+      "entry_and_exit_delay_plus_5m_absolute_return_positive": true,
+      "direction_flip_cagr_lower": true,
+      "weekly_cluster_signflip_p_at_most": 0.1
+    },
+    "sequential_oos": {
+      "2024_opened_only_after_2023_pass": true,
+      "2024_absolute_return_positive": true,
+      "2024_cagr_to_strict_mdd_at_least": 3.0,
+      "2024_strict_mdd_at_most_pct": 15.0,
+      "2024_each_half_absolute_return_positive": true,
+      "2025_opened_only_after_2024_pass": true,
+      "2026_opened_only_after_2025_pass": true,
+      "no_sign_weight_lookback_hold_or_score_repair": true
+    },
+    "frozen_controls_not_repair_candidates": [
+      "exact long-short direction flip",
+      "entry and exit delayed five minutes",
+      "ten basis points per notional side",
+      "price-only residual level plus rotation",
+      "funding-change-only cross-sectional rank",
+      "static residual-level rank"
+    ],
+    "orthogonality_after_standalone_pass": {
+      "compare_against": "all promoted/live/shadow sleeves on one marked ledger",
+      "absolute_daily_pnl_pearson_at_most": 0.3,
+      "absolute_weekly_pnl_pearson_at_most": 0.4,
+      "synchronized_portfolio_marginal_improvement_required": true
+    },
+    "stop_rule": "Reject before outcomes if support fails. Otherwise freeze the strict evaluator, open 2023 exactly once, and retire on any gate failure without opening 2024 or changing the score, sign, hold, weights, or execution."
+  },
+  "protocol_hash": "41c33c9a4028e78ae9007e419dcc40c64a66e5309cf1b8ea2623f83262b20cc1",
+  "created_at": "2026-07-18T12:46:16.717250+00:00"
+}
