@@ -1,0 +1,326 @@
+{
+  "protocol": "DACC-48 outcome-blind support and orthogonality freeze v1",
+  "outcomes_opened": false,
+  "post_entry_returns_or_pnl_calculated": false,
+  "funding_loaded": false,
+  "preregistration_commit": "1ecda026e2fd1e568d53da16c2e153e676d17a5d",
+  "preregistration_sha256": "126cda295359820fa360ef92488221a6c6f6c7dfdac5930e08f6c607d937835f",
+  "preregistration_manifest_hash": "4fc7b7e56cf1d691e050f2fd20d7f18afb8c863302b1856dcc199e790160419d",
+  "policy": {
+    "policy_id": "DACC-48",
+    "reference_bars": 8640,
+    "reference_min_periods": 2016,
+    "shock_abs_quantile": 0.995,
+    "minimum_shock_return_bp": 40.0,
+    "shock_scale_bars": 72,
+    "minimum_shock_scale_multiple": 4.0,
+    "minimum_shock_directional_taker_imbalance": 0.15,
+    "compression_bars": 6,
+    "maximum_compression_to_shock_ratio": 0.55,
+    "maximum_compression_net_fraction": 0.2,
+    "maximum_retrace_fraction": 0.3,
+    "reacceleration_bars": 3,
+    "minimum_break_margin_bp": 5.0,
+    "minimum_reacceleration_return_bp": 15.0,
+    "minimum_reacceleration_box_fraction": 0.3,
+    "reacceleration_flow_quantile": 0.7,
+    "minimum_directional_flow": 0.1,
+    "minimum_flow_acceleration": 0.1,
+    "minimum_range_acceleration": 1.5,
+    "trigger_offset_bars": 9,
+    "entry_offset_bars": 10,
+    "delayed_entry_offset_bars": 11,
+    "hold_bars": 48,
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.001
+  },
+  "implementation": {
+    "path": "training/build_delayed_aftershock_compression_continuation_support.py",
+    "sha256": "e7e084805706548571ccdc4fda36ffdd758f0ee413b0acdfbeead7236a9a55e1",
+    "python": "3.10.10",
+    "pandas": "2.3.3",
+    "numpy": "2.2.6"
+  },
+  "source": {
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "market_rows": 420768,
+    "zero_quote_volume_bars": 26,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00",
+    "loaded_columns": [
+      "date",
+      "open",
+      "high",
+      "low",
+      "close",
+      "quote_asset_volume",
+      "taker_buy_quote"
+    ],
+    "post_entry_returns_loaded": false,
+    "future_trade_returns_computed": false,
+    "funding_loaded": false
+  },
+  "clock": {
+    "path": "results/delayed_aftershock_compression_continuation_clock_2026-07-18.csv",
+    "sha256": "8fc098af70cfef698c09dcad4aebd8ea124b9e858f948000c5b0f7dcf919d0ff",
+    "rows": 828,
+    "columns": [
+      "policy",
+      "anchor_position",
+      "signal_position",
+      "entry_position",
+      "exit_position",
+      "anchor_date",
+      "signal_date",
+      "entry_date",
+      "exit_date",
+      "side",
+      "hold_bars"
+    ],
+    "write_contract": "immutable bytes; repeated runs must reproduce the clock",
+    "raw_event_counts": {
+      "primary": 1,
+      "direction_flip": 0,
+      "immediate_shock": 1070,
+      "without_compression": 7,
+      "compression_without_flow": 1,
+      "without_range": 1,
+      "one_bar_delayed_entry": 0,
+      "shock_time_shift_one_day": 0
+    },
+    "nonoverlap_event_counts": {
+      "primary": 1,
+      "direction_flip": 1,
+      "immediate_shock": 815,
+      "without_compression": 7,
+      "compression_without_flow": 1,
+      "without_range": 1,
+      "one_bar_delayed_entry": 1,
+      "shock_time_shift_one_day": 1
+    },
+    "primary_feature_summary": {
+      "shock_abs": {
+        "min": 0.008664987771654835,
+        "median": 0.008664987771654835,
+        "max": 0.008664987771654835
+      },
+      "box_width": {
+        "min": 0.0038600025275365196,
+        "median": 0.0038600025275365196,
+        "max": 0.0038600025275365196
+      },
+      "compression_flow": {
+        "min": -0.058411177751671234,
+        "median": -0.058411177751671234,
+        "max": -0.058411177751671234
+      },
+      "reacceleration_flow": {
+        "min": 0.28267063061204484,
+        "median": 0.28267063061204484,
+        "max": 0.28267063061204484
+      },
+      "break_margin": {
+        "min": 0.0016051706827950585,
+        "median": 0.0016051706827950585,
+        "max": 0.0016051706827950585
+      },
+      "range_acceleration": {
+        "min": 1.6930611866228151,
+        "median": 1.6930611866228151,
+        "max": 1.6930611866228151
+      }
+    }
+  },
+  "baseline_activation_contracts": {
+    "jump_continuation_72_bidirectional_20260712": {
+      "entry_count": 837,
+      "hold_bars": 96,
+      "clock_definition": "all stride-aligned fixed-rule activations, before outcome-dependent TP/SL de-overlap; max-hold occupancy is conservative",
+      "exact_committed_trade_clock_bound": false,
+      "admission_use": "diagnostic_only_fail_closed",
+      "thresholds": {
+        "hold_bars": 96,
+        "stride_bars": 6,
+        "long": {
+          "jv_jump_ratio_72": [
+            "ge",
+            0.31734477856221055
+          ],
+          "jv_signed_jump_72": [
+            "ge",
+            0.15098978078538647
+          ],
+          "jv_flow_recovery": [
+            "ge",
+            0.025127509061786887
+          ]
+        },
+        "short": {
+          "jv_jump_ratio_72": [
+            "ge",
+            0.31734477856221055
+          ],
+          "jv_signed_jump_72": [
+            "le",
+            -0.1495008467852352
+          ],
+          "jv_flow_recovery": [
+            "le",
+            -0.025286664913192248
+          ]
+        }
+      }
+    },
+    "jump_continuation_volume_clock_gate_20260712": {
+      "entry_count": 539,
+      "hold_bars": 96,
+      "clock_definition": "all stride-aligned fixed-rule activations, before outcome-dependent TP/SL de-overlap; max-hold occupancy is conservative",
+      "exact_committed_trade_clock_bound": false,
+      "admission_use": "diagnostic_only_fail_closed",
+      "thresholds": {
+        "hold_bars": 96,
+        "stride_bars": 6,
+        "long": {
+          "jv_jump_ratio_72": [
+            "ge",
+            0.31734477856221055
+          ],
+          "jv_signed_jump_72": [
+            "ge",
+            0.15098978078538647
+          ],
+          "jv_flow_recovery": [
+            "ge",
+            0.025127509061786887
+          ],
+          "vc_flow_speed_0p25": [
+            "ge",
+            0.00035365732808944646
+          ]
+        },
+        "short": {
+          "jv_jump_ratio_72": [
+            "ge",
+            0.31734477856221055
+          ],
+          "jv_signed_jump_72": [
+            "le",
+            -0.1495008467852352
+          ],
+          "jv_flow_recovery": [
+            "le",
+            -0.025286664913192248
+          ],
+          "vc_flow_speed_0p25": [
+            "le",
+            -0.000487587473415171
+          ]
+        }
+      }
+    },
+    "efficient_recovery_continuation_72_20260712": {
+      "entry_count": 343,
+      "hold_bars": 144,
+      "clock_definition": "all stride-aligned fixed-rule activations, before outcome-dependent TP/SL de-overlap; max-hold occupancy is conservative",
+      "exact_committed_trade_clock_bound": false,
+      "admission_use": "diagnostic_only_fail_closed",
+      "thresholds": {
+        "hold_bars": 144,
+        "stride_bars": 12,
+        "long": {
+          "lr_signed_eff_72": [
+            "ge",
+            0.1824548212170588
+          ],
+          "lr_flow_72": [
+            "ge",
+            0.04869572464172154
+          ],
+          "lr_flow_recovery": [
+            "ge",
+            0.06794383030855547
+          ]
+        },
+        "short": {
+          "lr_signed_eff_72": [
+            "le",
+            -0.16331195830141687
+          ],
+          "lr_flow_72": [
+            "le",
+            -0.055475434124467156
+          ],
+          "lr_flow_recovery": [
+            "le",
+            -0.06783534014527763
+          ]
+        }
+      }
+    }
+  },
+  "orthogonality": {
+    "admission_eligible": false,
+    "reason": "exact committed baseline trade clocks do not exist; reconstructed stride-aligned activation clocks are diagnostic proxies only",
+    "by_baseline": {
+      "jump_continuation_72_bidirectional_20260712": {
+        "baseline_activation_entries": 837,
+        "exact_entry_jaccard": 0.0,
+        "position_time_jaccard": 0.0
+      },
+      "jump_continuation_volume_clock_gate_20260712": {
+        "baseline_activation_entries": 539,
+        "exact_entry_jaccard": 0.0,
+        "position_time_jaccard": 0.0
+      },
+      "efficient_recovery_continuation_72_20260712": {
+        "baseline_activation_entries": 343,
+        "exact_entry_jaccard": 0.0,
+        "position_time_jaccard": 0.0
+      }
+    },
+    "maximum_exact_entry_jaccard": 0.0,
+    "maximum_position_time_jaccard": 0.0,
+    "candidate_entries_within_six_hours_of_any_baseline_share": 0.0,
+    "baseline_union_entries": 1132
+  },
+  "support": {
+    "counts": {
+      "train_2020_2022": 1,
+      "2020": 1,
+      "2021": 0,
+      "2022": 0,
+      "2023": 0,
+      "2023_h1": 0,
+      "2023_h2": 0
+    },
+    "primary_total": 1,
+    "long_share": 1.0,
+    "short_share": 0.0,
+    "maximum_single_month_share": 1.0,
+    "maximum_single_utc_week_share": 1.0,
+    "checks": {
+      "train_count": false,
+      "each_train_year": false,
+      "selection_count": false,
+      "selection_halves": false,
+      "direction_balance": false,
+      "monthly_concentration": false,
+      "weekly_concentration": false,
+      "exact_entry_jaccard": true,
+      "six_hour_proximity": true,
+      "position_time_jaccard": true,
+      "exact_baseline_clock_binding": false,
+      "fixed_hold": true
+    },
+    "passes_support": false
+  },
+  "sealed_windows": [
+    "all_post_entry_outcomes",
+    "2024",
+    "2025",
+    "2026_ytd"
+  ],
+  "manifest_hash": "299c099a752429fed39887fa6e174fcbd25852ed347cc35cc3813c29d5b53713"
+}
