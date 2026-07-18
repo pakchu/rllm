@@ -26,6 +26,18 @@ def test_flow_threshold_excludes_current_and_future_values() -> None:
     assert np.isnan(first.iloc[1])
 
 
+def test_zero_volume_bar_is_unavailable_instead_of_dividing_by_zero() -> None:
+    frame = pd.DataFrame(
+        {
+            "quote_asset_volume": [100.0, 0.0],
+            "taker_buy_quote": [75.0, 0.0],
+        }
+    )
+    flow = cbfr.completed_bar_flow(frame)
+    assert flow.iloc[0] == pytest.approx(0.5)
+    assert np.isnan(flow.iloc[1])
+
+
 def test_signal_fades_rejected_flow_and_requires_both_venues() -> None:
     cfg = cbfr.Config(robust_baseline_bars=2, robust_min_periods=2)
     panel = pd.DataFrame(
