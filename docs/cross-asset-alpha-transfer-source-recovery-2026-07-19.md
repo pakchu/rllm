@@ -23,5 +23,13 @@ The recovery is availability-only and fail-closed:
 7. Source hashes, discarded-prefix count, quarantined-row count, and an invalid
    date hash are written to the final result.
 
+The final integrity pass additionally fails on raw duplicate session dates,
+permits a long null-run recovery only when the run begins within 31 days of the
+provider history and has at most 20 valid rows before it, and aligns QQQ/GLD to
+their common provider-session union. `^KS11` is loaded only as a KRX session-date
+reference for KODEX 200; none of its prices or returns enter features, signals,
+performance, or selection. Missing reference sessions are inserted as explicit
+invalid rows, so every crossing signal/hold is skipped.
+
 This repair cannot improve a policy by inspecting returns; it only removes or
 invalidates unsupported observations.

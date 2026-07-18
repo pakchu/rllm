@@ -89,6 +89,71 @@ def test_yahoo_parser_discards_long_null_prefix_and_quarantines_later_gap() -> N
     assert meta["invalid_rows_quarantined"] == 1
 
 
+def test_yahoo_parser_rejects_duplicate_sessions() -> None:
+    payload = {
+        "chart": {
+            "error": None,
+            "result": [
+                {
+                    "meta": {"exchangeTimezoneName": "UTC"},
+                    "timestamp": [1609459200, 1609459200],
+                    "indicators": {
+                        "quote": [
+                            {
+                                "open": [100.0, 100.0],
+                                "high": [101.0, 101.0],
+                                "low": [99.0, 99.0],
+                                "close": [100.0, 100.0],
+                                "volume": [10.0, 10.0],
+                            }
+                        ],
+                        "adjclose": [{"adjclose": [100.0, 100.0]}],
+                    },
+                }
+            ],
+        }
+    }
+    with np.testing.assert_raises_regex(RuntimeError, "duplicate sessions"):
+        evaluator.parse_yahoo_payload(json.dumps(payload).encode(), "DUP")
+
+
+def test_yahoo_parser_rejects_long_null_block_that_is_not_a_prefix() -> None:
+    timestamps = [1609459200 + 86400 * index for index in range(60)]
+    values = [100.0] * 30 + [None] * 20 + [100.0] * 10
+    payload = {
+        "chart": {
+            "error": None,
+            "result": [
+                {
+                    "meta": {"exchangeTimezoneName": "UTC"},
+                    "timestamp": timestamps,
+                    "indicators": {
+                        "quote": [
+                            {"open": values, "high": values, "low": values, "close": values, "volume": values}
+                        ],
+                        "adjclose": [{"adjclose": values}],
+                    },
+                }
+            ],
+        }
+    }
+    with np.testing.assert_raises_regex(RuntimeError, "not an unusable listing prefix"):
+        evaluator.parse_yahoo_payload(json.dumps(payload).encode(), "LATE_GAP")
+
+
+def test_reference_calendar_inserts_explicit_invalid_rows() -> None:
+    frame = _frame(3)
+    missing = frame["date"].iloc[1]
+    sparse = frame.drop(index=1).reset_index(drop=True)
+    sparse["source_valid"] = True
+    aligned, meta = evaluator.align_to_reference_calendar(sparse, pd.DatetimeIndex(frame["date"]))
+    assert aligned["date"].tolist() == frame["date"].tolist()
+    assert aligned["source_valid"].tolist() == [True, False, True]
+    assert pd.isna(aligned.loc[1, "close"])
+    assert meta["calendar_missing_rows_inserted"] == 1
+    assert aligned.loc[1, "date"] == missing
+
+
 def test_rex_features_do_not_change_when_only_future_rows_change() -> None:
     frame = _frame()
     base = evaluator.rex_signal_bank(frame)
