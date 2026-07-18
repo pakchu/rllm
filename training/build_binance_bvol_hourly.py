@@ -90,10 +90,14 @@ def read_archive(payload: bytes) -> pd.DataFrame:
     microseconds = frame["calc_time"].abs().gt(100_000_000_000_000)
     if microseconds.any() and not microseconds.all():
         raise ValueError("BVOL timestamps mix milliseconds and microseconds")
-    timestamp = frame["calc_time"].floordiv(1_000) if microseconds.all() else frame["calc_time"]
-    if not timestamp.mod(1_000).eq(0).all():
-        raise ValueError("BVOL calculation times are not whole UTC seconds")
-    frame["date"] = pd.to_datetime(timestamp, unit="ms", utc=True).dt.tz_convert(None)
+    timestamp_ms = frame["calc_time"].floordiv(1_000) if microseconds.all() else frame["calc_time"]
+    # Binance publishes one observation per UTC second, but calc_time can carry
+    # a small sub-second calculation jitter.  Floor the label; never average or
+    # forward-fill values.  More than one observation in a second fails closed.
+    timestamp_ms = timestamp_ms.floordiv(1_000).mul(1_000)
+    if timestamp_ms.duplicated().any() or not timestamp_ms.is_monotonic_increasing:
+        raise ValueError("BVOL contains duplicate or unordered UTC seconds")
+    frame["date"] = pd.to_datetime(timestamp_ms, unit="ms", utc=True).dt.tz_convert(None)
     return frame[["date", "index_value"]]
 
 
