@@ -230,8 +230,22 @@ def verify_evaluation_freeze() -> dict[str, Any]:
     if cbfr.canonical_hash(body) != payload.get("manifest_hash"):
         raise RuntimeError("CBFR evaluator freeze manifest hash mismatch")
     expected = {
-        "protocol": "CBFR-72 strict 2023 evaluator pre-outcome freeze v1",
-        "outcomes_opened": False,
+        "protocol": "CBFR-72 strict 2023 evaluator implementation-recovery freeze v2",
+        "outcomes_opened": True,
+        "prior_freeze_sha256": (
+            "72b2f91d3741fb9dd52c00332b723658575571a49fa438f994e476469f336ac3"
+        ),
+        "first_attempt": {
+            "execution_sources_opened": True,
+            "result_artifact_written": False,
+            "markdown_artifact_written": False,
+            "stdout_metric_payload_written": False,
+            "failure": "TypeError adding five-minute Timedelta to string control-clock dates",
+            "failure_stage": "delay-control construction after primary calculations",
+            "strategy_parameters_changed": False,
+            "support_clock_changed": False,
+            "outcome_metrics_used_for_repair": False,
+        },
         "evaluation_source": str(EVALUATION_SOURCE),
         "evaluation_source_sha256": sha256(EVALUATION_SOURCE),
         "test_path": str(TEST_PATH),
@@ -402,6 +416,8 @@ def load_bundle_2023() -> strict.MarketBundle:
 
 def transform_clock(clock: pd.DataFrame, kind: str) -> pd.DataFrame:
     output = clock.copy()
+    for column in ("signal_date", "entry_date", "exit_date"):
+        output[column] = pd.to_datetime(output[column], errors="raise")
     if kind == "direction_flip":
         output["side"] *= -1
     elif kind == "delay_five_minutes":
