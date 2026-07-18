@@ -185,3 +185,36 @@ def test_transfer_gate_requires_all_frozen_checks() -> None:
     matrix = {symbol: passing for symbol in evaluator.INSTRUMENTS}
     matrix["GLD"] = failing
     assert evaluator.transfer_gate(matrix)["all_three_passed"] is False
+
+
+def test_source_metadata_does_not_depend_on_cache_or_download_mode(tmp_path, monkeypatch) -> None:
+    payload = {
+        "chart": {
+            "error": None,
+            "result": [
+                {
+                    "meta": {"exchangeTimezoneName": "UTC"},
+                    "timestamp": [1609459200, 1609545600],
+                    "indicators": {
+                        "quote": [
+                            {
+                                "open": [100.0, 101.0],
+                                "high": [101.0, 102.0],
+                                "low": [99.0, 100.0],
+                                "close": [100.0, 101.0],
+                                "volume": [10.0, 11.0],
+                            }
+                        ],
+                        "adjclose": [{"adjclose": [100.0, 101.0]}],
+                    },
+                }
+            ],
+        }
+    }
+    raw = json.dumps(payload).encode()
+    monkeypatch.setattr(evaluator, "download_payload", lambda *args, **kwargs: (raw, "download"))
+    _, downloaded = evaluator.load_market("TEST", str(tmp_path))
+    monkeypatch.setattr(evaluator, "download_payload", lambda *args, **kwargs: (raw, "cache"))
+    _, cached = evaluator.load_market("TEST", str(tmp_path))
+    assert downloaded == cached
+    assert "load_mode" not in downloaded

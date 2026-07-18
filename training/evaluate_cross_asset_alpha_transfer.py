@@ -177,9 +177,8 @@ def parse_yahoo_payload(raw: bytes, symbol: str) -> tuple[pd.DataFrame, dict[str
 
 
 def load_market(symbol: str, cache_dir: str = CACHE_DIR, *, refresh: bool = False) -> tuple[pd.DataFrame, dict[str, Any]]:
-    raw, mode = download_payload(symbol, cache_dir, refresh=refresh)
+    raw, _mode = download_payload(symbol, cache_dir, refresh=refresh)
     frame, meta = parse_yahoo_payload(raw, symbol)
-    meta["load_mode"] = mode
     return frame, meta
 
 
