@@ -73,3 +73,30 @@ def test_frozen_evaluator_artifact_replays() -> None:
     assert stored["manifest_hash"] == (
         "76f91543c284535dcf46f01c38e2bbb47f7192a57422c2d247198822f442feae"
     )
+
+
+def test_frozen_stage1_is_rejected_and_keeps_2023_sealed() -> None:
+    stored = json.loads(Path(evaluator.STAGE1_OUTPUT).read_text())
+    assert evaluator._sha256(evaluator.STAGE1_OUTPUT) == (
+        "57ba5710033d7d816cbf9dac04d34f7e3ee4441b38024a0c23f49a2a3ace413e"
+    )
+    assert stored["manifest_hash"] == (
+        "bc47514ad06ad3e4a422d078a7436f13077c3634fe3234fc9b4ba04c416a08d6"
+    )
+    assert stored["gate_passed"] is False
+    assert stored["disposition"] == "REJECT_KEEP_2023_SEALED"
+    assert stored["opened_windows"] == ["stage1_2020_2022"]
+    assert stored["sealed_windows"] == ["stage2_2023", "2024_plus"]
+    primary = stored["headline_by_clock"]["primary"]
+    assert primary["absolute_return_pct"] == pytest.approx(6.503480502844838)
+    assert primary["cagr_pct"] == pytest.approx(2.1219705301286362)
+    assert primary["strict_mdd_pct"] == pytest.approx(4.35091163184399)
+    assert primary["cagr_to_strict_mdd"] == pytest.approx(0.48770710822947905)
+    assert primary["trades"] == 26
+    diagnostics = stored["execution_diagnostics"]
+    assert diagnostics["market"]["last_timestamp"] == "2022-12-31T23:55:00+00:00"
+    assert diagnostics["funding"]["last_timestamp"] == "2022-12-31T16:00:00+00:00"
+    assert diagnostics["market"]["stopped_before_parsing_end_boundary"] is True
+    assert diagnostics["funding"]["stopped_before_parsing_end_boundary"] is True
+    with pytest.raises(ValueError, match="Stage1 failed; 2023 remains sealed"):
+        evaluator._verified_passing_stage1(stored["evaluator_freeze_manifest_hash"])
