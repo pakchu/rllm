@@ -14,4 +14,5 @@ The strategy universe is QQQ, KODEX 200, and GLD only. No KOSPI price or signal 
 
 Investing.com TVC is an unofficial source and is not suitable as a production market-data contract.
 The committed artifact records canonical chunk hashes; extracted raw payloads remain local.
+KRX no-bar intervals are accepted only when they exactly match the pre-outcome frozen allowlist; any new interval fails closed.
 Production replication should use an entitled broker feed such as IBKR or KIS and re-run parity checks.

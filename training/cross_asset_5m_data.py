@@ -51,6 +51,17 @@ UNUSABLE_PREFIX_THROUGH = {
     "GLD": "2024-08-05",
 }
 US_CLOSED_PRINT_DATES = {"2025-12-25"}
+FROZEN_KRX_NO_BAR_GAPS = (
+    ("2024-08-05", "2024-08-05T14:10:00", "2024-08-05T14:40:00", 30),
+    ("2025-04-23", "2025-04-23T12:35:00", "2025-04-23T12:50:00", 15),
+    ("2026-03-04", "2026-03-04T11:15:00", "2026-03-04T11:45:00", 30),
+    ("2026-03-09", "2026-03-09T10:30:00", "2026-03-09T11:00:00", 30),
+    ("2026-06-08", "2026-06-08T09:00:00", "2026-06-08T09:30:00", 30),
+    ("2026-06-23", "2026-06-23T14:30:00", "2026-06-23T15:00:00", 30),
+    ("2026-06-26", "2026-06-26T12:10:00", "2026-06-26T12:40:00", 30),
+    ("2026-07-07", "2026-07-07T13:50:00", "2026-07-07T14:20:00", 30),
+    ("2026-07-13", "2026-07-13T13:25:00", "2026-07-13T13:55:00", 30),
+)
 
 
 def _sha256(raw: bytes) -> str:
@@ -384,6 +395,22 @@ def normalize_provider_rows(
         full_count = 78 if timezone == "America/New_York" else 76
         if count != full_count:
             short_sessions.append(session.strftime("%Y-%m-%d"))
+    if timezone == "Asia/Seoul":
+        observed_sessions = set(frame["session_date"].dt.strftime("%Y-%m-%d"))
+        expected_gaps = [
+            {
+                "session_date": session_date,
+                "previous_bar": previous_bar,
+                "next_bar": next_bar,
+                "gap_minutes": gap_minutes,
+            }
+            for session_date, previous_bar, next_bar, gap_minutes in FROZEN_KRX_NO_BAR_GAPS
+            if session_date in observed_sessions
+        ]
+        if no_bar_gaps != expected_gaps:
+            raise RuntimeError(
+                "KRX no-bar intervals differ from the pre-outcome frozen allowlist; fail closed"
+            )
     frame = frame.sort_values("timestamp_utc").reset_index(drop=True)
     return frame, {
         "rows_regular_session": len(frame),
@@ -633,6 +660,7 @@ def render_docs(report: dict[str, Any]) -> str:
         "",
         "Investing.com TVC is an unofficial source and is not suitable as a production market-data contract.",
         "The committed artifact records canonical chunk hashes; extracted raw payloads remain local.",
+        "KRX no-bar intervals are accepted only when they exactly match the pre-outcome frozen allowlist; any new interval fails closed.",
         "Production replication should use an entitled broker feed such as IBKR or KIS and re-run parity checks.",
     ]
     return "\n".join(lines) + "\n"

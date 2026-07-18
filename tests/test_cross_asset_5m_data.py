@@ -81,7 +81,7 @@ def test_apply_daily_adjustment_preserves_raw_and_scales_ohlc() -> None:
 def test_krx_provider_stable_no_bar_gap_is_retained_without_synthesis() -> None:
     payload = _payload("2026-03-04T00:00:00Z", rows=76)
     for key in ("t", "o", "h", "l", "c", "v"):
-        del payload[key][30:35]
+        del payload[key][28:33]
     frame, meta = source.normalize_provider_rows(
         [payload],
         symbol="069500",
@@ -93,6 +93,21 @@ def test_krx_provider_stable_no_bar_gap_is_retained_without_synthesis() -> None:
     assert len(frame) == 71
     assert meta["provider_stable_no_bar_gap_count"] == 1
     assert meta["provider_stable_no_bar_gaps"][0]["gap_minutes"] == 30
+
+
+def test_krx_unfrozen_interior_gap_fails_closed() -> None:
+    payload = _payload("2026-03-05T00:00:00Z", rows=76)
+    for key in ("t", "o", "h", "l", "c", "v"):
+        del payload[key][28:33]
+    with pytest.raises(RuntimeError, match="frozen allowlist"):
+        source.normalize_provider_rows(
+            [payload],
+            symbol="069500",
+            timezone="Asia/Seoul",
+            regular_session=("09:00", "15:20"),
+            start_utc=pd.Timestamp("2026-03-05T00:00:00Z"),
+            end_utc=pd.Timestamp("2026-03-06T00:00:00Z"),
+        )
 
 
 def test_action_date_can_bridge_missing_daily_factor_without_price_imputation() -> None:
