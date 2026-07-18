@@ -45,33 +45,33 @@ def test_incidence_selection_and_independence_are_frozen() -> None:
     assert len(cells) == 12
     selected = support["support_selection"]["selected_cell"]
     assert selected["flow_quantile"] == 0.75
-    assert selected["defense_threshold"] == 0.25
+    assert selected["defense_threshold"] == 0.50
     assert selected["support"] == {
-        "by_quarter": {"q1": 20, "q2": 37, "q3": 46, "q4": 37},
-        "h1": 57,
-        "h2": 83,
-        "long_share": 75 / 140,
-        "longs": 75,
-        "maximum_quarter_share": 46 / 140,
-        "nonoverlap_total": 140,
+        "by_quarter": {"q1": 22, "q2": 44, "q3": 43, "q4": 35},
+        "h1": 66,
+        "h2": 78,
+        "long_share": 74 / 144,
+        "longs": 74,
+        "maximum_quarter_share": 44 / 144,
+        "nonoverlap_total": 144,
         "passes": True,
-        "short_share": 65 / 140,
-        "shorts": 65,
+        "short_share": 70 / 144,
+        "shorts": 70,
     }
     overlap = support["outcome_blind_independence"]
     assert overlap["pdf10"]["prior_events"] == 591
     assert max(item["jaccard"] for item in overlap.values()) < 0.04
-    assert max(item["new_clock_containment"] for item in overlap.values()) < 0.09
+    assert max(item["new_clock_containment"] for item in overlap.values()) < 0.07
 
 
 def test_event_clock_has_no_outcome_and_is_quarter_contained() -> None:
     support = json.loads(SUPPORT.read_text())
     clock = json.loads(CLOCK.read_text())
-    assert _sha256(SUPPORT) == "5c2793a504b63c0b928b5a75407d0099e03a6c30f41cc0bce768837fbed3aa93"
-    assert _sha256(CLOCK) == "b95e49600611c21a090efb43d9949607384c0a39188da4a5a069bd99bd152631"
+    assert _sha256(SUPPORT) == "048a8723494a91b082bdd07d466e1741a13a974c3c3c25c8ec81e081f27cc444"
+    assert _sha256(CLOCK) == "79b4838ae634efcff705e028a0ddff8b75d28d79180e3ac89f54b9cab7e5005f"
     assert clock["post_entry_outcomes_opened"] is False
     assert clock["entry_or_later_ohlc_loaded"] is False
-    assert clock["event_count"] == 140
+    assert clock["event_count"] == 144
     assert clock["event_clock_sha256"] == support["event_clock_sha256"]
     forbidden = {"return", "pnl", "funding", "equity", "cagr", "mdd", "high", "low"}
     for event in clock["events"]:
