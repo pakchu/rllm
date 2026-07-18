@@ -56,7 +56,9 @@ For the five-minute bar labelled `t`:
 6. Exit at the open 72 bars after entry, exactly six hours later.
 
 Signals are non-overlapping within each UTC calendar quarter, and entry plus
-exit must remain inside the same quarter. Missing source rows fail closed.
+exit must remain inside the same quarter. A missing or invalid **signal row**
+fails closed. Future signal-source availability cannot cancel a trade that was
+already knowable and scheduled at entry.
 
 ## Outcome-blind incidence calibration
 

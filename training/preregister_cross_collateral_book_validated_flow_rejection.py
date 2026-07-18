@@ -363,7 +363,10 @@ def build_signal(
             "side": side,
             "branch": branch,
             "hold_bars": np.where(side.ne(0), cfg.hold_bars, 0).astype(np.int16),
-            "quarantined": frame["quarantined"].astype(bool),
+            # Signal-time validity is already frozen into ``panel[clean]``.
+            # Future source availability is unknowable at entry and therefore
+            # must never cancel an otherwise scheduled trade.
+            "quarantined": False,
         }
     )
 
@@ -481,8 +484,13 @@ def fuzzy_overlap(
 
 
 def load_prior_clocks(credibility: pd.DataFrame) -> dict[str, pd.DataFrame]:
-    pdf_signal = build_pdf_signal(credibility, CredibilityConfig())
-    pdf = pdf_quarterly_schedule(pdf_signal, credibility)
+    pdf_frame = credibility.copy()
+    # Reproduce PDF-10's own clock. CBFR-only market validity must not alter a
+    # prior policy, and PDF-10 likewise did not use future source availability
+    # to cancel an entered trade.
+    pdf_frame["quarantined"] = False
+    pdf_signal = build_pdf_signal(pdf_frame, CredibilityConfig())
+    pdf = pdf_quarterly_schedule(pdf_signal, pdf_frame)
     clocks: dict[str, pd.DataFrame] = {"pdf10": pdf[["signal_date", "side"]].copy()}
     for name, path in PRIOR_CLOCKS.items():
         if path.suffix == ".json":
