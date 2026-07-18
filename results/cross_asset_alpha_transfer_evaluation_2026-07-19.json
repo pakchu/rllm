@@ -1,0 +1,2443 @@
+{
+  "schema_version": 1,
+  "research_id": "CAT-XA-1",
+  "preregistration_manifest_hash": "3e89889f79215fc383fc3375119d774a62d6c765b7d53043384a5c2597d86056",
+  "protocol": {
+    "exact_gross8_port": false,
+    "thresholds_fit_train_only": true,
+    "test_eval_reranking": false,
+    "entry": "next session open",
+    "nonoverlap": true,
+    "base_cost_bps_per_side": 5.0,
+    "stress_cost_bps_per_side": 10.0,
+    "cagr_uses_full_split_calendar": true,
+    "strict_mdd_uses_held_daily_high_low": true,
+    "data_source_limit": "Yahoo Finance chart API is a practical common adjusted-OHLCV source, not an official exchange feed. Production use requires independent QQQ/GLD and KODEX200 source parity.",
+    "production_replication_targets": {
+      "QQQ": "https://www.nasdaq.com/market-activity/etf/qqq/historical",
+      "069500.KS": "https://data.krx.co.kr/contents/MDC/MAIN/main/index.cmd?locale=en",
+      "GLD": "https://www.ssga.com/us/en/intermediary/etfs/spdr-gold-shares-gld"
+    }
+  },
+  "splits": {
+    "train": [
+      "2007-01-29",
+      "2017-01-01"
+    ],
+    "test": [
+      "2017-01-01",
+      "2022-01-01"
+    ],
+    "eval": [
+      "2022-01-01",
+      "2026-07-19"
+    ]
+  },
+  "calendar_reference": {
+    "symbol": "^KS11",
+    "purpose": "KRX provider-session dates only; no OHLC, feature, signal, return, or selection use",
+    "source": {
+      "symbol": "^KS11",
+      "source_url": "https://query1.finance.yahoo.com/v8/finance/chart/%5EKS11?period1=946684800&period2=1784419200&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+      "raw_bytes": 685507,
+      "raw_sha256": "5dc3ac8fd1efc57d86151e257ea01d054669b4b48ff561f1021fb21a01772a7b",
+      "exchange_timezone": "Asia/Seoul",
+      "rows": 6635,
+      "valid_rows": 6535,
+      "invalid_rows_quarantined": 100,
+      "invalid_dates_sha256": "187989c08bba6718f57bc5d368c971ed5ea85aa076bba587227736cd094529ac",
+      "discarded_unusable_prefix_rows": 0,
+      "discarded_unusable_prefix_through": null,
+      "start": "2000-01-04",
+      "end": "2026-07-16",
+      "max_calendar_gap_days": 11
+    }
+  },
+  "instruments": {
+    "QQQ": {
+      "source": {
+        "symbol": "QQQ",
+        "source_url": "https://query1.finance.yahoo.com/v8/finance/chart/QQQ?period1=946684800&period2=1784419200&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+        "raw_bytes": 723293,
+        "raw_sha256": "e9d0cbb6bbe41345f8897071198322f14f82f065c2f8ba0b9896be1ad434f162",
+        "exchange_timezone": "America/New_York",
+        "rows": 6674,
+        "valid_rows": 6674,
+        "invalid_rows_quarantined": 0,
+        "invalid_dates_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "discarded_unusable_prefix_rows": 0,
+        "discarded_unusable_prefix_through": null,
+        "start": "2000-01-03",
+        "end": "2026-07-17",
+        "max_calendar_gap_days": 7,
+        "calendar_reference": "QQQ/GLD provider-session union",
+        "calendar_reference_rows": 6674,
+        "calendar_missing_rows_inserted": 0,
+        "calendar_missing_dates_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "policies": {
+        "rex_pullback_reclaim_session": {
+          "threshold": 0.042752517757927704,
+          "threshold_quantile": 0.75,
+          "threshold_fit_positive_events": 369,
+          "hold_sessions": 2,
+          "raw_signal_counts": {
+            "train": 92,
+            "test": 53,
+            "eval": 39
+          },
+          "windows": {
+            "train": {
+              "base_5bp": {
+                "absolute_return_pct": 23.964905600729058,
+                "cagr_pct": 2.1881320984335373,
+                "strict_mdd_pct": 22.181910836070085,
+                "cagr_to_strict_mdd": 0.09864488747630379,
+                "trades": 69,
+                "longs": 17,
+                "shorts": 52,
+                "win_rate": 0.463768115942029,
+                "mean_trade_return_pct": 0.3526862864477175,
+                "one_sided_t_pvalue": 0.16023922227919496,
+                "t_statistic": 1.0007857756395018,
+                "yearly_return_pct": {
+                  "2007": 1.439714552356186,
+                  "2008": 20.207885754618626,
+                  "2009": -1.3819805409876595,
+                  "2010": 3.236419698021553,
+                  "2011": -7.0001733411573674,
+                  "2012": 1.9348596039537647,
+                  "2013": -1.6156472799157329,
+                  "2014": 0.9722797056782584,
+                  "2015": 6.251163122620529,
+                  "2016": -0.20660207176400602
+                },
+                "years_with_trade": 10,
+                "positive_calendar_year_share": 0.6,
+                "trade_clock_hash": "7c75e1d42e1c68a21c4eea54082dfb77619add1150a331e84e79e829301754e7"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": 15.693761822780395,
+                "cagr_pct": 1.4796338339155835,
+                "strict_mdd_pct": 23.00387950573606,
+                "cagr_to_strict_mdd": 0.06432105652208073,
+                "trades": 69,
+                "longs": 17,
+                "shorts": 52,
+                "win_rate": 0.43478260869565216,
+                "mean_trade_return_pct": 0.25230851199596427,
+                "one_sided_t_pvalue": 0.2380161123966688,
+                "t_statistic": 0.7166697497843947,
+                "yearly_return_pct": {
+                  "2007": 0.8324444333255521,
+                  "2008": 18.061906083210346,
+                  "2009": -1.972358547074582,
+                  "2010": 2.413208154542801,
+                  "2011": -7.741757862114518,
+                  "2012": 1.62928442950514,
+                  "2013": -1.7140562287178307,
+                  "2014": 0.5688953471428837,
+                  "2015": 5.403911888545965,
+                  "2016": -0.9032372782415532
+                },
+                "years_with_trade": 10,
+                "positive_calendar_year_share": 0.6,
+                "trade_clock_hash": "7c75e1d42e1c68a21c4eea54082dfb77619add1150a331e84e79e829301754e7"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": -33.82955275553265,
+                "cagr_pct": -4.075238053419472,
+                "strict_mdd_pct": 37.89134677125515,
+                "cagr_to_strict_mdd": -0.10755062568826397,
+                "trades": 69,
+                "longs": 52,
+                "shorts": 17,
+                "win_rate": 0.4782608695652174,
+                "mean_trade_return_pct": -0.5526362864476939,
+                "one_sided_t_pvalue": 0.9392577493015833,
+                "t_statistic": -1.5681656923768064,
+                "yearly_return_pct": {
+                  "2007": -2.9994740552566457,
+                  "2008": -22.643193325797984,
+                  "2009": -0.10827134941895356,
+                  "2010": -4.946587496656496,
+                  "2011": 5.6090695076474795,
+                  "2012": -2.5235426184974985,
+                  "2013": 1.4156972799157508,
+                  "2014": -1.8340006115952434,
+                  "2015": -7.929831237318908,
+                  "2016": -1.5744070462713422
+                },
+                "years_with_trade": 10,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "188c381e89d4832366e057c35169bd08c03e25d390649d4dc99b5e6256cfcf85"
+              }
+            },
+            "test": {
+              "base_5bp": {
+                "absolute_return_pct": 7.601887777772132,
+                "cagr_pct": 1.4763222042919688,
+                "strict_mdd_pct": 15.669049580261085,
+                "cagr_to_strict_mdd": 0.09421900139698006,
+                "trades": 46,
+                "longs": 13,
+                "shorts": 33,
+                "win_rate": 0.5434782608695652,
+                "mean_trade_return_pct": 0.18503356492282677,
+                "one_sided_t_pvalue": 0.2936547252207202,
+                "t_statistic": 0.5466651099903795,
+                "yearly_return_pct": {
+                  "2017": -1.9113390606751546,
+                  "2018": -5.390661371975225,
+                  "2019": 3.0149175036855214,
+                  "2020": 19.822407572651347,
+                  "2021": -6.064680308986581
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "4d2f5beba5489adc459d678734bd4522ec114efe9a48f085ab719c40417296bc"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": 2.7607699712610234,
+                "cagr_pct": 0.5462193360964207,
+                "strict_mdd_pct": 16.257744927626106,
+                "cagr_to_strict_mdd": 0.03359748467748765,
+                "trades": 46,
+                "longs": 13,
+                "shorts": 33,
+                "win_rate": 0.5,
+                "mean_trade_return_pct": 0.08482348510577106,
+                "one_sided_t_pvalue": 0.40153432710752524,
+                "t_statistic": 0.25085431341321257,
+                "yearly_return_pct": {
+                  "2017": -2.107467289160636,
+                  "2018": -6.238958592440569,
+                  "2019": 1.8871217976876409,
+                  "2020": 18.03715537266828,
+                  "2021": -6.906934062717074
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "4d2f5beba5489adc459d678734bd4522ec114efe9a48f085ab719c40417296bc"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": -17.258320239453894,
+                "cagr_pct": -3.7184769328032163,
+                "strict_mdd_pct": 29.82937723308352,
+                "cagr_to_strict_mdd": -0.12465821541453717,
+                "trades": 46,
+                "longs": 33,
+                "shorts": 13,
+                "win_rate": 0.41304347826086957,
+                "mean_trade_return_pct": -0.3849835649228084,
+                "one_sided_t_pvalue": 0.8693042739658772,
+                "t_statistic": -1.1373994926314688,
+                "yearly_return_pct": {
+                  "2017": 1.5252317201913224,
+                  "2018": 2.9298390740545965,
+                  "2019": -5.336481130912773,
+                  "2020": -19.828866036802417,
+                  "2021": 4.329801139591072
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.6,
+                "trade_clock_hash": "bc8e15667fdd1d76a1e82dd1983423a3d4a6520ac822448ccd01c3658dfa6c6c"
+              }
+            },
+            "eval": {
+              "base_5bp": {
+                "absolute_return_pct": 19.072630867348227,
+                "cagr_pct": 3.9155569985891203,
+                "strict_mdd_pct": 14.086684460883214,
+                "cagr_to_strict_mdd": 0.27796157495130125,
+                "trades": 35,
+                "longs": 12,
+                "shorts": 23,
+                "win_rate": 0.5428571428571428,
+                "mean_trade_return_pct": 0.5284878075895658,
+                "one_sided_t_pvalue": 0.1043215224205389,
+                "t_statistic": 1.281632920818908,
+                "yearly_return_pct": {
+                  "2022": 33.294658522461496,
+                  "2023": -1.845462812696319,
+                  "2024": -3.989423137811332,
+                  "2025": -4.384977359575504,
+                  "2026": -0.8612104571799284
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "1fba990ff70a8d80c48b9bf84ad00d3b787e81184fffd30499336a2017ccfdaf"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": 14.974156832980846,
+                "cagr_pct": 3.1177914520903904,
+                "strict_mdd_pct": 15.704830000931945,
+                "cagr_to_strict_mdd": 0.19852436810238483,
+                "trades": 35,
+                "longs": 12,
+                "shorts": 23,
+                "win_rate": 0.5428571428571428,
+                "mean_trade_return_pct": 0.4279341876663044,
+                "one_sided_t_pvalue": 0.15311001721751571,
+                "t_statistic": 1.0388199612318727,
+                "yearly_return_pct": {
+                  "2022": 31.44015422918831,
+                  "2023": -2.530657501921718,
+                  "2024": -4.4686364097775595,
+                  "2025": -4.957377887674341,
+                  "2026": -1.1584037139997894
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "1fba990ff70a8d80c48b9bf84ad00d3b787e81184fffd30499336a2017ccfdaf"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": -23.376220241116997,
+                "cagr_pct": -5.690156291274295,
+                "strict_mdd_pct": 31.820259445816856,
+                "cagr_to_strict_mdd": -0.17882180693603153,
+                "trades": 35,
+                "longs": 23,
+                "shorts": 12,
+                "win_rate": 0.45714285714285713,
+                "mean_trade_return_pct": -0.7284378075895399,
+                "one_sided_t_pvalue": 0.9568577829661717,
+                "t_statistic": -1.7665305832390126,
+                "yearly_return_pct": {
+                  "2022": -28.195029491480117,
+                  "2023": 0.267424698605212,
+                  "2024": 3.062609075357292,
+                  "2025": 3.119895383585125,
+                  "2026": 0.1395432847834055
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.8,
+                "trade_clock_hash": "b80d28eb8b7644957644f7c51b794f97e7d9343b81e26956efde195408bd2c50"
+              }
+            }
+          }
+        },
+        "rex_multiscale_extreme_fade_session": {
+          "threshold": 0.3638120709040663,
+          "threshold_quantile": 0.75,
+          "threshold_fit_positive_events": 1074,
+          "hold_sessions": 2,
+          "raw_signal_counts": {
+            "train": 269,
+            "test": 226,
+            "eval": 136
+          },
+          "windows": {
+            "train": {
+              "base_5bp": {
+                "absolute_return_pct": -23.73852724287738,
+                "cagr_pct": -2.6935840618374396,
+                "strict_mdd_pct": 39.18001206911698,
+                "cagr_to_strict_mdd": -0.06874893394840514,
+                "trades": 171,
+                "longs": 20,
+                "shorts": 151,
+                "win_rate": 0.391812865497076,
+                "mean_trade_return_pct": -0.1491453965726898,
+                "one_sided_t_pvalue": 0.923446985215965,
+                "t_statistic": -1.435064147862005,
+                "yearly_return_pct": {
+                  "2007": -3.4741955564889793,
+                  "2008": -4.571902695982722,
+                  "2009": 2.4966099362683902,
+                  "2010": 2.126282918456912,
+                  "2011": -0.05277812888293543,
+                  "2012": -3.433213759164566,
+                  "2013": -7.9561847570224,
+                  "2014": -5.135994659094212,
+                  "2015": -5.732835823220517,
+                  "2016": -0.4403296655610678
+                },
+                "years_with_trade": 10,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "d79dbac2dbf598cbbc3906285ea31b815c3c1c41d1ae0c793d70e58fb3ba014b"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -35.73343466770543,
+                "cagr_pct": -4.3569890378649,
+                "strict_mdd_pct": 46.652871241961215,
+                "cagr_to_strict_mdd": -0.09339165890278738,
+                "trades": 171,
+                "longs": 20,
+                "shorts": 151,
+                "win_rate": 0.32748538011695905,
+                "mean_trade_return_pct": -0.24902121388353152,
+                "one_sided_t_pvalue": 0.9912266545864882,
+                "t_statistic": -2.3984597109675363,
+                "yearly_return_pct": {
+                  "2007": -4.9123481377032485,
+                  "2008": -5.522137267354365,
+                  "2009": 0.36504226132829665,
+                  "2010": 0.0024167382375983593,
+                  "2011": -1.6403896341854352,
+                  "2012": -5.062185368922689,
+                  "2013": -9.689795992834583,
+                  "2014": -7.479931414216945,
+                  "2015": -6.951285723329004,
+                  "2016": -1.8254852158187562
+                },
+                "years_with_trade": 10,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "d79dbac2dbf598cbbc3906285ea31b815c3c1c41d1ae0c793d70e58fb3ba014b"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": -9.752580670620237,
+                "cagr_pct": -1.0285886779366926,
+                "strict_mdd_pct": 24.229517392308818,
+                "cagr_to_strict_mdd": -0.042451884669531134,
+                "trades": 171,
+                "longs": 151,
+                "shorts": 20,
+                "win_rate": 0.4853801169590643,
+                "mean_trade_return_pct": -0.05080460342728943,
+                "one_sided_t_pvalue": 0.68720661000977,
+                "t_statistic": -0.48883751426626626,
+                "yearly_return_pct": {
+                  "2007": 0.449164358545473,
+                  "2008": 1.9544365153929766,
+                  "2009": -7.074584552441065,
+                  "2010": -6.244619096035208,
+                  "2011": -3.929041254562926,
+                  "2012": -0.012021229914438436,
+                  "2013": 4.508193766275603,
+                  "2014": 0.11223218193268103,
+                  "2015": 3.139879378293675,
+                  "2016": -2.422968672089254
+                },
+                "years_with_trade": 10,
+                "positive_calendar_year_share": 0.5,
+                "trade_clock_hash": "af8624c9d8a314af7e5848fd6ef952c959c40fede14d38c5f7cc6c2efd6935e2"
+              }
+            },
+            "test": {
+              "base_5bp": {
+                "absolute_return_pct": -31.062184366610126,
+                "cagr_pct": -7.170129680999116,
+                "strict_mdd_pct": 33.41824841773426,
+                "cagr_to_strict_mdd": -0.2145573158524401,
+                "trades": 126,
+                "longs": 3,
+                "shorts": 123,
+                "win_rate": 0.3492063492063492,
+                "mean_trade_return_pct": -0.2873144235356803,
+                "one_sided_t_pvalue": 0.9952310935209172,
+                "t_statistic": -2.632756614680731,
+                "yearly_return_pct": {
+                  "2017": -8.109629302646681,
+                  "2018": -2.0019750983116036,
+                  "2019": -2.288636117847531,
+                  "2020": -15.228860400944022,
+                  "2021": -7.577631270541296
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.0,
+                "trade_clock_hash": "58b0f0e07868959abb2ab4e61f05f48e8dd7d90571438133841a748d12989cc1"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -39.229145820537205,
+                "cagr_pct": -9.482190908711374,
+                "strict_mdd_pct": 41.188496863543534,
+                "cagr_to_strict_mdd": -0.23021454121342755,
+                "trades": 126,
+                "longs": 3,
+                "shorts": 123,
+                "win_rate": 0.30158730158730157,
+                "mean_trade_return_pct": -0.3870520372773129,
+                "one_sided_t_pvalue": 0.999728355568627,
+                "t_statistic": -3.550236315754482,
+                "yearly_return_pct": {
+                  "2017": -11.272491293418174,
+                  "2018": -4.039988084480683,
+                  "2019": -4.320687566720061,
+                  "2020": -17.157775716209457,
+                  "2021": -9.951400413804857
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.0,
+                "trade_clock_hash": "58b0f0e07868959abb2ab4e61f05f48e8dd7d90571438133841a748d12989cc1"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": 10.588842656470089,
+                "cagr_pct": 2.0336164636407528,
+                "strict_mdd_pct": 12.120654091034977,
+                "cagr_to_strict_mdd": 0.16778108247020382,
+                "trades": 126,
+                "longs": 123,
+                "shorts": 3,
+                "win_rate": 0.5714285714285714,
+                "mean_trade_return_pct": 0.08736442353570299,
+                "one_sided_t_pvalue": 0.21245586396508936,
+                "t_statistic": 0.8005489634697286,
+                "yearly_return_pct": {
+                  "2017": 1.2765236709683991,
+                  "2018": -2.4370773326427675,
+                  "2019": -2.0360280409227216,
+                  "2020": 11.5346951184649,
+                  "2021": 2.4333451598083977
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.6,
+                "trade_clock_hash": "e86088ce0de7388bf8d72e67f9828276525c9352dc4e6b369424a13b5b144185"
+              }
+            },
+            "eval": {
+              "base_5bp": {
+                "absolute_return_pct": -23.890794094340052,
+                "cagr_pct": -5.829875094337977,
+                "strict_mdd_pct": 38.54832118294601,
+                "cagr_to_strict_mdd": -0.15123551209065741,
+                "trades": 81,
+                "longs": 16,
+                "shorts": 65,
+                "win_rate": 0.345679012345679,
+                "mean_trade_return_pct": -0.31928496573750265,
+                "one_sided_t_pvalue": 0.9355146758879229,
+                "t_statistic": -1.5340181765885148,
+                "yearly_return_pct": {
+                  "2022": 8.378185711799047,
+                  "2023": -9.64440223696017,
+                  "2024": -9.998397500973688,
+                  "2025": -6.082179996351067,
+                  "2026": -8.052059673625456
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "1cddc23dbed77663eece3c0e951e5e93d04d6a8c3dd483986b2aa088842ed032"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -29.816837528595862,
+                "cagr_pct": -7.4945524560934285,
+                "strict_mdd_pct": 42.87759833684714,
+                "cagr_to_strict_mdd": -0.1747894645874542,
+                "trades": 81,
+                "longs": 16,
+                "shorts": 65,
+                "win_rate": 0.32098765432098764,
+                "mean_trade_return_pct": -0.4189906009442971,
+                "one_sided_t_pvalue": 0.9763720969327925,
+                "t_statistic": -2.015073712503423,
+                "yearly_return_pct": {
+                  "2022": 7.191673549953692,
+                  "2023": -11.257451786747874,
+                  "2024": -11.781872946857664,
+                  "2025": -7.943259368901834,
+                  "2026": -9.149659400807032
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "1cddc23dbed77663eece3c0e951e5e93d04d6a8c3dd483986b2aa088842ed032"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": 8.590431508479291,
+                "cagr_pct": 1.829839513281395,
+                "strict_mdd_pct": 20.659360148285934,
+                "cagr_to_strict_mdd": 0.08857193543979207,
+                "trades": 81,
+                "longs": 65,
+                "shorts": 16,
+                "win_rate": 0.6172839506172839,
+                "mean_trade_return_pct": 0.11933496573752193,
+                "one_sided_t_pvalue": 0.28400802432954064,
+                "t_statistic": 0.573349910544893,
+                "yearly_return_pct": {
+                  "2022": -11.180562086284285,
+                  "2023": 6.405454469460836,
+                  "2024": 6.2566634591819215,
+                  "2025": 2.080583631158217,
+                  "2026": 5.930330789643201
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.8,
+                "trade_clock_hash": "9a70781954c6012a79eee5daeff0a69a7032b6698c0a577ae12448fd12ad1e7e"
+              }
+            }
+          }
+        },
+        "persistent_barrier_mass_density_fade_session": {
+          "threshold": 10.32340592377649,
+          "threshold_quantile": 0.975,
+          "threshold_fit_positive_events": 619,
+          "hold_sessions": 4,
+          "raw_signal_counts": {
+            "train": 16,
+            "test": 5,
+            "eval": 8
+          },
+          "windows": {
+            "train": {
+              "base_5bp": {
+                "absolute_return_pct": 28.5930583514024,
+                "cagr_pct": 2.566227326654902,
+                "strict_mdd_pct": 13.463616327467387,
+                "cagr_to_strict_mdd": 0.19060460906179355,
+                "trades": 16,
+                "longs": 6,
+                "shorts": 10,
+                "win_rate": 0.625,
+                "mean_trade_return_pct": 1.6717778423680405,
+                "one_sided_t_pvalue": 0.07731541426993682,
+                "t_statistic": 1.4989709294437779,
+                "yearly_return_pct": {
+                  "2007": -2.4390252131144763,
+                  "2008": 17.3403133786872,
+                  "2009": 4.1301296055817005,
+                  "2010": 1.7781836096167458,
+                  "2011": 0.0,
+                  "2012": 1.2204572767913868,
+                  "2013": -0.12957233697175052,
+                  "2014": 0.0,
+                  "2015": 4.847442461921947,
+                  "2016": 0.0
+                },
+                "years_with_trade": 7,
+                "positive_calendar_year_share": 0.5,
+                "trade_clock_hash": "9d3068fef904e6ec1b5813c7c6b4d60a62a4ab016cb70dba92fb5fef7a5d4518"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": 26.55042209680012,
+                "cagr_pct": 2.4008891164276847,
+                "strict_mdd_pct": 13.55017434523047,
+                "cagr_to_strict_mdd": 0.1771851088597081,
+                "trades": 16,
+                "longs": 6,
+                "shorts": 10,
+                "win_rate": 0.625,
+                "mean_trade_return_pct": 1.5700806465875647,
+                "one_sided_t_pvalue": 0.08958548119929716,
+                "t_statistic": 1.4091954308008257,
+                "yearly_return_pct": {
+                  "2007": -2.6340983334020907,
+                  "2008": 16.871538709237633,
+                  "2009": 4.025973443450259,
+                  "2010": 1.5746781823974487,
+                  "2011": 0.0,
+                  "2012": 0.9170237015620586,
+                  "2013": -0.22946773223547767,
+                  "2014": 0.0,
+                  "2015": 4.533136093666079,
+                  "2016": 0.0
+                },
+                "years_with_trade": 7,
+                "positive_calendar_year_share": 0.5,
+                "trade_clock_hash": "9d3068fef904e6ec1b5813c7c6b4d60a62a4ab016cb70dba92fb5fef7a5d4518"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": -27.29453225997156,
+                "cagr_pct": -3.1606254999493766,
+                "strict_mdd_pct": 29.840335542964493,
+                "cagr_to_strict_mdd": -0.10591789410004013,
+                "trades": 16,
+                "longs": 10,
+                "shorts": 6,
+                "win_rate": 0.25,
+                "mean_trade_return_pct": -1.8717278423680233,
+                "one_sided_t_pvalue": 0.9429980005585312,
+                "t_statistic": -1.6782526675709608,
+                "yearly_return_pct": {
+                  "2007": 2.0265277732188114,
+                  "2008": -17.916087277759164,
+                  "2009": -4.330079605581705,
+                  "2010": -2.2198679997179727,
+                  "2011": 0.0,
+                  "2012": -1.9340720697373692,
+                  "2013": -0.07037766302820936,
+                  "2014": 0.0,
+                  "2015": -5.298360851135708,
+                  "2016": 0.0
+                },
+                "years_with_trade": 7,
+                "positive_calendar_year_share": 0.1,
+                "trade_clock_hash": "d8e944a0df54f35a5dedc314b788f0c271b646badc3eb99530373ce7691198a2"
+              }
+            },
+            "test": {
+              "base_5bp": {
+                "absolute_return_pct": 4.572522135194945,
+                "cagr_pct": 0.8983277530515421,
+                "strict_mdd_pct": 3.638597560366541,
+                "cagr_to_strict_mdd": 0.2468884613227321,
+                "trades": 5,
+                "longs": 1,
+                "shorts": 4,
+                "win_rate": 0.6,
+                "mean_trade_return_pct": 0.9152243574971242,
+                "one_sided_t_pvalue": 0.19005952065353407,
+                "t_statistic": 0.9856202110349296,
+                "yearly_return_pct": {
+                  "2017": 0.0,
+                  "2018": -1.7738805143782566,
+                  "2019": 0.20693208127631202,
+                  "2020": 2.4105026222513537,
+                  "2021": 3.7404988051078947
+                },
+                "years_with_trade": 4,
+                "positive_calendar_year_share": 0.6,
+                "trade_clock_hash": "a01ea4c67eedcdf5d7f2117c8f912c9f3926f3cb78b8dab01b1c3829f5f9a7d4"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": 4.050574011061725,
+                "cagr_pct": 0.7973924616624828,
+                "strict_mdd_pct": 3.6765741903493576,
+                "cagr_to_strict_mdd": 0.21688463781189535,
+                "trades": 5,
+                "longs": 1,
+                "shorts": 4,
+                "win_rate": 0.6,
+                "mean_trade_return_pct": 0.8142839043398387,
+                "one_sided_t_pvalue": 0.21480900386776516,
+                "t_statistic": 0.8777937848289247,
+                "yearly_return_pct": {
+                  "2017": 0.0,
+                  "2018": -1.970283591158306,
+                  "2019": 0.1067000974682486,
+                  "2020": 2.3080665170098547,
+                  "2021": 3.636732371184581
+                },
+                "years_with_trade": 4,
+                "positive_calendar_year_share": 0.6,
+                "trade_clock_hash": "a01ea4c67eedcdf5d7f2117c8f912c9f3926f3cb78b8dab01b1c3829f5f9a7d4"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": -5.536696048997314,
+                "cagr_pct": -1.13284193849702,
+                "strict_mdd_pct": 7.600732307046732,
+                "cagr_to_strict_mdd": -0.14904378851058186,
+                "trades": 5,
+                "longs": 4,
+                "shorts": 1,
+                "win_rate": 0.4,
+                "mean_trade_return_pct": -1.115174357497084,
+                "one_sided_t_pvalue": 0.8519893197011038,
+                "t_statistic": -1.200949665044798,
+                "yearly_return_pct": {
+                  "2017": 0.0,
+                  "2018": 1.386679995410267,
+                  "2019": -0.4068820812762497,
+                  "2020": -2.610452622251336,
+                  "2021": -3.9404488051078657
+                },
+                "years_with_trade": 4,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "e33593ef6be1814d668b5d3c7dd8f8096ab3b40412ca27f74e4b334103aefdbc"
+              }
+            },
+            "eval": {
+              "base_5bp": {
+                "absolute_return_pct": -4.141077581137987,
+                "cagr_pct": -0.9262300337945506,
+                "strict_mdd_pct": 6.498776272592977,
+                "cagr_to_strict_mdd": -0.14252376061947272,
+                "trades": 7,
+                "longs": 0,
+                "shorts": 7,
+                "win_rate": 0.42857142857142855,
+                "mean_trade_return_pct": -0.5993910678588487,
+                "one_sided_t_pvalue": 0.9477860073913175,
+                "t_statistic": -1.911930753660311,
+                "yearly_return_pct": {
+                  "2022": 0.0,
+                  "2023": 0.41754878753383906,
+                  "2024": -1.7312228320882639,
+                  "2025": -2.8838641481602423,
+                  "2026": 0.026709154184390016
+                },
+                "years_with_trade": 4,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "cf2b54067dd923dcfb0db05329176295cea1f4418e971dfa8237c38851b4d8cc"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -4.810247101350084,
+                "cagr_pct": -1.0788183027897635,
+                "strict_mdd_pct": 7.05852251707938,
+                "cagr_to_strict_mdd": -0.15283911047664242,
+                "trades": 7,
+                "longs": 0,
+                "shorts": 7,
+                "win_rate": 0.14285714285714285,
+                "mean_trade_return_pct": -0.6988165269370136,
+                "one_sided_t_pvalue": 0.9664275441292903,
+                "t_statistic": -2.231308809323837,
+                "yearly_return_pct": {
+                  "2022": 0.0,
+                  "2023": 0.3171061343653747,
+                  "2024": -1.9277112028826981,
+                  "2025": -3.17499399588852,
+                  "2026": -0.0733425616408323
+                },
+                "years_with_trade": 4,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "cf2b54067dd923dcfb0db05329176295cea1f4418e971dfa8237c38851b4d8cc"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": 2.80877524059282,
+                "cagr_pct": 0.6113436080200874,
+                "strict_mdd_pct": 2.711520593607053,
+                "cagr_to_strict_mdd": 0.22546153972108898,
+                "trades": 7,
+                "longs": 7,
+                "shorts": 0,
+                "win_rate": 0.5714285714285714,
+                "mean_trade_return_pct": 0.3994410678588729,
+                "one_sided_t_pvalue": 0.12487028539474267,
+                "t_statistic": 1.2741325369468837,
+                "yearly_return_pct": {
+                  "2022": 0.0,
+                  "2023": -0.6174987875337989,
+                  "2024": 1.3384047354743744,
+                  "2025": 2.313203952491527,
+                  "2026": -0.2266591541844054
+                },
+                "years_with_trade": 4,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "39354262f68236e3798f5f63dee390968c4a3b65d891823606d71b32a08c6f92"
+              }
+            }
+          }
+        }
+      }
+    },
+    "069500.KS": {
+      "source": {
+        "symbol": "069500.KS",
+        "source_url": "https://query1.finance.yahoo.com/v8/finance/chart/069500.KS?period1=946684800&period2=1784419200&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+        "raw_bytes": 306027,
+        "raw_sha256": "2038c5e1e66c06aa67650c36bac5da712912c5b58e2aaa899de603ef331400b3",
+        "exchange_timezone": "Asia/Seoul",
+        "rows": 4248,
+        "valid_rows": 4219,
+        "invalid_rows_quarantined": 29,
+        "invalid_dates_sha256": "58677c073480605dc4c6e836a025cfe22f1407483cab66633361dd1d03aa595b",
+        "discarded_unusable_prefix_rows": 557,
+        "discarded_unusable_prefix_through": "2009-04-16",
+        "start": "2009-04-17",
+        "end": "2026-07-16",
+        "max_calendar_gap_days": 11,
+        "calendar_reference": "^KS11",
+        "calendar_reference_rows": 4248,
+        "calendar_missing_rows_inserted": 0,
+        "calendar_missing_dates_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "policies": {
+        "rex_pullback_reclaim_session": {
+          "threshold": 0.027865728399767045,
+          "threshold_quantile": 0.75,
+          "threshold_fit_positive_events": 274,
+          "hold_sessions": 2,
+          "raw_signal_counts": {
+            "train": 69,
+            "test": 50,
+            "eval": 41
+          },
+          "windows": {
+            "train": {
+              "base_5bp": {
+                "absolute_return_pct": -13.320433354410365,
+                "cagr_pct": -1.4300119426059799,
+                "strict_mdd_pct": 19.83478907489744,
+                "cagr_to_strict_mdd": -0.07209615071812273,
+                "trades": 55,
+                "longs": 16,
+                "shorts": 39,
+                "win_rate": 0.43636363636363634,
+                "mean_trade_return_pct": -0.24600871859637555,
+                "one_sided_t_pvalue": 0.8620387527635001,
+                "t_statistic": -1.100670319273453,
+                "yearly_return_pct": {
+                  "2007": 0.0,
+                  "2008": 0.0,
+                  "2009": 0.09715322590577724,
+                  "2010": -3.6175181365751374,
+                  "2011": -4.849784769784016,
+                  "2012": 1.6503289259201637,
+                  "2013": -2.7488421966994303,
+                  "2014": -0.5450510849454249,
+                  "2015": -1.3603893996833816,
+                  "2016": -2.634340834924953
+                },
+                "years_with_trade": 8,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "2f842bb711264e69623db1217405ab4328b9ba67ce97c8861a5fb891084fffa1"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -17.962464291313818,
+                "cagr_pct": -1.97514541483097,
+                "strict_mdd_pct": 22.400169120352153,
+                "cagr_to_strict_mdd": -0.08817546886449215,
+                "trades": 55,
+                "longs": 16,
+                "shorts": 39,
+                "win_rate": 0.38181818181818183,
+                "mean_trade_return_pct": -0.34578764836937137,
+                "one_sided_t_pvalue": 0.9363453648566576,
+                "t_statistic": -1.5486413572083573,
+                "yearly_return_pct": {
+                  "2007": 0.0,
+                  "2008": 0.0,
+                  "2009": -0.40245719077515174,
+                  "2010": -4.577256085131753,
+                  "2011": -6.07964854318821,
+                  "2012": 0.33644795572866926,
+                  "2013": -3.3310374684003885,
+                  "2014": -0.8431921083654315,
+                  "2015": -1.5576192517404275,
+                  "2016": -2.9262186910408383
+                },
+                "years_with_trade": 8,
+                "positive_calendar_year_share": 0.1,
+                "trade_clock_hash": "2f842bb711264e69623db1217405ab4328b9ba67ce97c8861a5fb891084fffa1"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": 1.809403380415553,
+                "cagr_pct": 0.1808428437695797,
+                "strict_mdd_pct": 13.58216415080732,
+                "cagr_to_strict_mdd": 0.01331472965291989,
+                "trades": 55,
+                "longs": 39,
+                "shorts": 16,
+                "win_rate": 0.509090909090909,
+                "mean_trade_return_pct": 0.04605871859639484,
+                "one_sided_t_pvalue": 0.41875489034685753,
+                "t_statistic": 0.20607182051135225,
+                "yearly_return_pct": {
+                  "2007": 0.0,
+                  "2008": 0.0,
+                  "2009": -1.2271256284146714,
+                  "2010": 1.5166133405807303,
+                  "2011": 1.4703466233815687,
+                  "2012": -4.300443841026691,
+                  "2013": 1.5253324907521737,
+                  "2014": -0.05502101991821107,
+                  "2015": 0.9648201258811273,
+                  "2016": 2.0606980293599975
+                },
+                "years_with_trade": 8,
+                "positive_calendar_year_share": 0.5,
+                "trade_clock_hash": "40df31878b08f70964fae3e5dc0907eab0c72204efd678f1b260d47b7f7197b0"
+              }
+            },
+            "test": {
+              "base_5bp": {
+                "absolute_return_pct": 4.403932011260303,
+                "cagr_pct": 0.8657696354966715,
+                "strict_mdd_pct": 7.66718803303611,
+                "cagr_to_strict_mdd": 0.11291879523056872,
+                "trades": 35,
+                "longs": 14,
+                "shorts": 21,
+                "win_rate": 0.4857142857142857,
+                "mean_trade_return_pct": 0.1370961959890612,
+                "one_sided_t_pvalue": 0.31776183090674925,
+                "t_statistic": 0.47826355156517253,
+                "yearly_return_pct": {
+                  "2017": 1.2147600230788091,
+                  "2018": -0.43101837235673957,
+                  "2019": -1.7746322750621268,
+                  "2020": 5.304638721480037,
+                  "2021": 0.15618514315021148
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.6,
+                "trade_clock_hash": "b8dced1bb84dc4e444042334247a69efe840e0cc0a091859a83de8c2006c8d50"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": 0.8103538622169726,
+                "cagr_pct": 0.16156678885719256,
+                "strict_mdd_pct": 8.586600999255566,
+                "cagr_to_strict_mdd": 0.018816151917528244,
+                "trades": 35,
+                "longs": 14,
+                "shorts": 21,
+                "win_rate": 0.42857142857142855,
+                "mean_trade_return_pct": 0.036934065525277476,
+                "one_sided_t_pvalue": 0.449068913139578,
+                "t_statistic": 0.12897442958535216,
+                "yearly_return_pct": {
+                  "2017": 0.7095713458816988,
+                  "2018": -0.530612246223594,
+                  "2019": -2.167042717483747,
+                  "2020": 4.256057527199775,
+                  "2021": -1.3360570300035013
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "b8dced1bb84dc4e444042334247a69efe840e0cc0a091859a83de8c2006c8d50"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": -11.583858105771705,
+                "cagr_pct": -2.4325246026107528,
+                "strict_mdd_pct": 15.659945021385225,
+                "cagr_to_strict_mdd": -0.1553341725841883,
+                "trades": 35,
+                "longs": 21,
+                "shorts": 14,
+                "win_rate": 0.42857142857142855,
+                "mean_trade_return_pct": -0.33704619598903823,
+                "one_sided_t_pvalue": 0.8760775444412852,
+                "t_statistic": -1.1757941901474078,
+                "yearly_return_pct": {
+                  "2017": -2.2419891013626847,
+                  "2018": 0.23106837235677968,
+                  "2019": 0.964430066184141,
+                  "2020": -7.583682225997778,
+                  "2021": -3.292582548258005
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "98a412f07d63ab4bb3e956ed3e2484f54722fc0ef0e8ad9eacd3c2fff7b4e092"
+              }
+            },
+            "eval": {
+              "base_5bp": {
+                "absolute_return_pct": -13.408624326378826,
+                "cagr_pct": -3.1180615273130097,
+                "strict_mdd_pct": 26.078933589904484,
+                "cagr_to_strict_mdd": -0.11956246280407933,
+                "trades": 31,
+                "longs": 12,
+                "shorts": 19,
+                "win_rate": 0.41935483870967744,
+                "mean_trade_return_pct": -0.39438981917497334,
+                "one_sided_t_pvalue": 0.7168512762741748,
+                "t_statistic": -0.5799222155356836,
+                "yearly_return_pct": {
+                  "2022": 0.47221864013922143,
+                  "2023": 1.6345553902921806,
+                  "2024": -5.936419859866183,
+                  "2025": -5.7403891323999705,
+                  "2026": -4.359880895517576
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "3323f82b1136f6a40a27ffcc2717e3b3d140bfd54c755799b25db83111949d27"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -16.053729738132304,
+                "cagr_pct": -3.7771173471293107,
+                "strict_mdd_pct": 27.543756473223546,
+                "cagr_to_strict_mdd": -0.1371315256436139,
+                "trades": 31,
+                "longs": 12,
+                "shorts": 19,
+                "win_rate": 0.3870967741935484,
+                "mean_trade_return_pct": -0.4940203307521178,
+                "one_sided_t_pvalue": 0.7636143551301147,
+                "t_statistic": -0.7271491369656404,
+                "yearly_return_pct": {
+                  "2022": 0.07083202606144035,
+                  "2023": 0.9250674787724122,
+                  "2024": -6.218398910234802,
+                  "2025": -6.492019225510537,
+                  "2026": -5.217420419393615
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "3323f82b1136f6a40a27ffcc2717e3b3d140bfd54c755799b25db83111949d27"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": 3.9222996650957853,
+                "cagr_pct": 0.8501044773283173,
+                "strict_mdd_pct": 13.878362319195048,
+                "cagr_to_strict_mdd": 0.06125394753187448,
+                "trades": 31,
+                "longs": 19,
+                "shorts": 12,
+                "win_rate": 0.5161290322580645,
+                "mean_trade_return_pct": 0.19443981917499417,
+                "one_sided_t_pvalue": 0.3884560473761558,
+                "t_statistic": 0.2859099430107088,
+                "yearly_return_pct": {
+                  "2022": -1.3077498867969606,
+                  "2023": -3.1578488023531914,
+                  "2024": 5.5045884924422195,
+                  "2025": 4.256431903378544,
+                  "2026": -1.147634919603513
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "9249d38f73417f60928bca7ff79c2f07a5996416ab62e5b3b4b7bff5a4eb2b5b"
+              }
+            }
+          }
+        },
+        "rex_multiscale_extreme_fade_session": {
+          "threshold": 0.3329220856390833,
+          "threshold_quantile": 0.75,
+          "threshold_fit_positive_events": 548,
+          "hold_sessions": 2,
+          "raw_signal_counts": {
+            "train": 137,
+            "test": 73,
+            "eval": 83
+          },
+          "windows": {
+            "train": {
+              "base_5bp": {
+                "absolute_return_pct": -4.8311812606371625,
+                "cagr_pct": -0.49768203959952295,
+                "strict_mdd_pct": 13.38461788145936,
+                "cagr_to_strict_mdd": -0.03718313395326153,
+                "trades": 89,
+                "longs": 18,
+                "shorts": 71,
+                "win_rate": 0.42696629213483145,
+                "mean_trade_return_pct": -0.0453894968483857,
+                "one_sided_t_pvalue": 0.6167067346866062,
+                "t_statistic": -0.2977621688920303,
+                "yearly_return_pct": {
+                  "2007": 0.0,
+                  "2008": 0.0,
+                  "2009": -0.1674805738800078,
+                  "2010": -3.2222383574275537,
+                  "2011": 0.04383050097913621,
+                  "2012": -2.4501182044024516,
+                  "2013": -0.5706134686165876,
+                  "2014": 2.6895104706663453,
+                  "2015": -1.4704510215465372,
+                  "2016": 0.32812058631550567
+                },
+                "years_with_trade": 8,
+                "positive_calendar_year_share": 0.3,
+                "trade_clock_hash": "62ed4c6a99792778d565459c26ceab591b342a36306bfb2fda1107a32719561c"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -12.941043337043157,
+                "cagr_pct": -1.386627500550064,
+                "strict_mdd_pct": 16.53015880228349,
+                "cagr_to_strict_mdd": -0.08388470535192402,
+                "trades": 89,
+                "longs": 18,
+                "shorts": 71,
+                "win_rate": 0.4044943820224719,
+                "mean_trade_return_pct": -0.14536909599792053,
+                "one_sided_t_pvalue": 0.8288022045359373,
+                "t_statistic": -0.9545987488699251,
+                "yearly_return_pct": {
+                  "2007": 0.0,
+                  "2008": 0.0,
+                  "2009": -0.3670956465375963,
+                  "2010": -5.518956283914777,
+                  "2011": -1.6437948820496762,
+                  "2012": -3.4214806514611285,
+                  "2013": -1.7575206156749568,
+                  "2014": 1.9726581556338996,
+                  "2015": -2.158263583516873,
+                  "2016": -0.6709064440373114
+                },
+                "years_with_trade": 8,
+                "positive_calendar_year_share": 0.1,
+                "trade_clock_hash": "62ed4c6a99792778d565459c26ceab591b342a36306bfb2fda1107a32719561c"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": -13.653092767794972,
+                "cagr_pct": -1.4681933264017233,
+                "strict_mdd_pct": 15.924742425959348,
+                "cagr_to_strict_mdd": -0.09219573460782525,
+                "trades": 89,
+                "longs": 71,
+                "shorts": 18,
+                "win_rate": 0.47191011235955055,
+                "mean_trade_return_pct": -0.1545605031515939,
+                "one_sided_t_pvalue": 0.8433046796286097,
+                "t_statistic": -1.0139409739920666,
+                "yearly_return_pct": {
+                  "2007": 0.0,
+                  "2008": 0.0,
+                  "2009": -0.27559196574795664,
+                  "2010": -1.7403103918552154,
+                  "2011": -4.1021373795829374,
+                  "2012": 0.16380928896173597,
+                  "2013": -1.9538489759825084,
+                  "2014": -4.17219557759222,
+                  "2015": -0.027586930451006797,
+                  "2016": -2.332986194003084
+                },
+                "years_with_trade": 8,
+                "positive_calendar_year_share": 0.1,
+                "trade_clock_hash": "bddf08a3fc599499fd1de71ada729a14c7e917553d5a5438a9fae7cc3edb12f9"
+              }
+            },
+            "test": {
+              "base_5bp": {
+                "absolute_return_pct": -25.004517851749753,
+                "cagr_pct": -5.593018559767948,
+                "strict_mdd_pct": 33.41461777759306,
+                "cagr_to_strict_mdd": -0.16738238925834656,
+                "trades": 47,
+                "longs": 12,
+                "shorts": 35,
+                "win_rate": 0.3191489361702128,
+                "mean_trade_return_pct": -0.5864332914288314,
+                "one_sided_t_pvalue": 0.9643049478655848,
+                "t_statistic": -1.8456146139322112,
+                "yearly_return_pct": {
+                  "2017": -11.454964665118206,
+                  "2018": -1.5200141207828088,
+                  "2019": 0.690155742262033,
+                  "2020": -17.93365587344856,
+                  "2021": 4.080844821383467
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "ca818060e32606179d2a4333de89d7c706c5aec497380073818e0d1df36bd968"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -28.450279741535,
+                "cagr_pct": -6.477048559700648,
+                "strict_mdd_pct": 36.02738865985857,
+                "cagr_to_strict_mdd": -0.1797812386807075,
+                "trades": 47,
+                "longs": 12,
+                "shorts": 35,
+                "win_rate": 0.2978723404255319,
+                "mean_trade_return_pct": -0.685871711522871,
+                "one_sided_t_pvalue": 0.9820204054087732,
+                "t_statistic": -2.1607270795551705,
+                "yearly_return_pct": {
+                  "2017": -13.0356916252501,
+                  "2018": -2.011552842856157,
+                  "2019": -0.012739528286831447,
+                  "2020": -18.66948864245267,
+                  "2021": 3.2508997965306152
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "ca818060e32606179d2a4333de89d7c706c5aec497380073818e0d1df36bd968"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": 18.61122026618325,
+                "cagr_pct": 3.4729617020881287,
+                "strict_mdd_pct": 12.382205660098277,
+                "cagr_to_strict_mdd": 0.28048005318468955,
+                "trades": 47,
+                "longs": 35,
+                "shorts": 12,
+                "win_rate": 0.6382978723404256,
+                "mean_trade_return_pct": 0.38648329142885235,
+                "one_sided_t_pvalue": 0.11503104614531977,
+                "t_statistic": 1.2163347837292369,
+                "yearly_return_pct": {
+                  "2017": 8.755359937790885,
+                  "2018": 0.4630491780474699,
+                  "2019": -2.1042876539827393,
+                  "2020": 17.908293357145965,
+                  "2021": -5.949583263264069
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.6,
+                "trade_clock_hash": "9aaf79cb9d018da21d91dfb00cb44a1aeecc512738afe802ef860d0b2bc413f7"
+              }
+            },
+            "eval": {
+              "base_5bp": {
+                "absolute_return_pct": -44.620473354417115,
+                "cagr_pct": -12.192773069506025,
+                "strict_mdd_pct": 47.9244126082324,
+                "cagr_to_strict_mdd": -0.2544167451603061,
+                "trades": 46,
+                "longs": 2,
+                "shorts": 44,
+                "win_rate": 0.30434782608695654,
+                "mean_trade_return_pct": -1.2379767016892185,
+                "one_sided_t_pvalue": 0.9978730494082273,
+                "t_statistic": -3.0114927796291413,
+                "yearly_return_pct": {
+                  "2022": -0.9996964814516507,
+                  "2023": -1.8921769411024192,
+                  "2024": -1.7172181606746162,
+                  "2025": -18.952086889133767,
+                  "2026": -28.42031268717421
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.0,
+                "trade_clock_hash": "bb4cf716506b156eea6076fda6cc235c6216181d8e4bdbd3ac1fc3dabef6da1f"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -47.11205429316223,
+                "cagr_pct": -13.077663676881501,
+                "strict_mdd_pct": 50.217551082379245,
+                "cagr_to_strict_mdd": -0.2604201796982948,
+                "trades": 46,
+                "longs": 2,
+                "shorts": 44,
+                "win_rate": 0.30434782608695654,
+                "mean_trade_return_pct": -1.3367634154871844,
+                "one_sided_t_pvalue": 0.9989218202336172,
+                "t_statistic": -3.2550564641479975,
+                "yearly_return_pct": {
+                  "2022": -1.1976475388182806,
+                  "2023": -2.1862796186601696,
+                  "2024": -1.8155255132032644,
+                  "2025": -20.716979626945463,
+                  "2026": -29.698170232831778
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.0,
+                "trade_clock_hash": "bb4cf716506b156eea6076fda6cc235c6216181d8e4bdbd3ac1fc3dabef6da1f"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": 58.066088203225696,
+                "cagr_pct": 10.598594000048411,
+                "strict_mdd_pct": 11.961487994296238,
+                "cagr_to_strict_mdd": 0.8860598284345799,
+                "trades": 46,
+                "longs": 44,
+                "shorts": 2,
+                "win_rate": 0.6739130434782609,
+                "mean_trade_return_pct": 1.0380267016892388,
+                "one_sided_t_pvalue": 0.0075797627895809625,
+                "t_statistic": 2.52509591895708,
+                "yearly_return_pct": {
+                  "2022": 0.41568848621658105,
+                  "2023": 1.2738194601837893,
+                  "2024": 1.517268160674634,
+                  "2025": 16.92740079539192,
+                  "2026": 30.943434510125044
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 1.0,
+                "trade_clock_hash": "3c3be44ef7527ce7d459fb0107159b359348ff5641eb86465f8deb2732eaed2b"
+              }
+            }
+          }
+        },
+        "persistent_barrier_mass_density_fade_session": {
+          "threshold": 8.090003634068903,
+          "threshold_quantile": 0.975,
+          "threshold_fit_positive_events": 440,
+          "hold_sessions": 4,
+          "raw_signal_counts": {
+            "train": 11,
+            "test": 5,
+            "eval": 7
+          },
+          "windows": {
+            "train": {
+              "base_5bp": {
+                "absolute_return_pct": -6.434093615385206,
+                "cagr_pct": -0.6678325691451215,
+                "strict_mdd_pct": 8.370512132681874,
+                "cagr_to_strict_mdd": -0.0797839556958089,
+                "trades": 11,
+                "longs": 6,
+                "shorts": 5,
+                "win_rate": 0.2727272727272727,
+                "mean_trade_return_pct": -0.5935079711498586,
+                "one_sided_t_pvalue": 0.9021577362062047,
+                "t_statistic": -1.3866376719645872,
+                "yearly_return_pct": {
+                  "2007": 0.0,
+                  "2008": 0.0,
+                  "2009": -0.7670767316965255,
+                  "2010": -3.2743857934809273,
+                  "2011": -1.3257088993006927,
+                  "2012": 0.45430914421829005,
+                  "2013": -0.0999749999999966,
+                  "2014": -1.3407554210979167,
+                  "2015": 0.0,
+                  "2016": -0.21979804109344414
+                },
+                "years_with_trade": 7,
+                "positive_calendar_year_share": 0.1,
+                "trade_clock_hash": "0653e8b086ee7c9ffc6dc23e4891a0fcdd3fb47d0e9872885da28e764a23e366"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -7.458442612651539,
+                "cagr_pct": -0.7779461580137981,
+                "strict_mdd_pct": 9.192091069789976,
+                "cagr_to_strict_mdd": -0.08463212038559284,
+                "trades": 11,
+                "longs": 6,
+                "shorts": 5,
+                "win_rate": 0.2727272727272727,
+                "mean_trade_return_pct": -0.6929393147955113,
+                "one_sided_t_pvalue": 0.9319106787161616,
+                "t_statistic": -1.620564277659673,
+                "yearly_return_pct": {
+                  "2007": 0.0,
+                  "2008": 0.0,
+                  "2009": -0.8663344631894554,
+                  "2010": -3.3711355890849615,
+                  "2011": -1.5230080950009328,
+                  "2012": 0.2534508033304128,
+                  "2013": -0.1998999999999973,
+                  "2014": -1.5380245312853424,
+                  "2015": 0.0,
+                  "2016": -0.4193085050015033
+                },
+                "years_with_trade": 7,
+                "positive_calendar_year_share": 0.1,
+                "trade_clock_hash": "0653e8b086ee7c9ffc6dc23e4891a0fcdd3fb47d0e9872885da28e764a23e366"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": 4.311368038772789,
+                "cagr_pct": 0.42620071748660227,
+                "strict_mdd_pct": 3.6530460672789755,
+                "cagr_to_strict_mdd": 0.11666995423467628,
+                "trades": 11,
+                "longs": 5,
+                "shorts": 6,
+                "win_rate": 0.6363636363636364,
+                "mean_trade_return_pct": 0.3935579711498857,
+                "one_sided_t_pvalue": 0.1897434166060316,
+                "t_statistic": 0.9194860649320379,
+                "yearly_return_pct": {
+                  "2007": 0.0,
+                  "2008": 0.0,
+                  "2009": 0.5671267316965434,
+                  "2010": 3.0744357934809674,
+                  "2011": 0.8592634903758389,
+                  "2012": -0.8774178401626087,
+                  "2013": -0.0999749999999966,
+                  "2014": 0.9470355568619304,
+                  "2015": 0.0,
+                  "2016": -0.18930801604656322
+                },
+                "years_with_trade": 7,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "4b0e60e6a09ab6371010b82ba8edd276b4fb6792b3cdec1004fc01e542d94ffc"
+              }
+            },
+            "test": {
+              "base_5bp": {
+                "absolute_return_pct": -6.3754544124566825,
+                "cagr_pct": -1.3090615554383178,
+                "strict_mdd_pct": 7.249269474430465,
+                "cagr_to_strict_mdd": -0.18057841001160516,
+                "trades": 5,
+                "longs": 1,
+                "shorts": 4,
+                "win_rate": 0.2,
+                "mean_trade_return_pct": -1.2973959436396254,
+                "one_sided_t_pvalue": 0.920909442134973,
+                "t_statistic": -1.7327063459633252,
+                "yearly_return_pct": {
+                  "2017": -0.9225514254749934,
+                  "2018": -4.7426959408269465,
+                  "2019": -0.7988692379026996,
+                  "2020": 0.0,
+                  "2021": 0.0
+                },
+                "years_with_trade": 3,
+                "positive_calendar_year_share": 0.0,
+                "trade_clock_hash": "0c78dd283470f45f45651fb5a8d8e4f5d0aca826477bc5ebb7d3144c454f3586"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -6.8427583938894365,
+                "cagr_pct": -1.4077886488520153,
+                "strict_mdd_pct": 7.546308929883184,
+                "cagr_to_strict_mdd": -0.18655327550628223,
+                "trades": 5,
+                "longs": 1,
+                "shorts": 4,
+                "win_rate": 0.0,
+                "mean_trade_return_pct": -1.396123223340826,
+                "one_sided_t_pvalue": 0.9323051354614271,
+                "t_statistic": -1.8664261128159965,
+                "yearly_return_pct": {
+                  "2017": -1.1206567343424512,
+                  "2018": -4.9331628726467684,
+                  "2019": -0.8980951689412708,
+                  "2020": 0.0,
+                  "2021": 0.0
+                },
+                "years_with_trade": 3,
+                "positive_calendar_year_share": 0.0,
+                "trade_clock_hash": "0c78dd283470f45f45651fb5a8d8e4f5d0aca826477bc5ebb7d3144c454f3586"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": 5.551811467224521,
+                "cagr_pct": 1.0866220807944194,
+                "strict_mdd_pct": 2.9510715892153483,
+                "cagr_to_strict_mdd": 0.3682127145832264,
+                "trades": 5,
+                "longs": 4,
+                "shorts": 1,
+                "win_rate": 0.8,
+                "mean_trade_return_pct": 1.0974459436396455,
+                "one_sided_t_pvalue": 0.10830664472236504,
+                "t_statistic": 1.4656678712603544,
+                "yearly_return_pct": {
+                  "2017": 0.5206754815148429,
+                  "2018": 4.379924335918806,
+                  "2019": 0.5989192379027175,
+                  "2020": 0.0,
+                  "2021": 0.0
+                },
+                "years_with_trade": 3,
+                "positive_calendar_year_share": 0.6,
+                "trade_clock_hash": "2d554b05b51bd6444ad1196ae8412c01ad66d362498954a4feea34626d16d764"
+              }
+            },
+            "eval": {
+              "base_5bp": {
+                "absolute_return_pct": -6.015017512827026,
+                "cagr_pct": -1.3556597557928596,
+                "strict_mdd_pct": 19.06395180092605,
+                "cagr_to_strict_mdd": -0.07111116152355186,
+                "trades": 7,
+                "longs": 0,
+                "shorts": 7,
+                "win_rate": 0.2857142857142857,
+                "mean_trade_return_pct": -0.8402023165131183,
+                "one_sided_t_pvalue": 0.7462188640832221,
+                "t_statistic": -0.7044456753359446,
+                "yearly_return_pct": {
+                  "2022": -3.3495512961623675,
+                  "2023": -2.195262671849685,
+                  "2024": -5.559266808698194,
+                  "2025": 0.0,
+                  "2026": 5.277448080706937
+                },
+                "years_with_trade": 4,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "ecc032675db30db6151d450f00dceef60bfaa56c9d9a7df8802145d9c5f3158a"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -6.671105480969142,
+                "cagr_pct": -1.5075866394591686,
+                "strict_mdd_pct": 19.548476465063914,
+                "cagr_to_strict_mdd": -0.07712041611802609,
+                "trades": 7,
+                "longs": 0,
+                "shorts": 7,
+                "win_rate": 0.2857142857142857,
+                "mean_trade_return_pct": -0.9393869041398304,
+                "one_sided_t_pvalue": 0.7697638677577178,
+                "t_statistic": -0.7883929909372639,
+                "yearly_return_pct": {
+                  "2022": -3.639285130475356,
+                  "2023": -2.293091860356078,
+                  "2024": -5.748101007476148,
+                  "2025": 0.0,
+                  "2026": 5.172144313270799
+                },
+                "years_with_trade": 4,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "ecc032675db30db6151d450f00dceef60bfaa56c9d9a7df8802145d9c5f3158a"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": 4.253473449903211,
+                "cagr_pct": 0.9207293570699493,
+                "strict_mdd_pct": 13.089108261454196,
+                "cagr_to_strict_mdd": 0.07034316919674224,
+                "trades": 7,
+                "longs": 7,
+                "shorts": 0,
+                "win_rate": 0.7142857142857143,
+                "mean_trade_return_pct": 0.6402523165131394,
+                "one_sided_t_pvalue": 0.30535745432336703,
+                "t_statistic": 0.5368028231143996,
+                "yearly_return_pct": {
+                  "2022": 2.6944917317051953,
+                  "2023": 1.995312671849736,
+                  "2024": 5.29978927220105,
+                  "2025": 0.0,
+                  "2026": -5.47739808070693
+                },
+                "years_with_trade": 4,
+                "positive_calendar_year_share": 0.6,
+                "trade_clock_hash": "21c8555c49ff6ec73fee3aa5839c9e612f47bbe9d092611cdc04e2b67f1659b2"
+              }
+            }
+          }
+        }
+      }
+    },
+    "GLD": {
+      "source": {
+        "symbol": "GLD",
+        "source_url": "https://query1.finance.yahoo.com/v8/finance/chart/GLD?period1=946684800&period2=1784419200&interval=1d&events=div%2Csplits&includeAdjustedClose=true",
+        "raw_bytes": 595242,
+        "raw_sha256": "f564a4f7f4fb582dafc40a06a02b12bedd599f0300bf1874ce20bf9507ccd928",
+        "exchange_timezone": "America/New_York",
+        "rows": 5448,
+        "valid_rows": 5448,
+        "invalid_rows_quarantined": 0,
+        "invalid_dates_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "discarded_unusable_prefix_rows": 0,
+        "discarded_unusable_prefix_through": null,
+        "start": "2004-11-18",
+        "end": "2026-07-17",
+        "max_calendar_gap_days": 5,
+        "calendar_reference": "QQQ/GLD provider-session union",
+        "calendar_reference_rows": 5448,
+        "calendar_missing_rows_inserted": 0,
+        "calendar_missing_dates_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "policies": {
+        "rex_pullback_reclaim_session": {
+          "threshold": 0.036045442619289964,
+          "threshold_quantile": 0.75,
+          "threshold_fit_positive_events": 443,
+          "hold_sessions": 2,
+          "raw_signal_counts": {
+            "train": 111,
+            "test": 21,
+            "eval": 37
+          },
+          "windows": {
+            "train": {
+              "base_5bp": {
+                "absolute_return_pct": -0.999849232995953,
+                "cagr_pct": -0.10119713536088648,
+                "strict_mdd_pct": 18.347267765575324,
+                "cagr_to_strict_mdd": -0.005515651521190583,
+                "trades": 86,
+                "longs": 38,
+                "shorts": 48,
+                "win_rate": 0.46511627906976744,
+                "mean_trade_return_pct": 0.0092542868587635,
+                "one_sided_t_pvalue": 0.48348383765396774,
+                "t_statistic": 0.0415338989966556,
+                "yearly_return_pct": {
+                  "2007": -2.0423741506989113,
+                  "2008": -6.021740767611428,
+                  "2009": -4.10165044448787,
+                  "2010": -3.3291622797684717,
+                  "2011": 10.229281291314862,
+                  "2012": 3.1387763187654683,
+                  "2013": -4.604240923310532,
+                  "2014": 0.11326186331863664,
+                  "2015": -1.6434506238359514,
+                  "2016": 8.622721557336721
+                },
+                "years_with_trade": 10,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "7c5b9564a9d60cdd572756fd110c50dfb67df894973a648dd6404d570d4c653f"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -9.163896444810327,
+                "cagr_pct": -0.9637311621877309,
+                "strict_mdd_pct": 21.942830123755698,
+                "cagr_to_strict_mdd": -0.04392009402398729,
+                "trades": 86,
+                "longs": 38,
+                "shorts": 48,
+                "win_rate": 0.4069767441860465,
+                "mean_trade_return_pct": -0.09077996973542156,
+                "one_sided_t_pvalue": 0.6577898423319166,
+                "t_statistic": -0.4078349111417694,
+                "yearly_return_pct": {
+                  "2007": -2.433714964059275,
+                  "2008": -7.9761568175809705,
+                  "2009": -5.151534766698996,
+                  "2010": -4.003999597604013,
+                  "2011": 9.350308376002502,
+                  "2012": 2.316343387691,
+                  "2013": -5.2701772046791495,
+                  "2014": -0.18685261741310244,
+                  "2015": -2.2322633360038147,
+                  "2016": 7.433532244616159
+                },
+                "years_with_trade": 10,
+                "positive_calendar_year_share": 0.3,
+                "trade_clock_hash": "7c5b9564a9d60cdd572756fd110c50dfb67df894973a648dd6404d570d4c653f"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": -18.004083884363865,
+                "cagr_pct": -1.9801572157387204,
+                "strict_mdd_pct": 27.862659980669736,
+                "cagr_to_strict_mdd": -0.07106849156227342,
+                "trades": 86,
+                "longs": 48,
+                "shorts": 38,
+                "win_rate": 0.47674418604651164,
+                "mean_trade_return_pct": -0.20920428685874298,
+                "one_sided_t_pvalue": 0.824784826711461,
+                "t_statistic": -0.9389237498976096,
+                "yearly_return_pct": {
+                  "2007": 1.2373459315265345,
+                  "2008": 0.15466255314973143,
+                  "2009": 1.7913421894703019,
+                  "2010": 1.8749872268040813,
+                  "2011": -11.309759239573069,
+                  "2012": -4.704626589897998,
+                  "2013": 3.281351108135233,
+                  "2014": -0.753419902063357,
+                  "2015": 0.3220203479833428,
+                  "2016": -10.273544828034675
+                },
+                "years_with_trade": 10,
+                "positive_calendar_year_share": 0.6,
+                "trade_clock_hash": "29b35569f68464adf2446cb05b190f7c9de94e43aaf873c2460a403ef0579989"
+              }
+            },
+            "test": {
+              "base_5bp": {
+                "absolute_return_pct": -8.162036021060237,
+                "cagr_pct": -1.6886660910312545,
+                "strict_mdd_pct": 9.049161331579125,
+                "cagr_to_strict_mdd": -0.18661023150711953,
+                "trades": 19,
+                "longs": 9,
+                "shorts": 10,
+                "win_rate": 0.3684210526315789,
+                "mean_trade_return_pct": -0.44288661740245394,
+                "one_sided_t_pvalue": 0.9720099995346404,
+                "t_statistic": -2.0429613271480176,
+                "yearly_return_pct": {
+                  "2017": -2.292743317377477,
+                  "2018": -0.24519365848694186,
+                  "2019": 1.5342483913981297,
+                  "2020": -0.8714592967003609,
+                  "2021": -6.383947102779297
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "8b450357b8edb01b684ef7e1ac270489dfd9a2f7d3495dfe63a1662d1bc03967"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -9.89177012440784,
+                "cagr_pct": -2.061862934832004,
+                "strict_mdd_pct": 10.319694350077791,
+                "cagr_to_strict_mdd": -0.19979883753208846,
+                "trades": 19,
+                "longs": 9,
+                "shorts": 10,
+                "win_rate": 0.3157894736842105,
+                "mean_trade_return_pct": -0.5424686200571811,
+                "one_sided_t_pvalue": 0.9889572565806873,
+                "t_statistic": -2.5048217709847447,
+                "yearly_return_pct": {
+                  "2017": -2.5856451972808725,
+                  "2018": -0.5442335793572561,
+                  "2019": 1.432688759450973,
+                  "2020": -1.4648935445970679,
+                  "2021": -6.94438077352606
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "8b450357b8edb01b684ef7e1ac270489dfd9a2f7d3495dfe63a1662d1bc03967"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": 4.634210410911277,
+                "cagr_pct": 0.9102304972426589,
+                "strict_mdd_pct": 4.7242792134462475,
+                "cagr_to_strict_mdd": 0.19267076650591694,
+                "trades": 19,
+                "longs": 10,
+                "shorts": 9,
+                "win_rate": 0.631578947368421,
+                "mean_trade_return_pct": 0.24293661740247538,
+                "one_sided_t_pvalue": 0.13858830700197705,
+                "t_statistic": 1.120625674382052,
+                "yearly_return_pct": {
+                  "2017": 1.7021799986005837,
+                  "2018": -0.3717263655164893,
+                  "2019": -1.7341983913981007,
+                  "2020": -0.3538905389461333,
+                  "2021": 5.462505816554208
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "2b9bf9ff7818e7fff2b41d553d31f853d9e0f2e2e32355bcda2ab0f17e848a2e"
+              }
+            },
+            "eval": {
+              "base_5bp": {
+                "absolute_return_pct": 8.312550371033844,
+                "cagr_pct": 1.7724477401320549,
+                "strict_mdd_pct": 9.688362874382006,
+                "cagr_to_strict_mdd": 0.18294605219822696,
+                "trades": 30,
+                "longs": 16,
+                "shorts": 14,
+                "win_rate": 0.5666666666666667,
+                "mean_trade_return_pct": 0.28604924590524844,
+                "one_sided_t_pvalue": 0.2226598660184682,
+                "t_statistic": 0.7737861303354145,
+                "yearly_return_pct": {
+                  "2022": 0.47858633140676066,
+                  "2023": -1.4158246133183172,
+                  "2024": -2.5766841882372216,
+                  "2025": -1.6723662603642775,
+                  "2026": 14.145701907809594
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "6fd9307485570dfe5d431c7c6a164bea5e41ea6d498dcfea036d68a11f6be8c2"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": 5.109063913343914,
+                "cagr_pct": 1.1023827602343106,
+                "strict_mdd_pct": 11.505715287276818,
+                "cagr_to_strict_mdd": 0.09581175378581991,
+                "trades": 30,
+                "longs": 16,
+                "shorts": 14,
+                "win_rate": 0.5666666666666667,
+                "mean_trade_return_pct": 0.18573812515329524,
+                "one_sided_t_pvalue": 0.3094026191203827,
+                "t_statistic": 0.5029395764207385,
+                "yearly_return_pct": {
+                  "2022": -0.12292998151633983,
+                  "2023": -1.7113552758287076,
+                  "2024": -2.965890432462548,
+                  "2025": -2.3587692975863606,
+                  "2026": 13.009084965938445
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "6fd9307485570dfe5d431c7c6a164bea5e41ea6d498dcfea036d68a11f6be8c2"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": -14.121671518107659,
+                "cagr_pct": -3.2941613674759007,
+                "strict_mdd_pct": 17.26051378184573,
+                "cagr_to_strict_mdd": -0.19084955460251912,
+                "trades": 30,
+                "longs": 14,
+                "shorts": 16,
+                "win_rate": 0.43333333333333335,
+                "mean_trade_return_pct": -0.4859992459052265,
+                "one_sided_t_pvalue": 0.9005377607597097,
+                "t_statistic": -1.314666901654768,
+                "yearly_return_pct": {
+                  "2022": -1.78807285262782,
+                  "2023": 0.7897132024149212,
+                  "2024": 1.770946373053861,
+                  "2025": 0.04006845244681756,
+                  "2026": -14.787099709162987
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.6,
+                "trade_clock_hash": "c8a4c3471be1c6f7ef33e0a1b948456713f680c32e99ff9caa6e24079dea3d55"
+              }
+            }
+          }
+        },
+        "rex_multiscale_extreme_fade_session": {
+          "threshold": 0.33319619830098823,
+          "threshold_quantile": 0.75,
+          "threshold_fit_positive_events": 749,
+          "hold_sessions": 2,
+          "raw_signal_counts": {
+            "train": 187,
+            "test": 97,
+            "eval": 148
+          },
+          "windows": {
+            "train": {
+              "base_5bp": {
+                "absolute_return_pct": -13.099783776294782,
+                "cagr_pct": -1.4047592428521938,
+                "strict_mdd_pct": 25.86358553297994,
+                "cagr_to_strict_mdd": -0.0543141723741635,
+                "trades": 127,
+                "longs": 37,
+                "shorts": 90,
+                "win_rate": 0.44881889763779526,
+                "mean_trade_return_pct": -0.0959637867845151,
+                "one_sided_t_pvalue": 0.7350079603725457,
+                "t_statistic": -0.6297720488638057,
+                "yearly_return_pct": {
+                  "2007": -1.0042022943467788,
+                  "2008": -9.29577842558481,
+                  "2009": -5.9535056398235415,
+                  "2010": -2.562126634111017,
+                  "2011": 4.414130051078624,
+                  "2012": 4.003709006270384,
+                  "2013": -0.7344008254459133,
+                  "2014": 1.8583142732819802,
+                  "2015": -0.11927711166950239,
+                  "2016": -3.7011375253449663
+                },
+                "years_with_trade": 10,
+                "positive_calendar_year_share": 0.3,
+                "trade_clock_hash": "ed5688313c609b1e0ffe6dada3f8c9c49776e3bcbf1131ca72d81488f8c4fc3c"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -23.471348791602253,
+                "cagr_pct": -2.659289293307343,
+                "strict_mdd_pct": 30.948435061067624,
+                "cagr_to_strict_mdd": -0.0859264543767728,
+                "trades": 127,
+                "longs": 37,
+                "shorts": 90,
+                "win_rate": 0.4251968503937008,
+                "mean_trade_return_pct": -0.1958927990005461,
+                "one_sided_t_pvalue": 0.8997477346403941,
+                "t_statistic": -1.286853465526022,
+                "yearly_return_pct": {
+                  "2007": -2.3815127874766695,
+                  "2008": -10.557729731003507,
+                  "2009": -7.539962798374211,
+                  "2010": -3.821559524728313,
+                  "2011": 2.447528508582142,
+                  "2012": 3.0711788929907113,
+                  "2013": -1.6244475490434729,
+                  "2014": 1.0460918002987984,
+                  "2015": -1.212760008274194,
+                  "2016": -4.9458481346805305
+                },
+                "years_with_trade": 10,
+                "positive_calendar_year_share": 0.3,
+                "trade_clock_hash": "ed5688313c609b1e0ffe6dada3f8c9c49776e3bcbf1131ca72d81488f8c4fc3c"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": -14.008348434554707,
+                "cagr_pct": -1.5091145594143707,
+                "strict_mdd_pct": 23.49764282423402,
+                "cagr_to_strict_mdd": -0.06422408284536366,
+                "trades": 127,
+                "longs": 90,
+                "shorts": 37,
+                "win_rate": 0.5118110236220472,
+                "mean_trade_return_pct": -0.10398621321546157,
+                "one_sided_t_pvalue": 0.7518869696106574,
+                "t_statistic": -0.6824200330624836,
+                "yearly_return_pct": {
+                  "2007": -1.9577004737059256,
+                  "2008": 6.827183999597541,
+                  "2009": 2.2949815099557735,
+                  "2010": -0.3226899171817621,
+                  "2011": -8.97219458617171,
+                  "2012": -5.840725500777477,
+                  "2013": -1.1963021358037063,
+                  "2014": -3.4779094422339285,
+                  "2015": -2.2977283746336785,
+                  "2016": 0.8250920480927348
+                },
+                "years_with_trade": 10,
+                "positive_calendar_year_share": 0.3,
+                "trade_clock_hash": "1715a759f56f8ced5c2fff70f1897e7d32865fe9e7ae2526b0999187e64634f1"
+              }
+            },
+            "test": {
+              "base_5bp": {
+                "absolute_return_pct": -4.042031564196568,
+                "cagr_pct": -0.821898210856864,
+                "strict_mdd_pct": 15.26471806398736,
+                "cagr_to_strict_mdd": -0.053842999746971584,
+                "trades": 64,
+                "longs": 18,
+                "shorts": 46,
+                "win_rate": 0.453125,
+                "mean_trade_return_pct": -0.054782443631386755,
+                "one_sided_t_pvalue": 0.6222279482638811,
+                "t_statistic": -0.3126963804721879,
+                "yearly_return_pct": {
+                  "2017": 1.6068803796788655,
+                  "2018": -3.420120467342025,
+                  "2019": -2.593275994712707,
+                  "2020": -4.82012717661272,
+                  "2021": 5.472007057980566
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "58f1f6038d949ed058e36e78b06bfdbb8569276e6ffefd9c8fadbee19557d2b3"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -9.995269556193875,
+                "cagr_pct": -2.0843744900765127,
+                "strict_mdd_pct": 18.918445874763336,
+                "cagr_to_strict_mdd": -0.11017683502517553,
+                "trades": 64,
+                "longs": 18,
+                "shorts": 46,
+                "win_rate": 0.40625,
+                "mean_trade_return_pct": -0.15475264748590292,
+                "one_sided_t_pvalue": 0.8100268471198395,
+                "t_statistic": -0.8842074336243516,
+                "yearly_return_pct": {
+                  "2017": 0.9986095203335488,
+                  "2018": -4.8590787215003095,
+                  "2019": -3.948477995031796,
+                  "2020": -6.4257031379272185,
+                  "2021": 4.212968021747421
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "58f1f6038d949ed058e36e78b06bfdbb8569276e6ffefd9c8fadbee19557d2b3"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": -9.443045989154285,
+                "cagr_pct": -1.9645021646652272,
+                "strict_mdd_pct": 12.144968331246986,
+                "cagr_to_strict_mdd": -0.16175440817008058,
+                "trades": 64,
+                "longs": 46,
+                "shorts": 18,
+                "win_rate": 0.453125,
+                "mean_trade_return_pct": -0.14516755636858908,
+                "one_sided_t_pvalue": 0.7947737522462166,
+                "t_statistic": -0.8286116213414526,
+                "yearly_return_pct": {
+                  "2017": -2.8209886294235265,
+                  "2018": 0.4302925001574254,
+                  "2019": -0.3492848726615816,
+                  "2020": 0.7754534017541115,
+                  "2021": -7.60479752724168
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "777522e30a2b42cd2dee29c6bc1819d15156ecccb6719d03cb8761a9ba681d43"
+              }
+            },
+            "eval": {
+              "base_5bp": {
+                "absolute_return_pct": -10.78774082029742,
+                "cagr_pct": -2.480351108916523,
+                "strict_mdd_pct": 29.0132379116941,
+                "cagr_to_strict_mdd": -0.08549032398472114,
+                "trades": 94,
+                "longs": 17,
+                "shorts": 77,
+                "win_rate": 0.43617021276595747,
+                "mean_trade_return_pct": -0.09420059408838116,
+                "one_sided_t_pvalue": 0.6484930073430171,
+                "t_statistic": -0.3824314053171213,
+                "yearly_return_pct": {
+                  "2022": -7.200456446155734,
+                  "2023": 1.148219324645594,
+                  "2024": -2.955500004004541,
+                  "2025": -13.270904364475555,
+                  "2026": 12.923599008511077
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "8d3a588f88beaa9220e2696a0f6b563e93ae47753238fe340ec52912720c2da5"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -18.797347733457503,
+                "cagr_pct": -4.478060481309532,
+                "strict_mdd_pct": 34.80194673593384,
+                "cagr_to_strict_mdd": -0.1286727008488243,
+                "trades": 94,
+                "longs": 17,
+                "shorts": 77,
+                "win_rate": 0.425531914893617,
+                "mean_trade_return_pct": -0.19413136993790453,
+                "one_sided_t_pvalue": 0.7839158860749097,
+                "t_statistic": -0.7889150613879969,
+                "yearly_return_pct": {
+                  "2022": -8.857135895530899,
+                  "2023": -0.657502663618359,
+                  "2024": -4.783297288620836,
+                  "2025": -15.920216705772571,
+                  "2026": 12.023141490641942
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "8d3a588f88beaa9220e2696a0f6b563e93ae47753238fe340ec52912720c2da5"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": -11.95388018706437,
+                "cagr_pct": -2.762265207676662,
+                "strict_mdd_pct": 22.13568327714963,
+                "cagr_to_strict_mdd": -0.12478788990119456,
+                "trades": 94,
+                "longs": 77,
+                "shorts": 17,
+                "win_rate": 0.5212765957446809,
+                "mean_trade_return_pct": -0.10574940591159655,
+                "one_sided_t_pvalue": 0.6656571605484763,
+                "t_statistic": -0.429316760744407,
+                "yearly_return_pct": {
+                  "2022": 3.678989741812466,
+                  "2023": -4.989249792198502,
+                  "2024": -1.1705738645693686,
+                  "2025": 7.237708068600224,
+                  "2026": -15.66401526189356
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "054e48db897b3865987b575955d120e00f4fe8242e9beaf7ff6a89a48a5ec658"
+              }
+            }
+          }
+        },
+        "persistent_barrier_mass_density_fade_session": {
+          "threshold": 7.07338154506997,
+          "threshold_quantile": 0.975,
+          "threshold_fit_positive_events": 626,
+          "hold_sessions": 4,
+          "raw_signal_counts": {
+            "train": 16,
+            "test": 12,
+            "eval": 8
+          },
+          "windows": {
+            "train": {
+              "base_5bp": {
+                "absolute_return_pct": -3.8581149963004324,
+                "cagr_pct": -0.39564309231838735,
+                "strict_mdd_pct": 9.550106753020792,
+                "cagr_to_strict_mdd": -0.04142813295707313,
+                "trades": 14,
+                "longs": 9,
+                "shorts": 5,
+                "win_rate": 0.35714285714285715,
+                "mean_trade_return_pct": -0.23992255627464176,
+                "one_sided_t_pvalue": 0.6153076770021149,
+                "t_statistic": -0.2993775865770982,
+                "yearly_return_pct": {
+                  "2007": 0.0,
+                  "2008": 0.7389887784301941,
+                  "2009": 0.0,
+                  "2010": -1.550501375082225,
+                  "2011": -0.6075043729253382,
+                  "2012": 0.016641803987726966,
+                  "2013": 0.40072901613670275,
+                  "2014": -1.519409594554877,
+                  "2015": 0.02527972028631975,
+                  "2016": -1.3996653696737527
+                },
+                "years_with_trade": 8,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "7dc949d07c9714bae4223243a5849334913f682830d3aa4ac6d215ace9142b12"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -5.195719522086439,
+                "cagr_pct": -0.5361504347339285,
+                "strict_mdd_pct": 9.683811567488998,
+                "cagr_to_strict_mdd": -0.05536564099759241,
+                "trades": 14,
+                "longs": 9,
+                "shorts": 5,
+                "win_rate": 0.2857142857142857,
+                "mean_trade_return_pct": -0.3397075737315014,
+                "one_sided_t_pvalue": 0.6608630100878834,
+                "t_statistic": -0.4243146757802181,
+                "yearly_return_pct": {
+                  "2007": 0.0,
+                  "2008": 0.4369985251512887,
+                  "2009": 0.0,
+                  "2010": -1.6489754860756545,
+                  "2011": -0.7069217166701169,
+                  "2012": -0.2831830340094377,
+                  "2013": 0.3003031869445616,
+                  "2014": -1.6179148051017722,
+                  "2015": -0.07477056574766161,
+                  "2016": -1.695244473548685
+                },
+                "years_with_trade": 8,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "7dc949d07c9714bae4223243a5849334913f682830d3aa4ac6d215ace9142b12"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": -0.04245406708308641,
+                "cagr_pct": -0.004278342131114332,
+                "strict_mdd_pct": 11.109654955935044,
+                "cagr_to_strict_mdd": -0.0003851012608477763,
+                "trades": 14,
+                "longs": 5,
+                "shorts": 9,
+                "win_rate": 0.6428571428571429,
+                "mean_trade_return_pct": 0.03997255627466049,
+                "one_sided_t_pvalue": 0.4804888587762389,
+                "t_statistic": 0.04987812572789738,
+                "yearly_return_pct": {
+                  "2007": 0.0,
+                  "2008": -2.176711488613736,
+                  "2009": 0.0,
+                  "2010": 1.3505513750822429,
+                  "2011": 0.4075543729253672,
+                  "2012": -0.7173640645436796,
+                  "2013": -0.6006790161366737,
+                  "2014": 1.319459594554906,
+                  "2015": -0.22522972028627963,
+                  "2016": 0.6492409535965304
+                },
+                "years_with_trade": 8,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "49b085cd94e96658bf9cb74ee6fec5e6b3e60ca70dc97fdffad5ff380d586756"
+              }
+            },
+            "test": {
+              "base_5bp": {
+                "absolute_return_pct": -0.8385253489601396,
+                "cagr_pct": -0.1682899822544215,
+                "strict_mdd_pct": 7.644596271165494,
+                "cagr_to_strict_mdd": -0.02201424068517408,
+                "trades": 11,
+                "longs": 7,
+                "shorts": 4,
+                "win_rate": 0.5454545454545454,
+                "mean_trade_return_pct": -0.0574836452415416,
+                "one_sided_t_pvalue": 0.5365636842244704,
+                "t_statistic": -0.09412046159711547,
+                "yearly_return_pct": {
+                  "2017": -0.27167342064965405,
+                  "2018": 2.420211546418405,
+                  "2019": -0.7518453490221955,
+                  "2020": -2.3170406839421953,
+                  "2021": 0.13768052755851468
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "a87ba2a348c386b7dd629435149de4d6423c4119c1ba1bf84a3d3504ad56ca7c"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -1.9241339969296223,
+                "cagr_pct": -0.38786833901091056,
+                "strict_mdd_pct": 7.829260854726283,
+                "cagr_to_strict_mdd": -0.049540862950908884,
+                "trades": 11,
+                "longs": 7,
+                "shorts": 4,
+                "win_rate": 0.45454545454545453,
+                "mean_trade_return_pct": -0.15745114721914835,
+                "one_sided_t_pvalue": 0.5992029783781329,
+                "t_statistic": -0.2580597057486195,
+                "yearly_return_pct": {
+                  "2017": -0.47108015976222717,
+                  "2018": 2.215422384660659,
+                  "2019": -0.9502919846041791,
+                  "2020": -2.7072842042272227,
+                  "2021": 0.03751781261709386
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "a87ba2a348c386b7dd629435149de4d6423c4119c1ba1bf84a3d3504ad56ca7c"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": -1.7546573461362236,
+                "cagr_pct": -0.35346183731677083,
+                "strict_mdd_pct": 8.210775871559516,
+                "cagr_to_strict_mdd": -0.0430485307169438,
+                "trades": 11,
+                "longs": 4,
+                "shorts": 7,
+                "win_rate": 0.2727272727272727,
+                "mean_trade_return_pct": -0.14246635475843442,
+                "one_sided_t_pvalue": 0.5898699425797853,
+                "t_statistic": -0.23326633193804502,
+                "yearly_return_pct": {
+                  "2017": -0.13071139388657338,
+                  "2018": -2.8190827080423753,
+                  "2019": 0.3517270554124652,
+                  "2020": 1.2145531104658769,
+                  "2021": -0.33763052755849676
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.4,
+                "trade_clock_hash": "28ccd1a590447ccb024b19b9099b32848e73d4bbbaefd7e8a3e5850cdd960c72"
+              }
+            },
+            "eval": {
+              "base_5bp": {
+                "absolute_return_pct": -3.5952101957059335,
+                "cagr_pct": -0.8023719886398495,
+                "strict_mdd_pct": 8.35868136959178,
+                "cagr_to_strict_mdd": -0.09599265161115186,
+                "trades": 8,
+                "longs": 3,
+                "shorts": 5,
+                "win_rate": 0.375,
+                "mean_trade_return_pct": -0.44557029201781756,
+                "one_sided_t_pvalue": 0.7738324009815059,
+                "t_statistic": -0.7957091632623811,
+                "yearly_return_pct": {
+                  "2022": -0.1578123429427425,
+                  "2023": -1.277275494725827,
+                  "2024": 2.8318202598225373,
+                  "2025": -3.154305970936544,
+                  "2026": -1.7891313828426791
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "baa0baea1a13a00928bca470f5da7549f282459f86f5643fab1a7d0c5f4be209"
+              },
+              "stress_10bp": {
+                "absolute_return_pct": -4.363946035690336,
+                "cagr_pct": -0.9769573760760264,
+                "strict_mdd_pct": 8.63339908672982,
+                "cagr_to_strict_mdd": -0.11316022417840997,
+                "trades": 8,
+                "longs": 3,
+                "shorts": 5,
+                "win_rate": 0.375,
+                "mean_trade_return_pct": -0.5451496103270073,
+                "one_sided_t_pvalue": 0.8188668728040314,
+                "t_statistic": -0.9745148441946561,
+                "yearly_return_pct": {
+                  "2022": -0.2576794911404723,
+                  "2023": -1.3760228999060597,
+                  "2024": 2.42100703491126,
+                  "2025": -3.25117587638305,
+                  "2026": -1.8873668041708536
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.2,
+                "trade_clock_hash": "baa0baea1a13a00928bca470f5da7549f282459f86f5643fab1a7d0c5f4be209"
+              },
+              "direction_flip_5bp": {
+                "absolute_return_pct": 1.893151496088863,
+                "cagr_pct": 0.41350054595283847,
+                "strict_mdd_pct": 5.591755197533022,
+                "cagr_to_strict_mdd": 0.07394825619963964,
+                "trades": 8,
+                "longs": 5,
+                "shorts": 3,
+                "win_rate": 0.5,
+                "mean_trade_return_pct": 0.2456202920178424,
+                "one_sided_t_pvalue": 0.3370728260890702,
+                "t_statistic": 0.43863408432527157,
+                "yearly_return_pct": {
+                  "2022": -0.042137657057228495,
+                  "2023": 1.077325494725856,
+                  "2024": -3.576674392949386,
+                  "2025": 2.954355970936562,
+                  "2026": 1.589181382842697
+                },
+                "years_with_trade": 5,
+                "positive_calendar_year_share": 0.6,
+                "trade_clock_hash": "bf56e2090fade531c2e94bea1c05ab9179e4c428535da9b96b350e2ef64d0f6b"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "transfer_decision": {
+    "rex_pullback_reclaim_session": {
+      "per_instrument": {
+        "QQQ": {
+          "checks": {
+            "raw_train_signals_at_least_40": true,
+            "positive_absolute_return": true,
+            "ratio_at_least_3": false,
+            "strict_mdd_at_most_15": true,
+            "at_least_20_trades": true,
+            "stress_positive": true,
+            "at_least_3_eval_years_with_trade": true,
+            "positive_year_share_at_least_60pct": false,
+            "direction_flip_weaker": true
+          },
+          "passed": false
+        },
+        "069500.KS": {
+          "checks": {
+            "raw_train_signals_at_least_40": true,
+            "positive_absolute_return": false,
+            "ratio_at_least_3": false,
+            "strict_mdd_at_most_15": false,
+            "at_least_20_trades": true,
+            "stress_positive": false,
+            "at_least_3_eval_years_with_trade": true,
+            "positive_year_share_at_least_60pct": false,
+            "direction_flip_weaker": false
+          },
+          "passed": false
+        },
+        "GLD": {
+          "checks": {
+            "raw_train_signals_at_least_40": true,
+            "positive_absolute_return": true,
+            "ratio_at_least_3": false,
+            "strict_mdd_at_most_15": true,
+            "at_least_20_trades": true,
+            "stress_positive": true,
+            "at_least_3_eval_years_with_trade": true,
+            "positive_year_share_at_least_60pct": false,
+            "direction_flip_weaker": true
+          },
+          "passed": false
+        }
+      },
+      "all_three_passed": false
+    },
+    "rex_multiscale_extreme_fade_session": {
+      "per_instrument": {
+        "QQQ": {
+          "checks": {
+            "raw_train_signals_at_least_40": true,
+            "positive_absolute_return": false,
+            "ratio_at_least_3": false,
+            "strict_mdd_at_most_15": false,
+            "at_least_20_trades": true,
+            "stress_positive": false,
+            "at_least_3_eval_years_with_trade": true,
+            "positive_year_share_at_least_60pct": false,
+            "direction_flip_weaker": false
+          },
+          "passed": false
+        },
+        "069500.KS": {
+          "checks": {
+            "raw_train_signals_at_least_40": true,
+            "positive_absolute_return": false,
+            "ratio_at_least_3": false,
+            "strict_mdd_at_most_15": false,
+            "at_least_20_trades": true,
+            "stress_positive": false,
+            "at_least_3_eval_years_with_trade": true,
+            "positive_year_share_at_least_60pct": false,
+            "direction_flip_weaker": false
+          },
+          "passed": false
+        },
+        "GLD": {
+          "checks": {
+            "raw_train_signals_at_least_40": true,
+            "positive_absolute_return": false,
+            "ratio_at_least_3": false,
+            "strict_mdd_at_most_15": false,
+            "at_least_20_trades": true,
+            "stress_positive": false,
+            "at_least_3_eval_years_with_trade": true,
+            "positive_year_share_at_least_60pct": false,
+            "direction_flip_weaker": true
+          },
+          "passed": false
+        }
+      },
+      "all_three_passed": false
+    },
+    "persistent_barrier_mass_density_fade_session": {
+      "per_instrument": {
+        "QQQ": {
+          "checks": {
+            "raw_train_signals_at_least_40": false,
+            "positive_absolute_return": false,
+            "ratio_at_least_3": false,
+            "strict_mdd_at_most_15": true,
+            "at_least_20_trades": false,
+            "stress_positive": false,
+            "at_least_3_eval_years_with_trade": true,
+            "positive_year_share_at_least_60pct": false,
+            "direction_flip_weaker": false
+          },
+          "passed": false
+        },
+        "069500.KS": {
+          "checks": {
+            "raw_train_signals_at_least_40": false,
+            "positive_absolute_return": false,
+            "ratio_at_least_3": false,
+            "strict_mdd_at_most_15": false,
+            "at_least_20_trades": false,
+            "stress_positive": false,
+            "at_least_3_eval_years_with_trade": true,
+            "positive_year_share_at_least_60pct": false,
+            "direction_flip_weaker": false
+          },
+          "passed": false
+        },
+        "GLD": {
+          "checks": {
+            "raw_train_signals_at_least_40": false,
+            "positive_absolute_return": false,
+            "ratio_at_least_3": false,
+            "strict_mdd_at_most_15": true,
+            "at_least_20_trades": false,
+            "stress_positive": false,
+            "at_least_3_eval_years_with_trade": true,
+            "positive_year_share_at_least_60pct": false,
+            "direction_flip_weaker": false
+          },
+          "passed": false
+        }
+      },
+      "all_three_passed": false
+    }
+  },
+  "result_hash": "dd240a7da1f75878f391fe02e875042a13187a5d92e18f46a33bb90a87adade7"
+}
