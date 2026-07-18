@@ -25,6 +25,9 @@ from training.preregister_cross_collateral_book_validated_flow_rejection import 
 
 
 POLICY_ID = "CLD-72"
+PREREGISTRATION_SOURCE = Path(
+    "training/preregister_cross_sectional_leadership_diffusion.py"
+)
 SELECTION_START = pd.Timestamp("2023-01-01 00:00:00")
 SELECTION_END = pd.Timestamp("2024-01-01 00:00:00")
 FIVE_MINUTES = pd.Timedelta(minutes=5)
@@ -658,6 +661,7 @@ def _event_clock_payload(schedule: pd.DataFrame) -> dict[str, Any]:
             event[key] = str(pd.Timestamp(event[key]))
     return {
         "protocol": "CLD-72 canonical outcome-blind event-clock freeze",
+        "preregistration_source_sha256": sha256(PREREGISTRATION_SOURCE),
         "post_entry_outcomes_opened": False,
         "entry_or_later_ohlc_loaded": False,
         "selection_end_exclusive": str(SELECTION_END),
@@ -793,6 +797,8 @@ def run_support(cfg: Config) -> dict[str, Any]:
     clock_payload = _event_clock_payload(selected_schedule)
     result = {
         "protocol": protocol(),
+        "preregistration_source": str(PREREGISTRATION_SOURCE),
+        "preregistration_source_sha256": sha256(PREREGISTRATION_SOURCE),
         "config": asdict(cfg),
         "frozen_sources": source,
         "support_selection": {
@@ -809,6 +815,7 @@ def run_support(cfg: Config) -> dict[str, Any]:
             else "retire CLD-72 before opening any post-entry outcome"
         ),
     }
+    result["manifest_hash"] = canonical_hash(result)
     for path in (Path(cfg.output), Path(cfg.event_clock_output), Path(cfg.docs_output)):
         path.parent.mkdir(parents=True, exist_ok=True)
     Path(cfg.output).write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")

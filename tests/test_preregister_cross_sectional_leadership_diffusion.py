@@ -93,3 +93,6 @@ def test_quarterly_schedule_delays_entry_and_prevents_overlap() -> None:
     payload = cld._event_clock_payload(schedule)
     assert payload["events"][0]["entry_date"] == "2023-02-01 01:05:00"
     assert len(payload["event_clock_sha256"]) == 64
+    assert payload["preregistration_source_sha256"] == cld.sha256(
+        cld.PREREGISTRATION_SOURCE
+    )
