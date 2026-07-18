@@ -38,7 +38,7 @@ def manifest() -> dict[str, Any]:
                 "name": "KODEX 200",
                 "investing_id": 953500,
                 "exchange_timezone": "Asia/Seoul",
-                "regular_session": ["09:00", "15:30"],
+                "regular_session": ["09:00", "15:20"],
                 "currency": "KRW",
             },
             "GLD": {
@@ -134,7 +134,9 @@ def manifest() -> dict[str, Any]:
             "duplicate_utc_timestamps": "fail closed",
             "invalid_ohlcv": "fail closed",
             "non_five_minute_alignment": "fail closed",
-            "missing_interior_regular_session_bar": "fail closed",
+            "missing_interior_regular_session_bar": (
+                "fail closed except provider-stable KRX no-trade/trading-halt intervals; never synthesize bars"
+            ),
             "prefix_invariance": True,
             "direction_flip_same_trade_clock": True,
         },

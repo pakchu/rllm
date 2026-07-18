@@ -1,6 +1,6 @@
 # Cross-asset five-minute transfer preregistration — 2026-07-19
 
-Manifest: `9ac94be69adaaaada5cb154616231d93807666aa47f608cf23e0b6599e5738d5`
+Manifest: `5cacbead33f2b66c5961e22666708cde72f9844233821002b421a17a658b6775`
 
 ## Scope
 
