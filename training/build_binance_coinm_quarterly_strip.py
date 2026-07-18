@@ -33,6 +33,7 @@ from training.build_binance_aggtrade_microstructure import (
 
 
 ARCHIVE_ROOT = "https://data.binance.vision/data/futures/cm/daily/klines"
+MONTHLY_ARCHIVE_ROOT = "https://data.binance.vision/data/futures/cm/monthly/klines"
 S3_ROOT = "https://s3-ap-northeast-1.amazonaws.com/data.binance.vision"
 SEALED_END_EXCLUSIVE = pd.Timestamp("2024-01-01")
 ARCHIVE_COLUMNS = (
@@ -95,12 +96,13 @@ OUTPUT_NUMERIC_COLUMNS = tuple(
 class BuildConfig:
     start: str = "2020-07-01"
     end: str = "2023-12-31 23:55"
-    output_dir: str = "data/binance_coinm_quarterly_strip_pre2024"
+    output_dir: str = "data/binance_coinm_quarterly_strip_pre2024_v2"
     workers: int = 16
     retries: int = 5
     timeout_seconds: int = 60
     overwrite: bool = False
     open_oos: bool = False
+    monthly_fallback: bool = True
 
 
 def contract_delivery(symbol: str) -> pd.Timestamp:
@@ -119,6 +121,13 @@ def listing_url(symbol: str) -> str:
 def archive_url(symbol: str, day: str) -> str:
     stem = f"{symbol}-5m-{day}.zip"
     return f"{ARCHIVE_ROOT}/{symbol}/5m/{stem}"
+
+
+def monthly_archive_url(symbol: str, month: str) -> str:
+    if not re.fullmatch(r"\d{4}-\d{2}", month):
+        raise ValueError(f"unexpected archive month: {month}")
+    stem = f"{symbol}-5m-{month}.zip"
+    return f"{MONTHLY_ARCHIVE_ROOT}/{symbol}/5m/{stem}"
 
 
 def parse_listing(payload: bytes, symbol: str) -> list[str]:
@@ -416,6 +425,88 @@ def _download_archive(
     }
 
 
+def _download_monthly_archive(
+    symbol: str,
+    month: str,
+    cfg: BuildConfig,
+    cache_dir: Path,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    url = monthly_archive_url(symbol, month)
+    payload = fetch_cached(
+        url,
+        cache_dir=cache_dir,
+        retries=cfg.retries,
+        timeout=cfg.timeout_seconds,
+    )
+    checksum_payload = fetch_cached(
+        url + ".CHECKSUM",
+        cache_dir=cache_dir,
+        retries=cfg.retries,
+        timeout=cfg.timeout_seconds,
+    )
+    expected = expected_sha256(checksum_payload)
+    observed = verify_sha256(payload, expected)
+    frame = read_archive(
+        payload,
+        symbol=symbol,
+        start=pd.Timestamp(cfg.start),
+        end=pd.Timestamp(cfg.end),
+    )
+    return frame, {
+        "symbol": symbol,
+        "month": month,
+        "url": url,
+        "archive_sha256": observed,
+        "rows_in_sealed_interval": int(len(frame)),
+        "valid_rows": int(frame["row_valid"].sum()),
+    }
+
+
+def missing_contract_months(
+    panel: pd.DataFrame,
+    raw: pd.DataFrame,
+) -> list[tuple[str, str]]:
+    """Return every calendar-required symbol/month absent from daily rows."""
+    available = pd.MultiIndex.from_frame(raw[["date", "symbol"]])
+    missing: set[tuple[str, str]] = set()
+    for leg in ("front", "next"):
+        required = panel[["signal_bar_open_utc", f"{leg}_symbol"]].dropna().copy()
+        required.columns = ["date", "symbol"]
+        absent = ~pd.MultiIndex.from_frame(required).isin(available)
+        for row in required.loc[absent].itertuples(index=False):
+            missing.add((str(row.symbol), pd.Timestamp(row.date).strftime("%Y-%m")))
+    return sorted(missing)
+
+
+def merge_daily_with_monthly_fallback(
+    daily: pd.DataFrame,
+    monthly: pd.DataFrame,
+) -> tuple[pd.DataFrame, int]:
+    """Validate overlap and add only keys absent from the daily primary source."""
+    keys = ["date", "symbol"]
+    if daily.duplicated(keys).any() or monthly.duplicated(keys).any():
+        raise ValueError("duplicate contract key before monthly fallback merge")
+    daily_indexed = daily.set_index(keys).sort_index()
+    monthly_indexed = monthly.set_index(keys).sort_index()
+    overlap = daily_indexed.index.intersection(monthly_indexed.index)
+    if len(overlap):
+        try:
+            pd.testing.assert_frame_equal(
+                daily_indexed.loc[overlap],
+                monthly_indexed.loc[overlap],
+                check_dtype=False,
+                check_exact=False,
+                rtol=0.0,
+                atol=1e-12,
+            )
+        except AssertionError as exc:
+            raise ValueError("daily and monthly Binance archives disagree") from exc
+    additions = monthly_indexed.loc[~monthly_indexed.index.isin(daily_indexed.index)]
+    combined = pd.concat([daily_indexed, additions]).reset_index()
+    combined = combined.sort_values(keys).reset_index(drop=True)
+    return combined, int(len(additions))
+
+
 def build(cfg: BuildConfig) -> dict[str, Any]:
     start = pd.Timestamp(cfg.start)
     end = pd.Timestamp(cfg.end)
@@ -479,20 +570,55 @@ def build(cfg: BuildConfig) -> dict[str, Any]:
                     f"verified archives: {completed}/{len(futures)}",
                     flush=True,
                 )
-    raw = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-    if raw.empty:
+    daily_raw = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    if daily_raw.empty:
         raise ValueError("no quarterly contract rows were downloaded")
-    raw = raw.sort_values(["date", "symbol"]).reset_index(drop=True)
-    panel = build_fixed_strip(raw, start=start, end=end)
+    daily_raw = daily_raw.sort_values(["date", "symbol"]).reset_index(drop=True)
+    panel = build_fixed_strip(daily_raw, start=start, end=end)
+    monthly_requests = (
+        missing_contract_months(panel, daily_raw) if cfg.monthly_fallback else []
+    )
+    monthly_frames: list[pd.DataFrame] = []
+    monthly_metadata: list[dict[str, Any]] = []
+    if monthly_requests:
+        with ThreadPoolExecutor(max_workers=cfg.workers) as executor:
+            futures = {
+                executor.submit(
+                    _download_monthly_archive, symbol, month, cfg, cache_dir
+                ): (symbol, month)
+                for symbol, month in monthly_requests
+            }
+            for completed, future in enumerate(as_completed(futures), start=1):
+                frame, metadata = future.result()
+                monthly_frames.append(frame)
+                monthly_metadata.append(metadata)
+                print(
+                    f"verified monthly fallbacks: {completed}/{len(futures)}",
+                    flush=True,
+                )
+    monthly_rows_added = 0
+    raw = daily_raw
+    if monthly_frames:
+        monthly_raw = pd.concat(monthly_frames, ignore_index=True)
+        raw, monthly_rows_added = merge_daily_with_monthly_fallback(
+            daily_raw, monthly_raw
+        )
+        panel = build_fixed_strip(raw, start=start, end=end)
     _write_gzip_csv(panel, output_path)
     archive_metadata.sort(key=lambda item: (item["symbol"], item["day"]))
+    monthly_metadata.sort(key=lambda item: (item["symbol"], item["month"]))
     manifest = {
         "schema_version": 1,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "config": asdict(cfg),
         "protocol": {
-            "source": "official checksum-verified Binance Vision COIN-M contract-specific daily klines",
+            "source": (
+                "official checksum-verified Binance Vision COIN-M contract-specific "
+                "daily klines with monthly missing-key fallback"
+            ),
             "archive_root": ARCHIVE_ROOT,
+            "monthly_archive_root": MONTHLY_ARCHIVE_ROOT,
+            "source_precedence": "daily rows win; monthly overlap must agree; only absent keys added",
             "selection": "fixed nearest two unexpired delivery symbols; missing front never promoted",
             "availability": "kline close_time + 1ms, equal to next five-minute boundary",
             "raw_archives_cached": True,
@@ -509,6 +635,12 @@ def build(cfg: BuildConfig) -> dict[str, Any]:
         ],
         "listings": listings,
         "archives": archive_metadata,
+        "monthly_fallback_requests": [
+            {"symbol": symbol, "month": month}
+            for symbol, month in monthly_requests
+        ],
+        "monthly_fallback_archives": monthly_metadata,
+        "monthly_rows_added": monthly_rows_added,
         "output": str(output_path),
         "output_sha256": hashlib.sha256(output_path.read_bytes()).hexdigest(),
         "rows": int(len(panel)),
@@ -534,7 +666,10 @@ def main() -> None:
     parser.add_argument("--timeout-seconds", type=int, default=BuildConfig.timeout_seconds)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--open-oos", action="store_true")
-    report = build(BuildConfig(**vars(parser.parse_args())))
+    parser.add_argument("--no-monthly-fallback", action="store_true")
+    args = vars(parser.parse_args())
+    args["monthly_fallback"] = not args.pop("no_monthly_fallback")
+    report = build(BuildConfig(**args))
     print(
         json.dumps(
             {

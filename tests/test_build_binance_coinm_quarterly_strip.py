@@ -4,7 +4,6 @@ import hashlib
 import io
 import zipfile
 
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -44,6 +43,15 @@ def test_contract_delivery_is_utc_0800_and_rejects_perp() -> None:
     assert strip.contract_delivery("BTCUSD_231229") == pd.Timestamp("2023-12-29 08:00")
     with pytest.raises(ValueError):
         strip.contract_delivery("BTCUSD_PERP")
+
+
+def test_monthly_archive_url_is_contract_specific() -> None:
+    assert strip.monthly_archive_url("BTCUSD_240329", "2023-12") == (
+        "https://data.binance.vision/data/futures/cm/monthly/klines/"
+        "BTCUSD_240329/5m/BTCUSD_240329-5m-2023-12.zip"
+    )
+    with pytest.raises(ValueError, match="archive month"):
+        strip.monthly_archive_url("BTCUSD_240329", "2023-12-01")
 
 
 def test_archive_parser_accepts_header_and_headerless_rows() -> None:
@@ -266,6 +274,44 @@ def test_cached_fetcher_is_stable(tmp_path) -> None:
     assert hashlib.sha256(first).hexdigest() == hashlib.sha256(second).hexdigest()
 
 
+def test_monthly_fallback_adds_only_missing_daily_keys() -> None:
+    symbol = "BTCUSD_231229"
+    daily = strip.read_archive(
+        _archive(symbol, [_row("2023-01-01 00:00")]),
+        symbol=symbol,
+        start=pd.Timestamp("2023-01-01"),
+        end=pd.Timestamp("2023-01-02"),
+    )
+    monthly = strip.read_archive(
+        _archive(
+            symbol,
+            [_row("2023-01-01 00:00"), _row("2023-01-01 00:05", close=101.0)],
+        ),
+        symbol=symbol,
+        start=pd.Timestamp("2023-01-01"),
+        end=pd.Timestamp("2023-01-02"),
+    )
+    combined, added = strip.merge_daily_with_monthly_fallback(daily, monthly)
+    assert added == 1
+    assert combined["date"].tolist() == list(
+        pd.date_range("2023-01-01", periods=2, freq="5min")
+    )
+
+
+def test_monthly_fallback_rejects_overlap_disagreement() -> None:
+    symbol = "BTCUSD_231229"
+    daily = strip.read_archive(
+        _archive(symbol, [_row("2023-01-01 00:00")]),
+        symbol=symbol,
+        start=pd.Timestamp("2023-01-01"),
+        end=pd.Timestamp("2023-01-02"),
+    )
+    monthly = daily.copy()
+    monthly.loc[0, "close"] += 1.0
+    with pytest.raises(ValueError, match="archives disagree"):
+        strip.merge_daily_with_monthly_fallback(daily, monthly)
+
+
 def test_download_archive_rejects_checksum_mismatch(tmp_path, monkeypatch) -> None:
     symbol = "BTCUSD_231229"
     payload = _archive(symbol, [_row("2023-01-01 00:00")])
@@ -279,6 +325,106 @@ def test_download_archive_rejects_checksum_mismatch(tmp_path, monkeypatch) -> No
     cfg = strip.BuildConfig(output_dir=str(tmp_path))
     with pytest.raises(ValueError, match="checksum mismatch"):
         strip._download_archive(symbol, "2023-01-01", cfg, tmp_path)
+
+
+def test_download_monthly_archive_rejects_checksum_mismatch(
+    tmp_path, monkeypatch
+) -> None:
+    symbol = "BTCUSD_231229"
+    payload = _archive(symbol, [_row("2023-12-01 00:00")])
+
+    def fake_fetch(url, **kwargs):
+        if url.endswith(".CHECKSUM"):
+            return ("0" * 64 + "  file.zip\n").encode()
+        return payload
+
+    monkeypatch.setattr(strip, "fetch_cached", fake_fetch)
+    cfg = strip.BuildConfig(output_dir=str(tmp_path))
+    with pytest.raises(ValueError, match="checksum mismatch"):
+        strip._download_monthly_archive(
+            symbol, "2023-12", cfg, tmp_path
+        )
+
+
+def test_build_monthly_fallback_covers_both_legs_and_records_provenance(
+    tmp_path, monkeypatch
+) -> None:
+    contracts = ("BTCUSD_230331", "BTCUSD_230630", "BTCUSD_230929")
+    monkeypatch.setattr(strip, "CONTRACTS", contracts)
+    day = "2023-01-01"
+    front_invalid = _row(f"{day} 00:00")
+    front_invalid[2] = front_invalid[1] - 1.0
+    daily_payloads = {
+        contracts[0]: _archive(contracts[0], [front_invalid]),
+        contracts[1]: _archive(contracts[1], [_row(f"{day} 00:00")]),
+    }
+    monthly_payloads = {
+        contracts[0]: _archive(
+            contracts[0],
+            [front_invalid, _row(f"{day} 00:05", close=101.0)],
+        ),
+        contracts[1]: _archive(
+            contracts[1],
+            [_row(f"{day} 00:00"), _row(f"{day} 00:05", close=101.0)],
+        ),
+    }
+
+    def listing(symbol: str, include_day: bool) -> bytes:
+        contents = (
+            "<Contents><Key>data/futures/cm/daily/klines/"
+            f"{symbol}/5m/{symbol}-5m-{day}.zip</Key></Contents>"
+            if include_day
+            else ""
+        )
+        return (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
+            f"<IsTruncated>false</IsTruncated>{contents}</ListBucketResult>"
+        ).encode()
+
+    def fake_fetch(url, **kwargs):
+        if url.startswith(strip.S3_ROOT):
+            symbol = next(symbol for symbol in contracts if symbol in url)
+            return listing(symbol, symbol in daily_payloads)
+        checksum = url.endswith(".CHECKSUM")
+        archive_url = url.removesuffix(".CHECKSUM")
+        symbol = next(symbol for symbol in contracts if symbol in archive_url)
+        payload = (
+            monthly_payloads[symbol]
+            if "/monthly/" in archive_url
+            else daily_payloads[symbol]
+        )
+        if checksum:
+            filename = archive_url.rsplit("/", 1)[-1]
+            return f"{hashlib.sha256(payload).hexdigest()}  {filename}\n".encode()
+        return payload
+
+    monkeypatch.setattr(strip, "fetch_cached", fake_fetch)
+    configs = [
+        strip.BuildConfig(
+            start=f"{day} 00:00",
+            end=f"{day} 00:10",
+            output_dir=str(tmp_path / name),
+            workers=1,
+        )
+        for name in ("first", "second")
+    ]
+    reports = [strip.build(cfg) for cfg in configs]
+    first = reports[0]
+    assert first["monthly_rows_added"] == 2
+    assert first["monthly_fallback_requests"] == [
+        {"symbol": contracts[0], "month": "2023-01"},
+        {"symbol": contracts[1], "month": "2023-01"},
+    ]
+    assert len(first["monthly_fallback_archives"]) == 2
+    assert all(
+        len(row["archive_sha256"]) == 64
+        for row in first["monthly_fallback_archives"]
+    )
+    panel = pd.read_csv(first["output"])
+    assert panel["feature_valid"].tolist() == [False, True]
+    assert panel.loc[0, "feature_invalid_reason"] == "front_row_invalid"
+    assert first["output_sha256"] == reports[1]["output_sha256"]
 
 
 def test_build_rejects_post2023_without_explicit_open(tmp_path) -> None:
