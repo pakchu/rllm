@@ -155,8 +155,7 @@ def test_frozen_manifest_matches_pre2024_depth_panel() -> None:
     assert item["rows"] == 105_120
     assert item["source_complete_rows"] == 101_649
     path = Path(item["path"])
-    if not path.exists():
-        path = Path("/home/pakchu/rllm") / path
+    assert not path.is_absolute()
     assert hashlib.sha256(path.read_bytes()).hexdigest() == item["sha256"]
     frame = pd.read_csv(path, compression="gzip", nrows=1)
     assert len(frame.columns) == 28
