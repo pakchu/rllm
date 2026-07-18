@@ -31,8 +31,12 @@ def test_clock_contract_rejects_outcome_column() -> None:
         support.assert_clock_contract(frame)
 
 
-def test_frozen_support_artifact_passes() -> None:
-    payload = support.run()
+def test_frozen_support_artifact_passes(tmp_path) -> None:
+    payload = support.run(
+        clock_output=tmp_path / "clock.csv.gz",
+        output=tmp_path / "support.json",
+        docs_output=tmp_path / "support.md",
+    )
     assert payload["outcomes_opened"] is False
     assert payload["post_entry_returns_or_pnl_calculated"] is False
     assert payload["support"]["passes_support"] is True
