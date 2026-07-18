@@ -947,7 +947,7 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
                     return [{"positionSide": "LONG", "positionAmt": "0.003", "entryPrice": "100"}]
 
                 async def _private_request(self, method, path, params):
-                    return [{"orderId": 88, "positionSide": "LONG", "side": "BUY", "time": entry_ms, "price": "100"}]
+                    return [{"orderId": 88, "positionSide": "LONG", "side": "BUY", "time": entry_ms, "price": "99"}]
 
                 async def get_order(self, symbol, order_id=None):
                     return {"orderId": order_id, "clientOrderId": cid, "time": entry_ms}
@@ -975,6 +975,7 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             restored = state["open_sleeves"][name]
             self.assertEqual(restored["exit_at"], "2026-07-09 14:35:00+00:00")
             self.assertEqual(restored["dynamic_exit"]["name"], "vwap_overheat")
+            self.assertEqual(restored["entry_fill_price"], 100.0)
 
         asyncio.run(run())
 
@@ -1062,6 +1063,72 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             self.assertGreaterEqual(len(client.placed), 2)
             self.assertEqual(Decimal(str(client.placed[0]["quantity"])), Decimal("0.01"))
             self.assertEqual(Decimal(str(client.placed[1]["quantity"])), Decimal("0.004"))
+
+        asyncio.run(run())
+
+    def test_post_only_refresh_reports_quantity_weighted_fill_price(self):
+        async def run():
+            class SequencedExecutor:
+                def __init__(self):
+                    self.prices = iter((100.0, 110.0))
+
+                async def get_maker_price(self, side, ws_orderbook=None):
+                    return next(self.prices)
+
+            client = FakeClient(
+                order_statuses=[
+                    {"orderId": 101, "status": "NEW", "executedQty": "0.004", "avgPrice": "100"},
+                ],
+                cancel_responses=[
+                    {"status": "CANCELED", "executedQty": "0.006", "avgPrice": "100"},
+                    {"status": "CANCELED", "executedQty": "0.004", "avgPrice": "110"},
+                ],
+            )
+            result = await _place_portfolio_maker_order_with_deadline(
+                client=client,
+                executor=SequencedExecutor(),
+                exec_cfg=SimpleNamespace(symbol="BTCUSDT"),
+                order_side="BUY",
+                quantity=Decimal("0.01"),
+                position_side="LONG",
+                signal_id="sig-weighted-price",
+                sleeve_name="fresh_kimchi_fx",
+                ttl_sec=2,
+                refresh_interval_sec=1,
+                poll_interval_sec=0.05,
+            )
+            self.assertEqual(result["status"], "FILLED")
+            self.assertEqual(Decimal(result["filled_quantity"]), Decimal("0.010"))
+            self.assertEqual(Decimal(result["avg_price"]), Decimal("104"))
+
+        asyncio.run(run())
+
+    def test_post_only_reconciles_cumulative_average_quote_not_delta_average(self):
+        async def run():
+            client = FakeClient(
+                order_statuses=[
+                    {"orderId": 101, "status": "NEW", "executedQty": "0.001", "avgPrice": "100"},
+                ],
+                cancel_responses=[
+                    {"status": "CANCELED", "executedQty": "0.002", "avgPrice": "110"},
+                ],
+            )
+            result = await _place_portfolio_maker_order_with_deadline(
+                client=client,
+                executor=FakeExecutor(),
+                exec_cfg=SimpleNamespace(symbol="BTCUSDT"),
+                order_side="BUY",
+                quantity=Decimal("0.002"),
+                position_side="LONG",
+                signal_id="sig-cumulative-average",
+                sleeve_name="legacy-maker",
+                ttl_sec=2,
+                refresh_interval_sec=1,
+                poll_interval_sec=0.05,
+            )
+            self.assertEqual(result["status"], "FILLED")
+            self.assertEqual(Decimal(result["filled_quantity"]), Decimal("0.002"))
+            self.assertEqual(Decimal(result["avg_price"]), Decimal("110"))
 
         asyncio.run(run())
 

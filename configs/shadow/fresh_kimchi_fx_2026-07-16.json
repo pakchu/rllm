@@ -20,5 +20,18 @@
   "entry_delay_bars": 1,
   "take_bps": 400,
   "stop_bps": 250,
-  "execution_fidelity": "signal_score_only; barrier exits are not wired"
+  "barrier_exit": {
+    "type": "fixed_bps",
+    "take_bps": 400,
+    "stop_bps": 250,
+    "entry_price_source": "actual_fill_avg",
+    "entry_execution": "market",
+    "price_source": "last_trade",
+    "same_bar_policy": "stop_before_take",
+    "live_touch_policy": "first_aggtrade_touch",
+    "stream_gap_policy": "market_close_fail_safe",
+    "execution": "market",
+    "monitor_interval_sec": 1.0
+  },
+  "execution_fidelity": "live barrier runtime wired; historical/live lifecycle parity remains required before promotion"
 }

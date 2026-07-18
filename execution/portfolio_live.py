@@ -18,6 +18,7 @@ import argparse
 import asyncio
 import fcntl
 import hashlib
+import inspect
 import json
 import logging
 import multiprocessing as mp
@@ -39,6 +40,7 @@ from execution.rex_llm_live import (
     build_rex_live_policy_record,
     rex_policy_config_from_candidate,
 )
+from execution.binance_aggtrade_stream import BinanceAggTradeStream
 from execution.portfolio_shadow_policies import (
     build_fresh_kimchi_feature_frame,
     build_markov_feature_frame,
@@ -725,6 +727,7 @@ class PortfolioLiveConfig:
     maker_refresh_interval_sec: int = 60
     entry_maker_max_deviation_pct: float = 0.003
     exit_maker_max_deviation_pct: float = 0.002
+    barrier_poll_sec: float = 1.0
     cancel_stale_open_orders: bool = True
     portfolio_selector_overlay: Path | None = None
     rex_selector_adapter_dir: Path | None = None
@@ -833,7 +836,16 @@ def _portfolio_uses_feature(portfolio: dict[str, Any], feature: str) -> bool:
 def _write_json(path: str | Path, payload: dict[str, Any]) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str) + "\n")
+    body = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str) + "\n"
+    temporary = p.with_name(f".{p.name}.{os.getpid()}.{time.time_ns()}.tmp")
+    try:
+        with temporary.open("w") as handle:
+            handle.write(body)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, p)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _ensure_trade_executions_table(engine: Any) -> None:
@@ -1635,6 +1647,315 @@ def _dynamic_exit_due(
     return bool(ok), [f"dynamic_exit_bars={bars_elapsed}>=min{min_bars}:pass", *reasons]
 
 
+def _barrier_exit_from_config(config: dict[str, Any]) -> dict[str, Any] | None:
+    """Normalize a fixed-bps barrier contract from a sleeve config.
+
+    Historical research expresses disabled barriers with very large bps values.
+    Live execution maps those values to ``None`` instead of creating unreachable
+    or malformed orders.  A partially configured contract is rejected later by
+    the trigger evaluators rather than silently changing its semantics.
+    """
+
+    raw = config.get("barrier_exit")
+    if raw is not None and not isinstance(raw, dict):
+        return {
+            "type": "invalid",
+            "validation_error": "barrier_exit_must_be_object",
+        }
+    source = dict(raw or {})
+    if not source and "take_bps" not in config and "stop_bps" not in config:
+        return None
+
+    def normalized_bps(key: str) -> float | None:
+        value = source.get(key, config.get(key))
+        if value in (None, ""):
+            return None
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return float("nan")
+        if number >= 1_000_000:
+            return None
+        return number
+
+    validation_errors: list[str] = []
+    for key in ("take_bps", "stop_bps"):
+        if key not in source or key not in config:
+            continue
+        try:
+            if float(source[key]) != float(config[key]):
+                validation_errors.append(f"{key}_conflicts_with_top_level")
+        except (TypeError, ValueError):
+            validation_errors.append(f"{key}_conflicts_with_top_level")
+    try:
+        monitor_interval_sec = float(source.get("monitor_interval_sec", 1.0) or 1.0)
+    except (TypeError, ValueError):
+        monitor_interval_sec = float("nan")
+    inherited_error = source.get("validation_error")
+    if inherited_error:
+        validation_errors.append(str(inherited_error))
+
+    return {
+        "type": str(source.get("type", "fixed_bps")),
+        "take_bps": normalized_bps("take_bps"),
+        "stop_bps": normalized_bps("stop_bps"),
+        "entry_price_source": str(source.get("entry_price_source", "actual_fill_avg")),
+        "entry_execution": str(source.get("entry_execution", "market")),
+        "price_source": str(source.get("price_source", "last_trade")),
+        "same_bar_policy": str(source.get("same_bar_policy", "stop_before_take")),
+        "live_touch_policy": str(source.get("live_touch_policy", "first_aggtrade_touch")),
+        "stream_gap_policy": str(source.get("stream_gap_policy", "market_close_fail_safe")),
+        "execution": str(source.get("execution", "market")),
+        "monitor_interval_sec": monitor_interval_sec,
+        **({"validation_error": ";".join(validation_errors)} if validation_errors else {}),
+    }
+
+
+def _validate_barrier_exit_contract(open_state: dict[str, Any]) -> tuple[dict[str, Any] | None, list[str]]:
+    barrier = open_state.get("barrier_exit")
+    if not isinstance(barrier, dict):
+        return None, []
+    errors: list[str] = []
+    if barrier.get("validation_error"):
+        errors.append(str(barrier["validation_error"]))
+    if str(barrier.get("type", "")) != "fixed_bps":
+        errors.append("type_must_be_fixed_bps")
+    if str(barrier.get("entry_price_source", "")) != "actual_fill_avg":
+        errors.append("entry_price_source_must_be_actual_fill_avg")
+    if str(barrier.get("entry_execution", "")) != "market":
+        errors.append("entry_execution_must_be_market")
+    if str(barrier.get("price_source", "")) != "last_trade":
+        errors.append("price_source_must_be_last_trade")
+    if str(barrier.get("same_bar_policy", "")) != "stop_before_take":
+        errors.append("same_bar_policy_must_be_stop_before_take")
+    if str(barrier.get("live_touch_policy", "")) != "first_aggtrade_touch":
+        errors.append("live_touch_policy_must_be_first_aggtrade_touch")
+    if str(barrier.get("stream_gap_policy", "")) != "market_close_fail_safe":
+        errors.append("stream_gap_policy_must_be_market_close_fail_safe")
+    if str(barrier.get("execution", "")) != "market":
+        errors.append("execution_must_be_market")
+    try:
+        poll = float(barrier.get("monitor_interval_sec"))
+    except (TypeError, ValueError):
+        poll = float("nan")
+    if not np.isfinite(poll) or poll <= 0.0:
+        errors.append("monitor_interval_sec_invalid")
+    enabled = 0
+    for key in ("take_bps", "stop_bps"):
+        value = barrier.get(key)
+        if value is None:
+            continue
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            errors.append(f"{key}_not_numeric")
+            continue
+        if not np.isfinite(number) or number <= 0.0 or number >= 1_000_000:
+            errors.append(f"{key}_out_of_range")
+            continue
+        enabled += 1
+    if enabled == 0:
+        errors.append("no_enabled_barrier")
+    try:
+        entry = float(open_state.get("entry_fill_price", open_state.get("entry_reference_price", 0.0)) or 0.0)
+    except (TypeError, ValueError):
+        entry = 0.0
+    if not np.isfinite(entry) or entry <= 0.0:
+        errors.append("entry_fill_price_missing")
+    side = str(open_state.get("side", "")).upper()
+    if side not in {"LONG", "SHORT"}:
+        errors.append("side_invalid")
+    return (barrier if not errors else None), [f"barrier_contract={error}:fail_closed" for error in errors]
+
+
+def _barrier_levels(open_state: dict[str, Any], barrier: dict[str, Any]) -> tuple[float | None, float | None]:
+    entry = float(open_state.get("entry_fill_price", open_state.get("entry_reference_price")))
+    side = str(open_state["side"]).upper()
+    take_bps = barrier.get("take_bps")
+    stop_bps = barrier.get("stop_bps")
+    take = None if take_bps is None else float(take_bps) / 10_000.0
+    stop = None if stop_bps is None else float(stop_bps) / 10_000.0
+    if side == "LONG":
+        return (
+            None if take is None else entry * (1.0 + take),
+            None if stop is None else entry * (1.0 - stop),
+        )
+    return (
+        None if take is None else entry * (1.0 - take),
+        None if stop is None else entry * (1.0 + stop),
+    )
+
+
+def _barrier_exit_due_at_price(
+    open_state: dict[str, Any], observed_price: float
+) -> tuple[bool, str | None, list[str]]:
+    """Evaluate a live first-touch observation against an open sleeve."""
+
+    barrier, reasons = _validate_barrier_exit_contract(open_state)
+    if barrier is None:
+        return False, None, reasons
+    try:
+        price = float(observed_price)
+    except (TypeError, ValueError):
+        price = float("nan")
+    if not np.isfinite(price) or price <= 0.0:
+        return False, None, [*reasons, "barrier_observed_price=invalid:fail_closed"]
+    take_level, stop_level = _barrier_levels(open_state, barrier)
+    side = str(open_state["side"]).upper()
+    stop_hit = stop_level is not None and (price <= stop_level if side == "LONG" else price >= stop_level)
+    take_hit = take_level is not None and (price >= take_level if side == "LONG" else price <= take_level)
+    if stop_hit:
+        return True, "stop", [f"barrier_stop={price:.12g}@{stop_level:.12g}:hit"]
+    if take_hit:
+        return True, "take", [f"barrier_take={price:.12g}@{take_level:.12g}:hit"]
+    return False, None, [
+        f"barrier_price={price:.12g}:inside",
+        f"barrier_take_level={take_level}",
+        f"barrier_stop_level={stop_level}",
+    ]
+
+
+def _barrier_exit_due_in_bars(
+    open_state: dict[str, Any],
+    bars: pd.DataFrame,
+    interval_minutes: int,
+) -> tuple[bool, str | None, list[str], pd.Timestamp | None]:
+    """Replay completed bars after a fill, preserving stop-before-take.
+
+    A bar containing a mid-bar maker fill is excluded because its pre-fill
+    high/low cannot be separated from the post-fill path.  The one-second live
+    monitor owns that partial bar; completed-bar replay is the restart fallback.
+    """
+
+    barrier, reasons = _validate_barrier_exit_contract(open_state)
+    if barrier is None:
+        return False, None, reasons, None
+    if bars.empty or not {"date", "high", "low"}.issubset(bars.columns):
+        return False, None, [*reasons, "barrier_bars=missing:fail_closed"], None
+    fill_raw = open_state.get("entry_filled_at")
+    try:
+        filled_at = pd.Timestamp(fill_raw)
+    except Exception:
+        return False, None, [*reasons, "entry_filled_at=missing:fail_closed"], None
+    if filled_at.tzinfo is None:
+        filled_at = filled_at.tz_localize("UTC")
+    else:
+        filled_at = filled_at.tz_convert("UTC")
+    first_full_bar = filled_at.ceil(f"{max(1, int(interval_minutes))}min")
+    last_raw = open_state.get("last_barrier_bar")
+    last_seen: pd.Timestamp | None = None
+    if last_raw:
+        last_seen = pd.Timestamp(last_raw)
+        last_seen = last_seen.tz_localize("UTC") if last_seen.tzinfo is None else last_seen.tz_convert("UTC")
+
+    ordered = bars[["date", "high", "low"]].copy()
+    ordered["date"] = pd.to_datetime(ordered["date"], utc=True, errors="coerce")
+    ordered["high"] = pd.to_numeric(ordered["high"], errors="coerce")
+    ordered["low"] = pd.to_numeric(ordered["low"], errors="coerce")
+    ordered = ordered.dropna().sort_values("date")
+    ordered = ordered[ordered["date"] >= first_full_bar]
+    if last_seen is not None:
+        ordered = ordered[ordered["date"] > last_seen]
+    if ordered.empty:
+        return False, None, [*reasons, f"barrier_completed_bars_after={first_full_bar}:none"], last_seen
+
+    take_level, stop_level = _barrier_levels(open_state, barrier)
+    side = str(open_state["side"]).upper()
+    for row in ordered.itertuples(index=False):
+        bar_ts = pd.Timestamp(row.date)
+        last_seen = bar_ts
+        high = float(row.high)
+        low = float(row.low)
+        stop_hit = stop_level is not None and (low <= stop_level if side == "LONG" else high >= stop_level)
+        take_hit = take_level is not None and (high >= take_level if side == "LONG" else low <= take_level)
+        if stop_hit:
+            return True, "stop", [f"barrier_bar={bar_ts}:stop_before_take"], last_seen
+        if take_hit:
+            return True, "take", [f"barrier_bar={bar_ts}:take"], last_seen
+    return False, None, [f"barrier_completed_bars={len(ordered)}:inside"], None
+
+
+def _entry_fill_metadata(order_info: dict[str, Any], fallback_price: float) -> dict[str, Any]:
+    """Extract the actual maker fill basis used by live barrier levels."""
+
+    candidates: list[dict[str, Any]] = []
+
+    def add_candidate(record: Any) -> None:
+        if not isinstance(record, dict) or record in candidates:
+            return
+        candidates.append(record)
+        raw_order = record.get("raw_order")
+        if isinstance(raw_order, dict) and raw_order not in candidates:
+            candidates.append(raw_order)
+
+    nested = order_info.get("order")
+    add_candidate(nested)
+    add_candidate(order_info)
+    price = 0.0
+    for record in candidates:
+        report = record.get("trade_report")
+        values = [
+            report.get("avg_price") if isinstance(report, dict) else None,
+            record.get("avg_price"),
+            record.get("avgPrice"),
+            record.get("price"),
+        ]
+        for value in values:
+            try:
+                candidate = float(value)
+            except (TypeError, ValueError):
+                continue
+            if np.isfinite(candidate) and candidate > 0.0:
+                price = candidate
+                break
+        if price > 0.0:
+            break
+    if price <= 0.0:
+        price = float(fallback_price)
+
+    # Exchange timestamps always precede local request/confirmation timestamps.
+    # The first user-trade fill is the point at which the live position begins
+    # carrying barrier risk.
+    filled_at: pd.Timestamp | None = None
+    for record in candidates:
+        report = record.get("trade_report")
+        values = [
+            report.get("first_fill_at") if isinstance(report, dict) else None,
+            report.get("last_fill_at") if isinstance(report, dict) else None,
+            record.get("updateTime"),
+            record.get("transactTime"),
+            record.get("time"),
+        ]
+        for value in values:
+            if value in (None, ""):
+                continue
+            try:
+                ts = pd.Timestamp(int(value), unit="ms", tz="UTC") if isinstance(value, (int, float)) else pd.Timestamp(value)
+                filled_at = ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+                break
+            except Exception:
+                continue
+        if filled_at is not None:
+            break
+    if filled_at is None:
+        for record in candidates:
+            for value in (record.get("finished_at"), record.get("started_at")):
+                if value in (None, ""):
+                    continue
+                try:
+                    ts = pd.Timestamp(value)
+                    filled_at = ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+                    break
+                except Exception:
+                    continue
+            if filled_at is not None:
+                break
+    return {
+        "entry_fill_price": float(price),
+        "entry_filled_at": None if filled_at is None else str(filled_at),
+    }
+
+
 
 def _load_portfolio_selector_overlay(portfolio: dict[str, Any], explicit_path: Path | None) -> dict[str, Any] | None:
     """Load a bounded portfolio-level selector overlay if configured.
@@ -1740,6 +2061,7 @@ def _score_sleeve(
     stride_offset = 0
     entry_delay = 1
     dynamic_exit: dict[str, Any] | None = None
+    barrier_exit: dict[str, Any] | None = None
 
     if source.endswith(".json"):
         if not Path(source).exists():
@@ -1862,6 +2184,7 @@ def _score_sleeve(
                 ]
             )
             dynamic_exit = cfg.get("dynamic_exit") if isinstance(cfg.get("dynamic_exit"), dict) else None
+            barrier_exit = _barrier_exit_from_config(cfg)
 
             if overlay_cfg is not None:
                 sel = overlay_cfg.get("symbolic_proxy", {})
@@ -1900,6 +2223,18 @@ def _score_sleeve(
         ]
         active &= entry_delay == 1
 
+    if barrier_exit is not None:
+        valid_barrier, barrier_validation_reasons = _validate_barrier_exit_contract(
+            {
+                "barrier_exit": barrier_exit,
+                "entry_fill_price": close,
+                "side": side,
+            }
+        )
+        if valid_barrier is None:
+            active = False
+            reasons.extend(barrier_validation_reasons)
+
     return {
         "name": name,
         "source": source,
@@ -1916,6 +2251,7 @@ def _score_sleeve(
         "signal_id": f"{name}:{side}:{ts.isoformat()}",
         "reasons": reasons,
         "dynamic_exit": dynamic_exit,
+        "barrier_exit": barrier_exit,
     }
 
 
@@ -2220,15 +2556,21 @@ def _load_sleeve_runtime_spec(sleeve: dict[str, Any]) -> dict[str, Any]:
     hold = int(sleeve.get("hold_bars", sleeve.get("hold_bars_5m", 0)) or 0)
     stride = int(sleeve.get("stride_bars", sleeve.get("stride_bars_5m", 1)) or 1)
     dynamic_exit = sleeve.get("dynamic_exit") if isinstance(sleeve.get("dynamic_exit"), dict) else None
+    barrier_exit = _barrier_exit_from_config(sleeve)
     if source.endswith(".json") and Path(source).exists():
         try:
             cfg = _load_json(source)
             if isinstance(cfg.get("dynamic_exit"), dict):
                 dynamic_exit = cfg["dynamic_exit"]
+            loaded_barrier = _barrier_exit_from_config(cfg)
+            if loaded_barrier is not None:
+                barrier_exit = loaded_barrier
             if "base_candidate" in cfg and "gates" not in cfg and "signal" not in cfg:
                 cfg = _load_json(str(cfg["base_candidate"]))
                 if dynamic_exit is None and isinstance(cfg.get("dynamic_exit"), dict):
                     dynamic_exit = cfg["dynamic_exit"]
+                if barrier_exit is None:
+                    barrier_exit = _barrier_exit_from_config(cfg)
             if "signal" in cfg:
                 hold = int(cfg["signal"].get("hold_bars_5m", cfg["signal"].get("hold_bars", hold)) or hold)
                 stride = int(cfg["signal"].get("stride_bars_5m", cfg["signal"].get("stride_bars", stride)) or stride)
@@ -2237,7 +2579,13 @@ def _load_sleeve_runtime_spec(sleeve: dict[str, Any]) -> dict[str, Any]:
                 stride = int(cfg.get("stride_bars", cfg.get("stride_bars_5m", stride)) or stride)
         except Exception:
             pass
-    return {"source": source, "hold_bars": hold, "stride_bars": stride, "dynamic_exit": dynamic_exit}
+    return {
+        "source": source,
+        "hold_bars": hold,
+        "stride_bars": stride,
+        "dynamic_exit": dynamic_exit,
+        "barrier_exit": barrier_exit,
+    }
 
 
 def _known_portfolio_sleeves(portfolio: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -2560,6 +2908,8 @@ async def _recover_exchange_positions_into_state(
             signal_ts = pd.Timestamp(int(entry.get("time", 0) or 0), unit="ms", tz="UTC").floor(f"{int(exec_cfg.interval_minutes)}min")
         if signal_id is None:
             signal_id = f"{name}:{side}:recovered:{order_id}"
+        recovered_entry_price = float(pos.get("entryPrice") or entry.get("price") or 0.0)
+        recovered_fill_at = pd.Timestamp(int(entry.get("time", 0) or 0), unit="ms", tz="UTC")
         hold_bars = int(spec.get("hold_bars") or exec_cfg.max_holding_bars)
         exit_at = signal_ts + pd.Timedelta(minutes=exec_cfg.interval_minutes * (1 + hold_bars))
         total_weight = float(sum(float(s.get("weight", 0.0) or 0.0) for s in portfolio.get("base_sleeves", [])))
@@ -2580,6 +2930,9 @@ async def _recover_exchange_positions_into_state(
             "margin_fraction": margin_fraction,
             "allocation_mode": allocation_mode,
             "quantity": str(qty),
+            "entry_reference_price": recovered_entry_price,
+            "entry_fill_price": recovered_entry_price,
+            "entry_filled_at": str(recovered_fill_at),
             "order_info": {
                 "status": "RECOVERED_FROM_EXCHANGE",
                 "order_id": order_id,
@@ -2589,6 +2942,7 @@ async def _recover_exchange_positions_into_state(
                 "position": {k: pos.get(k) for k in ["symbol", "positionSide", "positionAmt", "entryPrice", "updateTime"]},
             },
             "dynamic_exit": spec.get("dynamic_exit"),
+            "barrier_exit": spec.get("barrier_exit"),
             "recovered_from_exchange": True,
         }
         state.setdefault("processed_signals", {})[name] = signal_id
@@ -2747,6 +3101,7 @@ async def _place_portfolio_maker_order_with_deadline(
     deadline = asyncio.get_event_loop().time() + max(0, int(ttl_sec))
     remaining_qty = Decimal(str(quantity))
     total_filled = Decimal("0")
+    total_filled_quote = Decimal("0")
     avg_price = Decimal("0")
     active_order_id: Any = None
     active_client_order_id = ""
@@ -2755,6 +3110,7 @@ async def _place_portfolio_maker_order_with_deadline(
     refresh_history: list[dict[str, Any]] = []
     last_status: dict[str, Any] = {}
     active_counted_executed = Decimal("0")
+    active_counted_quote = Decimal("0")
     terminal_statuses = {"FILLED", "CANCELED", "REJECTED", "EXPIRED"}
     min_qty = Decimal("0.001")
 
@@ -2796,17 +3152,31 @@ async def _place_portfolio_maker_order_with_deadline(
         before placing the next chasing order.
         """
 
-        nonlocal active_counted_executed, total_filled, remaining_qty, avg_price
+        nonlocal active_counted_executed, active_counted_quote, total_filled, total_filled_quote, remaining_qty, avg_price
         observed = _order_executed_qty(order)
-        if observed <= active_counted_executed:
+        reported_avg = _order_avg_price(order)
+        if reported_avg <= 0 and active_price > 0:
+            reported_avg = active_price
+        if observed < active_counted_executed:
+            return Decimal("0")
+        if observed == active_counted_executed:
+            if observed > 0 and reported_avg > 0:
+                cumulative_quote = observed * reported_avg
+                total_filled_quote += cumulative_quote - active_counted_quote
+                active_counted_quote = cumulative_quote
+                if total_filled > 0:
+                    avg_price = total_filled_quote / total_filled
             return Decimal("0")
         delta = observed - active_counted_executed
         active_counted_executed = observed
         total_filled += delta
         remaining_qty = max(Decimal("0"), remaining_qty - delta)
-        reported_avg = _order_avg_price(order)
         if reported_avg > 0:
-            avg_price = reported_avg
+            cumulative_quote = observed * reported_avg
+            delta_quote = cumulative_quote - active_counted_quote
+            active_counted_quote = cumulative_quote
+            total_filled_quote += delta_quote
+            avg_price = total_filled_quote / total_filled
         refresh_history.append(
             {
                 "action": "fill_reconciled",
@@ -2831,7 +3201,7 @@ async def _place_portfolio_maker_order_with_deadline(
         return deviation <= float(max_deviation_pct), deviation
 
     async def place_new(reason: str) -> bool:
-        nonlocal active_order_id, active_client_order_id, active_price, last_status, active_counted_executed
+        nonlocal active_order_id, active_client_order_id, active_price, last_status, active_counted_executed, active_counted_quote
         if remaining_qty < min_qty:
             refresh_history.append({"action": "skip_place_min_remaining", "reason": reason, "remaining_qty": str(remaining_qty), "at": str(pd.Timestamp.utcnow())})
             return False
@@ -2860,6 +3230,7 @@ async def _place_portfolio_maker_order_with_deadline(
         active_client_order_id = cid
         active_price = Decimal(str(maker_price))
         active_counted_executed = Decimal("0")
+        active_counted_quote = Decimal("0")
         last_status = dict(order)
         raw_orders.append(order)
         refresh_history.append({"action": "placed" if reason == "initial" else "replaced", "reason": reason, "order_id": active_order_id, "client_order_id": cid, "price": str(active_price), "quantity": str(remaining_qty), "reference_price": reference_price, "deviation_pct": deviation, "at": str(pd.Timestamp.utcnow())})
@@ -2889,9 +3260,6 @@ async def _place_portfolio_maker_order_with_deadline(
             last_status = {**last_status, "query_error": str(exc)}
         status = str(last_status.get("status") or "UNKNOWN")
         observed_executed = _order_executed_qty(last_status)
-        reported_avg = _order_avg_price(last_status)
-        if reported_avg > 0:
-            avg_price = reported_avg
         if status == "FILLED":
             reconcile_active_fill(last_status, "status_filled")
             final_status = "FILLED"
@@ -3089,6 +3457,305 @@ async def _open_sleeve(
     }
 
 
+async def _place_market_result_order(
+    *,
+    client: Any,
+    symbol: str,
+    side: str,
+    quantity: Decimal,
+    position_side: Side,
+    reduce_only: bool,
+    client_order_id: str,
+) -> dict[str, Any]:
+    """Place a futures MARKET order and request the terminal RESULT response.
+
+    The local wave_trading client predates the response-type argument.  Use its
+    signed request transport in that case while preserving its symbol rounding.
+    """
+
+    place_order = client.place_order
+    parameters = inspect.signature(place_order).parameters
+    supports_response_type = "new_order_resp_type" in parameters or any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()
+    )
+    order_kwargs: dict[str, Any] = {
+        "symbol": symbol,
+        "side": side,
+        "order_type": "MARKET",
+        "quantity": float(quantity),
+        "client_order_id": client_order_id,
+        "position_side": position_side,
+    }
+    # The live runner requires hedge mode. Binance rejects reduceOnly together
+    # with LONG/SHORT positionSide; the opposite side plus positionSide is the
+    # unambiguous close contract. Retain reduceOnly only for a future one-way
+    # BOTH path.
+    if str(position_side).upper() == "BOTH":
+        order_kwargs["reduce_only"] = bool(reduce_only)
+    if supports_response_type:
+        order_kwargs["new_order_resp_type"] = "RESULT"
+        return dict(
+            await place_order(**order_kwargs)
+        )
+    if not all(hasattr(client, name) for name in ("_private_request", "get_symbol_info", "_round_quantity")):
+        return dict(await place_order(**order_kwargs))
+    symbol_info = await client.get_symbol_info(symbol)
+    params = {
+        "symbol": symbol,
+        "side": side,
+        "type": "MARKET",
+        "quantity": client._round_quantity(symbol_info, float(quantity)),
+        "positionSide": position_side,
+        "newClientOrderId": client_order_id,
+        "newOrderRespType": "RESULT",
+    }
+    # Binance hedge mode rejects reduceOnly.  The explicit positionSide makes
+    # the opposite-side order a close without allowing a side flip.
+    return dict(await client._private_request("POST", "/fapi/v1/order", params))
+
+
+async def _place_or_resolve_market_order(
+    *,
+    client: Any,
+    symbol: str,
+    side: str,
+    quantity: Decimal,
+    position_side: Side,
+    reduce_only: bool,
+    client_order_id: str,
+) -> dict[str, Any]:
+    """Place once, then resolve a lost POST response by idempotency key.
+
+    If both operations fail, return a durable UNKNOWN payload instead of
+    raising into a generic handler that could misclassify a live fill as a
+    normal rejected order.
+    """
+
+    try:
+        return await _place_market_result_order(
+            client=client,
+            symbol=symbol,
+            side=side,
+            quantity=quantity,
+            position_side=position_side,
+            reduce_only=reduce_only,
+            client_order_id=client_order_id,
+        )
+    except Exception as placement_exc:
+        try:
+            resolved = dict(await client.get_order(symbol, client_order_id=client_order_id))
+        except Exception as lookup_exc:
+            return {
+                "status": "UNKNOWN",
+                "clientOrderId": client_order_id,
+                "execution_uncertain": True,
+                "placement_error": f"{type(placement_exc).__name__}: {placement_exc}",
+                "idempotency_lookup_error": f"{type(lookup_exc).__name__}: {lookup_exc}",
+            }
+        resolved.setdefault("clientOrderId", client_order_id)
+        resolved["placement_error"] = f"{type(placement_exc).__name__}: {placement_exc}"
+        resolved["resolved_by_idempotency_lookup"] = True
+        return resolved
+
+
+async def _confirm_market_order(
+    *,
+    client: Any,
+    symbol: str,
+    raw_order: dict[str, Any],
+    client_order_id: str,
+    require_fill_details: bool = False,
+) -> dict[str, Any]:
+    """Resolve ACK/NEW market responses or mark them durably uncertain."""
+
+    order = dict(raw_order)
+    order_id = order.get("orderId", order.get("order_id"))
+    terminal = {"FILLED", "PARTIALLY_FILLED", "CANCELED", "REJECTED", "EXPIRED"}
+    for attempt in range(5):
+        status = str(order.get("status", "")).upper()
+        if status in terminal:
+            break
+        try:
+            if order_id is not None:
+                order = dict(await client.get_order(symbol, order_id=order_id))
+            else:
+                order = dict(await client.get_order(symbol, client_order_id=client_order_id))
+            order_id = order.get("orderId", order.get("order_id", order_id))
+        except Exception as exc:
+            order["confirmation_error"] = f"{type(exc).__name__}: {exc}"
+        if str(order.get("status", "")).upper() in terminal:
+            break
+        if attempt < 4:
+            await asyncio.sleep(0.2)
+
+    def executed(record: dict[str, Any]) -> Decimal:
+        for key in ("executedQty", "cumQty", "filled_quantity"):
+            try:
+                value = Decimal(str(record.get(key, "0") or "0"))
+            except Exception:
+                continue
+            if value > 0:
+                return value
+        return Decimal("0")
+
+    fills: list[dict[str, Any]] = []
+    if order_id is not None:
+        last_trade_error: str | None = None
+        for attempt in range(5):
+            try:
+                trades = await client.get_trades(symbol, limit=1000)
+                fills = [trade for trade in trades if str(trade.get("orderId")) == str(order_id)]
+            except Exception as exc:
+                last_trade_error = f"{type(exc).__name__}: {exc}"
+            if fills:
+                break
+            if attempt < 4:
+                await asyncio.sleep(0.2)
+        if not fills and last_trade_error:
+            order["trade_confirmation_error"] = last_trade_error
+        if fills:
+            report = _summarize_exchange_trade_fills(fills)
+            order["status"] = "FILLED" if report["quantity"] else order.get("status", "UNKNOWN")
+            order["executedQty"] = report["quantity"]
+            order["avgPrice"] = report["avg_price"]
+            order["trade_report"] = report
+
+    def average_price(record: dict[str, Any]) -> Decimal:
+        report = record.get("trade_report")
+        values = [
+            report.get("avg_price") if isinstance(report, dict) else None,
+            record.get("avgPrice"),
+            record.get("avg_price"),
+            record.get("price"),
+        ]
+        for value in values:
+            try:
+                price = Decimal(str(value or "0"))
+            except Exception:
+                continue
+            if price > 0:
+                return price
+        return Decimal("0")
+
+    def exchange_fill_time(record: dict[str, Any]) -> pd.Timestamp | None:
+        report = record.get("trade_report")
+        values = [
+            report.get("first_fill_at") if isinstance(report, dict) else None,
+            report.get("last_fill_at") if isinstance(report, dict) else None,
+            record.get("updateTime"),
+            record.get("transactTime"),
+            record.get("time"),
+        ]
+        for value in values:
+            if value in (None, ""):
+                continue
+            try:
+                ts = pd.Timestamp(int(value), unit="ms", tz="UTC") if isinstance(value, (int, float)) else pd.Timestamp(value)
+                return ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+            except Exception:
+                continue
+        return None
+
+    status = str(order.get("status", "UNKNOWN")).upper()
+    filled = executed(order)
+    execution_uncertain = bool(status not in terminal and filled <= 0)
+    if require_fill_details and status in {"FILLED", "PARTIALLY_FILLED"}:
+        fill_details_complete = bool(
+            filled > 0 and average_price(order) > 0 and exchange_fill_time(order) is not None
+        )
+        order["fill_details_complete"] = fill_details_complete
+        execution_uncertain |= not fill_details_complete
+    order["execution_uncertain"] = execution_uncertain
+    order.setdefault("clientOrderId", client_order_id)
+    return order
+
+
+async def _open_sleeve_market(
+    *,
+    client: Any,
+    exec_cfg: WaveExecutionConfig,
+    sleeve: dict[str, Any],
+    margin_fraction: float,
+) -> dict[str, Any]:
+    """Enter a barrier-managed sleeve atomically so partial maker fills are never unprotected."""
+
+    balance = await client.get_usdt_balance()
+    total_equity = float(balance["total"])
+    reference_price = float(await client.get_ticker_price(exec_cfg.symbol))
+    notional = total_equity * float(margin_fraction) * float(exec_cfg.leverage)
+    quantity = Decimal(str(notional / reference_price))
+    side: Side = sleeve["side"]
+    order_side = "BUY" if side == "LONG" else "SELL"
+    client_order_id = _portfolio_client_order_id(
+        str(sleeve["signal_id"]),
+        sleeve_name=str(sleeve["name"]),
+    )
+    started = pd.Timestamp.utcnow()
+    raw = await _place_or_resolve_market_order(
+        client=client,
+        symbol=exec_cfg.symbol,
+        side=order_side,
+        quantity=quantity,
+        position_side=side,
+        reduce_only=False,
+        client_order_id=client_order_id,
+    )
+    order = await _confirm_market_order(
+        client=client,
+        symbol=exec_cfg.symbol,
+        raw_order=dict(raw or {}),
+        client_order_id=client_order_id,
+        require_fill_details=True,
+    )
+    order_id = order.get("orderId", order.get("order_id"))
+
+    def first_decimal(*keys: str) -> Decimal:
+        for key in keys:
+            value = order.get(key)
+            if value in (None, ""):
+                continue
+            try:
+                return Decimal(str(value))
+            except Exception:
+                continue
+        return Decimal("0")
+
+    status = str(order.get("status", "UNKNOWN"))
+    filled = first_decimal("executedQty", "cumQty", "filled_quantity")
+    if filled <= 0 and status.upper() == "FILLED":
+        filled = first_decimal("origQty")
+    avg_price = first_decimal("avgPrice", "avg_price", "price")
+    finished = pd.Timestamp.utcnow()
+    normalized = {
+        "status": status,
+        "order_id": order_id,
+        "client_order_id": order.get("clientOrderId", client_order_id),
+        "requested_quantity": str(quantity),
+        "filled_quantity": str(filled),
+        "avg_price": str(avg_price),
+        "reference_price": reference_price,
+        "started_at": str(started),
+        "finished_at": str(finished),
+        "wall_time_sec": float((finished - started).total_seconds()),
+        "raw_order": order,
+        "trade_report": order.get("trade_report"),
+        "updateTime": order.get("updateTime"),
+        "transactTime": order.get("transactTime"),
+        "time": order.get("time"),
+        "barrier_market_entry": True,
+        "execution_uncertain": bool(order.get("execution_uncertain")),
+    }
+    return {
+        "order": normalized,
+        "requested_quantity": str(quantity),
+        "filled_quantity": str(filled),
+        "entry_ttl_sec": 0,
+        "notional": notional,
+        "margin_fraction": margin_fraction,
+        "equity_basis": total_equity,
+    }
+
+
 def _build_open_intents(
     *,
     sleeve_scores: list[dict[str, Any]],
@@ -3182,26 +3849,46 @@ async def _execute_open_intents(
                     raise RuntimeError(
                         f"stale entry cancellation not confirmed for sleeve={name}: {statuses}"
                     )
-                order_info = await _open_sleeve(
-                    client=client,
-                    executor=executor,
-                    exec_cfg=exec_cfg,
-                    sleeve=sleeve,
-                    margin_fraction=float(intent["margin_fraction"]),
-                    entry_ttl_sec=int(intent["entry_ttl_sec"]),
-                )
+                barrier = sleeve.get("barrier_exit")
+                if isinstance(barrier, dict):
+                    valid_barrier, validation_reasons = _validate_barrier_exit_contract(
+                        {
+                            "barrier_exit": barrier,
+                            "entry_fill_price": sleeve.get("current_close"),
+                            "side": sleeve.get("side"),
+                        }
+                    )
+                    if valid_barrier is None:
+                        raise RuntimeError("invalid barrier contract: " + ",".join(validation_reasons))
+                    order_info = await _open_sleeve_market(
+                        client=client,
+                        exec_cfg=exec_cfg,
+                        sleeve=sleeve,
+                        margin_fraction=float(intent["margin_fraction"]),
+                    )
+                else:
+                    order_info = await _open_sleeve(
+                        client=client,
+                        executor=executor,
+                        exec_cfg=exec_cfg,
+                        sleeve=sleeve,
+                        margin_fraction=float(intent["margin_fraction"]),
+                        entry_ttl_sec=int(intent["entry_ttl_sec"]),
+                    )
                 quantity = str(order_info.get("filled_quantity") or "0")
             filled = Decimal(str(quantity or "0"))
             order_payload = order_info.get("order", order_info)
+            execution_uncertain = bool(order_payload.get("execution_uncertain"))
             return {
                 "intent": intent,
-                "ok": True,
+                "ok": not execution_uncertain,
                 "replaced": replaced,
                 "order_info": order_info,
                 "filled_quantity": str(filled),
                 "order_status": str(order_payload.get("status", "")),
-                "reservation_status": "FILLED" if filled > 0 else "MISSED",
-                "error": None,
+                "reservation_status": "UNCERTAIN" if execution_uncertain else "FILLED" if filled > 0 else "MISSED",
+                "execution_uncertain": execution_uncertain,
+                "error": "market_order_execution_uncertain" if execution_uncertain else None,
             }
         except Exception as exc:
             return {
@@ -3212,6 +3899,7 @@ async def _execute_open_intents(
                 "filled_quantity": "0",
                 "order_status": "ERROR",
                 "reservation_status": "ERROR",
+                "execution_uncertain": False,
                 "error": f"{type(exc).__name__}: {exc}",
             }
 
@@ -3276,6 +3964,68 @@ async def _close_sleeve(
     return order
 
 
+async def _close_sleeve_market(
+    *,
+    client: Any,
+    sleeve_state: dict[str, Any],
+    exec_cfg: WaveExecutionConfig,
+) -> dict[str, Any]:
+    """Close a triggered barrier immediately; never chase a stop with makers."""
+
+    side: Side = sleeve_state["side"]
+    close_side = "SELL" if side == "LONG" else "BUY"
+    quantity = Decimal(str(sleeve_state["quantity"]))
+    client_order_id = _portfolio_client_order_id(
+        f"{sleeve_state.get('signal_id', 'portfolio-exit')}:barrier-close",
+        sleeve_name=str(sleeve_state.get("name", "portfolio-exit")),
+    )
+    raw = await _place_or_resolve_market_order(
+        client=client,
+        symbol=exec_cfg.symbol,
+        side=close_side,
+        quantity=quantity,
+        position_side=side,
+        reduce_only=True,
+        client_order_id=client_order_id,
+    )
+    order = await _confirm_market_order(
+        client=client,
+        symbol=exec_cfg.symbol,
+        raw_order=dict(raw or {}),
+        client_order_id=client_order_id,
+    )
+    order_id = order.get("orderId", order.get("order_id"))
+
+    def first_decimal(*keys: str) -> Decimal:
+        for key in keys:
+            value = order.get(key)
+            if value in (None, ""):
+                continue
+            try:
+                return Decimal(str(value))
+            except Exception:
+                continue
+        return Decimal("0")
+
+    filled = first_decimal("executedQty", "cumQty", "filled_quantity")
+    if filled <= 0 and str(order.get("status", "")).upper() == "FILLED":
+        filled = first_decimal("origQty")
+    avg_price = first_decimal("avgPrice", "avg_price", "price")
+    return {
+        "status": str(order.get("status", "UNKNOWN")),
+        "order_id": order_id,
+        "client_order_id": order.get("clientOrderId", order.get("client_order_id", client_order_id)),
+        "requested_quantity": str(quantity),
+        "filled_quantity": str(filled),
+        "avg_price": str(avg_price),
+        "started_at": str(pd.Timestamp.utcnow()),
+        "finished_at": str(pd.Timestamp.utcnow()),
+        "raw_order": order,
+        "barrier_market_exit": True,
+        "execution_uncertain": bool(order.get("execution_uncertain")),
+    }
+
+
 async def _execute_close_intents(
     *,
     intents: list[dict[str, Any]],
@@ -3299,17 +4049,24 @@ async def _execute_close_intents(
             else:
                 if client is None or executor is None:
                     raise RuntimeError("live close intent requires exchange client and executor")
-                close_reference_price = float(await client.get_ticker_price(exec_cfg.symbol))
-                close_info = await _close_sleeve(
-                    client=client,
-                    executor=executor,
-                    sleeve_state=open_state,
-                    exec_cfg=exec_cfg,
-                    ttl_sec=int(max_exit_wait_sec),
-                    reference_price=close_reference_price,
-                    max_deviation_pct=float(exit_maker_max_deviation_pct),
-                    refresh_interval_sec=int(maker_refresh_interval_sec),
-                )
+                if intent.get("barrier_exit_due"):
+                    close_info = await _close_sleeve_market(
+                        client=client,
+                        sleeve_state=open_state,
+                        exec_cfg=exec_cfg,
+                    )
+                else:
+                    close_reference_price = float(await client.get_ticker_price(exec_cfg.symbol))
+                    close_info = await _close_sleeve(
+                        client=client,
+                        executor=executor,
+                        sleeve_state=open_state,
+                        exec_cfg=exec_cfg,
+                        ttl_sec=int(max_exit_wait_sec),
+                        reference_price=close_reference_price,
+                        max_deviation_pct=float(exit_maker_max_deviation_pct),
+                        refresh_interval_sec=int(maker_refresh_interval_sec),
+                    )
                 close_info = await _attach_exchange_trade_report(
                     client=client,
                     symbol=exec_cfg.symbol,
@@ -3320,13 +4077,15 @@ async def _execute_close_intents(
             except Exception:
                 filled = Decimal("0")
             requested = Decimal(str(open_state.get("quantity", "0") or "0"))
+            execution_uncertain = bool(close_info.get("execution_uncertain"))
             return {
                 "intent": intent,
-                "ok": True,
+                "ok": not execution_uncertain,
                 "close_info": close_info,
                 "filled_quantity": str(filled),
                 "fully_closed": filled >= requested,
-                "error": None,
+                "execution_uncertain": execution_uncertain,
+                "error": "market_order_execution_uncertain" if execution_uncertain else None,
             }
         except Exception as exc:
             return {
@@ -3335,10 +4094,27 @@ async def _execute_close_intents(
                 "close_info": {},
                 "filled_quantity": "0",
                 "fully_closed": False,
+                "execution_uncertain": False,
                 "error": f"{type(exc).__name__}: {exc}",
             }
 
     return list(await asyncio.gather(*(execute_one(intent) for intent in intents)))
+
+
+def _close_order_type(
+    *,
+    barrier_exit_due: bool,
+    barrier_reason: str | None,
+    dynamic_exit_due: bool,
+    time_exit_due: bool,
+    taker_fallback: bool = False,
+) -> str:
+    if barrier_exit_due:
+        suffix = str(barrier_reason or "trigger").upper()
+        return f"MARKET_BARRIER_{suffix}"
+    if dynamic_exit_due and not time_exit_due:
+        return "POST_ONLY_DYNAMIC_EXIT_WITH_TAKER_FALLBACK" if taker_fallback else "POST_ONLY_DYNAMIC_EXIT"
+    return "POST_ONLY_EXIT_WITH_TAKER_FALLBACK" if taker_fallback else "POST_ONLY_EXIT"
 
 
 
@@ -3566,6 +4342,268 @@ async def _wait_for_expected_1m_tail(
     return waited, latest_map.get(binance_key), expected_bar, "notify" if not missing else "notify_timeout", latest_map, missing
 
 
+def _portfolio_has_barrier_exits(portfolio: dict[str, Any]) -> bool:
+    return any(
+        isinstance(_load_sleeve_runtime_spec(sleeve).get("barrier_exit"), dict)
+        for sleeve in portfolio.get("base_sleeves", [])
+    )
+
+
+def _portfolio_barrier_poll_sec(portfolio: dict[str, Any], configured_poll_sec: float) -> float:
+    intervals = [max(0.05, float(configured_poll_sec))]
+    for sleeve in portfolio.get("base_sleeves", []):
+        barrier = _load_sleeve_runtime_spec(sleeve).get("barrier_exit")
+        if not isinstance(barrier, dict):
+            continue
+        try:
+            interval = float(barrier.get("monitor_interval_sec"))
+        except (TypeError, ValueError):
+            continue
+        if np.isfinite(interval) and interval > 0.0:
+            intervals.append(max(0.05, interval))
+    return min(intervals)
+
+
+async def _wait_with_barrier_monitor(
+    *,
+    wait_sec: float,
+    poll_sec: float,
+    state_file: Path,
+    client: Any | None,
+    executor: Any | None,
+    exec_cfg: WaveExecutionConfig,
+    engine: Any,
+    strategy_name: str,
+    execution_exchange: str,
+    db_lease: PortfolioDbLease | None,
+    trade_stream: BinanceAggTradeStream | None = None,
+) -> list[str]:
+    """Monitor fixed barriers between decision bars without state races.
+
+    The parent awaits this routine, so it remains the sole state/order owner.
+    Production uses ordered aggregate trades; REST polling is retained only as
+    a test/backward-compatible fallback. Triggered exits use an immediate market
+    close, while any stream session/gap mismatch forces a fail-safe close.
+    """
+
+    deadline = asyncio.get_running_loop().time() + max(0.0, float(wait_sec))
+    closed: list[str] = []
+    if exec_cfg.dry_run or client is None or executor is None:
+        await asyncio.sleep(max(0.0, float(wait_sec)))
+        return closed
+
+    while True:
+        remaining = deadline - asyncio.get_running_loop().time()
+        if remaining <= 0.0:
+            return closed
+        if db_lease is not None:
+            _assert_portfolio_db_lease(db_lease)
+        state = _load_state(state_file)
+        monitored = {
+            str(name): dict(open_state)
+            for name, open_state in state.get("open_sleeves", {}).items()
+            if isinstance(open_state.get("barrier_exit"), dict)
+        }
+        if not monitored:
+            await asyncio.sleep(min(remaining, max(0.05, float(poll_sec))))
+            continue
+        intents: list[dict[str, Any]] = []
+        observed_at = pd.Timestamp.utcnow()
+        observed_price: float | None = None
+        if trade_stream is not None:
+            continuity_failed = {
+                key
+                for key, open_state in monitored.items()
+                if open_state.get("barrier_stream_session_id") != trade_stream.session_id
+                or int(open_state.get("barrier_stream_gap_count", -1)) != int(trade_stream.gap_count)
+                or not trade_stream.healthy
+            }
+            if continuity_failed:
+                try:
+                    observed_price = float(await client.get_ticker_price(exec_cfg.symbol))
+                except Exception:
+                    observed_price = None
+                for key in sorted(continuity_failed):
+                    current = dict(state["open_sleeves"].get(key, monitored[key]))
+                    current["last_barrier_exit_reasons"] = ["aggtrade_continuity=lost:fail_safe_close"]
+                    state["open_sleeves"][key] = current
+                    intents.append(
+                        {
+                            "key": key,
+                            "open_state": current,
+                            "time_exit_due": False,
+                            "dynamic_exit_due": False,
+                            "barrier_exit_due": True,
+                            "barrier_reason": "stream_gap_fail_safe",
+                        }
+                    )
+            else:
+                ticks = await trade_stream.collect(timeout_sec=min(remaining, max(0.05, float(poll_sec))))
+                triggered: set[str] = set()
+                for tick in ticks:
+                    observed_price = float(tick.price)
+                    for key, open_state in monitored.items():
+                        if key in triggered:
+                            continue
+                        fill_raw = open_state.get("entry_filled_at")
+                        try:
+                            fill_ts = pd.Timestamp(fill_raw)
+                            fill_ts = fill_ts.tz_localize("UTC") if fill_ts.tzinfo is None else fill_ts.tz_convert("UTC")
+                            if int(tick.event_time_ms) <= int(fill_ts.timestamp() * 1000):
+                                continue
+                        except Exception:
+                            pass
+                        due, reason, reasons = _barrier_exit_due_at_price(open_state, tick.price)
+                        current = dict(state["open_sleeves"].get(key, open_state))
+                        current["last_barrier_observed_price"] = float(tick.price)
+                        current["last_barrier_observed_at"] = str(pd.Timestamp(tick.event_time_ms, unit="ms", tz="UTC"))
+                        current["last_barrier_exit_reasons"] = reasons
+                        state["open_sleeves"][key] = current
+                        if due:
+                            triggered.add(key)
+                            intents.append(
+                                {
+                                    "key": key,
+                                    "open_state": current,
+                                    "time_exit_due": False,
+                                    "dynamic_exit_due": False,
+                                    "barrier_exit_due": True,
+                                    "barrier_reason": reason,
+                                }
+                            )
+        else:
+            try:
+                observed_price = float(await client.get_ticker_price(exec_cfg.symbol))
+            except Exception as exc:
+                _status(f"[portfolio-live] barrier monitor ticker error: {type(exc).__name__}: {exc}")
+                await asyncio.sleep(min(remaining, max(0.05, float(poll_sec))))
+                continue
+            for key, open_state in monitored.items():
+                due, reason, reasons = _barrier_exit_due_at_price(open_state, observed_price)
+                current = dict(state["open_sleeves"].get(key, open_state))
+                current["last_barrier_observed_price"] = observed_price
+                current["last_barrier_observed_at"] = str(observed_at)
+                current["last_barrier_exit_reasons"] = reasons
+                state["open_sleeves"][key] = current
+                if due:
+                    intents.append(
+                        {
+                            "key": key,
+                            "open_state": current,
+                            "time_exit_due": False,
+                            "dynamic_exit_due": False,
+                            "barrier_exit_due": True,
+                            "barrier_reason": reason,
+                        }
+                    )
+        if not intents:
+            if trade_stream is None:
+                await asyncio.sleep(min(remaining, max(0.05, float(poll_sec))))
+            continue
+
+        outcomes = await _execute_close_intents(
+            intents=intents,
+            client=client,
+            executor=executor,
+            exec_cfg=exec_cfg,
+            max_exit_wait_sec=0,
+            exit_maker_max_deviation_pct=0.0,
+            maker_refresh_interval_sec=1,
+        )
+        for outcome in outcomes:
+            intent = outcome["intent"]
+            key = str(intent["key"])
+            open_state = dict(intent["open_state"])
+            reason = intent.get("barrier_reason")
+            if not outcome.get("ok"):
+                open_state["close_pending"] = True
+                open_state["last_close_error"] = outcome.get("error")
+                if outcome.get("execution_uncertain"):
+                    uncertain = list(state.get("execution_uncertain_orders", []))
+                    uncertain.append(
+                        {
+                            "action": "CLOSE",
+                            "name": key,
+                            "signal_id": open_state.get("signal_id"),
+                            "order_info": outcome.get("close_info", {}),
+                            "recorded_at": str(pd.Timestamp.utcnow()),
+                        }
+                    )
+                    state["execution_uncertain_orders"] = uncertain[-100:]
+                state["open_sleeves"][key] = open_state
+                _log_trade_execution(
+                    engine,
+                    strategy_name=strategy_name,
+                    sub_strategy_name=str(open_state.get("name", key)),
+                    exchange=execution_exchange,
+                    symbol=exec_cfg.symbol,
+                    action="CLOSE",
+                    side="SELL" if str(open_state.get("side")).upper() == "LONG" else "BUY",
+                    position_side=str(open_state.get("side")),
+                    order_type=_close_order_type(
+                        barrier_exit_due=True,
+                        barrier_reason=reason,
+                        dynamic_exit_due=False,
+                        time_exit_due=False,
+                    ),
+                    signal_id=str(open_state.get("signal_id")),
+                    status="ERROR",
+                    order_info={},
+                    error=str(outcome.get("error")),
+                )
+                state["updated_at"] = str(pd.Timestamp.utcnow())
+                _write_json(state_file, state)
+                if outcome.get("execution_uncertain"):
+                    raise RuntimeError(f"barrier close execution uncertain for sleeve={key}; runner halted")
+                continue
+            close_info = dict(outcome.get("close_info", {}))
+            fully_closed = bool(outcome.get("fully_closed"))
+            _log_trade_execution(
+                engine,
+                strategy_name=strategy_name,
+                sub_strategy_name=str(open_state.get("name", key)),
+                exchange=execution_exchange,
+                symbol=exec_cfg.symbol,
+                action="CLOSE",
+                side="SELL" if str(open_state.get("side")).upper() == "LONG" else "BUY",
+                position_side=str(open_state.get("side")),
+                order_type=_close_order_type(
+                    barrier_exit_due=True,
+                    barrier_reason=reason,
+                    dynamic_exit_due=False,
+                    time_exit_due=False,
+                ),
+                signal_id=str(open_state.get("signal_id")),
+                status=str(close_info.get("status", "FILLED" if fully_closed else "PARTIAL")),
+                order_info=close_info,
+            )
+            if fully_closed:
+                state["open_sleeves"].pop(key, None)
+                closed.append(key)
+            else:
+                requested = Decimal(str(open_state.get("quantity", "0") or "0"))
+                filled = Decimal(str(outcome.get("filled_quantity", "0") or "0"))
+                open_state["quantity"] = str(max(Decimal("0"), requested - filled))
+                open_state["close_pending"] = True
+                open_state["last_close_order_info"] = close_info
+                state["open_sleeves"][key] = open_state
+            history = list(state.get("barrier_exit_history", []))
+            history.append(
+                {
+                    "name": key,
+                    "reason": reason,
+                    "observed_price": observed_price,
+                    "fully_closed": fully_closed,
+                    "order_info": close_info,
+                    "recorded_at": str(pd.Timestamp.utcnow()),
+                }
+            )
+            state["barrier_exit_history"] = history[-200:]
+        state["updated_at"] = str(pd.Timestamp.utcnow())
+        _write_json(state_file, state)
+        await asyncio.sleep(min(max(0.0, deadline - asyncio.get_running_loop().time()), max(0.05, float(poll_sec))))
+
+
 async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     portfolio = _load_json(cfg.portfolio_config)
     _validate_portfolio_mode(portfolio, live=cfg.live)
@@ -3576,6 +4614,8 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
         feature.startswith(("vg_upbit_", "kimchi_")) for feature in gate_features
     )
     include_alt_pool = any(feature.startswith("vg_alt_") for feature in gate_features)
+    has_barrier_exits = _portfolio_has_barrier_exits(portfolio)
+    barrier_poll_sec = _portfolio_barrier_poll_sec(portfolio, cfg.barrier_poll_sec)
     selector_overlay = _load_portfolio_selector_overlay(portfolio, cfg.portfolio_selector_overlay)
     rex_selector_cfg = RexLlmSelectorConfig(
         enabled=bool(cfg.rex_selector_adapter_dir),
@@ -3611,6 +4651,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
     runner_lock = _acquire_portfolio_runner_lock(cfg.state_file)
     db_lease: PortfolioDbLease | None = None
     alpha_processes: AlphaProcessManager | None = None
+    trade_stream: BinanceAggTradeStream | None = None
     client = executor = None
     try:
         engine = sqlalchemy_engine_from_env(cfg.env_path)
@@ -3638,7 +4679,15 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
         )
         if not exec_cfg.dry_run:
             client, executor = await _make_executor(exec_cfg)
+            if has_barrier_exits:
+                trade_stream = BinanceAggTradeStream(
+                    symbol=exec_cfg.symbol,
+                    testnet=bool(exec_cfg.testnet),
+                )
+                await trade_stream.start()
     except BaseException:
+        if trade_stream is not None:
+            await trade_stream.close()
         if alpha_processes is not None:
             await alpha_processes.shutdown()
         if client is not None:
@@ -3656,7 +4705,24 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 first = False
                 wait = _seconds_until_next_interval(pd.Timestamp.utcnow(), interval_minutes=exec_cfg.interval_minutes, close_delay_sec=cfg.close_delay_sec)
                 _status(f"[portfolio-live] waiting {wait:.1f}s for next {exec_cfg.interval_minutes}m close")
-                await asyncio.sleep(wait)
+                if has_barrier_exits:
+                    closed_during_wait = await _wait_with_barrier_monitor(
+                        wait_sec=wait,
+                        poll_sec=barrier_poll_sec,
+                        state_file=cfg.state_file,
+                        client=client,
+                        executor=executor,
+                        exec_cfg=exec_cfg,
+                        engine=engine,
+                        strategy_name=cfg.strategy_name,
+                        execution_exchange=execution_exchange,
+                        db_lease=db_lease,
+                        trade_stream=trade_stream,
+                    )
+                    if closed_during_wait:
+                        _status(f"[portfolio-live] barrier_closed={closed_during_wait}")
+                else:
+                    await asyncio.sleep(wait)
 
             asof = pd.Timestamp.utcnow()
             if db_lease is not None:
@@ -3714,6 +4780,15 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     rex_selector_cfg=rex_selector_cfg,
                 )
             alpha_score_sec = time.perf_counter() - score_t0
+            if trade_stream is not None:
+                for sleeve in sleeve_scores:
+                    if not isinstance(sleeve.get("barrier_exit"), dict):
+                        continue
+                    sleeve["barrier_stream_session_id"] = trade_stream.session_id
+                    sleeve["barrier_stream_gap_count"] = int(trade_stream.gap_count)
+                    if not trade_stream.healthy:
+                        sleeve["active"] = False
+                        sleeve.setdefault("reasons", []).append("aggtrade_stream=unhealthy:fail_closed")
             latest_decision_bar = pd.Timestamp(enriched.iloc[-1]["date"])
             if latest_decision_bar.tzinfo is None:
                 latest_decision_bar = latest_decision_bar.tz_localize("UTC")
@@ -3829,14 +4904,25 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 )
                 if dynamic_exit_reasons:
                     open_state["last_dynamic_exit_reasons"] = dynamic_exit_reasons
-                    state["open_sleeves"][key] = open_state
-                if time_exit_due or dynamic_exit_due:
+                barrier_exit_due, barrier_reason, barrier_exit_reasons, barrier_bar = _barrier_exit_due_in_bars(
+                    open_state,
+                    enriched[["date", "high", "low"]],
+                    exec_cfg.interval_minutes,
+                )
+                if barrier_exit_reasons:
+                    open_state["last_barrier_exit_reasons"] = barrier_exit_reasons
+                if barrier_bar is not None:
+                    open_state["last_barrier_bar"] = str(barrier_bar)
+                state["open_sleeves"][key] = open_state
+                if time_exit_due or dynamic_exit_due or barrier_exit_due:
                     close_intents.append(
                         {
                             "key": key,
                             "open_state": dict(open_state),
                             "time_exit_due": bool(time_exit_due),
                             "dynamic_exit_due": bool(dynamic_exit_due),
+                            "barrier_exit_due": bool(barrier_exit_due),
+                            "barrier_reason": barrier_reason,
                         }
                     )
 
@@ -3855,9 +4941,23 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 open_state = dict(intent["open_state"])
                 dynamic_exit_due = bool(intent["dynamic_exit_due"])
                 time_exit_due = bool(intent["time_exit_due"])
+                barrier_exit_due = bool(intent.get("barrier_exit_due"))
+                barrier_reason = intent.get("barrier_reason")
                 if not outcome.get("ok"):
                     open_state["close_pending"] = True
                     open_state["last_close_error"] = outcome.get("error")
+                    if outcome.get("execution_uncertain"):
+                        uncertain = list(state.get("execution_uncertain_orders", []))
+                        uncertain.append(
+                            {
+                                "action": "CLOSE",
+                                "name": key,
+                                "signal_id": open_state.get("signal_id"),
+                                "order_info": outcome.get("close_info", {}),
+                                "recorded_at": str(pd.Timestamp.utcnow()),
+                            }
+                        )
+                        state["execution_uncertain_orders"] = uncertain[-100:]
                     state["open_sleeves"][key] = open_state
                     if not exec_cfg.dry_run:
                         _log_trade_execution(
@@ -3869,30 +4969,34 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                             action="CLOSE",
                             side="SELL" if str(open_state.get("side")).upper() == "LONG" else "BUY",
                             position_side=str(open_state.get("side")),
-                            order_type="POST_ONLY_DYNAMIC_EXIT" if dynamic_exit_due and not time_exit_due else "POST_ONLY_EXIT",
+                            order_type=_close_order_type(
+                                barrier_exit_due=barrier_exit_due,
+                                barrier_reason=barrier_reason,
+                                dynamic_exit_due=dynamic_exit_due,
+                                time_exit_due=time_exit_due,
+                            ),
                             signal_id=str(open_state.get("signal_id")),
                             status="ERROR",
                             order_info={},
                             error=str(outcome.get("error")),
                         )
+                    state["updated_at"] = str(pd.Timestamp.utcnow())
+                    _write_json(cfg.state_file, state)
+                    if outcome.get("execution_uncertain"):
+                        raise RuntimeError(f"close execution uncertain for sleeve={key}; runner halted")
                     continue
 
                 close_info = dict(outcome.get("close_info", {}))
                 open_state["last_close_order_info"] = close_info
                 fully_closed = bool(outcome.get("fully_closed"))
                 if not exec_cfg.dry_run:
-                    if fully_closed:
-                        order_type = (
-                            "POST_ONLY_DYNAMIC_EXIT_WITH_TAKER_FALLBACK"
-                            if dynamic_exit_due and close_info.get("taker_fallback_order")
-                            else "POST_ONLY_DYNAMIC_EXIT"
-                            if dynamic_exit_due
-                            else "POST_ONLY_EXIT_WITH_TAKER_FALLBACK"
-                            if close_info.get("taker_fallback_order")
-                            else "POST_ONLY_EXIT"
-                        )
-                    else:
-                        order_type = "POST_ONLY_DYNAMIC_EXIT" if dynamic_exit_due and not time_exit_due else "POST_ONLY_EXIT"
+                    order_type = _close_order_type(
+                        barrier_exit_due=barrier_exit_due,
+                        barrier_reason=barrier_reason,
+                        dynamic_exit_due=dynamic_exit_due,
+                        time_exit_due=time_exit_due,
+                        taker_fallback=bool(fully_closed and close_info.get("taker_fallback_order")),
+                    )
                     _log_trade_execution(
                         engine,
                         strategy_name=cfg.strategy_name,
@@ -3916,9 +5020,20 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     open_state["quantity"] = str(max(Decimal("0"), requested - filled))
                     open_state["close_pending"] = True
                     state["open_sleeves"][key] = open_state
+                state["updated_at"] = str(pd.Timestamp.utcnow())
+                _write_json(cfg.state_file, state)
 
             opened: list[str] = []
             replaced_entry_orders = 0
+            if trade_stream is not None:
+                for sleeve in sleeve_scores:
+                    if not isinstance(sleeve.get("barrier_exit"), dict):
+                        continue
+                    sleeve["barrier_stream_session_id"] = trade_stream.session_id
+                    sleeve["barrier_stream_gap_count"] = int(trade_stream.gap_count)
+                    if not trade_stream.healthy:
+                        sleeve["active"] = False
+                        sleeve.setdefault("reasons", []).append("aggtrade_stream_pre_entry=unhealthy:fail_closed")
             entry_intents = _build_open_intents(
                 sleeve_scores=sleeve_scores,
                 state=state,
@@ -3983,6 +5098,10 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 sleeve = intent["sleeve"]
                 name = str(sleeve["name"])
                 signal_id = str(sleeve["signal_id"])
+                barrier_market_entry = bool(
+                    isinstance(sleeve.get("barrier_exit"), dict)
+                    and sleeve["barrier_exit"].get("entry_execution") == "market"
+                )
                 margin_fraction = float(intent["margin_fraction"])
                 entry_ttl_sec = int(intent["entry_ttl_sec"])
                 replaced = list(outcome.get("replaced", []))
@@ -4004,6 +5123,18 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         }
                     )
                     state["entry_order_errors"] = errors[-200:]
+                    if outcome.get("execution_uncertain"):
+                        uncertain = list(state.get("execution_uncertain_orders", []))
+                        uncertain.append(
+                            {
+                                "action": "OPEN",
+                                "name": name,
+                                "signal_id": signal_id,
+                                "order_info": outcome.get("order_info", {}),
+                                "recorded_at": str(pd.Timestamp.utcnow()),
+                            }
+                        )
+                        state["execution_uncertain_orders"] = uncertain[-100:]
                     if not exec_cfg.dry_run:
                         _log_trade_execution(
                             engine,
@@ -4014,13 +5145,17 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                             action="OPEN",
                             side="BUY" if sleeve["side"] == "LONG" else "SELL",
                             position_side=str(sleeve["side"]),
-                            order_type="POST_ONLY_ENTRY",
+                            order_type="MARKET_BARRIER_ENTRY" if barrier_market_entry else "POST_ONLY_ENTRY",
                             signal_id=signal_id,
                             status="ERROR",
                             order_info={},
                             computing_wall_time_sec=frame_build_sec + alpha_score_sec,
                             error=str(outcome.get("error")),
                         )
+                    state["updated_at"] = str(pd.Timestamp.utcnow())
+                    _write_json(cfg.state_file, state)
+                    if outcome.get("execution_uncertain"):
+                        raise RuntimeError(f"open execution uncertain for sleeve={name}; runner halted")
                     continue
                 order_info = dict(outcome.get("order_info", {}))
                 quantity = str(outcome.get("filled_quantity") or "0")
@@ -4034,7 +5169,7 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         action="OPEN",
                         side="BUY" if sleeve["side"] == "LONG" else "SELL",
                         position_side=str(sleeve["side"]),
-                        order_type="POST_ONLY_ENTRY",
+                        order_type="MARKET_BARRIER_ENTRY" if barrier_market_entry else "POST_ONLY_ENTRY",
                         signal_id=signal_id,
                         status=str(outcome.get("order_status", "")),
                         order_info=order_info.get("order", order_info),
@@ -4046,18 +5181,26 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                         {
                             "name": name,
                             "signal_id": signal_id,
-                            "reason": "post_only_entry_not_filled",
+                            "reason": "market_barrier_entry_not_filled" if barrier_market_entry else "post_only_entry_not_filled",
                             "entry_ttl_sec": entry_ttl_sec,
                             "order_info": order_info,
                             "recorded_at": str(pd.Timestamp.utcnow()),
                         }
                     )
                     state["missed_entries"] = missed[-200:]
+                    state["updated_at"] = str(pd.Timestamp.utcnow())
+                    _write_json(cfg.state_file, state)
                     continue
                 signal_ts = pd.Timestamp(sleeve["date"])
                 if signal_ts.tzinfo is None:
                     signal_ts = signal_ts.tz_localize("UTC")
                 exit_at = signal_ts + pd.Timedelta(minutes=exec_cfg.interval_minutes * (1 + int(sleeve["hold_bars"])))
+                fill_metadata = _entry_fill_metadata(
+                    order_info,
+                    fallback_price=float(sleeve.get("current_close", 0.0) or 0.0),
+                )
+                if fill_metadata["entry_filled_at"] is None:
+                    fill_metadata["entry_filled_at"] = str(pd.Timestamp.utcnow())
                 state["open_sleeves"][name] = {
                     "name": name,
                     "side": sleeve["side"],
@@ -4069,12 +5212,18 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     "allocation_mode": cfg.allocation_mode,
                     "quantity": quantity,
                     "entry_reference_price": float(sleeve.get("current_close", 0.0) or 0.0),
+                    **fill_metadata,
                     "maker_refresh_interval_sec": int(cfg.maker_refresh_interval_sec),
                     "entry_maker_max_deviation_pct": float(cfg.entry_maker_max_deviation_pct),
                     "exit_maker_max_deviation_pct": float(cfg.exit_maker_max_deviation_pct),
                     "order_info": order_info,
                     "dynamic_exit": sleeve.get("dynamic_exit"),
+                    "barrier_exit": sleeve.get("barrier_exit"),
+                    "barrier_stream_session_id": sleeve.get("barrier_stream_session_id"),
+                    "barrier_stream_gap_count": sleeve.get("barrier_stream_gap_count"),
                 }
+                state["updated_at"] = str(pd.Timestamp.utcnow())
+                _write_json(cfg.state_file, state)
                 opened.append(name)
 
             if reservation_conflicts:
@@ -4126,6 +5275,8 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                 LOG.info("portfolio_live.max_iterations_reached", extra={"iterations": iterations})
                 return
     finally:
+        if trade_stream is not None:
+            await trade_stream.close()
         if alpha_processes is not None:
             await alpha_processes.shutdown()
         if client is not None:
@@ -4170,6 +5321,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--maker-refresh-interval-sec", type=int, default=60, help="Refresh live post-only maker orders on this cadence")
     p.add_argument("--entry-maker-max-deviation-pct", type=float, default=0.003, help="Entry maker refresh band as fraction of signal reference price; calibrated to 0.3%%")
     p.add_argument("--exit-maker-max-deviation-pct", type=float, default=0.002, help="Exit maker refresh band as fraction of exit reference price; calibrated to 0.2%%")
+    p.add_argument("--barrier-poll-sec", type=float, default=1.0, help="Polling cadence for live fixed-bps TP/SL exits between decision bars")
     p.add_argument(
         "--portfolio-selector-overlay",
         default="",
@@ -4222,6 +5374,7 @@ def main() -> None:
                 maker_refresh_interval_sec=int(a.maker_refresh_interval_sec),
                 entry_maker_max_deviation_pct=float(a.entry_maker_max_deviation_pct),
                 exit_maker_max_deviation_pct=float(a.exit_maker_max_deviation_pct),
+                barrier_poll_sec=float(a.barrier_poll_sec),
                 cancel_stale_open_orders=bool(a.cancel_stale_open_orders),
                 portfolio_selector_overlay=Path(a.portfolio_selector_overlay) if a.portfolio_selector_overlay else None,
                 rex_selector_adapter_dir=Path(a.rex_selector_adapter_dir) if a.rex_selector_adapter_dir else None,
