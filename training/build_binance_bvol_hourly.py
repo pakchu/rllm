@@ -26,7 +26,7 @@ from training.build_binance_aggtrade_microstructure import (
 
 BASE_URL = "https://data.binance.vision/data/option/daily/BVOLIndex"
 SYMBOL = "BTCBVOLUSDT"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 SEALED_END_EXCLUSIVE = date(2024, 1, 1)
 RAW_COLUMNS = ("calc_time", "symbol", "base_asset", "quote_asset", "index_value")
 OUTPUT_COLUMNS = (
@@ -138,6 +138,28 @@ def aggregate_day(frame: pd.DataFrame, day: date) -> pd.DataFrame:
     return output.loc[:, OUTPUT_COLUMNS]
 
 
+def invalid_day(day: date, reason: str) -> pd.DataFrame:
+    """Return a sealed invalid UTC-day grid without imputing missing BVOL."""
+    if reason not in {"archive_missing", "checksum_missing"}:
+        raise ValueError(f"unsupported invalid-day reason: {reason}")
+    output = pd.DataFrame(
+        {
+            "date": pd.date_range(pd.Timestamp(day), periods=24, freq="1h"),
+            "open": np.nan,
+            "high": np.nan,
+            "low": np.nan,
+            "close": np.nan,
+            "source_rows": 0,
+            "source_complete": False,
+            "feature_valid": False,
+            "feature_invalid_reason": reason,
+        }
+    )
+    output["feature_available_time_utc"] = output["date"] + pd.Timedelta(hours=1)
+    output["trade_earliest_time_utc"] = output["feature_available_time_utc"]
+    return output.loc[:, OUTPUT_COLUMNS]
+
+
 def _month_end(month: date) -> date:
     return date(month.year + (month.month == 12), 1 if month.month == 12 else month.month + 1, 1)
 
@@ -178,16 +200,35 @@ def _process_month(
     frames: list[pd.DataFrame] = []
     archives: list[dict[str, Any]] = []
     for day in days:
-        checksum = expected_sha256(
-            fetcher(checksum_url(day), retries=cfg.retries, timeout=cfg.timeout_seconds)
-        )
-        payload = fetcher(archive_url(day), retries=cfg.retries, timeout=cfg.timeout_seconds)
+        try:
+            payload = fetcher(archive_url(day), retries=cfg.retries, timeout=cfg.timeout_seconds)
+        except FileNotFoundError:
+            frames.append(invalid_day(day, "archive_missing"))
+            archives.append({"day": str(day), "status": "archive_missing", "raw_rows": 0})
+            continue
+        try:
+            checksum_payload = fetcher(
+                checksum_url(day), retries=cfg.retries, timeout=cfg.timeout_seconds
+            )
+        except FileNotFoundError:
+            frames.append(invalid_day(day, "checksum_missing"))
+            archives.append(
+                {
+                    "day": str(day),
+                    "status": "checksum_missing",
+                    "archive_sha256": hashlib.sha256(payload).hexdigest(),
+                    "raw_rows": 0,
+                }
+            )
+            continue
+        checksum = expected_sha256(checksum_payload)
         observed = verify_sha256(payload, checksum)
         raw = read_archive(payload)
         frames.append(aggregate_day(raw, day))
         archives.append(
             {
                 "day": str(day),
+                "status": "verified",
                 "archive_sha256": observed,
                 "raw_rows": int(len(raw)),
             }
@@ -258,7 +299,13 @@ def build(cfg: BuildConfig) -> dict[str, Any]:
         "protocol": {
             "source": "official Binance BTCBVOLUSDT daily one-second BVOLIndex archives",
             "archive_root": BASE_URL,
-            "checksums_verified": True,
+            "valid_rows_checksum_verified": True,
+            "missing_archives_are_invalid_not_imputed": True,
+            "all_requested_archives_available_and_verified": all(
+                archive.get("status") == "verified"
+                for month in metadata
+                for archive in month["archives"]
+            ),
             "feature_available_time": "hour open plus one hour",
             "raw_archives_persisted": False,
             "outcomes_opened": False,
