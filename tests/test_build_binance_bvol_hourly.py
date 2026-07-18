@@ -88,3 +88,38 @@ def test_archive_urls_are_official_binance_vision_paths() -> None:
         "BTCBVOLUSDT/BTCBVOLUSDT-BVOLIndex-2023-06-20.zip"
     )
     assert builder.checksum_url(day).endswith(".zip.CHECKSUM")
+
+
+@pytest.mark.parametrize("reason", ["archive_missing", "checksum_missing"])
+def test_invalid_day_is_not_imputed(reason: str) -> None:
+    output = builder.invalid_day(date(2023, 9, 25), reason)
+
+    assert len(output) == 24
+    assert not output["feature_valid"].any()
+    assert not output["source_complete"].any()
+    assert output[["open", "high", "low", "close"]].isna().all().all()
+    assert output["feature_invalid_reason"].eq(reason).all()
+    assert output["date"].iloc[0] == pd.Timestamp("2023-09-25 00:00:00")
+    assert output["date"].iloc[-1] == pd.Timestamp("2023-09-25 23:00:00")
+
+
+def test_missing_archive_is_sealed_invalid_in_month_output(tmp_path) -> None:
+    cfg = builder.BuildConfig(
+        start="2023-09-25",
+        end="2023-09-26",
+        output_dir=str(tmp_path),
+    )
+
+    def missing_fetcher(url: str, **_: object) -> bytes:
+        raise FileNotFoundError(url)
+
+    metadata = builder._process_month(
+        date(2023, 9, 1), cfg, fetcher=missing_fetcher
+    )
+    output = pd.read_csv(metadata["output"], compression="gzip")
+
+    assert metadata["feature_valid_rows"] == 0
+    assert metadata["archives"] == [
+        {"day": "2023-09-25", "status": "archive_missing", "raw_rows": 0}
+    ]
+    assert output["feature_invalid_reason"].eq("archive_missing").all()
