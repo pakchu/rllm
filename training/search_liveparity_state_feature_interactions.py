@@ -161,7 +161,30 @@ def completed_hourly_features(market: pd.DataFrame) -> tuple[pd.DataFrame, pd.Da
 
 def state_bank(market: pd.DataFrame, dates: pd.Series) -> dict[str, np.ndarray]:
     hourly, hourly_features = completed_hourly_features(market)
+    return state_bank_from_hourly(hourly, hourly_features, dates)
+
+
+def state_bank_from_hourly(
+    hourly: pd.DataFrame,
+    hourly_features: pd.DataFrame,
+    dates: pd.Series,
+) -> dict[str, np.ndarray]:
+    """Build the frozen causal state bank from completed-hour inputs.
+
+    Keeping this boundary explicit lets live inference prepend a compact,
+    immutable hourly history without querying years of one-minute source rows.
+    ``state_bank`` remains the canonical batch wrapper and delegates here.
+    """
+
+    if hourly.empty or hourly_features.empty:
+        size = len(dates)
+        missing = np.full(size, -1, dtype=int)
+        return {"kalman": missing.copy(), "bocpd": missing.copy(), "semimarkov": missing.copy()}
+    hourly = hourly.sort_index()
+    hourly_features = hourly_features.sort_index().reindex(hourly.index)
     fit_hour = np.asarray((hourly_features.index >= FIT_START) & (hourly_features.index < FIT_END), dtype=bool)
+    if not fit_hour.any():
+        raise ValueError("completed hourly history does not cover the frozen Rank7 fit window")
     kalman_frame, _ = kalman_hourly_state(
         hourly,
         np.asarray((hourly.index >= FIT_START) & (hourly.index < FIT_END), dtype=bool),

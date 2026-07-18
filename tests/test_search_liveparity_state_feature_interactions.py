@@ -2,7 +2,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from training.search_liveparity_state_feature_interactions import completed_hourly_features, immutable_anchors
+from training.search_liveparity_state_feature_interactions import (
+    completed_hourly_features,
+    immutable_anchors,
+    state_bank,
+    state_bank_from_hourly,
+)
 
 
 def test_completed_hourly_features_excludes_current_boundary_bar():
@@ -37,3 +42,29 @@ def test_immutable_anchors_respect_cooldown():
     anchors = immutable_anchors(active, cooldown=144)
 
     assert np.flatnonzero(anchors).tolist() == [0, 144, 288]
+
+
+def test_state_bank_hourly_warm_start_path_matches_batch_builder():
+    rows = 35 * 24 * 12
+    dates = pd.date_range("2020-07-01", periods=rows, freq="5min")
+    phase = np.linspace(0.0, 18.0, rows)
+    close = 10_000.0 * np.exp(0.00002 * np.arange(rows) + 0.002 * np.sin(phase))
+    quote = 1_000_000.0 * (1.0 + 0.1 * np.cos(phase))
+    market = pd.DataFrame(
+        {
+            "date": dates,
+            "open": close,
+            "high": close * 1.001,
+            "low": close * 0.999,
+            "close": close,
+            "quote_asset_volume": quote,
+            "taker_buy_quote": quote * (0.5 + 0.05 * np.sin(phase)),
+        }
+    )
+    hourly, hourly_features = completed_hourly_features(market)
+
+    batch = state_bank(market, market["date"])
+    warm = state_bank_from_hourly(hourly, hourly_features, market["date"])
+
+    for key in ("kalman", "bocpd", "semimarkov"):
+        np.testing.assert_array_equal(warm[key], batch[key])
