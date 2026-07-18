@@ -256,18 +256,23 @@ def load_support_inputs(cfg: Config) -> tuple[pd.DataFrame, dict[str, Any]]:
     numeric = market[["open", "close", "quote_asset_volume", "taker_buy_quote"]]
     if not np.isfinite(numeric.to_numpy(float)).all():
         raise ValueError("signal-time market fields contain non-finite values")
-    if (market[["open", "close", "quote_asset_volume"]] <= 0.0).any().any():
-        raise ValueError("signal-time market fields must be positive")
+    if (market[["open", "close"]] <= 0.0).any().any():
+        raise ValueError("signal-time prices must be positive")
+    if (market[["quote_asset_volume", "taker_buy_quote"]] < 0.0).any().any():
+        raise ValueError("signal-time volumes must be non-negative")
     if (
-        market["taker_buy_quote"].lt(0.0)
-        | market["taker_buy_quote"].gt(market["quote_asset_volume"])
+        market["quote_asset_volume"].gt(0.0)
+        & market["taker_buy_quote"].gt(market["quote_asset_volume"])
     ).any():
         raise ValueError("taker buy quote volume is outside total quote volume")
 
     frame = credibility.merge(market, on="date", how="inner", validate="one_to_one")
     if len(frame) != len(expected_dates):
         raise ValueError("book and market panels do not share the full 2023 grid")
-    frame["quarantined"] = ~frame["source_complete"].astype(bool)
+    frame["quarantined"] = (
+        ~frame["source_complete"].astype(bool)
+        | frame["quote_asset_volume"].le(0.0)
+    )
     return frame, {
         **credibility_source,
         "market_manifest_sha256": _sha256(MARKET_MANIFEST),
@@ -285,6 +290,12 @@ def load_support_inputs(cfg: Config) -> tuple[pd.DataFrame, dict[str, Any]]:
     }
 
 
+def completed_bar_flow(frame: pd.DataFrame) -> pd.Series:
+    """Return signed taker flow, leaving zero-volume bars unavailable."""
+    total = frame["quote_asset_volume"].where(frame["quote_asset_volume"].gt(0.0))
+    return 2.0 * frame["taker_buy_quote"] / total - 1.0
+
+
 def build_feature_panel(frame: pd.DataFrame, cfg: Config) -> pd.DataFrame:
     credibility_cfg = CredibilityConfig(
         robust_baseline_bars=cfg.robust_baseline_bars,
@@ -292,8 +303,8 @@ def build_feature_panel(frame: pd.DataFrame, cfg: Config) -> pd.DataFrame:
     )
     um = _venue_features(frame, "um", credibility_cfg)
     cm = _venue_features(frame, "cm", credibility_cfg)
-    flow = 2.0 * frame["taker_buy_quote"] / frame["quote_asset_volume"] - 1.0
-    direction = np.sign(flow).astype(np.int8)
+    flow = completed_bar_flow(frame)
+    direction = np.sign(flow.fillna(0.0)).astype(np.int8)
     completed_bar_return = np.log(frame["close"] / frame["open"])
     um_defense = -direction * um["credibility"]
     cm_defense = -direction * cm["credibility"]
