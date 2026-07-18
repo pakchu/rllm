@@ -143,6 +143,16 @@ def completed_hourly_features(market: pd.DataFrame) -> tuple[pd.DataFrame, pd.Da
         }
     )
     hourly = grouped.loc[grouped["bar_count"] >= 12].drop(columns="bar_count").dropna()
+    return hourly, hourly_state_features(hourly)
+
+
+def hourly_state_features(hourly: pd.DataFrame) -> pd.DataFrame:
+    """Derive the exact state-model inputs from completed hourly bars."""
+
+    required = {"high", "low", "close", "quote", "buy"}
+    missing = sorted(required - set(hourly.columns))
+    if missing:
+        raise ValueError(f"completed hourly frame missing columns: {missing}")
     returns = np.log(hourly["close"]).diff()
     flow = 2.0 * hourly["buy"] / hourly["quote"].replace(0.0, np.nan) - 1.0
     features = pd.DataFrame(index=hourly.index)
@@ -156,7 +166,7 @@ def completed_hourly_features(market: pd.DataFrame) -> tuple[pd.DataFrame, pd.Da
     features["flow24"] = flow.rolling(24).mean()
     log_quote = np.log1p(hourly["quote"])
     features["volume_z"] = (log_quote - log_quote.rolling(168).mean()) / log_quote.rolling(168).std().replace(0.0, np.nan)
-    return hourly, features.replace([np.inf, -np.inf], np.nan)
+    return features.replace([np.inf, -np.inf], np.nan)
 
 
 def state_bank(market: pd.DataFrame, dates: pd.Series) -> dict[str, np.ndarray]:

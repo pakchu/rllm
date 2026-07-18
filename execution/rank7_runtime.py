@@ -17,8 +17,29 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import ExtraTreesRegressor
 
+import training.search_market_braid_alpha as market_braid
+import training.search_nested_barrier_witness_alpha as nested_barrier
+from preprocessing.market_features import build_market_feature_frame
+from training.audit_confirmed_pullback_squeeze_live_parity import (
+    decision_mask,
+    live_decision_features,
+)
 from training.audit_weak_feature_responsibility_stability import (
     FEATURE_COLUMNS as RESEARCH_FEATURE_COLUMNS,
+    OTHER_COLUMNS,
+    PA_COLUMNS,
+    causal_shift,
+    recent_side,
+)
+from training.long_component_tp_union_scan import _component_mask
+from training.long_regime_interest_gate_validation import build_interest_features
+from training.search_liveparity_state_feature_interactions import (
+    completed_hourly_features,
+    feature_matrix as state_feature_matrix,
+    hourly_state_features,
+    immutable_anchors,
+    state_bank,
+    state_bank_from_hourly,
 )
 
 
@@ -37,6 +58,10 @@ NO_BARRIER_BPS = 1_000_000.0
 
 class Rank7BundleError(RuntimeError):
     """Raised when a Rank7 artifact is missing, corrupt, or contract-incompatible."""
+
+
+class Rank7FeatureError(RuntimeError):
+    """Raised when live inputs cannot reproduce the frozen Rank7 feature graph."""
 
 
 def _utc_timestamp(value: Any) -> pd.Timestamp:
@@ -135,6 +160,7 @@ class Rank7Bundle:
     delay_bars: int
     valid_from: pd.Timestamp
     valid_until: pd.Timestamp
+    hourly_history: pd.DataFrame | None
 
     @property
     def model_version(self) -> str:
@@ -236,6 +262,44 @@ class Rank7Bundle:
             model.n_jobs = 1
             loaded.append(model)
 
+        hourly_history: pd.DataFrame | None = None
+        history_row = manifest.get("hourly_history")
+        if history_row is not None:
+            _require(isinstance(history_row, dict), "Rank7 hourly_history contract invalid")
+            relative = Path(str(history_row.get("path", "")))
+            history_path = (root / relative).resolve()
+            _require(history_path.is_relative_to(root), "Rank7 hourly history path escapes bundle")
+            _require(history_path.is_file(), f"Rank7 hourly history missing: {relative}")
+            _require(
+                _sha256(history_path) == str(history_row.get("sha256", "")),
+                "Rank7 hourly history checksum mismatch",
+            )
+            try:
+                hourly_history = pd.read_csv(history_path, compression="infer")
+            except Exception as exc:
+                raise Rank7BundleError(f"Rank7 hourly history unreadable: {exc}") from exc
+            required = ("date", "open", "high", "low", "close", "quote", "buy")
+            _require(tuple(hourly_history.columns) == required, "Rank7 hourly history columns mismatch")
+            hourly_history["date"] = pd.to_datetime(
+                hourly_history["date"], utc=True, errors="raise"
+            ).dt.tz_convert(None)
+            for column in required[1:]:
+                hourly_history[column] = pd.to_numeric(hourly_history[column], errors="coerce")
+            _require(
+                np.isfinite(hourly_history[list(required[1:])].to_numpy(float)).all(),
+                "Rank7 hourly history contains non-finite values",
+            )
+            _require(
+                hourly_history["date"].is_monotonic_increasing
+                and not hourly_history["date"].duplicated().any(),
+                "Rank7 hourly history order/uniqueness invalid",
+            )
+            intervals = hourly_history["date"].diff().dropna()
+            _require(
+                intervals.empty or intervals.eq(pd.Timedelta("1h")).all(),
+                "Rank7 hourly history grid is incomplete",
+            )
+
         return cls(
             root=root,
             manifest=manifest,
@@ -246,6 +310,7 @@ class Rank7Bundle:
             delay_bars=12,
             valid_from=valid_from,
             valid_until=valid_until,
+            hourly_history=hourly_history,
         )
 
     def predict(self, row: np.ndarray) -> tuple[float, float]:
@@ -260,6 +325,191 @@ class Rank7Bundle:
             predictions.append(prediction[0])
         mean = np.mean(np.stack(predictions), axis=0)
         return float(mean[0]), float(mean[1])
+
+
+def _normalise_rank7_market(market: pd.DataFrame) -> pd.DataFrame:
+    required = {
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "quote_asset_volume",
+        "number_of_trades",
+        "taker_buy_base",
+        "taker_buy_quote",
+        "open_interest",
+        "open_interest_available",
+        "spot_close",
+        "spot_rows",
+        "premium_index_1m_close",
+        "premium_rows",
+    }
+    missing = sorted(required - set(market.columns))
+    if missing:
+        raise Rank7FeatureError(f"Rank7 market frame missing columns: {missing}")
+    out = market.copy()
+    out["date"] = pd.to_datetime(out["date"], utc=True, errors="raise").dt.tz_convert(None)
+    out = out.sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
+    if out.empty:
+        raise Rank7FeatureError("Rank7 market frame is empty")
+    intervals = out["date"].diff().dropna()
+    if len(intervals) and not intervals.eq(pd.Timedelta("5min")).all():
+        raise Rank7FeatureError("Rank7 market frame is not a complete 5-minute grid")
+    for column in required - {"date"}:
+        out[column] = pd.to_numeric(out[column], errors="coerce")
+    for column in ("spot_rows", "premium_rows"):
+        value = out.iloc[-1][column]
+        if not np.isfinite(value) or int(value) != 5:
+            raise Rank7FeatureError(f"latest {column} must equal 5")
+    return out
+
+
+def _hourly_state_inputs(
+    market: pd.DataFrame,
+    hourly_history: pd.DataFrame | None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    current, _ = completed_hourly_features(market)
+    if hourly_history is None:
+        return current, hourly_state_features(current)
+    history = hourly_history.copy()
+    history["date"] = pd.to_datetime(history["date"], utc=True, errors="raise").dt.tz_convert(None)
+    history = history.set_index("date").sort_index()
+    if current.empty:
+        combined = history
+    else:
+        overlap = history.index.intersection(current.index)
+        if len(overlap):
+            columns = ["open", "high", "low", "close", "quote", "buy"]
+            left = history.loc[overlap, columns].to_numpy(float)
+            right = current.loc[overlap, columns].to_numpy(float)
+            if not np.allclose(left, right, rtol=1e-9, atol=1e-7, equal_nan=False):
+                raise Rank7FeatureError("live/hourly warm-start overlap mismatch")
+        first = current.index.min()
+        if len(history) and first > history.index.max() + pd.Timedelta("1h"):
+            raise Rank7FeatureError("live market tail does not overlap Rank7 hourly warm start")
+        combined = pd.concat([history.loc[history.index < first], current]).sort_index()
+    combined = combined.loc[combined.index <= market["date"].max()].copy()
+    intervals = combined.index.to_series().diff().dropna()
+    if len(intervals) and not intervals.eq(pd.Timedelta("1h")).all():
+        raise Rank7FeatureError("combined Rank7 hourly state grid is incomplete")
+    return combined, hourly_state_features(combined)
+
+
+def rebuild_rank7_feature_context(
+    market: pd.DataFrame,
+    *,
+    medians: np.ndarray,
+    clip: tuple[float, float] = (-20.0, 20.0),
+    delay_bars: int = 12,
+    hourly_history: pd.DataFrame | None = None,
+) -> dict[str, Any]:
+    """Rebuild the exact causal 40-column Rank7 graph on a 5-minute prefix."""
+
+    market = _normalise_rank7_market(market)
+    dates = pd.to_datetime(market["date"])
+    base_features = build_market_feature_frame(market, window_size=144)
+    raw_features = pd.concat(
+        [base_features, build_interest_features(market, base_features)], axis=1
+    )
+    raw_features = raw_features.loc[:, ~raw_features.columns.duplicated(keep="last")]
+    features = live_decision_features(raw_features)
+    decisions = decision_mask(dates, "live_hour_signal_bar", window_size=144)
+    funding_leg = decisions & _component_mask(features, "funding10_trend70")
+    premium_leg = decisions & _component_mask(features, "premium20_mom90")
+    base = funding_leg | premium_leg
+
+    if hourly_history is None:
+        bank = state_bank(market, dates)
+    else:
+        hourly, hourly_features = _hourly_state_inputs(market, hourly_history)
+        bank = state_bank_from_hourly(hourly, hourly_features, dates)
+    valid_state = (bank["kalman"] >= 0) & (bank["bocpd"] >= 0) & (bank["semimarkov"] >= 0)
+    base &= valid_state
+
+    barrier_bank = nested_barrier.build_barrier_bank(market)
+    long_signal, short_signal, info = nested_barrier.coalesced_barrier_signals(
+        market,
+        barrier_bank,
+        min_coalescence=3,
+        touch_width=0.001,
+        branch="depleted_continuation",
+    )
+    nested_side = causal_shift(long_signal.astype(np.int8) - short_signal.astype(np.int8))
+    nested24, nested_age = recent_side(nested_side, 288)
+    nested48, _ = recent_side(nested_side, 576)
+
+    braid_state = market_braid.build_bar_state(market)
+    braid_events = market_braid.market_braid_events(
+        braid_state,
+        shock_z=2.0,
+        passage_z=0.5,
+        max_age=144,
+        topology_mode="relative_order",
+    )
+    braid_side = causal_shift(braid_events.signal_side.to_numpy(np.int8))
+    braid24, braid_age = recent_side(braid_side, 288)
+    braid48, _ = recent_side(braid_side, 576)
+
+    state = state_feature_matrix(bank, funding_leg, premium_leg)
+    raw = np.column_stack(
+        [
+            state,
+            *[
+                pd.to_numeric(features[column], errors="coerce").to_numpy(float)
+                for column in PA_COLUMNS + OTHER_COLUMNS
+            ],
+        ]
+    )
+    weak = np.column_stack(
+        [
+            causal_shift(info["high_work_ratio"], np.nan),
+            causal_shift(info["low_work_ratio"], np.nan),
+            causal_shift(info["high_coalescence"]),
+            causal_shift(info["low_coalescence"]),
+            nested24,
+            nested48,
+            np.minimum(nested_age, 576),
+            braid24,
+            braid48,
+            np.minimum(braid_age, 576),
+        ]
+    )
+    unfilled = np.column_stack([raw, weak])
+    median_values = np.asarray(medians, dtype=float)
+    if median_values.shape != (len(FEATURE_COLUMNS),) or not np.isfinite(median_values).all():
+        raise Rank7FeatureError("Rank7 median vector is invalid")
+    lower, upper = map(float, clip)
+    if not (np.isfinite(lower) and np.isfinite(upper) and lower < upper):
+        raise Rank7FeatureError("Rank7 clip contract is invalid")
+    filled = np.clip(np.where(np.isfinite(unfilled), unfilled, median_values), lower, upper)
+    matrix = apply_rank7_delay(filled, bars=int(delay_bars))
+    anchors = immutable_anchors(base, 144)
+    return {
+        "market": market,
+        "dates": dates,
+        "features": features,
+        "matrix": matrix,
+        "unfilled_matrix": unfilled,
+        "base": base,
+        "anchors": anchors,
+        "funding_leg": funding_leg,
+        "premium_leg": premium_leg,
+        "nested_side": nested_side,
+        "braid_side": braid_side,
+        "feature_columns": FEATURE_COLUMNS,
+    }
+
+
+def build_rank7_feature_context(market: pd.DataFrame, bundle: Rank7Bundle) -> dict[str, Any]:
+    return rebuild_rank7_feature_context(
+        market,
+        medians=bundle.medians,
+        clip=bundle.clip,
+        delay_bars=bundle.delay_bars,
+        hourly_history=bundle.hourly_history,
+    )
 
 
 def _barrier_contract(spec: dict[str, Any]) -> dict[str, Any]:

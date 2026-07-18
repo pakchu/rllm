@@ -318,6 +318,7 @@ def build_full_design(cfg: Config) -> dict[str, Any]:
         "dates": dates,
         "features": features,
         "matrix": matrix,
+        "feature_medians": median,
         "fit": fit,
         "base": base,
         "funding_leg": funding_leg,

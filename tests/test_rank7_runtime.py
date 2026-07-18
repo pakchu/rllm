@@ -14,7 +14,9 @@ from execution.rank7_runtime import (
     FEATURE_COLUMNS,
     Rank7Bundle,
     Rank7BundleError,
+    Rank7FeatureError,
     apply_rank7_delay,
+    rebuild_rank7_feature_context,
     score_rank7_row,
 )
 
@@ -189,3 +191,82 @@ def test_rank7_scoring_fails_closed_outside_clock_anchor_and_validity(tmp_path: 
     assert "immutable_anchor=fail" in bad_anchor.reasons
     assert expired.active is False
     assert "bundle_validity=fail" in expired.reasons
+
+
+def _market(rows: int = 40 * 24 * 12 + 1) -> pd.DataFrame:
+    index = np.arange(rows, dtype=float)
+    dates = pd.date_range("2020-07-01", periods=rows, freq="5min")
+    close = 10_000.0 * np.exp(0.0001 * index + 0.001 * np.sin(index / 50.0))
+    quote = 1_000_000.0 * (1.0 + 0.05 * np.cos(index / 37.0))
+    return pd.DataFrame(
+        {
+            "date": dates,
+            "open": close,
+            "high": close * 1.001,
+            "low": close * 0.999,
+            "close": close,
+            "volume": 10.0,
+            "quote_asset_volume": quote,
+            "number_of_trades": 100.0,
+            "taker_buy_base": 5.0,
+            "taker_buy_quote": quote * (0.5 + 0.03 * np.sin(index / 17.0)),
+            "open_interest": 1_000_000.0 * np.exp(0.00001 * index),
+            "open_interest_available": 1.0,
+            "funding_rate": -0.00002,
+            "funding_available": 1.0,
+            "premium_index": -0.0003,
+            "premium_index_change": 0.0,
+            "premium_available": 1.0,
+            "binance_aux_any_available": 1.0,
+            "spot_close": close * 0.999,
+            "spot_rows": 5,
+            "premium_index_1m_close": -0.0003,
+            "premium_rows": 5,
+        }
+    )
+
+
+def test_rank7_feature_rebuild_emits_exact_ordered_finite_delayed_matrix() -> None:
+    market = _market()
+    context = rebuild_rank7_feature_context(
+        market,
+        medians=np.zeros(len(FEATURE_COLUMNS), dtype=float),
+        clip=(-20.0, 20.0),
+        delay_bars=12,
+    )
+
+    assert context["matrix"].shape == (len(market), len(FEATURE_COLUMNS))
+    assert np.isfinite(context["matrix"]).all()
+    assert tuple(context["feature_columns"]) == FEATURE_COLUMNS
+    funding = FEATURE_COLUMNS.index("funding_leg")
+    premium = FEATURE_COLUMNS.index("premium_leg")
+    assert context["matrix"][-1, funding] == float(context["funding_leg"][-1])
+    assert context["matrix"][-1, premium] == float(context["premium_leg"][-1])
+    assert len(context["anchors"]) == len(market)
+
+
+def test_rank7_feature_rebuild_rejects_incomplete_live_spot_or_premium() -> None:
+    market = _market()
+    market.loc[market.index[-1], "spot_rows"] = 4
+
+    with pytest.raises(Rank7FeatureError, match="spot_rows"):
+        rebuild_rank7_feature_context(
+            market,
+            medians=np.zeros(len(FEATURE_COLUMNS), dtype=float),
+            clip=(-20.0, 20.0),
+            delay_bars=12,
+        )
+
+
+def test_committed_rank7_2026_bundle_is_loadable_and_parity_gated() -> None:
+    bundle = Rank7Bundle.load("artifacts/rank7/frozen_annual_rank7_2026")
+
+    assert bundle.model_version == "rank7-annual-2026-v1"
+    assert bundle.hourly_history is not None
+    assert len(bundle.hourly_history) == 56_232
+    assert bundle.manifest["parity"]["feature"]["matrix_sha256"] == (
+        "33805051cac6fec8a70579c6bc45e6f593c58b514f5aea0b96faba9a6db60280"
+    )
+    assert bundle.manifest["parity"]["research_full_result_hash"] == (
+        "0cc647284179f7728e83a7ed6c160f9600c3509f25e468224e6a5d2f2e029eef"
+    )
