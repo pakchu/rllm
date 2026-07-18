@@ -51,11 +51,20 @@ def test_read_and_aggregate_complete_hour() -> None:
     assert second[["open", "high", "low", "close"]].isna().all()
 
 
-def test_timestamp_precision_and_symbol_fail_closed() -> None:
+def test_subsecond_jitter_is_floored_but_duplicate_seconds_fail_closed() -> None:
     raw = _raw("2023-06-20 00:00:00", 2)
     raw.loc[1, "calc_time"] += 1
-    with pytest.raises(ValueError, match="whole UTC seconds"):
+    parsed = builder.read_archive(_archive(raw))
+    assert parsed["date"].tolist() == [
+        pd.Timestamp("2023-06-20 00:00:00"),
+        pd.Timestamp("2023-06-20 00:00:01"),
+    ]
+    raw.loc[1, "calc_time"] = raw.loc[0, "calc_time"] + 999
+    with pytest.raises(ValueError, match="duplicate or unordered UTC seconds"):
         builder.read_archive(_archive(raw))
+
+
+def test_symbol_fails_closed() -> None:
     raw = _raw("2023-06-20 00:00:00", 2)
     raw.loc[0, "symbol"] = "ETHBVOLUSDT"
     with pytest.raises(ValueError, match="unexpected symbol"):
