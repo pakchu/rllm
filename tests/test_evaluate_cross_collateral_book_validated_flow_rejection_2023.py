@@ -40,7 +40,10 @@ def test_validate_clock_enforces_next_open_and_six_hours() -> None:
 
 def test_transform_controls_do_not_change_hold_or_primary() -> None:
     frame = _clock()
-    delayed = ev.transform_clock(frame, "delay_five_minutes")
+    string_clock = frame.copy()
+    for column in ("signal_date", "entry_date", "exit_date"):
+        string_clock[column] = string_clock[column].astype(str)
+    delayed = ev.transform_clock(string_clock, "delay_five_minutes")
     assert (delayed["exit_date"] - delayed["entry_date"]).eq(
         pd.Timedelta(hours=6)
     ).all()

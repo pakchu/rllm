@@ -12,10 +12,27 @@ from training.preregister_cross_collateral_book_validated_flow_rejection import 
 )
 
 
+PRIOR_FREEZE_SHA256 = (
+    "72b2f91d3741fb9dd52c00332b723658575571a49fa438f994e476469f336ac3"
+)
+
+
 def build_payload(commit: str) -> dict[str, object]:
     return {
-        "protocol": "CBFR-72 strict 2023 evaluator pre-outcome freeze v1",
-        "outcomes_opened": False,
+        "protocol": "CBFR-72 strict 2023 evaluator implementation-recovery freeze v2",
+        "outcomes_opened": True,
+        "prior_freeze_sha256": PRIOR_FREEZE_SHA256,
+        "first_attempt": {
+            "execution_sources_opened": True,
+            "result_artifact_written": False,
+            "markdown_artifact_written": False,
+            "stdout_metric_payload_written": False,
+            "failure": "TypeError adding five-minute Timedelta to string control-clock dates",
+            "failure_stage": "delay-control construction after primary calculations",
+            "strategy_parameters_changed": False,
+            "support_clock_changed": False,
+            "outcome_metrics_used_for_repair": False,
+        },
         "evaluation_source": str(ev.EVALUATION_SOURCE),
         "evaluation_source_sha256": ev.sha256(ev.EVALUATION_SOURCE),
         "test_path": str(ev.TEST_PATH),
@@ -45,8 +62,8 @@ def run(output: str | Path | None = None) -> dict[str, object]:
     path = ev.EVALUATION_FREEZE if output is None else Path(output)
     if path != ev.EVALUATION_FREEZE:
         raise ValueError("CBFR evaluator freeze output is immutable")
-    if path.exists():
-        raise RuntimeError("CBFR evaluator freeze already exists")
+    if not path.exists() or ev.sha256(path) != PRIOR_FREEZE_SHA256:
+        raise RuntimeError("CBFR recovery requires the exact failed v1 freeze")
     status = subprocess.check_output(["git", "status", "--porcelain"], text=True).strip()
     if status:
         raise RuntimeError("repository must be clean before evaluator freeze")
