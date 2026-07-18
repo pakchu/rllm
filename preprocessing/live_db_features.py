@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -114,6 +114,36 @@ def resample_market_bars(market_1m: pd.DataFrame, interval: str = "5min") -> pd.
     return out.reset_index(drop=True)
 
 
+def _attach_1m_decision_close_and_rows(
+    market: pd.DataFrame,
+    source_1m: pd.DataFrame,
+    *,
+    close_col: str,
+    rows_col: str,
+    interval: str,
+) -> pd.DataFrame:
+    """Attach exact per-decision 1m close/count fields by open-time bucket.
+
+    The count column is intentionally the observed source-row count, not a
+    boolean availability flag.  Downstream live parity gates can therefore
+    fail closed by requiring the exact expected count for the decision bar.
+    """
+
+    out = market.copy()
+    source = _normalise_bar_frame(source_1m)
+    if source.empty:
+        out[close_col] = np.nan
+        out[rows_col] = 0
+        return out
+    grouped = source.set_index("date").resample(interval, label="left", closed="left")
+    summary = grouped.agg({"close": "last"}).rename(columns={"close": close_col})
+    summary[rows_col] = grouped["close"].count().astype(int)
+    summary = summary.reset_index()
+    return out.merge(summary[["date", close_col, rows_col]], on="date", how="left", validate="one_to_one").assign(
+        **{rows_col: lambda frame: pd.to_numeric(frame[rows_col], errors="coerce").fillna(0).astype(int)}
+    )
+
+
 def build_live_feature_frame_from_frames(
     *,
     btcusdt_1m: pd.DataFrame,
@@ -122,6 +152,7 @@ def build_live_feature_frame_from_frames(
     forex_1m: pd.DataFrame,
     premium_1m: pd.DataFrame,
     funding: pd.DataFrame,
+    spot_1m: pd.DataFrame | None = None,
     cfg: LiveDbFeatureConfig = LiveDbFeatureConfig(),
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return ``(enriched_market, feature_frame)`` from DB-sourced frames."""
@@ -153,6 +184,21 @@ def build_live_feature_frame_from_frames(
         premium_tolerance=cfg.premium_tolerance,
         zscore_window=cfg.zscore_window,
     )
+    enriched = _attach_1m_decision_close_and_rows(
+        enriched,
+        premium_1m,
+        close_col="premium_index_1m_close",
+        rows_col="premium_rows",
+        interval=cfg.decision_interval,
+    )
+    if spot_1m is not None:
+        enriched = _attach_1m_decision_close_and_rows(
+            enriched,
+            spot_1m,
+            close_col="spot_close",
+            rows_col="spot_rows",
+            interval=cfg.decision_interval,
+        )
     features = build_market_feature_frame(
         enriched,
         window_size=cfg.feature_window_size,
@@ -221,6 +267,16 @@ def live_source_sql(cfg: LiveDbFeatureConfig, *, asof_param: str = "asof", start
         "premium_1m": f"""
             SELECT ts AS date, close_time, close
             FROM bars_binance_premium
+            WHERE symbol = '{cfg.symbol}' AND interval = '1m' AND ts >= :{start_param} AND ts <= :{asof_param}
+            ORDER BY ts
+        """,
+        "spot_1m": f"""
+            SELECT
+                ts AS date,
+                open, high, low, close, volume,
+                quote_asset_volume, number_of_trades, taker_buy_base, taker_buy_quote,
+                symbol AS tic
+            FROM bars_binance_spot
             WHERE symbol = '{cfg.symbol}' AND interval = '1m' AND ts >= :{start_param} AND ts <= :{asof_param}
             ORDER BY ts
         """,

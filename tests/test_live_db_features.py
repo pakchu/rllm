@@ -47,6 +47,7 @@ class TestLiveDbFeatures(unittest.TestCase):
     def test_builds_latest_snapshot_from_db_like_frames(self):
         dates = pd.date_range("2026-01-01 00:00:00", periods=1800, freq="1min")
         btc = _ohlcv(dates, "BTCUSDT", 100.0)
+        spot = _ohlcv(dates, "BTCUSDT", 99.5)
         btckrw = _ohlcv(dates, "KRW-BTC", 100.0 * 1300.0 * 1.02)
         usdkrw = _ohlcv(dates, "USDKRW", 1300.0)
         forex_rows = []
@@ -77,6 +78,7 @@ class TestLiveDbFeatures(unittest.TestCase):
             forex_1m=forex,
             premium_1m=premium,
             funding=funding,
+            spot_1m=spot,
             cfg=cfg,
         )
         snapshot = latest_live_feature_snapshot(enriched, features)
@@ -94,6 +96,42 @@ class TestLiveDbFeatures(unittest.TestCase):
         self.assertEqual(snapshot["data_quality"]["premium_available"], 1.0)
         self.assertEqual(snapshot["data_quality"]["funding_available"], 1.0)
         self.assertTrue(np.isfinite(snapshot["feature_snapshot"]["premium_index"]))
+        self.assertIn("premium_index_1m_close", enriched.columns)
+        self.assertIn("premium_rows", enriched.columns)
+        self.assertIn("spot_close", enriched.columns)
+        self.assertIn("spot_rows", enriched.columns)
+        self.assertEqual(int(enriched.iloc[-1]["premium_rows"]), 5)
+        self.assertEqual(int(enriched.iloc[-1]["spot_rows"]), 5)
+        self.assertAlmostEqual(float(enriched.iloc[0]["premium_index_1m_close"]), float(premium.loc[4, "close"]))
+        self.assertAlmostEqual(float(enriched.iloc[0]["spot_close"]), float(spot.loc[4, "close"]))
+
+    def test_intrabar_rank7_sources_fail_closed_on_incomplete_rows(self):
+        dates = pd.date_range("2026-01-01 00:00:00", periods=10, freq="1min")
+        btc = _ohlcv(dates, "BTCUSDT", 100.0)
+        spot = _ohlcv(dates.delete([8, 9]), "BTCUSDT", 99.5)
+        btckrw = _ohlcv(dates, "KRW-BTC", 100.0 * 1300.0 * 1.02)
+        usdkrw = _ohlcv(dates, "USDKRW", 1300.0)
+        forex = pd.concat([_ohlcv(dates, tic, 1.0) for tic in ["EURUSD", "USDJPY", "GBPUSD", "USDCAD", "USDSEK", "USDCHF"]])
+        premium = pd.DataFrame({"date": dates.delete([7, 8, 9]), "close": np.arange(7, dtype=float) / 1000.0})
+        funding = pd.DataFrame({"funding_time": [dates[0]], "funding_rate": [0.0001], "mark_price": [100.0]})
+        cfg = LiveDbFeatureConfig(feature_window_size=2, zscore_window=6, volume_window=6, lookback_minutes=10)
+
+        enriched, _ = build_live_feature_frame_from_frames(
+            btcusdt_1m=btc,
+            btckrw_1m=btckrw,
+            usdkrw_1m=usdkrw,
+            forex_1m=forex,
+            premium_1m=premium,
+            funding=funding,
+            spot_1m=spot,
+            cfg=cfg,
+        )
+
+        self.assertEqual(list(enriched["date"]), list(pd.date_range("2026-01-01", periods=2, freq="5min")))
+        self.assertEqual(list(enriched["spot_rows"].astype(int)), [5, 3])
+        self.assertEqual(list(enriched["premium_rows"].astype(int)), [5, 2])
+        self.assertAlmostEqual(float(enriched.loc[1, "spot_close"]), float(spot.iloc[-1]["close"]))
+        self.assertAlmostEqual(float(enriched.loc[1, "premium_index_1m_close"]), float(premium.iloc[-1]["close"]))
 
     def test_live_source_sql_mentions_required_tables(self):
         sql = live_source_sql(LiveDbFeatureConfig())
@@ -101,6 +139,7 @@ class TestLiveDbFeatures(unittest.TestCase):
         self.assertIn("bars_upbit", sql["btckrw_1m"])
         self.assertIn("bars_polygon", sql["forex_1m"])
         self.assertIn("bars_binance_premium", sql["premium_1m"])
+        self.assertIn("bars_binance_spot", sql["spot_1m"])
         self.assertIn("funding_rates_binance", sql["funding"])
         self.assertIn("ts <= :asof", sql["btcusdt_1m"])
         self.assertIn("funding_time <= :asof", sql["funding"])
