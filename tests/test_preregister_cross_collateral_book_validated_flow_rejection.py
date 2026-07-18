@@ -52,7 +52,7 @@ def test_signal_fades_rejected_flow_and_requires_both_venues() -> None:
             "clean": [True] * 5,
         }
     )
-    frame = pd.DataFrame({"quarantined": [False] * 5})
+    frame = pd.DataFrame({"quarantined": [False, False, False, True, True]})
     signal = cbfr.build_signal(
         panel,
         frame,
@@ -61,6 +61,7 @@ def test_signal_fades_rejected_flow_and_requires_both_venues() -> None:
         defense_threshold=0.5,
     )
     assert signal["side"].tolist() == [0, 0, -1, 1, 0]
+    assert not signal["quarantined"].any()
     assert signal.loc[2, "branch"] == "buy_flow_rejected_by_credible_asks"
     assert signal.loc[3, "branch"] == "sell_flow_rejected_by_credible_bids"
 
