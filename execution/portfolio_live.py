@@ -2232,24 +2232,45 @@ def _score_sleeve(
                     ]
                 )
             elif policy_type == "frozen_annual_rank7":
-                try:
-                    decision = _rank7_score_from_config(cfg, enriched)
-                except (Rank7BundleError, Rank7FeatureError, ValueError, KeyError) as exc:
+                # Rank7 can only emit on an exact hourly boundary.  Its frozen
+                # feature graph is intentionally expensive, so do not rebuild
+                # 18k+ rows on the other eleven five-minute slots each hour.
+                # Bundle integrity is validated during startup by
+                # _load_sleeve_runtime_spec; the due slot still fails closed
+                # through the full scorer below.
+                rank7_due = bool(ts.minute == 0 and ts.second == 0 and ts.microsecond == 0)
+                if not rank7_due:
                     gate_ok = False
-                    reasons.append(f"runtime_bridge=error:{type(exc).__name__}:{exc}")
-                    reasons.append("rank7_fail_closed=pass")
-                else:
-                    gate_ok = bool(decision.active)
                     side = "LONG"
-                    hold = int(decision.hold_bars)
+                    hold = int(cfg.get("hold_bars", 0))
                     stride = 1
                     stride_offset = 0
                     entry_delay = 1
-                    barrier_exit = decision.barrier_exit
-                    signal_id = decision.signal_id
-                    policy_metadata = decision.metadata()
-                    reasons.extend(decision.reasons)
-                    reasons.append("runtime_bridge=ready:rank7-annual-bundle")
+                    reasons.extend(
+                        [
+                            "decision_clock=skip:not_hour_boundary",
+                            "runtime_bridge=ready:rank7-annual-bundle:deferred",
+                        ]
+                    )
+                else:
+                    try:
+                        decision = _rank7_score_from_config(cfg, enriched)
+                    except (Rank7BundleError, Rank7FeatureError, ValueError, KeyError) as exc:
+                        gate_ok = False
+                        reasons.append(f"runtime_bridge=error:{type(exc).__name__}:{exc}")
+                        reasons.append("rank7_fail_closed=pass")
+                    else:
+                        gate_ok = bool(decision.active)
+                        side = "LONG"
+                        hold = int(decision.hold_bars)
+                        stride = 1
+                        stride_offset = 0
+                        entry_delay = 1
+                        barrier_exit = decision.barrier_exit
+                        signal_id = decision.signal_id
+                        policy_metadata = decision.metadata()
+                        reasons.extend(decision.reasons)
+                        reasons.append("runtime_bridge=ready:rank7-annual-bundle")
             elif base_policy == "rex":
                 record = build_rex_live_policy_record(
                     enriched,

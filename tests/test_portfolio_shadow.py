@@ -49,7 +49,7 @@ def _frames(rows: int = 2_500):
     return market, features
 
 
-def test_shadow_report_never_enables_orders_and_rank7_bridge_is_ready_but_data_fails_closed():
+def test_shadow_report_never_enables_orders_and_defers_rank7_outside_decision_clock():
     portfolio = json.loads(
         open("configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json").read()
     )
@@ -75,8 +75,8 @@ def test_shadow_report_never_enables_orders_and_rank7_bridge_is_ready_but_data_f
     }
     rank7 = next(row for row in report["scores"] if row["name"] == "frozen_annual_rank7")
     assert rank7["active"] is False
-    assert any(reason.startswith("runtime_bridge=error:Rank7FeatureError") for reason in rank7["reasons"])
-    assert "rank7_fail_closed=pass" in rank7["reasons"]
+    assert "decision_clock=skip:not_hour_boundary" in rank7["reasons"]
+    assert "runtime_bridge=ready:rank7-annual-bundle:deferred" in rank7["reasons"]
 
 
 def test_shadow_report_blocks_rank7_bundle_contract_errors():
