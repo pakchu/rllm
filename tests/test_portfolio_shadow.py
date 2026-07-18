@@ -54,13 +54,16 @@ def test_shadow_report_never_enables_orders_and_defers_rank7_outside_decision_cl
         open("configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json").read()
     )
     market, features = _frames()
-    report = build_shadow_report(
-        portfolio=portfolio,
-        enriched=market,
-        features=features,
-        execution_cfg=WaveExecutionConfig(),
-        decision_asof=pd.Timestamp(market.iloc[-1]["date"], tz="UTC"),
-    )
+    with patch(
+        "execution.portfolio_live.rank7_state_runtime_cache_ready", return_value=True
+    ):
+        report = build_shadow_report(
+            portfolio=portfolio,
+            enriched=market,
+            features=features,
+            execution_cfg=WaveExecutionConfig(),
+            decision_asof=pd.Timestamp(market.iloc[-1]["date"], tz="UTC"),
+        )
     assert report["orders_enabled"] is False
     assert report["live_promotion_ready"] is False
     assert report["complete_portfolio_runtime_ready"] is True

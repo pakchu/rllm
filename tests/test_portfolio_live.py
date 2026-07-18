@@ -347,7 +347,9 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             "weight": 2.0,
         }
 
-        with patch("execution.portfolio_live._rank7_score_from_config") as scorer:
+        with patch(
+            "execution.portfolio_live.rank7_state_runtime_cache_ready", return_value=True
+        ), patch("execution.portfolio_live._rank7_score_from_config") as scorer:
             score = _score_sleeves(
                 portfolio={"base_sleeves": [sleeve]},
                 enriched=enriched,
@@ -360,6 +362,33 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
         self.assertFalse(score["active"])
         self.assertIn("decision_clock=skip:not_hour_boundary", score["reasons"])
         self.assertIn("runtime_bridge=ready:rank7-annual-bundle:deferred", score["reasons"])
+
+    def test_rank7_scorer_warms_cold_state_cache_outside_decision_clock(self):
+        dates = pd.date_range("2026-07-18T11:00:00Z", periods=12, freq="5min")
+        enriched = pd.DataFrame(
+            {"date": dates, "open": 100.0, "high": 101.0, "low": 99.0, "close": 100.0}
+        )
+        sleeve = {
+            "name": "frozen_annual_rank7",
+            "source": "configs/shadow/frozen_annual_rank7_2026-07-16.json",
+            "side": "LONG",
+            "weight": 2.0,
+        }
+
+        with patch(
+            "execution.portfolio_live.rank7_state_runtime_cache_ready", return_value=False
+        ), patch("execution.portfolio_live._rank7_score_from_config") as scorer:
+            score = _score_sleeves(
+                portfolio={"base_sleeves": [sleeve]},
+                enriched=enriched,
+                features=pd.DataFrame({"unused": [0.0] * len(dates)}),
+                exec_cfg=WaveExecutionConfig(),
+                asof=dates[-1],
+            )[0]
+
+        scorer.assert_called_once()
+        self.assertFalse(score["active"])
+        self.assertIn("rank7_cache_warmup=complete", score["reasons"])
 
     def test_rank7_portfolio_declares_spot_freshness_and_barrier_runtime(self):
         portfolio = json.loads(

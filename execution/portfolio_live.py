@@ -48,6 +48,7 @@ from execution.rank7_runtime import (
     Rank7Decision,
     Rank7FeatureError,
     build_rank7_feature_context,
+    rank7_state_runtime_cache_ready,
     rank7_barrier_contract,
     score_rank7_row,
 )
@@ -2246,12 +2247,16 @@ def _score_sleeve(
                     stride = 1
                     stride_offset = 0
                     entry_delay = 1
-                    reasons.extend(
-                        [
-                            "decision_clock=skip:not_hour_boundary",
-                            "runtime_bridge=ready:rank7-annual-bundle:deferred",
-                        ]
-                    )
+                    reasons.append("decision_clock=skip:not_hour_boundary")
+                    if rank7_state_runtime_cache_ready():
+                        reasons.append("runtime_bridge=ready:rank7-annual-bundle:deferred")
+                    else:
+                        try:
+                            _rank7_score_from_config(cfg, enriched)
+                        except (Rank7BundleError, Rank7FeatureError, ValueError, KeyError) as exc:
+                            reasons.append(f"rank7_cache_warmup=error:{type(exc).__name__}:{exc}")
+                        else:
+                            reasons.append("rank7_cache_warmup=complete")
                 else:
                     try:
                         decision = _rank7_score_from_config(cfg, enriched)

@@ -158,6 +158,10 @@ def _clear_bocpd_runtime_cache() -> None:
     _KALMAN_RUNTIME_CACHE = None
 
 
+def rank7_state_runtime_cache_ready() -> bool:
+    return _BOCPD_RUNTIME_CACHE is not None and _KALMAN_RUNTIME_CACHE is not None
+
+
 def _runtime_kalman_frame(hourly: pd.DataFrame, train_mask: np.ndarray) -> pd.DataFrame:
     """Resume the fixed Rank7 Kalman filter for append-only hourly history."""
 
