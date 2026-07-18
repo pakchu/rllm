@@ -42,14 +42,14 @@ def test_one_week_placebo_preserves_new_york_wall_clock_across_dst() -> None:
     assert exit_time.isoformat() == "2023-03-19T21:00:00+00:00"
 
 
-def test_frozen_source_and_source_only_q75_counts() -> None:
+def test_frozen_source_and_source_only_q50_counts() -> None:
     source = clock.load_source()
-    events = clock.build_events(source, tail_quantile=0.75)
+    events = clock.build_events(source, tail_quantile=0.50)
     stage1 = [event for event in events if "2020" <= event.entry_time[:4] <= "2022"]
     sealed_2023 = [event for event in events if event.entry_time.startswith("2023")]
     assert len(source) == 365
-    assert len(events) == 55
-    assert len(stage1) == 46
-    assert sum(event.side == 1 for event in stage1) == 19
-    assert sum(event.side == -1 for event in stage1) == 27
-    assert len(sealed_2023) == 9
+    assert len(events) == 99
+    assert len(stage1) == 75
+    assert sum(event.side == 1 for event in stage1) == 28
+    assert sum(event.side == -1 for event in stage1) == 47
+    assert len(sealed_2023) == 24

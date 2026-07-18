@@ -28,6 +28,13 @@ DEFAULT_OUTPUT = "results/fed_h8_deposit_migration_preregistered_clock_2026-07-1
 NEW_YORK = ZoneInfo("America/New_York")
 ROBUST_WINDOW_RELEASES = 104
 TAIL_WINDOW_RELEASES = 52
+STRUCTURAL_EXCLUSION_RELEASES = frozenset(
+    {
+        "2020-10-02",  # large/small panel-shift method revision
+        "2023-03-31",  # FDIC bridge-bank treatment revision
+        "2023-06-30",  # weekly seasonal-adjustment outlier method revision
+    }
+)
 
 ClockMode = Literal[
     "primary",
@@ -252,6 +259,8 @@ def build_events(
         if abs(value) < cutoff:
             continue
         if require_agreement and int(row["agreement_count"]) < 2:
+            continue
+        if str(row["release_date"]) in STRUCTURAL_EXCLUSION_RELEASES:
             continue
         if str(row["release_weekday"]) not in {"Thursday", "Friday"}:
             continue
