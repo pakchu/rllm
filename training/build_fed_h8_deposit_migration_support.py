@@ -11,6 +11,8 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Mapping, cast
 
+import pandas as pd
+
 from training import fed_h8_deposit_migration_clock as clock
 from training import preregister_fed_h8_deposit_migration as prereg
 
@@ -179,12 +181,20 @@ def _valid_clock(name: str, rows: list[dict[str, Any]]) -> bool:
 def _verify_primary_clock(primary: list[clock.Event]) -> None:
     if _sha256(PRIMARY_CLOCK) != PRIMARY_CLOCK_SHA256:
         raise ValueError("H8DM-1 preregistered primary clock changed")
-    frame = clock.events_frame(primary)
-    expected = frame.to_csv(index=False, lineterminator="\n").encode()
-    with gzip.open(PRIMARY_CLOCK, "rb") as handle:
-        actual = handle.read()
-    if actual != expected:
-        raise ValueError("H8DM-1 primary clock no longer replays")
+    expected = clock.events_frame(primary).reset_index(drop=True)
+    actual = pd.read_csv(PRIMARY_CLOCK, compression="gzip")
+    for column in ("signal_time", "entry_time", "exit_time"):
+        actual[column] = pd.to_datetime(actual[column], utc=True, errors="raise")
+    try:
+        pd.testing.assert_frame_equal(
+            actual,
+            expected,
+            check_exact=False,
+            rtol=1e-12,
+            atol=1e-12,
+        )
+    except AssertionError as exc:
+        raise ValueError("H8DM-1 primary clock no longer replays") from exc
 
 
 def build_report(

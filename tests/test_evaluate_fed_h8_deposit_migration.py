@@ -217,23 +217,23 @@ def test_frozen_evaluator_artifact_replays() -> None:
     stored = json.loads(Path(evaluator.EVALUATOR_FREEZE).read_text())
     assert evaluator.verify_evaluator_freeze() == stored
     assert evaluator._sha256(evaluator.EVALUATOR_SOURCE) == (
-        "8f66ec75c20eba83af12f8531382b5c450c7c0ba1f2340f82e27915d09f168ac"
+        "39044584b07376e08db930354e67e3f56c55c9d6653f5ff43bd58138a1a1cbf4"
     )
     assert evaluator._sha256(evaluator.EVALUATOR_FREEZE) == (
-        "1ae15f1218fa5e319a2b1f750a99aa36293d4045ba3b3928928579fadbf4a2d5"
+        "92007518ee4b2f2138292578912c62cd6583b0b547bd4d1f0cea45a6ae6104a2"
     )
     assert stored["manifest_hash"] == (
-        "c93c5baf8f2da0d875e494f95264cc06ca360836613141fbaee59e5986ecf68e"
+        "7131c5b522e53eab7494a2a5768ed3a28bbf251573f267d5d197feaa0bc83412"
     )
 
 
 def test_frozen_stage1_is_rejected_and_keeps_2023_sealed() -> None:
     stored = json.loads(Path(evaluator.STAGE1_OUTPUT).read_text())
     assert evaluator._sha256(evaluator.STAGE1_OUTPUT) == (
-        "3f5118077cdafb48ffb59fc6cec8e7643613861f921bfd78403097181c287a7f"
+        "064f8b360b879846e25cd364fe6d8bdb58ce9f6042b8368468920adb175cd75d"
     )
     assert stored["manifest_hash"] == (
-        "fba386377571abf79c15c2888541695c8d7b7e828481c3c8bf0753c644356607"
+        "d6f52f185a539f2ad822613cd2c1482f13f137f57339a21bef42c47c80afe4f9"
     )
     assert stored["gate_passed"] is False
     assert stored["disposition"] == "REJECT_KEEP_2023_SEALED"

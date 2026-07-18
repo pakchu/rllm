@@ -54,8 +54,22 @@ def _corr(x: np.ndarray, y: np.ndarray) -> float:
 def _feature_row(feature: str, x: np.ndarray, y: np.ndarray, side_sign: np.ndarray) -> dict[str, Any]:
     ok = np.isfinite(x) & np.isfinite(y)
     x = x[ok]; y = y[ok]; ss = side_sign[ok]
-    if len(x) < 10:
-        return {"feature": feature, "n": int(len(x)), "score": -1e9}
+    if len(x) == 0:
+        return {
+            "feature": feature,
+            "n": 0,
+            "raw_corr": 0.0,
+            "signed_corr": 0.0,
+            "q25": 0.0,
+            "q75": 0.0,
+            "low_q_mean_trade_ret_pct": 0.0,
+            "high_q_mean_trade_ret_pct": 0.0,
+            "high_minus_low_mean_trade_ret_pct": 0.0,
+            "win_mean": 0.0,
+            "loss_mean": 0.0,
+            "win_minus_loss_mean": 0.0,
+            "score": -1e9,
+        }
     qlo, qhi = np.quantile(x, [0.25, 0.75])
     low = y[x <= qlo]
     high = y[x >= qhi]
@@ -67,7 +81,7 @@ def _feature_row(feature: str, x: np.ndarray, y: np.ndarray, side_sign: np.ndarr
     win_mean = float(np.mean(x[win])) if np.any(win) else 0.0
     loss_mean = float(np.mean(x[~win])) if np.any(~win) else 0.0
     sep = win_mean - loss_mean
-    score = abs(spread) + 5.0 * abs(raw_corr) + 5.0 * abs(signed_corr) + abs(sep)
+    score = -1e9 if len(x) < 10 else abs(spread) + 5.0 * abs(raw_corr) + 5.0 * abs(signed_corr) + abs(sep)
     return {
         "feature": feature,
         "n": int(len(x)),

@@ -29,12 +29,12 @@ STATIC_INPUT_SHA256 = {
     "docs/fed-h8-deposit-migration-preregistration-2026-07-18.md": "bb2a0d0b47557617e296d3c49d92d56244aa7ef8f88f5bed4e2e4a0571d1a0ae",
     "results/fed_h8_deposit_migration_preregistration_2026-07-18.json": "0705042e6fceb5e183e5967be846bc106ea860f642fd44cba72dfa214eb09432",
     "results/fed_h8_deposit_migration_preregistered_clock_2026-07-18.csv.gz": "20405f79b86861adcc784c81223baae1c40fdf3c73edda339578471a6a6d1b40",
-    "training/build_fed_h8_deposit_migration_support.py": "5a175930bdabac621600507bb98affb710bbfcdd93a35b2e72c4ea4fae9baa58",
+    "training/build_fed_h8_deposit_migration_support.py": "55a6aad1c7996c6f45dbdd2c79ceaefa4f59e308f7de5359310abb6de23d81e4",
     "docs/fed-h8-deposit-migration-support-2026-07-18.md": "52bdb6385fc8bc09f2b6f72dfd5bf876196787bfc9f8727025542fff7d012211",
     "results/fed_h8_deposit_migration_support_2026-07-18.json": "79c2042f00f54f525275dd5e1536adb8de790e0271a1c0765e41bd2b7570f057",
     "results/fed_h8_deposit_migration_clocks_2026-07-18.csv.gz": "1d1774123480868e36b8f76e28ee11c918f18d6694ce8f16056f338710f040ba",
     "training/evaluate_fiat_quote_participation_rotation.py": "e309f5217f033d57d2eadfec936843e736ce287f5c47f957c0ac6f0c71879c23",
-    "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json": "85d77ef584f73461e9b5a43fd63543b5728fa76354081983e7980aaa4c125af4",
     "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
 }
 MARKET_DATA_SHA256 = "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d"

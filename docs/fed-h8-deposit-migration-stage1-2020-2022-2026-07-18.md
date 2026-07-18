@@ -38,6 +38,6 @@
 ## Integrity
 
 - Physically opened window: `['2020-01-01T00:00:00+00:00', '2023-01-01T00:00:00+00:00']`
-- Evaluator SHA-256: `8f66ec75c20eba83af12f8531382b5c450c7c0ba1f2340f82e27915d09f168ac`
-- Result manifest: `fba386377571abf79c15c2888541695c8d7b7e828481c3c8bf0753c644356607`
+- Evaluator SHA-256: `39044584b07376e08db930354e67e3f56c55c9d6653f5ff43bd58138a1a1cbf4`
+- Result manifest: `d6f52f185a539f2ad822613cd2c1482f13f137f57339a21bef42c47c80afe4f9`
 - Full-clock CAGR includes idle cash; strict MDD includes intratrade adverse OHLC.

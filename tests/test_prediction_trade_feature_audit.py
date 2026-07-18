@@ -15,3 +15,14 @@ def test_feature_row_reports_quantile_spread():
     assert row["feature"] == "x"
     assert row["high_minus_low_mean_trade_ret_pct"] < 0
     assert row["n"] == 8
+
+
+def test_feature_row_preserves_schema_below_min_sample():
+    x = np.arange(3, dtype=float)
+    y = np.array([1, 0, -1], dtype=float)
+    side = np.ones(3, dtype=float)
+    row = _feature_row("x", x, y, side)
+    assert row["n"] == 3
+    assert "high_minus_low_mean_trade_ret_pct" in row
+    assert "win_minus_loss_mean" in row
+    assert row["score"] == -1e9
