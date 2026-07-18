@@ -1,0 +1,697 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-07-18T20:30:50.727266+00:00",
+  "protocol": {
+    "outcomes_opened": false,
+    "market_end_exclusive": "2024-01-01 00:00:00",
+    "fit_start": "2020-10-15 00:00:00",
+    "occupation": "prior 30 UTC days, daily frozen, joint time/quote-volume density",
+    "persistence": "prior frozen 2d or 7d local-extrema spectrum; current completed-hour traversal",
+    "flow": "signed taker flow speed over 0.25x strictly-prior 24h quote notional",
+    "event": "occupation crossing, persistence traversal and volume flow share direction; profile saddles>=2; crossed barriers>=3",
+    "entry": "next five-minute open after all completed features",
+    "exit": "fixed elapsed hold; global non-overlap per candidate",
+    "candidate_count": 4,
+    "direction": "constraint-release continuation; fixed before returns",
+    "direction_repair_allowed": false,
+    "threshold_repair_after_returns_allowed": false,
+    "2024_plus_opened": false
+  },
+  "source": {
+    "path": "/home/pakchu/rllm/data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d"
+  },
+  "implementation": {
+    "path": "training/preregister_price_memory_cage_escape_alpha.py",
+    "sha256": "46cc84e5e51159962a9e0d443f74bae77b42da90d9dc020257a8956b67abe8f7"
+  },
+  "raw_events_by_horizon": {
+    "576": 135,
+    "2016": 173
+  },
+  "candidates": [
+    {
+      "candidate": {
+        "persistence_horizon_bars": 576,
+        "hold_hours": 12
+      },
+      "name": "price_memory_cage_escape_2d_h12",
+      "clock_hash": "7e0dc595d0d7d3f9e5648b884d534b911d6a89df91d288308bc073b812de2d67",
+      "schedule_hashes": {
+        "fit": "c19e3197175aa96303829aa712579706ae29e8b01c39c511fbb8bed6795ee905",
+        "fit_2020q4": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "fit_2021h1": "4c420a8e729502cf6ab4f6455bba47ea36f22bb4ffc1c3c93c78823c8fc1acc0",
+        "fit_2021h2": "b823163477cd762b59b37e5d3543e689f9f9b748844f33fad7219b320055850a",
+        "fit_2022h1": "17bfc5b70c66a9568c3c018e5c5210e5428ccbf085b6a60b5c1001c4b3873b19",
+        "fit_2022h2": "178017dbc2658d1e17dc3628bfa7fc5dc60bbf0b0f857ee8e4703f94c14bac15",
+        "select_2023": "9ebfe2f84da8bd2efc85f8a1c05ef3465bdc4047e0562abd8b084c5902ade75f",
+        "select_2023h1": "70366b382c25b9c67aeb26377bac430883eb7ebd97358865c3a5bd02d96d694f",
+        "select_2023h2": "6aaf8521c47b1e815be41a66167021577819afb4143db12bf187ace725d3e33c"
+      },
+      "support": {
+        "fit": {
+          "total": 48,
+          "longs": 27,
+          "shorts": 21,
+          "by_month": {
+            "2021-01": 3,
+            "2021-02": 1,
+            "2021-03": 2,
+            "2021-05": 2,
+            "2021-06": 1,
+            "2021-07": 3,
+            "2021-08": 2,
+            "2021-12": 2,
+            "2022-01": 3,
+            "2022-02": 2,
+            "2022-03": 1,
+            "2022-04": 4,
+            "2022-05": 1,
+            "2022-06": 1,
+            "2022-08": 1,
+            "2022-09": 7,
+            "2022-10": 4,
+            "2022-11": 5,
+            "2022-12": 3
+          },
+          "max_month_fraction": 0.14583333333333334
+        },
+        "fit_2020q4": {
+          "total": 0,
+          "longs": 0,
+          "shorts": 0,
+          "by_month": {},
+          "max_month_fraction": 1.0
+        },
+        "fit_2021h1": {
+          "total": 9,
+          "longs": 6,
+          "shorts": 3,
+          "by_month": {
+            "2021-01": 3,
+            "2021-02": 1,
+            "2021-03": 2,
+            "2021-05": 2,
+            "2021-06": 1
+          },
+          "max_month_fraction": 0.3333333333333333
+        },
+        "fit_2021h2": {
+          "total": 7,
+          "longs": 2,
+          "shorts": 5,
+          "by_month": {
+            "2021-07": 3,
+            "2021-08": 2,
+            "2021-12": 2
+          },
+          "max_month_fraction": 0.42857142857142855
+        },
+        "fit_2022h1": {
+          "total": 12,
+          "longs": 8,
+          "shorts": 4,
+          "by_month": {
+            "2022-01": 3,
+            "2022-02": 2,
+            "2022-03": 1,
+            "2022-04": 4,
+            "2022-05": 1,
+            "2022-06": 1
+          },
+          "max_month_fraction": 0.3333333333333333
+        },
+        "fit_2022h2": {
+          "total": 20,
+          "longs": 11,
+          "shorts": 9,
+          "by_month": {
+            "2022-08": 1,
+            "2022-09": 7,
+            "2022-10": 4,
+            "2022-11": 5,
+            "2022-12": 3
+          },
+          "max_month_fraction": 0.35
+        },
+        "select_2023": {
+          "total": 39,
+          "longs": 17,
+          "shorts": 22,
+          "by_month": {
+            "2023-01": 1,
+            "2023-02": 5,
+            "2023-03": 6,
+            "2023-05": 3,
+            "2023-06": 3,
+            "2023-08": 4,
+            "2023-09": 8,
+            "2023-10": 2,
+            "2023-11": 3,
+            "2023-12": 4
+          },
+          "max_month_fraction": 0.20512820512820512
+        },
+        "select_2023h1": {
+          "total": 18,
+          "longs": 10,
+          "shorts": 8,
+          "by_month": {
+            "2023-01": 1,
+            "2023-02": 5,
+            "2023-03": 6,
+            "2023-05": 3,
+            "2023-06": 3
+          },
+          "max_month_fraction": 0.3333333333333333
+        },
+        "select_2023h2": {
+          "total": 21,
+          "longs": 7,
+          "shorts": 14,
+          "by_month": {
+            "2023-08": 4,
+            "2023-09": 8,
+            "2023-10": 2,
+            "2023-11": 3,
+            "2023-12": 4
+          },
+          "max_month_fraction": 0.38095238095238093
+        }
+      },
+      "gates": {
+        "fit_at_least_48": true,
+        "select_2023_at_least_24": true,
+        "each_full_fit_half_at_least_6": true,
+        "each_2023_half_at_least_8": true,
+        "fit_each_side_at_least_20pct": true,
+        "select_each_side_at_least_20pct": true,
+        "fit_max_month_at_most_20pct": true,
+        "select_max_month_at_most_25pct": true
+      },
+      "passes_support": true
+    },
+    {
+      "candidate": {
+        "persistence_horizon_bars": 576,
+        "hold_hours": 24
+      },
+      "name": "price_memory_cage_escape_2d_h24",
+      "clock_hash": "7e0dc595d0d7d3f9e5648b884d534b911d6a89df91d288308bc073b812de2d67",
+      "schedule_hashes": {
+        "fit": "9f362be73168fec8830e552633b91bf1153ec7c301c5dc0dba4064afe88940af",
+        "fit_2020q4": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "fit_2021h1": "cd8f622eca5ec1cff9dffb0ae1ef5748b49eaf8f1fa0dc1c7eabd8c7ac2d6e35",
+        "fit_2021h2": "11b7bb1f94337f16d188abb337e03609b485b6256733fc597bc7bf9bea60720d",
+        "fit_2022h1": "33ce96cd158b333c96d3254e6ec91d274c44bd164677c45a914a0da4945d6c02",
+        "fit_2022h2": "70c5535079c8185eaf7cc85656c490f326fc2bbe1faf8ca728c9925127ec6a09",
+        "select_2023": "7d9d01e888ba1e73eeecd124d1f8c642b6555b15f7bc14d379f896275b7c2f0f",
+        "select_2023h1": "bee8a74038a56e1a8804ef2fcf70f3d6a4dfa84c9b86b5fa35c0f5d6edc11bde",
+        "select_2023h2": "084c7e6e02324398e4dfe1a8744189a41d87f769a008b3066176f14863cba31d"
+      },
+      "support": {
+        "fit": {
+          "total": 42,
+          "longs": 23,
+          "shorts": 19,
+          "by_month": {
+            "2021-01": 3,
+            "2021-02": 1,
+            "2021-03": 2,
+            "2021-05": 1,
+            "2021-06": 1,
+            "2021-07": 3,
+            "2021-08": 2,
+            "2021-12": 2,
+            "2022-01": 2,
+            "2022-02": 2,
+            "2022-03": 1,
+            "2022-04": 2,
+            "2022-05": 1,
+            "2022-06": 1,
+            "2022-08": 1,
+            "2022-09": 6,
+            "2022-10": 3,
+            "2022-11": 5,
+            "2022-12": 3
+          },
+          "max_month_fraction": 0.14285714285714285
+        },
+        "fit_2020q4": {
+          "total": 0,
+          "longs": 0,
+          "shorts": 0,
+          "by_month": {},
+          "max_month_fraction": 1.0
+        },
+        "fit_2021h1": {
+          "total": 8,
+          "longs": 5,
+          "shorts": 3,
+          "by_month": {
+            "2021-01": 3,
+            "2021-02": 1,
+            "2021-03": 2,
+            "2021-05": 1,
+            "2021-06": 1
+          },
+          "max_month_fraction": 0.375
+        },
+        "fit_2021h2": {
+          "total": 7,
+          "longs": 2,
+          "shorts": 5,
+          "by_month": {
+            "2021-07": 3,
+            "2021-08": 2,
+            "2021-12": 2
+          },
+          "max_month_fraction": 0.42857142857142855
+        },
+        "fit_2022h1": {
+          "total": 9,
+          "longs": 7,
+          "shorts": 2,
+          "by_month": {
+            "2022-01": 2,
+            "2022-02": 2,
+            "2022-03": 1,
+            "2022-04": 2,
+            "2022-05": 1,
+            "2022-06": 1
+          },
+          "max_month_fraction": 0.2222222222222222
+        },
+        "fit_2022h2": {
+          "total": 18,
+          "longs": 9,
+          "shorts": 9,
+          "by_month": {
+            "2022-08": 1,
+            "2022-09": 6,
+            "2022-10": 3,
+            "2022-11": 5,
+            "2022-12": 3
+          },
+          "max_month_fraction": 0.3333333333333333
+        },
+        "select_2023": {
+          "total": 29,
+          "longs": 13,
+          "shorts": 16,
+          "by_month": {
+            "2023-01": 1,
+            "2023-02": 4,
+            "2023-03": 4,
+            "2023-05": 3,
+            "2023-06": 3,
+            "2023-08": 3,
+            "2023-09": 5,
+            "2023-10": 2,
+            "2023-11": 2,
+            "2023-12": 2
+          },
+          "max_month_fraction": 0.1724137931034483
+        },
+        "select_2023h1": {
+          "total": 15,
+          "longs": 9,
+          "shorts": 6,
+          "by_month": {
+            "2023-01": 1,
+            "2023-02": 4,
+            "2023-03": 4,
+            "2023-05": 3,
+            "2023-06": 3
+          },
+          "max_month_fraction": 0.26666666666666666
+        },
+        "select_2023h2": {
+          "total": 14,
+          "longs": 4,
+          "shorts": 10,
+          "by_month": {
+            "2023-08": 3,
+            "2023-09": 5,
+            "2023-10": 2,
+            "2023-11": 2,
+            "2023-12": 2
+          },
+          "max_month_fraction": 0.35714285714285715
+        }
+      },
+      "gates": {
+        "fit_at_least_48": false,
+        "select_2023_at_least_24": true,
+        "each_full_fit_half_at_least_6": true,
+        "each_2023_half_at_least_8": true,
+        "fit_each_side_at_least_20pct": true,
+        "select_each_side_at_least_20pct": true,
+        "fit_max_month_at_most_20pct": true,
+        "select_max_month_at_most_25pct": true
+      },
+      "passes_support": false
+    },
+    {
+      "candidate": {
+        "persistence_horizon_bars": 2016,
+        "hold_hours": 12
+      },
+      "name": "price_memory_cage_escape_7d_h12",
+      "clock_hash": "90aac3c169ce816a647dcbb0195fa8f25af6bf8e7348d7fa44bbda3e91aac50b",
+      "schedule_hashes": {
+        "fit": "eebf5ff39a008e91b1b1fb21bbb9652589105b4a6589d037335d00271795a7e1",
+        "fit_2020q4": "2c230176c594a89a8b9c6a6bf39a2d4b421c59800357546098516a65e9e91801",
+        "fit_2021h1": "a3b64aec65aa8d181449c92db2234802ae506959851f61fd560d9a9fd64d503f",
+        "fit_2021h2": "20b8b57ba3a9ccdddf5cbafc95b9d9d55c2c6d01e6986ab6bae4e681ec4b2cf5",
+        "fit_2022h1": "7a3d522d2212808853c3d49f9162d185ee2dbbcd5c588cb628930e4731e4a0a5",
+        "fit_2022h2": "9f5240fbaa5efd76c2e50f65d8e2ce94ec1ff86705bc33b90565226caccfbc6c",
+        "select_2023": "d06a544e95b0ce8fe35cc8da613b995b06864e6d1cf470465fca3cc06238fd01",
+        "select_2023h1": "d7c79ee1e096db9ac741e2b78e1b62cccaeaae86507ec6f4d8c9aef7a7d320e5",
+        "select_2023h2": "cd0c08c3c1ab83f69394180c5a0f365eb03653bf71b9cbf844e96e161d532b35"
+      },
+      "support": {
+        "fit": {
+          "total": 61,
+          "longs": 31,
+          "shorts": 30,
+          "by_month": {
+            "2020-11": 1,
+            "2021-01": 3,
+            "2021-02": 2,
+            "2021-03": 2,
+            "2021-05": 2,
+            "2021-06": 2,
+            "2021-07": 3,
+            "2021-08": 2,
+            "2021-10": 1,
+            "2021-11": 1,
+            "2021-12": 2,
+            "2022-01": 3,
+            "2022-02": 2,
+            "2022-03": 3,
+            "2022-04": 6,
+            "2022-05": 1,
+            "2022-06": 1,
+            "2022-08": 2,
+            "2022-09": 9,
+            "2022-10": 4,
+            "2022-11": 6,
+            "2022-12": 3
+          },
+          "max_month_fraction": 0.14754098360655737
+        },
+        "fit_2020q4": {
+          "total": 1,
+          "longs": 0,
+          "shorts": 1,
+          "by_month": {
+            "2020-11": 1
+          },
+          "max_month_fraction": 1.0
+        },
+        "fit_2021h1": {
+          "total": 11,
+          "longs": 6,
+          "shorts": 5,
+          "by_month": {
+            "2021-01": 3,
+            "2021-02": 2,
+            "2021-03": 2,
+            "2021-05": 2,
+            "2021-06": 2
+          },
+          "max_month_fraction": 0.2727272727272727
+        },
+        "fit_2021h2": {
+          "total": 9,
+          "longs": 3,
+          "shorts": 6,
+          "by_month": {
+            "2021-07": 3,
+            "2021-08": 2,
+            "2021-10": 1,
+            "2021-11": 1,
+            "2021-12": 2
+          },
+          "max_month_fraction": 0.3333333333333333
+        },
+        "fit_2022h1": {
+          "total": 16,
+          "longs": 9,
+          "shorts": 7,
+          "by_month": {
+            "2022-01": 3,
+            "2022-02": 2,
+            "2022-03": 3,
+            "2022-04": 6,
+            "2022-05": 1,
+            "2022-06": 1
+          },
+          "max_month_fraction": 0.375
+        },
+        "fit_2022h2": {
+          "total": 24,
+          "longs": 13,
+          "shorts": 11,
+          "by_month": {
+            "2022-08": 2,
+            "2022-09": 9,
+            "2022-10": 4,
+            "2022-11": 6,
+            "2022-12": 3
+          },
+          "max_month_fraction": 0.375
+        },
+        "select_2023": {
+          "total": 48,
+          "longs": 23,
+          "shorts": 25,
+          "by_month": {
+            "2023-01": 1,
+            "2023-02": 6,
+            "2023-03": 6,
+            "2023-04": 1,
+            "2023-05": 4,
+            "2023-06": 4,
+            "2023-08": 4,
+            "2023-09": 8,
+            "2023-10": 3,
+            "2023-11": 5,
+            "2023-12": 6
+          },
+          "max_month_fraction": 0.16666666666666666
+        },
+        "select_2023h1": {
+          "total": 22,
+          "longs": 12,
+          "shorts": 10,
+          "by_month": {
+            "2023-01": 1,
+            "2023-02": 6,
+            "2023-03": 6,
+            "2023-04": 1,
+            "2023-05": 4,
+            "2023-06": 4
+          },
+          "max_month_fraction": 0.2727272727272727
+        },
+        "select_2023h2": {
+          "total": 26,
+          "longs": 11,
+          "shorts": 15,
+          "by_month": {
+            "2023-08": 4,
+            "2023-09": 8,
+            "2023-10": 3,
+            "2023-11": 5,
+            "2023-12": 6
+          },
+          "max_month_fraction": 0.3076923076923077
+        }
+      },
+      "gates": {
+        "fit_at_least_48": true,
+        "select_2023_at_least_24": true,
+        "each_full_fit_half_at_least_6": true,
+        "each_2023_half_at_least_8": true,
+        "fit_each_side_at_least_20pct": true,
+        "select_each_side_at_least_20pct": true,
+        "fit_max_month_at_most_20pct": true,
+        "select_max_month_at_most_25pct": true
+      },
+      "passes_support": true
+    },
+    {
+      "candidate": {
+        "persistence_horizon_bars": 2016,
+        "hold_hours": 24
+      },
+      "name": "price_memory_cage_escape_7d_h24",
+      "clock_hash": "90aac3c169ce816a647dcbb0195fa8f25af6bf8e7348d7fa44bbda3e91aac50b",
+      "schedule_hashes": {
+        "fit": "e71c77f543d4d8a1692f04fef94b84532d4cd2415bf5a41fc97883d8732e6b73",
+        "fit_2020q4": "ef1f3bb9e36aca7aa9161e7a57b26108ebe6f4fe39a8fdaf8c70a6b669202e6c",
+        "fit_2021h1": "0adee2416cb2e81ef80b290c1256e611edb364b69cb9558dbb838f1a0bb6dc3a",
+        "fit_2021h2": "779baeb227b52b60bc5b38c0351483273b979e1f4ef3e3a0f32d71d984562a78",
+        "fit_2022h1": "8d6c36b99557d8d9ab8ebab4117f6ca0e0689c4f5176da7c42bf749acde7d182",
+        "fit_2022h2": "a7c2b23f3bd3d0cc17267af472e1e8ef9601aecb820d15b179578b07c935b624",
+        "select_2023": "2ba0eb116cd9a2ec6a8d871e66dee531aa7f497234b33d0e1ee3de831576c297",
+        "select_2023h1": "6bf363d514320cf3c36a26b47bcb11797319734decc59aac9bae1a8d4430920f",
+        "select_2023h2": "6c9a3e49ad85ceda594d59e737e2c47585051e3d260529453dacea2294e81906"
+      },
+      "support": {
+        "fit": {
+          "total": 50,
+          "longs": 25,
+          "shorts": 25,
+          "by_month": {
+            "2020-11": 1,
+            "2021-01": 3,
+            "2021-02": 2,
+            "2021-03": 2,
+            "2021-05": 1,
+            "2021-06": 1,
+            "2021-07": 3,
+            "2021-08": 2,
+            "2021-10": 1,
+            "2021-11": 1,
+            "2021-12": 2,
+            "2022-01": 2,
+            "2022-02": 2,
+            "2022-03": 2,
+            "2022-04": 4,
+            "2022-05": 1,
+            "2022-06": 1,
+            "2022-08": 2,
+            "2022-09": 6,
+            "2022-10": 3,
+            "2022-11": 5,
+            "2022-12": 3
+          },
+          "max_month_fraction": 0.12
+        },
+        "fit_2020q4": {
+          "total": 1,
+          "longs": 0,
+          "shorts": 1,
+          "by_month": {
+            "2020-11": 1
+          },
+          "max_month_fraction": 1.0
+        },
+        "fit_2021h1": {
+          "total": 9,
+          "longs": 5,
+          "shorts": 4,
+          "by_month": {
+            "2021-01": 3,
+            "2021-02": 2,
+            "2021-03": 2,
+            "2021-05": 1,
+            "2021-06": 1
+          },
+          "max_month_fraction": 0.3333333333333333
+        },
+        "fit_2021h2": {
+          "total": 9,
+          "longs": 3,
+          "shorts": 6,
+          "by_month": {
+            "2021-07": 3,
+            "2021-08": 2,
+            "2021-10": 1,
+            "2021-11": 1,
+            "2021-12": 2
+          },
+          "max_month_fraction": 0.3333333333333333
+        },
+        "fit_2022h1": {
+          "total": 12,
+          "longs": 8,
+          "shorts": 4,
+          "by_month": {
+            "2022-01": 2,
+            "2022-02": 2,
+            "2022-03": 2,
+            "2022-04": 4,
+            "2022-05": 1,
+            "2022-06": 1
+          },
+          "max_month_fraction": 0.3333333333333333
+        },
+        "fit_2022h2": {
+          "total": 19,
+          "longs": 9,
+          "shorts": 10,
+          "by_month": {
+            "2022-08": 2,
+            "2022-09": 6,
+            "2022-10": 3,
+            "2022-11": 5,
+            "2022-12": 3
+          },
+          "max_month_fraction": 0.3157894736842105
+        },
+        "select_2023": {
+          "total": 33,
+          "longs": 14,
+          "shorts": 19,
+          "by_month": {
+            "2023-01": 1,
+            "2023-02": 4,
+            "2023-03": 4,
+            "2023-04": 1,
+            "2023-05": 3,
+            "2023-06": 3,
+            "2023-08": 3,
+            "2023-09": 5,
+            "2023-10": 2,
+            "2023-11": 3,
+            "2023-12": 4
+          },
+          "max_month_fraction": 0.15151515151515152
+        },
+        "select_2023h1": {
+          "total": 16,
+          "longs": 8,
+          "shorts": 8,
+          "by_month": {
+            "2023-01": 1,
+            "2023-02": 4,
+            "2023-03": 4,
+            "2023-04": 1,
+            "2023-05": 3,
+            "2023-06": 3
+          },
+          "max_month_fraction": 0.25
+        },
+        "select_2023h2": {
+          "total": 17,
+          "longs": 6,
+          "shorts": 11,
+          "by_month": {
+            "2023-08": 3,
+            "2023-09": 5,
+            "2023-10": 2,
+            "2023-11": 3,
+            "2023-12": 4
+          },
+          "max_month_fraction": 0.29411764705882354
+        }
+      },
+      "gates": {
+        "fit_at_least_48": true,
+        "select_2023_at_least_24": true,
+        "each_full_fit_half_at_least_6": true,
+        "each_2023_half_at_least_8": true,
+        "fit_each_side_at_least_20pct": true,
+        "select_each_side_at_least_20pct": true,
+        "fit_max_month_at_most_20pct": true,
+        "select_max_month_at_most_25pct": true
+      },
+      "passes_support": true
+    }
+  ],
+  "support_freeze_hash": "09b559400b1d70ace8590455853c8a3201383174b51549d99a6491d037186a71"
+}
