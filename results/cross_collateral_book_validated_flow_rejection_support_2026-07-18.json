@@ -1,0 +1,452 @@
+{
+  "all_support_gates_pass": true,
+  "config": {
+    "defense_thresholds": [
+      0.0,
+      0.25,
+      0.5,
+      0.75
+    ],
+    "event_clock_output": "results/cross_collateral_book_validated_flow_rejection_event_clock_2026-07-18.json",
+    "flow_quantiles": [
+      0.75,
+      0.8,
+      0.85
+    ],
+    "hold_bars": 72,
+    "maximum_new_clock_containment": 0.3,
+    "maximum_prior_jaccard": 0.2,
+    "maximum_quarter_share": 0.4,
+    "minimum_events": 120,
+    "minimum_half_events": 50,
+    "minimum_quarter_events": 20,
+    "minimum_side_share": 0.35,
+    "output": "results/cross_collateral_book_validated_flow_rejection_support_2026-07-18.json",
+    "overlap_tolerance_bars": 12,
+    "robust_baseline_bars": 8640,
+    "robust_min_periods": 2016
+  },
+  "event_clock_sha256": "8aca1a9d0071ec2cf3ca37a02a496bdaa3a3f58e257628e160a071467bc51710",
+  "frozen_sources": {
+    "credibility_data_sha256": "45026cc02620d9a0c67f250804f2a06705bf0e824f72257d6c2414f40ab7d429",
+    "credibility_manifest_sha256": "f530f472765c8cb56bf564efd346c734e2404e072b87e2ff8dc3b84e303c30f7",
+    "entry_or_later_ohlc_loaded": false,
+    "high_or_low_loaded": false,
+    "market_columns_loaded": [
+      "date",
+      "open",
+      "close",
+      "quote_asset_volume",
+      "taker_buy_quote"
+    ],
+    "market_data_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "post_entry_return_funding_pnl_or_equity_loaded": false,
+    "range_end": "2023-12-31 23:55:00",
+    "range_start": "2023-01-01 00:00:00",
+    "rows": 105120,
+    "source_complete_rows": 101649
+  },
+  "next_action": "freeze evaluator before opening calendar-2023 post-entry outcomes",
+  "outcome_blind_independence": {
+    "crrc72": {
+      "jaccard": 0.0136986301369863,
+      "matches": 4,
+      "new_clock_containment": 0.02857142857142857,
+      "new_events": 140,
+      "prior_events": 156
+    },
+    "cspr": {
+      "jaccard": 0.0365296803652968,
+      "matches": 8,
+      "new_clock_containment": 0.05714285714285714,
+      "new_events": 140,
+      "prior_events": 87
+    },
+    "pdf10": {
+      "jaccard": 0.008275862068965517,
+      "matches": 6,
+      "new_clock_containment": 0.04285714285714286,
+      "new_events": 140,
+      "prior_events": 591
+    },
+    "umfr36": {
+      "jaccard": 0.029484029484029485,
+      "matches": 12,
+      "new_clock_containment": 0.08571428571428572,
+      "new_events": 140,
+      "prior_events": 279
+    }
+  },
+  "protocol": {
+    "clock": {
+      "bar_label": "UTC five-minute open timestamp t",
+      "entry": "next five-minute open at t+5m",
+      "exit": "open 72 bars after entry (six hours)",
+      "nonoverlapping_within_each_quarter": true,
+      "quarter_contained": true,
+      "signal_inputs_complete": "t+5m"
+    },
+    "eventual_execution": {
+      "cagr": "full declared wall-clock, including idle periods",
+      "cost_bp_per_notional_side": 6.0,
+      "funding": "realized funding cash flows on the held path",
+      "instrument": "Binance BTCUSDT USD-M perpetual",
+      "leverage": 0.5,
+      "strict_mdd": "global pre-entry high-water mark plus held OHLC path"
+    },
+    "evidence_boundary": {
+      "allowed_before_clock_freeze": [
+        "completed signal-bar open and close",
+        "completed signal-bar taker-buy and total quote volume",
+        "completed UM and CM book-credibility summaries",
+        "strictly lagged feature baselines",
+        "prior alpha event timestamps and sides"
+      ],
+      "forbidden_before_evaluator_freeze": [
+        "entry or later OHLC",
+        "post-entry return",
+        "funding paid during the trade",
+        "PnL, equity, CAGR, drawdown, hit rate, or payoff"
+      ],
+      "post_entry_outcomes_opened": false
+    },
+    "feature_formula": {
+      "action": "side = -flow_direction",
+      "completed_bar_return": "log(close / open)",
+      "cross_collateral_defense": "mean(UM defense, CM defense)",
+      "flow": "2 * taker_buy_quote / quote_asset_volume - 1",
+      "flow_direction": "sign(flow)",
+      "flow_threshold": {
+        "current_and_future_rows_excluded": true,
+        "minimum_rows": 2016,
+        "shift_rows": 1,
+        "statistic": "rolling quantile(abs(flow))",
+        "window_rows": 8640
+      },
+      "rejection": "flow_direction * completed_bar_return <= 0",
+      "venue_agreement": "UM defense > 0 AND CM defense > 0",
+      "venue_defense": "-flow_direction * venue_credibility"
+    },
+    "hypothesis": "an unusually one-sided completed-bar taker flow that fails to move price in its own direction is more likely to mean absorption when both collateral venues show credible opposite-side replenishment",
+    "independence_gate": {
+      "jaccard_at_most": 0.2,
+      "new_clock_containment_at_most": 0.3,
+      "post_entry_return_or_pnl_forbidden": true,
+      "prior_clocks": [
+        "PDF-10",
+        "CRRC-72",
+        "CSPR",
+        "UMFR-36"
+      ],
+      "tolerance_bars": 12
+    },
+    "policy_id": "CBFR-72",
+    "sequential_oos": {
+      "2024_plus_sealed": true,
+      "failed_stage_action": "retire this exact policy without repair",
+      "first_opened_stage": "calendar 2023 only, after evaluator freeze"
+    },
+    "support_gate": {
+      "each_side_share_at_least": 0.35,
+      "events_at_least": 120,
+      "events_each_half_at_least": 50,
+      "events_each_quarter_at_least": 20,
+      "largest_quarter_share_at_most": 0.4
+    },
+    "support_selection": {
+      "defense_thresholds": [
+        0.0,
+        0.25,
+        0.5,
+        0.75
+      ],
+      "flow_quantiles": [
+        0.75,
+        0.8,
+        0.85
+      ],
+      "incidence_pilot_disclosed": true,
+      "outcomes_used": false,
+      "selection_rule": "among cells passing every incidence gate, maximize defense threshold first, then flow quantile; no return tie-break"
+    }
+  },
+  "support_selection": {
+    "cells": [
+      {
+        "defense_threshold": 0.0,
+        "flow_quantile": 0.75,
+        "support": {
+          "by_quarter": {
+            "q1": 24,
+            "q2": 38,
+            "q3": 50,
+            "q4": 43
+          },
+          "h1": 62,
+          "h2": 93,
+          "long_share": 0.5483870967741935,
+          "longs": 85,
+          "maximum_quarter_share": 0.3225806451612903,
+          "nonoverlap_total": 155,
+          "passes": true,
+          "short_share": 0.45161290322580644,
+          "shorts": 70
+        }
+      },
+      {
+        "defense_threshold": 0.25,
+        "flow_quantile": 0.75,
+        "support": {
+          "by_quarter": {
+            "q1": 20,
+            "q2": 37,
+            "q3": 46,
+            "q4": 37
+          },
+          "h1": 57,
+          "h2": 83,
+          "long_share": 0.5357142857142857,
+          "longs": 75,
+          "maximum_quarter_share": 0.32857142857142857,
+          "nonoverlap_total": 140,
+          "passes": true,
+          "short_share": 0.4642857142857143,
+          "shorts": 65
+        }
+      },
+      {
+        "defense_threshold": 0.5,
+        "flow_quantile": 0.75,
+        "support": {
+          "by_quarter": {
+            "q1": 19,
+            "q2": 32,
+            "q3": 43,
+            "q4": 34
+          },
+          "h1": 51,
+          "h2": 77,
+          "long_share": 0.5390625,
+          "longs": 69,
+          "maximum_quarter_share": 0.3359375,
+          "nonoverlap_total": 128,
+          "passes": false,
+          "short_share": 0.4609375,
+          "shorts": 59
+        }
+      },
+      {
+        "defense_threshold": 0.75,
+        "flow_quantile": 0.75,
+        "support": {
+          "by_quarter": {
+            "q1": 16,
+            "q2": 27,
+            "q3": 33,
+            "q4": 28
+          },
+          "h1": 43,
+          "h2": 61,
+          "long_share": 0.5384615384615384,
+          "longs": 56,
+          "maximum_quarter_share": 0.3173076923076923,
+          "nonoverlap_total": 104,
+          "passes": false,
+          "short_share": 0.46153846153846156,
+          "shorts": 48
+        }
+      },
+      {
+        "defense_threshold": 0.0,
+        "flow_quantile": 0.8,
+        "support": {
+          "by_quarter": {
+            "q1": 15,
+            "q2": 30,
+            "q3": 38,
+            "q4": 30
+          },
+          "h1": 45,
+          "h2": 68,
+          "long_share": 0.5663716814159292,
+          "longs": 64,
+          "maximum_quarter_share": 0.336283185840708,
+          "nonoverlap_total": 113,
+          "passes": false,
+          "short_share": 0.4336283185840708,
+          "shorts": 49
+        }
+      },
+      {
+        "defense_threshold": 0.25,
+        "flow_quantile": 0.8,
+        "support": {
+          "by_quarter": {
+            "q1": 13,
+            "q2": 29,
+            "q3": 34,
+            "q4": 26
+          },
+          "h1": 42,
+          "h2": 60,
+          "long_share": 0.5588235294117647,
+          "longs": 57,
+          "maximum_quarter_share": 0.3333333333333333,
+          "nonoverlap_total": 102,
+          "passes": false,
+          "short_share": 0.4411764705882353,
+          "shorts": 45
+        }
+      },
+      {
+        "defense_threshold": 0.5,
+        "flow_quantile": 0.8,
+        "support": {
+          "by_quarter": {
+            "q1": 11,
+            "q2": 24,
+            "q3": 32,
+            "q4": 24
+          },
+          "h1": 35,
+          "h2": 56,
+          "long_share": 0.5494505494505495,
+          "longs": 50,
+          "maximum_quarter_share": 0.3516483516483517,
+          "nonoverlap_total": 91,
+          "passes": false,
+          "short_share": 0.45054945054945056,
+          "shorts": 41
+        }
+      },
+      {
+        "defense_threshold": 0.75,
+        "flow_quantile": 0.8,
+        "support": {
+          "by_quarter": {
+            "q1": 9,
+            "q2": 21,
+            "q3": 25,
+            "q4": 19
+          },
+          "h1": 30,
+          "h2": 44,
+          "long_share": 0.5540540540540541,
+          "longs": 41,
+          "maximum_quarter_share": 0.33783783783783783,
+          "nonoverlap_total": 74,
+          "passes": false,
+          "short_share": 0.44594594594594594,
+          "shorts": 33
+        }
+      },
+      {
+        "defense_threshold": 0.0,
+        "flow_quantile": 0.85,
+        "support": {
+          "by_quarter": {
+            "q1": 9,
+            "q2": 16,
+            "q3": 26,
+            "q4": 19
+          },
+          "h1": 25,
+          "h2": 45,
+          "long_share": 0.6142857142857143,
+          "longs": 43,
+          "maximum_quarter_share": 0.37142857142857144,
+          "nonoverlap_total": 70,
+          "passes": false,
+          "short_share": 0.38571428571428573,
+          "shorts": 27
+        }
+      },
+      {
+        "defense_threshold": 0.25,
+        "flow_quantile": 0.85,
+        "support": {
+          "by_quarter": {
+            "q1": 8,
+            "q2": 16,
+            "q3": 24,
+            "q4": 15
+          },
+          "h1": 24,
+          "h2": 39,
+          "long_share": 0.5873015873015873,
+          "longs": 37,
+          "maximum_quarter_share": 0.38095238095238093,
+          "nonoverlap_total": 63,
+          "passes": false,
+          "short_share": 0.4126984126984127,
+          "shorts": 26
+        }
+      },
+      {
+        "defense_threshold": 0.5,
+        "flow_quantile": 0.85,
+        "support": {
+          "by_quarter": {
+            "q1": 6,
+            "q2": 13,
+            "q3": 23,
+            "q4": 13
+          },
+          "h1": 19,
+          "h2": 36,
+          "long_share": 0.5636363636363636,
+          "longs": 31,
+          "maximum_quarter_share": 0.41818181818181815,
+          "nonoverlap_total": 55,
+          "passes": false,
+          "short_share": 0.43636363636363634,
+          "shorts": 24
+        }
+      },
+      {
+        "defense_threshold": 0.75,
+        "flow_quantile": 0.85,
+        "support": {
+          "by_quarter": {
+            "q1": 5,
+            "q2": 12,
+            "q3": 17,
+            "q4": 11
+          },
+          "h1": 17,
+          "h2": 28,
+          "long_share": 0.5555555555555556,
+          "longs": 25,
+          "maximum_quarter_share": 0.37777777777777777,
+          "nonoverlap_total": 45,
+          "passes": false,
+          "short_share": 0.4444444444444444,
+          "shorts": 20
+        }
+      }
+    ],
+    "post_entry_outcomes_used": false,
+    "selected_cell": {
+      "defense_threshold": 0.25,
+      "flow_quantile": 0.75,
+      "support": {
+        "by_quarter": {
+          "q1": 20,
+          "q2": 37,
+          "q3": 46,
+          "q4": 37
+        },
+        "h1": 57,
+        "h2": 83,
+        "long_share": 0.5357142857142857,
+        "longs": 75,
+        "maximum_quarter_share": 0.32857142857142857,
+        "nonoverlap_total": 140,
+        "passes": true,
+        "short_share": 0.4642857142857143,
+        "shorts": 65
+      }
+    }
+  }
+}
