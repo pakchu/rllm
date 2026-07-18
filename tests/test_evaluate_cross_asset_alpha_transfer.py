@@ -164,6 +164,7 @@ def test_strict_mdd_uses_intrahold_extremes(monkeypatch) -> None:
 
 def test_transfer_gate_requires_all_frozen_checks() -> None:
     passing = {
+        "raw_signal_counts": {"train": 40, "test": 20, "eval": 20},
         "windows": {
             "eval": {
                 "base_5bp": {
@@ -171,6 +172,7 @@ def test_transfer_gate_requires_all_frozen_checks() -> None:
                     "cagr_to_strict_mdd": 3.1,
                     "strict_mdd_pct": 10.0,
                     "trades": 20,
+                    "years_with_trade": 3,
                     "positive_calendar_year_share": 0.6,
                 },
                 "stress_10bp": {"absolute_return_pct": 1.0},

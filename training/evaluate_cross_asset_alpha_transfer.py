@@ -398,8 +398,10 @@ def simulate(
         statistic, p_value = 0.0, 1.0
     split_years = list(range(pd.Timestamp(start).year, pd.Timestamp(end).year + (pd.Timestamp(end).month > 1)))
     yearly_returns: dict[str, float] = {}
+    years_with_trade = 0
     for year in split_years:
         factors = [1.0 + row["net_return"] for row in records if pd.Timestamp(row["exit_date"]).year == year]
+        years_with_trade += int(bool(factors))
         yearly_returns[str(year)] = (float(np.prod(factors)) - 1.0) * 100.0 if factors else 0.0
     positive_year_share = (
         sum(value > 0.0 for value in yearly_returns.values()) / len(yearly_returns) if yearly_returns else 0.0
@@ -417,6 +419,7 @@ def simulate(
         "one_sided_t_pvalue": p_value,
         "t_statistic": statistic,
         "yearly_return_pct": yearly_returns,
+        "years_with_trade": years_with_trade,
         "positive_calendar_year_share": positive_year_share,
         "trade_clock_hash": hashlib.sha256(
             json.dumps([(row["signal_date"], row["side"]) for row in records], separators=(",", ":")).encode()
@@ -487,11 +490,13 @@ def transfer_gate(policy_results: dict[str, dict[str, Any]]) -> dict[str, Any]:
         eval_stress = row["windows"]["eval"]["stress_10bp"]
         flip = row["windows"]["eval"]["direction_flip_5bp"]
         checks = {
+            "raw_train_signals_at_least_40": row["raw_signal_counts"]["train"] >= 40,
             "positive_absolute_return": eval_base["absolute_return_pct"] > 0.0,
             "ratio_at_least_3": eval_base["cagr_to_strict_mdd"] >= 3.0,
             "strict_mdd_at_most_15": eval_base["strict_mdd_pct"] <= 15.0,
             "at_least_20_trades": eval_base["trades"] >= 20,
             "stress_positive": eval_stress["absolute_return_pct"] > 0.0,
+            "at_least_3_eval_years_with_trade": eval_base["years_with_trade"] >= 3,
             "positive_year_share_at_least_60pct": eval_base["positive_calendar_year_share"] >= 0.60,
             "direction_flip_weaker": flip["cagr_to_strict_mdd"] < eval_base["cagr_to_strict_mdd"],
         }
@@ -509,6 +514,15 @@ def render_docs(report: dict[str, Any]) -> str:
         f"Preregistration: `{report['preregistration_manifest_hash']}`",
         "",
         "The original gross-8 sleeves remain nonportable. These are fixed daily OHLCV translations, not exact ports.",
+        "",
+        "## Exact gross-8 portability",
+        "",
+        "| Sleeve | Exact port | Blocking market-specific inputs |",
+        "|---|:---:|---|",
+    ]
+    for sleeve, audit in prereg.manifest()["gross8_portability_audit"].items():
+        lines.append(f"| `{sleeve}` | NO | {', '.join(audit['blocking_inputs'])} |")
+    lines += [
         "",
         "Metric cells: `absolute return / full-calendar CAGR / strict MDD / CAGR-MDD / trades / positive-year share`.",
         "",
@@ -530,6 +544,27 @@ def render_docs(report: dict[str, Any]) -> str:
             lines.append(
                 f"| `{policy}` | {symbol} | {fmt(base)} | {fmt(stress)} | "
                 f"{flip['cagr_to_strict_mdd']:.2f} | {'PASS' if passed else 'FAIL'} |"
+            )
+    lines += [
+        "",
+        "## Train / Test / Eval stability",
+        "",
+        "Cells: `absolute return / CAGR-MDD / trades`.",
+        "",
+        "| Policy | Asset | Train 2007–2016 | Test 2017–2021 | Eval 2022–2026 |",
+        "|---|---|---:|---:|---:|",
+    ]
+    for policy in POLICIES:
+        for symbol in INSTRUMENTS:
+            windows = report["instruments"][symbol]["policies"][policy]["windows"]
+            def compact(split: str) -> str:
+                metrics = windows[split]["base_5bp"]
+                return (
+                    f"{metrics['absolute_return_pct']:.2f}% / "
+                    f"{metrics['cagr_to_strict_mdd']:.2f} / {metrics['trades']}"
+                )
+            lines.append(
+                f"| `{policy}` | {symbol} | {compact('train')} | {compact('test')} | {compact('eval')} |"
             )
     lines += ["", "## Frozen decision", ""]
     for policy in POLICIES:
