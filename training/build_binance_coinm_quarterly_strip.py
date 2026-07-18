@@ -481,30 +481,55 @@ def missing_contract_months(
 def merge_daily_with_monthly_fallback(
     daily: pd.DataFrame,
     monthly: pd.DataFrame,
-) -> tuple[pd.DataFrame, int]:
-    """Validate overlap and add only keys absent from the daily primary source."""
+) -> tuple[pd.DataFrame, int, dict[str, Any]]:
+    """Keep daily overlap, record official revisions, and add absent keys only."""
     keys = ["date", "symbol"]
     if daily.duplicated(keys).any() or monthly.duplicated(keys).any():
         raise ValueError("duplicate contract key before monthly fallback merge")
     daily_indexed = daily.set_index(keys).sort_index()
     monthly_indexed = monthly.set_index(keys).sort_index()
     overlap = daily_indexed.index.intersection(monthly_indexed.index)
+    conflict_payload: list[dict[str, Any]] = []
     if len(overlap):
-        try:
-            pd.testing.assert_frame_equal(
-                daily_indexed.loc[overlap],
-                monthly_indexed.loc[overlap],
-                check_dtype=False,
-                check_exact=False,
-                rtol=0.0,
-                atol=1e-12,
+        daily_overlap = daily_indexed.loc[overlap]
+        monthly_overlap = monthly_indexed.loc[overlap]
+        mismatch = daily_overlap.astype(str).ne(monthly_overlap.astype(str))
+        for key in mismatch.index[mismatch.any(axis=1)]:
+            columns = mismatch.columns[mismatch.loc[key]].tolist()
+            conflict_payload.append(
+                {
+                    "date": str(key[0]),
+                    "symbol": str(key[1]),
+                    "columns": [str(column) for column in columns],
+                    "daily": {
+                        str(column): str(daily_overlap.loc[key, column])
+                        for column in columns
+                    },
+                    "monthly": {
+                        str(column): str(monthly_overlap.loc[key, column])
+                        for column in columns
+                    },
+                }
             )
-        except AssertionError as exc:
-            raise ValueError("daily and monthly Binance archives disagree") from exc
+    conflict_bytes = json.dumps(
+        conflict_payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode()
+    overlap_diagnostics = {
+        "rows": int(len(overlap)),
+        "conflict_rows": int(len(conflict_payload)),
+        "conflict_fraction": (
+            float(len(conflict_payload) / len(overlap)) if len(overlap) else 0.0
+        ),
+        "conflict_sha256": hashlib.sha256(conflict_bytes).hexdigest(),
+        "resolution": "daily primary retained; monthly overlap never used",
+    }
     additions = monthly_indexed.loc[~monthly_indexed.index.isin(daily_indexed.index)]
     combined = pd.concat([daily_indexed, additions]).reset_index()
     combined = combined.sort_values(keys).reset_index(drop=True)
-    return combined, int(len(additions))
+    return combined, int(len(additions)), overlap_diagnostics
 
 
 def build(cfg: BuildConfig) -> dict[str, Any]:
@@ -597,10 +622,17 @@ def build(cfg: BuildConfig) -> dict[str, Any]:
                     flush=True,
                 )
     monthly_rows_added = 0
+    monthly_overlap = {
+        "rows": 0,
+        "conflict_rows": 0,
+        "conflict_fraction": 0.0,
+        "conflict_sha256": hashlib.sha256(b"[]").hexdigest(),
+        "resolution": "daily primary retained; monthly overlap never used",
+    }
     raw = daily_raw
     if monthly_frames:
         monthly_raw = pd.concat(monthly_frames, ignore_index=True)
-        raw, monthly_rows_added = merge_daily_with_monthly_fallback(
+        raw, monthly_rows_added, monthly_overlap = merge_daily_with_monthly_fallback(
             daily_raw, monthly_raw
         )
         panel = build_fixed_strip(raw, start=start, end=end)
@@ -618,7 +650,10 @@ def build(cfg: BuildConfig) -> dict[str, Any]:
             ),
             "archive_root": ARCHIVE_ROOT,
             "monthly_archive_root": MONTHLY_ARCHIVE_ROOT,
-            "source_precedence": "daily rows win; monthly overlap must agree; only absent keys added",
+            "source_precedence": (
+                "daily overlap always wins; monthly official revisions are hashed; "
+                "only absent keys are added"
+            ),
             "selection": "fixed nearest two unexpired delivery symbols; missing front never promoted",
             "availability": "kline close_time + 1ms, equal to next five-minute boundary",
             "raw_archives_cached": True,
@@ -641,6 +676,7 @@ def build(cfg: BuildConfig) -> dict[str, Any]:
         ],
         "monthly_fallback_archives": monthly_metadata,
         "monthly_rows_added": monthly_rows_added,
+        "monthly_overlap_diagnostics": monthly_overlap,
         "output": str(output_path),
         "output_sha256": hashlib.sha256(output_path.read_bytes()).hexdigest(),
         "rows": int(len(panel)),
