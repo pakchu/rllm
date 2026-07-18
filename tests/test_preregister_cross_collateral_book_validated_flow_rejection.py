@@ -95,3 +95,28 @@ def test_fuzzy_overlap_is_one_to_one_and_outcome_free() -> None:
     assert overlap["matches"] == 1
     assert overlap["jaccard"] == pytest.approx(0.25)
     assert overlap["new_clock_containment"] == pytest.approx(0.5)
+
+
+def test_future_source_gap_cannot_cancel_a_scheduled_trade() -> None:
+    dates = pd.date_range("2023-01-01", periods=100, freq="5min")
+    frame = pd.DataFrame(
+        {
+            "date": dates,
+            "quarantined": [False] + [True] * 99,
+        }
+    )
+    side = pd.Series(0, index=frame.index, dtype=np.int8)
+    side.iloc[0] = 1
+    signal = pd.DataFrame(
+        {
+            "date": dates,
+            "side": side,
+            "branch": np.where(side.ne(0), "causal_signal", "none"),
+            "hold_bars": np.where(side.ne(0), 72, 0).astype(np.int16),
+            "quarantined": False,
+        }
+    )
+    schedule = cbfr.quarterly_schedule(signal, frame)
+    assert len(schedule) == 1
+    assert schedule.iloc[0]["entry_position"] == 1
+    assert schedule.iloc[0]["exit_position"] == 73
