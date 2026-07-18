@@ -1,0 +1,492 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-07-18T21:39:46.311896+00:00",
+  "protocol": {
+    "outcomes_opened": false,
+    "source_end_exclusive": "2024-01-01 00:00:00",
+    "fit_start": "2020-07-15 00:00:00",
+    "normalization": "strictly-prior 7d rolling median/IQR, min 80%, reset by front/next pair",
+    "volume_semantics": "raw COIN-M contract counts; front/next share uses raw contracts, signed pressure is taker imbalance times sqrt(contracts)",
+    "signal_clock": "completed five-minute bar; entry no earlier than next bar open",
+    "liquidity_floor": "current combined contracts >= strictly-prior pair-local 25th percentile",
+    "delivery_rule": "front DTE <=45d and both legs remain >=12h from delivery after fixed exit",
+    "candidate_count": 2,
+    "direction_repair_allowed": false,
+    "threshold_repair_after_support_allowed": false,
+    "threshold_repair_after_returns_allowed": false,
+    "2024_plus_opened": false
+  },
+  "thresholds": {
+    "next_led": {
+      "hold_minutes": 60,
+      "next_share_min": 0.1,
+      "z_next_share_min": 1.0,
+      "z_abs_next_pressure_min": 2.0,
+      "directional_next_bar_return_min": 0.0005,
+      "directional_front_bar_return_min": -0.0001
+    },
+    "front_rejection": {
+      "hold_minutes": 30,
+      "front_share_min": 0.5,
+      "z_front_share_min": 0.75,
+      "z_abs_front_pressure_min": 1.25,
+      "z_abs_next_pressure_max": 0.75,
+      "directional_front_bar_return_max": -0.0002,
+      "directional_next_bar_return_max": 0.0
+    }
+  },
+  "source": {
+    "path": "data/binance_coinm_quarterly_strip_pre2024/BTCUSD_front_next_quarterly_5m_20200701T0000_20231231T2350.csv.gz",
+    "sha256": "d107b6dee3f8d1012110db4744cb36d3e7e7fc36a1f93cc17f5ce4c92ab461f3"
+  },
+  "source_manifest": {
+    "path": "data/binance_coinm_quarterly_strip_pre2024/build_manifest.json",
+    "sha256": "cdb1ea8f175b0edebf36373aa3231de0a9026413ee7bb3bf4ee602b5abe2db2e",
+    "output_sha256": "d107b6dee3f8d1012110db4744cb36d3e7e7fc36a1f93cc17f5ce4c92ab461f3"
+  },
+  "implementation": {
+    "path": "training/preregister_coinm_roll_migration_alpha.py",
+    "sha256": "e8872482d6382e51eb0d80400c662ac1c4bd5626a8653b14b6489d8b2df8b3a3"
+  },
+  "candidates": [
+    {
+      "candidate": {
+        "name": "coinm_next_led_roll_migration_h60m",
+        "mechanism": "next-led accepted flow continuation",
+        "traded_leg": "next",
+        "hold_bars": 12
+      },
+      "raw_events": 5219,
+      "clock_hash": "bea249b1458e22e07ba966ba680fe7c5d9a3d427485f61a80dbe8ecddccfbf63",
+      "schedule_hashes": {
+        "fit": "0a76d9f15620dd122784a2406cfd85982807d056beedbbd4d58bcb4739e028ac",
+        "fit_2020h2": "e585d19776f7aa8f4dfa65a8aae806925aaf5c0cd68907516f8e6f20f74e756a",
+        "fit_2021h1": "56b1ec8c0fd5a4c74c944f2d574df7b40e7c4d350168c042278ac59c443871fc",
+        "fit_2021h2": "9d641f902ca9eecbdcd4d8a87206c01c89b5766dedffe471bf024ea491969f87",
+        "fit_2022h1": "40bc81a66742a4e6280e0bee6643775584e17d529c4a46ad8786c641bded61b7",
+        "fit_2022h2": "249052aaef648b0421237da4cff2705a45c49d4b1775a011e7decccfc49c51d7",
+        "select_2023": "f1eb8bfc66e5f1782735ab4c40fddf34a6012bcfec131f52e0e5122d5b87ce1e",
+        "select_2023h1": "a5ac94f4a7e321541d3c6e7604858966971cdb8dad61723d8f6d584974f7585f",
+        "select_2023h2": "396a9d92941a85d9045dd94155f748b69618f7feeffbc4e3227acf448a7f983c"
+      },
+      "support": {
+        "fit": {
+          "total": 2583,
+          "longs": 1157,
+          "shorts": 1426,
+          "by_month": {
+            "2020-08": 104,
+            "2020-09": 171,
+            "2020-11": 130,
+            "2020-12": 141,
+            "2021-02": 169,
+            "2021-03": 191,
+            "2021-05": 116,
+            "2021-06": 168,
+            "2021-08": 123,
+            "2021-09": 166,
+            "2021-11": 70,
+            "2021-12": 196,
+            "2022-02": 80,
+            "2022-03": 120,
+            "2022-05": 104,
+            "2022-06": 126,
+            "2022-08": 73,
+            "2022-09": 175,
+            "2022-11": 65,
+            "2022-12": 95
+          },
+          "max_month_fraction": 0.07588075880758807,
+          "symbols": {
+            "BTCUSD_201225": 275,
+            "BTCUSD_210326": 271,
+            "BTCUSD_210625": 360,
+            "BTCUSD_210924": 284,
+            "BTCUSD_211231": 289,
+            "BTCUSD_220325": 266,
+            "BTCUSD_220624": 200,
+            "BTCUSD_220930": 230,
+            "BTCUSD_221230": 248,
+            "BTCUSD_230331": 160
+          },
+          "max_symbol_fraction": 0.13937282229965156
+        },
+        "fit_2020h2": {
+          "total": 546,
+          "longs": 253,
+          "shorts": 293,
+          "by_month": {
+            "2020-08": 104,
+            "2020-09": 171,
+            "2020-11": 130,
+            "2020-12": 141
+          },
+          "max_month_fraction": 0.3131868131868132,
+          "symbols": {
+            "BTCUSD_201225": 275,
+            "BTCUSD_210326": 271
+          },
+          "max_symbol_fraction": 0.5036630036630036
+        },
+        "fit_2021h1": {
+          "total": 644,
+          "longs": 243,
+          "shorts": 401,
+          "by_month": {
+            "2021-02": 169,
+            "2021-03": 191,
+            "2021-05": 116,
+            "2021-06": 168
+          },
+          "max_month_fraction": 0.296583850931677,
+          "symbols": {
+            "BTCUSD_210625": 360,
+            "BTCUSD_210924": 284
+          },
+          "max_symbol_fraction": 0.5590062111801242
+        },
+        "fit_2021h2": {
+          "total": 555,
+          "longs": 245,
+          "shorts": 310,
+          "by_month": {
+            "2021-08": 123,
+            "2021-09": 166,
+            "2021-11": 70,
+            "2021-12": 196
+          },
+          "max_month_fraction": 0.35315315315315315,
+          "symbols": {
+            "BTCUSD_211231": 289,
+            "BTCUSD_220325": 266
+          },
+          "max_symbol_fraction": 0.5207207207207207
+        },
+        "fit_2022h1": {
+          "total": 430,
+          "longs": 210,
+          "shorts": 220,
+          "by_month": {
+            "2022-02": 80,
+            "2022-03": 120,
+            "2022-05": 104,
+            "2022-06": 126
+          },
+          "max_month_fraction": 0.2930232558139535,
+          "symbols": {
+            "BTCUSD_220624": 200,
+            "BTCUSD_220930": 230
+          },
+          "max_symbol_fraction": 0.5348837209302325
+        },
+        "fit_2022h2": {
+          "total": 408,
+          "longs": 206,
+          "shorts": 202,
+          "by_month": {
+            "2022-08": 73,
+            "2022-09": 175,
+            "2022-11": 65,
+            "2022-12": 95
+          },
+          "max_month_fraction": 0.42892156862745096,
+          "symbols": {
+            "BTCUSD_221230": 248,
+            "BTCUSD_230331": 160
+          },
+          "max_symbol_fraction": 0.6078431372549019
+        },
+        "select_2023": {
+          "total": 824,
+          "longs": 393,
+          "shorts": 431,
+          "by_month": {
+            "2023-02": 86,
+            "2023-03": 136,
+            "2023-05": 57,
+            "2023-06": 147,
+            "2023-08": 49,
+            "2023-09": 133,
+            "2023-11": 87,
+            "2023-12": 129
+          },
+          "max_month_fraction": 0.1783980582524272,
+          "symbols": {
+            "BTCUSD_230630": 222,
+            "BTCUSD_230929": 204,
+            "BTCUSD_231229": 182,
+            "BTCUSD_240329": 216
+          },
+          "max_symbol_fraction": 0.26941747572815533
+        },
+        "select_2023h1": {
+          "total": 426,
+          "longs": 215,
+          "shorts": 211,
+          "by_month": {
+            "2023-02": 86,
+            "2023-03": 136,
+            "2023-05": 57,
+            "2023-06": 147
+          },
+          "max_month_fraction": 0.34507042253521125,
+          "symbols": {
+            "BTCUSD_230630": 222,
+            "BTCUSD_230929": 204
+          },
+          "max_symbol_fraction": 0.5211267605633803
+        },
+        "select_2023h2": {
+          "total": 398,
+          "longs": 178,
+          "shorts": 220,
+          "by_month": {
+            "2023-08": 49,
+            "2023-09": 133,
+            "2023-11": 87,
+            "2023-12": 129
+          },
+          "max_month_fraction": 0.3341708542713568,
+          "symbols": {
+            "BTCUSD_231229": 182,
+            "BTCUSD_240329": 216
+          },
+          "max_symbol_fraction": 0.542713567839196
+        }
+      },
+      "gates": {
+        "fit_at_least_400": true,
+        "select_2023_at_least_100": true,
+        "each_fit_half_at_least_50": true,
+        "each_2023_half_at_least_40": true,
+        "fit_each_side_at_least_30pct": true,
+        "select_each_side_at_least_30pct": true,
+        "fit_max_month_at_most_12pct": true,
+        "select_max_month_at_most_20pct": true,
+        "fit_max_symbol_at_most_20pct": true,
+        "select_max_symbol_at_most_35pct": true
+      },
+      "passes_support": true
+    },
+    {
+      "candidate": {
+        "name": "coinm_front_local_rejected_flow_h30m",
+        "mechanism": "front-local rejected flow fade",
+        "traded_leg": "front",
+        "hold_bars": 6
+      },
+      "raw_events": 1006,
+      "clock_hash": "fb1100a4f473d05b2a3fcbb1a31f556383819e0b89ef4aa91423493cfb06022b",
+      "schedule_hashes": {
+        "fit": "7db1ca29d10c163e1b8ba2e33cee03713a11024183b5e741f5d8d7f427bdc63d",
+        "fit_2020h2": "d03ddccae06c0e9c488d1d2c125dfb0ef9161ed9de0eb4af6a809049d336460b",
+        "fit_2021h1": "c33f466abd38e22743663e9b1dc5f366d0db5872ce6d6f49c80fd5d4a3cb7a48",
+        "fit_2021h2": "9b2d83064d886ca4fcc9904c0b48cc3cf777cc2dba1ddafeac5d58e685a1a7a3",
+        "fit_2022h1": "8e80834d1c3c9f07184e723a1a1d9f8d90cdd6b6a9fe2d2ec343951ec6366f85",
+        "fit_2022h2": "f9a86441557c9b7ec822a560203477bac04b0fa26dde8e4ae56aed212dc4f47f",
+        "select_2023": "c8b2dd30bc38d5b606909c0c45e528b4c600d7d3197b782839acf7f860903b06",
+        "select_2023h1": "9b64bbfb8ff3120611f84f285503a5db272233ea1401cb433d50314f6c3deca9",
+        "select_2023h2": "7cb3472429380092e03a8afad68c11c906eac094f21615cd21108a0f5686052d"
+      },
+      "support": {
+        "fit": {
+          "total": 679,
+          "longs": 359,
+          "shorts": 320,
+          "by_month": {
+            "2020-08": 45,
+            "2020-09": 49,
+            "2020-11": 39,
+            "2020-12": 37,
+            "2021-02": 45,
+            "2021-03": 47,
+            "2021-05": 38,
+            "2021-06": 27,
+            "2021-08": 32,
+            "2021-09": 33,
+            "2021-11": 21,
+            "2021-12": 35,
+            "2022-02": 33,
+            "2022-03": 29,
+            "2022-05": 32,
+            "2022-06": 43,
+            "2022-08": 20,
+            "2022-09": 34,
+            "2022-11": 21,
+            "2022-12": 19
+          },
+          "max_month_fraction": 0.07216494845360824,
+          "symbols": {
+            "BTCUSD_200925": 94,
+            "BTCUSD_201225": 76,
+            "BTCUSD_210326": 92,
+            "BTCUSD_210625": 65,
+            "BTCUSD_210924": 65,
+            "BTCUSD_211231": 56,
+            "BTCUSD_220325": 62,
+            "BTCUSD_220624": 75,
+            "BTCUSD_220930": 54,
+            "BTCUSD_221230": 40
+          },
+          "max_symbol_fraction": 0.13843888070692195
+        },
+        "fit_2020h2": {
+          "total": 170,
+          "longs": 108,
+          "shorts": 62,
+          "by_month": {
+            "2020-08": 45,
+            "2020-09": 49,
+            "2020-11": 39,
+            "2020-12": 37
+          },
+          "max_month_fraction": 0.28823529411764703,
+          "symbols": {
+            "BTCUSD_200925": 94,
+            "BTCUSD_201225": 76
+          },
+          "max_symbol_fraction": 0.5529411764705883
+        },
+        "fit_2021h1": {
+          "total": 157,
+          "longs": 86,
+          "shorts": 71,
+          "by_month": {
+            "2021-02": 45,
+            "2021-03": 47,
+            "2021-05": 38,
+            "2021-06": 27
+          },
+          "max_month_fraction": 0.29936305732484075,
+          "symbols": {
+            "BTCUSD_210326": 92,
+            "BTCUSD_210625": 65
+          },
+          "max_symbol_fraction": 0.5859872611464968
+        },
+        "fit_2021h2": {
+          "total": 121,
+          "longs": 54,
+          "shorts": 67,
+          "by_month": {
+            "2021-08": 32,
+            "2021-09": 33,
+            "2021-11": 21,
+            "2021-12": 35
+          },
+          "max_month_fraction": 0.2892561983471074,
+          "symbols": {
+            "BTCUSD_210924": 65,
+            "BTCUSD_211231": 56
+          },
+          "max_symbol_fraction": 0.5371900826446281
+        },
+        "fit_2022h1": {
+          "total": 137,
+          "longs": 67,
+          "shorts": 70,
+          "by_month": {
+            "2022-02": 33,
+            "2022-03": 29,
+            "2022-05": 32,
+            "2022-06": 43
+          },
+          "max_month_fraction": 0.31386861313868614,
+          "symbols": {
+            "BTCUSD_220325": 62,
+            "BTCUSD_220624": 75
+          },
+          "max_symbol_fraction": 0.5474452554744526
+        },
+        "fit_2022h2": {
+          "total": 94,
+          "longs": 44,
+          "shorts": 50,
+          "by_month": {
+            "2022-08": 20,
+            "2022-09": 34,
+            "2022-11": 21,
+            "2022-12": 19
+          },
+          "max_month_fraction": 0.3617021276595745,
+          "symbols": {
+            "BTCUSD_220930": 54,
+            "BTCUSD_221230": 40
+          },
+          "max_symbol_fraction": 0.574468085106383
+        },
+        "select_2023": {
+          "total": 252,
+          "longs": 124,
+          "shorts": 128,
+          "by_month": {
+            "2023-02": 27,
+            "2023-03": 39,
+            "2023-05": 25,
+            "2023-06": 44,
+            "2023-08": 14,
+            "2023-09": 21,
+            "2023-11": 32,
+            "2023-12": 50
+          },
+          "max_month_fraction": 0.1984126984126984,
+          "symbols": {
+            "BTCUSD_230331": 66,
+            "BTCUSD_230630": 69,
+            "BTCUSD_230929": 35,
+            "BTCUSD_231229": 82
+          },
+          "max_symbol_fraction": 0.3253968253968254
+        },
+        "select_2023h1": {
+          "total": 135,
+          "longs": 66,
+          "shorts": 69,
+          "by_month": {
+            "2023-02": 27,
+            "2023-03": 39,
+            "2023-05": 25,
+            "2023-06": 44
+          },
+          "max_month_fraction": 0.32592592592592595,
+          "symbols": {
+            "BTCUSD_230331": 66,
+            "BTCUSD_230630": 69
+          },
+          "max_symbol_fraction": 0.5111111111111111
+        },
+        "select_2023h2": {
+          "total": 117,
+          "longs": 58,
+          "shorts": 59,
+          "by_month": {
+            "2023-08": 14,
+            "2023-09": 21,
+            "2023-11": 32,
+            "2023-12": 50
+          },
+          "max_month_fraction": 0.42735042735042733,
+          "symbols": {
+            "BTCUSD_230929": 35,
+            "BTCUSD_231229": 82
+          },
+          "max_symbol_fraction": 0.7008547008547008
+        }
+      },
+      "gates": {
+        "fit_at_least_400": true,
+        "select_2023_at_least_100": true,
+        "each_fit_half_at_least_50": true,
+        "each_2023_half_at_least_40": true,
+        "fit_each_side_at_least_30pct": true,
+        "select_each_side_at_least_30pct": true,
+        "fit_max_month_at_most_12pct": true,
+        "select_max_month_at_most_20pct": true,
+        "fit_max_symbol_at_most_20pct": true,
+        "select_max_symbol_at_most_35pct": true
+      },
+      "passes_support": true
+    }
+  ],
+  "support_freeze_hash": "27ece8b14ba53c5d69029800fe1bb5eca222c00113cef49909b4edab45003048"
+}
