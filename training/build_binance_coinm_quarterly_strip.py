@@ -95,7 +95,7 @@ OUTPUT_NUMERIC_COLUMNS = tuple(
 class BuildConfig:
     start: str = "2020-07-01"
     end: str = "2023-12-31 23:55"
-    output_dir: str = "/home/pakchu/rllm/data/binance_coinm_quarterly_strip_pre2024"
+    output_dir: str = "data/binance_coinm_quarterly_strip_pre2024"
     workers: int = 16
     retries: int = 5
     timeout_seconds: int = 60
