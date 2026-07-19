@@ -233,7 +233,11 @@ def _completed_path_features(source: pd.DataFrame) -> pd.DataFrame:
     center = close.where(valid).shift(PATH_MINUTES).rolling(
         REFERENCE_MINUTES, min_periods=MIN_REFERENCE_MINUTES
     ).median()
-    reference_complete = prior_valid >= MIN_REFERENCE_MINUTES
+    full_reference_elapsed = pd.Series(
+        np.arange(len(source)) >= PATH_MINUTES + REFERENCE_MINUTES - 1,
+        index=source.index,
+    )
+    reference_complete = full_reference_elapsed & (prior_valid >= MIN_REFERENCE_MINUTES)
     path_count = cast(
         pd.Series,
         valid.astype(int)
@@ -287,7 +291,13 @@ def _add_prior_thresholds(state: pd.DataFrame) -> pd.DataFrame:
     prior_usable = usable.astype(int).shift(PATH_DECISIONS).rolling(
         REFERENCE_DECISIONS, min_periods=MIN_REFERENCE_DECISIONS
     ).sum()
-    output["feature_reference_complete"] = prior_usable.ge(MIN_REFERENCE_DECISIONS)
+    full_reference_elapsed = pd.Series(
+        np.arange(len(output)) >= PATH_DECISIONS + REFERENCE_DECISIONS - 1,
+        index=output.index,
+    )
+    output["feature_reference_complete"] = full_reference_elapsed & prior_usable.ge(
+        MIN_REFERENCE_DECISIONS
+    )
     for feature, (threshold, quantile) in THRESHOLD_COLUMNS.items():
         sample = _numeric(output, feature).where(usable)
         output[threshold] = sample.shift(PATH_DECISIONS).rolling(
