@@ -186,6 +186,10 @@ def test_freeze_opens_no_market_funding_or_simulation(
         raise AssertionError("freeze tried to open an execution outcome")
 
     monkeypatch.setattr(evaluator, "CONTROL_CLOCKS", tmp_path / "controls.csv.gz")
+    for stage in evaluator.STAGE_ORDER:
+        monkeypatch.setitem(
+            evaluator.STAGE_OUTPUTS, stage, tmp_path / f"unused-{stage}.json"
+        )
     monkeypatch.setattr(evaluator, "_sha256", tracking_sha)
     monkeypatch.setattr(evaluator, "load_execution_window", forbidden_outcome_open)
     monkeypatch.setattr(evaluator, "simulate_strict", forbidden_outcome_open)
@@ -213,6 +217,10 @@ def test_freeze_artifact_is_write_once(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setattr(evaluator, "CONTROL_CLOCKS", tmp_path / "controls.csv.gz")
+    for stage in evaluator.STAGE_ORDER:
+        monkeypatch.setitem(
+            evaluator.STAGE_OUTPUTS, stage, tmp_path / f"unused-{stage}.json"
+        )
     output = tmp_path / "freeze.json"
     evaluator.freeze_evaluator(output)
 
