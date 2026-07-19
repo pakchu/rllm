@@ -15,6 +15,11 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 
+if __package__ in (None, ""):
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from training.preregister_inverse_collateral_liquidation_absorption import (
     MIN_ABSOLUTE_LIQUIDATION_IMBALANCE,
     Config as PreregistrationConfig,
@@ -94,7 +99,7 @@ STATIC_INPUT_SHA256 = {
         "5da04978589444acd371fdbf637f742a813baddb4ab124fe866fb9b85c7d93b7"
     ),
     "tests/test_evaluate_inverse_collateral_liquidation_absorption.py": (
-        "f0998c2f3cfe6e62d6df2ce80cd01fcae5c0031d0fe935695304495bf865a5eb"
+        "a10e60eed58168d50ee09b3a1cdb144937b45caa9e47c74d31772d710d3e8777"
     ),
 }
 EXECUTION_FILE_SHA256 = {

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
@@ -85,6 +87,16 @@ def test_api_contract_is_icla_not_clbr() -> None:
     assert cfg.base_cost_rate_per_side == pytest.approx(0.0006)
     assert cfg.stress_cost_rate_per_side == pytest.approx(0.0010)
     assert not hasattr(cfg, "stop_price")
+
+
+def test_evaluator_is_directly_executable_from_repository_root() -> None:
+    completed = subprocess.run(
+        [sys.executable, str(evaluator.EVALUATOR_SOURCE), "--help"],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    assert "{freeze,train,test,eval}" in completed.stdout
 
 
 def test_fixed_time_exit_requires_exactly_twelve_bars_and_has_no_stop_path() -> None:
