@@ -1,11 +1,11 @@
-"""Build a verified 2023 USD-M BTCUSDT book-depth centroid-skew panel.
+"""Build a verified 2023 USD-M BTCUSDT average-quote geometry panel.
 
 This outcome-blind source builder reuses the official Binance Vision URL,
 checksum, archive parsing, fetch, gzip, and five-minute timing acceptance
 contracts from ``training.build_binance_cross_collateral_book_depth_2023``.
 It transforms only USD-M BTCUSDT bookDepth cumulative depth/notional snapshots
-into scale-free directional centroid-skew features and never reads prices or
-returns.
+into directional centroid-skew features plus an inner-band quote-center proxy.
+It never reads external OHLC, returns, funding, trades, or later outcomes.
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from training import build_binance_cross_collateral_book_depth_2023 as base
 VENUE = "um"
 SYMBOL = "BTCUSDT"
 SKEW_DISTANCES = (2, 3, 4, 5)
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 REFERENCE_MANIFEST_SHA256 = (
     "95ec6e133dfcc7ed3c058538f380d24d98552c0a921fc24a679d247159a4f080"
 )
@@ -169,15 +169,25 @@ def snapshots_to_skew(raw: pd.DataFrame) -> pd.DataFrame:
     avg["avg_quote"] = avg["notional"] / avg["depth"]
     pivot = avg.pivot(index="timestamp", columns="percentage", values="avg_quote")
 
-    out = pd.DataFrame({"timestamp": pivot.index})
+    out = pd.DataFrame(
+        {
+            "timestamp": pivot.index,
+            "center_quote": np.sqrt(
+                pivot[-1].to_numpy(float) * pivot[1].to_numpy(float)
+            ),
+        }
+    )
     for distance in SKEW_DISTANCES:
         out[f"skew_{distance}"] = (
             np.log((pivot[distance] / pivot[1]).to_numpy(float))
             - np.log((pivot[-1] / pivot[-distance]).to_numpy(float))
         )
     skew_columns = [f"skew_{distance}" for distance in SKEW_DISTANCES]
-    if not np.isfinite(out[skew_columns].to_numpy(float)).all():
-        raise ValueError("book-depth centroid skew contains non-finite values")
+    value_columns = ["center_quote", *skew_columns]
+    if not np.isfinite(out[value_columns].to_numpy(float)).all():
+        raise ValueError("book-depth average-quote geometry contains non-finite values")
+    if not out["center_quote"].gt(0.0).all():
+        raise ValueError("book-depth center quote must be positive")
     return out.sort_values("timestamp").reset_index(drop=True)
 
 
@@ -212,7 +222,13 @@ def aggregate_five_minute(raw: pd.DataFrame, cfg: Config) -> pd.DataFrame:
         if bar_date not in accepted_dates:
             continue
         ordered = group.sort_values("timestamp")
-        row: dict[str, Any] = {"date": bar_date}
+        center_values = ordered["center_quote"].to_numpy(float)
+        if not np.isfinite(center_values).all() or not (center_values > 0.0).all():
+            raise ValueError("accepted center quote values are invalid")
+        row: dict[str, Any] = {
+            "date": bar_date,
+            "center_quote_median": float(np.median(center_values)),
+        }
         for column in skew_columns:
             values = ordered[column].to_numpy(float)
             if not np.isfinite(values).all():
@@ -461,7 +477,11 @@ def build(cfg: Config) -> dict[str, Any]:
         {"date": pd.date_range(start, end, freq="5min", inclusive="left")}
     )
     panel = full_grid.merge(features, on="date", how="left", validate="one_to_one")
-    feature_columns = [column for column in panel if column.startswith("skew_")]
+    feature_columns = [
+        column
+        for column in panel
+        if column.startswith("skew_") or column == "center_quote_median"
+    ]
     timing_columns = ["snapshot_count", "first_offset_seconds", "last_offset_seconds"]
     required_columns = feature_columns + timing_columns
     panel["source_complete"] = panel[required_columns].notna().all(axis=1)
@@ -486,7 +506,7 @@ def build(cfg: Config) -> dict[str, Any]:
     missing = [item["date"] for item in records if not item["available"]]
     manifest = {
         "protocol": {
-            "name": "Binance USD-M BTCUSDT book-depth notional-centroid 2023 panel",
+            "name": "Binance USD-M BTCUSDT book-depth average-quote geometry 2023 panel",
             "schema_version": SCHEMA_VERSION,
             "outcomes_opened": False,
             "start_inclusive": str(pd.Timestamp(start)),
@@ -503,7 +523,8 @@ def build(cfg: Config) -> dict[str, Any]:
                 "percentage bands from a correct live order-book stream"
             ),
             "live_parity_required_for_production": True,
-            "price_or_return_inputs_opened": False,
+            "external_market_ohlc_or_return_inputs_opened": False,
+            "average_quote_price_levels_derived": True,
         },
         "config": asdict(cfg),
         "venue": VENUE,
@@ -515,6 +536,8 @@ def build(cfg: Config) -> dict[str, Any]:
         },
         "feature_definition": {
             "avg_quote": "notional / cumulative depth at each complete +/-1..5% raw snapshot level",
+            "center_quote": "geometric mean of cumulative bid -1% and ask +1% average quotes",
+            "center_quote_bar_statistic": "five-minute median",
             "skew_k": "log(ask_avg_k/ask_avg_1) - log(bid_avg_1/bid_avg_k), k=2..5",
             "direction": "positive means ask liquidity is radially farther from touch than bid liquidity",
             "bar_statistics": ["median", "net", "path", "efficiency"],
