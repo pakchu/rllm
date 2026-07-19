@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-07-19T02:52:10.742553+00:00",
+  "protocol": {
+    "outcomes_opened": false,
+    "outcome_value_columns_parsed": false,
+    "timestamp_columns_parsed_for_physical_boundaries": true,
+    "opened_windows": [],
+    "sealed_windows": [
+      "train_2020_2022",
+      "selection_2023",
+      "test_2024",
+      "eval_2025",
+      "holdout_2026"
+    ],
+    "selection_loader_requires_passing_train_artifact": true,
+    "selection_loader_requires_exact_train_replay": true,
+    "controls_cannot_replace_primary": true,
+    "strict_mdd_contract": "global/pre-entry HWM plus entry cost, favorable-before-adverse held 5m OHLC, realized funding debit, virtual adverse-mark liquidation cost, and actual exit cost",
+    "funding_boundary_policy": "interior settlements symmetric; exact entry/exit timestamp debits included and credits excluded"
+  },
+  "preregistration_commit": "47cfd8ab86a4e86898a1be64b6791ba0cb26a727",
+  "evaluation_source": "training/evaluate_packet_churn_persistence_pre2024.py",
+  "evaluation_source_sha256": "a3d8d56ed9cc6a49603206253bef3d19b42854f9bb58b3aca76b803b2f7258e2",
+  "evaluation_document": "docs/packet-churn-persistence-evaluator-contract-2026-07-19.md",
+  "evaluation_document_sha256": "397220f4e184965146460259a3797fa8c2b63bb886f0a39300d31c8a977f30b4",
+  "config": {
+    "feature_csv": "/home/pakchu/rllm/data/binance_cross_venue_minute_dispersion_btc/BTCUSDT_cross_venue_minute_dispersion_5m_2020-01_2023-12.csv.gz",
+    "market_csv": "/home/pakchu/rllm/data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "funding_csv": "/home/pakchu/rllm/results/binance_um_btcusdt_realized_funding_2020_2023.csv",
+    "freeze_output": "results/packet_churn_persistence_evaluator_freeze_2026-07-19.json",
+    "train_output": "results/packet_churn_persistence_train_2020_2022_2026-07-19.json",
+    "selection_output": "results/packet_churn_persistence_selection_2023_2026-07-19.json",
+    "leverage": 0.5,
+    "fee_rate": 0.0005,
+    "slippage_rate": 0.0001,
+    "stress_cost_rate": 0.001,
+    "cluster_permutations": 100000,
+    "cluster_seed": 20260719
+  },
+  "static_dependencies": {
+    "preregistration_source_sha256": "51ae73d77c1af6dafea79c8abd140646ec5c2536b7771bdddb8d810cb01827ca",
+    "preregistration_document_sha256": "c80e5597f9f4e0f73af163f0e49053a97f7371f7ed77d3bc7e2c4918249d3e76",
+    "support_result_sha256": "c8bdbf3d16dac7623f8f291c98a11d9e40cc14defdadb4d6206364bdbc64dc4f",
+    "support_clock_sha256": "e50be3f0744617e3797581ea762546e7f21c32dd0707b9bdcbd264686d4f9acb",
+    "execution_source_sha256": "5d8d4df7ea79790afb919bbb481d11de33ecba5768f6e26feb1f7667cd947d65",
+    "cluster_source_sha256": "1589a52605386570485a7e6be3b8f3aa9439a498abb60eaa42272ac62d4cbed3",
+    "feature_source_sha256": "5ea9f5075171c255732cc6eed003736c1beed211a0e6fd7797ab02f31a917aaa",
+    "market_source_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "funding_source_sha256": "c19829fa085a50f29c13762373a2b6db1c62025d657be1f5a3fbb9ce254482f7"
+  },
+  "outcome_boundaries": {
+    "market": {
+      "rows_pre2023": 315648,
+      "rows_pre2024": 420768,
+      "first_date": "2020-01-01 00:00:00",
+      "last_date": "2023-12-31 23:55:00"
+    },
+    "funding": {
+      "rows_pre2023": 3288,
+      "rows_pre2024": 4383,
+      "first_date": "2020-01-01 00:00:00",
+      "last_date": "2023-12-31 16:00:00"
+    }
+  },
+  "frozen_clocks": {
+    "primary": {
+      "rows": 192,
+      "hash": "df54c6114244c2676c90e9fe0e7698dd96db04537802893f7edc5318e67d39a0",
+      "entry_delay_bars_from_confirmation_end": 2
+    },
+    "same_clock_side_flip_control": {
+      "rows": 192,
+      "hash": "df54c6114244c2676c90e9fe0e7698dd96db04537802893f7edc5318e67d39a0",
+      "entry_delay_bars_from_confirmation_end": 2
+    },
+    "immediate_entry_control": {
+      "rows": 192,
+      "hash": "2fced4849c912a1bcff7a04c3a76e7b0411cfa655e0c56884fed7715e39690c8",
+      "entry_delay_bars_from_confirmation_end": 1
+    },
+    "extra_latency_control": {
+      "rows": 192,
+      "hash": "5be57671ba301d503deb339a3a38be9d107aaa45a39bc43a5146980f5edaf331",
+      "entry_delay_bars_from_confirmation_end": 3
+    }
+  },
+  "gates": {
+    "train": {
+      "absolute_return_pct": ">0",
+      "cagr_to_strict_mdd": ">=1.5",
+      "strict_mdd_pct": "<=15",
+      "trades": ">=100",
+      "ten_bp_per_side_stress_absolute_return_pct": ">0",
+      "weekly_cluster_sign_flip_p_value_one_sided": "<0.10"
+    },
+    "selection_2023": {
+      "absolute_return_pct": ">0",
+      "cagr_to_strict_mdd": ">=3",
+      "strict_mdd_pct": "<=15",
+      "h1_and_h2_absolute_return_pct": ">0",
+      "ten_bp_per_side_stress_absolute_return_pct": ">0",
+      "weekly_cluster_sign_flip_p_value_one_sided": "<0.10"
+    }
+  },
+  "result_hash": "90ecfe5059bbd46a7b57b679e21501f2941db034002185adcea366e607d8eaa2"
+}
