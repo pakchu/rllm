@@ -67,6 +67,8 @@ def test_archive_url_is_official_usd_m_btcusdt_book_depth() -> None:
 
 def test_formula_direction_and_symmetry() -> None:
     skew = builder.snapshots_to_skew(builder.read_archive(_archive(_raw_snapshots(1))))
+    expected_center = np.sqrt((100.0 / np.e**0.01) * (100.0 * np.e**0.01))
+    assert skew.loc[0, "center_quote"] == pytest.approx(expected_center)
     for k in builder.SKEW_DISTANCES:
         assert skew.loc[0, f"skew_{k}"] == pytest.approx(0.0, abs=2e-15)
 
@@ -85,6 +87,7 @@ def test_formula_direction_and_symmetry() -> None:
         scaled.loc[scaled["timestamp"].eq(timestamp), "notional"] *= 1.0 + snapshot / 100.0
     skew = builder.snapshots_to_skew(builder.read_archive(_archive(scaled)))
     assert np.abs(skew[[f"skew_{k}" for k in builder.SKEW_DISTANCES]].to_numpy()).max() < 2e-15
+    assert skew["center_quote"].is_monotonic_increasing
 
 
 def test_monotonic_and_crossed_average_quotes_are_invalid() -> None:
@@ -111,8 +114,12 @@ def test_aggregation_timing_path_and_efficiency_identities() -> None:
     assert row["snapshot_count"] == 10
     assert row["first_offset_seconds"] == 0.0
     assert row["last_offset_seconds"] == 270.0
+    snapshots = builder.snapshots_to_skew(builder.read_archive(_archive(raw)))
+    assert row["center_quote_median"] == pytest.approx(
+        snapshots["center_quote"].median()
+    )
 
-    skew = builder.snapshots_to_skew(builder.read_archive(_archive(raw)))
+    skew = snapshots
     values = skew["skew_5"].to_numpy(float)
     expected_net = values[-1] - values[0]
     expected_path = np.abs(np.diff(values)).sum()
