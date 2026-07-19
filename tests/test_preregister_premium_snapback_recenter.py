@@ -319,3 +319,4 @@ def test_psi_comparator_replays_prior_immediate_entry_and_eight_hour_hold(
         .eq(pd.Timedelta(hours=8))
         .all()
     )
+    assert bool((clocks["feature_available_time"] > clocks["entry_time"]).all())

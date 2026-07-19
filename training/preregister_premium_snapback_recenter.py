@@ -34,6 +34,7 @@ EXPECTED_SOURCE_MANIFEST_SHA256 = (
 )
 DEFAULT_CLOCKS = Path("data/premium_snapback_recenter_clocks_2020_2026.csv.gz")
 DEFAULT_CONTROLS_DIR = Path("data/premium_snapback_recenter_controls_2020_2026")
+DEFAULT_COMPARATORS_DIR = Path("data/premium_snapback_recenter_comparators_2020_2026")
 DEFAULT_RESULT = Path("results/premium_snapback_recenter_support_2026-07-19.json")
 
 EXTERNAL_COMPARATORS = {
@@ -154,6 +155,7 @@ class Config:
     expected_source_manifest_sha256: str = EXPECTED_SOURCE_MANIFEST_SHA256
     output_clock_path: str = str(DEFAULT_CLOCKS)
     controls_dir: str = str(DEFAULT_CONTROLS_DIR)
+    comparators_dir: str = str(DEFAULT_COMPARATORS_DIR)
     output_result_path: str = str(DEFAULT_RESULT)
 
 
@@ -600,8 +602,6 @@ def build_controls(state: pd.DataFrame, primary: pd.DataFrame) -> dict[str, pd.D
             direction_column="no_recenter_direction",
             candidate="PSR-no-recenter",
         ),
-        "psi_2016": _frozen_psi_clocks(state, window=2016),
-        "psi_8640": _frozen_psi_clocks(state, window=8640),
         "extra_latency": _derived_primary_control(
             primary, candidate="PSR-extra-latency", shift_minutes=5
         ),
@@ -609,6 +609,15 @@ def build_controls(state: pd.DataFrame, primary: pd.DataFrame) -> dict[str, pd.D
             primary, candidate="PSR-future-premium-placebo", shift_minutes=-40
         ),
         "random": _random_clocks(primary),
+    }
+
+
+def build_novelty_comparators(state: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """Build historical PSI schedules that are never eligible for outcome evaluation."""
+
+    return {
+        "psi_2016": _frozen_psi_clocks(state, window=2016),
+        "psi_8640": _frozen_psi_clocks(state, window=8640),
     }
 
 
@@ -729,6 +738,7 @@ def build_result(
     cfg: Config,
     primary: pd.DataFrame,
     controls: dict[str, pd.DataFrame],
+    novelty_comparators: dict[str, pd.DataFrame],
 ) -> dict[str, Any]:
     support = {split: _support_stats(primary, split) for split in SPLITS}
     primary_times = pd.DatetimeIndex(pd.to_datetime(primary["entry_time"]))
@@ -736,7 +746,7 @@ def build_result(
     for name in ("psi_2016", "psi_8640"):
         novelty[name] = _overlap(
             primary_times,
-            pd.DatetimeIndex(pd.to_datetime(controls[name]["entry_time"])),
+            pd.DatetimeIndex(pd.to_datetime(novelty_comparators[name]["entry_time"])),
         )
     for name, (path, expected_hash, coverage_start, coverage_end) in EXTERNAL_COMPARATORS.items():
         novelty[name] = _overlap(
@@ -801,6 +811,16 @@ def build_result(
             }
             for name, frame in controls.items()
         },
+        "novelty_comparators": {
+            name: {
+                "path": str(Path(cfg.comparators_dir) / f"{name}.csv.gz"),
+                "sha256": sha256_file(Path(cfg.comparators_dir) / f"{name}.csv.gz"),
+                "rows": int(len(frame)),
+                "outcome_evaluation_allowed": False,
+                "reason": "historical immediate-entry PSI schedule is noncausal under the current T+1s source contract",
+            }
+            for name, frame in novelty_comparators.items()
+        },
         "support": support,
         "support_passes": _support_passes(support),
         "novelty": novelty,
@@ -816,6 +836,7 @@ def run(cfg: Config) -> dict[str, Any]:
     state = derive_state(source)
     primary = build_clocks(state)
     controls = build_controls(state, primary)
+    novelty_comparators = build_novelty_comparators(state)
     output = Path(cfg.output_clock_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     _write_gzip_csv(primary, output)
@@ -823,7 +844,11 @@ def run(cfg: Config) -> dict[str, Any]:
     controls_dir.mkdir(parents=True, exist_ok=True)
     for name, frame in controls.items():
         _write_gzip_csv(frame, controls_dir / f"{name}.csv.gz")
-    result = build_result(cfg, primary, controls)
+    comparators_dir = Path(cfg.comparators_dir)
+    comparators_dir.mkdir(parents=True, exist_ok=True)
+    for name, frame in novelty_comparators.items():
+        _write_gzip_csv(frame, comparators_dir / f"{name}.csv.gz")
+    result = build_result(cfg, primary, controls, novelty_comparators)
     result_path = Path(cfg.output_result_path)
     result_path.parent.mkdir(parents=True, exist_ok=True)
     result_path.write_text(
@@ -838,6 +863,7 @@ def main() -> None:
     parser.add_argument("--source-manifest-path", default=Config.source_manifest_path)
     parser.add_argument("--output-clock-path", default=Config.output_clock_path)
     parser.add_argument("--controls-dir", default=Config.controls_dir)
+    parser.add_argument("--comparators-dir", default=Config.comparators_dir)
     parser.add_argument("--output-result-path", default=Config.output_result_path)
     result = run(Config(**vars(parser.parse_args())))
     print(
