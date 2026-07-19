@@ -1,0 +1,157 @@
+{
+  "protocol_version": "bitmex_trollbox_attention_support_v1",
+  "protocol": {
+    "policy_id": "TBASR-24",
+    "stage": "attention_only_source_support",
+    "outcomes_opened": false,
+    "message_semantics_opened": false,
+    "source": {
+      "official_rest": "https://docs.bitmex.com/api-explorer/chat-get",
+      "official_websocket": "https://www.bitmex.com/app/wsAPI",
+      "channel_id": 1,
+      "availability_clock": "cumulative max raw date in increasing chat-ID order",
+      "aggregate": "data/bitmex_trollbox_attention_5m_2020_2022.csv.gz",
+      "aggregate_sha256": "cb0bea6301826739b348c62e8926df7acb2391184d74b4f68c09db10f6a357b3",
+      "manifest": "results/bitmex_trollbox_attention_source_manifest_2026-07-20.json",
+      "manifest_hash": "ef20dd88c0755d81b95156410a217834db1c69dda1c2ca9bd3b5a1e1e4fbd892",
+      "message_text_loaded": false,
+      "character_count_loaded": false,
+      "market_price_loaded": false,
+      "funding_loaded": false,
+      "post_decision_outcome_loaded": false
+    },
+    "feature": {
+      "reference": "same 5m slot-of-week over 8 strictly earlier weeks; current slot excluded",
+      "message_quantile": 0.98,
+      "participant_quantile": 0.95,
+      "minimum_prior_slots": 8,
+      "minimum_messages": 5,
+      "minimum_participants": 3,
+      "maximum_participant_share": 0.5,
+      "quantile_interpolation": "pandas linear",
+      "cooldown": "greedy first event, 12 five-minute bars inclusive separation",
+      "threshold_grid": false
+    },
+    "clock": {
+      "observation": "one completed causal-availability 5m bar",
+      "decision": "observation end; no semantic label yet",
+      "earliest_later_entry": "1 additional complete five-minute bar later",
+      "frozen_later_hold_bars": 24
+    },
+    "support_gate": {
+      "minimum_prior_slots": 8,
+      "minimum_messages": 5,
+      "minimum_participants": 3,
+      "minimum_total": 240,
+      "minimum_train_2020h2_2021": 150,
+      "minimum_train_2020h2": 40,
+      "minimum_train_2021": 80,
+      "minimum_test_2022": 90,
+      "minimum_each_test_half": 35,
+      "minimum_each_quarter": 10,
+      "minimum_active_weeks": 100,
+      "minimum_train_active_weeks": 65,
+      "minimum_test_active_weeks": 35,
+      "maximum_quarter_share": 0.18
+    },
+    "failure_action": "reject before message semantics or outcomes; no threshold, lookback, cooldown, calendar, or support repair",
+    "next_stage_if_passed": "freeze exact small Gemma2 model revision, prompt, decoding, participant cap, synthetic semantic controls, and directional-support gate before opening message labels",
+    "frozen_artifacts": {
+      "source_decision": "docs/bitmex-trollbox-attention-saturation-mechanism-decision-2026-07-20.md",
+      "source_decision_sha256": "ae8f7f63e2fa07feeb66fc3d825f20ad00ff715840f7ae199a6a181a78969639",
+      "source_downloader": "training/download_bitmex_trollbox_attention.py",
+      "source_downloader_sha256": "da327d04c065df2e8117a96356fc9b48698a90b6821d1a88e0155218f19457af",
+      "preregistration_document": "docs/bitmex-trollbox-attention-support-preregistration-2026-07-20.md",
+      "preregistration_document_sha256": "0d3f715e00671c78e49c694d41226a2771b41221a84724c35c87d5cb459e521a",
+      "preregistration_source": "training/preregister_bitmex_trollbox_attention_support.py",
+      "preregistration_source_sha256": "81d01118ecbdfe67e074466bdb8db1a3de75c0e6239f6c1b6751a9f3bf711a33"
+    },
+    "research_history_boundary": "candidate-level freeze only; no complete TBASR incidence, semantics, or post-event BTC outcome informed this singleton"
+  },
+  "protocol_hash": "9740a6f1acc96fd6aa3f6474866053e2a26880c2c8f4770498827d7ea73a6f91",
+  "outcomes_opened": false,
+  "message_semantics_opened": false,
+  "source_loaded": true,
+  "source_audit": {
+    "aggregate_rows_parsed": 294807,
+    "character_count_loaded": false,
+    "message_text_rows_loaded": 0,
+    "market_rows_loaded": 0,
+    "rows_at_or_after_2023_loaded": 0
+  },
+  "window_support": {
+    "eligible_bars": 263232,
+    "threshold_ready_eligible_bars": 263232,
+    "raw_candidate_bars": 16143,
+    "cooldown_selected_bars": 5417
+  },
+  "support_gate": {
+    "counts": {
+      "total_2020h2_2022": 5417,
+      "train_2020h2_2021": 3132,
+      "train_2020h2": 849,
+      "train_2021": 2283,
+      "test_2022": 2285,
+      "test_2022_h1": 1087,
+      "test_2022_h2": 1198
+    },
+    "quarter_counts": {
+      "2020Q3": 428,
+      "2020Q4": 421,
+      "2021Q1": 637,
+      "2021Q2": 341,
+      "2021Q3": 600,
+      "2021Q4": 705,
+      "2022Q1": 473,
+      "2022Q2": 614,
+      "2022Q3": 584,
+      "2022Q4": 614
+    },
+    "expected_quarters": [
+      "2020Q3",
+      "2020Q4",
+      "2021Q1",
+      "2021Q2",
+      "2021Q3",
+      "2021Q4",
+      "2022Q1",
+      "2022Q2",
+      "2022Q3",
+      "2022Q4"
+    ],
+    "active_weeks": {
+      "all": 131,
+      "train": 79,
+      "test": 53
+    },
+    "maximum_quarter_share": 0.13014583717925052,
+    "checks": {
+      "total": true,
+      "train_total": true,
+      "train_2020h2": true,
+      "train_2021": true,
+      "test_total": true,
+      "test_h1": true,
+      "test_h2": true,
+      "each_quarter": true,
+      "active_weeks": true,
+      "train_active_weeks": true,
+      "test_active_weeks": true,
+      "quarter_concentration": true
+    },
+    "passed": true
+  },
+  "attention_clock_hash": "d9eafbc0ff55893abf05166b902c4153e09720c06496ed4886dec7f3efbd44f6",
+  "attention_clock_written": true,
+  "sealed": [
+    "all message text and semantic labels",
+    "all BTC price and post-event outcomes",
+    "2023",
+    "2024",
+    "2025",
+    "2026_ytd"
+  ],
+  "failure_action": null,
+  "result_hash": "fe36490c82fba474ae0a8cf0cd5a59e5dfd2af6d192263eca8ba393618773387",
+  "created_at": "2026-07-19T21:14:16.635110+00:00"
+}
