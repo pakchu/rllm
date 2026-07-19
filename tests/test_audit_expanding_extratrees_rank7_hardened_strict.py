@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -102,3 +104,44 @@ def test_frozen_dependency_hashes_are_current() -> None:
     assert rank7["rank_position"] == 7
     assert audit.TREES == 300
     assert tuple(audit.SEEDS) == (7, 71, 715, 2026, 71515)
+
+
+def test_committed_hardened_audit_artifact_passes_exact_contract() -> None:
+    artifact = Path(
+        "results/expanding_extratrees_rank7_hardened_strict_audit_2026-07-19.json"
+    )
+    payload = json.loads(artifact.read_text(encoding="utf-8"))
+    result_hash = payload.pop("result_hash")
+    assert audit.sha_obj(payload) == result_hash
+    assert result_hash == (
+        "7bfddcfb17b3239112c19bcd07b98f29a94eb8aa02263b1edd3cf6a6b0c069f2"
+    )
+    assert payload["pass"] is True
+    assert payload["verdict"] == "SURVIVES_HARDENED_STRICT_AUDIT"
+    assert payload["failure_reasons"] == []
+    assert payload["research_status"]["pristine_discovery_oos"] is False
+    assert payload["integrity"]["selected_positions_match"] is True
+    assert payload["integrity"]["fold_metadata_match"] is True
+    assert payload["integrity"]["all_schedule_hashes_match"] is True
+
+    all_stats = payload["hardened_stats"]["all"]
+    assert all_stats["absolute_return_pct"] == pytest.approx(64.04333565559774)
+    assert all_stats["cagr_pct"] == pytest.approx(15.587683200859903)
+    assert all_stats["strict_mdd_pct"] == pytest.approx(5.012922486676463)
+    assert all_stats["cagr_to_strict_mdd"] == pytest.approx(3.1095001453322775)
+    assert all_stats["trades"] == 74
+    assert payload["ten_bp_per_side_stress"]["all"][
+        "absolute_return_pct"
+    ] == pytest.approx(59.25692679817993)
+    assert (
+        payload["significance"]["future"]["weekly_cluster_sign_flip"][
+            "p_value_one_sided"
+        ]
+        < 0.01
+    )
+    assert (
+        payload["significance"]["all"]["stationary_trade_bootstrap"][
+            "one_sided_p_value"
+        ]
+        < 0.001
+    )
