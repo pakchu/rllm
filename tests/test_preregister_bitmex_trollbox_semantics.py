@@ -490,6 +490,11 @@ def test_private_mode_is_blocked_while_synthetic_sha_is_pending(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(tbasr, "_validate_config", lambda cfg: None)
+    monkeypatch.setattr(
+        tbasr,
+        "SYNTHETIC_RESULT_FILE_SHA256",
+        "pending_synthetic_commit",
+    )
 
     with pytest.raises(RuntimeError, match="synthetic result is pinned"):
         tbasr.run_private(tbasr.Config())
