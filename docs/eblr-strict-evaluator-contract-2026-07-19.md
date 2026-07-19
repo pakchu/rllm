@@ -31,6 +31,8 @@ write-once and may open only one chronological stage at a time.
 - Stress cost: **10bp per notional side**.
 - Exact interior funding is symmetric. At an exact entry or exit boundary,
   credits are dropped and debits retained under settlement-order ambiguity.
+  A dropped boundary credit still contributes its settlement mark to the
+  strict-MDD path; only the favorable cash flow is omitted.
 - Absolute return compounds every net cash flow. CAGR uses all seconds from the
   declared stage start to exclusive stage end, including idle periods.
 - Every report includes absolute return, CAGR, strict MDD, CAGR/strict-MDD,
