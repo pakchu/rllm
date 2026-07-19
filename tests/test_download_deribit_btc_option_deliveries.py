@@ -106,6 +106,8 @@ def test_download_aggregates_terminal_delta_release_and_excludes_future(
     assert frame["net_release_position"].tolist() == [10.0, 10.0]
     assert frame["atm_position"].tolist() == [3.0, 3.0]
     assert frame["option_count"].tolist() == [5, 5]
+    assert frame["itm_call_count"].tolist() == [1, 1]
+    assert frame["itm_put_count"].tolist() == [1, 1]
     assert frame["source_observation_earliest"].str.endswith("09:05:00.000000").all()
     with gzip.open(cfg.output_csv, "rt", encoding="utf-8") as handle:
         public = handle.read() + json.dumps(manifest)
