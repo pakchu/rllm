@@ -126,6 +126,10 @@ def test_event_consensus_enforces_minimum_and_majority_boundaries() -> None:
 def test_semantic_contract_is_text_only_and_has_no_market_inputs() -> None:
     contract = tbasr.semantic_contract(tbasr.Config())
 
+    assert contract["prompt_revision"] == (
+        "v2_synthetic_meta_instruction_hardening"
+    )
+    assert "meta-instruction" in contract["prompt"]
     assert contract["market_or_outcomes_opened"] is False
     assert contract["preprocessing"]["private_text_committed"] is False
     assert contract["aggregation"]["contrarian_side"] == {
