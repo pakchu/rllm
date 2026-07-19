@@ -1,0 +1,200 @@
+{
+  "protocol_version": "bitmex_insurance_fund_absorption_support_v1",
+  "protocol": {
+    "policy_id": "IFAR-288",
+    "support_only": true,
+    "outcomes_opened": false,
+    "source": {
+      "insurance_endpoint": "https://www.bitmex.com/api/v1/insurance",
+      "insurance_official_docs": "https://docs.bitmex.com/api-explorer/get-insurances",
+      "insurance_currency": "XBt",
+      "insurance_interval": [
+        "2018-01-01",
+        "2023-01-01"
+      ],
+      "insurance_source": "data/bitmex_xbt_insurance_fund_2018_2022.csv.gz",
+      "insurance_source_sha256": "523d179d4a4ac51e3ebf5ce24f188f23cda02f31d8f879e0d256361af333c6dc",
+      "insurance_manifest": "results/bitmex_xbt_insurance_fund_source_manifest_2026-07-20.json",
+      "insurance_manifest_hash": "4c751b96a4d877bc558bf37e693396fc529326feb050862ea5ddb9100cde8612",
+      "binance": "data/coinbase_leadership_binance_5m_2020_2022.csv.gz",
+      "binance_sha256": "1a06f1f4dbbdafaf885fb03844426eed5d5bad4aa206fa72b88db2cbd98bef94",
+      "selection_end_exclusive": "2023-01-01",
+      "funding_loaded": false,
+      "post_decision_execution_or_outcome_bars_loaded": false,
+      "raw_insurance_history_committed": false
+    },
+    "clock": {
+      "timezone": "UTC",
+      "insurance_snapshot": "daily 12:00 UTC",
+      "price_observation": "completed Binance 11:55-12:00 UTC five-minute close",
+      "decision": "snapshot timestamp + 1 full calendar day",
+      "entry": "1 complete five-minute latency bar later",
+      "hold_bars": 288,
+      "live_fail_closed": "expected source timestamp must actually be observed before decision"
+    },
+    "feature": {
+      "fund_return": "log current XBt wallet balance / prior daily balance",
+      "fund_loss": "max(-fund return, 0)",
+      "fund_loss_reference": "q0.5 of positive losses among the last 365 earlier snapshots; require 20; current row excluded",
+      "pre_snapshot_return": "log completed 12:00 price / prior completed 12:00 price",
+      "price_reference": "q0.5 absolute move among the last 126 earlier observations; require 90; current row excluded",
+      "mandatory": "negative fund return at least its prior loss threshold and absolute pre-snapshot BTC return at least its prior move threshold",
+      "side": "opposite the completed pre-snapshot BTC move",
+      "threshold_grid": false
+    },
+    "support_gate": {
+      "eligibility_start": "2020-07-01",
+      "minimum_total": 50,
+      "minimum_train_2020h2_2021": 30,
+      "minimum_train_2020h2": 8,
+      "minimum_train_2021": 20,
+      "minimum_test_2022": 20,
+      "minimum_each_test_half": 8,
+      "minimum_each_eligible_quarter": 2,
+      "minimum_side_share_all_train_test": 0.25,
+      "maximum_quarter_share": 0.2,
+      "failure_action": "reject before post-decision outcomes; no threshold, embargo, side, or hold repair"
+    },
+    "later_evaluation_contract": {
+      "train": [
+        "2020-07-01",
+        "2022-01-01"
+      ],
+      "test": [
+        "2022-01-01",
+        "2023-01-01"
+      ],
+      "sealed_sequential": [
+        "2023",
+        "2024",
+        "2025",
+        "2026_ytd"
+      ],
+      "leverage": 0.5,
+      "base_cost_notional_per_side": 0.0006,
+      "stress_cost_notional_per_side": 0.001,
+      "funding": "interior exact-time symmetric; exact entry/exit credits dropped and debits retained",
+      "cagr": "full split wall clock including warmup and idle cash",
+      "strict_mdd": "global/pre-entry HWM, entry cost, exact funding, every held 5m path, virtual adverse exit fee, and actual exit",
+      "primary_gates_each_train_and_test": {
+        "absolute_return_positive": true,
+        "cagr_to_strict_mdd_min": 3.0,
+        "strict_mdd_pct_max": 15.0,
+        "stress_cost_absolute_return_positive": true,
+        "one_bar_delayed_absolute_return_positive": true,
+        "mean_gross_underlying_bp_min": 20.0,
+        "weekly_cluster_signflip_p_max": 0.1
+      },
+      "mechanism_controls": [
+        "exact side flip",
+        "same price rule without the insurance-loss gate",
+        "seven-day-stale insurance loss gate",
+        "within-calendar-year permutation of insurance loss magnitudes"
+      ]
+    },
+    "frozen_artifacts": {
+      "source_decision": "docs/bitmex-insurance-fund-absorption-mechanism-decision-2026-07-20.md",
+      "source_decision_sha256": "37943511af6e88ac52b25b37bac3bfcda262b3132640986ec294ff640b76be02",
+      "source_downloader": "training/download_bitmex_xbt_insurance_fund.py",
+      "source_downloader_sha256": "06223bcb0681b1c4c4e4fe8f540fea2f14c4085ba93d2c9ef7e98b09a50a8868",
+      "preregistration_document": "docs/bitmex-insurance-fund-absorption-preregistration-2026-07-20.md",
+      "preregistration_document_sha256": "7be3f87db2175e934c7bf78e5c1b06320359c97517a333535434c75f93577571",
+      "preregistration_source": "training/preregister_bitmex_insurance_fund_absorption.py",
+      "preregistration_source_sha256": "7ecd1df9a32b593fb585d04ee3ccd83e58e3fd7b4475c15c1a9106f234087639"
+    },
+    "research_history_boundary": "candidate-level freeze only; unrelated repository research has seen market history, but no complete IFAR source incidence or post-decision outcome was used to select this singleton"
+  },
+  "protocol_hash": "a68ade9d78a86f57d9873eb5050d75c046340c9752e7419d21fa8720cec919e2",
+  "outcomes_opened": false,
+  "source_loaded": true,
+  "source_audit": {
+    "insurance_rows_parsed": 1826,
+    "market_snapshot_rows_parsed": 1096,
+    "market_outside_snapshot_non_date_rows_parsed": 0,
+    "funding_rows_loaded": 0,
+    "post_decision_execution_or_outcome_rows_loaded": 0,
+    "rows_at_or_after_2023_loaded": 0
+  },
+  "window_support": {
+    "insurance_days": 1826,
+    "market_days": 1096,
+    "eligible_days": 914,
+    "threshold_ready_eligible_days": 805,
+    "candidate_days": 25
+  },
+  "support_gate": {
+    "counts": {
+      "total_2020h2_2022": 25,
+      "train_2020h2_2021": 17,
+      "train_2020h2": 0,
+      "train_2021": 17,
+      "test_2022": 8,
+      "test_2022_h1": 2,
+      "test_2022_h2": 6
+    },
+    "side_shares": {
+      "all": {
+        "long": 0.48,
+        "short": 0.52
+      },
+      "train": {
+        "long": 0.4117647058823529,
+        "short": 0.5882352941176471
+      },
+      "test": {
+        "long": 0.625,
+        "short": 0.375
+      }
+    },
+    "quarter_counts": {
+      "2021Q1": 7,
+      "2021Q2": 5,
+      "2021Q3": 2,
+      "2021Q4": 3,
+      "2022Q1": 1,
+      "2022Q2": 1,
+      "2022Q3": 2,
+      "2022Q4": 4
+    },
+    "expected_quarters": [
+      "2020Q3",
+      "2020Q4",
+      "2021Q1",
+      "2021Q2",
+      "2021Q3",
+      "2021Q4",
+      "2022Q1",
+      "2022Q2",
+      "2022Q3",
+      "2022Q4"
+    ],
+    "maximum_quarter_share": 0.28,
+    "checks": {
+      "total": false,
+      "train_total": false,
+      "train_2020h2": false,
+      "train_2021": false,
+      "test_total": false,
+      "test_h1": false,
+      "test_h2": false,
+      "each_eligible_quarter": false,
+      "side_all": true,
+      "side_train": true,
+      "side_test": true,
+      "quarter_concentration": false
+    },
+    "passed": false
+  },
+  "event_clock_hash": "d826f11d71e39cee8a22359e059a286d670bc2c4220663eb4655c18de21c1003",
+  "event_clock_written": false,
+  "sealed": [
+    "all post-decision 2020-2022 outcomes",
+    "2023",
+    "2024",
+    "2025",
+    "2026_ytd"
+  ],
+  "failure_action": "reject before outcomes; no threshold, embargo, side, or hold repair",
+  "result_hash": "085fffd6addbd0e450bc70605e5c04e844d7b05b4c44cb916bff5b5a21959630",
+  "created_at": "2026-07-19T18:45:26.280616+00:00"
+}
