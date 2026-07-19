@@ -1,0 +1,301 @@
+{
+  "protocol": {
+    "policy_id": "RQCI-24",
+    "support_only": true,
+    "outcomes_opened": false,
+    "external_ohlc_funding_return_or_equity_loaded": false,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "feature": "30m impulse of outer-minus-inner directional average-quote curvature, residualized against the 30m inner quote-center move by strictly-prior rolling OLS",
+    "signal": "residual/raw dominance >=25%, quote-center move no larger than its strictly-prior rolling median, and absolute residual crosses its strictly-prior rolling threshold from below",
+    "side": "positive outer-ask curvature impulse long; negative short",
+    "clock": "completed 5m source bar; enter next 5m open; exit after 24 completed 5m bars",
+    "scheduler": "one position; four quarter-contained schedules with non-overlap state reset at known UTC quarter boundaries",
+    "source_gap_policy": "signal requires source_complete for t-6..t; future source gaps never cancel an already selected event",
+    "selection": "strictest-first frozen quantile stopping on first incidence pass; no fallback after comparator novelty",
+    "sealed_windows": [
+      "test2024",
+      "eval2025",
+      "recent2026"
+    ]
+  },
+  "config": {
+    "support_output": "results/residual_quote_curvature_impulse_support_2026-07-20.json",
+    "event_clock_output": "results/residual_quote_curvature_impulse_event_clock_2026-07-20.json",
+    "impulse_bars": 6,
+    "baseline_window_bars": 8640,
+    "baseline_minimum_bars": 4032,
+    "threshold_quantiles": [
+      0.995,
+      0.99,
+      0.985,
+      0.975,
+      0.95
+    ],
+    "quiet_center_quantile": 0.5,
+    "minimum_residual_dominance": 0.25,
+    "hold_bars": 24,
+    "minimum_nonoverlap_total": 180,
+    "minimum_nonoverlap_per_half": 70,
+    "minimum_nonoverlap_per_quarter": 30,
+    "minimum_side_share": 0.35,
+    "maximum_quarter_share": 0.4,
+    "overlap_tolerance_bars": 12,
+    "maximum_comparator_jaccard": 0.35,
+    "maximum_synthetic_false_events": 0
+  },
+  "frozen_artifacts": {
+    "preregistration_source": "training/preregister_residual_quote_curvature_impulse.py",
+    "preregistration_source_sha256": "1d8e9db1794323e3576ea812673bed7c011ffa2634bc49ebf4d073b9c5ef8468",
+    "preregistration_document": "docs/residual-quote-curvature-impulse-preregistration-2026-07-20.md",
+    "preregistration_document_sha256": "48a03266d118d0c68d0b36c84fc2d29cd781b153ec8f3487557aa3f87230f827",
+    "source_decision_document": "docs/rqci-source-mechanism-decision-2026-07-20.md",
+    "source_decision_document_sha256": "fe92ac70536171e62280bba8fac1cf5f950332cb02f7f77106e242d8f0595476",
+    "shared_causal_utility_source": "training/preregister_residual_notional_centroid_migration.py",
+    "shared_causal_utility_source_sha256": "733ef4c3aaa823f19c8fe9303d3405def0c86f593c35bb2556a69edc3f67ad6f",
+    "source_panel_sha256": "c4053ce27d28bebda4137349192b1a940360231469f63edc32bacabb2ce54131",
+    "source_manifest_sha256": "d8237c4562d33c12eff162776f723cc5fc94649b69d26a6230e16fc38c52bba1",
+    "comparators": {
+      "CCBVFR-72": {
+        "path": "results/cross_collateral_book_validated_flow_rejection_event_clock_2026-07-18.json",
+        "sha256": "79b4838ae634efcff705e028a0ddff8b75d28d79180e3ac89f54b9cab7e5005f",
+        "kind": "embedded_events"
+      },
+      "PDF-10": {
+        "path": "results/cross_collateral_liquidity_credibility_fracture_event_clock_2026-07-14.json",
+        "sha256": "ab8209308619b97880277b95fcc1a2f825b050a603e24b3e2125ddd5bfb226f8",
+        "kind": "replay_pdf10"
+      },
+      "CRRC-72": {
+        "path": "results/cross_venue_radial_refill_compression_event_clock_2026-07-17.json",
+        "sha256": "09d2ca954c5c4d06b981575c6b0f0e4dc6b49d8a693da418f3f26e5cc454c835",
+        "kind": "embedded_events"
+      }
+    }
+  },
+  "synthetic_control": {
+    "mechanism": "five fixed absolute-book moving-band nulls; only radial sampling changes while the underlying book remains stationary",
+    "maximum_allowed_nonoverlap_events_each_quantile": 0,
+    "scenarios": {
+      "smooth_symmetric": {
+        "0.995": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.99": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.985": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.975": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.95": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        }
+      },
+      "tick_rounded_anchor": {
+        "0.995": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.99": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.985": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.975": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.95": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        }
+      },
+      "stepped_asymmetric": {
+        "0.995": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.99": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.985": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.975": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.95": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        }
+      },
+      "missing_rows": {
+        "0.995": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.99": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.985": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.975": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.95": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        }
+      },
+      "discrete_asymmetric_ladder": {
+        "0.995": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.99": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.985": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.975": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.95": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        }
+      }
+    },
+    "passes": true
+  },
+  "source_loaded": true,
+  "source": {
+    "panel_sha256": "c4053ce27d28bebda4137349192b1a940360231469f63edc32bacabb2ce54131",
+    "manifest_sha256": "d8237c4562d33c12eff162776f723cc5fc94649b69d26a6230e16fc38c52bba1",
+    "rows": 105120,
+    "source_complete_rows": 101956,
+    "range_start": "2023-01-01 00:00:00",
+    "range_end": "2023-12-31 23:55:00"
+  },
+  "threshold_trials": [
+    {
+      "quantile": 0.995,
+      "raw_event_count": 3,
+      "support": {
+        "nonoverlap_total": 3,
+        "by_quarter": {
+          "q1": 1,
+          "q2": 0,
+          "q3": 0,
+          "q4": 2
+        },
+        "h1": 1,
+        "h2": 2,
+        "long_share": 0.3333333333333333,
+        "short_share": 0.6666666666666666,
+        "maximum_quarter_share": 0.6666666666666666,
+        "passes_incidence": false
+      }
+    },
+    {
+      "quantile": 0.99,
+      "raw_event_count": 10,
+      "support": {
+        "nonoverlap_total": 8,
+        "by_quarter": {
+          "q1": 1,
+          "q2": 1,
+          "q3": 1,
+          "q4": 5
+        },
+        "h1": 2,
+        "h2": 6,
+        "long_share": 0.5,
+        "short_share": 0.5,
+        "maximum_quarter_share": 0.625,
+        "passes_incidence": false
+      }
+    },
+    {
+      "quantile": 0.985,
+      "raw_event_count": 29,
+      "support": {
+        "nonoverlap_total": 23,
+        "by_quarter": {
+          "q1": 3,
+          "q2": 4,
+          "q3": 5,
+          "q4": 11
+        },
+        "h1": 7,
+        "h2": 16,
+        "long_share": 0.4782608695652174,
+        "short_share": 0.5217391304347826,
+        "maximum_quarter_share": 0.4782608695652174,
+        "passes_incidence": false
+      }
+    },
+    {
+      "quantile": 0.975,
+      "raw_event_count": 66,
+      "support": {
+        "nonoverlap_total": 50,
+        "by_quarter": {
+          "q1": 8,
+          "q2": 8,
+          "q3": 17,
+          "q4": 17
+        },
+        "h1": 16,
+        "h2": 34,
+        "long_share": 0.44,
+        "short_share": 0.56,
+        "maximum_quarter_share": 0.34,
+        "passes_incidence": false
+      }
+    },
+    {
+      "quantile": 0.95,
+      "raw_event_count": 192,
+      "support": {
+        "nonoverlap_total": 148,
+        "by_quarter": {
+          "q1": 14,
+          "q2": 36,
+          "q3": 45,
+          "q4": 53
+        },
+        "h1": 50,
+        "h2": 98,
+        "long_share": 0.4797297297297297,
+        "short_share": 0.5202702702702703,
+        "maximum_quarter_share": 0.3581081081081081,
+        "passes_incidence": false
+      }
+    }
+  ],
+  "selected_quantile": null,
+  "all_support_gates_pass": false,
+  "rejection_reason": "no frozen quantile passed incidence"
+}
