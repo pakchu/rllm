@@ -163,6 +163,22 @@ def test_load_sources_verifies_hashes_and_never_loads_market_outcomes() -> None:
         prereg.load_sources(replace(prereg.Config(), expected_eth_source_sha256="0" * 64))
 
 
+def test_load_sources_physically_reads_only_approved_columns(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = prereg.pd.read_csv
+    observed: list[set[str]] = []
+
+    def recording_read_csv(*args: Any, **kwargs: Any) -> pd.DataFrame:
+        observed.append(set(kwargs["usecols"]))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(prereg.pd, "read_csv", recording_read_csv)
+    prereg.load_sources(prereg.Config())
+
+    assert observed == [set(prereg.BTC_SIGNAL_COLUMNS), set(prereg.ETH_SIGNAL_COLUMNS)]
+
+
 def test_thresholds_are_strictly_prior_and_prefix_independent() -> None:
     btc, eth = _sources()
     index = 8_100

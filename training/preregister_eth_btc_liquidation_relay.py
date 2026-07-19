@@ -163,6 +163,7 @@ def _load_panel(
     frame = pd.read_csv(
         path,
         compression="gzip",
+        usecols=cast(Any, list(columns)),
         parse_dates=["date", "feature_available_time"],
     )
     frame = frame.loc[:, list(columns)]
@@ -492,6 +493,10 @@ def build(cfg: Config) -> dict[str, Any]:
             "later_stage_outcomes_opened": False,
         },
         "config": asdict(cfg),
+        "implementation": {
+            "path": "training/preregister_eth_btc_liquidation_relay.py",
+            "sha256": sha256_file(Path(__file__)),
+        },
         "sources": {
             "btc": {
                 "path": cfg.btc_source_path,

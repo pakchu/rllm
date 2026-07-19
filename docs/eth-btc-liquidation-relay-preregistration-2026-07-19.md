@@ -104,6 +104,34 @@ Exact entry-clock Jaccard must be at most 0.10 against each frozen comparator:
 Reject before outcomes if any source, support, side, concentration, latency,
 non-overlap, or novelty gate fails.
 
+## Frozen source-only support result
+
+The exact preregistered rule passed every outcome-blind support gate after the
+full 28-day warm-up was enforced:
+
+| split | clocks | long | short | max month share |
+|---|---:|---:|---:|---:|
+| train | 21 | 8 | 13 | 38.10% |
+| test | 132 | 49 | 83 | 20.45% |
+| eval | 113 | 25 | 88 | 24.78% |
+
+- total clocks: 266;
+- exact entry overlap with CLBR-24: 0 / Jaccard 0.000;
+- exact entry overlap with ICLA-60: 0 / Jaccard 0.000;
+- clock SHA-256:
+  `b4b35a0e9ae0cf26bf08df67b5c2fc832393c638c97f5b91a86894ee693b430e`;
+- support artifact SHA-256:
+  `58726a37bd632cccdf7a5320ec81b2f190f6448e1fd8392295d251683ab8ca17`;
+- canonical manifest hash:
+  `c3884a55f16c2677e01689a972f90289ab134519c257ec385f561b40116fa0a7`;
+- preregistration implementation SHA-256:
+  `fe40b29ab1cabc115304adce574033ab61a76d441ea730c379e63b1c7aa2d8cf`.
+
+No BTC price, execution, return, funding, or PnL was opened to obtain these
+counts. Train support is only one clock above the preregistered minimum and
+must not be described as strong statistical evidence; it merely permits the
+sealed train outcome stage to begin.
+
 ## Frozen causal controls for a later evaluator
 
 1. **Direction flip:** identical clocks, opposite side.
