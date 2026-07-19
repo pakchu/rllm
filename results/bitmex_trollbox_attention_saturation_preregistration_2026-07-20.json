@@ -1,0 +1,117 @@
+{
+  "protocol_version": "bitmex_trollbox_attention_saturation_preregistration_v1",
+  "candidate": "TBASR-24",
+  "as_of_date": "2026-07-20",
+  "support_commit": "e7cd2448176d29146fb501d054a759afc986e8fc",
+  "claim_boundary": "candidate-level frozen sequence only; the branch is globally contaminated by prior BTC research",
+  "hypothesis": "an unusually broad Trollbox attention burst whose frozen Gemma2 crowd direction agrees with a completed material BTC displacement marks crowded short-horizon extrapolation that mean-reverts over the next two hours",
+  "stage_windows": {
+    "train": [
+      "2020-07-01T00:00:00+00:00",
+      "2022-01-01T00:00:00+00:00"
+    ],
+    "test": [
+      "2022-01-01T00:00:00+00:00",
+      "2023-01-01T00:00:00+00:00"
+    ]
+  },
+  "semantic_input": {
+    "clock": "results/bitmex_trollbox_semantic_clock_2026-07-20.json",
+    "clock_sha256": "af8687564614ec5a1cbd7a1438c908f687af7bd99ceede9539016e5c1b111bd4",
+    "clock_manifest_hash": "fdcd9c7c376b18df2799acf24af04a421ca679e27009e6a539888defc7438aa8",
+    "support": "results/bitmex_trollbox_semantic_support_2026-07-20.json",
+    "support_sha256": "2b89f710d59a5c0708d400541defb43d5e292f6d9bdedbe66d6bdcf614d09e94",
+    "support_result_hash": "5996b7d7497d6bf5e96343f7ceca766363d58aa34280aea0fdb7b8653a8b1725",
+    "clear_labels": [
+      "BULLISH",
+      "BEARISH"
+    ],
+    "unclear_action": "no trade"
+  },
+  "price_displacement": {
+    "bar": "Binance BTCUSDT USD-M 5m OHLC",
+    "formula": "for final completed bar index i ending at observation_end, d_i=ln(close_i/open_{i-11}) over exactly 12 bars",
+    "material_threshold": "pandas rolling(window=8064,min_periods=8064).quantile(0.90,interpolation='linear').shift(13) applied to abs(d); bar timestamps are opens, so the newest reference final bar is i-13 and its close is target_start-5m, strictly before the target starts at i-11",
+    "reference_days": 28,
+    "reference_bars": 8064,
+    "reference_shift_bars": 13,
+    "quantile": 0.9,
+    "current_displacement_excluded": true,
+    "reference_endpoint_window": "[target_start-28d,target_start) at 5m endpoints; latest endpoint target_start-5m",
+    "direction_alignment": {
+      "BULLISH": "d_i > 0",
+      "BEARISH": "d_i < 0"
+    },
+    "parameter_search": []
+  },
+  "policy": {
+    "side": "frozen semantic contrarian_side after displacement alignment",
+    "leverage": 1.0,
+    "entry": "open at observation_end+5m; the intervening 5m bar must complete after the chat observation",
+    "exit": "open exactly 24 bars / 2h after entry",
+    "split_end": "base and stress exits must be strictly before split end",
+    "overlap": "stable chronological greedy selection; accept only if entry >= prior accepted exit",
+    "base_cost_notional_per_side": 0.0006,
+    "stress": {
+      "cost_notional_per_side": 0.001,
+      "entry_and_exit_delay_bars": 1,
+      "same_qualified_event_identities": true
+    }
+  },
+  "controls": {
+    "direction_flip": "same primary clocks, opposite side",
+    "deterministic_random_side": "same primary clocks; SHA256(TBASR-24|random-side|UTC entry), first hexadecimal nibble parity",
+    "semantic_alignment_ablation": "all clear material-displacement events without requiring semantic/price direction agreement; retain semantic contrarian side and apply its own frozen greedy non-overlap"
+  },
+  "strict_accounting": {
+    "funding_boundary": "interior exact-time symmetric; exact entry/exit credits dropped and debits retained; every visited settlement mark updates strict path",
+    "mdd": "global/pre-entry HWM; entry fee; every held 5m favorable then adverse OHLC; funding settlement marks; virtual adverse-mark exit fee; actual exit fee",
+    "cagr": "full declared split calendar including all warm-up and idle cash"
+  },
+  "outcome_gate": {
+    "minimum_trades": {
+      "train": 80,
+      "test": 40
+    },
+    "minimum_trades_each_side": {
+      "train": 20,
+      "test": 10
+    },
+    "minimum_weekly_clusters": {
+      "train": 40,
+      "test": 25
+    },
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "weekly_cluster_signflip_p_max": 0.1,
+    "mean_gross_underlying_move_bp_min": 20.0,
+    "each_half_year_absolute_return_positive": true,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "mechanism_control_margin_min": 0.25,
+    "statistical_test_contract": {
+      "cluster_key": "UTC entry timestamp ISO year/week",
+      "cluster_value": "sum of net account trade returns",
+      "observed": "absolute mean net account trade return",
+      "null": "independent Rademacher sign per weekly sum; signed total divided by trade count; compare abs(null)>=observed-1e-15",
+      "exact_cluster_max": 20,
+      "draws": 20000,
+      "seed": 20260720,
+      "empty_p_value": 1.0
+    }
+  },
+  "sequential_opening": {
+    "order": [
+      "train",
+      "test"
+    ],
+    "test_rows_must_not_be_parsed_until_train_passes": true,
+    "stop_on_first_failure": true,
+    "post_failure_parameter_repair": false
+  },
+  "market_or_funding_rows_parsed": 0,
+  "strategy_outcomes_calculated": false,
+  "mutable_parameters": [],
+  "manifest_hash": "0e9a7eb9cf61f23502fbe2779b4bd6e04c5f3718a4cdbcd2e3ac3fb1e698c42e"
+}
