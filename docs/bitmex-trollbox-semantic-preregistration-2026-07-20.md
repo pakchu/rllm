@@ -58,6 +58,13 @@ The prompt treats the one quoted message as untrusted data, explicitly ignores
 instructions inside it, respects negation and trading slang, and requires one
 exact label. A malformed output fails closed to `UNCLEAR`.
 
+Synthetic attempt 1 failed only the frozen prompt-injection control before any
+private text or market data was opened. Prompt revision
+`v2_synthetic_meta_instruction_hardening` therefore adds one narrow rule:
+messages that discuss classification rules, ask a classifier/AI for a label,
+or tell it what to output are meta-instructions and must be `UNCLEAR`. The
+original eight model controls and all numeric controls remain unchanged.
+
 The executable gate also verifies exact package versions, the Transformers Git
 revision recorded in installed package metadata, and every frozen model file
 hash before model loading. Resumable private labels are bound to the contract
