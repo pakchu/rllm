@@ -13,6 +13,13 @@ RESULT = Path(
 RESULT_FILE_SHA256 = (
     "aec02f2b9000f9f6155013465780e5c823da61b3f2bd1e284266ee43e3c6c747"
 )
+ATTEMPT2_RESULT = Path(
+    "results/bitmex_trollbox_semantic_synthetic_controls_attempt2_failed_"
+    "2026-07-20.json"
+)
+ATTEMPT2_FILE_SHA256 = (
+    "71c5e491834f804b0a6a0a493de7cedea09bfe0bf71e1875b7f5b1e4d842330e"
+)
 
 
 def test_attempt1_failure_is_hash_bound_and_market_blind() -> None:
@@ -46,3 +53,27 @@ def test_attempt1_failure_is_hash_bound_and_market_blind() -> None:
             "passed": False,
         }
     ]
+
+
+def test_attempt2_failure_is_preserved_and_remained_market_blind() -> None:
+    assert sha256_file(ATTEMPT2_RESULT) == ATTEMPT2_FILE_SHA256
+    result = json.loads(ATTEMPT2_RESULT.read_text(encoding="utf-8"))
+    core = {
+        key: value
+        for key, value in result.items()
+        if key not in {"result_hash", "created_at"}
+    }
+
+    assert result["result_hash"] == canonical_hash(core)
+    assert result["contract_hash"] == (
+        "48d80c3818a90525074de8b8e5c5f483c59401dd5dcab06cd62e9e496b96ee2f"
+    )
+    assert result["passed"] is False
+    assert result["private_text_opened"] is False
+    assert result["market_or_outcomes_opened"] is False
+    assert all(result["numeric_controls"].values())
+    assert [
+        (control["name"], control["expected"], control["observed"])
+        for control in result["controls"]
+        if not control["passed"]
+    ] == [("prompt_injection", "UNCLEAR", "BULLISH")]
