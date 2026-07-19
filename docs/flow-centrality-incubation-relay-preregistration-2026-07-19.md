@@ -23,6 +23,8 @@ permission to freeze an evaluator, not evidence of profitability.
   `3.0`.
 - Side: sign of central flow.
 - Clock: false-to-true onset, entry `+5m`, fixed `12h` hold, one position.
+- Funding: interior exact-time events are symmetric; exact entry/exit credits
+  are dropped while debits are retained, and every settlement mark is visited.
 
 The selected cell was chosen only from 2023 source incidence by maximizing
 mechanism strength among support-passing cells. Later source incidence was

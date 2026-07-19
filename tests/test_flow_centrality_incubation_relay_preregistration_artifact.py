@@ -16,10 +16,10 @@ CLOCK = Path("data/flow_centrality_incubation_relay_clocks_2023_2026.csv.gz")
 DOCS = Path(
     "docs/flow-centrality-incubation-relay-preregistration-2026-07-19.md"
 )
-RESULT_SHA256 = "547408da74596052f385ac7d6693d8689331c5cde7620c9829a8f31ccc7e5fd7"
+RESULT_SHA256 = "2ecd30c6a4f8678207053522aabe7ef6bfbc24e3f5d29b4e52743c218e4d2e89"
 CLOCK_SHA256 = "d4bb6245f0bac34885e780e35ff1edb9b5cf2114dc3c13088ec19613ad8056ea"
-DOCS_SHA256 = "a0f73677eca98eccf4d6590b39c7fb18f3381981dbd8eae04e6625b246237981"
-SOURCE_SHA256 = "a99c818bb4f109939aefaa8641d8bd56fdd1eab8abcad2fcba60830d10f3d10f"
+DOCS_SHA256 = "fa657716d0bc5c3be4dfaf975d97e80459cce8fbf5882d742e317ccc7d5067ed"
+SOURCE_SHA256 = "2c0af80ed23c9de9f875d6d53bb93c7cc6bd31fae710b514204c80e9df68b1d3"
 
 
 def _sha256(path: Path) -> str:
@@ -46,6 +46,13 @@ def test_fcir_preregistration_is_hash_locked_and_outcome_blind() -> None:
     assert report["future_source_values_opened_before_selection"] is False
     assert report["support_passed"] is True
     assert report["advance_to_evaluator_freeze"] is True
+    protocol = cast(dict[str, object], report["protocol"])
+    execution = cast(dict[str, object], protocol["eventual_execution"])
+    assert execution["funding"] == (
+        "conservative exact-time accounting: interior events symmetric; "
+        "exact entry/exit credits dropped and debits retained; every settlement "
+        "mark visited"
+    )
 
 
 def test_fcir_selection_uses_only_train_support_and_is_the_strongest_pass() -> None:

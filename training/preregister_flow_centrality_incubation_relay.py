@@ -236,7 +236,11 @@ def protocol() -> dict[str, Any]:
             "instrument": "Binance BTCUSDT USD-M perpetual",
             "leverage": 0.5,
             "cost_bp_per_notional_side": 6.0,
-            "funding": "exact realized funding ownership on [entry, exit)",
+            "funding": (
+                "conservative exact-time accounting: interior events symmetric; "
+                "exact entry/exit credits dropped and debits retained; every "
+                "settlement mark visited"
+            ),
             "strict_mdd": "global pre-entry HWM plus every held five-minute path",
             "full_calendar_cagr": True,
             "controls": [
@@ -813,6 +817,8 @@ permission to freeze an evaluator, not evidence of profitability.
   `{selected['minimum_effective_names']:.1f}`.
 - Side: sign of central flow.
 - Clock: false-to-true onset, entry `+5m`, fixed `12h` hold, one position.
+- Funding: interior exact-time events are symmetric; exact entry/exit credits
+  are dropped while debits are retained, and every settlement mark is visited.
 
 The selected cell was chosen only from 2023 source incidence by maximizing
 mechanism strength among support-passing cells. Later source incidence was
