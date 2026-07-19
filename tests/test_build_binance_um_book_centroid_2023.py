@@ -80,6 +80,12 @@ def test_formula_direction_and_symmetry() -> None:
     skew = builder.snapshots_to_skew(builder.read_archive(_archive(bid_farther)))
     assert skew.loc[0, "skew_5"] < 0.0
 
+    scaled = _raw_snapshots(10)
+    for snapshot, timestamp in enumerate(sorted(scaled["timestamp"].unique())):
+        scaled.loc[scaled["timestamp"].eq(timestamp), "notional"] *= 1.0 + snapshot / 100.0
+    skew = builder.snapshots_to_skew(builder.read_archive(_archive(scaled)))
+    assert np.abs(skew[[f"skew_{k}" for k in builder.SKEW_DISTANCES]].to_numpy()).max() < 2e-15
+
 
 def test_monotonic_and_crossed_average_quotes_are_invalid() -> None:
     raw = _raw_snapshots(1)
@@ -118,6 +124,15 @@ def test_aggregation_timing_path_and_efficiency_identities() -> None:
     flat = builder.aggregate_five_minute(builder.read_archive(_archive(_raw_snapshots(10))), cfg)
     assert flat.loc[0, "skew_5_path"] == pytest.approx(0.0)
     assert flat.loc[0, "skew_5_efficiency"] == pytest.approx(0.0)
+
+
+def test_one_invalid_snapshot_quarantines_the_complete_five_minute_bar() -> None:
+    raw = _raw_snapshots(20)
+    raw.loc[raw["timestamp"].eq(pd.Timestamp("2023-01-01 00:02:30")) & raw["percentage"].eq(1), "notional"] = (
+        raw.loc[raw["timestamp"].eq(pd.Timestamp("2023-01-01 00:02:30")) & raw["percentage"].eq(1), "depth"] * 98.0
+    )
+    bars = builder.aggregate_five_minute(builder.read_archive(_archive(raw)), builder.Config())
+    assert bars["date"].tolist() == [pd.Timestamp("2023-01-01 00:05:00")]
 
 
 def test_physical_seal_rejects_non_2023_builds_before_network() -> None:
@@ -184,3 +199,30 @@ def test_reference_manifest_hash_mismatch_fails_closed(tmp_path: Path) -> None:
     path.write_text('{"protocol":{"outcomes_opened":false},"archives":[]}\n')
     with pytest.raises(ValueError, match="reference manifest hash mismatch"):
         builder._load_reference_records(path)
+
+
+def test_frozen_source_quality_limits_pass_and_fail_exactly() -> None:
+    records = [
+        {
+            "date": "2023-01-01",
+            "available": True,
+            "snapshot_count": 1_000_000,
+            "centroid_invalid_snapshot_count": 8,
+            "reference_timing_complete_bar_count": 100_000,
+            "centroid_invalid_timing_complete_bar_count": 8,
+        }
+    ]
+    summary = builder.source_quality_summary(records)
+    builder.enforce_source_quality(summary, builder.Config())
+    with pytest.raises(ValueError, match="invalid snapshot fraction"):
+        builder.enforce_source_quality(
+            {**summary, "invalid_snapshot_fraction": 0.0001001}, builder.Config()
+        )
+    with pytest.raises(ValueError, match="timing-complete bar fraction"):
+        builder.enforce_source_quality(
+            {**summary, "quarantined_timing_complete_bar_fraction": 0.001001}, builder.Config()
+        )
+    with pytest.raises(ValueError, match="daily invalid snapshot fraction"):
+        builder.enforce_source_quality(
+            {**summary, "maximum_daily_invalid_snapshot_fraction": 0.01001}, builder.Config()
+        )
