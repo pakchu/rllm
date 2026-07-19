@@ -35,7 +35,7 @@ SOURCE_DECISION_SHA256 = (
 )
 SOURCE_DOWNLOADER = Path("training/download_bitmex_trollbox_attention.py")
 SOURCE_DOWNLOADER_SHA256 = (
-    "8bac32785afc15919b8462393ad834c9246f4416fdc7749a71c7bf180a4b133d"
+    "295fbce5261447a367533f04b510addef0839012efa3b93af83693e35a2c5e1b"
 )
 PREREGISTRATION_DOCUMENT = Path(
     "docs/bitmex-trollbox-attention-support-preregistration-2026-07-20.md"
@@ -178,7 +178,7 @@ def load_attention_source() -> tuple[pd.DataFrame, dict[str, Any]]:
         "end_exclusive": "2023-01-01",
         "channel_id": 1,
         "page_size": 500,
-        "request_pause_sec": 0.55,
+        "request_pause_sec": 0.25,
         "timeout_sec": 30.0,
         "maximum_retries": 8,
         "participant_salt_label": "TBASR-24-private-participant-v1",

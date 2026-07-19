@@ -105,7 +105,7 @@ def test_source_loader_binds_manifest_hash_source_hash_and_complete_grid(
             "end_exclusive": "2023-01-01",
             "channel_id": 1,
             "page_size": 500,
-            "request_pause_sec": 0.55,
+            "request_pause_sec": 0.25,
             "timeout_sec": 30.0,
             "maximum_retries": 8,
             "participant_salt_label": "TBASR-24-private-participant-v1",
