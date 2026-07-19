@@ -248,7 +248,74 @@ def test_support_gate_requires_counts_sides_concentration_and_subperiods(
 def test_overlap_reports_exact_and_near_without_outcomes() -> None:
     primary = pd.DatetimeIndex(pd.to_datetime(["2023-01-01 00:00", "2023-01-01 02:00"]))
     other = pd.DatetimeIndex(pd.to_datetime(["2023-01-01 00:00", "2023-01-01 02:25"]))
-    overlap = prereg._overlap(primary, other)
+    overlap = prereg._overlap(
+        primary,
+        other,
+        coverage_start="2023-01-01",
+        coverage_end="2023-01-02",
+    )
     assert overlap["exact_intersection"] == 1
     assert overlap["exact_jaccard"] == pytest.approx(1 / 3)
     assert overlap["within_30m_primary_share"] == 1.0
+
+
+def test_overlap_uses_only_shared_clock_coverage() -> None:
+    primary = pd.DatetimeIndex(
+        pd.to_datetime(
+            [
+                "2020-01-01 00:00",
+                "2023-01-01 00:00",
+                "2023-01-01 02:00",
+                "2026-01-01 00:00",
+            ]
+        )
+    )
+    other = pd.DatetimeIndex(
+        pd.to_datetime(["2023-01-01 00:00", "2023-01-01 02:25"])
+    )
+    overlap = prereg._overlap(
+        primary,
+        other,
+        coverage_start="2023-01-01",
+        coverage_end="2023-01-02",
+    )
+    assert overlap["primary_full"] == 4
+    assert overlap["primary"] == 2
+    assert overlap["exact_jaccard"] == pytest.approx(1 / 3)
+    assert overlap["within_30m_primary_share"] == 1.0
+
+
+def test_shifted_controls_cannot_cross_split_boundaries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(prereg, "SPLITS", {"train": ("2020-02-01", "2020-02-02")})
+    primary = prereg.build_clocks(_state())
+    early = primary.iloc[[0]].copy()
+    early["entry_time"] = pd.Timestamp("2020-02-01 00:20")
+    early["planned_exit_time"] = pd.Timestamp("2020-02-01 00:50")
+    control = prereg._derived_primary_control(
+        early, candidate="future", shift_minutes=-40
+    )
+    assert control.empty
+
+
+def test_psi_comparator_replays_prior_immediate_entry_and_eight_hour_hold(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(prereg, "SPLITS", {"train": ("2020-02-01", "2020-02-03")})
+    state = _state(180)
+    state["psi_2016_active"] = False
+    state["psi_2016_direction"] = 0
+    state.loc[[6, 7, 102], "psi_2016_active"] = True
+    state.loc[[6, 7, 102], "psi_2016_direction"] = [-1, -1, 1]
+    clocks = prereg._frozen_psi_clocks(state, window=2016)
+    assert clocks["decision_time"].tolist() == [
+        pd.Timestamp("2020-02-01 00:30"),
+        pd.Timestamp("2020-02-01 08:30"),
+    ]
+    assert clocks["entry_time"].equals(clocks["decision_time"])
+    assert bool(
+        (clocks["planned_exit_time"] - clocks["entry_time"])
+        .eq(pd.Timedelta(hours=8))
+        .all()
+    )
