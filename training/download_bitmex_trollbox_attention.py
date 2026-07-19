@@ -52,7 +52,7 @@ class Config:
     end_exclusive: str = "2023-01-01"
     channel_id: int = 1
     page_size: int = 500
-    request_pause_sec: float = 0.55
+    request_pause_sec: float = 0.25
     timeout_sec: float = 30.0
     maximum_retries: int = 8
     participant_salt_label: str = "TBASR-24-private-participant-v1"

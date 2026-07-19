@@ -17,6 +17,14 @@ replaced locally by study-specific pseudonymous hashes. Raw text and aggregate
 source data remain ignored; only a hash-bound manifest and research results are
 committed.
 
+An operational-only correction lowered the REST request pause from 0.55 to
+0.25 seconds after observing download throughput and the official anonymous
+limit of 180 requests per minute. At that point only resume-state page/message
+totals and date progress had been monitored; no attention threshold, event
+incidence, text semantic, or market outcome had been calculated. Pagination,
+selected bytes, hashes, availability time, and every support rule are
+unchanged.
+
 Increasing IDs can contain small raw-date regressions. The downloader therefore
 assigns `available_date = cumulative_max(raw_date)` in increasing-ID order. A
 late row is delayed, never advanced. Five-minute bars and this support clock use
