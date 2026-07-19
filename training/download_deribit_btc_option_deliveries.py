@@ -299,6 +299,8 @@ def aggregate_deliveries(
                 "option_count": int(len(group)),
                 "call_count": int(call.sum()),
                 "put_count": int(put.sum()),
+                "itm_call_count": int((call & itm).sum()),
+                "itm_put_count": int((put & itm).sum()),
                 "total_position": total_position,
                 "call_position": float(group.loc[call, "position"].sum()),
                 "put_position": float(group.loc[put, "position"].sum()),
@@ -477,7 +479,7 @@ def run(
     output = Path(cfg.output_csv)
     _write_deterministic_csv(output, frame)
     core = {
-        "protocol_version": "deribit_btc_option_delivery_source_v1",
+        "protocol_version": "deribit_btc_option_delivery_source_v2",
         "config": asdict(cfg),
         "source_audit": audit,
         "aggregate": {
