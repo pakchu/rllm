@@ -1,0 +1,297 @@
+{
+  "clock": {
+    "path": "results/packet_churn_persistence_clock_2026-07-19.csv",
+    "rows": 192,
+    "sha256": "e50be3f0744617e3797581ea762546e7f21c32dd0707b9bdcbd264686d4f9acb"
+  },
+  "created_at": "2026-07-19T02:21:56.372579+00:00",
+  "implementation": {
+    "predecessor_source": "training/preregister_minute_packet_topology_alpha.py",
+    "predecessor_source_sha256": "4aeb44d58ac37a4133991f39d545bb113163059cba4ceaa0db9564f58eb8712b",
+    "preregistration_source": "training/preregister_packet_churn_persistence.py",
+    "preregistration_source_sha256": "51ae73d77c1af6dafea79c8abd140646ec5c2536b7771bdddb8d810cb01827ca"
+  },
+  "mechanism": {
+    "action": "follow the original completed-bar displacement direction",
+    "base_event": "cross-venue one-minute packet churn breakout onset",
+    "candidate_clock_released_by_failed_confirmation": true,
+    "candidate_clock_released_by_overlap": false,
+    "confirmation": "both USD-M and Spot cumulative completed-bar displacement remain in setup direction and at least three USD-M bars retain >=0.50 minute-flow sign-switch rate",
+    "confirmation_bars": 6,
+    "entry": "after one complete five-minute latency bar, at the following open",
+    "entry_delay_bars_from_confirmation_bar": 2,
+    "hold_bars": 96,
+    "signal_clock": "sixth confirmation bar close"
+  },
+  "protocol": {
+    "2023_incidence_disclosed_but_profitability_unopened": true,
+    "funding_loaded": false,
+    "name": "PCP-6 packet churn persistence support freeze",
+    "outcomes_opened": false,
+    "post_entry_prices_loaded": false,
+    "predecessor_train_outcomes_known": true,
+    "sealed_windows": [
+      "train_2020_2022",
+      "selection_2023",
+      "test_2024",
+      "eval_2025",
+      "holdout_2026"
+    ],
+    "successor_2023_outcomes_opened": false,
+    "successor_train_outcomes_opened": false,
+    "support_selection_uses_2023_incidence": false,
+    "threshold_or_direction_repair_after_returns_allowed": false
+  },
+  "result_hash": "569bb9f80db0198a63351bc9ca84d0102d7db3161973d614a43f103b89b1fbb3",
+  "selected": {
+    "base_candidate": {
+      "family": "cross_venue_churn_breakout",
+      "hold_bars": 96,
+      "primary_quantile": 0.7,
+      "secondary_quantile": 0.35
+    },
+    "clock_hash": "cae4b8ea138b2b3d8038913eb2743ef8e70f272ce0bcd2f45271ae85236f484a",
+    "gates": {
+      "each_train_side_at_least_25pct": true,
+      "each_train_year_at_least_40": true,
+      "train_max_month_fraction_at_most_15pct": true,
+      "train_total_at_least_130": true
+    },
+    "name": "pcp_cross_venue_churn_breakout_p70_s35_h96_confirm6",
+    "passes_support": true,
+    "raw_qualified_sequences": 213,
+    "support": {
+      "by_year": {
+        "2020": 48,
+        "2021": 54,
+        "2022": 45,
+        "2023": 45
+      },
+      "longs": 104,
+      "selection_2023": {
+        "h1": 25,
+        "h2": 20,
+        "longs": 26,
+        "max_month_fraction": 0.13333333333333333,
+        "shorts": 19,
+        "total": 45
+      },
+      "shorts": 88,
+      "total": 192,
+      "train_2020_2022": {
+        "longs": 78,
+        "max_month_fraction": 0.061224489795918366,
+        "shorts": 69,
+        "total": 147
+      }
+    }
+  },
+  "source": {
+    "columns_used": [
+      "date",
+      "feature_available_time_utc",
+      "minute_dispersion_feature_valid",
+      "um_net_flow_fraction",
+      "spot_net_flow_fraction",
+      "um_flow_sign_switch_rate",
+      "um_ticket_log_std",
+      "um_signed_impact_bp",
+      "spot_signed_impact_bp"
+    ],
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00",
+    "path": "/home/pakchu/rllm/data/binance_cross_venue_minute_dispersion_btc/BTCUSDT_cross_venue_minute_dispersion_5m_2020-01_2023-12.csv.gz",
+    "physical_end_exclusive": "2024-01-01 00:00:00",
+    "rows": 420768,
+    "sha256": "5ea9f5075171c255732cc6eed003736c1beed211a0e6fd7797ab02f31a917aaa",
+    "valid_rows": 420205
+  },
+  "support_stopping_rule": {
+    "grid": {
+      "absolute_net_flow_quantiles": [
+        0.2,
+        0.35
+      ],
+      "ticket_dispersion_quantiles": [
+        0.7,
+        0.8
+      ]
+    },
+    "selected_name": "pcp_cross_venue_churn_breakout_p70_s35_h96_confirm6",
+    "selection": "the unique cell passing every 2020-2022 outcome-blind count, time-dispersion, and side-balance gate; 2023 incidence is reported but does not select the cell",
+    "trials": [
+      {
+        "base_candidate": {
+          "family": "cross_venue_churn_breakout",
+          "hold_bars": 96,
+          "primary_quantile": 0.7,
+          "secondary_quantile": 0.2
+        },
+        "clock_hash": "d3d188f7d6a3139da4d44b5b536ab04efd9c8055aaa52ccc9679823df731ee1e",
+        "gates": {
+          "each_train_side_at_least_25pct": true,
+          "each_train_year_at_least_40": false,
+          "train_max_month_fraction_at_most_15pct": true,
+          "train_total_at_least_130": false
+        },
+        "name": "pcp_cross_venue_churn_breakout_p70_s20_h96_confirm6",
+        "passes_support": false,
+        "raw_qualified_sequences": 133,
+        "support": {
+          "by_year": {
+            "2020": 35,
+            "2021": 36,
+            "2022": 25,
+            "2023": 30
+          },
+          "longs": 63,
+          "selection_2023": {
+            "h1": 17,
+            "h2": 13,
+            "longs": 15,
+            "max_month_fraction": 0.13333333333333333,
+            "shorts": 15,
+            "total": 30
+          },
+          "shorts": 63,
+          "total": 126,
+          "train_2020_2022": {
+            "longs": 48,
+            "max_month_fraction": 0.07291666666666667,
+            "shorts": 48,
+            "total": 96
+          }
+        }
+      },
+      {
+        "base_candidate": {
+          "family": "cross_venue_churn_breakout",
+          "hold_bars": 96,
+          "primary_quantile": 0.7,
+          "secondary_quantile": 0.35
+        },
+        "clock_hash": "cae4b8ea138b2b3d8038913eb2743ef8e70f272ce0bcd2f45271ae85236f484a",
+        "gates": {
+          "each_train_side_at_least_25pct": true,
+          "each_train_year_at_least_40": true,
+          "train_max_month_fraction_at_most_15pct": true,
+          "train_total_at_least_130": true
+        },
+        "name": "pcp_cross_venue_churn_breakout_p70_s35_h96_confirm6",
+        "passes_support": true,
+        "raw_qualified_sequences": 213,
+        "support": {
+          "by_year": {
+            "2020": 48,
+            "2021": 54,
+            "2022": 45,
+            "2023": 45
+          },
+          "longs": 104,
+          "selection_2023": {
+            "h1": 25,
+            "h2": 20,
+            "longs": 26,
+            "max_month_fraction": 0.13333333333333333,
+            "shorts": 19,
+            "total": 45
+          },
+          "shorts": 88,
+          "total": 192,
+          "train_2020_2022": {
+            "longs": 78,
+            "max_month_fraction": 0.061224489795918366,
+            "shorts": 69,
+            "total": 147
+          }
+        }
+      },
+      {
+        "base_candidate": {
+          "family": "cross_venue_churn_breakout",
+          "hold_bars": 96,
+          "primary_quantile": 0.8,
+          "secondary_quantile": 0.2
+        },
+        "clock_hash": "698b7b46361cf81c0c188974c8a6ef6ebc80e87c9b1551d5c69acf364d60d7bc",
+        "gates": {
+          "each_train_side_at_least_25pct": true,
+          "each_train_year_at_least_40": false,
+          "train_max_month_fraction_at_most_15pct": true,
+          "train_total_at_least_130": false
+        },
+        "name": "pcp_cross_venue_churn_breakout_p80_s20_h96_confirm6",
+        "passes_support": false,
+        "raw_qualified_sequences": 71,
+        "support": {
+          "by_year": {
+            "2020": 15,
+            "2021": 22,
+            "2022": 14,
+            "2023": 16
+          },
+          "longs": 33,
+          "selection_2023": {
+            "h1": 11,
+            "h2": 5,
+            "longs": 9,
+            "max_month_fraction": 0.1875,
+            "shorts": 7,
+            "total": 16
+          },
+          "shorts": 34,
+          "total": 67,
+          "train_2020_2022": {
+            "longs": 24,
+            "max_month_fraction": 0.0784313725490196,
+            "shorts": 27,
+            "total": 51
+          }
+        }
+      },
+      {
+        "base_candidate": {
+          "family": "cross_venue_churn_breakout",
+          "hold_bars": 96,
+          "primary_quantile": 0.8,
+          "secondary_quantile": 0.35
+        },
+        "clock_hash": "128979012ce13531d513e869f3fe6869491fc4436ccb417cf3575567afd86579",
+        "gates": {
+          "each_train_side_at_least_25pct": true,
+          "each_train_year_at_least_40": false,
+          "train_max_month_fraction_at_most_15pct": true,
+          "train_total_at_least_130": false
+        },
+        "name": "pcp_cross_venue_churn_breakout_p80_s35_h96_confirm6",
+        "passes_support": false,
+        "raw_qualified_sequences": 117,
+        "support": {
+          "by_year": {
+            "2020": 21,
+            "2021": 34,
+            "2022": 28,
+            "2023": 27
+          },
+          "longs": 52,
+          "selection_2023": {
+            "h1": 16,
+            "h2": 11,
+            "longs": 16,
+            "max_month_fraction": 0.18518518518518517,
+            "shorts": 11,
+            "total": 27
+          },
+          "shorts": 58,
+          "total": 110,
+          "train_2020_2022": {
+            "longs": 36,
+            "max_month_fraction": 0.07228915662650602,
+            "shorts": 47,
+            "total": 83
+          }
+        }
+      }
+    ]
+  }
+}
