@@ -7,6 +7,7 @@ from datetime import date
 from pathlib import Path
 from typing import cast
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -92,6 +93,24 @@ def test_read_activity_archive_rejects_taker_buy_above_quote() -> None:
     payload = _archive([_row("2023-06-25", quote=100.0, taker_buy=101.0)])
     with pytest.raises(ValueError, match="taker_buy_quote exceeds"):
         builder.read_activity_archive(payload)
+
+
+def test_read_activity_archive_accepts_large_quote_roundoff() -> None:
+    payload = _archive(
+        [
+            _row(
+                "2023-06-25",
+                quote=9_876_543_210.123457,
+                taker_buy=6_543_210_987.765432,
+            )
+        ]
+    )
+    frame = builder.read_activity_archive(payload)
+    assert frame.loc[0, "taker_sell_quote"] > 0.0
+    assert np.isclose(
+        frame.loc[0, "taker_buy_quote"] + frame.loc[0, "taker_sell_quote"],
+        frame.loc[0, "quote_asset_volume"],
+    )
 
 
 def test_process_day_rejects_incomplete_grid() -> None:
