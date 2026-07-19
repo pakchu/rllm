@@ -22,7 +22,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable
@@ -355,22 +355,32 @@ def _iter_private_rows(page_paths: Iterable[Path]) -> Iterable[tuple[bytes, dict
 
 def _write_aggregate(path: Path, rows: Iterable[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("wb") as raw:
-        with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as compressed:
-            with io.TextIOWrapper(compressed, encoding="utf-8", newline="") as text:
-                writer = csv.DictWriter(
-                    text,
-                    fieldnames=[
-                        "date",
-                        "message_count",
-                        "unique_participant_count",
-                        "maximum_participant_share",
-                        "character_count",
-                    ],
-                    lineterminator="\n",
-                )
-                writer.writeheader()
-                writer.writerows(rows)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    try:
+        with temporary.open("wb") as raw:
+            with gzip.GzipFile(
+                filename="", mode="wb", fileobj=raw, mtime=0
+            ) as compressed:
+                with io.TextIOWrapper(
+                    compressed, encoding="utf-8", newline=""
+                ) as text:
+                    writer = csv.DictWriter(
+                        text,
+                        fieldnames=[
+                            "date",
+                            "message_count",
+                            "unique_participant_count",
+                            "maximum_participant_share",
+                            "character_count",
+                        ],
+                        lineterminator="\n",
+                    )
+                    writer.writeheader()
+                    writer.writerows(rows)
+        os.replace(temporary, path)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
 
 
 def finalize(cfg: Config, state: dict[str, Any]) -> dict[str, Any]:
@@ -380,89 +390,130 @@ def finalize(cfg: Config, state: dict[str, Any]) -> dict[str, Any]:
     if len(page_paths) != int(state["pages"]):
         raise RuntimeError("Trollbox private page count does not match resume state")
 
-    raw_hasher = hashlib.sha256()
-    container_hasher = hashlib.sha256()
-    buckets: dict[pd.Timestamp, dict[str, Any]] = defaultdict(
-        lambda: {"messages": 0, "participants": Counter(), "characters": 0}
-    )
-    prior_id: int | None = None
-    availability_watermark: pd.Timestamp | None = None
-    maximum_raw_timestamp_regression = 0.0
-    messages = 0
-    for page in page_paths:
-        container_hasher.update(page.name.encode("utf-8") + b"\0")
-        container_hasher.update(bytes.fromhex(sha256_file(page)))
-        for raw, row in _iter_private_rows([page]):
-            raw_hasher.update(raw)
-            identifier = int(row["id"])
-            raw_timestamp = _utc(str(row["date"]))
-            available_timestamp = _utc(str(row["available_date"]))
-            if prior_id is not None and identifier <= prior_id:
-                raise RuntimeError("Trollbox private stream IDs are not increasing")
-            expected_available = (
-                raw_timestamp
-                if availability_watermark is None
-                else max(availability_watermark, raw_timestamp)
-            )
-            if available_timestamp != expected_available:
-                raise RuntimeError("Trollbox availability clock is not causal")
-            if availability_watermark is not None:
-                maximum_raw_timestamp_regression = max(
-                    maximum_raw_timestamp_regression,
-                    max(
-                        0.0,
-                        (availability_watermark - raw_timestamp).total_seconds(),
-                    ),
-                )
-            if "user" in row or set(row) != {
-                "id",
-                "date",
-                "available_date",
-                "user_hash",
-                "message",
-            }:
-                raise RuntimeError("Trollbox private stream privacy schema mismatch")
-            participant = str(row["user_hash"])
-            message = str(row["message"])
-            bucket = available_timestamp.floor("5min")
-            aggregate = buckets[bucket]
-            aggregate["messages"] += 1
-            aggregate["participants"][participant] += 1
-            aggregate["characters"] += len(message)
-            prior_id = identifier
-            availability_watermark = available_timestamp
-            messages += 1
-    if messages != int(state["messages"]) or messages == 0:
-        raise RuntimeError("Trollbox private stream message count mismatch")
-
     first_bucket = _utc(str(state["first_date"])).floor("5min")
     end = _utc(cfg.end_exclusive)
-    grid = pd.date_range(first_bucket, end - pd.Timedelta(minutes=5), freq="5min")
+    step = pd.Timedelta(minutes=5)
+    span = end - first_bucket
+    if span <= pd.Timedelta(0) or span % step != pd.Timedelta(0):
+        raise RuntimeError("Trollbox aggregate grid boundary mismatch")
+    grid_rows = int(span / step)
+    raw_hasher = hashlib.sha256()
+    container_hasher = hashlib.sha256()
+    audit: dict[str, Any] = {}
 
     def aggregate_rows() -> Iterable[dict[str, Any]]:
-        for timestamp in grid:
-            aggregate = buckets.get(timestamp)
-            if aggregate is None:
-                yield {
-                    "date": timestamp.tz_convert(None),
-                    "message_count": 0,
-                    "unique_participant_count": 0,
-                    "maximum_participant_share": 0.0,
-                    "character_count": 0,
-                }
-                continue
-            count = int(aggregate["messages"])
-            participants: Counter[str] = aggregate["participants"]
-            yield {
-                "date": timestamp.tz_convert(None),
-                "message_count": count,
-                "unique_participant_count": len(participants),
-                "maximum_participant_share": max(participants.values()) / count,
-                "character_count": int(aggregate["characters"]),
+        prior_id: int | None = None
+        availability_watermark: pd.Timestamp | None = None
+        maximum_raw_timestamp_regression = 0.0
+        messages = 0
+        emitted = 0
+        current_bucket = first_bucket
+        current_messages = 0
+        current_participants: Counter[str] = Counter()
+        current_characters = 0
+
+        def output_row() -> dict[str, Any]:
+            maximum_share = (
+                max(current_participants.values()) / current_messages
+                if current_messages
+                else 0.0
+            )
+            return {
+                "date": current_bucket.tz_convert(None),
+                "message_count": current_messages,
+                "unique_participant_count": len(current_participants),
+                "maximum_participant_share": maximum_share,
+                "character_count": current_characters,
             }
+
+        for page in page_paths:
+            container_hasher.update(page.name.encode("utf-8") + b"\0")
+            container_hasher.update(bytes.fromhex(sha256_file(page)))
+            for raw, row in _iter_private_rows([page]):
+                raw_hasher.update(raw)
+                identifier = int(row["id"])
+                raw_timestamp = _utc(str(row["date"]))
+                available_timestamp = _utc(str(row["available_date"]))
+                if prior_id is not None and identifier <= prior_id:
+                    raise RuntimeError(
+                        "Trollbox private stream IDs are not increasing"
+                    )
+                expected_available = (
+                    raw_timestamp
+                    if availability_watermark is None
+                    else max(availability_watermark, raw_timestamp)
+                )
+                if available_timestamp != expected_available:
+                    raise RuntimeError("Trollbox availability clock is not causal")
+                if availability_watermark is not None:
+                    maximum_raw_timestamp_regression = max(
+                        maximum_raw_timestamp_regression,
+                        max(
+                            0.0,
+                            (
+                                availability_watermark - raw_timestamp
+                            ).total_seconds(),
+                        ),
+                    )
+                if "user" in row or set(row) != {
+                    "id",
+                    "date",
+                    "available_date",
+                    "user_hash",
+                    "message",
+                }:
+                    raise RuntimeError(
+                        "Trollbox private stream privacy schema mismatch"
+                    )
+                if available_timestamp >= end:
+                    raise RuntimeError("Trollbox private stream crossed source cutoff")
+                bucket = available_timestamp.floor("5min")
+                if bucket < current_bucket:
+                    raise RuntimeError("Trollbox aggregate bucket regressed")
+                while current_bucket < bucket:
+                    emitted += 1
+                    yield output_row()
+                    current_bucket += step
+                    current_messages = 0
+                    current_participants = Counter()
+                    current_characters = 0
+                participant = str(row["user_hash"])
+                message = str(row["message"])
+                current_messages += 1
+                current_participants[participant] += 1
+                current_characters += len(message)
+                prior_id = identifier
+                availability_watermark = available_timestamp
+                messages += 1
+
+        if messages != int(state["messages"]) or messages == 0:
+            raise RuntimeError("Trollbox private stream message count mismatch")
+        while current_bucket < end:
+            emitted += 1
+            yield {
+                **output_row(),
+            }
+            current_bucket += step
+            current_messages = 0
+            current_participants = Counter()
+            current_characters = 0
+        if emitted != grid_rows:
+            raise RuntimeError("Trollbox aggregate emitted row count mismatch")
+        audit.update(
+            {
+                "messages": messages,
+                "maximum_raw_timestamp_regression": (
+                    maximum_raw_timestamp_regression
+                ),
+            }
+        )
 
     output = Path(cfg.aggregate_output)
     _write_aggregate(output, aggregate_rows())
+    messages = int(audit["messages"])
+    maximum_raw_timestamp_regression = float(
+        audit["maximum_raw_timestamp_regression"]
+    )
     spool_bytes = sum(path.stat().st_size for path in page_paths)
     core = {
         "protocol_version": "bitmex_trollbox_attention_source_v1",
@@ -504,9 +555,9 @@ def finalize(cfg: Config, state: dict[str, Any]) -> dict[str, Any]:
             "path": str(output),
             "sha256": sha256_file(output),
             "bytes": output.stat().st_size,
-            "rows": len(grid),
-            "start": str(grid[0]),
-            "end": str(grid[-1]),
+            "rows": grid_rows,
+            "start": str(first_bucket),
+            "end": str(end - step),
             "columns": [
                 "date",
                 "message_count",
@@ -539,10 +590,7 @@ def finalize(cfg: Config, state: dict[str, Any]) -> dict[str, Any]:
         "manifest_hash": canonical_hash(core),
     }
     manifest_path = Path(cfg.manifest_output)
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
-    )
+    _atomic_json(manifest_path, manifest)
     return manifest
 
 
