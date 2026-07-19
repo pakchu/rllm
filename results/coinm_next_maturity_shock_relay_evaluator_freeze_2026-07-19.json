@@ -1,0 +1,569 @@
+{
+  "protocol_version": "coinm_next_maturity_shock_relay_evaluator_v1",
+  "policy_id": "CMSR-36",
+  "as_of_date": "2026-07-19",
+  "support_commit": "d0636dffc57afe972a0893592cf4c317828c6a2b",
+  "preregistration_sha256": "44a1178110509708d7e391eb766fd02e9cd4b32bd1c790f03172e26a48eb98ea",
+  "preregistration_manifest_hash": "8172c007c9996d2984407f58e9bd20a2537b988f61898ba5aa5b3bafa1e55ed8",
+  "support_sha256": "ca055f162eaee47efc6500ba4f178b0cfe2a0e701f337c6ce306cdc3e5ae368a",
+  "support_manifest_hash": "8257ccccf25a528c3da411321c9eeb8e5a0fd3b960502e3ded31d1efec3723cb",
+  "clock_sha256": "e81450d4e76ffd0ce2ae96edf97106f2f4c473da233be0db18dc2530c8da8e87",
+  "evaluator_source": "training/evaluate_coinm_next_maturity_shock_relay.py",
+  "evaluator_source_sha256": "8638aad9eaa1e8a2d6a89fadf98d7a893e8e83907c58bc044ba0a7191d5ab95e",
+  "evaluation_config": {
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.001,
+    "cluster_draws": 20000,
+    "cluster_seed": 20260719,
+    "mdd_denominator_floor": 1e-09
+  },
+  "static_inputs": {
+    "training/preregister_coinm_next_maturity_shock_relay.py": "91924413f49e189de34884a511948d7fefeea1823797b25d9bd27763b9e40426",
+    "docs/coinm-next-maturity-shock-relay-preregistration-2026-07-19.md": "7d0c2e471fcc3eb877aef40c0b5f6fcf57caab38ede2c410dbd177d6755ff173",
+    "results/coinm_next_maturity_shock_relay_preregistration_2026-07-19.json": "44a1178110509708d7e391eb766fd02e9cd4b32bd1c790f03172e26a48eb98ea",
+    "training/build_coinm_next_maturity_shock_relay_support.py": "e9d69664c93383cf8d7dbb60ef270fae6d252ee771230e4f1e9b62fb69d0ba04",
+    "docs/coinm-next-maturity-shock-relay-support-2026-07-19.md": "cff08b398e676242d2246d63c64b37794584afa84211ef3a4eb1fb3dbfc5dc80",
+    "results/coinm_next_maturity_shock_relay_support_2026-07-19.json": "ca055f162eaee47efc6500ba4f178b0cfe2a0e701f337c6ce306cdc3e5ae368a",
+    "data/coinm_next_maturity_shock_relay_clocks_2020_2023.csv.gz": "e81450d4e76ffd0ce2ae96edf97106f2f4c473da233be0db18dc2530c8da8e87",
+    "tests/test_preregister_coinm_next_maturity_shock_relay.py": "4647fda633f3e1badd0b692f8e764dcd713abb159e7355c6cbb80be44456ca5f",
+    "tests/test_build_coinm_next_maturity_shock_relay_support.py": "f27f5599d4aeea74d03ce89757e80346129670e969a06b481c0f222dd855e548",
+    "tests/test_coinm_next_maturity_shock_relay_support_artifact.py": "4bc80b16cb3fba5a5524feace90a15c543578ff894c256e7548f5190c9ed6aba"
+  },
+  "schedule_records": {
+    "primary": {
+      "events": 158,
+      "train_events": 93,
+      "test_events": 65,
+      "schedule_hash": "21d903c000c95303bfb9fc9ef62da46e48ea43de10e061c1bac4e43e2bcf0f6f",
+      "first_signal": "2020-08-16T10:10:00+00:00",
+      "first_entry": "2020-08-16T10:20:00+00:00",
+      "last_exit": "2023-12-28T07:50:00+00:00",
+      "feature_available_after_signal_5m": true,
+      "entry_delay_exact": true,
+      "hold_exact": true,
+      "globally_nonoverlapping": true,
+      "pre_2024_only": true,
+      "valid_sides": true
+    },
+    "no_share_transition": {
+      "events": 618,
+      "train_events": 385,
+      "test_events": 233,
+      "schedule_hash": "0281600ef9a10f2a0eaeabf90e04d935bd2d66d84ae5a2a1f484497c8c29abb2",
+      "first_signal": "2020-08-04T09:20:00+00:00",
+      "first_entry": "2020-08-04T09:30:00+00:00",
+      "last_exit": "2023-12-28T07:50:00+00:00",
+      "feature_available_after_signal_5m": true,
+      "entry_delay_exact": true,
+      "hold_exact": true,
+      "globally_nonoverlapping": true,
+      "pre_2024_only": true,
+      "valid_sides": true
+    },
+    "no_lead_shock": {
+      "events": 271,
+      "train_events": 171,
+      "test_events": 100,
+      "schedule_hash": "81d4cfafe0fb114ad1d40519bc88b5ca9106fb4e68f9c00ff4ae8445b0b73535",
+      "first_signal": "2020-08-05T08:30:00+00:00",
+      "first_entry": "2020-08-05T08:40:00+00:00",
+      "last_exit": "2023-12-28T14:45:00+00:00",
+      "feature_available_after_signal_5m": true,
+      "entry_delay_exact": true,
+      "hold_exact": true,
+      "globally_nonoverlapping": true,
+      "pre_2024_only": true,
+      "valid_sides": true
+    },
+    "front_led_mirror": {
+      "events": 98,
+      "train_events": 63,
+      "test_events": 35,
+      "schedule_hash": "5e1f6c2cde709925fb8b38014d799c017b4e74a4c2e60fd2cb18f007dc122f73",
+      "first_signal": "2020-08-18T17:30:00+00:00",
+      "first_entry": "2020-08-18T17:40:00+00:00",
+      "last_exit": "2023-12-27T05:30:00+00:00",
+      "feature_available_after_signal_5m": true,
+      "entry_delay_exact": true,
+      "hold_exact": true,
+      "globally_nonoverlapping": true,
+      "pre_2024_only": true,
+      "valid_sides": true
+    },
+    "direction_flip": {
+      "events": 158,
+      "train_events": 93,
+      "test_events": 65,
+      "schedule_hash": "393cec4a584964cb7e6374e4a5ea55d9d50034a531c360c46549ff9bc104ddbb",
+      "first_signal": "2020-08-16T10:10:00+00:00",
+      "first_entry": "2020-08-16T10:20:00+00:00",
+      "last_exit": "2023-12-28T07:50:00+00:00",
+      "feature_available_after_signal_5m": true,
+      "entry_delay_exact": true,
+      "hold_exact": true,
+      "globally_nonoverlapping": true,
+      "pre_2024_only": true,
+      "valid_sides": true
+    },
+    "extra_latency_1h": {
+      "events": 158,
+      "train_events": 93,
+      "test_events": 65,
+      "schedule_hash": "d74766d5766ca6b129701522fded2e1fb1724d1da860ad1daaf94fb759d9ce5d",
+      "first_signal": "2020-08-16T10:10:00+00:00",
+      "first_entry": "2020-08-16T11:20:00+00:00",
+      "last_exit": "2023-12-28T08:50:00+00:00",
+      "feature_available_after_signal_5m": true,
+      "entry_delay_exact": true,
+      "hold_exact": true,
+      "globally_nonoverlapping": true,
+      "pre_2024_only": true,
+      "valid_sides": true
+    },
+    "deterministic_random_side": {
+      "events": 158,
+      "train_events": 93,
+      "test_events": 65,
+      "schedule_hash": "eeb4a7658d07b31d80e31238ffa311792b7a01a973ab1d74aad70bee2aad4d1e",
+      "first_signal": "2020-08-16T10:10:00+00:00",
+      "first_entry": "2020-08-16T10:20:00+00:00",
+      "last_exit": "2023-12-28T07:50:00+00:00",
+      "feature_available_after_signal_5m": true,
+      "entry_delay_exact": true,
+      "hold_exact": true,
+      "globally_nonoverlapping": true,
+      "pre_2024_only": true,
+      "valid_sides": true
+    }
+  },
+  "physical_market_files": {
+    "train": [
+      {
+        "month": "2020-08",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2020-08.csv.gz",
+        "sha256": "7077d92ff92cc7b4485a821f7091f407252e6faa0bd9ace7fddaa0b03da304bf",
+        "rows": 8928,
+        "first_date": "2020-08-01 00:00:00",
+        "last_date": "2020-08-31 23:55:00"
+      },
+      {
+        "month": "2020-09",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2020-09.csv.gz",
+        "sha256": "8809c435b1772be43ec1d9377d472bc3f3ea5752ba7b30addaaedf02787a05b6",
+        "rows": 8640,
+        "first_date": "2020-09-01 00:00:00",
+        "last_date": "2020-09-30 23:55:00"
+      },
+      {
+        "month": "2020-10",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2020-10.csv.gz",
+        "sha256": "85b2c0c675270e06a75a2f6a56b05fa731b1ed65efb46ceb2bbe905a9ebb1f06",
+        "rows": 8928,
+        "first_date": "2020-10-01 00:00:00",
+        "last_date": "2020-10-31 23:55:00"
+      },
+      {
+        "month": "2020-11",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2020-11.csv.gz",
+        "sha256": "bb3d637b6384fa5830af991b7d8a08cca71b36fb173686006b445a830db19bfe",
+        "rows": 8640,
+        "first_date": "2020-11-01 00:00:00",
+        "last_date": "2020-11-30 23:55:00"
+      },
+      {
+        "month": "2020-12",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2020-12.csv.gz",
+        "sha256": "4469831f6dcc3d780c3bf40a7cce9e8ff4e7b057e69915e09fca2671e5dd7965",
+        "rows": 8928,
+        "first_date": "2020-12-01 00:00:00",
+        "last_date": "2020-12-31 23:55:00"
+      },
+      {
+        "month": "2021-01",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2021-01.csv.gz",
+        "sha256": "49a0cd002ecbea3d24f777d766e3b5a8a8fbfa49d056b69dc4f6d610c2f8ca42",
+        "rows": 8928,
+        "first_date": "2021-01-01 00:00:00",
+        "last_date": "2021-01-31 23:55:00"
+      },
+      {
+        "month": "2021-02",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2021-02.csv.gz",
+        "sha256": "a88874c7bcdd6d9bddaadceec5fd2cf91b80f11c33c9f977c3d42960d7313a20",
+        "rows": 8064,
+        "first_date": "2021-02-01 00:00:00",
+        "last_date": "2021-02-28 23:55:00"
+      },
+      {
+        "month": "2021-03",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2021-03.csv.gz",
+        "sha256": "aa51a427b3aae5e8f1ad3eadfe76e2abccfeb383aabd631befa4b5b51a0212f1",
+        "rows": 8928,
+        "first_date": "2021-03-01 00:00:00",
+        "last_date": "2021-03-31 23:55:00"
+      },
+      {
+        "month": "2021-04",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2021-04.csv.gz",
+        "sha256": "d1a43a7b681e5e892ac45187afb5e2f3dc44d97a665f1d2d6426ece45e08c1b7",
+        "rows": 8640,
+        "first_date": "2021-04-01 00:00:00",
+        "last_date": "2021-04-30 23:55:00"
+      },
+      {
+        "month": "2021-05",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2021-05.csv.gz",
+        "sha256": "97c89949eef7b10bbb13be156defadf0c23856b8719d46af281065e1bf628934",
+        "rows": 8928,
+        "first_date": "2021-05-01 00:00:00",
+        "last_date": "2021-05-31 23:55:00"
+      },
+      {
+        "month": "2021-06",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2021-06.csv.gz",
+        "sha256": "b9ab61de6284565e8b22cf7d6b3e0775fbeccabebd40c73915c49a2f76c64d3a",
+        "rows": 8640,
+        "first_date": "2021-06-01 00:00:00",
+        "last_date": "2021-06-30 23:55:00"
+      },
+      {
+        "month": "2021-07",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2021-07.csv.gz",
+        "sha256": "f808936058168a065bd589cbff3c75c130444e02e5d4d214b8fc013dbf584b17",
+        "rows": 8928,
+        "first_date": "2021-07-01 00:00:00",
+        "last_date": "2021-07-31 23:55:00"
+      },
+      {
+        "month": "2021-08",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2021-08.csv.gz",
+        "sha256": "28a6d23c189da0d7c32e5bd3f6c0344d3aa14a9dd42ff332f5e6cf590e363244",
+        "rows": 8928,
+        "first_date": "2021-08-01 00:00:00",
+        "last_date": "2021-08-31 23:55:00"
+      },
+      {
+        "month": "2021-09",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2021-09.csv.gz",
+        "sha256": "8c8df9426648a38e532f3e2305843554c367b7dbc46a746d7142fe9db9f05da7",
+        "rows": 8640,
+        "first_date": "2021-09-01 00:00:00",
+        "last_date": "2021-09-30 23:55:00"
+      },
+      {
+        "month": "2021-10",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2021-10.csv.gz",
+        "sha256": "3ffb19d6a8f79e9de2374cabb7a7e6ea8cebe6b62fe3acfae98afc92bcb0f13d",
+        "rows": 8928,
+        "first_date": "2021-10-01 00:00:00",
+        "last_date": "2021-10-31 23:55:00"
+      },
+      {
+        "month": "2021-11",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2021-11.csv.gz",
+        "sha256": "2a25a5ecea5df2c0957705fc1302c85328a0054c9941e9631b1cab8783b16b93",
+        "rows": 8640,
+        "first_date": "2021-11-01 00:00:00",
+        "last_date": "2021-11-30 23:55:00"
+      },
+      {
+        "month": "2021-12",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2021-12.csv.gz",
+        "sha256": "1d61fa3ee0ad78d5a6b23076561df295ab724229a49aa11b52f8fa074d46437c",
+        "rows": 8928,
+        "first_date": "2021-12-01 00:00:00",
+        "last_date": "2021-12-31 23:55:00"
+      },
+      {
+        "month": "2022-01",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2022-01.csv.gz",
+        "sha256": "8434dbf89a76284c9b6cbb89e9c0a2b0d65c34a98cf90fd239d5086a65e74591",
+        "rows": 8928,
+        "first_date": "2022-01-01 00:00:00",
+        "last_date": "2022-01-31 23:55:00"
+      },
+      {
+        "month": "2022-02",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2022-02.csv.gz",
+        "sha256": "739cbd0c35a20f6fc4a6dd70813c349c828e2b17f6606a473fa6d9ae890a59ff",
+        "rows": 8064,
+        "first_date": "2022-02-01 00:00:00",
+        "last_date": "2022-02-28 23:55:00"
+      },
+      {
+        "month": "2022-03",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2022-03.csv.gz",
+        "sha256": "28ee0d8b8d0f1b6254ffad758e0e3be1fa441edf6704080f692083ae44cdb0e8",
+        "rows": 8928,
+        "first_date": "2022-03-01 00:00:00",
+        "last_date": "2022-03-31 23:55:00"
+      },
+      {
+        "month": "2022-04",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2022-04.csv.gz",
+        "sha256": "8c3330ebb3961fd1603bd9ec540bbc7a7970be73a8a568522a1e220eda420f07",
+        "rows": 8640,
+        "first_date": "2022-04-01 00:00:00",
+        "last_date": "2022-04-30 23:55:00"
+      },
+      {
+        "month": "2022-05",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2022-05.csv.gz",
+        "sha256": "445bd04e2f41efe13d397c9c3682f0fc76c5361dc31708bf7326ef797fe89188",
+        "rows": 8928,
+        "first_date": "2022-05-01 00:00:00",
+        "last_date": "2022-05-31 23:55:00"
+      },
+      {
+        "month": "2022-06",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2022-06.csv.gz",
+        "sha256": "ac7e61bbbe73a4ebb646c8ebef40b3beb00f0e0fbb4f91337ea6bc2f9051c811",
+        "rows": 8640,
+        "first_date": "2022-06-01 00:00:00",
+        "last_date": "2022-06-30 23:55:00"
+      },
+      {
+        "month": "2022-07",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2022-07.csv.gz",
+        "sha256": "f4dd71db656dfe066baf786d0b424057fe481a28bf8c240150d52e348a27f38e",
+        "rows": 8928,
+        "first_date": "2022-07-01 00:00:00",
+        "last_date": "2022-07-31 23:55:00"
+      },
+      {
+        "month": "2022-08",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2022-08.csv.gz",
+        "sha256": "84bb265f720bc587f35c3cec6cb7f81b999b6fc7ac4a8063dcf4057a006dc575",
+        "rows": 8928,
+        "first_date": "2022-08-01 00:00:00",
+        "last_date": "2022-08-31 23:55:00"
+      },
+      {
+        "month": "2022-09",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2022-09.csv.gz",
+        "sha256": "8e535369923d64cd2d6a65a3e0b409207707f0bff8c48fe0bd82336831e974ff",
+        "rows": 8640,
+        "first_date": "2022-09-01 00:00:00",
+        "last_date": "2022-09-30 23:55:00"
+      },
+      {
+        "month": "2022-10",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2022-10.csv.gz",
+        "sha256": "83693c4fdfcc7104dd343b4d5fdb69749547778ea22eb18eda275f960eeb0b72",
+        "rows": 8928,
+        "first_date": "2022-10-01 00:00:00",
+        "last_date": "2022-10-31 23:55:00"
+      },
+      {
+        "month": "2022-11",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2022-11.csv.gz",
+        "sha256": "8e92ce53615d18cdf139e3c5e16cabeb375ec8952752b6986c3dcf809db36ec8",
+        "rows": 8640,
+        "first_date": "2022-11-01 00:00:00",
+        "last_date": "2022-11-30 23:55:00"
+      },
+      {
+        "month": "2022-12",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2022-12.csv.gz",
+        "sha256": "1c273b86d8772e47fb37ba164954798ad61db3fd93570d3d1414cb184e2742b5",
+        "rows": 8928,
+        "first_date": "2022-12-01 00:00:00",
+        "last_date": "2022-12-31 23:55:00"
+      }
+    ],
+    "test": [
+      {
+        "month": "2023-01",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2023-01.csv.gz",
+        "sha256": "554fc5bbff29f159905e2793bc9e74bdb7cf9dfe06427817e3f806e0333287cd",
+        "rows": 8928,
+        "first_date": "2023-01-01 00:00:00",
+        "last_date": "2023-01-31 23:55:00"
+      },
+      {
+        "month": "2023-02",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2023-02.csv.gz",
+        "sha256": "c467e770615a2c707edb12d3c71f419f835024c871e2792acd01f4df4f390997",
+        "rows": 8064,
+        "first_date": "2023-02-01 00:00:00",
+        "last_date": "2023-02-28 23:55:00"
+      },
+      {
+        "month": "2023-03",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2023-03.csv.gz",
+        "sha256": "fb0fec594d67f67b2d44d6d3e88256a8fc9977fff6d2f613996183aed20c0ac9",
+        "rows": 8928,
+        "first_date": "2023-03-01 00:00:00",
+        "last_date": "2023-03-31 23:55:00"
+      },
+      {
+        "month": "2023-04",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2023-04.csv.gz",
+        "sha256": "a303b01a2d3501346a53959fdd5ce77afec6ac47df0cba834ed96e5c9229a13b",
+        "rows": 8640,
+        "first_date": "2023-04-01 00:00:00",
+        "last_date": "2023-04-30 23:55:00"
+      },
+      {
+        "month": "2023-05",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2023-05.csv.gz",
+        "sha256": "9fd73a76fd2aa299f7afd867dcccdf5dfd468d3cc6ed955ad761b38899051738",
+        "rows": 8928,
+        "first_date": "2023-05-01 00:00:00",
+        "last_date": "2023-05-31 23:55:00"
+      },
+      {
+        "month": "2023-06",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2023-06.csv.gz",
+        "sha256": "24c65475d5aeda2bd033a729ed0b4215cc291134cc98e517c41ac6ceefb5247a",
+        "rows": 8640,
+        "first_date": "2023-06-01 00:00:00",
+        "last_date": "2023-06-30 23:55:00"
+      },
+      {
+        "month": "2023-07",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2023-07.csv.gz",
+        "sha256": "edbf438167c2ab5f2615b8f2c5aa1cae9e61e4f3ff2ceec0fea55fe06ab8973a",
+        "rows": 8928,
+        "first_date": "2023-07-01 00:00:00",
+        "last_date": "2023-07-31 23:55:00"
+      },
+      {
+        "month": "2023-08",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2023-08.csv.gz",
+        "sha256": "0b2b5b605e8b7fc7b50237f72cdad3d690e3789c9eff43f11fe139f16fb73a1f",
+        "rows": 8928,
+        "first_date": "2023-08-01 00:00:00",
+        "last_date": "2023-08-31 23:55:00"
+      },
+      {
+        "month": "2023-09",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2023-09.csv.gz",
+        "sha256": "91ee766de24a73c805d3ba9a9e174b73af450b7a0371588b1106a22735d2303b",
+        "rows": 8640,
+        "first_date": "2023-09-01 00:00:00",
+        "last_date": "2023-09-30 23:55:00"
+      },
+      {
+        "month": "2023-10",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2023-10.csv.gz",
+        "sha256": "52c9203cf705d59a1648d61779400e66bbd42fc505bba22b07e6810f1c74e78d",
+        "rows": 8928,
+        "first_date": "2023-10-01 00:00:00",
+        "last_date": "2023-10-31 23:55:00"
+      },
+      {
+        "month": "2023-11",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2023-11.csv.gz",
+        "sha256": "b68bbe07695df8b2de8f8e4a9ad0d42c55317a268dee82a95f98d09745ff7cdb",
+        "rows": 8640,
+        "first_date": "2023-11-01 00:00:00",
+        "last_date": "2023-11-30 23:55:00"
+      },
+      {
+        "month": "2023-12",
+        "path": "data/binance_um_kline_reference_btc_2020_2023/monthly/BTCUSDT_5m_2023-12.csv.gz",
+        "sha256": "d09c8f3df3d673bda2d1d6993184eb8ef113e356739e97f426b0b2f606cd8a39",
+        "rows": 8928,
+        "first_date": "2023-12-01 00:00:00",
+        "last_date": "2023-12-31 23:55:00"
+      }
+    ]
+  },
+  "physical_funding_row_windows": {
+    "train": {
+      "path": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+      "source_sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6",
+      "source_start": "2020-01-01T00:00:00+00:00",
+      "source_end": "2024-01-01T00:00:00+00:00",
+      "source_rows": 4383,
+      "start_row_inclusive": 639,
+      "end_row_exclusive": 3288,
+      "rows": 2649,
+      "window_start": "2020-08-01T00:00:00+00:00",
+      "window_end_exclusive": "2023-01-01T00:00:00+00:00",
+      "boundary_row_read": false
+    },
+    "test": {
+      "path": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+      "source_sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6",
+      "source_start": "2020-01-01T00:00:00+00:00",
+      "source_end": "2024-01-01T00:00:00+00:00",
+      "source_rows": 4383,
+      "start_row_inclusive": 3288,
+      "end_row_exclusive": 4383,
+      "rows": 1095,
+      "window_start": "2023-01-01T00:00:00+00:00",
+      "window_end_exclusive": "2024-01-01T00:00:00+00:00",
+      "boundary_row_read": false
+    }
+  },
+  "schedule_invariant_checks": {
+    "primary/feature_available_after_signal_5m": true,
+    "primary/entry_delay_exact": true,
+    "primary/hold_exact": true,
+    "primary/globally_nonoverlapping": true,
+    "primary/pre_2024_only": true,
+    "primary/valid_sides": true,
+    "no_share_transition/feature_available_after_signal_5m": true,
+    "no_share_transition/entry_delay_exact": true,
+    "no_share_transition/hold_exact": true,
+    "no_share_transition/globally_nonoverlapping": true,
+    "no_share_transition/pre_2024_only": true,
+    "no_share_transition/valid_sides": true,
+    "no_lead_shock/feature_available_after_signal_5m": true,
+    "no_lead_shock/entry_delay_exact": true,
+    "no_lead_shock/hold_exact": true,
+    "no_lead_shock/globally_nonoverlapping": true,
+    "no_lead_shock/pre_2024_only": true,
+    "no_lead_shock/valid_sides": true,
+    "front_led_mirror/feature_available_after_signal_5m": true,
+    "front_led_mirror/entry_delay_exact": true,
+    "front_led_mirror/hold_exact": true,
+    "front_led_mirror/globally_nonoverlapping": true,
+    "front_led_mirror/pre_2024_only": true,
+    "front_led_mirror/valid_sides": true,
+    "direction_flip/feature_available_after_signal_5m": true,
+    "direction_flip/entry_delay_exact": true,
+    "direction_flip/hold_exact": true,
+    "direction_flip/globally_nonoverlapping": true,
+    "direction_flip/pre_2024_only": true,
+    "direction_flip/valid_sides": true,
+    "extra_latency_1h/feature_available_after_signal_5m": true,
+    "extra_latency_1h/entry_delay_exact": true,
+    "extra_latency_1h/hold_exact": true,
+    "extra_latency_1h/globally_nonoverlapping": true,
+    "extra_latency_1h/pre_2024_only": true,
+    "extra_latency_1h/valid_sides": true,
+    "deterministic_random_side/feature_available_after_signal_5m": true,
+    "deterministic_random_side/entry_delay_exact": true,
+    "deterministic_random_side/hold_exact": true,
+    "deterministic_random_side/globally_nonoverlapping": true,
+    "deterministic_random_side/pre_2024_only": true,
+    "deterministic_random_side/valid_sides": true
+  },
+  "strict_accounting": {
+    "global_pre_entry_high_water_mark": true,
+    "entry_cost_marked": true,
+    "funding_interior_symmetric": true,
+    "exact_entry_exit_funding_credits_dropped": true,
+    "exact_entry_exit_funding_debits_retained": true,
+    "funding_settlement_mark_always_marked": true,
+    "held_5m_order": "favorable_then_adverse",
+    "virtual_adverse_mark_exit_cost": true,
+    "actual_exit_cost_marked": true,
+    "full_calendar_cagr": true
+  },
+  "opened_windows": [],
+  "sealed_windows": [
+    "train_2020_2022",
+    "test_2023",
+    "2024_plus"
+  ],
+  "execution_ohlc_rows_parsed_during_freeze": 0,
+  "funding_rows_parsed_during_freeze": 0,
+  "simulation_run_during_freeze": 0,
+  "mutable_parameters": [],
+  "manifest_hash": "1004cc198dde1f8c20010f4b8dae0242c863d23afdc0528920557eb6324f67c5"
+}
