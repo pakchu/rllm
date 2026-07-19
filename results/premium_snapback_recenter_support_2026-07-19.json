@@ -1,0 +1,293 @@
+{
+  "schema_version": 1,
+  "candidate": "PSR-30/6",
+  "protocol": {
+    "source_only": true,
+    "outcomes_opened": false,
+    "btc_execution_prices_opened": false,
+    "funding_opened": false,
+    "candidate_count": 1,
+    "threshold_grid": false,
+    "direction_search": false,
+    "hold_search": false,
+    "entry": "decision + 10m after one empty completed 5m latency bucket",
+    "hold": "30m fixed; no stop, take-profit, regime gate or dynamic exit"
+  },
+  "config": {
+    "source_path": "data/binance_um_premium_path_btc_2020_2026/BTCUSDT_premium_path_1m_2020-01-01_2026-06-30.csv.gz",
+    "source_manifest_path": "results/binance_um_premium_path_btc_2020_2026_manifest.json",
+    "expected_source_sha256": "7fbaae1f85482b9fc9e148af357c7315e4e7fc4b4e3ae36c31f27545109f8aa9",
+    "expected_source_manifest_sha256": "821e84f2f03bf893a03d7904bf665b6fd7f6d38edd845d1a9c4eef384d1c1dd8",
+    "output_clock_path": "data/premium_snapback_recenter_clocks_2020_2026.csv.gz",
+    "controls_dir": "data/premium_snapback_recenter_controls_2020_2026",
+    "comparators_dir": "data/premium_snapback_recenter_comparators_2020_2026",
+    "output_result_path": "results/premium_snapback_recenter_support_2026-07-19.json"
+  },
+  "frozen_constants": {
+    "path_minutes": 30,
+    "decision_minutes": 5,
+    "reference_days": 30,
+    "minimum_reference_share": 0.95,
+    "quantiles": {
+      "path_range": 0.9,
+      "efficiency": 0.35,
+      "turns": 0.7,
+      "max_excursion": 0.85,
+      "terminal_deviation": 0.4
+    },
+    "entry_delay_minutes": 10,
+    "hold_minutes": 30,
+    "splits": {
+      "train": [
+        "2020-02-01",
+        "2023-01-01"
+      ],
+      "test": [
+        "2023-01-01",
+        "2024-01-01"
+      ],
+      "eval": [
+        "2024-01-01",
+        "2026-07-01"
+      ]
+    }
+  },
+  "source": {
+    "path": "data/binance_um_premium_path_btc_2020_2026/BTCUSDT_premium_path_1m_2020-01-01_2026-06-30.csv.gz",
+    "sha256": "7fbaae1f85482b9fc9e148af357c7315e4e7fc4b4e3ae36c31f27545109f8aa9",
+    "manifest": "results/binance_um_premium_path_btc_2020_2026_manifest.json",
+    "manifest_sha256": "821e84f2f03bf893a03d7904bf665b6fd7f6d38edd845d1a9c4eef384d1c1dd8"
+  },
+  "primary_clock": {
+    "path": "data/premium_snapback_recenter_clocks_2020_2026.csv.gz",
+    "sha256": "cb209ed35f9baa08cc2fb3dd5bd60b8e747b1408c09507b774ca275e0b2b2db6",
+    "rows": 1147
+  },
+  "controls": {
+    "direction_flip": {
+      "path": "data/premium_snapback_recenter_controls_2020_2026/direction_flip.csv.gz",
+      "sha256": "060d56d60451b2a6614aeac96678c419fc19c5c266d0c9f3e8aed847df4d07a1",
+      "rows": 1147
+    },
+    "simple_level": {
+      "path": "data/premium_snapback_recenter_controls_2020_2026/simple_level.csv.gz",
+      "sha256": "0c324be7985ce5fc12c44a942a6e85d60b0597aad93da30f330faf2bbf3160ad",
+      "rows": 14623
+    },
+    "no_recenter": {
+      "path": "data/premium_snapback_recenter_controls_2020_2026/no_recenter.csv.gz",
+      "sha256": "268248c0fc3aefe1cb04b19ab1a0cefcf506358ab4db80257f4a6973f9228dd3",
+      "rows": 2346
+    },
+    "extra_latency": {
+      "path": "data/premium_snapback_recenter_controls_2020_2026/extra_latency.csv.gz",
+      "sha256": "b17b3fa4be09993db2af85e4d6e2105330af2aeca3ca786f92dcd43922afefa7",
+      "rows": 1147
+    },
+    "future_premium_placebo": {
+      "path": "data/premium_snapback_recenter_controls_2020_2026/future_premium_placebo.csv.gz",
+      "sha256": "9c618f0da3ca91abd0d2628a4dc7645c890091f4af60d862164088613b3fe57f",
+      "rows": 1147
+    },
+    "random": {
+      "path": "data/premium_snapback_recenter_controls_2020_2026/random.csv.gz",
+      "sha256": "c2035b7cedbc183446cf00f5c6267e15b59a1ba0398d96dd875c7d4cd9d45822",
+      "rows": 1147
+    }
+  },
+  "novelty_comparators": {
+    "psi_2016": {
+      "path": "data/premium_snapback_recenter_comparators_2020_2026/psi_2016.csv.gz",
+      "sha256": "4e413c1eb6d656f541734ba17b2a010aceb50b508005acadd8e2cb8bbbb7e03a",
+      "rows": 878,
+      "outcome_evaluation_allowed": false,
+      "reason": "historical immediate-entry PSI schedule is noncausal under the current T+1s source contract"
+    },
+    "psi_8640": {
+      "path": "data/premium_snapback_recenter_comparators_2020_2026/psi_8640.csv.gz",
+      "sha256": "58fde45f300949b5c55e6e3025be6a9a4fe95451d3476e8ab0c03a83e3d81410",
+      "rows": 709,
+      "outcome_evaluation_allowed": false,
+      "reason": "historical immediate-entry PSI schedule is noncausal under the current T+1s source contract"
+    }
+  },
+  "support": {
+    "train": {
+      "total": 305,
+      "long": 167,
+      "short": 138,
+      "long_share": 0.5475409836065573,
+      "short_share": 0.4524590163934426,
+      "max_month_share": 0.10163934426229508,
+      "month_counts": {
+        "2020-12": 15,
+        "2021-01": 18,
+        "2021-02": 5,
+        "2021-03": 2,
+        "2021-04": 12,
+        "2021-05": 19,
+        "2021-06": 6,
+        "2021-07": 1,
+        "2021-09": 4,
+        "2021-10": 9,
+        "2021-11": 10,
+        "2021-12": 6,
+        "2022-01": 31,
+        "2022-02": 19,
+        "2022-03": 15,
+        "2022-04": 13,
+        "2022-05": 23,
+        "2022-06": 23,
+        "2022-07": 11,
+        "2022-08": 8,
+        "2022-09": 29,
+        "2022-10": 5,
+        "2022-11": 14,
+        "2022-12": 7
+      },
+      "subperiod_counts": {
+        "2020_partial": 15,
+        "2021": 92,
+        "2022": 198
+      }
+    },
+    "test": {
+      "total": 231,
+      "long": 99,
+      "short": 132,
+      "long_share": 0.42857142857142855,
+      "short_share": 0.5714285714285714,
+      "max_month_share": 0.1774891774891775,
+      "month_counts": {
+        "2023-01": 16,
+        "2023-02": 15,
+        "2023-03": 20,
+        "2023-04": 14,
+        "2023-05": 8,
+        "2023-06": 19,
+        "2023-07": 7,
+        "2023-08": 32,
+        "2023-09": 41,
+        "2023-10": 29,
+        "2023-11": 12,
+        "2023-12": 18
+      },
+      "subperiod_counts": {
+        "2023H1": 92,
+        "2023H2": 139
+      }
+    },
+    "eval": {
+      "total": 611,
+      "long": 330,
+      "short": 281,
+      "long_share": 0.5400981996726678,
+      "short_share": 0.45990180032733224,
+      "max_month_share": 0.07364975450081833,
+      "month_counts": {
+        "2024-01": 19,
+        "2024-02": 7,
+        "2024-03": 28,
+        "2024-04": 8,
+        "2024-05": 4,
+        "2024-06": 15,
+        "2024-07": 34,
+        "2024-08": 34,
+        "2024-09": 24,
+        "2024-10": 21,
+        "2024-11": 5,
+        "2024-12": 3,
+        "2025-01": 15,
+        "2025-02": 18,
+        "2025-03": 17,
+        "2025-04": 25,
+        "2025-05": 23,
+        "2025-06": 16,
+        "2025-07": 12,
+        "2025-08": 23,
+        "2025-09": 20,
+        "2025-10": 45,
+        "2025-11": 34,
+        "2025-12": 14,
+        "2026-01": 19,
+        "2026-02": 28,
+        "2026-03": 32,
+        "2026-04": 15,
+        "2026-05": 15,
+        "2026-06": 38
+      },
+      "subperiod_counts": {
+        "2024": 202,
+        "2025": 262,
+        "2026H1": 147
+      }
+    }
+  },
+  "support_passes": false,
+  "novelty": {
+    "psi_2016": {
+      "primary_full": 1147,
+      "other_full": 878,
+      "shared_start": "2020-02-02 23:25:00",
+      "shared_end": "2026-06-26 14:55:00",
+      "primary": 1147,
+      "other": 878,
+      "exact_intersection": 1,
+      "exact_jaccard": 0.0004940711462450593,
+      "within_30m_primary": 64,
+      "within_30m_primary_share": 0.05579773321708806
+    },
+    "psi_8640": {
+      "primary_full": 1147,
+      "other_full": 709,
+      "shared_start": "2020-02-02 23:25:00",
+      "shared_end": "2026-06-26 14:55:00",
+      "primary": 1147,
+      "other": 709,
+      "exact_intersection": 1,
+      "exact_jaccard": 0.0005390835579514825,
+      "within_30m_primary": 61,
+      "within_30m_primary_share": 0.05318221447253706
+    },
+    "CLBR-24": {
+      "primary_full": 1147,
+      "other_full": 277,
+      "shared_start": "2023-06-25 00:00:00",
+      "shared_end": "2024-10-15 00:00:00",
+      "primary": 327,
+      "other": 277,
+      "exact_intersection": 5,
+      "exact_jaccard": 0.008347245409015025,
+      "within_30m_primary": 48,
+      "within_30m_primary_share": 0.14678899082568808
+    },
+    "ICLA-60": {
+      "primary_full": 1147,
+      "other_full": 249,
+      "shared_start": "2023-06-25 00:00:00",
+      "shared_end": "2024-10-15 00:00:00",
+      "primary": 327,
+      "other": 249,
+      "exact_intersection": 3,
+      "exact_jaccard": 0.005235602094240838,
+      "within_30m_primary": 32,
+      "within_30m_primary_share": 0.09785932721712538
+    },
+    "EBLR-60/30": {
+      "primary_full": 1147,
+      "other_full": 266,
+      "shared_start": "2023-06-25 00:00:00",
+      "shared_end": "2024-10-15 00:00:00",
+      "primary": 327,
+      "other": 266,
+      "exact_intersection": 2,
+      "exact_jaccard": 0.00338409475465313,
+      "within_30m_primary": 20,
+      "within_30m_primary_share": 0.06116207951070336
+    }
+  },
+  "novelty_passes": true,
+  "may_open_train": false,
+  "implementation_sha256": "7f12921667e16711a3da188866367ca04ff7f588e82c95ad5b0068422855afd4",
+  "manifest_hash": "cd22c414d395dea4a45a63daf93888e4703560d0e5625e2d3ea64c172acc3fc8"
+}
