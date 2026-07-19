@@ -183,16 +183,34 @@ def validate_activity_frame(frame: pd.DataFrame, *, require_complete_grid: bool 
     )
     if bool(integral_trades.any()):
         raise ValueError("number_of_trades must be integral")
-    tolerance = 1e-7
-    if (frame["taker_buy_quote"] > frame["quote_asset_volume"] + tolerance).any():
+    absolute_tolerance = 1e-7
+    relative_tolerance = 1e-12
+    quote_tolerance = absolute_tolerance + (
+        frame["quote_asset_volume"].abs() * relative_tolerance
+    )
+    if (
+        frame["taker_buy_quote"]
+        > frame["quote_asset_volume"] + quote_tolerance
+    ).any():
         raise ValueError("taker_buy_quote exceeds quote_asset_volume")
-    if (frame["taker_sell_quote"] < -tolerance).any():
+    if (frame["taker_sell_quote"] < -quote_tolerance).any():
         raise ValueError("taker_sell_quote is negative")
-    if (frame["taker_sell_quote"] > frame["quote_asset_volume"] + tolerance).any():
+    if (
+        frame["taker_sell_quote"]
+        > frame["quote_asset_volume"] + quote_tolerance
+    ).any():
         raise ValueError("taker_sell_quote exceeds quote_asset_volume")
-    if ((frame["taker_buy_quote"] + frame["taker_sell_quote"] - frame["quote_asset_volume"]).abs() > tolerance).any():
+    if not np.allclose(
+        frame["taker_buy_quote"] + frame["taker_sell_quote"],
+        frame["quote_asset_volume"],
+        rtol=relative_tolerance,
+        atol=absolute_tolerance,
+    ):
         raise ValueError("taker buy/sell quote does not sum to quote_asset_volume")
-    if ((frame["taker_imbalance"] < -1.0 - tolerance) | (frame["taker_imbalance"] > 1.0 + tolerance)).any():
+    if (
+        (frame["taker_imbalance"] < -1.0 - absolute_tolerance)
+        | (frame["taker_imbalance"] > 1.0 + absolute_tolerance)
+    ).any():
         raise ValueError("taker_imbalance is outside [-1, 1]")
 
 
