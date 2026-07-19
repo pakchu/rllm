@@ -196,6 +196,16 @@ def test_thresholds_are_strictly_prior_and_prefix_independent() -> None:
     )
 
 
+def test_thresholds_require_a_full_28_calendar_day_reference() -> None:
+    btc, eth = _sources()
+    state = prereg.derive_relay_state(btc, eth)
+
+    assert pd.isna(state.loc[prereg.LOOKBACK_BARS - 1, "eth_prior_q95"])
+    assert pd.isna(state.loc[prereg.LOOKBACK_BARS - 1, "btc_prior_q95"])
+    assert state.loc[prereg.LOOKBACK_BARS, "eth_prior_q95"] == pytest.approx(1_200.0)
+    assert state.loc[prereg.LOOKBACK_BARS, "btc_prior_q95"] == pytest.approx(1_200.0)
+
+
 def test_missing_bar_in_either_source_invalidates_whole_12_bar_state() -> None:
     btc, eth = _sources()
     index = 8_100

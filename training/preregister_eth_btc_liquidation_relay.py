@@ -239,10 +239,17 @@ def _rolling_wave(
     positive = cast(pd.Series, output["total"]).where(
         cast(pd.Series, output["valid"]).astype(bool) & output["total"].gt(0.0)
     )
-    output["prior_q95"] = (
+    prior_q95 = (
         positive.shift(1)
         .rolling(LOOKBACK_BARS, min_periods=MIN_POSITIVE_WINDOWS)
         .quantile(REFERENCE_QUANTILE)
+    )
+    full_reference_elapsed = pd.Series(
+        np.arange(len(output)) >= LOOKBACK_BARS,
+        index=output.index,
+    )
+    output["prior_q95"] = cast(pd.Series, prior_q95).where(
+        full_reference_elapsed
     )
     output["severity"] = cast(pd.Series, output["total"]).div(
         cast(pd.Series, output["prior_q95"]).where(output["prior_q95"].gt(0.0))

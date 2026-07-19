@@ -45,8 +45,8 @@ For each completed five-minute bar `t` and each symbol `s`:
 
 4. Define `Q95_s(t)` as the 95th percentile of **positive** 60-minute total
    contract waves in the strictly prior 28 calendar days. The current wave is
-   excluded by shifting one completed bar. Require at least 300 positive prior
-   windows for each symbol.
+   excluded by shifting one completed bar. Require the full 28 calendar days
+   to have elapsed and at least 300 positive prior windows for each symbol.
 5. Define within-symbol severity:
 
    `severity_s(t) = total_60m_s(t) / Q95_s(t)`.
