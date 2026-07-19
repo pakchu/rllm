@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "protocol": {
+    "name": "inverse-collateral liquidation absorption ICLA-60",
+    "outcomes_opened": false,
+    "execution_prices_opened": false,
+    "funding_opened": false,
+    "return_labels_constructed": false,
+    "candidate_count": 1,
+    "candidate_repair_after_outcomes": false,
+    "all_stage_clocks_opened_source_only": true,
+    "later_stage_outcomes_opened": false
+  },
+  "config": {
+    "activity_source": "data/binance_um_activity_5m_2023_2024/BTCUSDT_5m_activity_2023-06-25_2024-10-15_exclusive.csv.gz",
+    "activity_manifest": "results/binance_um_activity_5m_2023_2024_manifest.json",
+    "clocks": "data/inverse_collateral_liquidation_absorption_clocks_2023_2024.csv.gz",
+    "result": "results/inverse_collateral_liquidation_absorption_support_2026-07-19.json"
+  },
+  "sources": {
+    "coinm_liquidation": {
+      "path": "data/binance_coinm_liquidation_snapshot_btc_2023_2024/BTCUSD_PERP_liquidation_5m_2023-06-25_2024-10-14.csv.gz",
+      "source_manifest": "results/binance_coinm_liquidation_snapshot_btc_2023_2024_manifest.json"
+    },
+    "usdm_activity": {
+      "path": "data/binance_um_activity_5m_2023_2024/BTCUSDT_5m_activity_2023-06-25_2024-10-15_exclusive.csv.gz",
+      "sha256": "dde78b3b14ca1689abaacd00e9085a81f63429ee077de7e22d7e108ad4eb697e",
+      "manifest": "results/binance_um_activity_5m_2023_2024_manifest.json",
+      "manifest_sha256": "ee22fa7facc901b4bac383f753391c527eafadd71e521dcfd9187de6f2d4b493"
+    }
+  },
+  "parameters": {
+    "bar_minutes": 5,
+    "wave_bars": 12,
+    "reference_days": 14,
+    "reference_bars": 4032,
+    "minimum_positive_observations": 200,
+    "wave_quantile": 0.9,
+    "minimum_absolute_liquidation_imbalance": 0.6,
+    "absorption_alignment": "fade direction times USD-M taker imbalance > 0",
+    "hold_bars": 12,
+    "nonoverlap": true
+  },
+  "splits": {
+    "train": [
+      "2023-06-25",
+      "2023-10-15"
+    ],
+    "test": [
+      "2023-10-15",
+      "2024-04-15"
+    ],
+    "eval": [
+      "2024-04-15",
+      "2024-10-15"
+    ]
+  },
+  "support": {
+    "train": {
+      "count": 30,
+      "long": 15,
+      "short": 15,
+      "minimum_required": 25,
+      "minimum_per_side": 8,
+      "maximum_month_share": 0.3,
+      "maximum_month_share_allowed": 0.35,
+      "checks": {
+        "minimum_total": true,
+        "minimum_long": true,
+        "minimum_short": true,
+        "maximum_month_share": true
+      },
+      "passes": true
+    },
+    "test": {
+      "count": 111,
+      "long": 69,
+      "short": 42,
+      "minimum_required": 90,
+      "minimum_per_side": 20,
+      "maximum_month_share": 0.1981981981981982,
+      "maximum_month_share_allowed": 0.25,
+      "checks": {
+        "minimum_total": true,
+        "minimum_long": true,
+        "minimum_short": true,
+        "maximum_month_share": true
+      },
+      "passes": true
+    },
+    "eval": {
+      "count": 108,
+      "long": 74,
+      "short": 34,
+      "minimum_required": 90,
+      "minimum_per_side": 20,
+      "maximum_month_share": 0.25,
+      "maximum_month_share_allowed": 0.3,
+      "checks": {
+        "minimum_total": true,
+        "minimum_long": true,
+        "minimum_short": true,
+        "maximum_month_share": true
+      },
+      "passes": true
+    }
+  },
+  "clock_overlap": {
+    "comparison": "CLBR-24 exact entry clock",
+    "clbr_clock_sha256": "df619a5ffc3b849d3c35fc7112641c33105ba76c81cbb7b8c7f3c975fd80bee0",
+    "primary_entries": 249,
+    "clbr_entries": 277,
+    "intersection_entries": 4,
+    "entry_jaccard": 0.007662835249042145,
+    "maximum_entry_jaccard_allowed": 0.1,
+    "passes": true
+  },
+  "clocks": {
+    "path": "data/inverse_collateral_liquidation_absorption_clocks_2023_2024.csv.gz",
+    "sha256": "a55c23a7a0c296b98bb7a8958f713548c4313c0c682f1693c8f8be80b70dd053",
+    "rows": 249,
+    "first_entry": "2023-06-30 17:35:00",
+    "last_exit": "2024-10-07 16:25:00"
+  },
+  "support_passes": true,
+  "manifest_hash": "22b98432da41ca69e01b3c37d2ca2903f959cb2f24a37262d7d248b3e16a0712"
+}
