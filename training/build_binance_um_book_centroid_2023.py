@@ -50,6 +50,9 @@ class Config:
     minimum_last_snapshot_offset_seconds: float = (
         base.Config.minimum_last_snapshot_offset_seconds
     )
+    maximum_invalid_snapshot_fraction: float = 0.0001
+    maximum_invalid_timing_complete_bar_fraction: float = 0.001
+    maximum_daily_invalid_snapshot_fraction: float = 0.01
 
 
 def archive_url(day: date) -> str:
@@ -114,20 +117,10 @@ def read_archive(payload: bytes) -> pd.DataFrame:
     return base.read_archive(payload)
 
 
-def snapshots_to_skew(raw: pd.DataFrame) -> pd.DataFrame:
-    """Convert complete snapshots to directional centroid-skew values.
-
-    The cumulative average quote at each level is notional/depth. Bid averages
-    must move non-increasingly outward, ask averages non-decreasingly outward,
-    and every bid level must stay below its corresponding ask level.
-    """
+def snapshot_quality(raw: pd.DataFrame) -> pd.DataFrame:
+    """Return deterministic contemporaneous algebra checks per snapshot."""
     avg = raw.copy()
     avg["avg_quote"] = avg["notional"] / avg["depth"]
-    if not np.isfinite(avg["avg_quote"].to_numpy(float)).all():
-        raise ValueError("book-depth average quote contains non-finite values")
-    if (avg["avg_quote"] <= 0.0).any():
-        raise ValueError("book-depth average quote contains non-positive values")
-
     pivot = avg.pivot(index="timestamp", columns="percentage", values="avg_quote")
     required = list(base.PERCENTAGES)
     if pivot.reindex(columns=required).isna().any().any():
@@ -136,12 +129,45 @@ def snapshots_to_skew(raw: pd.DataFrame) -> pd.DataFrame:
 
     bid = pivot.loc[:, [-1, -2, -3, -4, -5]].to_numpy(float)
     ask = pivot.loc[:, [1, 2, 3, 4, 5]].to_numpy(float)
-    if (np.diff(bid, axis=1) > 0.0).any():
-        raise ValueError("bid average quote is not non-increasing outward")
-    if (np.diff(ask, axis=1) < 0.0).any():
-        raise ValueError("ask average quote is not non-decreasing outward")
-    if (bid >= ask).any():
-        raise ValueError("book-depth average quotes are crossed")
+    finite = np.isfinite(bid).all(axis=1) & np.isfinite(ask).all(axis=1)
+    positive = (bid > 0.0).all(axis=1) & (ask > 0.0).all(axis=1)
+    bid_monotonic = ~(np.diff(bid, axis=1) > 0.0).any(axis=1)
+    ask_monotonic = ~(np.diff(ask, axis=1) < 0.0).any(axis=1)
+    uncrossed = ~(bid >= ask).any(axis=1)
+    valid = finite & positive & bid_monotonic & ask_monotonic & uncrossed
+    reason = np.select(
+        [~finite, ~positive, ~bid_monotonic, ~ask_monotonic, ~uncrossed],
+        [
+            "nonfinite_average_quote",
+            "nonpositive_average_quote",
+            "bid_average_not_monotonic",
+            "ask_average_not_monotonic",
+            "crossed_average_quotes",
+        ],
+        default="ok",
+    )
+    return pd.DataFrame(
+        {"timestamp": pivot.index, "centroid_valid": valid, "centroid_invalid_reason": reason}
+    ).reset_index(drop=True)
+
+
+def snapshots_to_skew(raw: pd.DataFrame) -> pd.DataFrame:
+    """Convert algebraically valid snapshots to directional centroid skew."""
+    quality = snapshot_quality(raw)
+    if not quality["centroid_valid"].all():
+        reason = str(quality.loc[~quality["centroid_valid"], "centroid_invalid_reason"].iloc[0])
+        messages = {
+            "nonfinite_average_quote": "book-depth average quote contains non-finite values",
+            "nonpositive_average_quote": "book-depth average quote contains non-positive values",
+            "bid_average_not_monotonic": "bid average quote is not non-increasing outward",
+            "ask_average_not_monotonic": "ask average quote is not non-decreasing outward",
+            "crossed_average_quotes": "book-depth average quotes are crossed",
+        }
+        raise ValueError(messages[reason])
+
+    avg = raw.copy()
+    avg["avg_quote"] = avg["notional"] / avg["depth"]
+    pivot = avg.pivot(index="timestamp", columns="percentage", values="avg_quote")
 
     out = pd.DataFrame({"timestamp": pivot.index})
     for distance in SKEW_DISTANCES:
@@ -164,7 +190,18 @@ def aggregate_five_minute(raw: pd.DataFrame, cfg: Config) -> pd.DataFrame:
         ["date", "snapshot_count", "first_offset_seconds", "last_offset_seconds"]
     ].copy()
 
-    skew = snapshots_to_skew(raw)
+    quality = snapshot_quality(raw)
+    quality["date"] = quality["timestamp"].dt.floor("5min")
+    invalid_dates = set(
+        quality.loc[~quality["centroid_valid"], "date"].tolist()
+    )
+    accepted_timing = accepted_timing.loc[
+        ~accepted_timing["date"].isin(invalid_dates)
+    ].reset_index(drop=True)
+    if accepted_timing.empty:
+        return pd.DataFrame()
+    raw_dates = raw["timestamp"].dt.floor("5min")
+    skew = snapshots_to_skew(raw.loc[~raw_dates.isin(invalid_dates)].copy())
     work = skew.copy()
     work["date"] = work["timestamp"].dt.floor("5min")
     accepted_dates = set(accepted_timing["date"].tolist())
@@ -207,6 +244,8 @@ def _empty_day(day: date) -> dict[str, Any]:
         "date": day.isoformat(),
         "available": False,
         "reason": "official archive or checksum not published",
+        "centroid_invalid_snapshot_count": 0,
+        "centroid_invalid_timing_complete_bar_count": 0,
         "frame": pd.DataFrame(),
     }
 
@@ -243,7 +282,15 @@ def process_day(
     day_end = day_start + pd.Timedelta(days=1)
     if raw["timestamp"].lt(day_start).any() or raw["timestamp"].ge(day_end).any():
         raise ValueError(f"USD-M BTCUSDT archive {day} contains another UTC date")
+    timing = base.aggregate_five_minute(raw, _base_timing_config(cfg))
+    quality = snapshot_quality(raw)
+    invalid_timestamps = quality.loc[~quality["centroid_valid"], "timestamp"]
+    invalid_dates = set(invalid_timestamps.dt.floor("5min").tolist())
+    timing_dates = set(timing["date"].tolist())
+    invalid_timing_complete_bars = len(invalid_dates & timing_dates)
     bars = aggregate_five_minute(raw, cfg)
+    if len(bars) != len(timing) - invalid_timing_complete_bars:
+        raise ValueError("centroid quarantine changed an unexpected five-minute bar")
     result = {
         "venue": VENUE,
         "symbol": SYMBOL,
@@ -252,6 +299,11 @@ def process_day(
         "archive_sha256": archive_hash,
         "raw_rows": int(len(raw)),
         "snapshot_count": int(raw["timestamp"].nunique()),
+        "reference_timing_complete_bar_count": int(len(timing)),
+        "centroid_invalid_snapshot_count": int(len(invalid_timestamps)),
+        "centroid_invalid_timing_complete_bar_count": int(
+            invalid_timing_complete_bars
+        ),
         "accepted_bar_count": int(len(bars)),
         "first_timestamp": str(raw["timestamp"].min()),
         "last_timestamp": str(raw["timestamp"].max()),
@@ -285,7 +337,73 @@ def _validate_config(cfg: Config) -> tuple[date, date]:
         raise ValueError("first snapshot offset bound is invalid")
     if not 0.0 <= base_cfg.minimum_last_snapshot_offset_seconds < 300.0:
         raise ValueError("last snapshot offset bound is invalid")
+    for value, name in (
+        (cfg.maximum_invalid_snapshot_fraction, "invalid snapshot fraction"),
+        (
+            cfg.maximum_invalid_timing_complete_bar_fraction,
+            "invalid timing-complete bar fraction",
+        ),
+        (
+            cfg.maximum_daily_invalid_snapshot_fraction,
+            "daily invalid snapshot fraction",
+        ),
+    ):
+        if not 0.0 <= value < 1.0:
+            raise ValueError(f"maximum {name} must be in [0, 1)")
     return start, end
+
+
+def source_quality_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
+    available = [item for item in records if item.get("available")]
+    total_snapshots = sum(int(item["snapshot_count"]) for item in available)
+    invalid_snapshots = sum(
+        int(item["centroid_invalid_snapshot_count"]) for item in available
+    )
+    timing_complete_bars = sum(
+        int(item["reference_timing_complete_bar_count"]) for item in available
+    )
+    invalid_bars = sum(
+        int(item["centroid_invalid_timing_complete_bar_count"]) for item in available
+    )
+    if total_snapshots <= 0 or timing_complete_bars <= 0:
+        raise ValueError("RNCM source-quality summary has no verified support")
+    daily = {
+        str(item["date"]): (
+            float(item["centroid_invalid_snapshot_count"]) / float(item["snapshot_count"])
+            if int(item["snapshot_count"]) else 0.0
+        )
+        for item in available
+    }
+    return {
+        "verified_snapshot_count": total_snapshots,
+        "invalid_snapshot_count": invalid_snapshots,
+        "invalid_snapshot_fraction": invalid_snapshots / total_snapshots,
+        "timing_complete_bar_count_before_centroid_quarantine": timing_complete_bars,
+        "quarantined_timing_complete_bar_count": invalid_bars,
+        "quarantined_timing_complete_bar_fraction": invalid_bars / timing_complete_bars,
+        "maximum_daily_invalid_snapshot_fraction": max(daily.values(), default=0.0),
+        "daily_invalid_snapshot_fraction_nonzero": {
+            day: value for day, value in daily.items() if value > 0.0
+        },
+    }
+
+
+def enforce_source_quality(summary: dict[str, Any], cfg: Config) -> None:
+    failures: list[str] = []
+    if summary["invalid_snapshot_fraction"] > cfg.maximum_invalid_snapshot_fraction:
+        failures.append("invalid snapshot fraction")
+    if (
+        summary["quarantined_timing_complete_bar_fraction"]
+        > cfg.maximum_invalid_timing_complete_bar_fraction
+    ):
+        failures.append("quarantined timing-complete bar fraction")
+    if (
+        summary["maximum_daily_invalid_snapshot_fraction"]
+        > cfg.maximum_daily_invalid_snapshot_fraction
+    ):
+        failures.append("daily invalid snapshot fraction")
+    if failures:
+        raise ValueError("RNCM frozen source-quality gate failed: " + ", ".join(failures))
 
 
 def _feature_distributions(panel: pd.DataFrame) -> dict[str, dict[str, float]]:
@@ -363,6 +481,8 @@ def build(cfg: Config) -> dict[str, Any]:
     base._write_gzip_csv(panel, output)
     file_hash = hashlib.sha256(output.read_bytes()).hexdigest()
     records = [_public_record(item) for item in results]
+    quality_summary = source_quality_summary(records)
+    enforce_source_quality(quality_summary, cfg)
     missing = [item["date"] for item in records if not item["available"]]
     manifest = {
         "protocol": {
@@ -377,7 +497,12 @@ def build(cfg: Config) -> dict[str, Any]:
                 "Archive URL, checksum, and raw fields are official Binance Vision data; "
                 "the notional/depth centroid-skew transformation is research inference."
             ),
-            "source_availability": "bar features are available at bar open + 5 minutes",
+            "historical_archive_publication": "daily files are published the next day",
+            "research_feature_observation_time": (
+                "bar open + 5 minutes, conditional on reconstructing equivalent "
+                "percentage bands from a correct live order-book stream"
+            ),
+            "live_parity_required_for_production": True,
             "price_or_return_inputs_opened": False,
         },
         "config": asdict(cfg),
@@ -395,6 +520,7 @@ def build(cfg: Config) -> dict[str, Any]:
             "bar_statistics": ["median", "net", "path", "efficiency"],
         },
         "missing_archive_dates": missing,
+        "source_quality": quality_summary,
         "archives": records,
         "file": {
             "path": str(output),
