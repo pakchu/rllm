@@ -1,0 +1,194 @@
+{
+  "protocol_version": "london_cash_lead_release_support_v1",
+  "protocol": {
+    "policy_id": "LCLR-24",
+    "support_only": true,
+    "outcomes_opened": false,
+    "source": {
+      "coinbase": "data/coinbase_btcusd_5m_2020_2022.csv.gz",
+      "coinbase_sha256": "07f7a3bddecbbc3724994645b9ac1cd0f391378e0feed421f2c8caa145aab77b",
+      "binance": "data/coinbase_leadership_binance_5m_2020_2022.csv.gz",
+      "binance_sha256": "1a06f1f4dbbdafaf885fb03844426eed5d5bad4aa206fa72b88db2cbd98bef94",
+      "source_manifest": "results/coinbase_spot_leadership_source_manifest_2026-07-16.json",
+      "source_manifest_sha256": "3af321fdcafd0fe6680c4583341b6508124a979fefbf489f8d3376c7ec78a269",
+      "selection_end_exclusive": "2023-01-01",
+      "funding_loaded": false,
+      "post_window_execution_or_outcome_bars_loaded": false
+    },
+    "clock": {
+      "timezone": "Europe/London",
+      "eligible_weekdays": [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday"
+      ],
+      "source_window": "[15:00,16:00) local, twelve completed five-minute bars",
+      "decision": "16:00 local after the 15:55 source bar closes",
+      "entry": "1 complete five-minute latency bar later",
+      "hold_bars": 24
+    },
+    "feature": {
+      "cash_return": "log Coinbase last close / first open across the source window",
+      "perp_return": "log Binance last close / first open across the source window",
+      "cash_efficiency": "abs cash return / sum abs Coinbase partition returns",
+      "relative_return": "cash return - perp return",
+      "cash_quote_share": "Coinbase volume*close / (Coinbase volume*close + Binance quote volume)",
+      "final_cash_return": "sum of the final 3 Coinbase partition returns",
+      "strict_prior_reference": "last 126 earlier source windows; incomplete values remain NaN and are ignored; require 63 finite prior values; current row excluded",
+      "mandatory": "same-direction cash/perp move and cash farther in the cash direction",
+      "optional_votes": [
+        "abs relative return >= prior q0.5",
+        "cash efficiency >= prior q0.5",
+        "cash quote share >= prior q0.5",
+        "final 15-minute cash return has the full-window sign"
+      ],
+      "optional_votes_required": 2,
+      "side": "sign of completed Coinbase window return"
+    },
+    "support_gate": {
+      "minimum_total": 180,
+      "minimum_train_2020_2021": 110,
+      "minimum_each_train_year": 45,
+      "minimum_test_2022": 55,
+      "minimum_each_test_half": 22,
+      "minimum_each_quarter": 8,
+      "minimum_side_share_all_train_test": 0.3,
+      "maximum_quarter_share": 0.18,
+      "failure_action": "reject before post-window outcomes; no threshold/hold repair"
+    },
+    "later_evaluation_contract": {
+      "train": [
+        "2020-01-01",
+        "2022-01-01"
+      ],
+      "test": [
+        "2022-01-01",
+        "2023-01-01"
+      ],
+      "sealed_sequential": [
+        "2023",
+        "2024",
+        "2025",
+        "2026_ytd"
+      ],
+      "leverage": 0.5,
+      "base_cost_notional_per_side": 0.0006,
+      "stress_cost_notional_per_side": 0.001,
+      "funding": "interior exact-time symmetric; exact entry/exit credits dropped and debits retained",
+      "cagr": "full split wall clock including warmup and idle cash",
+      "strict_mdd": "global/pre-entry HWM, entry cost, exact funding, every held 5m path, virtual adverse exit fee, and actual exit",
+      "primary_gates_each_train_and_test": {
+        "absolute_return_positive": true,
+        "cagr_to_strict_mdd_min": 3.0,
+        "strict_mdd_pct_max": 15.0,
+        "stress_cost_absolute_return_positive": true,
+        "one_bar_delayed_absolute_return_positive": true,
+        "mean_gross_underlying_bp_min": 20.0,
+        "weekly_cluster_signflip_p_max": 0.1
+      },
+      "mechanism_controls": [
+        "exact side flip",
+        "cash-only rule without mandatory cross-venue lead",
+        "same rule on a separately prior-normalized 12:00-13:00 London window",
+        "weekend 15:00-16:00 London clock"
+      ]
+    },
+    "frozen_artifacts": {
+      "source_decision": "docs/london-cash-lead-release-mechanism-decision-2026-07-20.md",
+      "source_decision_sha256": "1183980eb392687d668af0c5a9d5a2631729952418de94fff54f670f25a4521c",
+      "preregistration_document": "docs/london-cash-lead-release-preregistration-2026-07-20.md",
+      "preregistration_document_sha256": "fd996475dba37953b1abc0ec29cfe9edbe7d33b91d61d7880f4e0c7ea9330c65",
+      "preregistration_source": "training/preregister_london_cash_lead_release.py",
+      "preregistration_source_sha256": "d8b25131fdb375b0c327498238c8c8921eaf623d04cf9c363f0c2ffc78f025ac"
+    },
+    "research_history_boundary": "candidate-level freeze only; unrelated repository research has seen the market history, but no LCLR event incidence or post-window outcome was used to choose this singleton"
+  },
+  "protocol_hash": "931d59762eb27c9cdfee1237e791d6b2bb550cdd38b74718ab5801124232b37c",
+  "outcomes_opened": false,
+  "source_loaded": true,
+  "source_audit": {
+    "coinbase_rows_parsed": 9396,
+    "binance_rows_parsed": 9396,
+    "coinbase_outside_window_non_date_rows_parsed": 0,
+    "binance_outside_window_non_date_rows_parsed": 0,
+    "funding_rows_loaded": 0,
+    "post_window_execution_or_outcome_rows_loaded": 0,
+    "rows_at_or_after_2023_loaded": 0
+  },
+  "window_support": {
+    "windows": 783,
+    "complete_windows": 783,
+    "incomplete_windows": 0,
+    "threshold_ready_windows": 720,
+    "candidate_windows": 325
+  },
+  "support_gate": {
+    "counts": {
+      "total_2020_2022": 325,
+      "train_2020_2021": 209,
+      "train_2020": 81,
+      "train_2021": 128,
+      "test_2022": 116,
+      "test_2022_h1": 60,
+      "test_2022_h2": 56
+    },
+    "side_shares": {
+      "all": {
+        "long": 0.5046153846153846,
+        "short": 0.49538461538461537
+      },
+      "train": {
+        "long": 0.5215311004784688,
+        "short": 0.4784688995215311
+      },
+      "test": {
+        "long": 0.47413793103448276,
+        "short": 0.5258620689655172
+      }
+    },
+    "quarter_counts": {
+      "2020Q1": 1,
+      "2020Q2": 26,
+      "2020Q3": 29,
+      "2020Q4": 25,
+      "2021Q1": 30,
+      "2021Q2": 29,
+      "2021Q3": 31,
+      "2021Q4": 38,
+      "2022Q1": 33,
+      "2022Q2": 27,
+      "2022Q3": 24,
+      "2022Q4": 32
+    },
+    "maximum_quarter_share": 0.11692307692307692,
+    "checks": {
+      "total": true,
+      "train_total": true,
+      "train_2020": true,
+      "train_2021": true,
+      "test_total": true,
+      "test_h1": true,
+      "test_h2": true,
+      "each_quarter": false,
+      "side_all": true,
+      "side_train": true,
+      "side_test": true,
+      "quarter_concentration": true
+    },
+    "passed": false
+  },
+  "event_clock_hash": "2b864164bbab03dcb32c35846dcdcdbd7097e0289ceac2cc3bc8af30259637d1",
+  "event_clock_written": false,
+  "sealed": [
+    "all post-window 2020-2022 outcomes",
+    "2023",
+    "2024",
+    "2025",
+    "2026_ytd"
+  ],
+  "failure_action": "reject before outcomes; no parameter, vote, latency, or hold repair",
+  "result_hash": "8673c93acc8a3624895069298dc1073046ffbc85b909344b96f14c0d443f466b",
+  "created_at": "2026-07-19T18:13:28.792788+00:00"
+}
