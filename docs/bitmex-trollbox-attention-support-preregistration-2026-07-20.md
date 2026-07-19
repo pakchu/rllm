@@ -25,6 +25,13 @@ incidence, text semantic, or market outcome had been calculated. Pagination,
 selected bytes, hashes, availability time, and every support rule are
 unchanged.
 
+Before completion, final aggregation was also changed from retaining every
+five-minute participant counter in memory to a single-bucket streaming writer.
+The writer validates and hashes the same increasing-ID private stream, emits
+the same complete five-minute grid, and atomically replaces the aggregate only
+after success. This changes resource usage and crash safety only, not source
+membership or any research rule.
+
 Increasing IDs can contain small raw-date regressions. The downloader therefore
 assigns `available_date = cumulative_max(raw_date)` in increasing-ID order. A
 late row is delayed, never advanced. Five-minute bars and this support clock use

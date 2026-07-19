@@ -220,6 +220,26 @@ def test_short_page_failure_does_not_leave_private_page(tmp_path: Path) -> None:
     assert list(Path(cfg.page_dir).glob("page_*.jsonl.gz")) == []
 
 
+def test_aggregate_write_is_atomic_on_stream_failure(tmp_path: Path) -> None:
+    output = tmp_path / "aggregate.csv.gz"
+    output.write_bytes(b"previous-complete-output")
+
+    def broken_rows():
+        yield {
+            "date": "2020-01-01 00:00:00",
+            "message_count": 0,
+            "unique_participant_count": 0,
+            "maximum_participant_share": 0.0,
+            "character_count": 0,
+        }
+        raise RuntimeError("stream failed")
+
+    with pytest.raises(RuntimeError, match="stream failed"):
+        trollbox._write_aggregate(output, broken_rows())
+    assert output.read_bytes() == b"previous-complete-output"
+    assert not output.with_suffix(output.suffix + ".tmp").exists()
+
+
 class _HTTPResponse:
     def __init__(self, payload: bytes) -> None:
         self.payload = payload

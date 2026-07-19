@@ -35,7 +35,7 @@ SOURCE_DECISION_SHA256 = (
 )
 SOURCE_DOWNLOADER = Path("training/download_bitmex_trollbox_attention.py")
 SOURCE_DOWNLOADER_SHA256 = (
-    "295fbce5261447a367533f04b510addef0839012efa3b93af83693e35a2c5e1b"
+    "da327d04c065df2e8117a96356fc9b48698a90b6821d1a88e0155218f19457af"
 )
 PREREGISTRATION_DOCUMENT = Path(
     "docs/bitmex-trollbox-attention-support-preregistration-2026-07-20.md"
