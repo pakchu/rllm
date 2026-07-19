@@ -138,6 +138,34 @@ def test_completed_path_features_use_strictly_prior_center(monkeypatch: pytest.M
     )
 
 
+def test_reference_thresholds_require_full_calendar_windows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(prereg, "PATH_MINUTES", 6)
+    monkeypatch.setattr(prereg, "DECISION_MINUTES", 2)
+    monkeypatch.setattr(prereg, "REFERENCE_MINUTES", 20)
+    monkeypatch.setattr(prereg, "MIN_REFERENCE_MINUTES", 19)
+    features = prereg._completed_path_features(_source(80))
+    before = features.loc[
+        features["decision_time"].eq(pd.Timestamp("2020-01-01 00:24")),
+        "reference_complete",
+    ].iloc[0]
+    first_full = features.loc[
+        features["decision_time"].eq(pd.Timestamp("2020-01-01 00:26")),
+        "reference_complete",
+    ].iloc[0]
+    assert not bool(before)
+    assert bool(first_full)
+
+    monkeypatch.setattr(prereg, "PATH_DECISIONS", 3)
+    monkeypatch.setattr(prereg, "REFERENCE_DECISIONS", 10)
+    monkeypatch.setattr(prereg, "MIN_REFERENCE_DECISIONS", 9)
+    state = _state(20)
+    thresholded = prereg._add_prior_thresholds(state)
+    assert not bool(thresholded.loc[11, "feature_reference_complete"])
+    assert bool(thresholded.loc[12, "feature_reference_complete"])
+
+
 def test_candidate_direction_requires_one_sided_excursion_and_recenter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
