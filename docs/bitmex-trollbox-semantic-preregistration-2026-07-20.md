@@ -99,6 +99,11 @@ messages from one participant, balanced participants, one-participant evidence,
 and exact 2:1 consensus. The private mode is disabled until the synthetic
 artifact passes and its file SHA-256 is pinned in code.
 
+Revision v3 passed all 13 model/guard controls and all five numeric controls.
+The passing artifact is pinned by file SHA-256; the two earlier injection
+failures remain separately committed. This pass opens only private semantic
+support counting. It does not permit BTC price, funding, outcome, or PnL data.
+
 ## Frozen directional-support gate
 
 From the 5,417 attention windows, clear event labels must satisfy all:

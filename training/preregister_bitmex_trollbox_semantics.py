@@ -87,7 +87,9 @@ PREREGISTRATION_DOCUMENT = Path(
 PREREGISTRATION_SOURCE = Path(
     "training/preregister_bitmex_trollbox_semantics.py"
 )
-SYNTHETIC_RESULT_FILE_SHA256 = "pending_synthetic_commit"
+SYNTHETIC_RESULT_FILE_SHA256 = (
+    "c34abd3e9e38d52c8e98a75793b5c215e70021c7c451ce3e832ddc9e43539c5e"
+)
 
 PROMPT = (
     "Classify one participant's expressed stance toward the future BTC price. "
