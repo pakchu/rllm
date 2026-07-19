@@ -15,6 +15,19 @@ timestamps, the 500-row cap, and forward pagination behavior. Six returned
 message examples were visible during that probe, but no subsequent BTC outcome
 was joined or inspected.
 
+### Pre-incidence source-clock correction
+
+A later source-contract smoke test, still before the complete history or any
+attention incidence was opened, found that increasing chat IDs can contain
+small raw `date` regressions (1.625 seconds in the observed page). The frozen
+downloader therefore does not pretend raw timestamps are monotonic and does
+not sort text backward in time. It assigns each increasing ID an
+`available_date` equal to the cumulative maximum raw date seen so far. All
+five-minute aggregation and later event clocks use this conservative,
+nondecreasing availability clock. A message whose raw date arrives behind the
+watermark is delayed, never advanced. The manifest records the observed raw
+regression magnitude.
+
 ## Why this uses the LLM where it is strong
 
 The numeric layer will do only arithmetic it can audit reliably:
@@ -97,7 +110,8 @@ independent source.
 1. Commit this decision before fetching the complete pre-2023 chat prefix or
    calculating attention incidence.
 2. Freeze a resumable private downloader that streams English messages,
-   validates monotonic IDs/timestamps, hashes the raw canonical stream, and
+   validates monotonic IDs and a causal nondecreasing availability clock,
+   records raw timestamp regressions, hashes the private canonical stream, and
    emits privacy-preserving five-minute aggregates.
 3. Freeze an **attention-only** source-support gate before reading complete
    source incidence. No message semantics or market outcome may enter this
