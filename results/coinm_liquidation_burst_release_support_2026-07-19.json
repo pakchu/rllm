@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "protocol": {
+    "name": "COIN-M liquidation burst release CLBR-24",
+    "outcomes_opened": false,
+    "candidate_count": 1,
+    "candidate_repair_after_train": false,
+    "test_and_eval_clocks_opened_source_only": true,
+    "market_prices_opened": false
+  },
+  "config": {
+    "source": "data/binance_coinm_liquidation_snapshot_btc_2023_2024/BTCUSD_PERP_liquidation_5m_2023-06-25_2024-10-14.csv.gz",
+    "source_manifest": "results/binance_coinm_liquidation_snapshot_btc_2023_2024_manifest.json",
+    "clocks": "data/coinm_liquidation_burst_release_clocks_2023_2024.csv.gz",
+    "result": "results/coinm_liquidation_burst_release_support_2026-07-19.json"
+  },
+  "source": {
+    "path": "data/binance_coinm_liquidation_snapshot_btc_2023_2024/BTCUSD_PERP_liquidation_5m_2023-06-25_2024-10-14.csv.gz",
+    "sha256": "a23b93d8567a589e9f045ae4a56393e493a8da2748c5a051804c9bdf9388ccc3",
+    "manifest": "results/binance_coinm_liquidation_snapshot_btc_2023_2024_manifest.json",
+    "manifest_sha256": "5d78686e7c40d69261f09bc77e27ff734f682abba4abb95c2291e8282380053e"
+  },
+  "parameters": {
+    "rolling_days": 14,
+    "rolling_bars": 4032,
+    "minimum_positive_observations": 200,
+    "burst_quantile": 0.975,
+    "minimum_event_count": 3,
+    "minimum_absolute_imbalance": 0.8,
+    "release_ratio": 0.25,
+    "maximum_counterflow_ratio": 0.1,
+    "hold_bars": 24,
+    "bar_minutes": 5,
+    "stop_buffer_bps": 25.0
+  },
+  "splits": {
+    "train": [
+      "2023-06-25",
+      "2023-10-15"
+    ],
+    "test": [
+      "2023-10-15",
+      "2024-04-15"
+    ],
+    "eval": [
+      "2024-04-15",
+      "2024-10-15"
+    ]
+  },
+  "support": {
+    "train": {
+      "count": 40,
+      "long": 29,
+      "short": 11,
+      "minimum_required": 40,
+      "passes": true
+    },
+    "test": {
+      "count": 128,
+      "long": 82,
+      "short": 46,
+      "minimum_required": 100,
+      "passes": true
+    },
+    "eval": {
+      "count": 109,
+      "long": 77,
+      "short": 32,
+      "minimum_required": 100,
+      "passes": true
+    }
+  },
+  "clocks": {
+    "path": "data/coinm_liquidation_burst_release_clocks_2023_2024.csv.gz",
+    "sha256": "df619a5ffc3b849d3c35fc7112641c33105ba76c81cbb7b8c7f3c975fd80bee0",
+    "rows": 277,
+    "first_entry": "2023-06-30 14:00:00",
+    "last_exit": "2024-10-10 19:10:00"
+  },
+  "manifest_hash": "114071968cfba0bb40cf7fa44b283a3b0312d5de6551dec549999d80b8cbb27b"
+}
