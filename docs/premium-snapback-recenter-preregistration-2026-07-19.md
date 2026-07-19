@@ -119,21 +119,25 @@ minutes of a comparator must be at most 0.20 against:
 
 Failing support or novelty rejects the candidate before any BTC outcome opens.
 
-## Frozen controls
+## Frozen outcome controls
 
 1. same clocks, direction flipped;
 2. simple one-sided premium excursion without path/recenter requirements;
 3. high-energy alternating path without terminal recenter;
-4. prior PSI-2016 single-bar comparator, reconstructed with its frozen
-   signal-immediate entry, 96-bar hold and global non-overlap;
-5. prior PSI-8640 single-bar comparator under the same frozen PSI execution;
-6. primary delayed another five minutes;
-7. future-premium placebo shifted 40 minutes earlier so the decisive path is
+4. primary delayed another five minutes;
+5. future-premium placebo shifted 40 minutes earlier so the decisive path is
    noncausal and can only veto;
-8. deterministic random clocks preserving split, month, side and count.
+6. deterministic random clocks preserving split, month, side and count.
 
 Controls must be frozen before train outcome parsing. No control may replace a
 failed primary.
+
+The prior PSI-2016 and PSI-8640 schedules are separate **novelty-only historical
+comparators**. They reproduce the earlier study's signal-immediate entry,
+96-bar hold and global non-overlap exactly. Under the current source contract
+their entries precede `T+1s` availability, so they are intentionally forbidden
+from any BTC outcome/control evaluation. They may be used only to measure clock
+overlap and cannot support or veto PSR profitability.
 
 ## Later strict outcome gate
 
