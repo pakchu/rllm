@@ -1,0 +1,232 @@
+{
+  "protocol": {
+    "policy_id": "RNCM-72",
+    "support_only": true,
+    "outcomes_opened": false,
+    "external_ohlc_funding_return_or_equity_loaded": false,
+    "selection_end_exclusive": "2024-01-01 00:00:00",
+    "feature": "30m migration of five-minute median cumulative depth-weighted average-quote skew at radial bands 2..5, after strictly-prior rolling OLS removal of the inner-band quote-center move",
+    "signal": "all four residual migrations share sign, residual magnitude is at least 25% of raw migration, the 30m quote-center move is no larger than its strictly-prior rolling median, and absolute median residual crosses a strictly-prior rolling threshold from below",
+    "side": "positive residual migration long; negative short",
+    "clock": "source available at completed 5m bar; enter next 5m open; exit after 72 completed 5m bars",
+    "scheduler": "one position; four quarter-contained schedules; non-overlap state resets at each known UTC quarter boundary",
+    "source_gap_policy": "signal requires source_complete for t-6..t; future source gaps never cancel a selected event",
+    "selection": "try quantiles strictest-first and select the first passing frozen incidence/balance/concentration gates; no fallback after novelty",
+    "sealed_windows": [
+      "test2024",
+      "eval2025",
+      "recent2026"
+    ]
+  },
+  "config": {
+    "support_output": "results/residual_notional_centroid_migration_support_2026-07-20.json",
+    "event_clock_output": "results/residual_notional_centroid_migration_event_clock_2026-07-20.json",
+    "migration_bars": 6,
+    "baseline_window_bars": 8640,
+    "baseline_minimum_bars": 4032,
+    "threshold_quantiles": [
+      0.995,
+      0.99,
+      0.985,
+      0.975
+    ],
+    "quiet_center_quantile": 0.5,
+    "minimum_residual_dominance": 0.25,
+    "hold_bars": 72,
+    "minimum_nonoverlap_total": 120,
+    "minimum_nonoverlap_per_half": 45,
+    "minimum_nonoverlap_per_quarter": 20,
+    "minimum_side_share": 0.35,
+    "maximum_quarter_share": 0.4,
+    "overlap_tolerance_bars": 12,
+    "maximum_comparator_jaccard": 0.35,
+    "maximum_synthetic_false_events": 0
+  },
+  "synthetic_control": {
+    "mechanism": "five fixed absolute-book nulls spanning smooth, tick-rounded, stepped, missing-row, asymmetric, and discrete-ladder geometry; only the reference anchor driving percentage bands moves",
+    "maximum_allowed_nonoverlap_events_each_quantile": 0,
+    "scenarios": {
+      "smooth_symmetric": {
+        "0.995": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.99": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.985": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.975": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        }
+      },
+      "tick_rounded_anchor": {
+        "0.995": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.99": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.985": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.975": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        }
+      },
+      "stepped_asymmetric": {
+        "0.995": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.99": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.985": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.975": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        }
+      },
+      "missing_rows": {
+        "0.995": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.99": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.985": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.975": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        }
+      },
+      "discrete_asymmetric_ladder": {
+        "0.995": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.99": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.985": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        },
+        "0.975": {
+          "raw_events": 0,
+          "nonoverlap_events": 0
+        }
+      }
+    },
+    "passes": true
+  },
+  "source_loaded": true,
+  "source": {
+    "panel_sha256": "c4053ce27d28bebda4137349192b1a940360231469f63edc32bacabb2ce54131",
+    "manifest_sha256": "d8237c4562d33c12eff162776f723cc5fc94649b69d26a6230e16fc38c52bba1",
+    "rows": 105120,
+    "source_complete_rows": 101956,
+    "range_start": "2023-01-01 00:00:00",
+    "range_end": "2023-12-31 23:55:00"
+  },
+  "threshold_trials": [
+    {
+      "quantile": 0.995,
+      "raw_event_count": 5,
+      "support": {
+        "nonoverlap_total": 5,
+        "by_quarter": {
+          "q1": 1,
+          "q2": 2,
+          "q3": 0,
+          "q4": 2
+        },
+        "h1": 3,
+        "h2": 2,
+        "long_share": 0.6,
+        "short_share": 0.4,
+        "maximum_quarter_share": 0.4,
+        "passes_incidence": false
+      }
+    },
+    {
+      "quantile": 0.99,
+      "raw_event_count": 16,
+      "support": {
+        "nonoverlap_total": 16,
+        "by_quarter": {
+          "q1": 4,
+          "q2": 3,
+          "q3": 4,
+          "q4": 5
+        },
+        "h1": 7,
+        "h2": 9,
+        "long_share": 0.4375,
+        "short_share": 0.5625,
+        "maximum_quarter_share": 0.3125,
+        "passes_incidence": false
+      }
+    },
+    {
+      "quantile": 0.985,
+      "raw_event_count": 32,
+      "support": {
+        "nonoverlap_total": 31,
+        "by_quarter": {
+          "q1": 8,
+          "q2": 6,
+          "q3": 6,
+          "q4": 11
+        },
+        "h1": 14,
+        "h2": 17,
+        "long_share": 0.5483870967741935,
+        "short_share": 0.45161290322580644,
+        "maximum_quarter_share": 0.3548387096774194,
+        "passes_incidence": false
+      }
+    },
+    {
+      "quantile": 0.975,
+      "raw_event_count": 45,
+      "support": {
+        "nonoverlap_total": 39,
+        "by_quarter": {
+          "q1": 10,
+          "q2": 7,
+          "q3": 8,
+          "q4": 14
+        },
+        "h1": 17,
+        "h2": 22,
+        "long_share": 0.5641025641025641,
+        "short_share": 0.4358974358974359,
+        "maximum_quarter_share": 0.358974358974359,
+        "passes_incidence": false
+      }
+    }
+  ],
+  "selected_quantile": null,
+  "all_support_gates_pass": false,
+  "rejection_reason": "no frozen quantile passed incidence"
+}
