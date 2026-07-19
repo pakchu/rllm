@@ -40,14 +40,20 @@ EXTERNAL_COMPARATORS = {
     "CLBR-24": (
         Path("data/coinm_liquidation_burst_release_clocks_2023_2024.csv.gz"),
         "df619a5ffc3b849d3c35fc7112641c33105ba76c81cbb7b8c7f3c975fd80bee0",
+        "2023-06-25",
+        "2024-10-15",
     ),
     "ICLA-60": (
         Path("data/inverse_collateral_liquidation_absorption_clocks_2023_2024.csv.gz"),
         "a55c23a7a0c296b98bb7a8958f713548c4313c0c682f1693c8f8be80b70dd053",
+        "2023-06-25",
+        "2024-10-15",
     ),
     "EBLR-60/30": (
         Path("data/eth_btc_liquidation_relay_clocks_2023_2024.csv.gz"),
         "b4b35a0e9ae0cf26bf08df67b5c2fc832393c638c97f5b91a86894ee693b430e",
+        "2023-06-25",
+        "2024-10-15",
     ),
 }
 
@@ -67,6 +73,7 @@ EXCURSION_QUANTILE = 0.85
 TERMINAL_DEVIATION_QUANTILE = 0.40
 ENTRY_DELAY_MINUTES = 10
 HOLD_MINUTES = 30
+PSI_HOLD_MINUTES = 96 * 5
 MAX_EXACT_JACCARD = 0.10
 MAX_NEAR_PRIMARY_SHARE = 0.20
 NEAR_MINUTES = 30
@@ -472,7 +479,14 @@ def _derived_primary_control(
     output["direction"] = output["direction"].astype(int) * direction_multiplier
     for column in ("entry_time", "planned_exit_time"):
         output[column] = pd.to_datetime(output[column]) + pd.Timedelta(minutes=shift_minutes)
-    return output.loc[:, list(CLOCK_COLUMNS)]
+    keep = np.ones(len(output), dtype=bool)
+    for split, (start_text, end_text) in SPLITS.items():
+        in_split = output["split"].eq(split).to_numpy(bool)
+        entry = pd.to_datetime(output["entry_time"])
+        exit_time = pd.to_datetime(output["planned_exit_time"])
+        inside = entry.ge(start_text).to_numpy(bool) & exit_time.le(end_text).to_numpy(bool)
+        keep[in_split] &= inside[in_split]
+    return output.loc[keep, list(CLOCK_COLUMNS)].reset_index(drop=True)
 
 
 def _random_clocks(primary: pd.DataFrame) -> pd.DataFrame:
@@ -527,6 +541,48 @@ def _random_clocks(primary: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _frozen_psi_clocks(state: pd.DataFrame, *, window: int) -> pd.DataFrame:
+    """Reconstruct the selected prior PSI entry/hold contract source-only."""
+
+    active_column = f"psi_{window}_active"
+    direction_column = f"psi_{window}_direction"
+    events: list[dict[str, Any]] = []
+    next_allowed = pd.Timestamp.min
+    for index in np.flatnonzero(
+        cast(pd.Series, state[active_column]).astype(bool).to_numpy(bool)
+    ):
+        row = state.iloc[int(index)]
+        entry = cast(
+            pd.Timestamp, pd.Timestamp(cast(Any, row["decision_time"]))
+        )
+        exit_time = cast(
+            pd.Timestamp, entry + pd.Timedelta(minutes=PSI_HOLD_MINUTES)
+        )
+        if entry < next_allowed:
+            continue
+        split_name: str | None = None
+        for split, (start_text, end_text) in SPLITS.items():
+            if entry >= pd.Timestamp(start_text) and exit_time <= pd.Timestamp(end_text):
+                split_name = split
+                break
+        events.append(
+            {
+                "candidate": f"PSI-{window}-frozen-comparator",
+                "split": split_name,
+                "path_start_time": entry - pd.Timedelta(minutes=5),
+                "decision_time": entry,
+                "feature_available_time": row["feature_available_time"],
+                "entry_time": entry,
+                "planned_exit_time": exit_time,
+                "direction": int(row[direction_column]),
+                **{column: np.nan for column in CLOCK_COLUMNS[8:]},
+            }
+        )
+        next_allowed = exit_time
+    frame = pd.DataFrame(events, columns=cast(Any, list(CLOCK_COLUMNS)))
+    return frame.loc[frame["split"].notna()].reset_index(drop=True)
+
+
 def build_controls(state: pd.DataFrame, primary: pd.DataFrame) -> dict[str, pd.DataFrame]:
     return {
         "direction_flip": _derived_primary_control(
@@ -544,18 +600,8 @@ def build_controls(state: pd.DataFrame, primary: pd.DataFrame) -> dict[str, pd.D
             direction_column="no_recenter_direction",
             candidate="PSR-no-recenter",
         ),
-        "psi_2016": build_clocks(
-            state,
-            active_column="psi_2016_active",
-            direction_column="psi_2016_direction",
-            candidate="PSI-2016-comparator",
-        ),
-        "psi_8640": build_clocks(
-            state,
-            active_column="psi_8640_active",
-            direction_column="psi_8640_direction",
-            candidate="PSI-8640-comparator",
-        ),
+        "psi_2016": _frozen_psi_clocks(state, window=2016),
+        "psi_8640": _frozen_psi_clocks(state, window=8640),
         "extra_latency": _derived_primary_control(
             primary, candidate="PSR-extra-latency", shift_minutes=5
         ),
@@ -616,7 +662,43 @@ def _clock_times(path: Path, expected_hash: str) -> pd.DatetimeIndex:
     return pd.DatetimeIndex(entry)
 
 
-def _overlap(primary: pd.DatetimeIndex, other: pd.DatetimeIndex) -> dict[str, Any]:
+def _overlap(
+    primary: pd.DatetimeIndex,
+    other: pd.DatetimeIndex,
+    *,
+    coverage_start: str | None = None,
+    coverage_end: str | None = None,
+) -> dict[str, Any]:
+    primary = primary.dropna().sort_values().drop_duplicates()
+    other = other.dropna().sort_values().drop_duplicates()
+    primary_full, other_full = len(primary), len(other)
+    if not len(primary) or not len(other):
+        return {
+            "primary_full": primary_full,
+            "other_full": other_full,
+            "shared_start": None,
+            "shared_end": None,
+            "primary": 0,
+            "other": 0,
+            "exact_intersection": 0,
+            "exact_jaccard": 0.0,
+            "within_30m_primary": 0,
+            "within_30m_primary_share": 0.0,
+        }
+    if (coverage_start is None) != (coverage_end is None):
+        raise ValueError("overlap coverage requires both start and end")
+    if coverage_start is not None and coverage_end is not None:
+        shared_start = cast(pd.Timestamp, pd.Timestamp(coverage_start))
+        shared_end = cast(pd.Timestamp, pd.Timestamp(coverage_end))
+        primary = primary[(primary >= shared_start) & (primary < shared_end)]
+        other = other[(other >= shared_start) & (other < shared_end)]
+    else:
+        primary_start = cast(pd.Timestamp, primary.min())
+        other_start = cast(pd.Timestamp, other.min())
+        primary_end = cast(pd.Timestamp, primary.max())
+        other_end = cast(pd.Timestamp, other.max())
+        shared_start = min(primary_start, other_start)
+        shared_end = max(primary_end, other_end)
     primary_ns = set(primary.view("int64").tolist())
     other_ns = set(other.view("int64").tolist())
     intersection = len(primary_ns & other_ns)
@@ -630,6 +712,10 @@ def _overlap(primary: pd.DatetimeIndex, other: pd.DatetimeIndex) -> dict[str, An
         if len(candidates) and int(np.min(np.abs(candidates - value))) <= tolerance_ns:
             near += 1
     return {
+        "primary_full": primary_full,
+        "other_full": other_full,
+        "shared_start": str(shared_start),
+        "shared_end": str(shared_end),
         "primary": len(primary_ns),
         "other": len(other_ns),
         "exact_intersection": intersection,
@@ -652,8 +738,13 @@ def build_result(
             primary_times,
             pd.DatetimeIndex(pd.to_datetime(controls[name]["entry_time"])),
         )
-    for name, (path, expected_hash) in EXTERNAL_COMPARATORS.items():
-        novelty[name] = _overlap(primary_times, _clock_times(path, expected_hash))
+    for name, (path, expected_hash, coverage_start, coverage_end) in EXTERNAL_COMPARATORS.items():
+        novelty[name] = _overlap(
+            primary_times,
+            _clock_times(path, expected_hash),
+            coverage_start=coverage_start,
+            coverage_end=coverage_end,
+        )
     novelty_passes = all(
         row["exact_jaccard"] <= MAX_EXACT_JACCARD
         and row["within_30m_primary_share"] <= MAX_NEAR_PRIMARY_SHARE

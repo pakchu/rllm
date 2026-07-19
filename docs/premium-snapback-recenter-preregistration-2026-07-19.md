@@ -124,8 +124,9 @@ Failing support or novelty rejects the candidate before any BTC outcome opens.
 1. same clocks, direction flipped;
 2. simple one-sided premium excursion without path/recenter requirements;
 3. high-energy alternating path without terminal recenter;
-4. prior PSI-2016 single-bar comparator;
-5. prior PSI-8640 single-bar comparator;
+4. prior PSI-2016 single-bar comparator, reconstructed with its frozen
+   signal-immediate entry, 96-bar hold and global non-overlap;
+5. prior PSI-8640 single-bar comparator under the same frozen PSI execution;
 6. primary delayed another five minutes;
 7. future-premium placebo shifted 40 minutes earlier so the decisive path is
    noncausal and can only veto;
