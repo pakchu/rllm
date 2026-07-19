@@ -60,6 +60,27 @@ The source is frozen to `2023-06-25` inclusive through `2024-10-15`
 exclusive, matching the existing BTC COIN-M source boundary. The build opens no
 market outcomes; archive support and missing dates are source metadata only.
 
+## Frozen outcome-blind archive audit
+
+- archive days requested: 478;
+- checksum-verified available days: 474;
+- missing archive/checksum dates: `2023-08-05`, `2023-09-09`,
+  `2023-09-23`, `2023-09-25`;
+- raw rows: 56,186;
+- unique snapshots after exact deduplication: 28,092;
+- exact duplicates removed: 28,094;
+- five-minute rows: 137,664, of which 136,512 are source-valid and 11,637
+  contain at least one snapshot;
+- panel SHA-256:
+  `8d17ab3d5f9592f5254fef2e649065233be1777b8976983b4af38c77a8cc5bff`;
+- manifest SHA-256:
+  `c515731a9029d1786c8650f5106923d4cfbe8c35ed7a947f5420a16154601f5d`.
+
+All available days except `2023-09-21` contain exactly two copies of each
+snapshot row. On `2023-09-21`, 76 raw rows collapse to 37 unique rows. The
+builder applies the same exact-whole-row deduplication rule globally and does
+not infer why the source duplicated records.
+
 ## Stop conditions
 
 Reject the source if checksums, exact-duplicate semantics, UTC-day bounds,
