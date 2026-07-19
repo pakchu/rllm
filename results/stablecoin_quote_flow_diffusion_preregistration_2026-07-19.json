@@ -1,0 +1,274 @@
+{
+  "protocol_version": "stablecoin_quote_flow_diffusion_v1",
+  "as_of_date": "2026-07-19",
+  "outcomes_opened": false,
+  "policy": {
+    "policy_id": "SQFD-6",
+    "prior_window_hours": 720,
+    "prior_min_periods_hours": 672,
+    "robust_center_quantile": 0.5,
+    "robust_scale_lower_quantile": 0.25,
+    "robust_scale_upper_quantile": 0.75,
+    "normal_iqr_divisor": 1.349,
+    "alternative_min_abs_z": 0.75,
+    "usdt_lag_signed_z_max_exclusive": 0.5,
+    "alternative_share_quantile": 0.5,
+    "onset_only": true,
+    "entry_delay_minutes_after_hour_boundary": 5,
+    "hold_hours": 6,
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.001
+  },
+  "research_history_boundary": {
+    "development_outcomes_seen_for_unrelated_families": true,
+    "exact_sqfd_post_entry_outcomes_opened": false,
+    "source_only_structural_variants_inspected": 19,
+    "source_only_selection_fields": [
+      "train_event_count",
+      "train_long_short_balance",
+      "train_month_concentration"
+    ],
+    "source_only_forbidden_fields_not_opened": [
+      "spot_price",
+      "perpetual_price",
+      "forward_return",
+      "funding",
+      "PnL",
+      "CAGR",
+      "strict_MDD",
+      "win_rate"
+    ],
+    "candidate_count_for_outcome": 1,
+    "outcome_threshold_grid": false,
+    "direction_search": false,
+    "hold_search": false,
+    "sealed_candidate_windows": [
+      "train_2023_h2",
+      "test_2024",
+      "eval_2025",
+      "final_2026_h1"
+    ],
+    "current_survivor_source_selection_bias": "USDC and FDUSD are fixed because both remain live-deployable in 2026; no future price/return was used, but this is not pristine 2023 universe selection",
+    "future_support_fields_seen": true,
+    "future_support_is_nonpristine_diagnostic_only": true,
+    "threshold_selection_repair": {
+      "grid_descending": [
+        1.25,
+        1.0,
+        0.75,
+        0.5
+      ],
+      "selection_window": "train_2023_h2_only",
+      "selection_rule": "first threshold with >=50 events, >=35% each side, <=30% maximum train-month share",
+      "train_event_counts": [
+        13,
+        28,
+        55,
+        104
+      ],
+      "selected": 0.75,
+      "post_2023_support_cannot_change_rule": true
+    }
+  },
+  "mechanism": {
+    "claim": "aggressive BTC spot flow agreeing in the independent USDC and FDUSD quote books, while reference USDT flow remains opposite or materially weaker, diffuses into the BTCUSDT perpetual after a short delay",
+    "action": "follow the sign of the mean standardized USDC/FDUSD taker-flow imbalance",
+    "why_distinct": "the exact multi-stablecoin quote-flow panel and cross-quote consensus/USDT-lag state did not exist in prior repository alpha families",
+    "why_not_spot_perp_absorption": "SQFD uses neither spot price nor spot-perpetual price spread and requires agreement across two alternative quote books",
+    "novelty_boundary": "new intraday stablecoin-quote source axis, not a new gate archetype; FQPR uses a related quote-participation/reference-suppression shape"
+  },
+  "source_contract": {
+    "panel": "data/binance_stablecoin_quote_flow_btc_2023_2026/BTC_stablecoin_quote_flow_1h_2023-07-01_2026-06-30T23.csv.gz",
+    "panel_sha256": "064d1c88d5a72efe43bb05b360b1e6b62d75366d52e8bd9fafe963a9e2f9862b",
+    "manifest": "data/binance_stablecoin_quote_flow_btc_2023_2026/build_manifest.json",
+    "manifest_sha256": "9e6a82b9747df5c0ba1c9278e436551de03ef6136c0ad3aeb05f0a451ed12134",
+    "builder": "training/build_binance_stablecoin_quote_flow.py",
+    "builder_sha256": "6abe61e90e84b68665eb4d3fc1aa8f7c06b4c3c4698bb1718fc0c387f941021a",
+    "symbols": [
+      "BTCUSDT",
+      "BTCUSDC",
+      "BTCFDUSD"
+    ],
+    "activation_utc": {
+      "BTCUSDT": "2023-07-01T00:00:00Z",
+      "BTCUSDC": "2023-07-01T00:00:00Z",
+      "BTCFDUSD": "2023-08-04T08:00:00Z"
+    },
+    "available_after": "exact close_time_us of each completed one-hour row",
+    "gap_policy": "missing rows allowed only before frozen activation; no fill or stale carry",
+    "support_builder_allowed_fields": [
+      "date",
+      "symbol",
+      "open_time_us",
+      "close_time_us",
+      "base_volume_btc",
+      "trade_count",
+      "taker_buy_base_btc",
+      "taker_sell_base_btc",
+      "signed_taker_flow_btc",
+      "source_complete"
+    ],
+    "support_builder_forbidden_fields": [
+      "price",
+      "return",
+      "funding",
+      "PnL",
+      "CAGR",
+      "drawdown",
+      "win_rate",
+      "future_flow"
+    ]
+  },
+  "causal_feature_contract": {
+    "book_imbalance": "signed_taker_flow_btc/base_volume_btc; valid only with positive volume and trade_count",
+    "strict_prior_history": "pandas float64 series.shift(1).rolling(window=720,min_periods=672).quantile(q,interpolation=linear) on the exact hourly grid; invalid rows stay NaN and do not count",
+    "book_z": "(current imbalance-prior q50)/((prior q75-prior q25)/1.349); zero/nonfinite scale invalid",
+    "alt_share": "(BTCUSDC volume+BTCFDUSD volume)/(BTCUSDT+BTCUSDC+BTCFDUSD volume)",
+    "alt_share_threshold": "strictly-prior 720-hour q50 with 672 observations",
+    "setup": "USDC and FDUSD z signs agree and are nonzero; min absolute z >=0.75; side*USDT z <0.50; alt_share >= prior q50; false-to-true onset",
+    "side": "sign((z_USDC+z_FDUSD)/2)",
+    "decision_time": "boundary after the completed source hour",
+    "entry": "leave one complete five-minute latency bucket and enter BTCUSDT USD-M perpetual at boundary+5m open",
+    "numeric_contract": "NumPy/pandas float64, no pre-comparison rounding, literal >= and < tie handling",
+    "historical_availability_caveat": "archive close timestamps do not prove live collector finalization by boundary+5m; forward latency/parity must fail closed before live promotion"
+  },
+  "execution_contract": {
+    "instrument": "BTCUSDT USD-M perpetual",
+    "hold": "6 elapsed hours fixed; no stop, take-profit, or dynamic exit",
+    "nonoverlap": "one global position over [entry,exit)",
+    "sizing": "fixed 0.5x notional",
+    "costs": "6bp/notional/side base; 10bp/notional/side stress; exact funding",
+    "strict_mdd": "global/pre-entry HWM, entry cost, conservative funding boundary marks, every held favorable-then-adverse 5m OHLC path, virtual adverse-mark exit cost, actual exit cost",
+    "cagr": "full declared split calendar including warm-up and idle seconds",
+    "reservation_order": "build full-timeline onset, sort once, accept entry iff entry_time >= prior accepted exit_time with exit exclusive, then slice contained splits; independent controls reserve independently and same-clock controls reuse primary reservations",
+    "live_promotion": "requires forward three-book finalization latency/parity audit before any order path"
+  },
+  "splits": {
+    "train": [
+      "2023-07-01",
+      "2024-01-01"
+    ],
+    "test": [
+      "2024-01-01",
+      "2025-01-01"
+    ],
+    "eval": [
+      "2025-01-01",
+      "2026-01-01"
+    ],
+    "final": [
+      "2026-01-01",
+      "2026-07-01"
+    ]
+  },
+  "support_gate": {
+    "minimum_events": {
+      "train": 50,
+      "2023_q3": 10,
+      "2023_q4": 25,
+      "test": 100,
+      "2024_h1": 40,
+      "2024_h2": 40,
+      "eval": 100,
+      "2025_h1": 40,
+      "2025_h2": 40,
+      "final": 50,
+      "2026_q1": 20,
+      "2026_q2": 20
+    },
+    "minimum_each_side_share": 0.3,
+    "maximum_month_share": {
+      "train": 0.35,
+      "test": 0.2,
+      "eval": 0.2,
+      "final": 0.3
+    },
+    "comparator_exact_entry_jaccard_max": 0.1,
+    "comparator_near_6h_containment_max": 0.35
+  },
+  "mechanism_controls": {
+    "no_alt_breadth": "alt_z=(v_USDC*z_USDC+v_FDUSD*z_FDUSD)/(v_USDC+v_FDUSD); require abs(alt_z)>=0.75; side=sign(alt_z); retain USDT lag and participation gates; independent onset/nonoverlap",
+    "no_usdt_lag": "remove only side*USDT_z<0.50",
+    "no_participation": "remove only alternative-share median condition",
+    "usdt_only": "sign(USDT_z), abs(USDT_z)>=0.75, onset only",
+    "direction_flip": "same primary entries, opposite side",
+    "extra_latency_1h": "same signal and side, entry and exit delayed one hour",
+    "deterministic_random_side": "same primary entries; SHA256 ASCII SQFD-6|YYYY-MM-DDTHH:MM:SSZ; even first hex nibble long, odd short"
+  },
+  "outcome_gate": {
+    "minimum_trades": {
+      "train": 50,
+      "test": 100,
+      "eval": 100,
+      "final": 50
+    },
+    "absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_max_pct": 15.0,
+    "weekly_cluster_signflip_p_max": 0.1,
+    "mean_gross_underlying_move_bp_min": 20.0,
+    "each_half_absolute_return_positive": true,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "mechanism_control_margin_min": 0.25,
+    "sequential_opening": "train_then_test_then_eval_then_final_stop_on_first_failure",
+    "ratio_definition": "CAGR_pct/strict_MDD_pct; if MDD=0 use +inf/0/-inf by CAGR sign, and +inf controls fail the margin gate",
+    "statistical_test_contract": {
+      "cluster_key": "UTC entry timestamp ISO year/week",
+      "cluster_value": "sum of net account trade returns after base costs and realized funding",
+      "observed": "absolute mean net trade return",
+      "null": "independent Rademacher sign per weekly sum; signed total divided by trade count; compare abs(null) >= observed - 1e-15",
+      "exact": "enumerate all 2^K vectors when nonempty weekly cluster count K <= 20; p=exceed/2^K",
+      "monte_carlo": "otherwise NumPy default_rng(20260719), 20000 draws, deterministic batches, p=(1+exceed)/(20000+1)",
+      "empty": "p=1.0",
+      "seed": 20260719,
+      "draws": 20000
+    }
+  },
+  "rejection_contract": {
+    "support_failure": "reject without opening candidate outcomes",
+    "train_failure": "reject and keep test/eval/final sealed",
+    "test_failure": "reject and keep eval/final sealed",
+    "later_failure": "reject without activation, lookback, threshold, participation, lag, onset, latency, direction, hold, or support-gate repair"
+  },
+  "rllm_boundary": {
+    "standalone_alpha_is_formulaic": true,
+    "llm_not_allowed_to_create_or_repair_signals": true,
+    "future_role": "only after deterministic passage, an RLLM may abstain or scale down under a separately preregistered reward; it may not enter, reverse, or increase leverage"
+  },
+  "support_comparators": {
+    "near_window_hours": 6,
+    "near_containment_definition": "maximum of candidate-to-comparator and comparator-to-candidate fractions on exact common coverage",
+    "clocks": [
+      {
+        "candidate": "OPDR-24",
+        "path": "data/options_perpetual_demand_relay_clocks_2023_2026.csv.gz",
+        "sha256": "ceb79b206c3e1f6bf78b02cd2ace9a94f875ce930a704cc6e7a5a8b255021b99",
+        "filter": "control == primary"
+      },
+      {
+        "candidate": "PCBR-12",
+        "path": "data/premium_compression_breakout_relay_clocks_2020_2026.csv.gz",
+        "sha256": "659fc1b6b6e3a20e60031ed1d50f51c8c7d2836956f911f62ad13e4152740cda",
+        "filter": "control == primary"
+      },
+      {
+        "candidate": "PSR-30/6",
+        "path": "data/premium_snapback_recenter_clocks_2020_2026.csv.gz",
+        "sha256": "cb209ed35f9baa08cc2fb3dd5bd60b8e747b1408c09507b774ca275e0b2b2db6",
+        "filter": "candidate == PSR-30/6"
+      },
+      {
+        "candidate": "FQPR-3",
+        "path": "results/fiat_quote_participation_rotation_clocks_2026-07-17.csv",
+        "sha256": "54a70cce565d4f1727d095707471235f01345b94179a6c37df9f4c37d1a458a2",
+        "filter": "clock_name == primary and q == 0.65"
+      }
+    ],
+    "rank7_and_funding_premium": "post-passage return correlation only; cannot select or repair SQFD because no standalone frozen clock artifact is bound here",
+    "interpretation": "representation checks only; FQPR is included because its gate archetype is related even though its data axis and cadence differ"
+  },
+  "manifest_hash_contract": "SHA256 of UTF-8 JSON excluding manifest_hash, sorted keys, separators=(comma,colon), ensure_ascii=false",
+  "manifest_hash": "74fd535b8b2256d41e39513466bd697d553ee5c80aece8308e3de637745225b3"
+}
