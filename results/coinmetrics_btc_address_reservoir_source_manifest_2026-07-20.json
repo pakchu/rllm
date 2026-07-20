@@ -1,0 +1,58 @@
+{
+  "candidate": "ARCR-864",
+  "causal_availability": "available_at equals AssetEODCompletionTime and must be no earlier than observation UTC midnight plus one day",
+  "config": {
+    "base_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics",
+    "end_exclusive": "2024-01-01",
+    "manifest_output": "results/coinmetrics_btc_address_reservoir_source_manifest_2026-07-20.json",
+    "maximum_retries": 8,
+    "output_csv": "data/coinmetrics_btc_address_reservoir_2019_2023.csv.gz",
+    "page_size": 10000,
+    "request_pause_sec": 0.2,
+    "start": "2019-01-01",
+    "timeout_sec": 30.0
+  },
+  "manifest_hash": "19d4fcd74fe628c6ecb6d051bc6f0966bcf145263c4c63a4520ceec4f6dc37fe",
+  "official_catalog_url": "https://community-api.coinmetrics.io/v4/catalog-all-v2/asset-metrics?assets=btc&metrics=AdrBalCnt%2CAdrActCnt%2CAssetEODCompletionTime",
+  "outcome_boundary": {
+    "btc_market_rows_loaded": 0,
+    "funding_rows_loaded": 0,
+    "post_2023_source_rows_loaded": 0,
+    "raw_api_pages_persisted": false,
+    "return_or_pnl_fields": 0
+  },
+  "output": "data/coinmetrics_btc_address_reservoir_2019_2023.csv.gz",
+  "output_columns": [
+    "observation_date",
+    "available_at",
+    "AdrBalCnt",
+    "AdrActCnt"
+  ],
+  "output_sha256": "15550072f954d29ae4c9ffe16e11f07c492ee5b6b956e54654b14b9a7af5170a",
+  "protocol_version": 1,
+  "revision_boundary": "the output hash freezes this downloaded source vintage; it is not a historical archive of Coin Metrics revisions",
+  "source_audit": {
+    "duplicates": 0,
+    "expected_rows": 1826,
+    "first_observation": "2019-01-01T00:00:00Z",
+    "last_observation": "2023-12-31T00:00:00Z",
+    "maximum_observation_gap_days": 1,
+    "missing_days": 0,
+    "observed_rows": 1826,
+    "response_chain_sha256": "bb3287e17072f63aa916f9af236ded4f28a25d7b32d2c8907f0bbe8806005004",
+    "response_page_lengths": [
+      1826
+    ],
+    "response_page_sha256": [
+      "9fdcce7e9e419ccf19a9984d7fb26d81a92b6580280cb011a4b8b344d084a740"
+    ],
+    "response_pages": 1,
+    "source_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=AdrBalCnt%2CAdrActCnt%2CAssetEODCompletionTime&frequency=1d&start_time=2019-01-01&end_time=2023-12-31&page_size=10000",
+    "unexpected_row_fields": 0
+  },
+  "source_semantics": {
+    "AdrActCnt": "unique addresses active as originator or recipient during the interval",
+    "AdrBalCnt": "unique addresses holding any positive native-unit balance at interval end",
+    "AssetEODCompletionTime": "recorded completion timestamp used as source availability"
+  }
+}
