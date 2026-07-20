@@ -1,0 +1,128 @@
+{
+  "as_of_date": "2026-07-20",
+  "candidate": "SDDR-12",
+  "later_outcome_contract": {
+    "base_cost_bp_per_notional_side": 6.0,
+    "control_ratio_margin": 0.25,
+    "evaluator_must_be_committed_before_outcome": true,
+    "exact_realized_funding": true,
+    "full_calendar_cagr": true,
+    "leverage": 0.5,
+    "mandatory_controls": [
+      "direction_flip",
+      "deterministic_random_side",
+      "extra_latency_1h",
+      "usdc_only",
+      "fdusd_only",
+      "no_disagreement",
+      "matched_btcusdt_1h_momentum_side",
+      "matched_btcusdt_1h_reversion_side"
+    ],
+    "mean_gross_move_minimum_bp": 20.0,
+    "primary_ratio_minimum": 3.0,
+    "sequential_stages": [
+      "train_2023",
+      "test_2024",
+      "eval_2025",
+      "final_2026h1"
+    ],
+    "stop_on_first_failure": true,
+    "stress_cost_bp_per_notional_side": 10.0,
+    "stress_ratio_minimum": 2.5,
+    "strict_mdd_maximum_pct": 15.0,
+    "strict_position_path_mdd": true,
+    "weekly_sign_flip_p_maximum": 0.1
+  },
+  "manifest_hash": "88974fadce5f1094d503674b7b0ee9e2dd74d8cf3808b72b71bbbebebc1fbcfa",
+  "outcome_sources_opened": false,
+  "outcomes_opened": false,
+  "output": "results/stablecoin_denominator_dislocation_preregistration_2026-07-20.json",
+  "policy": {
+    "availability": "completed source hour h is known at h+1h",
+    "config": {
+      "bar_minutes": 5,
+      "disagreement_quantile": 0.8,
+      "entry_delay_minutes": 5,
+      "full_signal_months": [
+        "2023-09",
+        "2023-10",
+        "2023-11",
+        "2023-12"
+      ],
+      "hold_bars": 12,
+      "lookback_hours": 720,
+      "maximum_exact_entry_jaccard": 0.1,
+      "maximum_month_share": 0.45,
+      "maximum_novelty_containment": 0.35,
+      "minimum_events": 30,
+      "minimum_events_per_full_signal_month": 5,
+      "minimum_history_hours": 672,
+      "minimum_side_share": 0.3,
+      "novelty_containment_hours": 6,
+      "support_end_exclusive": "2024-01-01T00:00:00Z",
+      "z_threshold": 1.0
+    },
+    "entry": "BTCUSDT USD-M perpetual at h+1h+5m open",
+    "exit": "scheduled open after exactly 12 five-minute bars",
+    "global_nonoverlap": true,
+    "normalization": "strictly-prior 720h median and IQR/1.349, min 672h",
+    "primary": "same nonzero z sign; min(abs(z)) >= 1; current disagreement <= strictly-prior q80; false-to-true onset",
+    "side": "sign(mean(z_usdc,z_fdusd)); rich USDT proxy LONG, cheap USDT proxy SHORT"
+  },
+  "post_2023_source_rows_opened": false,
+  "preregistration_document": "docs/stablecoin-denominator-dislocation-preregistration-2026-07-20.md",
+  "preregistration_document_sha256": "ae1a52b17496b4b5044b3b3c33e4a088f557907736de98b8a07f18a75b06cf54",
+  "preregistration_source": "training/preregister_stablecoin_denominator_dislocation.py",
+  "preregistration_source_sha256": "9881898b60169e7aa72d7a18719ed6fbacdd1aae8ccc3542d6294c4bc2df2764",
+  "protocol_version": "stablecoin_denominator_dislocation_v1",
+  "rllm_boundary": "Gemma/RLLM may be added only after the frozen deterministic base demonstrates positive gross edge above costs; model may abstain or route risk but may not repair this clock",
+  "source": {
+    "manifest": "data/binance_stablecoin_denominator_btc_2023/build_manifest.json",
+    "manifest_sha256": "863e96b4325d051731c92852c6760986204a9df62f77ff0dd0e01ab08d8a15d3",
+    "panel": "data/binance_stablecoin_denominator_btc_2023/BTC_stablecoin_denominator_1h_2023-08-04T08_2023-12-31T23.csv.gz",
+    "panel_sha256": "aab063f0f9d898d5cdafffb57f552244083cd93fe69a3c6ebaf97faf6e27b642",
+    "persisted_observables": [
+      "date",
+      "source_available_at",
+      "usdc_vs_usdt",
+      "fdusd_vs_usdt",
+      "alt_consensus",
+      "alt_disagreement",
+      "source_complete"
+    ],
+    "raw_btc_prices_retained": false
+  },
+  "source_only_controls": [
+    "no_disagreement",
+    "usdc_only",
+    "fdusd_only",
+    "stale_1h"
+  ],
+  "support_comparators": {
+    "clock": "data/stablecoin_quote_flow_diffusion_clocks_2023_2026.csv.gz",
+    "clock_sha256": "a81e144eea1e80ae5439fc66db1fad5bbd00cd9ac177e25142b5cfb5a07bcc5b",
+    "controls": [
+      "primary",
+      "no_usdt_lag",
+      "no_participation"
+    ],
+    "support": "results/stablecoin_quote_flow_diffusion_support_2026-07-19.json",
+    "support_sha256": "07230e9e579f1b16e07712a022e572026b4fbfa17070e998970b3fd8ee21d4b5"
+  },
+  "support_gate": {
+    "full_signal_months": [
+      "2023-09",
+      "2023-10",
+      "2023-11",
+      "2023-12"
+    ],
+    "maximum_exact_entry_jaccard": 0.1,
+    "maximum_month_share": 0.45,
+    "maximum_novelty_containment": 0.35,
+    "minimum_events": 30,
+    "minimum_events_per_full_signal_month": 5,
+    "minimum_side_share": 0.3,
+    "novelty_containment_hours": 6,
+    "stop_if_failed": true
+  }
+}
