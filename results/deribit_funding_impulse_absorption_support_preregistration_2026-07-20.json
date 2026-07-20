@@ -1,0 +1,161 @@
+{
+  "artifact_hash": "911afce424443a7cd7e23b852357ce4bc1f6d0e837377b582515c8e88f6e7f41",
+  "bounded_source_schema_probes_opened": true,
+  "candidate_incidence_opened": false,
+  "complete_source_incidence_opened": false,
+  "outcomes_opened": false,
+  "protocol": {
+    "candidate_support_gate": {
+      "count_clock": "accepted entry timestamp after reference readiness, continuity, latency, split containment, and greedy nonoverlap",
+      "failure_action": "reject before BTC market outcomes; no threshold, sign, reference, latency, hold, scheduler, or support repair",
+      "maximum_month_share": 0.08,
+      "minimum_active_months": 44,
+      "minimum_each_quarter": 10,
+      "minimum_each_test_half": 30,
+      "minimum_each_train_year": 50,
+      "minimum_side_share_all_train_test": 0.25,
+      "minimum_test": 80,
+      "minimum_total": 300,
+      "minimum_train": 200
+    },
+    "clock": {
+      "earliest_observable_open": "ceiling of feature availability to a five-minute boundary",
+      "entry": "one additional completed five-minute bar",
+      "entry_latency_bars": 1,
+      "gap_rule": "require 8 contiguous hourly source rows ending at the current row",
+      "historical_availability": "source timestamp + 5 minutes",
+      "hold_bars": 72,
+      "hold_minutes": 360,
+      "live_availability": "actual first successful observation when later; never backdate",
+      "timezone": "UTC"
+    },
+    "feature": {
+      "funding_impulse": "interest_1h - interest_8h / 8",
+      "index_return_1h": "log(index_price / prev_index_price)",
+      "long": "funding_impulse_z <= -1.25, raw index_return_1h >= 0, and index_return_z >= 0",
+      "reference": "memory-valid observations in [T-720h,T) with strictly prior availability; require 360",
+      "repair_after_incidence": false,
+      "short": "funding_impulse_z >= 1.25, raw index_return_1h <= 0, and index_return_z <= 0",
+      "sign_search": false,
+      "standard_deviation_ddof": 0,
+      "threshold_grid": false,
+      "trailing_hourly_mean": "interest_8h / 8"
+    },
+    "frozen_artifacts": {
+      "preregistration_document": "docs/deribit-funding-impulse-absorption-support-preregistration-2026-07-20.md",
+      "preregistration_document_sha256": "8ce6dea8a3a24a826439e8f861937a5a6e5ccb9e9a1f99bf89764c3d23bd22e4",
+      "preregistration_source": "training/preregister_deribit_funding_impulse_absorption_support.py",
+      "preregistration_source_sha256": "b5bbae3561a0fb63e645a3453499aef4f6b64d08cd963082a0d32126957eef2b",
+      "source_decision": "docs/deribit-funding-impulse-absorption-mechanism-decision-2026-07-20.md",
+      "source_decision_sha256": "3aa1e0dbea5afa55b82e3693da945c384efe2187a971dfe4f8aa52d5677e7281",
+      "source_downloader": "training/download_deribit_btc_perpetual_funding_hourly.py",
+      "source_downloader_sha256": "0e13782b2be2a2af96793270fda1aa342278fdce154830b9b6d7e19d7f90310a"
+    },
+    "later_evaluation_contract": {
+      "base_cost_notional_per_side": 0.0006,
+      "cagr": "full split wall clock including warmup and idle cash",
+      "candidate_mean_gross_minus_best_component_or_stale_bp_min": 5.0,
+      "control_clock_contract": "six-hour hold, complete split containment, and chronological greedy nonoverlap; component/stale controls build their own clocks and exact-clock controls retain the candidate clock",
+      "controls": [
+        "exact side flip on candidate clock",
+        "impulse-only abs(funding_impulse_z)>=1.25, side opposite impulse, same scheduler",
+        "index-only abs(index_return_z)>=1.25, side opposite index return, same scheduler",
+        "eight-hour-stale interaction uses already-causal funding_impulse_z at exact T-8h and current index response",
+        "one additional five-minute entry delay before rescheduling",
+        "constant long and constant short on candidate clock",
+        "deterministic within-year paired funding-impulse/index-return source permutation and complete feature/clock rebuild"
+      ],
+      "funding": "interior exact-time symmetric; exact entry/exit credits dropped and debits retained",
+      "leverage": 0.5,
+      "minimum_component_or_stale_control_trades_each_split": 30,
+      "open_sequence": [
+        "train_2020_2022",
+        "test_2023"
+      ],
+      "primary_gates_each_opened_split": {
+        "absolute_return_positive": true,
+        "cagr_to_strict_mdd_min": 3.0,
+        "mean_gross_underlying_bp_min": 20.0,
+        "one_bar_delayed_absolute_return_positive": true,
+        "stress_cost_absolute_return_positive": true,
+        "strict_mdd_pct_max": 15.0,
+        "weekly_cluster_signflip_p_max": 0.1
+      },
+      "sealed_sequential": [
+        "2024",
+        "2025",
+        "2026_ytd"
+      ],
+      "stress_cost_notional_per_side": 0.001,
+      "strict_mdd": "global/pre-entry HWM, entry cost, exact funding, every held 5m path, virtual adverse exit fee, and actual exit"
+    },
+    "outcomes_opened": false,
+    "policy_id": "DFIA-72",
+    "research_history_boundary": "candidate-level freeze only; broad repository BTC history is open, bounded Deribit source probes are disclosed, and complete source incidence, candidate incidence, matching outcomes, and 2024+ source rows remain unopened; 2023 is an outcome-blind support-screened test rather than a pristine global holdout",
+    "scheduler": {
+      "candidate_clock": "every qualifying hourly row while flat",
+      "complete_split_containment": true,
+      "nonoverlap": "chronological greedy within each split; next entry may equal the prior accepted exit",
+      "test": [
+        "2023-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "train": [
+        "2020-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      "transition_onset_only": false
+    },
+    "source": {
+      "aggregate": "data/deribit_btc_perpetual_funding_2019_2023.csv.gz",
+      "aggregate_sha256": "pending_outcome_blind_download",
+      "endpoint": "https://www.deribit.com/api/v2/public/get_funding_rate_history",
+      "fields_explicitly_unused": [
+        "binance_open",
+        "binance_high",
+        "binance_low",
+        "binance_close",
+        "binance_funding",
+        "future_return",
+        "held_path",
+        "pnl"
+      ],
+      "fields_used": [
+        "timestamp",
+        "available_at",
+        "interest_1h",
+        "interest_8h",
+        "index_price",
+        "prev_index_price"
+      ],
+      "instrument": "BTC-PERPETUAL",
+      "interval": [
+        "2019-04-30T10:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "manifest": "results/deribit_btc_perpetual_funding_source_manifest_2026-07-20.json",
+      "manifest_hash": "pending_outcome_blind_download",
+      "official_docs": "https://docs.deribit.com/api-reference/market-data/public-get_funding_rate_history",
+      "official_usage_policy": "https://docs.deribit.com/articles/api-usage-policy",
+      "raw_responses_persisted": false,
+      "rows_at_or_after_2024_loaded": false
+    },
+    "source_gate": {
+      "eligible_months": [
+        "2020-01",
+        "2023-12"
+      ],
+      "expected_hourly_timestamps": 40958,
+      "first_exact": "2019-04-30T10:00:00Z",
+      "last_exact": "2023-12-31T23:00:00Z",
+      "maximum_adjacent_observed_timestamp_delta_hours": 24,
+      "maximum_consecutive_missing_timestamps": 23,
+      "memory_invariant_required": true,
+      "minimum_each_eligible_month_coverage_ratio": 0.95,
+      "minimum_overall_coverage_ratio": 0.98
+    },
+    "support_only": true
+  },
+  "protocol_hash": "a3988fc86f5e381b46db744e712dd56a18efbb72e3b783d9813b6cc58a03152b",
+  "protocol_version": "deribit_funding_impulse_absorption_preregistration_v1"
+}
