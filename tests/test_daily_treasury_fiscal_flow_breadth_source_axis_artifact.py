@@ -8,7 +8,7 @@ DECISION = Path(
     "docs/daily-treasury-fiscal-flow-breadth-source-axis-decision-2026-07-20.md"
 )
 EXPECTED_SHA256 = (
-    "88982cd9dc0122786f0da529a07330ec28f1ed3628cc333258e6f0bd6519545e"
+    "7ed2748506645aa4b4a9589d7c7d3dd1baa4456c78a7c7f56845358c02f18c5b"
 )
 
 
