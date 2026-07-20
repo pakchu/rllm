@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -17,6 +18,45 @@ class AggTradeTick:
     price: float
     event_time_ms: int
     aggregate_trade_id: int | None = None
+    quantity: float | None = None
+    is_buyer_maker: bool | None = None
+    first_trade_id: int | None = None
+    last_trade_id: int | None = None
+
+
+def parse_aggtrade_payload(payload: dict[str, Any]) -> AggTradeTick:
+    """Parse the official USD-M aggTrade payload without dropping BAFR fields."""
+
+    if payload.get("e") != "aggTrade":
+        raise ValueError("payload is not an aggregate trade")
+    required = ("a", "p", "q", "f", "l", "T", "m")
+    missing = [field for field in required if field not in payload]
+    if missing:
+        raise ValueError(f"aggTrade payload is missing fields: {missing}")
+    price = float(payload["p"])
+    quantity = float(payload["q"])
+    aggregate_trade_id = int(payload["a"])
+    first_trade_id = int(payload["f"])
+    last_trade_id = int(payload["l"])
+    event_time_ms = int(payload["T"])
+    buyer_maker = payload["m"]
+    if not math.isfinite(price) or not math.isfinite(quantity) or price <= 0.0 or quantity <= 0.0:
+        raise ValueError("aggTrade price and quantity must be positive")
+    if aggregate_trade_id < 0 or first_trade_id < 0 or last_trade_id < first_trade_id:
+        raise ValueError("aggTrade identifiers are invalid")
+    if event_time_ms < 0:
+        raise ValueError("aggTrade timestamp is invalid")
+    if not isinstance(buyer_maker, bool):
+        raise ValueError("aggTrade buyer-maker flag must be boolean")
+    return AggTradeTick(
+        price=price,
+        event_time_ms=event_time_ms,
+        aggregate_trade_id=aggregate_trade_id,
+        quantity=quantity,
+        is_buyer_maker=buyer_maker,
+        first_trade_id=first_trade_id,
+        last_trade_id=last_trade_id,
+    )
 
 
 class BinanceAggTradeStream:
@@ -45,6 +85,8 @@ class BinanceAggTradeStream:
         self.closed = False
         self.gap_count = 0
         self.overflowed = False
+        self.discontinuous = False
+        self.previous_aggregate_trade_id: int | None = None
         self.last_event_time_ms: int | None = None
         self.last_message_monotonic: float | None = None
         self.last_error: str | None = None
@@ -53,7 +95,13 @@ class BinanceAggTradeStream:
 
     @property
     def healthy(self) -> bool:
-        if not self.connected.is_set() or not self.ready.is_set() or self.overflowed or self.closed:
+        if (
+            not self.connected.is_set()
+            or not self.ready.is_set()
+            or self.overflowed
+            or self.discontinuous
+            or self.closed
+        ):
             return False
         if self.last_message_monotonic is None:
             return False
@@ -96,6 +144,23 @@ class BinanceAggTradeStream:
             except asyncio.QueueEmpty:
                 return ticks
 
+    def _accept_contiguous_tick(self, tick: AggTradeTick) -> bool:
+        identifier = tick.aggregate_trade_id
+        if identifier is None:
+            self.discontinuous = True
+            self.last_error = "aggTrade message has no aggregate trade ID"
+            return False
+        previous = self.previous_aggregate_trade_id
+        if previous is not None and identifier != previous + 1:
+            self.discontinuous = True
+            self.gap_count += 1
+            self.last_error = (
+                f"aggTrade ID discontinuity: expected {previous + 1}, got {identifier}"
+            )
+            return False
+        self.previous_aggregate_trade_id = identifier
+        return True
+
     async def _run(self) -> None:
         import websockets
 
@@ -109,14 +174,25 @@ class BinanceAggTradeStream:
                     async for message in socket:
                         if self.closed:
                             return
-                        payload: dict[str, Any] = json.loads(message)
+                        try:
+                            payload: dict[str, Any] = json.loads(message)
+                        except (json.JSONDecodeError, TypeError) as exc:
+                            self.discontinuous = True
+                            self.last_error = f"invalid aggTrade message: {exc}"
+                            self.connected.clear()
+                            break
                         if payload.get("e") != "aggTrade":
                             continue
-                        tick = AggTradeTick(
-                            price=float(payload["p"]),
-                            event_time_ms=int(payload.get("T", payload.get("E"))),
-                            aggregate_trade_id=int(payload["a"]) if payload.get("a") is not None else None,
-                        )
+                        try:
+                            tick = parse_aggtrade_payload(payload)
+                        except (KeyError, TypeError, ValueError) as exc:
+                            self.discontinuous = True
+                            self.last_error = f"invalid aggTrade payload: {exc}"
+                            self.connected.clear()
+                            break
+                        if not self._accept_contiguous_tick(tick):
+                            self.connected.clear()
+                            break
                         self.last_event_time_ms = tick.event_time_ms
                         self.last_message_monotonic = time.monotonic()
                         if self.queue.full():
@@ -134,7 +210,7 @@ class BinanceAggTradeStream:
             finally:
                 self.connected.clear()
                 self.ready.clear()
-            if self.closed or self.overflowed:
+            if self.closed or self.overflowed or self.discontinuous:
                 return
             self.gap_count += 1
             await asyncio.sleep(min(30.0, float(2**min(reconnect_attempt, 5))))
