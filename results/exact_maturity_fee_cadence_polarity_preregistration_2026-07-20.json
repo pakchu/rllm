@@ -3,7 +3,7 @@
     "preregistration_output": "results/exact_maturity_fee_cadence_polarity_preregistration_2026-07-20.json",
     "source_manifest": "results/bitcoin_utxo_fee_block_stats_source_manifest_2026-07-20.json"
   },
-  "manifest_hash": "0672c23224cfbf2e4fb9ebcacb08ff9e20f550128523544507fafe49e01c1bd0",
+  "manifest_hash": "487a4c0dd3aa501605274f0afaacb6714c668078e6fac0506798afa4f9b0d743",
   "mechanism_decision": {
     "path": "docs/exact-maturity-fee-cadence-polarity-mechanism-decision-2026-07-20.md",
     "sha256": "a640d13f02b23b0c76d5acb73427be0ad6fb87a3d08f9cd392a47b22f2918a39"
@@ -72,6 +72,26 @@
       "historical_embargo_seconds": 7200,
       "publication_latency": "one complete 5m latency bar",
       "raw_available": "max(timestamp[h:h+6])+7200 seconds"
+    },
+    "control_construction": {
+      "block_controls": "reuse the primary 26208-valid-height midrank, +/-0.90 tails, six-confirmation availability, onset, and 864-bar non-overlap unless the named transform changes a field",
+      "daily_aggregate_shadow": {
+        "availability": "D+2 00:00 UTC plus one complete 5m latency bar",
+        "cadence_compression": "median of block-level cadence_compression over the completed source day",
+        "fee_pressure": "log1p(sum(total_fees[h-100])) over the completed source day",
+        "normalization": "strict-prior empirical midrank over exactly 180 valid source days",
+        "onset_and_nonoverlap": "same valid-state onset and 864-bar chronological non-overlap as primary",
+        "source_day": "UTC day of timestamp[h] for valid exact-maturity height h",
+        "states": "same joint 0.90/0.10 tails and side orientation as primary"
+      },
+      "exposure_correlation": "Pearson correlation of signed 5m position exposure; zero when either vector has zero variance",
+      "random_clock": {
+        "candidate_lattice": "valid normalized maturity heights not used by the primary clock",
+        "matching": "preserve exact primary count in every stratum and enforce 864-bar non-overlap globally",
+        "seed": 20260720,
+        "strata": "entry calendar year, entry calendar month, primary side, and cadence-rank quartile"
+      },
+      "stale_7d": "for each h, use ranks from the latest valid maturity height with timestamp<=timestamp[h]-604800; retain h availability"
     },
     "controls": {
       "cadence_only": "cadence-rank tail onset with the primary side orientation, availability, hold, and non-overlap",
@@ -226,11 +246,11 @@
       "held_path_order": "all favorable OHLC/funding-credit extremes before all adverse OHLC/funding-debit extremes"
     }
   },
-  "policy_hash": "ecce53d9c17aea05ef78781d67ffea87b7bd27bc864b44624e7e0acaf87d1019",
+  "policy_hash": "a264e58f834f2a58dda9ddcf3dcf5035ef941cd2087124b3ea1c8c306559b92f",
   "policy_id": "EMFC-864",
   "preregistration_source": {
     "path": "training/preregister_exact_maturity_fee_cadence_polarity.py",
-    "sha256": "1dd0b7e2375415a8cc9ebb83179fcc2caddd950f7993c241cb2ce2800abff7d5"
+    "sha256": "5e8f1e9b857b0cb2a248738e69d97d8ec1c5e4c80410f0362b1dd89656333c1b"
   },
   "protocol_version": "exact_maturity_fee_cadence_polarity_preregistration_v1",
   "research_sequence": {
