@@ -1,0 +1,200 @@
+{
+  "config": {
+    "preregistration_output": "results/utxo_fee_clearing_polarity_preregistration_2026-07-20.json",
+    "source_manifest": "results/bitcoin_utxo_fee_block_stats_source_manifest_2026-07-20.json"
+  },
+  "manifest_hash": "95cd5911171b033923603d5d845949df6a7ef28020f2591c41ab1e0d1293da5b",
+  "outcome_boundary": {
+    "funding_rows_loaded": 0,
+    "funding_values_read": 0,
+    "market_rows_loaded": 0,
+    "market_values_read": 0,
+    "return_or_pnl_fields": 0,
+    "return_rows_loaded": 0,
+    "source_csv_values_read": 0,
+    "source_manifest_only": true
+  },
+  "outcomes_opened": false,
+  "policy": {
+    "causal_availability": {
+      "day_d_unavailable_before": "D+2 00:00 UTC",
+      "entry_time": "D+2 00:05 UTC",
+      "forbidden_inputs": [
+        "firstSeen",
+        "pool identity",
+        "unconfirmed mempool state",
+        "post-entry block"
+      ],
+      "hash_linked_successors_after_final_included_block": 6,
+      "publication_latency": "one complete 5m latency bar"
+    },
+    "controls": {
+      "constant_long_same_clock": "same primary entry/exit clock with side fixed to long",
+      "constant_short_same_clock": "same primary entry/exit clock with side fixed to short",
+      "direction_flip": "same primary entry/exit clock with every side multiplied by -1; diagnostic only",
+      "low_fee_mirror": "replace fee_rank >= 0.75 with fee_rank <= 0.25; retain polarity tails and side mapping",
+      "one_bar_delayed_entry": "same primary signals and sides; shift entry and scheduled exit exactly one 5m bar later",
+      "stale_7d": "at source day D use the already published fee_rank and polarity_rank attached to D-7; retain D publication/entry schedule",
+      "topology_only": "remove fee_rank condition; retain polarity tails, side mapping, scheduling, and non-overlap",
+      "year_side_stratified_random_clock": "sample without replacement from otherwise eligible publication days, preserving primary calendar-year and side counts; seed 20260720"
+    },
+    "eligibility": {
+      "every_eligible_day_considered": true,
+      "long": "fee_rank >= 0.75 and polarity_rank >= 0.75",
+      "ordering": "chronological non-overlap",
+      "short": "fee_rank >= 0.75 and polarity_rank <= 0.25"
+    },
+    "execution": {
+      "bar_size": "5m",
+      "base_cost_bp_per_notional_per_side": 6,
+      "funding": "exact funding, entry-inclusive/exit-exclusive, fixed entry quantity",
+      "hold_bars": 288,
+      "notional_leverage": 0.5,
+      "stress_cost_bp_per_notional_per_side": 10
+    },
+    "normalization": {
+      "fee_rank": "midrank of fee_burden over strict-prior source days",
+      "lookback_source_days": 180,
+      "method": "strict-prior rolling empirical midrank",
+      "midrank_formula": "(count(prior < current) + 0.5 * count(prior == current)) / prior_count",
+      "minimum_prior_source_days": 120,
+      "polarity_rank": "midrank of utxo_polarity over strict-prior source days"
+    },
+    "performance_gates": {
+      "absolute_return_positive_each": true,
+      "cagr_to_strict_mdd_minimum_each": 3.0,
+      "component_control_full_gate_pass_rejects_mechanism": [
+        "constant_long_same_clock",
+        "constant_short_same_clock",
+        "topology_only",
+        "low_fee_mirror",
+        "stale_7d",
+        "year_side_stratified_random_clock"
+      ],
+      "direction_flip_is_diagnostic_only": true,
+      "long_only_and_short_only_absolute_return_positive_each_window": true,
+      "mean_gross_bp_minimum_each": 30.0,
+      "one_bar_delayed_entry_absolute_return_positive_each_window": true,
+      "positive_subperiods": [
+        "2021",
+        "2022",
+        "2023H1",
+        "2023H2"
+      ],
+      "post_outcome_threshold_side_hold_or_latency_repair": "forbidden",
+      "required_windows": [
+        "train_2021_2022",
+        "selection_2023"
+      ],
+      "stress_absolute_return_positive_each": true,
+      "strict_max_drawdown_maximum_each": 0.15,
+      "weekly_cluster_sign_flip_p_maximum_each": 0.1
+    },
+    "policy_id": "UFCP-1",
+    "selection_stages": {
+      "stage_1": "open train 2021-2022 first",
+      "stage_2": "open 2023 only after exact train pass",
+      "stage_3": "2024+ remains sealed"
+    },
+    "singleton": true,
+    "source_features": {
+      "daily_source_minimum_blocks": 72,
+      "edges": "sum(total_inputs + total_outputs)",
+      "fee_burden": "log(sum(total_fees) / edges)",
+      "invalid_day": "reject a day when block count <72, edges<=0, total_fees<=0, or six successor blocks are unavailable",
+      "source_day": "UTC day D aggregated from completed confirmed Bitcoin blocks only",
+      "usable_range_requires_no_missing_utc_source_day": true,
+      "utxo_polarity": "sum(utxo_set_change) / edges"
+    },
+    "strict_accounting": {
+      "cagr_clock": "full declared wall-clock window including idle cash",
+      "cluster_test": "one-sided weekly entry-cluster sign flip; 100000 draws; seed 20260720",
+      "costs": "entry, scheduled exit, and hypothetical adverse liquidation costs included",
+      "drawdown_high_water_mark": "global and pre-entry",
+      "held_path_order": "all favorable OHLC/funding-credit extremes before all adverse OHLC/funding-debit extremes"
+    },
+    "support_floors": {
+      "daily_source_minimum_blocks": 72,
+      "long_short_share_train_and_selection": "each side between 25% and 75% inclusive in each window",
+      "maximum_month_share": "<=0.15 separately in train and selection",
+      "no_missing_utc_source_day_in_usable_range": true,
+      "selection_2023_total_minimum": 24,
+      "selection_each_half_minimum": 10,
+      "train_2021_2022_total_minimum": 60,
+      "train_each_year_minimum": 24
+    }
+  },
+  "policy_hash": "9945815de1e3f88ab1d59e2dec7dc7923294c91807cea8071f10e55c60a0daef",
+  "policy_id": "UFCP-1",
+  "preregistration_source": {
+    "path": "training/preregister_utxo_fee_clearing_polarity.py",
+    "sha256": "10311773ae2e9baac1b27d537bcab7cf5b8687d7dc84a0dd1b0bcd8d2673fa05"
+  },
+  "protocol_version": "utxo_fee_clearing_polarity_preregistration_v1",
+  "research_sequence": {
+    "sealed": "2024+",
+    "selection_second": "2023 only after exact train pass",
+    "train_first": "2021-2022"
+  },
+  "source_manifest": {
+    "manifest_hash": "98a84b0bd0338300f62eaa047b87498cc5a8d9505a03f6bd1912d1deb9564e8c",
+    "path": "results/bitcoin_utxo_fee_block_stats_source_manifest_2026-07-20.json",
+    "protocol_version": "bitcoin_utxo_fee_block_stats_source_v1",
+    "reference_audit": {
+      "all_basic_fields_match_reference": true,
+      "columns_cross_checked": [
+        "height",
+        "id",
+        "previousblockhash",
+        "timestamp",
+        "mediantime",
+        "tx_count",
+        "size",
+        "weight"
+      ],
+      "reference_path": "data/bitcoin_block_summaries_2020_2023.csv.gz",
+      "reference_sha256": "1f8d1c0153717f2c18d8fa6f09428c780a850b2aecc8fb42bc497e16e68e1833",
+      "rows_cross_checked": 213095
+    },
+    "sha256": "ceb096b7bfeaf309729c4cab9f5cd4d2e0d526e261b1e460e9d03cd4f24e8084",
+    "source_audit": {
+      "all_rows_pre_cutoff": true,
+      "complete_inclusive_height_range": true,
+      "end_height": 823785,
+      "end_timestamp_exclusive": 1704067200,
+      "height_links_checked": 213094,
+      "latest_eligible_packet_end": 823779,
+      "observed_rows": 213095,
+      "start_height": 610691,
+      "unique_block_hashes": true,
+      "utxo_identity_checked": true
+    },
+    "source_builder": {
+      "path": "training/download_bitcoin_utxo_fee_stats.py",
+      "sha256": "099454feff009a5a4d44a96bd3790ff586d0365eba2e9b72e7b071d34e743633"
+    },
+    "source_decision": {
+      "path": "docs/utxo-fee-clearing-polarity-mechanism-decision-2026-07-20.md",
+      "sha256": "95bf889fd053987e1717b182dc5da4f19ef51d75a1cbda427913089368c4852e"
+    },
+    "source_output": {
+      "bytes": 13991597,
+      "columns": [
+        "height",
+        "id",
+        "previousblockhash",
+        "timestamp",
+        "mediantime",
+        "tx_count",
+        "size",
+        "weight",
+        "total_fees",
+        "total_inputs",
+        "total_outputs",
+        "utxo_set_change"
+      ],
+      "path": "data/bitcoin_utxo_fee_block_stats_2020_2023.csv.gz",
+      "sha256": "8d5160b59bd104819adb34752f2bd5b01e9c07d7aa108188abcd9e6d323d102f"
+    }
+  }
+}
