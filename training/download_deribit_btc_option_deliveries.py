@@ -77,7 +77,7 @@ class Config:
     timeout_sec: float = 30.0
     request_pause_sec: float = 0.20
     maximum_retries: int = 8
-    maximum_event_delay_seconds: float = 5.0
+    maximum_event_row_span_seconds: float = 5.0
 
 
 Fetch = Callable[[dict[str, Any]], dict[str, Any]]
@@ -214,11 +214,13 @@ def _normalise_option(
         )
     except (KeyError, ValueError) as exc:
         raise ValueError(f"invalid Deribit option expiry: {instrument}") from exc
-    expiry_time = expiry_date + pd.Timedelta(hours=8)
-    delay_seconds = (raw_timestamp - expiry_time).total_seconds()
-    if not 0.0 <= delay_seconds <= cfg.maximum_event_delay_seconds:
+    scheduled_expiry_time = expiry_date + pd.Timedelta(hours=8)
+    if (
+        raw_timestamp < scheduled_expiry_time
+        or raw_timestamp.normalize() != scheduled_expiry_time.normalize()
+    ):
         raise ValueError(
-            "Deribit delivery timestamp is outside the frozen 08:00 window"
+            "Deribit delivery timestamp is outside the frozen expiry-date window"
         )
 
     strike = float(match.group("strike"))
@@ -237,7 +239,7 @@ def _normalise_option(
             "otm" if index_price > strike else "atm"
         )
     return {
-        "expiry_time": expiry_time,
+        "expiry_time": scheduled_expiry_time,
         "raw_timestamp": raw_timestamp,
         "instrument_name": instrument,
         "strike": strike,
@@ -275,8 +277,9 @@ def aggregate_deliveries(
         raw_span = (
             group["raw_timestamp"].max() - group["raw_timestamp"].min()
         ).total_seconds()
-        if raw_span > cfg.maximum_event_delay_seconds:
+        if raw_span > cfg.maximum_event_row_span_seconds:
             raise RuntimeError("Deribit option rows disagree on delivery clock")
+        delivery_event_time = group["raw_timestamp"].max()
         index_prices = group["index_price"].to_numpy(float)
         if not np.allclose(index_prices, index_prices[0], rtol=1e-12, atol=1e-8):
             raise RuntimeError("Deribit option rows disagree on delivery index")
@@ -293,7 +296,8 @@ def aggregate_deliveries(
         records.append(
             {
                 "expiry_time": expiry_time,
-                "source_observation_earliest": expiry_time
+                "delivery_event_time": delivery_event_time,
+                "source_observation_earliest": delivery_event_time
                 + pd.Timedelta(minutes=65),
                 "index_price": float(index_prices[0]),
                 "option_count": int(len(group)),
@@ -312,9 +316,10 @@ def aggregate_deliveries(
                 "absolute_release_position": abs(net_release),
                 "release_side": int(np.sign(net_release)),
                 "largest_instrument_share": float(position.max() / total_position),
-                "maximum_event_timestamp_offset_seconds": float(
-                    (group["raw_timestamp"] - expiry_time).dt.total_seconds().max()
+                "delivery_delay_seconds": float(
+                    (delivery_event_time - expiry_time).total_seconds()
                 ),
+                "maximum_event_row_span_seconds": float(raw_span),
             }
         )
     aggregate = pd.DataFrame.from_records(records)
@@ -332,16 +337,28 @@ def aggregate_deliveries(
             aggregate["expiry_time"].dt.hour.eq(8).all()
             and aggregate["expiry_time"].dt.minute.eq(0).all()
         ),
-        "maximum_event_timestamp_offset_seconds": float(
-            aggregate["maximum_event_timestamp_offset_seconds"].max()
+        "maximum_delivery_delay_seconds": float(
+            aggregate["delivery_delay_seconds"].max()
+        ),
+        "delayed_expiry_events": int(
+            aggregate["delivery_delay_seconds"].gt(5.0).sum()
+        ),
+        "maximum_event_row_span_seconds": float(
+            aggregate["maximum_event_row_span_seconds"].max()
         ),
         "rows_by_year": {
             str(year): int(count)
-            for year, count in options["expiry_time"].dt.year.value_counts().sort_index().items()
+            for year, count in options["expiry_time"]
+            .dt.year.value_counts()
+            .sort_index()
+            .items()
         },
         "expiries_by_year": {
             str(year): int(count)
-            for year, count in aggregate["expiry_time"].dt.year.value_counts().sort_index().items()
+            for year, count in aggregate["expiry_time"]
+            .dt.year.value_counts()
+            .sort_index()
+            .items()
         },
     }
     return aggregate, audit
@@ -479,7 +496,7 @@ def run(
     output = Path(cfg.output_csv)
     _write_deterministic_csv(output, frame)
     core = {
-        "protocol_version": "deribit_btc_option_delivery_source_v2",
+        "protocol_version": "deribit_btc_option_delivery_source_v3",
         "config": asdict(cfg),
         "source_audit": audit,
         "aggregate": {
@@ -498,8 +515,8 @@ def run(
         "causal_availability": {
             "deribit_publication_sla_known": False,
             "source_observation_rule": (
-                "expiry_time + 65 minutes after two identical canonical "
-                "delivery sets observed five minutes apart"
+                "delivery_event_time + 65 minutes after two identical "
+                "canonical delivery sets observed five minutes apart"
             ),
             "source_observation_latency_seconds": 3900,
             "earliest_next_5m_entry_latency_seconds": 4200,
@@ -538,9 +555,9 @@ def parse_args() -> Config:
         "--maximum-retries", type=int, default=Config.maximum_retries
     )
     parser.add_argument(
-        "--maximum-event-delay-seconds",
+        "--maximum-event-row-span-seconds",
         type=float,
-        default=Config.maximum_event_delay_seconds,
+        default=Config.maximum_event_row_span_seconds,
     )
     return Config(**vars(parser.parse_args()))
 

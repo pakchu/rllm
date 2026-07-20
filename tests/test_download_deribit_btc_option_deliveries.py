@@ -88,7 +88,10 @@ def test_download_aggregates_terminal_delta_release_and_excludes_future(
     cfg = _cfg(tmp_path)
     manifest = delivery.run(cfg, fetch=fetch, sleep=lambda _: None)
     assert [call.get("continuation") for call in calls] == [None, "next", "old"]
-    assert all(call["search_start_timestamp"] == _ms("2021-01-01") - 1 for call in calls)
+    assert all(
+        call["search_start_timestamp"] == _ms("2021-01-01") - 1
+        for call in calls
+    )
     assert manifest["source_audit"]["option_rows_selected"] == 10
     assert manifest["source_audit"]["futures_rows_excluded"] == 2
     assert manifest["source_audit"]["expiry_events"] == 2
@@ -108,7 +111,8 @@ def test_download_aggregates_terminal_delta_release_and_excludes_future(
     assert frame["option_count"].tolist() == [5, 5]
     assert frame["itm_call_count"].tolist() == [1, 1]
     assert frame["itm_put_count"].tolist() == [1, 1]
-    assert frame["source_observation_earliest"].str.endswith("09:05:00.000000").all()
+    assert frame["delivery_event_time"].str.endswith("08:00:00.100000").all()
+    assert frame["source_observation_earliest"].str.endswith("09:05:00.100000").all()
     with gzip.open(cfg.output_csv, "rt", encoding="utf-8") as handle:
         public = handle.read() + json.dumps(manifest)
     assert "BTC-3JAN20-90-C" not in public
@@ -138,8 +142,8 @@ def test_aggregate_maps_put_release_long_and_call_release_short() -> None:
             "unsupported Deribit",
         ),
         (
-            lambda row: row.update(timestamp=_ms("2020-01-03 08:00:06")),
-            "outside the frozen 08:00 window",
+            lambda row: row.update(timestamp=_ms("2020-01-04 08:00:06")),
+            "outside the frozen expiry-date window",
         ),
     ],
 )
@@ -184,6 +188,28 @@ def test_aggregate_rejects_duplicate_instrument_and_index_disagreement() -> None
     changed[2]["index_price"] = 101.0
     with pytest.raises(RuntimeError, match="delivery index"):
         delivery.aggregate_deliveries(changed, delivery.Config())
+    changed = [dict(row) for row in rows]
+    changed[2]["timestamp"] = _ms("2020-01-03 08:00:06")
+    with pytest.raises(RuntimeError, match="delivery clock"):
+        delivery.aggregate_deliveries(changed, delivery.Config())
+
+
+def test_delayed_delivery_uses_actual_event_time_for_observation() -> None:
+    rows = _expiry_rows("27AUG20", "2020-08-27")
+    for row in rows:
+        row["timestamp"] = _ms("2020-08-27 09:18:27.676")
+    aggregate, audit = delivery.aggregate_deliveries(rows, delivery.Config())
+    assert aggregate.loc[0, "expiry_time"] == pd.Timestamp(
+        "2020-08-27 08:00", tz="UTC"
+    )
+    assert aggregate.loc[0, "delivery_event_time"] == pd.Timestamp(
+        "2020-08-27 09:18:27.676", tz="UTC"
+    )
+    assert aggregate.loc[0, "source_observation_earliest"] == pd.Timestamp(
+        "2020-08-27 10:23:27.676", tz="UTC"
+    )
+    assert aggregate.loc[0, "delivery_delay_seconds"] == pytest.approx(4707.676)
+    assert audit["delayed_expiry_events"] == 1
 
 
 def test_download_rejects_forward_pagination_and_continuation_loop(
@@ -193,7 +219,11 @@ def test_download_rejects_forward_pagination_and_continuation_loop(
     newer = _expiry_rows("10JAN20", "2020-01-10")
     pages = iter([_payload(recent, "same"), _payload(newer, None)])
     with pytest.raises(RuntimeError, match="moved forward"):
-        delivery.download(_cfg(tmp_path), fetch=lambda _: next(pages), sleep=lambda _: None)
+        delivery.download(
+            _cfg(tmp_path),
+            fetch=lambda _: next(pages),
+            sleep=lambda _: None,
+        )
 
     pages = iter([_payload(recent, "same"), _payload(recent, "same")])
     with pytest.raises(RuntimeError, match="continuation loop"):
