@@ -304,6 +304,14 @@ def test_build_writes_four_symbol_pivot_with_only_frozen_source_columns(tmp_path
     forbidden = {"symbol", "open", "high", "low", "volume", "trade_count", "quote_notional"}
     assert not forbidden.intersection(output.columns)
     assert manifest["protocol"]["outcomes_opened"] is False
+    assert manifest["protocol"]["candidate"] == "RFXS2-576"
+    assert manifest["protocol"]["fixture_only"] is True
+    assert manifest["builder_commit"] is None
+    assert [item["path"] for item in manifest["mechanism_bindings"]] == [
+        builder.ORIGINAL_MECHANISM["path"],
+        builder.SOURCE_REJECTION["path"],
+        builder.MECHANISM["path"],
+    ]
 
 
 def test_build_rejects_mismatched_close_calendars(tmp_path: Path) -> None:
@@ -361,15 +369,15 @@ def test_build_is_byte_deterministic_for_output_and_manifest(tmp_path: Path) -> 
         (
             builder.BuildConfig(
                 symbols=SYMBOLS,
-                start="2020-09-01",
+                start="2020-10-01",
                 end="2023-02-01",
             ),
-            "2020-10-01",
+            "2020-11-01",
         ),
         (
             builder.BuildConfig(
                 symbols=SYMBOLS,
-                start="2020-10-02",
+                start="2020-11-02",
                 end="2023-02-01",
             ),
             "month starts",
@@ -377,7 +385,7 @@ def test_build_is_byte_deterministic_for_output_and_manifest(tmp_path: Path) -> 
         (
             builder.BuildConfig(
                 symbols=SYMBOLS,
-                start="2020-10-01",
+                start="2020-11-01",
                 end="2024-02-01",
             ),
             "2024-01-01",
@@ -393,7 +401,7 @@ def test_build_is_byte_deterministic_for_output_and_manifest(tmp_path: Path) -> 
         (
             builder.BuildConfig(
                 symbols=("BTCUSDT", "BTCEUR", "BTCTRY"),
-                start="2020-10-01",
+                start="2020-11-01",
                 end="2023-02-01",
             ),
             "exactly these symbols",
@@ -401,7 +409,7 @@ def test_build_is_byte_deterministic_for_output_and_manifest(tmp_path: Path) -> 
         (
             builder.BuildConfig(
                 symbols=("BTCUSDT", "BTCEUR", "BTCTRY", "BTCBRL", "BTCKRW"),
-                start="2020-10-01",
+                start="2020-11-01",
                 end="2023-02-01",
             ),
             "exactly these symbols",
@@ -409,7 +417,7 @@ def test_build_is_byte_deterministic_for_output_and_manifest(tmp_path: Path) -> 
         (
             builder.BuildConfig(
                 symbols=("BTCUSDT", "BTCEUR", "BTCTRY", "btceur"),
-                start="2020-10-01",
+                start="2020-11-01",
                 end="2023-02-01",
             ),
             "unique|exactly these symbols",
