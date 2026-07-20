@@ -20,9 +20,17 @@ POLICY_ID = "UFCP-1"
 PROTOCOL_VERSION = "utxo_fee_clearing_polarity_preregistration_v1"
 SOURCE_PROTOCOL_VERSION = "bitcoin_utxo_fee_block_stats_source_v1"
 SOURCE_MANIFEST = Path("results/bitcoin_utxo_fee_block_stats_source_manifest_2026-07-20.json")
+EXPECTED_SOURCE_MANIFEST_SHA256 = "ceb096b7bfeaf309729c4cab9f5cd4d2e0d526e261b1e460e9d03cd4f24e8084"
+EXPECTED_SOURCE_MANIFEST_HASH = "98a84b0bd0338300f62eaa047b87498cc5a8d9505a03f6bd1912d1deb9564e8c"
+EXPECTED_SOURCE_OUTPUT = Path("data/bitcoin_utxo_fee_block_stats_2020_2023.csv.gz")
+EXPECTED_SOURCE_OUTPUT_SHA256 = "8d5160b59bd104819adb34752f2bd5b01e9c07d7aa108188abcd9e6d323d102f"
+EXPECTED_SOURCE_OUTPUT_BYTES = 13_991_597
 SOURCE_DECISION = Path("docs/utxo-fee-clearing-polarity-mechanism-decision-2026-07-20.md")
 SOURCE_DECISION_SHA256 = "95bf889fd053987e1717b182dc5da4f19ef51d75a1cbda427913089368c4852e"
 SOURCE_BUILDER = Path("training/download_bitcoin_utxo_fee_stats.py")
+EXPECTED_SOURCE_BUILDER_SHA256 = "099454feff009a5a4d44a96bd3790ff586d0365eba2e9b72e7b071d34e743633"
+EXPECTED_REFERENCE = Path("data/bitcoin_block_summaries_2020_2023.csv.gz")
+EXPECTED_REFERENCE_SHA256 = "1f8d1c0153717f2c18d8fa6f09428c780a850b2aecc8fb42bc497e16e68e1833"
 PREREGISTRATION_SOURCE = Path("training/preregister_utxo_fee_clearing_polarity.py")
 DEFAULT_OUTPUT = Path("results/utxo_fee_clearing_polarity_preregistration_2026-07-20.json")
 FROZEN_START_HEIGHT = 610_691
@@ -43,6 +51,7 @@ SOURCE_COLUMNS = [
     "total_outputs",
     "utxo_set_change",
 ]
+REFERENCE_COLUMNS = SOURCE_COLUMNS[:8]
 SOURCE_OUTCOME_BOUNDARY = {
     "market_rows_loaded": 0,
     "funding_rows_loaded": 0,
@@ -127,6 +136,9 @@ def _validate_config(cfg: Config) -> None:
 
 def _validate_source_manifest(manifest_path: str | Path) -> dict[str, Any]:
     manifest_file = Path(manifest_path)
+    if manifest_file.resolve() != SOURCE_MANIFEST.resolve():
+        raise RuntimeError("UFCP source manifest path differs from the frozen source")
+    manifest_file_sha256 = sha256_file(manifest_file)
     manifest = _read_json(manifest_file)
     if canonical_hash(_manifest_core(manifest)) != manifest.get("manifest_hash"):
         raise RuntimeError("UFCP source manifest hash mismatch")
@@ -145,7 +157,9 @@ def _validate_source_manifest(manifest_path: str | Path) -> dict[str, Any]:
     if builder.get("path") != str(SOURCE_BUILDER):
         raise RuntimeError("UFCP source builder path drift")
     builder_sha = builder.get("sha256")
-    if not isinstance(builder_sha, str) or builder_sha != sha256_file(SOURCE_BUILDER):
+    if builder_sha != EXPECTED_SOURCE_BUILDER_SHA256:
+        raise RuntimeError("UFCP source builder SHA differs from the frozen source")
+    if builder_sha != sha256_file(SOURCE_BUILDER):
         raise RuntimeError("UFCP source builder SHA drift")
 
     output = manifest.get("output")
@@ -156,13 +170,19 @@ def _validate_source_manifest(manifest_path: str | Path) -> dict[str, Any]:
         raise RuntimeError("UFCP source output path missing")
     if Path(source_path).resolve() == manifest_file.resolve():
         raise RuntimeError("UFCP source output path aliases manifest")
+    if Path(source_path).resolve() != EXPECTED_SOURCE_OUTPUT.resolve():
+        raise RuntimeError("UFCP source output path differs from the frozen source")
     if output.get("columns") != SOURCE_COLUMNS:
         raise RuntimeError("UFCP source schema drift")
     observed_source_sha = sha256_file(source_path)
     if output.get("sha256") != observed_source_sha:
         raise RuntimeError("UFCP source file SHA mismatch")
+    if observed_source_sha != EXPECTED_SOURCE_OUTPUT_SHA256:
+        raise RuntimeError("UFCP source frozen SHA drift")
     if output.get("bytes") != Path(source_path).stat().st_size:
         raise RuntimeError("UFCP source file byte-size mismatch")
+    if output.get("bytes") != EXPECTED_SOURCE_OUTPUT_BYTES:
+        raise RuntimeError("UFCP source frozen byte-size drift")
 
     manifest_sha = sha256_file(manifest_file)
     if manifest.get("outcome_boundary") != SOURCE_OUTCOME_BOUNDARY:
@@ -195,8 +215,20 @@ def _validate_source_manifest(manifest_path: str | Path) -> dict[str, Any]:
         raise RuntimeError("UFCP frozen-reference audit missing")
     if reference.get("rows_cross_checked") != FROZEN_ROWS:
         raise RuntimeError("UFCP frozen-reference row-count drift")
+    if reference.get("reference_path") != str(EXPECTED_REFERENCE):
+        raise RuntimeError("UFCP frozen-reference path drift")
+    if reference.get("reference_sha256") != EXPECTED_REFERENCE_SHA256:
+        raise RuntimeError("UFCP frozen-reference SHA binding drift")
+    if sha256_file(EXPECTED_REFERENCE) != EXPECTED_REFERENCE_SHA256:
+        raise RuntimeError("UFCP frozen-reference file SHA drift")
+    if reference.get("columns_cross_checked") != REFERENCE_COLUMNS:
+        raise RuntimeError("UFCP frozen-reference column drift")
     if reference.get("all_basic_fields_match_reference") is not True:
         raise RuntimeError("UFCP frozen-reference field mismatch")
+    if manifest.get("manifest_hash") != EXPECTED_SOURCE_MANIFEST_HASH:
+        raise RuntimeError("UFCP source frozen manifest-hash drift")
+    if manifest_file_sha256 != EXPECTED_SOURCE_MANIFEST_SHA256:
+        raise RuntimeError("UFCP source frozen manifest-file SHA drift")
 
     return {
         "path": str(manifest_file),
