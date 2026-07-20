@@ -31,10 +31,12 @@ Official surfaces:
 - [Community BTC metric catalog](https://community-api.coinmetrics.io/v4/catalog-all-v2/asset-metrics?assets=btc)
 - [Metric reference data](https://community-api.coinmetrics.io/v4/reference-data/asset-metrics?metrics=AdrBalNtv10Cnt%2CAdrBalNtv100Cnt%2CAdrBalNtv1KCnt%2CSplyAdrBalNtv10%2CSplyAdrBalNtv100%2CSplyAdrBalNtv1K%2CAssetEODCompletionTime)
 
-A catalog-only probe on 2026-07-20 confirmed daily community coverage from
-Bitcoin genesis through 2026-07-19 for all six balance-cohort metrics. It read
-metric identifiers, definitions, units, frequencies, and coverage boundaries
-only; no time-series value was requested.
+A catalog-only probe on 2026-07-20 confirmed that Coin Metrics supports daily
+coverage from Bitcoin genesis through 2026-07-19 for all six balance-cohort
+metrics. It did **not** establish community entitlement. It read metric
+identifiers, definitions, units, frequencies, and coverage boundaries only; no
+time-series value was requested. A later source-access probe rejected this
+candidate before acquisition, as recorded in the source-rejection note.
 
 Repository search found no prior use of any of the six cohort metrics. ARCR
 used only total funded-address stock (`AdrBalCnt`) and daily active-address
