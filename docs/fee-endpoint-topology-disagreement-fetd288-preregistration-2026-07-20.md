@@ -11,7 +11,7 @@ input/output endpoint density is tentatively short; the opposite transport is
 tentatively long.  Same-direction transport is a control, not a primary
 signal.
 
-There is one bucket size, transport horizon, rank history, threshold, side
+There is one packet size, transport horizon, rank history, threshold, side
 mapping, publication lag, hold, and scheduler.  There is no feature, threshold,
 side, horizon, hold, or latency grid.
 
@@ -29,8 +29,10 @@ The mechanism and source contract are frozen in
 
 ## Exact source-only feature
 
-Partition blocks by miner-reported header timestamp into fixed Unix-aligned
-12-hour UTC buckets.  For bucket `t`:
+Partition blocks by `packet_id = floor(height / 72)`.  Drop an edge packet
+unless all 72 heights from `72*packet_id` through `72*packet_id+71` are present
+and hash-linked.  This absolute-height alignment does not depend on the frozen
+research start.  For complete packet `t`:
 
 ```text
 total_weight[t]    = sum(weight)
@@ -40,12 +42,12 @@ fee_pressure[t]    = log(total_fees[t] / total_weight[t])
 endpoint_density[t]= log(total_endpoints[t] / total_weight[t])
 ```
 
-A source bucket is valid only when it contains at least 24 blocks, every
-included row is finite and satisfies the frozen source invariants, and all
-three aggregate totals are positive.  No block or bucket is clipped,
+A source packet is valid only when it contains exactly 72 contiguous blocks,
+every included row satisfies the frozen source invariants, and all three
+aggregate totals are positive and finite.  No block or packet is clipped,
 interpolated, forward-filled, reassigned, or imputed.
 
-A feature row requires valid, consecutive buckets `t-2`, `t-1`, and `t`:
+A feature row requires valid, consecutive packet IDs `t-2`, `t-1`, and `t`:
 
 ```text
 fee_transport      = fee_pressure[t] - fee_pressure[t-2]
@@ -91,19 +93,21 @@ selection.
 
 ## Causal availability and event selection
 
-For every bucket:
+For every packet ending at height `h`:
 
-1. require at least six hash-linked successor blocks after its final included
-   block, all contained in the frozen source;
-2. set `source_available_at = fixed bucket end + 48 hours`;
+1. require hash-linked blocks through `h+6`, all contained in the frozen
+   source;
+2. set
+   `source_available_at = max(timestamp[packet_start:h+6]) + 48 hours`;
 3. set `entry_time = ceil_5m(source_available_at) + 5 minutes`; and
 4. set `scheduled_exit_time = entry_time + 24 hours`.
 
-Because fixed 12-hour bucket ends are already five-minute aligned, the extra
-five minutes is still mandatory.  Historical header timestamps are never
-treated as receipt times.
+The extra five minutes is mandatory even when synthetic availability is
+already aligned.  Historical header timestamps are never treated as receipt
+times.  Height packets prevent a future backdated header from being inserted
+into an apparently closed calendar bucket.
 
-Sort candidates by `(entry_time, bucket_start)`.  Accept the earliest candidate
+Sort candidates by `(entry_time, packet_id)`.  Accept the earliest candidate
 whose entry is at or after the prior accepted exit.  Suppress every
 intervening candidate, including opposite-side candidates, without replacement
 or outcome-based priority.  Entry equal to the prior exit is allowed.  The
@@ -130,8 +134,9 @@ Before any market or funding value is loaded, the source builder must prove:
 - every row is before the frozen 2024 cutoff;
 - positive size/weight/transaction counts, valid block weight, nonnegative
   fees/input/output counts, and exact `outputs-inputs == utxo_set_change`;
-- zero missing fixed 12-hour source buckets across the complete covered range;
-- every feature bucket has all six required successor blocks; and
+- exactly 2,959 complete, consecutive 72-block packets from heights
+  `610704..823751`, with only incomplete edge packets dropped;
+- every feature packet has all six required successor blocks; and
 - zero market, funding, premium, OI, liquidation, order-book, return, PnL, or
   post-2023 source value was loaded.
 
@@ -157,7 +162,7 @@ The accepted primary clock must satisfy all gates conjunctively.
 
 Only counts, side balance, source integrity, and calendar dispersion may be
 opened here.  A failure rejects FETD-288 without threshold, side, rank-history,
-bucket, latency, hold, support-floor, or calendar repair.
+packet, latency, hold, support-floor, or calendar repair.
 
 ## Frozen controls
 
@@ -169,10 +174,13 @@ bucket, latency, hold, support-floor, or calendar repair.
 - same-direction transport: positive transport product and
   `strain_rank >= 0.75`, side `sign(endpoint_transport)`, independent clock;
 - constant long and constant short on the primary clock;
-- seven-day stale primary feature/ranks, applied at the later bucket's
+- 14-packet stale primary feature/ranks, applied at the later packet's
   availability and given an independent clock;
 - month-and-side-stratified SHA-256 random clocks, seed `20260720`; and
-- one complete five-minute bar delayed entry and exit.
+- one complete five-minute bar delayed entry and exit.  Shift both timestamps
+  exactly five minutes, deterministically drop a shifted trade if it no longer
+  fits its original split, never replace it, and report the dropped count for
+  train and selection in the source-only support artifact before outcomes.
 
 If a fee-only, endpoint-only, same-direction, constant-side, stale, or random
 control independently satisfies the complete primary performance gate, reject
@@ -210,4 +218,3 @@ policy inversion is allowed.  The source was previously opened for unrelated
 UFCP support, and the repository has broad prior BTC outcome exposure.  Any
 eventual pass is therefore candidate-level frozen evidence, not a pristine
 global holdout claim.
-

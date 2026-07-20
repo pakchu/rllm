@@ -3,10 +3,10 @@
     "preregistration_output": "results/fee_endpoint_topology_disagreement_preregistration_2026-07-20.json",
     "source_manifest": "results/bitcoin_utxo_fee_block_stats_source_manifest_2026-07-20.json"
   },
-  "manifest_hash": "d45ef8806dff23bb457b857749b806ef1ecda22fea90aa15bf1940ae147ea45b",
+  "manifest_hash": "8e2042c5439ca6a7b73cbc05eb2c8f0600edc622833bc33afaabb12e178e0fbe",
   "mechanism_decision": {
     "path": "docs/fee-endpoint-topology-disagreement-mechanism-decision-2026-07-20.md",
-    "sha256": "e030793c9d63af2ae60329e4ab876999fd3fa1a71812b88d22b5676fb1d6c593"
+    "sha256": "3864ae9ec8bd93ad766e5c4c811c175dd34bac1609209d91d5ef13114ac75340"
   },
   "outcome_boundary": {
     "fetd_feature_rows_derived": 0,
@@ -34,9 +34,10 @@
       "ceil_5m": "((unix_seconds+299)//300)*300",
       "entry_latency_seconds": 300,
       "entry_time": "ceil_5m(source_available_at)+300 seconds",
-      "hash_linked_successors_after_final_bucket_block": 6,
+      "hash_linked_successors_after_packet_end": 6,
+      "height_packet_prevents_calendar_backfill": true,
       "historical_header_time_is_not_receipt_time": true,
-      "source_available_at": "fixed 12h bucket end + 48 hours",
+      "source_available_at": "max header timestamp from packet start through h+6 + 48 hours",
       "source_gap_action": "reject source; never fill or backdate"
     },
     "controls": {
@@ -46,15 +47,15 @@
       "endpoint_only": "require nonzero endpoint_transport and endpoint_magnitude_rank>=0.75; side=sign(endpoint_transport); build an independent chronological non-overlap clock",
       "fee_only": "require nonzero fee_transport and fee_magnitude_rank>=0.75; side=-sign(fee_transport); build an independent chronological non-overlap clock",
       "month_side_stratified_random_clock": "within each split-month SHA256-order rank-ready split-contained candidates by 20260720|window|month|entry_time; take the primary month total and preserve the primary long/short counts",
-      "one_bar_delayed_entry": "same primary signals and sides; shift entry and scheduled exit exactly one complete 5m bar later and drop lost split containment",
+      "one_bar_delayed_entry": "same primary signals and sides; shift entry and scheduled exit exactly one complete 5m bar later; deterministically drop a shifted trade that loses its original split containment, never replace it, and report train/selection dropped counts before outcomes",
       "same_direction": "require fee_transport*endpoint_transport>0 and strain_rank>=0.75; side=sign(endpoint_transport); build an independent chronological non-overlap clock",
-      "stale_7d": "at source bucket t apply primary eligibility and side from the fully formed feature/ranks at t-14; retain t availability and build an independent chronological non-overlap clock"
+      "stale_14_packets": "at source packet t apply primary eligibility and side from the fully formed feature/ranks at t-14; retain t availability and build an independent chronological non-overlap clock"
     },
     "eligibility": {
       "common": "fee_transport*endpoint_transport<0 and strain_rank>=0.75",
       "every_eligible_source_clock_considered": true,
       "long": "common and fee_transport<0 and endpoint_transport>0",
-      "ordering": "sort by entry_time then bucket_start; accept earliest when entry_time>=prior accepted exit; equal boundary allowed; suppress intervening candidates without score priority or replacement",
+      "ordering": "sort by entry_time then packet_id; accept earliest when entry_time>=prior accepted exit; equal boundary allowed; suppress intervening candidates without score priority or replacement",
       "post_support_repair": "forbidden",
       "short": "common and fee_transport>0 and endpoint_transport<0",
       "side": "-sign(fee_transport), equal to sign(endpoint_transport)",
@@ -78,10 +79,10 @@
       "current_row_excluded": true,
       "endpoint_magnitude_rank_control": "midrank of abs(endpoint_transport)",
       "fee_magnitude_rank_control": "midrank of abs(fee_transport)",
-      "lookback_valid_feature_buckets": 180,
+      "lookback_valid_feature_packets": 180,
       "method": "strict-prior rolling empirical midrank",
       "midrank_formula": "(count(prior < current)+0.5*count(prior == current))/prior_count",
-      "minimum_prior_valid_feature_buckets": 120,
+      "minimum_prior_valid_feature_packets": 120,
       "prior_available_at_strictly_before_current": true,
       "strain_rank": "midrank of strain_magnitude",
       "tie_equality": "exact IEEE-754 binary64 equality",
@@ -96,7 +97,7 @@
         "same_direction",
         "constant_long_same_clock",
         "constant_short_same_clock",
-        "stale_7d",
+        "stale_14_packets",
         "month_side_stratified_random_clock"
       ],
       "control_replacement": "forbidden under FETD-288",
@@ -123,11 +124,14 @@
     "promotion_boundary": "pre-2024 pass required before a separately frozen 2024-2026 source extension; no live promotion before field parity and 90 forward shadow days",
     "singleton": true,
     "source_features": {
-      "base_valid_feature_row": "require t-2,t-1,t as consecutive valid 12h buckets; each bucket has >=24 blocks and positive finite total_weight, total_fees, and total_endpoints; all derived values finite",
+      "base_valid_feature_row": "require t-2,t-1,t as consecutive valid 72-block packets; each packet has exactly 72 contiguous heights and positive finite total_weight, total_fees, and total_endpoints; all derived values finite",
+      "complete_packet_count": 2959,
+      "edge_packet_policy": "drop incomplete first and last packets",
       "endpoint_density": "log(total_endpoints/total_weight)",
       "endpoint_transport": "endpoint_density[t]-endpoint_density[t-2]",
       "fee_pressure": "log(total_fees/total_weight)",
       "fee_transport": "fee_pressure[t]-fee_pressure[t-2]",
+      "first_complete_packet_start_height": 610704,
       "forbidden_primary_fields": [
         "utxo_set_change",
         "tx_count",
@@ -142,18 +146,18 @@
         "return",
         "pnl"
       ],
-      "minimum_blocks_per_bucket": 24,
+      "last_complete_packet_end_height": 823751,
       "numeric_contract": "IEEE-754 binary64 and natural log; no epsilon, clipping, rounding, interpolation, forward fill, reassignment, or imputation; exact binary64 equality defines zero and ties",
-      "source_bucket_alignment": "floor(header_timestamp/43200)",
-      "source_bucket_seconds": 43200,
+      "packet_alignment": "packet_id=floor(height/72)",
+      "packet_blocks": 72,
       "strain_magnitude": "abs(fee_transport*endpoint_transport)",
       "total_endpoints": "sum(total_inputs+total_outputs)",
       "total_fees": "sum(total_fees)",
       "total_weight": "sum(weight)",
-      "transport_horizon_buckets": 2,
-      "transport_horizon_hours": 24
+      "transport_horizon_expected_hours": 24,
+      "transport_horizon_packets": 2
     },
-    "stopping_rule": "stop permanently at first support/train/selection failure; no sign, threshold, rank-window, bucket, support-floor, hold, latency, calendar, or clock repair; no failed-policy inversion",
+    "stopping_rule": "stop permanently at first support/train/selection failure; no sign, threshold, rank-window, packet, support-floor, hold, latency, calendar, or clock repair; no failed-policy inversion",
     "strict_accounting": {
       "cagr_clock": "full declared wall-clock window including idle cash",
       "cluster_test": "one-sided weekly entry-cluster sign flip; 100000 draws; seed 20260720",
@@ -172,9 +176,11 @@
       ]
     },
     "support_gates": {
+      "blocks_per_complete_packet": 72,
+      "complete_packet_count": 2959,
+      "consecutive_complete_packet_ids": true,
       "count_basis": "accepted primary entries after eligibility, split containment, and chronological non-overlap",
-      "minimum_blocks_per_source_bucket": 24,
-      "missing_12h_source_buckets": 0,
+      "delayed_entry_split_edge_reporting": "report train and selection dropped counts before outcomes; dropped trades receive no replacement",
       "selection_each_half_minimum": 14,
       "selection_each_quarter_minimum": 6,
       "selection_each_side_each_half_minimum": 5,
@@ -192,15 +198,15 @@
       "train_total_minimum": 80
     }
   },
-  "policy_hash": "ac7b4bfdf9da7d79dfcb8627557d691d50656474c55c4c20cdaedb2cb695896c",
+  "policy_hash": "7bd47d38c93c6507ce75bab455f3b3e7efee69a803f56bc1ab78ebcb85d9434e",
   "policy_id": "FETD-288",
   "preregistration_document": {
     "path": "docs/fee-endpoint-topology-disagreement-fetd288-preregistration-2026-07-20.md",
-    "sha256": "2e98f2aefc7c475319b448d731bc6dcd932c8c5142b4a2db2a967f0997df0234"
+    "sha256": "83af41a9f8d6a512f02e27cb7bcd326645af44ea09953ce0bdddffddfb5cb11c"
   },
   "preregistration_source": {
     "path": "training/preregister_fee_endpoint_topology_disagreement.py",
-    "sha256": "887b74fa5ae1ba123c4a51440273f52d5ea4c52df4bf5029001c357c11c49950"
+    "sha256": "ae1329f0cd124787d822096e56dc3bc3ed05ccd2f2f6f0cb86f47e5cd766c413"
   },
   "protocol_version": "fee_endpoint_topology_disagreement_preregistration_v1",
   "research_sequence": {

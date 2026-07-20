@@ -144,18 +144,21 @@ def test_writes_exact_outcome_blind_singleton_and_hashes(
 
     policy = artifact["policy"]
     assert policy["singleton"] is True
-    assert policy["source_features"]["source_bucket_seconds"] == 43_200
-    assert policy["source_features"]["minimum_blocks_per_bucket"] == 24
+    assert policy["source_features"]["packet_blocks"] == 72
+    assert policy["source_features"]["packet_alignment"] == (
+        "packet_id=floor(height/72)"
+    )
+    assert policy["source_features"]["complete_packet_count"] == 2_959
     assert policy["source_features"]["fee_pressure"] == (
         "log(total_fees/total_weight)"
     )
     assert policy["source_features"]["endpoint_density"] == (
         "log(total_endpoints/total_weight)"
     )
-    assert policy["source_features"]["transport_horizon_buckets"] == 2
+    assert policy["source_features"]["transport_horizon_packets"] == 2
     assert "utxo_set_change" in policy["source_features"]["forbidden_primary_fields"]
-    assert policy["normalization"]["lookback_valid_feature_buckets"] == 180
-    assert policy["normalization"]["minimum_prior_valid_feature_buckets"] == 120
+    assert policy["normalization"]["lookback_valid_feature_packets"] == 180
+    assert policy["normalization"]["minimum_prior_valid_feature_packets"] == 120
     assert policy["eligibility"]["common"] == (
         "fee_transport*endpoint_transport<0 and strain_rank>=0.75"
     )
@@ -178,9 +181,16 @@ def test_writes_exact_outcome_blind_singleton_and_hashes(
     assert policy["support_gates"]["train_short_minimum"] == 25
     assert policy["support_gates"]["selection_total_minimum"] == 35
     assert policy["support_gates"]["selection_each_quarter_minimum"] == 6
+    assert policy["support_gates"]["delayed_entry_split_edge_reporting"] == (
+        "report train and selection dropped counts before outcomes; dropped "
+        "trades receive no replacement"
+    )
     assert policy["performance_gates"]["cagr_to_strict_mdd_minimum_each"] == 3.0
     assert policy["performance_gates"]["strict_max_drawdown_maximum_each"] == 0.15
     assert policy["controls"] == prereg.CONTROL_DEFINITIONS
+    assert "report train/selection dropped counts" in policy["controls"][
+        "one_bar_delayed_entry"
+    ]
     assert prereg.load_preregistration(cfg.preregistration_output) == artifact
 
 

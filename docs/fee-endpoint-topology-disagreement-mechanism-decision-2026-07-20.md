@@ -14,8 +14,8 @@ signal incidence, market value, funding value, return, PnL, CAGR, or MDD.
 
 ## Mechanism
 
-For a completed source bucket, the candidate family is restricted to two
-confirmed-ledger quantities:
+For a completed, absolute-height-aligned 72-block packet, the candidate family
+is restricted to two confirmed-ledger quantities:
 
 ```text
 fee_pressure     = total_fees / block_weight
@@ -116,13 +116,15 @@ bulk-data licence and remains a private research transport.
 ## Causal availability boundary
 
 Historical header timestamps are miner-reported and are not receipt logs.
-The later preregistration must therefore use fixed UTC source buckets and:
+Calendar grouping by those timestamps would permit a later-mined, backdated
+header to enter an apparently closed historical bucket.  The later
+preregistration must therefore:
 
-1. include only blocks whose header timestamp belongs to a fully closed
-   bucket;
-2. require at least six hash-linked successors after the final included block;
-3. treat the bucket as unavailable until at least 48 hours after its fixed UTC
-   end;
+1. use complete 72-block packets aligned by absolute block height, never by
+   header-time calendar membership;
+2. require at least six hash-linked successors after the packet end;
+3. set synthetic availability from the maximum header timestamp observed from
+   packet start through the sixth successor, plus a fixed 48-hour embargo;
 4. add one complete five-minute latency bar before next-open entry;
 5. reserve events chronologically without score-priority replacement; and
 6. keep the complete fixed hold inside its declared split.
@@ -165,4 +167,3 @@ CAGR including idle cash, global/pre-entry-HWM strict MDD, CAGR/strict-MDD,
 trade count, both sides, stress cost, delayed entry, and clustered
 significance.  The target remains CAGR/strict-MDD at least 3 with strict MDD no
 greater than 15% and statistically meaningful trades.
-
