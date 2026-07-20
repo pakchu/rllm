@@ -1,0 +1,154 @@
+{
+  "as_of_date": "2026-07-20",
+  "candidate": "UCBR-12",
+  "later_outcome_contract": {
+    "absolute_return_positive": true,
+    "base_cost_bp_per_notional_side": 6.0,
+    "control_ratio_margin": 0.25,
+    "evaluator_must_be_committed_before_outcome": true,
+    "exact_realized_funding": true,
+    "full_calendar_cagr": true,
+    "leverage": 0.5,
+    "mandatory_controls": [
+      "direction_flip",
+      "deterministic_random_side",
+      "extra_latency_1h",
+      "all_four",
+      "leave_one_issuer_out",
+      "median_only",
+      "matched_btcusdt_12h_momentum_side",
+      "matched_btcusdt_12h_reversion_side"
+    ],
+    "mean_gross_move_minimum_bp": 25.0,
+    "minimum_trades_per_stage": 30,
+    "predeclared_half_periods_positive": true,
+    "primary_ratio_minimum": 3.0,
+    "sequential_stages": [
+      "train_2023",
+      "test_2024",
+      "eval_2025",
+      "final_2026h1"
+    ],
+    "stop_on_first_failure": true,
+    "stress_cost_bp_per_notional_side": 10.0,
+    "stress_ratio_minimum": 2.5,
+    "strict_mdd_maximum_pct": 15.0,
+    "strict_position_path_mdd": true,
+    "weekly_sign_flip_p_maximum": 0.1
+  },
+  "manifest_hash": "483884a349219ba3888253b39c33eae34c0a500400beef59bc0b8fe56ad55a3d",
+  "outcome_sources_opened": false,
+  "outcomes_opened": false,
+  "output": "results/usdt_collateral_breadth_relay_preregistration_2026-07-20.json",
+  "policy": {
+    "availability": "completed source hour h is known at h+1h",
+    "config": {
+      "bar_minutes": 5,
+      "entry_delay_minutes": 5,
+      "full_signal_months": [
+        "2023-09",
+        "2023-10",
+        "2023-11",
+        "2023-12"
+      ],
+      "hold_bars": 144,
+      "lookback_hours": 720,
+      "maximum_exact_entry_jaccard": 0.1,
+      "maximum_month_share": 0.45,
+      "maximum_novelty_containment": 0.35,
+      "minimum_agreeing_issuers": 3,
+      "minimum_events": 30,
+      "minimum_events_per_full_signal_month": 5,
+      "minimum_history_hours": 672,
+      "minimum_side_share": 0.3,
+      "novelty_containment_hours": 6,
+      "support_end_exclusive": "2024-01-01T00:00:00Z",
+      "z_threshold": 1.25
+    },
+    "entry": "BTCUSDT USD-M perpetual at h+1h+5m open",
+    "exit": "scheduled open after exactly 144 five-minute bars",
+    "global_nonoverlap_per_clock": true,
+    "normalization": "per issuer: strictly-prior 720h median and IQR/1.349, min 672 valid hours",
+    "primary": "at least three current-valid issuers have same-sign |z| >= 1.25; false-to-true onset only",
+    "source_sign": "+1 means broad alternative-stablecoin strength / USDT weakness; -1 means USDT strength",
+    "trade_side": "-source_sign: USDT weakness SHORT BTCUSDT, USDT strength LONG BTCUSDT"
+  },
+  "post_2023_source_rows_opened": false,
+  "preregistration_document": "docs/usdt-collateral-breadth-relay-preregistration-2026-07-20.md",
+  "preregistration_document_sha256": "f36be6497411f56f875443b523917b51cc35544744fdd6f91036f60a6874487f",
+  "preregistration_source": "training/preregister_usdt_collateral_breadth_relay.py",
+  "preregistration_source_sha256": "2976df47c029a3923e50afd617b5e1446e0c90836a7003fbc1ba14ddc3841ed8",
+  "protocol_version": "usdt_collateral_breadth_relay_v1",
+  "real_event_incidence_opened": false,
+  "rllm_boundary": "Gemma/RLLM is prohibited until the deterministic UCBR clock demonstrates gross edge above costs; it may later abstain or route risk but may not repair source timing, direction, breadth, or threshold",
+  "source": {
+    "manifest": "data/binance_usdt_collateral_breadth_2023/build_manifest.json",
+    "manifest_sha256": "26e142b818306275d48690711b7adca00b43750041d104e5c27a65b355c424f2",
+    "panel": "data/binance_usdt_collateral_breadth_2023/stablecoin_usdt_breadth_1h_2023-08-01T00_2023-12-31T23.csv.gz",
+    "panel_sha256": "e96fae39c869f6db0dc30bccc5b2fa72f5e7f717c2528038afede18dd5b9892d",
+    "persisted_observables": [
+      "date",
+      "source_available_at",
+      "usdcusdt_log_close",
+      "tusdusdt_log_close",
+      "usdpusdt_log_close",
+      "fdusdusdt_log_close",
+      "usdcusdt_valid",
+      "tusdusdt_valid",
+      "usdpusdt_valid",
+      "fdusdusdt_valid",
+      "valid_breadth",
+      "source_complete"
+    ],
+    "raw_ohlc_or_flow_retained": false
+  },
+  "source_only_controls": [
+    "all_four",
+    "leave_out_usdc",
+    "leave_out_tusd",
+    "leave_out_usdp",
+    "leave_out_fdusd",
+    "median_only",
+    "stale_1h"
+  ],
+  "support_comparators": [
+    {
+      "candidate": "SDDR-12",
+      "clock": "data/stablecoin_denominator_dislocation_clocks_2023.csv.gz",
+      "clock_sha256": "eaf2d6c187af9855e76474d2951fcdc12267174980a72649b73d068982ca8c69",
+      "controls": [
+        "primary"
+      ],
+      "support": "results/stablecoin_denominator_dislocation_support_2026-07-20.json",
+      "support_sha256": "1d7e8561963d903c5963bbd081c5cf0c9926dc9221f9a09d23fb565ab27f7bea"
+    },
+    {
+      "candidate": "SQFD-6",
+      "clock": "data/stablecoin_quote_flow_diffusion_clocks_2023_2026.csv.gz",
+      "clock_sha256": "a81e144eea1e80ae5439fc66db1fad5bbd00cd9ac177e25142b5cfb5a07bcc5b",
+      "controls": [
+        "primary",
+        "no_usdt_lag",
+        "no_participation"
+      ],
+      "support": "results/stablecoin_quote_flow_diffusion_support_2026-07-19.json",
+      "support_sha256": "07230e9e579f1b16e07712a022e572026b4fbfa17070e998970b3fd8ee21d4b5"
+    }
+  ],
+  "support_gate": {
+    "full_signal_months": [
+      "2023-09",
+      "2023-10",
+      "2023-11",
+      "2023-12"
+    ],
+    "maximum_exact_entry_jaccard": 0.1,
+    "maximum_month_share": 0.45,
+    "maximum_novelty_containment": 0.35,
+    "minimum_events": 30,
+    "minimum_events_per_full_signal_month": 5,
+    "minimum_side_share": 0.3,
+    "novelty_containment_hours": 6,
+    "stop_if_failed": true
+  }
+}
