@@ -1,5 +1,5 @@
 {
-  "protocol_version": "deribit_expiry_hedge_release_preregistration_v1",
+  "protocol_version": "deribit_expiry_hedge_release_preregistration_v2",
   "protocol": {
     "policy_id": "DEHR-72",
     "support_only": true,
@@ -19,6 +19,7 @@
       "manifest_hash": "pending_outcome_blind_download",
       "fields_used_for_support": [
         "expiry_time",
+        "delivery_event_time",
         "source_observation_earliest",
         "total_position",
         "absolute_release_position",
@@ -46,7 +47,7 @@
       "timezone": "UTC",
       "event": "Deribit option delivery, normally 08:00 UTC",
       "publication_sla_known": false,
-      "historical_observation": "event + 65 minutes",
+      "historical_observation": "reported delivery event timestamp + 65 minutes",
       "live_observation": "two identical canonical delivery sets observed five minutes apart, never before event + 60 minutes",
       "entry": "1 additional completed five-minute latency bar after source observation",
       "hold_bars": 72,
@@ -130,16 +131,22 @@
       "source_decision": "docs/deribit-expiry-hedge-release-mechanism-decision-2026-07-20.md",
       "source_decision_sha256": "459247767cd26b33fc9df1e2ee5819fda65826455151d943e0e432f1bb414c00",
       "source_downloader": "training/download_deribit_btc_option_deliveries.py",
-      "source_downloader_sha256": "b477b85c66d6a3578072e8893260abb09b5315a7a2a66fae50996cfb96bd97a7",
+      "source_downloader_sha256": "1e698db869ef263b692a950a3ecc4f4fafb834dd99db8476fd4da11bc1852cda",
+      "event_clock_correction": "docs/deribit-expiry-event-clock-operational-correction-2026-07-20.md",
+      "event_clock_correction_sha256": "3a7068c44d38b35e84a461186c22825d0961269bd2feb334785f6bf3001467a6",
+      "original_preregistration_artifact_hash": "8e0608227cfd85560d284de4c565ba1eb8741f46a54961c710a299a516386891",
       "preregistration_document": "docs/deribit-expiry-hedge-release-support-preregistration-2026-07-20.md",
-      "preregistration_document_sha256": "f29739fde15357fecbe1401e72fec10d1e028a20554f4634a163c6ae37a7fdf8",
+      "preregistration_document_sha256": "3865f35f732f23f62c74c08c5d2a922cd5f9968271571a98111a624f62121aa3",
       "preregistration_source": "training/preregister_deribit_expiry_hedge_release_support.py",
-      "preregistration_source_sha256": "94bf067583ad8881f1afe2b34f5e50ee8dd0469b251cea2c55b5d08c4724295b"
+      "preregistration_source_sha256": "7600d3d4f7f72eb5f7462c872b1a3e5d1f864a36a79f1f1e5eb31eeb232cf1fc"
     },
-    "research_history_boundary": "candidate-level freeze only; unrelated repository research has seen BTC history, but complete DEHR incidence and all matching post-entry outcomes remain unopened at preregistration"
+    "research_history_boundary": "candidate-level freeze only; unrelated repository research has seen BTC history. A source-only clock diagnostic opened page, row, year, and timestamp-offset statistics after the original freeze; DEHR candidate incidence and all matching post-entry outcomes remain unopened in this successor artifact"
   },
-  "protocol_hash": "6f31bba8e67cd137da4b7e7b0deafa54ba0edc05ece1816602fab372353d176f",
+  "protocol_hash": "519d830a0ad22d43775a23dfe15ab25c064a9e9683d874e4a3db8098a4126465",
   "outcomes_opened": false,
-  "source_incidence_opened": false,
-  "artifact_hash": "8e0608227cfd85560d284de4c565ba1eb8741f46a54961c710a299a516386891"
+  "source_incidence_opened": true,
+  "source_clock_diagnostic_opened": true,
+  "candidate_incidence_opened": false,
+  "supersedes_artifact_hash": "8e0608227cfd85560d284de4c565ba1eb8741f46a54961c710a299a516386891",
+  "artifact_hash": "d1797ea2eae04a85f9d917e27412bc8456878bd4b1d350b461b4bd64208e4c1e"
 }

@@ -2,7 +2,8 @@
 
 This stage reads only the pre-2023 Deribit BTC option-delivery aggregate.  It
 never reads Binance bars, funding, post-expiry returns, PnL, or a 2023+ source
-row.  The preregistration artifact must exist before source incidence is run.
+row.  The original preregistration existed before source incidence; this
+successor discloses the later source-only event-clock diagnostic explicitly.
 """
 from __future__ import annotations
 
@@ -38,7 +39,16 @@ SOURCE_DOWNLOADER = Path(
     "training/download_deribit_btc_option_deliveries.py"
 )
 SOURCE_DOWNLOADER_SHA256 = (
-    "b477b85c66d6a3578072e8893260abb09b5315a7a2a66fae50996cfb96bd97a7"
+    "1e698db869ef263b692a950a3ecc4f4fafb834dd99db8476fd4da11bc1852cda"
+)
+EVENT_CLOCK_CORRECTION = Path(
+    "docs/deribit-expiry-event-clock-operational-correction-2026-07-20.md"
+)
+EVENT_CLOCK_CORRECTION_SHA256 = (
+    "3a7068c44d38b35e84a461186c22825d0961269bd2feb334785f6bf3001467a6"
+)
+ORIGINAL_PREREGISTRATION_ARTIFACT_HASH = (
+    "8e0608227cfd85560d284de4c565ba1eb8741f46a54961c710a299a516386891"
 )
 PREREGISTRATION_DOCUMENT = Path(
     "docs/deribit-expiry-hedge-release-support-preregistration-2026-07-20.md"
@@ -49,6 +59,7 @@ PREREGISTRATION_SOURCE = Path(
 
 SOURCE_COLUMNS = [
     "expiry_time",
+    "delivery_event_time",
     "source_observation_earliest",
     "index_price",
     "option_count",
@@ -67,7 +78,8 @@ SOURCE_COLUMNS = [
     "absolute_release_position",
     "release_side",
     "largest_instrument_share",
-    "maximum_event_timestamp_offset_seconds",
+    "delivery_delay_seconds",
+    "maximum_event_row_span_seconds",
 ]
 
 
@@ -135,6 +147,7 @@ def _validate_config(cfg: Config) -> None:
     anchors = {
         SOURCE_DECISION: SOURCE_DECISION_SHA256,
         SOURCE_DOWNLOADER: SOURCE_DOWNLOADER_SHA256,
+        EVENT_CLOCK_CORRECTION: EVENT_CLOCK_CORRECTION_SHA256,
     }
     for path, expected_sha in anchors.items():
         if sha256_file(path) != expected_sha:
@@ -164,6 +177,7 @@ def protocol(cfg: Config) -> dict[str, Any]:
             "manifest_hash": "pending_outcome_blind_download",
             "fields_used_for_support": [
                 "expiry_time",
+                "delivery_event_time",
                 "source_observation_earliest",
                 "total_position",
                 "absolute_release_position",
@@ -192,7 +206,8 @@ def protocol(cfg: Config) -> dict[str, Any]:
             "event": "Deribit option delivery, normally 08:00 UTC",
             "publication_sla_known": False,
             "historical_observation": (
-                f"event + {cfg.source_observation_latency_minutes} minutes"
+                "reported delivery event timestamp + "
+                f"{cfg.source_observation_latency_minutes} minutes"
             ),
             "live_observation": (
                 "two identical canonical delivery sets observed five minutes "
@@ -316,6 +331,13 @@ def protocol(cfg: Config) -> dict[str, Any]:
             "source_decision_sha256": SOURCE_DECISION_SHA256,
             "source_downloader": str(SOURCE_DOWNLOADER),
             "source_downloader_sha256": SOURCE_DOWNLOADER_SHA256,
+            "event_clock_correction": str(EVENT_CLOCK_CORRECTION),
+            "event_clock_correction_sha256": (
+                EVENT_CLOCK_CORRECTION_SHA256
+            ),
+            "original_preregistration_artifact_hash": (
+                ORIGINAL_PREREGISTRATION_ARTIFACT_HASH
+            ),
             "preregistration_document": str(PREREGISTRATION_DOCUMENT),
             "preregistration_document_sha256": sha256_file(
                 PREREGISTRATION_DOCUMENT
@@ -327,8 +349,10 @@ def protocol(cfg: Config) -> dict[str, Any]:
         },
         "research_history_boundary": (
             "candidate-level freeze only; unrelated repository research has "
-            "seen BTC history, but complete DEHR incidence and all matching "
-            "post-entry outcomes remain unopened at preregistration"
+            "seen BTC history. A source-only clock diagnostic opened page, row, "
+            "year, and timestamp-offset statistics after the original freeze; "
+            "DEHR candidate incidence and all matching post-entry outcomes "
+            "remain unopened in this successor artifact"
         ),
     }
 
@@ -337,11 +361,14 @@ def write_preregistration(cfg: Config) -> dict[str, Any]:
     _validate_config(cfg)
     protocol_payload = protocol(cfg)
     core = {
-        "protocol_version": "deribit_expiry_hedge_release_preregistration_v1",
+        "protocol_version": "deribit_expiry_hedge_release_preregistration_v2",
         "protocol": protocol_payload,
         "protocol_hash": canonical_hash(protocol_payload),
         "outcomes_opened": False,
-        "source_incidence_opened": False,
+        "source_incidence_opened": True,
+        "source_clock_diagnostic_opened": True,
+        "candidate_incidence_opened": False,
+        "supersedes_artifact_hash": ORIGINAL_PREREGISTRATION_ARTIFACT_HASH,
     }
     artifact = {**core, "artifact_hash": canonical_hash(core)}
     path = Path(cfg.preregistration_output)
@@ -360,8 +387,16 @@ def load_preregistration(cfg: Config) -> dict[str, Any]:
         raise RuntimeError("DEHR-72 preregistration protocol drift")
     if artifact.get("outcomes_opened") is not False:
         raise RuntimeError("DEHR-72 preregistration opened outcomes")
-    if artifact.get("source_incidence_opened") is not False:
-        raise RuntimeError("DEHR-72 preregistration opened source incidence")
+    if artifact.get("source_incidence_opened") is not True:
+        raise RuntimeError("DEHR-72 preregistration hides source diagnostics")
+    if artifact.get("source_clock_diagnostic_opened") is not True:
+        raise RuntimeError("DEHR-72 preregistration hides the clock diagnostic")
+    if artifact.get("candidate_incidence_opened") is not False:
+        raise RuntimeError("DEHR-72 preregistration opened candidate incidence")
+    if artifact.get("supersedes_artifact_hash") != (
+        ORIGINAL_PREREGISTRATION_ARTIFACT_HASH
+    ):
+        raise RuntimeError("DEHR-72 preregistration predecessor mismatch")
     return artifact
 
 
@@ -372,7 +407,7 @@ def _manifest_core(manifest: dict[str, Any]) -> dict[str, Any]:
 def validate_source_manifest_metadata(
     manifest: dict[str, Any],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    if manifest.get("protocol_version") != "deribit_btc_option_delivery_source_v2":
+    if manifest.get("protocol_version") != "deribit_btc_option_delivery_source_v3":
         raise RuntimeError("DEHR-72 source manifest version mismatch")
     if canonical_hash(_manifest_core(manifest)) != manifest.get("manifest_hash"):
         raise RuntimeError("DEHR-72 source manifest hash mismatch")
@@ -435,8 +470,8 @@ def validate_source_manifest_metadata(
     if availability != {
         "deribit_publication_sla_known": False,
         "source_observation_rule": (
-            "expiry_time + 65 minutes after two identical canonical delivery "
-            "sets observed five minutes apart"
+            "delivery_event_time + 65 minutes after two identical canonical "
+            "delivery sets observed five minutes apart"
         ),
         "source_observation_latency_seconds": 3900,
         "earliest_next_5m_entry_latency_seconds": 4200,
@@ -449,10 +484,14 @@ def validate_source_frame(frame: pd.DataFrame, cfg: Config) -> pd.DataFrame:
     if list(frame.columns) != SOURCE_COLUMNS:
         raise RuntimeError("DEHR-72 source aggregate columns mismatch")
     checked = frame.copy()
-    for column in ["expiry_time", "source_observation_earliest"]:
+    for column in [
+        "expiry_time",
+        "delivery_event_time",
+        "source_observation_earliest",
+    ]:
         checked[column] = pd.to_datetime(checked[column], utc=True, errors="raise")
     numeric_columns = [column for column in SOURCE_COLUMNS if column not in {
-        "expiry_time", "source_observation_earliest"
+        "expiry_time", "delivery_event_time", "source_observation_earliest"
     }]
     for column in numeric_columns:
         checked[column] = pd.to_numeric(checked[column], errors="raise")
@@ -466,7 +505,7 @@ def validate_source_frame(frame: pd.DataFrame, cfg: Config) -> pd.DataFrame:
     end = pd.Timestamp(cfg.selection_end_exclusive, tz="UTC")
     if checked["expiry_time"].min() < start or checked["expiry_time"].max() >= end:
         raise RuntimeError("DEHR-72 source escaped the frozen pre-2023 interval")
-    expected_observation = checked["expiry_time"] + pd.Timedelta(
+    expected_observation = checked["delivery_event_time"] + pd.Timedelta(
         minutes=cfg.source_observation_latency_minutes
     )
     if not checked["source_observation_earliest"].equals(expected_observation):
@@ -507,11 +546,25 @@ def validate_source_frame(frame: pd.DataFrame, cfg: Config) -> pd.DataFrame:
         & expiry.microsecond.eq(0)
     ).all():
         raise RuntimeError("DEHR-72 source expiry is not exactly 08:00 UTC")
-    maximum_offset = SourceConfig.maximum_event_delay_seconds
-    if not checked["maximum_event_timestamp_offset_seconds"].between(
-        0.0, maximum_offset
+    event = checked["delivery_event_time"]
+    if (
+        event.lt(checked["expiry_time"]).any()
+        or not event.dt.normalize().equals(checked["expiry_time"].dt.normalize())
+    ):
+        raise RuntimeError("DEHR-72 source delivery event clock is invalid")
+    expected_delay = (event - checked["expiry_time"]).dt.total_seconds()
+    if not np.allclose(
+        checked["delivery_delay_seconds"],
+        expected_delay,
+        rtol=0.0,
+        atol=1e-6,
+    ):
+        raise RuntimeError("DEHR-72 source delivery delay mismatch")
+    maximum_span = SourceConfig.maximum_event_row_span_seconds
+    if not checked["maximum_event_row_span_seconds"].between(
+        0.0, maximum_span
     ).all():
-        raise RuntimeError("DEHR-72 source event timestamp offset is invalid")
+        raise RuntimeError("DEHR-72 source event row span is invalid")
     if not checked["largest_instrument_share"].between(0.0, 1.0).all():
         raise RuntimeError("DEHR-72 source instrument concentration is invalid")
     if not np.allclose(
@@ -763,6 +816,7 @@ def event_records(schedule: pd.DataFrame) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     columns = [
         "expiry_time",
+        "delivery_event_time",
         "source_observation_earliest",
         "entry_time",
         "exit_time",
@@ -772,6 +826,7 @@ def event_records(schedule: pd.DataFrame) -> list[dict[str, Any]]:
         records.append(
             {
                 "expiry_time": row["expiry_time"].isoformat(),
+                "delivery_event_time": row["delivery_event_time"].isoformat(),
                 "source_observation_earliest": row[
                     "source_observation_earliest"
                 ].isoformat(),
@@ -821,10 +876,11 @@ def run_support(cfg: Config) -> tuple[dict[str, Any], dict[str, Any] | None]:
         source_sha256=source_sha,
     )
     core = {
-        "protocol_version": "deribit_expiry_hedge_release_support_v1",
+        "protocol_version": "deribit_expiry_hedge_release_support_v2",
         "policy_id": POLICY_ID,
         "outcomes_opened": False,
         "source_incidence_opened": True,
+        "source_clock_diagnostic_previously_opened": True,
         "preregistration_hash": preregistration["artifact_hash"],
         "source_manifest_hash": source_manifest_hash,
         "source_sha256": source_sha,
@@ -866,7 +922,7 @@ def run_support(cfg: Config) -> tuple[dict[str, Any], dict[str, Any] | None]:
     clock: dict[str, Any] | None = None
     if summary["passed"]:
         clock_core = {
-            "protocol_version": "deribit_expiry_hedge_release_event_clock_v1",
+            "protocol_version": "deribit_expiry_hedge_release_event_clock_v2",
             "policy_id": POLICY_ID,
             "outcomes_opened": False,
             "support_result_hash": result["result_hash"],

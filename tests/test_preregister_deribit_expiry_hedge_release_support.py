@@ -51,6 +51,7 @@ def _source(
     return pd.DataFrame(
         {
             "expiry_time": dates,
+            "delivery_event_time": dates,
             "source_observation_earliest": dates + pd.Timedelta(minutes=65),
             "total_position": total_values,
             "absolute_release_position": absolute,
@@ -94,7 +95,8 @@ def _complete_source_columns(frame: pd.DataFrame) -> pd.DataFrame:
         "otm_position": 70.0,
         "atm_position": 0.0,
         "largest_instrument_share": 0.20,
-        "maximum_event_timestamp_offset_seconds": 0.1,
+        "delivery_delay_seconds": 0.0,
+        "maximum_event_row_span_seconds": 0.1,
     }
     for column, value in defaults.items():
         completed[column] = value
@@ -142,7 +144,7 @@ def test_signal_uses_frozen_side_and_causal_clock() -> None:
     assert candidates["side"].tolist() == [1, -1]
     assert (
         candidates["entry_time"]
-        == candidates["expiry_time"] + pd.Timedelta(minutes=70)
+        == candidates["delivery_event_time"] + pd.Timedelta(minutes=70)
     ).all()
     assert (
         candidates["exit_time"]
@@ -179,6 +181,13 @@ def test_validate_source_frame_rejects_clock_and_release_tampering() -> None:
         dehr.validate_source_frame(changed, dehr.Config())
 
     changed = source.copy()
+    changed.loc[1, "delivery_event_time"] += pd.Timedelta(hours=1)
+    changed.loc[1, "delivery_delay_seconds"] = 3600.0
+    changed.loc[1, "source_observation_earliest"] += pd.Timedelta(hours=1)
+    checked = dehr.validate_source_frame(changed, dehr.Config())
+    assert checked.loc[1, "delivery_delay_seconds"] == 3600.0
+
+    changed = source.copy()
     changed.loc[1, "release_side"] *= -1
     with pytest.raises(RuntimeError, match="release side"):
         dehr.validate_source_frame(changed, dehr.Config())
@@ -186,7 +195,7 @@ def test_validate_source_frame_rejects_clock_and_release_tampering() -> None:
 
 def _valid_source_manifest() -> dict[str, object]:
     core: dict[str, object] = {
-        "protocol_version": "deribit_btc_option_delivery_source_v2",
+        "protocol_version": "deribit_btc_option_delivery_source_v3",
         "config": asdict(dehr.SourceConfig()),
         "source_audit": {
             "start": "2019-01-01",
@@ -224,8 +233,8 @@ def _valid_source_manifest() -> dict[str, object]:
         "causal_availability": {
             "deribit_publication_sla_known": False,
             "source_observation_rule": (
-                "expiry_time + 65 minutes after two identical canonical "
-                "delivery sets observed five minutes apart"
+                "delivery_event_time + 65 minutes after two identical "
+                "canonical delivery sets observed five minutes apart"
             ),
             "source_observation_latency_seconds": 3900,
             "earliest_next_5m_entry_latency_seconds": 4200,
@@ -318,6 +327,7 @@ def test_event_hash_binds_side_config_preregistration_and_source() -> None:
     events = [
         {
             "expiry_time": "2022-01-01T08:00:00+00:00",
+            "delivery_event_time": "2022-01-01T08:00:00+00:00",
             "source_observation_earliest": "2022-01-01T09:05:00+00:00",
             "entry_time": "2022-01-01T09:10:00+00:00",
             "exit_time": "2022-01-01T15:10:00+00:00",
@@ -382,6 +392,12 @@ def test_preregistration_is_deterministic_and_tamper_evident(
     second = dehr.write_preregistration(cfg)
     assert Path(cfg.preregistration_output).read_bytes() == first_bytes
     assert first["artifact_hash"] == second["artifact_hash"]
+    assert first["source_incidence_opened"] is True
+    assert first["source_clock_diagnostic_opened"] is True
+    assert first["candidate_incidence_opened"] is False
+    assert first["supersedes_artifact_hash"] == (
+        dehr.ORIGINAL_PREREGISTRATION_ARTIFACT_HASH
+    )
     assert dehr.load_preregistration(cfg)["artifact_hash"] == first["artifact_hash"]
 
     tampered = json.loads(first_bytes)
