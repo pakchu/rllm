@@ -132,8 +132,6 @@ pdf_url
 byte_length
 sha256
 pdf_creation_metadata_raw
-http_etag
-http_last_modified
 parser_version
 table_ids_found
 extraction_status
@@ -148,8 +146,10 @@ byte-identical when the same frozen PDFs and parser version are supplied.
 
 The announcement workbook and dataset page-data JSON must also be archived and
 hash-bound, while only their pre-cap rows may enter logic. An HTTP redirect is
-retained in the receipt log and accepted only when the terminal HTTPS host is
-still `fiscaldata.treasury.gov`; a cross-host or downgrade redirect fails.
+retained in the receipt log and accepted only when its target is still the
+exact approved HTTPS metadata URL or a pre-cap report URL on
+`fiscaldata.treasury.gov`; a cross-host, downgrade, alternate path, or post-cap
+redirect fails before its target is requested.
 HTML error pages, encrypted PDFs, unsupported PDF filters, duplicate report
 dates, changed bytes at an already bound URL, and a record date inconsistent
 with the filename all fail closed.
