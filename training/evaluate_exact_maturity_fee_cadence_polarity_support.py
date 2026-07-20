@@ -511,14 +511,10 @@ def _clock_from_features(
         return pd.DataFrame(columns=CLOCK_COLUMNS)
     selected = features.iloc[accepted].copy()
     selected_state = np.asarray(state, dtype=np.int8)[accepted]
-    selected.insert(0, "policy_id", policy.policy_id)
-    selected.insert(1, "clock", name)
-    selected.insert(2, "side", selected_state)
-    selected.insert(
-        3,
-        "state",
-        [STATE_LABELS[int(value)] for value in selected_state],
-    )
+    selected["policy_id"] = policy.policy_id
+    selected["clock"] = name
+    selected["side"] = selected_state
+    selected["state"] = [STATE_LABELS[int(value)] for value in selected_state]
     if origin_lag is not None:
         selected["origin_lag"] = origin_lag
     selected["entry_time"] = pd.to_datetime(

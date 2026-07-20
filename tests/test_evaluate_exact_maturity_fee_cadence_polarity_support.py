@@ -149,6 +149,8 @@ def test_clock_scheduler_uses_onsets_and_suppresses_every_overlapping_event() ->
             "cadence_compression": np.arange(5, dtype=float),
             "fee_rank": np.linspace(0.1, 0.9, 5),
             "cadence_rank": np.linspace(0.1, 0.9, 5),
+            "state": np.zeros(5, dtype=np.int8),
+            "state_valid": True,
         }
     )
     state = np.asarray([-1, 0, 1, 0, -1], dtype=np.int8)
