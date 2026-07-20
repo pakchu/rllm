@@ -1,8 +1,8 @@
-"""Build the outcome-blind RFXS regional-fiat daily-close source panel.
+"""Build the outcome-blind RFXS2 regional-fiat daily-close source panel.
 
 The builder downloads official Binance Spot monthly daily-kline archives,
 verifies the published checksum filename and digest, validates the complete
-UTC daily candle, and retains only the four closes allowed by the frozen RFXS
+UTC daily candle, and retains only the four closes allowed by the frozen RFXS2
 mechanism.  It never reads USD-M execution prices, funding, or returns.
 """
 from __future__ import annotations
@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import io
 import json
+import subprocess
 import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
@@ -31,11 +32,23 @@ BASE_URL = "https://data.binance.vision/data/spot/monthly/klines"
 INTERVAL = "1d"
 SCHEMA_VERSION = 1
 MICROSECOND_TRANSITION = pd.Timestamp("2025-01-01", tz="UTC")
-FROZEN_SOURCE_START = date(2020, 10, 1)
+FROZEN_SOURCE_START = date(2020, 11, 1)
 FROZEN_SOURCE_END_EXCLUSIVE = date(2024, 1, 1)
-MECHANISM_COMMIT = "1d5805397ed72c98bc83597544b949b07d425f32"
-MECHANISM_PATH = "docs/regional-fiat-cross-rate-stress-mechanism-decision-2026-07-20.md"
-MECHANISM_SHA256 = "c3f7bcfd12c4412be0ad8696b2fa339c709fa94f1a5e61a22cf33c45e4d3ae89"
+ORIGINAL_MECHANISM = {
+    "commit": "1d5805397ed72c98bc83597544b949b07d425f32",
+    "path": "docs/regional-fiat-cross-rate-stress-mechanism-decision-2026-07-20.md",
+    "sha256": "c3f7bcfd12c4412be0ad8696b2fa339c709fa94f1a5e61a22cf33c45e4d3ae89",
+}
+SOURCE_REJECTION = {
+    "commit": "8ff99fec6f100537c260df8b1d484c32ebf56d8d",
+    "path": "docs/regional-fiat-cross-rate-stress-rfxs576-source-rejection-2026-07-20.md",
+    "sha256": "20c016be3b8d1cebfdd4e22fa98d1d29950b75304b1cf67d6cd752a5887ae4c8",
+}
+MECHANISM = {
+    "commit": "263426aad67b2ca5fdc408f62a64d970d35fdd43",
+    "path": "docs/regional-fiat-cross-rate-stress-v2-mechanism-decision-2026-07-20.md",
+    "sha256": "b9d0bd27f4c2b3b61a23f69bc308d8a6f4ce6292153fd485ea2431f08068e20c",
+}
 DEFAULT_SYMBOLS = ("BTCUSDT", "BTCEUR", "BTCTRY", "BTCBRL")
 RAW_COLUMNS = (
     "open_time",
@@ -72,9 +85,9 @@ OUTPUT_COLUMNS = (
 @dataclass(frozen=True)
 class BuildConfig:
     symbols: tuple[str, ...] = DEFAULT_SYMBOLS
-    start: str = "2020-10-01"
+    start: str = "2020-11-01"
     end: str = "2024-01-01"
-    output_dir: str = "data/binance_regional_fiat_cross_rate_btc_2020_2023"
+    output_dir: str = "data/binance_regional_fiat_cross_rate_btc_2020-11_2023"
     workers: int = 8
     retries: int = 5
     timeout_seconds: int = 60
@@ -237,7 +250,7 @@ def source_row(frame: pd.DataFrame, *, symbol: str) -> pd.DataFrame:
     """Retain only one completed close per UTC day for the requested symbol."""
     symbol = symbol.strip().upper()
     if symbol not in DEFAULT_SYMBOLS:
-        raise ValueError(f"unexpected RFXS symbol: {symbol}")
+        raise ValueError(f"unexpected RFXS2 symbol: {symbol}")
     unit = str(frame.attrs.get("timestamp_unit") or _timestamp_unit(frame["open_time"]))
     open_times = pd.to_datetime(frame["open_time"], unit=unit, utc=True, errors="raise")
     available = open_times + pd.Timedelta(days=1)
@@ -251,7 +264,7 @@ def source_row(frame: pd.DataFrame, *, symbol: str) -> pd.DataFrame:
         }
     )
     if tuple(output.columns) != SOURCE_COLUMNS:
-        raise AssertionError("internal RFXS source schema changed")
+        raise AssertionError("internal RFXS2 source schema changed")
     return output
 
 
@@ -331,11 +344,11 @@ def _validate_config(
         raise ValueError("monthly Spot build boundaries must be month starts")
     if start < FROZEN_SOURCE_START:
         raise ValueError(
-            f"RFXS source cannot begin before {FROZEN_SOURCE_START.isoformat()}"
+            f"RFXS2 source cannot begin before {FROZEN_SOURCE_START.isoformat()}"
         )
     if end > FROZEN_SOURCE_END_EXCLUSIVE:
         raise ValueError(
-            "RFXS outcome-blind source is capped at exclusive end "
+            "RFXS2 outcome-blind source is capped at exclusive end "
             f"{FROZEN_SOURCE_END_EXCLUSIVE.isoformat()}"
         )
     if cfg.workers < 1:
@@ -343,25 +356,57 @@ def _validate_config(
     if len(set(symbols)) != len(symbols):
         raise ValueError("symbols must be unique")
     if set(symbols) != set(DEFAULT_SYMBOLS) or len(symbols) != len(DEFAULT_SYMBOLS):
-        raise ValueError(f"RFXS requires exactly these symbols: {DEFAULT_SYMBOLS}")
+        raise ValueError(f"RFXS2 requires exactly these symbols: {DEFAULT_SYMBOLS}")
     if not allow_partial_fixture and (
         start != FROZEN_SOURCE_START or end != FROZEN_SOURCE_END_EXCLUSIVE
     ):
         raise ValueError(
-            "RFXS production source requires exact horizon "
+            "RFXS2 production source requires exact horizon "
             f"[{FROZEN_SOURCE_START.isoformat()}, "
             f"{FROZEN_SOURCE_END_EXCLUSIVE.isoformat()})"
         )
     return start, end, DEFAULT_SYMBOLS
 
 
-def _verify_mechanism() -> tuple[Path, str]:
+def _verify_mechanisms() -> tuple[Path, list[dict[str, str]]]:
     source_path = Path(__file__).resolve()
-    mechanism_path = source_path.parents[1] / MECHANISM_PATH
-    mechanism_hash = hashlib.sha256(mechanism_path.read_bytes()).hexdigest()
-    if mechanism_hash != MECHANISM_SHA256:
-        raise ValueError("frozen RFXS mechanism document changed")
-    return source_path, mechanism_hash
+    bindings: list[dict[str, str]] = []
+    for expected in (ORIGINAL_MECHANISM, SOURCE_REJECTION, MECHANISM):
+        artifact_path = source_path.parents[1] / expected["path"]
+        actual_hash = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+        if actual_hash != expected["sha256"]:
+            raise ValueError(f"frozen RFXS2 artifact changed: {expected['path']}")
+        bindings.append(dict(expected))
+    return source_path, bindings
+
+
+def _builder_commit(source_path: Path, *, fixture_only: bool) -> str | None:
+    """Bind production output to the committed builder before any fetch."""
+    if fixture_only:
+        return None
+    repository_root = source_path.parents[1]
+    try:
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repository_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        relative_path = source_path.relative_to(repository_root).as_posix()
+        committed_bytes = subprocess.run(
+            ["git", "show", f"{head}:{relative_path}"],
+            cwd=repository_root,
+            check=True,
+            capture_output=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError, ValueError) as exc:
+        raise ValueError("cannot bind RFXS2 builder to the current Git commit") from exc
+    if hashlib.sha256(committed_bytes).hexdigest() != hashlib.sha256(
+        source_path.read_bytes()
+    ).hexdigest():
+        raise ValueError("RFXS2 production builder is not committed at HEAD")
+    return head
 
 
 def _wide_panel(frames: list[pd.DataFrame], *, start: date, end: date) -> pd.DataFrame:
@@ -379,16 +424,16 @@ def _wide_panel(frames: list[pd.DataFrame], *, start: date, end: date) -> pd.Dat
         missing = expected_index.difference(observed_index)
         extra = observed_index.difference(expected_index)
         raise ValueError(
-            "combined RFXS panel does not match the full date-symbol grid; "
+            "combined RFXS2 panel does not match the full date-symbol grid; "
             f"missing={missing.tolist()[:10]}, extra={extra.tolist()[:10]}"
         )
     if not combined["source_complete"].all():
-        raise ValueError("combined RFXS panel contains incomplete source rows")
+        raise ValueError("combined RFXS2 panel contains incomplete source rows")
     availability_counts = combined.groupby("date", sort=True)[
         "source_available_not_before"
     ].nunique()
     if not availability_counts.eq(1).all():
-        raise ValueError("RFXS symbols disagree on source availability boundary")
+        raise ValueError("RFXS2 symbols disagree on source availability boundary")
 
     close_wide = combined.pivot(index="date", columns="symbol", values="close")
     close_wide = close_wide.loc[list(expected_dates), list(DEFAULT_SYMBOLS)]
@@ -406,9 +451,9 @@ def _wide_panel(frames: list[pd.DataFrame], *, start: date, end: date) -> pd.Dat
     wide = wide.loc[:, OUTPUT_COLUMNS]
     close_columns = [f"{symbol}_close" for symbol in DEFAULT_SYMBOLS]
     if not np.isfinite(wide[close_columns].to_numpy(float)).all():
-        raise ValueError("RFXS output contains non-finite closes")
+        raise ValueError("RFXS2 output contains non-finite closes")
     if (wide[close_columns] <= 0.0).any().any():
-        raise ValueError("RFXS output contains non-positive closes")
+        raise ValueError("RFXS2 output contains non-positive closes")
     return wide
 
 
@@ -418,9 +463,12 @@ def build(
     fetcher: Callable[..., bytes] = _fetch_bytes,
     _allow_partial_fixture: bool = False,
 ) -> dict[str, Any]:
-    source_path, mechanism_hash = _verify_mechanism()
+    source_path, mechanism_bindings = _verify_mechanisms()
     start, end, symbols = _validate_config(
         cfg, allow_partial_fixture=_allow_partial_fixture
+    )
+    builder_commit = _builder_commit(
+        source_path, fixture_only=_allow_partial_fixture
     )
     months = _month_starts(start, end)
     tasks = [(symbol, month) for symbol in symbols for month in months]
@@ -459,15 +507,12 @@ def build(
     manifest = {
         "schema_version": SCHEMA_VERSION,
         "builder": builder_record,
+        "builder_commit": builder_commit,
         "builder_sha256": hashlib.sha256(source_path.read_bytes()).hexdigest(),
-        "mechanism": {
-            "commit": MECHANISM_COMMIT,
-            "path": MECHANISM_PATH,
-            "sha256": mechanism_hash,
-        },
+        "mechanism_bindings": mechanism_bindings,
         "config": config_record,
         "protocol": {
-            "candidate": "RFXS-576",
+            "candidate": "RFXS2-576",
             "fixture_only": bool(_allow_partial_fixture),
             "source": "official Binance Spot monthly daily-kline archives",
             "archive_root": BASE_URL,
