@@ -24,7 +24,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import zlib
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, time as wall_time, timedelta, timezone
 from pathlib import Path
@@ -2256,6 +2256,13 @@ def _announcement_rows(announcements: Sequence[Announcement]) -> list[dict[str, 
     ]
 
 
+def _parse_report_payload(
+    record_date_iso: str, payload: bytes
+) -> tuple[str, ParsedDtsPdf]:
+    record_date = date.fromisoformat(record_date_iso)
+    return record_date_iso, parse_dts_pdf(payload, expected_record_date=record_date)
+
+
 def build_source(config: BuildConfig) -> dict[str, Any]:
     start = date.fromisoformat(config.start_date)
     end = date.fromisoformat(config.end_date)
@@ -2289,7 +2296,7 @@ def build_source(config: BuildConfig) -> dict[str, Any]:
     report_payloads: dict[date, bytes] = {}
     report_receipts: dict[date, FetchReceipt] = {}
 
-    def acquire(report: PublishedReport) -> tuple[date, bytes, FetchReceipt, ParsedDtsPdf]:
+    def acquire(report: PublishedReport) -> tuple[date, bytes, FetchReceipt]:
         raw_target = raw_reports_dir / f"{report.record_date:%Y%m%d}.pdf"
         payload, receipt = _load_or_fetch(
             url=report.url,
@@ -2297,16 +2304,33 @@ def build_source(config: BuildConfig) -> dict[str, Any]:
             allow_metadata=False,
             config=config,
         )
-        parsed = parse_dts_pdf(payload, expected_record_date=report.record_date)
-        return report.record_date, payload, receipt, parsed
+        return report.record_date, payload, receipt
 
     with ThreadPoolExecutor(max_workers=config.max_workers) as executor:
         futures = {executor.submit(acquire, report): report for report in reports}
         for future in as_completed(futures):
-            record_date, payload, receipt, parsed = future.result()
-            parsed_reports[record_date] = parsed
+            record_date, payload, receipt = future.result()
             report_payloads[record_date] = payload
             report_receipts[record_date] = receipt
+
+    if config.max_workers == 1:
+        for record_date in sorted(report_payloads):
+            parsed_reports[record_date] = parse_dts_pdf(
+                report_payloads[record_date], expected_record_date=record_date
+            )
+    else:
+        with ProcessPoolExecutor(max_workers=config.max_workers) as executor:
+            futures = {
+                executor.submit(
+                    _parse_report_payload,
+                    record_date.isoformat(),
+                    report_payloads[record_date],
+                ): record_date
+                for record_date in sorted(report_payloads)
+            }
+            for future in as_completed(futures):
+                record_date_iso, parsed = future.result()
+                parsed_reports[date.fromisoformat(record_date_iso)] = parsed
 
     all_rows = [
         asdict(row)

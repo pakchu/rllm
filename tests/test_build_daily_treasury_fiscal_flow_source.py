@@ -507,7 +507,7 @@ def test_source_build_is_deterministic_and_keeps_postcap_metadata_out_of_logic(
         start_date="2023-12-29",
         end_date="2023-12-29",
         output_dir=str(output),
-        max_workers=1,
+        max_workers=2,
         request_pace_seconds=0,
     )
 
