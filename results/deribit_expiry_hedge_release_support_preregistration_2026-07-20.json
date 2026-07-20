@@ -1,0 +1,145 @@
+{
+  "protocol_version": "deribit_expiry_hedge_release_preregistration_v1",
+  "protocol": {
+    "policy_id": "DEHR-72",
+    "support_only": true,
+    "outcomes_opened": false,
+    "source": {
+      "endpoint": "https://www.deribit.com/api/v2/public/get_last_settlements_by_currency",
+      "official_docs": "https://docs.deribit.com/api-reference/market-data/public-get_last_settlements_by_currency",
+      "currency": "BTC",
+      "settlement_type": "delivery",
+      "interval": [
+        "2019-01-01",
+        "2023-01-01"
+      ],
+      "aggregate": "data/deribit_btc_option_delivery_release_2019_2022.csv.gz",
+      "aggregate_sha256": "pending_outcome_blind_download",
+      "manifest": "results/deribit_btc_option_delivery_source_manifest_2026-07-20.json",
+      "manifest_hash": "pending_outcome_blind_download",
+      "fields_used_for_support": [
+        "expiry_time",
+        "source_observation_earliest",
+        "total_position",
+        "absolute_release_position",
+        "net_release_position",
+        "release_side"
+      ],
+      "fields_preserved_for_frozen_controls": [
+        "itm_call_count",
+        "itm_put_count",
+        "itm_call_position",
+        "itm_put_position"
+      ],
+      "fields_explicitly_unused": [
+        "post_expiry_btc_price",
+        "return",
+        "pnl",
+        "funding",
+        "profit_loss",
+        "session_profit_loss"
+      ],
+      "raw_responses_persisted": false,
+      "rows_at_or_after_2023_loaded": false
+    },
+    "clock": {
+      "timezone": "UTC",
+      "event": "Deribit option delivery, normally 08:00 UTC",
+      "publication_sla_known": false,
+      "historical_observation": "event + 65 minutes",
+      "live_observation": "two identical canonical delivery sets observed five minutes apart, never before event + 60 minutes",
+      "entry": "1 additional completed five-minute latency bar after source observation",
+      "hold_bars": 72,
+      "hold_minutes": 360,
+      "late_live_source": "delay or cancel; never backdate"
+    },
+    "feature": {
+      "release_share": "absolute net ITM terminal-delta release / total reported option position at the expiry",
+      "total_position_reference": "q0.50 from strictly prior expiries in 365 calendar days; require 20",
+      "release_share_reference": "q0.70 from the same strictly prior calendar window",
+      "candidate": "nonzero release side, total position at or above its prior reference, and release share at or above its prior reference",
+      "side": "long when ITM put position exceeds ITM call position; short when ITM call position exceeds ITM put position",
+      "threshold_grid": false,
+      "repair_after_incidence": false
+    },
+    "support_gate": {
+      "eligibility": [
+        "2020-07-01",
+        "2023-01-01"
+      ],
+      "source_first_at_or_before": "2019-03-01",
+      "source_last_at_or_after": "2022-12-25",
+      "minimum_source_eligible_expiries": 500,
+      "minimum_source_expiries_per_month": 10,
+      "maximum_source_gap_days": 14.0,
+      "minimum_total": 120,
+      "minimum_train_2020h2_2021": 70,
+      "minimum_train_2020h2": 15,
+      "minimum_train_2021": 45,
+      "minimum_test_2022": 50,
+      "minimum_each_test_half": 20,
+      "minimum_each_eligible_quarter": 8,
+      "minimum_active_months": 27,
+      "minimum_side_share_all_train_test": 0.25,
+      "maximum_month_share": 0.15,
+      "failure_action": "reject before market outcomes; no threshold, latency, side, hold, or calendar-support repair"
+    },
+    "later_evaluation_contract": {
+      "train": [
+        "2020-07-01",
+        "2022-01-01"
+      ],
+      "test": [
+        "2022-01-01",
+        "2023-01-01"
+      ],
+      "sealed_sequential": [
+        "2023",
+        "2024",
+        "2025",
+        "2026_ytd"
+      ],
+      "leverage": 0.5,
+      "base_cost_notional_per_side": 0.0006,
+      "stress_cost_notional_per_side": 0.001,
+      "funding": "interior exact-time symmetric; exact entry/exit credits dropped and debits retained",
+      "cagr": "full split wall clock including warmup and idle cash",
+      "strict_mdd": "global/pre-entry HWM, entry cost, exact funding, every held 5m path, virtual adverse exit fee, and actual exit",
+      "primary_gates_each_train_and_test": {
+        "absolute_return_positive": true,
+        "cagr_to_strict_mdd_min": 3.0,
+        "strict_mdd_pct_max": 15.0,
+        "stress_cost_absolute_return_positive": true,
+        "one_bar_delayed_absolute_return_positive": true,
+        "mean_gross_underlying_bp_min": 20.0,
+        "weekly_cluster_signflip_p_max": 0.1
+      },
+      "mechanism_controls": [
+        "expiry-time-only random side on every eligible expiry clock",
+        "exact direction flip",
+        "equal-position strike ablation: sign of ITM put count minus ITM call count",
+        "call/put-type ablation: exact candidate clocks with fixed alternating side independent of option type",
+        "deterministic random side on the exact candidate clocks, seeded only by expiry timestamp",
+        "release-share gate ablation",
+        "total-position gate ablation",
+        "one additional five-minute entry delay"
+      ],
+      "candidate_mean_gross_minus_best_nondirectional_control_bp_min": 5.0
+    },
+    "frozen_artifacts": {
+      "source_decision": "docs/deribit-expiry-hedge-release-mechanism-decision-2026-07-20.md",
+      "source_decision_sha256": "459247767cd26b33fc9df1e2ee5819fda65826455151d943e0e432f1bb414c00",
+      "source_downloader": "training/download_deribit_btc_option_deliveries.py",
+      "source_downloader_sha256": "b477b85c66d6a3578072e8893260abb09b5315a7a2a66fae50996cfb96bd97a7",
+      "preregistration_document": "docs/deribit-expiry-hedge-release-support-preregistration-2026-07-20.md",
+      "preregistration_document_sha256": "f29739fde15357fecbe1401e72fec10d1e028a20554f4634a163c6ae37a7fdf8",
+      "preregistration_source": "training/preregister_deribit_expiry_hedge_release_support.py",
+      "preregistration_source_sha256": "94bf067583ad8881f1afe2b34f5e50ee8dd0469b251cea2c55b5d08c4724295b"
+    },
+    "research_history_boundary": "candidate-level freeze only; unrelated repository research has seen BTC history, but complete DEHR incidence and all matching post-entry outcomes remain unopened at preregistration"
+  },
+  "protocol_hash": "6f31bba8e67cd137da4b7e7b0deafa54ba0edc05ece1816602fab372353d176f",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "artifact_hash": "8e0608227cfd85560d284de4c565ba1eb8741f46a54961c710a299a516386891"
+}
