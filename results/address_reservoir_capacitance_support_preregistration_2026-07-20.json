@@ -1,0 +1,165 @@
+{
+  "artifact_hash": "8207533dd43f1be29acc4aa70eacc45a95b0ae4c444509cd85b6090d4c32bf66",
+  "bounded_source_schema_probe_opened": true,
+  "candidate_incidence_opened": false,
+  "complete_source_incidence_opened": false,
+  "outcomes_opened": false,
+  "protocol": {
+    "clock": {
+      "earliest_observable_open": "ceil(feature_available_at, 5 minutes)",
+      "entry_latency_bars": 1,
+      "feature_availability": "maximum availability of current and seven-day-lag source rows",
+      "hold_bars": 864,
+      "hold_minutes": 4320,
+      "late_live_source": "delay or cancel; never backdate",
+      "nonoverlap": "greedy independently inside train and test",
+      "reference_availability": "prior feature availability must be strictly earlier than current feature availability",
+      "row_availability": "exact AssetEODCompletionTime, never earlier than observation midnight + 1 day",
+      "split_containment": true,
+      "timezone": "UTC"
+    },
+    "feature": {
+      "activity_flux": "log(AdrActCnt_t / AdrActCnt_t-7)",
+      "change_days": 7,
+      "direct_reversal_without_neutral": false,
+      "event": "first nonzero state after a neutral prior observation",
+      "long": {
+        "reservoir_z_min": 0.75,
+        "spread_z_min": 1.75,
+        "turnover_z_max": -0.75
+      },
+      "maximum_source_lag_days": 3.0,
+      "maximum_source_lag_scope": "current candidate row only",
+      "mechanical_identity": "turnover_shift = activity_flux - reservoir_flux; the gated terms are an intentional contrast, not independent confirmations",
+      "repair_after_incidence": false,
+      "reservoir_flux": "log(AdrBalCnt_t / AdrBalCnt_t-7)",
+      "short": {
+        "reservoir_z_max": -0.75,
+        "spread_z_max": -1.75,
+        "turnover_z_min": 0.75
+      },
+      "spread": "reservoir_z - turnover_z",
+      "standardization": {
+        "availability_filtered": true,
+        "clipping_or_winsorization": false,
+        "current_excluded": true,
+        "current_freshness_filter_applies_to_references": false,
+        "insufficient_or_zero_std": "neutral score",
+        "mean": "sample mean",
+        "minimum": 180,
+        "standard_deviation": "sample standard deviation, ddof=1",
+        "window": "strictly prior 365 calendar days"
+      },
+      "threshold_grid": false,
+      "turnover": "log(AdrActCnt_t / AdrBalCnt_t)",
+      "turnover_shift": "turnover_t - turnover_t-7"
+    },
+    "frozen_artifacts": {
+      "preregistration_document": "docs/address-reservoir-capacitance-support-preregistration-2026-07-20.md",
+      "preregistration_document_sha256": "f4ea3ac832a51038acd6c977fb7bd050c1c398acd4141594ffa6f4f99e612064",
+      "preregistration_source": "training/preregister_address_reservoir_capacitance_support.py",
+      "preregistration_source_sha256": "244e10a9afbb18faf863ee3ef4862a4af414ad4f3cd687a29b5c8c2011daf6c9",
+      "source_decision": "docs/address-reservoir-capacitance-mechanism-decision-2026-07-20.md",
+      "source_decision_sha256": "9b22d60eef61ab7fc3b9f5332669be75af0a4bd54d331f3017bf9aeabf0eaa8f",
+      "source_downloader": "training/download_coinmetrics_btc_address_reservoir_daily.py",
+      "source_downloader_sha256": "40b759a06038782ebc6e676b3320b4f8eb360e097de9384e5f0f0db45c890c94"
+    },
+    "later_evaluation_contract": {
+      "base_cost_notional_per_side": 0.0006,
+      "cagr": "full split wall clock including warmup and idle cash",
+      "candidate_mean_gross_minus_best_component_or_stale_control_bp_min": 5.0,
+      "control_comparison_metric": "mean gross underlying basis points per accepted trade, separately in every opened split",
+      "controls": [
+        "exact side flip",
+        "reservoir-only state: long at reservoir_z >= 0.75, short at reservoir_z <= -0.75",
+        "turnover-only state: long at turnover_z <= -0.75, short at turnover_z >= 0.75",
+        "activity-flux-only state: long at activity_z <= -0.75, short at activity_z >= 0.75",
+        "exact candidate event and side delayed seven calendar days before split containment and nonoverlap",
+        "one additional five-minute entry delay",
+        "constant long on exact candidate clocks",
+        "constant short on exact candidate clocks",
+        "within-year permutation of paired reservoir_flux, turnover_shift, activity_flux, and source_lag tuples; NumPy default_rng seed is the first eight bytes of SHA256('ARCR-864|<year>') interpreted as an unsigned big-endian integer; then recompute references, states, and clocks"
+      ],
+      "funding": "interior exact-time symmetric; exact entry/exit credits dropped and debits retained",
+      "leverage": 0.5,
+      "ordered_opening": [
+        "train_2021h2_2022",
+        "test_2023",
+        "2024",
+        "2025",
+        "2026_ytd"
+      ],
+      "primary_gates_each_opened_split": {
+        "absolute_return_positive": true,
+        "cagr_to_strict_mdd_min": 3.0,
+        "mean_gross_underlying_bp_min": 20.0,
+        "one_bar_delayed_absolute_return_positive": true,
+        "stress_cost_absolute_return_positive": true,
+        "strict_mdd_pct_max": 15.0,
+        "weekly_cluster_signflip_p_max": 0.1
+      },
+      "split_contained_holds": true,
+      "stop_on_first_failure": true,
+      "stress_cost_notional_per_side": 0.001,
+      "strict_mdd": "global/pre-entry HWM, entry cost, exact funding, every held 5m path, virtual adverse exit fee, and actual exit"
+    },
+    "outcomes_opened": false,
+    "policy_id": "ARCR-864",
+    "research_history_boundary": "candidate-level freeze only; broad unrelated BTC history has been seen. A disclosed bounded source-schema probe is open, while complete source incidence, candidate incidence, all matching market outcomes, and every 2024+ source row remain unopened",
+    "source": {
+      "aggregate": "data/coinmetrics_btc_address_reservoir_2019_2023.csv.gz",
+      "aggregate_sha256": "pending_outcome_blind_download",
+      "asset": "btc",
+      "endpoint": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics",
+      "exact_output_columns": [
+        "observation_date",
+        "available_at",
+        "AdrBalCnt",
+        "AdrActCnt"
+      ],
+      "interval": [
+        "2019-01-01",
+        "2024-01-01"
+      ],
+      "manifest": "results/coinmetrics_btc_address_reservoir_source_manifest_2026-07-20.json",
+      "manifest_hash": "pending_outcome_blind_download",
+      "market_funding_return_or_pnl_fields": [],
+      "metrics": [
+        "AdrBalCnt",
+        "AdrActCnt",
+        "AssetEODCompletionTime"
+      ],
+      "raw_responses_persisted": false,
+      "rows_at_or_after_2024_loaded": false
+    },
+    "support_gate": {
+      "count_clock": "accepted entry timestamp after current freshness, transition, latency, split containment, and greedy nonoverlap",
+      "expected_source_first": "2019-01-01T00:00:00Z",
+      "expected_source_last": "2023-12-31T00:00:00Z",
+      "expected_source_rows": 1826,
+      "failure_action": "reject before market outcomes; no feature, sign, threshold, transition, latency, hold, or support repair",
+      "maximum_month_share": 0.15,
+      "maximum_source_gap_days": 1,
+      "minimum_active_months": 25,
+      "minimum_each_quarter": 5,
+      "minimum_each_test_half": 12,
+      "minimum_side_share_all_train_test": 0.25,
+      "minimum_test_2023": 30,
+      "minimum_total": 90,
+      "minimum_train": 55,
+      "minimum_train_2021h2": 15,
+      "minimum_train_2022": 30,
+      "test": [
+        "2023-01-01",
+        "2024-01-01"
+      ],
+      "train": [
+        "2021-07-01",
+        "2023-01-01"
+      ]
+    },
+    "support_only": true
+  },
+  "protocol_hash": "cd0a21fcb587d7b83138b43e3f75728df9a1b83b6ee1f4b04e074d2010fc39c9",
+  "protocol_version": "address_reservoir_capacitance_preregistration_v1"
+}
