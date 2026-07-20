@@ -1,0 +1,284 @@
+{
+  "config": {
+    "preregistration_output": "results/fee_endpoint_topology_disagreement_preregistration_2026-07-20.json",
+    "source_manifest": "results/bitcoin_utxo_fee_block_stats_source_manifest_2026-07-20.json"
+  },
+  "manifest_hash": "d45ef8806dff23bb457b857749b806ef1ecda22fea90aa15bf1940ae147ea45b",
+  "mechanism_decision": {
+    "path": "docs/fee-endpoint-topology-disagreement-mechanism-decision-2026-07-20.md",
+    "sha256": "e030793c9d63af2ae60329e4ab876999fd3fa1a71812b88d22b5676fb1d6c593"
+  },
+  "outcome_boundary": {
+    "fetd_feature_rows_derived": 0,
+    "funding_rows_loaded": 0,
+    "market_rows_loaded": 0,
+    "return_or_pnl_fields": 0,
+    "signal_incidence_rows_derived": 0,
+    "source_artifact_bytes_hashed": true,
+    "source_csv_values_read": 0,
+    "source_manifest_json_read": true
+  },
+  "outcomes_opened": false,
+  "policy": {
+    "calendar": {
+      "fit_permission": "no fitted coefficient; all thresholds frozen",
+      "sealed": "2024+",
+      "selection": "[2023-01-01T00:00:00Z,2024-01-01T00:00:00Z)",
+      "train": "[2021-01-01T00:00:00Z,2023-01-01T00:00:00Z)",
+      "warmup_source": "[2020-01-01T00:00:00Z,2021-01-01T00:00:00Z)",
+      "window_assignment": "UTC half-open windows with entry and scheduled exit contained"
+    },
+    "causal_availability": {
+      "already_aligned_rule": "an aligned available_at still receives the additional 300s bar",
+      "availability_lag_seconds": 172800,
+      "ceil_5m": "((unix_seconds+299)//300)*300",
+      "entry_latency_seconds": 300,
+      "entry_time": "ceil_5m(source_available_at)+300 seconds",
+      "hash_linked_successors_after_final_bucket_block": 6,
+      "historical_header_time_is_not_receipt_time": true,
+      "source_available_at": "fixed 12h bucket end + 48 hours",
+      "source_gap_action": "reject source; never fill or backdate"
+    },
+    "controls": {
+      "constant_long_same_clock": "same primary entry/exit clock with side fixed long",
+      "constant_short_same_clock": "same primary entry/exit clock with side fixed short",
+      "direction_flip": "same primary entry/exit clock and eligibility with every side multiplied by -1; diagnostic only",
+      "endpoint_only": "require nonzero endpoint_transport and endpoint_magnitude_rank>=0.75; side=sign(endpoint_transport); build an independent chronological non-overlap clock",
+      "fee_only": "require nonzero fee_transport and fee_magnitude_rank>=0.75; side=-sign(fee_transport); build an independent chronological non-overlap clock",
+      "month_side_stratified_random_clock": "within each split-month SHA256-order rank-ready split-contained candidates by 20260720|window|month|entry_time; take the primary month total and preserve the primary long/short counts",
+      "one_bar_delayed_entry": "same primary signals and sides; shift entry and scheduled exit exactly one complete 5m bar later and drop lost split containment",
+      "same_direction": "require fee_transport*endpoint_transport>0 and strain_rank>=0.75; side=sign(endpoint_transport); build an independent chronological non-overlap clock",
+      "stale_7d": "at source bucket t apply primary eligibility and side from the fully formed feature/ranks at t-14; retain t availability and build an independent chronological non-overlap clock"
+    },
+    "eligibility": {
+      "common": "fee_transport*endpoint_transport<0 and strain_rank>=0.75",
+      "every_eligible_source_clock_considered": true,
+      "long": "common and fee_transport<0 and endpoint_transport>0",
+      "ordering": "sort by entry_time then bucket_start; accept earliest when entry_time>=prior accepted exit; equal boundary allowed; suppress intervening candidates without score priority or replacement",
+      "post_support_repair": "forbidden",
+      "short": "common and fee_transport>0 and endpoint_transport<0",
+      "side": "-sign(fee_transport), equal to sign(endpoint_transport)",
+      "zero_tolerance": "none; exact zero in either transport is ineligible"
+    },
+    "execution": {
+      "bar_size": "5m",
+      "base_cost_bp_per_notional_per_side": 6,
+      "entry": "next open exactly at entry_time",
+      "funding": "exact funding, entry-inclusive/exit-exclusive, fixed entry quantity",
+      "hold_bars": 288,
+      "hold_hours": 24,
+      "interval": "[entry_time,scheduled_exit_time)",
+      "non_overlap": true,
+      "notional_leverage": 0.5,
+      "scheduled_exit_time": "entry_time+86400 seconds",
+      "split_containment": "entry_time>=split_start and scheduled_exit_time<=split_end",
+      "stress_cost_bp_per_notional_per_side": 10
+    },
+    "normalization": {
+      "current_row_excluded": true,
+      "endpoint_magnitude_rank_control": "midrank of abs(endpoint_transport)",
+      "fee_magnitude_rank_control": "midrank of abs(fee_transport)",
+      "lookback_valid_feature_buckets": 180,
+      "method": "strict-prior rolling empirical midrank",
+      "midrank_formula": "(count(prior < current)+0.5*count(prior == current))/prior_count",
+      "minimum_prior_valid_feature_buckets": 120,
+      "prior_available_at_strictly_before_current": true,
+      "strain_rank": "midrank of strain_magnitude",
+      "tie_equality": "exact IEEE-754 binary64 equality",
+      "window_selection": "use exactly the most recent 180 strict-prior base-valid rows when available; fewer than 120 makes current rank-unready"
+    },
+    "performance_gates": {
+      "absolute_return_positive_each": true,
+      "cagr_to_strict_mdd_minimum_each": 3.0,
+      "component_control_full_gate_pass_rejects_mechanism": [
+        "fee_only",
+        "endpoint_only",
+        "same_direction",
+        "constant_long_same_clock",
+        "constant_short_same_clock",
+        "stale_7d",
+        "month_side_stratified_random_clock"
+      ],
+      "control_replacement": "forbidden under FETD-288",
+      "direction_flip_is_diagnostic_only": true,
+      "long_and_short_absolute_return_positive_each_window": true,
+      "mean_gross_bp_minimum_each": 30.0,
+      "one_bar_delayed_entry_absolute_return_positive_each_window": true,
+      "positive_subperiods": [
+        "2021",
+        "2022",
+        "2023H1",
+        "2023H2"
+      ],
+      "post_outcome_repair": "forbidden",
+      "required_sequence": [
+        "train",
+        "selection"
+      ],
+      "stress_absolute_return_positive_each": true,
+      "strict_max_drawdown_maximum_each": 0.15,
+      "weekly_cluster_sign_flip_p_maximum_each": 0.1
+    },
+    "policy_id": "FETD-288",
+    "promotion_boundary": "pre-2024 pass required before a separately frozen 2024-2026 source extension; no live promotion before field parity and 90 forward shadow days",
+    "singleton": true,
+    "source_features": {
+      "base_valid_feature_row": "require t-2,t-1,t as consecutive valid 12h buckets; each bucket has >=24 blocks and positive finite total_weight, total_fees, and total_endpoints; all derived values finite",
+      "endpoint_density": "log(total_endpoints/total_weight)",
+      "endpoint_transport": "endpoint_density[t]-endpoint_density[t-2]",
+      "fee_pressure": "log(total_fees/total_weight)",
+      "fee_transport": "fee_pressure[t]-fee_pressure[t-2]",
+      "forbidden_primary_fields": [
+        "utxo_set_change",
+        "tx_count",
+        "size",
+        "mediantime",
+        "market",
+        "funding",
+        "premium",
+        "open_interest",
+        "liquidation",
+        "order_book",
+        "return",
+        "pnl"
+      ],
+      "minimum_blocks_per_bucket": 24,
+      "numeric_contract": "IEEE-754 binary64 and natural log; no epsilon, clipping, rounding, interpolation, forward fill, reassignment, or imputation; exact binary64 equality defines zero and ties",
+      "source_bucket_alignment": "floor(header_timestamp/43200)",
+      "source_bucket_seconds": 43200,
+      "strain_magnitude": "abs(fee_transport*endpoint_transport)",
+      "total_endpoints": "sum(total_inputs+total_outputs)",
+      "total_fees": "sum(total_fees)",
+      "total_weight": "sum(weight)",
+      "transport_horizon_buckets": 2,
+      "transport_horizon_hours": 24
+    },
+    "stopping_rule": "stop permanently at first support/train/selection failure; no sign, threshold, rank-window, bucket, support-floor, hold, latency, calendar, or clock repair; no failed-policy inversion",
+    "strict_accounting": {
+      "cagr_clock": "full declared wall-clock window including idle cash",
+      "cluster_test": "one-sided weekly entry-cluster sign flip; 100000 draws; seed 20260720",
+      "costs": "entry, scheduled exit, and hypothetical adverse liquidation costs included",
+      "drawdown_high_water_mark": "global and pre-entry",
+      "held_path_order": "all favorable OHLC/funding-credit extremes before all adverse OHLC/funding-debit extremes",
+      "required_report_fields": [
+        "absolute_return",
+        "cagr",
+        "strict_mdd",
+        "cagr_to_strict_mdd",
+        "trades",
+        "long_trades",
+        "short_trades",
+        "calendar_clusters"
+      ]
+    },
+    "support_gates": {
+      "count_basis": "accepted primary entries after eligibility, split containment, and chronological non-overlap",
+      "minimum_blocks_per_source_bucket": 24,
+      "missing_12h_source_buckets": 0,
+      "selection_each_half_minimum": 14,
+      "selection_each_quarter_minimum": 6,
+      "selection_each_side_each_half_minimum": 5,
+      "selection_long_minimum": 12,
+      "selection_maximum_month_share": 0.2,
+      "selection_short_minimum": 12,
+      "selection_total_minimum": 35,
+      "support_failure_action": "reject FETD-288 before market/funding/outcomes; no repair",
+      "train_each_half_year_minimum": 14,
+      "train_each_side_each_year_minimum": 10,
+      "train_each_year_minimum": 32,
+      "train_long_minimum": 25,
+      "train_maximum_month_share": 0.15,
+      "train_short_minimum": 25,
+      "train_total_minimum": 80
+    }
+  },
+  "policy_hash": "ac7b4bfdf9da7d79dfcb8627557d691d50656474c55c4c20cdaedb2cb695896c",
+  "policy_id": "FETD-288",
+  "preregistration_document": {
+    "path": "docs/fee-endpoint-topology-disagreement-fetd288-preregistration-2026-07-20.md",
+    "sha256": "2e98f2aefc7c475319b448d731bc6dcd932c8c5142b4a2db2a967f0997df0234"
+  },
+  "preregistration_source": {
+    "path": "training/preregister_fee_endpoint_topology_disagreement.py",
+    "sha256": "887b74fa5ae1ba123c4a51440273f52d5ea4c52df4bf5029001c357c11c49950"
+  },
+  "protocol_version": "fee_endpoint_topology_disagreement_preregistration_v1",
+  "research_sequence": {
+    "evaluator_second": "commit and hash-freeze strict evaluator",
+    "outcomes": "train first; selection only after exact train pass",
+    "sealed": "2024+ source and outcomes",
+    "support_first": "source-only train/selection incidence"
+  },
+  "source_manifest": {
+    "data_use": "private internal research cache of consensus-derived fields via public Mempool REST transport; the API output has no separately documented data licence, production must use an owned Bitcoin Core node, and no raw response or unrelated metadata is redistributed",
+    "manifest_hash": "98a84b0bd0338300f62eaa047b87498cc5a8d9505a03f6bd1912d1deb9564e8c",
+    "outcome_boundary": {
+      "funding_rows_loaded": 0,
+      "market_rows_loaded": 0,
+      "outcome_rows_loaded": 0,
+      "post_2023_source_rows_loaded": 0,
+      "raw_mempool_responses_persisted": false,
+      "return_or_pnl_fields": 0,
+      "unrelated_mempool_metadata_persisted": false
+    },
+    "path": "results/bitcoin_utxo_fee_block_stats_source_manifest_2026-07-20.json",
+    "protocol_version": "bitcoin_utxo_fee_block_stats_source_v1",
+    "reference_audit": {
+      "all_basic_fields_match_reference": true,
+      "columns_cross_checked": [
+        "height",
+        "id",
+        "previousblockhash",
+        "timestamp",
+        "mediantime",
+        "tx_count",
+        "size",
+        "weight"
+      ],
+      "reference_path": "data/bitcoin_block_summaries_2020_2023.csv.gz",
+      "reference_sha256": "1f8d1c0153717f2c18d8fa6f09428c780a850b2aecc8fb42bc497e16e68e1833",
+      "rows_cross_checked": 213095
+    },
+    "sha256": "ceb096b7bfeaf309729c4cab9f5cd4d2e0d526e261b1e460e9d03cd4f24e8084",
+    "source_audit": {
+      "all_rows_pre_cutoff": true,
+      "complete_inclusive_height_range": true,
+      "end_height": 823785,
+      "end_timestamp_exclusive": 1704067200,
+      "expected_rows": 213095,
+      "height_links_checked": 213094,
+      "latest_eligible_packet_end": 823779,
+      "observed_rows": 213095,
+      "start_height": 610691,
+      "unique_block_hashes": true,
+      "utxo_identity_checked": true
+    },
+    "source_builder": {
+      "path": "training/download_bitcoin_utxo_fee_stats.py",
+      "sha256": "099454feff009a5a4d44a96bd3790ff586d0365eba2e9b72e7b071d34e743633"
+    },
+    "source_origin_decision": {
+      "path": "docs/utxo-fee-clearing-polarity-mechanism-decision-2026-07-20.md",
+      "sha256": "95bf889fd053987e1717b182dc5da4f19ef51d75a1cbda427913089368c4852e"
+    },
+    "source_output": {
+      "bytes": 13991597,
+      "columns": [
+        "height",
+        "id",
+        "previousblockhash",
+        "timestamp",
+        "mediantime",
+        "tx_count",
+        "size",
+        "weight",
+        "total_fees",
+        "total_inputs",
+        "total_outputs",
+        "utxo_set_change"
+      ],
+      "path": "data/bitcoin_utxo_fee_block_stats_2020_2023.csv.gz",
+      "sha256": "8d5160b59bd104819adb34752f2bd5b01e9c07d7aa108188abcd9e6d323d102f"
+    }
+  }
+}
