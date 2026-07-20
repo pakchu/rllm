@@ -238,6 +238,34 @@ def _load_json(path: str | Path) -> dict[str, Any]:
     return payload
 
 
+def _json_bytes(payload: dict[str, Any]) -> bytes:
+    return (
+        json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
+    ).encode("utf-8")
+
+
+def _write_once_bytes(path: str | Path, payload: bytes) -> None:
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        dir=output.parent,
+        prefix=f".{output.name}.",
+        suffix=".tmp",
+        delete=False,
+    ) as handle:
+        temporary = Path(handle.name)
+        handle.write(payload)
+        handle.flush()
+        os.fsync(handle.fileno())
+    try:
+        try:
+            os.link(temporary, output)
+        except FileExistsError as error:
+            raise FileExistsError(f"DLPD-12 artifact is write-once: {output}") from error
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def _verify_manifest(payload: dict[str, Any], *, label: str) -> None:
     core = {key: value for key, value in payload.items() if key != "manifest_hash"}
     if payload.get("manifest_hash") != _canonical_hash(core):
@@ -498,7 +526,19 @@ def _window_schedule(frame: pd.DataFrame, stage: str) -> pd.DataFrame:
     return selected.sort_values("entry_time", kind="mergesort").reset_index(drop=True)
 
 
-def _stage_source_spec(stage: str) -> dict[str, Any]:
+def _stage_exit_boundary_required(
+    stage: str, schedules: dict[str, pd.DataFrame]
+) -> bool:
+    end = STAGE_WINDOWS[stage][1]
+    return any(
+        bool(_window_schedule(schedule, stage)["exit_time"].eq(end).any())
+        for schedule in schedules.values()
+    )
+
+
+def _stage_source_spec(
+    stage: str, *, exit_boundary_required: bool
+) -> dict[str, Any]:
     start, end = STAGE_WINDOWS[stage]
     return {
         "stage": stage,
@@ -506,7 +546,7 @@ def _stage_source_spec(stage: str) -> dict[str, Any]:
         "required_protocol_version": "btcdom_leverage_polarity_execution_source_v1",
         "physical_window": [start.isoformat(), end.isoformat()],
         "physical_rows_limited_to_window": True,
-        "exit_boundary_required": False,
+        "exit_boundary_required": exit_boundary_required,
         "strategy_outcomes_calculated": False,
     }
 
@@ -572,7 +612,13 @@ def freeze_evaluator(
         "schedule_records": records,
         "phase_scope": ["train", "test"],
         "execution_source_specs": {
-            stage: _stage_source_spec(stage) for stage in ("train", "test")
+            stage: _stage_source_spec(
+                stage,
+                exit_boundary_required=_stage_exit_boundary_required(
+                    stage, schedules
+                ),
+            )
+            for stage in ("train", "test")
         },
         "future_signal_source_specs": {
             stage: _future_signal_spec(stage) for stage in ("eval", "final")
@@ -633,10 +679,7 @@ def freeze_evaluator(
         "mutable_parameters": [],
     }
     report = _seal(core)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    with output.open("x", encoding="utf-8") as handle:
-        json.dump(report, handle, indent=2, ensure_ascii=False, allow_nan=False)
-        handle.write("\n")
+    _write_once_bytes(output, _json_bytes(report))
     return report
 
 
@@ -703,8 +746,9 @@ def _slice_gzip_csv(
     timestamp_column: str,
     start: pd.Timestamp,
     end: pd.Timestamp,
+    include_end_boundary: bool = False,
 ) -> dict[str, Any]:
-    """Copy only [start, end) rows while parsing timestamps, never values."""
+    """Copy the stage rows while converting timestamps, never outcome values."""
     source_path = Path(source)
     output_path = Path(output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -735,7 +779,9 @@ def _slice_gzip_csv(
                         timestamp = _utc(fields[timestamp_index])
                         if timestamp < start:
                             continue
-                        if timestamp >= end:
+                        if timestamp > end or (
+                            timestamp == end and not include_end_boundary
+                        ):
                             break
                         if last is not None and timestamp <= last:
                             raise ValueError(
@@ -772,14 +818,18 @@ def prepare_stage_source(stage: str) -> dict[str, Any]:
     manifest_path = STAGE_SOURCE_MANIFESTS[stage]
     if manifest_path.exists():
         raise FileExistsError(f"DLPD-12 {stage} execution source is write-once")
+    directory = STAGE_SOURCE_DIRS[stage]
+    market_path = directory / "BTCUSDT_5m.csv.gz"
+    funding_path = directory / "BTCUSDT_funding_marks.csv.gz"
+    for orphan in (market_path, funding_path):
+        orphan.unlink(missing_ok=True)
     if _sha256(LEGACY_MARKET) != LEGACY_MARKET_SHA256:
         raise ValueError("DLPD-12 legacy market container bytes changed")
     if _sha256(LEGACY_FUNDING) != LEGACY_FUNDING_SHA256:
         raise ValueError("DLPD-12 legacy funding container bytes changed")
     start, end = STAGE_WINDOWS[stage]
-    directory = STAGE_SOURCE_DIRS[stage]
-    market_path = directory / "BTCUSDT_5m.csv.gz"
-    funding_path = directory / "BTCUSDT_funding_marks.csv.gz"
+    spec = cast(dict[str, Any], freeze["execution_source_specs"][stage])
+    include_end_boundary = bool(spec["exit_boundary_required"])
     created: list[Path] = []
     try:
         market = _slice_gzip_csv(
@@ -788,6 +838,7 @@ def prepare_stage_source(stage: str) -> dict[str, Any]:
             timestamp_column="date",
             start=start,
             end=end,
+            include_end_boundary=include_end_boundary,
         )
         created.append(market_path)
         funding = _slice_gzip_csv(
@@ -796,6 +847,7 @@ def prepare_stage_source(stage: str) -> dict[str, Any]:
             timestamp_column="funding_time_utc",
             start=start,
             end=end,
+            include_end_boundary=include_end_boundary,
         )
         created.append(funding_path)
         parsed_market, market_diagnostics = strict_source._parse_market_window(
@@ -803,18 +855,17 @@ def prepare_stage_source(stage: str) -> dict[str, Any]:
             start,
             end,
             require_exact_physical_window=True,
-            include_end_boundary=False,
+            include_end_boundary=include_end_boundary,
         )
         parsed_funding, funding_diagnostics = strict_source._parse_funding_window(
             funding_path,
             start,
             end,
             require_exact_physical_window=True,
-            include_end_boundary=False,
+            include_end_boundary=include_end_boundary,
         )
         if len(parsed_market) != market["rows"] or len(parsed_funding) != funding["rows"]:
             raise ValueError("DLPD-12 stage-source validation count changed")
-        spec = _stage_source_spec(stage)
         core = {
             "protocol_version": spec["required_protocol_version"],
             "candidate": POLICY_ID,
@@ -822,10 +873,10 @@ def prepare_stage_source(stage: str) -> dict[str, Any]:
             "evaluator_freeze_manifest_hash": freeze["manifest_hash"],
             "physical_window": spec["physical_window"],
             "physical_rows_limited_to_window": True,
-            "exit_boundary_required": False,
+            "exit_boundary_required": include_end_boundary,
             "strategy_outcomes_calculated": False,
             "official_checksums_verified": True,
-            "full_parent_containers_hashed": True,
+            "full_parent_compressed_bytes_hashed": True,
             "post_stage_numeric_rows_parsed": 0,
             "parent_market": {
                 "path": str(LEGACY_MARKET),
@@ -843,10 +894,7 @@ def prepare_stage_source(stage: str) -> dict[str, Any]:
             "funding": {**funding, "diagnostics": funding_diagnostics},
         }
         report = _seal(core)
-        manifest_path.parent.mkdir(parents=True, exist_ok=True)
-        with manifest_path.open("x", encoding="utf-8") as handle:
-            json.dump(report, handle, indent=2, ensure_ascii=False, allow_nan=False)
-            handle.write("\n")
+        _write_once_bytes(manifest_path, _json_bytes(report))
         return report
     except Exception:
         for path in created:
@@ -854,8 +902,33 @@ def prepare_stage_source(stage: str) -> dict[str, Any]:
         raise
 
 
-def _load_stage_source(stage: str) -> dict[str, Any]:
-    spec = _stage_source_spec(stage)
+def _rebuild_stage_source_identity(
+    stage: str, *, include_end_boundary: bool
+) -> dict[str, dict[str, Any]]:
+    start, end = STAGE_WINDOWS[stage]
+    with tempfile.TemporaryDirectory(prefix=f"dlpd-{stage}-identity-") as directory:
+        root = Path(directory)
+        market = _slice_gzip_csv(
+            LEGACY_MARKET,
+            root / "market.csv.gz",
+            timestamp_column="date",
+            start=start,
+            end=end,
+            include_end_boundary=include_end_boundary,
+        )
+        funding = _slice_gzip_csv(
+            LEGACY_FUNDING,
+            root / "funding.csv.gz",
+            timestamp_column="funding_time_utc",
+            start=start,
+            end=end,
+            include_end_boundary=include_end_boundary,
+        )
+    return {"market": market, "funding": funding}
+
+
+def _load_stage_source(stage: str, *, freeze: dict[str, Any]) -> dict[str, Any]:
+    spec = cast(dict[str, Any], freeze["execution_source_specs"][stage])
     payload = _load_json(STAGE_SOURCE_MANIFESTS[stage])
     _verify_manifest(payload, label=f"{stage} execution source")
     if payload.get("protocol_version") != spec["required_protocol_version"]:
@@ -872,10 +945,40 @@ def _load_stage_source(stage: str) -> dict[str, Any]:
             raise ValueError(f"DLPD-12 {stage} source {key} changed")
     if payload.get("official_checksums_verified") is not True:
         raise ValueError(f"DLPD-12 {stage} source lacks checksum verification")
-    for name in ("market", "funding"):
+    if payload.get("full_parent_compressed_bytes_hashed") is not True:
+        raise ValueError(f"DLPD-12 {stage} parent digest contract changed")
+    if payload.get("post_stage_numeric_rows_parsed") != 0:
+        raise ValueError(f"DLPD-12 {stage} parsed a future numeric row")
+    expected_parent_market = freeze["legacy_container_contract"]["market"]
+    expected_parent_funding = freeze["legacy_container_contract"]["funding"]
+    if payload.get("parent_market") != expected_parent_market:
+        raise ValueError(f"DLPD-12 {stage} parent market binding changed")
+    if payload.get("parent_funding") != expected_parent_funding:
+        raise ValueError(f"DLPD-12 {stage} parent funding binding changed")
+    expected_paths = {
+        "market": str(STAGE_SOURCE_DIRS[stage] / "BTCUSDT_5m.csv.gz"),
+        "funding": str(STAGE_SOURCE_DIRS[stage] / "BTCUSDT_funding_marks.csv.gz"),
+    }
+    for name, expected_path in expected_paths.items():
         item = payload.get(name)
-        if not isinstance(item, dict) or set(item) < {"path", "sha256"}:
+        if not isinstance(item, dict) or set(item) < {"path", "sha256", "rows"}:
             raise ValueError(f"DLPD-12 {stage} source lacks {name} identity")
+        if item["path"] != expected_path:
+            raise ValueError(f"DLPD-12 {stage} {name} path changed")
+    if _sha256(LEGACY_MARKET) != LEGACY_MARKET_SHA256:
+        raise ValueError("DLPD-12 legacy market container bytes changed")
+    if _sha256(LEGACY_FUNDING) != LEGACY_FUNDING_SHA256:
+        raise ValueError("DLPD-12 legacy funding container bytes changed")
+    rebuilt = _rebuild_stage_source_identity(
+        stage,
+        include_end_boundary=bool(spec["exit_boundary_required"]),
+    )
+    for name in ("market", "funding"):
+        item = cast(dict[str, Any], payload[name])
+        if item["sha256"] != rebuilt[name]["sha256"]:
+            raise ValueError(f"DLPD-12 {stage} {name} is not the frozen parent slice")
+        if int(item["rows"]) != int(rebuilt[name]["rows"]):
+            raise ValueError(f"DLPD-12 {stage} {name} row count changed")
     return payload
 
 
@@ -888,25 +991,26 @@ def load_execution_window(stage: str) -> tuple[pd.DataFrame, pd.DataFrame, dict[
         )
     freeze = verify_evaluator_freeze()
     _verified_prior_reports(stage, freeze_hash=cast(str, freeze["manifest_hash"]))
-    contract = _load_stage_source(stage)
+    contract = _load_stage_source(stage, freeze=freeze)
     if contract.get("evaluator_freeze_manifest_hash") != freeze["manifest_hash"]:
         raise ValueError(f"DLPD-12 {stage} source froze another evaluator")
     start, end = STAGE_WINDOWS[stage]
     market_item = contract["market"]
     funding_item = contract["funding"]
+    include_end_boundary = bool(contract["exit_boundary_required"])
     market, market_diagnostics = strict_source._parse_market_window(
         market_item["path"],
         start,
         end,
         require_exact_physical_window=True,
-        include_end_boundary=False,
+        include_end_boundary=include_end_boundary,
     )
     funding, funding_diagnostics = strict_source._parse_funding_window(
         funding_item["path"],
         start,
         end,
         require_exact_physical_window=True,
-        include_end_boundary=False,
+        include_end_boundary=include_end_boundary,
     )
     if _sha256(market_item["path"]) != market_item["sha256"]:
         raise ValueError(f"DLPD-12 {stage} market bytes changed")
@@ -1184,13 +1288,15 @@ def evaluate_stage(stage: str) -> dict[str, Any]:
     if output.exists() or document.exists():
         raise FileExistsError(f"DLPD-12 {stage} result is write-once")
     report = _build_stage_report(stage)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    document.parent.mkdir(parents=True, exist_ok=True)
-    with output.open("x", encoding="utf-8") as handle:
-        json.dump(report, handle, indent=2, ensure_ascii=False, allow_nan=False)
-        handle.write("\n")
-    with document.open("x", encoding="utf-8") as handle:
-        handle.write(render_stage_doc(report))
+    created_output = False
+    try:
+        _write_once_bytes(output, _json_bytes(report))
+        created_output = True
+        _write_once_bytes(document, render_stage_doc(report).encode("utf-8"))
+    except Exception:
+        if created_output:
+            output.unlink(missing_ok=True)
+        raise
     return report
 
 

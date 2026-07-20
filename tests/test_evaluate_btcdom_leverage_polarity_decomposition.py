@@ -179,6 +179,7 @@ def test_freeze_is_write_once(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -
 def test_slice_copies_only_declared_window_without_parsing_values(tmp_path: Path) -> None:
     source = tmp_path / "source.csv.gz"
     output = tmp_path / "slice.csv.gz"
+    second_output = tmp_path / "second-slice.csv.gz"
     with gzip.open(source, "wt", encoding="utf-8", newline="") as handle:
         handle.write("date,open,high,low,close\n")
         handle.write("2021-12-31 23:55:00,SECRET,SECRET,SECRET,SECRET\n")
@@ -200,6 +201,148 @@ def test_slice_copies_only_declared_window_without_parsing_values(tmp_path: Path
     assert "SECRET" not in content
     assert "FUTURE" not in content
     assert "2022-01-01 00:05:00" in content
+    second = evaluator._slice_gzip_csv(
+        source,
+        second_output,
+        timestamp_column="date",
+        start=pd.Timestamp("2022-01-01T00:00:00Z"),
+        end=pd.Timestamp("2023-01-01T00:00:00Z"),
+    )
+    assert result["sha256"] == second["sha256"]
+
+
+def test_stage_boundary_requirement_is_derived_from_frozen_clocks() -> None:
+    clocks = evaluator.derive_evaluation_clocks()
+    schedules = {
+        control: clocks.loc[clocks["control"].eq(control)].reset_index(drop=True)
+        for control in evaluator.ALL_CONTROLS
+    }
+    assert evaluator._stage_exit_boundary_required("train", schedules) is False
+    assert evaluator._stage_exit_boundary_required("test", schedules) is False
+
+    boundary = schedules["primary"].loc[
+        schedules["primary"]["split"].eq("2022")
+    ].iloc[:1].copy()
+    boundary["exit_time"] = evaluator.STAGE_WINDOWS["train"][1]
+    assert evaluator._stage_exit_boundary_required(
+        "train", {"boundary": boundary}
+    ) is True
+
+
+def test_phase_two_is_blocked_before_any_execution_source_open(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def forbidden(*args: object, **kwargs: object) -> None:
+        raise AssertionError("phase-two block ran too late")
+
+    monkeypatch.setattr(evaluator, "verify_evaluator_freeze", forbidden)
+    monkeypatch.setattr(evaluator, "_load_stage_source", forbidden)
+    with pytest.raises(RuntimeError, match="phase-two sealed"):
+        evaluator.load_execution_window("eval")
+
+
+def test_test_source_preparation_checks_prior_gate_before_parent_digest(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        evaluator,
+        "verify_evaluator_freeze",
+        lambda: {"manifest_hash": "freeze"},
+    )
+
+    def failed_prior(*args: object, **kwargs: object) -> None:
+        raise ValueError("train did not pass")
+
+    def forbidden_digest(*args: object, **kwargs: object) -> str:
+        raise AssertionError("parent digest ran before prior gate")
+
+    monkeypatch.setattr(evaluator, "_verified_prior_reports", failed_prior)
+    monkeypatch.setattr(evaluator, "_sha256", forbidden_digest)
+    with pytest.raises(ValueError, match="train did not pass"):
+        evaluator.prepare_stage_source("test")
+
+
+def test_stage_source_manifest_cannot_redirect_frozen_paths(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    spec = evaluator._stage_source_spec(
+        "train", exit_boundary_required=False
+    )
+    parent_market = {
+        "path": str(evaluator.LEGACY_MARKET),
+        "sha256": evaluator.LEGACY_MARKET_SHA256,
+        "manifest": str(evaluator.LEGACY_MARKET_MANIFEST),
+        "manifest_sha256": evaluator.LEGACY_MARKET_MANIFEST_SHA256,
+    }
+    parent_funding = {
+        "path": str(evaluator.LEGACY_FUNDING),
+        "sha256": evaluator.LEGACY_FUNDING_SHA256,
+        "manifest": str(evaluator.LEGACY_FUNDING_MANIFEST),
+        "manifest_sha256": evaluator.LEGACY_FUNDING_MANIFEST_SHA256,
+    }
+    payload = evaluator._seal(
+        {
+            "protocol_version": spec["required_protocol_version"],
+            "candidate": evaluator.POLICY_ID,
+            "stage": "train",
+            "physical_window": spec["physical_window"],
+            "physical_rows_limited_to_window": True,
+            "exit_boundary_required": False,
+            "strategy_outcomes_calculated": False,
+            "official_checksums_verified": True,
+            "full_parent_compressed_bytes_hashed": True,
+            "post_stage_numeric_rows_parsed": 0,
+            "parent_market": parent_market,
+            "parent_funding": parent_funding,
+            "market": {"path": "data/redirected.csv.gz", "sha256": "x", "rows": 1},
+            "funding": {
+                "path": str(
+                    evaluator.STAGE_SOURCE_DIRS["train"]
+                    / "BTCUSDT_funding_marks.csv.gz"
+                ),
+                "sha256": "y",
+                "rows": 1,
+            },
+        }
+    )
+    manifest = tmp_path / "source.json"
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+    monkeypatch.setitem(evaluator.STAGE_SOURCE_MANIFESTS, "train", manifest)
+    freeze = {
+        "execution_source_specs": {"train": spec},
+        "legacy_container_contract": {
+            "market": parent_market,
+            "funding": parent_funding,
+        },
+    }
+    with pytest.raises(ValueError, match="market path changed"):
+        evaluator._load_stage_source("train", freeze=freeze)
+
+
+def test_stage_result_pair_rolls_back_json_when_doc_write_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    output = tmp_path / "stage.json"
+    document = tmp_path / "stage.md"
+    monkeypatch.setitem(evaluator.STAGE_OUTPUTS, "train", output)
+    monkeypatch.setitem(evaluator.STAGE_DOCS, "train", document)
+    monkeypatch.setattr(evaluator, "_build_stage_report", lambda stage: {})
+    monkeypatch.setattr(evaluator, "render_stage_doc", lambda report: "doc")
+    real_write = evaluator._write_once_bytes
+    calls = 0
+
+    def fail_second(path: str | Path, payload: bytes) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("simulated doc failure")
+        real_write(path, payload)
+
+    monkeypatch.setattr(evaluator, "_write_once_bytes", fail_second)
+    with pytest.raises(OSError, match="simulated doc failure"):
+        evaluator.evaluate_stage("train")
+    assert not output.exists()
+    assert not document.exists()
 
 
 def test_flat_trade_costs_match_frozen_half_leverage_accounting() -> None:
