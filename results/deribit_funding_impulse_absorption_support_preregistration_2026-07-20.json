@@ -1,5 +1,5 @@
 {
-  "artifact_hash": "911afce424443a7cd7e23b852357ce4bc1f6d0e837377b582515c8e88f6e7f41",
+  "artifact_hash": "e974ceba3e824e5da078a97ef396080261b020bee0999e34a75af8ce3c908a03",
   "bounded_source_schema_probes_opened": true,
   "candidate_incidence_opened": false,
   "complete_source_incidence_opened": false,
@@ -42,14 +42,17 @@
       "trailing_hourly_mean": "interest_8h / 8"
     },
     "frozen_artifacts": {
+      "lower_bound_correction": "docs/deribit-funding-source-lower-bound-operational-correction-2026-07-20.md",
+      "lower_bound_correction_sha256": "ee4ae21d3785b9de7c37ba35f32cafb33b116f139c6b8cec32a36fc233d89e71",
+      "original_preregistration_artifact_hash": "911afce424443a7cd7e23b852357ce4bc1f6d0e837377b582515c8e88f6e7f41",
       "preregistration_document": "docs/deribit-funding-impulse-absorption-support-preregistration-2026-07-20.md",
-      "preregistration_document_sha256": "8ce6dea8a3a24a826439e8f861937a5a6e5ccb9e9a1f99bf89764c3d23bd22e4",
+      "preregistration_document_sha256": "a221bc618b8f8d10f7513279a2b067248849f3c0e291f3db2d18f2cf8ef8abfa",
       "preregistration_source": "training/preregister_deribit_funding_impulse_absorption_support.py",
-      "preregistration_source_sha256": "b5bbae3561a0fb63e645a3453499aef4f6b64d08cd963082a0d32126957eef2b",
+      "preregistration_source_sha256": "a9dd7ab37235bb567ba6d0654d4ae0d9437def8861b37cd80d6b0d136a53196e",
       "source_decision": "docs/deribit-funding-impulse-absorption-mechanism-decision-2026-07-20.md",
       "source_decision_sha256": "3aa1e0dbea5afa55b82e3693da945c384efe2187a971dfe4f8aa52d5677e7281",
       "source_downloader": "training/download_deribit_btc_perpetual_funding_hourly.py",
-      "source_downloader_sha256": "0e13782b2be2a2af96793270fda1aa342278fdce154830b9b6d7e19d7f90310a"
+      "source_downloader_sha256": "ef166913bf398282056a046e15985e2b8f2a81d8f338376fcf5ee2f8cc21d00d"
     },
     "later_evaluation_contract": {
       "base_cost_notional_per_side": 0.0006,
@@ -91,7 +94,7 @@
     },
     "outcomes_opened": false,
     "policy_id": "DFIA-72",
-    "research_history_boundary": "candidate-level freeze only; broad repository BTC history is open, bounded Deribit source probes are disclosed, and complete source incidence, candidate incidence, matching outcomes, and 2024+ source rows remain unopened; 2023 is an outcome-blind support-screened test rather than a pristine global holdout",
+    "research_history_boundary": "candidate-level freeze only; broad repository BTC history is open, bounded Deribit source probes and the lower-bound null diagnostic are disclosed, and complete source incidence, candidate incidence, matching outcomes, and 2024+ source rows remain unopened; 2023 is an outcome-blind support-screened test rather than a pristine global holdout",
     "scheduler": {
       "candidate_clock": "every qualifying hourly row while flat",
       "complete_split_containment": true,
@@ -133,6 +136,7 @@
         "2019-04-30T10:00:00Z",
         "2024-01-01T00:00:00Z"
       ],
+      "lower_boundary_prev_index_price": "exactly one preserved null at the first source row; never imputed or used as a return",
       "manifest": "results/deribit_btc_perpetual_funding_source_manifest_2026-07-20.json",
       "manifest_hash": "pending_outcome_blind_download",
       "official_docs": "https://docs.deribit.com/api-reference/market-data/public-get_funding_rate_history",
@@ -148,6 +152,7 @@
       "expected_hourly_timestamps": 40958,
       "first_exact": "2019-04-30T10:00:00Z",
       "last_exact": "2023-12-31T23:00:00Z",
+      "lower_boundary_null_prev_index_price_exact": 1,
       "maximum_adjacent_observed_timestamp_delta_hours": 24,
       "maximum_consecutive_missing_timestamps": 23,
       "memory_invariant_required": true,
@@ -156,6 +161,8 @@
     },
     "support_only": true
   },
-  "protocol_hash": "a3988fc86f5e381b46db744e712dd56a18efbb72e3b783d9813b6cc58a03152b",
-  "protocol_version": "deribit_funding_impulse_absorption_preregistration_v1"
+  "protocol_hash": "99bf41b46b69955106a0768995822ea29def3d62867365c591598e12242738d4",
+  "protocol_version": "deribit_funding_impulse_absorption_preregistration_v2",
+  "source_lower_boundary_diagnostic_opened": true,
+  "supersedes_artifact_hash": "911afce424443a7cd7e23b852357ce4bc1f6d0e837377b582515c8e88f6e7f41"
 }

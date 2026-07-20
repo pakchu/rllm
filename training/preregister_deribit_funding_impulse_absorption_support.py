@@ -43,7 +43,16 @@ SOURCE_DOWNLOADER = Path(
     "training/download_deribit_btc_perpetual_funding_hourly.py"
 )
 SOURCE_DOWNLOADER_SHA256 = (
-    "0e13782b2be2a2af96793270fda1aa342278fdce154830b9b6d7e19d7f90310a"
+    "ef166913bf398282056a046e15985e2b8f2a81d8f338376fcf5ee2f8cc21d00d"
+)
+LOWER_BOUND_CORRECTION = Path(
+    "docs/deribit-funding-source-lower-bound-operational-correction-2026-07-20.md"
+)
+LOWER_BOUND_CORRECTION_SHA256 = (
+    "ee4ae21d3785b9de7c37ba35f32cafb33b116f139c6b8cec32a36fc233d89e71"
+)
+ORIGINAL_PREREGISTRATION_ARTIFACT_HASH = (
+    "911afce424443a7cd7e23b852357ce4bc1f6d0e837377b582515c8e88f6e7f41"
 )
 PREREGISTRATION_DOCUMENT = Path(
     "docs/deribit-funding-impulse-absorption-support-preregistration-2026-07-20.md"
@@ -56,7 +65,10 @@ EXPECTED_SOURCE_SEMANTICS = {
     "interest_1h": "Deribit one-hour perpetual interest rate",
     "interest_8h": "Deribit eight-hour perpetual interest rate",
     "index_price": "Deribit BTC index price at the hourly row",
-    "prev_index_price": "Deribit BTC index price at the prior hourly point",
+    "prev_index_price": (
+        "Deribit BTC index price at the prior hourly point; null only at the "
+        "exact source lower boundary where prior history is unavailable"
+    ),
 }
 EXPECTED_OUTCOME_BOUNDARY = {
     "binance_market_rows_loaded": 0,
@@ -186,6 +198,7 @@ def _validate_config(cfg: Config) -> None:
     anchors = {
         SOURCE_DECISION: SOURCE_DECISION_SHA256,
         SOURCE_DOWNLOADER: SOURCE_DOWNLOADER_SHA256,
+        LOWER_BOUND_CORRECTION: LOWER_BOUND_CORRECTION_SHA256,
     }
     for path, expected_sha in anchors.items():
         if sha256_file(path) != expected_sha:
@@ -220,6 +233,10 @@ def protocol(cfg: Config) -> dict[str, Any]:
             ],
             "raw_responses_persisted": False,
             "rows_at_or_after_2024_loaded": False,
+            "lower_boundary_prev_index_price": (
+                "exactly one preserved null at the first source row; never "
+                "imputed or used as a return"
+            ),
         },
         "clock": {
             "timezone": "UTC",
@@ -293,6 +310,7 @@ def protocol(cfg: Config) -> dict[str, Any]:
                 cfg.maximum_source_gap_hours - 1
             ),
             "memory_invariant_required": True,
+            "lower_boundary_null_prev_index_price_exact": 1,
         },
         "candidate_support_gate": {
             "minimum_total": cfg.minimum_total,
@@ -371,6 +389,13 @@ def protocol(cfg: Config) -> dict[str, Any]:
             "source_decision_sha256": SOURCE_DECISION_SHA256,
             "source_downloader": str(SOURCE_DOWNLOADER),
             "source_downloader_sha256": SOURCE_DOWNLOADER_SHA256,
+            "lower_bound_correction": str(LOWER_BOUND_CORRECTION),
+            "lower_bound_correction_sha256": (
+                LOWER_BOUND_CORRECTION_SHA256
+            ),
+            "original_preregistration_artifact_hash": (
+                ORIGINAL_PREREGISTRATION_ARTIFACT_HASH
+            ),
             "preregistration_document": str(PREREGISTRATION_DOCUMENT),
             "preregistration_document_sha256": sha256_file(
                 PREREGISTRATION_DOCUMENT
@@ -382,10 +407,11 @@ def protocol(cfg: Config) -> dict[str, Any]:
         },
         "research_history_boundary": (
             "candidate-level freeze only; broad repository BTC history is open, "
-            "bounded Deribit source probes are disclosed, and complete source "
-            "incidence, candidate incidence, matching outcomes, and 2024+ source "
-            "rows remain unopened; 2023 is an outcome-blind support-screened "
-            "test rather than a pristine global holdout"
+            "bounded Deribit source probes and the lower-bound null diagnostic "
+            "are disclosed, and complete source incidence, candidate incidence, "
+            "matching outcomes, and 2024+ source rows remain unopened; 2023 is "
+            "an outcome-blind support-screened test rather than a pristine "
+            "global holdout"
         ),
     }
 
@@ -394,13 +420,15 @@ def write_preregistration(cfg: Config) -> dict[str, Any]:
     _validate_config(cfg)
     protocol_payload = protocol(cfg)
     core = {
-        "protocol_version": "deribit_funding_impulse_absorption_preregistration_v1",
+        "protocol_version": "deribit_funding_impulse_absorption_preregistration_v2",
         "protocol": protocol_payload,
         "protocol_hash": canonical_hash(protocol_payload),
         "outcomes_opened": False,
         "bounded_source_schema_probes_opened": True,
+        "source_lower_boundary_diagnostic_opened": True,
         "complete_source_incidence_opened": False,
         "candidate_incidence_opened": False,
+        "supersedes_artifact_hash": ORIGINAL_PREREGISTRATION_ARTIFACT_HASH,
     }
     artifact = {**core, "artifact_hash": canonical_hash(core)}
     _write_json(cfg.preregistration_output, artifact)
@@ -414,17 +442,29 @@ def load_preregistration(cfg: Config) -> dict[str, Any]:
     }
     if canonical_hash(core) != artifact.get("artifact_hash"):
         raise RuntimeError("DFIA-72 preregistration artifact hash mismatch")
-    if artifact.get("protocol") != protocol(cfg):
+    if artifact.get("protocol_version") != (
+        "deribit_funding_impulse_absorption_preregistration_v2"
+    ):
+        raise RuntimeError("DFIA-72 preregistration version mismatch")
+    expected_protocol = protocol(cfg)
+    if artifact.get("protocol") != expected_protocol or artifact.get(
+        "protocol_hash"
+    ) != canonical_hash(expected_protocol):
         raise RuntimeError("DFIA-72 preregistration protocol drift")
     expected_flags = {
         "outcomes_opened": False,
         "bounded_source_schema_probes_opened": True,
+        "source_lower_boundary_diagnostic_opened": True,
         "complete_source_incidence_opened": False,
         "candidate_incidence_opened": False,
     }
     for key, expected in expected_flags.items():
         if artifact.get(key) is not expected:
             raise RuntimeError(f"DFIA-72 preregistration boundary drift: {key}")
+    if artifact.get("supersedes_artifact_hash") != (
+        ORIGINAL_PREREGISTRATION_ARTIFACT_HASH
+    ):
+        raise RuntimeError("DFIA-72 preregistration predecessor mismatch")
     return artifact
 
 
@@ -517,6 +557,7 @@ def validate_source_manifest_metadata(
         or audit.get("unexpected_row_fields") != 0
         or audit.get("exact_boundary_duplicates") != 0
         or audit.get("conflicting_duplicates") != 0
+        or audit.get("lower_boundary_null_prev_index_price") != 1
     ):
         raise RuntimeError("DFIA-72 source boundary/schema audit mismatch")
     maximum_gap = audit.get("maximum_observation_gap_hours")
@@ -575,12 +616,26 @@ def validate_source_frame(frame: pd.DataFrame, cfg: Config) -> pd.DataFrame:
         "interest_1h",
         "interest_8h",
         "index_price",
-        "prev_index_price",
     ]
     for column in numeric_columns:
         checked[column] = pd.to_numeric(checked[column], errors="raise")
         if not np.isfinite(checked[column].to_numpy(float)).all():
             raise RuntimeError(f"DFIA-72 source {column} is not finite")
+    raw_previous = checked["prev_index_price"]
+    null_previous = raw_previous.isna() | raw_previous.astype(str).str.strip().eq(
+        ""
+    )
+    parsed_previous = pd.to_numeric(raw_previous, errors="coerce")
+    if (parsed_previous.isna() & ~null_previous).any():
+        raise RuntimeError("DFIA-72 source prev_index_price is not numeric")
+    expected_null = pd.Series(False, index=checked.index)
+    if len(expected_null):
+        expected_null.iloc[0] = True
+    if not null_previous.equals(expected_null):
+        raise RuntimeError(
+            "DFIA-72 source must preserve one lower-bound null prior index"
+        )
+    checked["prev_index_price"] = parsed_previous
     if checked.empty or checked["timestamp"].duplicated().any():
         raise RuntimeError("DFIA-72 source clock is empty or duplicated")
     if not checked["timestamp"].is_monotonic_increasing:
@@ -603,7 +658,10 @@ def validate_source_frame(frame: pd.DataFrame, cfg: Config) -> pd.DataFrame:
         raise RuntimeError("DFIA-72 source availability clock mismatch")
     if (
         checked["index_price"].le(0.0).any()
-        or checked["prev_index_price"].le(0.0).any()
+        or checked["prev_index_price"].iloc[1:].le(0.0).any()
+        or not np.isfinite(
+            checked["prev_index_price"].iloc[1:].to_numpy(float)
+        ).all()
     ):
         raise RuntimeError("DFIA-72 source index price is not positive")
 
