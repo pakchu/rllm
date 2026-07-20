@@ -49,7 +49,7 @@ REPORT_URL_TEMPLATE = (
 )
 USER_AGENT = "rllm-dffb-source-freeze/1.0"
 SCHEMA_VERSION = 1
-PARSER_VERSION = 1
+PARSER_VERSION = 2
 MIN_REPORT_DATE = date(2019, 1, 2)
 MAX_REPORT_DATE = date(2023, 12, 29)
 NEW_YORK = ZoneInfo("America/New_York")
@@ -59,7 +59,10 @@ PDF_DATE_PATTERN = re.compile(
     r"(?:January|February|March|April|May|June|July|August|September|"
     r"October|November|December)\s+\d{1,2},\s+\d{4}\b"
 )
-NUMBER_TOKEN = re.compile(r"^-?(?:0|[1-9]\d{0,2}(?:,\d{3})*)$")
+_UNSIGNED_NUMBER_PATTERN = r"(?:0|[1-9]\d{0,2}(?:,\d{3})*)"
+NUMBER_TOKEN = re.compile(
+    rf"^(?:-?{_UNSIGNED_NUMBER_PATTERN}|\({_UNSIGNED_NUMBER_PATTERN}\))$"
+)
 FOOTNOTE_TOKEN = re.compile(r"^(?:\d+/|\*+|[a-z]/)$", re.IGNORECASE)
 XLSX_NS = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 XLSX_REL_NS = {
@@ -237,6 +240,28 @@ class _PdfObject:
     dictionary: bytes
     stream_start: int | None
     stream_end_hint: int | None
+
+
+@dataclass(frozen=True)
+class _PdfTextDecoder:
+    code_lengths: tuple[int, ...]
+    mapping: dict[bytes, str]
+
+    def decode(self, payload: bytes) -> str:
+        output: list[str] = []
+        index = 0
+        while index < len(payload):
+            for length in self.code_lengths:
+                code = payload[index : index + length]
+                decoded = self.mapping.get(code)
+                if decoded is not None:
+                    output.append(decoded)
+                    index += length
+                    break
+            else:
+                value = payload[index : index + max(self.code_lengths, default=1)]
+                raise ValueError(f"PDF ToUnicode map lacks character code {value.hex()}")
+        return "".join(output)
 
 
 def sha256_bytes(payload: bytes) -> str:
@@ -650,6 +675,7 @@ def _parse_pdf_objects(payload: bytes) -> dict[int, _PdfObject]:
             objects[number] = parsed
     if not objects:
         raise ValueError("DTS PDF contains no parseable objects")
+    objects = _expand_pdf_object_streams(payload, objects)
     if any(b"/Encrypt" in item.dictionary for item in objects.values()):
         raise ValueError("encrypted DTS PDFs are unsupported")
     return objects
@@ -711,6 +737,75 @@ def _decode_pdf_stream(
         raise ValueError(f"PDF stream object {item.number} is not valid zlib") from exc
 
 
+def _expand_pdf_object_streams(
+    payload: bytes, objects: dict[int, _PdfObject]
+) -> dict[int, _PdfObject]:
+    expanded = dict(objects)
+    object_streams = sorted(
+        (
+            item
+            for item in objects.values()
+            if re.search(rb"/Type\s*/ObjStm\b", item.dictionary)
+        ),
+        key=lambda item: item.offset,
+    )
+    for container in object_streams:
+        count_match = re.search(rb"/N\s+(\d+)\b", container.dictionary)
+        first_match = re.search(rb"/First\s+(\d+)\b", container.dictionary)
+        if count_match is None or first_match is None:
+            raise ValueError(
+                f"PDF object stream {container.number} lacks N/First metadata"
+            )
+        count = int(count_match.group(1))
+        first = int(first_match.group(1))
+        decoded = _decode_pdf_stream(payload, container, objects)
+        if count < 1 or first < 1 or first > len(decoded):
+            raise ValueError(f"PDF object stream {container.number} has invalid bounds")
+        header = decoded[:first]
+        if re.fullmatch(rb"\s*(?:\d+\s+\d+\s*)+", header) is None:
+            raise ValueError(f"PDF object stream {container.number} has invalid header")
+        values = [int(value) for value in re.findall(rb"\d+", header)]
+        if len(values) != count * 2:
+            raise ValueError(
+                f"PDF object stream {container.number} count/header mismatch"
+            )
+        entries = list(zip(values[::2], values[1::2]))
+        offsets = [offset for _, offset in entries]
+        if offsets != sorted(offsets) or len(set(offsets)) != len(offsets):
+            raise ValueError(
+                f"PDF object stream {container.number} offsets are not increasing"
+            )
+        for index, (number, relative_offset) in enumerate(entries):
+            start = first + relative_offset
+            end = (
+                first + entries[index + 1][1]
+                if index + 1 < len(entries)
+                else len(decoded)
+            )
+            if not first <= start < end <= len(decoded):
+                raise ValueError(
+                    f"PDF object stream {container.number} has invalid object bounds"
+                )
+            body = decoded[start:end].strip()
+            if not body or b"stream" in body:
+                raise ValueError(
+                    f"PDF object stream {container.number} contains invalid object {number}"
+                )
+            embedded = _PdfObject(
+                number=number,
+                generation=0,
+                offset=container.offset,
+                body=body,
+                dictionary=body,
+                stream_start=None,
+                stream_end_hint=None,
+            )
+            previous = expanded.get(number)
+            if previous is None or previous.offset <= container.offset:
+                expanded[number] = embedded
+    return expanded
+
+
 def _page_content_references(item: _PdfObject) -> list[int]:
     array_match = re.search(rb"/Contents\s*\[([^]]*)\]", item.dictionary, re.DOTALL)
     if array_match is not None:
@@ -724,6 +819,71 @@ def _page_content_references(item: _PdfObject) -> list[int]:
     if not references:
         raise ValueError(f"DTS PDF page object {item.number} has no content streams")
     return references
+
+
+def _ordered_page_objects(objects: dict[int, _PdfObject]) -> list[_PdfObject]:
+    catalogs = [
+        item
+        for item in objects.values()
+        if re.search(rb"/Type\s*/Catalog\b", item.dictionary)
+    ]
+    if not catalogs:
+        return sorted(
+            (
+                item
+                for item in objects.values()
+                if re.search(rb"/Type\s*/Page\b", item.dictionary)
+            ),
+            key=lambda item: item.offset,
+        )
+    catalog = max(catalogs, key=lambda item: item.offset)
+    root_match = re.search(rb"/Pages\s+(\d+)\s+(\d+)\s+R\b", catalog.dictionary)
+    if root_match is None:
+        raise ValueError("DTS PDF catalog has no Pages reference")
+    root_number = int(root_match.group(1))
+    root_generation = int(root_match.group(2))
+    pages: list[_PdfObject] = []
+    active: set[int] = set()
+    visited: set[int] = set()
+
+    def visit(number: int, generation: int) -> None:
+        item = objects.get(number)
+        if item is None or item.generation != generation:
+            raise ValueError(f"DTS PDF page tree references missing object {number}")
+        if number in active:
+            raise ValueError("DTS PDF page tree contains a cycle")
+        if number in visited:
+            raise ValueError("DTS PDF page tree references a page twice")
+        active.add(number)
+        if re.search(rb"/Type\s*/Page\b", item.dictionary):
+            pages.append(item)
+        elif re.search(rb"/Type\s*/Pages\b", item.dictionary):
+            page_count_before = len(pages)
+            kids_match = re.search(rb"/Kids\s*\[([^]]*)\]", item.dictionary, re.DOTALL)
+            if kids_match is None:
+                raise ValueError(f"DTS PDF Pages object {number} has no Kids array")
+            references = [
+                (int(child), int(child_generation))
+                for child, child_generation in re.findall(
+                    rb"(\d+)\s+(\d+)\s+R\b", kids_match.group(1)
+                )
+            ]
+            if not references:
+                raise ValueError(f"DTS PDF Pages object {number} has no children")
+            for child, child_generation in references:
+                visit(child, child_generation)
+            count_match = re.search(rb"/Count\s+(\d+)\b", item.dictionary)
+            if count_match is None or int(count_match.group(1)) != (
+                len(pages) - page_count_before
+            ):
+                raise ValueError(f"DTS PDF Pages object {number} has a Count mismatch")
+        else:
+            raise ValueError(f"DTS PDF page tree object {number} has no page type")
+        active.remove(number)
+        visited.add(number)
+
+    visit(root_number, root_generation)
+    return pages
 
 
 def _pdf_literal_string(payload: bytes, start: int) -> tuple[bytes, int]:
@@ -850,6 +1010,237 @@ def _pdf_tokens(payload: bytes) -> Iterator[tuple[str, Any]]:
                 raise ValueError("non-ASCII PDF content operator") from exc
 
 
+def _balanced_pdf_dictionary(payload: bytes, start: int) -> bytes:
+    if payload[start : start + 2] != b"<<":
+        raise ValueError("PDF dictionary must start with <<")
+    index = start
+    depth = 0
+    while index < len(payload):
+        if payload[index : index + 2] == b"<<":
+            depth += 1
+            index += 2
+            continue
+        if payload[index : index + 2] == b">>":
+            depth -= 1
+            index += 2
+            if depth == 0:
+                return payload[start:index]
+            if depth < 0:
+                break
+            continue
+        if payload[index] == ord("("):
+            _, index = _pdf_literal_string(payload, index)
+            continue
+        if payload[index] == ord("<"):
+            _, index = _pdf_hex_string(payload, index)
+            continue
+        if payload[index] == ord("%"):
+            while index < len(payload) and payload[index] not in b"\r\n":
+                index += 1
+            continue
+        index += 1
+    raise ValueError("unterminated PDF dictionary")
+
+
+def _pdf_dictionary_value(
+    dictionary: bytes, key: bytes, objects: dict[int, _PdfObject]
+) -> bytes | None:
+    match = re.search(rb"/" + re.escape(key) + rb"\b", dictionary)
+    if match is None:
+        return None
+    index = match.end()
+    while index < len(dictionary) and dictionary[index] in b"\x00\t\n\x0c\r ":
+        index += 1
+    if dictionary[index : index + 2] == b"<<":
+        return _balanced_pdf_dictionary(dictionary, index)
+    reference = re.match(rb"(\d+)\s+(\d+)\s+R\b", dictionary[index:])
+    if reference is None:
+        raise ValueError(f"PDF dictionary key {key.decode('ascii')} has invalid value")
+    number = int(reference.group(1))
+    generation = int(reference.group(2))
+    item = objects.get(number)
+    if item is None or item.generation != generation or item.stream_start is not None:
+        raise ValueError(
+            f"PDF dictionary key {key.decode('ascii')} references invalid object"
+        )
+    return item.dictionary
+
+
+def _unicode_from_cmap_hex(value: bytes) -> str:
+    if len(value) % 2:
+        raise ValueError("PDF ToUnicode destination has odd byte length")
+    try:
+        decoded = value.decode("utf-16-be")
+    except UnicodeDecodeError as exc:
+        raise ValueError("PDF ToUnicode destination is not UTF-16BE") from exc
+    if not decoded:
+        raise ValueError("PDF ToUnicode destination is empty")
+    return unicodedata.normalize("NFC", decoded)
+
+
+def _parse_tounicode_cmap(payload: bytes) -> _PdfTextDecoder:
+    without_comments = re.sub(rb"%[^\r\n]*", b"", payload)
+    codespaces: list[tuple[bytes, bytes]] = []
+    for declared, block in re.findall(
+        rb"(\d+)\s+begincodespacerange\b(.*?)\bendcodespacerange",
+        without_comments,
+        re.DOTALL,
+    ):
+        pairs = re.findall(rb"<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>", block)
+        if len(pairs) != int(declared):
+            raise ValueError("PDF ToUnicode codespace count mismatch")
+        for lower_hex, upper_hex in pairs:
+            lower = bytes.fromhex(lower_hex.decode("ascii"))
+            upper = bytes.fromhex(upper_hex.decode("ascii"))
+            if not lower or len(lower) != len(upper) or lower > upper:
+                raise ValueError("PDF ToUnicode has invalid codespace range")
+            codespaces.append((lower, upper))
+    if not codespaces:
+        raise ValueError("PDF ToUnicode CMap has no codespace")
+
+    mapping: dict[bytes, str] = {}
+
+    def add(source: bytes, decoded: str) -> None:
+        if not any(
+            len(source) == len(lower) and lower <= source <= upper
+            for lower, upper in codespaces
+        ):
+            raise ValueError("PDF ToUnicode source lies outside codespace")
+        previous = mapping.get(source)
+        if previous is not None and previous != decoded:
+            raise ValueError("PDF ToUnicode maps one source code twice")
+        mapping[source] = decoded
+
+    for declared, block in re.findall(
+        rb"(\d+)\s+beginbfchar\b(.*?)\bendbfchar",
+        without_comments,
+        re.DOTALL,
+    ):
+        pairs = re.findall(rb"<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>", block)
+        if len(pairs) != int(declared):
+            raise ValueError("PDF ToUnicode bfchar count mismatch")
+        for source_hex, target_hex in pairs:
+            add(
+                bytes.fromhex(source_hex.decode("ascii")),
+                _unicode_from_cmap_hex(bytes.fromhex(target_hex.decode("ascii"))),
+            )
+
+    range_pattern = re.compile(
+        rb"<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*"
+        rb"(?:<([0-9A-Fa-f]+)>|\[((?:\s*<[0-9A-Fa-f]+>\s*)+)\])"
+    )
+    for declared, block in re.findall(
+        rb"(\d+)\s+beginbfrange\b(.*?)\bendbfrange",
+        without_comments,
+        re.DOTALL,
+    ):
+        ranges = list(range_pattern.finditer(block))
+        if len(ranges) != int(declared):
+            raise ValueError("PDF ToUnicode bfrange count mismatch")
+        for item in ranges:
+            lower = bytes.fromhex(item.group(1).decode("ascii"))
+            upper = bytes.fromhex(item.group(2).decode("ascii"))
+            if len(lower) != len(upper) or lower > upper:
+                raise ValueError("PDF ToUnicode has invalid bf range")
+            count = int.from_bytes(upper, "big") - int.from_bytes(lower, "big") + 1
+            if count > 65_536:
+                raise ValueError("PDF ToUnicode bf range is unreasonably large")
+            sources = [
+                value.to_bytes(len(lower), "big")
+                for value in range(
+                    int.from_bytes(lower, "big"), int.from_bytes(upper, "big") + 1
+                )
+            ]
+            if item.group(3) is not None:
+                base = bytes.fromhex(item.group(3).decode("ascii"))
+                destinations = [
+                    (int.from_bytes(base, "big") + offset).to_bytes(len(base), "big")
+                    for offset in range(count)
+                ]
+            else:
+                destinations = [
+                    bytes.fromhex(value.decode("ascii"))
+                    for value in re.findall(rb"<([0-9A-Fa-f]+)>", item.group(4))
+                ]
+                if len(destinations) != count:
+                    raise ValueError("PDF ToUnicode bf range array length mismatch")
+            for source, target in zip(sources, destinations):
+                add(source, _unicode_from_cmap_hex(target))
+    if not mapping:
+        raise ValueError("PDF ToUnicode CMap has no character mappings")
+    return _PdfTextDecoder(
+        code_lengths=tuple(sorted({len(value) for value in mapping}, reverse=True)),
+        mapping=mapping,
+    )
+
+
+def _inherited_page_resources(
+    page: _PdfObject, objects: dict[int, _PdfObject]
+) -> bytes | None:
+    current = page
+    visited: set[int] = set()
+    while True:
+        if current.number in visited:
+            raise ValueError("DTS PDF page parent chain contains a cycle")
+        visited.add(current.number)
+        resources = _pdf_dictionary_value(current.dictionary, b"Resources", objects)
+        if resources is not None:
+            return resources
+        parent_match = re.search(
+            rb"/Parent\s+(\d+)\s+(\d+)\s+R\b", current.dictionary
+        )
+        if parent_match is None:
+            return None
+        parent_number = int(parent_match.group(1))
+        parent_generation = int(parent_match.group(2))
+        parent = objects.get(parent_number)
+        if parent is None or parent.generation != parent_generation:
+            raise ValueError("DTS PDF page references a missing parent")
+        if re.search(rb"/Type\s*/Pages\b", parent.dictionary) is None:
+            raise ValueError("DTS PDF page parent is not a Pages object")
+        current = parent
+
+
+def _page_font_decoders(
+    payload: bytes, page: _PdfObject, objects: dict[int, _PdfObject]
+) -> tuple[dict[str, _PdfTextDecoder], set[str]]:
+    resources = _inherited_page_resources(page, objects)
+    if resources is None:
+        return {}, set()
+    fonts = _pdf_dictionary_value(resources, b"Font", objects)
+    if fonts is None:
+        return {}, set()
+    decoders: dict[str, _PdfTextDecoder] = {}
+    known_fonts: set[str] = set()
+    references = re.findall(rb"/([^/\s<>\[\]()]+)\s+(\d+)\s+(\d+)\s+R\b", fonts)
+    for raw_name, raw_number, raw_generation in references:
+        name = "/" + raw_name.decode("ascii")
+        known_fonts.add(name)
+        number = int(raw_number)
+        generation = int(raw_generation)
+        font = objects.get(number)
+        if font is None or font.generation != generation:
+            raise ValueError(f"DTS PDF page references missing font object {number}")
+        if re.search(rb"/Subtype\s*/Type0\b", font.dictionary) is None:
+            continue
+        if re.search(rb"/Encoding\s*/Identity-H\b", font.dictionary) is None:
+            raise ValueError(f"DTS PDF font {name} is not Identity-H")
+        cmap_match = re.search(
+            rb"/ToUnicode\s+(\d+)\s+(\d+)\s+R\b", font.dictionary
+        )
+        if cmap_match is None:
+            raise ValueError(f"DTS PDF font {name} has no ToUnicode map")
+        cmap_number = int(cmap_match.group(1))
+        cmap_generation = int(cmap_match.group(2))
+        cmap = objects.get(cmap_number)
+        if cmap is None or cmap.generation != cmap_generation:
+            raise ValueError(f"DTS PDF font {name} references a missing ToUnicode map")
+        decoders[name] = _parse_tounicode_cmap(
+            _decode_pdf_stream(payload, cmap, objects)
+        )
+    return decoders, known_fonts
+
+
 def _multiply_matrix(left: _Matrix, right: _Matrix) -> _Matrix:
     a, b, c, d, e, f = left
     g, h, i, j, k, ell = right
@@ -863,7 +1254,13 @@ def _multiply_matrix(left: _Matrix, right: _Matrix) -> _Matrix:
     )
 
 
-def parse_pdf_content_cells(payload: bytes, *, page_number: int) -> list[PdfTextCell]:
+def parse_pdf_content_cells(
+    payload: bytes,
+    *,
+    page_number: int,
+    font_decoders: dict[str, _PdfTextDecoder] | None = None,
+    known_font_names: set[str] | None = None,
+) -> list[PdfTextCell]:
     operands: list[Any] = []
     arrays: list[list[Any]] = []
     ctm: _Matrix = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
@@ -876,6 +1273,8 @@ def parse_pdf_content_cells(payload: bytes, *, page_number: int) -> list[PdfText
     in_text = False
     source_order = 0
     cells: list[PdfTextCell] = []
+    decoders = font_decoders or {}
+    text_position_changed = True
 
     def require_numbers(count: int, operator: str) -> list[float]:
         if len(operands) < count or not all(
@@ -885,38 +1284,64 @@ def parse_pdf_content_cells(payload: bytes, *, page_number: int) -> list[PdfText
         return operands[-count:]
 
     def show_text(value: Any) -> None:
-        nonlocal source_order
+        nonlocal source_order, text_position_changed
         if not in_text:
             raise ValueError("PDF text-showing operator occurs outside BT/ET")
         parts = value if isinstance(value, list) else [value]
         if not all(isinstance(part, (bytes, float)) for part in parts):
             raise ValueError("PDF text array contains an invalid value")
-        chunks: list[bytes] = []
+        chunks: list[str] = []
         for part in parts:
             if isinstance(part, bytes):
-                chunks.append(part)
-            elif part <= -200.0 and chunks and not chunks[-1].endswith(b" "):
+                decoder = decoders.get(font_name)
+                try:
+                    decoded = (
+                        decoder.decode(part)
+                        if decoder is not None
+                        else part.decode("cp1252")
+                    )
+                except UnicodeDecodeError as exc:
+                    raise ValueError(
+                        f"DTS PDF font {font_name or '<unset>'} text is undecodable"
+                    ) from exc
+                chunks.append(decoded)
+            elif part <= -200.0 and chunks and not chunks[-1].endswith(" "):
                 # Legacy DTS PDFs encode Helvetica's ordinary word space as a
                 # -278 TJ displacement instead of embedding a space byte.
-                chunks.append(b" ")
-        raw = b"".join(chunks)
-        try:
-            text = unicodedata.normalize("NFC", raw.decode("cp1252"))
-        except UnicodeDecodeError as exc:
-            raise ValueError("DTS PDF text is not valid WinAnsi/cp1252") from exc
+                chunks.append(" ")
+        text = unicodedata.normalize("NFC", "".join(chunks))
         matrix = _multiply_matrix(ctm, text_matrix)
-        cells.append(
-            PdfTextCell(
-                page_number=page_number,
-                source_order=source_order,
-                x=round(matrix[4], 6),
-                y=round(matrix[5], 6),
-                text=text,
-                font_name=font_name,
-                font_size=round(font_size, 6),
-            )
+        cell = PdfTextCell(
+            page_number=page_number,
+            source_order=source_order,
+            x=round(matrix[4], 6),
+            y=round(matrix[5], 6),
+            text=text,
+            font_name=font_name,
+            font_size=round(font_size, 6),
         )
+        if (
+            not text_position_changed
+            and cells
+            and cells[-1].page_number == cell.page_number
+            and cells[-1].x == cell.x
+            and cells[-1].y == cell.y
+            and cells[-1].font_size == cell.font_size
+        ):
+            previous = cells[-1]
+            cells[-1] = PdfTextCell(
+                page_number=previous.page_number,
+                source_order=previous.source_order,
+                x=previous.x,
+                y=previous.y,
+                text=previous.text + cell.text,
+                font_name=previous.font_name,
+                font_size=previous.font_size,
+            )
+        else:
+            cells.append(cell)
         source_order += 1
+        text_position_changed = False
 
     for token_type, value in _pdf_tokens(payload):
         if token_type == "array_start":
@@ -940,23 +1365,28 @@ def parse_pdf_content_cells(payload: bytes, *, page_number: int) -> list[PdfText
             if not graphics_stack:
                 raise ValueError("unmatched PDF graphics-state restore")
             ctm = graphics_stack.pop()
+            text_position_changed = True
         elif operator == "cm":
             values = require_numbers(6, operator)
             ctm = _multiply_matrix(ctm, tuple(values))  # type: ignore[arg-type]
+            text_position_changed = True
         elif operator == "BT":
             if in_text:
                 raise ValueError("nested PDF BT operator")
             in_text = True
             text_matrix = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
             line_matrix = text_matrix
+            text_position_changed = True
         elif operator == "ET":
             if not in_text:
                 raise ValueError("unmatched PDF ET operator")
             in_text = False
+            text_position_changed = True
         elif operator == "Tm":
             values = require_numbers(6, operator)
             text_matrix = tuple(values)  # type: ignore[assignment]
             line_matrix = text_matrix
+            text_position_changed = True
         elif operator in {"Td", "TD"}:
             tx, ty = require_numbers(2, operator)
             if operator == "TD":
@@ -965,6 +1395,7 @@ def parse_pdf_content_cells(payload: bytes, *, page_number: int) -> list[PdfText
                 line_matrix, (1.0, 0.0, 0.0, 1.0, tx, ty)
             )
             text_matrix = line_matrix
+            text_position_changed = True
         elif operator == "TL":
             leading = require_numbers(1, operator)[0]
         elif operator == "T*":
@@ -972,6 +1403,7 @@ def parse_pdf_content_cells(payload: bytes, *, page_number: int) -> list[PdfText
                 line_matrix, (1.0, 0.0, 0.0, 1.0, 0.0, -leading)
             )
             text_matrix = line_matrix
+            text_position_changed = True
         elif operator == "Tf":
             if (
                 len(operands) < 2
@@ -980,6 +1412,8 @@ def parse_pdf_content_cells(payload: bytes, *, page_number: int) -> list[PdfText
             ):
                 raise ValueError("PDF Tf has invalid operands")
             font_name = operands[-2]
+            if known_font_names is not None and font_name not in known_font_names:
+                raise ValueError(f"DTS PDF content uses undeclared font {font_name}")
             font_size = operands[-1]
         elif operator in {"Tj", "TJ"}:
             if not operands:
@@ -992,6 +1426,7 @@ def parse_pdf_content_cells(payload: bytes, *, page_number: int) -> list[PdfText
                 line_matrix, (1.0, 0.0, 0.0, 1.0, 0.0, -leading)
             )
             text_matrix = line_matrix
+            text_position_changed = True
             show_text(operands[-1])
         elif operator == '"':
             if len(operands) < 3:
@@ -1000,8 +1435,9 @@ def parse_pdf_content_cells(payload: bytes, *, page_number: int) -> list[PdfText
                 line_matrix, (1.0, 0.0, 0.0, 1.0, 0.0, -leading)
             )
             text_matrix = line_matrix
+            text_position_changed = True
             show_text(operands[-1])
-        elif operator in {"G", "g", "w", "Tc"}:
+        elif operator in {"G", "g", "w", "Tc", "Tw"}:
             require_numbers(1, operator)
         elif operator in {"m", "l"}:
             require_numbers(2, operator)
@@ -1025,6 +1461,9 @@ def parse_pdf_content_cells(payload: bytes, *, page_number: int) -> list[PdfText
                 or re.fullmatch(r"/Im\d+", operands[-1]) is None
             ):
                 raise ValueError("DTS PDF Do is not a known image invocation")
+        elif operator == "MP":
+            if len(operands) != 1 or not isinstance(operands[0], str):
+                raise ValueError("PDF MP has invalid operands")
         elif operator == "BI":
             raise ValueError("inline PDF images are unsupported")
         else:
@@ -1041,14 +1480,7 @@ def parse_pdf_content_cells(payload: bytes, *, page_number: int) -> list[PdfText
 
 def _pdf_page_cells(payload: bytes) -> tuple[PdfTextCell, ...]:
     objects = _parse_pdf_objects(payload)
-    pages = sorted(
-        (
-            item
-            for item in objects.values()
-            if re.search(rb"/Type\s*/Page\b", item.dictionary)
-        ),
-        key=lambda item: item.offset,
-    )
+    pages = _ordered_page_objects(objects)
     if not pages:
         raise ValueError("DTS PDF contains no page objects")
     all_cells: list[PdfTextCell] = []
@@ -1060,7 +1492,15 @@ def _pdf_page_cells(payload: bytes) -> tuple[PdfTextCell, ...]:
                 raise ValueError(f"DTS PDF page references missing object {reference}")
             streams.append(_decode_pdf_stream(payload, item, objects))
         content = b"\n".join(streams)
-        cells = parse_pdf_content_cells(content, page_number=page_number)
+        font_decoders, known_font_names = _page_font_decoders(
+            payload, page, objects
+        )
+        cells = parse_pdf_content_cells(
+            content,
+            page_number=page_number,
+            font_decoders=font_decoders,
+            known_font_names=known_font_names,
+        )
         all_cells.extend(cells)
     if not any(cell.text.strip() for cell in all_cells):
         raise ValueError("DTS PDF contains no extractable text")
@@ -1173,14 +1613,17 @@ def _parse_amount_token(value: str) -> int | None:
     stripped = value.strip()
     if not NUMBER_TOKEN.fullmatch(stripped):
         return None
-    return int(stripped.replace(",", ""))
+    parenthesized = stripped.startswith("(") and stripped.endswith(")")
+    digits = stripped[1:-1] if parenthesized else stripped
+    amount = int(digits.replace(",", ""))
+    return -amount if parenthesized else amount
 
 
 def _parse_amount_cell(value: str) -> tuple[bool, int | None, str, str]:
     stripped = " ".join(value.strip().split())
     match = re.fullmatch(
         r"(?:\$\s*)?(?:(\d+/|\*+|[a-z]/)\s*)?"
-        r"(-?(?:0|[1-9]\d{0,2}(?:,\d{3})*)|[-–—*])",
+        rf"(-?{_UNSIGNED_NUMBER_PATTERN}|\({_UNSIGNED_NUMBER_PATTERN}\)|[-–—*])",
         stripped,
         re.IGNORECASE,
     )
@@ -1325,6 +1768,87 @@ def _extract_table_i_rows(
     return tuple(output)
 
 
+def _parse_table_side_cells(
+    cells: Sequence[PdfTextCell], *, table: str, side_index: int
+) -> tuple[list[str], list[str], list[tuple[int | None, str]]]:
+    if table not in {"II", "IIIA"}:
+        raise ValueError(f"unsupported DTS numeric table: {table}")
+    label_cutoff = 160.0 if side_index == 0 else 430.0
+    label_tokens: list[str] = []
+    footnotes: list[str] = []
+    numeric_cells: list[PdfTextCell] = []
+    for cell in cells:
+        token = cell.text.strip()
+        if not token:
+            continue
+        if re.fullmatch(r"(?:\d+/|[a-z]/)", token, re.IGNORECASE):
+            footnotes.append(token)
+            continue
+        if cell.x < label_cutoff:
+            if FOOTNOTE_TOKEN.fullmatch(token):
+                footnotes.append(token)
+            else:
+                label_tokens.append(token)
+            continue
+        numeric_cells.append(cell)
+
+    column_cells: list[list[PdfTextCell]] = []
+    ordered_numeric = sorted(numeric_cells, key=lambda item: (item.x, item.source_order))
+    dollar_indexes = [
+        index for index, cell in enumerate(ordered_numeric) if cell.text.strip() == "$"
+    ]
+    use_dollar_delimiters = len(dollar_indexes) == 3 or (
+        len(dollar_indexes) == 2 and dollar_indexes[0] > 0
+    )
+    if use_dollar_delimiters:
+        current: list[PdfTextCell] = []
+        for cell in ordered_numeric:
+            if cell.text.strip() == "$":
+                if current:
+                    column_cells.append(current)
+                    current = []
+                continue
+            current.append(cell)
+        if current:
+            column_cells.append(current)
+    else:
+        without_dollars = [
+            cell for cell in ordered_numeric if cell.text.strip() != "$"
+        ]
+        for cell in without_dollars:
+            if (
+                not column_cells
+                or cell.x - max(item.x for item in column_cells[-1]) > 20.0
+            ):
+                column_cells.append([cell])
+            else:
+                column_cells[-1].append(cell)
+
+    values: list[tuple[int | None, str]] = []
+    for column in column_cells:
+        tokens = [cell.text.strip() for cell in sorted(column, key=lambda item: item.source_order)]
+        literal = "".join("".join(token.split()) for token in tokens if token != "$")
+        recognized, amount, embedded_footnote, missing = _parse_amount_cell(literal)
+        if not recognized:
+            raise ValueError(
+                f"DTS PDF numeric column has an invalid token sequence: {tokens!r}"
+            )
+        if embedded_footnote:
+            footnotes.append(embedded_footnote)
+        values.append((amount, missing))
+    return label_tokens, footnotes, values
+
+
+def _is_pdf_footer_boundary(value: str) -> bool:
+    return value.startswith(
+        (
+            "This statement summarizes the United States Treasury",
+            "Daily Treasury Statement Footnotes:",
+            "General Footnotes and Statements:",
+        )
+    )
+
+
 def _extract_table_rows(
     cells: Sequence[PdfTextCell], *, record_date: date, source_sha256: str
 ) -> tuple[DtsRow, ...]:
@@ -1356,16 +1880,24 @@ def _extract_table_rows(
 
     available, execution, stage = source_clock(record_date)
     pending: dict[tuple[str, str], list[str]] = {}
+    pending_footnotes: dict[tuple[str, str], list[str]] = {}
     section_stacks: dict[tuple[str, str], list[tuple[float, str]]] = {}
     output: list[DtsRow] = []
     center_x = 304.5
-    null_tokens = {"-", "–", "—", "*"}
 
     for table, page_number, start_y, end_y in segments:
+        footer_boundaries = [
+            line.y
+            for line in lines
+            if line.page_number == page_number
+            and end_y < line.y < start_y
+            and _is_pdf_footer_boundary(_line_text(line))
+        ]
+        effective_end_y = max([end_y, *footer_boundaries])
         segment_lines = [
             line
             for line in lines
-            if line.page_number == page_number and end_y < line.y < start_y
+            if line.page_number == page_number and effective_end_y < line.y < start_y
         ]
         segment_lines.sort(key=lambda line: -line.y)
         side_names = (
@@ -1387,35 +1919,21 @@ def _extract_table_rows(
                     continue
                 if _table_title(text) is not None or text.startswith("Table continued"):
                     continue
+                if (
+                    max(cell.font_size for cell in side_cells) <= 5.5
+                    and re.match(r"^(?:\d+\s*/|\*+|[a-z]\s*/)", text, re.IGNORECASE)
+                ):
+                    continue
 
-                labels: list[str] = []
-                footnotes: list[str] = []
-                values: list[tuple[int | None, str]] = []
-                for cell in side_cells:
-                    token = cell.text.strip()
-                    if not token or token == "$":
-                        continue
-                    recognized, amount, embedded_footnote, missing = _parse_amount_cell(
-                        token
-                    )
-                    if recognized:
-                        if embedded_footnote:
-                            footnotes.append(embedded_footnote)
-                        values.append((amount, missing))
-                    elif token in null_tokens:
-                        numeric_threshold = 160.0 if side_index == 0 else 430.0
-                        if cell.x >= numeric_threshold:
-                            values.append((None, token))
-                        else:
-                            labels.append(token)
-                    elif FOOTNOTE_TOKEN.fullmatch(token):
-                        footnotes.append(token)
-                    else:
-                        labels.append(token)
+                labels, footnotes, values = _parse_table_side_cells(
+                    side_cells, table=table, side_index=side_index
+                )
 
                 key = (table, side)
                 label_text = _mechanical_label_normalization(" ".join(labels))
                 if not values:
+                    if footnotes:
+                        pending_footnotes.setdefault(key, []).extend(footnotes)
                     if not label_text:
                         continue
                     if label_text.endswith(":"):
@@ -1428,6 +1946,7 @@ def _extract_table_rows(
                     else:
                         pending.setdefault(key, []).append(label_text)
                     continue
+                footnotes = [*pending_footnotes.pop(key, []), *footnotes]
                 if len(values) != 3:
                     raise ValueError(
                         f"DTS {record_date} {table}/{side} row {text!r} has "
@@ -1797,10 +2316,12 @@ def build_source(config: BuildConfig) -> dict[str, Any]:
     all_rows.sort(
         key=lambda row: (
             row["record_date"],
-            row["page_number"],
-            row["source_order"],
             row["table_id"],
             row["side"],
+            row["parent_section"],
+            row["page_number"],
+            row["source_order"],
+            row["raw_category_label"],
         )
     )
     rows_payload = canonical_csv(all_rows, OUTPUT_COLUMNS)

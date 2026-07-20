@@ -18,9 +18,19 @@ def _pdf_object(number: int, body: bytes) -> bytes:
     return f"{number} 0 obj\n".encode() + body + b"\nendobj\n"
 
 
-def _stream_object(number: int, content: bytes, *, filter_name: str = "FlateDecode") -> bytes:
+def _stream_object(
+    number: int,
+    content: bytes,
+    *,
+    filter_name: str = "FlateDecode",
+    extra_dictionary: bytes = b"",
+) -> bytes:
     compressed = zlib.compress(content) if filter_name == "FlateDecode" else content
-    dictionary = f"<< /Length {len(compressed)} /Filter /{filter_name} >>\n".encode()
+    dictionary = (
+        f"<< /Length {len(compressed)} /Filter /{filter_name} ".encode()
+        + extra_dictionary
+        + b" >>\n"
+    )
     return _pdf_object(
         number,
         dictionary + b"stream\n" + compressed + b"\nendstream",
@@ -68,10 +78,19 @@ def _minimal_dts_pdf(report_date: str = "Friday, December 29, 2023") -> bytes:
     return b"".join(
         [
             b"%PDF-1.4\n",
-            _pdf_object(1, b"<< /Type /Page /Contents [2 0 R 3 0 R] >>"),
+            _pdf_object(
+                1,
+                b"<< /Type /Page /Contents [2 0 R 3 0 R] "
+                b"/Resources<</Font<</F1 5 0 R>>>> >>",
+            ),
             _stream_object(2, b"q\n" + first_content),
             _stream_object(3, second_content + b"Q\n"),
             _pdf_object(4, b"<< /CreationDate (D:20240102160000-05'00') >>"),
+            _pdf_object(
+                5,
+                b"<</Type/Font/Subtype/Type1/BaseFont/Helvetica/"
+                b"Encoding/WinAnsiEncoding>>",
+            ),
             b"%%EOF\n",
         ]
     )
@@ -256,7 +275,7 @@ def test_content_parser_handles_tj_arrays_and_graphics_state() -> None:
     content = b"".join(
         [
             b"q 1 0 0 1 100 200 cm ",
-            b"BT /F1 10 Tf 1 0 0 1 5 6 Tm ",
+            b"/Artifact MP BT /F1 10 Tf 0 Tw 1 0 0 1 5 6 Tm ",
             b"[(Daily) -120 ( Treasury) 40 ( Statement)] TJ ET Q ",
             b"BT /F1 8 Tf 1 0 0 1 1 2 Tm (Plain) Tj ET",
         ]
@@ -268,6 +287,124 @@ def test_content_parser_handles_tj_arrays_and_graphics_state() -> None:
     ]
     with pytest.raises(ValueError, match="unsupported PDF content operator"):
         dts.parse_pdf_content_cells(b"123 ZZ", page_number=1)
+
+
+def test_content_parser_merges_same_position_font_fragments() -> None:
+    content = (
+        b"BT /F1 6.5 Tf 1 0 0 1 200 300 Tm (10) Tj "
+        b"/F2 6.5 Tf (,) Tj /F1 6.5 Tf (911) Tj ET"
+    )
+    cells = dts.parse_pdf_content_cells(content, page_number=1)
+    assert [(cell.text, cell.x, cell.y) for cell in cells] == [
+        ("10,911", 200.0, 300.0)
+    ]
+
+
+def test_object_stream_page_tree_and_tounicode_font_are_supported() -> None:
+    cmap = b"""/CIDInit /ProcSet findresource begin
+begincmap
+1 begincodespacerange
+<0000> <FFFF>
+endcodespacerange
+3 beginbfchar
+<0001> <0041>
+<0002> <0042>
+<0003> <0043>
+endbfchar
+endcmap
+end
+"""
+    embedded = [
+        (6, b"<</Type/Catalog/Pages 7 0 R>>"),
+        (
+            7,
+            b"<</Type/Pages/Count 1/Kids[8 0 R]/"
+            b"Resources<</Font<</C2_0 3 0 R>>>>>>",
+        ),
+        (
+            8,
+            b"<</Type/Page/Parent 7 0 R/Contents 2 0 R>>",
+        ),
+    ]
+    offsets: list[int] = []
+    bodies = bytearray()
+    for _, body in embedded:
+        offsets.append(len(bodies))
+        bodies.extend(body)
+        bodies.extend(b" ")
+    header = "".join(
+        f"{number} {offset} "
+        for (number, _), offset in zip(embedded, offsets)
+    ).encode()
+    object_stream = header + bodies
+    payload = b"".join(
+        [
+            b"%PDF-1.6\n",
+            _stream_object(
+                2,
+                b"BT /C2_0 10 Tf 1 0 0 1 5 6 Tm <000100020003> Tj ET",
+            ),
+            _pdf_object(
+                3,
+                b"<</Type/Font/Subtype/Type0/Encoding/Identity-H/ToUnicode 4 0 R>>",
+            ),
+            _stream_object(4, cmap),
+            _stream_object(
+                5,
+                object_stream,
+                extra_dictionary=(
+                    f"/Type /ObjStm /N {len(embedded)} /First {len(header)}".encode()
+                ),
+            ),
+            b"%%EOF\n",
+        ]
+    )
+    objects = dts._parse_pdf_objects(payload)
+    assert [page.number for page in dts._ordered_page_objects(objects)] == [8]
+    cells = dts._pdf_page_cells(payload)
+    assert [(cell.text, cell.x, cell.y) for cell in cells] == [("ABC", 5.0, 6.0)]
+
+
+def test_numeric_columns_rejoin_split_negatives_and_use_dollar_delimiters() -> None:
+    def cell(order: int, x: float, text: str) -> dts.PdfTextCell:
+        return dts.PdfTextCell(1, order, x, 100.0, text, "/F1", 6.5)
+
+    labels, _, values = dts._parse_table_side_cells(
+        [
+            cell(0, 45.0, "Notes"),
+            cell(1, 206.0, "0"),
+            cell(2, 246.0, "-"),
+            cell(3, 248.0, "1"),
+            cell(4, 275.0, "1,007,597"),
+        ],
+        table="IIIA",
+        side_index=0,
+    )
+    assert labels == ["Notes"]
+    assert values == [(0, ""), (-1, ""), (1_007_597, "")]
+
+    _, footnotes, values = dts._parse_table_side_cells(
+        [
+            cell(0, 440.0, "1/"),
+            cell(1, 443.0, "$"),
+            cell(2, 478.0, "0"),
+            cell(3, 486.0, "$"),
+            cell(4, 495.0, "1,095,375"),
+            cell(5, 529.0, "$"),
+            cell(6, 550.0, "8,094,659"),
+        ],
+        table="IIIA",
+        side_index=1,
+    )
+    assert footnotes == ["1/"]
+    assert values == [(0, ""), (1_095_375, ""), (8_094_659, "")]
+
+
+def test_amount_parser_handles_parenthesized_negatives_and_footer_boundaries() -> None:
+    assert dts._parse_amount_cell("$(1,234)") == (True, -1_234, "", "")
+    assert dts._is_pdf_footer_boundary(
+        "This statement summarizes the United States Treasury's operations"
+    )
 
 
 def test_pdf_parser_supports_content_arrays_and_extracts_all_required_sides() -> None:
