@@ -43,6 +43,17 @@ SOURCE_HOST_DECISION = (
 SOURCE_HOST_DECISION_SHA256 = (
     "fbe3212987384ce38e8057f9287c9dd832863aea5be34d7bd6744a6386798847"
 )
+PERSISTENT_TRANSPORT = "training/run_bate_esplora_backfill.py"
+PERSISTENT_TRANSPORT_SHA256 = (
+    "028f3d3ff128d17dbda4ac2dc4898267e0c91db98a639b570531a8a7fe0e2a74"
+)
+PERSISTENT_TRANSPORT_FREEZE = (
+    "docs/block-arrival-throughput-elasticity-persistent-transport-"
+    "freeze-2026-07-20.md"
+)
+PERSISTENT_TRANSPORT_FREEZE_SHA256 = (
+    "6fc1e38a46d2a1daa9cd24dcd19470321a1f9082613552ad30851b9072c1c424"
+)
 FROZEN_RESEARCH_BASE_URL = "https://mempool.space/api"
 FROZEN_BLOCK_ANCHORS = {
     823_785: "00000000000000000000d0cd9e5661fca08ed8916c8bb4f8ac2a3a34c8d3fa4b",
@@ -113,6 +124,16 @@ def _validate_frozen_loader(path: str | Path) -> None:
         raise RuntimeError("BATE source loader differs from the frozen SHA-256")
 
 
+def _validate_frozen_transport() -> None:
+    contracts = {
+        PERSISTENT_TRANSPORT: PERSISTENT_TRANSPORT_SHA256,
+        PERSISTENT_TRANSPORT_FREEZE: PERSISTENT_TRANSPORT_FREEZE_SHA256,
+    }
+    for path, expected in contracts.items():
+        if not Path(path).is_file() or sha256_file(path) != expected:
+            raise RuntimeError(f"BATE persistent transport contract drifted: {path}")
+
+
 def _validate_source_config(config: dict[str, Any]) -> None:
     frozen = {
         "start_height": block_source.FROZEN_START_HEIGHT,
@@ -142,6 +163,7 @@ def load_source(source_csv: str, source_manifest: str) -> tuple[pd.DataFrame, di
     ):
         raise RuntimeError("BATE source-host fallback decision is missing or has drifted")
     _validate_frozen_loader(Path(block_source.__file__))
+    _validate_frozen_transport()
     manifest_path = Path(source_manifest)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if not isinstance(manifest, dict):
@@ -558,6 +580,9 @@ def run(
         Path(source_csv).resolve(),
         Path(source_manifest).resolve(),
         Path(PREREGISTRATION).resolve(),
+        Path(SOURCE_HOST_DECISION).resolve(),
+        Path(PERSISTENT_TRANSPORT).resolve(),
+        Path(PERSISTENT_TRANSPORT_FREEZE).resolve(),
     }
     artifact_paths = {Path(output).resolve(), Path(clock_output).resolve()}
     if len(artifact_paths) != 2 or artifact_paths & protected_inputs:
@@ -591,6 +616,12 @@ def run(
             "sha256": SOURCE_HOST_DECISION_SHA256,
             "base_url": FROZEN_RESEARCH_BASE_URL,
             "block_anchors": FROZEN_BLOCK_ANCHORS,
+        },
+        "persistent_transport": {
+            "path": PERSISTENT_TRANSPORT,
+            "sha256": PERSISTENT_TRANSPORT_SHA256,
+            "freeze_path": PERSISTENT_TRANSPORT_FREEZE,
+            "freeze_sha256": PERSISTENT_TRANSPORT_FREEZE_SHA256,
         },
         "source": {
             "path": source_csv,

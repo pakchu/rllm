@@ -240,6 +240,17 @@ def test_frozen_source_loader_identity_is_not_self_attested(tmp_path: Path) -> N
     support._validate_frozen_loader(Path(support.block_source.__file__))
 
 
+def test_persistent_transport_contract_is_hash_frozen(
+    tmp_path: Path, monkeypatch
+) -> None:
+    support._validate_frozen_transport()
+    drifted = tmp_path / "transport.py"
+    drifted.write_text("# drifted\n")
+    monkeypatch.setattr(support, "PERSISTENT_TRANSPORT", str(drifted))
+    with pytest.raises(RuntimeError, match="transport contract drifted"):
+        support._validate_frozen_transport()
+
+
 def test_source_config_and_cross_host_anchors_are_frozen() -> None:
     config = {
         "start_height": support.block_source.FROZEN_START_HEIGHT,
