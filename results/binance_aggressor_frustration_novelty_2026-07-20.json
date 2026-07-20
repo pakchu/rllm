@@ -1,0 +1,418 @@
+{
+  "as_of": "2026-07-20",
+  "candidate": "BAFR-24F",
+  "stage": "outcome_blind_novelty_gate",
+  "outcomes_opened": false,
+  "protocol": {
+    "comparison_fields_loaded": [
+      "signal_date",
+      "side"
+    ],
+    "bafr_market_ohlc_or_funding_loaded": false,
+    "prior_market_data_loaded": false,
+    "common_coverage": "clip both clocks to each frozen comparator's declared source window",
+    "primary_match": "deterministic one-to-one timestamp match; side-agnostic time matching is the conservative gate and same-side matching is diagnostic",
+    "tolerance_bars": 12,
+    "jaccard_maximum": 0.2,
+    "bafr_containment_maximum": 0.3,
+    "family_policy": "gate each frozen variant and the timestamp-deduplicated union for multi-variant MFIC and NETF families"
+  },
+  "config": {
+    "bafr_support": "results/binance_aggressor_frustration_support_2026-07-20.json",
+    "bafr_clock": "results/binance_aggressor_frustration_clock_2026-07-20.csv",
+    "prior_bundle": "results/prior_microstructure_comparator_clock_bundle_2026-07-20.json",
+    "output": "results/binance_aggressor_frustration_novelty_2026-07-20.json"
+  },
+  "bafr_source": {
+    "support_path": "results/binance_aggressor_frustration_support_2026-07-20.json",
+    "support_sha256": "cf6edad6a4eb46c6630dbb5008c88da1ddd39f9ac5c1606785be02f2b323fb62",
+    "clock_path": "results/binance_aggressor_frustration_clock_2026-07-20.csv",
+    "clock_file_sha256": "f3b816a76decce31136ed23d22f043eb8e80ef1b8697b869241b060062f01747",
+    "clock_canonical_sha256": "47769b7992e20a4d401348c3e1f39e4804f4e1061bf24aadb2241865d538e65e",
+    "clock_rows": 11248
+  },
+  "prior_bundle": {
+    "path": "results/prior_microstructure_comparator_clock_bundle_2026-07-20.json",
+    "sha256": "c5584256140799b380973f9f376e5751ad754a81c9683473467b9d05af0bb9f0",
+    "stage": "prior_comparator_clock_freeze",
+    "protocol": {
+      "bafr_source_loaded": false,
+      "bafr_clock_loaded": false,
+      "bafr_support_loaded": false,
+      "bafr_outcomes_opened": false,
+      "post_entry_outcomes_computed": false,
+      "output_fields": [
+        "signal_date",
+        "side"
+      ],
+      "source_cutoff_exclusive": "2024-01-01 00:00:00",
+      "prior_market_usage": "only causal completed-bar inputs required to reproduce already-frozen prior-family signals",
+      "scheduling": "MFIC/NETF use their support schedules; WFRS/terminal reproduce each prior no-stop fit/select reservation separately"
+    },
+    "sources": {
+      "frozen_artifacts": {
+        "cbfr": {
+          "path": "results/cross_collateral_book_validated_flow_rejection_event_clock_2026-07-18.json",
+          "sha256": "79b4838ae634efcff705e028a0ddff8b75d28d79180e3ac89f54b9cab7e5005f"
+        },
+        "mfic": {
+          "path": "results/metaorder_fragmentation_impact_curvature_support_2026-07-14.json",
+          "sha256": "03bc5b2f67f974efa04715511920701c0db875b8bb4251f2e4c734a591aa80c8"
+        },
+        "netf": {
+          "path": "results/notional_event_topology_fracture_support_2026-07-14.json",
+          "sha256": "4062da454fbd83e10e04dc9b3b01d0884277023d68e209219bb1bcc76d38588e"
+        },
+        "wfrs": {
+          "path": "results/wasserstein_flow_response_strain_alpha_scan_2026-07-14.json",
+          "sha256": "20fd98879850bad447a59331c208fc94383401e2017073c5f730809151515ff0"
+        },
+        "terminal_absorption": {
+          "path": "results/orderflow_campaign_terminal_absorption_alpha_scan_2026-07-14.json",
+          "sha256": "7e5d877fdfc82eb4690fc5120fc09f142dd20bfe398a559cee12eb98bf4e9500"
+        }
+      },
+      "implementation_hashes": {
+        "training/preregister_metaorder_fragmentation_impact_curvature.py": "51e99dbdc5ba13e6b4ac15e3915ec5b30e36dff89c1e5b31a5f3f7f272f01a59",
+        "training/preregister_notional_event_topology_fracture.py": "2229c93495d246e949dc768860c4df942189a86b6f700183b09ae54c2873c578",
+        "training/search_wasserstein_flow_response_strain_alpha.py": "5d0f2b511811150c57bc9a598614416543848c2a59d2c3e45ddb2ec0004ac553",
+        "training/search_orderflow_campaign_terminal_absorption_alpha.py": "d7291191531cb607ae3c2704aa37028e889fc4e68cfbc88bf53ef309536b4110",
+        "training/search_orderflow_trophic_campaign_alpha.py": "80e5d6f54dc370abba6862fdb9fa91763f91a8389131c49bc2aed1eaf392d461",
+        "training/search_orderflow_trophic_succession_alpha.py": "b3dac0dc7c85f8af794c8bb11b96b99a90c87a20be3722559ead7eb8ac933a6b"
+      },
+      "cbfr": {
+        "path": "results/cross_collateral_book_validated_flow_rejection_event_clock_2026-07-18.json",
+        "sha256": "79b4838ae634efcff705e028a0ddff8b75d28d79180e3ac89f54b9cab7e5005f",
+        "rows": 144,
+        "clock_sha256": "087560a60cb610bfb3b6963022cc5039c6d8b932950aa8fb83fa289089813dc0"
+      },
+      "mfic": {
+        "feature_sha256": "c2bb0e6742f8cdc4e13315e7f0a13d6ab9cd536fb40d9cb4484b7a6ba30131cf",
+        "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+        "source_gap_days": [
+          "2020-04-15",
+          "2021-02-09",
+          "2021-02-24",
+          "2021-05-19",
+          "2022-09-06"
+        ],
+        "missing_feature_bars": 36,
+        "quarantined_bars": 1682,
+        "first_date": "2020-01-01 00:00:00",
+        "last_date": "2023-12-31 23:55:00",
+        "features_path": "data/binance_um_aggtrade_microstructure_btc_2020_2023/BTCUSDT_aggtrade_5m_2020-01-01_2023-12-31.csv.gz",
+        "feature_manifest_path": "data/binance_um_aggtrade_microstructure_btc_2020_2023/build_manifest.json",
+        "market_path": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+        "market_manifest_path": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json"
+      },
+      "netf": {
+        "config": {
+          "output": "results/notional_event_topology_fracture_support_2026-07-14.json",
+          "tension_quantile": 0.875,
+          "structure_quantile": 0.8,
+          "baseline_bars": 8640,
+          "baseline_min_periods": 2016,
+          "minimum_agg_trade_count": 64,
+          "minimum_nonoverlap_total": 250,
+          "minimum_nonoverlap_per_year": 40,
+          "minimum_nonoverlap_per_2023_half": 20,
+          "minimum_side_share": 0.25
+        },
+        "shared_source": "mfic"
+      },
+      "wfrs": {
+        "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+        "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+        "columns_loaded": [
+          "date",
+          "open",
+          "close",
+          "quote_asset_volume",
+          "taker_buy_quote"
+        ],
+        "future_outcome_transform_applied": false,
+        "first_date": "2019-12-31 15:00:00",
+        "last_date": "2023-12-31 23:55:00",
+        "rows": 420876
+      },
+      "terminal_absorption": {
+        "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+        "sha256": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192",
+        "columns_loaded": [
+          "date",
+          "close",
+          "high",
+          "low",
+          "quote_asset_volume",
+          "number_of_trades",
+          "taker_buy_quote"
+        ],
+        "future_outcome_transform_applied": false,
+        "first_date": "2019-12-31 15:00:00",
+        "last_date": "2023-12-31 23:55:00",
+        "rows": 420876
+      }
+    },
+    "comparators": {
+      "cbfr72": {
+        "family": "CBFR",
+        "coverage_start_inclusive": "2023-01-01 00:00:00",
+        "coverage_end_exclusive": "2024-01-01 00:00:00",
+        "clock_rows": 144,
+        "clock_sha256": "087560a60cb610bfb3b6963022cc5039c6d8b932950aa8fb83fa289089813dc0"
+      },
+      "mfic_fast": {
+        "family": "MFIC",
+        "coverage_start_inclusive": "2020-01-01 00:00:00",
+        "coverage_end_exclusive": "2024-01-01 00:00:00",
+        "clock_rows": 1566,
+        "clock_sha256": "18361c909f7f93451c193713b5de29a5d49262176a88c086fca6bee26de20256",
+        "candidate": {
+          "name": "mfic_fast",
+          "window_bars": 12,
+          "segment_bars": 3,
+          "continuation_hold_bars": 3,
+          "fade_hold_bars": 6
+        }
+      },
+      "mfic_slow": {
+        "family": "MFIC",
+        "coverage_start_inclusive": "2020-01-01 00:00:00",
+        "coverage_end_exclusive": "2024-01-01 00:00:00",
+        "clock_rows": 1635,
+        "clock_sha256": "825740a533e8dc6564a0bfa4dceb9d20df476ab4637d8d78542fb592d4c27cf1",
+        "candidate": {
+          "name": "mfic_slow",
+          "window_bars": 24,
+          "segment_bars": 6,
+          "continuation_hold_bars": 6,
+          "fade_hold_bars": 12
+        }
+      },
+      "mfic_union": {
+        "family": "MFIC",
+        "coverage_start_inclusive": "2020-01-01 00:00:00",
+        "coverage_end_exclusive": "2024-01-01 00:00:00",
+        "clock_rows": 3019,
+        "clock_sha256": "487a5eef086468aa670e79b047bed6417eeca420098b21d6ddabdab497a4f3a7",
+        "union_side_conflicts": 25
+      },
+      "netf_fast": {
+        "family": "NETF",
+        "coverage_start_inclusive": "2020-01-01 00:00:00",
+        "coverage_end_exclusive": "2024-01-01 00:00:00",
+        "clock_rows": 319,
+        "clock_sha256": "27c8b4af37eb154bba4b965a316ae374cca5a11628fea29143aaa01443788e4e",
+        "candidate": {
+          "name": "netf_fast",
+          "confirmation_bars": 6,
+          "hold_bars": 48
+        }
+      },
+      "netf_slow": {
+        "family": "NETF",
+        "coverage_start_inclusive": "2020-01-01 00:00:00",
+        "coverage_end_exclusive": "2024-01-01 00:00:00",
+        "clock_rows": 267,
+        "clock_sha256": "689e6cfc82733726c4c5334db1622289293ad9e53e64411c1fbb7412f87b2b8d",
+        "candidate": {
+          "name": "netf_slow",
+          "confirmation_bars": 12,
+          "hold_bars": 96
+        }
+      },
+      "netf_union": {
+        "family": "NETF",
+        "coverage_start_inclusive": "2020-01-01 00:00:00",
+        "coverage_end_exclusive": "2024-01-01 00:00:00",
+        "clock_rows": 586,
+        "clock_sha256": "4755c8b6d8c7972db0f445deed7f238a6b606e84bb0cc62c39b78cacc79995f9",
+        "union_side_conflicts": 0
+      },
+      "wfrs_l288_q90_h144": {
+        "family": "WFRS",
+        "coverage_start_inclusive": "2020-10-15 00:00:00",
+        "coverage_end_exclusive": "2024-01-01 00:00:00",
+        "clock_rows": 278,
+        "clock_sha256": "5115e72b722cf64005ba2903aaf990ad64ac4835732c6aec0d40231a3a4e99a0",
+        "candidate": {
+          "lookback": 288,
+          "score_quantile": 0.9,
+          "hold_bars": 144,
+          "flow_tail": 0.2063984418359628,
+          "score_threshold": 0.3377891045604261,
+          "split_reservation_reset": "2023-01-01"
+        }
+      },
+      "terminal_absorption_wait72_h72": {
+        "family": "terminal_absorption",
+        "coverage_start_inclusive": "2020-06-01 00:00:00",
+        "coverage_end_exclusive": "2024-01-01 00:00:00",
+        "clock_rows": 100,
+        "clock_sha256": "f901c9d6209f93186cf9665b7d27f2950e88f93f8e490747d3bf7cc4f04724b3",
+        "candidate": {
+          "profile": [
+            12,
+            24,
+            6
+          ],
+          "campaign_lookback": 144,
+          "campaign_min_events": 2,
+          "campaign_max_opposite": 1,
+          "max_wait_bars": 72,
+          "hold_bars": 72,
+          "absorption_threshold": 1.9190149879917735,
+          "split_reservation_reset": "2023-01-01"
+        }
+      }
+    }
+  },
+  "comparisons": [
+    {
+      "comparator": "cbfr72",
+      "coverage_start_inclusive": "2023-01-01 00:00:00",
+      "coverage_end_exclusive": "2024-01-01 00:00:00",
+      "tolerance_bars": 12,
+      "bafr_events": 3027,
+      "prior_events": 144,
+      "time_matches": 115,
+      "same_side_matches": 60,
+      "time_jaccard": 0.03763089005235602,
+      "bafr_time_containment": 0.03799141063759498,
+      "prior_time_containment_diagnostic": 0.7986111111111112,
+      "jaccard_maximum": 0.2,
+      "bafr_containment_maximum": 0.3,
+      "passes": true
+    },
+    {
+      "comparator": "mfic_fast",
+      "coverage_start_inclusive": "2020-01-01 00:00:00",
+      "coverage_end_exclusive": "2024-01-01 00:00:00",
+      "tolerance_bars": 12,
+      "bafr_events": 11248,
+      "prior_events": 1566,
+      "time_matches": 960,
+      "same_side_matches": 544,
+      "time_jaccard": 0.08098532141049435,
+      "bafr_time_containment": 0.08534850640113797,
+      "prior_time_containment_diagnostic": 0.6130268199233716,
+      "jaccard_maximum": 0.2,
+      "bafr_containment_maximum": 0.3,
+      "passes": true
+    },
+    {
+      "comparator": "mfic_slow",
+      "coverage_start_inclusive": "2020-01-01 00:00:00",
+      "coverage_end_exclusive": "2024-01-01 00:00:00",
+      "tolerance_bars": 12,
+      "bafr_events": 11248,
+      "prior_events": 1635,
+      "time_matches": 943,
+      "same_side_matches": 563,
+      "time_jaccard": 0.0789782244556114,
+      "bafr_time_containment": 0.0838371266002845,
+      "prior_time_containment_diagnostic": 0.5767584097859327,
+      "jaccard_maximum": 0.2,
+      "bafr_containment_maximum": 0.3,
+      "passes": true
+    },
+    {
+      "comparator": "mfic_union",
+      "coverage_start_inclusive": "2020-01-01 00:00:00",
+      "coverage_end_exclusive": "2024-01-01 00:00:00",
+      "tolerance_bars": 12,
+      "bafr_events": 11248,
+      "prior_events": 3019,
+      "time_matches": 1452,
+      "same_side_matches": 897,
+      "time_jaccard": 0.11330472103004292,
+      "bafr_time_containment": 0.1290896159317212,
+      "prior_time_containment_diagnostic": 0.4809539582643259,
+      "jaccard_maximum": 0.2,
+      "bafr_containment_maximum": 0.3,
+      "passes": true
+    },
+    {
+      "comparator": "netf_fast",
+      "coverage_start_inclusive": "2020-01-01 00:00:00",
+      "coverage_end_exclusive": "2024-01-01 00:00:00",
+      "tolerance_bars": 12,
+      "bafr_events": 11248,
+      "prior_events": 319,
+      "time_matches": 240,
+      "same_side_matches": 88,
+      "time_jaccard": 0.021188311115034872,
+      "bafr_time_containment": 0.021337126600284494,
+      "prior_time_containment_diagnostic": 0.7523510971786834,
+      "jaccard_maximum": 0.2,
+      "bafr_containment_maximum": 0.3,
+      "passes": true
+    },
+    {
+      "comparator": "netf_slow",
+      "coverage_start_inclusive": "2020-01-01 00:00:00",
+      "coverage_end_exclusive": "2024-01-01 00:00:00",
+      "tolerance_bars": 12,
+      "bafr_events": 11248,
+      "prior_events": 267,
+      "time_matches": 200,
+      "same_side_matches": 60,
+      "time_jaccard": 0.017675651789659744,
+      "bafr_time_containment": 0.017780938833570414,
+      "prior_time_containment_diagnostic": 0.7490636704119851,
+      "jaccard_maximum": 0.2,
+      "bafr_containment_maximum": 0.3,
+      "passes": true
+    },
+    {
+      "comparator": "netf_union",
+      "coverage_start_inclusive": "2020-01-01 00:00:00",
+      "coverage_end_exclusive": "2024-01-01 00:00:00",
+      "tolerance_bars": 12,
+      "bafr_events": 11248,
+      "prior_events": 586,
+      "time_matches": 353,
+      "same_side_matches": 122,
+      "time_jaccard": 0.030746450657608223,
+      "bafr_time_containment": 0.03138335704125178,
+      "prior_time_containment_diagnostic": 0.6023890784982935,
+      "jaccard_maximum": 0.2,
+      "bafr_containment_maximum": 0.3,
+      "passes": true
+    },
+    {
+      "comparator": "wfrs_l288_q90_h144",
+      "coverage_start_inclusive": "2020-10-15 00:00:00",
+      "coverage_end_exclusive": "2024-01-01 00:00:00",
+      "tolerance_bars": 12,
+      "bafr_events": 9072,
+      "prior_events": 278,
+      "time_matches": 181,
+      "same_side_matches": 101,
+      "time_jaccard": 0.019740429708801396,
+      "bafr_time_containment": 0.019951499118165784,
+      "prior_time_containment_diagnostic": 0.6510791366906474,
+      "jaccard_maximum": 0.2,
+      "bafr_containment_maximum": 0.3,
+      "passes": true
+    },
+    {
+      "comparator": "terminal_absorption_wait72_h72",
+      "coverage_start_inclusive": "2020-06-01 00:00:00",
+      "coverage_end_exclusive": "2024-01-01 00:00:00",
+      "tolerance_bars": 12,
+      "bafr_events": 10173,
+      "prior_events": 100,
+      "time_matches": 61,
+      "same_side_matches": 26,
+      "time_jaccard": 0.005973364669016843,
+      "bafr_time_containment": 0.00599626462203873,
+      "prior_time_containment_diagnostic": 0.61,
+      "jaccard_maximum": 0.2,
+      "bafr_containment_maximum": 0.3,
+      "passes": true
+    }
+  ],
+  "passed": true,
+  "next_stage": "freeze_outcome_evaluator"
+}
