@@ -359,7 +359,6 @@ def download_rows(
         payload = fetch(url)
         if not isinstance(payload, dict):
             raise RuntimeError("Coin Metrics response is not an object")
-        page_hashes.append(canonical_hash(payload))
         if payload.get("error") is not None:
             raise RuntimeError(f"Coin Metrics API error: {payload['error']!r}")
         data = payload.get("data")
@@ -385,17 +384,40 @@ def download_rows(
 
         next_url = payload.get("next_page_url")
         if next_url is None:
+            if frozenset(payload) != {"data"}:
+                raise ValueError("Coin Metrics terminal response schema drift")
             url = None
         elif isinstance(next_url, str) and next_url:
+            if frozenset(payload) != {
+                "data",
+                "next_page_token",
+                "next_page_url",
+            }:
+                raise ValueError("Coin Metrics paginated response schema drift")
             if not data:
                 raise RuntimeError(
                     "Coin Metrics pagination returned an empty non-terminal page"
                 )
             url = _validate_next_page_url(first_url, next_url)
+            response_token = payload.get("next_page_token")
+            url_token = urllib.parse.parse_qs(
+                urllib.parse.urlparse(url).query,
+                keep_blank_values=True,
+                strict_parsing=True,
+            ).get("next_page_token")
+            if (
+                not isinstance(response_token, str)
+                or not response_token
+                or url_token != [response_token]
+            ):
+                raise ValueError(
+                    "Coin Metrics response and URL page tokens disagree"
+                )
         else:
             raise ValueError(
                 "Coin Metrics next_page_url must be a non-empty string or null"
             )
+        page_hashes.append(canonical_hash(payload))
         if url is not None:
             sleep(cfg.request_pause_sec)
 
