@@ -19,15 +19,15 @@ Artifacts:
 - preregistration JSON:
   `results/exact_maturity_fee_cadence_polarity_preregistration_2026-07-20.json`;
 - JSON SHA-256:
-  `def9e5c4940bfd6a146262668b90e0e6d2efae58c16ac040a6811e2bca77b189`;
+  `43f1505786ad5ddd8a076afebccc26bff65387d8ef9b7a443035136606157ff6`;
 - canonical manifest hash:
-  `0672c23224cfbf2e4fb9ebcacb08ff9e20f550128523544507fafe49e01c1bd0`;
+  `487a4c0dd3aa501605274f0afaacb6714c668078e6fac0506798afa4f9b0d743`;
 - policy hash:
-  `ecce53d9c17aea05ef78781d67ffea87b7bd27bc864b44624e7e0acaf87d1019`;
+  `a264e58f834f2a58dda9ddcf3dcf5035ef941cd2087124b3ea1c8c306559b92f`;
 - generator:
   `training/preregister_exact_maturity_fee_cadence_polarity.py`;
 - generator SHA-256:
-  `1dd0b7e2375415a8cc9ebb83179fcc2caddd950f7993c241cb2ce2800abff7d5`;
+  `5e8f1e9b857b0cb2a248738e69d97d8ec1c5e4c80410f0362b1dd89656333c1b`;
 - mechanism decision SHA-256:
   `a640d13f02b23b0c76d5acb73427be0ad6fb87a3d08f9cd392a47b22f2918a39`.
 

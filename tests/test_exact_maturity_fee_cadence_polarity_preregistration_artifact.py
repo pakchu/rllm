@@ -11,10 +11,10 @@ ARTIFACT = Path(
     "results/exact_maturity_fee_cadence_polarity_preregistration_2026-07-20.json"
 )
 ARTIFACT_SHA256 = (
-    "def9e5c4940bfd6a146262668b90e0e6d2efae58c16ac040a6811e2bca77b189"
+    "43f1505786ad5ddd8a076afebccc26bff65387d8ef9b7a443035136606157ff6"
 )
-MANIFEST_HASH = "0672c23224cfbf2e4fb9ebcacb08ff9e20f550128523544507fafe49e01c1bd0"
-POLICY_HASH = "ecce53d9c17aea05ef78781d67ffea87b7bd27bc864b44624e7e0acaf87d1019"
+MANIFEST_HASH = "487a4c0dd3aa501605274f0afaacb6714c668078e6fac0506798afa4f9b0d743"
+POLICY_HASH = "a264e58f834f2a58dda9ddcf3dcf5035ef941cd2087124b3ea1c8c306559b92f"
 
 
 def _sha256(path: Path) -> str:
