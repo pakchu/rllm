@@ -1,0 +1,117 @@
+{
+  "protocol": "BATE-288 evaluator pre-outcome freeze v1",
+  "outcomes_opened": false,
+  "evaluation_source": "training/evaluate_block_arrival_throughput_elasticity_pre2024.py",
+  "evaluation_source_sha256": "da0fccbea5b9b1eba280e449444edd1a35b02cc17df35524ca846773774cbe0f",
+  "freeze_source": "training/freeze_block_arrival_throughput_elasticity_evaluator.py",
+  "freeze_source_sha256": "9ccb2ff7bc5323e313c21a374c219d6c440321489b24cb0641383e6964f16a48",
+  "evaluation_source_commit": "d837c58e78f93e6ef492610d45ffb263648f59c3",
+  "support_commit": "a6212c7ea1c961acf2657c91566aba7fc5ce6187",
+  "preregistration_sha256": "bdb8a9b7e602ca671fb496045a59741a5dd77fea7ed11a66c374e5fd6b5893cd",
+  "support_source_sha256": "91d32f887d5e34a5f1292bbdaa287520db0116a4c828323f09b827b2e9e4edfa",
+  "support_document_sha256": "1005f512ded09434060b27ed4ce51bb02876e6e2f9d01e5aeb8ec160753f2a52",
+  "support_result_sha256": "42598a24853b1d66f2e91a259b2a23e5939a1d0a640abafb4e087e3f209caefc",
+  "primary_clock_sha256": "cd4fbd01c104bd969ca1c12a53b8da82dd0e9376990e233c286ff009a5115c02",
+  "block_source_sha256": "1f8d1c0153717f2c18d8fa6f09428c780a850b2aecc8fb42bc497e16e68e1833",
+  "block_source_manifest_sha256": "9b1c3a81d607632267fe4c87857b2e80d381d3bab90fca7bb0b7df0061775983",
+  "market_data_sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+  "funding_data_sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6",
+  "funding_manifest_sha256": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
+  "opened_windows": [],
+  "sealed_windows": [
+    "train_2021_2022",
+    "selection_2023",
+    "2024",
+    "2025",
+    "2026_ytd"
+  ],
+  "mutable_parameters": [],
+  "labels_constructed_during_freeze": false,
+  "market_value_rows_parsed_during_freeze": 0,
+  "funding_value_rows_parsed_during_freeze": 0,
+  "execution_simulation_run_during_freeze": false,
+  "timestamp_columns_scanned_during_freeze": [
+    "market.date",
+    "funding.funding_time_ms"
+  ],
+  "policy_names": [
+    "primary",
+    "direction_flip",
+    "weight_only",
+    "tx_only",
+    "denominator_free",
+    "stale_24h",
+    "random_clock",
+    "one_bar_delayed_entry"
+  ],
+  "control_semantics": {
+    "primary": "frozen concordant throughput onset clock and frozen side",
+    "direction_flip": "primary clock with every execution side multiplied by -1",
+    "weight_only": "weight-z one-channel HIGH/LOW onsets, then frozen confirmation and scheduler",
+    "tx_only": "transaction-z one-channel HIGH/LOW onsets, then frozen confirmation and scheduler",
+    "denominator_free": "concordant robust-z of log six-block mean weight and transaction count, without elapsed-time denominator",
+    "stale_24h": "primary execution clock and side delayed by exactly 288 five-minute bars",
+    "random_clock": "year-stratified deterministic random composition of all available five-minute slack around non-overlapping 288-bar holds, with primary year/side counts",
+    "one_bar_delayed_entry": "primary execution clock and side delayed by one five-minute bar"
+  },
+  "evaluation_config": {
+    "leverage": 1.0,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.001,
+    "cluster_permutations": 100000,
+    "cluster_seed": 20260720,
+    "random_clock_seed": 73100288,
+    "stale_bars": 288,
+    "additional_delay_bars": 1,
+    "minimum_mean_gross_underlying_bp": 30.0,
+    "minimum_cagr_to_strict_mdd": 3.0,
+    "maximum_strict_mdd_pct": 15.0,
+    "maximum_weekly_cluster_p": 0.1
+  },
+  "control_clock_hashes": {
+    "primary": "584d9eb64e837469802c6233b26759347ad6590cd313d1a6ebaa40ea39e8e309",
+    "direction_flip": "db785e321f9db9cb413ca3effb79f5f1466e504b10a30e865e9436931bc3e13e",
+    "weight_only": "d1ba9cd5cbb4ce8e8f720e04e8a1205dcaea7631997d45af5118b1dd54363310",
+    "tx_only": "b937ea25ca863e0184585afd67dce9df31e77035b5af081c65adeaae69139613",
+    "denominator_free": "655c817cdb7972fefff6f1aa2bf73160762189ee1346cee9bd7b11d0b2262572",
+    "stale_24h": "7c3457085db2811a1a51b385dd9345804cbaedba73279f3cc9f553868a3148ab",
+    "random_clock": "91859e8df754ef51b0689ee2c44b21a9236336bb14c50d1c6783e1500fa266c5",
+    "one_bar_delayed_entry": "1017abf7a216feb2f69b1f0af2456eb7ef4392ea3b9ab28f3ae3e5ed8949a621"
+  },
+  "control_clock_counts": {
+    "primary": 971,
+    "direction_flip": 971,
+    "weight_only": 1014,
+    "tx_only": 1002,
+    "denominator_free": 666,
+    "stale_24h": 970,
+    "random_clock": 971,
+    "one_bar_delayed_entry": 971
+  },
+  "outcome_boundaries": {
+    "market": {
+      "timestamp_column": "date",
+      "timestamp_rows_scanned": 420877,
+      "value_rows_parsed": 0,
+      "first_timestamp": "2019-12-31 15:00:00",
+      "last_timestamp": "2024-01-01 00:00:00",
+      "sealed_2024_boundary_seen": true,
+      "window_value_row_counts": {
+        "train": 210240,
+        "selection": 105120
+      }
+    },
+    "funding": {
+      "timestamp_column": "funding_time_ms",
+      "timestamp_rows_scanned": 4383,
+      "value_rows_parsed": 0,
+      "first_timestamp_ms": 1577836800000,
+      "last_timestamp_ms": 1704038400000,
+      "window_value_row_counts": {
+        "train": 2190,
+        "selection": 1095
+      }
+    }
+  },
+  "manifest_hash": "23a5febaebf1c0db4d24d726ff5aad3012ddde834b7465247b76c297a24403ee"
+}
