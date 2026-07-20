@@ -381,7 +381,11 @@ def test_numeric_columns_rejoin_split_negatives_and_use_dollar_delimiters() -> N
         side_index=0,
     )
     assert labels == ["Notes"]
-    assert values == [(0, ""), (-1, ""), (1_007_597, "")]
+    assert values == [
+        (0, "", "0"),
+        (-1, "", "-1"),
+        (1_007_597, "", "1,007,597"),
+    ]
 
     _, footnotes, values = dts._parse_table_side_cells(
         [
@@ -397,11 +401,21 @@ def test_numeric_columns_rejoin_split_negatives_and_use_dollar_delimiters() -> N
         side_index=1,
     )
     assert footnotes == ["1/"]
-    assert values == [(0, ""), (1_095_375, ""), (8_094_659, "")]
+    assert values == [
+        (0, "", "0"),
+        (1_095_375, "", "1,095,375"),
+        (8_094_659, "", "8,094,659"),
+    ]
 
 
 def test_amount_parser_handles_parenthesized_negatives_and_footer_boundaries() -> None:
-    assert dts._parse_amount_cell("$(1,234)") == (True, -1_234, "", "")
+    assert dts._parse_amount_cell("$(1,234)") == (
+        True,
+        -1_234,
+        "",
+        "",
+        "$(1,234)",
+    )
     assert dts._is_pdf_footer_boundary(
         "This statement summarizes the United States Treasury's operations"
     )
@@ -415,6 +429,9 @@ def test_pdf_parser_supports_content_arrays_and_extracts_all_required_sides() ->
     assert parsed.creation_metadata_raw == ("D:20240102160000-05'00'",)
     assert len(parsed.table_i_rows) == 1
     assert parsed.table_i_rows[0].published_values_usd_millions_json == "[100,100,100]"
+    assert parsed.table_i_rows[0].published_value_literals_json == (
+        '["100","100","100"]'
+    )
     assert parsed.table_i_rows[0].footnote_markers == "1/"
     assert {(row.table_id, row.side) for row in parsed.rows} == {
         ("II", "deposit"),
@@ -422,6 +439,7 @@ def test_pdf_parser_supports_content_arrays_and_extracts_all_required_sides() ->
         ("IIIA", "issue"),
         ("IIIA", "redemption"),
     }
+    assert {row.today_amount_literal for row in parsed.rows} == {"1", "4", "7", "10"}
     assert {row.research_stage for row in parsed.rows} == {"boundary_quarantine"}
 
 

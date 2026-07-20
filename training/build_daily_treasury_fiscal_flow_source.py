@@ -48,8 +48,8 @@ REPORT_URL_TEMPLATE = (
     "DailyTreasuryStatement_{date_compact}.pdf"
 )
 USER_AGENT = "rllm-dffb-source-freeze/1.0"
-SCHEMA_VERSION = 1
-PARSER_VERSION = 2
+SCHEMA_VERSION = 2
+PARSER_VERSION = 3
 MIN_REPORT_DATE = date(2019, 1, 2)
 MAX_REPORT_DATE = date(2023, 12, 29)
 NEW_YORK = ZoneInfo("America/New_York")
@@ -96,8 +96,11 @@ OUTPUT_COLUMNS = (
     "raw_category_label",
     "normalized_category_label",
     "today_amount_usd_millions",
+    "today_amount_literal",
     "month_to_date_amount_usd_millions",
+    "month_to_date_amount_literal",
     "fiscal_year_to_date_amount_usd_millions",
+    "fiscal_year_to_date_amount_literal",
     "footnote_markers",
     "missing_value_tokens",
     "row_kind",
@@ -114,6 +117,7 @@ TABLE_I_OUTPUT_COLUMNS = (
     "normalized_category_label",
     "published_value_count",
     "published_values_usd_millions_json",
+    "published_value_literals_json",
     "missing_value_tokens_json",
     "footnote_markers",
     "schema_variant",
@@ -182,8 +186,11 @@ class DtsRow:
     raw_category_label: str
     normalized_category_label: str
     today_amount_usd_millions: str
+    today_amount_literal: str
     month_to_date_amount_usd_millions: str
+    month_to_date_amount_literal: str
     fiscal_year_to_date_amount_usd_millions: str
+    fiscal_year_to_date_amount_literal: str
     footnote_markers: str
     missing_value_tokens: str
     row_kind: str
@@ -202,6 +209,7 @@ class DtsTableIRow:
     normalized_category_label: str
     published_value_count: int
     published_values_usd_millions_json: str
+    published_value_literals_json: str
     missing_value_tokens_json: str
     footnote_markers: str
     schema_variant: str
@@ -1619,7 +1627,7 @@ def _parse_amount_token(value: str) -> int | None:
     return -amount if parenthesized else amount
 
 
-def _parse_amount_cell(value: str) -> tuple[bool, int | None, str, str]:
+def _parse_amount_cell(value: str) -> tuple[bool, int | None, str, str, str]:
     stripped = " ".join(value.strip().split())
     match = re.fullmatch(
         r"(?:\$\s*)?(?:(\d+/|\*+|[a-z]/)\s*)?"
@@ -1628,12 +1636,12 @@ def _parse_amount_cell(value: str) -> tuple[bool, int | None, str, str]:
         re.IGNORECASE,
     )
     if match is None:
-        return False, None, "", ""
+        return False, None, "", "", ""
     footnote = match.group(1) or ""
     raw_amount = match.group(2)
     amount = _parse_amount_token(raw_amount)
     missing = "" if amount is not None else raw_amount
-    return True, amount, footnote, missing
+    return True, amount, footnote, missing, stripped
 
 
 def _is_table_i_header(value: str) -> bool:
@@ -1694,16 +1702,18 @@ def _extract_table_i_rows(
             continue
         labels: list[str] = []
         footnotes: list[str] = []
-        values: list[tuple[int | None, str]] = []
+        values: list[tuple[int | None, str, str]] = []
         for cell in line.cells:
             token = cell.text.strip()
             if not token or token == "$":
                 continue
-            recognized, amount, embedded_footnote, missing = _parse_amount_cell(token)
+            recognized, amount, embedded_footnote, missing, literal = (
+                _parse_amount_cell(token)
+            )
             if recognized:
                 if embedded_footnote:
                     footnotes.append(embedded_footnote)
-                values.append((amount, missing))
+                values.append((amount, missing, literal))
             elif FOOTNOTE_TOKEN.fullmatch(token):
                 footnotes.append(token)
             else:
@@ -1728,10 +1738,11 @@ def _extract_table_i_rows(
         raw_label = _mechanical_label_normalization(" ".join(label_parts))
         if not raw_label:
             raise ValueError(f"DTS {record_date} Table I has an unlabeled row")
-        published_values = [value for value, _ in values]
+        published_values = [value for value, _, _ in values]
+        published_literals = [literal for _, _, literal in values]
         missing_tokens = [
             {"column_index": index, "literal": literal}
-            for index, (_, literal) in enumerate(values)
+            for index, (_, literal, _) in enumerate(values)
             if literal
         ]
         output.append(
@@ -1745,6 +1756,9 @@ def _extract_table_i_rows(
                 published_value_count=len(values),
                 published_values_usd_millions_json=canonical_json(
                     published_values
+                ).decode("utf-8").strip(),
+                published_value_literals_json=canonical_json(
+                    published_literals
                 ).decode("utf-8").strip(),
                 missing_value_tokens_json=canonical_json(missing_tokens)
                 .decode("utf-8")
@@ -1770,7 +1784,7 @@ def _extract_table_i_rows(
 
 def _parse_table_side_cells(
     cells: Sequence[PdfTextCell], *, table: str, side_index: int
-) -> tuple[list[str], list[str], list[tuple[int | None, str]]]:
+) -> tuple[list[str], list[str], list[tuple[int | None, str, str]]]:
     if table not in {"II", "IIIA"}:
         raise ValueError(f"unsupported DTS numeric table: {table}")
     label_cutoff = 160.0 if side_index == 0 else 430.0
@@ -1824,18 +1838,20 @@ def _parse_table_side_cells(
             else:
                 column_cells[-1].append(cell)
 
-    values: list[tuple[int | None, str]] = []
+    values: list[tuple[int | None, str, str]] = []
     for column in column_cells:
         tokens = [cell.text.strip() for cell in sorted(column, key=lambda item: item.source_order)]
         literal = "".join("".join(token.split()) for token in tokens if token != "$")
-        recognized, amount, embedded_footnote, missing = _parse_amount_cell(literal)
+        recognized, amount, embedded_footnote, missing, parsed_literal = (
+            _parse_amount_cell(literal)
+        )
         if not recognized:
             raise ValueError(
                 f"DTS PDF numeric column has an invalid token sequence: {tokens!r}"
             )
         if embedded_footnote:
             footnotes.append(embedded_footnote)
-        values.append((amount, missing))
+        values.append((amount, missing, parsed_literal))
     return label_tokens, footnotes, values
 
 
@@ -1964,7 +1980,7 @@ def _extract_table_rows(
                 parent_section = " > ".join(value for _, value in stack)
                 missing = [
                     f"{name}={literal}"
-                    for name, (_, literal) in zip(
+                    for name, (_, literal, _) in zip(
                         ("today", "month_to_date", "fiscal_year_to_date"), values
                     )
                     if literal
@@ -1990,12 +2006,15 @@ def _extract_table_rows(
                         today_amount_usd_millions=(
                             "" if values[0][0] is None else str(values[0][0])
                         ),
+                        today_amount_literal=values[0][2],
                         month_to_date_amount_usd_millions=(
                             "" if values[1][0] is None else str(values[1][0])
                         ),
+                        month_to_date_amount_literal=values[1][2],
                         fiscal_year_to_date_amount_usd_millions=(
                             "" if values[2][0] is None else str(values[2][0])
                         ),
+                        fiscal_year_to_date_amount_literal=values[2][2],
                         footnote_markers=",".join(footnotes),
                         missing_value_tokens=",".join(missing),
                         row_kind=row_kind,
