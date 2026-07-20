@@ -27,6 +27,8 @@ def _write_source(path: Path, payload: bytes = b"not a gzip csv; prereg must not
 def _source_manifest(tmp_path: Path, **overrides: Any) -> tuple[Path, dict[str, Any]]:
     source_path = tmp_path / "source.csv.gz"
     source_sha = _write_source(source_path)
+    reference_path = tmp_path / "reference.csv.gz"
+    reference_sha = _write_source(reference_path, b"frozen reference bytes\n")
     core: dict[str, Any] = {
         "protocol_version": prereg.SOURCE_PROTOCOL_VERSION,
         "source_decision": {"path": str(prereg.SOURCE_DECISION), "sha256": prereg.SOURCE_DECISION_SHA256},
@@ -46,7 +48,10 @@ def _source_manifest(tmp_path: Path, **overrides: Any) -> tuple[Path, dict[str, 
             "utxo_identity_checked": True,
         },
         "reference_audit": {
+            "reference_path": str(reference_path),
+            "reference_sha256": reference_sha,
             "rows_cross_checked": prereg.FROZEN_ROWS,
+            "columns_cross_checked": list(prereg.REFERENCE_COLUMNS),
             "all_basic_fields_match_reference": True,
         },
         "output": {
@@ -75,6 +80,15 @@ def _source_manifest(tmp_path: Path, **overrides: Any) -> tuple[Path, dict[str, 
     manifest = {**core, "manifest_hash": _canonical_hash(core)}
     path = tmp_path / "source_manifest.json"
     path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    prereg.SOURCE_MANIFEST = path
+    prereg.EXPECTED_SOURCE_MANIFEST_SHA256 = prereg.sha256_file(path)
+    prereg.EXPECTED_SOURCE_MANIFEST_HASH = manifest["manifest_hash"]
+    prereg.EXPECTED_SOURCE_OUTPUT = source_path
+    prereg.EXPECTED_SOURCE_OUTPUT_SHA256 = source_sha
+    prereg.EXPECTED_SOURCE_OUTPUT_BYTES = source_path.stat().st_size
+    prereg.EXPECTED_SOURCE_BUILDER_SHA256 = prereg.sha256_file(prereg.SOURCE_BUILDER)
+    prereg.EXPECTED_REFERENCE = reference_path
+    prereg.EXPECTED_REFERENCE_SHA256 = reference_sha
     return path, manifest
 
 
