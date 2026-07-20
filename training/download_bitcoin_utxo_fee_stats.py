@@ -33,6 +33,7 @@ DEFAULT_BASE_URL = "https://mempool.space/api"
 OFFICIAL_API = "https://mempool.space/docs/api/rest"
 SOURCE_DECISION = "docs/utxo-fee-clearing-polarity-mechanism-decision-2026-07-20.md"
 SOURCE_DECISION_SHA256 = "95bf889fd053987e1717b182dc5da4f19ef51d75a1cbda427913089368c4852e"
+SOURCE_BUILDER = "training/download_bitcoin_utxo_fee_stats.py"
 REFERENCE_BLOCK_SUMMARIES = "data/bitcoin_block_summaries_2020_2023.csv.gz"
 REFERENCE_BLOCK_SUMMARIES_SHA256 = "1f8d1c0153717f2c18d8fa6f09428c780a850b2aecc8fb42bc497e16e68e1833"
 PROTOCOL_VERSION = "bitcoin_utxo_fee_block_stats_source_v1"
@@ -200,6 +201,7 @@ def _validate_config(cfg: Config) -> None:
         raise ValueError("output, manifest, and checkpoint paths must be distinct")
     protected = {
         Path(SOURCE_DECISION).resolve(),
+        Path(SOURCE_BUILDER).resolve(),
         Path(cfg.reference_block_summaries).resolve(),
     }
     if artifact_paths & protected:
@@ -669,7 +671,10 @@ def run(
     decision_path = Path(SOURCE_DECISION)
     if not decision_path.is_file() or sha256_file(decision_path) != SOURCE_DECISION_SHA256:
         raise RuntimeError("UFCP mechanism decision is missing or has drifted")
+    builder_sha256 = sha256_file(SOURCE_BUILDER)
     rows = download(cfg, fetch=fetch, sleep=sleep)
+    if sha256_file(SOURCE_BUILDER) != builder_sha256:
+        raise RuntimeError("UFCP source builder changed during acquisition")
     source_audit = _audit_complete(rows, cfg)
     reference_audit = _cross_check_reference(rows, cfg)
     _write_canonical_gzip(cfg.output_csv, rows)
@@ -679,6 +684,10 @@ def run(
         "source_decision": {
             "path": SOURCE_DECISION,
             "sha256": SOURCE_DECISION_SHA256,
+        },
+        "source_builder": {
+            "path": SOURCE_BUILDER,
+            "sha256": builder_sha256,
         },
         "config": asdict(cfg),
         "source_audit": source_audit,

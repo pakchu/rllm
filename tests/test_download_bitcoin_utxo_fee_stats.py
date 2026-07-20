@@ -115,6 +115,10 @@ def test_run_fake_pages_resume_manifest_and_deterministic_output(tmp_path: Path)
     assert manifest["source_audit"]["expected_rows"] == 27
     assert manifest["source_audit"]["observed_rows"] == 27
     assert manifest["source_audit"]["utxo_identity_checked"] is True
+    assert manifest["source_builder"] == {
+        "path": source.SOURCE_BUILDER,
+        "sha256": source.sha256_file(source.SOURCE_BUILDER),
+    }
     assert manifest["reference_audit"] == {
         "reference_path": cfg.reference_block_summaries,
         "reference_sha256": cfg.reference_block_summaries_sha256,
