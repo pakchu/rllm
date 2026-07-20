@@ -47,7 +47,7 @@ MECHANISM_DECISION = Path(
     "docs/fee-endpoint-topology-disagreement-mechanism-decision-2026-07-20.md"
 )
 MECHANISM_DECISION_SHA256 = (
-    "e030793c9d63af2ae60329e4ab876999fd3fa1a71812b88d22b5676fb1d6c593"
+    "3864ae9ec8bd93ad766e5c4c811c175dd34bac1609209d91d5ef13114ac75340"
 )
 SOURCE_BUILDER = Path("training/download_bitcoin_utxo_fee_stats.py")
 SOURCE_BUILDER_SHA256 = (
@@ -64,7 +64,7 @@ PREREGISTRATION_DOCUMENT = Path(
     "docs/fee-endpoint-topology-disagreement-fetd288-preregistration-2026-07-20.md"
 )
 PREREGISTRATION_DOCUMENT_SHA256 = (
-    "2e98f2aefc7c475319b448d731bc6dcd932c8c5142b4a2db2a967f0997df0234"
+    "83af41a9f8d6a512f02e27cb7bcd326645af44ea09953ce0bdddffddfb5cb11c"
 )
 DEFAULT_OUTPUT = Path(
     "results/fee_endpoint_topology_disagreement_preregistration_2026-07-20.json"
@@ -140,8 +140,8 @@ CONTROL_DEFINITIONS = {
     "constant_short_same_clock": (
         "same primary entry/exit clock with side fixed short"
     ),
-    "stale_7d": (
-        "at source bucket t apply primary eligibility and side from the fully "
+    "stale_14_packets": (
+        "at source packet t apply primary eligibility and side from the fully "
         "formed feature/ranks at t-14; retain t availability and build an "
         "independent chronological non-overlap clock"
     ),
@@ -152,7 +152,9 @@ CONTROL_DEFINITIONS = {
     ),
     "one_bar_delayed_entry": (
         "same primary signals and sides; shift entry and scheduled exit "
-        "exactly one complete 5m bar later and drop lost split containment"
+        "exactly one complete 5m bar later; deterministically drop a shifted "
+        "trade that loses its original split containment, never replace it, "
+        "and report train/selection dropped counts before outcomes"
     ),
 }
 
@@ -355,22 +357,26 @@ def policy() -> dict[str, Any]:
         "policy_id": POLICY_ID,
         "singleton": True,
         "source_features": {
-            "source_bucket_seconds": 43_200,
-            "source_bucket_alignment": "floor(header_timestamp/43200)",
-            "minimum_blocks_per_bucket": 24,
+            "packet_blocks": 72,
+            "packet_alignment": "packet_id=floor(height/72)",
+            "first_complete_packet_start_height": 610_704,
+            "last_complete_packet_end_height": 823_751,
+            "complete_packet_count": 2_959,
+            "edge_packet_policy": "drop incomplete first and last packets",
             "total_weight": "sum(weight)",
             "total_fees": "sum(total_fees)",
             "total_endpoints": "sum(total_inputs+total_outputs)",
             "fee_pressure": "log(total_fees/total_weight)",
             "endpoint_density": "log(total_endpoints/total_weight)",
-            "transport_horizon_buckets": 2,
-            "transport_horizon_hours": 24,
+            "transport_horizon_packets": 2,
+            "transport_horizon_expected_hours": 24,
             "fee_transport": "fee_pressure[t]-fee_pressure[t-2]",
             "endpoint_transport": "endpoint_density[t]-endpoint_density[t-2]",
             "strain_magnitude": "abs(fee_transport*endpoint_transport)",
             "base_valid_feature_row": (
-                "require t-2,t-1,t as consecutive valid 12h buckets; each "
-                "bucket has >=24 blocks and positive finite total_weight, "
+                "require t-2,t-1,t as consecutive valid 72-block packets; each "
+                "packet has exactly 72 contiguous heights and positive finite "
+                "total_weight, "
                 "total_fees, and total_endpoints; all derived values finite"
             ),
             "forbidden_primary_fields": [
@@ -398,8 +404,8 @@ def policy() -> dict[str, Any]:
             "midrank_formula": (
                 "(count(prior < current)+0.5*count(prior == current))/prior_count"
             ),
-            "lookback_valid_feature_buckets": 180,
-            "minimum_prior_valid_feature_buckets": 120,
+            "lookback_valid_feature_packets": 180,
+            "minimum_prior_valid_feature_packets": 120,
             "window_selection": (
                 "use exactly the most recent 180 strict-prior base-valid rows "
                 "when available; fewer than 120 makes current rank-unready"
@@ -423,7 +429,7 @@ def policy() -> dict[str, Any]:
             "zero_tolerance": "none; exact zero in either transport is ineligible",
             "every_eligible_source_clock_considered": True,
             "ordering": (
-                "sort by entry_time then bucket_start; accept earliest when "
+                "sort by entry_time then packet_id; accept earliest when "
                 "entry_time>=prior accepted exit; equal boundary allowed; "
                 "suppress intervening candidates without score priority or "
                 "replacement"
@@ -431,8 +437,10 @@ def policy() -> dict[str, Any]:
             "post_support_repair": "forbidden",
         },
         "causal_availability": {
-            "hash_linked_successors_after_final_bucket_block": 6,
-            "source_available_at": "fixed 12h bucket end + 48 hours",
+            "hash_linked_successors_after_packet_end": 6,
+            "source_available_at": (
+                "max header timestamp from packet start through h+6 + 48 hours"
+            ),
             "availability_lag_seconds": 172_800,
             "ceil_5m": "((unix_seconds+299)//300)*300",
             "entry_time": "ceil_5m(source_available_at)+300 seconds",
@@ -441,6 +449,7 @@ def policy() -> dict[str, Any]:
                 "an aligned available_at still receives the additional 300s bar"
             ),
             "historical_header_time_is_not_receipt_time": True,
+            "height_packet_prevents_calendar_backfill": True,
             "source_gap_action": "reject source; never fill or backdate",
         },
         "execution": {
@@ -490,8 +499,13 @@ def policy() -> dict[str, Any]:
             "selection_each_side_each_half_minimum": 5,
             "selection_each_quarter_minimum": 6,
             "selection_maximum_month_share": 0.20,
-            "minimum_blocks_per_source_bucket": 24,
-            "missing_12h_source_buckets": 0,
+            "complete_packet_count": 2_959,
+            "blocks_per_complete_packet": 72,
+            "consecutive_complete_packet_ids": True,
+            "delayed_entry_split_edge_reporting": (
+                "report train and selection dropped counts before outcomes; "
+                "dropped trades receive no replacement"
+            ),
             "support_failure_action": (
                 "reject FETD-288 before market/funding/outcomes; no repair"
             ),
@@ -513,7 +527,7 @@ def policy() -> dict[str, Any]:
                 "same_direction",
                 "constant_long_same_clock",
                 "constant_short_same_clock",
-                "stale_7d",
+                "stale_14_packets",
                 "month_side_stratified_random_clock",
             ],
             "direction_flip_is_diagnostic_only": True,
@@ -554,7 +568,7 @@ def policy() -> dict[str, Any]:
         ),
         "stopping_rule": (
             "stop permanently at first support/train/selection failure; no "
-            "sign, threshold, rank-window, bucket, support-floor, hold, latency, "
+            "sign, threshold, rank-window, packet, support-floor, hold, latency, "
             "calendar, or clock repair; no failed-policy inversion"
         ),
     }
@@ -703,4 +717,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
