@@ -240,6 +240,31 @@ def test_frozen_source_loader_identity_is_not_self_attested(tmp_path: Path) -> N
     support._validate_frozen_loader(Path(support.block_source.__file__))
 
 
+def test_source_config_and_cross_host_anchors_are_frozen() -> None:
+    config = {
+        "start_height": support.block_source.FROZEN_START_HEIGHT,
+        "end_height": support.block_source.FROZEN_END_HEIGHT,
+        "end_timestamp_exclusive": support.block_source.FIRST_2024_TIMESTAMP,
+        "base_url": support.FROZEN_RESEARCH_BASE_URL,
+    }
+    support._validate_source_config(config)
+    with pytest.raises(RuntimeError, match="prefix and host"):
+        support._validate_source_config(
+            {**config, "base_url": "https://blockstream.info/api"}
+        )
+
+    anchors = pd.DataFrame(
+        {
+            "height": list(support.FROZEN_BLOCK_ANCHORS),
+            "id": list(support.FROZEN_BLOCK_ANCHORS.values()),
+        }
+    )
+    support._validate_block_anchors(anchors)
+    anchors.loc[0, "id"] = "0" * 64
+    with pytest.raises(RuntimeError, match="anchor mismatch"):
+        support._validate_block_anchors(anchors)
+
+
 def test_frozen_policy_rejects_any_repair() -> None:
     support._validate_policy(support.Policy())
     with pytest.raises(RuntimeError, match="differs from preregistration"):

@@ -37,6 +37,18 @@ PROTOCOL_VERSION = "block_arrival_throughput_elasticity_support_v1"
 FROZEN_SOURCE_LOADER_SHA256 = (
     "0628e9e5925087e68b5d0a7a8f74dc91d908a209d140557a8ac690cd0e98bc53"
 )
+SOURCE_HOST_DECISION = (
+    "docs/block-arrival-throughput-elasticity-source-host-fallback-2026-07-20.md"
+)
+SOURCE_HOST_DECISION_SHA256 = (
+    "fbe3212987384ce38e8057f9287c9dd832863aea5be34d7bd6744a6386798847"
+)
+FROZEN_RESEARCH_BASE_URL = "https://mempool.space/api"
+FROZEN_BLOCK_ANCHORS = {
+    823_785: "00000000000000000000d0cd9e5661fca08ed8916c8bb4f8ac2a3a34c8d3fa4b",
+    820_000: "00000000000000000000ba232574c32b4f0cd023e133c05125310625626d6571",
+    817_176: "000000000000000000028e5ab706bdaa53fcd907cde34d45d2446ce6059069ae",
+}
 TRAIN_START = pd.Timestamp("2021-01-01T00:00:00Z")
 TRAIN_END = pd.Timestamp("2023-01-01T00:00:00Z")
 SELECTION_END = pd.Timestamp("2024-01-01T00:00:00Z")
@@ -101,10 +113,34 @@ def _validate_frozen_loader(path: str | Path) -> None:
         raise RuntimeError("BATE source loader differs from the frozen SHA-256")
 
 
+def _validate_source_config(config: dict[str, Any]) -> None:
+    frozen = {
+        "start_height": block_source.FROZEN_START_HEIGHT,
+        "end_height": block_source.FROZEN_END_HEIGHT,
+        "end_timestamp_exclusive": block_source.FIRST_2024_TIMESTAMP,
+        "base_url": FROZEN_RESEARCH_BASE_URL,
+    }
+    if any(config.get(key) != value for key, value in frozen.items()):
+        raise RuntimeError("Bitcoin block source is not the frozen full prefix and host")
+
+
+def _validate_block_anchors(frame: pd.DataFrame) -> None:
+    indexed = frame.set_index("height")["id"].astype(str)
+    for height, expected in FROZEN_BLOCK_ANCHORS.items():
+        if height not in indexed.index or indexed.loc[height] != expected:
+            raise RuntimeError(f"Bitcoin block source anchor mismatch at {height}")
+
+
 def load_source(source_csv: str, source_manifest: str) -> tuple[pd.DataFrame, dict[str, Any]]:
     prereg = Path(PREREGISTRATION)
     if not prereg.is_file() or sha256_file(prereg) != PREREGISTRATION_SHA256:
         raise RuntimeError("BATE-288 support preregistration is missing or has drifted")
+    host_decision = Path(SOURCE_HOST_DECISION)
+    if (
+        not host_decision.is_file()
+        or sha256_file(host_decision) != SOURCE_HOST_DECISION_SHA256
+    ):
+        raise RuntimeError("BATE source-host fallback decision is missing or has drifted")
     _validate_frozen_loader(Path(block_source.__file__))
     manifest_path = Path(source_manifest)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -118,13 +154,7 @@ def load_source(source_csv: str, source_manifest: str) -> tuple[pd.DataFrame, di
     config = manifest.get("config")
     if not isinstance(config, dict):
         raise RuntimeError("Bitcoin block source manifest has no config")
-    frozen = {
-        "start_height": block_source.FROZEN_START_HEIGHT,
-        "end_height": block_source.FROZEN_END_HEIGHT,
-        "end_timestamp_exclusive": block_source.FIRST_2024_TIMESTAMP,
-    }
-    if any(config.get(key) != value for key, value in frozen.items()):
-        raise RuntimeError("Bitcoin block source is not the frozen full prefix")
+    _validate_source_config(config)
     decision = manifest.get("source_decision")
     if not isinstance(decision, dict) or decision.get(
         "sha256"
@@ -181,6 +211,7 @@ def load_source(source_csv: str, source_manifest: str) -> tuple[pd.DataFrame, di
         previous.iloc[1:].to_numpy(), ids.iloc[:-1].to_numpy()
     ):
         raise RuntimeError("Bitcoin block source hash-chain linkage failed")
+    _validate_block_anchors(frame)
     if frame["timestamp"].ge(block_source.FIRST_2024_TIMESTAMP).any():
         raise RuntimeError("Bitcoin block source crossed the sealed 2024 boundary")
     if (
@@ -554,6 +585,12 @@ def run(
         "preregistration": {
             "path": PREREGISTRATION,
             "sha256": PREREGISTRATION_SHA256,
+        },
+        "source_host_decision": {
+            "path": SOURCE_HOST_DECISION,
+            "sha256": SOURCE_HOST_DECISION_SHA256,
+            "base_url": FROZEN_RESEARCH_BASE_URL,
+            "block_anchors": FROZEN_BLOCK_ANCHORS,
         },
         "source": {
             "path": source_csv,
