@@ -1,0 +1,158 @@
+{
+  "artifacts": {
+    "control_clocks": {
+      "clock_counts": {
+        "constant_long_same_clock": 273,
+        "constant_short_same_clock": 273,
+        "direction_flip": 273,
+        "low_fee_mirror": 188,
+        "one_bar_delayed_entry": 273,
+        "stale_7d": 269,
+        "topology_only": 734,
+        "year_side_stratified_random_clock": 273
+      },
+      "columns": [
+        "policy_id",
+        "clock",
+        "source_day",
+        "available_time",
+        "entry_time",
+        "exit_time",
+        "side",
+        "source_start_height",
+        "source_end_height",
+        "successor_end_height",
+        "block_count",
+        "edges",
+        "fees",
+        "fee_burden",
+        "utxo_polarity",
+        "fee_rank",
+        "polarity_rank"
+      ],
+      "frame_hash": "8e9e1e149bc50c1f41a111fc2d1f9f00eb82d526fc52e82baf59c9600b3ed085",
+      "path": "results/utxo_fee_clearing_polarity_control_clocks_2026-07-20.csv.gz",
+      "rows": 2556,
+      "sha256": "90434b0decc6dcfd6d950d1b2a235488b84ed5b348064faac536d6a5a64faa5f"
+    },
+    "primary_clock": {
+      "columns": [
+        "policy_id",
+        "clock",
+        "source_day",
+        "available_time",
+        "entry_time",
+        "exit_time",
+        "side",
+        "source_start_height",
+        "source_end_height",
+        "successor_end_height",
+        "block_count",
+        "edges",
+        "fees",
+        "fee_burden",
+        "utxo_polarity",
+        "fee_rank",
+        "polarity_rank"
+      ],
+      "frame_hash": "1d3a87b54ac587c757fecd772d5584d8cf60dfc66fc5baee048fc15c96ada2ac",
+      "path": "results/utxo_fee_clearing_polarity_primary_clock_2026-07-20.csv",
+      "rows": 273,
+      "sha256": "8338c290d63b522531c8d55c8a79ba73cc13915c936733ec03ffcf6ab0e86c1b"
+    }
+  },
+  "config": {
+    "control_clocks": "results/utxo_fee_clearing_polarity_control_clocks_2026-07-20.csv.gz",
+    "output": "results/utxo_fee_clearing_polarity_support_2026-07-20.json",
+    "preregistration": "results/utxo_fee_clearing_polarity_preregistration_2026-07-20.json",
+    "primary_clock": "results/utxo_fee_clearing_polarity_primary_clock_2026-07-20.csv"
+  },
+  "funding_rows_loaded": 0,
+  "funding_values_read": 0,
+  "manifest_hash": "fd77dd20f5568b705ffc0189af9390ec9cc8db7139824c1220e457b9f0c1dace",
+  "market_rows_loaded": 0,
+  "market_values_read": 0,
+  "outcome_boundary": {
+    "funding_rows_loaded": 0,
+    "funding_values_read": 0,
+    "market_rows_loaded": 0,
+    "market_values_read": 0,
+    "profit_loss_fields": 0,
+    "return_rows_loaded": 0
+  },
+  "policy_id": "UFCP-1",
+  "preregistration": {
+    "manifest_hash": "95cd5911171b033923603d5d845949df6a7ef28020f2591c41ab1e0d1293da5b",
+    "path": "results/utxo_fee_clearing_polarity_preregistration_2026-07-20.json",
+    "sha256": "160efdd2eb857c47a80ec0ed4a976a659a1ee3dd3c930093d197798e619d65c9"
+  },
+  "profit_loss_fields": 0,
+  "protocol_version": "utxo_fee_clearing_polarity_support_v1",
+  "return_rows_loaded": 0,
+  "return_values_read": 0,
+  "source": {
+    "columns": [
+      "height",
+      "id",
+      "previousblockhash",
+      "timestamp",
+      "mediantime",
+      "tx_count",
+      "size",
+      "weight",
+      "total_fees",
+      "total_inputs",
+      "total_outputs",
+      "utxo_set_change"
+    ],
+    "path": "data/bitcoin_utxo_fee_block_stats_2020_2023.csv.gz",
+    "rows_read": 213095,
+    "sha256": "8d5160b59bd104819adb34752f2bd5b01e9c07d7aa108188abcd9e6d323d102f"
+  },
+  "support_builder": {
+    "path": "training/build_utxo_fee_clearing_polarity_support.py",
+    "sha256": "ed1682ee65f189d63a79ffb6111b25525b0285c0cc97592b465b6fcbbb552505"
+  },
+  "support_gates": {
+    "checks": {
+      "all_usable_days_edges_positive": true,
+      "all_usable_days_fees_positive": true,
+      "all_usable_days_have_min72_blocks": true,
+      "all_usable_days_no_missing_utc_day": true,
+      "selection_2023_h1_minimum": true,
+      "selection_2023_h2_minimum": true,
+      "selection_2023_total_minimum": true,
+      "selection_max_entry_month_share": false,
+      "selection_side_share_25_75": false,
+      "train_2021_2022_total_minimum": true,
+      "train_2021_minimum": true,
+      "train_2022_minimum": true,
+      "train_max_entry_month_share": false,
+      "train_side_share_25_75": true
+    },
+    "counts": {
+      "2021": 32,
+      "2022": 60,
+      "2023H1": 78,
+      "2023H2": 42,
+      "primary_total": 273,
+      "selection_2023": 120,
+      "train_2021_2022": 92
+    },
+    "max_entry_month_share": {
+      "selection": 0.25833333333333336,
+      "train": 0.1956521739130435
+    },
+    "passed": false,
+    "side_counts": {
+      "selection": {
+        "-1": 3,
+        "1": 117
+      },
+      "train": {
+        "-1": 43,
+        "1": 49
+      }
+    }
+  }
+}
