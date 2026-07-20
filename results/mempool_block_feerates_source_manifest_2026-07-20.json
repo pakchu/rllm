@@ -1,0 +1,100 @@
+{
+  "protocol_version": "mempool_block_feerate_history_source_v1",
+  "config": {
+    "raw_output": "data/mempool_block_feerates_3y_2026-07-20.raw.json.gz",
+    "output_csv": "data/mempool_block_feerates_3y_2026-07-20.csv.gz",
+    "manifest_output": "results/mempool_block_feerates_source_manifest_2026-07-20.json",
+    "timeout_sec": 30.0,
+    "request_pause_sec": 0.25,
+    "maximum_retries": 8,
+    "maximum_response_bytes": 5000000,
+    "minimum_response_rows": 2000
+  },
+  "source_decision": {
+    "path": "docs/block-feerate-breadth-transport-mechanism-decision-2026-07-20.md",
+    "sha256": "f6dd7d52b03d1370483a1157e24efad45b6886230bafed0931b0ac88cbde82cb"
+  },
+  "source_builder": {
+    "path": "training/download_mempool_block_feerate_history.py",
+    "sha256": "ebd30dd109a92c4dc5a2a6a444a5d5760fa4360c7fd848b02923f0670e4a2910"
+  },
+  "source_audit": {
+    "endpoint": "https://mempool.space/api/v1/mining/blocks/fee-rates/3y",
+    "official_rest_docs": "https://mempool.space/docs/api/rest",
+    "upstream_repository": "https://github.com/mempool/mempool",
+    "upstream_commit": "e9d6cf8c042f946be53e372bb36530cd7b7851a4",
+    "http_status": 200,
+    "final_url": "https://mempool.space/api/v1/mining/blocks/fee-rates/3y",
+    "retrieved_at_utc": "2026-07-20T09:02:30.628066Z",
+    "response_headers": {
+      "date": "Mon, 20 Jul 2026 09:02:28 GMT",
+      "etag": "W/\"4e564-RJvYwNUJqLGdQWvvCgzgfWMQELc\"",
+      "last-modified": null,
+      "content-type": "application/json; charset=utf-8"
+    },
+    "raw_response_bytes": 320868,
+    "raw_response_sha256": "480a99c3ebfd49f98511f94fe05d9f8d76a2e28ebef7cde937768b0d4321e008",
+    "response_rows": 2193,
+    "retained_rows": 2191,
+    "edge_rows_dropped": 2,
+    "first_dropped_bucket_start_utc": "2023-07-20T00:00:00Z",
+    "last_dropped_bucket_start_utc": "2026-07-20T00:00:00Z",
+    "first_retained_bucket_start_utc": "2023-07-20T12:00:00Z",
+    "last_retained_bucket_start_utc": "2026-07-19T12:00:00Z",
+    "first_retained_avg_height": 799556,
+    "last_retained_avg_height": 958761,
+    "strictly_increasing_unique_timestamps": true,
+    "strictly_increasing_unique_heights": true,
+    "unique_bucket_ids": true,
+    "percentile_ordering_valid": true,
+    "missing_12h_buckets": 0,
+    "maximum_bucket_gap_seconds": 43200,
+    "missing_bucket_policy": "retain gap; never forward-fill or backdate"
+  },
+  "raw_artifact": {
+    "path": "data/mempool_block_feerates_3y_2026-07-20.raw.json.gz",
+    "sha256": "4309dfbbdb08b89cd9cc92a341bd6186146b1e67adc2c3f926c8154ddabc4898",
+    "bytes": 35671,
+    "decompressed_sha256": "480a99c3ebfd49f98511f94fe05d9f8d76a2e28ebef7cde937768b0d4321e008",
+    "encoding": "gzip of exact HTTP response bytes; mtime=0"
+  },
+  "normalized_artifact": {
+    "path": "data/mempool_block_feerates_3y_2026-07-20.csv.gz",
+    "sha256": "007d13ba756fd29faae1ae87caa11554438b54bb5028f24b2f0c21ddf3a0e55d",
+    "bytes": 47095,
+    "rows": 2191,
+    "columns": [
+      "bucket_start_utc",
+      "bucket_end_utc",
+      "available_at_utc",
+      "avg_height",
+      "avg_timestamp",
+      "fee_p0",
+      "fee_p10",
+      "fee_p25",
+      "fee_p50",
+      "fee_p75",
+      "fee_p90",
+      "fee_p100"
+    ]
+  },
+  "causal_availability": {
+    "source_bucket_seconds": 43200,
+    "source_availability_lag_seconds": 172800,
+    "available_at_rule": "fixed bucket end + 48 hours",
+    "earliest_entry_rule": "first complete 5-minute execution bar after available_at",
+    "earliest_entry_additional_seconds": 300,
+    "edge_policy": "drop first and last response buckets",
+    "missing_bucket_policy": "retain gap; never forward-fill or backdate"
+  },
+  "outcome_boundary": {
+    "btc_market_rows_loaded": 0,
+    "funding_rows_loaded": 0,
+    "premium_or_oi_rows_loaded": 0,
+    "return_or_pnl_fields": 0,
+    "bfrt_features_derived": 0,
+    "signal_incidence_rows_derived": 0
+  },
+  "data_use": "private research snapshot; public-route operational and legal review remains required before live promotion",
+  "manifest_hash": "fe616bcf294e8b3b2abc6dec124e922f77df4bca47a86249fc270f2af6b46f21"
+}
