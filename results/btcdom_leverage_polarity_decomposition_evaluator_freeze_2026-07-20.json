@@ -1,0 +1,314 @@
+{
+  "protocol_version": "btcdom_leverage_polarity_evaluator_v1",
+  "candidate": "DLPD-12",
+  "as_of_date": "2026-07-20",
+  "support_commit": "5f7fb3baa4bb4e5cfb07bdc3577e3add75a76932",
+  "preregistration_manifest_hash": "7af6c5ef7445ef65886362c7878338ffff98b9f23658f1884aab85dafeeb3e8b",
+  "support_manifest_hash": "037cfba9851a001bbad29fdd9d96bed22354204defa9f2d5788cc51d53528c90",
+  "evaluator_source": "training/evaluate_btcdom_leverage_polarity_decomposition.py",
+  "evaluator_source_sha256": "748fae0511cfe3f3eca48f43627bc1a6b728253c225ee1fc6e2aba14f390b17c",
+  "strict_engine_dependency": "training/evaluate_flow_centrality_incubation_relay.py",
+  "strict_engine_dependency_sha256": "036b22442a2080e7ea5ffe914c605a9b1b1a55b128a315a2f2f05be7b37a736d",
+  "strict_source_dependency": "training/evaluate_stablecoin_quote_flow_diffusion.py",
+  "strict_source_dependency_sha256": "0ea59a107f05777ba91ab1c8fc5900e724ba48ec6ce647a42c34c34422222e3b",
+  "evaluation_config": {
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.001,
+    "hold_bars": 144,
+    "exact_cluster_max": 20,
+    "cluster_draws": 20000,
+    "cluster_seed": 20260719
+  },
+  "static_inputs": {
+    "training/preregister_btcdom_leverage_polarity_decomposition.py": "0b3797487daf156b66f1799a20b474e38a7bd7387c831462af6d363113b663ab",
+    "training/build_btcdom_leverage_polarity_decomposition_support.py": "f662128d5f0a09f8ed80182791df6328ca12efe10e8f8df9682b907d33fb5a23",
+    "results/btcdom_leverage_polarity_decomposition_preregistration_2026-07-20.json": "6d5ba05072d7e1677239e2a6dba9ec8dab79bfb7a7e25fe89b3396e269adc9ff",
+    "results/btcdom_leverage_polarity_decomposition_support_2026-07-20.json": "1107694d5ff304aabaabbb962e9aeeaa64075001e494a0432dba3261ceace4f6",
+    "data/btcdom_leverage_polarity_decomposition_clocks_2022_2023.csv.gz": "b33990f1629465caa837aa1f6f74430054b7185b68ece47b8c7540f9c11bf0fb",
+    "docs/btcdom-leverage-polarity-decomposition-preregistration-2026-07-20.md": "f03f7b90587486ccdbc1d7d4e91bb96820d8e0ce38d0497f4a3170b22d2208a8",
+    "docs/btcdom-leverage-polarity-decomposition-support-pass-2026-07-20.md": "d20d1809b1d71ee8487ce5f2d8ec649a059008cdbd3e1dd2487910dd698ed6dd",
+    "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
+    "training/evaluate_flow_centrality_incubation_relay.py": "036b22442a2080e7ea5ffe914c605a9b1b1a55b128a315a2f2f05be7b37a736d",
+    "training/evaluate_stablecoin_quote_flow_diffusion.py": "0ea59a107f05777ba91ab1c8fc5900e724ba48ec6ce647a42c34c34422222e3b"
+  },
+  "evaluation_clock": "data/btcdom_leverage_polarity_decomposition_evaluation_clocks_2022_2023.csv.gz",
+  "evaluation_clock_sha256": "38ccc18df700d24462d0cae91e34733856ed053dc400c584a3eedaf3f9ed60f1",
+  "schedule_records": {
+    "primary": {
+      "events": 421,
+      "schedule_hash": "f1cd3b7c599603f798db3368e511f982a0af1ffd95aa8ffc68547f6d29b4c347",
+      "stage_counts": {
+        "train": 237,
+        "test": 184
+      },
+      "first_entry": "2022-01-05T17:05:00+00:00",
+      "last_exit": "2023-12-12T06:05:00+00:00"
+    },
+    "btc_only_tail": {
+      "events": 1065,
+      "schedule_hash": "b213dc9f801808fc9e765b0ffa5074f2b03bbd8417dc323c0125882f7e47b7e2",
+      "stage_counts": {
+        "train": 566,
+        "test": 499
+      },
+      "first_entry": "2022-01-01T16:05:00+00:00",
+      "last_exit": "2023-12-31T14:05:00+00:00"
+    },
+    "dom_only_mirror": {
+      "events": 1018,
+      "schedule_hash": "295881401c004c065ea7da46207f851226f88cdaa9b56a944b76c406891eddf9",
+      "stage_counts": {
+        "train": 530,
+        "test": 488
+      },
+      "first_entry": "2022-01-01T07:05:00+00:00",
+      "last_exit": "2023-12-31T14:05:00+00:00"
+    },
+    "same_sign": {
+      "events": 462,
+      "schedule_hash": "931c64e610b03f7e44298a7ab51cef8ea999749f40c516964671421b3ba2b61e",
+      "stage_counts": {
+        "train": 240,
+        "test": 222
+      },
+      "first_entry": "2022-01-02T18:05:00+00:00",
+      "last_exit": "2023-12-31T14:05:00+00:00"
+    },
+    "stale_btc_1h": {
+      "events": 421,
+      "schedule_hash": "cdc5508ea3cb84a946e1a39594e8746b6aad7565b283029dcabce5b776a9161c",
+      "stage_counts": {
+        "train": 233,
+        "test": 188
+      },
+      "first_entry": "2022-01-03T21:05:00+00:00",
+      "last_exit": "2023-12-12T06:05:00+00:00"
+    },
+    "stale_dom_1h": {
+      "events": 445,
+      "schedule_hash": "3ccbfdd7cba6cf0858f9376900f67fe1ef74985fb5629f128b6dd9796b522401",
+      "stage_counts": {
+        "train": 242,
+        "test": 203
+      },
+      "first_entry": "2022-01-04T16:05:00+00:00",
+      "last_exit": "2023-12-21T09:05:00+00:00"
+    },
+    "direction_flip": {
+      "events": 421,
+      "schedule_hash": "3c1548e0458c42a51ce2be6ba5b4f8365f5b53bd86e4773b0fa522b70c5a5ac1",
+      "stage_counts": {
+        "train": 237,
+        "test": 184
+      },
+      "first_entry": "2022-01-05T17:05:00+00:00",
+      "last_exit": "2023-12-12T06:05:00+00:00"
+    },
+    "deterministic_random_side": {
+      "events": 421,
+      "schedule_hash": "0cf392daa2171c053d16471d8424e3033794cbc27eee20b752a6fe2fe81911e3",
+      "stage_counts": {
+        "train": 237,
+        "test": 184
+      },
+      "first_entry": "2022-01-05T17:05:00+00:00",
+      "last_exit": "2023-12-12T06:05:00+00:00"
+    },
+    "extra_latency_1h": {
+      "events": 421,
+      "schedule_hash": "adbd17be3da8c682c27aa715980f6d4c2f99f4cac296eed74d4b07ab4fbc3de0",
+      "stage_counts": {
+        "train": 237,
+        "test": 184
+      },
+      "first_entry": "2022-01-05T18:05:00+00:00",
+      "last_exit": "2023-12-12T07:05:00+00:00"
+    }
+  },
+  "phase_scope": [
+    "train",
+    "test"
+  ],
+  "execution_source_specs": {
+    "train": {
+      "stage": "train",
+      "required_manifest": "results/btcdom_leverage_polarity_decomposition_train_execution_source_2026-07-20.json",
+      "required_protocol_version": "btcdom_leverage_polarity_execution_source_v1",
+      "physical_window": [
+        "2022-01-01T00:00:00+00:00",
+        "2023-01-01T00:00:00+00:00"
+      ],
+      "physical_rows_limited_to_window": true,
+      "exit_boundary_required": false,
+      "strategy_outcomes_calculated": false
+    },
+    "test": {
+      "stage": "test",
+      "required_manifest": "results/btcdom_leverage_polarity_decomposition_test_execution_source_2026-07-20.json",
+      "required_protocol_version": "btcdom_leverage_polarity_execution_source_v1",
+      "physical_window": [
+        "2023-01-01T00:00:00+00:00",
+        "2024-01-01T00:00:00+00:00"
+      ],
+      "physical_rows_limited_to_window": true,
+      "exit_boundary_required": false,
+      "strategy_outcomes_calculated": false
+    }
+  },
+  "future_signal_source_specs": {
+    "eval": {
+      "stage": "eval",
+      "required_manifest": "results/btcdom_leverage_polarity_decomposition_eval_signal_source_2026-07-20.json",
+      "physical_window": [
+        "2024-01-01T00:00:00+00:00",
+        "2026-01-01T00:00:00+00:00"
+      ],
+      "policy_source": "training/preregister_btcdom_leverage_polarity_decomposition.py",
+      "policy_source_sha256": "0b3797487daf156b66f1799a20b474e38a7bd7387c831462af6d363113b663ab",
+      "outcomes_opened": false
+    },
+    "final": {
+      "stage": "final",
+      "required_manifest": "results/btcdom_leverage_polarity_decomposition_final_signal_source_2026-07-20.json",
+      "physical_window": [
+        "2026-01-01T00:00:00+00:00",
+        "2026-07-01T00:00:00+00:00"
+      ],
+      "policy_source": "training/preregister_btcdom_leverage_polarity_decomposition.py",
+      "policy_source_sha256": "0b3797487daf156b66f1799a20b474e38a7bd7387c831462af6d363113b663ab",
+      "outcomes_opened": false
+    }
+  },
+  "phase_two_requirement": "after train and test pass, freeze a separate immutable eval/final signal-and-execution evaluator before opening any 2024+ outcome row",
+  "legacy_container_contract": {
+    "eligible_stages": [
+      "train",
+      "test"
+    ],
+    "market": {
+      "path": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+      "sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+      "manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+      "manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e"
+    },
+    "funding": {
+      "path": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+      "sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6",
+      "manifest": "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json",
+      "manifest_sha256": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b"
+    }
+  },
+  "stage_windows": {
+    "train": [
+      "2022-01-01T00:00:00+00:00",
+      "2023-01-01T00:00:00+00:00"
+    ],
+    "test": [
+      "2023-01-01T00:00:00+00:00",
+      "2024-01-01T00:00:00+00:00"
+    ],
+    "eval": [
+      "2024-01-01T00:00:00+00:00",
+      "2026-01-01T00:00:00+00:00"
+    ],
+    "final": [
+      "2026-01-01T00:00:00+00:00",
+      "2026-07-01T00:00:00+00:00"
+    ]
+  },
+  "half_windows": {
+    "train": {
+      "2022_h1": [
+        "2022-01-01T00:00:00+00:00",
+        "2022-07-01T00:00:00+00:00"
+      ],
+      "2022_h2": [
+        "2022-07-01T00:00:00+00:00",
+        "2023-01-01T00:00:00+00:00"
+      ]
+    },
+    "test": {
+      "2023_h1": [
+        "2023-01-01T00:00:00+00:00",
+        "2023-07-01T00:00:00+00:00"
+      ],
+      "2023_h2": [
+        "2023-07-01T00:00:00+00:00",
+        "2024-01-01T00:00:00+00:00"
+      ]
+    },
+    "eval": {
+      "2024": [
+        "2024-01-01T00:00:00+00:00",
+        "2025-01-01T00:00:00+00:00"
+      ],
+      "2025": [
+        "2025-01-01T00:00:00+00:00",
+        "2026-01-01T00:00:00+00:00"
+      ]
+    },
+    "final": {
+      "2026_q1": [
+        "2026-01-01T00:00:00+00:00",
+        "2026-04-01T00:00:00+00:00"
+      ],
+      "2026_q2": [
+        "2026-04-01T00:00:00+00:00",
+        "2026-07-01T00:00:00+00:00"
+      ]
+    }
+  },
+  "outcome_gate": {
+    "component_controls_cannot_repair_primary": true,
+    "each_opened_stage": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_at_least": 3.0,
+      "contained_subperiods_positive": true,
+      "direction_flip_inferior": true,
+      "strict_mdd_at_most": 0.15,
+      "ten_bp_stress_absolute_return_positive": true,
+      "weekly_cluster_signflip_p_at_most": 0.1
+    },
+    "minimum_train_and_test_trades_each": 120,
+    "sequence": [
+      "train_2022",
+      "test_2023",
+      "eval_2024_2025",
+      "final_2026H1"
+    ],
+    "source_support_is_not_profitability_evidence": true
+  },
+  "source_only_controls": [
+    "btc_only_tail",
+    "dom_only_mirror",
+    "same_sign",
+    "stale_btc_1h",
+    "stale_dom_1h"
+  ],
+  "derived_controls": [
+    "direction_flip",
+    "deterministic_random_side",
+    "extra_latency_1h"
+  ],
+  "strict_accounting": {
+    "funding_boundary": "interior symmetric; exact entry/exit credits dropped and debits retained",
+    "mdd": "global/pre-entry HWM; costs; exact funding marks; every held 5m favorable-then-adverse OHLC path",
+    "cagr": "full declared split calendar including idle cash",
+    "entry_exit": "next 5m open after completed-hour decision; exact 12h open-to-open hold"
+  },
+  "opened_windows": [],
+  "sealed_windows": [
+    "train",
+    "test",
+    "eval",
+    "final"
+  ],
+  "execution_ohlc_rows_parsed_during_freeze": 0,
+  "funding_rows_parsed_during_freeze": 0,
+  "execution_outcome_data_bytes_hashed_during_freeze": false,
+  "simulation_run_during_freeze": false,
+  "mutable_parameters": [],
+  "manifest_hash": "c55b8b23f1ec45821ca670fab6f5811826b37d839c01d1e44d2a0ca1b30a31fd"
+}
