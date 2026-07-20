@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from execution.binance_aggtrade_stream import parse_aggtrade_payload
 from preprocessing.aggressor_frustration import (
     AggTradeTickState,
     advance_tick_state,
@@ -168,3 +169,41 @@ def test_later_bucket_mutation_cannot_change_earlier_bucket() -> None:
 def test_duplicate_or_reversed_ids_fail_closed(rows: list[list[object]], message: str) -> None:
     with pytest.raises(ValueError, match=message):
         classify_event_frame(_frame(rows))
+
+
+def test_archive_and_live_message_replay_have_identical_tick_states_and_scores() -> None:
+    payloads = [
+        {"e": "aggTrade", "a": 1, "p": "100", "q": "1", "f": 1, "l": 1, "T": 1_000, "m": False},
+        {"e": "aggTrade", "a": 2, "p": "99", "q": "2", "f": 2, "l": 2, "T": 2_000, "m": False},
+        {"e": "aggTrade", "a": 3, "p": "99", "q": "3", "f": 3, "l": 3, "T": 3_000, "m": True},
+        {"e": "aggTrade", "a": 4, "p": "100", "q": "4", "f": 4, "l": 4, "T": 4_000, "m": True},
+    ]
+    archive = _frame(
+        [
+            [item["a"], float(item["p"]), float(item["q"]), item["f"], item["l"], item["T"], item["m"]]
+            for item in payloads
+        ]
+    )
+    live_ticks = [parse_aggtrade_payload(item) for item in payloads]
+    live = _frame(
+        [
+            [
+                tick.aggregate_trade_id,
+                tick.price,
+                tick.quantity,
+                tick.first_trade_id,
+                tick.last_trade_id,
+                tick.event_time_ms,
+                tick.is_buyer_maker,
+            ]
+            for tick in live_ticks
+        ]
+    )
+
+    archive_events, archive_state = classify_event_frame(archive)
+    live_events, live_state = classify_event_frame(live)
+    pd.testing.assert_frame_equal(archive_events, live_events)
+    assert archive_state == live_state
+    archive_bars, _ = aggregate_frustration_five_minute(archive)
+    live_bars, _ = aggregate_frustration_five_minute(live)
+    pd.testing.assert_frame_equal(archive_bars, live_bars)
