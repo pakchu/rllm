@@ -135,6 +135,7 @@ def test_run_writes_complete_deterministic_source_and_manifest(
 ) -> None:
     cfg = _cfg(tmp_path)
     rows = _rows(cfg.start, 24)
+    rows[0]["prev_index_price"] = None
     manifest = source.run(
         cfg, fetch=_fetch_rows(rows), sleep=lambda _: None
     )
@@ -146,6 +147,7 @@ def test_run_writes_complete_deterministic_source_and_manifest(
     assert audit["missing_hours"] == 0
     assert audit["maximum_observation_gap_hours"] == 1
     assert audit["contiguous_index_price_links_checked"] == 23
+    assert audit["lower_boundary_null_prev_index_price"] == 1
     assert audit["memory_identity"]["contiguous_eight_hour_windows"] == 17
     assert audit["memory_identity"]["maximum_absolute_sum1h_minus_8h"] == "0.000"
     assert manifest["outcome_boundary"] == {
@@ -161,6 +163,7 @@ def test_run_writes_complete_deterministic_source_and_manifest(
     assert written[0]["timestamp"] == cfg.start
     assert written[0]["available_at"] == "2023-01-01T00:05:00Z"
     assert written[0]["interest_1h"] == "0.001"
+    assert written[0]["prev_index_price"] == ""
     assert written[-1]["timestamp"] == "2023-01-01T23:00:00Z"
     assert json.loads(Path(cfg.manifest_output).read_text()) == manifest
 
@@ -180,6 +183,7 @@ def test_http_decode_preserves_exact_decimal_lexemes() -> None:
         row,
         allowed_start=_dt("2023-01-01T00:00:00Z"),
         allowed_end=_dt("2023-01-01T01:00:00Z"),
+        source_start=_dt("2023-01-01T00:00:00Z"),
         availability_delay_minutes=5,
     )
     assert normalised["interest_1h"] == "0.123456789123456789"
@@ -205,6 +209,32 @@ def test_row_contract_fails_closed(mutator, message: str) -> None:
             row,
             allowed_start=_dt("2023-01-01T00:00:00Z"),
             allowed_end=_dt("2023-01-01T01:00:00Z"),
+            source_start=_dt("2023-01-01T00:00:00Z"),
+            availability_delay_minutes=5,
+        )
+
+
+def test_only_exact_lower_boundary_may_have_null_previous_index() -> None:
+    start = _dt("2019-04-30T10:00:00Z")
+    row = _row(start)
+    row["prev_index_price"] = None
+    normalised = source._normalise_row(
+        row,
+        allowed_start=start,
+        allowed_end=start + timedelta(hours=1),
+        source_start=start,
+        availability_delay_minutes=5,
+    )
+    assert normalised["prev_index_price"] == ""
+
+    later = _row(start + timedelta(hours=1))
+    later["prev_index_price"] = None
+    with pytest.raises(ValueError, match="only at the exact source start"):
+        source._normalise_row(
+            later,
+            allowed_start=start,
+            allowed_end=start + timedelta(hours=2),
+            source_start=start,
             availability_delay_minutes=5,
         )
 
