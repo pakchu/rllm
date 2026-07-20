@@ -1,0 +1,109 @@
+{
+  "as_of": "2026-07-20",
+  "candidate": "BAFR-24F",
+  "stage": "outcome_blind_support",
+  "outcomes_opened": false,
+  "policy": {
+    "baseline_clean_observations": 8640,
+    "baseline_minimum_observations": 2016,
+    "absolute_score_quantile": 0.9,
+    "entry": "next five-minute open",
+    "hold_bars": 24,
+    "side": "sign(frustration_score)",
+    "post_gap_quarantine_bars": 24
+  },
+  "config": {
+    "features": "data/binance_um_aggressor_frustration_btc_2020_2023/BTCUSDT_aggressor_frustration_5m_2020-01-01_2023-12-31.csv.gz",
+    "feature_manifest": "data/binance_um_aggressor_frustration_btc_2020_2023/build_manifest.json",
+    "market": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "clock_output": "results/binance_aggressor_frustration_clock_2026-07-20.csv",
+    "result_output": "results/binance_aggressor_frustration_support_2026-07-20.json"
+  },
+  "source": {
+    "feature_sha256": "e46dc9a4f5e4d4a93bc260d40c0a599ccd0e609d5cb8ebf438c716f7272f7275",
+    "feature_manifest_sha256": "9fa1025c90fb8ad1729f2278236a73e94b0d20bcf9b79178610306cf3b85a28b",
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "market_columns_loaded": [
+      "date"
+    ],
+    "price_or_outcome_columns_loaded": [],
+    "feature_rows": 420732,
+    "market_rows": 420768,
+    "missing_feature_bars": 36,
+    "source_gap_days": [
+      "2020-04-15",
+      "2021-02-09",
+      "2021-02-24",
+      "2021-05-19",
+      "2022-09-06"
+    ],
+    "quarantined_bars": 1682,
+    "quarantined_fraction": 0.0039974522777397525,
+    "first_date": "2020-01-01 00:00:00",
+    "last_date": "2023-12-31 23:55:00"
+  },
+  "source_checks": {
+    "manifest_months_present": true,
+    "monthly_artifact_hashes": true,
+    "monthly_rows": true,
+    "archive_date_lists": true,
+    "within_month_state_chain": true,
+    "month_warmup_chain": true,
+    "archive_terminal_ids": true,
+    "schema": true,
+    "timestamps": true,
+    "event_count_partition": true,
+    "aggressor_notional_partition": true,
+    "signed_notional_identity": true,
+    "tick_notional_partition": true,
+    "buy_frustration_identity": true,
+    "sell_frustration_identity": true,
+    "frustrated_share_identity": true,
+    "frustration_score_identity": true,
+    "tick_imbalance_identity": true,
+    "score_bounds": true,
+    "nonnegative_notionals": true,
+    "manifest_rows": true,
+    "manifest_columns": true,
+    "pre2024_cutoff": true
+  },
+  "source_quality_passes": true,
+  "diagnostics": {
+    "clean_rows": 419086,
+    "threshold_available_rows": 417070,
+    "raw_signal_count": 41484,
+    "nonoverlap_count": 11248
+  },
+  "support": {
+    "total": 11248,
+    "by_year": {
+      "2020": 2576,
+      "2021": 2759,
+      "2022": 2886,
+      "2023": 3027
+    },
+    "2023_h1": 1467,
+    "2023_h2": 1560,
+    "long_share": 0.4711059743954481,
+    "short_share": 0.5288940256045519,
+    "maximum_single_month_share": 0.024804409672830725,
+    "passes": true
+  },
+  "clock": {
+    "path": "results/binance_aggressor_frustration_clock_2026-07-20.csv",
+    "sha256": "f3b816a76decce31136ed23d22f043eb8e80ef1b8697b869241b060062f01747",
+    "rows": 11248,
+    "columns": [
+      "signal_position",
+      "entry_position",
+      "exit_position",
+      "signal_date",
+      "entry_date",
+      "exit_date",
+      "side",
+      "hold_bars"
+    ]
+  },
+  "passed": true,
+  "next_stage": "outcome_blind_novelty_gate"
+}
