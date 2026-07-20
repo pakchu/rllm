@@ -64,7 +64,9 @@ interpretation only; no return was inspected to rationalize the rejection.
     `7292e1c1f8b1979ca95eabd2ada14cc2009f970a6e21d90a70b4c016d8de0302`
 
 Two complete executions were byte-identical. The next alpha search must move
-to an independent observable rather than optimize this failure. The selected
-next direction is venue microstructure resiliency from BitMEX quote/trade and
-liquidation records, with a new source audit and preregistration before any BTC
-outcome is opened.
+to an independent observable rather than optimize this failure. BitMEX
+quote/trade/liquidation resiliency was considered but is not an eligible next
+source: commit `75afc39` already rejected BitMEX market data for profit-seeking
+production use because the repository has no written commercial-data consent.
+The next candidate must first pass source entitlement, live parity, history,
+and repository-novelty checks before any BTC outcome is opened.
