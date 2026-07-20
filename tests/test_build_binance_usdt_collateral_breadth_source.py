@@ -206,6 +206,8 @@ def test_build_is_deterministic_and_retains_no_raw_flow(
     assert (Path(cfg.output_dir) / "build_manifest.json").read_bytes() == manifest_bytes
     assert first["rows"] == first["complete_rows"] == 744
     assert first["minimum_observed_breadth"] == 3
+    assert first["builder"] == str(builder.BUILDER_PATH)
+    assert first["builder_sha256"] == builder.sha256_file(builder.BUILDER_PATH)
     assert first["protocol"]["outcomes_opened"] is False
     assert first["protocol"]["raw_ohlc_retained"] is False
     stored = pd.read_csv(output)
