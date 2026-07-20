@@ -687,7 +687,7 @@ def matched_random_clock(
     primary_clock: pd.DataFrame,
     policy: Policy,
     *,
-    maximum_attempts: int = 200,
+    candidate_pool_width: int = 8,
 ) -> pd.DataFrame:
     """Build a deterministic year/month/side/activity matched null clock."""
     if primary_clock.empty:
@@ -725,59 +725,37 @@ def matched_random_clock(
         .to_dict()
     )
 
-    selected: pd.DataFrame | None = None
-    for attempt in range(maximum_attempts):
-        rng = np.random.default_rng(policy.random_seed + attempt)
-        chosen_rows: list[pd.Series] = []
-        next_entry = GRID_START
-        failed = False
-        for month in sorted(targets["month"].unique()):
-            month_targets = targets.loc[targets["month"] == month]
-            desired_quartiles = month_targets["activity_quartile"].astype(int).tolist()
-            rng.shuffle(desired_quartiles)
-            month_candidates = candidates.loc[candidates["month"] == month]
-            month_chosen: list[pd.Series] = []
-            used_heights: set[int] = set()
-            local_next = next_entry
-            for quartile in desired_quartiles:
-                eligible = month_candidates.loc[
-                    month_candidates["activity_quartile"].eq(quartile)
-                    & month_candidates["entry_time"].ge(local_next)
-                    & ~month_candidates["maturity_height"].isin(used_heights)
-                ].sort_values("entry_time")
-                if eligible.empty:
-                    failed = True
-                    break
-                early = eligible.iloc[: min(64, len(eligible))]
-                chosen = early.iloc[int(rng.integers(0, len(early)))].copy()
-                month_chosen.append(chosen)
-                used_heights.add(int(chosen["maturity_height"]))
-                local_next = pd.Timestamp(chosen["entry_time"]) + pd.Timedelta(
-                    seconds=policy.hold_seconds
-                )
-            if failed:
-                break
-            month_chosen.sort(key=lambda row: pd.Timestamp(row["entry_time"]))
-            sides_by_quartile: dict[int, list[int]] = {}
-            for quartile in set(desired_quartiles):
-                sides = month_targets.loc[
-                    month_targets["activity_quartile"].eq(quartile), "side"
-                ].astype(int).tolist()
-                rng.shuffle(sides)
-                sides_by_quartile[quartile] = sides
-            for row in month_chosen:
-                quartile = int(row["activity_quartile"])
-                row["side"] = sides_by_quartile[quartile].pop()
-                chosen_rows.append(row)
-            if month_chosen:
-                next_entry = pd.Timestamp(month_chosen[-1]["entry_time"]) + pd.Timedelta(
-                    seconds=policy.hold_seconds
-                )
-        if not failed and len(chosen_rows) == len(targets):
-            selected = pd.DataFrame(chosen_rows).sort_values("entry_time")
-            break
-    if selected is None:
-        raise RuntimeError("EMFC matched random clock could not satisfy frozen strata")
+    if candidate_pool_width <= 0:
+        raise ValueError("EMFC random candidate pool width must be positive")
+    rng = np.random.default_rng(policy.random_seed)
+    chosen_rows: list[pd.Series] = []
+    used_heights: set[int] = set()
+    next_entry = GRID_START
+    for _, target in targets.sort_values("entry_time").iterrows():
+        target_entry = pd.Timestamp(target["entry_time"])
+        eligible = candidates.loc[
+            candidates["month"].eq(target["month"])
+            & candidates["activity_quartile"].eq(target["activity_quartile"])
+            & candidates["entry_time"].ge(next_entry)
+            & ~candidates["maturity_height"].isin(used_heights)
+        ].sort_values("entry_time")
+        if eligible.empty:
+            raise RuntimeError(
+                "EMFC matched random clock lacks a non-overlapping stratum candidate"
+            )
+        before_target = eligible.loc[eligible["entry_time"].lt(target_entry)]
+        if len(before_target):
+            pool = before_target.iloc[-min(candidate_pool_width, len(before_target)) :]
+        else:
+            pool = eligible.iloc[:1]
+        chosen = pool.iloc[int(rng.integers(0, len(pool)))].copy()
+        chosen["side"] = int(target["side"])
+        chosen_rows.append(chosen)
+        used_heights.add(int(chosen["maturity_height"]))
+        next_entry = pd.Timestamp(chosen["entry_time"]) + pd.Timedelta(
+            seconds=policy.hold_seconds
+        )
+    selected = pd.DataFrame(chosen_rows).sort_values("entry_time")
 
     selected_counts = (
         selected.assign(
