@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import tempfile
 from typing import Any
 
 
@@ -132,6 +133,32 @@ CONTROL_DEFINITIONS = {
 
 
 @dataclass(frozen=True)
+class SourceFreeze:
+    source_manifest: Path
+    source_manifest_sha256: str
+    source_manifest_hash: str
+    source_output: Path
+    source_output_sha256: str
+    source_output_bytes: int
+    source_builder_sha256: str
+    reference: Path
+    reference_sha256: str
+
+
+PRODUCTION_SOURCE_FREEZE = SourceFreeze(
+    source_manifest=SOURCE_MANIFEST,
+    source_manifest_sha256=EXPECTED_SOURCE_MANIFEST_SHA256,
+    source_manifest_hash=EXPECTED_SOURCE_MANIFEST_HASH,
+    source_output=EXPECTED_SOURCE_OUTPUT,
+    source_output_sha256=EXPECTED_SOURCE_OUTPUT_SHA256,
+    source_output_bytes=EXPECTED_SOURCE_OUTPUT_BYTES,
+    source_builder_sha256=EXPECTED_SOURCE_BUILDER_SHA256,
+    reference=EXPECTED_REFERENCE,
+    reference_sha256=EXPECTED_REFERENCE_SHA256,
+)
+
+
+@dataclass(frozen=True)
 class Config:
     source_manifest: str = str(SOURCE_MANIFEST)
     preregistration_output: str = str(DEFAULT_OUTPUT)
@@ -166,9 +193,11 @@ def _manifest_core(manifest: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in manifest.items() if key != "manifest_hash"}
 
 
-def _validate_config(cfg: Config) -> None:
+def _validate_config(cfg: Config, freeze: SourceFreeze) -> None:
     source_manifest = Path(cfg.source_manifest)
     output = Path(cfg.preregistration_output)
+    if source_manifest.resolve() != freeze.source_manifest.resolve():
+        raise RuntimeError("EMFC source manifest path differs from the frozen source")
     if source_manifest == output or source_manifest.resolve() == output.resolve():
         raise ValueError("EMFC artifact path must not alias the source manifest")
     protected = {
@@ -206,9 +235,12 @@ def _validate_novelty_comparators() -> dict[str, dict[str, str]]:
     return bindings
 
 
-def _validate_source_manifest(manifest_path: str | Path) -> dict[str, Any]:
+def _validate_source_manifest(
+    manifest_path: str | Path,
+    freeze: SourceFreeze,
+) -> dict[str, Any]:
     manifest_file = Path(manifest_path)
-    if manifest_file.resolve() != SOURCE_MANIFEST.resolve():
+    if manifest_file.resolve() != freeze.source_manifest.resolve():
         raise RuntimeError("EMFC source manifest path differs from the frozen source")
     manifest_file_sha256 = sha256_file(manifest_file)
     manifest = _read_json(manifest_file)
@@ -229,7 +261,7 @@ def _validate_source_manifest(manifest_path: str | Path) -> dict[str, Any]:
     if builder.get("path") != str(SOURCE_BUILDER):
         raise RuntimeError("EMFC source builder path drift")
     builder_sha = builder.get("sha256")
-    if builder_sha != EXPECTED_SOURCE_BUILDER_SHA256:
+    if builder_sha != freeze.source_builder_sha256:
         raise RuntimeError("EMFC source builder SHA differs from the frozen source")
     if builder_sha != sha256_file(SOURCE_BUILDER):
         raise RuntimeError("EMFC source builder SHA drift")
@@ -242,18 +274,18 @@ def _validate_source_manifest(manifest_path: str | Path) -> dict[str, Any]:
         raise RuntimeError("EMFC source output path missing")
     if Path(source_path).resolve() == manifest_file.resolve():
         raise RuntimeError("EMFC source output path aliases manifest")
-    if Path(source_path).resolve() != EXPECTED_SOURCE_OUTPUT.resolve():
+    if Path(source_path).resolve() != freeze.source_output.resolve():
         raise RuntimeError("EMFC source output path differs from the frozen source")
     if output.get("columns") != SOURCE_COLUMNS:
         raise RuntimeError("EMFC source schema drift")
     observed_source_sha = sha256_file(source_path)
     if output.get("sha256") != observed_source_sha:
         raise RuntimeError("EMFC source file SHA mismatch")
-    if observed_source_sha != EXPECTED_SOURCE_OUTPUT_SHA256:
+    if observed_source_sha != freeze.source_output_sha256:
         raise RuntimeError("EMFC source frozen SHA drift")
     if output.get("bytes") != Path(source_path).stat().st_size:
         raise RuntimeError("EMFC source file byte-size mismatch")
-    if output.get("bytes") != EXPECTED_SOURCE_OUTPUT_BYTES:
+    if output.get("bytes") != freeze.source_output_bytes:
         raise RuntimeError("EMFC source frozen byte-size drift")
 
     manifest_sha = sha256_file(manifest_file)
@@ -287,19 +319,19 @@ def _validate_source_manifest(manifest_path: str | Path) -> dict[str, Any]:
         raise RuntimeError("EMFC frozen-reference audit missing")
     if reference.get("rows_cross_checked") != FROZEN_ROWS:
         raise RuntimeError("EMFC frozen-reference row-count drift")
-    if reference.get("reference_path") != str(EXPECTED_REFERENCE):
+    if reference.get("reference_path") != str(freeze.reference):
         raise RuntimeError("EMFC frozen-reference path drift")
-    if reference.get("reference_sha256") != EXPECTED_REFERENCE_SHA256:
+    if reference.get("reference_sha256") != freeze.reference_sha256:
         raise RuntimeError("EMFC frozen-reference SHA binding drift")
-    if sha256_file(EXPECTED_REFERENCE) != EXPECTED_REFERENCE_SHA256:
+    if sha256_file(freeze.reference) != freeze.reference_sha256:
         raise RuntimeError("EMFC frozen-reference file SHA drift")
     if reference.get("columns_cross_checked") != REFERENCE_COLUMNS:
         raise RuntimeError("EMFC frozen-reference column drift")
     if reference.get("all_basic_fields_match_reference") is not True:
         raise RuntimeError("EMFC frozen-reference field mismatch")
-    if manifest.get("manifest_hash") != EXPECTED_SOURCE_MANIFEST_HASH:
+    if manifest.get("manifest_hash") != freeze.source_manifest_hash:
         raise RuntimeError("EMFC source frozen manifest-hash drift")
-    if manifest_file_sha256 != EXPECTED_SOURCE_MANIFEST_SHA256:
+    if manifest_file_sha256 != freeze.source_manifest_sha256:
         raise RuntimeError("EMFC source frozen manifest-file SHA drift")
 
     return {
@@ -506,9 +538,9 @@ def artifact_core(
     }
 
 
-def write_preregistration(cfg: Config) -> dict[str, Any]:
-    _validate_config(cfg)
-    source_binding = _validate_source_manifest(cfg.source_manifest)
+def _write_preregistration(cfg: Config, freeze: SourceFreeze) -> dict[str, Any]:
+    _validate_config(cfg, freeze)
+    source_binding = _validate_source_manifest(cfg.source_manifest, freeze)
     mechanism_decision = _validate_mechanism_decision()
     novelty_comparators = _validate_novelty_comparators()
     output = Path(cfg.preregistration_output)
@@ -522,25 +554,51 @@ def write_preregistration(cfg: Config) -> dict[str, Any]:
     )
     artifact = {**core, "manifest_hash": canonical_hash(core)}
     output.parent.mkdir(parents=True, exist_ok=True)
-    temporary = output.with_name(f".{output.name}.tmp")
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=output.parent,
+        prefix=f".{output.name}.",
+        suffix=".tmp",
+        text=True,
+    )
+    temporary = Path(temporary_name)
     try:
-        temporary.write_text(
-            json.dumps(artifact, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(
+                json.dumps(artifact, indent=2, sort_keys=True, ensure_ascii=False)
+                + "\n"
+            )
+            handle.flush()
+            os.fsync(handle.fileno())
         os.replace(temporary, output)
     finally:
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
         temporary.unlink(missing_ok=True)
     return artifact
 
 
-def load_preregistration(path: str | Path = DEFAULT_OUTPUT) -> dict[str, Any]:
+def write_preregistration(cfg: Config) -> dict[str, Any]:
+    return _write_preregistration(cfg, PRODUCTION_SOURCE_FREEZE)
+
+
+def _load_preregistration(
+    path: str | Path,
+    freeze: SourceFreeze,
+) -> dict[str, Any]:
     artifact = _read_json(path)
     core = {key: value for key, value in artifact.items() if key != "manifest_hash"}
     if canonical_hash(core) != artifact.get("manifest_hash"):
         raise RuntimeError("EMFC preregistration manifest hash mismatch")
     if artifact.get("policy") != policy():
         raise RuntimeError("EMFC preregistration policy drift")
+    if artifact.get("policy_hash") != canonical_hash(policy()):
+        raise RuntimeError("EMFC preregistration policy hash drift")
+    if artifact.get("protocol_version") != PROTOCOL_VERSION:
+        raise RuntimeError("EMFC preregistration protocol version drift")
+    if artifact.get("policy_id") != POLICY_ID:
+        raise RuntimeError("EMFC preregistration policy id drift")
     if artifact.get("outcomes_opened") is not False:
         raise RuntimeError("EMFC preregistration opened outcomes")
     if artifact.get("outcome_boundary") != PREREGISTRATION_OUTCOME_BOUNDARY:
@@ -563,10 +621,19 @@ def load_preregistration(path: str | Path = DEFAULT_OUTPUT) -> dict[str, Any]:
         cfg = Config(**raw_config)
     except TypeError as exc:
         raise RuntimeError("EMFC preregistration config drift") from exc
-    _validate_config(cfg)
-    if artifact.get("source_manifest") != _validate_source_manifest(cfg.source_manifest):
+    if Path(cfg.preregistration_output).resolve() != Path(path).resolve():
+        raise RuntimeError("EMFC preregistration output-path binding drift")
+    _validate_config(cfg, freeze)
+    if artifact.get("source_manifest") != _validate_source_manifest(
+        cfg.source_manifest,
+        freeze,
+    ):
         raise RuntimeError("EMFC preregistration source-manifest binding drift")
     return artifact
+
+
+def load_preregistration(path: str | Path = DEFAULT_OUTPUT) -> dict[str, Any]:
+    return _load_preregistration(path, PRODUCTION_SOURCE_FREEZE)
 
 
 def parse_args() -> Config:

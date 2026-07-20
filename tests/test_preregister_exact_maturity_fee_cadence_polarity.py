@@ -23,7 +23,10 @@ def _write_source(path: Path, payload: bytes = b"not a gzip csv; prereg must not
     return hashlib.sha256(payload).hexdigest()
 
 
-def _source_manifest(tmp_path: Path, **overrides: Any) -> tuple[Path, dict[str, Any]]:
+def _source_manifest(
+    tmp_path: Path,
+    **overrides: Any,
+) -> tuple[Path, dict[str, Any], prereg.SourceFreeze]:
     source_path = tmp_path / "source.csv.gz"
     source_sha = _write_source(source_path)
     reference_path = tmp_path / "reference.csv.gz"
@@ -79,16 +82,18 @@ def _source_manifest(tmp_path: Path, **overrides: Any) -> tuple[Path, dict[str, 
     manifest = {**core, "manifest_hash": _canonical_hash(core)}
     path = tmp_path / "source_manifest.json"
     path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    prereg.SOURCE_MANIFEST = path
-    prereg.EXPECTED_SOURCE_MANIFEST_SHA256 = prereg.sha256_file(path)
-    prereg.EXPECTED_SOURCE_MANIFEST_HASH = manifest["manifest_hash"]
-    prereg.EXPECTED_SOURCE_OUTPUT = source_path
-    prereg.EXPECTED_SOURCE_OUTPUT_SHA256 = source_sha
-    prereg.EXPECTED_SOURCE_OUTPUT_BYTES = source_path.stat().st_size
-    prereg.EXPECTED_SOURCE_BUILDER_SHA256 = prereg.sha256_file(prereg.SOURCE_BUILDER)
-    prereg.EXPECTED_REFERENCE = reference_path
-    prereg.EXPECTED_REFERENCE_SHA256 = reference_sha
-    return path, manifest
+    freeze = prereg.SourceFreeze(
+        source_manifest=path,
+        source_manifest_sha256=prereg.sha256_file(path),
+        source_manifest_hash=manifest["manifest_hash"],
+        source_output=source_path,
+        source_output_sha256=source_sha,
+        source_output_bytes=source_path.stat().st_size,
+        source_builder_sha256=prereg.sha256_file(prereg.SOURCE_BUILDER),
+        reference=reference_path,
+        reference_sha256=reference_sha,
+    )
+    return path, manifest, freeze
 
 
 def _cfg(tmp_path: Path, manifest: Path | None = None, output: Path | None = None) -> prereg.Config:
@@ -101,11 +106,11 @@ def _cfg(tmp_path: Path, manifest: Path | None = None, output: Path | None = Non
 def test_writes_exact_source_only_block_emfc_policy_controls_gates_and_hash(
     tmp_path: Path,
 ) -> None:
-    manifest_path, manifest = _source_manifest(tmp_path)
+    manifest_path, manifest, freeze = _source_manifest(tmp_path)
     cfg = _cfg(tmp_path, manifest_path)
 
     with patch("gzip.open", side_effect=AssertionError("CSV must not be decompressed")):
-        artifact = prereg.write_preregistration(cfg)
+        artifact = prereg._write_preregistration(cfg, freeze)
 
     assert artifact == json.loads(Path(cfg.preregistration_output).read_text(encoding="utf-8"))
     core = {k: v for k, v in artifact.items() if k != "manifest_hash"}
@@ -205,7 +210,7 @@ def test_writes_exact_source_only_block_emfc_policy_controls_gates_and_hash(
         "selection_second": "2023 only after exact train pass",
         "sealed": "2024+",
     }
-    assert prereg.load_preregistration(cfg.preregistration_output) == artifact
+    assert prereg._load_preregistration(cfg.preregistration_output, freeze) == artifact
 
 
 @pytest.mark.parametrize(
@@ -224,52 +229,94 @@ def test_writes_exact_source_only_block_emfc_policy_controls_gates_and_hash(
 def test_rejects_source_manifest_schema_builder_decision_boundary_drift(
     tmp_path: Path, override: dict[str, Any], message: str
 ) -> None:
-    manifest_path, _ = _source_manifest(tmp_path, **override)
+    manifest_path, _, freeze = _source_manifest(tmp_path, **override)
     with pytest.raises(RuntimeError, match=message):
-        prereg.write_preregistration(_cfg(tmp_path, manifest_path))
+        prereg._write_preregistration(_cfg(tmp_path, manifest_path), freeze)
 
 
 def test_rejects_manifest_hash_and_source_file_hash_drift(tmp_path: Path) -> None:
-    manifest_path, manifest = _source_manifest(tmp_path)
+    manifest_path, manifest, freeze = _source_manifest(tmp_path)
     manifest["output"]["bytes"] += 1
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(RuntimeError, match="manifest hash"):
+        prereg._write_preregistration(_cfg(tmp_path, manifest_path), freeze)
+
+    manifest_path, _, freeze = _source_manifest(
+        tmp_path / "sha", source_sha="0" * 64
+    )
+    with pytest.raises(RuntimeError, match="source file SHA"):
+        prereg._write_preregistration(
+            _cfg(tmp_path / "sha", manifest_path), freeze
+        )
+
+
+def test_public_writer_rejects_nonproduction_source_without_patching_freeze(
+    tmp_path: Path,
+) -> None:
+    manifest_path, _, _ = _source_manifest(tmp_path)
+    with pytest.raises(RuntimeError, match="path differs from the frozen source"):
         prereg.write_preregistration(_cfg(tmp_path, manifest_path))
 
-    manifest_path, _ = _source_manifest(tmp_path / "sha", source_sha="0" * 64)
-    with pytest.raises(RuntimeError, match="source file SHA"):
-        prereg.write_preregistration(_cfg(tmp_path / "sha", manifest_path))
+
+def test_atomic_writer_does_not_follow_predictable_legacy_temp_symlink(
+    tmp_path: Path,
+) -> None:
+    manifest_path, _, freeze = _source_manifest(tmp_path)
+    output = tmp_path / "prereg.json"
+    protected = tmp_path / "protected.txt"
+    protected.write_text("do-not-touch\n", encoding="utf-8")
+    legacy_temp = output.with_name(f".{output.name}.tmp")
+    legacy_temp.symlink_to(protected)
+
+    prereg._write_preregistration(_cfg(tmp_path, manifest_path, output), freeze)
+
+    assert protected.read_text(encoding="utf-8") == "do-not-touch\n"
+    assert legacy_temp.is_symlink()
+    assert json.loads(output.read_text(encoding="utf-8"))["policy_id"] == "EMFC-864"
 
 
 def test_rejects_artifact_path_alias_and_path_config_errors(tmp_path: Path) -> None:
-    manifest_path, _ = _source_manifest(tmp_path)
+    manifest_path, _, freeze = _source_manifest(tmp_path)
     with pytest.raises(ValueError, match="alias"):
-        prereg.write_preregistration(_cfg(tmp_path, manifest_path, manifest_path))
+        prereg._write_preregistration(
+            _cfg(tmp_path, manifest_path, manifest_path), freeze
+        )
     with pytest.raises(ValueError, match="JSON"):
-        prereg.write_preregistration(_cfg(tmp_path, manifest_path, tmp_path / "artifact.txt"))
+        prereg._write_preregistration(
+            _cfg(tmp_path, manifest_path, tmp_path / "artifact.txt"), freeze
+        )
     with pytest.raises(ValueError, match="source file"):
-        prereg.write_preregistration(_cfg(tmp_path, manifest_path, prereg.PREREGISTRATION_SOURCE))
+        prereg._write_preregistration(
+            _cfg(tmp_path, manifest_path, prereg.PREREGISTRATION_SOURCE), freeze
+        )
     comparator = Path(next(iter(prereg.NOVELTY_COMPARATORS.values()))["path"])
     with pytest.raises(ValueError, match="source file"):
-        prereg.write_preregistration(_cfg(tmp_path, manifest_path, comparator))
-    source_path = Path(_source_manifest(tmp_path / "source-alias")[1]["output"]["path"])
-    source_manifest = tmp_path / "source-alias" / "source_manifest.json"
+        prereg._write_preregistration(
+            _cfg(tmp_path, manifest_path, comparator), freeze
+        )
+    source_manifest, source_payload, source_freeze = _source_manifest(
+        tmp_path / "source-alias"
+    )
+    source_path = Path(source_payload["output"]["path"])
     with pytest.raises(ValueError, match="JSON|source data"):
-        prereg.write_preregistration(_cfg(tmp_path / "source-alias", source_manifest, source_path))
+        prereg._write_preregistration(
+            _cfg(tmp_path / "source-alias", source_manifest, source_path),
+            source_freeze,
+        )
 
 
 def test_rejects_mechanism_and_novelty_comparator_drift(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    manifest_path, _ = _source_manifest(tmp_path)
+    manifest_path, _, freeze = _source_manifest(tmp_path)
     cfg = _cfg(tmp_path, manifest_path)
 
     monkeypatch.setattr(prereg, "MECHANISM_DECISION_SHA256", "0" * 64)
     with pytest.raises(RuntimeError, match="mechanism decision drift"):
-        prereg.write_preregistration(cfg)
+        prereg._write_preregistration(cfg, freeze)
     monkeypatch.undo()
 
-    manifest_path, _ = _source_manifest(tmp_path / "comparator")
+    manifest_path, _, freeze = _source_manifest(tmp_path / "comparator")
     comparator_definitions = {
         key: dict(value) for key, value in prereg.NOVELTY_COMPARATORS.items()
     }
@@ -277,13 +324,17 @@ def test_rejects_mechanism_and_novelty_comparator_drift(
     comparator_definitions[first]["sha256"] = "0" * 64
     monkeypatch.setattr(prereg, "NOVELTY_COMPARATORS", comparator_definitions)
     with pytest.raises(RuntimeError, match="novelty comparator drift"):
-        prereg.write_preregistration(_cfg(tmp_path / "comparator", manifest_path))
+        prereg._write_preregistration(
+            _cfg(tmp_path / "comparator", manifest_path), freeze
+        )
 
 
-def test_load_rejects_preregistration_policy_and_outcome_boundary_drift(tmp_path: Path) -> None:
-    manifest_path, _ = _source_manifest(tmp_path)
+def test_load_rejects_preregistration_policy_and_outcome_boundary_drift(
+    tmp_path: Path,
+) -> None:
+    manifest_path, _, freeze = _source_manifest(tmp_path)
     cfg = _cfg(tmp_path, manifest_path)
-    artifact = prereg.write_preregistration(cfg)
+    artifact = prereg._write_preregistration(cfg, freeze)
 
     drift = dict(artifact)
     drift["policy"] = {**drift["policy"], "policy_id": "EMFC-2"}
@@ -291,7 +342,15 @@ def test_load_rejects_preregistration_policy_and_outcome_boundary_drift(tmp_path
     drift["manifest_hash"] = _canonical_hash(core)
     Path(cfg.preregistration_output).write_text(json.dumps(drift), encoding="utf-8")
     with pytest.raises(RuntimeError, match="policy drift"):
-        prereg.load_preregistration(cfg.preregistration_output)
+        prereg._load_preregistration(cfg.preregistration_output, freeze)
+
+    drift = dict(artifact)
+    drift["policy_hash"] = "0" * 64
+    core = {k: v for k, v in drift.items() if k != "manifest_hash"}
+    drift["manifest_hash"] = _canonical_hash(core)
+    Path(cfg.preregistration_output).write_text(json.dumps(drift), encoding="utf-8")
+    with pytest.raises(RuntimeError, match="policy hash drift"):
+        prereg._load_preregistration(cfg.preregistration_output, freeze)
 
     drift = dict(artifact)
     drift["outcome_boundary"] = {**drift["outcome_boundary"], "source_csv_values_read": 1}
@@ -299,7 +358,7 @@ def test_load_rejects_preregistration_policy_and_outcome_boundary_drift(tmp_path
     drift["manifest_hash"] = _canonical_hash(core)
     Path(cfg.preregistration_output).write_text(json.dumps(drift), encoding="utf-8")
     with pytest.raises(RuntimeError, match="source-only boundary"):
-        prereg.load_preregistration(cfg.preregistration_output)
+        prereg._load_preregistration(cfg.preregistration_output, freeze)
 
     tampered = dict(artifact)
     tampered["outcomes_opened"] = True
@@ -307,7 +366,7 @@ def test_load_rejects_preregistration_policy_and_outcome_boundary_drift(tmp_path
     tampered["manifest_hash"] = _canonical_hash(core)
     Path(cfg.preregistration_output).write_text(json.dumps(tampered), encoding="utf-8")
     with pytest.raises(RuntimeError, match="opened outcomes"):
-        prereg.load_preregistration(cfg.preregistration_output)
+        prereg._load_preregistration(cfg.preregistration_output, freeze)
 
     tampered = dict(artifact)
     tampered["source_manifest"] = {**tampered["source_manifest"], "manifest_hash": "0" * 64}
@@ -315,4 +374,4 @@ def test_load_rejects_preregistration_policy_and_outcome_boundary_drift(tmp_path
     tampered["manifest_hash"] = _canonical_hash(core)
     Path(cfg.preregistration_output).write_text(json.dumps(tampered), encoding="utf-8")
     with pytest.raises(RuntimeError, match="source-manifest binding"):
-        prereg.load_preregistration(cfg.preregistration_output)
+        prereg._load_preregistration(cfg.preregistration_output, freeze)
