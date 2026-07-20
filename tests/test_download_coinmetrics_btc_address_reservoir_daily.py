@@ -41,7 +41,16 @@ def _row(
 def _payload(
     rows: list[dict[str, object]], next_url: str | None = None
 ) -> dict[str, object]:
-    return {"data": rows, "next_page_url": next_url}
+    payload: dict[str, object] = {"data": rows}
+    if next_url is not None:
+        token = urllib.parse.parse_qs(
+            urllib.parse.urlparse(next_url).query
+        ).get("next_page_token", ["test-token"])[0]
+        payload.update(
+            next_page_token=token,
+            next_page_url=next_url,
+        )
+    return payload
 
 
 def _cfg(tmp_path: Path, **changes: object) -> source.Config:
@@ -338,13 +347,22 @@ def test_payload_and_configuration_contracts_fail_closed(tmp_path: Path) -> None
     with pytest.raises(ValueError, match="must be a list"):
         source.download_rows(
             cfg,
-            fetch=lambda _: {"data": {}, "next_page_url": None},
+            fetch=lambda _: {"data": {}},
             sleep=lambda _: None,
         )
     with pytest.raises(ValueError, match="next_page_url"):
         source.download_rows(
             cfg,
             fetch=lambda _: {"data": [_row("2023-12-28")], "next_page_url": ""},
+            sleep=lambda _: None,
+        )
+    with pytest.raises(ValueError, match="response schema drift"):
+        source.download_rows(
+            cfg,
+            fetch=lambda _: {
+                "data": [_row("2023-12-28")],
+                "future_return_series": [1.0],
+            },
             sleep=lambda _: None,
         )
     with pytest.raises(RuntimeError, match="exceeds frozen"):
