@@ -324,6 +324,7 @@ def _normalise_row(
     *,
     allowed_start: datetime,
     allowed_end: datetime,
+    source_start: datetime,
     availability_delay_minutes: int,
 ) -> OutputRow:
     keys = frozenset(raw)
@@ -355,9 +356,19 @@ def _normalise_row(
     interest_1h = _parse_decimal(raw["interest_1h"], "interest_1h", positive=False)
     interest_8h = _parse_decimal(raw["interest_8h"], "interest_8h", positive=False)
     index_price = _parse_decimal(raw["index_price"], "index_price", positive=True)
-    prev_index_price = _parse_decimal(
-        raw["prev_index_price"], "prev_index_price", positive=True
-    )
+    raw_previous = raw["prev_index_price"]
+    if raw_previous is None:
+        if observed != source_start:
+            raise ValueError(
+                "prev_index_price may be null only at the exact source start"
+            )
+        prev_index_price = ""
+    else:
+        prev_index_price = _format_decimal(
+            _parse_decimal(
+                raw_previous, "prev_index_price", positive=True
+            )
+        )
     available = observed + timedelta(minutes=availability_delay_minutes)
     return {
         "timestamp": _format_utc(observed),
@@ -365,7 +376,7 @@ def _normalise_row(
         "interest_1h": _format_decimal(interest_1h),
         "interest_8h": _format_decimal(interest_8h),
         "index_price": _format_decimal(index_price),
-        "prev_index_price": _format_decimal(prev_index_price),
+        "prev_index_price": prev_index_price,
     }
 
 
@@ -435,6 +446,7 @@ def download_rows(
                 raw,
                 allowed_start=window_start - HOUR,
                 allowed_end=window_end,
+                source_start=start,
                 availability_delay_minutes=cfg.synthetic_availability_delay_minutes,
             )
             observed = _parse_utc(row["timestamp"], "timestamp")
@@ -522,6 +534,9 @@ def download_rows(
         "exact_boundary_duplicates": exact_boundary_duplicates,
         "conflicting_duplicates": 0,
         "contiguous_index_price_links_checked": contiguous_price_links,
+        "lower_boundary_null_prev_index_price": sum(
+            row["prev_index_price"] == "" for row in rows
+        ),
         "memory_identity": memory,
         "unexpected_row_fields": 0,
     }
@@ -597,7 +612,11 @@ def run(
             "interest_1h": "Deribit one-hour perpetual interest rate",
             "interest_8h": "Deribit eight-hour perpetual interest rate",
             "index_price": "Deribit BTC index price at the hourly row",
-            "prev_index_price": "Deribit BTC index price at the prior hourly point",
+            "prev_index_price": (
+                "Deribit BTC index price at the prior hourly point; null only "
+                "at the exact source lower boundary where prior history is "
+                "unavailable"
+            ),
         },
         "causal_availability": {
             "historical_synthetic_delay_minutes": (
