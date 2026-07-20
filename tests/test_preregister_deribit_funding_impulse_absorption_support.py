@@ -55,6 +55,7 @@ def _small_source(
         previous[offset] = prior_price
         index_price[offset] = prior_price * np.exp(value)
         prior_price = index_price[offset]
+    previous[0] = np.nan
     interest_8h = np.array(
         [
             full_interest[max(0, offset - 7) : offset + 1].sum()
@@ -116,6 +117,7 @@ def _valid_manifest() -> dict[str, Any]:
             "maximum_observation_gap_hours": 1,
             "exact_boundary_duplicates": 0,
             "conflicting_duplicates": 0,
+            "lower_boundary_null_prev_index_price": 1,
             "contiguous_index_price_links_checked": expected_hours - 1,
             "memory_identity": {
                 "contiguous_eight_hour_windows": expected_hours - 7,
@@ -162,6 +164,9 @@ def test_protocol_and_default_configuration_are_frozen(tmp_path: Path) -> None:
         "pending_outcome_blind_download"
     )
     assert payload["source"]["rows_at_or_after_2024_loaded"] is False
+    assert payload["source"]["lower_boundary_prev_index_price"].startswith(
+        "exactly one preserved null"
+    )
     assert payload["feature"]["threshold_grid"] is False
     assert payload["source_gate"]["expected_hourly_timestamps"] == 40_958
     assert payload["clock"]["hold_bars"] == 72
@@ -184,6 +189,10 @@ def test_preregistration_is_deterministic_and_tamper_evident(
     assert first["outcomes_opened"] is False
     assert first["complete_source_incidence_opened"] is False
     assert first["candidate_incidence_opened"] is False
+    assert first["source_lower_boundary_diagnostic_opened"] is True
+    assert first["supersedes_artifact_hash"] == (
+        dfia.ORIGINAL_PREREGISTRATION_ARTIFACT_HASH
+    )
     assert dfia.load_preregistration(cfg)["artifact_hash"] == first[
         "artifact_hash"
     ]
@@ -192,6 +201,18 @@ def test_preregistration_is_deterministic_and_tamper_evident(
     tampered["candidate_incidence_opened"] = True
     Path(cfg.preregistration_output).write_text(json.dumps(tampered))
     with pytest.raises(RuntimeError, match="artifact hash mismatch"):
+        dfia.load_preregistration(cfg)
+
+    rehashed = json.loads(first_bytes)
+    rehashed["protocol_version"] = "obsolete"
+    core = {
+        key: value
+        for key, value in rehashed.items()
+        if key != "artifact_hash"
+    }
+    rehashed["artifact_hash"] = dfia.canonical_hash(core)
+    Path(cfg.preregistration_output).write_text(json.dumps(rehashed))
+    with pytest.raises(RuntimeError, match="version mismatch"):
         dfia.load_preregistration(cfg)
 
 
@@ -236,6 +257,12 @@ def test_manifest_rejects_forbidden_source_metadata_before_file_read() -> None:
         ),
         (
             lambda manifest: manifest["source_audit"].update(
+                lower_boundary_null_prev_index_price=0
+            ),
+            "boundary/schema audit",
+        ),
+        (
+            lambda manifest: manifest["source_audit"].update(
                 response_chain_sha256="c" * 64
             ),
             "response-chain audit",
@@ -269,6 +296,11 @@ def test_source_frame_validates_clock_chain_memory_and_availability() -> None:
     changed = source.copy()
     changed.loc[10, "prev_index_price"] *= 0.99
     with pytest.raises(RuntimeError, match="index-price chain"):
+        dfia.validate_source_frame(changed, cfg)
+
+    changed = source.copy()
+    changed.loc[1, "prev_index_price"] = np.nan
+    with pytest.raises(RuntimeError, match="one lower-bound null"):
         dfia.validate_source_frame(changed, cfg)
 
     changed = source.copy()

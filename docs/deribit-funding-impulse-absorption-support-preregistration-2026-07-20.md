@@ -15,6 +15,24 @@ one-hour/eight-hour memory relationship. Failure of any gate below rejects
 this singleton without changing its reference, thresholds, side map, latency,
 hold, scheduler, or support requirements.
 
+### Successor lower-bound disclosure
+
+After the original preregistration artifact was committed, the first complete
+source attempt stopped on its first result before writing a source file. The
+exact lower-bound row at `2019-04-30T10:00:00Z` has
+`prev_index_price=null`; two subsequent bounded 28-day windows had no
+nonnumeric source field. This source-only diagnostic opened neither the
+complete source nor candidate incidence or market outcomes. The operational
+correction is recorded in
+`deribit-funding-source-lower-bound-operational-correction-2026-07-20.md`.
+
+This successor keeps every signal and gate below unchanged. It permits and
+preserves one null `prev_index_price` only on the exact first source row. That
+row cannot produce an index return or enter an eight-hour feature/reference
+chain. Any later null remains a hard failure. The original artifact hash
+`911afce424443a7cd7e23b852357ce4bc1f6d0e837377b582515c8e88f6e7f41`
+is retained as the predecessor.
+
 ## Frozen source and causal clock
 
 The only source is Deribit's public BTC perpetual funding-history endpoint:
@@ -26,6 +44,10 @@ The only source is Deribit's public BTC perpetual funding-history endpoint:
   `[2019-04-30T10:00:00Z, 2024-01-01T00:00:00Z)`; and
 - deterministic request windows no wider than 28 days, with exact boundary
   deduplication and no persisted raw response.
+
+The exact lower-bound row's unavailable prior index is serialized as an empty
+field, never imputed, and counted once in the manifest. Every subsequent prior
+index must be positive and preserve the contiguous price chain.
 
 Official references are the [funding-history endpoint](https://docs.deribit.com/api-reference/market-data/public-get_funding_rate_history),
 the [inverse perpetual specification](https://support.deribit.com/hc/en-us/articles/31424954847133-Inverse-Perpetual),
@@ -101,8 +123,8 @@ All checks must pass:
   run longer than 23 missing hourly timestamps);
 - exact source schema, causal availability, index-price chain, and memory
   invariant; and
-- no duplicate, conflicting boundary, market, return, PnL, or 2024+ source
-  row.
+- exactly one null prior index on the lower-bound row, and no duplicate,
+  conflicting boundary, market, return, PnL, or 2024+ source row.
 
 ## Frozen candidate-support gate
 
