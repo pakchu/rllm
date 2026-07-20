@@ -194,6 +194,16 @@ def test_writes_exact_source_only_block_emfc_policy_controls_gates_and_hash(
         ]
         == 0.35
     )
+    assert policy["control_construction"]["daily_aggregate_shadow"] == {
+        "source_day": "UTC day of timestamp[h] for valid exact-maturity height h",
+        "fee_pressure": "log1p(sum(total_fees[h-100])) over the completed source day",
+        "cadence_compression": "median of block-level cadence_compression over the completed source day",
+        "normalization": "strict-prior empirical midrank over exactly 180 valid source days",
+        "states": "same joint 0.90/0.10 tails and side orientation as primary",
+        "availability": "D+2 00:00 UTC plus one complete 5m latency bar",
+        "onset_and_nonoverlap": "same valid-state onset and 864-bar chronological non-overlap as primary",
+    }
+    assert policy["control_construction"]["random_clock"]["seed"] == 20260720
     assert policy["performance_gates"]["cagr_to_strict_mdd_minimum_each"] == 3.0
     assert policy["performance_gates"]["strict_max_drawdown_maximum_each"] == 0.15
     assert set(policy["performance_gates"]["component_control_full_gate_pass_rejects_mechanism"]) >= {

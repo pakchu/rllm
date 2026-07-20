@@ -466,6 +466,26 @@ def policy() -> dict[str, Any]:
             "exposure_grid": "5m UTC over 2021-01-01 inclusive through 2024-01-01 exclusive; flat=0",
             "failure_action": "reject before loading market or funding outcomes; no threshold, lag, side, onset, or hold repair",
         },
+        "control_construction": {
+            "block_controls": "reuse the primary 26208-valid-height midrank, +/-0.90 tails, six-confirmation availability, onset, and 864-bar non-overlap unless the named transform changes a field",
+            "daily_aggregate_shadow": {
+                "source_day": "UTC day of timestamp[h] for valid exact-maturity height h",
+                "fee_pressure": "log1p(sum(total_fees[h-100])) over the completed source day",
+                "cadence_compression": "median of block-level cadence_compression over the completed source day",
+                "normalization": "strict-prior empirical midrank over exactly 180 valid source days",
+                "states": "same joint 0.90/0.10 tails and side orientation as primary",
+                "availability": "D+2 00:00 UTC plus one complete 5m latency bar",
+                "onset_and_nonoverlap": "same valid-state onset and 864-bar chronological non-overlap as primary",
+            },
+            "stale_7d": "for each h, use ranks from the latest valid maturity height with timestamp<=timestamp[h]-604800; retain h availability",
+            "random_clock": {
+                "candidate_lattice": "valid normalized maturity heights not used by the primary clock",
+                "strata": "entry calendar year, entry calendar month, primary side, and cadence-rank quartile",
+                "matching": "preserve exact primary count in every stratum and enforce 864-bar non-overlap globally",
+                "seed": 20260720,
+            },
+            "exposure_correlation": "Pearson correlation of signed 5m position exposure; zero when either vector has zero variance",
+        },
         "performance_gates": {
             "required_windows": ["train_2021_2022", "selection_2023"],
             "absolute_return_positive_each": True,
