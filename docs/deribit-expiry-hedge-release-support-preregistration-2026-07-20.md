@@ -12,6 +12,20 @@ when this contract was written. The thresholds below are a singleton. Failure
 rejects DEHR-72 without changing its lookback, quantiles, side map, latency,
 hold, or support requirements.
 
+### Successor clock-only disclosure
+
+After the original preregistration was committed, loader v2 failed before
+aggregation on a delayed 2020-08-27 delivery event. A source-only diagnostic
+opened page count, option-row count, yearly row counts, and delivery timestamp
+offsets, but no DEHR candidate incidence or market outcome. The exact audit is
+recorded in
+`deribit-expiry-event-clock-operational-correction-2026-07-20.md`.
+
+This successor preserves every signal, support, performance, and control rule
+below. It changes only the causal event clock: scheduled expiry and actual
+reported delivery are separate, and historical availability follows the later
+actual event. The original artifact hash remains bound as the predecessor.
+
 ## Frozen source and causal clock
 
 The source is Deribit's public BTC `delivery` history:
@@ -28,12 +42,14 @@ futures, reject duplicate instruments, and bind each response page and the
 deterministic aggregate by SHA-256. It may not load a BTC market or outcome
 table.
 
-The API event timestamp is not treated as a publication timestamp. Historical
-availability is synthetically delayed to `expiry + 65 minutes`, matching two
-identical live canonical delivery sets five minutes apart after an initial
-60-minute embargo. Entry is one further completed five-minute bar later
-(`expiry + 70 minutes`). Late live data delays or cancels the event and is
-never backdated. The later frozen hold is 72 five-minute bars (six hours).
+The API event timestamp is not treated as a publication timestamp. The
+scheduled `expiry_time` comes from the instrument name; `delivery_event_time`
+is the latest common API event timestamp for that expiry. Historical
+availability is synthetically delayed to `delivery_event_time + 65 minutes`,
+matching two identical live canonical delivery sets five minutes apart after
+an initial 60-minute embargo. Entry is one further completed five-minute bar
+later. Late live data delays or cancels the event and is never backdated. The
+later frozen hold is 72 five-minute bars (six hours).
 
 ## Exact singleton source feature
 
@@ -127,5 +143,7 @@ least 5 bp. Controls may reject the mechanism but cannot replace it.
 
 The repository has already seen broad BTC history. This protocol can establish
 only a candidate-level frozen sequence. It cannot turn 2022 or later years into
-a globally pristine holdout. At preregistration, complete DEHR incidence and
-all matching post-entry outcomes remained unopened.
+a globally pristine holdout. At the original preregistration, complete source
+incidence and all outcomes were unopened. At this successor, source clock/count
+diagnostics are disclosed as opened; DEHR candidate incidence and all matching
+post-entry outcomes remain unopened.
