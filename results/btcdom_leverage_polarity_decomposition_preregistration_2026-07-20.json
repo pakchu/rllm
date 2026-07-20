@@ -1,0 +1,135 @@
+{
+  "as_of_date": "2026-07-20",
+  "candidate": "DLPD-12",
+  "conditional_outcome_gate": {
+    "component_controls_cannot_repair_primary": true,
+    "each_opened_stage": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_at_least": 3.0,
+      "contained_subperiods_positive": true,
+      "direction_flip_inferior": true,
+      "strict_mdd_at_most": 0.15,
+      "ten_bp_stress_absolute_return_positive": true,
+      "weekly_cluster_signflip_p_at_most": 0.1
+    },
+    "minimum_train_and_test_trades_each": 120,
+    "sequence": [
+      "train_2022",
+      "test_2023",
+      "eval_2024_2025",
+      "final_2026H1"
+    ],
+    "source_support_is_not_profitability_evidence": true
+  },
+  "manifest_hash": "7af6c5ef7445ef65886362c7878338ffff98b9f23658f1884aab85dafeeb3e8b",
+  "outcome_sources_opened": false,
+  "outcomes_opened": false,
+  "policy": {
+    "clock": "false-to-true onset; decision at hour close; entry +5m; fixed 12h hold",
+    "config": {
+      "absolute_z_threshold": 1.0,
+      "entry_delay_minutes": 5,
+      "hold_hours": 12,
+      "lookback_hours": 720,
+      "maximum_bidirectional_near_share": 0.35,
+      "maximum_exact_entry_jaccard": 0.1,
+      "maximum_month_share": 0.2,
+      "minimum_events_per_quarter": 20,
+      "minimum_events_per_year": 120,
+      "minimum_history_hours": 672,
+      "minimum_side_share": 0.25,
+      "novelty_hours": 1,
+      "novelty_year": 2023,
+      "support_years": [
+        2022,
+        2023
+      ]
+    },
+    "normalization": "strictly prior 720-hour rolling median and IQR/1.349; minimum 672 valid",
+    "primary": "opposite extreme robust premium z-scores; side=BTC premium sign"
+  },
+  "post_2023_source_rows_opened": false,
+  "preregistration_document": "docs/btcdom-leverage-polarity-decomposition-preregistration-2026-07-20.md",
+  "preregistration_document_sha256": "f03f7b90587486ccdbc1d7d4e91bb96820d8e0ce38d0497f4a3170b22d2208a8",
+  "preregistration_source": "training/preregister_btcdom_leverage_polarity_decomposition.py",
+  "preregistration_source_sha256": "0b3797487daf156b66f1799a20b474e38a7bd7387c831462af6d363113b663ab",
+  "protocol_version": "btcdom_leverage_polarity_decomposition_v1",
+  "real_event_incidence_opened": false,
+  "source_manifest": "data/binance_btcdom_premium_decomposition_2021_2023/build_manifest.json",
+  "source_manifest_sha256": "885014743c299250c85cec42561db0dc99b09a60ecb1adfe893d8cac95651c05",
+  "source_only_controls": [
+    "btc_only_tail",
+    "dom_only_mirror",
+    "same_sign",
+    "stale_btc_1h",
+    "stale_dom_1h"
+  ],
+  "source_panel": "data/binance_btcdom_premium_decomposition_2021_2023/BTCUSDT_BTCDOMUSDT_premium_close_1h_2021-07-02_2023-12-31.csv.gz",
+  "source_panel_sha256": "75fb36b33810134746515e3ad99234e2a52f6f721551792788f6d3950ff5b1d9",
+  "support_comparators": [
+    {
+      "candidate": "PSR-30/6",
+      "clock": "data/premium_snapback_recenter_clocks_2020_2026.csv.gz",
+      "clock_sha256": "cb209ed35f9baa08cc2fb3dd5bd60b8e747b1408c09507b774ca275e0b2b2db6",
+      "control": null,
+      "entry_field": "entry_time",
+      "format": "csv",
+      "support": "results/premium_snapback_recenter_support_2026-07-19.json",
+      "support_sha256": "f33708368b089dd588051971b8d17b4174aaac304ead7a30b07ebb3ee3520b4f"
+    },
+    {
+      "candidate": "PCBR-12",
+      "clock": "data/premium_compression_breakout_relay_clocks_2020_2026.csv.gz",
+      "clock_sha256": "659fc1b6b6e3a20e60031ed1d50f51c8c7d2836956f911f62ad13e4152740cda",
+      "control": "primary",
+      "entry_field": "entry_time",
+      "format": "csv",
+      "support": "results/premium_compression_breakout_relay_support_2026-07-19.json",
+      "support_sha256": "de41852acb7987685d31a799eddf56a7e59afa756f5435ce46e054ea72f83857"
+    },
+    {
+      "candidate": "OPDR-24",
+      "clock": "data/options_perpetual_demand_relay_clocks_2023_2026.csv.gz",
+      "clock_sha256": "ceb79b206c3e1f6bf78b02cd2ace9a94f875ce930a704cc6e7a5a8b255021b99",
+      "control": "primary",
+      "entry_field": "entry_time",
+      "format": "csv",
+      "support": "results/options_perpetual_demand_relay_support_2026-07-19.json",
+      "support_sha256": "d8a82c072c45a2e965b8e4d05383aa3cb7f39d92728aef54ccd51ad54a02b9f3"
+    },
+    {
+      "candidate": "CLD-72",
+      "clock": "results/cross_sectional_leadership_diffusion_event_clock_2026-07-18.json",
+      "clock_sha256": "089ae3f854459a76bade4e3fd6682d1b1a9a6d600dc990a367840c179c0e623d",
+      "control": null,
+      "entry_field": "entry_date",
+      "format": "json_events",
+      "support": "results/cross_sectional_leadership_diffusion_support_2026-07-18.json",
+      "support_sha256": "e2e23be7504473edc0d5df44b5a25d2fa2ec6f82770206cf35bdf9ca66e020dc"
+    },
+    {
+      "candidate": "FCIR-12",
+      "clock": "data/flow_centrality_incubation_relay_clocks_2023_2026.csv.gz",
+      "clock_sha256": "d4bb6245f0bac34885e780e35ff1edb9b5cf2114dc3c13088ec19613ad8056ea",
+      "control": null,
+      "entry_field": "entry_time",
+      "format": "csv",
+      "support": "results/flow_centrality_incubation_relay_support_2026-07-19.json",
+      "support_sha256": "2ecd30c6a4f8678207053522aabe7ef6bfbc24e3f5d29b4e52743c218e4d2e89"
+    }
+  ],
+  "support_gate": {
+    "maximum_bidirectional_near_share": 0.35,
+    "maximum_exact_entry_jaccard": 0.1,
+    "maximum_month_share": 0.2,
+    "minimum_events_per_quarter": 20,
+    "minimum_events_per_year": 120,
+    "minimum_side_share": 0.25,
+    "novelty_hours": 1,
+    "novelty_year": 2023,
+    "years": [
+      2022,
+      2023
+    ]
+  }
+}
