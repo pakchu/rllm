@@ -1,0 +1,106 @@
+{
+  "protocol_version": "mempool_witness_composition_history_source_v1",
+  "config": {
+    "raw_output": "data/mempool_witness_composition_4y_2026-07-20.raw.json.gz",
+    "output_csv": "data/mempool_witness_composition_4y_2026-07-20.csv.gz",
+    "manifest_output": "results/mempool_witness_composition_source_manifest_2026-07-20.json",
+    "timeout_sec": 30.0,
+    "request_pause_sec": 0.25,
+    "maximum_retries": 8,
+    "maximum_response_bytes": 3000000,
+    "minimum_response_rows": 2800
+  },
+  "source_decision": {
+    "path": "docs/witness-composition-transport-mechanism-decision-2026-07-20.md",
+    "sha256": "101e84303efb3146dae587048c179b6688c93b50bb4c99edec8ba8daab72bc98"
+  },
+  "source_builder": {
+    "path": "training/download_mempool_witness_composition_history.py",
+    "sha256": "d5cd3f2cab5e501d5484539f1ea3c5aac5a96916dd65aa1060bb561fa639d721"
+  },
+  "source_audit": {
+    "endpoint": "https://mempool.space/api/v1/mining/blocks/sizes-weights/4y",
+    "official_rest_docs": "https://mempool.space/docs/api/rest",
+    "upstream_repository": "https://github.com/mempool/mempool",
+    "upstream_commit": "e9d6cf8c042f946be53e372bb36530cd7b7851a4",
+    "http_status": 200,
+    "final_url": "https://mempool.space/api/v1/mining/blocks/sizes-weights/4y",
+    "retrieved_at_utc": "2026-07-20T10:27:31.250986Z",
+    "response_headers": {
+      "date": "Mon, 20 Jul 2026 10:27:29 GMT",
+      "etag": "W/\"59e71-wimSunVghY3LTE+daWrtvIOPIaY\"",
+      "last-modified": null,
+      "content-type": "application/json; charset=utf-8"
+    },
+    "raw_response_bytes": 368241,
+    "raw_response_sha256": "6fdb0db77ae56c5b348918bc966384c1a88032655b9e061c510bfcc3df642e94",
+    "response_rows": 2923,
+    "retained_rows": 2921,
+    "edge_rows_dropped": 2,
+    "first_dropped_bucket_start_utc": "2022-07-20T00:00:00Z",
+    "last_dropped_bucket_start_utc": "2026-07-20T00:00:00Z",
+    "first_retained_bucket_start_utc": "2022-07-20T12:00:00Z",
+    "last_retained_bucket_start_utc": "2026-07-19T12:00:00Z",
+    "first_retained_avg_height": 745785,
+    "last_retained_avg_height": 958761,
+    "strictly_increasing_unique_timestamps": true,
+    "strictly_increasing_unique_heights": true,
+    "unique_bucket_ids": true,
+    "paired_size_weight_rows": 2923,
+    "size_weight_pairing_valid": true,
+    "block_weight_limit_valid": true,
+    "witness_share_bounds_valid": true,
+    "rounding_tolerance_rows": 0,
+    "rounding_tolerance_bytes": 4,
+    "missing_12h_buckets": 0,
+    "maximum_bucket_gap_seconds": 43200,
+    "missing_bucket_policy": "reject any gap; never forward-fill or backdate"
+  },
+  "raw_artifact": {
+    "path": "data/mempool_witness_composition_4y_2026-07-20.raw.json.gz",
+    "sha256": "ddd3615294d501ed3b24c5d43e2fc16319bd87f1add3c14dde2362c4b789c4c1",
+    "bytes": 73145,
+    "decompressed_sha256": "6fdb0db77ae56c5b348918bc966384c1a88032655b9e061c510bfcc3df642e94",
+    "encoding": "gzip of exact HTTP response bytes; mtime=0"
+  },
+  "normalized_artifact": {
+    "path": "data/mempool_witness_composition_4y_2026-07-20.csv.gz",
+    "sha256": "ee761e813085dfdee675ca9d420516f814c4c2824f3f5cef604acc3871d46c61",
+    "bytes": 69318,
+    "rows": 2921,
+    "columns": [
+      "bucket_start_utc",
+      "bucket_end_utc",
+      "available_at_utc",
+      "avg_height",
+      "avg_timestamp",
+      "avg_size",
+      "avg_weight"
+    ]
+  },
+  "source_semantics": {
+    "avg_size": "integer-cast average serialized block size among non-stale blocks in the 12-hour source bucket",
+    "avg_weight": "integer-cast average BIP 141 block weight among the same non-stale blocks and source bucket",
+    "pairing": "sizes and weights require exact avgHeight and timestamp identity before normalization",
+    "derived_features": "none in the frozen source artifact"
+  },
+  "causal_availability": {
+    "source_bucket_seconds": 43200,
+    "source_availability_lag_seconds": 172800,
+    "available_at_rule": "fixed bucket end + 48 hours",
+    "earliest_entry_rule": "first complete 5-minute execution bar after available_at",
+    "earliest_entry_additional_seconds": 300,
+    "edge_policy": "drop first and last response buckets",
+    "missing_bucket_policy": "reject any gap; never forward-fill or backdate"
+  },
+  "outcome_boundary": {
+    "btc_market_rows_loaded": 0,
+    "funding_rows_loaded": 0,
+    "premium_or_oi_rows_loaded": 0,
+    "return_or_pnl_fields": 0,
+    "wctr_features_derived": 0,
+    "signal_incidence_rows_derived": 0
+  },
+  "data_use": "private research snapshot; public-route operational and legal review remains required before live promotion",
+  "manifest_hash": "55914b3ec31fe8fb66d8a8dc31acb3784a10b256625073a5aeff1d317660ea8d"
+}
