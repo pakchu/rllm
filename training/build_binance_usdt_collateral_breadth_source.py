@@ -29,6 +29,7 @@ from training.build_binance_stablecoin_quote_flow import (
 
 
 SCHEMA_VERSION = 1
+BUILDER_PATH = Path("training/build_binance_usdt_collateral_breadth_source.py")
 DEFAULT_SYMBOLS = ("USDCUSDT", "TUSDUSDT", "USDPUSDT", "FDUSDUSDT")
 MINIMUM_VALID_BREADTH = 3
 EXPECTED_ARCHIVE_SHA256: dict[tuple[str, str], str] = {
@@ -261,6 +262,8 @@ def build(
     config_record["symbols"] = list(symbols)
     manifest = {
         "schema_version": SCHEMA_VERSION,
+        "builder": str(BUILDER_PATH),
+        "builder_sha256": sha256_file(BUILDER_PATH),
         "config": config_record,
         "protocol": {
             "source": "official Binance Spot monthly hourly-kline archives",
