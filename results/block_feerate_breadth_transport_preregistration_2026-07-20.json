@@ -1,0 +1,283 @@
+{
+  "config": {
+    "preregistration_output": "results/block_feerate_breadth_transport_preregistration_2026-07-20.json",
+    "source_manifest": "results/mempool_block_feerates_source_manifest_2026-07-20.json"
+  },
+  "manifest_hash": "2d708231cbecaa5621c756f6cd9b7fbd259feb8baf32268464d68838487b9ebc",
+  "outcome_boundary": {
+    "funding_rows_loaded": 0,
+    "market_rows_loaded": 0,
+    "normalized_source_artifact_bytes_hashed": true,
+    "normalized_source_values_read": 0,
+    "raw_source_artifact_bytes_hashed": true,
+    "raw_source_values_read": 0,
+    "return_or_pnl_fields": 0,
+    "signal_incidence_rows_derived": 0,
+    "source_feature_rows_derived": 0,
+    "source_manifest_json_read": true
+  },
+  "outcomes_opened": false,
+  "policy": {
+    "calendar": {
+      "eval": "[2026-01-01T00:00:00Z,2026-07-20T00:00:00Z)",
+      "fit_permission": "no fitted coefficient; thresholds frozen here",
+      "test": "[2025-01-01T00:00:00Z,2026-01-01T00:00:00Z)",
+      "test_eval_use": "report-only; never select, rerank, invert, or repair",
+      "train": "[2023-11-01T00:00:00Z,2025-01-01T00:00:00Z)",
+      "warmup_source": "2023-07-20T12:00:00Z through 2023-10-31T23:59:59Z",
+      "window_assignment": "entry and scheduled exit must both lie in window"
+    },
+    "causal_availability": {
+      "entry_latency_seconds": 300,
+      "entry_time": "ceil_5m(source_available_at) + one complete 5m bar",
+      "feature_rows": "t and strict-prior source rows only",
+      "missing_bucket_policy": "invalidate affected features; never fill",
+      "source_available_at": "fixed 12h bucket end + 48 hours"
+    },
+    "controls": {
+      "constant_long_same_clock": "same primary entry/exit clock with side fixed long",
+      "constant_short_same_clock": "same primary entry/exit clock with side fixed short",
+      "direction_flip": "same primary clock and eligibility with every side multiplied by -1; diagnostic only",
+      "magnitude_only": "retain magnitude_rank >= 0.75 and side=sign(location); remove coherence and tail-divergence filters; sign(location) must still equal sign(signed_coherence); build its own chronological non-overlap clock",
+      "month_side_stratified_random_clock": "sample without replacement from rank-ready source clocks preserving primary calendar-month and side counts; seed 20260720",
+      "one_bar_delayed_entry": "same primary signals and sides; shift entry and scheduled exit exactly one complete 5m bar later",
+      "stale_7d": "at source bucket t use the fully formed primary feature/ranks from t-14; retain t availability and execution clock",
+      "tail_only": "retain magnitude_rank>=0.75 and coherence>=0.60 but require tail_divergence_rank>0.75; use its own chronological non-overlap clock and side=sign(signed_coherence)"
+    },
+    "eligibility": {
+      "common": "magnitude_rank>=0.75 and coherence>=0.60 and tail_divergence_rank<=0.75",
+      "every_eligible_source_clock_considered": true,
+      "long": "common and signed_coherence>0 and location>0",
+      "ordering": "sort by entry_time then bucket_start; accept only when entry_time >= prior accepted exit_time; suppress intervening signals with no score priority or replacement",
+      "post_support_threshold_or_side_repair": "forbidden",
+      "short": "common and signed_coherence<0 and location<0",
+      "side": "sign(signed_coherence), which must equal sign(location)"
+    },
+    "execution": {
+      "bar_size": "5m",
+      "base_cost_bp_per_notional_per_side": 6,
+      "entry": "open at entry_time after the latency bar closes",
+      "funding": "exact funding, entry-inclusive/exit-exclusive, fixed entry quantity",
+      "hold_bars": 288,
+      "hold_hours": 24,
+      "interval": "[entry_time, scheduled_exit_time)",
+      "non_overlap": true,
+      "notional_leverage": 0.5,
+      "stress_cost_bp_per_notional_per_side": 10
+    },
+    "normalization": {
+      "current_row_excluded": true,
+      "lookback_valid_feature_buckets": 180,
+      "magnitude_rank": "midrank of abs(location)",
+      "method": "strict-prior rolling empirical midrank",
+      "midrank_formula": "(count(prior < current) + 0.5*count(prior == current)) / prior_count",
+      "minimum_prior_valid_feature_buckets": 120,
+      "prior_rows_must_be_available_before_current": true,
+      "tail_divergence_rank": "midrank of tail_divergence"
+    },
+    "performance_gates": {
+      "absolute_return_positive_each": true,
+      "cagr_to_strict_mdd_minimum_each": 3.0,
+      "component_control_full_gate_pass_rejects_specific_mechanism": [
+        "magnitude_only",
+        "tail_only",
+        "constant_long_same_clock",
+        "constant_short_same_clock",
+        "stale_7d",
+        "month_side_stratified_random_clock"
+      ],
+      "direction_flip_is_diagnostic_only": true,
+      "long_and_short_absolute_return_positive": [
+        "train",
+        "test"
+      ],
+      "mean_gross_bp_minimum_each": 20.0,
+      "one_bar_delayed_entry_absolute_return_positive_each": true,
+      "positive_subperiods": [
+        "train_2024H1",
+        "train_2024H2",
+        "test_2025H1",
+        "test_2025H2",
+        "eval_2026H1"
+      ],
+      "post_outcome_repair": "forbidden",
+      "required_sequence": [
+        "train",
+        "test",
+        "eval"
+      ],
+      "stress_absolute_return_positive_each": true,
+      "strict_max_drawdown_maximum_each": 0.15,
+      "weekly_cluster_sign_flip_p_maximum_each": 0.1
+    },
+    "policy_id": "BFRT-288",
+    "promotion_boundary": "snapshot research only; no live or shadow promotion before 90 forward shadow days pass frozen schema, freshness, and value-stability checks",
+    "singleton": true,
+    "source_features": {
+      "coherence": "abs(signed_coherence)",
+      "delta": "d[p,t] = x[p,t] - x[p,t-2]",
+      "excluded_from_features": [
+        0,
+        100
+      ],
+      "invalid_feature": "reject unless t,t-1,t-2 are consecutive 12h buckets, all five percentiles are finite/non-negative, l1_motion>0, location!=0, signed_coherence!=0, and sign(signed_coherence)==sign(location)",
+      "l1_motion": "sum_p(abs(d[p,t]))",
+      "location": "median(d[10,t],d[25,t],d[50,t],d[75,t],d[90,t])",
+      "log_surface": "x[p,t] = log1p(fee_p[t])",
+      "numeric_contract": "IEEE-754 binary64 math.log1p; no epsilon, clipping, rounding, or imputation; exact binary64 equality defines rank ties",
+      "percentiles": [
+        10,
+        25,
+        50,
+        75,
+        90
+      ],
+      "signed_coherence": "sum_p(d[p,t]) / l1_motion",
+      "tail_divergence": "abs((d[90,t]-d[75,t])-(d[25,t]-d[10,t])) / l1_motion",
+      "transport_horizon_buckets": 2,
+      "transport_horizon_hours": 24
+    },
+    "stopping_rule": "stop permanently at first support/train/test/eval gate failure; no sign, threshold, rank-window, hold, latency, or calendar repair",
+    "strict_accounting": {
+      "cagr_clock": "full declared wall-clock window including idle cash",
+      "cluster_test": "one-sided weekly entry-cluster sign flip; 100000 draws; seed 20260720",
+      "costs": "entry, scheduled exit, and hypothetical adverse liquidation costs included",
+      "drawdown_high_water_mark": "global and pre-entry",
+      "held_path_order": "all favorable OHLC/funding-credit extremes before all adverse OHLC/funding-debit extremes"
+    },
+    "support_gates": {
+      "count_basis": "accepted primary non-overlap entries assigned by entry_time",
+      "eval_2026_h1_minimum": 18,
+      "eval_long_minimum": 6,
+      "eval_maximum_month_share": 0.25,
+      "eval_short_minimum": 6,
+      "eval_total_minimum": 20,
+      "missing_12h_source_buckets": 0,
+      "support_failure_action": "reject BFRT-288 without opening market/funding/outcomes; no repair",
+      "test_each_half_minimum": 14,
+      "test_each_quarter_minimum": 6,
+      "test_long_minimum": 12,
+      "test_maximum_month_share": 0.2,
+      "test_short_minimum": 12,
+      "test_total_minimum": 35,
+      "train_2023_nov_dec_minimum": 8,
+      "train_2024_h1_minimum": 14,
+      "train_2024_h2_minimum": 14,
+      "train_long_minimum": 25,
+      "train_maximum_month_share": 0.15,
+      "train_short_minimum": 25,
+      "train_total_minimum": 80
+    }
+  },
+  "policy_hash": "06d2284866781a3c751857a6a049769cece2e64ea56e00d8e2180b5992825925",
+  "policy_id": "BFRT-288",
+  "preregistration_document": {
+    "path": "docs/block-feerate-breadth-transport-preregistration-2026-07-20.md",
+    "sha256": "04b77d6358aead4ecae494f75c71e1c0f40066fc466df01e4a7b9ede4c7fab2c"
+  },
+  "preregistration_source": {
+    "path": "training/preregister_block_feerate_breadth_transport.py",
+    "sha256": "2cc282d40e6791b0e4a5b5c1fb6f5081335eceb9a144db17faf157a8965deb5f"
+  },
+  "protocol_version": "block_feerate_breadth_transport_preregistration_v1",
+  "research_sequence": {
+    "evaluator_second": "commit and hash-freeze strict evaluator",
+    "outcomes": "train, then test, then eval; stop at first failure",
+    "support_first": "source-only train/test/eval incidence"
+  },
+  "source_manifest": {
+    "causal_availability": {
+      "available_at_rule": "fixed bucket end + 48 hours",
+      "earliest_entry_additional_seconds": 300,
+      "earliest_entry_rule": "first complete 5-minute execution bar after available_at",
+      "edge_policy": "drop first and last response buckets",
+      "missing_bucket_policy": "retain gap; never forward-fill or backdate",
+      "source_availability_lag_seconds": 172800,
+      "source_bucket_seconds": 43200
+    },
+    "manifest_hash": "fe616bcf294e8b3b2abc6dec124e922f77df4bca47a86249fc270f2af6b46f21",
+    "normalized_artifact": {
+      "bytes": 47095,
+      "columns": [
+        "bucket_start_utc",
+        "bucket_end_utc",
+        "available_at_utc",
+        "avg_height",
+        "avg_timestamp",
+        "fee_p0",
+        "fee_p10",
+        "fee_p25",
+        "fee_p50",
+        "fee_p75",
+        "fee_p90",
+        "fee_p100"
+      ],
+      "path": "data/mempool_block_feerates_3y_2026-07-20.csv.gz",
+      "rows": 2191,
+      "sha256": "007d13ba756fd29faae1ae87caa11554438b54bb5028f24b2f0c21ddf3a0e55d"
+    },
+    "outcome_boundary": {
+      "bfrt_features_derived": 0,
+      "btc_market_rows_loaded": 0,
+      "funding_rows_loaded": 0,
+      "premium_or_oi_rows_loaded": 0,
+      "return_or_pnl_fields": 0,
+      "signal_incidence_rows_derived": 0
+    },
+    "path": "results/mempool_block_feerates_source_manifest_2026-07-20.json",
+    "protocol_version": "mempool_block_feerate_history_source_v1",
+    "raw_artifact": {
+      "bytes": 35671,
+      "decompressed_sha256": "480a99c3ebfd49f98511f94fe05d9f8d76a2e28ebef7cde937768b0d4321e008",
+      "encoding": "gzip of exact HTTP response bytes; mtime=0",
+      "path": "data/mempool_block_feerates_3y_2026-07-20.raw.json.gz",
+      "sha256": "4309dfbbdb08b89cd9cc92a341bd6186146b1e67adc2c3f926c8154ddabc4898"
+    },
+    "sha256": "1ad4ee8bc9e81d3f7e7169426de21f0398bc6ab1d739e6f27e6d9ff02f331555",
+    "source_audit": {
+      "edge_rows_dropped": 2,
+      "endpoint": "https://mempool.space/api/v1/mining/blocks/fee-rates/3y",
+      "final_url": "https://mempool.space/api/v1/mining/blocks/fee-rates/3y",
+      "first_dropped_bucket_start_utc": "2023-07-20T00:00:00Z",
+      "first_retained_avg_height": 799556,
+      "first_retained_bucket_start_utc": "2023-07-20T12:00:00Z",
+      "http_status": 200,
+      "last_dropped_bucket_start_utc": "2026-07-20T00:00:00Z",
+      "last_retained_avg_height": 958761,
+      "last_retained_bucket_start_utc": "2026-07-19T12:00:00Z",
+      "maximum_bucket_gap_seconds": 43200,
+      "missing_12h_buckets": 0,
+      "missing_bucket_policy": "retain gap; never forward-fill or backdate",
+      "official_rest_docs": "https://mempool.space/docs/api/rest",
+      "percentile_ordering_valid": true,
+      "raw_response_bytes": 320868,
+      "raw_response_sha256": "480a99c3ebfd49f98511f94fe05d9f8d76a2e28ebef7cde937768b0d4321e008",
+      "response_headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Mon, 20 Jul 2026 09:02:28 GMT",
+        "etag": "W/\"4e564-RJvYwNUJqLGdQWvvCgzgfWMQELc\"",
+        "last-modified": null
+      },
+      "response_rows": 2193,
+      "retained_rows": 2191,
+      "retrieved_at_utc": "2026-07-20T09:02:30.628066Z",
+      "strictly_increasing_unique_heights": true,
+      "strictly_increasing_unique_timestamps": true,
+      "unique_bucket_ids": true,
+      "upstream_commit": "e9d6cf8c042f946be53e372bb36530cd7b7851a4",
+      "upstream_repository": "https://github.com/mempool/mempool"
+    },
+    "source_builder": {
+      "path": "training/download_mempool_block_feerate_history.py",
+      "sha256": "ebd30dd109a92c4dc5a2a6a444a5d5760fa4360c7fd848b02923f0670e4a2910"
+    },
+    "source_decision": {
+      "path": "docs/block-feerate-breadth-transport-mechanism-decision-2026-07-20.md",
+      "sha256": "f6dd7d52b03d1370483a1157e24efad45b6886230bafed0931b0ac88cbde82cb"
+    },
+    "source_freeze": {
+      "path": "docs/block-feerate-breadth-transport-source-freeze-2026-07-20.md",
+      "sha256": "0336a5d567b894964ad3aaca541548a7962e16b6a79a34dcda4bb5478e2f3092"
+    }
+  }
+}
