@@ -9,21 +9,21 @@ only when combined with unusually compressed or expanded 100-block cadence.
 
 This decision freezes the observable and falsification boundary only.  It
 opens no source incidence, BTC market value, funding value, future return,
-PnL, CAGR, or drawdown.  Thresholds, strict-prior normalization, publication
-clock, support floors, and controls must be frozen in a separate
-preregistration before the existing block source is read for candidate
-incidence.
+PnL, CAGR, or drawdown.  Thresholds, strict-prior normalization, support
+floors, and controls must be frozen in a separate preregistration before the
+existing block source is read for candidate incidence.
 
 For every canonical block at height `h`, the deterministic primitives are:
 
 1. `matured_fee_component[h] = total_fees[h - 100]`;
 2. `maturity_elapsed[h] = mediantime[h] - mediantime[h - 100]`; and
-3. the UTC maturation day is the UTC day containing block `h`, never the day
-   containing origin block `h - 100`.
+3. `confirmation_height[h] = h + 6`.
 
-The provisional two-sided orientation is short when both matured fee pressure
-and cadence compression are unusually high, and long when both are unusually
-low.  The hypothesis is that the conjunction describes a delayed settlement
+The primary clock is block-level at the exact maturity height `h`; it is not
+assigned to an origin day or collapsed into a UTC-day aggregate.  The
+provisional two-sided orientation is short when both matured fee pressure and
+cadence compression are unusually high, and long when both are unusually low.
+The hypothesis is that the conjunction describes a delayed settlement
 pressure state that is not fully represented by either channel alone.  The
 direction and 864 five-minute-bar hold may not be repaired after incidence or
 returns are opened.
@@ -110,48 +110,55 @@ They motivate fail-fast shadow controls rather than a profitability claim.
 
 The preregistration must bind all of these controls before opening incidence:
 
-1. matured-fee-only and cadence-only clocks;
-2. same-maturation-day aggregate fee and block-count/cadence shadows;
-3. aggregate matured fees versus per-matured-block fee intensity;
+1. matured-fee-only and cadence-only onset clocks;
+2. a completed-UTC-day aggregate with the conservative `D+2 00:05 UTC`
+   schedule, retained only as a calendar/block-count shadow;
+3. a same-height `total_fees[h]` shadow;
 4. `h - 99` and `h - 101` pseudo-maturity variants;
 5. a seven-day stale-feature clock;
 6. an origin-day-shift clock that is evaluated only as a leakage sentinel and
    may never become the primary policy;
 7. direction flip, constant-long, and constant-short controls;
-8. deterministic random clocks matched by year, month, side, and block-count
-   stratum; and
+8. deterministic random clocks matched by year, month, side, event count, and
+   source-activity stratum; and
 9. one additional five-minute execution-latency control.
 
 Source-only support must reject the candidate without repair when the primary
-clock is too sparse, materially one-sided, calendar-concentrated, dominated by
-one source discontinuity, or indistinguishable from the same-day, fee-only,
-cadence-only, or pseudo-maturity shadows under the frozen novelty rules.
-Thresholds, lookback, side, hold, grouping day, and controls may not be changed
-after incidence is visible.
+clock is too sparse, too dense, materially one-sided, calendar-concentrated,
+mechanically pinned to the 72-hour non-overlap boundary, dominated by one
+source discontinuity, or indistinguishable from the daily, same-height,
+fee-only, cadence-only, stale, or pseudo-maturity shadows under the frozen
+novelty rules. Thresholds, lookback, side, hold, onset, and controls may not be
+changed after incidence is visible.
 
 ## Availability and leakage boundary
 
-Header timestamps are event fields, not archived node receipt times.  EMFC
-inherits the conservative UFCP daily boundary:
+Header timestamps are event fields, not archived node receipt times.  For a
+candidate maturity height `h`, the primary historical availability is:
 
-1. aggregate only a completed UTC maturation day `D`;
-2. require at least six hash-linked successors after the final included block;
-3. treat day `D` as unavailable before `D + 2 00:00 UTC`;
-4. enter no earlier than `D + 2 00:05 UTC`, after one complete five-minute
-   latency bar; and
-5. never assign the signal to the origin block or origin day.
+```text
+raw_available = max(timestamp[h:h+6]) + 2 hours
+decision_boundary = ceil(raw_available to a 5-minute UTC boundary)
+entry_time = decision_boundary + 5 minutes
+```
 
-All strict-prior ranks must use only completed source days available before
-the signal day.  No full-sample rank, outcome-conditioned threshold, missing
-day repair, or post-entry source row is allowed.  Live promotion additionally
-requires actual local first-seen timestamps, canonical-chain/reorg handling,
+Thus every signal waits through six hash-linked successors, a conservative
+two-hour header-time embargo, and one complete five-minute latency bar.  The
+support calendar belongs to `entry_time`, never origin height `h-100`, its UTC
+day, or header timestamp `h`.
+
+All strict-prior statistics must use only valid exact-maturity heights strictly
+below `h`.  The current block, confirmation blocks, future blocks, full-sample
+statistics, outcome-conditioned thresholds, and post-entry source rows are
+forbidden from feature normalization.  Live promotion additionally requires
+actual local first-seen timestamps, canonical-chain/reorg handling,
 six-confirmation parity, and at least 90 shadow days.
 
 ## Frozen research sequence
 
 1. Commit this decision without reading candidate incidence.
 2. Commit and hash-freeze one source-manifest-only preregistration defining
-   exact daily features, strict-prior ranks, thresholds, controls, support
+   exact block-level features, strict-prior statistics, thresholds, controls, support
    floors, novelty comparators, and stopping rules.
 3. Run source-only incidence, shadow, dispersion, and novelty checks.  Load no
    market or funding value.
