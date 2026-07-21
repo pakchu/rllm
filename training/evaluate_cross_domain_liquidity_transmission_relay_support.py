@@ -38,7 +38,7 @@ from training import preregister_cross_domain_liquidity_transmission_relay as pr
 
 
 POLICY_ID = "CDLTR-72A"
-PROTOCOL_VERSION = "cross_domain_liquidity_transmission_relay_support_v1"
+PROTOCOL_VERSION = "cross_domain_liquidity_transmission_relay_support_v2"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 EVALUATOR_SOURCE = Path(
     "training/evaluate_cross_domain_liquidity_transmission_relay_support.py"
@@ -187,15 +187,23 @@ def _utc_series(values: pd.Series, label: str) -> pd.Series:
 
 
 def _date_series(values: pd.Series, label: str) -> pd.Series:
+    text = values.astype("string")
+    date_only = text.str.fullmatch(r"\d{4}-\d{2}-\d{2}")
+    midnight = text.str.fullmatch(r"\d{4}-\d{2}-\d{2} 00:00:00")
+    if not bool((date_only | midnight).fillna(False).all()):
+        raise RuntimeError(
+            f"{label} dates must be canonical dates or midnight timestamps"
+        )
+    canonical_dates = text.str.slice(0, 10)
     try:
-        parsed = pd.to_datetime(values, format="%Y-%m-%d", errors="raise")
+        parsed = pd.to_datetime(canonical_dates, format="%Y-%m-%d", errors="raise")
     except (TypeError, ValueError) as error:
         raise RuntimeError(f"{label} dates are invalid") from error
     if bool(parsed.isna().any()):
         raise RuntimeError(f"{label} dates contain nulls")
     normalized = parsed.dt.strftime("%Y-%m-%d")
-    if not normalized.equals(values.astype(str).reset_index(drop=True)):
-        raise RuntimeError(f"{label} dates are not canonical ISO dates")
+    if not normalized.equals(canonical_dates.astype(str).reset_index(drop=True)):
+        raise RuntimeError(f"{label} dates are not valid calendar dates")
     return parsed.dt.date
 
 
