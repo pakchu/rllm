@@ -1,0 +1,174 @@
+{
+  "as_of_date": "2026-07-22",
+  "candidate": "UGCI-288",
+  "decision": "freeze_source_support_before_any_outcome",
+  "later_metrics_required": [
+    "absolute_return",
+    "full_calendar_cagr",
+    "strict_mdd",
+    "cagr_to_strict_mdd",
+    "trades",
+    "long_short_counts",
+    "realized_funding",
+    "base_and_stress_costs"
+  ],
+  "manifest_hash": "61b6d60f8c2ef21b94b3343bc3cf2a5fd82366679ae9d768d846831b12829722",
+  "novelty_comparators": [
+    {
+      "candidate": "AMTR-48",
+      "comparison_end_exclusive": "2024-01-01T00:00:00Z",
+      "comparison_start": "2021-01-01T00:00:00Z",
+      "controls": [
+        "primary",
+        "cross_minter"
+      ],
+      "entry_column": "entry_time",
+      "path": "data/authorized_minter_turnaround_relay_clocks_2020_2023.csv.gz",
+      "sha256": "30875029daa4d6e2eff9a59f53d45eda57dbced05988df089c38a6c81abfa0f6"
+    },
+    {
+      "candidate": "SQFD-6",
+      "comparison_end_exclusive": "2024-01-01T00:00:00Z",
+      "comparison_start": "2023-09-01T00:00:00Z",
+      "controls": [
+        "primary",
+        "no_usdt_lag",
+        "no_participation"
+      ],
+      "entry_column": "entry_time",
+      "path": "data/stablecoin_quote_flow_diffusion_clocks_2023_2026.csv.gz",
+      "sha256": "a81e144eea1e80ae5439fc66db1fad5bbd00cd9ac177e25142b5cfb5a07bcc5b"
+    },
+    {
+      "candidate": "SDDR-12",
+      "comparison_end_exclusive": "2024-01-01T00:00:00Z",
+      "comparison_start": "2023-09-01T00:00:00Z",
+      "controls": [
+        "primary"
+      ],
+      "entry_column": "entry_time",
+      "path": "data/stablecoin_denominator_dislocation_clocks_2023.csv.gz",
+      "sha256": "eaf2d6c187af9855e76474d2951fcdc12267174980a72649b73d068982ca8c69"
+    },
+    {
+      "candidate": "UCBR-12",
+      "comparison_end_exclusive": "2024-01-01T00:00:00Z",
+      "comparison_start": "2023-09-01T00:00:00Z",
+      "controls": [
+        "primary"
+      ],
+      "entry_column": "entry_time",
+      "path": "data/usdt_collateral_breadth_relay_clocks_2023.csv.gz",
+      "sha256": "20b3ee9f82696222a3adbde0045dfde53e0e240e85162e463166aa8fe90b1a8f"
+    }
+  ],
+  "one_way_sequence": {
+    "evaluator_committed_before_market": true,
+    "failure_action": "retire UGCI-288 without repair",
+    "post_2023_remains_sealed": true,
+    "support_before_evaluator": true,
+    "train_2021_2022_before_selection_2023": true
+  },
+  "outcome_boundary": {
+    "btc_market_rows_read": 0,
+    "comparator_rows_read": 0,
+    "funding_rows_read": 0,
+    "future_return_rows_read": 0,
+    "network_calls": 0,
+    "outcome_sources_opened": false,
+    "outcomes_opened": false,
+    "post_2023_source_rows_opened": false,
+    "return_or_pnl_fields_read": 0,
+    "subprocess_calls": 0
+  },
+  "policy": {
+    "config": {
+      "asset": "usdc_eth",
+      "bar_minutes": 5,
+      "entry_delay_minutes": 10,
+      "event_clock": "available_at",
+      "events": [
+        "mint",
+        "burn"
+      ],
+      "global_nonoverlap": true,
+      "gross_tail_quantile": 0.95,
+      "hold_bars": 288,
+      "include_zero_event_packets": true,
+      "leverage": 0.5,
+      "lookback_days": 180,
+      "minimum_history_packets": 360,
+      "minimum_imbalance_ratio": 0.6,
+      "packet_hours": 6,
+      "quantile_method": "nearest_rank",
+      "selection_end_exclusive": "2024-01-01T00:00:00Z",
+      "selection_start": "2023-01-01T00:00:00Z",
+      "train_end_exclusive": "2023-01-01T00:00:00Z",
+      "train_start": "2021-01-01T00:00:00Z",
+      "warmup_start": "2020-01-01T00:00:00Z"
+    },
+    "direction": "LONG if net_raw > 0; SHORT if net_raw < 0",
+    "entry": "packet_end + 10 minutes BTCUSDT USD-M perpetual open",
+    "exit": "scheduled open after exactly 288 five-minute bars",
+    "later_economic_controls": [
+      "direction_flip",
+      "deterministic_random_side",
+      "double_cost",
+      "extra_latency_1h"
+    ],
+    "packet_formulas": {
+      "burn_raw": "sum(amount_raw where event == burn)",
+      "gross_raw": "mint_raw + burn_raw",
+      "imbalance_ratio": "abs(net_raw) / gross_raw",
+      "mint_raw": "sum(amount_raw where event == mint)",
+      "net_raw": "mint_raw - burn_raw"
+    },
+    "source_only_controls": [
+      "no_gross_tail",
+      "no_imbalance_floor",
+      "stale_6h"
+    ],
+    "threshold": "nearest-rank q95 of gross_raw on the strictly prior 180-day six-hour grid, current packet excluded"
+  },
+  "preregistration_document": "docs/usdc-gross-clearing-imbalance-preregistration-2026-07-22.md",
+  "preregistration_document_sha256": "1bec24856a0b2a1bcf7691f43466bf1b0349b67a4bc03693a638c8a2327b3def",
+  "preregistration_source": "training/preregister_usdc_gross_clearing_imbalance.py",
+  "preregistration_source_sha256": "15cc19176f20fbdeae337398678e373d2fbe2e7677a62beed2e156cebea4df0c",
+  "protocol_version": "usdc_gross_clearing_imbalance_preregistration_v1",
+  "rllm_boundary": {
+    "allowed_only_after_deterministic_economics_pass": true,
+    "may_abstain_or_size_only_under_separate_freeze": true,
+    "may_create_retime_reverse_or_repair_events": false
+  },
+  "source": {
+    "availability_field": "available_at",
+    "csv": "data/ethereum_stablecoin_issuance_redemption_2020_2023/ethereum_usdt_usdc_issuance_redemption_2020_2023.csv.gz",
+    "csv_sha256": "70ba3799ba84dc671051623a8d167b1731f043cf84a686b9878a67fcd52e5901",
+    "manifest": "results/ethereum_stablecoin_issuance_redemption_source_manifest_2026-07-21.json",
+    "manifest_sha256": "8ec9ab08c413bf6f5f8170fb800b05105522d4cf1a7932943c214288701e31fe",
+    "numeric_fields_parsed_during_preregistration": 0,
+    "required_asset": "usdc_eth",
+    "required_events": [
+      "mint",
+      "burn"
+    ],
+    "rows_parsed_during_preregistration": 0
+  },
+  "support_gate": {
+    "maximum_bidirectional_novelty_containment": 0.35,
+    "maximum_entry_month_share": 0.15,
+    "maximum_exact_entry_jaccard": 0.1,
+    "maximum_side_share_selection": 0.75,
+    "maximum_side_share_train": 0.75,
+    "minimum_common_candidate_events": 10,
+    "minimum_common_comparator_events": 5,
+    "minimum_events_each_selection_half": 20,
+    "minimum_events_each_train_year": 45,
+    "minimum_selection_events": 50,
+    "minimum_side_share_selection": 0.25,
+    "minimum_side_share_train": 0.25,
+    "minimum_train_events": 120,
+    "novelty_containment_hours": 6,
+    "stop_if_failed": true
+  }
+}
