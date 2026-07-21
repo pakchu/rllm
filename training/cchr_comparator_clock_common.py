@@ -17,7 +17,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
-from typing import Any, Iterable, Mapping, Sequence, cast
+from typing import Any, BinaryIO, Iterable, Mapping, Sequence, cast
 
 import pandas as pd
 
@@ -345,6 +345,186 @@ def read_hash_bound_columns(
     return frame.loc[:, list(columns)]
 
 
+class _BoundaryPrefixStream(io.RawIOBase):
+    """Expose complete rows strictly before a timestamp boundary.
+
+    CSV fields are scanned as opaque bytes until the physical timestamp field.
+    Once the first sealed timestamp is found, no later field in that row can
+    reach pandas or be materialized as a column value.
+    """
+
+    def __init__(
+        self,
+        path: Path,
+        *,
+        date_column: str,
+        required_columns: Sequence[str],
+        boundary: pd.Timestamp,
+    ) -> None:
+        super().__init__()
+        source = (
+            gzip.open(path, "rb")
+            if path.suffix.lower() == ".gz"
+            else path.open("rb", buffering=0)
+        )
+        self._source = cast(BinaryIO, source)
+        self._boundary = boundary
+        self._previous: pd.Timestamp | None = None
+        self._done = False
+        self.reached_boundary = False
+        self.source_ended_before_boundary = False
+        try:
+            header = self._source.readline()
+            if not header:
+                raise ValueError("hash-bound prefix source has no CSV header")
+            decoded_header = header.decode("utf-8-sig")
+            names = next(csv.reader([decoded_header]))
+            if date_column not in names:
+                raise ValueError("hash-bound prefix date column is missing")
+            self._date_field_index = names.index(date_column)
+            missing = sorted(set(required_columns) - set(names))
+            if missing:
+                raise ValueError(
+                    f"hash-bound prefix source is missing columns: {missing}"
+                )
+            bom = b"\xef\xbb\xbf"
+            self._pending = bytearray(
+                header[len(bom) :] if header.startswith(bom) else header
+            )
+        except BaseException:
+            self._source.close()
+            raise
+
+    def readable(self) -> bool:
+        return True
+
+    def _one_byte(self) -> bytes:
+        return self._source.read(1)
+
+    def _physical_field(self) -> tuple[bytes, bytes, bool] | None:
+        first = self._one_byte()
+        if not first:
+            return None
+        prefix = bytearray(first)
+        value = bytearray()
+        if first == b",":
+            return bytes(prefix), b"", False
+        if first == b"\n":
+            return bytes(prefix), b"", True
+        if first == b"\r":
+            newline = self._one_byte()
+            if newline != b"\n":
+                raise ValueError("prefix CSV uses an invalid CR line ending")
+            prefix.extend(newline)
+            return bytes(prefix), b"", True
+        if first == b'"':
+            while True:
+                character = self._one_byte()
+                if not character:
+                    raise ValueError("unterminated quoted prefix date field")
+                prefix.extend(character)
+                if character in (b"\r", b"\n"):
+                    raise ValueError("prefix date field cannot contain a newline")
+                if character != b'"':
+                    value.extend(character)
+                    continue
+                delimiter = self._one_byte()
+                if delimiter == b'"':
+                    prefix.extend(delimiter)
+                    value.extend(b'"')
+                    continue
+                if delimiter:
+                    prefix.extend(delimiter)
+                if delimiter not in (b"", b",", b"\r", b"\n"):
+                    raise ValueError("invalid delimiter after quoted prefix date field")
+                if delimiter == b"\r":
+                    newline = self._one_byte()
+                    if newline != b"\n":
+                        raise ValueError("prefix CSV uses an invalid CR line ending")
+                    prefix.extend(newline)
+                return bytes(prefix), bytes(value), delimiter != b","
+
+        value.extend(first)
+        while True:
+            delimiter = self._one_byte()
+            if not delimiter:
+                return bytes(prefix), bytes(value), True
+            prefix.extend(delimiter)
+            if delimiter == b",":
+                return bytes(prefix), bytes(value), False
+            if delimiter == b"\n":
+                return bytes(prefix), bytes(value), True
+            if delimiter == b"\r":
+                newline = self._one_byte()
+                if newline != b"\n":
+                    raise ValueError("prefix CSV uses an invalid CR line ending")
+                prefix.extend(newline)
+                return bytes(prefix), bytes(value), True
+            value.extend(delimiter)
+
+    def _date_field(self) -> tuple[bytes, str, bool] | None:
+        prefix = bytearray()
+        for field_index in range(self._date_field_index + 1):
+            field = self._physical_field()
+            if field is None:
+                if field_index == 0:
+                    return None
+                raise ValueError("prefix CSV row ended before its date field")
+            raw_field, raw_value, row_complete = field
+            prefix.extend(raw_field)
+            if field_index < self._date_field_index:
+                if row_complete:
+                    raise ValueError("prefix CSV row ended before its date field")
+                continue
+            return bytes(prefix), raw_value.decode("utf-8"), row_complete
+        raise AssertionError("unreachable prefix date-field state")
+
+    def _next_retained_row(self) -> bytes | None:
+        field = self._date_field()
+        if field is None:
+            self._done = True
+            self.source_ended_before_boundary = True
+            return None
+        prefix, raw_date, row_complete = field
+        stamp_value = pd.Timestamp(raw_date)
+        if not isinstance(stamp_value, pd.Timestamp) or pd.isna(stamp_value):
+            raise ValueError("prefix source contains an invalid timestamp")
+        stamp = stamp_value
+        if stamp.tzinfo is None:
+            stamp = stamp.tz_localize("UTC")
+        else:
+            stamp = stamp.tz_convert("UTC")
+        if self._previous is not None and stamp < self._previous:
+            raise ValueError("hash-bound prefix source must be timestamp ordered")
+        self._previous = stamp
+        if stamp >= self._boundary:
+            self._done = True
+            self.reached_boundary = True
+            return None
+        if row_complete:
+            return prefix
+        return prefix + self._source.readline()
+
+    def readinto(self, buffer: Any) -> int:
+        if self.closed:
+            raise ValueError("I/O operation on closed prefix stream")
+        view = memoryview(buffer).cast("B")
+        while len(self._pending) < len(view) and not self._done:
+            row = self._next_retained_row()
+            if row is None:
+                break
+            self._pending.extend(row)
+        count = min(len(view), len(self._pending))
+        view[:count] = self._pending[:count]
+        del self._pending[:count]
+        return count
+
+    def close(self) -> None:
+        if not self.closed:
+            self._source.close()
+        super().close()
+
+
 def read_hash_bound_prefix(
     path: str | Path,
     *,
@@ -377,36 +557,43 @@ def read_hash_bound_prefix(
         boundary = boundary.tz_localize("UTC")
     else:
         boundary = boundary.tz_convert("UTC")
-    read_csv = cast(Any, pd.read_csv)
-    reader = read_csv(
+    raw_stream = _BoundaryPrefixStream(
         repository_path(path),
-        usecols=list(columns),
-        chunksize=chunksize,
+        date_column=date_column,
+        required_columns=columns,
+        boundary=boundary,
     )
+    buffered_stream = io.BufferedReader(raw_stream)
+    read_csv = cast(Any, pd.read_csv)
     chunks: list[pd.DataFrame] = []
-    reached_boundary = False
     previous_timestamp: pd.Timestamp | None = None
-    for raw_chunk in reader:
-        chunk = cast(pd.DataFrame, raw_chunk).loc[:, list(columns)].copy()
-        dates = pd.to_datetime(chunk[date_column], utc=True, errors="raise")
-        if not isinstance(dates, pd.Series):
-            raise TypeError("prefix date parser did not return a Series")
-        if not dates.is_monotonic_increasing or (
-            previous_timestamp is not None
-            and len(dates)
-            and dates.iloc[0] < previous_timestamp
-        ):
-            raise ValueError("hash-bound prefix source must be timestamp ordered")
-        if len(dates):
-            previous_timestamp = cast(pd.Timestamp, dates.iloc[-1])
-        keep = dates < boundary
-        if bool(keep.to_numpy(dtype=bool).any()):
-            retained = chunk.loc[keep].copy()
-            retained[date_column] = dates.loc[keep].to_numpy()
-            chunks.append(retained)
-        if bool((~keep).to_numpy(dtype=bool).any()):
-            reached_boundary = True
-            break
+    try:
+        reader = read_csv(
+            buffered_stream,
+            usecols=list(columns),
+            chunksize=chunksize,
+        )
+        for raw_chunk in reader:
+            chunk = cast(pd.DataFrame, raw_chunk).loc[:, list(columns)].copy()
+            dates = pd.to_datetime(chunk[date_column], utc=True, errors="raise")
+            if not isinstance(dates, pd.Series):
+                raise TypeError("prefix date parser did not return a Series")
+            if not dates.is_monotonic_increasing or (
+                previous_timestamp is not None
+                and len(dates)
+                and dates.iloc[0] < previous_timestamp
+            ):
+                raise ValueError("hash-bound prefix source must be timestamp ordered")
+            if len(dates):
+                previous_timestamp = cast(pd.Timestamp, dates.iloc[-1])
+            if bool((dates >= boundary).to_numpy(dtype=bool).any()):
+                raise RuntimeError("sealed row reached the pandas prefix parser")
+            chunk[date_column] = dates.to_numpy()
+            chunks.append(chunk)
+        reached_boundary = raw_stream.reached_boundary
+        source_ended_before_boundary = raw_stream.source_ended_before_boundary
+    finally:
+        buffered_stream.close()
     if not chunks:
         raise ValueError(f"no rows before {boundary.isoformat()} in {path}")
     frame = cast(pd.DataFrame, pd.concat(chunks, ignore_index=True))
@@ -415,7 +602,7 @@ def read_hash_bound_prefix(
         (parsed >= boundary).to_numpy(dtype=bool).any()
     ):
         raise RuntimeError("sealed rows escaped the hash-bound prefix loader")
-    if not reached_boundary:
+    if not reached_boundary and source_ended_before_boundary:
         # A naturally truncated pre-boundary source is valid; this flag is
         # intentionally informational rather than an admission requirement.
         frame.attrs["source_ended_before_boundary"] = True
