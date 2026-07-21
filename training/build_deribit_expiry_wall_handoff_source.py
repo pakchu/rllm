@@ -23,7 +23,7 @@ MECHANISM_DOCUMENT = Path(
     "docs/deribit-expiry-wall-handoff-mechanism-decision-2026-07-21.md"
 )
 MECHANISM_DOCUMENT_SHA256 = (
-    "f9c0029a6b9a7f0aa3015bc352974ec76238a2f3eb34887ed649d02d5cfaf0bb"
+    "f5b378b75e3d32c18e32b245f62674a7a7b25f90ec7761d865ddb6c627a93ce8"
 )
 SHARED_DOWNLOADER = Path("training/download_deribit_btc_option_deliveries.py")
 SHARED_DOWNLOADER_SHA256 = (
