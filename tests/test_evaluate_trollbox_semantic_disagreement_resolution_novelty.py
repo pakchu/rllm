@@ -72,32 +72,46 @@ def test_real_novelty_gate_retires_only_for_tbasr_near_overlap() -> None:
     ]
     assert failed == ["tbasr_tolerant_coverage_at_most_0_35"]
     tbasr = report["novelty_metrics"]["tbasr:primary"]
-    assert tbasr["tsdr_events"] == 163
-    assert tbasr["comparator_events"] == 358
-    assert tbasr["exact_entry_matches"] == 26
+    assert tbasr["tsdr_events"] == 238
+    assert tbasr["comparator_events"] == 577
+    assert tbasr["exact_entry_matches"] == 43
     assert tbasr["exact_entry_jaccard"] == pytest.approx(
-        0.052525252525252523
+        0.05569948186528497
     )
-    assert tbasr["maximum_one_to_one_tolerant_matches"] == 66
+    assert tbasr["maximum_one_to_one_tolerant_matches"] == 96
     assert tbasr["tsdr_tolerant_match_coverage"] == pytest.approx(
-        0.4049079754601227
+        0.40336134453781514
     )
     assert tbasr["signed_occupied_exposure_correlation"] == pytest.approx(
-        -0.07648823196555221
+        -0.07364987694673925
     )
+    assert report["path_novelty"] == {
+        "definition": ["onset_end", "resolution_end", "side"],
+        "tsdr_paths": 238,
+        "prior_committed_semantic_strategies": ["TBASR-24"],
+        "comparators": {
+            "tbasr:primary": {
+                "path_kind": "singleton semantic event",
+                "singleton_paths": 577,
+                "exact_path_matches": 0,
+            }
+        },
+    }
     assert report["failure_action"] == "retire_before_economic_evaluation"
     assert report["pure_clock"]["rows_by_candidate"] == {
-        "tbasr:primary": 358,
+        "tbasr:primary": 577,
         "tsdr:primary": 238,
     }
     assert report["pure_clock"]["sha256"] == hashlib.sha256(clock_bytes).hexdigest()
     assert report["outcome_boundary"] == {
-        "market_rows_loaded_for_frozen_tbasr_causal_feature": 210528,
+        "market_rows_loaded_for_frozen_tbasr_causal_feature": 315648,
+        "tbasr_2022_causal_feature_rows_loaded": 105120,
         "funding_rows_loaded": 0,
         "performance_artifacts_parsed": 0,
         "return_or_pnl_fields_read": 0,
         "strict_simulation_calls": 0,
-        "tbasr_test_or_later_market_rows_loaded": 0,
+        "tbasr_2023_or_later_market_rows_loaded": 0,
+        "tbasr_test_economic_report_parsed": 0,
         "post_2022_semantic_rows_loaded": 0,
         "raw_private_text_opened": False,
         "network_calls": 0,
