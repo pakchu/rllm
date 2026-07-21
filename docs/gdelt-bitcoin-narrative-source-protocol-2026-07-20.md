@@ -18,7 +18,7 @@ Official references:
 - mode: `timelinevolraw`
 - format: `json`
 - source interval: `[2020-01-01, 2024-01-01)`
-- logical request windows: calendar quarters, half-open
+- logical request window: one full `[2020-01-01, 2024-01-01)` interval per query
 - API `enddatetime`: one second before each logical exclusive end; this avoids
   GDELT's observed inclusion of the boundary calendar-day bin
 - required response resolution: one UTC day
@@ -61,6 +61,13 @@ written, one 2020Q1 request showed that `enddatetime=20200401000000` returns an
 April 1 daily bin. The request builder was therefore corrected to send
 `enddatetime=20200331235959` for logical `[2020-01-01, 2020-04-01)`. The failed
 response was not cached and no feature or outcome was evaluated.
+
+The initial implementation split each query into 16 calendar quarters. The
+official DOC API specifies daily resolution for periods longer than one week,
+so the repeated requests added rate-limit risk without adding resolution. Before
+any source artifact was written, the transport was reduced to one full request
+per query (four requests total); the logical dates, queries, daily resolution,
+and availability clock did not change.
 
 After source promotion, source-only feature definitions and minimum incidence
 gates must be frozen before any BTC outcome is opened.
