@@ -1,0 +1,95 @@
+{
+  "built_at_utc": "2026-07-21T23:49:35.764498+00:00",
+  "config": {
+    "cache_dir": "data/bitfinex_margin_funding_stats_2020_2023_cache",
+    "end_exclusive": "2024-01-01T00:00:00Z",
+    "keep_cache": false,
+    "manifest": "results/bitfinex_margin_funding_stats_source_manifest_2026-07-20.json",
+    "maximum_attempts": 7,
+    "maximum_gap_hours": 6.0,
+    "output": "data/bitfinex_margin_funding_stats_2020_2023.csv.gz",
+    "page_limit": 250,
+    "raw_output": "data/bitfinex_margin_funding_stats_raw_2020_2023.jsonl.gz",
+    "request_pause_seconds": 4.05,
+    "request_timeout_seconds": 30.0,
+    "start": "2020-01-01T00:00:00Z"
+  },
+  "coverage": {
+    "fBTC": {
+      "first_observation": "2020-01-01T00:05:01+00:00",
+      "last_observation": "2023-12-31T23:05:00+00:00",
+      "maximum_gap_hours": 3.2777777777777777,
+      "missing_utc_hours": 9,
+      "rows": 35058
+    },
+    "fUSD": {
+      "first_observation": "2020-01-01T00:05:01+00:00",
+      "last_observation": "2023-12-31T23:05:00+00:00",
+      "maximum_gap_hours": 3.2777777777777777,
+      "missing_utc_hours": 9,
+      "rows": 35058
+    }
+  },
+  "files": {
+    "builder": {
+      "path": "training/download_bitfinex_margin_funding_stats_v2.py",
+      "sha256": "b3bb9434dec618c8724ad584caa2fb66cd705d210dd66889b32ab80fd8f480ca"
+    },
+    "canonical": {
+      "columns": [
+        "symbol",
+        "observation_time",
+        "available_at",
+        "timestamp_ms",
+        "frr",
+        "average_period_days",
+        "funding_amount",
+        "funding_amount_used",
+        "funding_below_threshold"
+      ],
+      "path": "data/bitfinex_margin_funding_stats_2020_2023.csv.gz",
+      "rows": 70116,
+      "sha256": "71635b9f3a38efa7422a6fcf616859e6a41636bbb79ff0f85e160ef395b0d53c"
+    },
+    "raw": {
+      "path": "data/bitfinex_margin_funding_stats_raw_2020_2023.jsonl.gz",
+      "rows": 70116,
+      "sha256": "2f5ca2b344806be5bbfa63090fb79a86259d722e03c4f136cd316eb5787f8adb"
+    }
+  },
+  "protocol_version": "bitfinex_margin_funding_stats_source_v2",
+  "requests": {
+    "fBTC": {
+      "cached_pages": 142,
+      "network_requests": 0
+    },
+    "fUSD": {
+      "cached_pages": 142,
+      "network_requests": 0
+    }
+  },
+  "source_contract": {
+    "api_requirements": "https://docs.bitfinex.com/docs/requirements-and-limitations",
+    "availability_rule": "max(floor(observation_time, 1h) + 15m, ceil(observation_time, 5m))",
+    "documentation": "https://docs.bitfinex.com/reference/rest-public-funding-stats",
+    "end_exclusive": "2024-01-01T00:00:00+00:00",
+    "endpoint": "https://api-pub.bitfinex.com/v2/funding/stats/{symbol}/hist",
+    "late_observation_fallback_rows": 100,
+    "market_or_pnl_columns_loaded": false,
+    "minimum_request_pause_seconds": 4.0,
+    "outcomes_opened": false,
+    "page_limit": 250,
+    "post_2023_rows_requested": false,
+    "start_inclusive": "2020-01-01T00:00:00+00:00",
+    "symbols": [
+      "fUSD",
+      "fBTC"
+    ]
+  },
+  "transport_amendment": {
+    "path": "results/bitfinex_margin_funding_stats_transport_v2_amendment_2026-07-20.json",
+    "sha256": "1fc2d1b35242e7a1bd8232b3b0dfe65d479d0f8e2c4240c523efea1937dd00e9",
+    "v1_builder": "training/download_bitfinex_margin_funding_stats.py",
+    "v1_builder_sha256": "55bb48e7cc810fa42c46bf5de58513b5a8eb3ab9c41ea70592a6617f466db665"
+  }
+}

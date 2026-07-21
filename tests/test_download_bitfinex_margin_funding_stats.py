@@ -174,3 +174,27 @@ def test_transport_v2_amendment_is_hash_bound_and_outcome_blind() -> None:
     )
     assert payload["outcome_boundary"]["feature_values_inspected"] is False
     assert payload["outcome_boundary"]["outcomes_opened"] is False
+
+
+def test_frozen_v2_source_artifacts_match_manifest_without_opening_features() -> None:
+    manifest_path = Path(
+        "results/bitfinex_margin_funding_stats_source_manifest_2026-07-20.json"
+    )
+    canonical = Path("data/bitfinex_margin_funding_stats_2020_2023.csv.gz")
+    raw = Path("data/bitfinex_margin_funding_stats_raw_2020_2023.jsonl.gz")
+    assert hashlib.sha256(manifest_path.read_bytes()).hexdigest() == (
+        "9d7c13d56983d7d33fec1c17e24f1794baca64fcfc666599b798d5d5b49cf9b9"
+    )
+    assert hashlib.sha256(canonical.read_bytes()).hexdigest() == (
+        "71635b9f3a38efa7422a6fcf616859e6a41636bbb79ff0f85e160ef395b0d53c"
+    )
+    assert hashlib.sha256(raw.read_bytes()).hexdigest() == (
+        "2f5ca2b344806be5bbfa63090fb79a86259d722e03c4f136cd316eb5787f8adb"
+    )
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["protocol_version"] == source_v2.PROTOCOL_VERSION
+    assert manifest["files"]["canonical"]["rows"] == 70_116
+    assert manifest["files"]["raw"]["rows"] == 70_116
+    assert manifest["source_contract"]["late_observation_fallback_rows"] == 100
+    assert manifest["source_contract"]["outcomes_opened"] is False
+    assert manifest["source_contract"]["post_2023_rows_requested"] is False
