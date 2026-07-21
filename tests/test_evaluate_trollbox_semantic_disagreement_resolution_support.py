@@ -11,12 +11,14 @@ from training.evaluate_trollbox_semantic_disagreement_resolution_support import 
     DEADLINE,
     HOLD,
     Candidate,
+    IMPLEMENTATION,
     SemanticEvent,
     build_primary_candidates,
     build_report,
     canonical_hash,
     load_json,
     schedule_candidates,
+    sha256_file,
     write_report,
 )
 
@@ -167,6 +169,10 @@ def test_real_frozen_source_passes_without_market_access() -> None:
         "post_2022_semantic_rows_loaded": 0,
         "network_calls": 0,
         "outcomes_opened": False,
+    }
+    assert report["implementation_binding"] == {
+        "path": str(IMPLEMENTATION),
+        "sha256": sha256_file(IMPLEMENTATION),
     }
     core = {k: v for k, v in report.items() if k not in {"created_at", "result_hash"}}
     assert report["result_hash"] == canonical_hash(core)
