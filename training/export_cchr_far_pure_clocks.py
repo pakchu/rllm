@@ -213,25 +213,26 @@ def _attach_delayed_metrics(
 
 def _funding_event_rate(dates: pd.Series, funding: pd.DataFrame) -> np.ndarray:
     event_rate = np.full(len(dates), np.nan, dtype=float)
-    funding_dates = _utc_series(funding["date"], label="funding date")
-    pre2024_funding = funding.loc[funding_dates < PRE2024_END].copy()
-    if pre2024_funding.empty:
-        return event_rate
     exact = pd.to_datetime(
-        pd.to_numeric(pre2024_funding["funding_time"], errors="raise"),
+        pd.to_numeric(funding["funding_time"], errors="raise"),
         unit="ms",
         utc=True,
         errors="raise",
     )
+    pre2024 = exact < PRE2024_END
+    exact = exact.loc[pre2024]
+    rates = pd.to_numeric(funding.loc[pre2024, "funding_rate"], errors="coerce")
+    if len(exact) == 0:
+        return event_rate
     date_values = dates.to_numpy(dtype="datetime64[ns]")
-    for timestamp, rate in zip(
-        exact,
-        pd.to_numeric(pre2024_funding["funding_rate"], errors="coerce"),
-        strict=True,
-    ):
+    for timestamp, rate in zip(exact, rates, strict=True):
         known = pd.Timestamp(timestamp).ceil("5min")
         pos = int(np.searchsorted(date_values, known.to_datetime64(), side="left"))
-        if pos < len(event_rate) and np.isfinite(rate):
+        if (
+            pos < len(event_rate)
+            and date_values[pos] == known.to_datetime64()
+            and np.isfinite(rate)
+        ):
             event_rate[pos] = float(rate)
     return event_rate
 

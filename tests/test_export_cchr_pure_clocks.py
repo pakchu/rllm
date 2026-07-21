@@ -183,6 +183,32 @@ def test_export_publishes_exact_clock_and_provenance_manifest_create_only(
     assert manifest_path.read_bytes() == original_manifest
 
 
+def test_manifest_records_zero_row_members_without_accepting_unknown_ids(
+    tmp_path: Path,
+) -> None:
+    candidate_ids = ("synthetic:a", "synthetic:b")
+    payload = _synthetic_preregistration(tmp_path, candidate_ids)
+    prereg_path = tmp_path / "prereg.json"
+    prereg_path.write_text("{}\n", encoding="utf-8")
+    plan = runner.ExportPlan(
+        family="pdlh",
+        preregistration=payload,
+        preregistration_path=prereg_path,
+        preregistration_sha256=common.sha256_file(prereg_path),
+        clock_target=tmp_path / "clock.csv.gz",
+        manifest_target=tmp_path / "manifest.json",
+    )
+    manifest = runner.build_export_manifest(
+        plan,
+        _clock(("synthetic:a",)),
+        clock_sha256="b" * 64,
+    )
+    assert manifest["clock"]["rows_by_candidate"] == {
+        "synthetic:a": 1,
+        "synthetic:b": 0,
+    }
+
+
 def test_pair_publish_rolls_back_owned_clock_if_manifest_target_races(
     tmp_path: Path,
 ) -> None:

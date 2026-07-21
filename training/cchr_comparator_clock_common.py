@@ -235,6 +235,7 @@ def validate_clock_frame(
     frame: pd.DataFrame,
     *,
     expected_candidate_ids: Sequence[str] | None = None,
+    require_all_expected_members: bool = True,
 ) -> pd.DataFrame:
     if tuple(frame.columns) != CLOCK_COLUMNS:
         raise ValueError("clock frame must have the exact frozen six-column schema")
@@ -266,7 +267,9 @@ def validate_clock_frame(
         expected_ids = set(expected_candidate_ids)
         if len(expected_ids) != len(tuple(expected_candidate_ids)):
             raise ValueError("expected candidate IDs contain duplicates")
-        if observed_ids != expected_ids:
+        if not observed_ids.issubset(expected_ids):
+            raise ValueError("clock contains IDs outside the frozen candidate map")
+        if require_all_expected_members and observed_ids != expected_ids:
             raise ValueError("clock member IDs differ from the frozen candidate map")
     normalized["side"] = side_series.astype(int)
     return normalized.sort_values(
@@ -278,9 +281,12 @@ def clock_csv_bytes(
     frame: pd.DataFrame,
     *,
     expected_candidate_ids: Sequence[str] | None = None,
+    require_all_expected_members: bool = True,
 ) -> bytes:
     normalized = validate_clock_frame(
-        frame, expected_candidate_ids=expected_candidate_ids
+        frame,
+        expected_candidate_ids=expected_candidate_ids,
+        require_all_expected_members=require_all_expected_members,
     )
     buffer = io.StringIO(newline="")
     writer = csv.writer(buffer, lineterminator="\n")
@@ -295,10 +301,15 @@ def write_deterministic_gzip_clock(
     path: str | Path,
     *,
     expected_candidate_ids: Sequence[str] | None = None,
+    require_all_expected_members: bool = True,
 ) -> str:
     target = repository_path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    csv_bytes = clock_csv_bytes(frame, expected_candidate_ids=expected_candidate_ids)
+    csv_bytes = clock_csv_bytes(
+        frame,
+        expected_candidate_ids=expected_candidate_ids,
+        require_all_expected_members=require_all_expected_members,
+    )
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{target.name}.", suffix=".tmp", dir=target.parent
     )

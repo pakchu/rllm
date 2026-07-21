@@ -241,12 +241,12 @@ def build_export_manifest(
     normalized = clock_common.validate_clock_frame(
         frame,
         expected_candidate_ids=tuple(candidate_map),
+        require_all_expected_members=False,
     )
+    observed_counts = normalized.groupby("candidate_id", sort=True).size().to_dict()
     rows_by_candidate = {
-        str(candidate_id): int(count)
-        for candidate_id, count in normalized.groupby("candidate_id", sort=True)
-        .size()
-        .items()
+        str(candidate_id): int(observed_counts.get(candidate_id, 0))
+        for candidate_id in candidate_map
     }
     payload: dict[str, Any] = {
         "protocol_version": prereg.EXPORT_MANIFEST_PROTOCOL_VERSION,
@@ -433,6 +433,7 @@ def _stage_plan(plan: ExportPlan) -> StagedExport:
     normalized = clock_common.validate_clock_frame(
         frame,
         expected_candidate_ids=expected_ids,
+        require_all_expected_members=False,
     )
     clock_temporary = _temporary_path(plan.clock_target, suffix=".csv.gz.tmp")
     manifest_temporary: Path | None = None
@@ -441,6 +442,7 @@ def _stage_plan(plan: ExportPlan) -> StagedExport:
             normalized,
             clock_temporary,
             expected_candidate_ids=expected_ids,
+            require_all_expected_members=False,
         )
         manifest = build_export_manifest(
             plan,

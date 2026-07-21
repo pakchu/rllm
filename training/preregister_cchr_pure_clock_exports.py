@@ -25,7 +25,7 @@ from training import export_cchr_pdlh_pure_clocks as pdlh
 from training import preregister_cross_collateral_cohort_handoff_relay as cchr
 
 
-PROTOCOL_VERSION = "cchr_pure_clock_export_preregistration_v3"
+PROTOCOL_VERSION = "cchr_pure_clock_export_preregistration_v5"
 POLICY_ID = "CCHR-288"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 RESULTS_ROOT = REPOSITORY_ROOT / "results"
@@ -51,11 +51,11 @@ EXPORTER_SOURCES = {
     "live": Path("training/export_cchr_live_portfolio_pure_clocks.py"),
 }
 PREREGISTRATION_OUTPUTS = {
-    "pdlh": Path("results/cchr_pdlh_pure_clock_preregistration_v3_2026-07-21.json"),
-    "dtv": Path("results/cchr_dtv_pure_clock_preregistration_v3_2026-07-21.json"),
-    "far": Path("results/cchr_far_pure_clock_preregistration_v3_2026-07-21.json"),
+    "pdlh": Path("results/cchr_pdlh_pure_clock_preregistration_v5_2026-07-21.json"),
+    "dtv": Path("results/cchr_dtv_pure_clock_preregistration_v5_2026-07-21.json"),
+    "far": Path("results/cchr_far_pure_clock_preregistration_v5_2026-07-21.json"),
     "live": Path(
-        "results/cchr_live_portfolio_pure_clock_preregistration_v3_2026-07-21.json"
+        "results/cchr_live_portfolio_pure_clock_preregistration_v5_2026-07-21.json"
     ),
 }
 
@@ -278,7 +278,9 @@ def _output_contract(family: str) -> dict[str, Any]:
             "compression": "gzip",
             "gzip_mtime": 0,
             "ordering": ["candidate_id", "entry_time"],
-            "all_candidate_ids_required": True,
+            "all_candidate_ids_declared": True,
+            "zero_row_members_allowed": True,
+            "unknown_candidate_ids_allowed": False,
         },
         "export_manifest_contract": {
             "protocol_version": EXPORT_MANIFEST_PROTOCOL_VERSION,
