@@ -243,3 +243,16 @@ def test_summary_applies_all_frozen_support_gates() -> None:
     assert summary["events"] == 60
     assert summary["distinct_minters"] == 5
     assert all(summary["checks"].values())
+
+
+def test_published_support_artifact_is_valid_and_outcome_blind() -> None:
+    report = amtr._read_json(amtr.DEFAULT_REPORT_OUTPUT)
+    amtr.validate_report(report)
+    assert report["decision"]["status"] == "retired_before_novelty"
+    assert report["primary_support"]["events"] == 5
+    assert report["outcome_boundary"]["comparator_clock_rows_read"] == 0
+    assert report["outcome_boundary"]["btc_market_rows_read"] == 0
+    assert not any(
+        forbidden in report["clock_output"]["columns"]
+        for forbidden in ("return", "pnl", "cagr", "mdd", "price", "funding")
+    )
