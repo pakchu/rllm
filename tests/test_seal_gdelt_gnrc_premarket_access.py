@@ -8,6 +8,11 @@ import pytest
 from training import seal_gdelt_gnrc_premarket_access as seal
 
 
+PREMARKET_SEAL_SHA256 = (
+    "eef502ab306a074f790593e10f3e7bf52642d7605433a4e5e3cf2b0e07a98478"
+)
+
+
 def _manifest_pair() -> tuple[dict[str, object], dict[str, object]]:
     market: dict[str, object] = {
         "config": {
@@ -105,3 +110,10 @@ def test_premarket_seal_is_write_once(
     assert json.loads(output.read_text()) == payload
     with pytest.raises(FileExistsError, match="write-once"):
         seal.write_once(output)
+
+
+def test_committed_premarket_seal_matches_frozen_builder_exactly() -> None:
+    assert seal.sha256_file(seal.DEFAULT_OUTPUT) == PREMARKET_SEAL_SHA256
+    with seal.repository_path(seal.DEFAULT_OUTPUT).open(encoding="utf-8") as handle:
+        payload = json.load(handle)
+    assert payload == seal.build_seal()
