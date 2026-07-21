@@ -85,6 +85,7 @@ Aggregate = Callable[
     [list[dict[str, Any]], Config],
     tuple[pd.DataFrame, dict[str, Any]],
 ]
+PageCommitment = Callable[[list[dict[str, Any]]], str]
 
 
 def canonical_hash(payload: Any) -> str:
@@ -383,6 +384,7 @@ def download(
     fetch: Fetch | None = None,
     sleep: Callable[[float], None] = time.sleep,
     aggregate: Aggregate | None = None,
+    page_commitment: PageCommitment | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     if not 1 <= cfg.page_size <= 1000:
         raise ValueError("Deribit delivery page_size must be in [1, 1000]")
@@ -422,9 +424,13 @@ def download(
         if continuation is not None:
             params["continuation"] = continuation
         payload = fetch(params)
-        page_hashes.append(canonical_hash(payload))
         batch, next_continuation = _parse_payload(
             payload, page_size=cfg.page_size
+        )
+        page_hashes.append(
+            page_commitment(batch)
+            if page_commitment is not None
+            else canonical_hash(payload)
         )
         page_lengths.append(len(batch))
         if not batch:

@@ -26,7 +26,7 @@ MECHANISM_DOCUMENT_SHA256 = (
 )
 SHARED_DOWNLOADER = Path("training/download_deribit_btc_option_deliveries.py")
 SHARED_DOWNLOADER_SHA256 = (
-    "a6b2fe7960d0ba00ea8335736fb89ccd553bd331cc4cb6df601aaf644a3603de"
+    "aa925828cf8350ed522c0ac559c64faed90fc049b99228d60b349d2771b1cd4c"
 )
 FROZEN_PRE_REFACTOR_DOWNLOADER_SHA256 = (
     "1e698db869ef263b692a950a3ecc4f4fafb834dd99db8476fd4da11bc1852cda"
@@ -72,6 +72,11 @@ class Config:
 
 
 Fetch = Callable[[dict[str, Any]], dict[str, Any]]
+
+
+def _settlement_rows_commitment(rows: list[dict[str, Any]]) -> str:
+    """Commit stable source rows, excluding request-specific API timing fields."""
+    return delivery.canonical_hash(rows)
 
 
 def _delivery_config(cfg: Config) -> delivery.Config:
@@ -319,7 +324,15 @@ def run(
         fetch=fetch,
         sleep=sleep if sleep is not None else time.sleep,
         aggregate=aggregate_wall_deliveries,
+        page_commitment=_settlement_rows_commitment,
     )
+    audit["page_commitment_scope"] = "ordered settlements rows only"
+    audit["excluded_dynamic_response_fields"] = [
+        "result.continuation",
+        "usIn",
+        "usOut",
+        "usDiff",
+    ]
     output = Path(cfg.output_csv)
     delivery._write_deterministic_csv(output, frame)
     core: dict[str, Any] = {
