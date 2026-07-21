@@ -1,0 +1,85 @@
+{
+  "as_of_date": "2026-07-21",
+  "authorization": {
+    "comparator_clock_access": false,
+    "full_pair_support_evaluator": false,
+    "next_action": "new independently frozen event-level mechanism only",
+    "outcome_evaluator": false,
+    "post_2023_event_access": false
+  },
+  "decision": {
+    "comparator_novelty_opened": false,
+    "economic_outcomes_opened": false,
+    "failed_gates": [
+      "tail_validity",
+      "side_balance"
+    ],
+    "pair_incidence_opened": false,
+    "pass": false,
+    "reason": "the complete source has only 3 USDT redeem rows, below the 33 rows required for even one strictly-prior SHORT tail event",
+    "repair_authorized": false,
+    "status": "retired_before_pair_incidence"
+  },
+  "earliest_failure": {
+    "maximum_possible_short_tail_events": 0,
+    "minimum_total_rows_for_any_tail_event": 33,
+    "observed_total_rows": 3,
+    "required_event": "usdt_eth:redeem",
+    "short_template_possible": false,
+    "side_balance_possible": false,
+    "strictly_prior_rows_required": 32,
+    "tail_validity_pass": false
+  },
+  "evaluator": {
+    "path": "training/evaluate_issuer_rotation_handoff_source_gate.py",
+    "sha256": "d42e5da2b05dfbef4a437e51a584c0006aeae48118f486b6a3d416fe6123cab3"
+  },
+  "gate_contract": {
+    "earliest_failure_short_circuit": true,
+    "failure_action": "retire without repair or outcomes",
+    "minimum_prior_same_type_rows": 32,
+    "short_template": "usdt_eth:redeem + usdc_eth:mint",
+    "side_balance_minimum_share": 0.3,
+    "tail_quantile": "strictly-prior nearest-rank 90th percentile"
+  },
+  "manifest_hash": "5c018b45fabddf6c645ead58a84b914840e136b4d39da1f8849e9d092ae8306e",
+  "mechanism_freeze": {
+    "path": "docs/issuer-rotation-handoff-mechanism-freeze-2026-07-21.md",
+    "sha256": "24dd0c2621f7f8246bd5c150fe0e6321803f58246e1ef5ec178db36a7f757de9"
+  },
+  "outcome_boundary": {
+    "btc_market_rows_read": 0,
+    "comparator_clock_rows_read": 0,
+    "funding_rows_read": 0,
+    "future_return_rows_read": 0,
+    "mechanism_freeze_bytes_hashed": true,
+    "network_calls": 0,
+    "pair_incidence_rows_derived": 0,
+    "post_2023_event_rows_read": 0,
+    "return_or_pnl_fields_read": 0,
+    "source_csv_bytes_hashed": true,
+    "source_csv_rows_read": 0,
+    "source_manifest_json_parsed": true,
+    "subprocess_calls": 0
+  },
+  "outcomes_opened": false,
+  "policy_id": "IRH-36",
+  "protocol_version": "issuer_rotation_handoff_source_gate_v1",
+  "source": {
+    "csv_path": "data/ethereum_stablecoin_issuance_redemption_2020_2023/ethereum_usdt_usdc_issuance_redemption_2020_2023.csv.gz",
+    "csv_sha256": "70ba3799ba84dc671051623a8d167b1731f043cf84a686b9878a67fcd52e5901",
+    "dual_replay_equal": true,
+    "event_counts": {
+      "usdc_eth:burn": 166552,
+      "usdc_eth:mint": 99033,
+      "usdt_eth:destroyed_black_funds": 642,
+      "usdt_eth:issue": 132,
+      "usdt_eth:redeem": 3
+    },
+    "event_rows": 266362,
+    "header_cross_check": true,
+    "manifest_hash": "a0c7740db64f7779fade68d76985c629cabe81983bf594e8258cef16a5725a1b",
+    "manifest_path": "results/ethereum_stablecoin_issuance_redemption_source_manifest_2026-07-21.json",
+    "manifest_sha256": "8ec9ab08c413bf6f5f8170fb800b05105522d4cf1a7932943c214288701e31fe"
+  }
+}

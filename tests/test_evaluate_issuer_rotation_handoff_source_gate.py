@@ -86,3 +86,9 @@ def test_run_is_byte_deterministic(tmp_path: Path) -> None:
     second = gate.run(output)
     assert first == second
     assert output.read_bytes() == first_bytes
+
+
+def test_published_source_gate_matches_current_evaluator() -> None:
+    published = gate._read_json(gate.DEFAULT_OUTPUT)
+    gate.validate_report(published)
+    assert published == gate.build_report()
