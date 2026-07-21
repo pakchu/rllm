@@ -1,0 +1,140 @@
+{
+  "builder": {
+    "path": "training/download_gdelt_bitcoin_narrative_daily_v2.py",
+    "sha256": "10f22a4a7e45080369dd989add6765caac3ad3a91c72f5e4bb26986904671569",
+    "v1_dependency_path": "training/download_gdelt_bitcoin_narrative_daily.py",
+    "v1_dependency_sha256": "d756990d979e901033891ad6a8c565783dc58e8a4a9e286d6e866929dd74889e"
+  },
+  "config": {
+    "availability_lag_hours": 48,
+    "availability_minute": 15,
+    "cache_dir": "data/gdelt_bitcoin_narrative_2020_2023_v2_cache",
+    "daily_output": "data/gdelt_bitcoin_narrative_daily_2020_2023.csv.gz",
+    "end_date_exclusive": "2024-01-01",
+    "manifest_output": "results/gdelt_bitcoin_narrative_source_manifest_2026-07-20.json",
+    "maximum_retries": 12,
+    "raw_bundle_output": "data/gdelt_bitcoin_narrative_timeline_raw_2020_2023.jsonl.gz",
+    "request_pause_seconds": 60.0,
+    "retry_base_seconds": 15.0,
+    "retry_max_seconds": 300.0,
+    "start_date": "2020-01-01",
+    "timeout_seconds": 1800.0
+  },
+  "contract": {
+    "availability": "source_date UTC midnight + 48h15m",
+    "end_date_exclusive": "2024-01-01",
+    "endpoint": "https://api.gdeltproject.org/api/v2/doc/doc",
+    "format": "json",
+    "mode": "timelinevolraw",
+    "protocol_version": "gdelt_bitcoin_narrative_daily_source_v2",
+    "queries": [
+      {
+        "query": "(bitcoin OR cryptocurrency)",
+        "query_id": "broad"
+      },
+      {
+        "query": "(bitcoin OR cryptocurrency) AND (hack OR hacked OR exploit OR scam OR fraud OR theft OR bankruptcy OR bankrupt OR collapse OR liquidation OR liquidated)",
+        "query_id": "failure"
+      },
+      {
+        "query": "(bitcoin OR cryptocurrency) AND (ban OR banned OR regulation OR regulator OR crackdown OR lawsuit OR investigation)",
+        "query_id": "constraint"
+      },
+      {
+        "query": "(bitcoin OR cryptocurrency) AND (ETF OR institutional OR adoption OR approval OR approved OR investment)",
+        "query_id": "adoption"
+      }
+    ],
+    "required_date_resolution": "day",
+    "sparse_bin_policy": {
+      "all_query_absence": "global monitoring outage day with all counts zero",
+      "global_norm": "consensus norm from available feature-query bins; zero only when all four query bins are absent",
+      "omitted_query_bin": "zero matching articles",
+      "subset_validation": "failure/constraint/adoption must not exceed broad"
+    },
+    "start_date": "2020-01-01",
+    "windowing": "single_full_half_open_with_api_end_at_last_second"
+  },
+  "contract_hash": "68b6e659b1d03aea7e734aa7fb146cd0efb73b26c2dcc7ebe91e152bee9fed73",
+  "manifest_hash": "ec8721f42bc8efc19251f7ee7bb526fe70df6c6426b9c63688850bfb0c142a17",
+  "next_action": "commit outer source seal before opening feature counts",
+  "official_sources": [
+    "https://www.gdeltproject.org/data.html",
+    "https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/",
+    "https://blog.gdeltproject.org/doc-2-0-updates-1-5-year-searching-and-updated-mobile-interface/"
+  ],
+  "outcome_boundary": {
+    "btc_market_rows_read": 0,
+    "economic_metrics_computed": false,
+    "funding_rows_read": 0,
+    "future_return_rows_read": 0,
+    "post_2023_news_rows_requested": 0,
+    "return_or_pnl_fields_read": 0
+  },
+  "outputs": {
+    "daily_columns": [
+      "date",
+      "available_at",
+      "global_article_count",
+      "broad_article_count",
+      "failure_article_count",
+      "constraint_article_count",
+      "adoption_article_count"
+    ],
+    "daily_path": "data/gdelt_bitcoin_narrative_daily_2020_2023.csv.gz",
+    "daily_sha256": "52d98ee9d63049ca9b12a70f7728a56dfad520f6379feef4e173140e7581347b",
+    "raw_bundle_path": "data/gdelt_bitcoin_narrative_timeline_raw_2020_2023.jsonl.gz",
+    "raw_bundle_sha256": "eb2ca3c2353f1a2c589b850e4e33df16e70027596dd872f77753608ed6463044"
+  },
+  "protocol_version": "gdelt_bitcoin_narrative_daily_source_v2",
+  "requests": {
+    "count": 4,
+    "response_hashes": [
+      {
+        "end_exclusive": "2024-01-01",
+        "query_id": "broad",
+        "response_sha256": "9155b696e0f47da7fa8a6cd73ef6df1e05f6ea61cd95717abb299b4e3866548c",
+        "start": "2020-01-01"
+      },
+      {
+        "end_exclusive": "2024-01-01",
+        "query_id": "failure",
+        "response_sha256": "46f787dbfabcb58649b247d815902eb79d633e9f32e2cbb74a5b85542b37ceb9",
+        "start": "2020-01-01"
+      },
+      {
+        "end_exclusive": "2024-01-01",
+        "query_id": "constraint",
+        "response_sha256": "a027667d246b358c68d216719d3ca948610f907667b1b9e6b735ed4b5d2cb7f2",
+        "start": "2020-01-01"
+      },
+      {
+        "end_exclusive": "2024-01-01",
+        "query_id": "adoption",
+        "response_sha256": "3b704bf8c459526e9968f10353807396f662bab8103fadb14b97c2d66fd4fae2",
+        "start": "2020-01-01"
+      }
+    ]
+  },
+  "source_audit": {
+    "daily_rows": 1461,
+    "date_resolution": "day",
+    "first_available_at": "2020-01-03T00:15:00Z",
+    "first_date": "2020-01-01",
+    "global_norm_consistent_across_available_queries": true,
+    "global_outage_dates": [
+      "2020-10-20",
+      "2023-03-23"
+    ],
+    "global_outage_days": 2,
+    "known_global_outage_dates_match": true,
+    "last_available_at": "2024-01-02T00:15:00Z",
+    "last_date": "2023-12-31",
+    "missing_bins_by_query": {
+      "adoption": 2,
+      "broad": 2,
+      "constraint": 2,
+      "failure": 2
+    }
+  }
+}
