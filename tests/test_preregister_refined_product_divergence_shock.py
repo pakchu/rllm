@@ -50,6 +50,9 @@ def test_support_and_novelty_gates_are_conjunctively_frozen() -> None:
     assert report["novelty"]["exact_entry_jaccard_max"] == 0.10
     assert report["novelty"]["maximum_bidirectional_containment_max"] == 0.25
     assert report["novelty"]["absolute_signed_exposure_correlation_max"] == 0.35
+    assert report["novelty"]["comparison_start"] == "2020-01-01T00:00:00Z"
+    assert report["novelty"]["comparison_end_exclusive"] == "2024-01-01T00:00:00Z"
+    assert report["novelty"]["truncate_to_observed_comparator_events"] is False
     assert report["novelty"]["epsb_primary_exact_release_overlap_required"] == 0
 
 

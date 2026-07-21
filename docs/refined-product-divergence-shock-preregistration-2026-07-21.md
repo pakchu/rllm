@@ -165,14 +165,19 @@ timestamps, bind these exact outcome-free clock artifacts:
 | DTV cohort | `results/cchr_dtv_pure_clocks_2026-07-21.csv.gz` | `798e442f8ff4867232079cd6b500f388326b42c920297d407abbd1c4c85df225` |
 | PDLH cohort | `results/cchr_pdlh_pure_clocks_2026-07-21.csv.gz` | `5001efba77620c45a4784a71a7d5ab5a3127a4549be926a581e6597ed3e0c9fa` |
 
-On the common defined train/selection interval, RPDS must satisfy against each
-individual comparator candidate:
+On the single combined `[2020-01-01, 2024-01-01)` UTC grid, RPDS must satisfy
+against each individual comparator candidate:
 
 - exact-entry Jaccard at most 0.10;
 - maximum bidirectional one-to-one containment within plus/minus six hours at
   most 0.25; and
 - absolute signed occupied-exposure correlation on the five-minute union grid
   at most 0.35.
+
+No denominator is truncated to a comparator's first or last observed event.
+An unavailable comparator exposure remains zero on the combined grid; the
+maximum bidirectional containment prevents that zero prefix from hiding a
+high fraction of comparator events near RPDS.
 
 Against EPSB `primary`, exact release-date and exact-entry overlap must be zero;
 any nonzero overlap is an implementation error because the sign states are

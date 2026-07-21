@@ -17,7 +17,7 @@ MECHANISM_DOCUMENT = Path(
     "docs/refined-product-divergence-shock-preregistration-2026-07-21.md"
 )
 MECHANISM_DOCUMENT_SHA256 = (
-    "530bc6272d4941a8bb62c2a3e719f914db907bb5389ca059ee4cb93daaf07df7"
+    "9763f87f21d9250588587fa59fbbab8d78af611652edc84ab4851bd7eace2988"
 )
 GENERATOR_SOURCE = Path("training/preregister_refined_product_divergence_shock.py")
 DEFAULT_OUTPUT = Path(
@@ -191,6 +191,9 @@ def build_preregistration() -> dict[str, Any]:
         ],
         "novelty": {
             "bindings": _serialized_bindings(COMPARATOR_BINDINGS),
+            "comparison_start": "2020-01-01T00:00:00Z",
+            "comparison_end_exclusive": "2024-01-01T00:00:00Z",
+            "truncate_to_observed_comparator_events": False,
             "exact_entry_jaccard_max": 0.10,
             "one_to_one_tolerance_hours": 6,
             "maximum_bidirectional_containment_max": 0.25,

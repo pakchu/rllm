@@ -10,8 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT = (
     ROOT / "results/refined_product_divergence_shock_preregistration_2026-07-21.json"
 )
-ARTIFACT_SHA256 = "082026f1091d3b5cdc7a2271d011479f949f8b7a1a9be71a1e2dbfc971b44c8d"
-MANIFEST_HASH = "eb68c2d510c68223cd391fb219fb58d851153a34dfbaf73542978b2b9e56e4f9"
+ARTIFACT_SHA256 = "b66454c6739080171d26199addc0db553affb79f43cf7c3aab868de3f656e97a"
+MANIFEST_HASH = "df7bc965823165e7cffb20353c9edb0aa472544c562dd656b5cd4f92bfc5d8c0"
 
 
 def test_committed_preregistration_is_hash_bound_and_reproducible() -> None:
