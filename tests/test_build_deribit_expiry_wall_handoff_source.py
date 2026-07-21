@@ -196,6 +196,9 @@ def test_source_run_binds_mechanism_and_shared_downloader(tmp_path: Path) -> Non
     assert manifest["mechanism_binding"]["sha256"] == (
         wall.MECHANISM_DOCUMENT_SHA256
     )
+    assert manifest["implementation_binding"]["sha256"] == (
+        wall.delivery.sha256_file(wall.IMPLEMENTATION)
+    )
     assert manifest["shared_downloader_binding"]["sha256"] == (
         wall.SHARED_DOWNLOADER_SHA256
     )
