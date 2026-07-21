@@ -1,0 +1,607 @@
+{
+  "as_of_date": "2026-07-20",
+  "control_role": "diagnostic only; excluded from the 24-way champion family",
+  "controls": [
+    "simple_quality_score",
+    "broad_attention_only",
+    "no_attention_penalty",
+    "stale_one_source_day",
+    "direction_flip",
+    "deterministic_random_side_seed_20260720"
+  ],
+  "decision": "freeze_source_features_and_lattice_before_source_counts",
+  "economic_protocol": {
+    "absolute_return": "ending_equity / starting_equity - 1",
+    "bar_grid": "every UTC five-minute bar-open in [split_start, split_end_exclusive); bar interval is [open_time, open_time+5m)",
+    "base_cost": {
+      "deduction": "abs(position_units) * execution_price * side_cost_bps / 10000",
+      "entry_bps": 2.0,
+      "exit_bps": 2.0
+    },
+    "cagr": "(ending_equity / starting_equity) ** (365.2425 / full_calendar_days) - 1",
+    "champion_selection": "among train and selection qualifiers, maximize selection CAGR/strict MDD; tie by lower selection strict MDD then variant_id",
+    "entry": "5m open exactly source available_at + 10 minutes",
+    "exit": "5m open exactly H calendar days after entry",
+    "familywise_test": {
+      "adjusted_p_maximum": 0.1,
+      "block_days": 7,
+      "centering": "subtract each variant's 2023 sample mean before resampling",
+      "controls": "diagnostic only and excluded from champion selection",
+      "draws": 100000,
+      "family_variant_ids": [
+        "GNRC-rotation-f7s28-t050-h3d",
+        "GNRC-rotation-f7s28-t050-h7d",
+        "GNRC-rotation-f7s28-t100-h3d",
+        "GNRC-rotation-f7s28-t100-h7d",
+        "GNRC-rotation-f14s56-t050-h3d",
+        "GNRC-rotation-f14s56-t050-h7d",
+        "GNRC-rotation-f14s56-t100-h3d",
+        "GNRC-rotation-f14s56-t100-h7d",
+        "GNRC-clearing-f7s28-t050-h3d",
+        "GNRC-clearing-f7s28-t050-h7d",
+        "GNRC-clearing-f7s28-t100-h3d",
+        "GNRC-clearing-f7s28-t100-h7d",
+        "GNRC-clearing-f14s56-t050-h3d",
+        "GNRC-clearing-f14s56-t050-h7d",
+        "GNRC-clearing-f14s56-t100-h3d",
+        "GNRC-clearing-f14s56-t100-h7d",
+        "GNRC-rule_to_adoption-f7s28-t050-h3d",
+        "GNRC-rule_to_adoption-f7s28-t050-h7d",
+        "GNRC-rule_to_adoption-f7s28-t100-h3d",
+        "GNRC-rule_to_adoption-f7s28-t100-h7d",
+        "GNRC-rule_to_adoption-f14s56-t050-h3d",
+        "GNRC-rule_to_adoption-f14s56-t050-h7d",
+        "GNRC-rule_to_adoption-f14s56-t100-h3d",
+        "GNRC-rule_to_adoption-f14s56-t100-h7d"
+      ],
+      "method": "one-sided Romano-Wolf max-t circular block bootstrap",
+      "null": "mean daily net log return <= 0",
+      "seed": 20260720,
+      "selection_period": "2023-01-01 through 2023-12-31 UTC daily net log equity returns",
+      "source_unsupported_train_ineligible_or_zero_variance_adjusted_p": 1.0,
+      "statistic": "sqrt(n)*mean(r)/sample_std(r, ddof=1)",
+      "synchronization": "same circular seven-day block indices for every variant"
+    },
+    "funding": {
+      "cash_change": "-position_units * funding_mark_price * funding_rate",
+      "coverage": "exactly one BTCUSDT funding row at every UTC 00:00, 08:00, and 16:00 timestamp in the full split",
+      "required": true,
+      "timing": "every Binance funding timestamp strictly after entry and at or before exit"
+    },
+    "initial_equity": 1.0,
+    "market": "BTCUSDT USD-M perpetual 5m",
+    "marking": "validate the complete split bar/funding grids; visit every bar open, all fully-held strict extremes, every close, both execution costs, and each in-position funding cash flow; flat intervals carry equity",
+    "position_units": "side * equity_before_entry_cost / entry_open_price",
+    "post_selection_oos": {
+      "evaluation_as_of": "2026-07-20",
+      "market_access_seal": {
+        "must_be_committed_before": "any 2024+ BTC market or funding read",
+        "path": "results/gnrc_oos_market_access_seal_2026-07-20.json",
+        "required_fields": [
+          "protocol_version",
+          "champion_variant_id",
+          "champion_policy_hash",
+          "selection_report_path",
+          "selection_report_sha256",
+          "oos_source_builder_path",
+          "oos_source_builder_sha256",
+          "oos_evaluator_path",
+          "oos_evaluator_sha256",
+          "oos_source_output_path",
+          "source_start",
+          "source_end_exclusive",
+          "sealed_at",
+          "no_interim_oos_access",
+          "source_access_seal_path",
+          "source_access_seal_sha256",
+          "oos_source_output_sha256",
+          "oos_source_manifest_path",
+          "oos_source_manifest_sha256",
+          "oos_source_rows",
+          "oos_source_feature_values_inspected",
+          "oos_source_outcomes_inspected"
+        ]
+      },
+      "market_end_exclusive": "2026-07-01T00:00:00Z",
+      "market_start": "2024-01-01T00:00:00Z",
+      "maximum_strict_mdd_percent": 15.0,
+      "minimum_cagr_to_strict_mdd": 3.0,
+      "minimum_trades": 50,
+      "opening_preconditions": [
+        "source-access seal validates real path hashes and is committed before 2024+ news",
+        "source is downloaded without feature/outcome inspection",
+        "market-access seal binds source seal, 912 rows, source output, and manifest",
+        "no interim OOS market inspection"
+      ],
+      "required_absolute_return_positive": true,
+      "required_source_rows": 912,
+      "source_access_seal": {
+        "must_be_committed_before": "any 2024+ source request",
+        "path": "results/gnrc_oos_source_access_seal_2026-07-20.json",
+        "required_fields": [
+          "protocol_version",
+          "champion_variant_id",
+          "champion_policy_hash",
+          "selection_report_path",
+          "selection_report_sha256",
+          "oos_source_builder_path",
+          "oos_source_builder_sha256",
+          "oos_evaluator_path",
+          "oos_evaluator_sha256",
+          "oos_source_output_path",
+          "source_start",
+          "source_end_exclusive",
+          "sealed_at",
+          "no_interim_oos_access"
+        ]
+      },
+      "source_end_exclusive": "2026-07-01",
+      "source_grid_validation": "parse the hashed gzip CSV and require exact sorted unique dates plus the frozen +48h15m availability clock",
+      "source_output_columns": [
+        "date",
+        "available_at",
+        "global_article_count",
+        "broad_article_count",
+        "failure_article_count",
+        "constraint_article_count",
+        "adoption_article_count"
+      ],
+      "source_start": "2024-01-01",
+      "transport": "identical queries, daily grid, and +48h15m availability clock"
+    },
+    "selection_qualifiers": {
+      "absolute_return_positive": true,
+      "maximum_strict_mdd_percent": 20.0,
+      "minimum_cagr_to_strict_mdd": 1.0,
+      "minimum_trades": 10
+    },
+    "stress_cost": {
+      "deduction": "abs(position_units) * execution_price * side_cost_bps / 10000",
+      "entry_bps": 4.0,
+      "exit_bps": 4.0
+    },
+    "strict_intrabar_order": "for every fully held bar after entry and strictly before exit, visit favorable extreme then adverse extreme before close (LONG high then low; SHORT low then high); exit occurs at the scheduled bar open before that bar's extremes",
+    "strict_mdd": "maximum (running_peak_equity - strict_path_equity) / running_peak_equity over the full calendar 5m path including flat and intratrade marks",
+    "train_qualifiers": {
+      "absolute_return_positive": true,
+      "maximum_strict_mdd_percent": 25.0,
+      "minimum_cagr_to_strict_mdd": 1.0,
+      "minimum_trades": 24,
+      "stress_absolute_return_positive": true
+    }
+  },
+  "failure_action": "retire_family_without_threshold_or_sign_repair",
+  "family": "GNRC",
+  "family_support_gates": {
+    "minimum_passing_variants": 8,
+    "require_every_score_archetype": true,
+    "require_every_window_pair": true,
+    "stop_without_repair_if_failed": true
+  },
+  "manifest_hash": "481aae4d1ebbf147333cfdfe8534d695761932049775354f3bb242a5a786715e",
+  "outcome_boundary": {
+    "btc_market_rows_read": 0,
+    "funding_rows_read": 0,
+    "future_return_rows_read": 0,
+    "gdelt_daily_rows_read": 0,
+    "gdelt_raw_responses_read": 0,
+    "outcomes_opened": false,
+    "return_or_pnl_fields_read": 0
+  },
+  "policy": {
+    "base_features": {
+      "xA": "log((adoption + 0.5) / (broad + 0.5))",
+      "xB": "log((broad + 0.5) / (global + 0.5))",
+      "xC": "log((constraint + 0.5) / (broad + 0.5))",
+      "xF": "log((failure + 0.5) / (broad + 0.5))"
+    },
+    "config": {
+      "attention_penalty": 0.25,
+      "decision_clock": "source_available_at",
+      "entry_delay_minutes": 10,
+      "global_nonoverlap_per_variant": true,
+      "leverage": 1.0,
+      "mad_consistency_scale": 1.4826,
+      "mad_floor": 1e-06,
+      "pseudocount": 0.5,
+      "selection_end_exclusive": "2024-01-01T00:00:00Z",
+      "selection_start": "2023-01-01T00:00:00Z",
+      "train_end_exclusive": "2023-01-01T00:00:00Z",
+      "train_start": "2021-01-01T00:00:00Z"
+    },
+    "robust_features": {
+      "CLRx": "(mean(x[t-2f+1:t-f]) - mean(x[t-f+1:t])) / max(1.4826*MAD_slow(x, including t), 1e-6)",
+      "ClearAdoption": "CLRA",
+      "ClearRisk": "0.5 * (CLRF + CLRC)",
+      "MAD": "median(abs(x - median(slow))) on the same slow index set",
+      "Quality": "ZA - Risk",
+      "Risk": "0.5 * (ZF + ZC)",
+      "Zx": "(mean_fast(x, including t) - mean_slow(x, including t)) / max(1.4826*MAD_slow(x, including t), 1e-6)",
+      "index_sets": {
+        "current_fast": "[t-f+1, t] inclusive",
+        "full_history_required": "at least s consecutive daily rows; s >= 2f",
+        "previous_fast": "[t-2f+1, t-f] inclusive",
+        "slow": "[t-s+1, t] inclusive"
+      },
+      "mean": "ordinary arithmetic mean",
+      "median": "middle observation; average the two middle observations when even"
+    },
+    "scheduler": {
+      "conflict": "flat when long and short both reach threshold",
+      "decision": "source available_at",
+      "entry": "decision + 10 minutes",
+      "exit": "entry + hold calendar days",
+      "nonoverlap": "admit only when entry > previous admitted exit; same-time roll prohibited",
+      "ordering": "ascending (available_at, source_date), unique source_date",
+      "required_source_grid": "exactly every source date whose source_date+48h25m entry and full hold satisfy split_start <= entry and exit < split_end",
+      "split_containment": "split_start <= entry and exit < split_end_exclusive",
+      "state": "reset flat independently at each split"
+    },
+    "scores": {
+      "clearing": {
+        "long": "ClearRisk - ClearAdoption + 0.25*Quality - 0.25*max(ZB, 0)",
+        "short": "-(ClearRisk - ClearAdoption + 0.25*Quality - 0.25*max(ZB, 0))"
+      },
+      "rotation": {
+        "long": "Quality - 0.25*max(ZB, 0)",
+        "short": "-(Quality - 0.25*max(ZB, 0))"
+      },
+      "rule_to_adoption": {
+        "long": "min(ZA, ZC) - ZF - 0.25*max(ZB, 0)",
+        "short": "ZF + 0.5*max(ZC, 0) - ZA + 0.25*max(ZB, 0)"
+      }
+    },
+    "source_clock_assertion": "every row date is consecutive and unique; available_at must equal source date UTC midnight + 48h15m",
+    "support_denominators": {
+      "active_decision_share": "admitted events / eligible decisions",
+      "admitted_event": "directional trigger after conflict and nonoverlap",
+      "calendar_attribution": "UTC entry timestamp",
+      "eligible_decision": "full feature history, source evidence gate true, and split-contained entry/exit, before score and nonoverlap",
+      "maximum_month_share": "maximum admitted events in one UTC entry month / admitted events",
+      "raw_directional_trigger": "eligible decision with either side at threshold before conflict/nonoverlap"
+    }
+  },
+  "preregistration_document": "docs/gdelt-narrative-rotation-clearing-preregistration-2026-07-20.md",
+  "preregistration_document_sha256": "50b1e2550b8ec3e36b4db39873ed404b734d689f3094ff5da1d9d0bb10e2a388",
+  "preregistration_source": "training/preregister_gdelt_narrative_rotation_clearing.py",
+  "preregistration_source_sha256": "68c8402c4b04f9d301a76bf4ed202d2488154de03365467a13abf435e5ffe587",
+  "protocol_version": "gdelt_narrative_rotation_clearing_preregistration_v1",
+  "rllm_boundary": {
+    "gnrc_primary_oos_may_be_reused_for_rllm_claim": false,
+    "may_retime_reverse_or_create_events": false,
+    "part_of_gnrc_primary_claim": false,
+    "reason": "abstention and sizing alter realized entries/exposure",
+    "required_before_any_rllm_result": [
+      "separate overlay preregistration",
+      "model prompt parser checkpoint and training data hashes",
+      "overlay multiplicity correction",
+      "holdout not previously opened by deterministic GNRC evaluation"
+    ],
+    "status": "exploratory_only_until_separate_preregistration"
+  },
+  "source_evidence_gates": {
+    "minimum_adoption_articles_per_slow_window": 3,
+    "minimum_broad_articles_per_slow_day": 10,
+    "minimum_constraint_articles_per_slow_window": 3,
+    "minimum_failure_articles_per_slow_window": 3,
+    "minimum_nonzero_adoption_days_per_slow_window": 2,
+    "minimum_nonzero_constraint_days_per_slow_window": 2,
+    "minimum_nonzero_failure_days_per_slow_window": 2
+  },
+  "source_transport": {
+    "builder": "training/download_gdelt_bitcoin_narrative_daily.py",
+    "builder_sha256": "d756990d979e901033891ad6a8c565783dc58e8a4a9e286d6e866929dd74889e",
+    "commit": "22af253848939855aa456b2e2a5dda02e01a84c5",
+    "contract": {
+      "availability": "source_date UTC midnight + 48h15m",
+      "end_date_exclusive": "2024-01-01",
+      "endpoint": "https://api.gdeltproject.org/api/v2/doc/doc",
+      "format": "json",
+      "mode": "timelinevolraw",
+      "protocol_version": "gdelt_bitcoin_narrative_daily_source_v1",
+      "queries": [
+        {
+          "query": "(bitcoin OR cryptocurrency)",
+          "query_id": "broad"
+        },
+        {
+          "query": "(bitcoin OR cryptocurrency) AND (hack OR hacked OR exploit OR scam OR fraud OR theft OR bankruptcy OR bankrupt OR collapse OR liquidation OR liquidated)",
+          "query_id": "failure"
+        },
+        {
+          "query": "(bitcoin OR cryptocurrency) AND (ban OR banned OR regulation OR regulator OR crackdown OR lawsuit OR investigation)",
+          "query_id": "constraint"
+        },
+        {
+          "query": "(bitcoin OR cryptocurrency) AND (ETF OR institutional OR adoption OR approval OR approved OR investment)",
+          "query_id": "adoption"
+        }
+      ],
+      "required_date_resolution": "day",
+      "start_date": "2020-01-01",
+      "windowing": "single_full_half_open_with_api_end_at_last_second"
+    },
+    "daily_artifact_opened": false,
+    "protocol_document": "docs/gdelt-bitcoin-narrative-source-protocol-2026-07-20.md",
+    "protocol_document_sha256": "4dd39d0b0558ed5d7cbdf18a5d3235f80a53b2cdf5758cefeb0406efc7bcb2a6",
+    "raw_bundle_opened": false
+  },
+  "variant_support_gates": {
+    "maximum_active_decision_share": 0.4,
+    "maximum_selection_month_share": 0.3,
+    "maximum_train_month_share": 0.2,
+    "minimum_active_decision_share": 0.03,
+    "minimum_events_each_selection_half": 4,
+    "minimum_events_each_train_year": 8,
+    "minimum_selection_events": 10,
+    "minimum_selection_events_each_side": 2,
+    "minimum_train_events": 24,
+    "minimum_train_events_each_side": 5
+  },
+  "variants": [
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 7,
+      "hold_days": 3,
+      "long_rule": "long_score >= threshold",
+      "score": "rotation",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 28,
+      "threshold": 0.5,
+      "variant_id": "GNRC-rotation-f7s28-t050-h3d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 7,
+      "hold_days": 7,
+      "long_rule": "long_score >= threshold",
+      "score": "rotation",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 28,
+      "threshold": 0.5,
+      "variant_id": "GNRC-rotation-f7s28-t050-h7d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 7,
+      "hold_days": 3,
+      "long_rule": "long_score >= threshold",
+      "score": "rotation",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 28,
+      "threshold": 1.0,
+      "variant_id": "GNRC-rotation-f7s28-t100-h3d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 7,
+      "hold_days": 7,
+      "long_rule": "long_score >= threshold",
+      "score": "rotation",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 28,
+      "threshold": 1.0,
+      "variant_id": "GNRC-rotation-f7s28-t100-h7d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 14,
+      "hold_days": 3,
+      "long_rule": "long_score >= threshold",
+      "score": "rotation",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 56,
+      "threshold": 0.5,
+      "variant_id": "GNRC-rotation-f14s56-t050-h3d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 14,
+      "hold_days": 7,
+      "long_rule": "long_score >= threshold",
+      "score": "rotation",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 56,
+      "threshold": 0.5,
+      "variant_id": "GNRC-rotation-f14s56-t050-h7d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 14,
+      "hold_days": 3,
+      "long_rule": "long_score >= threshold",
+      "score": "rotation",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 56,
+      "threshold": 1.0,
+      "variant_id": "GNRC-rotation-f14s56-t100-h3d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 14,
+      "hold_days": 7,
+      "long_rule": "long_score >= threshold",
+      "score": "rotation",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 56,
+      "threshold": 1.0,
+      "variant_id": "GNRC-rotation-f14s56-t100-h7d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 7,
+      "hold_days": 3,
+      "long_rule": "long_score >= threshold",
+      "score": "clearing",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 28,
+      "threshold": 0.5,
+      "variant_id": "GNRC-clearing-f7s28-t050-h3d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 7,
+      "hold_days": 7,
+      "long_rule": "long_score >= threshold",
+      "score": "clearing",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 28,
+      "threshold": 0.5,
+      "variant_id": "GNRC-clearing-f7s28-t050-h7d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 7,
+      "hold_days": 3,
+      "long_rule": "long_score >= threshold",
+      "score": "clearing",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 28,
+      "threshold": 1.0,
+      "variant_id": "GNRC-clearing-f7s28-t100-h3d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 7,
+      "hold_days": 7,
+      "long_rule": "long_score >= threshold",
+      "score": "clearing",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 28,
+      "threshold": 1.0,
+      "variant_id": "GNRC-clearing-f7s28-t100-h7d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 14,
+      "hold_days": 3,
+      "long_rule": "long_score >= threshold",
+      "score": "clearing",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 56,
+      "threshold": 0.5,
+      "variant_id": "GNRC-clearing-f14s56-t050-h3d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 14,
+      "hold_days": 7,
+      "long_rule": "long_score >= threshold",
+      "score": "clearing",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 56,
+      "threshold": 0.5,
+      "variant_id": "GNRC-clearing-f14s56-t050-h7d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 14,
+      "hold_days": 3,
+      "long_rule": "long_score >= threshold",
+      "score": "clearing",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 56,
+      "threshold": 1.0,
+      "variant_id": "GNRC-clearing-f14s56-t100-h3d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 14,
+      "hold_days": 7,
+      "long_rule": "long_score >= threshold",
+      "score": "clearing",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 56,
+      "threshold": 1.0,
+      "variant_id": "GNRC-clearing-f14s56-t100-h7d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 7,
+      "hold_days": 3,
+      "long_rule": "long_score >= threshold",
+      "score": "rule_to_adoption",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 28,
+      "threshold": 0.5,
+      "variant_id": "GNRC-rule_to_adoption-f7s28-t050-h3d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 7,
+      "hold_days": 7,
+      "long_rule": "long_score >= threshold",
+      "score": "rule_to_adoption",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 28,
+      "threshold": 0.5,
+      "variant_id": "GNRC-rule_to_adoption-f7s28-t050-h7d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 7,
+      "hold_days": 3,
+      "long_rule": "long_score >= threshold",
+      "score": "rule_to_adoption",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 28,
+      "threshold": 1.0,
+      "variant_id": "GNRC-rule_to_adoption-f7s28-t100-h3d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 7,
+      "hold_days": 7,
+      "long_rule": "long_score >= threshold",
+      "score": "rule_to_adoption",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 28,
+      "threshold": 1.0,
+      "variant_id": "GNRC-rule_to_adoption-f7s28-t100-h7d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 14,
+      "hold_days": 3,
+      "long_rule": "long_score >= threshold",
+      "score": "rule_to_adoption",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 56,
+      "threshold": 0.5,
+      "variant_id": "GNRC-rule_to_adoption-f14s56-t050-h3d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 14,
+      "hold_days": 7,
+      "long_rule": "long_score >= threshold",
+      "score": "rule_to_adoption",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 56,
+      "threshold": 0.5,
+      "variant_id": "GNRC-rule_to_adoption-f14s56-t050-h7d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 14,
+      "hold_days": 3,
+      "long_rule": "long_score >= threshold",
+      "score": "rule_to_adoption",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 56,
+      "threshold": 1.0,
+      "variant_id": "GNRC-rule_to_adoption-f14s56-t100-h3d"
+    },
+    {
+      "conflict_rule": "flat if both sides trigger",
+      "fast_days": 14,
+      "hold_days": 7,
+      "long_rule": "long_score >= threshold",
+      "score": "rule_to_adoption",
+      "short_rule": "short_score >= threshold",
+      "slow_days": 56,
+      "threshold": 1.0,
+      "variant_id": "GNRC-rule_to_adoption-f14s56-t100-h7d"
+    }
+  ]
+}

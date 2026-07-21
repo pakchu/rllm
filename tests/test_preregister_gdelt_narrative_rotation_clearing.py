@@ -15,6 +15,15 @@ from training import preregister_gdelt_narrative_rotation_clearing as prereg
 
 
 UTC = timezone.utc
+FROZEN_PREREGISTRATION = Path(
+    "results/gdelt_narrative_rotation_clearing_preregistration_2026-07-20.json"
+)
+FROZEN_PREREGISTRATION_SHA256 = (
+    "ae175a242db1fa850164789e4a3e6f3f39b4ac8eae0fb877ce79e915ae3d67f3"
+)
+FROZEN_MANIFEST_HASH = (
+    "481aae4d1ebbf147333cfdfe8534d695761932049775354f3bb242a5a786715e"
+)
 
 
 def _count_rows(*, failure_tail: int, constraint_tail: int, adoption_tail: int):
@@ -93,6 +102,23 @@ def test_write_once_preserves_manifest_hash(tmp_path: Path) -> None:
     assert prereg.canonical_hash(unhashed) == restored["manifest_hash"]
     with pytest.raises(FileExistsError, match="write-once"):
         prereg.write_once(output)
+
+
+def test_frozen_preregistration_artifact_is_exactly_hash_bound() -> None:
+    assert prereg.sha256_file(FROZEN_PREREGISTRATION) == FROZEN_PREREGISTRATION_SHA256
+    payload = json.loads(
+        prereg.repository_path(FROZEN_PREREGISTRATION).read_text(encoding="utf-8")
+    )
+    unhashed = dict(payload)
+    assert unhashed.pop("manifest_hash") == FROZEN_MANIFEST_HASH
+    assert prereg.canonical_hash(unhashed) == FROZEN_MANIFEST_HASH
+    assert payload["preregistration_source_sha256"] == prereg.sha256_file(
+        prereg.PREREGISTRATION_SOURCE
+    )
+    assert payload["preregistration_document_sha256"] == prereg.sha256_file(
+        prereg.PREREGISTRATION_DOCUMENT
+    )
+    assert payload["outcome_boundary"]["outcomes_opened"] is False
 
 
 def test_rllm_cannot_control_event_identity_or_side() -> None:
