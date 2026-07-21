@@ -121,7 +121,7 @@ def test_network_requires_exact_eight_calendar_dates_and_majority_log_sign() -> 
     dates = pd.date_range("2021-01-01", periods=10, freq="D")
     frame = pd.DataFrame(
         {
-            "observation_date": dates.strftime("%Y-%m-%d"),
+            "observation_date": dates.strftime("%Y-%m-%d 00:00:00"),
             "available_at": dates.tz_localize("UTC") + pd.Timedelta(days=1),
             "AdrActCnt": [100] * 7 + [110, 90, 100],
             "TxCnt": [100] * 7 + [120, 80, 100],
@@ -148,7 +148,7 @@ def test_network_observation_unavailable_until_2024_cannot_emit_pre2024_vote() -
     dates = pd.date_range("2023-12-24", periods=8, freq="D")
     frame = pd.DataFrame(
         {
-            "observation_date": dates.strftime("%Y-%m-%d"),
+            "observation_date": dates.strftime("%Y-%m-%d 00:00:00"),
             "available_at": dates.tz_localize("UTC") + pd.Timedelta(days=1),
             "AdrActCnt": range(100, 108),
             "TxCnt": range(200, 208),
@@ -160,6 +160,24 @@ def test_network_observation_unavailable_until_2024_cannot_emit_pre2024_vote() -
 
     assert votes["observation_date"].max() == date(2023, 12, 30)
     assert votes["available_at"].lt(support.EVALUATION_END).all()
+
+
+def test_observation_date_normalization_rejects_non_midnight_timestamp() -> None:
+    dates = pd.date_range("2021-01-01", periods=8, freq="D")
+    observations = dates.strftime("%Y-%m-%d 00:00:00").tolist()
+    observations[0] = "2021-01-01 00:05:00"
+    frame = pd.DataFrame(
+        {
+            "observation_date": observations,
+            "available_at": dates.tz_localize("UTC") + pd.Timedelta(days=1),
+            "AdrActCnt": range(100, 108),
+            "TxCnt": range(200, 208),
+            "TxTfrCnt": range(300, 308),
+        }
+    )
+
+    with pytest.raises(RuntimeError, match="canonical dates or midnight"):
+        support.derive_network_votes(frame)
 
 
 def test_relay_requires_strictly_later_first_report_and_no_retry_until_reentry() -> (

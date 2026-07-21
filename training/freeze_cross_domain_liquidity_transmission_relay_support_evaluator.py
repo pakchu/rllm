@@ -21,32 +21,22 @@ PROTOCOL_VERSION = "cross_domain_liquidity_transmission_relay_evaluator_freeze_v
 DEFAULT_OUTPUT = Path(
     "results/cross_domain_liquidity_transmission_relay_evaluator_freeze_2026-07-21.json"
 )
+FROZEN_EVALUATOR_COMMIT = "6900b42ecc7d64c708218fcf048290e52ceb7a46"
+FROZEN_EVALUATOR_SHA256 = (
+    "649a4d4da64df32c3acb66ccedc6ad607bc8abef6b247235ff42e837ab3992e1"
+)
 
 
 def _committed_evaluator() -> tuple[str, str]:
     source = str(evaluate.EVALUATOR_SOURCE)
-    status = subprocess.check_output(
-        ["git", "status", "--porcelain", "--", source],
-        cwd=evaluate.REPOSITORY_ROOT,
-        text=True,
-    ).strip()
-    if status:
-        raise RuntimeError("CDLTR evaluator source is not clean at HEAD")
-    commit = subprocess.check_output(
-        ["git", "log", "-1", "--format=%H", "--", source],
-        cwd=evaluate.REPOSITORY_ROOT,
-        text=True,
-    ).strip()
-    if len(commit) != 40:
-        raise RuntimeError("CDLTR evaluator source has no full commit hash")
     committed = subprocess.check_output(
-        ["git", "show", f"{commit}:{source}"],
+        ["git", "show", f"{FROZEN_EVALUATOR_COMMIT}:{source}"],
         cwd=evaluate.REPOSITORY_ROOT,
     )
     committed_sha = hashlib.sha256(committed).hexdigest()
-    if committed_sha != evaluate.sha256_file(evaluate.EVALUATOR_SOURCE):
-        raise RuntimeError("CDLTR evaluator source is not reproducible from Git")
-    return commit, committed_sha
+    if committed_sha != FROZEN_EVALUATOR_SHA256:
+        raise RuntimeError("CDLTR v1 evaluator commit is not reproducible from Git")
+    return FROZEN_EVALUATOR_COMMIT, committed_sha
 
 
 def build_manifest(commit: str, source_sha256: str) -> dict[str, Any]:

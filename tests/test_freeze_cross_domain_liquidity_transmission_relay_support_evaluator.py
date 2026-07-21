@@ -19,7 +19,7 @@ def _temporary_output() -> tuple[tempfile.TemporaryDirectory[str], Path]:
     return directory, output.relative_to(freeze.evaluate.REPOSITORY_ROOT)
 
 
-def test_freeze_binds_clean_committed_evaluator_without_opening_source_rows(
+def test_freeze_reproduces_pinned_v1_evaluator_without_opening_source_rows(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
