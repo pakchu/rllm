@@ -37,6 +37,9 @@ EXPECTED_EVALUATOR_COMMIT = "aa49346724e8446e04017302d1de408b3a1b743d"
 EXPECTED_EVALUATOR_SHA256 = (
     "aa62dc2678733f86f33b45deb370842032683398cc5142f1849cb4b3ceaa9498"
 )
+FROZEN_EVALUATOR_PROTOCOL_VERSION = (
+    "cross_domain_liquidity_transmission_relay_support_v2"
+)
 
 
 def _require_file(path: Path, expected_sha: str, label: str) -> Path:
@@ -50,29 +53,14 @@ def _require_file(path: Path, expected_sha: str, label: str) -> Path:
 
 def _clean_committed_evaluator() -> tuple[str, str]:
     source = str(evaluate.EVALUATOR_SOURCE)
-    status = subprocess.check_output(
-        ["git", "status", "--porcelain", "--", source],
-        cwd=evaluate.REPOSITORY_ROOT,
-        text=True,
-    ).strip()
-    if status:
-        raise RuntimeError("CDLTR v2 evaluator source is not clean at HEAD")
-    commit = subprocess.check_output(
-        ["git", "log", "-1", "--format=%H", "--", source],
-        cwd=evaluate.REPOSITORY_ROOT,
-        text=True,
-    ).strip()
-    if commit != EXPECTED_EVALUATOR_COMMIT:
-        raise RuntimeError("CDLTR v2 evaluator commit drift")
     committed = subprocess.check_output(
-        ["git", "show", f"{commit}:{source}"], cwd=evaluate.REPOSITORY_ROOT
+        ["git", "show", f"{EXPECTED_EVALUATOR_COMMIT}:{source}"],
+        cwd=evaluate.REPOSITORY_ROOT,
     )
     source_sha = hashlib.sha256(committed).hexdigest()
     if source_sha != EXPECTED_EVALUATOR_SHA256:
         raise RuntimeError("CDLTR v2 evaluator source SHA drift")
-    if source_sha != evaluate.sha256_file(evaluate.EVALUATOR_SOURCE):
-        raise RuntimeError("CDLTR v2 evaluator is not reproducible from Git")
-    return commit, source_sha
+    return EXPECTED_EVALUATOR_COMMIT, source_sha
 
 
 def build_manifest(commit: str, source_sha: str) -> dict[str, Any]:
@@ -91,7 +79,7 @@ def build_manifest(commit: str, source_sha: str) -> dict[str, Any]:
         "protocol_version": PROTOCOL_VERSION,
         "candidate": evaluate.POLICY_ID,
         "evaluator_source": str(evaluate.EVALUATOR_SOURCE),
-        "evaluator_protocol_version": evaluate.PROTOCOL_VERSION,
+        "evaluator_protocol_version": FROZEN_EVALUATOR_PROTOCOL_VERSION,
         "evaluator_source_commit": commit,
         "evaluator_source_sha256": source_sha,
         "preregistration": {

@@ -180,6 +180,35 @@ def test_observation_date_normalization_rejects_non_midnight_timestamp() -> None
         support.derive_network_votes(frame)
 
 
+def test_network_simultaneous_backfill_keeps_latest_observation_once() -> None:
+    dates = pd.date_range("2021-01-01", periods=10, freq="D")
+    frame = pd.DataFrame(
+        {
+            "observation_date": dates.strftime("%Y-%m-%d 00:00:00"),
+            "available_at": ["2021-02-01T00:00:00Z"] * 8
+            + ["2021-02-02T00:00:00Z", "2021-02-03T00:00:00Z"],
+            "AdrActCnt": [100] * 7 + [110, 120, 130],
+            "TxCnt": [100] * 7 + [110, 120, 130],
+            "TxTfrCnt": [100] * 7 + [90, 80, 70],
+        }
+    )
+
+    votes = support.derive_network_votes(frame)
+
+    assert votes["available_at"].is_unique
+    assert votes["observation_date"].tolist() == [
+        date(2021, 1, 8),
+        date(2021, 1, 9),
+        date(2021, 1, 10),
+    ]
+    assert votes["side"].tolist() == [1, 1, 1]
+
+    regressed = frame.copy()
+    regressed.loc[8, "available_at"] = "2021-01-31T23:59:00Z"
+    with pytest.raises(RuntimeError, match="availability regresses"):
+        support.derive_network_votes(regressed)
+
+
 def test_relay_requires_strictly_later_first_report_and_no_retry_until_reentry() -> (
     None
 ):

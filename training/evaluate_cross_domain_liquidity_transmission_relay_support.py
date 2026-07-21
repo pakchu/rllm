@@ -38,7 +38,7 @@ from training import preregister_cross_domain_liquidity_transmission_relay as pr
 
 
 POLICY_ID = "CDLTR-72A"
-PROTOCOL_VERSION = "cross_domain_liquidity_transmission_relay_support_v2"
+PROTOCOL_VERSION = "cross_domain_liquidity_transmission_relay_support_v3"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 EVALUATOR_SOURCE = Path(
     "training/evaluate_cross_domain_liquidity_transmission_relay_support.py"
@@ -237,7 +237,12 @@ def _validate_ordered_availability(frame: pd.DataFrame, label: str) -> None:
         raise RuntimeError(f"{label} availability timestamps are not increasing")
 
 
-def _vote_frame(rows: list[dict[str, Any]], label: str) -> pd.DataFrame:
+def _vote_frame(
+    rows: list[dict[str, Any]],
+    label: str,
+    *,
+    collapse_simultaneous_availability: bool = False,
+) -> pd.DataFrame:
     frame = pd.DataFrame.from_records(rows, columns=VOTE_COLUMNS)
     if frame.empty:
         raise RuntimeError(f"{label} produced no vote rows")
@@ -249,6 +254,18 @@ def _vote_frame(rows: list[dict[str, Any]], label: str) -> pd.DataFrame:
     if not bool(frame.loc[~frame["valid"], "side"].eq(0).all()):
         raise RuntimeError(f"{label} invalid rows must be neutral")
     _validate_ordered_dates(frame, label)
+    if collapse_simultaneous_availability:
+        if not bool(frame["available_at"].is_monotonic_increasing):
+            raise RuntimeError(
+                f"{label} availability regresses before simultaneous-batch collapse"
+            )
+        frame = (
+            frame.sort_values(["available_at", "observation_date"], kind="mergesort")
+            .groupby("available_at", sort=False, as_index=False)
+            .tail(1)
+            .sort_values("available_at", kind="mergesort")
+            .reset_index(drop=True)
+        )
     _validate_ordered_availability(frame, label)
     if any(value >= date(2024, 1, 1) for value in frame["observation_date"]):
         raise RuntimeError(f"{label} contains a post-2023 observation")
@@ -395,7 +412,11 @@ def derive_network_votes(source: pd.DataFrame) -> pd.DataFrame:
                 "valid": valid,
             }
         )
-    return _vote_frame(rows, "network")
+    return _vote_frame(
+        rows,
+        "network",
+        collapse_simultaneous_availability=True,
+    )
 
 
 def _events_by_time(frame: pd.DataFrame) -> dict[pd.Timestamp, list[dict[str, Any]]]:
