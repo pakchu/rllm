@@ -17,6 +17,8 @@ import io
 import json
 import math
 import os
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from collections import Counter
@@ -32,6 +34,8 @@ DEFAULT_END_EXCLUSIVE = "2024-01-01T00:00:00Z"
 DEFAULT_CONFIRMATION_BLOCKS = 64
 DEFAULT_BLOCK_RANGE = 10_000
 DEFAULT_HEADER_BATCH_SIZE = 100
+DEFAULT_MAX_RETRIES = 6
+DEFAULT_REQUEST_INTERVAL_SEC = 0.0
 USER_AGENT = "rllm-source-research/1.0"
 
 USDT_ADDRESS = "0xdac17f958d2ee523a2206206994597c13d831ec7"
@@ -136,6 +140,8 @@ class Config:
     max_block_range: int = DEFAULT_BLOCK_RANGE
     header_batch_size: int = DEFAULT_HEADER_BATCH_SIZE
     timeout_sec: float = 60.0
+    max_retries: int = DEFAULT_MAX_RETRIES
+    request_interval_sec: float = DEFAULT_REQUEST_INTERVAL_SEC
 
 
 @dataclass(frozen=True)
@@ -155,12 +161,45 @@ class Rpc(Protocol):
 class JsonRpcClient:
     """Minimal JSON-RPC client that preserves request ordering."""
 
-    def __init__(self, url: str, *, timeout_sec: float) -> None:
+    def __init__(
+        self,
+        url: str,
+        *,
+        timeout_sec: float,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        request_interval_sec: float = DEFAULT_REQUEST_INTERVAL_SEC,
+    ) -> None:
         if not url.strip():
             raise ValueError("Ethereum RPC URL must be non-empty")
+        if max_retries < 0:
+            raise ValueError("max_retries must be non-negative")
+        if request_interval_sec < 0:
+            raise ValueError("request_interval_sec must be non-negative")
         self._url = url
         self._timeout_sec = timeout_sec
+        self._max_retries = max_retries
+        self._request_interval_sec = request_interval_sec
+        self._last_request_at: float | None = None
         self._next_id = 1
+
+    def _throttle(self) -> None:
+        if self._last_request_at is not None:
+            elapsed = time.monotonic() - self._last_request_at
+            remaining = self._request_interval_sec - elapsed
+            if remaining > 0:
+                time.sleep(remaining)
+        self._last_request_at = time.monotonic()
+
+    @staticmethod
+    def _retry_delay(exc: BaseException, attempt: int) -> float:
+        if isinstance(exc, urllib.error.HTTPError):
+            retry_after = exc.headers.get("Retry-After") if exc.headers else None
+            if retry_after is not None:
+                try:
+                    return max(0.0, float(retry_after))
+                except ValueError:
+                    pass
+        return min(2.0**attempt, 16.0)
 
     def _post(self, payload: Any) -> Any:
         request = urllib.request.Request(
@@ -168,8 +207,24 @@ class JsonRpcClient:
             data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
             headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
         )
-        with urllib.request.urlopen(request, timeout=self._timeout_sec) as response:
-            return json.loads(response.read().decode("utf-8"))
+        for attempt in range(self._max_retries + 1):
+            self._throttle()
+            try:
+                with urllib.request.urlopen(
+                    request, timeout=self._timeout_sec
+                ) as response:
+                    return json.loads(response.read().decode("utf-8"))
+            except urllib.error.HTTPError as exc:
+                if exc.code not in {429, 500, 502, 503, 504}:
+                    raise
+                if attempt >= self._max_retries:
+                    raise
+                time.sleep(self._retry_delay(exc, attempt))
+            except (urllib.error.URLError, TimeoutError) as exc:
+                if attempt >= self._max_retries:
+                    raise
+                time.sleep(self._retry_delay(exc, attempt))
+        raise AssertionError("bounded Ethereum RPC retry loop exhausted unexpectedly")
 
     @staticmethod
     def _result(response: Any, expected_id: int) -> Any:
@@ -681,10 +736,16 @@ def build_outputs(
     if primary_rpc is None or verification_rpc is None:
         _transport_hosts(cfg)
     primary_rpc = primary_rpc or JsonRpcClient(
-        cfg.primary_rpc_url, timeout_sec=cfg.timeout_sec
+        cfg.primary_rpc_url,
+        timeout_sec=cfg.timeout_sec,
+        max_retries=cfg.max_retries,
+        request_interval_sec=cfg.request_interval_sec,
     )
     verification_rpc = verification_rpc or JsonRpcClient(
-        cfg.verification_rpc_url, timeout_sec=cfg.timeout_sec
+        cfg.verification_rpc_url,
+        timeout_sec=cfg.timeout_sec,
+        max_retries=cfg.max_retries,
+        request_interval_sec=cfg.request_interval_sec,
     )
     primary_rows, primary_audit = collect_source(primary_rpc, cfg)
     _, verification_audit, _, _ = collect_log_source(verification_rpc, cfg)
@@ -784,6 +845,10 @@ def parse_args() -> Config:
         "--header-batch-size", type=int, default=Config.header_batch_size
     )
     parser.add_argument("--timeout-sec", type=float, default=Config.timeout_sec)
+    parser.add_argument("--max-retries", type=int, default=Config.max_retries)
+    parser.add_argument(
+        "--request-interval-sec", type=float, default=Config.request_interval_sec
+    )
     return Config(**vars(parser.parse_args()))
 
 

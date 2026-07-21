@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import gzip
 import hashlib
+import io
+import json
+import urllib.error
+from email.message import Message
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -359,3 +363,60 @@ def test_independent_rpc_host_is_required() -> None:
     )
     with pytest.raises(ValueError, match="independent hostname"):
         builder._transport_hosts(cfg)
+
+
+def test_json_rpc_client_retries_only_transient_http_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+
+    def fake_urlopen(request: Any, *, timeout: float) -> io.BytesIO:
+        nonlocal attempts
+        attempts += 1
+        assert timeout == 1.0
+        if attempts == 1:
+            headers = Message()
+            headers["Retry-After"] = "0"
+            raise urllib.error.HTTPError(
+                request.full_url,
+                429,
+                "rate limited",
+                headers,
+                None,
+            )
+        return io.BytesIO(
+            json.dumps({"jsonrpc": "2.0", "id": 1, "result": "0x1"}).encode()
+        )
+
+    monkeypatch.setattr(builder.urllib.request, "urlopen", fake_urlopen)
+    client = builder.JsonRpcClient(
+        "https://rpc.invalid", timeout_sec=1.0, max_retries=1
+    )
+    assert client.call("eth_chainId", []) == "0x1"
+    assert attempts == 2
+
+
+def test_json_rpc_client_does_not_retry_non_transient_http_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+
+    def fake_urlopen(request: Any, *, timeout: float) -> io.BytesIO:
+        nonlocal attempts
+        attempts += 1
+        headers = Message()
+        raise urllib.error.HTTPError(
+            request.full_url,
+            400,
+            "bad request",
+            headers,
+            None,
+        )
+
+    monkeypatch.setattr(builder.urllib.request, "urlopen", fake_urlopen)
+    client = builder.JsonRpcClient(
+        "https://rpc.invalid", timeout_sec=1.0, max_retries=3
+    )
+    with pytest.raises(urllib.error.HTTPError):
+        client.call("eth_chainId", [])
+    assert attempts == 1
