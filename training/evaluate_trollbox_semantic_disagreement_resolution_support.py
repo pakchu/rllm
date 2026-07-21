@@ -51,6 +51,9 @@ ATTENTION_CLOCK_MANIFEST_HASH = (
 DEFAULT_OUTPUT = Path(
     "results/trollbox_semantic_disagreement_resolution_support_2026-07-21.json"
 )
+IMPLEMENTATION = Path(
+    "training/evaluate_trollbox_semantic_disagreement_resolution_support.py"
+)
 
 TRAIN_START = datetime(2020, 7, 1, tzinfo=timezone.utc)
 TRAIN_END = datetime(2022, 1, 1, tzinfo=timezone.utc)
@@ -720,6 +723,10 @@ def build_report() -> dict[str, Any]:
         "decision_binding": {
             "path": str(MECHANISM_DOCUMENT),
             "sha256": MECHANISM_DOCUMENT_SHA256,
+        },
+        "implementation_binding": {
+            "path": str(IMPLEMENTATION),
+            "sha256": sha256_file(IMPLEMENTATION),
         },
         "source_binding": {
             "semantic_clock": str(SEMANTIC_CLOCK),
