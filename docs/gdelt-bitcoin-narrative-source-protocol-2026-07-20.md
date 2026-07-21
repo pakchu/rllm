@@ -18,7 +18,9 @@ Official references:
 - mode: `timelinevolraw`
 - format: `json`
 - source interval: `[2020-01-01, 2024-01-01)`
-- request windows: calendar quarters, half-open
+- logical request windows: calendar quarters, half-open
+- API `enddatetime`: one second before each logical exclusive end; this avoids
+  GDELT's observed inclusion of the boundary calendar-day bin
 - required response resolution: one UTC day
 - availability assigned to source date + 48 hours + 15 minutes
 - every query must return a complete daily grid
@@ -53,6 +55,12 @@ Before this protocol was frozen, one connectivity/schema probe opened the
 `broad` query for January 2021 and confirmed a daily `value` plus global `norm`
 schema. The probe did not open category queries or any market outcome. No count,
 threshold, or trading rule is selected from that probe.
+
+After the downloader was first committed but before any source artifact was
+written, one 2020Q1 request showed that `enddatetime=20200401000000` returns an
+April 1 daily bin. The request builder was therefore corrected to send
+`enddatetime=20200331235959` for logical `[2020-01-01, 2020-04-01)`. The failed
+response was not cached and no feature or outcome was evaluated.
 
 After source promotion, source-only feature definitions and minimum incidence
 gates must be frozen before any BTC outcome is opened.

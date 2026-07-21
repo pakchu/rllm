@@ -31,10 +31,10 @@ def _response(url: str) -> bytes:
         (value, index) for index, (_, value) in enumerate(gdelt.QUERIES)
     )[query]
     start = datetime.strptime(params["startdatetime"][0], "%Y%m%d%H%M%S").date()
-    end = datetime.strptime(params["enddatetime"][0], "%Y%m%d%H%M%S").date()
+    inclusive_end = datetime.strptime(params["enddatetime"][0], "%Y%m%d%H%M%S").date()
     data = []
     cursor = start
-    while cursor < end:
+    while cursor <= inclusive_end:
         data.append(
             {
                 "date": cursor.strftime("%Y%m%dT000000Z"),
@@ -59,6 +59,13 @@ def test_quarter_windows_are_complete_and_half_open() -> None:
         (date(2020, 7, 1), date(2020, 10, 1)),
         (date(2020, 10, 1), date(2021, 1, 1)),
     ]
+
+
+def test_request_url_translates_half_open_end_to_last_included_second() -> None:
+    url = gdelt.request_url(gdelt.QUERIES[0][1], date(2023, 10, 1), date(2024, 1, 1))
+    params = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+    assert params["startdatetime"] == ["20231001000000"]
+    assert params["enddatetime"] == ["20231231235959"]
 
 
 def test_downloader_freezes_daily_counts_and_is_resumable(tmp_path: Path) -> None:

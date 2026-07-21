@@ -180,7 +180,7 @@ def source_contract(cfg: Config) -> dict[str, Any]:
         ],
         "start_date": cfg.start_date,
         "end_date_exclusive": cfg.end_date_exclusive,
-        "windowing": "calendar_quarter_half_open",
+        "windowing": "calendar_quarter_half_open_with_api_end_at_last_second",
         "required_date_resolution": "day",
         "availability": (
             "source_date UTC midnight + "
@@ -190,12 +190,13 @@ def source_contract(cfg: Config) -> dict[str, Any]:
 
 
 def request_url(query: str, start: date, end: date) -> str:
+    inclusive_end = datetime.combine(end, datetime.min.time()) - timedelta(seconds=1)
     params = {
         "query": query,
         "mode": "timelinevolraw",
         "format": "json",
         "startdatetime": start.strftime("%Y%m%d000000"),
-        "enddatetime": end.strftime("%Y%m%d000000"),
+        "enddatetime": inclusive_end.strftime("%Y%m%d%H%M%S"),
     }
     return f"{ENDPOINT}?{urllib.parse.urlencode(params)}"
 
