@@ -93,6 +93,11 @@ class FakeRpc:
         return [self.call(method, params) for method, params in requests]
 
 
+class NoBatchRpc(FakeRpc):
+    def batch(self, requests: Sequence[tuple[str, list[Any]]]) -> list[Any]:
+        raise AssertionError("verification replay must not fetch confirmation headers")
+
+
 def _headers() -> dict[int, dict[str, Any]]:
     return {number: _header(number, number * 100) for number in range(11)}
 
@@ -281,12 +286,14 @@ def test_duplicate_canonical_identity_fails_closed() -> None:
 def test_dual_replay_build_has_no_outcome_access(tmp_path: Path) -> None:
     cfg = _config(tmp_path)
     primary = FakeRpc(headers=_headers(), logs=_fixture_logs())
-    verification = FakeRpc(headers=_headers(), logs=_fixture_logs())
+    verification = NoBatchRpc(headers=_headers(), logs=_fixture_logs())
     rows, core = builder.build_outputs(
         cfg, primary_rpc=primary, verification_rpc=verification
     )
     assert len(rows) == 2
     assert core["dual_replay"]["canonical_replay_equal"] is True
+    assert len(core["dual_replay"]["canonical_log_hashes"]) == 2
+    assert len(set(core["dual_replay"]["canonical_log_hashes"])) == 1
     assert core["dual_replay"]["provider_urls_embedded"] is False
     assert core["event_counts"] == {"usdc_eth:burn": 1, "usdt_eth:issue": 1}
     assert core["outcome_boundary"] == {

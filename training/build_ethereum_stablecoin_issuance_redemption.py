@@ -469,6 +469,18 @@ def materialize_rows(
 ) -> list[dict[str, Any]]:
     if confirmation_blocks <= 0:
         raise ValueError("confirmation_blocks must be positive")
+    normalized = normalize_logs(raw_logs, start_block=start_block, end_block=end_block)
+    return materialize_normalized_rows(
+        rpc,
+        normalized,
+        confirmation_blocks=confirmation_blocks,
+        header_batch_size=header_batch_size,
+    )
+
+
+def normalize_logs(
+    raw_logs: Sequence[dict[str, Any]], *, start_block: int, end_block: int
+) -> list[dict[str, Any]]:
     normalized = [
         normalize_log(raw, start_block=start_block, end_block=end_block)
         for raw in raw_logs
@@ -481,6 +493,27 @@ def materialize_rows(
                 "Ethereum source contains a duplicate canonical log identity"
             )
         identities.add(identity)
+    normalized.sort(
+        key=lambda row: (
+            row["block_number"],
+            row["transaction_index"],
+            row["log_index"],
+            row["asset"],
+            row["event"],
+        )
+    )
+    return normalized
+
+
+def materialize_normalized_rows(
+    rpc: Rpc,
+    normalized: Sequence[dict[str, Any]],
+    *,
+    confirmation_blocks: int,
+    header_batch_size: int,
+) -> list[dict[str, Any]]:
+    if confirmation_blocks <= 0:
+        raise ValueError("confirmation_blocks must be positive")
     needed = [row["block_number"] for row in normalized]
     needed.extend(row["block_number"] + confirmation_blocks for row in normalized)
     headers = fetch_headers(rpc, needed, batch_size=header_batch_size)
@@ -514,8 +547,8 @@ def materialize_rows(
     return rows
 
 
-def _contract_code_audit(rpc: Rpc, start_block: int, end_block: int) -> dict[str, bool]:
-    audit: dict[str, bool] = {}
+def _contract_code_audit(rpc: Rpc, start_block: int, end_block: int) -> dict[str, str]:
+    audit: dict[str, str] = {}
     for address in sorted({spec.address for spec in EVENT_SPECS}):
         for label, block in (("start", start_block), ("end", end_block)):
             code = rpc.call("eth_getCode", [address, hex(block)])
@@ -523,14 +556,18 @@ def _contract_code_audit(rpc: Rpc, start_block: int, end_block: int) -> dict[str
                 raise RuntimeError(
                     f"stablecoin contract has no code at {label} boundary"
                 )
-            _hex_data(code, "contract bytecode", bytes_length=(len(code) - 2) // 2)
-            audit[f"{address}:{label}"] = True
+            normalized = _hex_data(
+                code, "contract bytecode", bytes_length=(len(code) - 2) // 2
+            )
+            audit[f"{address}:{label}"] = hashlib.sha256(
+                bytes.fromhex(normalized[2:])
+            ).hexdigest()
     return audit
 
 
-def collect_source(
+def collect_log_source(
     rpc: Rpc, cfg: Config
-) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], dict[str, Any], int, int]:
     chain_id = _quantity(rpc.call("eth_chainId", []), "chain id")
     if chain_id != CHAIN_ID:
         raise RuntimeError(
@@ -552,25 +589,16 @@ def collect_source(
         last_source_block,
         max_block_range=cfg.max_block_range,
     )
-    rows = materialize_rows(
-        rpc,
+    normalized = normalize_logs(
         raw_logs,
         start_block=start_header.number,
         end_block=last_source_block,
-        confirmation_blocks=cfg.confirmation_blocks,
-        header_batch_size=cfg.header_batch_size,
     )
-    if not rows:
+    if not normalized:
         raise RuntimeError("Ethereum stablecoin source returned no events")
-    if any(row["event"] == "deprecate" for row in rows):
+    if any(row["event"] == "deprecate" for row in normalized):
         raise RuntimeError(
             "USDT deprecation event requires an explicitly reviewed successor contract"
-        )
-    required_finalized_block = max(row["confirmation_block_number"] for row in rows)
-    finalized_header = get_header(rpc, "finalized")
-    if finalized_header.number < required_finalized_block:
-        raise RuntimeError(
-            "Ethereum finalized head does not cover all confirmation blocks"
         )
     audit = {
         "chain_id": chain_id,
@@ -587,8 +615,32 @@ def collect_source(
             "block_timestamp": _format_timestamp(end_header.timestamp),
         },
         "last_source_block": last_source_block,
-        "contract_code_present": code_audit,
-        "event_rows": len(rows),
+        "contract_code_sha256": code_audit,
+        "event_rows": len(normalized),
+        "canonical_log_hash": _canonical_hash(normalized),
+    }
+    return normalized, audit, start_header.number, last_source_block
+
+
+def collect_source(
+    rpc: Rpc, cfg: Config
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    normalized, log_audit, _, _ = collect_log_source(rpc, cfg)
+    rows = materialize_normalized_rows(
+        rpc,
+        normalized,
+        confirmation_blocks=cfg.confirmation_blocks,
+        header_batch_size=cfg.header_batch_size,
+    )
+    required_finalized_block = max(row["confirmation_block_number"] for row in rows)
+    finalized_header = get_header(rpc, "finalized")
+    if finalized_header.number < required_finalized_block:
+        raise RuntimeError(
+            "Ethereum finalized head does not cover all confirmation blocks"
+        )
+    audit = {
+        "log_source": log_audit,
+        "materialized_rows": len(rows),
         "canonical_event_hash": _canonical_hash(rows),
         "finalized_coverage": {
             "required_through_block": required_finalized_block,
@@ -635,8 +687,8 @@ def build_outputs(
         cfg.verification_rpc_url, timeout_sec=cfg.timeout_sec
     )
     primary_rows, primary_audit = collect_source(primary_rpc, cfg)
-    verification_rows, verification_audit = collect_source(verification_rpc, cfg)
-    if primary_audit != verification_audit or primary_rows != verification_rows:
+    _, verification_audit, _, _ = collect_log_source(verification_rpc, cfg)
+    if primary_audit["log_source"] != verification_audit:
         raise RuntimeError("independent Ethereum RPC replays disagree")
     counts = Counter(f"{row['asset']}:{row['event']}" for row in primary_rows)
     year_counts = Counter(row["block_timestamp"][:4] for row in primary_rows)
@@ -669,9 +721,9 @@ def build_outputs(
         "dual_replay": {
             "independent_transport_count": 2,
             "canonical_replay_equal": True,
-            "canonical_event_hashes": [
-                primary_audit["canonical_event_hash"],
-                verification_audit["canonical_event_hash"],
+            "canonical_log_hashes": [
+                primary_audit["log_source"]["canonical_log_hash"],
+                verification_audit["canonical_log_hash"],
             ],
             "provider_urls_embedded": False,
         },
