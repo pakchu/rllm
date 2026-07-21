@@ -51,14 +51,9 @@ def _response(url: str) -> bytes:
     ).encode("utf-8")
 
 
-def test_quarter_windows_are_complete_and_half_open() -> None:
-    windows = gdelt.quarter_windows(date(2020, 1, 1), date(2021, 1, 1))
-    assert windows == [
-        (date(2020, 1, 1), date(2020, 4, 1)),
-        (date(2020, 4, 1), date(2020, 7, 1)),
-        (date(2020, 7, 1), date(2020, 10, 1)),
-        (date(2020, 10, 1), date(2021, 1, 1)),
-    ]
+def test_request_window_is_one_complete_half_open_source_interval() -> None:
+    windows = gdelt.request_windows(date(2020, 1, 1), date(2024, 1, 1))
+    assert windows == [(date(2020, 1, 1), date(2024, 1, 1))]
 
 
 def test_request_url_translates_half_open_end_to_last_included_second() -> None:
@@ -77,9 +72,9 @@ def test_downloader_freezes_daily_counts_and_is_resumable(tmp_path: Path) -> Non
         return _response(url)
 
     manifest = gdelt.run(cfg, fetch=fetch, sleep=lambda _: None)
-    assert len(calls) == len(gdelt.QUERIES) * 16 == 64
+    assert len(calls) == len(gdelt.QUERIES) == 4
     assert manifest["source_audit"]["daily_rows"] == 1_461
-    assert manifest["requests"]["count"] == 64
+    assert manifest["requests"]["count"] == 4
     assert manifest["outcome_boundary"]["btc_market_rows_read"] == 0
     assert manifest["builder"]["sha256"] == gdelt.sha256_file(gdelt.BUILDER)
     with gzip.open(cfg.daily_output, "rt", encoding="utf-8", newline="") as handle:
@@ -96,7 +91,7 @@ def test_downloader_freezes_daily_counts_and_is_resumable(tmp_path: Path) -> Non
     }
     with gzip.open(cfg.raw_bundle_output, "rt", encoding="utf-8") as handle:
         raw_records = [json.loads(line) for line in handle]
-    assert len(raw_records) == 64
+    assert len(raw_records) == 4
     assert all("payload" in row and "rows" not in row for row in raw_records)
 
     calls.clear()
@@ -161,7 +156,7 @@ def test_default_contract_never_requests_post_2023_news() -> None:
     assert gdelt.source_contract(cfg)["required_date_resolution"] == "day"
     assert all(
         end <= date(2024, 1, 1)
-        for _, end in gdelt.quarter_windows(
+        for _, end in gdelt.request_windows(
             gdelt.parse_date(cfg.start_date), gdelt.parse_date(cfg.end_date_exclusive)
         )
     )

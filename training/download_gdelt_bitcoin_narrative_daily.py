@@ -1,8 +1,9 @@
 """Freeze daily Bitcoin narrative counts from GDELT's official DOC 2.0 API.
 
-The downloader requests four preregistered queries in calendar-quarter windows
-using ``timelinevolraw``.  It stores a deterministic raw-response bundle plus a
-daily count table.  No market, return, funding, label, or PnL source is read.
+The downloader requests four preregistered queries across one frozen historical
+window using ``timelinevolraw``.  It stores a deterministic raw-response bundle
+plus a daily count table.  No market, return, funding, label, or PnL source is
+read.
 
 Official references:
 https://www.gdeltproject.org/data.html
@@ -125,25 +126,10 @@ def format_timestamp(value: datetime) -> str:
     return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _next_quarter(value: date) -> date:
-    month = value.month + 3
-    year = value.year + (month - 1) // 12
-    month = (month - 1) % 12 + 1
-    return date(year, month, 1)
-
-
-def quarter_windows(start: date, end: date) -> list[tuple[date, date]]:
-    if start >= end or start.day != 1 or start.month not in {1, 4, 7, 10}:
-        raise ValueError("GDELT source dates must start on a calendar quarter")
-    if end.day != 1 or end.month not in {1, 4, 7, 10}:
-        raise ValueError("GDELT source end must be a calendar-quarter boundary")
-    windows: list[tuple[date, date]] = []
-    cursor = start
-    while cursor < end:
-        following = min(_next_quarter(cursor), end)
-        windows.append((cursor, following))
-        cursor = following
-    return windows
+def request_windows(start: date, end: date) -> list[tuple[date, date]]:
+    if start >= end:
+        raise ValueError("GDELT source interval is empty")
+    return [(start, end)]
 
 
 def validate_config(cfg: Config) -> None:
@@ -156,7 +142,7 @@ def validate_config(cfg: Config) -> None:
         raise ValueError("GDELT source interval and availability contract are frozen")
     start = parse_date(cfg.start_date)
     end = parse_date(cfg.end_date_exclusive)
-    quarter_windows(start, end)
+    request_windows(start, end)
     if cfg.availability_lag_hours < 24:
         raise ValueError("GDELT availability lag must be at least 24 hours")
     if not 0 <= cfg.availability_minute <= 59:
@@ -180,7 +166,7 @@ def source_contract(cfg: Config) -> dict[str, Any]:
         ],
         "start_date": cfg.start_date,
         "end_date_exclusive": cfg.end_date_exclusive,
-        "windowing": "calendar_quarter_half_open_with_api_end_at_last_second",
+        "windowing": "single_full_half_open_with_api_end_at_last_second",
         "required_date_resolution": "day",
         "availability": (
             "source_date UTC midnight + "
@@ -339,7 +325,7 @@ def collect_responses(
     end = parse_date(cfg.end_date_exclusive)
     records: list[dict[str, Any]] = []
     for query_id, query in QUERIES:
-        for window_start, window_end in quarter_windows(start, end):
+        for window_start, window_end in request_windows(start, end):
             url = request_url(query, window_start, window_end)
             cache = _cache_path(cache_dir, query_id, window_start, window_end)
             if cache.exists():
