@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
 import pytest
 
+import training.evaluate_deribit_expiry_wall_handoff_support as dewh
 from training.evaluate_deribit_expiry_wall_handoff_support import (
     BAR,
     HOLD_BARS,
     Candidate,
+    _dehr_release_side_control,
+    _load_comparators,
     normalized_entry,
     publish,
     schedule_candidates,
@@ -153,3 +157,35 @@ def test_publish_is_create_only(tmp_path: Path) -> None:
     assert not clock_path.exists()
     with pytest.raises(FileExistsError):
         publish(report_path, clock_path, report, None)
+
+
+def test_dehr_release_side_control_preserves_exact_train_clocks() -> None:
+    train = _candidate(datetime(2022, 1, 1, 9, 10, tzinfo=timezone.utc))
+    train = replace(train, split="train")
+    selection = _candidate(datetime(2023, 1, 1, 9, 10, tzinfo=timezone.utc))
+    selection = replace(selection, split="selection")
+
+    controlled, audit = _dehr_release_side_control(
+        [train, selection], {train.causal_origin: -1}
+    )
+
+    assert len(controlled) == 1
+    assert controlled[0].entry_time == train.entry_time
+    assert controlled[0].side == -1
+    assert audit == {
+        "eligible_dewh_train_clocks": 1,
+        "matched_dehr_release_sides": 1,
+        "missing_train_clocks": 0,
+        "selection_control_unavailable_by_frozen_design": True,
+    }
+
+
+def test_comparator_loader_revalidates_frozen_clock_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    drifted = tmp_path / "afcs.csv"
+    drifted.write_text("drifted\n", encoding="utf-8")
+    monkeypatch.setattr(dewh, "AFCS_CLOCK", drifted)
+
+    with pytest.raises(ValueError, match="frozen comparator binding changed"):
+        _load_comparators()

@@ -25,9 +25,22 @@ from training.evaluate_trollbox_semantic_disagreement_resolution_novelty import 
     maximum_tolerant_matches,
 )
 from training.freeze_dewh_comparator_cohort import (
+    AFCS_CLOCK,
+    AFCS_CLOCK_SHA256,
+    BAFR_CLOCK,
+    BAFR_CLOCK_SHA256,
     DEHR_CLOCK,
+    DEHR_CLOCK_SHA256,
+    DEHR_MANIFEST,
+    DEHR_MANIFEST_SHA256,
     LIVE_CLOCK,
+    LIVE_CLOCK_SHA256,
+    LIVE_MANIFEST,
+    LIVE_MANIFEST_SHA256,
     MFIC_CLOCK,
+    MFIC_CLOCK_SHA256,
+    MFIC_MANIFEST,
+    MFIC_MANIFEST_SHA256,
     REQUIRED_MEMBERS,
     _load_afcs,
     _load_bafr,
@@ -67,6 +80,19 @@ COMPARATOR_FREEZE_SHA256 = (
 )
 COMPARATOR_FREEZE_MANIFEST_HASH = (
     "8f599ca5dfdf0615b15b932d6d13247e5e62564506d3c2acfbfe7fcc07752aab"
+)
+DEHR_CONTROL_SOURCE = Path("data/deribit_btc_option_delivery_release_2019_2022.csv.gz")
+DEHR_CONTROL_SOURCE_SHA256 = (
+    "a59953eb0efddbab7a28af9fdd0f61f204fa98d2de330cf1a4090293378b0fda"
+)
+DEHR_CONTROL_MANIFEST = Path(
+    "results/deribit_btc_option_delivery_source_manifest_2026-07-20.json"
+)
+DEHR_CONTROL_MANIFEST_SHA256 = (
+    "b1a2ed3a39b8e71adc0a46a5411d4f568eda3bdaa910cef64d9746fa6f5ea3e5"
+)
+DEHR_CONTROL_MANIFEST_HASH = (
+    "44b54dcd895a127dc89dc9c45f40f65c845814badeaf6c35bdabbc37e4e1b852"
 )
 DEFAULT_REPORT = Path("results/deribit_expiry_wall_handoff_source_gate_2026-07-21.json")
 DEFAULT_CLOCK = Path("results/dewh_pure_clocks_2026-07-21.csv.gz")
@@ -491,12 +517,92 @@ def _deterministic_side(entry: datetime) -> int:
     return 1 if digest[0] < 128 else -1
 
 
+def _load_dehr_control_sides() -> tuple[dict[datetime, int], dict[str, Any]]:
+    bindings = {
+        DEHR_CONTROL_SOURCE: DEHR_CONTROL_SOURCE_SHA256,
+        DEHR_CONTROL_MANIFEST: DEHR_CONTROL_MANIFEST_SHA256,
+    }
+    for path, expected in bindings.items():
+        if sha256_file(path) != expected:
+            raise ValueError(f"DEWH DEHR-control binding changed: {path}")
+    manifest = _load_json(DEHR_CONTROL_MANIFEST)
+    if manifest.get("manifest_hash") != DEHR_CONTROL_MANIFEST_HASH:
+        raise ValueError("DEHR control manifest hash changed")
+    if manifest.get("aggregate", {}).get("sha256") != DEHR_CONTROL_SOURCE_SHA256:
+        raise ValueError("DEHR control aggregate binding changed")
+    boundary = manifest.get("outcome_boundary", {})
+    if boundary.get("post_delivery_return_or_pnl_loaded") is not False:
+        raise ValueError("DEHR control source opened economic outcomes")
+
+    frame = pd.read_csv(
+        DEHR_CONTROL_SOURCE,
+        compression="gzip",
+        usecols=cast(Any, ["expiry_time", "release_side"]),
+    )
+    frame["expiry_time"] = pd.to_datetime(
+        frame["expiry_time"], utc=True, errors="raise"
+    )
+    if len(frame) != 1119 or bool(frame["expiry_time"].duplicated().any()):
+        raise ValueError("DEHR control source identity changed")
+    if bool(frame["expiry_time"].ge(pd.Timestamp(TRAIN_END)).any()):
+        raise ValueError("DEHR control source opened post-2022 rows")
+    if not cast(pd.Series, frame["release_side"]).isin([-1, 1]).all():
+        raise ValueError("DEHR control source has an invalid release side")
+    expiries = cast(pd.Series, frame["expiry_time"])
+    release_sides = cast(pd.Series, frame["release_side"])
+    sides = {
+        cast(pd.Timestamp, expiry).to_pydatetime(): int(side)
+        for expiry, side in zip(expiries, release_sides)
+    }
+    return sides, {
+        "rows": len(frame),
+        "first_expiry": cast(pd.Timestamp, frame["expiry_time"].iloc[0]).isoformat(),
+        "last_expiry": cast(pd.Timestamp, frame["expiry_time"].iloc[-1]).isoformat(),
+        "fields_read": ["expiry_time", "release_side"],
+    }
+
+
+def _dehr_release_side_control(
+    primary: Sequence[Candidate], sides: Mapping[datetime, int]
+) -> tuple[list[Candidate], dict[str, Any]]:
+    eligible = [row for row in primary if row.split == "train"]
+    missing = [row.causal_origin for row in eligible if row.causal_origin not in sides]
+    if missing:
+        raise ValueError(
+            "frozen DEHR release side does not cover every train DEWH clock"
+        )
+    controlled = [replace(row, side=sides[row.causal_origin]) for row in eligible]
+    return controlled, {
+        "eligible_dewh_train_clocks": len(eligible),
+        "matched_dehr_release_sides": len(controlled),
+        "missing_train_clocks": len(missing),
+        "selection_control_unavailable_by_frozen_design": True,
+    }
+
+
 def _load_comparators() -> dict[str, list[ClockRow]]:
     freeze = _load_json(COMPARATOR_FREEZE)
     if freeze.get("manifest_hash") != COMPARATOR_FREEZE_MANIFEST_HASH:
         raise ValueError("DEWH comparator freeze manifest changed")
     if freeze.get("required_members") != list(REQUIRED_MEMBERS):
         raise ValueError("DEWH comparator freeze membership changed")
+    expected_bindings = {
+        "afcs": (AFCS_CLOCK, AFCS_CLOCK_SHA256),
+        "bafr": (BAFR_CLOCK, BAFR_CLOCK_SHA256),
+        "mfic_manifest": (MFIC_MANIFEST, MFIC_MANIFEST_SHA256),
+        "mfic_clock": (MFIC_CLOCK, MFIC_CLOCK_SHA256),
+        "live_manifest": (LIVE_MANIFEST, LIVE_MANIFEST_SHA256),
+        "live_clock": (LIVE_CLOCK, LIVE_CLOCK_SHA256),
+        "dehr_manifest": (DEHR_MANIFEST, DEHR_MANIFEST_SHA256),
+        "dehr_clock": (DEHR_CLOCK, DEHR_CLOCK_SHA256),
+    }
+    frozen_bindings = freeze.get("clock_bindings", {})
+    for name, (path, expected_sha256) in expected_bindings.items():
+        binding = frozen_bindings.get(name, {})
+        if binding.get("path") != str(path) or binding.get("sha256") != expected_sha256:
+            raise ValueError(f"DEWH frozen comparator binding changed: {name}")
+        if sha256_file(path) != expected_sha256:
+            raise ValueError(f"DEWH comparator artifact changed: {path}")
     mfic_schema = [
         "candidate_id",
         "split",
@@ -671,7 +777,6 @@ def build_outputs() -> tuple[dict[str, Any], bytes | None]:
         "largest_instrument_concentration": (
             rank_ready & total_gate & instrument_gate & distance_gate
         ),
-        "expiry_time_only": pd.Series(True, index=frame.index),
     }
     controls: dict[str, Any] = {}
     for name, mask in control_specs.items():
@@ -687,13 +792,31 @@ def build_outputs() -> tuple[dict[str, Any], bytes | None]:
         replace(row, side=1 if index % 2 == 0 else -1)
         for index, row in enumerate(primary)
     ]
+    expiry_raw = build_candidates(
+        frame,
+        np.ones(len(frame), dtype=bool),
+        wall_side,
+    )
+    expiry_random = [
+        replace(row, side=_deterministic_side(row.entry_time)) for row in expiry_raw
+    ]
+    expiry_random, expiry_random_audit = schedule_candidates(expiry_random)
+    dehr_sides, dehr_source_audit = _load_dehr_control_sides()
+    dehr_release, dehr_control_audit = _dehr_release_side_control(primary, dehr_sides)
     delayed_raw = build_candidates(frame, primary_mask, wall_side, extra_entry_bars=1)
     delayed, delayed_audit = schedule_candidates(delayed_raw)
     controls.update(
         {
             "direction_flip": _control_report(direction_flip, None),
             "deterministic_random_side": _control_report(random_side, None),
+            "expiry_time_only_deterministic_random_side": _control_report(
+                expiry_random, expiry_random_audit
+            ),
             "fixed_alternating_side": _control_report(alternating_side, None),
+            "frozen_dehr_release_side_at_exact_dewh_clocks": {
+                **_control_report(dehr_release, None),
+                "coverage_audit": dehr_control_audit,
+            },
             "one_bar_execution_delay": _control_report(delayed, delayed_audit),
         }
     )
@@ -735,6 +858,13 @@ def build_outputs() -> tuple[dict[str, Any], bytes | None]:
             "sha256": COMPARATOR_FREEZE_SHA256,
             "manifest_hash": COMPARATOR_FREEZE_MANIFEST_HASH,
         },
+        "dehr_control_source_binding": {
+            "path": str(DEHR_CONTROL_SOURCE),
+            "sha256": DEHR_CONTROL_SOURCE_SHA256,
+            "manifest": str(DEHR_CONTROL_MANIFEST),
+            "manifest_sha256": DEHR_CONTROL_MANIFEST_SHA256,
+            "manifest_hash": DEHR_CONTROL_MANIFEST_HASH,
+        },
         "configuration": {
             "lookback_days": LOOKBACK_DAYS,
             "minimum_prior_expiries": MINIMUM_PRIOR_EXPIRIES,
@@ -749,6 +879,7 @@ def build_outputs() -> tuple[dict[str, Any], bytes | None]:
             "selection_end_exclusive": SELECTION_END.isoformat(),
         },
         "source_audit": source_audit,
+        "dehr_control_source_audit": dehr_source_audit,
         "primary": primary_report,
         "controls": controls,
         "support_gate": support,
@@ -768,6 +899,8 @@ def build_outputs() -> tuple[dict[str, Any], bytes | None]:
         ),
         "outcome_boundary": {
             "dewh_source_rows_read": source_audit["rows"],
+            "dehr_control_source_rows_read": dehr_source_audit["rows"],
+            "dehr_release_side_fields_read": dehr_source_audit["rows"],
             "comparator_clock_rows_read": comparator_rows,
             "market_rows_loaded": 0,
             "funding_rows_loaded": 0,
@@ -788,7 +921,7 @@ def build_outputs() -> tuple[dict[str, Any], bytes | None]:
         ),
     }
     core["result_hash"] = canonical_hash(core)
-    return {**core, "created_at": datetime.now(timezone.utc).isoformat()}, clock_bytes
+    return core, clock_bytes
 
 
 def publish(
