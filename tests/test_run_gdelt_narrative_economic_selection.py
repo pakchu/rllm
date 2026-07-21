@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from training import run_gdelt_narrative_economic_selection as launcher
+
+
+ECONOMIC_REPORT_SHA256 = (
+    "c305c47268649c2e13e37b755ef32af2f626bb71d092a1c7bba15417d6eb90a7"
+)
+ECONOMIC_REPORT_MANIFEST_HASH = (
+    "a68b11e41caf21c130c22ef2a93c72d6735d0f449dea2a7b2bc38204f85091ee"
+)
 
 
 def test_launcher_frozen_inputs_match_committed_hashes() -> None:
@@ -69,3 +78,37 @@ def test_launcher_delegates_to_write_once_only_after_hash_verification(
     monkeypatch.setattr(launcher, "load_evaluator", lambda: fake)
     assert launcher.run(output) == {"decision": "synthetic"}
     assert calls == [output]
+
+
+def test_committed_economic_result_retires_without_opening_oos() -> None:
+    assert launcher.sha256_file(launcher.DEFAULT_OUTPUT) == ECONOMIC_REPORT_SHA256
+    with launcher.repository_path(launcher.DEFAULT_OUTPUT).open(
+        encoding="utf-8"
+    ) as handle:
+        report = json.load(handle)
+    assert report["manifest_hash"] == ECONOMIC_REPORT_MANIFEST_HASH
+    assert report["decision"] == "retire_without_repair"
+    assert report["champion_variant_id"] is None
+    assert report["champion_policy_hash"] is None
+    assert report["selection_candidate_ids"] == []
+    assert report["familywise_test"]["ordered_tested_variant_ids"] == []
+    assert report["outcome_boundary"] == {
+        "oos_opened": False,
+        "post_2023_funding_rows_read": 0,
+        "post_2023_market_rows_read": 0,
+        "post_2023_news_rows_read": 0,
+        "pre2024_funding_rows_read": 3_285,
+        "pre2024_market_rows_read": 315_360,
+    }
+    unsupported = [
+        variant
+        for variant in report["variant_results"].values()
+        if not variant["source_support_pass"]
+    ]
+    assert len(unsupported) == 7
+    assert all(
+        variant["outcome_status"] == "not_opened_source_unsupported"
+        and variant["train"]["market_outcome_opened"] is False
+        and variant["selection"]["base_2bps_per_side"] is None
+        for variant in unsupported
+    )
