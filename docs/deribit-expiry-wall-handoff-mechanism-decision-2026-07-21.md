@@ -182,6 +182,18 @@ current AFCS, BAFR, MFIC-fast, MFIC-slow, and three production-sleeve pure
 clocks, plus a deterministic reconstruction of the unchanged DEHR-72 singleton
 through 2022.
 
+The historical DEHR artifact added 65 and then 5 minutes to the API delivery
+timestamp without rounding, so every ordinary entry retained a small
+millisecond offset from the five-minute execution grid. Comparing those raw
+timestamps to DEWH would make an identical expiry look different for an
+operationally meaningless reason. The related-source comparator must preserve
+DEHR's exact candidate selection and side, but normalize its execution clock
+with the DEWH live-parity rule: round `source_observation_earliest` up to the
+next five-minute boundary, wait one complete bucket, then hold the unchanged
+DEHR 72 bars. The export must report both the frozen DEHR event-clock hash and
+the count of normalized rows. This normalization is only for conservative
+novelty comparison; it does not reopen, repair, or authorize DEHR performance.
+
 For every unrelated comparator over common coverage, require all of:
 
 - exact-entry Jaccard at most 0.20;
