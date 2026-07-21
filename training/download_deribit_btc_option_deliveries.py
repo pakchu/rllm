@@ -23,7 +23,7 @@ import urllib.request
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 import numpy as np
 import pandas as pd
@@ -81,6 +81,10 @@ class Config:
 
 
 Fetch = Callable[[dict[str, Any]], dict[str, Any]]
+Aggregate = Callable[
+    [list[dict[str, Any]], Config],
+    tuple[pd.DataFrame, dict[str, Any]],
+]
 
 
 def canonical_hash(payload: Any) -> str:
@@ -99,10 +103,10 @@ def sha256_file(path: str | Path) -> str:
 
 
 def _utc(value: str | pd.Timestamp) -> pd.Timestamp:
-    timestamp = pd.Timestamp(value)
+    timestamp = cast(pd.Timestamp, pd.Timestamp(value))
     if timestamp.tzinfo is None:
-        return timestamp.tz_localize("UTC")
-    return timestamp.tz_convert("UTC")
+        return cast(pd.Timestamp, timestamp.tz_localize("UTC"))
+    return cast(pd.Timestamp, timestamp.tz_convert("UTC"))
 
 
 def _http_page(cfg: Config, params: dict[str, Any]) -> dict[str, Any]:
@@ -199,22 +203,31 @@ def _normalise_option(
     if match is None:
         raise ValueError(f"unsupported Deribit BTC delivery instrument: {instrument}")
 
-    raw_timestamp = pd.Timestamp(_timestamp_ms(row), unit="ms", tz="UTC")
+    raw_timestamp = cast(
+        pd.Timestamp,
+        pd.Timestamp(_timestamp_ms(row), unit="ms", tz="UTC"),
+    )
     expiry_match = EXPIRY_RE.fullmatch(match.group("expiry"))
     if expiry_match is None:
         raise ValueError(f"invalid Deribit option expiry: {instrument}")
     try:
-        expiry_date = pd.Timestamp(
-            datetime(
-                2000 + int(expiry_match.group("year")),
-                MONTH_BY_CODE[expiry_match.group("month")],
-                int(expiry_match.group("day")),
-                tzinfo=timezone.utc,
+        expiry_date = cast(
+            pd.Timestamp,
+            pd.Timestamp(
+                datetime(
+                    2000 + int(expiry_match.group("year")),
+                    MONTH_BY_CODE[expiry_match.group("month")],
+                    int(expiry_match.group("day")),
+                    tzinfo=timezone.utc,
+                )
             )
         )
     except (KeyError, ValueError) as exc:
         raise ValueError(f"invalid Deribit option expiry: {instrument}") from exc
-    scheduled_expiry_time = expiry_date + pd.Timedelta(hours=8)
+    scheduled_expiry_time = cast(
+        pd.Timestamp,
+        expiry_date + pd.Timedelta(hours=8),
+    )
     if (
         raw_timestamp < scheduled_expiry_time
         or raw_timestamp.normalize() != scheduled_expiry_time.normalize()
@@ -369,6 +382,7 @@ def download(
     *,
     fetch: Fetch | None = None,
     sleep: Callable[[float], None] = time.sleep,
+    aggregate: Aggregate | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     if not 1 <= cfg.page_size <= 1000:
         raise ValueError("Deribit delivery page_size must be in [1, 1000]")
@@ -450,8 +464,11 @@ def download(
 
     if not rows:
         raise RuntimeError("Deribit delivery source returned no frozen rows")
-    aggregate, aggregate_audit = aggregate_deliveries(rows, cfg)
-    if aggregate["expiry_time"].min() < start or aggregate["expiry_time"].max() >= end:
+    aggregate_frame, aggregate_audit = (aggregate or aggregate_deliveries)(rows, cfg)
+    if (
+        aggregate_frame["expiry_time"].min() < start
+        or aggregate_frame["expiry_time"].max() >= end
+    ):
         raise RuntimeError("Deribit aggregate escaped frozen interval")
     audit = {
         "endpoint": ENDPOINT,
@@ -467,7 +484,7 @@ def download(
         "end_exclusive": cfg.end_exclusive,
         **aggregate_audit,
     }
-    return aggregate, audit
+    return aggregate_frame, audit
 
 
 def _write_deterministic_csv(path: Path, frame: pd.DataFrame) -> None:

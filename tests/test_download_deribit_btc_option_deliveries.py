@@ -4,6 +4,7 @@ import gzip
 import json
 from dataclasses import replace
 from pathlib import Path
+from typing import Any, cast
 
 import pandas as pd
 import pytest
@@ -12,7 +13,8 @@ from training import download_deribit_btc_option_deliveries as delivery
 
 
 def _ms(value: str) -> int:
-    return int(pd.Timestamp(value, tz="UTC").timestamp() * 1000)
+    timestamp = cast(pd.Timestamp, pd.Timestamp(value, tz="UTC"))
+    return int(timestamp.timestamp() * 1000)
 
 
 def _row(
@@ -116,6 +118,44 @@ def test_download_aggregates_terminal_delta_release_and_excludes_future(
     with gzip.open(cfg.output_csv, "rt", encoding="utf-8") as handle:
         public = handle.read() + json.dumps(manifest)
     assert "BTC-3JAN20-90-C" not in public
+
+
+def test_download_accepts_a_source_only_aggregate_callback(tmp_path: Path) -> None:
+    recent = _expiry_rows("3JAN20", "2020-01-03")
+    before = _expiry_rows("28DEC18", "2018-12-28")
+    pages = {
+        None: _payload(recent, "old"),
+        "old": _payload(before, None),
+    }
+    observed: list[dict[str, object]] = []
+
+    def fetch(params: dict[str, object]) -> dict[str, object]:
+        return pages[params.get("continuation")]
+
+    def aggregate(
+        rows: list[dict[str, Any]], cfg: delivery.Config
+    ) -> tuple[pd.DataFrame, dict[str, object]]:
+        observed.extend(rows)
+        return (
+            pd.DataFrame(
+                {"expiry_time": [pd.Timestamp("2020-01-03 08:00", tz="UTC")]}
+            ),
+            {"custom_aggregate": True, "currency": cfg.currency},
+        )
+
+    frame, audit = delivery.download(
+        _cfg(tmp_path),
+        fetch=fetch,
+        sleep=lambda _: None,
+        aggregate=aggregate,
+    )
+
+    assert len(observed) == len(recent)
+    assert frame["expiry_time"].tolist() == [
+        pd.Timestamp("2020-01-03 08:00", tz="UTC")
+    ]
+    assert audit["custom_aggregate"] is True
+    assert audit["currency"] == "BTC"
 
 
 def test_aggregate_maps_put_release_long_and_call_release_short() -> None:
