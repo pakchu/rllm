@@ -18,6 +18,7 @@ from training import download_deribit_btc_option_deliveries as delivery
 
 POLICY_ID = "DEWH-144"
 PROTOCOL_VERSION = "deribit_expiry_wall_handoff_source_v1"
+IMPLEMENTATION = Path("training/build_deribit_expiry_wall_handoff_source.py")
 MECHANISM_DOCUMENT = Path(
     "docs/deribit-expiry-wall-handoff-mechanism-decision-2026-07-21.md"
 )
@@ -339,6 +340,10 @@ def run(
         "protocol_version": PROTOCOL_VERSION,
         "policy_id": POLICY_ID,
         "configuration": asdict(cfg),
+        "implementation_binding": {
+            "path": str(IMPLEMENTATION),
+            "sha256": delivery.sha256_file(IMPLEMENTATION),
+        },
         "mechanism_binding": {
             "path": str(MECHANISM_DOCUMENT),
             "sha256": MECHANISM_DOCUMENT_SHA256,
