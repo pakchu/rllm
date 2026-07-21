@@ -2,11 +2,20 @@ from __future__ import annotations
 
 import builtins
 import io
+import json
 from pathlib import Path
 
 import pytest
 
 from training import run_gdelt_narrative_source_support as launcher
+
+
+SOURCE_SUPPORT_REPORT_SHA256 = (
+    "1b35c6fef694f1b352129cd3b40ae85832834561f61b731bccaf4d8b24c2a5e4"
+)
+SOURCE_SUPPORT_MANIFEST_HASH = (
+    "fa4465fa3a8f6b001d4179c692e2d0a7b11e6ce7439a474bb995541b9aa32780"
+)
 
 
 def test_launcher_frozen_inputs_match_committed_hashes() -> None:
@@ -105,3 +114,26 @@ def test_launcher_run_is_write_once_and_reads_no_market_files(
     with pytest.raises(FileExistsError, match="write-once"):
         launcher.run(output)
     assert opened <= allowed
+
+
+def test_committed_source_support_result_advances_without_opening_outcomes() -> None:
+    assert launcher.sha256_file(launcher.DEFAULT_OUTPUT) == SOURCE_SUPPORT_REPORT_SHA256
+    with launcher.repository_path(launcher.DEFAULT_OUTPUT).open(
+        encoding="utf-8"
+    ) as handle:
+        report = json.load(handle)
+    family = report["family_support"]
+    assert report["manifest_hash"] == SOURCE_SUPPORT_MANIFEST_HASH
+    assert report["decision"] == "advance_to_market"
+    assert family["family_advances"] is True
+    assert family["passing_variant_count"] == 17
+    assert all(family["checks"].values())
+    assert report["outcome_boundary"] == {
+        "btc_market_rows_read": 0,
+        "economic_metrics_computed": False,
+        "funding_rows_read": 0,
+        "future_return_rows_read": 0,
+        "outcomes_opened": False,
+        "post_2023_news_rows_read": 0,
+        "return_or_pnl_fields_read": 0,
+    }
