@@ -1,0 +1,168 @@
+{
+  "as_of_date": "2026-07-20",
+  "candidate_family": "BFMWD-144",
+  "decision": "freeze_source_support_before_source_values_or_any_outcome",
+  "economic_gates": {
+    "base_cost_bp_per_side": 6.0,
+    "block_length_days": 7,
+    "draws": 100000,
+    "full_calendar_cagr": true,
+    "maximum_strict_mdd": 0.15,
+    "minimum_cagr_to_strict_mdd": 3.0,
+    "minimum_mean_gross_side_adjusted_bp": 30.0,
+    "minimum_stress_cagr_to_strict_mdd": 2.5,
+    "multiple_testing": "Romano-Wolf one-sided step-down max-t",
+    "require_each_calendar_half_positive": true,
+    "require_each_side_contribution_positive": true,
+    "require_one_bar_delay_positive": true,
+    "require_positive_absolute_return": true,
+    "seed": 20260720,
+    "stress_cost_bp_per_side": 10.0,
+    "strict_path_mdd": true,
+    "weekly_cluster_pvalue_maximum": 0.1
+  },
+  "files": {
+    "preregistration_document": "docs/bitfinex-margin-warehouse-deployment-preregistration-2026-07-20.md",
+    "preregistration_document_sha256": "180140619dabba0760033b83a87cfd4f4ca80b09987f7dc2c87e849bc4623fdc",
+    "preregistration_source": "training/preregister_bitfinex_margin_warehouse_deployment.py",
+    "preregistration_source_sha256": "67cfa51549ecadcd474ffe81f8037335b09ef761200deebd3870bdb6bbf8405c"
+  },
+  "manifest_hash": "9b5d78e506393340c912e6d0fc965a9f2e129594c242d6072fb92c7ed84fb81d",
+  "one_way_sequence": {
+    "evaluator_hash_frozen_before_market_access": true,
+    "failed_candidate_repair_forbidden": true,
+    "llm_rescue_forbidden": true,
+    "selection_2023_before_any_2024_plus_access": true,
+    "source_artifact_after_preregistration": true,
+    "source_support_before_market_evaluator": true,
+    "train_2021_2022_before_selection_2023": true
+  },
+  "outcome_boundary": {
+    "btc_market_rows_read": 0,
+    "comparator_rows_opened": false,
+    "funding_rows_read": 0,
+    "future_return_rows_read": 0,
+    "outcome_sources_opened": false,
+    "outcomes_opened": false,
+    "post_2023_rows_read": 0,
+    "return_or_pnl_fields_read": 0,
+    "source_numeric_rows_opened": false
+  },
+  "policy": {
+    "config": {
+      "available_at_rule": "floor(observation_time, 1h) + 15m",
+      "bar_minutes": 5,
+      "btc_side": -1,
+      "entry_delay_minutes": 5,
+      "global_nonoverlap": true,
+      "history_hours": 1440,
+      "leverage": 0.5,
+      "minimum_history_hours": 1080,
+      "onset_only": true,
+      "robust_mad_scale": 1.4826,
+      "selection_end_exclusive": "2024-01-01T00:00:00Z",
+      "selection_start": "2023-01-01T00:00:00Z",
+      "signal_grid": "hourly_official_observation",
+      "simultaneous_symbol_conflict": "abstain",
+      "symbols": [
+        "fUSD",
+        "fBTC"
+      ],
+      "tenor_confirmation": "current_average_period_at_or_above_strict_prior_median",
+      "train_end_exclusive": "2023-01-01T00:00:00Z",
+      "train_start": "2021-01-01T00:00:00Z",
+      "usd_side": 1,
+      "utilization_clip": 1e-06,
+      "warmup_start": "2020-01-01T00:00:00Z"
+    },
+    "conflict": "abstain if fUSD and fBTC trigger at the same anchor",
+    "direction": "fUSD -> LONG (+1); fBTC -> SHORT (-1)",
+    "entry": "source available_at + one five-minute bar",
+    "exit": "scheduled open after exactly 144 five-minute bars",
+    "features": {
+      "standardization": "median/MAD*1.4826 over the strictly prior 1440 valid hourly feature observations, minimum 1080; current anchor excluded",
+      "unused_draw": "log1p(unused[t-deployment]) - log1p(unused[t])",
+      "used_deployment": "log1p(used[t]) - log1p(used[t-deployment])",
+      "utilization_deployment": "logit(utilization[t]) - logit(utilization[t-deployment])",
+      "warehouse_charge": "log1p(unused[t-deployment]) - log1p(unused[t-deployment-warehouse])"
+    },
+    "later_economic_controls": [
+      "direction_flip",
+      "fUSD_only",
+      "fBTC_only",
+      "deterministic_random_side",
+      "extra_latency_one_bar",
+      "ten_bp_per_side_stress"
+    ],
+    "official_fields": {
+      "tenor": "average_period_days",
+      "total": "funding_amount",
+      "unused": "funding_amount - funding_amount_used",
+      "used": "funding_amount_used",
+      "utilization": "used / total clipped to [1e-6, 1-1e-6]"
+    },
+    "source_only_controls": [
+      "no_warehouse_charge_prerequisite",
+      "no_unused_draw_confirmation",
+      "no_tenor_confirmation",
+      "stale_24h_source"
+    ],
+    "trigger": "all four feature robust-z values >= 1.0 and current tenor >= its strictly prior 1440-hour median; exact source coverage; same-symbol onset only",
+    "variants": [
+      {
+        "deployment_hours": 3,
+        "hold_bars": 144,
+        "robust_z_threshold": 1.0,
+        "variant_id": "bfmwd_w12_d3_z10_h12",
+        "warehouse_hours": 12
+      },
+      {
+        "deployment_hours": 3,
+        "hold_bars": 144,
+        "robust_z_threshold": 1.0,
+        "variant_id": "bfmwd_w24_d3_z10_h12",
+        "warehouse_hours": 24
+      },
+      {
+        "deployment_hours": 6,
+        "hold_bars": 144,
+        "robust_z_threshold": 1.0,
+        "variant_id": "bfmwd_w12_d6_z10_h12",
+        "warehouse_hours": 12
+      },
+      {
+        "deployment_hours": 6,
+        "hold_bars": 144,
+        "robust_z_threshold": 1.0,
+        "variant_id": "bfmwd_w24_d6_z10_h12",
+        "warehouse_hours": 24
+      }
+    ]
+  },
+  "protocol_version": "bitfinex_margin_warehouse_deployment_preregistration_v1",
+  "source_contract": {
+    "builder": "training/download_bitfinex_margin_funding_stats.py",
+    "builder_sha256": "55bb48e7cc810fa42c46bf5de58513b5a8eb3ab9c41ea70592a6617f466db665",
+    "network_calls": 0,
+    "numeric_source_rows_parsed": 0,
+    "physical_end_exclusive": "2024-01-01T00:00:00Z",
+    "physical_start": "2020-01-01T00:00:00Z",
+    "source_decision": "docs/bitfinex-margin-warehouse-deployment-source-decision-2026-07-20.md",
+    "source_decision_sha256": "44b2ae699e55b49a3ce0b6dd291090a396e9716c378d9da27a98e6435af1b291"
+  },
+  "support_gates": {
+    "maximum_bidirectional_novelty_containment": 0.35,
+    "maximum_calendar_month_share": 0.2,
+    "maximum_exact_entry_jaccard": 0.1,
+    "maximum_rolling_14day_share": 0.2,
+    "maximum_side_share": 0.8,
+    "maximum_weekday_share": 0.25,
+    "minimum_events_each_selection_half": 12,
+    "minimum_events_each_train_year": 20,
+    "minimum_selection_events": 30,
+    "minimum_side_share": 0.2,
+    "minimum_train_events": 60,
+    "novelty_containment_hours": 6,
+    "stop_if_no_variant_passes": true
+  }
+}
