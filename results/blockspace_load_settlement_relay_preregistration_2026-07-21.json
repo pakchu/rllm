@@ -1,0 +1,358 @@
+{
+  "comparator_bindings": {
+    "bate_288_primary_clock": {
+      "path": "results/block_arrival_throughput_elasticity_clock_2026-07-20.csv",
+      "role": "directional_interval_clock",
+      "sha256": "cd4fbd01c104bd969ca1c12a53b8da82dd0e9376990e233c286ff009a5115c02"
+    },
+    "fetd_288_preregistration": {
+      "path": "results/fee_endpoint_topology_disagreement_preregistration_2026-07-20.json",
+      "role": "rebuild_contract",
+      "sha256": "2de820b6f78d0cd566f2750f91bfca8c092795ab93b81121326bdb067247e285"
+    },
+    "fetd_288_support": {
+      "path": "results/fee_endpoint_topology_disagreement_support_2026-07-20.json",
+      "role": "sealed_clock_commitment",
+      "sha256": "03ba910a314ba6efb647f6588dff603261d414e5114680ca33bdc27d59aed035"
+    },
+    "fetd_288_support_builder": {
+      "path": "training/build_fee_endpoint_topology_disagreement_support.py",
+      "role": "deterministic_clock_rebuilder",
+      "sha256": "1d1330415d6b22f0ebe32719dd6b5232cb4df28b08c2f0ee2942f15aa7c6f01d"
+    },
+    "prior_microstructure_bundle": {
+      "path": "results/cdltr_prior_comparator_views_2026-07-21.csv.gz",
+      "role": "mixed_directional_and_timestamp_clock_bundle",
+      "sha256": "bffdcf158d7d4e38db5794fb4761de528fb73b0b772ae950f3a087a93ab63f1a"
+    },
+    "prior_microstructure_bundle_manifest": {
+      "path": "results/cdltr_prior_comparator_views_manifest_2026-07-21.json",
+      "role": "bundle_schema_and_provenance",
+      "sha256": "a795f384287f24200e00d2cc5a5721610bb5282d1b044b3a653a053190c44261"
+    },
+    "ufcp_1_primary_clock": {
+      "path": "results/utxo_fee_clearing_polarity_primary_clock_2026-07-20.csv",
+      "role": "directional_interval_clock",
+      "sha256": "8338c290d63b522531c8d55c8a79ba73cc13915c936733ec03ffcf6ab0e86c1b"
+    },
+    "wctr_288_primary_clock": {
+      "path": "results/witness_composition_transport_primary_clock_2026-07-20.csv.gz",
+      "role": "directional_interval_clock",
+      "sha256": "7a6b56a3024d0d087322fad7b3229276c539b93374691cd2812af0630dc752b1"
+    }
+  },
+  "config": {
+    "preregistration_output": "results/blockspace_load_settlement_relay_preregistration_2026-07-21.json",
+    "source_manifest": "results/bitcoin_utxo_fee_block_stats_source_manifest_2026-07-20.json"
+  },
+  "manifest_hash": "87d4486be4c37d6f6078409c719f35ff196583c80fa834cf0fdf47d5f437a29a",
+  "mechanism_decision": {
+    "path": "docs/blockspace-load-settlement-relay-mechanism-decision-2026-07-21.md",
+    "sha256": "dd7a5ddc67710b06537e6839c0519218508ed2190d1b799d548ad11f704a33f2"
+  },
+  "outcome_boundary": {
+    "blsr_feature_rows_derived": 0,
+    "comparator_artifact_bytes_hashed": true,
+    "comparator_rows_read": 0,
+    "funding_rows_loaded": 0,
+    "market_rows_loaded": 0,
+    "network_calls": 0,
+    "post_2023_rows_loaded": 0,
+    "return_or_pnl_fields": 0,
+    "signal_incidence_rows_derived": 0,
+    "source_artifact_bytes_hashed": true,
+    "source_csv_values_read": 0,
+    "source_manifest_json_read": true,
+    "subprocess_calls": 0
+  },
+  "outcomes_opened": false,
+  "policy": {
+    "calendar": {
+      "fit_permission": "no fitted coefficient or threshold grid",
+      "sealed": "2024+",
+      "selection": "[2023-01-01T00:00:00Z,2024-01-01T00:00:00Z)",
+      "train": "[2021-01-01T00:00:00Z,2023-01-01T00:00:00Z)",
+      "warmup_source": "calendar 2020 only"
+    },
+    "causal_availability": {
+      "already_aligned_rule": "aligned availability still receives 300s",
+      "availability_lag_seconds": 172800,
+      "ceil_5m": "((unix_seconds+299)//300)*300",
+      "entry_latency_seconds": 300,
+      "entry_time": "ceil_5m(confirming_source_available_at)+300 seconds",
+      "hash_linked_successors_after_packet_end": 6,
+      "source_available_at": "max header timestamp from packet start through h+6 + 48 hours",
+      "source_gap_action": "reject; never fill, reorder, or backdate"
+    },
+    "controls": {
+      "deterministic_random_side": "exact primary entries/exits; SHA256('BLSR-288-random-side-20260721|' + entry_time), first digest byte<128 LONG else SHORT",
+      "direction_flip": "exact primary entries/exits with every side multiplied by -1",
+      "endpoint_only": "each endpoint_change with endpoint_magnitude_rank>=0.75 and nonzero sign; side=sign(endpoint_change); independent chronological nonoverlap",
+      "fee_only": "each fee_change with fee_magnitude_rank>=0.75 and nonzero sign; side=sign(fee_change); independent chronological nonoverlap",
+      "one_bar_latency": "shift primary entry and exit exactly 300 seconds; drop without replacement when the shifted trade leaves its original split",
+      "one_packet_stale_response": "shift the confirming endpoint state by one complete packet and apply it only at the later packet availability",
+      "opposite_response_relay": "exact primary fee onset and three-packet deadline, but emit only when the first significant endpoint response disagrees; side remains the fee-load sign",
+      "reverse_order_relay": "significant endpoint change starts an episode; the first significant fee change in the next three packets must agree",
+      "same_packet_agreement": "both changes significant and same-signed in one packet; side equals the common sign; independent chronological nonoverlap"
+    },
+    "execution": {
+      "bar_size": "5m",
+      "base_cost_bp_per_notional_per_side": 6,
+      "entry": "next open exactly at entry_time",
+      "funding": "exact entry-inclusive/exit-exclusive marks at fixed entry quantity",
+      "hold_bars": 288,
+      "hold_hours": 24,
+      "interval": "[entry_time,scheduled_exit_time)",
+      "notional_leverage": 0.5,
+      "scheduled_exit_time": "entry_time+86400 seconds",
+      "stress_cost_bp_per_notional_per_side": 10
+    },
+    "normalization": {
+      "current_row_excluded": true,
+      "endpoint_magnitude_rank": "midrank(abs(endpoint_change))",
+      "fee_magnitude_rank": "midrank(abs(fee_change))",
+      "lookback_valid_packet_changes": 180,
+      "method": "strict-prior rolling empirical midrank of absolute change",
+      "midrank_formula": "(count(prior < current)+0.5*count(prior == current))/prior_count",
+      "minimum_prior_valid_packet_changes": 120,
+      "parameter_grid": [],
+      "prior_available_at_strictly_before_current": true,
+      "significance_boundary": 0.75,
+      "tie_equality": "exact IEEE-754 binary64 equality",
+      "window_selection": "use the most recent 180 strict-prior base-valid changes when available; fewer than 120 makes current rank-unready"
+    },
+    "novelty_gates": {
+      "all_nonempty_comparators_must_pass": true,
+      "candidate_one_to_one_within_six_hours_fraction_maximum": 0.35,
+      "comparator_removal_after_incidence": "forbidden",
+      "comparators": [
+        "FETD-288",
+        "BATE-288",
+        "UFCP-1",
+        "WCTR-288",
+        "prior_microstructure_bundle"
+      ],
+      "exact_entry_timestamp_jaccard_maximum": 0.2,
+      "exposure_grid": "full [2021-01-01,2024-01-01) UTC at 5m",
+      "signed_occupied_exposure_absolute_pearson_maximum": 0.4,
+      "timestamp_only_rule": "omit only signed exposure correlation"
+    },
+    "performance_gates": {
+      "absolute_return_positive_each": true,
+      "cagr_to_strict_mdd_minimum_each": 3.0,
+      "control_replacement": "forbidden under BLSR-288",
+      "long_and_short_absolute_return_positive_train_selection": true,
+      "mean_gross_bp_minimum_each": 30.0,
+      "mechanism_control_minimum_ratio_margin": 0.25,
+      "mechanism_controls": [
+        "fee_only",
+        "endpoint_only",
+        "same_packet_agreement",
+        "reverse_order_relay",
+        "opposite_response_relay",
+        "one_packet_stale_response"
+      ],
+      "one_bar_latency_absolute_return_positive_each": true,
+      "positive_subperiods": [
+        "2021",
+        "2022",
+        "2023H1",
+        "2023H2"
+      ],
+      "post_outcome_repair": "forbidden",
+      "required_sequence": [
+        "train",
+        "selection",
+        "2024",
+        "2025",
+        "2026"
+      ],
+      "stress_absolute_return_positive_each": true,
+      "strict_max_drawdown_maximum_each": 0.15,
+      "weekly_cluster_sign_flip_p_maximum_each": 0.1
+    },
+    "policy_id": "BLSR-288",
+    "promotion_boundary": "pre-2024 pass required before separately frozen 2024+ source and outcome stages; live requires Bitcoin Core parity and 90 shadow days",
+    "relay": {
+      "active_fee_shocks": "ignored until current episode resolves or expires",
+      "availability_order": "source_available_at must be strictly increasing with packet_id; tie or regression rejects the source clock",
+      "cancel": "opposite first significant endpoint response emits none",
+      "confirm": "sign(endpoint_change)==load_sign emits one candidate",
+      "deadline_packets_after_onset": 3,
+      "expire": "no significant endpoint response by third later packet",
+      "first_response": "first later nonzero endpoint_change with endpoint_magnitude_rank>=0.75 resolves the episode",
+      "no_retry": true,
+      "onset": "when inactive, first nonzero fee_change with fee_magnitude_rank>=0.75 starts load_sign=sign(fee_change)",
+      "processing_order": "strictly increasing packet_id",
+      "restart": "only the packet after the resolved/expired inspected packet",
+      "side": "load_sign; positive LONG, negative SHORT"
+    },
+    "rllm_boundary": "only after deterministic standalone and orthogonality pass may a compact Gemma policy consume symbolic relay state to abstain or size",
+    "scheduling": {
+      "acceptance": "entry_time>=prior accepted exit; equal boundary allowed",
+      "candidate_order": "entry_time,onset_packet_id,confirmation_packet_id",
+      "global_nonoverlap": true,
+      "overlap_action": "suppress without priority or replacement",
+      "split_containment": "entry>=split_start and scheduled_exit<=split_end"
+    },
+    "singleton": true,
+    "source_features": {
+      "base_valid_feature_row": "require t-1,t as consecutive valid absolute-height packets; each packet has exactly 72 contiguous linked blocks and positive finite packet_weight, packet_fees, packet_endpoints",
+      "complete_packet_count": 2959,
+      "edge_packet_policy": "drop incomplete first and last packets",
+      "endpoint_change": "endpoint_density[t]-endpoint_density[t-1]",
+      "endpoint_density": "log(packet_endpoints/packet_weight)",
+      "fee_change": "fee_pressure[t]-fee_pressure[t-1]",
+      "fee_pressure": "log(packet_fees/packet_weight)",
+      "first_complete_packet_start_height": 610704,
+      "forbidden_primary_fields": [
+        "utxo_set_change",
+        "tx_count",
+        "size",
+        "mediantime",
+        "market",
+        "funding",
+        "premium",
+        "open_interest",
+        "liquidation",
+        "order_book",
+        "return",
+        "pnl"
+      ],
+      "last_complete_packet_end_height": 823751,
+      "numeric_contract": "IEEE-754 binary64 and natural log; no epsilon, clipping, rounding, interpolation, forward fill, reassignment, or imputation; exact binary64 equality defines zero and ties",
+      "packet_alignment": "packet_id=floor(height/72)",
+      "packet_blocks": 72,
+      "packet_endpoints": "sum(total_inputs+total_outputs)",
+      "packet_fees": "sum(total_fees)",
+      "packet_weight": "sum(weight)"
+    },
+    "stopping_rule": "stop permanently at first source/support/novelty/train/selection/test/eval/forward failure; no threshold, packet, rank, deadline, sign, availability, latency, hold, floor, comparator, or control repair",
+    "strict_accounting": {
+      "cagr_clock": "full declared wall-clock window including idle cash",
+      "cluster_test": "one-sided weekly entry-cluster sign flip; 100000 draws; seed 20260721",
+      "costs": "entry, scheduled exit, and hypothetical adverse liquidation costs",
+      "drawdown_high_water_mark": "global and pre-entry",
+      "held_path_order": "all favorable OHLC/funding-credit extremes before all adverse OHLC/funding-debit extremes",
+      "required_report_fields": [
+        "absolute_return",
+        "cagr",
+        "strict_mdd",
+        "cagr_to_strict_mdd",
+        "trades",
+        "long_trades",
+        "short_trades",
+        "calendar_clusters"
+      ]
+    },
+    "support_gates": {
+      "count_basis": "accepted primary entries after relay, containment, and nonoverlap",
+      "selection_each_half_minimum": 14,
+      "selection_each_quarter_minimum": 6,
+      "selection_each_side_each_half_minimum": 4,
+      "selection_long_minimum": 12,
+      "selection_maximum_month_share": 0.2,
+      "selection_maximum_weekday_share": 0.25,
+      "selection_short_minimum": 12,
+      "selection_total_minimum": 35,
+      "support_failure_action": "reject BLSR-288 before outcomes; no repair",
+      "train_each_half_year_minimum": 12,
+      "train_each_side_each_year_minimum": 8,
+      "train_each_year_minimum": 30,
+      "train_long_minimum": 24,
+      "train_maximum_month_share": 0.2,
+      "train_maximum_weekday_share": 0.25,
+      "train_short_minimum": 24,
+      "train_total_minimum": 80
+    }
+  },
+  "policy_hash": "f9194cb23d01e910861f573a735293faa087f315c422000ef4da049409f6f62f",
+  "policy_id": "BLSR-288",
+  "preregistration_source": {
+    "path": "training/preregister_blockspace_load_settlement_relay.py",
+    "sha256": "f26015b4b18af4c6e3ca12330abffb389b71300158c206409eb383215d4f0810"
+  },
+  "protocol_version": "blockspace_load_settlement_relay_preregistration_v1",
+  "research_sequence": {
+    "evaluator_second": "commit and hash-freeze strict evaluator",
+    "outcomes": "train first; each later window only after exact pass",
+    "sealed": "2024+ source and outcomes",
+    "support_first": "source-only train/selection incidence and novelty"
+  },
+  "source_manifest": {
+    "data_use": "private internal research cache of consensus-derived fields via public Mempool REST transport; the API output has no separately documented data licence, production must use an owned Bitcoin Core node, and no raw response or unrelated metadata is redistributed",
+    "manifest_hash": "98a84b0bd0338300f62eaa047b87498cc5a8d9505a03f6bd1912d1deb9564e8c",
+    "outcome_boundary": {
+      "funding_rows_loaded": 0,
+      "market_rows_loaded": 0,
+      "outcome_rows_loaded": 0,
+      "post_2023_source_rows_loaded": 0,
+      "raw_mempool_responses_persisted": false,
+      "return_or_pnl_fields": 0,
+      "unrelated_mempool_metadata_persisted": false
+    },
+    "path": "results/bitcoin_utxo_fee_block_stats_source_manifest_2026-07-20.json",
+    "protocol_version": "bitcoin_utxo_fee_block_stats_source_v1",
+    "reference_audit": {
+      "all_basic_fields_match_reference": true,
+      "columns_cross_checked": [
+        "height",
+        "id",
+        "previousblockhash",
+        "timestamp",
+        "mediantime",
+        "tx_count",
+        "size",
+        "weight"
+      ],
+      "reference_path": "data/bitcoin_block_summaries_2020_2023.csv.gz",
+      "reference_sha256": "1f8d1c0153717f2c18d8fa6f09428c780a850b2aecc8fb42bc497e16e68e1833",
+      "rows_cross_checked": 213095
+    },
+    "sha256": "ceb096b7bfeaf309729c4cab9f5cd4d2e0d526e261b1e460e9d03cd4f24e8084",
+    "source_audit": {
+      "all_rows_pre_cutoff": true,
+      "complete_inclusive_height_range": true,
+      "end_height": 823785,
+      "end_timestamp_exclusive": 1704067200,
+      "expected_rows": 213095,
+      "height_links_checked": 213094,
+      "latest_eligible_packet_end": 823779,
+      "observed_rows": 213095,
+      "start_height": 610691,
+      "unique_block_hashes": true,
+      "utxo_identity_checked": true
+    },
+    "source_builder": {
+      "path": "training/download_bitcoin_utxo_fee_stats.py",
+      "sha256": "099454feff009a5a4d44a96bd3790ff586d0365eba2e9b72e7b071d34e743633"
+    },
+    "source_origin_decision": {
+      "path": "docs/utxo-fee-clearing-polarity-mechanism-decision-2026-07-20.md",
+      "sha256": "95bf889fd053987e1717b182dc5da4f19ef51d75a1cbda427913089368c4852e"
+    },
+    "source_output": {
+      "bytes": 13991597,
+      "columns": [
+        "height",
+        "id",
+        "previousblockhash",
+        "timestamp",
+        "mediantime",
+        "tx_count",
+        "size",
+        "weight",
+        "total_fees",
+        "total_inputs",
+        "total_outputs",
+        "utxo_set_change"
+      ],
+      "path": "data/bitcoin_utxo_fee_block_stats_2020_2023.csv.gz",
+      "sha256": "8d5160b59bd104819adb34752f2bd5b01e9c07d7aa108188abcd9e6d323d102f"
+    }
+  },
+  "source_validator": {
+    "path": "training/preregister_fee_endpoint_topology_disagreement.py",
+    "sha256": "ae1329f0cd124787d822096e56dc3bc3ed05ccd2f2f6f0cb86f47e5cd766c413"
+  }
+}
