@@ -7,10 +7,17 @@ in U.S. commercial-crude, gasoline, and distillate inventories from the EIA
 Weekly Petroleum Status Report.
 
 This freeze occurs before RPDS source incidence, side counts, calendar
-concentration, comparator timestamps, BTC market data, funding, return, PnL,
-absolute return, CAGR, or strict MDD is opened. The source's total 259 issues,
-258 complete rows, one quarantined row, and the prior EPSB concordant-state
-counts were already published. No mixed-state RPDS count has been computed.
+concentration, comparator overlap metrics, BTC market data, funding, return,
+PnL, absolute return, CAGR, or strict MDD is opened. The source's total 259
+issues, 258 complete rows, one quarantined row, and prior EPSB
+concordant-state counts were already published.
+
+During design, one 2019 EIA source row and the first ten rows of the live pure-
+clock comparator were printed to verify schemas. No RPDS predicate, mixed-state
+count, RPDS clock, comparator overlap, correlation, or outcome was computed
+from them. The preregistration records those 1/10 row exposures rather than
+claiming a false zero-row clean room. Neither exposure selected the physical
+sign topology, 48-hour hold, or novelty limits.
 
 RPDS is not a threshold or hold repair of EPSB-1. EPSB traded only releases in
 which crude, gasoline, and distillate all moved in the same direction. RPDS

@@ -17,7 +17,7 @@ MECHANISM_DOCUMENT = Path(
     "docs/refined-product-divergence-shock-preregistration-2026-07-21.md"
 )
 MECHANISM_DOCUMENT_SHA256 = (
-    "9763f87f21d9250588587fa59fbbab8d78af611652edc84ab4851bd7eace2988"
+    "089203b3213b1c6565ad82974ea6c807889bf360f9fcfc60b9b548edfa4e67b3"
 )
 GENERATOR_SOURCE = Path("training/preregister_refined_product_divergence_shock.py")
 DEFAULT_OUTPUT = Path(
@@ -216,9 +216,11 @@ def build_preregistration() -> dict[str, Any]:
             "report_absolute_return_with_ratio": True,
         },
         "outcome_boundary": {
-            "source_value_rows_read": 0,
+            "prefreeze_source_value_rows_read_for_schema": 1,
+            "prefreeze_comparator_clock_rows_read_for_schema": 10,
+            "rpds_predicate_evaluations": 0,
             "candidate_clock_rows_created": 0,
-            "comparator_clock_rows_read": 0,
+            "comparator_overlap_metrics_computed": 0,
             "btc_market_rows_read": 0,
             "funding_rows_read": 0,
             "future_return_rows_read": 0,

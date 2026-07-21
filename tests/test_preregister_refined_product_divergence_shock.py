@@ -23,9 +23,19 @@ def test_preregistration_freezes_the_exact_mixed_sign_topology() -> None:
     assert report["execution"]["entry_delay_minutes"] == 5
 
 
-def test_preregistration_opens_no_source_values_or_outcomes() -> None:
+def test_preregistration_discloses_schema_rows_and_opens_no_outcomes() -> None:
     report = rpds.build_preregistration()
-    assert all(value == 0 for value in report["outcome_boundary"].values())
+    boundary = report["outcome_boundary"]
+    assert boundary["prefreeze_source_value_rows_read_for_schema"] == 1
+    assert boundary["prefreeze_comparator_clock_rows_read_for_schema"] == 10
+    assert boundary["rpds_predicate_evaluations"] == 0
+    assert boundary["candidate_clock_rows_created"] == 0
+    assert boundary["comparator_overlap_metrics_computed"] == 0
+    assert boundary["btc_market_rows_read"] == 0
+    assert boundary["funding_rows_read"] == 0
+    assert boundary["future_return_rows_read"] == 0
+    assert boundary["return_or_pnl_fields_read"] == 0
+    assert boundary["post_2023_source_rows_read"] == 0
     assert report["later_outcome_contract"]["authorized"] is False
     assert report["authorization"]["post_2023_source_access"] is False
     assert report["authorization"]["threshold_or_hold_repair"] is False
