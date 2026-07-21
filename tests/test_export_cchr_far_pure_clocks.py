@@ -100,8 +100,14 @@ def test_attach_delayed_metrics_requires_exact_one_complete_bar_no_staleness() -
     assert joined.loc[1, "positioning_source_time"] == market.loc[0, "date"]
 
     stale_metrics = metrics.drop(index=1).reset_index(drop=True)
-    with pytest.raises(RuntimeError, match="stale"):
-        far._attach_delayed_metrics(market, stale_metrics)
+    bounded = far._attach_delayed_metrics(market, stale_metrics)
+    assert bounded["positioning_available"].tolist() == [0.0, 1.0, 0.0, 1.0]
+    available = bounded["positioning_available"].eq(1.0)
+    ages = (
+        bounded.loc[available, "date"]
+        - bounded.loc[available, "positioning_source_time"]
+    )
+    assert ages.eq(pd.Timedelta("5min")).all()
 
 
 def test_funding_settlement_timing_uses_exact_time_ceil_without_future_rows() -> None:

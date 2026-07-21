@@ -171,14 +171,17 @@ def _attach_delayed_metrics(
         right["create_time"], label="metrics create_time"
     )
     right = right.sort_values("create_time").reset_index(drop=True)
+    if bool(right["create_time"].duplicated().to_numpy(dtype=bool).any()):
+        raise ValueError("metrics rows must have unique timestamps")
 
-    joined = pd.merge_asof(
+    joined = pd.merge(
         left,
         right,
         left_on="date",
         right_on="create_time",
-        direction="backward",
-        tolerance=FIVE_MINUTES,
+        how="left",
+        sort=False,
+        validate="one_to_one",
     )
     value_columns = ["sum_open_interest", "count_long_short_ratio"]
     joined[value_columns] = joined[value_columns].shift(1)
@@ -203,8 +206,8 @@ def _attach_delayed_metrics(
             "positioning source is stale; exact one-complete-bar delay required"
         )
     joined["positioning_available"] = (
-        joined[value_columns].notna().all(axis=1).astype(float)
-    )
+        joined[value_columns].notna().all(axis=1) & valid_source
+    ).astype(float)
     return joined.drop(columns=["create_time"])
 
 

@@ -479,13 +479,75 @@ class _BoundaryPrefixStream(io.RawIOBase):
             return bytes(prefix), raw_value.decode("utf-8"), row_complete
         raise AssertionError("unreachable prefix date-field state")
 
+    @staticmethod
+    def _field_from_physical_row(row: bytes, target_index: int) -> bytes:
+        """Extract one CSV field while leaving later fields opaque."""
+
+        position = 0
+        for field_index in range(target_index + 1):
+            if position >= len(row):
+                raise ValueError("prefix CSV row ended before its date field")
+            value = bytearray()
+            if row[position] == ord('"'):
+                position += 1
+                while True:
+                    if position >= len(row):
+                        raise ValueError("unterminated quoted prefix field")
+                    character = row[position]
+                    if character in (ord("\r"), ord("\n")):
+                        raise ValueError("prefix CSV field cannot contain a newline")
+                    if character != ord('"'):
+                        value.append(character)
+                        position += 1
+                        continue
+                    if position + 1 < len(row) and row[position + 1] == ord('"'):
+                        value.append(ord('"'))
+                        position += 2
+                        continue
+                    position += 1
+                    if position < len(row) and row[position] not in (
+                        ord(","),
+                        ord("\r"),
+                        ord("\n"),
+                    ):
+                        raise ValueError("invalid delimiter after quoted prefix field")
+                    break
+            else:
+                start = position
+                while position < len(row) and row[position] not in (
+                    ord(","),
+                    ord("\r"),
+                    ord("\n"),
+                ):
+                    position += 1
+                value.extend(row[start:position])
+
+            delimiter = row[position] if position < len(row) else None
+            if field_index == target_index:
+                return bytes(value)
+            if delimiter != ord(","):
+                raise ValueError("prefix CSV row ended before its date field")
+            position += 1
+        raise AssertionError("unreachable physical-row field state")
+
     def _next_retained_row(self) -> bytes | None:
-        field = self._date_field()
-        if field is None:
-            self._done = True
-            self.source_ended_before_boundary = True
-            return None
-        prefix, raw_date, row_complete = field
+        if self._date_field_index == 0:
+            field = self._date_field()
+            if field is None:
+                self._done = True
+                self.source_ended_before_boundary = True
+                return None
+            prefix, raw_date, row_complete = field
+            retained_row = prefix if row_complete else prefix + self._source.readline()
+        else:
+            retained_row = self._source.readline()
+            if not retained_row:
+                self._done = True
+                self.source_ended_before_boundary = True
+                return None
+            raw_date = self._field_from_physical_row(
+                retained_row, self._date_field_index
+            ).decode("utf-8")
         stamp_value = pd.Timestamp(raw_date)
         if not isinstance(stamp_value, pd.Timestamp) or pd.isna(stamp_value):
             raise ValueError("prefix source contains an invalid timestamp")
@@ -501,9 +563,7 @@ class _BoundaryPrefixStream(io.RawIOBase):
             self._done = True
             self.reached_boundary = True
             return None
-        if row_complete:
-            return prefix
-        return prefix + self._source.readline()
+        return retained_row
 
     def readinto(self, buffer: Any) -> int:
         if self.closed:

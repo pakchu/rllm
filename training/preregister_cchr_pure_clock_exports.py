@@ -25,7 +25,7 @@ from training import export_cchr_pdlh_pure_clocks as pdlh
 from training import preregister_cross_collateral_cohort_handoff_relay as cchr
 
 
-PROTOCOL_VERSION = "cchr_pure_clock_export_preregistration_v2"
+PROTOCOL_VERSION = "cchr_pure_clock_export_preregistration_v3"
 POLICY_ID = "CCHR-288"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 RESULTS_ROOT = REPOSITORY_ROOT / "results"
@@ -51,11 +51,11 @@ EXPORTER_SOURCES = {
     "live": Path("training/export_cchr_live_portfolio_pure_clocks.py"),
 }
 PREREGISTRATION_OUTPUTS = {
-    "pdlh": Path("results/cchr_pdlh_pure_clock_preregistration_v2_2026-07-21.json"),
-    "dtv": Path("results/cchr_dtv_pure_clock_preregistration_v2_2026-07-21.json"),
-    "far": Path("results/cchr_far_pure_clock_preregistration_v2_2026-07-21.json"),
+    "pdlh": Path("results/cchr_pdlh_pure_clock_preregistration_v3_2026-07-21.json"),
+    "dtv": Path("results/cchr_dtv_pure_clock_preregistration_v3_2026-07-21.json"),
+    "far": Path("results/cchr_far_pure_clock_preregistration_v3_2026-07-21.json"),
     "live": Path(
-        "results/cchr_live_portfolio_pure_clock_preregistration_v2_2026-07-21.json"
+        "results/cchr_live_portfolio_pure_clock_preregistration_v3_2026-07-21.json"
     ),
 }
 
