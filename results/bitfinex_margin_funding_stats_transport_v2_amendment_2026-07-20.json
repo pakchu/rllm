@@ -1,0 +1,55 @@
+{
+  "as_of_date": "2026-07-20",
+  "bindings": {
+    "amendment_document": {
+      "path": "docs/bitfinex-margin-funding-transport-v2-amendment-2026-07-20.md",
+      "sha256": "fdfae375679776ce5038720ebcaed0fdf9e2cbc46a86fe4469147346c3878013"
+    },
+    "comparator_freeze": {
+      "path": "results/bitfinex_margin_warehouse_deployment_comparator_freeze_2026-07-20.json",
+      "sha256": "37ee403d33b5361c752b84ef94d46a05d991d82e1b0a77338b41a6c49e8410de"
+    },
+    "preregistration": {
+      "path": "results/bitfinex_margin_warehouse_deployment_preregistration_2026-07-20.json",
+      "sha256": "6e478bac6becb58d282867f4ee612d9d13e803d01985474477d6e3073cd49e58"
+    },
+    "v1_builder": {
+      "path": "training/download_bitfinex_margin_funding_stats.py",
+      "sha256": "55bb48e7cc810fa42c46bf5de58513b5a8eb3ab9c41ea70592a6617f466db665"
+    },
+    "v2_builder": {
+      "path": "training/download_bitfinex_margin_funding_stats_v2.py",
+      "sha256": "b3bb9434dec618c8724ad584caa2fb66cd705d210dd66889b32ab80fd8f480ca"
+    }
+  },
+  "decision": "replace_only_invalid_availability_clock_before_feature_inspection",
+  "failure": {
+    "error": "Bitfinex conservative availability precedes observation",
+    "machine_parsed_source_rows_before_fail_closed_validation": 70116,
+    "v1_artifact_published": false
+  },
+  "manifest_hash": "5ccceeb6a952b0b1af9da9b6dc19b928131ca0e07a98f9a8ea66331cd84bf954",
+  "outcome_boundary": {
+    "btc_market_rows_read": 0,
+    "candidate_incidence_opened": false,
+    "comparator_incidence_opened": false,
+    "feature_values_inspected": false,
+    "funding_paid_rows_read": 0,
+    "outcomes_opened": false,
+    "post_2023_rows_read": 0,
+    "return_or_pnl_fields_read": 0
+  },
+  "protocol_version": "bitfinex_margin_funding_stats_transport_v2_amendment_v1",
+  "timestamp_only_audit": {
+    "field_opened": "MTS",
+    "funding_or_tenor_fields_inspected": 0,
+    "observations_after_hh15": 100,
+    "rows": 70116
+  },
+  "transport_change": {
+    "all_non_clock_source_fields_unchanged": true,
+    "candidate_contract_unchanged": true,
+    "v1": "floor(observation_time, 1h) + 15m",
+    "v2": "max(floor(observation_time, 1h) + 15m, ceil(observation_time, 5m))"
+  }
+}
