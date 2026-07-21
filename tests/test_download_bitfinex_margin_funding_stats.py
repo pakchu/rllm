@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
@@ -9,6 +10,7 @@ import pandas as pd
 import pytest
 
 from training import download_bitfinex_margin_funding_stats as source
+from training import download_bitfinex_margin_funding_stats_v2 as source_v2
 
 
 def _row(timestamp_ms: int, *, used: float = 80.0) -> list[object]:
@@ -48,6 +50,16 @@ def test_parse_row_rejects_short_or_nonfinite_rows() -> None:
     row[7] = float("nan")
     with pytest.raises(ValueError, match="non-finite"):
         source.parse_row("fUSD", row)
+
+
+def test_v2_availability_never_precedes_late_observation() -> None:
+    regular = source_v2.parse_row(
+        "fUSD", _row(_ms("2020-01-01T00:05:28Z"))
+    )
+    late = source_v2.parse_row("fBTC", _row(_ms("2020-01-01T00:34:20Z")))
+    assert regular["available_at"] == pd.Timestamp("2020-01-01T00:15:00Z")
+    assert late["available_at"] == pd.Timestamp("2020-01-01T00:35:00Z")
+    assert late["available_at"] >= late["observation_time"]
 
 
 def test_validate_page_requires_reverse_chronology_and_bounds() -> None:
@@ -138,3 +150,27 @@ def test_source_builder_is_physically_pre2024() -> None:
     assert 'end_exclusive: str = "2024-01-01T00:00:00Z"' in text
     assert '"outcomes_opened": False' in text
     assert '"post_2023_rows_requested": False' in text
+
+
+def test_transport_v2_amendment_is_hash_bound_and_outcome_blind() -> None:
+    path = Path(
+        "results/bitfinex_margin_funding_stats_transport_v2_amendment_2026-07-20.json"
+    )
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == (
+        "1fc2d1b35242e7a1bd8232b3b0dfe65d479d0f8e2c4240c523efea1937dd00e9"
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    manifest_hash = payload.pop("manifest_hash")
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode()
+    assert manifest_hash == hashlib.sha256(encoded).hexdigest()
+    assert payload["bindings"]["v2_builder"]["sha256"] == (
+        "b3bb9434dec618c8724ad584caa2fb66cd705d210dd66889b32ab80fd8f480ca"
+    )
+    assert payload["outcome_boundary"]["feature_values_inspected"] is False
+    assert payload["outcome_boundary"]["outcomes_opened"] is False
