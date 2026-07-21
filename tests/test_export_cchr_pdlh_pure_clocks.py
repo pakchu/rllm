@@ -84,8 +84,14 @@ def test_attach_delayed_metrics_uses_one_complete_bar_and_rejects_stale() -> Non
 
     stale_market = pd.DataFrame({"date": _dates("2021-01-01T00:00:00Z", 5)})
     stale_metrics = metrics.iloc[:1]
-    with pytest.raises(RuntimeError, match="stale beyond ten minutes"):
-        pdlh.attach_delayed_metrics(stale_market, stale_metrics)
+    bounded = pdlh.attach_delayed_metrics(stale_market, stale_metrics)
+    available = bounded["positioning_available"]
+    ages = (
+        bounded.loc[available, "date"]
+        - bounded.loc[available, "positioning_source_time"]
+    )
+    assert ages.max() == pd.Timedelta("10min")
+    assert available.tolist() == [False, True, True, False, False]
 
 
 def test_prior_z_excludes_current_row() -> None:
