@@ -93,7 +93,8 @@ The committed aggregate may retain only:
 
 - `expiry_time`, `delivery_event_time`, and historical earliest observation;
 - `index_price`, distinct strike count, total position;
-- dominant strike and position, wall share, strike-position HHI;
+- dominant strike and position, wall share, strike-position HHI, and the
+  largest individual instrument share used only by the frozen ablation;
 - local log spacing and signed normalized wall distance `u_e`;
 - source-quality flags and timing diagnostics.
 
