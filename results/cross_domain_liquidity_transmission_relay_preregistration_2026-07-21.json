@@ -1,0 +1,330 @@
+{
+  "candidate": "CDLTR-72A",
+  "comparator_amendment": {
+    "path": "docs/cdltr72a-preincidence-comparator-amendment-2026-07-21.md",
+    "sha256": "fba002d78e0c29d5824d2bfd922d74c1d5477f2eb63f55959f14aafd88661064"
+  },
+  "comparator_binding": {
+    "clock": "results/cdltr_prior_comparator_views_2026-07-21.csv.gz",
+    "clock_sha256": "bffdcf158d7d4e38db5794fb4761de528fb73b0b772ae950f3a087a93ab63f1a",
+    "directional_comparators": [
+      "CVTR-1",
+      "DFFB-601",
+      "FLCC-1:FLCC-H4-Q60",
+      "FLCC-1:FLCC-H4-Q65",
+      "FLCC-1:FLCC-H8-Q60",
+      "FLCC-1:FLCC-H8-Q65",
+      "NTB-7",
+      "NWE-8",
+      "ORFR-1",
+      "chain_activity_impulse_momentum"
+    ],
+    "directional_rows": 1788,
+    "event_rows_read_during_preregistration": 0,
+    "format": "csv_gzip",
+    "header": [
+      "comparator",
+      "capability",
+      "decision_time",
+      "entry_time",
+      "exit_time",
+      "side",
+      "source_clock"
+    ],
+    "manifest": "results/cdltr_prior_comparator_views_manifest_2026-07-21.json",
+    "manifest_sha256": "a795f384287f24200e00d2cc5a5721610bb5282d1b044b3a653a053190c44261",
+    "manifest_values_parsed_during_preregistration": 0,
+    "rows": 9985,
+    "timestamp_only_comparators": [
+      "NWE-7",
+      "live_anchor_2023",
+      "prior_microstructure:cbfr72",
+      "prior_microstructure:mfic_fast",
+      "prior_microstructure:mfic_slow",
+      "prior_microstructure:mfic_union",
+      "prior_microstructure:netf_fast",
+      "prior_microstructure:netf_slow",
+      "prior_microstructure:netf_union",
+      "prior_microstructure:terminal_absorption_wait72_h72",
+      "prior_microstructure:wfrs_l288_q90_h144"
+    ],
+    "timestamp_only_rows": 8197
+  },
+  "comparator_incidence_opened": false,
+  "config": {
+    "output": "results/cross_domain_liquidity_transmission_relay_preregistration_2026-07-21.json"
+  },
+  "manifest_hash": "7b094ece1c86ca84081476a1fb4b5035df1149a0eb1075aa5d657fd7eca799c7",
+  "mechanism_decision": {
+    "path": "docs/cross-domain-liquidity-transmission-relay-mechanism-decision-2026-07-21.md",
+    "sha256": "970a114b7dab6b39bea8110264eb4ab05fd9794b5cb239bc643acb53619eebe5"
+  },
+  "next_action": "run exact source-only CDLTR-72A support and novelty evaluator",
+  "outcome_boundary": {
+    "btc_market_rows_loaded": 0,
+    "comparator_event_rows_read": 0,
+    "comparator_manifest_values_parsed": 0,
+    "funding_rows_loaded": 0,
+    "network_calls": 0,
+    "post_2023_rows_read": 0,
+    "real_event_incidence_rows_derived": 0,
+    "return_or_pnl_fields_read": 0,
+    "return_rows_loaded": 0,
+    "source_feature_rows_derived": 0,
+    "source_value_rows_read": 0,
+    "subprocess_calls": 0
+  },
+  "outcomes_opened": false,
+  "performance_values_opened": false,
+  "policy": {
+    "candidate": "CDLTR-72A",
+    "controls": {
+      "deterministic_random_side": "LONG iff first byte SHA256('CDLTR-72|20260721|' + entry_time_utc) < 128, otherwise SHORT; predecessor seed retained",
+      "direction_flip": "exact primary clock, opposite side",
+      "macro_only": "macro-episode onset, same side",
+      "network_only": "network-vote onset, same side",
+      "one_network_report_delay": "primary side on next valid network report",
+      "reverse_order": "network onset followed by first macro update"
+    },
+    "execution": {
+      "decision_time": "confirming network available_at",
+      "entry": "ceil_to_5m(decision_time) + 5 minutes",
+      "exact_boundary_still_adds_minutes": 5,
+      "global_nonoverlap": true,
+      "hold_hours": 72,
+      "notional_exposure": 0.5,
+      "split_crossing_action": "skip",
+      "stops_or_take_profit": false
+    },
+    "llm_boundary": {
+      "authorized_before_deterministic_train_and_selection_pass": false,
+      "later_role": "TRADE/ABSTAIN veto only",
+      "may_change_side_timing_hold_or_relay": false,
+      "rl_reward_requirements": [
+        "strict drawdown penalty",
+        "turnover penalty"
+      ]
+    },
+    "non_pristine_boundary": "candidate-level new interaction; component-family development results are research-seen and cannot validate CDLTR",
+    "novelty_gates": {
+      "cdltr_dates_within_one_utc_day_fraction_maximum": 0.5,
+      "decision_date_jaccard_maximum": 0.3,
+      "directional_comparators_must_have_nonzero_variance": true,
+      "exposure_grid": "complete 5m UTC common span; entry-inclusive/exit-exclusive; flat 0, long +1, short -1",
+      "failure_action": "reject CDLTR-72A without repair or outcomes",
+      "flcc_candidates_pass_independently": true,
+      "missing_side_exit_or_union_may_not_be_invented": true,
+      "signed_exposure_applies_to": [
+        "CVTR-1",
+        "DFFB-601",
+        "FLCC-1:FLCC-H4-Q60",
+        "FLCC-1:FLCC-H4-Q65",
+        "FLCC-1:FLCC-H8-Q60",
+        "FLCC-1:FLCC-H8-Q65",
+        "NTB-7",
+        "NWE-8",
+        "ORFR-1",
+        "chain_activity_impulse_momentum"
+      ],
+      "signed_occupied_exposure_absolute_pearson_maximum": 0.4,
+      "timestamp_gates_apply_to": [
+        "CVTR-1",
+        "DFFB-601",
+        "FLCC-1:FLCC-H4-Q60",
+        "FLCC-1:FLCC-H4-Q65",
+        "FLCC-1:FLCC-H8-Q60",
+        "FLCC-1:FLCC-H8-Q65",
+        "NTB-7",
+        "NWE-8",
+        "ORFR-1",
+        "chain_activity_impulse_momentum",
+        "NWE-7",
+        "live_anchor_2023",
+        "prior_microstructure:cbfr72",
+        "prior_microstructure:mfic_fast",
+        "prior_microstructure:mfic_slow",
+        "prior_microstructure:mfic_union",
+        "prior_microstructure:netf_fast",
+        "prior_microstructure:netf_slow",
+        "prior_microstructure:netf_union",
+        "prior_microstructure:terminal_absorption_wait72_h72",
+        "prior_microstructure:wfrs_l288_q90_h144"
+      ],
+      "timestamp_only_comparators": [
+        "NWE-7",
+        "live_anchor_2023",
+        "prior_microstructure:cbfr72",
+        "prior_microstructure:mfic_fast",
+        "prior_microstructure:mfic_slow",
+        "prior_microstructure:mfic_union",
+        "prior_microstructure:netf_fast",
+        "prior_microstructure:netf_slow",
+        "prior_microstructure:netf_union",
+        "prior_microstructure:terminal_absorption_wait72_h72",
+        "prior_microstructure:wfrs_l288_q90_h144"
+      ]
+    },
+    "outcome_sequence": [
+      "source support and novelty",
+      "separately frozen strict train",
+      "strict selection only after train pass",
+      "future shadow only after final freeze"
+    ],
+    "predecessor_disposition": "CDLTR-72 rejected before preregistration and incidence because not every comparator defined a directional interval",
+    "relay": {
+      "cboe_vote_expiry_hours": 36,
+      "failed_confirmation_retry": false,
+      "macro_episode_transition": "absent_or_opposite_to_same_nonzero_side",
+      "network_confirmation": "first report strictly after macro onset",
+      "network_deadline_hours_after_onset": 36,
+      "reactivation_requires_macro_exit_and_reentry": true,
+      "rrp_vote_expiry_hours": 36,
+      "state_age_clock": "actual UTC availability timestamp"
+    },
+    "singleton": true,
+    "source_votes": {
+      "cboe": {
+        "causal_time": "09:35 America/New_York on the next exact date in the three-index intersection",
+        "forward_fill": false,
+        "long": "VIX9D_close < VIX3M_close",
+        "neutral": "VIX9D_close == VIX3M_close",
+        "short": "VIX9D_close > VIX3M_close"
+      },
+      "network": {
+        "causal_time": "available_at",
+        "long": "at least two positive metric votes",
+        "lookback_calendar_days": 7,
+        "metric_transform": "sign(log(current / exact_7d_prior))",
+        "metrics": [
+          "AdrActCnt",
+          "TxCnt",
+          "TxTfrCnt"
+        ],
+        "neutral": "otherwise",
+        "required_consecutive_dates": 8,
+        "short": "at least two negative metric votes"
+      },
+      "rrp": {
+        "causal_time": "result_available_at_utc",
+        "long": "accepted_now - accepted_fifth_prior_slot < 0",
+        "lookback_normal_operation_slots": 5,
+        "neutral": "delta == 0",
+        "quarantine_breaks_baseline": true,
+        "required_complete_slots_inclusive": 6,
+        "short": "accepted_now - accepted_fifth_prior_slot > 0"
+      }
+    },
+    "stopping_rule": "any source, support, control, novelty, or strict economic failure permanently rejects CDLTR-72A; repair requires a new candidate identity",
+    "support_gates": {
+      "all_controls_must_pass_calendar_and_containment": true,
+      "each_selection_half_year_minimum": 12,
+      "each_train_half_year_minimum": 12,
+      "each_train_year_minimum": 25,
+      "maximum_month_share": 0.2,
+      "maximum_weekday_share": 0.35,
+      "selection_each_side_minimum": 8,
+      "selection_total_minimum": 30,
+      "train_each_side_minimum": 18,
+      "train_total_minimum": 60
+    },
+    "windows": {
+      "sealed_from": "2024-01-01T00:00:00Z",
+      "selection": [
+        "2023-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "train": [
+        "2021-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      "warmup": [
+        "2020-01-01T00:00:00Z",
+        "2021-01-01T00:00:00Z"
+      ]
+    }
+  },
+  "policy_hash": "3b59238a1b6c76dd4b9cb7c3bdde0571a6e852eb0ec9c36b469388e3aac95197",
+  "preregistration_document": {
+    "path": "docs/cross-domain-liquidity-transmission-relay-preregistration-2026-07-21.md",
+    "sha256": "b768a63da6809230e4fbd87bc7106e19460817aa3f5bb645d20645e00b18582a"
+  },
+  "preregistration_source": {
+    "path": "training/preregister_cross_domain_liquidity_transmission_relay.py",
+    "sha256": "85d81e605afde5c94219ab752c9d52a4e7f8ed8a5b7a97ff1dc725cf6e1c5021"
+  },
+  "protocol_version": "cross_domain_liquidity_transmission_relay_preregistration_v2",
+  "source_bindings": {
+    "cboe": {
+      "allowed_columns": [
+        "observation_date",
+        "VIX9D_close",
+        "VIX3M_close"
+      ],
+      "builder": "training/build_cboe_volatility_term_structure.py",
+      "builder_sha256": "0cd9fb50d6f665e9cc4f20539bacde328d1b7587b624ebc15f8a7b3489eeec2d",
+      "header": [
+        "observation_date",
+        "VIX9D_close",
+        "VIX_close",
+        "VIX3M_close"
+      ],
+      "manifest": "data/cboe_volatility_term_structure_2018_2023/build_manifest.json",
+      "manifest_sha256": "42b2a35ad131bd63574d2adcf684e28766dc3060fa645fc749df10dd3fb27f27",
+      "source": "data/cboe_volatility_term_structure_2018_2023/cboe_vix_term_structure_2018-01-01_2023-12-31.csv.gz",
+      "source_sha256": "6f1b2f7f3a5b1e4d5001d673e6ff54374791879c278248ce27b3d610e4f75dc7"
+    },
+    "network": {
+      "allowed_columns": [
+        "observation_date",
+        "available_at",
+        "AdrActCnt",
+        "TxCnt",
+        "TxTfrCnt"
+      ],
+      "builder": "training/download_coinmetrics_btc_network_daily.py",
+      "builder_sha256": "73929fe4f7b8463ee187d008657cdad5be45df0d5f2c74ded1d541f61e87b763",
+      "header": [
+        "observation_date",
+        "available_at",
+        "AdrActCnt",
+        "TxCnt",
+        "TxTfrCnt"
+      ],
+      "manifest": "results/coinmetrics_btc_network_daily_pre2024_manifest_2026-07-16.json",
+      "manifest_sha256": "66b185769800c4732cf748b40ca9cb48c5eee239abf0425ff193c0688111c372",
+      "source": "data/coinmetrics_btc_network_daily_2020_2023.csv.gz",
+      "source_sha256": "97ab2ca9d0c347d85221b51734f98072763370072ca51f1c40e3214191159b42"
+    },
+    "rrp": {
+      "allowed_columns": [
+        "operation_date",
+        "result_available_at_utc",
+        "total_amount_accepted_usd",
+        "source_complete",
+        "quarantine_reason"
+      ],
+      "builder": "training/build_new_york_fed_overnight_rrp.py",
+      "builder_sha256": "0567157dde18b1c6ccfb37b669ceead521360f23dd0b73033fccc08e37c0d42c",
+      "header": [
+        "operation_id",
+        "operation_date",
+        "settlement_date",
+        "maturity_date",
+        "close_time_et",
+        "result_available_at_utc",
+        "last_updated_et",
+        "total_amount_submitted_usd",
+        "total_amount_accepted_usd",
+        "participating_counterparties",
+        "accepted_counterparties",
+        "source_complete",
+        "quarantine_reason"
+      ],
+      "manifest": "data/new_york_fed_overnight_rrp_2018_2023/build_manifest.json",
+      "manifest_sha256": "4f87e2219da71c94832c8708086ba01387efc145e3488b62cd3b3d07c62d8fee",
+      "source": "data/new_york_fed_overnight_rrp_2018_2023/new_york_fed_overnight_rrp_2018-01-01_2023-12-31.csv.gz",
+      "source_sha256": "49f67ed44b7eb81fd35c17a8209cf14d6a8019d7e9f77fce8c343d1a7fb66b27"
+    }
+  },
+  "source_incidence_opened": false
+}
