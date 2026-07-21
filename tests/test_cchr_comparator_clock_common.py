@@ -178,6 +178,70 @@ def test_hash_bound_prefix_stops_at_sealed_boundary(
     assert frame["date"].max() < pd.Timestamp("2024-01-01T00:00:00Z")
 
 
+def test_hash_bound_prefix_never_reads_the_rest_of_the_first_sealed_row(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(clocks, "REPOSITORY_ROOT", tmp_path)
+    source = tmp_path / "sealed.csv"
+    source.write_bytes(
+        b"date,causal_value\n"
+        b"2023-12-31T23:55:00Z,1.0\n"
+        b'2024-01-01T00:00:00Z,"unterminated sealed payload'
+    )
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    frame = clocks.read_hash_bound_prefix(
+        "sealed.csv",
+        expected_sha256=digest,
+        columns=("date", "causal_value"),
+        date_column="date",
+        end_exclusive="2024-01-01T00:00:00Z",
+        chunksize=1,
+    )
+    assert frame["causal_value"].tolist() == [1.0]
+
+
+def test_hash_bound_prefix_isolates_a_nonfirst_date_before_sealed_payload(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(clocks, "REPOSITORY_ROOT", tmp_path)
+    source = tmp_path / "date_second.csv"
+    source.write_bytes(
+        b"causal_value,date,sealed_payload\n"
+        b"1.0,2023-12-31T23:55:00Z,allowed\n"
+        b'2.0,2024-01-01T00:00:00Z,"unterminated sealed payload'
+    )
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    frame = clocks.read_hash_bound_prefix(
+        "date_second.csv",
+        expected_sha256=digest,
+        columns=("date", "causal_value"),
+        date_column="date",
+        end_exclusive="2024-01-01T00:00:00Z",
+    )
+    assert frame["causal_value"].tolist() == [1.0]
+
+
+def test_hash_bound_prefix_handles_blank_leading_index_and_date_last(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(clocks, "REPOSITORY_ROOT", tmp_path)
+    source = tmp_path / "blank_index.csv.gz"
+    payload = (
+        b",causal_value,date\n0,1.0,2023-12-31T23:55:00Z\n1,2.0,2024-01-01T00:00:00Z\n"
+    )
+    source.write_bytes(gzip.compress(payload))
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    frame = clocks.read_hash_bound_prefix(
+        "blank_index.csv.gz",
+        expected_sha256=digest,
+        columns=("date", "causal_value"),
+        date_column="date",
+        end_exclusive="2024-01-01T00:00:00Z",
+        chunksize=1,
+    )
+    assert frame["causal_value"].tolist() == [1.0]
+
+
 def test_hash_bound_prefix_rejects_an_unordered_source(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -186,8 +250,8 @@ def test_hash_bound_prefix_rejects_an_unordered_source(
     source.write_text(
         "date,causal_value\n"
         "2023-12-31T23:55:00Z,1.0\n"
-        "2024-01-01T00:00:00Z,2.0\n"
-        "2023-12-31T23:50:00Z,3.0\n",
+        "2023-12-31T23:50:00Z,3.0\n"
+        "2024-01-01T00:00:00Z,2.0\n",
         encoding="utf-8",
     )
     digest = hashlib.sha256(source.read_bytes()).hexdigest()

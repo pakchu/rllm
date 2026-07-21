@@ -1,0 +1,227 @@
+{
+  "authorization": {
+    "network_access": false,
+    "outcome_evaluator": false,
+    "post_2023_source_access": false,
+    "source_only_clock_export_after_this_artifact": true
+  },
+  "candidate_map": {
+    "live:cand_rex_veto_7": {
+      "component_weight": 1.45,
+      "family": "live",
+      "hold_bars": 144,
+      "parameters": {
+        "component": "cand_rex_veto_7"
+      }
+    },
+    "live:new_long_minimal_funding_premium": {
+      "component_weight": 1.75,
+      "family": "live",
+      "hold_bars": 576,
+      "parameters": {
+        "component": "new_long_minimal_funding_premium"
+      }
+    },
+    "live:oi_upbit_ratio288_low": {
+      "component_weight": 0.65,
+      "family": "live",
+      "hold_bars": 30,
+      "parameters": {
+        "component": "oi_upbit_ratio288_low"
+      }
+    }
+  },
+  "candidate_map_sha256": "6d6c169cd9ad40acaac56dc4b3ad018937a961a793bc2e502ed19350e6f3ddaf",
+  "clock_contract": {
+    "causal_origin": "signal time",
+    "decision_delay_bars": 1,
+    "entry_delay_bars": 1,
+    "exit": "fixed hold_bars after entry; exit boundary must exist",
+    "interval": "[entry_time,exit_time)",
+    "prefix_loading": "hash full compressed bytes first; boundary stream isolates each timestamp field before pandas and stops without materializing the first sealed row",
+    "scheduling": "split containment first, then non-overlap independently per candidate_id with entry_time >= prior_exit accepted",
+    "schema": [
+      "candidate_id",
+      "split",
+      "decision_time",
+      "entry_time",
+      "exit_time",
+      "side"
+    ],
+    "signal_bar": "completed five-minute bar identified by open timestamp",
+    "source_end_exclusive": "2024-01-01T00:00:00Z"
+  },
+  "configuration_bindings": {
+    "funding_premium": {
+      "path": "configs/live/new_long_minimal_funding_premium_candidate.json",
+      "sha256": "f0848c5fea1fcc7823ed15b6e4b865a8dc2731c2d2bfd2ba21b0f92c534f0f03"
+    },
+    "oi": {
+      "path": "configs/live/oi_upbit_ratio288_low_candidate.json",
+      "sha256": "659239373e1f51fc2df9615f5387686fd9252a56e1c366b45421bf39d3d6223f"
+    },
+    "portfolio": {
+      "path": "configs/live/portfolio_gross385_trainmdd40_2026-07-12.json",
+      "sha256": "86f255ca3967245b8b0676b00025b955d7f33668ab1ef9d813623191b4ecd1e7"
+    },
+    "rex": {
+      "path": "configs/live/rex_veto_7_candidate.json",
+      "sha256": "36df47c4737eb99f4ca5e2b257d9bd2fbf130df9d731b9ac02fcfe5192acd4db"
+    }
+  },
+  "family": "live",
+  "implementation_bindings": {
+    "common": {
+      "path": "training/cchr_comparator_clock_common.py",
+      "sha256": "e8386db1447f1d5bb4721e5133c93d8d1de01451be6aedbc9a121b6c086e75d2"
+    },
+    "exporter": {
+      "path": "training/export_cchr_live_portfolio_pure_clocks.py",
+      "sha256": "97c641058547163df9f6c17f1e844151aea5a834d63d0bd5308827600b1a7811"
+    },
+    "runner": {
+      "path": "training/export_cchr_pure_clocks.py",
+      "sha256": "0df98b23142ab2fcda7ccf992b4e050251abfbb1c6bb87ef8a9c501a66735245"
+    }
+  },
+  "manifest_hash": "63ac6c649a2873da6f8aadf2e692fb72a3fcc93a4f89a386a1bb235e6a7406ec",
+  "master_preregistration": {
+    "path": "results/cross_collateral_cohort_handoff_relay_preregistration_2026-07-21.json",
+    "sha256": "b3792b0f24c4e0e022903c359db143337b0c998034600480edbc29095d039056",
+    "source_path": "training/preregister_cross_collateral_cohort_handoff_relay.py",
+    "source_sha256": "797dffd052fd9b5f922ad06780c21c94815ee3403212b38d12405076382c800f"
+  },
+  "member_count": 3,
+  "outcome_boundary": {
+    "comparator_rows_read": 0,
+    "funding_rows_loaded": 0,
+    "market_rows_loaded": 0,
+    "network_calls": 0,
+    "outcome_artifacts_parsed": 0,
+    "post_2023_rows_loaded": 0,
+    "raw_input_bytes_hashed": true,
+    "raw_input_rows_parsed": 0,
+    "return_or_pnl_fields_read": 0,
+    "signal_incidence_rows_derived": 0,
+    "source_csv_decompressed": 0,
+    "source_csv_values_read": 0,
+    "subprocess_calls": 0
+  },
+  "outcomes_opened": false,
+  "output_contract": {
+    "clock_format": {
+      "all_candidate_ids_required": true,
+      "compression": "gzip",
+      "encoding": "utf-8",
+      "gzip_mtime": 0,
+      "line_ending": "LF",
+      "ordering": [
+        "candidate_id",
+        "entry_time"
+      ],
+      "schema": [
+        "candidate_id",
+        "split",
+        "decision_time",
+        "entry_time",
+        "exit_time",
+        "side"
+      ]
+    },
+    "combined_freeze": "results/cross_collateral_cohort_handoff_relay_comparator_freeze_2026-07-21.json",
+    "export_manifest": "results/cchr_live_portfolio_pure_clock_manifest_2026-07-21.json",
+    "export_manifest_contract": {
+      "manifest_hash": "sha256 canonical JSON excluding manifest_hash",
+      "protocol_version": "cchr_pure_clock_export_manifest_v1",
+      "required_top_level_keys": [
+        "protocol_version",
+        "policy_id",
+        "family",
+        "preregistration",
+        "implementation_bindings",
+        "raw_input_bindings",
+        "configuration_bindings",
+        "candidate_map_sha256",
+        "member_count",
+        "clock",
+        "export_manifest",
+        "authorization",
+        "outcomes_opened",
+        "outcome_boundary",
+        "manifest_hash"
+      ]
+    },
+    "preregistration": "results/cchr_live_portfolio_pure_clock_preregistration_2026-07-21.json",
+    "publication": "create-only clock and manifest pair; no overwrite",
+    "pure_clock": "results/cchr_live_portfolio_pure_clocks_2026-07-21.csv.gz"
+  },
+  "policy_id": "CCHR-288",
+  "preregistration_source": {
+    "path": "training/preregister_cchr_pure_clock_exports.py",
+    "sha256": "261563eb8a11ecbf218e11288bce67e18abf6f9604b3aa714c760dcf174f7fde"
+  },
+  "protocol_version": "cchr_pure_clock_export_preregistration_v1",
+  "raw_input_bindings": {
+    "funding": {
+      "columns": [
+        "date",
+        "funding_time",
+        "funding_rate"
+      ],
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+    },
+    "market": {
+      "columns": [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "quote_asset_volume",
+        "taker_buy_base",
+        "usdkrw",
+        "usdkrw_available",
+        "open_interest",
+        "open_interest_available"
+      ],
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+      "sha256": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192"
+    },
+    "premium": {
+      "columns": [
+        "date",
+        "close",
+        "close_time"
+      ],
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
+    },
+    "upbit": {
+      "columns": [
+        "date",
+        "close",
+        "volume"
+      ],
+      "path": "/home/pakchu/workspace/wave_trading/data/2020-01-01_2025-12-15_4bd081fc54811fccdee66850692c435e.csv.gz",
+      "sha256": "7c377c402b4c1c3db3dafb5e15cd06e93f6e9c2c08d154ed88dd47e91f86eb35"
+    }
+  },
+  "research_splits": [
+    {
+      "end_exclusive": "2023-01-01T00:00:00Z",
+      "name": "train",
+      "start_inclusive": "2021-08-08T00:00:00Z"
+    },
+    {
+      "end_exclusive": "2024-01-01T00:00:00Z",
+      "name": "selection",
+      "start_inclusive": "2023-01-01T00:00:00Z"
+    }
+  ],
+  "threshold_contract": {
+    "fit": "bound by config and exporter hashes; no refit during export",
+    "kind": "frozen numeric config thresholds"
+  }
+}
