@@ -23,21 +23,21 @@ Manifest:
 
 ```text
 data/deribit_btc_expiry_wall_2019_2023/build_manifest.json
-SHA-256 dfcfe89bb1a5b38e154eef54614d1a14fa97b10efb9b8c82045f468558be40e8
-manifest hash 675b79d7b4257ecc808d9662d0747df0cddd42c048307f5da0cd1f6e511f3801
+SHA-256 dde10a20d6efc3026be253daefe88bff0bae4ba379deaa90b4d08431dd741c36
+manifest hash dbecf89849c356e4b5900600e2727ad5f972c9a62487b8d897407a0e22da104e
 ```
 
 Implementation bindings:
 
 ```text
 training/build_deribit_expiry_wall_handoff_source.py
-SHA-256 96befd588bc817f054d76bc04fab1ff5b3d1e1e54ac3d1c012c5a8933fa65e7b
+SHA-256 708a5315476c56286ab0b195d839aab521ec0d5d47c206e7c43976342af75b20
 
 training/download_deribit_btc_option_deliveries.py
 SHA-256 aa925828cf8350ed522c0ac559c64faed90fc049b99228d60b349d2771b1cd4c
 
 docs/deribit-expiry-wall-handoff-mechanism-decision-2026-07-21.md
-SHA-256 f9c0029a6b9a7f0aa3015bc352974ec76238a2f3eb34887ed649d02d5cfaf0bb
+SHA-256 f5b378b75e3d32c18e32b245f62674a7a7b25f90ec7761d865ddb6c627a93ce8
 ```
 
 ## Official-source result
