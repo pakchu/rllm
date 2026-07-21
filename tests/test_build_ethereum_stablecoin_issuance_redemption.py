@@ -289,16 +289,25 @@ def test_duplicate_canonical_identity_fails_closed() -> None:
 
 def test_dual_replay_build_has_no_outcome_access(tmp_path: Path) -> None:
     cfg = _config(tmp_path)
-    primary = FakeRpc(headers=_headers(), logs=_fixture_logs())
+    primary = NoBatchRpc(headers=_headers(), logs=_fixture_logs())
     verification = NoBatchRpc(headers=_headers(), logs=_fixture_logs())
+    header_rpc = FakeRpc(headers=_headers())
     rows, core = builder.build_outputs(
-        cfg, primary_rpc=primary, verification_rpc=verification
+        cfg,
+        primary_rpc=primary,
+        verification_rpc=verification,
+        header_rpc=header_rpc,
     )
     assert len(rows) == 2
     assert core["dual_replay"]["canonical_replay_equal"] is True
     assert len(core["dual_replay"]["canonical_log_hashes"]) == 2
     assert len(set(core["dual_replay"]["canonical_log_hashes"])) == 1
     assert core["dual_replay"]["provider_urls_embedded"] is False
+    assert core["header_materialization"] == {
+        "transport_independent_from_primary_logs": False,
+        "event_block_hash_cross_checked": True,
+        "provider_url_embedded": False,
+    }
     assert core["event_counts"] == {"usdc_eth:burn": 1, "usdt_eth:issue": 1}
     assert core["outcome_boundary"] == {
         "source_only": True,
@@ -420,3 +429,87 @@ def test_json_rpc_client_does_not_retry_non_transient_http_error(
     with pytest.raises(urllib.error.HTTPError):
         client.call("eth_chainId", [])
     assert attempts == 1
+
+
+def test_json_rpc_client_retries_only_internal_json_rpc_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+
+    def fake_urlopen(request: Any, *, timeout: float) -> io.BytesIO:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            payload = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "error": {"code": -32603, "message": "Internal Server Error"},
+            }
+        else:
+            payload = {"jsonrpc": "2.0", "id": 1, "result": "0x1"}
+        return io.BytesIO(json.dumps(payload).encode())
+
+    monkeypatch.setattr(builder.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(builder.time, "sleep", lambda _: None)
+    client = builder.JsonRpcClient(
+        "https://rpc.invalid", timeout_sec=1.0, max_retries=1
+    )
+    assert client.call("eth_chainId", []) == "0x1"
+    assert attempts == 2
+
+
+def test_json_rpc_client_does_not_retry_semantic_json_rpc_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+
+    def fake_urlopen(request: Any, *, timeout: float) -> io.BytesIO:
+        nonlocal attempts
+        attempts += 1
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "error": {"code": -32005, "message": "query returned too many results"},
+        }
+        return io.BytesIO(json.dumps(payload).encode())
+
+    monkeypatch.setattr(builder.urllib.request, "urlopen", fake_urlopen)
+    client = builder.JsonRpcClient(
+        "https://rpc.invalid", timeout_sec=1.0, max_retries=3
+    )
+    with pytest.raises(builder.EthereumRpcError, match="too many results"):
+        client.call("eth_getLogs", [])
+    assert attempts == 1
+
+
+def test_json_rpc_client_retries_batch_with_internal_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+
+    def fake_urlopen(request: Any, *, timeout: float) -> io.BytesIO:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            payload = [
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "error": {"code": -32603, "message": "Internal Server Error"},
+                },
+                {"jsonrpc": "2.0", "id": 2, "result": "second"},
+            ]
+        else:
+            payload = [
+                {"jsonrpc": "2.0", "id": 1, "result": "first"},
+                {"jsonrpc": "2.0", "id": 2, "result": "second"},
+            ]
+        return io.BytesIO(json.dumps(payload).encode())
+
+    monkeypatch.setattr(builder.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(builder.time, "sleep", lambda _: None)
+    client = builder.JsonRpcClient(
+        "https://rpc.invalid", timeout_sec=1.0, max_retries=1
+    )
+    assert client.batch([("first", []), ("second", [])]) == ["first", "second"]
+    assert attempts == 2

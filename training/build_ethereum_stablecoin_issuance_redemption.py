@@ -134,6 +134,7 @@ class Config:
     manifest_output: str = "results/ethereum_stablecoin_issuance_redemption_source_manifest_2026-07-21.json"
     primary_rpc_url: str = ""
     verification_rpc_url: str = ""
+    header_rpc_url: str = ""
     start: str = DEFAULT_START
     end_exclusive: str = DEFAULT_END_EXCLUSIVE
     confirmation_blocks: int = DEFAULT_CONFIRMATION_BLOCKS
@@ -150,6 +151,17 @@ class BlockHeader:
     block_hash: str
     parent_hash: str
     timestamp: int
+
+
+class EthereumRpcError(RuntimeError):
+    def __init__(self, code: int | None, message: str) -> None:
+        super().__init__(f"Ethereum RPC error {code}: {message}")
+        self.code = code
+        self.rpc_message = message
+
+    @property
+    def transient(self) -> bool:
+        return self.code == -32603
 
 
 class Rpc(Protocol):
@@ -232,8 +244,12 @@ class JsonRpcClient:
             raise RuntimeError("Ethereum RPC returned a malformed response identity")
         if response.get("error") is not None:
             error = response["error"]
+            code = error.get("code") if isinstance(error, dict) else None
             message = error.get("message") if isinstance(error, dict) else str(error)
-            raise RuntimeError(f"Ethereum RPC error: {message}")
+            raise EthereumRpcError(
+                code if isinstance(code, int) else None,
+                str(message),
+            )
         if "result" not in response:
             raise RuntimeError("Ethereum RPC response has no result")
         return response["result"]
@@ -241,10 +257,23 @@ class JsonRpcClient:
     def call(self, method: str, params: list[Any]) -> Any:
         request_id = self._next_id
         self._next_id += 1
-        response = self._post(
-            {"jsonrpc": "2.0", "id": request_id, "method": method, "params": params}
+        payload = {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "method": method,
+            "params": params,
+        }
+        for attempt in range(self._max_retries + 1):
+            response = self._post(payload)
+            try:
+                return self._result(response, request_id)
+            except EthereumRpcError as exc:
+                if not exc.transient or attempt >= self._max_retries:
+                    raise
+                time.sleep(self._retry_delay(exc, attempt))
+        raise AssertionError(
+            "bounded Ethereum JSON-RPC retry loop exhausted unexpectedly"
         )
-        return self._result(response, request_id)
 
     def batch(self, requests: Sequence[tuple[str, list[Any]]]) -> list[Any]:
         if not requests:
@@ -263,22 +292,32 @@ class JsonRpcClient:
                     "params": params,
                 }
             )
-        response = self._post(payload)
-        if not isinstance(response, list) or len(response) != len(payload):
-            raise RuntimeError("Ethereum RPC returned a malformed batch")
-        by_id: dict[int, Any] = {}
-        for item in response:
-            if not isinstance(item, dict) or not isinstance(item.get("id"), int):
-                raise RuntimeError("Ethereum RPC batch item has no integer id")
-            item_id = int(item["id"])
-            if item_id in by_id:
-                raise RuntimeError("Ethereum RPC batch contains a duplicate id")
-            by_id[item_id] = item
-        if set(by_id) != set(request_ids):
-            raise RuntimeError("Ethereum RPC batch response ids do not match requests")
-        return [
-            self._result(by_id[request_id], request_id) for request_id in request_ids
-        ]
+        for attempt in range(self._max_retries + 1):
+            response = self._post(payload)
+            if not isinstance(response, list) or len(response) != len(payload):
+                raise RuntimeError("Ethereum RPC returned a malformed batch")
+            by_id: dict[int, Any] = {}
+            for item in response:
+                if not isinstance(item, dict) or not isinstance(item.get("id"), int):
+                    raise RuntimeError("Ethereum RPC batch item has no integer id")
+                item_id = int(item["id"])
+                if item_id in by_id:
+                    raise RuntimeError("Ethereum RPC batch contains a duplicate id")
+                by_id[item_id] = item
+            if set(by_id) != set(request_ids):
+                raise RuntimeError(
+                    "Ethereum RPC batch response ids do not match requests"
+                )
+            try:
+                return [
+                    self._result(by_id[request_id], request_id)
+                    for request_id in request_ids
+                ]
+            except EthereumRpcError as exc:
+                if not exc.transient or attempt >= self._max_retries:
+                    raise
+                time.sleep(self._retry_delay(exc, attempt))
+        raise AssertionError("bounded Ethereum batch retry loop exhausted unexpectedly")
 
 
 def _canonical_hash(payload: Any) -> str:
@@ -678,17 +717,18 @@ def collect_log_source(
 
 
 def collect_source(
-    rpc: Rpc, cfg: Config
+    rpc: Rpc, cfg: Config, *, header_rpc: Rpc | None = None
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     normalized, log_audit, _, _ = collect_log_source(rpc, cfg)
+    header_rpc = header_rpc or rpc
     rows = materialize_normalized_rows(
-        rpc,
+        header_rpc,
         normalized,
         confirmation_blocks=cfg.confirmation_blocks,
         header_batch_size=cfg.header_batch_size,
     )
     required_finalized_block = max(row["confirmation_block_number"] for row in rows)
-    finalized_header = get_header(rpc, "finalized")
+    finalized_header = get_header(header_rpc, "finalized")
     if finalized_header.number < required_finalized_block:
         raise RuntimeError(
             "Ethereum finalized head does not cover all confirmation blocks"
@@ -717,14 +757,18 @@ def _write_csv_gz(path: Path, rows: Sequence[dict[str, Any]]) -> None:
                 )
 
 
-def _transport_hosts(cfg: Config) -> tuple[str, str]:
+def _transport_hosts(cfg: Config) -> tuple[str, str, str]:
     primary_host = urllib.parse.urlsplit(cfg.primary_rpc_url).hostname or ""
     verification_host = urllib.parse.urlsplit(cfg.verification_rpc_url).hostname or ""
+    header_url = cfg.header_rpc_url or cfg.primary_rpc_url
+    header_host = urllib.parse.urlsplit(header_url).hostname or ""
     if not primary_host or not verification_host:
         raise ValueError("both Ethereum RPC URLs must have hostnames")
+    if not header_host:
+        raise ValueError("Ethereum header RPC URL must have a hostname")
     if primary_host.lower() == verification_host.lower():
         raise ValueError("verification RPC must use an independent hostname")
-    return primary_host, verification_host
+    return primary_host, verification_host, header_host
 
 
 def build_outputs(
@@ -732,9 +776,9 @@ def build_outputs(
     *,
     primary_rpc: Rpc | None = None,
     verification_rpc: Rpc | None = None,
+    header_rpc: Rpc | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    if primary_rpc is None or verification_rpc is None:
-        _transport_hosts(cfg)
+    primary_host, _, header_host = _transport_hosts(cfg)
     primary_rpc = primary_rpc or JsonRpcClient(
         cfg.primary_rpc_url,
         timeout_sec=cfg.timeout_sec,
@@ -747,7 +791,19 @@ def build_outputs(
         max_retries=cfg.max_retries,
         request_interval_sec=cfg.request_interval_sec,
     )
-    primary_rows, primary_audit = collect_source(primary_rpc, cfg)
+    if header_rpc is None:
+        if cfg.header_rpc_url:
+            header_rpc = JsonRpcClient(
+                cfg.header_rpc_url,
+                timeout_sec=cfg.timeout_sec,
+                max_retries=cfg.max_retries,
+                request_interval_sec=cfg.request_interval_sec,
+            )
+        else:
+            header_rpc = primary_rpc
+    primary_rows, primary_audit = collect_source(
+        primary_rpc, cfg, header_rpc=header_rpc
+    )
     _, verification_audit, _, _ = collect_log_source(verification_rpc, cfg)
     if primary_audit["log_source"] != verification_audit:
         raise RuntimeError("independent Ethereum RPC replays disagree")
@@ -787,6 +843,13 @@ def build_outputs(
                 verification_audit["canonical_log_hash"],
             ],
             "provider_urls_embedded": False,
+        },
+        "header_materialization": {
+            "transport_independent_from_primary_logs": (
+                header_host.lower() != primary_host.lower()
+            ),
+            "event_block_hash_cross_checked": True,
+            "provider_url_embedded": False,
         },
         "event_counts": dict(sorted(counts.items())),
         "year_counts": dict(sorted(year_counts.items())),
@@ -834,6 +897,10 @@ def parse_args() -> Config:
     parser.add_argument(
         "--verification-rpc-url",
         default=os.environ.get("ETHEREUM_VERIFICATION_RPC_URL", ""),
+    )
+    parser.add_argument(
+        "--header-rpc-url",
+        default=os.environ.get("ETHEREUM_HEADER_RPC_URL", ""),
     )
     parser.add_argument("--start", default=Config.start)
     parser.add_argument("--end-exclusive", default=Config.end_exclusive)
