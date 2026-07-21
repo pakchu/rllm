@@ -1,0 +1,427 @@
+{
+  "as_of_date": "2026-07-21",
+  "authorization": {
+    "candidate_count": 1,
+    "current_action": "source support and novelty only",
+    "economic_evaluator_authorized": false
+  },
+  "controls": [
+    "amount_only_tail",
+    "raw_accepted_breadth_tail",
+    "participating_breadth_residual",
+    "direction_flip",
+    "one_release_delay",
+    "deterministic_random_side"
+  ],
+  "document": {
+    "path": "docs/overnight-rrp-participant-breadth-preregistration-2026-07-21.md",
+    "sha256": "4e2a7e905e1733e18dbc96b5fb8ef046fba7bbdbf90049f76fda767c6ae5cee5"
+  },
+  "evidence_boundary": {
+    "bound_comparator_artifacts": 7,
+    "btc_market_rows_read": 0,
+    "comparator_entry_exit_or_side_fields_materialized": 0,
+    "comparator_identifier_rows_projected_for_cohort_freeze": 7104,
+    "comparator_overlap_metrics_computed": 0,
+    "economic_outcomes_opened": false,
+    "funding_rows_read": 0,
+    "future_return_rows_read": 0,
+    "orpb_incidence_or_side_counts_computed": 0,
+    "orpb_residuals_computed": 0,
+    "post_2023_source_rows_read": 0,
+    "prior_orfr_preregistration_and_support_artifacts_read": 2,
+    "prospective_comparator_headers_inspected_before_review": 8,
+    "return_or_pnl_fields_read": 0,
+    "source_value_rows_read_for_schema": 2
+  },
+  "execution": {
+    "base_cost_notional_per_side": 0.0006,
+    "decision": "result_available_at_utc",
+    "entry_delay_minutes": 5,
+    "exit": "next normal operation result_available_at_utc plus 5 minutes",
+    "funding_interval": "[entry, exit)",
+    "last_source_row_omitted": true,
+    "leverage": 0.5,
+    "nonoverlap": true,
+    "stress_cost_notional_per_side": 0.001
+  },
+  "feature": {
+    "amount": "A=log1p(total_amount_accepted_usd/1e9)",
+    "breadth": "B=log1p(accepted_counterparties)",
+    "current_residual": "B[t]-(alpha[t]+beta[t]*A[t])",
+    "direction": {
+      "lower": "LONG",
+      "upper": "SHORT"
+    },
+    "fit": "OLS with intercept B~A on exactly 21 consecutive complete prior operations; current row excluded",
+    "lookback_complete_operations": 21,
+    "lower_tail": 0.1,
+    "parameter_grid": false,
+    "rank": "strict-prior midrank against the 21 in-sample residuals from the same prior-only fit",
+    "upper_tail": 0.9,
+    "zero_variance_or_nonfinite_fit": "abstain without clearing a complete row"
+  },
+  "generator": {
+    "path": "training/preregister_overnight_rrp_participant_breadth.py",
+    "sha256": "1235c3af56eacd64fd5f84d526688fd80ca93bfb0c6faf6fa29bd172c9105c88"
+  },
+  "later_outcome_contract": {
+    "absolute_return_reported_with_cagr_mdd": true,
+    "authorization_requires": "unchanged support and novelty pass",
+    "authorized": false,
+    "gates": {
+      "base_and_stress_absolute_return_positive": true,
+      "cagr_to_strict_mdd_min": 3.0,
+      "each_contained_subperiod_return_positive": true,
+      "mean_gross_underlying_bp_min": 35.0,
+      "mechanism_control_ratio_margin_min": 0.25,
+      "strict_mdd_pct_max": 15.0,
+      "weekly_cluster_signflip_p_max": 0.1
+    },
+    "post_2023_sealed": true,
+    "repair_authorized": false,
+    "stage1": [
+      "2021-01-01",
+      "2023-01-01"
+    ],
+    "stage2": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "stage2_requires_exact_stage1_pass": true
+  },
+  "manifest_hash": "cdc0a7297df71417fe6a00198c296ddf8899b4e9d581e5a2b5f8c55b3b8ba1dd",
+  "novelty": {
+    "bindings": {
+      "bdrc": {
+        "columns": [
+          "clock_name",
+          "release_date",
+          "decision_time",
+          "entry_time",
+          "exit_time",
+          "side",
+          "h8_sign",
+          "repo_sign",
+          "repo5_bp",
+          "sofr_effective_date",
+          "sofr_available_at"
+        ],
+        "expected_rows": 905,
+        "identifier_columns": [
+          "clock_name"
+        ],
+        "path": "results/bank_deposit_secured_repo_concordance_clocks_2026-07-20.csv.gz",
+        "required_groups": {
+          "deterministic_random_side": 75,
+          "direction_flip": 75,
+          "discordant_state": 64,
+          "h8_only": 212,
+          "nsa_h8": 70,
+          "primary": 75,
+          "sofr_only_h8_schedule": 197,
+          "stale_h8_one_release": 74,
+          "stale_sofr_one_observation": 63
+        },
+        "sha256": "1ff3a6075e3ceff928e1dd19d05880dbe9dbab0e07d79b853146d7b4c8f6cabc"
+      },
+      "dffb_controls": {
+        "columns": [
+          "policy_id",
+          "clock",
+          "window",
+          "signal_record_date",
+          "execution_record_date",
+          "decision_time_utc",
+          "entry_time_utc",
+          "exit_time_utc",
+          "side",
+          "deposit_breadth",
+          "withdrawal_breadth",
+          "issue_breadth",
+          "redemption_breadth",
+          "deposit_eligible_categories",
+          "withdrawal_eligible_categories",
+          "issue_eligible_categories",
+          "redemption_eligible_categories",
+          "cash_impulse",
+          "debt_impulse",
+          "cash_rank126",
+          "debt_rank126",
+          "total_net_cash",
+          "total_net_cash_rank126"
+        ],
+        "expected_rows": 1502,
+        "identifier_columns": [
+          "policy_id",
+          "clock"
+        ],
+        "path": "results/daily_treasury_fiscal_flow_breadth_control_clocks_2026-07-21.csv.gz",
+        "required_groups": {
+          "DFFB-601|cash_only": 384,
+          "DFFB-601|debt_only": 394,
+          "DFFB-601|deterministic_random_side": 112,
+          "DFFB-601|direction_flip": 112,
+          "DFFB-601|one_report_delay": 112,
+          "DFFB-601|total_net_cash": 388
+        },
+        "sha256": "416fc8663b292fcee069e4aca53b83e99a05b594a96940ab2c557e6e0d05e312"
+      },
+      "dffb_primary": {
+        "columns": [
+          "policy_id",
+          "clock",
+          "window",
+          "signal_record_date",
+          "execution_record_date",
+          "decision_time_utc",
+          "entry_time_utc",
+          "exit_time_utc",
+          "side",
+          "deposit_breadth",
+          "withdrawal_breadth",
+          "issue_breadth",
+          "redemption_breadth",
+          "deposit_eligible_categories",
+          "withdrawal_eligible_categories",
+          "issue_eligible_categories",
+          "redemption_eligible_categories",
+          "cash_impulse",
+          "debt_impulse",
+          "cash_rank126",
+          "debt_rank126",
+          "total_net_cash",
+          "total_net_cash_rank126"
+        ],
+        "expected_rows": 112,
+        "identifier_columns": [
+          "policy_id",
+          "clock"
+        ],
+        "path": "results/daily_treasury_fiscal_flow_breadth_primary_clock_2026-07-21.csv.gz",
+        "required_groups": {
+          "DFFB-601|primary": 112
+        },
+        "sha256": "df53e1a27fcbc6ea2c4bc3f462a557a75c76a98db3c362944dad0b4d74382978"
+      },
+      "flcc": {
+        "columns": [
+          "candidate_id",
+          "clock_name",
+          "feature_release_date",
+          "signal_release_date",
+          "signal_time",
+          "entry_time",
+          "exit_time",
+          "side",
+          "horizon_releases",
+          "lower_rank_numerator",
+          "upper_rank_numerator",
+          "prior_lookback",
+          "net_rank_numerator",
+          "asset_rank_numerator",
+          "tga_release_rank_numerator",
+          "rrp_release_rank_numerator",
+          "component_breadth",
+          "component_tail_breadth"
+        ],
+        "expected_rows": 3098,
+        "identifier_columns": [
+          "candidate_id",
+          "clock_name"
+        ],
+        "path": "results/federal_liquidity_component_concordance_preregistered_clock_2026-07-17.csv.gz",
+        "required_groups": {
+          "FLCC-H4-Q60|component_concordance_only": 131,
+          "FLCC-H4-Q60|direction_flip": 136,
+          "FLCC-H4-Q60|net_only": 173,
+          "FLCC-H4-Q60|one_release_delay": 136,
+          "FLCC-H4-Q60|primary": 136,
+          "FLCC-H4-Q60|random_side": 136,
+          "FLCC-H4-Q65|component_concordance_only": 110,
+          "FLCC-H4-Q65|direction_flip": 122,
+          "FLCC-H4-Q65|net_only": 154,
+          "FLCC-H4-Q65|one_release_delay": 122,
+          "FLCC-H4-Q65|primary": 122,
+          "FLCC-H4-Q65|random_side": 122,
+          "FLCC-H8-Q60|component_concordance_only": 117,
+          "FLCC-H8-Q60|direction_flip": 125,
+          "FLCC-H8-Q60|net_only": 167,
+          "FLCC-H8-Q60|one_release_delay": 124,
+          "FLCC-H8-Q60|primary": 125,
+          "FLCC-H8-Q60|random_side": 125,
+          "FLCC-H8-Q65|component_concordance_only": 99,
+          "FLCC-H8-Q65|direction_flip": 116,
+          "FLCC-H8-Q65|net_only": 153,
+          "FLCC-H8-Q65|one_release_delay": 115,
+          "FLCC-H8-Q65|primary": 116,
+          "FLCC-H8-Q65|random_side": 116
+        },
+        "sha256": "7ebb0450422d9265e46c596e0b6415b6a8816c66f5e0cbb9ccda14ca6cb4c67c"
+      },
+      "orfr_clocks": {
+        "columns": [
+          "control",
+          "signal_time",
+          "entry_time",
+          "exit_time",
+          "side",
+          "operation_date"
+        ],
+        "expected_rows": 1001,
+        "identifier_columns": [
+          "control"
+        ],
+        "path": "results/overnight_rrp_flow_release_clocks_2026-07-17.csv.gz",
+        "required_groups": {
+          "one_day_delta_tail": 346,
+          "one_release_delay": 327,
+          "primary": 328
+        },
+        "sha256": "7242d9870627dfc0cf067ff87d9664a1576dd374cb8985e927b40f15d1e3d480"
+      },
+      "orfr_features": {
+        "columns": [
+          "operation_date",
+          "decision_time",
+          "entry_time",
+          "scheduled_exit_time",
+          "side",
+          "clock_mode",
+          "log_amount",
+          "innovation",
+          "innovation_rank"
+        ],
+        "expected_rows": 328,
+        "identifier_columns": [
+          "clock_mode"
+        ],
+        "path": "results/overnight_rrp_flow_release_preregistered_clock_2026-07-17.csv.gz",
+        "required_groups": {
+          "primary": 328
+        },
+        "sha256": "9f09bc88c9661441a33cee724e59524f57c0b021abff0fe81263e1a341b7b7b7"
+      },
+      "sfrd": {
+        "columns": [
+          "event_index",
+          "effective_date",
+          "sofr_available_at_utc",
+          "delta_bp",
+          "rank_twice_numerator",
+          "rank_twice_denominator",
+          "state",
+          "side",
+          "entry_time",
+          "exit_time"
+        ],
+        "expected_rows": 158,
+        "fixed_candidate_id": "SFRD-1|primary",
+        "identifier_columns": [],
+        "path": "results/sofr_rate_dislocation_preregistered_clock_2026-07-17.csv.gz",
+        "required_groups": {
+          "SFRD-1|primary": 158
+        },
+        "sha256": "391c42dd2b0d5b87ffcd73058dd9fa0c4d18fd2f535597effff5a4c8edea2e69"
+      }
+    },
+    "comparison_end_exclusive": "2024-01-01T00:00:00Z",
+    "comparison_start": "2021-01-01T00:00:00Z",
+    "fail_closed_on_missing_empty_schema_time_overlap_or_outcome_field": true,
+    "other_macro": {
+      "absolute_signed_exposure_correlation_max": 0.35,
+      "exact_entry_jaccard_max": 0.1,
+      "six_hour_bidirectional_containment_max": 0.25
+    },
+    "repair_authorized": false,
+    "same_source_orfr": {
+      "absolute_residual_amount_innovation_spearman_max": 0.35,
+      "absolute_signed_exposure_correlation_max": 0.35,
+      "exact_entry_jaccard_max": 0.15,
+      "one_rrp_operation_bidirectional_containment_max": 0.35
+    },
+    "truncate_to_comparator_observed_prefix": false
+  },
+  "policy_id": "ORPB-21",
+  "protocol_version": "overnight_rrp_participant_breadth_preregistration_v1",
+  "source": {
+    "allowed_columns": [
+      "operation_date",
+      "result_available_at_utc",
+      "total_amount_accepted_usd",
+      "participating_counterparties",
+      "accepted_counterparties",
+      "source_complete"
+    ],
+    "bindings": {
+      "build_manifest": {
+        "path": "data/new_york_fed_overnight_rrp_2018_2023/build_manifest.json",
+        "sha256": "4f87e2219da71c94832c8708086ba01387efc145e3488b62cd3b3d07c62d8fee"
+      },
+      "panel": {
+        "path": "data/new_york_fed_overnight_rrp_2018_2023/new_york_fed_overnight_rrp_2018-01-01_2023-12-31.csv.gz",
+        "sha256": "49f67ed44b7eb81fd35c17a8209cf14d6a8019d7e9f77fce8c343d1a7fb66b27"
+      },
+      "source_audit": {
+        "path": "docs/new-york-fed-overnight-rrp-source-audit-2026-07-17.md",
+        "sha256": "329db1cf886bfbceb0a048b1c44c59378af717ddd9731e5e26fd09e14ada8d23"
+      },
+      "source_builder": {
+        "path": "training/build_new_york_fed_overnight_rrp.py",
+        "sha256": "0567157dde18b1c6ccfb37b669ceead521360f23dd0b73033fccc08e37c0d42c"
+      }
+    },
+    "complete_rows": 1489,
+    "end_operation_date": "2023-12-29",
+    "internal_build_manifest_hash": "de6708a85fd7626e19adb48bf89a27cf2e50cbc09f8caddb9a6f67c03ca7140a",
+    "physical_rows": 1498,
+    "quarantine_policy": "clock only; blank values; emit no signal; clear the 21-operation window; never bridge the row",
+    "quarantined_rows": 9,
+    "start_operation_date": "2018-01-02"
+  },
+  "support": {
+    "history": [
+      "2018-01-01",
+      "2021-01-01"
+    ],
+    "integrity_gates": {
+      "decision_clock_exact": true,
+      "entry_delay_exact": true,
+      "last_source_row_omitted": true,
+      "next_operation_exit_exact": true,
+      "nonoverlap_exact": true,
+      "prior_only_ols_replay_exact": true,
+      "prior_only_rank_replay_exact": true,
+      "quarantine_clears_feature_window": true,
+      "quarantined_values_blank": true,
+      "source_binding_hashes_exact": true,
+      "source_row_and_quarantine_counts_exact": true,
+      "source_schema_exact": true,
+      "split_containment_exact": true
+    },
+    "repair_authorized": false,
+    "selection": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "selection_gates": {
+      "each_half_events_min": 8,
+      "each_side_share_min": 0.2,
+      "events_max": 80,
+      "events_min": 25,
+      "maximum_month_share": 0.25
+    },
+    "short_circuit_before_comparator_access_on_failure": true,
+    "train": [
+      "2021-01-01",
+      "2023-01-01"
+    ],
+    "train_gates": {
+      "each_side_share_min": 0.25,
+      "each_year_events_min": 20,
+      "events_max": 130,
+      "events_min": 50,
+      "maximum_month_share": 0.2
+    }
+  }
+}
