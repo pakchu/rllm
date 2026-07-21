@@ -8,6 +8,7 @@ import hashlib
 import io
 import json
 import os
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -20,7 +21,6 @@ import training.evaluate_bitmex_trollbox_attention_saturation as tbasr
 from training.evaluate_trollbox_semantic_disagreement_resolution_support import (
     POLICY_ID,
     SELECTION_END,
-    TRAIN_END,
     TRAIN_START,
     build_primary_candidates,
     canonical_hash,
@@ -207,38 +207,54 @@ def _build_tsdr_clocks(support: Mapping[str, Any]) -> list[ClockRow]:
     return rows
 
 
-def _build_tbasr_train_clocks() -> tuple[list[ClockRow], dict[str, Any]]:
+def _build_tbasr_clocks() -> tuple[list[ClockRow], dict[str, Any]]:
     if sha256_file(TBASR_IMPLEMENTATION) != TBASR_IMPLEMENTATION_SHA256:
         raise ValueError("TBASR comparator implementation changed")
     if sha256_file(TBASR_FREEZE) != TBASR_FREEZE_SHA256:
         raise ValueError("TBASR comparator freeze changed")
     freeze = tbasr.verify_evaluator_freeze()
-    contracts = freeze["source_contracts"]["stage_market_months"]["train"]
+    contracts = freeze["source_contracts"]["stage_market_months"]["test"]
     market, market_diagnostics = tbasr._parse_market_months(
         contracts,
-        end=cast(pd.Timestamp, tbasr.STAGE_WINDOWS["train"][1]),
+        end=cast(pd.Timestamp, tbasr.STAGE_WINDOWS["test"][1]),
     )
-    schedules, _, incidence = tbasr.build_stage_schedules(market, "train")
-    primary = schedules[tbasr.PRIMARY]
-    rows = [
-        ClockRow(
-            candidate_id="tbasr:primary",
-            split="train",
-            causal_origin=_timestamp(row["observation_end"], field="observation_end"),
-            decision_time=_timestamp(
-                row["feature_available_time"], field="feature_available_time"
-            ),
-            entry_time=_timestamp(row["entry_time"], field="entry_time"),
-            exit_time=_timestamp(row["exit_time"], field="exit_time"),
-            side=int(row["side"]),
+    rows: list[ClockRow] = []
+    incidence: dict[str, Any] = {}
+    for stage in ("train", "test"):
+        schedules, _, stage_incidence = tbasr.build_stage_schedules(market, stage)
+        incidence[stage] = stage_incidence
+        primary = schedules[tbasr.PRIMARY]
+        rows.extend(
+            ClockRow(
+                candidate_id="tbasr:primary",
+                split="train" if stage == "train" else "selection",
+                causal_origin=_timestamp(
+                    row["observation_end"], field="observation_end"
+                ),
+                decision_time=_timestamp(
+                    row["feature_available_time"], field="feature_available_time"
+                ),
+                entry_time=_timestamp(row["entry_time"], field="entry_time"),
+                exit_time=_timestamp(row["exit_time"], field="exit_time"),
+                side=int(row["side"]),
+            )
+            for row in primary.to_dict(orient="records")
         )
-        for row in primary.to_dict(orient="records")
-    ]
+    rows.sort(key=lambda row: row.entry_time)
     _validate_clock_rows(rows, label="TBASR-24")
-    if len(rows) != incidence["primary_events"]:
+    expected_rows = sum(
+        int(stage_incidence["primary_events"])
+        for stage_incidence in incidence.values()
+    )
+    if len(rows) != expected_rows:
         raise ValueError("TBASR comparator incidence changed")
     return rows, {
         "market_rows_loaded": len(market),
+        "market_rows_from_2022": int(
+            cast(pd.Series, market["date"])
+            .ge(pd.Timestamp("2022-01-01T00:00:00Z"))
+            .sum()
+        ),
         "market_diagnostics": market_diagnostics,
         "incidence": incidence,
         "evaluator_freeze_manifest_hash": freeze["manifest_hash"],
@@ -449,7 +465,7 @@ def _pure_clock_bytes(rows: Sequence[ClockRow]) -> bytes:
 def build_outputs() -> tuple[dict[str, Any], bytes]:
     support = _load_support()
     tsdr_rows = _build_tsdr_clocks(support)
-    tbasr_rows, tbasr_audit = _build_tbasr_train_clocks()
+    tbasr_rows, tbasr_audit = _build_tbasr_clocks()
     live_rows, live_audit = _load_live_clocks()
 
     tbasr_metrics = _novelty_metrics(
@@ -457,8 +473,15 @@ def build_outputs() -> tuple[dict[str, Any], bytes]:
         tbasr_rows,
         candidate_id="tbasr:primary",
         start=TRAIN_START,
-        end=TRAIN_END,
+        end=SELECTION_END,
     )
+    tsdr_paths = {
+        (row.causal_origin, row.decision_time, row.side) for row in tsdr_rows
+    }
+    tbasr_singleton_paths = {
+        (row.causal_origin, row.causal_origin, row.side) for row in tbasr_rows
+    }
+    exact_path_matches = len(tsdr_paths & tbasr_singleton_paths)
     live_metrics: dict[str, dict[str, Any]] = {}
     for candidate_id, rows in sorted(live_rows.items()):
         eligible = [row for row in rows if row.entry_time < SELECTION_END]
@@ -476,6 +499,10 @@ def build_outputs() -> tuple[dict[str, Any], bytes]:
 
     checks = {
         "tbasr_comparator_nonempty": len(tbasr_rows) > 0,
+        "tbasr_covers_train_and_selection": (
+            {row.split for row in tbasr_rows} == {"train", "selection"}
+        ),
+        "tbasr_exact_semantic_path_matches_zero": exact_path_matches == 0,
         "tbasr_exact_entry_jaccard_at_most_0_20": (
             tbasr_metrics["exact_entry_jaccard"] <= 0.20
         ),
@@ -553,24 +580,43 @@ def build_outputs() -> tuple[dict[str, Any], bytes]:
             "market_rows_loaded_for_frozen_tbasr_causal_feature": tbasr_audit[
                 "market_rows_loaded"
             ],
+            "tbasr_2022_causal_feature_rows_loaded": tbasr_audit[
+                "market_rows_from_2022"
+            ],
             "funding_rows_loaded": 0,
             "performance_artifacts_parsed": 0,
             "return_or_pnl_fields_read": 0,
             "strict_simulation_calls": 0,
-            "tbasr_test_or_later_market_rows_loaded": 0,
+            "tbasr_2023_or_later_market_rows_loaded": 0,
+            "tbasr_test_economic_report_parsed": 0,
             "post_2022_semantic_rows_loaded": 0,
             "raw_private_text_opened": False,
             "network_calls": 0,
             "economic_outcomes_computed": False,
         },
         "comparator_availability": {
-            "tbasr_train_rows": len(tbasr_rows),
+            "tbasr_rows": len(tbasr_rows),
+            "tbasr_rows_by_split": dict(
+                sorted(Counter(row.split for row in tbasr_rows).items())
+            ),
             "live_clock_rows": live_audit["rows"],
             "live_members": live_audit["members"],
         },
         "tbasr_source_audit": {
             "market": tbasr_audit["market_diagnostics"],
             "incidence": tbasr_audit["incidence"],
+        },
+        "path_novelty": {
+            "definition": ["onset_end", "resolution_end", "side"],
+            "tsdr_paths": len(tsdr_paths),
+            "prior_committed_semantic_strategies": ["TBASR-24"],
+            "comparators": {
+                "tbasr:primary": {
+                    "path_kind": "singleton semantic event",
+                    "singleton_paths": len(tbasr_singleton_paths),
+                    "exact_path_matches": exact_path_matches,
+                }
+            },
         },
         "novelty_metrics": {
             "tbasr:primary": tbasr_metrics,
