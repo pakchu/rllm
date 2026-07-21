@@ -19,9 +19,23 @@ def _temporary_output() -> tuple[tempfile.TemporaryDirectory[str], Path]:
     return directory, output.relative_to(freeze.evaluate.REPOSITORY_ROOT)
 
 
+def _hide_completed_support_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        freeze.evaluate,
+        "DEFAULT_OUTPUT_REPORT",
+        Path("results/.cdltr-v3-freeze-test-missing-report.json"),
+    )
+    monkeypatch.setattr(
+        freeze.evaluate,
+        "DEFAULT_OUTPUT_CLOCK",
+        Path("results/.cdltr-v3-freeze-test-missing-clock.csv.gz"),
+    )
+
+
 def test_v3_freeze_preserves_both_failures_but_opens_no_rows(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    _hide_completed_support_run(monkeypatch)
     monkeypatch.setattr(
         freeze.evaluate.pd,
         "read_csv",
@@ -72,7 +86,8 @@ def test_v3_freeze_binds_v2_audit_and_simultaneous_batch_rule() -> None:
     )
 
 
-def test_tampered_v3_freeze_fails_closed() -> None:
+def test_tampered_v3_freeze_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    _hide_completed_support_run(monkeypatch)
     directory, output = _temporary_output()
     try:
         freeze.freeze(output)
