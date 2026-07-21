@@ -5,6 +5,7 @@ import gzip
 import hashlib
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from training import cchr_comparator_clock_common as clocks
@@ -148,6 +149,56 @@ def test_hash_bound_reader_materializes_only_allowlisted_columns(
             "source.csv",
             expected_sha256="0" * 64,
             columns=("date", "causal_value"),
+        )
+
+
+def test_hash_bound_prefix_stops_at_sealed_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(clocks, "REPOSITORY_ROOT", tmp_path)
+    source = tmp_path / "prefix.csv"
+    source.write_text(
+        "date,causal_value,sealed_outcome\n"
+        "2023-12-31T23:55:00Z,1.0,10\n"
+        "2024-01-01T00:00:00Z,2.0,20\n"
+        "2024-01-01T00:05:00Z,3.0,30\n",
+        encoding="utf-8",
+    )
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    frame = clocks.read_hash_bound_prefix(
+        "prefix.csv",
+        expected_sha256=digest,
+        columns=("date", "causal_value"),
+        date_column="date",
+        end_exclusive="2024-01-01T00:00:00Z",
+        chunksize=2,
+    )
+    assert list(frame.columns) == ["date", "causal_value"]
+    assert frame["causal_value"].tolist() == [1.0]
+    assert frame["date"].max() < pd.Timestamp("2024-01-01T00:00:00Z")
+
+
+def test_hash_bound_prefix_rejects_an_unordered_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(clocks, "REPOSITORY_ROOT", tmp_path)
+    source = tmp_path / "unordered.csv"
+    source.write_text(
+        "date,causal_value\n"
+        "2023-12-31T23:55:00Z,1.0\n"
+        "2024-01-01T00:00:00Z,2.0\n"
+        "2023-12-31T23:50:00Z,3.0\n",
+        encoding="utf-8",
+    )
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    with pytest.raises(ValueError, match="timestamp ordered"):
+        clocks.read_hash_bound_prefix(
+            "unordered.csv",
+            expected_sha256=digest,
+            columns=("date", "causal_value"),
+            date_column="date",
+            end_exclusive="2024-01-01T00:00:00Z",
+            chunksize=3,
         )
 
 

@@ -345,6 +345,83 @@ def read_hash_bound_columns(
     return frame.loc[:, list(columns)]
 
 
+def read_hash_bound_prefix(
+    path: str | Path,
+    *,
+    expected_sha256: str,
+    columns: Sequence[str],
+    date_column: str,
+    end_exclusive: str | pd.Timestamp,
+    chunksize: int = 100_000,
+) -> pd.DataFrame:
+    """Hash-bind a source, then retain only its ordered causal prefix.
+
+    The CSV parser is restricted to the frozen allowlist.  Iteration stops as
+    soon as the ordered source reaches ``end_exclusive``; no retained frame can
+    contain a sealed row.
+    """
+
+    if date_column not in columns:
+        raise ValueError("prefix date column must be present in the input allowlist")
+    if chunksize < 1:
+        raise ValueError("prefix chunksize must be positive")
+    if not columns or len(set(columns)) != len(tuple(columns)):
+        raise ValueError("input column allowlist must be non-empty and unique")
+    if not expected_sha256 or sha256_file(path) != expected_sha256:
+        raise ValueError(f"input hash differs from frozen value: {path}")
+    boundary_value = pd.Timestamp(end_exclusive)
+    if not isinstance(boundary_value, pd.Timestamp):
+        raise ValueError("prefix boundary must be a valid timestamp")
+    boundary = boundary_value
+    if boundary.tzinfo is None:
+        boundary = boundary.tz_localize("UTC")
+    else:
+        boundary = boundary.tz_convert("UTC")
+    read_csv = cast(Any, pd.read_csv)
+    reader = read_csv(
+        repository_path(path),
+        usecols=list(columns),
+        chunksize=chunksize,
+    )
+    chunks: list[pd.DataFrame] = []
+    reached_boundary = False
+    previous_timestamp: pd.Timestamp | None = None
+    for raw_chunk in reader:
+        chunk = cast(pd.DataFrame, raw_chunk).loc[:, list(columns)].copy()
+        dates = pd.to_datetime(chunk[date_column], utc=True, errors="raise")
+        if not isinstance(dates, pd.Series):
+            raise TypeError("prefix date parser did not return a Series")
+        if not dates.is_monotonic_increasing or (
+            previous_timestamp is not None
+            and len(dates)
+            and dates.iloc[0] < previous_timestamp
+        ):
+            raise ValueError("hash-bound prefix source must be timestamp ordered")
+        if len(dates):
+            previous_timestamp = cast(pd.Timestamp, dates.iloc[-1])
+        keep = dates < boundary
+        if bool(keep.to_numpy(dtype=bool).any()):
+            retained = chunk.loc[keep].copy()
+            retained[date_column] = dates.loc[keep].to_numpy()
+            chunks.append(retained)
+        if bool((~keep).to_numpy(dtype=bool).any()):
+            reached_boundary = True
+            break
+    if not chunks:
+        raise ValueError(f"no rows before {boundary.isoformat()} in {path}")
+    frame = cast(pd.DataFrame, pd.concat(chunks, ignore_index=True))
+    parsed = pd.to_datetime(frame[date_column], utc=True, errors="raise")
+    if not isinstance(parsed, pd.Series) or bool(
+        (parsed >= boundary).to_numpy(dtype=bool).any()
+    ):
+        raise RuntimeError("sealed rows escaped the hash-bound prefix loader")
+    if not reached_boundary:
+        # A naturally truncated pre-boundary source is valid; this flag is
+        # intentionally informational rather than an admission requirement.
+        frame.attrs["source_ended_before_boundary"] = True
+    return frame.loc[:, list(columns)].reset_index(drop=True)
+
+
 def candidate_map_hash(candidate_map: Mapping[str, Mapping[str, Any]]) -> str:
     if not candidate_map or any(key.strip() != key or not key for key in candidate_map):
         raise ValueError("candidate map keys must be non-empty and byte-exact")
