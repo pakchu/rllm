@@ -1,0 +1,106 @@
+{
+  "amendment_document": "docs/gdelt-bitcoin-narrative-source-v2-amendment-2026-07-22.md",
+  "amendment_document_sha256": "c426b7277314dd2181849c3e47bc36bc93c6d2c1cb4ef7c8fe219cde0c0a5699",
+  "amendment_source": "training/preregister_gdelt_source_transport_v2_amendment.py",
+  "amendment_source_sha256": "2ea78c789f1ebbf25eedd990f602700d8b4c1e773b6bf3d928f69aee3220e053",
+  "as_of_date": "2026-07-22",
+  "created_at": "2026-07-22T00:00:00Z",
+  "date_only_diagnostic": {
+    "article_count_values_inspected": 0,
+    "expected_rows": 1461,
+    "first_date": "2020-01-01",
+    "full_broad_rows": 1459,
+    "last_date": "2023-12-31",
+    "missing_dates": [
+      "2020-10-20",
+      "2023-03-23"
+    ],
+    "two_year_windows_reproduced_same_dates": true,
+    "unrelated_anchor_omitted_both_dates": true,
+    "unrelated_anchor_query": "(economy OR government OR market)"
+  },
+  "decision": "amend_transport_only_for_empirical_global_outage_bins",
+  "manifest_hash": "7f7d23c0477e86d7179c83ec673513e6f9c21afb54e79e4f90fc614e46327ae5",
+  "next_action": "commit this amendment, freeze source-support evaluator, then run v2; commit an outer source seal before parsing feature counts",
+  "original_preregistration": {
+    "manifest_hash": "481aae4d1ebbf147333cfdfe8534d695761932049775354f3bb242a5a786715e",
+    "path": "results/gdelt_narrative_rotation_clearing_preregistration_2026-07-20.json",
+    "policy_document": "docs/gdelt-narrative-rotation-clearing-preregistration-2026-07-20.md",
+    "policy_document_sha256": "50b1e2550b8ec3e36b4db39873ed404b734d689f3094ff5da1d9d0bb10e2a388",
+    "policy_source": "training/preregister_gdelt_narrative_rotation_clearing.py",
+    "policy_source_sha256": "68c8402c4b04f9d301a76bf4ed202d2488154de03365467a13abf435e5ffe587",
+    "sha256": "ae175a242db1fa850164789e4a3e6f3f39b4ac8eae0fb877ce79e915ae3d67f3"
+  },
+  "outcome_boundary": {
+    "btc_market_rows_read": 0,
+    "final_source_artifact_opened": false,
+    "funding_rows_read": 0,
+    "future_return_rows_read": 0,
+    "outcomes_opened": false,
+    "return_or_pnl_fields_read": 0,
+    "source_feature_values_inspected": false
+  },
+  "policy_invariants": {
+    "feature_formulas_changed": false,
+    "feature_queries_changed": false,
+    "market_protocol_changed": false,
+    "score_signs_changed": false,
+    "source_or_family_support_gates_changed": false,
+    "windows_thresholds_holds_changed": false
+  },
+  "protocol_version": "gdelt_source_transport_v2_amendment_v1",
+  "transport": {
+    "only_added_contract_field": "sparse_bin_policy",
+    "unchanged_contract_fields": [
+      "endpoint",
+      "mode",
+      "format",
+      "queries",
+      "start_date",
+      "end_date_exclusive",
+      "windowing",
+      "required_date_resolution",
+      "availability"
+    ],
+    "v1_builder": "training/download_gdelt_bitcoin_narrative_daily.py",
+    "v1_builder_sha256": "d756990d979e901033891ad6a8c565783dc58e8a4a9e286d6e866929dd74889e",
+    "v2_builder": "training/download_gdelt_bitcoin_narrative_daily_v2.py",
+    "v2_builder_sha256": "10f22a4a7e45080369dd989add6765caac3ad3a91c72f5e4bb26986904671569",
+    "v2_commit": "ec3749c7c16a6cb598a4b749abfaf83d175e40ed",
+    "v2_contract": {
+      "availability": "source_date UTC midnight + 48h15m",
+      "end_date_exclusive": "2024-01-01",
+      "endpoint": "https://api.gdeltproject.org/api/v2/doc/doc",
+      "format": "json",
+      "mode": "timelinevolraw",
+      "protocol_version": "gdelt_bitcoin_narrative_daily_source_v2",
+      "queries": [
+        {
+          "query": "(bitcoin OR cryptocurrency)",
+          "query_id": "broad"
+        },
+        {
+          "query": "(bitcoin OR cryptocurrency) AND (hack OR hacked OR exploit OR scam OR fraud OR theft OR bankruptcy OR bankrupt OR collapse OR liquidation OR liquidated)",
+          "query_id": "failure"
+        },
+        {
+          "query": "(bitcoin OR cryptocurrency) AND (ban OR banned OR regulation OR regulator OR crackdown OR lawsuit OR investigation)",
+          "query_id": "constraint"
+        },
+        {
+          "query": "(bitcoin OR cryptocurrency) AND (ETF OR institutional OR adoption OR approval OR approved OR investment)",
+          "query_id": "adoption"
+        }
+      ],
+      "required_date_resolution": "day",
+      "sparse_bin_policy": {
+        "all_query_absence": "global monitoring outage day with all counts zero",
+        "global_norm": "consensus norm from available feature-query bins; zero only when all four query bins are absent",
+        "omitted_query_bin": "zero matching articles",
+        "subset_validation": "failure/constraint/adoption must not exceed broad"
+      },
+      "start_date": "2020-01-01",
+      "windowing": "single_full_half_open_with_api_end_at_last_second"
+    }
+  }
+}
