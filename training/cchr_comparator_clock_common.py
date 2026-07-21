@@ -575,7 +575,9 @@ def read_hash_bound_prefix(
         )
         for raw_chunk in reader:
             chunk = cast(pd.DataFrame, raw_chunk).loc[:, list(columns)].copy()
-            dates = pd.to_datetime(chunk[date_column], utc=True, errors="raise")
+            dates = pd.to_datetime(
+                chunk[date_column], utc=True, errors="raise", format="mixed"
+            )
             if not isinstance(dates, pd.Series):
                 raise TypeError("prefix date parser did not return a Series")
             if not dates.is_monotonic_increasing or (

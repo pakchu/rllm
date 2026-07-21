@@ -47,6 +47,7 @@ ENTRY_Z = 1.5
 CONTRACTION_FRACTION = 0.5
 RESET_Z = 0.25
 FIVE_MINUTES = cast(pd.Timedelta, pd.Timedelta(minutes=5))
+MERGE_TOLERANCE = cast(pd.Timedelta, pd.Timedelta(minutes=5))
 STALENESS_LIMIT = cast(pd.Timedelta, pd.Timedelta(minutes=10))
 SOURCE_DELAY_BARS = 1
 STATES = ("top_position_minus_global", "top_account_minus_global")
@@ -167,7 +168,7 @@ def attach_delayed_metrics(market: pd.DataFrame, metrics: pd.DataFrame) -> pd.Da
         left_on="date",
         right_on="create_time",
         direction="backward",
-        tolerance=STALENESS_LIMIT,
+        tolerance=MERGE_TOLERANCE,
     )
     joined[value_columns] = joined[value_columns].shift(SOURCE_DELAY_BARS)
     joined["positioning_source_time"] = joined["create_time"].shift(SOURCE_DELAY_BARS)
@@ -436,6 +437,7 @@ def export_manifest(
         "protocol": {
             "pre_2024_only": True,
             "metrics_delay_bars": SOURCE_DELAY_BARS,
+            "metrics_merge_tolerance_minutes": 5,
             "metrics_staleness_limit_minutes": 10,
             "prior_z_window": PRIOR_Z_WINDOW,
             "prior_z_min_periods": PRIOR_Z_MIN_PERIODS,
