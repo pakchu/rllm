@@ -19,9 +19,23 @@ def _temporary_output() -> tuple[tempfile.TemporaryDirectory[str], Path]:
     return directory, output.relative_to(freeze.evaluate.REPOSITORY_ROOT)
 
 
+def _hide_completed_support_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        freeze.evaluate,
+        "DEFAULT_OUTPUT_REPORT",
+        Path("results/.cdltr-v1-freeze-test-missing-report.json"),
+    )
+    monkeypatch.setattr(
+        freeze.evaluate,
+        "DEFAULT_OUTPUT_CLOCK",
+        Path("results/.cdltr-v1-freeze-test-missing-clock.csv.gz"),
+    )
+
+
 def test_freeze_reproduces_pinned_v1_evaluator_without_opening_source_rows(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    _hide_completed_support_run(monkeypatch)
     monkeypatch.setattr(
         freeze.evaluate.pd,
         "read_csv",
@@ -54,7 +68,10 @@ def test_freeze_reproduces_pinned_v1_evaluator_without_opening_source_rows(
         directory.cleanup()
 
 
-def test_tampered_existing_freeze_fails_closed() -> None:
+def test_tampered_existing_freeze_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _hide_completed_support_run(monkeypatch)
     directory, output = _temporary_output()
     try:
         freeze.freeze(output)
@@ -68,7 +85,8 @@ def test_tampered_existing_freeze_fails_closed() -> None:
         directory.cleanup()
 
 
-def test_freeze_output_path_fails_closed() -> None:
+def test_freeze_output_path_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    _hide_completed_support_run(monkeypatch)
     for unsafe in ("/tmp/freeze.json", "~/freeze.json", "../freeze.json"):
         with pytest.raises(RuntimeError, match="repository-relative"):
             freeze.freeze(unsafe)
