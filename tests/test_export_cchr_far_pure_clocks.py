@@ -117,8 +117,8 @@ def test_funding_settlement_timing_uses_exact_time_ceil_without_future_rows() ->
     funding = pd.DataFrame(
         {
             "date": [
-                pd.Timestamp("2021-01-01T00:00:00Z"),
-                pd.Timestamp("2024-01-01T00:00:00Z"),
+                pd.Timestamp("2021-01-01T00:02:00Z"),
+                pd.Timestamp("2024-01-01T00:02:00Z"),
             ],
             "funding_time": [
                 int(pd.Timestamp("2021-01-01T00:02:00Z").timestamp() * 1000),

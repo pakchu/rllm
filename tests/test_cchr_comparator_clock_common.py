@@ -97,6 +97,18 @@ def test_exact_clock_schema_and_expected_members_are_enforced() -> None:
     assert tuple(normalized.columns) == clocks.CLOCK_COLUMNS
     with pytest.raises(ValueError, match="candidate map"):
         clocks.validate_clock_frame(frame, expected_candidate_ids=("a", "b"))
+    relaxed = clocks.validate_clock_frame(
+        frame,
+        expected_candidate_ids=("a", "b"),
+        require_all_expected_members=False,
+    )
+    assert set(relaxed["candidate_id"]) == {"a"}
+    with pytest.raises(ValueError, match="outside"):
+        clocks.validate_clock_frame(
+            frame,
+            expected_candidate_ids=("b",),
+            require_all_expected_members=False,
+        )
     with pytest.raises(ValueError, match="six-column"):
         clocks.validate_clock_frame(frame.assign(return_pct=1.0))
 
