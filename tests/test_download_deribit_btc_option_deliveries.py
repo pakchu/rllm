@@ -128,6 +128,7 @@ def test_download_accepts_a_source_only_aggregate_callback(tmp_path: Path) -> No
         "old": _payload(before, None),
     }
     observed: list[dict[str, object]] = []
+    committed: list[list[dict[str, Any]]] = []
 
     def fetch(params: dict[str, object]) -> dict[str, object]:
         return pages[params.get("continuation")]
@@ -143,11 +144,16 @@ def test_download_accepts_a_source_only_aggregate_callback(tmp_path: Path) -> No
             {"custom_aggregate": True, "currency": cfg.currency},
         )
 
+    def page_commitment(rows: list[dict[str, Any]]) -> str:
+        committed.append(rows)
+        return delivery.canonical_hash(rows)
+
     frame, audit = delivery.download(
         _cfg(tmp_path),
         fetch=fetch,
         sleep=lambda _: None,
         aggregate=aggregate,
+        page_commitment=page_commitment,
     )
 
     assert len(observed) == len(recent)
@@ -156,6 +162,11 @@ def test_download_accepts_a_source_only_aggregate_callback(tmp_path: Path) -> No
     ]
     assert audit["custom_aggregate"] is True
     assert audit["currency"] == "BTC"
+    assert len(committed) == 2
+    assert audit["page_canonical_sha256"] == [
+        delivery.canonical_hash(recent),
+        delivery.canonical_hash(before),
+    ]
 
 
 def test_aggregate_maps_put_release_long_and_call_release_short() -> None:

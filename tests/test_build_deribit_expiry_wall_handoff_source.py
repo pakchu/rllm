@@ -118,13 +118,25 @@ def test_source_run_is_deterministic_and_retains_no_instrument_rows(
 ) -> None:
     recent = _expiry_rows("29DEC23", "2023-12-29")
     before = _expiry_rows("28DEC18", "2018-12-28")
-    pages = {
-        None: _payload(recent, "old"),
-        "old": _payload(before, None),
-    }
+    request_count = 0
 
     def fetch(params: dict[str, Any]) -> dict[str, Any]:
-        return pages[params.get("continuation")]
+        nonlocal request_count
+        run_number, page_number = divmod(request_count, 2)
+        request_count += 1
+        if page_number == 0:
+            payload = _payload(recent, f"old-{run_number}")
+        else:
+            assert params.get("continuation") == f"old-{run_number}"
+            payload = _payload(before, None)
+        payload.update(
+            {
+                "usIn": 1000 + request_count,
+                "usOut": 2000 + request_count,
+                "usDiff": request_count,
+            }
+        )
+        return payload
 
     cfg = replace(
         wall.Config(),
@@ -141,6 +153,9 @@ def test_source_run_is_deterministic_and_retains_no_instrument_rows(
     assert Path(cfg.output_csv).read_bytes() == first_csv
     assert Path(cfg.manifest_output).read_bytes() == first_manifest
     assert first["manifest_hash"] == second["manifest_hash"]
+    assert first["source_audit"]["page_commitment_scope"] == (
+        "ordered settlements rows only"
+    )
     assert first["aggregate"]["columns"] == list(wall.SOURCE_COLUMNS)
     assert first["candidate_incidence_computed"] is False
     assert first["parameter_search_performed"] is False
