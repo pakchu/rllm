@@ -251,6 +251,34 @@ def build_manifest() -> dict[str, Any]:
             "deterministic_gzip_mtime": 0,
             "decision_values": ["PASS_SUPPORT", "REJECT_NO_REPAIR"],
         },
+        "support_evaluator_contract": {
+            "module": "training.evaluate_same_millisecond_cascade_support",
+            "source_access_seal": (
+                "results/same_millisecond_cascade_source_access_seal_2026-07-20.json"
+            ),
+            "source_access_seal_rule": (
+                "support execution is disabled until a hash-only seal binds the built "
+                "source and manifest; populating frozen hash constants is the only "
+                "permitted post-build evaluator edit"
+            ),
+            "rolling_threshold": (
+                "source score is masked to source_complete, shifted one calendar row, "
+                "then rolling(window=8640,min_periods=2016).quantile(0.995); invalid "
+                "rows consume clock time but do not contribute an observation"
+            ),
+            "decision_time": "five-minute bucket date + 5 minutes",
+            "entry_time": "bucket date at t+2",
+            "exit_time": "bucket date at entry_position+144",
+            "comparator_timestamp_semantics": (
+                "registered columns ending in Z retain their offset; timezone-naive "
+                "canonical comparator timestamps are interpreted as UTC because every "
+                "registered artifact declares a UTC event clock"
+            ),
+            "duplicate_comparator_entries": "fail_closed_within_member",
+            "bafr_reporting": "exact-entry Jaccard and exact primary containment only",
+            "future_source_values_read_for_clock": False,
+            "market_or_funding_outcomes_read": False,
+        },
         "later_economic_protocol": {
             "sequential_stages": [
                 ["train", "2020-01-01", "2023-01-01"],
