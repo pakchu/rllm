@@ -60,6 +60,29 @@ def test_frozen_source_access_seal_hash_and_manifest() -> None:
     assert all(value == 0 for value in seal["row_counters"].values())
 
 
+def test_frozen_source_support_rejection_and_outcome_boundary() -> None:
+    assert support.sha256_file(support.DEFAULT_RESULT) == (
+        "ea95077fb16ed367f06f204c729525e699ff1af89bd8af63df1b7acd7e656c09"
+    )
+    assert support.sha256_file(support.DEFAULT_CLOCKS) == (
+        "d688c4e4d845cf0a4daaf14b7ecfa6bb4c990bde59602eb9d55ffc7088c6d7b9"
+    )
+    result = support._load_json(support.DEFAULT_RESULT)
+    support._verify_internal_hash(result, "source-support result")
+    assert result["decision"] == "REJECT_NO_REPAIR"
+    assert result["manifest_hash"] == (
+        "3084691e08a90325bfcb3e0d60e102427afdcc34ec1fda46195864c8161e464d"
+    )
+    assert result["support"]["train"]["events"] == 14
+    assert result["support"]["selection"]["events"] == 13
+    boundary = result["outcome_boundary"]
+    assert boundary["outcomes_opened"] is False
+    assert boundary["btc_market_rows_read"] == 0
+    assert boundary["settlement_mark_values_read"] == 0
+    assert boundary["return_or_pnl_fields_read"] == 0
+    assert boundary["post_2023_rows_read"] == 0
+
+
 def test_header_validation_is_exact(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         support.pd,
