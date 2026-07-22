@@ -12,10 +12,32 @@ from training import evaluate_bitfinex_margin_warehouse_deployment_support as su
 from training import preregister_bitfinex_margin_warehouse_deployment as prereg
 
 
+SOURCE_ACCESS_SEAL_SHA256 = (
+    "ab82e7456d6710b30d8654066e79f4eb14f58d29e5ec744421692fe4518dd72b"
+)
+
+
 def test_support_evaluator_accepts_exact_frozen_preregistration() -> None:
     payload = support.validate_preregistration()
     assert payload["candidate_family"] == prereg.CANDIDATE_FAMILY
     assert payload["support_gates"] == prereg.SUPPORT_GATES
+
+
+def test_source_access_seal_binds_evaluator_before_feature_access() -> None:
+    path = support.SOURCE_ACCESS_SEAL
+    assert support.sha256_file(path) == SOURCE_ACCESS_SEAL_SHA256
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    unhashed = dict(payload)
+    manifest_hash = unhashed.pop("manifest_hash")
+    assert manifest_hash == support.canonical_hash(unhashed)
+    assert payload["bindings"]["evaluator_source"]["sha256"] == (
+        "6983246760bfd49a02e059b8dbebea9ca445778f8c700a6d488ed4bf5fffb630"
+    )
+    assert payload["bindings"]["protocol_document"]["sha256"] == (
+        "e117472e600643e4b082e447814d9f486716494cdaa92be32f1723e05cd459d3"
+    )
+    assert payload["feature_values_inspected_before_seal"] is False
+    assert payload["market_outcomes_opened_before_seal"] is False
 
 
 def test_strict_prior_robust_zscore_excludes_current_observation() -> None:
