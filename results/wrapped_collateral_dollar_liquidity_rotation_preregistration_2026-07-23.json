@@ -1,0 +1,283 @@
+{
+  "candidate": "WCDR-2016",
+  "config": {
+    "output": "results/wrapped_collateral_dollar_liquidity_rotation_preregistration_2026-07-23.json"
+  },
+  "manifest_hash": "267fae61f29caa3117846349c6346e14cbd041e0ed121249c2f9fcdf8f37bf4f",
+  "mechanism_decision": {
+    "path": "docs/wrapped-collateral-dollar-liquidity-rotation-mechanism-decision-2026-07-23.md",
+    "sha256": "4fe1176bcb221bf67a62c6a196440efdd3f2fcd22ff3b30a078ce868c6dc1e26"
+  },
+  "next_action": "build exact source-only WCDR-2016 support clocks",
+  "outcome_boundary": {
+    "btc_market_rows_read": 0,
+    "candidate_incidence_rows_derived": 0,
+    "comparator_rows_read": 0,
+    "funding_rows_read": 0,
+    "future_return_rows_read": 0,
+    "network_calls": 0,
+    "pnl_cagr_mdd_opened": false,
+    "post_2023_contract_event_rows_read": 0,
+    "source_csv_headers_read": 2,
+    "source_feature_rows_derived": 0,
+    "source_file_bytes_hashed": true,
+    "source_value_rows_read": 0,
+    "subprocess_calls": 0
+  },
+  "outcomes_opened": false,
+  "performance_values_opened": false,
+  "policy": {
+    "candidate": "WCDR-2016",
+    "causal_state": {
+      "block_timestamp_forbidden": true,
+      "decision_grid": "00:00:00 UTC each calendar day",
+      "forbidden_transforms": [
+        "amount clipping",
+        "quantile threshold",
+        "forward fill",
+        "full-sample normalization",
+        "entity or exchange address classification"
+      ],
+      "only_clock_field": "available_at",
+      "side": {
+        "long": "wbtc_net_raw < 0 and usdc_net_raw > 0",
+        "otherwise": "no candidate",
+        "short": "wbtc_net_raw > 0 and usdc_net_raw < 0"
+      },
+      "source_cutoff": "decision_time - 6 elapsed hours",
+      "usdc_validity": {
+        "gross_raw_positive": true,
+        "minimum_events": 30
+      },
+      "wbtc_validity": {
+        "actor_must_be_nonzero_ethereum_address": true,
+        "gross_raw_positive": true,
+        "maximum_top_actor_gross_share": 0.9,
+        "minimum_distinct_actors": 2,
+        "minimum_events": 3
+      },
+      "windows": {
+        "interval": "cutoff-lookback < available_at <= cutoff",
+        "usdc_calendar_days": 7,
+        "wbtc_calendar_days": 30
+      }
+    },
+    "controls": {
+      "count_sign_consensus": "primary plus amount/count net-sign agreement in both sources",
+      "deterministic_random_side": "SHA-256 fixed side-count-matched primary-side permutation",
+      "direction_flip": "exact primary clock with both sides reversed",
+      "same_sign_direct": "equal nonzero signs; side=common sign",
+      "stale_7d": "primary with both source cutoffs delayed seven days",
+      "usdc_only_direct": "valid USDC states; side=sign(usdc_net_raw)",
+      "wbtc_only_contrarian": "valid WBTC states; side=-sign(wbtc_net_raw)",
+      "year_amount_permutation": "deterministic within-source/event/year amount permutation"
+    },
+    "economic_hypothesis": {
+      "long": "WBTC net burn with USDC net mint is a collateral-unwind/dollar-replenishment state",
+      "no_trade": "same-sign or zero-sign source states are ambiguous",
+      "short": "WBTC net mint with USDC net burn is collateral expansion against dollar contraction",
+      "wbtc_mint_long_or_burn_short_claimed": false
+    },
+    "economic_sequence": [
+      "source-only support",
+      "freeze strict evaluator",
+      "train 2021-2022",
+      "selection 2023 only after train pass",
+      "immutable post-2023 source extension only after pre-2024 pass",
+      "test 2024",
+      "eval 2025",
+      "recent 2026"
+    ],
+    "execution": {
+      "accept_when_entry_at_or_after_prior_exit": true,
+      "decision_time": "daily UTC anchor",
+      "entry_delay_minutes": 5,
+      "global_nonoverlap": true,
+      "hold_bars_5m": 2016,
+      "hold_elapsed_days": 7,
+      "notional_exposure": 0.5,
+      "split_crossing_action": "skip",
+      "stops_take_profit_or_trailing_exit": false
+    },
+    "multiple_testing_hypotheses": 1,
+    "post_2023_extension": {
+      "new_bridges_assets_stablecoins_or_address_labels_allowed": false,
+      "same_contracts_topics_confirmation_and_feature_policy": true,
+      "wbtc_open_api_dates_allowed": false
+    },
+    "rllm_boundary": {
+      "authorized_before_deterministic_train_and_selection_pass": false,
+      "later_actions": [
+        "TRADE_FIXED_SIDE",
+        "ABSTAIN"
+      ],
+      "later_inputs": [
+        "bucketed WBTC net/gross ratio",
+        "bucketed USDC net/gross ratio",
+        "event-count balances",
+        "WBTC actor concentration",
+        "state age",
+        "current position",
+        "time to exit"
+      ],
+      "may_create_clock_reverse_side_or_change_hold": false,
+      "reward_penalties": [
+        "strict drawdown",
+        "turnover"
+      ]
+    },
+    "singleton": true,
+    "source_rows": {
+      "usdc": {
+        "asset": "usdc_eth",
+        "decimals": 6,
+        "events": [
+          "mint",
+          "burn"
+        ],
+        "usdt_or_black_funds_allowed": false
+      },
+      "wbtc": {
+        "asset": "wbtc_eth",
+        "decimals": 8,
+        "events": [
+          "mint",
+          "burn"
+        ]
+      }
+    },
+    "source_support_gates": {
+      "each_selection_half_year_minimum": 8,
+      "each_train_half_year_minimum": 8,
+      "each_train_year_minimum": 20,
+      "failure_action": "reject WCDR-2016 without repair or outcomes",
+      "maximum_consecutive_same_side": 10,
+      "maximum_month_share": 0.2,
+      "selection_distinct_wbtc_actors_minimum": 5,
+      "selection_each_side_minimum": 4,
+      "selection_total_minimum": 20,
+      "train_distinct_wbtc_actors_minimum": 10,
+      "train_each_side_minimum": 12,
+      "train_total_minimum": 50
+    },
+    "stopping_rule": "any source, support, integrity, or staged economic failure rejects WCDR-2016; repair requires a new candidate identity frozen before access",
+    "strict_economic_gates": {
+      "absolute_return_positive": true,
+      "base_cost_notional_per_side": 0.0006,
+      "cagr_to_strict_mdd_minimum": 3.0,
+      "calendar_month_cluster_signflip_p_maximum": 0.1,
+      "flip_stale_or_random_full_qualification_rejects": true,
+      "full_calendar_cagr": true,
+      "must_beat_wbtc_and_usdc_component_controls": true,
+      "realized_funding": true,
+      "stress_cost_notional_per_side": 0.001,
+      "strict_intratrade_high_water_mdd": true,
+      "strict_mdd_pct_maximum": 15.0,
+      "ten_bp_notional_side_stress_return_positive": true
+    },
+    "windows": {
+      "sealed_from": "2024-01-01T00:00:00Z",
+      "selection": [
+        "2023-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "train": [
+        "2021-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      "warmup": [
+        "2020-01-01T00:00:00Z",
+        "2021-01-01T00:00:00Z"
+      ]
+    }
+  },
+  "policy_hash": "da52fecb2d4759f042f815ea42f298750ff17b023f347a2004d0b3a3dd5dfd93",
+  "preregistration_source": {
+    "path": "training/preregister_wrapped_collateral_dollar_liquidity_rotation.py",
+    "sha256": "f4e5b3f49c5679558a7268ce03b64abc5988e145b3392efebb398f55c0a55d56"
+  },
+  "protocol_version": "wrapped_collateral_dollar_liquidity_rotation_v1",
+  "source_bindings": {
+    "usdc": {
+      "allowed_columns": [
+        "asset",
+        "event",
+        "event_sign",
+        "amount_raw",
+        "indexed_address_1",
+        "block_number",
+        "transaction_index",
+        "log_index",
+        "available_at"
+      ],
+      "builder": "training/build_ethereum_stablecoin_issuance_redemption.py",
+      "builder_sha256": "af699d91404e44298573ca148c6cf1b90b68d9aac2972da9ad228a26b9e8a9a5",
+      "header": [
+        "asset",
+        "contract_address",
+        "event",
+        "event_sign",
+        "amount_raw",
+        "decimals",
+        "indexed_address_1",
+        "indexed_address_2",
+        "data_address",
+        "block_number",
+        "block_hash",
+        "block_timestamp",
+        "transaction_hash",
+        "transaction_index",
+        "log_index",
+        "confirmation_block_number",
+        "confirmation_block_hash",
+        "available_at"
+      ],
+      "manifest": "results/ethereum_stablecoin_issuance_redemption_source_manifest_2026-07-21.json",
+      "manifest_file_sha256": "8ec9ab08c413bf6f5f8170fb800b05105522d4cf1a7932943c214288701e31fe",
+      "manifest_hash": "a0c7740db64f7779fade68d76985c629cabe81983bf594e8258cef16a5725a1b",
+      "source": "data/ethereum_stablecoin_issuance_redemption_2020_2023/ethereum_usdt_usdc_issuance_redemption_2020_2023.csv.gz",
+      "source_sha256": "70ba3799ba84dc671051623a8d167b1731f043cf84a686b9878a67fcd52e5901",
+      "value_rows_read_during_preregistration": 0
+    },
+    "wbtc": {
+      "allowed_columns": [
+        "event",
+        "event_sign",
+        "amount_raw",
+        "actor_address",
+        "block_number",
+        "transaction_index",
+        "semantic_log_index",
+        "available_at"
+      ],
+      "builder": "training/build_wbtc_custody_bridge_flow_source.py",
+      "builder_sha256": "70816fbcc94d5ecd11f99e3b1ebc3087e396c8f6972adcefd7c3a308f7c6fdbf",
+      "header": [
+        "asset",
+        "contract_address",
+        "event",
+        "event_sign",
+        "amount_raw",
+        "decimals",
+        "actor_address",
+        "block_number",
+        "block_hash",
+        "block_timestamp",
+        "transaction_hash",
+        "transaction_index",
+        "semantic_log_index",
+        "companion_transfer_log_index",
+        "confirmation_block_number",
+        "confirmation_block_hash",
+        "available_at"
+      ],
+      "manifest": "results/wbtc_custody_bridge_flow_source_manifest_2026-07-23.json",
+      "manifest_file_sha256": "e95267d55f390a35bf609580e014c67d44adabe67526022d5e80d555964274e8",
+      "manifest_hash": "4e4344a7f2841803dc8da625ee1320f79e1821d54cb2366a5464728507b4bcab",
+      "source": "data/wbtc_custody_bridge_flow_2020_2023/wbtc_mint_burn_2020_2023.csv.gz",
+      "source_sha256": "bfcc6ebc2ded0cd8a57e5cda83a77daafe4de325adf606b23ba43ecf486b3b4e",
+      "value_rows_read_during_preregistration": 0
+    }
+  },
+  "source_incidence_opened": false
+}
