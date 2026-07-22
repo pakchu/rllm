@@ -98,6 +98,16 @@ one-to-one to the unused comparator entry with the smallest absolute distance,
 ties going to the earlier comparator.  Exact matching uses zero distance;
 tolerant matching permits at most 12 five-minute bars.  Jaccard is
 `matches/(primary+comparator-matches)` and containment is `matches/primary`.
+Registered canonical comparator timestamps without an explicit offset are
+interpreted as UTC; timestamps already ending in `Z` retain that offset.
+Duplicate entries within one comparator member fail closed.  Dense BAFR uses
+exact-entry Jaccard and exact primary containment only.
+
+The prior threshold is implemented exactly as a calendar-row rolling window:
+mask score to `source_complete`, shift one row, then apply
+`rolling(8640,min_periods=2016).quantile(0.995)`.  Invalid rows consume elapsed
+clock time but contribute no observation, and current `t` never enters its own
+threshold.
 
 ## Frozen later economic falsification
 
