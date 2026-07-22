@@ -1,0 +1,161 @@
+{
+  "audit_source": {
+    "path": "training/audit_cftc_dealer_absorption_client_consensus_source.py",
+    "sha256": "c42e587aed512505a386419f4e839de5c2d06567636c770db099d56eebeb1a78"
+  },
+  "candidate": "DAIC-168-RETIRED-PREOUTCOME",
+  "candidate_identity_stated_before_incidence": {
+    "asset_manager_and_leveraged_net_changes": "same nonzero sign",
+    "dealer_net_change": "opposite sign",
+    "entry_delay_minutes": 5,
+    "global_nonoverlap": true,
+    "hold_elapsed_hours": 168,
+    "notional_exposure": 0.5,
+    "side": "follow asset-manager/leveraged-money consensus",
+    "signal_time": "frozen conservative CFTC available_time_utc"
+  },
+  "checks": {
+    "accepted_events_do_not_overlap": true,
+    "btc_market_rows_opened_zero": true,
+    "daic_and_cita_accepted_entries_disjoint": true,
+    "daic_and_cita_raw_report_dates_disjoint": true,
+    "entry_waits_exactly_five_minutes": true,
+    "funding_rows_opened_zero": true,
+    "hold_is_exactly_168_hours": true,
+    "one_source_row_quarantined": true,
+    "performance_values_opened_false": true,
+    "source_complete_rows_exactly_298": true,
+    "source_hashes_match": true,
+    "source_rows_exactly_299": true
+  },
+  "disposition": "REJECT_BEFORE_OUTCOMES_NO_REPAIR",
+  "inherited_statistical_support_reference": {
+    "minimum_each_train_year_trades": 20,
+    "minimum_train_trades": 75,
+    "not_a_post_incidence_repair_grid": true,
+    "source": "unchanged CITA-1 preregistered Stage1 statistical-support floor",
+    "used_for_rejection_only": true
+  },
+  "manifest_hash": "38daac0b91e1973b8557c971dd9644b8b97325a1996bd5105e23f7df0ead48b4",
+  "next_action": "leave the CFTC same-sign/dealer-opposition neighborhood; select a new source-native mechanism before reading its incidence",
+  "outcome_boundary": {
+    "btc_market_rows_read": 0,
+    "funding_rows_read": 0,
+    "pnl_cagr_mdd_opened": false,
+    "return_rows_read": 0,
+    "source_rows_read": 299
+  },
+  "protocol_version": "cftc_dealer_absorption_client_consensus_source_audit_v1",
+  "rejection_reasons": [
+    {
+      "code": "FORMAL_PREREGISTRATION_BOUNDARY_BREACHED",
+      "detail": "a delegated source reviewer computed exact DAIC incidence before a repository preregistration artifact was committed"
+    },
+    {
+      "code": "TRAIN_SUPPORT_BELOW_INHERITED_CFTC_FLOOR",
+      "observed": 30,
+      "required": 75
+    },
+    {
+      "code": "EVERY_TRAIN_YEAR_BELOW_INHERITED_CFTC_FLOOR",
+      "observed": {
+        "2020": 7,
+        "2021": 6,
+        "2022": 16
+      },
+      "required_each": 20
+    }
+  ],
+  "research_integrity": {
+    "btc_outcomes_opened_for_daic": false,
+    "conservative_action": "retire unchanged candidate before outcomes",
+    "exact_source_incidence_opened": true,
+    "formal_preregistration_committed_before_exact_incidence": false,
+    "performance_values_opened_for_daic": false
+  },
+  "source_binding": {
+    "allowed_columns": [
+      "report_date",
+      "available_time_utc",
+      "official_zip_url",
+      "special_publication_override",
+      "source_complete",
+      "dealer_published_net_change",
+      "asset_mgr_published_net_change",
+      "lev_money_published_net_change"
+    ],
+    "build_manifest": "data/cftc_institutional_transfer_absorption_2018_2023/build_manifest.json",
+    "build_manifest_sha256": "e9d4ca15da671c086265557e5d302518fd4b9a9ad59fe9d0ff1181d772d60406",
+    "panel": "data/cftc_institutional_transfer_absorption_2018_2023/cftc_institutional_transfer_absorption_2018_2023.csv.gz",
+    "panel_sha256": "064eed3fa340b1701f4686d1176de2a10f39128abc5ebf846e8b6319b8144ee6",
+    "source_manifest": "data/cftc_institutional_transfer_absorption_2018_2023/source_manifest.json",
+    "source_manifest_sha256": "a594b02d1191c32f905c13be3faaa74ec2f3f0e04723d3b11b76ee8b454d6897"
+  },
+  "source_incidence": {
+    "cita_accepted_events": 181,
+    "cita_raw_events": 183,
+    "daic_accepted_events": 61,
+    "daic_cita_accepted_entry_jaccard": 0.0,
+    "daic_cita_raw_report_overlap": 0,
+    "daic_raw_events": 63,
+    "daic_suppressed_overlap_events": 2,
+    "windows": {
+      "2019_source_history": {
+        "events": 3,
+        "longs": 0,
+        "max_single_month_share": 0.3333333333333333,
+        "shorts": 3,
+        "special_publication_overrides": 0
+      },
+      "2020": {
+        "events": 7,
+        "longs": 3,
+        "max_single_month_share": 0.42857142857142855,
+        "shorts": 4,
+        "special_publication_overrides": 0
+      },
+      "2021": {
+        "events": 6,
+        "longs": 4,
+        "max_single_month_share": 0.16666666666666666,
+        "shorts": 2,
+        "special_publication_overrides": 0
+      },
+      "2022": {
+        "events": 16,
+        "longs": 8,
+        "max_single_month_share": 0.1875,
+        "shorts": 8,
+        "special_publication_overrides": 0
+      },
+      "2023_h1": {
+        "events": 10,
+        "longs": 3,
+        "max_single_month_share": 0.3,
+        "shorts": 7,
+        "special_publication_overrides": 3
+      },
+      "2023_h2": {
+        "events": 14,
+        "longs": 6,
+        "max_single_month_share": 0.35714285714285715,
+        "shorts": 8,
+        "special_publication_overrides": 0
+      },
+      "selection_2023": {
+        "events": 25,
+        "longs": 10,
+        "max_single_month_share": 0.2,
+        "shorts": 15,
+        "special_publication_overrides": 3
+      },
+      "train_2020_2022": {
+        "events": 30,
+        "longs": 15,
+        "max_single_month_share": 0.1,
+        "shorts": 15,
+        "special_publication_overrides": 0
+      }
+    }
+  }
+}
