@@ -142,10 +142,14 @@ No current code path supports post-2023 access.
 
 ## Frozen identities
 
-- evaluator source SHA-256: `TBD_AFTER_FREEZE`;
-- evaluation-clock SHA-256: `TBD_AFTER_FREEZE`;
-- evaluator manifest hash: `TBD_AFTER_FREEZE`;
-- evaluator JSON SHA-256: `TBD_AFTER_FREEZE`;
+- evaluator source SHA-256:
+  `1ed4ffa7aca2bbe3c84dc7dca05c537ab020a11ee5bde2d4219770721d755f2d`;
+- evaluation-clock SHA-256:
+  `c699c2d8c462b465579eb4035c76dda96923a4f39663395b371a04e9ad6de4a9`;
+- evaluator manifest hash:
+  `9ea2049f8c4ae02350b241a716284cc01463a5658c2469d0cab2adef2e12f992`;
+- evaluator JSON SHA-256:
+  `417ef91ed16f35c99093d6809fbd515a6981aca9db539b0a3419e7b0b4702ed7`;
 - source clock SHA-256:
   `ed882ac8a28f1f0b2b7ad7bf3d2de1f37b175cde63b20d4d1c7a290f3eb89bec`;
 - support result SHA-256:
