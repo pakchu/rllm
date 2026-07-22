@@ -349,3 +349,12 @@ def test_protocol_and_helper_bindings_are_current() -> None:
     assert builder._sha256(builder.ETHEREUM_HELPER_PATH) == (
         builder.ETHEREUM_HELPER_SHA256
     )
+
+
+def test_disk_limit_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    class Usage:
+        used = protocol.DISK_LIMIT_GIB * 1024**3
+
+    monkeypatch.setattr(builder.shutil, "disk_usage", lambda _: Usage())
+    with pytest.raises(RuntimeError, match="used disk below"):
+        builder._check_disk_limit()

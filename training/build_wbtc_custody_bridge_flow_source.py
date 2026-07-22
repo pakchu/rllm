@@ -14,6 +14,8 @@ import hashlib
 import io
 import json
 import os
+import shutil
+import sys
 import urllib.parse
 from collections import Counter
 from dataclasses import dataclass
@@ -108,6 +110,19 @@ def _load_protocol() -> dict[str, Any]:
     if payload.get("outcome_boundary", {}).get("source_only") is not True:
         raise RuntimeError("WCBF source protocol no longer has a source-only boundary")
     return payload
+
+
+def _check_disk_limit() -> None:
+    used_bytes = shutil.disk_usage(REPO_ROOT).used
+    limit_bytes = protocol.DISK_LIMIT_GIB * 1024**3
+    if used_bytes >= limit_bytes:
+        raise RuntimeError(
+            f"WCBF source build requires used disk below {protocol.DISK_LIMIT_GIB} GiB"
+        )
+
+
+def _progress(message: str) -> None:
+    print(f"[wcbf-source] {message}", file=sys.stderr, flush=True)
 
 
 def _event_specs_by_topic() -> dict[str, protocol.EventSpec]:
@@ -575,6 +590,7 @@ def build_outputs(
     header_rpc: ethereum.Rpc | None = None,
     receipt_rpc: ethereum.Rpc | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    _check_disk_limit()
     protocol_payload = _load_protocol()
     hosts = _transport_hosts(cfg)
     primary_rpc = primary_rpc or _client(cfg.primary_rpc_url, cfg)
@@ -584,20 +600,33 @@ def build_outputs(
         cfg.receipt_rpc_url or cfg.verification_rpc_url, cfg
     )
 
+    _progress("primary semantic-log replay started")
     primary_rows, primary_audit = collect_log_source(primary_rpc, cfg)
+    _progress(f"primary replay complete: {len(primary_rows)} semantic events")
+    _progress("independent verification replay started")
     verification_rows, verification_audit = collect_log_source(verification_rpc, cfg)
+    _progress(
+        f"verification replay complete: {len(verification_rows)} semantic events"
+    )
     if primary_audit != verification_audit or primary_rows != verification_rows:
         raise RuntimeError("independent WCBF Ethereum log replays disagree")
+    _progress("transaction-receipt pair audit started")
     receipt_rows, receipt_audit = validate_receipt_pairs(
         receipt_rpc,
         primary_rows,
         batch_size=cfg.receipt_batch_size,
     )
+    _progress(
+        "receipt audit complete: "
+        f"{receipt_audit['zero_transfer_pairs_verified']} zero-transfer pairs"
+    )
+    _progress("canonical event and confirmation header materialization started")
     materialized, header_audit = materialize_rows(
         header_rpc,
         receipt_rows,
         header_batch_size=cfg.header_batch_size,
     )
+    _progress(f"header materialization complete: {len(materialized)} source rows")
     support = _source_support(materialized)
     output_rows = [
         {
