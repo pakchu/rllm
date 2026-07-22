@@ -1,0 +1,233 @@
+{
+  "protocol_version": "bgp_routing_churn_relay_source_v1",
+  "source_id": "BRCR",
+  "outcomes_opened": false,
+  "market_clocks_opened": false,
+  "historical_source_incidence_opened": false,
+  "mechanism_parser_opened": false,
+  "source_only_probe_opened": true,
+  "source_only_probe": {
+    "objects": [
+      {
+        "archive_label": "2020-01-01T00:00:00Z",
+        "compressed_bytes": 3953511,
+        "compressed_sha256": "84ea79cd40424754a77530bcaf98eff988f6582712ef5199d53cc1ec159b3162",
+        "decompressed_bytes": 19967733,
+        "record_count": 138891,
+        "last_modified": "Wed, 01 Jan 2020 00:05:15 GMT",
+        "etag": "\"5e0be23b-3c5367\""
+      },
+      {
+        "archive_label": "2021-01-01T00:00:00Z",
+        "compressed_bytes": 7573375,
+        "compressed_sha256": "ed199898df7cb1df6388315990cb0dd69492b3b144046cf1e226c97efe88c929",
+        "decompressed_bytes": 44790599,
+        "record_count": 295941,
+        "last_modified": "Fri, 01 Jan 2021 00:05:44 GMT",
+        "etag": "\"5fee6758-738f7f\""
+      },
+      {
+        "archive_label": "2022-01-01T00:00:00Z",
+        "compressed_bytes": 3085355,
+        "compressed_sha256": "6815f3dd52a507ec202f774ee56ecc18ca02c2a0681606517e65d345b7d8d11a",
+        "decompressed_bytes": 18301516,
+        "record_count": 114035,
+        "last_modified": "Sat, 01 Jan 2022 00:05:08 GMT",
+        "etag": "\"61cf9ab4-2f142b\""
+      },
+      {
+        "archive_label": "2023-01-01T00:00:00Z",
+        "compressed_bytes": 3592286,
+        "compressed_sha256": "e7233b1424bfee50dfa5bd3990c03ebf53f9662e120c343d5ed26f3e51d3c3a3",
+        "decompressed_bytes": 24584606,
+        "record_count": 138274,
+        "last_modified": "Sun, 01 Jan 2023 00:05:13 GMT",
+        "etag": "\"63b0ce39-36d05e\""
+      }
+    ],
+    "object_bodies_opened": 4,
+    "directory_listings_opened": [
+      "https://data.ris.ripe.net/rrc00/2023.01/"
+    ],
+    "coordinate_rule": "January 1 00:00 UTC, one object per source year",
+    "all_streams_gzip_crc_valid": true,
+    "all_streams_exact_mrt_boundary": true,
+    "all_streams_timestamp_monotone": true,
+    "all_embedded_timestamps": "00:00:00 through 00:04:59 UTC",
+    "observed_type_subtypes": [
+      "16:0",
+      "16:1",
+      "16:4",
+      "16:5"
+    ],
+    "full_interval_incidence_counted": false,
+    "market_or_outcomes_opened": false
+  },
+  "decision_binding": {
+    "path": "docs/bgp-routing-churn-relay-source-axis-decision-2026-07-22.md",
+    "sha256": "9f26353a78884cb027b79560f48ef37b8c8427df08a62eeedc24ef6c990b3005"
+  },
+  "implementation_binding": {
+    "path": "training/preregister_bgp_routing_churn_relay.py",
+    "sha256": "7e7d9cad14fb0d33e17098db1e369d4bbe1a20f59fba41a2402e943cb534d6a7"
+  },
+  "source_contract": {
+    "authority": {
+      "operator": "RIPE NCC Routing Information Service",
+      "collector": "rrc00",
+      "collector_scope": "multihop global",
+      "archive_base": "https://data.ris.ripe.net/rrc00",
+      "transport": "public HTTPS gzip-compressed MRT",
+      "raw_archive_documentation": "https://ris.ripe.net/docs/mrt/",
+      "collector_documentation": "https://ris.ripe.net/docs/route-collectors/",
+      "mrt_specification": "https://www.rfc-editor.org/rfc/rfc6396"
+    },
+    "archive_interval": {
+      "start_inclusive": "2020-01-01T00:00:00Z",
+      "end_exclusive": "2024-01-01T00:00:00Z",
+      "hours_utc": [
+        0,
+        6,
+        12,
+        18
+      ],
+      "file_interval_minutes": 5,
+      "expected_objects": 5844,
+      "filename": "updates.YYYYMMDD.HHmm.gz"
+    },
+    "mrt_schema": {
+      "common_header": "!IHHI",
+      "common_header_bytes": 12,
+      "record_type": 16,
+      "allowed_subtypes": [
+        0,
+        1,
+        4,
+        5,
+        6,
+        7
+      ],
+      "message_subtypes": [
+        1,
+        4,
+        6,
+        7
+      ],
+      "state_change_subtypes": [
+        0,
+        5
+      ],
+      "timestamps": "monotone and in [label, label + 5 minutes)",
+      "payload_length": "must terminate exactly at gzip stream boundary",
+      "unknown_type_or_subtype": "fatal"
+    },
+    "retained_fields": [
+      "archive label, conservative availability, and official URL",
+      "compressed bytes and SHA-256",
+      "decompressed bytes",
+      "MRT record, message-record, and state-change-record counts",
+      "minimum and maximum embedded MRT timestamps",
+      "exact type/subtype counts",
+      "canonical object identity SHA-256",
+      "transport-only Last-Modified, ETag, and Content-Length evidence"
+    ],
+    "forbidden_fields": [
+      "raw BGP payloads in normalized source output",
+      "prefixes, AS paths, peer IPs, peer ASNs, communities, or next hops",
+      "bview files, another collector, RIPEstat, RIPE Atlas, or IODA fallback",
+      "HTTP metadata as a signal feature",
+      "BTC bars/returns/funding/PnL",
+      "prior alpha clocks or portfolio outcomes"
+    ]
+  },
+  "availability_contract": {
+    "effective_point_in_time_field": "archive_label + 15 minutes",
+    "documented_creation_cadence_minutes": 5,
+    "conservative_publication_floor_minutes_after_label": 15,
+    "http_last_modified_is_availability": false,
+    "http_etag_is_availability": false,
+    "historical_archive_alone_proves_immutable_bytes": false,
+    "bview_recopy_incident_disclosed": true,
+    "later_signal_floor": "availability plus separately frozen execution delay"
+  },
+  "source_quality_gates": {
+    "transport": {
+      "minimum_object_fraction_each_year": 0.995,
+      "minimum_object_fraction_each_month": 0.98,
+      "maximum_consecutive_missing_objects": 4,
+      "gzip_crc_required": true,
+      "compressed_sha256_fraction": 1.0,
+      "declared_content_length_must_match": true,
+      "strong_apache_etag_required": true,
+      "last_modified_delay_minutes_inclusive": [
+        5,
+        30
+      ],
+      "duplicate_sha_across_labels_allowed": 0,
+      "two_in_memory_parse_passes_required": true,
+      "exact_cross_pass_equality_required": true
+    },
+    "mrt": {
+      "valid_common_header_fraction": 1.0,
+      "valid_payload_boundary_fraction": 1.0,
+      "valid_timestamp_interval_fraction": 1.0,
+      "valid_type_subtype_fraction": 1.0,
+      "minimum_message_records_each_object": 1,
+      "imputation_or_forward_fill_allowed": false
+    },
+    "replay": {
+      "labels": "00:00 UTC on the first day of every source month",
+      "expected_objects": 48,
+      "second_fetch_sha256_equality_fraction": 1.0,
+      "second_fetch_header_equality_fraction": 1.0
+    },
+    "denominators": {
+      "object_year": "all expected frozen labels in that calendar year",
+      "object_month": "all expected frozen labels in that calendar month",
+      "missing_or_unparseable_object": "counts missing in its expected slot",
+      "missing_streak": "walk every expected label in chronological order",
+      "fetched_or_successful_objects_never_define_a_denominator": true
+    },
+    "failure_effect": "REJECT_NO_REPAIR"
+  },
+  "disk_contract": {
+    "abort_before_download_when_used_gib_at_least": 300,
+    "stream_one_object_then_release": true,
+    "maximum_concurrent_objects": 1,
+    "maximum_compressed_bytes_each": 134217728,
+    "maximum_decompressed_bytes_each": 1073741824,
+    "deterministic_output_gzip_mtime": 0
+  },
+  "later_mechanism_boundary": {
+    "authorized_now": false,
+    "eligible_inputs": [
+      "prior-only aggregate message-record churn",
+      "prior-only aggregate peer-state-change churn",
+      "prior-only decompressed-byte churn"
+    ],
+    "must_freeze_before_market": [
+      "exact churn algebra and prior-only baseline",
+      "event clock and direction",
+      "hold, execution delay, leverage, and support controls",
+      "clock novelty comparators"
+    ],
+    "llm_or_rllm_may_not": [
+      "create, delete, retime, relabel, or impute source objects",
+      "decode forbidden BGP identity fields without a new protocol",
+      "select direction or threshold from eval outcomes"
+    ]
+  },
+  "next_stage_artifacts": {
+    "archive_labels_first": "2020-01-01T00:00:00Z",
+    "archive_labels_last": "2023-12-31T18:00:00Z",
+    "replay_labels_first": "2020-01-01T00:00:00Z",
+    "replay_labels_last": "2023-12-01T00:00:00Z",
+    "source_rows": "data/bgp_routing_churn_relay_2020_2023.jsonl.gz",
+    "object_manifest": "results/bgp_routing_churn_relay_object_manifest_2026-07-22.json.gz",
+    "source_manifest": "results/bgp_routing_churn_relay_source_manifest_2026-07-22.json",
+    "source_support_result": "results/bgp_routing_churn_relay_source_support_2026-07-22.json",
+    "write_once": true
+  },
+  "rejection_contract": "any transport, metadata-age, gzip, MRT boundary, timestamp, type/subtype, coverage, duplicate, replay, disk, or source-support failure retires BRCR without changing collector, archive hours, interval, accepted fields, or thresholds",
+  "manifest_hash": "97dd7fff76fee4e9cefd76a9e8af7e6e2df04a9c2e69e5dc68f6827748ef44e7"
+}
