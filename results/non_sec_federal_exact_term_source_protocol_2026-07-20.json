@@ -1,0 +1,311 @@
+{
+  "protocol_version": "non_sec_federal_exact_term_source_v1",
+  "source_id": "NFET",
+  "outcomes_opened": false,
+  "market_clocks_opened": false,
+  "candidate_envelope_probe_opened": true,
+  "final_exact_member_incidence_opened": false,
+  "semantic_model_opened": false,
+  "candidate_envelope_probe": {
+    "scope": "broad FederalRegister API feasibility union only",
+    "years": [
+      2020,
+      2021,
+      2022,
+      2023
+    ],
+    "unique_document_numbers": 486,
+    "unique_publication_days": 348,
+    "documents_with_sec_agency": 218,
+    "exact_govinfo_membership_evaluated": false,
+    "market_or_outcomes_opened": false
+  },
+  "decision_binding": {
+    "path": "docs/non-sec-federal-exact-term-source-axis-decision-2026-07-20.md",
+    "sha256": "d95dc74bad967f2fc4b3a64ccb7bbaa2ee71a5586053e74a27fcfbf01da7b436"
+  },
+  "implementation_binding": {
+    "path": "training/preregister_non_sec_federal_exact_term_source.py",
+    "sha256": "48754ca00f1786b9cb0d2e00e85e34c9e9fd72f7f8d874ff18c2f00cd5c15df5"
+  },
+  "source_contract": {
+    "source_id": "NFET",
+    "source_name": "Non-SEC Federal Exact-Term publication salience",
+    "claim_scope": "complete only under the frozen FederalRegister API search envelope; not a full-corpus semantic census or recall claim",
+    "range": [
+      "2020-01-01",
+      "2024-01-01"
+    ],
+    "end_is_exclusive": true,
+    "authority_hierarchy": [
+      "GovInfo collection sitemap for expected issue packages",
+      "FederalRegister.gov API for candidate document discovery and metadata reconciliation only",
+      "official GovInfo granule MODS and HTML for metadata and exact membership",
+      "official GovInfo granule PDF retained as archival/legal authority"
+    ],
+    "bulk_xml": {
+      "used": false,
+      "reason": "derived nonofficial rendition with observed parse anomalies",
+      "guide": "https://www.govinfo.gov/bulkdata/FR/resources/FDsys_OFR-XML_User-Guide-v1.pdf"
+    },
+    "issue_inventory": {
+      "url_template": "https://www.govinfo.gov/sitemap/FR_{YYYY}_sitemap.xml",
+      "years": [
+        2020,
+        2021,
+        2022,
+        2023
+      ],
+      "root": "{http://www.sitemaps.org/schemas/sitemap/0.9}urlset",
+      "entry_fields": [
+        "loc",
+        "lastmod"
+      ],
+      "allowed_ignored_entry_fields": [
+        "changefreq",
+        "priority"
+      ],
+      "loc_fullmatch": "https://www\\.govinfo\\.gov/app/details/FR-(\\d{4}-\\d{2}-\\d{2})",
+      "ordering": "publication_date ascending",
+      "weekend_holiday_rule": "only sealed sitemap packages exist; never infer calendar dates",
+      "failure_effect": "REJECT_NO_REPAIR"
+    },
+    "candidate_discovery": {
+      "endpoint": "https://www.federalregister.gov/api/v1/documents.json",
+      "literal_term_queries": [
+        "bitcoin",
+        "cryptocurrency",
+        "cryptocurrencies",
+        "virtual currency",
+        "virtual currencies",
+        "virtual-currency",
+        "virtual-currencies",
+        "blockchain",
+        "distributed ledger",
+        "distributed-ledger"
+      ],
+      "fixed_parameters": {
+        "conditions[publication_date][gte]": "2020-01-01",
+        "conditions[publication_date][lte]": "2023-12-31",
+        "order": "oldest",
+        "per_page": 1000
+      },
+      "pagination": "reconstruct integer page=1..total_pages for every query",
+      "candidate_union_key": "document_number",
+      "duplicate_must_agree_fields": [
+        "document_number",
+        "publication_date",
+        "type",
+        "title",
+        "pdf_url"
+      ],
+      "search_rank_or_snippet_establishes_membership": false,
+      "api_false_negative_scope": "a GovInfo exact-term document not proposed by the frozen query union is outside NFET-v1 and cannot support a full-corpus claim",
+      "conflicting_duplicate_effect": "REJECT_NO_REPAIR"
+    },
+    "official_document": {
+      "mods_template": "https://www.govinfo.gov/metadata/granule/FR-{publication_date}/{document_number}/mods.xml",
+      "html_template": "https://www.govinfo.gov/content/pkg/FR-{publication_date}/html/{document_number}.htm",
+      "pdf_template": "https://www.govinfo.gov/content/pkg/FR-{publication_date}/pdf/{document_number}.pdf",
+      "api_key_required": false,
+      "detail_template": "https://www.federalregister.gov/api/v1/documents/{document_number}.json",
+      "html_establishes_membership": true,
+      "pdf_adds_or_repairs_membership": false,
+      "positive_pdf_magic": "%PDF-",
+      "all_candidate_retention": "content-addressed deterministic compressed search page, MODS, raw HTML, canonical visible text, and detail JSON",
+      "positive_additional_retention": "content-addressed GovInfo PDF plus exact match records",
+      "html_raw_sha_role": "transport audit only",
+      "html_identity": "canonical normalized visible-text SHA-256",
+      "reason_raw_html_is_not_identity": "edge email-obfuscation attributes can vary while visible text is stable"
+    },
+    "disk": {
+      "used_abort_gib": 300,
+      "check": "before every response download on the output filesystem",
+      "raw_archives_persisted": true,
+      "storage": "content-addressed deterministic gzip with mtime=0"
+    },
+    "revision_rule": "changed previously sealed sitemap, search, MODS, canonical text, or pdf bytes halt NFET; never rebuild history in place"
+  },
+  "parser_contract": {
+    "mods": {
+      "namespace": "http://www.loc.gov/mods/v3",
+      "xlink_namespace": "http://www.w3.org/1999/xlink",
+      "root": "{http://www.loc.gov/mods/v3}mods",
+      "singular_fields": [
+        "collectionCode",
+        "accessId",
+        "frDocNumber",
+        "identifier[type=FR Doc No.]",
+        "granuleClass",
+        "relatedItem[type=host] originInfo/dateIssued",
+        "relatedItem[type=host] identifier[type=uri]"
+      ],
+      "agency_selector": "all MODS extension agency values",
+      "other_format_rule": "exactly two unique xlink href values: HTML and PDF"
+    },
+    "html_engine": "Python stdlib html.parser.HTMLParser",
+    "convert_charrefs": true,
+    "decode": "UTF-8 strict",
+    "ignored_elements": [
+      "script",
+      "style"
+    ],
+    "text_order": "all other handle_data fragments in document order",
+    "fragment_joiner": "one ASCII space",
+    "unicode_normalization": "NFKC",
+    "unicode_database_version": "13.0.0",
+    "case_normalization": "str.lower",
+    "control_rule": "replace code points whose Unicode category starts C with ASCII space",
+    "whitespace_rule": "Python Unicode \\s+ collapsed to one ASCII space, then strip",
+    "regex_engine": "Python re",
+    "regex_flags": [
+      "re.ASCII"
+    ],
+    "patterns": [
+      {
+        "pattern_id": "bitcoin",
+        "regex": "(?<![a-z0-9_])bitcoin(?![a-z0-9_])"
+      },
+      {
+        "pattern_id": "cryptocurrency",
+        "regex": "(?<![a-z0-9_])cryptocurrenc(?:y|ies)(?![a-z0-9_])"
+      },
+      {
+        "pattern_id": "virtual_currency",
+        "regex": "(?<![a-z0-9_])virtual[ -]+currenc(?:y|ies)(?![a-z0-9_])"
+      },
+      {
+        "pattern_id": "blockchain",
+        "regex": "(?<![a-z0-9_])blockchain(?![a-z0-9_])"
+      },
+      {
+        "pattern_id": "distributed_ledger",
+        "regex": "(?<![a-z0-9_])distributed[ -]+ledger(?![a-z0-9_])"
+      }
+    ],
+    "support_record": [
+      "pattern_id",
+      "substring",
+      "span_start",
+      "span_end_exclusive"
+    ],
+    "stemming_fuzzy_semantic_or_llm_membership": false
+  },
+  "agency_contract": {
+    "source": "GovInfo MODS extension agency values",
+    "normalization": "Unicode NFKC; str.upper; category-C to space; collapse whitespace",
+    "set_rule": "sorted unique nonempty set; duplicate name is fatal",
+    "sec_name": "SECURITIES AND EXCHANGE COMMISSION",
+    "mixed_sec_document": "sec_comparator only",
+    "primary": "all positive documents without the SEC name",
+    "concentration": "each k-agency primary document contributes 1/k to each name",
+    "detail_cross_check": {
+      "source": "FederalRegister detail agencies[].slug",
+      "slug_fullmatch": "[a-z0-9]+(?:-[a-z0-9]+)*",
+      "sec_slug": "securities-and-exchange-commission",
+      "sec_membership_must_agree_with_govinfo": true
+    },
+    "manual_alias_or_parent_rollup": false
+  },
+  "identity_and_reconciliation": {
+    "stable_identity": "document_number",
+    "implementation_functions": [
+      "parse_govinfo_mods",
+      "reconcile_agency_routing",
+      "reconcile_positive_identity"
+    ],
+    "document_number_fullmatch": "(?=.{3,64}\\Z)[A-Z0-9]+(?:-[A-Z0-9]+)+",
+    "required_equalities": [
+      "candidate document_number == GovInfo MODS accessId",
+      "candidate document_number == GovInfo MODS frDocNumber",
+      "candidate document_number == GovInfo MODS FR Doc No. identifier",
+      "candidate publication_date == GovInfo MODS host dateIssued",
+      "GovInfo MODS host URI == predictable issue details URL",
+      "GovInfo MODS collectionCode == FR",
+      "GovInfo MODS otherFormat links == predictable HTML and PDF URLs",
+      "candidate document_number == detail document_number",
+      "candidate publication_date == detail publication_date",
+      "detail pdf_url == predictable GovInfo PDF URL"
+    ],
+    "positive_required_objects": [
+      "candidate search record",
+      "GovInfo granule MODS",
+      "official GovInfo HTML",
+      "official GovInfo PDF",
+      "FederalRegister detail JSON"
+    ],
+    "correction_rule": "record correction_of and corrections; correction remains a new document at its own availability and never mutates the original",
+    "mismatch_effect": "REJECT_NO_REPAIR"
+  },
+  "availability_contract": {
+    "historical": "publication_date + 1 calendar day at 12:00 UTC",
+    "advance_display_or_public_inspection_used": false,
+    "live": "max(historical floor, durable local receipt + parse + hash + reconciliation + manifest commit)",
+    "event_deduplication": "one source event per primary publication date"
+  },
+  "source_quality_gates": {
+    "primary_non_sec": {
+      "minimum_documents": 140,
+      "minimum_documents_each_year": 25,
+      "minimum_unique_publication_days": 120,
+      "minimum_unique_publication_days_each_year": 20,
+      "minimum_documents_each_quarter": 5,
+      "maximum_month_share": 0.15,
+      "maximum_fractional_agency_share": 0.45
+    },
+    "sec_comparator": {
+      "minimum_documents": 100,
+      "minimum_documents_each_year": 15,
+      "minimum_unique_publication_days": 80
+    },
+    "integrity": {
+      "candidate_page_reconciliation_fraction": 1.0,
+      "candidate_issue_inventory_reconciliation_fraction": 1.0,
+      "positive_mods_html_pdf_detail_reconciliation_fraction": 1.0,
+      "quarantine_or_imputation_allowed": false,
+      "deterministic_rebuild_required": true
+    },
+    "failure_effect": "REJECT_NO_REPAIR"
+  },
+  "novelty_gates": {
+    "outcomes_opened": false,
+    "source_clock": "one event per unique primary publication date at D+1 12:00 UTC",
+    "required_comparators": [
+      "NFET_SEC_same_source",
+      "GDELT_GNRC",
+      "SEC_EDGAR",
+      "Wikimedia",
+      "BitMEX_Trollbox",
+      "executable_live_portfolio"
+    ],
+    "comparator_bindings": "paths, schemas, common coverage, and SHA-256 values must be committed in a later outcome-blind novelty access seal",
+    "matching": "within common coverage sort unique UTC entries; visit primary entries chronologically and match the unused comparator entry with minimum absolute distance, ties toward the earlier comparator",
+    "exact_entry_jaccard_max": 0.2,
+    "tolerant_window_hours": 24,
+    "tolerant_one_to_one_jaccard_max": 0.35,
+    "primary_containment_max": 0.5,
+    "all_metrics_all_comparators_must_pass": true,
+    "missing_malformed_unhashable_or_empty_common_coverage": "fail closed"
+  },
+  "later_model_boundary": {
+    "authorized_now": false,
+    "allowed_later": "single quote-grounded Gemma extractor/classifier then train-only RLLM gate",
+    "forbidden": [
+      "LLM membership or agency routing",
+      "source event creation deletion or retiming",
+      "eval reward for prompt adapter or checkpoint selection",
+      "future prices or post-entry information",
+      "analyzer/trader two-model split"
+    ]
+  },
+  "next_stage_artifacts": {
+    "issue_inventory_and_candidate_response_seal": "results/non_sec_federal_exact_term_source_access_seal_2026-07-20.json",
+    "selected_source": "data/non_sec_federal_exact_term_source_2020_2023.jsonl.gz",
+    "source_manifest": "results/non_sec_federal_exact_term_source_manifest_2026-07-20.json",
+    "source_support_result": "results/non_sec_federal_exact_term_source_support_2026-07-20.json",
+    "write_once": true,
+    "deterministic_gzip_mtime": 0
+  },
+  "rejection_contract": "any source hierarchy, inventory, pagination, official-text, agency, identity, reconciliation, disk, quality, or novelty failure retires NFET without changing queries, terms, dates, parser, SEC routing, availability, thresholds, or comparators",
+  "manifest_hash": "59925ae4255abf5d35efb5f6d4bb974be319f3e91ffc3f1b17d746ff4576fbd3"
+}
