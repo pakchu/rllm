@@ -28,6 +28,7 @@ SOURCE_AUDIT_PATH = Path("results/binance_aggtrade_microstructure_audit_2026-07-
 SOURCE_AUDIT_SHA256 = (
     "5ac5a342d7f766ea0b6dcf9f97468ab70b9e1194775469ed0245d9208d0dc9c6"
 )
+SMCC_UNDERLYING_OVERLAP_COUNTS = {"2020-01-15": 1}
 
 
 @dataclass(frozen=True)
@@ -46,8 +47,13 @@ class BuildConfig:
 class SourceContract:
     archive_sha256_by_date: dict[str, str]
     archive_facts_by_date: dict[str, dict[str, int]]
-    source_gap_days: frozenset[str]
+    aggregate_gap_days: frozenset[str]
+    underlying_overlap_counts: dict[str, int]
     verified_zero_volume_bins: frozenset[pd.Timestamp]
+
+    @property
+    def source_gap_days(self) -> frozenset[str]:
+        return self.aggregate_gap_days | frozenset(self.underlying_overlap_counts)
 
 
 def _sha256(path: Path) -> str:
@@ -96,7 +102,15 @@ def load_source_contract() -> SourceContract:
     )
     if not archive_hashes or not gap_days or not zero_bins:
         raise ValueError("frozen aggTrade source contract is unexpectedly empty")
-    return SourceContract(archive_hashes, archive_facts, gap_days, zero_bins)
+    if not set(SMCC_UNDERLYING_OVERLAP_COUNTS).issubset(archive_hashes):
+        raise ValueError("SMCC underlying-overlap quarantine is outside the source interval")
+    return SourceContract(
+        archive_hashes,
+        archive_facts,
+        gap_days,
+        dict(SMCC_UNDERLYING_OVERLAP_COUNTS),
+        zero_bins,
+    )
 
 
 def _fetch_verified_day(
@@ -316,11 +330,17 @@ def _process_month(
             - raw["last_trade_id"].to_numpy(np.int64)[:-1]
             - 1
         )
-        if np.any(underlying_deltas < 0):
-            raise ValueError(f"underlying-trade ID ranges overlap or regress on {day}")
-        expected_gap_day = day.isoformat() in source_contract.source_gap_days
-        if (agg_id_gap_count > 0) != expected_gap_day:
+        underlying_overlap_count = int(np.count_nonzero(underlying_deltas < 0))
+        stamp = day.isoformat()
+        expected_underlying_overlap_count = source_contract.underlying_overlap_counts.get(
+            stamp, 0
+        )
+        if underlying_overlap_count != expected_underlying_overlap_count:
+            raise ValueError(f"underlying-trade ID overlap contract changed on {day}")
+        expected_aggregate_gap_day = stamp in source_contract.aggregate_gap_days
+        if (agg_id_gap_count > 0) != expected_aggregate_gap_day:
             raise ValueError(f"aggTrade intra-day gap contract changed on {day}")
+        expected_gap_day = stamp in source_contract.source_gap_days
         observed_bars = aggregate_same_millisecond_five_minute(raw)
         if not (
             (observed_bars["date"] >= day_start)
@@ -474,6 +494,10 @@ def build(
             "source_audit": str(SOURCE_AUDIT_PATH),
             "source_audit_sha256": SOURCE_AUDIT_SHA256,
             "source_gap_days": sorted(contract.source_gap_days),
+            "aggregate_gap_days": sorted(contract.aggregate_gap_days),
+            "underlying_overlap_quarantine_counts": dict(
+                sorted(contract.underlying_overlap_counts.items())
+            ),
             "verified_zero_volume_empty_bins": len(contract.verified_zero_volume_bins),
             "full_five_minute_grid": True,
             "post_gap_quarantine_bars": 24,

@@ -69,16 +69,27 @@ def build_manifest() -> dict[str, Any]:
             "end_is_exclusive": True,
             "raw_archives_persisted": False,
             "gap_policy": (
-                "quarantine verified source-ID-gap UTC days, missing buckets, "
-                "and the following 24 five-minute bars; never impute"
+                "quarantine verified aggregate-ID-gap UTC days, the SMCC-specific "
+                "duplicate-underlying-ID UTC day, missing buckets, and the following "
+                "24 five-minute bars; never impute"
             ),
             "required_source_gap_days": [
+                "2020-01-15",
                 "2020-04-15",
                 "2021-02-09",
                 "2021-02-24",
                 "2021-05-19",
                 "2022-09-06",
             ],
+            "smcc_specific_underlying_overlap_quarantine": {
+                "2020-01-15": {
+                    "overlap_count": 1,
+                    "reason": (
+                        "two adjacent aggregate rows repeat the same underlying trade "
+                        "ID and identical economic event fields; quarantine full UTC day"
+                    ),
+                }
+            },
             "zero-volume_empty_bars": (
                 "only timestamps explicitly recorded by the hash-bound audit as "
                 "zero volume and zero trades are complete empty bars"

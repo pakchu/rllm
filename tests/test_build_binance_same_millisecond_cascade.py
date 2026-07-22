@@ -20,6 +20,7 @@ def _archive(
     price: float = 100.0,
     internal_gap: bool = False,
     underlying_gap: bool = False,
+    underlying_overlap: bool = False,
     start_agg_id: int = 1,
     start_trade_id: int = 10,
     timestamp_day: date | None = None,
@@ -27,7 +28,10 @@ def _archive(
     timestamp_ms = int(pd.Timestamp(timestamp_day or day, tz="UTC").timestamp() * 1_000)
     offsets = [0, 2, 3] if internal_gap else [0, 1, 2]
     identifiers = [start_agg_id + offset for offset in offsets]
-    trade_offsets = [0, 2, 3] if underlying_gap else offsets
+    if underlying_overlap:
+        trade_offsets = [0, 1, 1]
+    else:
+        trade_offsets = [0, 2, 3] if underlying_gap else offsets
     trade_ids = [start_trade_id + offset for offset in trade_offsets]
     rows = [
         [identifiers[0], price, 1.0, trade_ids[0], trade_ids[0], timestamp_ms, "false"],
@@ -89,6 +93,7 @@ def _contract(
     payloads: dict[date, bytes],
     *,
     gap_days: frozenset[str] = frozenset(),
+    underlying_overlap_counts: dict[str, int] | None = None,
     zero_bins: frozenset[pd.Timestamp] = frozenset(),
 ) -> builder.SourceContract:
     facts: dict[str, dict[str, int]] = {}
@@ -109,7 +114,8 @@ def _contract(
             for day, payload in payloads.items()
         },
         archive_facts_by_date=facts,
-        source_gap_days=gap_days,
+        aggregate_gap_days=gap_days,
+        underlying_overlap_counts=underlying_overlap_counts or {},
         verified_zero_volume_bins=zero_bins,
     )
 
@@ -179,6 +185,45 @@ def test_underlying_id_holes_do_not_invent_aggregate_source_gap(tmp_path: Path) 
     output = pd.read_csv(result["combined_output"], compression="gzip")
     assert not output["source_gap_day"].any()
     assert output["source_complete"].sum() == 1
+
+
+def test_frozen_underlying_overlap_day_is_fully_quarantined(tmp_path: Path) -> None:
+    day = date(2020, 1, 15)
+    payload = _archive(day, underlying_overlap=True)
+    fetcher = _FakeFetcher({day: payload})
+    cfg = builder.BuildConfig(
+        start=day.isoformat(),
+        end="2020-01-16",
+        output_dir=str(tmp_path),
+        workers=1,
+    )
+    result = builder.build(
+        cfg,
+        fetcher=fetcher,
+        source_contract=_contract(
+            {day: payload},
+            underlying_overlap_counts={day.isoformat(): 1},
+        ),
+    )
+    output = pd.read_csv(result["combined_output"], compression="gzip")
+    assert output["source_gap_day"].all()
+    assert not output["source_complete"].any()
+
+
+def test_unregistered_underlying_overlap_fails_closed(tmp_path: Path) -> None:
+    day = date(2020, 1, 15)
+    payload = _archive(day, underlying_overlap=True)
+    with pytest.raises(ValueError, match="underlying-trade ID overlap contract changed"):
+        builder.build(
+            builder.BuildConfig(
+                start=day.isoformat(),
+                end="2020-01-16",
+                output_dir=str(tmp_path),
+                workers=1,
+            ),
+            fetcher=_FakeFetcher({day: payload}),
+            source_contract=_contract({day: payload}),
+        )
 
 
 def test_resume_metadata_cannot_redirect_verified_output(tmp_path: Path) -> None:
@@ -326,6 +371,14 @@ def test_repository_source_contract_is_hash_bound_and_complete() -> None:
     contract = builder.load_source_contract()
     assert len(contract.archive_sha256_by_date) == 1_461
     assert contract.source_gap_days == frozenset(
-        {"2020-04-15", "2021-02-09", "2021-02-24", "2021-05-19", "2022-09-06"}
+        {
+            "2020-01-15",
+            "2020-04-15",
+            "2021-02-09",
+            "2021-02-24",
+            "2021-05-19",
+            "2022-09-06",
+        }
     )
+    assert contract.underlying_overlap_counts == {"2020-01-15": 1}
     assert len(contract.verified_zero_volume_bins) == 26

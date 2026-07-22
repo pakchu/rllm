@@ -31,14 +31,21 @@
     ],
     "end_is_exclusive": true,
     "raw_archives_persisted": false,
-    "gap_policy": "quarantine verified source-ID-gap UTC days, missing buckets, and the following 24 five-minute bars; never impute",
+    "gap_policy": "quarantine verified aggregate-ID-gap UTC days, the SMCC-specific duplicate-underlying-ID UTC day, missing buckets, and the following 24 five-minute bars; never impute",
     "required_source_gap_days": [
+      "2020-01-15",
       "2020-04-15",
       "2021-02-09",
       "2021-02-24",
       "2021-05-19",
       "2022-09-06"
     ],
+    "smcc_specific_underlying_overlap_quarantine": {
+      "2020-01-15": {
+        "overlap_count": 1,
+        "reason": "two adjacent aggregate rows repeat the same underlying trade ID and identical economic event fields; quarantine full UTC day"
+      }
+    },
     "zero-volume_empty_bars": "only timestamps explicitly recorded by the hash-bound audit as zero volume and zero trades are complete empty bars"
   },
   "causal_feature_contract": {
@@ -296,6 +303,6 @@
     ]
   },
   "rejection_contract": "any source, support, novelty, train, or sequential-stage failure retires SMCC-144 without changing its sign, quantile, collision floor, coherence, delay, hold, costs, or gates",
-  "manifest_hash": "d68b5a90b7438b72cbb5ab336fc5918efa7d68f149b29b2ee7db921bf3e3ed77",
-  "created_at": "2026-07-22T03:02:22.274325+00:00"
+  "manifest_hash": "5628bdf5e9f6079ebb14585886738c9176ae869e249bcad89927775c7dafa302",
+  "created_at": "2026-07-22T03:53:04.554002+00:00"
 }

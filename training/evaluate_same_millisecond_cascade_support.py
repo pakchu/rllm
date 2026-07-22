@@ -19,10 +19,10 @@ from training import preregister_same_millisecond_cascade as prereg
 
 PREREGISTRATION_PATH = Path(prereg.DEFAULT_OUTPUT)
 PREREGISTRATION_FILE_SHA256 = (
-    "538fbae53a05ebd02dcd1465f24132ab50c7e964abe635b1ef89e0d06f428af4"
+    "49fb04bc666f56f00efebf1f03c08e4a386f69b12fb12feeac22f9fde4ff9111"
 )
 PREREGISTRATION_MANIFEST_HASH = (
-    "d68b5a90b7438b72cbb5ab336fc5918efa7d68f149b29b2ee7db921bf3e3ed77"
+    "5628bdf5e9f6079ebb14585886738c9176ae869e249bcad89927775c7dafa302"
 )
 SOURCE_ACCESS_SEAL_PATH = Path(
     "results/same_millisecond_cascade_source_access_seal_2026-07-20.json"

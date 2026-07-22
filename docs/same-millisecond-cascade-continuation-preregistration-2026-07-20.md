@@ -33,6 +33,20 @@ preceding millisecond group inside the same five-minute bar.  If `g*` is the
 first group in the bar, its sweep and score are zero; no price state is borrowed
 across a bar or archive boundary.
 
+### Source-integrity amendment before incidence access
+
+The first blinded source build stopped before support counts were read because
+the official `2020-01-15` archive contains one pair of adjacent aggregate rows
+that repeats the same underlying trade ID and all economic event fields while
+using consecutive aggregate IDs.  A source-only scan confirmed this is the
+only underlying-ID overlap in January 2020; the other 47 monthly builds had
+already failed closed on any overlap.  No SMCC event incidence, return, or
+market outcome was inspected.  The full `2020-01-15` UTC day is therefore
+added to the quarantine set, followed by the same 24-bar quarantine.  Positive
+underlying-ID holes remain permissible because the frozen aggregate-source
+audit defines completeness by aggregate IDs; overlaps remain exact-count
+bound and fail closed.
+
 ```text
 share = notional(g*) / bar_notional
 sweep_bp = 10000 * side(g*) * log(last_price(g*) / predecessor_price)
