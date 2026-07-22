@@ -352,6 +352,33 @@ def test_clock_encoding_is_reproducible_and_contains_no_outcome_fields() -> None
     assert "strict_bar_backtest" not in source_text
 
 
+def test_frozen_support_artifacts_pass_without_opening_outcomes() -> None:
+    result_path = Path(
+        "results/bitfinex_margin_warehouse_deployment_support_2026-07-20.json"
+    )
+    clock_path = Path(
+        "data/bitfinex_margin_warehouse_deployment_clocks_2021_2023.csv.gz"
+    )
+    assert support.sha256_file(result_path) == (
+        "c857e070f4cb157a005f4a95bee0bff9c7b30daf97128832a690a68d05bfb79c"
+    )
+    assert support.sha256_file(clock_path) == (
+        "02b4fcc462a5a48be7673649f4cf4b2f9bb210baca4294eed1696d479820cccc"
+    )
+    payload = json.loads(result_path.read_text(encoding="utf-8"))
+    unhashed = dict(payload)
+    manifest_hash = unhashed.pop("manifest_hash")
+    assert manifest_hash == support.canonical_hash(unhashed)
+    assert payload["clock_artifact"]["rows"] == 6_583
+    assert payload["family_support_passed"] is True
+    assert payload["passing_variants"] == [
+        variant.variant_id for variant in prereg.VARIANTS
+    ]
+    assert payload["outcome_boundary"]["outcomes_opened"] is False
+    assert payload["outcome_boundary"]["btc_market_rows_read"] == 0
+    assert payload["outcome_boundary"]["post_2023_rows_read"] == 0
+
+
 def test_robust_zscore_requires_positive_mad() -> None:
     values = pd.Series(np.ones(5))
     result = support.strict_prior_robust_zscore(
