@@ -21,7 +21,7 @@ MECHANISM_DECISION = Path(
     "mechanism-decision-2026-07-23.md"
 )
 MECHANISM_DECISION_SHA256 = (
-    "b7a13b3a3361b7e7207aeaf7ea1a8f4c9f0f71f16951129df0d456d5fded0380"
+    "0837517b5891e0dd8cc320e023d37662fe6984af46767aca57edc91e7bf14286"
 )
 DEFAULT_OUTPUT = Path(
     "results/treasury_auction_settlement_collision_carry_"
@@ -140,7 +140,8 @@ EXPECTED_OUTCOME_BOUNDARY: Mapping[str, Any] = {
     "funding_rows_read": 0,
     "future_return_rows_read": 0,
     "pnl_cagr_mdd_opened": False,
-    "post_2023_source_value_rows_read": 0,
+    "post_2023_raw_transport_rows_may_be_parsed_for_auction_date_key_filter": True,
+    "post_2023_rows_materialized_into_tascc": 0,
     "network_calls": 0,
     "subprocess_calls": 0,
 }
@@ -207,6 +208,11 @@ def policy_payload() -> dict[str, Any]:
             "panel_allowed_columns": list(PANEL_ALLOWED_COLUMNS),
             "raw_allowed_fields": list(RAW_ALLOWED_FIELDS),
             "join_key": ["auctionDate", "cusip"],
+            "raw_transport_boundary": (
+                "current raw pages may parse post-2023 objects; inspect auctionDate "
+                "only, discard keys outside the frozen pre-2024 panel before "
+                "materializing issueDate/term/other TASCC fields, and count all rows"
+            ),
             "forbidden_values": [
                 "bid_to_cover_ratio",
                 "competitive_accepted_usd",

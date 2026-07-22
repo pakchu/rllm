@@ -17,6 +17,11 @@ def test_preregistration_discloses_heavily_seen_source_and_unopened_candidate() 
     assert payload["exact_source_incidence_opened"] is False
     assert payload["outcomes_opened"] is False
     assert payload["performance_values_opened"] is False
+    boundary = payload["outcome_boundary"]
+    assert boundary[
+        "post_2023_raw_transport_rows_may_be_parsed_for_auction_date_key_filter"
+    ] is True
+    assert boundary["post_2023_rows_materialized_into_tascc"] == 0
     disclosure = payload["prior_research_disclosure"]
     assert disclosure["tadi_2021_2022_btc_outcomes_opened_and_failed"] is True
     assert disclosure["tascc_market_outcomes_opened"] is False
