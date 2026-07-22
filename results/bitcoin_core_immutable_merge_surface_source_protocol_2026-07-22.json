@@ -1,0 +1,171 @@
+{
+  "protocol_version": "bitcoin_core_immutable_merge_surface_source_v1",
+  "source_id": "BCIMS",
+  "outcomes_opened": false,
+  "market_clocks_opened": false,
+  "historical_source_incidence_opened": false,
+  "semantic_model_opened": false,
+  "source_only_probe_opened": true,
+  "source_only_probe": {
+    "interval": "[2024-01-01, sealed probe tip]",
+    "excluded_from_source_support": true,
+    "sealed_tip": "bc49bd154a31b285c0f89be51767a424ac380924",
+    "git_version": "2.43.0",
+    "filtered_clone_size_mib": 74,
+    "first_parent_commits": 3016,
+    "two_parent_merges": 3016,
+    "bitcoin_subjects": 2950,
+    "gui_subjects": 66,
+    "other_two_parent_subjects": 0,
+    "non_two_parent_commits": 0,
+    "unique_utc_committer_days": 697,
+    "descending_committer_time_violations": 0,
+    "market_or_outcomes_opened": false
+  },
+  "decision_binding": {
+    "path": "docs/bitcoin-core-immutable-merge-surface-source-axis-decision-2026-07-22.md",
+    "sha256": "af18cdb1c7184d3f603efbf62e6242212db08f97a41faebde7ba733ecc3761fa"
+  },
+  "implementation_binding": {
+    "path": "training/preregister_bitcoin_core_immutable_merge_surface.py",
+    "sha256": "93fd9abd74383187dc4a82596848aa10a7eb14f47a2fb7fc2ec5c4935ace07b6"
+  },
+  "unicode_database_version": "13.0.0",
+  "source_contract": {
+    "authority": {
+      "remote": "https://github.com/bitcoin/bitcoin.git",
+      "branch": "master",
+      "sealed_tip": "bc49bd154a31b285c0f89be51767a424ac380924",
+      "default_branch_symref_must_equal": "refs/heads/master",
+      "object_format": "sha1",
+      "clone_arguments": [
+        "--single-branch",
+        "--branch=master",
+        "--filter=blob:none",
+        "--no-checkout"
+      ],
+      "mutable_github_pr_metadata_used": false,
+      "blob_contents_opened_in_source_support": false
+    },
+    "interval": {
+      "start_inclusive": "2020-01-01",
+      "end_exclusive": "2024-01-01",
+      "membership_clock": "causal_availability_utc",
+      "probe_interval_excluded": "[2024-01-01, sealed probe tip]"
+    },
+    "traversal": {
+      "command_semantics": "sealed tip first-parent chain, reverse chronological order reversed to oldest-first",
+      "every_first_parent_commit_retained_for_audit": true,
+      "primary_parent_count": 2,
+      "path_delta_parent": 1,
+      "rename_detection": false,
+      "path_encoding": "UTF-8 strict",
+      "path_surface": "first component; root file maps to __root__"
+    },
+    "membership": {
+      "subject_fullmatch": "\\AMerge (?P<repo>bitcoin/bitcoin|bitcoin-core/gui)#(?P<pr_number>[1-9][0-9]*): (?P<title>\\S(?:.*\\S)?)\\Z",
+      "primary_repository": "bitcoin/bitcoin",
+      "comparator_repository": "bitcoin-core/gui",
+      "other_form": "audit_only",
+      "llm_can_change_membership": false,
+      "duplicate_pr_number_within_stratum": "fatal"
+    },
+    "retained_fields": [
+      "raw commit object bytes",
+      "commit/tree/parent hashes",
+      "author and committer timestamps normalized to UTC",
+      "full immutable commit message",
+      "exact merge-subject captures",
+      "NUL-safe no-renames path delta against parent one",
+      "raw extraction SHA-256 values"
+    ],
+    "forbidden_fields": [
+      "current PR title/body/labels/milestone/state",
+      "reactions/reviews/contributor profile",
+      "market bars/returns/funding/PnL",
+      "future repository state outside the sealed tip"
+    ]
+  },
+  "availability_contract": {
+    "historical": "12:00 UTC on second calendar day after running-max UTC committer day",
+    "git_committer_time_claimed_as_server_receipt": false,
+    "live": "max(historical floor, durable fetch + object verification + extraction + hash + manifest commit)",
+    "force_push_or_unreachable_sealed_ancestor": "halt"
+  },
+  "source_quality_gates": {
+    "integrity": {
+      "git_fsck_connectivity_required": true,
+      "sealed_tip_must_be_reachable_from_fetched_master": true,
+      "first_parent_object_reconciliation_fraction": 1.0,
+      "raw_commit_and_path_delta_hash_fraction": 1.0,
+      "primary_and_comparator_parent_count": 2,
+      "primary_nonempty_path_delta_fraction": 1.0,
+      "unknown_first_parent_fraction_max": 0.05,
+      "unknown_first_parent_fraction_max_each_year": 0.1,
+      "quarantine_or_imputation_allowed": false
+    },
+    "primary_core": {
+      "minimum_events": 2400,
+      "minimum_events_each_year": 500,
+      "minimum_events_each_quarter": 100,
+      "minimum_unique_availability_days_each_year": 180,
+      "maximum_calendar_month_share": 0.12,
+      "minimum_distinct_top_level_surfaces_each_year": 6,
+      "maximum_fractional_top_level_surface_share": 0.7
+    },
+    "gui_comparator": {
+      "minimum_events": 30,
+      "minimum_events_each_year": 5,
+      "minimum_unique_availability_days": 25
+    },
+    "fractional_surface_attribution": "an event touching k unique top-level surfaces contributes 1/k to each",
+    "failure_effect": "REJECT_NO_REPAIR"
+  },
+  "disk_contract": {
+    "abort_before_fetch_when_used_gib_at_least": 300,
+    "raw_blob_download_authorized": false,
+    "deterministic_gzip_mtime": 0
+  },
+  "later_semantic_boundary": {
+    "authorized_now": false,
+    "eligible_inputs_after_source_pass": [
+      "full immutable merge message",
+      "exact changed-path list",
+      "separately frozen immutable diff text"
+    ],
+    "mandatory_baselines": [
+      "path-surface-only",
+      "component-prefix-keyword-only",
+      "cadence-only"
+    ],
+    "requirements": [
+      "single local LLM",
+      "evidence-grounded label with abstention",
+      "model and labels frozen before returns open",
+      "train-only adapter or RLLM selection"
+    ],
+    "forbidden": [
+      "LLM event creation/deletion/retiming",
+      "mutable GitHub metadata as historical model input",
+      "eval reward or checkpoint selection",
+      "analyzer/trader two-model split"
+    ]
+  },
+  "later_clock_novelty_boundary": {
+    "authorized_now": false,
+    "applies_to": "later frozen semantic event clock, not dense source rows",
+    "exact_entry_jaccard_max": 0.2,
+    "tolerant_window_hours": 24,
+    "tolerant_one_to_one_jaccard_max": 0.35,
+    "primary_containment_max": 0.5,
+    "all_prior_live_and_rejected_family_comparators_required": true
+  },
+  "next_stage_artifacts": {
+    "source_rows": "data/bitcoin_core_immutable_merge_surface_2020_2023.jsonl.gz",
+    "source_manifest": "results/bitcoin_core_immutable_merge_surface_source_manifest_2026-07-22.json",
+    "source_support_result": "results/bitcoin_core_immutable_merge_surface_source_support_2026-07-22.json",
+    "write_once": true
+  },
+  "rejection_contract": "any remote, object, traversal, parser, timestamp, path, disk, annual, quarterly, concentration, comparator, replay, or live-parity failure retires BCIMS without changing the interval, delay, membership regex, thresholds, or strata",
+  "manifest_hash": "d2edac0aa3e8ccdf7b17b7bd0d8d7e60a053624ac3626904956cab714bac6cd3"
+}
