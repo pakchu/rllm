@@ -19,6 +19,7 @@ def _archive(
     *,
     price: float = 100.0,
     internal_gap: bool = False,
+    underlying_gap: bool = False,
     start_agg_id: int = 1,
     start_trade_id: int = 10,
     timestamp_day: date | None = None,
@@ -26,7 +27,8 @@ def _archive(
     timestamp_ms = int(pd.Timestamp(timestamp_day or day, tz="UTC").timestamp() * 1_000)
     offsets = [0, 2, 3] if internal_gap else [0, 1, 2]
     identifiers = [start_agg_id + offset for offset in offsets]
-    trade_ids = [start_trade_id + offset for offset in offsets]
+    trade_offsets = [0, 2, 3] if underlying_gap else offsets
+    trade_ids = [start_trade_id + offset for offset in trade_offsets]
     rows = [
         [identifiers[0], price, 1.0, trade_ids[0], trade_ids[0], timestamp_ms, "false"],
         [identifiers[1], price + 1.0, 1.0, trade_ids[1], trade_ids[1], timestamp_ms + 1, "false"],
@@ -155,6 +157,28 @@ def test_known_gap_day_is_fully_quarantined(tmp_path: Path) -> None:
     output = pd.read_csv(result["combined_output"], compression="gzip")
     assert output["source_gap_day"].all()
     assert not output["source_complete"].any()
+
+
+def test_underlying_id_holes_do_not_invent_aggregate_source_gap(tmp_path: Path) -> None:
+    day = date(2020, 3, 1)
+    payload = _archive(day, underlying_gap=True)
+    fetcher = _FakeFetcher({day: payload})
+    cfg = builder.BuildConfig(
+        start=day.isoformat(),
+        end="2020-03-02",
+        output_dir=str(tmp_path),
+        workers=1,
+    )
+
+    result = builder.build(
+        cfg,
+        fetcher=fetcher,
+        source_contract=_contract({day: payload}),
+    )
+
+    output = pd.read_csv(result["combined_output"], compression="gzip")
+    assert not output["source_gap_day"].any()
+    assert output["source_complete"].sum() == 1
 
 
 def test_resume_metadata_cannot_redirect_verified_output(tmp_path: Path) -> None:
