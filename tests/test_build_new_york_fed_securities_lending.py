@@ -92,6 +92,18 @@ def test_build_panels_orders_operations_and_cusips() -> None:
     assert [row.cusip for row in details[:2]] == ["A", "Z"]
 
 
+def test_build_panels_rejects_one_empty_annual_source() -> None:
+    payloads = {
+        f"operations_{year}": payload(
+            operation(f"{year}-01-02", f"SL {year} 1")
+        )
+        for year in range(source.START_YEAR, source.END_YEAR + 1)
+    }
+    payloads["operations_2021"] = payload()
+    with pytest.raises(RuntimeError, match="empty: 2021"):
+        source.build_panels(payloads)
+
+
 def test_availability_uses_next_utc_midnight_or_later_revision() -> None:
     normal, _ = source.parse_annual_payload(payload(operation()), expected_year=2020)
     assert normal[0].available_at_utc == datetime(2020, 1, 3, tzinfo=UTC)
@@ -100,6 +112,22 @@ def test_availability_uses_next_utc_midnight_or_later_revision() -> None:
         expected_year=2020,
     )
     assert revised[0].available_at_utc == datetime(2020, 1, 3, 8, tzinfo=UTC)
+
+
+@pytest.mark.parametrize(
+    ("day", "timestamp", "match"),
+    [
+        ("2020-11-01", "2020-11-01 01:30:00", "ambiguous"),
+        ("2020-03-08", "2020-03-08 02:30:00", "nonexistent"),
+    ],
+)
+def test_availability_rejects_dst_ambiguous_or_nonexistent_local_time(
+    day: str, timestamp: str, match: str
+) -> None:
+    with pytest.raises(RuntimeError, match=match):
+        source.parse_annual_payload(
+            payload(operation(day, last_updated=timestamp)), expected_year=2020
+        )
 
 
 @pytest.mark.parametrize(
@@ -142,6 +170,29 @@ def test_zero_acceptance_preserves_official_na_rate_as_null() -> None:
     awarded["totalParAmtAccepted"] = 1
     with pytest.raises(RuntimeError, match="missing weightedAverageRate"):
         source.parse_annual_payload(payload(awarded), expected_year=2020)
+
+
+def test_nullable_nonreconciliation_fields_remain_null() -> None:
+    nullable = detail()
+    nullable["somaHoldings"] = None
+    nullable["theoAvailToBorrow"] = None
+    nullable["actualAvailToBorrow"] = None
+    nullable["outstandingLoans"] = None
+    _, details = source.parse_annual_payload(
+        payload(operation(details=[nullable])), expected_year=2020
+    )
+    assert details[0].soma_holdings is None
+    assert details[0].theoretical_available_to_borrow is None
+    assert details[0].actual_available_to_borrow is None
+    assert details[0].outstanding_loans is None
+
+
+def test_nullable_amount_needed_for_reconciliation_fails_closed() -> None:
+    row = operation()
+    row["details"][0]["parAmtSubmitted"] = None
+    row["totalParAmtSubmitted"] = 100
+    with pytest.raises(RuntimeError, match="cannot reconcile"):
+        source.parse_annual_payload(payload(row), expected_year=2020)
 
 
 def test_duplicate_operation_and_cusip_fail_closed() -> None:
@@ -201,6 +252,15 @@ def test_acquire_writes_once_and_replays_cache(tmp_path: Path) -> None:
             source.acquire_sources(cfg, fetcher=fetcher, clock=fixed)
         for path in source._raw_paths(root).values():
             assert gzip.decompress(path.read_bytes())
+
+        ledger_path = root / "raw/fetch_ledger.json"
+        tampered = json.loads(ledger_path.read_text())
+        tampered[1]["request_url"] = source.annual_url(2020)
+        ledger_path.write_text(json.dumps(tampered))
+        with pytest.raises(RuntimeError, match="schema/request changed"):
+            source.acquire_sources(
+                source.Config(output_dir=str(relative), fetch=False)
+            )
     finally:
         if root.exists():
             import shutil
@@ -212,6 +272,16 @@ def test_redirect_and_content_type_fail_closed() -> None:
     bad = source.FetchResponse(b"{}", "https://example.com/x", 200, "application/json")
     with pytest.raises(RuntimeError, match="outside official host"):
         source._validate_response(source.annual_url(2020), bad, json_expected=True)
+    query_drift = source.FetchResponse(
+        b"{}",
+        source.SEARCH_URL + "?startDate=2020-01-01&endDate=2020-01-31",
+        200,
+        "application/json",
+    )
+    with pytest.raises(RuntimeError, match="URL changed"):
+        source._validate_response(
+            source.annual_url(2020), query_drift, json_expected=True
+        )
     bad_type = source.FetchResponse(
         b"{}", source.annual_url(2020), 200, "text/html"
     )
@@ -225,6 +295,15 @@ def test_source_panels_contain_no_candidate_or_market_fields() -> None:
     forbidden = {"candidate", "side", "hold", "return", "pnl", "cagr", "mdd", "funding"}
     assert not forbidden.intersection(source.OPERATION_COLUMNS)
     assert not forbidden.intersection(source.DETAIL_COLUMNS)
+
+
+def test_source_check_vocabulary_is_positive_for_all_invariants() -> None:
+    assert "unknown_fields_rejected" in Path(
+        source.REPOSITORY_ROOT / source.SCRIPT_PATH
+    ).read_text()
+    assert "unknown_fields_accepted" not in Path(
+        source.REPOSITORY_ROOT / source.SCRIPT_PATH
+    ).read_text()
 
 
 def test_repository_path_rejects_escape() -> None:

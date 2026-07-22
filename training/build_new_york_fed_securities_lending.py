@@ -139,13 +139,13 @@ class Detail:
     available_at_utc: datetime
     cusip: str
     security_description: str
-    par_submitted: Decimal
-    par_accepted: Decimal
+    par_submitted: Decimal | None
+    par_accepted: Decimal | None
     weighted_average_rate: Decimal | None
-    soma_holdings: Decimal
-    theoretical_available_to_borrow: Decimal
-    actual_available_to_borrow: Decimal
-    outstanding_loans: Decimal
+    soma_holdings: Decimal | None
+    theoretical_available_to_borrow: Decimal | None
+    actual_available_to_borrow: Decimal | None
+    outstanding_loans: Decimal | None
 
 
 Fetch = Callable[[str, int], FetchResponse]
@@ -250,8 +250,8 @@ def _validate_response(request_url: str, response: FetchResponse, *, json_expect
     observed = urllib.parse.urlsplit(response.final_url)
     if observed.scheme != "https" or observed.netloc != "markets.newyorkfed.org":
         raise RuntimeError("NY Fed source redirected outside official host")
-    if observed.path != expected.path:
-        raise RuntimeError("NY Fed source response path changed")
+    if observed != expected:
+        raise RuntimeError("NY Fed source response URL changed")
     content_type = response.content_type.lower()
     if json_expected and "json" not in content_type:
         raise RuntimeError("NY Fed annual response is not JSON")
@@ -291,6 +291,64 @@ def _raw_paths(root: Path) -> dict[str, Path]:
     return paths
 
 
+def _request_specs() -> list[tuple[str, str, bool]]:
+    return [("openapi", OPENAPI_URL, False)] + [
+        (f"operations_{year}", annual_url(year), True)
+        for year in range(START_YEAR, END_YEAR + 1)
+    ]
+
+
+def _validate_cached_ledger(
+    ledger: Any, payloads: Mapping[str, bytes]
+) -> list[dict[str, Any]]:
+    if not isinstance(ledger, list):
+        raise RuntimeError("cached NY Fed ledger must be an array")
+    expected_specs = _request_specs()
+    expected_names = [name for name, _, _ in expected_specs]
+    if len(ledger) != len(expected_names) or any(
+        not isinstance(row, dict) for row in ledger
+    ):
+        raise RuntimeError("cached NY Fed ledger shape changed")
+    names = [row.get("name") for row in ledger]
+    if names != expected_names or len(set(names)) != len(names):
+        raise RuntimeError("cached NY Fed ledger identities changed")
+    required_fields = {
+        "name",
+        "request_url",
+        "final_url",
+        "retrieved_at_utc",
+        "http_status",
+        "content_type",
+        "bytes",
+        "sha256",
+    }
+    for row, (name, url, json_expected) in zip(ledger, expected_specs):
+        if set(row) != required_fields or row["request_url"] != url:
+            raise RuntimeError(f"cached NY Fed ledger schema/request changed: {name}")
+        try:
+            retrieved = datetime.fromisoformat(str(row["retrieved_at_utc"]))
+        except ValueError as exc:
+            raise RuntimeError("cached NY Fed retrieval timestamp changed") from exc
+        if retrieved.tzinfo is None:
+            raise RuntimeError("cached NY Fed retrieval timestamp lost timezone")
+        payload = payloads[name]
+        response = FetchResponse(
+            body=payload,
+            final_url=str(row["final_url"]),
+            status=int(row["http_status"]),
+            content_type=str(row["content_type"]),
+        )
+        _validate_response(url, response, json_expected=json_expected)
+        if row["bytes"] != len(payload) or row["sha256"] != sha256_bytes(payload):
+            raise RuntimeError(f"cached NY Fed source metadata mismatch: {name}")
+    if (
+        b"/api/seclending/{operation}/results/{include}/search.{format}"
+        not in payloads["openapi"]
+    ):
+        raise RuntimeError("cached OpenAPI lost securities-lending search")
+    return ledger
+
+
 def acquire_sources(
     cfg: Config,
     *,
@@ -303,24 +361,20 @@ def acquire_sources(
     if all(path.exists() for path in raw_paths.values()) and ledger_path.exists():
         if cfg.fetch:
             raise RuntimeError("frozen source cache exists; refusing refresh")
-        ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
-        by_name = {row["name"]: row for row in ledger}
         payloads: dict[str, bytes] = {}
         for name, path in raw_paths.items():
             payload = gzip.decompress(path.read_bytes())
-            if by_name.get(name, {}).get("sha256") != sha256_bytes(payload):
-                raise RuntimeError(f"cached NY Fed source hash mismatch: {name}")
             payloads[name] = payload
+        ledger = _validate_cached_ledger(
+            json.loads(ledger_path.read_text(encoding="utf-8")), payloads
+        )
         return payloads, ledger
     if any(path.exists() for path in raw_paths.values()) or ledger_path.exists():
         raise RuntimeError("partial NY Fed source cache exists")
     if not cfg.fetch:
         raise RuntimeError("source cache absent; rerun with --fetch")
 
-    requests = [("openapi", OPENAPI_URL, False)] + [
-        (f"operations_{year}", annual_url(year), True)
-        for year in range(START_YEAR, END_YEAR + 1)
-    ]
+    requests = _request_specs()
     payloads = {}
     ledger = []
     for name, url, json_expected in requests:
@@ -399,7 +453,17 @@ def _availability(operation_day: date, last_updated: Any) -> tuple[str, datetime
         raise RuntimeError("lastUpdated unexpectedly has a timezone")
     if local_naive.date() < operation_day:
         raise RuntimeError("lastUpdated predates operation")
-    revision = local_naive.replace(tzinfo=NEW_YORK).astimezone(UTC)
+    candidates = []
+    for fold in (0, 1):
+        aware = local_naive.replace(tzinfo=NEW_YORK, fold=fold)
+        if aware.astimezone(UTC).astimezone(NEW_YORK).replace(tzinfo=None) == local_naive:
+            candidates.append(aware)
+    offsets = {candidate.utcoffset() for candidate in candidates}
+    if not candidates:
+        raise RuntimeError("lastUpdated is a nonexistent New York local time")
+    if len(offsets) != 1:
+        raise RuntimeError("lastUpdated is an ambiguous New York local time")
+    revision = candidates[0].astimezone(UTC)
     base = datetime.combine(operation_day + timedelta(days=1), time(), UTC)
     return raw, max(base, revision)
 
@@ -484,7 +548,7 @@ def parse_annual_payload(
                 raise RuntimeError("duplicate operation/CUSIP detail")
             seen_details.add(identity)
             numeric = {
-                name: _decimal(detail_raw[source], source)
+                name: _decimal(detail_raw[source], source, optional=True)
                 for name, source in {
                     "par_submitted": "parAmtSubmitted",
                     "par_accepted": "parAmtAccepted",
@@ -494,16 +558,20 @@ def parse_annual_payload(
                     "outstanding_loans": "outstandingLoans",
                 }.items()
             }
-            if any(not isinstance(value, Decimal) for value in numeric.values()):
-                raise RuntimeError("detail decimal unexpectedly absent")
-            if numeric["par_accepted"] > numeric["par_submitted"]:
+            par_submitted = numeric["par_submitted"]
+            par_accepted = numeric["par_accepted"]
+            if (
+                par_submitted is not None
+                and par_accepted is not None
+                and par_accepted > par_submitted
+            ):
                 raise RuntimeError("detail accepted amount exceeds submitted amount")
             weighted_average_rate = _decimal(
                 detail_raw["weightedAverageRate"],
                 "weightedAverageRate",
                 optional=True,
             )
-            if numeric["par_accepted"] > 0 and weighted_average_rate is None:
+            if par_accepted is not None and par_accepted > 0 and weighted_average_rate is None:
                 raise RuntimeError("accepted detail is missing weightedAverageRate")
             detail = Detail(
                 operation_id=operation_id,
@@ -517,11 +585,18 @@ def parse_annual_payload(
                 **numeric,
             )
             operation_details.append(detail)
+        if any(
+            item.par_submitted is None or item.par_accepted is None
+            for item in operation_details
+        ):
+            raise RuntimeError("nullable submitted/accepted detail cannot reconcile")
         submitted_sum = sum(
-            (item.par_submitted for item in operation_details), Decimal(0)
+            (item.par_submitted for item in operation_details if item.par_submitted is not None),
+            Decimal(0),
         )
         accepted_sum = sum(
-            (item.par_accepted for item in operation_details), Decimal(0)
+            (item.par_accepted for item in operation_details if item.par_accepted is not None),
+            Decimal(0),
         )
         if submitted_sum != total_submitted or accepted_sum != total_accepted:
             raise RuntimeError("operation totals do not reconcile to details")
@@ -540,6 +615,8 @@ def build_panels(payloads: Mapping[str, bytes]) -> tuple[list[Operation], list[D
         annual_operations, annual_details = parse_annual_payload(
             payloads[name], expected_year=year
         )
+        if not annual_operations or not annual_details:
+            raise RuntimeError(f"annual NY Fed source is empty: {year}")
         operations.extend(annual_operations)
         details.extend(annual_details)
     operations.sort(key=lambda row: (row.operation_date, row.operation_id))
@@ -671,7 +748,7 @@ def write_outputs(
                 for row in operations
             ),
             "operation_detail_totals_reconciled": True,
-            "unknown_fields_accepted": False,
+            "unknown_fields_rejected": True,
         },
         "research_boundary": {
             "candidate_features_computed": [],
