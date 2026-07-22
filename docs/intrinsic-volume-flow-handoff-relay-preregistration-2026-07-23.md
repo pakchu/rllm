@@ -61,6 +61,12 @@ Before any post-entry price is read, the source-only builder must show:
 - no month above 12%, no quarter above 25%, and no event gap above 90 days;
 - no same-side event run above two.
 
+All support statistics use accepted UTC `entry_time`. The gap is the maximum
+elapsed time between consecutive accepted primary entries, excluding source
+and warmup endpoints. Month/quarter concentration divides accepted entries in
+that UTC period by all accepted primary entries across train plus selection;
+same-side run is chronological after non-overlap scheduling.
+
 Primary gates apply to the chronologically accepted, split-contained,
 non-overlapping primary clock. Windows are entry-time contained and require
 the scheduled exit not to cross the window end. Controls are exact
