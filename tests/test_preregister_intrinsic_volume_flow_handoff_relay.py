@@ -66,6 +66,7 @@ def test_control_domains_and_component_margin_are_frozen() -> None:
     assert support["controls_affect_primary_pass"] is False
     assert "split-contained" in support["gate_domain"]
     assert "cannot rescue or reject" in controls["shared_control_contract"]
+    assert "90-anchor" in controls["shared_control_contract"]
     assert economics["component_control_universe"] == [
         "any_handoff",
         "no_price_lag",
