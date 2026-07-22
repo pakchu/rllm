@@ -1,0 +1,388 @@
+"""Freeze SMCC-144 before rebuilding source incidence or opening outcomes."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+
+DEFAULT_OUTPUT = "results/same_millisecond_cascade_preregistration_2026-07-20.json"
+ARCHIVE_MANIFEST = (
+    "data/binance_um_aggtrade_microstructure_btc_2020_2023/build_manifest.json"
+)
+ARCHIVE_MANIFEST_SHA256 = (
+    "6eec40460a6146c58994e52f1af9ace4eecc0c085887d97af5ef17c30b9f7e73"
+)
+SOURCE_AUDIT = "results/binance_aggtrade_microstructure_audit_2026-07-14.json"
+SOURCE_AUDIT_SHA256 = (
+    "5ac5a342d7f766ea0b6dcf9f97468ab70b9e1194775469ed0245d9208d0dc9c6"
+)
+
+
+@dataclass(frozen=True)
+class Policy:
+    policy_id: str = "SMCC-144"
+    baseline_bars: int = 8_640
+    baseline_min_periods: int = 2_016
+    score_quantile: float = 0.995
+    minimum_bar_agg_trade_count: int = 64
+    minimum_group_agg_trade_count: int = 3
+    minimum_group_coherence: float = 0.80
+    execution_delay_bars: int = 2
+    hold_bars: int = 144
+    post_gap_quarantine_bars: int = 24
+    leverage: float = 0.5
+    base_cost_notional_per_side: float = 0.0006
+    stress_cost_notional_per_side: float = 0.0010
+
+
+def canonical_hash(payload: Any) -> str:
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def build_manifest() -> dict[str, Any]:
+    core: dict[str, Any] = {
+        "protocol_version": "same_millisecond_cascade_continuation_v1",
+        "outcomes_opened": False,
+        "source_incidence_opened": False,
+        "policy": asdict(Policy()),
+        "source_contract": {
+            "source": "official Binance USD-M BTCUSDT daily aggTrades archives",
+            "archive_manifest": ARCHIVE_MANIFEST,
+            "archive_manifest_sha256": ARCHIVE_MANIFEST_SHA256,
+            "source_audit": SOURCE_AUDIT,
+            "source_audit_sha256": SOURCE_AUDIT_SHA256,
+            "builder": "training.build_binance_same_millisecond_cascade",
+            "transform": "preprocessing.same_millisecond_cascade",
+            "range": ["2020-01-01", "2024-01-01"],
+            "end_is_exclusive": True,
+            "raw_archives_persisted": False,
+            "gap_policy": (
+                "quarantine verified source-ID-gap UTC days, missing buckets, "
+                "and the following 24 five-minute bars; never impute"
+            ),
+            "required_source_gap_days": [
+                "2020-04-15",
+                "2021-02-09",
+                "2021-02-24",
+                "2021-05-19",
+                "2022-09-06",
+            ],
+            "zero-volume_empty_bars": (
+                "only timestamps explicitly recorded by the hash-bound audit as "
+                "zero volume and zero trades are complete empty bars"
+            ),
+        },
+        "causal_feature_contract": {
+            "bucket": "completed UTC five-minute bar t",
+            "group": "exact equality of integer aggTrade transact_time",
+            "group_selection": (
+                "maximum group quote notional; earliest millisecond wins exact ties"
+            ),
+            "predecessor": (
+                "last price of the strictly preceding millisecond group inside t; "
+                "first group receives zero sweep and score"
+            ),
+            "coherence": "abs(group signed quote notional) / group quote notional",
+            "side": "sign(group signed quote notional)",
+            "sweep_bp": (
+                "10000 * side * log(group last price / causal predecessor price)"
+            ),
+            "score": "group notional share * coherence * max(sweep_bp, 0)",
+            "eligibility": (
+                "bar aggTrades >=64; selected group events >=3; coherence >=0.80; "
+                "nonzero side; positive sweep; score >= strictly-prior q99.5"
+            ),
+            "baseline": (
+                "prior 8640 clean bars excluding t, minimum 2016 observations"
+            ),
+            "candidate_count": 1,
+            "threshold_or_hold_grid": False,
+        },
+        "execution_contract": {
+            "decision": "after completed bar t and source finality",
+            "entry": "t+2 open after one full empty computation bar",
+            "exit": "scheduled open after 144 held five-minute bars",
+            "direction": "follow selected group side",
+            "nonoverlap": True,
+            "stop_or_take_profit": None,
+            "position_size": "0.5x account gross",
+            "funding": "exact realized BTCUSDT funding under conservative boundaries",
+            "cagr_clock": "full wall-clock split including warmup and idle cash",
+            "strict_mdd": (
+                "global/pre-entry HWM through entry cost, favorable-before-adverse "
+                "held OHLC, funding, virtual adverse exit cost, and actual exit"
+            ),
+        },
+        "support_gates": {
+            "total_2020_2023_min": 150,
+            "total_2020_2023_max": 900,
+            "each_calendar_year_min": 30,
+            "each_2023_half_min": 15,
+            "each_side_share_min": 0.25,
+            "each_side_share_max": 0.75,
+            "maximum_single_month_share": 0.15,
+            "failure_action": "REJECT_NO_REPAIR_WITHOUT_OUTCOMES",
+        },
+        "support_schedule_contract": {
+            "ordering": "chronological eligible decision bars",
+            "nonoverlap": (
+                "accept when entry_position >= prior accepted exit_position; "
+                "entry=t+2 and exit=entry+144"
+            ),
+            "boundary": "entry and exit must both be strictly before 2024-01-01",
+            "annual_attribution": "UTC calendar year and month of entry_time",
+            "half_attribution": "UTC 2023 H1/H2 of entry_time",
+            "future_source_rule": (
+                "source completeness after decision t never cancels an event; "
+                "only t and its strictly-prior baseline must be clean"
+            ),
+        },
+        "novelty_gates": {
+            "comparator_registry": [
+                {
+                    "family": "MFIC",
+                    "path": "results/lvrt_mfic_pure_clocks_2026-07-21.csv.gz",
+                    "sha256": "d7d889bd2c8137682e244d399a42f14e2c04c48e88a336e07d05e48ddb0605bd",
+                    "members": ["mfic:mfic_fast", "mfic:mfic_slow"],
+                    "member_column": "candidate_id",
+                    "entry_column": "entry_time",
+                    "coverage": ["2020-01-01", "2024-01-01"],
+                },
+                {
+                    "family": "AFCS",
+                    "path": "results/aggregate_fill_compression_sweep_clock_2026-07-17.csv",
+                    "sha256": "bf1611554604c1930ba2212e674ea434f7c9793377b3f33ef531b3b4e0381688",
+                    "members": ["AFCS-144"],
+                    "member_column": None,
+                    "entry_column": "entry_date",
+                    "coverage": ["2020-01-01", "2024-01-01"],
+                },
+                {
+                    "family": "TAAR",
+                    "path": "data/tail_arrival_support_clocks_2020_2022.csv.gz",
+                    "sha256": "b3ff6f36f7d59a18c32cd18100352661f34879f7987973ca0906345aac164582",
+                    "members": ["T01", "T02", "T03", "T04"],
+                    "member_column": "policy_id",
+                    "entry_column": None,
+                    "derived_entry": "signal_date + 2 completed five-minute bars",
+                    "coverage": ["2020-01-01", "2023-01-01"],
+                },
+                {
+                    "family": "RIFT",
+                    "path": "results/refill_inference_flow_topology_clock_2026-07-14.csv",
+                    "sha256": "83becb88da83ce55e235f10c2e91ed3a2ad478c6aea2e9298d37c43b36cfff00",
+                    "members": ["rift96"],
+                    "member_column": "branch",
+                    "entry_column": "entry_date",
+                    "coverage": ["2020-01-01", "2024-01-01"],
+                },
+                {
+                    "family": "PCP",
+                    "path": "results/packet_churn_persistence_clock_2026-07-19.csv",
+                    "sha256": "e50be3f0744617e3797581ea762546e7f21c32dd0707b9bdcbd264686d4f9acb",
+                    "members": ["PCP-6"],
+                    "member_column": None,
+                    "entry_column": "entry_date",
+                    "coverage": ["2020-01-01", "2024-01-01"],
+                },
+            ],
+            "exact_entry_jaccard_max": 0.05,
+            "tolerant_window_five_minute_bars": 12,
+            "tolerant_one_to_one_jaccard_max": 0.15,
+            "primary_containment_max": 0.30,
+            "matching_algorithm": (
+                "within each member coverage, sort unique UTC entries; visit primary "
+                "entries chronologically and match the unused comparator entry with "
+                "minimum absolute distance, breaking ties toward the earlier comparator; "
+                "exact uses zero distance and tolerant uses <=12 five-minute bars"
+            ),
+            "jaccard_formula": "matches / (primary_count + comparator_count - matches)",
+            "containment_formula": "matches / primary_count",
+            "dense_bafr": {
+                "path": "results/binance_aggressor_frustration_clock_2026-07-20.csv",
+                "sha256": "f3b816a76decce31136ed23d22f043eb8e80ef1b8697b869241b060062f01747",
+                "entry_column": "entry_date",
+                "coverage": ["2020-01-01", "2024-01-01"],
+                "report_only": ["exact_entry_jaccard", "primary_containment"],
+            },
+            "explicit_exclusions": {
+                "LVRT": "only one confirmed event and no canonical standalone clock",
+                "MINUTE_PACKET_TOPOLOGY": "support artifact has no canonical event clock",
+                "NETF": "no canonical clock artifact exists; RIFT is the frozen topology comparator",
+            },
+            "missing_or_malformed_comparator": "fail_closed",
+        },
+        "support_artifact_contract": {
+            "json": "results/same_millisecond_cascade_support_2026-07-20.json",
+            "clock": "data/same_millisecond_cascade_clock_2020_2023.csv.gz",
+            "clock_columns": [
+                "decision_time",
+                "entry_time",
+                "exit_time",
+                "side",
+                "score",
+                "threshold",
+            ],
+            "required_json_fields": [
+                "preregistration_hash",
+                "source_sha256",
+                "source_manifest_sha256",
+                "outcomes_opened",
+                "source_counts",
+                "support_gates",
+                "novelty",
+                "decision",
+                "clock_sha256",
+            ],
+            "outcomes_opened": False,
+            "write_once": True,
+            "deterministic_gzip_mtime": 0,
+            "decision_values": ["PASS_SUPPORT", "REJECT_NO_REPAIR"],
+        },
+        "later_economic_protocol": {
+            "sequential_stages": [
+                ["train", "2020-01-01", "2023-01-01"],
+                ["selection", "2023-01-01", "2024-01-01"],
+                ["test", "2024-01-01", "2025-01-01"],
+                ["eval", "2025-01-01", "2026-01-01"],
+                ["recent_report", "2026-01-01", None],
+            ],
+            "base_absolute_return_positive": True,
+            "cagr_to_strict_mdd_min": 3.0,
+            "strict_mdd_pct_max": 15.0,
+            "stress_absolute_return_positive": True,
+            "stress_cagr_to_strict_mdd_min": 2.5,
+            "mean_gross_underlying_bp_min": 24.0,
+            "weekly_cluster_signflip_p_max": 0.10,
+            "train_each_year_positive": True,
+            "selection_each_half_positive": True,
+            "control_ratio_margin_min": 0.25,
+            "stop_on_first_failure": True,
+        },
+        "falsification_controls": {
+            "exact_side_flip": "primary entry/exit clock with side multiplied by -1",
+            "five_minute_return_tail_continuation": (
+                "own q99.5 prior-only clock of abs(log(last_price/first_price)); "
+                "side=sign(log return); same clean history, delay, hold, nonoverlap"
+            ),
+            "bar_notional_tail_continuation": (
+                "bar_score=(quote_notional/prior-8640 median quote_notional) * "
+                "max(10000*sign(signed_quote_notional)*log(last_price/first_price),0); "
+                "own prior-only q99.5 clock, side=sign(signed_quote_notional), same scheduler"
+            ),
+            "interarrival_hhi_proxy_continuation": (
+                "proxy_score=event_notional_hhi*max(interarrival_burstiness,0)*"
+                "max(10000*signed_price_response,0); own prior-only q99.5 clock, "
+                "side=sign(signed_quote_notional), same scheduler"
+            ),
+            "stale_one_hour": "primary signal, side, entry, and exit shifted +12 bars",
+            "stale_twenty_four_hours": "primary signal, side, entry, and exit shifted +288 bars",
+            "remove_coherence": (
+                "selected maximum-notional ms group; score=share*max(sweep_bp,0); "
+                "no coherence gate; own prior-only q99.5 clock"
+            ),
+            "remove_positive_sweep": (
+                "selected maximum-notional ms group; score=share*coherence; "
+                "no sweep sign gate; own prior-only q99.5 clock"
+            ),
+            "remove_collision_count": (
+                "primary score and gates except selected-group event count may be one; "
+                "own prior-only q99.5 clock"
+            ),
+            "qualification_rule": (
+                "every direct control uses identical costs/accounting/stage gates; "
+                "an independently qualifying direct control rejects the mechanism"
+            ),
+        },
+        "claim_boundary": {
+            "claim": (
+                "a rare coherent exact-millisecond displacement may continue as "
+                "slower inventory and risk processes react"
+            ),
+            "not_claimed": [
+                "one parent order",
+                "a liquidation",
+                "participant identity",
+                "exchange-independent timestamp semantics",
+            ],
+        },
+        "rejection_contract": (
+            "any source, support, novelty, train, or sequential-stage failure "
+            "retires SMCC-144 without changing its sign, quantile, collision floor, "
+            "coherence, delay, hold, costs, or gates"
+        ),
+    }
+    return {
+        **core,
+        "manifest_hash": canonical_hash(core),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def validate_manifest(payload: dict[str, Any]) -> None:
+    core = {
+        key: value
+        for key, value in payload.items()
+        if key not in {"manifest_hash", "created_at"}
+    }
+    if canonical_hash(core) != payload.get("manifest_hash"):
+        raise RuntimeError("SMCC-144 preregistration hash mismatch")
+    if payload.get("outcomes_opened") is not False:
+        raise RuntimeError("SMCC-144 preregistration cannot open outcomes")
+    if payload.get("source_incidence_opened") is not False:
+        raise RuntimeError("SMCC-144 preregistration must precede source incidence")
+    if payload.get("policy") != asdict(Policy()):
+        raise RuntimeError("SMCC-144 frozen policy differs from code")
+    if payload.get("causal_feature_contract", {}).get("candidate_count") != 1:
+        raise RuntimeError("SMCC-144 must remain a singleton policy")
+
+
+def write_manifest_once(path: str | Path, payload: dict[str, Any]) -> str:
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if output.exists():
+        existing = json.loads(output.read_text(encoding="utf-8"))
+        validate_manifest(existing)
+        if existing["manifest_hash"] != payload["manifest_hash"]:
+            raise RuntimeError("refusing to overwrite frozen SMCC-144 preregistration")
+        return "verified_existing"
+    with output.open("x", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
+    return "created"
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", default=DEFAULT_OUTPUT)
+    args = parser.parse_args()
+    payload = build_manifest()
+    status = write_manifest_once(args.output, payload)
+    print(
+        json.dumps(
+            {
+                "status": status,
+                "outcomes_opened": False,
+                "source_incidence_opened": False,
+                "policy_id": payload["policy"]["policy_id"],
+                "manifest_hash": payload["manifest_hash"],
+                "output": args.output,
+            },
+            indent=2,
+        )
+    )
+
+
+if __name__ == "__main__":
+    main()
