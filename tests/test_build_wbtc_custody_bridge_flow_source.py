@@ -162,6 +162,7 @@ def _config(tmp_path: Path) -> builder.Config:
         manifest_output=str(tmp_path / "manifest.json"),
         primary_rpc_url="https://primary.invalid",
         verification_rpc_url="https://verification.invalid",
+        checkpoint_db=str(tmp_path / "checkpoint.sqlite3"),
         max_block_range=protocol.MAX_BLOCK_RANGE,
         header_batch_size=8,
         receipt_batch_size=4,
@@ -340,6 +341,46 @@ def test_independent_rpc_host_is_required() -> None:
     )
     with pytest.raises(ValueError, match="independent hostname"):
         builder._transport_hosts(cfg)
+
+
+def test_log_checkpoint_resumes_completed_ranges(tmp_path: Path) -> None:
+    class CountingRpc(FakeRpc):
+        def __init__(self, logs: Sequence[dict[str, Any]]) -> None:
+            super().__init__(logs)
+            self.log_calls = 0
+
+        def call(self, method: str, params: list[Any]) -> Any:
+            if method == "eth_getLogs":
+                self.log_calls += 1
+            return super().call(method, params)
+
+    rpc = CountingRpc(_logs()[:2])
+    checkpoint_path = tmp_path / "checkpoint.sqlite3"
+    checkpoint = builder.LogCheckpoint(checkpoint_path)
+    first = builder.fetch_semantic_logs(
+        rpc,
+        protocol.START_BOUNDARY_BLOCK,
+        protocol.START_BOUNDARY_BLOCK + 20_000,
+        max_block_range=10_000,
+        checkpoint=checkpoint,
+        checkpoint_role="primary:test",
+    )
+    first_call_count = rpc.log_calls
+    checkpoint.close()
+
+    checkpoint = builder.LogCheckpoint(checkpoint_path)
+    second = builder.fetch_semantic_logs(
+        rpc,
+        protocol.START_BOUNDARY_BLOCK,
+        protocol.START_BOUNDARY_BLOCK + 20_000,
+        max_block_range=10_000,
+        checkpoint=checkpoint,
+        checkpoint_role="primary:test",
+    )
+    checkpoint.close()
+    assert first == second
+    assert first_call_count == 3
+    assert rpc.log_calls == first_call_count
 
 
 def test_protocol_and_helper_bindings_are_current() -> None:

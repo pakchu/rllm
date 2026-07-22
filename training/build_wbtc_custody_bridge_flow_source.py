@@ -15,6 +15,7 @@ import io
 import json
 import os
 import shutil
+import sqlite3
 import sys
 import urllib.parse
 from collections import Counter
@@ -49,6 +50,7 @@ DEFAULT_OUTPUT_CSV = (
 DEFAULT_MANIFEST_OUTPUT = (
     "results/wbtc_custody_bridge_flow_source_manifest_2026-07-23.json"
 )
+DEFAULT_CHECKPOINT_DB = "data/.cache/wcbf_source_backfill.sqlite3"
 
 OUTPUT_COLUMNS = (
     "asset",
@@ -79,6 +81,7 @@ class Config:
     verification_rpc_url: str = ""
     header_rpc_url: str = ""
     receipt_rpc_url: str = ""
+    checkpoint_db: str = DEFAULT_CHECKPOINT_DB
     max_block_range: int = protocol.MAX_BLOCK_RANGE
     header_batch_size: int = protocol.HEADER_BATCH_SIZE
     receipt_batch_size: int = protocol.RECEIPT_BATCH_SIZE
@@ -125,6 +128,99 @@ def _progress(message: str) -> None:
     print(f"[wcbf-source] {message}", file=sys.stderr, flush=True)
 
 
+class LogCheckpoint:
+    """Small protocol-bound cache for completed eth_getLogs block ranges."""
+
+    def __init__(self, path: str | Path) -> None:
+        candidate = _repo_path(path)
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        if candidate.is_symlink():
+            raise RuntimeError("WCBF checkpoint path may not be a symlink")
+        self.path = candidate
+        self.connection = sqlite3.connect(candidate)
+        self.connection.execute("PRAGMA journal_mode=WAL")
+        self.connection.execute("PRAGMA synchronous=FULL")
+        self.connection.execute(
+            "CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+        )
+        self.connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS log_chunks (
+                role TEXT NOT NULL,
+                first_block INTEGER NOT NULL,
+                last_block INTEGER NOT NULL,
+                payload_json TEXT NOT NULL,
+                PRIMARY KEY (role, first_block, last_block)
+            )
+            """
+        )
+        identity = ethereum._canonical_hash(
+            {
+                "protocol_sha256": PROTOCOL_SHA256,
+                "protocol_manifest_hash": PROTOCOL_MANIFEST_HASH,
+                "chain_id": protocol.CHAIN_ID,
+                "contract": protocol.WBTC_ADDRESS,
+                "topics": [spec.topic for spec in protocol.EVENT_SPECS],
+                "start_block": protocol.START_BOUNDARY_BLOCK,
+                "last_source_block": protocol.LAST_SOURCE_BLOCK,
+            }
+        )
+        existing = self.connection.execute(
+            "SELECT value FROM metadata WHERE key = 'source_identity'"
+        ).fetchone()
+        if existing is not None and existing[0] != identity:
+            self.connection.close()
+            raise RuntimeError("WCBF checkpoint belongs to a different source protocol")
+        self.connection.execute(
+            "INSERT OR IGNORE INTO metadata(key, value) VALUES('source_identity', ?)",
+            (identity,),
+        )
+        self.connection.commit()
+
+    def get(self, role: str, first_block: int, last_block: int) -> list[dict[str, Any]] | None:
+        found = self.connection.execute(
+            """
+            SELECT payload_json FROM log_chunks
+            WHERE role = ? AND first_block = ? AND last_block = ?
+            """,
+            (role, first_block, last_block),
+        ).fetchone()
+        if found is None:
+            return None
+        payload = json.loads(found[0])
+        if not isinstance(payload, list) or any(not isinstance(row, dict) for row in payload):
+            raise RuntimeError("WCBF checkpoint log chunk is malformed")
+        return payload
+
+    def put(
+        self,
+        role: str,
+        first_block: int,
+        last_block: int,
+        rows: Sequence[dict[str, Any]],
+    ) -> None:
+        payload = json.dumps(
+            list(rows),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        )
+        with self.connection:
+            self.connection.execute(
+                """
+                INSERT INTO log_chunks(role, first_block, last_block, payload_json)
+                VALUES(?, ?, ?, ?)
+                ON CONFLICT(role, first_block, last_block)
+                DO UPDATE SET payload_json = excluded.payload_json
+                """,
+                (role, first_block, last_block, payload),
+            )
+
+    def close(self) -> None:
+        self.connection.close()
+
+
 def _event_specs_by_topic() -> dict[str, protocol.EventSpec]:
     return {spec.topic: spec for spec in protocol.EVENT_SPECS}
 
@@ -135,6 +231,8 @@ def fetch_semantic_logs(
     end_block: int,
     *,
     max_block_range: int,
+    checkpoint: LogCheckpoint | None = None,
+    checkpoint_role: str = "",
 ) -> list[dict[str, Any]]:
     if start_block > end_block:
         return []
@@ -144,17 +242,27 @@ def fetch_semantic_logs(
     topics = [spec.topic for spec in protocol.EVENT_SPECS]
     for first in range(start_block, end_block + 1, max_block_range):
         last = min(first + max_block_range - 1, end_block)
-        result = rpc.call(
-            "eth_getLogs",
-            [
-                {
-                    "fromBlock": hex(first),
-                    "toBlock": hex(last),
-                    "address": protocol.WBTC_ADDRESS,
-                    "topics": [topics],
-                }
-            ],
+        result = (
+            checkpoint.get(checkpoint_role, first, last)
+            if checkpoint is not None
+            else None
         )
+        if result is None:
+            result = rpc.call(
+                "eth_getLogs",
+                [
+                    {
+                        "fromBlock": hex(first),
+                        "toBlock": hex(last),
+                        "address": protocol.WBTC_ADDRESS,
+                        "topics": [topics],
+                    }
+                ],
+            )
+            if checkpoint is not None:
+                if not isinstance(result, list):
+                    raise RuntimeError("WCBF eth_getLogs result is not a list")
+                checkpoint.put(checkpoint_role, first, last, result)
         if not isinstance(result, list):
             raise RuntimeError("WCBF eth_getLogs result is not a list")
         for raw in result:
@@ -273,7 +381,11 @@ def _boundary_code_audit(rpc: ethereum.Rpc) -> dict[str, Any]:
 
 
 def collect_log_source(
-    rpc: ethereum.Rpc, cfg: Config
+    rpc: ethereum.Rpc,
+    cfg: Config,
+    *,
+    checkpoint: LogCheckpoint | None = None,
+    checkpoint_role: str = "",
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     chain_id = ethereum._quantity(rpc.call("eth_chainId", []), "chain id")
     if chain_id != protocol.CHAIN_ID:
@@ -298,6 +410,8 @@ def collect_log_source(
         protocol.START_BOUNDARY_BLOCK,
         protocol.LAST_SOURCE_BLOCK,
         max_block_range=cfg.max_block_range,
+        checkpoint=checkpoint,
+        checkpoint_role=checkpoint_role,
     )
     rows = normalize_semantic_logs(
         raw,
@@ -600,14 +714,29 @@ def build_outputs(
         cfg.receipt_rpc_url or cfg.verification_rpc_url, cfg
     )
 
-    _progress("primary semantic-log replay started")
-    primary_rows, primary_audit = collect_log_source(primary_rpc, cfg)
-    _progress(f"primary replay complete: {len(primary_rows)} semantic events")
-    _progress("independent verification replay started")
-    verification_rows, verification_audit = collect_log_source(verification_rpc, cfg)
-    _progress(
-        f"verification replay complete: {len(verification_rows)} semantic events"
-    )
+    checkpoint = LogCheckpoint(cfg.checkpoint_db) if cfg.checkpoint_db else None
+    try:
+        _progress("primary semantic-log replay started")
+        primary_rows, primary_audit = collect_log_source(
+            primary_rpc,
+            cfg,
+            checkpoint=checkpoint,
+            checkpoint_role=f"primary:{hosts['primary']}",
+        )
+        _progress(f"primary replay complete: {len(primary_rows)} semantic events")
+        _progress("independent verification replay started")
+        verification_rows, verification_audit = collect_log_source(
+            verification_rpc,
+            cfg,
+            checkpoint=checkpoint,
+            checkpoint_role=f"verification:{hosts['verification']}",
+        )
+        _progress(
+            f"verification replay complete: {len(verification_rows)} semantic events"
+        )
+    finally:
+        if checkpoint is not None:
+            checkpoint.close()
     if primary_audit != verification_audit or primary_rows != verification_rows:
         raise RuntimeError("independent WCBF Ethereum log replays disagree")
     _progress("transaction-receipt pair audit started")
@@ -749,6 +878,7 @@ def parse_args() -> Config:
         "--receipt-rpc-url",
         default=os.environ.get("ETHEREUM_RECEIPT_RPC_URL", ""),
     )
+    parser.add_argument("--checkpoint-db", default=Config.checkpoint_db)
     parser.add_argument("--max-block-range", type=int, default=Config.max_block_range)
     parser.add_argument(
         "--header-batch-size", type=int, default=Config.header_batch_size
