@@ -1,0 +1,169 @@
+{
+  "protocol_version": "texas_metar_thermal_relay_source_v1",
+  "source_id": "TMTR",
+  "outcomes_opened": false,
+  "market_clocks_opened": false,
+  "historical_source_incidence_opened": false,
+  "thermal_parser_opened": false,
+  "source_only_probe_opened": true,
+  "source_only_probe": {
+    "archive_label": "2023-01-01T00:00:00Z",
+    "url": "https://madis-data.ncep.noaa.gov/madisPublic/data/archive/2023/01/01/point/metar/netcdf/20230101_0000.gz",
+    "compressed_bytes": 1219946,
+    "compressed_sha256": "01b595a18291d75d94851c0ed2de2ae1725f8fadd7d10aaffaa27e9ea5528ffb",
+    "decompressed_bytes": 12263204,
+    "decompressed_sha256": "ec97587646a1a2492143cbc22a2d891640af1cfd2905630cb9b4f48f2f6bb8c1",
+    "netcdf_record_count": 8243,
+    "target_station_rows": 4,
+    "target_stations": [
+      "KMAF",
+      "KABI",
+      "KLBB",
+      "KACT"
+    ],
+    "target_receipt_time": "2022-12-31T23:58:00Z",
+    "full_interval_incidence_counted": false,
+    "thermal_values_parsed": false,
+    "market_or_outcomes_opened": false
+  },
+  "decision_binding": {
+    "path": "docs/texas-metar-thermal-relay-source-axis-decision-2026-07-22.md",
+    "sha256": "ae95b6211ad701e638984e1739b23fd8b08d2a3da01a29b572dc15820d6acb5d"
+  },
+  "implementation_binding": {
+    "path": "training/preregister_texas_metar_thermal_relay.py",
+    "sha256": "2ac87bae550436c7d8321f1960351bd7261040bbb432a2e38cf7c44269c68eb7"
+  },
+  "source_contract": {
+    "authority": {
+      "operator": "NOAA/NWS NCEP MADIS",
+      "archive_base": "https://madis-data.ncep.noaa.gov/madisPublic/data/archive",
+      "dataset_path": "point/metar/netcdf",
+      "transport": "public HTTPS gzip-compressed classic netCDF",
+      "historical_documentation": "https://madis.ncep.noaa.gov/faq_historicaldata.shtml"
+    },
+    "archive_interval": {
+      "start_inclusive": "2020-01-01T00:00:00Z",
+      "end_exclusive": "2024-01-01T00:00:00Z",
+      "hours_utc": [
+        0,
+        6,
+        12,
+        18
+      ],
+      "expected_objects": 5844
+    },
+    "station_panel": [
+      {
+        "station": "KMAF",
+        "name": "Midland International",
+        "role": "west"
+      },
+      {
+        "station": "KABI",
+        "name": "Abilene Regional",
+        "role": "west-central"
+      },
+      {
+        "station": "KLBB",
+        "name": "Lubbock Preston Smith",
+        "role": "northwest"
+      },
+      {
+        "station": "KACT",
+        "name": "Waco Regional",
+        "role": "central"
+      }
+    ],
+    "membership": {
+      "report_type": "METAR",
+      "correction_field": "empty",
+      "raw_metar_fullmatch": "\\A(?:METAR )?(?P<station>KMAF|KABI|KLBB|KACT) (?P<day>0[1-9]|[12][0-9]|3[01])(?P<hour>[01][0-9]|2[0-3])(?P<minute>[0-5][0-9])Z(?: [!-~]+)+\\Z",
+      "observation_window": "(archive_label - 75 minutes, archive_label]",
+      "receipt_window": "[timeObs, archive_label + 15 minutes]",
+      "maximum_observation_to_receipt_minutes": 30,
+      "exact_duplicate_rows": "deduplicate before cardinality check",
+      "conflicting_or_multiple_rows_per_station_object": "fatal"
+    },
+    "retained_fields": [
+      "archive label and official URL",
+      "compressed object SHA-256 and byte count",
+      "stationName",
+      "timeObs",
+      "timeReceived",
+      "reportType",
+      "correction",
+      "rawMETAR",
+      "canonical row identity SHA-256"
+    ],
+    "forbidden_fields": [
+      "decoded MADIS meteorological variables or QC summaries",
+      "latitude/longitude/elevation",
+      "GHCNh, ISD CSV, forecast, or unofficial mirror fallback",
+      "BTC bars/returns/funding/PnL",
+      "prior alpha clocks or portfolio outcomes"
+    ]
+  },
+  "availability_contract": {
+    "causal_field": "timeReceived",
+    "archive_label_is_availability": false,
+    "http_last_modified_is_availability": false,
+    "later_signal_floor": "max retained timeReceived plus frozen execution delay",
+    "negative_or_over_30_minute_receipt_delay": "exclude and count as audit failure"
+  },
+  "source_quality_gates": {
+    "transport": {
+      "minimum_object_fraction_each_year": 0.995,
+      "minimum_object_fraction_each_month": 0.98,
+      "gzip_crc_required": true,
+      "classic_netcdf_magic_required": true,
+      "compressed_sha256_fraction": 1.0,
+      "two_in_memory_parse_passes_required": true,
+      "exact_cross_pass_equality_required": true
+    },
+    "panel": {
+      "minimum_station_fraction_each_year": 0.95,
+      "minimum_all_four_fraction_each_year": 0.9,
+      "minimum_all_four_fraction_each_month": 0.85,
+      "maximum_consecutive_missing_all_four_anchors": 4,
+      "retained_raw_syntax_fraction": 1.0,
+      "retained_temporal_envelope_fraction": 1.0,
+      "conflicting_target_reports_allowed": 0,
+      "imputation_or_forward_fill_allowed": false
+    },
+    "failure_effect": "REJECT_NO_REPAIR"
+  },
+  "disk_contract": {
+    "abort_before_download_when_used_gib_at_least": 300,
+    "stream_one_object_then_delete": true,
+    "maximum_concurrent_objects": 8,
+    "deterministic_output_gzip_mtime": 0
+  },
+  "later_mechanism_boundary": {
+    "authorized_now": false,
+    "eligible_input": "rawMETAR only",
+    "must_freeze_before_market": [
+      "exact weather-token parser",
+      "thermal state algebra",
+      "event clock and direction",
+      "hold, execution delay, leverage, and support controls",
+      "clock novelty comparators"
+    ],
+    "llm_or_rllm_may_not": [
+      "create, delete, retime, or relabel source reports",
+      "repair missing stations",
+      "select direction or threshold from eval outcomes"
+    ]
+  },
+  "next_stage_artifacts": {
+    "archive_labels_first": "2020-01-01T00:00:00Z",
+    "archive_labels_last": "2023-12-31T18:00:00Z",
+    "source_rows": "data/texas_metar_thermal_relay_2020_2023.jsonl.gz",
+    "object_manifest": "results/texas_metar_thermal_relay_object_manifest_2026-07-22.json.gz",
+    "source_manifest": "results/texas_metar_thermal_relay_source_manifest_2026-07-22.json",
+    "source_support_result": "results/texas_metar_thermal_relay_source_support_2026-07-22.json",
+    "write_once": true
+  },
+  "rejection_contract": "any transport, gzip, netCDF, schema, object-coverage, station-coverage, receipt-time, raw-identity, duplicate, conflict, replay, disk, or source-support failure retires TMTR without changing stations, archive hours, interval, accepted fields, or thresholds",
+  "manifest_hash": "e53c8de3424d0e804645622ae4e526f0c3a217b85576d5534cd2a9a77f9e884d"
+}
