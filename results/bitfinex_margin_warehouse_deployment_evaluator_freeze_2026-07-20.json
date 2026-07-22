@@ -1,0 +1,398 @@
+{
+  "as_of_date": "2026-07-20",
+  "candidate_family": "BFMWD-144",
+  "control_order": [
+    "primary",
+    "direction_flip",
+    "fUSD_only",
+    "fBTC_only",
+    "deterministic_random_side",
+    "extra_latency_one_bar"
+  ],
+  "economic_gates": {
+    "base_cost_bp_per_side": 6.0,
+    "block_length_days": 7,
+    "draws": 100000,
+    "full_calendar_cagr": true,
+    "maximum_strict_mdd": 0.15,
+    "minimum_cagr_to_strict_mdd": 3.0,
+    "minimum_mean_gross_side_adjusted_bp": 30.0,
+    "minimum_stress_cagr_to_strict_mdd": 2.5,
+    "multiple_testing": "Romano-Wolf one-sided step-down max-t",
+    "require_each_calendar_half_positive": true,
+    "require_each_side_contribution_positive": true,
+    "require_one_bar_delay_positive": true,
+    "require_positive_absolute_return": true,
+    "seed": 20260720,
+    "stress_cost_bp_per_side": 10.0,
+    "strict_path_mdd": true,
+    "weekly_cluster_pvalue_maximum": 0.1
+  },
+  "evaluation_config": {
+    "base_cost_notional_per_side": 0.0006,
+    "bootstrap_batch_draws": 2000,
+    "hold_bars": 144,
+    "leverage": 0.5,
+    "romano_wolf_block_days": 7,
+    "romano_wolf_draws": 100000,
+    "romano_wolf_seed": 20260720,
+    "stress_cost_notional_per_side": 0.001
+  },
+  "evaluator_source": "training/evaluate_bitfinex_margin_warehouse_deployment.py",
+  "evaluator_source_sha256": "4ef73db88d45c903aa26bff7e8676f3d8eae393922b6bdf1b02938657984ebf0",
+  "execution_ohlc_rows_parsed_during_freeze": 0,
+  "execution_outcome_data_bytes_hashed_during_freeze": false,
+  "execution_source_specs": {
+    "selection": {
+      "exit_boundary_required": false,
+      "full_parent_compressed_bytes_hashed": true,
+      "parent_digest_deferred_until_selection": false,
+      "physical_rows_limited_to_window": true,
+      "physical_window": [
+        "2023-01-01T00:00:00+00:00",
+        "2024-01-01T00:00:00+00:00"
+      ],
+      "required_manifest": "results/bitfinex_margin_warehouse_deployment_selection_execution_source_2026-07-20.json",
+      "required_protocol_version": "bitfinex_margin_warehouse_execution_source_v1",
+      "stage": "selection",
+      "strategy_outcomes_calculated": false
+    },
+    "train": {
+      "exit_boundary_required": false,
+      "full_parent_compressed_bytes_hashed": false,
+      "parent_digest_deferred_until_selection": true,
+      "physical_rows_limited_to_window": true,
+      "physical_window": [
+        "2021-01-01T00:00:00+00:00",
+        "2023-01-01T00:00:00+00:00"
+      ],
+      "required_manifest": "results/bitfinex_margin_warehouse_deployment_train_execution_source_2026-07-20.json",
+      "required_protocol_version": "bitfinex_margin_warehouse_execution_source_v1",
+      "stage": "train",
+      "strategy_outcomes_calculated": false
+    }
+  },
+  "family_ids": [
+    "bfmwd_w12_d3_z10_h12",
+    "bfmwd_w24_d3_z10_h12",
+    "bfmwd_w12_d6_z10_h12",
+    "bfmwd_w24_d6_z10_h12"
+  ],
+  "funding_rows_parsed_during_freeze": 0,
+  "half_windows": {
+    "selection": {
+      "2023_h1": [
+        "2023-01-01T00:00:00+00:00",
+        "2023-07-01T00:00:00+00:00"
+      ],
+      "2023_h2": [
+        "2023-07-01T00:00:00+00:00",
+        "2024-01-01T00:00:00+00:00"
+      ]
+    },
+    "train": {
+      "2021_h1": [
+        "2021-01-01T00:00:00+00:00",
+        "2021-07-01T00:00:00+00:00"
+      ],
+      "2021_h2": [
+        "2021-07-01T00:00:00+00:00",
+        "2022-01-01T00:00:00+00:00"
+      ],
+      "2022_h1": [
+        "2022-01-01T00:00:00+00:00",
+        "2022-07-01T00:00:00+00:00"
+      ],
+      "2022_h2": [
+        "2022-07-01T00:00:00+00:00",
+        "2023-01-01T00:00:00+00:00"
+      ]
+    }
+  },
+  "legacy_container_contract": {
+    "eligible_stages": [
+      "train",
+      "selection"
+    ],
+    "funding": {
+      "manifest": "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json",
+      "manifest_sha256": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
+      "path": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+      "sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+    },
+    "market": {
+      "manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+      "manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+      "path": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+      "sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d"
+    }
+  },
+  "manifest_hash": "2b925e43427d80f41e085d391fdccc4d6f464db9a77bd4d8de9ed955d3122598",
+  "mutable_parameters": [],
+  "opened_windows": [],
+  "post_2023_access_supported": false,
+  "preregistration_manifest_hash": "9b5d78e506393340c912e6d0fc965a9f2e129594c242d6072fb92c7ed84fb81d",
+  "protocol_document": "docs/bitfinex-margin-warehouse-deployment-economic-protocol-2026-07-20.md",
+  "protocol_document_sha256": "7aafcaf5a405b504f9f0e83c6a890fa2f3b21956fd5194d8673c5eecd01e88b3",
+  "protocol_version": "bitfinex_margin_warehouse_deployment_evaluator_v1",
+  "romano_wolf": {
+    "block_days": 7,
+    "draws": 100000,
+    "family": [
+      "bfmwd_w12_d3_z10_h12",
+      "bfmwd_w24_d3_z10_h12",
+      "bfmwd_w12_d6_z10_h12",
+      "bfmwd_w24_d6_z10_h12"
+    ],
+    "method": "one-sided step-down max-t circular block bootstrap",
+    "realized_return_clock": "UTC exit calendar day; idle days are zero",
+    "seed": 20260720,
+    "synchronized_indices": true
+  },
+  "schedule_records": {
+    "bfmwd_w12_d3_z10_h12": {
+      "deterministic_random_side": {
+        "events": 238,
+        "schedule_hash": "0a93824f16a22a303f2be30d5338053c6d7466013f4a5bb1d753de90f7e028ae",
+        "stage_counts": {
+          "selection": 61,
+          "train": 177
+        }
+      },
+      "direction_flip": {
+        "events": 238,
+        "schedule_hash": "25bf05ec069ae89f2d9e18c81b282496a78785c77de3eaaf3d69d3a0164f2337",
+        "stage_counts": {
+          "selection": 61,
+          "train": 177
+        }
+      },
+      "extra_latency_one_bar": {
+        "events": 238,
+        "schedule_hash": "63f3bafb07ab9315e2127c6d5e9d5460bdf958d40089316a7cadd3e79efaa121",
+        "stage_counts": {
+          "selection": 61,
+          "train": 177
+        }
+      },
+      "fBTC_only": {
+        "events": 108,
+        "schedule_hash": "51c3ace328330db4ea4d6b9a569cf99c0d44a733d9e31d263ece35a52bb3492f",
+        "stage_counts": {
+          "selection": 28,
+          "train": 80
+        }
+      },
+      "fUSD_only": {
+        "events": 130,
+        "schedule_hash": "8abc7e26c93d8c0e7579c9a70292ec5fca5cfb4300cf4696f88c54d4dc78e5c4",
+        "stage_counts": {
+          "selection": 33,
+          "train": 97
+        }
+      },
+      "primary": {
+        "events": 238,
+        "schedule_hash": "154b2376991a2aa54aa0adc7191804504a98acc070a405aa157b5686e19ac599",
+        "stage_counts": {
+          "selection": 61,
+          "train": 177
+        }
+      }
+    },
+    "bfmwd_w12_d6_z10_h12": {
+      "deterministic_random_side": {
+        "events": 214,
+        "schedule_hash": "2f6e9a0160661f8daebaa6dac4502fc22f870e3804f7e72c19df0f2988f41caf",
+        "stage_counts": {
+          "selection": 62,
+          "train": 152
+        }
+      },
+      "direction_flip": {
+        "events": 214,
+        "schedule_hash": "9df7fff227d4333ec58431c2a655877b0af11230373d015967b88efe9aebc2f8",
+        "stage_counts": {
+          "selection": 62,
+          "train": 152
+        }
+      },
+      "extra_latency_one_bar": {
+        "events": 214,
+        "schedule_hash": "49350060ab1be9b76a5c8fead564bd4e7c9ee67977c80ffa49de51394a433d64",
+        "stage_counts": {
+          "selection": 62,
+          "train": 152
+        }
+      },
+      "fBTC_only": {
+        "events": 101,
+        "schedule_hash": "ba4a46c48dc0a73305148a5594dee4ea8718ab1277e2a15f8b5fc996d6808c4d",
+        "stage_counts": {
+          "selection": 30,
+          "train": 71
+        }
+      },
+      "fUSD_only": {
+        "events": 113,
+        "schedule_hash": "f46ceada117952a45a2506aec893d296b55418bc53bb741b086524b6c7f05109",
+        "stage_counts": {
+          "selection": 32,
+          "train": 81
+        }
+      },
+      "primary": {
+        "events": 214,
+        "schedule_hash": "e3e6ea006791720a603f9c57c0b73d50cac74ad705b1e5a8c5ae2fa032e43b0e",
+        "stage_counts": {
+          "selection": 62,
+          "train": 152
+        }
+      }
+    },
+    "bfmwd_w24_d3_z10_h12": {
+      "deterministic_random_side": {
+        "events": 218,
+        "schedule_hash": "f8befc7051bc5e64fe907dab159adb699e195bfea9670466c137ead7ba7c3fe7",
+        "stage_counts": {
+          "selection": 71,
+          "train": 147
+        }
+      },
+      "direction_flip": {
+        "events": 218,
+        "schedule_hash": "b31a7ecf46722a3462bc40d0de7a96f3d4e0e59617d393f529cacd2c67fdaa4a",
+        "stage_counts": {
+          "selection": 71,
+          "train": 147
+        }
+      },
+      "extra_latency_one_bar": {
+        "events": 218,
+        "schedule_hash": "ca0d02ecc61ee1cdb5607b74dadf8067f998d695843ca0a37d3117928e302e3f",
+        "stage_counts": {
+          "selection": 71,
+          "train": 147
+        }
+      },
+      "fBTC_only": {
+        "events": 92,
+        "schedule_hash": "dfbf07794bc664b01d630906dc59391200e20e60627d8185a9583d509328ba56",
+        "stage_counts": {
+          "selection": 28,
+          "train": 64
+        }
+      },
+      "fUSD_only": {
+        "events": 126,
+        "schedule_hash": "8dcb66df7777919df0535d250593cdd74ede84539b7ac7dd8dc82ab42b3f3d04",
+        "stage_counts": {
+          "selection": 43,
+          "train": 83
+        }
+      },
+      "primary": {
+        "events": 218,
+        "schedule_hash": "be901d6b3ca7cb8369a34b3b779766104a1a299f559b4c5158eff177509935b8",
+        "stage_counts": {
+          "selection": 71,
+          "train": 147
+        }
+      }
+    },
+    "bfmwd_w24_d6_z10_h12": {
+      "deterministic_random_side": {
+        "events": 196,
+        "schedule_hash": "28511b1f8744257fa2d168737fda66391a5960eaeb6f1830664a08fe684fbe0a",
+        "stage_counts": {
+          "selection": 65,
+          "train": 131
+        }
+      },
+      "direction_flip": {
+        "events": 196,
+        "schedule_hash": "c1ad1ac4f00dc3af64f1d963a31a602ce2fcc7d794be9e5d88242105452c2968",
+        "stage_counts": {
+          "selection": 65,
+          "train": 131
+        }
+      },
+      "extra_latency_one_bar": {
+        "events": 196,
+        "schedule_hash": "d044b73cbba20852cc75747dfe1fa3c75810012ef3b79d65699fa4174ec29262",
+        "stage_counts": {
+          "selection": 65,
+          "train": 131
+        }
+      },
+      "fBTC_only": {
+        "events": 91,
+        "schedule_hash": "da7af0155b0ddca419e05bd9d176e6702413ef01062ea8512d9ba924ac6ed9ee",
+        "stage_counts": {
+          "selection": 28,
+          "train": 63
+        }
+      },
+      "fUSD_only": {
+        "events": 105,
+        "schedule_hash": "db91cceaf515509ddb0e3d6534d48c3ac206e6382f42c8d02fc31165171cfbde",
+        "stage_counts": {
+          "selection": 37,
+          "train": 68
+        }
+      },
+      "primary": {
+        "events": 196,
+        "schedule_hash": "7ad28206b96eab4e7221787f55da1d6f9ec6a5219edf3bd60d1fd54fd29f7867",
+        "stage_counts": {
+          "selection": 65,
+          "train": 131
+        }
+      }
+    }
+  },
+  "sealed_windows": [
+    "train",
+    "selection"
+  ],
+  "simulation_run_during_freeze": false,
+  "source_clock": "data/bitfinex_margin_warehouse_deployment_clocks_2021_2023.csv.gz",
+  "source_clock_sha256": "02b4fcc462a5a48be7673649f4cf4b2f9bb210baca4294eed1696d479820cccc",
+  "stage_windows": {
+    "selection": [
+      "2023-01-01T00:00:00+00:00",
+      "2024-01-01T00:00:00+00:00"
+    ],
+    "train": [
+      "2021-01-01T00:00:00+00:00",
+      "2023-01-01T00:00:00+00:00"
+    ]
+  },
+  "static_inputs": {
+    "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "data/bitfinex_margin_warehouse_deployment_clocks_2021_2023.csv.gz": "02b4fcc462a5a48be7673649f4cf4b2f9bb210baca4294eed1696d479820cccc",
+    "docs/bitfinex-margin-warehouse-deployment-economic-protocol-2026-07-20.md": "7aafcaf5a405b504f9f0e83c6a890fa2f3b21956fd5194d8673c5eecd01e88b3",
+    "docs/bitfinex-margin-warehouse-deployment-preregistration-2026-07-20.md": "180140619dabba0760033b83a87cfd4f4ca80b09987f7dc2c87e849bc4623fdc",
+    "docs/bitfinex-margin-warehouse-deployment-support-protocol-2026-07-20.md": "e117472e600643e4b082e447814d9f486716494cdaa92be32f1723e05cd459d3",
+    "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
+    "results/bitfinex_margin_warehouse_deployment_preregistration_2026-07-20.json": "6e478bac6becb58d282867f4ee612d9d13e803d01985474477d6e3073cd49e58",
+    "results/bitfinex_margin_warehouse_deployment_support_2026-07-20.json": "c857e070f4cb157a005f4a95bee0bff9c7b30daf97128832a690a68d05bfb79c",
+    "training/evaluate_bitfinex_margin_warehouse_deployment_support.py": "6983246760bfd49a02e059b8dbebea9ca445778f8c700a6d488ed4bf5fffb630",
+    "training/evaluate_flow_centrality_incubation_relay.py": "036b22442a2080e7ea5ffe914c605a9b1b1a55b128a315a2f2f05be7b37a736d",
+    "training/evaluate_stablecoin_quote_flow_diffusion.py": "0ea59a107f05777ba91ab1c8fc5900e724ba48ec6ce647a42c34c34422222e3b",
+    "training/preregister_bitfinex_margin_warehouse_deployment.py": "67cfa51549ecadcd474ffe81f8037335b09ef761200deebd3870bdb6bbf8405c"
+  },
+  "strict_accounting": {
+    "cagr": "full declared stage calendar including idle cash",
+    "entry_exit": "frozen next-5m-open clock and exact 144-bar hold",
+    "funding_boundary": "interior symmetric; exact entry/exit credits dropped and debits retained",
+    "mdd": "global/pre-entry HWM; costs; exact funding marks; every held 5m favorable-then-adverse OHLC path",
+    "stage_end": "exclusive; every admitted exit strictly before boundary"
+  },
+  "strict_engine_dependency": "training/evaluate_flow_centrality_incubation_relay.py",
+  "strict_engine_dependency_sha256": "036b22442a2080e7ea5ffe914c605a9b1b1a55b128a315a2f2f05be7b37a736d",
+  "strict_source_dependency": "training/evaluate_stablecoin_quote_flow_diffusion.py",
+  "strict_source_dependency_sha256": "0ea59a107f05777ba91ab1c8fc5900e724ba48ec6ce647a42c34c34422222e3b",
+  "support_commit": "dfa1c15cd04acdfe624d28509c8d8876e6e6dc95",
+  "support_manifest_hash": "d1e90ddf786b9e6ad3169260d56475a61395a9ae10da747fb2d7373a740989f2"
+}
