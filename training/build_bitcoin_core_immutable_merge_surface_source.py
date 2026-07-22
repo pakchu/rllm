@@ -75,7 +75,14 @@ def _run_git(
     check: bool = True,
 ) -> subprocess.CompletedProcess[bytes]:
     env = os.environ.copy()
-    env.update({"LC_ALL": "C", "LANG": "C", "GIT_OPTIONAL_LOCKS": "0"})
+    env.update(
+        {
+            "LC_ALL": "C",
+            "LANG": "C",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_NO_LAZY_FETCH": "1",
+        }
+    )
     result = subprocess.run(
         ["git", "-C", str(repo), *args],
         stdout=subprocess.PIPE,
@@ -218,7 +225,7 @@ def parse_raw_path_delta(raw: bytes) -> list[dict[str, str]]:
         status = match.group("status").decode("ascii")
         if status in {"C", "R"}:
             raise ValueError("BCIMS path delta unexpectedly used rename detection")
-        if status not in {"A", "D", "M", "T", "U", "X", "B"}:
+        if status not in {"A", "D", "M", "T"}:
             raise ValueError("BCIMS path delta has an unsupported status")
         try:
             path = path_raw.decode("utf-8", errors="strict")
@@ -244,7 +251,14 @@ def parse_raw_path_delta(raw: bytes) -> list[dict[str, str]]:
 
 def _cat_file_batch(repo: Path, hashes: Sequence[str]) -> Iterator[tuple[str, bytes]]:
     env = os.environ.copy()
-    env.update({"LC_ALL": "C", "LANG": "C", "GIT_OPTIONAL_LOCKS": "0"})
+    env.update(
+        {
+            "LC_ALL": "C",
+            "LANG": "C",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_NO_LAZY_FETCH": "1",
+        }
+    )
     process = subprocess.Popen(
         ["git", "-C", str(repo), "cat-file", "--batch"],
         stdin=subprocess.PIPE,
@@ -297,6 +311,42 @@ def _historical_floor(
     return next_running_day, floor
 
 
+def local_object_inventory(repo: Path) -> dict[str, Any]:
+    result = _run_git(
+        repo,
+        "cat-file",
+        "--batch-all-objects",
+        "--batch-check=%(objectname) %(objecttype) %(objectsize)",
+    )
+    counts: Counter[str] = Counter()
+    for line in result.stdout.splitlines():
+        parts = line.split(b" ")
+        if (
+            len(parts) != 3
+            or HEX40.fullmatch(parts[0].decode("ascii", errors="strict")) is None
+            or not parts[2].isdigit()
+        ):
+            raise RuntimeError("BCIMS local object inventory is malformed")
+        object_type = parts[1].decode("ascii", errors="strict")
+        if object_type not in {"blob", "commit", "tag", "tree"}:
+            raise RuntimeError("BCIMS local object inventory has an unknown type")
+        counts[object_type] += 1
+    return {
+        "object_counts": {
+            object_type: counts[object_type]
+            for object_type in ("blob", "commit", "tag", "tree")
+        },
+        "enumeration_stdout_sha256": sha256_bytes(result.stdout),
+        "enumeration_stderr_sha256": sha256_bytes(result.stderr),
+    }
+
+
+def require_no_local_blobs(inventory: Mapping[str, Any], stage: str) -> None:
+    counts = inventory.get("object_counts")
+    if not isinstance(counts, Mapping) or counts.get("blob") != 0:
+        raise RuntimeError(f"BCIMS {stage} local object inventory contains blobs")
+
+
 def verify_and_refresh_source_repo(repo: Path) -> dict[str, Any]:
     if not repo.is_dir():
         raise RuntimeError("BCIMS source repository does not exist")
@@ -313,6 +363,8 @@ def verify_and_refresh_source_repo(repo: Path) -> dict[str, Any]:
     ).stdout.decode().strip()
     if promisor != "true" or partial_filter != "blob:none":
         raise RuntimeError("BCIMS clone is not the frozen blobless promisor clone")
+    before_fetch_inventory = local_object_inventory(repo)
+    require_no_local_blobs(before_fetch_inventory, "pre-fetch")
 
     remote_probe = _run_git(repo, "ls-remote", "--symref", "origin", "HEAD").stdout
     remote_lines = remote_probe.decode("utf-8", errors="strict").splitlines()
@@ -324,6 +376,8 @@ def verify_and_refresh_source_repo(repo: Path) -> dict[str, Any]:
 
     enforce_disk_guard(repo)
     _run_git(repo, "fetch", "--filter=blob:none", "--no-tags", "origin", "master")
+    after_fetch_inventory = local_object_inventory(repo)
+    require_no_local_blobs(after_fetch_inventory, "post-fetch")
     sealed = _run_git(
         repo, "rev-parse", f"{protocol.PROBE_SEALED_TIP}^{{commit}}"
     ).stdout.decode().strip()
@@ -348,10 +402,9 @@ def verify_and_refresh_source_repo(repo: Path) -> dict[str, Any]:
     ).stdout.decode("ascii", errors="strict").strip()
     return {
         "remote": remote,
-        "remote_default_symref": "refs/heads/master",
-        "remote_head_at_fetch": remote_heads[0],
-        "remote_probe_sha256": sha256_bytes(remote_probe),
+        "remote_default_symref_verified": "refs/heads/master",
         "sealed_tip": sealed,
+        "sealed_tip_reachable_from_fetched_master": True,
         "object_format": object_format,
         "promisor": True,
         "partial_clone_filter": partial_filter,
@@ -361,6 +414,8 @@ def verify_and_refresh_source_repo(repo: Path) -> dict[str, Any]:
         "fsck_stderr_sha256": sha256_bytes(fsck.stderr),
         "used_gib_before_fetch": used_before,
         "used_gib_after_fetch": enforce_disk_guard(repo),
+        "pre_fetch_local_object_inventory": before_fetch_inventory,
+        "post_fetch_local_object_inventory": after_fetch_inventory,
     }
 
 
@@ -429,6 +484,7 @@ def collect_source_rows(repo: Path) -> list[dict[str, Any]]:
             "--raw",
             "-r",
             "--no-renames",
+            "--no-ext-diff",
             "-z",
             parent_one,
             commit["commit_hash"],
@@ -669,6 +725,36 @@ def _canonical_json_line(payload: Mapping[str, Any]) -> bytes:
     ).encode("utf-8")
 
 
+def source_rows_fingerprint(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    jsonl_hasher = hashlib.sha256()
+    identity_hasher = hashlib.sha256()
+    raw_evidence_hasher = hashlib.sha256()
+    for row in rows:
+        jsonl_hasher.update(_canonical_json_line(row))
+        event_id = row.get("event_id")
+        raw_commit_sha256 = row.get("raw_commit_sha256")
+        raw_path_delta_sha256 = row.get("raw_path_delta_sha256")
+        if (
+            not isinstance(event_id, str)
+            or not isinstance(raw_commit_sha256, str)
+            or not isinstance(raw_path_delta_sha256, str)
+        ):
+            raise ValueError("BCIMS replay fingerprint row is missing evidence hashes")
+        identity_hasher.update(event_id.encode("ascii") + b"\n")
+        raw_evidence_hasher.update(
+            raw_commit_sha256.encode("ascii")
+            + b" "
+            + raw_path_delta_sha256.encode("ascii")
+            + b"\n"
+        )
+    return {
+        "row_count": len(rows),
+        "canonical_jsonl_sha256": jsonl_hasher.hexdigest(),
+        "ordered_event_ids_sha256": identity_hasher.hexdigest(),
+        "ordered_raw_evidence_sha256": raw_evidence_hasher.hexdigest(),
+    }
+
+
 def write_source_once(path: Path, rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     output = _repo_path(path)
     if output.exists():
@@ -753,6 +839,22 @@ def build_source(
 
     source_verification = verify_and_refresh_source_repo(source_repo)
     rows = collect_source_rows(source_repo)
+    pass_a = source_rows_fingerprint(rows)
+    replay_rows = collect_source_rows(source_repo)
+    pass_b = source_rows_fingerprint(replay_rows)
+    if pass_a != pass_b or rows != replay_rows:
+        raise RuntimeError("BCIMS deterministic replay differs before artifact write")
+    del replay_rows
+    post_extraction_inventory = local_object_inventory(source_repo)
+    require_no_local_blobs(post_extraction_inventory, "post-extraction")
+    source_verification["post_extraction_local_object_inventory"] = (
+        post_extraction_inventory
+    )
+    source_verification["deterministic_replay"] = {
+        "pass_a": pass_a,
+        "pass_b": pass_b,
+        "passed": True,
+    }
     source_file = write_source_once(source_output, rows)
     support_core = evaluate_support(rows)
     support_core.update(

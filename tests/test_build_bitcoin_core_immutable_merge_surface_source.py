@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import gzip
 import hashlib
+import json
 import os
 import subprocess
 from datetime import datetime, timezone
@@ -117,6 +118,18 @@ def test_parse_raw_path_delta_preserves_exact_no_rename_records() -> None:
         (
             b":100644 100644 " + b"1" * 40 + b" " + b"2" * 40 + b" R\x00src/a\x00",
             "rename",
+        ),
+        (
+            b":100644 100644 " + b"1" * 40 + b" " + b"2" * 40 + b" U\x00src/a\x00",
+            "unsupported",
+        ),
+        (
+            b":100644 100644 " + b"1" * 40 + b" " + b"2" * 40 + b" X\x00src/a\x00",
+            "unsupported",
+        ),
+        (
+            b":100644 100644 " + b"1" * 40 + b" " + b"2" * 40 + b" B\x00src/a\x00",
+            "unsupported",
         ),
         (
             b":100644 100644 "
@@ -285,6 +298,21 @@ def test_disk_guard_rejects_at_frozen_limit(monkeypatch: pytest.MonkeyPatch, tmp
         builder.enforce_disk_guard(tmp_path)
 
 
+def test_local_object_inventory_detects_blobs(tmp_path: Path) -> None:
+    repo = tmp_path / "objects.git"
+    repo.mkdir()
+    _git(repo, "init", "-q", "-b", "master")
+    _git(repo, "config", "user.name", "Fixture")
+    _git(repo, "config", "user.email", "fixture@example.invalid")
+    (repo / "tracked.txt").write_text("blob\n")
+    _git(repo, "add", "tracked.txt")
+    _git(repo, "commit", "-q", "-m", "tracked")
+    inventory = builder.local_object_inventory(repo)
+    assert inventory["object_counts"]["blob"] == 1
+    with pytest.raises(RuntimeError, match="contains blobs"):
+        builder.require_no_local_blobs(inventory, "fixture")
+
+
 def test_result_hash_excludes_no_required_contract_fields() -> None:
     rows = [
         _row(year=year, month=1, day=1, stratum="primary_core")
@@ -295,6 +323,80 @@ def test_result_hash_excludes_no_required_contract_fields() -> None:
     mutated = dict(result)
     mutated["outcomes_opened"] = True
     assert builder.canonical_hash(mutated) != result_hash
+
+
+def test_build_source_replay_mismatch_fails_before_writes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "source.jsonl.gz"
+    manifest = tmp_path / "manifest.json"
+    support = tmp_path / "support.json"
+    row = {
+        "event_id": "a" * 40,
+        "raw_commit_sha256": "b" * 64,
+        "raw_path_delta_sha256": "c" * 64,
+    }
+    changed = {**row, "event_id": "d" * 40}
+    calls = iter(([row], [changed]))
+    monkeypatch.setattr(builder, "verify_committed_builder", lambda: {"sha256": "x"})
+    monkeypatch.setattr(builder, "verify_and_refresh_source_repo", lambda _: {})
+    monkeypatch.setattr(builder, "collect_source_rows", lambda _: next(calls))
+
+    with pytest.raises(RuntimeError, match="deterministic replay"):
+        builder.build_source(tmp_path, source, manifest, support)
+    assert not source.exists()
+    assert not manifest.exists()
+    assert not support.exists()
+
+
+def test_build_source_writes_only_after_identical_replay(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "source.jsonl.gz"
+    manifest = tmp_path / "manifest.json"
+    support = tmp_path / "support.json"
+    row = {
+        "event_id": "a" * 40,
+        "raw_commit_sha256": "b" * 64,
+        "raw_path_delta_sha256": "c" * 64,
+    }
+    inventory = {
+        "object_counts": {"blob": 0, "commit": 1, "tag": 0, "tree": 1},
+        "enumeration_stdout_sha256": "d" * 64,
+        "enumeration_stderr_sha256": "e" * 64,
+    }
+    monkeypatch.setattr(
+        builder,
+        "verify_committed_builder",
+        lambda: {"path": "builder.py", "sha256": "f" * 64},
+    )
+    monkeypatch.setattr(builder, "verify_and_refresh_source_repo", lambda _: {})
+    monkeypatch.setattr(builder, "collect_source_rows", lambda _: [dict(row)])
+    monkeypatch.setattr(builder, "local_object_inventory", lambda _: inventory)
+    monkeypatch.setattr(
+        builder,
+        "evaluate_support",
+        lambda _: {
+            "source_id": "BCIMS",
+            "status": "PASS_ADVANCE_TO_SEMANTIC_FREEZE",
+            "all_gates_passed": True,
+            "stratum_counts": {
+                "primary_core": 1,
+                "gui_comparator": 0,
+                "audit_only": 0,
+            },
+            "outcomes_opened": False,
+        },
+    )
+
+    result = builder.build_source(tmp_path, source, manifest, support)
+    assert result["all_gates_passed"] is True
+    assert source.exists() and manifest.exists() and support.exists()
+    manifest_payload = json.loads(manifest.read_text())
+    assert manifest_payload["source_verification"]["deterministic_replay"]["passed"] is True
+    assert "remote_head_at_fetch" not in manifest_payload["source_verification"]
 
 
 def test_committed_builder_binding_rejects_dirty_bytes(
