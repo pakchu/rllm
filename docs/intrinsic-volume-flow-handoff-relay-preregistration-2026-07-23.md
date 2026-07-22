@@ -68,8 +68,11 @@ old-side/fade, any-handoff, no-price-lag, no-flow-strength, persistence-level,
 fixed-noon, and deterministic-random-side clocks. They share latency, hold,
 non-overlap, containment, and clock schema. Their incidence is report-only and
 cannot rescue or reject primary, although malformed control clocks fail the
-build. A failed support gate retires IVFHR-72 without calculating a return.
-Parameters may not be repaired after incidence is opened.
+build. Component controls retain the same 90-anchor reference warmup even when
+their ablation removes q60; fixed-noon builds its own identical warmup, while
+side-flip and random-side reuse primary timestamps exactly. A failed support
+gate retires IVFHR-72 without calculating a return. Parameters may not be
+repaired after incidence is opened.
 
 ## Frozen economic and LLM sequence
 

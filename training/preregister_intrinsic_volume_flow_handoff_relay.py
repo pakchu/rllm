@@ -235,10 +235,14 @@ def _core_manifest() -> dict[str, Any]:
                 "report-only"
             ),
             "shared_control_contract": (
-                "every control uses the same next-open latency, 72-bar hold, chronological "
-                "non-overlap, split containment, and clock-only schema as primary; malformed "
-                "control clocks fail the build, but control incidence cannot rescue or reject "
-                "a primary source-support decision"
+                "any_handoff, no_price_lag, no_flow_strength, and persistence_level require "
+                "the same 90-anchor strictly-prior reference warmup as primary even when a "
+                "control drops the q60 test; fixed_noon_handoff builds its own identical "
+                "strictly-prior warmup; exact_side_flip and deterministic_random_side reuse "
+                "primary timestamps exactly; every control uses the same next-open latency, "
+                "72-bar hold, chronological non-overlap, split containment, and clock-only "
+                "schema as primary; malformed control clocks fail the build, but control "
+                "incidence cannot rescue or reject a primary source-support decision"
             ),
         },
         "strict_sequence": {
