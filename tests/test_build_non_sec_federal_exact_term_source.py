@@ -176,7 +176,9 @@ def _decision(
         "member": member,
         "identity_stratum": stratum if member else None,
         "member_stratum": stratum if member else None,
-        "govinfo_agency_names": agencies or [f"AGENCY {document_number}"],
+        "govinfo_agency_names": (
+            agencies or [f"AGENCY {document_number}"] if member else None
+        ),
         "detail_agency_slugs": (
             [SEC_SLUG if stratum == "sec_comparator" else PRIMARY_SLUG]
             if member
@@ -358,7 +360,7 @@ def test_bad_positive_pdf_is_rejected(tmp_path: Path) -> None:
         )
 
 
-def test_all_candidates_retain_govinfo_identity_but_only_positives_route_detail(
+def test_all_candidates_retain_raw_metadata_but_only_positives_reconcile_identity(
     tmp_path: Path,
 ) -> None:
     cfg = _cfg(tmp_path)
@@ -408,6 +410,7 @@ def test_all_candidates_retain_govinfo_identity_but_only_positives_route_detail(
     ]
     assert positive_decision["identity_stratum"] == "primary_non_sec"
     assert negative_decision["identity_stratum"] is None
+    assert negative_decision["govinfo_agency_names"] is None
     assert negative_decision["detail_agency_slugs"] is None
 
 
@@ -432,6 +435,7 @@ def test_negative_retains_malformed_detail_agency_as_raw_audit_without_routing(
     assert decision["member"] is False
     assert decision["identity_stratum"] is None
     assert decision["member_stratum"] is None
+    assert decision["govinfo_agency_names"] is None
     assert decision["detail_agency_slugs"] is None
     retained = json.loads(
         source.load_object(
@@ -449,6 +453,53 @@ def test_positive_rejects_malformed_detail_agency_slug(tmp_path: Path) -> None:
     detail["agencies"].append({"raw_name": "Office of the Secretary"})
     responses[source.detail_url("2020-04249")] = json.dumps(detail).encode()
     with pytest.raises(ValueError, match="malformed agency slug"):
+        source._process_candidate(
+            cfg,
+            source._state_core(cfg),
+            candidate,
+            fetch=_fetcher(responses),
+            now=_now,
+        )
+
+
+def test_negative_retains_duplicate_mods_agency_as_raw_audit_without_routing(
+    tmp_path: Path,
+) -> None:
+    cfg = _cfg(tmp_path)
+    candidate = _candidate("2020-09447", "2020-06-17")
+    responses = _responses_for(
+        candidate, html=_html("no frozen exact term in this notice")
+    )
+    mods = responses[nfet.govinfo_document_urls("2020-06-17", "2020-09447")["mods"]]
+    responses[nfet.govinfo_document_urls("2020-06-17", "2020-09447")["mods"]] = (
+        mods.replace(
+            b"</extension>",
+            b"<agency>" + PRIMARY_AGENCY.encode() + b"</agency></extension>",
+        )
+    )
+    decision = source._process_candidate(
+        cfg,
+        source._state_core(cfg),
+        candidate,
+        fetch=_fetcher(responses),
+        now=_now,
+    )
+    assert decision["member"] is False
+    assert decision["govinfo_agency_names"] is None
+    assert decision["member_stratum"] is None
+    assert source.build_events([decision], stratum="primary_non_sec") == []
+
+
+def test_positive_rejects_duplicate_mods_agency(tmp_path: Path) -> None:
+    cfg = _cfg(tmp_path)
+    candidate = _candidate("2020-09447", "2020-06-17")
+    responses = _responses_for(candidate)
+    mods_url = nfet.govinfo_document_urls("2020-06-17", "2020-09447")["mods"]
+    responses[mods_url] = responses[mods_url].replace(
+        b"</extension>",
+        b"<agency>" + PRIMARY_AGENCY.encode() + b"</agency></extension>",
+    )
+    with pytest.raises(ValueError, match="repeats an agency name"):
         source._process_candidate(
             cfg,
             source._state_core(cfg),
