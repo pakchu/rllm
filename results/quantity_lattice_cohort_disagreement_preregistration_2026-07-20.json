@@ -1,0 +1,287 @@
+{
+  "protocol_version": "quantity_lattice_cohort_disagreement_v1",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "policy": {
+    "policy_id": "QLCD-288",
+    "baseline_bars": 8640,
+    "baseline_min_periods": 2016,
+    "score_quantile": 0.9975,
+    "minimum_bar_agg_trade_count": 64,
+    "minimum_coarse_event_count": 3,
+    "minimum_fine_event_count": 16,
+    "execution_delay_bars": 2,
+    "hold_bars": 288,
+    "post_gap_quarantine_bars": 24,
+    "exposure": 0.5
+  },
+  "source_contract": {
+    "source": "official Binance USD-M BTCUSDT daily aggTrades archives",
+    "archive_manifest": "data/binance_um_aggtrade_microstructure_btc_2020_2023/build_manifest.json",
+    "archive_manifest_sha256": "6eec40460a6146c58994e52f1af9ace4eecc0c085887d97af5ef17c30b9f7e73",
+    "source_audit": "results/binance_aggtrade_microstructure_audit_2026-07-14.json",
+    "source_audit_sha256": "5ac5a342d7f766ea0b6dcf9f97468ab70b9e1194775469ed0245d9208d0dc9c6",
+    "builder": "training.build_binance_quantity_lattice_cohort",
+    "transform": "preprocessing.quantity_lattice_cohort",
+    "range": [
+      "2020-01-01",
+      "2024-01-01"
+    ],
+    "end_is_exclusive": true,
+    "raw_archives_persisted": false,
+    "quantity_contract": "parse positive BTC quantity and require quantity*1000 to equal an integer within 1e-9 absolute tolerance",
+    "required_source_gap_days": [
+      "2020-01-15",
+      "2020-04-15",
+      "2021-02-09",
+      "2021-02-24",
+      "2021-05-19",
+      "2022-09-06"
+    ],
+    "underlying_overlap_quarantine": {
+      "2020-01-15": 1
+    },
+    "gap_policy": "quarantine required UTC days, verified missing buckets, and the following 24 five-minute bars; never impute"
+  },
+  "feature_contract": {
+    "candidate_count": 1,
+    "bucket": "completed UTC five-minute bar t",
+    "coarse": "quantity_mbtc % 100 == 0 (multiples of 0.1 BTC)",
+    "medium": "quantity_mbtc % 10 == 0 and quantity_mbtc % 100 != 0; diagnostic/control only",
+    "fine": "quantity_mbtc % 10 != 0 (remaining 0.001-BTC increments)",
+    "aggressive_side": "+1 when is_buyer_maker=false, else -1",
+    "coarse_share": "coarse_quantity_mbtc / total_quantity_mbtc",
+    "coarse_coherence": "abs(coarse_signed_quantity_mbtc) / coarse_quantity_mbtc",
+    "fine_signed_share": "fine_signed_quantity_mbtc / fine_quantity_mbtc",
+    "coarse_side": "sign(coarse_signed_quantity_mbtc)",
+    "opposition": "max(-coarse_side * fine_signed_share, 0)",
+    "score": "coarse_share * coarse_coherence * opposition",
+    "direction": "coarse_side",
+    "price_fields_used": false,
+    "notional_fields_used": false,
+    "threshold_grid": false
+  },
+  "support_schedule_contract": {
+    "threshold": "mask score to source_complete, shift one calendar row, then rolling(8640,min_periods=2016).quantile(0.9975)",
+    "eligibility": "source_complete; agg_trade_count>=64; coarse_event_count>=3; fine_event_count>=16; coarse_side!=0; opposition>0; score>0; score>=strictly-prior threshold",
+    "decision_time": "after completed bar t closes",
+    "entry_time": "bucket date at t+2",
+    "exit_time": "bucket date at entry_position+288",
+    "nonoverlap": "accept eligible bars chronologically; skip while entry precedes the last scheduled exit; re-entry at the exit timestamp is allowed",
+    "future_source_rule": "source completeness after decision t never cancels a selected event",
+    "pre2024_containment": true,
+    "severity_rationale": "q99.75 defines an exceptional joint coarse-share/coherence/opposition state on a bounded [0,1] score; it is frozen without incidence and is not selected from an event-count grid",
+    "hold_rationale": "288 five-minute bars span one full UTC day and three ordinary eight-hour perpetual funding cycles, the fixed horizon for cross-session inventory resolution; no hold alternative is registered"
+  },
+  "support_gates": {
+    "total_2020_2023_min": 200,
+    "total_2020_2023_max": 800,
+    "each_calendar_year_min": 35,
+    "each_2023_half_min": 15,
+    "each_side_share_min": 0.25,
+    "each_side_share_max": 0.75,
+    "maximum_single_month_share": 0.15
+  },
+  "novelty_gates": {
+    "comparator_registry": [
+      {
+        "family": "MFIC",
+        "path": "results/lvrt_mfic_pure_clocks_2026-07-21.csv.gz",
+        "sha256": "d7d889bd2c8137682e244d399a42f14e2c04c48e88a336e07d05e48ddb0605bd",
+        "members": [
+          "mfic:mfic_fast",
+          "mfic:mfic_slow"
+        ],
+        "member_column": "candidate_id",
+        "entry_column": "entry_time",
+        "coverage": [
+          "2020-01-01",
+          "2024-01-01"
+        ]
+      },
+      {
+        "family": "AFCS",
+        "path": "results/aggregate_fill_compression_sweep_clock_2026-07-17.csv",
+        "sha256": "bf1611554604c1930ba2212e674ea434f7c9793377b3f33ef531b3b4e0381688",
+        "members": [
+          "AFCS-144"
+        ],
+        "member_column": null,
+        "entry_column": "entry_date",
+        "coverage": [
+          "2020-01-01",
+          "2024-01-01"
+        ]
+      },
+      {
+        "family": "TAAR",
+        "path": "data/tail_arrival_support_clocks_2020_2022.csv.gz",
+        "sha256": "b3ff6f36f7d59a18c32cd18100352661f34879f7987973ca0906345aac164582",
+        "members": [
+          "T01",
+          "T02",
+          "T03",
+          "T04"
+        ],
+        "member_column": "policy_id",
+        "entry_column": null,
+        "derived_entry": "signal_date + 2 completed five-minute bars",
+        "coverage": [
+          "2020-01-01",
+          "2023-01-01"
+        ]
+      },
+      {
+        "family": "RIFT",
+        "path": "results/refill_inference_flow_topology_clock_2026-07-14.csv",
+        "sha256": "83becb88da83ce55e235f10c2e91ed3a2ad478c6aea2e9298d37c43b36cfff00",
+        "members": [
+          "rift96"
+        ],
+        "member_column": "branch",
+        "entry_column": "entry_date",
+        "coverage": [
+          "2020-01-01",
+          "2024-01-01"
+        ]
+      },
+      {
+        "family": "PCP",
+        "path": "results/packet_churn_persistence_clock_2026-07-19.csv",
+        "sha256": "e50be3f0744617e3797581ea762546e7f21c32dd0707b9bdcbd264686d4f9acb",
+        "members": [
+          "PCP-6"
+        ],
+        "member_column": null,
+        "entry_column": "entry_date",
+        "coverage": [
+          "2020-01-01",
+          "2024-01-01"
+        ]
+      },
+      {
+        "family": "SMCC",
+        "path": "data/same_millisecond_cascade_clock_2020_2023.csv.gz",
+        "sha256": "3b255b224ab510afc30edb265d62428db9fdf07d90610499df62efff9ffa410d",
+        "members": [
+          "SMCC-144"
+        ],
+        "member_column": null,
+        "entry_column": "entry_time",
+        "coverage": [
+          "2020-01-01",
+          "2024-01-01"
+        ]
+      }
+    ],
+    "exact_entry_jaccard_max": 0.05,
+    "tolerant_window_five_minute_bars": 12,
+    "tolerant_one_to_one_jaccard_max": 0.15,
+    "primary_containment_max": 0.3,
+    "matching_algorithm": "within each member coverage, sort unique UTC entries; visit primary entries chronologically and match the unused comparator entry with minimum absolute distance, ties toward the earlier comparator",
+    "dense_bafr": {
+      "path": "results/binance_aggressor_frustration_clock_2026-07-20.csv",
+      "sha256": "f3b816a76decce31136ed23d22f043eb8e80ef1b8697b869241b060062f01747",
+      "entry_column": "entry_date",
+      "coverage": [
+        "2020-01-01",
+        "2024-01-01"
+      ],
+      "report_only": [
+        "exact_entry_jaccard",
+        "primary_containment"
+      ],
+      "errors_gate_decision": false
+    },
+    "missing_or_malformed_comparator": "sparse registry fails closed; dense BAFR remains report-only",
+    "explicit_exclusions": {
+      "NETF": "no canonical NETF clock artifact exists; RIFT is the frozen topology substitute already used by prior microstructure novelty batteries",
+      "PRIOR_TRADE_SIZE_SCAN": "the candle-average trade-size search has no frozen outcome-blind canonical clock; AFCS and MFIC are the closest executable size/fill comparators, while QLCD uses exact quantity residue classes"
+    }
+  },
+  "support_artifact_contract": {
+    "source": "data/binance_um_quantity_lattice_btc_2020_2023/BTCUSDT_quantity_lattice_5m_2020-01-01_2023-12-31.csv.gz",
+    "source_manifest": "data/binance_um_quantity_lattice_btc_2020_2023/build_manifest.json",
+    "clock": "data/quantity_lattice_cohort_disagreement_clock_2020_2023.csv.gz",
+    "result": "results/quantity_lattice_cohort_disagreement_support_2026-07-20.json",
+    "evaluator": "training.evaluate_quantity_lattice_cohort_disagreement_support",
+    "clock_columns": [
+      "decision_time",
+      "entry_time",
+      "exit_time",
+      "side",
+      "score",
+      "threshold"
+    ],
+    "write_once": true,
+    "deterministic_gzip_mtime": 0,
+    "outcomes_opened": false,
+    "decision_values": [
+      "PASS_SUPPORT",
+      "REJECT_NO_REPAIR"
+    ]
+  },
+  "falsification_controls": {
+    "exact_side_flip": "primary clock with side multiplied by -1",
+    "medium_vs_fine": "replace coarse cohort with medium cohort, same q99.75 prior-only score and scheduler",
+    "remove_opposition": "score=coarse_share*coarse_coherence, no fine-flow opposition gate, own q99.75 prior-only clock",
+    "all_quantity_imbalance": "score=abs(total_signed_quantity_mbtc)/total_quantity_mbtc, direction its sign, own q99.75 prior-only clock",
+    "stale_one_hour": "primary signal, side, entry, and exit shifted +12 bars",
+    "stale_twenty_four_hours": "primary signal, side, entry, and exit shifted +288 bars"
+  },
+  "later_economic_protocol": {
+    "sequential_stages": [
+      [
+        "train",
+        "2020-01-01",
+        "2023-01-01"
+      ],
+      [
+        "selection",
+        "2023-01-01",
+        "2024-01-01"
+      ],
+      [
+        "test",
+        "2024-01-01",
+        "2025-01-01"
+      ],
+      [
+        "eval",
+        "2025-01-01",
+        "2026-01-01"
+      ],
+      [
+        "recent_report",
+        "2026-01-01",
+        null
+      ]
+    ],
+    "base_cost_bp_per_side": 6.0,
+    "stress_cost_bp_per_side": 10.0,
+    "full_calendar_cagr": true,
+    "strict_held_path_mdd": true,
+    "base_absolute_return_positive": true,
+    "cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_pct_max": 15.0,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "mean_gross_underlying_bp_min": 24.0,
+    "weekly_cluster_signflip_p_max": 0.1,
+    "train_each_year_positive": true,
+    "selection_each_half_positive": true,
+    "stop_on_first_failure": true
+  },
+  "claim_boundary": {
+    "claim": "when exact-denomination coarse aggregate-event quantity flow opposes fine-lot flow, the coarse cohort may lead slower inventory resolution",
+    "not_claimed": [
+      "participant identity",
+      "institutional ownership",
+      "one parent order",
+      "profitability of round-number trading in general"
+    ]
+  },
+  "rejection_contract": "any source, support, novelty, train, or sequential-stage failure retires QLCD-288 without changing lattice tiers, direction, quantile, delay, hold, costs, or gates",
+  "manifest_hash": "9fd76b3dd9fd0d900689684c9d6b1d2c57ede9877eec73979b3ff11d29f59a16",
+  "created_at": "2026-07-22T04:46:00.665754+00:00"
+}
