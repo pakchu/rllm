@@ -183,9 +183,9 @@ def validate_preregistration() -> dict[str, Any]:
     _verify_internal_hash(payload, "preregistration")
     if payload.get("candidate_family") != prereg.CANDIDATE_FAMILY:
         raise ValueError("BFMWD candidate family changed")
-    if payload.get("policy", {}).get("config") != prereg.asdict(
-        prereg.FROZEN_POLICY
-    ):
+    expected_policy = prereg.asdict(prereg.FROZEN_POLICY)
+    expected_policy["symbols"] = list(prereg.FROZEN_POLICY.symbols)
+    if payload.get("policy", {}).get("config") != expected_policy:
         raise ValueError("BFMWD frozen policy changed")
     if payload.get("policy", {}).get("variants") != [
         prereg.asdict(variant) for variant in prereg.VARIANTS

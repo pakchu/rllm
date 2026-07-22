@@ -12,6 +12,12 @@ from training import evaluate_bitfinex_margin_warehouse_deployment_support as su
 from training import preregister_bitfinex_margin_warehouse_deployment as prereg
 
 
+def test_support_evaluator_accepts_exact_frozen_preregistration() -> None:
+    payload = support.validate_preregistration()
+    assert payload["candidate_family"] == prereg.CANDIDATE_FAMILY
+    assert payload["support_gates"] == prereg.SUPPORT_GATES
+
+
 def test_strict_prior_robust_zscore_excludes_current_observation() -> None:
     values = pd.Series([0.0, 2.0, 4.0, 100.0])
     result = support.strict_prior_robust_zscore(
