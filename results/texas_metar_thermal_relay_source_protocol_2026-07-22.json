@@ -1,5 +1,5 @@
 {
-  "protocol_version": "texas_metar_thermal_relay_source_v1",
+  "protocol_version": "texas_metar_thermal_relay_source_v3",
   "source_id": "TMTR",
   "outcomes_opened": false,
   "market_clocks_opened": false,
@@ -22,22 +22,32 @@
       "KACT"
     ],
     "target_receipt_time": "2022-12-31T23:58:00Z",
+    "target_report_type": "METAR",
+    "target_correction_value": 0,
+    "netcdf_magic_hex": "43444601",
+    "required_dimension_values": {
+      "recNum": null,
+      "maxStaNamLen": 5,
+      "maxRepLen": 6,
+      "maxMETARLen": 256
+    },
     "full_interval_incidence_counted": false,
     "thermal_values_parsed": false,
     "market_or_outcomes_opened": false
   },
   "decision_binding": {
     "path": "docs/texas-metar-thermal-relay-source-axis-decision-2026-07-22.md",
-    "sha256": "ae95b6211ad701e638984e1739b23fd8b08d2a3da01a29b572dc15820d6acb5d"
+    "sha256": "5839a46b1531a3ab569bf94dc9f3b639b24c1f63aadab2f86e00f53eb6f0c6e5"
   },
   "implementation_binding": {
     "path": "training/preregister_texas_metar_thermal_relay.py",
-    "sha256": "2ac87bae550436c7d8321f1960351bd7261040bbb432a2e38cf7c44269c68eb7"
+    "sha256": "5ce25ee9b115d6ad591bc9826c4eabdda8f96281d88d7b37214424ca59d22e2f"
   },
   "source_contract": {
     "authority": {
       "operator": "NOAA/NWS NCEP MADIS",
       "archive_base": "https://madis-data.ncep.noaa.gov/madisPublic/data/archive",
+      "real_time_base": "https://madis-data.ncep.noaa.gov/madisPublic/data/point/metar/netcdf",
       "dataset_path": "point/metar/netcdf",
       "transport": "public HTTPS gzip-compressed classic netCDF",
       "historical_documentation": "https://madis.ncep.noaa.gov/faq_historicaldata.shtml"
@@ -77,13 +87,83 @@
     ],
     "membership": {
       "report_type": "METAR",
-      "correction_field": "empty",
+      "correction_integer_must_equal": 0,
       "raw_metar_fullmatch": "\\A(?:METAR )?(?P<station>KMAF|KABI|KLBB|KACT) (?P<day>0[1-9]|[12][0-9]|3[01])(?P<hour>[01][0-9]|2[0-3])(?P<minute>[0-5][0-9])Z(?: [!-~]+)+\\Z",
-      "observation_window": "(archive_label - 75 minutes, archive_label]",
+      "forbidden_raw_tokens": [
+        "COR",
+        "NIL",
+        "SPECI"
+      ],
+      "auto_token_allowed": true,
+      "observation_window": "(archive_label - 15 minutes, archive_label]",
       "receipt_window": "[timeObs, archive_label + 15 minutes]",
-      "maximum_observation_to_receipt_minutes": 30,
+      "maximum_observation_to_receipt_minutes_exclusive": 30,
+      "raw_ddhhmmz_must_equal_time_obs": true,
+      "month_and_year_rollover_resolved_against_archive_label": true,
       "exact_duplicate_rows": "deduplicate before cardinality check",
       "conflicting_or_multiple_rows_per_station_object": "fatal"
+    },
+    "netcdf_schema": {
+      "magic_hex": "43444601",
+      "required_dimensions": {
+        "recNum": null,
+        "maxStaNamLen": 5,
+        "maxRepLen": 6,
+        "maxMETARLen": 256
+      },
+      "required_variables": {
+        "stationName": {
+          "dimensions": [
+            "recNum",
+            "maxStaNamLen"
+          ],
+          "typecode": "c",
+          "fill_value": null
+        },
+        "reportType": {
+          "dimensions": [
+            "recNum",
+            "maxRepLen"
+          ],
+          "typecode": "c",
+          "fill_value": null
+        },
+        "rawMETAR": {
+          "dimensions": [
+            "recNum",
+            "maxMETARLen"
+          ],
+          "typecode": "c",
+          "fill_value": null
+        },
+        "timeObs": {
+          "dimensions": [
+            "recNum"
+          ],
+          "typecode": "d",
+          "fill_value": 1.7976931348623157e+308
+        },
+        "timeReceived": {
+          "dimensions": [
+            "recNum"
+          ],
+          "typecode": "d",
+          "fill_value": 1.7976931348623157e+308
+        },
+        "correction": {
+          "dimensions": [
+            "recNum"
+          ],
+          "typecode": "i",
+          "fill_value": -2147483647
+        }
+      },
+      "aliases_allowed": false,
+      "additional_dataset_fields_permitted_but_unread": true,
+      "extractor_reads_only_required_variables": true,
+      "fixed_ascii_decode": "C-order bytes; trim trailing NUL/space only; reject empty, embedded NUL, control, and non-ASCII",
+      "epoch_decode": "finite integer seconds since Unix epoch in UTC; fill rejected",
+      "schema_corruption_effect": "fatal"
     },
     "retained_fields": [
       "archive label and official URL",
@@ -105,11 +185,18 @@
     ]
   },
   "availability_contract": {
-    "causal_field": "timeReceived",
+    "receipt_field": "timeReceived",
+    "effective_point_in_time_field": "source_row_availability",
     "archive_label_is_availability": false,
     "http_last_modified_is_availability": false,
-    "later_signal_floor": "max retained timeReceived plus frozen execution delay",
-    "negative_or_over_30_minute_receipt_delay": "exclude and count as audit failure"
+    "real_time_object_route": "https://madis-data.ncep.noaa.gov/madisPublic/data/point/metar/netcdf/YYYYMMDD_HH00.gz",
+    "official_processing_cadence_minutes": 5,
+    "nominal_file_window_end_minutes_after_label": 44,
+    "conservative_publication_floor_minutes_after_label": 60,
+    "source_row_availability": "max(timeReceived, archive_label + 60 minutes)",
+    "later_signal_floor": "source_row_availability plus separately frozen execution delay",
+    "historical_archive_alone_proves_point_in_time_availability": false,
+    "negative_or_at_least_30_minute_receipt_delay": "exclude and count as audit failure"
   },
   "source_quality_gates": {
     "transport": {
@@ -117,6 +204,7 @@
       "minimum_object_fraction_each_month": 0.98,
       "gzip_crc_required": true,
       "classic_netcdf_magic_required": true,
+      "netcdf_schema_corruption_is_fatal": true,
       "compressed_sha256_fraction": 1.0,
       "two_in_memory_parse_passes_required": true,
       "exact_cross_pass_equality_required": true
@@ -131,12 +219,22 @@
       "conflicting_target_reports_allowed": 0,
       "imputation_or_forward_fill_allowed": false
     },
+    "denominators": {
+      "object_year": "all expected frozen archive labels in that calendar year",
+      "object_month": "all expected frozen archive labels in that calendar month",
+      "station_year": "all expected frozen archive labels in that year for each station",
+      "all_four_year": "all expected frozen archive labels in that year",
+      "all_four_month": "all expected frozen archive labels in that month",
+      "missing_or_unparseable_object": "counts missing for all four stations and as an incomplete panel",
+      "panel_streak": "walk every expected label in chronological order",
+      "fetched_or_successful_rows_never_define_a_denominator": true
+    },
     "failure_effect": "REJECT_NO_REPAIR"
   },
   "disk_contract": {
     "abort_before_download_when_used_gib_at_least": 300,
     "stream_one_object_then_delete": true,
-    "maximum_concurrent_objects": 8,
+    "maximum_concurrent_objects": 1,
     "deterministic_output_gzip_mtime": 0
   },
   "later_mechanism_boundary": {
@@ -165,5 +263,5 @@
     "write_once": true
   },
   "rejection_contract": "any transport, gzip, netCDF, schema, object-coverage, station-coverage, receipt-time, raw-identity, duplicate, conflict, replay, disk, or source-support failure retires TMTR without changing stations, archive hours, interval, accepted fields, or thresholds",
-  "manifest_hash": "e53c8de3424d0e804645622ae4e526f0c3a217b85576d5534cd2a9a77f9e884d"
+  "manifest_hash": "e24d1a8c30efa5142b9f81ddd78f47a1673c5df2e6dc610072a06cca87c5e4eb"
 }
