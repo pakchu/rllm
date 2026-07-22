@@ -1,0 +1,330 @@
+{
+  "protocol_version": "quantity_lattice_cohort_disagreement_evaluator_v1",
+  "candidate": "QLCD-288",
+  "as_of_date": "2026-07-20",
+  "support_commit": "71bc605fa1ee345d26983e029f98fedafaa726ac",
+  "preregistration_manifest_hash": "9fd76b3dd9fd0d900689684c9d6b1d2c57ede9877eec73979b3ff11d29f59a16",
+  "preregistration_file_sha256": "eb7920891cb2c9c5753f08e5a3ebfd3c3d39de28fdb2a245fc5b6d978c0f84d9",
+  "support_result_sha256": "d5b5f2e59fe2f8d8df775a9ee7a05da0bab2898af210d6e724669d9781efe640",
+  "support_decision": "PASS_SUPPORT",
+  "source_clock": "data/quantity_lattice_cohort_disagreement_clock_2020_2023.csv.gz",
+  "source_clock_sha256": "ed882ac8a28f1f0b2b7ad7bf3d2de1f37b175cde63b20d4d1c7a290f3eb89bec",
+  "evaluation_clock": "data/quantity_lattice_cohort_disagreement_evaluation_clocks_2020_2023.csv.gz",
+  "evaluation_clock_sha256": "c699c2d8c462b465579eb4035c76dda96923a4f39663395b371a04e9ad6de4a9",
+  "falsification_controls": [
+    "exact_side_flip",
+    "medium_vs_fine",
+    "remove_opposition",
+    "all_quantity_imbalance",
+    "stale_one_hour",
+    "stale_twenty_four_hours"
+  ],
+  "falsification_controls_are_mandatory_report_only": true,
+  "falsification_controls_cannot_repair_primary": true,
+  "evaluator_source": "training/evaluate_quantity_lattice_cohort_disagreement.py",
+  "evaluator_source_sha256": "1ed4ffa7aca2bbe3c84dc7dca05c537ab020a11ee5bde2d4219770721d755f2d",
+  "strict_source_dependency": "training/evaluate_stablecoin_quote_flow_diffusion.py",
+  "strict_source_dependency_sha256": "0ea59a107f05777ba91ab1c8fc5900e724ba48ec6ce647a42c34c34422222e3b",
+  "evaluation_config": {
+    "leverage": 0.5,
+    "base_cost_notional_per_side": 0.0006,
+    "stress_cost_notional_per_side": 0.001,
+    "hold_bars": 288,
+    "exact_cluster_max": 20,
+    "cluster_draws": 20000,
+    "cluster_seed": 20260720
+  },
+  "economic_gates": {
+    "base_absolute_return_positive": true,
+    "base_cagr_to_strict_mdd_min": 3.0,
+    "strict_mdd_pct_max": 15.0,
+    "stress_absolute_return_positive": true,
+    "stress_cagr_to_strict_mdd_min": 2.5,
+    "mean_gross_underlying_bp_min": 24.0,
+    "weekly_cluster_signflip_p_strict_max": 0.1,
+    "train_each_year_absolute_return_positive": true,
+    "selection_each_half_absolute_return_positive": true
+  },
+  "static_inputs": {
+    "results/quantity_lattice_cohort_disagreement_preregistration_2026-07-20.json": "eb7920891cb2c9c5753f08e5a3ebfd3c3d39de28fdb2a245fc5b6d978c0f84d9",
+    "results/quantity_lattice_cohort_disagreement_support_2026-07-20.json": "d5b5f2e59fe2f8d8df775a9ee7a05da0bab2898af210d6e724669d9781efe640",
+    "data/quantity_lattice_cohort_disagreement_clock_2020_2023.csv.gz": "ed882ac8a28f1f0b2b7ad7bf3d2de1f37b175cde63b20d4d1c7a290f3eb89bec",
+    "results/quantity_lattice_cohort_disagreement_source_access_seal_2026-07-20.json": "cade903a3d15349903c3e16853a23a092b36a293cb46ceb7b0c5514737aca834",
+    "training/preregister_quantity_lattice_cohort_disagreement.py": "565022325caa7d4cf167475a9eb0ca154cb809c777d5dbc906244a5d348ce012",
+    "training/evaluate_quantity_lattice_cohort_disagreement_support.py": "a800441c6f5a6aafa08a41323ca6d03a933c7567845d83f4b8112e46727af8a6",
+    "docs/quantity-lattice-cohort-disagreement-preregistration-2026-07-20.md": "b28db48c10eccb6d5464d0b377dc4f18df5921e4c06e41c8b3922efada7429c6",
+    "docs/quantity-lattice-cohort-support-pass-2026-07-20.md": "397f8ba82a8973ae19a56309b96f8dcf9cfb80b1a4e481ddaca20ec6db4bc8b0",
+    "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
+    "training/evaluate_stablecoin_quote_flow_diffusion.py": "0ea59a107f05777ba91ab1c8fc5900e724ba48ec6ce647a42c34c34422222e3b"
+  },
+  "stage_order": [
+    "train",
+    "selection",
+    "test",
+    "eval",
+    "recent"
+  ],
+  "phase_scope": [
+    "train",
+    "selection"
+  ],
+  "stage_windows": {
+    "train": [
+      "2020-01-01T00:00:00+00:00",
+      "2023-01-01T00:00:00+00:00"
+    ],
+    "selection": [
+      "2023-01-01T00:00:00+00:00",
+      "2024-01-01T00:00:00+00:00"
+    ],
+    "test": [
+      "2024-01-01T00:00:00+00:00",
+      "2025-01-01T00:00:00+00:00"
+    ],
+    "eval": [
+      "2025-01-01T00:00:00+00:00",
+      "2026-01-01T00:00:00+00:00"
+    ],
+    "recent": [
+      "2026-01-01T00:00:00+00:00",
+      null
+    ]
+  },
+  "subperiod_windows": {
+    "train": {
+      "2020": [
+        "2020-01-01T00:00:00+00:00",
+        "2021-01-01T00:00:00+00:00"
+      ],
+      "2021": [
+        "2021-01-01T00:00:00+00:00",
+        "2022-01-01T00:00:00+00:00"
+      ],
+      "2022": [
+        "2022-01-01T00:00:00+00:00",
+        "2023-01-01T00:00:00+00:00"
+      ]
+    },
+    "selection": {
+      "2023_h1": [
+        "2023-01-01T00:00:00+00:00",
+        "2023-07-01T00:00:00+00:00"
+      ],
+      "2023_h2": [
+        "2023-07-01T00:00:00+00:00",
+        "2024-01-01T00:00:00+00:00"
+      ]
+    }
+  },
+  "stage_schedule_records": {
+    "primary": {
+      "train": {
+        "events": 377,
+        "schedule_hash": "f72d34a536051d94b1b24018f4d5f69b775ad738bf2be2af6bec21a41acce4a1",
+        "first_entry": "2020-01-11T06:00:00+00:00",
+        "last_exit": "2022-12-30T18:00:00+00:00"
+      },
+      "selection": {
+        "events": 111,
+        "schedule_hash": "5ebd8b8c5e3d1ed91969ea09c181206080287a946b3c2153ed8cd035c0126f56",
+        "first_entry": "2023-01-01T14:45:00+00:00",
+        "last_exit": "2023-12-24T08:45:00+00:00"
+      }
+    },
+    "exact_side_flip": {
+      "train": {
+        "events": 377,
+        "schedule_hash": "b5149b28f6e258bd506b8cd650f9db045bcb86d309cc1f0c6a56a82a8e77ae7c",
+        "first_entry": "2020-01-11T06:00:00+00:00",
+        "last_exit": "2022-12-30T18:00:00+00:00"
+      },
+      "selection": {
+        "events": 111,
+        "schedule_hash": "d49a8a2ba712880a68ae29b329aebbbf425e2ecaf29bea33a2c4f7633a98bab4",
+        "first_entry": "2023-01-01T14:45:00+00:00",
+        "last_exit": "2023-12-24T08:45:00+00:00"
+      }
+    },
+    "medium_vs_fine": {
+      "train": {
+        "events": 421,
+        "schedule_hash": "6a0cffa07ae757d0b2c16582097fc471406fec3be15842c41c0bab10c5ced0c0",
+        "first_entry": "2020-01-10T00:50:00+00:00",
+        "last_exit": "2022-12-30T07:05:00+00:00"
+      },
+      "selection": {
+        "events": 125,
+        "schedule_hash": "f83d483d54873876513f35315720a53dd34eb54290236461bc5cc6748fe0d347",
+        "first_entry": "2023-01-02T01:55:00+00:00",
+        "last_exit": "2023-12-29T22:30:00+00:00"
+      }
+    },
+    "remove_opposition": {
+      "train": {
+        "events": 392,
+        "schedule_hash": "8cf5a97a7b0282b30ed2c0b73a2c5710e91757d16ba70f5cefd27de497ee6af2",
+        "first_entry": "2020-01-09T13:00:00+00:00",
+        "last_exit": "2022-12-30T18:30:00+00:00"
+      },
+      "selection": {
+        "events": 111,
+        "schedule_hash": "7a98a28d443a96573ca6cdc627c0923b9b0e28ede268bb90343b3a31c38fbef3",
+        "first_entry": "2023-01-01T07:05:00+00:00",
+        "last_exit": "2023-12-31T10:35:00+00:00"
+      }
+    },
+    "all_quantity_imbalance": {
+      "train": {
+        "events": 386,
+        "schedule_hash": "fb629311ab7e4ffc462118f55bb27c46b65156ec66f7474c2278710bdd3727fa",
+        "first_entry": "2020-01-16T22:25:00+00:00",
+        "last_exit": "2022-12-30T17:35:00+00:00"
+      },
+      "selection": {
+        "events": 99,
+        "schedule_hash": "98b631ffd1356c0880f44983e086fc4759a84c35c47880d85f3e654c83a94324",
+        "first_entry": "2023-01-01T02:50:00+00:00",
+        "last_exit": "2023-12-31T01:05:00+00:00"
+      }
+    },
+    "stale_one_hour": {
+      "train": {
+        "events": 377,
+        "schedule_hash": "ec546f291949bfa2945767f0b1858528a953f26a3f4a3be070bda814117de3f5",
+        "first_entry": "2020-01-11T07:00:00+00:00",
+        "last_exit": "2022-12-30T19:00:00+00:00"
+      },
+      "selection": {
+        "events": 111,
+        "schedule_hash": "54a1886f9fb3dfcdad951146721f1a78a04f51a2ea939bb036fcda1b481dda1c",
+        "first_entry": "2023-01-01T15:45:00+00:00",
+        "last_exit": "2023-12-24T09:45:00+00:00"
+      }
+    },
+    "stale_twenty_four_hours": {
+      "train": {
+        "events": 377,
+        "schedule_hash": "7589276cff01e2080152b5528b66496e2777da3dbc0cd4684f72d7d669564f49",
+        "first_entry": "2020-01-12T06:00:00+00:00",
+        "last_exit": "2022-12-31T18:00:00+00:00"
+      },
+      "selection": {
+        "events": 112,
+        "schedule_hash": "f5323ad09855eb1567a74360b51d48f449e8044c3f5f5a2af3199d0066affbf6",
+        "first_entry": "2023-01-01T04:25:00+00:00",
+        "last_exit": "2023-12-25T08:45:00+00:00"
+      }
+    }
+  },
+  "primary_cross_stage_exclusions": [
+    {
+      "decision_time": "2022-12-31T04:20:00+00:00",
+      "entry_time": "2022-12-31T04:25:00+00:00",
+      "exit_time": "2023-01-01T04:25:00+00:00",
+      "side": -1,
+      "score_hex": "0x1.14a088d9370aep-4",
+      "threshold_hex": "0x1.78612625d4192p-5"
+    }
+  ],
+  "primary_cross_stage_exclusion_hash": "7b7824b732032476f7409ea93cf942fd9731bcf949de8a42faf7ec0fa4b5eff3",
+  "stage_membership_contract": "positions must be fully contained in a declared stage; every crossing position is excluded without reassignment, truncation, or outcome access",
+  "execution_source_specs": {
+    "train": {
+      "stage": "train",
+      "required_manifest": "results/quantity_lattice_cohort_disagreement_train_execution_source_2026-07-20.json",
+      "required_protocol_version": "quantity_lattice_cohort_disagreement_execution_source_v1",
+      "physical_window": [
+        "2020-01-01T00:00:00+00:00",
+        "2023-01-01T00:00:00+00:00"
+      ],
+      "physical_rows_limited_to_window": true,
+      "exit_boundary_required": false,
+      "strategy_outcomes_calculated": false
+    },
+    "selection": {
+      "stage": "selection",
+      "required_manifest": "results/quantity_lattice_cohort_disagreement_selection_execution_source_2026-07-20.json",
+      "required_protocol_version": "quantity_lattice_cohort_disagreement_execution_source_v1",
+      "physical_window": [
+        "2023-01-01T00:00:00+00:00",
+        "2024-01-01T00:00:00+00:00"
+      ],
+      "physical_rows_limited_to_window": true,
+      "exit_boundary_required": false,
+      "strategy_outcomes_calculated": false
+    }
+  },
+  "legacy_container_contract": {
+    "market": {
+      "path": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+      "sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+      "manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+      "manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e"
+    },
+    "funding": {
+      "path": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+      "sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6",
+      "manifest": "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json",
+      "manifest_sha256": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b"
+    }
+  },
+  "strict_accounting": {
+    "entry_exit": "5m open at frozen clock entry and exit; exact 288-bar hold",
+    "cost": "notional cost on entry and exit at 6bp/side base or 10bp/side stress",
+    "funding_boundary": "interior symmetric; exact entry/exit funding credits dropped and debits retained",
+    "mdd": "global pre-entry HWM; costs; exact funding marks; every held 5m favorable-then-adverse OHLC path",
+    "cagr": "full declared stage calendar including idle cash",
+    "subperiod": "only trades fully contained in each frozen year or half",
+    "mean_gross": "unlevered side-signed entry-open to exit-open move in bp",
+    "weekly_signflip": "nominal frozen two-sided ISO-entry-week clustered randomization diagnostic, not a standalone discovery p-value; exact through 20 clusters, otherwise 20,000 Monte Carlo draws with seed 20260720"
+  },
+  "opened_windows": [],
+  "sealed_windows": [
+    "train",
+    "selection",
+    "test",
+    "eval",
+    "recent"
+  ],
+  "execution_ohlc_rows_parsed_during_freeze": 0,
+  "funding_rows_parsed_during_freeze": 0,
+  "execution_outcome_identity_hashes_predeclared": true,
+  "execution_outcome_data_bytes_hashed_during_freeze": false,
+  "execution_outcome_rows_opened_during_freeze": false,
+  "simulation_run_during_freeze": false,
+  "phase_two_required_after_selection_pass": true,
+  "post_2023_access_supported": false,
+  "future_clock_contract": "a separately committed phase-two evaluator must rebuild exact QLCD features from official checksum-verified aggTrades with prior-baseline and global non-overlap continuity before opening 2024+ outcomes",
+  "future_phase_contract": {
+    "current_evaluator_approval": "train_and_selection_only",
+    "phase_two_stages": [
+      "test_2024",
+      "eval_2025",
+      "recent_report_2026_plus"
+    ],
+    "signal_source": "official Binance USD-M BTCUSDT daily aggTrades archives with each archive bound to its official CHECKSUM file",
+    "continuity_anchor": {
+      "source": "data/binance_um_quantity_lattice_btc_2020_2023/BTCUSDT_quantity_lattice_5m_2020-01-01_2023-12-31.csv.gz",
+      "source_sha256": "3ca945f134115fc7b58086405fd881db3e3b70087bd9da54ffc293f6b658072e",
+      "clock": "data/quantity_lattice_cohort_disagreement_clock_2020_2023.csv.gz",
+      "clock_sha256": "ed882ac8a28f1f0b2b7ad7bf3d2de1f37b175cde63b20d4d1c7a290f3eb89bec"
+    },
+    "source_failure_rules": {
+      "checksum_missing_or_mismatch": "abort phase two; never quarantine-and-continue",
+      "parse_or_quantity_precision_failure": "abort phase two",
+      "intra_day_id_gap_overlap_regression_or_exact_duplicate": "quarantine the complete incident UTC day and following 24 five-minute bars",
+      "cross_day_id_discontinuity": "quarantine both adjacent UTC days and the 24 bars following the later day",
+      "missing_five_minute_bucket": "treat as verified empty only when official USD-M kline volume and trade count are both zero; otherwise quarantine the complete UTC day and next 24 bars",
+      "manual_exception_after_phase_one": false
+    },
+    "clock_replay": "concatenate the hash-bound 2020-2023 source with future source, preserve the strictly-prior 8640-row q99.75 baseline without reset, replay the global non-overlap scheduler without reset, and require the full pre-2024 primary clock to match its frozen bytes before admitting any future event",
+    "stage_membership": "admit only positions fully contained in the declared stage; freeze every cross-boundary exclusion identity before that stage's outcomes",
+    "execution_source": "official checksum-bound BTCUSDT USD-M 5m klines and exact funding events/marks; physically isolate each stage before numeric parsing; reject symlinks and stale caches",
+    "recent_end": "latest completed UTC day fixed in the phase-two freeze before any 2026 outcome opens",
+    "phase_two_must_be_committed_before_2024_outcomes": true,
+    "mutable_rules_after_phase_one": []
+  },
+  "mutable_parameters": [],
+  "manifest_hash": "9ea2049f8c4ae02350b241a716284cc01463a5658c2469d0cab2adef2e12f992"
+}
