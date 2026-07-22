@@ -6,9 +6,16 @@ Preregister one new source-family-seen, outcome-blind singleton:
 **TASCC-72 — Treasury Auction Settlement-Collision Carry**.
 
 The exact TASCC basket incidence has not been derived and no TASCC BTC outcome
-has been opened. The next authorized step may read only the frozen 2016–2023
-Treasury auction schedule fields and hash-bound comparator clocks. Calendar
-2024 onward remains sealed.
+has been opened. The next authorized step may materialize only frozen
+2016–2023 Treasury panel keys and hash-bound comparator clocks.
+
+The two raw TreasuryDirect transport pages are current archive snapshots and
+contain later rows through 2026. A JSON parser will necessarily parse those
+transport objects. The builder must inspect `auctionDate` only to reject rows
+outside the pre-2024 normalized-panel key set before retaining any other TASCC
+field. It must count all transport rows parsed and materialize zero post-2023
+candidate rows. Calendar 2024 onward remains sealed from TASCC construction and
+all market evaluation.
 
 ## Prior-research contamination disclosure
 
@@ -45,6 +52,8 @@ rather than auction quality.
 
 1. Join the frozen normalized original-issue nominal coupon panel to the two
    frozen raw TreasuryDirect pages on exact `(auctionDate, cusip)`.
+   Raw transport rows outside the pre-2024 panel key set are discarded after
+   key inspection and may not materialize `issueDate`, term, or other fields.
 2. Materialize only `auctionDate`, `issueDate`, `cusip`, `securityType`,
    `originalSecurityTerm`, `reopening`, panel `result_available_at_utc`, and
    panel `source_complete`.
