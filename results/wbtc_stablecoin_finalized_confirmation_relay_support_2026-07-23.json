@@ -1,0 +1,2260 @@
+{
+  "black_funds_control_causal_interpretation": "veto only when confiscation is available after the WBTC anchor and no later than the would-be confirmation batch; same-time veto wins",
+  "candidate": "WSCF-72-SOURCE-FAMILY-SEEN",
+  "checks": {
+    "duplicate_accepted_confirmation_batch_forbidden": true,
+    "duplicate_accepted_wbtc_batch_forbidden": true,
+    "each_selection_half_year_minimum": true,
+    "each_train_half_year_minimum": true,
+    "each_train_year_minimum": true,
+    "maximum_calendar_gap_days": true,
+    "maximum_consecutive_same_side": false,
+    "maximum_month_share": true,
+    "maximum_quarter_share": true,
+    "novelty:live_portfolio_pure_clocks:live:cand_rex_veto_7": true,
+    "novelty:live_portfolio_pure_clocks:live:new_long_minimal_funding_premium": true,
+    "novelty:live_portfolio_pure_clocks:live:oi_upbit_ratio288_low": true,
+    "novelty:sealed_prior_stablecoin_bundle:AMTR-48:cross_minter": false,
+    "novelty:sealed_prior_stablecoin_bundle:SDDR-12:primary": false,
+    "novelty:sealed_prior_stablecoin_bundle:SQFD-6:no_participation": false,
+    "novelty:sealed_prior_stablecoin_bundle:SQFD-6:no_usdt_lag": false,
+    "novelty:sealed_prior_stablecoin_bundle:SQFD-6:primary": false,
+    "novelty:sealed_prior_stablecoin_bundle:UCBR-12:primary": false,
+    "novelty:ugci_primary": true,
+    "novelty:wcdr_primary": true,
+    "novelty:wtsl_primary": true,
+    "selection_distinct_wbtc_actors_minimum": true,
+    "selection_each_side_minimum": true,
+    "selection_total_minimum": true,
+    "train_distinct_wbtc_actors_minimum": true,
+    "train_each_side_minimum": true,
+    "train_total_minimum": true
+  },
+  "clock_output": {
+    "columns": [
+      "candidate",
+      "control",
+      "signal_id",
+      "window",
+      "wbtc_available_at",
+      "anchor_time",
+      "signal_time",
+      "entry_time",
+      "exit_time",
+      "side",
+      "wbtc_batch_identity",
+      "wbtc_net_raw",
+      "wbtc_gross_raw",
+      "wbtc_rows",
+      "wbtc_distinct_actors",
+      "wbtc_top_actor_share",
+      "confirmation_batch_identity",
+      "stablecoin_scope",
+      "cumulative_stablecoin_net_raw",
+      "cumulative_stablecoin_gross_raw",
+      "stablecoin_batches",
+      "confirmation_delay_seconds",
+      "usdc_net_raw",
+      "usdc_gross_raw",
+      "usdt_net_raw",
+      "usdt_gross_raw"
+    ],
+    "gzip_mtime": 0,
+    "path": "data/wbtc_stablecoin_finalized_confirmation_relay_2021_2023/wscf72_support_clocks_2021_2023.csv.gz",
+    "rows": 2681,
+    "sha256": "86565774ae97a1024c5a66b4d59a1f5413bf4608398623359dd3ee24572f0ef3"
+  },
+  "comparator_audit": {
+    "live_portfolio_pure_clocks": {
+      "physical_rows_read": 440,
+      "views": {
+        "live_portfolio_pure_clocks:live:cand_rex_veto_7": 218,
+        "live_portfolio_pure_clocks:live:new_long_minimal_funding_premium": 82,
+        "live_portfolio_pure_clocks:live:oi_upbit_ratio288_low": 140
+      }
+    },
+    "sealed_prior_stablecoin_bundle": {
+      "physical_rows_read": 780,
+      "views": {
+        "sealed_prior_stablecoin_bundle:AMTR-48:cross_minter": 411,
+        "sealed_prior_stablecoin_bundle:AMTR-48:primary": 5,
+        "sealed_prior_stablecoin_bundle:SDDR-12:primary": 78,
+        "sealed_prior_stablecoin_bundle:SQFD-6:no_participation": 89,
+        "sealed_prior_stablecoin_bundle:SQFD-6:no_usdt_lag": 114,
+        "sealed_prior_stablecoin_bundle:SQFD-6:primary": 55,
+        "sealed_prior_stablecoin_bundle:UCBR-12:primary": 28
+      }
+    },
+    "ugci_primary": {
+      "physical_rows_read": 1245,
+      "views": {
+        "ugci_primary": 98
+      }
+    },
+    "wcdr_primary": {
+      "physical_rows_read": 818,
+      "views": {
+        "wcdr_primary": 78
+      }
+    },
+    "wtsl_primary": {
+      "physical_rows_read": 2643,
+      "views": {
+        "wtsl_primary": 167
+      }
+    }
+  },
+  "comparator_bindings": [
+    {
+      "clock": "data/wrapped_collateral_dollar_liquidity_rotation_2021_2023/wcdr2016_support_clocks_2021_2023.csv.gz",
+      "clock_sha256": "241d96a64a654ba2faeda2d4a8460131269acf21d0bbbf31177d35d1ecd63b3c",
+      "comparison": [
+        "2021-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "entry_field": "entry_time",
+      "filters": {
+        "candidate": "WCDR-2016",
+        "control": "primary"
+      },
+      "group_field": null,
+      "header": [
+        "candidate",
+        "control",
+        "signal_id",
+        "window",
+        "decision_time",
+        "source_cutoff",
+        "entry_time",
+        "exit_time",
+        "side",
+        "wbtc_net_raw",
+        "wbtc_gross_raw",
+        "wbtc_count_net",
+        "wbtc_rows",
+        "wbtc_distinct_actors",
+        "wbtc_top_actor_share",
+        "usdc_net_raw",
+        "usdc_gross_raw",
+        "usdc_count_net",
+        "usdc_rows"
+      ],
+      "manifest": "results/wrapped_collateral_dollar_liquidity_rotation_support_2026-07-23.json",
+      "manifest_file_sha256": "df3101a973c514c7c8297e7132b6c9d95fe7d10adf234dc5b5b29c497e972c35",
+      "manifest_hash": "0a28128c820c1f5baf73c7653901056d3803e9bc0cce54b29a03afc7051ef600",
+      "name": "wcdr_primary",
+      "side_field": "side",
+      "value_rows_read_during_preregistration": 0
+    },
+    {
+      "clock": "data/wbtc_turnover_stablecoin_liquidity_2021_2023/wtsl168_support_clocks_2021_2023.csv.gz",
+      "clock_sha256": "df8cb085d439c9ee9e89334cb891b9e3b04f54c2a8e70bd4f552a90648ea8b6d",
+      "comparison": [
+        "2021-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "entry_field": "entry_time",
+      "filters": {
+        "candidate": "WTSL-168-SOURCE-SEEN",
+        "control": "primary"
+      },
+      "group_field": null,
+      "header": [
+        "candidate",
+        "control",
+        "signal_id",
+        "window",
+        "decision_time",
+        "source_cutoff",
+        "entry_time",
+        "exit_time",
+        "side",
+        "wbtc_net_raw",
+        "wbtc_gross_raw",
+        "wbtc_rows",
+        "wbtc_distinct_actors",
+        "wbtc_top_actor_share",
+        "wbtc_prior_median_twice_raw",
+        "stablecoin_scope",
+        "stablecoin_net_raw",
+        "stablecoin_gross_raw",
+        "stablecoin_rows",
+        "stablecoin_veto_rows",
+        "usdc_net_raw",
+        "usdc_gross_raw",
+        "usdt_net_raw",
+        "usdt_gross_raw"
+      ],
+      "manifest": "results/wbtc_turnover_stablecoin_liquidity_support_2026-07-23.json",
+      "manifest_file_sha256": "1415b8e2a40f2aff908bfec1d1faa9621445c3fe87b41c43fd95a991725b23bd",
+      "manifest_hash": "b53de47d743f7f61240e59ac3149c0a37467f6bb8ce580c9c3c2bc84341b7e9e",
+      "name": "wtsl_primary",
+      "side_field": "side",
+      "value_rows_read_during_preregistration": 0
+    },
+    {
+      "clock": "data/usdc_gross_clearing_imbalance_clocks_2021_2023.csv.gz",
+      "clock_sha256": "a0f861c69ac171e1efa665dc90a916d0351413ca07e5e46783bb8abd662175fd",
+      "comparison": [
+        "2021-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "entry_field": "entry_time",
+      "filters": {
+        "candidate": "UGCI-288",
+        "control": "primary"
+      },
+      "group_field": null,
+      "header": [
+        "candidate",
+        "control",
+        "signal_id",
+        "source_packet_start",
+        "source_packet_end",
+        "feature_available_time",
+        "decision_time",
+        "entry_time",
+        "exit_time",
+        "side",
+        "mint_raw",
+        "burn_raw",
+        "gross_raw",
+        "net_raw",
+        "imbalance_ratio",
+        "prior_gross_q95",
+        "prior_history_packets"
+      ],
+      "manifest": "results/usdc_gross_clearing_imbalance_support_2026-07-22.json",
+      "manifest_file_sha256": "b61fc80bc879f15e9f1d15ac135ecbbda9384301cb8889def5b5a502af6068fa",
+      "manifest_hash": "bc6b79c83e176ebd110a39fdf126b86504c5c9ce9411df65a5fb46670170a8f4",
+      "name": "ugci_primary",
+      "side_field": "side",
+      "value_rows_read_during_preregistration": 0
+    },
+    {
+      "clock": "results/ugci_prior_comparator_views_pre2024_2026-07-22.csv.gz",
+      "clock_sha256": "dfbf4808813c1b0db4c5a4f05af324473d3a92dfa5cdfc6581e1b07bc17271bd",
+      "comparison": [
+        "2021-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "entry_field": "entry_time",
+      "filters": {},
+      "group_field": null,
+      "header": [
+        "candidate",
+        "control",
+        "entry_time",
+        "comparison_start",
+        "comparison_end_exclusive"
+      ],
+      "manifest": "results/ugci_prior_comparator_views_pre2024_manifest_2026-07-22.json",
+      "manifest_file_sha256": "38abf60a8c9aa44c7fb53a5435f22cb650151b58e33a6fca1ffae1aeb36ed5c2",
+      "manifest_hash": "a00301a229bc1c620f355cb42adc05b760d8734d7a903490ab2c1d3a0fd92d33",
+      "name": "sealed_prior_stablecoin_bundle",
+      "side_field": null,
+      "value_rows_read_during_preregistration": 0
+    },
+    {
+      "clock": "results/cchr_live_portfolio_pure_clocks_2026-07-21.csv.gz",
+      "clock_sha256": "73d6efbd35b3be64b0fa04fa9c8cb2db25866ef884f19b1ae673949e22a42b08",
+      "comparison": [
+        "2021-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "entry_field": "entry_time",
+      "filters": {},
+      "group_field": "candidate_id",
+      "header": [
+        "candidate_id",
+        "split",
+        "decision_time",
+        "entry_time",
+        "exit_time",
+        "side"
+      ],
+      "manifest": "results/cchr_live_portfolio_pure_clock_manifest_2026-07-21.json",
+      "manifest_file_sha256": "6c53ae482cf72bba0f286a47626842bf43070276ff5fe359be718e44864af57d",
+      "manifest_hash": "2c240d4ffad4b8aa51434acebb74a61e8605fd0fa1a5e8e4554d3fa46fc1baea",
+      "name": "live_portfolio_pure_clocks",
+      "side_field": "side",
+      "value_rows_read_during_preregistration": 0
+    }
+  ],
+  "controls": {
+    "anchored_first_nonzero": {
+      "selection": {
+        "active_months": 12,
+        "distinct_wbtc_actors": 11,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2023H1": 32,
+          "2023H2": 24
+        },
+        "maximum_calendar_gap_days": 25.76736111111111,
+        "maximum_consecutive_same_side": 9,
+        "maximum_month_share": 0.125,
+        "maximum_quarter_share": 0.35714285714285715,
+        "month_counts": {
+          "2023-01": 5,
+          "2023-02": 5,
+          "2023-03": 2,
+          "2023-04": 7,
+          "2023-05": 6,
+          "2023-06": 7,
+          "2023-07": 7,
+          "2023-08": 4,
+          "2023-09": 2,
+          "2023-10": 4,
+          "2023-11": 4,
+          "2023-12": 3
+        },
+        "quarter_counts": {
+          "2023Q1": 12,
+          "2023Q2": 20,
+          "2023Q3": 13,
+          "2023Q4": 11
+        },
+        "side_counts": {
+          "long": 32,
+          "short": 24
+        },
+        "trades": 56,
+        "wbtc_actor_set_hash": "79f10c388c7f05d499386ba520aff0e3d550e6171fb19ea4cd149c5b895e70e9",
+        "year_counts": {
+          "2023": 56
+        }
+      },
+      "trades": 208,
+      "train": {
+        "active_months": 24,
+        "distinct_wbtc_actors": 15,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2021H1": 41,
+          "2021H2": 36,
+          "2022H1": 39,
+          "2022H2": 36
+        },
+        "maximum_calendar_gap_days": 12.45486111111111,
+        "maximum_consecutive_same_side": 7,
+        "maximum_month_share": 0.05921052631578947,
+        "maximum_quarter_share": 0.13815789473684212,
+        "month_counts": {
+          "2021-01": 7,
+          "2021-02": 6,
+          "2021-03": 7,
+          "2021-04": 7,
+          "2021-05": 9,
+          "2021-06": 5,
+          "2021-07": 6,
+          "2021-08": 5,
+          "2021-09": 7,
+          "2021-10": 7,
+          "2021-11": 5,
+          "2021-12": 6,
+          "2022-01": 6,
+          "2022-02": 6,
+          "2022-03": 6,
+          "2022-04": 7,
+          "2022-05": 7,
+          "2022-06": 7,
+          "2022-07": 6,
+          "2022-08": 8,
+          "2022-09": 6,
+          "2022-10": 4,
+          "2022-11": 6,
+          "2022-12": 6
+        },
+        "quarter_counts": {
+          "2021Q1": 20,
+          "2021Q2": 21,
+          "2021Q3": 18,
+          "2021Q4": 18,
+          "2022Q1": 18,
+          "2022Q2": 21,
+          "2022Q3": 20,
+          "2022Q4": 16
+        },
+        "side_counts": {
+          "long": 74,
+          "short": 78
+        },
+        "trades": 152,
+        "wbtc_actor_set_hash": "12bb9385e8adb87879de7a2e968fe859932031cd287dc4d75e11ff81c1aa156a",
+        "year_counts": {
+          "2021": 77,
+          "2022": 75
+        }
+      }
+    },
+    "black_funds_veto": {
+      "selection": {
+        "active_months": 12,
+        "distinct_wbtc_actors": 10,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2023H1": 30,
+          "2023H2": 22
+        },
+        "maximum_calendar_gap_days": 30.055555555555557,
+        "maximum_consecutive_same_side": 8,
+        "maximum_month_share": 0.1346153846153846,
+        "maximum_quarter_share": 0.34615384615384615,
+        "month_counts": {
+          "2023-01": 4,
+          "2023-02": 5,
+          "2023-03": 3,
+          "2023-04": 6,
+          "2023-05": 5,
+          "2023-06": 7,
+          "2023-07": 7,
+          "2023-08": 4,
+          "2023-09": 1,
+          "2023-10": 4,
+          "2023-11": 3,
+          "2023-12": 3
+        },
+        "quarter_counts": {
+          "2023Q1": 12,
+          "2023Q2": 18,
+          "2023Q3": 12,
+          "2023Q4": 10
+        },
+        "side_counts": {
+          "long": 29,
+          "short": 23
+        },
+        "trades": 52,
+        "wbtc_actor_set_hash": "1c033e526c81bb20b6bbacb7ffa9de93e64063e5bc88d4d6647792e5365d9b1e",
+        "year_counts": {
+          "2023": 52
+        }
+      },
+      "trades": 193,
+      "train": {
+        "active_months": 24,
+        "distinct_wbtc_actors": 15,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2021H1": 39,
+          "2021H2": 33,
+          "2022H1": 37,
+          "2022H2": 32
+        },
+        "maximum_calendar_gap_days": 14.208333333333334,
+        "maximum_consecutive_same_side": 20,
+        "maximum_month_share": 0.05673758865248227,
+        "maximum_quarter_share": 0.14184397163120568,
+        "month_counts": {
+          "2021-01": 7,
+          "2021-02": 5,
+          "2021-03": 7,
+          "2021-04": 7,
+          "2021-05": 8,
+          "2021-06": 5,
+          "2021-07": 6,
+          "2021-08": 4,
+          "2021-09": 5,
+          "2021-10": 7,
+          "2021-11": 5,
+          "2021-12": 6,
+          "2022-01": 6,
+          "2022-02": 6,
+          "2022-03": 5,
+          "2022-04": 6,
+          "2022-05": 7,
+          "2022-06": 7,
+          "2022-07": 6,
+          "2022-08": 5,
+          "2022-09": 5,
+          "2022-10": 4,
+          "2022-11": 6,
+          "2022-12": 6
+        },
+        "quarter_counts": {
+          "2021Q1": 19,
+          "2021Q2": 20,
+          "2021Q3": 15,
+          "2021Q4": 18,
+          "2022Q1": 17,
+          "2022Q2": 20,
+          "2022Q3": 16,
+          "2022Q4": 16
+        },
+        "side_counts": {
+          "long": 87,
+          "short": 54
+        },
+        "trades": 141,
+        "wbtc_actor_set_hash": "8c81ca3774270b45082218ef224810d1b0dc8f0a45022dfe15c57af4db786ce7",
+        "year_counts": {
+          "2021": 72,
+          "2022": 69
+        }
+      }
+    },
+    "deterministic_random_side": {
+      "selection": {
+        "active_months": 12,
+        "distinct_wbtc_actors": 10,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2023H1": 30,
+          "2023H2": 22
+        },
+        "maximum_calendar_gap_days": 30.055555555555557,
+        "maximum_consecutive_same_side": 4,
+        "maximum_month_share": 0.1346153846153846,
+        "maximum_quarter_share": 0.34615384615384615,
+        "month_counts": {
+          "2023-01": 4,
+          "2023-02": 5,
+          "2023-03": 3,
+          "2023-04": 6,
+          "2023-05": 5,
+          "2023-06": 7,
+          "2023-07": 7,
+          "2023-08": 4,
+          "2023-09": 1,
+          "2023-10": 4,
+          "2023-11": 3,
+          "2023-12": 3
+        },
+        "quarter_counts": {
+          "2023Q1": 12,
+          "2023Q2": 18,
+          "2023Q3": 12,
+          "2023Q4": 10
+        },
+        "side_counts": {
+          "long": 26,
+          "short": 26
+        },
+        "trades": 52,
+        "wbtc_actor_set_hash": "1c033e526c81bb20b6bbacb7ffa9de93e64063e5bc88d4d6647792e5365d9b1e",
+        "year_counts": {
+          "2023": 52
+        }
+      },
+      "trades": 193,
+      "train": {
+        "active_months": 24,
+        "distinct_wbtc_actors": 15,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2021H1": 39,
+          "2021H2": 33,
+          "2022H1": 37,
+          "2022H2": 32
+        },
+        "maximum_calendar_gap_days": 14.208333333333334,
+        "maximum_consecutive_same_side": 10,
+        "maximum_month_share": 0.05673758865248227,
+        "maximum_quarter_share": 0.14184397163120568,
+        "month_counts": {
+          "2021-01": 7,
+          "2021-02": 5,
+          "2021-03": 7,
+          "2021-04": 7,
+          "2021-05": 8,
+          "2021-06": 5,
+          "2021-07": 6,
+          "2021-08": 4,
+          "2021-09": 5,
+          "2021-10": 7,
+          "2021-11": 5,
+          "2021-12": 6,
+          "2022-01": 6,
+          "2022-02": 6,
+          "2022-03": 5,
+          "2022-04": 6,
+          "2022-05": 7,
+          "2022-06": 7,
+          "2022-07": 6,
+          "2022-08": 5,
+          "2022-09": 5,
+          "2022-10": 4,
+          "2022-11": 6,
+          "2022-12": 6
+        },
+        "quarter_counts": {
+          "2021Q1": 19,
+          "2021Q2": 20,
+          "2021Q3": 15,
+          "2021Q4": 18,
+          "2022Q1": 17,
+          "2022Q2": 20,
+          "2022Q3": 16,
+          "2022Q4": 16
+        },
+        "side_counts": {
+          "long": 89,
+          "short": 52
+        },
+        "trades": 141,
+        "wbtc_actor_set_hash": "8c81ca3774270b45082218ef224810d1b0dc8f0a45022dfe15c57af4db786ce7",
+        "year_counts": {
+          "2021": 72,
+          "2022": 69
+        }
+      }
+    },
+    "direction_flip": {
+      "selection": {
+        "active_months": 12,
+        "distinct_wbtc_actors": 10,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2023H1": 30,
+          "2023H2": 22
+        },
+        "maximum_calendar_gap_days": 30.055555555555557,
+        "maximum_consecutive_same_side": 8,
+        "maximum_month_share": 0.1346153846153846,
+        "maximum_quarter_share": 0.34615384615384615,
+        "month_counts": {
+          "2023-01": 4,
+          "2023-02": 5,
+          "2023-03": 3,
+          "2023-04": 6,
+          "2023-05": 5,
+          "2023-06": 7,
+          "2023-07": 7,
+          "2023-08": 4,
+          "2023-09": 1,
+          "2023-10": 4,
+          "2023-11": 3,
+          "2023-12": 3
+        },
+        "quarter_counts": {
+          "2023Q1": 12,
+          "2023Q2": 18,
+          "2023Q3": 12,
+          "2023Q4": 10
+        },
+        "side_counts": {
+          "long": 24,
+          "short": 28
+        },
+        "trades": 52,
+        "wbtc_actor_set_hash": "1c033e526c81bb20b6bbacb7ffa9de93e64063e5bc88d4d6647792e5365d9b1e",
+        "year_counts": {
+          "2023": 52
+        }
+      },
+      "trades": 193,
+      "train": {
+        "active_months": 24,
+        "distinct_wbtc_actors": 15,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2021H1": 39,
+          "2021H2": 33,
+          "2022H1": 37,
+          "2022H2": 32
+        },
+        "maximum_calendar_gap_days": 14.208333333333334,
+        "maximum_consecutive_same_side": 20,
+        "maximum_month_share": 0.05673758865248227,
+        "maximum_quarter_share": 0.14184397163120568,
+        "month_counts": {
+          "2021-01": 7,
+          "2021-02": 5,
+          "2021-03": 7,
+          "2021-04": 7,
+          "2021-05": 8,
+          "2021-06": 5,
+          "2021-07": 6,
+          "2021-08": 4,
+          "2021-09": 5,
+          "2021-10": 7,
+          "2021-11": 5,
+          "2021-12": 6,
+          "2022-01": 6,
+          "2022-02": 6,
+          "2022-03": 5,
+          "2022-04": 6,
+          "2022-05": 7,
+          "2022-06": 7,
+          "2022-07": 6,
+          "2022-08": 5,
+          "2022-09": 5,
+          "2022-10": 4,
+          "2022-11": 6,
+          "2022-12": 6
+        },
+        "quarter_counts": {
+          "2021Q1": 19,
+          "2021Q2": 20,
+          "2021Q3": 15,
+          "2021Q4": 18,
+          "2022Q1": 17,
+          "2022Q2": 20,
+          "2022Q3": 16,
+          "2022Q4": 16
+        },
+        "side_counts": {
+          "long": 54,
+          "short": 87
+        },
+        "trades": 141,
+        "wbtc_actor_set_hash": "8c81ca3774270b45082218ef224810d1b0dc8f0a45022dfe15c57af4db786ce7",
+        "year_counts": {
+          "2021": 72,
+          "2022": 69
+        }
+      }
+    },
+    "lead_lag_reverse": {
+      "selection": {
+        "active_months": 12,
+        "distinct_wbtc_actors": 8,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2023H1": 21,
+          "2023H2": 18
+        },
+        "maximum_calendar_gap_days": 26.520833333333332,
+        "maximum_consecutive_same_side": 5,
+        "maximum_month_share": 0.15384615384615385,
+        "maximum_quarter_share": 0.28205128205128205,
+        "month_counts": {
+          "2023-01": 4,
+          "2023-02": 4,
+          "2023-03": 2,
+          "2023-04": 3,
+          "2023-05": 3,
+          "2023-06": 5,
+          "2023-07": 6,
+          "2023-08": 3,
+          "2023-09": 2,
+          "2023-10": 2,
+          "2023-11": 2,
+          "2023-12": 3
+        },
+        "quarter_counts": {
+          "2023Q1": 10,
+          "2023Q2": 11,
+          "2023Q3": 11,
+          "2023Q4": 7
+        },
+        "side_counts": {
+          "long": 19,
+          "short": 20
+        },
+        "trades": 39,
+        "wbtc_actor_set_hash": "32e4efdfd6e86d8858a9e6d845322cd804561aceb7711b79ddd7c03b5c5e40c4",
+        "year_counts": {
+          "2023": 39
+        }
+      },
+      "trades": 153,
+      "train": {
+        "active_months": 24,
+        "distinct_wbtc_actors": 15,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2021H1": 34,
+          "2021H2": 25,
+          "2022H1": 29,
+          "2022H2": 26
+        },
+        "maximum_calendar_gap_days": 20.40625,
+        "maximum_consecutive_same_side": 24,
+        "maximum_month_share": 0.07017543859649122,
+        "maximum_quarter_share": 0.15789473684210525,
+        "month_counts": {
+          "2021-01": 6,
+          "2021-02": 5,
+          "2021-03": 5,
+          "2021-04": 6,
+          "2021-05": 8,
+          "2021-06": 4,
+          "2021-07": 3,
+          "2021-08": 4,
+          "2021-09": 4,
+          "2021-10": 6,
+          "2021-11": 5,
+          "2021-12": 3,
+          "2022-01": 5,
+          "2022-02": 4,
+          "2022-03": 3,
+          "2022-04": 5,
+          "2022-05": 5,
+          "2022-06": 7,
+          "2022-07": 5,
+          "2022-08": 6,
+          "2022-09": 4,
+          "2022-10": 4,
+          "2022-11": 3,
+          "2022-12": 4
+        },
+        "quarter_counts": {
+          "2021Q1": 16,
+          "2021Q2": 18,
+          "2021Q3": 11,
+          "2021Q4": 14,
+          "2022Q1": 12,
+          "2022Q2": 17,
+          "2022Q3": 15,
+          "2022Q4": 11
+        },
+        "side_counts": {
+          "long": 81,
+          "short": 33
+        },
+        "trades": 114,
+        "wbtc_actor_set_hash": "7cbc8e0146628bd1d6a8acb1d6b5e2477a4460e25dffb9cb0e51458f1ac7d994",
+        "year_counts": {
+          "2021": 59,
+          "2022": 55
+        }
+      }
+    },
+    "opposite_confirmation": {
+      "selection": {
+        "active_months": 12,
+        "distinct_wbtc_actors": 11,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2023H1": 27,
+          "2023H2": 24
+        },
+        "maximum_calendar_gap_days": 25.76736111111111,
+        "maximum_consecutive_same_side": 8,
+        "maximum_month_share": 0.13725490196078433,
+        "maximum_quarter_share": 0.3137254901960784,
+        "month_counts": {
+          "2023-01": 4,
+          "2023-02": 5,
+          "2023-03": 2,
+          "2023-04": 5,
+          "2023-05": 6,
+          "2023-06": 5,
+          "2023-07": 7,
+          "2023-08": 4,
+          "2023-09": 2,
+          "2023-10": 4,
+          "2023-11": 4,
+          "2023-12": 3
+        },
+        "quarter_counts": {
+          "2023Q1": 11,
+          "2023Q2": 16,
+          "2023Q3": 13,
+          "2023Q4": 11
+        },
+        "side_counts": {
+          "long": 25,
+          "short": 26
+        },
+        "trades": 51,
+        "wbtc_actor_set_hash": "79f10c388c7f05d499386ba520aff0e3d550e6171fb19ea4cd149c5b895e70e9",
+        "year_counts": {
+          "2023": 51
+        }
+      },
+      "trades": 196,
+      "train": {
+        "active_months": 24,
+        "distinct_wbtc_actors": 16,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2021H1": 38,
+          "2021H2": 34,
+          "2022H1": 39,
+          "2022H2": 34
+        },
+        "maximum_calendar_gap_days": 12.503472222222221,
+        "maximum_consecutive_same_side": 16,
+        "maximum_month_share": 0.05517241379310345,
+        "maximum_quarter_share": 0.14482758620689656,
+        "month_counts": {
+          "2021-01": 7,
+          "2021-02": 6,
+          "2021-03": 5,
+          "2021-04": 7,
+          "2021-05": 8,
+          "2021-06": 5,
+          "2021-07": 6,
+          "2021-08": 5,
+          "2021-09": 6,
+          "2021-10": 5,
+          "2021-11": 6,
+          "2021-12": 6,
+          "2022-01": 6,
+          "2022-02": 5,
+          "2022-03": 7,
+          "2022-04": 7,
+          "2022-05": 7,
+          "2022-06": 7,
+          "2022-07": 5,
+          "2022-08": 7,
+          "2022-09": 6,
+          "2022-10": 4,
+          "2022-11": 6,
+          "2022-12": 6
+        },
+        "quarter_counts": {
+          "2021Q1": 18,
+          "2021Q2": 20,
+          "2021Q3": 17,
+          "2021Q4": 17,
+          "2022Q1": 18,
+          "2022Q2": 21,
+          "2022Q3": 18,
+          "2022Q4": 16
+        },
+        "side_counts": {
+          "long": 85,
+          "short": 60
+        },
+        "trades": 145,
+        "wbtc_actor_set_hash": "7d3cee89722a0d21febae4d113f1481c66286293eebdb47ba07b4c331da01b50",
+        "year_counts": {
+          "2021": 72,
+          "2022": 73
+        }
+      }
+    },
+    "primary": {
+      "selection": {
+        "active_months": 12,
+        "distinct_wbtc_actors": 10,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2023H1": 30,
+          "2023H2": 22
+        },
+        "maximum_calendar_gap_days": 30.055555555555557,
+        "maximum_consecutive_same_side": 8,
+        "maximum_month_share": 0.1346153846153846,
+        "maximum_quarter_share": 0.34615384615384615,
+        "month_counts": {
+          "2023-01": 4,
+          "2023-02": 5,
+          "2023-03": 3,
+          "2023-04": 6,
+          "2023-05": 5,
+          "2023-06": 7,
+          "2023-07": 7,
+          "2023-08": 4,
+          "2023-09": 1,
+          "2023-10": 4,
+          "2023-11": 3,
+          "2023-12": 3
+        },
+        "quarter_counts": {
+          "2023Q1": 12,
+          "2023Q2": 18,
+          "2023Q3": 12,
+          "2023Q4": 10
+        },
+        "side_counts": {
+          "long": 28,
+          "short": 24
+        },
+        "trades": 52,
+        "wbtc_actor_set_hash": "1c033e526c81bb20b6bbacb7ffa9de93e64063e5bc88d4d6647792e5365d9b1e",
+        "year_counts": {
+          "2023": 52
+        }
+      },
+      "trades": 193,
+      "train": {
+        "active_months": 24,
+        "distinct_wbtc_actors": 15,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2021H1": 39,
+          "2021H2": 33,
+          "2022H1": 37,
+          "2022H2": 32
+        },
+        "maximum_calendar_gap_days": 14.208333333333334,
+        "maximum_consecutive_same_side": 20,
+        "maximum_month_share": 0.05673758865248227,
+        "maximum_quarter_share": 0.14184397163120568,
+        "month_counts": {
+          "2021-01": 7,
+          "2021-02": 5,
+          "2021-03": 7,
+          "2021-04": 7,
+          "2021-05": 8,
+          "2021-06": 5,
+          "2021-07": 6,
+          "2021-08": 4,
+          "2021-09": 5,
+          "2021-10": 7,
+          "2021-11": 5,
+          "2021-12": 6,
+          "2022-01": 6,
+          "2022-02": 6,
+          "2022-03": 5,
+          "2022-04": 6,
+          "2022-05": 7,
+          "2022-06": 7,
+          "2022-07": 6,
+          "2022-08": 5,
+          "2022-09": 5,
+          "2022-10": 4,
+          "2022-11": 6,
+          "2022-12": 6
+        },
+        "quarter_counts": {
+          "2021Q1": 19,
+          "2021Q2": 20,
+          "2021Q3": 15,
+          "2021Q4": 18,
+          "2022Q1": 17,
+          "2022Q2": 20,
+          "2022Q3": 16,
+          "2022Q4": 16
+        },
+        "side_counts": {
+          "long": 87,
+          "short": 54
+        },
+        "trades": 141,
+        "wbtc_actor_set_hash": "8c81ca3774270b45082218ef224810d1b0dc8f0a45022dfe15c57af4db786ce7",
+        "year_counts": {
+          "2021": 72,
+          "2022": 69
+        }
+      }
+    },
+    "stablecoin_only_12h_grid": {
+      "selection": {
+        "active_months": 12,
+        "distinct_wbtc_actors": 0,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2023H1": 60,
+          "2023H2": 61
+        },
+        "maximum_calendar_gap_days": 3.5,
+        "maximum_consecutive_same_side": 10,
+        "maximum_month_share": 0.09090909090909091,
+        "maximum_quarter_share": 0.256198347107438,
+        "month_counts": {
+          "2023-01": 11,
+          "2023-02": 9,
+          "2023-03": 10,
+          "2023-04": 10,
+          "2023-05": 10,
+          "2023-06": 10,
+          "2023-07": 11,
+          "2023-08": 10,
+          "2023-09": 10,
+          "2023-10": 10,
+          "2023-11": 10,
+          "2023-12": 10
+        },
+        "quarter_counts": {
+          "2023Q1": 30,
+          "2023Q2": 30,
+          "2023Q3": 31,
+          "2023Q4": 30
+        },
+        "side_counts": {
+          "long": 58,
+          "short": 63
+        },
+        "trades": 121,
+        "wbtc_actor_set_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "year_counts": {
+          "2023": 121
+        }
+      },
+      "trades": 364,
+      "train": {
+        "active_months": 24,
+        "distinct_wbtc_actors": 0,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2021H1": 61,
+          "2021H2": 61,
+          "2022H1": 60,
+          "2022H2": 61
+        },
+        "maximum_calendar_gap_days": 3.0,
+        "maximum_consecutive_same_side": 20,
+        "maximum_month_share": 0.04526748971193416,
+        "maximum_quarter_share": 0.12757201646090535,
+        "month_counts": {
+          "2021-01": 11,
+          "2021-02": 9,
+          "2021-03": 10,
+          "2021-04": 10,
+          "2021-05": 11,
+          "2021-06": 10,
+          "2021-07": 10,
+          "2021-08": 10,
+          "2021-09": 10,
+          "2021-10": 11,
+          "2021-11": 10,
+          "2021-12": 10,
+          "2022-01": 10,
+          "2022-02": 10,
+          "2022-03": 10,
+          "2022-04": 10,
+          "2022-05": 10,
+          "2022-06": 10,
+          "2022-07": 11,
+          "2022-08": 10,
+          "2022-09": 10,
+          "2022-10": 10,
+          "2022-11": 10,
+          "2022-12": 10
+        },
+        "quarter_counts": {
+          "2021Q1": 30,
+          "2021Q2": 31,
+          "2021Q3": 30,
+          "2021Q4": 31,
+          "2022Q1": 30,
+          "2022Q2": 30,
+          "2022Q3": 31,
+          "2022Q4": 30
+        },
+        "side_counts": {
+          "long": 155,
+          "short": 88
+        },
+        "trades": 243,
+        "wbtc_actor_set_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "year_counts": {
+          "2021": 122,
+          "2022": 121
+        }
+      }
+    },
+    "stablecoin_year_amount_permutation": {
+      "selection": {
+        "active_months": 12,
+        "distinct_wbtc_actors": 12,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2023H1": 30,
+          "2023H2": 24
+        },
+        "maximum_calendar_gap_days": 25.743055555555557,
+        "maximum_consecutive_same_side": 9,
+        "maximum_month_share": 0.12962962962962962,
+        "maximum_quarter_share": 0.35185185185185186,
+        "month_counts": {
+          "2023-01": 5,
+          "2023-02": 5,
+          "2023-03": 1,
+          "2023-04": 6,
+          "2023-05": 6,
+          "2023-06": 7,
+          "2023-07": 7,
+          "2023-08": 4,
+          "2023-09": 2,
+          "2023-10": 4,
+          "2023-11": 4,
+          "2023-12": 3
+        },
+        "quarter_counts": {
+          "2023Q1": 11,
+          "2023Q2": 19,
+          "2023Q3": 13,
+          "2023Q4": 11
+        },
+        "side_counts": {
+          "long": 28,
+          "short": 26
+        },
+        "trades": 54,
+        "wbtc_actor_set_hash": "b6bda7dcfe5924364525c1e73b9e94d2bdf45b0f17b8d2f43f3e36873913ea30",
+        "year_counts": {
+          "2023": 54
+        }
+      },
+      "trades": 192,
+      "train": {
+        "active_months": 24,
+        "distinct_wbtc_actors": 15,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2021H1": 37,
+          "2021H2": 30,
+          "2022H1": 37,
+          "2022H2": 34
+        },
+        "maximum_calendar_gap_days": 16.975694444444443,
+        "maximum_consecutive_same_side": 19,
+        "maximum_month_share": 0.057971014492753624,
+        "maximum_quarter_share": 0.14492753623188406,
+        "month_counts": {
+          "2021-01": 6,
+          "2021-02": 5,
+          "2021-03": 6,
+          "2021-04": 7,
+          "2021-05": 8,
+          "2021-06": 5,
+          "2021-07": 6,
+          "2021-08": 3,
+          "2021-09": 4,
+          "2021-10": 7,
+          "2021-11": 5,
+          "2021-12": 5,
+          "2022-01": 5,
+          "2022-02": 6,
+          "2022-03": 6,
+          "2022-04": 6,
+          "2022-05": 7,
+          "2022-06": 7,
+          "2022-07": 6,
+          "2022-08": 7,
+          "2022-09": 5,
+          "2022-10": 4,
+          "2022-11": 6,
+          "2022-12": 6
+        },
+        "quarter_counts": {
+          "2021Q1": 17,
+          "2021Q2": 20,
+          "2021Q3": 13,
+          "2021Q4": 17,
+          "2022Q1": 17,
+          "2022Q2": 20,
+          "2022Q3": 18,
+          "2022Q4": 16
+        },
+        "side_counts": {
+          "long": 87,
+          "short": 51
+        },
+        "trades": 138,
+        "wbtc_actor_set_hash": "8e8fcc004b8937eecd9b98b6a885362797536d221caa8f3a091a101b7fdd8946",
+        "year_counts": {
+          "2021": 67,
+          "2022": 71
+        }
+      }
+    },
+    "stale_wbtc_24h": {
+      "selection": {
+        "active_months": 12,
+        "distinct_wbtc_actors": 10,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2023H1": 29,
+          "2023H2": 24
+        },
+        "maximum_calendar_gap_days": 25.75,
+        "maximum_consecutive_same_side": 9,
+        "maximum_month_share": 0.1320754716981132,
+        "maximum_quarter_share": 0.33962264150943394,
+        "month_counts": {
+          "2023-01": 4,
+          "2023-02": 5,
+          "2023-03": 2,
+          "2023-04": 6,
+          "2023-05": 6,
+          "2023-06": 6,
+          "2023-07": 7,
+          "2023-08": 5,
+          "2023-09": 2,
+          "2023-10": 4,
+          "2023-11": 4,
+          "2023-12": 2
+        },
+        "quarter_counts": {
+          "2023Q1": 11,
+          "2023Q2": 18,
+          "2023Q3": 14,
+          "2023Q4": 10
+        },
+        "side_counts": {
+          "long": 30,
+          "short": 23
+        },
+        "trades": 53,
+        "wbtc_actor_set_hash": "6038f818fd5fffe254f64ad6ded85d93cdfdf007c97559caf57bbdada77935c4",
+        "year_counts": {
+          "2023": 53
+        }
+      },
+      "trades": 193,
+      "train": {
+        "active_months": 24,
+        "distinct_wbtc_actors": 15,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2021H1": 38,
+          "2021H2": 35,
+          "2022H1": 34,
+          "2022H2": 33
+        },
+        "maximum_calendar_gap_days": 14.96875,
+        "maximum_consecutive_same_side": 17,
+        "maximum_month_share": 0.05714285714285714,
+        "maximum_quarter_share": 0.14285714285714285,
+        "month_counts": {
+          "2021-01": 6,
+          "2021-02": 5,
+          "2021-03": 7,
+          "2021-04": 7,
+          "2021-05": 8,
+          "2021-06": 5,
+          "2021-07": 7,
+          "2021-08": 5,
+          "2021-09": 6,
+          "2021-10": 7,
+          "2021-11": 5,
+          "2021-12": 5,
+          "2022-01": 5,
+          "2022-02": 5,
+          "2022-03": 5,
+          "2022-04": 6,
+          "2022-05": 7,
+          "2022-06": 6,
+          "2022-07": 7,
+          "2022-08": 7,
+          "2022-09": 5,
+          "2022-10": 5,
+          "2022-11": 5,
+          "2022-12": 4
+        },
+        "quarter_counts": {
+          "2021Q1": 18,
+          "2021Q2": 20,
+          "2021Q3": 18,
+          "2021Q4": 17,
+          "2022Q1": 15,
+          "2022Q2": 19,
+          "2022Q3": 19,
+          "2022Q4": 14
+        },
+        "side_counts": {
+          "long": 87,
+          "short": 53
+        },
+        "trades": 140,
+        "wbtc_actor_set_hash": "8c81ca3774270b45082218ef224810d1b0dc8f0a45022dfe15c57af4db786ce7",
+        "year_counts": {
+          "2021": 73,
+          "2022": 67
+        }
+      }
+    },
+    "stale_wbtc_72h": {
+      "selection": {
+        "active_months": 12,
+        "distinct_wbtc_actors": 9,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2023H1": 26,
+          "2023H2": 24
+        },
+        "maximum_calendar_gap_days": 25.76388888888889,
+        "maximum_consecutive_same_side": 5,
+        "maximum_month_share": 0.14,
+        "maximum_quarter_share": 0.32,
+        "month_counts": {
+          "2023-01": 5,
+          "2023-02": 3,
+          "2023-03": 2,
+          "2023-04": 5,
+          "2023-05": 5,
+          "2023-06": 6,
+          "2023-07": 7,
+          "2023-08": 5,
+          "2023-09": 2,
+          "2023-10": 3,
+          "2023-11": 4,
+          "2023-12": 3
+        },
+        "quarter_counts": {
+          "2023Q1": 10,
+          "2023Q2": 16,
+          "2023Q3": 14,
+          "2023Q4": 10
+        },
+        "side_counts": {
+          "long": 26,
+          "short": 24
+        },
+        "trades": 50,
+        "wbtc_actor_set_hash": "f720e54f5986ce60dd7d55b194f557bde61be3ad10f3c467e99046bdc03dcf53",
+        "year_counts": {
+          "2023": 50
+        }
+      },
+      "trades": 193,
+      "train": {
+        "active_months": 24,
+        "distinct_wbtc_actors": 15,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2021H1": 40,
+          "2021H2": 33,
+          "2022H1": 36,
+          "2022H2": 34
+        },
+        "maximum_calendar_gap_days": 22.552083333333332,
+        "maximum_consecutive_same_side": 15,
+        "maximum_month_share": 0.06293706293706294,
+        "maximum_quarter_share": 0.13986013986013987,
+        "month_counts": {
+          "2021-01": 7,
+          "2021-02": 7,
+          "2021-03": 6,
+          "2021-04": 7,
+          "2021-05": 9,
+          "2021-06": 4,
+          "2021-07": 4,
+          "2021-08": 5,
+          "2021-09": 5,
+          "2021-10": 7,
+          "2021-11": 6,
+          "2021-12": 6,
+          "2022-01": 4,
+          "2022-02": 6,
+          "2022-03": 6,
+          "2022-04": 6,
+          "2022-05": 7,
+          "2022-06": 7,
+          "2022-07": 7,
+          "2022-08": 7,
+          "2022-09": 6,
+          "2022-10": 3,
+          "2022-11": 5,
+          "2022-12": 6
+        },
+        "quarter_counts": {
+          "2021Q1": 20,
+          "2021Q2": 20,
+          "2021Q3": 14,
+          "2021Q4": 19,
+          "2022Q1": 16,
+          "2022Q2": 20,
+          "2022Q3": 20,
+          "2022Q4": 14
+        },
+        "side_counts": {
+          "long": 91,
+          "short": 52
+        },
+        "trades": 143,
+        "wbtc_actor_set_hash": "dac3345fe1e7290b2ab18bcb30dd28a15272e5261341dc6a722d37c506f8097e",
+        "year_counts": {
+          "2021": 73,
+          "2022": 70
+        }
+      }
+    },
+    "usdc_only_confirmation": {
+      "selection": {
+        "active_months": 12,
+        "distinct_wbtc_actors": 10,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2023H1": 29,
+          "2023H2": 22
+        },
+        "maximum_calendar_gap_days": 30.055555555555557,
+        "maximum_consecutive_same_side": 8,
+        "maximum_month_share": 0.13725490196078433,
+        "maximum_quarter_share": 0.3333333333333333,
+        "month_counts": {
+          "2023-01": 4,
+          "2023-02": 5,
+          "2023-03": 3,
+          "2023-04": 6,
+          "2023-05": 5,
+          "2023-06": 6,
+          "2023-07": 7,
+          "2023-08": 4,
+          "2023-09": 1,
+          "2023-10": 4,
+          "2023-11": 3,
+          "2023-12": 3
+        },
+        "quarter_counts": {
+          "2023Q1": 12,
+          "2023Q2": 17,
+          "2023Q3": 12,
+          "2023Q4": 10
+        },
+        "side_counts": {
+          "long": 27,
+          "short": 24
+        },
+        "trades": 51,
+        "wbtc_actor_set_hash": "1c033e526c81bb20b6bbacb7ffa9de93e64063e5bc88d4d6647792e5365d9b1e",
+        "year_counts": {
+          "2023": 51
+        }
+      },
+      "trades": 192,
+      "train": {
+        "active_months": 24,
+        "distinct_wbtc_actors": 15,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2021H1": 39,
+          "2021H2": 33,
+          "2022H1": 37,
+          "2022H2": 32
+        },
+        "maximum_calendar_gap_days": 14.208333333333334,
+        "maximum_consecutive_same_side": 20,
+        "maximum_month_share": 0.05673758865248227,
+        "maximum_quarter_share": 0.14184397163120568,
+        "month_counts": {
+          "2021-01": 7,
+          "2021-02": 5,
+          "2021-03": 7,
+          "2021-04": 7,
+          "2021-05": 8,
+          "2021-06": 5,
+          "2021-07": 6,
+          "2021-08": 4,
+          "2021-09": 5,
+          "2021-10": 7,
+          "2021-11": 5,
+          "2021-12": 6,
+          "2022-01": 6,
+          "2022-02": 6,
+          "2022-03": 5,
+          "2022-04": 6,
+          "2022-05": 7,
+          "2022-06": 7,
+          "2022-07": 6,
+          "2022-08": 5,
+          "2022-09": 5,
+          "2022-10": 4,
+          "2022-11": 6,
+          "2022-12": 6
+        },
+        "quarter_counts": {
+          "2021Q1": 19,
+          "2021Q2": 20,
+          "2021Q3": 15,
+          "2021Q4": 18,
+          "2022Q1": 17,
+          "2022Q2": 20,
+          "2022Q3": 16,
+          "2022Q4": 16
+        },
+        "side_counts": {
+          "long": 87,
+          "short": 54
+        },
+        "trades": 141,
+        "wbtc_actor_set_hash": "8c81ca3774270b45082218ef224810d1b0dc8f0a45022dfe15c57af4db786ce7",
+        "year_counts": {
+          "2021": 72,
+          "2022": 69
+        }
+      }
+    },
+    "usdt_only_confirmation": {
+      "selection": {
+        "active_months": 1,
+        "distinct_wbtc_actors": 1,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2023H1": 1
+        },
+        "maximum_calendar_gap_days": null,
+        "maximum_consecutive_same_side": 1,
+        "maximum_month_share": 1.0,
+        "maximum_quarter_share": 1.0,
+        "month_counts": {
+          "2023-06": 1
+        },
+        "quarter_counts": {
+          "2023Q2": 1
+        },
+        "side_counts": {
+          "long": 1,
+          "short": 0
+        },
+        "trades": 1,
+        "wbtc_actor_set_hash": "c4e1307670ca85048fe443989ae71466d6ae2e0e5fe9e99750a0180aa108399f",
+        "year_counts": {
+          "2023": 1
+        }
+      },
+      "trades": 10,
+      "train": {
+        "active_months": 6,
+        "distinct_wbtc_actors": 6,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2021H1": 7,
+          "2021H2": 2
+        },
+        "maximum_calendar_gap_days": 170.96527777777777,
+        "maximum_consecutive_same_side": 9,
+        "maximum_month_share": 0.2222222222222222,
+        "maximum_quarter_share": 0.4444444444444444,
+        "month_counts": {
+          "2021-01": 1,
+          "2021-02": 2,
+          "2021-03": 1,
+          "2021-04": 1,
+          "2021-05": 2,
+          "2021-11": 2
+        },
+        "quarter_counts": {
+          "2021Q1": 4,
+          "2021Q2": 3,
+          "2021Q4": 2
+        },
+        "side_counts": {
+          "long": 9,
+          "short": 0
+        },
+        "trades": 9,
+        "wbtc_actor_set_hash": "1f94b93d9c7e7b6cd86aa13f5ede89c1e4704eedab134856d1d241241bcada20",
+        "year_counts": {
+          "2021": 9
+        }
+      }
+    },
+    "wbtc_only_direct": {
+      "selection": {
+        "active_months": 12,
+        "distinct_wbtc_actors": 11,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2023H1": 32,
+          "2023H2": 24
+        },
+        "maximum_calendar_gap_days": 25.760416666666668,
+        "maximum_consecutive_same_side": 7,
+        "maximum_month_share": 0.125,
+        "maximum_quarter_share": 0.35714285714285715,
+        "month_counts": {
+          "2023-01": 5,
+          "2023-02": 5,
+          "2023-03": 2,
+          "2023-04": 7,
+          "2023-05": 6,
+          "2023-06": 7,
+          "2023-07": 7,
+          "2023-08": 4,
+          "2023-09": 2,
+          "2023-10": 4,
+          "2023-11": 4,
+          "2023-12": 3
+        },
+        "quarter_counts": {
+          "2023Q1": 12,
+          "2023Q2": 20,
+          "2023Q3": 13,
+          "2023Q4": 11
+        },
+        "side_counts": {
+          "long": 31,
+          "short": 25
+        },
+        "trades": 56,
+        "wbtc_actor_set_hash": "79f10c388c7f05d499386ba520aff0e3d550e6171fb19ea4cd149c5b895e70e9",
+        "year_counts": {
+          "2023": 56
+        }
+      },
+      "trades": 208,
+      "train": {
+        "active_months": 24,
+        "distinct_wbtc_actors": 15,
+        "duplicate_confirmation_batch_identities": 0,
+        "duplicate_wbtc_batch_identities": 0,
+        "half_year_counts": {
+          "2021H1": 41,
+          "2021H2": 36,
+          "2022H1": 39,
+          "2022H2": 36
+        },
+        "maximum_calendar_gap_days": 12.45138888888889,
+        "maximum_consecutive_same_side": 16,
+        "maximum_month_share": 0.05921052631578947,
+        "maximum_quarter_share": 0.13815789473684212,
+        "month_counts": {
+          "2021-01": 7,
+          "2021-02": 6,
+          "2021-03": 7,
+          "2021-04": 7,
+          "2021-05": 9,
+          "2021-06": 5,
+          "2021-07": 6,
+          "2021-08": 5,
+          "2021-09": 7,
+          "2021-10": 7,
+          "2021-11": 5,
+          "2021-12": 6,
+          "2022-01": 6,
+          "2022-02": 6,
+          "2022-03": 6,
+          "2022-04": 7,
+          "2022-05": 7,
+          "2022-06": 7,
+          "2022-07": 6,
+          "2022-08": 8,
+          "2022-09": 6,
+          "2022-10": 4,
+          "2022-11": 6,
+          "2022-12": 6
+        },
+        "quarter_counts": {
+          "2021Q1": 20,
+          "2021Q2": 21,
+          "2021Q3": 18,
+          "2021Q4": 18,
+          "2022Q1": 18,
+          "2022Q2": 21,
+          "2022Q3": 20,
+          "2022Q4": 16
+        },
+        "side_counts": {
+          "long": 91,
+          "short": 61
+        },
+        "trades": 152,
+        "wbtc_actor_set_hash": "12bb9385e8adb87879de7a2e968fe859932031cd287dc4d75e11ff81c1aa156a",
+        "year_counts": {
+          "2021": 77,
+          "2022": 75
+        }
+      }
+    }
+  },
+  "decision": "REJECT_SOURCE",
+  "failed_checks": [
+    "maximum_consecutive_same_side",
+    "novelty:sealed_prior_stablecoin_bundle:AMTR-48:cross_minter",
+    "novelty:sealed_prior_stablecoin_bundle:SDDR-12:primary",
+    "novelty:sealed_prior_stablecoin_bundle:SQFD-6:no_participation",
+    "novelty:sealed_prior_stablecoin_bundle:SQFD-6:no_usdt_lag",
+    "novelty:sealed_prior_stablecoin_bundle:SQFD-6:primary",
+    "novelty:sealed_prior_stablecoin_bundle:UCBR-12:primary"
+  ],
+  "implementation": {
+    "path": "training/build_wbtc_stablecoin_finalized_confirmation_relay_support.py",
+    "sha256": "4cb048d6cc70efb40f6b0a7a5cd728977e928f3dae35fba1b012ca09aa0c18ee"
+  },
+  "manifest_hash": "1a7ec88467779e461217af1430f79f21fdeb127ba7f29abd1a836a36c99b1faf",
+  "next_action": "retire candidate without BTC outcomes or repair",
+  "novelty": {
+    "live_portfolio_pure_clocks:live:cand_rex_veto_7": {
+      "comparator_entries": 218,
+      "comparison": [
+        "2021-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "direction_aware": true,
+      "gate_eligible": true,
+      "gate_pass": true,
+      "same_side": {
+        "comparator_to_wscf_near_share": 0.09174311926605505,
+        "exact_entry_jaccard": 0.0,
+        "wscf_to_comparator_near_share": 0.08808290155440414
+      },
+      "signless": {
+        "comparator_to_wscf_near_share": 0.15137614678899083,
+        "exact_entry_jaccard": 0.0,
+        "wscf_to_comparator_near_share": 0.15025906735751296
+      },
+      "wscf_entries": 193
+    },
+    "live_portfolio_pure_clocks:live:new_long_minimal_funding_premium": {
+      "comparator_entries": 82,
+      "comparison": [
+        "2021-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "direction_aware": true,
+      "gate_eligible": true,
+      "gate_pass": true,
+      "same_side": {
+        "comparator_to_wscf_near_share": 0.12195121951219512,
+        "exact_entry_jaccard": 0.0,
+        "wscf_to_comparator_near_share": 0.05181347150259067
+      },
+      "signless": {
+        "comparator_to_wscf_near_share": 0.2804878048780488,
+        "exact_entry_jaccard": 0.0,
+        "wscf_to_comparator_near_share": 0.11917098445595854
+      },
+      "wscf_entries": 193
+    },
+    "live_portfolio_pure_clocks:live:oi_upbit_ratio288_low": {
+      "comparator_entries": 140,
+      "comparison": [
+        "2021-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "direction_aware": true,
+      "gate_eligible": true,
+      "gate_pass": true,
+      "same_side": {
+        "comparator_to_wscf_near_share": 0.1357142857142857,
+        "exact_entry_jaccard": 0.0,
+        "wscf_to_comparator_near_share": 0.07253886010362694
+      },
+      "signless": {
+        "comparator_to_wscf_near_share": 0.17857142857142858,
+        "exact_entry_jaccard": 0.0,
+        "wscf_to_comparator_near_share": 0.09326424870466321
+      },
+      "wscf_entries": 193
+    },
+    "sealed_prior_stablecoin_bundle:AMTR-48:cross_minter": {
+      "comparator_entries": 411,
+      "comparison": [
+        "2021-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "direction_aware": false,
+      "gate_eligible": true,
+      "gate_pass": false,
+      "signless": {
+        "comparator_to_wscf_near_share": 0.1922141119221411,
+        "exact_entry_jaccard": 0.0033222591362126247,
+        "wscf_to_comparator_near_share": 0.40932642487046633
+      },
+      "wscf_entries": 193
+    },
+    "sealed_prior_stablecoin_bundle:AMTR-48:primary": {
+      "comparator_entries": 5,
+      "comparison": [
+        "2021-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "direction_aware": false,
+      "gate_eligible": false,
+      "gate_pass": false,
+      "signless": {
+        "comparator_to_wscf_near_share": 0.2,
+        "exact_entry_jaccard": 0.0,
+        "wscf_to_comparator_near_share": 0.0051813471502590676
+      },
+      "wscf_entries": 193
+    },
+    "sealed_prior_stablecoin_bundle:SDDR-12:primary": {
+      "comparator_entries": 78,
+      "comparison": [
+        "2023-09-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "direction_aware": false,
+      "gate_eligible": true,
+      "gate_pass": false,
+      "signless": {
+        "comparator_to_wscf_near_share": 0.11538461538461539,
+        "exact_entry_jaccard": 0.0,
+        "wscf_to_comparator_near_share": 0.36363636363636365
+      },
+      "wscf_entries": 11
+    },
+    "sealed_prior_stablecoin_bundle:SQFD-6:no_participation": {
+      "comparator_entries": 89,
+      "comparison": [
+        "2023-09-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "direction_aware": false,
+      "gate_eligible": true,
+      "gate_pass": false,
+      "signless": {
+        "comparator_to_wscf_near_share": 0.07865168539325842,
+        "exact_entry_jaccard": 0.0,
+        "wscf_to_comparator_near_share": 0.6363636363636364
+      },
+      "wscf_entries": 11
+    },
+    "sealed_prior_stablecoin_bundle:SQFD-6:no_usdt_lag": {
+      "comparator_entries": 114,
+      "comparison": [
+        "2023-09-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "direction_aware": false,
+      "gate_eligible": true,
+      "gate_pass": false,
+      "signless": {
+        "comparator_to_wscf_near_share": 0.12280701754385964,
+        "exact_entry_jaccard": 0.0,
+        "wscf_to_comparator_near_share": 0.7272727272727273
+      },
+      "wscf_entries": 11
+    },
+    "sealed_prior_stablecoin_bundle:SQFD-6:primary": {
+      "comparator_entries": 55,
+      "comparison": [
+        "2023-09-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "direction_aware": false,
+      "gate_eligible": true,
+      "gate_pass": false,
+      "signless": {
+        "comparator_to_wscf_near_share": 0.09090909090909091,
+        "exact_entry_jaccard": 0.0,
+        "wscf_to_comparator_near_share": 0.45454545454545453
+      },
+      "wscf_entries": 11
+    },
+    "sealed_prior_stablecoin_bundle:UCBR-12:primary": {
+      "comparator_entries": 28,
+      "comparison": [
+        "2023-09-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "direction_aware": false,
+      "gate_eligible": true,
+      "gate_pass": false,
+      "signless": {
+        "comparator_to_wscf_near_share": 0.14285714285714285,
+        "exact_entry_jaccard": 0.0,
+        "wscf_to_comparator_near_share": 0.36363636363636365
+      },
+      "wscf_entries": 11
+    },
+    "ugci_primary": {
+      "comparator_entries": 98,
+      "comparison": [
+        "2021-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "direction_aware": true,
+      "gate_eligible": true,
+      "gate_pass": true,
+      "same_side": {
+        "comparator_to_wscf_near_share": 0.1836734693877551,
+        "exact_entry_jaccard": 0.0034482758620689655,
+        "wscf_to_comparator_near_share": 0.09326424870466321
+      },
+      "signless": {
+        "comparator_to_wscf_near_share": 0.2653061224489796,
+        "exact_entry_jaccard": 0.0034482758620689655,
+        "wscf_to_comparator_near_share": 0.13471502590673576
+      },
+      "wscf_entries": 193
+    },
+    "wcdr_primary": {
+      "comparator_entries": 78,
+      "comparison": [
+        "2021-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "direction_aware": true,
+      "gate_eligible": true,
+      "gate_pass": true,
+      "same_side": {
+        "comparator_to_wscf_near_share": 0.02564102564102564,
+        "exact_entry_jaccard": 0.0,
+        "wscf_to_comparator_near_share": 0.010362694300518135
+      },
+      "signless": {
+        "comparator_to_wscf_near_share": 0.08974358974358974,
+        "exact_entry_jaccard": 0.0,
+        "wscf_to_comparator_near_share": 0.03626943005181347
+      },
+      "wscf_entries": 193
+    },
+    "wtsl_primary": {
+      "comparator_entries": 167,
+      "comparison": [
+        "2021-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "direction_aware": true,
+      "gate_eligible": true,
+      "gate_pass": true,
+      "same_side": {
+        "comparator_to_wscf_near_share": 0.16766467065868262,
+        "exact_entry_jaccard": 0.002785515320334262,
+        "wscf_to_comparator_near_share": 0.13989637305699482
+      },
+      "signless": {
+        "comparator_to_wscf_near_share": 0.2155688622754491,
+        "exact_entry_jaccard": 0.002785515320334262,
+        "wscf_to_comparator_near_share": 0.18134715025906736
+      },
+      "wscf_entries": 193
+    }
+  },
+  "outcome_boundary": {
+    "btc_market_rows_read": 0,
+    "funding_rows_read": 0,
+    "future_return_rows_read": 0,
+    "network_calls": 0,
+    "pnl_cagr_mdd_opened": false,
+    "post_2023_contract_event_value_rows_loaded": 0,
+    "sealed_non_timestamp_fields_decoded": 0,
+    "subprocess_calls": 0
+  },
+  "outcomes_opened": false,
+  "performance_values_opened": false,
+  "preregistration_artifact": "results/wbtc_stablecoin_finalized_confirmation_relay_preregistration_2026-07-23.json",
+  "preregistration_artifact_sha256": "b105051e2b3bdf806c3abff30312889656534f49914ca4e4f584cb9723fb2fe0",
+  "preregistration_commit": "8729160",
+  "preregistration_manifest_hash": "1466ec5118df70985dda8692df1496d2d03285449ecadd5f8fcdec216b3f978f",
+  "preregistration_policy_hash": "fadc7bf149767416995a9756941e53ba80e81889b5c4b5612d9c4667ea86460d",
+  "primary_support": {
+    "all_side_counts": {
+      "long": 115,
+      "short": 78
+    },
+    "all_year_counts": {
+      "2021": 72,
+      "2022": 69,
+      "2023": 52
+    },
+    "selection": {
+      "active_months": 12,
+      "distinct_wbtc_actors": 10,
+      "duplicate_confirmation_batch_identities": 0,
+      "duplicate_wbtc_batch_identities": 0,
+      "half_year_counts": {
+        "2023H1": 30,
+        "2023H2": 22
+      },
+      "maximum_calendar_gap_days": 30.055555555555557,
+      "maximum_consecutive_same_side": 8,
+      "maximum_month_share": 0.1346153846153846,
+      "maximum_quarter_share": 0.34615384615384615,
+      "month_counts": {
+        "2023-01": 4,
+        "2023-02": 5,
+        "2023-03": 3,
+        "2023-04": 6,
+        "2023-05": 5,
+        "2023-06": 7,
+        "2023-07": 7,
+        "2023-08": 4,
+        "2023-09": 1,
+        "2023-10": 4,
+        "2023-11": 3,
+        "2023-12": 3
+      },
+      "quarter_counts": {
+        "2023Q1": 12,
+        "2023Q2": 18,
+        "2023Q3": 12,
+        "2023Q4": 10
+      },
+      "side_counts": {
+        "long": 28,
+        "short": 24
+      },
+      "trades": 52,
+      "wbtc_actor_set_hash": "1c033e526c81bb20b6bbacb7ffa9de93e64063e5bc88d4d6647792e5365d9b1e",
+      "year_counts": {
+        "2023": 52
+      }
+    },
+    "total_trades": 193,
+    "train": {
+      "active_months": 24,
+      "distinct_wbtc_actors": 15,
+      "duplicate_confirmation_batch_identities": 0,
+      "duplicate_wbtc_batch_identities": 0,
+      "half_year_counts": {
+        "2021H1": 39,
+        "2021H2": 33,
+        "2022H1": 37,
+        "2022H2": 32
+      },
+      "maximum_calendar_gap_days": 14.208333333333334,
+      "maximum_consecutive_same_side": 20,
+      "maximum_month_share": 0.05673758865248227,
+      "maximum_quarter_share": 0.14184397163120568,
+      "month_counts": {
+        "2021-01": 7,
+        "2021-02": 5,
+        "2021-03": 7,
+        "2021-04": 7,
+        "2021-05": 8,
+        "2021-06": 5,
+        "2021-07": 6,
+        "2021-08": 4,
+        "2021-09": 5,
+        "2021-10": 7,
+        "2021-11": 5,
+        "2021-12": 6,
+        "2022-01": 6,
+        "2022-02": 6,
+        "2022-03": 5,
+        "2022-04": 6,
+        "2022-05": 7,
+        "2022-06": 7,
+        "2022-07": 6,
+        "2022-08": 5,
+        "2022-09": 5,
+        "2022-10": 4,
+        "2022-11": 6,
+        "2022-12": 6
+      },
+      "quarter_counts": {
+        "2021Q1": 19,
+        "2021Q2": 20,
+        "2021Q3": 15,
+        "2021Q4": 18,
+        "2022Q1": 17,
+        "2022Q2": 20,
+        "2022Q3": 16,
+        "2022Q4": 16
+      },
+      "side_counts": {
+        "long": 87,
+        "short": 54
+      },
+      "trades": 141,
+      "wbtc_actor_set_hash": "8c81ca3774270b45082218ef224810d1b0dc8f0a45022dfe15c57af4db786ce7",
+      "year_counts": {
+        "2021": 72,
+        "2022": 69
+      }
+    }
+  },
+  "protocol_version": "wbtc_stablecoin_finalized_confirmation_relay_support_v1",
+  "research_status": "source-family-seen_candidate-outcome-blind",
+  "source_audit": {
+    "stablecoin": {
+      "boundary_sentinel_timestamp_rows_scanned": 1,
+      "directional_rows": 265718,
+      "first_available_at": "2020-01-01T04:44:32Z",
+      "last_available_at_before_seal": "2023-12-31T23:48:35Z",
+      "physical_rows_read_before_seal": 266360,
+      "post_2023_contract_event_value_rows_loaded": 0,
+      "sealed_from": "2024-01-01T00:00:00Z",
+      "sealed_non_timestamp_fields_decoded": 0,
+      "unique_identities": 266360,
+      "veto_rows": 642
+    },
+    "stablecoin_atomic_batches": 261921,
+    "wbtc": {
+      "eligible_rows": 993,
+      "first_available_at": "2020-01-06T17:31:53Z",
+      "last_available_at": "2023-12-28T19:29:47Z",
+      "physical_rows_read": 993,
+      "post_2023_contract_event_value_rows_loaded": 0,
+      "unique_identities": 993
+    },
+    "wbtc_atomic_batches": 992
+  },
+  "source_bindings": {
+    "stablecoin": {
+      "allowed_columns": [
+        "asset",
+        "event",
+        "event_sign",
+        "amount_raw",
+        "decimals",
+        "block_number",
+        "transaction_index",
+        "log_index",
+        "confirmation_block_number",
+        "available_at"
+      ],
+      "builder": "training/build_ethereum_stablecoin_issuance_redemption.py",
+      "builder_sha256": "af699d91404e44298573ca148c6cf1b90b68d9aac2972da9ad228a26b9e8a9a5",
+      "header": [
+        "asset",
+        "contract_address",
+        "event",
+        "event_sign",
+        "amount_raw",
+        "decimals",
+        "indexed_address_1",
+        "indexed_address_2",
+        "data_address",
+        "block_number",
+        "block_hash",
+        "block_timestamp",
+        "transaction_hash",
+        "transaction_index",
+        "log_index",
+        "confirmation_block_number",
+        "confirmation_block_hash",
+        "available_at"
+      ],
+      "manifest": "results/ethereum_stablecoin_issuance_redemption_source_manifest_2026-07-21.json",
+      "manifest_file_sha256": "8ec9ab08c413bf6f5f8170fb800b05105522d4cf1a7932943c214288701e31fe",
+      "manifest_hash": "a0c7740db64f7779fade68d76985c629cabe81983bf594e8258cef16a5725a1b",
+      "source": "data/ethereum_stablecoin_issuance_redemption_2020_2023/ethereum_usdt_usdc_issuance_redemption_2020_2023.csv.gz",
+      "source_sha256": "70ba3799ba84dc671051623a8d167b1731f043cf84a686b9878a67fcd52e5901",
+      "value_rows_read_during_preregistration": 0
+    },
+    "wbtc": {
+      "allowed_columns": [
+        "asset",
+        "event",
+        "event_sign",
+        "amount_raw",
+        "decimals",
+        "actor_address",
+        "block_number",
+        "transaction_index",
+        "semantic_log_index",
+        "confirmation_block_number",
+        "available_at"
+      ],
+      "builder": "training/build_wbtc_custody_bridge_flow_source.py",
+      "builder_sha256": "70816fbcc94d5ecd11f99e3b1ebc3087e396c8f6972adcefd7c3a308f7c6fdbf",
+      "header": [
+        "asset",
+        "contract_address",
+        "event",
+        "event_sign",
+        "amount_raw",
+        "decimals",
+        "actor_address",
+        "block_number",
+        "block_hash",
+        "block_timestamp",
+        "transaction_hash",
+        "transaction_index",
+        "semantic_log_index",
+        "companion_transfer_log_index",
+        "confirmation_block_number",
+        "confirmation_block_hash",
+        "available_at"
+      ],
+      "manifest": "results/wbtc_custody_bridge_flow_source_manifest_2026-07-23.json",
+      "manifest_file_sha256": "e95267d55f390a35bf609580e014c67d44adabe67526022d5e80d555964274e8",
+      "manifest_hash": "4e4344a7f2841803dc8da625ee1320f79e1821d54cb2366a5464728507b4bcab",
+      "source": "data/wbtc_custody_bridge_flow_2020_2023/wbtc_mint_burn_2020_2023.csv.gz",
+      "source_sha256": "bfcc6ebc2ded0cd8a57e5cda83a77daafe4de325adf606b23ba43ecf486b3b4e",
+      "value_rows_read_during_preregistration": 0
+    }
+  },
+  "source_incidence_opened": true
+}
