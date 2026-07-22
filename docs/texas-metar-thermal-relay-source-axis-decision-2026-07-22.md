@@ -57,6 +57,13 @@ https://madis-data.ncep.noaa.gov/madisPublic/data/archive/
   YYYY/MM/DD/point/metar/netcdf/YYYYMMDD_HH00.gz
 ```
 
+The corresponding operational public object route is frozen as:
+
+```text
+https://madis-data.ncep.noaa.gov/madisPublic/data/point/metar/netcdf/
+  YYYYMMDD_HH00.gz
+```
+
 NOAA describes MADIS as an operational observational database with uniform
 timestamps and quality flags, available from July 2001 to the present. NOAA's
 historical-data documentation identifies the date-partitioned archive and its
@@ -67,6 +74,8 @@ compressed netCDF files.
   https://madis.ncep.noaa.gov/faq_historicaldata.shtml
 - MADIS METAR description:
   https://madis.ncep.noaa.gov/madis_metar.shtml
+- MADIS operational METAR netCDF directory:
+  https://madis-data.ncep.noaa.gov/madisPublic/data/point/metar/netcdf/
 
 TMTR must retain only fields embedded in the archived netCDF object:
 
@@ -74,7 +83,7 @@ TMTR must retain only fields embedded in the archived netCDF object:
 - `timeObs`;
 - `timeReceived`;
 - `reportType`;
-- `correction`; and
+- integer `correction`; and
 - `rawMETAR`.
 
 Decoded MADIS temperature, dew point, wind, precipitation, pressure, QC
@@ -83,9 +92,35 @@ frozen source artifact. A later separately committed parser may derive weather
 tokens only from `rawMETAR`. This prevents later archive reprocessing or a
 changed decoder from silently entering the signal.
 
-The causal timestamp is the archived `timeReceived`, not the observation time,
-file modification time, or nominal archive-hour label. A source row may not be
-used before `timeReceived` plus a later frozen execution delay.
+Historical archive membership alone does not prove that a row was publicly
+available at its archived `timeReceived`. NOAA documents continuous ingest,
+five-minute processing of the current and previous hour, and a nominal object
+window ending 44 minutes after its label. TMTR therefore assigns every retained
+row the conservative public-availability timestamp
+`max(timeReceived, archive label + 60 minutes)`. A source row may not be used
+before that timestamp plus a later frozen execution delay. HTTP modification
+time and the bare archive label are never availability claims.
+
+MADIS documents that a nominal `0000` file spans reports from 23:45 through
+00:44 and that late reports can enter a later data-recovery pass. TMTR therefore
+uses only an uncorrected (`correction == 0`) routine report observed in the last
+15 minutes ending at the nominal label, received no later than 15 minutes after
+that label, and received strictly less than 30 minutes after observation. The
+raw report's `DDHHMMZ` token must resolve against the archive label, including
+month/year rollover, to exactly the retained `timeObs`. `reportType` must be
+exactly `METAR`; raw `COR`, `NIL`, and `SPECI` tokens are rejected, while the
+routine `AUTO` token is allowed. This deliberately discards the post-label half
+of each MADIS file and any late recovery row.
+
+The transport contract is exact classic CDF1 (`43 44 46 01`). It requires the
+record dimension `recNum`, widths `maxStaNamLen=5`, `maxRepLen=6`, and
+`maxMETARLen=256`, and the exact six required variable names, dimensions,
+typecodes, and fill values observed in the bounded probe. NOAA's file may carry
+additional variables and dimensions, but the extractor may neither read nor
+persist them; aliases for the six required names are forbidden. Fixed-width
+text is decoded from C-order bytes by trimming trailing NUL/space only and
+rejecting empty, embedded-NUL, control, or non-ASCII values. Timestamps must be
+finite integer Unix seconds in UTC. Any required-schema corruption is fatal.
 
 ## Fixed station panel
 
@@ -116,8 +151,12 @@ be added, removed, substituted, or weighted after full incidence is opened.
 
 The source stage may inspect object availability, bytes, hashes, target-report
 coverage, receipt delays, raw-report syntax, duplicate identities, and
-cross-pass equality. It may not parse thermal state, calculate an event clock,
-or load any market/outcome data.
+cross-pass equality. Every coverage denominator is the complete expected-label
+calendar, never the fetched or successful subset. Missing/unparseable objects
+count missing for all four stations and as incomplete panels; netCDF/schema
+corruption is an immediate fatal failure. Panel streaks walk every expected
+label in chronological order. The stage may not parse thermal state, calculate
+an event clock, or load any market/outcome data.
 
 ## Bounded source-only probe already opened
 
@@ -132,6 +171,11 @@ netCDF readable by SciPy, and contained all four target stations once. The
 observations were received at `2022-12-31T23:58:00Z`; their raw reports were
 ordinary `KACT`, `KMAF`, `KABI`, and `KLBB` METAR strings. No other archive
 hour, source incidence, thermal value, BTC series, or outcome was counted.
+
+The probe also fixed `recNum` as the unlimited record dimension; character
+widths 5, 6, and 256; character typecode `c`; timestamp typecode `d` with fill
+`1.7976931348623157e+308`; and correction typecode `i` with fill `-2147483647`.
+The four target rows had `reportType=METAR` and integer `correction=0`.
 
 Separately, bounded NOAA GHCNh metadata probes confirmed the corresponding
 airport identities. GHCNh is not an authorized TMTR source.

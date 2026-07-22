@@ -11,9 +11,9 @@
 - machine manifest:
   `results/texas_metar_thermal_relay_source_protocol_2026-07-22.json`
 - manifest hash:
-  `e53c8de3424d0e804645622ae4e526f0c3a217b85576d5534cd2a9a77f9e884d`
+  `e24d1a8c30efa5142b9f81ddd78f47a1673c5df2e6dc610072a06cca87c5e4eb`
 - manifest file SHA-256:
-  `f246936105cd6e713fd627c2800a1c1c4d6220ec7cc2a67bd431b37205e9378a`
+  `16d01d0d1e8f617b78c054e81e9407a9986625071ec77ff3584398fb39525f7d`
 - outcomes opened: `false`
 - historical source incidence opened: `false`
 - thermal parser opened: `false`
@@ -32,7 +32,8 @@ The station panel is immutable:
 - `KACT` — Waco Regional.
 
 Only `stationName`, `timeObs`, `timeReceived`, `reportType`, `correction`, and
-`rawMETAR` may enter normalized source rows. Every decoded MADIS weather field,
+`rawMETAR` may enter normalized source rows. `correction` is the integer MADIS
+correction flag, not text. Every decoded MADIS weather field,
 QC summary, coordinate, and elevation is excluded. A later parser may derive
 weather tokens only from the frozen raw METAR string.
 
@@ -41,16 +42,53 @@ weather tokens only from the frozen raw METAR string.
 A retained row must:
 
 - belong to one frozen station;
-- have `reportType=METAR` and an empty correction field;
+- have `reportType=METAR` and `correction == 0`;
 - full-match the frozen visible-ASCII station/time report grammar;
-- have observation time in `(archive label - 75 minutes, archive label]`;
+- reject raw `COR`, `NIL`, and `SPECI` tokens while permitting routine `AUTO`;
+- have observation time in `(archive label - 15 minutes, archive label]`;
 - have receipt time in `[timeObs, archive label + 15 minutes]`; and
-- have observation-to-receipt delay no greater than 30 minutes.
+- have its raw `DDHHMMZ` resolve, including month/year rollover, exactly to
+  `timeObs`.
+
+These strict bounds imply an observation-to-receipt delay below 30 minutes.
 
 Exact duplicate rows are deduplicated before cardinality checking. Two
 different eligible reports for the same station and archive object are fatal.
-The causal timestamp is `timeReceived`; the archive label and HTTP modification
-time are not availability claims.
+Historical archive membership alone does not prove point-in-time publication.
+The live route is frozen as
+`https://madis-data.ncep.noaa.gov/madisPublic/data/point/metar/netcdf/YYYYMMDD_HH00.gz`,
+and row availability is conservatively
+`max(timeReceived, archive label + 60 minutes)`. The archive label and HTTP
+modification time are not availability claims. The 60-minute floor follows
+MADIS's documented five-minute current/previous-hour processing and nominal
+file window ending 44 minutes after the label. The tighter membership window
+excludes the post-label portion and late data-recovery reports.
+
+## Exact netCDF extraction contract
+
+Only classic CDF1 magic (`43 44 46 01`) is accepted. Required dimensions are
+the unlimited record dimension `recNum`, `maxStaNamLen=5`, `maxRepLen=6`, and
+`maxMETARLen=256`. The six required variables are exact and aliases are
+forbidden:
+
+| variable | dimensions | typecode | fill |
+|---|---|---:|---:|
+| `stationName` | `recNum,maxStaNamLen` | `c` | none |
+| `reportType` | `recNum,maxRepLen` | `c` | none |
+| `rawMETAR` | `recNum,maxMETARLen` | `c` | none |
+| `timeObs` | `recNum` | `d` | `1.7976931348623157e+308` |
+| `timeReceived` | `recNum` | `d` | `1.7976931348623157e+308` |
+| `correction` | `recNum` | `i` | `-2147483647` |
+
+The NOAA object may contain additional dimensions and variables, as the bounded
+probe did, but the extractor may read only these six required variables.
+Character rows are C-order bytes with trailing NUL/space trimmed; empty values,
+embedded NUL, control bytes, and non-ASCII bytes are fatal. Epochs must be
+finite integer seconds in UTC and fills are rejected. `correction` must be
+integer zero. The canonical row tuple is archive label plus the exact six
+decoded values; exact tuples are deduplicated, while multiple distinct eligible
+tuples for a station/object are fatal. Every retained tuple receives a SHA-256
+identity.
 
 ## Frozen source gates
 
@@ -73,6 +111,12 @@ The panel must satisfy:
 
 Any failed gate is `REJECT_NO_REPAIR`. Stations, hours, interval, fields, and
 thresholds cannot change after incidence.
+
+Every ratio denominator is formed from expected archive-label opportunities,
+not fetched objects or successful rows. A missing/unparseable object is missing
+for all four station opportunities and is an incomplete panel. A fetched
+gzip/netCDF/schema-corrupt object is fatal rather than merely missing. The
+consecutive-panel scan walks all 5,844 expected labels in chronological order.
 
 ## Deferred mechanism and RLLM boundary
 
