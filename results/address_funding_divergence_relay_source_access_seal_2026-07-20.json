@@ -1,0 +1,167 @@
+{
+  "as_of_date": "2026-07-20",
+  "bindings": {
+    "address_source": {
+      "manifest": "results/coinmetrics_btc_address_reservoir_source_manifest_2026-07-20.json",
+      "manifest_sha256": "f16827d26a1e095e504623c24f94cfd77af36d4466439cf203c4bf0f72ddad97",
+      "path": "data/coinmetrics_btc_address_reservoir_2019_2023.csv.gz",
+      "sha256": "15550072f954d29ae4c9ffe16e11f07c492ee5b6b956e54654b14b9a7af5170a"
+    },
+    "comparators": [
+      {
+        "candidate": "NTB-7",
+        "capability": "directional_interval",
+        "comparison_end_exclusive": "2024-01-01T00:00:00Z",
+        "comparison_start": "2021-01-01T00:00:00Z",
+        "entry_column": "entry_date",
+        "exit_column": "exit_date",
+        "filters": {
+          "policy_id": [
+            "NTB-7"
+          ]
+        },
+        "format": "csv",
+        "group_column": null,
+        "path": "results/network_topology_broadening_clock_2026-07-17.csv",
+        "sha256": "6b1bd7c7458cffa062e40872c3ad1730007c01426790b1ba8e52c6eb853de42f",
+        "side_column": "side"
+      },
+      {
+        "candidate": "CVTR-1",
+        "capability": "directional_interval",
+        "comparison_end_exclusive": "2024-01-01T00:00:00Z",
+        "comparison_start": "2021-01-01T00:00:00Z",
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "clock_mode": [
+            "primary"
+          ]
+        },
+        "format": "csv",
+        "group_column": null,
+        "path": "results/cboe_volatility_term_rotation_preregistered_clock_2026-07-17.csv.gz",
+        "sha256": "c0250d1f40c87049f6d7639ba43f5285835441399a62968434b65c7d46ed2a93",
+        "side_column": "side"
+      },
+      {
+        "candidate": "ORFR-1",
+        "capability": "directional_interval",
+        "comparison_end_exclusive": "2024-01-01T00:00:00Z",
+        "comparison_start": "2021-01-01T00:00:00Z",
+        "entry_column": "entry_time",
+        "exit_column": "scheduled_exit_time",
+        "filters": {
+          "clock_mode": [
+            "primary"
+          ]
+        },
+        "format": "csv",
+        "group_column": null,
+        "path": "results/overnight_rrp_flow_release_preregistered_clock_2026-07-17.csv.gz",
+        "sha256": "9f09bc88c9661441a33cee724e59524f57c0b021abff0fe81263e1a341b7b7b7",
+        "side_column": "side"
+      },
+      {
+        "candidate": "FLCC-1",
+        "capability": "directional_interval",
+        "comparison_end_exclusive": "2024-01-01T00:00:00Z",
+        "comparison_start": "2021-01-01T00:00:00Z",
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "clock_name": [
+            "primary"
+          ]
+        },
+        "format": "csv",
+        "group_column": "candidate_id",
+        "path": "results/federal_liquidity_component_concordance_preregistered_clock_2026-07-17.csv.gz",
+        "sha256": "7ebb0450422d9265e46c596e0b6415b6a8816c66f5e0cbb9ccda14ca6cb4c67c",
+        "side_column": "side"
+      },
+      {
+        "candidate": "prior_microstructure",
+        "capability": "timestamp_only",
+        "comparison_end_exclusive": "min(2024-01-01T00:00:00Z, coverage_end_exclusive)",
+        "comparison_start": "max(2021-01-01T00:00:00Z, coverage_start_inclusive)",
+        "entry_column": "signal_date",
+        "exit_column": null,
+        "filters": {},
+        "format": "json_comparator_event_bundle",
+        "group_column": "comparators.*",
+        "path": "results/prior_microstructure_comparator_clock_bundle_2026-07-20.json",
+        "sha256": "c5584256140799b380973f9f376e5751ad754a81c9683473467b9d05af0bb9f0",
+        "side_column": null
+      },
+      {
+        "candidate": "BFMWD-144",
+        "capability": "directional_interval",
+        "comparison_end_exclusive": "2024-01-01T00:00:00Z",
+        "comparison_start": "2021-01-01T00:00:00Z",
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "control": [
+            "primary"
+          ]
+        },
+        "format": "csv",
+        "group_column": "variant_id",
+        "path": "data/bitfinex_margin_warehouse_deployment_clocks_2021_2023.csv.gz",
+        "sha256": "02b4fcc462a5a48be7673649f4cf4b2f9bb210baca4294eed1696d479820cccc",
+        "side_column": "side"
+      },
+      {
+        "candidate": "DLPD-12",
+        "capability": "directional_interval",
+        "comparison_end_exclusive": "2024-01-01T00:00:00Z",
+        "comparison_start": "2022-01-01T00:00:00Z",
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "control": [
+            "primary"
+          ]
+        },
+        "format": "csv",
+        "group_column": null,
+        "path": "data/btcdom_leverage_polarity_decomposition_clocks_2022_2023.csv.gz",
+        "sha256": "b33990f1629465caa837aa1f6f74430054b7185b68ece47b8c7540f9c11bf0fb",
+        "side_column": "side"
+      }
+    ],
+    "evaluator_source": {
+      "path": "training/evaluate_address_funding_divergence_relay_support.py",
+      "sha256": "cde702a7b8fe17f0d04140ca7f0dab43e200eebdba853dc44c68251f789746a4"
+    },
+    "funding_source": {
+      "manifest": "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json",
+      "manifest_sha256": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
+      "path": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+      "sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+    },
+    "preregistration": {
+      "path": "results/address_funding_divergence_relay_preregistration_2026-07-20.json",
+      "sha256": "f76a82881aab7560015c15b181e73b17d09e173fdfbb7a3001b1234e8be66220"
+    },
+    "protocol_document": {
+      "path": "docs/address-funding-divergence-relay-support-protocol-2026-07-20.md",
+      "sha256": "b69ece9b6d2974e793477e127c61d5fcc5aaa89050fee3e286e04f2e303de152"
+    }
+  },
+  "candidate": "AFDR-864",
+  "comparator_rows_inspected_before_seal": false,
+  "feature_values_inspected_before_seal": false,
+  "manifest_hash": "6d56244ececa18bc99be83bf228896a027c073be42cc7e0677821b3f54e541e9",
+  "market_outcomes_opened_before_seal": false,
+  "protocol_version": "address_funding_divergence_relay_source_access_v1",
+  "row_counters": {
+    "address_numeric_rows": 0,
+    "btc_market_rows": 0,
+    "comparator_rows": 0,
+    "funding_numeric_rows": 0,
+    "post_2023_rows": 0,
+    "return_or_pnl_rows": 0
+  }
+}
