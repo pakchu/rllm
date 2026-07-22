@@ -27,11 +27,16 @@ PREREGISTRATION_MANIFEST_HASH = (
 SOURCE_ACCESS_SEAL_PATH = Path(
     "results/quantity_lattice_cohort_disagreement_source_access_seal_2026-07-20.json"
 )
-# These constants intentionally keep execution disabled until a hash-only
-# source seal is created after the blinded build.
-SOURCE_ACCESS_SEAL_FILE_SHA256: str | None = None
-EXPECTED_SOURCE_SHA256: str | None = None
-EXPECTED_SOURCE_MANIFEST_SHA256: str | None = None
+# Frozen only after the blinded source build and hash-only access seal.
+SOURCE_ACCESS_SEAL_FILE_SHA256: str | None = (
+    "cade903a3d15349903c3e16853a23a092b36a293cb46ceb7b0c5514737aca834"
+)
+EXPECTED_SOURCE_SHA256: str | None = (
+    "3ca945f134115fc7b58086405fd881db3e3b70087bd9da54ffc293f6b658072e"
+)
+EXPECTED_SOURCE_MANIFEST_SHA256: str | None = (
+    "bcdf89924f54a5b97d4219749c2094d2a4c08d8473a37bc5367d9b8e5791284f"
+)
 DEFAULT_SOURCE = Path(
     "data/binance_um_quantity_lattice_btc_2020_2023/"
     "BTCUSDT_quantity_lattice_5m_2020-01-01_2023-12-31.csv.gz"
