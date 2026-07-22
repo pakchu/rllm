@@ -1,0 +1,289 @@
+{
+  "candidate": "BIRB-120-SOURCE-FAMILY-SEEN",
+  "comparator_bindings": [
+    {
+      "comparison": [
+        "2020-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "name": "prior_microstructure_bundle",
+      "parser": "comparators.*.events[].signal_date; side ignored at source stage",
+      "path": "results/prior_microstructure_comparator_clock_bundle_2026-07-20.json",
+      "read_mode": "raw bytes for SHA-256 only",
+      "sha256": "c5584256140799b380973f9f376e5751ad754a81c9683473467b9d05af0bb9f0",
+      "value_rows_read_during_preregistration": 0
+    },
+    {
+      "comparison": [
+        "2020-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "name": "bitmex_trollbox_semantic_clock",
+      "parser": "events[].entry_earliest; zero-side rows excluded",
+      "path": "results/bitmex_trollbox_semantic_clock_2026-07-20.json",
+      "read_mode": "raw bytes for SHA-256 only",
+      "sha256": "af8687564614ec5a1cbd7a1438c908f687af7bd99ceede9539016e5c1b111bd4",
+      "value_rows_read_during_preregistration": 0
+    },
+    {
+      "comparison": [
+        "2020-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "name": "live_portfolio_pure_clocks",
+      "parser": "CSV entry_time grouped by candidate_id",
+      "path": "results/cchr_live_portfolio_pure_clocks_2026-07-21.csv.gz",
+      "read_mode": "raw bytes for SHA-256 only",
+      "sha256": "73d6efbd35b3be64b0fa04fa9c8cb2db25866ef884f19b1ae673949e22a42b08",
+      "value_rows_read_during_preregistration": 0
+    }
+  ],
+  "config": {
+    "output": "results/sec_bitcoin_issuer_reactivation_breadth_preregistration_2026-07-23.json"
+  },
+  "exact_source_incidence_opened": false,
+  "manifest_hash": "8191b9d1d1ac85be8f8317188ac39dc25918a5189b144a5873adfc277fb39779",
+  "mechanism_decision": {
+    "path": "docs/sec-bitcoin-issuer-reactivation-breadth-mechanism-decision-2026-07-23.md",
+    "sha256": "bfd7ce68795323a4348eee962e0e80b43a88e2b069ee202e93a456d8f6a48580"
+  },
+  "next_action": "build exact source-only BIRB support, controls, and novelty clocks",
+  "outcome_boundary": {
+    "btc_market_rows_read": 0,
+    "comparator_file_bytes_hashed_during_preregistration": true,
+    "comparator_value_rows_read_during_preregistration": 0,
+    "exact_birb_breadth_events_derived": 0,
+    "exact_birb_reactivation_rows_derived": 0,
+    "funding_rows_read": 0,
+    "future_return_rows_read": 0,
+    "network_calls": 0,
+    "pnl_cagr_mdd_opened": false,
+    "post_2023_source_value_rows_read": 0,
+    "sec_filing_body_rows_read": 0,
+    "source_audit_metadata_parsed": true,
+    "source_file_bytes_hashed_during_preregistration": true,
+    "source_value_rows_read_during_preregistration": 0,
+    "subprocess_calls": 0
+  },
+  "outcomes_opened": false,
+  "performance_values_opened": false,
+  "policy": {
+    "atomic_batches": {
+      "grouping_key": "exact ready_time",
+      "historical_ready_time": "official acceptanceDateTime UTC + 60 elapsed minutes",
+      "intra_batch_order_forbidden": true,
+      "processing_sort": [
+        "ready_time",
+        "accession"
+      ],
+      "same_ready_rows_are_simultaneous": true,
+      "state_update": "apply whole batch, then evaluate one crossing"
+    },
+    "candidate": "BIRB-120-SOURCE-FAMILY-SEEN",
+    "economic_controls": {
+      "any_mention_breadth": "source control clock long",
+      "deterministic_random_side": "SHA-256 side assignment on exact primary clock",
+      "direction_flip": "exact primary clock short",
+      "first_ever_birth_breadth": "source control clock long",
+      "repeat_filer_breadth": "source control clock long",
+      "single_reactivation": "source control clock long",
+      "stale_30d": "source control clock long",
+      "time_shift_7d": "exact primary entry shifted +7 elapsed days"
+    },
+    "economic_hypothesis": {
+      "assimilation": "continuation for 120 elapsed hours after breadth first passage",
+      "mechanism": "three distinct issuers returning to Bitcoin-hit SEC filings after at least one annual cycle indicate renewed cross-issuer engagement",
+      "semantic_claim": "none at filing level; breadth is directional object and filing prose is unopened",
+      "side": "LONG"
+    },
+    "economic_sequence": [
+      "source-only support, specificity, and novelty",
+      "freeze strict evaluator",
+      "train 2020-2022",
+      "selection 2023 only after train pass",
+      "immutable post-2023 source extension only after pre-2024 pass",
+      "test 2024",
+      "eval 2025",
+      "recent 2026"
+    ],
+    "execution": {
+      "accept_when_entry_at_or_after_prior_exit": true,
+      "entry_and_exit_same_split_required": true,
+      "entry_time": "ceil_to_5m(signal_ready) + 5 elapsed minutes",
+      "exact_grid_signal_still_waits_one_bar": true,
+      "global_nonoverlap": true,
+      "hold_bars_5m": 1440,
+      "hold_elapsed_hours": 120,
+      "notional_exposure": 0.5,
+      "reservation_interval": "[entry_time, exit_time)",
+      "side_override": false,
+      "split_crossing_action": "skip",
+      "stops_take_profit_or_trailing_exit": false,
+      "suppressed_candidate_queueing": false
+    },
+    "mechanism_specificity_gates": {
+      "maximum_primary_to_any_mention_near_containment": 0.6,
+      "maximum_primary_to_birth_near_containment": 0.5,
+      "maximum_primary_to_permutation_near_containment": 0.5,
+      "maximum_primary_to_repeat_near_containment": 0.5,
+      "maximum_primary_to_single_near_containment": 0.7,
+      "maximum_primary_to_stale_near_containment": 0.5,
+      "near_window_elapsed_hours": 12,
+      "threshold_controls_are_report_only": true
+    },
+    "novelty": {
+      "comparators": [
+        "prior_microstructure_bundle",
+        "bitmex_trollbox_semantic_clock",
+        "live_portfolio_pure_clocks"
+      ],
+      "maximum_birb_to_comparator_near_containment": 0.35,
+      "maximum_exact_entry_jaccard": 0.1,
+      "minimum_comparator_entries": 10,
+      "near_window_elapsed_hours": 12,
+      "side_ignored_at_source_stage": true
+    },
+    "primary_clock": {
+      "breadth_window": "(current_ready - 7 elapsed days, current_ready]",
+      "breadth_window_elapsed_days": 7,
+      "distinct_issuer_threshold": 3,
+      "expiry_only_signal": false,
+      "first_ever_issuer_hit": "not a primary reactivation",
+      "issuer_contribution_per_episode": 1,
+      "prior_hit": "immediately previous eligible accession for same issuer",
+      "reactivation_gap_elapsed_days_minimum": 365,
+      "side": "LONG",
+      "signal": "first below-three to at-least-three transition caused by a new batch",
+      "state_reset": "breadth count falls below three"
+    },
+    "research_status": "source-family-seen_candidate-outcome-blind",
+    "rllm_boundary": {
+      "authorized_before_deterministic_train_and_selection_pass": false,
+      "current_position_state_required": true,
+      "inputs_must_be_causal": true,
+      "later_actions": [
+        "TRADE_FIXED_LONG",
+        "ABSTAIN"
+      ],
+      "may_create_clock_reverse_side_or_change_hold": false,
+      "reward_penalties": [
+        "strict drawdown",
+        "turnover"
+      ]
+    },
+    "singleton": true,
+    "source_controls": {
+      "any_mention_breadth": "three distinct eligible issuers in seven days",
+      "first_ever_birth_breadth": "three distinct first-ever issuer hits in seven days",
+      "repeat_filer_breadth": "three distinct issuers with prior gap below 90 days",
+      "single_reactivation": "each 365-day reactivation emits directly",
+      "stale_30d": "shift reactivation ready times +30 elapsed days before breadth",
+      "threshold_four": "report-only breadth specificity control",
+      "threshold_two": "report-only breadth specificity control",
+      "year_cik_permutation": "deterministic SHA-256 permutation of issuer keys within ready-time year"
+    },
+    "source_family_hypothesis_number": 3,
+    "source_rows": {
+      "accession_deduplication": true,
+      "allowed_fields": [
+        "acceptance_datetime",
+        "accession",
+        "amendment",
+        "ciks",
+        "form"
+      ],
+      "amendments_emit": false,
+      "filing_body_fetch": false,
+      "forms": [
+        "6-K",
+        "8-K"
+      ],
+      "issuer_key": "smallest numeric CIK in frozen accession CIK set",
+      "llm_source_labeling": false
+    },
+    "source_support_gates": {
+      "duplicate_accepted_accession_identity_allowed": false,
+      "each_selection_half_year_minimum": 3,
+      "each_train_year_minimum": 6,
+      "failure_action": "reject candidate without BTC outcomes or repair",
+      "maximum_calendar_gap_days": 150,
+      "maximum_month_share": 0.2,
+      "maximum_quarter_share": 0.4,
+      "selection_distinct_reactivated_issuers_minimum": 6,
+      "selection_total_minimum": 8,
+      "train_active_quarters_minimum": 8,
+      "train_distinct_reactivated_issuers_minimum": 18,
+      "train_total_minimum": 24
+    },
+    "stopping_rule": "any identity, source, causality, support, specificity, novelty, train, or staged selection failure rejects BIRB-120-SOURCE-FAMILY-SEEN; any repair requires a new identity frozen before access",
+    "strict_economic_gates": {
+      "absolute_return_positive": true,
+      "base_cost_notional_per_side": 0.0006,
+      "cagr_to_strict_mdd_minimum": 3.0,
+      "calendar_month_cluster_signflip_p_maximum": 0.1,
+      "control_full_qualification_rejects": true,
+      "full_calendar_cagr": true,
+      "minimum_trades_selection": 8,
+      "minimum_trades_train": 20,
+      "realized_funding": true,
+      "selection_h1_and_h2_absolute_return_positive": true,
+      "stress_cost_notional_per_side": 0.001,
+      "strict_intratrade_high_water_mdd": true,
+      "strict_mdd_pct_maximum": 15.0,
+      "ten_bp_notional_side_stress_return_positive": true
+    },
+    "windows": {
+      "sealed_from": "2024-01-01T00:00:00Z",
+      "selection": [
+        "2023-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "source_warmup": [
+        "2018-01-01T00:00:00Z",
+        "2020-01-01T00:00:00Z"
+      ],
+      "train": [
+        "2020-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ]
+    }
+  },
+  "policy_hash": "61c3a0146dd252ae252b01e9d2e05551754827960bfea2513ef7bea58a094197",
+  "preregistration_source": {
+    "path": "training/preregister_sec_bitcoin_issuer_reactivation_breadth.py",
+    "sha256": "14ce694c7e635528aa400e9945d8ff126c5c1d7f3b31a61a545ea0b9a9f63c36"
+  },
+  "prior_research_disclosure": {
+    "birb_exact_incidence_opened": false,
+    "birb_market_outcomes_opened": false,
+    "prior_candidates_stopped_at": "frozen Gemma synthetic interface",
+    "prior_family_candidates": [
+      "EBCT-72",
+      "BPAX-120"
+    ],
+    "prior_sec_candidate_market_outcomes_opened": false,
+    "prior_sec_filing_bodies_classified": false,
+    "pristine_source_family_claim": false,
+    "source_family": "SEC EDGAR Bitcoin-hit non-amendment 8-K/6-K",
+    "source_family_hypothesis_number": 3,
+    "source_metadata_and_aggregate_counts_opened": true
+  },
+  "protocol_version": "sec_bitcoin_issuer_reactivation_breadth_v1",
+  "source_binding": {
+    "allowed_fields": [
+      "acceptance_datetime",
+      "accession",
+      "amendment",
+      "ciks",
+      "form"
+    ],
+    "audit": "results/sec_edgar_bitcoin_8k_6k_source_audit_2026-07-21.json",
+    "audit_manifest_hash": "b4234f71b559a6b98e4056491f3b726191e9a89c2c0bec1e549249d93840f575",
+    "audit_sha256": "c1e11d1f5089378ac787fdb2a80474f0feec33d5fb2296fb0c3014d6f1fafec1",
+    "canonical_rows_sha256": "98793185f1e411d8c59736fb54c5ed529d539e81ccddf2c823f24127ecfcef0b",
+    "source": "data/sec_edgar_bitcoin_8k_6k_source_2018_2023.jsonl.gz",
+    "source_sha256": "c8489dfe9b4ac25da8bea7653115e5b58a44fa897f2815eaf68bad354e10c6ce",
+    "value_rows_read_during_preregistration": 0
+  },
+  "source_family_values_previously_opened": true
+}
