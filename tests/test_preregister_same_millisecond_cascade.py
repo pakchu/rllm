@@ -34,6 +34,10 @@ def test_manifest_binds_audited_archive_chain() -> None:
     assert source["archive_manifest_sha256"] == smcc.ARCHIVE_MANIFEST_SHA256
     assert source["source_audit_sha256"] == smcc.SOURCE_AUDIT_SHA256
     assert source["raw_archives_persisted"] is False
+    assert source["required_source_gap_days"][0] == "2020-01-15"
+    assert source["smcc_specific_underlying_overlap_quarantine"]["2020-01-15"][
+        "overlap_count"
+    ] == 1
 
 
 def test_manifest_freezes_comparators_controls_and_support_schema() -> None:

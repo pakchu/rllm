@@ -9,9 +9,9 @@ MDD is accessible to this evaluator.
 
 - path: `results/same_millisecond_cascade_preregistration_2026-07-20.json`
 - file SHA-256:
-  `538fbae53a05ebd02dcd1465f24132ab50c7e964abe635b1ef89e0d06f428af4`
+  `49fb04bc666f56f00efebf1f03c08e4a386f69b12fb12feeac22f9fde4ff9111`
 - canonical manifest hash:
-  `d68b5a90b7438b72cbb5ab336fc5918efa7d68f149b29b2ee7db921bf3e3ed77`
+  `5628bdf5e9f6079ebb14585886738c9176ae869e249bcad89927775c7dafa302`
 - source incidence opened: `false`
 - outcomes opened: `false`
 
@@ -41,3 +41,12 @@ Execution remains disabled until a hash-only source-access seal binds the built
 source bytes and source-manifest bytes.  After the build, the only permitted
 evaluator edit is populating the seal/source hash constants; signal, scheduling,
 support, novelty, or artifact logic may not change.
+
+## Pre-access source amendment
+
+The first source build failed closed on one exact duplicate underlying-trade
+range in the hash-bound `2020-01-15` archive before support incidence was read.
+The preregistration and its two evaluator hash constants were amended only to
+add that full UTC day to source quarantine.  Policy, threshold, scheduler,
+support gates, novelty gates, and output logic are unchanged.  The hashes above
+are the post-amendment bindings.
