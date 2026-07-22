@@ -630,7 +630,7 @@ def materialize_rows(
         raise RuntimeError("WCBF finalized head does not cover confirmation blocks")
     return materialized, {
         "required_through_block": required_finalized_block,
-        "observed_finalized_block": finalized.number,
+        "finalized_tag_checked": True,
         "observed_finalized_block_at_least_required": True,
         "event_block_hash_cross_checked": True,
     }

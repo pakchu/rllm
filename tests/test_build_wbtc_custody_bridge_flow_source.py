@@ -282,6 +282,12 @@ def test_build_outputs_is_dual_replayed_and_source_only(
         counts == {"mint": 1, "burn": 1}
         for counts in core["source_support"]["year_event_counts"].values()
     )
+    assert core["source_audit"]["header_materialization"] == {
+        "required_through_block": rows[-1]["confirmation_block_number"],
+        "finalized_tag_checked": True,
+        "observed_finalized_block_at_least_required": True,
+        "event_block_hash_cross_checked": True,
+    }
     assert core["outcome_boundary"] == {
         "source_only": True,
         "btc_market_rows_read": 0,
