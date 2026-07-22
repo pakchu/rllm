@@ -27,12 +27,16 @@ PREREGISTRATION_MANIFEST_HASH = (
 SOURCE_ACCESS_SEAL_PATH = Path(
     "results/same_millisecond_cascade_source_access_seal_2026-07-20.json"
 )
-# These three constants intentionally keep support execution disabled until the
-# hash-only source seal is produced and committed.  No evaluator logic may
-# change when they are populated.
-SOURCE_ACCESS_SEAL_FILE_SHA256: str | None = None
-EXPECTED_SOURCE_SHA256: str | None = None
-EXPECTED_SOURCE_MANIFEST_SHA256: str | None = None
+# Hash-only seal populated after the source build without parsing feature rows.
+SOURCE_ACCESS_SEAL_FILE_SHA256: str | None = (
+    "c261beb2084be8a2c553f4cc684d24f0b50695fa39cf76332fd797ee95814a97"
+)
+EXPECTED_SOURCE_SHA256: str | None = (
+    "8fa03b0d7f58db9d0ba6c889e99ce87ba668f55a3c7f0ab5638a374c4584bfd1"
+)
+EXPECTED_SOURCE_MANIFEST_SHA256: str | None = (
+    "e6ba3fbf74bc9bc1a7c1b35873e9ff430e5bc0a7b7edcc7e082f3f397362c805"
+)
 DEFAULT_SOURCE = Path(
     "data/binance_um_same_millisecond_cascade_btc_2020_2023/"
     "BTCUSDT_same_millisecond_5m_2020-01-01_2023-12-31.csv.gz"
