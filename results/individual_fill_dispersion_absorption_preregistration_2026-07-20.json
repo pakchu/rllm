@@ -1,0 +1,460 @@
+{
+  "protocol_version": "individual_fill_dispersion_absorption_v1",
+  "outcomes_opened": false,
+  "source_incidence_opened": false,
+  "policy": {
+    "policy_id": "IFDA-72",
+    "baseline_bars": 8640,
+    "baseline_min_periods": 2016,
+    "score_quantile": 0.995,
+    "minimum_total_fill_count": 128,
+    "minimum_each_side_fill_count": 32,
+    "execution_delay_bars": 2,
+    "hold_bars": 72,
+    "post_gap_quarantine_bars": 24,
+    "exposure": 0.5,
+    "disk_used_abort_gib": 300
+  },
+  "source_axis_decision": {
+    "path": "docs/individual-fill-dispersion-absorption-source-axis-decision-2026-07-20.md",
+    "sha256": "43f2f65412751993e90a85fb8edea0d0365f110186a4063e04fc5f8bfb9c4da3",
+    "tcda_rejected_before_preregistration": true
+  },
+  "source_contract": {
+    "source": "official Binance USD-M BTCUSDT daily trades archives",
+    "official_specification": "https://github.com/binance/binance-public-data",
+    "archive_url_template": "https://data.binance.vision/data/futures/um/daily/trades/BTCUSDT/BTCUSDT-trades-{YYYY-MM-DD}.zip",
+    "checksum_suffix": ".CHECKSUM",
+    "range": [
+      "2020-01-01",
+      "2024-01-01"
+    ],
+    "end_is_exclusive": true,
+    "raw_columns": [
+      "trade_id",
+      "price",
+      "qty",
+      "quote_qty",
+      "time",
+      "is_buyer_maker"
+    ],
+    "raw_archives_persisted": false,
+    "download_unit": "one UTC daily ZIP at a time",
+    "checksum_verified_before_parse": true,
+    "trade_id_contract": "strictly increasing unique IDs with exact +1 continuity across rows and archive boundaries",
+    "notional_reconciliation": "positive quote_qty must agree with positive price*qty under the builder's frozen decimal tolerance",
+    "missing_archive_policy": "reject candidate; do not bridge or impute",
+    "source_gap_policy": "verified complete zero-trade buckets are allowed; any unverified gap and the following 24 five-minute bars are incomplete",
+    "disk_guard": "abort before each download when filesystem used bytes are at least 300 GiB; raw ZIP bytes are discarded after each day",
+    "builder": "training.build_binance_individual_fill_dispersion",
+    "transform": "preprocessing.individual_fill_dispersion",
+    "forbidden_reads": [
+      "future OHLC",
+      "funding PnL",
+      "post-entry return",
+      "strategy label",
+      "existing alpha outcome"
+    ]
+  },
+  "feature_contract": {
+    "candidate_count": 1,
+    "bucket": "completed UTC five-minute bar t",
+    "fill_notional": "official quote_qty, reconciled to price*qty",
+    "aggressive_side": "+1 when is_buyer_maker=false, else -1",
+    "buy_notional": "sum(fill_notional where aggressive_side=+1)",
+    "sell_notional": "sum(fill_notional where aggressive_side=-1)",
+    "dominant_side": "sign(buy_notional-sell_notional)",
+    "flow_coherence": "abs(buy_notional-sell_notional)/(buy_notional+sell_notional)",
+    "side_hhi": "sum(q_i^2)/(sum(q_i)^2) within each aggressive side",
+    "side_normalized_effective_count": "(1/side_hhi)/side_fill_count",
+    "dominant_equalization": "side_normalized_effective_count of dominant_side",
+    "opposing_equalization": "side_normalized_effective_count of -dominant_side",
+    "equalization_gap": "max(dominant_equalization-opposing_equalization,0)",
+    "score": "flow_coherence*dominant_equalization*equalization_gap",
+    "direction": "-dominant_side (fade the coherent aggressor wave)",
+    "price_path_fields_used": false,
+    "aggregate_trade_event_fields_used_by_primary": false,
+    "participant_or_parent_order_identity_inferred": false,
+    "threshold_grid": false
+  },
+  "support_schedule_contract": {
+    "stable_universe": "source_complete; total fills>=128; buy fills>=32; sell fills>=32; dominant_side nonzero; equalization_gap>0; score>0",
+    "threshold": "mask score to the stable universe, shift one calendar row, then rolling(8640,min_periods=2016).quantile(0.995)",
+    "activation": "current stable-universe score>=strictly-prior threshold and the immediately previous calendar bar was not active",
+    "decision_time": "after completed bar t closes",
+    "entry_time": "bucket date at t+2",
+    "exit_time": "bucket date at entry_position+72",
+    "nonoverlap": "accept activations chronologically; skip while entry precedes the last scheduled exit; re-entry at exit timestamp is allowed",
+    "future_source_rule": "source completeness after decision t never cancels a selected event",
+    "pre2024_containment": true,
+    "severity_rationale": "q99.5 is a single frozen upper-tail threshold on a bounded joint coherence/equalization/asymmetry score; no incidence grid is allowed",
+    "hold_rationale": "72 five-minute bars is six hours, testing cross-session inventory absorption without reusing the prior 12h/24h fragmentation holds"
+  },
+  "support_gates": {
+    "total_2020_2023_min": 250,
+    "total_2020_2023_max": 1100,
+    "each_calendar_year_min": 50,
+    "each_2023_half_min": 20,
+    "each_side_share_min": 0.25,
+    "each_side_share_max": 0.75,
+    "maximum_single_month_share": 0.15,
+    "mechanism_control_total_min": 125,
+    "mechanism_control_each_year_min": 20
+  },
+  "novelty_gates": {
+    "prior_bundle": {
+      "path": "results/prior_microstructure_comparator_clock_bundle_2026-07-20.json",
+      "sha256": "c5584256140799b380973f9f376e5751ad754a81c9683473467b9d05af0bb9f0",
+      "members": [
+        "cbfr72",
+        "mfic_fast",
+        "mfic_slow",
+        "netf_fast",
+        "netf_slow",
+        "wfrs_l288_q90_h144",
+        "terminal_absorption_wait72_h72"
+      ],
+      "entry_column": "signal_date"
+    },
+    "explicit_clocks": [
+      {
+        "family": "MFIC",
+        "path": "results/lvrt_mfic_pure_clocks_2026-07-21.csv.gz",
+        "sha256": "d7d889bd2c8137682e244d399a42f14e2c04c48e88a336e07d05e48ddb0605bd",
+        "members": [
+          "mfic:mfic_fast",
+          "mfic:mfic_slow"
+        ],
+        "member_column": "candidate_id",
+        "entry_column": "entry_time",
+        "coverage": [
+          "2020-01-01",
+          "2024-01-01"
+        ]
+      },
+      {
+        "family": "AFCS",
+        "path": "results/aggregate_fill_compression_sweep_clock_2026-07-17.csv",
+        "sha256": "bf1611554604c1930ba2212e674ea434f7c9793377b3f33ef531b3b4e0381688",
+        "members": [
+          "AFCS-144"
+        ],
+        "member_column": null,
+        "entry_column": "entry_date",
+        "coverage": [
+          "2020-01-01",
+          "2024-01-01"
+        ]
+      },
+      {
+        "family": "TAAR",
+        "path": "data/tail_arrival_support_clocks_2020_2022.csv.gz",
+        "sha256": "b3ff6f36f7d59a18c32cd18100352661f34879f7987973ca0906345aac164582",
+        "members": [
+          "T01",
+          "T02",
+          "T03",
+          "T04"
+        ],
+        "member_column": "policy_id",
+        "entry_column": null,
+        "derived_entry": "signal_date + 2 completed five-minute bars",
+        "coverage": [
+          "2020-01-01",
+          "2023-01-01"
+        ]
+      },
+      {
+        "family": "RIFT",
+        "path": "results/refill_inference_flow_topology_clock_2026-07-14.csv",
+        "sha256": "83becb88da83ce55e235f10c2e91ed3a2ad478c6aea2e9298d37c43b36cfff00",
+        "members": [
+          "rift96"
+        ],
+        "member_column": "branch",
+        "entry_column": "entry_date",
+        "coverage": [
+          "2020-01-01",
+          "2024-01-01"
+        ]
+      },
+      {
+        "family": "PCP",
+        "path": "results/packet_churn_persistence_clock_2026-07-19.csv",
+        "sha256": "e50be3f0744617e3797581ea762546e7f21c32dd0707b9bdcbd264686d4f9acb",
+        "members": [
+          "PCP-6"
+        ],
+        "member_column": null,
+        "entry_column": "entry_date",
+        "coverage": [
+          "2020-01-01",
+          "2024-01-01"
+        ]
+      },
+      {
+        "family": "SMCC",
+        "path": "data/same_millisecond_cascade_clock_2020_2023.csv.gz",
+        "sha256": "3b255b224ab510afc30edb265d62428db9fdf07d90610499df62efff9ffa410d",
+        "members": [
+          "SMCC-144"
+        ],
+        "member_column": null,
+        "entry_column": "entry_time",
+        "coverage": [
+          "2020-01-01",
+          "2024-01-01"
+        ]
+      },
+      {
+        "family": "VTMS",
+        "path": "results/venue_ticket_migration_shock_clock_2026-07-17.csv",
+        "sha256": "7baf6f7de33e66417061dbea6f51efc6ea4993b2b5f2b9e0c09627a68adc57e2",
+        "members": [
+          "VTMS-288"
+        ],
+        "member_column": null,
+        "entry_column": "entry_date",
+        "coverage": [
+          "2020-01-01",
+          "2024-01-01"
+        ]
+      },
+      {
+        "family": "QLCD",
+        "path": "data/quantity_lattice_cohort_disagreement_clock_2020_2023.csv.gz",
+        "sha256": "ed882ac8a28f1f0b2b7ad7bf3d2de1f37b175cde63b20d4d1c7a290f3eb89bec",
+        "members": [
+          "QLCD-288"
+        ],
+        "member_column": null,
+        "entry_column": "entry_time",
+        "coverage": [
+          "2020-01-01",
+          "2024-01-01"
+        ]
+      }
+    ],
+    "exact_entry_jaccard_max": 0.05,
+    "tolerant_window_five_minute_bars": 12,
+    "tolerant_one_to_one_jaccard_max": 0.15,
+    "primary_containment_max": 0.3,
+    "matching_algorithm": "within common coverage, sort unique UTC entries; visit primary entries chronologically and match the unused comparator entry with minimum absolute distance, ties toward the earlier comparator",
+    "dense_bafr": {
+      "path": "results/binance_aggressor_frustration_clock_2026-07-20.csv",
+      "sha256": "f3b816a76decce31136ed23d22f043eb8e80ef1b8697b869241b060062f01747",
+      "entry_column": "entry_date",
+      "coverage": [
+        "2020-01-01",
+        "2024-01-01"
+      ],
+      "report_only": true
+    },
+    "missing_or_malformed_comparator": "all sparse clocks fail closed; dense BAFR remains report-only"
+  },
+  "falsification_controls": {
+    "exact_side_flip": "primary clock with side multiplied by -1",
+    "aggtrade_equalization": "same formula on aggregate-event notionals from the frozen aggTrades source, own q99.5 prior-only onset clock",
+    "flow_only_fade": "score=flow_coherence, direction=-dominant_side, own q99.5 clock",
+    "remove_cross_side_asymmetry": "score=flow_coherence*dominant_equalization, own q99.5 clock",
+    "all_fill_equalization": "score=flow_coherence*all-fill normalized effective count, direction =-dominant_side, own q99.5 clock",
+    "stale_one_hour": "primary signal, side, entry, and exit shifted +12 bars",
+    "stale_twenty_four_hours": "primary signal, side, entry, and exit shifted +288 bars"
+  },
+  "support_artifact_contract": {
+    "source": "data/binance_um_individual_fill_dispersion_btc_2020_2023/BTCUSDT_individual_fill_dispersion_5m_2020-01-01_2023-12-31.csv.gz",
+    "source_manifest": "data/binance_um_individual_fill_dispersion_btc_2020_2023/build_manifest.json",
+    "clock": "data/individual_fill_dispersion_absorption_clock_2020_2023.csv.gz",
+    "clock_columns": [
+      "decision_time",
+      "entry_time",
+      "exit_time",
+      "side",
+      "score",
+      "threshold"
+    ],
+    "control_clock_bundle": "data/individual_fill_dispersion_absorption_control_clocks_2020_2023.csv.gz",
+    "control_clock_columns": [
+      "control_id",
+      "decision_time",
+      "entry_time",
+      "exit_time",
+      "side",
+      "score",
+      "threshold"
+    ],
+    "required_own_clock_controls": [
+      "aggtrade_equalization",
+      "flow_only_fade",
+      "remove_cross_side_asymmetry",
+      "all_fill_equalization"
+    ],
+    "result": "results/individual_fill_dispersion_absorption_support_2026-07-20.json",
+    "evaluator": "training.evaluate_individual_fill_dispersion_absorption_support",
+    "write_once": true,
+    "deterministic_gzip_mtime": 0,
+    "outcomes_opened": false,
+    "decision_values": [
+      "PASS_SUPPORT",
+      "REJECT_NO_REPAIR"
+    ],
+    "required_result_hash_fields": [
+      "preregistration_file_sha256",
+      "source_file_sha256",
+      "source_manifest_sha256",
+      "primary_clock_sha256",
+      "control_clock_bundle_sha256",
+      "comparator_bundle_sha256"
+    ],
+    "missing_control_effect": "REJECT_NO_REPAIR"
+  },
+  "later_economic_protocol": {
+    "sequential_stages": [
+      [
+        "train",
+        "2020-01-01",
+        "2023-01-01"
+      ],
+      [
+        "selection",
+        "2023-01-01",
+        "2024-01-01"
+      ],
+      [
+        "test",
+        "2024-01-01",
+        "2025-01-01"
+      ],
+      [
+        "eval",
+        "2025-01-01",
+        "2026-01-01"
+      ],
+      [
+        "recent_report",
+        "2026-01-01",
+        null
+      ]
+    ],
+    "base_cost_bp_per_side": 6.0,
+    "stress_cost_bp_per_side": 10.0,
+    "full_calendar_cagr": true,
+    "strict_held_path_mdd": true,
+    "train": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_min": 1.5,
+      "strict_mdd_pct_max": 20.0,
+      "each_year_positive": true,
+      "weekly_cluster_signflip_p_max": 0.1,
+      "mean_gross_underlying_bp_min": 24.0,
+      "stress_absolute_return_positive": true
+    },
+    "selection_and_oos": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_min": 3.0,
+      "strict_mdd_pct_max": 15.0,
+      "weekly_cluster_signflip_p_max": 0.1,
+      "stress_absolute_return_positive": true,
+      "minimum_trades_per_year": 40,
+      "selection_each_half_positive": true
+    },
+    "ratio_definition": {
+      "formula": "cagr_pct/strict_mdd_pct",
+      "domain": "strict_mdd_pct must be strictly positive and CAGR, MDD, and ratio must all be finite; otherwise the comparison fails closed"
+    },
+    "granularity_increment_gate": {
+      "control_id": "aggtrade_equalization",
+      "required_stages": [
+        "train",
+        "selection",
+        "test",
+        "eval"
+      ],
+      "absolute_return_rule": "primary_absolute_return_pct > control_absolute_return_pct",
+      "ratio_rule": "primary_cagr_to_strict_mdd - control_cagr_to_strict_mdd >= 0.50",
+      "ratio_margin_min": 0.5,
+      "all_stages_must_pass_independently": true,
+      "required_result_fields": [
+        "primary_absolute_return_pct",
+        "control_absolute_return_pct",
+        "primary_cagr_to_strict_mdd",
+        "control_cagr_to_strict_mdd",
+        "absolute_return_pass",
+        "ratio_margin",
+        "ratio_margin_pass",
+        "stage_pass"
+      ]
+    },
+    "mechanism_control_dominance_gate": {
+      "control_ids": [
+        "aggtrade_equalization",
+        "flow_only_fade",
+        "remove_cross_side_asymmetry",
+        "all_fill_equalization"
+      ],
+      "required_stages": [
+        "train",
+        "selection",
+        "test",
+        "eval"
+      ],
+      "ratio_margin_min": 0.25,
+      "rule": "primary_cagr_to_strict_mdd - strongest_finite_control_cagr_to_strict_mdd >= 0.25",
+      "missing_or_nonfinite_control_effect": "stage fails closed"
+    },
+    "stop_on_first_failure": true
+  },
+  "live_parity_gate": {
+    "recent_endpoint": "/fapi/v1/trades",
+    "catchup_endpoint": "/fapi/v1/historicalTrades",
+    "raw_futures_websocket_assumed": false,
+    "official_rest_reference": "https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data#recent-trades-list",
+    "schema_normalization": {
+      "archive_trade_id": "trade Id -> trade_id",
+      "rest_trade_id": "id -> trade_id",
+      "archive_and_rest": {
+        "price": "price",
+        "qty": "qty",
+        "quoteQty": "quote_qty",
+        "time": "time",
+        "isBuyerMaker": "is_buyer_maker"
+      },
+      "isRPITrade": "REST-only boolean metadata introduced after the research window; validate and count when present but exclude from IFDA feature math",
+      "unknown_fields": "reject until a new schema version is frozen"
+    },
+    "request_contract": {
+      "recent_limit": 1000,
+      "recent_ip_weight": 5,
+      "historical_limit": 500,
+      "historical_ip_weight": 20,
+      "historical_api_key_required": true,
+      "historical_lookback_max": "one month",
+      "normal_poll_interval_seconds_max": 1.0,
+      "catchup_from_id_inclusive": true,
+      "unresolved_gap_wall_clock_minutes_max": 15,
+      "rate_limit_behavior": "track response weight headers and obey 429 Retry-After; never continue polling through a required backoff"
+    },
+    "requirements": [
+      "strictly contiguous trade IDs",
+      "no unrecovered five-minute bucket",
+      "historical/live feature byte-equivalence on replay fixture",
+      "documented request-weight compliance with backoff"
+    ],
+    "gap_behavior": "suppress new orders immediately; fetch sequentially from the first missing trade ID; resume only after exact continuity and bar replay",
+    "lookback_or_timeout_failure": "halt IFDA, flatten only under the separately frozen portfolio safety policy, and rebuild from checksum archives; never bridge the gap",
+    "failure_effect": "research-only; forbidden from live portfolio"
+  },
+  "claim_boundary": {
+    "claim": "a coherent aggressor wave distributed across unusually equal-sized individual matches relative to the opposing side may indicate broad passive absorption and subsequent reversion",
+    "not_claimed": [
+      "participant identity",
+      "maker ownership",
+      "one parent order",
+      "resting-book depth",
+      "profitability before sequential evaluation"
+    ]
+  },
+  "rejection_contract": "any source, disk, support, control-support, novelty, train, sequential stage, granularity-increment, or live-parity failure retires IFDA-72 without changing formula, fade direction, quantile, minimum counts, delay, hold, costs, or gates",
+  "manifest_hash": "757401202eacd3dcf0540ae54f4c121ba595d2495d0f4ae69fe248bfa360e02c",
+  "created_at": "2026-07-22T06:55:32.009611+00:00"
+}
