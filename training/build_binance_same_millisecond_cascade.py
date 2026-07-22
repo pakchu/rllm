@@ -307,17 +307,19 @@ def _process_month(
         ).dt.tz_localize(None)
         if not ((raw_timestamps >= day_start) & (raw_timestamps < day_end)).all():
             raise ValueError(f"aggTrade archive contains timestamps outside {day}")
-        agg_id_gap_count = int(
-            np.count_nonzero(np.diff(raw["agg_trade_id"].to_numpy(np.int64)) != 1)
+        aggregate_deltas = np.diff(raw["agg_trade_id"].to_numpy(np.int64))
+        if np.any(aggregate_deltas <= 0):
+            raise ValueError(f"aggregate-trade IDs overlap or regress on {day}")
+        agg_id_gap_count = int(np.count_nonzero(aggregate_deltas > 1))
+        underlying_deltas = (
+            raw["first_trade_id"].to_numpy(np.int64)[1:]
+            - raw["last_trade_id"].to_numpy(np.int64)[:-1]
+            - 1
         )
-        underlying_gap_count = int(
-            np.count_nonzero(
-                raw["first_trade_id"].to_numpy(np.int64)[1:]
-                != raw["last_trade_id"].to_numpy(np.int64)[:-1] + 1
-            )
-        )
+        if np.any(underlying_deltas < 0):
+            raise ValueError(f"underlying-trade ID ranges overlap or regress on {day}")
         expected_gap_day = day.isoformat() in source_contract.source_gap_days
-        if (agg_id_gap_count > 0 or underlying_gap_count > 0) != expected_gap_day:
+        if (agg_id_gap_count > 0) != expected_gap_day:
             raise ValueError(f"aggTrade intra-day gap contract changed on {day}")
         observed_bars = aggregate_same_millisecond_five_minute(raw)
         if not (
