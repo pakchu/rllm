@@ -21,7 +21,7 @@ MECHANISM_DECISION = Path(
     "mechanism-decision-2026-07-23.md"
 )
 MECHANISM_DECISION_SHA256 = (
-    "bfd7ce68795323a4348eee962e0e80b43a88e2b069ee202e93a456d8f6a48580"
+    "11f6e9448bbf55bc9b8e5483bde3b0a204f2408b4c01f485598e2c5592c7e237"
 )
 DEFAULT_OUTPUT = Path(
     "results/sec_bitcoin_issuer_reactivation_breadth_"
@@ -237,7 +237,10 @@ def policy_payload() -> dict[str, Any]:
             "maximum_primary_to_birth_near_containment": 0.50,
             "maximum_primary_to_any_mention_near_containment": 0.60,
             "maximum_primary_to_repeat_near_containment": 0.50,
-            "maximum_primary_to_single_near_containment": 0.70,
+            "single_reactivation_component_relation": (
+                "primary trigger is definitionally a raw reactivation timestamp"
+            ),
+            "single_reactivation_proximity_is_report_only": True,
             "maximum_primary_to_stale_near_containment": 0.50,
             "maximum_primary_to_permutation_near_containment": 0.50,
             "near_window_elapsed_hours": 12,
