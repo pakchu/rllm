@@ -515,6 +515,35 @@ def historical_available_at(publication_date: str) -> str:
     return available.isoformat()
 
 
+def validate_candidate_govinfo_identity(
+    document_number: str,
+    publication_date: str,
+    mods: Mapping[str, Any],
+) -> tuple[str, ...]:
+    urls = nfet.govinfo_document_urls(publication_date, document_number)
+    expected = {
+        "collection_code": "FR",
+        "access_id": document_number,
+        "fr_doc_number": document_number,
+        "identifier_fr_doc_number": document_number,
+        "host_date_issued": publication_date,
+        "host_uri": f"https://www.govinfo.gov/app/details/FR-{publication_date}",
+        "other_format_urls": tuple(sorted((urls["html"], urls["pdf"]))),
+    }
+    for field, value in expected.items():
+        if mods.get(field) != value:
+            raise ValueError(f"NFET GovInfo MODS {field} identity mismatch")
+    granule_class = mods.get("granule_class")
+    if not isinstance(granule_class, str) or not granule_class.strip():
+        raise ValueError("NFET GovInfo MODS granule_class is empty")
+    agency_names = mods.get("agency_names")
+    if not isinstance(agency_names, (list, tuple)) or not all(
+        isinstance(name, str) and name for name in agency_names
+    ):
+        raise ValueError("NFET GovInfo MODS agency_names are malformed")
+    return tuple(agency_names)
+
+
 def evaluate_candidate_sources(
     candidate: Mapping[str, Any],
     *,
@@ -529,8 +558,8 @@ def evaluate_candidate_sources(
         raise ValueError("NFET candidate identity is malformed")
     mods = nfet.parse_govinfo_mods(mods_raw)
     detail = _load_json_object(detail_raw, label="FederalRegister detail")
-    identity = nfet.reconcile_positive_identity(
-        document_number, publication_date, mods, detail
+    govinfo_agency_names = validate_candidate_govinfo_identity(
+        document_number, publication_date, mods
     )
     canonical_text = nfet.official_html_membership_view(html_raw)
     if not canonical_text:
@@ -538,13 +567,20 @@ def evaluate_candidate_sources(
     matches = nfet.exact_term_matches(canonical_text)
     if matches and (pdf_raw is None or not pdf_raw.startswith(b"%PDF-")):
         raise ValueError("NFET positive GovInfo PDF is missing or malformed")
-    normalize_correction_metadata(detail, current_document_number=document_number)
+    identity: Mapping[str, Any] | None = None
+    if matches:
+        identity = nfet.reconcile_positive_identity(
+            document_number, publication_date, mods, detail
+        )
+        normalize_correction_metadata(detail, current_document_number=document_number)
     return {
         "member": bool(matches),
-        "identity_stratum": identity["stratum"],
-        "member_stratum": identity["stratum"] if matches else None,
-        "govinfo_agency_names": list(identity["govinfo_agency_names"]),
-        "detail_agency_slugs": list(identity["detail_agency_slugs"]),
+        "identity_stratum": identity["stratum"] if identity is not None else None,
+        "member_stratum": identity["stratum"] if identity is not None else None,
+        "govinfo_agency_names": list(govinfo_agency_names),
+        "detail_agency_slugs": (
+            list(identity["detail_agency_slugs"]) if identity is not None else None
+        ),
         "canonical_text": canonical_text,
         "exact_matches": matches,
         "historical_available_at": historical_available_at(publication_date),
@@ -1092,13 +1128,14 @@ def _manifest_core(
             ],
             "positive_only": ["GovInfo PDF", "exact match records"],
             "negative_pdf_requests": 0,
-            "identity_reconciled_for_all_candidates": True,
+            "govinfo_identity_reconciled_for_all_candidates": True,
+            "detail_identity_and_agency_reconciled_for_positive_members": True,
             "raw_html_role": "transport audit only",
             "canonical_text_role": "membership identity",
             "detail_corrections_role": (
-                "relationship fields are schema-validated but remain only in the "
-                "hash-bound raw detail audit object; they never enter structured "
-                "candidate decisions, features, or events"
+                "positive relationship fields are schema-validated; all raw detail "
+                "objects remain hash-bound audit evidence, and relationships never "
+                "enter structured candidate decisions, features, or events"
             ),
             "storage": "content-addressed deterministic gzip mtime=0",
             "disk_used_abort_gib": cfg.disk_used_abort_gib,

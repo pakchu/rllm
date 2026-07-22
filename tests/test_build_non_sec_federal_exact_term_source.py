@@ -174,12 +174,14 @@ def _decision(
     return {
         "candidate": candidate,
         "member": member,
-        "identity_stratum": stratum,
+        "identity_stratum": stratum if member else None,
         "member_stratum": stratum if member else None,
         "govinfo_agency_names": agencies or [f"AGENCY {document_number}"],
-        "detail_agency_slugs": [
-            SEC_SLUG if stratum == "sec_comparator" else PRIMARY_SLUG
-        ],
+        "detail_agency_slugs": (
+            [SEC_SLUG if stratum == "sec_comparator" else PRIMARY_SLUG]
+            if member
+            else None
+        ),
         "exact_matches": [
             {
                 "pattern_id": "bitcoin",
@@ -356,7 +358,7 @@ def test_bad_positive_pdf_is_rejected(tmp_path: Path) -> None:
         )
 
 
-def test_all_candidates_retain_identity_but_relationships_stay_in_raw_audit(
+def test_all_candidates_retain_govinfo_identity_but_only_positives_route_detail(
     tmp_path: Path,
 ) -> None:
     cfg = _cfg(tmp_path)
@@ -404,11 +406,56 @@ def test_all_candidates_retain_identity_but_relationships_stay_in_raw_audit(
     assert positive_detail["corrections"] == [
         source.correction_relationship_url("2021-11111")
     ]
-    assert (
-        positive_decision["identity_stratum"]
-        == negative_decision["identity_stratum"]
-        == "primary_non_sec"
+    assert positive_decision["identity_stratum"] == "primary_non_sec"
+    assert negative_decision["identity_stratum"] is None
+    assert negative_decision["detail_agency_slugs"] is None
+
+
+def test_negative_retains_malformed_detail_agency_as_raw_audit_without_routing(
+    tmp_path: Path,
+) -> None:
+    cfg = _cfg(tmp_path)
+    candidate = _candidate("2020-04249", "2020-03-02")
+    responses = _responses_for(
+        candidate, html=_html("no frozen exact term in this notice")
     )
+    detail = json.loads(responses[source.detail_url("2020-04249")])
+    detail["agencies"].append({"raw_name": "Office of the Secretary"})
+    responses[source.detail_url("2020-04249")] = json.dumps(detail).encode()
+    decision = source._process_candidate(
+        cfg,
+        source._state_core(cfg),
+        candidate,
+        fetch=_fetcher(responses),
+        now=_now,
+    )
+    assert decision["member"] is False
+    assert decision["identity_stratum"] is None
+    assert decision["member_stratum"] is None
+    assert decision["detail_agency_slugs"] is None
+    retained = json.loads(
+        source.load_object(
+            decision["receipts"]["detail"], archive_root=cfg.archive_root
+        )
+    )
+    assert retained["agencies"][1] == {"raw_name": "Office of the Secretary"}
+
+
+def test_positive_rejects_malformed_detail_agency_slug(tmp_path: Path) -> None:
+    cfg = _cfg(tmp_path)
+    candidate = _candidate("2020-04249", "2020-03-02")
+    responses = _responses_for(candidate)
+    detail = json.loads(responses[source.detail_url("2020-04249")])
+    detail["agencies"].append({"raw_name": "Office of the Secretary"})
+    responses[source.detail_url("2020-04249")] = json.dumps(detail).encode()
+    with pytest.raises(ValueError, match="malformed agency slug"):
+        source._process_candidate(
+            cfg,
+            source._state_core(cfg),
+            candidate,
+            fetch=_fetcher(responses),
+            now=_now,
+        )
 
 
 @pytest.mark.parametrize(
