@@ -350,7 +350,7 @@ def require_no_local_blobs(inventory: Mapping[str, Any], stage: str) -> None:
 def verify_and_refresh_source_repo(repo: Path) -> dict[str, Any]:
     if not repo.is_dir():
         raise RuntimeError("BCIMS source repository does not exist")
-    used_before = enforce_disk_guard(repo)
+    enforce_disk_guard(repo)
     remote = _run_git(repo, "remote", "get-url", "origin").stdout.decode().strip()
     if remote != protocol.OFFICIAL_REMOTE:
         raise RuntimeError("BCIMS origin URL differs from the official remote")
@@ -400,6 +400,7 @@ def verify_and_refresh_source_repo(repo: Path) -> dict[str, Any]:
         stderr=subprocess.PIPE,
         check=True,
     ).stdout.decode("ascii", errors="strict").strip()
+    enforce_disk_guard(repo)
     return {
         "remote": remote,
         "remote_default_symref_verified": "refs/heads/master",
@@ -412,10 +413,10 @@ def verify_and_refresh_source_repo(repo: Path) -> dict[str, Any]:
         "fsck_connectivity_passed": True,
         "fsck_stdout_sha256": sha256_bytes(fsck.stdout),
         "fsck_stderr_sha256": sha256_bytes(fsck.stderr),
-        "used_gib_before_fetch": used_before,
-        "used_gib_after_fetch": enforce_disk_guard(repo),
-        "pre_fetch_local_object_inventory": before_fetch_inventory,
-        "post_fetch_local_object_inventory": after_fetch_inventory,
+        "local_blob_absence": {
+            "pre_fetch": True,
+            "post_fetch": True,
+        },
     }
 
 
@@ -847,9 +848,9 @@ def build_source(
     del replay_rows
     post_extraction_inventory = local_object_inventory(source_repo)
     require_no_local_blobs(post_extraction_inventory, "post-extraction")
-    source_verification["post_extraction_local_object_inventory"] = (
-        post_extraction_inventory
-    )
+    source_verification.setdefault("local_blob_absence", {})[
+        "post_extraction"
+    ] = True
     source_verification["deterministic_replay"] = {
         "pass_a": pass_a,
         "pass_b": pass_b,

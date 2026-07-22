@@ -313,6 +313,74 @@ def test_local_object_inventory_detects_blobs(tmp_path: Path) -> None:
         builder.require_no_local_blobs(inventory, "fixture")
 
 
+def test_source_verification_does_not_persist_post_seal_object_fingerprints(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = tmp_path / "source.git"
+    repo.mkdir()
+    inventory_variant = {"value": 0}
+
+    def fake_run_git(
+        _: Path,
+        *args: str,
+        check: bool = True,
+    ) -> subprocess.CompletedProcess[bytes]:
+        del check
+        stdout = b""
+        returncode = 0
+        if args == ("remote", "get-url", "origin"):
+            stdout = (builder.protocol.OFFICIAL_REMOTE + "\n").encode()
+        elif args == ("rev-parse", "--show-object-format"):
+            stdout = b"sha1\n"
+        elif args == ("config", "--get", "remote.origin.promisor"):
+            stdout = b"true\n"
+        elif args == ("config", "--get", "remote.origin.partialclonefilter"):
+            stdout = b"blob:none\n"
+        elif args[:2] == ("cat-file", "--batch-all-objects"):
+            suffix = inventory_variant["value"]
+            stdout = (
+                f"{'1' * 39}{suffix} commit 1\n"
+                f"{'2' * 39}{suffix} tree 1\n"
+            ).encode()
+        elif args == ("ls-remote", "--symref", "origin", "HEAD"):
+            remote_head = "3" * 39 + str(inventory_variant["value"])
+            stdout = f"ref: refs/heads/master\tHEAD\n{remote_head}\tHEAD\n".encode()
+        elif args == (
+            "rev-parse",
+            f"{builder.protocol.PROBE_SEALED_TIP}^{{commit}}",
+        ):
+            stdout = (builder.protocol.PROBE_SEALED_TIP + "\n").encode()
+        elif args[:2] == ("merge-base", "--is-ancestor"):
+            returncode = 0
+        elif args[:2] not in (("fetch", "--filter=blob:none"), ("fsck", "--connectivity-only")):
+            raise AssertionError(f"unexpected git command: {args}")
+        return subprocess.CompletedProcess(["git", *args], returncode, stdout, b"")
+
+    monkeypatch.setattr(builder, "_run_git", fake_run_git)
+    monkeypatch.setattr(builder, "enforce_disk_guard", lambda _: 1)
+    monkeypatch.setattr(
+        builder.subprocess,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(
+            args[0], 0, b"git version fixture\n", b""
+        ),
+    )
+
+    first = builder.verify_and_refresh_source_repo(repo)
+    inventory_variant["value"] = 1
+    second = builder.verify_and_refresh_source_repo(repo)
+
+    assert first == second
+    assert first["local_blob_absence"] == {
+        "pre_fetch": True,
+        "post_fetch": True,
+    }
+    serialized = json.dumps(first, sort_keys=True)
+    for forbidden in ("object_counts", "inventory", "remote_head", "used_gib"):
+        assert forbidden not in serialized
+
+
 def test_result_hash_excludes_no_required_contract_fields() -> None:
     rows = [
         _row(year=year, month=1, day=1, stratum="primary_core")
@@ -396,7 +464,43 @@ def test_build_source_writes_only_after_identical_replay(
     assert source.exists() and manifest.exists() and support.exists()
     manifest_payload = json.loads(manifest.read_text())
     assert manifest_payload["source_verification"]["deterministic_replay"]["passed"] is True
+    assert manifest_payload["source_verification"]["local_blob_absence"] == {
+        "post_extraction": True
+    }
     assert "remote_head_at_fetch" not in manifest_payload["source_verification"]
+
+
+def test_build_source_rejects_post_extraction_blob_before_any_write(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "source.jsonl.gz"
+    manifest = tmp_path / "manifest.json"
+    support = tmp_path / "support.json"
+    row = {
+        "event_id": "a" * 40,
+        "raw_commit_sha256": "b" * 64,
+        "raw_path_delta_sha256": "c" * 64,
+    }
+    inventory = {
+        "object_counts": {"blob": 1, "commit": 9, "tag": 0, "tree": 9},
+        "enumeration_stdout_sha256": "d" * 64,
+        "enumeration_stderr_sha256": "e" * 64,
+    }
+    monkeypatch.setattr(builder, "verify_committed_builder", lambda: {"sha256": "x"})
+    monkeypatch.setattr(
+        builder,
+        "verify_and_refresh_source_repo",
+        lambda _: {"local_blob_absence": {"pre_fetch": True, "post_fetch": True}},
+    )
+    monkeypatch.setattr(builder, "collect_source_rows", lambda _: [dict(row)])
+    monkeypatch.setattr(builder, "local_object_inventory", lambda _: inventory)
+
+    with pytest.raises(RuntimeError, match="post-extraction.*contains blobs"):
+        builder.build_source(tmp_path, source, manifest, support)
+    assert not source.exists()
+    assert not manifest.exists()
+    assert not support.exists()
 
 
 def test_committed_builder_binding_rejects_dirty_bytes(

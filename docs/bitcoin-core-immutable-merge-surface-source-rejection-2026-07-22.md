@@ -56,14 +56,17 @@ The rejection is not caused by transport or nondeterminism:
 - ordered raw commit/path evidence SHA-256:
   `1499688f201a26c35f628c42fbb86ebcdf82abcc719fdfe4a6d373d6bdaa13c6`;
 - the blobless clone contained zero local blob objects before fetch, after
-  fetch, and after both extraction passes; and
+  fetch, and after both extraction passes;
 - no mutable GitHub PR metadata or post-seal remote HEAD identity entered the
-  source or support artifacts.
+  source or support artifacts; and
+- transient commit/tree inventories and disk-use values were redacted after
+  review, leaving only zero-blob booleans and sealed-tip verification in the
+  manifest.
 
 The machine-readable rejection is
 `results/bitcoin_core_immutable_merge_surface_source_rejection_2026-07-22.json`,
 with result hash
-`38650591438b3a7e2dd83de10f086facbe5375ef805160a98786b557d888523c`.
+`df1e5edac6cf7fd7f1febc2fe89e9168098ca414a35ab131d67f6f5eda2aa90d`.
 
 ## Why this cannot be repaired
 

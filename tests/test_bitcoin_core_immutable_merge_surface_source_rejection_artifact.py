@@ -4,6 +4,7 @@ import gzip
 import hashlib
 import json
 import re
+import subprocess
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -23,7 +24,7 @@ SUPPORT = ROOT / (
     "results/bitcoin_core_immutable_merge_surface_source_support_2026-07-22.json"
 )
 EXPECTED_RESULT_HASH = (
-    "38650591438b3a7e2dd83de10f086facbe5375ef805160a98786b557d888523c"
+    "df1e5edac6cf7fd7f1febc2fe89e9168098ca414a35ab131d67f6f5eda2aa90d"
 )
 
 
@@ -42,8 +43,23 @@ def test_bcims_rejection_hash_and_frozen_evidence_chain() -> None:
     assert payload["result_hash"] == EXPECTED_RESULT_HASH
     assert builder.canonical_hash(core) == EXPECTED_RESULT_HASH
     assert payload["decision"] == "REJECT_NO_REPAIR"
-    for evidence in payload["frozen_evidence"].values():
-        assert _sha256((ROOT / evidence["path"]).read_bytes()) == evidence["sha256"]
+    for evidence_id, evidence in payload["frozen_evidence"].items():
+        if evidence_id == "source_builder":
+            raw = subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(ROOT),
+                    "show",
+                    f"{evidence['commit']}:{evidence['path']}",
+                ],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            ).stdout
+        else:
+            raw = (ROOT / evidence["path"]).read_bytes()
+        assert _sha256(raw) == evidence["sha256"]
 
 
 def test_bcims_rejection_replays_rows_and_exact_failure_shapes() -> None:
@@ -83,13 +99,23 @@ def test_bcims_rejection_proves_replay_and_zero_blob_boundary() -> None:
     replay = manifest["source_verification"]["deterministic_replay"]
     assert replay["passed"] is True
     assert fingerprint == replay["pass_a"] == replay["pass_b"]
-    for stage in (
-        "pre_fetch_local_object_inventory",
-        "post_fetch_local_object_inventory",
-        "post_extraction_local_object_inventory",
+    verification = manifest["source_verification"]
+    assert verification["local_blob_absence"] == {
+        "pre_fetch": True,
+        "post_fetch": True,
+        "post_extraction": True,
+    }
+    assert verification["post_seal_fingerprint_redaction"]["applied"] is True
+    serialized = json.dumps(verification, sort_keys=True)
+    for forbidden in (
+        "object_counts",
+        "enumeration_stdout_sha256",
+        "enumeration_stderr_sha256",
+        "remote_head_at_fetch",
+        "used_gib_before_fetch",
+        "used_gib_after_fetch",
     ):
-        assert manifest["source_verification"][stage]["object_counts"]["blob"] == 0
-    assert "remote_head_at_fetch" not in manifest["source_verification"]
+        assert forbidden not in serialized
 
 
 def test_bcims_rejection_matches_failed_support_and_keeps_outcomes_closed() -> None:
