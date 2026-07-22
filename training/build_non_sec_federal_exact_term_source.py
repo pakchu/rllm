@@ -556,11 +556,7 @@ def evaluate_candidate_sources(
     publication_date = candidate.get("publication_date")
     if not isinstance(document_number, str) or not isinstance(publication_date, str):
         raise ValueError("NFET candidate identity is malformed")
-    mods = nfet.parse_govinfo_mods(mods_raw)
     detail = _load_json_object(detail_raw, label="FederalRegister detail")
-    govinfo_agency_names = validate_candidate_govinfo_identity(
-        document_number, publication_date, mods
-    )
     canonical_text = nfet.official_html_membership_view(html_raw)
     if not canonical_text:
         raise ValueError("NFET canonical GovInfo HTML text is empty")
@@ -569,6 +565,8 @@ def evaluate_candidate_sources(
         raise ValueError("NFET positive GovInfo PDF is missing or malformed")
     identity: Mapping[str, Any] | None = None
     if matches:
+        mods = nfet.parse_govinfo_mods(mods_raw)
+        validate_candidate_govinfo_identity(document_number, publication_date, mods)
         identity = nfet.reconcile_positive_identity(
             document_number, publication_date, mods, detail
         )
@@ -577,7 +575,9 @@ def evaluate_candidate_sources(
         "member": bool(matches),
         "identity_stratum": identity["stratum"] if identity is not None else None,
         "member_stratum": identity["stratum"] if identity is not None else None,
-        "govinfo_agency_names": list(govinfo_agency_names),
+        "govinfo_agency_names": (
+            list(identity["govinfo_agency_names"]) if identity is not None else None
+        ),
         "detail_agency_slugs": (
             list(identity["detail_agency_slugs"]) if identity is not None else None
         ),
@@ -1128,7 +1128,7 @@ def _manifest_core(
             ],
             "positive_only": ["GovInfo PDF", "exact match records"],
             "negative_pdf_requests": 0,
-            "govinfo_identity_reconciled_for_all_candidates": True,
+            "govinfo_identity_and_agency_reconciled_for_positive_members": True,
             "detail_identity_and_agency_reconciled_for_positive_members": True,
             "raw_html_role": "transport audit only",
             "canonical_text_role": "membership identity",
