@@ -89,9 +89,12 @@ Source controls are fixed before incidence:
 - `year_cik_permutation`: deterministic within-year permutation of issuer keys;
 - `threshold_two` and `threshold_four`: report-only breadth specificity checks.
 
-The primary must not collapse to birth, repeat-filer, any-mention, single-event,
-or stale clocks under the preregistered overlap/retention caps. Permutation may
-not preserve the primary event identities beyond its cap.
+The primary must not collapse to birth, repeat-filer, any-mention, stale, or
+permuted clocks under the preregistered overlap/retention caps. A primary
+trigger is definitionally one of the raw single-reactivation timestamps, so
+single-reactivation proximity is report-only at source stage; it remains a
+mandatory economic component benchmark later. Treating that known subset
+relation as a source novelty failure would make the contract self-contradictory.
 
 If source support passes, a separately committed strict evaluator must use
 realized funding, 6 bp per side base cost, 10 bp stress cost, full-calendar
@@ -123,4 +126,3 @@ economic evidence.
 Any identity, source, causality, support, novelty, train, or selection failure
 retires `BIRB-120`. Gap, breadth window, threshold, side, or hold repair requires
 a new candidate identity preregistered before access.
-

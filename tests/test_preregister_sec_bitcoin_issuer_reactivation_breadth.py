@@ -61,6 +61,8 @@ def test_controls_support_novelty_economics_and_rllm_are_fixed() -> None:
     assert novelty["comparators"] == [
         spec["name"] for spec in prereg.COMPARATOR_SPECS
     ]
+    specificity = policy["mechanism_specificity_gates"]
+    assert specificity["single_reactivation_proximity_is_report_only"] is True
     strict = policy["strict_economic_gates"]
     assert strict["cagr_to_strict_mdd_minimum"] == 3.0
     assert strict["strict_mdd_pct_maximum"] == 15.0
