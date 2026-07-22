@@ -197,6 +197,23 @@ def _core_manifest() -> dict[str, Any]:
             "maximum_single_quarter_share": 0.25,
             "maximum_calendar_gap_days": 90,
             "maximum_same_side_run": 2,
+            "statistic_definitions": {
+                "event_timestamp": "accepted clock entry_time in UTC",
+                "calendar_subperiod": "entry_time membership with exit_time <= subperiod end",
+                "side_share": "side count divided by accepted events in the named window",
+                "active_months": "distinct UTC calendar months containing an accepted entry",
+                "month_or_quarter_share": (
+                    "accepted entries in the UTC month or quarter divided by all accepted "
+                    "primary entries across train plus selection"
+                ),
+                "calendar_gap_days": (
+                    "maximum elapsed days between consecutive accepted primary entry_time "
+                    "values; warmup/source endpoints are excluded"
+                ),
+                "same_side_run": (
+                    "maximum chronological run of equal side among accepted primary entries"
+                ),
+            },
             "failure_action": "reject without calculating a post-entry return",
             "gate_domain": (
                 "the chronologically accepted, split-contained, non-overlapping primary "

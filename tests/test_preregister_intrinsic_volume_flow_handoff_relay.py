@@ -65,6 +65,7 @@ def test_control_domains_and_component_margin_are_frozen() -> None:
     economics = payload["economic_gates"]
     assert support["controls_affect_primary_pass"] is False
     assert "split-contained" in support["gate_domain"]
+    assert "consecutive accepted" in support["statistic_definitions"]["calendar_gap_days"]
     assert "cannot rescue or reject" in controls["shared_control_contract"]
     assert "90-anchor" in controls["shared_control_contract"]
     assert economics["component_control_universe"] == [
