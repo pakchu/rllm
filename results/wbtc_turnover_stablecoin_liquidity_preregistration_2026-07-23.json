@@ -1,0 +1,344 @@
+{
+  "candidate": "WTSL-168-SOURCE-SEEN",
+  "config": {
+    "output": "results/wbtc_turnover_stablecoin_liquidity_preregistration_2026-07-23.json"
+  },
+  "manifest_hash": "81f41c68b526a2e22a4da769e973026255d44251f7df996e7cdbc5eb8a66ac4a",
+  "mechanism_decision": {
+    "path": "docs/wbtc-turnover-stablecoin-liquidity-mechanism-decision-2026-07-23.md",
+    "sha256": "f656d2a88964baaf3dead52d89beba25a9a04d653bcf59d7ce2d35e1ca653e2a"
+  },
+  "next_action": "reproduce exact source-only WTSL-168-SOURCE-SEEN clocks",
+  "outcome_boundary": {
+    "btc_market_rows_read": 0,
+    "comparator_rows_read": 0,
+    "funding_rows_read": 0,
+    "future_return_rows_read": 0,
+    "network_calls": 0,
+    "pnl_cagr_mdd_opened": false,
+    "post_2023_contract_event_value_rows_read": 0,
+    "prior_candidate_incidence_rows_derived": 236,
+    "prior_source_incidence_opened": true,
+    "source_csv_headers_read_during_preregistration": 2,
+    "source_file_bytes_hashed_during_preregistration": true,
+    "source_value_rows_read_during_preregistration": 0,
+    "subprocess_calls": 0
+  },
+  "outcomes_opened": false,
+  "performance_values_opened": false,
+  "policy": {
+    "candidate": "WTSL-168-SOURCE-SEEN",
+    "causal_state": {
+      "block_timestamp_forbidden": true,
+      "current_window": {
+        "elapsed_hours": 168,
+        "interval": "cutoff-168h < available_at <= cutoff"
+      },
+      "decision_grid_utc_hours": [
+        0,
+        6,
+        12,
+        18
+      ],
+      "forbidden_transforms": [
+        "WBTC net sign in primary side",
+        "amount clipping",
+        "outcome-selected threshold",
+        "forward fill",
+        "full-sample normalization",
+        "entity or exchange address classification"
+      ],
+      "only_clock_field": "available_at",
+      "side": {
+        "long": "stablecoin_net_raw > 0",
+        "otherwise": "no candidate",
+        "short": "stablecoin_net_raw < 0"
+      },
+      "source_cutoff": "decision_time - 6 elapsed hours",
+      "stablecoin_validity": {
+        "destroyed_black_funds_in_window": "veto",
+        "gross_raw_positive": true,
+        "minimum_absolute_net_to_gross": "0.05_exact_integer_arithmetic",
+        "usdc_usdt_raw_amounts_sum_directly": true
+      },
+      "wbtc_activity_baseline": {
+        "complete_source_coverage_hours": 8928,
+        "each_endpoint_window_hours": 168,
+        "endpoint_spacing_hours": 6,
+        "median_even_rule": "2*current_gross >= sum(two_middle_prior_gross_values)",
+        "prior_endpoints": 1460,
+        "strictly_prior_first_endpoint": "cutoff - 6h",
+        "strictly_prior_last_endpoint": "cutoff - 365d",
+        "zeros_included": true
+      },
+      "wbtc_validity": {
+        "actor_must_be_nonzero_ethereum_address": true,
+        "current_gross_at_least_prior_median": true,
+        "gross_raw_positive": true,
+        "maximum_top_actor_gross_share": 0.85,
+        "minimum_distinct_actors": 2,
+        "minimum_events": 2
+      }
+    },
+    "controls": {
+      "actor_cap_60": "primary with WBTC top actor gross share <=0.60",
+      "deterministic_random_side": "SHA-256 fixed side-count-matched exact primary clock",
+      "direction_flip": "exact primary clock with both sides reversed",
+      "no_black_funds_veto": "primary ignoring only black-funds veto",
+      "stablecoin_only_direct": "stablecoin rule without WBTC activity gate",
+      "stale_24h": "primary with both source cutoffs delayed 24 hours",
+      "stale_48h": "primary with both source cutoffs delayed 48 hours",
+      "usdc_only_direct": "WBTC gate plus USDC-only net direction",
+      "usdt_only_direct": "WBTC gate plus USDT-only net direction",
+      "wbtc_signed_placebo": "valid WBTC activity; side=sign(wbtc_net_raw)",
+      "year_amount_permutation": "deterministic within-source/event/year amount permutation"
+    },
+    "economic_hypothesis": {
+      "directional_alpha": "combined stablecoin net issuance-redemption",
+      "long": "eligible WBTC turnover and positive stablecoin net impulse",
+      "materiality_gate": "unusually active WBTC custody-boundary turnover",
+      "short": "eligible WBTC turnover and negative stablecoin net impulse",
+      "stablecoin_only_must_be_beaten": true,
+      "wbtc_net_sign_used_by_primary": false
+    },
+    "economic_sequence": [
+      "reproduce source-only support and controls",
+      "freeze strict evaluator",
+      "train 2021-2022",
+      "selection 2023 only after train pass",
+      "immutable post-2023 source extension only after pre-2024 pass",
+      "test 2024",
+      "eval 2025",
+      "recent 2026"
+    ],
+    "execution": {
+      "accept_when_entry_at_or_after_prior_exit": true,
+      "decision_time": "four six-hour UTC anchors per day",
+      "entry_delay_minutes": 10,
+      "global_nonoverlap": true,
+      "hold_bars_5m": 288,
+      "hold_elapsed_hours": 24,
+      "notional_exposure": 0.5,
+      "split_crossing_action": "skip",
+      "stops_take_profit_or_trailing_exit": false
+    },
+    "post_2023_extension": {
+      "new_bridges_assets_stablecoins_or_address_labels_allowed": false,
+      "same_contracts_topics_confirmation_and_feature_policy": true,
+      "wbtc_open_api_dates_allowed": false
+    },
+    "research_status": "source-seen_outcome-blind",
+    "rllm_boundary": {
+      "authorized_before_deterministic_train_and_selection_pass": false,
+      "later_actions": [
+        "TRADE_FIXED_SIDE",
+        "ABSTAIN"
+      ],
+      "may_create_clock_reverse_side_or_change_hold": false,
+      "reward_penalties": [
+        "strict drawdown",
+        "turnover"
+      ]
+    },
+    "singleton": true,
+    "source_family_hypotheses": 2,
+    "source_rows": {
+      "stablecoin": {
+        "assets": [
+          "usdc_eth",
+          "usdt_eth"
+        ],
+        "decimals": 6,
+        "directional_events": [
+          "mint",
+          "burn",
+          "issue",
+          "redeem"
+        ],
+        "veto_event": "destroyed_black_funds"
+      },
+      "wbtc": {
+        "asset": "wbtc_eth",
+        "decimals": 8,
+        "events": [
+          "mint",
+          "burn"
+        ],
+        "role": "gross-turnover materiality only"
+      }
+    },
+    "source_support_gates": {
+      "each_selection_half_year_minimum": 6,
+      "each_train_half_year_minimum": 8,
+      "each_train_year_minimum": 20,
+      "failure_action": "reject WTSL-168-SOURCE-SEEN without outcomes",
+      "interpretation": "reproducibility_and_minimum_identifiability_only",
+      "maximum_consecutive_same_side": 20,
+      "maximum_month_share": 0.2,
+      "maximum_quarter_share": 0.4,
+      "selection_distinct_wbtc_actors_minimum": 5,
+      "selection_each_side_minimum": 8,
+      "selection_total_minimum": 20,
+      "train_distinct_wbtc_actors_minimum": 10,
+      "train_each_side_minimum": 24,
+      "train_total_minimum": 120
+    },
+    "source_support_reproduction": {
+      "market_outcomes_opened": false,
+      "pre_2024_primary_candidates": 236,
+      "selection_2023_side_counts": {
+        "long": 12,
+        "short": 13
+      },
+      "side_counts": {
+        "long": 189,
+        "short": 47
+      },
+      "source_incidence_opened": true,
+      "source_support_is_confirmatory": false,
+      "year_counts": {
+        "2021": 168,
+        "2022": 43,
+        "2023": 25
+      }
+    },
+    "stopping_rule": "any reproduction, source, integrity, train, or staged selection failure rejects WTSL-168-SOURCE-SEEN; repair requires a new identity",
+    "strict_economic_gates": {
+      "absolute_return_positive": true,
+      "base_cost_notional_per_side": 0.0006,
+      "cagr_to_strict_mdd_minimum": 3.0,
+      "calendar_month_cluster_signflip_p_maximum": 0.1,
+      "flip_stale_or_random_full_qualification_rejects": true,
+      "full_calendar_cagr": true,
+      "minimum_trades": 20,
+      "minimum_trades_each_side": 6,
+      "primary_cagr_mdd_above_stablecoin_only": true,
+      "realized_funding": true,
+      "stress_cost_notional_per_side": 0.001,
+      "strict_intratrade_high_water_mdd": true,
+      "strict_mdd_pct_maximum": 15.0,
+      "ten_bp_notional_side_stress_return_positive": true
+    },
+    "windows": {
+      "sealed_from": "2024-01-01T00:00:00Z",
+      "selection": [
+        "2023-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "source_coverage_start": "2020-01-01T00:00:00Z",
+      "train": [
+        "2021-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ]
+    }
+  },
+  "policy_hash": "884cc1e5a3674e7aac52f367fac5ee1ba2fa8a541f09de4af900fec1947065a6",
+  "preregistration_source": {
+    "path": "training/preregister_wbtc_turnover_stablecoin_liquidity.py",
+    "sha256": "2bd2b457f7d0dd98db0c854558b1c164b930552d02818b4e2859db8327aca870"
+  },
+  "protocol_version": "wbtc_turnover_stablecoin_liquidity_v1",
+  "source_bindings": {
+    "stablecoin": {
+      "allowed_columns": [
+        "asset",
+        "event",
+        "event_sign",
+        "amount_raw",
+        "indexed_address_1",
+        "decimals",
+        "block_number",
+        "transaction_index",
+        "log_index",
+        "available_at"
+      ],
+      "builder": "training/build_ethereum_stablecoin_issuance_redemption.py",
+      "builder_sha256": "af699d91404e44298573ca148c6cf1b90b68d9aac2972da9ad228a26b9e8a9a5",
+      "header": [
+        "asset",
+        "contract_address",
+        "event",
+        "event_sign",
+        "amount_raw",
+        "decimals",
+        "indexed_address_1",
+        "indexed_address_2",
+        "data_address",
+        "block_number",
+        "block_hash",
+        "block_timestamp",
+        "transaction_hash",
+        "transaction_index",
+        "log_index",
+        "confirmation_block_number",
+        "confirmation_block_hash",
+        "available_at"
+      ],
+      "manifest": "results/ethereum_stablecoin_issuance_redemption_source_manifest_2026-07-21.json",
+      "manifest_file_sha256": "8ec9ab08c413bf6f5f8170fb800b05105522d4cf1a7932943c214288701e31fe",
+      "manifest_hash": "a0c7740db64f7779fade68d76985c629cabe81983bf594e8258cef16a5725a1b",
+      "source": "data/ethereum_stablecoin_issuance_redemption_2020_2023/ethereum_usdt_usdc_issuance_redemption_2020_2023.csv.gz",
+      "source_sha256": "70ba3799ba84dc671051623a8d167b1731f043cf84a686b9878a67fcd52e5901",
+      "value_rows_read_during_preregistration": 0
+    },
+    "wbtc": {
+      "allowed_columns": [
+        "event",
+        "event_sign",
+        "amount_raw",
+        "actor_address",
+        "block_number",
+        "transaction_index",
+        "semantic_log_index",
+        "available_at"
+      ],
+      "builder": "training/build_wbtc_custody_bridge_flow_source.py",
+      "builder_sha256": "70816fbcc94d5ecd11f99e3b1ebc3087e396c8f6972adcefd7c3a308f7c6fdbf",
+      "header": [
+        "asset",
+        "contract_address",
+        "event",
+        "event_sign",
+        "amount_raw",
+        "decimals",
+        "actor_address",
+        "block_number",
+        "block_hash",
+        "block_timestamp",
+        "transaction_hash",
+        "transaction_index",
+        "semantic_log_index",
+        "companion_transfer_log_index",
+        "confirmation_block_number",
+        "confirmation_block_hash",
+        "available_at"
+      ],
+      "manifest": "results/wbtc_custody_bridge_flow_source_manifest_2026-07-23.json",
+      "manifest_file_sha256": "e95267d55f390a35bf609580e014c67d44adabe67526022d5e80d555964274e8",
+      "manifest_hash": "4e4344a7f2841803dc8da625ee1320f79e1821d54cb2366a5464728507b4bcab",
+      "source": "data/wbtc_custody_bridge_flow_2020_2023/wbtc_mint_burn_2020_2023.csv.gz",
+      "source_sha256": "bfcc6ebc2ded0cd8a57e5cda83a77daafe4de325adf606b23ba43ecf486b3b4e",
+      "value_rows_read_during_preregistration": 0
+    }
+  },
+  "source_incidence_disclosure": {
+    "market_outcomes_opened": false,
+    "pre_2024_primary_candidates": 236,
+    "selection_2023_side_counts": {
+      "long": 12,
+      "short": 13
+    },
+    "side_counts": {
+      "long": 189,
+      "short": 47
+    },
+    "source_incidence_opened": true,
+    "source_support_is_confirmatory": false,
+    "year_counts": {
+      "2021": 168,
+      "2022": 43,
+      "2023": 25
+    }
+  },
+  "source_incidence_opened": true
+}
