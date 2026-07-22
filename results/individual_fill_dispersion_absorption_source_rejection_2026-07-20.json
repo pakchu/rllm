@@ -1,0 +1,109 @@
+{
+  "artifact_boundary": {
+    "full_build_completed": false,
+    "raw_zip_persisted": false,
+    "repository_source_csv_written": false,
+    "repository_source_manifest_written": false,
+    "transient_smoke_artifacts_deleted": true
+  },
+  "checksum_verified_archives": {
+    "2020-01-01": {
+      "aggtrade_rows": 71359,
+      "aggtrades_sha256": "638e72c179e4965c2a6521bb27295930d09126433efe0cc3acd4e925ada955ac",
+      "raw_missing_trade_id_count": 0,
+      "trade_rows": 101871,
+      "trades_sha256": "b876c7c36bed75187d0843c53aa77792c91a28b931b495d0894e3f8cb4247ecd"
+    },
+    "2020-01-02": {
+      "aggtrade_id_non_plus_one_transition_count": 0,
+      "aggtrade_rows": 160454,
+      "aggtrades_sha256": "d7aa5d060eb4530dffa7609211881bb7caeef9d143b9e1ead2a459ca8e583ba9",
+      "raw_missing_ids_between_aggtrade_spans": 39,
+      "raw_missing_ids_inside_aggtrade_spans": 60,
+      "raw_missing_trade_id_count": 99,
+      "trade_rows": 224747,
+      "trades_sha256": "15bcd04fdd1b286a9ca4608b3452ce96bad0192483f5da627c73fc5b9aa2f464",
+      "underlying_between_span_gap_count": 15,
+      "underlying_missing_ids_between_spans": 39,
+      "underlying_span_cardinality": 224807
+    }
+  },
+  "decision": "REJECT_NO_REPAIR",
+  "failure_stage": "frozen source integrity before support clocks and market outcomes",
+  "frozen_evidence": {
+    "implementation_sha256": {
+      "builder": "524fe89441c98b242f6077de64642c684b836ea43ef6a1a9cda1a1efa4547552",
+      "transform": "d700d4ac2a8c4bee470a72da4a86c66d297ccf2fb681b531e82854d1322ef5d8"
+    },
+    "preregistration_commit": "e633d60",
+    "preregistration_file_sha256": "abecfddfaad7a7640d8d16fc04ff3938dad79cfa94d4b97095d01baf9f7c9b70",
+    "preregistration_manifest_sha256": "757401202eacd3dcf0540ae54f4c121ba595d2495d0f4ae69fe248bfa360e02c",
+    "source_axis_decision_commit": "01df2cd",
+    "source_builder_commit": "468cc3baa5eab6468c13559e9d50faad0fff53e6",
+    "source_protocol_sha256": "e8ee7e07d00b0933acd4b892fbce795c8480488a111b789e1d8cdeae98f160fe"
+  },
+  "frozen_failure": {
+    "contract": "trade IDs must be strictly increasing and exact +1 continuous across rows and archive boundaries",
+    "expected_contiguous_cardinality": 224846,
+    "failure_date": "2020-01-02",
+    "first_failure_archive_kind": "trades",
+    "first_gap_examples": [
+      {
+        "left": 25487817,
+        "missing": 1,
+        "right": 25487819
+      },
+      {
+        "left": 25487825,
+        "missing": 1,
+        "right": 25487827
+      },
+      {
+        "left": 25487828,
+        "missing": 5,
+        "right": 25487834
+      },
+      {
+        "left": 25488302,
+        "missing": 1,
+        "right": 25488304
+      },
+      {
+        "left": 25488412,
+        "missing": 1,
+        "right": 25488414
+      }
+    ],
+    "first_trade_id": 25349375,
+    "last_trade_id": 25574220,
+    "maximum_transition_delta": 8,
+    "missing_trade_id_count": 99,
+    "non_plus_one_transition_count": 45,
+    "raw_trade_rows": 224747
+  },
+  "opened_boundaries": {
+    "candidate_clock_built": false,
+    "control_clock_bundle_built": false,
+    "market_or_funding_rows_loaded": 0,
+    "novelty_calculated": false,
+    "one_day_feature_smoke_opened": true,
+    "outcomes_opened": false,
+    "returns_or_pnl_calculated": false,
+    "source_incidence_opened": "partial; 2020-01-01 and 2020-01-02 only",
+    "support_counts_calculated": false
+  },
+  "policy_id": "IFDA-72",
+  "protocol_version": "individual_fill_dispersion_absorption_source_rejection_v1",
+  "rejection_scope": {
+    "candidate_retired": "IFDA-72",
+    "forbidden_repairs": [
+      "relax or remove exact +1 trade-ID continuity",
+      "drop the failing day or start later",
+      "impute missing IDs or rows",
+      "switch archive type after observing the failure",
+      "change threshold, direction, hold, or support gates"
+    ],
+    "next_candidate_requirement": "use a genuinely different observable and mechanism; do not reuse IFDA clocks"
+  },
+  "result_hash": "e52de36347ac8d57bfa05462d3dca4d19e127e9f859e583fe115650ff70a1ebf"
+}
