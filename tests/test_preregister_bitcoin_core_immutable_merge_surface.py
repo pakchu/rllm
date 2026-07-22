@@ -122,6 +122,12 @@ def test_causal_availability_rejects_naive_or_malformed_times() -> None:
         bcims.causal_availability_floors(["not-a-time"])
 
 
+def test_causal_availability_pins_a_descending_utc_day_to_running_max() -> None:
+    assert bcims.causal_availability_floors(
+        ["2020-01-05T01:00:00+00:00", "2020-01-04T23:00:00+00:00"]
+    ) == ["2020-01-07T12:00:00Z", "2020-01-07T12:00:00Z"]
+
+
 @pytest.mark.parametrize(
     ("path", "surface"),
     [
@@ -142,6 +148,13 @@ def test_path_surface_is_exact_and_root_aware(path: str, surface: str) -> None:
 def test_path_surface_rejects_unsafe_shapes(path: str) -> None:
     with pytest.raises(ValueError):
         bcims.path_surface(path)
+
+
+def test_path_surface_rejects_controls_and_nonencodable_unicode() -> None:
+    with pytest.raises(ValueError, match="forbidden"):
+        bcims.path_surface("src/\x7fname")
+    with pytest.raises(UnicodeEncodeError):
+        bcims.path_surface("src/\udcff")
 
 
 def test_source_contract_excludes_mutable_metadata_and_blobs() -> None:
