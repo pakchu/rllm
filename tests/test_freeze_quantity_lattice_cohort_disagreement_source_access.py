@@ -50,12 +50,19 @@ def test_seal_is_write_once(tmp_path: Path) -> None:
         freezer.write_once(path, {"outcomes_opened": True})
 
 
-def test_support_execution_is_disabled_before_source_seal() -> None:
-    assert evaluator.SOURCE_ACCESS_SEAL_FILE_SHA256 is None
-    assert evaluator.EXPECTED_SOURCE_SHA256 is None
-    assert evaluator.EXPECTED_SOURCE_MANIFEST_SHA256 is None
-    with pytest.raises(RuntimeError, match="not hash-sealed"):
-        evaluator.load_source_access_seal(
-            evaluator.SupportConfig(),
-            evaluator.load_preregistration(),
-        )
+def test_support_execution_is_bound_to_frozen_source_seal() -> None:
+    assert evaluator.SOURCE_ACCESS_SEAL_FILE_SHA256 == (
+        "cade903a3d15349903c3e16853a23a092b36a293cb46ceb7b0c5514737aca834"
+    )
+    assert evaluator.EXPECTED_SOURCE_SHA256 == (
+        "3ca945f134115fc7b58086405fd881db3e3b70087bd9da54ffc293f6b658072e"
+    )
+    assert evaluator.EXPECTED_SOURCE_MANIFEST_SHA256 == (
+        "bcdf89924f54a5b97d4219749c2094d2a4c08d8473a37bc5367d9b8e5791284f"
+    )
+    seal = evaluator.load_source_access_seal(
+        evaluator.SupportConfig(),
+        evaluator.load_preregistration(),
+    )
+    assert seal["source_rows_parsed"] == 0
+    assert seal["outcomes_opened"] is False
