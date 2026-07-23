@@ -113,7 +113,15 @@ revalidate URL, bytes, hashes, schema, and normalized outputs.
 The builder must reject redirects outside `data.financialresearch.gov`, HTML,
 non-JSON responses, unknown top-level fields, duplicate mnemonics, duplicate
 observation dates within a mnemonic, nonfinite values, a final/as-of series in
-the preliminary payload, or a date after 2023-12-31.
+the preliminary payload, or an aggregation/normalized date after 2023-12-31.
+
+The OFR full-dataset response can return a mnemonic's complete
+`disclosure_edits` subseries even when `start_date` and `end_date` restrict its
+aggregation rows. Those raw markers remain hash-bound in the response but are
+not normalized outside 2019–2023. The audit must report total, retained,
+pre-2019, and post-2023 marker counts; every retained marker must correspond to
+an aggregation row. An out-of-window marker may never create, remove, fill, or
+otherwise alter an in-window observation.
 
 ## Conservative causal availability
 
@@ -150,7 +158,7 @@ Before any mechanism is selected, the source audit may report only:
 - series names, mnemonics, descriptions, units, segments, tenor/collateral
   subsets, start/end dates, and source metadata;
 - row counts, date coverage, duplicates, nonfinite values, missing values, and
-  disclosure-edit counts;
+  disclosure-edit counts, including excluded out-of-window source markers;
 - preliminary/final series-definition correspondence without value spreads;
 - deterministic artifact and manifest hashes; and
 - whether the conservative availability clock is reproducible.
