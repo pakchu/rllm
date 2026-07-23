@@ -18,6 +18,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Callable, Mapping, Sequence
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
@@ -159,6 +160,14 @@ class ClockSample:
     uncertainty_ns: int
 
 
+@dataclass(frozen=True)
+class ClockLedgerExpectation:
+    websocket_messages: int
+    rest_attempts: int
+    rest_attempts_completed: int
+    rest_responses_audited: int
+
+
 @dataclass
 class CaptureState:
     capture_day: str
@@ -171,6 +180,9 @@ class CaptureState:
     ws_pongs: int = 0
     websocket_sessions: int = 0
     clock_samples: list[ClockSample] = field(default_factory=list)
+    rest_attempts_started: int = 0
+    rest_attempts_completed: int = 0
+    rest_responses_audited: int = 0
     raw_bytes: int = 0
     first_trade_monotonic_ns: int | None = None
     last_trade_monotonic_ns: int | None = None
@@ -206,12 +218,17 @@ def _repo_path(path: str | Path) -> Path:
     return candidate if candidate.is_absolute() else REPO_ROOT / candidate
 
 
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+def _utc_datetime_from_ns(utc_ns: int) -> datetime:
+    seconds, nanoseconds = divmod(utc_ns, 1_000_000_000)
+    return datetime.fromtimestamp(seconds, timezone.utc).replace(
+        microsecond=nanoseconds // 1_000
+    )
 
 
-def _utc_iso(value: datetime) -> str:
-    return value.isoformat().replace("+00:00", "Z")
+def _utc_iso_from_ns(utc_ns: int) -> str:
+    seconds, nanoseconds = divmod(utc_ns, 1_000_000_000)
+    prefix = datetime.fromtimestamp(seconds, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+    return f"{prefix}.{nanoseconds:09d}Z"
 
 
 def _local_clock_sample(source: str, ordinal: int) -> ClockSample:
@@ -219,7 +236,13 @@ def _local_clock_sample(source: str, ordinal: int) -> ClockSample:
     utc_ns = time.time_ns()
     after = time.monotonic_ns()
     if after < before:
-        raise ParityCaptureError("monotonic clock reversed during UTC sampling")
+        return ClockSample(
+            source=source,
+            ordinal=ordinal,
+            monotonic_ns=before,
+            utc_ns=utc_ns,
+            uncertainty_ns=-1,
+        )
     return ClockSample(
         source=source,
         ordinal=ordinal,
@@ -520,10 +543,15 @@ def evaluate_rest_ws_parity(
     }
 
 
-def evaluate_clock_integrity(samples: Sequence[ClockSample]) -> dict[str, Any]:
+def evaluate_clock_integrity(
+    samples: Sequence[ClockSample], expectation: ClockLedgerExpectation
+) -> dict[str, Any]:
     ordered = sorted(samples, key=lambda sample: sample.monotonic_ns)
     reversals: list[tuple[ClockSample, ClockSample]] = []
     nonincreasing_monotonic = 0
+    invalid_sampling_uncertainty = sum(
+        sample.uncertainty_ns < 0 for sample in ordered
+    )
     maximum_disagreement_ns = 0
     for previous, current in zip(ordered, ordered[1:]):
         monotonic_delta = current.monotonic_ns - previous.monotonic_ns
@@ -542,15 +570,92 @@ def evaluate_clock_integrity(samples: Sequence[ClockSample]) -> dict[str, Any]:
     else:
         monotonic_elapsed_ns = 0
         utc_elapsed_ns = 0
+    observed_ledger = Counter((sample.source, sample.ordinal) for sample in samples)
+    expected_ledger = Counter(
+        [("capture_start", 1), ("capture_end", 1)]
+        + [
+            ("websocket_receipt", ordinal)
+            for ordinal in range(1, expectation.websocket_messages + 1)
+        ]
+        + [
+            (source, ordinal)
+            for ordinal in range(1, expectation.rest_attempts + 1)
+            for source in ("rest_request_start", "rest_response_end")
+        ]
+    )
+    missing_ledger = expected_ledger - observed_ledger
+    excess_ledger = observed_ledger - expected_ledger
+    ordered_identities = [(sample.source, sample.ordinal) for sample in ordered]
+    websocket_ledger = [
+        identity
+        for identity in ordered_identities
+        if identity[0] == "websocket_receipt"
+    ]
+    rest_ledger = [
+        identity
+        for identity in ordered_identities
+        if identity[0] in {"rest_request_start", "rest_response_end"}
+    ]
+    expected_websocket_ledger = [
+        ("websocket_receipt", ordinal)
+        for ordinal in range(1, expectation.websocket_messages + 1)
+    ]
+    expected_rest_ledger = [
+        (source, ordinal)
+        for ordinal in range(1, expectation.rest_attempts + 1)
+        for source in ("rest_request_start", "rest_response_end")
+    ]
+    boundary_ledger_complete = (
+        bool(ordered_identities)
+        and ordered_identities[0] == ("capture_start", 1)
+        and ordered_identities[-1] == ("capture_end", 1)
+    )
+    ledger_sequence_complete = (
+        boundary_ledger_complete
+        and websocket_ledger == expected_websocket_ledger
+        and rest_ledger == expected_rest_ledger
+    )
+    rest_ledger_complete = (
+        expectation.rest_attempts
+        == expectation.rest_attempts_completed
+        == expectation.rest_responses_audited
+    )
+    ledger_complete = (
+        not missing_ledger
+        and not excess_ledger
+        and ledger_sequence_complete
+        and rest_ledger_complete
+    )
+    ledger_rows = [
+        {
+            "source": sample.source,
+            "ordinal": sample.ordinal,
+            "monotonic_ns": sample.monotonic_ns,
+            "utc_ns": sample.utc_ns,
+            "uncertainty_ns": sample.uncertainty_ns,
+        }
+        for sample in ordered
+    ]
+
+    def _counter_hash(values: Counter[tuple[str, int]]) -> str:
+        serialized = "\n".join(
+            f"{source}:{ordinal}:{count}"
+            for (source, ordinal), count in sorted(values.items())
+        )
+        return sha256_bytes(serialized.encode())
+
     return {
         "clock_contract_passed": (
             len(ordered) >= 2
             and not reversals
             and nonincreasing_monotonic == 0
+            and invalid_sampling_uncertainty == 0
+            and ledger_complete
         ),
         "samples": len(ordered),
         "utc_reversal_count": len(reversals),
         "nonincreasing_monotonic_count": nonincreasing_monotonic,
+        "invalid_sampling_uncertainty_count": invalid_sampling_uncertainty,
         "maximum_adjacent_clock_disagreement_ns": maximum_disagreement_ns,
         "monotonic_elapsed_ns": monotonic_elapsed_ns,
         "utc_elapsed_ns": utc_elapsed_ns,
@@ -558,6 +663,16 @@ def evaluate_clock_integrity(samples: Sequence[ClockSample]) -> dict[str, Any]:
         "maximum_sampling_uncertainty_ns": max(
             (sample.uncertainty_ns for sample in ordered), default=0
         ),
+        "ledger_complete": ledger_complete,
+        "boundary_ledger_complete": boundary_ledger_complete,
+        "ledger_sequence_complete": ledger_sequence_complete,
+        "rest_attempt_ledger_complete": rest_ledger_complete,
+        "expected_samples": sum(expected_ledger.values()),
+        "missing_ledger_entries": sum(missing_ledger.values()),
+        "excess_ledger_entries": sum(excess_ledger.values()),
+        "missing_ledger_hash": _counter_hash(missing_ledger),
+        "excess_ledger_hash": _counter_hash(excess_ledger),
+        "clock_ledger_hash": sha256_bytes(canonical_json(ledger_rows).rstrip(b"\n")),
         "reversal_transition_hash": sha256_bytes(
             "\n".join(
                 (
@@ -631,8 +746,6 @@ def fetch_rest() -> RestTransportResponse:
         )
     except urllib.error.URLError as exc:
         raise ParityCaptureError("frozen Bybit REST transport failed") from exc
-    if len(transport.raw) > MAX_REST_RESPONSE_BYTES:
-        raise ParityCaptureError("REST response exceeds frozen byte bound")
     return transport
 
 
@@ -657,10 +770,9 @@ def _record_ws_message(
     receipt_utc_ns: int,
     receipt_monotonic_ns: int,
     receipt_uncertainty_ns: int = 0,
+    frame_type: Literal["text", "binary"] = "text",
 ) -> tuple[str, tuple[NormalizedTrade, ...]]:
     state.raw_bytes += len(raw)
-    if state.raw_bytes > MAX_CAPTURE_RAW_BYTES:
-        raise ParityCaptureError("capture raw bytes exceed frozen bound")
     state.ws_messages += 1
     state.clock_samples.append(
         ClockSample(
@@ -678,15 +790,18 @@ def _record_ws_message(
             "receipt_utc_ns": receipt_utc_ns,
             "receipt_monotonic_ns": receipt_monotonic_ns,
             "receipt_clock_uncertainty_ns": receipt_uncertainty_ns,
-            "raw_json_sha256": sha256_bytes(raw),
-            "raw_json_base64": base64.b64encode(raw).decode("ascii"),
+            "frame_type": frame_type,
+            "raw_frame_sha256": sha256_bytes(raw),
+            "raw_frame_base64": base64.b64encode(raw).decode("ascii"),
         },
     )
+    if state.raw_bytes > MAX_CAPTURE_RAW_BYTES:
+        raise ParityCaptureError("capture raw bytes exceed frozen bound")
+    if frame_type != "text":
+        raise ParityCaptureError("WebSocket binary frame is forbidden")
     if receipt_utc_ns // 1_000_000_000 < 0:
         raise ParityCaptureError("local UTC receipt time is invalid")
-    if datetime.fromtimestamp(receipt_utc_ns / 1e9, timezone.utc).date().isoformat() != (
-        state.capture_day
-    ):
+    if _utc_datetime_from_ns(receipt_utc_ns).date().isoformat() != state.capture_day:
         raise ParityCaptureError("capture crossed UTC midnight")
     kind, trades = parse_ws_payload(raw)
     if kind == "subscribe":
@@ -703,74 +818,125 @@ def _record_ws_message(
     return kind, trades
 
 
+def _begin_rest_attempt(
+    state: CaptureState,
+    handle: Any,
+    start: ClockSample,
+) -> int:
+    ordinal = state.rest_attempts_started + 1
+    state.rest_attempts_started = ordinal
+    state.clock_samples.append(start)
+    _write_raw_line(
+        handle,
+        {
+            "record_type": "request_start",
+            "ordinal": ordinal,
+            "clock_source": start.source,
+            "clock_ordinal": start.ordinal,
+            "request_start_utc_ns": start.utc_ns,
+            "request_start_monotonic_ns": start.monotonic_ns,
+            "request_start_clock_uncertainty_ns": start.uncertainty_ns,
+        },
+    )
+    if start.source != "rest_request_start" or start.ordinal != ordinal:
+        raise ParityCaptureError("REST request-start clock identity differs")
+    if _utc_datetime_from_ns(start.utc_ns).date().isoformat() != state.capture_day:
+        raise ParityCaptureError("capture crossed UTC midnight")
+    return ordinal
+
+
+def _complete_rest_clock(
+    state: CaptureState,
+    ordinal: int,
+    end: ClockSample,
+) -> None:
+    state.clock_samples.append(end)
+    if end.source != "rest_response_end" or end.ordinal != ordinal:
+        raise ParityCaptureError("REST response-end clock identity differs")
+    if ordinal != state.rest_attempts_completed + 1:
+        raise ParityCaptureError("REST attempt completion order differs")
+    state.rest_attempts_completed = ordinal
+
+
+def _record_rest_transport_error(
+    state: CaptureState,
+    handle: Any,
+    *,
+    ordinal: int,
+    end: ClockSample,
+    error: Exception,
+) -> None:
+    _write_raw_line(
+        handle,
+        {
+            "record_type": "transport_error",
+            "ordinal": ordinal,
+            "clock_source": end.source,
+            "clock_ordinal": end.ordinal,
+            "response_end_utc_ns": end.utc_ns,
+            "response_end_monotonic_ns": end.monotonic_ns,
+            "response_end_clock_uncertainty_ns": end.uncertainty_ns,
+            "error_type": type(error).__name__,
+            "error_message": str(error)[:1_000],
+        },
+    )
+    _complete_rest_clock(state, ordinal, end)
+
+
 def _record_rest_response(
     state: CaptureState,
     handle: Any,
     response: RestTransportResponse,
     *,
-    request_start_utc_ns: int,
-    request_start_monotonic_ns: int,
-    response_end_utc_ns: int,
-    response_end_monotonic_ns: int,
+    ordinal: int,
+    start: ClockSample,
+    end: ClockSample,
     final: bool,
-    request_start_uncertainty_ns: int = 0,
-    response_end_uncertainty_ns: int = 0,
 ) -> RestSnapshot:
     state.raw_bytes += len(response.raw)
-    if state.raw_bytes > MAX_CAPTURE_RAW_BYTES:
-        raise ParityCaptureError("capture raw bytes exceed frozen bound")
-    ordinal = len(state.rest_snapshots) + 1
-    state.clock_samples.extend(
-        (
-            ClockSample(
-                source="rest_request_start",
-                ordinal=ordinal,
-                monotonic_ns=request_start_monotonic_ns,
-                utc_ns=request_start_utc_ns,
-                uncertainty_ns=request_start_uncertainty_ns,
-            ),
-            ClockSample(
-                source="rest_response_end",
-                ordinal=ordinal,
-                monotonic_ns=response_end_monotonic_ns,
-                utc_ns=response_end_utc_ns,
-                uncertainty_ns=response_end_uncertainty_ns,
-            ),
-        )
-    )
     _write_raw_line(
         handle,
         {
+            "record_type": "response",
             "ordinal": ordinal,
             "final": final,
-            "request_start_utc_ns": request_start_utc_ns,
-            "request_start_monotonic_ns": request_start_monotonic_ns,
-            "response_end_utc_ns": response_end_utc_ns,
-            "response_end_monotonic_ns": response_end_monotonic_ns,
-            "request_start_clock_uncertainty_ns": request_start_uncertainty_ns,
-            "response_end_clock_uncertainty_ns": response_end_uncertainty_ns,
+            "request_clock_source": start.source,
+            "request_clock_ordinal": start.ordinal,
+            "response_clock_source": end.source,
+            "response_clock_ordinal": end.ordinal,
+            "request_start_utc_ns": start.utc_ns,
+            "request_start_monotonic_ns": start.monotonic_ns,
+            "response_end_utc_ns": end.utc_ns,
+            "response_end_monotonic_ns": end.monotonic_ns,
+            "request_start_clock_uncertainty_ns": start.uncertainty_ns,
+            "response_end_clock_uncertainty_ns": end.uncertainty_ns,
             "http_status": response.status,
             "final_url": response.final_url,
             "content_type": response.content_type,
             "location": response.location,
+            "raw_body_complete": len(response.raw) <= MAX_REST_RESPONSE_BYTES,
             "raw_json_sha256": sha256_bytes(response.raw),
             "raw_json_base64": base64.b64encode(response.raw).decode("ascii"),
         },
     )
-    if response_end_monotonic_ns < request_start_monotonic_ns:
+    state.rest_responses_audited += 1
+    _complete_rest_clock(state, ordinal, end)
+    if len(response.raw) > MAX_REST_RESPONSE_BYTES:
+        raise ParityCaptureError("REST response exceeds frozen byte bound")
+    if state.raw_bytes > MAX_CAPTURE_RAW_BYTES:
+        raise ParityCaptureError("capture raw bytes exceed frozen bound")
+    if end.monotonic_ns < start.monotonic_ns:
         raise ParityCaptureError("REST monotonic clock reversed")
-    for utc_ns in (request_start_utc_ns, response_end_utc_ns):
-        if datetime.fromtimestamp(utc_ns / 1e9, timezone.utc).date().isoformat() != (
-            state.capture_day
-        ):
+    for sample in (start, end):
+        if _utc_datetime_from_ns(sample.utc_ns).date().isoformat() != state.capture_day:
             raise ParityCaptureError("capture crossed UTC midnight")
     if response.status != 200 or response.final_url != REST_URL:
         raise ParityCaptureError("unexpected REST status or redirect")
     trades = parse_rest_response(response.raw)
     snapshot = RestSnapshot(
         ordinal=ordinal,
-        request_start_monotonic_ns=request_start_monotonic_ns,
-        response_end_monotonic_ns=response_end_monotonic_ns,
+        request_start_monotonic_ns=start.monotonic_ns,
+        response_end_monotonic_ns=end.monotonic_ns,
         final=final,
         trades=trades,
     )
@@ -786,21 +952,30 @@ async def _fetch_and_record_rest(
     fetch: FetchRest,
 ) -> RestSnapshot:
     enforce_disk_guard()
-    ordinal = len(state.rest_snapshots) + 1
+    ordinal = state.rest_attempts_started + 1
     start = _local_clock_sample("rest_request_start", ordinal)
-    response = await asyncio.to_thread(fetch)
+    _begin_rest_attempt(state, handle, start)
+    try:
+        response = await asyncio.to_thread(fetch)
+    except Exception as exc:
+        end = _local_clock_sample("rest_response_end", ordinal)
+        _record_rest_transport_error(
+            state,
+            handle,
+            ordinal=ordinal,
+            end=end,
+            error=exc,
+        )
+        raise
     end = _local_clock_sample("rest_response_end", ordinal)
     return _record_rest_response(
         state,
         handle,
         response,
-        request_start_utc_ns=start.utc_ns,
-        request_start_monotonic_ns=start.monotonic_ns,
-        response_end_utc_ns=end.utc_ns,
-        response_end_monotonic_ns=end.monotonic_ns,
+        ordinal=ordinal,
+        start=start,
+        end=end,
         final=final,
-        request_start_uncertainty_ns=start.uncertainty_ns,
-        response_end_uncertainty_ns=end.uncertainty_ns,
     )
 
 
@@ -818,15 +993,22 @@ async def _rest_poller(
     state: CaptureState,
     handle: Any,
     deadline_ns: int,
+    stop: asyncio.Event,
     *,
     fetch: FetchRest,
 ) -> None:
     next_due_ns = time.monotonic_ns()
     interval_ns = REST_INTERVAL_SECONDS * 1_000_000_000
-    while next_due_ns < deadline_ns:
+    while next_due_ns < deadline_ns and not stop.is_set():
         remaining = (next_due_ns - time.monotonic_ns()) / 1e9
         if remaining > 0:
-            await asyncio.sleep(remaining)
+            try:
+                await asyncio.wait_for(stop.wait(), timeout=remaining)
+                return
+            except asyncio.TimeoutError:
+                pass
+        if stop.is_set():
+            return
         await _fetch_and_record_rest(state, handle, final=False, fetch=fetch)
         next_due_ns += interval_ns
 
@@ -838,7 +1020,6 @@ async def _capture_network(
     *,
     fetch: FetchRest = fetch_rest,
 ) -> None:
-    import websockets
     from websockets.asyncio.client import connect
     from websockets.exceptions import SecurityError
 
@@ -868,9 +1049,14 @@ async def _capture_network(
             message = await asyncio.wait_for(
                 socket.recv(), timeout=WS_OPEN_TIMEOUT_SECONDS
             )
-            if not isinstance(message, str):
-                raise ParityCaptureError("WebSocket message is not a text frame")
-            raw = message.encode("utf-8")
+            if isinstance(message, str):
+                raw = message.encode("utf-8")
+                frame_type: Literal["text", "binary"] = "text"
+            elif isinstance(message, bytes):
+                raw = message
+                frame_type = "binary"
+            else:
+                raise ParityCaptureError("WebSocket frame type is unsupported")
             receipt = _local_clock_sample("websocket_receipt", state.ws_messages + 1)
             kind, _ = _record_ws_message(
                 state,
@@ -879,6 +1065,7 @@ async def _capture_network(
                 receipt.utc_ns,
                 receipt.monotonic_ns,
                 receipt.uncertainty_ns,
+                frame_type,
             )
             if kind == "trade":
                 if state.ws_subscription_acks != 1:
@@ -890,8 +1077,9 @@ async def _capture_network(
 
         assert state.first_trade_monotonic_ns is not None
         deadline_ns = state.first_trade_monotonic_ns + CAPTURE_SECONDS * 1_000_000_000
+        stop_rest = asyncio.Event()
         rest_task = asyncio.create_task(
-            _rest_poller(state, rest_handle, deadline_ns, fetch=fetch)
+            _rest_poller(state, rest_handle, deadline_ns, stop_rest, fetch=fetch)
         )
         heartbeat_task = asyncio.create_task(_heartbeat(socket, deadline_ns))
         try:
@@ -903,9 +1091,14 @@ async def _capture_network(
                     message = await asyncio.wait_for(socket.recv(), timeout=remaining)
                 except asyncio.TimeoutError:
                     break
-                if not isinstance(message, str):
-                    raise ParityCaptureError("WebSocket message is not a text frame")
-                raw = message.encode("utf-8")
+                if isinstance(message, str):
+                    raw = message.encode("utf-8")
+                    frame_type = "text"
+                elif isinstance(message, bytes):
+                    raw = message
+                    frame_type = "binary"
+                else:
+                    raise ParityCaptureError("WebSocket frame type is unsupported")
                 receipt = _local_clock_sample(
                     "websocket_receipt", state.ws_messages + 1
                 )
@@ -916,16 +1109,19 @@ async def _capture_network(
                     receipt.utc_ns,
                     receipt.monotonic_ns,
                     receipt.uncertainty_ns,
+                    frame_type,
                 )
                 if kind == "subscribe":
                     raise ParityCaptureError("duplicate WebSocket subscription ack")
             await rest_task
             await heartbeat_task
         finally:
-            for task in (rest_task, heartbeat_task):
-                if not task.done():
-                    task.cancel()
-            await asyncio.gather(rest_task, heartbeat_task, return_exceptions=True)
+            stop_rest.set()
+            if not rest_task.done():
+                await asyncio.gather(rest_task, return_exceptions=True)
+            if not heartbeat_task.done():
+                heartbeat_task.cancel()
+            await asyncio.gather(heartbeat_task, return_exceptions=True)
 
     await _fetch_and_record_rest(state, rest_handle, final=True, fetch=fetch)
 
@@ -970,8 +1166,22 @@ def build_manifest(
             "ws_pongs": state.ws_pongs,
             "raw_json_bytes": state.raw_bytes,
             "clock_samples": len(state.clock_samples),
+            "rest_attempts_started": state.rest_attempts_started,
+            "rest_attempts_completed": state.rest_attempts_completed,
+            "rest_responses_audited": state.rest_responses_audited,
             "first_trade_monotonic_ns": state.first_trade_monotonic_ns,
             "last_trade_monotonic_ns": state.last_trade_monotonic_ns,
+            "boundary_clock_samples": [
+                {
+                    "source": sample.source,
+                    "ordinal": sample.ordinal,
+                    "monotonic_ns": sample.monotonic_ns,
+                    "utc_ns": sample.utc_ns,
+                    "uncertainty_ns": sample.uncertainty_ns,
+                }
+                for sample in state.clock_samples
+                if sample.source in {"capture_start", "capture_end"}
+            ],
         },
         "parity": dict(parity),
         "raw_artifacts": {
@@ -1033,14 +1243,16 @@ def write_manifest(path: Path, manifest: Mapping[str, Any]) -> None:
 def run_capture() -> tuple[Path, dict[str, Any]]:
     validate_bindings()
     disk_before = enforce_disk_guard()
-    now = _utc_now()
+    capture_start = _local_clock_sample("capture_start", 1)
+    now = _utc_datetime_from_ns(capture_start.utc_ns)
     output_dir = _capture_output_dir(now)
     output_dir.mkdir(parents=True, exist_ok=False)
     state = CaptureState(
         capture_day=now.date().isoformat(),
-        started_at_utc=_utc_iso(now),
+        started_at_utc=_utc_iso_from_ns(capture_start.utc_ns),
         output_dir=output_dir,
     )
+    state.clock_samples.append(capture_start)
     ws_path = output_dir / "websocket_messages.ndjson.gz"
     rest_path = output_dir / "rest_responses.ndjson.gz"
     runtime_error: Exception | None = None
@@ -1051,8 +1263,18 @@ def run_capture() -> tuple[Path, dict[str, Any]]:
             asyncio.run(_capture_network(state, ws_handle, rest_handle))
         except Exception as exc:  # The immutable failure manifest is the audit trail.
             runtime_error = exc
-    state.ended_at_utc = _utc_iso(_utc_now())
-    clock_integrity = evaluate_clock_integrity(state.clock_samples)
+    capture_end = _local_clock_sample("capture_end", 1)
+    state.clock_samples.append(capture_end)
+    state.ended_at_utc = _utc_iso_from_ns(capture_end.utc_ns)
+    clock_integrity = evaluate_clock_integrity(
+        state.clock_samples,
+        ClockLedgerExpectation(
+            websocket_messages=state.ws_messages,
+            rest_attempts=state.rest_attempts_started,
+            rest_attempts_completed=state.rest_attempts_completed,
+            rest_responses_audited=state.rest_responses_audited,
+        ),
+    )
     if runtime_error is None:
         parity = apply_clock_gate(
             evaluate_rest_ws_parity(state.ws_trades, state.rest_snapshots),
