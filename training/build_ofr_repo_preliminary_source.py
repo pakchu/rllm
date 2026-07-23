@@ -27,7 +27,7 @@ SOURCE_DECISION = Path(
     "docs/ofr-repo-segmentation-source-axis-decision-2026-07-23.md"
 )
 SOURCE_DECISION_SHA256 = (
-    "6c383ee224c794e0fea7414e5f7c20f523001b869f0e7bf999f800247faf5445"
+    "6762684f49d47240f32fd55e4fc238c5309b4ebe060e1d4184b265c1d06b7efc"
 )
 API_HOST = "data.financialresearch.gov"
 MNEMONICS_URL = (
@@ -112,6 +112,15 @@ class Observation:
     measure: str
     subset: str
     series_name: str
+
+
+@dataclass(frozen=True)
+class DatasetAudit:
+    disclosure_markers_total: int
+    disclosure_markers_retained: int
+    disclosure_markers_before_window: int
+    disclosure_markers_after_window: int
+    series_without_window_observations: int
 
 
 Fetch = Callable[[str, int], FetchResponse]
@@ -610,7 +619,7 @@ def _availability(observation_day: date) -> datetime:
 
 def parse_dataset(
     payload: bytes, mnemonic_names: Mapping[str, str]
-) -> tuple[list[SeriesDefinition], list[Observation]]:
+) -> tuple[list[SeriesDefinition], list[Observation], DatasetAudit]:
     document = _decode_json_document(payload, "OFR dataset response")
     root = _mapping(document, "OFR dataset")
     if set(root) != TOP_LEVEL_FIELDS:
@@ -630,6 +639,11 @@ def parse_dataset(
         )
     definitions: list[SeriesDefinition] = []
     observations: list[Observation] = []
+    disclosure_markers_total = 0
+    disclosure_markers_retained = 0
+    disclosure_markers_before_window = 0
+    disclosure_markers_after_window = 0
+    series_without_window_observations = 0
     for mnemonic in sorted(raw_series):
         series_name = mnemonic_names[mnemonic]
         segment, measure, subset = _parse_mnemonic(mnemonic)
@@ -648,9 +662,23 @@ def parse_dataset(
             timeseries.get("disclosure_edits", []),
             f"{mnemonic}.disclosure_edits",
         )
-        disclosure_dates = {observation_day for observation_day, _ in disclosure}
+        disclosure_markers_total += len(disclosure)
+        disclosure_markers_before_window += sum(
+            observation_day < START_DATE for observation_day, _ in disclosure
+        )
+        disclosure_markers_after_window += sum(
+            observation_day > END_DATE for observation_day, _ in disclosure
+        )
+        retained_disclosure_dates = {
+            observation_day
+            for observation_day, _ in disclosure
+            if START_DATE <= observation_day <= END_DATE
+        }
+        disclosure_markers_retained += len(retained_disclosure_dates)
         if any(value is not None for _, value in disclosure):
             raise RuntimeError("OFR disclosure-edit marker stopped being null")
+        if not aggregation:
+            series_without_window_observations += 1
         definitions.append(
             SeriesDefinition(
                 mnemonic=mnemonic,
@@ -673,7 +701,7 @@ def parse_dataset(
                     observation_date=observation_day,
                     available_at_utc=_availability(observation_day),
                     value=value,
-                    disclosure_edit=observation_day in disclosure_dates,
+                    disclosure_edit=observation_day in retained_disclosure_dates,
                     segment=segment,
                     measure=measure,
                     subset=subset,
@@ -681,25 +709,39 @@ def parse_dataset(
                 )
             )
         aggregation_dates = {observation_day for observation_day, _ in aggregation}
-        if not disclosure_dates.issubset(aggregation_dates):
-            raise RuntimeError("OFR disclosure edit has no aggregation row")
+        if not retained_disclosure_dates.issubset(aggregation_dates):
+            raise RuntimeError("OFR in-window disclosure edit has no aggregation row")
     identities = {(row.mnemonic, row.observation_date) for row in observations}
     if len(identities) != len(observations):
         raise RuntimeError("duplicate OFR normalized observation")
     observations.sort(key=lambda row: (row.observation_date, row.mnemonic))
-    return definitions, observations
+    audit = DatasetAudit(
+        disclosure_markers_total=disclosure_markers_total,
+        disclosure_markers_retained=disclosure_markers_retained,
+        disclosure_markers_before_window=disclosure_markers_before_window,
+        disclosure_markers_after_window=disclosure_markers_after_window,
+        series_without_window_observations=series_without_window_observations,
+    )
+    if (
+        audit.disclosure_markers_retained
+        + audit.disclosure_markers_before_window
+        + audit.disclosure_markers_after_window
+        != audit.disclosure_markers_total
+    ):
+        raise RuntimeError("OFR disclosure marker window accounting changed")
+    return definitions, observations, audit
 
 
 def build_panel(
     payloads: Mapping[str, bytes]
-) -> tuple[list[SeriesDefinition], list[Observation]]:
+) -> tuple[list[SeriesDefinition], list[Observation], DatasetAudit]:
     if set(payloads) != {"mnemonics", "preliminary"}:
         raise RuntimeError("OFR source payload identities changed")
     names = parse_mnemonics(payloads["mnemonics"])
-    definitions, observations = parse_dataset(payloads["preliminary"], names)
+    definitions, observations, audit = parse_dataset(payloads["preliminary"], names)
     if not definitions or not observations:
         raise RuntimeError("OFR normalized source is empty")
-    return definitions, observations
+    return definitions, observations, audit
 
 
 def _observation_row(row: Observation) -> dict[str, str]:
@@ -739,6 +781,7 @@ def write_outputs(
     cfg: Config,
     definitions: Sequence[SeriesDefinition],
     observations: Sequence[Observation],
+    dataset_audit: DatasetAudit,
     ledger: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
     root = _repository_path(cfg.output_dir)
@@ -805,6 +848,21 @@ def write_outputs(
             "disclosure_edit_rows": sum(
                 row.disclosure_edit for row in observations
             ),
+            "source_disclosure_markers_total": (
+                dataset_audit.disclosure_markers_total
+            ),
+            "source_disclosure_markers_retained": (
+                dataset_audit.disclosure_markers_retained
+            ),
+            "source_disclosure_markers_before_window": (
+                dataset_audit.disclosure_markers_before_window
+            ),
+            "source_disclosure_markers_after_window": (
+                dataset_audit.disclosure_markers_after_window
+            ),
+            "series_without_window_observations": (
+                dataset_audit.series_without_window_observations
+            ),
             "unique_series_dates": len(
                 {(row.mnemonic, row.observation_date) for row in observations}
             ),
@@ -847,11 +905,22 @@ def write_outputs(
             )
             == len(observations),
             "unknown_envelope_fields_rejected": True,
+            "out_of_window_disclosures_not_normalized": (
+                dataset_audit.disclosure_markers_retained
+                == sum(row.disclosure_edit for row in observations)
+            ),
             "final_or_asof_rows_read_zero": True,
         },
         "research_boundary": {
             "metadata_rows_read": len(definitions),
             "preliminary_source_rows_read": len(observations),
+            "preliminary_disclosure_markers_read": (
+                dataset_audit.disclosure_markers_total
+            ),
+            "out_of_window_disclosure_markers_excluded": (
+                dataset_audit.disclosure_markers_before_window
+                + dataset_audit.disclosure_markers_after_window
+            ),
             "final_source_rows_read": 0,
             "candidate_features_computed": [],
             "candidate_incidence_opened": False,
@@ -881,9 +950,9 @@ def build(
     if sha256_file(SOURCE_DECISION) != SOURCE_DECISION_SHA256:
         raise RuntimeError("OFR source decision hash mismatch")
     payloads, ledger = acquire_sources(cfg, fetcher=fetcher, clock=clock)
-    definitions, observations = build_panel(payloads)
+    definitions, observations, dataset_audit = build_panel(payloads)
     validate_expected_source_shape(payloads["mnemonics"], definitions)
-    return write_outputs(cfg, definitions, observations, ledger)
+    return write_outputs(cfg, definitions, observations, dataset_audit, ledger)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
