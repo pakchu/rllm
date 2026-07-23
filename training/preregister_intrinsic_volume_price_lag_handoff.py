@@ -5,6 +5,8 @@ import argparse
 import gzip
 import hashlib
 import json
+import os
+import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -669,25 +671,60 @@ def validate_frozen_dependencies() -> None:
             raise RuntimeError(f"IVPLH-72 comparator header changed: {item['id']}")
 
 
+def _canonical_manifest_text() -> str:
+    return json.dumps(
+        build_manifest(),
+        indent=2,
+        sort_keys=True,
+        ensure_ascii=True,
+        allow_nan=False,
+    ) + "\n"
+
+
 def write_once(path: str | Path, payload: dict[str, Any]) -> str:
     output = Path(path)
+    validate_frozen_dependencies()
     validate_manifest(payload)
-    if output.exists():
-        stored = json.loads(output.read_text())
-        validate_manifest(stored)
-        if stored["manifest_hash"] != payload["manifest_hash"]:
-            raise RuntimeError("refusing to overwrite IVPLH-72 preregistration")
-        return "verified_existing"
+    canonical_text = _canonical_manifest_text()
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(payload, indent=2, ensure_ascii=True) + "\n")
-    return "created"
+    file_descriptor, temporary_name = tempfile.mkstemp(
+        dir=output.parent,
+        prefix=f".{output.name}.",
+        suffix=".tmp",
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(
+            file_descriptor,
+            "w",
+            encoding="utf-8",
+            newline="\n",
+        ) as handle:
+            handle.write(canonical_text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary.chmod(0o644)
+        try:
+            os.link(temporary, output)
+        except FileExistsError:
+            if (
+                output.is_symlink()
+                or not output.is_file()
+                or output.read_text(encoding="utf-8") != canonical_text
+            ):
+                raise RuntimeError(
+                    "refusing noncanonical existing IVPLH-72 preregistration"
+                )
+            return "verified_existing"
+        return "created"
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     args = parser.parse_args()
-    validate_frozen_dependencies()
     payload = build_manifest()
     status = write_once(args.output, payload)
     print(
