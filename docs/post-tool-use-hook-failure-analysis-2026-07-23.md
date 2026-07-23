@@ -180,14 +180,76 @@ Trust entry 자체는 실행 명령이 아니지만, 레거시 hook이 계속 �
 - 장시간 세션 중 plugin cache를 교체해야 한다면 이전 버전 cache를 즉시 삭제하지 않거나, 교체 직후 세션을 재시작한다.
 - 재시작 후 `omx doctor`로 cache와 hook 공급원이 하나인지 확인한다.
 
-## 현재 적용 상태
+## 적용 결과 — 2026-07-23
 
-이 문서는 원인 분석 결과만 기록한다. 사용자 홈 설정과 프로젝트 hook 파일의 삭제·수정은 수행하지 않았다. 세션 재시작과 hook 단일화 후에는 아래 조건을 만족해야 해결된 것으로 본다.
+후속 요청에 따라 plugin mode를 기준으로 hook 단일화를 적용했다.
 
-1. 단일 tool call에서 `Running 1 PostToolUse hook` 또는 중복 없는 단일 lifecycle 실행
-2. `PostToolUse hook (failed)` 미발생
-3. `0.20.2/hooks/codex-native-hook.mjs` 참조 미발생
-4. 현재 `0.20.3` hook이 종료 코드 0 반환
+### 변경 내용
+
+1. 프로젝트 레거시 hook 파일 `.codex/hooks.json` 삭제
+2. 프로젝트 `.codex/config.toml`에서 `hooks = true` 삭제
+3. 프로젝트 `.codex/config.toml`에서 `.codex/hooks.json` trust entry 7개 삭제
+4. 사용자 `/home/pakchu/.codex/config.toml`에서 같은 프로젝트 hook trust entry 7개 삭제
+5. 사용자 plugin hook 설정과 `0.20.3` plugin trust entry는 유지
+
+변경 전 설정은 다음 위치에 백업했다.
+
+```text
+/home/pakchu/rllm/.omx/backups/hook-single-20260723/
+├── project-config.toml
+├── project-hooks.json
+└── user-config.toml
+```
+
+### 검증
+
+현재 plugin wrapper에 synthetic `PostToolUse` payload를 직접 전달한 결과:
+
+```text
+PLUGIN_HOOK_RC 0
+PLUGIN_HOOK_STDOUT '{}\n'
+PLUGIN_HOOK_STDERR ''
+```
+
+`omx doctor` 결과:
+
+```text
+Native hooks: OK
+Plugin versions: 0.20.3 일치
+17 passed, 4 warnings, 0 failed
+```
+
+4개 warning은 multi-agent legacy 값, deprecated explore override, stale Spark agent model, 중복 legacy skill root에 관한 것으로 hook 단일화와 무관하다.
+
+새로운 ephemeral Codex 프로세스에서 shell tool을 정확히 한 번 호출한 결과:
+
+```text
+SessionStart=1
+UserPromptSubmit=1
+PreToolUse=1
+PostToolUse=1
+Stop=1
+failed=0
+```
+
+검증 로그:
+
+```text
+/home/pakchu/rllm/.omx/logs/hook-singleization-fresh-codex-2026-07-23.log
+```
+
+따라서 **새로 시작하는 Codex 세션에서는 plugin hook 하나만 등록되고 각 lifecycle event가 한 번만 실행된다.**
+
+### 현재 실행 중인 세션에 대한 주의
+
+현재 문서를 작성 중인 기존 세션은 시작 시점에 읽은 hook registry를 메모리에 유지한다. 설정 파일을 정리해도 이 프로세스에는 hot reload되지 않으므로, 기존 세션에서는 종료 전까지 stale `0.20.2` 실패 메시지가 계속 보일 수 있다.
+
+현재 세션을 한 번 재시작하면 아래 조건으로 전환된다.
+
+1. 프로젝트 hook 미발견
+2. plugin `0.20.3` hook만 등록
+3. `PostToolUse` 1회 실행
+4. hook failure 0건
 
 ## 버전 스냅샷
 
