@@ -1,0 +1,630 @@
+{
+  "comparator_rows_decoded": false,
+  "economic_rllm_sequence": {
+    "fixed_economics": {
+      "base_cost_bp_per_notional_side": 6.0,
+      "full_calendar_cagr_includes_idle_cash": true,
+      "gross_exposure": 0.5,
+      "realized_funding": "[entry,exit)",
+      "stops_take_profit_early_exit_or_overlap": false,
+      "stress_cost_bp_per_notional_side": 10.0,
+      "strict_mdd_includes_pre_entry_hwm_and_intratrade_extremes": true
+    },
+    "roles": {
+      "inner_test": "2022",
+      "post_2023": "separately audited source extension required",
+      "rllm_fit": "2020-2021",
+      "sealed_eval": "2023",
+      "source_warmup": "2017-2019"
+    },
+    "sealed_eval_qualification": {
+      "base_and_stress_absolute_return_positive": true,
+      "cagr_to_strict_mdd_min": 3.0,
+      "each_half_absolute_return_positive": true,
+      "each_half_trades_min": 4,
+      "each_side_trades_min": 4,
+      "executed_trades_min": 12,
+      "mean_gross_underlying_bp_strictly_above": 20.0,
+      "strict_mdd_max": 0.15,
+      "weekly_cluster_sign_flip_p_max": 0.1
+    },
+    "separate_committed_evaluator_required": true,
+    "source_support_and_novelty_before_market": true
+  },
+  "evidence_boundary": {
+    "btc_market_rows_loaded": 0,
+    "comparator_event_rows_read": 0,
+    "funding_rows_loaded": 0,
+    "joint_source_incidence_rows_derived": 0,
+    "network_calls": 0,
+    "post_2023_rows_read": 0,
+    "return_or_pnl_fields_read": 0,
+    "return_rows_loaded": 0,
+    "source_feature_rows_derived": 0,
+    "source_value_rows_read": 0,
+    "subprocess_calls": 0
+  },
+  "execution_contract": {
+    "decision": "H8 release date 17:00:00 America/New_York",
+    "dst_wall_clock_normalization": false,
+    "entry": "H8 release date 17:05:00 America/New_York",
+    "entry_equal_previous_exit": "accepted",
+    "excluded_release_may_host_prior_delayed_state": true,
+    "excluded_release_originates_state": false,
+    "exit": "entry_utc + 4,320 elapsed minutes",
+    "exposure": "[entry_utc, exit_utc)",
+    "global_nonoverlap_before_split": true,
+    "instrument": "Binance USD-M BTCUSDT perpetual",
+    "split_containment_after_reservation": true
+  },
+  "frozen_documents": {
+    "boundary": {
+      "path": "docs/dollar-collateral-liquidity-bank-relay-boundary-2026-07-24.md",
+      "sha256": "fed61a096acf0186f153f0cc4e939cec39652fa68eba1fe5afd480121572bf24"
+    },
+    "common_window_policy": {
+      "path": "docs/novelty-comparator-common-window-policy-2026-07-23.md",
+      "sha256": "928bce6e04fb34001478b4b4ea84156580b661c88a0f0338065a891c009bd580"
+    },
+    "mechanism": {
+      "path": "docs/dollar-collateral-liquidity-bank-relay-mechanism-decision-2026-07-24.md",
+      "sha256": "71fff458151cc74ae16ec48d1a8d17a91a7b899a0d99715e55c98628e1a9d686"
+    }
+  },
+  "live_fail_flat_contract": {
+    "expected_publication_calendars_predeclared": true,
+    "missing_late_schema_integrity_availability_or_quarantine_mismatch": "no source update and no event",
+    "retrieval_time_and_response_sha256_append_only_ledger": true,
+    "source_migration": "separate prospective commit and shadow replay; no change to already scheduled event",
+    "stale_carry_alternate_endpoint_fill_or_imputation": false
+  },
+  "manifest_hash": "da77218e89ee588f901d719ea9944fad1cfd5f1b88712f679dc1e2de5a3a9e4d",
+  "novelty_contract": {
+    "asynchronous_thresholds": {
+      "absolute_signed_occupancy_pearson_max": 0.45,
+      "exact_entry_jaccard_max": 0.2,
+      "six_hour_one_to_one_jaccard_max": 0.35
+    },
+    "common_window_policy_path": "docs/novelty-comparator-common-window-policy-2026-07-23.md",
+    "common_window_policy_sha256": "928bce6e04fb34001478b4b4ea84156580b661c88a0f0338065a891c009bd580",
+    "comparators": [
+      {
+        "clock_family": "asynchronous",
+        "groups": [
+          {
+            "filter": {
+              "candidate_id": "FLCC-H4-Q60",
+              "clock_name": "primary"
+            },
+            "minimum_contained_rows": 90
+          },
+          {
+            "filter": {
+              "candidate_id": "FLCC-H4-Q65",
+              "clock_name": "primary"
+            },
+            "minimum_contained_rows": 90
+          },
+          {
+            "filter": {
+              "candidate_id": "FLCC-H8-Q60",
+              "clock_name": "primary"
+            },
+            "minimum_contained_rows": 90
+          },
+          {
+            "filter": {
+              "candidate_id": "FLCC-H8-Q65",
+              "clock_name": "primary"
+            },
+            "minimum_contained_rows": 90
+          }
+        ],
+        "header_sha256": "38d354aa0f63efa58bf5181cdc8cdecc4d9fc2f1a6eda8df8933c95f79cffdb7",
+        "id": "FLCC",
+        "parser": {
+          "entry_column": "entry_time",
+          "exit_column": "exit_time",
+          "group_columns": [
+            "candidate_id",
+            "clock_name"
+          ],
+          "group_filter": "exact UTF-8 string equality on every frozen filter field; no strip, case-fold, regex, coercion, or substring matching",
+          "raw_validation": "parse all artifact rows before containment; selected group requires unique entry, exit>entry, and chronological nonoverlap",
+          "read_csv": "pandas.read_csv(usecols=exact_usecols,dtype='string',keep_default_na=False,na_filter=False)",
+          "side_column": "side",
+          "side_mapping": {
+            "LONG": 1,
+            "SHORT": -1
+          },
+          "timestamp_parser": "require RFC3339 timezone suffix Z or +/-HH:MM, then pandas.to_datetime(errors='raise',utc=True)",
+          "unknown_or_blank_side": "fail"
+        },
+        "path": "results/federal_liquidity_component_concordance_preregistered_clock_2026-07-17.csv.gz",
+        "sha256": "7ebb0450422d9265e46c596e0b6415b6a8816c66f5e0cbb9ccda14ca6cb4c67c",
+        "usecols": [
+          "candidate_id",
+          "clock_name",
+          "entry_time",
+          "exit_time",
+          "side"
+        ]
+      },
+      {
+        "clock_family": "asynchronous",
+        "groups": [
+          {
+            "filter": {
+              "control": "primary"
+            },
+            "minimum_contained_rows": 150
+          },
+          {
+            "filter": {
+              "control": "one_day_delta_tail"
+            },
+            "minimum_contained_rows": 150
+          },
+          {
+            "filter": {
+              "control": "one_release_delay"
+            },
+            "minimum_contained_rows": 150
+          }
+        ],
+        "header_sha256": "3a45759e0b14eeef01ddfb5146ca03515a562846412c98fa1ca1aca7e285528e",
+        "id": "ORFR",
+        "parser": {
+          "entry_column": "entry_time",
+          "exit_column": "exit_time",
+          "group_columns": [
+            "control"
+          ],
+          "group_filter": "exact UTF-8 string equality on every frozen filter field; no strip, case-fold, regex, coercion, or substring matching",
+          "raw_validation": "parse all artifact rows before containment; selected group requires unique entry, exit>entry, and chronological nonoverlap",
+          "read_csv": "pandas.read_csv(usecols=exact_usecols,dtype='string',keep_default_na=False,na_filter=False)",
+          "side_column": "side",
+          "side_mapping": {
+            "LONG": 1,
+            "SHORT": -1
+          },
+          "timestamp_parser": "require RFC3339 timezone suffix Z or +/-HH:MM, then pandas.to_datetime(errors='raise',utc=True)",
+          "unknown_or_blank_side": "fail"
+        },
+        "path": "results/overnight_rrp_flow_release_clocks_2026-07-17.csv.gz",
+        "sha256": "7242d9870627dfc0cf067ff87d9664a1576dd374cb8985e927b40f15d1e3d480",
+        "usecols": [
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ]
+      },
+      {
+        "clock_family": "asynchronous",
+        "groups": [
+          {
+            "filter": {
+              "candidate_id": "ORPB-21",
+              "control": "primary"
+            },
+            "minimum_contained_rows": 180
+          }
+        ],
+        "header_sha256": "257ee9b477b9c62e9c287d03269d813c3a8b4b6286d836ab61ed5a925a2fd3f4",
+        "id": "ORPB",
+        "parser": {
+          "entry_column": "entry_time",
+          "exit_column": "exit_time",
+          "group_columns": [
+            "candidate_id",
+            "control"
+          ],
+          "group_filter": "exact UTF-8 string equality on every frozen filter field; no strip, case-fold, regex, coercion, or substring matching",
+          "raw_validation": "parse all artifact rows before containment; selected group requires unique entry, exit>entry, and chronological nonoverlap",
+          "read_csv": "pandas.read_csv(usecols=exact_usecols,dtype='string',keep_default_na=False,na_filter=False)",
+          "side_column": "side",
+          "side_mapping": {
+            "LONG": 1,
+            "SHORT": -1
+          },
+          "timestamp_parser": "require RFC3339 timezone suffix Z or +/-HH:MM, then pandas.to_datetime(errors='raise',utc=True)",
+          "unknown_or_blank_side": "fail"
+        },
+        "path": "results/overnight_rrp_participant_breadth_support_clocks_2026-07-21.csv.gz",
+        "sha256": "ef21323229801f11557e0c2d9d4465f7d58b13569552d656d64fdb7d440622ed",
+        "usecols": [
+          "candidate_id",
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ]
+      },
+      {
+        "clock_family": "same_h8_anchor",
+        "groups": [
+          {
+            "filter": {
+              "clock_mode": "primary"
+            },
+            "minimum_contained_rows": 90
+          }
+        ],
+        "header_sha256": "58dd787ede642429260f05ca2bc0918a22f2a83eb778686de49b279d8a1cf8b3",
+        "id": "H8DM",
+        "parser": {
+          "entry_column": "entry_time",
+          "exit_column": "exit_time",
+          "group_columns": [
+            "clock_mode"
+          ],
+          "group_filter": "exact UTF-8 string equality on every frozen filter field; no strip, case-fold, regex, coercion, or substring matching",
+          "raw_validation": "parse all artifact rows before containment; selected group requires unique entry, exit>entry, and chronological nonoverlap",
+          "read_csv": "pandas.read_csv(usecols=exact_usecols,dtype='string',keep_default_na=False,na_filter=False)",
+          "side_column": "side",
+          "side_mapping": {
+            "LONG": 1,
+            "SHORT": -1
+          },
+          "timestamp_parser": "require RFC3339 timezone suffix Z or +/-HH:MM, then pandas.to_datetime(errors='raise',utc=True)",
+          "unknown_or_blank_side": "fail"
+        },
+        "path": "results/fed_h8_deposit_migration_preregistered_clock_2026-07-18.csv.gz",
+        "sha256": "20405f79b86861adcc784c81223baae1c40fdf3c73edda339578471a6a6d1b40",
+        "usecols": [
+          "clock_mode",
+          "entry_time",
+          "exit_time",
+          "side"
+        ]
+      },
+      {
+        "clock_family": "same_h8_anchor",
+        "groups": [
+          {
+            "filter": {
+              "clock_name": "primary"
+            },
+            "minimum_contained_rows": 50
+          },
+          {
+            "filter": {
+              "clock_name": "h8_only"
+            },
+            "minimum_contained_rows": 120
+          }
+        ],
+        "header_sha256": "ef3cd7e042ff592bd4747ecd9bbf47b66cc7ab587db60a834efb502a11c7a605",
+        "id": "BDRC",
+        "parser": {
+          "entry_column": "entry_time",
+          "exit_column": "exit_time",
+          "group_columns": [
+            "clock_name"
+          ],
+          "group_filter": "exact UTF-8 string equality on every frozen filter field; no strip, case-fold, regex, coercion, or substring matching",
+          "raw_validation": "parse all artifact rows before containment; selected group requires unique entry, exit>entry, and chronological nonoverlap",
+          "read_csv": "pandas.read_csv(usecols=exact_usecols,dtype='string',keep_default_na=False,na_filter=False)",
+          "side_column": "side",
+          "side_mapping": {
+            "LONG": 1,
+            "SHORT": -1
+          },
+          "timestamp_parser": "require RFC3339 timezone suffix Z or +/-HH:MM, then pandas.to_datetime(errors='raise',utc=True)",
+          "unknown_or_blank_side": "fail"
+        },
+        "path": "results/bank_deposit_secured_repo_concordance_clocks_2026-07-20.csv.gz",
+        "sha256": "1ff3a6075e3ceff928e1dd19d05880dbe9dbab0e07d79b853146d7b4c8f6cabc",
+        "usecols": [
+          "clock_name",
+          "entry_time",
+          "exit_time",
+          "side"
+        ]
+      }
+    ],
+    "complete_five_minute_grid": true,
+    "crossing_interval": "report and exclude whole",
+    "failure_action": "retire DCLB-864 unchanged before outcomes",
+    "full_interval_containment": true,
+    "groups_compared_separately": true,
+    "prospective_policy_motivation": {
+      "dclb_market_outcomes_opened_when_disclosed": false,
+      "dclb_source_incidence_or_overlap_opened_when_disclosed": false,
+      "disclosed_fact": "a valid prior RMSR comparator trade entered in late 2023 and exited in early 2024",
+      "effect": "bind universal full-containment accounting; do not clip, repair, or reinterpret the prior row",
+      "prior_cross_boundary_comparator_timing_row_seen": true
+    },
+    "raw_validation_before_filter": true,
+    "same_h8_anchor_thresholds": {
+      "absolute_signed_occupancy_pearson_max": 0.65,
+      "exact_entry_jaccard_max": 0.6,
+      "same_entry_same_side_reproduction_max": 0.75
+    },
+    "seven_calendar_day_one_to_one_jaccard": "report_only",
+    "undefined_correlation": "fail",
+    "window": [
+      "2020-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ]
+  },
+  "outcomes_opened": false,
+  "policy": {
+    "bar_minutes": 5,
+    "entry_local_time": "17:05:00 America/New_York",
+    "gross_exposure": 0.5,
+    "h41_prior_deltas": 104,
+    "h8_decision_local_time": "17:00:00 America/New_York",
+    "h8_prior_component_observations": 104,
+    "hold_bars": 864,
+    "hold_elapsed_minutes": 4320,
+    "policy_id": "DCLB-864",
+    "random_namespace": "DCLB-864",
+    "rrp_prior_interval_deltas": 13
+  },
+  "protocol_version": "dollar_collateral_liquidity_bank_relay_preregistration_v1",
+  "research_history_boundary": {
+    "cxrt_source_support_failure_seen": true,
+    "exact_dclb_comparator_overlap_seen": false,
+    "exact_dclb_joint_state_or_incidence_seen": false,
+    "exact_dclb_market_outcomes_seen": false,
+    "global_pristine_holdout_claimed": false,
+    "h41_source_and_family_outcomes_seen": true,
+    "h8_source_and_family_outcomes_seen": true,
+    "rrp_source_and_family_outcomes_seen": true
+  },
+  "rllm_boundary": {
+    "action_space": [
+      "TRADE_FIXED_SIDE",
+      "ABSTAIN"
+    ],
+    "allowed_tokens": [
+      "fixed_side",
+      "h41_direction_and_transition",
+      "rrp_interval_direction_and_transition",
+      "macro_concordance_dominance_and_strength",
+      "h8_relief_stress_and_component_agreement",
+      "bank_support_relation",
+      "source_age_count_and_validity_buckets",
+      "current_position_state"
+    ],
+    "forbidden": [
+      "raw_levels_deltas_zscores_ranks_or_rank_numerators",
+      "date_timestamp_weekday_release_or_row_identity",
+      "source_url_or_hash",
+      "BTC_price_return_funding_future_path_label_reward_or_PnL",
+      "CAGR_MDD_or_split_identity",
+      "candidate_creation_side_reversal_hold_leverage_or_time_choice"
+    ],
+    "model_checkpoint_reward_and_seed_freeze_before_fit": true,
+    "no_2022_checkpoint_choice_from_2023": true,
+    "prompt_reveals_outcome_summary": false
+  },
+  "source_algebra": {
+    "h41": {
+      "center": "h41_num-104",
+      "feature": "log(current_net_liquidity/prior_net_liquidity)",
+      "first_rankable_delta": 105,
+      "freshness": "previous_h8_decision < available_at_utc <= current_h8_decision",
+      "numerator": "2*count(prior<x)+count(prior==x)",
+      "reused_release_forbidden": true,
+      "strict_prior_midrank_count": 104
+    },
+    "h8": {
+      "anchor": "every archived release including irregular weekdays",
+      "components": [
+        "large_minus_small_other_deposit_log_change_bp",
+        "small_borrowings_log_change_bp",
+        "negative_small_cash_asset_log_change_bp"
+      ],
+      "exclusions": [
+        "2020-10-02",
+        "2023-03-31",
+        "2023-06-30",
+        "2023-12-15"
+      ],
+      "robust_scale": "1.4826*MAD",
+      "robust_z_prior_observations": 104,
+      "sa_primary_nsa_control_only": true,
+      "validity": "nonzero mean stress with at least two component signs matching composite sign"
+    },
+    "macro": {
+      "bank_relation": "BANK_SUPPORTS iff h8_relief_sign==side_sign; otherwise BANK_OPPOSES",
+      "integer": "13*h41_center_num-104*rrp_center_num",
+      "neutral_macro_ineligible": true,
+      "side": "LONG iff +1; SHORT iff -1",
+      "side_sign": "sign(macro_integer)"
+    },
+    "rrp": {
+      "complete_operation_count_range": [
+        3,
+        7
+      ],
+      "delta": "current_complete_level-prior_complete_level",
+      "first_rankable_post_reset_delta": 14,
+      "interval": "previous_h8_decision < result_available_at_utc <= current_h8_decision",
+      "level": "log1p(mean(accepted_usd)/1_000_000_000)",
+      "numerator": "2*count(prior<x)+count(prior==x)",
+      "quarantine": "incomplete interval emits no level/delta and resets rank history; no bridge",
+      "relief_center": "-(rrp_num-13)",
+      "strict_prior_midrank_count": 13
+    }
+  },
+  "source_contracts": {
+    "h41": {
+      "allowlist": [
+        "release_date",
+        "observation_date",
+        "available_at_utc",
+        "net_liquidity_usd_millions"
+      ],
+      "audit": "docs/federal-reserve-h41-net-liquidity-source-audit-2026-07-17.md",
+      "audit_sha256": "fec3e11fa5112aff97b338c6404b3202cfa38c02391debaeee3c18ff3b3b23c1",
+      "header_sha256": "4bd522eddda52fefa94c9722f6015596fcde80769c59441046bc0438e1d314d9",
+      "loader": "pandas.read_csv(usecols=exact_allowlist)",
+      "manifest": "data/federal_reserve_h41_net_liquidity_2018_2023/build_manifest.json",
+      "manifest_sha256": "1ec212a85de0e49c5a0c2d35b8b22be86eb7d62989f7a0098be1bb1274b2a99b",
+      "numeric_rule": "finite and strictly positive",
+      "path": "data/federal_reserve_h41_net_liquidity_2018_2023/federal_reserve_h41_net_liquidity_2018-01-04_2023-12-28.csv.gz",
+      "sha256": "224883dad01b9d7f17d52eb87f3d7ef9890c8dd055a6c36577a534d2afe69621"
+    },
+    "h8": {
+      "allowlist": [
+        "release_date",
+        "release_time_utc",
+        "release_weekday",
+        "sa_large_other_deposits_prior",
+        "sa_large_other_deposits_latest",
+        "sa_small_other_deposits_prior",
+        "sa_small_other_deposits_latest",
+        "sa_small_borrowings_prior",
+        "sa_small_borrowings_latest",
+        "sa_small_cash_assets_prior",
+        "sa_small_cash_assets_latest",
+        "nsa_large_other_deposits_prior",
+        "nsa_large_other_deposits_latest",
+        "nsa_small_other_deposits_prior",
+        "nsa_small_other_deposits_latest",
+        "nsa_small_borrowings_prior",
+        "nsa_small_borrowings_latest",
+        "nsa_small_cash_assets_prior",
+        "nsa_small_cash_assets_latest"
+      ],
+      "audit": "docs/fed-h8-deposit-migration-source-audit-2026-07-18.md",
+      "audit_sha256": "a022ee840b3db977030de057890c2c57cd0a45029c879a3b37d648a49e063d3c",
+      "header_sha256": "b9c20c15035b90266cb47b8465922fde5f1062c3634050b0f006ee6263b978e8",
+      "loader": "pandas.read_csv(usecols=exact_allowlist)",
+      "manifest": "data/fed_h8_deposit_migration_2017_2023/build_manifest.json",
+      "manifest_sha256": "1f0a194e628ab9c44c23fc4a923145dcf89a62bface745cc36872eeee919eda9",
+      "numeric_rule": "retained SA and NSA levels finite and strictly positive",
+      "path": "data/fed_h8_deposit_migration_2017_2023/fed_h8_deposit_migration_2017_2023.csv.gz",
+      "sha256": "c8d1bfb0bbd13ef6d35f09ad7367ef8d2d5bb28981376223b735746ade68a572"
+    },
+    "rrp": {
+      "allowlist": [
+        "operation_date",
+        "result_available_at_utc",
+        "total_amount_accepted_usd",
+        "source_complete",
+        "quarantine_reason"
+      ],
+      "audit": "docs/new-york-fed-overnight-rrp-source-audit-2026-07-17.md",
+      "audit_sha256": "329db1cf886bfbceb0a048b1c44c59378af717ddd9731e5e26fd09e14ada8d23",
+      "header_sha256": "81a388d6e36c5e84c166b5fe111d3766ea5c6b56ac83895ed3541a6c05a01e9c",
+      "loader": "pandas.read_csv(usecols=exact_allowlist)",
+      "manifest": "data/new_york_fed_overnight_rrp_2018_2023/build_manifest.json",
+      "manifest_sha256": "4f87e2219da71c94832c8708086ba01387efc145e3488b62cd3b3d07c62d8fee",
+      "numeric_rule": "amount blank iff source_complete=false with nonempty quarantine_reason; otherwise finite and nonnegative",
+      "path": "data/new_york_fed_overnight_rrp_2018_2023/new_york_fed_overnight_rrp_2018-01-01_2023-12-31.csv.gz",
+      "sha256": "49f67ed44b7eb81fd35c17a8209cf14d6a8019d7e9f77fce8c343d1a7fb66b27"
+    }
+  },
+  "source_incidence_opened": false,
+  "source_only_controls": {
+    "all_required": true,
+    "delayed": "prior valid raw state enters next archived H8 release at 17:05 ET, then global reservation repeats",
+    "independently_reserved": [
+      "primary",
+      "h41_only",
+      "rrp_interval_only",
+      "h8_only",
+      "macro_concordant_only",
+      "macro_discordant_only",
+      "bank_supports_only",
+      "bank_opposes_only",
+      "stale_h41_one_release",
+      "stale_rrp_one_interval",
+      "one_h8_release_execution_delay",
+      "nsa_h8"
+    ],
+    "nsa_h8": "primary macro side and clock with exact NSA H8 validity and relation replay",
+    "ordered": [
+      "primary",
+      "h41_only",
+      "rrp_interval_only",
+      "h8_only",
+      "macro_concordant_only",
+      "macro_discordant_only",
+      "bank_supports_only",
+      "bank_opposes_only",
+      "stale_h41_one_release",
+      "stale_rrp_one_interval",
+      "exact_direction_flip",
+      "deterministic_random_side",
+      "one_h8_release_execution_delay",
+      "nsa_h8"
+    ],
+    "random_side": "UTF8 SHA256('DCLB-864|YYYY-MM-DDTHH:MM:SSZ'); LONG iff first digest byte<128",
+    "same_primary_timestamps": [
+      "exact_direction_flip",
+      "deterministic_random_side"
+    ],
+    "stale_h41": "immediately preceding emitted available H41 rank",
+    "stale_rrp": "immediately preceding emitted rank in same post-quarantine segment"
+  },
+  "source_rows_decoded": false,
+  "source_support_gate": {
+    "composition_each_split": {
+      "bank_opposes_share_min": 0.2,
+      "bank_supports_share_min": 0.2,
+      "each_stale_same_side_reproduction_max": 0.85,
+      "h41_only_same_side_reproduction_max": 0.85,
+      "macro_concordant_share_min": 0.2,
+      "macro_discordant_share_min": 0.2,
+      "random_same_side_reproduction_max": 0.6,
+      "rrp_only_same_side_reproduction_max": 0.85,
+      "strong_share_min": 0.15,
+      "three_of_three_share_min": 0.1,
+      "two_of_three_share_min": 0.1,
+      "weak_share_min": 0.15
+    },
+    "every_required_control_nonempty_each_split": true,
+    "failure_action": "retire DCLB-864 unchanged before comparator rows or outcomes",
+    "selection": {
+      "active_months_min": 8,
+      "each_half_events_min": 7,
+      "each_quarter_events_min": 2,
+      "each_side_share_min": 0.2,
+      "events_min": 20,
+      "maximum_entry_gap_days": 75.0,
+      "maximum_month_share": 0.25,
+      "maximum_same_side_run": 10,
+      "window": [
+        "2023-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ]
+    },
+    "train": {
+      "active_months_min": 24,
+      "each_side_share_min": 0.2,
+      "each_year_events_min": 12,
+      "events_min": 75,
+      "maximum_entry_gap_days": 60.0,
+      "maximum_month_share": 0.12,
+      "maximum_quarter_share": 0.24,
+      "maximum_same_side_run": 12,
+      "window": [
+        "2020-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ]
+    },
+    "undefined_or_empty_denominator": "fail"
+  },
+  "strict_sequence": {
+    "no_parameter_repair": true,
+    "stages": [
+      "mechanism_commit",
+      "write_once_preregistration_commit",
+      "source_support_evaluator_commit",
+      "source_support",
+      "comparator_novelty",
+      "economic_rllm_evaluator_commit",
+      "fit_2020_2021",
+      "inner_test_2022",
+      "sealed_eval_2023",
+      "post_2023_source_extension"
+    ],
+    "stop_at_first_failure": true
+  }
+}
