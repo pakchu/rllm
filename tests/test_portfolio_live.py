@@ -1085,6 +1085,7 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
                     return {"orderId": order_id, "clientOrderId": cid}
 
             state = {
+                "last_position_reconcile_error": "stale timestamp error",
                 "open_sleeves": {
                     "rex_dual_regime_auto": {
                         "name": "rex_dual_regime_auto",
@@ -1104,6 +1105,7 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             self.assertEqual(len(rows), 1)
             self.assertEqual(rows[0]["order_info"]["status"], "FILLED_RECONCILED")
             self.assertEqual(rows[0]["order_info"]["trade_report"]["realized_pnl"], "0.003")
+            self.assertNotIn("last_position_reconcile_error", state)
 
         asyncio.run(run())
 
@@ -1124,7 +1126,11 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
                 async def get_order(self, symbol, order_id=None):
                     return {"orderId": order_id, "clientOrderId": cid, "time": entry_ms}
 
-            state = {"open_sleeves": {}, "processed_signals": {}}
+            state = {
+                "open_sleeves": {},
+                "processed_signals": {},
+                "last_position_recovery_error": "stale timestamp error",
+            }
             portfolio = {
                 "base_sleeves": [
                     {
@@ -1148,6 +1154,7 @@ class PortfolioLiveSafetyTests(unittest.TestCase):
             self.assertEqual(restored["exit_at"], "2026-07-09 14:35:00+00:00")
             self.assertEqual(restored["dynamic_exit"]["name"], "vwap_overheat")
             self.assertEqual(restored["entry_fill_price"], 100.0)
+            self.assertNotIn("last_position_recovery_error", state)
 
         asyncio.run(run())
 

@@ -787,6 +787,40 @@ def test_wait_with_barrier_monitor_removes_hit_sleeve_and_logs_one_close(tmp_pat
     asyncio.run(run())
 
 
+def test_aggtrade_monitor_drains_ticks_without_open_barrier_positions(tmp_path: Path) -> None:
+    state_file = tmp_path / "portfolio_state.json"
+    state_file.write_text(json.dumps({"open_sleeves": {}, "processed_signals": {}}))
+
+    class FakeStream:
+        def __init__(self) -> None:
+            self.collect_calls = 0
+
+        async def collect(self, *, timeout_sec: float):
+            self.collect_calls += 1
+            await asyncio.sleep(min(timeout_sec, 0.001))
+            return [AggTradeTick(price=100.0, event_time_ms=self.collect_calls)]
+
+    async def run() -> None:
+        stream = FakeStream()
+        closed = await pl._wait_with_barrier_monitor(
+            wait_sec=0.01,
+            poll_sec=0.005,
+            state_file=state_file,
+            client=object(),
+            executor=object(),
+            exec_cfg=WaveExecutionConfig(dry_run=False, allow_live_orders=True),
+            engine=object(),
+            strategy_name="rllm",
+            execution_exchange="binance",
+            db_lease=None,
+            trade_stream=stream,
+        )
+        assert closed == []
+        assert stream.collect_calls > 0
+
+    asyncio.run(run())
+
+
 def test_aggtrade_monitor_closes_on_first_observed_touch_in_order(tmp_path: Path) -> None:
     state_file = tmp_path / "portfolio_state.json"
     state = _open_state()

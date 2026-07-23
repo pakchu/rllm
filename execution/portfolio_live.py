@@ -2892,6 +2892,7 @@ async def _reconcile_exchange_flat_sleeves(
     except Exception as exc:
         state["last_position_reconcile_error"] = str(exc)
         return []
+    state.pop("last_position_reconcile_error", None)
     active_sides: set[str] = set()
     for pos in positions:
         try:
@@ -3029,6 +3030,7 @@ async def _recover_exchange_positions_into_state(
     except Exception as exc:
         state["last_position_recovery_error"] = str(exc)
         return recovered
+    state.pop("last_position_recovery_error", None)
     active_positions = []
     for pos in positions:
         try:
@@ -4638,7 +4640,15 @@ async def _wait_with_barrier_monitor(
             if isinstance(open_state.get("barrier_exit"), dict)
         }
         if not monitored:
-            await asyncio.sleep(min(remaining, max(0.05, float(poll_sec))))
+            wait_for = min(remaining, max(0.05, float(poll_sec)))
+            if trade_stream is not None:
+                # The public stream remains active before the first barrier
+                # position opens.  Consume and discard that idle backlog so a
+                # busy BTC market cannot fill the bounded queue and permanently
+                # fail-close every later barrier entry.
+                await trade_stream.collect(timeout_sec=wait_for)
+            else:
+                await asyncio.sleep(wait_for)
             continue
         intents: list[dict[str, Any]] = []
         observed_at = pd.Timestamp.utcnow()
@@ -5084,8 +5094,8 @@ async def run_portfolio_loop(cfg: PortfolioLiveConfig) -> None:
                     now=now,
                     max_age_sec=int(cfg.max_entry_wait_sec),
                 )
+                state["last_stale_order_cancels"] = stale_cancelled
                 if stale_cancelled:
-                    state["last_stale_order_cancels"] = stale_cancelled
                     history = list(state.get("stale_order_cancel_history", []))
                     history.extend(stale_cancelled)
                     state["stale_order_cancel_history"] = history[-200:]
