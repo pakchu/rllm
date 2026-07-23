@@ -188,7 +188,7 @@ def test_production_metadata_shape_is_frozen_before_candidate_work() -> None:
         "TRIV1": 20,
     }
     assert source.EXPECTED_SERIES_BY_MEASURE == {"AR": 34, "OV": 14, "TV": 34}
-    definitions, _ = source.build_panel(fixture_payloads())
+    definitions, _, _ = source.build_panel(fixture_payloads())
     with pytest.raises(RuntimeError, match="metadata series count changed"):
         source.validate_expected_source_shape(
             fixture_payloads()["mnemonics"], definitions
@@ -196,7 +196,7 @@ def test_production_metadata_shape_is_frozen_before_candidate_work() -> None:
 
 
 def test_dataset_parser_preserves_nulls_and_waits_eight_days() -> None:
-    definitions, rows = source.build_panel(fixture_payloads())
+    definitions, rows, audit = source.build_panel(fixture_payloads())
     assert len(definitions) == 2
     assert len(rows) == 4
     first = next(
@@ -213,13 +213,15 @@ def test_dataset_parser_preserves_nulls_and_waits_eight_days() -> None:
     assert source._availability(date(2021, 1, 2)) == datetime(
         2021, 1, 10, tzinfo=UTC
     )
+    assert audit.disclosure_markers_total == 1
+    assert audit.disclosure_markers_retained == 1
 
 
 def test_transport_gzip_is_decoded_once_and_bounded() -> None:
     payloads = fixture_payloads()
     compressed = dict(payloads)
     compressed["preliminary"] = gzip.compress(payloads["preliminary"])
-    definitions, observations = source.build_panel(compressed)
+    definitions, observations, _ = source.build_panel(compressed)
     assert len(definitions) == 2
     assert len(observations) == 4
     with pytest.raises(RuntimeError, match="transport gzip is invalid"):
@@ -227,6 +229,29 @@ def test_transport_gzip_is_decoded_once_and_bounded() -> None:
     nested = gzip.compress(gzip.compress(payloads["preliminary"]))
     with pytest.raises(RuntimeError, match="transport gzip is nested"):
         source.parse_dataset(nested, {})
+
+
+def test_out_of_window_disclosure_markers_are_audited_not_normalized() -> None:
+    payloads = fixture_payloads()
+    document = json.loads(payloads["preliminary"])
+    document["timeseries"]["REPO-DVP_AR_OO-P"]["timeseries"][
+        "disclosure_edits"
+    ] = [
+        ["2018-12-31", None],
+        ["2019-01-03", None],
+        ["2024-01-01", None],
+    ]
+    payloads["preliminary"] = json.dumps(document).encode()
+    _, observations, audit = source.build_panel(payloads)
+    assert audit.disclosure_markers_total == 3
+    assert audit.disclosure_markers_retained == 1
+    assert audit.disclosure_markers_before_window == 1
+    assert audit.disclosure_markers_after_window == 1
+    assert sum(row.disclosure_edit for row in observations) == 1
+    assert all(
+        source.START_DATE <= row.observation_date <= source.END_DATE
+        for row in observations
+    )
 
 
 def test_dataset_parser_rejects_final_duplicate_future_and_negative_volume() -> None:
@@ -347,7 +372,7 @@ def test_output_artifacts_are_deterministic_and_outcome_blind(
     monkeypatch.setattr(source, "REPOSITORY_ROOT", tmp_path)
     monkeypatch.setattr(source, "SCRIPT_PATH", Path("builder.py"))
     (tmp_path / "builder.py").write_text("# fixture\n")
-    definitions, observations = source.build_panel(fixture_payloads())
+    definitions, observations, audit = source.build_panel(fixture_payloads())
     ledger = [
         {
             "name": name,
@@ -366,6 +391,7 @@ def test_output_artifacts_are_deterministic_and_outcome_blind(
         source.Config(output_dir="out", fetch=True, request_timeout_seconds=7),
         definitions,
         observations,
+        audit,
         ledger,
     )
     first_panel = (tmp_path / first["observations"]["path"]).read_bytes()
@@ -373,6 +399,7 @@ def test_output_artifacts_are_deterministic_and_outcome_blind(
         source.Config(output_dir="out", fetch=False, request_timeout_seconds=999),
         definitions,
         observations,
+        audit,
         ledger,
     )
     second_panel = (tmp_path / second["observations"]["path"]).read_bytes()
