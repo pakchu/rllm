@@ -144,7 +144,7 @@ def test_disclosure_marker_invalidates_required_source_date() -> None:
     day = date(2021, 1, 1)
     rows = source_rows(day)
     rows["REPO-GCF_AR_AG-P"] = support.replace(
-        rows["REPO-GCF_AR_AG-P"], disclosure_edit="suppressed"
+        rows["REPO-GCF_AR_AG-P"], disclosure_edit=True
     )
     features, audit = support.build_features({day: rows})
     assert features == []
