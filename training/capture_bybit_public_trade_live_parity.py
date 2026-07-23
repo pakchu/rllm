@@ -35,7 +35,7 @@ from training.probe_bybit_public_trade_sequence_source import (
 )
 
 
-PROTOCOL_VERSION = "bybit_public_trade_live_parity_capture_v1"
+PROTOCOL_VERSION = "bybit_public_trade_live_parity_capture_v2"
 SCRIPT_PATH = Path("training/capture_bybit_public_trade_live_parity.py")
 CONTRACT_PATH = Path(
     "docs/bybit-public-trade-live-parity-capture-contract-2026-07-23.md"
@@ -57,6 +57,18 @@ SOURCE_RESULT_SHA256 = (
 )
 SOURCE_RESULT_MANIFEST_HASH = (
     "c36f46c8399692b62d202a7331c9215fc3a5684cc3b2d57ca04d7fc7c83a5f84"
+)
+V1_INVALIDATION_PATH = Path(
+    "docs/bybit-public-trade-live-parity-capture-v1-invalidation-2026-07-23.md"
+)
+V1_INVALIDATION_SHA256 = (
+    "d43cb2eeec60bf3866ffe740c820c7b5e8ffe495143be3304560960f039ff15a"
+)
+V1_INVALID_ARTIFACT_PATH = Path(
+    "results/bybit_public_trade_live_parity_capture_v1_invalid_2026-07-23.json"
+)
+V1_INVALID_ARTIFACT_SHA256 = (
+    "d7eb515b4571a767d5efebc18ea179ebdcdd0f345c425bf2840755807f32dcbf"
 )
 
 REST_ENDPOINT = "https://api.bybit.com/v5/market/recent-trade"
@@ -138,6 +150,15 @@ class RestTransportResponse:
     raw: bytes
 
 
+@dataclass(frozen=True)
+class ClockSample:
+    source: str
+    ordinal: int
+    monotonic_ns: int
+    utc_ns: int
+    uncertainty_ns: int
+
+
 @dataclass
 class CaptureState:
     capture_day: str
@@ -149,6 +170,7 @@ class CaptureState:
     ws_subscription_acks: int = 0
     ws_pongs: int = 0
     websocket_sessions: int = 0
+    clock_samples: list[ClockSample] = field(default_factory=list)
     raw_bytes: int = 0
     first_trade_monotonic_ns: int | None = None
     last_trade_monotonic_ns: int | None = None
@@ -192,6 +214,21 @@ def _utc_iso(value: datetime) -> str:
     return value.isoformat().replace("+00:00", "Z")
 
 
+def _local_clock_sample(source: str, ordinal: int) -> ClockSample:
+    before = time.monotonic_ns()
+    utc_ns = time.time_ns()
+    after = time.monotonic_ns()
+    if after < before:
+        raise ParityCaptureError("monotonic clock reversed during UTC sampling")
+    return ClockSample(
+        source=source,
+        ordinal=ordinal,
+        monotonic_ns=before + (after - before) // 2,
+        utc_ns=utc_ns,
+        uncertainty_ns=after - before,
+    )
+
+
 def validate_bindings() -> None:
     if sha256_file(CONTRACT_PATH) != CONTRACT_SHA256:
         raise ParityCaptureError("live-parity contract hash differs")
@@ -199,6 +236,10 @@ def validate_bindings() -> None:
         raise ParityCaptureError("source-audit document hash differs")
     if sha256_file(SOURCE_RESULT_PATH) != SOURCE_RESULT_SHA256:
         raise ParityCaptureError("source-feasibility result hash differs")
+    if sha256_file(V1_INVALIDATION_PATH) != V1_INVALIDATION_SHA256:
+        raise ParityCaptureError("v1 live-capture invalidation hash differs")
+    if sha256_file(V1_INVALID_ARTIFACT_PATH) != V1_INVALID_ARTIFACT_SHA256:
+        raise ParityCaptureError("v1 invalid capture artifact hash differs")
     source_result = json.loads(_repo_path(SOURCE_RESULT_PATH).read_text())
     if (
         source_result.get("decision") != "SOURCE_FEASIBILITY_PASS"
@@ -402,7 +443,6 @@ def evaluate_rest_ws_parity(
         if ws_unique[source_id].comparison_fields()
         != rest_unique[source_id].comparison_fields()
     }
-
     eligible_ws_ids: set[str] = set()
     eligible_rest_ids: set[str] = set()
     if ws_observations and rest_snapshots:
@@ -480,6 +520,71 @@ def evaluate_rest_ws_parity(
     }
 
 
+def evaluate_clock_integrity(samples: Sequence[ClockSample]) -> dict[str, Any]:
+    ordered = sorted(samples, key=lambda sample: sample.monotonic_ns)
+    reversals: list[tuple[ClockSample, ClockSample]] = []
+    nonincreasing_monotonic = 0
+    maximum_disagreement_ns = 0
+    for previous, current in zip(ordered, ordered[1:]):
+        monotonic_delta = current.monotonic_ns - previous.monotonic_ns
+        utc_delta = current.utc_ns - previous.utc_ns
+        if monotonic_delta <= 0:
+            nonincreasing_monotonic += 1
+        if utc_delta < 0:
+            reversals.append((previous, current))
+        maximum_disagreement_ns = max(
+            maximum_disagreement_ns,
+            abs(utc_delta - monotonic_delta),
+        )
+    if len(ordered) >= 2:
+        monotonic_elapsed_ns = ordered[-1].monotonic_ns - ordered[0].monotonic_ns
+        utc_elapsed_ns = ordered[-1].utc_ns - ordered[0].utc_ns
+    else:
+        monotonic_elapsed_ns = 0
+        utc_elapsed_ns = 0
+    return {
+        "clock_contract_passed": (
+            len(ordered) >= 2
+            and not reversals
+            and nonincreasing_monotonic == 0
+        ),
+        "samples": len(ordered),
+        "utc_reversal_count": len(reversals),
+        "nonincreasing_monotonic_count": nonincreasing_monotonic,
+        "maximum_adjacent_clock_disagreement_ns": maximum_disagreement_ns,
+        "monotonic_elapsed_ns": monotonic_elapsed_ns,
+        "utc_elapsed_ns": utc_elapsed_ns,
+        "elapsed_disagreement_ns": utc_elapsed_ns - monotonic_elapsed_ns,
+        "maximum_sampling_uncertainty_ns": max(
+            (sample.uncertainty_ns for sample in ordered), default=0
+        ),
+        "reversal_transition_hash": sha256_bytes(
+            "\n".join(
+                (
+                    f"{left.source}:{left.ordinal}:{left.monotonic_ns}:"
+                    f"{right.source}:{right.ordinal}:{right.monotonic_ns}"
+                )
+                for left, right in reversals
+            ).encode()
+        ),
+    }
+
+
+def apply_clock_gate(
+    parity: Mapping[str, Any], clock_integrity: Mapping[str, Any]
+) -> dict[str, Any]:
+    output = json.loads(json.dumps(parity))
+    output["clock_integrity"] = dict(clock_integrity)
+    passed = bool(clock_integrity["clock_contract_passed"])
+    output.setdefault("checks", {})["local_utc_nonreversing"] = passed
+    if not passed:
+        output["decision"] = "REJECT_NO_REPAIR"
+        failures = output.setdefault("failures", [])
+        if "local_utc_nonreversing" not in failures:
+            failures.append("local_utc_nonreversing")
+    return output
+
+
 def _validate_rest_url(url: str) -> None:
     parsed = urllib.parse.urlsplit(url)
     if (
@@ -551,27 +656,38 @@ def _record_ws_message(
     raw: bytes,
     receipt_utc_ns: int,
     receipt_monotonic_ns: int,
+    receipt_uncertainty_ns: int = 0,
 ) -> tuple[str, tuple[NormalizedTrade, ...]]:
-    if receipt_utc_ns // 1_000_000_000 < 0:
-        raise ParityCaptureError("local UTC receipt time is invalid")
-    if datetime.fromtimestamp(receipt_utc_ns / 1e9, timezone.utc).date().isoformat() != (
-        state.capture_day
-    ):
-        raise ParityCaptureError("capture crossed UTC midnight")
     state.raw_bytes += len(raw)
     if state.raw_bytes > MAX_CAPTURE_RAW_BYTES:
         raise ParityCaptureError("capture raw bytes exceed frozen bound")
     state.ws_messages += 1
+    state.clock_samples.append(
+        ClockSample(
+            source="websocket_receipt",
+            ordinal=state.ws_messages,
+            monotonic_ns=receipt_monotonic_ns,
+            utc_ns=receipt_utc_ns,
+            uncertainty_ns=receipt_uncertainty_ns,
+        )
+    )
     _write_raw_line(
         handle,
         {
             "ordinal": state.ws_messages,
             "receipt_utc_ns": receipt_utc_ns,
             "receipt_monotonic_ns": receipt_monotonic_ns,
+            "receipt_clock_uncertainty_ns": receipt_uncertainty_ns,
             "raw_json_sha256": sha256_bytes(raw),
             "raw_json_base64": base64.b64encode(raw).decode("ascii"),
         },
     )
+    if receipt_utc_ns // 1_000_000_000 < 0:
+        raise ParityCaptureError("local UTC receipt time is invalid")
+    if datetime.fromtimestamp(receipt_utc_ns / 1e9, timezone.utc).date().isoformat() != (
+        state.capture_day
+    ):
+        raise ParityCaptureError("capture crossed UTC midnight")
     kind, trades = parse_ws_payload(raw)
     if kind == "subscribe":
         state.ws_subscription_acks += 1
@@ -597,18 +713,31 @@ def _record_rest_response(
     response_end_utc_ns: int,
     response_end_monotonic_ns: int,
     final: bool,
+    request_start_uncertainty_ns: int = 0,
+    response_end_uncertainty_ns: int = 0,
 ) -> RestSnapshot:
-    if response_end_monotonic_ns < request_start_monotonic_ns:
-        raise ParityCaptureError("REST monotonic clock reversed")
-    for utc_ns in (request_start_utc_ns, response_end_utc_ns):
-        if datetime.fromtimestamp(utc_ns / 1e9, timezone.utc).date().isoformat() != (
-            state.capture_day
-        ):
-            raise ParityCaptureError("capture crossed UTC midnight")
     state.raw_bytes += len(response.raw)
     if state.raw_bytes > MAX_CAPTURE_RAW_BYTES:
         raise ParityCaptureError("capture raw bytes exceed frozen bound")
     ordinal = len(state.rest_snapshots) + 1
+    state.clock_samples.extend(
+        (
+            ClockSample(
+                source="rest_request_start",
+                ordinal=ordinal,
+                monotonic_ns=request_start_monotonic_ns,
+                utc_ns=request_start_utc_ns,
+                uncertainty_ns=request_start_uncertainty_ns,
+            ),
+            ClockSample(
+                source="rest_response_end",
+                ordinal=ordinal,
+                monotonic_ns=response_end_monotonic_ns,
+                utc_ns=response_end_utc_ns,
+                uncertainty_ns=response_end_uncertainty_ns,
+            ),
+        )
+    )
     _write_raw_line(
         handle,
         {
@@ -618,6 +747,8 @@ def _record_rest_response(
             "request_start_monotonic_ns": request_start_monotonic_ns,
             "response_end_utc_ns": response_end_utc_ns,
             "response_end_monotonic_ns": response_end_monotonic_ns,
+            "request_start_clock_uncertainty_ns": request_start_uncertainty_ns,
+            "response_end_clock_uncertainty_ns": response_end_uncertainty_ns,
             "http_status": response.status,
             "final_url": response.final_url,
             "content_type": response.content_type,
@@ -626,6 +757,13 @@ def _record_rest_response(
             "raw_json_base64": base64.b64encode(response.raw).decode("ascii"),
         },
     )
+    if response_end_monotonic_ns < request_start_monotonic_ns:
+        raise ParityCaptureError("REST monotonic clock reversed")
+    for utc_ns in (request_start_utc_ns, response_end_utc_ns):
+        if datetime.fromtimestamp(utc_ns / 1e9, timezone.utc).date().isoformat() != (
+            state.capture_day
+        ):
+            raise ParityCaptureError("capture crossed UTC midnight")
     if response.status != 200 or response.final_url != REST_URL:
         raise ParityCaptureError("unexpected REST status or redirect")
     trades = parse_rest_response(response.raw)
@@ -648,20 +786,21 @@ async def _fetch_and_record_rest(
     fetch: FetchRest,
 ) -> RestSnapshot:
     enforce_disk_guard()
-    start_utc_ns = time.time_ns()
-    start_mono_ns = time.monotonic_ns()
+    ordinal = len(state.rest_snapshots) + 1
+    start = _local_clock_sample("rest_request_start", ordinal)
     response = await asyncio.to_thread(fetch)
-    end_mono_ns = time.monotonic_ns()
-    end_utc_ns = time.time_ns()
+    end = _local_clock_sample("rest_response_end", ordinal)
     return _record_rest_response(
         state,
         handle,
         response,
-        request_start_utc_ns=start_utc_ns,
-        request_start_monotonic_ns=start_mono_ns,
-        response_end_utc_ns=end_utc_ns,
-        response_end_monotonic_ns=end_mono_ns,
+        request_start_utc_ns=start.utc_ns,
+        request_start_monotonic_ns=start.monotonic_ns,
+        response_end_utc_ns=end.utc_ns,
+        response_end_monotonic_ns=end.monotonic_ns,
         final=final,
+        request_start_uncertainty_ns=start.uncertainty_ns,
+        response_end_uncertainty_ns=end.uncertainty_ns,
     )
 
 
@@ -732,17 +871,21 @@ async def _capture_network(
             if not isinstance(message, str):
                 raise ParityCaptureError("WebSocket message is not a text frame")
             raw = message.encode("utf-8")
-            receipt_utc_ns = time.time_ns()
-            receipt_mono_ns = time.monotonic_ns()
+            receipt = _local_clock_sample("websocket_receipt", state.ws_messages + 1)
             kind, _ = _record_ws_message(
-                state, ws_handle, raw, receipt_utc_ns, receipt_mono_ns
+                state,
+                ws_handle,
+                raw,
+                receipt.utc_ns,
+                receipt.monotonic_ns,
+                receipt.uncertainty_ns,
             )
             if kind == "trade":
                 if state.ws_subscription_acks != 1:
                     raise ParityCaptureError(
                         "first trade arrived without exactly one subscription ack"
                     )
-                state.first_trade_monotonic_ns = receipt_mono_ns
+                state.first_trade_monotonic_ns = receipt.monotonic_ns
                 first_trade_seen = True
 
         assert state.first_trade_monotonic_ns is not None
@@ -763,10 +906,16 @@ async def _capture_network(
                 if not isinstance(message, str):
                     raise ParityCaptureError("WebSocket message is not a text frame")
                 raw = message.encode("utf-8")
-                receipt_utc_ns = time.time_ns()
-                receipt_mono_ns = time.monotonic_ns()
+                receipt = _local_clock_sample(
+                    "websocket_receipt", state.ws_messages + 1
+                )
                 kind, _ = _record_ws_message(
-                    state, ws_handle, raw, receipt_utc_ns, receipt_mono_ns
+                    state,
+                    ws_handle,
+                    raw,
+                    receipt.utc_ns,
+                    receipt.monotonic_ns,
+                    receipt.uncertainty_ns,
                 )
                 if kind == "subscribe":
                     raise ParityCaptureError("duplicate WebSocket subscription ack")
@@ -820,6 +969,7 @@ def build_manifest(
             "ws_subscription_acks": state.ws_subscription_acks,
             "ws_pongs": state.ws_pongs,
             "raw_json_bytes": state.raw_bytes,
+            "clock_samples": len(state.clock_samples),
             "first_trade_monotonic_ns": state.first_trade_monotonic_ns,
             "last_trade_monotonic_ns": state.last_trade_monotonic_ns,
         },
@@ -848,6 +998,10 @@ def build_manifest(
             "source_result_path": str(SOURCE_RESULT_PATH),
             "source_result_sha256": SOURCE_RESULT_SHA256,
             "source_result_manifest_hash": SOURCE_RESULT_MANIFEST_HASH,
+            "v1_invalidation_path": str(V1_INVALIDATION_PATH),
+            "v1_invalidation_sha256": V1_INVALIDATION_SHA256,
+            "v1_invalid_artifact_path": str(V1_INVALID_ARTIFACT_PATH),
+            "v1_invalid_artifact_sha256": V1_INVALID_ARTIFACT_SHA256,
             "capture_script_path": str(SCRIPT_PATH),
             "capture_script_sha256": sha256_file(SCRIPT_PATH),
         },
@@ -898,10 +1052,14 @@ def run_capture() -> tuple[Path, dict[str, Any]]:
         except Exception as exc:  # The immutable failure manifest is the audit trail.
             runtime_error = exc
     state.ended_at_utc = _utc_iso(_utc_now())
+    clock_integrity = evaluate_clock_integrity(state.clock_samples)
     if runtime_error is None:
-        parity = evaluate_rest_ws_parity(state.ws_trades, state.rest_snapshots)
+        parity = apply_clock_gate(
+            evaluate_rest_ws_parity(state.ws_trades, state.rest_snapshots),
+            clock_integrity,
+        )
     else:
-        parity = {
+        parity = apply_clock_gate({
             "decision": "REJECT_NO_REPAIR",
             "checks": {"capture_runtime_completed": False},
             "failures": [f"capture_runtime:{type(runtime_error).__name__}"],
@@ -909,7 +1067,7 @@ def run_capture() -> tuple[Path, dict[str, Any]]:
                 "type": type(runtime_error).__name__,
                 "message": str(runtime_error)[:1_000],
             },
-        }
+        }, clock_integrity)
     manifest = build_manifest(
         state,
         parity,
