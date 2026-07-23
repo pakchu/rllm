@@ -99,7 +99,7 @@ def passing_inputs() -> tuple[list[capture.ObservedWsTrade], list[capture.RestSn
 
 def test_frozen_transport_and_bindings_are_exact() -> None:
     capture.validate_bindings()
-    assert capture.PROTOCOL_VERSION == "bybit_public_trade_live_parity_capture_v2"
+    assert capture.PROTOCOL_VERSION == "bybit_public_trade_live_parity_capture_v3"
     assert capture.REST_URL == (
         "https://api.bybit.com/v5/market/recent-trade?"
         "category=linear&symbol=BTCUSDT&limit=1000"
@@ -108,6 +108,10 @@ def test_frozen_transport_and_bindings_are_exact() -> None:
     assert capture.WS_TOPIC == "publicTrade.BTCUSDT"
     assert capture.CAPTURE_SECONDS == 600
     assert capture.REST_INTERVAL_SECONDS == 1
+    assert capture.CLOCK_PREFLIGHT_SECONDS == 60
+    assert capture.HOST_CLOCK_SCRIPT_SHA256 == (
+        "312b34ca099824d5e16c701c51472a96d04fde65c798cafe43ba07bc25799e9a"
+    )
 
 
 def test_local_clock_sample_uses_bracketed_monotonic_midpoint(
@@ -124,6 +128,110 @@ def test_local_clock_sample_uses_bracketed_monotonic_midpoint(
         utc_ns=1_000,
         uncertainty_ns=20,
     )
+
+
+def test_windows_host_clock_uses_one_fixed_non_shell_process(
+    tmp_path: Path,
+) -> None:
+    writes: list[bytes] = []
+    commands: list[tuple[list[str], dict[str, object]]] = []
+    responses = iter((b"639203856000000000\r\n", b"639203856010000000\r\n"))
+
+    class FakeStdin:
+        def write(self, payload: bytes) -> None:
+            writes.append(payload)
+
+        def flush(self) -> None:
+            return None
+
+    class FakeStdout:
+        def readline(self, size: int) -> bytes:
+            assert size == 128
+            return next(responses)
+
+    class FakeProcess:
+        pid = 77
+        stdin = FakeStdin()
+        stdout = FakeStdout()
+        stderr = BytesIO()
+        return_code: int | None = None
+
+        def poll(self) -> int | None:
+            return self.return_code
+
+        def wait(self, timeout: int) -> int:
+            assert timeout == 5
+            self.return_code = 0
+            return 0
+
+        def kill(self) -> None:
+            self.return_code = -9
+
+    process = FakeProcess()
+
+    def fake_popen(command: list[str], **kwargs: object) -> FakeProcess:
+        commands.append((command, kwargs))
+        return process
+
+    powershell_path = tmp_path / "powershell.exe"
+    powershell_path.write_bytes(b"fixture")
+    monotonic = iter((100, 101, 102, 120, 200, 201, 202, 240))
+    clock = capture.WindowsHostRawClock(
+        popen_factory=fake_popen,
+        readable=lambda *_: True,
+        read_chunk=lambda stream, size: stream.readline(size),
+        raw_monotonic_ns=lambda: next(monotonic),
+        powershell_path=powershell_path,
+        release_reader=lambda: "microsoft-standard-WSL2",
+    )
+    clock.start()
+    sample = capture._local_clock_sample("fixture", 1, clock)
+    clock.close()
+
+    assert sample == capture.ClockSample(
+        "fixture", 1, 220, 1_784_788_801_000_000_000, 40
+    )
+    command, kwargs = commands[0]
+    assert command == [
+        str(powershell_path),
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        capture.HOST_CLOCK_SCRIPT,
+    ]
+    assert kwargs["shell"] is False
+    assert writes == [b"t\n", b"t\n", b"q\n"]
+    metadata = clock.metadata()
+    assert metadata["monotonic_source"] == "CLOCK_MONOTONIC_RAW"
+    assert metadata["utc_reads"] == 2
+    assert metadata["closed_cleanly"] is True
+    assert metadata["fallback_used"] is False
+
+
+def test_clock_preflight_requires_complete_nonreversing_raw_ledger() -> None:
+    samples = [
+        capture.ClockSample("clock_provider_preflight", 1, 100, 1_000, 2),
+        capture.ClockSample("clock_provider_preflight", 2, 200, 1_100, 2),
+    ]
+    passed = capture.evaluate_clock_preflight(
+        samples,
+        probe_started_monotonic_ns=50,
+        probe_ended_monotonic_ns=250,
+        required_duration_ns=200,
+    )
+    assert passed["decision"] == "PASS"
+    assert all(passed["checks"].values())
+
+    rejected = capture.evaluate_clock_preflight(
+        [samples[0], capture.ClockSample("clock_provider_preflight", 3, 200, 900, 2)],
+        probe_started_monotonic_ns=50,
+        probe_ended_monotonic_ns=250,
+        required_duration_ns=200,
+    )
+    assert rejected["decision"] == "REJECT_NO_NETWORK"
+    assert rejected["checks"]["sample_ordinals_complete"] is False
+    assert rejected["checks"]["host_utc_nonreversing"] is False
 
 
 def test_rest_parser_normalizes_exact_fields_without_float_rounding() -> None:
@@ -247,6 +355,41 @@ def test_ws_capture_bound_rejects_only_after_raw_frame_audit(
     envelope = json.loads(handle.getvalue())
     assert base64.b64decode(envelope["raw_frame_base64"]) == raw
     assert state.raw_bytes == len(raw)
+
+
+def test_ws_frame_is_audited_when_receipt_clock_fails() -> None:
+    class FailingClock:
+        provider_id = "fixture"
+        monotonic_source = "CLOCK_MONOTONIC_RAW"
+        utc_source = "fixture"
+
+        def monotonic_ns(self) -> int:
+            return 100
+
+        def utc_ns(self) -> int:
+            raise capture.ParityCaptureError("clock fixture")
+
+    state = capture.CaptureState(
+        capture_day="2026-07-23",
+        started_at_utc="2026-07-23T00:00:00Z",
+        output_dir=Path("data/fixture"),
+    )
+    handle = BytesIO()
+    raw = b'{"op":"pong"}'
+    with pytest.raises(capture.ParityCaptureError, match="clock fixture"):
+        capture._sample_and_record_ws_message(
+            state,
+            handle,
+            raw,
+            "text",
+            FailingClock(),
+        )
+    envelope = json.loads(handle.getvalue())
+    assert envelope["receipt_utc_ns"] is None
+    assert envelope["clock_error_type"] == "ParityCaptureError"
+    assert base64.b64decode(envelope["raw_frame_base64"]) == raw
+    assert state.ws_messages == 1
+    assert state.clock_samples == []
 
 
 def test_http_error_body_and_status_are_audited_before_rejection() -> None:
@@ -431,6 +574,66 @@ def test_rest_transport_failure_persists_start_and_end_attempt_evidence(
     ]
 
 
+def test_completed_rest_body_is_audited_when_response_clock_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    utc_ns = int(datetime(2026, 7, 23, tzinfo=timezone.utc).timestamp() * 1e9)
+
+    class EndFailingClock:
+        provider_id = "fixture"
+        monotonic_source = "CLOCK_MONOTONIC_RAW"
+        utc_source = "fixture"
+
+        def __init__(self) -> None:
+            self.utc_calls = 0
+            self.monotonic = 0
+
+        def monotonic_ns(self) -> int:
+            self.monotonic += 10
+            return self.monotonic
+
+        def utc_ns(self) -> int:
+            self.utc_calls += 1
+            if self.utc_calls == 1:
+                return utc_ns
+            raise capture.ParityCaptureError("end clock fixture")
+
+    raw = rest_raw([rest_row(1)])
+    response = capture.RestTransportResponse(
+        status=200,
+        final_url=capture.REST_URL,
+        content_type="application/json",
+        location=None,
+        raw=raw,
+    )
+    monkeypatch.setattr(capture, "enforce_disk_guard", lambda: 250)
+    state = capture.CaptureState(
+        capture_day="2026-07-23",
+        started_at_utc="2026-07-23T00:00:00Z",
+        output_dir=Path("data/fixture"),
+    )
+    handle = BytesIO()
+    with pytest.raises(capture.ParityCaptureError, match="end clock fixture"):
+        asyncio.run(
+            capture._fetch_and_record_rest(
+                state,
+                handle,
+                final=False,
+                fetch=lambda: response,
+                clock=EndFailingClock(),
+            )
+        )
+    lines = [json.loads(line) for line in handle.getvalue().splitlines()]
+    assert [line["record_type"] for line in lines] == [
+        "request_start",
+        "response_clock_error",
+    ]
+    assert base64.b64decode(lines[1]["raw_json_base64"]) == raw
+    assert state.rest_attempts_started == 1
+    assert state.rest_attempts_completed == 0
+    assert state.rest_responses_audited == 1
+
+
 def test_rest_poller_stop_waits_for_inflight_response_audit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -479,6 +682,41 @@ def test_rest_poller_stop_waits_for_inflight_response_audit(
     assert [line["record_type"] for line in lines] == ["request_start", "response"]
     assert state.rest_attempts_started == state.rest_attempts_completed == 1
     assert state.rest_responses_audited == 1
+
+
+def test_raw_deadline_uses_one_persistent_websocket_receive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class AdvancingClock:
+        provider_id = "fixture"
+        monotonic_source = "CLOCK_MONOTONIC_RAW"
+        utc_source = "fixture"
+
+        def __init__(self) -> None:
+            self.current = -1_000_000_000
+
+        def monotonic_ns(self) -> int:
+            self.current += 1_000_000_000
+            return self.current
+
+        def utc_ns(self) -> int:
+            return 1_000_000_000
+
+    class BlockingSocket:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def recv(self) -> str:
+            self.calls += 1
+            await asyncio.Event().wait()
+            raise AssertionError("unreachable")
+
+    monkeypatch.setattr(capture, "RAW_WAIT_QUANTUM_SECONDS", 0.0)
+    clock = AdvancingClock()
+    socket = BlockingSocket()
+    message = asyncio.run(capture._recv_until_clock(socket, clock, 2_000_000_000))
+    assert message is None
+    assert socket.calls == 1
 
 
 def test_parity_passes_with_unordered_overlapping_rest_windows() -> None:
@@ -645,6 +883,18 @@ def test_manifest_is_hash_bound_immutable_and_outcome_blind(
         disk_used_gib_before_capture=250,
         ws_path=ws_path,
         rest_path=rest_path,
+        clock_metadata={
+            "provider_id": capture.WindowsHostRawClock.provider_id,
+            "monotonic_source": "CLOCK_MONOTONIC_RAW",
+            "utc_source": capture.WindowsHostRawClock.utc_source,
+            "powershell_path": str(capture.POWERSHELL_PATH),
+            "powershell_script_sha256": capture.HOST_CLOCK_SCRIPT_SHA256,
+            "shell": False,
+            "warmup_sample": {"uncertainty_ns": 1},
+            "closed_cleanly": True,
+            "fallback_used": False,
+        },
+        clock_preflight={"decision": "PASS", "failures": []},
     )
     core = dict(manifest)
     observed = core.pop("manifest_hash_without_self")
@@ -656,6 +906,8 @@ def test_manifest_is_hash_bound_immutable_and_outcome_blind(
         "market_outcomes_opened": False,
         "returns_or_pnl_opened": False,
     }
+    assert manifest["transport"]["deadline_clock"] == "CLOCK_MONOTONIC_RAW"
+    assert manifest["clock_provider"]["fallback_used"] is False
     output = tmp_path / "manifest.json"
     capture.write_manifest(output, manifest)
     assert json.loads(output.read_text()) == manifest
@@ -665,8 +917,43 @@ def test_manifest_is_hash_bound_immutable_and_outcome_blind(
 
 def test_production_entrypoint_has_no_duration_endpoint_or_disk_bypass() -> None:
     assert not inspect.signature(capture.run_capture).parameters
+    source = inspect.getsource(capture.run_capture)
+    assert "WindowsHostRawClock()" in source
+    assert "run_clock_preflight(clock)" in source
+    assert "clock=clock" in source
+    assert "PROCESS_CLOCK" not in source
     with pytest.raises(SystemExit):
         capture.parse_args(["--duration", "1"])
+
+
+def test_production_preflight_failure_closes_clock_before_any_network(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[str] = []
+
+    class FakeClock:
+        def start(self) -> None:
+            events.append("clock_start")
+
+        def close(self) -> None:
+            events.append("clock_close")
+
+    def reject_preflight(clock: object) -> dict[str, object]:
+        assert isinstance(clock, FakeClock)
+        events.append("preflight")
+        raise capture.ParityCaptureError("preflight fixture")
+
+    async def forbidden_network(*args: object, **kwargs: object) -> None:
+        raise AssertionError("network must remain sealed")
+
+    monkeypatch.setattr(capture, "validate_bindings", lambda: None)
+    monkeypatch.setattr(capture, "enforce_disk_guard", lambda: 250)
+    monkeypatch.setattr(capture, "WindowsHostRawClock", FakeClock)
+    monkeypatch.setattr(capture, "run_clock_preflight", reject_preflight)
+    monkeypatch.setattr(capture, "_capture_network", forbidden_network)
+    with pytest.raises(capture.ParityCaptureError, match="preflight fixture"):
+        capture.run_capture()
+    assert events == ["clock_start", "preflight", "clock_close"]
 
 
 def test_disk_guard_uses_repo_filesystem_and_fails_closed(

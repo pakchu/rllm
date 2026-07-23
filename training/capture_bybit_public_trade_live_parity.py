@@ -11,7 +11,10 @@ import asyncio
 import base64
 import gzip
 import json
+import os
+import select
 import ssl
+import subprocess
 import sys
 import time
 import urllib.error
@@ -23,7 +26,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 from training.probe_bybit_public_trade_sequence_source import (
     DISK_LIMIT_GIB,
@@ -36,7 +39,7 @@ from training.probe_bybit_public_trade_sequence_source import (
 )
 
 
-PROTOCOL_VERSION = "bybit_public_trade_live_parity_capture_v2"
+PROTOCOL_VERSION = "bybit_public_trade_live_parity_capture_v3"
 SCRIPT_PATH = Path("training/capture_bybit_public_trade_live_parity.py")
 CONTRACT_PATH = Path(
     "docs/bybit-public-trade-live-parity-capture-contract-2026-07-23.md"
@@ -71,6 +74,21 @@ V1_INVALID_ARTIFACT_PATH = Path(
 V1_INVALID_ARTIFACT_SHA256 = (
     "d7eb515b4571a767d5efebc18ea179ebdcdd0f345c425bf2840755807f32dcbf"
 )
+CLOCK_CORRECTION_PATH = Path(
+    "docs/bybit-capture-clock-source-correction-2026-07-23.md"
+)
+CLOCK_CORRECTION_SHA256 = (
+    "95300035e07a8d57927916284f0a69e7855c12fe50e050599a548a038bcb82e9"
+)
+CLOCK_PREFLIGHT_RESULT_PATH = Path(
+    "results/bybit_capture_clock_source_preflight_v1_2026-07-23.json"
+)
+CLOCK_PREFLIGHT_RESULT_SHA256 = (
+    "9868e49ad722b5cf5d557efe88fcf1d6a24fc318117a71dc01d7a1680a28614e"
+)
+CLOCK_PREFLIGHT_RESULT_MANIFEST_HASH = (
+    "40cce365242abade2aa79802f57167488f48b20319244a43af53826ecf1e28be"
+)
 
 REST_ENDPOINT = "https://api.bybit.com/v5/market/recent-trade"
 REST_QUERY = "category=linear&symbol=BTCUSDT&limit=1000"
@@ -83,6 +101,10 @@ CAPTURE_SECONDS = 600
 REST_INTERVAL_SECONDS = 1
 REST_LIMIT = 1000
 HEARTBEAT_SECONDS = 20
+CLOCK_PREFLIGHT_SECONDS = 60
+CLOCK_PREFLIGHT_SAMPLE_INTERVAL_SECONDS = 0.1
+RAW_WAIT_QUANTUM_SECONDS = 0.25
+HOST_CLOCK_READ_TIMEOUT_SECONDS = 2
 HTTP_TIMEOUT_SECONDS = 10
 WS_OPEN_TIMEOUT_SECONDS = 10
 MAX_REST_RESPONSE_BYTES = 16 * 1024 * 1024
@@ -93,6 +115,18 @@ MIN_UNIQUE_WS_TRADES = 1_000
 MIN_REST_SNAPSHOTS = 10
 MIN_COMMON_IDS = 1_000
 USER_AGENT = "rllm-bybit-live-parity/1.0"
+POWERSHELL_PATH = Path(
+    "/mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe"
+)
+HOST_CLOCK_SCRIPT = """while (($line = [Console]::In.ReadLine()) -ne $null) {
+  if ($line -eq 'q') { break }
+  if ($line -ne 't') { exit 64 }
+  $ticks = [DateTime]::UtcNow.Ticks
+  [Console]::Out.WriteLine($ticks)
+  [Console]::Out.Flush()
+}"""
+HOST_CLOCK_SCRIPT_SHA256 = sha256_bytes(HOST_CLOCK_SCRIPT.encode("utf-8"))
+WINDOWS_UNIX_EPOCH_TICKS = 621_355_968_000_000_000
 TICK_DIRECTIONS = frozenset(
     {"PlusTick", "ZeroPlusTick", "MinusTick", "ZeroMinusTick"}
 )
@@ -158,6 +192,215 @@ class ClockSample:
     monotonic_ns: int
     utc_ns: int
     uncertainty_ns: int
+
+
+class ClockReader(Protocol):
+    provider_id: str
+    monotonic_source: str
+    utc_source: str
+
+    def monotonic_ns(self) -> int: ...
+
+    def utc_ns(self) -> int: ...
+
+
+class ProcessClockReader:
+    """Test-only/default process clocks; production capture never selects these."""
+
+    provider_id = "python_process_clock"
+    monotonic_source = "CLOCK_MONOTONIC"
+    utc_source = "CLOCK_REALTIME"
+
+    def monotonic_ns(self) -> int:
+        return time.monotonic_ns()
+
+    def utc_ns(self) -> int:
+        return time.time_ns()
+
+
+PROCESS_CLOCK = ProcessClockReader()
+
+
+def _pipe_readable(stream: Any, timeout_seconds: float) -> bool:
+    readable, _, _ = select.select([stream], [], [], timeout_seconds)
+    return bool(readable)
+
+
+def _read_pipe_chunk(stream: Any, maximum_bytes: int) -> bytes:
+    return os.read(stream.fileno(), maximum_bytes)
+
+
+def _kernel_release() -> str:
+    return Path("/proc/sys/kernel/osrelease").read_text(encoding="utf-8")
+
+
+class WindowsHostRawClock:
+    """Frozen WSL clock: Windows host UTC bracketed by CLOCK_MONOTONIC_RAW."""
+
+    provider_id = "windows_host_utc_raw_monotonic_v1"
+    monotonic_source = "CLOCK_MONOTONIC_RAW"
+    utc_source = "windows_powershell_datetime_utcnow_ticks"
+
+    def __init__(
+        self,
+        *,
+        popen_factory: Callable[..., Any] = subprocess.Popen,
+        readable: Callable[[Any, float], bool] = _pipe_readable,
+        read_chunk: Callable[[Any, int], bytes] = _read_pipe_chunk,
+        raw_monotonic_ns: Callable[[], int] | None = None,
+        powershell_path: Path = POWERSHELL_PATH,
+        release_reader: Callable[[], str] = _kernel_release,
+    ) -> None:
+        self._popen_factory = popen_factory
+        self._readable = readable
+        self._read_chunk = read_chunk
+        self._raw_monotonic_ns = raw_monotonic_ns or (
+            lambda: time.clock_gettime_ns(time.CLOCK_MONOTONIC_RAW)
+        )
+        self._powershell_path = powershell_path
+        self._release_reader = release_reader
+        self._process: Any | None = None
+        self._warmup_sample: ClockSample | None = None
+        self._utc_reads = 0
+        self._pid: int | None = None
+        self._closed_cleanly = False
+
+    def monotonic_ns(self) -> int:
+        return self._raw_monotonic_ns()
+
+    def utc_ns(self) -> int:
+        process = self._process
+        if process is None or process.poll() is not None:
+            raise ParityCaptureError("Windows host clock process is not running")
+        if process.stdin is None or process.stdout is None:
+            raise ParityCaptureError("Windows host clock pipes are unavailable")
+        try:
+            process.stdin.write(b"t\n")
+            process.stdin.flush()
+        except (BrokenPipeError, OSError) as exc:
+            raise ParityCaptureError("Windows host clock request failed") from exc
+        deadline_ns = (
+            self.monotonic_ns() + HOST_CLOCK_READ_TIMEOUT_SECONDS * 1_000_000_000
+        )
+        raw = bytearray()
+        while b"\n" not in raw:
+            remaining_seconds = (deadline_ns - self.monotonic_ns()) / 1e9
+            if remaining_seconds <= 0 or not self._readable(
+                process.stdout, remaining_seconds
+            ):
+                raise ParityCaptureError("Windows host clock response timed out")
+            try:
+                chunk = self._read_chunk(process.stdout, 128 - len(raw))
+            except OSError as exc:
+                raise ParityCaptureError(
+                    "Windows host clock response read failed"
+                ) from exc
+            if not chunk:
+                raise ParityCaptureError("Windows host clock response reached EOF")
+            raw.extend(chunk)
+            if len(raw) >= 128 and b"\n" not in raw:
+                raise ParityCaptureError("Windows host clock response is oversized")
+        line, separator, suffix = bytes(raw).partition(b"\n")
+        if separator != b"\n" or suffix:
+            raise ParityCaptureError("Windows host clock response framing differs")
+        token = line.strip()
+        if not token.isascii() or not token.isdigit() or len(token) > 32:
+            raise ParityCaptureError("Windows host clock response is malformed")
+        ticks = int(token)
+        if ticks <= WINDOWS_UNIX_EPOCH_TICKS:
+            raise ParityCaptureError("Windows host clock response is nonpositive")
+        value = (ticks - WINDOWS_UNIX_EPOCH_TICKS) * 100
+        self._utc_reads += 1
+        return value
+
+    def start(self) -> None:
+        if self._process is not None:
+            raise ParityCaptureError("Windows host clock process started twice")
+        if not hasattr(time, "CLOCK_MONOTONIC_RAW"):
+            raise ParityCaptureError("CLOCK_MONOTONIC_RAW is unavailable")
+        release = self._release_reader().lower()
+        if "microsoft" not in release or not self._powershell_path.is_file():
+            raise ParityCaptureError("frozen WSL Windows host clock is unavailable")
+        process = self._popen_factory(
+            [
+                str(self._powershell_path),
+                "-NoLogo",
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                HOST_CLOCK_SCRIPT,
+            ],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            shell=False,
+            bufsize=0,
+        )
+        self._process = process
+        self._pid = process.pid
+        self._warmup_sample = _local_clock_sample("clock_provider_warmup", 1, self)
+        if self._warmup_sample.uncertainty_ns < 0:
+            raise ParityCaptureError("Windows host clock warmup was invalid")
+        _utc_datetime_from_ns(self._warmup_sample.utc_ns)
+
+    def close(self) -> None:
+        process = self._process
+        if process is None:
+            raise ParityCaptureError("Windows host clock process was never started")
+        error: Exception | None = None
+        try:
+            if process.poll() is None:
+                if process.stdin is None:
+                    raise ParityCaptureError("Windows host clock stdin is unavailable")
+                process.stdin.write(b"q\n")
+                process.stdin.flush()
+            return_code = process.wait(timeout=5)
+            if return_code != 0:
+                raise ParityCaptureError(
+                    f"Windows host clock exited with status {return_code}"
+                )
+        except Exception as exc:
+            error = exc
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=5)
+        finally:
+            self._closed_cleanly = error is None
+            for stream in (process.stdin, process.stdout):
+                close_stream = getattr(stream, "close", None)
+                if close_stream is not None:
+                    try:
+                        close_stream()
+                    except OSError as exc:
+                        self._closed_cleanly = False
+                        if error is None:
+                            error = exc
+        if error is not None:
+            raise ParityCaptureError("Windows host clock close failed") from error
+
+    def metadata(self) -> dict[str, Any]:
+        warmup = self._warmup_sample
+        return {
+            "provider_id": self.provider_id,
+            "monotonic_source": self.monotonic_source,
+            "utc_source": self.utc_source,
+            "powershell_path": str(self._powershell_path),
+            "powershell_script_sha256": HOST_CLOCK_SCRIPT_SHA256,
+            "shell": False,
+            "process_pid": self._pid,
+            "utc_reads": self._utc_reads,
+            "warmup_sample": (
+                {
+                    "monotonic_ns": warmup.monotonic_ns,
+                    "utc_ns": warmup.utc_ns,
+                    "uncertainty_ns": warmup.uncertainty_ns,
+                }
+                if warmup is not None
+                else None
+            ),
+            "closed_cleanly": self._closed_cleanly,
+            "fallback_used": False,
+        }
 
 
 @dataclass(frozen=True)
@@ -231,10 +474,14 @@ def _utc_iso_from_ns(utc_ns: int) -> str:
     return f"{prefix}.{nanoseconds:09d}Z"
 
 
-def _local_clock_sample(source: str, ordinal: int) -> ClockSample:
-    before = time.monotonic_ns()
-    utc_ns = time.time_ns()
-    after = time.monotonic_ns()
+def _local_clock_sample(
+    source: str,
+    ordinal: int,
+    clock: ClockReader = PROCESS_CLOCK,
+) -> ClockSample:
+    before = clock.monotonic_ns()
+    utc_ns = clock.utc_ns()
+    after = clock.monotonic_ns()
     if after < before:
         return ClockSample(
             source=source,
@@ -252,6 +499,126 @@ def _local_clock_sample(source: str, ordinal: int) -> ClockSample:
     )
 
 
+def evaluate_clock_preflight(
+    samples: Sequence[ClockSample],
+    *,
+    probe_started_monotonic_ns: int,
+    probe_ended_monotonic_ns: int,
+    required_duration_ns: int,
+) -> dict[str, Any]:
+    ordered = sorted(samples, key=lambda sample: sample.monotonic_ns)
+    reversals = 0
+    nonincreasing = 0
+    maximum_disagreement_ns = 0
+    for previous, current in zip(ordered, ordered[1:]):
+        monotonic_delta = current.monotonic_ns - previous.monotonic_ns
+        utc_delta = current.utc_ns - previous.utc_ns
+        reversals += utc_delta < 0
+        nonincreasing += monotonic_delta <= 0
+        maximum_disagreement_ns = max(
+            maximum_disagreement_ns,
+            abs(utc_delta - monotonic_delta),
+        )
+    ordinals_complete = [sample.ordinal for sample in samples] == list(
+        range(1, len(samples) + 1)
+    ) and all(sample.source == "clock_provider_preflight" for sample in samples)
+    invalid_uncertainty = sum(sample.uncertainty_ns < 0 for sample in samples)
+    try:
+        utc_days = {
+            _utc_datetime_from_ns(sample.utc_ns).date().isoformat()
+            for sample in samples
+        }
+    except (OSError, OverflowError, ValueError):
+        utc_days = set()
+    probe_elapsed_ns = probe_ended_monotonic_ns - probe_started_monotonic_ns
+    sample_elapsed_ns = (
+        ordered[-1].monotonic_ns - ordered[0].monotonic_ns
+        if len(ordered) >= 2
+        else 0
+    )
+    utc_elapsed_ns = (
+        ordered[-1].utc_ns - ordered[0].utc_ns if len(ordered) >= 2 else 0
+    )
+    checks = {
+        "minimum_two_samples": len(samples) >= 2,
+        "required_raw_duration_elapsed": probe_elapsed_ns >= required_duration_ns,
+        "sample_ordinals_complete": ordinals_complete,
+        "raw_monotonic_strictly_increasing": nonincreasing == 0,
+        "host_utc_nonreversing": reversals == 0,
+        "sampling_uncertainty_valid": invalid_uncertainty == 0,
+        "single_utc_day": len(utc_days) == 1,
+    }
+    ledger_rows = [
+        {
+            "source": sample.source,
+            "ordinal": sample.ordinal,
+            "monotonic_ns": sample.monotonic_ns,
+            "utc_ns": sample.utc_ns,
+            "uncertainty_ns": sample.uncertainty_ns,
+        }
+        for sample in samples
+    ]
+    return {
+        "decision": "PASS" if all(checks.values()) else "REJECT_NO_NETWORK",
+        "checks": checks,
+        "failures": [name for name, passed in checks.items() if not passed],
+        "samples": len(samples),
+        "probe_elapsed_ns": probe_elapsed_ns,
+        "required_duration_ns": required_duration_ns,
+        "sample_elapsed_ns": sample_elapsed_ns,
+        "utc_elapsed_ns": utc_elapsed_ns,
+        "elapsed_disagreement_ns": utc_elapsed_ns - sample_elapsed_ns,
+        "utc_reversal_count": reversals,
+        "nonincreasing_monotonic_count": nonincreasing,
+        "invalid_sampling_uncertainty_count": invalid_uncertainty,
+        "maximum_adjacent_clock_disagreement_ns": maximum_disagreement_ns,
+        "maximum_sampling_uncertainty_ns": max(
+            (sample.uncertainty_ns for sample in samples), default=0
+        ),
+        "utc_days": sorted(utc_days),
+        "clock_ledger_hash": sha256_bytes(
+            canonical_json(ledger_rows).rstrip(b"\n")
+        ),
+    }
+
+
+def run_clock_preflight(
+    clock: ClockReader,
+    *,
+    duration_ns: int = CLOCK_PREFLIGHT_SECONDS * 1_000_000_000,
+    sample_interval_seconds: float = CLOCK_PREFLIGHT_SAMPLE_INTERVAL_SECONDS,
+    sleep: Callable[[float], None] = time.sleep,
+) -> dict[str, Any]:
+    if duration_ns <= 0 or sample_interval_seconds <= 0:
+        raise ParityCaptureError("clock preflight bounds must be positive")
+    probe_started = clock.monotonic_ns()
+    deadline = probe_started + duration_ns
+    samples: list[ClockSample] = []
+    while clock.monotonic_ns() < deadline:
+        samples.append(
+            _local_clock_sample(
+                "clock_provider_preflight",
+                len(samples) + 1,
+                clock,
+            )
+        )
+        remaining_seconds = (deadline - clock.monotonic_ns()) / 1e9
+        if remaining_seconds > 0:
+            sleep(min(sample_interval_seconds, remaining_seconds))
+    probe_ended = clock.monotonic_ns()
+    report = evaluate_clock_preflight(
+        samples,
+        probe_started_monotonic_ns=probe_started,
+        probe_ended_monotonic_ns=probe_ended,
+        required_duration_ns=duration_ns,
+    )
+    if report["decision"] != "PASS":
+        raise ParityCaptureError(
+            "Windows host/raw-monotonic clock preflight rejected before network"
+        )
+    return report
+
+
 def validate_bindings() -> None:
     if sha256_file(CONTRACT_PATH) != CONTRACT_SHA256:
         raise ParityCaptureError("live-parity contract hash differs")
@@ -263,6 +630,10 @@ def validate_bindings() -> None:
         raise ParityCaptureError("v1 live-capture invalidation hash differs")
     if sha256_file(V1_INVALID_ARTIFACT_PATH) != V1_INVALID_ARTIFACT_SHA256:
         raise ParityCaptureError("v1 invalid capture artifact hash differs")
+    if sha256_file(CLOCK_CORRECTION_PATH) != CLOCK_CORRECTION_SHA256:
+        raise ParityCaptureError("clock-source correction hash differs")
+    if sha256_file(CLOCK_PREFLIGHT_RESULT_PATH) != CLOCK_PREFLIGHT_RESULT_SHA256:
+        raise ParityCaptureError("clock-source preflight result hash differs")
     source_result = json.loads(_repo_path(SOURCE_RESULT_PATH).read_text())
     if (
         source_result.get("decision") != "SOURCE_FEASIBILITY_PASS"
@@ -270,6 +641,14 @@ def validate_bindings() -> None:
         != SOURCE_RESULT_MANIFEST_HASH
     ):
         raise ParityCaptureError("source-feasibility pass binding differs")
+    clock_result = json.loads(_repo_path(CLOCK_PREFLIGHT_RESULT_PATH).read_text())
+    if (
+        clock_result.get("decision")
+        != "PROCESS_REALTIME_REJECT_HOST_RAW_BRIDGE_FEASIBLE"
+        or clock_result.get("manifest_hash_without_self")
+        != CLOCK_PREFLIGHT_RESULT_MANIFEST_HASH
+    ):
+        raise ParityCaptureError("clock-source preflight binding differs")
 
 
 def enforce_disk_guard() -> int:
@@ -840,6 +1219,66 @@ def _record_ws_message(
     return kind, trades
 
 
+def _record_ws_clock_error(
+    state: CaptureState,
+    handle: Any,
+    raw: bytes,
+    *,
+    frame_type: Literal["text", "binary"],
+    error: Exception,
+) -> None:
+    state.raw_bytes += len(raw)
+    state.ws_messages += 1
+    _write_raw_line(
+        handle,
+        {
+            "ordinal": state.ws_messages,
+            "receipt_utc_ns": None,
+            "receipt_monotonic_ns": None,
+            "receipt_clock_uncertainty_ns": None,
+            "frame_type": frame_type,
+            "raw_frame_sha256": sha256_bytes(raw),
+            "raw_frame_base64": base64.b64encode(raw).decode("ascii"),
+            "clock_error_type": type(error).__name__,
+            "clock_error_message": str(error)[:1_000],
+        },
+    )
+    if state.raw_bytes > MAX_CAPTURE_RAW_BYTES:
+        raise ParityCaptureError("capture raw bytes exceed frozen bound")
+
+
+def _sample_and_record_ws_message(
+    state: CaptureState,
+    handle: Any,
+    raw: bytes,
+    frame_type: Literal["text", "binary"],
+    clock: ClockReader,
+) -> tuple[str, tuple[NormalizedTrade, ...], ClockSample]:
+    try:
+        receipt = _local_clock_sample(
+            "websocket_receipt", state.ws_messages + 1, clock
+        )
+    except Exception as exc:
+        _record_ws_clock_error(
+            state,
+            handle,
+            raw,
+            frame_type=frame_type,
+            error=exc,
+        )
+        raise
+    kind, trades = _record_ws_message(
+        state,
+        handle,
+        raw,
+        receipt.utc_ns,
+        receipt.monotonic_ns,
+        receipt.uncertainty_ns,
+        frame_type,
+    )
+    return kind, trades, receipt
+
+
 def _begin_rest_attempt(
     state: CaptureState,
     handle: Any,
@@ -903,6 +1342,75 @@ def _record_rest_transport_error(
         },
     )
     _complete_rest_clock(state, ordinal, end)
+
+
+def _record_rest_transport_clock_error(
+    state: CaptureState,
+    handle: Any,
+    *,
+    ordinal: int,
+    transport_error: Exception,
+    clock_error: Exception,
+) -> None:
+    _write_raw_line(
+        handle,
+        {
+            "record_type": "transport_error_clock_error",
+            "ordinal": ordinal,
+            "response_end_utc_ns": None,
+            "response_end_monotonic_ns": None,
+            "response_end_clock_uncertainty_ns": None,
+            "error_type": type(transport_error).__name__,
+            "error_message": str(transport_error)[:1_000],
+            "clock_error_type": type(clock_error).__name__,
+            "clock_error_message": str(clock_error)[:1_000],
+        },
+    )
+
+
+def _record_rest_response_clock_error(
+    state: CaptureState,
+    handle: Any,
+    response: RestTransportResponse,
+    *,
+    ordinal: int,
+    start: ClockSample,
+    final: bool,
+    clock_error: Exception,
+) -> None:
+    state.raw_bytes += len(response.raw)
+    _write_raw_line(
+        handle,
+        {
+            "record_type": "response_clock_error",
+            "ordinal": ordinal,
+            "final": final,
+            "request_clock_source": start.source,
+            "request_clock_ordinal": start.ordinal,
+            "response_clock_source": None,
+            "response_clock_ordinal": None,
+            "request_start_utc_ns": start.utc_ns,
+            "request_start_monotonic_ns": start.monotonic_ns,
+            "response_end_utc_ns": None,
+            "response_end_monotonic_ns": None,
+            "request_start_clock_uncertainty_ns": start.uncertainty_ns,
+            "response_end_clock_uncertainty_ns": None,
+            "http_status": response.status,
+            "final_url": response.final_url,
+            "content_type": response.content_type,
+            "location": response.location,
+            "raw_body_complete": len(response.raw) <= MAX_REST_RESPONSE_BYTES,
+            "raw_json_sha256": sha256_bytes(response.raw),
+            "raw_json_base64": base64.b64encode(response.raw).decode("ascii"),
+            "clock_error_type": type(clock_error).__name__,
+            "clock_error_message": str(clock_error)[:1_000],
+        },
+    )
+    state.rest_responses_audited += 1
+    if len(response.raw) > MAX_REST_RESPONSE_BYTES:
+        raise ParityCaptureError("REST response exceeds frozen byte bound")
+    if state.raw_bytes > MAX_CAPTURE_RAW_BYTES:
+        raise ParityCaptureError("capture raw bytes exceed frozen bound")
 
 
 def _record_rest_response(
@@ -972,15 +1480,26 @@ async def _fetch_and_record_rest(
     *,
     final: bool,
     fetch: FetchRest,
+    clock: ClockReader = PROCESS_CLOCK,
 ) -> RestSnapshot:
     enforce_disk_guard()
     ordinal = state.rest_attempts_started + 1
-    start = _local_clock_sample("rest_request_start", ordinal)
+    start = _local_clock_sample("rest_request_start", ordinal, clock)
     _begin_rest_attempt(state, handle, start)
     try:
         response = await asyncio.to_thread(fetch)
     except Exception as exc:
-        end = _local_clock_sample("rest_response_end", ordinal)
+        try:
+            end = _local_clock_sample("rest_response_end", ordinal, clock)
+        except Exception as clock_exc:
+            _record_rest_transport_clock_error(
+                state,
+                handle,
+                ordinal=ordinal,
+                transport_error=exc,
+                clock_error=clock_exc,
+            )
+            raise clock_exc from exc
         _record_rest_transport_error(
             state,
             handle,
@@ -989,7 +1508,19 @@ async def _fetch_and_record_rest(
             error=exc,
         )
         raise
-    end = _local_clock_sample("rest_response_end", ordinal)
+    try:
+        end = _local_clock_sample("rest_response_end", ordinal, clock)
+    except Exception as exc:
+        _record_rest_response_clock_error(
+            state,
+            handle,
+            response,
+            ordinal=ordinal,
+            start=start,
+            final=final,
+            clock_error=exc,
+        )
+        raise
     return _record_rest_response(
         state,
         handle,
@@ -1001,14 +1532,61 @@ async def _fetch_and_record_rest(
     )
 
 
-async def _heartbeat(socket: Any, deadline_ns: int) -> None:
+async def _wait_until_clock(
+    clock: ClockReader,
+    deadline_ns: int,
+    *,
+    stop: asyncio.Event | None = None,
+) -> bool:
+    """Wait on asyncio's clock while gating completion on the frozen clock."""
+
     while True:
-        remaining = (deadline_ns - time.monotonic_ns()) / 1e9
+        remaining = (deadline_ns - clock.monotonic_ns()) / 1e9
         if remaining <= 0:
+            return False
+        timeout = min(remaining, RAW_WAIT_QUANTUM_SECONDS)
+        if stop is None:
+            await asyncio.sleep(timeout)
+            continue
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=timeout)
+            return True
+        except asyncio.TimeoutError:
+            continue
+
+
+async def _recv_until_clock(socket: Any, clock: ClockReader, deadline_ns: int) -> Any:
+    receive_task = asyncio.create_task(socket.recv())
+    try:
+        while True:
+            remaining = (deadline_ns - clock.monotonic_ns()) / 1e9
+            if remaining <= 0:
+                return None
+            done, _ = await asyncio.wait(
+                {receive_task},
+                timeout=min(remaining, RAW_WAIT_QUANTUM_SECONDS),
+            )
+            if receive_task in done:
+                return receive_task.result()
+    finally:
+        if not receive_task.done():
+            receive_task.cancel()
+        await asyncio.gather(receive_task, return_exceptions=True)
+
+
+async def _heartbeat(
+    socket: Any,
+    deadline_ns: int,
+    clock: ClockReader = PROCESS_CLOCK,
+) -> None:
+    interval_ns = HEARTBEAT_SECONDS * 1_000_000_000
+    next_due_ns = clock.monotonic_ns() + interval_ns
+    while next_due_ns < deadline_ns:
+        await _wait_until_clock(clock, next_due_ns)
+        if clock.monotonic_ns() >= deadline_ns:
             return
-        await asyncio.sleep(min(HEARTBEAT_SECONDS, remaining))
-        if time.monotonic_ns() < deadline_ns:
-            await socket.send(json.dumps({"op": "ping"}, separators=(",", ":")))
+        await socket.send(json.dumps({"op": "ping"}, separators=(",", ":")))
+        next_due_ns += interval_ns
 
 
 async def _rest_poller(
@@ -1018,20 +1596,22 @@ async def _rest_poller(
     stop: asyncio.Event,
     *,
     fetch: FetchRest,
+    clock: ClockReader = PROCESS_CLOCK,
 ) -> None:
-    next_due_ns = time.monotonic_ns()
+    next_due_ns = clock.monotonic_ns()
     interval_ns = REST_INTERVAL_SECONDS * 1_000_000_000
     while next_due_ns < deadline_ns and not stop.is_set():
-        remaining = (next_due_ns - time.monotonic_ns()) / 1e9
-        if remaining > 0:
-            try:
-                await asyncio.wait_for(stop.wait(), timeout=remaining)
-                return
-            except asyncio.TimeoutError:
-                pass
+        if await _wait_until_clock(clock, next_due_ns, stop=stop):
+            return
         if stop.is_set():
             return
-        await _fetch_and_record_rest(state, handle, final=False, fetch=fetch)
+        await _fetch_and_record_rest(
+            state,
+            handle,
+            final=False,
+            fetch=fetch,
+            clock=clock,
+        )
         next_due_ns += interval_ns
 
 
@@ -1041,6 +1621,7 @@ async def _capture_network(
     rest_handle: Any,
     *,
     fetch: FetchRest = fetch_rest,
+    clock: ClockReader = PROCESS_CLOCK,
 ) -> None:
     from websockets.asyncio.client import connect
     from websockets.exceptions import SecurityError
@@ -1079,15 +1660,12 @@ async def _capture_network(
                 frame_type = "binary"
             else:
                 raise ParityCaptureError("WebSocket frame type is unsupported")
-            receipt = _local_clock_sample("websocket_receipt", state.ws_messages + 1)
-            kind, _ = _record_ws_message(
+            kind, _, receipt = _sample_and_record_ws_message(
                 state,
                 ws_handle,
                 raw,
-                receipt.utc_ns,
-                receipt.monotonic_ns,
-                receipt.uncertainty_ns,
                 frame_type,
+                clock,
             )
             if kind == "trade":
                 if state.ws_subscription_acks != 1:
@@ -1101,17 +1679,20 @@ async def _capture_network(
         deadline_ns = state.first_trade_monotonic_ns + CAPTURE_SECONDS * 1_000_000_000
         stop_rest = asyncio.Event()
         rest_task = asyncio.create_task(
-            _rest_poller(state, rest_handle, deadline_ns, stop_rest, fetch=fetch)
+            _rest_poller(
+                state,
+                rest_handle,
+                deadline_ns,
+                stop_rest,
+                fetch=fetch,
+                clock=clock,
+            )
         )
-        heartbeat_task = asyncio.create_task(_heartbeat(socket, deadline_ns))
+        heartbeat_task = asyncio.create_task(_heartbeat(socket, deadline_ns, clock))
         try:
             while True:
-                remaining = (deadline_ns - time.monotonic_ns()) / 1e9
-                if remaining <= 0:
-                    break
-                try:
-                    message = await asyncio.wait_for(socket.recv(), timeout=remaining)
-                except asyncio.TimeoutError:
+                message = await _recv_until_clock(socket, clock, deadline_ns)
+                if message is None:
                     break
                 if isinstance(message, str):
                     raw = message.encode("utf-8")
@@ -1121,17 +1702,12 @@ async def _capture_network(
                     frame_type = "binary"
                 else:
                     raise ParityCaptureError("WebSocket frame type is unsupported")
-                receipt = _local_clock_sample(
-                    "websocket_receipt", state.ws_messages + 1
-                )
-                kind, _ = _record_ws_message(
+                kind, _, _ = _sample_and_record_ws_message(
                     state,
                     ws_handle,
                     raw,
-                    receipt.utc_ns,
-                    receipt.monotonic_ns,
-                    receipt.uncertainty_ns,
                     frame_type,
+                    clock,
                 )
                 if kind == "subscribe":
                     raise ParityCaptureError("duplicate WebSocket subscription ack")
@@ -1145,7 +1721,13 @@ async def _capture_network(
                 heartbeat_task.cancel()
             await asyncio.gather(heartbeat_task, return_exceptions=True)
 
-    await _fetch_and_record_rest(state, rest_handle, final=True, fetch=fetch)
+    await _fetch_and_record_rest(
+        state,
+        rest_handle,
+        final=True,
+        fetch=fetch,
+        clock=clock,
+    )
 
 
 def _artifact_metadata(path: Path) -> dict[str, Any]:
@@ -1163,7 +1745,28 @@ def build_manifest(
     disk_used_gib_before_capture: int,
     ws_path: Path,
     rest_path: Path,
+    clock_metadata: Mapping[str, Any],
+    clock_preflight: Mapping[str, Any],
 ) -> dict[str, Any]:
+    provider_binding_passed = (
+        clock_metadata.get("provider_id")
+        == WindowsHostRawClock.provider_id
+        and clock_metadata.get("monotonic_source")
+        == WindowsHostRawClock.monotonic_source
+        and clock_metadata.get("utc_source") == WindowsHostRawClock.utc_source
+        and clock_metadata.get("powershell_path") == str(POWERSHELL_PATH)
+        and clock_metadata.get("powershell_script_sha256")
+        == HOST_CLOCK_SCRIPT_SHA256
+        and clock_metadata.get("shell") is False
+        and clock_metadata.get("fallback_used") is False
+        and clock_metadata.get("warmup_sample") is not None
+    )
+    if not provider_binding_passed or clock_preflight.get("decision") != "PASS":
+        raise ParityCaptureError("capture clock provider manifest binding differs")
+    if parity["decision"].startswith("REST_WS_PARITY_PASS") and not clock_metadata.get(
+        "closed_cleanly"
+    ):
+        raise ParityCaptureError("passing manifest requires clean clock-provider close")
     manifest: dict[str, Any] = {
         "protocol_version": PROTOCOL_VERSION,
         "decision": parity["decision"],
@@ -1181,7 +1784,10 @@ def build_manifest(
             "reconnects": 0,
             "capture_seconds": CAPTURE_SECONDS,
             "heartbeat_seconds": HEARTBEAT_SECONDS,
+            "deadline_clock": clock_metadata["monotonic_source"],
         },
+        "clock_provider": dict(clock_metadata),
+        "clock_preflight": dict(clock_preflight),
         "capture": {
             "ws_messages": state.ws_messages,
             "ws_subscription_acks": state.ws_subscription_acks,
@@ -1234,6 +1840,13 @@ def build_manifest(
             "v1_invalidation_sha256": V1_INVALIDATION_SHA256,
             "v1_invalid_artifact_path": str(V1_INVALID_ARTIFACT_PATH),
             "v1_invalid_artifact_sha256": V1_INVALID_ARTIFACT_SHA256,
+            "clock_correction_path": str(CLOCK_CORRECTION_PATH),
+            "clock_correction_sha256": CLOCK_CORRECTION_SHA256,
+            "clock_preflight_result_path": str(CLOCK_PREFLIGHT_RESULT_PATH),
+            "clock_preflight_result_sha256": CLOCK_PREFLIGHT_RESULT_SHA256,
+            "clock_preflight_result_manifest_hash": (
+                CLOCK_PREFLIGHT_RESULT_MANIFEST_HASH
+            ),
             "capture_script_path": str(SCRIPT_PATH),
             "capture_script_sha256": sha256_file(SCRIPT_PATH),
         },
@@ -1262,13 +1875,35 @@ def write_manifest(path: Path, manifest: Mapping[str, Any]) -> None:
     temporary.replace(path)
 
 
+def _merge_runtime_error(
+    current: Exception | None, additional: Exception
+) -> Exception:
+    if current is None:
+        return additional
+    return ParityCaptureError(
+        f"{type(current).__name__}: {str(current)[:400]} | "
+        f"{type(additional).__name__}: {str(additional)[:400]}"
+    )
+
+
 def run_capture() -> tuple[Path, dict[str, Any]]:
     validate_bindings()
-    disk_before = enforce_disk_guard()
-    capture_start = _local_clock_sample("capture_start", 1)
-    now = _utc_datetime_from_ns(capture_start.utc_ns)
-    output_dir = _capture_output_dir(now)
-    output_dir.mkdir(parents=True, exist_ok=False)
+    enforce_disk_guard()
+    clock = WindowsHostRawClock()
+    try:
+        clock.start()
+        clock_preflight = run_clock_preflight(clock)
+        disk_before = enforce_disk_guard()
+        capture_start = _local_clock_sample("capture_start", 1, clock)
+        now = _utc_datetime_from_ns(capture_start.utc_ns)
+        output_dir = _capture_output_dir(now)
+        output_dir.mkdir(parents=True, exist_ok=False)
+    except Exception:
+        try:
+            clock.close()
+        except Exception:
+            pass
+        raise
     state = CaptureState(
         capture_day=now.date().isoformat(),
         started_at_utc=_utc_iso_from_ns(capture_start.utc_ns),
@@ -1278,16 +1913,31 @@ def run_capture() -> tuple[Path, dict[str, Any]]:
     ws_path = output_dir / "websocket_messages.ndjson.gz"
     rest_path = output_dir / "rest_responses.ndjson.gz"
     runtime_error: Exception | None = None
-    with gzip.open(ws_path, "wb", compresslevel=6) as ws_handle, gzip.open(
-        rest_path, "wb", compresslevel=6
-    ) as rest_handle:
-        try:
-            asyncio.run(_capture_network(state, ws_handle, rest_handle))
-        except Exception as exc:  # The immutable failure manifest is the audit trail.
-            runtime_error = exc
-    capture_end = _local_clock_sample("capture_end", 1)
-    state.clock_samples.append(capture_end)
-    state.ended_at_utc = _utc_iso_from_ns(capture_end.utc_ns)
+    try:
+        with gzip.open(ws_path, "wb", compresslevel=6) as ws_handle, gzip.open(
+            rest_path, "wb", compresslevel=6
+        ) as rest_handle:
+            asyncio.run(
+                _capture_network(
+                    state,
+                    ws_handle,
+                    rest_handle,
+                    clock=clock,
+                )
+            )
+    except Exception as exc:  # The immutable failure manifest is the audit trail.
+        runtime_error = exc
+    try:
+        capture_end = _local_clock_sample("capture_end", 1, clock)
+        state.clock_samples.append(capture_end)
+        state.ended_at_utc = _utc_iso_from_ns(capture_end.utc_ns)
+    except Exception as exc:
+        runtime_error = _merge_runtime_error(runtime_error, exc)
+    try:
+        clock.close()
+    except Exception as exc:
+        runtime_error = _merge_runtime_error(runtime_error, exc)
+    clock_metadata = clock.metadata()
     clock_integrity = evaluate_clock_integrity(
         state.clock_samples,
         ClockLedgerExpectation(
@@ -1318,6 +1968,8 @@ def run_capture() -> tuple[Path, dict[str, Any]]:
         disk_used_gib_before_capture=disk_before,
         ws_path=ws_path,
         rest_path=rest_path,
+        clock_metadata=clock_metadata,
+        clock_preflight=clock_preflight,
     )
     manifest_path = output_dir / "manifest.json"
     write_manifest(manifest_path, manifest)
