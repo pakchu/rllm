@@ -13,14 +13,14 @@ from typing import Any, Mapping, Sequence
 
 
 POLICY_ID = "RQHR-72"
-PROTOCOL_VERSION = "radial_quote_handoff_relay_preregistration_v1"
+PROTOCOL_VERSION = "radial_quote_handoff_relay_preregistration_v2"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = Path("training/preregister_radial_quote_handoff_relay.py")
 MECHANISM_DECISION = Path(
     "docs/radial-quote-handoff-relay-mechanism-decision-2026-07-23.md"
 )
 MECHANISM_DECISION_SHA256 = (
-    "0b42b726df121b265c5e6780db24098b44d8d6ff11cd3967cf05ca8ed0b38ea6"
+    "8fb17aef3599c6ef187d561210b73984c61cc0c067b9c79d7803d350987de5d2"
 )
 COMMON_WINDOW_POLICY = Path(
     "docs/novelty-comparator-common-window-policy-2026-07-23.md"
@@ -29,7 +29,13 @@ COMMON_WINDOW_POLICY_SHA256 = (
     "928bce6e04fb34001478b4b4ea84156580b661c88a0f0338065a891c009bd580"
 )
 DEFAULT_OUTPUT = Path(
+    "results/radial_quote_handoff_relay_preregistration_v2_2026-07-23.json"
+)
+SUPERSEDED_V1_ARTIFACT = Path(
     "results/radial_quote_handoff_relay_preregistration_2026-07-23.json"
+)
+SUPERSEDED_V1_ARTIFACT_SHA256 = (
+    "cecc1e7d77913e5cb0c0e2f6d16775289b18e9f31e6dbfddcb24a605c522da77"
 )
 
 SOURCE_PANEL = Path(
@@ -75,6 +81,11 @@ RQHR_COLUMNS = (
 )
 
 HISTORY_BINDINGS: tuple[Mapping[str, Any], ...] = (
+    {
+        "name": "superseded_v1_machine_preregistration",
+        "path": SUPERSEDED_V1_ARTIFACT,
+        "sha256": SUPERSEDED_V1_ARTIFACT_SHA256,
+    },
     {
         "name": "source_axis_decision",
         "path": Path("docs/btc-alpha-source-axis-decision-2026-07-20.md"),
@@ -172,9 +183,15 @@ COMPARATOR_SPECS: tuple[Mapping[str, Any], ...] = (
             "hold_bars",
         ],
         "producer": Path(
-            "training/preregister_cross_collateral_liquidity_credibility_fracture.py"
+            "training/preregister_radial_liquidity_wavefront_cascade.py"
         ),
         "producer_sha256": (
+            "9f94706ef05750bc08ce7ef56672512ff7d245a31f830ae1064d1d1c2b02a7a9"
+        ),
+        "replay_source": Path(
+            "training/preregister_cross_collateral_liquidity_credibility_fracture.py"
+        ),
+        "replay_source_sha256": (
             "8947050c990b5638f6d8b2e952f252289ddef6c92f85fb13f75001fe721e6e28"
         ),
         "dependency": Path(
@@ -185,7 +202,10 @@ COMPARATOR_SPECS: tuple[Mapping[str, Any], ...] = (
             "9a3001db640ec8041d885645d33f11dd6075276685eb22f8ae3c618363d3099a"
         ),
         "parser": "replay exact PDF-10 support clock and validate every row",
-        "canonical_projection": "ordered signal_position and numeric side",
+        "canonical_projection": (
+            "ordered signal_position, entry_position, exit_position, numeric "
+            "side, branch, and hold_bars"
+        ),
     },
     {
         "group": "crrc:primary",
@@ -242,6 +262,12 @@ PRIOR_RESEARCH_DISCLOSURE: Mapping[str, Any] = {
     "rqhr_comparator_overlap_opened": False,
     "average_quote_source_market_outcomes_opened": False,
     "prior_comparator_timing_rows_partially_opened_for_validation": True,
+    "v1_machine_preregistration_superseded_before_incidence": True,
+    "v1_machine_preregistration_path": str(SUPERSEDED_V1_ARTIFACT),
+    "v1_machine_preregistration_sha256": SUPERSEDED_V1_ARTIFACT_SHA256,
+    "v1_supersession_reason": (
+        "PDF-10 canonical clock is six fields, not the v1 two-field description"
+    ),
 }
 
 EXPECTED_OUTCOME_BOUNDARY: Mapping[str, Any] = {
@@ -295,6 +321,11 @@ def _repository_path(path: str | Path) -> Path:
     except ValueError as exc:
         raise RuntimeError("RQHR path must remain repository-relative") from exc
     return resolved
+
+
+def _validate_output_path(path: str | Path) -> None:
+    if _repository_path(path) == _repository_path(SUPERSEDED_V1_ARTIFACT):
+        raise RuntimeError("RQHR v1 preregistration path is permanently reserved")
 
 
 def sha256_file(path: str | Path) -> str:
@@ -823,6 +854,18 @@ def _comparator_bindings(*, verify: bool) -> list[dict[str, Any]]:
             )
             row["dependency"] = str(spec["dependency"])
             row["dependency_sha256"] = dependency_hash
+        if "replay_source" in spec:
+            replay_hash = (
+                _verify_hash(
+                    spec["replay_source"],
+                    spec["replay_source_sha256"],
+                    f"{spec['group']} replay source",
+                )
+                if verify
+                else spec["replay_source_sha256"]
+            )
+            row["replay_source"] = str(spec["replay_source"])
+            row["replay_source_sha256"] = replay_hash
         output.append(row)
     return output
 
@@ -854,6 +897,12 @@ def build_preregistration(*, verify_sources: bool = True) -> dict[str, Any]:
         "mechanism_decision": {
             "path": str(MECHANISM_DECISION),
             "sha256": MECHANISM_DECISION_SHA256,
+        },
+        "supersedes": {
+            "path": str(SUPERSEDED_V1_ARTIFACT),
+            "sha256": SUPERSEDED_V1_ARTIFACT_SHA256,
+            "before_rqhr_incidence": True,
+            "reason": PRIOR_RESEARCH_DISCLOSURE["v1_supersession_reason"],
         },
         "common_window_policy": {
             "path": str(COMMON_WINDOW_POLICY),
@@ -893,6 +942,10 @@ def build_preregistration(*, verify_sources: bool = True) -> dict[str, Any]:
 def validate_preregistration(
     payload: Mapping[str, Any], *, verify_sources: bool = True
 ) -> None:
+    config = payload.get("config")
+    if not isinstance(config, Mapping) or not isinstance(config.get("output"), str):
+        raise RuntimeError("RQHR preregistration config drift")
+    _validate_output_path(config["output"])
     if payload.get("candidate") != POLICY_ID:
         raise RuntimeError("RQHR candidate identity drift")
     if payload.get("policy") != policy_payload():
@@ -973,6 +1026,7 @@ def _atomic_write(path: Path, payload: Mapping[str, Any]) -> None:
 
 
 def write_preregistration(cfg: Config = Config()) -> tuple[dict[str, Any], str]:
+    _validate_output_path(cfg.output)
     output = _repository_path(cfg.output)
     payload = build_preregistration()
     payload["config"] = asdict(cfg)
