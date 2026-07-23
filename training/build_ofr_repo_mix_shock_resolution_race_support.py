@@ -112,7 +112,7 @@ class SourceRow:
     observation_date: date
     available_at: datetime
     value: Fraction | None
-    disclosure_edit: str = ""
+    disclosure_edit: bool = False
 
 
 @dataclass(frozen=True)
@@ -305,12 +305,15 @@ def load_source() -> tuple[dict[date, dict[str, SourceRow]], int, int]:
                 raise RuntimeError("RMSR source availability changed")
             if mnemonic in by_date[observation_day]:
                 raise RuntimeError("duplicate RMSR required source row")
+            disclosure_text = raw["disclosure_edit"].strip()
+            if disclosure_text not in {"0", "1"}:
+                raise RuntimeError("RMSR disclosure-edit flag changed")
             by_date[observation_day][mnemonic] = SourceRow(
                 mnemonic=mnemonic,
                 observation_date=observation_day,
                 available_at=available_at,
                 value=_fraction(raw["value"], f"{mnemonic} value", optional=True),
-                disclosure_edit=raw["disclosure_edit"].strip(),
+                disclosure_edit=disclosure_text == "1",
             )
     if normalized_rows != 77_369:
         raise RuntimeError("RMSR normalized source row count changed")
