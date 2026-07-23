@@ -571,7 +571,7 @@ def build_artifact(
     current_disk = enforce_disk_guard()
     directory: dict[str, Any] | None = None
     probes: list[dict[str, Any]] = []
-    prefix_rejections: list[dict[str, str]] = []
+    prefix_rejections: list[dict[str, Any]] = []
     failures: list[str] = []
     try:
         directory = inspect_directory(
@@ -597,7 +597,7 @@ def build_artifact(
                         "expected_compressed_prefix_sha256": V1_PREFIX_SHA256[
                             exc.day.isoformat()
                         ],
-                        "source_schema_decompressed": "false",
+                        "source_schema_decompressed": False,
                     }
                 )
                 failures.append(str(exc))
