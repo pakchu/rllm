@@ -138,7 +138,15 @@ existing causal source rules:
 - intersect exact source dates only after each surface is available;
 - never fill, carry, interpolate, or synthesize a missing CBOE date;
 - treat source date `D` values as unavailable for trading on `D`; and
-- delay any decision until a later exact common CBOE source date.
+- delay any decision until the first later regular CBOE session fixed by a
+  prospective exchange-session calendar; the later session's source-row
+  presence or absence may not create or suppress the decision.
+
+This availability wording is intentionally stricter than the earlier CBOE
+research clocks. It was corrected before the OPRR mechanism, source incidence,
+or market outcome was opened: selecting the next row from a completed archive
+would reveal future row membership. The mechanism must freeze the exact
+session-calendar rule independently of the three source panels.
 
 These are current historical vintages, not proof of point-in-time revision
 history. Live promotion requires forward-vintage capture, parity checks, and
