@@ -65,7 +65,6 @@ PROBE_DAYS = (
 )
 DISK_LIMIT_GIB = 300
 READ_CHUNK_BYTES = 16 * 1024
-MAX_COMPRESSED_PREFIX_BYTES = 4 * 1024 * 1024
 MAX_DECOMPRESSED_PREFIX_BYTES = 128 * 1024
 MAX_DIRECTORY_BYTES = 4 * 1024 * 1024
 MAX_DAILY_CONTENT_LENGTH = 1024 * 1024 * 1024
@@ -104,6 +103,15 @@ CANONICAL_ALIASES: dict[str, frozenset[str]] = {
 
 class SourceProbeError(RuntimeError):
     """A frozen source or transport invariant failed."""
+
+
+class SourcePrefixMismatch(SourceProbeError):
+    """The replay prefix differs before any source record is decompressed."""
+
+    def __init__(self, day: date, observed_sha256: str) -> None:
+        self.day = day
+        self.observed_sha256 = observed_sha256
+        super().__init__(f"{day.isoformat()}: compressed prefix differs from v1")
 
 
 @dataclass(frozen=True)
@@ -405,22 +413,25 @@ class _CsvBoundaryState:
             self.record_ends.append(offset_after_byte)
 
 
-def _read_two_csv_records(response: Any) -> tuple[bytes, bytes, bytes, bytes]:
-    digest_input = bytearray()
+def _read_compressed_prefix(response: Any) -> bytes:
+    payload = response.read(READ_CHUNK_BYTES)
+    if not payload:
+        raise SourceProbeError("empty gzip prefix")
+    if len(payload) > READ_CHUNK_BYTES:
+        raise SourceProbeError("response ignored the frozen prefix bound")
+    return bytes(payload)
+
+
+def _decompress_two_csv_records(
+    compressed_prefix: bytes,
+) -> tuple[bytes, bytes, bytes]:
     decompressed = bytearray()
     boundaries = _CsvBoundaryState()
     inflater = zlib.decompressobj(16 + zlib.MAX_WBITS)
-    pending = b""
+    pending = compressed_prefix
     while len(boundaries.record_ends or []) < 2:
         if not pending:
-            remaining = MAX_COMPRESSED_PREFIX_BYTES - len(digest_input)
-            if remaining <= 0:
-                raise SourceProbeError("gzip prefix lacks two complete CSV records")
-            chunk = response.read(min(READ_CHUNK_BYTES, remaining))
-            if not chunk:
-                raise SourceProbeError("gzip object ended before two CSV records")
-            digest_input.extend(chunk)
-            pending = chunk
+            raise SourceProbeError("frozen gzip prefix lacks two CSV records")
         previous_pending_length = len(pending)
         try:
             inflated = inflater.decompress(pending, max_length=1)
@@ -437,8 +448,6 @@ def _read_two_csv_records(response: Any) -> tuple[bytes, bytes, bytes, bytes]:
             raise SourceProbeError("gzip object ended before two CSV records")
         if pending and len(pending) == previous_pending_length:
             raise SourceProbeError("gzip decompressor made no bounded progress")
-        if not pending:
-            continue
 
     record_ends = boundaries.record_ends
     assert record_ends is not None and len(record_ends) == 2
@@ -446,11 +455,15 @@ def _read_two_csv_records(response: Any) -> tuple[bytes, bytes, bytes, bytes]:
     exact_prefix = bytes(decompressed[:second_end])
     raw_header = exact_prefix[:first_end]
     raw_first_record = exact_prefix[first_end:second_end]
-    return bytes(digest_input), exact_prefix, raw_header, raw_first_record
+    return exact_prefix, raw_header, raw_first_record
 
 
 def inspect_archive_day(
-    day: date, *, timeout_seconds: float, open_url: OpenUrl = _default_open_url
+    day: date,
+    *,
+    expected_prefix_sha256: str,
+    timeout_seconds: float,
+    open_url: OpenUrl = _default_open_url,
 ) -> dict[str, Any]:
     if day not in PROBE_DAYS:
         raise SourceProbeError("day is outside the frozen three-day probe")
@@ -458,9 +471,13 @@ def inspect_archive_day(
     validate_official_url(url)
     with open_url(url, timeout_seconds) as response:
         metadata = _response_metadata(response, url)
-        compressed_prefix, csv_prefix, raw_header, raw_first = (
-            _read_two_csv_records(response)
-        )
+        compressed_prefix = _read_compressed_prefix(response)
+    observed_prefix_sha256 = sha256_bytes(compressed_prefix)
+    if observed_prefix_sha256 != expected_prefix_sha256:
+        raise SourcePrefixMismatch(day, observed_prefix_sha256)
+    csv_prefix, raw_header, raw_first = _decompress_two_csv_records(
+        compressed_prefix
+    )
     try:
         decoded = csv_prefix.decode("utf-8", errors="strict")
     except UnicodeDecodeError as exc:
@@ -478,7 +495,7 @@ def inspect_archive_day(
         "url": url,
         "metadata": metadata,
         "compressed_prefix_bytes_consumed": len(compressed_prefix),
-        "compressed_prefix_sha256": sha256_bytes(compressed_prefix),
+        "compressed_prefix_sha256": observed_prefix_sha256,
         "csv_two_record_sha256": sha256_bytes(csv_prefix),
         "raw_header_sha256": sha256_bytes(raw_header),
         "first_record_raw_sha256": sha256_bytes(raw_first),
@@ -499,11 +516,12 @@ def classify_schema_drift(probes: list[dict[str, Any]]) -> dict[str, Any]:
     base = list(FROZEN_BASE_HEADER)
     allowed_recent = base + list(ALLOWED_OPTIONAL_SUFFIX)
     for item in probes:
+        day = str(item["day"])
         header = list(item["header"])
         if header == base:
             added: list[str] = []
             classification = "frozen_base_header"
-        elif header == allowed_recent:
+        elif day == "2026-07-22" and header == allowed_recent:
             added = list(ALLOWED_OPTIONAL_SUFFIX)
             classification = "explicit_recent_optional_suffix"
         else:
@@ -517,7 +535,7 @@ def classify_schema_drift(probes: list[dict[str, Any]]) -> dict[str, Any]:
             acceptable = False
         by_day.append(
             {
-                "day": item["day"],
+                "day": day,
                 "classification": classification,
                 "added_fields": added,
                 "removed_fields": removed,
@@ -548,17 +566,12 @@ def build_artifact(
     cfg: ProbeConfig,
     *,
     open_url: OpenUrl = _default_open_url,
-    disk_used_gib: int | None = None,
-    expected_prefix_hashes: Mapping[str, str] | None = V1_PREFIX_SHA256,
 ) -> dict[str, Any]:
     validate_correction_bindings()
-    current_disk = enforce_disk_guard() if disk_used_gib is None else disk_used_gib
-    if current_disk >= DISK_LIMIT_GIB:
-        raise SourceProbeError(
-            f"disk guard rejected {current_disk} GiB used at {DISK_LIMIT_GIB} GiB"
-        )
+    current_disk = enforce_disk_guard()
     directory: dict[str, Any] | None = None
     probes: list[dict[str, Any]] = []
+    prefix_rejections: list[dict[str, str]] = []
     failures: list[str] = []
     try:
         directory = inspect_directory(
@@ -571,19 +584,24 @@ def build_artifact(
             try:
                 probe = inspect_archive_day(
                     day,
+                    expected_prefix_sha256=V1_PREFIX_SHA256[day.isoformat()],
                     timeout_seconds=cfg.timeout_seconds,
                     open_url=open_url,
                 )
                 probes.append(probe)
-                if expected_prefix_hashes is not None:
-                    expected_hash = expected_prefix_hashes.get(day.isoformat())
-                    if expected_hash is None or (
-                        probe["compressed_prefix_sha256"] != expected_hash
-                    ):
-                        failures.append(
-                            f"{day.isoformat()}: compressed prefix differs from v1"
-                        )
-                        break
+            except SourcePrefixMismatch as exc:
+                prefix_rejections.append(
+                    {
+                        "day": exc.day.isoformat(),
+                        "observed_compressed_prefix_sha256": exc.observed_sha256,
+                        "expected_compressed_prefix_sha256": V1_PREFIX_SHA256[
+                            exc.day.isoformat()
+                        ],
+                        "source_schema_decompressed": "false",
+                    }
+                )
+                failures.append(str(exc))
+                break
             except SourceProbeError as exc:
                 failures.append(f"{day.isoformat()}: {exc}")
                 break
@@ -613,11 +631,15 @@ def build_artifact(
         "returns_or_pnl_opened": False,
         "directory": directory,
         "probes": probes,
+        "prefix_rejections": prefix_rejections,
+        "prefix_binding_enforced": True,
         "schema_drift": schema_drift,
         "failures": failures,
         "disk": {
             "used_gib_before_probe": current_disk,
             "limit_gib": DISK_LIMIT_GIB,
+            "guard_filesystem": str(REPO_ROOT),
+            "guard_enforced": True,
             "raw_archives_persisted": False,
         },
         "bindings": {
