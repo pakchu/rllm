@@ -262,12 +262,19 @@ Source/component controls use the same latency, transition construction,
    assign component values in that hashed source order to destination dates in
    chronological order, then apply the primary state/transition rule.
 
-Economic controls on the exact primary clock are exact direction flip,
-deterministic SHA-256 random side, constant long, and constant short. No control
-may replace the primary after outcomes open. The primary must beat both family
-controls and all four leave-one-component controls on train and selection
-risk-adjusted performance; otherwise the four-weak-signal interaction claim is
-rejected.
+Economic controls reuse the exact accepted primary entries/exits:
+
+- `exact_direction_flip`: multiply every primary side by `-1`;
+- `deterministic_random_side`: LONG iff the first byte of
+  `SHA256("RVFC-72|deterministic_random_side|<entry_time_utc_iso>")` is below
+  128, otherwise SHORT;
+- `constant_long`: side is always LONG; and
+- `constant_short`: side is always SHORT.
+
+No control may replace the primary after outcomes open. The primary must beat
+both family controls and all four leave-one-component controls on train and
+selection risk-adjusted performance; otherwise the four-weak-signal interaction
+claim is rejected.
 
 The source-support artifact must also report, without changing eligibility or
 side, the dominant total-rate venue, dominant total-volume venue, dominant
