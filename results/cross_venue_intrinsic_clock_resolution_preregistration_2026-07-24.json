@@ -1,0 +1,590 @@
+{
+  "causal_clock_contract": {
+    "anchor": "first completed 5m bar reaching own venue target; both anchor starts <=17:50 UTC; exact tie ineligible",
+    "expected_volume": "per venue median of complete daily quote notional in exact prior 28 calendar positions, current excluded, minimum 21",
+    "flow": "cumulative signed_quote_notional / cumulative quote_notional from UTC-day start through requested completed bar",
+    "future_bar_used_by_signal": false,
+    "gap": "positive integer (A_late-A_early)/5m",
+    "gap_reference": "previous at most 180 valid paired-anchor days, current excluded, minimum 90; pooled linear q60",
+    "initial_conflict": "d=sign(leader flow at A_early) is nonzero and laggard early sign=-d",
+    "leader": "venue with earlier anchor; laggard is the other venue",
+    "price_basis_or_return_input": null,
+    "resolution": "leader and laggard cumulative flow signs at A_late both equal d",
+    "side": "fixed d",
+    "target": "0.50*expected_volume per venue"
+  },
+  "comparator_rows_decoded": false,
+  "economic_contract": {
+    "base_account_cost_per_side": 0.0003,
+    "base_cost_notional_per_side": 0.0006,
+    "cagr": "full declared calendar including warmup and idle cash",
+    "cluster_signflip": {
+      "draws": 100000,
+      "empty": 1.0,
+      "null": "one Rademacher sign per nonempty week",
+      "p": "(1+count(null>=observed))/(draws+1)",
+      "return": "net account trade return after base costs and funding",
+      "rng_reset": "independently per split and control",
+      "seed": 20260724,
+      "statistic": "sum(trade_returns)/N",
+      "week": "UTC ISO entry week, Monday 00:00"
+    },
+    "funding_interval": "entry_time <= funding_time < exit_time",
+    "instrument": "Binance USD-M BTCUSDT perpetual",
+    "leverage": 0.5,
+    "stress_account_cost_per_side": 0.0005,
+    "stress_cost_notional_per_side": 0.001,
+    "stress_replaces_base": true,
+    "strict_mdd": "global/pre-entry HWM; entry cost; each held-bar favorable then adverse; funding debit ordering; virtual adverse exit cost; scheduled-open exit and cost; exclude later exit-bar OHLC"
+  },
+  "economic_gates": {
+    "combined_2024_2025_cluster_p_max": 0.05,
+    "long_and_short_sleeve_return_positive": true,
+    "mean_gross_underlying_bp_min": 30.0,
+    "one_bar_delay_absolute_return_positive": true,
+    "placebos_may_not_fully_qualify": [
+      "exact_direction_flip",
+      "deterministic_random_side",
+      "one_bar_execution_delay",
+      "one_hour_execution_delay"
+    ],
+    "primary_ratio_margin_over_controls_min": 0.5,
+    "score_bearing_controls": [
+      "gap_only",
+      "initial_conflict_only",
+      "late_alignment_only",
+      "no_leader_persistence",
+      "no_gap_tail",
+      "fixed_expected_time_clocks",
+      "stale_laggard_flow_24h"
+    ],
+    "selection_each_half_return_positive": true,
+    "selection_each_half_trades_min": 10,
+    "selection_trades_min": 24,
+    "stress_absolute_return_positive": true,
+    "test_and_eval": {
+      "absolute_return_positive": true,
+      "cagr_to_strict_mdd_min": 3.0,
+      "one_bar_delay_absolute_return_positive": true,
+      "stress_absolute_return_positive": true,
+      "strict_mdd_pct_max": 15.0,
+      "trades_min": 20,
+      "weekly_cluster_signflip_p_max": 0.1
+    },
+    "train_and_selection_absolute_return_positive": true,
+    "train_and_selection_cagr_to_strict_mdd_min": 3.0,
+    "train_and_selection_strict_mdd_pct_max": 15.0,
+    "train_each_year_return_positive": true,
+    "weekly_cluster_signflip_p_max": 0.1
+  },
+  "execution_contract": {
+    "buffer": "[A_late+5m,A_late+10m) must complete",
+    "causal_origin": "A_early",
+    "clock_fields": [
+      "source_day",
+      "causal_origin",
+      "resolution_bar_start",
+      "signal_available_time",
+      "decision_order_time",
+      "entry_time",
+      "exit_time",
+      "side",
+      "leader_venue"
+    ],
+    "comparator_timestamp": "entry_time",
+    "crossing_candidate_keeps_global_reservation": true,
+    "decision_order_time": "A_late+10m",
+    "entry": "USD-M BTCUSDT open at A_late+10m",
+    "exit": "entry+72*5m scheduled open",
+    "global_nonoverlap_before_split": true,
+    "later_source_defect_cannot_cancel_entered_position": true,
+    "resolution_bar_start": "A_late",
+    "signal_available_time": "A_late+5m",
+    "split_containment": "origin, resolution, availability, buffer, decision, entry, full held path, and exit in one half-open split",
+    "stop_or_take_profit": null
+  },
+  "frozen_documents": {
+    "boundary": {
+      "commit": "dc90f0d9e5577f393e6de488b53483efe7b7972c",
+      "path": "docs/cross-venue-intrinsic-clock-resolution-boundary-2026-07-24.md",
+      "sha256": "9643d3178af71d0e92a0dbe8c3c4f09f7232c1117406609a7467cce793993c3b"
+    },
+    "mechanism": {
+      "commit": "cb6aa0544b4fc774e5ee62cb5acf55298eb492ff",
+      "path": "docs/cross-venue-intrinsic-clock-resolution-mechanism-decision-2026-07-24.md",
+      "sha256": "25d238e6d5718854ea35ecde3f37720869898e622e2610f46337da2daa315264"
+    }
+  },
+  "live_parity": {
+    "computation_buffer_bars": 1,
+    "current_prefix_defect_action": "cancel current day and remain flat",
+    "fail_flat_on": [
+      "missing bar",
+      "reordered bar",
+      "duplicate bar",
+      "clock drift",
+      "late data",
+      "source divergence",
+      "anchor computed before finalization"
+    ],
+    "five_minute_finalization_before_accumulation": true,
+    "maintain_separate_venue_quote_and_signed_flow_sums": true,
+    "persist_raw_minute_rows": true,
+    "persist_receipt_and_finalization_timestamps": true,
+    "reference_window": "exact prior 28 calendar days with at least 21 complete days",
+    "required_minute_checks": [
+      "exact UTC minute boundary",
+      "unique monotonic minute identity",
+      "positive quote activity",
+      "finite taker-buy quote within total quote activity"
+    ],
+    "rest_repair": "may restore storage for later reference windows; may not backdate a missed decision or resurrect a canceled historical trade",
+    "sources": [
+      "official Binance Spot BTCUSDT one-minute klines",
+      "official Binance USD-M BTCUSDT one-minute klines"
+    ]
+  },
+  "llm_boundary": {
+    "action_space": [
+      "TRADE_FIXED_SIDE",
+      "ABSTAIN"
+    ],
+    "activation_requires_unchanged_train_selection_and_oos_pass": true,
+    "allowed_tokens": [
+      "leader_venue",
+      "gap_rank_bucket",
+      "early_conflict_relation",
+      "leader_persistence_relation",
+      "laggard_resolution_relation",
+      "causal_flow_strength_buckets",
+      "source_validity_state",
+      "current_position"
+    ],
+    "forbidden": [
+      "timestamp",
+      "row_identifier",
+      "raw_price",
+      "future_label",
+      "sealed_reward",
+      "side_choice",
+      "hold_choice",
+      "leverage_increase"
+    ]
+  },
+  "manifest_hash": "75f93cc512ab711936af56834c60c2a416c4bcc43ea672a9076e6763cbff2f1c",
+  "novelty_contract": {
+    "absolute_signed_occupancy_pearson_max": 0.4,
+    "common_coverage": "intersection of declared comparator coverage and CVICR source; CVTT train only",
+    "comparators": [
+      {
+        "declared_coverage": [
+          "2020-01-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_date",
+        "exit_column": "exit_date",
+        "group_column": "branch",
+        "header": [
+          "signal_position",
+          "entry_position",
+          "exit_position",
+          "signal_date",
+          "entry_date",
+          "exit_date",
+          "side",
+          "branch",
+          "hold_bars"
+        ],
+        "header_sha256": "3211ca0e50e607f39ef0c8ee72329828a267cdab15de029002b0b5beaeb2032c",
+        "id": "CATCH-12",
+        "path": "results/cash_auction_transfer_catchup_handoff_clock_2026-07-14.csv",
+        "selected_groups": [
+          "catch12"
+        ],
+        "sha256": "066bf8e08267a043cc191eb436f0aa33105ab948de9f9f1edfde4d9c30de46d1",
+        "side_column": "side",
+        "side_encoding": {
+          "-1": -1,
+          "1": 1
+        },
+        "six_hour_tolerant_gate": false
+      },
+      {
+        "declared_coverage": [
+          "2020-01-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_date",
+        "exit_column": "exit_date",
+        "group_column": "branch",
+        "header": [
+          "signal_position",
+          "entry_position",
+          "exit_position",
+          "signal_date",
+          "entry_date",
+          "exit_date",
+          "side",
+          "branch",
+          "hold_bars"
+        ],
+        "header_sha256": "3211ca0e50e607f39ef0c8ee72329828a267cdab15de029002b0b5beaeb2032c",
+        "id": "CLASP-24",
+        "path": "results/cash_late_arrival_spillover_propagation_clock_2026-07-14.csv",
+        "selected_groups": [
+          "clasp24"
+        ],
+        "sha256": "e166f4bd24afd5a2f129bcc26393ad4293ad0bc5792686b3b0fc4a805d53f9d5",
+        "side_column": "side",
+        "side_encoding": {
+          "-1": -1,
+          "1": 1
+        },
+        "six_hour_tolerant_gate": false
+      },
+      {
+        "declared_coverage": [
+          "2020-01-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_date",
+        "exit_column": "exit_date",
+        "group_column": "branch",
+        "header": [
+          "signal_position",
+          "entry_position",
+          "exit_position",
+          "signal_date",
+          "entry_date",
+          "exit_date",
+          "side",
+          "branch",
+          "hold_bars"
+        ],
+        "header_sha256": "3211ca0e50e607f39ef0c8ee72329828a267cdab15de029002b0b5beaeb2032c",
+        "id": "LURI-48",
+        "path": "results/leveraged_um_inventory_release_handoff_clock_2026-07-14.csv",
+        "selected_groups": [
+          "luri48"
+        ],
+        "sha256": "50765cfed0c3ec6a0d1df18857c4e0a3e574d1aa449538c9b89cfac1fff67095",
+        "side_column": "side",
+        "side_encoding": {
+          "-1": -1,
+          "1": 1
+        },
+        "six_hour_tolerant_gate": false
+      },
+      {
+        "declared_coverage": [
+          "2020-01-01T00:00:00Z",
+          "2023-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_date",
+        "exit_column": null,
+        "exit_derivation": "entry_date + hold_bars*5m",
+        "group_column": "policy_id",
+        "header": [
+          "policy_id",
+          "route",
+          "side",
+          "hold_bars",
+          "signal_date",
+          "signal_row",
+          "entry_date"
+        ],
+        "header_sha256": "a182548526587fa060072ca6fc2ab284167d12e9b56dcc1c6194c5d5f65cc683",
+        "id": "CVTT-V01-V04",
+        "path": "data/cross_venue_temporal_torsion_v2_support_clocks_2020_2022.csv.gz",
+        "selected_groups": [
+          "V01",
+          "V02",
+          "V03",
+          "V04"
+        ],
+        "selection_absence_is_not_failure": true,
+        "sha256": "8f933b9d387fbcb764645a7002a5eefa9ee159c9c1ce7e007dca0dc4c16ebe33",
+        "side_column": "side",
+        "side_encoding": {
+          "-1": -1,
+          "1": 1
+        },
+        "six_hour_tolerant_gate": false
+      },
+      {
+        "declared_coverage": [
+          "2020-01-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "group_column": "clock_name",
+        "header": [
+          "clock_name",
+          "source_day",
+          "decision_time",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "header_sha256": "0ad7d7a39f7d772de30d2c47056efd3c9b7740561eea9a1b69007b4870d5d495",
+        "id": "IVLIR-primary",
+        "path": "data/intrinsic_volume_latent_impact_relay_clocks_2020_2023.csv.gz",
+        "selected_groups": [
+          "primary"
+        ],
+        "sha256": "523f24a0d955fe99cfb86c62078532c5fc9091234e6669ab9acff2a8f3367788",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        },
+        "six_hour_tolerant_gate": true
+      },
+      {
+        "compare_groups_separately": true,
+        "declared_coverage": [
+          "2020-01-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "group_column": "clock_name",
+        "header": [
+          "clock_name",
+          "source_day",
+          "decision_time",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "header_sha256": "0ad7d7a39f7d772de30d2c47056efd3c9b7740561eea9a1b69007b4870d5d495",
+        "id": "IVFHR-primary-and-any-handoff",
+        "path": "data/intrinsic_volume_flow_handoff_relay_clocks_2020_2023.csv.gz",
+        "selected_groups": [
+          "primary",
+          "any_handoff"
+        ],
+        "sha256": "ab12762dec9a93d41c293766e46dfc80ade81914fb32753a5923faa6437c338e",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        },
+        "six_hour_tolerant_gate": true
+      },
+      {
+        "declared_coverage": [
+          "2021-01-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "group_column": "control",
+        "header": [
+          "control",
+          "signal_id",
+          "source_day",
+          "decision_time",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "header_sha256": "d5ae2566140aca706f84f916965352daed3aad058e4abcc9614f19f4950f0bbd",
+        "id": "IVPLH-primary",
+        "path": "data/intrinsic_volume_price_lag_handoff_clocks_2020_2023.csv.gz",
+        "selected_groups": [
+          "primary"
+        ],
+        "sha256": "2efca3b44b0512a9423da90171f43babcadec2316dc6148796f3e61f98138e80",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        },
+        "six_hour_tolerant_gate": true
+      }
+    ],
+    "empty_required_extraction_or_nonfinite_correlation": "one and fail",
+    "exact_entry_jaccard_max": 0.1,
+    "failure_action": "retire CVICR-72 unchanged before outcomes",
+    "one_bar_tolerant_jaccard_max": 0.2,
+    "position_time_jaccard": "report_only",
+    "six_hour_tolerant_jaccard_intrinsic_family_max": 0.6,
+    "tolerant_matching": "sorted two-pointer maximum-cardinality one-to-one matching; advance earlier entry outside tolerance, otherwise match and advance both; matched/(n_candidate+n_comparator-matched)",
+    "twelve_bar_tolerant_jaccard_max": 0.35
+  },
+  "outcomes_opened": false,
+  "policy": {
+    "base_cost_notional_per_side": 0.0006,
+    "cluster_signflip_draws": 100000,
+    "computation_buffer_bars": 1,
+    "entry_delay_bars_from_late_anchor": 2,
+    "gap_quantile": 0.6,
+    "gap_reference_pairs": 180,
+    "gap_reference_pairs_min": 90,
+    "hold_bars": 72,
+    "intrinsic_volume_fraction": 0.5,
+    "latest_anchor_start_minute_utc": 1070,
+    "leverage": 0.5,
+    "policy_id": "CVICR-72",
+    "random_seed": 20260724,
+    "reference_calendar_days": 28,
+    "reference_complete_days_min": 21,
+    "signal_availability_bars": 1,
+    "stress_cost_notional_per_side": 0.001
+  },
+  "protocol_version": "cross_venue_intrinsic_clock_resolution_v1",
+  "research_history_boundary": {
+    "claim_scope": "candidate-level frozen test, not globally pristine history",
+    "exact_cvicr_anchor_or_candidate_incidence_seen": false,
+    "exact_cvicr_post_entry_outcomes_seen": false,
+    "llm_used_in_this_stage": false,
+    "post_2023_cvicr_source_seen": false,
+    "predecessor_cross_venue_and_intrinsic_outcomes_seen": true,
+    "repo_wide_btc_history_seen": true
+  },
+  "source_contract": {
+    "allowlist": [
+      "date",
+      "feature_available_time_utc",
+      "trade_earliest_time_utc",
+      "spot_quote_notional",
+      "um_quote_notional",
+      "spot_signed_quote_notional",
+      "um_signed_quote_notional",
+      "source_complete"
+    ],
+    "bar_interval": "5min",
+    "current_day": "require only causal prefix through A_late plus complete buffer row; never inspect later-day completeness to accept/reject a candidate",
+    "interval": [
+      "2020-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "loader": "pandas.read_csv(usecols=allowlist); no load-and-drop",
+    "missing_policy": "missing reference day stays missing in exact 28-calendar-day window; current prefix defect cancels current day; never impute",
+    "reference_day": "all 288 rows source-complete and numerically valid",
+    "required_availability": "feature_available_time_utc == trade_earliest_time_utc == date+5m",
+    "rows": 420768,
+    "source": "data/binance_cross_venue_minute_leadership_btc_2020_2023/BTCUSDT_cross_venue_minute_leadership_5m_2020-01_2023-12.csv.gz",
+    "source_audit": "results/binance_cross_venue_minute_leadership_audit_2026-07-14.json",
+    "source_audit_sha256": "ffe0124ac9c5c0c3f1d1c284b672618cf910dc16cae36e65c1efe79710f039af",
+    "source_header_sha256": "b7c730d6fc2c37d6e94f6a436478fd09ff42d15d7fd81bf521c4ca36465ff49f",
+    "source_manifest": "data/binance_cross_venue_minute_leadership_btc_2020_2023/build_manifest.json",
+    "source_manifest_sha256": "544c2945a2b56be478a1edc4abbb93b762bda5afc32cbd0658dd6822ff6b70fa",
+    "source_sha256": "00ab6a55fc7bfeb3012584db5bc97a7d7b98dd995491acfd3f865c6bd41f92cc"
+  },
+  "source_incidence_opened": false,
+  "source_only_controls": {
+    "all_emit_side_in": [
+      -1,
+      1
+    ],
+    "fixed_expected_time_gap_threshold": "current day's causal primary paired-anchor q60 threshold; no second fitted gap distribution",
+    "fixed_time_tie": "ineligible",
+    "independent_clocks_reserve_independently": true,
+    "missing_stale_prefix": "ineligible",
+    "ordered": [
+      "primary",
+      "gap_only",
+      "initial_conflict_only",
+      "late_alignment_only",
+      "no_leader_persistence",
+      "no_gap_tail",
+      "fixed_expected_time_clocks",
+      "stale_laggard_flow_24h",
+      "exact_direction_flip",
+      "deterministic_random_side",
+      "one_bar_execution_delay",
+      "one_hour_execution_delay"
+    ],
+    "random_side": "SHA256('CVICR-72|'+entry_time_utc), LONG iff first byte<128",
+    "score_bearing": [
+      "gap_only",
+      "initial_conflict_only",
+      "late_alignment_only",
+      "no_leader_persistence",
+      "no_gap_tail",
+      "fixed_expected_time_clocks",
+      "stale_laggard_flow_24h"
+    ],
+    "zero_or_nonfinite_side": "ineligible"
+  },
+  "source_rows_decoded": false,
+  "source_support_gate": {
+    "each_train_year_events_min": 20,
+    "failure_action": "retire CVICR-72 unchanged before outcomes",
+    "mechanism_selectivity": {
+      "clock_basis": "own globally reserved split-contained accepted entries",
+      "fixed_expected_time_entry_jaccard_max": 0.1,
+      "primary_over_gap_only_max": 0.4,
+      "primary_over_initial_conflict_only_max": 0.7,
+      "primary_over_late_alignment_only_max": 0.7,
+      "primary_over_no_gap_tail_max": 0.7,
+      "stale_laggard_flow_entry_jaccard_max": 0.05,
+      "undefined_or_empty_required_control": "one and fail"
+    },
+    "selection": [
+      "2023-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "selection_active_months_min": 8,
+    "selection_each_half_events_min": 10,
+    "selection_each_leader_share_min": 0.15,
+    "selection_each_quarter_events_min": 4,
+    "selection_each_side_share_min": 0.2,
+    "selection_events_min": 24,
+    "selection_max_entry_gap_days": 75.0,
+    "selection_max_month_share": 0.2,
+    "selection_max_same_leader_run": 10,
+    "selection_max_same_side_run": 8,
+    "train": [
+      "2020-01-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ],
+    "train_active_months_min": 24,
+    "train_each_leader_share_min": 0.15,
+    "train_each_side_share_min": 0.2,
+    "train_events_min": 75,
+    "train_max_entry_gap_days": 90.0,
+    "train_max_month_share": 0.15,
+    "train_max_quarter_share": 0.3,
+    "train_max_same_leader_run": 12,
+    "train_max_same_side_run": 10
+  },
+  "stopping_rule": "first failed source, support, selectivity, novelty, or economic gate retires CVICR-72 unchanged",
+  "strict_sequence": {
+    "no_parameter_repair": true,
+    "phase_1": "source support, controls, and novelty only",
+    "phase_2": "commit and hash-freeze strict evaluator",
+    "post_2023_source_extension_requires_separate_audit": true,
+    "stages": [
+      [
+        "train",
+        "2020-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      [
+        "selection",
+        "2023-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      [
+        "test_2024",
+        "2024-01-01T00:00:00Z",
+        "2025-01-01T00:00:00Z"
+      ],
+      [
+        "eval_2025",
+        "2025-01-01T00:00:00Z",
+        "2026-01-01T00:00:00Z"
+      ],
+      [
+        "final_2026_ytd",
+        "2026-01-01T00:00:00Z",
+        null
+      ]
+    ],
+    "stop_at_first_failure": true
+  }
+}
