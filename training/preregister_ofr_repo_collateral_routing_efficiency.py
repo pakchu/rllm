@@ -11,8 +11,6 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from training import preregister_ofr_repo_mix_shock_resolution_race as rmsr
-
 
 POLICY_ID = "RCRE-72-SOURCE-REUSE"
 PROTOCOL_VERSION = "ofr_repo_collateral_routing_efficiency_preregistration_v1"
@@ -34,16 +32,36 @@ DEFAULT_OUTPUT = Path(
     "results/ofr_repo_collateral_routing_efficiency_preregistration_2026-07-23.json"
 )
 
-OBSERVATIONS = rmsr.OBSERVATIONS
-OBSERVATIONS_SHA256 = rmsr.OBSERVATIONS_SHA256
-METADATA = rmsr.METADATA
-METADATA_SHA256 = rmsr.METADATA_SHA256
-SOURCE_MANIFEST = rmsr.SOURCE_MANIFEST
-SOURCE_MANIFEST_SHA256 = rmsr.SOURCE_MANIFEST_SHA256
-SOURCE_AUDIT = rmsr.SOURCE_AUDIT
-SOURCE_AUDIT_SHA256 = rmsr.SOURCE_AUDIT_SHA256
-SOURCE_CANONICAL_MANIFEST_HASH = rmsr.SOURCE_CANONICAL_MANIFEST_HASH
-REQUIRED_SERIES = rmsr.REQUIRED_SERIES
+SOURCE_ROOT = Path("data/ofr_repo_preliminary_2019_2023")
+OBSERVATIONS = SOURCE_ROOT / "ofr_repo_preliminary_observations_2019_2023.csv.gz"
+OBSERVATIONS_SHA256 = (
+    "6bb24b9a3d6ed6d266b0c885a9d9888bcccb3045df66d37d83031af66c6dc02a"
+)
+METADATA = SOURCE_ROOT / "ofr_repo_preliminary_metadata_2019_2023.json.gz"
+METADATA_SHA256 = (
+    "19a04e82eb5d8ddc6c3cb8dc64694438abd6b1987951470bb317659d9c53ef4f"
+)
+SOURCE_MANIFEST = SOURCE_ROOT / "build_manifest.json"
+SOURCE_MANIFEST_SHA256 = (
+    "f937f567e1789ecb39a2b84d6288b2cbab931da4e9f1f4e51addea4b3423b705"
+)
+SOURCE_AUDIT = Path("docs/ofr-repo-preliminary-source-audit-2026-07-23.md")
+SOURCE_AUDIT_SHA256 = (
+    "88e5ee4852acda41759b4c85731e3f6be170869a7485985b9c96507daa387ccb"
+)
+SOURCE_CANONICAL_MANIFEST_HASH = (
+    "802b83a9478711cd29d5b606d9e12eb1e90890e37f5908d4de64d7dd71f6d449"
+)
+REQUIRED_SERIES = (
+    "REPO-GCF_AR_AG-P",
+    "REPO-GCF_AR_T-P",
+    "REPO-TRIV1_AR_AG-P",
+    "REPO-TRIV1_AR_T-P",
+    "REPO-GCF_TV_AG-P",
+    "REPO-GCF_TV_T-P",
+    "REPO-TRIV1_TV_AG-P",
+    "REPO-TRIV1_TV_T-P",
+)
 COMPONENTS = (
     "quantity_gap",
     "rate_gap",
@@ -54,7 +72,130 @@ COMPONENTS = (
 )
 
 COMPARATOR_SPECS: tuple[Mapping[str, Any], ...] = (
-    *rmsr.COMPARATOR_SPECS,
+    {
+        "name": "overnight_rrp_flow_release_all_controls",
+        "path": Path("results/overnight_rrp_flow_release_clocks_2026-07-17.csv.gz"),
+        "sha256": (
+            "7242d9870627dfc0cf067ff87d9664a1576dd374cb8985e927b40f15d1e3d480"
+        ),
+        "parser": "entry_time/exit_time/side grouped by every control",
+    },
+    {
+        "name": "overnight_rrp_participant_breadth_all_controls",
+        "path": Path(
+            "results/overnight_rrp_participant_breadth_support_clocks_2026-07-21.csv.gz"
+        ),
+        "sha256": (
+            "ef21323229801f11557e0c2d9d4465f7d58b13569552d656d64fdb7d440622ed"
+        ),
+        "parser": "entry_time/exit_time/side grouped by every control",
+    },
+    {
+        "name": "federal_liquidity_component_concordance_all_groups",
+        "path": Path(
+            "results/federal_liquidity_component_concordance_preregistered_clock_2026-07-17.csv.gz"
+        ),
+        "sha256": (
+            "7ebb0450422d9265e46c596e0b6415b6a8816c66f5e0cbb9ccda14ca6cb4c67c"
+        ),
+        "parser": (
+            "entry_time/exit_time/side grouped by candidate_id and clock_name"
+        ),
+    },
+    {
+        "name": "daily_treasury_fiscal_flow_breadth_primary",
+        "path": Path(
+            "results/daily_treasury_fiscal_flow_breadth_primary_clock_2026-07-21.csv.gz"
+        ),
+        "sha256": (
+            "df53e1a27fcbc6ea2c4bc3f462a557a75c76a98db3c362944dad0b4d74382978"
+        ),
+        "parser": (
+            "entry_time_utc/exit_time_utc/side grouped by policy_id and clock"
+        ),
+    },
+    {
+        "name": "daily_treasury_fiscal_flow_breadth_controls",
+        "path": Path(
+            "results/daily_treasury_fiscal_flow_breadth_control_clocks_2026-07-21.csv.gz"
+        ),
+        "sha256": (
+            "416fc8663b292fcee069e4aca53b83e99a05b594a96940ab2c557e6e0d05e312"
+        ),
+        "parser": (
+            "entry_time_utc/exit_time_utc/side grouped by policy_id and clock"
+        ),
+    },
+    {
+        "name": "sofr_rate_dislocation_primary",
+        "path": Path(
+            "results/sofr_rate_dislocation_preregistered_clock_2026-07-17.csv.gz"
+        ),
+        "sha256": (
+            "391c42dd2b0d5b87ffcd73058dd9fa0c4d18fd2f535597effff5a4c8edea2e69"
+        ),
+        "parser": "entry_time/exit_time/side fixed group SFRD-1|primary",
+    },
+    {
+        "name": "bank_deposit_secured_repo_concordance_all_clocks",
+        "path": Path(
+            "results/bank_deposit_secured_repo_concordance_clocks_2026-07-20.csv.gz"
+        ),
+        "sha256": (
+            "1ff3a6075e3ceff928e1dd19d05880dbe9dbab0e07d79b853146d7b4c8f6cabc"
+        ),
+        "parser": "entry_time/exit_time/side grouped by every clock_name",
+    },
+    {
+        "name": "fed_h8_deposit_migration_primary",
+        "path": Path(
+            "results/fed_h8_deposit_migration_preregistered_clock_2026-07-18.csv.gz"
+        ),
+        "sha256": (
+            "20405f79b86861adcc784c81223baae1c40fdf3c73edda339578471a6a6d1b40"
+        ),
+        "parser": "entry_time/exit_time/side where clock_mode is primary",
+    },
+    {
+        "name": "soma_lending_collateral_scarcity_primary",
+        "path": Path(
+            "results/soma_lending_collateral_scarcity_clocks_2026-07-23.csv.gz"
+        ),
+        "sha256": (
+            "b3fe0dc8c895f9a8974cdf08b5bed9d58ff693b8aca7ed59c224627de930a948"
+        ),
+        "parser": "entry_time/exit_time/side where control is primary",
+    },
+    {
+        "name": "cross_domain_liquidity_transmission_all_clocks",
+        "path": Path(
+            "results/cross_domain_liquidity_transmission_relay_support_clock_2026-07-21.csv.gz"
+        ),
+        "sha256": (
+            "aa2bcafd0f62ebe585f93cbd357d29c37ae526a95a90b8a6c0bd7c068cd6e5a1"
+        ),
+        "parser": (
+            "entry_time_utc/exit_time_utc/side grouped by every clock"
+        ),
+    },
+    {
+        "name": "live_portfolio_pure_clocks",
+        "path": Path("results/cchr_live_portfolio_pure_clocks_2026-07-21.csv.gz"),
+        "sha256": (
+            "73d6efbd35b3be64b0fa04fa9c8cb2db25866ef884f19b1ae673949e22a42b08"
+        ),
+        "parser": "entry_time/exit_time/side grouped by every candidate_id",
+    },
+    {
+        "name": "ofr_repo_venue_fragmentation_consensus_primary",
+        "path": Path(
+            "results/ofr_repo_venue_fragmentation_consensus_clocks_2026-07-23.csv.gz"
+        ),
+        "sha256": (
+            "b2d251b147feecc98def94610834c7b11f078f35e580f6e7a950fc55bfe0724e"
+        ),
+        "parser": "entry_time/exit_time/side where control is primary",
+    },
     {
         "name": "ofr_repo_mix_shock_resolution_race_primary",
         "path": Path(
@@ -68,7 +209,67 @@ COMPARATOR_SPECS: tuple[Mapping[str, Any], ...] = (
 )
 
 HISTORY_BINDINGS: tuple[Mapping[str, Any], ...] = (
-    *rmsr.HISTORY_BINDINGS,
+    {
+        "name": "flcc_stage1_outcome_seen",
+        "path": Path(
+            "results/federal_liquidity_component_concordance_stage1_2020_2022_2026-07-17.json"
+        ),
+        "sha256": (
+            "10dc911ad06c7e523d612ff34675421388fefb94fa93e157bfac7e93bd1d82a6"
+        ),
+    },
+    {
+        "name": "overnight_rrp_stage1_outcome_seen",
+        "path": Path(
+            "results/overnight_rrp_flow_release_stage1_2021_2022_2026-07-17.json"
+        ),
+        "sha256": (
+            "57dcfc8d5cf945250f8e1ee18e95dc341d81c5dad372ead166c64ebc38e4d63d"
+        ),
+    },
+    {
+        "name": "sofr_stage1_outcome_seen",
+        "path": Path(
+            "results/sofr_rate_dislocation_stage1_2021_2022_2026-07-17.json"
+        ),
+        "sha256": (
+            "b8a3d4dbbf00102bf1c14a156ede95aea344f820fa15a3735e305e532ee7e88e"
+        ),
+    },
+    {
+        "name": "h8_stage1_outcome_seen",
+        "path": Path(
+            "results/fed_h8_deposit_migration_stage1_2020_2022_2026-07-18.json"
+        ),
+        "sha256": (
+            "3f5118077cdafb48ffb59fc6cec8e7643613861f921bfd78403097181c287a7f"
+        ),
+    },
+    {
+        "name": "rvfc_source_support_values_seen",
+        "path": Path(
+            "results/ofr_repo_venue_fragmentation_consensus_support_2026-07-23.json"
+        ),
+        "sha256": (
+            "c5918606c958fc8f966e8bd1884e75a91a6cec44074e2edbe86675fa7f978402"
+        ),
+    },
+    {
+        "name": "rvfc_source_support_rejection_decision",
+        "path": Path(
+            "docs/ofr-repo-venue-fragmentation-consensus-support-rejection-2026-07-23.md"
+        ),
+        "sha256": (
+            "df97af1f976a08bb7e6870c775ef345e566a505ba0abca3292ae292bf5e32bc8"
+        ),
+    },
+    {
+        "name": "rvfc_preregistration_protocol_dependency",
+        "path": Path("training/preregister_ofr_repo_venue_fragmentation_consensus.py"),
+        "sha256": (
+            "e6cddb766e67443f848b6c75ba097ec798d138ced3daa44bb1374a1b7edcd2da"
+        ),
+    },
     {
         "name": "rmsr_source_support_values_seen",
         "path": Path(
@@ -287,7 +488,9 @@ def policy_payload() -> dict[str, Any]:
             "failure_action": "reject before comparator rows and outcomes",
         },
         "source_controls": {
-            "quantity_gap_label_pair": "original and venue-swapped direction flips; diagnostic only",
+            "quantity_gap_label_pair": (
+                "original and venue-swapped direction flips; diagnostic only"
+            ),
             "rate_gap_label_pair": "original and venue-swapped direction flips; diagnostic only",
             "absolute_pressure": "rank abs(quantity_gap)*abs(rate_gap)",
             "both_legs_extreme": (
@@ -390,10 +593,26 @@ def _source_binding() -> dict[str, Any]:
         raise RuntimeError("RCRE observation manifest binding mismatch")
     if manifest.get("metadata", {}).get("sha256") != METADATA_SHA256:
         raise RuntimeError("RCRE metadata manifest binding mismatch")
-    if not all(manifest.get("source_checks", {}).values()):
+    source_checks = manifest.get("source_checks")
+    if (
+        not isinstance(source_checks, Mapping)
+        or not source_checks
+        or not all(value is True for value in source_checks.values())
+    ):
         raise RuntimeError("RCRE source manifest contains a failed check")
-    if manifest.get("research_boundary", {}).get("btc_market_rows_read") != 0:
-        raise RuntimeError("RCRE source manifest opened BTC rows")
+    expected_boundary = {
+        "btc_market_rows_read": 0,
+        "funding_rows_read": 0,
+        "return_rows_read": 0,
+        "pnl_cagr_mdd_opened": False,
+        "candidate_incidence_opened": False,
+        "candidate_features_computed": [],
+        "final_source_rows_read": 0,
+    }
+    manifest_boundary = manifest.get("research_boundary", {})
+    for field, expected_value in expected_boundary.items():
+        if manifest_boundary.get(field) != expected_value:
+            raise RuntimeError(f"RCRE source manifest boundary opened: {field}")
     return {
         "observations": str(OBSERVATIONS),
         "observations_sha256": OBSERVATIONS_SHA256,
