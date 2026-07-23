@@ -26,6 +26,26 @@ def test_policy_freezes_invariant_signed_interaction_and_gates() -> None:
     assert policy["mutable_parameters"] == []
 
 
+def test_comparator_cohort_is_locally_frozen_without_transitive_registry() -> None:
+    assert [row["name"] for row in rcre.COMPARATOR_SPECS] == [
+        "overnight_rrp_flow_release_all_controls",
+        "overnight_rrp_participant_breadth_all_controls",
+        "federal_liquidity_component_concordance_all_groups",
+        "daily_treasury_fiscal_flow_breadth_primary",
+        "daily_treasury_fiscal_flow_breadth_controls",
+        "sofr_rate_dislocation_primary",
+        "bank_deposit_secured_repo_concordance_all_clocks",
+        "fed_h8_deposit_migration_primary",
+        "soma_lending_collateral_scarcity_primary",
+        "cross_domain_liquidity_transmission_all_clocks",
+        "live_portfolio_pure_clocks",
+        "ofr_repo_venue_fragmentation_consensus_primary",
+        "ofr_repo_mix_shock_resolution_race_primary",
+    ]
+    assert all(isinstance(row["path"], Path) for row in rcre.COMPARATOR_SPECS)
+    assert all(len(row["sha256"]) == 64 for row in rcre.COMPARATOR_SPECS)
+
+
 def test_static_preregistration_is_explicitly_noneligible_and_value_blind() -> None:
     payload = rcre.build_preregistration(verify_sources=False)
     rcre.validate_preregistration(payload, verify_sources=False)
@@ -74,6 +94,69 @@ def test_policy_or_boundary_tampering_fails_closed() -> None:
     payload["signed_features_or_rcre_incidence_opened"] = True
     with pytest.raises(RuntimeError, match="boundary opened"):
         rcre.validate_preregistration(payload, verify_sources=False)
+
+
+@pytest.mark.parametrize(
+    ("field", "opened"),
+    [
+        ("btc_market_rows_read", 1),
+        ("funding_rows_read", 1),
+        ("return_rows_read", 1),
+        ("pnl_cagr_mdd_opened", True),
+        ("candidate_incidence_opened", True),
+        ("candidate_features_computed", ["routing_pressure"]),
+        ("final_source_rows_read", 1),
+    ],
+)
+def test_source_manifest_outcome_boundary_fails_closed(
+    tmp_path: Path, monkeypatch, field: str, opened: object
+) -> None:
+    observations = Path("observations.csv.gz")
+    metadata = Path("metadata.json.gz")
+    manifest_path = Path("manifest.json")
+    audit = Path("audit.md")
+    for path in (observations, metadata, audit):
+        (tmp_path / path).write_bytes(f"{path}\n".encode())
+
+    manifest = {
+        "manifest_hash": "canonical-manifest",
+        "observations": {"sha256": "", "rows": 77_369},
+        "metadata": {"sha256": "", "series": 82},
+        "source_checks": {"complete": True},
+        "research_boundary": {
+            "btc_market_rows_read": 0,
+            "funding_rows_read": 0,
+            "return_rows_read": 0,
+            "pnl_cagr_mdd_opened": False,
+            "candidate_incidence_opened": False,
+            "candidate_features_computed": [],
+            "final_source_rows_read": 0,
+        },
+    }
+    manifest["research_boundary"][field] = opened
+
+    monkeypatch.setattr(rcre, "REPOSITORY_ROOT", tmp_path)
+    monkeypatch.setattr(rcre, "OBSERVATIONS", observations)
+    monkeypatch.setattr(rcre, "METADATA", metadata)
+    monkeypatch.setattr(rcre, "SOURCE_MANIFEST", manifest_path)
+    monkeypatch.setattr(rcre, "SOURCE_AUDIT", audit)
+    monkeypatch.setattr(
+        rcre, "OBSERVATIONS_SHA256", rcre.sha256_file(observations)
+    )
+    monkeypatch.setattr(rcre, "METADATA_SHA256", rcre.sha256_file(metadata))
+    monkeypatch.setattr(rcre, "SOURCE_AUDIT_SHA256", rcre.sha256_file(audit))
+    manifest["observations"]["sha256"] = rcre.OBSERVATIONS_SHA256
+    manifest["metadata"]["sha256"] = rcre.METADATA_SHA256
+    (tmp_path / manifest_path).write_text(json.dumps(manifest))
+    monkeypatch.setattr(
+        rcre, "SOURCE_MANIFEST_SHA256", rcre.sha256_file(manifest_path)
+    )
+    monkeypatch.setattr(
+        rcre, "SOURCE_CANONICAL_MANIFEST_HASH", "canonical-manifest"
+    )
+
+    with pytest.raises(RuntimeError, match=f"boundary opened: {field}"):
+        rcre._source_binding()
 
 
 def test_write_is_immutable_and_no_clobber(tmp_path: Path, monkeypatch) -> None:
