@@ -340,7 +340,7 @@ def test_prefix_mismatch_rejects_before_source_schema_decompression(
                 archive_payload()[: probe.READ_CHUNK_BYTES]
             ),
             "expected_compressed_prefix_sha256": "0" * 64,
-            "source_schema_decompressed": "false",
+            "source_schema_decompressed": False,
         }
     ]
     assert urls == [probe.DIRECTORY_URL, probe.archive_url(probe.PROBE_DAYS[0])]
