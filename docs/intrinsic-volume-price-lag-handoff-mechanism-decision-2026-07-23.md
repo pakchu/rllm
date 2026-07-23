@@ -356,10 +356,12 @@ IVLIR group universe is `primary`, `flow_only`, `no_under_response`,
 `deterministic_random_side`; an unknown clock name fails closed. AFCS and LVRT
 require every raw row to carry exactly their selected branch value. BAFR,
 SMCC, and QLCD each have one implicit group. In every raw group, entry and exit
-must be timezone-aware UTC and five-minute aligned, side must be `LONG` or
-`SHORT`, exit must equal entry plus the table hold, entries must be unique and
-sorted, and intervals must not overlap. Any malformed row or empty required
-artifact/group fails before window filtering.
+must be timezone-aware UTC and five-minute aligned. IVLIR side must be exactly
+`LONG` or `SHORT`; BAFR, AFCS, LVRT, SMCC, and QLCD side must be exact decimal
+`1` or `-1`, normalized respectively to `LONG` or `SHORT` before metrics. Exit
+must equal entry plus the table hold, entries must be unique and sorted, and
+intervals must not overlap. Any malformed row or empty required artifact/group
+fails before window filtering.
 
 The common window is `[2021-01-01T00:00:00Z,
 2024-01-01T00:00:00Z)`. After complete raw-group validation, use an interval
