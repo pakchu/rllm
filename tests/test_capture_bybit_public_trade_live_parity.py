@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import inspect
 import json
+import threading
 from dataclasses import replace
 from datetime import datetime, timezone
 from io import BytesIO
@@ -197,8 +199,54 @@ def test_malformed_ws_bytes_are_audited_before_parser_rejects() -> None:
     with pytest.raises(capture.ParityCaptureError, match="UTF-8 JSON"):
         capture._record_ws_message(state, handle, raw, utc_ns, 100)
     envelope = json.loads(handle.getvalue())
-    assert base64.b64decode(envelope["raw_json_base64"]) == raw
-    assert envelope["raw_json_sha256"] == capture.sha256_bytes(raw)
+    assert base64.b64decode(envelope["raw_frame_base64"]) == raw
+    assert envelope["raw_frame_sha256"] == capture.sha256_bytes(raw)
+
+
+def test_binary_ws_frame_is_clocked_and_audited_before_rejection() -> None:
+    state = capture.CaptureState(
+        capture_day="2026-07-23",
+        started_at_utc="2026-07-23T00:00:00Z",
+        output_dir=Path("data/fixture"),
+    )
+    handle = BytesIO()
+    utc_ns = int(datetime(2026, 7, 23, tzinfo=timezone.utc).timestamp() * 1e9)
+    raw = b"\x00\xffbinary"
+    with pytest.raises(capture.ParityCaptureError, match="binary"):
+        capture._record_ws_message(
+            state,
+            handle,
+            raw,
+            utc_ns,
+            100,
+            3,
+            "binary",
+        )
+    envelope = json.loads(handle.getvalue())
+    assert envelope["frame_type"] == "binary"
+    assert base64.b64decode(envelope["raw_frame_base64"]) == raw
+    assert state.clock_samples == [
+        capture.ClockSample("websocket_receipt", 1, 100, utc_ns, 3)
+    ]
+
+
+def test_ws_capture_bound_rejects_only_after_raw_frame_audit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state = capture.CaptureState(
+        capture_day="2026-07-23",
+        started_at_utc="2026-07-23T00:00:00Z",
+        output_dir=Path("data/fixture"),
+    )
+    handle = BytesIO()
+    raw = b'{"op":"pong"}'
+    utc_ns = int(datetime(2026, 7, 23, tzinfo=timezone.utc).timestamp() * 1e9)
+    monkeypatch.setattr(capture, "MAX_CAPTURE_RAW_BYTES", len(raw) - 1)
+    with pytest.raises(capture.ParityCaptureError, match="raw bytes"):
+        capture._record_ws_message(state, handle, raw, utc_ns, 100)
+    envelope = json.loads(handle.getvalue())
+    assert base64.b64decode(envelope["raw_frame_base64"]) == raw
+    assert state.raw_bytes == len(raw)
 
 
 def test_http_error_body_and_status_are_audited_before_rejection() -> None:
@@ -217,21 +265,80 @@ def test_http_error_body_and_status_are_audited_before_rejection() -> None:
         location=None,
         raw=raw,
     )
+    start = capture.ClockSample("rest_request_start", 1, 100, utc_ns, 1)
+    end = capture.ClockSample("rest_response_end", 1, 101, utc_ns + 1, 1)
+    capture._begin_rest_attempt(state, handle, start)
     with pytest.raises(capture.ParityCaptureError, match="status"):
         capture._record_rest_response(
             state,
             handle,
             response,
-            request_start_utc_ns=utc_ns,
-            request_start_monotonic_ns=100,
-            response_end_utc_ns=utc_ns + 1,
-            response_end_monotonic_ns=101,
+            ordinal=1,
+            start=start,
+            end=end,
             final=False,
         )
-    envelope = json.loads(handle.getvalue())
+    lines = [json.loads(line) for line in handle.getvalue().splitlines()]
+    assert lines[0]["record_type"] == "request_start"
+    envelope = lines[1]
+    assert envelope["record_type"] == "response"
     assert envelope["http_status"] == 429
     assert base64.b64decode(envelope["raw_json_base64"]) == raw
     assert envelope["raw_json_sha256"] == capture.sha256_bytes(raw)
+
+
+def test_rest_size_bound_rejects_only_after_body_and_clock_audit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state = capture.CaptureState(
+        capture_day="2026-07-23",
+        started_at_utc="2026-07-23T00:00:00Z",
+        output_dir=Path("data/fixture"),
+    )
+    handle = BytesIO()
+    utc_ns = int(datetime(2026, 7, 23, tzinfo=timezone.utc).timestamp() * 1e9)
+    start = capture.ClockSample("rest_request_start", 1, 100, utc_ns, 1)
+    end = capture.ClockSample("rest_response_end", 1, 200, utc_ns + 100, 1)
+    response = capture.RestTransportResponse(
+        status=200,
+        final_url=capture.REST_URL,
+        content_type="application/json",
+        location=None,
+        raw=b"oversized",
+    )
+    monkeypatch.setattr(capture, "MAX_REST_RESPONSE_BYTES", 4)
+    capture._begin_rest_attempt(state, handle, start)
+    with pytest.raises(capture.ParityCaptureError, match="response exceeds"):
+        capture._record_rest_response(
+            state,
+            handle,
+            response,
+            ordinal=1,
+            start=start,
+            end=end,
+            final=False,
+        )
+    envelope = json.loads(handle.getvalue().splitlines()[1])
+    assert envelope["raw_body_complete"] is False
+    assert base64.b64decode(envelope["raw_json_base64"]) == response.raw
+    assert state.rest_attempts_completed == state.rest_responses_audited == 1
+
+
+def test_rest_clock_identity_is_audited_before_rejection() -> None:
+    state = capture.CaptureState(
+        capture_day="2026-07-23",
+        started_at_utc="2026-07-23T00:00:00Z",
+        output_dir=Path("data/fixture"),
+    )
+    handle = BytesIO()
+    utc_ns = int(datetime(2026, 7, 23, tzinfo=timezone.utc).timestamp() * 1e9)
+    malformed = capture.ClockSample("wrong_source", 7, 100, utc_ns, 1)
+    with pytest.raises(capture.ParityCaptureError, match="identity"):
+        capture._begin_rest_attempt(state, handle, malformed)
+    envelope = json.loads(handle.getvalue())
+    assert envelope["clock_source"] == "wrong_source"
+    assert envelope["clock_ordinal"] == 7
+    assert state.clock_samples == [malformed]
 
 
 def test_redirect_response_is_returned_for_audit_without_target_request() -> None:
@@ -261,21 +368,117 @@ def test_redirect_response_is_returned_for_audit_without_target_request() -> Non
         location="https://example.com/forbidden",
         raw=raw,
     )
+    start = capture.ClockSample("rest_request_start", 1, 100, utc_ns, 1)
+    end = capture.ClockSample("rest_response_end", 1, 101, utc_ns + 1, 1)
+    capture._begin_rest_attempt(state, handle, start)
     with pytest.raises(capture.ParityCaptureError, match="status"):
         capture._record_rest_response(
             state,
             handle,
             response,
-            request_start_utc_ns=utc_ns,
-            request_start_monotonic_ns=100,
-            response_end_utc_ns=utc_ns + 1,
-            response_end_monotonic_ns=101,
+            ordinal=1,
+            start=start,
+            end=end,
             final=False,
         )
-    envelope = json.loads(handle.getvalue())
+    envelope = json.loads(handle.getvalue().splitlines()[1])
     assert envelope["http_status"] == 302
     assert envelope["location"] == "https://example.com/forbidden"
     assert base64.b64decode(envelope["raw_json_base64"]) == raw
+
+
+def test_rest_transport_failure_persists_start_and_end_attempt_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    utc_ns = int(datetime(2026, 7, 23, tzinfo=timezone.utc).timestamp() * 1e9)
+    samples = iter(
+        (
+            capture.ClockSample("rest_request_start", 1, 100, utc_ns, 1),
+            capture.ClockSample("rest_response_end", 1, 200, utc_ns + 100, 1),
+        )
+    )
+    monkeypatch.setattr(capture, "enforce_disk_guard", lambda: 250)
+    monkeypatch.setattr(capture, "_local_clock_sample", lambda *_: next(samples))
+    state = capture.CaptureState(
+        capture_day="2026-07-23",
+        started_at_utc="2026-07-23T00:00:00Z",
+        output_dir=Path("data/fixture"),
+    )
+    handle = BytesIO()
+
+    def fail() -> capture.RestTransportResponse:
+        raise capture.ParityCaptureError("transport fixture")
+
+    with pytest.raises(capture.ParityCaptureError, match="fixture"):
+        asyncio.run(
+            capture._fetch_and_record_rest(
+                state,
+                handle,
+                final=False,
+                fetch=fail,
+            )
+        )
+    lines = [json.loads(line) for line in handle.getvalue().splitlines()]
+    assert [line["record_type"] for line in lines] == [
+        "request_start",
+        "transport_error",
+    ]
+    assert state.rest_attempts_started == state.rest_attempts_completed == 1
+    assert state.rest_responses_audited == 0
+    assert [sample.source for sample in state.clock_samples] == [
+        "rest_request_start",
+        "rest_response_end",
+    ]
+
+
+def test_rest_poller_stop_waits_for_inflight_response_audit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    utc_ns = int(datetime(2026, 7, 23, tzinfo=timezone.utc).timestamp() * 1e9)
+    samples = iter(
+        (
+            capture.ClockSample("rest_request_start", 1, 100, utc_ns, 1),
+            capture.ClockSample("rest_response_end", 1, 200, utc_ns + 100, 1),
+        )
+    )
+    monkeypatch.setattr(capture, "enforce_disk_guard", lambda: 250)
+    monkeypatch.setattr(capture, "_local_clock_sample", lambda *_: next(samples))
+    state = capture.CaptureState(
+        capture_day="2026-07-23",
+        started_at_utc="2026-07-23T00:00:00Z",
+        output_dir=Path("data/fixture"),
+    )
+    handle = BytesIO()
+    fetch_started = threading.Event()
+    release_fetch = threading.Event()
+
+    def fetch() -> capture.RestTransportResponse:
+        fetch_started.set()
+        assert release_fetch.wait(timeout=2)
+        return capture.RestTransportResponse(
+            status=200,
+            final_url=capture.REST_URL,
+            content_type="application/json",
+            location=None,
+            raw=rest_raw([rest_row(1)]),
+        )
+
+    async def exercise() -> None:
+        stop = asyncio.Event()
+        task = asyncio.create_task(
+            capture._rest_poller(state, handle, 10**30, stop, fetch=fetch)
+        )
+        while not fetch_started.is_set():
+            await asyncio.sleep(0)
+        stop.set()
+        release_fetch.set()
+        await task
+
+    asyncio.run(exercise())
+    lines = [json.loads(line) for line in handle.getvalue().splitlines()]
+    assert [line["record_type"] for line in lines] == ["request_start", "response"]
+    assert state.rest_attempts_started == state.rest_attempts_completed == 1
+    assert state.rest_responses_audited == 1
 
 
 def test_parity_passes_with_unordered_overlapping_rest_windows() -> None:
@@ -327,15 +530,21 @@ def test_parity_rejects_nonoverlapping_rest_windows_and_missing_final_marker() -
 
 def test_clock_integrity_sorts_cross_task_samples_before_validation() -> None:
     samples = [
-        capture.ClockSample("ws", 3, 300, 1_300, 2),
-        capture.ClockSample("rest_start", 1, 100, 1_100, 4),
-        capture.ClockSample("rest_end", 1, 200, 1_200, 3),
+        capture.ClockSample("capture_end", 1, 500, 1_500, 2),
+        capture.ClockSample("websocket_receipt", 1, 200, 1_200, 2),
+        capture.ClockSample("rest_response_end", 1, 400, 1_400, 3),
+        capture.ClockSample("capture_start", 1, 100, 1_100, 4),
+        capture.ClockSample("rest_request_start", 1, 300, 1_300, 2),
     ]
-    audit = capture.evaluate_clock_integrity(samples)
+    audit = capture.evaluate_clock_integrity(
+        samples,
+        capture.ClockLedgerExpectation(1, 1, 1, 1),
+    )
     assert audit["clock_contract_passed"] is True
     assert audit["utc_reversal_count"] == 0
     assert audit["nonincreasing_monotonic_count"] == 0
-    assert audit["monotonic_elapsed_ns"] == audit["utc_elapsed_ns"] == 200
+    assert audit["ledger_complete"] is True
+    assert audit["monotonic_elapsed_ns"] == audit["utc_elapsed_ns"] == 400
     assert audit["maximum_sampling_uncertainty_ns"] == 4
 
 
@@ -344,9 +553,10 @@ def test_clock_reversal_forces_a_previously_passing_parity_to_reject() -> None:
     parity = capture.evaluate_rest_ws_parity(ws, snapshots)
     audit = capture.evaluate_clock_integrity(
         [
-            capture.ClockSample("ws", 1, 100, 1_000, 1),
-            capture.ClockSample("rest", 1, 200, 900, 1),
-        ]
+            capture.ClockSample("capture_start", 1, 100, 1_000, 1),
+            capture.ClockSample("capture_end", 1, 200, 900, 1),
+        ],
+        capture.ClockLedgerExpectation(0, 0, 0, 0),
     )
     assert audit["utc_reversal_count"] == 1
     assert audit["clock_contract_passed"] is False
@@ -357,15 +567,39 @@ def test_clock_reversal_forces_a_previously_passing_parity_to_reject() -> None:
 
 
 def test_missing_or_duplicate_clock_samples_fail_closed() -> None:
-    assert capture.evaluate_clock_integrity([])["clock_contract_passed"] is False
+    empty = capture.ClockLedgerExpectation(0, 0, 0, 0)
+    assert capture.evaluate_clock_integrity([], empty)["clock_contract_passed"] is False
     duplicate = capture.evaluate_clock_integrity(
         [
-            capture.ClockSample("ws", 1, 100, 1_000, 0),
-            capture.ClockSample("rest", 1, 100, 1_001, 0),
-        ]
+            capture.ClockSample("capture_start", 1, 100, 1_000, 0),
+            capture.ClockSample("capture_start", 1, 100, 1_001, 0),
+            capture.ClockSample("capture_end", 1, 200, 1_100, 0),
+        ],
+        empty,
     )
     assert duplicate["nonincreasing_monotonic_count"] == 1
     assert duplicate["clock_contract_passed"] is False
+
+    missing_ws = capture.evaluate_clock_integrity(
+        [
+            capture.ClockSample("capture_start", 1, 100, 1_000, 0),
+            capture.ClockSample("capture_end", 1, 200, 1_100, 0),
+        ],
+        capture.ClockLedgerExpectation(1, 0, 0, 0),
+    )
+    assert missing_ws["ledger_complete"] is False
+    assert missing_ws["missing_ledger_entries"] == 1
+
+    misplaced_boundaries = capture.evaluate_clock_integrity(
+        [
+            capture.ClockSample("capture_end", 1, 100, 1_000, 0),
+            capture.ClockSample("websocket_receipt", 1, 200, 1_100, 0),
+            capture.ClockSample("capture_start", 1, 300, 1_200, 0),
+        ],
+        capture.ClockLedgerExpectation(1, 0, 0, 0),
+    )
+    assert misplaced_boundaries["boundary_ledger_complete"] is False
+    assert misplaced_boundaries["ledger_complete"] is False
 
 
 def test_manifest_is_hash_bound_immutable_and_outcome_blind(
