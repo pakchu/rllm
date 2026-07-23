@@ -71,6 +71,8 @@ OBSERVATION_COLUMNS = (
     "subset",
     "series_name",
 )
+GZIP_MAGIC = b"\x1f\x8b"
+MAX_DECODED_JSON_BYTES = 16 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -403,6 +405,23 @@ def _decimal(value: Any, label: str, *, optional: bool = False) -> Decimal | Non
     return result
 
 
+def _decode_json_document(payload: bytes, label: str) -> Any:
+    decoded = payload
+    if payload.startswith(GZIP_MAGIC):
+        try:
+            decoded = gzip.decompress(payload)
+        except (EOFError, OSError) as exc:
+            raise RuntimeError(f"{label} transport gzip is invalid") from exc
+        if decoded.startswith(GZIP_MAGIC):
+            raise RuntimeError(f"{label} transport gzip is nested")
+    if len(decoded) > MAX_DECODED_JSON_BYTES:
+        raise RuntimeError(f"{label} decoded JSON exceeds frozen size limit")
+    try:
+        return json.loads(decoded.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"{label} is invalid JSON") from exc
+
+
 def _parse_mnemonic(value: str) -> tuple[str, str, str]:
     if not value.startswith("REPO-") or not value.endswith("-P"):
         raise RuntimeError(f"non-preliminary repo mnemonic: {value}")
@@ -420,10 +439,7 @@ def _parse_mnemonic(value: str) -> tuple[str, str, str]:
 
 
 def _parse_mnemonic_catalog(payload: bytes) -> dict[str, str]:
-    try:
-        document = json.loads(payload.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise RuntimeError("OFR mnemonic response is invalid JSON") from exc
+    document = _decode_json_document(payload, "OFR mnemonic response")
     if not isinstance(document, list) or not document:
         raise RuntimeError("OFR mnemonic response must be a nonempty array")
     output: dict[str, str] = {}
@@ -595,10 +611,7 @@ def _availability(observation_day: date) -> datetime:
 def parse_dataset(
     payload: bytes, mnemonic_names: Mapping[str, str]
 ) -> tuple[list[SeriesDefinition], list[Observation]]:
-    try:
-        document = json.loads(payload.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise RuntimeError("OFR dataset response is invalid JSON") from exc
+    document = _decode_json_document(payload, "OFR dataset response")
     root = _mapping(document, "OFR dataset")
     if set(root) != TOP_LEVEL_FIELDS:
         raise RuntimeError("OFR dataset top-level schema changed")

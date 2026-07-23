@@ -215,6 +215,20 @@ def test_dataset_parser_preserves_nulls_and_waits_eight_days() -> None:
     )
 
 
+def test_transport_gzip_is_decoded_once_and_bounded() -> None:
+    payloads = fixture_payloads()
+    compressed = dict(payloads)
+    compressed["preliminary"] = gzip.compress(payloads["preliminary"])
+    definitions, observations = source.build_panel(compressed)
+    assert len(definitions) == 2
+    assert len(observations) == 4
+    with pytest.raises(RuntimeError, match="transport gzip is invalid"):
+        source.parse_dataset(source.GZIP_MAGIC + b"broken", {})
+    nested = gzip.compress(gzip.compress(payloads["preliminary"]))
+    with pytest.raises(RuntimeError, match="transport gzip is nested"):
+        source.parse_dataset(nested, {})
+
+
 def test_dataset_parser_rejects_final_duplicate_future_and_negative_volume() -> None:
     payloads = fixture_payloads()
     names = source.parse_mnemonics(payloads["mnemonics"])
