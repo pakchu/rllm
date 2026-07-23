@@ -144,6 +144,35 @@ def test_write_once_is_reproducible_and_rejects_drift(tmp_path) -> None:
         p.validate_manifest(stored)
 
 
+def test_write_once_uses_canonical_bytes_for_reordered_payload(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[bool] = []
+    monkeypatch.setattr(
+        p,
+        "validate_frozen_dependencies",
+        lambda: calls.append(True),
+    )
+    payload = p.build_manifest()
+    reordered = dict(reversed(list(payload.items())))
+    output = tmp_path / "freeze.json"
+    assert p.write_once(output, reordered) == "created"
+    assert calls == [True]
+    assert output.read_text(encoding="utf-8") == p._canonical_manifest_text()
+    assert not list(tmp_path.glob(".freeze.json.*.tmp"))
+
+
+def test_write_once_rejects_reformatted_existing_manifest(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(p, "validate_frozen_dependencies", lambda: None)
+    payload = p.build_manifest()
+    output = tmp_path / "freeze.json"
+    output.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="noncanonical existing"):
+        p.write_once(output, payload)
+
+
 def test_validate_manifest_rejects_self_rehashed_non_policy_drift() -> None:
     payload = p.build_manifest()
     payload["novelty_contract"]["minimum_selected_contained_rows"] = 11
