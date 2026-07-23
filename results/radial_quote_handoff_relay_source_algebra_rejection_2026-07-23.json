@@ -1,0 +1,113 @@
+{
+  "advance_to_evaluator_freeze": false,
+  "boundary": {
+    "comparator_overlap_opened": false,
+    "comparator_rows_read": 0,
+    "market_or_outcome_rows_read": 0,
+    "price_funding_return_pnl_cagr_mdd_opened": false,
+    "rqhr_arms_derived": 0,
+    "rqhr_confirmations_derived": 0,
+    "rqhr_events_derived": 0,
+    "rqhr_features_derived": 0,
+    "rqhr_net_path_efficiency_values_opened": true
+  },
+  "candidate": "RQHR-72",
+  "failure_action": "retire RQHR-72 unchanged before event incidence and market outcomes",
+  "failure_stage": "frozen_source_algebra",
+  "frozen_bindings": {
+    "gzip_csv_writer": {
+      "float_format": "%.12g",
+      "path": "training/build_binance_aggtrade_microstructure.py",
+      "sha256": "dc09b9b2d8838f6b1e64ef73636e39aacd7f843720a20ab01e566660d7d2c47a"
+    },
+    "preregistration": {
+      "path": "results/radial_quote_handoff_relay_preregistration_v2_2026-07-23.json",
+      "sha256": "402c0b02cfea5932766f1892520860acd6beaeafb9e6948024d71e761c2d5f70"
+    },
+    "source_builder": {
+      "path": "training/build_binance_um_book_centroid_2023.py",
+      "sha256": "6021a1ee140500350e8b6bc0e8dae5ca32a84db39039c21d809ca798909a5c24"
+    },
+    "source_panel": {
+      "path": "data/binance_um_book_centroid_btcusdt_2023/BTCUSDT_um_book_centroid_skew_5m_2023.csv.gz",
+      "sha256": "c4053ce27d28bebda4137349192b1a940360231469f63edc32bacabb2ce54131"
+    },
+    "support_builder": {
+      "commit": "0a05f3f",
+      "path": "training/build_radial_quote_handoff_relay_support.py",
+      "sha256": "9bb5890962838419b2452ef9f62e3e1db4a8db59b74b5d8bb3f72e5d4b713222"
+    },
+    "synthetic_null": {
+      "manifest_hash": "b41d9df8600fcab7c90927fbeacf12cf96c4e50b9992e57101e2ede31581ea38",
+      "passed": true,
+      "path": "results/radial_quote_handoff_relay_synthetic_null_2026-07-23.json",
+      "sha256": "b96965b9e7ea452d9258fa8e0b4bec36d894a0e5b593cef9d24628a5f8101860"
+    }
+  },
+  "manifest_hash": "bb20b4fb60f0f9f166eedbf00d4102d8f5f9787d8c844842114967d96d83cc55",
+  "parameter_changes_after_failure": [],
+  "protocol_version": "radial_quote_handoff_relay_source_algebra_rejection_v1",
+  "research_status": "rejected_before_feature_arm_event_or_comparator_incidence",
+  "source_audit": {
+    "algebra_observations": 407824,
+    "complete_rows": 101956,
+    "exact_columns_read": [
+      "date",
+      "skew_2_net",
+      "skew_2_path",
+      "skew_2_efficiency",
+      "skew_3_net",
+      "skew_3_path",
+      "skew_3_efficiency",
+      "skew_4_net",
+      "skew_4_path",
+      "skew_4_efficiency",
+      "skew_5_net",
+      "skew_5_path",
+      "skew_5_efficiency",
+      "source_complete",
+      "source_available_at"
+    ],
+    "failure_counts_by_radius": {
+      "2": 41,
+      "3": 79,
+      "4": 80,
+      "5": 107
+    },
+    "failure_counts_by_reason": {
+      "efficiency_ratio": 307
+    },
+    "first_failure": {
+      "absolute_efficiency_error": "5.0122977702471999E-12",
+      "date": "2023-01-01 21:20:00",
+      "net": "0.000104385510952",
+      "path": "0.000132558095267",
+      "position": 256,
+      "radius": 3,
+      "reasons": [
+        "efficiency_ratio"
+      ],
+      "recomputed_efficiency": "0.7874699069999877022297528001",
+      "stored_efficiency": "0.787469907005"
+    },
+    "fixed_absolute_tolerance": "5E-12",
+    "forbidden_columns_read": [],
+    "incomplete_rows": 3164,
+    "maximum_absolute_efficiency_error": "8.6537675544275273E-12",
+    "maximum_error_observation": {
+      "absolute_efficiency_error": "8.6537675544275273E-12",
+      "date": "2023-10-09 14:45:00",
+      "net": "0.00102307656069",
+      "path": "0.00107013672239",
+      "position": 81105,
+      "radius": 2,
+      "recomputed_efficiency": "0.9560241596093462324455724727",
+      "stored_efficiency": "0.956024159618"
+    },
+    "post_2023_rows_read": 0,
+    "root_cause": "independent %.12g serialization of net, path, and efficiency can move recomputed abs(net)/path beyond the frozen 5e-12 tolerance",
+    "rows_read": 105120,
+    "total_failed_observations": 307
+  },
+  "support_or_novelty_evaluated": false
+}
