@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import base64
 import gzip
 import json
 import ssl
@@ -81,6 +82,9 @@ MIN_UNIQUE_WS_TRADES = 1_000
 MIN_REST_SNAPSHOTS = 10
 MIN_COMMON_IDS = 1_000
 USER_AGENT = "rllm-bybit-live-parity/1.0"
+TICK_DIRECTIONS = frozenset(
+    {"PlusTick", "ZeroPlusTick", "MinusTick", "ZeroMinusTick"}
+)
 
 
 class ParityCaptureError(RuntimeError):
@@ -127,6 +131,14 @@ class RestSnapshot:
     trades: tuple[NormalizedTrade, ...]
 
 
+@dataclass(frozen=True)
+class RestTransportResponse:
+    status: int
+    final_url: str
+    content_type: str | None
+    raw: bytes
+
+
 @dataclass
 class CaptureState:
     capture_day: str
@@ -144,7 +156,7 @@ class CaptureState:
     ended_at_utc: str | None = None
 
 
-FetchRest = Callable[[], bytes]
+FetchRest = Callable[[], RestTransportResponse]
 
 
 def _repo_path(path: str | Path) -> Path:
@@ -217,6 +229,12 @@ def _canonical_positive_decimal(value: object, label: str) -> str:
 def _strict_source_id(value: object, label: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ParityCaptureError(f"{label} must be a nonempty string")
+    return value
+
+
+def _strict_tick_direction(value: object) -> str:
+    if not isinstance(value, str) or value not in TICK_DIRECTIONS:
+        raise ParityCaptureError("WebSocket L is not a documented tick direction")
     return value
 
 
@@ -307,6 +325,7 @@ def parse_ws_payload(
         if previous_time is not None and trade_time < previous_time:
             raise ParityCaptureError("WebSocket message trade times are decreasing")
         previous_time = trade_time
+        _strict_tick_direction(row.get("L"))
         parsed.append(
             NormalizedTrade(
                 source_id=_strict_source_id(row.get("i"), "WebSocket i"),
@@ -455,7 +474,7 @@ def _validate_rest_url(url: str) -> None:
         raise ParityCaptureError("REST URL differs from frozen Bybit route")
 
 
-def fetch_rest() -> bytes:
+def fetch_rest() -> RestTransportResponse:
     _validate_rest_url(REST_URL)
     request = urllib.request.Request(
         REST_URL,
@@ -468,14 +487,26 @@ def fetch_rest() -> bytes:
     )
     try:
         with opener.open(request, timeout=HTTP_TIMEOUT_SECONDS) as response:
-            if response.status != 200 or response.geturl() != REST_URL:
-                raise ParityCaptureError("unexpected REST status or redirect")
             raw = response.read(MAX_REST_RESPONSE_BYTES + 1)
-    except (urllib.error.HTTPError, urllib.error.URLError, SourceProbeError) as exc:
+            transport = RestTransportResponse(
+                status=int(response.status),
+                final_url=str(response.geturl()),
+                content_type=response.headers.get("Content-Type"),
+                raw=raw,
+            )
+    except urllib.error.HTTPError as exc:
+        raw = exc.read(MAX_REST_RESPONSE_BYTES + 1)
+        transport = RestTransportResponse(
+            status=int(exc.code),
+            final_url=str(exc.geturl()),
+            content_type=exc.headers.get("Content-Type"),
+            raw=raw,
+        )
+    except (urllib.error.URLError, SourceProbeError) as exc:
         raise ParityCaptureError("frozen Bybit REST transport failed") from exc
-    if len(raw) > MAX_REST_RESPONSE_BYTES:
+    if len(transport.raw) > MAX_REST_RESPONSE_BYTES:
         raise ParityCaptureError("REST response exceeds frozen byte bound")
-    return raw
+    return transport
 
 
 def _write_raw_line(handle: Any, payload: Mapping[str, Any]) -> None:
@@ -505,11 +536,21 @@ def _record_ws_message(
         state.capture_day
     ):
         raise ParityCaptureError("capture crossed UTC midnight")
-    kind, trades = parse_ws_payload(raw)
     state.raw_bytes += len(raw)
     if state.raw_bytes > MAX_CAPTURE_RAW_BYTES:
         raise ParityCaptureError("capture raw bytes exceed frozen bound")
     state.ws_messages += 1
+    _write_raw_line(
+        handle,
+        {
+            "ordinal": state.ws_messages,
+            "receipt_utc_ns": receipt_utc_ns,
+            "receipt_monotonic_ns": receipt_monotonic_ns,
+            "raw_json_sha256": sha256_bytes(raw),
+            "raw_json_base64": base64.b64encode(raw).decode("ascii"),
+        },
+    )
+    kind, trades = parse_ws_payload(raw)
     if kind == "subscribe":
         state.ws_subscription_acks += 1
     elif kind == "pong":
@@ -521,23 +562,13 @@ def _record_ws_message(
             ObservedWsTrade(trade, receipt_monotonic_ns) for trade in trades
         )
         state.last_trade_monotonic_ns = receipt_monotonic_ns
-    _write_raw_line(
-        handle,
-        {
-            "ordinal": state.ws_messages,
-            "receipt_utc_ns": receipt_utc_ns,
-            "receipt_monotonic_ns": receipt_monotonic_ns,
-            "raw_json_sha256": sha256_bytes(raw),
-            "raw_json_utf8": raw.decode("utf-8", errors="strict"),
-        },
-    )
     return kind, trades
 
 
 def _record_rest_response(
     state: CaptureState,
     handle: Any,
-    raw: bytes,
+    response: RestTransportResponse,
     *,
     request_start_utc_ns: int,
     request_start_monotonic_ns: int,
@@ -552,31 +583,37 @@ def _record_rest_response(
             state.capture_day
         ):
             raise ParityCaptureError("capture crossed UTC midnight")
-    trades = parse_rest_response(raw)
-    state.raw_bytes += len(raw)
+    state.raw_bytes += len(response.raw)
     if state.raw_bytes > MAX_CAPTURE_RAW_BYTES:
         raise ParityCaptureError("capture raw bytes exceed frozen bound")
+    ordinal = len(state.rest_snapshots) + 1
+    _write_raw_line(
+        handle,
+        {
+            "ordinal": ordinal,
+            "final": final,
+            "request_start_utc_ns": request_start_utc_ns,
+            "request_start_monotonic_ns": request_start_monotonic_ns,
+            "response_end_utc_ns": response_end_utc_ns,
+            "response_end_monotonic_ns": response_end_monotonic_ns,
+            "http_status": response.status,
+            "final_url": response.final_url,
+            "content_type": response.content_type,
+            "raw_json_sha256": sha256_bytes(response.raw),
+            "raw_json_base64": base64.b64encode(response.raw).decode("ascii"),
+        },
+    )
+    if response.status != 200 or response.final_url != REST_URL:
+        raise ParityCaptureError("unexpected REST status or redirect")
+    trades = parse_rest_response(response.raw)
     snapshot = RestSnapshot(
-        ordinal=len(state.rest_snapshots) + 1,
+        ordinal=ordinal,
         request_start_monotonic_ns=request_start_monotonic_ns,
         response_end_monotonic_ns=response_end_monotonic_ns,
         final=final,
         trades=trades,
     )
     state.rest_snapshots.append(snapshot)
-    _write_raw_line(
-        handle,
-        {
-            "ordinal": snapshot.ordinal,
-            "final": final,
-            "request_start_utc_ns": request_start_utc_ns,
-            "request_start_monotonic_ns": request_start_monotonic_ns,
-            "response_end_utc_ns": response_end_utc_ns,
-            "response_end_monotonic_ns": response_end_monotonic_ns,
-            "raw_json_sha256": sha256_bytes(raw),
-            "raw_json_utf8": raw.decode("utf-8", errors="strict"),
-        },
-    )
     return snapshot
 
 
@@ -590,13 +627,13 @@ async def _fetch_and_record_rest(
     enforce_disk_guard()
     start_utc_ns = time.time_ns()
     start_mono_ns = time.monotonic_ns()
-    raw = await asyncio.to_thread(fetch)
+    response = await asyncio.to_thread(fetch)
     end_mono_ns = time.monotonic_ns()
     end_utc_ns = time.time_ns()
     return _record_rest_response(
         state,
         handle,
-        raw,
+        response,
         request_start_utc_ns=start_utc_ns,
         request_start_monotonic_ns=start_mono_ns,
         response_end_utc_ns=end_utc_ns,

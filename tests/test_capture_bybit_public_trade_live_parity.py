@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import base64
 import inspect
 import json
 from dataclasses import replace
+from datetime import datetime, timezone
+from io import BytesIO
 from pathlib import Path
 
 import pytest
@@ -158,6 +161,59 @@ def test_ws_parser_rejects_decreasing_message_time_and_seq_as_bool() -> None:
     row["seq"] = True
     with pytest.raises(capture.ParityCaptureError, match="nonnegative"):
         capture.parse_ws_payload(ws_raw([row]))
+
+    row = ws_row(1)
+    row.pop("L")
+    with pytest.raises(capture.ParityCaptureError, match="tick direction"):
+        capture.parse_ws_payload(ws_raw([row]))
+
+
+def test_malformed_ws_bytes_are_audited_before_parser_rejects() -> None:
+    state = capture.CaptureState(
+        capture_day="2026-07-23",
+        started_at_utc="2026-07-23T00:00:00Z",
+        output_dir=Path("data/fixture"),
+    )
+    handle = BytesIO()
+    utc_ns = int(datetime(2026, 7, 23, tzinfo=timezone.utc).timestamp() * 1e9)
+    raw = b"\xffnot-json"
+    with pytest.raises(capture.ParityCaptureError, match="UTF-8 JSON"):
+        capture._record_ws_message(state, handle, raw, utc_ns, 100)
+    envelope = json.loads(handle.getvalue())
+    assert base64.b64decode(envelope["raw_json_base64"]) == raw
+    assert envelope["raw_json_sha256"] == capture.sha256_bytes(raw)
+
+
+def test_http_error_body_and_status_are_audited_before_rejection() -> None:
+    state = capture.CaptureState(
+        capture_day="2026-07-23",
+        started_at_utc="2026-07-23T00:00:00Z",
+        output_dir=Path("data/fixture"),
+    )
+    handle = BytesIO()
+    utc_ns = int(datetime(2026, 7, 23, tzinfo=timezone.utc).timestamp() * 1e9)
+    raw = b'{"retCode":10006,"retMsg":"Too many visits"}'
+    response = capture.RestTransportResponse(
+        status=429,
+        final_url=capture.REST_URL,
+        content_type="application/json",
+        raw=raw,
+    )
+    with pytest.raises(capture.ParityCaptureError, match="status"):
+        capture._record_rest_response(
+            state,
+            handle,
+            response,
+            request_start_utc_ns=utc_ns,
+            request_start_monotonic_ns=100,
+            response_end_utc_ns=utc_ns + 1,
+            response_end_monotonic_ns=101,
+            final=False,
+        )
+    envelope = json.loads(handle.getvalue())
+    assert envelope["http_status"] == 429
+    assert base64.b64decode(envelope["raw_json_base64"]) == raw
+    assert envelope["raw_json_sha256"] == capture.sha256_bytes(raw)
 
 
 def test_parity_passes_with_unordered_overlapping_rest_windows() -> None:
