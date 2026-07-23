@@ -1,0 +1,464 @@
+{
+  "batch_contract": {
+    "atom_identity": [
+      "operation_id",
+      "cusip"
+    ],
+    "equal_cusips_across_operations_merged": false,
+    "first_complete_after_break_can_trigger": false,
+    "invalid_batch_breaks_continuity": true,
+    "key": "exact available_at_utc",
+    "operation_detail_reconciliation": "exact decimal",
+    "positive_batch_totals_required": [
+      "par_submitted",
+      "actual_available_to_borrow",
+      "par_accepted",
+      "par_accepted_times_weighted_average_rate"
+    ],
+    "reference": "immediately previous complete strictly earlier batch",
+    "simultaneous_batches_are_mutually_prior": false
+  },
+  "comparator_rows_decoded": false,
+  "components": {
+    "aggregate_slcs_levels_used": false,
+    "award_distortion": "JSD(submitted_share, accepted_share)",
+    "fee_distortion": "JSD(accepted_share, accepted_fee_mass_share)",
+    "higher_meaning": "greater cross-sectional allocation fracture",
+    "inventory_mismatch": "JSD(submitted_share, actual_available_share)",
+    "order": [
+      "inventory_mismatch",
+      "award_distortion",
+      "unmet_demand_mass",
+      "fee_distortion"
+    ],
+    "rolling_rank_or_fitted_scale_used": false,
+    "unmet_demand_mass": "sum(submitted where accepted==0) / sum(submitted)"
+  },
+  "composition_gate": {
+    "control_reproduction_denominator": "accepted primary",
+    "each_split": {
+      "each_component_control_reproduction_max": 0.8,
+      "each_component_raw_agreement_max": 0.95,
+      "each_component_raw_agreement_min": 0.55,
+      "each_stale_reproduction_max": 0.75,
+      "exact_three_of_four_share_min": 0.15,
+      "four_of_four_share_max": 0.85,
+      "four_of_four_share_min": 0.1,
+      "mean_change_reproduction_max": 0.9,
+      "permutation_exact_entry_jaccard_max": 0.5,
+      "permutation_same_side_reproduction_max": 0.65,
+      "random_side_reproduction_max": 0.6
+    },
+    "flat_component_counts_as_disagreement": true,
+    "raw_denominator": "split-contained raw primary opportunities before reservation"
+  },
+  "controls": {
+    "independent_reservation": [
+      "inventory_mismatch_only",
+      "award_distortion_only",
+      "unmet_demand_mass_only",
+      "fee_distortion_only",
+      "mean_change_without_consensus",
+      "two_of_four_without_opposition",
+      "one_batch_stale",
+      "five_batch_stale",
+      "within_batch_demand_permutation"
+    ],
+    "order": [
+      "primary",
+      "inventory_mismatch_only",
+      "award_distortion_only",
+      "unmet_demand_mass_only",
+      "fee_distortion_only",
+      "mean_change_without_consensus",
+      "two_of_four_without_opposition",
+      "one_batch_stale",
+      "five_batch_stale",
+      "within_batch_demand_permutation",
+      "exact_direction_flip",
+      "deterministic_random_side",
+      "constant_long",
+      "constant_short"
+    ],
+    "permutation": {
+      "destination_hash_bytes": "SCAF-48\\0timestamp\\0operation_id\\0cusip",
+      "destination_order": [
+        "digest_bytes",
+        "operation_id",
+        "cusip"
+      ],
+      "encoding": "UTF-8",
+      "field": "submitted_share_p",
+      "nul_in_identifier": "reject",
+      "source_order": [
+        "operation_id",
+        "cusip"
+      ]
+    },
+    "primary_clock_side_only": [
+      "exact_direction_flip",
+      "deterministic_random_side",
+      "constant_long",
+      "constant_short"
+    ],
+    "random_side": {
+      "digest_integer": "unsigned big-endian",
+      "even": "LONG",
+      "input": "SCAF-48|<primary_signal_id>|RANDOM_SIDE",
+      "odd": "SHORT"
+    },
+    "stale_history_reset_on_invalid_batch": true
+  },
+  "economic_rllm_sequence": {
+    "deterministic_cagr_to_strict_mdd_min": 3.0,
+    "deterministic_source_train_selection_pass_required": true,
+    "economic_evaluator_authorized": false,
+    "exact_funding_and_executable_costs": true,
+    "full_wall_clock_cagr": true,
+    "rllm_actions": [
+      "TRADE_FIXED_SIDE",
+      "ABSTAIN"
+    ],
+    "rllm_forbidden": [
+      "raw_components",
+      "amounts",
+      "rates",
+      "cusips",
+      "operation_ids",
+      "dates",
+      "timestamps",
+      "btc_prices",
+      "future_paths",
+      "split_labels",
+      "ranks",
+      "rewards",
+      "evaluated_outcomes"
+    ],
+    "rllm_tokens": [
+      "four_component_UP_DOWN_FLAT",
+      "FRACTURE_RELIEF",
+      "three_vs_four_agreement",
+      "prior_symbolic_relation",
+      "batch_validity",
+      "position_fixed_side_time_in_position",
+      "fixed_risk_budget"
+    ],
+    "strict_mdd": "global/pre-entry HWM plus intratrade adverse path and costs"
+  },
+  "evidence_boundary": {
+    "btc_market_rows_read": 0,
+    "detail_value_rows_read": 0,
+    "funding_rows_read": 0,
+    "future_return_rows_read": 0,
+    "network_calls": 0,
+    "operation_value_rows_read": 0,
+    "pnl_cagr_mdd_opened": false,
+    "scaf_batches_derived": 0,
+    "scaf_candidate_events_derived": 0,
+    "scaf_components_computed": 0,
+    "scaf_transitions_derived": 0,
+    "slcs_comparator_value_rows_read": 0,
+    "subprocess_calls": 0
+  },
+  "execution": {
+    "acceptance": "entry >= previous accepted exit",
+    "canonical_signal_timestamp": "YYYY-MM-DDTHH:MM:SSZ",
+    "entry": "ceil_to_5m(signal) + 5 elapsed minutes",
+    "entry_exit_same_split_required": true,
+    "fractional_source_seconds_allowed": false,
+    "global_nonoverlap_before_split": true,
+    "hold_bars": 576,
+    "hold_minutes": 2880,
+    "interval": "[entry, exit)",
+    "notional": 0.5,
+    "primary_signal_id": "sha256_utf8(SCAF-48|timestamp|FRACTURE_OR_RELIEF)",
+    "reservation_sort": [
+      "entry_time",
+      "signal_available_time",
+      "signal_id"
+    ],
+    "stop_or_take_profit": false,
+    "suppressed_events_queued": false
+  },
+  "frozen_documents": {
+    "boundary": {
+      "path": "docs/soma-collateral-allocation-fracture-boundary-2026-07-24.md",
+      "sha256": "faade722ffa8f7ce67db50cb34e55d371a31c9d3770e96f1b9507e8470b340d3"
+    },
+    "mechanism": {
+      "path": "docs/soma-collateral-allocation-fracture-mechanism-decision-2026-07-24.md",
+      "sha256": "af203719ed3111880ff5528723b2d9c0878ec9ba659739baf7862df96d007728"
+    },
+    "schema_amendment": {
+      "path": "docs/scaf-normalized-source-schema-preincidence-amendment-2026-07-24.md",
+      "sha256": "8e6a2ef1be5c5e93c5e998cb8b9d7a9ddf0a3e931042d6d0f47238af0b39b5d2"
+    },
+    "source_audit": {
+      "path": "docs/new-york-fed-securities-lending-source-audit-2026-07-23.md",
+      "sha256": "c812998be0bd44efc09b8120d9bc0b2a96f4e1e95f9414a4c8458d97319307bc"
+    },
+    "source_builder": {
+      "path": "training/build_new_york_fed_securities_lending.py",
+      "sha256": "2f0b5b3daca253ca015c7f691faf0ab75d11c200c11f5bc1c47b34ed1b85ef45"
+    }
+  },
+  "live_fail_flat": {
+    "capture_and_hash_official_response": true,
+    "emergency_flatten_is_alpha_exit": false,
+    "failure_while_flat": "remain flat and halt",
+    "failure_while_positioned": "one reduce-only market flatten request and halt",
+    "preorder_integrity_failure": "invalidate order and halt",
+    "restart": "audited new complete baseline batch"
+  },
+  "manifest_hash": "fd22849e9a92476fc2e08805bd7e634cc478592238a087ef5a67c121d51f1a44",
+  "novelty_contract": {
+    "bound_prior_artifacts": {
+      "slcs_preregistration": {
+        "path": "results/soma_lending_collateral_scarcity_preregistration_2026-07-23.json",
+        "sha256": "517d53437db55773bd98d7513ee5722dd1c03769a519393985f978994b3edc1a"
+      },
+      "slcs_rejection": {
+        "path": "docs/soma-lending-collateral-scarcity-support-rejection-2026-07-23.md",
+        "sha256": "fb7e46c7f86ab6fd839e5d79fd26f3077547dbadfef241b1490bd09009f7521b"
+      },
+      "slcs_support": {
+        "path": "results/soma_lending_collateral_scarcity_support_2026-07-23.json",
+        "sha256": "354f3edb9f1d9bdbac1f609e50882f2e4d1df6ee8cfa555287ca99a15148a738"
+      }
+    },
+    "common_window": [
+      "2020-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "comparator": {
+      "exact_group_equality": true,
+      "group_column": "control",
+      "groups": [
+        "primary",
+        "demand_intensity_only",
+        "weighted_fee_only",
+        "carry_intensity_only",
+        "demand_breadth_only",
+        "mean_without_consensus",
+        "same_sign_without_magnitude"
+      ],
+      "header_sha256": "45a24e800b79a30047ffeb5f45c69cf4817262e57b0af1cf5e046332536e5e94",
+      "minimum_contained_rows_each": 20,
+      "path": "results/soma_lending_collateral_scarcity_clocks_2026-07-23.csv.gz",
+      "read_csv": {
+        "dtype": "string",
+        "keep_default_na": false,
+        "na_filter": false,
+        "usecols": [
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ]
+      },
+      "sha256": "b3fe0dc8c895f9a8974cdf08b5bed9d58ff693b8aca7ed59c224627de930a948"
+    },
+    "occupancy": {
+      "LONG": 1,
+      "SHORT": -1,
+      "constant_or_nonfinite": "fail",
+      "grid": "complete five-minute common-window cells",
+      "idle": 0,
+      "interval": "[entry, exit)",
+      "self_overlap": "fail"
+    },
+    "one_day_matching": {
+      "algorithm": "maximum-cardinality deterministic augmenting path",
+      "criterion": "absolute local-date difference <= 1",
+      "jaccard_denominator": "candidate + comparator - matched",
+      "timezone": "America/New_York"
+    },
+    "opens_only_after_source_and_composition_pass": true,
+    "thresholds_each_group": {
+      "absolute_signed_occupancy_pearson_max": 0.35,
+      "exact_entry_jaccard_max": 0.25,
+      "one_new_york_calendar_day_jaccard_max": 0.5,
+      "same_entry_same_side_reproduction_max": 0.3
+    }
+  },
+  "numeric_contract": {
+    "amount_arithmetic": "arbitrary precision Decimal",
+    "atom_order": [
+      "operation_id",
+      "cusip"
+    ],
+    "component_quantum": "1e-12",
+    "jsd_accumulator": "math.fsum over binary64 shares",
+    "jsd_logarithm": "natural log normalized by ln(2)",
+    "rounding": "ROUND_HALF_EVEN",
+    "unmet_mass_binary_float_forbidden": true,
+    "unmet_mass_decimal_context_precision": 80,
+    "zero_log_convention": "0*log(0/m)=0"
+  },
+  "outcomes_opened": false,
+  "policy": {
+    "entry_latency_minutes": 5,
+    "hold_bars": 576,
+    "hold_minutes": 2880,
+    "notional": 0.5,
+    "policy_id": "SCAF-48",
+    "selection_end": "2024-01-01T00:00:00Z",
+    "train_end": "2023-01-01T00:00:00Z",
+    "train_start": "2020-01-01T00:00:00Z"
+  },
+  "protocol_version": "soma_collateral_allocation_fracture_preregistration_v1",
+  "research_history_boundary": {
+    "dclb_source_support_failure_seen": true,
+    "outcome_unseen_scaf_claim": true,
+    "pristine_soma_source_claim": false,
+    "scaf_comparator_rows_seen": false,
+    "scaf_market_or_funding_outcomes_seen": false,
+    "scaf_source_incidence_seen": false,
+    "slcs_market_or_funding_outcomes_seen": false,
+    "slcs_source_values_and_incidence_seen": true
+  },
+  "research_status": "source_seen_outcome_unseen_preincidence",
+  "singleton": true,
+  "source_contracts": {
+    "details": {
+      "header_sha256": "9f4d54dff4b9c9f0c47c0a85e0bf245276e5a3cb764b3c084017f679586b76dd",
+      "path": "data/new_york_fed_securities_lending_2019_2023/new_york_fed_securities_lending_details_2019_2023.csv.gz",
+      "read_csv": {
+        "dtype": "string",
+        "keep_default_na": false,
+        "na_filter": false,
+        "usecols": [
+          "operation_id",
+          "operation_date",
+          "available_at_utc",
+          "cusip",
+          "par_submitted",
+          "par_accepted",
+          "weighted_average_rate",
+          "actual_available_to_borrow"
+        ]
+      },
+      "sha256": "27178d8738cb50c4e6c13f1e5940fcfdf4009e6979b006c42fb86fb399d0716d"
+    },
+    "forbidden_columns": [
+      "security_description",
+      "soma_holdings",
+      "theoretical_available_to_borrow",
+      "outstanding_loans",
+      "settlement_date",
+      "maturity_date",
+      "note"
+    ],
+    "manifest": {
+      "path": "data/new_york_fed_securities_lending_2019_2023/build_manifest.json",
+      "sha256": "58b9eb56728065d919978b8969e9bbb4bcb291f723a290d22045fe2ca3da2019"
+    },
+    "network_calls": 0,
+    "operations": {
+      "header_sha256": "c0d63795e5e53cef816c50472c6941069cb018f30ad1f745f250daa0fa6b9200",
+      "path": "data/new_york_fed_securities_lending_2019_2023/new_york_fed_securities_lending_operations_2019_2023.csv.gz",
+      "read_csv": {
+        "dtype": "string",
+        "keep_default_na": false,
+        "na_filter": false,
+        "usecols": [
+          "operation_id",
+          "operation_date",
+          "available_at_utc",
+          "total_par_submitted",
+          "total_par_accepted"
+        ]
+      },
+      "sha256": "99eb8c37c05417789dfad7452c7b2ddc5b6b640078b87451f1c945158af77906"
+    },
+    "raw_api_json_forbidden": true
+  },
+  "source_incidence_opened": false,
+  "source_rows_decoded": false,
+  "source_support_gate": {
+    "coverage": {
+      "each_split_raw_consensus_share_max": 0.65,
+      "each_split_raw_consensus_share_min": 0.1,
+      "selection_complete_batches_min": 220,
+      "selection_valid_transitions_min": 215,
+      "train_complete_batches_min": 700,
+      "train_valid_transitions_min": 690
+    },
+    "empty_or_undefined": "fail",
+    "every_control_nonempty_each_split": true,
+    "failure_action": "retire SCAF-48 unchanged before comparator rows or outcomes",
+    "selection": {
+      "active_months_min": 10,
+      "each_half_events_min": 15,
+      "each_quarter_events_min": 7,
+      "events_min": 35,
+      "long_min": 10,
+      "maximum_month_share": 0.2,
+      "maximum_same_side_run": 8,
+      "maximum_utc_calendar_gap_days": 30,
+      "short_min": 10
+    },
+    "train": {
+      "active_months_min": 30,
+      "each_year_events_min": 30,
+      "events_min": 120,
+      "long_min": 30,
+      "maximum_month_share": 0.12,
+      "maximum_quarter_share": 0.25,
+      "maximum_same_side_run": 12,
+      "maximum_utc_calendar_gap_days": 30,
+      "short_min": 30
+    }
+  },
+  "strict_sequence": [
+    "boundary_commit",
+    "schema_amendment_commit",
+    "mechanism_commit",
+    "write_once_preregistration_commit",
+    "source_support_evaluator_commit",
+    "source_support",
+    "relational_composition",
+    "slcs_same_source_novelty",
+    "economic_rllm_evaluator_commit",
+    "train_2020_2022",
+    "selection_2023",
+    "post_2023_source_extension"
+  ],
+  "transition": {
+    "comparison": "quantized current versus previous component",
+    "every_consensus_batch_is_raw_opportunity": true,
+    "fracture": "count(UP) >= 3",
+    "magnitude_threshold": null,
+    "neutral": "otherwise",
+    "relief": "count(DOWN) >= 3",
+    "side": {
+      "FRACTURE": "SHORT",
+      "NEUTRAL": "ABSTAIN",
+      "RELIEF": "LONG"
+    },
+    "tokens": [
+      "UP",
+      "DOWN",
+      "FLAT"
+    ]
+  },
+  "windows": {
+    "sealed": [
+      "2024-01-01T00:00:00Z",
+      null
+    ],
+    "selection": [
+      "2023-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "support_calendar_timezone": "UTC",
+    "train": [
+      "2020-01-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ],
+    "warmup": [
+      "2019-01-01T00:00:00Z",
+      "2020-01-01T00:00:00Z"
+    ]
+  }
+}
