@@ -99,6 +99,12 @@ official mnemonic/metadata context needed to prove that every retained series:
 4. is a rate or volume series for DVP, GCF, or tri-party repo; and
 5. preserves its disclosure-edit subseries where the API exposes one.
 
+The mnemonic response is also the frozen final-definition audit surface. Every
+preliminary mnemonic must have exactly one corresponding final mnemonic, and
+their series names must be identical after removing only the terminal
+`(Preliminary)` / `(Final)` vintage label. No final time-series values may be
+requested or read for this check.
+
 The exact request URL, retrieval UTC time, HTTP status, content type, byte
 count, response SHA-256, redirects, and API metadata must be written to a fetch
 ledger. Raw API bytes are retained as deterministic gzip. Offline replay must
@@ -113,18 +119,24 @@ the preliminary payload, or a date after 2023-12-31.
 
 The API exposes observation dates and series update metadata, not a historical
 publication timestamp for every point. A candidate may not backdate a row to
-its observation day. The normalized source uses one deliberately conservative
-clock for every segment:
+its observation day. Preliminary publication began on 2020-09-09, so older
+historical rows also may not be treated as if the feed existed in 2019. The
+normalized source uses one deliberately conservative clock for every segment:
 
 ```text
-available_at_utc = observation_date 00:00 UTC + 8 elapsed calendar days
+preliminary_feed_floor_utc = 2020-09-10 00:00 UTC
+available_at_utc = max(
+    observation_date 00:00 UTC + 8 elapsed calendar days,
+    preliminary_feed_floor_utc,
+)
 ```
 
 This is later than the documented one- or two-business-day lag, remains later
 than the normal 3 p.m. Eastern publication through DST, and avoids reconstructing
-a holiday calendar from hindsight. A missing row is missing; it is never
-forward-filled, interpolated, converted to zero, or borrowed from the final
-vintage.
+a holiday calendar from hindsight. The feed floor makes pre-publication history
+audit-only until the first preliminary release could have been known. A missing
+row is missing; it is never forward-filled, interpolated, converted to zero, or
+borrowed from the final vintage.
 
 The preliminary payload is retained as its own source vintage. The source
 audit must compare metadata—not candidate features—between preliminary and
