@@ -16,13 +16,16 @@ import os
 import re
 import ssl
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 import zlib
+from collections import Counter
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +36,24 @@ DECISION_PATH = Path(
     "docs/bybit-public-trade-sequence-source-axis-decision-2026-07-23.md"
 )
 DEFAULT_OUTPUT = Path(
-    "results/bybit_public_trade_sequence_source_feasibility_2026-07-23.json"
+    "results/bybit_public_trade_sequence_source_feasibility_v2_2026-07-23.json"
+)
+CORRECTION_PATH = Path(
+    "docs/bybit-public-trade-source-probe-v1-invalidation-v2-correction-"
+    "2026-07-23.md"
+)
+CORRECTION_SHA256 = (
+    "73996f714ce74e1bc81268b545be04177375d61554ba33a219980b3b04ca0bda"
+)
+V1_INVALID_PATH = Path(
+    "results/bybit_public_trade_sequence_source_feasibility_v1_invalid_"
+    "2026-07-23.json"
+)
+V1_INVALID_FILE_SHA256 = (
+    "3e2872467acebfd07f91ff8b9ff0079eb9dc518f6f37ad79f83a6a47cf413536"
+)
+V1_INVALID_MANIFEST_HASH = (
+    "fdc57f5ecfb34f516726fbd1d323faf1d397cd492c81ae23ef006354b3554227"
 )
 
 ARCHIVE_ROOT = "https://public.bybit.com/trading/BTCUSDT"
@@ -46,10 +66,29 @@ PROBE_DAYS = (
 DISK_LIMIT_GIB = 300
 READ_CHUNK_BYTES = 16 * 1024
 MAX_COMPRESSED_PREFIX_BYTES = 4 * 1024 * 1024
-MAX_DECOMPRESSED_PREFIX_BYTES = 8 * 1024 * 1024
+MAX_DECOMPRESSED_PREFIX_BYTES = 128 * 1024
 MAX_DIRECTORY_BYTES = 4 * 1024 * 1024
 MAX_DAILY_CONTENT_LENGTH = 1024 * 1024 * 1024
-USER_AGENT = "rllm-bybit-source-feasibility/1.0"
+USER_AGENT = "rllm-bybit-source-feasibility/2.0"
+
+V1_PREFIX_SHA256 = {
+    "2020-03-25": "dfde89d406b7d179c03fef8116d2668ab52999199e39e07cdd55175a6e749821",
+    "2023-01-01": "e91c088cdf75a06fcaecb42be75d59178706798029cdec098ef67e49cc2e7455",
+    "2026-07-22": "ad70af6e771252b3c5331234882d7a60defece0813e9ca189c91b64bc93e6039",
+}
+FROZEN_BASE_HEADER = (
+    "timestamp",
+    "symbol",
+    "side",
+    "size",
+    "price",
+    "tickDirection",
+    "trdMatchID",
+    "grossValue",
+    "homeNotional",
+    "foreignNotional",
+)
+ALLOWED_OPTIONAL_SUFFIX = ("RPI",)
 
 CANONICAL_ALIASES: dict[str, frozenset[str]] = {
     "timestamp": frozenset({"timestamp", "time", "tradetime", "exectime"}),
@@ -129,6 +168,22 @@ def validate_official_url(url: str) -> None:
         raise SourceProbeError("URL differs from frozen official Bybit route")
 
 
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: Any,
+        code: int,
+        msg: str,
+        headers: Any,
+        newurl: str,
+    ) -> None:
+        del req, fp, msg, headers
+        raise SourceProbeError(
+            f"redirect rejected before target access: HTTP {code} to {newurl}"
+        )
+
+
 def _default_open_url(url: str, timeout_seconds: float) -> Any:
     validate_official_url(url)
     request = urllib.request.Request(
@@ -137,7 +192,16 @@ def _default_open_url(url: str, timeout_seconds: float) -> Any:
         method="GET",
     )
     context = ssl.create_default_context()
-    return urllib.request.urlopen(request, timeout=timeout_seconds, context=context)
+    opener = urllib.request.build_opener(
+        _NoRedirectHandler(),
+        urllib.request.HTTPSHandler(context=context),
+    )
+    try:
+        return opener.open(request, timeout=timeout_seconds)
+    except urllib.error.HTTPError as exc:
+        raise SourceProbeError(f"HTTP {exc.code} for frozen Bybit URL") from exc
+    except urllib.error.URLError as exc:
+        raise SourceProbeError("frozen Bybit URL transport failed") from exc
 
 
 def used_gib(path: str | Path) -> int:
@@ -147,8 +211,8 @@ def used_gib(path: str | Path) -> int:
     return used // (1024**3)
 
 
-def enforce_disk_guard(output: str | Path) -> int:
-    current = used_gib(output)
+def enforce_disk_guard() -> int:
+    current = used_gib(REPO_ROOT)
     if current >= DISK_LIMIT_GIB:
         raise SourceProbeError(
             f"disk guard rejected {current} GiB used at {DISK_LIMIT_GIB} GiB"
@@ -157,7 +221,8 @@ def enforce_disk_guard(output: str | Path) -> int:
 
 
 def _response_metadata(response: Any, expected_url: str) -> dict[str, Any]:
-    status = int(getattr(response, "status", response.getcode()))
+    status_value = getattr(response, "status", None)
+    status = int(response.getcode() if status_value is None else status_value)
     final_url = str(response.geturl())
     if status != 200 or final_url != expected_url:
         raise SourceProbeError("unexpected HTTP status or redirect")
@@ -206,6 +271,22 @@ def expected_2023_names() -> tuple[str, ...]:
     return tuple(names)
 
 
+class _AnchorHrefParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.hrefs: list[str] = []
+
+    def handle_starttag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ) -> None:
+        if tag.lower() != "a":
+            return
+        href_values = [value for key, value in attrs if key.lower() == "href"]
+        if len(href_values) != 1 or href_values[0] is None:
+            raise SourceProbeError("directory anchor lacks one exact href")
+        self.hrefs.append(href_values[0])
+
+
 def inspect_directory(
     *, timeout_seconds: float, open_url: OpenUrl = _default_open_url
 ) -> dict[str, Any]:
@@ -214,10 +295,18 @@ def inspect_directory(
         metadata = _response_metadata(response, DIRECTORY_URL)
         raw = _read_bounded(response, MAX_DIRECTORY_BYTES)
     text = raw.decode("utf-8", errors="strict")
-    observed = set(re.findall(r"BTCUSDT2023-\d{2}-\d{2}\.csv\.gz", text))
+    parser = _AnchorHrefParser()
+    parser.feed(text)
+    parser.close()
+    pattern = re.compile(r"BTCUSDT2023-\d{2}-\d{2}\.csv\.gz")
+    observed_counts = Counter(
+        href for href in parser.hrefs if pattern.fullmatch(href) is not None
+    )
+    observed = set(observed_counts)
     expected = set(expected_2023_names())
     missing = sorted(expected - observed)
     unexpected = sorted(observed - expected)
+    duplicates = sorted(name for name, count in observed_counts.items() if count != 1)
     return {
         "url": DIRECTORY_URL,
         "metadata": metadata,
@@ -227,7 +316,8 @@ def inspect_directory(
         "observed_2023_files": len(observed),
         "missing_2023_files": missing,
         "unexpected_2023_files": unexpected,
-        "complete_2023": not missing and not unexpected,
+        "duplicate_2023_hrefs": duplicates,
+        "complete_2023": not missing and not unexpected and not duplicates,
     }
 
 
@@ -282,29 +372,81 @@ def validate_first_record(
     }
 
 
-def _read_two_csv_records(response: Any) -> tuple[bytes, bytes]:
+@dataclass
+class _CsvBoundaryState:
+    in_quotes: bool = False
+    pending_quote: bool = False
+    record_ends: list[int] | None = None
+
+    def __post_init__(self) -> None:
+        if self.record_ends is None:
+            self.record_ends = []
+
+    def feed(self, value: int, offset_after_byte: int) -> None:
+        if self.in_quotes:
+            if self.pending_quote:
+                if value == ord('"'):
+                    self.pending_quote = False
+                    return
+                self.in_quotes = False
+                self.pending_quote = False
+                self._outside(value, offset_after_byte)
+                return
+            if value == ord('"'):
+                self.pending_quote = True
+            return
+        self._outside(value, offset_after_byte)
+
+    def _outside(self, value: int, offset_after_byte: int) -> None:
+        if value == ord('"'):
+            self.in_quotes = True
+        elif value == ord("\n"):
+            assert self.record_ends is not None
+            self.record_ends.append(offset_after_byte)
+
+
+def _read_two_csv_records(response: Any) -> tuple[bytes, bytes, bytes, bytes]:
     digest_input = bytearray()
     decompressed = bytearray()
+    boundaries = _CsvBoundaryState()
     inflater = zlib.decompressobj(16 + zlib.MAX_WBITS)
-    while decompressed.count(b"\n") < 2:
-        remaining = MAX_COMPRESSED_PREFIX_BYTES - len(digest_input)
-        if remaining <= 0:
-            raise SourceProbeError("gzip prefix lacks two complete CSV records")
-        chunk = response.read(min(READ_CHUNK_BYTES, remaining))
-        if not chunk:
-            raise SourceProbeError("gzip object ended before two CSV records")
-        digest_input.extend(chunk)
+    pending = b""
+    while len(boundaries.record_ends or []) < 2:
+        if not pending:
+            remaining = MAX_COMPRESSED_PREFIX_BYTES - len(digest_input)
+            if remaining <= 0:
+                raise SourceProbeError("gzip prefix lacks two complete CSV records")
+            chunk = response.read(min(READ_CHUNK_BYTES, remaining))
+            if not chunk:
+                raise SourceProbeError("gzip object ended before two CSV records")
+            digest_input.extend(chunk)
+            pending = chunk
+        previous_pending_length = len(pending)
         try:
-            inflated = inflater.decompress(chunk)
+            inflated = inflater.decompress(pending, max_length=1)
         except zlib.error as exc:
             raise SourceProbeError("invalid gzip prefix") from exc
-        decompressed.extend(inflated)
-        if len(decompressed) > MAX_DECOMPRESSED_PREFIX_BYTES:
-            raise SourceProbeError("decompressed prefix exceeds frozen bound")
-    lines = decompressed.splitlines(keepends=True)
-    if len(lines) < 2:
-        raise SourceProbeError("gzip prefix lacks complete lines")
-    return bytes(digest_input), b"".join(lines[:2])
+        pending = inflater.unconsumed_tail
+        if inflated:
+            decompressed.extend(inflated)
+            if len(decompressed) > MAX_DECOMPRESSED_PREFIX_BYTES:
+                raise SourceProbeError("decompressed prefix exceeds frozen bound")
+            boundaries.feed(inflated[0], len(decompressed))
+            continue
+        if inflater.eof:
+            raise SourceProbeError("gzip object ended before two CSV records")
+        if pending and len(pending) == previous_pending_length:
+            raise SourceProbeError("gzip decompressor made no bounded progress")
+        if not pending:
+            continue
+
+    record_ends = boundaries.record_ends
+    assert record_ends is not None and len(record_ends) == 2
+    first_end, second_end = record_ends
+    exact_prefix = bytes(decompressed[:second_end])
+    raw_header = exact_prefix[:first_end]
+    raw_first_record = exact_prefix[first_end:second_end]
+    return bytes(digest_input), exact_prefix, raw_header, raw_first_record
 
 
 def inspect_archive_day(
@@ -316,7 +458,9 @@ def inspect_archive_day(
     validate_official_url(url)
     with open_url(url, timeout_seconds) as response:
         metadata = _response_metadata(response, url)
-        compressed_prefix, csv_prefix = _read_two_csv_records(response)
+        compressed_prefix, csv_prefix, raw_header, raw_first = (
+            _read_two_csv_records(response)
+        )
     try:
         decoded = csv_prefix.decode("utf-8", errors="strict")
     except UnicodeDecodeError as exc:
@@ -336,15 +480,68 @@ def inspect_archive_day(
         "compressed_prefix_bytes_consumed": len(compressed_prefix),
         "compressed_prefix_sha256": sha256_bytes(compressed_prefix),
         "csv_two_record_sha256": sha256_bytes(csv_prefix),
+        "raw_header_sha256": sha256_bytes(raw_header),
+        "first_record_raw_sha256": sha256_bytes(raw_first),
+        "logical_csv_records_decompressed": 2,
+        "decompressed_bytes": len(csv_prefix),
+        "bytes_decompressed_after_first_record": 0,
         "header": header,
         "field_count": len(header),
         "canonical_field_mapping": mapping,
-        "first_record_sha256": sha256_bytes(
-            (",".join(first) + "\n").encode("utf-8")
-        ),
         "first_record_values_retained": False,
         "first_record_validations": validations,
     }
+
+
+def classify_schema_drift(probes: list[dict[str, Any]]) -> dict[str, Any]:
+    by_day: list[dict[str, Any]] = []
+    acceptable = True
+    base = list(FROZEN_BASE_HEADER)
+    allowed_recent = base + list(ALLOWED_OPTIONAL_SUFFIX)
+    for item in probes:
+        header = list(item["header"])
+        if header == base:
+            added: list[str] = []
+            classification = "frozen_base_header"
+        elif header == allowed_recent:
+            added = list(ALLOWED_OPTIONAL_SUFFIX)
+            classification = "explicit_recent_optional_suffix"
+        else:
+            added = [field for field in header if field not in base]
+            classification = "unclassified_drift"
+            acceptable = False
+        removed = [field for field in base if field not in header]
+        common = [field for field in header if field in base]
+        reordered = common != [field for field in base if field in header]
+        if removed or reordered:
+            acceptable = False
+        by_day.append(
+            {
+                "day": item["day"],
+                "classification": classification,
+                "added_fields": added,
+                "removed_fields": removed,
+                "base_fields_reordered": reordered,
+                "accepted": classification != "unclassified_drift"
+                and not removed
+                and not reordered,
+            }
+        )
+    return {
+        "observed": any(row["added_fields"] for row in by_day),
+        "frozen_base_header": base,
+        "allowed_optional_suffix": list(ALLOWED_OPTIONAL_SUFFIX),
+        "optional_fields_excluded_from_primary": list(ALLOWED_OPTIONAL_SUFFIX),
+        "by_day": by_day,
+        "explicitly_classified": acceptable,
+    }
+
+
+def validate_correction_bindings() -> None:
+    if sha256_file(CORRECTION_PATH) != CORRECTION_SHA256:
+        raise SourceProbeError("v2 correction document hash differs")
+    if sha256_file(V1_INVALID_PATH) != V1_INVALID_FILE_SHA256:
+        raise SourceProbeError("invalid v1 audit artifact hash differs")
 
 
 def build_artifact(
@@ -352,8 +549,10 @@ def build_artifact(
     *,
     open_url: OpenUrl = _default_open_url,
     disk_used_gib: int | None = None,
+    expected_prefix_hashes: Mapping[str, str] | None = V1_PREFIX_SHA256,
 ) -> dict[str, Any]:
-    current_disk = enforce_disk_guard(cfg.output) if disk_used_gib is None else disk_used_gib
+    validate_correction_bindings()
+    current_disk = enforce_disk_guard() if disk_used_gib is None else disk_used_gib
     if current_disk >= DISK_LIMIT_GIB:
         raise SourceProbeError(
             f"disk guard rejected {current_disk} GiB used at {DISK_LIMIT_GIB} GiB"
@@ -370,26 +569,38 @@ def build_artifact(
             failures.append("official directory lacks exact 2023 daily coverage")
         for day in PROBE_DAYS:
             try:
-                probes.append(
-                    inspect_archive_day(
-                        day,
-                        timeout_seconds=cfg.timeout_seconds,
-                        open_url=open_url,
-                    )
+                probe = inspect_archive_day(
+                    day,
+                    timeout_seconds=cfg.timeout_seconds,
+                    open_url=open_url,
                 )
+                probes.append(probe)
+                if expected_prefix_hashes is not None:
+                    expected_hash = expected_prefix_hashes.get(day.isoformat())
+                    if expected_hash is None or (
+                        probe["compressed_prefix_sha256"] != expected_hash
+                    ):
+                        failures.append(
+                            f"{day.isoformat()}: compressed prefix differs from v1"
+                        )
+                        break
             except SourceProbeError as exc:
                 failures.append(f"{day.isoformat()}: {exc}")
                 break
     except SourceProbeError as exc:
         failures.append(f"directory: {exc}")
 
+    schema_drift: dict[str, Any] | None = None
     if len(probes) == len(PROBE_DAYS):
         mappings = [probe["canonical_field_mapping"] for probe in probes]
         if any(mapping != mappings[0] for mapping in mappings[1:]):
             failures.append("canonical historical field mapping drifts across boundaries")
+        schema_drift = classify_schema_drift(probes)
+        if not schema_drift["explicitly_classified"]:
+            failures.append("full historical schema drift is not explicitly classified")
 
     artifact: dict[str, Any] = {
-        "protocol_version": "bybit_public_trade_sequence_source_feasibility_v1",
+        "protocol_version": "bybit_public_trade_sequence_source_feasibility_v2",
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "decision": "SOURCE_FEASIBILITY_PASS" if not failures else "REJECT_NO_REPAIR",
         "source_axis": "Bybit BTCUSDT linear individual public trades",
@@ -402,6 +613,7 @@ def build_artifact(
         "returns_or_pnl_opened": False,
         "directory": directory,
         "probes": probes,
+        "schema_drift": schema_drift,
         "failures": failures,
         "disk": {
             "used_gib_before_probe": current_disk,
@@ -411,15 +623,34 @@ def build_artifact(
         "bindings": {
             "decision_path": str(DECISION_PATH),
             "decision_sha256": sha256_file(DECISION_PATH),
+            "correction_path": str(CORRECTION_PATH),
+            "correction_sha256": CORRECTION_SHA256,
+            "invalid_v1_path": str(V1_INVALID_PATH),
+            "invalid_v1_file_sha256": V1_INVALID_FILE_SHA256,
+            "invalid_v1_manifest_hash": V1_INVALID_MANIFEST_HASH,
             "script_path": str(SCRIPT_PATH),
             "script_sha256": sha256_file(SCRIPT_PATH),
         },
+        "v1_decision_authoritative": False,
+        "manifest_hash_scope": "canonical_json_excluding_manifest_hash_without_self",
     }
-    artifact["manifest_hash"] = canonical_hash(artifact)
+    artifact["manifest_hash_without_self"] = canonical_hash(artifact)
     return artifact
 
 
+def validate_manifest_hash(artifact: Mapping[str, Any]) -> None:
+    mutable = dict(artifact)
+    observed = mutable.pop("manifest_hash_without_self", None)
+    if mutable.get("manifest_hash_scope") != (
+        "canonical_json_excluding_manifest_hash_without_self"
+    ):
+        raise SourceProbeError("unknown manifest hash scope")
+    if not isinstance(observed, str) or observed != canonical_hash(mutable):
+        raise SourceProbeError("manifest hash verification failed")
+
+
 def write_artifact(path: str | Path, artifact: Mapping[str, Any]) -> None:
+    validate_manifest_hash(artifact)
     output = _repo_path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_suffix(output.suffix + ".tmp")
