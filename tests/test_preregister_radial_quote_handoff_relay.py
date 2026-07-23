@@ -212,6 +212,17 @@ def test_comparator_cohort_and_hash_producers_are_locally_frozen() -> None:
     )
     assert all(row["protocol"] for row in rqhr.COMPARATOR_SPECS)
     assert all(row["closed_flags"] for row in rqhr.COMPARATOR_SPECS)
+    pdf = rqhr.COMPARATOR_SPECS[1]
+    assert pdf["producer"] == Path(
+        "training/preregister_radial_liquidity_wavefront_cascade.py"
+    )
+    assert pdf["replay_source"] == Path(
+        "training/preregister_cross_collateral_liquidity_credibility_fracture.py"
+    )
+    assert pdf["canonical_projection"] == (
+        "ordered signal_position, entry_position, exit_position, numeric "
+        "side, branch, and hold_bars"
+    )
 
 
 def test_preregistration_module_has_no_project_import_dependency() -> None:
@@ -271,8 +282,10 @@ def test_verified_preregistration_binds_bytes_without_parsing_json(
     assert payload["verification_mode"] == "verified_hashes_without_value_parsing"
     assert payload["source_binding"]["panel_sha256"] == rqhr.SOURCE_PANEL_SHA256
     assert payload["source_binding"]["manifest_metadata_parsed"] is False
-    assert len(payload["history_bindings"]) == 5
+    assert len(payload["history_bindings"]) == 6
     assert len(payload["comparator_bindings"]) == 3
+    assert payload["protocol_version"].endswith("_v2")
+    assert payload["supersedes"]["before_rqhr_incidence"] is True
 
 
 def test_policy_or_boundary_tampering_fails_closed() -> None:
@@ -319,6 +332,25 @@ def test_repository_paths_reject_absolute_and_parent_escape() -> None:
         rqhr._repository_path("/tmp/outside")
     with pytest.raises(RuntimeError, match="repository-relative"):
         rqhr._repository_path("../outside")
+
+
+def test_v2_rejects_reserved_v1_output_even_when_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload = rqhr.build_preregistration(verify_sources=False)
+    payload["config"]["output"] = str(rqhr.SUPERSEDED_V1_ARTIFACT)
+    core = {key: value for key, value in payload.items() if key != "manifest_hash"}
+    payload["manifest_hash"] = rqhr.canonical_hash(core)
+    with pytest.raises(RuntimeError, match="permanently reserved"):
+        rqhr.validate_preregistration(payload, verify_sources=False)
+
+    monkeypatch.setattr(rqhr, "REPOSITORY_ROOT", tmp_path)
+    assert not (tmp_path / rqhr.SUPERSEDED_V1_ARTIFACT).exists()
+    with pytest.raises(RuntimeError, match="permanently reserved"):
+        rqhr.write_preregistration(
+            rqhr.Config(output=str(rqhr.SUPERSEDED_V1_ARTIFACT))
+        )
 
 
 def test_atomic_write_and_preregistration_are_no_clobber(
