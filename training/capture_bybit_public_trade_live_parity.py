@@ -626,6 +626,25 @@ def evaluate_clock_integrity(
         and ledger_sequence_complete
         and rest_ledger_complete
     )
+    capture_start_samples = [
+        sample
+        for sample in samples
+        if (sample.source, sample.ordinal) == ("capture_start", 1)
+    ]
+    try:
+        capture_utc_day = (
+            _utc_datetime_from_ns(capture_start_samples[0].utc_ns).date().isoformat()
+            if len(capture_start_samples) == 1
+            else None
+        )
+        utc_day_consistent = capture_utc_day is not None and all(
+            _utc_datetime_from_ns(sample.utc_ns).date().isoformat()
+            == capture_utc_day
+            for sample in samples
+        )
+    except (OSError, OverflowError, ValueError):
+        capture_utc_day = None
+        utc_day_consistent = False
     ledger_rows = [
         {
             "source": sample.source,
@@ -651,6 +670,7 @@ def evaluate_clock_integrity(
             and nonincreasing_monotonic == 0
             and invalid_sampling_uncertainty == 0
             and ledger_complete
+            and utc_day_consistent
         ),
         "samples": len(ordered),
         "utc_reversal_count": len(reversals),
@@ -667,6 +687,8 @@ def evaluate_clock_integrity(
         "boundary_ledger_complete": boundary_ledger_complete,
         "ledger_sequence_complete": ledger_sequence_complete,
         "rest_attempt_ledger_complete": rest_ledger_complete,
+        "capture_utc_day": capture_utc_day,
+        "utc_day_consistent": utc_day_consistent,
         "expected_samples": sum(expected_ledger.values()),
         "missing_ledger_entries": sum(missing_ledger.values()),
         "excess_ledger_entries": sum(excess_ledger.values()),

@@ -566,6 +566,26 @@ def test_clock_reversal_forces_a_previously_passing_parity_to_reject() -> None:
     assert "local_utc_nonreversing" in gated["failures"]
 
 
+def test_clock_integrity_rejects_capture_crossing_utc_midnight() -> None:
+    start_utc_ns = int(
+        datetime(2026, 7, 23, 23, 59, 59, tzinfo=timezone.utc).timestamp() * 1e9
+    )
+    end_utc_ns = int(
+        datetime(2026, 7, 24, 0, 0, 1, tzinfo=timezone.utc).timestamp() * 1e9
+    )
+    audit = capture.evaluate_clock_integrity(
+        [
+            capture.ClockSample("capture_start", 1, 100, start_utc_ns, 1),
+            capture.ClockSample("capture_end", 1, 200, end_utc_ns, 1),
+        ],
+        capture.ClockLedgerExpectation(0, 0, 0, 0),
+    )
+    assert audit["utc_reversal_count"] == 0
+    assert audit["capture_utc_day"] == "2026-07-23"
+    assert audit["utc_day_consistent"] is False
+    assert audit["clock_contract_passed"] is False
+
+
 def test_missing_or_duplicate_clock_samples_fail_closed() -> None:
     empty = capture.ClockLedgerExpectation(0, 0, 0, 0)
     assert capture.evaluate_clock_integrity([], empty)["clock_contract_passed"] is False
