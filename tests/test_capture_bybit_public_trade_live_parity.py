@@ -197,6 +197,7 @@ def test_http_error_body_and_status_are_audited_before_rejection() -> None:
         status=429,
         final_url=capture.REST_URL,
         content_type="application/json",
+        location=None,
         raw=raw,
     )
     with pytest.raises(capture.ParityCaptureError, match="status"):
@@ -214,6 +215,50 @@ def test_http_error_body_and_status_are_audited_before_rejection() -> None:
     assert envelope["http_status"] == 429
     assert base64.b64decode(envelope["raw_json_base64"]) == raw
     assert envelope["raw_json_sha256"] == capture.sha256_bytes(raw)
+
+
+def test_redirect_response_is_returned_for_audit_without_target_request() -> None:
+    handler = capture._AuditNoRedirectHandler()
+    original = object()
+    returned = handler.http_error_302(
+        capture.urllib.request.Request(capture.REST_URL),
+        original,
+        302,
+        "Found",
+        {"Location": "https://example.com/forbidden"},
+    )
+    assert returned is original
+
+    state = capture.CaptureState(
+        capture_day="2026-07-23",
+        started_at_utc="2026-07-23T00:00:00Z",
+        output_dir=Path("data/fixture"),
+    )
+    handle = BytesIO()
+    utc_ns = int(datetime(2026, 7, 23, tzinfo=timezone.utc).timestamp() * 1e9)
+    raw = b"redirect"
+    response = capture.RestTransportResponse(
+        status=302,
+        final_url=capture.REST_URL,
+        content_type="text/plain",
+        location="https://example.com/forbidden",
+        raw=raw,
+    )
+    with pytest.raises(capture.ParityCaptureError, match="status"):
+        capture._record_rest_response(
+            state,
+            handle,
+            response,
+            request_start_utc_ns=utc_ns,
+            request_start_monotonic_ns=100,
+            response_end_utc_ns=utc_ns + 1,
+            response_end_monotonic_ns=101,
+            final=False,
+        )
+    envelope = json.loads(handle.getvalue())
+    assert envelope["http_status"] == 302
+    assert envelope["location"] == "https://example.com/forbidden"
+    assert base64.b64decode(envelope["raw_json_base64"]) == raw
 
 
 def test_parity_passes_with_unordered_overlapping_rest_windows() -> None:

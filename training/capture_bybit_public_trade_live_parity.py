@@ -27,8 +27,6 @@ from typing import Any, Literal
 from training.probe_bybit_public_trade_sequence_source import (
     DISK_LIMIT_GIB,
     REPO_ROOT,
-    SourceProbeError,
-    _NoRedirectHandler,
     canonical_hash,
     canonical_json,
     sha256_bytes,
@@ -136,6 +134,7 @@ class RestTransportResponse:
     status: int
     final_url: str
     content_type: str | None
+    location: str | None
     raw: bytes
 
 
@@ -157,6 +156,27 @@ class CaptureState:
 
 
 FetchRest = Callable[[], RestTransportResponse]
+
+
+class _AuditNoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Return the original 3xx response for audit without contacting Location."""
+
+    def _return_original(
+        self,
+        req: urllib.request.Request,
+        fp: Any,
+        code: int,
+        msg: str,
+        headers: Any,
+    ) -> Any:
+        del req, code, msg, headers
+        return fp
+
+    http_error_301 = _return_original
+    http_error_302 = _return_original
+    http_error_303 = _return_original
+    http_error_307 = _return_original
+    http_error_308 = _return_original
 
 
 def _repo_path(path: str | Path) -> Path:
@@ -482,7 +502,7 @@ def fetch_rest() -> RestTransportResponse:
         method="GET",
     )
     opener = urllib.request.build_opener(
-        _NoRedirectHandler(),
+        _AuditNoRedirectHandler(),
         urllib.request.HTTPSHandler(context=ssl.create_default_context()),
     )
     try:
@@ -492,6 +512,7 @@ def fetch_rest() -> RestTransportResponse:
                 status=int(response.status),
                 final_url=str(response.geturl()),
                 content_type=response.headers.get("Content-Type"),
+                location=response.headers.get("Location"),
                 raw=raw,
             )
     except urllib.error.HTTPError as exc:
@@ -500,9 +521,10 @@ def fetch_rest() -> RestTransportResponse:
             status=int(exc.code),
             final_url=str(exc.geturl()),
             content_type=exc.headers.get("Content-Type"),
+            location=exc.headers.get("Location"),
             raw=raw,
         )
-    except (urllib.error.URLError, SourceProbeError) as exc:
+    except urllib.error.URLError as exc:
         raise ParityCaptureError("frozen Bybit REST transport failed") from exc
     if len(transport.raw) > MAX_REST_RESPONSE_BYTES:
         raise ParityCaptureError("REST response exceeds frozen byte bound")
@@ -599,6 +621,7 @@ def _record_rest_response(
             "http_status": response.status,
             "final_url": response.final_url,
             "content_type": response.content_type,
+            "location": response.location,
             "raw_json_sha256": sha256_bytes(response.raw),
             "raw_json_base64": base64.b64encode(response.raw).decode("ascii"),
         },
