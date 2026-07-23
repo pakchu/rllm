@@ -33,6 +33,19 @@ arming, confirmation, cancellation, direction, execution, controls, support,
 novelty, economic sequence, and stopping rules before any RQHR feature, arm,
 terminal, event incidence, comparator overlap, or market outcome is computed.
 
+### Pre-incidence protocol correction
+
+While implementing the support builder, a source-code-only replay audit found
+that PDF-10's declared
+`ce1c6ec42434874d97c6b6034f51a73771b27e314da6d37a4f44b0563e6972e2`
+clock hash uses six canonical fields, not the two-field producer helper first
+described in the machine preregistration: `signal_position`,
+`entry_position`, `exit_position`, `side`, `branch`, and `hold_bars`.
+No RQHR source value, feature, arm, event, comparator row value, overlap, or
+market outcome was opened. The v1 machine preregistration is therefore
+superseded before incidence; only a v2 artifact binding this corrected document
+may authorize synthetic or real support execution.
+
 ## Evidence and contamination boundary
 
 The 2023 source panel was built and audited before RNCM. RNCM subsequently read
@@ -358,7 +371,10 @@ PDF-10 replay additionally binds:
   `9a3001db640ec8041d885645d33f11dd6075276685eb22f8ae3c618363d3099a`;
 - `training/preregister_cross_collateral_liquidity_credibility_fracture.py`,
   SHA-256
-  `8947050c990b5638f6d8b2e952f252289ddef6c92f85fb13f75001fe721e6e28`.
+  `8947050c990b5638f6d8b2e952f252289ddef6c92f85fb13f75001fe721e6e28`;
+- the six-field canonical hash producer,
+  `training/preregister_radial_liquidity_wavefront_cascade.py`, SHA-256
+  `9f94706ef05750bc08ce7ef56672512ff7d245a31f830ae1064d1d1c2b02a7a9`.
 
 The other canonical-hash producers are also bound:
 
@@ -372,10 +388,11 @@ The other canonical-hash producers are also bound:
 
 Canonical hash replay is artifact-specific and exact: CCBVFR hashes the full
 ordered embedded event dictionaries with sorted JSON keys and compact
-separators; PDF-10 hashes ordered `signal_position` and numeric `side`
-records from the replayed schedule under the same JSON serialization; CRRC
-hashes ordered `signal_position`, `entry_position`, `exit_position`,
-numeric `side`, and `hold_bars` records under that serialization.
+separators; PDF-10 hashes ordered `signal_position`, `entry_position`,
+`exit_position`, numeric `side`, `branch`, and `hold_bars` records from
+the replayed schedule under the same JSON serialization; CRRC hashes ordered
+`signal_position`, `entry_position`, `exit_position`, numeric `side`, and
+`hold_bars` records under that serialization.
 
 Before common-window filtering, parse every raw row in each exact group and
 validate the artifact protocol, outcome-closed flags, declared event count,
