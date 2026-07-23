@@ -1,0 +1,579 @@
+{
+  "causal_feature_contract": {
+    "anchor": "first completed 5m bar reaching target; bar-open <=17:55 UTC",
+    "calendar_predecessor": "latest prior eligible anchor must have source_day exactly D-1 calendar day",
+    "cumulative_flow": "sum(2*taker_buy_quote-quote_asset_volume) / cumulative quote volume from UTC-day start through anchor",
+    "daily_expected_volume": "median total quote_asset_volume of previous 28 complete UTC days; current day excluded; at least 21 days",
+    "event_reference": "last at most 180 strictly-prior eligible anchors; at least 90 required; no threshold derived from reference",
+    "flow_magnitude_threshold": null,
+    "flow_side": "LONG iff cumulative_flow>0; SHORT iff cumulative_flow<0",
+    "future_bar_used_by_signal": false,
+    "handoff": "current flow side equals negative previous flow side",
+    "intrinsic_target": "0.50 * daily_expected_volume",
+    "price_lag": "flow_side_sign * log(anchor_close/day_open) <= 0",
+    "prior_run_minimum": null,
+    "side": "fixed to current/new flow side"
+  },
+  "comparator_rows_decoded": false,
+  "economic_contract": {
+    "base_cost_notional_per_side": 0.0006,
+    "calendar_years": "elapsed_seconds/(365.25*86400)",
+    "cluster_signflip": "20000 SHA256 one-sided ISO UTC entry-week sign flips; add-one p-value",
+    "funding_cash": "-side_sign*quantity*funding_rate*settlement_mark",
+    "funding_interval": "entry_time <= funding_time < exit_time",
+    "instrument": "Binance USD-M BTCUSDT perpetual",
+    "leverage": 0.5,
+    "mean_gross_underlying_bp": "mean(side_sign*(exit_open/entry_open-1)*10000)",
+    "one_extra_bar_delay": "shift entry and exit +5m; same event set/side/72-bar hold; no reschedule",
+    "quantity": "0.5*pre_entry_equity/entry_open; fixed through exit",
+    "stress_cost_notional_per_side": 0.001,
+    "strict_mdd": "global/pre-entry HWM; entry fee; each held-bar favorable then adverse; signed same-bar funding; adverse virtual exit fee; scheduled exit fee"
+  },
+  "economic_gates": {
+    "base_and_stress_cost_positive": true,
+    "combined_2024_2025_absolute_return_positive": true,
+    "combined_2024_2025_cluster_p_max": 0.05,
+    "combined_2024_2025_ratio_min": 3.0,
+    "component_controls": [
+      "handoff_without_price_lag",
+      "price_lag_without_handoff",
+      "fixed_noon",
+      "stale_24h"
+    ],
+    "component_margin_bp_min": 5.0,
+    "each_stage_absolute_return_positive": true,
+    "each_stage_cagr_to_strict_mdd_min": 3.0,
+    "each_stage_strict_mdd_pct_max": 15.0,
+    "mean_gross_underlying_bp_min": 15.0,
+    "one_extra_bar_delay_positive": true,
+    "selection_each_half_positive": true,
+    "train_each_year_positive": true,
+    "weekly_cluster_signflip_p_max": 0.1
+  },
+  "execution_contract": {
+    "anchor_bar_semantics": "t covers [t,t+5m) and is available at t+5m",
+    "containment": "source day in UTC date range; S<=decision; S<=entry; exit<=E",
+    "decision_time": "anchor bar-open + 5m",
+    "entry_time": "anchor bar-open + 10m",
+    "exit_time": "entry_time + 72*5m",
+    "reservation": "sort raw candidates by (entry_time,signal_id); accept iff entry_time>=prior_accepted_exit_time; each control independent",
+    "signal_id": "SHA256 canonical JSON keys control,decision_time,policy_id,side,source_day,source_panel_sha256",
+    "split_reservations": {
+      "lineage_calibration": [
+        "2020-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      "selection": [
+        "2023-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ]
+    },
+    "stop_or_take_profit": null
+  },
+  "frozen_documents": {
+    "boundary": {
+      "path": "docs/intrinsic-volume-price-lag-handoff-boundary-2026-07-23.md",
+      "sha256": "e1f12a7ccf693f2aafecd3b14e74090e2c1560a39a89ca59f2da3356c4cf244d"
+    },
+    "common_window_policy": {
+      "path": "docs/novelty-comparator-common-window-policy-2026-07-23.md",
+      "sha256": "928bce6e04fb34001478b4b4ea84156580b661c88a0f0338065a891c009bd580"
+    },
+    "mechanism": {
+      "path": "docs/intrinsic-volume-price-lag-handoff-mechanism-decision-2026-07-23.md",
+      "sha256": "ce16708f7d6fd3e4f9459ec4f8778f30336c6439f7317f4dbe6d71221cbf86dc"
+    }
+  },
+  "llm_boundary": {
+    "action_space": [
+      "TRADE_FIXED_SIDE",
+      "ABSTAIN"
+    ],
+    "activation_requires_base_train_and_selection_pass": true,
+    "allowed_symbolic_prior_buckets": [
+      "new side",
+      "previous side",
+      "previous run length",
+      "anchor time",
+      "flow magnitude rank",
+      "price lag rank",
+      "volume target overshoot rank",
+      "time since prior handoff",
+      "source freshness",
+      "current portfolio position"
+    ],
+    "exact_split_identity_forbidden": true,
+    "may_not_change": [
+      "candidate clock",
+      "side",
+      "entry",
+      "hold",
+      "leverage",
+      "cost model"
+    ],
+    "protocol_committed_before_label_dataset": true,
+    "protocol_freeze_after_base_train_before_selection": true,
+    "raw_timestamp_or_price_forbidden": true,
+    "selection_feedback_forbidden": true,
+    "skipped_trade_releases_reservation": false,
+    "train_labels_only": true
+  },
+  "manifest_hash": "a647a944a65b46fa52799d544acfee1a4c8c72722e05b54c3cf891c2537f0619",
+  "novelty_contract": {
+    "absolute_signed_occupancy_pearson_max": 0.35,
+    "common_window": [
+      "2021-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "common_window_policy_path": "docs/novelty-comparator-common-window-policy-2026-07-23.md",
+    "common_window_policy_sha256": "928bce6e04fb34001478b4b4ea84156580b661c88a0f0338065a891c009bd580",
+    "comparators": [
+      {
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "group_column": "clock_name",
+        "header": [
+          "clock_name",
+          "source_day",
+          "decision_time",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "header_sha256": "0ad7d7a39f7d772de30d2c47056efd3c9b7740561eea9a1b69007b4870d5d495",
+        "hold_bars": 72,
+        "id": "IVLIR-72",
+        "known_groups": [
+          "primary",
+          "flow_only",
+          "no_under_response",
+          "no_headroom",
+          "fixed_noon",
+          "exact_side_flip",
+          "deterministic_random_side"
+        ],
+        "path": "data/intrinsic_volume_latent_impact_relay_clocks_2020_2023.csv.gz",
+        "selected_group": "primary",
+        "sha256": "523f24a0d955fe99cfb86c62078532c5fc9091234e6669ab9acff2a8f3367788",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": "LONG",
+          "SHORT": "SHORT"
+        },
+        "source_day_column": "source_day",
+        "tolerant_containment": true
+      },
+      {
+        "entry_column": "entry_date",
+        "exit_column": "exit_date",
+        "group_column": null,
+        "header": [
+          "signal_position",
+          "entry_position",
+          "exit_position",
+          "signal_date",
+          "entry_date",
+          "exit_date",
+          "side",
+          "hold_bars"
+        ],
+        "header_sha256": "437d41a791ba1084c3f38903ed6352f61462c3e3f3c5bb8fa065519a11b13852",
+        "hold_bars": 24,
+        "id": "BAFR-24F",
+        "known_groups": [
+          "BAFR-24F"
+        ],
+        "path": "results/binance_aggressor_frustration_clock_2026-07-20.csv",
+        "selected_group": "BAFR-24F",
+        "sha256": "f3b816a76decce31136ed23d22f043eb8e80ef1b8697b869241b060062f01747",
+        "side_column": "side",
+        "side_encoding": {
+          "-1": "SHORT",
+          "1": "LONG"
+        },
+        "source_day_column": null,
+        "tolerant_containment": false
+      },
+      {
+        "entry_column": "entry_date",
+        "exit_column": "exit_date",
+        "group_column": "branch",
+        "header": [
+          "origin_position",
+          "signal_position",
+          "entry_position",
+          "exit_position",
+          "origin_date",
+          "signal_date",
+          "entry_date",
+          "exit_date",
+          "side",
+          "branch",
+          "delay_bars",
+          "hold_bars"
+        ],
+        "header_sha256": "fbe1d4fc7a2981a9fec253c5e6e04874035899626c9a19d96a97774e2b2d1999",
+        "hold_bars": 144,
+        "id": "AFCS-144",
+        "known_groups": [
+          "afcs_144"
+        ],
+        "path": "results/aggregate_fill_compression_sweep_clock_2026-07-17.csv",
+        "selected_group": "afcs_144",
+        "sha256": "bf1611554604c1930ba2212e674ea434f7c9793377b3f33ef531b3b4e0381688",
+        "side_column": "side",
+        "side_encoding": {
+          "-1": "SHORT",
+          "1": "LONG"
+        },
+        "source_day_column": null,
+        "tolerant_containment": true
+      },
+      {
+        "entry_column": "entry_date",
+        "exit_column": "exit_date",
+        "group_column": "branch",
+        "header": [
+          "setup_position",
+          "signal_position",
+          "entry_position",
+          "exit_position",
+          "setup_date",
+          "signal_date",
+          "entry_date",
+          "exit_date",
+          "side",
+          "branch",
+          "hold_bars"
+        ],
+        "header_sha256": "53ede9e934bd3c0612944e9ad678cb81e1400c5e0c3d64a10ed3401157a900e0",
+        "hold_bars": 12,
+        "id": "LVRT-R0",
+        "known_groups": [
+          "lvrt_r0"
+        ],
+        "path": "results/liquidity_vacuum_replenishment_clock_2026-07-17.csv",
+        "selected_group": "lvrt_r0",
+        "sha256": "ed9dd6391df2118ac09d147a4e57c3cb3f6e105a13f6c0d973ee424cfedd54d2",
+        "side_column": "side",
+        "side_encoding": {
+          "-1": "SHORT",
+          "1": "LONG"
+        },
+        "source_day_column": null,
+        "tolerant_containment": true
+      },
+      {
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "group_column": null,
+        "header": [
+          "decision_time",
+          "entry_time",
+          "exit_time",
+          "side",
+          "score",
+          "threshold"
+        ],
+        "header_sha256": "56bc773a89f31d3c29c6ab5177451df6fe40518c0d879ec97248696e1ecb2b9c",
+        "hold_bars": 144,
+        "id": "SMCC-144",
+        "known_groups": [
+          "SMCC-144"
+        ],
+        "path": "data/same_millisecond_cascade_clock_2020_2023.csv.gz",
+        "selected_group": "SMCC-144",
+        "sha256": "3b255b224ab510afc30edb265d62428db9fdf07d90610499df62efff9ffa410d",
+        "side_column": "side",
+        "side_encoding": {
+          "-1": "SHORT",
+          "1": "LONG"
+        },
+        "source_day_column": null,
+        "tolerant_containment": true
+      },
+      {
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "group_column": null,
+        "header": [
+          "decision_time",
+          "entry_time",
+          "exit_time",
+          "side",
+          "score",
+          "threshold"
+        ],
+        "header_sha256": "56bc773a89f31d3c29c6ab5177451df6fe40518c0d879ec97248696e1ecb2b9c",
+        "hold_bars": 288,
+        "id": "QLCD-288",
+        "known_groups": [
+          "QLCD-288"
+        ],
+        "path": "data/quantity_lattice_cohort_disagreement_clock_2020_2023.csv.gz",
+        "selected_group": "QLCD-288",
+        "sha256": "ed882ac8a28f1f0b2b7ad7bf3d2de1f37b175cde63b20d4d1c7a290f3eb89bec",
+        "side_column": "side",
+        "side_encoding": {
+          "-1": "SHORT",
+          "1": "LONG"
+        },
+        "source_day_column": null,
+        "tolerant_containment": true
+      }
+    ],
+    "exact_entry_jaccard_max": 0.1,
+    "failure_action": "retire IVPLH-72 unchanged before outcomes",
+    "full_containment": "entry>=W0 and exit<=W1; never clip",
+    "ivlir_source_day_jaccard_max": 0.25,
+    "match_pair_order": [
+      "absolute_delta",
+      "candidate_entry_time",
+      "comparator_entry_time"
+    ],
+    "maximum_bidirectional_containment_max": 0.4,
+    "minimum_selected_contained_rows": 10,
+    "raw_validation_before_filter": true,
+    "required_count_report": [
+      "raw",
+      "contained",
+      "before",
+      "after",
+      "crossing"
+    ],
+    "tolerant_match_minutes": 60,
+    "zero_or_nonfinite_correlation": "one and fail"
+  },
+  "outcomes_opened": false,
+  "policy": {
+    "base_cost_notional_per_side": 0.0006,
+    "cluster_signflip_draws": 20000,
+    "decision_delay_bars": 1,
+    "entry_delay_bars": 2,
+    "event_reference_anchors": 180,
+    "event_reference_min_anchors": 90,
+    "fixed_noon_anchor_minute_utc": 715,
+    "hold_bars": 72,
+    "intrinsic_volume_fraction": 0.5,
+    "latest_anchor_minute_utc": 1075,
+    "leverage": 0.5,
+    "mdd_denominator_floor": 1e-09,
+    "policy_id": "IVPLH-72",
+    "stale_control_delay_bars": 288,
+    "stress_cost_notional_per_side": 0.001,
+    "utc_day_volume_lookback_days": 28,
+    "utc_day_volume_min_days": 21
+  },
+  "predecessor_lineage": {
+    "candidate_decision_equals_predecessor_entry": true,
+    "candidate_entry_and_exit_shift_bars": 1,
+    "clock": {
+      "header": [
+        "clock_name",
+        "source_day",
+        "decision_time",
+        "entry_time",
+        "exit_time",
+        "side"
+      ],
+      "header_sha256": "0ad7d7a39f7d772de30d2c47056efd3c9b7740561eea9a1b69007b4870d5d495",
+      "path": "data/intrinsic_volume_flow_handoff_relay_clocks_2020_2023.csv.gz",
+      "sha256": "ab12762dec9a93d41c293766e46dfc80ade81914fb32753a5923faa6437c338e"
+    },
+    "disclosed_global_rows": 66,
+    "identity_key": [
+      "source_day",
+      "side",
+      "decision_time"
+    ],
+    "identity_mismatch_action": "reject unchanged before support",
+    "known_clock_names": [
+      "primary",
+      "any_handoff",
+      "no_price_lag",
+      "no_flow_strength",
+      "persistence_level",
+      "fixed_noon_handoff",
+      "exact_side_flip",
+      "deterministic_random_side"
+    ],
+    "preregistration": {
+      "path": "results/intrinsic_volume_flow_handoff_relay_preregistration_2026-07-23.json",
+      "sha256": "e01e7f5af034adf98c0eef1e086ed1265c02998641f39d8cddd5137089f4153e"
+    },
+    "selected_clock_name": "any_handoff",
+    "support_report": {
+      "path": "results/intrinsic_volume_flow_handoff_relay_support_2026-07-23.json",
+      "sha256": "ed2a82e875d650f2e6f3197df1d34e39617d07640b5e13a3cc7ccc4bb09661d4"
+    }
+  },
+  "predecessor_rows_decoded": false,
+  "protocol_version": "intrinsic_volume_price_lag_handoff_v1",
+  "research_history_boundary": {
+    "claim_scope": "source-seen candidate; support is operational adequacy, not discovery evidence",
+    "ivplh_post_entry_outcomes_seen": false,
+    "llm_used_in_this_stage": false,
+    "post_2023_source_values_seen": false,
+    "predecessor_any_handoff_global_support_seen": true,
+    "predecessor_exact_rows_or_split_counts_seen": false,
+    "source_seen_successor": true
+  },
+  "source_contract": {
+    "bar_interval": "5min",
+    "complete_rows_per_utc_day": 288,
+    "exact_grid_required": true,
+    "interval": [
+      "2020-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "market": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+    "market_manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+    "market_manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+    "market_rows": 420768,
+    "market_sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d",
+    "missing_bar_policy": "fail closed; no interpolation or forward fill",
+    "required_columns": [
+      "date",
+      "open",
+      "high",
+      "low",
+      "close",
+      "quote_asset_volume",
+      "taker_buy_quote"
+    ],
+    "state_columns": [
+      "date",
+      "open",
+      "close",
+      "quote_asset_volume",
+      "taker_buy_quote"
+    ],
+    "taker_quote_tolerance": "max(1e-8, abs(quote_asset_volume)*1e-10)",
+    "validation_only_columns": [
+      "high",
+      "low"
+    ]
+  },
+  "source_incidence_opened": false,
+  "source_only_controls": {
+    "ordered": [
+      "primary",
+      "handoff_without_price_lag",
+      "price_lag_without_handoff",
+      "fixed_noon",
+      "stale_24h",
+      "direction_flip",
+      "anchor_side_year_permutation",
+      "anchor_return_year_permutation",
+      "deterministic_random_side"
+    ],
+    "permutation_mapping": "within source-day year, SHA256 lexical donor/destination bijection",
+    "permutation_rng": null,
+    "random_side": "first SHA256 byte of side-free canonical identity; LONG iff <128",
+    "skipped_trade_releases_reservation": false
+  },
+  "source_support_gate": {
+    "each_selection_half_events_min": 4,
+    "each_train_half_events_min": 3,
+    "each_train_year_events_min": 10,
+    "empty_denominator": "one and fail",
+    "failure_action": "retire IVPLH-72 unchanged before comparators/outcomes",
+    "maximum_split_gap_days": 120.0,
+    "maximum_split_month_share": 0.2,
+    "maximum_split_quarter_share": 0.4,
+    "maximum_split_same_side_run": 10,
+    "permutation_exact_entry_jaccard_max": 0.35,
+    "permutation_same_side_reproduction_max": 0.6,
+    "selection_each_side_events_min": 3,
+    "selection_each_side_share_min": 0.2,
+    "selection_events_min": 12,
+    "selection_window": [
+      "2023-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "statistic_definitions": {
+      "gap": "maximum elapsed accepted-entry gap within split",
+      "month_quarter_denominator": "accepted entries in containing split",
+      "permutation_jaccard": "distinct accepted entry-time sets within split",
+      "same_side_reproduction": "exact timestamp and normalized side matches / primary split entries",
+      "same_side_run": "chronological (entry_time,signal_id) within split",
+      "selection_halves": [
+        [
+          "2023_h1",
+          "2023-01-01",
+          "2023-07-01"
+        ],
+        [
+          "2023_h2",
+          "2023-07-01",
+          "2024-01-01"
+        ]
+      ],
+      "subperiod_membership": "source day in UTC date range; decision and entry >= start; exit <= end",
+      "train_halves": [
+        [
+          "2021_h1",
+          "2021-01-01",
+          "2021-07-01"
+        ],
+        [
+          "2021_h2",
+          "2021-07-01",
+          "2022-01-01"
+        ],
+        [
+          "2022_h1",
+          "2022-01-01",
+          "2022-07-01"
+        ],
+        [
+          "2022_h2",
+          "2022-07-01",
+          "2023-01-01"
+        ]
+      ]
+    },
+    "train_each_side_events_min": 6,
+    "train_each_side_share_min": 0.2,
+    "train_events_min": 24,
+    "train_window": [
+      "2021-01-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ]
+  },
+  "stopping_rule": "first failed identity, integrity, support, permutation, novelty, or economic gate retires IVPLH-72 unchanged",
+  "strict_sequence": {
+    "no_parameter_repair": true,
+    "phase_1": "source support and permutation controls",
+    "phase_2": "comparator novelty only after phase 1 passes",
+    "phase_3": "commit hash-bound strict evaluator before outcomes",
+    "stages": [
+      [
+        "train",
+        "2021-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      [
+        "selection",
+        "2023-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      [
+        "test_2024",
+        "2024-01-01T00:00:00Z",
+        "2025-01-01T00:00:00Z"
+      ],
+      [
+        "eval_2025",
+        "2025-01-01T00:00:00Z",
+        "2026-01-01T00:00:00Z"
+      ],
+      [
+        "final_2026_h1",
+        "2026-01-01T00:00:00Z",
+        "2026-07-01T00:00:00Z"
+      ]
+    ],
+    "stop_at_first_failure": true
+  }
+}
