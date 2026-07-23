@@ -97,6 +97,7 @@ def passing_inputs() -> tuple[list[capture.ObservedWsTrade], list[capture.RestSn
 
 def test_frozen_transport_and_bindings_are_exact() -> None:
     capture.validate_bindings()
+    assert capture.PROTOCOL_VERSION == "bybit_public_trade_live_parity_capture_v2"
     assert capture.REST_URL == (
         "https://api.bybit.com/v5/market/recent-trade?"
         "category=linear&symbol=BTCUSDT&limit=1000"
@@ -105,6 +106,22 @@ def test_frozen_transport_and_bindings_are_exact() -> None:
     assert capture.WS_TOPIC == "publicTrade.BTCUSDT"
     assert capture.CAPTURE_SECONDS == 600
     assert capture.REST_INTERVAL_SECONDS == 1
+
+
+def test_local_clock_sample_uses_bracketed_monotonic_midpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monotonic = iter((100, 120))
+    monkeypatch.setattr(capture.time, "monotonic_ns", lambda: next(monotonic))
+    monkeypatch.setattr(capture.time, "time_ns", lambda: 1_000)
+    sample = capture._local_clock_sample("fixture", 7)
+    assert sample == capture.ClockSample(
+        source="fixture",
+        ordinal=7,
+        monotonic_ns=110,
+        utc_ns=1_000,
+        uncertainty_ns=20,
+    )
 
 
 def test_rest_parser_normalizes_exact_fields_without_float_rounding() -> None:
@@ -306,6 +323,49 @@ def test_parity_rejects_nonoverlapping_rest_windows_and_missing_final_marker() -
     snapshots[-1] = replace(snapshots[-1], final=False)
     result = capture.evaluate_rest_ws_parity(ws, snapshots)
     assert result["checks"]["one_final_rest_snapshot_last"] is False
+
+
+def test_clock_integrity_sorts_cross_task_samples_before_validation() -> None:
+    samples = [
+        capture.ClockSample("ws", 3, 300, 1_300, 2),
+        capture.ClockSample("rest_start", 1, 100, 1_100, 4),
+        capture.ClockSample("rest_end", 1, 200, 1_200, 3),
+    ]
+    audit = capture.evaluate_clock_integrity(samples)
+    assert audit["clock_contract_passed"] is True
+    assert audit["utc_reversal_count"] == 0
+    assert audit["nonincreasing_monotonic_count"] == 0
+    assert audit["monotonic_elapsed_ns"] == audit["utc_elapsed_ns"] == 200
+    assert audit["maximum_sampling_uncertainty_ns"] == 4
+
+
+def test_clock_reversal_forces_a_previously_passing_parity_to_reject() -> None:
+    ws, snapshots = passing_inputs()
+    parity = capture.evaluate_rest_ws_parity(ws, snapshots)
+    audit = capture.evaluate_clock_integrity(
+        [
+            capture.ClockSample("ws", 1, 100, 1_000, 1),
+            capture.ClockSample("rest", 1, 200, 900, 1),
+        ]
+    )
+    assert audit["utc_reversal_count"] == 1
+    assert audit["clock_contract_passed"] is False
+    gated = capture.apply_clock_gate(parity, audit)
+    assert gated["decision"] == "REJECT_NO_REPAIR"
+    assert gated["checks"]["local_utc_nonreversing"] is False
+    assert "local_utc_nonreversing" in gated["failures"]
+
+
+def test_missing_or_duplicate_clock_samples_fail_closed() -> None:
+    assert capture.evaluate_clock_integrity([])["clock_contract_passed"] is False
+    duplicate = capture.evaluate_clock_integrity(
+        [
+            capture.ClockSample("ws", 1, 100, 1_000, 0),
+            capture.ClockSample("rest", 1, 100, 1_001, 0),
+        ]
+    )
+    assert duplicate["nonincreasing_monotonic_count"] == 1
+    assert duplicate["clock_contract_passed"] is False
 
 
 def test_manifest_is_hash_bound_immutable_and_outcome_blind(
