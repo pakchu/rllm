@@ -21,6 +21,7 @@
       "both_halves_positive": true,
       "each_side_contribution_positive": true,
       "each_side_min": 20,
+      "max_action_share": 0.85,
       "ratio_min": 1.0,
       "return_positive": true,
       "stress_and_one_bar_delay_positive": true,
@@ -32,6 +33,7 @@
       "both_halves_positive": true,
       "each_side_contribution_positive": true,
       "each_side_min": 15,
+      "max_action_share": 0.9,
       "ratio_min": 0.5,
       "return_positive": true,
       "stress_and_one_bar_delay_positive": true,
@@ -114,64 +116,164 @@
       "sha256": "3d8171b615580dd4c20d2b577265f52ac2646fb9697f73d3abd6ff8b82c3374f"
     }
   },
-  "manifest_hash": "7d0b0f44afa49468d01b14f93e68ed08e8b2a531278e4d871b29b7c68148d037",
+  "manifest_hash": "2145ff3cda4632cbc1bd824bc0ecefcc95cca12e201443c3c8e1401689ef02ef",
   "novelty_contract": {
     "cboe_abs_signed_exposure_correlation_max": 0.6,
     "cboe_same_side_reproduction_max": 0.7,
     "cboe_timing_jaccard": "report_only",
     "comparators": [
       {
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
         "group_column": "control",
+        "group_selection": "every nonempty group over common coverage",
         "header_sha256": "9628d5d9bb26e18964e87d96e33119d8eba8b11208ed516ce18a336b8e04041c",
         "id": "VTR",
+        "loader_allowlist": [
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "missing_common_coverage": "fail",
         "path": "results/cboe_volatility_term_rotation_clocks_2026-07-17.csv.gz",
-        "sha256": "47f4ca447daa2b03a0827ad243ed1107eb34a37e5d7bab18ecd3c4331736959d"
+        "sha256": "47f4ca447daa2b03a0827ad243ed1107eb34a37e5d7bab18ecd3c4331736959d",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        }
       },
       {
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
         "group_column": "control",
+        "group_selection": "every nonempty group over common coverage",
         "header_sha256": "ed0b1417ea6946fc8427f47f95b5b4dbcd6f377fad8da62484a2c95cbc85da92",
         "id": "THD",
+        "loader_allowlist": [
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "missing_common_coverage": "fail",
         "path": "results/cboe_tail_hedge_disagreement_clocks_2026-07-18.csv.gz",
-        "sha256": "0e19455e2fb5ab2d36cc996c9adf514adc85c69dd1a325562344a8015464d546"
+        "sha256": "0e19455e2fb5ab2d36cc996c9adf514adc85c69dd1a325562344a8015464d546",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        }
       },
       {
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
         "group_column": "control",
+        "group_selection": "every nonempty group over common coverage",
         "header_sha256": "6a763bf874f4cd5dc0ea16433d30868c3dee92a70e74f3dbcbfe6329a2d6d2ee",
         "id": "IHM",
+        "loader_allowlist": [
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "missing_common_coverage": "fail",
         "path": "results/cboe_institutional_hedge_migration_clocks_2026-07-18.csv.gz",
-        "sha256": "5e04cffacb1754c3111fcc32b09d72f06b546a4803b40c77d655a9787b015c0b"
+        "sha256": "5e04cffacb1754c3111fcc32b09d72f06b546a4803b40c77d655a9787b015c0b",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        }
       },
       {
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
         "group_column": "control",
+        "group_selection": "every nonempty group over common coverage",
         "header_sha256": "d66a8a9e0593867005d8f47f026bd05556a9ff3c2c3a33e4b4dfc914d99c8591",
         "id": "CXRT",
+        "loader_allowlist": [
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "missing_common_coverage": "fail",
         "path": "data/cboe_cross_surface_risk_transfer_clocks_2020_2023.csv.gz",
-        "sha256": "b3cc6f3d6a19cb39ef63ec0ba9908c983ce03c56a0c7dd8786e51c2ef1c0885f"
+        "sha256": "b3cc6f3d6a19cb39ef63ec0ba9908c983ce03c56a0c7dd8786e51c2ef1c0885f",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        }
       },
       {
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
         "group_column": "control",
+        "group_selection": "every nonempty group over common coverage",
         "header_sha256": "4789240b9dc9d024165094f4c0e6f7d42d06776993891261715ad5dd58bf93bf",
         "id": "OPRR",
+        "loader_allowlist": [
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "missing_common_coverage": "fail",
         "path": "data/cboe_option_pressure_rank_rotation_clocks_2020_2023.csv.gz",
-        "sha256": "a5c15e0d6444f79239276fb9c3da0555dea27a52eda254e7425d9b223d30d46c"
+        "sha256": "a5c15e0d6444f79239276fb9c3da0555dea27a52eda254e7425d9b223d30d46c",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        }
       },
       {
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
         "group_column": "candidate_id",
+        "group_selection": "every nonempty group over common coverage",
         "header_sha256": "da21cfc42a55581971c304cc30122a72f9d062a7601db59a9702ec35504acb9a",
         "id": "CCHR-live-pre2024",
+        "loader_allowlist": [
+          "candidate_id",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "missing_common_coverage": "fail",
         "path": "results/cchr_live_portfolio_pure_clocks_2026-07-21.csv.gz",
         "rows": 440,
-        "sha256": "73d6efbd35b3be64b0fa04fa9c8cb2db25866ef884f19b1ae673949e22a42b08"
+        "sha256": "73d6efbd35b3be64b0fa04fa9c8cb2db25866ef884f19b1ae673949e22a42b08",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        }
       }
     ],
     "forbidden_paths": [
       "data/premium_compression_breakout_relay_clocks_2020_2026.csv.gz",
       "data/premium_snapback_recenter_clocks_2020_2026.csv.gz"
     ],
+    "hash_drift": "fail",
     "live_abs_signed_exposure_correlation_max": 0.4,
     "live_exact_jaccard_max": 0.1,
     "live_one_hour_jaccard_max": 0.25,
-    "parse_after": "2022 policy selection and pre-2024 action freeze"
+    "loader_semantics_allowlist": [
+      "policy_or_group_id",
+      "decision_or_admission",
+      "entry",
+      "exit",
+      "action_or_side"
+    ],
+    "missing_required_common_coverage": "fail",
+    "parse_after": "2022 policy selection and pre-2024 action freeze",
+    "undefined_correlation": "fail"
   },
   "outcome_boundary": {
     "comparator_rows_decoded": 0,
@@ -248,18 +350,41 @@
     "dpo": {
       "batch": 1,
       "beta": 0.1,
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "bf16": false,
       "checkpoints": [
         24,
         48,
         72,
         96
       ],
+      "epsilon": 1e-08,
       "fp16": true,
       "gradient_accumulation": 8,
+      "label_smoothing": 0.0,
       "learning_rate": 5e-06,
       "loss": "sigmoid",
+      "max_grad_norm": 1.0,
+      "optimizer": "AdamW",
+      "optimizer_steps": 96,
+      "reference": "final SFT with DPO updates disabled",
+      "scheduler": "cosine",
       "seed": 20260724,
-      "steps": 96
+      "warmup_steps": 8,
+      "weight_decay": 0.01
+    },
+    "environment": {
+      "bitsandbytes": "0.49.2",
+      "numpy": "2.2.6",
+      "pandas": "2.3.3",
+      "peft": "0.18.1",
+      "scikit_learn": "1.7.2",
+      "torch": "2.9.0",
+      "transformers_git_revision": "5d7ff4393ab99aa7cadf4cccd1f814dbb799f2bb",
+      "trl": "0.29.0"
     },
     "files": {
       "config.json": "eacec6c5ca317a87ed2c46789d9705b9274db5027e7ba59da739bfae23addb55",
@@ -283,7 +408,8 @@
         "k_proj",
         "v_proj",
         "o_proj"
-      ]
+      ],
+      "task_type": "CAUSAL_LM"
     },
     "mapping": {
       "ADMISSION": {
@@ -297,7 +423,9 @@
     },
     "max_tokens": 384,
     "memory_gib": {
+      "adapter_checkpoint_directory_max": 0.25,
       "inference_reserved_max": 6.5,
+      "retained_sft_plus_selected_dpo_max": 1.0,
       "training_allocated_max": 14.0,
       "training_reserved_max": 16.0
     },
@@ -332,11 +460,24 @@
     },
     "sft": {
       "batch": 1,
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "bf16": false,
+      "completion_only_loss": true,
+      "epsilon": 1e-08,
       "fp16": true,
       "gradient_accumulation": 8,
       "learning_rate": 0.0002,
+      "max_grad_norm": 1.0,
+      "optimizer": "AdamW",
+      "optimizer_steps": 64,
+      "packing": false,
+      "scheduler": "cosine",
       "seed": 20260724,
-      "steps": 64
+      "warmup_steps": 8,
+      "weight_decay": 0.01
     },
     "tasks": [
       "ADMISSION",

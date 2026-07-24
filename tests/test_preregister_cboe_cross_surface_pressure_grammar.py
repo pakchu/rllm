@@ -113,7 +113,56 @@ def test_model_contract_is_one_causal_lm_with_train_only_prior_correction() -> N
     assert "2020-2021" in contract["prior_correction"]
     assert contract["offset_reuse"].startswith("hash-frozen")
     assert contract["ties_or_errors"] == "ABSTAIN"
+    assert contract["environment"] == {
+        "torch": "2.9.0",
+        "transformers_git_revision": (
+            "5d7ff4393ab99aa7cadf4cccd1f814dbb799f2bb"
+        ),
+        "trl": "0.29.0",
+        "peft": "0.18.1",
+        "bitsandbytes": "0.49.2",
+        "numpy": "2.2.6",
+        "pandas": "2.3.3",
+        "scikit_learn": "1.7.2",
+    }
+    assert contract["lora"]["task_type"] == "CAUSAL_LM"
+    assert contract["sft"]["optimizer_steps"] == 64
+    assert contract["sft"]["completion_only_loss"] is True
+    assert contract["sft"]["packing"] is False
+    assert contract["dpo"]["optimizer_steps"] == 96
+    assert contract["dpo"]["reference"].startswith("final SFT")
+    assert contract["dpo"]["label_smoothing"] == 0.0
     assert contract["memory_gib"]["inference_reserved_max"] == 6.5
+    assert contract["memory_gib"]["adapter_checkpoint_directory_max"] == 0.25
+    assert contract["memory_gib"]["retained_sft_plus_selected_dpo_max"] == 1.0
+
+
+def test_cheap_and_novelty_gates_fail_closed() -> None:
+    payload = p.build_manifest()
+    baseline = payload["baseline_contract"]
+    assert baseline["transfer_2021"]["max_action_share"] == 0.90
+    assert baseline["selection_2022"]["max_action_share"] == 0.85
+
+    novelty = payload["novelty_contract"]
+    assert novelty["hash_drift"] == "fail"
+    assert novelty["undefined_correlation"] == "fail"
+    assert novelty["missing_required_common_coverage"] == "fail"
+    assert novelty["loader_semantics_allowlist"] == [
+        "policy_or_group_id",
+        "decision_or_admission",
+        "entry",
+        "exit",
+        "action_or_side",
+    ]
+    for comparator in novelty["comparators"]:
+        assert comparator["loader_allowlist"] == [
+            comparator["group_column"],
+            comparator["entry_column"],
+            comparator["exit_column"],
+            comparator["side_column"],
+        ]
+        assert comparator["side_encoding"] == {"LONG": 1, "SHORT": -1}
+        assert comparator["missing_common_coverage"] == "fail"
 
 
 def test_strict_prior_midrank_excludes_current_handles_ties_and_truncates() -> None:
