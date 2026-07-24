@@ -2068,7 +2068,7 @@ def assert_protocol_committed() -> tuple[str, str]:
 
 def _disk_guard() -> tuple[int, int]:
     usage = shutil.disk_usage(REPOSITORY_ROOT)
-    used = usage.total - usage.free
+    used = usage.used
     if used >= DISK_USED_LIMIT:
         raise DiskGuardError("filesystem use is at or above 300 GiB")
     if usage.free < DISK_FREE_FLOOR:

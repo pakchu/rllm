@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 import inspect
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Callable
 
 import pytest
@@ -950,6 +951,24 @@ def test_report_publication_is_atomic_no_clobber(tmp_path: Path) -> None:
     with pytest.raises(audit.PublicationError):
         audit._atomic_publish(report, b'{"ok":false}\n')
     assert report.read_bytes() == b'{"ok":true}\n'
+
+
+def test_disk_guard_uses_filesystem_reported_used_bytes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    used = audit.DISK_USED_LIMIT - 1
+    free = audit.DISK_FREE_FLOOR + 1
+    monkeypatch.setattr(
+        audit.shutil,
+        "disk_usage",
+        lambda _: SimpleNamespace(
+            total=used + free + 64 * 1024**3,
+            used=used,
+            free=free,
+        ),
+    )
+
+    assert audit._disk_guard() == (used, free)
 
 
 def test_manifest_chain_replay_binds_sequence_hashes_and_raw_bytes(
