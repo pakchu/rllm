@@ -126,7 +126,7 @@ Validation also requires:
 - integer heights, timestamps, median times, counts, sizes, weights, fees,
   inputs, outputs, and UTXO changes;
 - `tx_count >= 1`, `size > 0`, `weight > 0`, and `total_fees >= 0`;
-- `0 < weight <= 4*size`;
+- `size <= weight <= 4*size`;
 - timestamps and median times strictly before the frozen cutoff;
 - lowercase 64-character hexadecimal block ids and parent ids; and
 - no duplicate height or id.
@@ -149,30 +149,46 @@ bucket_start = floor(header_timestamp / 43200) * 43200
 bucket_end   = bucket_start + 43200
 ```
 
-Group every block by `bucket_start` in UTC. A bucket is source-valid only when:
+The bucket is **formed from a causal height prefix**, not from all later rows.
+For each nominal `bucket_end`, define:
+
+```text
+anchor_height =
+    first height whose mediantime >= bucket_end
+
+confirmation_height =
+    anchor_height + 288
+
+bucket_members =
+    rows with height <= confirmation_height
+    and bucket_start <= timestamp < bucket_end
+```
+
+The anchor depends only on monotone chain progression past the bucket boundary.
+The exact 288th successor closes membership permanently. A later block with a
+backdated header timestamp inside an already formed bucket is ignored for that
+bucket by definition and recorded as a late-member diagnostic; it never
+rewrites the state.
+
+A bucket is source-valid only when:
 
 - `[bucket_start,bucket_end)` is inside `[2020-01-01,2024-01-01)`;
-- it contains at least one block;
+- `anchor_height` and exact `confirmation_height` both exist;
+- `bucket_members` contains at least one block;
 - every contributing row passed source validation;
-- its maximum contributing height is strictly larger than that of the previous
-  bucket;
-- exact confirmation height `bucket_max_height + 288` exists; and
+- anchor and confirmation heights are strictly larger than those of the
+  previous bucket; and
 - the resulting signal-availability time is nondecreasing by bucket start.
 
-The 288-successor condition is a causal confirmation device, not a tunable
-event threshold. A latest bucket lacking its exact successor is omitted.
+The 288-successor condition is a causal prefix-closure device, not a tunable
+event threshold. A latest bucket lacking its exact anchor or successor is
+omitted.
 
 The previous bucket for features and transitions is the immediately preceding
 source-valid bucket by `bucket_start`, including a bucket later suppressed by
 reservation or split containment.
 
 ## Exact causal clock
-
-For each source-valid bucket, bind the exact row at:
-
-```text
-confirmation_height = bucket_max_height + 288
-```
 
 Define raw historical availability:
 
@@ -185,10 +201,11 @@ prefix_max_mediantime =
 
 raw_available_seconds =
     max(
-        bucket_end + 172800,
+        bucket_end,
         prefix_max_timestamp,
         prefix_max_mediantime,
     )
+    + 172800
 ```
 
 Define:
@@ -206,8 +223,10 @@ order buffer always remains.
 
 The prefix maximum prevents a forward-dated intermediate successor from being
 ignored merely because the exact confirmation row has a lower header time.
-Historical header/median times remain conservative proxies, not first-seen
-proof. Live availability is:
+The additional 48 hours begin only after the latest bucket boundary or
+observed prefix clock, so the historical schedule cannot use the successor
+header/MTP as if it were an exact receipt time. Historical header/median times
+remain conservative proxies, not first-seen proof. Live availability is:
 
 ```text
 max(frozen historical clock, actual node receipt/validation clock)
@@ -226,9 +245,21 @@ Execution:
 - require source bucket, confirmation, availability, latency, entry, all held
   bars, and exit to stay inside one half-open evaluation split.
 
-The corrected clock may depend on the exact 288th successor. Once that
+The corrected clock depends on the exact anchor and 288th successor. Once that
 successor forms the state, later source appends must not change the state,
 rank, token, availability, or reservation.
+
+The mandatory prefix-replay invariant is:
+
+1. rebuild each formed bucket using only rows with
+   `height <= confirmation_height`;
+2. reproduce membership, primitives, ranks, tokens, availability, and
+   reservation byte-for-byte;
+3. append every later source prefix in turn; and
+4. verify that no formed artifact changes.
+
+Failure is terminal. Edge buckets lacking enough prefix or successor history
+are omitted rather than repaired.
 
 ## Exact eight primitives
 
@@ -493,8 +524,12 @@ cheap algorithm is refit on 2020–2021 and evaluated on 2022. Gemma fits only
 2020–2021 and selects exactly one checkpoint on 2022.
 
 2020–2022 are development evidence. 2023 is untouched by threshold, prompt,
-feature, model, checkpoint, or control selection. There is no monthly,
-rolling, continuous, or eval-label adaptation.
+feature, model, checkpoint, control, or market-outcome selection. The
+hash-bound 2023 source covariates may be decoded for operational validity and
+later immutable inference, but every 2023 incidence and token-distribution
+statistic is report-only and cannot authorize continuation, retirement,
+repair, or selection. There is no monthly, rolling, continuous, or eval-label
+adaptation.
 
 ## Source-only support gate
 
@@ -515,23 +550,23 @@ All must pass:
 - nondecreasing bucket maximum height and availability;
 - strict-prior current exclusion, ties, 252 cap, and 126 minimum;
 - future-append invariance for every earlier formed state and clock;
-- at least 2,700 global opportunities;
+- at least 2,000 development opportunities in `[2020-01-01,2023-01-01)`;
 - at least 1,250 opportunities in 2020–2021 combined;
 - at least 570 opportunities in 2020;
-- at least 700 opportunities in each of 2021, 2022, and 2023;
+- at least 700 opportunities in each of 2021 and 2022;
 - at least nine active execution months in 2020;
-- all twelve active months in each of 2021–2023;
-- at least 340 opportunities per half-year in each of 2021–2023;
-- at least 165 opportunities per quarter in each of 2021–2023;
+- all twelve active months in each of 2021 and 2022;
+- at least 340 opportunities per half-year in each of 2021 and 2022;
+- at least 165 opportunities per quarter in each of 2021 and 2022;
 - maximum 2020 single-month share at most 13%;
-- maximum single-month share at most 10% in each of 2021–2023;
-- maximum entry gap at most three calendar days in every year;
+- maximum single-month share at most 10% in each of 2021 and 2022;
+- maximum entry gap at most three calendar days in 2020–2022;
 - exact six-hour hold and action-independent global reservation; and
 - no raw, rank, action, side, market, return, or outcome column in the clock.
 
 ### Token support
 
-Train means 2020–2021 combined. Train, 2022, and 2023 must each satisfy:
+Train means 2020–2021 combined. Train and 2022 must each satisfy:
 
 - every value of every pair-relation token has at least 5% share;
 - no pair-relation value exceeds 80%;
@@ -545,7 +580,13 @@ Train means 2020–2021 combined. Train, 2022, and 2023 must each satisfy:
 - at least four leader-transition values occur and none exceeds 75%;
 - largest exact twelve-token signature share is at most 5%;
 - no token is missing or invalid; and
-- every value appearing in 2022 or 2023 already appears in train.
+- every value appearing in 2022 already appears in train.
+
+The same 2023 incidence, calendar, marginal-token, exact-signature, and
+train-vocabulary statistics are emitted under a separate
+`eval_source_report_only` namespace. They never enter a Boolean support gate.
+An unseen 2023 token value forces `ABSTAIN` under the already frozen policy; it
+does not permit a vocabulary change or candidate retirement before outcomes.
 
 Required synthetic and real-prefix tests:
 
@@ -642,6 +683,37 @@ Weekly-cluster sign flip:
 
 No-trade/no-cluster policies return `1.0`.
 
+### Familywise selection correction
+
+Every development-stage policy comparison also uses one shared max-stat null.
+For each policy, place weekly net returns on the union of nonempty UTC weeks,
+using zero for a week in which that policy is flat, and compute:
+
+```text
+t_policy =
+    mean(weekly_return)
+    / (std(weekly_return,ddof=1)/sqrt(number_of_union_weeks))
+```
+
+Zero variance returns `-infinity`. For each of 100,000 draws, apply the same
+Rademacher sign to the same week for every policy and retain the maximum null
+`t` across the complete frozen family. The adjusted one-sided p-value is:
+
+```text
+p_max =
+    (1 + count(max_null_t >= observed_selected_t)) / 100001
+```
+
+The family contains every emitted primary, exact-memory, prior-only,
+quarter-phase-prior, single-token, group-only, leave-one-token-out,
+leave-one-group-out, shuffled-label, circular-block-shift, final-SFT, and DPO
+checkpoint policy that exists at that stage. A policy cannot be omitted after
+its result is seen.
+
+The ordinary policy-local sign-flip p-value remains reported. Development
+selection gates use `p_max`; the one immutable 2023 policy uses the ordinary
+one-policy p-value because no 2023 candidate family is selected.
+
 ## Train-only utility and labels
 
 For each fit opportunity and action:
@@ -722,10 +794,36 @@ Frozen policies:
    - sqrt max features,
    - no bootstrap,
    - seed 20260724;
-8. 32 shuffled-label Naive Bayes controls, seeds `20260724..20260755`;
-9. 32 independently shuffled-utility ridge controls, same seeds;
-10. twelve single-token ridge policies; and
-11. twelve leave-one-token-out ridge policies.
+8. fit-majority three-action prior;
+9. fit admission-prior plus direction-prior constant policy;
+10. quarter-phase prior:
+    - fit one majority oracle action for each UTC calendar quarter number
+      `Q1..Q4`;
+    - apply only the matching quarter-number prior downstream;
+    - diagnostic control only because calendar identity is forbidden to BCRT;
+11. 32 shuffled-label Naive Bayes controls, seeds `20260724..20260755`;
+12. 32 independently shuffled-utility ridge controls, same seeds;
+13. 16 circular block-shift label/utility controls over chronological fit rows,
+    with exact positive offsets:
+
+    ```text
+    [62,93,124,155,186,217,248,279,
+     310,341,372,403,434,465,496,527]
+    ```
+
+14. twelve single-token ridge policies;
+15. twelve leave-one-token-out ridge policies;
+16. five group-only ridge policies:
+    - pair relations only,
+    - leaders only,
+    - breadth/occupancy only,
+    - transitions only,
+    - current topology without transitions; and
+17. five leave-one-group-out ridge policies over the same groups.
+
+Circular controls preserve label prevalence and much of temporal
+autocorrelation while destroying state alignment. None of the prior, seasonal,
+shuffled, or circular controls may qualify as BCRT.
 
 ### 2020 to 2021 transfer gate
 
@@ -741,7 +839,10 @@ At least one learned primary algorithm must satisfy on unchanged 2021:
 - no action above 90%;
 - positive stress-cost return;
 - positive one-bar-delay return; and
-- weekly-cluster one-sided `p < 0.25`.
+- familywise weekly-cluster `p_max < 0.25`;
+- higher return and ratio than every prior-only, quarter-phase, shuffled, and
+  circular control; and
+- higher return and ratio than the strongest single-token or group-only policy.
 
 ### 2022 cheap learnability gate
 
@@ -757,9 +858,13 @@ The refit 2020–2021 algorithm must satisfy on 2022:
 - no action above 85%;
 - positive stress-cost return;
 - positive one-bar-delay return;
-- weekly-cluster one-sided `p < 0.15`;
-- higher return and ratio than every shuffled control; and
-- higher return and ratio than the strongest single-token policy.
+- familywise weekly-cluster `p_max < 0.10`;
+- higher return and ratio than every prior-only, quarter-phase, shuffled, and
+  circular control;
+- higher return and ratio than the strongest single-token or group-only
+  policy; and
+- no single-token majority-action policy reproduces more than 70% of selected
+  non-abstain actions on matching opportunities.
 
 Select by higher ratio, higher return, lower MDD, then lexicographically smaller
 policy id. Failure retires BCRT before GPU.
@@ -865,6 +970,14 @@ Generation is forbidden. For each task and code:
 
 Offsets are never recomputed on 2022, 2023, or later data.
 
+The train-mean adapter-delta subtraction removes global code bias but is not
+treated as sufficient evidence against label-prior learning. One frozen
+prior-only null adapter is trained with the identical SFT/DPO recipe and
+labels, except every input line is replaced by its key plus literal
+`MASKED`. It receives no BCRT state. The null is evaluated on 2022 and its
+pre-2024 predictions are frozen. It can never qualify as BCRT; the selected
+BCRT checkpoint must beat it on return, ratio, and familywise significance.
+
 Admission trades only when calibrated `Q2>Q1`. Direction is LONG when
 calibrated `Q1>Q2` and SHORT when `Q2>Q1`. Any tie or failure abstains.
 
@@ -930,9 +1043,15 @@ Each checkpoint is evaluated once on 2022. It qualifies only with:
 - no action above 85%;
 - positive stress-cost return;
 - positive one-bar-delay return;
-- weekly-cluster one-sided `p < 0.10`;
-- return above the selected cheap policy; and
-- ratio at least 0.25 above the selected cheap policy.
+- familywise weekly-cluster `p_max < 0.05`;
+- return and ratio above every frozen cheap primary, prior-only,
+  quarter-phase, shuffled, circular, single-token, group-only, and ablation
+  policy under common coverage;
+- return and ratio above the masked-token prior adapter; and
+- no single token value contains more than 60% of non-abstain actions;
+- no single-token majority-action policy reproduces more than 70% of selected
+  non-abstain actions; and
+- ratio at least 0.25 above the strongest frozen non-RLLM policy.
 
 Select by higher ratio, higher return, lower MDD, then earlier optimizer step.
 Failure retires BCRT before 2023. Retain final SFT and selected DPO only.
@@ -953,10 +1072,24 @@ Bind:
 | MCR-7 | `results/miner_cadence_recovery_clock_2026-07-17.csv` | `2535244889b046ff00c369ee854973a91c23429dff82a6dd3c1a293a01352b0b` |
 | NTB-7 | `results/network_topology_broadening_clock_2026-07-17.csv` | `6b1bd7c7458cffa062e40872c3ad1730007c01426790b1ba8e52c6eb853de42f` |
 | BFC-3 | `results/blockspace_fee_confirmation_clock_2026-07-17.csv` | `edda7bb8ae8a1de4e51a3b86e98d533748e73d203125a3ded1a487e9a0e93632` |
+| WCTR-288 | `results/witness_composition_transport_primary_clock_2026-07-20.csv.gz` | `7a6b56a3024d0d087322fad7b3229276c539b93374691cd2812af0630dc752b1` |
+| BFRT-288 | `results/block_feerate_breadth_transport_primary_clock_2026-07-20.csv.gz` | `33428d29c2ace9b23672b2dc9dc3e9ba0e3020fa1a6e3845d55fa5d75230d64a` |
+| EMFC-864 | `results/exact_maturity_fee_cadence_polarity_clocks_2026-07-20.csv` | `31af41f42ffe4dc73f0ff35ccf278e38c856d224184e802e46b370650d35951d` |
 | frozen live sleeves | `results/cchr_live_portfolio_pure_clocks_2026-07-21.csv.gz` | `73d6efbd35b3be64b0fa04fa9c8cb2db25866ef884f19b1ae673949e22a42b08` |
 
 Load only policy/group id, decision/admission when present, entry, exit, and
 side/action. Raw comparator source features and outcomes are forbidden.
+
+FETD-288 did not publish row-level clocks. Bind its sealed support report:
+
+```text
+results/fee_endpoint_topology_disagreement_support_2026-07-20.json
+SHA256 03ba910a314ba6efb647f6588dff603261d414e5114680ca33bdc27d59aed035
+```
+
+Do not reconstruct or decode its unpublished event rows. Its mechanism overlap
+is instead challenged by the frozen fee/utilization pair-only, group-only, and
+single-token reducibility controls.
 
 For every nonempty comparator over required common coverage:
 
@@ -985,13 +1118,19 @@ The unchanged selected BCRT policy must satisfy:
 - maximum single execution-month share at most 15%;
 - no action above 85%;
 - at least 30 nonempty UTC entry-week clusters;
-- weekly-cluster one-sided `p < 0.10`;
+- one-policy weekly-cluster one-sided `p < 0.05`;
 - mean signed gross underlying move at least 20 bp per trade;
 - positive stress-cost return;
 - positive one-bar-delay return;
 - positive return under every neutral-code option-order audit;
-- return above the strongest frozen cheap policy; and
-- ratio at least 0.50 above the strongest frozen cheap policy.
+- return and ratio above every frozen cheap primary, prior-only,
+  quarter-phase, shuffled, circular, single-token, group-only, and ablation
+  policy under common coverage;
+- return and ratio above the masked-token prior adapter;
+- no single token value contains more than 60% of non-abstain actions;
+- no single-token majority-action policy reproduces more than 70% of selected
+  non-abstain actions; and
+- ratio at least 0.50 above the strongest frozen non-RLLM policy.
 
 One-hour delay is mandatory reporting, not a gate.
 
