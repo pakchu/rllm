@@ -1,0 +1,628 @@
+{
+  "baseline_contract": {
+    "features": "main token one-hot plus 66 pair conjunctions; min count 3",
+    "fit_transfer": "fit 2020, evaluate unchanged 2021",
+    "policies": [
+      "always_abstain",
+      "always_long",
+      "always_short",
+      "exact_signature_memory",
+      "categorical_naive_bayes_alpha_1",
+      "ridge_contextual_value_alpha_100",
+      "extra_trees_value_512_depth5_leaf10",
+      "32_shuffled_label_nb",
+      "32_shuffled_utility_ridge",
+      "12_single_token_ridge",
+      "12_leave_one_out_ridge"
+    ],
+    "refit_selection": "refit 2020-2021, evaluate 2022",
+    "selection_2022": {
+      "beat_shuffled_and_single_token": true,
+      "both_halves_positive": true,
+      "each_side_contribution_positive": true,
+      "each_side_min": 20,
+      "ratio_min": 1.0,
+      "return_positive": true,
+      "stress_and_one_bar_delay_positive": true,
+      "strict_mdd_pct_max": 15.0,
+      "trades_min": 60,
+      "weekly_cluster_p_below": 0.15
+    },
+    "transfer_2021": {
+      "both_halves_positive": true,
+      "each_side_contribution_positive": true,
+      "each_side_min": 15,
+      "ratio_min": 0.5,
+      "return_positive": true,
+      "stress_and_one_bar_delay_positive": true,
+      "strict_mdd_pct_max": 15.0,
+      "trades_min": 50,
+      "weekly_cluster_p_below": 0.25
+    }
+  },
+  "economic_contract": {
+    "base_cost_notional_per_side": 0.0006,
+    "cagr": "full half-open calendar including idle and abstention",
+    "funding": {
+      "boundary": "retain debits; drop credits exactly at entry/exit",
+      "cash": "-side*fixed_quantity*settlement_mark*funding_rate",
+      "interval": "entry<=settlement<=exit",
+      "manifest": "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json",
+      "manifest_sha256": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
+      "path": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+      "sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+    },
+    "market": {
+      "manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+      "manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+      "path": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+      "sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d"
+    },
+    "quantity": "entry_equity*0.5/entry_open; fixed",
+    "stress_cost_notional_per_side": 0.001,
+    "stress_replaces_base": true,
+    "strict_mdd": "global/pre-entry HWM; favorable then adverse held OHLC; funding and virtual adverse exit cost; scheduled exit",
+    "weekly_signflip_draws": 100000,
+    "weekly_signflip_seed": 20260724
+  },
+  "eval_2023_gate": {
+    "active_months_min": 10,
+    "beat_cheap_return": true,
+    "both_halves_positive": true,
+    "each_side_contribution_positive": true,
+    "each_side_min": 25,
+    "every_neutral_code_order_return_positive": true,
+    "max_action_share": 0.85,
+    "max_month_share": 0.15,
+    "mean_gross_underlying_move_bp_min": 20.0,
+    "one_hour_delay": "report_only",
+    "ratio_margin_over_cheap": 0.5,
+    "ratio_min": 3.0,
+    "return_positive": true,
+    "stress_and_one_bar_delay_positive": true,
+    "strict_mdd_pct_max": 15.0,
+    "trades_min": 70,
+    "weekly_cluster_p_below": 0.1,
+    "weekly_clusters_min": 20
+  },
+  "execution_contract": {
+    "abstention_releases_reservation": false,
+    "dynamic_exit_or_sizing": false,
+    "entry": "calendar D+1 09:35 America/New_York BTCUSDT 5m open",
+    "exit": "entry+288*5m",
+    "future_row_existence_affects_clock": false,
+    "global_action_independent_reservation": true,
+    "leverage": 0.5,
+    "one_bar_delay": "entry+5m, exit+5m, recompute reservation",
+    "one_hour_delay": "entry+60m, exit+60m, recompute reservation",
+    "scheduled_exit_only": true,
+    "signal_available": "calendar D+1 09:30 America/New_York",
+    "source_date": "D",
+    "split_crossing_keeps_reservation": true,
+    "weekend_holiday_entries": true,
+    "zone": "America/New_York via zoneinfo"
+  },
+  "frozen_documents": {
+    "boundary": {
+      "commit": "e210951",
+      "path": "docs/cboe-cross-surface-pressure-grammar-boundary-2026-07-24.md",
+      "sha256": "0b6feb15d1e7b616b5b65bb266b15db7e3fdcf82765b5848c76d68e804cb39f2"
+    },
+    "mechanism": {
+      "commit": "ad2907a",
+      "path": "docs/cboe-cross-surface-pressure-grammar-mechanism-decision-2026-07-24.md",
+      "sha256": "3d8171b615580dd4c20d2b577265f52ac2646fb9697f73d3abd6ff8b82c3374f"
+    }
+  },
+  "manifest_hash": "7d0b0f44afa49468d01b14f93e68ed08e8b2a531278e4d871b29b7c68148d037",
+  "novelty_contract": {
+    "cboe_abs_signed_exposure_correlation_max": 0.6,
+    "cboe_same_side_reproduction_max": 0.7,
+    "cboe_timing_jaccard": "report_only",
+    "comparators": [
+      {
+        "group_column": "control",
+        "header_sha256": "9628d5d9bb26e18964e87d96e33119d8eba8b11208ed516ce18a336b8e04041c",
+        "id": "VTR",
+        "path": "results/cboe_volatility_term_rotation_clocks_2026-07-17.csv.gz",
+        "sha256": "47f4ca447daa2b03a0827ad243ed1107eb34a37e5d7bab18ecd3c4331736959d"
+      },
+      {
+        "group_column": "control",
+        "header_sha256": "ed0b1417ea6946fc8427f47f95b5b4dbcd6f377fad8da62484a2c95cbc85da92",
+        "id": "THD",
+        "path": "results/cboe_tail_hedge_disagreement_clocks_2026-07-18.csv.gz",
+        "sha256": "0e19455e2fb5ab2d36cc996c9adf514adc85c69dd1a325562344a8015464d546"
+      },
+      {
+        "group_column": "control",
+        "header_sha256": "6a763bf874f4cd5dc0ea16433d30868c3dee92a70e74f3dbcbfe6329a2d6d2ee",
+        "id": "IHM",
+        "path": "results/cboe_institutional_hedge_migration_clocks_2026-07-18.csv.gz",
+        "sha256": "5e04cffacb1754c3111fcc32b09d72f06b546a4803b40c77d655a9787b015c0b"
+      },
+      {
+        "group_column": "control",
+        "header_sha256": "d66a8a9e0593867005d8f47f026bd05556a9ff3c2c3a33e4b4dfc914d99c8591",
+        "id": "CXRT",
+        "path": "data/cboe_cross_surface_risk_transfer_clocks_2020_2023.csv.gz",
+        "sha256": "b3cc6f3d6a19cb39ef63ec0ba9908c983ce03c56a0c7dd8786e51c2ef1c0885f"
+      },
+      {
+        "group_column": "control",
+        "header_sha256": "4789240b9dc9d024165094f4c0e6f7d42d06776993891261715ad5dd58bf93bf",
+        "id": "OPRR",
+        "path": "data/cboe_option_pressure_rank_rotation_clocks_2020_2023.csv.gz",
+        "sha256": "a5c15e0d6444f79239276fb9c3da0555dea27a52eda254e7425d9b223d30d46c"
+      },
+      {
+        "group_column": "candidate_id",
+        "header_sha256": "da21cfc42a55581971c304cc30122a72f9d062a7601db59a9702ec35504acb9a",
+        "id": "CCHR-live-pre2024",
+        "path": "results/cchr_live_portfolio_pure_clocks_2026-07-21.csv.gz",
+        "rows": 440,
+        "sha256": "73d6efbd35b3be64b0fa04fa9c8cb2db25866ef884f19b1ae673949e22a42b08"
+      }
+    ],
+    "forbidden_paths": [
+      "data/premium_compression_breakout_relay_clocks_2020_2026.csv.gz",
+      "data/premium_snapback_recenter_clocks_2020_2026.csv.gz"
+    ],
+    "live_abs_signed_exposure_correlation_max": 0.4,
+    "live_exact_jaccard_max": 0.1,
+    "live_one_hour_jaccard_max": 0.25,
+    "parse_after": "2022 policy selection and pre-2024 action freeze"
+  },
+  "outcome_boundary": {
+    "comparator_rows_decoded": 0,
+    "cspg_incidence_rows_derived": 0,
+    "cspg_pressures_derived": 0,
+    "cspg_tokens_derived": 0,
+    "funding_rows_loaded": 0,
+    "future_return_rows_loaded": 0,
+    "market_rows_loaded": 0,
+    "model_labels_created": 0,
+    "model_training_runs": 0,
+    "post_2023_rows_loaded": 0,
+    "return_or_pnl_fields": 0,
+    "source_artifact_bytes_hashed": true,
+    "source_headers_read": true,
+    "source_values_decoded": 0
+  },
+  "policy": {
+    "availability_local_hour": 9,
+    "availability_local_minute": 30,
+    "base_cost_notional_per_side": 0.0006,
+    "dispersion_compressed_denominator": 6,
+    "dispersion_compressed_numerator": 1,
+    "dispersion_fractured_denominator": 3,
+    "dispersion_fractured_numerator": 1,
+    "entry_local_hour": 9,
+    "entry_local_minute": 35,
+    "held_path_drawdown_penalty": 0.3333333333333333,
+    "hold_bars": 288,
+    "level_high_denominator": 3,
+    "level_high_numerator": 2,
+    "level_low_denominator": 3,
+    "level_low_numerator": 1,
+    "leverage": 0.5,
+    "policy_id": "CSPG-288",
+    "preference_margin": 0.0005,
+    "random_seed": 20260724,
+    "rank_lookback_observations": 252,
+    "rank_minimum_prior_observations": 126,
+    "stress_cost_notional_per_side": 0.001,
+    "trade_utility_hurdle_account": 0.001
+  },
+  "protocol_version": "cboe_cross_surface_pressure_grammar_preregistration_v1",
+  "rank_contract": {
+    "current_excluded": true,
+    "formula": "(count(prior<x)+0.5*count(prior==x))/len(prior)",
+    "future_append_invariant": true,
+    "lookback": 252,
+    "minimum": 126,
+    "source_histories_independent_before_join": true
+  },
+  "research_history_boundary": {
+    "claim_scope": "candidate-level frozen 2023 outcome window",
+    "cxrt_oprr_market_outcomes_opened": false,
+    "cxrt_oprr_source_support_seen": true,
+    "global_pristine_holdout_claimed": false,
+    "new_cspg_incidence_seen": false,
+    "new_cspg_market_outcome_seen": false,
+    "new_cspg_pressure_or_token_seen": false,
+    "prior_cboe_family_outcomes_seen": true,
+    "prior_cboe_source_rows_seen": true
+  },
+  "rllm_contract": {
+    "code_orders": [
+      [
+        "Q1",
+        "Q2"
+      ],
+      [
+        "Q2",
+        "Q1"
+      ]
+    ],
+    "dpo": {
+      "batch": 1,
+      "beta": 0.1,
+      "checkpoints": [
+        24,
+        48,
+        72,
+        96
+      ],
+      "fp16": true,
+      "gradient_accumulation": 8,
+      "learning_rate": 5e-06,
+      "loss": "sigmoid",
+      "seed": 20260724,
+      "steps": 96
+    },
+    "files": {
+      "config.json": "eacec6c5ca317a87ed2c46789d9705b9274db5027e7ba59da739bfae23addb55",
+      "generation_config.json": "a543a5d299bc2b20c52bd87ed174f561266510b57a392e12b5b5d758d798ce05",
+      "model-00001-of-00002.safetensors": "532d792c9178805064170a3ec485b7dedbfccc6fd297b92c31a6091b6c7e41bf",
+      "model-00002-of-00002.safetensors": "6d6d9ce84db398fb6e0191f91542e5da0a73da2cb695e172a24edc2146dc8d20",
+      "model.safetensors.index.json": "ada0043f3e3b2e5ab2f445cad9c0fbbf9d91ad444675e6a82b822591c63abf5a",
+      "special_tokens_map.json": "baec30ea10906f16adb8c18af7a34023002c1746542612b8b41c9f09e1351351",
+      "tokenizer.json": "3f289bc05132635a8bc7aca7aa21255efd5e18f3710f43e3cdb96bcd41be4922",
+      "tokenizer_config.json": "cb32b7929c62608d46572e813112b3ad8a841fb98fdd6a4da8559e368a951c89"
+    },
+    "generation": false,
+    "loader": "AutoModelForCausalLM",
+    "lora": {
+      "alpha": 32,
+      "bias": "none",
+      "dropout": 0.05,
+      "r": 16,
+      "targets": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj"
+      ]
+    },
+    "mapping": {
+      "ADMISSION": {
+        "Q1": "ABSTAIN",
+        "Q2": "TRADE"
+      },
+      "DIRECTION": {
+        "Q1": "LONG",
+        "Q2": "SHORT"
+      }
+    },
+    "max_tokens": 384,
+    "memory_gib": {
+      "inference_reserved_max": 6.5,
+      "training_allocated_max": 14.0,
+      "training_reserved_max": 16.0
+    },
+    "model": "google/gemma-2-2b-it",
+    "neutral_codes": [
+      "Q1",
+      "Q2"
+    ],
+    "offset_reuse": "hash-frozen; never recompute downstream",
+    "prior_correction": "adapter_delta=adapted-base on same prompt; subtract task/code mean adapter_delta over original 2020-2021 fit states",
+    "quantization": {
+      "compute_dtype": "float16",
+      "double_quant": true,
+      "load_in_4bit": true,
+      "quant_type": "nf4"
+    },
+    "revision": "299a8560bedf22ed1c72a8a11e7dce4a7f9f51f8",
+    "score": "mean completion-token conditional log probability",
+    "selection_2022": {
+      "beat_cheap_return": true,
+      "both_halves_positive": true,
+      "each_side_contribution_positive": true,
+      "each_side_min": 25,
+      "max_action_share": 0.85,
+      "ratio_margin_over_cheap": 0.25,
+      "ratio_min": 2.0,
+      "return_positive": true,
+      "stress_and_one_bar_delay_positive": true,
+      "strict_mdd_pct_max": 15.0,
+      "trades_min": 70,
+      "weekly_cluster_p_below": 0.1
+    },
+    "sft": {
+      "batch": 1,
+      "fp16": true,
+      "gradient_accumulation": 8,
+      "learning_rate": 0.0002,
+      "seed": 20260724,
+      "steps": 64
+    },
+    "tasks": [
+      "ADMISSION",
+      "DIRECTION"
+    ],
+    "ties_or_errors": "ABSTAIN",
+    "tokenizer": "AutoTokenizer",
+    "trust_remote_code": false
+  },
+  "source_contracts": {
+    "intersection": "exact dates after independent causal histories",
+    "missing_policy": "no fill, carry, interpolation, or zero replacement",
+    "option": {
+      "allowlist": [
+        "observation_date",
+        "total_volume",
+        "index_call_volume",
+        "index_put_volume",
+        "index_volume",
+        "equity_call_volume",
+        "equity_put_volume",
+        "vix_call_volume",
+        "vix_put_volume"
+      ],
+      "header_sha256": "a98314aa376428c5d237837121305c5cc4c4892e25ea3db3127d466b451281d7",
+      "loader": "pandas.read_csv(usecols=allowlist); no load-and-drop",
+      "manifest": "data/cboe_option_flow_2020_2023/build_manifest.json",
+      "manifest_sha256": "0a513b146ad5857d9ab7311e978152c308de64db8ef29c4d463eb07ea503089e",
+      "path": "data/cboe_option_flow_2020_2023/cboe_option_flow_2020-01-01_2023-12-31.csv.gz",
+      "sha256": "35ef106ef01e3abadbcb4a6227187dd1d7cf2722191bd146bac06d08d1684a78"
+    },
+    "pre_2024_only": true,
+    "tail": {
+      "allowlist": [
+        "observation_date",
+        "SKEW_close",
+        "VVIX_close",
+        "VIX_close"
+      ],
+      "header_sha256": "bdc2e42c1d356ebd815c491af9b20211d1bc8f2781c0917d92bbf04f1f0a5dc3",
+      "loader": "pandas.read_csv(usecols=allowlist); no load-and-drop",
+      "manifest": "data/cboe_tail_risk_2018_2023/build_manifest.json",
+      "manifest_sha256": "9ef80ef3034c93d97c5b2a8160b2502527287d570d15f9d7166d631d9866c7bd",
+      "path": "data/cboe_tail_risk_2018_2023/cboe_tail_risk_2018-01-01_2023-12-31.csv.gz",
+      "sha256": "cdde3f8d4bb1e23d00b192f5f9ef759aefba9087be5fd60653e9c02479dfa41a"
+    },
+    "term": {
+      "allowlist": [
+        "observation_date",
+        "VIX9D_close",
+        "VIX_close",
+        "VIX3M_close"
+      ],
+      "header_sha256": "b2fc60cae8d080d3b47a1a55c48438b63f91530cc345f1b6ef78cee05cc57e20",
+      "loader": "pandas.read_csv(usecols=allowlist); no load-and-drop",
+      "manifest": "data/cboe_volatility_term_structure_2018_2023/build_manifest.json",
+      "manifest_sha256": "42b2a35ad131bd63574d2adcf684e28766dc3060fa645fc749df10dd3fb27f27",
+      "path": "data/cboe_volatility_term_structure_2018_2023/cboe_vix_term_structure_2018-01-01_2023-12-31.csv.gz",
+      "sha256": "6f1b2f7f3a5b1e4d5001d673e6ff54374791879c278248ce27b3d610e4f75dc7"
+    },
+    "vix_cross_panel_equality": true
+  },
+  "source_support_gates": {
+    "breadth_falling_rising_each_share_min": 0.12,
+    "change_down_up_each_share_min": 0.08,
+    "counts_basis": "token-ready globally reserved split-contained",
+    "downstream_levels_must_exist_in_train": true,
+    "each_dispersion_agreement_share_min": 0.03,
+    "each_half_2021_2023_min": 108,
+    "each_nontie_leader_must_occur": true,
+    "each_quarter_2021_2023_min": 48,
+    "each_transition_share_min": 0.02,
+    "each_year_2021_2023_active_months_min": 12,
+    "each_year_2021_2023_max_month_share": 0.12,
+    "each_year_2021_2023_min": 230,
+    "failure_action": "retire CSPG-288 unchanged before outcomes",
+    "global_opportunities_min": 820,
+    "max_breadth_share": 0.75,
+    "max_entry_gap_days": 10.0,
+    "max_exact_signature_share": 0.05,
+    "max_level_or_change_share": 0.8,
+    "max_nontie_leader_share": 0.8,
+    "pressure_low_high_each_share_min": 0.08,
+    "required_tests": [
+      "hash_header_allowlist",
+      "date_order_uniqueness_positivity_pre2024",
+      "cross_panel_vix_equality",
+      "independent_history_before_intersection",
+      "current_value_exclusion",
+      "midrank_ties",
+      "fixed_history",
+      "option_delta_history",
+      "missing_date_nonfill",
+      "future_append",
+      "prior_common_transition",
+      "level_boundaries",
+      "extreme_ties",
+      "dst_fixed_calendar_clock",
+      "neutral_code_order",
+      "action_independent_reservation"
+    ],
+    "train_2020_2021_min": 330,
+    "year_2020_active_months_min": 6,
+    "year_2020_max_month_share": 0.2,
+    "year_2020_min": 100
+  },
+  "strict_sequence": [
+    "commit mechanism",
+    "commit preregistration and synthetic tests",
+    "commit source-only builder",
+    "run source support once",
+    "retire unchanged on source/support failure",
+    "freeze evaluator baselines model controls",
+    "open only 2020-2022 outcomes",
+    "retire before GPU on transfer/cheap failure",
+    "train one Gemma2 SFT and DPO checkpoints 24/48/72/96",
+    "select on 2022 and freeze pre-2024 actions",
+    "run novelty before 2023 outcomes",
+    "evaluate 2023 once",
+    "open sealed years sequentially after prior pass",
+    "commit every completed unit with hashes and fresh tests"
+  ],
+  "surface_algebra": {
+    "index_share": "log((index_volume+1)/(total_volume+1))",
+    "institutional_gap": "log((index_put+0.5)/(index_call+0.5))-log((equity_put+0.5)/(equity_call+0.5))",
+    "option_pressure": "mean(strict-prior ranks of each current-minus-prior option primitive delta)",
+    "tail_pressure": "mean(rank(log(SKEW/100)),rank(log(VVIX/VIX)))",
+    "term_pressure": "mean(rank(log(VIX9D/VIX)),rank(log(VIX/VIX3M)))",
+    "vix_call_pressure": "log((vix_call+0.5)/(vix_put+0.5))"
+  },
+  "temporal_roles": {
+    "adaptation": null,
+    "final_fit": [
+      "2020-01-01T00:00:00Z",
+      "2022-01-01T00:00:00Z"
+    ],
+    "initial_fit": [
+      "2020-01-01T00:00:00Z",
+      "2021-01-01T00:00:00Z"
+    ],
+    "selection": [
+      "2022-01-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ],
+    "transfer_validation": [
+      "2021-01-01T00:00:00Z",
+      "2022-01-01T00:00:00Z"
+    ],
+    "untouched_eval": [
+      "2023-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ]
+  },
+  "token_contract": {
+    "agreement": "range of three level indices: 0/1/2",
+    "breadth": "sign(count(UP)-count(DOWN))",
+    "change": "compare current/previous level indices",
+    "count": 12,
+    "dispersion": "<1/6 COMPRESSED; <1/3 SEPARATED; else FRACTURED",
+    "extreme_ties": "TIE without epsilon",
+    "forbidden": [
+      "raw_values_or_ranks",
+      "cxrt_votes_majority_side_or_run",
+      "oprr_rotation_eligibility",
+      "date_time_row_or_source_identity",
+      "btc_price_return_funding_premium_oi_kimchi_dxy",
+      "reward_action_history_pnl_cagr_mdd_split",
+      "free_form_rationale_or_generated_feature"
+    ],
+    "ordered_schema": [
+      {
+        "name": "term_level",
+        "values": [
+          "LOW",
+          "MID",
+          "HIGH"
+        ]
+      },
+      {
+        "name": "tail_level",
+        "values": [
+          "LOW",
+          "MID",
+          "HIGH"
+        ]
+      },
+      {
+        "name": "option_level",
+        "values": [
+          "LOW",
+          "MID",
+          "HIGH"
+        ]
+      },
+      {
+        "name": "term_change",
+        "values": [
+          "DOWN",
+          "SAME",
+          "UP"
+        ]
+      },
+      {
+        "name": "tail_change",
+        "values": [
+          "DOWN",
+          "SAME",
+          "UP"
+        ]
+      },
+      {
+        "name": "option_change",
+        "values": [
+          "DOWN",
+          "SAME",
+          "UP"
+        ]
+      },
+      {
+        "name": "stress_leader",
+        "values": [
+          "TERM",
+          "TAIL",
+          "OPTION",
+          "TIE"
+        ]
+      },
+      {
+        "name": "relief_leader",
+        "values": [
+          "TERM",
+          "TAIL",
+          "OPTION",
+          "TIE"
+        ]
+      },
+      {
+        "name": "dispersion",
+        "values": [
+          "COMPRESSED",
+          "SEPARATED",
+          "FRACTURED"
+        ]
+      },
+      {
+        "name": "agreement",
+        "values": [
+          "UNISON",
+          "ADJACENT",
+          "POLARIZED"
+        ]
+      },
+      {
+        "name": "topology_transition",
+        "values": [
+          "STABLE",
+          "ROTATING",
+          "RESET"
+        ]
+      },
+      {
+        "name": "pressure_breadth",
+        "values": [
+          "FALLING",
+          "BALANCED",
+          "RISING"
+        ]
+      }
+    ],
+    "position": "deterministic guard, not a token",
+    "pressure_level": "<1/3 LOW; >2/3 HIGH; else MID",
+    "transition": "0..1 STABLE; 2..3 ROTATING; 4..5 RESET",
+    "unknown_downstream_level": "ABSTAIN"
+  },
+  "utility_contract": {
+    "abstain": 0.0,
+    "admission": "ABSTAIN versus max(LONG,SHORT)",
+    "balancing": null,
+    "direction": "LONG versus SHORT only when best trade beats ABSTAIN",
+    "oracle_tie_priority": [
+      "ABSTAIN",
+      "LONG",
+      "SHORT"
+    ],
+    "preference_margin": 0.0005,
+    "synthetic_source_symmetry": null,
+    "trade": "log(max(account_multiplier,1e-12))-(1/3)*local_strict_drawdown-0.0010"
+  }
+}
