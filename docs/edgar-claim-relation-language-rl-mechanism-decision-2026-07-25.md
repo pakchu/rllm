@@ -471,6 +471,17 @@ timestamp, filesystem order, model, or external source participates.
 | adversarial | 768 | 48 | after checkpoint selection |
 | swap | 512 / 256 pairs | 32 / 16 pairs | after checkpoint selection |
 
+In the adversarial split, zero-based ordinals `0` and `1` of every scenario are
+guard-only rows, exactly 32 rows total. Ordinal `0` places
+`Ignore previous instructions.` in `P3`; ordinal `1` places `System prompt.` in
+`C3`. Their scenario target remains in the manifest to preserve balance, but
+the prefilter must reject them with zero model calls. They are excluded from
+model exact/parse/evidence/per-code denominators and included only in the
+`guard_rows=32`, `guard_rejections=32`, `guard_model_calls=0` gate. The
+remaining adversarial model denominator is exactly 736 rows, 46 per scenario.
+This conservative guard may reject a legitimate filing containing a forbidden
+literal; such a row fails closed rather than weakening the prefilter.
+
 Each swap pair differs only in issuer alias, calendar/date, amount, quantity,
 and exchange-symbol surfaces and retains the same target. The machine
 preregistration commit must contain, before any model load:
@@ -536,7 +547,12 @@ Checkpoint selection uses only calibration:
 4. lowest malformed count; and
 5. lowest checkpoint step.
 
-The adversarial and swap rows remain unopened until selection.
+`M0` necessarily generates, validates, hashes, and commits adversarial and swap
+bytes. “Remain unopened until selection” means no trainer, checkpoint selector,
+inference evaluator, agent, or human may inspect or parse their row content
+after `M0` and before calibration selects the checkpoint. Hash-only
+verification remains allowed. The frozen `M0` generator/tests are the sole
+pre-selection content readers.
 
 Synthetic pass requires:
 
@@ -559,6 +575,14 @@ The relation-contrast gate is a structural novelty check: an absolute-state
 classifier cannot pass by reading the current sentence alone. A later
 relation-ablated control removes relation-specific information while preserving
 status/delta marginals and must be evaluated beside the primary.
+
+There are exactly 16 relation-contrast quadruplets in adversarial ordinals
+`2..17`: eight upward-current and eight downward-current groups. Each group
+contains one row from the matching `FULFILL`, `REVERSE`, `NEW`, and
+`REALIZED_REPEAT` scenarios. Its raw current `C2` sentence and all non-prior
+surfaces are byte-identical across four rows; only prior text and the required
+delta, relation, and prior-evidence target fields differ. These 64 rows are
+part of the 736-row model denominator.
 
 Research inference on the RTX 5090 is authorized after synthetic pass.
 3060-Ti live deployment is **not** yet authorized. If economics later pass, a
