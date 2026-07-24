@@ -250,9 +250,11 @@ final-vintage repair, or neighboring bucket substitution is allowed.
 Rows sharing one availability timestamp form one causal batch. No member may
 enter another member's strict-prior reference. Every row in the batch computes
 its rank only from complete rows whose availability is strictly earlier than
-the batch. After all batch ranks are fixed, complete rows enter later history
-in ascending observation-date order. Only the greatest complete observation
-date in a batch may become a decision row; earlier batch rows are history only.
+the batch. Only the greatest complete observation date in a batch may become a
+decision row; earlier batch rows are history only. Every current decision
+token, transition, source-age relation, and reservation is finalized against
+states from strictly earlier availability batches. Only afterward do complete
+current-batch rows enter future histories in ascending observation-date order.
 This tie-break is source-value- and token-blind.
 
 The provisional execution clock is:
@@ -358,9 +360,12 @@ freeze:
 
 Source support must be decided only from pre-2023 support. The source-support
 builder may hash the complete frozen source artifact and verify already
-published aggregate manifest counts, but it must parse TPCT values only
-through `2022-12-31`. Every 2023 TPCT source value and statistic remains sealed
-until final-policy hash freeze. A 2023 token value unseen before 2023 must
+published aggregate manifest counts. It may parse a TPCT vector's values only
+when that vector's deterministic unreserved entry and full 120-hour exit both
+satisfy the strict pre-2023 split-containment rule. Every vector that could
+produce or consume a reservation with entry or exit at/after
+`2023-01-01T00:00:00Z` remains sealed until final-policy hash freeze,
+regardless of observation date. A 2023 token value unseen before 2023 must
 force `ABSTAIN` under the already frozen policy.
 
 ## Mandatory economic sequence
