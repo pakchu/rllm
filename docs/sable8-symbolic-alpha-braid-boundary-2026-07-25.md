@@ -125,7 +125,20 @@ SHA256
   dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192
 ```
 
-Exact support-stage allowlist:
+Exact physical header:
+
+```text
+date,open,high,low,close,volume,quote_asset_volume,number_of_trades,
+taker_buy_base,taker_buy_quote,tic,day,dxy,kimchi_premium,usdkrw,btckrw,
+dxy_available,kimchi_available,usdkrw_available,external_any_available,
+dxy_zscore,dxy_momentum,kimchi_premium_zscore,kimchi_premium_change,
+usdkrw_zscore,usdkrw_momentum,open_interest,open_interest_value,
+cmc_circulating_supply,open_interest_available
+header SHA256
+  c306861dde4024d44622d34e664188f41636c8bab6f544db740213dee71ab58b
+```
+
+Exact support-cut projection:
 
 ```text
 date
@@ -145,8 +158,11 @@ open_interest
 open_interest_available
 ```
 
-The loader must fail on path, hash, physical header, ordering, timestamp,
-numeric, positivity, or availability drift. Load-and-drop is forbidden.
+The loader must fail on path, hash, exact physical header and order, timestamp,
+numeric, positivity, or availability drift. It may tokenize unprojected CSV
+cells only to preserve row framing; it may not convert, retain, hash by value,
+aggregate, or expose any unprojected cell. The bounded output contains exactly
+the support-cut projection above. Pandas-style load-all-then-drop is forbidden.
 
 ### Realized BTCUSDT funding
 
@@ -157,6 +173,10 @@ SHA256
   4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7
 allowlist
   date,funding_rate,funding_time
+physical header
+  date,symbol,funding_rate,funding_time,mark_price
+header SHA256
+  1c09a5cc3f8b5e7f0c06f0055e364d0dc97a9677dd505535e6f59d3cb9b48202
 ```
 
 ### Completed BTCUSDT premium
@@ -168,6 +188,10 @@ SHA256
   b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7
 allowlist
   date,close,close_time
+physical header
+  date,symbol,open,high,low,close,close_time
+header SHA256
+  22e5715846fbfa49646f0c7c9078d40455e2e726d8e316fcdd49dbfebbd626ed
 ```
 
 The support gate may parse only source rows strictly before
