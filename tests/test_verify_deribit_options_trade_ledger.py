@@ -6,6 +6,7 @@ import subprocess
 import urllib.error
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -620,6 +621,33 @@ def test_clean_guard_requires_committed_head(
     ]
     monkeypatch.setattr(ledger, "_git", lambda *args: responses.pop(0))
     assert ledger.assert_protocol_committed() == "deadbeef"
+
+
+def test_disk_guard_uses_reported_used_not_reserved_blocks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    gib = 1024**3
+    monkeypatch.setattr(
+        ledger.shutil,
+        "disk_usage",
+        lambda _: SimpleNamespace(
+            total=1_000 * gib,
+            used=298 * gib,
+            free=650 * gib,
+        ),
+    )
+    assert ledger.assert_disk_guard() == 298
+    monkeypatch.setattr(
+        ledger.shutil,
+        "disk_usage",
+        lambda _: SimpleNamespace(
+            total=1_000 * gib,
+            used=299 * gib + 1,
+            free=649 * gib,
+        ),
+    )
+    with pytest.raises(ledger.LedgerError, match="headroom"):
+        ledger.assert_disk_guard()
 
 
 def _bulk_rows(
