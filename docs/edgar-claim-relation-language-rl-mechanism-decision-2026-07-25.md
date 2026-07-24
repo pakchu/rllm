@@ -225,8 +225,8 @@ each authorized header alias, it creates only these deterministic variants:
 3. each of the above with periods removed and runs of whitespace collapsed.
 
 Alias matches are case-insensitive and bounded by non-alphanumeric characters.
-Every match becomes `[ENTITY]`. The remaining symbol passes, in this order,
-are:
+Every match is assigned sentinel `U+E000`. The remaining symbol passes, in
+this order, are:
 
 ```text
 (?i:\b(?:NASDAQ|NYSE|NYSEAMERICAN|TSX|LSE)\s*:\s*[A-Z][A-Z0-9.]{0,5}\b)
@@ -234,12 +234,31 @@ are:
 (?<![A-Za-z0-9])[A-Z][A-Z0-9.]{1,5}(?![A-Za-z0-9])
 ```
 
-Each match becomes `[SYMBOL]`; there is no acronym whitelist. This can redact
-useful acronyms, but it prevents a standalone all-capital ticker from becoming
-an identity side channel. The protocol claims mitigation, not proof that a
-pretrained model has zero issuer knowledge. Synthetic alias/name/symbol swaps
-must be 100% invariant, and the historical swap-invariance gate includes the
-same three surfaces in addition to dates and amounts.
+Each symbol match is assigned sentinel `U+E001`; there is no acronym whitelist.
+This can redact useful acronyms, but it prevents a standalone all-capital
+ticker from becoming an identity side channel. The protocol claims mitigation,
+not proof that a pretrained model has zero issuer knowledge. Synthetic
+alias/name/symbol swaps must be 100% invariant, and the historical
+swap-invariance gate includes the same three surfaces in addition to dates and
+amounts.
+
+Implementations insert private-use sentinels `U+E000..U+E006` during the
+ordered passes and map them exactly as:
+
+```text
+U+E000 -> [ENTITY]
+U+E001 -> [SYMBOL]
+U+E002 -> [DATE]
+U+E003 -> [TIME]
+U+E004 -> [NUM]
+U+E005 -> [LINK]
+U+E006 -> [ID]
+```
+
+They are materialized only after every regex pass. This prevents the
+standalone all-capital pattern from re-redacting placeholder words such as
+`ENTITY` or `DATE`. Any private-use code point present in source text before
+redaction is a hard parse failure.
 
 Before prompt construction, a case-insensitive literal-substring prefilter
 rejects a pair when either side contains any of:
