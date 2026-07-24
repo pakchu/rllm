@@ -50,6 +50,15 @@ TPCT is therefore market-outcome-unseen but explicitly
 **source-support-seen**. The prior failures informed the decision to test a
 dense within-segment grammar. This disclosure is permanent.
 
+The source-family search ledger is also frozen. It contains exactly five OFR
+candidate concepts: `RVFC-72`, `RMSR-72`, `RCRE-72`, `DMSH-168`, and
+`TPCT-120`. The first four were retired before market outcomes. Any 2023
+one-policy p-value is nevertheless conditional/descriptive, not confirmatory.
+An unchanged 2023--2024 result may become confirmatory only under the
+candidate-level Bonferroni budget frozen below. Opening another OFR candidate
+or another TPCT outcome-bearing variant before that confirmation invalidates
+the budget rather than enlarging it after the fact.
+
 TPCT is not a threshold repair:
 
 - only `TRIV1` is used; DVP, GCF, and `TRI` are forbidden;
@@ -883,9 +892,21 @@ shuffled-utility, circular-shift, masked-token adapter, SFT, DPO checkpoint,
 and orientation-flipped inference policy emitted at that stage. A seen policy
 cannot be removed.
 
+The observed `t_policy` is the primary selector among policies that satisfy all
+non-significance qualification gates. Select the highest observed `t_policy`
+(equivalently the lowest shared-null `p_max`) first; only exact `t_policy` ties
+use ratio, return, MDD, and the final deterministic tie-break. Ratio or return
+may not select a lower-`t_policy` policy. The shared max null includes all
+emitted policies, including policies that fail another qualification gate, so
+the selected development policy is tested against the same statistic that
+selected it.
+
 The immutable 2023 policy reports an ordinary one-policy p-value because no
-2023 policy is selected. The overall discovery remains explicitly exploratory
-until unchanged 2024 confirmation.
+2023 policy is selected, but the value is explicitly
+**conditional/descriptive** after source-support search. It is a frozen quality
+gate, not a confirmatory type-I-error claim. Confirmatory language is forbidden
+until unchanged 2024 replication passes the candidate-level source-family
+budget.
 
 ## Train-only utility and labels
 
@@ -1010,8 +1031,9 @@ contextual utility must satisfy unchanged on 2022:
 - no single-token majority-action policy reproduces more than 75% of selected
   non-abstain actions on matching opportunities.
 
-Select by higher ratio, higher return, lower MDD, then lexicographically
-smaller policy ID. Failure retires TPCT before GPU.
+Among policies passing every gate above, select by higher observed
+`t_policy`, then higher ratio, higher return, lower MDD, then
+lexicographically smaller policy ID. Failure retires TPCT before GPU.
 
 ## Frozen single-Gemma RLLM
 
@@ -1094,9 +1116,28 @@ Memory/artifact gates:
 
 ### Neutral action scoring
 
-Serialize the twelve tokens in canonical order. End the text-only user prompt:
+This complete serialization contract is frozen before any policy-train outcome
+is loaded, before the cheap economic evaluator runs, and before SFT/DPO.
+Changing any byte, chat argument, special-token rule, or completion mask creates
+a new candidate and cannot repair TPCT.
+
+Construct the user text as UTF-8 by joining the following lines with literal LF
+bytes. There is no trailing LF or trailing whitespace:
 
 ```text
+STATE:
+maturity_wings=<canonical token value>
+term_belly=<canonical token value>
+term_volume_rate=<canonical token value>
+collateral_volume_rate=<canonical token value>
+safe_risky_composition=<canonical token value>
+rate_surface=<canonical token value>
+high_leader=<canonical token value>
+low_leader=<canonical token value>
+rank_breadth=<canonical token value>
+extreme_occupancy=<canonical token value>
+order_transition=<canonical token value>
+leader_transition=<canonical token value>
 TASK=TPCT_ACTION
 OPTIONS:
 <one permutation of the three fixed mapping lines below>
@@ -1114,6 +1155,37 @@ Q3=SHORT
 Every state is scored under all six permutations of the displayed option
 lines. The only valid completions are `CHOICE=Q1`, `CHOICE=Q2`, and
 `CHOICE=Q3`. Generation is forbidden.
+
+The chat surface is exact:
+
+```python
+messages = [{"role": "user", "content": [{"type": "text", "text": user_text}]}]
+processor.apply_chat_template(
+    messages,
+    tokenize=True,
+    add_generation_prompt=True,
+    enable_thinking=False,
+    preserve_thinking=False,
+    tools=None,
+    return_dict=True,
+    return_tensors="pt",
+)
+```
+
+There is no system/developer message, assistant history, tool definition,
+multimodal content, or free-form prefix. The hash-bound
+`chat_template.jinja` inserts the sole BOS and turn markers. No caller-level
+BOS/EOS is added. For scoring, tokenize each exact completion with
+`add_special_tokens=False`; score only its non-special lexical token IDs.
+Neither EOS nor `<turn|>` is part of the completion score. For SFT/DPO, render
+the same one-user chat plus one assistant message containing exactly the chosen
+completion with `add_generation_prompt=False`; the completion-only mask includes
+only the same lexical completion IDs and excludes BOS, role/turn markers,
+`<turn|>`, EOS, padding, and every prompt token. A serialization self-test must
+hash the six rendered prompt prefixes, three completion-ID sequences, and six
+option orders crossed with all three completions (eighteen fully rendered
+user/assistant examples) before the economic evaluator or model training may
+open outcomes.
 
 For each permutation and action completion:
 
@@ -1210,8 +1282,9 @@ Each checkpoint is evaluated once on 2022. It qualifies only with:
 - no single-token majority policy reproduces more than 75% of non-abstain
   actions.
 
-Select by higher ratio, higher return, lower MDD, then earlier optimizer step.
-Failure retires TPCT before 2023. Retain final SFT and selected DPO only.
+Among checkpoints passing every gate above, select by higher observed
+`t_policy`, then higher ratio, higher return, lower MDD, then earlier optimizer
+step. Failure retires TPCT before 2023. Retain final SFT and selected DPO only.
 
 ## Final pre-2023 policy freeze
 
@@ -1257,13 +1330,27 @@ The 2023 source must independently satisfy, without repair:
 - unseen pre-2023 token values abstain; and
 - no source/schema/version/replay drift.
 
-Policy novelty over common pre-2024 coverage:
+Policy novelty uses the complete frozen comparator cohort from the pre-outcome
+clock stage, not only live sleeves. Over common pre-2024 coverage, every
+RVFC/RMSR/RCRE/DMSH, Federal-liquidity, and live-sleeve comparator group must
+pass:
 
-- exact-entry Jaccard at most 0.10 against each frozen live sleeve;
+- exact-entry Jaccard at most 0.20;
+- 24-hour tolerant entry Jaccard at most 0.50;
+- absolute unsigned occupied-time correlation at most 0.75; and
+- where the frozen comparator schema provides a semantically valid directional
+  action, absolute signed occupied-exposure correlation at most 0.50.
+
+Against each frozen live sleeve, the stricter limits are:
+
+- exact-entry Jaccard at most 0.10;
 - 24-hour tolerant entry Jaccard at most 0.30;
-- absolute signed occupied-exposure correlation at most 0.35;
-- absolute unsigned occupied-time correlation at most 0.60; and
-- every required comparator has valid nonempty common coverage.
+- absolute signed occupied-exposure correlation at most 0.35; and
+- absolute unsigned occupied-time correlation at most 0.60.
+
+Every required comparator must have valid nonempty common coverage. A required
+directional comparator with a missing/invalid side field fails rather than
+falling back to unsigned novelty.
 
 The unchanged TPCT policy must then satisfy:
 
@@ -1279,7 +1366,7 @@ The unchanged TPCT policy must then satisfy:
 - maximum single execution-month share at most 20%;
 - no action above 90%;
 - at least 20 nonempty UTC entry-week clusters;
-- one-policy weekly-cluster one-sided `p < 0.05`;
+- conditional/descriptive one-policy weekly-cluster one-sided `p < 0.05`;
 - mean signed gross underlying move at least 40 bp per trade;
 - positive stress-cost return;
 - positive one-hour-delay return;
@@ -1307,10 +1394,13 @@ must reproduce all pre-2024 source rows, primitives, ranks, tokens,
 reservations, and actions byte-for-byte.
 
 The unchanged policy must pass every 2023 source, economic, risk, direction,
-cost, delay, and significance gate on full-calendar 2024. Combined 2023–2024
-weekly-cluster p must be below 0.01. Failure retires TPCT; no retraining,
-continual update, prompt repair, checkpoint change, threshold adjustment, or
-leverage increase is allowed.
+cost, delay, and descriptive-significance gate on full-calendar 2024. The
+combined 2023–2024 weekly-cluster one-policy p-value must be below
+`0.01 / 5 = 0.002`, using the frozen five-concept OFR source-family Bonferroni
+budget. This combined corrected criterion is the first confirmatory statistical
+claim allowed for TPCT. Failure retires TPCT; no retraining, continual update,
+prompt repair, checkpoint change, threshold adjustment, leverage increase, or
+post-hoc expansion of the candidate ledger is allowed.
 
 Only an unchanged 2024 pass may authorize later 2025 and 2026-YTD reports.
 
