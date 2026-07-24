@@ -22,9 +22,9 @@ BOUNDARY_DOCUMENT = (
     "docs/sable8-symbolic-alpha-braid-boundary-2026-07-25.md"
 )
 BOUNDARY_DOCUMENT_SHA256 = (
-    "ac06223155575405a12b5ed59023aea43dfbfacda680ba36ba449b07a8e36acc"
+    "f45e4d2b0cc2429b27728a390276ff076d029932617cf4dce50577408e73f115"
 )
-BOUNDARY_COMMIT = "4cbce55"
+BOUNDARY_COMMIT = "74bec74"
 
 MARKET_SOURCE = (
     "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz"
@@ -49,6 +49,41 @@ MARKET_ALLOWLIST = (
     "open_interest",
     "open_interest_available",
 )
+MARKET_PHYSICAL_HEADER = (
+    "date",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "quote_asset_volume",
+    "number_of_trades",
+    "taker_buy_base",
+    "taker_buy_quote",
+    "tic",
+    "day",
+    "dxy",
+    "kimchi_premium",
+    "usdkrw",
+    "btckrw",
+    "dxy_available",
+    "kimchi_available",
+    "usdkrw_available",
+    "external_any_available",
+    "dxy_zscore",
+    "dxy_momentum",
+    "kimchi_premium_zscore",
+    "kimchi_premium_change",
+    "usdkrw_zscore",
+    "usdkrw_momentum",
+    "open_interest",
+    "open_interest_value",
+    "cmc_circulating_supply",
+    "open_interest_available",
+)
+MARKET_HEADER_SHA256 = (
+    "c306861dde4024d44622d34e664188f41636c8bab6f544db740213dee71ab58b"
+)
 
 FUNDING_SOURCE = (
     "data/binance_um_aux_btc_2020_2026/"
@@ -58,6 +93,16 @@ FUNDING_SOURCE_SHA256 = (
     "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
 )
 FUNDING_ALLOWLIST = ("date", "funding_rate", "funding_time")
+FUNDING_PHYSICAL_HEADER = (
+    "date",
+    "symbol",
+    "funding_rate",
+    "funding_time",
+    "mark_price",
+)
+FUNDING_HEADER_SHA256 = (
+    "1c09a5cc3f8b5e7f0c06f0055e364d0dc97a9677dd505535e6f59d3cb9b48202"
+)
 
 PREMIUM_SOURCE = (
     "data/binance_um_aux_btc_2020_2026/"
@@ -67,6 +112,18 @@ PREMIUM_SOURCE_SHA256 = (
     "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
 )
 PREMIUM_ALLOWLIST = ("date", "close", "close_time")
+PREMIUM_PHYSICAL_HEADER = (
+    "date",
+    "symbol",
+    "open",
+    "high",
+    "low",
+    "close",
+    "close_time",
+)
+PREMIUM_HEADER_SHA256 = (
+    "22e5715846fbfa49646f0c7c9078d40455e2e726d8e316fcdd49dbfebbd626ed"
+)
 
 SOURCE_END_EXCLUSIVE = "2024-01-01T00:00:00Z"
 PRE2024_CUTS = {
@@ -261,16 +318,27 @@ def _source_contract(
     path: str,
     sha256: str,
     allowlist: Sequence[str],
+    physical_header: Sequence[str],
+    header_sha256: str,
     timestamp_field: str,
 ) -> dict[str, Any]:
     return {
         "path": path,
         "sha256": sha256,
-        "allowlist": list(allowlist),
-        "loader": "stream csv.DictReader; reject extra/missing/reordered fields",
+        "physical_header": list(physical_header),
+        "physical_header_sha256": header_sha256,
+        "cut_allowlist": list(allowlist),
+        "loader": (
+            "stream csv.reader; bind exact physical header; convert and "
+            "persist cut_allowlist only"
+        ),
         "timestamp_field": timestamp_field,
         "cutoff_exclusive": SOURCE_END_EXCLUSIVE,
         "physical_stop_before_other_field_conversion": True,
+        "unprojected_cells": (
+            "tokenize for CSV framing only; never convert, retain, aggregate, "
+            "hash by value, or expose"
+        ),
     }
 
 
@@ -299,18 +367,24 @@ def _manifest_core() -> dict[str, Any]:
                 path=MARKET_SOURCE,
                 sha256=MARKET_SOURCE_SHA256,
                 allowlist=MARKET_ALLOWLIST,
+                physical_header=MARKET_PHYSICAL_HEADER,
+                header_sha256=MARKET_HEADER_SHA256,
                 timestamp_field="date",
             ),
             "funding": _source_contract(
                 path=FUNDING_SOURCE,
                 sha256=FUNDING_SOURCE_SHA256,
                 allowlist=FUNDING_ALLOWLIST,
+                physical_header=FUNDING_PHYSICAL_HEADER,
+                header_sha256=FUNDING_HEADER_SHA256,
                 timestamp_field="funding_time",
             ),
             "premium": _source_contract(
                 path=PREMIUM_SOURCE,
                 sha256=PREMIUM_SOURCE_SHA256,
                 allowlist=PREMIUM_ALLOWLIST,
+                physical_header=PREMIUM_PHYSICAL_HEADER,
+                header_sha256=PREMIUM_HEADER_SHA256,
                 timestamp_field="close_time",
             ),
         },

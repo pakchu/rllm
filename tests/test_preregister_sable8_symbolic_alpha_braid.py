@@ -56,9 +56,21 @@ def test_sources_are_bound_to_hash_allowlist_and_physical_cut() -> None:
 
     assert sources["market"]["path"] == p.MARKET_SOURCE
     assert sources["market"]["sha256"] == p.MARKET_SOURCE_SHA256
-    assert sources["market"]["allowlist"] == list(p.MARKET_ALLOWLIST)
-    assert sources["funding"]["allowlist"] == list(p.FUNDING_ALLOWLIST)
-    assert sources["premium"]["allowlist"] == list(p.PREMIUM_ALLOWLIST)
+    assert sources["market"]["physical_header"] == list(
+        p.MARKET_PHYSICAL_HEADER
+    )
+    assert sources["market"]["physical_header_sha256"] == (
+        p.MARKET_HEADER_SHA256
+    )
+    assert sources["market"]["cut_allowlist"] == list(p.MARKET_ALLOWLIST)
+    assert sources["funding"]["cut_allowlist"] == list(p.FUNDING_ALLOWLIST)
+    assert sources["premium"]["cut_allowlist"] == list(p.PREMIUM_ALLOWLIST)
+    assert sources["funding"]["physical_header"] == list(
+        p.FUNDING_PHYSICAL_HEADER
+    )
+    assert sources["premium"]["physical_header"] == list(
+        p.PREMIUM_PHYSICAL_HEADER
+    )
     assert all(
         contract["physical_stop_before_other_field_conversion"] is True
         for contract in sources.values()
