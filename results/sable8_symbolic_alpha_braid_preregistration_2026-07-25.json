@@ -1,0 +1,270 @@
+{
+  "boundary": {
+    "commit": "4cbce55",
+    "path": "docs/sable8-symbolic-alpha-braid-boundary-2026-07-25.md",
+    "sha256": "ac06223155575405a12b5ed59023aea43dfbfacda680ba36ba449b07a8e36acc"
+  },
+  "language_contract": {
+    "bands": [
+      "EXTREME_LOW",
+      "LOW",
+      "MIDDLE",
+      "HIGH",
+      "EXTREME_HIGH"
+    ],
+    "consecutive_boundary_seconds": 28800,
+    "context_stale_token": "STALE",
+    "forbidden_input_fields": [
+      "timestamp",
+      "date",
+      "year",
+      "month",
+      "weekday",
+      "hour",
+      "row_id",
+      "split",
+      "future_return",
+      "label",
+      "reward",
+      "pnl",
+      "cagr",
+      "mdd",
+      "oracle_action",
+      "prior_alpha",
+      "prior_prediction",
+      "portfolio_weight",
+      "manual_regime"
+    ],
+    "invalid_sequence_action": "FLAT",
+    "midrank_ties": true,
+    "oldest_first": true,
+    "rank_history_max": 540,
+    "rank_history_min": 180,
+    "sequence_lines": 6,
+    "strictly_prior": true
+  },
+  "manifest_hash": "b96327ff942ef521173f6e22df5fba30f17484d44664c9eee241f7a6a4040150",
+  "outcome_boundary": {
+    "candidate_2023_outcomes_opened": false,
+    "candidate_2024_outcomes_opened": false,
+    "candidate_2025_outcomes_opened": false,
+    "candidate_2026_outcomes_opened": false,
+    "candidate_source_values_decoded": 0,
+    "candidate_token_incidence_calculated": 0,
+    "funding_cash_flows_evaluated": 0,
+    "future_return_labels_built": 0,
+    "market_outcomes_evaluated": 0,
+    "models_trained": 0,
+    "post_2023_numeric_source_rows_parsed": 0,
+    "rewards_built": 0
+  },
+  "outputs": {
+    "preregistration": "results/sable8_symbolic_alpha_braid_preregistration_2026-07-25.json",
+    "source_cut_manifest": "results/sable8_source_cut_manifest_pre2024_2026-07-25.json",
+    "support": "results/sable8_symbolic_alpha_braid_support_2026-07-25.json"
+  },
+  "physical_cuts": {
+    "all_support_reads_cut_only": true,
+    "encoding": "UTF-8",
+    "gzip_mtime": 0,
+    "manifest": "results/sable8_source_cut_manifest_pre2024_2026-07-25.json",
+    "newline": "LF",
+    "paths": {
+      "funding": "data/sable8_source_cuts/pre2024/funding.csv.gz",
+      "market": "data/sable8_source_cuts/pre2024/market.csv.gz",
+      "premium": "data/sable8_source_cuts/pre2024/premium.csv.gz"
+    }
+  },
+  "policy": {
+    "bar_minutes": 5,
+    "base_cost_per_changed_notional": 0.0006,
+    "boundary_hours_utc": [
+      0,
+      8,
+      16
+    ],
+    "decision_delay_minutes": 10,
+    "execution_delay_minutes": 15,
+    "leverage": 0.5,
+    "policy_id": "SABLE-8",
+    "rank_history_max": 540,
+    "rank_history_min": 180,
+    "sequence_lines": 6,
+    "state_delay_minutes": 5,
+    "stress_cost_per_changed_notional": 0.001
+  },
+  "primitive_contract": {
+    "context": [
+      "oi_price_divergence_1d",
+      "kimchi_change_12h",
+      "usdkrw_change_12h",
+      "dxy_change_1d"
+    ],
+    "core": [
+      "price_return_1d",
+      "range_location_7d",
+      "volatility_ratio_1d_30d",
+      "jump_share_1d",
+      "signed_jump_1d",
+      "volume_clock_flow_speed_25",
+      "liquidity_signed_efficiency_6h",
+      "taker_flow_recovery_1h_6h",
+      "funding_sum_24h",
+      "premium_mean_8h"
+    ],
+    "equations": {
+      "dxy_change_1d": "log(dxy_t/dxy_t-288)",
+      "funding_sum_24h": "sum(funding_rate,cutoff-24h<funding_time<=cutoff)",
+      "jump_share_1d": "max(RV_1d-BV_1d,0)/RV_1d",
+      "kimchi_change_12h": "kimchi_t-kimchi_t-144",
+      "liquidity_signed_efficiency_6h": "log(c_t/c_t-72)/sum(abs(r),t-71..t)",
+      "oi_price_divergence_1d": "log(oi_t/oi_t-288)-price_return_1d",
+      "premium_mean_8h": "mean(close,cutoff-8h<close_time<=cutoff)",
+      "price_return_1d": "log(c_t/c_t-288)",
+      "range_location_7d": "(c_t-min(c_t-2015..t))/(max(c_t-2015..t)-min(...))",
+      "signed_jump_1d": "sum(r^3,t-287..t)/RV_1d^(3/2)",
+      "taker_flow_recovery_1h_6h": "mean(a/q,t-11..t)-mean(a/q,t-71..t)",
+      "usdkrw_change_12h": "log(usdkrw_t/usdkrw_t-144)",
+      "volatility_ratio_1d_30d": "log((sum(r^2,t-287..t)+1e-18)/(sum(r^2,t-8639..t)/30+1e-18))",
+      "volume_clock_flow_speed_25": "(sum(a,j..t)/sum(q,j..t))/(t-j+1); target=.25*sum(q,t-288..t-1)"
+    },
+    "order": [
+      "price_return_1d",
+      "range_location_7d",
+      "volatility_ratio_1d_30d",
+      "jump_share_1d",
+      "signed_jump_1d",
+      "volume_clock_flow_speed_25",
+      "liquidity_signed_efficiency_6h",
+      "taker_flow_recovery_1h_6h",
+      "funding_sum_24h",
+      "premium_mean_8h",
+      "oi_price_divergence_1d",
+      "kimchi_change_12h",
+      "usdkrw_change_12h",
+      "dxy_change_1d"
+    ]
+  },
+  "protocol_version": "sable8_symbolic_alpha_braid_preregistration_v1",
+  "research_history_boundary": {
+    "claim_scope": "contaminated-history candidate research MDP",
+    "component_family_outcomes_seen": true,
+    "global_pristine_holdout_claimed": false,
+    "sable_model_outcomes_seen": false,
+    "sable_rewards_seen": false,
+    "sable_source_values_seen": false,
+    "sable_token_incidence_seen": false
+  },
+  "sources": {
+    "funding": {
+      "allowlist": [
+        "date",
+        "funding_rate",
+        "funding_time"
+      ],
+      "cutoff_exclusive": "2024-01-01T00:00:00Z",
+      "loader": "stream csv.DictReader; reject extra/missing/reordered fields",
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+      "physical_stop_before_other_field_conversion": true,
+      "sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7",
+      "timestamp_field": "funding_time"
+    },
+    "market": {
+      "allowlist": [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume",
+        "taker_buy_quote",
+        "dxy",
+        "kimchi_premium",
+        "usdkrw",
+        "dxy_available",
+        "kimchi_available",
+        "usdkrw_available",
+        "open_interest",
+        "open_interest_available"
+      ],
+      "cutoff_exclusive": "2024-01-01T00:00:00Z",
+      "loader": "stream csv.DictReader; reject extra/missing/reordered fields",
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+      "physical_stop_before_other_field_conversion": true,
+      "sha256": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192",
+      "timestamp_field": "date"
+    },
+    "premium": {
+      "allowlist": [
+        "date",
+        "close",
+        "close_time"
+      ],
+      "cutoff_exclusive": "2024-01-01T00:00:00Z",
+      "loader": "stream csv.DictReader; reject extra/missing/reordered fields",
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz",
+      "physical_stop_before_other_field_conversion": true,
+      "sha256": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7",
+      "timestamp_field": "close_time"
+    }
+  },
+  "stage_authority": {
+    "authorized": [
+      "source_cut",
+      "primitive",
+      "rank",
+      "token_support"
+    ],
+    "forbidden": [
+      "forward_return",
+      "reward",
+      "action_label",
+      "model_training",
+      "economic_metric",
+      "post_2023_numeric_source"
+    ],
+    "next_required_commit": "stage_0_5_evaluator_and_model_freeze"
+  },
+  "support_gates": {
+    "active_months": [
+      "2020-05",
+      "2022-12"
+    ],
+    "adjacent_state_change_share_min": 0.95,
+    "core_missing_share_max": 0.01,
+    "development_2020_2022_token_ready_min": 3000,
+    "dxy_fresh_share_min": 0.55,
+    "dxy_stale_share_min": 0.05,
+    "each_year_2021_2022_token_ready_min": 900,
+    "failure_action": "retire_without_reward_construction",
+    "kimchi_fresh_share_min": 0.8,
+    "largest_core_band_share_max": 0.45,
+    "max_exact_sequence_share": 0.01,
+    "occupied_core_bands_min": 4,
+    "occupied_oi_bands_min": 4,
+    "oi_fresh_share_min": 0.5,
+    "prefix_replay_required": true,
+    "report_only_2023_token_ready_min": 900,
+    "usdkrw_fresh_share_min": 0.55,
+    "usdkrw_stale_share_min": 0.05
+  },
+  "temporal_roles": {
+    "candidate_gate": [
+      "2023-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "candidate_gate_may_select": false,
+    "confirmation": [
+      "2022-01-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ],
+    "fit": [
+      "2020-01-01T00:00:00Z",
+      "2021-01-01T00:00:00Z"
+    ],
+    "internal_selection": [
+      "2021-01-01T00:00:00Z",
+      "2022-01-01T00:00:00Z"
+    ]
+  }
+}
