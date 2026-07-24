@@ -334,7 +334,7 @@ Primitive order and formulas:
 8. CORPORATE_WITHIN_PRIVATE =
        v_CORD / V_PRIVATE
 
-9. PRIVATE_COLLATERAL_PREMIUM =
+9. PRIVATE_PREMIUM =
        (v_CORD*r_CORD + v_O*r_O) / V_PRIVATE
        - (v_T*r_T + v_AG*r_AG) / V_GOV
 
