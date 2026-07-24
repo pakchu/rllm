@@ -707,8 +707,9 @@ p_max =
 The family contains every emitted primary, exact-memory, prior-only,
 quarter-phase-prior, single-token, group-only, leave-one-token-out,
 leave-one-group-out, shuffled-label, circular-block-shift, final-SFT, and DPO
-checkpoint policy that exists at that stage. A policy cannot be omitted after
-its result is seen.
+checkpoint policy that exists at that stage, plus every required
+orientation-flipped inference control. A policy cannot be omitted after its
+result is seen.
 
 The ordinary policy-local sign-flip p-value remains reported. Development
 selection gates use `p_max`; the one immutable 2023 policy uses the ordinary
@@ -821,9 +822,22 @@ Frozen policies:
     - current topology without transitions; and
 17. five leave-one-group-out ridge policies over the same groups.
 
+Every learned primary and every later RLLM checkpoint also emits two
+non-qualifying orientation controls without refitting:
+
+18. pair-direction-flipped inference:
+    - swap the two non-`BALANCED` values of all five pair-relation tokens only
+      at downstream inference;
+    - retain `BALANCED` and every other token unchanged; and
+    - use the already fitted policy and threshold unchanged;
+19. relation-breadth-flipped inference:
+    - swap `LEFT_BROAD` and `RIGHT_BROAD` only at downstream inference;
+    - retain `MIXED` and every other token unchanged; and
+    - use the already fitted policy and threshold unchanged.
+
 Circular controls preserve label prevalence and much of temporal
 autocorrelation while destroying state alignment. None of the prior, seasonal,
-shuffled, or circular controls may qualify as BCRT.
+shuffled, circular, or orientation-flipped controls may qualify as BCRT.
 
 ### 2020 to 2021 transfer gate
 
@@ -838,11 +852,16 @@ At least one learned primary algorithm must satisfy on unchanged 2021:
 - positive LONG and SHORT net contribution separately;
 - no action above 90%;
 - positive stress-cost return;
-- positive one-bar-delay return; and
+- positive one-bar-delay return;
 - familywise weekly-cluster `p_max < 0.25`;
+- higher return than always abstain;
+- higher return and ratio than always long, always short, and exact-signature
+  memory;
 - higher return and ratio than every prior-only, quarter-phase, shuffled, and
-  circular control; and
-- higher return and ratio than the strongest single-token or group-only policy.
+  circular control;
+- higher return and ratio than the strongest single-token or group-only policy;
+- higher return and ratio than both of its orientation-flipped inference
+  controls.
 
 ### 2022 cheap learnability gate
 
@@ -859,10 +878,15 @@ The refit 2020–2021 algorithm must satisfy on 2022:
 - positive stress-cost return;
 - positive one-bar-delay return;
 - familywise weekly-cluster `p_max < 0.10`;
+- higher return than always abstain;
+- higher return and ratio than always long, always short, and exact-signature
+  memory;
 - higher return and ratio than every prior-only, quarter-phase, shuffled, and
   circular control;
 - higher return and ratio than the strongest single-token or group-only
   policy; and
+- higher return and ratio than both of its orientation-flipped inference
+  controls;
 - no single-token majority-action policy reproduces more than 70% of selected
   non-abstain actions on matching opportunities.
 
@@ -1047,6 +1071,8 @@ Each checkpoint is evaluated once on 2022. It qualifies only with:
 - return and ratio above every frozen cheap primary, prior-only,
   quarter-phase, shuffled, circular, single-token, group-only, and ablation
   policy under common coverage;
+- return and ratio above both orientation-flipped inference controls for the
+  checkpoint;
 - return and ratio above the masked-token prior adapter; and
 - no single token value contains more than 60% of non-abstain actions;
 - no single-token majority-action policy reproduces more than 70% of selected
@@ -1126,6 +1152,7 @@ The unchanged selected BCRT policy must satisfy:
 - return and ratio above every frozen cheap primary, prior-only,
   quarter-phase, shuffled, circular, single-token, group-only, and ablation
   policy under common coverage;
+- return and ratio above both frozen orientation-flipped inference controls;
 - return and ratio above the masked-token prior adapter;
 - no single token value contains more than 60% of non-abstain actions;
 - no single-token majority-action policy reproduces more than 70% of selected
