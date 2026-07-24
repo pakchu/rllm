@@ -1143,8 +1143,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "decision": report["decision"],
                 "passed": report["passed"],
                 "manifest_hash": report["manifest_hash"],
-                "archive_sha256": report["archive"]["compressed_sha256"],
-                "interval_rows": report["interval_artifact"]["rows"],
+                "archive_sha256": report["archive"].get("compressed_sha256"),
+                "interval_rows": report.get("interval_artifact", {}).get(
+                    "rows",
+                    0,
+                ),
                 "statuses": statuses,
             },
             sort_keys=True,

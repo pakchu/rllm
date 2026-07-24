@@ -405,6 +405,28 @@ def test_run_persists_terminal_source_rejection(
     assert len(writes) == 1
 
 
+def test_main_reports_terminal_rejection_without_archive_hash(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    report = {
+        "transport_id": "BAWDP-v1",
+        "decision": "RETIRE_BAWDP_V1_NO_REPAIR",
+        "passed": False,
+        "manifest_hash": "a" * 64,
+        "archive": {"complete_archive_hash_available": False},
+    }
+    monkeypatch.setattr(
+        parity,
+        "run",
+        lambda **_: (report, {"report": "written"}),
+    )
+    assert parity.main([]) == 1
+    output = json.loads(capsys.readouterr().out)
+    assert output["archive_sha256"] is None
+    assert output["interval_rows"] == 0
+
+
 def test_build_report_keeps_every_outcome_closed() -> None:
     start = parity.ARCHIVE_DAY_START_MS + 10_000
     records = tuple(make_trade(index, start + index) for index in range(1_001))
