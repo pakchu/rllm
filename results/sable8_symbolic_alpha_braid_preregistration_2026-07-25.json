@@ -1,8 +1,8 @@
 {
   "boundary": {
-    "commit": "4cbce55",
+    "commit": "74bec74",
     "path": "docs/sable8-symbolic-alpha-braid-boundary-2026-07-25.md",
-    "sha256": "ac06223155575405a12b5ed59023aea43dfbfacda680ba36ba449b07a8e36acc"
+    "sha256": "f45e4d2b0cc2429b27728a390276ff076d029932617cf4dce50577408e73f115"
   },
   "language_contract": {
     "bands": [
@@ -43,7 +43,7 @@
     "sequence_lines": 6,
     "strictly_prior": true
   },
-  "manifest_hash": "b96327ff942ef521173f6e22df5fba30f17484d44664c9eee241f7a6a4040150",
+  "manifest_hash": "b74ac9a0053290519e3e9155f88cf5911592f474931b447ce5383f1416a3b762",
   "outcome_boundary": {
     "candidate_2023_outcomes_opened": false,
     "candidate_2024_outcomes_opened": false,
@@ -157,20 +157,29 @@
   },
   "sources": {
     "funding": {
-      "allowlist": [
+      "cut_allowlist": [
         "date",
         "funding_rate",
         "funding_time"
       ],
       "cutoff_exclusive": "2024-01-01T00:00:00Z",
-      "loader": "stream csv.DictReader; reject extra/missing/reordered fields",
+      "loader": "stream csv.reader; bind exact physical header; convert and persist cut_allowlist only",
       "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+      "physical_header": [
+        "date",
+        "symbol",
+        "funding_rate",
+        "funding_time",
+        "mark_price"
+      ],
+      "physical_header_sha256": "1c09a5cc3f8b5e7f0c06f0055e364d0dc97a9677dd505535e6f59d3cb9b48202",
       "physical_stop_before_other_field_conversion": true,
       "sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7",
-      "timestamp_field": "funding_time"
+      "timestamp_field": "funding_time",
+      "unprojected_cells": "tokenize for CSV framing only; never convert, retain, aggregate, hash by value, or expose"
     },
     "market": {
-      "allowlist": [
+      "cut_allowlist": [
         "date",
         "open",
         "high",
@@ -188,24 +197,69 @@
         "open_interest_available"
       ],
       "cutoff_exclusive": "2024-01-01T00:00:00Z",
-      "loader": "stream csv.DictReader; reject extra/missing/reordered fields",
+      "loader": "stream csv.reader; bind exact physical header; convert and persist cut_allowlist only",
       "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+      "physical_header": [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "quote_asset_volume",
+        "number_of_trades",
+        "taker_buy_base",
+        "taker_buy_quote",
+        "tic",
+        "day",
+        "dxy",
+        "kimchi_premium",
+        "usdkrw",
+        "btckrw",
+        "dxy_available",
+        "kimchi_available",
+        "usdkrw_available",
+        "external_any_available",
+        "dxy_zscore",
+        "dxy_momentum",
+        "kimchi_premium_zscore",
+        "kimchi_premium_change",
+        "usdkrw_zscore",
+        "usdkrw_momentum",
+        "open_interest",
+        "open_interest_value",
+        "cmc_circulating_supply",
+        "open_interest_available"
+      ],
+      "physical_header_sha256": "c306861dde4024d44622d34e664188f41636c8bab6f544db740213dee71ab58b",
       "physical_stop_before_other_field_conversion": true,
       "sha256": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192",
-      "timestamp_field": "date"
+      "timestamp_field": "date",
+      "unprojected_cells": "tokenize for CSV framing only; never convert, retain, aggregate, hash by value, or expose"
     },
     "premium": {
-      "allowlist": [
+      "cut_allowlist": [
         "date",
         "close",
         "close_time"
       ],
       "cutoff_exclusive": "2024-01-01T00:00:00Z",
-      "loader": "stream csv.DictReader; reject extra/missing/reordered fields",
+      "loader": "stream csv.reader; bind exact physical header; convert and persist cut_allowlist only",
       "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz",
+      "physical_header": [
+        "date",
+        "symbol",
+        "open",
+        "high",
+        "low",
+        "close",
+        "close_time"
+      ],
+      "physical_header_sha256": "22e5715846fbfa49646f0c7c9078d40455e2e726d8e316fcdd49dbfebbd626ed",
       "physical_stop_before_other_field_conversion": true,
       "sha256": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7",
-      "timestamp_field": "close_time"
+      "timestamp_field": "close_time",
+      "unprojected_cells": "tokenize for CSV framing only; never convert, retain, aggregate, hash by value, or expose"
     }
   },
   "stage_authority": {
