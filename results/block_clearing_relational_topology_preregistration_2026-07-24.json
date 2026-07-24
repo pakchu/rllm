@@ -1,0 +1,1123 @@
+{
+  "baseline_contract": {
+    "circular_block_shift_offsets": [
+      62,
+      93,
+      124,
+      155,
+      186,
+      217,
+      248,
+      279,
+      310,
+      341,
+      372,
+      403,
+      434,
+      465,
+      496,
+      527
+    ],
+    "controls_never_qualify": [
+      "prior_only",
+      "quarter_phase",
+      "shuffled",
+      "circular_block_shift",
+      "orientation_flipped_inference"
+    ],
+    "features": "token one-hot plus 66 pair conjunctions; min count 5",
+    "fit_transfer": "fit 2020, evaluate unchanged 2021",
+    "orientation_flipped_inference_controls": {
+      "applies_to": "every learned primary and every later RLLM checkpoint",
+      "can_qualify": false,
+      "pair_direction_flip": "swap both non-BALANCED values of all five pair tokens only at downstream inference",
+      "refit": false,
+      "relation_breadth_flip": "swap LEFT_BROAD and RIGHT_BROAD only at downstream inference",
+      "unchanged": [
+        "BALANCED",
+        "MIXED",
+        "all_other_tokens",
+        "fitted_policy",
+        "threshold"
+      ]
+    },
+    "policies": [
+      "always_abstain",
+      "always_long",
+      "always_short",
+      "exact_signature_memory",
+      "categorical_naive_bayes_alpha_1",
+      "ridge_contextual_value_alpha_100",
+      "extra_trees_value_512_depth6_leaf12_split24",
+      "fit_majority_three_action_prior",
+      "fit_admission_and_direction_prior",
+      "utc_quarter_phase_prior",
+      "32_shuffled_label_nb",
+      "32_shuffled_utility_ridge",
+      "16_circular_block_shift_controls",
+      "12_single_token_ridge",
+      "12_leave_one_token_out_ridge",
+      "5_group_only_ridge",
+      "5_leave_one_group_out_ridge"
+    ],
+    "refit_selection": "refit 2020-2021, evaluate 2022",
+    "selection_2022": {
+      "beat_always_abstain_return": true,
+      "beat_always_long_short_exact_memory_return_and_ratio": true,
+      "beat_both_orientation_flipped_controls": true,
+      "beat_every_prior_quarter_shuffled_circular": true,
+      "beat_strongest_single_token_and_group_only": true,
+      "both_halves_positive": true,
+      "each_side_contribution_positive": true,
+      "each_side_min": 75,
+      "familywise_weekly_cluster_p_max_below": 0.1,
+      "max_action_share": 0.85,
+      "ratio_min": 1.0,
+      "return_positive": true,
+      "single_token_action_reproduction_max": 0.7,
+      "stress_and_one_bar_delay_positive": true,
+      "strict_mdd_pct_max": 15.0,
+      "trades_min": 240
+    },
+    "selection_order": [
+      "higher_ratio",
+      "higher_return",
+      "lower_strict_mdd",
+      "lexicographically_smaller_policy_id"
+    ],
+    "shuffle_seeds": [
+      20260724,
+      20260725,
+      20260726,
+      20260727,
+      20260728,
+      20260729,
+      20260730,
+      20260731,
+      20260732,
+      20260733,
+      20260734,
+      20260735,
+      20260736,
+      20260737,
+      20260738,
+      20260739,
+      20260740,
+      20260741,
+      20260742,
+      20260743,
+      20260744,
+      20260745,
+      20260746,
+      20260747,
+      20260748,
+      20260749,
+      20260750,
+      20260751,
+      20260752,
+      20260753,
+      20260754,
+      20260755
+    ],
+    "token_groups": {
+      "breadth_occupancy_only": [
+        "rank_breadth",
+        "extreme_occupancy",
+        "relation_breadth"
+      ],
+      "current_topology_without_transitions": [
+        "cadence_utilization",
+        "utilization_fee",
+        "packing_witness",
+        "utxo_fee",
+        "load_fee_dispersion",
+        "high_leader",
+        "low_leader",
+        "rank_breadth",
+        "extreme_occupancy",
+        "relation_breadth"
+      ],
+      "leaders_only": [
+        "high_leader",
+        "low_leader"
+      ],
+      "pair_relations_only": [
+        "cadence_utilization",
+        "utilization_fee",
+        "packing_witness",
+        "utxo_fee",
+        "load_fee_dispersion"
+      ],
+      "transitions_only": [
+        "order_transition",
+        "leader_transition"
+      ]
+    },
+    "transfer_2021": {
+      "beat_always_abstain_return": true,
+      "beat_always_long_short_exact_memory_return_and_ratio": true,
+      "beat_both_orientation_flipped_controls": true,
+      "beat_every_prior_quarter_shuffled_circular": true,
+      "beat_strongest_single_token_and_group_only": true,
+      "both_halves_positive": true,
+      "each_side_contribution_positive": true,
+      "each_side_min": 60,
+      "familywise_weekly_cluster_p_max_below": 0.25,
+      "max_action_share": 0.9,
+      "ratio_min": 0.5,
+      "return_positive": true,
+      "stress_and_one_bar_delay_positive": true,
+      "strict_mdd_pct_max": 15.0,
+      "trades_min": 200
+    }
+  },
+  "bucket_contract": {
+    "anchor_and_confirmation_heights_strictly_increasing": true,
+    "anchor_and_confirmation_must_exist": true,
+    "anchor_height": "first height whose mediantime is greater than or equal to bucket_end",
+    "assignment": "floor(timestamp/43200)*43200 UTC",
+    "availability_monotone": true,
+    "confirmation_height": "anchor_height+288",
+    "interval": "[bucket_start,bucket_start+43200)",
+    "late_backdated_members": "ignore for formed bucket and emit diagnostic",
+    "latest_unconfirmed_buckets": "omit",
+    "membership": "rows with height<=confirmation_height and bucket_start<=timestamp<bucket_end",
+    "minimum_blocks": 1,
+    "prefix_replay": "rebuild each formed bucket at confirmation_height and require byte-identical membership, primitives, ranks, tokens, availability, and reservation after every append",
+    "previous_state": "immediately prior source-valid bucket",
+    "previous_state_includes_reservation_or_split_suppressed": true
+  },
+  "economic_contract": {
+    "base_cost_notional_per_side": 0.0006,
+    "cagr": "full half-open calendar including warmup idle abstention",
+    "funding": {
+      "boundary": "retain debits; drop credits exactly at entry/exit",
+      "cash": "-side*fixed_quantity*settlement_mark*funding_rate",
+      "interval": "entry<=settlement<=exit",
+      "manifest": "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json",
+      "manifest_sha256": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b",
+      "path": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+      "sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+    },
+    "market": {
+      "manifest": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+      "manifest_sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e",
+      "path": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+      "sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d"
+    },
+    "quantity": "entry_equity*0.5/entry_open; fixed",
+    "stress_cost_notional_per_side": 0.001,
+    "stress_replaces_base": true,
+    "strict_mdd": "global/pre-entry HWM; favorable then adverse held OHLC; funding and virtual adverse exit cost; scheduled exit",
+    "weekly_signflip_draws": 100000,
+    "weekly_signflip_seed": 20260724
+  },
+  "eval_2023_gate": {
+    "active_months_min": 10,
+    "beat_both_orientation_flipped_controls": true,
+    "beat_every_frozen_non_rllm_prior_ablation_null": true,
+    "beat_masked_token_prior_adapter": true,
+    "both_halves_positive": true,
+    "each_side_contribution_positive": true,
+    "each_side_min": 75,
+    "every_neutral_code_order_return_positive": true,
+    "max_action_share": 0.85,
+    "max_month_share": 0.15,
+    "max_token_value_non_abstain_action_share": 0.6,
+    "mean_gross_underlying_move_bp_min": 20.0,
+    "one_hour_delay": "report_only",
+    "one_policy_weekly_cluster_p_below": 0.05,
+    "ratio_margin_over_strongest_non_rllm": 0.5,
+    "ratio_min": 3.0,
+    "return_positive": true,
+    "single_token_action_reproduction_max": 0.7,
+    "stress_and_one_bar_delay_positive": true,
+    "strict_mdd_pct_max": 15.0,
+    "trades_min": 240,
+    "weekly_clusters_min": 30
+  },
+  "eval_source_report_only": {
+    "boolean_gate": false,
+    "may_authorize_continue_retire_repair_or_selection": false,
+    "reports": [
+      "incidence",
+      "calendar_coverage",
+      "marginal_token_distribution",
+      "exact_signature_distribution",
+      "train_vocabulary_coverage"
+    ],
+    "scope": "[2023-01-01,2024-01-01)",
+    "unseen_token_value": "frozen policy ABSTAIN"
+  },
+  "execution_contract": {
+    "abstention_releases_reservation": false,
+    "dynamic_exit_or_sizing": false,
+    "entry": "signal_available+300 seconds BTCUSDT 5m open",
+    "exit": "entry+72*300 seconds",
+    "global_action_independent_reservation": true,
+    "leverage": 0.5,
+    "live_clock": "max(frozen historical clock, actual node receipt/validation clock)",
+    "one_bar_delay": "entry+5m,exit+5m,recompute reservation",
+    "one_hour_delay": "entry+60m,exit+60m,recompute reservation",
+    "raw_available": "max(bucket_end,prefix_max_timestamp_through_confirmation,prefix_max_mediantime_through_confirmation)+172800",
+    "scheduled_exit_only": true,
+    "signal_available": "ceil raw availability to 300 seconds",
+    "split_containment_fields": [
+      "source_bucket",
+      "anchor",
+      "confirmation",
+      "signal_available",
+      "latency_bar",
+      "entry",
+      "held_bars",
+      "exit"
+    ],
+    "split_crossing_keeps_reservation": true,
+    "split_interval": "half-open"
+  },
+  "familywise_signflip_contract": {
+    "adjusted_p": "(1+count(max_null_t>=selected_t))/100001",
+    "cheap_selection_p_max_below": 0.1,
+    "draws": 100000,
+    "eval_2023": "ordinary immutable one-policy p-value",
+    "family": [
+      "every emitted learned primary",
+      "exact_signature_memory",
+      "prior_only",
+      "quarter_phase_prior",
+      "single_token",
+      "group_only",
+      "leave_one_token_out",
+      "leave_one_group_out",
+      "shuffled_label",
+      "shuffled_utility",
+      "circular_block_shift",
+      "final_sft",
+      "every_dpo_checkpoint",
+      "masked_token_prior_adapter",
+      "pair_direction_flipped_inference",
+      "relation_breadth_flipped_inference"
+    ],
+    "null_statistic": "maximum t across complete frozen family",
+    "post_result_omission": "forbidden",
+    "rllm_selection_p_max_below": 0.05,
+    "seed": 20260724,
+    "shared_null": "same Rademacher sign for the same union week and every policy",
+    "statistic": "mean(weekly_return)/(std(weekly_return,ddof=1)/sqrt(union_week_count))",
+    "transfer_p_max_below": 0.25,
+    "weeks": "union of nonempty UTC weeks across the complete frozen family; flat policy-week return is zero",
+    "zero_variance_statistic": "-infinity"
+  },
+  "frozen_documents": {
+    "boundary": {
+      "commit": "d4d2864",
+      "path": "docs/block-clearing-relational-topology-boundary-2026-07-24.md",
+      "sha256": "ab3d71d5b7f52254a3d25f4eeada35acab16ec7a2460528e2727b56ae8039560"
+    },
+    "mechanism": {
+      "commit": "c743851",
+      "path": "docs/block-clearing-relational-topology-mechanism-decision-2026-07-24.md",
+      "sha256": "95d3ebffea956fbaee261d8da280d8ced8f12164823a9d86755771d0fb98b991"
+    }
+  },
+  "manifest_hash": "c9f08196f5a25dd05320a2c7cf3fbf951403d10f2362e67e2b0169b03fec194f",
+  "novelty_contract": {
+    "absolute_signed_exposure_correlation_max": 0.35,
+    "comparators": [
+      {
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "group_column": "policy_id",
+        "group_selection": "every nonempty group over common coverage",
+        "header_sha256": "562a0e666e50028f9118865f30d0e719830a7e0527e93fd870997b5a1138fe05",
+        "id": "BATE-288",
+        "loader_allowlist": [
+          "policy_id",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "missing_common_coverage": "fail",
+        "path": "results/block_arrival_throughput_elasticity_clock_2026-07-20.csv",
+        "sha256": "cd4fbd01c104bd969ca1c12a53b8da82dd0e9376990e233c286ff009a5115c02",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        }
+      },
+      {
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "group_column": "policy_id",
+        "group_selection": "every nonempty group over common coverage",
+        "header_sha256": "647b27c3660f5d06e621f31d9045c16917605b17b66a6ed62e139bd550a7a30e",
+        "id": "UFCP-1",
+        "loader_allowlist": [
+          "policy_id",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "missing_common_coverage": "fail",
+        "path": "results/utxo_fee_clearing_polarity_primary_clock_2026-07-20.csv",
+        "sha256": "8338c290d63b522531c8d55c8a79ba73cc13915c936733ec03ffcf6ab0e86c1b",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        }
+      },
+      {
+        "entry_column": "entry_date",
+        "exit_column": "exit_date",
+        "group_column": "policy_id",
+        "group_selection": "every nonempty group over common coverage",
+        "header_sha256": "113d5b413482187c07c71272b8edccfe14032d24fb5b5ca1d0363f63367dc72a",
+        "id": "MCR-7",
+        "loader_allowlist": [
+          "policy_id",
+          "entry_date",
+          "exit_date",
+          "side"
+        ],
+        "missing_common_coverage": "fail",
+        "path": "results/miner_cadence_recovery_clock_2026-07-17.csv",
+        "sha256": "2535244889b046ff00c369ee854973a91c23429dff82a6dd3c1a293a01352b0b",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        }
+      },
+      {
+        "entry_column": "entry_date",
+        "exit_column": "exit_date",
+        "group_column": "policy_id",
+        "group_selection": "every nonempty group over common coverage",
+        "header_sha256": "ba82923c66192b28b0d240ffe29b2071043bb437c043fc1d35cfce77859ed13e",
+        "id": "NTB-7",
+        "loader_allowlist": [
+          "policy_id",
+          "entry_date",
+          "exit_date",
+          "side"
+        ],
+        "missing_common_coverage": "fail",
+        "path": "results/network_topology_broadening_clock_2026-07-17.csv",
+        "sha256": "6b1bd7c7458cffa062e40872c3ad1730007c01426790b1ba8e52c6eb853de42f",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        }
+      },
+      {
+        "entry_column": "entry_date",
+        "exit_column": "exit_date",
+        "group_column": "policy_id",
+        "group_selection": "every nonempty group over common coverage",
+        "header_sha256": "cf484b9ccd564006f91a2a799c50ea84148f28ecd10322b06b5d34dd04b43562",
+        "id": "BFC-3",
+        "loader_allowlist": [
+          "policy_id",
+          "entry_date",
+          "exit_date",
+          "side"
+        ],
+        "missing_common_coverage": "fail",
+        "path": "results/blockspace_fee_confirmation_clock_2026-07-17.csv",
+        "sha256": "edda7bb8ae8a1de4e51a3b86e98d533748e73d203125a3ded1a487e9a0e93632",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        }
+      },
+      {
+        "entry_column": "entry_time_utc",
+        "exit_column": "exit_time_utc",
+        "group_column": "clock",
+        "group_selection": "every nonempty group over common coverage",
+        "header_sha256": "cd90df97c515162cdd0d2fbca7f341ef65a61367168ff6bcc9d8d6e93eb3b6cb",
+        "id": "WCTR-288",
+        "loader_allowlist": [
+          "clock",
+          "entry_time_utc",
+          "exit_time_utc",
+          "side"
+        ],
+        "missing_common_coverage": "fail",
+        "path": "results/witness_composition_transport_primary_clock_2026-07-20.csv.gz",
+        "sha256": "7a6b56a3024d0d087322fad7b3229276c539b93374691cd2812af0630dc752b1",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        }
+      },
+      {
+        "entry_column": "entry_time_utc",
+        "exit_column": "exit_time_utc",
+        "group_column": "clock",
+        "group_selection": "every nonempty group over common coverage",
+        "header_sha256": "34f459439a8db95467cbbceca6ba14254bee97e8eca53a0840da2b68d1167c05",
+        "id": "BFRT-288",
+        "loader_allowlist": [
+          "clock",
+          "entry_time_utc",
+          "exit_time_utc",
+          "side"
+        ],
+        "missing_common_coverage": "fail",
+        "path": "results/block_feerate_breadth_transport_primary_clock_2026-07-20.csv.gz",
+        "sha256": "33428d29c2ace9b23672b2dc9dc3e9ba0e3020fa1a6e3845d55fa5d75230d64a",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        }
+      },
+      {
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "group_column": "clock",
+        "group_selection": "every nonempty group over common coverage",
+        "header_sha256": "9f57b86445928f284bc4039700f21cdbda2ccb7594ea72ce1426bce507aa1c4b",
+        "id": "EMFC-864",
+        "loader_allowlist": [
+          "clock",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "missing_common_coverage": "fail",
+        "path": "results/exact_maturity_fee_cadence_polarity_clocks_2026-07-20.csv",
+        "sha256": "31af41f42ffe4dc73f0ff35ccf278e38c856d224184e802e46b370650d35951d",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        }
+      },
+      {
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "group_column": "candidate_id",
+        "group_selection": "every nonempty group over common coverage",
+        "header_sha256": "da21cfc42a55581971c304cc30122a72f9d062a7601db59a9702ec35504acb9a",
+        "id": "CCHR-live-pre2024",
+        "loader_allowlist": [
+          "candidate_id",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "missing_common_coverage": "fail",
+        "path": "results/cchr_live_portfolio_pure_clocks_2026-07-21.csv.gz",
+        "rows": 440,
+        "sha256": "73d6efbd35b3be64b0fa04fa9c8cb2db25866ef884f19b1ae673949e22a42b08",
+        "side_column": "side",
+        "side_encoding": {
+          "LONG": 1,
+          "SHORT": -1
+        }
+      }
+    ],
+    "exact_and_one_hour_entry_jaccard": "report",
+    "hash_drift_or_missing_common_coverage": "fail",
+    "live_exact_jaccard_max": 0.1,
+    "live_one_hour_jaccard_max": 0.25,
+    "parse_after": "2022 selection and immutable pre-2024 action freeze",
+    "unsigned_time_containment": "report",
+    "zero_variance_or_undefined": "fail"
+  },
+  "outcome_boundary": {
+    "bcrt_buckets_derived": 0,
+    "bcrt_opportunity_rows_derived": 0,
+    "bcrt_primitive_or_rank_values_derived": 0,
+    "bcrt_token_rows_derived": 0,
+    "comparator_rows_decoded": 0,
+    "funding_rows_loaded": 0,
+    "future_return_rows_loaded": 0,
+    "market_rows_loaded": 0,
+    "model_labels_created": 0,
+    "model_training_runs": 0,
+    "post_2023_rows_loaded": 0,
+    "return_or_pnl_fields": 0,
+    "source_artifact_bytes_hashed": true,
+    "source_header_read": true,
+    "source_manifest_aggregate_metadata_read": true,
+    "source_values_decoded": 0
+  },
+  "policy": {
+    "bar_seconds": 300,
+    "base_cost_notional_per_side": 0.0006,
+    "bucket_seconds": 43200,
+    "confirmation_blocks": 288,
+    "extreme_high_denominator": 6,
+    "extreme_high_numerator": 5,
+    "extreme_low_denominator": 6,
+    "extreme_low_numerator": 1,
+    "held_path_drawdown_penalty": 0.3333333333333333,
+    "hold_bars": 72,
+    "latency_bars": 1,
+    "leverage": 0.5,
+    "minimum_embargo_seconds": 172800,
+    "order_rotating_max_changes": 13,
+    "order_stable_max_changes": 6,
+    "pair_delta_denominator": 6,
+    "pair_delta_numerator": 1,
+    "policy_id": "BCRT-72",
+    "preference_margin": 0.0003,
+    "random_seed": 20260724,
+    "rank_breadth_threshold": 2,
+    "rank_lookback_buckets": 252,
+    "rank_minimum_prior_buckets": 126,
+    "stress_cost_notional_per_side": 0.001,
+    "trade_utility_hurdle_account": 0.0005
+  },
+  "primitive_contract": {
+    "cadence": "log(block_count)",
+    "clipping_or_full_series_normalization": false,
+    "fee_burden": "log((sum(total_fees)+1)/(sum(weight)+1))",
+    "fee_dispersion": "MAD(log((total_fees_i+1)/(weight_i+1)))",
+    "load_dispersion": "MAD(weight_i/4000000)",
+    "mad": "median(abs(x-median(x)))",
+    "ordered": [
+      "CADENCE",
+      "UTILIZATION",
+      "PACKING",
+      "FEE",
+      "UTXO",
+      "WITNESS",
+      "LOAD_DISPERSION",
+      "FEE_DISPERSION"
+    ],
+    "packing": "log((sum(tx_count)+1)/(sum(weight)+1))",
+    "utilization": "log((sum(weight)+1)/(4000000*n+1))",
+    "utxo_pressure": "sum(utxo_set_change)/(sum(tx_count)+1)",
+    "witness_discount": "(4*sum(size)-sum(weight))/(4*sum(size))"
+  },
+  "protocol_version": "block_clearing_relational_topology_preregistration_v1",
+  "rank_contract": {
+    "current_excluded": true,
+    "first_complete_state_is_predecessor_only": true,
+    "formula": "(count(prior<x)+0.5*count(prior==x))/len(prior)",
+    "future_append_invariant": true,
+    "histories_independent_by_primitive": true,
+    "lookback": 252,
+    "minimum": 126
+  },
+  "research_history_boundary": {
+    "base_chain_family_outcomes_seen": true,
+    "base_chain_source_values_seen": true,
+    "bate_2021_2022_outcomes_seen": true,
+    "bcrt_market_outcomes_seen": false,
+    "bcrt_tokens_or_incidence_seen": false,
+    "bcrt_values_seen": false,
+    "claim_scope": "candidate-level frozen 2023 outcome window",
+    "global_pristine_holdout_claimed": false
+  },
+  "rllm_contract": {
+    "code_orders": [
+      [
+        "Q1",
+        "Q2"
+      ],
+      [
+        "Q2",
+        "Q1"
+      ]
+    ],
+    "dpo": {
+      "batch": 1,
+      "beta": 0.1,
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "bf16": false,
+      "checkpoints": [
+        48,
+        96,
+        144,
+        192
+      ],
+      "epsilon": 1e-08,
+      "fp16": true,
+      "gradient_accumulation": 8,
+      "label_smoothing": 0.0,
+      "learning_rate": 5e-06,
+      "loss": "sigmoid",
+      "max_grad_norm": 1.0,
+      "optimizer": "AdamW",
+      "optimizer_steps": 192,
+      "reference": "final SFT with DPO updates disabled",
+      "scheduler": "cosine",
+      "seed": 20260724,
+      "warmup_steps": 16,
+      "weight_decay": 0.01
+    },
+    "environment": {
+      "bitsandbytes": "0.49.2",
+      "numpy": "2.2.6",
+      "pandas": "2.3.3",
+      "peft": "0.18.1",
+      "scikit_learn": "1.7.2",
+      "torch": "2.9.0",
+      "transformers_git_revision": "5d7ff4393ab99aa7cadf4cccd1f814dbb799f2bb",
+      "trl": "0.29.0"
+    },
+    "files": {
+      "config.json": "eacec6c5ca317a87ed2c46789d9705b9274db5027e7ba59da739bfae23addb55",
+      "generation_config.json": "a543a5d299bc2b20c52bd87ed174f561266510b57a392e12b5b5d758d798ce05",
+      "model-00001-of-00002.safetensors": "532d792c9178805064170a3ec485b7dedbfccc6fd297b92c31a6091b6c7e41bf",
+      "model-00002-of-00002.safetensors": "6d6d9ce84db398fb6e0191f91542e5da0a73da2cb695e172a24edc2146dc8d20",
+      "model.safetensors.index.json": "ada0043f3e3b2e5ab2f445cad9c0fbbf9d91ad444675e6a82b822591c63abf5a",
+      "special_tokens_map.json": "baec30ea10906f16adb8c18af7a34023002c1746542612b8b41c9f09e1351351",
+      "tokenizer.json": "3f289bc05132635a8bc7aca7aa21255efd5e18f3710f43e3cdb96bcd41be4922",
+      "tokenizer_config.json": "cb32b7929c62608d46572e813112b3ad8a841fb98fdd6a4da8559e368a951c89"
+    },
+    "generation": false,
+    "loader": "AutoModelForCausalLM",
+    "lora": {
+      "alpha": 32,
+      "bias": "none",
+      "dropout": 0.05,
+      "r": 16,
+      "targets": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj"
+      ],
+      "task_type": "CAUSAL_LM"
+    },
+    "mapping": {
+      "ADMISSION": {
+        "Q1": "ABSTAIN",
+        "Q2": "TRADE"
+      },
+      "DIRECTION": {
+        "Q1": "LONG",
+        "Q2": "SHORT"
+      }
+    },
+    "masked_token_prior_adapter": {
+      "can_qualify": false,
+      "frozen_pre_2024_predictions": true,
+      "input": "each token line replaced by key plus literal MASKED",
+      "recipe": "identical SFT and DPO recipe and labels"
+    },
+    "max_tokens": 384,
+    "memory_gib": {
+      "adapter_checkpoint_directory_max": 0.25,
+      "inference_reserved_max": 6.5,
+      "retained_sft_plus_selected_dpo_max": 1.0,
+      "training_allocated_max": 14.0,
+      "training_reserved_max": 16.0
+    },
+    "model": "google/gemma-2-2b-it",
+    "neutral_codes": [
+      "Q1",
+      "Q2"
+    ],
+    "offset_reuse": "hash-frozen; never recompute downstream",
+    "prior_correction": "adapter_delta=adapted-base on same prompt; subtract task/code mean adapter_delta over original 2020-2021 fit states",
+    "prompt_serialization": {
+      "completion_candidates": [
+        "CHOICE=Q1",
+        "CHOICE=Q2"
+      ],
+      "line_separator": "\\n",
+      "position_in_prompt": false,
+      "state": "KEY=VALUE one per line in canonical token order",
+      "suffix_lines": [
+        "TASK=<ADMISSION or DIRECTION>",
+        "OPTIONS=<Q1,Q2 or Q2,Q1>",
+        "Return exactly CHOICE=<one option>."
+      ],
+      "text_only": true,
+      "trailing_newline": false
+    },
+    "quantization": {
+      "compute_dtype": "float16",
+      "double_quant": true,
+      "load_in_4bit": true,
+      "quant_type": "nf4"
+    },
+    "revision": "299a8560bedf22ed1c72a8a11e7dce4a7f9f51f8",
+    "score": "mean completion-token conditional log probability",
+    "selection_2022": {
+      "beat_both_orientation_flipped_controls": true,
+      "beat_every_frozen_non_rllm_prior_ablation_null": true,
+      "beat_masked_token_prior_adapter": true,
+      "both_halves_positive": true,
+      "each_side_contribution_positive": true,
+      "each_side_min": 75,
+      "familywise_weekly_cluster_p_max_below": 0.05,
+      "max_action_share": 0.85,
+      "max_token_value_non_abstain_action_share": 0.6,
+      "ratio_margin_over_strongest_non_rllm": 0.25,
+      "ratio_min": 2.0,
+      "return_positive": true,
+      "single_token_action_reproduction_max": 0.7,
+      "stress_and_one_bar_delay_positive": true,
+      "strict_mdd_pct_max": 15.0,
+      "trades_min": 240
+    },
+    "selection_order": [
+      "higher_ratio",
+      "higher_return",
+      "lower_strict_mdd",
+      "earlier_optimizer_step"
+    ],
+    "sft": {
+      "batch": 1,
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "bf16": false,
+      "completion_only_loss": true,
+      "epsilon": 1e-08,
+      "fp16": true,
+      "gradient_accumulation": 8,
+      "learning_rate": 0.0002,
+      "max_grad_norm": 1.0,
+      "optimizer": "AdamW",
+      "optimizer_steps": 128,
+      "packing": false,
+      "scheduler": "cosine",
+      "seed": 20260724,
+      "warmup_steps": 16,
+      "weight_decay": 0.01
+    },
+    "tasks": [
+      "ADMISSION",
+      "DIRECTION"
+    ],
+    "ties_or_errors": "ABSTAIN",
+    "tokenizer": "AutoTokenizer",
+    "trust_remote_code": false
+  },
+  "source_contract": {
+    "allowlist": [
+      "height",
+      "id",
+      "previousblockhash",
+      "timestamp",
+      "mediantime",
+      "tx_count",
+      "size",
+      "weight",
+      "total_fees",
+      "total_inputs",
+      "total_outputs",
+      "utxo_set_change"
+    ],
+    "end_timestamp_exclusive": 1704067200,
+    "header_sha256": "66cefecff20d70a4229285fc5b93a7cd6126dfd53173acc9c8bffe805638c342",
+    "height_end": 823785,
+    "height_start": 610691,
+    "identity": "utxo_set_change=total_outputs-total_inputs",
+    "loader": "pandas.read_csv(usecols=allowlist); no load-and-drop",
+    "manifest": "results/bitcoin_utxo_fee_block_stats_source_manifest_2026-07-20.json",
+    "manifest_hash": "98a84b0bd0338300f62eaa047b87498cc5a8d9505a03f6bd1912d1deb9564e8c",
+    "manifest_sha256": "ceb096b7bfeaf309729c4cab9f5cd4d2e0d526e261b1e460e9d03cd4f24e8084",
+    "path": "data/bitcoin_utxo_fee_block_stats_2020_2023.csv.gz",
+    "pre_2024_only": true,
+    "production_contract": {
+      "actual_first_seen_timestamps_required": true,
+      "forward_field_parity_required": true,
+      "live_mismatch_action": "block BCRT; do not rewrite historical values",
+      "owned_bitcoin_core_required": true,
+      "raw_response_hashing_required": true
+    },
+    "reference": "data/bitcoin_block_summaries_2020_2023.csv.gz",
+    "reference_allowlist": [
+      "height",
+      "id",
+      "previousblockhash",
+      "timestamp",
+      "mediantime",
+      "tx_count",
+      "size",
+      "weight"
+    ],
+    "reference_header_sha256": "afb4c6b31bc7909918b78f60ef1e14b9f59bd2e619f2c297fe1b3ce31f02d2fe",
+    "reference_sha256": "1f8d1c0153717f2c18d8fa6f09428c780a850b2aecc8fb42bc497e16e68e1833",
+    "rows": 213095,
+    "sha256": "8d5160b59bd104819adb34752f2bd5b01e9c07d7aa108188abcd9e6d323d102f",
+    "source_builder": "training/download_bitcoin_utxo_fee_stats.py",
+    "source_builder_sha256": "099454feff009a5a4d44a96bd3790ff586d0365eba2e9b72e7b071d34e743633",
+    "source_decision": "docs/utxo-fee-clearing-polarity-mechanism-decision-2026-07-20.md",
+    "source_decision_sha256": "95bf889fd053987e1717b182dc5da4f19ef51d75a1cbda427913089368c4852e",
+    "validation": {
+      "block_ids": "lowercase 64-character hexadecimal",
+      "height_and_id_unique": true,
+      "integer_columns": [
+        "height",
+        "timestamp",
+        "mediantime",
+        "tx_count",
+        "size",
+        "weight",
+        "total_fees",
+        "total_inputs",
+        "total_outputs",
+        "utxo_set_change"
+      ],
+      "nonnegative": [
+        "total_fees"
+      ],
+      "positive": [
+        "tx_count",
+        "size",
+        "weight"
+      ],
+      "timestamps_before_cutoff": true,
+      "weight_bounds": "size <= weight <= 4*size"
+    }
+  },
+  "source_support_gates": {
+    "boolean_scope": "[2020-01-01,2023-01-01) development only",
+    "counts_basis": "token-ready globally reserved split-contained",
+    "development_incidence": {
+      "development_2020_2022_min": 2000,
+      "each_half_2021_2022_min": 340,
+      "each_quarter_2021_2022_min": 165,
+      "each_year_2021_2022_active_months_min": 12,
+      "each_year_2021_2022_max_month_share": 0.1,
+      "each_year_2021_2022_min": 700,
+      "max_entry_gap_days_2020_2022": 3,
+      "train_2020_2021_min": 1250,
+      "year_2020_active_months_min": 9,
+      "year_2020_max_month_share": 0.13,
+      "year_2020_min": 570
+    },
+    "failure_action": "retire BCRT-72 unchanged before outcomes",
+    "token_scope": [
+      "train_2020_2021",
+      "selection_2022"
+    ],
+    "token_support": {
+      "extreme_occupancy_each_share_min": 0.02,
+      "extreme_occupancy_max_share": 0.9,
+      "leader_max_nontie_share": 0.4,
+      "leader_nontie_distinct_min": 5,
+      "leader_tie_share_max": 0.2,
+      "leader_transition_distinct_min": 4,
+      "leader_transition_max_share": 0.75,
+      "max_exact_signature_share": 0.05,
+      "order_transition_each_share_min": 0.03,
+      "order_transition_max_share": 0.85,
+      "pair_each_value_share_min": 0.05,
+      "pair_max_value_share": 0.8,
+      "rank_breadth_each_share_min": 0.05,
+      "rank_breadth_max_share": 0.8,
+      "relation_breadth_each_share_min": 0.05,
+      "relation_breadth_max_share": 0.8,
+      "selection_values_must_exist_in_train": true
+    }
+  },
+  "strict_sequence": [
+    "commit mechanism",
+    "commit preregistration and synthetic tests",
+    "commit source-only builder",
+    "run source support once",
+    "retire unchanged on source/token failure",
+    "freeze evaluator baselines model controls",
+    "open only 2020-2022 outcomes",
+    "retire before GPU on transfer/cheap failure",
+    "train one Gemma2 SFT and DPO checkpoints 48/96/144/192",
+    "select on 2022 and freeze pre-2024 actions",
+    "run novelty before 2023 outcomes",
+    "evaluate 2023 once",
+    "open sealed years sequentially after prior pass",
+    "commit every completed unit with hashes and fresh tests"
+  ],
+  "temporal_roles": {
+    "adaptation": null,
+    "final_fit": [
+      "2020-01-01T00:00:00Z",
+      "2022-01-01T00:00:00Z"
+    ],
+    "initial_fit": [
+      "2020-01-01T00:00:00Z",
+      "2021-01-01T00:00:00Z"
+    ],
+    "selection": [
+      "2022-01-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ],
+    "transfer_validation": [
+      "2021-01-01T00:00:00Z",
+      "2022-01-01T00:00:00Z"
+    ],
+    "untouched_eval": [
+      "2023-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ]
+  },
+  "token_contract": {
+    "count": 12,
+    "extreme_occupancy": "count(rank<1/6 or rank>5/6); 0..2 COMPACT,3..5 FOCUSED,6..8 FRACTURED",
+    "forbidden": [
+      "raw_source_values_or_numeric_ranks",
+      "date_time_height_id_or_row_identity",
+      "btc_price_return_funding_premium_oi_kimchi_dxy",
+      "prior_action_reward_pnl_cagr_mdd_or_split",
+      "prior_base_chain_policy_signal_side_state_or_outcome",
+      "source_path_hash_or_transport_identity",
+      "free_form_rationale_chain_of_thought_or_generated_feature"
+    ],
+    "leader_ties": "TIE without epsilon",
+    "order_transition": "changed 28 pair-order states; 0..6 STABLE, 7..13 ROTATING, 14..28 RESET",
+    "ordered_schema": [
+      {
+        "name": "cadence_utilization",
+        "values": [
+          "CADENCE_LEADS",
+          "BALANCED",
+          "UTILIZATION_LEADS"
+        ]
+      },
+      {
+        "name": "utilization_fee",
+        "values": [
+          "UTILIZATION_LEADS",
+          "BALANCED",
+          "FEE_LEADS"
+        ]
+      },
+      {
+        "name": "packing_witness",
+        "values": [
+          "PACKING_LEADS",
+          "BALANCED",
+          "WITNESS_LEADS"
+        ]
+      },
+      {
+        "name": "utxo_fee",
+        "values": [
+          "UTXO_LEADS",
+          "BALANCED",
+          "FEE_LEADS"
+        ]
+      },
+      {
+        "name": "load_fee_dispersion",
+        "values": [
+          "LOAD_WIDER",
+          "BALANCED",
+          "FEE_WIDER"
+        ]
+      },
+      {
+        "name": "high_leader",
+        "values": [
+          "CADENCE",
+          "UTILIZATION",
+          "PACKING",
+          "FEE",
+          "UTXO",
+          "WITNESS",
+          "LOAD_DISPERSION",
+          "FEE_DISPERSION",
+          "TIE"
+        ]
+      },
+      {
+        "name": "low_leader",
+        "values": [
+          "CADENCE",
+          "UTILIZATION",
+          "PACKING",
+          "FEE",
+          "UTXO",
+          "WITNESS",
+          "LOAD_DISPERSION",
+          "FEE_DISPERSION",
+          "TIE"
+        ]
+      },
+      {
+        "name": "rank_breadth",
+        "values": [
+          "LOW_BROAD",
+          "MIXED",
+          "HIGH_BROAD"
+        ]
+      },
+      {
+        "name": "extreme_occupancy",
+        "values": [
+          "COMPACT",
+          "FOCUSED",
+          "FRACTURED"
+        ]
+      },
+      {
+        "name": "relation_breadth",
+        "values": [
+          "RIGHT_BROAD",
+          "MIXED",
+          "LEFT_BROAD"
+        ]
+      },
+      {
+        "name": "order_transition",
+        "values": [
+          "STABLE",
+          "ROTATING",
+          "RESET"
+        ]
+      },
+      {
+        "name": "leader_transition",
+        "values": [
+          "TIE_INVOLVED",
+          "BOTH_STABLE",
+          "HIGH_ROTATED",
+          "LOW_ROTATED",
+          "BOTH_ROTATED"
+        ]
+      }
+    ],
+    "pair_boundary_equality": "BALANCED",
+    "pair_relation": "delta>1/6 left; delta<-1/6 right; else BALANCED",
+    "pair_tokens": [
+      "cadence_utilization",
+      "utilization_fee",
+      "packing_witness",
+      "utxo_fee",
+      "load_fee_dispersion"
+    ],
+    "position": "deterministic guard, not a token",
+    "rank_breadth": "high=count(rank>0.5),low=count(rank<0.5); difference >=2 HIGH_BROAD, <=-2 LOW_BROAD, else MIXED",
+    "relation_breadth": "five semantic pair scores; sum>=2 LEFT_BROAD, <=-2 RIGHT_BROAD, else MIXED",
+    "unknown_downstream_value": "ABSTAIN"
+  },
+  "utility_contract": {
+    "abstain": 0.0,
+    "admission": "ABSTAIN versus max(LONG,SHORT)",
+    "balancing": null,
+    "direction": "LONG versus SHORT only when best trade beats ABSTAIN",
+    "oracle_tie_priority": [
+      "ABSTAIN",
+      "LONG",
+      "SHORT"
+    ],
+    "pre_gpu_label_gate": {
+      "admission_max_target_share": 0.9,
+      "both_preference_sets_nonempty": true,
+      "direction_each_target_share_min": 0.2
+    },
+    "preference_margin": 0.0003,
+    "synthetic_source_symmetry": null,
+    "trade": "log(max(account_multiplier,1e-12))-(1/3)*local_strict_drawdown-0.0005"
+  }
+}
