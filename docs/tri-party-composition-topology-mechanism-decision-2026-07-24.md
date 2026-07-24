@@ -1185,7 +1185,25 @@ only the same lexical completion IDs and excludes BOS, role/turn markers,
 hash the six rendered prompt prefixes, three completion-ID sequences, and six
 option orders crossed with all three completions (eighteen fully rendered
 user/assistant examples) before the economic evaluator or model training may
-open outcomes.
+open outcomes. The synthetic serialization specimen is fixed to:
+
+```text
+maturity_wings=OVERNIGHT_LEADS
+term_belly=NEAR_TERM_LEADS
+term_volume_rate=LONG_TERM_VOLUME_LEADS
+collateral_volume_rate=GOVERNMENT_VOLUME_LEADS
+safe_risky_composition=TREASURY_LEADS
+rate_surface=TERM_RATE_LEADS
+high_leader=OVERNIGHT
+low_leader=OVERNIGHT
+rank_breadth=LOW_BROAD
+extreme_occupancy=COMPACT
+order_transition=STABLE
+leader_transition=TIE_INVOLVED
+```
+
+This specimen tests bytes and tokenization only; it is not a claimed reachable
+market state and never enters training or evaluation.
 
 For each permutation and action completion:
 
