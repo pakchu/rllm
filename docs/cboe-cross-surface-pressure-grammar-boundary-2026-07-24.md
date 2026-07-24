@@ -201,9 +201,10 @@ strictly-prior histories, exact-date intersection, and cross-panel VIX equality.
 Missing dates may not be filled, carried, interpolated, or replaced with zero.
 
 These are frozen current historical vintages, not proof of point-in-time
-revision history. Historical use must delay a completed close until a later
-exact common CBOE date. Live promotion requires forward raw response capture,
-retrieval timestamps, revision alarms, and schema/value parity.
+revision history. Historical use must delay a completed close until the fixed
+next-calendar-day clock below, independent of future row existence. Live
+promotion requires forward raw response capture, retrieval timestamps,
+revision alarms, and schema/value parity.
 
 ## Provisional source state
 
