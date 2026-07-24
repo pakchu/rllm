@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import inspect
 from collections import Counter
@@ -313,7 +314,39 @@ def test_disk_cap_is_below_300_gib() -> None:
     assert used < runner.MAXIMUM_FILESYSTEM_USED_BYTES
 
 
-def test_production_output_and_checkpoint_root_are_absent() -> None:
+def test_committed_production_output_records_frozen_failure() -> None:
     cfg = runner.Config()
-    assert not runner._path(cfg.output).exists()
-    assert not runner._path(cfg.checkpoint_root).exists()
+    output = runner._path(cfg.output)
+    raw = output.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == (
+        "9d872a023097cb321b1e8c5488c9a4209c5fe75bc66b6e6e97a2bfe321daa483"
+    )
+    payload = json.loads(raw)
+    unhashed = dict(payload)
+    recorded_self_hash = unhashed.pop("self_hash")
+    assert recorded_self_hash == (
+        "afd25fbcc5982416d7847156b7cd17e2b657a101f4a63c0cb7e6fcec319dbe6f"
+    )
+    assert runner.canonical_hash(unhashed) == recorded_self_hash
+    assert payload["decision"] == {
+        "2024_or_later_authorized": False,
+        "economic_evaluation_authorized": False,
+        "historical_body_transport_authorized": False,
+        "historical_semantic_execution_authorized": False,
+        "next_step": (
+            "retire ECRL-1 unchanged before historical bodies and outcomes"
+        ),
+        "repair_authorized": False,
+        "status": "retired_synthetic_failure",
+        "synthetic_gate_passed": False,
+    }
+    assert payload["checkpoints"]["selected_step"] == 192
+    assert payload["checkpoints"]["selected_manifest"] is None
+    checks = payload["final"]["gate"]["checks"]
+    assert {key for key, passed in checks.items() if not passed} == {
+        "evidence_validity_100",
+        "parse_rate_100",
+        "swap_invariance_100",
+        "swap_pair_exact_99",
+    }
+    assert set(payload["outcome_boundary"].values()) == {0}
