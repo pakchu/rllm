@@ -949,12 +949,12 @@ def assert_protocol_committed() -> str:
 
 def used_gib(path: Path = REPOSITORY_ROOT) -> int:
     usage = shutil.disk_usage(path)
-    return (usage.total - usage.free) // (1024**3)
+    return usage.used // (1024**3)
 
 
 def assert_disk_guard() -> int:
     usage = shutil.disk_usage(REPOSITORY_ROOT)
-    used_bytes = usage.total - usage.free
+    used_bytes = usage.used
     used = used_bytes // (1024**3)
     if used_bytes + DISK_HEADROOM_BYTES >= DISK_LIMIT_GIB * 1024**3:
         raise LedgerError(
