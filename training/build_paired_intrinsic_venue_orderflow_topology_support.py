@@ -7,6 +7,7 @@ import hashlib
 import io
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 from collections.abc import Iterable, Mapping, Sequence
@@ -174,8 +175,14 @@ def _format_day(value: Any) -> str:
 
 
 def _git_check(*args: str) -> subprocess.CompletedProcess[str]:
+    executable = shutil.which("git")
+    if executable is None:
+        fallback = Path("/usr/bin/git")
+        if not fallback.is_file():
+            raise RuntimeError("PIVOT cannot resolve the git executable")
+        executable = str(fallback)
     return subprocess.run(
-        ["git", *args],
+        [executable, *args],
         cwd=REPOSITORY_ROOT,
         text=True,
         capture_output=True,
