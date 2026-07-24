@@ -392,7 +392,8 @@ All gates must pass:
 - at least `750` opportunities globally through 2023;
 - at least `350` train opportunities;
 - at least `150` train opportunities in each of 2020 and 2021;
-- all 12 calendar months active in each complete train year;
+- at least `7` active calendar months in warm-up year 2020;
+- all `12` calendar months active in 2021;
 - maximum train single-month share at most `15%`; and
 - maximum gap between train entries at most `14` calendar days.
 
@@ -450,6 +451,12 @@ permits later anchors; no count from the later-anchor extension is assumed. The
 `750` global floor leaves more than 10% attrition against the disclosed `864`
 reference-ready precedent for the different token warm-up, reservation, and
 split-containment rules.
+
+The reduced 2020 month floor is structural, not incidence-selected. The source
+begins on `2020-01-01`; the exact prior-28-calendar-day reference and subsequent
+90-base-state ordinal warm-up make the first months incapable of producing a
+token-ready opportunity. Requiring 12 active months in 2020 would therefore be
+impossible before any row is decoded.
 
 ## Frozen economic accounting
 
