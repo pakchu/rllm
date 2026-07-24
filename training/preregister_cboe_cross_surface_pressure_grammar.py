@@ -388,10 +388,19 @@ def opportunity_times(observation_date: date | str) -> dict[str, datetime]:
     )
     if not isinstance(source_day, date):
         raise TypeError("CSPG source date must be a date or ISO date string")
+    policy = Policy()
     next_day = source_day + timedelta(days=1)
     new_york = ZoneInfo("America/New_York")
-    available_local = datetime.combine(next_day, time(9, 30), tzinfo=new_york)
-    entry_local = datetime.combine(next_day, time(9, 35), tzinfo=new_york)
+    available_local = datetime.combine(
+        next_day,
+        time(policy.availability_local_hour, policy.availability_local_minute),
+        tzinfo=new_york,
+    )
+    entry_local = datetime.combine(
+        next_day,
+        time(policy.entry_local_hour, policy.entry_local_minute),
+        tzinfo=new_york,
+    )
     available = available_local.astimezone(timezone.utc)
     entry = entry_local.astimezone(timezone.utc)
     return {
@@ -430,7 +439,7 @@ def reserve_intervals(
 
 
 def comparator_contracts() -> list[dict[str, Any]]:
-    return [
+    contracts = [
         {
             "id": "VTR",
             "path": "results/cboe_volatility_term_rotation_clocks_2026-07-17.csv.gz",
@@ -475,6 +484,24 @@ def comparator_contracts() -> list[dict[str, Any]]:
             "rows": 440,
         },
     ]
+    for item in contracts:
+        item.update(
+            {
+                "entry_column": "entry_time",
+                "exit_column": "exit_time",
+                "side_column": "side",
+                "loader_allowlist": [
+                    item["group_column"],
+                    "entry_time",
+                    "exit_time",
+                    "side",
+                ],
+                "side_encoding": {"LONG": 1, "SHORT": -1},
+                "group_selection": "every nonempty group over common coverage",
+                "missing_common_coverage": "fail",
+            }
+        )
+    return contracts
 
 
 def frozen_dependencies() -> dict[str, str]:
@@ -807,6 +834,7 @@ def _core_manifest() -> dict[str, Any]:
                 "trades_min": 50,
                 "each_side_min": 15,
                 "each_side_contribution_positive": True,
+                "max_action_share": 0.90,
                 "stress_and_one_bar_delay_positive": True,
                 "weekly_cluster_p_below": 0.25,
             },
@@ -818,6 +846,7 @@ def _core_manifest() -> dict[str, Any]:
                 "trades_min": 60,
                 "each_side_min": 20,
                 "each_side_contribution_positive": True,
+                "max_action_share": 0.85,
                 "stress_and_one_bar_delay_positive": True,
                 "weekly_cluster_p_below": 0.15,
                 "beat_shuffled_and_single_token": True,
@@ -830,6 +859,18 @@ def _core_manifest() -> dict[str, Any]:
             "loader": "AutoModelForCausalLM",
             "tokenizer": "AutoTokenizer",
             "trust_remote_code": False,
+            "environment": {
+                "torch": "2.9.0",
+                "transformers_git_revision": (
+                    "5d7ff4393ab99aa7cadf4cccd1f814dbb799f2bb"
+                ),
+                "trl": "0.29.0",
+                "peft": "0.18.1",
+                "bitsandbytes": "0.49.2",
+                "numpy": "2.2.6",
+                "pandas": "2.3.3",
+                "scikit_learn": "1.7.2",
+            },
             "quantization": {
                 "load_in_4bit": True,
                 "quant_type": "nf4",
@@ -841,6 +882,7 @@ def _core_manifest() -> dict[str, Any]:
                 "alpha": 32,
                 "dropout": 0.05,
                 "bias": "none",
+                "task_type": "CAUSAL_LM",
                 "targets": ["q_proj", "k_proj", "v_proj", "o_proj"],
             },
             "tasks": list(TASKS),
@@ -860,28 +902,50 @@ def _core_manifest() -> dict[str, Any]:
             "ties_or_errors": "ABSTAIN",
             "max_tokens": 384,
             "sft": {
-                "steps": 64,
+                "optimizer": "AdamW",
                 "learning_rate": 2.0e-4,
+                "betas": [0.9, 0.999],
+                "epsilon": 1.0e-8,
+                "weight_decay": 0.01,
+                "scheduler": "cosine",
+                "warmup_steps": 8,
+                "max_grad_norm": 1.0,
+                "optimizer_steps": 64,
                 "batch": 1,
                 "gradient_accumulation": 8,
+                "packing": False,
+                "completion_only_loss": True,
                 "fp16": True,
+                "bf16": False,
                 "seed": policy.random_seed,
             },
             "dpo": {
                 "loss": "sigmoid",
                 "beta": 0.1,
-                "steps": 96,
+                "label_smoothing": 0.0,
+                "reference": "final SFT with DPO updates disabled",
+                "optimizer": "AdamW",
+                "betas": [0.9, 0.999],
+                "epsilon": 1.0e-8,
+                "weight_decay": 0.01,
+                "scheduler": "cosine",
+                "warmup_steps": 8,
+                "max_grad_norm": 1.0,
+                "optimizer_steps": 96,
                 "checkpoints": [24, 48, 72, 96],
                 "learning_rate": 5.0e-6,
                 "batch": 1,
                 "gradient_accumulation": 8,
                 "fp16": True,
+                "bf16": False,
                 "seed": policy.random_seed,
             },
             "memory_gib": {
                 "inference_reserved_max": 6.5,
                 "training_reserved_max": 16.0,
                 "training_allocated_max": 14.0,
+                "adapter_checkpoint_directory_max": 0.25,
+                "retained_sft_plus_selected_dpo_max": 1.0,
             },
             "selection_2022": {
                 "return_positive": True,
@@ -906,6 +970,16 @@ def _core_manifest() -> dict[str, Any]:
             "live_exact_jaccard_max": 0.10,
             "live_one_hour_jaccard_max": 0.25,
             "live_abs_signed_exposure_correlation_max": 0.40,
+            "loader_semantics_allowlist": [
+                "policy_or_group_id",
+                "decision_or_admission",
+                "entry",
+                "exit",
+                "action_or_side",
+            ],
+            "hash_drift": "fail",
+            "undefined_correlation": "fail",
+            "missing_required_common_coverage": "fail",
             "forbidden_paths": list(FORBIDDEN_COMPARATOR_PATHS),
             "parse_after": "2022 policy selection and pre-2024 action freeze",
         },

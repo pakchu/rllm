@@ -11,10 +11,10 @@ ARTIFACT = Path(
     "preregistration_2026-07-24.json"
 )
 ARTIFACT_SHA256 = (
-    "fb3cc457b77e731b0f5ce8d6cdc692f1bcadfc7ea65a059ac4fb7d9cd45ffa33"
+    "aa22b964af179dad2daf617496344eb7c335b2f63cfbf4a32f893c065e58d229"
 )
 MANIFEST_HASH = (
-    "7d0b0f44afa49468d01b14f93e68ed08e8b2a531278e4d871b29b7c68148d037"
+    "2145ff3cda4632cbc1bd824bc0ecefcc95cca12e201443c3c8e1401689ef02ef"
 )
 
 
