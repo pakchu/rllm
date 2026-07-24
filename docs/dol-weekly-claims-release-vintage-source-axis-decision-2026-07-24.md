@@ -77,8 +77,10 @@ That probe found:
   ledger;
 - the state-table archive is complete in most years but has only 23 dated
   tables in 2019 and 44 in 2025; and
-- the 2023 state calendar contains one malformed extra link,
-  `/unemploy/page8/2023/0223.html`, alongside the canonical dated tables.
+- the state calendars contain two malformed extra links alongside the
+  canonical dated tables:
+  - `/unemploy/page8/2012/022312.html`, whose encoded date is a Thursday; and
+  - `/unemploy/page8/2023/0223.html`, whose filename is not an `MMDDYY` date.
 
 Those source-format facts are frozen here rather than discovered after market
 access. The production audit may not repair them or reinterpret them using
@@ -189,14 +191,16 @@ The path date must:
 - be a Saturday; and
 - equal the embedded initial-claims week-ending date in the fetched table.
 
-The known noncanonical 2023 calendar link:
+The known noncanonical calendar links:
 
 ```text
+/unemploy/page8/2012/022312.html
 /unemploy/page8/2023/0223.html
 ```
 
-must appear exactly once, must not match the selected-path grammar, and must
-not be fetched. Any other malformed `page8` link rejects the source.
+must each appear exactly once in their stated year, must not match the selected
+Saturday-path contract, and must not be fetched. Any other malformed `page8`
+link rejects the source.
 
 ### Archived state-table schema
 
@@ -448,14 +452,15 @@ be backfilled from a revised current series.
 The exact selected table counts must be:
 
 ```text
-2012  53    2013  52    2014  52    2015  52
+2012  52    2013  52    2014  52    2015  52
 2016  53    2017  52    2018  52    2019  23
 2020  52    2021  52    2022  52    2023  52
 2024  52    2025  44
 ```
 
-The 2023 archive must additionally contain exactly the one frozen malformed
-link, which is counted as inventory metadata but is not a selected table.
+The 2012 and 2023 archives must each additionally contain exactly their one
+frozen malformed link. The links are counted as inventory metadata but are not
+selected tables.
 
 ### Cross-surface identity
 
