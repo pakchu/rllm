@@ -251,19 +251,21 @@ Kimchi, DXY, outcome, or PnL as model input.
 For source date `D`:
 
 1. compute all source state using `D` and strictly prior history;
-2. let `D_next` be the first later date in the exact common CBOE calendar;
-3. treat the state as unavailable before `D_next 09:30`
+2. define `D+1` as the next calendar date, independent of every future source
+   row;
+3. treat the state as unavailable before calendar `D+1 09:30`
    America/New_York;
-4. reserve the decision/entry at `D_next 09:35` America/New_York;
+4. reserve the decision/entry at calendar `D+1 09:35`
+   America/New_York;
 5. enter at the exact UTC-converted five-minute open;
 6. hold exactly 288 five-minute bars; and
 7. require the source state, availability, entry, hold, and exit to stay inside
    one split.
 
-Never use the next row's market behavior, existence after the already-known
-common calendar, or a synthesized weekend/holiday date to create or suppress a
-clock. Opportunities are reserved globally before policy action; abstention
-does not release them.
+Weekend and holiday entries are valid because BTCUSDT trades continuously.
+Never use a future source row's behavior or existence to create, suppress, or
+move a clock. Opportunities are reserved globally before policy action;
+abstention does not release them.
 
 ## Alternatives retained
 
@@ -291,6 +293,10 @@ does not release them.
 7. A control diagnoses failure and may not replace the primary.
 8. No post-observation change to source, formula, token, clock, hold, reward,
    model, threshold, or support floor is permitted under the same identity.
+
+The fixed next-calendar-day correction above was committed before any CSPG
+value, token, clock, or outcome was opened. It is part of the initial boundary,
+not a post-incidence repair.
 
 ## Outcome boundary
 
