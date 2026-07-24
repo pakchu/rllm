@@ -2,7 +2,7 @@
 
 ## Selection
 
-Select one source-seen, outcome-unseen policy axis:
+Select one source-support-seen, outcome-unseen policy axis:
 
 **TPCT-120 — Tri-Party Composition Topology Policy**.
 
@@ -77,6 +77,14 @@ TPCT changes the predictive object:
 - the hold is prospectively fixed at 120 hours rather than reusing the failed
   72-hour or 168-hour event identity.
 
+TPCT is explicitly a **source-support-seen successor**. Repeated OFR
+source-support attempts informed the choice to test a dense grammar rather
+than another sparse intersection. This weakens any claim that TPCT's source
+geometry was selected independently of prior incidence, even though no OFR
+market outcome has been opened. Every later result must retain that
+disclosure, use the frozen within-candidate familywise correction, and require
+an unchanged post-2023 source extension before production promotion.
+
 TPCT may not reuse a prior candidate's threshold, vote, transition, side,
 precursor, terminal, product, support exception, or failed control as a hidden
 gate. Prior OFR source values and incidences must be disclosed in every later
@@ -96,8 +104,7 @@ series. It must reason over compositions such as:
   rotate together or substitute for one another;
 - whether volume leadership agrees with rate-pressure leadership;
 - whether the current topology persists, rotates, or reverses relative to the
-  immediately prior valid state; and
-- whether the current sleeve position permits the otherwise selected action.
+  immediately prior valid state.
 
 No single relation is claimed to be strong. The hypothesis is that the joint,
 causal symbolic grammar changes the conditional utility of long, short, and
@@ -108,6 +115,10 @@ chain of thought, model-generated feature, or model-controlled accounting.
 Source validation, exact-rational composition, strict-prior ranks,
 scheduling, costs, reward, risk metrics, and execution remain deterministic
 code.
+
+Current sleeve position, executability, portfolio conflicts, and prior TPCT
+actions are deterministic accounting/execution guards only. They are not
+policy tokens or model inputs.
 
 A language model is justified only after frozen cheap causal baselines
 demonstrate transferable pre-2023 structure. The RLLM must then add value over
@@ -150,28 +161,48 @@ The normalized source contains 77,369 unique preliminary rows from 2019-01-02
 through 2023-12-29. Those aggregate facts and the published series definitions
 are prior source-audit knowledge, not TPCT incidence.
 
-The later mechanism may use only preliminary `TRIV1` average-rate and
-transaction-volume rows from these non-overlapping semantic buckets:
+The later mechanism may use only these exact sixteen preliminary `TRIV1`
+mnemonics:
 
 ```text
-tenor:
-  OO    Overnight/Open
-  B27   2–7 days
-  B830  8–30 days
-  G30   >30 days
-
-collateral:
-  T     U.S. Treasury securities
-  AG    Federal Agency and GSE securities
-  CORD  Corporate debt
-  O     Other collateral
+REPO-TRIV1_AR_OO-P
+REPO-TRIV1_TV_OO-P
+REPO-TRIV1_AR_B27-P
+REPO-TRIV1_TV_B27-P
+REPO-TRIV1_AR_B830-P
+REPO-TRIV1_TV_B830-P
+REPO-TRIV1_AR_G30-P
+REPO-TRIV1_TV_G30-P
+REPO-TRIV1_AR_T-P
+REPO-TRIV1_TV_T-P
+REPO-TRIV1_AR_AG-P
+REPO-TRIV1_TV_AG-P
+REPO-TRIV1_AR_CORD-P
+REPO-TRIV1_TV_CORD-P
+REPO-TRIV1_AR_O-P
+REPO-TRIV1_TV_O-P
 ```
 
-The exact sixteen-series allowlist is therefore the Cartesian pairing of the
-eight listed buckets with `AR` and `TV` under `REPO-TRIV1_*_*-P`. `TOT` and
-overlapping `LE30` are forbidden as model inputs. DVP, GCF, `TRI`, outstanding
-volume, final vintage, as-of vintage, post-2023 rows, disclosure-edited values,
-and all other source families are forbidden.
+The frozen payload's own API metadata names the tenor buckets
+`Overnight/Open`, `2 - 7 Days`, `8 - 30 Days`, and `>30 Days`, and the
+collateral buckets `U.S. Treasury Securities`, `Federal Agency and GSE
+Securities`, `Corporate Debt`, and `Other Collateral`. That hash-bound,
+payload-specific metadata governs historical reconstruction. The current
+general OFR glossary describes `G30` as `30+ Days`; this version mismatch is
+not silently reconciled. A live or extension payload whose exact series name,
+description, parent relation, unit, subset class, or bucket boundary differs
+from the frozen historical metadata fails closed and requires a new source
+version decision.
+
+For the frozen historical payload only, the mechanism must prove from the
+bound API metadata that the four listed tenor definitions and four listed
+collateral definitions are treated as non-overlapping by the payload. If that
+proof cannot be made without relying on the newer glossary or a guessed
+endpoint convention, TPCT retires before values are decoded.
+
+`TOT` and overlapping `LE30` are forbidden as model inputs. DVP, GCF, `TRI`,
+outstanding volume, final vintage, as-of vintage, post-2023 rows,
+disclosure-edited values, and all other source families are forbidden.
 
 `TRI - TRIV1` residuals are specifically forbidden. Official 2026 OFR material
 states that the tri-party market excludes the New York Fed ON RRP facility, so
@@ -208,16 +239,21 @@ available_at_utc = max(
 )
 ```
 
-The mechanism must freeze exact vector completeness before decoding values.
-Nulls, disclosure edits, missing required rows, nonpositive denominators,
-nonfinite values, duplicate rows, and semantic overlap invalidate the vector.
-No fill, interpolation, zero substitution, final-vintage repair, or neighboring
-bucket substitution is allowed.
+The mechanism must freeze exact vector-completeness and rejection rules before
+decoding values. The source-only parser may then decode only the sixteen
+required values to apply those rules before emitting any primitive, rank,
+token, or opportunity. Nulls, disclosure edits, missing required rows,
+nonpositive denominators, nonfinite values, duplicate rows, and semantic
+overlap invalidate the vector. No fill, interpolation, zero substitution,
+final-vintage repair, or neighboring bucket substitution is allowed.
 
 Rows sharing one availability timestamp form one causal batch. No member may
-enter another member's strict-prior reference. The mechanism must freeze which
-single complete observation date, if any, can become a decision row from an
-equal-availability batch.
+enter another member's strict-prior reference. Every row in the batch computes
+its rank only from complete rows whose availability is strictly earlier than
+the batch. After all batch ranks are fixed, complete rows enter later history
+in ascending observation-date order. Only the greatest complete observation
+date in a batch may become a decision row; earlier batch rows are history only.
+This tie-break is source-value- and token-blind.
 
 The provisional execution clock is:
 
@@ -227,7 +263,9 @@ The provisional execution clock is:
 4. enter only at the following five-minute open;
 5. reserve opportunities globally in chronological order before action;
 6. hold exactly 120 elapsed hours / 1,440 five-minute bars; and
-7. require entry and exit to remain inside one declared split.
+7. require entry and exit to remain inside one declared half-open split
+   `[split_start, split_end)`, with `entry >= split_start` and the exit-open
+   timestamp strictly `< split_end`.
 
 An `ABSTAIN`, policy failure, or unexecutable market row does not release the
 reservation for a later state. Suppressed opportunities are never queued.
@@ -246,14 +284,17 @@ may select one compact grammar from:
 7. corporate/other collateral versus government-collateral relations;
 8. volume-leader versus rate-pressure-leader agreement;
 9. cross-family concentration or dispersion agreement;
-10. current topology versus the immediately prior valid topology;
-11. source age and validity; and
-12. current TPCT sleeve position and executability.
+10. current topology versus the immediately prior valid topology; and
+11. source age and validity.
 
 Every ordinal category must use a strictly prior, fixed-length source
 reference. Raw levels, raw ranks, dates, years, months, prices, returns,
 funding, portfolio PnL, prior model actions, future source rows, and post-entry
 paths are forbidden model inputs.
+
+Current position, executability, prior action, and external portfolio conflict
+remain deterministic execution masks after policy scoring. They may not appear
+in the grammar, prompt, labels, or model state.
 
 The mechanism must use exact rational arithmetic for source decimals, sums,
 shares, weighted rates, ties, and comparisons. It must prove that the tenor
@@ -273,24 +314,26 @@ sealed from                        2024-01-01T00:00:00Z
 ```
 
 The exact split assignment is by reserved entry time, not observation date.
-The full hold must be contained inside its split. Source support may report
-2023 incidence, token marginals, and unseen vocabulary only as a
-non-authorizing operational diagnostic. No 2023 market, funding, return, PnL,
-label, reward, prompt, model, threshold, checkpoint, or control selection is
-allowed before one final policy is frozen.
+The full hold must satisfy the half-open containment rule above. Source support
+must not decode or report 2023 TPCT values, incidence, token marginals,
+signatures, or unseen vocabulary. No 2023 source value, market, funding,
+return, PnL, label, reward, prompt, model, threshold, checkpoint, or control
+selection is allowed before one final policy is frozen.
 
 To avoid treating deliberate split containment as source failure, the
 mechanism must prospectively separate:
 
-- **interior opportunity gaps**, measured only between consecutive accepted
-  reservations whose entries are in the same split after removing the exact
-  start/end containment buffers; and
+- **interior opportunity gaps**, measured only between consecutive emitted
+  split-contained reservations whose entries are in the same half-open split;
+  and
 - **declared split-boundary blackout**, measured and reported separately but
   never used to relax an interior support rule.
 
-The exact buffers and maximum interior gap must be frozen before TPCT
-incidence. Calendar holidays and source invalidity remain part of the interior
-gap; only deterministic split containment is separated.
+The maximum interior gap, maximum start delay from each split boundary, maximum
+end lead to each split boundary, and maximum cross-boundary blackout must all
+be frozen before TPCT incidence. Calendar holidays and source invalidity
+remain in these measurements. The cross-boundary pair is excluded only from
+the interior statistic and remains subject to its own preregistered cap.
 
 ## Mandatory mechanism and source-support proof
 
@@ -313,10 +356,12 @@ freeze:
 12. fail-flat live behavior for missing, revised, duplicated, stale, or
     schema-drifted source vectors.
 
-Source support must be decided only from pre-2023 support. Every 2023
-source-only statistic is report-only, cannot authorize continuation or
-retirement, and cannot change the grammar. A 2023 token value unseen before
-2023 must force `ABSTAIN` under the already frozen policy.
+Source support must be decided only from pre-2023 support. The source-support
+builder may hash the complete frozen source artifact and verify already
+published aggregate manifest counts, but it must parse TPCT values only
+through `2022-12-31`. Every 2023 TPCT source value and statistic remains sealed
+until final-policy hash freeze. A 2023 token value unseen before 2023 must
+force `ABSTAIN` under the already frozen policy.
 
 ## Mandatory economic sequence
 
@@ -334,6 +379,15 @@ If and only if source support and clock novelty pass:
    trade count, side counts, exposure, turnover, costs, funding, subperiods,
    clustered uncertainty, and all controls; and
 9. retire unchanged at the first failed stage.
+
+Because prior source-support attempts influenced TPCT's dense geometry, a 2023
+pass is candidate evaluation rather than sufficient production confirmation.
+Production promotion additionally requires an official preliminary-vintage
+2024 extension fetched only after the unchanged 2023 pass. The extension must
+reproduce every pre-2024 source row, state, reservation, token, and action
+byte-for-byte and pass the unchanged economic, risk, delay, cost, direction,
+and significance gates. A failed 2024 extension retires TPCT; it cannot be
+retrained or repaired.
 
 No control may replace the primary after inspection. No threshold, side,
 token, source field, prior length, hold, split, reward, model, prompt,
@@ -384,6 +438,10 @@ This selection unit inspected only:
 - the outcome-blind BCRT source-support retirement;
 - official OFR documentation and current methodology/version notes; and
 - already disclosed aggregate source counts.
+
+The candidate is not source-incidence-pristine: prior OFR source-support
+reports influenced the dense-policy research direction. It remains
+market-outcome-unseen.
 
 It did not decode or compute:
 
