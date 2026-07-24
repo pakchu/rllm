@@ -578,6 +578,22 @@ def test_protocol_guard_requires_committed_clean_source_and_test(
         b._assert_protocol_committed()
 
 
+def test_git_check_uses_an_absolute_resolved_executable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: list[list[str]] = []
+
+    def fake_run(command: list[str], **kwargs: object) -> object:
+        observed.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(b.shutil, "which", lambda name: "/resolved/git")
+    monkeypatch.setattr(b.subprocess, "run", fake_run)
+    result = b._git_check("status", "--short")
+    assert result.returncode == 0
+    assert observed == [["/resolved/git", "status", "--short"]]
+
+
 def test_write_once_is_reproducible_and_rejects_drift(tmp_path) -> None:
     path = tmp_path / "artifact.bin"
     assert b._write_once(path, b"one") == "created"
