@@ -171,6 +171,26 @@ def test_json_round_trip_manifest_validates() -> None:
     p.validate_manifest(persisted_shape)
 
 
+def test_persisted_preregistration_validates_against_committed_producer() -> None:
+    artifact = p.REPOSITORY_ROOT / p.DEFAULT_OUTPUT
+    payload = json.loads(artifact.read_text(encoding="utf-8"))
+    p.validate_manifest(payload)
+    assert p.sha256_file(p.DEFAULT_OUTPUT) == (
+        "4ac8bf8f2d54120130c49a90f3d40a5cfaf141673525cb54df4b5333c01290e6"
+    )
+    assert payload["producer"] == {
+        "head_at_generation": "32f97c8d74e2598c9858da32b7eb203b690da0b4",
+        "script": p.PRODUCER_SCRIPT,
+        "script_clean_at_generation": True,
+        "script_commit": "32f97c8d74e2598c9858da32b7eb203b690da0b4",
+        "script_sha256": (
+            "1fb3b7f39fe418e9c160a3035cbb63a8f65cb72119a49d36c93fc5528c37e10c"
+        ),
+        "script_tracked": True,
+        "uncommitted_producer": False,
+    }
+
+
 def test_write_once_is_reproducible_and_rejects_drift(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
