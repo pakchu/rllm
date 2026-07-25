@@ -1,0 +1,524 @@
+{
+  "boundary": {
+    "commit": "66218040c8c9aaaaa25fa398a07b823d6b3447ff",
+    "document": "docs/tracer4-tri-surface-relational-executor-boundary-2026-07-25.md",
+    "document_sha256": "45c15c2ef2664c35857186363894727010538f878cdda1088eb923b5a653f7d5"
+  },
+  "clock": {
+    "decision_time": "B+5m",
+    "execution_time": "B+10m",
+    "five_minute_cutoff": "B",
+    "premium_availability": "date+61s",
+    "premium_cutoff": "B+61s",
+    "premium_date_at_or_after_boundary_forbidden": true,
+    "source_window": "[B-4h,B)"
+  },
+  "controls": {
+    "ids": [
+      "premium_stale_1440m",
+      "cash_perpetual_swap",
+      "aggtrade_monthly_rotate_37_rows"
+    ],
+    "may_replace_primary": false,
+    "score_bearing_later": true
+  },
+  "forbidden_support_fields": [
+    "execution_open",
+    "execution_high",
+    "execution_low",
+    "execution_close",
+    "funding_rate",
+    "future_return",
+    "label",
+    "action",
+    "target",
+    "reward",
+    "pnl",
+    "cagr",
+    "mdd",
+    "strict_mdd",
+    "portfolio_weight",
+    "prior_model_prediction"
+  ],
+  "manifest_hash": "67f06047661336ebad4da19f0dd65578520a28f1d1b4b468c6300b4aa4d54318",
+  "outcome_boundary": {
+    "cagr_values_computed": 0,
+    "execution_market_rows_opened": 0,
+    "funding_rows_opened": 0,
+    "future_return_rows_opened": 0,
+    "mdd_values_computed": 0,
+    "model_rows_built": 0,
+    "pnl_values_computed": 0,
+    "post_2023_numeric_source_rows_opened": 0,
+    "reward_rows_built": 0
+  },
+  "physical_cuts": {
+    "all_support_reads_cut_only": true,
+    "gzip_mtime": 0,
+    "line_ending": "LF",
+    "manifest": "results/tracer4_source_cut_manifest_pre2024_2026-07-25.json",
+    "paths": {
+      "aggtrade": "data/tracer4_source_cuts/pre2024/aggtrade.csv.gz",
+      "leadership": "data/tracer4_source_cuts/pre2024/leadership.csv.gz",
+      "premium": "data/tracer4_source_cuts/pre2024/premium.csv.gz"
+    },
+    "token_output": "data/tracer4_source_cuts/pre2024/token_support.csv.gz",
+    "utf8": true,
+    "write_once": true
+  },
+  "policy": {
+    "base_cost_per_changed_notional": 0.0006,
+    "boundary_hours_utc": [
+      0,
+      4,
+      8,
+      12,
+      16,
+      20
+    ],
+    "category_share_max": 0.9,
+    "category_support_min": 0.05,
+    "control_aggtrade_rotate_rows": 37,
+    "control_premium_shift_minutes": 1440,
+    "core_valid_min": 0.95,
+    "decision_delay_minutes": 5,
+    "distinct_signatures_min": 300,
+    "execution_delay_minutes": 10,
+    "five_minute_rows": 48,
+    "jsd_max": 0.25,
+    "leverage": 0.5,
+    "policy_id": "TRACER-4H",
+    "premium_cutoff_seconds": 61,
+    "premium_rows": 240,
+    "random_seed": 20260725,
+    "rank_history_max": 540,
+    "rank_history_min": 360,
+    "rank_quantiles": [
+      0.33,
+      0.67
+    ],
+    "sequence_lines": 3,
+    "signature_share_max": 0.05,
+    "source_invalid_max": 0.05,
+    "source_join_min": 0.99,
+    "source_window_minutes": 240,
+    "stress_cost_per_changed_notional": 0.001
+  },
+  "protocol_version": "tracer4_tri_surface_relational_executor_preregistration_v1",
+  "research_history_boundary": {
+    "claim_scope": "contaminated-history candidate-specific composition and annual transfer",
+    "component_family_outcomes_seen": true,
+    "global_pristine_holdout_claimed": false,
+    "single_clock_timestamp_checked_after_boundary": true,
+    "tracer_model_outcomes_seen": false,
+    "tracer_rewards_seen": false,
+    "tracer_source_values_seen_before_boundary": false,
+    "tracer_token_incidence_seen": false
+  },
+  "sources": {
+    "aggtrade": {
+      "cut_allowlist": [
+        "date",
+        "first_transact_time_ms",
+        "last_transact_time_ms",
+        "agg_trade_count",
+        "quote_notional",
+        "signed_quote_notional",
+        "micro_log_return",
+        "event_notional_hhi",
+        "normalized_effective_event_count",
+        "sign_flip_rate",
+        "max_same_sign_run_share",
+        "interarrival_mean_ms",
+        "interarrival_burstiness"
+      ],
+      "cut_output": "data/tracer4_source_cuts/pre2024/aggtrade.csv.gz",
+      "load_all_then_drop_forbidden": true,
+      "manifest": "data/binance_um_aggtrade_microstructure_btc_2020_2023/build_manifest.json",
+      "manifest_sha256": "6eec40460a6146c58994e52f1af9ace4eecc0c085887d97af5ef17c30b9f7e73",
+      "path": "data/binance_um_aggtrade_microstructure_btc_2020_2023/BTCUSDT_aggtrade_5m_2020-01-01_2023-12-31.csv.gz",
+      "physical_header": [
+        "date",
+        "first_transact_time_ms",
+        "last_transact_time_ms",
+        "agg_trade_count",
+        "underlying_trade_count",
+        "base_volume",
+        "quote_notional",
+        "buy_quote_notional",
+        "sell_quote_notional",
+        "signed_quote_notional",
+        "flow_coherence",
+        "first_price",
+        "last_price",
+        "micro_log_return",
+        "signed_price_response",
+        "event_notional_mean",
+        "event_notional_std",
+        "event_notional_p50",
+        "event_notional_p90",
+        "event_notional_p99",
+        "event_notional_max",
+        "event_notional_hhi",
+        "normalized_effective_event_count",
+        "underlying_trades_per_agg_event",
+        "signed_event_imbalance",
+        "sign_flip_rate",
+        "mean_same_sign_run_length",
+        "max_same_sign_run_share",
+        "interarrival_mean_ms",
+        "interarrival_std_ms",
+        "interarrival_burstiness",
+        "buy_sell_event_size_log_ratio"
+      ],
+      "physical_header_sha256": "fbdbd489b8d0b01262a8f8c73f19ea0ecf4dfb0de86040c1f2933e0374ea2507",
+      "physical_projection_required": true,
+      "post_2023_numeric_conversion_forbidden": true,
+      "sha256": "c2bb0e6742f8cdc4e13315e7f0a13d6ab9cd536fb40d9cb4484b7a6ba30131cf",
+      "source_end_exclusive": "2024-01-01T00:00:00Z",
+      "source_start": "2020-01-01T00:00:00Z"
+    },
+    "leadership": {
+      "cut_allowlist": [
+        "date",
+        "feature_available_time_utc",
+        "spot_quote_notional",
+        "um_quote_notional",
+        "spot_signed_quote_notional",
+        "um_signed_quote_notional",
+        "spot_to_um_lagged_flow_response_bp",
+        "um_to_spot_lagged_flow_response_bp",
+        "open_basis_bp",
+        "close_basis_bp",
+        "source_complete",
+        "cross_venue_feature_valid"
+      ],
+      "cut_output": "data/tracer4_source_cuts/pre2024/leadership.csv.gz",
+      "load_all_then_drop_forbidden": true,
+      "manifest": "data/binance_cross_venue_minute_leadership_btc_2020_2023/build_manifest.json",
+      "manifest_sha256": "544c2945a2b56be478a1edc4abbb93b762bda5afc32cbd0658dd6822ff6b70fa",
+      "path": "data/binance_cross_venue_minute_leadership_btc_2020_2023/BTCUSDT_cross_venue_minute_leadership_5m_2020-01_2023-12.csv.gz",
+      "physical_header": [
+        "date",
+        "feature_available_time_utc",
+        "trade_earliest_time_utc",
+        "spot_rows",
+        "um_rows",
+        "spot_missing_minutes",
+        "um_missing_minutes",
+        "spot_invalid_source_minutes",
+        "um_invalid_source_minutes",
+        "lagged_pair_count",
+        "reverse_lagged_pair_count",
+        "simultaneous_flow_pair_count",
+        "simultaneous_return_pair_count",
+        "spot_quote_notional",
+        "um_quote_notional",
+        "spot_trade_count",
+        "um_trade_count",
+        "spot_signed_quote_notional",
+        "um_signed_quote_notional",
+        "spot_flow_fraction",
+        "um_flow_fraction",
+        "spot_flow_coherence",
+        "um_flow_coherence",
+        "spot_log_return_5m",
+        "um_log_return_5m",
+        "spot_abs_path_return_bp",
+        "um_abs_path_return_bp",
+        "spot_activity_time_centroid",
+        "um_activity_time_centroid",
+        "um_minus_spot_activity_time_centroid",
+        "spot_flow_time_centroid",
+        "um_flow_time_centroid",
+        "um_minus_spot_flow_time_centroid",
+        "spot_return_time_centroid",
+        "um_return_time_centroid",
+        "um_minus_spot_return_time_centroid",
+        "spot_to_um_lagged_flow_response_bp",
+        "um_to_spot_lagged_flow_response_bp",
+        "lagged_flow_response_diff_bp",
+        "spot_to_um_lagged_directional_alignment",
+        "um_to_spot_lagged_directional_alignment",
+        "lagged_directional_alignment_diff",
+        "flow_transfer_asymmetry",
+        "return_leadership_asymmetry",
+        "reverse_spot_to_um_lagged_flow_response_bp",
+        "reverse_um_to_spot_lagged_flow_response_bp",
+        "reverse_lagged_flow_response_diff_bp",
+        "reverse_spot_to_um_lagged_directional_alignment",
+        "reverse_um_to_spot_lagged_directional_alignment",
+        "reverse_lagged_directional_alignment_diff",
+        "reverse_flow_transfer_asymmetry",
+        "reverse_return_leadership_asymmetry",
+        "simultaneous_flow_sign_agreement",
+        "simultaneous_return_sign_agreement",
+        "open_basis_bp",
+        "close_basis_bp",
+        "basis_change_bp",
+        "log_spot_um_quote_ratio",
+        "source_complete",
+        "cross_venue_feature_valid",
+        "feature_invalid_reason"
+      ],
+      "physical_header_sha256": "b7c730d6fc2c37d6e94f6a436478fd09ff42d15d7fd81bf521c4ca36465ff49f",
+      "physical_projection_required": true,
+      "post_2023_numeric_conversion_forbidden": true,
+      "sha256": "00ab6a55fc7bfeb3012584db5bc97a7d7b98dd995491acfd3f865c6bd41f92cc",
+      "source_end_exclusive": "2024-01-01T00:00:00Z",
+      "source_start": "2020-01-01T00:00:00Z"
+    },
+    "premium": {
+      "cut_allowlist": [
+        "date",
+        "source_close_time",
+        "feature_available_time",
+        "source_valid",
+        "premium_open",
+        "premium_high",
+        "premium_low",
+        "premium_close"
+      ],
+      "cut_output": "data/tracer4_source_cuts/pre2024/premium.csv.gz",
+      "load_all_then_drop_forbidden": true,
+      "path": "data/binance_um_premium_path_btc_2020_2026/BTCUSDT_premium_path_1m_2020-01-01_2026-06-30.csv.gz",
+      "physical_header": [
+        "date",
+        "source_close_time",
+        "feature_available_time",
+        "source_valid",
+        "premium_open",
+        "premium_high",
+        "premium_low",
+        "premium_close"
+      ],
+      "physical_header_sha256": "8efbf5700dc24aadf216da08b3c74712ceaec0b1a52e21ef01a877b5fbe26274",
+      "physical_projection_required": true,
+      "post_2023_numeric_conversion_forbidden": true,
+      "sha256": "7fbaae1f85482b9fc9e148af357c7315e4e7fc4b4e3ae36c31f27545109f8aa9",
+      "source_end_exclusive": "2024-01-01T00:00:00Z",
+      "source_start": "2020-01-01T00:00:00Z"
+    }
+  },
+  "stage_0_5_requirements": {
+    "algorithm_family_and_grid": true,
+    "clean_committed_runner": true,
+    "cost_funding_mdd_delay": true,
+    "familywise_inference": true,
+    "freeze_before_reward": true,
+    "killer_baselines": true,
+    "prior_clock_novelty": true,
+    "reward_and_bellman_target": true,
+    "seeds_and_tie_breaks": true,
+    "write_once_schedules": true
+  },
+  "stage_authority": {
+    "authorized": [
+      "source_cut",
+      "primitive",
+      "rank",
+      "token_support"
+    ],
+    "forbidden": [
+      "execution_market",
+      "funding",
+      "future_return",
+      "reward",
+      "model_training",
+      "policy_selection",
+      "economic_evaluation"
+    ],
+    "support_pass_required_for_stage_0_5": true
+  },
+  "support_gates": {
+    "adjacent_year_jsd_max": 0.25,
+    "all_gates_conjunctive": true,
+    "append_replay_required": true,
+    "category_share_max": 0.9,
+    "category_support_min": 0.05,
+    "core_valid_min_each_year": 0.95,
+    "denominator": "sequence-ready core-valid states in named UTC year",
+    "distinct_signatures_min": 300,
+    "flow_buy_and_sell_min": 0.15,
+    "impact_follow_and_absorb_min": 0.1,
+    "quarter_ready_min_after_warmup": 450,
+    "safety_and_position_excluded": true,
+    "sequence_ready_min": {
+      "2020": 1500,
+      "2021": 2000,
+      "2022": 2000,
+      "2023": 2000
+    },
+    "signature_share_max": 0.05,
+    "source_invalid_max_each_year": 0.05,
+    "source_join_min_each_year": 0.99,
+    "sponsor_cash_and_leverage_min": 0.1
+  },
+  "support_output": "results/tracer4_tri_surface_relational_executor_support_2026-07-25.json",
+  "temporal_roles": {
+    "annual_refit": "rolling one-year prior-only",
+    "confirmation": [
+      "2023-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "eval": [
+      "2022-01-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ],
+    "failed_year_may_be_repaired": false,
+    "fit": [
+      "2020-01-01T00:00:00Z",
+      "2021-01-01T00:00:00Z"
+    ],
+    "later_outcomes_conditionally_opened": true,
+    "selected_algorithm_changes_after_2021": false,
+    "test": [
+      "2021-01-01T00:00:00Z",
+      "2022-01-01T00:00:00Z"
+    ]
+  },
+  "tokens": {
+    "band_tokens": [
+      "LOW",
+      "MID",
+      "HIGH"
+    ],
+    "columns": [
+      "sponsor",
+      "flow_consensus",
+      "impact_relation",
+      "participation",
+      "flow_persistence",
+      "auction_tempo",
+      "premium_price_relation",
+      "basis_premium_relation",
+      "sponsor_transition",
+      "impact_transition",
+      "crowding_transition"
+    ],
+    "position_tokens": [
+      "SHORT",
+      "FLAT",
+      "LONG"
+    ],
+    "raw_numeric_model_input_forbidden": true,
+    "safety_tokens": [
+      "SOURCE_INVALID",
+      "FLOW_NEUTRAL",
+      "RESPONSE_NEUTRAL",
+      "MIXED",
+      "MIXED",
+      "STEADY",
+      "PREMIUM_NEUTRAL",
+      "BOTH_NEUTRAL",
+      "SPONSOR_MIXED",
+      "IMPACT_MIXED",
+      "CROWDING_STABLE"
+    ],
+    "schema": [
+      {
+        "name": "sponsor",
+        "vocabulary": [
+          "CASH_LEADS",
+          "LEVERAGE_LEADS",
+          "BALANCED"
+        ]
+      },
+      {
+        "name": "flow_consensus",
+        "vocabulary": [
+          "CONSENSUS_BUY",
+          "CONSENSUS_SELL",
+          "CASH_BUY_LEVERAGE_SELL",
+          "CASH_SELL_LEVERAGE_BUY",
+          "FLOW_NEUTRAL"
+        ]
+      },
+      {
+        "name": "impact_relation",
+        "vocabulary": [
+          "BUY_FOLLOWTHROUGH",
+          "BUY_ABSORBED",
+          "SELL_FOLLOWTHROUGH",
+          "SELL_ABSORBED",
+          "RESPONSE_NEUTRAL"
+        ]
+      },
+      {
+        "name": "participation",
+        "vocabulary": [
+          "BROAD",
+          "MIXED",
+          "CONCENTRATED"
+        ]
+      },
+      {
+        "name": "flow_persistence",
+        "vocabulary": [
+          "PERSISTENT",
+          "ROTATING",
+          "MIXED"
+        ]
+      },
+      {
+        "name": "auction_tempo",
+        "vocabulary": [
+          "BURST",
+          "STEADY",
+          "SLOW"
+        ]
+      },
+      {
+        "name": "premium_price_relation",
+        "vocabulary": [
+          "CROWDING_CONFIRMS_UP",
+          "CROWDING_CONFIRMS_DOWN",
+          "PREMIUM_DIVERGES_FROM_UP",
+          "PREMIUM_DIVERGES_FROM_DOWN",
+          "PREMIUM_NEUTRAL"
+        ]
+      },
+      {
+        "name": "basis_premium_relation",
+        "vocabulary": [
+          "BOTH_EXPAND",
+          "BOTH_COMPRESS",
+          "BASIS_ONLY",
+          "PREMIUM_ONLY",
+          "CROSS_DISAGREE",
+          "BOTH_NEUTRAL"
+        ]
+      },
+      {
+        "name": "sponsor_transition",
+        "vocabulary": [
+          "STABLE_CASH",
+          "STABLE_LEVERAGE",
+          "ROTATED_TO_CASH",
+          "ROTATED_TO_LEVERAGE",
+          "SPONSOR_MIXED"
+        ]
+      },
+      {
+        "name": "impact_transition",
+        "vocabulary": [
+          "FOLLOWTHROUGH_PERSISTS",
+          "ABSORPTION_PERSISTS",
+          "FOLLOWTHROUGH_TO_ABSORPTION",
+          "ABSORPTION_TO_FOLLOWTHROUGH",
+          "IMPACT_MIXED"
+        ]
+      },
+      {
+        "name": "crowding_transition",
+        "vocabulary": [
+          "CROWDING_BUILDS",
+          "CROWDING_RELEASES",
+          "CROWDING_FLIPS",
+          "CROWDING_STABLE"
+        ]
+      }
+    ],
+    "sequence_lines": 3
+  }
+}
