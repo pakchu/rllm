@@ -472,9 +472,13 @@ resets, and sequence length:
    and take modulo the size of the field's ASCII-lexicographically sorted
    legal vocabulary. A three-label weak-order vocabulary contains every
    serialization produced by contiguous rank vectors over `{0,1,2}` with
-   ties joined by `=` and descending groups joined by `>`; Treasury applies
-   this independently to every retained term. A step vocabulary is exactly
-   `DOWN,EQUAL,UP`; and
+   rank zero highest, ties joined by `=`, descending groups joined by `>`, and
+   labels inside one tie in fixed `P,D,I` or `DVP,GCF,TRIV1` order. The
+   `<field>` key is the Treasury term, one of
+   `submitted_step,accepted_step,coverage_step`, or one of
+   `rate_order,volume_order`; `execution_time` is canonical whole-second UTC.
+   Treasury applies this independently to every retained term. A step
+   vocabulary is exactly `DOWN,EQUAL,UP`; and
 7. `future_append`: after building the primary source-token batches, append
    one synthetic valid token batch per source at
    `2024-01-02T00:00:00Z`, `2024-01-02T00:05:00Z`, and
