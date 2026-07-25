@@ -77,9 +77,11 @@ path
 SHA256
   00ab6a55fc7bfeb3012584db5bc97a7d7b98dd995491acfd3f865c6bd41f92cc
 header SHA256
-  ed7949cad9ee5396f110678ff85fad19a12466f99195a6e585acef6e2c46f242
+  b7c730d6fc2c37d6e94f6a436478fd09ff42d15d7fd81bf521c4ca36465ff49f
 manifest
   data/binance_cross_venue_minute_leadership_btc_2020_2023/build_manifest.json
+manifest SHA256
+  544c2945a2b56be478a1edc4abbb93b762bda5afc32cbd0658dd6822ff6b70fa
 ```
 
 Exact allowlist and order:
@@ -91,29 +93,13 @@ spot_quote_notional
 um_quote_notional
 spot_signed_quote_notional
 um_signed_quote_notional
-spot_flow_coherence
-um_flow_coherence
-spot_log_return_5m
-um_log_return_5m
-spot_activity_time_centroid
-um_activity_time_centroid
-spot_flow_time_centroid
-um_flow_time_centroid
 spot_to_um_lagged_flow_response_bp
 um_to_spot_lagged_flow_response_bp
-flow_transfer_asymmetry
-return_leadership_asymmetry
-simultaneous_flow_sign_agreement
-simultaneous_return_sign_agreement
 open_basis_bp
 close_basis_bp
-basis_change_bp
 source_complete
 cross_venue_feature_valid
 ```
-
-The same-bar returns are causal source features after
-`feature_available_time_utc`; they are not post-decision outcomes.
 
 ### Surface B — USD-M aggregate-trade topology
 
@@ -124,9 +110,11 @@ path
 SHA256
   c2bb0e6742f8cdc4e13315e7f0a13d6ab9cd536fb40d9cb4484b7a6ba30131cf
 header SHA256
-  224a65d10568adc024f66022bf47344ac783691a18e09b6ef773eb0946bfbb5f
+  fbdbd489b8d0b01262a8f8c73f19ea0ecf4dfb0de86040c1f2933e0374ea2507
 manifest
   data/binance_um_aggtrade_microstructure_btc_2020_2023/build_manifest.json
+manifest SHA256
+  6eec40460a6146c58994e52f1af9ace4eecc0c085887d97af5ef17c30b9f7e73
 ```
 
 Exact allowlist and order:
@@ -136,26 +124,19 @@ date
 first_transact_time_ms
 last_transact_time_ms
 agg_trade_count
-underlying_trade_count
 quote_notional
-buy_quote_notional
-sell_quote_notional
 signed_quote_notional
-flow_coherence
 micro_log_return
-signed_price_response
 event_notional_hhi
 normalized_effective_event_count
-underlying_trades_per_agg_event
-signed_event_imbalance
 sign_flip_rate
-mean_same_sign_run_length
 max_same_sign_run_share
 interarrival_mean_ms
-interarrival_std_ms
 interarrival_burstiness
-buy_sell_event_size_log_ratio
 ```
+
+`micro_log_return` is a completed same-window causal source feature; it is not
+a post-decision outcome.
 
 ### Surface C — USD-M premium path
 
@@ -166,7 +147,7 @@ path
 SHA256
   7fbaae1f85482b9fc9e148af357c7315e4e7fc4b4e3ae36c31f27545109f8aa9
 header SHA256
-  dae25782c3e4478e1d60323957af7ffb2cb09fa8d72297e5d9a48e7216614076
+  8efbf5700dc24aadf216da08b3c74712ceaec0b1a52e21ef01a877b5fbe26274
 ```
 
 Exact allowlist and order:
@@ -221,7 +202,9 @@ For boundary `B`:
 ```text
 source window          [B-4h, B)
 latest five-minute bar B-5m, complete at B
-state cutoff           B
+five-minute cutoff     B
+premium cutoff         B+61s
+unified state complete B+61s
 policy decision        B+5m
 execution              B+10m at the USD-M five-minute open
 next execution         B+4h+10m
@@ -229,8 +212,11 @@ next execution         B+4h+10m
 
 Only Surface-A rows with `feature_available_time_utc <= B`, Surface-B rows
 whose `last_transact_time_ms < B`, and Surface-C rows with
-`feature_available_time <= B` may contribute. Every contributing timestamp
-must lie in `[B-4h,B)` by its source observation clock.
+`feature_available_time <= B+61s` may contribute. Every contributing `date`
+must lie in `[B-4h,B)`. The premium source contract fixes availability to
+`date+61s`; therefore the final row at `date=B-1m` is available at `B+1s`.
+The additional sixty-second margin is conservative and cannot admit a row
+whose `date >= B`.
 
 The policy is queried at every source-ready boundary. A boundary with an
 invalid core surface or insufficient trailing rank history executes the
@@ -260,6 +246,16 @@ numeric cells must be finite, every notional/count/range field that is
 mathematically nonnegative must be nonnegative, and all three surfaces must
 span the exact half-open source window without duplicate timestamps. Otherwise
 the boundary is source-invalid.
+
+Surface A additionally requires each absolute signed notional not to exceed its
+paired quote notional. Surface B requires absolute signed notional not to exceed
+quote notional, positive aggregate-trade count, `event_notional_hhi` in
+`[0,1]`, positive effective participation, `sign_flip_rate` and
+`max_same_sign_run_share` in `[0,1]`, nonnegative interarrival mean, and finite
+burstiness. Surface C requires
+`premium_high >= max(premium_open,premium_close)`,
+`premium_low <= min(premium_open,premium_close)`, and finite OHLC; premium may
+be negative and is not subject to a positivity rule.
 
 For a core-valid boundary define:
 
@@ -335,13 +331,11 @@ The exact primitive families are:
 1. cash-to-perpetual lagged response difference;
 2. cash/perpetual signed-flow pair;
 3. USD-M signed flow and same-window price response;
-4. response per absolute signed notional;
-5. aggregate-event concentration and effective participation;
-6. event sign persistence and arrival burstiness;
-7. Spot/USD-M activity and flow centroid difference;
-8. Spot/USD-M basis change;
-9. premium close change and premium intrawindow range; and
-10. transition of each relation from the immediately prior canonical boundary.
+4. aggregate-event concentration and effective participation;
+5. event sign persistence and arrival burstiness;
+6. Spot/USD-M basis change;
+7. premium close change and premium intrawindow range; and
+8. transition of each relation from the immediately prior canonical boundary.
 
 A source-invalid boundary never contributes to a future rolling reference.
 Append replay must reproduce every already formed primitive, rank, token, and
@@ -503,6 +497,19 @@ signature, and Jensen-Shannon support statistics exclude source-invalid and
 rank-warm-up safety lines; their availability is governed separately by the
 core-valid and sequence-ready gates.
 
+If the current boundary is source-invalid, all eleven fields use the safety
+line above. If the current boundary is core-valid but the immediately prior
+canonical boundary is source-invalid or rank-unready, the eight current-state
+fields are computed normally while:
+
+```text
+sponsor_transition  = SPONSOR_MIXED
+impact_transition   = IMPACT_MIXED
+crowding_transition = CROWDING_STABLE
+```
+
+No transition skips backward to a prior valid state.
+
 No raw value, rank percentile, timestamp, date, price, return magnitude,
 funding value, reward, previous reward, action probability, equity, drawdown,
 or portfolio statistic may enter the prompt.
@@ -520,8 +527,9 @@ Source support is outcome-blind and conjunctive. All must pass:
 4. Sequence-ready boundaries are at least 1,500 in 2020 and 2,000 in each of
    2021, 2022, and 2023; every quarter after warm-up has at least 450.
 5. Forced-`FLAT` source-invalid share is at most 5.0% in every year.
-6. Every field has at least two categories with at least 5.0% annual share in
-   every year; no one category exceeds 90.0%.
+6. Every one of the eleven source-relation fields has at least two categories
+   with at least 5.0% annual share in every year; no one category exceeds
+   90.0%.
 7. `flow_consensus` has at least 15.0% aggregate buy support and 15.0% aggregate
    sell support in every year.
 8. `impact_relation` has at least 10.0% follow-through and 10.0% absorption
@@ -541,14 +549,35 @@ Source support is outcome-blind and conjunctive. All must pass:
     states byte-identical.
 14. No forbidden source or outcome counter is nonzero.
 
+A gate-6 through gate-11 denominator contains exactly the sequence-ready,
+core-valid states in the named UTC calendar year. Safety lines and
+`current_position` are excluded. Signature rows contain exactly the eleven
+source-relation fields. For Jensen-Shannon divergence, absent vocabulary values
+receive probability zero, `M=(P+Q)/2`, logarithms are base two, and every
+`0*log2(0/M)` term is defined as zero.
+
 A support failure retires TRACER-4H unchanged. Gates may not be relaxed and
 controls may not replace the primary.
 
 ## Contingent economic chronology
 
 Only a complete source-support pass may authorize a separately committed
-reward/evaluator freeze. The intended chronology, which that later freeze may
-narrow but not weaken, is:
+Stage 0.5 reward/evaluator freeze. Before any future return or reward is built,
+Stage 0.5 must bind:
+
+- every policy family, algorithm, feature mask, hyperparameter, seed, fit
+  window, checkpoint, tie-break, invalid-output action, and schedule schema;
+- exact one-step reward, Bellman target, discount, terminal rule, transaction
+  cost, realized-funding convention, strict-MDD path order, and delay stress;
+- exact 2021 selection statistic, algorithm-selection order, familywise test,
+  promotion gate, and report schema;
+- every comparator path and novelty calculation;
+- source/evaluator/test hashes and clean committed runner revision; and
+- write-once schedule/report manifests for each annual transaction.
+
+No algorithm grid, checkpoint choice, threshold, or selection statistic may be
+introduced after a reward is constructed. The intended chronology, which
+Stage 0.5 may narrow but not weaken, is:
 
 ```text
 fit 2020 only
@@ -588,6 +617,45 @@ MDD at most `15%`, at least 120 non-flat intervals, at least 20% long and 20%
 short share, positive return in both calendar halves, required-control defeat,
 and familywise `pmax < 0.10`.
 
+Mandatory score-bearing killer baselines and ablations are:
+
+```text
+always_flat
+always_long
+always_short
+current_state_only
+reversed_three_state_order
+sorted_three_state_order
+surface_a_only
+surface_b_only
+surface_c_only
+no_surface_a
+no_surface_b
+no_surface_c
+categorical_linear_fqi
+categorical_ridge_fqi
+extra_trees_fqi
+scratch_sequence_model
+exact_signature_memory
+reward_shuffle
+circular_21_reward
+```
+
+The primary must beat every single-surface, masked-surface, order-destruction,
+memory, and shuffled-reward baseline on the frozen minimum transfer score. A
+Gemma policy may not be promoted merely because aggregate-trade tokens were
+already useful in CARTA train or because another primary failed.
+
+Before the 2021 schedule is sealed, Stage 0.5 must also bind committed
+candidate-clock comparators from CARTA, CSPR, LURI, CATCH, and any available
+PIVOT source clock. No comparator outcome is needed. On active comparator
+timestamps, no single prior comparator may reproduce more than 80% of
+TRACER's non-flat target signs. After mapping each comparator's scheduled
+exposure to the fixed four-hour intervals and filling inactive intervals with
+zero, the absolute Pearson correlation with TRACER targets must also remain
+below 0.80. A constant series has correlation zero by definition. Failure is a
+novelty retirement before opening 2021 outcomes.
+
 ## RLLM role
 
 The later evaluator may compare frozen cheap relational policies with one
@@ -611,3 +679,17 @@ familywise gate fails. Do not inspect a later year's outcome after failure.
 Do not use a failed result to change TRACER's source, clock, rank window,
 category vocabulary, action space, rolling-fit rule, costs, risk accounting,
 thresholds, model family, or promotion gate.
+
+## Pre-support structural correction record
+
+After the initial boundary commit and before source incidence, token
+distribution, future return, reward, or outcome access, review against the
+already committed premium builder and artifact tests found that premium
+availability is exactly `date+61s`, not `date+60s`. One read-only review also
+checked a single timestamp row and no feature magnitude. This amendment moves
+only the source completion cutoff to `B+61s`, removes projected columns that no
+frozen token consumes, makes invalid-prior transitions total, corrects raw
+header hashes to include the terminating LF byte, and adds the missing Stage
+0.5 and killer-baseline constraints. No incidence threshold, category,
+direction, reward, market outcome, funding value, PnL, CAGR, or MDD informed
+these corrections.
