@@ -233,6 +233,8 @@ def test_manifest_binds_no_outcome_access(monkeypatch: pytest.MonkeyPatch) -> No
     assert payload["mutable_parameters"] == []
     assert tuple(payload["family_ids"]) == freeze.FAMILY_IDS
     assert payload["family_size"] == 31
+    round_tripped = freeze.json_normalized(payload)
+    freeze.validate_manifest(round_tripped)
     changed = dict(payload)
     changed["cheap_policy"] = {
         **payload["cheap_policy"],

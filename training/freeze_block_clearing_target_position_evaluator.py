@@ -266,6 +266,18 @@ def canonical_hash(payload: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def json_normalized(payload: Any) -> Any:
+    return json.loads(
+        json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+            allow_nan=False,
+        )
+    )
+
+
 def _load_json(path: str | Path) -> dict[str, Any]:
     payload = json.loads(_path(path).read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
@@ -867,7 +879,9 @@ def _manifest_core(*, freeze_commit: str) -> dict[str, Any]:
 
 
 def build_manifest(*, freeze_commit: str) -> dict[str, Any]:
-    core = _manifest_core(freeze_commit=freeze_commit)
+    core = json_normalized(
+        _manifest_core(freeze_commit=freeze_commit)
+    )
     return {**core, "manifest_hash": canonical_hash(core)}
 
 
