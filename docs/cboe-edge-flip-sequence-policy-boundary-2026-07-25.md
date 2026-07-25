@@ -354,9 +354,8 @@ current target before inference.
 
 ## Causal decision clock
 
-Let a sequence end at source observation date `D`. Define `D+1` and `D+2` as
-the next one and two **calendar** dates, not later business, exchange, common,
-or source-row dates.
+Let a sequence end at source observation date `D`. Define `D+1` as the next
+**calendar** date, not a later business, exchange, common, or source-row date.
 
 The state from `D` has this future-row-independent clock:
 
@@ -364,7 +363,7 @@ The state from `D` has this future-row-independent clock:
 source available = calendar D+1 09:30 America/New_York
 decision          = calendar D+1 09:35 America/New_York
 entry/rebalance   = calendar D+1 09:35 America/New_York
-scheduled exit    = calendar D+2 09:35 America/New_York
+scheduled exit    = entry + 288*5 minutes
 ```
 
 Timezone conversion must use Python `zoneinfo.ZoneInfo("America/New_York")`.
@@ -380,13 +379,16 @@ does not claim clock novelty over CSPG.
 
 No stale source carry, same-date entry, late backfill, queued trade, or
 bar-time rounding is permitted. The completed `D` state is used only for its
-fixed `[D+1 09:35, D+2 09:35)` interval and is then stale.
+fixed 288-bar interval and is then stale.
 
 Every interval is reserved before any position or model action is known.
-Intervals from consecutive source dates meet exactly at rebalance. A later
-interval after a source-date gap begins from flat. `TARGET_FLAT`, inference
-failure, missing market execution, or external portfolio conflict cannot
-release or move another interval.
+Reserve candidate intervals in ascending entry order and suppress, never
+queue, any interval whose entry is strictly before the prior accepted
+scheduled exit. Equality is accepted as one direct rebalance. A later interval
+after a schedule gap begins from flat. This rule handles New York DST without
+changing the exact 288-bar hold. `TARGET_FLAT`, inference failure, missing
+market execution, or external portfolio conflict cannot release or move
+another interval.
 
 ## Target-position transition
 
@@ -469,8 +471,8 @@ failure.
   2023;
 - at least `50` complete intervals in every calendar quarter;
 - zero overlapping intervals;
-- every interval exactly follows the frozen next-calendar-day, fixed
-  twenty-four-hour clock;
+- every interval exactly follows the frozen next-calendar-day entry and exact
+  288-bar hold;
 - deleting or appending later source rows cannot create, suppress, or move an
   already formed interval; and
 - no role-crossing interval.
