@@ -27,6 +27,10 @@ DEFAULT_OUTPUT = (
     "preregistration_2026-07-25.json"
 )
 PRODUCER_SCRIPT = "training/preregister_liquidity_aware_microstructure_braid.py"
+SEALED_PRODUCER_COMMIT = "32f97c8d74e2598c9858da32b7eb203b690da0b4"
+SEALED_PRODUCER_SCRIPT_SHA256 = (
+    "1fb3b7f39fe418e9c160a3035cbb63a8f65cb72119a49d36c93fc5528c37e10c"
+)
 
 AUDIT_DOCUMENT = "docs/post-tracer-alpha-mechanism-audit-2026-07-25.md"
 AUDIT_DOCUMENT_SHA256 = (
@@ -474,33 +478,14 @@ def _git_output(*args: str) -> str:
 
 
 def producer_binding() -> dict[str, Any]:
-    tracked = subprocess.run(
-        ["git", "ls-files", "--error-unmatch", "--", PRODUCER_SCRIPT],
-        cwd=REPOSITORY_ROOT,
-        text=True,
-        capture_output=True,
-        check=False,
-    ).returncode == 0
-    clean = False
-    commit: str | None = None
-    if tracked:
-        clean = (
-            subprocess.run(
-                ["git", "diff", "--quiet", "HEAD", "--", PRODUCER_SCRIPT],
-                cwd=REPOSITORY_ROOT,
-                check=False,
-            ).returncode
-            == 0
-        )
-        commit = _git_output("log", "-1", "--format=%H", "--", PRODUCER_SCRIPT)
     return {
         "script": PRODUCER_SCRIPT,
-        "script_sha256": sha256_file(PRODUCER_SCRIPT),
-        "script_tracked": tracked,
-        "script_clean_at_generation": clean,
-        "script_commit": commit,
-        "head_at_generation": _git_output("rev-parse", "HEAD"),
-        "uncommitted_producer": not (tracked and clean and commit is not None),
+        "script_sha256": SEALED_PRODUCER_SCRIPT_SHA256,
+        "script_tracked": True,
+        "script_clean_at_generation": True,
+        "script_commit": SEALED_PRODUCER_COMMIT,
+        "head_at_generation": SEALED_PRODUCER_COMMIT,
+        "uncommitted_producer": False,
     }
 
 
@@ -860,12 +845,25 @@ def validate_manifest(payload: Mapping[str, Any]) -> None:
         raise ValueError("LAMB preregistration manifest hash drift")
 
 
-def assert_producer_committed() -> None:
-    producer = producer_binding()
-    if producer["uncommitted_producer"]:
-        raise RuntimeError("LAMB producer script is untracked or differs from HEAD")
-    if producer["script_commit"] != producer["head_at_generation"]:
-        raise RuntimeError("LAMB producer must be generated from its own clean commit")
+def assert_producer_committed(*, creating: bool) -> None:
+    sealed_bytes = subprocess.run(
+        ["git", "show", f"{SEALED_PRODUCER_COMMIT}:{PRODUCER_SCRIPT}"],
+        cwd=REPOSITORY_ROOT,
+        capture_output=True,
+        check=True,
+    ).stdout
+    if hashlib.sha256(sealed_bytes).hexdigest() != SEALED_PRODUCER_SCRIPT_SHA256:
+        raise RuntimeError("LAMB sealed producer commit no longer reproduces its hash")
+    if not creating:
+        return
+    current_head = _git_output("rev-parse", "HEAD")
+    if (
+        current_head != SEALED_PRODUCER_COMMIT
+        or sha256_file(PRODUCER_SCRIPT) != SEALED_PRODUCER_SCRIPT_SHA256
+    ):
+        raise RuntimeError(
+            "LAMB missing artifact can only be created by the sealed producer HEAD"
+        )
 
 
 def _output_path(path: str | Path) -> Path:
@@ -938,7 +936,8 @@ def main() -> None:
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     args = parser.parse_args()
     assert_boundary_committed()
-    assert_producer_committed()
+    output_exists = _output_path(args.output).exists()
+    assert_producer_committed(creating=not output_exists)
     validate_frozen_dependencies()
     payload = build_manifest()
     validate_manifest(payload)

@@ -191,6 +191,13 @@ def test_persisted_preregistration_validates_against_committed_producer() -> Non
     }
 
 
+def test_sealed_producer_remains_verifiable_after_later_commits() -> None:
+    assert p.producer_binding()["script_commit"] == p.SEALED_PRODUCER_COMMIT
+    p.assert_producer_committed(creating=False)
+    with pytest.raises(RuntimeError, match="sealed producer HEAD"):
+        p.assert_producer_committed(creating=True)
+
+
 def test_write_once_is_reproducible_and_rejects_drift(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
