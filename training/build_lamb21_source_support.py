@@ -269,6 +269,15 @@ def _exact_bool(series: pd.Series, label: str) -> pd.Series:
     return text.eq("true")
 
 
+def _exact_micro_bool(series: pd.Series, label: str) -> pd.Series:
+    if pd.api.types.is_bool_dtype(series.dtype):
+        return series.astype(bool)
+    text = series.astype("string")
+    if not text.isin(("True", "False")).all():
+        raise ValueError(f"{label} is not exact physical True|False boolean")
+    return text.eq("True")
+
+
 def _exact_dates(series: pd.Series, label: str) -> pd.Series:
     text = series.astype("string")
     if not text.str.fullmatch(r"\d{4}-\d{2}-\d{2}").all():
@@ -456,7 +465,9 @@ def _validate_micro_common(
         raise ValueError(f"LAMB {label} does not reproduce expected 5m grid")
     result["date"] = date
     for column in FLAG_COLUMNS:
-        result[column] = _exact_bool(_series(result, column), f"{label} {column}")
+        result[column] = _exact_micro_bool(
+            _series(result, column), f"{label} {column}"
+        )
     numeric_columns = [
         column for column in allowlist if column not in {"date", *FLAG_COLUMNS}
     ]

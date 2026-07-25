@@ -110,20 +110,20 @@ def _micro_frame(
         verified_empty = not observed and index not in gap_positions
         base: dict[str, object] = {
             "date": ts.strftime("%Y-%m-%d %H:%M:%S"),
-            "source_observed": "true" if observed else "false",
-            "source_complete": "true",
-            "source_gap_day": "true" if index in gap_positions else "false",
-            "verified_zero_volume_empty": "true" if verified_empty else "false",
-            "post_gap_quarantine": "false",
+            "source_observed": "True" if observed else "False",
+            "source_complete": "True",
+            "source_gap_day": "True" if index in gap_positions else "False",
+            "verified_zero_volume_empty": "True" if verified_empty else "False",
+            "post_gap_quarantine": "False",
         }
         base_complete = (observed or verified_empty) and index not in gap_positions
         prior_invalid = any(
             position < index and position >= index - 24
             for position in gap_positions
         )
-        base["post_gap_quarantine"] = "true" if prior_invalid else "false"
+        base["post_gap_quarantine"] = "True" if prior_invalid else "False"
         base["source_complete"] = (
-            "true" if base_complete and not prior_invalid else "false"
+            "True" if base_complete and not prior_invalid else "False"
         )
         if source == "lattice":
             base.update(
@@ -348,6 +348,16 @@ def test_micro_validators_reject_noncanonical_grid_and_lattice_identities() -> N
     skipped = good_lattice.drop(index=3).reset_index(drop=True)
     with pytest.raises(ValueError, match="5m grid"):
         _call("validate_micro_source_frame", skipped, source="lattice", require_full_grid=False)
+
+    wrong_bool_case = good_lattice.copy()
+    wrong_bool_case.loc[0, "source_observed"] = "true"
+    with pytest.raises(ValueError, match="physical True.*False"):
+        _call(
+            "validate_micro_source_frame",
+            wrong_bool_case,
+            source="lattice",
+            require_full_grid=False,
+        )
 
     impossible = good_lattice.copy()
     impossible.loc[0, "coarse_quantity_mbtc"] = "400"
