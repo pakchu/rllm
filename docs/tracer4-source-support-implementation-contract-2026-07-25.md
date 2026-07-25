@@ -71,10 +71,14 @@ cuts.
 
 - `date` and `feature_available_time_utc` are unique, monotone UTC timestamps;
 - `feature_available_time_utc == date+5m`;
-- quote notionals are finite and nonnegative;
-- signed notionals are finite and bounded in absolute value by quote notional;
-- lagged response and basis fields are finite;
 - `source_complete` and `cross_venue_feature_valid` are exact binary values.
+- when both validity flags are true, quote notionals are finite and
+  nonnegative, signed notionals are finite and bounded in absolute value by
+  quote notional, and lagged-response/basis fields are finite;
+- when either validity flag is false, projected numeric cells may be
+  blank/NaN; any present projected numeric cell must still be finite;
+- a false validity flag makes every containing four-hour boundary invalid.
+  Invalid numeric cells are never filled, neutralized, ranked, or tokenized.
 
 ### Aggregate trades
 
