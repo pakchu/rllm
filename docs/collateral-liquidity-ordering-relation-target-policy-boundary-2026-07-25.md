@@ -39,6 +39,11 @@ events toward a dense target-position sequence. The candidate is not
 independent, pristine, clean-room, or source-value-blind. Only its exact joint
 cards, model actions, and outcomes remain unopened.
 
+During preregistration hardening, only the exact gzip header line of each bound
+predecessor clock was decoded to freeze its parser. Zero predecessor value or
+action rows, zero CLOR joint-state rows, and zero market, funding, reward, or
+performance rows were decoded.
+
 ## Bound selection authority
 
 ```text
@@ -322,11 +327,25 @@ funding, or future field enters a line.
 
 ## Sequence and action contract
 
-Within each split, start with empty history and `CURRENT_POSITION=FLAT`.
-After twelve consecutive valid lines, every later valid line is one model
-decision using the rolling twelve-line sequence. The sequence length is fixed
-at twelve because it covers approximately three independent update cycles per
-source without introducing a fitted horizon.
+Within each split, start with empty history and `CURRENT_POSITION=FLAT`. Number
+consecutive valid lines from one after every split or invalid-line reset. Valid
+line `N` is a model decision exactly when `N >= 12`; its prompt uses the
+trailing twelve valid lines including line `N`. Therefore the first model
+decision is the twelfth consecutive valid line, not the thirteenth. The
+sequence length is fixed at twelve because it covers approximately three
+independent update cycles per source without introducing a fitted horizon.
+
+Each primary line is canonical UTF-8 ASCII with no leading or trailing
+whitespace:
+
+```text
+UPDATED=<comma-separated members in TREASURY,SOMA,OFR order>;TREASURY=<token>;SOMA=<submitted_step,accepted_step,coverage_step>;OFR=<rate_order,volume_order>
+```
+
+`UPDATED` contains exactly the nonempty set of sources updated at that
+execution time. Relation tokens contain no spaces. Prompt bytes use LF
+newlines, exactly two LF bytes between the instruction paragraph and
+`STATE_01`, and no terminal newline after `TARGET=`.
 
 The exact text envelope is:
 
@@ -350,9 +369,23 @@ numbers, and generated strategy rules are forbidden.
 The target transition occurs at the state's already frozen
 `execution_time`. Repeating the current target causes no trade. A source
 invalidity, sequence reset, split end, process restart without complete
-durable state, or stale collector forces flat. A target may persist only until
-the next state transition and never more than 72 elapsed hours without a
-fresh valid decision.
+durable state, or stale collector forces flat.
+
+Every valid model decision at time `t` cancels any prior expiry and sets
+`target_expiry_time = t + 72 elapsed hours`. At a timestamp shared by a source
+execution group and an old expiry, process the source group first. A fresh
+valid model decision at that timestamp cancels the old expiry; otherwise the
+old expiry then emits a deterministic action-only transition to
+`TARGET_FLAT`. An expiry transition:
+
+- does not emit a source line;
+- does not enter or clear the twelve-line source history;
+- never invokes the model; and
+- changes only the durable current target, so the next prompt observes
+  `CURRENT_POSITION=FLAT`.
+
+If the target is already flat, expiry is a no-op. Thus a non-flat target can
+never persist beyond 72 elapsed hours without a fresh valid decision.
 
 ## Research splits
 
@@ -394,9 +427,11 @@ opened, a separately committed source evaluator must pass in this order:
 8. no complete state-line signature exceeds 25% of a split;
 9. at least 150/70/70 unique twelve-line sequence hashes in
    TRAIN/TEST/EVAL;
-10. every frozen control below is deterministic, row-preserving where
-    declared, hash-distinct from primary, and changes at least 10% of eligible
-    sequence hashes; and
+10. each of the six relation-falsification controls below is deterministic,
+    row-preserving where declared, hash-distinct from primary, and changes at
+    least 10% of eligible sequence hashes; `future_append` is excluded from
+    that changed-hash floor and instead must pass append invariance exactly;
+    and
 11. every forbidden-access counter remains zero.
 
 Any failed gate retires CLOR-D1 unchanged before outcomes. Counts, freshness,
@@ -408,23 +443,44 @@ be repaired from observed incidence.
 Controls use the same causal rows, freshness, execution grouping, split
 resets, and sequence length:
 
-1. `treasury_bidder_label_rotation`: rotate `P -> D -> I -> P` before weak
-   ordering serialization;
-2. `soma_one_batch_stale`: use the immediately prior valid SOMA transition
-   token at the current SOMA update;
-3. `ofr_venue_label_rotation`: rotate `DVP -> GCF -> TRIV1 -> DVP` before
-   order serialization;
-4. `one_merged_update_stale`: apply the complete previous valid primary line
-   at the current valid execution time;
-5. `within_year_source_time_reverse`: reverse source tokens among valid
-   source batches within source/year while retaining original execution
-   times;
-6. `deterministic_random_relations`: replace relation levels from
-   SHA-256 of candidate ID, source, and execution time while preserving the
-   exact primary schedule; and
-7. `future_append`: append synthetic post-2023 source batches and require
-   every pre-2024 primary line, validity decision, sequence, and hash to remain
-   byte-identical.
+1. `treasury_bidder_label_rotation`: replace every serialized bidder label
+   simultaneously by `P -> D`, `D -> I`, and `I -> P`, preserving term order,
+   equality groups, batch timing, and every other field;
+2. `soma_one_batch_stale`: at each SOMA update after the first emitted
+   transition, use the immediately prior emitted valid SOMA transition token;
+   the first emitted transition remains unchanged;
+3. `ofr_venue_label_rotation`: replace every serialized venue label
+   simultaneously by `DVP -> GCF`, `GCF -> TRIV1`, and `TRIV1 -> DVP`,
+   preserving equality groups, batch timing, and every other field;
+4. `one_merged_update_stale`: the first valid primary line remains unchanged;
+   every later valid execution time receives the complete immediately
+   preceding valid primary line's four field values while retaining the
+   current execution time;
+5. `within_year_source_time_reverse`: separately for Treasury, SOMA, and OFR
+   and each UTC calendar year, reverse the ordered list of that source's valid
+   emitted tokens across its original source-update slots; retain every
+   original availability, execution group, update membership, validity
+   decision, and non-updating source state;
+6. `deterministic_random_relations`: preserve the exact primary schedule,
+   validity, term membership, and update membership, but replace each weak
+   ordering or `UP|DOWN|EQUAL` field. For a field, form
+   `SHA256("CLOR-D1|deterministic_random_relations|<SOURCE>|<execution_time>|<field>")`,
+   interpret the first eight digest bytes as one unsigned big-endian integer,
+   and take modulo the size of the field's ASCII-lexicographically sorted
+   legal vocabulary. A three-label weak-order vocabulary contains every
+   serialization produced by contiguous rank vectors over `{0,1,2}` with
+   ties joined by `=` and descending groups joined by `>`; Treasury applies
+   this independently to every retained term. A step vocabulary is exactly
+   `DOWN,EQUAL,UP`; and
+7. `future_append`: after building the primary source-token batches, append
+   one synthetic valid token batch per source at
+   `2024-01-02T00:00:00Z`, `2024-01-02T00:05:00Z`, and
+   `2024-01-02T00:10:00Z` in Treasury, SOMA, OFR order. The synthetic tokens
+   are respectively `2-Year:P>D>I`, `UP,UP,UP`, and
+   `DVP>GCF>TRIV1,TRIV1>GCF>DVP`. Require every pre-2024 primary line,
+   validity decision, sequence, sequence hash, and action-only expiry to remain
+   byte-identical. This is an append-invariance check only: it is not required
+   to be hash-distinct from primary or to change 10% of eligible hashes.
 
 Controls are source-language falsifications only. None may replace a failed
 primary or become a trading policy.
@@ -467,21 +523,89 @@ The dense action-independent CLOR decision schedule is expected to overlap
 public-release clocks, so schedule overlap alone is diagnostic rather than a
 pass claim.
 
+Common-window eligibility is additionally bound to:
+
+```text
+docs/novelty-comparator-common-window-policy-2026-07-23.md
+commit 26c37a88d2286bd6bfe535c00f8d48009ac08dd5
+SHA256 928bce6e04fb34001478b4b4ea84156580b661c88a0f0338065a891c009bd580
+```
+
+The exact predecessor parsers are:
+
+| ID | Header SHA-256 | Required columns | Exact primary filter | Interval columns |
+|---|---|---|---|---|
+| TADI | `1e798fc8c8cf2dc5c66e40aaa631a2fa20a8f4368b9551290686d92dada55046` | `entry_time,scheduled_exit_time,side,clock_mode` | `clock_mode == "primary"` | `entry_time,scheduled_exit_time,side` |
+| TASCC | `c2e97f5b9d7726dc5174ad4bff9e6af962f01e56d8d232236236afd3b82e1f3a` | `candidate,control,entry_time,exit_time,side` | `candidate == "TASCC-72-SOURCE-FAMILY-SEEN"` and `control == "primary"` | `entry_time,exit_time,side` |
+| SLCS | `45a24e800b79a30047ffeb5f45c69cf4817262e57b0af1cf5e046332536e5e94` | `control,entry_time,exit_time,side` | `control == "primary"` | `entry_time,exit_time,side` |
+| SCAF | `770965eb9e07bbca6f6b3f3c3165fe5c04301ef6573da86dacd161582cfa8c8f` | `control,entry_time,exit_time,side` | `control == "primary"` | `entry_time,exit_time,side` |
+| RVFC | `93d6771691150abdb0f571460afa837a2c8e582ec8fafbf2f3203657a9801782` | `control,entry_time,exit_time,side` | `control == "primary"` | `entry_time,exit_time,side` |
+| RMSR | `3053df0fdaaf4ab8015d36403f52f927d78e55301fead996ff02ca6cd4bf1660` | `control,entry_time,exit_time,side` | `control == "primary"` | `entry_time,exit_time,side` |
+| RCRE | `ae1d29dc71aaf5149a77432f22626736026c10eda680cef47472d7b5a1348638` | `control,entry_time,exit_time,side` | `control == "primary"` | `entry_time,exit_time,side` |
+| DMSH | `d8d2cb1cf0ba29c686b7abe9415a9fc9785fe81f24ef0af6516038665d7ec3bb` | `control,entry_time,exit_time,side` | `control == "primary"` | `entry_time,exit_time,side` |
+
+Each parser first verifies the exact full committed gzip header and artifact
+hash, then decodes only its required columns. Side must be exactly `LONG` or
+`SHORT`; timestamps must be whole-second canonical UTC. Every raw primary
+interval must have `exit > entry`, unique entry time, and no chronological
+overlap. For the common window, retain only intervals fully contained in
+`[W0,W1)`; exclude boundary-crossing rows whole and never clip them. Empty
+in-window primary groups, duplicate entries, overlap, invalid side/time, or
+zero-variance exposure fail closed.
+
 Before any 2023 EVAL market or funding row opens, the separately frozen
 economic/RLLM evaluator must compare the TEST-selected CLOR policy against
 every predecessor only over the exact common TRAIN+TEST interval
 `[2020-09-10T00:00:00Z, 2023-01-01T00:00:00Z)`:
 
-- exact target-transition entry Jaccard at most `0.35`;
-- deterministic one-to-one entry matching within `+/-6h`, with both
+- exact signless target-transition entry Jaccard at most `0.35`;
+- deterministic signless one-to-one entry matching within `+/-6h`, with both
   CLOR-to-predecessor and predecessor-to-CLOR matched fractions at most `0.50`;
 - absolute signed occupied-exposure Pearson correlation at most `0.40`; and
 - no parser ambiguity, missing required comparator, zero-variance exposure, or
   interval clipping.
 
+For CLOR, a non-flat occupied interval begins only when the durable target
+changes to `LONG` or `SHORT`, including a direct reversal, and ends at the next
+target change, safety flat, 72-hour expiry, or split end; intervals are
+entry-inclusive and exit-exclusive. Repeated targets create no entry. The
+signless exact-entry key is the canonical entry timestamp only. Exact Jaccard
+is set intersection size
+divided by set union size; either empty set fails.
+
+For tolerant matching, give every row the identity
+`SHA256("CLOR-D1|comparison|<artifact_sha256>|<group>|<entry>|<exit>|<side>")`.
+Sort left rows by `(entry_time,row_identity)`. For each left row, choose among
+unmatched right rows within six elapsed hours the row minimizing
+`(absolute_time_difference,right_entry_time,right_row_identity)`, match it,
+and continue. Run independently in both directions. The gated fractions are
+matched rows divided by the corresponding left-row count. Side is ignored for
+the gated entry metrics; same-side metrics are report-only and cannot relax a
+gate.
+
+Exposure uses every five-minute UTC interval start `t` in the common
+TRAIN+TEST window. CLOR is `+1`, `0`, or `-1` from the durable target effective
+at `t`; a predecessor is its exact side for `entry_time <= t < exit_time` and
+zero otherwise. Compute Pearson correlation over the complete grid including
+joint-zero cells and gate its absolute value. No resampling, forward extension,
+partial interval, or grid clipping is allowed.
+
 It must also train and select exact no-Treasury, no-SOMA, and no-OFR ablations
-under identical seeds, budgets, reward, and checkpoint rules. On TEST, the
-full three-source policy must:
+under identical seeds, budgets, reward, and checkpoint rules. Ablations retain
+the primary execution schedule, full-source validity decisions, split resets,
+model-decision timestamps, 72-hour expiry rule, and twelve-line windows. They
+remove no source batches and recompute no freshness. At serialization only:
+
+- the omitted source field becomes the exact token `MASKED`;
+- the omitted source name is removed from `UPDATED`;
+- if it was the only updated source, serialize `UPDATED=NONE`; and
+- `CURRENT_POSITION` is the durable position of that separately trained
+  ablation.
+
+No ablation identifier enters the prompt. Target-change fraction compares
+full and ablation target tokens at their identical model-decision timestamps:
+the numerator is unequal tokens and the denominator is all such timestamps.
+On TEST, the full three-source policy must:
 
 1. change at least 10% of target decisions relative to each ablation;
 2. have positive absolute return and positive CAGR/strict-MDD; and
