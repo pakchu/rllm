@@ -459,8 +459,11 @@ resets, and sequence length:
 5. `within_year_source_time_reverse`: separately for Treasury, SOMA, and OFR
    and each UTC calendar year, reverse the ordered list of that source's valid
    emitted tokens across its original source-update slots; retain every
-   original availability, execution group, update membership, validity
-   decision, and non-updating source state;
+   original availability, execution group, update membership, and validity
+   decision. After placing each reversed token, recompute that control
+   source's carried latest state forward until its next update. Preserve
+   non-updating source timing and update membership, not the primary carried
+   state;
 6. `deterministic_random_relations`: preserve the exact primary schedule,
    validity, term membership, and update membership, but replace each weak
    ordering or `UP|DOWN|EQUAL` field. For a field, form
@@ -601,6 +604,18 @@ remove no source batches and recompute no freshness. At serialization only:
 - if it was the only updated source, serialize `UPDATED=NONE`; and
 - `CURRENT_POSITION` is the durable position of that separately trained
   ablation.
+
+The ablation-only canonical line grammar is:
+
+```text
+UPDATED=<NONE or comma-separated remaining members in TREASURY,SOMA,OFR order>;TREASURY=<token|MASKED>;SOMA=<submitted_step,accepted_step,coverage_step|MASKED>;OFR=<rate_order,volume_order|MASKED>
+```
+
+Exactly one source field is `MASKED` in each named ablation. `NONE` and
+`MASKED` are legal only in ablation prompts. Every primary source-support count,
+diversity floor, signature, control, and sequence-hash gate uses the primary
+grammar with nonempty `UPDATED`; ablations cannot affect or rescue source
+support.
 
 No ablation identifier enters the prompt. Target-change fraction compares
 full and ablation target tokens at their identical model-decision timestamps:
