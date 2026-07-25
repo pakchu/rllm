@@ -102,6 +102,41 @@ def test_fit_family_is_exactly_frozen_and_counts_estimators(
     assert fitted.state_rows == len(states)
 
 
+def test_refit_accepts_two_terminally_separated_calendar_episodes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    states = pd.concat(
+        [_states(2020), _states(2021)],
+        ignore_index=True,
+    )
+    count = len(states)
+    rewards = np.zeros((count, 3, 3), dtype=float)
+    reachable = np.ones((count, 3), dtype=bool)
+    terminal = np.zeros(count, dtype=bool)
+    for row in (0, 3):
+        reachable[row] = False
+        reachable[row, cheap.POSITIONS.index("POSITION_FLAT")] = True
+    rewards[~reachable] = np.nan
+    terminal[[2, 5]] = True
+
+    def fake_fit(*args, **kwargs):
+        return cheap.constant_policy("TARGET_FLAT")
+
+    monkeypatch.setattr(cheap, "fit_fitted_q", fake_fit)
+    monkeypatch.setattr(
+        cheap,
+        "action_code_permutation_policy",
+        fake_fit,
+    )
+    fitted = family.fit_family(
+        states,
+        rewards,
+        terminal,
+        reachable,
+    )
+    assert fitted.state_rows == 6
+
+
 def test_transfer_schedules_include_bcrt_holds_and_exact_delays(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

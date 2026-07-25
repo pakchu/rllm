@@ -106,11 +106,21 @@ def _validate_training_arrays(
         raise ValueError("BCTP family transition masks changed")
     if not np.isfinite(rewards[reachable]).all():
         raise ValueError("BCTP family reachable rewards are non-finite")
-    if not terminal_array[-1] or terminal_array[:-1].any():
+    if not terminal_array[-1]:
         raise ValueError("BCTP family terminal mask changed")
     expected_reachable = np.ones_like(reachable)
-    expected_reachable[0] = False
-    expected_reachable[0, cheap.POSITIONS.index("POSITION_FLAT")] = True
+    reset_rows = np.concatenate(
+        (
+            np.array([0], dtype=int),
+            np.flatnonzero(terminal_array[:-1]) + 1,
+        )
+    )
+    for reset_row in reset_rows:
+        expected_reachable[reset_row] = False
+        expected_reachable[
+            reset_row,
+            cheap.POSITIONS.index("POSITION_FLAT"),
+        ] = True
     if not np.array_equal(reachable, expected_reachable):
         raise ValueError("BCTP family reachability changed")
     return records, rewards, terminal_array, reachable
