@@ -1,0 +1,425 @@
+{
+  "availability_contract": {
+    "daily_decision_frequency": "1D",
+    "daily_decision_utc_time": "00:00:00",
+    "decision_rule": "first 00:00 UTC boundary at or after available_at",
+    "effective_output_field": "available_at",
+    "effective_time_field": "canonical block N+64 timestamp",
+    "event_time_field": "canonical event block timestamp",
+    "history_days": 28,
+    "later_market_rule": "one complete five-minute bar after decision timestamp",
+    "live_finalized_head_required": true,
+    "maximum_proposal_age_days": 90,
+    "provider_receipt_time_allowed": false,
+    "removed_logs_allowed": false,
+    "silent_forward_fill_allowed": false,
+    "stale_state": "STALE_OR_NO_PROPOSAL"
+  },
+  "bounded_no_log_probe": {
+    "all_first_code_boundaries_equal": true,
+    "all_first_code_runtime_hashes_equal": true,
+    "all_last_source_runtime_hashes_equal": true,
+    "all_prior_block_code_empty": true,
+    "all_year_boundary_headers_equal": true,
+    "compound_alpha_observed_first_code_block": 9601459,
+    "compound_repository_alpha_marker_block": 9601447,
+    "eth_get_logs_called": false,
+    "event_incidence_opened": false,
+    "provider_hosts_part_of_artifact_identity": false,
+    "transports": 2
+  },
+  "candidate": {
+    "correction_commit": "0016296bad08b8101944a6b87fbad184e00d6a59",
+    "id": "GIPR-D1",
+    "name": "Governance Intent-Payload Relation daily target-position RLLM",
+    "selection_commit": "cdb8907002736d5c7703232faee3073dd96f2596",
+    "source_axis": "ethereum_governance_intent_payload_relation"
+  },
+  "decision_binding": {
+    "path": "docs/post-clor-d1-alpha-mechanism-audit-2026-07-25.md",
+    "sha256": "fd52594fcdfbd85d9a8385ae57513f98ebca169da43f31cafbe058b7519e7c43"
+  },
+  "forbidden_access_contract": {
+    "btc_or_funding_outcomes_opened": false,
+    "counters": {
+      "btc_market_rows_read": 0,
+      "cagr_values_built": 0,
+      "funding_rows_read": 0,
+      "future_return_rows_read": 0,
+      "model_actions_built": 0,
+      "model_rows_built": 0,
+      "pnl_rows_built": 0,
+      "post_2023_source_rows_read": 0,
+      "reward_rows_built": 0,
+      "strict_mdd_values_built": 0,
+      "trade_rows_built": 0
+    },
+    "event_incidence_opened": false,
+    "governance_descriptions_read": 0,
+    "governance_event_rows_read": 0,
+    "governance_payloads_read": 0,
+    "lifecycle_rows_read": 0,
+    "network_calls_during_preregistration": 0
+  },
+  "manifest_hash": "daccd86ac2b218552f6312189fe4cd0ce6c775fe3b91f37ace31e8d12e1b1645",
+  "next_authorized_step": "implement and seal synthetic-only GIPR-D1 source-support evaluator",
+  "official_sources": [
+    "https://docs.compound.finance/v2/",
+    "https://docs.compound.finance/v2/governance/",
+    "https://github.com/compound-finance/compound-protocol/blob/a3214f67b73310d547e00fc578e8355911c9d376/contracts/Governance/GovernorAlpha.sol",
+    "https://github.com/compound-finance/compound-protocol/blob/a3214f67b73310d547e00fc578e8355911c9d376/contracts/Governance/GovernorBravoInterfaces.sol",
+    "https://github.com/compound-finance/compound-protocol/blob/a3214f67b73310d547e00fc578e8355911c9d376/networks/mainnet.json",
+    "https://developers.uniswap.org/docs/ecosystem/governance/technical-reference",
+    "https://github.com/Uniswap/governance/blob/eabd8c71ad01f61fb54ed6945162021ee419998e/contracts/GovernorAlpha.sol",
+    "https://docs.openzeppelin.com/contracts/4.x/governance",
+    "https://docs.openzeppelin.com/contracts/4.x/api/governance",
+    "https://ethereum.org/developers/docs/apis/json-rpc/",
+    "https://ethereum.github.io/execution-apis/api/methods/eth_getLogs/"
+  ],
+  "parser_contract": {
+    "array_lengths_must_match": true,
+    "duplicate_lifecycle_events_allowed": false,
+    "dynamic_offset_alignment_required": true,
+    "dynamic_tail_nonoverlap_required": true,
+    "empty_calldata_allowed": true,
+    "empty_signature_allowed": true,
+    "execute_without_queue_allowed": false,
+    "lifecycle_transition_matrix": {
+      "proposal_canceled": [],
+      "proposal_created": [
+        "proposal_queued",
+        "proposal_canceled"
+      ],
+      "proposal_executed": [],
+      "proposal_queued": [
+        "proposal_executed",
+        "proposal_canceled"
+      ]
+    },
+    "maximum_actions_per_proposal": 10,
+    "maximum_calldata_bytes_per_action": 65536,
+    "maximum_calldata_bytes_per_proposal": 262144,
+    "maximum_description_bytes": 131072,
+    "maximum_signature_bytes": 512,
+    "minimum_actions_per_proposal": 1,
+    "nul_in_description_allowed": false,
+    "proposal_created_fields": [
+      "proposal_id",
+      "proposer",
+      "targets",
+      "values",
+      "signatures",
+      "calldatas",
+      "start_block",
+      "end_block",
+      "description"
+    ],
+    "proposal_identity_fields": [
+      "governor_address",
+      "proposal_id"
+    ],
+    "strict_utf8_description_required": true,
+    "trailing_unparsed_bytes_allowed": false,
+    "uint256_canonical_bounds_required": true
+  },
+  "protocol_version": "gipr_d1_source_preregistration_v1",
+  "representation_contract": {
+    "analyzer_trader_pair_allowed": false,
+    "deterministic_source_tokens": [
+      "protocol",
+      "governor_generation",
+      "event_type",
+      "proposal_age_bucket",
+      "lifecycle_age_bucket",
+      "action_count_bucket",
+      "target_role_or_unknown",
+      "signature_or_selector_or_unknown",
+      "calldata_validity",
+      "abi_shape_class",
+      "native_value_presence",
+      "description_structure",
+      "cross_protocol_relation_persistence_or_flip",
+      "current_target_position"
+    ],
+    "hidden_reasoning_persisted": false,
+    "later_model_relation_tokens": [
+      "AGREE",
+      "PARTIAL",
+      "CONFLICT",
+      "UNRESOLVED"
+    ],
+    "model_actions": [
+      "TARGET_LONG",
+      "TARGET_FLAT",
+      "TARGET_SHORT"
+    ],
+    "model_controls_leverage_size_stop_cost_or_reward": false,
+    "raw_block_or_timestamp_model_inputs_allowed": false,
+    "raw_numeric_model_inputs_allowed": false,
+    "raw_price_return_rank_pnl_model_inputs_allowed": false,
+    "raw_unknown_addresses_model_inputs_allowed": false,
+    "single_model_only": true
+  },
+  "source_contract": {
+    "chain_id": 1,
+    "confirmation_blocks": 64,
+    "disk_limit_gib": 300,
+    "end_boundary_exclusive": {
+      "block_hash": "0x08f760c77e7a5843464404bf59d1f042a8b2ec18ae9345a16940546216069eec",
+      "block_number": 18908895,
+      "block_timestamp": "2024-01-01T00:00:11Z"
+    },
+    "end_exclusive": "2024-01-01T00:00:00Z",
+    "events": [
+      {
+        "event": "proposal_created",
+        "lifecycle_rank": 0,
+        "signature": "ProposalCreated(uint256,address,address[],uint256[],string[],bytes[],uint256,uint256,string)",
+        "topic": "0x7d84a6263ae0d98d3329bd7b46bb4e8d6f98cd35a7adb45c274c8b7fd5ebd5e0",
+        "topic_count": 1
+      },
+      {
+        "event": "proposal_canceled",
+        "lifecycle_rank": 3,
+        "signature": "ProposalCanceled(uint256)",
+        "topic": "0x789cf55be980739dad1d0699b93b58e806b51c9d96619bfa8fe0a28abaa7b30c",
+        "topic_count": 1
+      },
+      {
+        "event": "proposal_queued",
+        "lifecycle_rank": 1,
+        "signature": "ProposalQueued(uint256,uint256)",
+        "topic": "0x9a2e42fd6722813d69113e7d0079d3d940171428df7373df9c7f7617cfda2892",
+        "topic_count": 1
+      },
+      {
+        "event": "proposal_executed",
+        "lifecycle_rank": 2,
+        "signature": "ProposalExecuted(uint256)",
+        "topic": "0x712ae1383f79ac853f8d882153778e0260ef8f03b504e2866e0593e04d2b291f",
+        "topic_count": 1
+      }
+    ],
+    "governors": [
+      {
+        "address": "0xc0da01a04c3f3e0be433606045bb7017a7323e38",
+        "first_code_block": 9601459,
+        "first_code_block_hash": "0xbddb934b440954acb2dc68405b5d1dddef95d6243b64940bd244ce20102d7e5b",
+        "first_code_timestamp": "2020-03-04T00:33:10Z",
+        "generation": "alpha",
+        "last_source_code_bytes": 14339,
+        "last_source_code_sha256": "2bbca6c569d84c5d4ec74ae6d5e0ad4c5c6f2f72faa73c737ae7b13e92b5dd70",
+        "protocol": "compound",
+        "runtime_code_bytes": 14339,
+        "runtime_code_sha256": "2bbca6c569d84c5d4ec74ae6d5e0ad4c5c6f2f72faa73c737ae7b13e92b5dd70"
+      },
+      {
+        "address": "0xc0da02939e1441f497fd74f78ce7decb17b66529",
+        "first_code_block": 12006099,
+        "first_code_block_hash": "0x00454a9add83814d32e58011466c6f63c0a0ea855324a5eabc7aa38c04d9ef5d",
+        "first_code_timestamp": "2021-03-09T19:07:59Z",
+        "generation": "bravo",
+        "last_source_code_bytes": 1065,
+        "last_source_code_sha256": "092bfd06201b9c2b39eec9047663a84a3faa9dcf806266c8ea8c711022f93ea5",
+        "protocol": "compound",
+        "runtime_code_bytes": 1065,
+        "runtime_code_sha256": "092bfd06201b9c2b39eec9047663a84a3faa9dcf806266c8ea8c711022f93ea5"
+      },
+      {
+        "address": "0x5e4be8bc9637f0eaa1a755019e06a68ce081d58f",
+        "first_code_block": 10861678,
+        "first_code_block_hash": "0x3e8f26ac4837d27fb9162ab0c5a7effacb77020c6b9a0685487658ca816d10fd",
+        "first_code_timestamp": "2020-09-14T18:11:45Z",
+        "generation": "alpha_v0",
+        "last_source_code_bytes": 14528,
+        "last_source_code_sha256": "52522136d37cd631fec7217c1eaa33a51c36a0ab8d39dacf78ca81f96917bf73",
+        "protocol": "uniswap",
+        "runtime_code_bytes": 14528,
+        "runtime_code_sha256": "52522136d37cd631fec7217c1eaa33a51c36a0ab8d39dacf78ca81f96917bf73"
+      },
+      {
+        "address": "0xc4e172459f1e7939d522503b81afaac1014ce6f6",
+        "first_code_block": 12543659,
+        "first_code_block_hash": "0xa24265bbf5b075a09603597df2062d5b1023688e34836f2f60870f2d786b373e",
+        "first_code_timestamp": "2021-05-31T18:14:24Z",
+        "generation": "alpha_v2",
+        "last_source_code_bytes": 14676,
+        "last_source_code_sha256": "e3017ff6353b11ba6edaa6146214131a5d6eb495a1ed1077c06f30f499d6352f",
+        "protocol": "uniswap",
+        "runtime_code_bytes": 14676,
+        "runtime_code_sha256": "e3017ff6353b11ba6edaa6146214131a5d6eb495a1ed1077c06f30f499d6352f"
+      },
+      {
+        "address": "0x408ed6354d4973f66138c91495f2f2fcbd8724c3",
+        "first_code_block": 13059157,
+        "first_code_block_hash": "0x8dd8250f60a6fb2b2b79c9eb933942d0414fb10320680d6596d0d17170ae443e",
+        "first_code_timestamp": "2021-08-20T01:12:02Z",
+        "generation": "bravo",
+        "last_source_code_bytes": 1065,
+        "last_source_code_sha256": "e8105a936619cc787de45ab68bef2e92329eee665bf0cdb4924c0d46c0ba343e",
+        "protocol": "uniswap",
+        "runtime_code_bytes": 1065,
+        "runtime_code_sha256": "e8105a936619cc787de45ab68bef2e92329eee665bf0cdb4924c0d46c0ba343e"
+      }
+    ],
+    "header_batch_size": 100,
+    "known_target_roles": [
+      {
+        "address": "0x6d903f6003cca6255d85cca4d3b5e5146dc33925",
+        "protocol": "compound",
+        "role": "TIMELOCK"
+      },
+      {
+        "address": "0xc00e94cb662c3520282e6f5717214004a7f26888",
+        "protocol": "compound",
+        "role": "GOVERNANCE_TOKEN"
+      },
+      {
+        "address": "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
+        "protocol": "compound",
+        "role": "RISK_CONTROLLER"
+      },
+      {
+        "address": "0x1a9c8182c09f50c8318d769245bea52c32be35bc",
+        "protocol": "uniswap",
+        "role": "TIMELOCK"
+      },
+      {
+        "address": "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984",
+        "protocol": "uniswap",
+        "role": "GOVERNANCE_TOKEN"
+      },
+      {
+        "address": "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f",
+        "protocol": "uniswap",
+        "role": "V2_FACTORY"
+      },
+      {
+        "address": "0x1f98431c8ad98523631ae4a59f267346ea31f984",
+        "protocol": "uniswap",
+        "role": "V3_FACTORY"
+      }
+    ],
+    "last_source_block": 18908894,
+    "max_block_range": 5000,
+    "start": "2020-01-01T00:00:00Z",
+    "start_boundary": {
+      "block_hash": "0xfa39cb98792d28b79138fc0a2ab7c08e59c00b43bd0dcd0b7e4bd49684f7216c",
+      "block_number": 9193266,
+      "block_timestamp": "2020-01-01T00:00:11Z"
+    },
+    "year_boundaries": [
+      {
+        "block_hash": "0xfa39cb98792d28b79138fc0a2ab7c08e59c00b43bd0dcd0b7e4bd49684f7216c",
+        "first_block": 9193266,
+        "name": "source_start",
+        "observed_block_timestamp": "2020-01-01T00:00:11Z",
+        "timestamp": "2020-01-01T00:00:00Z"
+      },
+      {
+        "block_hash": "0x12620d72a9306bc7c5ed1e2ba1ac75115197020d5101925305c714e8e1d174d7",
+        "first_block": 11565019,
+        "name": "train_year_2",
+        "observed_block_timestamp": "2021-01-01T00:00:00Z",
+        "timestamp": "2021-01-01T00:00:00Z"
+      },
+      {
+        "block_hash": "0x2f03b3220805ee951f2d4c250621e9c2175439cef524e976aed707a2d595729e",
+        "first_block": 13916166,
+        "name": "test_start",
+        "observed_block_timestamp": "2022-01-01T00:00:03Z",
+        "timestamp": "2022-01-01T00:00:00Z"
+      },
+      {
+        "block_hash": "0x53dd35d982c984441b3b613919d64dbbf131063d0f85804d77f93f190fa5e106",
+        "first_block": 16308190,
+        "name": "eval_start",
+        "observed_block_timestamp": "2023-01-01T00:00:11Z",
+        "timestamp": "2023-01-01T00:00:00Z"
+      },
+      {
+        "block_hash": "0x08f760c77e7a5843464404bf59d1f042a8b2ec18ae9345a16940546216069eec",
+        "first_block": 18908895,
+        "name": "source_end_exclusive",
+        "observed_block_timestamp": "2024-01-01T00:00:11Z",
+        "timestamp": "2024-01-01T00:00:00Z"
+      }
+    ]
+  },
+  "source_support_contract": {
+    "all_gates_required": true,
+    "first_failure_action": "REJECT_GIPR_D1_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+    "future_append_cutoff": "2024-01-01T00:00:00Z",
+    "gate_relaxation_after_incidence_allowed": false,
+    "gates_in_order": [
+      "source_schema_chronology_reconciliation",
+      "dual_transport_canonical_replay",
+      "dynamic_abi_and_payload_integrity",
+      "canonical_log_and_header_identity",
+      "lifecycle_ordering",
+      "split_proposal_action_support",
+      "cross_protocol_support",
+      "structural_vocabulary_diversity",
+      "daily_schedule_coverage_and_staleness",
+      "future_append_invariance",
+      "relation_control_sensitivity",
+      "forbidden_access_zero"
+    ],
+    "minimum_additional_lifecycle_event_types_per_split": 2,
+    "minimum_control_changed_fraction": "0.10",
+    "minimum_nonempty_description_fraction": "0.95",
+    "minimum_unique_description_fraction": "0.90",
+    "relation_controls": [
+      "protocol_label_swap",
+      "within_day_event_order_reverse",
+      "text_payload_pair_permutation",
+      "ordered_action_permutation",
+      "lifecycle_event_rotation",
+      "availability_plus_seven_days"
+    ],
+    "required_lifecycle_event": "proposal_created",
+    "source_drop_or_repair_allowed": false
+  },
+  "split_contract": {
+    "market_outcome_policy": "FORBIDDEN until separate evaluator freeze",
+    "post_2023_source_policy": "SEALED",
+    "splits": [
+      {
+        "end_exclusive": "2022-01-01T00:00:00Z",
+        "minimum_actions": 24,
+        "minimum_active_calendar_months": 8,
+        "minimum_daily_decisions_after_warmup": 700,
+        "minimum_proposals": 24,
+        "minimum_proposals_per_protocol": 4,
+        "minimum_unique_selectors": 8,
+        "minimum_unique_targets": 8,
+        "name": "train",
+        "start": "2020-01-01T00:00:00Z"
+      },
+      {
+        "end_exclusive": "2023-01-01T00:00:00Z",
+        "minimum_actions": 12,
+        "minimum_active_calendar_months": 4,
+        "minimum_daily_decisions_after_warmup": 350,
+        "minimum_proposals": 12,
+        "minimum_proposals_per_protocol": 4,
+        "minimum_unique_selectors": 4,
+        "minimum_unique_targets": 4,
+        "name": "test",
+        "start": "2022-01-01T00:00:00Z"
+      },
+      {
+        "end_exclusive": "2024-01-01T00:00:00Z",
+        "minimum_actions": 12,
+        "minimum_active_calendar_months": 4,
+        "minimum_daily_decisions_after_warmup": 350,
+        "minimum_proposals": 12,
+        "minimum_proposals_per_protocol": 4,
+        "minimum_unique_selectors": 4,
+        "minimum_unique_targets": 4,
+        "name": "eval",
+        "start": "2023-01-01T00:00:00Z"
+      }
+    ]
+  }
+}
