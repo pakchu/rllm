@@ -1,0 +1,539 @@
+{
+  "authority": {
+    "audit_document": "docs/post-tracer-alpha-mechanism-audit-2026-07-25.md",
+    "audit_document_sha256": "7394cd096d92b5469eb625605faaa8f53c49fc486b921269a1b2da0b08afbf9e",
+    "boundary_commit": "0fd5e738f27b034a914853145bc8434d5d928502",
+    "boundary_document": "docs/london-cash-derivative-path-boundary-2026-07-25.md",
+    "boundary_document_sha256": "2be38b0181d0269af4159a70070dc3a9eef340a4e277965d09cf082eea848b7e",
+    "producer": {
+      "commit": "a1e5435ea43fb17337ce76b80ccf53d5c26e9b0b",
+      "path": "training/preregister_london_cash_derivative_path.py",
+      "sha256": "a20118ab1b7cfe1a12c050bfc4a612689286383d9fa8fd2043dfcce62fd7368f"
+    }
+  },
+  "clock": {
+    "boundary": "16:00 local",
+    "calendar_days": "every date including Saturday and Sunday",
+    "calendar_slot_counts_2020_2022": {
+      "276": 3,
+      "288": 1090,
+      "300": 3
+    },
+    "decision": "B_D+5m",
+    "execution": "Binance five-minute open at B_D+10m",
+    "expected_five_minute_slots": [
+      276,
+      288,
+      300
+    ],
+    "first_line": "2020-01-01 emitted as SOURCE_INVALID_START and counts invalid in every denominator",
+    "inference_deadline": "B_D+5m",
+    "source_window": "[previous local 16:00,current local 16:00)",
+    "state_complete": "B_D",
+    "target_interval": "[B_D+10m,B_(D+1)+10m)",
+    "timezone": "Europe/London",
+    "year_terminal": "December 31 deterministic TARGET_FLAT at B_D+10m; no next-year outcome opened"
+  },
+  "contingent_economic_chronology": {
+    "annual_refit": "same frozen algorithm on all strictly prior authorized years",
+    "authorized_now": false,
+    "sequential_transfer": [
+      "2023",
+      "2024",
+      "2025",
+      "2026_ytd"
+    ],
+    "stop": "first failed source, economic, control, or transfer gate",
+    "test": "single calendar-2022 pass after checkpoint rule freeze",
+    "train": "2020 only after evaluator freeze",
+    "validation": "2021 only; 2022 remains sealed"
+  },
+  "controls": {
+    "later_lclr": {
+      "lclr_exact_policy": "independent original 16:05 entry, 18:05 exit, 0.5x",
+      "lclr_mask_daily_target": "same London date mask/side at LCDP B_D+10m; flat otherwise; never filters primary",
+      "preregistration": "docs/london-cash-lead-release-preregistration-2026-07-20.md",
+      "preregistration_sha256": "fd996475dba37953b1abc0ec29cfe9edbe7d33b91d61d7880f4e0c7ea9330c65",
+      "rejection": "docs/london-cash-lead-release-support-rejection-2026-07-20.md",
+      "rejection_sha256": "462a521079ae55076495885516ffe3e6e5dc870a50de7a6f3d310e3026f6d5c6"
+    },
+    "rebuild_contract": "rebuild every affected primitive, prior quantile, transition, and sequence; unavailable source remains CONTROL_UNREADY",
+    "source_token_control_ids": [
+      "cash_perp_role_swap",
+      "cash_stale_one_day",
+      "perp_stale_one_day",
+      "lag_7_calendar_days",
+      "calendar_context_mask",
+      "cash_only_language",
+      "perp_only_language"
+    ]
+  },
+  "decision": "freeze_source_token_support_only",
+  "forbidden_access": {
+    "action_rows_built": 0,
+    "at_or_after_2023_non_date_source_rows_parsed": 0,
+    "execution_or_post_boundary_rows_opened": 0,
+    "funding_rows_opened": 0,
+    "future_return_rows_built": 0,
+    "model_rows_built": 0,
+    "pnl_cagr_mdd_values_computed": 0,
+    "reward_rows_built": 0,
+    "source_data_rows_parsed_by_preregistration": 0,
+    "trade_rows_built": 0
+  },
+  "manifest_hash": "0cbeeaad957c67187381405681e8e7935c7039c7c9f9e2d0a19cbe5e912d5dac",
+  "numeric_primitives": {
+    "arcs": "first and last N/2 ordered steps",
+    "basis": "log(Coinbase price/Binance price) at start and end",
+    "cash_quote": "sum Coinbase volume*close",
+    "cash_share": "cash_quote/(cash_quote+perp_quote)",
+    "efficiency": "abs(return)/path, zero when path is zero",
+    "log_path": "x0=log(first open), xi=log(close_i), step_i=xi-x(i-1)",
+    "path": "sum abs step",
+    "perp_quote": "sum Binance quote_asset_volume",
+    "prior_reference": "previous 126 emitted lines, current excluded, invalid ignored, minimum 63 finite valid cash-share values, q1/3 and q2/3",
+    "range": "log(max high/min low)",
+    "return": "sum step"
+  },
+  "phase": "outcome_blind_source_token_support_preregistration",
+  "policy": {
+    "boundary_hour_london": 16,
+    "execution_minutes": 10,
+    "inference_minutes": 5,
+    "maximum_category_share": 0.94,
+    "minimum_annual_source_valid_share": 0.97,
+    "minimum_category_share": 0.03,
+    "minimum_control_difference_share": 0.05,
+    "minimum_prior_valid_days": 63,
+    "minimum_quarter_source_valid_share": 0.95,
+    "minimum_ready_2020": 280,
+    "minimum_ready_2021_2022": 350,
+    "minimum_ready_post_warmup_quarter": 80,
+    "prior_lookback_days": 126,
+    "sequence_lines": 21,
+    "source_end_exclusive": "2023-01-01",
+    "source_start_inclusive": "2020-01-01"
+  },
+  "policy_id": "LCDP-D1",
+  "protocol_version": "london_cash_derivative_path_preregistration_v1",
+  "research_history": {
+    "candidate_specific_joint_state_opened": false,
+    "globally_pristine": false,
+    "historical_snapshot_live_equivalent": false,
+    "lamb_retirement": "docs/lamb21-source-support-retirement-2026-07-25.md",
+    "lamb_retirement_sha256": "d73564235ed391fa0678228ef9aeca8a5bfcaa912fe75961030e78b1a68c2e60",
+    "lclr_repair_forbidden": true,
+    "tracer_retirement": "docs/tracer4-source-support-retirement-2026-07-25.md",
+    "tracer_retirement_sha256": "07f0501f826e2a722e770c616ce5c2698851e7bdcc0cc17d7958c8628bb20135"
+  },
+  "sources": {
+    "binance": {
+      "header_sha256": "8b70cdf275862b56bcbdd7e10b18c7d82c9cac47dcc3dd2c5ceae78f8f102232",
+      "path": "data/coinbase_leadership_binance_5m_2020_2022.csv.gz",
+      "physical_header": [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume"
+      ],
+      "projected_columns": [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "quote_asset_volume"
+      ],
+      "sha256": "1a06f1f4dbbdafaf885fb03844426eed5d5bad4aa206fa72b88db2cbd98bef94"
+    },
+    "coinbase": {
+      "header_sha256": "056e6938d2dea3e9ef9a9230ca192cbfcf11ea270151115f96cf4e7c94c0de17",
+      "path": "data/coinbase_btcusd_5m_2020_2022.csv.gz",
+      "physical_header": [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "source_complete"
+      ],
+      "projected_columns": [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "source_complete"
+      ],
+      "sha256": "07f7a3bddecbbc3724994645b9ac1cd0f391378e0feed421f2c8caa145aab77b"
+    },
+    "manifest": {
+      "historical_snapshot_is_point_in_time": false,
+      "manifest_hash": "243ecba3b9e31548d682084dd5acc2e89c6a24423bce241dd6338a57dd6eefe9",
+      "path": "results/coinbase_spot_leadership_source_manifest_2026-07-16.json",
+      "sha256": "3af321fdcafd0fe6680c4583341b6508124a979fefbf489f8d3376c7ec78a269"
+    }
+  },
+  "support_gates": {
+    "append_replay_end_exclusive": [
+      "2021-01-01",
+      "2022-01-01",
+      "2023-01-01"
+    ],
+    "calendar_lines_exact": 1096,
+    "cash_and_perp_both_directions_each_year": true,
+    "category_share_max": 0.94,
+    "category_share_min": 0.03,
+    "conjunctive_order": [
+      "protocol_source_integrity",
+      "calendar_dst_integrity",
+      "source_validity",
+      "readiness",
+      "token_diversity",
+      "control_distinctness",
+      "append_replay",
+      "forbidden_access"
+    ],
+    "control_difference_share_min": 0.05,
+    "failure_action": "retire_lcdp_d1_unchanged_before_outcomes",
+    "pass_action": "authorize_economic_rllm_evaluator_freeze_only",
+    "ready_min_2020": 280,
+    "ready_min_2021": 350,
+    "ready_min_2022": 350,
+    "ready_min_each_quarter_after_2020q1": 80,
+    "source_valid_share_min_quarter": 0.95,
+    "source_valid_share_min_year": 0.97
+  },
+  "token_language": {
+    "action_space": [
+      "TARGET_SHORT",
+      "TARGET_FLAT",
+      "TARGET_LONG"
+    ],
+    "control_vocabulary": {
+      "alignment_transition": [
+        "ALIGNMENT_PERSISTS",
+        "ALIGNMENT_FLIPS",
+        "ALIGNMENT_DISSIPATES",
+        "ALIGNMENT_MIXED",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY",
+        "ABLATION_MASKED",
+        "CONTROL_UNREADY"
+      ],
+      "arc_transfer": [
+        "CASH_LEAD_EXTENDS",
+        "CASH_LEAD_REVERSES",
+        "PERP_LEAD_EXTENDS",
+        "PERP_LEAD_REVERSES",
+        "ARC_MIXED",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY",
+        "ABLATION_MASKED",
+        "CONTROL_UNREADY"
+      ],
+      "calendar_context": [
+        "WEEKDAY",
+        "SATURDAY",
+        "SUNDAY",
+        "CALENDAR_MASKED"
+      ],
+      "daily_alignment": [
+        "BOTH_RISE",
+        "BOTH_FALL",
+        "CASH_RISE_PERP_FALL",
+        "CASH_FALL_PERP_RISE",
+        "RETURN_MIXED_OR_FLAT",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY",
+        "ABLATION_MASKED",
+        "CONTROL_UNREADY",
+        "CASH_ONLY_RISE",
+        "CASH_ONLY_FALL",
+        "CASH_ONLY_FLAT",
+        "PERP_ONLY_RISE",
+        "PERP_ONLY_FALL",
+        "PERP_ONLY_FLAT"
+      ],
+      "daily_leader": [
+        "CASH_LEADS_RISE",
+        "CASH_LEADS_FALL",
+        "PERP_LEADS_RISE",
+        "PERP_LEADS_FALL",
+        "NO_CLEAR_LEADER",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY",
+        "ABLATION_MASKED",
+        "CONTROL_UNREADY"
+      ],
+      "leader_transition": [
+        "CASH_LEAD_PERSISTS",
+        "PERP_LEAD_PERSISTS",
+        "LEAD_ROTATES_TO_CASH",
+        "LEAD_ROTATES_TO_PERP",
+        "LEAD_MIXED",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY",
+        "ABLATION_MASKED",
+        "CONTROL_UNREADY"
+      ],
+      "participation_state": [
+        "CASH_PARTICIPATION_LOW",
+        "CASH_PARTICIPATION_MID",
+        "CASH_PARTICIPATION_HIGH",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY",
+        "ABLATION_MASKED",
+        "CONTROL_UNREADY"
+      ],
+      "participation_transition": [
+        "CASH_SHARE_RISING",
+        "CASH_SHARE_FALLING",
+        "CASH_SHARE_STABLE",
+        "PARTICIPATION_UNKNOWN",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY",
+        "ABLATION_MASKED",
+        "CONTROL_UNREADY"
+      ],
+      "path_efficiency": [
+        "CASH_CLEANER",
+        "PERP_CLEANER",
+        "BOTH_CHOPPY_OR_TIE",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY",
+        "ABLATION_MASKED",
+        "CONTROL_UNREADY"
+      ],
+      "range_relation": [
+        "CASH_RANGE_DOMINANT",
+        "PERP_RANGE_DOMINANT",
+        "RANGE_BALANCED",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY",
+        "ABLATION_MASKED",
+        "CONTROL_UNREADY"
+      ],
+      "relative_basis_path": [
+        "CASH_RICHENS",
+        "CASH_CHEAPENS",
+        "BASIS_ROTATES",
+        "BASIS_FLAT",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY",
+        "ABLATION_MASKED",
+        "CONTROL_UNREADY"
+      ]
+    },
+    "ordered_fields": [
+      "calendar_context",
+      "daily_alignment",
+      "daily_leader",
+      "relative_basis_path",
+      "arc_transfer",
+      "path_efficiency",
+      "range_relation",
+      "participation_state",
+      "participation_transition",
+      "alignment_transition",
+      "leader_transition"
+    ],
+    "output_grammar": [
+      "{\"target\":\"TARGET_SHORT\"}",
+      "{\"target\":\"TARGET_FLAT\"}",
+      "{\"target\":\"TARGET_LONG\"}"
+    ],
+    "primary_vocabulary": {
+      "alignment_transition": [
+        "ALIGNMENT_PERSISTS",
+        "ALIGNMENT_FLIPS",
+        "ALIGNMENT_DISSIPATES",
+        "ALIGNMENT_MIXED",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY"
+      ],
+      "arc_transfer": [
+        "CASH_LEAD_EXTENDS",
+        "CASH_LEAD_REVERSES",
+        "PERP_LEAD_EXTENDS",
+        "PERP_LEAD_REVERSES",
+        "ARC_MIXED",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY"
+      ],
+      "calendar_context": [
+        "WEEKDAY",
+        "SATURDAY",
+        "SUNDAY"
+      ],
+      "daily_alignment": [
+        "BOTH_RISE",
+        "BOTH_FALL",
+        "CASH_RISE_PERP_FALL",
+        "CASH_FALL_PERP_RISE",
+        "RETURN_MIXED_OR_FLAT",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY"
+      ],
+      "daily_leader": [
+        "CASH_LEADS_RISE",
+        "CASH_LEADS_FALL",
+        "PERP_LEADS_RISE",
+        "PERP_LEADS_FALL",
+        "NO_CLEAR_LEADER",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY"
+      ],
+      "leader_transition": [
+        "CASH_LEAD_PERSISTS",
+        "PERP_LEAD_PERSISTS",
+        "LEAD_ROTATES_TO_CASH",
+        "LEAD_ROTATES_TO_PERP",
+        "LEAD_MIXED",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY"
+      ],
+      "participation_state": [
+        "CASH_PARTICIPATION_LOW",
+        "CASH_PARTICIPATION_MID",
+        "CASH_PARTICIPATION_HIGH",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY"
+      ],
+      "participation_transition": [
+        "CASH_SHARE_RISING",
+        "CASH_SHARE_FALLING",
+        "CASH_SHARE_STABLE",
+        "PARTICIPATION_UNKNOWN",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY"
+      ],
+      "path_efficiency": [
+        "CASH_CLEANER",
+        "PERP_CLEANER",
+        "BOTH_CHOPPY_OR_TIE",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY"
+      ],
+      "range_relation": [
+        "CASH_RANGE_DOMINANT",
+        "PERP_RANGE_DOMINANT",
+        "RANGE_BALANCED",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY"
+      ],
+      "relative_basis_path": [
+        "CASH_RICHENS",
+        "CASH_CHEAPENS",
+        "BASIS_ROTATES",
+        "BASIS_FLAT",
+        "SOURCE_INVALID",
+        "SOURCE_INVALID_START",
+        "RANK_UNREADY"
+      ]
+    },
+    "prompt_forbidden": [
+      "calendar date or year",
+      "raw timestamp",
+      "price or return",
+      "volume or notional",
+      "rank or quantile",
+      "future path or funding",
+      "reward or evaluated split statistic"
+    ],
+    "ready_vocabulary": {
+      "alignment_transition": [
+        "ALIGNMENT_PERSISTS",
+        "ALIGNMENT_FLIPS",
+        "ALIGNMENT_DISSIPATES",
+        "ALIGNMENT_MIXED"
+      ],
+      "arc_transfer": [
+        "CASH_LEAD_EXTENDS",
+        "CASH_LEAD_REVERSES",
+        "PERP_LEAD_EXTENDS",
+        "PERP_LEAD_REVERSES",
+        "ARC_MIXED"
+      ],
+      "calendar_context": [
+        "WEEKDAY",
+        "SATURDAY",
+        "SUNDAY"
+      ],
+      "daily_alignment": [
+        "BOTH_RISE",
+        "BOTH_FALL",
+        "CASH_RISE_PERP_FALL",
+        "CASH_FALL_PERP_RISE",
+        "RETURN_MIXED_OR_FLAT"
+      ],
+      "daily_leader": [
+        "CASH_LEADS_RISE",
+        "CASH_LEADS_FALL",
+        "PERP_LEADS_RISE",
+        "PERP_LEADS_FALL",
+        "NO_CLEAR_LEADER"
+      ],
+      "leader_transition": [
+        "CASH_LEAD_PERSISTS",
+        "PERP_LEAD_PERSISTS",
+        "LEAD_ROTATES_TO_CASH",
+        "LEAD_ROTATES_TO_PERP",
+        "LEAD_MIXED"
+      ],
+      "participation_state": [
+        "CASH_PARTICIPATION_LOW",
+        "CASH_PARTICIPATION_MID",
+        "CASH_PARTICIPATION_HIGH"
+      ],
+      "participation_transition": [
+        "CASH_SHARE_RISING",
+        "CASH_SHARE_FALLING",
+        "CASH_SHARE_STABLE",
+        "PARTICIPATION_UNKNOWN"
+      ],
+      "path_efficiency": [
+        "CASH_CLEANER",
+        "PERP_CLEANER",
+        "BOTH_CHOPPY_OR_TIE"
+      ],
+      "range_relation": [
+        "CASH_RANGE_DOMINANT",
+        "PERP_RANGE_DOMINANT",
+        "RANGE_BALANCED"
+      ],
+      "relative_basis_path": [
+        "CASH_RICHENS",
+        "CASH_CHEAPENS",
+        "BASIS_ROTATES",
+        "BASIS_FLAT"
+      ]
+    },
+    "safety_action": "TARGET_FLAT without model invocation",
+    "sequence": "21 emitted calendar-day lines oldest to newest plus CURRENT_TARGET",
+    "serialization": "ordered field=value pairs joined by one ASCII |; no omissions"
+  }
+}
