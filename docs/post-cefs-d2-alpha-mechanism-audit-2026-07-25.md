@@ -4,7 +4,8 @@ Date: 2026-07-25
 
 ## Outcome
 
-Select one new outcome-blind source-composition candidate:
+Select one new **source-incidence-informed, outcome-blind**
+source-composition candidate:
 
 **CLOR-D1 — Collateral Liquidity Ordering-Relation target policy.**
 
@@ -23,7 +24,25 @@ only `TARGET_LONG`, `TARGET_FLAT`, or `TARGET_SHORT` from compact categorical
 state cards plus current position.
 
 This selection is permission to freeze one exact source-only mechanism. It is
-not source support, alpha, profitability, or live-deployment evidence.
+not an independent or pristine discovery claim, source support, alpha,
+profitability, or live-deployment evidence.
+
+## Adversarial contamination correction
+
+CLOR-D1 was selected after the repository had already observed that several
+sparse fixed-side Treasury, SOMA, and OFR compositions failed source support.
+Its asynchronous dense target-position architecture is therefore itself
+**source-incidence-informed**. It cannot be described as clean-room,
+independent, or candidate-source-blind merely because its exact joint cards
+and market outcomes remain unopened.
+
+The admissible claim is narrower:
+
+> the exact three-source primitive language, merged update sequence, and
+> target-position policy remain unevaluated.
+
+This correction does not authorize using prior failure incidence to choose a
+threshold, side, field, state density, hold, or performance gate.
 
 ## Why CEFS cannot be repaired
 
@@ -44,7 +63,7 @@ result.
 
 | candidate | useful property | disqualifying risk | decision |
 |---|---|---|---|
-| **CLOR-D1** | Three official 2019–2023 collateral surfaces; SOMA and OFR prior candidates reached only source-support failures; asynchronous relation ordering is unevaluated | Current historical APIs are not original point-in-time captures; exact joined live parity is not yet proven; Treasury-family outcomes have prior exposure | **Select for source-only freeze** |
+| **CLOR-D1** | Three official 2019–2023 collateral surfaces; exact joint relation sequence is unevaluated | Architecture selection is source-incidence-informed; current historical APIs are not original point-in-time captures; exact joined live parity is not yet proven; Treasury-family outcomes have prior exposure | **Select for source-only freeze** |
 | MARS-W8: CFTC + EIA + CPI weak-signal sequence | Directly matches the weak-signal-combination thesis and has causal official releases | All three singleton families already opened 2020–2022 outcomes. Selecting their combination after seeing those results would be explicit development-outcome mining | Reject for this turn |
 | SOMA-only dense sequence | Daily, balanced, operationally rich source | SCAF already revealed component dominance and selection density. Redesigning the same source language now would condition on opened source incidence | Reject for this turn |
 | SQRB-H1 stablecoin reservoir | Crypto-native relation language | Common denominator, collateral-breadth, and BTCDOM history is concentrated in late 2023 and component outcomes are already exposed | Reject |
@@ -125,19 +144,24 @@ not been evaluated.
 
 It may not reuse or repair:
 
-- TADI bid-to-cover/indirect-share tail ranks, direction, or hold;
+- TADI bid-to-cover, indirect-share, tail ranks, direction, or hold; any
+  Treasury primitive derived from bidder accepted amounts remains explicitly
+  contaminated and must face a no-Treasury ablation plus the frozen TADI
+  clock;
 - TASCC issue/settlement collision packaging;
 - SLCS aggregate scarcity ranks or vote;
 - SCAF's four divergence components, three-of-four consensus, direction, or
   48-hour clock;
 - any RVFC, RMSR, RCRE, DMSH, or other OFR threshold, product, handoff,
-  direction, or event clock;
+  direction, or event clock; all named clocks remain mandatory comparators;
 - a source-owned LONG/SHORT side, scalar pressure score, equal vote, fitted
   threshold, percentile-selected event, or post-result gate; or
 - any CEFS source, edge, split, token, or control.
 
-Known component failures may define exclusions only. They may not choose a
-CLOR feature, vocabulary, sequence length, action, reward, hold, or checkpoint.
+Known component failures informed the successor architecture and therefore
+remain disclosed contamination. They may define exclusions, but may not choose
+a CLOR threshold, side, vocabulary level, sequence length, action, reward,
+hold, or checkpoint.
 
 ## Required next freeze
 
@@ -154,6 +178,12 @@ Before decoding one CLOR joint state, the next boundary must fix:
 9. source-only diversity, stability, append, permutation, staleness, and
    retired-clock novelty gates; and
 10. first-failure retirement with zero economic or model access.
+
+The freeze must hash-bind the TADI, TASCC, SLCS, SCAF, RVFC, RMSR, RCRE, and
+DMSH clocks before CLOR incidence. A later economic/RLLM evaluator must compare
+CLOR target transitions and occupied exposure with every bound clock and must
+include no-Treasury, no-SOMA, and no-OFR ablations. A failed comparator or
+ablation gate retires CLOR; no source may be dropped or promoted.
 
 Only a complete source-support pass may authorize a separately committed
 cheap-baseline and RLLM evaluator.
