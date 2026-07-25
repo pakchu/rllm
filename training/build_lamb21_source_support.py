@@ -288,6 +288,21 @@ def _exact_timestamps(series: pd.Series, label: str) -> pd.Series:
     return cast(pd.Series, parsed)
 
 
+def _exact_micro_timestamps(series: pd.Series, label: str) -> pd.Series:
+    text = series.astype("string")
+    if not text.str.fullmatch(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}").all():
+        raise ValueError(f"{label} is not exact canonical UTC grid text")
+    parsed = pd.to_datetime(
+        text,
+        format="%Y-%m-%d %H:%M:%S",
+        utc=True,
+        errors="raise",
+    )
+    if parsed.isna().any():
+        raise ValueError(f"{label} contains a missing timestamp")
+    return cast(pd.Series, parsed)
+
+
 def _strictly_increasing(series: pd.Series) -> bool:
     return bool(series.is_monotonic_increasing and not series.duplicated().any())
 
@@ -433,7 +448,7 @@ def _validate_micro_common(
     if tuple(frame.columns) != tuple(allowlist):
         raise ValueError(f"LAMB {label} projection order drift")
     result = frame.copy()
-    date = _exact_timestamps(_series(result, "date"), f"{label} date")
+    date = _exact_micro_timestamps(_series(result, "date"), f"{label} date")
     if date.isna().any() or not _strictly_increasing(date):
         raise ValueError(f"LAMB {label} timestamps are duplicate or unordered")
     observed_index = pd.DatetimeIndex(date)
@@ -728,7 +743,9 @@ def validate_micro_source_frame(
     else:
         if frame.empty:
             raise ValueError("LAMB partial micro source is empty")
-        timestamps = _exact_timestamps(_series(frame, "date"), f"{source} date")
+        timestamps = _exact_micro_timestamps(
+            _series(frame, "date"), f"{source} date"
+        )
         expected = pd.date_range(
             timestamps.iloc[0],
             timestamps.iloc[-1] + pd.Timedelta(minutes=5),

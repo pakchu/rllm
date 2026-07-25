@@ -109,7 +109,7 @@ def _micro_frame(
         observed = index in observed_positions
         verified_empty = not observed and index not in gap_positions
         base: dict[str, object] = {
-            "date": ts.isoformat().replace("+00:00", "Z"),
+            "date": ts.strftime("%Y-%m-%d %H:%M:%S"),
             "source_observed": "true" if observed else "false",
             "source_complete": "true",
             "source_gap_day": "true" if index in gap_positions else "false",
@@ -360,7 +360,12 @@ def test_cascade_validator_rejects_forward_ms_and_notional_overflow() -> None:
     assert _call("validate_micro_source_frame", good, source="cascade", require_full_grid=False)["source_complete"].all()
 
     bad_clock = good.copy()
-    start_ms = int(pd.Timestamp(bad_clock.loc[0, "date"]).timestamp() * 1000)
+    start_ms = int(
+        pd.Timestamp(bad_clock.loc[0, "date"])
+        .tz_localize("UTC")
+        .timestamp()
+        * 1000
+    )
     bad_clock.loc[0, "last_transact_time_ms"] = str(start_ms + 300_000)
     with pytest.raises(ValueError, match="transaction clock"):
         _call("validate_micro_source_frame", bad_clock, source="cascade", require_full_grid=False)
