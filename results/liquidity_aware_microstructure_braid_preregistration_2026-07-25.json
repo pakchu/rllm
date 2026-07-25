@@ -1,0 +1,553 @@
+{
+  "boundary": {
+    "audit_document": "docs/post-tracer-alpha-mechanism-audit-2026-07-25.md",
+    "audit_sha256": "7394cd096d92b5469eb625605faaa8f53c49fc486b921269a1b2da0b08afbf9e",
+    "boundary_document": "docs/liquidity-aware-microstructure-braid-boundary-2026-07-25.md",
+    "boundary_sha256": "a412b3e7dcfad625e0cdccd3a1941055bc5e104f4693b21ddf24b4fa1aa7c654",
+    "commit": "b0a6838236091cfdb6caf4c001c9901458e43f03"
+  },
+  "clock": {
+    "boundaries_utc": [
+      "00:00:00",
+      "08:00:00",
+      "16:00:00"
+    ],
+    "decision": "B+5m",
+    "execution": "B+10m at USD-M five-minute open",
+    "invalid_or_unready_target": "TARGET_FLAT",
+    "macro_asof": "<= B",
+    "micro_completion": "date+5m <= B",
+    "micro_rows_each_source": 96,
+    "micro_window": "[B-8h,B)",
+    "next_execution": "B+8h+10m",
+    "state_complete": "B",
+    "target_persists_between_decisions": true,
+    "wall_clock_time_compressed": false
+  },
+  "contingent_economic_sequence": {
+    "2020_2022": "development/history",
+    "2023": "candidate-specific transfer, not globally pristine",
+    "2024": "sealed historical annual test after source extension",
+    "2025": "sealed historical annual eval after unchanged 2024 pass",
+    "2026_ytd": "sealed recent confirmation after unchanged 2024 and 2025 passes",
+    "full_three_calendar_year_claim_before_2026_12_31": false,
+    "historical_not_realtime_prospective": true,
+    "lattice_only_and_no_lattice_killer_baselines": true,
+    "live_claim_requires_forward_shadow_or_live_interval": true,
+    "maximum_familywise_p": 0.1,
+    "maximum_strict_mdd": 0.15,
+    "minimum_base_cagr_to_strict_mdd": 3.0,
+    "minimum_each_direction_share": 0.2,
+    "minimum_nonflat_intervals": 120,
+    "minimum_stress_and_delay_ratio": 2.5,
+    "requires_support_pass": true,
+    "reward_and_model_protocol_committed_before_reward": true
+  },
+  "controls": {
+    "cascade_delay": "37 prior five-minute positions inside UTC month; first 37 positions control-invalid",
+    "independent_rebuild": true,
+    "macro_mask": "mask four macro fields on every history line and recompute macro_transition=MIXED",
+    "may_replace_primary": false,
+    "ordered": [
+      "h41_stale_one_release",
+      "rrp_stale_one_operation",
+      "lattice_cohort_swap",
+      "cascade_delay_37",
+      "macro_relation_mask"
+    ]
+  },
+  "evidence_boundary": {
+    "cagr_values_computed": 0,
+    "execution_market_rows_opened": 0,
+    "funding_rows_opened": 0,
+    "future_return_rows_opened": 0,
+    "joint_state_rows_built": 0,
+    "mdd_values_computed": 0,
+    "model_rows_built": 0,
+    "pnl_values_computed": 0,
+    "post_2023_source_rows_opened": 0,
+    "reward_rows_built": 0,
+    "source_value_rows_decoded": 0,
+    "trades_built": 0
+  },
+  "forbidden_support_fields": [
+    "execution_open",
+    "execution_high",
+    "execution_low",
+    "execution_close",
+    "funding_rate",
+    "future_return",
+    "label",
+    "action",
+    "target",
+    "reward",
+    "model_prediction",
+    "trade",
+    "pnl",
+    "cagr",
+    "mdd",
+    "strict_mdd",
+    "portfolio_weight"
+  ],
+  "manifest_hash": "be035126c30f35c425563ee5b8d8d81c57b64c50dd072e8e7ae9b6acc1fd939e",
+  "policy": {
+    "boundary_hours_utc": [
+      0,
+      8,
+      16
+    ],
+    "cascade_control_delay_rows": 37,
+    "category_share_max": 0.94,
+    "category_support_min": 0.03,
+    "core_valid_min": 0.95,
+    "decision_delay_minutes": 5,
+    "distinct_signatures_min": 120,
+    "execution_delay_minutes": 10,
+    "forced_flat_max": 0.08,
+    "h41_fresh_days": 4,
+    "h41_max_age_days": 10,
+    "jsd_max": 0.3,
+    "micro_rows_per_boundary": 96,
+    "policy_id": "LAMB-21",
+    "rank_history_max": 270,
+    "rank_history_min": 180,
+    "rank_quantiles": [
+      0.33,
+      0.67
+    ],
+    "rrp_fresh_days": 2,
+    "rrp_max_age_days": 5,
+    "sequence_lines": 21,
+    "signature_share_max": 0.1,
+    "source_join_min": 0.99,
+    "source_window_minutes": 480
+  },
+  "producer": {
+    "head_at_generation": "32f97c8d74e2598c9858da32b7eb203b690da0b4",
+    "script": "training/preregister_liquidity_aware_microstructure_braid.py",
+    "script_clean_at_generation": true,
+    "script_commit": "32f97c8d74e2598c9858da32b7eb203b690da0b4",
+    "script_sha256": "1fb3b7f39fe418e9c160a3035cbb63a8f65cb72119a49d36c93fc5528c37e10c",
+    "script_tracked": true,
+    "uncommitted_producer": false
+  },
+  "protocol_version": "liquidity_aware_microstructure_braid_preregistration_v1",
+  "rank_contract": {
+    "invalid_boundary_enters_reference": false,
+    "macro_ranked": false,
+    "maximum_prior_valid_boundaries": 270,
+    "minimum_prior_valid_boundaries": 180,
+    "quantiles": [
+      0.33,
+      0.67
+    ],
+    "ranked_primitives": [
+      "coarse_share",
+      "coarse_coherence",
+      "fine_conviction",
+      "collision_share",
+      "cascade_share",
+      "cascade_coherence"
+    ],
+    "strictly_prior": true,
+    "tie_rule": "LOW x<=q33; MID q33<x<=q67; HIGH x>q67"
+  },
+  "research_history": {
+    "component_market_outcomes_seen": true,
+    "component_source_incidence_seen": true,
+    "dclb_policy_reused": false,
+    "exact_lamb_joint_incidence_seen": false,
+    "exact_lamb_market_outcomes_seen": false,
+    "global_pristine_holdout_claimed": false,
+    "qlcd_policy_reused": false,
+    "qlcd_primitive_reuse_disclosed": true,
+    "smcc_policy_reused": false,
+    "tracer_policy_reused": false
+  },
+  "source_contracts": {
+    "cascade": {
+      "allowlist": [
+        "date",
+        "source_observed",
+        "source_complete",
+        "source_gap_day",
+        "verified_zero_volume_empty",
+        "post_gap_quarantine",
+        "first_transact_time_ms",
+        "last_transact_time_ms",
+        "agg_trade_count",
+        "first_price",
+        "last_price",
+        "quote_notional",
+        "collision_quote_notional",
+        "max_ms_quote_notional",
+        "max_ms_signed_quote_notional"
+      ],
+      "excluded_columns": [
+        "max_ms_score"
+      ],
+      "load_all_then_drop_forbidden": false,
+      "loader": "pandas.read_csv(usecols=exact_allowlist)",
+      "manifest": "data/binance_um_same_millisecond_cascade_btc_2020_2023/build_manifest.json",
+      "manifest_sha256": "e6ba3fbf74bc9bc1a7c1b35873e9ff430e5bc0a7b7edcc7e082f3f397362c805",
+      "path": "data/binance_um_same_millisecond_cascade_btc_2020_2023/BTCUSDT_same_millisecond_5m_2020-01-01_2023-12-31.csv.gz",
+      "physical_header": [
+        "date",
+        "source_observed",
+        "source_complete",
+        "source_gap_day",
+        "verified_zero_volume_empty",
+        "post_gap_quarantine",
+        "first_transact_time_ms",
+        "last_transact_time_ms",
+        "agg_trade_count",
+        "underlying_trade_count",
+        "millisecond_group_count",
+        "collision_group_count",
+        "first_price",
+        "last_price",
+        "quote_notional",
+        "signed_quote_notional",
+        "collision_quote_notional",
+        "collision_notional_share",
+        "max_ms_transact_time",
+        "max_ms_event_count",
+        "max_ms_underlying_trade_count",
+        "max_ms_quote_notional",
+        "max_ms_signed_quote_notional",
+        "max_ms_notional_share",
+        "max_ms_coherence",
+        "max_ms_side",
+        "max_ms_pre_group_price",
+        "max_ms_first_price",
+        "max_ms_last_price",
+        "max_ms_sweep_bp",
+        "max_ms_score"
+      ],
+      "physical_header_sha256": "1af1937bd53b900960f12c73af0701a86990fcb688d6727c9715c9330b1f6090",
+      "projection_order_is_frozen": true,
+      "sha256": "8fa03b0d7f58db9d0ba6c889e99ce87ba668f55a3c7f0ab5638a374c4584bfd1"
+    },
+    "h41": {
+      "allowlist": [
+        "release_date",
+        "observation_date",
+        "available_at_utc",
+        "net_liquidity_usd_millions"
+      ],
+      "availability": "available_at_utc <= B; age <= 10 elapsed days",
+      "load_all_then_drop_forbidden": false,
+      "loader": "pandas.read_csv(usecols=exact_allowlist)",
+      "manifest": "data/federal_reserve_h41_net_liquidity_2018_2023/build_manifest.json",
+      "manifest_sha256": "1ec212a85de0e49c5a0c2d35b8b22be86eb7d62989f7a0098be1bb1274b2a99b",
+      "path": "data/federal_reserve_h41_net_liquidity_2018_2023/federal_reserve_h41_net_liquidity_2018-01-04_2023-12-28.csv.gz",
+      "physical_header": [
+        "release_date",
+        "observation_date",
+        "available_at_utc",
+        "total_assets_usd_millions",
+        "treasury_general_account_usd_millions",
+        "reverse_repurchase_agreements_usd_millions",
+        "net_liquidity_usd_millions",
+        "source_format",
+        "source_url",
+        "source_sha256"
+      ],
+      "physical_header_sha256": "4bd522eddda52fefa94c9722f6015596fcde80769c59441046bc0438e1d314d9",
+      "predecessor": "immediately prior physical release only",
+      "projection_order_is_frozen": true,
+      "sha256": "224883dad01b9d7f17d52eb87f3d7ef9890c8dd055a6c36577a534d2afe69621"
+    },
+    "lattice": {
+      "allowlist": [
+        "date",
+        "source_observed",
+        "source_complete",
+        "source_gap_day",
+        "verified_zero_volume_empty",
+        "post_gap_quarantine",
+        "agg_trade_count",
+        "total_quantity_mbtc",
+        "coarse_quantity_mbtc",
+        "coarse_signed_quantity_mbtc",
+        "fine_quantity_mbtc",
+        "fine_signed_quantity_mbtc"
+      ],
+      "cohort_definition": {
+        "coarse": "quantity_mbtc % 100 == 0",
+        "fine": "all remaining exact 1 mBTC increments",
+        "medium": "quantity_mbtc % 10 == 0 and not coarse"
+      },
+      "excluded_columns": [
+        "qlcd_score"
+      ],
+      "load_all_then_drop_forbidden": false,
+      "loader": "pandas.read_csv(usecols=exact_allowlist)",
+      "manifest": "data/binance_um_quantity_lattice_btc_2020_2023/build_manifest.json",
+      "manifest_sha256": "bcdf89924f54a5b97d4219749c2094d2a4c08d8473a37bc5367d9b8e5791284f",
+      "path": "data/binance_um_quantity_lattice_btc_2020_2023/BTCUSDT_quantity_lattice_5m_2020-01-01_2023-12-31.csv.gz",
+      "physical_header": [
+        "date",
+        "source_observed",
+        "source_complete",
+        "source_gap_day",
+        "verified_zero_volume_empty",
+        "post_gap_quarantine",
+        "agg_trade_count",
+        "total_quantity_mbtc",
+        "total_signed_quantity_mbtc",
+        "coarse_event_count",
+        "coarse_quantity_mbtc",
+        "coarse_signed_quantity_mbtc",
+        "medium_event_count",
+        "medium_quantity_mbtc",
+        "medium_signed_quantity_mbtc",
+        "fine_event_count",
+        "fine_quantity_mbtc",
+        "fine_signed_quantity_mbtc",
+        "coarse_quantity_share",
+        "coarse_coherence",
+        "fine_signed_share",
+        "coarse_side",
+        "cohort_opposition",
+        "qlcd_score"
+      ],
+      "physical_header_sha256": "1021675e0998dfaf49a13d46af7365b0762719917817d8719c2d8d99116f47ed",
+      "projection_order_is_frozen": true,
+      "sha256": "3ca945f134115fc7b58086405fd881db3e3b70087bd9da54ffc293f6b658072e"
+    },
+    "rrp": {
+      "allowlist": [
+        "operation_date",
+        "result_available_at_utc",
+        "total_amount_accepted_usd",
+        "participating_counterparties",
+        "accepted_counterparties",
+        "source_complete",
+        "quarantine_reason"
+      ],
+      "availability": "result_available_at_utc <= B; age <= 5 elapsed days; source_complete=true; quarantine_reason blank",
+      "load_all_then_drop_forbidden": false,
+      "loader": "pandas.read_csv(usecols=exact_allowlist)",
+      "manifest": "data/new_york_fed_overnight_rrp_2018_2023/build_manifest.json",
+      "manifest_sha256": "4f87e2219da71c94832c8708086ba01387efc145e3488b62cd3b3d07c62d8fee",
+      "path": "data/new_york_fed_overnight_rrp_2018_2023/new_york_fed_overnight_rrp_2018-01-01_2023-12-31.csv.gz",
+      "physical_header": [
+        "operation_id",
+        "operation_date",
+        "settlement_date",
+        "maturity_date",
+        "close_time_et",
+        "result_available_at_utc",
+        "last_updated_et",
+        "total_amount_submitted_usd",
+        "total_amount_accepted_usd",
+        "participating_counterparties",
+        "accepted_counterparties",
+        "source_complete",
+        "quarantine_reason"
+      ],
+      "physical_header_sha256": "81a388d6e36c5e84c166b5fe111d3766ea5c6b56ac83895ed3541a6c05a01e9c",
+      "predecessor": "immediately prior physical operation in same complete segment",
+      "projection_order_is_frozen": true,
+      "sha256": "49f67ed44b7eb81fd35c17a8209cf14d6a8019d7e9f77fce8c343d1a7fb66b27"
+    }
+  },
+  "source_support_gates": {
+    "adjacent_year_jsd_max": 0.3,
+    "all_conjunctive": true,
+    "all_controls_distinct": true,
+    "append_replay_byte_identical": true,
+    "cascade_follow_and_absorb_min_each_year": 0.075,
+    "category_share_max_each_year": 0.94,
+    "category_support_min_each_year": 0.03,
+    "core_valid_min_each_year": 0.95,
+    "distinct_signatures_min_each_year": 120,
+    "diversity_denominator": "sequence-ready core-valid states in named UTC year; safety and current_position excluded",
+    "failure_action": "retire LAMB-21 unchanged before rewards",
+    "forbidden_counter_max": 0,
+    "forced_flat_max_each_full_post_warmup_quarter": 0.08,
+    "macro_support_and_restrict_min_each_year": 0.05,
+    "micro_buy_and_sell_min_each_year": 0.1,
+    "minimum_supported_categories_per_field_each_year": 2,
+    "quarter_ready_min_after_warmup": 225,
+    "sequence_ready_min": {
+      "2020": 750,
+      "2021": 1000,
+      "2022": 1000,
+      "2023": 1000
+    },
+    "signature_share_max_each_year": 0.1,
+    "source_join_min_each_year": 0.99
+  },
+  "stage_authority": {
+    "authorized": [
+      "physical_header_validation",
+      "exact_source_projection",
+      "causal_source_join",
+      "primitive_construction",
+      "strict_prior_rank",
+      "token_support",
+      "source_only_controls",
+      "append_replay"
+    ],
+    "forbidden": [
+      "execution_market",
+      "funding",
+      "future_return",
+      "reward",
+      "model_training",
+      "checkpoint_selection",
+      "trade",
+      "economic_evaluation"
+    ]
+  },
+  "support_outputs": {
+    "support_report": "results/lamb21_source_support_2026-07-25.json",
+    "token_support": "data/lamb21_source_support/token_support.csv.gz"
+  },
+  "tokens": {
+    "action_space": [
+      "TARGET_SHORT",
+      "TARGET_FLAT",
+      "TARGET_LONG"
+    ],
+    "columns": [
+      "h41_impulse",
+      "rrp_impulse",
+      "macro_sponsorship",
+      "macro_age",
+      "lattice_relation",
+      "lattice_concentration",
+      "cascade_impact",
+      "cascade_intensity",
+      "micro_braid",
+      "macro_transition",
+      "micro_transition"
+    ],
+    "invalid_output_action": "TARGET_FLAT",
+    "position_tokens": [
+      "SHORT",
+      "FLAT",
+      "LONG"
+    ],
+    "raw_numeric_prompt_fields": 0,
+    "safety_tokens": [
+      "SOURCE_INVALID",
+      "RRP_FLAT",
+      "MACRO_NEUTRAL",
+      "BOTH_AGING",
+      "LATTICE_NEUTRAL",
+      "LATTICE_MIXED",
+      "CASCADE_NEUTRAL",
+      "CASCADE_MIXED",
+      "MICRO_NEUTRAL",
+      "MACRO_TRANSITION_MIXED",
+      "MICRO_TRANSITION_MIXED"
+    ],
+    "schema": [
+      {
+        "name": "h41_impulse",
+        "vocabulary": [
+          "H41_EXPANDS",
+          "H41_CONTRACTS",
+          "H41_FLAT"
+        ]
+      },
+      {
+        "name": "rrp_impulse",
+        "vocabulary": [
+          "RRP_RELEASES",
+          "RRP_DRAINS",
+          "RRP_FLAT"
+        ]
+      },
+      {
+        "name": "macro_sponsorship",
+        "vocabulary": [
+          "LIQUIDITY_SUPPORTS",
+          "LIQUIDITY_RESTRICTS",
+          "MACRO_SPLIT",
+          "MACRO_NEUTRAL"
+        ]
+      },
+      {
+        "name": "macro_age",
+        "vocabulary": [
+          "BOTH_FRESH",
+          "H41_AGING",
+          "RRP_AGING",
+          "BOTH_AGING"
+        ]
+      },
+      {
+        "name": "lattice_relation",
+        "vocabulary": [
+          "COHORTS_BUY",
+          "COHORTS_SELL",
+          "COARSE_BUY_FINE_SELL",
+          "COARSE_SELL_FINE_BUY",
+          "LATTICE_NEUTRAL"
+        ]
+      },
+      {
+        "name": "lattice_concentration",
+        "vocabulary": [
+          "COARSE_DOMINANT",
+          "FINE_DOMINANT",
+          "LATTICE_MIXED"
+        ]
+      },
+      {
+        "name": "cascade_impact",
+        "vocabulary": [
+          "CASCADE_BUY_FOLLOWTHROUGH",
+          "CASCADE_BUY_ABSORBED",
+          "CASCADE_SELL_FOLLOWTHROUGH",
+          "CASCADE_SELL_ABSORBED",
+          "CASCADE_NEUTRAL"
+        ]
+      },
+      {
+        "name": "cascade_intensity",
+        "vocabulary": [
+          "CASCADE_BROAD",
+          "CASCADE_LOCAL",
+          "CASCADE_MIXED"
+        ]
+      },
+      {
+        "name": "micro_braid",
+        "vocabulary": [
+          "MICRO_CONFIRMS_BUY",
+          "MICRO_CONFIRMS_SELL",
+          "LATTICE_BUY_CASCADE_SELL",
+          "LATTICE_SELL_CASCADE_BUY",
+          "MICRO_NEUTRAL"
+        ]
+      },
+      {
+        "name": "macro_transition",
+        "vocabulary": [
+          "SUPPORT_PERSISTS",
+          "RESTRICTION_PERSISTS",
+          "ROTATES_TO_SUPPORT",
+          "ROTATES_TO_RESTRICTION",
+          "MACRO_TRANSITION_MIXED"
+        ]
+      },
+      {
+        "name": "micro_transition",
+        "vocabulary": [
+          "BUY_PRESSURE_PERSISTS",
+          "SELL_PRESSURE_PERSISTS",
+          "PRESSURE_FLIPS",
+          "PRESSURE_DISSIPATES",
+          "MICRO_TRANSITION_MIXED"
+        ]
+      }
+    ],
+    "sequence_calendar_span_days": 7,
+    "sequence_lines": 21
+  }
+}
