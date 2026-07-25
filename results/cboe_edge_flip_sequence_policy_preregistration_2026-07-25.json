@@ -1,0 +1,394 @@
+{
+  "authority": {
+    "audit_document": "docs/post-lcdp-alpha-mechanism-audit-2026-07-25.md",
+    "audit_document_sha256": "4bbf47feb0579e4b4766ad3c0aa9a282a082c4c60fee723065ea70c7f8d50288",
+    "boundary_commit": "b7297ccf9235da98edcbe9b35d84009245972321",
+    "boundary_document": "docs/cboe-edge-flip-sequence-policy-boundary-2026-07-25.md",
+    "boundary_document_sha256": "d0b522a7ac87e3526d6cd740bb81304bd73042bc327978660eb551b159c16ec3",
+    "clock_authority": "docs/cboe-cross-surface-pressure-grammar-boundary-2026-07-24.md",
+    "clock_authority_sha256": "0b6feb15d1e7b616b5b65bb266b15db7e3fdcf82765b5848c76d68e804cb39f2",
+    "producer": {
+      "commit": "ec8eae23226d39f0c62b6c5711d6080f2bf990a4",
+      "path": "training/preregister_cboe_edge_flip_sequence_policy.py",
+      "sha256": "1c4668e72846eadf66011c582c62e8574af3679204500c1ff9631101ecbb7ac1"
+    }
+  },
+  "chronology": {
+    "candidate_eval": "[2023-01-01,2024-01-01)",
+    "containment": "entry and scheduled exit both inside role",
+    "market_access_authorized_now": false,
+    "sealed_extensions": [
+      "2024",
+      "2025",
+      "2026_ytd"
+    ],
+    "source_support_may_read_2020_2023_tokens": true,
+    "test_checkpoint_selection": "[2022-01-01,2023-01-01)",
+    "train_development": "[2020-01-01,2022-01-01)"
+  },
+  "clock": {
+    "availability": "calendar D+1 09:30 America/New_York",
+    "entry": "calendar D+1 09:35 America/New_York",
+    "equality_rule": "direct target-to-target rebalance at equality",
+    "future_row_membership_used": false,
+    "gap_rule": "flat after scheduled exit until a later reserved entry",
+    "interval": "[entry,scheduled_exit)",
+    "reservation": "ascending entry; suppress strict overlap; accept equality",
+    "scheduled_exit": "entry plus 288 five-minute bars",
+    "source_observation": "D",
+    "timezone": "America/New_York via zoneinfo",
+    "weekend_and_holiday_entry": true
+  },
+  "contingent_economic_chronology": {
+    "authorized_now": false,
+    "eval": "2023 once; no repair",
+    "model_family_frozen_now": false,
+    "sequential_transfer": [
+      "2024",
+      "2025",
+      "2026_ytd"
+    ],
+    "stop": "first failed source, economic, control, or transfer gate",
+    "test": "2022 once under frozen checkpoint rule",
+    "train": "2020-2021 only after evaluator/model freeze"
+  },
+  "controls": {
+    "definitions": {
+      "current_only": "all non-current states MASKED",
+      "flow_only": "term and tail MASKED",
+      "group_order_rotation": "flow, term, tail serialization order",
+      "reverse_sequence": "reverse five state blocks",
+      "stale_current": "CURRENT duplicates LATE",
+      "tail_only": "term and flow MASKED",
+      "term_only": "tail and flow MASKED",
+      "within_group_value_rotation": "swap term pairs, swap tail pair, rotate six flow values"
+    },
+    "masked_primary_forbidden": true,
+    "ordered_ids": [
+      "reverse_sequence",
+      "stale_current",
+      "group_order_rotation",
+      "within_group_value_rotation",
+      "term_only",
+      "tail_only",
+      "flow_only",
+      "current_only"
+    ],
+    "position_context_preserved": true,
+    "schedule_preserved": true
+  },
+  "decision": "freeze_source_language_support_only",
+  "forbidden_access": {
+    "funding_rows_opened": 0,
+    "future_return_rows_built": 0,
+    "market_rows_opened": 0,
+    "model_rows_built": 0,
+    "pnl_cagr_mdd_values_computed": 0,
+    "post_2023_source_rows_opened": 0,
+    "reward_rows_built": 0,
+    "selected_action_rows_built": 0,
+    "source_data_rows_parsed_by_preregistration": 0,
+    "trade_rows_built": 0
+  },
+  "manifest_hash": "9aa7c891ec241d4733db215068bed3507f41c03cbae7198c906a079ddb6467bf",
+  "parsing": {
+    "date": "exact ten-byte YYYY-MM-DD strict Gregorian round-trip",
+    "decimal": "finite strictly-positive plain Decimal; no exponent, sign, whitespace, comma, underscore, float, rounding, or epsilon",
+    "flow_hidden_fields": "header and whole-file hash validation only; no numeric parse",
+    "intersection": "exact sorted three-panel source-date intersection; no fill, carry, interpolation, substitution, or zero",
+    "vix_identity": "term VIX_close equals tail VIX_close exactly",
+    "volume": "exact strictly-positive base-ten integer"
+  },
+  "phase": "outcome_blind_source_language_support_preregistration",
+  "policy": {
+    "availability_hour_new_york": 9,
+    "availability_minute": 30,
+    "bar_minutes": 5,
+    "edges_per_state": 12,
+    "entry_hour_new_york": 9,
+    "entry_minute": 35,
+    "hold_bars": 288,
+    "maximum_change_level_share": 0.88,
+    "maximum_current_signature_share": 0.15,
+    "maximum_level_edge_share": 0.98,
+    "maximum_role_level_share_drift": 0.25,
+    "maximum_sequence_signature_share": 0.02,
+    "minimum_change_direction_share": 0.1,
+    "minimum_distinct_current_signatures": 40,
+    "minimum_quarter_intervals": 50,
+    "minimum_reverse_difference_share": 0.95,
+    "minimum_rotation_semantic_difference_share": 0.5,
+    "minimum_stale_semantic_difference_share": 0.35,
+    "minimum_total_intervals": 920,
+    "minimum_unique_sequence_share": 0.8,
+    "minimum_year_intervals": 230,
+    "sequence_states": 5,
+    "source_end_exclusive": "2024-01-01",
+    "source_start_inclusive": "2020-01-01"
+  },
+  "policy_id": "CEFS-D1",
+  "protocol_version": "cboe_edge_flip_sequence_policy_preregistration_v1",
+  "relation_language": {
+    "aggregation_forbidden": true,
+    "comparison": "LOWER if left<right; EQUAL if left=right; else HIGHER",
+    "comparison_levels": [
+      "LOWER",
+      "EQUAL",
+      "HIGHER"
+    ],
+    "edge_formulas": {
+      "FLOW_EQUITY_PCR_CHANGE": "compare(equity_pcr[C],equity_pcr[P])",
+      "FLOW_INDEX_PCR_CHANGE": "compare(index_pcr[C],index_pcr[P])",
+      "FLOW_SPX_PCR_CHANGE": "compare(spx_pcr[C],spx_pcr[P])",
+      "FLOW_TOTAL_PCR_CHANGE": "compare(total_pcr[C],total_pcr[P])",
+      "FLOW_VIX_PCR_CHANGE": "compare(vix_pcr[C],vix_pcr[P])",
+      "FLOW_VIX_SHARE_CHANGE": "compare_ratio(vix_volume[C],index_volume[C],vix_volume[P],index_volume[P])",
+      "TAIL_SKEW_CHANGE": "compare(SKEW_close[C],SKEW_close[P])",
+      "TAIL_VOLVOL_CHANGE": "compare_ratio(VVIX_close[C],VIX_close[C],VVIX_close[P],VIX_close[P])",
+      "TERM_BACK_CHANGE": "compare_ratio(VIX_close[C],VIX3M_close[C],VIX_close[P],VIX3M_close[P])",
+      "TERM_BACK_LEVEL": "compare(VIX_close[C],VIX3M_close[C])",
+      "TERM_FRONT_CHANGE": "compare_ratio(VIX9D_close[C],VIX_close[C],VIX9D_close[P],VIX_close[P])",
+      "TERM_FRONT_LEVEL": "compare(VIX9D_close[C],VIX_close[C])"
+    },
+    "ordered_edges": [
+      "TERM_FRONT_LEVEL",
+      "TERM_BACK_LEVEL",
+      "TERM_FRONT_CHANGE",
+      "TERM_BACK_CHANGE",
+      "TAIL_SKEW_CHANGE",
+      "TAIL_VOLVOL_CHANGE",
+      "FLOW_TOTAL_PCR_CHANGE",
+      "FLOW_INDEX_PCR_CHANGE",
+      "FLOW_EQUITY_PCR_CHANGE",
+      "FLOW_VIX_PCR_CHANGE",
+      "FLOW_SPX_PCR_CHANGE",
+      "FLOW_VIX_SHARE_CHANGE"
+    ],
+    "ratio_comparison": "compare(a*d,c*b) for positive a/b and c/d",
+    "source_owned_side_forbidden": true
+  },
+  "research_history": {
+    "candidate_specific_edge_sequence_opened": false,
+    "corrected_clock_reused_without_novelty_claim": true,
+    "globally_pristine": false,
+    "historical_current_vintage_is_live_equivalent": false,
+    "predecessor_documents": {
+      "cihm_rejection": {
+        "path": "docs/cboe-institutional-hedge-migration-rejection-2026-07-18.md",
+        "sha256": "823bcc1613f0404937c6d405d947483057ce5b4a7f9766a5279afdb451c4cf65"
+      },
+      "cspg_retirement": {
+        "path": "docs/cspg-source-support-retirement-2026-07-24.md",
+        "sha256": "084be289afe411d46df7bd4fea9e82528559a29d2ecdc8529bf2006d9942ac29"
+      },
+      "cthd_rejection": {
+        "path": "docs/cboe-tail-hedge-disagreement-rejection-2026-07-18.md",
+        "sha256": "ab3985a9fa2175da238d8c43a8ee57dc7f0e149f81ca3ad85debfdffc955b9ef"
+      },
+      "cvtr_rejection": {
+        "path": "docs/cboe-volatility-term-rotation-rejection-2026-07-17.md",
+        "sha256": "f5101951b2ddc610e55603cbe9e96fae81cc9412ae70648eb5353e29f6d130e9"
+      },
+      "cxrt_rejection": {
+        "path": "docs/cxrt-source-support-result-2026-07-24.md",
+        "sha256": "af73042b035b5cc2b1ad6cf49c0270155e19a315dde7c6da9463332896d3725d"
+      },
+      "oprr_rejection": {
+        "path": "docs/oprr-source-support-result-2026-07-24.md",
+        "sha256": "9dfa67235b80817ceb40cf3a4fe4041300f8279ccad3a0f25dad26eeba0ef2e5"
+      }
+    }
+  },
+  "sequence_language": {
+    "action_space": [
+      "TARGET_LONG",
+      "TARGET_FLAT",
+      "TARGET_SHORT"
+    ],
+    "control_edge_vocabulary": [
+      "LOWER",
+      "EQUAL",
+      "HIGHER",
+      "MASKED"
+    ],
+    "edges_per_state": 12,
+    "ordered_states": [
+      "EARLIEST",
+      "EARLY",
+      "MIDDLE",
+      "LATE",
+      "CURRENT"
+    ],
+    "position_contexts": [
+      "TARGET_FLAT",
+      "TARGET_LONG",
+      "TARGET_SHORT"
+    ],
+    "position_templates_per_schedule": 3,
+    "primary_edge_vocabulary": [
+      "LOWER",
+      "EQUAL",
+      "HIGHER"
+    ],
+    "prompt_forbidden": [
+      "raw or formatted number",
+      "date, weekday, month, or year",
+      "rank, quantile, score, pressure, consensus, or source side",
+      "source path or hash",
+      "price, return, funding, pnl, equity, or drawdown",
+      "split or checkpoint identity",
+      "model confidence or hidden reasoning"
+    ],
+    "safety_target": "TARGET_FLAT without model inference",
+    "serialization": "sixty RELATIVE_STATE.EDGE=LEVEL lines in frozen order, then POSITION=TARGET_* and one final newline",
+    "state_count": 5
+  },
+  "sources": {
+    "flow": {
+      "audit": "docs/cboe-option-flow-source-audit-2026-07-18.md",
+      "audit_sha256": "c182ee2f9078c5bee2d2a0f3ec488105980a1c54651b8b651db2e3af96278f8f",
+      "forbidden_numeric_columns": [
+        "total_call_volume",
+        "total_put_volume",
+        "total_volume",
+        "index_call_volume",
+        "index_put_volume",
+        "equity_call_volume",
+        "equity_put_volume",
+        "equity_volume",
+        "vix_call_volume",
+        "vix_put_volume",
+        "spx_call_volume",
+        "spx_put_volume",
+        "spx_volume"
+      ],
+      "header_sha256": "a98314aa376428c5d237837121305c5cc4c4892e25ea3db3127d466b451281d7",
+      "integrity_text_columns": [
+        "response_sha256"
+      ],
+      "integrity_text_rules": {
+        "response_sha256": "exact 64 lowercase hexadecimal characters; forbidden from relations, tokens, prompts, controls, labels, actions, and model inputs"
+      },
+      "manifest": "data/cboe_option_flow_2020_2023/build_manifest.json",
+      "manifest_hash": "07c2effecd8c67e7ddb81abf5e01620a667a52e2db02c78b742eb49b506e1bac",
+      "manifest_sha256": "0a513b146ad5857d9ab7311e978152c308de64db8ef29c4d463eb07ea503089e",
+      "path": "data/cboe_option_flow_2020_2023/cboe_option_flow_2020-01-01_2023-12-31.csv.gz",
+      "physical_header": [
+        "observation_date",
+        "total_pcr",
+        "index_pcr",
+        "equity_pcr",
+        "vix_pcr",
+        "spx_pcr",
+        "total_call_volume",
+        "total_put_volume",
+        "total_volume",
+        "index_call_volume",
+        "index_put_volume",
+        "index_volume",
+        "equity_call_volume",
+        "equity_put_volume",
+        "equity_volume",
+        "vix_call_volume",
+        "vix_put_volume",
+        "vix_volume",
+        "spx_call_volume",
+        "spx_put_volume",
+        "spx_volume",
+        "response_sha256"
+      ],
+      "relation_columns": [
+        "observation_date",
+        "total_pcr",
+        "index_pcr",
+        "equity_pcr",
+        "vix_pcr",
+        "spx_pcr",
+        "index_volume",
+        "vix_volume"
+      ],
+      "sha256": "35ef106ef01e3abadbcb4a6227187dd1d7cf2722191bd146bac06d08d1684a78"
+    },
+    "tail": {
+      "allowed_columns": [
+        "observation_date",
+        "SKEW_close",
+        "VVIX_close",
+        "VIX_close"
+      ],
+      "audit": "docs/cboe-tail-risk-source-audit-2026-07-18.md",
+      "audit_sha256": "706c5839cc5babc7b150d71a139b659c76b2cc5a1a355de61868842000b2847b",
+      "header_sha256": "bdc2e42c1d356ebd815c491af9b20211d1bc8f2781c0917d92bbf04f1f0a5dc3",
+      "manifest": "data/cboe_tail_risk_2018_2023/build_manifest.json",
+      "manifest_hash": "091ddf3050035156814fe168e1edcac193e23cca9f39a3ef0140bcb5f8265d72",
+      "manifest_sha256": "9ef80ef3034c93d97c5b2a8160b2502527287d570d15f9d7166d631d9866c7bd",
+      "path": "data/cboe_tail_risk_2018_2023/cboe_tail_risk_2018-01-01_2023-12-31.csv.gz",
+      "physical_header": [
+        "observation_date",
+        "SKEW_close",
+        "VVIX_close",
+        "VIX_close"
+      ],
+      "sha256": "cdde3f8d4bb1e23d00b192f5f9ef759aefba9087be5fd60653e9c02479dfa41a"
+    },
+    "term": {
+      "allowed_columns": [
+        "observation_date",
+        "VIX9D_close",
+        "VIX_close",
+        "VIX3M_close"
+      ],
+      "audit": "docs/cboe-volatility-term-structure-source-audit-2026-07-17.md",
+      "audit_sha256": "985799cd9a26217bffb678ae2d5dbfa81070c84edf955bec681de663a3b63c58",
+      "header_sha256": "b2fc60cae8d080d3b47a1a55c48438b63f91530cc345f1b6ef78cee05cc57e20",
+      "manifest": "data/cboe_volatility_term_structure_2018_2023/build_manifest.json",
+      "manifest_hash": "d10f798e26cceca76c3a998cfaf97af068d443431121ed19e80a986a08ad4ce3",
+      "manifest_sha256": "42b2a35ad131bd63574d2adcf684e28766dc3060fa645fc749df10dd3fb27f27",
+      "path": "data/cboe_volatility_term_structure_2018_2023/cboe_vix_term_structure_2018-01-01_2023-12-31.csv.gz",
+      "physical_header": [
+        "observation_date",
+        "VIX9D_close",
+        "VIX_close",
+        "VIX3M_close"
+      ],
+      "sha256": "6f1b2f7f3a5b1e4d5001d673e6ff54374791879c278248ce27b3d610e4f75dc7"
+    }
+  },
+  "support_gates": {
+    "common_date_first": "2020-01-02",
+    "common_date_last": "2023-12-29",
+    "common_dates_exact": 1006,
+    "failure_action": "retire_cefs_d1_unchanged_before_outcomes",
+    "first_stop_order": [
+      "authority_forbidden_access",
+      "schema_chronology",
+      "schedule_support",
+      "primitive_edge_support",
+      "state_diversity_stability",
+      "source_only_controls",
+      "determinism_append_replay"
+    ],
+    "maximum_change_level_share": 0.88,
+    "maximum_common_date_gap_days": 10,
+    "maximum_current_signature_share": 0.15,
+    "maximum_level_edge_share": 0.98,
+    "maximum_role_level_share_drift": 0.25,
+    "maximum_sequence_signature_share": 0.02,
+    "minimum_change_direction_share": 0.1,
+    "minimum_distinct_current_signatures": 40,
+    "minimum_quarter_intervals": 50,
+    "minimum_reverse_difference_share": 0.95,
+    "minimum_rotation_semantic_difference_share": 0.5,
+    "minimum_stale_semantic_difference_share": 0.35,
+    "minimum_total_intervals": 920,
+    "minimum_unique_sequence_share": 0.8,
+    "minimum_year_intervals": 230,
+    "pass_action": "authorize_economic_rllm_evaluator_freeze_only",
+    "prefix_end_exclusive": [
+      "2021-01-01",
+      "2022-01-01",
+      "2023-01-01",
+      "2024-01-01"
+    ]
+  }
+}
