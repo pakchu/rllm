@@ -278,6 +278,40 @@ class FittedQPolicy:
             return self.default_q()
         return q
 
+    def predict_q_many(
+        self,
+        rows: Sequence[Mapping[str, Any]],
+        positions: Sequence[str],
+    ) -> np.ndarray:
+        if len(rows) != len(positions):
+            raise ValueError("BCTP batch rows and positions must align")
+        output = np.vstack(
+            [self.default_q() for _ in rows]
+        ) if rows else np.zeros((0, 3), dtype=float)
+        valid_indices: list[int] = []
+        encoded: list[np.ndarray] = []
+        for index, (row, position) in enumerate(zip(rows, positions)):
+            x, ok = self.encoder.encode_one(
+                row,
+                position,
+                self.feature_mode,
+            )
+            if ok:
+                valid_indices.append(index)
+                encoded.append(x)
+        if not encoded:
+            return output
+        predicted = np.asarray(
+            self.estimator.predict(np.vstack(encoded)),
+            dtype=float,
+        )
+        if predicted.shape != (len(encoded), 3):
+            return output
+        for index, q in zip(valid_indices, predicted):
+            if np.all(np.isfinite(q)):
+                output[index] = q
+        return output
+
     def choose_model_index(self, row: Mapping[str, Any], current_position: str) -> int:
         return _choose_model_index(self.predict_q(row, current_position), current_position)
 
@@ -425,21 +459,62 @@ def _fit_fitted_q(
 
     for _ in range(1, BELLMAN_ITERATIONS):
         previous = policy
-        updated: list[np.ndarray] = []
-        for i, p in train_indices:
-            target = rewards[i, p].copy()
-            if not terminal_arr[i] and i + 1 < n:
+        updated = [
+            rewards[i, p].copy()
+            for i, p in train_indices
+        ]
+        if algorithm == "extra_trees":
+            continuation_rows: list[Mapping[str, Any]] = []
+            continuation_positions: list[str] = []
+            continuation_slots: list[tuple[int, int]] = []
+            for train_index, (i, _) in enumerate(train_indices):
+                if terminal_arr[i] or i + 1 >= n:
+                    continue
                 for model_action_index, action_name in enumerate(
                     internal_action_names
                 ):
-                    next_position = action_name.replace("TARGET", "POSITION")
+                    continuation_rows.append(records[i + 1])
+                    continuation_positions.append(
+                        action_name.replace("TARGET", "POSITION")
+                    )
+                    continuation_slots.append(
+                        (train_index, model_action_index)
+                    )
+            continuation_q = previous.predict_q_many(
+                continuation_rows,
+                continuation_positions,
+            )
+            for (train_index, model_action_index), next_q in zip(
+                continuation_slots,
+                continuation_q,
+            ):
+                finite = np.isfinite(next_q)
+                cont = np.max(next_q[finite]) if finite.any() else 0.0
+                updated[train_index][model_action_index] += GAMMA * cont
+        else:
+            for train_index, (i, _) in enumerate(train_indices):
+                if terminal_arr[i] or i + 1 >= n:
+                    continue
+                for model_action_index, action_name in enumerate(
+                    internal_action_names
+                ):
+                    next_position = action_name.replace(
+                        "TARGET",
+                        "POSITION",
+                    )
                     next_q = previous.predict_q(
                         records[i + 1],
                         next_position,
                     )
-                    cont = np.max(next_q[np.isfinite(next_q)]) if np.isfinite(next_q).any() else 0.0
-                    target[model_action_index] += GAMMA * cont
-            updated.append(target)
+                    finite = np.isfinite(next_q)
+                    cont = (
+                        np.max(next_q[finite])
+                        if finite.any()
+                        else 0.0
+                    )
+                    updated[train_index][model_action_index] += (
+                        GAMMA * cont
+                    )
         y = np.vstack(updated)
         estimator = _fit_estimator(algorithm, x, y)
         policy = FittedQPolicy(

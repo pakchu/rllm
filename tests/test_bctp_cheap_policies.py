@@ -154,3 +154,67 @@ def test_encoder_uses_frozen_vocabulary_not_observed_only() -> None:
     known_but_unobserved["s_0__cadence_utilization"] = token_values[-1]
     q = policy.predict_q(known_but_unobserved, "POSITION_FLAT")
     assert np.isfinite(q).all()
+
+
+def test_batched_extra_trees_bellman_matches_scalar_reference(
+    monkeypatch,
+) -> None:
+    states = _states(10)
+    rng = np.random.default_rng(20260725)
+    rewards = rng.normal(0.0, 0.01, size=(10, 3, 3))
+    terminal = np.zeros(10, dtype=bool)
+    terminal[-1] = True
+    reachable = np.ones((10, 3), dtype=bool)
+    monkeypatch.setattr(p, "BELLMAN_ITERATIONS", 4)
+    monkeypatch.setattr(
+        p,
+        "EXTRA_TREES_KWARGS",
+        {**p.EXTRA_TREES_KWARGS, "n_estimators": 16},
+    )
+
+    batched_method = p.FittedQPolicy.predict_q_many
+
+    def scalar_reference(self, rows, positions):
+        return np.vstack(
+            [
+                self.predict_q(row, position)
+                for row, position in zip(rows, positions)
+            ]
+        )
+
+    monkeypatch.setattr(
+        p.FittedQPolicy,
+        "predict_q_many",
+        scalar_reference,
+    )
+    scalar = p.fit_fitted_q(
+        states,
+        rewards,
+        terminal,
+        reachable,
+        algorithm="extra_trees",
+    )
+    monkeypatch.setattr(
+        p.FittedQPolicy,
+        "predict_q_many",
+        batched_method,
+    )
+    batched = p.fit_fitted_q(
+        states,
+        rewards,
+        terminal,
+        reachable,
+        algorithm="extra_trees",
+    )
+
+    positions = list(p.POSITIONS)
+    for row in states:
+        expected = np.vstack(
+            [scalar.predict_q(row, position) for position in positions]
+        )
+        actual = batched.predict_q_many([row] * 3, positions)
+        np.testing.assert_allclose(actual, expected, rtol=0.0, atol=1e-15)
+    assert p.rollout_policy(batched, states) == p.rollout_policy(
+        scalar,
+        states,
+    )
