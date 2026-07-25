@@ -910,6 +910,7 @@ def write_once(path: str | Path, payload: Mapping[str, Any]) -> str:
     target.parent.mkdir(parents=True, exist_ok=True)
     if target.parent.is_symlink():
         raise RuntimeError("LAMB output parent contains a symlink")
+    assert_producer_committed(creating=True)
     try:
         descriptor = os.open(
             target,
@@ -917,6 +918,8 @@ def write_once(path: str | Path, payload: Mapping[str, Any]) -> str:
             0o644,
         )
     except FileExistsError:
+        if target.is_symlink() or not target.is_file():
+            raise RuntimeError("LAMB write-once target is not a regular file")
         if target.read_bytes() != encoded:
             raise RuntimeError(f"LAMB write-once artifact drift: {target}")
         return "verified_existing"
@@ -936,8 +939,7 @@ def main() -> None:
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     args = parser.parse_args()
     assert_boundary_committed()
-    output_exists = _output_path(args.output).exists()
-    assert_producer_committed(creating=not output_exists)
+    assert_producer_committed(creating=False)
     validate_frozen_dependencies()
     payload = build_manifest()
     validate_manifest(payload)

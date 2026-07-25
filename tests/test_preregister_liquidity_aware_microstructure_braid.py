@@ -203,11 +203,19 @@ def test_write_once_is_reproducible_and_rejects_drift(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     payload = p.build_manifest()
+    creation_checks: list[bool] = []
     monkeypatch.setattr(p, "REPOSITORY_ROOT", tmp_path)
+    monkeypatch.setattr(
+        p,
+        "assert_producer_committed",
+        lambda *, creating: creation_checks.append(creating),
+    )
     assert p.write_once("results/freeze.json", payload) == "created"
+    assert creation_checks == [True]
     target = tmp_path / "results" / "freeze.json"
     assert target.exists()
     assert p.write_once("results/freeze.json", payload) == "verified_existing"
+    assert creation_checks == [True]
     target.write_text("{}\n", encoding="utf-8")
     with pytest.raises(RuntimeError, match="artifact drift"):
         p.write_once("results/freeze.json", payload)
@@ -219,6 +227,11 @@ def test_write_once_rejects_unsafe_paths_and_symlink_parent(
 ) -> None:
     payload = p.build_manifest()
     monkeypatch.setattr(p, "REPOSITORY_ROOT", tmp_path)
+    monkeypatch.setattr(
+        p,
+        "assert_producer_committed",
+        lambda *, creating: None,
+    )
     with pytest.raises(RuntimeError, match="repository-relative"):
         p.write_once("../escape.json", payload)
     with pytest.raises(RuntimeError, match="repository-relative"):
