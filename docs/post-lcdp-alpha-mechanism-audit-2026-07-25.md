@@ -33,14 +33,14 @@ The immediately preceding candidates are terminal:
   internally contradicted.
 
 Their thresholds, clocks, source-validity exceptions, actions, holds, token
-merges, row drops, and failed controls remain closed. CSTP-D1 does not reuse
+merges, row drops, and failed controls remain closed. CEFS-D1 does not reuse
 any of them.
 
 ## Candidate screen
 
 | Candidate | Source history and live path | New claim | Main weakness | Decision |
 |---|---|---|---|---|
-| **CEFS-D1** | Three locally frozen Cboe daily panels, 1,006 exact common option-flow dates available over 2020–2023; conservative next-Cboe-session clock; official date-addressable/live sources already documented | A percentile-free sequence of primitive relation-edge states and edge flips can support a three-action daily target policy without a handcrafted pressure score | Cboe is outcome-seen through earlier simple rules; current pages are not a point-in-time archive; forward live parity remains mandatory | **Select** |
+| **CEFS-D1** | Three locally frozen Cboe daily panels, 1,006 exact common option-flow dates available over 2020–2023; fixed next-calendar-day clock independent of future row membership; official date-addressable/live sources already documented | A percentile-free sequence of primitive relation-edge states and edge flips can support a three-action daily target policy without a handcrafted pressure score | Cboe is outcome-seen through earlier simple rules; current pages are not a point-in-time archive; forward live parity remains mandatory | **Select** |
 | SQRB-H1 | Binance stablecoin quote, denominator, collateral-breadth, and BTCDOM premium sources | Dense hourly stablecoin reservoir target policy | The common denominator/breadth/BTCDOM history is concentrated in late 2023, while multiple component mechanisms already opened train outcomes; insufficient clean train/test/eval geometry | Reject for this turn |
 | VPRS-Session | Cboe panels plus Binance BTCBVOL and perp premium | Cross-market volatility assimilation | Frozen BTCBVOL history starts only in June 2023, so it cannot support the required 2020–2022 train/test chronology without changing the source identity | Reject for this turn |
 | CLOR-Release | Treasury auctions, SOMA lending, and OFR preliminary repo releases | Asynchronous collateral-release ordering policy | Prior source-composition failures, conservative multi-day availability, current-vintage revision risk, and no frozen joined live-parity source make this a high-burden successor | Reserve only |
