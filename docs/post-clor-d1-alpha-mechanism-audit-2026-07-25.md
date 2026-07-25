@@ -100,23 +100,26 @@ addresses:
 
 | protocol | contract | address | first-code block |
 |---|---|---:|---:|
-| Compound | GovernorAlpha | `0xc0dA01a04C3f3E0be433606045bB7017A7323E38` | 9,601,447 |
+| Compound | GovernorAlpha | `0xc0dA01a04C3f3E0be433606045bB7017A7323E38` | 9,601,459 |
 | Compound | GovernorBravo | `0xc0da02939e1441f497fd74f78ce7decb17b66529` | 12,006,099 |
 | Uniswap | GovernorAlpha v0 | `0x5e4be8Bc9637f0EAA1A755019e06A68ce081D58F` | 10,861,678 |
 | Uniswap | GovernorAlpha v2 | `0xC4e172459f1E7939D522503B81AFAaC1014CE6F6` | 12,543,659 |
 | Uniswap | GovernorBravo | `0x408ED6354d4973f66138C91495F2f2FCbd8724C3` | 13,059,157 |
 
-The Compound addresses and deployment blocks are present in the official
-`networks/mainnet.json` artifact:
+The Compound addresses and repository deployment markers are present in the
+official `networks/mainnet.json` artifact:
 
 <https://github.com/compound-finance/compound-protocol/blob/a3214f67b73310d547e00fc578e8355911c9d376/networks/mainnet.json>
 
 The three Uniswap addresses are published by the official Uniswap technical
-reference. The first-code blocks above were found without reading event logs
-by binary-searching `eth_getCode`. Two Ethereum transports independently
-returned identical first-code block hashes and bytecode hashes for all three
-addresses. This bounded transport probe is feasibility evidence only and must
-be hash-bound by the preregistration.
+reference. The exact first-code blocks above were found without reading event
+logs by binary-searching `eth_getCode`. Compound's repository marker for
+GovernorAlpha is block 9,601,447, while both transports place the first
+non-empty runtime code at block 9,601,459; the stricter observed first-code
+boundary is therefore frozen. Two Ethereum transports independently returned
+identical first-code block hashes and bytecode hashes for all five addresses.
+This bounded transport probe is feasibility evidence only and must be
+hash-bound by the preregistration.
 
 ## Historical envelope and causal clock
 
