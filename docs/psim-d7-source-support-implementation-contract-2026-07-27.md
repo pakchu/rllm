@@ -69,7 +69,9 @@ The official Gate-4 class roster is frozen to:
 Unknown or ambiguous grammar produces the typed event failure
 `ERROR_UNKNOWN_GRAMMAR`; strict normalization failure remains
 `ERROR_STRICT_UTF8`. Materialization continues through the complete event
-roster and then rejects before any model or outcome access.
+roster and then rejects before any model or outcome access. Producer and
+validator share one canonical, non-textual D7 error-profile hash function so
+typed errors remain auditable without publishing source or exception text.
 
 ## Frozen D6 representation mechanisms
 

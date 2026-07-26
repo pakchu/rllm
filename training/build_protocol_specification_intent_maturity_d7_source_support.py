@@ -2199,6 +2199,15 @@ def build_event_semantics_d6(
     }
 
 
+def _error_profile_hash(outcome_id: str) -> str:
+    return canonical_hash(
+        {
+            "error_type": "D7TypedEventError",
+            "outcome_id": outcome_id,
+        }
+    )
+
+
 def _typed_outcome(
     event_id: str,
     outcome_id: str,
@@ -2211,9 +2220,7 @@ def _typed_outcome(
         "passed": passed,
     }
     if not passed:
-        row["error_profile_hash"] = canonical_hash(
-            {"error_type": "D7TypedEventError", "outcome_id": outcome_id}
-        )
+        row["error_profile_hash"] = _error_profile_hash(outcome_id)
     return row
 
 
@@ -3328,12 +3335,7 @@ def _validated_outcome_partition(
             }
             or outcome_id not in ERROR_SEMANTIC_OUTCOMES
             or row.get("error_profile_hash")
-            != canonical_hash(
-                {
-                    "error_type": "D6SemanticError",
-                    "outcome_id": outcome_id,
-                }
-            )
+            != _error_profile_hash(outcome_id)
         ):
             return None
         error_rows.append(row)

@@ -676,6 +676,12 @@ def test_bitcoin_overlay_collects_complete_roster_before_typed_reject(
         "ERROR_UNKNOWN_GRAMMAR": 1,
         "PASS_MODEL_VISIBLE": 3,
     }
+    partition = runner._validated_outcome_partition(
+        receipt["event_outcomes"]
+    )
+    assert partition is not None
+    assert len(partition[0]) == 3
+    assert len(partition[1]) == 1
     serialized = json.dumps(receipt, sort_keys=True)
     assert "Retained preface" not in serialized
     assert "BIP-899" not in serialized
@@ -1019,6 +1025,17 @@ def test_gate_four_collects_all_replicas_before_typed_error_rejection(
         monkeypatch,
         error_outcomes=[error]
     )
+    receipt_checks = runner._semantics_receipt_checks(
+        "ethereum",
+        semantics[("ethereum", "a")],
+        [runner.event_row(row) for row in events[("ethereum", "a")]],
+    )
+    assert receipt_checks == {
+        "shape": True,
+        "outcome_binding": True,
+        "transport_binding": True,
+        "migration_binding": True,
+    }
     gate = runner.gate_event_parser_replay(
         events,
         semantics,
