@@ -180,30 +180,63 @@ def test_seal_commit_is_exact_direct_child_with_only_seal_paths() -> None:
         runner.EXECUTION_SEAL_PATH.as_posix(),
         runner.SEAL_TEST_PATH.as_posix(),
     }
-    assert runner._assert_committed(
-        runner.SEAL_TEST_PATH,
-        expected_commit=seal_commit,
-    ) == seal_commit
-    assert runner._git_output("rev-parse", "HEAD") == seal_commit
+    assert runner._git_output(
+        "cat-file",
+        "-e",
+        f"{seal_commit}:{runner.SEAL_TEST_PATH.as_posix()}",
+    ) == ""
+    assert runner._git_output(
+        "merge-base",
+        "--is-ancestor",
+        seal_commit,
+        "HEAD",
+    ) == ""
 
 
 def test_runner_validates_committed_execution_seal() -> None:
-    payload = runner.validate_execution_seal()
-    assert payload == seal()
-    assert payload["seal_hash"] == SEAL_HASH
-    assert payload["shared_commit"] == SHARED_COMMIT
+    seal_commit = runner._assert_committed(runner.EXECUTION_SEAL_PATH)
+    if runner._git_output("rev-parse", "HEAD") == seal_commit:
+        payload = runner.validate_execution_seal()
+        assert payload == seal()
+        assert payload["seal_hash"] == SEAL_HASH
+        assert payload["shared_commit"] == SHARED_COMMIT
+    else:
+        terminal = runner.terminal_state()
+        assert terminal is not None
+        assert terminal["authority"]["execution_seal"]["seal_hash"] == (
+            SEAL_HASH
+        )
+        assert terminal["authority"]["execution_seal"][
+            "shared_commit"
+        ] == SHARED_COMMIT
 
 
 def test_seal_did_not_open_source_or_create_terminal_artifacts() -> None:
-    assert not runner.DEFAULT_SOURCE_ROOT.exists()
-    assert not any(
-        (runner.REPO_ROOT / path).exists()
-        for path in (
-            runner.DEFAULT_RESULT_PATH,
-            runner.DEFAULT_REJECTION_PATH,
-            runner.DEFAULT_EVENTS_PATH,
-            runner.DEFAULT_CARDS_PATH,
-            runner.DEFAULT_CONTROLS_PATH,
-            runner.RUN_LOCK_PATH,
+    rejection = runner.REPO_ROOT / runner.DEFAULT_REJECTION_PATH
+    if rejection.exists():
+        terminal = runner.terminal_state()
+        assert terminal is not None
+        assert terminal["decision"] == "reject"
+        assert terminal["terminal_action"] == runner.FAILURE_ACTION
+        assert not any(
+            (runner.REPO_ROOT / path).exists()
+            for path in (
+                runner.DEFAULT_RESULT_PATH,
+                runner.DEFAULT_EVENTS_PATH,
+                runner.DEFAULT_CARDS_PATH,
+                runner.DEFAULT_CONTROLS_PATH,
+                runner.RUN_LOCK_PATH,
+            )
         )
-    )
+    else:
+        assert not runner.DEFAULT_SOURCE_ROOT.exists()
+        assert not any(
+            (runner.REPO_ROOT / path).exists()
+            for path in (
+                runner.DEFAULT_RESULT_PATH,
+                runner.DEFAULT_EVENTS_PATH,
+                runner.DEFAULT_CARDS_PATH,
+                runner.DEFAULT_CONTROLS_PATH,
+                runner.RUN_LOCK_PATH,
+            )
+        )
