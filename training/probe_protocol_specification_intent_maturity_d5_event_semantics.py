@@ -479,6 +479,13 @@ def _model_text_delta(rows: Sequence[Mapping[str, str]]) -> str:
     return text
 
 
+def _model_visible_delta_rows(
+    rows: Sequence[Mapping[str, str]],
+) -> list[Mapping[str, str]]:
+    allowed = frozenset(d4.core.MODEL_SECTION_ORDER)
+    return [row for row in rows if row["section"] in allowed]
+
+
 def _event_path_identity(
     protocol: str,
     proposal_number: int,
@@ -589,7 +596,8 @@ def build_event_semantics_d5(
             old,
             new,
         )
-    text = _model_text_delta(rows)
+    model_rows = _model_visible_delta_rows(rows)
+    text = _model_text_delta(model_rows)
     return {
         "audit_diff_hash": audit_diff_hash,
         "audit_line_change_count": len(rows),
@@ -599,7 +607,7 @@ def build_event_semantics_d5(
         "normalized_text_delta": text,
         "invalid_metadata_present": invalid_metadata,
         "invalid_metadata_states": invalid_metadata_states,
-        "model_line_change_count": len(rows),
+        "model_line_change_count": len(model_rows),
         "model_visibility": "MODEL_VISIBLE",
         "new_metadata_state": (
             ABSENT_STATE if new is None else new.metadata_state
@@ -682,8 +690,6 @@ def _run_synthetic_battery() -> dict[str, Any]:
     )
     valid_event = _synthetic_event(valid_old, valid_new)
     required_fragments = {
-        "OTHER|REMOVE|status: Draft",
-        "OTHER|ADD|status: Review",
         "ABSTRACT|REMOVE|Old synthetic intent.",
         "ABSTRACT|ADD|New synthetic intent.",
     }
@@ -692,6 +698,18 @@ def _run_synthetic_battery() -> dict[str, Any]:
     ):
         raise RuntimeError(
             "PSIM-D5 normalized text delta lost synthetic lines"
+        )
+    forbidden_fragments = {
+        "OTHER|REMOVE|status: Draft",
+        "OTHER|ADD|status: Review",
+        "OTHER|REMOVE|requires: 1",
+        "OTHER|ADD|requires: 1, 2",
+    }
+    if forbidden_fragments.intersection(
+        valid_event["normalized_text_delta"].splitlines()
+    ):
+        raise RuntimeError(
+            "PSIM-D5 model text exposed proposal metadata lines"
         )
 
     invalid_fixtures = {
@@ -858,7 +876,8 @@ def _run_synthetic_battery() -> dict[str, Any]:
             repeated_or_moved_pairs
         ),
         "bip_d4_parse_outputs_unchanged": 1,
-        "normalized_text_delta_includes_metadata_and_body_lines": True,
+        "normalized_text_delta_excludes_metadata_lines": True,
+        "normalized_text_delta_includes_approved_body_lines": True,
         "dependency_unknown_without_repair_for_known_invalid": len(
             observed_invalid
         ),
@@ -954,7 +973,9 @@ def build_probe() -> dict[str, Any]:
             "metadata_resolution": (
                 "NONE_NO_FIRST_LAST_MERGE_DEDUP_RENAME_OR_SELF_EDGE_DROP"
             ),
+            "model_metadata_lines_visible": False,
             "model_text_field": "normalized_text_delta",
+            "model_text_sections": list(d4.core.MODEL_SECTION_ORDER),
             "path_identity": (
                 "PROTOCOL_PLUS_EXACT_OLD_NEW_GROUP_PATHS_PLUS_NUMBER_"
                 "CANONICAL_HASH_BOUND"

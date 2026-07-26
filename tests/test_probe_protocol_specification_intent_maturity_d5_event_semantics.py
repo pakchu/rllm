@@ -12,10 +12,10 @@ from training import (
 )
 
 PROBE_SHA256 = (
-    "f4496846b979ba1e832b4a7108ae9575f0c0e44101f006062efc4453aa6f8799"
+    "42265a1ed0899366047732e1fa5dad24d961bb4b0bd7fb7bb58479a77bc8894b"
 )
 RESULT_HASH = (
-    "b94321b815f4f32cc8c8b6d9b323b88d3b8f29ab1e7e410f4b8266b92e4c186b"
+    "467f4272bc7276879c0087662a70d99c57d9cef421647f1a679e2fce65de4871"
 )
 
 
@@ -204,14 +204,9 @@ def test_valid_event_uses_exact_path_and_normalized_algorithmic_delta() -> (
     assert observed["dependency_edge_delta_count"] == 1
     assert observed["invalid_metadata_present"] is False
     assert observed["invalid_metadata_states"] == []
-    assert observed["audit_line_change_count"] == (
-        observed["model_line_change_count"]
-    )
+    assert observed["audit_line_change_count"] == 6
+    assert observed["model_line_change_count"] == 2
     assert observed["normalized_text_delta"].splitlines() == [
-        "OTHER|REMOVE|status: Draft",
-        "OTHER|REMOVE|requires: 1",
-        "OTHER|ADD|status: Review",
-        "OTHER|ADD|requires: 1, 2",
         "ABSTRACT|REMOVE|Old text.",
         "ABSTRACT|ADD|New text.",
     ]
@@ -265,7 +260,8 @@ def test_known_invalid_metadata_is_explicit_without_repair_and_text_remains(
     assert observed["dependency_delta_state"] == "UNKNOWN_INVALID_METADATA"
     assert observed["dependency_edge_delta_count"] is None
     assert observed["normalized_text_delta"]
-    assert observed["model_line_change_count"] == (
+    assert 0 < observed["model_line_change_count"]
+    assert observed["model_line_change_count"] <= (
         observed["audit_line_change_count"]
     )
 
@@ -521,7 +517,11 @@ def test_semantics_contract_explicitly_forbids_metadata_repairs(
         "TRUE_FOR_NONADMINISTRATIVE_EVENTS"
     )
     assert contract["administrative_text_model_visible"] is False
+    assert contract["model_metadata_lines_visible"] is False
     assert contract["model_text_field"] == "normalized_text_delta"
+    assert contract["model_text_sections"] == list(
+        probe.d4.core.MODEL_SECTION_ORDER
+    )
     assert contract["normalized_text_delta_is_causal_semantics_claim"] is (
         False
     )
@@ -543,7 +543,8 @@ def test_synthetic_battery_is_complete(
             "INVALID_MALFORMED_HEADER": True,
             "INVALID_SELF_DEPENDENCY": True,
         },
-        "normalized_text_delta_includes_metadata_and_body_lines": True,
+        "normalized_text_delta_excludes_metadata_lines": True,
+        "normalized_text_delta_includes_approved_body_lines": True,
         "path_identity_binds_protocol_number_and_exact_side_paths": True,
         "raw_audit_diff_preserved_when_quarantined": True,
         "reverse_migration_fails_closed": True,

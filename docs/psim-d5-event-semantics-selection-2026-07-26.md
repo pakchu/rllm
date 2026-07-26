@@ -32,7 +32,9 @@ number, old/new exact group path와 그 canonical hash로 보존한다.
 normalized algorithmic text delta는 metadata parse와 독립적으로
 기록한다. metadata는 해석 가능 여부를 categorical state로 전달한다.
 LLM은 관측 가능한 text 변화와 invalidity 상태를 함께 볼 수 있지만,
-parser가 source에 없는 값을 만들지는 않는다.
+parser가 source에 없는 값을 만들지는 않는다. 전체 normalized delta는
+audit에 남고, 모델에는 기존 memorization 경계를 유지한 승인된 본문
+section만 전달된다.
 
 ## 고정된 계약
 
@@ -52,9 +54,16 @@ parser가 source에 없는 값을 만들지는 않는다.
 - model-visible 형식은 `SECTION|DIRECTION|LINE`이다.
 - model-facing field 이름은 `normalized_text_delta`이며 source bytes를
   작성자의 intent라고 단정하는 alias를 두지 않는다.
-- header와 `OTHER`, body section을 모두 포함한다.
+- 전체 delta hash와 변경 줄 수는 header와 `OTHER`를 포함해 audit에
+  보존한다.
+- 모델 delta에는 `ABSTRACT`, `MOTIVATION`, `SPECIFICATION`,
+  `RATIONALE`, `BACKWARD_COMPATIBILITY`, `SECURITY`, `TESTS`,
+  `IMPLEMENTATION` 본문 section만 포함한다.
+- proposal number, status, author, date, dependency ID 등 front matter와
+  `OTHER` line은 model-visible text에서 제외한다.
 - non-administrative event의 invalid metadata가 알려진 상태라면 text
-  delta는 model-visible이다.
+  delta의 승인된 본문 부분과 explicit invalidity state가
+  model-visible이다.
 - 이 delta는 source bytes 사이의 deterministic algorithmic proxy다.
   작성자의 인과 의도나 line move의 의미를 안다고 주장하지 않는다.
 - repeated-line과 moved-line synthetic fixture로 동일 입력의
@@ -124,7 +133,8 @@ redirect에서 일반 문서로 돌아오는 reverse transition도 의미가
 | unknown grammar | 3/3 fail closed |
 | reverse migration | fail closed |
 | D4 Bitcoin parse output | 1/1 byte-semantic equal |
-| metadata + body normalized delta | 보존 |
+| approved body normalized delta | 보존 |
+| metadata/raw `OTHER` lines | audit-only, model 제외 |
 | repeated/moved-line proxy | 2/2 deterministic |
 | quarantine audit diff | 보존 |
 
@@ -140,8 +150,8 @@ redirect에서 일반 문서로 돌아오는 reverse transition도 의미가
 | D4 census commit | `6be3e767d4320da0ce9aa34d2cfabbf4ac0fb3ef` |
 | D4 census result hash | `85ff0c04a1fe06b34b7f214f5fd7b9a1191a4ef0dd990a7e7d002f72efe9428d` |
 | D5 probe | `results/protocol_specification_intent_maturity_d5_event_semantics_probe_2026-07-26.json` |
-| D5 probe SHA-256 | `f4496846b979ba1e832b4a7108ae9575f0c0e44101f006062efc4453aa6f8799` |
-| D5 probe result hash | `b94321b815f4f32cc8c8b6d9b323b88d3b8f29ab1e7e410f4b8266b92e4c186b` |
+| D5 probe SHA-256 | `42265a1ed0899366047732e1fa5dad24d961bb4b0bd7fb7bb58479a77bc8894b` |
+| D5 probe result hash | `467f4272bc7276879c0087662a70d99c57d9cef421647f1a679e2fce65de4871` |
 | semantics version | `PSIM_PATH_IDENTITY_NORMALIZED_TEXT_DELTA_V1_EXACT_ERC_QUARANTINE` |
 
 다음 허용 단계는 D5 preregistration이다. official source execution은
