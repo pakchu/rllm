@@ -1,0 +1,1392 @@
+{
+  "availability_contract": {
+    "committer_time_is_publication_receipt": false,
+    "counterpart_lookback_days": 90,
+    "daily_decision_frequency": "1D",
+    "daily_decision_utc_time": "12:05:00",
+    "effective_day": "running_max_utc_committer_calendar_day",
+    "force_push_or_unreachable_ancestor_action": "HALT_NO_REBUILD",
+    "live_available_at": "max(historical_floor,durable_fetch_object_verify_extract_hash_manifest_commit_time)",
+    "primary_historical_economic_schedule": "ARCHIVE_D90",
+    "schedules": [
+      {
+        "delay_calendar_days": 2,
+        "name": "ARCHIVE_D2",
+        "primary_economic_clock": false,
+        "profitability_claim_allowed": false
+      },
+      {
+        "delay_calendar_days": 7,
+        "name": "ARCHIVE_D7",
+        "primary_economic_clock": false,
+        "profitability_claim_allowed": false
+      },
+      {
+        "delay_calendar_days": 30,
+        "name": "ARCHIVE_D30",
+        "primary_economic_clock": false,
+        "profitability_claim_allowed": false
+      },
+      {
+        "delay_calendar_days": 90,
+        "name": "ARCHIVE_D90",
+        "primary_economic_clock": true,
+        "profitability_claim_allowed": true
+      }
+    ],
+    "shorter_schedules_are_diagnostics_only": true
+  },
+  "boundary_reset_contract": {
+    "boundary_states": [
+      "PRE_WINDOW",
+      "PRE_WINDOW_BASELINE",
+      "PRE_WINDOW_UNKNOWN",
+      "NO_EVENT_YET"
+    ],
+    "first_update_old_blob_role": "PRE_WINDOW_BASELINE",
+    "old_blob_creates_synthetic_prior_event": false,
+    "pre_2020_blob_warmup_allowed": false,
+    "pre_first_event_dependency_state": "PRE_WINDOW_UNKNOWN",
+    "stale_age_before_first_protocol_event": "NO_EVENT_YET",
+    "window_age_before_first_event": "PRE_WINDOW",
+    "window_revision_count_before_first_event": 0
+  },
+  "bucket_contract": {
+    "edges": {
+      "changed_section_count": [
+        0,
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "dependency_edge_delta_count": [
+        0,
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "line_change_count": [
+        0,
+        1,
+        3,
+        8,
+        20,
+        50,
+        100,
+        250,
+        500
+      ],
+      "stale_age_days": [
+        0,
+        2,
+        7,
+        30,
+        90,
+        180
+      ],
+      "update_gap_days": [
+        0,
+        2,
+        7,
+        30,
+        90,
+        180,
+        365
+      ],
+      "window_age_days": [
+        0,
+        7,
+        30,
+        90,
+        180,
+        365,
+        730
+      ],
+      "window_revision_count": [
+        0,
+        1,
+        2,
+        4,
+        8,
+        16,
+        32
+      ]
+    },
+    "interval_rule": "NEGATIVE_OR_SENTINEL_SEPARATE; OTHERWISE RIGHT_CLOSED_AT_LAST_EDGE_WITH_OVERFLOW",
+    "raw_numeric_values_model_visible": false
+  },
+  "candidate": {
+    "id": "PSIM-D5",
+    "name": "Protocol Specification Intent-Maturity relation RLLM, exact path identity plus normalized text-delta semantics",
+    "selection_commit": "0e62ec05e6861b2619e6737dd594e7306ad7c93a",
+    "source_axis": "official_eip_bip_specification_revision_relation",
+    "stage": "source_support_only"
+  },
+  "daily_relation_contract": {
+    "administrative_events_retained_in_model_cards": false,
+    "administrative_events_retained_in_source_event_artifact": true,
+    "both_protocol_sets_nonempty": "complete_cartesian_product",
+    "both_sets_empty_sentinel": "NO_ANCHOR",
+    "canonical_event_order": [
+      "availability_utc",
+      "first_parent_index",
+      "proposal_number",
+      "event_id"
+    ],
+    "exactly_one_protocol_set_nonempty": "each_anchor_with_most_recent_opposite_event_in_90_days",
+    "explicit_no_new_event_state_required": true,
+    "maximum_model_events_per_card": 64,
+    "maximum_model_text_bytes_per_event": 8192,
+    "missing_opposite_sentinel": "NO_COUNTERPART",
+    "model_text_field": "normalized_text_delta",
+    "opposite_tie_break": "maximum_event_id",
+    "over_limit_card_action": "SOURCE_GATE_REJECT_NO_TRUNCATION",
+    "prior_card_hash_required": true,
+    "semantic_or_market_pair_selection_allowed": false
+  },
+  "decision_binding": {
+    "commit": "0e62ec05e6861b2619e6737dd594e7306ad7c93a",
+    "path": "docs/psim-d5-event-semantics-selection-2026-07-26.md",
+    "sha256": "364302ddada267c7252c37cd211f088893597917ab6ea3bbe99f896c647beba1"
+  },
+  "event_contract": {
+    "all_matching_path_events_retained": true,
+    "create": "zero_old_blob_and_exactly_one_new_blob",
+    "d5_source_semantics": {
+      "full_normalized_delta_audit": {
+        "fields": [
+          "audit_diff_hash",
+          "audit_line_change_count",
+          "exact_old_path",
+          "exact_new_path",
+          "path_identity_hash",
+          "old_metadata_state",
+          "new_metadata_state",
+          "invalid_metadata_states"
+        ],
+        "model_visible": false,
+        "raw_or_normalized_lines_persisted": false
+      },
+      "historical_ethereum_blob_class_counts": {
+        "D4_DUPLICATE_IDENTICAL_HEADER": 7,
+        "D4_MALFORMED_HEADER_LINE": 20,
+        "D4_SELF_DEPENDENCY": 9,
+        "D4_VALID": 4440,
+        "ERC_MIGRATION_REDIRECT_LOWER_PATH": 365,
+        "ERC_MIGRATION_REDIRECT_UPPER_PATH": 365
+      },
+      "model_card_integration": {
+        "administrative_events_retained_in_model_cards": false,
+        "administrative_events_retained_in_source_event_artifact": true,
+        "exact_paths_or_path_identity_hash_model_visible": false,
+        "known_invalid_state_model_visible": true,
+        "normalized_text_delta_sections": [
+          "ABSTRACT",
+          "MOTIVATION",
+          "SPECIFICATION",
+          "RATIONALE",
+          "BACKWARD_COMPATIBILITY",
+          "SECURITY",
+          "TESTS",
+          "IMPLEMENTATION"
+        ],
+        "raw_header_other_or_copyright_lines_model_visible": false
+      },
+      "probe_semantics": {
+        "administrative_quarantine": "EXACT_ONE_LINE_ETHEREUM_ERC_MOVE_STUB_WITH_TARGET_NUMBER_EQUAL_TO_PROPOSAL_GROUP_PATH_NUMBER",
+        "administrative_quarantine_invalid_metadata_audit": "PRESERVE_EXPLICIT_INVALID_STATES_WHILE_MODEL_TEXT_IS_EMPTY",
+        "administrative_text_model_visible": false,
+        "bip_parser": "UNCHANGED_D4_STRICT_PARSER",
+        "dependency_when_metadata_invalid": "UNKNOWN_WITH_NULL_COUNT_NO_REPAIR",
+        "invalid_metadata_states": [
+          "INVALID_DUPLICATE_CONFLICTING",
+          "INVALID_DUPLICATE_IDENTICAL",
+          "INVALID_MALFORMED_HEADER",
+          "INVALID_SELF_DEPENDENCY",
+          "INVALID_UNKNOWN"
+        ],
+        "known_invalid_metadata_text_model_visible": "TRUE_FOR_NONADMINISTRATIVE_EVENTS",
+        "metadata_resolution": "NONE_NO_FIRST_LAST_MERGE_DEDUP_RENAME_OR_SELF_EDGE_DROP",
+        "model_metadata_lines_visible": false,
+        "model_text_field": "normalized_text_delta",
+        "model_text_sections": [
+          "ABSTRACT",
+          "MOTIVATION",
+          "SPECIFICATION",
+          "RATIONALE",
+          "BACKWARD_COMPATIBILITY",
+          "SECURITY",
+          "TESTS",
+          "IMPLEMENTATION"
+        ],
+        "normalized_text_delta_is_causal_semantics_claim": false,
+        "normalized_text_delta_order": "SEQUENCE_MATCHER_OPCODE_ORDER_REMOVE_THEN_ADD_SOURCE_ORDER",
+        "path_identity": "PROTOCOL_PLUS_EXACT_OLD_NEW_GROUP_PATHS_PLUS_NUMBER_CANONICAL_HASH_BOUND",
+        "raw_normalization": "UNCHANGED_D1_NORMALIZE_BLOB_BYTES",
+        "reverse_administrative_transition": "FAIL_CLOSED",
+        "unknown_grammar": "FAIL_CLOSED_BEFORE_MODEL_OR_OUTCOMES"
+      },
+      "semantics_version": "PSIM_PATH_IDENTITY_NORMALIZED_TEXT_DELTA_V1_EXACT_ERC_QUARANTINE",
+      "synthetic_probe_binding": {
+        "commit": "0e62ec05e6861b2619e6737dd594e7306ad7c93a",
+        "d4_forensic_root_opened": false,
+        "market_model_outcomes_opened": false,
+        "official_historical_proposal_source_opened": false,
+        "official_reference_notes_model_visible": false,
+        "path": "results/protocol_specification_intent_maturity_d5_event_semantics_probe_2026-07-26.json",
+        "protocol_version": "psim_d5_path_text_event_semantics_probe_v1",
+        "result_hash": "467f4272bc7276879c0087662a70d99c57d9cef421647f1a679e2fce65de4871",
+        "script_path": "training/probe_protocol_specification_intent_maturity_d5_event_semantics.py",
+        "script_sha256": "d1aaf55effec3df8f38854992b4c60bd39d612e4bd6cd00fe705f60b5cac9d85",
+        "semantics_version": "PSIM_PATH_IDENTITY_NORMALIZED_TEXT_DELTA_V1_EXACT_ERC_QUARANTINE",
+        "sha256": "42265a1ed0899366047732e1fa5dad24d961bb4b0bd7fb7bb58479a77bc8894b",
+        "synthetic_only": true,
+        "test_path": "tests/test_probe_protocol_specification_intent_maturity_d5_event_semantics.py",
+        "test_sha256": "68919a7e02975557443e7f3e5d38c912e2fbdd74eeaa95e95922fa842cd0b1c1"
+      }
+    },
+    "delete": "exactly_one_old_blob_and_zero_new_blob",
+    "duplicate_number_paths_in_one_tree": "REJECT",
+    "event_id_formula": "SHA256(protocol||NUL||commit_oid||NUL||canonical_decimal_proposal_number||NUL||old_blob_oid_or_NULL||NUL||new_blob_oid_or_NULL)",
+    "event_types": [
+      "CREATE",
+      "UPDATE",
+      "DELETE"
+    ],
+    "format_migration_same_number_is_update": true,
+    "multiple_old_or_new_blobs_same_number": "REJECT",
+    "path_number_preamble_number_must_match": true,
+    "update": "exactly_one_old_blob_and_exactly_one_new_blob"
+  },
+  "excluded_feasibility_probe": {
+    "bitcoin": {
+      "commit_days": 404,
+      "commits": 1146,
+      "markdown_path_touches": 140,
+      "mediawiki_path_touches": 1524,
+      "proposal_path_touches": 1664,
+      "strict_utf8_newest_blob": true,
+      "unique_proposal_paths": 210
+    },
+    "ethereum": {
+      "commit_days": 692,
+      "commits": 2280,
+      "proposal_path_touches": 2358,
+      "strict_utf8_newest_blob": true,
+      "unique_proposal_paths": 413
+    },
+    "probe_may_set_economic_direction_or_threshold": false,
+    "probe_start_inclusive": "2024-01-01T00:00:00Z",
+    "source_interval_incidence_opened": false
+  },
+  "forbidden_access_contract": {
+    "btc_or_funding_outcomes_opened": false,
+    "counters": {
+      "btc_market_rows_read": 0,
+      "cagr_values_built": 0,
+      "daily_cards_built": 0,
+      "dependency_rows_read": 0,
+      "funding_rows_read": 0,
+      "future_return_rows_read": 0,
+      "model_outputs_built": 0,
+      "model_rows_built": 0,
+      "pnl_rows_built": 0,
+      "post_2023_proposal_blobs_read": 0,
+      "pre_2020_proposal_blobs_read": 0,
+      "proposal_text_rows_read": 0,
+      "reward_rows_built": 0,
+      "source_incidence_rows_read": 0,
+      "strict_mdd_values_built": 0,
+      "trade_rows_built": 0
+    },
+    "git_commands_during_preregistration": 0,
+    "models_loaded": 0,
+    "network_calls_during_preregistration": 0,
+    "proposal_blobs_opened": false,
+    "source_incidence_opened": false
+  },
+  "inheritance_proof": {
+    "all_other_contract_paths_byte_equal": true,
+    "authorized_delta": {
+      "candidate.id": {
+        "after": "PSIM-D5",
+        "before": "PSIM-D4"
+      },
+      "candidate.name": {
+        "after": "Protocol Specification Intent-Maturity relation RLLM, exact path identity plus normalized text-delta semantics",
+        "before": "Protocol Specification Intent-Maturity relation RLLM, historical EIP normalized-empty separator grammar"
+      },
+      "candidate.selection_commit": {
+        "after": "0e62ec05e6861b2619e6737dd594e7306ad7c93a",
+        "before": "131009359c60bc5b28b76d22a63abf698011fbcb"
+      },
+      "daily_relation_contract.administrative_events_retained_in_model_cards": {
+        "after": false,
+        "before": null
+      },
+      "daily_relation_contract.administrative_events_retained_in_source_event_artifact": {
+        "after": true,
+        "before": null
+      },
+      "daily_relation_contract.model_text_field": {
+        "after": "normalized_text_delta",
+        "before": null
+      },
+      "decision_binding.commit": {
+        "after": "0e62ec05e6861b2619e6737dd594e7306ad7c93a",
+        "before": "131009359c60bc5b28b76d22a63abf698011fbcb"
+      },
+      "decision_binding.path": {
+        "after": "docs/psim-d5-event-semantics-selection-2026-07-26.md",
+        "before": "docs/post-psim-d3-alpha-mechanism-audit-2026-07-26.md"
+      },
+      "decision_binding.sha256": {
+        "after": "364302ddada267c7252c37cd211f088893597917ab6ea3bbe99f896c647beba1",
+        "before": "2615736ba063c2b8e35811d3d01ab3517b345d74a2f7b70d248899aa393d7b99"
+      },
+      "event_contract.d5_source_semantics": {
+        "after": {
+          "full_normalized_delta_audit": {
+            "fields": [
+              "audit_diff_hash",
+              "audit_line_change_count",
+              "exact_old_path",
+              "exact_new_path",
+              "path_identity_hash",
+              "old_metadata_state",
+              "new_metadata_state",
+              "invalid_metadata_states"
+            ],
+            "model_visible": false,
+            "raw_or_normalized_lines_persisted": false
+          },
+          "historical_ethereum_blob_class_counts": {
+            "D4_DUPLICATE_IDENTICAL_HEADER": 7,
+            "D4_MALFORMED_HEADER_LINE": 20,
+            "D4_SELF_DEPENDENCY": 9,
+            "D4_VALID": 4440,
+            "ERC_MIGRATION_REDIRECT_LOWER_PATH": 365,
+            "ERC_MIGRATION_REDIRECT_UPPER_PATH": 365
+          },
+          "model_card_integration": {
+            "administrative_events_retained_in_model_cards": false,
+            "administrative_events_retained_in_source_event_artifact": true,
+            "exact_paths_or_path_identity_hash_model_visible": false,
+            "known_invalid_state_model_visible": true,
+            "normalized_text_delta_sections": [
+              "ABSTRACT",
+              "MOTIVATION",
+              "SPECIFICATION",
+              "RATIONALE",
+              "BACKWARD_COMPATIBILITY",
+              "SECURITY",
+              "TESTS",
+              "IMPLEMENTATION"
+            ],
+            "raw_header_other_or_copyright_lines_model_visible": false
+          },
+          "probe_semantics": {
+            "administrative_quarantine": "EXACT_ONE_LINE_ETHEREUM_ERC_MOVE_STUB_WITH_TARGET_NUMBER_EQUAL_TO_PROPOSAL_GROUP_PATH_NUMBER",
+            "administrative_quarantine_invalid_metadata_audit": "PRESERVE_EXPLICIT_INVALID_STATES_WHILE_MODEL_TEXT_IS_EMPTY",
+            "administrative_text_model_visible": false,
+            "bip_parser": "UNCHANGED_D4_STRICT_PARSER",
+            "dependency_when_metadata_invalid": "UNKNOWN_WITH_NULL_COUNT_NO_REPAIR",
+            "invalid_metadata_states": [
+              "INVALID_DUPLICATE_CONFLICTING",
+              "INVALID_DUPLICATE_IDENTICAL",
+              "INVALID_MALFORMED_HEADER",
+              "INVALID_SELF_DEPENDENCY",
+              "INVALID_UNKNOWN"
+            ],
+            "known_invalid_metadata_text_model_visible": "TRUE_FOR_NONADMINISTRATIVE_EVENTS",
+            "metadata_resolution": "NONE_NO_FIRST_LAST_MERGE_DEDUP_RENAME_OR_SELF_EDGE_DROP",
+            "model_metadata_lines_visible": false,
+            "model_text_field": "normalized_text_delta",
+            "model_text_sections": [
+              "ABSTRACT",
+              "MOTIVATION",
+              "SPECIFICATION",
+              "RATIONALE",
+              "BACKWARD_COMPATIBILITY",
+              "SECURITY",
+              "TESTS",
+              "IMPLEMENTATION"
+            ],
+            "normalized_text_delta_is_causal_semantics_claim": false,
+            "normalized_text_delta_order": "SEQUENCE_MATCHER_OPCODE_ORDER_REMOVE_THEN_ADD_SOURCE_ORDER",
+            "path_identity": "PROTOCOL_PLUS_EXACT_OLD_NEW_GROUP_PATHS_PLUS_NUMBER_CANONICAL_HASH_BOUND",
+            "raw_normalization": "UNCHANGED_D1_NORMALIZE_BLOB_BYTES",
+            "reverse_administrative_transition": "FAIL_CLOSED",
+            "unknown_grammar": "FAIL_CLOSED_BEFORE_MODEL_OR_OUTCOMES"
+          },
+          "semantics_version": "PSIM_PATH_IDENTITY_NORMALIZED_TEXT_DELTA_V1_EXACT_ERC_QUARANTINE",
+          "synthetic_probe_binding": {
+            "commit": "0e62ec05e6861b2619e6737dd594e7306ad7c93a",
+            "d4_forensic_root_opened": false,
+            "market_model_outcomes_opened": false,
+            "official_historical_proposal_source_opened": false,
+            "official_reference_notes_model_visible": false,
+            "path": "results/protocol_specification_intent_maturity_d5_event_semantics_probe_2026-07-26.json",
+            "protocol_version": "psim_d5_path_text_event_semantics_probe_v1",
+            "result_hash": "467f4272bc7276879c0087662a70d99c57d9cef421647f1a679e2fce65de4871",
+            "script_path": "training/probe_protocol_specification_intent_maturity_d5_event_semantics.py",
+            "script_sha256": "d1aaf55effec3df8f38854992b4c60bd39d612e4bd6cd00fe705f60b5cac9d85",
+            "semantics_version": "PSIM_PATH_IDENTITY_NORMALIZED_TEXT_DELTA_V1_EXACT_ERC_QUARANTINE",
+            "sha256": "42265a1ed0899366047732e1fa5dad24d961bb4b0bd7fb7bb58479a77bc8894b",
+            "synthetic_only": true,
+            "test_path": "tests/test_probe_protocol_specification_intent_maturity_d5_event_semantics.py",
+            "test_sha256": "68919a7e02975557443e7f3e5d38c912e2fbdd74eeaa95e95922fa842cd0b1c1"
+          }
+        },
+        "before": null
+      },
+      "memorization_contract.administrative_events_excluded_from_challenges": {
+        "after": true,
+        "before": null
+      },
+      "memorization_contract.first_failure_action": {
+        "after": "REJECT_PSIM_D5_UNCHANGED_BEFORE_MARKET_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D4_UNCHANGED_BEFORE_MARKET_OR_OUTCOMES"
+      },
+      "memorization_contract.model_text_field": {
+        "after": "normalized_text_delta",
+        "before": null
+      },
+      "next_authorized_step": {
+        "after": "implement and seal synthetic-only PSIM-D5 path/text-delta source-support evaluator",
+        "before": "implement and seal synthetic-only PSIM-D4 historical EIP parser source-support evaluator"
+      },
+      "parser_contract.metadata_parse_failure_action": {
+        "after": "CLASSIFY_D5_KNOWN_INVALID_WITHOUT_REPAIR_OR_REJECT_UNKNOWN",
+        "before": "REJECT_NOT_AUDIT_ONLY"
+      },
+      "protocol_version": {
+        "after": "psim_d5_source_preregistration_v1",
+        "before": "psim_d4_source_preregistration_v1"
+      },
+      "representation_contract.administrative_events_model_visible": {
+        "after": false,
+        "before": null
+      },
+      "representation_contract.dependency_delta_states": {
+        "after": [
+          "NO_PRIOR",
+          "STABLE",
+          "ADDED",
+          "REMOVED",
+          "MIXED",
+          "DELETED",
+          "UNKNOWN_INVALID_METADATA"
+        ],
+        "before": [
+          "NO_PRIOR",
+          "STABLE",
+          "ADDED",
+          "REMOVED",
+          "MIXED",
+          "DELETED"
+        ]
+      },
+      "representation_contract.deterministic_source_tokens": {
+        "after": [
+          "protocol",
+          "event_type",
+          "window_revision_count_bucket",
+          "window_age_bucket",
+          "update_gap_bucket",
+          "stale_age_bucket",
+          "old_section_presence",
+          "new_section_presence",
+          "changed_section_bitset",
+          "dependency_delta_state",
+          "dependency_edge_delta_count_bucket",
+          "line_change_count_bucket",
+          "changed_section_count_bucket",
+          "counterpart_state",
+          "prior_card_hash",
+          "old_metadata_state",
+          "new_metadata_state",
+          "invalid_metadata_present"
+        ],
+        "before": [
+          "protocol",
+          "event_type",
+          "window_revision_count_bucket",
+          "window_age_bucket",
+          "update_gap_bucket",
+          "stale_age_bucket",
+          "old_section_presence",
+          "new_section_presence",
+          "changed_section_bitset",
+          "dependency_delta_state",
+          "dependency_edge_delta_count_bucket",
+          "line_change_count_bucket",
+          "changed_section_count_bucket",
+          "counterpart_state",
+          "prior_card_hash"
+        ]
+      },
+      "representation_contract.exact_paths_or_path_identity_hash_model_visible": {
+        "after": false,
+        "before": null
+      },
+      "representation_contract.known_invalid_metadata_state_model_visible": {
+        "after": true,
+        "before": null
+      },
+      "representation_contract.legacy_intent_text_field_allowed": {
+        "after": false,
+        "before": null
+      },
+      "representation_contract.model_text_field": {
+        "after": "normalized_text_delta",
+        "before": null
+      },
+      "representation_contract.model_text_sections": {
+        "after": [
+          "ABSTRACT",
+          "MOTIVATION",
+          "SPECIFICATION",
+          "RATIONALE",
+          "BACKWARD_COMPATIBILITY",
+          "SECURITY",
+          "TESTS",
+          "IMPLEMENTATION"
+        ],
+        "before": null
+      },
+      "representation_contract.raw_header_other_or_copyright_text_model_visible": {
+        "after": false,
+        "before": null
+      },
+      "source_contract.artifact_paths.cards": {
+        "after": "data/protocol_specification_intent_maturity_d5_cards_2020_2024q1.jsonl.gz",
+        "before": "data/protocol_specification_intent_maturity_d4_cards_2020_2024q1.jsonl.gz"
+      },
+      "source_contract.artifact_paths.controls": {
+        "after": "results/protocol_specification_intent_maturity_d5_source_controls_2026-07-26.json",
+        "before": "results/protocol_specification_intent_maturity_d4_source_controls_2026-07-26.json"
+      },
+      "source_contract.artifact_paths.events": {
+        "after": "data/protocol_specification_intent_maturity_d5_events_2020_2023.jsonl.gz",
+        "before": "data/protocol_specification_intent_maturity_d4_events_2020_2023.jsonl.gz"
+      },
+      "source_contract.artifact_paths.rejection": {
+        "after": "results/protocol_specification_intent_maturity_d5_source_rejection_2026-07-26.json",
+        "before": "results/protocol_specification_intent_maturity_d4_source_rejection_2026-07-26.json"
+      },
+      "source_contract.artifact_paths.result": {
+        "after": "results/protocol_specification_intent_maturity_d5_source_support_2026-07-26.json",
+        "before": "results/protocol_specification_intent_maturity_d4_source_support_2026-07-26.json"
+      },
+      "source_contract.bare_repository_contract.ref_roster[1]": {
+        "after": "refs/psim-d5/sealed-tip",
+        "before": "refs/psim-d4/sealed-tip"
+      },
+      "source_contract.bare_repository_contract.sealed_ref": {
+        "after": "refs/psim-d5/sealed-tip",
+        "before": "refs/psim-d4/sealed-tip"
+      },
+      "source_contract.bare_repository_contract.source_traversal_ref": {
+        "after": "refs/psim-d5/sealed-tip",
+        "before": "refs/psim-d4/sealed-tip"
+      },
+      "source_contract.batch_hydration_contract.first_failure_action": {
+        "after": "REJECT_PSIM_D5_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D4_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+      },
+      "source_contract.batch_hydration_contract.forbidden_transports[7]": {
+        "after": "D1, D2, D3, or D4 source-object reuse",
+        "before": "D1, D2, or D3 source-object reuse"
+      },
+      "source_contract.batch_hydration_contract.post_hydration_read.missing_object_action": {
+        "after": "REJECT_PSIM_D5_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D4_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+      },
+      "source_contract.batch_hydration_contract.trace_child_argv_ambiguity_action": {
+        "after": "REJECT_PSIM_D5_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D4_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+      },
+      "source_contract.repositories[0].sealed_ref": {
+        "after": "refs/psim-d5/sealed-tip",
+        "before": "refs/psim-d4/sealed-tip"
+      },
+      "source_contract.repositories[1].sealed_ref": {
+        "after": "refs/psim-d5/sealed-tip",
+        "before": "refs/psim-d4/sealed-tip"
+      },
+      "source_contract.source_root": {
+        "after": "/tmp/psim-d5-source",
+        "before": "/tmp/psim-d4-source"
+      },
+      "source_support_contract.administrative_events_retained_in_model_cards": {
+        "after": false,
+        "before": null
+      },
+      "source_support_contract.administrative_events_retained_in_source_artifact": {
+        "after": true,
+        "before": null
+      },
+      "source_support_contract.blob_semantics_total_fraction_required": {
+        "after": "1.0",
+        "before": null
+      },
+      "source_support_contract.control_sensitivity_metric.administrative_events_in_model_payload": {
+        "after": false,
+        "before": null
+      },
+      "source_support_contract.control_sensitivity_metric.first_failure_action": {
+        "after": "REJECT_PSIM_D5_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D4_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+      },
+      "source_support_contract.ethereum_historical_blob_class_counts": {
+        "after": {
+          "D4_DUPLICATE_IDENTICAL_HEADER": 7,
+          "D4_MALFORMED_HEADER_LINE": 20,
+          "D4_SELF_DEPENDENCY": 9,
+          "D4_VALID": 4440,
+          "ERC_MIGRATION_REDIRECT_LOWER_PATH": 365,
+          "ERC_MIGRATION_REDIRECT_UPPER_PATH": 365
+        },
+        "before": null
+      },
+      "source_support_contract.first_failure_action": {
+        "after": "REJECT_PSIM_D5_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D4_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+      },
+      "source_support_contract.gate_four_semantics": {
+        "after": "STRICT_D4_VALID_OR_EXACT_ADMINISTRATIVE_REDIRECT_OR_KNOWN_INVALID_METADATA_STATE_OTHERWISE_REJECT",
+        "before": null
+      },
+      "source_support_contract.parser_success_fraction_required": {
+        "after": null,
+        "before": "1.0"
+      },
+      "source_support_contract.relation_control_transforms.dependency_edge_direction_reverse": {
+        "after": "swap ADDED<->REMOVED; keep NO_PRIOR,STABLE,MIXED,DELETED,UNKNOWN_INVALID_METADATA fixed",
+        "before": "swap ADDED<->REMOVED; keep NO_PRIOR,STABLE,MIXED,DELETED fixed"
+      },
+      "source_support_contract.relation_control_transforms.old_new_direction_reverse": {
+        "after": "swap all old/new derived fields and exact side paths; map CREATE<->DELETE and retain UPDATE; swap explicit metadata states; reverse normalized_text_delta ADD/REMOVE; retain administrative quarantine as model-hidden",
+        "before": "swap all old/new derived fields; map CREATE<->DELETE and retain UPDATE; rebuild dependency and section deltas"
+      },
+      "source_support_contract.relation_control_transforms.protocol_label_swap": {
+        "after": "swap ethereum<->bitcoin labels after extraction; preserve raw event identity, exact side-path audit hash, metadata state, and normalized text delta; rebuild relation cards; administrative quarantine remains model-hidden",
+        "before": "swap ethereum<->bitcoin labels after extraction; preserve raw event identity and text; rebuild relation cards"
+      }
+    },
+    "authorized_delta_hash": "81ec7b54b199801bf5f68f78c03de1c96583eb6c2a061124a2367966457c190d",
+    "authorized_delta_paths": [
+      "candidate.id",
+      "candidate.name",
+      "candidate.selection_commit",
+      "daily_relation_contract.administrative_events_retained_in_model_cards",
+      "daily_relation_contract.administrative_events_retained_in_source_event_artifact",
+      "daily_relation_contract.model_text_field",
+      "decision_binding.commit",
+      "decision_binding.path",
+      "decision_binding.sha256",
+      "event_contract.d5_source_semantics",
+      "memorization_contract.administrative_events_excluded_from_challenges",
+      "memorization_contract.first_failure_action",
+      "memorization_contract.model_text_field",
+      "next_authorized_step",
+      "parser_contract.metadata_parse_failure_action",
+      "protocol_version",
+      "representation_contract.administrative_events_model_visible",
+      "representation_contract.dependency_delta_states",
+      "representation_contract.deterministic_source_tokens",
+      "representation_contract.exact_paths_or_path_identity_hash_model_visible",
+      "representation_contract.known_invalid_metadata_state_model_visible",
+      "representation_contract.legacy_intent_text_field_allowed",
+      "representation_contract.model_text_field",
+      "representation_contract.model_text_sections",
+      "representation_contract.raw_header_other_or_copyright_text_model_visible",
+      "source_contract.artifact_paths.cards",
+      "source_contract.artifact_paths.controls",
+      "source_contract.artifact_paths.events",
+      "source_contract.artifact_paths.rejection",
+      "source_contract.artifact_paths.result",
+      "source_contract.bare_repository_contract.ref_roster[1]",
+      "source_contract.bare_repository_contract.sealed_ref",
+      "source_contract.bare_repository_contract.source_traversal_ref",
+      "source_contract.batch_hydration_contract.first_failure_action",
+      "source_contract.batch_hydration_contract.forbidden_transports[7]",
+      "source_contract.batch_hydration_contract.post_hydration_read.missing_object_action",
+      "source_contract.batch_hydration_contract.trace_child_argv_ambiguity_action",
+      "source_contract.repositories[0].sealed_ref",
+      "source_contract.repositories[1].sealed_ref",
+      "source_contract.source_root",
+      "source_support_contract.administrative_events_retained_in_model_cards",
+      "source_support_contract.administrative_events_retained_in_source_artifact",
+      "source_support_contract.blob_semantics_total_fraction_required",
+      "source_support_contract.control_sensitivity_metric.administrative_events_in_model_payload",
+      "source_support_contract.control_sensitivity_metric.first_failure_action",
+      "source_support_contract.ethereum_historical_blob_class_counts",
+      "source_support_contract.first_failure_action",
+      "source_support_contract.gate_four_semantics",
+      "source_support_contract.parser_success_fraction_required",
+      "source_support_contract.relation_control_transforms.dependency_edge_direction_reverse",
+      "source_support_contract.relation_control_transforms.old_new_direction_reverse",
+      "source_support_contract.relation_control_transforms.protocol_label_swap"
+    ],
+    "batch_hydration_contract_hash": "e2cff3df57a398ba65072b4243077c68f4ba71e44e5c11f182c7d884c4721381",
+    "d4_preregistration": {
+      "commit": "7731f8322b1700550ff1aa46d8a6c6898c31eef0",
+      "contract_core_hash": "6ab492385bc88dd5789ae73474d26a0a5782d1e8d13292cc79acdb6f1f3a808e",
+      "manifest_hash": "b37fe58cf7a043d2164f2e3b08856a75fefad87aef85c02083873e7f3cffb1c8",
+      "path": "results/protocol_specification_intent_maturity_d4_preregistration_2026-07-26.json",
+      "sha256": "52d77eafef0e9e79f1d7a47b9c262aad148765a34ac1928b26992cfafce4d515"
+    },
+    "d4_terminal_rejection": {
+      "commit": "e406778f76f252d3b0cddb33242edcb51e984c80",
+      "first_failure_gate_id": 4,
+      "outcomes_opened": false,
+      "path": "results/protocol_specification_intent_maturity_d4_source_rejection_2026-07-26.json",
+      "proposal_blobs_opened": 5206,
+      "proposal_text_rows_opened": 44,
+      "result_hash": "8563ef3ace444896295d7076cd0f839e8f62f89899e312d711f9768f5cbf84aa",
+      "sha256": "4d947075c0f54c5cd09c732710da0502c87d89fa52029fe81367dd3f27ab2aaf"
+    },
+    "d4_transport_mechanics_byte_equal_after_namespace_rebase": true,
+    "d5_event_semantics_probe": {
+      "commit": "0e62ec05e6861b2619e6737dd594e7306ad7c93a",
+      "d4_forensic_root_opened": false,
+      "market_model_outcomes_opened": false,
+      "official_historical_proposal_source_opened": false,
+      "official_reference_notes_model_visible": false,
+      "path": "results/protocol_specification_intent_maturity_d5_event_semantics_probe_2026-07-26.json",
+      "protocol_version": "psim_d5_path_text_event_semantics_probe_v1",
+      "result_hash": "467f4272bc7276879c0087662a70d99c57d9cef421647f1a679e2fce65de4871",
+      "script_path": "training/probe_protocol_specification_intent_maturity_d5_event_semantics.py",
+      "script_sha256": "d1aaf55effec3df8f38854992b4c60bd39d612e4bd6cd00fe705f60b5cac9d85",
+      "selection_scope": "AUTHORIZE_D5_PREREGISTRATION_ONLY_NOT_OFFICIAL_SOURCE_EXECUTION",
+      "semantics_version": "PSIM_PATH_IDENTITY_NORMALIZED_TEXT_DELTA_V1_EXACT_ERC_QUARANTINE",
+      "sha256": "42265a1ed0899366047732e1fa5dad24d961bb4b0bd7fb7bb58479a77bc8894b",
+      "synthetic_only": true,
+      "test_path": "tests/test_probe_protocol_specification_intent_maturity_d5_event_semantics.py",
+      "test_sha256": "68919a7e02975557443e7f3e5d38c912e2fbdd74eeaa95e95922fa842cd0b1c1"
+    },
+    "event_semantics_contract_hash": "d73f97f980009b199d918bce662876f29e3559ee618a38679ec5209aa8404dcf",
+    "official_selection_evidence": [
+      "https://github.com/ethereum/EIPs/commit/0f44e2b94df4e504bb7b912f56ebd712db2ad396",
+      "https://github.com/ethereum/EIPs/commit/47ce70257fae525a427780630bd8d1903cc96e75",
+      "https://eips.ethereum.org/EIPS/eip-1",
+      "https://yaml.org/spec/1.2.2/"
+    ],
+    "preregistration_access": {
+      "d4_forensic_root_opened": false,
+      "git_commands": 0,
+      "market_model_outcomes_opened": false,
+      "network_calls": 0,
+      "official_historical_proposal_source_opened": false,
+      "official_reference_notes_model_visible": false
+    }
+  },
+  "manifest_hash": "f08eeb300fceb906cdcde485b4bce184c48d4cb14a1cd9028046e0c21a287309",
+  "memorization_contract": {
+    "administrative_events_excluded_from_challenges": true,
+    "base_and_final_models_must_pass_before_market": true,
+    "bonferroni_family_alpha": "0.01",
+    "candidate_ids_per_challenge": 8,
+    "challenge_selection_hash_suffix": "PSIM_MEMORIZATION_V1",
+    "chance_probability": "0.125",
+    "decoys_same_protocol_and_source_year": true,
+    "first_failure_action": "REJECT_PSIM_D5_UNCHANGED_BEFORE_MARKET_OR_OUTCOMES",
+    "forced_choice_no_abstention": true,
+    "maximum_events_per_protocol_source_year": 16,
+    "minimum_eligible_events_per_protocol": 32,
+    "model_text_field": "normalized_text_delta",
+    "per_test_alpha": "0.003333333333333333333333333333",
+    "quarantine": {
+      "bitcoin": [
+        32,
+        39,
+        44,
+        141,
+        340,
+        341,
+        342
+      ],
+      "ethereum": [
+        20,
+        721,
+        1559,
+        3675,
+        4337,
+        4844,
+        4895
+      ]
+    },
+    "quarantined_events_retained_in_source_support": true,
+    "quarantined_relation_units_model_or_economics_allowed": false,
+    "repair_resample_or_model_swap_after_result_allowed": false,
+    "tests": [
+      "ethereum",
+      "bitcoin",
+      "combined"
+    ]
+  },
+  "next_authorized_step": "implement and seal synthetic-only PSIM-D5 path/text-delta source-support evaluator",
+  "official_sources": [
+    "https://eips.ethereum.org/EIPS/eip-1",
+    "https://github.com/ethereum/EIPs",
+    "https://github.com/ethereum/EIPs.git",
+    "https://github.com/bitcoin/bips",
+    "https://github.com/bitcoin/bips.git",
+    "https://github.com/bitcoin/bips/blob/master/bip-0003.md",
+    "https://git-scm.com/docs/git-log",
+    "https://git-scm.com/book/en/v2/Git-Internals-Git-Objects"
+  ],
+  "parser_contract": {
+    "bip_preamble": {
+      "dependency_fields_casefold": [
+        "requires",
+        "replaces",
+        "proposed-replacement"
+      ],
+      "markdown_termination": "first_blank_line_after_first_field",
+      "optional_mediawiki_closing_line": "</pre>",
+      "optional_mediawiki_opening_line": "<pre>",
+      "required_number_field_casefold": "bip"
+    },
+    "current_process_vocabulary_validation_allowed": false,
+    "declared_status_is_model_visible": false,
+    "dependency_token_grammar": "comma_separated_positive_ascii_decimal",
+    "duplicate_header_key_allowed": false,
+    "duplicate_or_self_dependency_allowed": false,
+    "eip_frontmatter": {
+      "closing_line": "---",
+      "dependency_fields": [
+        "requires"
+      ],
+      "normalized_empty_line_contract": {
+        "bip_parser": "IDENTICAL_D1_FUNCTION_OBJECT",
+        "current_eipw_compatibility_claim": false,
+        "empty_line_semantics": "IGNORE_AS_NONSEMANTIC_SEPARATOR",
+        "general_yaml_parser_adopted": false,
+        "header_bounds_position": "BEFORE_NORMALIZED_EMPTY_LINE_FILTER",
+        "nonempty_line_parser": "UNCHANGED_PSIM_PREAMBLE_STATE_MACHINE_V1",
+        "physical_line_classes": "PHYSICAL_EMPTY_OR_ASCII_HORIZONTAL_WHITESPACE_ONLY_BOTH_NORMALIZE_TO_EMPTY_UNDER_FROZEN_D1_NORMALIZER",
+        "scope": "EIP_FRONT_MATTER_ONLY_AFTER_D1_NORMALIZATION"
+      },
+      "opening_line": "---",
+      "required_number_field": "eip"
+    },
+    "field_continuation": "leading_ascii_space_or_tab",
+    "header_key_normalization": "NFC_ASCII_CASEFOLD_STRIP_COLLAPSE_INTERNAL_SPACE",
+    "header_key_pattern": "^[A-Za-z][A-Za-z0-9 -]*$",
+    "heading_alias_normalization": "NFC_CASEFOLD_STRIP_COLLAPSE_ASCII_WHITESPACE_REMOVE_TRAILING_COLON",
+    "line_diff_algorithm": "python_difflib_SequenceMatcher_autojunk_false_over_normalized_lines",
+    "markdown_heading_pattern": "^#{1,6}[ \\t]+(.+?)[ \\t]*#*[ \\t]*$",
+    "maximum_blob_bytes": 2097152,
+    "maximum_dependencies": 128,
+    "maximum_header_bytes": 131072,
+    "maximum_header_lines": 256,
+    "maximum_line_bytes": 65536,
+    "maximum_sections": 128,
+    "mediawiki_heading_pattern": "^(={2,6})[ \\t]*(.*?)[ \\t]*\\1$",
+    "metadata_parse_failure_action": "CLASSIFY_D5_KNOWN_INVALID_WITHOUT_REPAIR_OR_REJECT_UNKNOWN",
+    "newline_normalization": "CRLF_AND_CR_TO_LF",
+    "nul_allowed": false,
+    "primary_proposal_number_must_be_positive": true,
+    "proposal_number_leading_zero_normalization": "ASCII_DECIMAL_TO_INT",
+    "python_version_bound_at_execution_seal": true,
+    "reference_parser": {
+      "bip_empty_value": "ALLOW",
+      "bip_function": "parse_bip_preamble",
+      "bip_markdown_end": "first blank line after first field or EOF",
+      "bip_mediawiki_tags": "exact <pre> and </pre> lines",
+      "continuation": "line begins ASCII space/tab, does not parse as a field under format mode, and has nonempty stripped content",
+      "dependency_function": "parse_dependency_ids",
+      "duplicate_keys_after_casefold": "REJECT",
+      "eip_empty_value": "REJECT unless populated by one or more continuations",
+      "eip_function": "parse_eip_preamble_d4",
+      "eip_opening_and_first_closing_fence": "exact --- line",
+      "field_separator": "first colon after normalized key",
+      "full_line_comments": {
+        "bip": [
+          "ASCII optional whitespace then #",
+          "single-line exact <!--...--> after ASCII strip"
+        ],
+        "eip": [
+          "ASCII optional whitespace then #"
+        ]
+      },
+      "inline_comments_stripped": false,
+      "maximum_bip_leading_blank_lines": 3,
+      "normalizer_function": "normalize_blob_bytes",
+      "quoted_or_bracket_values": "retained_as_opaque_text",
+      "synthetic_probe_binding": {
+        "commit": "131009359c60bc5b28b76d22a63abf698011fbcb",
+        "d3_forensic_root_opened": false,
+        "market_model_outcomes_opened": false,
+        "official_historical_proposal_source_opened": false,
+        "parser_version": "PSIM_PREAMBLE_STATE_MACHINE_V2_EIP_EMPTY_SEPARATORS",
+        "path": "results/protocol_specification_intent_maturity_d4_parser_probe_2026-07-26.json",
+        "probe_may_change_only_eip_normalized_empty_line_grammar": true,
+        "protocol_version": "psim_d4_historical_eip_preamble_probe_v1",
+        "result_hash": "4a3cca52755716dbf6e9b4cd801e46b72bab841cea5609f6bb42519487e5f5e6",
+        "sha256": "fbb97d65ef93b307c47055ed1883d6416e510a70b38083ae17ced2c78e4745ee",
+        "synthetic_only": true
+      },
+      "utf8_bom_allowed": false,
+      "version": "PSIM_PREAMBLE_STATE_MACHINE_V2_EIP_EMPTY_SEPARATORS"
+    },
+    "section_aliases": {
+      "ABSTRACT": [
+        "abstract"
+      ],
+      "BACKWARD_COMPATIBILITY": [
+        "backward compatibility",
+        "backwards compatibility"
+      ],
+      "COPYRIGHT": [
+        "copyright",
+        "copyright waiver"
+      ],
+      "IMPLEMENTATION": [
+        "implementation",
+        "reference implementation",
+        "reference implementations"
+      ],
+      "MOTIVATION": [
+        "motivation"
+      ],
+      "OTHER": [],
+      "RATIONALE": [
+        "rationale"
+      ],
+      "SECURITY": [
+        "security consideration",
+        "security considerations"
+      ],
+      "SPECIFICATION": [
+        "spec",
+        "specification",
+        "specifications"
+      ],
+      "TESTS": [
+        "test case",
+        "test cases",
+        "test vector",
+        "test vectors"
+      ]
+    },
+    "strict_utf8": true,
+    "strip_trailing_horizontal_whitespace": true,
+    "unicode_normalization": "NFC"
+  },
+  "protocol_version": "psim_d5_source_preregistration_v1",
+  "representation_contract": {
+    "abstain_forces_target_flat": true,
+    "administrative_events_model_visible": false,
+    "analyzer_trader_pair_allowed": false,
+    "dependency_delta_states": [
+      "NO_PRIOR",
+      "STABLE",
+      "ADDED",
+      "REMOVED",
+      "MIXED",
+      "DELETED",
+      "UNKNOWN_INVALID_METADATA"
+    ],
+    "deterministic_source_tokens": [
+      "protocol",
+      "event_type",
+      "window_revision_count_bucket",
+      "window_age_bucket",
+      "update_gap_bucket",
+      "stale_age_bucket",
+      "old_section_presence",
+      "new_section_presence",
+      "changed_section_bitset",
+      "dependency_delta_state",
+      "dependency_edge_delta_count_bucket",
+      "line_change_count_bucket",
+      "changed_section_count_bucket",
+      "counterpart_state",
+      "prior_card_hash",
+      "old_metadata_state",
+      "new_metadata_state",
+      "invalid_metadata_present"
+    ],
+    "exact_paths_or_path_identity_hash_model_visible": false,
+    "free_form_rationale_allowed": false,
+    "insufficient_evidence_forces_current_target": true,
+    "known_invalid_metadata_state_model_visible": true,
+    "later_model_actions": [
+      "TARGET_LONG",
+      "TARGET_FLAT",
+      "TARGET_SHORT"
+    ],
+    "later_relation_tokens": [
+      "CONVERGENT_INTENT",
+      "COMPLEMENTARY_INTENT",
+      "TECHNICAL_TENSION",
+      "INDEPENDENT_INTENT",
+      "INSUFFICIENT_EVIDENCE",
+      "ABSTAIN"
+    ],
+    "legacy_intent_text_field_allowed": false,
+    "model_controls_leverage_size_stop_cost_or_reward": false,
+    "model_text_field": "normalized_text_delta",
+    "model_text_sections": [
+      "ABSTRACT",
+      "MOTIVATION",
+      "SPECIFICATION",
+      "RATIONALE",
+      "BACKWARD_COMPATIBILITY",
+      "SECURITY",
+      "TESTS",
+      "IMPLEMENTATION"
+    ],
+    "raw_header_other_or_copyright_text_model_visible": false,
+    "raw_price_return_rank_pnl_model_inputs_allowed": false,
+    "raw_proposal_number_hash_path_timestamp_date_author_url_allowed": false,
+    "single_model_single_call_per_card": true,
+    "split_boundary_without_position_forces_target_flat": true
+  },
+  "source_contract": {
+    "artifact_paths": {
+      "cards": "data/protocol_specification_intent_maturity_d5_cards_2020_2024q1.jsonl.gz",
+      "controls": "results/protocol_specification_intent_maturity_d5_source_controls_2026-07-26.json",
+      "events": "data/protocol_specification_intent_maturity_d5_events_2020_2023.jsonl.gz",
+      "rejection": "results/protocol_specification_intent_maturity_d5_source_rejection_2026-07-26.json",
+      "result": "results/protocol_specification_intent_maturity_d5_source_support_2026-07-26.json"
+    },
+    "bare_repository_contract": {
+      "absolute_git_dir_must_equal_configured_root": true,
+      "checkout_allowed": false,
+      "forbidden_paths": [
+        ".git",
+        "index",
+        "worktrees",
+        "commondir",
+        "gitdir",
+        "objects/info/alternates",
+        "shallow"
+      ],
+      "fresh_independent_roots_required": true,
+      "git_common_dir": ".",
+      "git_fsck_no_dangling_required": true,
+      "git_status_allowed": false,
+      "is_bare_repository": true,
+      "is_inside_work_tree": false,
+      "ref_roster": [
+        "refs/heads/master",
+        "refs/psim-d5/sealed-tip"
+      ],
+      "root_names": {
+        "bitcoin_a": "bitcoin-a.git",
+        "bitcoin_b": "bitcoin-b.git",
+        "ethereum_a": "ethereum-a.git",
+        "ethereum_b": "ethereum-b.git"
+      },
+      "sealed_ref": "refs/psim-d5/sealed-tip",
+      "shared_objects_or_cache_allowed": false,
+      "source_traversal_ref": "refs/psim-d5/sealed-tip",
+      "symbolic_head": "refs/heads/master"
+    },
+    "batch_hydration_contract": {
+      "all_new_object_types_must_be_blob": true,
+      "at_least_one_new_promisor_pack_required": true,
+      "command": [
+        "/usr/bin/git",
+        "-C",
+        "<fresh-bare-root>",
+        "-c",
+        "fetch.negotiationAlgorithm=noop",
+        "fetch",
+        "origin",
+        "--no-tags",
+        "--no-write-fetch-head",
+        "--recurse-submodules=no",
+        "--filter=blob:none",
+        "--no-auto-maintenance",
+        "--stdin"
+      ],
+      "complete_new_object_set_must_equal_requested_oids": true,
+      "every_new_pack_requires_matching_promisor_marker": true,
+      "fetch_head_must_remain_absent": true,
+      "first_failure_action": "REJECT_PSIM_D5_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+      "forbidden_transports": [
+        "interactive or buffered cat-file lazy hydration",
+        "per-object fetch",
+        "retry",
+        "fallback lazy fetch",
+        "full clone",
+        "git fetch --refetch",
+        "checkout",
+        "D1, D2, D3, or D4 source-object reuse"
+      ],
+      "gate_id": 4,
+      "gate_name": "historical_blob_preamble_dependency_integrity",
+      "initial_requested_oids_must_be_absent": true,
+      "maintenance_child_processes_allowed": 0,
+      "multiple_new_packfiles_allowed": true,
+      "new_loose_objects_allowed": false,
+      "oid_derivation": "sorted unique non-null old_blob_oid/new_blob_oid union from the replica-local retained 2020-2023 ProposalGroup rows",
+      "oid_derivation_after_gate_id": 3,
+      "oid_manifest_encoding": "lowercase full 40-hex SHA-1 one per LF-terminated line with final LF",
+      "one_fetch_invocation_per_replica": true,
+      "physical_pack_count_fixed": false,
+      "post_hydration_read": {
+        "cat_file_transport_role": "local_decode_only",
+        "environment": "GIT_NO_LAZY_FETCH=1",
+        "fetch_child_processes_allowed": 0,
+        "missing_object_action": "REJECT_PSIM_D5_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "object_store_ref_and_fetch_head_snapshot_must_be_unchanged": true
+      },
+      "pre_and_post_inventory": [
+        "complete local object roster and types",
+        "pack roster",
+        "promisor marker roster",
+        "loose-object roster",
+        "ref roster",
+        "FETCH_HEAD presence"
+      ],
+      "ref_roster_must_be_unchanged": true,
+      "replica_count": 4,
+      "stdin_is_complete_oid_manifest": true,
+      "stdout_stderr_consumption": "subprocess_run_communicate",
+      "synthetic_probe_binding": {
+        "buffered_cat_file_control_pack_count": 6,
+        "buffered_cat_file_control_requested_oids": 6,
+        "commit": "126f7f1354eff90f30d5a6b3d60bd6641268b03b",
+        "market_model_outcomes_opened": false,
+        "official_source_opened": false,
+        "path": "results/protocol_specification_intent_maturity_d3_transport_probe_2026-07-25.json",
+        "probe_may_change_only_transport_contract": true,
+        "protocol_version": "psim_d3_batch_hydration_transport_probe_v1",
+        "result_hash": "0df158cddd9b663b2daca14e01bcaa5c2e64b7f5d976720282120585bc41c63a",
+        "sha256": "4a815145a1f2ab9c6c61d599cf0aaf2218172e9f71251e95ce7178c1f3be13b7",
+        "single_fetch_observed_pack_count": 1
+      },
+      "timeout_seconds": 1800,
+      "trace_child_argv_ambiguity_action": "REJECT_PSIM_D5_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+    },
+    "card_end_exclusive": "2024-04-01T00:00:00Z",
+    "clone_arguments": [
+      "--bare",
+      "--filter=blob:none",
+      "--single-branch",
+      "--branch",
+      "master",
+      "--no-tags"
+    ],
+    "commit_subject_used_for_inclusion_or_classification": false,
+    "current_checkout_used_as_historical_truth": false,
+    "disk_limit_gib": 300,
+    "end_exclusive": "2024-01-01T00:00:00Z",
+    "git_binary_binding": {
+      "exact_binary_required": true,
+      "path": "/usr/bin/git",
+      "path_lookup_allowed": false,
+      "sha256": "2a8c18fbf43da9f692d75474c72bea9dfd796c260b0f3dfe456376abc3bbd668",
+      "synthetic_no_lazy_fetch_semantic_probe_required": true,
+      "version": "git version 2.43.0"
+    },
+    "git_fsck_no_dangling_required": true,
+    "git_status_allowed": false,
+    "git_version": "git version 2.43.0",
+    "git_version_and_object_format_bound_at_execution_seal": true,
+    "github_pr_issue_label_review_metadata_allowed": false,
+    "path_handling": "NUL_SAFE_BYTE_EXACT_CASE_SENSITIVE",
+    "rename_detection": false,
+    "repositories": [
+      {
+        "branch": "master",
+        "document_formats": [
+          "markdown_frontmatter"
+        ],
+        "local_branch_ref": "refs/heads/master",
+        "object_format": "sha1",
+        "path_pattern": "^EIPS/eip-([1-9][0-9]*)\\.md$",
+        "protocol": "ethereum",
+        "remote": "https://github.com/ethereum/EIPs.git",
+        "remote_head_symref": "refs/heads/master",
+        "sealed_ref": "refs/psim-d5/sealed-tip",
+        "sealed_tip": "5e82ef62895121027a6c5f0c23276e1b2bed3071"
+      },
+      {
+        "branch": "master",
+        "document_formats": [
+          "mediawiki_rfc822",
+          "markdown_rfc822"
+        ],
+        "local_branch_ref": "refs/heads/master",
+        "object_format": "sha1",
+        "path_pattern": "^bip-([0-9]{4})\\.(mediawiki|md)$",
+        "protocol": "bitcoin",
+        "remote": "https://github.com/bitcoin/bips.git",
+        "remote_head_symref": "refs/heads/master",
+        "sealed_ref": "refs/psim-d5/sealed-tip",
+        "sealed_tip": "b289d016b99c81527623c10e995e0318f744ebf3"
+      }
+    ],
+    "repository_representation": "BARE_OBJECT_DATABASE_NO_WORKTREE_NO_INDEX",
+    "shared_git_environment_scrubbed": true,
+    "source_root": "/tmp/psim-d5-source",
+    "start": "2020-01-01T00:00:00Z",
+    "traversal": "sealed_tip_complete_first_parent_oldest_to_newest",
+    "tree_delta_parent": "parent_one_or_empty_tree_for_root"
+  },
+  "source_support_contract": {
+    "administrative_events_retained_in_model_cards": false,
+    "administrative_events_retained_in_source_artifact": true,
+    "all_gates_required": true,
+    "blob_semantics_total_fraction_required": "1.0",
+    "control_sensitivity_metric": {
+      "administrative_events_in_model_payload": false,
+      "aggregation": "require every control x archive schedule x split cell; no pooling or weighting",
+      "changed_definition": "SHA256(canonical_json(transformed_local_payload)) != SHA256(canonical_json(baseline_local_payload))",
+      "comparison_unit": "canonical local daily relation-card payload for one decision day",
+      "denominator": "unique eligible decision days for one exact control,schedule,split cell",
+      "excluded_from_comparison_payload": [
+        "card_hash",
+        "prior_card_hash",
+        "raw_commit_or_blob_ids",
+        "control_name",
+        "audit_counters"
+      ],
+      "first_failure_action": "REJECT_PSIM_D5_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+      "minimum_changed_fraction_per_cell": "0.10",
+      "minimum_eligible_days_per_cell": 4,
+      "numerator": "eligible denominator days whose payload changed",
+      "quarantined_events_in_source_control_payload": true,
+      "zero_eligible_cell_action": "REJECT"
+    },
+    "ethereum_historical_blob_class_counts": {
+      "D4_DUPLICATE_IDENTICAL_HEADER": 7,
+      "D4_MALFORMED_HEADER_LINE": 20,
+      "D4_SELF_DEPENDENCY": 9,
+      "D4_VALID": 4440,
+      "ERC_MIGRATION_REDIRECT_LOWER_PATH": 365,
+      "ERC_MIGRATION_REDIRECT_UPPER_PATH": 365
+    },
+    "first_failure_action": "REJECT_PSIM_D5_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+    "future_append_cutoff": "2024-01-01T00:00:00Z",
+    "gate_four_semantics": "STRICT_D4_VALID_OR_EXACT_ADMINISTRATIVE_REDIRECT_OR_KNOWN_INVALID_METADATA_STATE_OTHERWISE_REJECT",
+    "gate_relaxation_after_incidence_allowed": false,
+    "gates_in_order": [
+      "sealed_git_identity_and_object_integrity",
+      "first_parent_traversal_and_causal_clock",
+      "path_object_grammar_and_unique_proposal_tree",
+      "historical_blob_preamble_dependency_integrity",
+      "split_annual_quarterly_unique_day_support",
+      "event_section_dependency_revision_vocabulary_diversity",
+      "daily_card_coverage_and_explicit_staleness",
+      "independent_replay_and_canonical_manifest_identity",
+      "future_append_invariance",
+      "relation_control_sensitivity",
+      "pairing_reset_quarantine_and_four_schedule_identity",
+      "forbidden_access_zero",
+      "terminal_publication"
+    ],
+    "independent_replay_roots": 2,
+    "maximum_top_changed_section_share": "0.80",
+    "minimum_dependency_delta_categories_overall": 2,
+    "minimum_event_types_overall": 2,
+    "minimum_non_quarantined_events_per_protocol": 32,
+    "minimum_revision_buckets_overall": 3,
+    "minimum_section_categories_overall": 4,
+    "relation_control_eligibility": {
+      "availability_plus_seven_days": "baseline or shifted card day contains at least one newly available event",
+      "dependency_edge_direction_reverse": "card contains at least one ADDED or REMOVED dependency delta",
+      "old_new_direction_reverse": "card contains at least one source event",
+      "proposal_version_pair_cyclic_permutation": "card contains an UPDATE from a protocol/source_year stratum with at least two eligible UPDATE events",
+      "protocol_label_swap": "decision day has at least one non-sentinel event or counterpart",
+      "section_label_cyclic_rotation": "card contains at least one changed section other than OTHER",
+      "within_day_event_order_reverse": "either protocol has at least two newly available events that day"
+    },
+    "relation_control_transforms": {
+      "availability_plus_seven_days": "add exactly seven calendar days to every available_at under each archive schedule and rebuild every card",
+      "dependency_edge_direction_reverse": "swap ADDED<->REMOVED; keep NO_PRIOR,STABLE,MIXED,DELETED,UNKNOWN_INVALID_METADATA fixed",
+      "old_new_direction_reverse": "swap all old/new derived fields and exact side paths; map CREATE<->DELETE and retain UPDATE; swap explicit metadata states; reverse normalized_text_delta ADD/REMOVE; retain administrative quarantine as model-hidden",
+      "proposal_version_pair_cyclic_permutation": "within each protocol/source_year, sort eligible UPDATE events by event_id and rotate old-blob-derived fields forward by one while holding new-blob-derived fields fixed",
+      "protocol_label_swap": "swap ethereum<->bitcoin labels after extraction; preserve raw event identity, exact side-path audit hash, metadata state, and normalized text delta; rebuild relation cards; administrative quarantine remains model-hidden",
+      "section_label_cyclic_rotation": "rotate changed-section labels over ABSTRACT,MOTIVATION,SPECIFICATION,RATIONALE,BACKWARD_COMPATIBILITY,SECURITY,TESTS,IMPLEMENTATION,COPYRIGHT; keep OTHER fixed",
+      "within_day_event_order_reverse": "reverse each protocol/day canonical event sequence before pairing; preserve event payloads"
+    },
+    "relation_controls": [
+      "protocol_label_swap",
+      "within_day_event_order_reverse",
+      "proposal_version_pair_cyclic_permutation",
+      "old_new_direction_reverse",
+      "section_label_cyclic_rotation",
+      "dependency_edge_direction_reverse",
+      "availability_plus_seven_days"
+    ],
+    "shared_git_object_alternates_allowed": false,
+    "shared_worktree_or_cache_allowed": false,
+    "source_drop_or_repair_allowed": false
+  },
+  "split_contract": {
+    "daily_card_and_relation_support_assignment_field": "decision_timestamp_under_ARCHIVE_D90",
+    "later_economic_split_assignment_field": "decision_timestamp_under_ARCHIVE_D90",
+    "later_test_eval_minimum_cagr_strict_mdd": "3.0",
+    "later_test_eval_positive_absolute_return_required": true,
+    "market_outcome_policy": "FORBIDDEN until separate evaluator freeze",
+    "post_2023_proposal_content_policy": "SEALED",
+    "shorter_schedule_support_role": "replay_and_control_only_not_threshold_rescue",
+    "source_event_support_assignment_field": "event_effective_day",
+    "splits": [
+      {
+        "decision_end_exclusive": "2022-01-01T00:00:00Z",
+        "decision_start": "2020-01-01T00:00:00Z",
+        "maximum_top_event_day_share": "0.25",
+        "maximum_top_proposal_event_share": "0.35",
+        "minimum_active_months_per_protocol": 8,
+        "minimum_active_quarters_per_protocol": 6,
+        "minimum_counterpart_fraction": "0.35",
+        "minimum_events_per_protocol": 20,
+        "minimum_events_per_protocol_per_source_year": 6,
+        "minimum_events_total": 80,
+        "minimum_relation_units_nonexcluded": 40,
+        "minimum_unique_event_days_per_protocol": 12,
+        "minimum_unique_proposals_per_protocol": 6,
+        "minimum_unique_proposals_total": 24,
+        "name": "train"
+      },
+      {
+        "decision_end_exclusive": "2023-01-01T00:00:00Z",
+        "decision_start": "2022-01-01T00:00:00Z",
+        "maximum_top_event_day_share": "0.35",
+        "maximum_top_proposal_event_share": "0.50",
+        "minimum_active_months_per_protocol": 4,
+        "minimum_active_quarters_per_protocol": 3,
+        "minimum_counterpart_fraction": "0.25",
+        "minimum_events_per_protocol": 8,
+        "minimum_events_per_protocol_per_source_year": 6,
+        "minimum_events_total": 30,
+        "minimum_relation_units_nonexcluded": 12,
+        "minimum_unique_event_days_per_protocol": 6,
+        "minimum_unique_proposals_per_protocol": 3,
+        "minimum_unique_proposals_total": 10,
+        "name": "test"
+      },
+      {
+        "decision_end_exclusive": "2024-01-01T00:00:00Z",
+        "decision_start": "2023-01-01T00:00:00Z",
+        "maximum_top_event_day_share": "0.35",
+        "maximum_top_proposal_event_share": "0.50",
+        "minimum_active_months_per_protocol": 4,
+        "minimum_active_quarters_per_protocol": 3,
+        "minimum_counterpart_fraction": "0.25",
+        "minimum_events_per_protocol": 8,
+        "minimum_events_per_protocol_per_source_year": 6,
+        "minimum_events_total": 30,
+        "minimum_relation_units_nonexcluded": 12,
+        "minimum_unique_event_days_per_protocol": 6,
+        "minimum_unique_proposals_per_protocol": 3,
+        "minimum_unique_proposals_total": 10,
+        "name": "eval"
+      }
+    ]
+  }
+}
