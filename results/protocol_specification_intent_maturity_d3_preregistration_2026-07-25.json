@@ -1,0 +1,1011 @@
+{
+  "availability_contract": {
+    "committer_time_is_publication_receipt": false,
+    "counterpart_lookback_days": 90,
+    "daily_decision_frequency": "1D",
+    "daily_decision_utc_time": "12:05:00",
+    "effective_day": "running_max_utc_committer_calendar_day",
+    "force_push_or_unreachable_ancestor_action": "HALT_NO_REBUILD",
+    "live_available_at": "max(historical_floor,durable_fetch_object_verify_extract_hash_manifest_commit_time)",
+    "primary_historical_economic_schedule": "ARCHIVE_D90",
+    "schedules": [
+      {
+        "delay_calendar_days": 2,
+        "name": "ARCHIVE_D2",
+        "primary_economic_clock": false,
+        "profitability_claim_allowed": false
+      },
+      {
+        "delay_calendar_days": 7,
+        "name": "ARCHIVE_D7",
+        "primary_economic_clock": false,
+        "profitability_claim_allowed": false
+      },
+      {
+        "delay_calendar_days": 30,
+        "name": "ARCHIVE_D30",
+        "primary_economic_clock": false,
+        "profitability_claim_allowed": false
+      },
+      {
+        "delay_calendar_days": 90,
+        "name": "ARCHIVE_D90",
+        "primary_economic_clock": true,
+        "profitability_claim_allowed": true
+      }
+    ],
+    "shorter_schedules_are_diagnostics_only": true
+  },
+  "boundary_reset_contract": {
+    "boundary_states": [
+      "PRE_WINDOW",
+      "PRE_WINDOW_BASELINE",
+      "PRE_WINDOW_UNKNOWN",
+      "NO_EVENT_YET"
+    ],
+    "first_update_old_blob_role": "PRE_WINDOW_BASELINE",
+    "old_blob_creates_synthetic_prior_event": false,
+    "pre_2020_blob_warmup_allowed": false,
+    "pre_first_event_dependency_state": "PRE_WINDOW_UNKNOWN",
+    "stale_age_before_first_protocol_event": "NO_EVENT_YET",
+    "window_age_before_first_event": "PRE_WINDOW",
+    "window_revision_count_before_first_event": 0
+  },
+  "bucket_contract": {
+    "edges": {
+      "changed_section_count": [
+        0,
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "dependency_edge_delta_count": [
+        0,
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "line_change_count": [
+        0,
+        1,
+        3,
+        8,
+        20,
+        50,
+        100,
+        250,
+        500
+      ],
+      "stale_age_days": [
+        0,
+        2,
+        7,
+        30,
+        90,
+        180
+      ],
+      "update_gap_days": [
+        0,
+        2,
+        7,
+        30,
+        90,
+        180,
+        365
+      ],
+      "window_age_days": [
+        0,
+        7,
+        30,
+        90,
+        180,
+        365,
+        730
+      ],
+      "window_revision_count": [
+        0,
+        1,
+        2,
+        4,
+        8,
+        16,
+        32
+      ]
+    },
+    "interval_rule": "NEGATIVE_OR_SENTINEL_SEPARATE; OTHERWISE RIGHT_CLOSED_AT_LAST_EDGE_WITH_OVERFLOW",
+    "raw_numeric_values_model_visible": false
+  },
+  "candidate": {
+    "id": "PSIM-D3",
+    "name": "Protocol Specification Intent-Maturity relation RLLM, targeted batch-hydration bare replay",
+    "selection_commit": "126f7f1354eff90f30d5a6b3d60bd6641268b03b",
+    "source_axis": "official_eip_bip_specification_revision_relation",
+    "stage": "source_support_only"
+  },
+  "daily_relation_contract": {
+    "both_protocol_sets_nonempty": "complete_cartesian_product",
+    "both_sets_empty_sentinel": "NO_ANCHOR",
+    "canonical_event_order": [
+      "availability_utc",
+      "first_parent_index",
+      "proposal_number",
+      "event_id"
+    ],
+    "exactly_one_protocol_set_nonempty": "each_anchor_with_most_recent_opposite_event_in_90_days",
+    "explicit_no_new_event_state_required": true,
+    "maximum_model_events_per_card": 64,
+    "maximum_model_text_bytes_per_event": 8192,
+    "missing_opposite_sentinel": "NO_COUNTERPART",
+    "opposite_tie_break": "maximum_event_id",
+    "over_limit_card_action": "SOURCE_GATE_REJECT_NO_TRUNCATION",
+    "prior_card_hash_required": true,
+    "semantic_or_market_pair_selection_allowed": false
+  },
+  "decision_binding": {
+    "commit": "126f7f1354eff90f30d5a6b3d60bd6641268b03b",
+    "path": "docs/post-psim-d2-alpha-mechanism-audit-2026-07-25.md",
+    "sha256": "7fecb77f93bdf0f78cbdb45afbf866d3c726944627ed49bdf56ef69f0535ba4a"
+  },
+  "event_contract": {
+    "all_matching_path_events_retained": true,
+    "create": "zero_old_blob_and_exactly_one_new_blob",
+    "delete": "exactly_one_old_blob_and_zero_new_blob",
+    "duplicate_number_paths_in_one_tree": "REJECT",
+    "event_id_formula": "SHA256(protocol||NUL||commit_oid||NUL||canonical_decimal_proposal_number||NUL||old_blob_oid_or_NULL||NUL||new_blob_oid_or_NULL)",
+    "event_types": [
+      "CREATE",
+      "UPDATE",
+      "DELETE"
+    ],
+    "format_migration_same_number_is_update": true,
+    "multiple_old_or_new_blobs_same_number": "REJECT",
+    "path_number_preamble_number_must_match": true,
+    "update": "exactly_one_old_blob_and_exactly_one_new_blob"
+  },
+  "excluded_feasibility_probe": {
+    "bitcoin": {
+      "commit_days": 404,
+      "commits": 1146,
+      "markdown_path_touches": 140,
+      "mediawiki_path_touches": 1524,
+      "proposal_path_touches": 1664,
+      "strict_utf8_newest_blob": true,
+      "unique_proposal_paths": 210
+    },
+    "ethereum": {
+      "commit_days": 692,
+      "commits": 2280,
+      "proposal_path_touches": 2358,
+      "strict_utf8_newest_blob": true,
+      "unique_proposal_paths": 413
+    },
+    "probe_may_set_economic_direction_or_threshold": false,
+    "probe_start_inclusive": "2024-01-01T00:00:00Z",
+    "source_interval_incidence_opened": false
+  },
+  "forbidden_access_contract": {
+    "btc_or_funding_outcomes_opened": false,
+    "counters": {
+      "btc_market_rows_read": 0,
+      "cagr_values_built": 0,
+      "daily_cards_built": 0,
+      "dependency_rows_read": 0,
+      "funding_rows_read": 0,
+      "future_return_rows_read": 0,
+      "model_outputs_built": 0,
+      "model_rows_built": 0,
+      "pnl_rows_built": 0,
+      "post_2023_proposal_blobs_read": 0,
+      "pre_2020_proposal_blobs_read": 0,
+      "proposal_text_rows_read": 0,
+      "reward_rows_built": 0,
+      "source_incidence_rows_read": 0,
+      "strict_mdd_values_built": 0,
+      "trade_rows_built": 0
+    },
+    "git_commands_during_preregistration": 0,
+    "models_loaded": 0,
+    "network_calls_during_preregistration": 0,
+    "proposal_blobs_opened": false,
+    "source_incidence_opened": false
+  },
+  "inheritance_proof": {
+    "all_other_contract_paths_byte_equal": true,
+    "authorized_delta": {
+      "candidate.id": {
+        "after": "PSIM-D3",
+        "before": "PSIM-D2"
+      },
+      "candidate.name": {
+        "after": "Protocol Specification Intent-Maturity relation RLLM, targeted batch-hydration bare replay",
+        "before": "Protocol Specification Intent-Maturity relation RLLM, bare object-database replay"
+      },
+      "candidate.selection_commit": {
+        "after": "126f7f1354eff90f30d5a6b3d60bd6641268b03b",
+        "before": "73de336a1d24399927d43e08c8394450b1cd1cb0"
+      },
+      "decision_binding.commit": {
+        "after": "126f7f1354eff90f30d5a6b3d60bd6641268b03b",
+        "before": "73de336a1d24399927d43e08c8394450b1cd1cb0"
+      },
+      "decision_binding.path": {
+        "after": "docs/post-psim-d2-alpha-mechanism-audit-2026-07-25.md",
+        "before": "docs/post-psim-d1-alpha-mechanism-audit-2026-07-25.md"
+      },
+      "decision_binding.sha256": {
+        "after": "7fecb77f93bdf0f78cbdb45afbf866d3c726944627ed49bdf56ef69f0535ba4a",
+        "before": "e68c0217a6aa3927c88c1f48d9c45ed0b2be3cee4bc3c86d3cb4c6a88e1f8598"
+      },
+      "memorization_contract.first_failure_action": {
+        "after": "REJECT_PSIM_D3_UNCHANGED_BEFORE_MARKET_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D2_UNCHANGED_BEFORE_MARKET_OR_OUTCOMES"
+      },
+      "next_authorized_step": {
+        "after": "implement and seal synthetic-only PSIM-D3 targeted batch-hydration source-support evaluator",
+        "before": "implement and seal synthetic-only PSIM-D2 bare source-support evaluator"
+      },
+      "protocol_version": {
+        "after": "psim_d3_source_preregistration_v1",
+        "before": "psim_d2_source_preregistration_v1"
+      },
+      "source_contract.artifact_paths.cards": {
+        "after": "data/protocol_specification_intent_maturity_d3_cards_2020_2024q1.jsonl.gz",
+        "before": "data/protocol_specification_intent_maturity_d2_cards_2020_2024q1.jsonl.gz"
+      },
+      "source_contract.artifact_paths.controls": {
+        "after": "results/protocol_specification_intent_maturity_d3_source_controls_2026-07-25.json",
+        "before": "results/protocol_specification_intent_maturity_d2_source_controls_2026-07-25.json"
+      },
+      "source_contract.artifact_paths.events": {
+        "after": "data/protocol_specification_intent_maturity_d3_events_2020_2023.jsonl.gz",
+        "before": "data/protocol_specification_intent_maturity_d2_events_2020_2023.jsonl.gz"
+      },
+      "source_contract.artifact_paths.rejection": {
+        "after": "results/protocol_specification_intent_maturity_d3_source_rejection_2026-07-25.json",
+        "before": "results/protocol_specification_intent_maturity_d2_source_rejection_2026-07-25.json"
+      },
+      "source_contract.artifact_paths.result": {
+        "after": "results/protocol_specification_intent_maturity_d3_source_support_2026-07-25.json",
+        "before": "results/protocol_specification_intent_maturity_d2_source_support_2026-07-25.json"
+      },
+      "source_contract.bare_repository_contract.ref_roster[1]": {
+        "after": "refs/psim-d3/sealed-tip",
+        "before": "refs/psim-d2/sealed-tip"
+      },
+      "source_contract.bare_repository_contract.sealed_ref": {
+        "after": "refs/psim-d3/sealed-tip",
+        "before": "refs/psim-d2/sealed-tip"
+      },
+      "source_contract.bare_repository_contract.source_traversal_ref": {
+        "after": "refs/psim-d3/sealed-tip",
+        "before": "refs/psim-d2/sealed-tip"
+      },
+      "source_contract.batch_hydration_contract": {
+        "after": {
+          "all_new_object_types_must_be_blob": true,
+          "at_least_one_new_promisor_pack_required": true,
+          "command": [
+            "/usr/bin/git",
+            "-C",
+            "<fresh-bare-root>",
+            "-c",
+            "fetch.negotiationAlgorithm=noop",
+            "fetch",
+            "origin",
+            "--no-tags",
+            "--no-write-fetch-head",
+            "--recurse-submodules=no",
+            "--filter=blob:none",
+            "--no-auto-maintenance",
+            "--stdin"
+          ],
+          "complete_new_object_set_must_equal_requested_oids": true,
+          "every_new_pack_requires_matching_promisor_marker": true,
+          "fetch_head_must_remain_absent": true,
+          "first_failure_action": "REJECT_PSIM_D3_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+          "forbidden_transports": [
+            "interactive or buffered cat-file lazy hydration",
+            "per-object fetch",
+            "retry",
+            "fallback lazy fetch",
+            "full clone",
+            "git fetch --refetch",
+            "checkout",
+            "D1 or D2 source-object reuse"
+          ],
+          "gate_id": 4,
+          "gate_name": "historical_blob_preamble_dependency_integrity",
+          "initial_requested_oids_must_be_absent": true,
+          "maintenance_child_processes_allowed": 0,
+          "multiple_new_packfiles_allowed": true,
+          "new_loose_objects_allowed": false,
+          "oid_derivation": "sorted unique non-null old_blob_oid/new_blob_oid union from the replica-local retained 2020-2023 ProposalGroup rows",
+          "oid_derivation_after_gate_id": 3,
+          "oid_manifest_encoding": "lowercase full 40-hex SHA-1 one per LF-terminated line with final LF",
+          "one_fetch_invocation_per_replica": true,
+          "physical_pack_count_fixed": false,
+          "post_hydration_read": {
+            "cat_file_transport_role": "local_decode_only",
+            "environment": "GIT_NO_LAZY_FETCH=1",
+            "fetch_child_processes_allowed": 0,
+            "missing_object_action": "REJECT_PSIM_D3_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+            "object_store_ref_and_fetch_head_snapshot_must_be_unchanged": true
+          },
+          "pre_and_post_inventory": [
+            "complete local object roster and types",
+            "pack roster",
+            "promisor marker roster",
+            "loose-object roster",
+            "ref roster",
+            "FETCH_HEAD presence"
+          ],
+          "ref_roster_must_be_unchanged": true,
+          "replica_count": 4,
+          "stdin_is_complete_oid_manifest": true,
+          "stdout_stderr_consumption": "subprocess_run_communicate",
+          "synthetic_probe_binding": {
+            "buffered_cat_file_control_pack_count": 6,
+            "buffered_cat_file_control_requested_oids": 6,
+            "commit": "126f7f1354eff90f30d5a6b3d60bd6641268b03b",
+            "market_model_outcomes_opened": false,
+            "official_source_opened": false,
+            "path": "results/protocol_specification_intent_maturity_d3_transport_probe_2026-07-25.json",
+            "probe_may_change_only_transport_contract": true,
+            "protocol_version": "psim_d3_batch_hydration_transport_probe_v1",
+            "result_hash": "0df158cddd9b663b2daca14e01bcaa5c2e64b7f5d976720282120585bc41c63a",
+            "sha256": "4a815145a1f2ab9c6c61d599cf0aaf2218172e9f71251e95ce7178c1f3be13b7",
+            "single_fetch_observed_pack_count": 1
+          },
+          "timeout_seconds": 1800,
+          "trace_child_argv_ambiguity_action": "REJECT_PSIM_D3_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+        },
+        "before": null
+      },
+      "source_contract.git_binary_binding": {
+        "after": {
+          "exact_binary_required": true,
+          "path": "/usr/bin/git",
+          "path_lookup_allowed": false,
+          "sha256": "2a8c18fbf43da9f692d75474c72bea9dfd796c260b0f3dfe456376abc3bbd668",
+          "synthetic_no_lazy_fetch_semantic_probe_required": true,
+          "version": "git version 2.43.0"
+        },
+        "before": null
+      },
+      "source_contract.repositories[0].sealed_ref": {
+        "after": "refs/psim-d3/sealed-tip",
+        "before": "refs/psim-d2/sealed-tip"
+      },
+      "source_contract.repositories[1].sealed_ref": {
+        "after": "refs/psim-d3/sealed-tip",
+        "before": "refs/psim-d2/sealed-tip"
+      },
+      "source_contract.source_root": {
+        "after": "/tmp/psim-d3-source",
+        "before": "/tmp/psim-d2-source"
+      },
+      "source_support_contract.control_sensitivity_metric.first_failure_action": {
+        "after": "REJECT_PSIM_D3_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D2_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+      },
+      "source_support_contract.first_failure_action": {
+        "after": "REJECT_PSIM_D3_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D2_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+      }
+    },
+    "authorized_delta_hash": "a092091bc5f9316a90c828b2701526697a5ff29a3ca1ac82580acc30eada3b9e",
+    "authorized_delta_paths": [
+      "candidate.id",
+      "candidate.name",
+      "candidate.selection_commit",
+      "decision_binding.commit",
+      "decision_binding.path",
+      "decision_binding.sha256",
+      "memorization_contract.first_failure_action",
+      "next_authorized_step",
+      "protocol_version",
+      "source_contract.artifact_paths.cards",
+      "source_contract.artifact_paths.controls",
+      "source_contract.artifact_paths.events",
+      "source_contract.artifact_paths.rejection",
+      "source_contract.artifact_paths.result",
+      "source_contract.bare_repository_contract.ref_roster[1]",
+      "source_contract.bare_repository_contract.sealed_ref",
+      "source_contract.bare_repository_contract.source_traversal_ref",
+      "source_contract.batch_hydration_contract",
+      "source_contract.git_binary_binding",
+      "source_contract.repositories[0].sealed_ref",
+      "source_contract.repositories[1].sealed_ref",
+      "source_contract.source_root",
+      "source_support_contract.control_sensitivity_metric.first_failure_action",
+      "source_support_contract.first_failure_action"
+    ],
+    "batch_hydration_contract_hash": "6701b544f055c5eaa5e1c22dc4963f975514b9e5833845ee92c8384bdec9cf39",
+    "d2_preregistration": {
+      "commit": "e853f7688a484b323c024115e3ef4af07e6a5896",
+      "contract_core_hash": "e49c744dab0775e64bdccda214726aad4f4788ebb2faf730dbc643792bd9e89b",
+      "manifest_hash": "917d2f318b268b01621c9e969237d76fc82d7e6aff408269842e660cc155d915",
+      "path": "results/protocol_specification_intent_maturity_d2_preregistration_2026-07-25.json",
+      "sha256": "3b405de2bcdc1979855e8505148f7de3fbee366cb126e78b1b23e10f84cf470a"
+    },
+    "d2_terminal_rejection": {
+      "commit": "0e98ba563fb38012f7cd5c65cc1f4ca3800f0483",
+      "first_failure_gate_id": 4,
+      "outcomes_opened": false,
+      "path": "results/protocol_specification_intent_maturity_d2_source_rejection_2026-07-25.json",
+      "result_hash": "b8134ab47a1c69916593d1092b9125e0a8a78da11cf3080660064b12a2e6387c",
+      "sha256": "461ea699ada0d6873422c537e63f5fcff3bca56a436caae9aeff4bb74761ca24",
+      "source_incidence_opened": true
+    },
+    "git_binary_binding_hash": "70aa4a393c76b2d310f4cc91367533a47a93537fa06ccaa2dcb5dc6100397ebf",
+    "official_git_documentation": [
+      "https://git-scm.com/docs/partial-clone/2.43.0.html",
+      "https://git-scm.com/docs/git-fetch/2.43.0.html",
+      "https://git-scm.com/docs/git-cat-file/2.43.0.html",
+      "https://github.com/git/git/blob/v2.43.0/promisor-remote.c#L17-L45"
+    ],
+    "preregistration_access": {
+      "git_commands": 0,
+      "market_model_outcomes_opened": false,
+      "network_calls": 0,
+      "official_source_opened": false
+    },
+    "transport_probe": {
+      "commit": "126f7f1354eff90f30d5a6b3d60bd6641268b03b",
+      "path": "results/protocol_specification_intent_maturity_d3_transport_probe_2026-07-25.json",
+      "protocol_version": "psim_d3_batch_hydration_transport_probe_v1",
+      "result_hash": "0df158cddd9b663b2daca14e01bcaa5c2e64b7f5d976720282120585bc41c63a",
+      "sha256": "4a815145a1f2ab9c6c61d599cf0aaf2218172e9f71251e95ce7178c1f3be13b7",
+      "synthetic_only": true
+    }
+  },
+  "manifest_hash": "d87358780df573bde11a317bf2e56f0ce044b3fc2fad3a28ef6e154d64023d86",
+  "memorization_contract": {
+    "base_and_final_models_must_pass_before_market": true,
+    "bonferroni_family_alpha": "0.01",
+    "candidate_ids_per_challenge": 8,
+    "challenge_selection_hash_suffix": "PSIM_MEMORIZATION_V1",
+    "chance_probability": "0.125",
+    "decoys_same_protocol_and_source_year": true,
+    "first_failure_action": "REJECT_PSIM_D3_UNCHANGED_BEFORE_MARKET_OR_OUTCOMES",
+    "forced_choice_no_abstention": true,
+    "maximum_events_per_protocol_source_year": 16,
+    "minimum_eligible_events_per_protocol": 32,
+    "per_test_alpha": "0.003333333333333333333333333333",
+    "quarantine": {
+      "bitcoin": [
+        32,
+        39,
+        44,
+        141,
+        340,
+        341,
+        342
+      ],
+      "ethereum": [
+        20,
+        721,
+        1559,
+        3675,
+        4337,
+        4844,
+        4895
+      ]
+    },
+    "quarantined_events_retained_in_source_support": true,
+    "quarantined_relation_units_model_or_economics_allowed": false,
+    "repair_resample_or_model_swap_after_result_allowed": false,
+    "tests": [
+      "ethereum",
+      "bitcoin",
+      "combined"
+    ]
+  },
+  "next_authorized_step": "implement and seal synthetic-only PSIM-D3 targeted batch-hydration source-support evaluator",
+  "official_sources": [
+    "https://eips.ethereum.org/EIPS/eip-1",
+    "https://github.com/ethereum/EIPs",
+    "https://github.com/ethereum/EIPs.git",
+    "https://github.com/bitcoin/bips",
+    "https://github.com/bitcoin/bips.git",
+    "https://github.com/bitcoin/bips/blob/master/bip-0003.md",
+    "https://git-scm.com/docs/git-log",
+    "https://git-scm.com/book/en/v2/Git-Internals-Git-Objects"
+  ],
+  "parser_contract": {
+    "bip_preamble": {
+      "dependency_fields_casefold": [
+        "requires",
+        "replaces",
+        "proposed-replacement"
+      ],
+      "markdown_termination": "first_blank_line_after_first_field",
+      "optional_mediawiki_closing_line": "</pre>",
+      "optional_mediawiki_opening_line": "<pre>",
+      "required_number_field_casefold": "bip"
+    },
+    "current_process_vocabulary_validation_allowed": false,
+    "declared_status_is_model_visible": false,
+    "dependency_token_grammar": "comma_separated_positive_ascii_decimal",
+    "duplicate_header_key_allowed": false,
+    "duplicate_or_self_dependency_allowed": false,
+    "eip_frontmatter": {
+      "closing_line": "---",
+      "dependency_fields": [
+        "requires"
+      ],
+      "opening_line": "---",
+      "required_number_field": "eip"
+    },
+    "field_continuation": "leading_ascii_space_or_tab",
+    "header_key_normalization": "NFC_ASCII_CASEFOLD_STRIP_COLLAPSE_INTERNAL_SPACE",
+    "header_key_pattern": "^[A-Za-z][A-Za-z0-9 -]*$",
+    "heading_alias_normalization": "NFC_CASEFOLD_STRIP_COLLAPSE_ASCII_WHITESPACE_REMOVE_TRAILING_COLON",
+    "line_diff_algorithm": "python_difflib_SequenceMatcher_autojunk_false_over_normalized_lines",
+    "markdown_heading_pattern": "^#{1,6}[ \\t]+(.+?)[ \\t]*#*[ \\t]*$",
+    "maximum_blob_bytes": 2097152,
+    "maximum_dependencies": 128,
+    "maximum_header_bytes": 131072,
+    "maximum_header_lines": 256,
+    "maximum_line_bytes": 65536,
+    "maximum_sections": 128,
+    "mediawiki_heading_pattern": "^(={2,6})[ \\t]*(.*?)[ \\t]*\\1$",
+    "metadata_parse_failure_action": "REJECT_NOT_AUDIT_ONLY",
+    "newline_normalization": "CRLF_AND_CR_TO_LF",
+    "nul_allowed": false,
+    "primary_proposal_number_must_be_positive": true,
+    "proposal_number_leading_zero_normalization": "ASCII_DECIMAL_TO_INT",
+    "python_version_bound_at_execution_seal": true,
+    "reference_parser": {
+      "bip_empty_value": "ALLOW",
+      "bip_function": "parse_bip_preamble",
+      "bip_markdown_end": "first blank line after first field or EOF",
+      "bip_mediawiki_tags": "exact <pre> and </pre> lines",
+      "continuation": "line begins ASCII space/tab, does not parse as a field under format mode, and has nonempty stripped content",
+      "dependency_function": "parse_dependency_ids",
+      "duplicate_keys_after_casefold": "REJECT",
+      "eip_empty_value": "REJECT unless populated by one or more continuations",
+      "eip_function": "parse_eip_preamble",
+      "eip_opening_and_first_closing_fence": "exact --- line",
+      "field_separator": "first colon after normalized key",
+      "full_line_comments": {
+        "bip": [
+          "ASCII optional whitespace then #",
+          "single-line exact <!--...--> after ASCII strip"
+        ],
+        "eip": [
+          "ASCII optional whitespace then #"
+        ]
+      },
+      "inline_comments_stripped": false,
+      "maximum_bip_leading_blank_lines": 3,
+      "normalizer_function": "normalize_blob_bytes",
+      "quoted_or_bracket_values": "retained_as_opaque_text",
+      "utf8_bom_allowed": false,
+      "version": "PSIM_PREAMBLE_STATE_MACHINE_V1"
+    },
+    "section_aliases": {
+      "ABSTRACT": [
+        "abstract"
+      ],
+      "BACKWARD_COMPATIBILITY": [
+        "backward compatibility",
+        "backwards compatibility"
+      ],
+      "COPYRIGHT": [
+        "copyright",
+        "copyright waiver"
+      ],
+      "IMPLEMENTATION": [
+        "implementation",
+        "reference implementation",
+        "reference implementations"
+      ],
+      "MOTIVATION": [
+        "motivation"
+      ],
+      "OTHER": [],
+      "RATIONALE": [
+        "rationale"
+      ],
+      "SECURITY": [
+        "security consideration",
+        "security considerations"
+      ],
+      "SPECIFICATION": [
+        "spec",
+        "specification",
+        "specifications"
+      ],
+      "TESTS": [
+        "test case",
+        "test cases",
+        "test vector",
+        "test vectors"
+      ]
+    },
+    "strict_utf8": true,
+    "strip_trailing_horizontal_whitespace": true,
+    "unicode_normalization": "NFC"
+  },
+  "protocol_version": "psim_d3_source_preregistration_v1",
+  "representation_contract": {
+    "abstain_forces_target_flat": true,
+    "analyzer_trader_pair_allowed": false,
+    "dependency_delta_states": [
+      "NO_PRIOR",
+      "STABLE",
+      "ADDED",
+      "REMOVED",
+      "MIXED",
+      "DELETED"
+    ],
+    "deterministic_source_tokens": [
+      "protocol",
+      "event_type",
+      "window_revision_count_bucket",
+      "window_age_bucket",
+      "update_gap_bucket",
+      "stale_age_bucket",
+      "old_section_presence",
+      "new_section_presence",
+      "changed_section_bitset",
+      "dependency_delta_state",
+      "dependency_edge_delta_count_bucket",
+      "line_change_count_bucket",
+      "changed_section_count_bucket",
+      "counterpart_state",
+      "prior_card_hash"
+    ],
+    "free_form_rationale_allowed": false,
+    "insufficient_evidence_forces_current_target": true,
+    "later_model_actions": [
+      "TARGET_LONG",
+      "TARGET_FLAT",
+      "TARGET_SHORT"
+    ],
+    "later_relation_tokens": [
+      "CONVERGENT_INTENT",
+      "COMPLEMENTARY_INTENT",
+      "TECHNICAL_TENSION",
+      "INDEPENDENT_INTENT",
+      "INSUFFICIENT_EVIDENCE",
+      "ABSTAIN"
+    ],
+    "model_controls_leverage_size_stop_cost_or_reward": false,
+    "raw_price_return_rank_pnl_model_inputs_allowed": false,
+    "raw_proposal_number_hash_path_timestamp_date_author_url_allowed": false,
+    "single_model_single_call_per_card": true,
+    "split_boundary_without_position_forces_target_flat": true
+  },
+  "source_contract": {
+    "artifact_paths": {
+      "cards": "data/protocol_specification_intent_maturity_d3_cards_2020_2024q1.jsonl.gz",
+      "controls": "results/protocol_specification_intent_maturity_d3_source_controls_2026-07-25.json",
+      "events": "data/protocol_specification_intent_maturity_d3_events_2020_2023.jsonl.gz",
+      "rejection": "results/protocol_specification_intent_maturity_d3_source_rejection_2026-07-25.json",
+      "result": "results/protocol_specification_intent_maturity_d3_source_support_2026-07-25.json"
+    },
+    "bare_repository_contract": {
+      "absolute_git_dir_must_equal_configured_root": true,
+      "checkout_allowed": false,
+      "forbidden_paths": [
+        ".git",
+        "index",
+        "worktrees",
+        "commondir",
+        "gitdir",
+        "objects/info/alternates",
+        "shallow"
+      ],
+      "fresh_independent_roots_required": true,
+      "git_common_dir": ".",
+      "git_fsck_no_dangling_required": true,
+      "git_status_allowed": false,
+      "is_bare_repository": true,
+      "is_inside_work_tree": false,
+      "ref_roster": [
+        "refs/heads/master",
+        "refs/psim-d3/sealed-tip"
+      ],
+      "root_names": {
+        "bitcoin_a": "bitcoin-a.git",
+        "bitcoin_b": "bitcoin-b.git",
+        "ethereum_a": "ethereum-a.git",
+        "ethereum_b": "ethereum-b.git"
+      },
+      "sealed_ref": "refs/psim-d3/sealed-tip",
+      "shared_objects_or_cache_allowed": false,
+      "source_traversal_ref": "refs/psim-d3/sealed-tip",
+      "symbolic_head": "refs/heads/master"
+    },
+    "batch_hydration_contract": {
+      "all_new_object_types_must_be_blob": true,
+      "at_least_one_new_promisor_pack_required": true,
+      "command": [
+        "/usr/bin/git",
+        "-C",
+        "<fresh-bare-root>",
+        "-c",
+        "fetch.negotiationAlgorithm=noop",
+        "fetch",
+        "origin",
+        "--no-tags",
+        "--no-write-fetch-head",
+        "--recurse-submodules=no",
+        "--filter=blob:none",
+        "--no-auto-maintenance",
+        "--stdin"
+      ],
+      "complete_new_object_set_must_equal_requested_oids": true,
+      "every_new_pack_requires_matching_promisor_marker": true,
+      "fetch_head_must_remain_absent": true,
+      "first_failure_action": "REJECT_PSIM_D3_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+      "forbidden_transports": [
+        "interactive or buffered cat-file lazy hydration",
+        "per-object fetch",
+        "retry",
+        "fallback lazy fetch",
+        "full clone",
+        "git fetch --refetch",
+        "checkout",
+        "D1 or D2 source-object reuse"
+      ],
+      "gate_id": 4,
+      "gate_name": "historical_blob_preamble_dependency_integrity",
+      "initial_requested_oids_must_be_absent": true,
+      "maintenance_child_processes_allowed": 0,
+      "multiple_new_packfiles_allowed": true,
+      "new_loose_objects_allowed": false,
+      "oid_derivation": "sorted unique non-null old_blob_oid/new_blob_oid union from the replica-local retained 2020-2023 ProposalGroup rows",
+      "oid_derivation_after_gate_id": 3,
+      "oid_manifest_encoding": "lowercase full 40-hex SHA-1 one per LF-terminated line with final LF",
+      "one_fetch_invocation_per_replica": true,
+      "physical_pack_count_fixed": false,
+      "post_hydration_read": {
+        "cat_file_transport_role": "local_decode_only",
+        "environment": "GIT_NO_LAZY_FETCH=1",
+        "fetch_child_processes_allowed": 0,
+        "missing_object_action": "REJECT_PSIM_D3_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "object_store_ref_and_fetch_head_snapshot_must_be_unchanged": true
+      },
+      "pre_and_post_inventory": [
+        "complete local object roster and types",
+        "pack roster",
+        "promisor marker roster",
+        "loose-object roster",
+        "ref roster",
+        "FETCH_HEAD presence"
+      ],
+      "ref_roster_must_be_unchanged": true,
+      "replica_count": 4,
+      "stdin_is_complete_oid_manifest": true,
+      "stdout_stderr_consumption": "subprocess_run_communicate",
+      "synthetic_probe_binding": {
+        "buffered_cat_file_control_pack_count": 6,
+        "buffered_cat_file_control_requested_oids": 6,
+        "commit": "126f7f1354eff90f30d5a6b3d60bd6641268b03b",
+        "market_model_outcomes_opened": false,
+        "official_source_opened": false,
+        "path": "results/protocol_specification_intent_maturity_d3_transport_probe_2026-07-25.json",
+        "probe_may_change_only_transport_contract": true,
+        "protocol_version": "psim_d3_batch_hydration_transport_probe_v1",
+        "result_hash": "0df158cddd9b663b2daca14e01bcaa5c2e64b7f5d976720282120585bc41c63a",
+        "sha256": "4a815145a1f2ab9c6c61d599cf0aaf2218172e9f71251e95ce7178c1f3be13b7",
+        "single_fetch_observed_pack_count": 1
+      },
+      "timeout_seconds": 1800,
+      "trace_child_argv_ambiguity_action": "REJECT_PSIM_D3_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+    },
+    "card_end_exclusive": "2024-04-01T00:00:00Z",
+    "clone_arguments": [
+      "--bare",
+      "--filter=blob:none",
+      "--single-branch",
+      "--branch",
+      "master",
+      "--no-tags"
+    ],
+    "commit_subject_used_for_inclusion_or_classification": false,
+    "current_checkout_used_as_historical_truth": false,
+    "disk_limit_gib": 300,
+    "end_exclusive": "2024-01-01T00:00:00Z",
+    "git_binary_binding": {
+      "exact_binary_required": true,
+      "path": "/usr/bin/git",
+      "path_lookup_allowed": false,
+      "sha256": "2a8c18fbf43da9f692d75474c72bea9dfd796c260b0f3dfe456376abc3bbd668",
+      "synthetic_no_lazy_fetch_semantic_probe_required": true,
+      "version": "git version 2.43.0"
+    },
+    "git_fsck_no_dangling_required": true,
+    "git_status_allowed": false,
+    "git_version": "git version 2.43.0",
+    "git_version_and_object_format_bound_at_execution_seal": true,
+    "github_pr_issue_label_review_metadata_allowed": false,
+    "path_handling": "NUL_SAFE_BYTE_EXACT_CASE_SENSITIVE",
+    "rename_detection": false,
+    "repositories": [
+      {
+        "branch": "master",
+        "document_formats": [
+          "markdown_frontmatter"
+        ],
+        "local_branch_ref": "refs/heads/master",
+        "object_format": "sha1",
+        "path_pattern": "^EIPS/eip-([1-9][0-9]*)\\.md$",
+        "protocol": "ethereum",
+        "remote": "https://github.com/ethereum/EIPs.git",
+        "remote_head_symref": "refs/heads/master",
+        "sealed_ref": "refs/psim-d3/sealed-tip",
+        "sealed_tip": "5e82ef62895121027a6c5f0c23276e1b2bed3071"
+      },
+      {
+        "branch": "master",
+        "document_formats": [
+          "mediawiki_rfc822",
+          "markdown_rfc822"
+        ],
+        "local_branch_ref": "refs/heads/master",
+        "object_format": "sha1",
+        "path_pattern": "^bip-([0-9]{4})\\.(mediawiki|md)$",
+        "protocol": "bitcoin",
+        "remote": "https://github.com/bitcoin/bips.git",
+        "remote_head_symref": "refs/heads/master",
+        "sealed_ref": "refs/psim-d3/sealed-tip",
+        "sealed_tip": "b289d016b99c81527623c10e995e0318f744ebf3"
+      }
+    ],
+    "repository_representation": "BARE_OBJECT_DATABASE_NO_WORKTREE_NO_INDEX",
+    "shared_git_environment_scrubbed": true,
+    "source_root": "/tmp/psim-d3-source",
+    "start": "2020-01-01T00:00:00Z",
+    "traversal": "sealed_tip_complete_first_parent_oldest_to_newest",
+    "tree_delta_parent": "parent_one_or_empty_tree_for_root"
+  },
+  "source_support_contract": {
+    "all_gates_required": true,
+    "control_sensitivity_metric": {
+      "aggregation": "require every control x archive schedule x split cell; no pooling or weighting",
+      "changed_definition": "SHA256(canonical_json(transformed_local_payload)) != SHA256(canonical_json(baseline_local_payload))",
+      "comparison_unit": "canonical local daily relation-card payload for one decision day",
+      "denominator": "unique eligible decision days for one exact control,schedule,split cell",
+      "excluded_from_comparison_payload": [
+        "card_hash",
+        "prior_card_hash",
+        "raw_commit_or_blob_ids",
+        "control_name",
+        "audit_counters"
+      ],
+      "first_failure_action": "REJECT_PSIM_D3_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+      "minimum_changed_fraction_per_cell": "0.10",
+      "minimum_eligible_days_per_cell": 4,
+      "numerator": "eligible denominator days whose payload changed",
+      "quarantined_events_in_source_control_payload": true,
+      "zero_eligible_cell_action": "REJECT"
+    },
+    "first_failure_action": "REJECT_PSIM_D3_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+    "future_append_cutoff": "2024-01-01T00:00:00Z",
+    "gate_relaxation_after_incidence_allowed": false,
+    "gates_in_order": [
+      "sealed_git_identity_and_object_integrity",
+      "first_parent_traversal_and_causal_clock",
+      "path_object_grammar_and_unique_proposal_tree",
+      "historical_blob_preamble_dependency_integrity",
+      "split_annual_quarterly_unique_day_support",
+      "event_section_dependency_revision_vocabulary_diversity",
+      "daily_card_coverage_and_explicit_staleness",
+      "independent_replay_and_canonical_manifest_identity",
+      "future_append_invariance",
+      "relation_control_sensitivity",
+      "pairing_reset_quarantine_and_four_schedule_identity",
+      "forbidden_access_zero",
+      "terminal_publication"
+    ],
+    "independent_replay_roots": 2,
+    "maximum_top_changed_section_share": "0.80",
+    "minimum_dependency_delta_categories_overall": 2,
+    "minimum_event_types_overall": 2,
+    "minimum_non_quarantined_events_per_protocol": 32,
+    "minimum_revision_buckets_overall": 3,
+    "minimum_section_categories_overall": 4,
+    "parser_success_fraction_required": "1.0",
+    "relation_control_eligibility": {
+      "availability_plus_seven_days": "baseline or shifted card day contains at least one newly available event",
+      "dependency_edge_direction_reverse": "card contains at least one ADDED or REMOVED dependency delta",
+      "old_new_direction_reverse": "card contains at least one source event",
+      "proposal_version_pair_cyclic_permutation": "card contains an UPDATE from a protocol/source_year stratum with at least two eligible UPDATE events",
+      "protocol_label_swap": "decision day has at least one non-sentinel event or counterpart",
+      "section_label_cyclic_rotation": "card contains at least one changed section other than OTHER",
+      "within_day_event_order_reverse": "either protocol has at least two newly available events that day"
+    },
+    "relation_control_transforms": {
+      "availability_plus_seven_days": "add exactly seven calendar days to every available_at under each archive schedule and rebuild every card",
+      "dependency_edge_direction_reverse": "swap ADDED<->REMOVED; keep NO_PRIOR,STABLE,MIXED,DELETED fixed",
+      "old_new_direction_reverse": "swap all old/new derived fields; map CREATE<->DELETE and retain UPDATE; rebuild dependency and section deltas",
+      "proposal_version_pair_cyclic_permutation": "within each protocol/source_year, sort eligible UPDATE events by event_id and rotate old-blob-derived fields forward by one while holding new-blob-derived fields fixed",
+      "protocol_label_swap": "swap ethereum<->bitcoin labels after extraction; preserve raw event identity and text; rebuild relation cards",
+      "section_label_cyclic_rotation": "rotate changed-section labels over ABSTRACT,MOTIVATION,SPECIFICATION,RATIONALE,BACKWARD_COMPATIBILITY,SECURITY,TESTS,IMPLEMENTATION,COPYRIGHT; keep OTHER fixed",
+      "within_day_event_order_reverse": "reverse each protocol/day canonical event sequence before pairing; preserve event payloads"
+    },
+    "relation_controls": [
+      "protocol_label_swap",
+      "within_day_event_order_reverse",
+      "proposal_version_pair_cyclic_permutation",
+      "old_new_direction_reverse",
+      "section_label_cyclic_rotation",
+      "dependency_edge_direction_reverse",
+      "availability_plus_seven_days"
+    ],
+    "shared_git_object_alternates_allowed": false,
+    "shared_worktree_or_cache_allowed": false,
+    "source_drop_or_repair_allowed": false
+  },
+  "split_contract": {
+    "daily_card_and_relation_support_assignment_field": "decision_timestamp_under_ARCHIVE_D90",
+    "later_economic_split_assignment_field": "decision_timestamp_under_ARCHIVE_D90",
+    "later_test_eval_minimum_cagr_strict_mdd": "3.0",
+    "later_test_eval_positive_absolute_return_required": true,
+    "market_outcome_policy": "FORBIDDEN until separate evaluator freeze",
+    "post_2023_proposal_content_policy": "SEALED",
+    "shorter_schedule_support_role": "replay_and_control_only_not_threshold_rescue",
+    "source_event_support_assignment_field": "event_effective_day",
+    "splits": [
+      {
+        "decision_end_exclusive": "2022-01-01T00:00:00Z",
+        "decision_start": "2020-01-01T00:00:00Z",
+        "maximum_top_event_day_share": "0.25",
+        "maximum_top_proposal_event_share": "0.35",
+        "minimum_active_months_per_protocol": 8,
+        "minimum_active_quarters_per_protocol": 6,
+        "minimum_counterpart_fraction": "0.35",
+        "minimum_events_per_protocol": 20,
+        "minimum_events_per_protocol_per_source_year": 6,
+        "minimum_events_total": 80,
+        "minimum_relation_units_nonexcluded": 40,
+        "minimum_unique_event_days_per_protocol": 12,
+        "minimum_unique_proposals_per_protocol": 6,
+        "minimum_unique_proposals_total": 24,
+        "name": "train"
+      },
+      {
+        "decision_end_exclusive": "2023-01-01T00:00:00Z",
+        "decision_start": "2022-01-01T00:00:00Z",
+        "maximum_top_event_day_share": "0.35",
+        "maximum_top_proposal_event_share": "0.50",
+        "minimum_active_months_per_protocol": 4,
+        "minimum_active_quarters_per_protocol": 3,
+        "minimum_counterpart_fraction": "0.25",
+        "minimum_events_per_protocol": 8,
+        "minimum_events_per_protocol_per_source_year": 6,
+        "minimum_events_total": 30,
+        "minimum_relation_units_nonexcluded": 12,
+        "minimum_unique_event_days_per_protocol": 6,
+        "minimum_unique_proposals_per_protocol": 3,
+        "minimum_unique_proposals_total": 10,
+        "name": "test"
+      },
+      {
+        "decision_end_exclusive": "2024-01-01T00:00:00Z",
+        "decision_start": "2023-01-01T00:00:00Z",
+        "maximum_top_event_day_share": "0.35",
+        "maximum_top_proposal_event_share": "0.50",
+        "minimum_active_months_per_protocol": 4,
+        "minimum_active_quarters_per_protocol": 3,
+        "minimum_counterpart_fraction": "0.25",
+        "minimum_events_per_protocol": 8,
+        "minimum_events_per_protocol_per_source_year": 6,
+        "minimum_events_total": 30,
+        "minimum_relation_units_nonexcluded": 12,
+        "minimum_unique_event_days_per_protocol": 6,
+        "minimum_unique_proposals_per_protocol": 3,
+        "minimum_unique_proposals_total": 10,
+        "name": "eval"
+      }
+    ]
+  }
+}
