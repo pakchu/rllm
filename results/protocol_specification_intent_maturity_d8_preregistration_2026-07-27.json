@@ -1,0 +1,1625 @@
+{
+  "availability_contract": {
+    "committer_time_is_publication_receipt": false,
+    "counterpart_lookback_days": 90,
+    "daily_decision_frequency": "1D",
+    "daily_decision_utc_time": "12:05:00",
+    "effective_day": "running_max_utc_committer_calendar_day",
+    "force_push_or_unreachable_ancestor_action": "HALT_NO_REBUILD",
+    "live_available_at": "max(historical_floor,durable_fetch_object_verify_extract_hash_manifest_commit_time)",
+    "primary_historical_economic_schedule": "ARCHIVE_D90",
+    "schedules": [
+      {
+        "delay_calendar_days": 2,
+        "name": "ARCHIVE_D2",
+        "primary_economic_clock": false,
+        "profitability_claim_allowed": false
+      },
+      {
+        "delay_calendar_days": 7,
+        "name": "ARCHIVE_D7",
+        "primary_economic_clock": false,
+        "profitability_claim_allowed": false
+      },
+      {
+        "delay_calendar_days": 30,
+        "name": "ARCHIVE_D30",
+        "primary_economic_clock": false,
+        "profitability_claim_allowed": false
+      },
+      {
+        "delay_calendar_days": 90,
+        "name": "ARCHIVE_D90",
+        "primary_economic_clock": true,
+        "profitability_claim_allowed": true
+      }
+    ],
+    "shorter_schedules_are_diagnostics_only": true
+  },
+  "boundary_reset_contract": {
+    "boundary_states": [
+      "PRE_WINDOW",
+      "PRE_WINDOW_BASELINE",
+      "PRE_WINDOW_UNKNOWN",
+      "NO_EVENT_YET"
+    ],
+    "first_update_old_blob_role": "PRE_WINDOW_BASELINE",
+    "old_blob_creates_synthetic_prior_event": false,
+    "pre_2020_blob_warmup_allowed": false,
+    "pre_first_event_dependency_state": "PRE_WINDOW_UNKNOWN",
+    "stale_age_before_first_protocol_event": "NO_EVENT_YET",
+    "window_age_before_first_event": "PRE_WINDOW",
+    "window_revision_count_before_first_event": 0
+  },
+  "bucket_contract": {
+    "edges": {
+      "changed_section_count": [
+        0,
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "dependency_edge_delta_count": [
+        0,
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "line_change_count": [
+        0,
+        1,
+        3,
+        8,
+        20,
+        50,
+        100,
+        250,
+        500
+      ],
+      "stale_age_days": [
+        0,
+        2,
+        7,
+        30,
+        90,
+        180
+      ],
+      "update_gap_days": [
+        0,
+        2,
+        7,
+        30,
+        90,
+        180,
+        365
+      ],
+      "window_age_days": [
+        0,
+        7,
+        30,
+        90,
+        180,
+        365,
+        730
+      ],
+      "window_revision_count": [
+        0,
+        1,
+        2,
+        4,
+        8,
+        16,
+        32
+      ]
+    },
+    "interval_rule": "NEGATIVE_OR_SENTINEL_SEPARATE; OTHERWISE RIGHT_CLOSED_AT_LAST_EDGE_WITH_OVERFLOW",
+    "raw_numeric_values_model_visible": false
+  },
+  "candidate": {
+    "d9_allowed_after_source_failure": false,
+    "id": "PSIM-D8",
+    "last_source_representation_successor": true,
+    "name": "Protocol Specification Intent-Maturity source support, frozen D7 semantics plus lossless ordered relation subcards",
+    "selection_commit": "211454a96695de44af3e009b751eff7df9e3ae5f",
+    "source_axis": "official_eip_bip_specification_revision_relation",
+    "stage": "source_support_only"
+  },
+  "daily_relation_contract": {
+    "administrative_events_retained_in_model_cards": false,
+    "administrative_events_retained_in_source_event_artifact": true,
+    "both_protocol_sets_nonempty": "complete_cartesian_product",
+    "both_sets_empty_sentinel": "NO_ANCHOR",
+    "canonical_event_order": [
+      "availability_utc",
+      "first_parent_index",
+      "proposal_number",
+      "event_id"
+    ],
+    "exactly_one_protocol_set_nonempty": "each_anchor_with_most_recent_opposite_event_in_90_days",
+    "explicit_no_new_event_state_required": true,
+    "maximum_model_events_per_card": null,
+    "maximum_model_relation_units_per_subcard": 64,
+    "maximum_model_text_bytes_per_chunk": 8192,
+    "maximum_model_text_bytes_per_event": 65536,
+    "maximum_model_text_chunks_per_event": 8,
+    "missing_opposite_sentinel": "NO_COUNTERPART",
+    "model_text_field": "normalized_text_delta_chunks",
+    "model_text_transport_contract": {
+      "audit_receipt_fields": [
+        "chunk_count",
+        "chunks",
+        "full_text_line_count",
+        "full_text_sha256",
+        "full_text_utf8_bytes",
+        "max_bytes_per_chunk",
+        "max_chunks_per_event",
+        "protocol_version",
+        "receipt_hash",
+        "reconstructed_sha256",
+        "reconstruction_matches"
+      ],
+      "audit_receipt_model_visible": false,
+      "canonical_partition_validation_required": true,
+      "chunk_payload_fields": [
+        "chunk_count",
+        "chunk_index",
+        "normalized_text_delta_chunk"
+      ],
+      "chunk_payload_order": "ZERO_BASED_ASCENDING_CHUNK_INDEX",
+      "chunk_payloads_are_transport_fragments_not_events_or_labels": true,
+      "empty_text_chunk_count": 0,
+      "event_container_field": "normalized_text_delta_chunks",
+      "full_text_reconstruction": "BYTE_FOR_BYTE_REQUIRED",
+      "full_text_serialization": "D5_CAUSAL_MODEL_ROWS_SECTION_DIRECTION_LINE_JOINED_BY_LF",
+      "line_serialization_semantics": "SECTION_AND_DIRECTION_ARE_THE_FIRST_TWO_DELIMITED_FIELDS;_LINE_IS_OPAQUE_AFTER_THE_SECOND_PIPE_AND_IS_NOT_REPARSED",
+      "max_bytes_per_chunk": 8192,
+      "max_bytes_per_event": 65536,
+      "max_chunks_per_event": 8,
+      "model_aggregation_policy": "UNDECIDED_NOT_AUTHORIZED_BY_D8_SOURCE_PREREGISTRATION",
+      "ninth_chunk_action": "RECORD_TYPED_EVENT_ERROR_CONTINUE_COMPLETE_ROSTER_THEN_REJECT_NO_TRUNCATION_OR_SUMMARIZATION",
+      "split": "GREEDY_CONTIGUOUS_UTF8_BYTES_BACKTRACK_CONTINUATION_BOUNDARY",
+      "strict_utf8_required": true
+    },
+    "opposite_tie_break": "maximum_event_id",
+    "over_limit_card_action": "BUILD_LOSSLESS_ORDERED_RELATION_SUBCARDS_NO_TRUNCATION_OR_SUMMARIZATION",
+    "prior_card_hash_required": true,
+    "relation_subcard_contract": {
+      "audit_manifest_model_visible": false,
+      "cap_raise_allowed": false,
+      "complete_relation_roster_hash_required": true,
+      "control_denominator": "UNIQUE_LOGICAL_DECISION_DAYS",
+      "dropping_sampling_summarization_allowed": false,
+      "later_model_aggregation": "UNDECIDED_NOT_AUTHORIZED_BY_D8_SOURCE_PREREGISTRATION",
+      "later_model_input": "VERIFIED_SUBCARD_SLICE_ONLY_UNDER_SEPARATE_PREREGISTRATION",
+      "logical_card_hash_binds_completed_manifest": true,
+      "logical_card_payload_model_visible": false,
+      "logical_daily_card_count": "EXACTLY_ONE_PER_SCHEDULE_AND_DECISION_DAY",
+      "logical_daily_relation_roster": "EXACT_D7_ORDERED_COMPLETE_RELATION_UNITS",
+      "market_or_outcome_dependent_partition_allowed": false,
+      "maximum_model_relation_units_per_subcard": 64,
+      "subcard_chain_required": true,
+      "subcard_coverage": "COMPLETE_NONOVERLAPPING_NO_GAP_NO_DUPLICATION",
+      "subcard_partition": "CONTIGUOUS_GREEDY_SLICES_IN_ORIGINAL_ORDER",
+      "subcard_payload_hash_required": true
+    },
+    "semantic_or_market_pair_selection_allowed": false
+  },
+  "decision_binding": {
+    "commit": "211454a96695de44af3e009b751eff7df9e3ae5f",
+    "path": "docs/psim-d8-relation-subcard-mechanism-selection-2026-07-27.md",
+    "sha256": "a46b2960586a2e80f78600a4069481de03ca80048c436e67fe09afe513d36385"
+  },
+  "event_contract": {
+    "all_matching_path_events_retained": true,
+    "create": "zero_old_blob_and_exactly_one_new_blob",
+    "d5_source_semantics": {
+      "full_normalized_delta_audit": {
+        "fields": [
+          "audit_diff_hash",
+          "audit_line_change_count",
+          "exact_old_path",
+          "exact_new_path",
+          "path_identity_hash",
+          "old_metadata_state",
+          "new_metadata_state",
+          "invalid_metadata_states"
+        ],
+        "model_visible": false,
+        "raw_or_normalized_lines_persisted": false
+      },
+      "historical_ethereum_blob_class_counts": {
+        "D4_DUPLICATE_IDENTICAL_HEADER": 7,
+        "D4_MALFORMED_HEADER_LINE": 20,
+        "D4_SELF_DEPENDENCY": 9,
+        "D4_VALID": 4440,
+        "ERC_MIGRATION_REDIRECT_LOWER_PATH": 365,
+        "ERC_MIGRATION_REDIRECT_UPPER_PATH": 365
+      },
+      "model_card_integration": {
+        "administrative_events_retained_in_model_cards": false,
+        "administrative_events_retained_in_source_event_artifact": true,
+        "exact_paths_or_path_identity_hash_model_visible": false,
+        "known_invalid_state_model_visible": true,
+        "normalized_text_delta_sections": [
+          "ABSTRACT",
+          "MOTIVATION",
+          "SPECIFICATION",
+          "RATIONALE",
+          "BACKWARD_COMPATIBILITY",
+          "SECURITY",
+          "TESTS",
+          "IMPLEMENTATION"
+        ],
+        "raw_header_other_or_copyright_lines_model_visible": false
+      },
+      "probe_semantics": {
+        "administrative_quarantine": "EXACT_ONE_LINE_ETHEREUM_ERC_MOVE_STUB_WITH_TARGET_NUMBER_EQUAL_TO_PROPOSAL_GROUP_PATH_NUMBER",
+        "administrative_quarantine_invalid_metadata_audit": "PRESERVE_EXPLICIT_INVALID_STATES_WHILE_MODEL_TEXT_IS_EMPTY",
+        "administrative_text_model_visible": false,
+        "bip_parser": "UNCHANGED_D4_STRICT_PARSER",
+        "dependency_when_metadata_invalid": "UNKNOWN_WITH_NULL_COUNT_NO_REPAIR",
+        "invalid_metadata_states": [
+          "INVALID_DUPLICATE_CONFLICTING",
+          "INVALID_DUPLICATE_IDENTICAL",
+          "INVALID_MALFORMED_HEADER",
+          "INVALID_SELF_DEPENDENCY",
+          "INVALID_UNKNOWN"
+        ],
+        "known_invalid_metadata_text_model_visible": "TRUE_FOR_NONADMINISTRATIVE_EVENTS",
+        "metadata_resolution": "NONE_NO_FIRST_LAST_MERGE_DEDUP_RENAME_OR_SELF_EDGE_DROP",
+        "model_metadata_lines_visible": false,
+        "model_text_field": "normalized_text_delta",
+        "model_text_sections": [
+          "ABSTRACT",
+          "MOTIVATION",
+          "SPECIFICATION",
+          "RATIONALE",
+          "BACKWARD_COMPATIBILITY",
+          "SECURITY",
+          "TESTS",
+          "IMPLEMENTATION"
+        ],
+        "normalized_text_delta_is_causal_semantics_claim": false,
+        "normalized_text_delta_order": "SEQUENCE_MATCHER_OPCODE_ORDER_REMOVE_THEN_ADD_SOURCE_ORDER",
+        "path_identity": "PROTOCOL_PLUS_EXACT_OLD_NEW_GROUP_PATHS_PLUS_NUMBER_CANONICAL_HASH_BOUND",
+        "raw_normalization": "UNCHANGED_D1_NORMALIZE_BLOB_BYTES",
+        "reverse_administrative_transition": "FAIL_CLOSED",
+        "unknown_grammar": "FAIL_CLOSED_BEFORE_MODEL_OR_OUTCOMES"
+      },
+      "semantics_version": "PSIM_PATH_IDENTITY_NORMALIZED_TEXT_DELTA_V1_EXACT_ERC_QUARANTINE",
+      "synthetic_probe_binding": {
+        "commit": "0e62ec05e6861b2619e6737dd594e7306ad7c93a",
+        "d4_forensic_root_opened": false,
+        "market_model_outcomes_opened": false,
+        "official_historical_proposal_source_opened": false,
+        "official_reference_notes_model_visible": false,
+        "path": "results/protocol_specification_intent_maturity_d5_event_semantics_probe_2026-07-26.json",
+        "protocol_version": "psim_d5_path_text_event_semantics_probe_v1",
+        "result_hash": "467f4272bc7276879c0087662a70d99c57d9cef421647f1a679e2fce65de4871",
+        "script_path": "training/probe_protocol_specification_intent_maturity_d5_event_semantics.py",
+        "script_sha256": "d1aaf55effec3df8f38854992b4c60bd39d612e4bd6cd00fe705f60b5cac9d85",
+        "semantics_version": "PSIM_PATH_IDENTITY_NORMALIZED_TEXT_DELTA_V1_EXACT_ERC_QUARANTINE",
+        "sha256": "42265a1ed0899366047732e1fa5dad24d961bb4b0bd7fb7bb58479a77bc8894b",
+        "synthetic_only": true,
+        "test_path": "tests/test_probe_protocol_specification_intent_maturity_d5_event_semantics.py",
+        "test_sha256": "68919a7e02975557443e7f3e5d38c912e2fbdd74eeaa95e95922fa842cd0b1c1"
+      }
+    },
+    "d6_source_mechanisms": {
+      "base_semantics": "PSIM_D5_UNCHANGED_EXCEPT_THIS_EXACT_FROZEN_D6_OVERLAY",
+      "d5_failure_census": {
+        "model_text_bound_error_events": 190,
+        "model_text_bound_event_roster_hash": "0f299221248e66ca1eddc9cdd839cab504755537e47464c697c481544d169fd4",
+        "reverse_administrative_migration_events": 365
+      },
+      "gate_four_totality": {
+        "canonical_rejection_required_before_return_or_raise": true,
+        "complete_roster_scope": "ALL_RETAINED_2020_2023_PROPOSAL_GROUP_EVENTS_IN_ALL_FOUR_FRESH_REPLICAS_AFTER_SUCCESSFUL_HYDRATION",
+        "decision_after_complete_roster_only": true,
+        "error_report_raw_or_normalized_text_allowed": false,
+        "event_semantics_exception_may_abort_roster_collection": false,
+        "event_semantics_outcome_per_event_required": true,
+        "replica_outcome_roster_identity_required": true,
+        "semantic_error_examples": [
+          "UNKNOWN_GRAMMAR",
+          "UNAUTHORIZED_OR_MUTATED_MIGRATION_EPISODE",
+          "NONCANONICAL_CHUNK_PARTITION",
+          "MORE_THAN_EIGHT_MODEL_TEXT_CHUNKS",
+          "STRICT_UTF8_FAILURE"
+        ],
+        "semantic_error_handling": "ACCUMULATE_TYPED_AUDIT_ONLY_OUTCOME_CONTINUE_COMPLETE_ROSTER",
+        "semantic_error_terminal_action": "REJECT_PSIM_D6_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "terminal_gate_result": "PASS_ONLY_IF_COMPLETE_ROSTER_HAS_NO_UNAUTHORIZED_ERROR_OUTCOME"
+      },
+      "mechanism_probe_binding": {
+        "commit": "f985acb9821913e10325ed9487bdcea8fc2d39d9",
+        "d5_forensic_root_accessed": false,
+        "document_path": "docs/psim-d6-mechanism-selection-2026-07-26.md",
+        "document_sha256": "d47448291b529442cc5dc18e0ccd86147a2c4cc837d63d025b91d39eca308959",
+        "market_model_outcomes_accessed": false,
+        "mechanism_version": "PSIM_EXACT_MIGRATION_RECEIPT_PLUS_UTF8_CHUNK_TRANSPORT_V1",
+        "path": "results/protocol_specification_intent_maturity_d6_mechanism_probe_2026-07-26.json",
+        "protocol_version": "psim_d6_source_mechanism_probe_v1",
+        "result_hash": "dda4b4786b34064a104178580f6cd33e56d5616c282515f6579105231b5dab38",
+        "script_path": "training/probe_protocol_specification_intent_maturity_d6_mechanism.py",
+        "script_sha256": "fbe73520217e7e3119ee29cfff30c1bf7355678369a95fd5fde659eb3db68d91",
+        "selection_scope": "AUTHORIZE_D6_PREREGISTRATION_ONLY_NOT_OFFICIAL_SOURCE_EXECUTION",
+        "sha256": "01b09218d71d83c6abc3c4225b708a1cae6fe9e426b9bbd98f4fe6e86579d60b",
+        "synthetic_only": true,
+        "test_path": "tests/test_probe_protocol_specification_intent_maturity_d6_mechanism.py",
+        "test_sha256": "3aeaaacf3f97d87771e7af7684b08915f5f1e501adab779436c6835b27d534b6"
+      },
+      "mechanism_probe_contract": {
+        "administrative_restoration": "EXACT_THREE_STEP_CAUSAL_EPISODE_PLUS_PER_PROPOSAL_FROZEN_RECEIPT_HASH",
+        "administrative_restoration_model_text_visible": false,
+        "chunk_full_text_serialization": "D5_CAUSAL_MODEL_ROWS_SECTION_DIRECTION_LINE_JOINED_BY_LF",
+        "chunk_split": "GREEDY_CONTIGUOUS_UTF8_BYTES_BACKTRACK_CONTINUATION_BOUNDARY",
+        "chunk_transport_fields": [
+          "chunk_count",
+          "chunk_index",
+          "normalized_text_delta_chunk"
+        ],
+        "chunk_transport_order": "ZERO_BASED_ASCENDING_CHUNK_INDEX",
+        "full_text_reconstruction": "BYTE_FOR_BYTE_REQUIRED",
+        "max_bytes_per_chunk": 8192,
+        "max_chunks_per_event": 8,
+        "ninth_chunk": "FAIL_CLOSED_NO_TRUNCATION_OR_SUMMARIZATION",
+        "receipt_authority_count": 365,
+        "restoration_requires_prior_events_not_future_events": true,
+        "unknown_episode": "FAIL_CLOSED_BEFORE_MODEL_OR_OUTCOMES"
+      },
+      "mechanism_version": "PSIM_EXACT_MIGRATION_RECEIPT_PLUS_UTF8_CHUNK_TRANSPORT_V1",
+      "migration_restoration": {
+        "administrative_events_model_visible": false,
+        "authority": {
+          "episode_count": 365,
+          "episode_receipt_manifest_hash": "abf21a4691e4407158efc61a267cc6eaec8522751c25fa531aed6f782accdc07",
+          "episode_roster_hash": "7065c33783f1ea54af1522da7e442ec05507c38355bb98ed90daf3f87e89b0bd",
+          "proposal_roster_hash": "c12e353514f8bfdf928e3ba7c0e26b598615c8e20ce25b3dbbe31537fd169ccd",
+          "source_census_commit": "4c4e3eb49962597eac7f63a0a3c1bf58f1fe73e4",
+          "source_census_path": "results/protocol_specification_intent_maturity_d5_event_semantics_census_2026-07-26.json",
+          "source_census_result_hash": "0ca0a11f6693543dafbcf29052f2e963bf721c6e12f71f6fc9fbb1856e2dfe4a",
+          "source_census_sha256": "df2bcbef28b22d6daeb258d5c0f36b918d833b9c5fb0e5c9229a44edce4c2d59"
+        },
+        "authority_receipt_hashes_model_visible": false,
+        "authorized_sequence": {
+          "blob_classes": [
+            [
+              "D4_VALID",
+              "ERC_MIGRATION_REDIRECT_LOWER_PATH"
+            ],
+            [
+              "ERC_MIGRATION_REDIRECT_LOWER_PATH",
+              "ERC_MIGRATION_REDIRECT_UPPER_PATH"
+            ],
+            [
+              "ERC_MIGRATION_REDIRECT_UPPER_PATH",
+              "D4_VALID"
+            ]
+          ],
+          "commit_oids": [
+            "0f44e2b94df4e504bb7b912f56ebd712db2ad396",
+            "47ce70257fae525a427780630bd8d1903cc96e75",
+            "25cdf1d059778236e28bf22d752ca48a35af91f6"
+          ],
+          "effective_days": [
+            "2023-10-25",
+            "2023-10-25",
+            "2023-10-26"
+          ],
+          "historical_d5_outcome_ids": [
+            "PASS_ADMINISTRATIVE_QUARANTINE",
+            "PASS_ADMINISTRATIVE_QUARANTINE",
+            "ERROR_REVERSE_ADMINISTRATIVE_MIGRATION"
+          ]
+        },
+        "exact_path_and_blob_continuity_required": true,
+        "generic_administrative_to_valid_transition_authorized": false,
+        "model_payload_for_restoration": {
+          "administrative_quarantined": true,
+          "model_visibility": "ADMINISTRATIVE_QUARANTINE",
+          "normalized_text_delta_chunks": []
+        },
+        "restoration_authorization": "EXACT_FROZEN_PROPOSAL_RECEIPT_PLUS_EXACT_THREE_STEP_CAUSAL_EPISODE_ONLY",
+        "unknown_or_mutated_episode_action": "RECORD_TYPED_EVENT_ERROR_CONTINUE_COMPLETE_ROSTER_THEN_REJECT_BEFORE_MODEL_OR_OUTCOMES"
+      },
+      "model_text_transport": {
+        "audit_receipt_fields": [
+          "chunk_count",
+          "chunks",
+          "full_text_line_count",
+          "full_text_sha256",
+          "full_text_utf8_bytes",
+          "max_bytes_per_chunk",
+          "max_chunks_per_event",
+          "protocol_version",
+          "receipt_hash",
+          "reconstructed_sha256",
+          "reconstruction_matches"
+        ],
+        "audit_receipt_model_visible": false,
+        "canonical_partition_validation_required": true,
+        "chunk_payload_fields": [
+          "chunk_count",
+          "chunk_index",
+          "normalized_text_delta_chunk"
+        ],
+        "chunk_payload_order": "ZERO_BASED_ASCENDING_CHUNK_INDEX",
+        "chunk_payloads_are_transport_fragments_not_events_or_labels": true,
+        "empty_text_chunk_count": 0,
+        "event_container_field": "normalized_text_delta_chunks",
+        "full_text_reconstruction": "BYTE_FOR_BYTE_REQUIRED",
+        "full_text_serialization": "D5_CAUSAL_MODEL_ROWS_SECTION_DIRECTION_LINE_JOINED_BY_LF",
+        "line_serialization_semantics": "SECTION_AND_DIRECTION_ARE_THE_FIRST_TWO_DELIMITED_FIELDS;_LINE_IS_OPAQUE_AFTER_THE_SECOND_PIPE_AND_IS_NOT_REPARSED",
+        "max_bytes_per_chunk": 8192,
+        "max_bytes_per_event": 65536,
+        "max_chunks_per_event": 8,
+        "model_aggregation_policy": "UNDECIDED_NOT_AUTHORIZED_BY_D6_PREREGISTRATION",
+        "ninth_chunk_action": "RECORD_TYPED_EVENT_ERROR_CONTINUE_COMPLETE_ROSTER_THEN_REJECT_NO_TRUNCATION_OR_SUMMARIZATION",
+        "split": "GREEDY_CONTIGUOUS_UTF8_BYTES_BACKTRACK_CONTINUATION_BOUNDARY",
+        "strict_utf8_required": true
+      }
+    },
+    "d7_bitcoin_grammar": {
+      "base_semantics": "PSIM_D6_UNCHANGED_EXCEPT_THIS_EXACT_FROZEN_D7_BITCOIN_OVERLAY",
+      "bitcoin_only": true,
+      "d6_exact_erc_migration_restoration_frozen": true,
+      "d6_lossless_utf8_chunk_transport_frozen": true,
+      "d6_max_bytes_per_chunk": 8192,
+      "d6_max_chunks_per_event": 8,
+      "d6_ninth_chunk_action": "FAIL_CLOSED_NO_TRUNCATION_OR_SUMMARIZATION",
+      "d6_source_mechanism_contract_hash": "d03ea5ccacd415dab0f7d839b842d14e52492324c4fe432a723b6a2acb2c27b2",
+      "d6_source_mechanisms_byte_equal": true,
+      "ethereum_semantics_changed": false,
+      "grammar_mechanism": {
+        "dependency_allowed_bare_token": "[0-9]+",
+        "dependency_allowed_prefixed_token": "BIP-[0-9]+",
+        "dependency_prefix_case": "EXACT_UPPERCASE",
+        "dependency_prefix_effect": "INTEGER_EDGE_VALIDATION_ONLY_SOURCE_TEXT_UNCHANGED",
+        "dependency_token_outer_whitespace": "INHERIT_D6_STRIP_SURROUNDING_SP_HTAB",
+        "dependency_unknown_token": "FAIL_CLOSED",
+        "fallback_pre_fence_grammar": "BALANCED_NON_NESTED_EXACT_PAIRS",
+        "fallback_pre_header_blocks_before_selected": "NONE",
+        "header_candidate_parser": "UNCHANGED_FROZEN_BIP_PARSER",
+        "header_candidate_selection": "EXACTLY_ONE_PARSEABLE_LATER_PRE_HEADER_TOTAL",
+        "header_path_binding": "BIP_FIELD_EQUALS_PATH_PROPOSAL",
+        "header_prefix_and_body_retention": "FULL_NORMALIZED_TEXT_RETAINED",
+        "identity_conditioned_allowlist": false,
+        "initial_parser_first": true,
+        "later_header_authorized_initial_error": "ValueError: PSIM malformed header line",
+        "multiple_parseable_headers": "FAIL_CLOSED",
+        "unknown_grammar": "FAIL_CLOSED_BEFORE_MODEL_OR_OUTCOMES"
+      },
+      "identity_conditioned_allowlist": false,
+      "mechanism_probe_binding": {
+        "commit": "fe7f1d123eaf65af35d0d43e90f79faccbc53622",
+        "d6_forensic_root_accessed": false,
+        "document_path": "docs/psim-d7-bitcoin-grammar-mechanism-selection-2026-07-26.md",
+        "document_sha256": "1fffa4b885006467742bffcaf33f41a0cac4300018f32f271db389876312d6d5",
+        "market_model_outcomes_accessed": false,
+        "mechanism_version": "PSIM_D7_UNIQUE_LATER_BIP_HEADER_PLUS_PREFIXED_DEPENDENCY_V1",
+        "path": "results/protocol_specification_intent_maturity_d7_mechanism_probe_2026-07-26.json",
+        "protocol_version": "psim_d7_bitcoin_grammar_mechanism_probe_v1",
+        "result_hash": "832b1327d19b29f44f4fbd76dac312e001a7da19eb813ce41277d64a45492371",
+        "script_path": "training/probe_protocol_specification_intent_maturity_d7_bitcoin_grammar_mechanism.py",
+        "script_sha256": "f841ae20fb7db5e8129a4b4d6e5a712f8b4094c5ff51adfee917005e0feb53d5",
+        "selection_scope": "AUTHORIZE_D7_PREREGISTRATION_ONLY_NOT_OFFICIAL_SOURCE_EXECUTION",
+        "sha256": "2a549e6acfac2127527272ffe69986177b5e36f68f66623c6921ababac35ee94",
+        "synthetic_only": true,
+        "test_path": "tests/test_probe_protocol_specification_intent_maturity_d7_bitcoin_grammar_mechanism.py",
+        "test_sha256": "9aace70243b2d5c2eaea940c3c410850c16e7f74775e2c995c270061bdebd5bf"
+      },
+      "mechanism_version": "PSIM_D7_UNIQUE_LATER_BIP_HEADER_PLUS_PREFIXED_DEPENDENCY_V1",
+      "unknown_or_ambiguous_grammar_action": "RECORD_TYPED_EVENT_ERROR_CONTINUE_COMPLETE_ROSTER_THEN_REJECT_BEFORE_MODEL_OR_OUTCOMES"
+    },
+    "delete": "exactly_one_old_blob_and_zero_new_blob",
+    "duplicate_number_paths_in_one_tree": "REJECT",
+    "event_id_formula": "SHA256(protocol||NUL||commit_oid||NUL||canonical_decimal_proposal_number||NUL||old_blob_oid_or_NULL||NUL||new_blob_oid_or_NULL)",
+    "event_types": [
+      "CREATE",
+      "UPDATE",
+      "DELETE"
+    ],
+    "format_migration_same_number_is_update": true,
+    "multiple_old_or_new_blobs_same_number": "REJECT",
+    "path_number_preamble_number_must_match": true,
+    "update": "exactly_one_old_blob_and_exactly_one_new_blob"
+  },
+  "excluded_feasibility_probe": {
+    "bitcoin": {
+      "commit_days": 404,
+      "commits": 1146,
+      "markdown_path_touches": 140,
+      "mediawiki_path_touches": 1524,
+      "proposal_path_touches": 1664,
+      "strict_utf8_newest_blob": true,
+      "unique_proposal_paths": 210
+    },
+    "ethereum": {
+      "commit_days": 692,
+      "commits": 2280,
+      "proposal_path_touches": 2358,
+      "strict_utf8_newest_blob": true,
+      "unique_proposal_paths": 413
+    },
+    "probe_may_set_economic_direction_or_threshold": false,
+    "probe_start_inclusive": "2024-01-01T00:00:00Z",
+    "source_interval_incidence_opened": false
+  },
+  "execution_authorization_contract": {
+    "d5_forensic_or_source_root_reuse_allowed": false,
+    "d6_forensic_or_source_root_reuse_allowed": false,
+    "d7_forensic_or_source_root_reuse_allowed": false,
+    "d8_is_last_source_representation_successor": true,
+    "d9_source_successor_allowed_after_d8_failure": false,
+    "market_model_or_outcome_access_before_all_source_gates": false,
+    "official_source_execution_authorized_by_this_preregistration": false,
+    "required_before_official_source_execution": [
+      "REVIEWED_D8_IMPLEMENTATION_COMMIT",
+      "REVIEWED_D8_TEST_COMMIT",
+      "CANONICAL_D8_DIRECT_CHILD_EXECUTION_SEAL_BINDING_PREREGISTRATION_AND_CODE"
+    ],
+    "source_root_must_be_fresh": true,
+    "synthetic_mechanism_probe_authorizes_official_execution": false
+  },
+  "forbidden_access_contract": {
+    "btc_or_funding_outcomes_opened": false,
+    "counters": {
+      "btc_market_rows_read": 0,
+      "cagr_values_built": 0,
+      "daily_cards_built": 0,
+      "dependency_rows_read": 0,
+      "funding_rows_read": 0,
+      "future_return_rows_read": 0,
+      "model_outputs_built": 0,
+      "model_rows_built": 0,
+      "pnl_rows_built": 0,
+      "post_2023_proposal_blobs_read": 0,
+      "pre_2020_proposal_blobs_read": 0,
+      "proposal_text_rows_read": 0,
+      "reward_rows_built": 0,
+      "source_incidence_rows_read": 0,
+      "strict_mdd_values_built": 0,
+      "trade_rows_built": 0
+    },
+    "git_commands_during_preregistration": 0,
+    "models_loaded": 0,
+    "network_calls_during_preregistration": 0,
+    "proposal_blobs_opened": false,
+    "source_incidence_opened": false
+  },
+  "inheritance_proof": {
+    "all_other_contract_paths_byte_equal": true,
+    "authorized_delta": {
+      "candidate.d9_allowed_after_source_failure": {
+        "after": false,
+        "before": null
+      },
+      "candidate.id": {
+        "after": "PSIM-D8",
+        "before": "PSIM-D7"
+      },
+      "candidate.last_source_representation_successor": {
+        "after": true,
+        "before": null
+      },
+      "candidate.name": {
+        "after": "Protocol Specification Intent-Maturity source support, frozen D7 semantics plus lossless ordered relation subcards",
+        "before": "Protocol Specification Intent-Maturity source support, frozen D6 transport plus Bitcoin grammar overlay"
+      },
+      "candidate.selection_commit": {
+        "after": "211454a96695de44af3e009b751eff7df9e3ae5f",
+        "before": "fe7f1d123eaf65af35d0d43e90f79faccbc53622"
+      },
+      "daily_relation_contract.maximum_model_events_per_card": {
+        "after": null,
+        "before": 64
+      },
+      "daily_relation_contract.maximum_model_relation_units_per_subcard": {
+        "after": 64,
+        "before": null
+      },
+      "daily_relation_contract.model_text_transport_contract.model_aggregation_policy": {
+        "after": "UNDECIDED_NOT_AUTHORIZED_BY_D8_SOURCE_PREREGISTRATION",
+        "before": "UNDECIDED_NOT_AUTHORIZED_BY_D7_PREREGISTRATION"
+      },
+      "daily_relation_contract.over_limit_card_action": {
+        "after": "BUILD_LOSSLESS_ORDERED_RELATION_SUBCARDS_NO_TRUNCATION_OR_SUMMARIZATION",
+        "before": "SOURCE_GATE_REJECT_NO_TRUNCATION"
+      },
+      "daily_relation_contract.relation_subcard_contract": {
+        "after": {
+          "audit_manifest_model_visible": false,
+          "cap_raise_allowed": false,
+          "complete_relation_roster_hash_required": true,
+          "control_denominator": "UNIQUE_LOGICAL_DECISION_DAYS",
+          "dropping_sampling_summarization_allowed": false,
+          "later_model_aggregation": "UNDECIDED_NOT_AUTHORIZED_BY_D8_SOURCE_PREREGISTRATION",
+          "later_model_input": "VERIFIED_SUBCARD_SLICE_ONLY_UNDER_SEPARATE_PREREGISTRATION",
+          "logical_card_hash_binds_completed_manifest": true,
+          "logical_card_payload_model_visible": false,
+          "logical_daily_card_count": "EXACTLY_ONE_PER_SCHEDULE_AND_DECISION_DAY",
+          "logical_daily_relation_roster": "EXACT_D7_ORDERED_COMPLETE_RELATION_UNITS",
+          "market_or_outcome_dependent_partition_allowed": false,
+          "maximum_model_relation_units_per_subcard": 64,
+          "subcard_chain_required": true,
+          "subcard_coverage": "COMPLETE_NONOVERLAPPING_NO_GAP_NO_DUPLICATION",
+          "subcard_partition": "CONTIGUOUS_GREEDY_SLICES_IN_ORIGINAL_ORDER",
+          "subcard_payload_hash_required": true
+        },
+        "before": null
+      },
+      "decision_binding.commit": {
+        "after": "211454a96695de44af3e009b751eff7df9e3ae5f",
+        "before": "fe7f1d123eaf65af35d0d43e90f79faccbc53622"
+      },
+      "decision_binding.path": {
+        "after": "docs/psim-d8-relation-subcard-mechanism-selection-2026-07-27.md",
+        "before": "docs/psim-d7-bitcoin-grammar-mechanism-selection-2026-07-26.md"
+      },
+      "decision_binding.sha256": {
+        "after": "a46b2960586a2e80f78600a4069481de03ca80048c436e67fe09afe513d36385",
+        "before": "1fffa4b885006467742bffcaf33f41a0cac4300018f32f271db389876312d6d5"
+      },
+      "execution_authorization_contract.d7_forensic_or_source_root_reuse_allowed": {
+        "after": false,
+        "before": null
+      },
+      "execution_authorization_contract.d8_is_last_source_representation_successor": {
+        "after": true,
+        "before": null
+      },
+      "execution_authorization_contract.d9_source_successor_allowed_after_d8_failure": {
+        "after": false,
+        "before": null
+      },
+      "execution_authorization_contract.required_before_official_source_execution[0]": {
+        "after": "REVIEWED_D8_IMPLEMENTATION_COMMIT",
+        "before": "REVIEWED_D7_IMPLEMENTATION_COMMIT"
+      },
+      "execution_authorization_contract.required_before_official_source_execution[1]": {
+        "after": "REVIEWED_D8_TEST_COMMIT",
+        "before": "REVIEWED_D7_TEST_COMMIT"
+      },
+      "execution_authorization_contract.required_before_official_source_execution[2]": {
+        "after": "CANONICAL_D8_DIRECT_CHILD_EXECUTION_SEAL_BINDING_PREREGISTRATION_AND_CODE",
+        "before": "CANONICAL_D7_DIRECT_CHILD_EXECUTION_SEAL_BINDING_PREREGISTRATION_AND_CODE"
+      },
+      "memorization_contract.first_failure_action": {
+        "after": "REJECT_AND_RETIRE_PSIM_AFTER_D8_MEMORIZATION_FAILURE_BEFORE_MARKET_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D7_UNCHANGED_BEFORE_MARKET_OR_OUTCOMES"
+      },
+      "memorization_contract.model_text_chunk_aggregation_policy": {
+        "after": "UNDECIDED_NOT_AUTHORIZED_BY_D8_SOURCE_PREREGISTRATION",
+        "before": "UNDECIDED_NOT_AUTHORIZED_BY_D7_PREREGISTRATION"
+      },
+      "next_authorized_step": {
+        "after": "implement, test, review, and seal the final synthetic-only PSIM-D8 source-support evaluator; this preregistration does not authorize official source execution, and any D8 source failure retires PSIM without a D9 successor",
+        "before": "implement, test, review, and seal a synthetic-only PSIM-D7 source-support evaluator; this preregistration does not authorize official source execution"
+      },
+      "protocol_version": {
+        "after": "psim_d8_source_preregistration_v1",
+        "before": "psim_d7_source_preregistration_v1"
+      },
+      "representation_contract.later_model_input": {
+        "after": "VERIFIED_SUBCARD_SLICE_ONLY_UNDER_SEPARATE_PREREGISTRATION",
+        "before": null
+      },
+      "representation_contract.logical_daily_card_payload_model_visible": {
+        "after": false,
+        "before": null
+      },
+      "representation_contract.model_call_granularity": {
+        "after": "UNDECIDED_NOT_AUTHORIZED_BY_D8_SOURCE_PREREGISTRATION",
+        "before": null
+      },
+      "representation_contract.model_text_transport_contract.model_aggregation_policy": {
+        "after": "UNDECIDED_NOT_AUTHORIZED_BY_D8_SOURCE_PREREGISTRATION",
+        "before": "UNDECIDED_NOT_AUTHORIZED_BY_D7_PREREGISTRATION"
+      },
+      "representation_contract.relation_subcard_manifest_model_visible": {
+        "after": false,
+        "before": null
+      },
+      "representation_contract.single_model_single_call_per_card": {
+        "after": false,
+        "before": true
+      },
+      "source_contract.artifact_paths.cards": {
+        "after": "data/protocol_specification_intent_maturity_d8_cards_2020_2024q1.jsonl.gz",
+        "before": "data/protocol_specification_intent_maturity_d7_cards_2020_2024q1.jsonl.gz"
+      },
+      "source_contract.artifact_paths.controls": {
+        "after": "results/protocol_specification_intent_maturity_d8_source_controls_2026-07-27.json",
+        "before": "results/protocol_specification_intent_maturity_d7_source_controls_2026-07-26.json"
+      },
+      "source_contract.artifact_paths.events": {
+        "after": "data/protocol_specification_intent_maturity_d8_events_2020_2023.jsonl.gz",
+        "before": "data/protocol_specification_intent_maturity_d7_events_2020_2023.jsonl.gz"
+      },
+      "source_contract.artifact_paths.rejection": {
+        "after": "results/protocol_specification_intent_maturity_d8_source_rejection_2026-07-27.json",
+        "before": "results/protocol_specification_intent_maturity_d7_source_rejection_2026-07-26.json"
+      },
+      "source_contract.artifact_paths.result": {
+        "after": "results/protocol_specification_intent_maturity_d8_source_support_2026-07-27.json",
+        "before": "results/protocol_specification_intent_maturity_d7_source_support_2026-07-26.json"
+      },
+      "source_contract.bare_repository_contract.ref_roster[1]": {
+        "after": "refs/psim-d8/sealed-tip",
+        "before": "refs/psim-d7/sealed-tip"
+      },
+      "source_contract.bare_repository_contract.sealed_ref": {
+        "after": "refs/psim-d8/sealed-tip",
+        "before": "refs/psim-d7/sealed-tip"
+      },
+      "source_contract.bare_repository_contract.source_traversal_ref": {
+        "after": "refs/psim-d8/sealed-tip",
+        "before": "refs/psim-d7/sealed-tip"
+      },
+      "source_contract.batch_hydration_contract.first_failure_action": {
+        "after": "REJECT_AND_RETIRE_PSIM_PERMANENTLY_NO_D9_AFTER_D8_SOURCE_FAILURE_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D7_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+      },
+      "source_contract.batch_hydration_contract.forbidden_transports[7]": {
+        "after": "D1, D2, D3, D4, D5, D6, or D7 source-object reuse",
+        "before": "D1, D2, D3, D4, D5, or D6 source-object reuse"
+      },
+      "source_contract.batch_hydration_contract.post_hydration_read.missing_object_action": {
+        "after": "REJECT_AND_RETIRE_PSIM_PERMANENTLY_NO_D9_AFTER_D8_SOURCE_FAILURE_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D7_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+      },
+      "source_contract.batch_hydration_contract.trace_child_argv_ambiguity_action": {
+        "after": "REJECT_AND_RETIRE_PSIM_PERMANENTLY_NO_D9_AFTER_D8_SOURCE_FAILURE_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D7_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+      },
+      "source_contract.repositories[0].sealed_ref": {
+        "after": "refs/psim-d8/sealed-tip",
+        "before": "refs/psim-d7/sealed-tip"
+      },
+      "source_contract.repositories[1].sealed_ref": {
+        "after": "refs/psim-d8/sealed-tip",
+        "before": "refs/psim-d7/sealed-tip"
+      },
+      "source_contract.source_root": {
+        "after": "/tmp/psim-d8-source",
+        "before": "/tmp/psim-d7-source"
+      },
+      "source_support_contract.control_sensitivity_metric.first_failure_action": {
+        "after": "REJECT_AND_RETIRE_PSIM_PERMANENTLY_NO_D9_AFTER_D8_SOURCE_FAILURE_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D7_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+      },
+      "source_support_contract.first_failure_action": {
+        "after": "REJECT_AND_RETIRE_PSIM_PERMANENTLY_NO_D9_AFTER_D8_SOURCE_FAILURE_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D7_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+      },
+      "source_support_contract.gate_four_totality_contract.semantic_error_terminal_action": {
+        "after": "REJECT_AND_RETIRE_PSIM_PERMANENTLY_NO_D9_AFTER_D8_SOURCE_FAILURE_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "before": "REJECT_PSIM_D7_UNCHANGED_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+      }
+    },
+    "authorized_delta_hash": "33db9ba0fea552e24d62d16cd4bda84973fdae351977eb35f376df08599c543f",
+    "authorized_delta_paths": [
+      "candidate.d9_allowed_after_source_failure",
+      "candidate.id",
+      "candidate.last_source_representation_successor",
+      "candidate.name",
+      "candidate.selection_commit",
+      "daily_relation_contract.maximum_model_events_per_card",
+      "daily_relation_contract.maximum_model_relation_units_per_subcard",
+      "daily_relation_contract.model_text_transport_contract.model_aggregation_policy",
+      "daily_relation_contract.over_limit_card_action",
+      "daily_relation_contract.relation_subcard_contract",
+      "decision_binding.commit",
+      "decision_binding.path",
+      "decision_binding.sha256",
+      "execution_authorization_contract.d7_forensic_or_source_root_reuse_allowed",
+      "execution_authorization_contract.d8_is_last_source_representation_successor",
+      "execution_authorization_contract.d9_source_successor_allowed_after_d8_failure",
+      "execution_authorization_contract.required_before_official_source_execution[0]",
+      "execution_authorization_contract.required_before_official_source_execution[1]",
+      "execution_authorization_contract.required_before_official_source_execution[2]",
+      "memorization_contract.first_failure_action",
+      "memorization_contract.model_text_chunk_aggregation_policy",
+      "next_authorized_step",
+      "protocol_version",
+      "representation_contract.later_model_input",
+      "representation_contract.logical_daily_card_payload_model_visible",
+      "representation_contract.model_call_granularity",
+      "representation_contract.model_text_transport_contract.model_aggregation_policy",
+      "representation_contract.relation_subcard_manifest_model_visible",
+      "representation_contract.single_model_single_call_per_card",
+      "source_contract.artifact_paths.cards",
+      "source_contract.artifact_paths.controls",
+      "source_contract.artifact_paths.events",
+      "source_contract.artifact_paths.rejection",
+      "source_contract.artifact_paths.result",
+      "source_contract.bare_repository_contract.ref_roster[1]",
+      "source_contract.bare_repository_contract.sealed_ref",
+      "source_contract.bare_repository_contract.source_traversal_ref",
+      "source_contract.batch_hydration_contract.first_failure_action",
+      "source_contract.batch_hydration_contract.forbidden_transports[7]",
+      "source_contract.batch_hydration_contract.post_hydration_read.missing_object_action",
+      "source_contract.batch_hydration_contract.trace_child_argv_ambiguity_action",
+      "source_contract.repositories[0].sealed_ref",
+      "source_contract.repositories[1].sealed_ref",
+      "source_contract.source_root",
+      "source_support_contract.control_sensitivity_metric.first_failure_action",
+      "source_support_contract.first_failure_action",
+      "source_support_contract.gate_four_totality_contract.semantic_error_terminal_action"
+    ],
+    "batch_hydration_contract_hash": "7eab28547cabb3aacf0c2cfa0498cc26e3de6b36d7e2f8d7b1a80fd6823d048d",
+    "d7_authority_binding_hash": "662a7fba3c6d5c86590c472e208f6479aaab6f593e04405652793bdec747a80f",
+    "d7_event_parser_source_split_schedule_gate_control_contracts_equal": true,
+    "d7_execution_seal": {
+      "commit": "3cb95185bad64b6e82fdd89f8e6f7f3eaa6fda72",
+      "implementation_commit": "0e8f22f2680a9edb2cf8497343444c16e4946df0",
+      "path": "results/psim_d7_source_support_execution_seal_2026-07-27.json",
+      "payload_replay_hash": "4481e8cff5085d16ee44568a248214b61c52755ac59be55011ebecb04e514563",
+      "runner_sha256": "75d4345a1d2e311a49bc7bec837f2345a6f630b5d5382485e2afb04cadb92a47",
+      "seal_hash": "8088c0902479612bb7cc64f0c729c7375640fcb095bdd9c3d0fe62dcd35fa308",
+      "sha256": "ea94ec6566b5925fb0be16bc30aae0e47f7215d42a202943e4d5213f144573d6",
+      "test_sha256": "a9e00d86bb48811f95cfb417daef70baa33e203150c6202753c01f8d3921e887"
+    },
+    "d7_hydration_mechanics_byte_equal_after_namespace_rebase": true,
+    "d7_model_text_transport_byte_equal_after_aggregation_rebase": true,
+    "d7_observed_source_cardinality": {
+      "first_overflow_relation_units": 143,
+      "maximum_relation_units": 1221,
+      "overflow_card_cells": 24
+    },
+    "d7_post_terminal_forensic": {
+      "commit": "eb6bbc0ff8b83a38c9bcb56b817e7483fee7661b",
+      "document": {
+        "path": "docs/psim-d7-gate5-post-terminal-forensic-2026-07-27.md",
+        "sha256": "7c32f061af8f60e332e043a2df3ae38b39510e09acd94fea010e0ce2e9297740"
+      },
+      "path": "results/protocol_specification_intent_maturity_d7_gate5_forensic_2026-07-27.json",
+      "result_hash": "620d81baadafaa9d5cee1e5c38883846d1ac2df60acd00b67117241d87184144",
+      "script": {
+        "path": "training/audit_protocol_specification_intent_maturity_d7_gate5_rejection.py",
+        "sha256": "99c54480221eb7f934e3fac59880b3a07e28201c8f4e554eb3bc425b22d1d7bd"
+      },
+      "sha256": "35f961d2bde8a71045209698eee1c5508108218726b73fd2d3ceff35de85ab9b",
+      "test": {
+        "path": "tests/test_audit_protocol_specification_intent_maturity_d7_gate5_rejection.py",
+        "sha256": "9c8dfb7a0eb7adfe3f8273b62c9271b1e23c9dffa6405b61a2c477ec5ad7f864"
+      }
+    },
+    "d7_preregistration": {
+      "commit": "107c6fe172c2dcba604b06ca67f23f136507b6e9",
+      "contract_core_hash": "b8ed324c1b1da5f0137d5b6b33bcc09ad7720aef2e7c332a85f4f9da59ce07cb",
+      "document": {
+        "path": "docs/psim-d7-source-support-preregistration-2026-07-26.md",
+        "sha256": "a8594400fe583d8efa00c09735b2110904eadc0f4c712a0974fe908db7fc6171"
+      },
+      "manifest_hash": "7b6ac7c514bd3c0c8fad54a69707bb682a8a97bae020a603940c3410ddea378d",
+      "path": "results/protocol_specification_intent_maturity_d7_preregistration_2026-07-26.json",
+      "producer": {
+        "path": "training/preregister_protocol_specification_intent_maturity_d7.py",
+        "sha256": "669494125becd1e1ed82a3a3048eaad23a063ef49c24a1bf613ba828695203fa"
+      },
+      "sha256": "e9402b984232a9c30a5bc427ee8b828b4e61b7f355746e36ee5fe986be3ae79d",
+      "test": {
+        "path": "tests/test_preregister_protocol_specification_intent_maturity_d7.py",
+        "sha256": "720795099c82dc7dc04da41c5749527e4680a4c8ee16a4366e47e13b17d9270f"
+      }
+    },
+    "d7_terminal_rejection": {
+      "commit": "6d286943566dd13f591aeea41cbc767233822adf",
+      "daily_cards": 0,
+      "events": 5356,
+      "first_failure_gate_id": 5,
+      "outcomes_opened": false,
+      "parent_seal_commit": "3cb95185bad64b6e82fdd89f8e6f7f3eaa6fda72",
+      "path": "results/protocol_specification_intent_maturity_d7_source_rejection_2026-07-26.json",
+      "proposal_blobs_opened": 11280,
+      "result_hash": "45846070617398860a03f5a401047c95a37c7ba3526c37fbcea5a11687e8658b",
+      "sha256": "36702b4737f1bb37e901241a96e04f30e77132bb6a18ade1fab277a83f15557e",
+      "terminal_is_direct_child_of_seal_commit": true
+    },
+    "d8_mechanism_probe": {
+      "commit": "211454a96695de44af3e009b751eff7df9e3ae5f",
+      "d7_forensic_source_root_accessed": false,
+      "document_path": "docs/psim-d8-relation-subcard-mechanism-selection-2026-07-27.md",
+      "document_sha256": "a46b2960586a2e80f78600a4069481de03ca80048c436e67fe09afe513d36385",
+      "market_model_outcomes_accessed": false,
+      "mechanism_contract_hash": "c86aaf1e9975d62c88c45f89dc6943fef7e2ed8902ecc840ea9f569e09e1e0fb",
+      "mechanism_version": "PSIM_D8_LOGICAL_DAY_CARD_WITH_ORDERED_RELATION_SUBCARDS_V1",
+      "path": "results/protocol_specification_intent_maturity_d8_mechanism_probe_2026-07-27.json",
+      "protocol_version": "psim_d8_relation_subcard_mechanism_probe_v1",
+      "result_hash": "3b690e6e11399a12aca41a2ba79f74f5d8642f029dc5241d72d342a6f3706672",
+      "scenario_roster_hash": "9a718845c1af15904a9d263511c601432d1ae3e2ddd17bad9e9bfb2fbefcc00c",
+      "script_path": "training/probe_protocol_specification_intent_maturity_d8_relation_subcard_mechanism.py",
+      "script_sha256": "b869c73b4ce1de783ff67888825ba3d0c41d8075050afe1c9b8ee6579f76fb4d",
+      "selection_scope": "AUTHORIZE_D8_PREREGISTRATION_ONLY_NOT_OFFICIAL_SOURCE_EXECUTION",
+      "sha256": "9c926f1fc44e60e4fcf92679dfd36db8d410220dcbbecec8c71e05bba0076d76",
+      "synthetic_only": true,
+      "test_path": "tests/test_probe_protocol_specification_intent_maturity_d8_relation_subcard_mechanism.py",
+      "test_sha256": "9a2a99ab3ad1e4e4bf7ff98515831532142d39761f007ecc26e2d3b280e8fbc9"
+    },
+    "execution_authorization_contract_hash": "06f1012e5fe9246286a9d0b28da53877f846ef3c917a3023158893a601c0456f",
+    "preregistration_access": {
+      "d7_execution_seal_artifact_read": true,
+      "d7_forensic_artifact_read_via_mechanism_probe": true,
+      "d7_forensic_or_source_root_opened": false,
+      "d7_preregistration_artifact_read": true,
+      "d7_source_runner_invoked": false,
+      "d7_terminal_artifact_read": true,
+      "d8_mechanism_probe_artifact_read": true,
+      "d8_official_source_execution_invoked": false,
+      "d8_source_root_created_or_opened": false,
+      "git_commands": 0,
+      "market_model_outcomes_opened": false,
+      "network_calls": 0,
+      "official_historical_proposal_source_opened": false
+    },
+    "relation_subcard_contract_hash": "c86aaf1e9975d62c88c45f89dc6943fef7e2ed8902ecc840ea9f569e09e1e0fb"
+  },
+  "manifest_hash": "d06124a48dde7e79f18d7627297f3d17196f6296fdb6221e42c40e7b032313dc",
+  "memorization_contract": {
+    "administrative_events_excluded_from_challenges": true,
+    "base_and_final_models_must_pass_before_market": true,
+    "bonferroni_family_alpha": "0.01",
+    "candidate_ids_per_challenge": 8,
+    "challenge_selection_hash_suffix": "PSIM_MEMORIZATION_V1",
+    "chance_probability": "0.125",
+    "decoys_same_protocol_and_source_year": true,
+    "first_failure_action": "REJECT_AND_RETIRE_PSIM_AFTER_D8_MEMORIZATION_FAILURE_BEFORE_MARKET_OR_OUTCOMES",
+    "forced_choice_no_abstention": true,
+    "maximum_events_per_protocol_source_year": 16,
+    "minimum_eligible_events_per_protocol": 32,
+    "model_text_chunk_aggregation_policy": "UNDECIDED_NOT_AUTHORIZED_BY_D8_SOURCE_PREREGISTRATION",
+    "model_text_field": "normalized_text_delta_chunks",
+    "per_test_alpha": "0.003333333333333333333333333333",
+    "quarantine": {
+      "bitcoin": [
+        32,
+        39,
+        44,
+        141,
+        340,
+        341,
+        342
+      ],
+      "ethereum": [
+        20,
+        721,
+        1559,
+        3675,
+        4337,
+        4844,
+        4895
+      ]
+    },
+    "quarantined_events_retained_in_source_support": true,
+    "quarantined_relation_units_model_or_economics_allowed": false,
+    "repair_resample_or_model_swap_after_result_allowed": false,
+    "tests": [
+      "ethereum",
+      "bitcoin",
+      "combined"
+    ]
+  },
+  "next_authorized_step": "implement, test, review, and seal the final synthetic-only PSIM-D8 source-support evaluator; this preregistration does not authorize official source execution, and any D8 source failure retires PSIM without a D9 successor",
+  "official_sources": [
+    "https://eips.ethereum.org/EIPS/eip-1",
+    "https://github.com/ethereum/EIPs",
+    "https://github.com/ethereum/EIPs.git",
+    "https://github.com/bitcoin/bips",
+    "https://github.com/bitcoin/bips.git",
+    "https://github.com/bitcoin/bips/blob/master/bip-0003.md",
+    "https://git-scm.com/docs/git-log",
+    "https://git-scm.com/book/en/v2/Git-Internals-Git-Objects"
+  ],
+  "parser_contract": {
+    "bip_preamble": {
+      "dependency_fields_casefold": [
+        "requires",
+        "replaces",
+        "proposed-replacement"
+      ],
+      "markdown_termination": "first_blank_line_after_first_field",
+      "optional_mediawiki_closing_line": "</pre>",
+      "optional_mediawiki_opening_line": "<pre>",
+      "required_number_field_casefold": "bip"
+    },
+    "current_process_vocabulary_validation_allowed": false,
+    "declared_status_is_model_visible": false,
+    "dependency_token_grammar": "comma_separated_positive_ascii_decimal",
+    "duplicate_header_key_allowed": false,
+    "duplicate_or_self_dependency_allowed": false,
+    "eip_frontmatter": {
+      "closing_line": "---",
+      "dependency_fields": [
+        "requires"
+      ],
+      "normalized_empty_line_contract": {
+        "bip_parser": "IDENTICAL_D1_FUNCTION_OBJECT",
+        "current_eipw_compatibility_claim": false,
+        "empty_line_semantics": "IGNORE_AS_NONSEMANTIC_SEPARATOR",
+        "general_yaml_parser_adopted": false,
+        "header_bounds_position": "BEFORE_NORMALIZED_EMPTY_LINE_FILTER",
+        "nonempty_line_parser": "UNCHANGED_PSIM_PREAMBLE_STATE_MACHINE_V1",
+        "physical_line_classes": "PHYSICAL_EMPTY_OR_ASCII_HORIZONTAL_WHITESPACE_ONLY_BOTH_NORMALIZE_TO_EMPTY_UNDER_FROZEN_D1_NORMALIZER",
+        "scope": "EIP_FRONT_MATTER_ONLY_AFTER_D1_NORMALIZATION"
+      },
+      "opening_line": "---",
+      "required_number_field": "eip"
+    },
+    "field_continuation": "leading_ascii_space_or_tab",
+    "header_key_normalization": "NFC_ASCII_CASEFOLD_STRIP_COLLAPSE_INTERNAL_SPACE",
+    "header_key_pattern": "^[A-Za-z][A-Za-z0-9 -]*$",
+    "heading_alias_normalization": "NFC_CASEFOLD_STRIP_COLLAPSE_ASCII_WHITESPACE_REMOVE_TRAILING_COLON",
+    "line_diff_algorithm": "python_difflib_SequenceMatcher_autojunk_false_over_normalized_lines",
+    "markdown_heading_pattern": "^#{1,6}[ \\t]+(.+?)[ \\t]*#*[ \\t]*$",
+    "maximum_blob_bytes": 2097152,
+    "maximum_dependencies": 128,
+    "maximum_header_bytes": 131072,
+    "maximum_header_lines": 256,
+    "maximum_line_bytes": 65536,
+    "maximum_sections": 128,
+    "mediawiki_heading_pattern": "^(={2,6})[ \\t]*(.*?)[ \\t]*\\1$",
+    "metadata_parse_failure_action": "RETAIN_D5_KNOWN_INVALID_WITHOUT_REPAIR_OR_EMIT_TYPED_D7_EVENT_ERROR",
+    "newline_normalization": "CRLF_AND_CR_TO_LF",
+    "nul_allowed": false,
+    "primary_proposal_number_must_be_positive": true,
+    "proposal_number_leading_zero_normalization": "ASCII_DECIMAL_TO_INT",
+    "python_version_bound_at_execution_seal": true,
+    "reference_parser": {
+      "bip_empty_value": "ALLOW",
+      "bip_function": "parse_bip_preamble",
+      "bip_markdown_end": "first blank line after first field or EOF",
+      "bip_mediawiki_tags": "exact <pre> and </pre> lines",
+      "continuation": "line begins ASCII space/tab, does not parse as a field under format mode, and has nonempty stripped content",
+      "dependency_function": "parse_dependency_ids",
+      "duplicate_keys_after_casefold": "REJECT",
+      "eip_empty_value": "REJECT unless populated by one or more continuations",
+      "eip_function": "parse_eip_preamble_d4",
+      "eip_opening_and_first_closing_fence": "exact --- line",
+      "field_separator": "first colon after normalized key",
+      "full_line_comments": {
+        "bip": [
+          "ASCII optional whitespace then #",
+          "single-line exact <!--...--> after ASCII strip"
+        ],
+        "eip": [
+          "ASCII optional whitespace then #"
+        ]
+      },
+      "inline_comments_stripped": false,
+      "maximum_bip_leading_blank_lines": 3,
+      "normalizer_function": "normalize_blob_bytes",
+      "quoted_or_bracket_values": "retained_as_opaque_text",
+      "synthetic_probe_binding": {
+        "commit": "131009359c60bc5b28b76d22a63abf698011fbcb",
+        "d3_forensic_root_opened": false,
+        "market_model_outcomes_opened": false,
+        "official_historical_proposal_source_opened": false,
+        "parser_version": "PSIM_PREAMBLE_STATE_MACHINE_V2_EIP_EMPTY_SEPARATORS",
+        "path": "results/protocol_specification_intent_maturity_d4_parser_probe_2026-07-26.json",
+        "probe_may_change_only_eip_normalized_empty_line_grammar": true,
+        "protocol_version": "psim_d4_historical_eip_preamble_probe_v1",
+        "result_hash": "4a3cca52755716dbf6e9b4cd801e46b72bab841cea5609f6bb42519487e5f5e6",
+        "sha256": "fbb97d65ef93b307c47055ed1883d6416e510a70b38083ae17ced2c78e4745ee",
+        "synthetic_only": true
+      },
+      "utf8_bom_allowed": false,
+      "version": "PSIM_PREAMBLE_STATE_MACHINE_V2_EIP_EMPTY_SEPARATORS"
+    },
+    "section_aliases": {
+      "ABSTRACT": [
+        "abstract"
+      ],
+      "BACKWARD_COMPATIBILITY": [
+        "backward compatibility",
+        "backwards compatibility"
+      ],
+      "COPYRIGHT": [
+        "copyright",
+        "copyright waiver"
+      ],
+      "IMPLEMENTATION": [
+        "implementation",
+        "reference implementation",
+        "reference implementations"
+      ],
+      "MOTIVATION": [
+        "motivation"
+      ],
+      "OTHER": [],
+      "RATIONALE": [
+        "rationale"
+      ],
+      "SECURITY": [
+        "security consideration",
+        "security considerations"
+      ],
+      "SPECIFICATION": [
+        "spec",
+        "specification",
+        "specifications"
+      ],
+      "TESTS": [
+        "test case",
+        "test cases",
+        "test vector",
+        "test vectors"
+      ]
+    },
+    "strict_utf8": true,
+    "strip_trailing_horizontal_whitespace": true,
+    "unicode_normalization": "NFC"
+  },
+  "protocol_version": "psim_d8_source_preregistration_v1",
+  "representation_contract": {
+    "abstain_forces_target_flat": true,
+    "administrative_events_model_visible": false,
+    "analyzer_trader_pair_allowed": false,
+    "dependency_delta_states": [
+      "NO_PRIOR",
+      "STABLE",
+      "ADDED",
+      "REMOVED",
+      "MIXED",
+      "DELETED",
+      "UNKNOWN_INVALID_METADATA"
+    ],
+    "deterministic_source_tokens": [
+      "protocol",
+      "event_type",
+      "window_revision_count_bucket",
+      "window_age_bucket",
+      "update_gap_bucket",
+      "stale_age_bucket",
+      "old_section_presence",
+      "new_section_presence",
+      "changed_section_bitset",
+      "dependency_delta_state",
+      "dependency_edge_delta_count_bucket",
+      "line_change_count_bucket",
+      "changed_section_count_bucket",
+      "counterpart_state",
+      "prior_card_hash",
+      "old_metadata_state",
+      "new_metadata_state",
+      "invalid_metadata_present"
+    ],
+    "exact_paths_or_path_identity_hash_model_visible": false,
+    "free_form_rationale_allowed": false,
+    "insufficient_evidence_forces_current_target": true,
+    "known_invalid_metadata_state_model_visible": true,
+    "later_model_actions": [
+      "TARGET_LONG",
+      "TARGET_FLAT",
+      "TARGET_SHORT"
+    ],
+    "later_model_input": "VERIFIED_SUBCARD_SLICE_ONLY_UNDER_SEPARATE_PREREGISTRATION",
+    "later_relation_tokens": [
+      "CONVERGENT_INTENT",
+      "COMPLEMENTARY_INTENT",
+      "TECHNICAL_TENSION",
+      "INDEPENDENT_INTENT",
+      "INSUFFICIENT_EVIDENCE",
+      "ABSTAIN"
+    ],
+    "legacy_intent_text_field_allowed": false,
+    "logical_daily_card_payload_model_visible": false,
+    "model_call_granularity": "UNDECIDED_NOT_AUTHORIZED_BY_D8_SOURCE_PREREGISTRATION",
+    "model_controls_leverage_size_stop_cost_or_reward": false,
+    "model_text_field": "normalized_text_delta_chunks",
+    "model_text_sections": [
+      "ABSTRACT",
+      "MOTIVATION",
+      "SPECIFICATION",
+      "RATIONALE",
+      "BACKWARD_COMPATIBILITY",
+      "SECURITY",
+      "TESTS",
+      "IMPLEMENTATION"
+    ],
+    "model_text_transport_contract": {
+      "audit_receipt_fields": [
+        "chunk_count",
+        "chunks",
+        "full_text_line_count",
+        "full_text_sha256",
+        "full_text_utf8_bytes",
+        "max_bytes_per_chunk",
+        "max_chunks_per_event",
+        "protocol_version",
+        "receipt_hash",
+        "reconstructed_sha256",
+        "reconstruction_matches"
+      ],
+      "audit_receipt_model_visible": false,
+      "canonical_partition_validation_required": true,
+      "chunk_payload_fields": [
+        "chunk_count",
+        "chunk_index",
+        "normalized_text_delta_chunk"
+      ],
+      "chunk_payload_order": "ZERO_BASED_ASCENDING_CHUNK_INDEX",
+      "chunk_payloads_are_transport_fragments_not_events_or_labels": true,
+      "empty_text_chunk_count": 0,
+      "event_container_field": "normalized_text_delta_chunks",
+      "full_text_reconstruction": "BYTE_FOR_BYTE_REQUIRED",
+      "full_text_serialization": "D5_CAUSAL_MODEL_ROWS_SECTION_DIRECTION_LINE_JOINED_BY_LF",
+      "line_serialization_semantics": "SECTION_AND_DIRECTION_ARE_THE_FIRST_TWO_DELIMITED_FIELDS;_LINE_IS_OPAQUE_AFTER_THE_SECOND_PIPE_AND_IS_NOT_REPARSED",
+      "max_bytes_per_chunk": 8192,
+      "max_bytes_per_event": 65536,
+      "max_chunks_per_event": 8,
+      "model_aggregation_policy": "UNDECIDED_NOT_AUTHORIZED_BY_D8_SOURCE_PREREGISTRATION",
+      "ninth_chunk_action": "RECORD_TYPED_EVENT_ERROR_CONTINUE_COMPLETE_ROSTER_THEN_REJECT_NO_TRUNCATION_OR_SUMMARIZATION",
+      "split": "GREEDY_CONTIGUOUS_UTF8_BYTES_BACKTRACK_CONTINUATION_BOUNDARY",
+      "strict_utf8_required": true
+    },
+    "raw_header_other_or_copyright_text_model_visible": false,
+    "raw_price_return_rank_pnl_model_inputs_allowed": false,
+    "raw_proposal_number_hash_path_timestamp_date_author_url_allowed": false,
+    "relation_subcard_manifest_model_visible": false,
+    "single_model_single_call_per_card": false,
+    "split_boundary_without_position_forces_target_flat": true
+  },
+  "source_contract": {
+    "artifact_paths": {
+      "cards": "data/protocol_specification_intent_maturity_d8_cards_2020_2024q1.jsonl.gz",
+      "controls": "results/protocol_specification_intent_maturity_d8_source_controls_2026-07-27.json",
+      "events": "data/protocol_specification_intent_maturity_d8_events_2020_2023.jsonl.gz",
+      "rejection": "results/protocol_specification_intent_maturity_d8_source_rejection_2026-07-27.json",
+      "result": "results/protocol_specification_intent_maturity_d8_source_support_2026-07-27.json"
+    },
+    "bare_repository_contract": {
+      "absolute_git_dir_must_equal_configured_root": true,
+      "checkout_allowed": false,
+      "forbidden_paths": [
+        ".git",
+        "index",
+        "worktrees",
+        "commondir",
+        "gitdir",
+        "objects/info/alternates",
+        "shallow"
+      ],
+      "fresh_independent_roots_required": true,
+      "git_common_dir": ".",
+      "git_fsck_no_dangling_required": true,
+      "git_status_allowed": false,
+      "is_bare_repository": true,
+      "is_inside_work_tree": false,
+      "ref_roster": [
+        "refs/heads/master",
+        "refs/psim-d8/sealed-tip"
+      ],
+      "root_names": {
+        "bitcoin_a": "bitcoin-a.git",
+        "bitcoin_b": "bitcoin-b.git",
+        "ethereum_a": "ethereum-a.git",
+        "ethereum_b": "ethereum-b.git"
+      },
+      "sealed_ref": "refs/psim-d8/sealed-tip",
+      "shared_objects_or_cache_allowed": false,
+      "source_traversal_ref": "refs/psim-d8/sealed-tip",
+      "symbolic_head": "refs/heads/master"
+    },
+    "batch_hydration_contract": {
+      "all_new_object_types_must_be_blob": true,
+      "at_least_one_new_promisor_pack_required": true,
+      "command": [
+        "/usr/bin/git",
+        "-C",
+        "<fresh-bare-root>",
+        "-c",
+        "fetch.negotiationAlgorithm=noop",
+        "fetch",
+        "origin",
+        "--no-tags",
+        "--no-write-fetch-head",
+        "--recurse-submodules=no",
+        "--filter=blob:none",
+        "--no-auto-maintenance",
+        "--stdin"
+      ],
+      "complete_new_object_set_must_equal_requested_oids": true,
+      "every_new_pack_requires_matching_promisor_marker": true,
+      "fetch_head_must_remain_absent": true,
+      "first_failure_action": "REJECT_AND_RETIRE_PSIM_PERMANENTLY_NO_D9_AFTER_D8_SOURCE_FAILURE_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+      "forbidden_transports": [
+        "interactive or buffered cat-file lazy hydration",
+        "per-object fetch",
+        "retry",
+        "fallback lazy fetch",
+        "full clone",
+        "git fetch --refetch",
+        "checkout",
+        "D1, D2, D3, D4, D5, D6, or D7 source-object reuse"
+      ],
+      "gate_id": 4,
+      "gate_name": "historical_blob_preamble_dependency_integrity",
+      "initial_requested_oids_must_be_absent": true,
+      "maintenance_child_processes_allowed": 0,
+      "multiple_new_packfiles_allowed": true,
+      "new_loose_objects_allowed": false,
+      "oid_derivation": "sorted unique non-null old_blob_oid/new_blob_oid union from the replica-local retained 2020-2023 ProposalGroup rows",
+      "oid_derivation_after_gate_id": 3,
+      "oid_manifest_encoding": "lowercase full 40-hex SHA-1 one per LF-terminated line with final LF",
+      "one_fetch_invocation_per_replica": true,
+      "physical_pack_count_fixed": false,
+      "post_hydration_read": {
+        "cat_file_transport_role": "local_decode_only",
+        "environment": "GIT_NO_LAZY_FETCH=1",
+        "fetch_child_processes_allowed": 0,
+        "missing_object_action": "REJECT_AND_RETIRE_PSIM_PERMANENTLY_NO_D9_AFTER_D8_SOURCE_FAILURE_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+        "object_store_ref_and_fetch_head_snapshot_must_be_unchanged": true
+      },
+      "pre_and_post_inventory": [
+        "complete local object roster and types",
+        "pack roster",
+        "promisor marker roster",
+        "loose-object roster",
+        "ref roster",
+        "FETCH_HEAD presence"
+      ],
+      "ref_roster_must_be_unchanged": true,
+      "replica_count": 4,
+      "stdin_is_complete_oid_manifest": true,
+      "stdout_stderr_consumption": "subprocess_run_communicate",
+      "synthetic_probe_binding": {
+        "buffered_cat_file_control_pack_count": 6,
+        "buffered_cat_file_control_requested_oids": 6,
+        "commit": "126f7f1354eff90f30d5a6b3d60bd6641268b03b",
+        "market_model_outcomes_opened": false,
+        "official_source_opened": false,
+        "path": "results/protocol_specification_intent_maturity_d3_transport_probe_2026-07-25.json",
+        "probe_may_change_only_transport_contract": true,
+        "protocol_version": "psim_d3_batch_hydration_transport_probe_v1",
+        "result_hash": "0df158cddd9b663b2daca14e01bcaa5c2e64b7f5d976720282120585bc41c63a",
+        "sha256": "4a815145a1f2ab9c6c61d599cf0aaf2218172e9f71251e95ce7178c1f3be13b7",
+        "single_fetch_observed_pack_count": 1
+      },
+      "timeout_seconds": 1800,
+      "trace_child_argv_ambiguity_action": "REJECT_AND_RETIRE_PSIM_PERMANENTLY_NO_D9_AFTER_D8_SOURCE_FAILURE_BEFORE_MARKET_MODEL_OR_OUTCOMES"
+    },
+    "card_end_exclusive": "2024-04-01T00:00:00Z",
+    "clone_arguments": [
+      "--bare",
+      "--filter=blob:none",
+      "--single-branch",
+      "--branch",
+      "master",
+      "--no-tags"
+    ],
+    "commit_subject_used_for_inclusion_or_classification": false,
+    "current_checkout_used_as_historical_truth": false,
+    "disk_limit_gib": 300,
+    "end_exclusive": "2024-01-01T00:00:00Z",
+    "git_binary_binding": {
+      "exact_binary_required": true,
+      "path": "/usr/bin/git",
+      "path_lookup_allowed": false,
+      "sha256": "2a8c18fbf43da9f692d75474c72bea9dfd796c260b0f3dfe456376abc3bbd668",
+      "synthetic_no_lazy_fetch_semantic_probe_required": true,
+      "version": "git version 2.43.0"
+    },
+    "git_fsck_no_dangling_required": true,
+    "git_status_allowed": false,
+    "git_version": "git version 2.43.0",
+    "git_version_and_object_format_bound_at_execution_seal": true,
+    "github_pr_issue_label_review_metadata_allowed": false,
+    "path_handling": "NUL_SAFE_BYTE_EXACT_CASE_SENSITIVE",
+    "rename_detection": false,
+    "repositories": [
+      {
+        "branch": "master",
+        "document_formats": [
+          "markdown_frontmatter"
+        ],
+        "local_branch_ref": "refs/heads/master",
+        "object_format": "sha1",
+        "path_pattern": "^EIPS/eip-([1-9][0-9]*)\\.md$",
+        "protocol": "ethereum",
+        "remote": "https://github.com/ethereum/EIPs.git",
+        "remote_head_symref": "refs/heads/master",
+        "sealed_ref": "refs/psim-d8/sealed-tip",
+        "sealed_tip": "5e82ef62895121027a6c5f0c23276e1b2bed3071"
+      },
+      {
+        "branch": "master",
+        "document_formats": [
+          "mediawiki_rfc822",
+          "markdown_rfc822"
+        ],
+        "local_branch_ref": "refs/heads/master",
+        "object_format": "sha1",
+        "path_pattern": "^bip-([0-9]{4})\\.(mediawiki|md)$",
+        "protocol": "bitcoin",
+        "remote": "https://github.com/bitcoin/bips.git",
+        "remote_head_symref": "refs/heads/master",
+        "sealed_ref": "refs/psim-d8/sealed-tip",
+        "sealed_tip": "b289d016b99c81527623c10e995e0318f744ebf3"
+      }
+    ],
+    "repository_representation": "BARE_OBJECT_DATABASE_NO_WORKTREE_NO_INDEX",
+    "shared_git_environment_scrubbed": true,
+    "source_root": "/tmp/psim-d8-source",
+    "start": "2020-01-01T00:00:00Z",
+    "traversal": "sealed_tip_complete_first_parent_oldest_to_newest",
+    "tree_delta_parent": "parent_one_or_empty_tree_for_root"
+  },
+  "source_support_contract": {
+    "administrative_events_retained_in_model_cards": false,
+    "administrative_events_retained_in_source_artifact": true,
+    "all_gates_required": true,
+    "blob_semantics_total_fraction_required": "1.0",
+    "control_sensitivity_metric": {
+      "administrative_events_in_model_payload": false,
+      "aggregation": "require every control x archive schedule x split cell; no pooling or weighting",
+      "changed_definition": "SHA256(canonical_json(transformed_local_payload)) != SHA256(canonical_json(baseline_local_payload))",
+      "comparison_unit": "canonical local daily relation-card payload for one decision day",
+      "denominator": "unique eligible decision days for one exact control,schedule,split cell",
+      "excluded_from_comparison_payload": [
+        "card_hash",
+        "prior_card_hash",
+        "raw_commit_or_blob_ids",
+        "control_name",
+        "audit_counters"
+      ],
+      "first_failure_action": "REJECT_AND_RETIRE_PSIM_PERMANENTLY_NO_D9_AFTER_D8_SOURCE_FAILURE_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+      "minimum_changed_fraction_per_cell": "0.10",
+      "minimum_eligible_days_per_cell": 4,
+      "numerator": "eligible denominator days whose payload changed",
+      "quarantined_events_in_source_control_payload": true,
+      "zero_eligible_cell_action": "REJECT"
+    },
+    "ethereum_historical_blob_class_counts": {
+      "D4_DUPLICATE_IDENTICAL_HEADER": 7,
+      "D4_MALFORMED_HEADER_LINE": 20,
+      "D4_SELF_DEPENDENCY": 9,
+      "D4_VALID": 4440,
+      "ERC_MIGRATION_REDIRECT_LOWER_PATH": 365,
+      "ERC_MIGRATION_REDIRECT_UPPER_PATH": 365
+    },
+    "first_failure_action": "REJECT_AND_RETIRE_PSIM_PERMANENTLY_NO_D9_AFTER_D8_SOURCE_FAILURE_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+    "future_append_cutoff": "2024-01-01T00:00:00Z",
+    "gate_four_semantics": "D6_EXACT_FROZEN_MIGRATION_AND_CHUNK_SEMANTICS_PLUS_EXACT_D7_BITCOIN_UNIQUE_LATER_HEADER_AND_PREFIXED_DEPENDENCY_GRAMMAR_OTHERWISE_COMPLETE_TYPED_ERROR_ROSTER_AND_REJECT",
+    "gate_four_totality_contract": {
+      "canonical_rejection_required_before_return_or_raise": true,
+      "complete_roster_scope": "ALL_RETAINED_2020_2023_PROPOSAL_GROUP_EVENTS_IN_ALL_FOUR_FRESH_REPLICAS_AFTER_SUCCESSFUL_HYDRATION",
+      "decision_after_complete_roster_only": true,
+      "error_report_raw_or_normalized_text_allowed": false,
+      "event_semantics_exception_may_abort_roster_collection": false,
+      "event_semantics_outcome_per_event_required": true,
+      "replica_outcome_roster_identity_required": true,
+      "semantic_error_examples": [
+        "UNKNOWN_GRAMMAR",
+        "UNAUTHORIZED_OR_MUTATED_MIGRATION_EPISODE",
+        "NONCANONICAL_CHUNK_PARTITION",
+        "MORE_THAN_EIGHT_MODEL_TEXT_CHUNKS",
+        "STRICT_UTF8_FAILURE"
+      ],
+      "semantic_error_handling": "ACCUMULATE_TYPED_AUDIT_ONLY_OUTCOME_CONTINUE_COMPLETE_ROSTER",
+      "semantic_error_terminal_action": "REJECT_AND_RETIRE_PSIM_PERMANENTLY_NO_D9_AFTER_D8_SOURCE_FAILURE_BEFORE_MARKET_MODEL_OR_OUTCOMES",
+      "terminal_gate_result": "PASS_ONLY_IF_COMPLETE_ROSTER_HAS_NO_UNAUTHORIZED_ERROR_OUTCOME"
+    },
+    "gate_relaxation_after_incidence_allowed": false,
+    "gates_in_order": [
+      "sealed_git_identity_and_object_integrity",
+      "first_parent_traversal_and_causal_clock",
+      "path_object_grammar_and_unique_proposal_tree",
+      "historical_blob_preamble_dependency_integrity",
+      "split_annual_quarterly_unique_day_support",
+      "event_section_dependency_revision_vocabulary_diversity",
+      "daily_card_coverage_and_explicit_staleness",
+      "independent_replay_and_canonical_manifest_identity",
+      "future_append_invariance",
+      "relation_control_sensitivity",
+      "pairing_reset_quarantine_and_four_schedule_identity",
+      "forbidden_access_zero",
+      "terminal_publication"
+    ],
+    "independent_replay_roots": 2,
+    "maximum_top_changed_section_share": "0.80",
+    "minimum_dependency_delta_categories_overall": 2,
+    "minimum_event_types_overall": 2,
+    "minimum_non_quarantined_events_per_protocol": 32,
+    "minimum_revision_buckets_overall": 3,
+    "minimum_section_categories_overall": 4,
+    "relation_control_eligibility": {
+      "availability_plus_seven_days": "baseline or shifted card day contains at least one newly available event",
+      "dependency_edge_direction_reverse": "card contains at least one ADDED or REMOVED dependency delta",
+      "old_new_direction_reverse": "card contains at least one source event",
+      "proposal_version_pair_cyclic_permutation": "card contains an UPDATE from a protocol/source_year stratum with at least two eligible UPDATE events",
+      "protocol_label_swap": "decision day has at least one non-sentinel event or counterpart",
+      "section_label_cyclic_rotation": "card contains at least one changed section other than OTHER",
+      "within_day_event_order_reverse": "either protocol has at least two newly available events that day"
+    },
+    "relation_control_transforms": {
+      "availability_plus_seven_days": "add exactly seven calendar days to every available_at under each archive schedule and rebuild every card",
+      "dependency_edge_direction_reverse": "swap ADDED<->REMOVED; keep NO_PRIOR,STABLE,MIXED,DELETED,UNKNOWN_INVALID_METADATA fixed",
+      "old_new_direction_reverse": "swap all old/new derived fields and exact side paths; map CREATE<->DELETE and retain UPDATE; swap explicit metadata states; reverse D5 normalized text-delta ADD/REMOVE rows before canonical D6 rechunking; retain administrative quarantine as model-hidden",
+      "proposal_version_pair_cyclic_permutation": "within each protocol/source_year, sort eligible UPDATE events by event_id and rotate old-blob-derived fields forward by one while holding new-blob-derived fields fixed",
+      "protocol_label_swap": "swap ethereum<->bitcoin labels after extraction; preserve raw event identity, exact side-path audit hash, metadata state, and underlying D5 normalized text-delta rows; rebuild canonical D6 chunks and relation cards; administrative quarantine remains model-hidden",
+      "section_label_cyclic_rotation": "rotate changed-section labels over ABSTRACT,MOTIVATION,SPECIFICATION,RATIONALE,BACKWARD_COMPATIBILITY,SECURITY,TESTS,IMPLEMENTATION,COPYRIGHT; keep OTHER fixed",
+      "within_day_event_order_reverse": "reverse each protocol/day canonical event sequence before pairing; preserve event payloads"
+    },
+    "relation_controls": [
+      "protocol_label_swap",
+      "within_day_event_order_reverse",
+      "proposal_version_pair_cyclic_permutation",
+      "old_new_direction_reverse",
+      "section_label_cyclic_rotation",
+      "dependency_edge_direction_reverse",
+      "availability_plus_seven_days"
+    ],
+    "shared_git_object_alternates_allowed": false,
+    "shared_worktree_or_cache_allowed": false,
+    "source_drop_or_repair_allowed": false
+  },
+  "split_contract": {
+    "daily_card_and_relation_support_assignment_field": "decision_timestamp_under_ARCHIVE_D90",
+    "later_economic_split_assignment_field": "decision_timestamp_under_ARCHIVE_D90",
+    "later_test_eval_minimum_cagr_strict_mdd": "3.0",
+    "later_test_eval_positive_absolute_return_required": true,
+    "market_outcome_policy": "FORBIDDEN until separate evaluator freeze",
+    "post_2023_proposal_content_policy": "SEALED",
+    "shorter_schedule_support_role": "replay_and_control_only_not_threshold_rescue",
+    "source_event_support_assignment_field": "event_effective_day",
+    "splits": [
+      {
+        "decision_end_exclusive": "2022-01-01T00:00:00Z",
+        "decision_start": "2020-01-01T00:00:00Z",
+        "maximum_top_event_day_share": "0.25",
+        "maximum_top_proposal_event_share": "0.35",
+        "minimum_active_months_per_protocol": 8,
+        "minimum_active_quarters_per_protocol": 6,
+        "minimum_counterpart_fraction": "0.35",
+        "minimum_events_per_protocol": 20,
+        "minimum_events_per_protocol_per_source_year": 6,
+        "minimum_events_total": 80,
+        "minimum_relation_units_nonexcluded": 40,
+        "minimum_unique_event_days_per_protocol": 12,
+        "minimum_unique_proposals_per_protocol": 6,
+        "minimum_unique_proposals_total": 24,
+        "name": "train"
+      },
+      {
+        "decision_end_exclusive": "2023-01-01T00:00:00Z",
+        "decision_start": "2022-01-01T00:00:00Z",
+        "maximum_top_event_day_share": "0.35",
+        "maximum_top_proposal_event_share": "0.50",
+        "minimum_active_months_per_protocol": 4,
+        "minimum_active_quarters_per_protocol": 3,
+        "minimum_counterpart_fraction": "0.25",
+        "minimum_events_per_protocol": 8,
+        "minimum_events_per_protocol_per_source_year": 6,
+        "minimum_events_total": 30,
+        "minimum_relation_units_nonexcluded": 12,
+        "minimum_unique_event_days_per_protocol": 6,
+        "minimum_unique_proposals_per_protocol": 3,
+        "minimum_unique_proposals_total": 10,
+        "name": "test"
+      },
+      {
+        "decision_end_exclusive": "2024-01-01T00:00:00Z",
+        "decision_start": "2023-01-01T00:00:00Z",
+        "maximum_top_event_day_share": "0.35",
+        "maximum_top_proposal_event_share": "0.50",
+        "minimum_active_months_per_protocol": 4,
+        "minimum_active_quarters_per_protocol": 3,
+        "minimum_counterpart_fraction": "0.25",
+        "minimum_events_per_protocol": 8,
+        "minimum_events_per_protocol_per_source_year": 6,
+        "minimum_events_total": 30,
+        "minimum_relation_units_nonexcluded": 12,
+        "minimum_unique_event_days_per_protocol": 6,
+        "minimum_unique_proposals_per_protocol": 3,
+        "minimum_unique_proposals_total": 10,
+        "name": "eval"
+      }
+    ]
+  }
+}
