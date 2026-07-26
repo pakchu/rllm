@@ -1311,6 +1311,66 @@ def test_official_run_refuses_without_seal_before_source_access(
         runner.run_official(runner.Config())
 
 
+def test_dual_epoch_verification_combines_archive_and_current_counts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inherited = {
+        "passed": 602,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0,
+        "xfailed": 0,
+        "xpassed": 0,
+    }
+    current = {
+        "passed": 70,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0,
+        "xfailed": 0,
+        "xpassed": 0,
+    }
+    monkeypatch.setattr(
+        runner,
+        "_run_inherited_archive_verification",
+        lambda: inherited,
+    )
+    monkeypatch.setattr(
+        runner,
+        "_run_pytest_paths",
+        lambda paths, *, cwd, epoch: current,
+    )
+    receipt = runner._run_pytest_verification()
+    assert receipt["protocol_version"] == (
+        "psim_d7_dual_epoch_pytest_verification_v1"
+    )
+    assert receipt["inherited_pre_rebase"] == inherited
+    assert receipt["current_d7"] == current
+    assert receipt["totals"] == {
+        "passed": 672,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0,
+        "xfailed": 0,
+        "xpassed": 0,
+    }
+
+
+def test_inherited_archive_verification_rejects_stale_root(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    stale = tmp_path / "stale-archive-worktree"
+    stale.mkdir()
+    monkeypatch.setattr(
+        runner,
+        "INHERITED_VERIFICATION_ROOT",
+        stale,
+    )
+    with pytest.raises(RuntimeError, match="unsafe or stale"):
+        runner._run_inherited_archive_verification()
+
+
 def test_post_seal_verification_uses_recursion_guard(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

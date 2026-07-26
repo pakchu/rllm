@@ -170,6 +170,16 @@ EXECUTION_SEAL_PATH = Path(
     "results/psim_d7_source_support_execution_seal_2026-07-27.json"
 )
 RUN_LOCK_PATH = Path("results/.psim_d7_source_support_run.lock")
+PRE_REBASE_AUTHORITY_COMMIT = (
+    "107c6fe172c2dcba604b06ca67f23f136507b6e9"
+)
+PRE_REBASE_AUTHORITY_REF = (
+    "refs/remotes/origin/"
+    "archive/psim-authority-pre-rebase-20260727-107c6fe"
+)
+INHERITED_VERIFICATION_ROOT = Path(
+    "/tmp/psim-d7-inherited-verification"
+)
 DEFAULT_RESULT_PATH = Path(prereg.ARTIFACT_PATHS["result"])
 DEFAULT_REJECTION_PATH = Path(prereg.ARTIFACT_PATHS["rejection"])
 DEFAULT_EVENTS_PATH = Path(prereg.ARTIFACT_PATHS["events"])
@@ -4920,7 +4930,7 @@ def _pytest_counts(stdout: str, stderr: str) -> dict[str, int]:
     return core._pytest_counts(stdout, stderr)
 
 
-VERIFICATION_TEST_PATHS = tuple(
+INHERITED_VERIFICATION_TEST_PATHS = tuple(
     Path(value)
     for value in (
         "tests/test_preregister_protocol_specification_intent_maturity.py",
@@ -4944,22 +4954,43 @@ VERIFICATION_TEST_PATHS = tuple(
         "tests/test_audit_protocol_specification_intent_maturity_d6_bitcoin_grammar_census.py",
         "tests/test_probe_protocol_specification_intent_maturity_d7_bitcoin_grammar_mechanism.py",
         "tests/test_preregister_protocol_specification_intent_maturity_d7.py",
-        TEST_PATH.as_posix(),
     )
 )
 
+CURRENT_D7_VERIFICATION_TEST_PATHS = (
+    Path(
+        "tests/"
+        "test_probe_protocol_specification_intent_maturity_d7_bitcoin_"
+        "grammar_mechanism.py"
+    ),
+    Path(
+        "tests/"
+        "test_preregister_protocol_specification_intent_maturity_d7.py"
+    ),
+    TEST_PATH,
+)
 
-def _run_pytest_verification() -> dict[str, Any]:
-    argv = [
+
+def _run_pytest_paths(
+    paths: Sequence[Path],
+    *,
+    cwd: Path,
+    epoch: str,
+) -> dict[str, Any]:
+    display_argv = [
         ".venv/bin/pytest",
         "-q",
-        *(path.as_posix() for path in VERIFICATION_TEST_PATHS),
+        *(path.as_posix() for path in paths),
+    ]
+    argv = [
+        str(REPO_ROOT / ".venv/bin/pytest"),
+        *display_argv[1:],
     ]
     environment = dict(os.environ)
     environment["PYTHONPATH"] = "."
     completed = subprocess.run(
         argv,
-        cwd=REPO_ROOT,
+        cwd=cwd,
         env=environment,
         check=False,
         capture_output=True,
@@ -4975,15 +5006,136 @@ def _run_pytest_verification() -> dict[str, Any]:
         or counts["xpassed"]
     ):
         raise RuntimeError(
-            "PSIM-D7 exact pytest verification failed\n"
+            f"PSIM-D7 {epoch} pytest verification failed\n"
             + completed.stdout
             + completed.stderr
         )
     return {
-        "argv": argv,
+        "argv": display_argv,
+        "epoch": epoch,
         "environment_override": {"PYTHONPATH": "."},
         "exit_code": completed.returncode,
         **counts,
+    }
+
+
+def _run_inherited_archive_verification() -> dict[str, Any]:
+    root = INHERITED_VERIFICATION_ROOT
+    if not root.is_absolute() or os.path.lexists(root):
+        raise RuntimeError(
+            "PSIM-D7 inherited verification root is unsafe or stale"
+        )
+    archive_commit = _git_output(
+        "rev-parse",
+        PRE_REBASE_AUTHORITY_REF,
+    )
+    if archive_commit != PRE_REBASE_AUTHORITY_COMMIT:
+        raise RuntimeError("PSIM-D7 pre-rebase archive ref changed")
+
+    created = False
+    try:
+        completed = subprocess.run(
+            [
+                str(GIT_BINARY),
+                "worktree",
+                "add",
+                "--detach",
+                str(root),
+                PRE_REBASE_AUTHORITY_COMMIT,
+            ],
+            cwd=REPO_ROOT,
+            env=_git_environment({"GIT_NO_LAZY_FETCH": "1"}),
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode != 0:
+            raise RuntimeError(
+                "PSIM-D7 inherited verification worktree creation failed"
+            )
+        created = True
+        if (
+            subprocess.run(
+                [
+                    str(GIT_BINARY),
+                    "-C",
+                    str(root),
+                    "rev-parse",
+                    "HEAD",
+                ],
+                cwd=REPO_ROOT,
+                env=_git_environment({"GIT_NO_LAZY_FETCH": "1"}),
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            != PRE_REBASE_AUTHORITY_COMMIT
+        ):
+            raise RuntimeError(
+                "PSIM-D7 inherited verification worktree HEAD changed"
+            )
+        (root / ".venv").symlink_to(
+            REPO_ROOT / ".venv",
+            target_is_directory=True,
+        )
+        receipt = _run_pytest_paths(
+            INHERITED_VERIFICATION_TEST_PATHS,
+            cwd=root,
+            epoch="PRE_REBASE_INHERITED_AUTHORITY",
+        )
+        return {
+            **receipt,
+            "authority_commit": PRE_REBASE_AUTHORITY_COMMIT,
+            "authority_ref": PRE_REBASE_AUTHORITY_REF,
+        }
+    finally:
+        if created:
+            cleanup = subprocess.run(
+                [
+                    str(GIT_BINARY),
+                    "worktree",
+                    "remove",
+                    "--force",
+                    str(root),
+                ],
+                cwd=REPO_ROOT,
+                env=_git_environment({"GIT_NO_LAZY_FETCH": "1"}),
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if cleanup.returncode != 0 or os.path.lexists(root):
+                raise RuntimeError(
+                    "PSIM-D7 inherited verification cleanup failed"
+                )
+
+
+def _run_pytest_verification() -> dict[str, Any]:
+    inherited = _run_inherited_archive_verification()
+    current = _run_pytest_paths(
+        CURRENT_D7_VERIFICATION_TEST_PATHS,
+        cwd=REPO_ROOT,
+        epoch="CURRENT_D7_IMPLEMENTATION",
+    )
+    count_fields = (
+        "passed",
+        "failed",
+        "skipped",
+        "errors",
+        "xfailed",
+        "xpassed",
+    )
+    totals = {
+        name: int(inherited[name]) + int(current[name])
+        for name in count_fields
+    }
+    return {
+        "protocol_version": (
+            "psim_d7_dual_epoch_pytest_verification_v1"
+        ),
+        "inherited_pre_rebase": inherited,
+        "current_d7": current,
+        "totals": totals,
     }
 
 

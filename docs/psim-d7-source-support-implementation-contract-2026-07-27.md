@@ -18,6 +18,13 @@ profitability, and outcome access remain forbidden.
   `archive/psim-authority-pre-rebase-20260727-107c6fe`. The D7 runner binds
   the byte-identical rebased paths used by the current branch and separately
   revalidates the canonical preregistration's frozen predecessor hashes.
+- Seal verification is dual-epoch rather than suppressing rebase-sensitive
+  failures. The complete inherited D1-D7-preregistration battery runs in a
+  fresh detached worktree at pre-rebase commit
+  `107c6fe172c2dcba604b06ca67f23f136507b6e9`; the current D7 mechanism,
+  preregistration, and evaluator battery then runs at the implementation
+  commit. Both epochs require zero failures, skips, errors, expected failures,
+  or unexpected passes, and the temporary worktree must be removed.
 - The terminal PSIM-D6 result remains a rejection. PSIM-D6 must not be rerun,
   repaired, or reused as a D7 source candidate.
 - D6 acquisition, first-parent traversal, path grouping, availability
