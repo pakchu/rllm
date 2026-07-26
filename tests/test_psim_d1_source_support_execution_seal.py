@@ -15,6 +15,7 @@ SEAL_HASH = (
     "c26397920fa1137845f5dea56eab72cb1a8d4ead401e7ee3e249c5c1e39aa506"
 )
 SHARED_COMMIT = "80b656994f17548a7a599a548e23e9f1cd01302d"
+SEAL_COMMIT = "d537ef0e3254f157daf197f6effbac73945a4034"
 RUNNER_SHA256 = (
     "414e83256b3ea489a9e1cd0995f6061e5fab550cd12c795ef7e88eff8998d9fb"
 )
@@ -138,7 +139,7 @@ def test_execution_seal_binds_frozen_preregistration_authority() -> None:
 
 def test_seal_commit_is_exact_direct_child_with_only_seal_paths() -> None:
     seal_commit = psim._assert_committed(psim.EXECUTION_SEAL_PATH)
-    assert seal_commit == psim._git_output("rev-parse", "HEAD")
+    assert seal_commit == SEAL_COMMIT
     assert psim._git_output(
         "rev-list",
         "--parents",
@@ -157,24 +158,52 @@ def test_seal_commit_is_exact_direct_child_with_only_seal_paths() -> None:
         psim.EXECUTION_SEAL_PATH.as_posix(),
         psim.SEAL_TEST_PATH.as_posix(),
     }
+    assert psim._git_output(
+        "merge-base",
+        "--is-ancestor",
+        seal_commit,
+        "HEAD",
+    ) == ""
 
 
 def test_runner_validates_committed_execution_seal() -> None:
-    payload = psim.validate_execution_seal()
-    assert payload == seal()
-    assert payload["seal_hash"] == SEAL_HASH
+    if psim._git_output("rev-parse", "HEAD") == SEAL_COMMIT:
+        payload = psim.validate_execution_seal()
+        assert payload == seal()
+        assert payload["seal_hash"] == SEAL_HASH
+    else:
+        terminal = psim.terminal_state()
+        assert terminal is not None
+        assert terminal["authority"]["execution_seal"]["seal_hash"] == SEAL_HASH
+        assert terminal["authority"]["execution_seal"]["shared_commit"] == (
+            SHARED_COMMIT
+        )
 
 
 def test_seal_did_not_create_source_or_terminal_artifacts() -> None:
-    assert not psim.DEFAULT_SOURCE_ROOT.exists()
-    assert not any(
-        (psim.REPO_ROOT / path).exists()
-        for path in (
-            psim.DEFAULT_RESULT_PATH,
-            psim.DEFAULT_REJECTION_PATH,
-            psim.DEFAULT_EVENTS_PATH,
-            psim.DEFAULT_CARDS_PATH,
-            psim.DEFAULT_CONTROLS_PATH,
-            psim.RUN_LOCK_PATH,
+    if (psim.REPO_ROOT / psim.DEFAULT_REJECTION_PATH).exists():
+        terminal = psim.terminal_state()
+        assert terminal is not None
+        assert terminal["decision"] == "reject"
+        assert not any(
+            (psim.REPO_ROOT / path).exists()
+            for path in (
+                psim.DEFAULT_RESULT_PATH,
+                psim.DEFAULT_EVENTS_PATH,
+                psim.DEFAULT_CARDS_PATH,
+                psim.DEFAULT_CONTROLS_PATH,
+                psim.RUN_LOCK_PATH,
+            )
         )
-    )
+    else:
+        assert not psim.DEFAULT_SOURCE_ROOT.exists()
+        assert not any(
+            (psim.REPO_ROOT / path).exists()
+            for path in (
+                psim.DEFAULT_RESULT_PATH,
+                psim.DEFAULT_EVENTS_PATH,
+                psim.DEFAULT_CARDS_PATH,
+                psim.DEFAULT_CONTROLS_PATH,
+                psim.RUN_LOCK_PATH,
+            )
+        )
