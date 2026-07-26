@@ -578,8 +578,7 @@ def test_bitcoin_overlay_preserves_d6_initial_and_supports_exact_d7_delta(
     )
     assert isinstance(observed, runner.D7BitcoinBlobSemantics)
     for name in semantics_probe.BlobSemantics.__dataclass_fields__:
-        if name != "classification_detail_hash":
-            assert getattr(observed, name) == getattr(inherited, name)
+        assert getattr(observed, name) == getattr(inherited, name)
     assert observed.grammar_anchor == d7_mechanism.INITIAL_ANCHOR
     assert observed.dependency_token_mode == "BARE_ONLY"
 
@@ -669,12 +668,12 @@ def test_bitcoin_overlay_collects_complete_roster_before_typed_reject(
     assert receipt["semantic_error_count"] == 1
     assert receipt["class_counts"] == {
         "D4_VALID": 1,
-        "D7_BLOB_DECODE_ERROR": 1,
+        "D7_BITCOIN_GRAMMAR_ERROR": 1,
         "D7_BIP_LATER_HEADER": 1,
         "D7_BIP_PREFIXED_DEPENDENCY": 1,
     }
     assert receipt["event_outcome_counts"] == {
-        "ERROR_BLOB_DECODE_UNAVAILABLE": 1,
+        "ERROR_UNKNOWN_GRAMMAR": 1,
         "PASS_MODEL_VISIBLE": 3,
     }
     serialized = json.dumps(receipt, sort_keys=True)
@@ -1338,7 +1337,7 @@ def test_dual_epoch_verification_combines_archive_and_current_counts(
     monkeypatch.setattr(
         runner,
         "_run_pytest_paths",
-        lambda paths, *, cwd, epoch: current,
+        lambda paths, *, cwd, epoch, expected_passed: current,
     )
     receipt = runner._run_pytest_verification()
     assert receipt["protocol_version"] == (
@@ -1354,6 +1353,49 @@ def test_dual_epoch_verification_combines_archive_and_current_counts(
         "xfailed": 0,
         "xpassed": 0,
     }
+
+
+def test_pytest_verification_sanitizes_ambient_selection_controls(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    observed: dict[str, Any] = {}
+    simulated = {"stdout": "1 passed in 0.01s\n"}
+    monkeypatch.setenv("PYTEST_ADDOPTS", "-k never_collect_anything")
+    monkeypatch.setenv("PYTEST_PLUGINS", "untrusted_plugin")
+    monkeypatch.setenv("COVERAGE_PROCESS_START", "/tmp/untrusted")
+
+    def fake_run(argv, **kwargs):
+        observed["argv"] = argv
+        observed["env"] = kwargs["env"]
+        return SimpleNamespace(
+            returncode=0,
+            stdout=simulated["stdout"],
+            stderr="",
+        )
+
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+    receipt = runner._run_pytest_paths(
+        (Path("tests/test_synthetic.py"),),
+        cwd=tmp_path,
+        epoch="SYNTHETIC",
+        expected_passed=1,
+    )
+    environment = observed["env"]
+    assert environment["PYTEST_ADDOPTS"] == ""
+    assert environment["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] == "1"
+    assert environment["PYTHONNOUSERSITE"] == "1"
+    assert "PYTEST_PLUGINS" not in environment
+    assert "COVERAGE_PROCESS_START" not in environment
+    assert receipt["expected_passed"] == 1
+    simulated["stdout"] = "2 passed in 0.01s\n"
+    with pytest.raises(RuntimeError, match="pytest verification failed"):
+        runner._run_pytest_paths(
+            (Path("tests/test_synthetic.py"),),
+            cwd=tmp_path,
+            epoch="SYNTHETIC",
+            expected_passed=1,
+        )
 
 
 def test_inherited_archive_verification_rejects_stale_root(
@@ -1394,3 +1436,6 @@ def test_post_seal_verification_uses_recursion_guard(
         runner.SEAL_TEST_PATH.as_posix(),
     ]
     assert observed["env"][runner.SEAL_TEST_CHILD_ENV] == "1"
+    assert observed["env"]["PYTEST_ADDOPTS"] == ""
+    assert observed["env"]["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] == "1"
+    assert payload["expected_passed"] == runner.EXPECTED_SEAL_TEST_PASSED

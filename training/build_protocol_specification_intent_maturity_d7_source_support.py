@@ -446,6 +446,11 @@ def parse_blob_features(
         for token in header.get(field, "").split(",")
         if token.strip(" \t")
     )
+    d6_native = (
+        selection["audit_receipt"]["anchor"]
+        == d7_mechanism.INITIAL_ANCHOR
+        and not prefixed
+    )
     lines = tuple(selection["normalized_lines"])
     sections = core._line_sections(protocol, lines)
     return D7BitcoinBlobSemantics(
@@ -462,7 +467,11 @@ def parse_blob_features(
         dependency_availability="KNOWN",
         administrative_class="NONE",
         model_visible=True,
-        classification_detail_hash=mechanism_receipt["receipt_hash"],
+        classification_detail_hash=(
+            canonical_hash({})
+            if d6_native
+            else mechanism_receipt["receipt_hash"]
+        ),
         grammar_anchor=selection["audit_receipt"]["anchor"],
         dependency_token_mode=(
             "PREFIXED_PRESENT" if prefixed else "BARE_ONLY"
@@ -2203,7 +2212,7 @@ def _typed_outcome(
     }
     if not passed:
         row["error_profile_hash"] = canonical_hash(
-            {"error_type": "D6SemanticError", "outcome_id": outcome_id}
+            {"error_type": "D7TypedEventError", "outcome_id": outcome_id}
         )
     return row
 
@@ -2231,6 +2240,12 @@ def _materialize_events_from_raw(
                     oid,
                     raw_by_oid[oid],
                 )
+            except d7_mechanism.D7MechanismError as error:
+                decode_error_outcomes[oid] = (
+                    "ERROR_STRICT_UTF8"
+                    if error.code == "ERROR_STRICT_SOURCE_NORMALIZATION"
+                    else "ERROR_UNKNOWN_GRAMMAR"
+                )
             except UnicodeError:
                 decode_error_outcomes[oid] = "ERROR_STRICT_UTF8"
             except Exception:
@@ -2242,9 +2257,15 @@ def _materialize_events_from_raw(
         _blob_classification(row) for row in features.values()
     )
     class_counts.update(
-        "D7_STRICT_UTF8_ERROR"
-        if outcome_id == "ERROR_STRICT_UTF8"
-        else "D7_BLOB_DECODE_ERROR"
+        (
+            "D7_STRICT_UTF8_ERROR"
+            if outcome_id == "ERROR_STRICT_UTF8"
+            else (
+                "D7_BITCOIN_GRAMMAR_ERROR"
+                if outcome_id == "ERROR_UNKNOWN_GRAMMAR"
+                else "D7_BLOB_DECODE_ERROR"
+            )
+        )
         for outcome_id in decode_error_outcomes.values()
     )
     decisions, migration_errors = _migration_decisions(
@@ -2298,7 +2319,11 @@ def _materialize_events_from_raw(
             outcome_id = (
                 "ERROR_STRICT_UTF8"
                 if "ERROR_STRICT_UTF8" in missing_outcomes
-                else "ERROR_BLOB_DECODE_UNAVAILABLE"
+                else (
+                    "ERROR_UNKNOWN_GRAMMAR"
+                    if "ERROR_UNKNOWN_GRAMMAR" in missing_outcomes
+                    else "ERROR_BLOB_DECODE_UNAVAILABLE"
+                )
             )
             outcomes.append(
                 _typed_outcome(
@@ -4214,7 +4239,6 @@ def build_self_check_manifest() -> dict[str, Any]:
     initial_is_d6_equal = all(
         getattr(initial_d7, name) == getattr(initial_d6, name)
         for name in inherited_blob_fields
-        if name != "classification_detail_hash"
     )
     later_raw = d7_mechanism._synthetic_bip(
         synthetic_proposal,
@@ -4969,6 +4993,41 @@ CURRENT_D7_VERIFICATION_TEST_PATHS = (
     ),
     TEST_PATH,
 )
+EXPECTED_INHERITED_VERIFICATION_PASSED = 602
+EXPECTED_CURRENT_D7_VERIFICATION_PASSED = 86
+EXPECTED_SEAL_TEST_PASSED = 7
+VERIFICATION_ENVIRONMENT_OVERRIDE = {
+    "LANG": "C",
+    "LC_ALL": "C",
+    "PYTHONHASHSEED": "0",
+    "PYTHONNOUSERSITE": "1",
+    "PYTHONPATH": ".",
+    "PYTEST_ADDOPTS": "",
+    "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+    "TZ": "UTC",
+}
+VERIFICATION_ENVIRONMENT_PASSTHROUGH = (
+    "HOME",
+    "LOGNAME",
+    "PATH",
+    "SHELL",
+    "TMPDIR",
+    "USER",
+)
+
+
+def _verification_environment(
+    additions: Mapping[str, str] | None = None,
+) -> dict[str, str]:
+    environment = {
+        key: os.environ[key]
+        for key in VERIFICATION_ENVIRONMENT_PASSTHROUGH
+        if key in os.environ
+    }
+    environment.update(VERIFICATION_ENVIRONMENT_OVERRIDE)
+    if additions:
+        environment.update(additions)
+    return environment
 
 
 def _run_pytest_paths(
@@ -4976,6 +5035,7 @@ def _run_pytest_paths(
     *,
     cwd: Path,
     epoch: str,
+    expected_passed: int,
 ) -> dict[str, Any]:
     display_argv = [
         ".venv/bin/pytest",
@@ -4986,8 +5046,7 @@ def _run_pytest_paths(
         str(REPO_ROOT / ".venv/bin/pytest"),
         *display_argv[1:],
     ]
-    environment = dict(os.environ)
-    environment["PYTHONPATH"] = "."
+    environment = _verification_environment()
     completed = subprocess.run(
         argv,
         cwd=cwd,
@@ -4999,6 +5058,7 @@ def _run_pytest_paths(
     counts = _pytest_counts(completed.stdout, completed.stderr)
     if (
         completed.returncode != 0
+        or counts["passed"] != expected_passed
         or counts["failed"]
         or counts["skipped"]
         or counts["errors"]
@@ -5013,7 +5073,10 @@ def _run_pytest_paths(
     return {
         "argv": display_argv,
         "epoch": epoch,
-        "environment_override": {"PYTHONPATH": "."},
+        "environment_override": dict(
+            sorted(VERIFICATION_ENVIRONMENT_OVERRIDE.items())
+        ),
+        "expected_passed": expected_passed,
         "exit_code": completed.returncode,
         **counts,
     }
@@ -5082,6 +5145,7 @@ def _run_inherited_archive_verification() -> dict[str, Any]:
             INHERITED_VERIFICATION_TEST_PATHS,
             cwd=root,
             epoch="PRE_REBASE_INHERITED_AUTHORITY",
+            expected_passed=EXPECTED_INHERITED_VERIFICATION_PASSED,
         )
         return {
             **receipt,
@@ -5116,6 +5180,7 @@ def _run_pytest_verification() -> dict[str, Any]:
         CURRENT_D7_VERIFICATION_TEST_PATHS,
         cwd=REPO_ROOT,
         epoch="CURRENT_D7_IMPLEMENTATION",
+        expected_passed=EXPECTED_CURRENT_D7_VERIFICATION_PASSED,
     )
     count_fields = (
         "passed",
@@ -5141,9 +5206,9 @@ def _run_pytest_verification() -> dict[str, Any]:
 
 def _run_post_seal_test_verification() -> dict[str, Any]:
     argv = [".venv/bin/pytest", "-q", SEAL_TEST_PATH.as_posix()]
-    environment = dict(os.environ)
-    environment["PYTHONPATH"] = "."
-    environment[SEAL_TEST_CHILD_ENV] = "1"
+    environment = _verification_environment(
+        {SEAL_TEST_CHILD_ENV: "1"}
+    )
     completed = subprocess.run(
         argv,
         cwd=REPO_ROOT,
@@ -5155,6 +5220,7 @@ def _run_post_seal_test_verification() -> dict[str, Any]:
     counts = _pytest_counts(completed.stdout, completed.stderr)
     if (
         completed.returncode != 0
+        or counts["passed"] != EXPECTED_SEAL_TEST_PASSED
         or counts["failed"]
         or counts["skipped"]
         or counts["errors"]
@@ -5169,9 +5235,10 @@ def _run_post_seal_test_verification() -> dict[str, Any]:
     return {
         "argv": argv,
         "environment_override": {
-            "PYTHONPATH": ".",
+            **dict(sorted(VERIFICATION_ENVIRONMENT_OVERRIDE.items())),
             SEAL_TEST_CHILD_ENV: "1",
         },
+        "expected_passed": EXPECTED_SEAL_TEST_PASSED,
         "exit_code": completed.returncode,
         **counts,
     }

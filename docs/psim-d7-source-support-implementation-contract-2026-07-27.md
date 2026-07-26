@@ -24,7 +24,9 @@ profitability, and outcome access remain forbidden.
   `107c6fe172c2dcba604b06ca67f23f136507b6e9`; the current D7 mechanism,
   preregistration, and evaluator battery then runs at the implementation
   commit. Both epochs require zero failures, skips, errors, expected failures,
-  or unexpected passes, and the temporary worktree must be removed.
+  or unexpected passes, exact frozen pass counts, a pytest environment with
+  ambient selection/plugin controls removed, and removal of the temporary
+  worktree.
 - The terminal PSIM-D6 result remains a rejection. PSIM-D6 must not be rerun,
   repaired, or reused as a D7 source candidate.
 - D6 acquisition, first-parent traversal, path grouping, availability
@@ -64,9 +66,10 @@ The official Gate-4 class roster is frozen to:
 - `D7_BIP_LATER_HEADER`: 7; and
 - `D7_BIP_PREFIXED_DEPENDENCY`: 1.
 
-Unknown or ambiguous grammar produces a typed event failure. Materialization
-continues through the complete event roster and then rejects before any model
-or outcome access.
+Unknown or ambiguous grammar produces the typed event failure
+`ERROR_UNKNOWN_GRAMMAR`; strict normalization failure remains
+`ERROR_STRICT_UTF8`. Materialization continues through the complete event
+roster and then rejects before any model or outcome access.
 
 ## Frozen D6 representation mechanisms
 
