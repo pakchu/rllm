@@ -1,0 +1,135 @@
+{
+  "candidate": {
+    "base_leverage": 0.5,
+    "id": "expanding_extratrees_rank7_annual_refit",
+    "leverage_cap_rationale": "three-times the frozen 0.50x exposure; fixed before levered metrics to test the user target without an unbounded sizing search",
+    "leverage_grid": [
+      0.5,
+      0.75,
+      1.0,
+      1.25,
+      1.5
+    ],
+    "only_variable": "absolute account leverage",
+    "policy_changes_allowed": false,
+    "schedule_changes_allowed": false
+  },
+  "immutable_policy": {
+    "annual_expanding_refits": true,
+    "base_cost_per_side": 0.0006,
+    "direction": "long_only",
+    "entry": "next_5m_open",
+    "exit": "source_owned_tp_sl_or_time",
+    "full_calendar_cagr_includes_idle_time": true,
+    "funding_boundary": "interior symmetric; exact entry/exit credits dropped and debits retained",
+    "non_overlap": true,
+    "predictor_delay_bars_5m": 12,
+    "selected_position_hash": "8ffbd55f07ceda0e82c270fe4b370fffba44bb3fcfc807368c4385d2ba97f531",
+    "stress_cost_per_side": 0.001,
+    "strict_mdd": "global/pre-entry HWM plus entry cost, favorable-before-adverse held 5m OHLC, realized funding debit, virtual adverse-mark liquidation cost, and actual exit cost"
+  },
+  "integrity": {
+    "all_grid_cells_reported": true,
+    "all_leverage_cells_must_share_exact_trade_clock_hashes": true,
+    "frozen_dependencies_sha256": {
+      "results/expanding_extratrees_rank7_hardened_strict_audit_2026-07-19.json": "90d1d1add44a119d2e2083944fc5e483ce1e221b814015d233899cd87adf4e57",
+      "results/expanding_extratrees_rank7_stability_2026-07-15.json": "ffdde5450ef73e0f6099a49ff75a6e16a272dc0c55eb68857ed0f6e168a8ccb2",
+      "results/expanding_extratrees_top10_oos_2026-07-15.json": "41a06a4f492a8625fc3023dd8a7e03a0e229182b7325fc9deb13c100cf381c15",
+      "results/expanding_extratrees_top10_pre2025_manifest_2026-07-15.json": "5901c4cdd66f7894e4712c1d3d5f490af39b8557170968442c84981d34b90976",
+      "training/audit_expanding_extratrees_rank7_hardened_strict.py": "b7d239352ff090726cac1fef5bbb318329f01d4800b17a4816ada69c792c0c6e",
+      "training/audit_expanding_extratrees_rank7_stability.py": "a5280fda3e9ac6267b82914b3e1a094f1bf5716656554d4e0e5ca32306ae0540",
+      "training/audit_weak_feature_responsibility_stability.py": "154352ab3af889716e06cfb6fa3ddd3242a478ded3bdd93b5bcadd54f15e25f9",
+      "training/evaluate_packet_churn_persistence_pre2024.py": "a3d8d56ed9cc6a49603206253bef3d19b42854f9bb58b3aca76b803b2f7258e2",
+      "training/search_inventory_purge_reclaim_alpha.py": "5d8d4df7ea79790afb919bbb481d11de33ecba5768f6e26feb1f7667cd947d65"
+    },
+    "future_metrics_must_not_enter_selection_payload": true,
+    "nonfinite_metrics_fail_closed": true
+  },
+  "manifest_hash": "01fa88ba5e1398c06ea192749c81a15e516982688761c570f160d6e416a16659",
+  "next_authorized_step": "IMPLEMENT_REVIEW_COMMIT_AND_PUSH_FIXED_BATTERY_THEN_EXECUTE_ONCE",
+  "protocol_version": "expanding_extratrees_rank7_leverage_battery_v1",
+  "report_only_evaluation": {
+    "base_gates_each_annual_window": {
+      "absolute_return_pct_strictly_above": 0.0,
+      "cagr_to_strict_mdd_at_least": 3.0,
+      "minimum_trades": {
+        "2025": 12,
+        "2026h1": 6
+      },
+      "strict_mdd_pct_at_most": 15.0
+    },
+    "base_gates_each_combined_window": {
+      "absolute_return_pct_strictly_above": 0.0,
+      "cagr_to_strict_mdd_at_least": 3.0,
+      "minimum_trades": {
+        "all": 42,
+        "future": 18
+      },
+      "strict_mdd_pct_at_most": 15.0
+    },
+    "calendar": [
+      "2025-01-01",
+      "2026-06-02"
+    ],
+    "no_repair_after_open": true,
+    "significance_gates_combined_windows": {
+      "draws": 50000,
+      "seed": 20260727,
+      "stationary_trade_bootstrap_one_sided_p_at_most": 0.1,
+      "weekly_cluster_sign_flip_one_sided_p_at_most": 0.1
+    },
+    "stress_gates_combined_windows": {
+      "absolute_return_pct_strictly_above": 0.0
+    },
+    "windows": [
+      "2025",
+      "2026h1",
+      "future",
+      "all"
+    ]
+  },
+  "research_status": {
+    "pristine_discovery_oos": false,
+    "protocol_isolation": "leverage is selected only from 2023-2024; 2025+ is report-only and cannot alter, repair, or reselect the leverage",
+    "reason": "2025+ rank-7 outcomes were already viewed before this sizing audit"
+  },
+  "selection": {
+    "base_gates_each_window": {
+      "absolute_return_pct_strictly_above": 0.0,
+      "cagr_to_strict_mdd_at_least": 3.0,
+      "strict_mdd_pct_at_most": 12.0
+    },
+    "calendar": [
+      "2023-01-01",
+      "2025-01-01"
+    ],
+    "minimum_trades": {
+      "2023": 12,
+      "2024": 12,
+      "selection": 24
+    },
+    "no_passing_cell_action": "reject_scaling_and_keep_frozen_0_50x_research_baseline",
+    "no_tie_breaker_needed": "the leverage ordering is strict and the highest passing value wins",
+    "rule": "select the highest leverage in the fixed grid that passes every base gate and the fixed 10bp-per-side stress profitability gate",
+    "stress_gates_each_window": {
+      "absolute_return_pct_strictly_above": 0.0,
+      "strict_mdd_pct_at_most": 15.0
+    },
+    "windows": [
+      "2023",
+      "2024",
+      "selection"
+    ]
+  },
+  "user_target": {
+    "absolute_return_always_reported": true,
+    "cagr_pct_at_least": 50.0,
+    "cagr_to_strict_mdd_at_least": 3.0,
+    "classification": "target_hit only if both fixed future and all windows pass all three thresholds; otherwise alpha may survive but target is not met",
+    "required_windows": [
+      "future",
+      "all"
+    ],
+    "strict_mdd_pct_at_most": 15.0
+  }
+}
