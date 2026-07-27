@@ -28,7 +28,7 @@ from training import run_psim_d8_rllm1_base_memorization_gate as base_gate
 
 REPO_ROOT = _BOOTSTRAP_REPO_ROOT
 PROTOCOL_VERSION = (
-    "psim_d8_rllm2_source_feature_seal_preregistration_v1"
+    "psim_d8_rllm2_source_feature_seal_preregistration_v2"
 )
 STAGE_ID = "PSIM-D8-RLLM2-S1"
 AS_OF_DATE = "2026-07-27"
@@ -94,7 +94,7 @@ CHECKPOINT_DIRECTORY = Path(
 
 SOURCE_ROW_SCHEMA_VERSION = "psim_d8_rllm2_source_row_v1"
 RELATION_ROW_SCHEMA_VERSION = "psim_d8_rllm2_relation_row_v1"
-SHARD_SIZE = 32
+SHARD_SIZE = 1
 EMBEDDING_DTYPE = "float32"
 EMBEDDING_WIDTH = 2_560
 RELATION_LOGIT_DTYPE = "float32"
@@ -571,6 +571,16 @@ def build_preregistration() -> dict[str, Any]:
             "result_path": RESULT_PATH.as_posix(),
             "checkpoint_directory": CHECKPOINT_DIRECTORY.as_posix(),
             "checkpoint_shard_size": SHARD_SIZE,
+            "inflight_sentinel": (
+                CHECKPOINT_DIRECTORY / "inflight.json"
+            ).as_posix(),
+            "inflight_sentinel_before_each_row_forward": True,
+            "inflight_without_committed_row_on_resume": (
+                "terminal_reject_without_repeating_the_ambiguous_forward"
+            ),
+            "inflight_with_committed_row_on_resume": (
+                "verify_the_bound_row_shard_then_remove_the_stale_sentinel"
+            ),
             "clean_head_equals_origin_main_required": True,
             "fixed_paths_no_output_override": True,
             "preflight_before_attempt": [
@@ -589,6 +599,7 @@ def build_preregistration() -> dict[str, Any]:
                 "explicit_resume_flag_required": True,
                 "same_execution_commit_runner_prereg_and_roster_required": True,
                 "only_contiguous_hash_verified_shards_accepted": True,
+                "row_granular_checkpoint_prevents_completed_row_replay": True,
                 "model_predictions_cannot_change_future_source_rows": True,
             },
             "caught_post_attempt_failure": (

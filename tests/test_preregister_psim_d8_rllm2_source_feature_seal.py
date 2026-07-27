@@ -115,7 +115,10 @@ def test_preregistration_is_canonical_and_closes_all_outcomes(
     assert payload["candidate"]["profitability_claim"] is False
     assert payload["embedding_contract"]["shape"] == [1_461, 2_560]
     assert payload["relation_teacher_contract"]["forward_count"] == 1_344
-    assert payload["execution_contract"]["checkpoint_shard_size"] == 32
+    assert payload["execution_contract"]["checkpoint_shard_size"] == 1
+    assert payload["execution_contract"][
+        "inflight_sentinel_before_each_row_forward"
+    ] is True
     assert payload["access_boundary"]["market_or_funding_paths_read"] == []
     assert (
         payload["access_boundary"][

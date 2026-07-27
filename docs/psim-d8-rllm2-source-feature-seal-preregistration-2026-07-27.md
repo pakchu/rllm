@@ -68,17 +68,29 @@ subcard, resampling, or output-based prompt change.
 
 ## Interruption and failure rules
 
-The attempt sentinel is written before model weights load. A process
-interruption may resume only when:
+The attempt sentinel is written before model weights load. Each logical row is
+its own checkpoint shard. An `inflight.json` sentinel is atomically committed
+before either forward for that row starts and is removed only after both
+required outputs are hash-bound in the row shard. A process interruption may
+resume only when:
 
 - the attempt exists and no terminal result exists;
 - execution commit, runner, preregistration, and source roster are unchanged;
 - checkpoint shards form a contiguous hash-verified prefix; and
 - the explicit resume mode is used.
 
+A stale in-flight sentinel is cleared only when its exact row shard already
+exists and verifies. If that row was not committed, the attempt is terminally
+rejected rather than repeating an ambiguously started model forward.
+
 A caught post-sentinel exception writes terminal rejection. It cannot be
 repaired, rerun, resampled, or switched to another model. Checkpoints are
 deleted only after every final artifact and the terminal result verify.
+
+Final source rows, embeddings, logits, and teacher rows are first built and
+hash-verified under the bound checkpoint directory. They are atomically
+promoted to their official paths, and the authorizing pass result is promoted
+last. Therefore a failed verification cannot leave an authorizing pass file.
 
 ## Access boundary
 
