@@ -195,7 +195,7 @@ def test_frozen_input_tamper_is_rejected(
         runner._verify_source_artifacts()
 
 
-def test_official_outputs_do_not_exist_before_execution() -> None:
+def test_official_terminal_outputs_are_now_complete() -> None:
     for path in (
         prereg.ATTEMPT_PATH,
         prereg.RESULT_PATH,
@@ -204,4 +204,4 @@ def test_official_outputs_do_not_exist_before_execution() -> None:
         prereg.DELAYED_SCHEDULE_PATH,
         prereg.SCHEDULE_MANIFEST_PATH,
     ):
-        assert not runner.repository_path(path).exists()
+        assert runner.repository_path(path).is_file()

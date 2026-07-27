@@ -181,7 +181,7 @@ def test_global_2021_contamination_is_explicit_and_fail_closed() -> None:
     assert payload["candidate"]["globally_pristine_2021_claim"] is False
 
 
-def test_artifact_paths_are_fixed_and_no_runner_exists_yet() -> None:
+def test_artifact_paths_are_fixed_and_terminal_outputs_exist() -> None:
     payload = prereg.build_preregistration()
     artifacts = payload["artifact_contract"]
 
@@ -204,12 +204,12 @@ def test_artifact_paths_are_fixed_and_no_runner_exists_yet() -> None:
         "write_once": True,
         "result_published_last": True,
     }
-    assert not prereg.repository_path(prereg.ATTEMPT_PATH).exists()
-    assert not prereg.repository_path(prereg.RESULT_PATH).exists()
-    assert not prereg.repository_path(prereg.RESIDUAL_LEDGER_PATH).exists()
-    assert not prereg.repository_path(prereg.SCHEDULE_PATH).exists()
-    assert not prereg.repository_path(prereg.DELAYED_SCHEDULE_PATH).exists()
-    assert not prereg.repository_path(prereg.SCHEDULE_MANIFEST_PATH).exists()
+    assert prereg.repository_path(prereg.ATTEMPT_PATH).is_file()
+    assert prereg.repository_path(prereg.RESULT_PATH).is_file()
+    assert prereg.repository_path(prereg.RESIDUAL_LEDGER_PATH).is_file()
+    assert prereg.repository_path(prereg.SCHEDULE_PATH).is_file()
+    assert prereg.repository_path(prereg.DELAYED_SCHEDULE_PATH).is_file()
+    assert prereg.repository_path(prereg.SCHEDULE_MANIFEST_PATH).is_file()
 
 
 def test_write_is_deterministic_and_drift_closed(tmp_path: Path) -> None:
