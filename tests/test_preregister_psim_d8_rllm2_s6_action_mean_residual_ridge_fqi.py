@@ -132,7 +132,7 @@ def test_future_gate_and_global_contamination_remain_fail_closed() -> None:
     assert disclosure["2021_may_be_called_globally_pristine"] is False
 
 
-def test_artifact_paths_are_fixed_and_outputs_do_not_exist() -> None:
+def test_artifact_paths_are_fixed_and_only_failed_attempt_exists() -> None:
     artifacts = prereg.build_preregistration()["artifact_contract"]
 
     assert artifacts["runner"] == prereg.RUNNER_PATH.as_posix()
@@ -146,8 +146,17 @@ def test_artifact_paths_are_fixed_and_outputs_do_not_exist() -> None:
     )
     assert artifacts["fixed_paths_no_output_override"] is True
     assert artifacts["write_once"] is True
+    attempt_path = prereg.repository_path(prereg.ATTEMPT_PATH)
+    assert attempt_path.is_file()
+    attempt = json.loads(attempt_path.read_text(encoding="utf-8"))
+    assert attempt["stage_id"] == prereg.STAGE_ID
+    assert attempt["execution_commit"] == (
+        "31cd9ba330a7f3c53b7a5a642d365e729d1e7cca"
+    )
+    assert attempt["attempt_hash"] == (
+        "0b686a89dc796800422b218888fd904a24ddbfa6c7ca2e350662621085e7c45d"
+    )
     for path in (
-        prereg.ATTEMPT_PATH,
         prereg.RESULT_PATH,
         prereg.RESIDUAL_LEDGER_PATH,
         prereg.SCHEDULE_PATH,
