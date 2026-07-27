@@ -1,0 +1,1843 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-07-27T16:19:25.261544+00:00",
+  "mode": "all_frozen_atomic_alpha_completed_bar_monthly_replay",
+  "accounting_version": "same_btc_low_high_v1",
+  "retrospective_not_pristine_oos": true,
+  "config": {
+    "env_path": "<redacted>",
+    "output": "results/all_alpha_july_2026_performance_2026-07-27.json",
+    "docs_output": "docs/all-alpha-july-2026-performance-2026-07-27.md",
+    "historical_context": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "start": "2026-07-01T00:00:00Z",
+    "end": "2026-08-01T00:00:00Z",
+    "asof": "2026-07-27T15:03:00Z",
+    "lookback_minutes": 150000,
+    "enriched_cache": "/tmp/rllm_july_2026_all/enriched.pkl",
+    "features_cache": "/tmp/rllm_july_2026_all/features.pkl",
+    "funding_cache": "/tmp/rllm_july_2026_all/funding.pkl"
+  },
+  "window": {
+    "requested_start": "2026-07-01 00:00:00",
+    "requested_end_exclusive": "2026-08-01 00:00:00",
+    "start": "2026-07-01 00:00:00",
+    "end_exclusive": "2026-07-27 15:00:00",
+    "last_completed_bar": "2026-07-27 14:55:00",
+    "bars": 7668,
+    "calendar_days": 26.625
+  },
+  "comparison_contract": {
+    "unit_leverage": 0.5,
+    "cost_rate_each_side": 0.0006,
+    "entry": "next_completed_5m_bar_open",
+    "stride": "absolute UTC research clock; explicit offset else stride-1",
+    "overlap": "one open trade per atomic alpha",
+    "source_availability": "fail closed; code-frozen legacy REX retains its explicit weekend FX-calendar fallback and reports strict sensitivity",
+    "strict_mdd": "same BTC upper-before-lower intrabar envelope",
+    "split_boundary": "flat start; only split-contained exits admitted",
+    "fixed_hold_funding": "excluded for parity with frozen event-path research accounting",
+    "fresh_rank7_funding": "realized funding included"
+  },
+  "inventory": {
+    "scored_atomic_alphas": 24,
+    "atomic_config_files": [
+      "configs/live/bullish_pb30_addon_returnz_htf1w_candidate.json",
+      "configs/live/bullish_pb30_base_candidate.json",
+      "configs/live/bullish_pb30_funding_activity_flow_htf_candidate.json",
+      "configs/live/funding_premium_lr_impact_central_research_candidate.json",
+      "configs/live/new_long_minimal_funding_premium_candidate.json",
+      "configs/live/nonpb30_taker_returnz_rangevol_htf4hrange_h72_candidate.json",
+      "configs/live/oi_alt_ratio72_dyn_exit_candidate.json",
+      "configs/live/oi_divergence_pullback_range_rsi_h96_s6_candidate.json",
+      "configs/live/oi_divergence_sma24_highfreq_h30_s6_candidate.json",
+      "configs/live/oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay.json",
+      "configs/live/oi_upbit_ratio288_low_candidate.json",
+      "configs/live/rex_taker_low_range_position_research_candidate.json",
+      "configs/live/rex_veto_7_candidate.json",
+      "configs/live/short_kimchi3d_candidate.json",
+      "configs/live/short_premium_panic_candidate.json",
+      "configs/shadow/fresh_kimchi_fx_2026-07-16.json",
+      "configs/shadow/frozen_annual_rank7_2026-07-16.json",
+      "configs/shadow/markov_transition_long_2026-07-16.json",
+      "configs/shadow/rex_taker_low_range_position_2026-07-16.json"
+    ],
+    "research_pool_files": [
+      "research/pools/alphas/bocpd_top10_funding_premium_long_20260713.json",
+      "research/pools/alphas/calendar_oi_funding_friday_asia_long_20260712.json",
+      "research/pools/alphas/kalman_top10_funding_premium_long_20260713.json",
+      "research/pools/alphas/markov_persistent_funding_premium_long_20260712.json",
+      "research/pools/alphas/rex_htf_range_veto_alpha_20260712.json",
+      "research/pools/alphas/semimarkov_top10_funding_premium_long_20260713.json"
+    ],
+    "scored_source_files": [
+      "configs/live/bullish_pb30_addon_returnz_htf1w_candidate.json",
+      "configs/live/funding_premium_lr_impact_central_research_candidate.json",
+      "configs/live/new_long_minimal_funding_premium_candidate.json",
+      "configs/live/nonpb30_taker_returnz_rangevol_htf4hrange_h72_candidate.json",
+      "configs/live/oi_alt_ratio72_dyn_exit_candidate.json",
+      "configs/live/oi_divergence_pullback_range_rsi_h96_s6_candidate.json",
+      "configs/live/oi_divergence_sma24_highfreq_h30_s6_candidate.json",
+      "configs/live/oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay.json",
+      "configs/live/oi_upbit_ratio288_low_candidate.json",
+      "configs/live/rex_veto_7_candidate.json",
+      "configs/live/short_kimchi3d_candidate.json",
+      "configs/live/short_premium_panic_candidate.json",
+      "configs/shadow/fresh_kimchi_fx_2026-07-16.json",
+      "configs/shadow/frozen_annual_rank7_2026-07-16.json",
+      "configs/shadow/markov_transition_long_2026-07-16.json",
+      "configs/shadow/rex_taker_low_range_position_2026-07-16.json",
+      "research/pools/alphas/bocpd_top10_funding_premium_long_20260713.json",
+      "research/pools/alphas/calendar_oi_funding_friday_asia_long_20260712.json",
+      "research/pools/alphas/kalman_top10_funding_premium_long_20260713.json",
+      "research/pools/alphas/rex_htf_range_veto_alpha_20260712.json",
+      "research/pools/alphas/semimarkov_top10_funding_premium_long_20260713.json"
+    ],
+    "portfolio_configs_excluded_as_compositions": [
+      "configs/live/portfolio_added_alpha_mainnet_live_2026-07-18.json",
+      "configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json",
+      "configs/live/portfolio_added_alpha_testnet_canary_2026-07-18.json",
+      "configs/live/portfolio_bull_bear_oi_rex_capital_efficient_candidate.json",
+      "configs/live/portfolio_bull_bear_oi_rex_llm_selector_overlay.json",
+      "configs/live/portfolio_gross2_mdd10_oos_max_candidate.json",
+      "configs/live/portfolio_gross385_trainmdd40_2026-07-12.json",
+      "configs/live/portfolio_gross3_return_priority_mdd25_candidate.json",
+      "configs/live/portfolio_gross3_return_priority_mdd25_ratio5_2026_candidate.json",
+      "configs/live/portfolio_gross3_robust_oi_rex_candidate.json",
+      "configs/live/portfolio_gross4_no_llm_ratio5_mdd20_2026-07-08.json",
+      "configs/live/portfolio_gross575_no_llm_7sleeve_minratio_2026-07-08.json",
+      "configs/live/portfolio_gross610_dynamic_top1_2026-07-08.json",
+      "configs/live/portfolio_gross6_mdd20_ratio5_return_best_candidate.json",
+      "configs/live/portfolio_gross6_oos_mdd20_return_best_candidate.json",
+      "configs/live/portfolio_gross6_period_mdd20_return_best_candidate.json",
+      "configs/shadow/portfolio_added_alpha_signal_parity_sources_2026-07-16.json",
+      "configs/shadow/portfolio_state_ensemble_candidate_2026-07-16.json"
+    ],
+    "runtime_configs_excluded": [
+      "configs/live/rex_llm_binance_testnet_bear_pilot.json"
+    ],
+    "raw_scan_artifacts_inventory_only": [
+      "results/aggressor_centroid_inversion_alpha_scan_2026-07-14.json",
+      "results/all_alpha_wave_feature_combo_scan_2026-07-08.json",
+      "results/alt_derivatives_crowding_alpha_scan_2026-07-13.json",
+      "results/alt_volume_breadth_alpha_scan_2026-07-08.json",
+      "results/barrier_constitution_alpha_scan_2026-07-13.json",
+      "results/bocpd_state_gated_alpha_scan_2026-07-13.json",
+      "results/calendar_oi_funding_alpha_scan_2026-07-10.json",
+      "results/causal_cone_age_front_alpha_scan_2026-07-14.json",
+      "results/causal_online_expert_alpha_scan_2026-07-13.json",
+      "results/cftc_concentration_topology_alpha_scan_2026-07-13.json",
+      "results/cftc_release_assimilation_alpha_scan_2026-07-13.json",
+      "results/chronos2_embedding_probe_alpha_scan_2026-07-13.json",
+      "results/chronos2_fit_oriented_alpha_scan_2026-07-13.json",
+      "results/chronos2_zero_shot_alpha_scan_2026-07-13.json",
+      "results/closed_excursion_holonomy_alpha_scan_2026-07-13.json",
+      "results/cme_offshore_debt_handoff_alpha_scan_2026-07-13.json",
+      "results/conformal_sr_pressure_alpha_scan_2026-07-14.json",
+      "results/context_session_alpha_scan_fast_2026-07-08.json",
+      "results/crossmap_flow_causality_alpha_scan_2026-07-14.json",
+      "results/crossvenue_microstructure_consensus_alpha_scan_2026-07-13.json",
+      "results/debt_transfer_velocity_alpha_scan_2026-07-13.json",
+      "results/deribit_dvol_alpha_scan_2026-07-13.json",
+      "results/dual_intrinsic_clock_alpha_scan_2026-07-14.json",
+      "results/dvol_orphan_convexity_alpha_scan_2026-07-13.json",
+      "results/dvol_rex_complement_alpha_scan_2026-07-13.json",
+      "results/dynamic_exit_alpha_scan_2026-07-08.json",
+      "results/efficiency_volterm_bidirectional_alpha_scan_2026-07-12.json",
+      "results/execution_metronome_absorption_alpha_scan_2026-07-14.json",
+      "results/existing_alpha_volume_gate_scan_2026-07-08.json",
+      "results/extrema_arrival_bidirectional_alpha_scan_2026-07-12.json",
+      "results/frozen_causal_cone_rupture_alpha_scan_2026-07-14.json",
+      "results/funding_age_rollover_transfer_alpha_scan_2026-07-13.json",
+      "results/funding_premium_alt_crowding_gate_alpha_scan_2026-07-13.json",
+      "results/funding_premium_external_state_gate_alpha_scan_2026-07-13.json",
+      "results/funding_premium_independent_gate_alpha_scan_2026-07-13.json",
+      "results/funding_premium_oi_transition_gate_alpha_scan_2026-07-13.json",
+      "results/funding_settlement_bidirectional_alpha_scan_2026-07-12.json",
+      "results/funding_settlement_curl_alpha_scan_2026-07-13.json",
+      "results/gaussian_hmm_regime_alpha_scan_2026-07-12.json",
+      "results/hawkes_liquidation_cascade_alpha_scan_2026-07-13.json",
+      "results/hidden_safe_haven_cancellation_alpha_scan_2026-07-14.json",
+      "results/hmm_gated_funding_premium_alpha_scan_2026-07-12.json",
+      "results/invariant_ensemble_uncertainty_alpha_scan_2026-07-13.json",
+      "results/invariant_groupdro_alpha_scan_2026-07-13.json",
+      "results/invariant_groupdro_rolling_alpha_scan_2026-07-13.json",
+      "results/inventory_conservation_residual_alpha_scan_2026-07-13.json",
+      "results/jump_variation_bidirectional_alpha_scan_refresh_2026-07-12.json",
+      "results/kalman_state_gated_alpha_scan_2026-07-13.json",
+      "results/liquidation_scar_field_alpha_scan_2026-07-13.json",
+      "results/liquidation_scar_first_passage_alpha_scan_2026-07-13.json",
+      "results/market_braid_alpha_scan_2026-07-13.json",
+      "results/markov_transition_gated_alpha_scan_2026-07-12.json",
+      "results/moment_continual_probe_alpha_scan_2026-07-13.json",
+      "results/moment_embedding_probe_alpha_scan_2026-07-13.json",
+      "results/moment_mamba2_alpha_scan_2026-07-13.json",
+      "results/moment_mamba2_path_critic_alpha_scan_2026-07-13.json",
+      "results/moment_retrieval_direct_utility_alpha_scan_2026-07-13.json",
+      "results/moment_retrieval_path_critic_alpha_scan_2026-07-13.json",
+      "results/moment_retrieval_recency_alpha_scan_2026-07-13.json",
+      "results/nested_barrier_witness_alpha_scan_2026-07-13.json",
+      "results/nonequilibrium_probability_current_alpha_scan_2026-07-14.json",
+      "results/occupation_saddle_escape_alpha_scan_2026-07-14.json",
+      "results/oi_cost_basis_liquidation_alpha_scan_2026-07-13.json",
+      "results/oi_liquidation_bidirectional_alpha_scan_2026-07-12.json",
+      "results/oi_roundtrip_geometric_phase_alpha_scan_2026-07-13.json",
+      "results/online_rls_price_impact_alpha_scan_2026-07-13.json",
+      "results/orderflow_campaign_terminal_absorption_alpha_scan_2026-07-14.json",
+      "results/orderflow_trophic_campaign_alpha_scan_2026-07-13.json",
+      "results/orderflow_trophic_chirp_alpha_scan_2026-07-13.json",
+      "results/orderflow_trophic_succession_alpha_scan_2026-07-13.json",
+      "results/ordinal_complexity_bidirectional_alpha_scan_2026-07-13.json",
+      "results/path_signature_leadlag_alpha_scan_2026-07-13.json",
+      "results/persistent_barrier_annihilation_alpha_scan_2026-07-14.json",
+      "results/positioning_continual_hgb_alpha_scan_2026-07-13.json",
+      "results/positioning_disagreement_alpha_scan_2026-07-13.json",
+      "results/positioning_dvol_continual_hgb_alpha_scan_2026-07-13.json",
+      "results/positioning_hgb_path_alpha_scan_2026-07-13.json",
+      "results/positioning_inventory_transfer_alpha_scan_2026-07-13.json",
+      "results/positioning_lifecycle_hazard_alpha_scan_2026-07-13.json",
+      "results/positioning_simplex_curvature_alpha_scan_2026-07-14.json",
+      "results/preisach_flow_scar_alpha_scan_2026-07-14.json",
+      "results/premium_intrabar_shape_alpha_scan_2026-07-13.json",
+      "results/price_structure_breakout_alpha_scan_limited_2026-07-08.json",
+      "results/propagator_impact_debt_alpha_scan_2026-07-13.json",
+      "results/rex_failure_veto_alpha_scan_2026-07-12.json",
+      "results/rex_pre2024_ml_alpha_scan_2026-07-13.json",
+      "results/rex_pre2024_ml_side_balanced_alpha_scan_2026-07-13.json",
+      "results/rex_pre2025_taker_range_ml_alpha_scan_2026-07-13.json",
+      "results/rex_pre2025_taker_range_ml_horizon_alpha_scan_2026-07-13.json",
+      "results/rex_regime_routed_alpha_scan_2026-07-13.json",
+      "results/rg_domain_wall_relaxation_alpha_scan_2026-07-14.json",
+      "results/river_contextual_utility_alpha_scan_2026-07-13.json",
+      "results/river_online_alpha_scan_2026-07-13.json",
+      "results/semimarkov_duration_alpha_scan_2026-07-13.json",
+      "results/session_handoff_bidirectional_alpha_scan_2026-07-12.json",
+      "results/short_base_alpha_scan_fast2_2026-07-08.json",
+      "results/spot_perp_absorption_alpha_scan_2026-07-13.json",
+      "results/spot_perp_phase_slip_alpha_scan_2026-07-13.json",
+      "results/spot_perp_transfer_entropy_alpha_scan_2026-07-13.json",
+      "results/tabicl_foundation_alpha_scan_2026-07-13.json",
+      "results/trade_size_impact_bidirectional_alpha_scan_2026-07-12.json",
+      "results/visibility_layer_irreversibility_alpha_scan_2026-07-14.json",
+      "results/volume_clock_bidirectional_alpha_scan_2026-07-12.json",
+      "results/volume_limited_alpha_scan_2026-07-08.json",
+      "results/volume_upbit_alpha_scan_2026-07-08.json",
+      "results/walkforward_linear_alpha_scan_fast_2026-07-12.json",
+      "results/wasserstein_flow_response_strain_alpha_scan_2026-07-14.json",
+      "results/wave_structure_alpha_scan_2026-07-08.json",
+      "results/weekend_fx_reconciliation_alpha_scan_2026-07-14.json"
+    ],
+    "raw_scan_artifact_count": 109,
+    "non_replayed_or_deduplicated": [
+      {
+        "path": "configs/live/bullish_pb30_base_candidate.json",
+        "reason": "deduplicated wrapper; the same fixed base module is replayed from the PB30 base/addon source"
+      },
+      {
+        "path": "configs/live/bullish_pb30_funding_activity_flow_htf_candidate.json",
+        "reason": "quantile-only thresholds are not frozen; PB30 fixed base/addon modules are replayed instead"
+      },
+      {
+        "path": "configs/live/rex_taker_low_range_position_research_candidate.json",
+        "reason": "deduplicated alias; productionized frozen shadow contract is replayed"
+      },
+      {
+        "path": "research/pools/alphas/markov_persistent_funding_premium_long_20260712.json",
+        "reason": "deduplicated research record; the productionized frozen Markov shadow contract is replayed"
+      }
+    ],
+    "unaccounted_atomic_files": [],
+    "replayed_variant_notes": [
+      {
+        "name": "oi_divergence_highfreq_selector",
+        "note": "bounded frozen symbolic selector proxy; cannot create entries"
+      },
+      {
+        "name": "legacy_rex_dual_regime_auto",
+        "note": "code-frozen legacy expanding-quantile policy"
+      },
+      {
+        "name": "legacy_rex_dual_regime_short",
+        "note": "short-only projection of the code-frozen legacy policy"
+      }
+    ]
+  },
+  "data_quality": {
+    "loaded_market_rows_before_asof_cap": 29999,
+    "loaded_funding_rows_before_asof_cap": 7478,
+    "asof_cap": {
+      "asof": "2026-07-27 15:03:00+00:00",
+      "completed_end_exclusive": "2026-07-27 15:00:00+00:00",
+      "market_rows_discarded_after_asof": 0,
+      "funding_rows_discarded_after_asof": 0
+    },
+    "market_rows_with_warmup": 29999,
+    "market_start": "2026-04-14 11:05:00",
+    "market_end": "2026-07-27 14:55:00",
+    "feature_columns": 161,
+    "availability": {
+      "open_interest_available": {
+        "available_bars": 7662,
+        "coverage_pct": 99.92175273865415
+      },
+      "funding_available": {
+        "available_bars": 7668,
+        "coverage_pct": 100.0
+      },
+      "premium_available": {
+        "available_bars": 7668,
+        "coverage_pct": 100.0
+      },
+      "usdkrw_available": {
+        "available_bars": 5232,
+        "coverage_pct": 68.23161189358372
+      },
+      "dxy_available": {
+        "available_bars": 5372,
+        "coverage_pct": 70.05738132498695
+      },
+      "kimchi_available": {
+        "available_bars": 5232,
+        "coverage_pct": 68.23161189358372
+      }
+    },
+    "alt_pool_coverage_pct": 100.0,
+    "upbit_volume_coverage_pct": 68.23161189358372,
+    "window_market_hash": "d4dcd50aeabe600eb8a1bb37f5348e019ebc1c469db074ae11c3176bb88f70e2"
+  },
+  "activity_flow_frozen_fit": {
+    "fit_window": "2020-01-01/2024-01-01",
+    "fit_rows": 420768,
+    "history_path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+    "score_stats": {
+      "variant": "activity_flow_htf",
+      "components": [
+        {
+          "feature": "quote_vol_rel_1d_30d",
+          "weight": 1.0,
+          "mean": -0.06163261618784641,
+          "std": 0.4366270761183531
+        },
+        {
+          "feature": "quote_vol_z_1d",
+          "weight": 0.75,
+          "mean": -0.010860055618598097,
+          "std": 1.0468278520980367
+        },
+        {
+          "feature": "dollar_flow_rel_4h_30d",
+          "weight": 1.0,
+          "mean": -0.16559672553580518,
+          "std": 0.6210926023176995
+        },
+        {
+          "feature": "taker_imbalance",
+          "weight": 0.5,
+          "mean": -0.003431480971788264,
+          "std": 0.21664196303159597
+        },
+        {
+          "feature": "bear_pressure",
+          "weight": -0.75,
+          "mean": 0.05604609525989878,
+          "std": 0.09304556137462995
+        }
+      ]
+    },
+    "train_quantiles": {
+      "q40": -0.13971813639480224,
+      "q50": -0.014518217778270642
+    },
+    "frozen_thresholds": {
+      "q50": -0.014521571823090329,
+      "q40": -0.13969842891406745
+    },
+    "threshold_drift": {
+      "q50": 3.354044819686708e-06,
+      "q40": -1.9707480734793004e-05
+    }
+  },
+  "metrics": {
+    "pb30_base": {
+      "absolute_return_pct": 0.0,
+      "cagr_pct": 0.0,
+      "strict_mdd_pct": 0.0,
+      "cagr_to_strict_mdd": 0.0,
+      "return_to_strict_mdd": 0.0,
+      "trades": 0,
+      "longs": 0,
+      "shorts": 0,
+      "win_rate": 0.0,
+      "active_bars": 0,
+      "final_equity": 1.0,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "pb30_base": 0
+      }
+    },
+    "pb30_addon": {
+      "absolute_return_pct": 0.02889848506264503,
+      "cagr_pct": 0.3971677301341403,
+      "strict_mdd_pct": 1.3297840656665838,
+      "cagr_to_strict_mdd": 0.29867084467962185,
+      "return_to_strict_mdd": 0.021731712545494386,
+      "trades": 3,
+      "longs": 3,
+      "shorts": 0,
+      "win_rate": 0.6666666666666666,
+      "active_bars": 219,
+      "final_equity": 1.0002889848506265,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "pb30_addon": 3
+      }
+    },
+    "nonpb30_taker": {
+      "absolute_return_pct": 0.4916200613083843,
+      "cagr_pct": 6.9591420520126235,
+      "strict_mdd_pct": 0.9479522792008588,
+      "cagr_to_strict_mdd": 7.341236689550774,
+      "return_to_strict_mdd": 0.518612668691328,
+      "trades": 3,
+      "longs": 3,
+      "shorts": 0,
+      "win_rate": 0.6666666666666666,
+      "active_bars": 219,
+      "final_equity": 1.0049162006130838,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "nonpb30_taker": 3
+      }
+    },
+    "oi_divergence_pullback": {
+      "absolute_return_pct": 2.897102820658559,
+      "cagr_pct": 47.962006613635744,
+      "strict_mdd_pct": 1.283167911582217,
+      "cagr_to_strict_mdd": 37.37781016865979,
+      "return_to_strict_mdd": 2.257773744580529,
+      "trades": 4,
+      "longs": 4,
+      "shorts": 0,
+      "win_rate": 0.75,
+      "active_bars": 388,
+      "final_equity": 1.0289710282065856,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "oi_divergence_pullback": 4
+      }
+    },
+    "oi_divergence_highfreq": {
+      "absolute_return_pct": 0.7207262067877362,
+      "cagr_pct": 10.353301067408637,
+      "strict_mdd_pct": 1.2267692850988943,
+      "cagr_to_strict_mdd": 8.439485071208006,
+      "return_to_strict_mdd": 0.5874993900989589,
+      "trades": 12,
+      "longs": 12,
+      "shorts": 0,
+      "win_rate": 0.5,
+      "active_bars": 372,
+      "final_equity": 1.0072072620678774,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "oi_divergence_highfreq": 12
+      }
+    },
+    "oi_divergence_highfreq_selector": {
+      "absolute_return_pct": 0.7207262067877362,
+      "cagr_pct": 10.353301067408637,
+      "strict_mdd_pct": 1.2267692850988943,
+      "cagr_to_strict_mdd": 8.439485071208006,
+      "return_to_strict_mdd": 0.5874993900989589,
+      "trades": 12,
+      "longs": 12,
+      "shorts": 0,
+      "win_rate": 0.5,
+      "active_bars": 372,
+      "final_equity": 1.0072072620678774,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "oi_divergence_highfreq_selector": 12
+      }
+    },
+    "oi_upbit_ratio288_low": {
+      "absolute_return_pct": 0.44074668566320696,
+      "cagr_pct": 6.218716118673662,
+      "strict_mdd_pct": 0.6172622726702048,
+      "cagr_to_strict_mdd": 10.074673917413126,
+      "return_to_strict_mdd": 0.714034706441053,
+      "trades": 4,
+      "longs": 4,
+      "shorts": 0,
+      "win_rate": 0.5,
+      "active_bars": 124,
+      "final_equity": 1.004407466856632,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "oi_upbit_ratio288_low": 4
+      }
+    },
+    "oi_alt_ratio72_dynamic_exit": {
+      "absolute_return_pct": 1.46260475902098,
+      "cagr_pct": 22.04156360251519,
+      "strict_mdd_pct": 1.4509711386045288,
+      "cagr_to_strict_mdd": 15.190904226884664,
+      "return_to_strict_mdd": 1.0080178165553588,
+      "trades": 2,
+      "longs": 2,
+      "shorts": 0,
+      "win_rate": 0.5,
+      "active_bars": 123,
+      "final_equity": 1.0146260475902098,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "oi_alt_ratio72_dynamic_exit": 2
+      }
+    },
+    "short_kimchi3d": {
+      "absolute_return_pct": 0.0,
+      "cagr_pct": 0.0,
+      "strict_mdd_pct": 0.0,
+      "cagr_to_strict_mdd": 0.0,
+      "return_to_strict_mdd": 0.0,
+      "trades": 0,
+      "longs": 0,
+      "shorts": 0,
+      "win_rate": 0.0,
+      "active_bars": 0,
+      "final_equity": 1.0,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "short_kimchi3d": 0
+      }
+    },
+    "short_premium_panic": {
+      "absolute_return_pct": 0.0,
+      "cagr_pct": 0.0,
+      "strict_mdd_pct": 0.0,
+      "cagr_to_strict_mdd": 0.0,
+      "return_to_strict_mdd": 0.0,
+      "trades": 0,
+      "longs": 0,
+      "shorts": 0,
+      "win_rate": 0.0,
+      "active_bars": 0,
+      "final_equity": 1.0,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "short_premium_panic": 0
+      }
+    },
+    "new_long_minimal_funding_premium": {
+      "absolute_return_pct": 0.0,
+      "cagr_pct": 0.0,
+      "strict_mdd_pct": 0.0,
+      "cagr_to_strict_mdd": 0.0,
+      "return_to_strict_mdd": 0.0,
+      "trades": 0,
+      "longs": 0,
+      "shorts": 0,
+      "win_rate": 0.0,
+      "active_bars": 0,
+      "final_equity": 1.0,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "new_long_minimal_funding_premium": 0
+      }
+    },
+    "funding_premium_lr_impact_central": {
+      "absolute_return_pct": 0.0,
+      "cagr_pct": 0.0,
+      "strict_mdd_pct": 0.0,
+      "cagr_to_strict_mdd": 0.0,
+      "return_to_strict_mdd": 0.0,
+      "trades": 0,
+      "longs": 0,
+      "shorts": 0,
+      "win_rate": 0.0,
+      "active_bars": 0,
+      "final_equity": 1.0,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "funding_premium_lr_impact_central": 0
+      }
+    },
+    "calendar_oi_funding_friday_asia_long": {
+      "absolute_return_pct": -1.5016583013508056,
+      "cagr_pct": -18.74391894035028,
+      "strict_mdd_pct": 3.2239347659603568,
+      "cagr_to_strict_mdd": -5.813988278626592,
+      "return_to_strict_mdd": -0.46578433199267494,
+      "trades": 3,
+      "longs": 3,
+      "shorts": 0,
+      "win_rate": 0.3333333333333333,
+      "active_bars": 435,
+      "final_equity": 0.9849834169864919,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "calendar_oi_funding_friday_asia_long": 3
+      }
+    },
+    "kalman_funding_premium_long": {
+      "absolute_return_pct": 0.0,
+      "cagr_pct": 0.0,
+      "strict_mdd_pct": 0.0,
+      "cagr_to_strict_mdd": 0.0,
+      "return_to_strict_mdd": 0.0,
+      "trades": 0,
+      "longs": 0,
+      "shorts": 0,
+      "win_rate": 0.0,
+      "active_bars": 0,
+      "final_equity": 1.0,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "kalman_funding_premium_long": 0
+      }
+    },
+    "bocpd_funding_premium_long": {
+      "absolute_return_pct": 0.0,
+      "cagr_pct": 0.0,
+      "strict_mdd_pct": 0.0,
+      "cagr_to_strict_mdd": 0.0,
+      "return_to_strict_mdd": 0.0,
+      "trades": 0,
+      "longs": 0,
+      "shorts": 0,
+      "win_rate": 0.0,
+      "active_bars": 0,
+      "final_equity": 1.0,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "bocpd_funding_premium_long": 0
+      }
+    },
+    "semimarkov_funding_premium_long": {
+      "absolute_return_pct": 0.0,
+      "cagr_pct": 0.0,
+      "strict_mdd_pct": 0.0,
+      "cagr_to_strict_mdd": 0.0,
+      "return_to_strict_mdd": 0.0,
+      "trades": 0,
+      "longs": 0,
+      "shorts": 0,
+      "win_rate": 0.0,
+      "active_bars": 0,
+      "final_equity": 1.0,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "semimarkov_funding_premium_long": 0
+      }
+    },
+    "rex_htf_range_veto": {
+      "absolute_return_pct": 0.0,
+      "cagr_pct": 0.0,
+      "strict_mdd_pct": 0.0,
+      "cagr_to_strict_mdd": 0.0,
+      "return_to_strict_mdd": 0.0,
+      "trades": 0,
+      "longs": 0,
+      "shorts": 0,
+      "win_rate": 0.0,
+      "active_bars": 0,
+      "final_equity": 1.0,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "rex_htf_range_veto": 0
+      }
+    },
+    "legacy_rex_dual_regime_auto": {
+      "absolute_return_pct": -0.4629916158345959,
+      "cagr_pct": -6.167800777924748,
+      "strict_mdd_pct": 3.5432571146678082,
+      "cagr_to_strict_mdd": -1.740714991410664,
+      "return_to_strict_mdd": -0.1306683655323734,
+      "trades": 14,
+      "longs": 2,
+      "shorts": 12,
+      "win_rate": 0.5714285714285714,
+      "active_bars": 2030,
+      "final_equity": 0.995370083841654,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "legacy_rex_dual_regime_auto": 14
+      }
+    },
+    "legacy_rex_dual_regime_short": {
+      "absolute_return_pct": -1.7109452378409662,
+      "cagr_pct": -21.08066044804958,
+      "strict_mdd_pct": 3.5432571146678082,
+      "cagr_to_strict_mdd": -5.949514744719834,
+      "return_to_strict_mdd": -0.4828735771836227,
+      "trades": 12,
+      "longs": 0,
+      "shorts": 12,
+      "win_rate": 0.5,
+      "active_bars": 1740,
+      "final_equity": 0.9828905476215903,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "legacy_rex_dual_regime_short": 12
+      }
+    },
+    "fresh_kimchi_fx": {
+      "absolute_return_pct": 0.0,
+      "cagr_pct": 0.0,
+      "strict_mdd_pct": 0.0,
+      "cagr_to_strict_mdd": 0.0,
+      "return_to_strict_mdd": 0.0,
+      "trades": 0,
+      "longs": 0,
+      "shorts": 0,
+      "win_rate": 0.0,
+      "active_bars": 0,
+      "final_equity": 1.0,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "fresh_kimchi_fx": 0
+      }
+    },
+    "frozen_annual_rank7": {
+      "absolute_return_pct": 0.0,
+      "cagr_pct": 0.0,
+      "strict_mdd_pct": 0.0,
+      "cagr_to_strict_mdd": 0.0,
+      "return_to_strict_mdd": 0.0,
+      "trades": 0,
+      "longs": 0,
+      "shorts": 0,
+      "win_rate": 0.0,
+      "active_bars": 0,
+      "final_equity": 1.0,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "frozen_annual_rank7": 0
+      }
+    },
+    "rex_taker_low_range_position": {
+      "absolute_return_pct": -1.0433422260152314,
+      "cagr_pct": -13.400904596370577,
+      "strict_mdd_pct": 1.5741346381806909,
+      "cagr_to_strict_mdd": -8.513188307614334,
+      "return_to_strict_mdd": -0.6628036768322919,
+      "trades": 5,
+      "longs": 0,
+      "shorts": 5,
+      "win_rate": 0.2,
+      "active_bars": 725,
+      "final_equity": 0.9895665777398477,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "rex_taker_low_range_position": 5
+      }
+    },
+    "cand_rex_veto_7": {
+      "absolute_return_pct": -0.389679164829726,
+      "cagr_pct": -5.215265941278046,
+      "strict_mdd_pct": 1.276857260787656,
+      "cagr_to_strict_mdd": -4.084454935911083,
+      "return_to_strict_mdd": -0.3051861604243408,
+      "trades": 1,
+      "longs": 0,
+      "shorts": 1,
+      "win_rate": 0.0,
+      "active_bars": 145,
+      "final_equity": 0.9961032083517027,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "cand_rex_veto_7": 1
+      }
+    },
+    "markov_transition_long": {
+      "absolute_return_pct": 0.0,
+      "cagr_pct": 0.0,
+      "strict_mdd_pct": 0.0,
+      "cagr_to_strict_mdd": 0.0,
+      "return_to_strict_mdd": 0.0,
+      "trades": 0,
+      "longs": 0,
+      "shorts": 0,
+      "win_rate": 0.0,
+      "active_bars": 0,
+      "final_equity": 1.0,
+      "calendar_days": 26.625,
+      "trades_by_sleeve": {
+        "markov_transition_long": 0
+      }
+    }
+  },
+  "promoted_gross8": {
+    "absolute_return_pct": -1.0403933929998055,
+    "cagr_pct": -13.3654965940591,
+    "strict_mdd_pct": 2.0359030824293245,
+    "cagr_to_strict_mdd": -6.564898255427185,
+    "return_to_strict_mdd": -0.5110230452416058,
+    "trades": 6,
+    "longs": 0,
+    "shorts": 6,
+    "win_rate": 0.16666666666666666,
+    "active_bars": 870,
+    "final_equity": 0.989596066070002,
+    "calendar_days": 26.625,
+    "trades_by_sleeve": {
+      "fresh_kimchi_fx": 0,
+      "frozen_annual_rank7": 0,
+      "rex_taker_low_range_position": 5,
+      "cand_rex_veto_7": 1,
+      "markov_transition_long": 0
+    }
+  },
+  "promoted_weights": {
+    "fresh_kimchi_fx": 2.0,
+    "frozen_annual_rank7": 2.0,
+    "rex_taker_low_range_position": 0.4,
+    "cand_rex_veto_7": 1.6,
+    "markov_transition_long": 2.0
+  },
+  "signal_diagnostics": {
+    "pb30_base": {
+      "raw": 0,
+      "raw_longs": 0,
+      "raw_shorts": 0,
+      "accepted_trades": 0,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    },
+    "pb30_addon": {
+      "raw": 7,
+      "raw_longs": 7,
+      "raw_shorts": 0,
+      "accepted_trades": 3,
+      "skipped_overlap": 4,
+      "skipped_boundary": 0
+    },
+    "nonpb30_taker": {
+      "raw": 3,
+      "raw_longs": 3,
+      "raw_shorts": 0,
+      "accepted_trades": 3,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    },
+    "oi_divergence_pullback": {
+      "raw": 5,
+      "raw_longs": 5,
+      "raw_shorts": 0,
+      "accepted_trades": 4,
+      "skipped_overlap": 1,
+      "skipped_boundary": 0
+    },
+    "oi_divergence_highfreq": {
+      "raw": 21,
+      "raw_longs": 21,
+      "raw_shorts": 0,
+      "accepted_trades": 12,
+      "skipped_overlap": 9,
+      "skipped_boundary": 0
+    },
+    "oi_divergence_highfreq_selector": {
+      "raw": 21,
+      "raw_longs": 21,
+      "raw_shorts": 0,
+      "accepted_trades": 12,
+      "skipped_overlap": 9,
+      "skipped_boundary": 0
+    },
+    "oi_upbit_ratio288_low": {
+      "raw": 5,
+      "raw_longs": 5,
+      "raw_shorts": 0,
+      "accepted_trades": 4,
+      "skipped_overlap": 1,
+      "skipped_boundary": 0
+    },
+    "oi_alt_ratio72_dynamic_exit": {
+      "raw": 2,
+      "raw_longs": 2,
+      "raw_shorts": 0,
+      "accepted_trades": 2,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    },
+    "short_kimchi3d": {
+      "raw": 0,
+      "raw_longs": 0,
+      "raw_shorts": 0,
+      "accepted_trades": 0,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    },
+    "short_premium_panic": {
+      "raw": 0,
+      "raw_longs": 0,
+      "raw_shorts": 0,
+      "accepted_trades": 0,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    },
+    "new_long_minimal_funding_premium": {
+      "raw": 0,
+      "raw_longs": 0,
+      "raw_shorts": 0,
+      "accepted_trades": 0,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    },
+    "funding_premium_lr_impact_central": {
+      "raw": 0,
+      "raw_longs": 0,
+      "raw_shorts": 0,
+      "accepted_trades": 0,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    },
+    "calendar_oi_funding_friday_asia_long": {
+      "raw": 3,
+      "raw_longs": 3,
+      "raw_shorts": 0,
+      "accepted_trades": 3,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    },
+    "kalman_funding_premium_long": {
+      "raw": 0,
+      "raw_longs": 0,
+      "raw_shorts": 0,
+      "accepted_trades": 0,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    },
+    "bocpd_funding_premium_long": {
+      "raw": 0,
+      "raw_longs": 0,
+      "raw_shorts": 0,
+      "accepted_trades": 0,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    },
+    "semimarkov_funding_premium_long": {
+      "raw": 0,
+      "raw_longs": 0,
+      "raw_shorts": 0,
+      "accepted_trades": 0,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    },
+    "legacy_rex_dual_regime_auto": {
+      "raw": 339,
+      "raw_longs": 16,
+      "raw_shorts": 323,
+      "accepted_trades": 14,
+      "skipped_overlap": 325,
+      "skipped_boundary": 0
+    },
+    "legacy_rex_dual_regime_short": {
+      "raw": 323,
+      "raw_longs": 0,
+      "raw_shorts": 323,
+      "accepted_trades": 12,
+      "skipped_overlap": 311,
+      "skipped_boundary": 0
+    },
+    "fresh_kimchi_fx": {
+      "raw": 0,
+      "raw_longs": 0,
+      "raw_shorts": 0,
+      "accepted_trades": 0,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    },
+    "frozen_annual_rank7": {
+      "raw": 0,
+      "raw_longs": 0,
+      "raw_shorts": 0,
+      "accepted_trades": 0,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    },
+    "rex_taker_low_range_position": {
+      "raw": 6,
+      "raw_longs": 0,
+      "raw_shorts": 6,
+      "accepted_trades": 5,
+      "skipped_overlap": 1,
+      "skipped_boundary": 0
+    },
+    "cand_rex_veto_7": {
+      "raw": 1,
+      "raw_longs": 0,
+      "raw_shorts": 1,
+      "accepted_trades": 1,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    },
+    "markov_transition_long": {
+      "raw": 0,
+      "raw_longs": 0,
+      "raw_shorts": 0,
+      "accepted_trades": 0,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    },
+    "rex_htf_range_veto": {
+      "raw": 0,
+      "raw_longs": 0,
+      "raw_shorts": 0,
+      "accepted_trades": 0,
+      "skipped_overlap": 0,
+      "skipped_boundary": 0
+    }
+  },
+  "duplicate_groups": {
+    "exact_signal": [
+      [
+        "oi_divergence_highfreq",
+        "oi_divergence_highfreq_selector"
+      ]
+    ],
+    "exact_path": [
+      [
+        "oi_divergence_highfreq",
+        "oi_divergence_highfreq_selector"
+      ]
+    ],
+    "zero_signal": [
+      "bocpd_funding_premium_long",
+      "fresh_kimchi_fx",
+      "frozen_annual_rank7",
+      "funding_premium_lr_impact_central",
+      "kalman_funding_premium_long",
+      "markov_transition_long",
+      "new_long_minimal_funding_premium",
+      "pb30_base",
+      "rex_htf_range_veto",
+      "semimarkov_funding_premium_long",
+      "short_kimchi3d",
+      "short_premium_panic"
+    ],
+    "zero_path": [
+      "bocpd_funding_premium_long",
+      "fresh_kimchi_fx",
+      "frozen_annual_rank7",
+      "funding_premium_lr_impact_central",
+      "kalman_funding_premium_long",
+      "markov_transition_long",
+      "new_long_minimal_funding_premium",
+      "pb30_base",
+      "rex_htf_range_veto",
+      "semimarkov_funding_premium_long",
+      "short_kimchi3d",
+      "short_premium_panic"
+    ]
+  },
+  "rank7_diagnostics": {
+    "candidate_anchors": 23,
+    "raw_active": 5,
+    "blocked_runtime_source": 0,
+    "bundle_manifest_hash": "06211697e4717f15db2c796da606c3785bfc25cac8ffa417fb3274063cb6ac8d",
+    "model_version": "rank7-annual-2026-v1"
+  },
+  "funding_lr_diagnostics": {
+    "manifest_rank": 8,
+    "spec": {
+      "feature": "lr_impact_72",
+      "tail": 0.3,
+      "lower": -0.20030301257467914,
+      "upper": 0.24664964484849766,
+      "gate_mode": "central",
+      "target_component": "funding"
+    },
+    "manifest_sha256": "65cf6eabc836bf2d9ca8dcd2b1b5ef88114c98c2b05935aa3ae2045340ecdfd5"
+  },
+  "legacy_rex_availability_sensitivity": {
+    "legacy_rex_dual_regime_auto": {
+      "weekend_fallback_signal_rows": 0,
+      "strict_fail_closed_metric": {
+        "absolute_return_pct": -0.4629916158345959,
+        "cagr_pct": -6.167800777924748,
+        "strict_mdd_pct": 3.5432571146678082,
+        "cagr_to_strict_mdd": -1.740714991410664,
+        "return_to_strict_mdd": -0.1306683655323734,
+        "trades": 14,
+        "longs": 2,
+        "shorts": 12,
+        "win_rate": 0.5714285714285714,
+        "active_bars": 2030,
+        "final_equity": 0.995370083841654,
+        "calendar_days": 26.625,
+        "trades_by_sleeve": {
+          "legacy_rex_dual_regime_auto": 14
+        }
+      }
+    },
+    "legacy_rex_dual_regime_short": {
+      "weekend_fallback_signal_rows": 0,
+      "strict_fail_closed_metric": {
+        "absolute_return_pct": -1.7109452378409662,
+        "cagr_pct": -21.08066044804958,
+        "strict_mdd_pct": 3.5432571146678082,
+        "cagr_to_strict_mdd": -5.949514744719834,
+        "return_to_strict_mdd": -0.4828735771836227,
+        "trades": 12,
+        "longs": 0,
+        "shorts": 12,
+        "win_rate": 0.5,
+        "active_bars": 1740,
+        "final_equity": 0.9828905476215903,
+        "calendar_days": 26.625,
+        "trades_by_sleeve": {
+          "legacy_rex_dual_regime_short": 12
+        }
+      }
+    }
+  },
+  "trades": {
+    "pb30_base": [],
+    "pb30_addon": [
+      {
+        "sleeve": "pb30_addon",
+        "signal_date": "2026-07-01 03:55:00",
+        "entry_date": "2026-07-01 04:00:00",
+        "exit_date": "2026-07-01 10:00:00",
+        "side": "LONG",
+        "net_return": -0.0026902470606593454,
+        "source": null
+      },
+      {
+        "sleeve": "pb30_addon",
+        "signal_date": "2026-07-01 14:25:00",
+        "entry_date": "2026-07-01 14:30:00",
+        "exit_date": "2026-07-01 20:30:00",
+        "side": "LONG",
+        "net_return": 0.0010242594392080306,
+        "source": null
+      },
+      {
+        "sleeve": "pb30_addon",
+        "signal_date": "2026-07-01 22:25:00",
+        "entry_date": "2026-07-01 22:30:00",
+        "exit_date": "2026-07-02 04:30:00",
+        "side": "LONG",
+        "net_return": 0.001961000388954748,
+        "source": null
+      }
+    ],
+    "nonpb30_taker": [
+      {
+        "sleeve": "nonpb30_taker",
+        "signal_date": "2026-07-01 23:55:00",
+        "entry_date": "2026-07-02 00:00:00",
+        "exit_date": "2026-07-02 06:00:00",
+        "side": "LONG",
+        "net_return": 0.0034072697731228896,
+        "source": null
+      },
+      {
+        "sleeve": "nonpb30_taker",
+        "signal_date": "2026-07-02 09:55:00",
+        "entry_date": "2026-07-02 10:00:00",
+        "exit_date": "2026-07-02 16:00:00",
+        "side": "LONG",
+        "net_return": 0.002882388465794472,
+        "source": null
+      },
+      {
+        "sleeve": "nonpb30_taker",
+        "signal_date": "2026-07-14 23:55:00",
+        "entry_date": "2026-07-15 00:00:00",
+        "exit_date": "2026-07-15 06:00:00",
+        "side": "LONG",
+        "net_return": -0.0013746193149871688,
+        "source": null
+      }
+    ],
+    "oi_divergence_pullback": [
+      {
+        "sleeve": "oi_divergence_pullback",
+        "signal_date": "2026-07-02 07:25:00",
+        "entry_date": "2026-07-02 07:30:00",
+        "exit_date": "2026-07-02 15:30:00",
+        "side": "LONG",
+        "net_return": 0.012197876717073175,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_pullback",
+        "signal_date": "2026-07-02 16:25:00",
+        "entry_date": "2026-07-02 16:30:00",
+        "exit_date": "2026-07-03 00:30:00",
+        "side": "LONG",
+        "net_return": 0.000333099733022868,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_pullback",
+        "signal_date": "2026-07-06 13:25:00",
+        "entry_date": "2026-07-06 13:30:00",
+        "exit_date": "2026-07-06 21:30:00",
+        "side": "LONG",
+        "net_return": 0.021645154096083807,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_pullback",
+        "signal_date": "2026-07-07 01:55:00",
+        "entry_date": "2026-07-07 02:00:00",
+        "exit_date": "2026-07-07 10:00:00",
+        "side": "LONG",
+        "net_return": -0.005297965370462565,
+        "source": null
+      }
+    ],
+    "oi_divergence_highfreq": [
+      {
+        "sleeve": "oi_divergence_highfreq",
+        "signal_date": "2026-07-01 19:25:00",
+        "entry_date": "2026-07-01 19:30:00",
+        "exit_date": "2026-07-01 22:00:00",
+        "side": "LONG",
+        "net_return": 0.004957071629693166,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq",
+        "signal_date": "2026-07-02 00:25:00",
+        "entry_date": "2026-07-02 00:30:00",
+        "exit_date": "2026-07-02 03:00:00",
+        "side": "LONG",
+        "net_return": 0.004741160094110741,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq",
+        "signal_date": "2026-07-02 05:55:00",
+        "entry_date": "2026-07-02 06:00:00",
+        "exit_date": "2026-07-02 08:30:00",
+        "side": "LONG",
+        "net_return": -0.0018359444996326468,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq",
+        "signal_date": "2026-07-02 16:25:00",
+        "entry_date": "2026-07-02 16:30:00",
+        "exit_date": "2026-07-02 19:00:00",
+        "side": "LONG",
+        "net_return": 0.004004040223466676,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq",
+        "signal_date": "2026-07-02 19:55:00",
+        "entry_date": "2026-07-02 20:00:00",
+        "exit_date": "2026-07-02 22:30:00",
+        "side": "LONG",
+        "net_return": -0.00019228478862143294,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq",
+        "signal_date": "2026-07-06 12:55:00",
+        "entry_date": "2026-07-06 13:00:00",
+        "exit_date": "2026-07-06 15:30:00",
+        "side": "LONG",
+        "net_return": 0.005015867312661015,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq",
+        "signal_date": "2026-07-07 01:25:00",
+        "entry_date": "2026-07-07 01:30:00",
+        "exit_date": "2026-07-07 04:00:00",
+        "side": "LONG",
+        "net_return": -0.006556676031288622,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq",
+        "signal_date": "2026-07-08 08:55:00",
+        "entry_date": "2026-07-08 09:00:00",
+        "exit_date": "2026-07-08 11:30:00",
+        "side": "LONG",
+        "net_return": 0.0002651980864467607,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq",
+        "signal_date": "2026-07-13 18:25:00",
+        "entry_date": "2026-07-13 18:30:00",
+        "exit_date": "2026-07-13 21:00:00",
+        "side": "LONG",
+        "net_return": 0.0012401818320755265,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq",
+        "signal_date": "2026-07-15 00:25:00",
+        "entry_date": "2026-07-15 00:30:00",
+        "exit_date": "2026-07-15 03:00:00",
+        "side": "LONG",
+        "net_return": -0.003352479364056804,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq",
+        "signal_date": "2026-07-15 06:55:00",
+        "entry_date": "2026-07-15 07:00:00",
+        "exit_date": "2026-07-15 09:30:00",
+        "side": "LONG",
+        "net_return": -0.0005284177617208563,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq",
+        "signal_date": "2026-07-15 09:55:00",
+        "entry_date": "2026-07-15 10:00:00",
+        "exit_date": "2026-07-15 12:30:00",
+        "side": "LONG",
+        "net_return": -0.0005023238472532388,
+        "source": null
+      }
+    ],
+    "oi_divergence_highfreq_selector": [
+      {
+        "sleeve": "oi_divergence_highfreq_selector",
+        "signal_date": "2026-07-01 19:25:00",
+        "entry_date": "2026-07-01 19:30:00",
+        "exit_date": "2026-07-01 22:00:00",
+        "side": "LONG",
+        "net_return": 0.004957071629693166,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq_selector",
+        "signal_date": "2026-07-02 00:25:00",
+        "entry_date": "2026-07-02 00:30:00",
+        "exit_date": "2026-07-02 03:00:00",
+        "side": "LONG",
+        "net_return": 0.004741160094110741,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq_selector",
+        "signal_date": "2026-07-02 05:55:00",
+        "entry_date": "2026-07-02 06:00:00",
+        "exit_date": "2026-07-02 08:30:00",
+        "side": "LONG",
+        "net_return": -0.0018359444996326468,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq_selector",
+        "signal_date": "2026-07-02 16:25:00",
+        "entry_date": "2026-07-02 16:30:00",
+        "exit_date": "2026-07-02 19:00:00",
+        "side": "LONG",
+        "net_return": 0.004004040223466676,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq_selector",
+        "signal_date": "2026-07-02 19:55:00",
+        "entry_date": "2026-07-02 20:00:00",
+        "exit_date": "2026-07-02 22:30:00",
+        "side": "LONG",
+        "net_return": -0.00019228478862143294,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq_selector",
+        "signal_date": "2026-07-06 12:55:00",
+        "entry_date": "2026-07-06 13:00:00",
+        "exit_date": "2026-07-06 15:30:00",
+        "side": "LONG",
+        "net_return": 0.005015867312661015,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq_selector",
+        "signal_date": "2026-07-07 01:25:00",
+        "entry_date": "2026-07-07 01:30:00",
+        "exit_date": "2026-07-07 04:00:00",
+        "side": "LONG",
+        "net_return": -0.006556676031288622,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq_selector",
+        "signal_date": "2026-07-08 08:55:00",
+        "entry_date": "2026-07-08 09:00:00",
+        "exit_date": "2026-07-08 11:30:00",
+        "side": "LONG",
+        "net_return": 0.0002651980864467607,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq_selector",
+        "signal_date": "2026-07-13 18:25:00",
+        "entry_date": "2026-07-13 18:30:00",
+        "exit_date": "2026-07-13 21:00:00",
+        "side": "LONG",
+        "net_return": 0.0012401818320755265,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq_selector",
+        "signal_date": "2026-07-15 00:25:00",
+        "entry_date": "2026-07-15 00:30:00",
+        "exit_date": "2026-07-15 03:00:00",
+        "side": "LONG",
+        "net_return": -0.003352479364056804,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq_selector",
+        "signal_date": "2026-07-15 06:55:00",
+        "entry_date": "2026-07-15 07:00:00",
+        "exit_date": "2026-07-15 09:30:00",
+        "side": "LONG",
+        "net_return": -0.0005284177617208563,
+        "source": null
+      },
+      {
+        "sleeve": "oi_divergence_highfreq_selector",
+        "signal_date": "2026-07-15 09:55:00",
+        "entry_date": "2026-07-15 10:00:00",
+        "exit_date": "2026-07-15 12:30:00",
+        "side": "LONG",
+        "net_return": -0.0005023238472532388,
+        "source": null
+      }
+    ],
+    "oi_upbit_ratio288_low": [
+      {
+        "sleeve": "oi_upbit_ratio288_low",
+        "signal_date": "2026-07-01 19:25:00",
+        "entry_date": "2026-07-01 19:30:00",
+        "exit_date": "2026-07-01 22:00:00",
+        "side": "LONG",
+        "net_return": 0.004957071629693166,
+        "source": null
+      },
+      {
+        "sleeve": "oi_upbit_ratio288_low",
+        "signal_date": "2026-07-02 16:25:00",
+        "entry_date": "2026-07-02 16:30:00",
+        "exit_date": "2026-07-02 19:00:00",
+        "side": "LONG",
+        "net_return": 0.004004040223466676,
+        "source": null
+      },
+      {
+        "sleeve": "oi_upbit_ratio288_low",
+        "signal_date": "2026-07-02 19:55:00",
+        "entry_date": "2026-07-02 20:00:00",
+        "exit_date": "2026-07-02 22:30:00",
+        "side": "LONG",
+        "net_return": -0.00019228478862143294,
+        "source": null
+      },
+      {
+        "sleeve": "oi_upbit_ratio288_low",
+        "signal_date": "2026-07-07 02:25:00",
+        "entry_date": "2026-07-07 02:30:00",
+        "exit_date": "2026-07-07 05:00:00",
+        "side": "LONG",
+        "net_return": -0.004341334537177,
+        "source": null
+      }
+    ],
+    "oi_alt_ratio72_dynamic_exit": [
+      {
+        "sleeve": "oi_alt_ratio72_dynamic_exit",
+        "signal_date": "2026-07-01 19:25:00",
+        "entry_date": "2026-07-01 19:30:00",
+        "exit_date": "2026-07-02 01:35:00",
+        "side": "LONG",
+        "net_return": -0.0006757756960023009,
+        "source": "dynamic_exit"
+      },
+      {
+        "sleeve": "oi_alt_ratio72_dynamic_exit",
+        "signal_date": "2026-07-06 12:55:00",
+        "entry_date": "2026-07-06 13:00:00",
+        "exit_date": "2026-07-06 17:00:00",
+        "side": "LONG",
+        "net_return": 0.015312170879144826,
+        "source": "dynamic_exit"
+      }
+    ],
+    "short_kimchi3d": [],
+    "short_premium_panic": [],
+    "new_long_minimal_funding_premium": [],
+    "funding_premium_lr_impact_central": [],
+    "calendar_oi_funding_friday_asia_long": [
+      {
+        "sleeve": "calendar_oi_funding_friday_asia_long",
+        "signal_date": "2026-07-02 00:55:00",
+        "entry_date": "2026-07-02 01:00:00",
+        "exit_date": "2026-07-02 13:00:00",
+        "side": "LONG",
+        "net_return": 0.014276286756616852,
+        "source": null
+      },
+      {
+        "sleeve": "calendar_oi_funding_friday_asia_long",
+        "signal_date": "2026-07-06 00:55:00",
+        "entry_date": "2026-07-06 01:00:00",
+        "exit_date": "2026-07-06 13:00:00",
+        "side": "LONG",
+        "net_return": -0.016329447005944075,
+        "source": null
+      },
+      {
+        "sleeve": "calendar_oi_funding_friday_asia_long",
+        "signal_date": "2026-07-08 00:55:00",
+        "entry_date": "2026-07-08 01:00:00",
+        "exit_date": "2026-07-08 13:00:00",
+        "side": "LONG",
+        "net_return": -0.012759470671287798,
+        "source": null
+      }
+    ],
+    "kalman_funding_premium_long": [],
+    "bocpd_funding_premium_long": [],
+    "semimarkov_funding_premium_long": [],
+    "rex_htf_range_veto": [],
+    "legacy_rex_dual_regime_auto": [
+      {
+        "sleeve": "legacy_rex_dual_regime_auto",
+        "signal_date": "2026-07-01 02:30:00",
+        "entry_date": "2026-07-01 02:35:00",
+        "exit_date": "2026-07-01 14:35:00",
+        "side": "SHORT",
+        "net_return": -0.006207566696066258,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_auto",
+        "signal_date": "2026-07-01 14:50:00",
+        "entry_date": "2026-07-01 14:55:00",
+        "exit_date": "2026-07-02 02:55:00",
+        "side": "SHORT",
+        "net_return": -0.006717090821115712,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_auto",
+        "signal_date": "2026-07-02 03:00:00",
+        "entry_date": "2026-07-02 03:05:00",
+        "exit_date": "2026-07-02 15:05:00",
+        "side": "SHORT",
+        "net_return": -0.010350792494931316,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_auto",
+        "signal_date": "2026-07-02 23:45:00",
+        "entry_date": "2026-07-02 23:50:00",
+        "exit_date": "2026-07-03 11:50:00",
+        "side": "SHORT",
+        "net_return": -0.00443957054913291,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_auto",
+        "signal_date": "2026-07-03 20:45:00",
+        "entry_date": "2026-07-03 20:50:00",
+        "exit_date": "2026-07-04 08:50:00",
+        "side": "SHORT",
+        "net_return": 0.0008511837033005065,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_auto",
+        "signal_date": "2026-07-06 00:15:00",
+        "entry_date": "2026-07-06 00:20:00",
+        "exit_date": "2026-07-06 12:20:00",
+        "side": "SHORT",
+        "net_return": 0.010655321659442274,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_auto",
+        "signal_date": "2026-07-06 15:50:00",
+        "entry_date": "2026-07-06 15:55:00",
+        "exit_date": "2026-07-07 03:55:00",
+        "side": "SHORT",
+        "net_return": 0.0017404524776714059,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_auto",
+        "signal_date": "2026-07-07 18:50:00",
+        "entry_date": "2026-07-07 18:55:00",
+        "exit_date": "2026-07-08 06:55:00",
+        "side": "SHORT",
+        "net_return": 0.008284257514934668,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_auto",
+        "signal_date": "2026-07-08 11:40:00",
+        "entry_date": "2026-07-08 11:45:00",
+        "exit_date": "2026-07-08 23:45:00",
+        "side": "SHORT",
+        "net_return": 0.00018673412531700073,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_auto",
+        "signal_date": "2026-07-09 08:20:00",
+        "entry_date": "2026-07-09 08:25:00",
+        "exit_date": "2026-07-09 20:25:00",
+        "side": "SHORT",
+        "net_return": -0.0022631707587486005,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_auto",
+        "signal_date": "2026-07-09 23:15:00",
+        "entry_date": "2026-07-09 23:20:00",
+        "exit_date": "2026-07-10 11:20:00",
+        "side": "SHORT",
+        "net_return": -0.010491912317484808,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_auto",
+        "signal_date": "2026-07-10 14:05:00",
+        "entry_date": "2026-07-10 14:10:00",
+        "exit_date": "2026-07-11 02:10:00",
+        "side": "SHORT",
+        "net_return": 0.0017523912302586098,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_auto",
+        "signal_date": "2026-07-13 23:45:00",
+        "entry_date": "2026-07-13 23:50:00",
+        "exit_date": "2026-07-14 11:50:00",
+        "side": "LONG",
+        "net_return": 0.004532050798617737,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_auto",
+        "signal_date": "2026-07-17 09:50:00",
+        "entry_date": "2026-07-17 09:55:00",
+        "exit_date": "2026-07-17 21:55:00",
+        "side": "LONG",
+        "net_return": 0.008127884236313943,
+        "source": null
+      }
+    ],
+    "legacy_rex_dual_regime_short": [
+      {
+        "sleeve": "legacy_rex_dual_regime_short",
+        "signal_date": "2026-07-01 02:30:00",
+        "entry_date": "2026-07-01 02:35:00",
+        "exit_date": "2026-07-01 14:35:00",
+        "side": "SHORT",
+        "net_return": -0.006207566696066258,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_short",
+        "signal_date": "2026-07-01 14:50:00",
+        "entry_date": "2026-07-01 14:55:00",
+        "exit_date": "2026-07-02 02:55:00",
+        "side": "SHORT",
+        "net_return": -0.006717090821115712,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_short",
+        "signal_date": "2026-07-02 03:00:00",
+        "entry_date": "2026-07-02 03:05:00",
+        "exit_date": "2026-07-02 15:05:00",
+        "side": "SHORT",
+        "net_return": -0.010350792494931316,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_short",
+        "signal_date": "2026-07-02 23:45:00",
+        "entry_date": "2026-07-02 23:50:00",
+        "exit_date": "2026-07-03 11:50:00",
+        "side": "SHORT",
+        "net_return": -0.00443957054913291,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_short",
+        "signal_date": "2026-07-03 20:45:00",
+        "entry_date": "2026-07-03 20:50:00",
+        "exit_date": "2026-07-04 08:50:00",
+        "side": "SHORT",
+        "net_return": 0.0008511837033005065,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_short",
+        "signal_date": "2026-07-06 00:15:00",
+        "entry_date": "2026-07-06 00:20:00",
+        "exit_date": "2026-07-06 12:20:00",
+        "side": "SHORT",
+        "net_return": 0.010655321659442274,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_short",
+        "signal_date": "2026-07-06 15:50:00",
+        "entry_date": "2026-07-06 15:55:00",
+        "exit_date": "2026-07-07 03:55:00",
+        "side": "SHORT",
+        "net_return": 0.0017404524776714059,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_short",
+        "signal_date": "2026-07-07 18:50:00",
+        "entry_date": "2026-07-07 18:55:00",
+        "exit_date": "2026-07-08 06:55:00",
+        "side": "SHORT",
+        "net_return": 0.008284257514934668,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_short",
+        "signal_date": "2026-07-08 11:40:00",
+        "entry_date": "2026-07-08 11:45:00",
+        "exit_date": "2026-07-08 23:45:00",
+        "side": "SHORT",
+        "net_return": 0.00018673412531700073,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_short",
+        "signal_date": "2026-07-09 08:20:00",
+        "entry_date": "2026-07-09 08:25:00",
+        "exit_date": "2026-07-09 20:25:00",
+        "side": "SHORT",
+        "net_return": -0.0022631707587486005,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_short",
+        "signal_date": "2026-07-09 23:15:00",
+        "entry_date": "2026-07-09 23:20:00",
+        "exit_date": "2026-07-10 11:20:00",
+        "side": "SHORT",
+        "net_return": -0.010491912317484808,
+        "source": null
+      },
+      {
+        "sleeve": "legacy_rex_dual_regime_short",
+        "signal_date": "2026-07-10 14:05:00",
+        "entry_date": "2026-07-10 14:10:00",
+        "exit_date": "2026-07-11 02:10:00",
+        "side": "SHORT",
+        "net_return": 0.0017523912302586098,
+        "source": null
+      }
+    ],
+    "fresh_kimchi_fx": [],
+    "frozen_annual_rank7": [],
+    "rex_taker_low_range_position": [
+      {
+        "sleeve": "rex_taker_low_range_position",
+        "signal_date": "2026-07-07 10:55:00",
+        "entry_date": "2026-07-07 11:00:00",
+        "exit_date": "2026-07-07 23:00:00",
+        "side": "SHORT",
+        "net_return": -0.0033372731320906457,
+        "source": null
+      },
+      {
+        "sleeve": "rex_taker_low_range_position",
+        "signal_date": "2026-07-09 08:55:00",
+        "entry_date": "2026-07-09 09:00:00",
+        "exit_date": "2026-07-09 21:00:00",
+        "side": "SHORT",
+        "net_return": -0.0033773931199454488,
+        "source": null
+      },
+      {
+        "sleeve": "rex_taker_low_range_position",
+        "signal_date": "2026-07-10 06:55:00",
+        "entry_date": "2026-07-10 07:00:00",
+        "exit_date": "2026-07-10 19:00:00",
+        "side": "SHORT",
+        "net_return": -0.0005097550131889506,
+        "source": null
+      },
+      {
+        "sleeve": "rex_taker_low_range_position",
+        "signal_date": "2026-07-10 20:55:00",
+        "entry_date": "2026-07-10 21:00:00",
+        "exit_date": "2026-07-11 09:00:00",
+        "side": "SHORT",
+        "net_return": -0.003820521762955442,
+        "source": null
+      },
+      {
+        "sleeve": "rex_taker_low_range_position",
+        "signal_date": "2026-07-11 16:55:00",
+        "entry_date": "2026-07-11 17:00:00",
+        "exit_date": "2026-07-12 05:00:00",
+        "side": "SHORT",
+        "net_return": 0.0005756208431426657,
+        "source": null
+      }
+    ],
+    "cand_rex_veto_7": [
+      {
+        "sleeve": "cand_rex_veto_7",
+        "signal_date": "2026-07-01 20:55:00",
+        "entry_date": "2026-07-01 21:00:00",
+        "exit_date": "2026-07-02 09:00:00",
+        "side": "SHORT",
+        "net_return": -0.0038967916482972598,
+        "source": null
+      }
+    ],
+    "markov_transition_long": []
+  },
+  "source_sha256": {
+    "configs/live/bullish_pb30_addon_returnz_htf1w_candidate.json": "8d177652f3275740b8a28a85cb13c78911bdccc3f73823b18245ecf26481d78f",
+    "configs/live/funding_premium_lr_impact_central_research_candidate.json": "0fea783743929f6e7b168f845261cc687d36cc0bd5692d6d8b7cbe09061e22e4",
+    "configs/live/new_long_minimal_funding_premium_candidate.json": "f0848c5fea1fcc7823ed15b6e4b865a8dc2731c2d2bfd2ba21b0f92c534f0f03",
+    "configs/live/nonpb30_taker_returnz_rangevol_htf4hrange_h72_candidate.json": "b9ee050b005a2e3152e9fe83ca0783b4cab3241114827741e57f211447ac7709",
+    "configs/live/oi_alt_ratio72_dyn_exit_candidate.json": "6e5bd6b8a66fe4caaea489a47ec4e67ab1abe92e8c9ee849aadcc7b386345211",
+    "configs/live/oi_divergence_pullback_range_rsi_h96_s6_candidate.json": "6533650bb6800308762dc02f310dbfe7dbd59c8a217d55305f6c5388eb2a480b",
+    "configs/live/oi_divergence_sma24_highfreq_h30_s6_candidate.json": "30f2f4abf397805550b9a393c1168c920d6d10f9220e795567b43d043a0d5406",
+    "configs/live/oi_divergence_sma24_highfreq_h30_s6_llm_selector_overlay.json": "ed2564ece14e9da1d9c81bb20429d084eac09fbdd40370732fcc48872255e40a",
+    "configs/live/oi_upbit_ratio288_low_candidate.json": "659239373e1f51fc2df9615f5387686fd9252a56e1c366b45421bf39d3d6223f",
+    "configs/live/portfolio_added_alpha_mainnet_live_2026-07-18.json": "3f6c929f6b03797093b8b81f50ede533176aa169f5f81a4bb5f616d31afd24ff",
+    "configs/live/rex_veto_7_candidate.json": "36df47c4737eb99f4ca5e2b257d9bd2fbf130df9d731b9ac02fcfe5192acd4db",
+    "configs/live/short_kimchi3d_candidate.json": "c13f07976eb98a87248029c00a4271e3ca9486e74325ae48b2e33e41d34ccf68",
+    "configs/live/short_premium_panic_candidate.json": "c9a6ef798c4834cd9eaf8cc6e522117a0e4a12e39c88a376b3da7bc1b0e39119",
+    "configs/shadow/fresh_kimchi_fx_2026-07-16.json": "f3e764d5d065643905105ae1c46668a22684569289c3781b79fc6b2efcc5154f",
+    "configs/shadow/frozen_annual_rank7_2026-07-16.json": "b75621bb604266d1cd2529a29f8bdb6aec3b1f2c14ff00d88673ef007362526d",
+    "configs/shadow/markov_transition_long_2026-07-16.json": "ebfec66715428b2fffead13e17229fb4369816daeeeab2c02cf0115e7110b755",
+    "configs/shadow/rex_taker_low_range_position_2026-07-16.json": "d4c56a6f1659189876c1d3f2e519a3dbc2608c754720c5cd1f65a02adb5589e4",
+    "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c",
+    "execution/rex_llm_live.py": "2e0de376e967b237afb711dd44503ec45dbb9b6548f575219c1cf93cc2de9c48",
+    "research/pools/alphas/bocpd_top10_funding_premium_long_20260713.json": "2ca6bd25df1e88bd28fbb949f3fa162b0baf2934b23945ca841f655692e24420",
+    "research/pools/alphas/calendar_oi_funding_friday_asia_long_20260712.json": "5129ac173f274197d57adac3c001bec36be0c696ae07bbc3f08486b11372f84f",
+    "research/pools/alphas/kalman_top10_funding_premium_long_20260713.json": "8e637f6ee21f571a0f72b05499272a1c2a3f78ff1946c476bf53f7910e413751",
+    "research/pools/alphas/rex_htf_range_veto_alpha_20260712.json": "cf4d3fedbe435bd84af51171c5eb52b82e78c154291d10991f7f0fc0b6a9f1a9",
+    "research/pools/alphas/semimarkov_top10_funding_premium_long_20260713.json": "67b2716b373e5af64c098911e0a3b8ed98b5556b550750f9a38bf996584e4fbe",
+    "results/bocpd_state_gated_alpha_scan_2026-07-13.json": "cf526fe824ae7e1cd983c2fe2c921152ed0a3b57f55cfde729b5a2fdf7b640fa",
+    "results/funding_premium_independent_gate_top10_manifest_2026-07-13.json": "abda79f8105faa328a3513059041b61e0d2adf4d8a433dbf226948c0e15cf159",
+    "results/kalman_state_gated_alpha_scan_2026-07-13.json": "2651ca559bcde0d282db5f3d7cf5e68237774d74ed75b2c03e9512e0258ab0a1",
+    "results/semimarkov_duration_alpha_scan_2026-07-13.json": "27750e60f1caf8bb9c7aa838af5241aae1912b5cb36836681be9c5b8e585dcb2"
+  },
+  "interpretation": {
+    "primary": "absolute_return_pct, strict_mdd_pct, and trades",
+    "partial_period_cagr_warning": "CAGR annualizes 26.625 days and is not statistically stable",
+    "universe_boundary": "all frozen atomic contracts; portfolio combinations and unfrozen raw scan rows excluded",
+    "statistical_power": "26.625 days and at most 14 accepted trades per alpha are insufficient for standalone promotion"
+  }
+}
