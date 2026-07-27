@@ -96,8 +96,18 @@
       "warmup_fraction": 0.1,
       "weight_decay": 0.01
     },
-    "relation_teacher": "base model source-only forced-choice label with a prior-card-hash-derived permutation; invalid output=ABSTAIN",
+    "relation_teacher": "base model source-only one-forward forced-choice logits over single-token codes A through F; label-to-code permutation is the ascending SHA256(lowercase_hex_selector_digest || NUL || label || NUL || PSIM_D8_RLLM1_RELATION_TEACHER_V1) order; nonfinite logits=ABSTAIN; exact ties choose lexical code",
+    "relation_teacher_codes": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F"
+    ],
     "relation_teacher_created_before_market": true,
+    "relation_teacher_decoded_generation": false,
+    "relation_teacher_prompt_terminal": "RELATION_CODE=",
     "seeds": [
       20260727,
       20260728
@@ -229,7 +239,7 @@
     },
     "test_or_eval_failure_action": "REJECT_PSIM_D8_RLLM1_UNCHANGED_NO_REPAIR_OR_2024_OPEN"
   },
-  "manifest_hash": "e7a5630aa877ede9d97ee1376acd24f101243ab203281d531e096a3fdfa096bc",
+  "manifest_hash": "d2d22214b810cc99a6d7e893b35f91c4f46fde803d7309bf388954dc55729fff",
   "memorization_contract": {
     "base_model_challenge_before_any_market_access": true,
     "bonferroni_reject_p_below": 0.0033333333333333335,
@@ -250,13 +260,63 @@
           "2023": 1033
         }
       },
+      "maximum_true_code_share": {
+        "bitcoin": 0.1875,
+        "combined": 0.1640625,
+        "ethereum": 0.1875
+      },
       "selected_challenge_events": {
         "bitcoin": 64,
         "ethereum": 64
+      },
+      "true_choice_code_histogram": {
+        "bitcoin": {
+          "A": 8,
+          "B": 6,
+          "C": 5,
+          "D": 9,
+          "E": 12,
+          "F": 9,
+          "G": 8,
+          "H": 7
+        },
+        "combined": {
+          "A": 16,
+          "B": 15,
+          "C": 10,
+          "D": 19,
+          "E": 16,
+          "F": 21,
+          "G": 15,
+          "H": 16
+        },
+        "ethereum": {
+          "A": 8,
+          "B": 9,
+          "C": 5,
+          "D": 10,
+          "E": 4,
+          "F": 12,
+          "G": 7,
+          "H": 9
+        }
       }
     },
-    "choice_order": "candidate proposal IDs ordered by the frozen hash rule",
-    "decoys": "distinct same-protocol same-effective-year proposal IDs",
+    "choice_codes": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G",
+      "H"
+    ],
+    "choice_order": "true ID plus seven decoys sorted by independent order_hash",
+    "code_tokenization_failure_action": "TERMINAL_REJECT",
+    "decoded_generation": false,
+    "decoy_hash": "SHA256(lowercase_event_id || NUL || lowercase_protocol || NUL || four_digit_effective_year || NUL || canonical_decimal_proposal_id || NUL || PSIM_MEMORIZATION_V1_DECOY)",
+    "decoys": "seven lowest distinct same-protocol same-effective-year proposal IDs by decoy_hash after excluding the true ID",
     "exact_one_sided_binomial_chance": 0.125,
     "failure_action": "REJECT_PSIM_D8_RLLM1_BEFORE_NEXT_MARKET_STAGE_NO_REDACTION_REPAIR_RESAMPLE_OR_MODEL_SWAP",
     "families": [
@@ -266,9 +326,13 @@
     ],
     "final_model_challenge_after_test_selection_before_eval_market": true,
     "minimum_events_per_protocol": 32,
+    "order_hash": "SHA256(lowercase_event_id || NUL || lowercase_protocol || NUL || four_digit_effective_year || NUL || canonical_decimal_proposal_id || NUL || PSIM_MEMORIZATION_V1_ORDER)",
+    "prompt_terminal": "ANSWER=",
     "quarantined_events_model_reward_economics_visible": false,
     "quarantined_events_remain_in_source_accounting": true,
+    "scoring": "one text-only model forward; final prompt position logits for exact single-token codes A through H; greatest finite logit wins; exact ties choose lexical code",
     "selection": "lowest SHA256(event_id || PSIM_MEMORIZATION_V1), maximum 16 per protocol/effective-year",
+    "true_code_balance_gate": "every code appears for each protocol and combined; maximum true-code share <=0.20 before model access",
     "version": "PSIM_MEMORIZATION_V1"
   },
   "model_contract": {
@@ -311,6 +375,7 @@
     },
     "single_forward_per_logical_decision": true,
     "snapshot_verified_by_this_preregistration": false,
+    "source_embedding_position_token": "POSITION_FLAT",
     "target_head_action_order": [
       "TARGET_FLAT",
       "TARGET_SHORT",

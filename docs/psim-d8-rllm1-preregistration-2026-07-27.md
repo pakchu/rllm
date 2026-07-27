@@ -162,6 +162,31 @@ The inherited `PSIM_MEMORIZATION_V1` challenge is unchanged:
 - Bonferroni rejection at `p < 0.01 / 3`;
 - minimum 32 events per protocol.
 
+For each eligible proposal ID:
+
+```text
+candidate_hash =
+  SHA256(
+    lowercase_event_id || NUL ||
+    lowercase_protocol || NUL ||
+    four_digit_effective_year || NUL ||
+    canonical_decimal_proposal_id || NUL ||
+    "PSIM_MEMORIZATION_V1_DECOY"
+  )
+```
+
+The seven lowest non-true IDs are decoys. To avoid making the true ID almost
+always the last choice, candidate presentation uses a second independent hash
+with the same fields and salt `PSIM_MEMORIZATION_V1_ORDER`. The true ID and
+decoys are ordered by that hash and assigned codes `A` through `H`. Before
+model access, every code must occur for Ethereum, Bitcoin, and the combined
+sample, and no true-code share may exceed 20%.
+
+One model forward scores the exact single-token code logits at the final
+`ANSWER=` position. Greatest finite logit wins; an exact tie chooses lexical
+code order. Generated text is never decoded. A non-single-token code is a
+terminal failure.
+
 Source support provides 64 challenge events for Ethereum and 64 for Bitcoin.
 The exact base model must pass before any market row is opened. The final
 fine-tuned model must pass again after 2022 selection and before 2023 market
@@ -201,8 +226,29 @@ mandatory synthetic runtime gate rather than an assumption:
 - [Google Gemma 4 prompt formatting](https://ai.google.dev/gemma/docs/core/prompt-formatting-gemma4)
 - [Google Gemma 4 QLoRA](https://ai.google.dev/gemma/docs/core/huggingface_text_finetune_qlora)
 
-The base model first creates source-only relation teacher labels under a
-hash-permuted forced-choice code. Invalid output becomes `ABSTAIN`.
+The base model first creates source-only relation teacher labels. Each card's
+selected-subcard selector digest deterministically permutes the six relation
+labels onto single-token codes `A` through `F`:
+
+```text
+relation_label_hash =
+  SHA256(
+    lowercase_hex_selector_digest || NUL ||
+    exact_relation_label || NUL ||
+    "PSIM_D8_RLLM1_RELATION_TEACHER_V1"
+  )
+```
+
+Labels are sorted by this hash and assigned codes `A` through `F` in lexical
+code order. One forward scores those code logits at `RELATION_CODE=`; exact
+ties use lexical code order and nonfinite logits become `ABSTAIN`. Generated
+teacher text is never decoded.
+
+Frozen source embeddings use the exact policy prompt rendered with
+`CURRENT_POSITION=POSITION_FLAT`. Current position is then supplied as a
+separate deterministic categorical input to the fitted-Q learner. No
+test/eval position or behavior-policy path is used to construct the source
+embedding.
 
 The cheap semantic gate uses frozen Gemma embeddings, train-year-only
 32-component PCA, and fixed ridge/Extra-Trees fitted-Q learners. It must
@@ -289,9 +335,9 @@ Canonical artifact:
 ```text
 results/psim_d8_rllm1_preregistration_2026-07-27.json
 SHA-256
-6f143fdb5f61697defe2cbc9b7b15ce8aaf0da4980c3ff0ba0f4f994cc68a78f
+78e467b64e0728231626aa8300fe13f10a445f494b368459c8cab9852d752759
 manifest hash
-e7a5630aa877ede9d97ee1376acd24f101243ab203281d531e096a3fdfa096bc
+d2d22214b810cc99a6d7e893b35f91c4f46fde803d7309bf388954dc55729fff
 ```
 
 There is no absolute return, CAGR, strict MDD, trade count, or profitability

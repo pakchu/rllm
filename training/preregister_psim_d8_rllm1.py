@@ -147,6 +147,11 @@ RELATION_LABELS = (
 )
 TARGET_LABELS = ("TARGET_FLAT", "TARGET_SHORT", "TARGET_LONG")
 POSITION_LABELS = ("POSITION_FLAT", "POSITION_SHORT", "POSITION_LONG")
+RELATION_TEACHER_CODES = ("A", "B", "C", "D", "E", "F")
+MEMORIZATION_CHALLENGE_CODES = ("A", "B", "C", "D", "E", "F", "G", "H")
+MEMORIZATION_DECOY_SALT = "PSIM_MEMORIZATION_V1_DECOY"
+MEMORIZATION_ORDER_SALT = "PSIM_MEMORIZATION_V1_ORDER"
+RELATION_TEACHER_SALT = "PSIM_D8_RLLM1_RELATION_TEACHER_V1"
 
 RELATION_DEFINITIONS: Mapping[str, str] = {
     "CONVERGENT_INTENT": (
@@ -478,7 +483,7 @@ def _validate_card(card: Mapping[str, Any]) -> None:
         raise RuntimeError("PSIM-D8-RLLM1 logical card hash changed")
 
 
-def selected_subcard_ordinal(card: Mapping[str, Any]) -> int:
+def selected_subcard_selector_digest(card: Mapping[str, Any]) -> str:
     local = card["local_payload"]
     manifest = local["relation_subcard_manifest"]
     selector_material = (
@@ -486,11 +491,79 @@ def selected_subcard_ordinal(card: Mapping[str, Any]) -> int:
         f"{manifest['complete_relation_roster_sha256']}\x00"
         f"{card['decision_at']}\x00{SELECTOR_SALT}"
     ).encode("utf-8")
-    digest = hashlib.sha256(selector_material).digest()
+    return hashlib.sha256(selector_material).hexdigest()
+
+
+def selected_subcard_ordinal(card: Mapping[str, Any]) -> int:
+    digest = bytes.fromhex(selected_subcard_selector_digest(card))
+    manifest = card["local_payload"]["relation_subcard_manifest"]
     count = int(manifest["subcard_count"])
     if count <= 0:
         raise RuntimeError("PSIM-D8-RLLM1 has no selectable subcard")
     return int.from_bytes(digest[:8], "big") % count
+
+
+def _memorization_candidate_hash(
+    event_id: str,
+    protocol: str,
+    effective_year: str | int,
+    proposal_id: str | int,
+    salt: str,
+) -> str:
+    material = (
+        f"{str(event_id).lower()}\x00{str(protocol).lower()}\x00"
+        f"{int(effective_year):04d}\x00{int(proposal_id)}\x00{salt}"
+    ).encode("utf-8")
+    return hashlib.sha256(material).hexdigest()
+
+
+def memorization_decoy_hash(
+    event_id: str,
+    protocol: str,
+    effective_year: str | int,
+    proposal_id: str | int,
+) -> str:
+    return _memorization_candidate_hash(
+        event_id,
+        protocol,
+        effective_year,
+        proposal_id,
+        MEMORIZATION_DECOY_SALT,
+    )
+
+
+def memorization_order_hash(
+    event_id: str,
+    protocol: str,
+    effective_year: str | int,
+    proposal_id: str | int,
+) -> str:
+    return _memorization_candidate_hash(
+        event_id,
+        protocol,
+        effective_year,
+        proposal_id,
+        MEMORIZATION_ORDER_SALT,
+    )
+
+
+def relation_teacher_code_mapping(
+    card: Mapping[str, Any],
+) -> dict[str, str]:
+    selector_digest = selected_subcard_selector_digest(card)
+    ordered = sorted(
+        RELATION_LABELS,
+        key=lambda label: hashlib.sha256(
+            (
+                f"{selector_digest}\x00{label}\x00"
+                f"{RELATION_TEACHER_SALT}"
+            ).encode("utf-8")
+        ).hexdigest(),
+    )
+    return {
+        label: code
+        for label, code in zip(ordered, RELATION_TEACHER_CODES)
+    }
 
 
 def selected_relation_units(card: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -785,6 +858,11 @@ def _memorization_capacity(
     events: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
     selected: Counter[str] = Counter()
+    true_code_histogram: dict[str, Counter[str]] = {
+        "ethereum": Counter(),
+        "bitcoin": Counter(),
+        "combined": Counter(),
+    }
     eligible: dict[str, dict[str, int]] = defaultdict(dict)
     for protocol in ("ethereum", "bitcoin"):
         for year in ("2020", "2021", "2022", "2023"):
@@ -809,13 +887,58 @@ def _memorization_capacity(
                     ).encode("utf-8")
                 ).hexdigest(),
             )
-            count = min(16, len(ordered))
+            chosen = ordered[:16]
+            count = len(chosen)
             selected[protocol] += count
             eligible[protocol][year] = len(candidates)
+            for event in chosen:
+                event_id = str(event["event_id"])
+                true_id = int(event["proposal_number"])
+                decoys = sorted(
+                    (
+                        proposal_id
+                        for proposal_id in unique_ids
+                        if proposal_id != true_id
+                    ),
+                    key=lambda proposal_id: memorization_decoy_hash(
+                        event_id,
+                        protocol,
+                        year,
+                        proposal_id,
+                    ),
+                )[:7]
+                roster = sorted(
+                    [true_id, *decoys],
+                    key=lambda proposal_id: memorization_order_hash(
+                        event_id,
+                        protocol,
+                        year,
+                        proposal_id,
+                    ),
+                )
+                code = MEMORIZATION_CHALLENGE_CODES[
+                    roster.index(true_id)
+                ]
+                true_code_histogram[protocol][code] += 1
+                true_code_histogram["combined"][code] += 1
     if selected != Counter({"ethereum": 64, "bitcoin": 64}):
         raise RuntimeError(
             f"PSIM-D8-RLLM1 memorization capacity changed: {selected}"
         )
+    for protocol, expected in (
+        ("ethereum", 64),
+        ("bitcoin", 64),
+        ("combined", 128),
+    ):
+        histogram = true_code_histogram[protocol]
+        if (
+            sum(histogram.values()) != expected
+            or set(histogram) != set(MEMORIZATION_CHALLENGE_CODES)
+            or max(histogram.values()) / expected > 0.20
+        ):
+            raise RuntimeError(
+                "PSIM-D8-RLLM1 memorization choice-code balance changed"
+            )
     return {
         "eligible_nonquarantined_events": {
             protocol: dict(sorted(years.items()))
@@ -823,6 +946,18 @@ def _memorization_capacity(
         },
         "selected_challenge_events": dict(sorted(selected.items())),
         "combined_selected_challenge_events": sum(selected.values()),
+        "true_choice_code_histogram": {
+            protocol: {
+                code: true_code_histogram[protocol][code]
+                for code in MEMORIZATION_CHALLENGE_CODES
+            }
+            for protocol in ("ethereum", "bitcoin", "combined")
+        },
+        "maximum_true_code_share": {
+            protocol: max(true_code_histogram[protocol].values())
+            / (64 if protocol != "combined" else 128)
+            for protocol in ("ethereum", "bitcoin", "combined")
+        },
     }
 
 
@@ -954,8 +1089,38 @@ def build_preregistration() -> dict[str, Any]:
                 "maximum 16 per protocol/effective-year"
             ),
             "candidates_per_event": 8,
-            "decoys": "distinct same-protocol same-effective-year proposal IDs",
-            "choice_order": "candidate proposal IDs ordered by the frozen hash rule",
+            "decoy_hash": (
+                "SHA256(lowercase_event_id || NUL || lowercase_protocol || "
+                "NUL || four_digit_effective_year || NUL || "
+                "canonical_decimal_proposal_id || NUL || "
+                "PSIM_MEMORIZATION_V1_DECOY)"
+            ),
+            "order_hash": (
+                "SHA256(lowercase_event_id || NUL || lowercase_protocol || "
+                "NUL || four_digit_effective_year || NUL || "
+                "canonical_decimal_proposal_id || NUL || "
+                "PSIM_MEMORIZATION_V1_ORDER)"
+            ),
+            "decoys": (
+                "seven lowest distinct same-protocol same-effective-year "
+                "proposal IDs by decoy_hash after excluding the true ID"
+            ),
+            "choice_order": (
+                "true ID plus seven decoys sorted by independent order_hash"
+            ),
+            "choice_codes": list(MEMORIZATION_CHALLENGE_CODES),
+            "scoring": (
+                "one text-only model forward; final prompt position logits "
+                "for exact single-token codes A through H; greatest finite "
+                "logit wins; exact ties choose lexical code"
+            ),
+            "prompt_terminal": "ANSWER=",
+            "decoded_generation": False,
+            "code_tokenization_failure_action": "TERMINAL_REJECT",
+            "true_code_balance_gate": (
+                "every code appears for each protocol and combined; maximum "
+                "true-code share <=0.20 before model access"
+            ),
             "base_model_challenge_before_any_market_access": True,
             "final_model_challenge_after_test_selection_before_eval_market": True,
             "exact_one_sided_binomial_chance": 0.125,
@@ -1002,6 +1167,7 @@ def build_preregistration() -> dict[str, Any]:
                 "TARGET_LONG",
             ],
             "additive_direction_bias_or_posthoc_calibration": False,
+            "source_embedding_position_token": "POSITION_FLAT",
             "local_snapshot_required": True,
             "snapshot_verified_by_this_preregistration": False,
             "official_references": [
@@ -1120,9 +1286,16 @@ def build_preregistration() -> dict[str, Any]:
                 "+0.05*selected_subcard_relation_cross_entropy"
             ),
             "relation_teacher": (
-                "base model source-only forced-choice label with a "
-                "prior-card-hash-derived permutation; invalid output=ABSTAIN"
+                "base model source-only one-forward forced-choice logits over "
+                "single-token codes A through F; label-to-code permutation is "
+                "the ascending SHA256(lowercase_hex_selector_digest || NUL || "
+                "label || NUL || PSIM_D8_RLLM1_RELATION_TEACHER_V1) order; "
+                "nonfinite "
+                "logits=ABSTAIN; exact ties choose lexical code"
             ),
+            "relation_teacher_codes": list(RELATION_TEACHER_CODES),
+            "relation_teacher_prompt_terminal": "RELATION_CODE=",
+            "relation_teacher_decoded_generation": False,
             "relation_teacher_created_before_market": True,
             "head_save": (
                 "adapter plus explicit relation_head/action_head state dict and "

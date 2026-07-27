@@ -15,7 +15,7 @@ from training import preregister_psim_d8_rllm1 as prereg
 
 RESULT_PATH = prereg.REPO_ROOT / prereg.DEFAULT_OUTPUT
 RESULT_SHA256 = (
-    "6f143fdb5f61697defe2cbc9b7b15ce8aaf0da4980c3ff0ba0f4f994cc68a78f"
+    "78e467b64e0728231626aa8300fe13f10a445f494b368459c8cab9852d752759"
 )
 
 
@@ -50,7 +50,7 @@ def test_committed_preregistration_is_exact_and_canonical() -> None:
     core = {key: value for key, value in payload.items() if key != "manifest_hash"}
     assert payload["manifest_hash"] == prereg.canonical_hash(core)
     assert payload["manifest_hash"] == (
-        "e7a5630aa877ede9d97ee1376acd24f101243ab203281d531e096a3fdfa096bc"
+        "d2d22214b810cc99a6d7e893b35f91c4f46fde803d7309bf388954dc55729fff"
     )
 
 
@@ -134,6 +134,9 @@ def test_selector_is_source_only_exact_and_manifest_bound() -> None:
         expected = (
             int.from_bytes(hashlib.sha256(material).digest()[:8], "big")
             % int(manifest["subcard_count"])
+        )
+        assert prereg.selected_subcard_selector_digest(card) == (
+            hashlib.sha256(material).hexdigest()
         )
         assert prereg.selected_subcard_ordinal(card) == expected
         descriptor = manifest["subcards"][expected]
@@ -260,6 +263,88 @@ def test_capacity_and_memorization_support_are_frozen() -> None:
     assert challenge["bonferroni_reject_p_below"] == pytest.approx(
         0.01 / 3.0
     )
+    assert challenge["choice_codes"] == list(
+        prereg.MEMORIZATION_CHALLENGE_CODES
+    )
+    assert challenge["decoy_hash"] == (
+        "SHA256(lowercase_event_id || NUL || lowercase_protocol || NUL || "
+        "four_digit_effective_year || NUL || "
+        "canonical_decimal_proposal_id || NUL || "
+        "PSIM_MEMORIZATION_V1_DECOY)"
+    )
+    assert challenge["order_hash"] == (
+        "SHA256(lowercase_event_id || NUL || lowercase_protocol || NUL || "
+        "four_digit_effective_year || NUL || "
+        "canonical_decimal_proposal_id || NUL || "
+        "PSIM_MEMORIZATION_V1_ORDER)"
+    )
+    assert challenge["decoded_generation"] is False
+    assert challenge["scoring"].startswith("one text-only model forward")
+    decoy_hashes = [
+        prereg.memorization_decoy_hash(
+            "a" * 64,
+            "bitcoin",
+            2020,
+            proposal_id,
+        )
+        for proposal_id in (1, 2, 3, 4, 5, 6, 7, 8)
+    ]
+    order_hashes = [
+        prereg.memorization_order_hash(
+            "a" * 64,
+            "bitcoin",
+            2020,
+            proposal_id,
+        )
+        for proposal_id in (1, 2, 3, 4, 5, 6, 7, 8)
+    ]
+    assert len(set(decoy_hashes)) == 8
+    assert len(set(order_hashes)) == 8
+    assert decoy_hashes != order_hashes
+    assert decoy_hashes == [
+        prereg.memorization_decoy_hash(
+            "A" * 64,
+            "BITCOIN",
+            "2020",
+            proposal_id,
+        )
+        for proposal_id in (1, 2, 3, 4, 5, 6, 7, 8)
+    ]
+    assert challenge["capacity"]["true_choice_code_histogram"] == {
+        "ethereum": {
+            "A": 8,
+            "B": 9,
+            "C": 5,
+            "D": 10,
+            "E": 4,
+            "F": 12,
+            "G": 7,
+            "H": 9,
+        },
+        "bitcoin": {
+            "A": 8,
+            "B": 6,
+            "C": 5,
+            "D": 9,
+            "E": 12,
+            "F": 9,
+            "G": 8,
+            "H": 7,
+        },
+        "combined": {
+            "A": 16,
+            "B": 15,
+            "C": 10,
+            "D": 19,
+            "E": 16,
+            "F": 21,
+            "G": 15,
+            "H": 16,
+        },
+    }
+    assert max(
+        challenge["capacity"]["maximum_true_code_share"].values()
+    ) <= 0.20
     assert challenge["base_model_challenge_before_any_market_access"] is True
     assert challenge[
         "final_model_challenge_after_test_selection_before_eval_market"
@@ -278,6 +363,7 @@ def test_model_training_economics_controls_and_final_gates_are_fixed() -> None:
     assert model["single_forward_per_logical_decision"] is True
     assert model["head_bias"] is False
     assert model["additive_direction_bias_or_posthoc_calibration"] is False
+    assert model["source_embedding_position_token"] == "POSITION_FLAT"
     assert model["snapshot_verified_by_this_preregistration"] is False
 
     development = payload["semantic_encoder_development_gate"]
@@ -295,6 +381,20 @@ def test_model_training_economics_controls_and_final_gates_are_fixed() -> None:
     rllm = payload["conditional_rllm_contract"]
     assert rllm["seeds"] == [20260727, 20260728]
     assert rllm["checkpoint_optimizer_steps"] == [80, 160, 240]
+    assert rllm["relation_teacher_codes"] == list(
+        prereg.RELATION_TEACHER_CODES
+    )
+    assert "lowercase_hex_selector_digest" in rllm["relation_teacher"]
+    assert prereg.RELATION_TEACHER_SALT in rllm["relation_teacher"]
+    assert rllm["relation_teacher_decoded_generation"] is False
+    first, second = _economic_cards()[:2]
+    for card in (first, second):
+        mapping = prereg.relation_teacher_code_mapping(card)
+        assert set(mapping) == set(prereg.RELATION_LABELS)
+        assert set(mapping.values()) == set(prereg.RELATION_TEACHER_CODES)
+    assert prereg.relation_teacher_code_mapping(first) != (
+        prereg.relation_teacher_code_mapping(second)
+    )
     assert rllm["lora"] == {
         "rank": 16,
         "alpha": 32,
