@@ -2,7 +2,8 @@
 
 Date: 2026-07-27 KST
 
-Status: frozen source-only preregistration; no market/model outcome opened
+Status: frozen source-only preregistration with pre-model memorization
+erratum; no market/model outcome opened
 
 Candidate: `PSIM-D8-RLLM1`
 
@@ -151,10 +152,25 @@ fits the exact model context.
 
 ## Memorization gate
 
-The inherited `PSIM_MEMORIZATION_V1` challenge is unchanged:
+### Pre-model erratum
 
-- at most 16 nonquarantined events per protocol/effective-year, selected by
-  lowest frozen event hash;
+The first committed draft allowed selected events whose fully redacted delta
+text was empty. That would test candidate-number priors rather than recovery
+from supplied source evidence. This was found before any Gemma inference and
+before any market or funding payload was opened.
+
+`PSIM_MEMORIZATION_V1_ERRATUM1` therefore makes only two source-only repairs:
+
+1. challenge events must have non-empty redacted normalized delta text;
+2. true-code placement is exactly balanced by an independent frozen hash.
+
+The event-selection salt, decoy pool, decoy hash, and decoy-order hash remain
+unchanged. This is not a model-output-driven resample.
+
+The corrected challenge freezes:
+
+- exactly 16 nonquarantined, non-empty-redacted events per
+  protocol/effective-year, selected by lowest frozen event hash;
 - one true proposal ID and seven distinct same-protocol, same-year decoys;
 - forced choice without abstention;
 - exact one-sided binomial tests against `1/8` for Ethereum, Bitcoin, and the
@@ -175,17 +191,27 @@ candidate_hash =
   )
 ```
 
-The seven lowest non-true IDs are decoys. To avoid making the true ID almost
-always the last choice, candidate presentation uses a second independent hash
-with the same fields and salt `PSIM_MEMORIZATION_V1_ORDER`. The true ID and
-decoys are ordered by that hash and assigned codes `A` through `H`. Before
-model access, every code must occur for Ethereum, Bitcoin, and the combined
-sample, and no true-code share may exceed 20%.
+The seven lowest non-true IDs are decoys. Within each
+protocol/effective-year, the 16 selected event IDs are ranked by:
 
-One model forward scores the exact single-token code logits at the final
-`ANSWER=` position. Greatest finite logit wins; an exact tie chooses lexical
-code order. Generated text is never decoded. A non-single-token code is a
-terminal failure.
+```text
+SHA256(
+  lowercase_event_id || NUL ||
+  "PSIM_MEMORIZATION_V1_CODE_ASSIGNMENT_ERRATUM1"
+)
+```
+
+Codes `A` through `H` are assigned cyclically, exactly twice each. The seven
+decoys are independently ordered with salt `PSIM_MEMORIZATION_V1_ORDER` and
+placed into the remaining lexical codes. Thus every code is true exactly
+eight times per protocol and sixteen times combined.
+
+The raw user content terminates with `ANSWER=`. After the frozen Gemma chat
+template appends its assistant-generation prefix, one model forward scores
+the exact single-token code logits at that first assistant-token position.
+Greatest finite logit wins; an exact tie chooses lexical code order.
+Generated text is never decoded. A non-single-token code is a terminal
+failure.
 
 Source support provides 64 challenge events for Ethereum and 64 for Bitcoin.
 The exact base model must pass before any market row is opened. The final

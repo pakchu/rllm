@@ -15,7 +15,7 @@ from training import preregister_psim_d8_rllm1 as prereg
 
 RESULT_PATH = prereg.REPO_ROOT / prereg.DEFAULT_OUTPUT
 RESULT_SHA256 = (
-    "78e467b64e0728231626aa8300fe13f10a445f494b368459c8cab9852d752759"
+    "6e9b034744acc1b701a283c7ba34e2bcc533e781c33bbe95657060f78c67732e"
 )
 
 
@@ -50,7 +50,7 @@ def test_committed_preregistration_is_exact_and_canonical() -> None:
     core = {key: value for key, value in payload.items() if key != "manifest_hash"}
     assert payload["manifest_hash"] == prereg.canonical_hash(core)
     assert payload["manifest_hash"] == (
-        "d2d22214b810cc99a6d7e893b35f91c4f46fde803d7309bf388954dc55729fff"
+        "31b86a25fedfe9c3ef98cfa4a3b617a8df7bddf68cc6eab6be33fa66069e4d89"
     )
 
 
@@ -255,6 +255,19 @@ def test_capacity_and_memorization_support_are_frozen() -> None:
     ] == 117
     assert capacity["rendered_prompt_utf8_bytes"]["maximum"] == 122_113
     challenge = payload["memorization_contract"]
+    assert challenge["version"] == "PSIM_MEMORIZATION_V1_ERRATUM1"
+    assert challenge["pre_model_erratum"] == {
+        "reason": (
+            "The original source-only roster admitted events whose "
+            "redacted evidence was empty. Before any model inference, "
+            "eligibility was narrowed to non-empty redacted evidence "
+            "and true-code placement was made exactly balanced."
+        ),
+        "model_inference_before_erratum": False,
+        "market_or_funding_access_before_erratum": False,
+        "selection_salt_changed": False,
+        "decoy_pool_changed": False,
+    }
     assert challenge["capacity"]["selected_challenge_events"] == {
         "bitcoin": 64,
         "ethereum": 64,
@@ -277,6 +290,10 @@ def test_capacity_and_memorization_support_are_frozen() -> None:
         "four_digit_effective_year || NUL || "
         "canonical_decimal_proposal_id || NUL || "
         "PSIM_MEMORIZATION_V1_ORDER)"
+    )
+    assert challenge["true_code_assignment_hash"] == (
+        "SHA256(lowercase_event_id || NUL || "
+        "PSIM_MEMORIZATION_V1_CODE_ASSIGNMENT_ERRATUM1)"
     )
     assert challenge["decoded_generation"] is False
     assert challenge["scoring"].startswith("one text-only model forward")
@@ -313,34 +330,54 @@ def test_capacity_and_memorization_support_are_frozen() -> None:
     assert challenge["capacity"]["true_choice_code_histogram"] == {
         "ethereum": {
             "A": 8,
-            "B": 9,
-            "C": 5,
-            "D": 10,
-            "E": 4,
-            "F": 12,
-            "G": 7,
-            "H": 9,
+            "B": 8,
+            "C": 8,
+            "D": 8,
+            "E": 8,
+            "F": 8,
+            "G": 8,
+            "H": 8,
         },
         "bitcoin": {
             "A": 8,
-            "B": 6,
-            "C": 5,
-            "D": 9,
-            "E": 12,
-            "F": 9,
+            "B": 8,
+            "C": 8,
+            "D": 8,
+            "E": 8,
+            "F": 8,
             "G": 8,
-            "H": 7,
+            "H": 8,
         },
         "combined": {
             "A": 16,
-            "B": 15,
-            "C": 10,
-            "D": 19,
+            "B": 16,
+            "C": 16,
+            "D": 16,
             "E": 16,
-            "F": 21,
-            "G": 15,
+            "F": 16,
+            "G": 16,
             "H": 16,
         },
+    }
+    assert challenge["capacity"]["eligible_nonempty_redacted_events"] == {
+        "bitcoin": {
+            "2020": 30,
+            "2021": 61,
+            "2022": 31,
+            "2023": 30,
+        },
+        "ethereum": {
+            "2020": 376,
+            "2021": 264,
+            "2022": 515,
+            "2023": 567,
+        },
+    }
+    assert challenge["capacity"]["selected_empty_redacted_events"] == 0
+    assert challenge["capacity"]["maximum_true_code_share"] == {
+        "bitcoin": 0.125,
+        "combined": 0.125,
+        "ethereum": 0.125,
     }
     assert max(
         challenge["capacity"]["maximum_true_code_share"].values()

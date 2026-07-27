@@ -239,13 +239,27 @@
     },
     "test_or_eval_failure_action": "REJECT_PSIM_D8_RLLM1_UNCHANGED_NO_REPAIR_OR_2024_OPEN"
   },
-  "manifest_hash": "d2d22214b810cc99a6d7e893b35f91c4f46fde803d7309bf388954dc55729fff",
+  "manifest_hash": "31b86a25fedfe9c3ef98cfa4a3b617a8df7bddf68cc6eab6be33fa66069e4d89",
   "memorization_contract": {
     "base_model_challenge_before_any_market_access": true,
     "bonferroni_reject_p_below": 0.0033333333333333335,
     "candidates_per_event": 8,
     "capacity": {
       "combined_selected_challenge_events": 128,
+      "eligible_nonempty_redacted_events": {
+        "bitcoin": {
+          "2020": 30,
+          "2021": 61,
+          "2022": 31,
+          "2023": 30
+        },
+        "ethereum": {
+          "2020": 376,
+          "2021": 264,
+          "2022": 515,
+          "2023": 567
+        }
+      },
       "eligible_nonquarantined_events": {
         "bitcoin": {
           "2020": 80,
@@ -261,44 +275,45 @@
         }
       },
       "maximum_true_code_share": {
-        "bitcoin": 0.1875,
-        "combined": 0.1640625,
-        "ethereum": 0.1875
+        "bitcoin": 0.125,
+        "combined": 0.125,
+        "ethereum": 0.125
       },
       "selected_challenge_events": {
         "bitcoin": 64,
         "ethereum": 64
       },
+      "selected_empty_redacted_events": 0,
       "true_choice_code_histogram": {
         "bitcoin": {
           "A": 8,
-          "B": 6,
-          "C": 5,
-          "D": 9,
-          "E": 12,
-          "F": 9,
+          "B": 8,
+          "C": 8,
+          "D": 8,
+          "E": 8,
+          "F": 8,
           "G": 8,
-          "H": 7
+          "H": 8
         },
         "combined": {
           "A": 16,
-          "B": 15,
-          "C": 10,
-          "D": 19,
+          "B": 16,
+          "C": 16,
+          "D": 16,
           "E": 16,
-          "F": 21,
-          "G": 15,
+          "F": 16,
+          "G": 16,
           "H": 16
         },
         "ethereum": {
           "A": 8,
-          "B": 9,
-          "C": 5,
-          "D": 10,
-          "E": 4,
-          "F": 12,
-          "G": 7,
-          "H": 9
+          "B": 8,
+          "C": 8,
+          "D": 8,
+          "E": 8,
+          "F": 8,
+          "G": 8,
+          "H": 8
         }
       }
     },
@@ -312,7 +327,7 @@
       "G",
       "H"
     ],
-    "choice_order": "true ID plus seven decoys sorted by independent order_hash",
+    "choice_order": "within each protocol/effective-year, selected event IDs are ranked by true_code_assignment_hash and assigned A through H cyclically exactly twice; seven decoys are sorted by independent order_hash into the remaining lexical codes",
     "code_tokenization_failure_action": "TERMINAL_REJECT",
     "decoded_generation": false,
     "decoy_hash": "SHA256(lowercase_event_id || NUL || lowercase_protocol || NUL || four_digit_effective_year || NUL || canonical_decimal_proposal_id || NUL || PSIM_MEMORIZATION_V1_DECOY)",
@@ -327,13 +342,21 @@
     "final_model_challenge_after_test_selection_before_eval_market": true,
     "minimum_events_per_protocol": 32,
     "order_hash": "SHA256(lowercase_event_id || NUL || lowercase_protocol || NUL || four_digit_effective_year || NUL || canonical_decimal_proposal_id || NUL || PSIM_MEMORIZATION_V1_ORDER)",
+    "pre_model_erratum": {
+      "decoy_pool_changed": false,
+      "market_or_funding_access_before_erratum": false,
+      "model_inference_before_erratum": false,
+      "reason": "The original source-only roster admitted events whose redacted evidence was empty. Before any model inference, eligibility was narrowed to non-empty redacted evidence and true-code placement was made exactly balanced.",
+      "selection_salt_changed": false
+    },
     "prompt_terminal": "ANSWER=",
     "quarantined_events_model_reward_economics_visible": false,
     "quarantined_events_remain_in_source_accounting": true,
     "scoring": "one text-only model forward; final prompt position logits for exact single-token codes A through H; greatest finite logit wins; exact ties choose lexical code",
-    "selection": "lowest SHA256(event_id || PSIM_MEMORIZATION_V1), maximum 16 per protocol/effective-year",
-    "true_code_balance_gate": "every code appears for each protocol and combined; maximum true-code share <=0.20 before model access",
-    "version": "PSIM_MEMORIZATION_V1"
+    "selection": "among events with non-empty redacted normalized delta text, lowest SHA256(event_id || PSIM_MEMORIZATION_V1), exactly 16 per protocol/effective-year",
+    "true_code_assignment_hash": "SHA256(lowercase_event_id || NUL || PSIM_MEMORIZATION_V1_CODE_ASSIGNMENT_ERRATUM1)",
+    "true_code_balance_gate": "every code appears exactly twice per protocol/effective-year, eight times per protocol, and sixteen times combined before model access",
+    "version": "PSIM_MEMORIZATION_V1_ERRATUM1"
   },
   "model_contract": {
     "additive_direction_bias_or_posthoc_calibration": false,

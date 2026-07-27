@@ -149,8 +149,13 @@ TARGET_LABELS = ("TARGET_FLAT", "TARGET_SHORT", "TARGET_LONG")
 POSITION_LABELS = ("POSITION_FLAT", "POSITION_SHORT", "POSITION_LONG")
 RELATION_TEACHER_CODES = ("A", "B", "C", "D", "E", "F")
 MEMORIZATION_CHALLENGE_CODES = ("A", "B", "C", "D", "E", "F", "G", "H")
+MEMORIZATION_CONTRACT_VERSION = "PSIM_MEMORIZATION_V1_ERRATUM1"
+MEMORIZATION_SELECTION_SALT = "PSIM_MEMORIZATION_V1"
 MEMORIZATION_DECOY_SALT = "PSIM_MEMORIZATION_V1_DECOY"
 MEMORIZATION_ORDER_SALT = "PSIM_MEMORIZATION_V1_ORDER"
+MEMORIZATION_CODE_ASSIGNMENT_SALT = (
+    "PSIM_MEMORIZATION_V1_CODE_ASSIGNMENT_ERRATUM1"
+)
 RELATION_TEACHER_SALT = "PSIM_D8_RLLM1_RELATION_TEACHER_V1"
 
 RELATION_DEFINITIONS: Mapping[str, str] = {
@@ -547,6 +552,53 @@ def memorization_order_hash(
     )
 
 
+def memorization_selection_hash(event_id: str) -> str:
+    return hashlib.sha256(
+        (str(event_id) + MEMORIZATION_SELECTION_SALT).encode("utf-8")
+    ).hexdigest()
+
+
+def memorization_code_assignment_hash(event_id: str) -> str:
+    material = (
+        f"{str(event_id).lower()}\x00"
+        f"{MEMORIZATION_CODE_ASSIGNMENT_SALT}"
+    ).encode("utf-8")
+    return hashlib.sha256(material).hexdigest()
+
+
+def memorization_redacted_event_text(
+    event: Mapping[str, Any],
+) -> str:
+    chunks = event.get("normalized_text_delta_chunks")
+    if not isinstance(chunks, list):
+        raise RuntimeError("memorization event text chunks changed")
+    redacted = [
+        redact_model_text(
+            str(chunk.get("normalized_text_delta_chunk", ""))
+        )
+        for chunk in chunks
+        if isinstance(chunk, Mapping)
+    ]
+    return "\n".join(text for text in redacted if text).strip()
+
+
+def memorization_true_code_assignments(
+    selected: Sequence[Mapping[str, Any]],
+) -> dict[str, str]:
+    if len(selected) != 16:
+        raise RuntimeError(
+            "memorization code assignment requires 16 selected events"
+        )
+    event_ids = [str(event["event_id"]) for event in selected]
+    if len(set(event_ids)) != 16:
+        raise RuntimeError("memorization selected event IDs are duplicated")
+    ordered = sorted(event_ids, key=memorization_code_assignment_hash)
+    return {
+        event_id: MEMORIZATION_CHALLENGE_CODES[index % 8]
+        for index, event_id in enumerate(ordered)
+    }
+
+
 def relation_teacher_code_mapping(
     card: Mapping[str, Any],
 ) -> dict[str, str]:
@@ -864,6 +916,7 @@ def _memorization_capacity(
         "combined": Counter(),
     }
     eligible: dict[str, dict[str, int]] = defaultdict(dict)
+    eligible_nonempty: dict[str, dict[str, int]] = defaultdict(dict)
     for protocol in ("ethereum", "bitcoin"):
         for year in ("2020", "2021", "2022", "2023"):
             candidates = [
@@ -873,24 +926,28 @@ def _memorization_capacity(
                 and str(event.get("effective_day", "")).startswith(year)
                 and not bool(event.get("memorization_excluded"))
             ]
+            challenge_candidates = [
+                event
+                for event in candidates
+                if memorization_redacted_event_text(event)
+            ]
             unique_ids = {int(event["proposal_number"]) for event in candidates}
             if len(unique_ids) < 8:
                 raise RuntimeError(
                     "PSIM-D8-RLLM1 has too few same-year challenge decoys"
                 )
             ordered = sorted(
-                candidates,
-                key=lambda event: hashlib.sha256(
-                    (
-                        str(event["event_id"])
-                        + "PSIM_MEMORIZATION_V1"
-                    ).encode("utf-8")
-                ).hexdigest(),
+                challenge_candidates,
+                key=lambda event: memorization_selection_hash(
+                    str(event["event_id"])
+                ),
             )
             chosen = ordered[:16]
+            assignments = memorization_true_code_assignments(chosen)
             count = len(chosen)
             selected[protocol] += count
             eligible[protocol][year] = len(candidates)
+            eligible_nonempty[protocol][year] = len(challenge_candidates)
             for event in chosen:
                 event_id = str(event["event_id"])
                 true_id = int(event["proposal_number"])
@@ -907,18 +964,11 @@ def _memorization_capacity(
                         proposal_id,
                     ),
                 )[:7]
-                roster = sorted(
-                    [true_id, *decoys],
-                    key=lambda proposal_id: memorization_order_hash(
-                        event_id,
-                        protocol,
-                        year,
-                        proposal_id,
-                    ),
-                )
-                code = MEMORIZATION_CHALLENGE_CODES[
-                    roster.index(true_id)
-                ]
+                if len(decoys) != 7:
+                    raise RuntimeError(
+                        "PSIM-D8-RLLM1 memorization decoy support changed"
+                    )
+                code = assignments[event_id]
                 true_code_histogram[protocol][code] += 1
                 true_code_histogram["combined"][code] += 1
     if selected != Counter({"ethereum": 64, "bitcoin": 64}):
@@ -944,6 +994,11 @@ def _memorization_capacity(
             protocol: dict(sorted(years.items()))
             for protocol, years in sorted(eligible.items())
         },
+        "eligible_nonempty_redacted_events": {
+            protocol: dict(sorted(years.items()))
+            for protocol, years in sorted(eligible_nonempty.items())
+        },
+        "selected_empty_redacted_events": 0,
         "selected_challenge_events": dict(sorted(selected.items())),
         "combined_selected_challenge_events": sum(selected.values()),
         "true_choice_code_histogram": {
@@ -1081,12 +1136,25 @@ def build_preregistration() -> dict[str, Any]:
             "over_cap_action": "TERMINAL_REJECT_NO_TRUNCATION_OR_RESELECTION",
         },
         "memorization_contract": {
-            "version": "PSIM_MEMORIZATION_V1",
+            "version": MEMORIZATION_CONTRACT_VERSION,
+            "pre_model_erratum": {
+                "reason": (
+                    "The original source-only roster admitted events whose "
+                    "redacted evidence was empty. Before any model inference, "
+                    "eligibility was narrowed to non-empty redacted evidence "
+                    "and true-code placement was made exactly balanced."
+                ),
+                "model_inference_before_erratum": False,
+                "market_or_funding_access_before_erratum": False,
+                "selection_salt_changed": False,
+                "decoy_pool_changed": False,
+            },
             "quarantined_events_remain_in_source_accounting": True,
             "quarantined_events_model_reward_economics_visible": False,
             "selection": (
-                "lowest SHA256(event_id || PSIM_MEMORIZATION_V1), "
-                "maximum 16 per protocol/effective-year"
+                "among events with non-empty redacted normalized delta text, "
+                "lowest SHA256(event_id || PSIM_MEMORIZATION_V1), exactly "
+                "16 per protocol/effective-year"
             ),
             "candidates_per_event": 8,
             "decoy_hash": (
@@ -1101,12 +1169,19 @@ def build_preregistration() -> dict[str, Any]:
                 "canonical_decimal_proposal_id || NUL || "
                 "PSIM_MEMORIZATION_V1_ORDER)"
             ),
+            "true_code_assignment_hash": (
+                "SHA256(lowercase_event_id || NUL || "
+                "PSIM_MEMORIZATION_V1_CODE_ASSIGNMENT_ERRATUM1)"
+            ),
             "decoys": (
                 "seven lowest distinct same-protocol same-effective-year "
                 "proposal IDs by decoy_hash after excluding the true ID"
             ),
             "choice_order": (
-                "true ID plus seven decoys sorted by independent order_hash"
+                "within each protocol/effective-year, selected event IDs are "
+                "ranked by true_code_assignment_hash and assigned A through "
+                "H cyclically exactly twice; seven decoys are sorted by "
+                "independent order_hash into the remaining lexical codes"
             ),
             "choice_codes": list(MEMORIZATION_CHALLENGE_CODES),
             "scoring": (
@@ -1118,8 +1193,9 @@ def build_preregistration() -> dict[str, Any]:
             "decoded_generation": False,
             "code_tokenization_failure_action": "TERMINAL_REJECT",
             "true_code_balance_gate": (
-                "every code appears for each protocol and combined; maximum "
-                "true-code share <=0.20 before model access"
+                "every code appears exactly twice per protocol/effective-year, "
+                "eight times per protocol, and sixteen times combined before "
+                "model access"
             ),
             "base_model_challenge_before_any_market_access": True,
             "final_model_challenge_after_test_selection_before_eval_market": True,
