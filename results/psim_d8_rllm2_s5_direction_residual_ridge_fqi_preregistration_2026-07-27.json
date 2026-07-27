@@ -1,0 +1,449 @@
+{
+  "access_boundary": {
+    "2020_outcome_derived_artifact_bytes_hashed": true,
+    "2020_transition_reward_rows_parsed": 0,
+    "2021_economic_metrics_computed": 0,
+    "2021_funding_rows_parsed": 0,
+    "2021_market_or_funding_paths_read": [],
+    "2021_market_rows_parsed": 0,
+    "2021_policy_specific_outcomes_opened": false,
+    "2021_rewards_created": 0,
+    "2022_or_later_outcomes_opened": false,
+    "model_forwards_started": 0,
+    "model_loaded": false,
+    "raw_market_or_funding_paths_read": [],
+    "source_files_read": [
+      "data/bctp_stage_sources/2021/source_manifest.json",
+      "data/psim_d8_rllm2_s4_semantic_fqi_delayed_schedules_2021.csv.gz",
+      "data/psim_d8_rllm2_s4_semantic_fqi_pca32_2020.npz",
+      "data/psim_d8_rllm2_s4_semantic_fqi_schedules_2021.csv.gz",
+      "data/psim_d8_rllm2_s4_semantic_fqi_transition_ledger_2020.csv.gz",
+      "docs/bctp-cheap-policy-2021-transfer-result-2026-07-25.md",
+      "docs/psim-d8-rllm2-s4-pre2021-readiness-rejection-2026-07-27.md",
+      "results/psim_d8_rllm2_s4_pre2021_readiness_rejection_2026-07-27.json",
+      "results/psim_d8_rllm2_s4_semantic_fqi_preregistration_2026-07-27.json",
+      "results/psim_d8_rllm2_s4_semantic_fqi_schedule_seal_2021_2026-07-27.json",
+      "results/psim_d8_rllm2_s4_train2020_semantic_fqi_attempt_2026-07-27.json",
+      "results/psim_d8_rllm2_s4_train2020_semantic_fqi_seal_2026-07-27.json"
+    ]
+  },
+  "artifact_contract": {
+    "attempt": "results/psim_d8_rllm2_s5_train2020_direction_residual_ridge_fqi_attempt_2026-07-27.json",
+    "base_schedules_2021": "data/psim_d8_rllm2_s5_direction_residual_ridge_fqi_schedules_2021.csv.gz",
+    "delayed_primary_schedule_2021": "data/psim_d8_rllm2_s5_direction_residual_ridge_fqi_delayed_schedule_2021.csv.gz",
+    "deterministic_csv_gzip_and_json": true,
+    "fixed_paths_no_output_override": true,
+    "residual_reward_ledger_2020": "data/psim_d8_rllm2_s5_direction_residual_reward_ledger_2020.csv.gz",
+    "result": "results/psim_d8_rllm2_s5_train2020_direction_residual_ridge_fqi_pre2021_gate_2026-07-27.json",
+    "result_published_last": true,
+    "runner": "training/run_psim_d8_rllm2_s5_train2020_direction_residual_ridge_fqi.py",
+    "schedule_gate_manifest_2021": "results/psim_d8_rllm2_s5_direction_residual_ridge_fqi_schedule_gate_2021_2026-07-27.json",
+    "write_once": true
+  },
+  "candidate": {
+    "globally_pristine_2021_claim": false,
+    "id": "PSIM-D8-RLLM2-S5-DIRECTION-RESIDUAL-RIDGE-FQI",
+    "predecessor": "PSIM-D8-RLLM2-S4-PRE2021-READINESS-AUDIT",
+    "profitability_claim": false,
+    "selection_from_2020_metrics": false,
+    "selection_from_known_2021_metrics": false,
+    "single_promotable_primary": "semantic_ridge_direction_residual_fqi",
+    "stage": "reuse_2020_ledger_fit_direction_residual_ridge_and_seal_2021"
+  },
+  "chronology": [
+    "verify exact S4 terminal rejection and artifact hashes",
+    "write S5 attempt before parsing the 2020 transition ledger",
+    "read no raw market or funding payload",
+    "reconstruct exact 2020 reward tensor from the frozen ledger",
+    "compute three fixed direction-residual deltas without search",
+    "fit the complete eight-policy Ridge family on 2020 only",
+    "seal 2021 base and delayed schedules before any 2021 outcome read",
+    "run the fixed pre-2021 schedule readiness gate",
+    "terminally reject on failure; on pass authorize only a separate report-only 2021 transfer preregistration"
+  ],
+  "control_family": {
+    "action_code_permutation": "fit with internal LONG/SHORT/FLAT codes, canonicalize back to FLAT/SHORT/LONG, and require exact schedule identity",
+    "combined_2021_family_count": 33,
+    "combined_2021_family_ids": [
+      "semantic_ridge_fqi",
+      "semantic_extra_trees_fqi",
+      "always_flat",
+      "always_long",
+      "always_short",
+      "previous_target_persistence",
+      "exact_redacted_payload_memory",
+      "metadata_frontmatter_only",
+      "path_section_diff_size_only",
+      "cadence_revision_topology_only",
+      "shuffled_eip_bip_daily_relation",
+      "shuffled_old_new_pairing",
+      "future_status_scrub",
+      "ethereum_only",
+      "bitcoin_only",
+      "current_position_only",
+      "masked_semantic_embedding",
+      "semantic_ridge_fqi_circular_21_reward",
+      "semantic_ridge_fqi_within_month_shuffled_reward",
+      "semantic_ridge_fqi_direction_flip",
+      "semantic_ridge_fqi_action_code_permutation",
+      "semantic_extra_trees_fqi_circular_21_reward",
+      "semantic_extra_trees_fqi_within_month_shuffled_reward",
+      "semantic_extra_trees_fqi_direction_flip",
+      "semantic_extra_trees_fqi_action_code_permutation",
+      "semantic_ridge_direction_residual_fqi",
+      "semantic_ridge_direction_residual_fqi_action_code_permutation",
+      "semantic_ridge_direction_residual_fqi_direction_flip",
+      "semantic_ridge_direction_residual_fqi_circular_21_reward",
+      "semantic_ridge_direction_residual_fqi_within_month_shuffled_reward",
+      "semantic_ridge_direction_residual_fqi_current_position_only",
+      "semantic_ridge_direction_residual_fqi_masked_semantic_embedding",
+      "semantic_ridge_direction_residual_fqi_metadata_frontmatter_only"
+    ],
+    "current_position_only": "zero semantic-width input; separate position one-hot retained",
+    "direction_flip": "swap canonical short and long Q outputs",
+    "fixed_circular_reward_shift": 21,
+    "fixed_within_month_shuffle_seed": 20260727,
+    "masked_semantic_embedding": "all 32 semantic coordinates zero; position one-hot retained",
+    "metadata_frontmatter_only": "the exact S4 nonsemantic metadata/frontmatter feature family",
+    "new_control_policy_ids": [
+      "semantic_ridge_direction_residual_fqi_action_code_permutation",
+      "semantic_ridge_direction_residual_fqi_direction_flip",
+      "semantic_ridge_direction_residual_fqi_circular_21_reward",
+      "semantic_ridge_direction_residual_fqi_within_month_shuffled_reward",
+      "semantic_ridge_direction_residual_fqi_current_position_only",
+      "semantic_ridge_direction_residual_fqi_masked_semantic_embedding",
+      "semantic_ridge_direction_residual_fqi_metadata_frontmatter_only"
+    ],
+    "new_policy_family_ids": [
+      "semantic_ridge_direction_residual_fqi",
+      "semantic_ridge_direction_residual_fqi_action_code_permutation",
+      "semantic_ridge_direction_residual_fqi_direction_flip",
+      "semantic_ridge_direction_residual_fqi_circular_21_reward",
+      "semantic_ridge_direction_residual_fqi_within_month_shuffled_reward",
+      "semantic_ridge_direction_residual_fqi_current_position_only",
+      "semantic_ridge_direction_residual_fqi_masked_semantic_embedding",
+      "semantic_ridge_direction_residual_fqi_metadata_frontmatter_only"
+    ],
+    "s4_family_role": "frozen_nonpromotable_comparison_controls",
+    "single_predeclared_family_for_weekly_max_stat": true
+  },
+  "direction_residual_reward_contract": {
+    "actions": [
+      "TARGET_FLAT",
+      "TARGET_SHORT",
+      "TARGET_LONG"
+    ],
+    "clipping": false,
+    "delta_formula": "for each current position p, delta_p = 0.5 * mean_t(R[t,p,TARGET_LONG] - R[t,p,TARGET_SHORT]) over all finite reachable 2020 state rows",
+    "delta_selected_from_economic_metrics": false,
+    "fit_rows": "all 366 2020 source rows",
+    "hyperparameter_search": false,
+    "input": "exact S4 strict 2020 reward tensor reconstructed from the 3,288-row transition ledger",
+    "positions": [
+      "POSITION_SHORT",
+      "POSITION_FLAT",
+      "POSITION_LONG"
+    ],
+    "post_transform_invariant": "for each current position, mean residual long reward equals mean residual short reward within numeric tolerance 1e-15",
+    "reward_control_order": "residualize first; circular and within-month controls then permute the complete residual reward rows",
+    "scaling": false,
+    "threshold_search": false,
+    "transform": {
+      "TARGET_FLAT": "R_star[t,p,flat] = R[t,p,flat]",
+      "TARGET_LONG": "R_star[t,p,long] = R[t,p,long] - delta_p",
+      "TARGET_SHORT": "R_star[t,p,short] = R[t,p,short] + delta_p"
+    }
+  },
+  "execution_contract": {
+    "all_outputs_written_before_result": true,
+    "attempt_written_before_2020_ledger_parse": true,
+    "clean_head_equals_origin_main_required": true,
+    "exact_existing_result_resume_validation_required": true,
+    "no_2021_reward_or_economic_metric_creation": true,
+    "no_2021_stage_source_payload_read": true,
+    "no_model_load_or_new_model_forward": true,
+    "no_qlora": true,
+    "no_raw_market_or_funding_payload_read": true,
+    "runner_must_be_committed_and_hash_bound_before_execution": true
+  },
+  "fitted_q_contract": {
+    "action_order": [
+      "TARGET_FLAT",
+      "TARGET_SHORT",
+      "TARGET_LONG"
+    ],
+    "algorithm": "ridge",
+    "alpha": 100.0,
+    "bellman_iterations": 25,
+    "discount": 0.99,
+    "extra_trees_authorized": false,
+    "features": "exact frozen S4 PCA32 semantic coordinates plus separate current-position one-hot",
+    "model_load_or_new_gemma_forward_authorized": false,
+    "primary_policy_id": "semantic_ridge_direction_residual_fqi",
+    "qlora_authorized": false,
+    "target_account_gross": [
+      0.0,
+      -0.5,
+      0.5
+    ],
+    "tie_break": [
+      "TARGET_FLAT",
+      "current_target",
+      "TARGET_SHORT",
+      "TARGET_LONG"
+    ],
+    "unpenalized_intercept": true
+  },
+  "frozen_source_and_outcome_artifacts": {
+    "embeddings": {
+      "dtype": "float32",
+      "path": "data/psim_d8_rllm2_s3_chunked_native_source_embeddings_2020_2023.npz",
+      "sha256": "509d7922561cdec0582165e5976ac9bdcc72dfe26e68c6ce46fe7ba9fab4f2a0",
+      "shape": [
+        1461,
+        2560
+      ]
+    },
+    "model": {
+      "additive_direction_bias_or_posthoc_calibration": false,
+      "architecture": "Gemma4ForConditionalGeneration loaded from the exact multimodal checkpoint with no image/audio/video inputs; LoRA attaches only to model.language_model; last non-padding language hidden state feeds dedicated bias-free selected-subcard relation and target-action heads; no generated trading text",
+      "attention": "sdpa_if_pinned_runtime_supports_else_terminal_reject",
+      "chat_render": "pinned tokenizer chat template; one user turn; add_generation_prompt=true; thinking disabled",
+      "device_map": {
+        "": 0
+      },
+      "files": {
+        "chat_template.jinja": "0a2c8073c878ab1da004bee933a998606537bbb62016310352c7285c3f01c5b5",
+        "config.json": "33b10c02df3c2e8536cf323d29d53262aaa2f4d11dbe19bc729373fbe90295d4",
+        "generation_config.json": "d4226bbe3117d2d253ba4609720ba82c6c4ce4627a9a6ae05387c78983ac03de",
+        "model.safetensors": "cfbd3d2f1cd71bd471c37fe2bf8546d5028d41e5736f64e1ca6c6b8893125503",
+        "processor_config.json": "32bdf45d2ad4cc29a0822ddd157a182de76644f0419a6228d151495256e9813c",
+        "tokenizer.json": "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f",
+        "tokenizer_config.json": "9f4fec4b1dc6ecddf8f4a92e9caea5971c0e67d81309f3f9066a2bee8c362633"
+      },
+      "head_bias": false,
+      "id": "google/gemma-4-E4B-it",
+      "local_snapshot_required": true,
+      "logical_prompt_forward_schedule": "fixed_512_chunked_causal_cache_scan",
+      "maximum_input_tokens": 32768,
+      "official_references": [
+        "https://huggingface.co/docs/transformers/model_doc/gemma4",
+        "https://huggingface.co/docs/peft/developer_guides/quantization",
+        "https://huggingface.co/docs/peft/package_reference/lora",
+        "https://ai.google.dev/gemma/docs/core/prompt-formatting-gemma4",
+        "https://ai.google.dev/gemma/docs/core/huggingface_text_finetune_qlora"
+      ],
+      "quantization": "bitsandbytes NF4 double-quant BF16 compute",
+      "relation_head_scope": "SELECTED_SUBCARD_RELATION",
+      "revision": "ee0ef6023621cff504d758262d4e04895a5af4a2",
+      "runtime_versions": {
+        "accelerate": "1.12.0",
+        "bitsandbytes": "0.49.2",
+        "peft": "0.18.1",
+        "torch": "2.9.0",
+        "transformers": "5.7.0.dev0"
+      },
+      "single_forward_per_logical_decision": false,
+      "snapshot_verified_by_this_preregistration": false,
+      "source_embedding_position_token": "POSITION_FLAT",
+      "target_head_action_order": [
+        "TARGET_FLAT",
+        "TARGET_SHORT",
+        "TARGET_LONG"
+      ],
+      "tie_rule": [
+        "TARGET_FLAT",
+        "CURRENT_POSITION_TARGET",
+        "TARGET_SHORT",
+        "TARGET_LONG"
+      ],
+      "transformers_revision": "5d7ff4393ab99aa7cadf4cccd1f814dbb799f2bb",
+      "version_note": "The repository keeps its previously validated pinned Transformers revision; current Google examples recommend a newer release, so runtime compatibility is a mandatory synthetic gate rather than an assumed property.",
+      "visible_cuda_devices": 1
+    },
+    "pca32_2020": {
+      "components": 32,
+      "fit_rows": 366,
+      "input_width": 2560,
+      "path": "data/psim_d8_rllm2_s4_semantic_fqi_pca32_2020.npz",
+      "refit": false,
+      "sha256": "6a01d505ad2531683c9e8e9e0672456daf19a17a59b32d772fc857370210f0a2"
+    },
+    "relation_logits": {
+      "dtype": "float32",
+      "path": "data/psim_d8_rllm2_s3_chunked_native_relation_teacher_logits_2020_2023.npz",
+      "sha256": "384725cd8f2f451a8dedca76625333d66517937b744e09ea5d71cd938c500b62",
+      "shape": [
+        1461,
+        6
+      ]
+    },
+    "s4_base_schedules_2021": {
+      "path": "data/psim_d8_rllm2_s4_semantic_fqi_schedules_2021.csv.gz",
+      "role": "frozen_nonpromotable_comparison_family",
+      "rows": 9125,
+      "sha256": "2f5b04e2514ca8b328fa6a92a45cea2828225090afc2427a58b6b778655394ba"
+    },
+    "s4_delayed_schedules_2021": {
+      "path": "data/psim_d8_rllm2_s4_semantic_fqi_delayed_schedules_2021.csv.gz",
+      "role": "frozen_nonpromotable_comparison_family",
+      "rows": 730,
+      "sha256": "326d4e8c5e866b83b331d97ee54ea2abedce35abf85887539ee97220ed354484"
+    },
+    "selector": {
+      "alternate_subcard_after_quarantine_or_capacity_failure": false,
+      "complete_manifest_validation_required": true,
+      "formula": "uint64_be(SHA256(prior_card_hash || NUL || complete_relation_roster_sha256 || NUL || decision_at || NUL || fixed_salt)[:8]) mod subcard_count",
+      "market_outcome_or_model_dependent": false,
+      "maximum_relation_units": 64,
+      "primary_schedule": "ARCHIVE_D90",
+      "salt": "PSIM_D8_RLLM1_SUBCARD_SELECTOR_FIXED_20260727",
+      "selector_inputs_model_visible": false,
+      "version": "PSIM_D8_RLLM1_SELECTED_SUBCARD_V1"
+    },
+    "source_rows": {
+      "path": "data/psim_d8_rllm2_s3_chunked_native_source_feature_rows_2020_2023.jsonl.gz",
+      "rows": 1461,
+      "sha256": "2897845bf55506bf877c2015a670707287d3d98c3718361e24ad31504b98939c",
+      "source_row_roster_hash": "033df68d9067a88cb14eb83f92b7638f0addc2372ef08184ef75e9fe3f7ba47c"
+    },
+    "transition_ledger_2020": {
+      "actions": 3,
+      "current_positions": 3,
+      "frame_hash": "25a0e03be8cdc327506205db2467c40f9434fb19851cec1bd78b7e9f4c820c06",
+      "path": "data/psim_d8_rllm2_s4_semantic_fqi_transition_ledger_2020.csv.gz",
+      "rows": 3288,
+      "sha256": "07d465538d84648793ebbf302c54dace38ef71e88b22d7bd3a19fec500b99a7a",
+      "state_rows": 366
+    }
+  },
+  "future_2021_transfer_gate": {
+    "absolute_return_positive": true,
+    "base_cost_rate": 0.0006,
+    "both_half_returns_positive": true,
+    "cagr_to_strict_mdd_minimum": 1.0,
+    "delay_return_positive": true,
+    "execution_delay": "one complete 5m bar",
+    "familywise_p_max_strictly_below": 0.25,
+    "minimum_each_direction_share": 0.2,
+    "minimum_nonflat_intervals": 80,
+    "must_beat_strongest_nonsemantic_control": true,
+    "role": "policy-specific report-only transfer under disclosed global 2021 contamination",
+    "selection_or_repair_from_2021_metrics": false,
+    "single_promotable_primary": "semantic_ridge_direction_residual_fqi",
+    "stress_cost_rate": 0.001,
+    "stress_return_positive": true,
+    "strict_economics_implementation": "training/bctp_strict_economics.py",
+    "success_is_live_promotion": false,
+    "success_requires_forward_or_live_confirmation": true,
+    "weekly_familywise_family_ids": [
+      "semantic_ridge_fqi",
+      "semantic_extra_trees_fqi",
+      "always_flat",
+      "always_long",
+      "always_short",
+      "previous_target_persistence",
+      "exact_redacted_payload_memory",
+      "metadata_frontmatter_only",
+      "path_section_diff_size_only",
+      "cadence_revision_topology_only",
+      "shuffled_eip_bip_daily_relation",
+      "shuffled_old_new_pairing",
+      "future_status_scrub",
+      "ethereum_only",
+      "bitcoin_only",
+      "current_position_only",
+      "masked_semantic_embedding",
+      "semantic_ridge_fqi_circular_21_reward",
+      "semantic_ridge_fqi_within_month_shuffled_reward",
+      "semantic_ridge_fqi_direction_flip",
+      "semantic_ridge_fqi_action_code_permutation",
+      "semantic_extra_trees_fqi_circular_21_reward",
+      "semantic_extra_trees_fqi_within_month_shuffled_reward",
+      "semantic_extra_trees_fqi_direction_flip",
+      "semantic_extra_trees_fqi_action_code_permutation",
+      "semantic_ridge_direction_residual_fqi",
+      "semantic_ridge_direction_residual_fqi_action_code_permutation",
+      "semantic_ridge_direction_residual_fqi_direction_flip",
+      "semantic_ridge_direction_residual_fqi_circular_21_reward",
+      "semantic_ridge_direction_residual_fqi_within_month_shuffled_reward",
+      "semantic_ridge_direction_residual_fqi_current_position_only",
+      "semantic_ridge_direction_residual_fqi_masked_semantic_embedding",
+      "semantic_ridge_direction_residual_fqi_metadata_frontmatter_only"
+    ]
+  },
+  "global_outcome_contamination_disclosure": {
+    "2021_may_be_called_globally_pristine": false,
+    "globally_pristine_2021_claim_allowed": false,
+    "globally_pristine_evidence_requires_forward_or_live_data": true,
+    "interpretation": "S4 itself did not read 2021 outcomes, but the repository and research history already contain 2021 BTCUSDT transfer metrics",
+    "known_unrelated_2021_metrics_may_not_inform_s5_design": true,
+    "prior_2021_stage_funding_rows": 1095,
+    "prior_2021_stage_market_rows": 105120,
+    "prior_2021_stage_source_manifest": "data/bctp_stage_sources/2021/source_manifest.json",
+    "prior_2021_stage_source_manifest_sha256": "1d12d8dad47eda810933ddce7ac2d911a7a4f85262ecc02e91e22df2488c6e2d",
+    "prior_2021_transfer_result_document": "docs/bctp-cheap-policy-2021-transfer-result-2026-07-25.md",
+    "prior_2021_transfer_result_document_sha256": "bd72c0839035860f289aec3ffcfe6e55721dd8a15bd65c93c3bb62475fa95d95",
+    "prior_2021_transfer_result_exists": true,
+    "s5_policy_specific_2021_metrics_already_exist": false
+  },
+  "manifest_hash": "96fa6b761154beba09fcbdaf826a408b7a5549e067eef9ff68a11c4bed887c54",
+  "next_authorized_step": "IMPLEMENT_REVIEW_COMMIT_AND_PUSH_S5_RUNNER_THEN_EXECUTE_OUTCOME_BLIND_PRE2021_SCHEDULE_GATE_ONLY",
+  "pre2021_schedule_readiness_gate": {
+    "action_code_permutation_exact_target_identity": true,
+    "base_primary_schedule_rows": 365,
+    "degenerate_control_ids": [
+      "always_flat",
+      "always_long",
+      "always_short",
+      "previous_target_persistence",
+      "semantic_ridge_direction_residual_fqi_current_position_only",
+      "semantic_ridge_direction_residual_fqi_masked_semantic_embedding",
+      "semantic_ridge_direction_residual_fqi_metadata_frontmatter_only"
+    ],
+    "delayed_primary_schedule_rows": 365,
+    "delayed_target_counts_must_equal_base": true,
+    "failure_action": "TERMINAL_REJECT_S5_WITHOUT_2021_MARKET_FUNDING_REWARD_OR_METRIC_ACCESS",
+    "minimum_long_share_of_nonflat_targets": 0.2,
+    "minimum_nonflat_target_rows": 80,
+    "minimum_short_share_of_nonflat_targets": 0.2,
+    "minimum_target_hamming_distance_from_each_degenerate_control": 1,
+    "must_run_before_any_2021_market_or_funding_read": true,
+    "pass_action": "SEAL_S5_2021_SCHEDULE_AUTHORIZE_SEPARATE_REPORT_ONLY_2021_TRANSFER_PREREGISTRATION"
+  },
+  "predecessor_terminal_evidence": {
+    "s4_attempt": {
+      "attempt_hash": "3f314bc9633351934b7b0c7ccc198f6ac48709e1ae7cf99ff4969900aaa553bc",
+      "path": "results/psim_d8_rllm2_s4_train2020_semantic_fqi_attempt_2026-07-27.json",
+      "sha256": "717a140cec4a19ef057b2e44f7a508d25e977fd98b4447c3ea6f5dadd7e1e1fd"
+    },
+    "s4_audit_script_sha256": "d2da78e9801711dfa9fad1faaa0be3e77d62003d731caa36dfba2ed3873f9221",
+    "s4_preregistration": {
+      "manifest_hash": "81eaa2c6ea80e792a20d4abf6e341355d66ea3b0bed7cd359af040139ce91845",
+      "path": "results/psim_d8_rllm2_s4_semantic_fqi_preregistration_2026-07-27.json",
+      "sha256": "2c3be7d92f61248dd26d428a9793f1ec1e703e794e6454970c8a6c2804fc2a34"
+    },
+    "s4_readiness_rejection": {
+      "path": "results/psim_d8_rllm2_s4_pre2021_readiness_rejection_2026-07-27.json",
+      "result_hash": "36e81a7a42aa3a06b95e01c5203ec8f363a11b6771bafd28614ce4f055611ba9",
+      "sha256": "e670c0965ba9fccccc06f472cff696e1392a2853d4d8016350191849d4548560",
+      "terminal_action": "REJECT_PSIM_D8_RLLM2_S4_BEFORE_2021_OUTCOME_OPEN_HOLD_S4_2021_EVALUATION_START_NEW_PREREGISTERED_ATTEMPT"
+    },
+    "s4_rejection_document": {
+      "path": "docs/psim-d8-rllm2-s4-pre2021-readiness-rejection-2026-07-27.md",
+      "sha256": "5952ccad1d7536b82dc29f785e32f99fe89e1642aaa9de6311da05205965af0b"
+    },
+    "s4_result": {
+      "path": "results/psim_d8_rllm2_s4_train2020_semantic_fqi_seal_2026-07-27.json",
+      "result_hash": "4253626d04e70f51dbd73df6c898c4a553b8df76b1ceb9c903c82e83ab2e3c09",
+      "sha256": "ca7a9a42eda7719a7e59b9927bf9c8e754689007468ec235ac4c5e2a1c619c75"
+    },
+    "s4_schedule_manifest": {
+      "manifest_hash": "e90ce8de7c82aa5ca22365f6c50a42bd975e994202b67df751a12ef804de6f85",
+      "path": "results/psim_d8_rllm2_s4_semantic_fqi_schedule_seal_2021_2026-07-27.json",
+      "sha256": "cd5d06f43d98b36e4d69b5630afe5e98f8d807aa05707e571aa49ed7c6ff4f6c"
+    },
+    "terminal_record_commit": "2bdc009e0ca60ba103a98cdce8eee17194ee44c4"
+  },
+  "protocol_version": "psim_d8_rllm2_s5_direction_residual_ridge_fqi_preregistration_v1"
+}
