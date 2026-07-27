@@ -37,6 +37,10 @@ DEFAULT_OUTPUT = Path(
 RUNNER_PATH = Path(
     "training/run_psim_d8_rllm2_s4_train2020_semantic_fqi.py"
 )
+ATTEMPT_PATH = Path(
+    "results/psim_d8_rllm2_s4_train2020_semantic_fqi_"
+    "attempt_2026-07-27.json"
+)
 RESULT_PATH = Path(
     "results/psim_d8_rllm2_s4_train2020_semantic_fqi_"
     "seal_2026-07-27.json"
@@ -551,6 +555,7 @@ def build_preregistration() -> dict[str, Any]:
         },
         "artifact_contract": {
             "runner": RUNNER_PATH.as_posix(),
+            "attempt": ATTEMPT_PATH.as_posix(),
             "result": RESULT_PATH.as_posix(),
             "transition_ledger_2020": TRANSITION_LEDGER_PATH.as_posix(),
             "pca32_2020": PCA_PATH.as_posix(),

@@ -93,6 +93,10 @@ def test_semantic_family_and_training_degrees_are_frozen() -> None:
         ]
         is False
     )
+    assert payload["artifact_contract"]["attempt"] == (
+        "results/psim_d8_rllm2_s4_train2020_semantic_fqi_"
+        "attempt_2026-07-27.json"
+    )
     authorized = payload["authorized_2020_outcome_sources"]
     assert authorized["stage"] == "2020"
     assert authorized["start_inclusive"] == "2020-01-01T00:00:00Z"
