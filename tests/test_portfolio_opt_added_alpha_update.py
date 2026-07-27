@@ -7,13 +7,16 @@ from training.portfolio_opt_added_alpha_update import (
     NEW_SLEEVES,
     SLEEVES,
     exact_pre2025_rows,
+    family_gross_cap_for,
     pre2025_passes,
     pre2025_row_sort_key,
     pre2025_selection_key,
     quantize_weights,
     refine_pre2025_rows,
     strict_metric,
+    validate_rank7_capacity_evidence,
     valid_weights,
+    weight_candidates,
     weight_neighbors,
     years_for,
 )
@@ -71,6 +74,60 @@ def test_weight_contract_enforces_grid_min_gross_and_family_cap():
         },
         cfg,
     )
+    assert not valid_weights({"frozen_annual_rank7": 2.05}, cfg)
+
+
+def test_rank7_capacity_exception_is_explicit_and_does_not_relax_other_families():
+    cfg = Config(rank7_family_gross_cap=3.0)
+    assert family_gross_cap_for("rank7", cfg) == 3.0
+    assert family_gross_cap_for("rex", cfg) == 2.0
+    assert valid_weights({"frozen_annual_rank7": 3.0}, cfg)
+    assert not valid_weights({"frozen_annual_rank7": 3.05}, cfg)
+    assert not valid_weights(
+        {
+            "new_long_minimal_funding_premium": 1.5,
+            "markov_transition_long": 0.55,
+        },
+        cfg,
+    )
+
+
+def test_rank7_capacity_candidates_include_frozen_endpoint_without_duplicate_sleeve():
+    baseline_candidates = weight_candidates(
+        Config(random_samples=0, seed_count=0)
+    )
+    cfg = Config(
+        rank7_family_gross_cap=3.0,
+        random_samples=0,
+        seed_count=0,
+    )
+    candidates = weight_candidates(cfg)
+    assert len(baseline_candidates) == 382
+    assert any(weights.get("frozen_annual_rank7") == 3.0 for weights in candidates)
+    assert SLEEVES.count("frozen_annual_rank7") == 1
+
+
+def test_rank7_capacity_evidence_uses_only_pre2025_selection_fields():
+    cfg = Config(
+        rank7_family_gross_cap=3.0,
+        rank7_capacity_evidence=(
+            "results/expanding_extratrees_rank7_leverage_battery_2026-07-27.json"
+        ),
+    )
+    evidence = validate_rank7_capacity_evidence(cfg)
+    assert evidence is not None
+    assert evidence["base_leverage"] == 0.5
+    assert evidence["selected_leverage"] == 1.5
+    assert evidence["selected_multiplier"] == 3.0
+    assert evidence["selection_windows"] == ["2023", "2024", "selection"]
+    assert evidence["duplicate_sleeve_created"] is False
+    assert evidence["report_only_metrics_used_for_allocation"] is False
+
+
+def test_rank7_capacity_expansion_fails_closed_without_evidence():
+    cfg = Config(rank7_family_gross_cap=3.0)
+    with np.testing.assert_raises_regex(ValueError, "requires frozen capacity evidence"):
+        validate_rank7_capacity_evidence(cfg)
 
 
 def test_refinement_neighbors_remain_on_valid_grid():

@@ -66,6 +66,7 @@ OUTPUT = "results/portfolio_added_alpha_update_2026-07-16.json"
 DOCS_OUTPUT = "docs/portfolio-added-alpha-update-2026-07-16.md"
 CANDIDATE_CONFIG = "configs/live/portfolio_added_alpha_shadow_candidate_2026-07-16.json"
 ACCOUNTING_VERSION = "same_btc_low_high_v1"
+RANK7_BASE_LEVERAGE = 0.5
 
 LIVE_WEIGHTS = {
     "oi_upbit_ratio288_low": 0.65,
@@ -120,6 +121,7 @@ class Config:
     candidate_config: str = CANDIDATE_CONFIG
     gross_cap: float = 10.0
     family_gross_cap: float = 2.0
+    rank7_family_gross_cap: float = 2.0
     min_nonzero_weight: float = 0.25
     weight_step: float = 0.05
     train_mdd_cap: float = 40.0
@@ -136,6 +138,12 @@ class Config:
     refinement_top_n: int = 20
     refinement_patience: int = 3
     cost_rate: float = 0.0006
+    rank7_capacity_evidence: str = ""
+    comparison_portfolio: str = ""
+    comparison_label: str = ""
+    report_title: str = "Added-alpha portfolio allocation update (2026-07-16)"
+    candidate_name: str = "portfolio_added_alpha_shadow_candidate_2026_07_16"
+    candidate_as_of: str = "2026-07-16"
 
 
 def resolve_existing(path: str | Path) -> Path:
@@ -177,6 +185,91 @@ def file_record(path: str | Path) -> dict[str, Any]:
         "path": str(resolved),
         "bytes": resolved.stat().st_size,
         "sha256": digest.hexdigest(),
+    }
+
+
+def family_gross_cap_for(family: str, cfg: Config) -> float:
+    """Return the frozen family cap, with the explicit Rank7 capacity exception."""
+    if family == "rank7":
+        return float(cfg.rank7_family_gross_cap)
+    return float(cfg.family_gross_cap)
+
+
+def load_portfolio_weights(path: str | Path) -> dict[str, float]:
+    payload = json.loads(resolve_existing(path).read_text(encoding="utf-8"))
+    raw = payload.get("weights")
+    if not isinstance(raw, dict) or not raw:
+        raise ValueError(f"portfolio config has no weights: {path}")
+    weights = {str(name): float(value) for name, value in raw.items()}
+    if not np.isfinite(list(weights.values())).all():
+        raise ValueError(f"portfolio config contains nonfinite weights: {path}")
+    return weights
+
+
+def validate_rank7_capacity_evidence(cfg: Config) -> dict[str, Any] | None:
+    """Validate only the pre-2025-selected Rank7 sizing fields used by allocation."""
+    if cfg.rank7_family_gross_cap <= cfg.family_gross_cap + 1e-12:
+        return None
+    if not cfg.rank7_capacity_evidence:
+        raise ValueError("Rank7 family-cap expansion requires frozen capacity evidence")
+
+    evidence_path = resolve_existing(cfg.rank7_capacity_evidence)
+    payload = json.loads(evidence_path.read_text(encoding="utf-8"))
+    integrity = payload.get("integrity", {})
+    if payload.get("mode") != "frozen_rank7_preregistered_leverage_battery":
+        raise ValueError("Rank7 capacity evidence mode drifted")
+    if integrity.get("selection_uses_only_pre_2025_windows") is not True:
+        raise ValueError("Rank7 leverage selection is not isolated to pre-2025 windows")
+    if integrity.get("future_repair_or_reselection") is not False:
+        raise ValueError("Rank7 leverage evidence permits future repair or reselection")
+
+    selected_leverage = float(payload["selected_leverage"])
+    selection_rows = [
+        row
+        for row in payload.get("selection_grid", [])
+        if np.isclose(float(row.get("leverage", np.nan)), selected_leverage)
+    ]
+    if len(selection_rows) != 1 or selection_rows[0].get("passes") is not True:
+        raise ValueError("Rank7 selected leverage is not a unique passing selection cell")
+    selected_row = selection_rows[0]
+    expected_windows = {"2023", "2024", "selection"}
+    if set(selected_row.get("base", {})) != expected_windows:
+        raise ValueError("Rank7 capacity base selection windows drifted")
+    if set(selected_row.get("stress", {})) != expected_windows:
+        raise ValueError("Rank7 capacity stress selection windows drifted")
+
+    preregistration = payload.get("preregistration", {})
+    preregistration_path = resolve_existing(preregistration["path"])
+    preregistration_sha = file_record(preregistration_path)["sha256"]
+    if preregistration_sha != preregistration.get("sha256"):
+        raise ValueError("Rank7 capacity preregistration hash drifted")
+    preregistration_payload = json.loads(
+        preregistration_path.read_text(encoding="utf-8")
+    )
+    candidate = preregistration_payload.get("candidate", {})
+    base_leverage = float(candidate.get("base_leverage", np.nan))
+    if not np.isclose(base_leverage, RANK7_BASE_LEVERAGE):
+        raise ValueError("Rank7 base leverage drifted")
+    selected_multiplier = selected_leverage / base_leverage
+    if not np.isclose(cfg.rank7_family_gross_cap, selected_multiplier):
+        raise ValueError(
+            "Rank7 family cap does not equal the pre-2025-selected leverage multiplier"
+        )
+
+    return {
+        "evidence_path": str(evidence_path),
+        "evidence_sha256": file_record(evidence_path)["sha256"],
+        "preregistration_path": str(preregistration_path),
+        "preregistration_sha256": preregistration_sha,
+        "selection_uses_only_pre_2025_windows": True,
+        "future_repair_or_reselection": False,
+        "base_leverage": base_leverage,
+        "selected_leverage": selected_leverage,
+        "selected_multiplier": selected_multiplier,
+        "selected_cell_passed": True,
+        "selection_windows": sorted(expected_windows),
+        "duplicate_sleeve_created": False,
+        "report_only_metrics_used_for_allocation": False,
     }
 
 
@@ -860,12 +953,21 @@ def valid_weights(weights: dict[str, float], cfg: Config) -> bool:
             return False
         family = FAMILIES[name]
         family_gross[family] = family_gross.get(family, 0.0) + float(weight)
-    return all(value <= cfg.family_gross_cap + 1e-9 for value in family_gross.values())
+    return all(
+        value <= family_gross_cap_for(family, cfg) + 1e-9
+        for family, value in family_gross.items()
+    )
 
 
 def weight_candidates(cfg: Config) -> list[dict[str, float]]:
     candidates: list[dict[str, float]] = []
     seen: set[tuple[float, ...]] = set()
+
+    def pair_seed_grid(sleeve: str) -> tuple[float, ...]:
+        cap = family_gross_cap_for(FAMILIES[sleeve], cfg)
+        original = (0.25, 0.5, 1.0, 1.5, 2.0)
+        extension = tuple(float(value) for value in np.arange(2.25, cap + 0.001, 0.25))
+        return tuple(value for value in original if value <= cap + 1e-12) + extension
 
     def add(raw: dict[str, float]) -> None:
         weights = quantize_weights(raw, cfg)
@@ -877,16 +979,19 @@ def weight_candidates(cfg: Config) -> list[dict[str, float]]:
             candidates.append(weights)
 
     add(LIVE_WEIGHTS)
+    if cfg.comparison_portfolio:
+        add(load_portfolio_weights(cfg.comparison_portfolio))
     for scale in (0.5, 0.75, 1.0):
         anchor = {name: weight * scale for name, weight in LIVE_WEIGHTS.items()}
         add(anchor)
         for sleeve in NEW_SLEEVES:
-            for weight in np.arange(0.25, 2.001, 0.25):
+            sleeve_cap = family_gross_cap_for(FAMILIES[sleeve], cfg)
+            for weight in np.arange(0.25, sleeve_cap + 0.001, 0.25):
                 add({**anchor, sleeve: float(weight)})
     for left_index, left in enumerate(NEW_SLEEVES):
         for right in NEW_SLEEVES[left_index + 1 :]:
-            for left_weight in (0.25, 0.5, 1.0, 1.5, 2.0):
-                for right_weight in (0.25, 0.5, 1.0, 1.5, 2.0):
+            for left_weight in pair_seed_grid(left):
+                for right_weight in pair_seed_grid(right):
                     add({**LIVE_WEIGHTS, left: left_weight, right: right_weight})
                     add({left: left_weight, right: right_weight})
 
@@ -1131,14 +1236,18 @@ def _format_metric(metric: dict[str, Any]) -> str:
 def render_docs(report: dict[str, Any]) -> str:
     selected = report["frozen_pre2025_top1"]
     baseline = report["baseline_live_replay"]["corrected_strict"]
+    family_caps = ", ".join(
+        f"{family}={cap:g}"
+        for family, cap in sorted(report["family_gross_caps"].items())
+    )
     lines = [
-        "# Added-alpha portfolio allocation update (2026-07-16)",
+        f"# {report['config']['report_title']}",
         "",
         "Metric cells: `absolute return / full-calendar CAGR / strict MDD / CAGR-MDD / trades`.",
         "",
         "## Frozen protocol",
         "",
-        f"- Gross <= {report['config']['gross_cap']}; family gross <= {report['config']['family_gross_cap']}.",
+        f"- Gross <= {report['config']['gross_cap']}; family caps: `{family_caps}`.",
         f"- Non-zero weight >= {report['config']['min_nonzero_weight']}; step = {report['config']['weight_step']}.",
         f"- Accounting `{report['accounting_version']}`; protocol `{report['protocol_hash']}`.",
         "- Allocation ranking uses train and 2024 only.",
@@ -1156,6 +1265,16 @@ def render_docs(report: dict[str, Any]) -> str:
         "| Portfolio | Train | 2024 selection | 2025 report | 2026H1 report |",
         "|---|---:|---:|---:|---:|",
         f"| Previous live | {_format_metric(baseline['train'])} | {_format_metric(baseline['test2024'])} | {_format_metric(baseline['eval2025'])} | {_format_metric(baseline['ytd2026'])} |",
+    ]
+    comparison = report.get("comparison_portfolio")
+    if comparison is not None:
+        stats = comparison["stats"]
+        lines.append(
+            f"| {comparison['label']} | {_format_metric(stats['train'])} | "
+            f"{_format_metric(stats['test2024'])} | {_format_metric(stats['eval2025'])} | "
+            f"{_format_metric(stats['ytd2026'])} |"
+        )
+    lines += [
         f"| Frozen rank 1 | {_format_metric(selected['stats']['train'])} | {_format_metric(selected['stats']['test2024'])} | {_format_metric(selected['stats']['eval2025'])} | {_format_metric(selected['stats']['ytd2026'])} |",
         "",
         "## Top pre-2025 allocation ranks",
@@ -1180,6 +1299,7 @@ def render_docs(report: dict[str, Any]) -> str:
         "- Every sleeve is marked at the same underlying BTC low/high price points; upper is applied before lower on each bar.",
         "- The reported row is the best found in a deterministic seeded candidate search, not a proof of the global discrete-grid optimum.",
         "- Rank7 and Fresh Kimchi retain their canonical execution/funding schedules.",
+        "- A Rank7 cap above the common family cap is allowed only when a pre-2025-selected leverage battery proves the exact multiplier; no duplicate Rank7 sleeve is created.",
         "- Advanced-state representatives selected by inspecting future passers were excluded.",
         "- This experiment does not overwrite the current live config.",
     ]
@@ -1188,6 +1308,7 @@ def render_docs(report: dict[str, Any]) -> str:
 
 def run(cfg: Config) -> dict[str, Any]:
     ensure_runtime_inputs()
+    rank7_capacity = validate_rank7_capacity_evidence(cfg)
     input_provenance = {
         "market": file_record(cfg.input_csv),
         "funding": file_record(cfg.funding_csv),
@@ -1207,6 +1328,14 @@ def run(cfg: Config) -> dict[str, Any]:
         ),
         "rex_reasoning_source": file_record("data/rex_event_reasoning_policy_sft_20260712.jsonl"),
     }
+    if cfg.rank7_capacity_evidence:
+        input_provenance["rank7_capacity_evidence"] = file_record(
+            cfg.rank7_capacity_evidence
+        )
+    if cfg.comparison_portfolio:
+        input_provenance["comparison_portfolio"] = file_record(
+            cfg.comparison_portfolio
+        )
     legacy_cfg = legacy_all.Config(
         random_samples=0,
         candidate_rex_top_n=50,
@@ -1266,6 +1395,27 @@ def run(cfg: Config) -> dict[str, Any]:
     strict_baseline = {
         split: strict_metric(arrays[split], years_for(split), LIVE_WEIGHTS) for split in SPLIT_BOUNDS
     }
+    comparison_portfolio: dict[str, Any] | None = None
+    if cfg.comparison_portfolio:
+        comparison_weights = quantize_weights(
+            load_portfolio_weights(cfg.comparison_portfolio), cfg
+        )
+        if not valid_weights(comparison_weights, cfg):
+            raise ValueError("comparison portfolio violates the active weight contract")
+        comparison_portfolio = {
+            "label": cfg.comparison_label or Path(cfg.comparison_portfolio).stem,
+            "path": cfg.comparison_portfolio,
+            "weights": comparison_weights,
+            "gross": round(sum(comparison_weights.values()), 6),
+            "weights_included_as_pre2025_candidate_anchor": True,
+            "future_metrics_used_for_ranking": False,
+            "stats": {
+                split: strict_metric(
+                    arrays[split], years_for(split), comparison_weights
+                )
+                for split in SPLIT_BOUNDS
+            },
+        }
 
     candidates = weight_candidates(cfg)
     ranked_pre2025 = exact_pre2025_rows(arrays, candidates, cfg)
@@ -1303,42 +1453,53 @@ def run(cfg: Config) -> dict[str, Any]:
         "path_counts": path_counts,
         "path_final_equities": path_meta,
         "funding_lr_manifest": funding_meta,
+        "rank7_capacity_selection": rank7_capacity,
     }
+    family_gross_caps = {
+        family: family_gross_cap_for(family, cfg)
+        for family in sorted(set(FAMILIES.values()))
+    }
+    protocol_constraints = {
+        key: value
+        for key, value in asdict(cfg).items()
+        if key
+        in {
+            "gross_cap",
+            "family_gross_cap",
+            "min_nonzero_weight",
+            "weight_step",
+            "train_mdd_cap",
+            "test_mdd_cap",
+            "future_mdd_cap",
+            "min_test_trades",
+            "min_test_ratio",
+            "min_future_ratio",
+            "random_samples",
+            "seed",
+            "seed_count",
+            "refinement_rounds",
+            "refinement_top_n",
+            "refinement_patience",
+            "cost_rate",
+        }
+    }
+    if not np.isclose(cfg.rank7_family_gross_cap, cfg.family_gross_cap):
+        protocol_constraints["family_gross_cap_overrides"] = {
+            "rank7": cfg.rank7_family_gross_cap
+        }
     report = {
         "as_of": datetime.now(timezone.utc).isoformat(),
         "schema_version": 1,
         "accounting_version": ACCOUNTING_VERSION,
         "mode": "frozen_pre2025_allocation_rank_future_veto_only",
         "config": asdict(cfg),
+        "family_gross_caps": family_gross_caps,
         "protocol_hash": json_hash(
             {
                 "sleeves": SLEEVES,
                 "families": FAMILIES,
                 "splits": SPLIT_BOUNDS,
-                "constraints": {
-                    key: value
-                    for key, value in asdict(cfg).items()
-                    if key
-                    in {
-                        "gross_cap",
-                        "family_gross_cap",
-                        "min_nonzero_weight",
-                        "weight_step",
-                        "train_mdd_cap",
-                        "test_mdd_cap",
-                        "future_mdd_cap",
-                        "min_test_trades",
-                        "min_test_ratio",
-                        "min_future_ratio",
-                        "random_samples",
-                        "seed",
-                        "seed_count",
-                        "refinement_rounds",
-                        "refinement_top_n",
-                        "refinement_patience",
-                        "cost_rate",
-                    }
-                },
+                "constraints": protocol_constraints,
                 "input_sha256": {
                     name: record["sha256"] for name, record in input_provenance.items()
                 },
@@ -1359,6 +1520,7 @@ def run(cfg: Config) -> dict[str, Any]:
         "candidate_universe": {
             "live_anchor": list(LIVE_WEIGHTS),
             "added": list(NEW_SLEEVES),
+            "rank7_capacity_extension": rank7_capacity,
             "excluded": {
                 "kalman_bocpd_semimarkov_representatives": (
                     "exact representative chosen from pre-evaluation Top-10 after observing future passers"
@@ -1373,6 +1535,7 @@ def run(cfg: Config) -> dict[str, Any]:
             "legacy_exact_reproduction": legacy_replay,
             "corrected_strict": strict_baseline,
         },
+        "comparison_portfolio": comparison_portfolio,
         "candidate_generation": {
             "generated_initial": len(candidates),
             "seed_range": [cfg.seed, cfg.seed + cfg.seed_count - 1],
@@ -1381,6 +1544,9 @@ def run(cfg: Config) -> dict[str, Any]:
             "refinement": refinement_meta,
             "search_scope": "deterministic seeded/random candidate set; not a proof of global grid optimum",
             "selection_clock": "shared 5-minute same-BTC low/high upper-before-lower strict MDD",
+            "comparison_weights_included_as_anchor": bool(
+                cfg.comparison_portfolio
+            ),
         },
         "source_validation": source_validation,
         "frozen_pre2025_top1": selected,
@@ -1394,14 +1560,24 @@ def run(cfg: Config) -> dict[str, Any]:
     docs.parent.mkdir(parents=True, exist_ok=True)
     docs.write_text(render_docs(report))
     candidate_config = {
-        "name": "portfolio_added_alpha_shadow_candidate_2026_07_16",
+        "name": cfg.candidate_name,
         "status": disposition,
-        "as_of": "2026-07-16",
+        "as_of": cfg.candidate_as_of,
         "weights": selected["weights"],
         "gross_weight": selected["gross"],
         "selection": "frozen train+2024 rank 1; 2025/2026 veto only; no reranking",
         "future_veto_passed": selected["future_veto_passed"],
         "research_contaminated": True,
+        "rank7_capacity_extension": rank7_capacity,
+        "comparison_portfolio": (
+            {
+                "path": comparison_portfolio["path"],
+                "weights": comparison_portfolio["weights"],
+                "gross_weight": comparison_portfolio["gross"],
+            }
+            if comparison_portfolio is not None
+            else None
+        ),
         "source_result": cfg.output,
         "protocol_hash": report["protocol_hash"],
         "accounting_version": ACCOUNTING_VERSION,
