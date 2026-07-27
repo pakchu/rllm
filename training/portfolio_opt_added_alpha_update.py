@@ -1303,6 +1303,16 @@ def render_docs(report: dict[str, Any]) -> str:
         "- Advanced-state representatives selected by inspecting future passers were excluded.",
         "- This experiment does not overwrite the current live config.",
     ]
+    rank7_cap = float(report["family_gross_caps"]["rank7"])
+    rank7_weight = float(selected["weights"].get("frozen_annual_rank7", 0.0))
+    if np.isclose(rank7_weight, rank7_cap) and rank7_cap > float(
+        report["config"]["family_gross_cap"]
+    ):
+        lines.append(
+            "- Rank7 finished exactly at its authorized 3.0 multiplier "
+            "(1.5x effective leverage). This is a capacity-bound result, not "
+            "evidence that leverage above the preregistered cap is optimal or safe."
+        )
     return "\n".join(lines) + "\n"
 
 
