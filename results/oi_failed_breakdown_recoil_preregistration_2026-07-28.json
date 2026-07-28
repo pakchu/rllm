@@ -1,0 +1,167 @@
+{
+  "as_of": "2026-07-28",
+  "name": "oi_failed_breakdown_recoil",
+  "short_name": "OFBR-1",
+  "status": "preregistered_before_outcome_scan",
+  "objective": "Add a causal long sleeve that improves the frozen Gross9 portfolio by monetizing failed downside continuation after leveraged short inventory builds.",
+  "mechanism": {
+    "anchor": [
+      "completed 4h BTC log return is in the calibration q20 lower tail",
+      "one-bar-delayed 4h OI-minus-price divergence is in the calibration upper tail",
+      "completed 1h taker imbalance is in the calibration lower tail",
+      "completed close is in the calibration q25 lower tail of its trailing 4h high-low range"
+    ],
+    "confirmation": [
+      "wait a fixed 30m or 60m after the anchor",
+      "completed close reclaims the anchor close",
+      "completed fast taker flow is greater than anchor 1h taker flow",
+      "one-bar-delayed OI has not fallen more than the frozen retention allowance",
+      "post-anchor downside excursion is no larger than 1.5 times the pre-anchor 1h ATR",
+      "completed close finishes in the frozen upper fraction of the post-anchor range"
+    ],
+    "trade": "enter LONG at the next 5m open after confirmation; fixed hold; no take-profit or stop"
+  },
+  "causality_contract": {
+    "decision_clock": "completed 5m bars only",
+    "entry_delay_bars": 1,
+    "open_interest_delay_bars": 1,
+    "missing_open_interest": "fail closed; no forward fill",
+    "rolling_features": "trailing-only and inclusive of the completed decision bar",
+    "threshold_fit_window": [
+      "2020-09-01",
+      "2023-01-01"
+    ],
+    "candidate_train_window": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "test_selection_window": [
+      "2024-01-01",
+      "2025-01-01"
+    ],
+    "future_veto_windows": {
+      "eval2025": [
+        "2025-01-01",
+        "2026-01-01"
+      ],
+      "ytd2026": [
+        "2026-01-01",
+        "2026-06-03"
+      ]
+    },
+    "future_can_rerank": false,
+    "future_can_repair": false
+  },
+  "frozen_grid": {
+    "price_return_quantile": [
+      0.2
+    ],
+    "oi_minus_price_quantile": [
+      0.75,
+      0.9
+    ],
+    "taker_sell_quantile": [
+      0.2,
+      0.35
+    ],
+    "range_position_quantile": [
+      0.25
+    ],
+    "confirmation_wait_bars": [
+      6,
+      12
+    ],
+    "minimum_oi_retention": [
+      -0.005,
+      0.0
+    ],
+    "minimum_post_anchor_range_position": [
+      0.65,
+      0.8
+    ],
+    "hold_bars": [
+      36,
+      72,
+      144
+    ],
+    "anchor_stride_bars": 6,
+    "post_anchor_atr_multiple": 1.5,
+    "candidate_count": 96
+  },
+  "execution_contract": {
+    "side": "LONG",
+    "leverage": 0.5,
+    "fee_and_slippage_per_notional_side": 0.0006,
+    "stress_fee_and_slippage_per_notional_side": 0.001,
+    "non_overlapping_within_sleeve": true,
+    "split_contained_exits": true,
+    "annualization": "declared full calendar window including all idle cash time",
+    "strict_mdd": "global high-water mark with same-BTC completed-bar upper-before-lower OHLC path"
+  },
+  "selection_contract": {
+    "pre2024_shortlist": {
+      "max_candidates": 10,
+      "requirements": [
+        "calibration absolute return > 0",
+        "2023 absolute return > 0",
+        "2023 trades >= 12",
+        "calibration and 2023 strict MDD <= 20%",
+        "minimum of calibration and 2023 CAGR/strict-MDD >= 1"
+      ],
+      "rank": "maximize minimum(calibration ratio, 2023 ratio), then 2023 ratio, then lower MDD, then lexicographic parameter order"
+    },
+    "test2024_top1": {
+      "requirements": [
+        "2024 absolute return > 0",
+        "2024 CAGR/strict-MDD >= 3",
+        "2024 strict MDD <= 15%",
+        "2024 trades >= 12",
+        "Gross9 plus weight 0.25 must improve 2024 CAGR/strict-MDD without lowering absolute return"
+      ],
+      "rank": "maximize the minimum Gross9 portfolio ratio across 2023 and 2024, then 2024 marginal ratio improvement, then standalone 2024 ratio, then lower weight/gross"
+    },
+    "future_veto": {
+      "requirements": [
+        "2025 and 2026 absolute return > 0",
+        "2025 and 2026 CAGR/strict-MDD >= 3",
+        "2025 and 2026 strict MDD <= 15%",
+        "2025 trades >= 12 and 2026 trades >= 6",
+        "10bp/side stress remains positive in both future windows",
+        "adding the frozen sleeve does not reduce Gross9 absolute return or CAGR/strict-MDD in either future window"
+      ]
+    }
+  },
+  "orthogonality_contract": {
+    "required_diagnostics": [
+      "exact entry Jaccard versus every Gross9 sleeve",
+      "entry overlap within plus/minus 6h",
+      "occupied-position-bar Jaccard",
+      "zero-filled daily MTM Pearson and Spearman correlation",
+      "candidate contribution on the worst 20 Gross9 drawdown bars",
+      "overlap with REX short positions and Rank7/Markov long positions"
+    ],
+    "default_limits": {
+      "exact_entry_jaccard_max": 0.02,
+      "near_6h_entry_fraction_max": 0.25,
+      "occupied_position_bar_jaccard_max": 0.15,
+      "absolute_daily_pnl_pearson_max": 0.3,
+      "minimum_nonzero_pnl_days": 10
+    },
+    "exception": "A higher REX-short overlap is allowed only when the candidate is opposite-side, the frozen portfolio marginal test improves strict MDD, and overlap is reported rather than hidden."
+  },
+  "input_provenance": {
+    "market": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "open_interest": {
+      "path": "/tmp/btcusdt_open_interest_5m_2020_2026.csv",
+      "sha256": "e08f93033e56959e8e7a9c1e21f27c5f01efc8d06fa6b4fbbfe7354697122b31"
+    },
+    "gross9": {
+      "path": "configs/shadow/portfolio_rank7_capacity_candidate_2026-07-28.json",
+      "sha256": "006f82e1f0affad9f96a08a6c600542feec4a0e1198ed99b8630627de4913450"
+    }
+  },
+  "research_caveat": "The wider programme has previously inspected 2025 and 2026. This freeze prevents new future reranking but cannot make those calendars globally pristine. Any passing result remains forward-shadow only."
+}
