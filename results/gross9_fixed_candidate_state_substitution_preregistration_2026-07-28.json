@@ -1,0 +1,307 @@
+{
+  "as_of": "2026-07-28",
+  "name": "gross9_fixed_candidate_and_state_substitution_battery",
+  "short_name": "G9-FCSS-1",
+  "status": "preregistered_before_shared_clock_candidate_battery",
+  "objective": "Find a fixed, executable alpha sleeve that improves the exact Gross9 portfolio rather than merely increasing leverage or re-tuning a gate.",
+  "portfolio_baseline": {
+    "name": "Gross9 Rank7 capacity shadow candidate",
+    "weights": {
+      "fresh_kimchi_fx": 2.0,
+      "frozen_annual_rank7": 3.0,
+      "rex_taker_low_range_position": 0.4,
+      "cand_rex_veto_7": 1.6,
+      "markov_transition_long": 2.0
+    },
+    "gross": 9.0,
+    "accounting": "same_btc_low_high_v1",
+    "frozen_stats": {
+      "train": {
+        "absolute_return_pct": 2553.1888632565006,
+        "cagr_pct": 167.48900464182316,
+        "strict_mdd_pct": 36.5769674927924,
+        "cagr_to_strict_mdd": 4.5790839460605195,
+        "trades": 861
+      },
+      "test2024": {
+        "absolute_return_pct": 222.4781807991963,
+        "cagr_pct": 221.70538181047203,
+        "strict_mdd_pct": 16.951632847348485,
+        "cagr_to_strict_mdd": 13.078703615572373,
+        "trades": 203
+      },
+      "eval2025": {
+        "absolute_return_pct": 185.25265289527007,
+        "cagr_pct": 185.45752320115974,
+        "strict_mdd_pct": 14.728702710577679,
+        "cagr_to_strict_mdd": 12.591572173425032,
+        "trades": 133
+      },
+      "ytd2026": {
+        "absolute_return_pct": 79.62608011271656,
+        "cagr_pct": 304.8037988242007,
+        "strict_mdd_pct": 17.926164497882368,
+        "cagr_to_strict_mdd": 17.003291410173517,
+        "trades": 108
+      }
+    }
+  },
+  "candidate_universe": {
+    "addition_candidates": {
+      "nonpb30_taker": {
+        "source": "configs/live/nonpb30_taker_returnz_rangevol_htf4hrange_h72_candidate.json",
+        "family": "orderflow_pullback",
+        "side": "long",
+        "hold_bars": 72,
+        "stride_bars": 12,
+        "entry_delay_bars": 1,
+        "mechanism": "positive taker imbalance during a volatile standardized pullback with a wide four-hour range",
+        "research_changes_forbidden": [
+          "threshold refit",
+          "gate change",
+          "hold/stride search",
+          "side flip",
+          "dynamic exit"
+        ]
+      },
+      "oi_divergence_highfreq": {
+        "source": "configs/live/oi_divergence_sma24_highfreq_h30_s6_candidate.json",
+        "family": "oi_divergence",
+        "side": "long",
+        "hold_bars": 30,
+        "stride_bars": 6,
+        "entry_delay_bars": 1,
+        "mechanism": "short-horizon continuation after OI absorbs a volatile price pullback while price remains below SMA24",
+        "research_changes_forbidden": [
+          "threshold refit",
+          "gate change",
+          "selector overlay",
+          "hold/stride search",
+          "side flip",
+          "dynamic exit"
+        ]
+      }
+    },
+    "state_substitution_candidates": {
+      "kalman_top10_strict_majority_long": {
+        "source": "results/kalman_state_gated_alpha_scan_2026-07-13.json",
+        "family": "funding_premium",
+        "base_setup": "long_minimal_funding_premium",
+        "model": "causal local-linear Kalman",
+        "members": 10,
+        "votes_required": 6,
+        "hold_bars": 576,
+        "stride_bars": 12
+      },
+      "bocpd_top10_strict_majority_long": {
+        "source": "results/bocpd_state_gated_alpha_scan_2026-07-13.json",
+        "family": "funding_premium",
+        "base_setup": "long_minimal_funding_premium",
+        "model": "causal hourly BOCPD",
+        "members": 10,
+        "votes_required": 6,
+        "hold_bars": 576,
+        "stride_bars": 12
+      },
+      "semimarkov_top10_strict_majority_long": {
+        "source": "results/semimarkov_duration_alpha_scan_2026-07-13.json",
+        "family": "funding_premium",
+        "base_setup": "long_minimal_funding_premium",
+        "model": "causal observable-duration semi-Markov",
+        "members": 10,
+        "votes_required": 6,
+        "hold_bars": 576,
+        "stride_bars": 12
+      }
+    },
+    "state_contract": {
+      "builder": "training/state_model_top10_ensemble.py",
+      "top_n_order": "use each persisted pre-evaluation ordering only",
+      "aggregation": "fixed 6-of-10 strict majority",
+      "threshold_tuned": false,
+      "future_fields_used": false,
+      "exact_representative_selection_forbidden": true
+    },
+    "explicit_exclusions": {
+      "oi_divergence_pullback": "already rejected by G9-OIDP-1 pre-2025 marginal audit",
+      "oi_upbit_ratio288_low": "already present in the authoritative Gross9 allocation universe and selected at zero",
+      "funding_premium_lr_impact_central": "already present in the authoritative Gross9 allocation universe and selected at zero",
+      "oi_alt_ratio72_dynamic_exit": "live alt-volume feature and research/live exit parity are incomplete",
+      "pb30_modules": "overlap the existing long pullback/funding family and have weak 2026 risk without a clean marginal contract",
+      "exact_state_model_representatives": "would permit post-evaluation representative picking; only frozen Top-10 majority is allowed"
+    }
+  },
+  "execution_contract": {
+    "market_clock": "shared completed BTCUSDT 5-minute bars",
+    "entry": "next bar open",
+    "unit_leverage": 0.5,
+    "cost_rate_each_side": 0.0006,
+    "strict_mdd": "same-BTC low/high upper-before-lower",
+    "split_boundary": "only split-contained exits",
+    "funding_for_fixed_hold": "excluded for parity with frozen Gross9 research accounting"
+  },
+  "selection_contract": {
+    "selection_windows": [
+      "train through 2023",
+      "test2024"
+    ],
+    "future_windows_forbidden_during_ranking": [
+      "eval2025",
+      "ytd2026",
+      "July 2026"
+    ],
+    "addition_weight_grid": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "state_substitution_weight_grid": [
+      0.25,
+      0.5,
+      0.75,
+      1.0,
+      1.25,
+      1.5,
+      1.75,
+      2.0
+    ],
+    "addition_rule": "keep all Gross9 weights and add candidate weight; gross becomes 9+weight; compare to pro-rata Gross9 at identical gross",
+    "state_substitution_rule": "replace x of markov_transition_long 2.0 with x of exactly one state candidate; keep funding_premium family gross and total gross fixed at 2.0 and 9.0",
+    "gross_cap": 10.0,
+    "family_gross_cap": 2.0,
+    "rank7_family_gross_cap": 3.0,
+    "top1_only": true,
+    "requirements": [
+      "train strict MDD <=40% and test2024 strict MDD <=20%",
+      "train and test2024 absolute returns each remain positive and >=97% of Gross9 baseline",
+      "candidate standalone train and test2024 absolute returns are positive",
+      "candidate portfolio beats its comparator CAGR/strict-MDD in both train and test2024",
+      "minimum train/test2024 ratio improvement over comparator is >=0.05",
+      "at least one selection window strict MDD is lower than Gross9 baseline",
+      "entry Jaccard versus every non-replaced Gross9 sleeve is <=0.50",
+      "all exact entry counts equal event counts"
+    ],
+    "comparator": {
+      "addition": "same-gross pro-rata Gross9 leverage control",
+      "state_substitution": "unchanged Gross9 baseline",
+      "addition_family_cap_treatment": "same-gross pro-rata control is a non-deployable diagnostic leverage counterfactual and is explicitly exempt from family caps; the candidate portfolio itself must satisfy every family cap"
+    },
+    "rank": "maximize minimum train/test2024 ratio improvement over comparator, then geometric mean improvement, then test2024 MDD reduction, then test2024 absolute-return retention, then lower changed weight, then lexical candidate name",
+    "numeric_thresholds": {
+      "train_strict_mdd_cap_pct": 40.0,
+      "test2024_strict_mdd_cap_pct": 20.0,
+      "absolute_return_retention_floor": 0.97,
+      "min_ratio_improvement_over_comparator": 0.05,
+      "entry_jaccard_cap": 0.5
+    },
+    "jaccard_scope": {
+      "addition": "candidate versus every positive-weight Gross9 sleeve, including markov_transition_long",
+      "state_substitution": "candidate versus every positive-weight Gross9 sleeve except markov_transition_long; Markov shares the same base setup and is always excluded from acceptance Jaccard even when residual Markov weight remains",
+      "mandatory_state_overlap_diagnostic": "report exact entry Jaccard and occupied-bar overlap against markov_transition_long for every state cell despite the acceptance exemption"
+    }
+  },
+  "future_veto_contract": {
+    "future_can_rerank": false,
+    "future_can_repair": false,
+    "requirements": [
+      "eval2025 and ytd2026 portfolio absolute returns remain positive, strict MDD <=20%, and ratio >=3",
+      "neither future ratio falls by more than 0.25 versus Gross9 and at least one future ratio improves",
+      "candidate standalone eval2025 plus ytd2026 compounded return is positive",
+      "10bp/notional/side stress keeps eval2025 and ytd2026 portfolio returns positive",
+      "for addition candidates only, the fixed July candidate replay must be non-negative; state strict-majority candidates have no equivalent frozen July metric and remain forward-shadow regardless"
+    ],
+    "numeric_thresholds": {
+      "future_strict_mdd_cap_pct": 20.0,
+      "future_min_ratio": 3.0,
+      "future_ratio_drop_cap": 0.25,
+      "stress_cost_rate_each_side": 0.001
+    },
+    "july_scope": {
+      "addition_candidates": "use the already frozen July atomic replay only; negative candidate absolute return vetoes top1",
+      "state_substitution_candidates": "the frozen July artifact did not replay the 6-of-10 strict-majority sleeves, so it cannot be substituted with single-representative metrics; July is unavailable and no July pass is claimed",
+      "state_disposition_if_other_vetoes_pass": "forward shadow only until a prospective strict-majority observation window is collected"
+    }
+  },
+  "required_diagnostics": [
+    "shared-clock standalone stats",
+    "exact entry Jaccard and occupied overlap",
+    "zero-filled daily MTM correlations",
+    "candidate return while Gross9 flat",
+    "worst-20 Gross9 bar contribution",
+    "comparator deltas",
+    "source signal hashes and schedule counts",
+    "10bp stress",
+    "July fixed replay provenance",
+    "state candidate versus residual Markov overlap even though it is excluded from acceptance Jaccard"
+  ],
+  "input_provenance": {
+    "market": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "market_with_oi": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+      "sha256": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192"
+    },
+    "funding": {
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+    },
+    "premium": {
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
+    },
+    "gross9_config": {
+      "path": "configs/shadow/portfolio_rank7_capacity_candidate_2026-07-28.json",
+      "sha256": "006f82e1f0affad9f96a08a6c600542feec4a0e1198ed99b8630627de4913450"
+    },
+    "gross9_result": {
+      "path": "results/portfolio_rank7_capacity_update_2026-07-28.json",
+      "sha256": "7260ba91698ac31838558d1af11701e5e251f9b49749a573c8d38610d5388756"
+    },
+    "nonpb30_config": {
+      "path": "configs/live/nonpb30_taker_returnz_rangevol_htf4hrange_h72_candidate.json",
+      "sha256": "b9ee050b005a2e3152e9fe83ca0783b4cab3241114827741e57f211447ac7709"
+    },
+    "oi_highfreq_config": {
+      "path": "configs/live/oi_divergence_sma24_highfreq_h30_s6_candidate.json",
+      "sha256": "30f2f4abf397805550b9a393c1168c920d6d10f9220e795567b43d043a0d5406"
+    },
+    "kalman_scan": {
+      "path": "results/kalman_state_gated_alpha_scan_2026-07-13.json",
+      "sha256": "2651ca559bcde0d282db5f3d7cf5e68237774d74ed75b2c03e9512e0258ab0a1"
+    },
+    "bocpd_scan": {
+      "path": "results/bocpd_state_gated_alpha_scan_2026-07-13.json",
+      "sha256": "cf526fe824ae7e1cd983c2fe2c921152ed0a3b57f55cfde729b5a2fdf7b640fa"
+    },
+    "semimarkov_scan": {
+      "path": "results/semimarkov_duration_alpha_scan_2026-07-13.json",
+      "sha256": "27750e60f1caf8bb9c7aa838af5241aae1912b5cb36836681be9c5b8e585dcb2"
+    },
+    "state_ensemble_builder": {
+      "path": "training/state_model_top10_ensemble.py",
+      "sha256": "d05d200afcb49d5700bafb2b2a4d692c3039516536f9000e9e51c39049135bdc"
+    },
+    "prior_state_portfolio_result": {
+      "path": "results/portfolio_state_ensemble_update_2026-07-16.json",
+      "sha256": "27f327f4e0cb39eb25aae49ad02944d1216ab506e8e524f2f2fbfa9dc1ce2f90"
+    },
+    "july_atomic_replay": {
+      "path": "results/all_alpha_july_2026_performance_2026-07-27.json",
+      "sha256": "888eef0a332897f6a7d40d1be6c982bbdabee6ce93e74fe45bea8fa3ceb37d71"
+    }
+  },
+  "known_research_exposure": {
+    "all_candidates_and_future_windows_have_been_inspected": true,
+    "prior_state_portfolio_result_known": "The earlier freely reoptimized state portfolio selected BOCPD pre-2025 but failed its future veto; this new test freezes Gross9 and only permits within-family substitution.",
+    "july_known": "July atomic performance was inspected before this audit and is veto-only.",
+    "disposition": "A survivor is forward-shadow evidence, not pristine OOS or permission for live capital."
+  },
+  "runner_integrity_contract": {
+    "hardcode_exact_preregistration_sha256_after_this_file_is_committed": true,
+    "fail_closed_on_preregistration_or_input_hash_drift": true,
+    "self_hash_not_embedded_to_avoid_recursive_hashing": true
+  }
+}
