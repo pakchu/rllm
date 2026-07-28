@@ -39,11 +39,11 @@ clock. The source, target market, and information-arrival mechanism differ.
 The machine contract is
 `results/cash_open_cross_asset_gap_relay_marginal_preregistration_2026-07-28.json`.
 It binds all input paths and hashes. Its frozen SHA-256 is
-`d90ce7d5d43ce761d1d7078cf1abe0767200772fc85e6c435f8a4a9b69f10dce`.
+`a989b3be122a99a94531c05735128ba64030b637cca59cad4af75c2713fe649a`.
 
 The frozen evaluator is
 `training/evaluate_cash_open_cross_asset_gap_relay_marginal.py`; its SHA-256
-is `d7de5f20836ae18a20a48973cfa6804f0a200d7fa4beb93d229ad34d7732c817`
+is `b99bb754427e0ad161a9322e13e451f92069b684d131da3a62682e2c6348568f`
 and is also recorded inside the machine contract. That self-binding prevents
 changing the model, controls, accounting, gates, or phase isolation after
 observing a selection or evaluation result.

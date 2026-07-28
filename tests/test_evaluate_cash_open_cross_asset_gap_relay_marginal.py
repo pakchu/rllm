@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import json
 from pathlib import Path
 
 import numpy as np
@@ -681,6 +682,7 @@ def _complete_selection_artifact() -> tuple[dict, dict, dict]:
 
 def test_eval_verifies_selection_result_hash_prereg_schema_and_top1():
     selection, input_identity, config = _complete_selection_artifact()
+    selection = json.loads(cogr.canonical_json(selection))
     top = selection["frozen_top1"]
     assert cogr.verify_selection_artifact(
         selection,

@@ -2324,7 +2324,11 @@ def verify_selection_artifact(
         raise RuntimeError("selection artifact config drifted")
     if selection.get("input_identity") != json_ready(expected_input_identity):
         raise RuntimeError("selection artifact input identity drifted")
-    if tuple(selection.get("input_identity", {})) != INPUT_KEYS:
+    observed_input_keys = tuple(selection.get("input_identity", {}))
+    if (
+        len(observed_input_keys) != len(INPUT_KEYS)
+        or set(observed_input_keys) != set(INPUT_KEYS)
+    ):
         raise RuntimeError("selection artifact input identity is incomplete")
     if "gross9_source_meta" in selection or "gross9_observable_state" in selection:
         raise RuntimeError("selection artifact exposed post-selection Gross9 metadata")
