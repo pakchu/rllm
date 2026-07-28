@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import training.portfolio_opt_added_alpha_update as portfolio_update
 
 from training.portfolio_opt_added_alpha_update import (
@@ -278,6 +279,36 @@ def test_strict_metric_offsets_opposite_sleeves_at_same_btc_price():
         {"frozen_annual_rank7": 1.0, "fresh_kimchi_fx": 1.0},
     )
     assert np.isclose(result["strict_mdd_pct"], 0.0)
+
+
+def test_split_arrays_preserves_exact_entry_positions():
+    market = pd.DataFrame(
+        {
+            "date": pd.date_range("2024-01-01", periods=4, freq="5min"),
+        }
+    )
+    zeros = np.zeros(len(market), dtype=float)
+    sleeve = "fresh_kimchi_fx"
+    events = [
+        {
+            "split": "test2024",
+            "sleeve": sleeve,
+            "ret": zeros.copy(),
+            "adv": zeros.copy(),
+            "fav": zeros.copy(),
+            "low": zeros.copy(),
+            "high": zeros.copy(),
+            "trade_count": 2,
+            "win_count": 1,
+            "entry_positions": [1, 3],
+        }
+    ]
+    arrays = portfolio_update.split_arrays(
+        events,
+        market,
+        {"test2024": np.ones(len(market), dtype=bool)},
+    )
+    assert arrays["test2024"]["entry_positions"][sleeve].tolist() == [1, 3]
 
 
 def test_exact_pre2025_ranks_every_generated_candidate_on_bar_clock():

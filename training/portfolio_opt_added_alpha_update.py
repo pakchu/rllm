@@ -324,6 +324,7 @@ def append_mask_policy(
         favorable = np.zeros(len(market), dtype=np.float64)
         market_low = np.zeros(len(market), dtype=np.float64)
         market_high = np.zeros(len(market), dtype=np.float64)
+        entry_positions: list[int] = []
         next_allowed = 0
         trades = wins = 0
         first_signal: int | None = None
@@ -377,6 +378,7 @@ def append_mask_policy(
                 market_high += event_adverse
             trades += 1
             wins += int(float(realized) > 0.0)
+            entry_positions.append(position + 1)
             first_signal = position if first_signal is None else first_signal
             next_allowed = exit_position + 1
         counts[split] = trades
@@ -395,6 +397,7 @@ def append_mask_policy(
                     "high": market_high,
                     "trade_count": trades,
                     "win_count": wins,
+                    "entry_positions": entry_positions,
                 }
             )
     return counts
@@ -487,6 +490,7 @@ def append_rex_taker_policy(
         favorable = np.zeros(len(market), dtype=np.float64)
         market_low = np.zeros(len(market), dtype=np.float64)
         market_high = np.zeros(len(market), dtype=np.float64)
+        entry_positions: list[int] = []
         next_allowed = 0
         trades = wins = 0
         first_signal: int | None = None
@@ -534,6 +538,7 @@ def append_rex_taker_policy(
                 market_high += event_adverse
             trades += 1
             wins += int(float(realized) > 0.0)
+            entry_positions.append(position + 1)
             first_signal = position if first_signal is None else first_signal
             next_allowed = exit_position + 1
         counts[split] = trades
@@ -552,6 +557,7 @@ def append_rex_taker_policy(
                     "high": market_high,
                     "trade_count": trades,
                     "win_count": wins,
+                    "entry_positions": entry_positions,
                 }
             )
     return counts
@@ -588,6 +594,7 @@ def attach_live_rex_ohlc(
         favorable = np.zeros(len(market), dtype=np.float64)
         market_low = np.zeros(len(market), dtype=np.float64)
         market_high = np.zeros(len(market), dtype=np.float64)
+        entry_positions: list[int] = []
         next_allowed = 0
         trades = 0
         for source_row in source:
@@ -636,6 +643,7 @@ def attach_live_rex_ohlc(
                 market_low += event_favorable
                 market_high += event_adverse
             trades += 1
+            entry_positions.append(position + 1)
             next_allowed = exit_position + 1
         matches = [
             event
@@ -647,6 +655,7 @@ def attach_live_rex_ohlc(
         matches[0]["fav"] = favorable
         matches[0]["low"] = market_low
         matches[0]["high"] = market_high
+        matches[0]["entry_positions"] = entry_positions
 
 
 def attach_default_favorable(events: list[dict[str, Any]], market: pd.DataFrame) -> None:
@@ -725,6 +734,10 @@ def path_event(
     market_low[positions] = local_market_low
     market_high[positions] = local_market_high
     trades = list(trades)
+    entry_positions = [
+        int(trade.entry_position)
+        for trade in trades
+    ]
     return {
         "split": split,
         "sleeve": sleeve,
@@ -740,6 +753,7 @@ def path_event(
         "win_count": sum(
             float(trade.price_factor) * float(trade.funding_factor) > 1.0 for trade in trades
         ),
+        "entry_positions": entry_positions,
     }
 
 
@@ -830,6 +844,9 @@ def split_arrays(
         market_high = np.zeros_like(returns)
         counts = np.zeros(len(SLEEVES), dtype=np.int64)
         wins = np.zeros(len(SLEEVES), dtype=np.int64)
+        entry_positions: dict[str, list[int]] = {
+            sleeve: [] for sleeve in SLEEVES
+        }
         for event in events:
             if event["split"] != split or event["sleeve"] not in SLEEVES:
                 continue
@@ -845,6 +862,11 @@ def split_arrays(
                 wins[index] += int(event["win_count"])
             elif trade_count == 1:
                 wins[index] += int(float(event.get("ret_bps", 0.0)) > 0.0)
+            event_entries = event.get("entry_positions")
+            if event_entries is not None:
+                entry_positions[event["sleeve"]].extend(
+                    int(position) for position in event_entries
+                )
         output[split] = {
             "R": returns,
             "A": adverse,
@@ -854,6 +876,12 @@ def split_arrays(
             "counts": counts,
             "wins": wins,
             "dates": pd.DatetimeIndex(dates.iloc[start:end]),
+            "entry_positions": {
+                sleeve: np.asarray(
+                    sorted(set(values)), dtype=np.int64
+                )
+                for sleeve, values in entry_positions.items()
+            },
         }
     return output
 
