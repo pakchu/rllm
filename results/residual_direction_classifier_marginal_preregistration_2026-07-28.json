@@ -1,0 +1,335 @@
+{
+  "name": "residual_direction_confidence_classifier_gross9_marginal_battery",
+  "short_name": "RDC-1",
+  "status": "preregistered_before_pre2025_classifier_fit_or_outcome_scan",
+  "created_on": "2026-07-28",
+  "prior_battery_boundary": {
+    "family": "spot_perp_plus_inventory_residual_12",
+    "familywise_ledger": [
+      {
+        "battery": "RREM-1",
+        "status": "rejected_pre2025",
+        "eligible_top1": false,
+        "future_opened": false
+      },
+      {
+        "battery": "RDC-1",
+        "status": "final_preregistered_family_battery",
+        "eligible_top1": "at most one pre2025 passing cell"
+      }
+    ],
+    "familywise_stop": "RDC-1 is the final battery permitted to reuse this exact 12-feature family on 2023/2024. If it fails, the family closes; no threshold, target, model, hold, or coordination repair may reopen it.",
+    "promotion_status": "exploratory_forward_shadow even if pre2025 and contaminated historical future vetoes pass; live promotion additionally requires the frozen prospective gate."
+  },
+  "hypothesis": "Causal spot-perpetual and delayed inventory residuals may rank the better 6h/12h direction even when absolute risk-adjusted return regression is negative. A confidence-tail classifier can form a sparse bidirectional sleeve that improves frozen Gross9 versus identical configured gross.",
+  "physical_selection_cutoff": "2025-01-01",
+  "feature_contract": {
+    "columns": [
+      "spa_residual_z_2016",
+      "spa_residual_z_8640",
+      "spa_lead_residual_z_2016",
+      "spa_lead_residual_z_8640",
+      "spa_flow_z_2016",
+      "spa_flow_z_8640",
+      "spa_spot_share_z_2016",
+      "spa_spot_share_z_8640",
+      "resid_z48",
+      "resid_z144",
+      "resid_z288",
+      "carry_z"
+    ],
+    "spot_perp_semantics": "Current completed-bar observations standardized against rolling history ending at t-1; rolling regressions are fitted through t-1.",
+    "inventory_semantics": "For scoring year C in {2022,2023,2024}, conservation-residual regression coefficients are fitted only on rows with source timestamps and labels strictly before C-01-01. The resulting fold-local beta is applied to that fold; OI metrics remain delayed one complete 5m source bar and rolling z-scores use completed history.",
+    "forbidden_inputs": [
+      "future OHLC",
+      "future funding or premium",
+      "future Gross9 PnL",
+      "Rank7 features, predictions, or labels",
+      "calendar identity beyond the annual expanding fit boundary",
+      "2025 or 2026 data"
+    ],
+    "row_admission": "All 12 fold-local declared feature values must be finite at completed signal bar t."
+  },
+  "learner_contract": {
+    "estimator": "sklearn.ensemble.ExtraTreesClassifier",
+    "n_estimators": 256,
+    "max_depth": 4,
+    "min_samples_leaf": 128,
+    "max_features": 0.75,
+    "bootstrap": false,
+    "class_weight": "balanced",
+    "seeds": [
+      7,
+      71,
+      715
+    ],
+    "target": "long when long_exact_net_return >= short_exact_net_return, otherwise short; both labels use the canonical 0.5x, 6bp/notional/side no-stop path",
+    "fit_purge": "A label may enter a fit only when entry, every held return/adverse bar, and time exit are strictly before model_fit_end_exclusive.",
+    "score": "For each seed read p_long from the classes_==1 column. mean_long=mean_seed(p_long), uncertainty=std_seed(p_long,ddof=0). Choose long when mean_long>=0.5, otherwise short. chosen_empirical_confidence=max(mean_long,1-mean_long)-0.5*uncertainty. This is an uncalibrated rank score, not a calibrated probability.",
+    "score_quantile": 0.9,
+    "score_calibration": "For each hold and prediction year Y, use np.quantile(chosen_empirical_confidence, 0.90, method=\"linear\") over every finite hourly anchor in Y-1 whose complete path exits inside Y-1. This population is before coordination gates and before candidate non-overlap. It was predicted by a classifier and fold-local feature state fitted strictly before Y-1. Admit current-year anchors when score >= threshold. No absolute score floor is added.",
+    "fit_start_inclusive": "2020-10-15",
+    "anchor_stride_bars": 12,
+    "entry_delay_bars": 1,
+    "unit_leverage": 0.5,
+    "normal_cost_per_notional_per_side": 0.0006,
+    "candidate_stress_cost_per_notional_per_side": 0.001,
+    "tp": null,
+    "sl": null,
+    "sklearn_version": "1.7.2",
+    "class_encoding": {
+      "short": 0,
+      "long": 1,
+      "predict_proba_long_column": "the unique estimator.classes_ index equal to integer 1; every fit must contain both classes [0,1] or fail closed"
+    },
+    "random_state": "Each estimator uses random_state equal to its declared seed."
+  },
+  "execution_and_accounting": {
+    "position_indices": "For signal_position t and hold H, entry_position e=t+1. Return and adverse bars are j in the inclusive interval [e,e+H-1], each using OHLC at j and next open j+1. Time exit_position x=e+H and exit cost is charged at x. A fit/evaluation row is contained only when x is strictly before the boundary position.",
+    "candidate_nonoverlap": "Each policy is one sleeve. After accepting a signal at t and entering at e=t+1, ignore all later candidate signals with signal_position <= exit_position x; the next admissible signal_position is x+1. Candidate trades never stack or net.",
+    "split_containment": "Signals whose complete entry-through-exit path is not contained in the measured split are excluded.",
+    "portfolio_clock": "Gross9 and candidate paths share the same BTC 5m clock and same-BTC upper-before-lower strict-MDD accounting.",
+    "calendar_metrics": "Absolute return, CAGR, and strict MDD include every idle bar from the fixed calendar boundaries.",
+    "gross9_drawdown_gate": "At completed signal bar t, compare frozen Gross9 closing equity after t with its running upper-envelope peak through t; both are computed only from bars at or before t on one continuous 2020-09-01 through 2024-12-31 clock. The state does not reset at the 2024 selection boundary."
+  },
+  "annual_folds": [
+    {
+      "prediction_year": 2023,
+      "calibration_year": 2022,
+      "calibration_model_fit_end_exclusive": "2022-01-01",
+      "prediction_model_fit_end_exclusive": "2023-01-01",
+      "calibration_feature_fit_end_exclusive": "2022-01-01",
+      "prediction_feature_fit_end_exclusive": "2023-01-01"
+    },
+    {
+      "prediction_year": 2024,
+      "calibration_year": 2023,
+      "calibration_model_fit_end_exclusive": "2023-01-01",
+      "prediction_model_fit_end_exclusive": "2024-01-01",
+      "calibration_feature_fit_end_exclusive": "2023-01-01",
+      "prediction_feature_fit_end_exclusive": "2024-01-01"
+    }
+  ],
+  "candidate_universe": {
+    "hold_bars": [
+      72,
+      144
+    ],
+    "coordination_modes": [
+      {
+        "name": "unrestricted",
+        "rule": "No Gross9 state gate."
+      },
+      {
+        "name": "gross9_flat_at_signal",
+        "rule": "The frozen Gross9 portfolio has no occupied sleeve bar at completed signal bar t."
+      },
+      {
+        "name": "gross9_drawdown_ge_5pct",
+        "rule": "Frozen Gross9 equity after completed signal bar t is at least 5% below its running upper-envelope peak through t."
+      }
+    ],
+    "coordination_tie_break_order": [
+      "unrestricted",
+      "gross9_flat_at_signal",
+      "gross9_drawdown_ge_5pct"
+    ],
+    "policy_cells": 6,
+    "candidate_weight_grid": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "portfolio_cells": 24
+  },
+  "selection_contract": {
+    "standalone_windows": {
+      "selection_2023": {
+        "start_inclusive": "2023-01-01",
+        "end_exclusive": "2024-01-01"
+      },
+      "selection_2024": {
+        "start_inclusive": "2024-01-01",
+        "end_exclusive": "2025-01-01"
+      }
+    },
+    "gross9_windows": {
+      "train": {
+        "start_inclusive": "2020-09-01",
+        "end_exclusive": "2024-01-01",
+        "candidate_is_flat_before": "2023-01-01"
+      },
+      "selection_2024": {
+        "start_inclusive": "2024-01-01",
+        "end_exclusive": "2025-01-01",
+        "portfolio_engine_alias": "test2024 is an internal historical array key only; it is part of pre-2025 selection and is not a held-out test"
+      }
+    },
+    "standalone_requirements": {
+      "absolute_return_positive_each_year": true,
+      "minimum_cagr_to_strict_mdd_each_year": 1.5,
+      "maximum_strict_mdd_pct_each_year": 15.0,
+      "minimum_trades_each_year": 30,
+      "candidate_10bp_stress_absolute_return_positive_each_year": true
+    },
+    "portfolio_requirements": {
+      "train_strict_mdd_cap_pct": 40.0,
+      "selection_2024_strict_mdd_cap_pct": 20.0,
+      "absolute_return_retention_floor_vs_unscaled_gross9": 0.97,
+      "minimum_cagr_mdd_improvement_vs_same_gross_prorata_gross9_each_window": 0.05,
+      "strict_mdd_reduction_vs_unscaled_gross9_in_at_least_one_window": true,
+      "maximum_exact_entry_jaccard_vs_any_gross9_sleeve": 0.25,
+      "candidate_10bp_stress_portfolio_absolute_return_positive_each_window": true
+    },
+    "same_gross_formula": {
+      "baseline_weights": "Let frozen Gross9 sleeve weights be b_i with sum_i b_i = 9.",
+      "combined_candidate": "For candidate allocation c in {0.25,0.50,0.75,1.00}, keep every b_i unchanged and add candidate weight c. Static configured gross is 9+c.",
+      "prorata_control": "Use only Gross9 sleeves with control weight b_i * (9+c)/9. The control's static configured gross is exactly 9+c.",
+      "gross_interpretation": "This is static configured sleeve gross, matching the frozen portfolio engine. It is not barwise active notional matching; zero active Gross9 exposure requires no special denominator rule.",
+      "candidate_unit": "Candidate weight 1.0 multiplies its canonical 0.5x unit path once."
+    },
+    "metric_formulas": {
+      "bar_return": "r_t = sum_i weight_i * R_i,t",
+      "equity": "E_t = product_{u<=t} max(0, 1+r_u); E_before,t = 1 for the first bar and E_{t-1} afterward",
+      "ohlc_envelope": "low_t = E_before,t * max(0,1+sum_i weight_i*L_i,t); high_t = E_before,t * max(0,1+sum_i weight_i*H_i,t)",
+      "strict_mdd": "upper_t=max(E_before,t,E_t,low_t,high_t); peak_t=cummax(upper_t); lower_t=min(E_before,t,E_t,low_t,high_t); MDD=max_t(1-lower_t/peak_t)",
+      "absolute_return_pct": "100*(E_last-1)",
+      "cagr_pct": "100*(E_last^(1/calendar_years)-1), where calendar_years is exact end_exclusive-start_inclusive seconds divided by 365.25 days",
+      "cagr_to_strict_mdd": "CAGR_pct/strict_MDD_pct when strict_MDD_pct > 1e-12, otherwise 0",
+      "entry_jaccard": "For each Gross9 sleeve, compute |candidate_entries intersect sleeve_entries| / |candidate_entries union sleeve_entries| using exact global entry positions restricted to 2023-01-01 through 2024-12-31; admission uses the maximum across sleeves.",
+      "same_gross_ratio_improvement": "For window W, improvement_W = cagr_to_strict_mdd(combined_candidate,W) - cagr_to_strict_mdd(prorata_control,W), an absolute ratio-point difference.",
+      "minimum_same_gross_ratio_improvement": "min(improvement_train, improvement_selection_2024)",
+      "signed_geometric_mean_same_gross_ratio_improvement": "Let p=improvement_train*improvement_selection_2024. Return 0 when p=0; return sqrt(abs(p)) only when both improvements are positive; otherwise return -sqrt(abs(p)).",
+      "selection_2024_mdd_reduction": "strict_MDD_pct(unscaled_Gross9,selection_2024) - strict_MDD_pct(combined_candidate,selection_2024), measured in percentage points.",
+      "nan_policy": "Any non-finite metric or comparison fails admission."
+    },
+    "ranking_key": [
+      {
+        "field": "pass_all_requirements",
+        "direction": "descending"
+      },
+      {
+        "field": "minimum_same_gross_ratio_improvement",
+        "direction": "descending"
+      },
+      {
+        "field": "signed_geometric_mean_same_gross_ratio_improvement",
+        "direction": "descending"
+      },
+      {
+        "field": "selection_2024_mdd_reduction",
+        "direction": "descending"
+      },
+      {
+        "field": "minimum_stressed_standalone_absolute_return",
+        "direction": "descending"
+      },
+      {
+        "field": "candidate_weight",
+        "direction": "ascending"
+      },
+      {
+        "field": "hold_bars",
+        "direction": "ascending"
+      },
+      {
+        "field": "coordination_mode_ordinal",
+        "direction": "ascending",
+        "ordinals": {
+          "unrestricted": 0,
+          "gross9_flat_at_signal": 1,
+          "gross9_drawdown_ge_5pct": 2
+        }
+      },
+      {
+        "field": "candidate_name",
+        "direction": "ascending",
+        "purpose": "final total-order tie break"
+      }
+    ],
+    "numeric_comparison_precision": "Use unrounded float64 metrics; displayed rounding never enters selection.",
+    "top1_only": true,
+    "stress_semantics": {
+      "normal_selection": "All return-retention, same-gross comparator improvement, MDD, and Jaccard gates use Gross9 at frozen 6bp/side and candidate at normal 6bp/side.",
+      "candidate_stress": "Replay identical candidate model, feature states, scores, thresholds, sides, and entries at candidate-only 10bp/notional/side; Gross9 and the same-gross control remain at frozen 6bp/side.",
+      "stress_admission": "Stressed candidate standalone absolute return must be strictly >0 in selection_2023 and selection_2024. The combined portfolio with normal-cost Gross9 plus stressed candidate must be strictly >0 in Gross9 train and selection_2024. The same-gross control is not stress-reranked.",
+      "comparison_operators": "MDD caps use <=; return retention and same-gross ratio improvement use >=; positive-return and MDD-reduction requirements use strict >."
+    }
+  },
+  "future_veto_contract": {
+    "historical_future_may_open_only_if_pre2025_top1_passes": true,
+    "historical_future_can_veto": true,
+    "historical_future_can_certify": false,
+    "future_can_rerank": false,
+    "future_can_repair": false,
+    "future_can_select_another_cell": false,
+    "research_contamination": "2025/2026 have been inspected elsewhere and can never provide pristine confirmation.",
+    "prospective_live_promotion_gate": {
+      "starts_after": "RDC-1 exact top1 code, model states, thresholds, and weight are committed and remain unchanged",
+      "minimum_consecutive_calendar_days": 90,
+      "minimum_candidate_trades": 30,
+      "candidate_absolute_return_pct_strictly_positive": true,
+      "candidate_10bp_stress_absolute_return_pct_strictly_positive": true,
+      "combined_portfolio_absolute_return_not_worse_than_unscaled_gross9": true,
+      "combined_portfolio_strict_mdd_not_worse_than_unscaled_gross9": true,
+      "same_gross_prorata_gross9_cagr_mdd_improvement_strictly_positive": true,
+      "any_failure": "reject live promotion; no parameter repair under this family"
+    },
+    "july_2026_scope": "outside historical selection; may count prospectively only if it occurs after the immutable freeze start"
+  },
+  "input_provenance": {
+    "market": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "market_with_oi": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+      "sha256": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192"
+    },
+    "spot_premium_5m": {
+      "path": "data/cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "c21ed3f52804a3f879ef5167b6b81ee0fd7dd262f2e9d87ee5c1c25dbad73617"
+    },
+    "binance_metrics_5m": {
+      "path": "data/binance_um_metrics_BTCUSDT_5m_2020-09-01_2026-06-01.csv.gz",
+      "sha256": "d391022352d5b14dea7ffd207a9d1f84f603d06ddae42da55dd792f722fc0106"
+    },
+    "funding": {
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+    },
+    "premium_1h": {
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
+    },
+    "gross9_pre2025_anchor": {
+      "path": "results/gross9_pre2025_authoritative_anchor_2026-07-28.json",
+      "sha256": "329878d90b6cd9c731eb4871ac041256f95f03c14dd261ada681d3a370709875"
+    },
+    "rank7_capacity_evidence": {
+      "path": "results/expanding_extratrees_rank7_leverage_battery_2026-07-27.json",
+      "sha256": "e079f7a70d4e5eea7de962cf5daad93fd634fdf5779854d1783f83a837dc41ab"
+    },
+    "spot_perp_feature_builder": {
+      "path": "training/search_spot_perp_absorption_alpha.py",
+      "sha256": "3ec3d87b45ce9467b710d157522f3b03fa04e13fd88d80b44fc4f32139a84b08"
+    },
+    "inventory_feature_builder": {
+      "path": "training/search_inventory_conservation_residual_alpha.py",
+      "sha256": "813546cdb898407e90227fb15e05e9468245330259879b9612754d6a14e736d2"
+    },
+    "gross9_context_builder": {
+      "path": "training/audit_gross9_fixed_candidate_state_substitution.py",
+      "sha256": "b727d3fb0c45801e839265e0595be457a7fb204b8f64b92247cb82d50e49f4c2"
+    },
+    "gross9_portfolio_engine": {
+      "path": "training/portfolio_opt_added_alpha_update.py",
+      "sha256": "0bbe02d60ed7393e704a72c65d92d2a952eafee0d5a3d32310a782b80e2ae901"
+    },
+    "residual_runtime": {
+      "path": "training/audit_gross9_residual_recovery_extratrees_marginal.py",
+      "sha256": "573ed0b8752e6cf68406ea63c9ce6e13fa79e6e29c0c22fb79b140fa3554b1ca"
+    }
+  }
+}
