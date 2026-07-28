@@ -596,6 +596,12 @@ def _metric_cell(metric: dict[str, Any]) -> str:
 
 
 def _render_pre2024(payload: dict[str, Any]) -> str:
+    displayed = payload["shortlist"] or payload["diagnostic_top"]
+    table_label = (
+        "frozen shortlist"
+        if payload["shortlist"]
+        else "top failed cells (diagnostic only; no cell admitted)"
+    )
     lines = [
         "# RSDR-1 pre-2024 support selection",
         "",
@@ -603,14 +609,17 @@ def _render_pre2024(payload: dict[str, Any]) -> str:
         "",
         f"- raw fit-window REX-short anchors: {payload['thresholds']['rex_short_fit_anchors']}",
         f"- raw fit-window anchors with delayed OI: {payload['thresholds']['rex_short_oi_fit_anchors']}",
+        f"- raw 2022 REX-short anchors: {payload['raw_anchor_counts']['support_2022']}",
+        f"- raw 2023 REX-short anchors: {payload['raw_anchor_counts']['robustness_2023']}",
         f"- tested: {payload['tested']}",
         f"- passed frozen shortlist gate: {payload['passed']}",
         f"- status: **{payload['decision']}**",
+        f"- table: {table_label}",
         "",
-        "| # | candidate | 2022 | 2022 H1 | 2022 H2 | 2023 | 2023 H1 | 2023 H2 | combined |",
-        "|---:|---|---:|---:|---:|---:|---:|---:|---:|",
+        "| # | candidate | pass | 2022 | 2022 H1 | 2022 H2 | 2023 | 2023 H1 | 2023 H2 | combined |",
+        "|---:|---|:---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
-    for index, row in enumerate(payload["shortlist"], start=1):
+    for index, row in enumerate(displayed, start=1):
         stats = row["stats"]
         cells = [
             _metric_cell(stats[name])
@@ -625,7 +634,10 @@ def _render_pre2024(payload: dict[str, Any]) -> str:
             )
         ]
         lines.append(
-            f"| {index} | `{row['candidate']['name']}` | " + " | ".join(cells) + " |"
+            f"| {index} | `{row['candidate']['name']}` | "
+            f"{'Y' if row['passes'] else 'N'} | "
+            + " | ".join(cells)
+            + " |"
         )
     lines += [
         "",
@@ -644,6 +656,24 @@ def run_pre2024(cfg: Config) -> dict[str, Any]:
     dates = pd.to_datetime(market["date"])
     features = build_features(market)
     thresholds = fit_thresholds(features, dates, preregistration)
+    raw_anchors = raw_short_anchors(
+        features,
+        strength_threshold=float(thresholds["rex_strength"]),
+        stride_bars=int(preregistration["frozen_grid"]["rex_stride_bars"]),
+    )
+    raw_anchor_counts = {
+        name: int(
+            np.sum(
+                (dates.iloc[raw_anchors] >= pd.Timestamp(start))
+                & (dates.iloc[raw_anchors] < pd.Timestamp(end))
+            )
+        )
+        for name, (start, end) in {
+            "fit": WINDOWS["fit"],
+            "support_2022": WINDOWS["support_2022"],
+            "robustness_2023": WINDOWS["robustness_2023"],
+        }.items()
+    }
     rows: list[dict[str, Any]] = []
     metric_windows = (
         "support_2022",
@@ -684,6 +714,7 @@ def run_pre2024(cfg: Config) -> dict[str, Any]:
         preregistration["selection_contract"]["pre2024_shortlist"]["max_candidates"]
     )
     shortlist = passed[:max_candidates]
+    diagnostic_top = sorted(rows, key=_pre2024_key, reverse=True)[:max_candidates]
     source_prefix = _prefix_record(cfg, market, "2024-01-01")
     freeze = {
         "preregistration_sha256": _sha256(cfg.preregistration),
@@ -699,9 +730,11 @@ def run_pre2024(cfg: Config) -> dict[str, Any]:
         "preregistration_sha256": freeze["preregistration_sha256"],
         "source_prefix": source_prefix,
         "thresholds": thresholds,
+        "raw_anchor_counts": raw_anchor_counts,
         "tested": len(rows),
         "passed": len(passed),
         "shortlist": shortlist,
+        "diagnostic_top": diagnostic_top,
         "decision": "open_test2024" if shortlist else "reject_pre2024",
         "test2024_opened": False,
         "future_opened": False,
