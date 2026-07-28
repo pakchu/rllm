@@ -1,0 +1,244 @@
+{
+  "as_of": "2026-07-28",
+  "name": "residual_inventory_transfer_transition",
+  "short_name": "RITT-1",
+  "status": "preregistered_before_outcome_scan",
+  "objective": "Find a causal BTC long/short sleeve whose interaction between premium-residualized spot-perpetual basis stress and unexplained delayed-OI ownership transitions improves the frozen Gross9 portfolio rather than merely adding correlated leverage.",
+  "economic_hypothesis": {
+    "claim": "A spot-perpetual basis residual is not tradable by itself, and unexplained leveraged inventory is not tradable by itself. Their interaction may be useful when abnormal basis stress is actively widening and newly created inventory is owned by the side implied by completed carry. A transition from one ownership/stress state to another can identify leveraged inventory absorption or release.",
+    "tradable_mechanism": [
+      "long-window basis residual removes the completed premium-index component from the direct spot-perpetual basis",
+      "short-minus-long residual acceleration distinguishes actively widening tails from stale extreme levels",
+      "delayed OI conservation residual identifies inventory creation unexplained by absolute return, signed return, premium, and funding",
+      "completed carry sign labels the likely owner of excess inventory without acting as a standalone alpha",
+      "the previous 12-hour state and current state determine posterior long-versus-short executable utility"
+    ]
+  },
+  "novelty_boundary": {
+    "primary_axes": [
+      "spa_residual_z_8640",
+      "spa_residual_z_2016 minus spa_residual_z_8640",
+      "causal inventory-conservation residual z-score at 288 bars",
+      "carry sign used only as excess-inventory ownership label",
+      "empirical-Bayes previous-state to current-state executable utility"
+    ],
+    "explicitly_excluded": [
+      "future-labelled REX JSONL",
+      "DXY, USDKRW, and Kimchi features",
+      "raw spot participation and spot/perpetual return-gap features",
+      "raw OI return and raw taker-imbalance features",
+      "Rank7 nested-barrier, market-braid, and source-gate features",
+      "HMM state-count search",
+      "full AOSP feature set",
+      "future-period threshold repair",
+      "unavailable spot quote-volume, taker-flow, and trade-count columns"
+    ],
+    "not_a_repeat_of": {
+      "spot_perp_absorption": "RITT-1 does not trade a fixed residual magnitude, contraction, or expansion-onset rule. The basis residual defines one half of an interaction state.",
+      "inventory_conservation_residual": "RITT-1 does not map positive inventory residual plus carry sign directly to a static fade. Inventory ownership must interact with a basis-residual transition.",
+      "AOSP_1": "RITT-1 uses four residual/ownership quantities, no HGB learner, no spot-participation matrix, and no fit-prediction score quantile.",
+      "Rank7": "RITT-1 is a separate fixed-hold transition table with no Rank7 barriers, source gates, or weak-feature bundle."
+    }
+  },
+  "source_and_feature_contract": {
+    "decision_clock": "each completed :00 five-minute bar",
+    "spot_completeness": "spot_rows and premium_rows must both equal 5 at the decision bar",
+    "open_interest_delay_bars": 1,
+    "funding_join": "backward as-of using only published funding rows",
+    "missing_source_policy": "fail closed at inference; no forward fill of spot or OI",
+    "rolling_fit_policy": "every rolling mean, scale, covariance, and regression coefficient uses observations ending at t-1",
+    "basis_residual_windows_bars": [
+      2016,
+      8640
+    ],
+    "inventory_horizon_bars": 288,
+    "inventory_residual_window_bars": 2016,
+    "transition_lag_bars": 144,
+    "features": {
+      "basis_long_residual": "spa_residual_z_8640 from causal direct-basis-versus-completed-premium residualization",
+      "basis_residual_acceleration": "spa_residual_z_2016 minus spa_residual_z_8640",
+      "inventory_residual": "delayed OI 24h log change sequentially residualized with prior-only rolling regressions against absolute 24h return, signed 24h return, completed premium, and known funding, then prior-only z-scored",
+      "inventory_owner": "negative sign of carry pressure when inventory residual is excessive; carry pressure is equal-weight prior-only z-scores of completed premium and known funding"
+    },
+    "state_encoding": {
+      "fit_fold_thresholds": {
+        "basis_negative_tail": "basis_long_residual <= fit-fold q20 and basis_residual_acceleration < 0",
+        "basis_positive_tail": "basis_long_residual >= fit-fold q80 and basis_residual_acceleration > 0",
+        "basis_neutral": "all other valid rows",
+        "excess_inventory": "inventory_residual >= fit-fold q80",
+        "inventory_owner_short_crowd": "excess inventory and carry pressure < 0",
+        "inventory_owner_long_crowd": "excess inventory and carry pressure > 0",
+        "inventory_normal": "not excess inventory or zero carry"
+      },
+      "current_state": "basis state {-1,0,+1} x inventory-owner state {-1,0,+1}, yielding exactly 9 states",
+      "transition": "state at the completed bar 144 bars earlier -> current state, yielding at most 81 transition groups",
+      "threshold_scope": "all q20/q80 thresholds are estimated only from purged fit decisions for that annual fold"
+    }
+  },
+  "model_contract": {
+    "learner": "one empirical-Bayes transition utility table for each annual fold",
+    "target": "next-open fixed-hold net return after two 6bp/notional side costs minus 0.5 times side-specific leveraged intratrade MAE",
+    "target_clip": "purged fit-fold 0.5% and 99.5% winsorization independently by side",
+    "posterior_prior": "each transition-side mean shrinks toward the fit-fold global side mean with fixed prior_strength 64",
+    "posterior_variance": "pooled fit-fold side variance divided by transition_count plus prior_strength",
+    "confidence": "posterior mean minus lcb_z times posterior standard error",
+    "activation": "choose the side with higher confidence only when confidence is positive, expected-utility separation is at least 0.0001, the transition has at least 50 purged fit observations, and current state differs from previous state",
+    "annual_expanding_folds": {
+      "2023": {
+        "fit_start": "2020-10-15",
+        "fit_end_exclusive": "2023-01-01",
+        "predict": [
+          "2023-01-01",
+          "2024-01-01"
+        ]
+      },
+      "2024": {
+        "fit_start": "2020-10-15",
+        "fit_end_exclusive": "2024-01-01",
+        "predict": [
+          "2024-01-01",
+          "2025-01-01"
+        ]
+      },
+      "2025_veto": {
+        "fit_start": "2020-10-15",
+        "fit_end_exclusive": "2025-01-01",
+        "predict": [
+          "2025-01-01",
+          "2026-01-01"
+        ]
+      },
+      "2026_veto": {
+        "fit_start": "2020-10-15",
+        "fit_end_exclusive": "2026-01-01",
+        "predict": [
+          "2026-01-01",
+          "2026-06-03"
+        ]
+      }
+    },
+    "purge": "a fit target is allowed only when its source-owned exit is strictly before the annual fit cutoff"
+  },
+  "frozen_grid": {
+    "hold_bars": [
+      72,
+      144
+    ],
+    "lcb_z": [
+      0.0,
+      0.5
+    ],
+    "risk_lambda": 0.5,
+    "allowed_side": "both_only",
+    "prior_strength": 64,
+    "min_transition_support": 50,
+    "min_side_advantage": 0.0001,
+    "decision_stride_bars": 12,
+    "model_policy_cells": 4,
+    "portfolio_weight_grid": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ]
+  },
+  "execution_contract": {
+    "base_leverage": 0.5,
+    "fee_and_slippage_per_notional_side": 0.0006,
+    "stress_fee_and_slippage_per_notional_side": 0.001,
+    "entry": "next 5m open after the completed decision bar",
+    "exit": "fixed hold at a future 5m open; no TP or SL",
+    "non_overlapping_within_sleeve": true,
+    "split_contained_exits": true,
+    "annualization": "full declared calendar window including idle cash",
+    "strict_mdd": "same-BTC completed-bar upper-before-lower OHLC path"
+  },
+  "selection_contract": {
+    "standalone_pre2025": {
+      "requirements": [
+        "2023 and 2024 absolute return are both positive",
+        "2023 and 2024 each have at least 12 trades and each half-year has at least 4 trades",
+        "2023 and 2024 strict MDD are each <= 15%",
+        "minimum 2023/2024 CAGR-to-strict-MDD is >= 1.5"
+      ],
+      "shortlist_max": 4,
+      "rank": "maximize minimum 2023/2024 ratio, then geometric mean ratio, then minimum half-year return, then combined absolute return, then shorter hold and lower lcb_z"
+    },
+    "gross9_marginal": {
+      "baseline": "frozen Gross9 weights are not reoptimized",
+      "requirements": [
+        "candidate is added only at frozen weights 0.25, 0.50, 0.75, or 1.00 and total gross remains <= 10",
+        "train strict MDD <= 40% and 2024 strict MDD <= 20%",
+        "train and 2024 absolute returns remain positive and at least 97% of baseline",
+        "train and 2024 Gross9 CAGR-to-strict-MDD deltas are both positive",
+        "minimum train/2024 ratio delta exceeds the same-gross pro-rata Gross9 leverage control",
+        "at least one of train or 2024 strict MDD is lower than baseline",
+        "candidate entry Jaccard versus every existing sleeve is <= 0.25",
+        "candidate has positive standalone PnL during bars when Gross9 has no open position"
+      ],
+      "rank": "maximize minimum train/2024 ratio delta over leverage control, then geometric mean positive ratio delta, then 2024 MDD reduction, then 2024 return delta, then lower added weight"
+    },
+    "future_veto": {
+      "requirements": [
+        "2025 and 2026 use only their annually expanding past-data refits",
+        "frozen portfolio 2025 and 2026 returns remain positive, strict MDD <= 20%, and ratio >= 3",
+        "neither future Gross9 ratio falls by more than 0.25 and at least one improves",
+        "standalone combined 2025-2026 absolute return is positive",
+        "10bp/side stress keeps frozen portfolio future returns positive"
+      ],
+      "future_can_rerank": false,
+      "future_can_repair": false
+    }
+  },
+  "negative_controls_after_top1_freeze": [
+    "basis-residual transition table without inventory state",
+    "inventory transition table without basis state",
+    "raw OI-change plus carry in place of inventory conservation residual",
+    "raw spot participation in place of basis residual",
+    "12-hour transition lag shifted one bar into the future must be prohibited",
+    "transition lag placebo of 288 bars"
+  ],
+  "portfolio_baseline": {
+    "name": "Gross9 Rank7 capacity shadow candidate",
+    "weights": {
+      "fresh_kimchi_fx": 2.0,
+      "frozen_annual_rank7": 3.0,
+      "rex_taker_low_range_position": 0.4,
+      "cand_rex_veto_7": 1.6,
+      "markov_transition_long": 2.0
+    },
+    "gross": 9.0,
+    "accounting": "same_btc_low_high_v1"
+  },
+  "required_diagnostics": [
+    "feature and transition-state availability by year",
+    "fit-threshold, transition-table, and activation hashes by annual fold",
+    "transition support distribution and posterior side counts",
+    "side counts and half-year stability",
+    "exact entry and occupied-bar overlap versus every Gross9 sleeve",
+    "zero-filled daily MTM Pearson and Spearman correlation",
+    "same-gross pro-rata Gross9 leverage control",
+    "standalone PnL while Gross9 is flat",
+    "worst-20 Gross9 drawdown-bar contribution",
+    "negative controls after top1 freeze"
+  ],
+  "input_provenance": {
+    "market_with_oi": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+      "sha256": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192"
+    },
+    "spot_and_completed_premium": {
+      "path": "data/cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "c21ed3f52804a3f879ef5167b6b81ee0fd7dd262f2e9d87ee5c1c25dbad73617"
+    },
+    "funding": {
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+    },
+    "gross9": {
+      "path": "configs/shadow/portfolio_rank7_capacity_candidate_2026-07-28.json",
+      "sha256": "006f82e1f0affad9f96a08a6c600542feec4a0e1198ed99b8630627de4913450"
+    }
+  },
+  "research_caveat": "2025/2026 have been inspected elsewhere, so future stages are veto-only and cannot restore pristine OOS status. A survivor is forward-shadow evidence, not automatic live promotion."
+}
