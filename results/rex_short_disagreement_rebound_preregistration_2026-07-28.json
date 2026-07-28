@@ -1,0 +1,185 @@
+{
+  "as_of": "2026-07-28",
+  "name": "rex_short_disagreement_rebound",
+  "short_name": "RSDR-1",
+  "status": "preregistered_before_outcome_scan",
+  "objective": "Add a causal long hedge/alpha sleeve that improves the frozen Gross9 portfolio when a raw REX short setup fails to continue and delayed open interest plus completed-bar price action indicate trapped short inventory.",
+  "mechanism": {
+    "raw_rex_clock": [
+      "recompute the REX HTF pullback-reclaim strength and direction directly from completed market bars",
+      "fit the q75 positive-strength threshold only on 2020-09-01 through 2021-12-31",
+      "sample the raw clock every 24 five-minute bars",
+      "retain only raw REX direction SHORT",
+      "do not read the future-labelled REX SFT JSONL"
+    ],
+    "anchor": [
+      "one-bar-delayed 4h OI-minus-price log-return divergence is above the frozen REX-short-anchor quantile",
+      "all price, range, flow, ATR, and delayed OI values are finite"
+    ],
+    "confirmation": [
+      "wait a fixed 30m or 60m after the raw REX short anchor",
+      "completed close is above the anchor close",
+      "completed 15m taker flow is greater than the anchor completed 1h taker flow",
+      "one-bar-delayed OI has not fallen more than the frozen retention allowance",
+      "post-anchor downside excursion is no larger than 1.5 times the anchor 1h ATR",
+      "completed close is in the frozen upper fraction of the post-anchor high-low range"
+    ],
+    "trade": "enter a separate LONG sleeve at the next 5m open after confirmation; fixed hold; no take-profit or stop; do not veto or rewrite the existing REX trade"
+  },
+  "causality_contract": {
+    "decision_clock": "completed 5m bars only",
+    "entry_delay_bars": 1,
+    "open_interest_delay_bars": 1,
+    "missing_open_interest": "fail closed; no forward fill",
+    "rolling_features": "trailing-only and inclusive of the completed decision bar",
+    "rex_threshold_fit_window": [
+      "2020-09-01",
+      "2022-01-01"
+    ],
+    "oi_threshold_fit_window": [
+      "2020-09-01",
+      "2022-01-01"
+    ],
+    "support_window": [
+      "2022-01-01",
+      "2023-01-01"
+    ],
+    "robustness_window": [
+      "2023-01-01",
+      "2024-01-01"
+    ],
+    "test_selection_window": [
+      "2024-01-01",
+      "2025-01-01"
+    ],
+    "future_veto_windows": {
+      "eval2025": [
+        "2025-01-01",
+        "2026-01-01"
+      ],
+      "ytd2026": [
+        "2026-01-01",
+        "2026-06-03"
+      ]
+    },
+    "future_can_rerank": false,
+    "future_can_repair": false
+  },
+  "frozen_grid": {
+    "rex_strength_quantile": 0.75,
+    "rex_stride_bars": 24,
+    "oi_minus_price_anchor_quantile": [
+      0.5,
+      0.75
+    ],
+    "confirmation_wait_bars": [
+      6,
+      12
+    ],
+    "minimum_oi_retention": [
+      -0.005,
+      0.0
+    ],
+    "minimum_post_anchor_range_position": [
+      0.5,
+      0.65
+    ],
+    "post_anchor_atr_multiple": 1.5,
+    "hold_bars": [
+      36,
+      72,
+      144
+    ],
+    "mechanism_candidate_count": 48,
+    "portfolio_weight_grid": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "portfolio_candidate_count_per_shortlist_row": 4
+  },
+  "execution_contract": {
+    "side": "LONG",
+    "base_leverage": 0.5,
+    "fee_and_slippage_per_notional_side": 0.0006,
+    "stress_fee_and_slippage_per_notional_side": 0.001,
+    "non_overlapping_within_sleeve": true,
+    "split_contained_exits": true,
+    "maximum_added_portfolio_gross": 1.0,
+    "maximum_total_portfolio_gross": 10.0,
+    "annualization": "declared full calendar window including all idle cash time",
+    "strict_mdd": "global high-water mark with same-BTC completed-bar upper-before-lower OHLC path"
+  },
+  "selection_contract": {
+    "pre2024_shortlist": {
+      "max_candidates": 12,
+      "requirements": [
+        "2022 and 2023 each have at least 4 accepted trades",
+        "2022 plus 2023 has at least 12 accepted trades",
+        "combined 2022-2023 absolute return is positive at 0.5x",
+        "neither calendar has absolute return below -1.0%",
+        "2022, 2023, and combined strict MDD are each no greater than 8.0%"
+      ],
+      "rank": "maximize combined 2022-2023 CAGR/strict-MDD, then minimum annual absolute return, then combined absolute return, then shorter hold, then lexical parameter order"
+    },
+    "test2024_top1": {
+      "requirements": [
+        "2024 candidate has at least 4 accepted trades and absolute return above -1.0%",
+        "Gross9 plus the candidate respects train strict MDD <= 40%, 2024 strict MDD <= 20%, and gross <= 10",
+        "Gross9 plus the candidate keeps positive train and 2024 absolute return",
+        "the candidate improves both the train and 2024 Gross9 CAGR/strict-MDD ratios, or lowers 2024 strict MDD by at least 0.50 percentage points while train ratio falls by no more than 0.10",
+        "train and 2024 absolute return each remain at least 97% of the frozen Gross9 baseline"
+      ],
+      "rank": "maximize the minimum train/2024 Gross9 ratio delta, then geometric mean of positive ratio deltas, then 2024 strict-MDD reduction, then 2024 absolute-return delta, then lower added weight, shorter hold, and lexical parameter order"
+    },
+    "future_veto": {
+      "requirements": [
+        "2025 and 2026 frozen-portfolio absolute return remain positive",
+        "2025 and 2026 frozen-portfolio strict MDD remain <= 20% and CAGR/strict-MDD remain >= 3",
+        "neither future Gross9 ratio is reduced by more than 0.25 and at least one future ratio improves",
+        "combined 2025-2026 candidate standalone absolute return is positive",
+        "10bp/side stress keeps both future frozen-portfolio absolute returns positive"
+      ]
+    }
+  },
+  "portfolio_baseline": {
+    "name": "Gross9 Rank7 capacity shadow candidate",
+    "weights": {
+      "fresh_kimchi_fx": 2.0,
+      "frozen_annual_rank7": 3.0,
+      "rex_taker_low_range_position": 0.4,
+      "cand_rex_veto_7": 1.6,
+      "markov_transition_long": 2.0
+    },
+    "gross": 9.0,
+    "accounting": "same_btc_low_high_v1",
+    "selection_source": "results/portfolio_rank7_capacity_update_2026-07-28.json"
+  },
+  "orthogonality_contract": {
+    "required_diagnostics": [
+      "exact entry Jaccard versus every Gross9 sleeve",
+      "entry overlap within plus/minus 6h",
+      "occupied-position-bar Jaccard",
+      "zero-filled daily MTM Pearson and Spearman correlation",
+      "candidate contribution on the worst 20 Gross9 drawdown bars",
+      "overlap with existing REX short positions and Rank7/Markov long positions"
+    ],
+    "rex_overlap_exception": "High overlap with a raw REX short clock is intentional only because the candidate is opposite-side; the exact overlap and portfolio strict-MDD effect must be disclosed."
+  },
+  "input_provenance": {
+    "market": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "open_interest": {
+      "path": "/tmp/btcusdt_open_interest_5m_2020_2026.csv",
+      "sha256": "e08f93033e56959e8e7a9c1e21f27c5f01efc8d06fa6b4fbbfe7354697122b31"
+    },
+    "gross9": {
+      "path": "configs/shadow/portfolio_rank7_capacity_candidate_2026-07-28.json",
+      "sha256": "006f82e1f0affad9f96a08a6c600542feec4a0e1198ed99b8630627de4913450"
+    }
+  },
+  "research_caveat": "The wider programme has inspected 2025 and 2026 and the frozen Gross9 sleeves are not globally pristine. This staged protocol prevents new future reranking but any passing result remains forward-shadow only until it survives genuinely new live data."
+}
