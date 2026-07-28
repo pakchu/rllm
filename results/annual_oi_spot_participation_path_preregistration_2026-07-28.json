@@ -1,0 +1,240 @@
+{
+  "as_of": "2026-07-28",
+  "name": "annual_oi_spot_participation_path",
+  "short_name": "AOSP-1",
+  "status": "preregistered_before_outcome_scan",
+  "objective": "Find a regime-agnostic, annually refit long/short BTC sleeve whose delayed open-interest and spot-versus-perpetual participation features add positive marginal value to the frozen Gross9 portfolio.",
+  "novelty_boundary": {
+    "primary_axes": [
+      "one-complete-5m-bar delayed futures open interest",
+      "complete Binance spot close and volume",
+      "spot-versus-perpetual return gaps",
+      "spot-versus-perpetual notional participation ratios",
+      "OI growth relative to spot cash participation",
+      "perpetual taker imbalance as an execution-context control"
+    ],
+    "explicitly_excluded": [
+      "future-labelled REX JSONL",
+      "DXY, USDKRW, and Kimchi features",
+      "funding and premium-index features",
+      "Rank7 nested-barrier and market-braid weak features",
+      "unavailable spot quote-volume, taker-flow, and trade-count columns"
+    ],
+    "relationship_to_rank7": "This is a separate annual model with different anchors, direct spot-volume/OI axes, fixed-hold long/short execution, and no Rank7 funding/premium source gate or barrier exits."
+  },
+  "feature_contract": {
+    "decision_clock": "each completed :00 five-minute bar",
+    "spot_completeness": "spot_rows must equal 5 at the decision bar",
+    "open_interest_delay_bars": 1,
+    "missing_source_policy": "fail closed at inference; no forward fill",
+    "rolling_statistics": "trailing-only; z-score center and scale use observations ending one completed bar before the current value",
+    "horizons_bars": [
+      12,
+      48,
+      288
+    ],
+    "feature_groups": {
+      "spot_perp_price": [
+        "log spot/perp basis",
+        "spot-minus-perp log-return gap at 1h, 4h, and 24h",
+        "basis change at 1h, 4h, and 24h"
+      ],
+      "participation": [
+        "log rolling spot notional divided by rolling perpetual quote volume at 1h, 4h, and 24h",
+        "prior-window z-scores of spot and perpetual log volume",
+        "spot participation acceleration"
+      ],
+      "open_interest": [
+        "delayed OI log return at 1h, 4h, and 24h",
+        "delayed OI return minus perpetual return",
+        "delayed OI return minus spot return",
+        "delayed OI value divided by 24h spot notional"
+      ],
+      "controls": [
+        "perpetual taker imbalance at 1h and 4h",
+        "perpetual realized volatility at 4h and 24h",
+        "perpetual range position at 12h and 7d",
+        "hour-of-day and weekday sine/cosine"
+      ]
+    }
+  },
+  "model_contract": {
+    "learner": "two HistGradientBoostingRegressors, one for executable long utility and one for executable short utility",
+    "target": "next-open fixed-hold net return after two 6bp/notional side costs minus risk_lambda times side-specific leveraged intratrade MAE",
+    "target_clip": "fit-fold 0.5% and 99.5% winsorization independently by side",
+    "annual_expanding_folds": {
+      "2023": {
+        "fit_start": "2020-10-15",
+        "fit_end_exclusive": "2023-01-01",
+        "predict": [
+          "2023-01-01",
+          "2024-01-01"
+        ]
+      },
+      "2024": {
+        "fit_start": "2020-10-15",
+        "fit_end_exclusive": "2024-01-01",
+        "predict": [
+          "2024-01-01",
+          "2025-01-01"
+        ]
+      },
+      "2025_veto": {
+        "fit_start": "2020-10-15",
+        "fit_end_exclusive": "2025-01-01",
+        "predict": [
+          "2025-01-01",
+          "2026-01-01"
+        ]
+      },
+      "2026_veto": {
+        "fit_start": "2020-10-15",
+        "fit_end_exclusive": "2026-01-01",
+        "predict": [
+          "2026-01-01",
+          "2026-06-03"
+        ]
+      }
+    },
+    "purge": "a fit target is allowed only when its source-owned exit is strictly before the fold fit_end",
+    "early_stopping": false,
+    "prediction_threshold": "side-max confidence must exceed the frozen quantile of fit-fold predictions and be positive"
+  },
+  "frozen_grid": {
+    "model_specs": [
+      {
+        "name": "h72_mean_lam05",
+        "hold_bars": 72,
+        "risk_lambda": 0.5,
+        "loss": "squared_error",
+        "max_leaf_nodes": 7,
+        "min_samples_leaf": 120,
+        "l2_regularization": 10.0
+      },
+      {
+        "name": "h144_mean_lam05",
+        "hold_bars": 144,
+        "risk_lambda": 0.5,
+        "loss": "squared_error",
+        "max_leaf_nodes": 7,
+        "min_samples_leaf": 120,
+        "l2_regularization": 10.0
+      },
+      {
+        "name": "h144_robust_lam10",
+        "hold_bars": 144,
+        "risk_lambda": 1.0,
+        "loss": "absolute_error",
+        "max_leaf_nodes": 7,
+        "min_samples_leaf": 180,
+        "l2_regularization": 10.0
+      },
+      {
+        "name": "h288_mean_lam05",
+        "hold_bars": 288,
+        "risk_lambda": 0.5,
+        "loss": "squared_error",
+        "max_leaf_nodes": 7,
+        "min_samples_leaf": 180,
+        "l2_regularization": 10.0
+      }
+    ],
+    "score_quantile": [
+      0.8,
+      0.9
+    ],
+    "allowed_side": [
+      "both",
+      "long",
+      "short"
+    ],
+    "decision_stride_bars": 12,
+    "model_policy_cells": 24,
+    "portfolio_weight_grid": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ]
+  },
+  "execution_contract": {
+    "base_leverage": 0.5,
+    "fee_and_slippage_per_notional_side": 0.0006,
+    "stress_fee_and_slippage_per_notional_side": 0.001,
+    "entry": "next 5m open after the completed decision bar",
+    "exit": "fixed hold at a future 5m open; no TP or SL",
+    "non_overlapping_within_sleeve": true,
+    "split_contained_exits": true,
+    "annualization": "full declared calendar window including idle cash",
+    "strict_mdd": "same-BTC completed-bar upper-before-lower OHLC path"
+  },
+  "selection_contract": {
+    "standalone_pre2025": {
+      "requirements": [
+        "2023 and 2024 absolute return are both positive",
+        "2023 and 2024 each have at least 12 trades and each half-year has at least 4 trades",
+        "2023 and 2024 strict MDD are each <= 15%",
+        "minimum 2023/2024 CAGR-to-strict-MDD is >= 1.5"
+      ],
+      "shortlist_max": 8,
+      "rank": "maximize minimum 2023/2024 ratio, then geometric mean ratio, then minimum half-year return, then combined absolute return, then lower model complexity and lexical policy order"
+    },
+    "gross9_top1": {
+      "requirements": [
+        "total gross <= 10 with added weight on the frozen 0.25 grid",
+        "train strict MDD <= 40% and 2024 strict MDD <= 20%",
+        "train and 2024 absolute returns remain positive and at least 97% of baseline",
+        "minimum train/2024 Gross9 CAGR-to-strict-MDD delta is positive"
+      ],
+      "rank": "maximize minimum train/2024 Gross9 ratio delta, then geometric mean positive ratio delta, then 2024 MDD reduction, then 2024 return delta, then lower added weight"
+    },
+    "future_veto": {
+      "requirements": [
+        "2025 and 2026 use only their annually expanding past-data refits",
+        "frozen portfolio 2025 and 2026 returns remain positive, strict MDD <= 20%, and ratio >= 3",
+        "neither future Gross9 ratio falls by more than 0.25 and at least one improves",
+        "standalone combined 2025-2026 absolute return is positive",
+        "10bp/side stress keeps frozen portfolio future returns positive"
+      ],
+      "future_can_rerank": false,
+      "future_can_repair": false
+    }
+  },
+  "portfolio_baseline": {
+    "name": "Gross9 Rank7 capacity shadow candidate",
+    "weights": {
+      "fresh_kimchi_fx": 2.0,
+      "frozen_annual_rank7": 3.0,
+      "rex_taker_low_range_position": 0.4,
+      "cand_rex_veto_7": 1.6,
+      "markov_transition_long": 2.0
+    },
+    "gross": 9.0,
+    "accounting": "same_btc_low_high_v1"
+  },
+  "required_diagnostics": [
+    "feature availability by year",
+    "prediction and schedule hashes by annual fold",
+    "side counts and half-year stability",
+    "seed rerun equality for deterministic learner",
+    "exact entry and occupied-bar overlap versus every Gross9 sleeve",
+    "zero-filled daily MTM Pearson/Spearman correlation",
+    "worst-20 Gross9 drawdown-bar contribution",
+    "feature permutation and OI/spot ablation diagnostics after top1 freeze"
+  ],
+  "input_provenance": {
+    "market_with_oi": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+      "sha256": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192"
+    },
+    "spot": {
+      "path": "data/cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "c21ed3f52804a3f879ef5167b6b81ee0fd7dd262f2e9d87ee5c1c25dbad73617"
+    },
+    "gross9": {
+      "path": "configs/shadow/portfolio_rank7_capacity_candidate_2026-07-28.json",
+      "sha256": "006f82e1f0affad9f96a08a6c600542feec4a0e1198ed99b8630627de4913450"
+    }
+  },
+  "research_caveat": "2025/2026 have been inspected elsewhere, so future stages are veto-only and cannot restore pristine OOS status. A passing model is a forward-shadow retraining process, not an automatic live promotion."
+}
