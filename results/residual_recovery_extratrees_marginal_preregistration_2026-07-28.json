@@ -60,10 +60,10 @@
     },
     "risk_lambda": 0.5,
     "seed_uncertainty_lambda": 0.5,
-    "side_rule": "choose the side with the greater seed-mean(return-risk_lambda*adverse) minus seed_uncertainty_lambda times its seed standard deviation",
+    "side_rule": "For each side compute adjusted_side_score = mean_seed(return-risk_lambda*adverse) - seed_uncertainty_lambda*std_seed(return-risk_lambda*adverse, ddof=0). Choose long when long_score >= short_score, otherwise short. The chosen adjusted score is the row admission score.",
     "minimum_score": 0.0,
     "score_quantile": 0.8,
-    "score_calibration": "For each hold, the threshold for year Y is max(0, q80) over all finite hourly anchor scores predicted for Y-1 by a model trained strictly before Y-1. It is shared by long and short and by all three coordination modes. Outcomes from Y-1 do not enter threshold calibration.",
+    "score_calibration": "For each hold, the threshold for year Y is max(0, q80) over the chosen adjusted row admission scores at all finite hourly anchors in Y-1, predicted by a model trained strictly before Y-1. It is shared by long and short and by all three coordination modes. Admit a row when its chosen score >= threshold. Outcomes from Y-1 do not enter threshold calibration.",
     "fit_start_inclusive": "2020-10-15",
     "anchor_stride_bars": 12,
     "entry_delay_bars": 1,
@@ -74,7 +74,8 @@
     "sl": null
   },
   "execution_and_accounting": {
-    "candidate_nonoverlap": "Each policy is one sleeve. After accepting a signal at t and entering at t+1, ignore all later candidate signals with signal_position <= exit_position; the next admissible signal_position is exit_position + 1. Candidate trades never stack or net.",
+    "position_indices": "For signal_position t and hold H, entry_position e=t+1. Return and adverse bars are j in the inclusive interval [e,e+H-1], each using OHLC at j and next open j+1. Time exit_position x=e+H and exit cost is charged at x. A fit/evaluation row is contained only when x is strictly before the boundary position.",
+    "candidate_nonoverlap": "Each policy is one sleeve. After accepting a signal at t and entering at e=t+1, ignore all later candidate signals with signal_position <= exit_position x; the next admissible signal_position is x+1. Candidate trades never stack or net.",
     "split_containment": "Signals whose complete entry-through-exit path is not contained in the measured split are excluded.",
     "portfolio_clock": "Gross9 and candidate paths share the same BTC 5m clock and same-BTC upper-before-lower strict-MDD accounting.",
     "calendar_metrics": "Absolute return, CAGR, and strict MDD include every idle bar from the fixed calendar boundaries.",
@@ -144,9 +145,10 @@
         "end_exclusive": "2024-01-01",
         "candidate_is_flat_before": "2023-01-01"
       },
-      "test2024": {
+      "selection_2024": {
         "start_inclusive": "2024-01-01",
-        "end_exclusive": "2025-01-01"
+        "end_exclusive": "2025-01-01",
+        "portfolio_engine_alias": "test2024 is an internal historical array key only; it is part of pre-2025 selection and is not a held-out test"
       }
     },
     "standalone_requirements": {
@@ -158,7 +160,7 @@
     },
     "portfolio_requirements": {
       "train_strict_mdd_cap_pct": 40.0,
-      "test2024_strict_mdd_cap_pct": 20.0,
+      "selection_2024_strict_mdd_cap_pct": 20.0,
       "absolute_return_retention_floor_vs_unscaled_gross9": 0.97,
       "minimum_cagr_mdd_improvement_vs_same_gross_prorata_gross9_each_window": 0.05,
       "strict_mdd_reduction_vs_unscaled_gross9_in_at_least_one_window": true,
@@ -181,6 +183,10 @@
       "cagr_pct": "100*(E_last^(1/calendar_years)-1), where calendar_years is exact end_exclusive-start_inclusive seconds divided by 365.25 days",
       "cagr_to_strict_mdd": "CAGR_pct/strict_MDD_pct when strict_MDD_pct > 1e-12, otherwise 0",
       "entry_jaccard": "For each Gross9 sleeve, compute |candidate_entries intersect sleeve_entries| / |candidate_entries union sleeve_entries| using exact global entry positions restricted to 2023-01-01 through 2024-12-31; admission uses the maximum across sleeves.",
+      "same_gross_ratio_improvement": "For window W, improvement_W = cagr_to_strict_mdd(combined_candidate,W) - cagr_to_strict_mdd(prorata_control,W), an absolute ratio-point difference.",
+      "minimum_same_gross_ratio_improvement": "min(improvement_train, improvement_selection_2024)",
+      "signed_geometric_mean_same_gross_ratio_improvement": "Let p=improvement_train*improvement_selection_2024. Return 0 when p=0; return sqrt(abs(p)) only when both improvements are positive; otherwise return -sqrt(abs(p)).",
+      "selection_2024_mdd_reduction": "strict_MDD_pct(unscaled_Gross9,selection_2024) - strict_MDD_pct(combined_candidate,selection_2024), measured in percentage points.",
       "nan_policy": "Any non-finite metric or comparison fails admission."
     },
     "ranking_key": [
@@ -197,7 +203,7 @@
         "direction": "descending"
       },
       {
-        "field": "test2024_mdd_reduction",
+        "field": "selection_2024_mdd_reduction",
         "direction": "descending"
       },
       {

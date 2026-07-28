@@ -23,7 +23,9 @@ CAGR/strict-MDD가 2023 포함 train과 2024에서 모두 개선되는지**다.
   OHLC 손실의 최댓값
 - 점수: `return - 0.5 × adverse - 0.5 × seed uncertainty`
 - 기준점: 각 hold별 전년도 모든 유효 hourly OOS 점수의 80% 분위수와
-  0 중 큰 값. long/short와 세 운용 모드는 같은 기준점을 공유
+  0 중 큰 값. 점수는 선택된 방향의 seed 평균 utility에서 population
+  standard deviation(`ddof=0`)의 0.5배를 뺀 값이다. long/short와 세 운용
+  모드는 같은 기준점을 공유
 - 진입: 완료된 5분봉 `t`에서 판단, `t+1` 시가
 - 보유: 6시간 또는 12시간
 - 레버리지: 0.5x
@@ -35,6 +37,8 @@ CAGR/strict-MDD가 2023 포함 train과 2024에서 모두 개선되는지**다.
 - stress는 모델·점수·방향·진입을 바꾸지 않고 후보 비용만 10bp로 재생
 - split 경계를 넘는 거래는 제외한다. 단일 후보 sleeve가 열려 있으면
   `signal_position <= exit_position`인 모든 신호를 버리고 포지션을 쌓지 않는다.
+- 인덱스는 `signal=t`, `entry=e=t+1`, 보유봉 `[e,e+H-1]`,
+  `time exit=x=e+H`로 고정한다. 다음 허용 signal은 `x+1`이다.
 
 ## 정확히 여섯 정책
 
@@ -51,6 +55,9 @@ Gross9 손익은 피처, 게이트, 임계값에 들어갈 수 없다.
 
 2023과 2024는 모두 pre-2025 **선별 구간**이다. 각 정책은 두 해 모두에서
 다음을 만족해야 한다.
+
+코드 내부의 기존 배열명 `test2024`는 `selection_2024`의 역사적 alias일
+뿐이며 held-out test를 뜻하지 않는다.
 
 - 절대수익 양수
 - full-calendar CAGR / strict MDD ≥ 1.5
