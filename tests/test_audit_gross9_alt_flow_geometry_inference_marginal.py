@@ -210,6 +210,31 @@ def test_fold_masks_purge_boundary_crossing_targets() -> None:
     assert np.array_equal(predict, [False, False, True, False])
 
 
+def test_extratrees_predictions_are_bitwise_reproducible() -> None:
+    rng = np.random.default_rng(29)
+    matrix = rng.normal(size=(1_300, 5))
+    targets = rng.normal(size=(1_300, 4))
+    fit = np.zeros(1_300, dtype=bool)
+    fit[:1_100] = True
+    predict = ~fit
+    preregistration = {
+        "learner_contract": {
+            "n_estimators": 16,
+            "max_depth": 3,
+            "min_samples_leaf": 24,
+            "max_features": 0.75,
+        }
+    }
+    first, first_meta = mod._fit_predict_ensemble(
+        matrix, targets, fit, predict, preregistration
+    )
+    second, second_meta = mod._fit_predict_ensemble(
+        matrix, targets, fit, predict, preregistration
+    )
+    assert np.array_equal(first, second)
+    assert first_meta == second_meta
+
+
 def test_no_stop_target_uses_next_open_fixed_exit_cost_and_funding() -> None:
     market = _market(220)
     signal = 20

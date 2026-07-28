@@ -889,7 +889,7 @@ def _fit_predict_ensemble(
             max_features=float(learner["max_features"]),
             bootstrap=False,
             random_state=int(seed),
-            n_jobs=-1,
+            n_jobs=1,
         ).fit(x_fit, y_fit)
         predicted = model.predict(x_predict)
         predictions.append(predicted)
