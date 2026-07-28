@@ -1,0 +1,448 @@
+{
+  "name": "cash_open_cross_asset_gap_relay_gross9_marginal_battery",
+  "short_name": "COGR-12",
+  "status": "preregistered_before_any_cogr_btc_market_funding_or_portfolio_outcome_is_opened",
+  "created_on": "2026-07-28",
+  "physical_selection_cutoff": "2024-01-01",
+  "hypothesis": "Information arriving in the QQQ and GLD US cash opening auction can reveal risk-rotation and liquidity geometry before it is fully transmitted into continuously traded BTC. A shallow expanding learner may turn that sparse cross-market arrival into a bidirectional 12-hour BTC sleeve that improves frozen Gross9 at identical configured gross.",
+  "novelty_boundary": {
+    "material_difference": "COGR-12 trades BTC from current-session QQQ/GLD opening information. Prior cross-asset transfer batteries translated BTC rules into trades on QQQ, KODEX 200, or GLD; crypto CATCH batteries modeled spot-to-perpetual transmission inside crypto. Neither is this source, target market, or clock.",
+    "forbidden_repairs": [
+      "add a new source asset after seeing COGR outcomes",
+      "change the 09:35 signal or 09:40 entry clock",
+      "change the 12-hour hold",
+      "change the feature subset, target, learner, seed, threshold quantile, direction rule, or coordination gate after outcomes",
+      "lower an underfilled gate or choose the second-ranked 2023H2 cell after 2024",
+      "use 2025 or 2026 to select, rank, repair, or certify"
+    ],
+    "terminal_stop": "If the frozen 2023H2 top1 does not pass the exact 2024 veto, close the QQQ/GLD cash-open shallow-tree relay family. A later attempt requires a materially different source or economic mechanism and a new outcome-blind preregistration."
+  },
+  "source_contract": {
+    "safe_feature_path": "data/cash_open_cross_asset_gap_relay_pre2025/qqq_gld_cash_open_safe_features_pre2025.csv.gz",
+    "safe_manifest_path": "data/cash_open_cross_asset_gap_relay_pre2025/build_manifest.json",
+    "feature_count": 31,
+    "feature_available_local_time": "09:35 America/New_York",
+    "entry_local_time": "09:40 America/New_York",
+    "selection_cutoff_exclusive": "2024-01-01",
+    "source_artifact_cutoff_exclusive": "2025-01-01",
+    "current_session_values_allowed": [
+      "QQQ raw cash open on the provider split-normalized basis",
+      "GLD raw cash open on the provider split-normalized basis",
+      "effective-date cash-dividend metadata",
+      "effective-date split metadata for audit only"
+    ],
+    "current_session_values_forbidden": [
+      "QQQ or GLD high",
+      "QQQ or GLD low",
+      "QQQ or GLD close",
+      "QQQ or GLD volume",
+      "BTC price, funding, return, PnL, or portfolio state"
+    ],
+    "prior_feature_boundary": "Every non-opening feature ends at the preceding completed US cash session. No carry, interpolation, backward fill, or stale substitution is allowed in the primary feature frame.",
+    "invalid_policy": "A session is admissible only when feature_valid is true and all 31 feature values are finite. Invalid sessions remain absent; no imputation is allowed.",
+    "production_limitation": "Frozen Yahoo caches are research-only. Live promotion requires an entitled QQQ/GLD cash-open feed and a frozen signal-clock and feature-value parity audit."
+  },
+  "feature_contract": {
+    "columns": [
+      "gap_open_qqq",
+      "prior_close_return_1d_qqq",
+      "prior_close_return_5d_qqq",
+      "prior_close_return_20d_qqq",
+      "prior_intraday_return_qqq",
+      "prior_range_qqq",
+      "prior_realized_vol_5d_qqq",
+      "prior_realized_vol_20d_qqq",
+      "prior_volume_z60_qqq",
+      "gap_open_gld",
+      "prior_close_return_1d_gld",
+      "prior_close_return_5d_gld",
+      "prior_close_return_20d_gld",
+      "prior_intraday_return_gld",
+      "prior_range_gld",
+      "prior_realized_vol_5d_gld",
+      "prior_realized_vol_20d_gld",
+      "prior_volume_z60_gld",
+      "gap_risk_rotation",
+      "gap_joint_liquidity",
+      "gap_abs_total",
+      "gap_direction_agreement",
+      "prior_return_spread_1d",
+      "prior_return_spread_5d",
+      "prior_return_spread_20d",
+      "prior_return_corr_20d",
+      "prior_return_beta_20d",
+      "prior_vol_ratio_20d",
+      "prior_volume_z_spread",
+      "weekday_sin",
+      "weekday_cos"
+    ],
+    "current_gap_block": [
+      "gap_open_qqq",
+      "gap_open_gld",
+      "gap_risk_rotation",
+      "gap_joint_liquidity",
+      "gap_abs_total",
+      "gap_direction_agreement"
+    ],
+    "primary_variant": "all 31 frozen features in the declared order",
+    "training_imputation": "none; every admitted fit and prediction row must be finite",
+    "scaling": "none; ExtraTrees receives the frozen float64 values directly"
+  },
+  "learner_contract": {
+    "estimator": "sklearn.ensemble.ExtraTreesRegressor",
+    "sklearn_version": "1.7.2",
+    "n_estimators": 256,
+    "max_depth": 4,
+    "min_samples_leaf": 32,
+    "max_features": 0.75,
+    "bootstrap": false,
+    "n_jobs": 1,
+    "seeds": [
+      7,
+      71,
+      715
+    ],
+    "fit_start_inclusive": "2020-10-15",
+    "minimum_fit_rows": 500,
+    "target_columns": [
+      "long_exact_net_return",
+      "long_strict_adverse_excursion",
+      "short_exact_net_return",
+      "short_strict_adverse_excursion"
+    ],
+    "target_semantics": {
+      "return": "At 0.5x, compound the canonical no-stop BTCUSDT path from the 09:40 entry open through the open exactly 144 five-minute bars later, with 6 bp per notional charged at both entry and exit and exact held-interval funding.",
+      "adverse": "For the same path and side, compute the maximum non-negative loss magnitude generated by entry cost, funding debits, held five-minute OHLC adverse excursions, and terminal net return.",
+      "fit_purge": "A label enters a fit only when feature availability, entry, every held OHLC/funding mark, and exit are strictly before fit_end_exclusive.",
+      "evaluation_purge": "A trade enters a measured window only when feature availability, entry, every held OHLC/funding mark, and exit are contained before that window end_exclusive.",
+      "stress": "The 6 bp model, scores, thresholds, sides, gates, and entries are replayed unchanged; only candidate entry and exit cost changes to 10 bp per notional per side."
+    },
+    "risk_lambda": 0.5,
+    "seed_uncertainty_lambda": 0.5,
+    "side_rule": "For each side, adjusted_score = mean_seed(predicted_return - 0.5*predicted_adverse) - 0.5*std_seed(predicted_return - 0.5*predicted_adverse, ddof=0). Choose long when adjusted_long >= adjusted_short, otherwise short. The chosen adjusted score is the admission score.",
+    "minimum_score": 0.0,
+    "score_quantile": 0.75,
+    "score_threshold_rule": "For a prediction fold, threshold=max(0,q75) over every finite chosen admission score in its frozen prior calibration fold. Calibration uses predictions only, never calibration outcomes. The threshold is shared by long and short and all coordination modes.",
+    "unit_leverage": 0.5,
+    "normal_cost_per_notional_per_side": 0.0006,
+    "candidate_stress_cost_per_notional_per_side": 0.001,
+    "entry_delay_bars": 1,
+    "entry_delay_definition": "Binance market timestamps are five-minute bar-open timestamps. The feature timestamp T=09:35 is mapped to signal_position whose bar opens at T. The coordination snapshot is signal_position-1, the 09:30 bar that ends at T. The entire signal_position bar [T,T+5m) is forbidden to the model and gate. entry_position=signal_position+1 opens at 09:40. exit_position=entry_position+144 opens exactly 12 hours later.",
+    "hold_bars": 144,
+    "tp": null,
+    "sl": null
+  },
+  "expanding_folds": [
+    {
+      "name": "calibration_2023h1",
+      "fit_end_exclusive": "2023-01-01",
+      "prediction_start": "2023-01-01",
+      "prediction_end_exclusive": "2023-07-01",
+      "threshold_source": null,
+      "candidate_entries_allowed": false,
+      "outcomes_used_for_ranking": false
+    },
+    {
+      "name": "selection_2023h2",
+      "fit_end_exclusive": "2023-07-01",
+      "prediction_start": "2023-07-01",
+      "prediction_end_exclusive": "2024-01-01",
+      "threshold_source": "calibration_2023h1",
+      "candidate_entries_allowed": true,
+      "outcomes_used_for_ranking": true
+    },
+    {
+      "name": "eval_2024",
+      "fit_end_exclusive": "2024-01-01",
+      "prediction_start": "2024-01-01",
+      "prediction_end_exclusive": "2025-01-01",
+      "threshold_source": "selection_2023h2",
+      "candidate_entries_allowed": true,
+      "outcomes_used_for_ranking": false,
+      "exact_frozen_top1_only": true
+    }
+  ],
+  "candidate_universe": {
+    "coordination_modes": [
+      {
+        "name": "unrestricted",
+        "rule": "No Gross9 state gate."
+      },
+      {
+        "name": "gross9_flat_at_signal",
+        "rule": "Immediately at 09:35, frozen Gross9 has no occupied sleeve on the just-completed BTC bar ending at 09:35. No 09:35-to-09:40 price is observed by this gate."
+      },
+      {
+        "name": "gross9_drawdown_ge_5pct",
+        "rule": "Immediately at 09:35, frozen Gross9 closing equity through the just-completed BTC bar is at least 5% below its running upper-envelope peak through that bar. State is continuous from 2020-09-01 and does not reset at H2 or 2024."
+      }
+    ],
+    "coordination_tie_break_order": [
+      "unrestricted",
+      "gross9_flat_at_signal",
+      "gross9_drawdown_ge_5pct"
+    ],
+    "candidate_weight_grid": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "policy_cells": 3,
+    "portfolio_cells": 12,
+    "underfill_policy": "A coordination mode below a sample gate fails closed. Thresholds and gates are never relaxed to fill it."
+  },
+  "execution_and_accounting": {
+    "market_timestamp_semantics": "Every BTCUSDT market date is the Binance five-minute bar-open timestamp in UTC.",
+    "clock": "For feature time T=09:35 America/New_York, signal_position is the BTC bar opening at T; coordination_position=signal_position-1 is the 09:30 bar ending at T; entry_position=signal_position+1 is the 09:40 bar open; exit_position=entry_position+144 is the open 12 hours later.",
+    "forbidden_latency_bar": "Neither the model nor any Gross9 gate may read open, high, low, close, volume, funding, return, PnL, or portfolio state from the BTC bar opening at signal_position and spanning [09:35,09:40). The bar may appear only as an unused clock separator. Entry begins at its next open.",
+    "nonoverlap": "One candidate sleeve. After an accepted entry, suppress later accepted signals through the exact exit position; the next signal must occur strictly after exit.",
+    "funding": "Apply every exact BTCUSDT funding event in the closed timestamp interval [entry,exit]. Funding factors follow side and 0.5x notional; no forecast, accrual approximation, or funding carry-forward is allowed.",
+    "split_containment": "Feature availability, model score, coordination state, entry, every held OHLC/funding mark, and exit must be contained in the measured calendar.",
+    "portfolio_clock": "Candidate and Gross9 paths share the same BTCUSDT five-minute arrays. Candidate paths use the frozen funding-aware subaccount implementation before conversion to portfolio return/low/high arrays.",
+    "calendar_metrics": "Absolute return, CAGR, strict MDD, and idle time use the complete declared start/end calendar, including every no-trade period.",
+    "strict_mdd": "Use global/pre-entry HWM, entry and hypothetical adverse exit cost, exact funding debit path, every held five-minute favorable-then-adverse same-BTC OHLC envelope, terminal exit, and synchronized portfolio upper-before-lower ordering.",
+    "metric_formulas": {
+      "bar_return": "r_t=sum_i(weight_i*R_i,t)",
+      "equity": "E_t=product_{u<=t} max(0,1+r_u)",
+      "strict_mdd": "At each bar update the synchronized upper envelope before the lower envelope; compare every lower value with the global running upper HWM.",
+      "absolute_return_pct": "100*(E_last-1)",
+      "cagr_pct": "100*(E_last^(1/calendar_years)-1), where calendar_years is exact end_exclusive-start_inclusive seconds divided by 365.25 days",
+      "cagr_to_strict_mdd": "CAGR_pct/strict_MDD_pct when strict_MDD_pct>1e-12, otherwise 0"
+    }
+  },
+  "controls": {
+    "feature_model_controls": [
+      {
+        "name": "qqq_only",
+        "features": "the nine QQQ columns plus weekday_sin and weekday_cos"
+      },
+      {
+        "name": "gld_only",
+        "features": "the nine GLD columns plus weekday_sin and weekday_cos"
+      },
+      {
+        "name": "prior_only_no_current_open",
+        "features": "all primary columns except the six current_gap_block columns"
+      },
+      {
+        "name": "one_session_stale_current_open",
+        "features": "all 31 columns, but each of the six current_gap_block columns is shifted by exactly one prior common US session"
+      },
+      {
+        "name": "weekday_only",
+        "features": "weekday_sin and weekday_cos only"
+      }
+    ],
+    "feature_model_control_training": "Each feature/model control is independently refit under the exact primary folds, targets, seeds, q75 threshold rule, side rule, and selected coordination mode.",
+    "fixed_schedule_controls": [
+      {
+        "name": "exact_side_flip",
+        "rule": "Use the primary accepted entries and negate every primary side."
+      },
+      {
+        "name": "constant_long",
+        "rule": "Use the primary accepted entries and set every side long."
+      },
+      {
+        "name": "deterministic_random_side",
+        "rule": "Use the primary accepted entries; side is the low bit of SHA256('COGR-12|YYYY-MM-DD'), mapped deterministically to long or short."
+      },
+      {
+        "name": "one_us_session_delayed_entry",
+        "rule": "Keep each primary score, acceptance, and side fixed, map it to 09:35 on the next valid common QQQ/GLD feature session, then enter at that session's 09:40 open and hold 12 hours. Do not re-gate or retune. Apply chronological nonoverlap after delay, keeping the earliest original signal on a collision. Drop a delayed trade unless signal, entry, every held/funding mark, and exit remain in the measured window."
+      }
+    ],
+    "best_control_rule": "Every one of the nine named controls is always included in best-control comparison, regardless of trade count. A zero-trade control has the metric-formula ratio 0. No control can be silently excluded as ineligible.",
+    "replacement_prohibition": "Controls can only falsify the mechanism. No control may become the selected candidate or trigger a repair."
+  },
+  "selection_contract": {
+    "calibration_window": {
+      "start_inclusive": "2023-01-01",
+      "end_exclusive": "2023-07-01",
+      "purpose": "score-distribution calibration only; no candidate metrics or ranking"
+    },
+    "selection_window": {
+      "start_inclusive": "2023-07-01",
+      "end_exclusive": "2024-01-01",
+      "purpose": "select exactly one top portfolio cell among the frozen 12"
+    },
+    "eval_window": {
+      "start_inclusive": "2024-01-01",
+      "end_exclusive": "2025-01-01",
+      "purpose": "evaluate only the frozen 2023H2 top1; pass or terminal veto"
+    },
+    "selection_2023h2_standalone_requirements": {
+      "absolute_return_positive": true,
+      "minimum_cagr_to_strict_mdd": 1.5,
+      "maximum_strict_mdd_pct": 15.0,
+      "minimum_trades": 25,
+      "minimum_long_share": 0.2,
+      "minimum_short_share": 0.2,
+      "maximum_month_share": 0.35,
+      "maximum_weekday_share": 0.35,
+      "candidate_10bp_stress_absolute_return_positive": true
+    },
+    "selection_2023h2_portfolio_requirements": {
+      "maximum_strict_mdd_pct": 20.0,
+      "absolute_return_retention_floor_vs_unscaled_gross9": 0.97,
+      "minimum_cagr_mdd_improvement_vs_same_gross_prorata_gross9": 0.05,
+      "strict_mdd_reduction_vs_unscaled_gross9": true,
+      "maximum_exact_entry_jaccard_vs_any_gross9_sleeve": 0.25,
+      "candidate_10bp_stress_portfolio_absolute_return_positive": true
+    },
+    "selection_2023h2_mechanism_requirements": {
+      "primary_cagr_mdd_margin_over_best_of_all_nine_controls": 0.1
+    },
+    "ranking_key": [
+      "pass_all_2023h2_requirements desc",
+      "same_gross_cagr_mdd_improvement desc",
+      "strict_mdd_reduction_vs_unscaled_gross9 desc",
+      "standalone_cagr_to_strict_mdd desc",
+      "stressed_standalone_absolute_return desc",
+      "candidate_weight asc",
+      "coordination mode frozen order"
+    ],
+    "top1_only": true,
+    "no_fallback": "If no 2023H2 cell passes, reject without opening 2024. If top1 later fails 2024, do not evaluate or promote rank2.",
+    "numeric_precision": "All selection uses unrounded float64 values; display rounding never enters a gate."
+  },
+  "eval_2024_veto_contract": {
+    "exact_frozen_2023h2_top1_only": true,
+    "standalone_requirements": {
+      "absolute_return_positive": true,
+      "minimum_cagr_to_strict_mdd": 1.5,
+      "maximum_strict_mdd_pct": 15.0,
+      "minimum_trades": 50,
+      "minimum_long_share": 0.2,
+      "minimum_short_share": 0.2,
+      "maximum_month_share": 0.2,
+      "maximum_weekday_share": 0.3,
+      "first_calendar_half_absolute_return_positive": true,
+      "second_calendar_half_absolute_return_positive": true,
+      "candidate_10bp_stress_absolute_return_positive": true
+    },
+    "portfolio_requirements": {
+      "maximum_strict_mdd_pct": 20.0,
+      "absolute_return_retention_floor_vs_unscaled_gross9": 0.97,
+      "minimum_cagr_mdd_improvement_vs_same_gross_prorata_gross9": 0.05,
+      "strict_mdd_reduction_vs_unscaled_gross9": true,
+      "maximum_exact_entry_jaccard_vs_any_gross9_sleeve": 0.25,
+      "candidate_10bp_stress_portfolio_absolute_return_positive": true
+    },
+    "mechanism_requirements": {
+      "primary_cagr_mdd_margin_over_best_of_all_nine_controls": 0.0
+    },
+    "statistical_requirement": {
+      "standalone_test": "one-sided weekly-cluster Rademacher sign flip on primary standalone trade log returns",
+      "portfolio_test": "one-sided weekly-cluster Rademacher sign flip on paired barwise log-return differences between combined COGR+Gross9 and same-configured-gross pro-rata Gross9",
+      "portfolio_effect_size": "A 90% percentile bootstrap lower bound of the mean paired weekly log-return difference must be strictly positive.",
+      "clusters": "ISO year-week; standalone groups by entry week and portfolio groups synchronized barwise paired log-return differences",
+      "simulations": 10000,
+      "seed": 20260728,
+      "minimum_active_weeks_each_test": 26,
+      "maximum_p_value_each_test": 0.1,
+      "p_value_formula": "(1 + count(simulated signed total weekly effect >= observed total weekly effect)) / 10001",
+      "bootstrap": "Resample the observed paired portfolio weekly effects with replacement 10000 times using seed 20260729; take the linear 10th percentile of bootstrap mean effects."
+    },
+    "pass_semantics": "Every standalone, portfolio, mechanism, concentration, stress, and statistical check must pass. A failed check terminally vetoes COGR-12."
+  },
+  "same_gross_formula": {
+    "baseline_weights": {
+      "cand_rex_veto_7": 1.6,
+      "fresh_kimchi_fx": 2.0,
+      "frozen_annual_rank7": 3.0,
+      "markov_transition_long": 2.0,
+      "rex_taker_low_range_position": 0.4
+    },
+    "baseline_configured_gross_units": 9.0,
+    "candidate_weight_unit": "c is a configured sleeve multiplier applied to the canonical COGR unit return path, which already embeds 0.5x BTC notional leverage. Therefore c adds c configured gross units but 0.5*c instantaneous candidate notional when occupied. Existing Gross9 sleeves also retain their own embedded leverage, so configured gross is deliberately not claimed to equal instantaneous exchange notional.",
+    "combined_candidate": "For candidate weight c, keep every frozen Gross9 weight unchanged and add the canonical 0.5x COGR unit path at multiplier c. Static configured gross units=9+c.",
+    "prorata_control": "Use Gross9 only at every baseline sleeve multiplier scaled by (9+c)/9. Static configured gross units=9+c.",
+    "ratio_comparison": "combined candidate CAGR/strict-MDD minus same-gross pro-rata Gross9 CAGR/strict-MDD",
+    "retention_and_mdd_comparison": "Absolute-return retention and MDD reduction compare combined candidate with unscaled Gross9.",
+    "gross_interpretation": "Static configured sleeve multiplier units used by the frozen portfolio engine, not active barwise exchange notional."
+  },
+  "phase_contract": {
+    "selection_command": "evaluate_cash_open_cross_asset_gap_relay_marginal.py selection",
+    "selection_reads_candidate_labels_through": "2023-12-31T23:59:59.999999999Z",
+    "selection_ranks_on": "2023H2 only",
+    "selection_output": "results/gross9_cash_open_cross_asset_gap_relay_selection_2023h2_2026-07-28.json",
+    "eval_command": "evaluate_cash_open_cross_asset_gap_relay_marginal.py eval",
+    "eval_requires_passing_selection_freeze": true,
+    "eval_reads_candidate_labels_through": "2024-12-31T23:59:59.999999999Z",
+    "eval_ranks_on": null,
+    "eval_output": "results/gross9_cash_open_cross_asset_gap_relay_eval_2024_2026-07-28.json",
+    "gross9_runtime_note": "The frozen Gross9 context builder may parse its checksum-bound pre-2025 source caches in both phases, but selection exposes and scores only the 2023H2 metric slice. No 2024 candidate feature, target, control, or portfolio metric is built in selection."
+  },
+  "future_veto_contract": {
+    "historical_2025_2026_may_open_only_if_2024_passes": true,
+    "historical_future_can_veto": true,
+    "historical_future_can_certify": false,
+    "future_can_rerank": false,
+    "future_can_repair": false,
+    "future_can_select_another_cell": false
+  },
+  "input_provenance": {
+    "safe_features": {
+      "path": "data/cash_open_cross_asset_gap_relay_pre2025/qqq_gld_cash_open_safe_features_pre2025.csv.gz",
+      "sha256": "d0d04293cf05a7703b6970e5b97dc2e1e69ecb2d42de4b20c78958523e2e9c44"
+    },
+    "safe_feature_manifest": {
+      "path": "data/cash_open_cross_asset_gap_relay_pre2025/build_manifest.json",
+      "sha256": "5f61359d837106acd84c2dc509600cda7b5d10522acd644c768bfb769d2909f8"
+    },
+    "safe_feature_builder": {
+      "path": "training/build_cash_open_cross_asset_gap_features.py",
+      "sha256": "fd096107c32fc2ce98d2b138010d7326416e59638fc722189583444ba17c7656"
+    },
+    "market": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "market_with_oi": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+      "sha256": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192"
+    },
+    "funding": {
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+    },
+    "premium_1h": {
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
+    },
+    "gross9_pre2025_anchor": {
+      "path": "results/gross9_pre2025_authoritative_anchor_2026-07-28.json",
+      "sha256": "329878d90b6cd9c731eb4871ac041256f95f03c14dd261ada681d3a370709875"
+    },
+    "rank7_capacity_evidence": {
+      "path": "results/expanding_extratrees_rank7_leverage_battery_2026-07-27.json",
+      "sha256": "e079f7a70d4e5eea7de962cf5daad93fd634fdf5779854d1783f83a837dc41ab"
+    },
+    "gross9_context_builder": {
+      "path": "training/audit_gross9_fixed_candidate_state_substitution.py",
+      "sha256": "b727d3fb0c45801e839265e0595be457a7fb204b8f64b92247cb82d50e49f4c2"
+    },
+    "gross9_runtime": {
+      "path": "training/audit_gross9_residual_recovery_extratrees_marginal.py",
+      "sha256": "573ed0b8752e6cf68406ea63c9ce6e13fa79e6e29c0c22fb79b140fa3554b1ca"
+    },
+    "gross9_portfolio_engine": {
+      "path": "training/portfolio_opt_added_alpha_update.py",
+      "sha256": "0bbe02d60ed7393e704a72c65d92d2a952eafee0d5a3d32310a782b80e2ae901"
+    },
+    "funding_bar_path": {
+      "path": "training/audit_rank7_fresh_kimchi_fixed_portfolio.py",
+      "sha256": "a311492a47dd63647130d3eeb7a6740de23c12b0e6af42f8f5e81f7b0fb41345"
+    },
+    "execution_engine": {
+      "path": "training/search_inventory_purge_reclaim_alpha.py",
+      "sha256": "5d8d4df7ea79790afb919bbb481d11de33ecba5768f6e26feb1f7667cd947d65"
+    },
+    "cogr_evaluator": {
+      "path": "training/evaluate_cash_open_cross_asset_gap_relay_marginal.py",
+      "sha256": "d7de5f20836ae18a20a48973cfa6804f0a200d7fa4beb93d229ad34d7732c817"
+    }
+  }
+}
