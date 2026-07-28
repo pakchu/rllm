@@ -22,4 +22,6 @@ The complete machine-readable contract, exact source hashes, weight grids, exclu
 - The same-gross pro-rata addition control is a deliberately non-deployable leverage counterfactual and is exempt from family caps; every candidate portfolio itself must respect the caps.
 - State substitutions always exclude the residual Markov sleeve from acceptance Jaccard because both gate the same base setup, but exact Markov overlap remains a mandatory diagnostic.
 - The frozen July artifact does not contain the 6-of-10 state ensembles. It is used only for the two addition candidates; a state survivor remains forward-shadow even if the 2025/2026 veto passes.
+- The pre-2025 runner validates only files that can affect selection. It uses a future-free Gross9 anchor containing only weights, accounting rules, and train/2024 statistics; the full Gross9 result/config, prior state result, and July replay remain hash-frozen for the later veto but are not opened by selection.
+- Every configured runtime path, including Rank7 capacity evidence and all three state scan paths, must resolve to the exact preregistered path and SHA-256.
 - The evaluator must hard-code this committed preregistration SHA-256 and fail closed on any contract or input drift.
