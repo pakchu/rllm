@@ -85,6 +85,10 @@ SUPPORT_WINDOW = ("2023-01-01", "2025-01-01")
 SELECTION_WINDOW = tuple(WINDOWS["holdout2023"])
 SUPPORT_COLUMNS = ("pre_evaluation_rank", "signal_position", "signal_date", "side")
 EXPECTED_TOP10_RANKS = tuple(range(1, 11))
+# The frozen 2023 manifest hash was computed over every 6-hour anchor in the
+# original market frame through 2026-06-02, including zero decisions outside
+# 2023. Preserve that historical hash shape without loading post-2024 values.
+FROZEN_MANIFEST_MARKET_SIZE = 674_785
 FORBIDDEN_SUPPORT_COLUMN_TOKENS = (
     "return",
     "forward",
@@ -298,6 +302,18 @@ def validate_processed_cutoff(exclude_from: str) -> None:
         )
 
 
+def validate_prepared_cutoff(prepared: dict[str, Any]) -> None:
+    dates = pd.to_datetime(prepared["dates"])
+    if dates.empty:
+        raise ValueError("processed market is empty")
+    cutoff = pd.Timestamp(SUPPORT_WINDOW[1])
+    if bool((dates >= cutoff).any()):
+        raise ValueError(
+            "processed market contains rows at or after the frozen "
+            f"pre-2025 cutoff {cutoff.date()}"
+        )
+
+
 def prepare_invariant_inputs(
     cfg: Config,
     source_manifest: dict[str, Any],
@@ -469,20 +485,34 @@ def effective_hash_from_rows(
     hold_bars: int = HOLD_BARS,
     stride_bars: int = ANCHOR_STRIDE,
     minimum_signal_position: int = 143,
+    hash_market_size: int | None = None,
 ) -> str:
     date_values = pd.to_datetime(dates).reset_index(drop=True)
     start, end = map(pd.Timestamp, window)
+    market_size = (
+        len(date_values) if hash_market_size is None else int(hash_market_size)
+    )
+    if market_size < len(date_values):
+        raise ValueError("hash_market_size cannot truncate processed dates")
     positions = np.arange(
         int(minimum_signal_position),
-        len(date_values) - int(hold_bars) - 2,
+        market_size - int(hold_bars) - 2,
         int(stride_bars),
         dtype=np.int64,
     )
-    selected_positions = {
-        int(row["signal_position"]): row["side"]
-        for row in rows
-        if start <= pd.Timestamp(row["signal_date"]) < end
-    }
+    selected_positions: dict[int, str] = {}
+    for row in rows:
+        signal_position = int(row["signal_position"])
+        exit_position = signal_position + 1 + int(hold_bars)
+        if exit_position >= len(date_values):
+            continue
+        signal_date = pd.Timestamp(row["signal_date"])
+        exit_date = pd.Timestamp(date_values.iloc[exit_position])
+        if (
+            start <= signal_date < end
+            and start <= exit_date < end
+        ):
+            selected_positions[signal_position] = str(row["side"])
     long = np.array([selected_positions.get(int(pos)) == "long" for pos in positions], dtype=bool)
     short = np.array([selected_positions.get(int(pos)) == "short" for pos in positions], dtype=bool)
     return _signal_hash(long, short)
@@ -512,14 +542,34 @@ def verify_frozen_signal_hash(
     long_active: np.ndarray,
     short_active: np.ndarray,
     window: tuple[str, str] = SELECTION_WINDOW,
+    hash_market_size: int | None = None,
 ) -> str:
-    observed_hash = effective_selection_signal_hash(
+    rows = effective_signal_rows(
+        dates,
+        long_active,
+        short_active,
+        rank=rank,
+        window=window,
+        market_size=len(market),
+    )
+    observed_hash = effective_hash_from_rows(
+        rows,
+        dates=dates,
+        window=window,
+        hash_market_size=hash_market_size,
+    )
+    direct_hash = effective_selection_signal_hash(
         market,
         dates,
         long_active,
         short_active,
         window=window,
     )
+    if hash_market_size is None and observed_hash != direct_hash:
+        raise ValueError(
+            f"rank {rank} row/direct signal hash mismatch: "
+            f"{observed_hash} != {direct_hash}"
+        )
     if observed_hash != str(expected_hash):
         raise ValueError(
             f"rank {rank} 2023 signal hash drift: {observed_hash} != {expected_hash}"
@@ -625,6 +675,7 @@ def build_support(args: argparse.Namespace) -> dict[str, Any]:
         exclude_from=args.exclude_from,
     )
     prepared = prepare_invariant_inputs(cfg, ensemble_manifest)
+    validate_prepared_cutoff(prepared)
     streams, diagnostics = train_transformed_streams(prepared)
 
     support_rows: list[dict[str, Any]] = []
@@ -646,6 +697,7 @@ def build_support(args: argparse.Namespace) -> dict[str, Any]:
             dates=prepared["dates"],
             long_active=long_active,
             short_active=short_active,
+            hash_market_size=FROZEN_MANIFEST_MARKET_SIZE,
         )
         rows = effective_signal_rows(
             prepared["dates"],
@@ -659,6 +711,7 @@ def build_support(args: argparse.Namespace) -> dict[str, Any]:
             rows,
             dates=prepared["dates"],
             window=SELECTION_WINDOW,
+            hash_market_size=FROZEN_MANIFEST_MARKET_SIZE,
         )
         if emitted_2023_hash != observed_hash:
             raise ValueError(
@@ -706,6 +759,14 @@ def build_support(args: argparse.Namespace) -> dict[str, Any]:
             "forbidden_support_column_tokens": list(FORBIDDEN_SUPPORT_COLUMN_TOKENS),
             "raw_source_files_used_for_frozen_identity_only": True,
             "feature_generation_cutoff": SUPPORT_WINDOW[1],
+            "frozen_manifest_hash_padding": {
+                "market_rows": FROZEN_MANIFEST_MARKET_SIZE,
+                "post_2024_values_loaded": False,
+                "reason": (
+                    "historical 2023 signal hashes include zero-decision "
+                    "anchors through the original 2026-06-02 frame"
+                ),
+            },
         },
         "source_manifests": {
             "groupdro": str(args.groupdro_manifest),

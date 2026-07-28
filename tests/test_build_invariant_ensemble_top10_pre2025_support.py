@@ -107,6 +107,23 @@ def test_effective_rows_match_frozen_hash_algorithm_and_detect_drift() -> None:
         short_active=short_active,
         window=("2023-01-01", "2023-02-01"),
     ) == expected
+    padded_expected = builder.effective_hash_from_rows(
+        rows,
+        dates=dates,
+        window=("2023-01-01", "2023-02-01"),
+        hash_market_size=n + 1000,
+    )
+    assert padded_expected != expected
+    assert builder.verify_frozen_signal_hash(
+        rank=4,
+        expected_hash=padded_expected,
+        market=market,
+        dates=dates,
+        long_active=long_active,
+        short_active=short_active,
+        window=("2023-01-01", "2023-02-01"),
+        hash_market_size=n + 1000,
+    ) == padded_expected
     with pytest.raises(ValueError, match="hash drift"):
         builder.verify_frozen_signal_hash(
             rank=4,
@@ -117,6 +134,51 @@ def test_effective_rows_match_frozen_hash_algorithm_and_detect_drift() -> None:
             short_active=short_active,
             window=("2023-01-01", "2023-02-01"),
         )
+
+
+def test_effective_row_hash_excludes_signal_whose_exit_crosses_window() -> None:
+    dates = pd.Series(pd.date_range("2023-12-29", periods=2500, freq="5min"))
+    market = pd.DataFrame({"date": dates})
+    positions = np.arange(
+        143,
+        len(dates) - builder.HOLD_BARS - 2,
+        builder.ANCHOR_STRIDE,
+        dtype=np.int64,
+    )
+    signal_position = next(
+        int(position)
+        for position in positions
+        if dates.iloc[position] < pd.Timestamp("2024-01-01")
+        and dates.iloc[position + 1 + builder.HOLD_BARS]
+        >= pd.Timestamp("2024-01-01")
+    )
+    long_active = np.zeros(len(dates), dtype=bool)
+    short_active = np.zeros(len(dates), dtype=bool)
+    long_active[signal_position] = True
+    support_rows = builder.effective_signal_rows(
+        dates,
+        long_active,
+        short_active,
+        rank=1,
+        window=builder.SUPPORT_WINDOW,
+        market_size=len(market),
+    )
+    assert any(
+        row["signal_position"] == signal_position for row in support_rows
+    )
+    direct = effective_selection_signal_hash(
+        market,
+        dates,
+        long_active,
+        short_active,
+        window=builder.SELECTION_WINDOW,
+    )
+    emitted = builder.effective_hash_from_rows(
+        support_rows,
+        dates=dates,
+        window=builder.SELECTION_WINDOW,
+    )
+    assert emitted == direct
 
 
 def test_source_manifest_contract_validation(tmp_path: Path) -> None:
@@ -242,12 +304,20 @@ def test_build_support_enforces_cutoff_and_emitted_manifest_contract(
         eligible = anchor_positions[dates.iloc[anchor_positions].dt.year.to_numpy() == year]
         long_active[eligible[[200, 1000]]] = True
     short_active = np.zeros(len(market), dtype=bool)
-    expected_hash = effective_selection_signal_hash(
-        market,
+    padded_market_size = len(market) + 1_000
+    selection_rows = builder.effective_signal_rows(
         dates,
         long_active,
         short_active,
+        rank=1,
         window=builder.SELECTION_WINDOW,
+        market_size=len(market),
+    )
+    expected_hash = builder.effective_hash_from_rows(
+        selection_rows,
+        dates=dates,
+        window=builder.SELECTION_WINDOW,
+        hash_market_size=padded_market_size,
     )
     frozen_rows = [
         {
@@ -310,6 +380,11 @@ def test_build_support_enforces_cutoff_and_emitted_manifest_contract(
         "policy_masks_for_frozen_row",
         lambda *_: (long_active, short_active),
     )
+    monkeypatch.setattr(
+        builder,
+        "FROZEN_MANIFEST_MARKET_SIZE",
+        padded_market_size,
+    )
     output = tmp_path / "support.csv.gz"
     manifest_output = tmp_path / "support.json"
     args = Namespace(
@@ -323,6 +398,32 @@ def test_build_support_enforces_cutoff_and_emitted_manifest_contract(
         exclude_from=builder.SUPPORT_WINDOW[1],
         force=False,
     )
+    future_prepared = {
+        **prepared,
+        "dates": pd.concat(
+            [
+                dates,
+                pd.Series([pd.Timestamp(builder.SUPPORT_WINDOW[1])]),
+            ],
+            ignore_index=True,
+        ),
+    }
+    monkeypatch.setattr(
+        builder,
+        "prepare_invariant_inputs",
+        lambda *_: future_prepared,
+    )
+    with pytest.raises(ValueError, match="contains rows at or after"):
+        builder.build_support(
+            Namespace(
+                **{
+                    **vars(args),
+                    "output": tmp_path / "future-prepared.csv.gz",
+                    "manifest_output": tmp_path / "future-prepared.json",
+                }
+            )
+        )
+    monkeypatch.setattr(builder, "prepare_invariant_inputs", lambda *_: prepared)
     manifest = builder.build_support(args)
     assert manifest["processed_market"]["last_timestamp"].startswith("2024-12-31")
     assert manifest["processed_pre2025_market_frame_sha256"] == builder.dataframe_sha256(
@@ -334,6 +435,14 @@ def test_build_support_enforces_cutoff_and_emitted_manifest_contract(
         for row in manifest["top10"]
     )
     assert all("holdout2023" not in row for row in manifest["top10"])
+    assert manifest["outcome_blind_contract"]["frozen_manifest_hash_padding"] == {
+        "market_rows": padded_market_size,
+        "post_2024_values_loaded": False,
+        "reason": (
+            "historical 2023 signal hashes include zero-decision anchors "
+            "through the original 2026-06-02 frame"
+        ),
+    }
     assert output.exists()
     assert json.loads(manifest_output.read_text())["support_csv_sha256"] == builder.sha256_file(
         output
