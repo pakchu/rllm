@@ -338,11 +338,16 @@ def _validate_gate_features(
             raise RuntimeError(f"{name} features missing: {missing}")
 
 
-def build_selection_arrays(
+def build_gross9_selection_context(
     cfg: Config,
-    preregistration: dict[str, Any],
-) -> tuple[pd.DataFrame, dict[str, dict[str, Any]], dict[str, Any]]:
-    _install_candidate_universe()
+) -> tuple[
+    pd.DataFrame,
+    dict[str, np.ndarray],
+    list[dict[str, Any]],
+    pd.DataFrame,
+    dict[str, Any],
+]:
+    """Rebuild only frozen Gross9 events on the pre-2025 selection clock."""
     oi_cache = materialize_frozen_oi_cache(cfg.market_with_oi_csv)
     portfolio.ensure_runtime_inputs()
     capacity_cfg = portfolio.Config(
@@ -407,6 +412,30 @@ def build_selection_arrays(
         events, market, masks, cost_rate=cfg.cost_rate
     )
     path_counts = _append_rank7_and_fresh_selection(events, cfg)
+    source_meta = {
+        "rank7_capacity": capacity,
+        "oi_cache": oi_cache,
+        "feature_columns": int(features.shape[1]),
+        "counts": {
+            "markov_transition_long": markov_counts,
+            "funding_premium_lr_impact_central": funding_counts,
+            "rex_taker_low_range_position": rex_counts,
+            **path_counts,
+        },
+        "funding_meta": funding_meta,
+    }
+    return market, masks, events, features, source_meta
+
+
+def build_selection_arrays(
+    cfg: Config,
+    preregistration: dict[str, Any],
+) -> tuple[pd.DataFrame, dict[str, dict[str, Any]], dict[str, Any]]:
+    del preregistration
+    _install_candidate_universe()
+    market, masks, events, features, source_meta = (
+        build_gross9_selection_context(cfg)
+    )
 
     specs = _candidate_specs(cfg)
     _validate_gate_features(features, specs)
@@ -442,21 +471,9 @@ def build_selection_arrays(
             cost_rate=cfg.cost_rate,
         )
     arrays = portfolio.split_arrays(events, market, masks)
-    source_meta = {
-        "rank7_capacity": capacity,
-        "oi_cache": oi_cache,
-        "feature_columns": int(features.shape[1]),
-        "counts": {
-            "markov_transition_long": markov_counts,
-            "funding_premium_lr_impact_central": funding_counts,
-            "rex_taker_low_range_position": rex_counts,
-            **path_counts,
-            **addition_counts,
-            **state_counts,
-        },
-        "funding_meta": funding_meta,
-        "state_model_top10_ensembles": state_audit,
-    }
+    source_meta["counts"].update(addition_counts)
+    source_meta["counts"].update(state_counts)
+    source_meta["state_model_top10_ensembles"] = state_audit
     return market, arrays, source_meta
 
 
