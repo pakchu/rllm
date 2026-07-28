@@ -17,6 +17,7 @@ CAGR/strict-MDD가 2023 포함 train과 2024에서 모두 개선되는지**다.
 - 물리적 데이터 컷오프: `2025-01-01`
 - 연단위 expanding fit: 2023, 2024
 - 모델: 256 trees, depth 4, min leaf 128, max-features 0.75, 3 seeds
+- 행 입장 조건: 완료된 신호봉에서 12개 피처가 모두 finite
 - 출력: long/short의 정확한 비용차감 수익과 strict adverse excursion
 - adverse target: 보유 중 각 봉 시가 기준 canonical leverage-adjusted adverse
   OHLC 손실의 최댓값
