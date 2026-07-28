@@ -1308,6 +1308,43 @@ def render(payload: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
+            "## Model admission diagnosis",
+            "",
+            "| hold | prior-OOS q80 for 2023 | prior-OOS q80 for 2024 | frozen threshold 2023/2024 | unrestricted active anchors |",
+            "|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for hold in HOLDS:
+        models = payload["model_meta"][str(hold)]["annual_models"]
+        candidate = payload["candidates"][
+            f"residual_recovery_h{hold:03d}_unrestricted"
+        ]
+        lines.append(
+            "| {hold} | {q23:.6f} | {q24:.6f} | {t23:.6f}/{t24:.6f} | {active} |".format(
+                hold=hold,
+                q23=models["2023"]["calibration"]["raw_quantile"],
+                q24=models["2024"]["calibration"]["raw_quantile"],
+                t23=models["2023"]["calibration"]["threshold"],
+                t24=models["2024"]["calibration"]["threshold"],
+                active=candidate["raw_active_anchors"],
+            )
+        )
+    if not any(
+        payload["candidates"][name]["raw_active_anchors"]
+        for name in CANDIDATE_NAMES
+    ):
+        lines.extend(
+            [
+                "",
+                "Every prior-year OOS q80 score was negative. The preregistered "
+                "`max(0, q80)` admission floor therefore produced zero entries. "
+                "This is a fail-closed rejection of executable edge, not missing "
+                "market data or an execution failure.",
+            ]
+        )
+    lines.extend(
+        [
+            "",
             "## Boundary",
             "",
             "- Candidate market, spot, OI metrics, funding, and premium inputs were physically truncated before `2025-01-01`.",
