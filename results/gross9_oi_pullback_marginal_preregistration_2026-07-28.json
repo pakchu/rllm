@@ -1,0 +1,166 @@
+{
+  "as_of": "2026-07-28",
+  "name": "gross9_fixed_oi_divergence_pullback_marginal",
+  "short_name": "G9-OIDP-1",
+  "status": "preregistered_before_gross9_marginal_scan",
+  "objective": "Determine whether the already frozen OI-divergence pullback long sleeve, which was omitted from the Gross9 candidate universe, improves the exact frozen Gross9 portfolio under shared 5-minute BTC accounting.",
+  "candidate_contract": {
+    "name": "oi_divergence_pullback_range_rsi_h96_s6",
+    "source": "configs/live/oi_divergence_pullback_range_rsi_h96_s6_candidate.json",
+    "status": "paper_candidate",
+    "side": "LONG",
+    "thresholds": "use the four train-fitted thresholds in the source config without modification",
+    "hold_bars": 96,
+    "stride_bars": 6,
+    "entry_delay_bars": 1,
+    "portfolio_unit_leverage": 0.5,
+    "cost_rate_each_side": 0.0006,
+    "no_research_changes": [
+      "no threshold refit",
+      "no gate addition or removal",
+      "no hold or stride search",
+      "no side flip",
+      "no dynamic exit",
+      "no future-selected selector"
+    ],
+    "mechanism": "long after delayed OI grows relative to a four-hour price pullback while range volatility is elevated and RSI remains weak; the hypothesis is leveraged accumulation absorbing a temporary selloff"
+  },
+  "why_reopen_as_marginal_audit": {
+    "gross9_omission": "The Rank7-capacity Gross9 candidate universe contains the live anchor plus five added sleeves and never evaluates this fixed OI pullback candidate.",
+    "existing_standalone_evidence": {
+      "train_pre2024": "42.71% absolute return, 11.26% CAGR, 44.29% strict MDD, ratio 0.25, 313 trades",
+      "test_2024": "52.54% absolute return, 52.41% CAGR, 6.34% strict MDD, ratio 8.27, 64 trades",
+      "eval_2025": "36.60% absolute return, 36.63% CAGR, 5.46% strict MDD, ratio 6.71, 40 trades",
+      "ytd_2026_through_june": "0.62% absolute return, 1.50% CAGR, 9.65% strict MDD, ratio 0.16, 17 trades"
+    },
+    "recent_forward_like_diagnostic": "The frozen completed-bar July replay through 2026-07-27 produced +2.90% absolute return, 1.28% strict MDD, and four trades; this is already inspected and can only veto, never select weight."
+  },
+  "portfolio_baseline": {
+    "name": "Gross9 Rank7 capacity shadow candidate",
+    "weights": {
+      "fresh_kimchi_fx": 2.0,
+      "frozen_annual_rank7": 3.0,
+      "rex_taker_low_range_position": 0.4,
+      "cand_rex_veto_7": 1.6,
+      "markov_transition_long": 2.0
+    },
+    "gross": 9.0,
+    "accounting": "same_btc_low_high_v1",
+    "frozen_stats": {
+      "train": {
+        "absolute_return_pct": 2553.1888632565006,
+        "cagr_pct": 167.48900464182316,
+        "strict_mdd_pct": 36.5769674927924,
+        "cagr_to_strict_mdd": 4.5790839460605195,
+        "trades": 861
+      },
+      "test2024": {
+        "absolute_return_pct": 222.4781807991963,
+        "cagr_pct": 221.70538181047203,
+        "strict_mdd_pct": 16.951632847348485,
+        "cagr_to_strict_mdd": 13.078703615572373,
+        "trades": 203
+      },
+      "eval2025": {
+        "absolute_return_pct": 185.25265289527007,
+        "cagr_pct": 185.45752320115974,
+        "strict_mdd_pct": 14.728702710577679,
+        "cagr_to_strict_mdd": 12.591572173425032,
+        "trades": 133
+      },
+      "ytd2026": {
+        "absolute_return_pct": 79.62608011271656,
+        "cagr_pct": 304.8037988242007,
+        "strict_mdd_pct": 17.926164497882368,
+        "cagr_to_strict_mdd": 17.003291410173517,
+        "trades": 108
+      }
+    }
+  },
+  "selection_contract": {
+    "selection_windows": [
+      "train through 2023",
+      "test2024"
+    ],
+    "future_windows_forbidden_during_ranking": [
+      "eval2025",
+      "ytd2026",
+      "July 2026"
+    ],
+    "candidate_weight_grid": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "gross_cap": 10.0,
+    "requirements": [
+      "frozen Gross9 weights remain unchanged",
+      "train strict MDD <= 40% and test2024 strict MDD <= 20%",
+      "train and test2024 absolute returns remain positive and at least 97% of baseline",
+      "train and test2024 CAGR-to-strict-MDD deltas versus baseline are both positive",
+      "minimum train/test2024 ratio delta exceeds the same-gross pro-rata Gross9 leverage control",
+      "at least one of train or test2024 strict MDD is lower than baseline",
+      "candidate standalone train and test2024 absolute returns are positive",
+      "candidate entry Jaccard versus every Gross9 sleeve is <= 0.25"
+    ],
+    "rank": "maximize minimum train/test2024 ratio delta over the same-gross leverage control, then geometric mean positive ratio delta, then test2024 MDD reduction, then test2024 absolute-return delta, then lower candidate weight",
+    "top1_only": true
+  },
+  "future_veto_contract": {
+    "future_can_rerank": false,
+    "future_can_repair": false,
+    "requirements": [
+      "eval2025 and ytd2026 Gross9 absolute returns remain positive, strict MDD <= 20%, and ratio >= 3",
+      "neither future Gross9 ratio falls by more than 0.25 versus baseline and at least one future ratio improves",
+      "fixed candidate standalone eval2025 plus ytd2026 compounded absolute return is positive",
+      "10bp/notional/side stress keeps future portfolio returns positive",
+      "the fixed July 2026 candidate replay remains positive; July cannot choose or change the weight"
+    ]
+  },
+  "required_diagnostics": [
+    "exact shared-clock standalone stats",
+    "entry Jaccard and occupied-bar overlap versus every Gross9 sleeve",
+    "zero-filled daily MTM Pearson and Spearman correlation",
+    "same-gross pro-rata Gross9 leverage control",
+    "candidate PnL while Gross9 is flat",
+    "worst-20 baseline drawdown-bar contribution",
+    "source and schedule hashes",
+    "frozen July replay provenance"
+  ],
+  "input_provenance": {
+    "market": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "market_with_oi": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+      "sha256": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192"
+    },
+    "funding": {
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+    },
+    "premium": {
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
+    },
+    "candidate_config": {
+      "path": "configs/live/oi_divergence_pullback_range_rsi_h96_s6_candidate.json",
+      "sha256": "6533650bb6800308762dc02f310dbfe7dbd59c8a217d55305f6c5388eb2a480b"
+    },
+    "gross9_config": {
+      "path": "configs/shadow/portfolio_rank7_capacity_candidate_2026-07-28.json",
+      "sha256": "006f82e1f0affad9f96a08a6c600542feec4a0e1198ed99b8630627de4913450"
+    },
+    "gross9_result": {
+      "path": "results/portfolio_rank7_capacity_update_2026-07-28.json",
+      "sha256": "7260ba91698ac31838558d1af11701e5e251f9b49749a573c8d38610d5388756"
+    },
+    "july_replay": {
+      "path": "results/all_alpha_july_2026_performance_2026-07-27.json",
+      "candidate_metric_is_veto_only": true
+    }
+  },
+  "contamination_caveat": "The alpha and all reported calendar windows have been inspected previously. This audit can identify a missed fixed-sleeve portfolio interaction, but cannot create pristine OOS evidence. Any survivor remains forward-shadow."
+}
