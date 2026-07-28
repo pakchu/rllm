@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 
 import training.search_residual_inventory_transfer_transition_alpha as module
 
@@ -97,6 +98,20 @@ def test_transition_table_shrinks_sparse_states_to_global_mean() -> None:
     assert table["counts"][2] == 400
     assert 0.02 < table["posterior_mean"][0, 0] < table["global_mean"][0]
     assert table["global_mean"][1] < table["posterior_mean"][1, 1] < 0.02
+    diagnostics = module.transition_table_diagnostics(
+        table, min_support=50
+    )
+    assert set(diagnostics["supported_preferred_side_counts"]) == {
+        "long",
+        "short",
+    }
+    assert set(diagnostics["changed_transition_support_quantiles"]) == {
+        "0",
+        "25",
+        "50",
+        "75",
+        "100",
+    }
 
 
 def test_activation_requires_support_change_positive_lcb_and_advantage() -> None:
@@ -132,3 +147,102 @@ def test_fit_thresholds_ignore_rows_outside_fit_positions() -> None:
     mutated.loc[2_500:, :] *= 1000.0
     second = module.fit_thresholds(mutated, np.arange(0, 2_500))
     assert first == second
+
+
+def test_input_provenance_mismatch_fails_closed(tmp_path: Path) -> None:
+    paths = {}
+    for name in ("market", "spot", "funding"):
+        path = tmp_path / f"{name}.csv"
+        path.write_text("date\n2024-01-01\n", encoding="utf-8")
+        paths[name] = str(path)
+    cfg = module.Config(
+        market_csv=paths["market"],
+        spot_csv=paths["spot"],
+        funding_csv=paths["funding"],
+    )
+    prereg = _preregistration()
+    with pytest.raises(RuntimeError, match="input provenance mismatch"):
+        module.validate_input_provenance(cfg, prereg)
+
+
+def test_prefix_audit_ignores_rows_at_or_after_cutoff(tmp_path: Path) -> None:
+    dates = pd.date_range("2024-12-31 23:00", periods=13, freq="5min")
+    market_path = tmp_path / "market.csv"
+    spot_path = tmp_path / "spot.csv"
+    funding_path = tmp_path / "funding.csv"
+    pd.DataFrame({"date": dates}).to_csv(market_path, index=False)
+    pd.DataFrame(
+        {
+            "date": dates,
+            "spot_close": 100.0,
+            "spot_rows": 5,
+            "premium_index_1m_close": 0.0,
+            "premium_rows": 5,
+        }
+    ).to_csv(spot_path, index=False)
+    pd.DataFrame(
+        {
+            "date": [dates[0], pd.Timestamp("2025-01-01")],
+            "funding_rate": [0.001, 999.0],
+        }
+    ).to_csv(funding_path, index=False)
+    cfg = module.Config(
+        market_csv=str(market_path),
+        spot_csv=str(spot_path),
+        funding_csv=str(funding_path),
+    )
+    first = module.load_sources(
+        cfg, cutoff="2025-01-01", return_audit=True
+    )
+    assert isinstance(first, tuple)
+    _, first_audit = first
+    market = pd.read_csv(market_path)
+    market.loc[len(market)] = {"date": "2025-01-02"}
+    market.to_csv(market_path, index=False)
+    spot = pd.read_csv(spot_path)
+    spot.loc[len(spot)] = {
+        "date": "2025-01-02",
+        "spot_close": 999.0,
+        "spot_rows": 5,
+        "premium_index_1m_close": 999.0,
+        "premium_rows": 5,
+    }
+    spot.to_csv(spot_path, index=False)
+    second = module.load_sources(
+        cfg, cutoff="2025-01-01", return_audit=True
+    )
+    assert isinstance(second, tuple)
+    _, second_audit = second
+    assert (
+        first_audit["raw_prefix_hashes"]
+        == second_audit["raw_prefix_hashes"]
+    )
+
+
+def test_short_mdd_uses_upper_before_lower_completed_bar_path() -> None:
+    dates = pd.Series(pd.date_range("2024-01-01", periods=8, freq="5min"))
+    market = pd.DataFrame(
+        {
+            "open": np.full(8, 100.0),
+            "high": [100.0, 110.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0],
+            "low": [100.0, 90.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0],
+        }
+    )
+    long_active = np.zeros(8, dtype=bool)
+    short_active = np.zeros(8, dtype=bool)
+    short_active[0] = True
+    metric = module.simulate_upper_then_lower(
+        market,
+        dates,
+        long_active,
+        short_active,
+        window="tiny",
+        hold_bars=2,
+        stride_bars=1,
+        leverage=1.0,
+        fee_rate=0.0,
+        windows={"tiny": ("2024-01-01", "2024-01-02")},
+    )
+    assert metric["trades"] == 1
+    assert metric["shorts"] == 1
+    assert metric["strict_mdd_pct"] == pytest.approx(10.0)

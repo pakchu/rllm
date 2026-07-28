@@ -1,0 +1,1149 @@
+{
+  "as_of": "2026-07-28T03:31:59.039997+00:00",
+  "phase": "pre2025_annual_selection",
+  "config": {
+    "market_csv": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+    "spot_csv": "data/cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz",
+    "funding_csv": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+    "preregistration": "results/residual_inventory_transfer_transition_preregistration_2026-07-28.json",
+    "output": "results/residual_inventory_transfer_transition_pre2025_selection_2026-07-28.json",
+    "docs_output": "docs/residual-inventory-transfer-transition-pre2025-selection-2026-07-28.md",
+    "leverage": 0.5,
+    "cost_rate": 0.0006,
+    "funding_tolerance": "12h"
+  },
+  "input_identity": {
+    "market_with_oi": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+      "sha256": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192",
+      "validated_against_preregistration": true
+    },
+    "spot_and_completed_premium": {
+      "path": "data/cache_spot_premium_5m_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "c21ed3f52804a3f879ef5167b6b81ee0fd7dd262f2e9d87ee5c1c25dbad73617",
+      "validated_against_preregistration": true
+    },
+    "funding": {
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7",
+      "validated_against_preregistration": true
+    }
+  },
+  "preregistration": "results/residual_inventory_transfer_transition_preregistration_2026-07-28.json",
+  "preregistration_sha256": "6fc28c27bce97b65e844196f654dfb77bc0f2164e19f59069d9899146344eac4",
+  "source_prefix": {
+    "cutoff": "2025-01-01",
+    "rows": 526284,
+    "first": "2019-12-31 15:00:00",
+    "last": "2024-12-31 23:55:00",
+    "raw_prefix_hashes": {
+      "market": "646a494ee0080cbe26aea50c556e0c833fce51a921238f4573253a714fba5112",
+      "spot": "6b693d224ff6574bed1d83b05833a27d8e27d14f6c59177c25cdd60c936f74b8",
+      "funding": "dc369d436d9efe33e065dae71f214e1565059bf937fcd47097e6b9bf55c4251c"
+    },
+    "source_max_timestamp_before_cutoff": {
+      "market": "2024-12-31 23:55:00",
+      "spot": "2024-12-31 23:55:00",
+      "funding": "2024-12-31 16:00:00"
+    }
+  },
+  "feature_columns": [
+    "basis_long_residual",
+    "basis_residual_acceleration",
+    "inventory_residual",
+    "carry_pressure"
+  ],
+  "feature_count": 4,
+  "feature_hash": "b43a7d547ebb4999892384a53b43c1726f3c54b62e7505c4e8b85ce8fd97a8b4",
+  "coverage": {
+    "2020": {
+      "rows": 105408,
+      "spot_complete_fraction": 0.9975713418336369,
+      "premium_complete_fraction": 0.9973151942926534,
+      "delayed_oi_available_fraction": 0.333323846387371,
+      "full_feature_fraction": 0.2577223740133576,
+      "source_valid_fraction": 0.2576844262295082
+    },
+    "2021": {
+      "rows": 105120,
+      "spot_complete_fraction": 0.9981069254185693,
+      "premium_complete_fraction": 0.9981259512937595,
+      "delayed_oi_available_fraction": 0.9999048706240488,
+      "full_feature_fraction": 0.9527397260273973,
+      "source_valid_fraction": 0.952720700152207
+    },
+    "2022": {
+      "rows": 105120,
+      "spot_complete_fraction": 1.0,
+      "premium_complete_fraction": 0.9998668188736682,
+      "delayed_oi_available_fraction": 0.9988869863013699,
+      "full_feature_fraction": 0.9894691780821918,
+      "source_valid_fraction": 0.989412100456621
+    },
+    "2023": {
+      "rows": 105120,
+      "spot_complete_fraction": 0.9998477929984779,
+      "premium_complete_fraction": 0.9998002283105023,
+      "delayed_oi_available_fraction": 0.9998477929984779,
+      "full_feature_fraction": 0.8808314307458143,
+      "source_valid_fraction": 0.8808314307458143
+    },
+    "2024": {
+      "rows": 105408,
+      "spot_complete_fraction": 1.0,
+      "premium_complete_fraction": 0.9999905130540376,
+      "delayed_oi_available_fraction": 0.9972392987249544,
+      "full_feature_fraction": 0.8937556921675774,
+      "source_valid_fraction": 0.8937462052216151
+    }
+  },
+  "fold_meta": {
+    "72": {
+      "2023": {
+        "fit_start": "2020-10-15 00:00:00",
+        "fit_end_exclusive": "2023-01-01",
+        "predict_start": "2023-01-01",
+        "predict_end_exclusive": "2024-01-01",
+        "fit_rows": 18655,
+        "predict_rows": 7715,
+        "thresholds": {
+          "basis_q20": -0.6192458510398865,
+          "basis_q80": 0.6989890933036805,
+          "inventory_q80": 0.9661251902580263
+        },
+        "threshold_hash": "3194ecc2b3cb5b5e0734ab8d47e32b1a6672c2f353d2cb61231a0d549ea375ff",
+        "fit_position_hash": "464ed7c0148c92a48502dcbf3f3f740f6b347fb89b60a2595c690b325414e977",
+        "predict_position_hash": "1b17d6afd3af2c2609a999be6a052eab7b1a7effa28ab288bcdeb09ff0e3cf76",
+        "table_hash": "5c5565e0a8f819855952c4f949e43059a6ec1faf1e18669e028529b64654c459",
+        "fit_transition_rows": 18553,
+        "supported_transitions_50": 29,
+        "posterior_diagnostics": {
+          "global_mean": [
+            -0.0041766492066656145,
+            -0.004192136267208203
+          ],
+          "supported_changed_transitions": 24,
+          "max_supported_posterior_mean": [
+            -0.002586208904125727,
+            -0.002639252739210725
+          ],
+          "max_supported_lcb_0_5": -0.0031272500709117377,
+          "positive_supported_side_cells": 0,
+          "max_supported_side_advantage": 0.003853854479209909,
+          "changed_transition_support_quantiles": {
+            "0": 1.0,
+            "25": 6.0,
+            "50": 21.0,
+            "75": 64.0,
+            "100": 821.0
+          },
+          "supported_preferred_side_counts": {
+            "long": 16,
+            "short": 8
+          }
+        },
+        "predict_basis_state_counts": {
+          "-1": 561,
+          "0": 6722,
+          "1": 432
+        },
+        "predict_owner_state_counts": {
+          "-1": 782,
+          "0": 6199,
+          "1": 734
+        }
+      },
+      "2024": {
+        "fit_start": "2020-10-15 00:00:00",
+        "fit_end_exclusive": "2024-01-01",
+        "predict_start": "2024-01-01",
+        "predict_end_exclusive": "2025-01-01",
+        "fit_rows": 26370,
+        "predict_rows": 7844,
+        "thresholds": {
+          "basis_q20": -0.589622664451599,
+          "basis_q80": 0.6786272644996645,
+          "inventory_q80": 0.962645196914673
+        },
+        "threshold_hash": "057a1ee964fc900c54e2c939d1046c39f0ccfa3317eab1e7adb5d8e7b0feed5b",
+        "fit_position_hash": "8b5a4315a5dbf62afbea319162a818bf12eb883da08d7697267f0324bed09f68",
+        "predict_position_hash": "f7d0f1a75001ed64293373c03e316eac234a3620948ddf206eeede3d3cd71ac1",
+        "table_hash": "624be1029b8c97b05f58964326d576732adafbb78ef4ad6932cea52b42469831",
+        "fit_transition_rows": 26218,
+        "supported_transitions_50": 32,
+        "posterior_diagnostics": {
+          "global_mean": [
+            -0.003595472592468915,
+            -0.003830574194432873
+          ],
+          "supported_changed_transitions": 27,
+          "max_supported_posterior_mean": [
+            -0.002007854738482485,
+            -0.002465182117769554
+          ],
+          "max_supported_lcb_0_5": -0.002446084339128405,
+          "positive_supported_side_cells": 0,
+          "max_supported_side_advantage": 0.0038003395832680647,
+          "changed_transition_support_quantiles": {
+            "0": 1.0,
+            "25": 7.0,
+            "50": 27.5,
+            "75": 91.5,
+            "100": 1165.0
+          },
+          "supported_preferred_side_counts": {
+            "long": 18,
+            "short": 9
+          }
+        },
+        "predict_basis_state_counts": {
+          "-1": 682,
+          "0": 6548,
+          "1": 614
+        },
+        "predict_owner_state_counts": {
+          "-1": 817,
+          "0": 6145,
+          "1": 882
+        }
+      }
+    },
+    "144": {
+      "2023": {
+        "fit_start": "2020-10-15 00:00:00",
+        "fit_end_exclusive": "2023-01-01",
+        "predict_start": "2023-01-01",
+        "predict_end_exclusive": "2024-01-01",
+        "fit_rows": 18649,
+        "predict_rows": 7715,
+        "thresholds": {
+          "basis_q20": -0.6193697333335876,
+          "basis_q80": 0.69862859249115,
+          "inventory_q80": 0.966362249851227
+        },
+        "threshold_hash": "5efaab558b267e182d3dc7c84ff660d8374c7d21b63f056a8ba4d2724000e3a9",
+        "fit_position_hash": "c147637930c82ab0b13507e539b81a3563b0b4f0029357260af04dd0bd1446c0",
+        "predict_position_hash": "1b17d6afd3af2c2609a999be6a052eab7b1a7effa28ab288bcdeb09ff0e3cf76",
+        "table_hash": "79999c7dcc0fb4d46a864c701b7944549480c6f52a11dde2ff0f2df59a641c7c",
+        "fit_transition_rows": 18547,
+        "supported_transitions_50": 29,
+        "posterior_diagnostics": {
+          "global_mean": [
+            -0.0057011193705158785,
+            -0.005781323891310622
+          ],
+          "supported_changed_transitions": 24,
+          "max_supported_posterior_mean": [
+            -0.0029638039482410956,
+            -0.0029298116107710323
+          ],
+          "max_supported_lcb_0_5": -0.003621567797555608,
+          "positive_supported_side_cells": 0,
+          "max_supported_side_advantage": 0.006742672471988655,
+          "changed_transition_support_quantiles": {
+            "0": 1.0,
+            "25": 6.0,
+            "50": 21.0,
+            "75": 64.0,
+            "100": 821.0
+          },
+          "supported_preferred_side_counts": {
+            "long": 13,
+            "short": 11
+          }
+        },
+        "predict_basis_state_counts": {
+          "-1": 561,
+          "0": 6722,
+          "1": 432
+        },
+        "predict_owner_state_counts": {
+          "-1": 781,
+          "0": 6201,
+          "1": 733
+        }
+      },
+      "2024": {
+        "fit_start": "2020-10-15 00:00:00",
+        "fit_end_exclusive": "2024-01-01",
+        "predict_start": "2024-01-01",
+        "predict_end_exclusive": "2025-01-01",
+        "fit_rows": 26364,
+        "predict_rows": 7844,
+        "thresholds": {
+          "basis_q20": -0.5896441102027893,
+          "basis_q80": 0.6788105607032777,
+          "inventory_q80": 0.9628616333007817
+        },
+        "threshold_hash": "9f0fd27256a16b4c2c0874bd40d00f8c38e41ef4d797af91f3ec325dff8ca85c",
+        "fit_position_hash": "c524bf9689b43de9ab11497eea6f3089cc8fa7bd38dd79afdcc07db20979a358",
+        "predict_position_hash": "f7d0f1a75001ed64293373c03e316eac234a3620948ddf206eeede3d3cd71ac1",
+        "table_hash": "efd11d22c09c53c300dfffd66b347f9f6b23adce7d89b3cac540010d995b3a1e",
+        "fit_transition_rows": 26212,
+        "supported_transitions_50": 32,
+        "posterior_diagnostics": {
+          "global_mean": [
+            -0.004808155903221671,
+            -0.005364992418110926
+          ],
+          "supported_changed_transitions": 27,
+          "max_supported_posterior_mean": [
+            -0.0028749983750263235,
+            -0.002931446340476978
+          ],
+          "max_supported_lcb_0_5": -0.0031320747564558167,
+          "positive_supported_side_cells": 0,
+          "max_supported_side_advantage": 0.005256708117149774,
+          "changed_transition_support_quantiles": {
+            "0": 1.0,
+            "25": 7.0,
+            "50": 27.5,
+            "75": 91.5,
+            "100": 1165.0
+          },
+          "supported_preferred_side_counts": {
+            "long": 17,
+            "short": 10
+          }
+        },
+        "predict_basis_state_counts": {
+          "-1": 682,
+          "0": 6548,
+          "1": 614
+        },
+        "predict_owner_state_counts": {
+          "-1": 817,
+          "0": 6145,
+          "1": 882
+        }
+      }
+    }
+  },
+  "tested": 4,
+  "passed": 0,
+  "shortlist": [],
+  "diagnostic_top": [
+    {
+      "name": "ritt_h72_lcb00",
+      "hold_bars": 72,
+      "lcb_z": 0.0,
+      "policy_meta": {
+        "2023": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 29,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "2024": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 32,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "stats": {
+        "2023": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        }
+      },
+      "passes": false
+    },
+    {
+      "name": "ritt_h72_lcb05",
+      "hold_bars": 72,
+      "lcb_z": 0.5,
+      "policy_meta": {
+        "2023": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 29,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "2024": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 32,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "stats": {
+        "2023": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        }
+      },
+      "passes": false
+    },
+    {
+      "name": "ritt_h144_lcb00",
+      "hold_bars": 144,
+      "lcb_z": 0.0,
+      "policy_meta": {
+        "2023": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 29,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "2024": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 32,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "stats": {
+        "2023": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        }
+      },
+      "passes": false
+    },
+    {
+      "name": "ritt_h144_lcb05",
+      "hold_bars": 144,
+      "lcb_z": 0.5,
+      "policy_meta": {
+        "2023": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 29,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "2024": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 32,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "stats": {
+        "2023": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        }
+      },
+      "passes": false
+    }
+  ],
+  "decision": "reject_pre2025",
+  "gross9_marginal_opened": false,
+  "future_opened": false,
+  "freeze_hash": "13b350771f8e6f715e351e1fc3609a373d5d9778fc0029a138dcf195cba926f8",
+  "all_pre2025_rows": [
+    {
+      "name": "ritt_h72_lcb00",
+      "hold_bars": 72,
+      "lcb_z": 0.0,
+      "policy_meta": {
+        "2023": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 29,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "2024": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 32,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "stats": {
+        "2023": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        }
+      },
+      "passes": false
+    },
+    {
+      "name": "ritt_h72_lcb05",
+      "hold_bars": 72,
+      "lcb_z": 0.5,
+      "policy_meta": {
+        "2023": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 29,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "2024": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 32,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "stats": {
+        "2023": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        }
+      },
+      "passes": false
+    },
+    {
+      "name": "ritt_h144_lcb00",
+      "hold_bars": 144,
+      "lcb_z": 0.0,
+      "policy_meta": {
+        "2023": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 29,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "2024": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 32,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "stats": {
+        "2023": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        }
+      },
+      "passes": false
+    },
+    {
+      "name": "ritt_h144_lcb05",
+      "hold_bars": 144,
+      "lcb_z": 0.5,
+      "policy_meta": {
+        "2023": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 29,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "2024": {
+          "eligible": 0,
+          "long_signals": 0,
+          "short_signals": 0,
+          "supported_transition_count": 32,
+          "activation_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "stats": {
+        "2023": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2023_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h1": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        },
+        "2024_h2": {
+          "return_pct": 0.0,
+          "cagr_pct": 0.0,
+          "strict_mdd_pct": 0.0,
+          "ratio": 0.0,
+          "trades": 0,
+          "longs": 0,
+          "shorts": 0,
+          "win_rate": 0.0,
+          "mean_trade_return_pct": 0.0,
+          "p_value_mean_return_approx": 1.0,
+          "effect_size_d": 0.0
+        }
+      },
+      "passes": false
+    }
+  ]
+}

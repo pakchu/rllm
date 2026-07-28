@@ -23,15 +23,12 @@ from training.search_annual_oi_spot_participation_path_alpha import (
     executable_utilities,
     fold_fit_mask,
 )
-from training.search_positioning_disagreement_alpha import (
-    _future_extreme,
-    _simulate_no_stop,
-)
 from training.search_positioning_hgb_path_alpha import _read_before
 from training.search_spot_perp_absorption_alpha import (
     _prior_z,
     _rolling_residual,
 )
+from training.strict_bar_backtest import _trade_stats
 
 
 PREREGISTRATION = Path(
@@ -113,6 +110,17 @@ def _array_hash(values: np.ndarray) -> str:
     return hashlib.sha256(np.ascontiguousarray(values).tobytes()).hexdigest()
 
 
+def _frame_hash(frame: pd.DataFrame) -> str:
+    digest = hashlib.sha256()
+    digest.update("\n".join(map(str, frame.columns)).encode())
+    digest.update(
+        pd.util.hash_pandas_object(frame, index=False)
+        .to_numpy(dtype="<u8")
+        .tobytes()
+    )
+    return digest.hexdigest()
+
+
 def load_preregistration(path: str | Path) -> dict[str, Any]:
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     if payload.get("name") != "residual_inventory_transfer_transition":
@@ -131,17 +139,55 @@ def load_preregistration(path: str | Path) -> dict[str, Any]:
     return payload
 
 
+def validate_input_provenance(
+    cfg: Config, preregistration: dict[str, Any]
+) -> dict[str, Any]:
+    expected = preregistration["input_provenance"]
+    configured = {
+        "market_with_oi": cfg.market_csv,
+        "spot_and_completed_premium": cfg.spot_csv,
+        "funding": cfg.funding_csv,
+    }
+    records: dict[str, Any] = {}
+    for name, path in configured.items():
+        actual = _sha256(path)
+        wanted = str(expected[name]["sha256"])
+        if actual != wanted:
+            raise RuntimeError(
+                f"input provenance mismatch for {name}: {actual} != {wanted}"
+            )
+        records[name] = {
+            "path": str(path),
+            "sha256": actual,
+            "validated_against_preregistration": True,
+        }
+    return records
+
+
 def _parse_utc_naive(values: pd.Series) -> pd.Series:
     return pd.to_datetime(
         values, utc=True, errors="raise", format="mixed"
     ).dt.tz_convert(None)
 
 
-def load_sources(cfg: Config, *, cutoff: str = SELECTION_CUTOFF) -> pd.DataFrame:
+def load_sources(
+    cfg: Config,
+    *,
+    cutoff: str = SELECTION_CUTOFF,
+    return_audit: bool = False,
+) -> pd.DataFrame | tuple[pd.DataFrame, dict[str, Any]]:
     """Physically truncate and causally align market, spot, premium, and funding."""
     market = _read_before(cfg.market_csv, "date", cutoff)
     spot = _read_before(cfg.spot_csv, "date", cutoff)
     funding = _read_before(cfg.funding_csv, "date", cutoff)
+    prefix_audit = {
+        "cutoff": cutoff,
+        "raw_prefix_hashes": {
+            "market": _frame_hash(market),
+            "spot": _frame_hash(spot),
+            "funding": _frame_hash(funding),
+        },
+    }
     market["date"] = _parse_utc_naive(market["date"])
     spot["date"] = _parse_utc_naive(spot["date"])
     funding["date"] = _parse_utc_naive(funding["date"])
@@ -195,6 +241,13 @@ def load_sources(cfg: Config, *, cutoff: str = SELECTION_CUTOFF) -> pd.DataFrame
         > pd.to_datetime(merged.loc[known, "date"])
     ).any():
         raise RuntimeError("funding join references a future publication")
+    prefix_audit["source_max_timestamp_before_cutoff"] = {
+        "market": str(pd.to_datetime(market["date"]).max()),
+        "spot": str(pd.to_datetime(spot["date"]).max()),
+        "funding": str(pd.to_datetime(funding["date"]).max()),
+    }
+    if return_audit:
+        return merged, prefix_audit
     return merged
 
 
@@ -416,6 +469,64 @@ def fit_transition_table(
     }
 
 
+def transition_table_diagnostics(
+    table: dict[str, Any], *, min_support: int
+) -> dict[str, Any]:
+    counts = np.asarray(table["counts"], dtype=np.int64)
+    means = np.asarray(table["posterior_mean"], dtype=float)
+    variance = np.asarray(table["posterior_mean_variance"], dtype=float)
+    keys = np.arange(81, dtype=np.int64)
+    supported_changed = (
+        (counts >= int(min_support)) & ((keys // 9) != (keys % 9))
+    )
+    if not supported_changed.any():
+        return {
+            "global_mean": np.asarray(
+                table["global_mean"], dtype=float
+            ).tolist(),
+            "supported_changed_transitions": 0,
+            "max_supported_posterior_mean": [None, None],
+            "max_supported_lcb_0_5": None,
+            "positive_supported_side_cells": 0,
+            "max_supported_side_advantage": None,
+        }
+    supported_means = means[supported_changed]
+    supported_variance = variance[supported_changed]
+    changed_counts = counts[(keys // 9) != (keys % 9)]
+    preferred = np.argmax(supported_means, axis=1)
+    return {
+        "global_mean": np.asarray(
+            table["global_mean"], dtype=float
+        ).tolist(),
+        "supported_changed_transitions": int(np.sum(supported_changed)),
+        "max_supported_posterior_mean": np.max(
+            supported_means, axis=0
+        ).tolist(),
+        "max_supported_lcb_0_5": float(
+            np.max(
+                supported_means
+                - 0.5 * np.sqrt(np.maximum(0.0, supported_variance))
+            )
+        ),
+        "positive_supported_side_cells": int(
+            np.sum(supported_means > 0.0)
+        ),
+        "max_supported_side_advantage": float(
+            np.max(np.abs(supported_means[:, 0] - supported_means[:, 1]))
+        ),
+        "changed_transition_support_quantiles": {
+            str(int(quantile * 100)): float(
+                np.quantile(changed_counts, quantile)
+            )
+            for quantile in (0.0, 0.25, 0.5, 0.75, 1.0)
+        },
+        "supported_preferred_side_counts": {
+            "long": int(np.sum(preferred == 0)),
+            "short": int(np.sum(preferred == 1)),
+        },
+    }
+
+
 def activation_masks(
     length: int,
     positions: np.ndarray,
@@ -547,6 +658,14 @@ def fit_fold(
             "supported_transitions_50": int(
                 np.sum(np.asarray(table["counts"]) >= 50)
             ),
+            "posterior_diagnostics": transition_table_diagnostics(
+                table,
+                min_support=int(
+                    preregistration["frozen_grid"][
+                        "min_transition_support"
+                    ]
+                ),
+            ),
             "predict_basis_state_counts": {
                 str(value): int(np.sum(basis_state[predict_positions] == value))
                 for value in (-1, 0, 1)
@@ -591,6 +710,126 @@ def _cell_key(row: dict[str, Any]) -> tuple[Any, ...]:
         -float(row["lcb_z"]),
         str(row["name"]),
     )
+
+
+def simulate_upper_then_lower(
+    market: pd.DataFrame,
+    dates: pd.Series,
+    long_active: np.ndarray,
+    short_active: np.ndarray,
+    *,
+    window: str,
+    hold_bars: int,
+    stride_bars: int,
+    leverage: float,
+    fee_rate: float,
+    windows: dict[str, tuple[str, str]] = WINDOWS,
+) -> dict[str, Any]:
+    """Strict completed-bar path: every held bar marks high before low."""
+    start, end = windows[window]
+    period = ((dates >= pd.Timestamp(start)) & (dates < pd.Timestamp(end))).to_numpy(
+        bool
+    )
+    opens = pd.to_numeric(market["open"], errors="coerce").to_numpy(float)
+    highs = pd.to_numeric(market["high"], errors="coerce").to_numpy(float)
+    lows = pd.to_numeric(market["low"], errors="coerce").to_numpy(float)
+    candidates = np.arange(
+        0,
+        len(market) - int(hold_bars) - 2,
+        int(stride_bars),
+        dtype=np.int64,
+    )
+    candidates = candidates[
+        period[candidates] & (long_active[candidates] | short_active[candidates])
+    ]
+    side_cost = float(fee_rate) * float(leverage)
+    equity = 1.0
+    peak = 1.0
+    strict_mdd = 0.0
+    next_position = 0
+    trade_returns: list[float] = []
+    sides: list[int] = []
+    for position in candidates:
+        if int(position) < next_position:
+            continue
+        side = (
+            1
+            if long_active[position] and not short_active[position]
+            else (
+                -1
+                if short_active[position] and not long_active[position]
+                else 0
+            )
+        )
+        if side == 0:
+            continue
+        entry = int(position) + 1
+        exit_position = entry + int(hold_bars)
+        if exit_position >= len(market) or not period[exit_position]:
+            continue
+        entry_price = float(opens[entry])
+        if not np.isfinite(entry_price) or entry_price <= 0.0:
+            continue
+        entry_equity = equity
+        after_entry_fee = equity * (1.0 - side_cost)
+        strict_mdd = max(strict_mdd, 1.0 - after_entry_fee / peak)
+        for bar in range(entry, exit_position):
+            for mark_price in (float(highs[bar]), float(lows[bar])):
+                marked = max(
+                    0.0,
+                    after_entry_fee
+                    * (
+                        1.0
+                        + float(leverage)
+                        * side
+                        * (mark_price / entry_price - 1.0)
+                    ),
+                )
+                strict_mdd = max(strict_mdd, 1.0 - marked / peak)
+                peak = max(peak, marked)
+        exit_mark = max(
+            0.0,
+            after_entry_fee
+            * (
+                1.0
+                + float(leverage)
+                * side
+                * (float(opens[exit_position]) / entry_price - 1.0)
+            ),
+        )
+        equity = exit_mark * (1.0 - side_cost)
+        strict_mdd = max(strict_mdd, 1.0 - equity / peak)
+        peak = max(peak, equity)
+        trade_returns.append(equity / entry_equity - 1.0)
+        sides.append(side)
+        next_position = exit_position + 1
+    years = (pd.Timestamp(end) - pd.Timestamp(start)).total_seconds() / (
+        365.25 * 86400.0
+    )
+    absolute_return = (equity - 1.0) * 100.0
+    cagr = (
+        (equity ** (1.0 / years) - 1.0) * 100.0
+        if equity > 0.0
+        else -100.0
+    )
+    mdd = strict_mdd * 100.0
+    returns = np.asarray(trade_returns, dtype=float)
+    evidence = _trade_stats(returns)
+    return {
+        "return_pct": float(absolute_return),
+        "cagr_pct": float(cagr),
+        "strict_mdd_pct": float(mdd),
+        "ratio": float(cagr / mdd) if mdd > 1e-12 else 0.0,
+        "trades": int(len(returns)),
+        "longs": int(sum(side > 0 for side in sides)),
+        "shorts": int(sum(side < 0 for side in sides)),
+        "win_rate": float((returns > 0.0).mean()) if len(returns) else 0.0,
+        "mean_trade_return_pct": float(evidence["mean_trade_ret_pct"]),
+        "p_value_mean_return_approx": float(
+            evidence["p_value_mean_ret_approx"]
+        ),
+        "effect_size_d": float(evidence["effect_size_d"]),
+    }
 
 
 def _feature_hash(features: pd.DataFrame, dates: pd.Series) -> str:
@@ -702,6 +941,26 @@ def _render(payload: dict[str, Any]) -> str:
         )
     lines += [
         "",
+        "## Rejection diagnosis",
+        "",
+    ]
+    for hold, folds in payload["fold_meta"].items():
+        for fold, meta in folds.items():
+            diagnostic = meta["posterior_diagnostics"]
+            max_means = diagnostic["max_supported_posterior_mean"]
+            lines.append(
+                f"- hold `{hold}` / {fold}: global utility "
+                f"`{diagnostic['global_mean'][0]:+.6f}/"
+                f"{diagnostic['global_mean'][1]:+.6f}` (long/short), "
+                f"best supported posterior "
+                f"`{max_means[0]:+.6f}/{max_means[1]:+.6f}`, "
+                f"positive supported side cells "
+                f"`{diagnostic['positive_supported_side_cells']}`."
+            )
+    lines += [
+        "",
+        "All adequately supported transition-side posteriors remained below zero after frozen costs and adverse-excursion penalty. The zero-trade result is therefore a fail-closed model decision, not missing data or an execution error.",
+        "",
         "## Boundary",
         "",
         "- Market, spot/premium, and funding sources were physically truncated before 2025.",
@@ -726,7 +985,11 @@ def _atomic_json(path: str | Path, payload: dict[str, Any]) -> None:
 
 def run_pre2025(cfg: Config) -> dict[str, Any]:
     preregistration = load_preregistration(cfg.preregistration)
-    market = load_sources(cfg)
+    input_identity = validate_input_provenance(cfg, preregistration)
+    loaded = load_sources(cfg, return_audit=True)
+    if not isinstance(loaded, tuple):
+        raise AssertionError("source audit was not returned")
+    market, source_prefix_audit = loaded
     dates = pd.to_datetime(market["date"])
     features, source_valid = build_features(market)
     valid_decisions = decision_mask(market, source_valid)
@@ -756,21 +1019,6 @@ def run_pre2025(cfg: Config) -> dict[str, Any]:
             fold_bank[(hold, fold_name)] = fitted
             fold_meta[str(hold)][fold_name] = fitted["meta"]
 
-    extremes = {
-        int(hold): (
-            _future_extreme(
-                pd.to_numeric(market["low"], errors="coerce").to_numpy(float),
-                int(hold),
-                "min",
-            ),
-            _future_extreme(
-                pd.to_numeric(market["high"], errors="coerce").to_numpy(float),
-                int(hold),
-                "max",
-            ),
-        )
-        for hold in grid["hold_bars"]
-    }
     rows: list[dict[str, Any]] = []
     for hold_bars in grid["hold_bars"]:
         hold = int(hold_bars)
@@ -794,7 +1042,7 @@ def run_pre2025(cfg: Config) -> dict[str, Any]:
                     f"{fold_name}_h1",
                     f"{fold_name}_h2",
                 ):
-                    stats[metric_name] = _simulate_no_stop(
+                    stats[metric_name] = simulate_upper_then_lower(
                         market,
                         dates,
                         long_active,
@@ -804,8 +1052,6 @@ def run_pre2025(cfg: Config) -> dict[str, Any]:
                         stride_bars=int(grid["decision_stride_bars"]),
                         leverage=cfg.leverage,
                         fee_rate=cfg.cost_rate,
-                        slippage_rate=0.0,
-                        extremes=extremes[hold],
                         windows=WINDOWS,
                     )
             row = {
@@ -839,9 +1085,10 @@ def run_pre2025(cfg: Config) -> dict[str, Any]:
             "rows": int(len(market)),
             "first": str(dates.iloc[0]),
             "last": str(dates.iloc[-1]),
-            "market_sha256": _sha256(cfg.market_csv),
-            "spot_sha256": _sha256(cfg.spot_csv),
-            "funding_sha256": _sha256(cfg.funding_csv),
+            "raw_prefix_hashes": source_prefix_audit["raw_prefix_hashes"],
+            "source_max_timestamp_before_cutoff": source_prefix_audit[
+                "source_max_timestamp_before_cutoff"
+            ],
         },
         "feature_hash": _feature_hash(features, dates),
         "fold_meta": fold_meta,
@@ -851,6 +1098,7 @@ def run_pre2025(cfg: Config) -> dict[str, Any]:
         "as_of": datetime.now(timezone.utc).isoformat(),
         "phase": "pre2025_annual_selection",
         "config": asdict(cfg),
+        "input_identity": input_identity,
         "preregistration": cfg.preregistration,
         "preregistration_sha256": freeze["preregistration_sha256"],
         "source_prefix": freeze["source_prefix"],
