@@ -1,0 +1,377 @@
+{
+  "name": "alt_flow_geometry_inference_gross9_marginal_battery",
+  "short_name": "AFGI-12",
+  "status": "preregistered_before_exact_policy_model_fit_or_btc_outcome_scan",
+  "created_on": "2026-07-28",
+  "prior_family_boundary": {
+    "source_axis": "completed-hour price-free taker flow and activity for six Binance USD-M alt perpetuals",
+    "retired_rule_families": [
+      {
+        "family": "FCIR-12",
+        "status": "REJECT_NO_REPAIR at 2023 train",
+        "forbidden_repair": "centrality network, quiet-crowd gate, q75 strength, fixed central-flow side"
+      },
+      {
+        "family": "DTAC-8",
+        "status": "REJECT_NO_REPAIR at 2023 train",
+        "forbidden_repair": "flow/premium discordant tails, consensus votes, fixed 8h side rule"
+      },
+      {
+        "family": "TGR-12",
+        "status": "rejected at source-support gate",
+        "forbidden_repair": "mean-ticket leader gap, q90 leader flow, bottom-four quiet gate"
+      }
+    ],
+    "material_difference": "AFGI-12 uses no directed centrality, premium input, tail-vote rule, mean-ticket feature, symbolic event threshold, or repaired side. It is one supervised geometry learner over flow, quote volume, and trade count.",
+    "terminal_stop": "If no AFGI-12 portfolio cell passes, close the six-alt hourly flow/activity supervised-model family. No feature subset, target, quantile, hold, learner, seed, coordination, or threshold repair may reopen it."
+  },
+  "hypothesis": "Cross-sectional alt-perpetual aggressive-flow geometry may reveal rotation, crowd concentration, and liquidity synchronization before those states are fully transmitted to BTC. A shallow expanding ensemble may rank a sparse bidirectional 12h sleeve that improves frozen Gross9 at identical configured gross.",
+  "physical_selection_cutoff": "2025-01-01",
+  "source_contract": {
+    "symbols": [
+      "ETHUSDT",
+      "SOLUSDT",
+      "BNBUSDT",
+      "XRPUSDT",
+      "DOGEUSDT",
+      "ADAUSDT"
+    ],
+    "panel_columns_read": [
+      "feature_available_time_utc",
+      "symbol",
+      "quote_volume_usdt",
+      "trade_count",
+      "taker_flow_fraction",
+      "feature_valid"
+    ],
+    "feature_clock": "Each source hour [H-1h,H) is usable at H. The model signal is attached to the BTCUSDT 5m bar opening at H; one complete 5m latency bucket is then left empty and entry is the BTCUSDT open at H+5m.",
+    "invalid_policy": "All six symbols must be feature_valid and finite. Missing/invalid rows remain NaN; no carry, interpolation, zero fill, or stale fallback is allowed.",
+    "outcome_isolation": "The feature builder reads no BTC price, return, funding, PnL, Gross9 state, model label, 2025, or 2026 value."
+  },
+  "feature_contract": {
+    "count": 52,
+    "columns": [
+      "flow_now_ETHUSDT",
+      "flow_mean_6h_ETHUSDT",
+      "flow_mean_24h_ETHUSDT",
+      "flow_accel_6h_24h_ETHUSDT",
+      "quote_volume_z720_ETHUSDT",
+      "trade_count_z720_ETHUSDT",
+      "flow_now_SOLUSDT",
+      "flow_mean_6h_SOLUSDT",
+      "flow_mean_24h_SOLUSDT",
+      "flow_accel_6h_24h_SOLUSDT",
+      "quote_volume_z720_SOLUSDT",
+      "trade_count_z720_SOLUSDT",
+      "flow_now_BNBUSDT",
+      "flow_mean_6h_BNBUSDT",
+      "flow_mean_24h_BNBUSDT",
+      "flow_accel_6h_24h_BNBUSDT",
+      "quote_volume_z720_BNBUSDT",
+      "trade_count_z720_BNBUSDT",
+      "flow_now_XRPUSDT",
+      "flow_mean_6h_XRPUSDT",
+      "flow_mean_24h_XRPUSDT",
+      "flow_accel_6h_24h_XRPUSDT",
+      "quote_volume_z720_XRPUSDT",
+      "trade_count_z720_XRPUSDT",
+      "flow_now_DOGEUSDT",
+      "flow_mean_6h_DOGEUSDT",
+      "flow_mean_24h_DOGEUSDT",
+      "flow_accel_6h_24h_DOGEUSDT",
+      "quote_volume_z720_DOGEUSDT",
+      "trade_count_z720_DOGEUSDT",
+      "flow_now_ADAUSDT",
+      "flow_mean_6h_ADAUSDT",
+      "flow_mean_24h_ADAUSDT",
+      "flow_accel_6h_24h_ADAUSDT",
+      "quote_volume_z720_ADAUSDT",
+      "trade_count_z720_ADAUSDT",
+      "flow_xs_mean_now",
+      "flow_xs_std_now",
+      "flow_xs_breadth_now",
+      "flow_xs_abs_hhi_now",
+      "flow_xs_mean_6h",
+      "flow_xs_std_6h",
+      "flow_xs_breadth_6h",
+      "flow_quote_volume_alignment_now",
+      "flow_trade_count_alignment_now",
+      "pc1_variance_share_168h",
+      "flow_effective_rank_168h",
+      "pc1_loading_entropy_168h",
+      "pc1_projection_now",
+      "pc1_projection_6h",
+      "pc1_subspace_drift_168h",
+      "flow_rotation_cosine_6h_24h"
+    ],
+    "symbol_features": {
+      "flow_now": "current completed-hour taker_flow_fraction",
+      "flow_mean_6h": "arithmetic mean of the current and preceding five completed valid hours; rolling window includes current; min_periods=6",
+      "flow_mean_24h": "arithmetic mean of current and preceding 23 completed valid hours; rolling window includes current; min_periods=24",
+      "flow_accel_6h_24h": "flow_mean_6h - flow_mean_24h",
+      "quote_volume_z720": "(current quote_volume_usdt - strictly-prior rolling q50)/(strictly-prior (q75-q25)/1.349), using shift(1), 720 positional hours, min_periods=672, linear quantiles",
+      "trade_count_z720": "same robust-z contract applied to current trade_count",
+      "zero_scale": "A zero, negative, or non-finite robust scale invalidates the row."
+    },
+    "cross_sectional_features": {
+      "mean_std": "population mean and population std (ddof=0) across the six declared symbols",
+      "breadth": "mean(sign(value)) across six symbols; exact zero contributes zero",
+      "abs_hhi": "sum((abs(flow_i)/sum_j abs(flow_j))**2); zero/non-finite denominator invalidates the row",
+      "alignment": "population Pearson correlation across six symbols between current flow and current robust-z activity vector; zero/non-finite population std invalidates the row",
+      "rotation_cosine": "dot(flow_mean_6h,flow_mean_24h)/(L2 norms product); zero/non-finite norm invalidates the row"
+    },
+    "pca_geometry": {
+      "reference": "For each current hour t, correlation uses exactly the 168 immediately preceding completed flow vectors [t-168h,t), excludes current t, and requires every value finite.",
+      "eigendecomposition": "np.linalg.eigh(float64 correlation); sort eigenvalues descending; clip tiny negative eigenvalues to zero; nonpositive/nonfinite trace invalidates the row.",
+      "pc1_orientation": "Orient the leading eigenvector so its loading sum is positive. If abs(sum)<=1e-12, orient the first symbol in frozen order among maximum-absolute loadings positive.",
+      "pc1_variance_share": "largest clipped eigenvalue / sum clipped eigenvalues",
+      "effective_rank": "exp(-sum(p_i*log(p_i))) over positive normalized clipped eigenvalues",
+      "loading_entropy": "-sum(q_i*log(q_i))/log(6), q_i=abs(v_i)/sum(abs(v)); zero denominator invalid",
+      "projections": "dot(oriented PC1,current flow) and dot(oriented PC1,current 6h flow mean)",
+      "subspace_drift": "1-abs(dot(v_t,v_(t-1))); both PC1 states are independently prior-only; the first valid state remains invalid for drift"
+    },
+    "row_admission": "All 52 values must be finite at the completed signal hour."
+  },
+  "learner_contract": {
+    "estimator": "sklearn.ensemble.ExtraTreesRegressor",
+    "sklearn_version": "1.7.2",
+    "n_estimators": 256,
+    "max_depth": 4,
+    "min_samples_leaf": 96,
+    "max_features": 0.75,
+    "bootstrap": false,
+    "seeds": [
+      7,
+      71,
+      715
+    ],
+    "target": "Four-output no-stop target: long exact net return, long strict adverse drawdown, short exact net return, short strict adverse drawdown over the fixed 12h path.",
+    "target_accounting": "Entry/exit cost and exact realized BTCUSDT funding use the same 0.5x multiplicative ExecutionEngine convention as frozen Gross9. Funding timestamps in [entry,exit] are included. Adverse is the favorable-then-adverse strict excursion used by equity_stats: entry cost, favorable price envelope, funding-debit factor, adverse price envelope, then terminal marked result.",
+    "score": "For each seed and side compute predicted return - 0.5*predicted adverse. Per side score is seed mean - 0.5*population seed std. Choose long on ties; chosen score is the larger side score.",
+    "score_quantile": 0.95,
+    "minimum_score": 0.0,
+    "score_threshold": "max(0, np.quantile(all finite immediately-prior OOS fold scores,0.95,method='linear')). Admission uses >= before coordination and non-overlap.",
+    "fit_purge": "A label may enter a fit only when signal, H+5m entry, all 144 held bars, exact funding path, and time exit are strictly before fit_end_exclusive.",
+    "anchor_stride_bars": 12,
+    "entry_delay_bars": 1,
+    "hold_bars": 144,
+    "unit_leverage": 0.5,
+    "normal_cost_per_notional_per_side": 0.0006,
+    "candidate_stress_cost_per_notional_per_side": 0.001,
+    "tp": null,
+    "sl": null,
+    "stress_replay": "10bp stress reuses identical source features, fitted models, scores, thresholds, sides, coordination masks, and executable schedules. It changes only candidate entry/exit cost; it cannot refit or rescore."
+  },
+  "expanding_folds": [
+    {
+      "name": "calibration_2023q2",
+      "fit_end_exclusive": "2023-04-01",
+      "prediction_start": "2023-04-01",
+      "prediction_end_exclusive": "2023-07-01",
+      "threshold_source": null,
+      "candidate_entries_allowed": false
+    },
+    {
+      "name": "selection_2023q3",
+      "fit_end_exclusive": "2023-07-01",
+      "prediction_start": "2023-07-01",
+      "prediction_end_exclusive": "2023-10-01",
+      "threshold_source": "calibration_2023q2",
+      "candidate_entries_allowed": true
+    },
+    {
+      "name": "selection_2023q4",
+      "fit_end_exclusive": "2023-10-01",
+      "prediction_start": "2023-10-01",
+      "prediction_end_exclusive": "2024-01-01",
+      "threshold_source": "selection_2023q3",
+      "candidate_entries_allowed": true
+    },
+    {
+      "name": "selection_2024",
+      "fit_end_exclusive": "2024-01-01",
+      "prediction_start": "2024-01-01",
+      "prediction_end_exclusive": "2025-01-01",
+      "threshold_source": "selection_2023q4",
+      "candidate_entries_allowed": true
+    }
+  ],
+  "candidate_universe": {
+    "hold_bars": [
+      144
+    ],
+    "coordination_modes": [
+      {
+        "name": "unrestricted",
+        "rule": "No Gross9 state gate."
+      },
+      {
+        "name": "gross9_flat_at_signal",
+        "rule": "Frozen Gross9 has no occupied sleeve at completed signal bar."
+      },
+      {
+        "name": "gross9_drawdown_ge_5pct",
+        "rule": "Continuous frozen Gross9 closing equity is at least 5% below its upper-envelope HWM at signal bar; state does not reset at 2024."
+      }
+    ],
+    "coordination_tie_break_order": [
+      "unrestricted",
+      "gross9_flat_at_signal",
+      "gross9_drawdown_ge_5pct"
+    ],
+    "policy_cells": 3,
+    "candidate_weight_grid": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "portfolio_cells": 12
+  },
+  "execution_and_accounting": {
+    "entry_exit": "Feature available H; signal on BTC bar H; entry H+5m open; hold exactly 144 five-minute bars; exit H+12h+5m open.",
+    "nonoverlap": "One candidate sleeve. After an accepted entry, later signals through the exact exit position are suppressed; next signal must be exit_position+1 or later.",
+    "split_containment": "Signal, entry, every held/funding mark, and exit must be contained in the measured calendar window.",
+    "portfolio_clock": "Candidate path is produced with the funding-aware subaccount path and converted onto the same BTC 5m return/low/high arrays as Gross9.",
+    "calendar_metrics": "Absolute return, CAGR, strict MDD, and idle time use the complete declared start/end calendar.",
+    "strict_mdd": "Same-BTC synchronized upper-before-lower envelope, global/pre-entry HWM, entry/exit costs, exact funding factor, every held OHLC bar, and terminal exit are included."
+  },
+  "selection_contract": {
+    "windows": {
+      "selection_2023h2": {
+        "start_inclusive": "2023-07-01",
+        "end_exclusive": "2024-01-01"
+      },
+      "selection_2024": {
+        "start_inclusive": "2024-01-01",
+        "end_exclusive": "2025-01-01"
+      }
+    },
+    "standalone_requirements": {
+      "absolute_return_positive_each_window": true,
+      "minimum_cagr_to_strict_mdd_each_window": 1.5,
+      "maximum_strict_mdd_pct_each_window": 15.0,
+      "minimum_trades": {
+        "selection_2023h2": 25,
+        "selection_2024": 50
+      },
+      "minimum_long_share_each_window": 0.2,
+      "minimum_short_share_each_window": 0.2,
+      "candidate_10bp_stress_absolute_return_positive_each_window": true
+    },
+    "portfolio_requirements": {
+      "maximum_strict_mdd_pct_each_window": 20.0,
+      "absolute_return_retention_floor_vs_unscaled_gross9": 0.97,
+      "minimum_cagr_mdd_improvement_vs_same_gross_prorata_gross9_each_window": 0.05,
+      "strict_mdd_reduction_vs_unscaled_gross9_in_at_least_one_window": true,
+      "maximum_exact_entry_jaccard_vs_any_gross9_sleeve": 0.25,
+      "candidate_10bp_stress_portfolio_absolute_return_positive_each_window": true
+    },
+    "same_gross_formula": {
+      "combined_candidate": "Keep frozen Gross9 weights b_i (sum 9) and add candidate weight c; configured gross=9+c.",
+      "prorata_control": "Use Gross9 only at b_i*(9+c)/9; configured gross=9+c.",
+      "ratio_comparison": "Combined candidate CAGR/strict-MDD minus same-gross pro-rata control CAGR/strict-MDD.",
+      "retention_and_mdd_comparison": "Absolute-return retention and MDD reduction compare combined candidate with unscaled Gross9, not the pro-rata control.",
+      "gross_interpretation": "Static configured sleeve gross, not barwise active exposure."
+    },
+    "prior_family_overlap": "Report exact-entry Jaccard and +/-12h bidirectional containment versus FCIR-12, DTAC-8, and TGR-12 clocks. These are diagnostic only and cannot select, repair, or reject a cell.",
+    "ranking_key": [
+      "pass_all_requirements desc",
+      "minimum same-gross ratio improvement desc",
+      "signed geometric mean same-gross improvement desc",
+      "2024 MDD reduction desc",
+      "minimum stressed standalone absolute return desc",
+      "candidate weight asc",
+      "coordination mode frozen order"
+    ],
+    "top1_only": true,
+    "numeric_precision": "All selection uses unrounded float64 values; display rounding never enters a gate."
+  },
+  "future_veto_contract": {
+    "historical_future_may_open_only_if_pre2025_top1_passes": true,
+    "historical_future_can_veto": true,
+    "historical_future_can_certify": false,
+    "future_can_rerank": false,
+    "future_can_repair": false,
+    "future_can_select_another_cell": false,
+    "research_contamination": "2025/2026 BTC outcomes were inspected elsewhere and can only veto the frozen top1.",
+    "prospective_live_promotion_gate": {
+      "minimum_consecutive_calendar_days": 90,
+      "minimum_candidate_trades": 30,
+      "candidate_absolute_return_positive": true,
+      "candidate_10bp_stress_positive": true,
+      "combined_portfolio_mdd_not_worse_than_gross9": true,
+      "same_gross_ratio_improvement_positive": true
+    }
+  },
+  "input_provenance": {
+    "six_alt_flow_panel": {
+      "path": "data/binance_six_alt_price_free_flow_2023_2026/six_alt_price_free_flow_1h_2023-01-01_2026-06-01.csv.gz",
+      "sha256": "bf4d67ee02948444712a6ff7862a0d4f4ae4ae2a704c9d0586538043c169f6b9"
+    },
+    "six_alt_flow_manifest": {
+      "path": "data/binance_six_alt_price_free_flow_2023_2026/build_manifest.json",
+      "sha256": "eab61cbc7f5fc51e78f574e8bef163b3a3b91bd027136cae8efd7aaf26edc0f1"
+    },
+    "market": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "market_with_oi": {
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+      "sha256": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192"
+    },
+    "funding": {
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+    },
+    "premium_1h": {
+      "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
+    },
+    "gross9_pre2025_anchor": {
+      "path": "results/gross9_pre2025_authoritative_anchor_2026-07-28.json",
+      "sha256": "329878d90b6cd9c731eb4871ac041256f95f03c14dd261ada681d3a370709875"
+    },
+    "rank7_capacity_evidence": {
+      "path": "results/expanding_extratrees_rank7_leverage_battery_2026-07-27.json",
+      "sha256": "e079f7a70d4e5eea7de962cf5daad93fd634fdf5779854d1783f83a837dc41ab"
+    },
+    "six_alt_source_builder": {
+      "path": "training/build_six_alt_price_free_flow_panel.py",
+      "sha256": "7e6a212ab2eeb30ef69e4f9ea5772b757c46fa46dae5f1ea52c0732289b28506"
+    },
+    "gross9_context_builder": {
+      "path": "training/audit_gross9_fixed_candidate_state_substitution.py",
+      "sha256": "b727d3fb0c45801e839265e0595be457a7fb204b8f64b92247cb82d50e49f4c2"
+    },
+    "gross9_runtime": {
+      "path": "training/audit_gross9_residual_recovery_extratrees_marginal.py",
+      "sha256": "573ed0b8752e6cf68406ea63c9ce6e13fa79e6e29c0c22fb79b140fa3554b1ca"
+    },
+    "gross9_portfolio_engine": {
+      "path": "training/portfolio_opt_added_alpha_update.py",
+      "sha256": "0bbe02d60ed7393e704a72c65d92d2a952eafee0d5a3d32310a782b80e2ae901"
+    },
+    "funding_bar_path": {
+      "path": "training/audit_rank7_fresh_kimchi_fixed_portfolio.py",
+      "sha256": "a311492a47dd63647130d3eeb7a6740de23c12b0e6af42f8f5e81f7b0fb41345"
+    },
+    "execution_engine": {
+      "path": "training/search_inventory_purge_reclaim_alpha.py",
+      "sha256": "5d8d4df7ea79790afb919bbb481d11de33ecba5768f6e26feb1f7667cd947d65"
+    },
+    "fcir_clock": {
+      "path": "data/flow_centrality_incubation_relay_clocks_2023_2026.csv.gz",
+      "sha256": "d4bb6245f0bac34885e780e35ff1edb9b5cf2114dc3c13088ec19613ad8056ea"
+    },
+    "dtac_clock": {
+      "path": "data/discordant_tail_absorption_consensus_clocks_2023_2026.csv.gz",
+      "sha256": "c71685bb6285c07e90e328ffe2f69a11de37445f8113a47d7ffee6ef16eece79"
+    },
+    "tgr_clock": {
+      "path": "data/ticket_gap_release_clocks_2023_2026.csv.gz",
+      "sha256": "166c6e214f43d19eb0c33adbc7deed5fd81eeee222de6a737daf061fd2c3ffc2"
+    }
+  }
+}
