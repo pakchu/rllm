@@ -33,6 +33,30 @@ def test_same_gross_grid_and_mdd_gate_are_frozen() -> None:
     ] == 0.05
 
 
+def test_causal_execution_funding_drawdown_and_overlap_are_frozen() -> None:
+    payload = prereg.build_preregistration()
+    candidate = payload["candidate_contract"]
+    accounting = payload["portfolio_accounting_contract"]
+
+    assert candidate["decision_clock"] == "daily D8 card decision_at 12:05 UTC"
+    assert candidate["entry_clock"] == (
+        "first 5m open one complete bar after decision_at"
+    )
+    assert candidate["hold_bars_5m"] == 288
+    assert candidate["base_cost_per_side"] == 0.0006
+    assert candidate["stress_cost_per_side"] == 0.001
+    assert candidate["funding"] == "exact_mark_funding_cashflows"
+    assert accounting["bar_timing"] == "signal_t_entry_t_plus_1_open"
+    assert accounting["drawdown"].startswith(
+        "same-BTC OHLC upper-before-lower strict intraposition MDD"
+    )
+    assert accounting["overlap_controls"] == [
+        "exact entry-position Jaccard against each Gross9 sleeve",
+        "occupied-bar Jaccard against each Gross9 sleeve",
+        "daily marked-return Pearson and Spearman correlations",
+    ]
+
+
 def test_missing_gross9_payloads_are_bound_without_being_opened(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
