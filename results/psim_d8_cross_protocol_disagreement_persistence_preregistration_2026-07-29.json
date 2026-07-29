@@ -1,0 +1,210 @@
+{
+  "access_boundary": {
+    "economic_metrics_computed": 0,
+    "funding_rows_parsed": 0,
+    "market_or_funding_paths_opened_or_read": [],
+    "market_rows_parsed": 0,
+    "source_payload_paths_opened_or_read": [],
+    "source_payload_rows_parsed": 0,
+    "source_values_or_incidence_computed": false
+  },
+  "action_contract": {
+    "entry_lag_bars_5m": 1,
+    "entry_time": "open of the first complete 5m interval beginning at least one full bar after decision_at",
+    "exit_time": "open exactly 288 5m bars after entry",
+    "flat_rule": "otherwise",
+    "holding_bars_5m": 288,
+    "long_rule": "slow_ewma >= slow_floor AND slow_ewma - fast_ewma >= fast_slow_gap",
+    "overlap": "forbidden_first_signal_wins",
+    "position_size": "one_unit_notional_standalone",
+    "short_rule": "slow_ewma >= slow_floor AND fast_ewma - slow_ewma >= fast_slow_gap",
+    "signal_time": "card decision_at after causal source availability",
+    "simultaneous_long_short_action": "impossible_by_positive_gap"
+  },
+  "as_of_date": "2026-07-29",
+  "candidate": {
+    "id": "PSIM-D8-CDP1",
+    "name": "PSIM-D8 cross-protocol disagreement persistence",
+    "outcomes_opened": false,
+    "profitability_claim": false,
+    "source_candidate": "PSIM-D8",
+    "source_values_opened": false,
+    "stage": "source_structural_family_preregistration"
+  },
+  "evaluation_contract": {
+    "2020_2021_outcomes_excluded_from_all_decisions": true,
+    "base_cost_per_side": 0.0006,
+    "drawdown": "strict_intra_position_adverse_excursion",
+    "funding": "exact_mark_funding_cashflows",
+    "future_veto_gate": {
+      "base_net_return_strictly_positive": true,
+      "base_return_over_strict_mdd_minimum": 0.5,
+      "minimum_closed_trades": 15,
+      "stress_net_return_not_negative": true,
+      "strict_mdd_not_more_than_selection_multiple": 2.0
+    },
+    "future_veto_is_untouched": true,
+    "future_veto_period": [
+      "2023-01-01",
+      "2023-12-31"
+    ],
+    "post_veto_repair_rank2_or_threshold_change_allowed": false,
+    "same_gross_portfolio_promotion": "separate preregistration required after standalone future veto and restoration of exact frozen Gross9 inputs",
+    "selection_eligibility": {
+      "base_net_return_strictly_positive": true,
+      "minimum_closed_trades": 20,
+      "minimum_long_trade_share": 0.2,
+      "minimum_short_trade_share": 0.2,
+      "stress_net_return_strictly_positive": true
+    },
+    "selection_order": [
+      "base_net_return_over_strict_mdd_descending",
+      "stress_net_return_descending",
+      "closed_trades_descending",
+      "candidate_id_ascending"
+    ],
+    "selection_period": [
+      "2022-01-01",
+      "2022-12-31"
+    ],
+    "single_selected_top1": true,
+    "stress_cost_per_side": 0.001
+  },
+  "execution_contract": {
+    "failure_is_terminal_for_cdp1": true,
+    "new_family_after_failure_requires_new_preregistration": true,
+    "preregistration_committed_before_source_payload_open": true,
+    "selection_result_committed_before_2023_future_veto_open": true,
+    "source_support_result_committed_before_outcome_payload_open": true
+  },
+  "feature_contract": {
+    "card_clock": "daily_card_decision_at_12:05:00_utc",
+    "changed_sections_jaccard_definition": "1 - |set(ethereum.changed_sections) intersect set(bitcoin.changed_sections)| / |set(ethereum.changed_sections) union set(bitcoin.changed_sections)|; both empty gives 0",
+    "daily_aggregate": "arithmetic_mean(unit_score for all eligible relation units)",
+    "eligible_unit": "ethereum and bitcoin are mapping payloads; counterpart_state is SAME_DAY_CARTESIAN or TRAILING_90D; memorization_excluded is false",
+    "empty_day_action": "daily_score_missing; leave both EWMAs unchanged; emit no signal",
+    "ewma_formula": "ewma_t = alpha*x_t + (1-alpha)*ewma_previous, alpha = 1 - exp(log(0.5)/half_life)",
+    "ewma_initialization": "first_nonmissing_daily_score",
+    "exact_mismatch_definition": "0.0 when the two protocol payload values are exactly equal; 1.0 otherwise",
+    "fast_ewma_half_life_cards": 3,
+    "market_funding_or_return_inputs": false,
+    "minimum_nonmissing_cards_before_signal": 30,
+    "normalization_or_fitted_parameters": false,
+    "primary_schedule": "ARCHIVE_D90",
+    "relation_scope": "complete_logical_day_relation_roster",
+    "slow_ewma_half_life_cards": 30,
+    "unit_components": [
+      "event_type_exact_mismatch",
+      "window_revision_count_bucket_exact_mismatch",
+      "window_age_bucket_exact_mismatch",
+      "update_gap_bucket_exact_mismatch",
+      "dependency_delta_state_exact_mismatch",
+      "dependency_edge_delta_count_bucket_exact_mismatch",
+      "line_change_count_bucket_exact_mismatch",
+      "changed_section_count_bucket_exact_mismatch",
+      "changed_sections_jaccard_distance"
+    ],
+    "unit_score_formula": "mean(component_disagreement_j for j in the 9 frozen components)"
+  },
+  "frozen_family": {
+    "candidate_count": 9,
+    "candidate_ids": [
+      "CDP_S35_G05",
+      "CDP_S35_G10",
+      "CDP_S35_G15",
+      "CDP_S50_G05",
+      "CDP_S50_G10",
+      "CDP_S50_G15",
+      "CDP_S65_G05",
+      "CDP_S65_G10",
+      "CDP_S65_G15"
+    ],
+    "cartesian_product_order": "slow_floor_outer_gap_inner",
+    "fast_slow_gap_grid": [
+      0.05,
+      0.1,
+      0.15
+    ],
+    "rank2_or_post_result_threshold_repair_allowed": false,
+    "slow_floor_grid": [
+      0.35,
+      0.5,
+      0.65
+    ]
+  },
+  "independence_contract": {
+    "2021_terminal_metrics_used_for_direction_threshold_or_selection": false,
+    "forbidden_inputs": [
+      "gemma_or_any_other_language_model_output",
+      "teacher_relation_labels_or_logits",
+      "text_embeddings_or_generated_text",
+      "selected_subcard_or_subcard_selector",
+      "ridge_fqi_q_values_or_residual_rewards",
+      "2020_or_2021_market_funding_returns_or_policy_metrics"
+    ],
+    "repair_or_successor_of_rllm2": false,
+    "rllm2_terminal_report": {
+      "path": "docs/psim-d8-rllm2-s7-2021-report-only-transfer-rejection-2026-07-27.md",
+      "sha256": "d171edfda4518c80815d2404553ab10ffe394f83a78d38f514aa0e315e4ccfde"
+    },
+    "rllm2_terminal_result": {
+      "2022_or_later_outcomes_opened": false,
+      "decision": "reject",
+      "path": "results/psim_d8_rllm2_s7_2021_report_only_transfer_result_2026-07-27.json",
+      "result_hash": "545b58bd5346d6fa5c87195e06692432a0b0447cbc31a56a917830b62da59e71",
+      "sha256": "c061b82438a5b207801b321b864a252564fcd754f3ce09a4ff4d427c3327480a",
+      "terminal_action": "RETIRE_UNCHANGED_S6R1_HYPOTHESIS_NO_2021_REPAIR"
+    }
+  },
+  "manifest_hash": "8f564a0ceb967df9c7bb2cd3b719156aa75cde7883c3426d07a5be191ef5ae5d",
+  "outcome_authority": {
+    "funding": {
+      "path": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+      "payload_opened_or_hashed_at_preregistration": false,
+      "sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+    },
+    "market": {
+      "path": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+      "payload_opened_or_hashed_at_preregistration": false,
+      "sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d"
+    }
+  },
+  "protocol_version": "psim_d8_cross_protocol_disagreement_persistence_v1",
+  "source_authority": {
+    "cards": {
+      "canonical_rows_sha256": "cd73cd6f7f82a02b8662ef4689a721fa32698f73f37aebc1f1041dbfab3fb071",
+      "path": "data/protocol_specification_intent_maturity_d8_cards_2020_2024q1.jsonl.gz",
+      "payload_opened_or_hashed_at_preregistration": false,
+      "sha256": "ce1bd1bd9a24068e6e223efca323db805781e912eadb0d2a8b7d63610fab96c1"
+    },
+    "events": {
+      "canonical_rows_sha256": "b6f1e1733d423fd0fd88f7008d1e505d3a513c0d2bec692446c6e2cf32196ac0",
+      "path": "data/protocol_specification_intent_maturity_d8_events_2020_2023.jsonl.gz",
+      "payload_opened_or_hashed_at_preregistration": false,
+      "sha256": "d7308789176af4bfe1bb2f5f13c89d6811bc7f938f3ecec08b1bf8acc5f7e2b2"
+    },
+    "execution_seal": {
+      "path": "results/psim_d8_source_support_execution_seal_2026-07-27.json",
+      "sha256": "c63951fddbae7aabf0eaa51edaacfdfc67203b004580d080189eb8635648f9df"
+    },
+    "source_controls": {
+      "path": "results/protocol_specification_intent_maturity_d8_source_controls_2026-07-27.json",
+      "sha256": "6c24b5d6ea693e19a90972a31ae96a24ac28a1f1a6b20be63418d0b5881551b1"
+    },
+    "source_rerun_repair_or_d9_allowed": false,
+    "source_support_result": {
+      "path": "results/protocol_specification_intent_maturity_d8_source_support_2026-07-27.json",
+      "sha256": "0b92b476b654cd76f0cf9dc004690cbcb78e7a5e73917b5d66611c0460d00204"
+    }
+  },
+  "source_support_gate": {
+    "evaluated_before_market_or_funding_open": true,
+    "failure_action": "TERMINAL_REJECT_CDP1_SOURCE_SUPPORT_NO_THRESHOLD_REPAIR",
+    "maximum_top_calendar_month_share": 0.5,
+    "minimum_active_quarters_each_year": 3,
+    "minimum_eligible_signal_days_2022": 24,
+    "minimum_eligible_signal_days_2023": 24,
+    "minimum_long_candidates_with_incidence": 1,
+    "minimum_short_candidates_with_incidence": 1
+  }
+}
