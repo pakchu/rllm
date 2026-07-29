@@ -1,0 +1,738 @@
+{
+  "candidate_comparator_overlap_opened": false,
+  "causal_batch_contract": {
+    "current_batch_mutually_prior": false,
+    "exactly_one_complete_operation_required": true,
+    "invalid_or_multi_operation_batch_resets": [
+      "rolling_history",
+      "prior_LOW_state",
+      "prior_HIGH_state"
+    ],
+    "key": "exact available_at_utc",
+    "weekend_holiday_or_no_operation_gap_resets": false
+  },
+  "complete_operation_contract": {
+    "accepted_not_above_submitted_each_detail": true,
+    "detail_operation_totals_reconcile_exactly": [
+      "par_submitted",
+      "par_accepted"
+    ],
+    "every_detail_joins_exactly_one_operation": true,
+    "every_operation_has_detail": true,
+    "joined_date_and_availability_exact": true,
+    "one_invalid_detail_invalidates_operation": true,
+    "operation_cusip_unique": true,
+    "operation_id_unique": true,
+    "reason_counts_required": true,
+    "row_deletion_or_imputation": false,
+    "strictly_positive_centroid_weights": [
+      "par_submitted",
+      "par_accepted",
+      "actual_available_to_borrow"
+    ]
+  },
+  "controls": {
+    "delayed_accepted_set": "may shrink under independent overlap, crossing, or missing same-segment successor; every reason reported",
+    "delayed_controls_may_create_parent_events": false,
+    "delayed_parent_set": "raw parent signal IDs and sides unchanged",
+    "one_extra_bar_delay": "same event and side; entry and exit +5 elapsed minutes",
+    "one_operation_delay": "same event and side; entry at next complete causal operation in same uninterrupted segment scheduled entry; exit +72h; rerun reservation",
+    "outcome_order": [
+      "exact_direction_flip",
+      "deterministic_random_side",
+      "constant_long",
+      "constant_short",
+      "one_extra_bar_delay",
+      "one_operation_delay"
+    ],
+    "random_side": {
+      "LONG": "first SHA256 byte < 128",
+      "SHORT": "first SHA256 byte >= 128",
+      "input": "SMAF-72|<primary_signal_id>|RANDOM_SIDE"
+    },
+    "source_clocks_reserve_independently": true,
+    "source_definitions": {
+      "aggregate_demand_intensity": "sum(S)/sum(V)",
+      "award_inventory_tilt": "C(A)-C(V)",
+      "primary": "2*C(S)-C(V)-C(A)",
+      "submitted_award_tilt": "C(S)-C(A)",
+      "submitted_inventory_tilt": "C(S)-C(V)"
+    },
+    "source_order": [
+      "primary",
+      "submitted_inventory_tilt",
+      "submitted_award_tilt",
+      "award_inventory_tilt",
+      "aggregate_demand_intensity"
+    ]
+  },
+  "economic_contract": {
+    "base_cost_bp_per_notional_side": 6.0,
+    "cost_cash": "abs(quantity)*execution_price*bp/10000",
+    "entry_price": "exact 5m open at entry_time",
+    "exit_price": "exact 5m open at exit_time",
+    "full_calendar_cagr": "includes idle cash; elapsed_seconds/(365.25*86400)",
+    "funding_cash": "-side_sign*quantity*funding_rate*settlement_mark_price",
+    "funding_interval": "entry_time <= funding_time < exit_time",
+    "initial_equity": 1.0,
+    "instrument": "Binance USD-M BTCUSDT perpetual",
+    "later_evaluator_must_validate_identity_and_header_first": true,
+    "mean_gross_underlying_bp": "mean(side_sign*(exit_open/entry_open-1)*10000)",
+    "quantity": "0.5*pre_entry_equity/entry_open; fixed through exit",
+    "rows_open_authorized": false,
+    "side_sign": {
+      "LONG": 1,
+      "SHORT": -1
+    },
+    "stops_take_profit_early_exit_or_overlap": false,
+    "stress_cost_bp_per_notional_side": 10.0,
+    "strict_mdd": "global/pre-entry HWM; entry fee; funding credits before favorable held-bar extreme; funding debits before adverse extreme; adverse virtual exit fee; scheduled exit fee",
+    "weekly_cluster_signflip": {
+      "bit": "most significant bit of digest byte zero; &0x80",
+      "bit_input": "UTF8 no newline: SMAF-72|<STAGE_TOKEN>|<DRAW_00000>|<ISO_YEAR_4>-W<ISO_WEEK_2>",
+      "bit_one_multiplier": -1,
+      "bit_zero_multiplier": 1,
+      "cluster": "UTC ISO entry week base-cost net trade PnL",
+      "draw_indices": "0..19999 formatted as five digits",
+      "draws": 20000,
+      "iso_week_format": "two digits",
+      "iso_year_format": "four digits",
+      "p_value": "(1+count(flipped_total>=observed_total))/20001",
+      "stage_tokens": [
+        "TRAIN_2020_2022",
+        "SELECTION_2023"
+      ]
+    }
+  },
+  "economic_gates": {
+    "required_joint_report": [
+      "absolute_return",
+      "cagr",
+      "strict_mdd",
+      "cagr_to_strict_mdd",
+      "trades",
+      "long_trades",
+      "short_trades",
+      "subperiod_returns",
+      "mean_gross_underlying_bp",
+      "funding_cash",
+      "cost_cash",
+      "weekly_clusters",
+      "weekly_cluster_signflip_p"
+    ],
+    "selection_2023": {
+      "base_and_stress_absolute_return_positive": true,
+      "base_and_stress_strict_mdd_max": 0.15,
+      "base_cagr_to_strict_mdd_min": 3.0,
+      "direction_random_constant_margin": "primary base absolute return strictly greater",
+      "each_delay_absolute_return_positive": true,
+      "each_half_base_absolute_return_positive": true,
+      "each_half_min": 7,
+      "each_side_min": 5,
+      "executed_trades_min": 18,
+      "mean_gross_underlying_bp_min": 35.0,
+      "mechanism_control_absolute_return_margin": "primary strictly greater than every source control",
+      "mechanism_control_ratio_margin_min": 0.25,
+      "stress_cagr_to_strict_mdd_min": 2.5,
+      "weekly_cluster_signflip_p_max": 0.2
+    },
+    "train_2020_2022": {
+      "base_and_stress_absolute_return_positive": true,
+      "base_and_stress_strict_mdd_max": 0.15,
+      "base_cagr_to_strict_mdd_min": 3.0,
+      "direction_random_constant_margin": "primary base absolute return strictly greater",
+      "each_delay_absolute_return_positive": true,
+      "each_side_min": 15,
+      "each_year_base_absolute_return_positive": true,
+      "each_year_min": 15,
+      "executed_trades_min": 60,
+      "mean_gross_underlying_bp_min": 35.0,
+      "mechanism_control_absolute_return_margin": "primary strictly greater than every source control",
+      "mechanism_control_ratio_margin_min": 0.25,
+      "stress_cagr_to_strict_mdd_min": 2.5,
+      "weekly_cluster_signflip_p_max": 0.1
+    },
+    "zero_mdd_or_nonfinite_control_ratio": "fail margin comparison"
+  },
+  "economic_hydration_contract": {
+    "before_economic_evaluator_commit": [
+      "copy bytes into exact logical repository-relative paths",
+      "reject symlink or non-regular file",
+      "set hydrated files read-only",
+      "validate all four full-file SHA256 identities",
+      "validate both gzip header SHA256 identities",
+      "write exact canonical manifest results/smaf_72_economic_artifact_hydration_2026-07-30.json",
+      "open zero market or funding rows until checks pass"
+    ],
+    "evaluator_fallback_artifact_root": null,
+    "evaluator_refuses_absent_logical_path": true,
+    "external_store_location_frozen_or_recorded_here": false,
+    "host_absolute_source_path": {
+      "allowed_only_in_uncommitted_gitignored_log": ".omx/local/smaf-72-hydration-source-path.json",
+      "forbidden_from_committed_manifest_evaluator_and_results": true
+    },
+    "later_evaluator_freezes": [
+      "hydration manifest file SHA256",
+      "hydration internal manifest_hash"
+    ],
+    "later_evaluator_validates_before_rows": true,
+    "logical_paths_and_hashes_define_identity": true,
+    "manifest": {
+      "artifact_keys_exact": [
+        "logical_path",
+        "portable_source_locator",
+        "copied_at_utc",
+        "size_bytes",
+        "sha256",
+        "header_sha256",
+        "regular_file",
+        "symlink",
+        "mode",
+        "rows_opened_before_validation"
+      ],
+      "artifact_order": "ascending logical_path",
+      "copied_at_utc": "UTC RFC3339 YYYY-MM-DDTHH:MM:SS.ffffffZ",
+      "encoding": "UTF-8",
+      "funding_rows_opened": 0,
+      "manifest_hash": "SHA256 compact sorted-key JSON without manifest_hash; separators comma/colon, ensure_ascii true, allow_nan false",
+      "market_rows_opened": 0,
+      "mode": "0444",
+      "path": "results/smaf_72_economic_artifact_hydration_2026-07-30.json",
+      "portable_source_locator": "local-cache:sha256:<artifact sha256>",
+      "protocol_version": "smaf_72_economic_artifact_hydration_v1",
+      "regular_file": true,
+      "rows_opened_before_validation": 0,
+      "serialization": {
+        "allow_nan": false,
+        "ensure_ascii": true,
+        "indent": 2,
+        "sort_keys": true
+      },
+      "symlink": false,
+      "top_level_keys_exact": [
+        "protocol_version",
+        "artifacts",
+        "market_rows_opened",
+        "funding_rows_opened",
+        "manifest_hash"
+      ],
+      "trailing_lf_count": 1
+    },
+    "matching_market_bytes_hash_checked_outside_worktree": true,
+    "materialization_state_at_freeze": {
+      "funding_data": true,
+      "funding_manifest": true,
+      "market_data": false,
+      "market_manifest": false
+    }
+  },
+  "economic_rows_opened": false,
+  "evidence_boundary": {
+    "btc_market_rows_loaded": 0,
+    "candidate_overlap_metrics_computed": 0,
+    "description_probe_rows_read": 8,
+    "disclosure_is_conservative_contamination_envelope": true,
+    "forward_returns_pnl_cagr_or_mdd_opened": false,
+    "funding_data_rows_loaded": 0,
+    "historical_access_independently_auditable_from_pre_head": false,
+    "network_calls": 0,
+    "pristine_source_claim": false,
+    "probe_identity_rows_read": 8,
+    "scaf_rows_scanned_for_group_inventory": 5809,
+    "slcs_rows_scanned_for_group_inventory": 1685,
+    "smaf_centroids_fractures_ranks_tails_or_events_derived": 0,
+    "source_amount_rate_or_availability_rows_read": 0,
+    "subprocess_calls": 0
+  },
+  "execution": {
+    "acceptance": "entry_time >= previous accepted exit_time",
+    "already_aligned_still_waits_minutes": 5,
+    "candidate_order": [
+      "entry_time",
+      "signal_id"
+    ],
+    "ceil_5m": "smallest Unix-epoch multiple of 300s >= decision",
+    "decision_time": "available_at_utc",
+    "entry_time": "ceil_to_5m(decision_time)+5 elapsed minutes",
+    "exit_time": "entry_time+72 elapsed hours",
+    "global_nonoverlap_before_split": true,
+    "hold_bars": 864,
+    "hold_hours": 72,
+    "reservation": "[entry_time,exit_time)",
+    "source_state_independent_of_suppression": true,
+    "suppression": "no queue, replacement, or release"
+  },
+  "feature_contract": {
+    "centroid": "sum(W_i*tau_i)/sum(W_i)",
+    "decomposition": "(C(S)-C(V))+(C(S)-C(A))",
+    "high_side": "SHORT",
+    "low_side": "LONG",
+    "meaning": "submitted maturity relative to the average of available-to-borrow and accepted-award centroids",
+    "not_duration_dv01_risk_or_causal": true,
+    "polarity_repair_forbidden": true,
+    "primary": "2*C(S)-C(V)-C(A)",
+    "weights": {
+      "A": "par_accepted",
+      "S": "par_submitted",
+      "V": "actual_available_to_borrow"
+    }
+  },
+  "frozen_documents": {
+    "common_window_policy": {
+      "path": "docs/novelty-comparator-common-window-policy-2026-07-23.md",
+      "sha256": "928bce6e04fb34001478b4b4ea84156580b661c88a0f0338065a891c009bd580"
+    },
+    "preregistration": {
+      "path": "docs/soma-maturity-allocation-fracture-preregistration-2026-07-30.md",
+      "sha256": "0ca0b00c77bd55e3360abe1f36409938a8e95dc450a599b89370d1265b4491f9"
+    },
+    "source_audit": {
+      "path": "docs/new-york-fed-securities-lending-source-audit-2026-07-23.md",
+      "sha256": "c812998be0bd44efc09b8120d9bc0b2a96f4e1e95f9414a4c8458d97319307bc"
+    },
+    "source_builder": {
+      "path": "training/build_new_york_fed_securities_lending.py",
+      "sha256": "2f0b5b3daca253ca015c7f691faf0ab75d11c200c11f5bc1c47b34ed1b85ef45"
+    }
+  },
+  "manifest_hash": "a5949fd0aa723aebf271a966371222c219093fbff1f3d34ba383f5f66620682b",
+  "novelty_contract": {
+    "all_selected_groups_must_pass": true,
+    "common_window": [
+      "2020-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "comparators": [
+      {
+        "allowed_groups": [
+          "primary",
+          "carry_intensity_only",
+          "constant_long",
+          "constant_short",
+          "demand_breadth_only",
+          "demand_intensity_only",
+          "deterministic_random_side",
+          "exact_direction_flip",
+          "five_operation_stale",
+          "mean_without_consensus",
+          "one_operation_stale",
+          "same_sign_without_magnitude",
+          "weighted_fee_only",
+          "year_component_permutation"
+        ],
+        "group_column": "control",
+        "header_sha256": "45a24e800b79a30047ffeb5f45c69cf4817262e57b0af1cf5e046332536e5e94",
+        "id": "SLCS",
+        "minimum_contained_rows_each_group": 20,
+        "path": "results/soma_lending_collateral_scarcity_clocks_2026-07-23.csv.gz",
+        "read_csv": {
+          "dtype": "string",
+          "keep_default_na": false,
+          "na_filter": false,
+          "usecols": [
+            "control",
+            "entry_time",
+            "exit_time",
+            "side"
+          ]
+        },
+        "selected_groups": [
+          "primary",
+          "demand_intensity_only",
+          "weighted_fee_only",
+          "carry_intensity_only",
+          "demand_breadth_only"
+        ],
+        "sha256": "b3fe0dc8c895f9a8974cdf08b5bed9d58ff693b8aca7ed59c224627de930a948",
+        "side_map": {
+          "-1": "SHORT",
+          "1": "LONG"
+        }
+      },
+      {
+        "allowed_groups": [
+          "primary",
+          "inventory_mismatch_only",
+          "award_distortion_only",
+          "unmet_demand_mass_only",
+          "fee_distortion_only",
+          "mean_change_without_consensus",
+          "two_of_four_without_opposition",
+          "one_batch_stale",
+          "five_batch_stale",
+          "within_batch_demand_permutation",
+          "exact_direction_flip",
+          "deterministic_random_side",
+          "constant_long",
+          "constant_short"
+        ],
+        "group_column": "control",
+        "header_sha256": "770965eb9e07bbca6f6b3f3c3165fe5c04301ef6573da86dacd161582cfa8c8f",
+        "id": "SCAF",
+        "minimum_contained_rows_each_group": 20,
+        "path": "data/soma_collateral_allocation_fracture_clocks_2020_2023.csv.gz",
+        "read_csv": {
+          "dtype": "string",
+          "keep_default_na": false,
+          "na_filter": false,
+          "usecols": [
+            "control",
+            "entry_time",
+            "exit_time",
+            "side"
+          ]
+        },
+        "selected_groups": [
+          "primary",
+          "inventory_mismatch_only",
+          "award_distortion_only",
+          "unmet_demand_mass_only",
+          "fee_distortion_only"
+        ],
+        "sha256": "64e07005d70442bfa7a110b1e6bea9802ee94be16d95f6e7db9228f4790a28e6",
+        "side_map": {
+          "LONG": "LONG",
+          "SHORT": "SHORT"
+        }
+      }
+    ],
+    "duplicate_entry_overlap_non5m_empty_or_nonfinite": "fail",
+    "failure_action": "retire SMAF-72 unchanged before outcomes",
+    "full_interval_containment": true,
+    "groups_compared_separately": true,
+    "occupancy": {
+      "LONG": 1,
+      "SHORT": -1,
+      "grid": "complete five-minute UTC grid over [2020-01-01,2024-01-01)",
+      "idle": 0,
+      "interval": "[entry,exit)"
+    },
+    "one_to_one_24h_match": {
+      "algorithm": "two pointers; discard only timestamp >24 elapsed hours earlier; otherwise match and advance both",
+      "inputs": "sorted distinct UTC entry times",
+      "matched_count": "maximum cardinality"
+    },
+    "opens_only_after_all_source_support_passes": true,
+    "raw_validation_before_filter": true,
+    "thresholds_each_group": {
+      "absolute_signed_occupancy_pearson_max": 0.35,
+      "candidate_24h_containment_max": 0.4,
+      "comparator_24h_containment_max": 0.4,
+      "exact_entry_jaccard_max": 0.2,
+      "same_entry_same_side_reproduction_max": 0.3
+    }
+  },
+  "outcomes_opened": false,
+  "parser_contract": {
+    "amount_regex": "\\A(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?\\Z",
+    "coupon_validation_only": true,
+    "exact_ascii_spaces": true,
+    "float_forbidden": true,
+    "gregorian_validation": true,
+    "label_validation_only": true,
+    "maturity_year": "2000 + YY",
+    "numeric_arithmetic": "exact rational from decimal digits",
+    "regex_flags": [
+      "ASCII"
+    ],
+    "security_description_regex": "\\A(?P<label>[A-Z][A-Z0-9/-]{0,15}) (?P<coupon>[0-9]{1,2}(?:\\.[0-9]{1,6})?) (?P<maturity>(?:0[1-9]|1[0-2])/(?:0[1-9]|[12][0-9]|3[01])/[0-9]{2})\\Z",
+    "tau": "maturity_date - operation_date in integer calendar days",
+    "tau_max": 18263,
+    "tau_min": 1,
+    "trim_or_normalize": false
+  },
+  "policy": {
+    "base_cost_bp_per_notional_side": 6.0,
+    "cluster_signflip_draws": 20000,
+    "entry_latency_minutes": 5,
+    "history_operations": 126,
+    "hold_bars": 864,
+    "hold_hours": 72,
+    "leverage": 0.5,
+    "lower_tail_numerator": 1,
+    "policy_id": "SMAF-72",
+    "selection_end": "2024-01-01T00:00:00Z",
+    "stress_cost_bp_per_notional_side": 10.0,
+    "tail_denominator": 10,
+    "train_end": "2023-01-01T00:00:00Z",
+    "train_start": "2020-01-01T00:00:00Z",
+    "upper_tail_numerator": 9
+  },
+  "probe_disclosure": {
+    "amount_rate_availability_fields_read": false,
+    "failure_action": "retire unchanged; parser repair forbidden",
+    "incidence_or_count_computed": false,
+    "operation_date": "2019-01-02",
+    "operation_id": "SL 010219 1",
+    "rows": [
+      [
+        "912810EC8",
+        "T 08.875 02/15/19"
+      ],
+      [
+        "912810ED6",
+        "T 08.125 08/15/19"
+      ],
+      [
+        "912810EE4",
+        "T 08.500 02/15/20"
+      ],
+      [
+        "912810EF1",
+        "T 08.750 05/15/20"
+      ],
+      [
+        "912810EG9",
+        "T 08.750 08/15/20"
+      ],
+      [
+        "912810EH7",
+        "T 07.875 02/15/21"
+      ],
+      [
+        "912810EJ3",
+        "T 08.125 05/15/21"
+      ],
+      [
+        "912810EK0",
+        "T 08.125 08/15/21"
+      ]
+    ],
+    "selection": "first eight normalized detail rows from the first operation_id in file order"
+  },
+  "protocol_version": "soma_maturity_allocation_fracture_preregistration_v1",
+  "rank_and_onset": {
+    "E": "count(prior == current)",
+    "HIGH": "10*(2*L+E) >= 2268",
+    "L": "count(prior < current)",
+    "LOW": "10*(2*L+E) <= 252",
+    "canonical_signal_id": "sha256_utf8(SMAF-72|<control>|<operation_id>|<available_at_utc>|<LOW_OR_HIGH>)",
+    "first_rank_ready_operation": "baseline only; cannot trigger",
+    "history": "latest 126 strictly prior complete operations",
+    "integer_cross_multiplication_only": true,
+    "midrank": "(2*L+E)/252",
+    "tail_persistence_emits": false,
+    "trigger": "false-to-true onset of LOW or HIGH"
+  },
+  "research_status": "source_seen_outcome_unseen_preincidence",
+  "rllm_boundary": {
+    "actions": [
+      "TRADE_FIXED_SIDE",
+      "ABSTAIN"
+    ],
+    "activation_requires_deterministic_train_and_selection_pass": true,
+    "fit_window": "2020-2022 only",
+    "forbidden": [
+      "raw maturity amount or rank numerator",
+      "timestamp date or split identity",
+      "price return funding reward or PnL",
+      "CAGR MDD or evaluated outcome"
+    ],
+    "may_not_change": [
+      "candidate clock",
+      "side",
+      "entry",
+      "exit",
+      "hold",
+      "leverage",
+      "accounting"
+    ],
+    "selection_feedback_may_change_policy": false
+  },
+  "sealed_economic_artifacts": {
+    "funding_data": {
+      "header_sha256": "71b2b1395313f631969674c43e569c8f1619a9fb23c8316e2e0478c32f01d61f",
+      "path": "data/binance_um_btcusdt_funding_marks_2020_2023.csv.gz",
+      "sha256": "3284bbb6bb67946acb673c6b67459543e217f752589e1d47b6c7c3b659f733e6"
+    },
+    "funding_manifest": {
+      "path": "results/binance_um_btcusdt_funding_marks_2020_2023_manifest_2026-07-17.json",
+      "sha256": "a0b2d27e1aa8cf2d9ab8cb659b598ee0a6d7bd25401c9e10ae92d1a74415845b"
+    },
+    "market_data": {
+      "header_sha256": "5e8d51e7e1218929db6a54ca59280eb4306171b81d5d0880467a85cf9d23eff2",
+      "path": "data/binance_um_kline_reference_btc_2020_2023/BTCUSDT_5m_2020-01-01_2023-12-31.csv.gz",
+      "sha256": "e7a987ac662601bff445a23bb3c9aea736d14b8f7ef88d7e69794cdaf9d6c28d"
+    },
+    "market_manifest": {
+      "path": "data/binance_um_kline_reference_btc_2020_2023/build_manifest.json",
+      "sha256": "c04fbbd299cc748a6745c0ef030787da4d560833c744c81c98dd8840efc7913e"
+    }
+  },
+  "sequence_rules": {
+    "no_parameter_or_parser_repair": true,
+    "post_2023_sealed": true,
+    "selection_opens_only_after_train_pass": true,
+    "selection_rows_loaded_during_train": false,
+    "stop_at_first_failure": true
+  },
+  "singleton": true,
+  "source_contracts": {
+    "details": {
+      "header_sha256": "9f4d54dff4b9c9f0c47c0a85e0bf245276e5a3cb764b3c084017f679586b76dd",
+      "path": "data/new_york_fed_securities_lending_2019_2023/new_york_fed_securities_lending_details_2019_2023.csv.gz",
+      "read_csv": {
+        "dtype": "string",
+        "keep_default_na": false,
+        "na_filter": false,
+        "usecols": [
+          "operation_id",
+          "operation_date",
+          "available_at_utc",
+          "cusip",
+          "security_description",
+          "par_submitted",
+          "par_accepted",
+          "actual_available_to_borrow"
+        ]
+      },
+      "sha256": "27178d8738cb50c4e6c13f1e5940fcfdf4009e6979b006c42fb86fb399d0716d"
+    },
+    "manifest": {
+      "canonical_hash": "748db33b3ea40eb48d126d0e9882b05e1994741bf851a8f3c7b89d5166db969c",
+      "path": "data/new_york_fed_securities_lending_2019_2023/build_manifest.json",
+      "sha256": "58b9eb56728065d919978b8969e9bbb4bcb291f723a290d22045fe2ca3da2019"
+    },
+    "network_calls": 0,
+    "operation_maturity_date_forbidden": true,
+    "operations": {
+      "header_sha256": "c0d63795e5e53cef816c50472c6941069cb018f30ad1f745f250daa0fa6b9200",
+      "path": "data/new_york_fed_securities_lending_2019_2023/new_york_fed_securities_lending_operations_2019_2023.csv.gz",
+      "read_csv": {
+        "dtype": "string",
+        "keep_default_na": false,
+        "na_filter": false,
+        "usecols": [
+          "operation_id",
+          "operation_date",
+          "available_at_utc",
+          "total_par_submitted",
+          "total_par_accepted"
+        ]
+      },
+      "sha256": "99eb8c37c05417789dfad7452c7b2ddc5b6b640078b87451f1c945158af77906"
+    },
+    "raw_api_json_forbidden": true
+  },
+  "source_incidence_opened": false,
+  "source_support_gates": {
+    "coverage": {
+      "each_ratio_exact_in_full_warmup_train_selection": 1.0,
+      "each_split_each_raw_tail_share_max": 0.2,
+      "each_split_each_raw_tail_share_min": 0.05,
+      "selection_rank_ready_min": 240,
+      "train_rank_ready_min": 740
+    },
+    "coverage_formulas": {
+      "complete_operation_share": "complete operations / all operation rows",
+      "description_parser_coverage": "valid parsed joined detail rows / all joined detail rows",
+      "single_operation_batch_share": "valid one-complete-operation availability batches / all distinct available_at_utc batches"
+    },
+    "coverage_windows": {
+      "full": [
+        "2019-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "selection": [
+        "2023-01-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "train": [
+        "2020-01-01T00:00:00Z",
+        "2023-01-01T00:00:00Z"
+      ],
+      "warmup": [
+        "2019-01-01T00:00:00Z",
+        "2020-01-01T00:00:00Z"
+      ]
+    },
+    "failure_action": "retire SMAF-72 unchanged before external comparators or outcomes",
+    "failure_order": [
+      "frozen_identity_and_exact_header",
+      "schema_join_uniqueness_reconciliation",
+      "parser_coverage_and_complete_operations",
+      "singleton_causal_batches",
+      "rank_coverage_and_tail_selectivity",
+      "primary_event_support",
+      "internal_component_distinctness"
+    ],
+    "internal_component_distinctness": {
+      "absolute_signed_occupancy_pearson_max": 0.8,
+      "controls": [
+        "submitted_inventory_tilt",
+        "submitted_award_tilt",
+        "award_inventory_tilt",
+        "aggregate_demand_intensity"
+      ],
+      "each_split_each_side_share_min": 0.2,
+      "exact_entry_jaccard_max": 0.7,
+      "same_entry_same_side_reproduction_max": 0.7,
+      "selection_entries_min_each": 10,
+      "train_entries_min_each": 30,
+      "undefined_or_nonfinite_correlation": "fail"
+    },
+    "operation_and_batch_window_attribution": "available_at_utc",
+    "selection": {
+      "active_months_min": 8,
+      "each_half_min": 7,
+      "each_quarter_min": 3,
+      "each_side_min": 5,
+      "each_side_share_min": 0.2,
+      "events_max": 70,
+      "events_min": 18,
+      "maximum_elapsed_entry_gap_days": 90,
+      "maximum_month_share": 0.25,
+      "maximum_quarter_share": 0.45,
+      "maximum_same_side_run": 6
+    },
+    "split_boundary_resets_rank_history": false,
+    "train": {
+      "active_months_min": 20,
+      "each_half_min": 6,
+      "each_quarter_min": 2,
+      "each_side_min": 15,
+      "each_side_share_min": 0.2,
+      "each_year_min": 15,
+      "events_max": 180,
+      "events_min": 60,
+      "maximum_elapsed_entry_gap_days": 90,
+      "maximum_month_share": 0.15,
+      "maximum_quarter_share": 0.3,
+      "maximum_same_side_run": 8
+    },
+    "undefined_or_empty": "fail"
+  },
+  "strict_sequence": [
+    "preregistration_document_commit",
+    "write_once_preregistration_commit",
+    "source_support_evaluator_commit",
+    "source_support",
+    "internal_component_distinctness",
+    "external_comparator_novelty",
+    "economic_evaluator_commit",
+    "train_2020_2022_once",
+    "selection_2023_once_if_train_passes",
+    "post_2023_source_extension"
+  ],
+  "windows": {
+    "containment": "operation_date, decision, entry, and exit in same split; exit may equal exclusive end",
+    "crossing_interval": "report and exclude whole",
+    "sealed": [
+      "2024-01-01T00:00:00Z",
+      null
+    ],
+    "selection": [
+      "2023-01-01T00:00:00Z",
+      "2024-01-01T00:00:00Z"
+    ],
+    "timezone": "UTC",
+    "train": [
+      "2020-01-01T00:00:00Z",
+      "2023-01-01T00:00:00Z"
+    ],
+    "warmup": [
+      "2019-01-01T00:00:00Z",
+      "2020-01-01T00:00:00Z"
+    ]
+  }
+}
