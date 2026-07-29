@@ -15,6 +15,7 @@ import re
 import secrets
 import stat
 import subprocess
+import sys
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -27,7 +28,12 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
-from training import preregister_soma_maturity_allocation_fracture as prereg
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from training import (
+    preregister_soma_maturity_allocation_fracture as prereg,
+)
 
 PROTOCOL_VERSION = "soma_maturity_allocation_fracture_support_v1"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]

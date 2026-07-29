@@ -4,6 +4,8 @@ import csv
 import gzip
 import io
 import json
+import subprocess
+import sys
 from datetime import date, datetime, timedelta, timezone
 from fractions import Fraction
 from pathlib import Path
@@ -38,6 +40,18 @@ def test_protocol_guard_uses_exactly_two_git_checks(
     assert len(calls) == 2
     assert calls[0][:2] == ("ls-files", "--error-unmatch")
     assert calls[1][:3] == ("diff", "--quiet", "HEAD")
+
+
+def test_direct_script_help_imports_without_source_access() -> None:
+    completed = subprocess.run(
+        [sys.executable, str(s.SCRIPT_PATH), "--help"],
+        cwd=s.REPOSITORY_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "Build outcome-blind SMAF-72" in completed.stdout
 
 
 def _synthetic_source(
