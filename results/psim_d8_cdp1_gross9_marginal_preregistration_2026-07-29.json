@@ -1,0 +1,131 @@
+{
+  "access_boundary": {
+    "2022_portfolio_interaction_metrics_computed": false,
+    "2023_portfolio_interaction_metrics_computed": false,
+    "gross9_events_rebuilt": false,
+    "gross9_market_opened_or_hashed": false,
+    "gross9_market_with_oi_opened_or_hashed": false
+  },
+  "as_of_date": "2026-07-29",
+  "candidate_contract": {
+    "base_cost_per_side": 0.0006,
+    "decision_clock": "daily D8 card decision_at 12:05 UTC",
+    "entry_clock": "first 5m open one complete bar after decision_at",
+    "family": "PSIM-D8-CDP1",
+    "fixed_top1": "CDP_S50_G05",
+    "funding": "exact_mark_funding_cashflows",
+    "hold_bars_5m": 288,
+    "overlap": "forbidden_first_signal_wins",
+    "signal_thresholds_or_state_repair_allowed": false,
+    "standalone_future_veto_result": {
+      "path": "results/psim_d8_cross_protocol_disagreement_2023_veto_result_2026-07-29.json",
+      "sha256": "44ed96d5f2cabc045aac3ecb8f828de548654047097ad445eb8cb868e5c721ce"
+    },
+    "standalone_selection_result": {
+      "path": "results/psim_d8_cross_protocol_disagreement_2022_selection_result_2026-07-29.json",
+      "sha256": "33cb78065b04a1103b048a0607a4d68f40ada58bd9911b49d1f4da49c73d2f4e"
+    },
+    "stress_cost_per_side": 0.001,
+    "unit_leverage": 0.5
+  },
+  "failure_actions": {
+    "failed_2023_veto": "TERMINAL_REJECT_CDP1_NO_REPAIR",
+    "missing_or_drifting_authority": "PAUSE_WITHOUT_SUBSTITUTION",
+    "no_passing_2022_cell": "TERMINAL_REJECT_CDP1_NO_REPAIR",
+    "passing_2023_veto": "PROMOTE_ONLY_AFTER_DETERMINISTIC_REPLAY_TESTS_AND_CRITIC_PASS"
+  },
+  "future_veto_contract": {
+    "future_can_repair_candidate_or_weight": false,
+    "future_can_rerank": false,
+    "future_can_select_rank2": false,
+    "gates": {
+      "absolute_return_retention_vs_unscaled_gross9": 0.97,
+      "base_and_stress_candidate_return_not_negative": true,
+      "maximum_exact_entry_jaccard_vs_any_gross9_sleeve": 0.25,
+      "minimum_cagr_to_strict_mdd_improvement_vs_same_gross": 0.05,
+      "strict_mdd_not_above_unscaled_gross9": true
+    },
+    "window": [
+      "2023-01-01",
+      "2024-01-01"
+    ]
+  },
+  "gross9_authority": {
+    "accounting": "same_btc_low_high_v1",
+    "anchor": {
+      "path": "results/gross9_pre2025_authoritative_anchor_2026-07-28.json",
+      "sha256": "329878d90b6cd9c731eb4871ac041256f95f03c14dd261ada681d3a370709875"
+    },
+    "config": {
+      "path": "configs/shadow/portfolio_rank7_capacity_candidate_2026-07-28.json",
+      "sha256": "006f82e1f0affad9f96a08a6c600542feec4a0e1198ed99b8630627de4913450"
+    },
+    "db_or_regenerated_cache_substitution_allowed": false,
+    "gross": 9.0,
+    "market": {
+      "bytes": 66696659,
+      "must_exist_and_match_before_any_interaction_metric": true,
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+      "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+    },
+    "market_with_oi": {
+      "bytes": 72898508,
+      "must_exist_and_match_before_any_interaction_metric": true,
+      "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz",
+      "sha256": "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192"
+    },
+    "result": {
+      "path": "results/portfolio_rank7_capacity_update_2026-07-28.json",
+      "sha256": "7260ba91698ac31838558d1af11701e5e251f9b49749a573c8d38610d5388756"
+    },
+    "weights": {
+      "cand_rex_veto_7": 1.6,
+      "fresh_kimchi_fx": 2.0,
+      "frozen_annual_rank7": 3.0,
+      "markov_transition_long": 2.0,
+      "rex_taker_low_range_position": 0.4
+    }
+  },
+  "manifest_hash": "53a3d22897ee144c752b2c2339a268cdfb499e53f6bea32e71db2ebe5566c448",
+  "portfolio_accounting_contract": {
+    "bar_timing": "signal_t_entry_t_plus_1_open",
+    "costs": "candidate entry and exit costs charged on exact notional",
+    "drawdown": "same-BTC OHLC upper-before-lower strict intraposition MDD on the shared 5m clock",
+    "funding": "candidate exact settlement mark cashflows; Gross9 frozen replay",
+    "overlap_controls": [
+      "exact entry-position Jaccard against each Gross9 sleeve",
+      "occupied-bar Jaccard against each Gross9 sleeve",
+      "daily marked-return Pearson and Spearman correlations"
+    ]
+  },
+  "protocol_version": "psim_d8_cdp1_gross9_same_gross_marginal_v1",
+  "selection_contract": {
+    "candidate_weight_grid": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "gates": {
+      "absolute_return_retention_vs_unscaled_gross9": 0.97,
+      "base_and_stress_candidate_return_positive": true,
+      "gross_cap": 10.0,
+      "maximum_exact_entry_jaccard_vs_any_gross9_sleeve": 0.25,
+      "minimum_cagr_to_strict_mdd_improvement_vs_same_gross": 0.05,
+      "strict_mdd_not_above_unscaled_gross9": true
+    },
+    "grid_origin": "inherited unchanged from the preregistered Gross9 addition grid used before CDP1 source or outcome access",
+    "ranking": [
+      "cagr_to_strict_mdd_improvement_vs_same_gross_descending",
+      "strict_mdd_reduction_vs_unscaled_gross9_descending",
+      "candidate_weight_ascending"
+    ],
+    "same_gross_comparator": "Gross9 weights multiplied by (9 + candidate_weight) / 9",
+    "top1_only": true,
+    "window": [
+      "2022-01-01",
+      "2023-01-01"
+    ]
+  },
+  "stage": "pre_gross9_portfolio_interaction"
+}
