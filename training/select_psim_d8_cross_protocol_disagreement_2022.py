@@ -20,7 +20,7 @@ from training import run_psim_d8_cross_protocol_disagreement_source_support as s
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-PROTOCOL_VERSION = "psim_d8_cross_protocol_disagreement_2022_selection_v1"
+PROTOCOL_VERSION = "psim_d8_cross_protocol_disagreement_2022_selection_v1r1"
 SOURCE_RESULT = source.DEFAULT_OUTPUT
 SOURCE_RESULT_SHA256 = (
     "43a6815201d20ed083ee224c0874405370fb3a061455af7cacc32f7c79c16d6f"
@@ -33,7 +33,14 @@ RUNNER_PATH = Path(
 )
 ATTEMPT_PATH = Path(
     "results/psim_d8_cross_protocol_disagreement_2022_selection_"
+    "attempt_r1_2026-07-29.json"
+)
+FAILED_ATTEMPT_PATH = Path(
+    "results/psim_d8_cross_protocol_disagreement_2022_selection_"
     "attempt_2026-07-29.json"
+)
+FAILED_ATTEMPT_HASH = (
+    "2fbb33f3b2d8bacf54e7b50dc6ccfa388d898bc9ae3ff5747c374fef0132036c"
 )
 RESULT_PATH = Path(
     "results/psim_d8_cross_protocol_disagreement_2022_selection_"
@@ -97,9 +104,19 @@ def prepare_attempt() -> dict[str, Any]:
             "result_hash": SOURCE_RESULT_HASH,
             "eligible_candidate_ids": support["eligible_candidate_ids"],
         },
+        "prior_operational_failure": {
+            "attempt_path": FAILED_ATTEMPT_PATH.as_posix(),
+            "attempt_hash": FAILED_ATTEMPT_HASH,
+            "reason": (
+                "funding_time_utc has exchange millisecond jitter; exact "
+                "settlement mark clock is mark_open_time_utc"
+            ),
+            "candidate_metrics_computed": 0,
+            "thresholds_or_candidates_changed": False,
+        },
         "access_boundary": {
-            "2022_market_rows_parsed": 0,
-            "2022_funding_rows_parsed": 0,
+            "2022_market_rows_parsed": 105_120,
+            "2022_funding_rows_parsed": 1_095,
             "2022_economic_metrics_computed": 0,
             "2023_market_rows_parsed": 0,
             "2023_funding_rows_parsed": 0,
@@ -304,7 +321,7 @@ def _load_2022_funding() -> list[dict[str, Any]]:
                 continue
             rows.append(
                 {
-                    "funding_time": pd.Timestamp(timestamp),
+                    "funding_time": pd.Timestamp(row["mark_open_time_utc"]),
                     "funding_rate": float(row["funding_rate"]),
                     "settlement_mark_price": float(
                         row["settlement_mark_price"]
