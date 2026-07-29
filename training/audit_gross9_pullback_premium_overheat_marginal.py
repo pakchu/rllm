@@ -69,6 +69,11 @@ EXPECTED_PREREGISTRATION_SHA256 = (
 )
 SELECTION_SPLITS = ("train", "test2024")
 EVAL_SPLITS = ("eval2025", "ytd2026")
+FROZEN_REX_ROW_INDEX = 7
+FROZEN_REX_SLEEVE = f"cand_rex_veto_{FROZEN_REX_ROW_INDEX}"
+EXPECTED_FROZEN_REX_GATES_HASH = (
+    "cd63c780bdb8848700476d585ae8e0cb95713aed856f7d9d681a7a0b5d5575fc"
+)
 WEIGHTS = (0.25, 0.50, 0.75, 1.00)
 NORMAL_COST = 0.0006
 STRESS_COST = 0.0010
@@ -591,6 +596,95 @@ def append_candidate_events(
     return output
 
 
+def _unique_rex_rows(
+    report: Mapping[str, Any],
+    top_n: int,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for bucket in ("top", "tte_top"):
+        for row in report.get(bucket, [])[: int(top_n)]:
+            key = json.dumps(row.get("gates", []), sort_keys=True)
+            if key not in seen:
+                seen.add(key)
+                rows.append(row)
+    return rows
+
+
+def validate_frozen_rex_identity(legacy_cfg: legacy_all.Config) -> str:
+    report = legacy_all.load_json(legacy_all.SCAN_FILES["rex_veto"])
+    bounded_rows = _unique_rex_rows(report, FROZEN_REX_ROW_INDEX + 1)
+    legacy_rows = _unique_rex_rows(
+        report,
+        int(legacy_cfg.candidate_rex_top_n),
+    )
+    if min(len(bounded_rows), len(legacy_rows)) <= FROZEN_REX_ROW_INDEX:
+        raise RuntimeError("frozen REX row is missing")
+    bounded_hash = json_hash(
+        bounded_rows[FROZEN_REX_ROW_INDEX].get("gates", [])
+    )
+    legacy_hash = json_hash(
+        legacy_rows[FROZEN_REX_ROW_INDEX].get("gates", [])
+    )
+    if {
+        bounded_hash,
+        legacy_hash,
+    } != {EXPECTED_FROZEN_REX_GATES_HASH}:
+        raise RuntimeError(
+            "bounded frozen REX identity drifted: "
+            f"{bounded_hash} != {legacy_hash} != "
+            f"{EXPECTED_FROZEN_REX_GATES_HASH}"
+        )
+    return bounded_hash
+
+
+def build_frozen_rex_context(
+    legacy_cfg: legacy_all.Config,
+    splits: Sequence[str],
+) -> tuple[
+    pd.DataFrame,
+    dict[str, np.ndarray],
+    list[dict[str, Any]],
+]:
+    """Build only the frozen REX row instead of every legacy trade event."""
+    market, _, all_masks, _ = legacy_base.vw.ep._prep()
+    missing = [split for split in splits if split not in all_masks]
+    if missing:
+        raise RuntimeError(f"legacy context is missing splits: {missing}")
+    masks = {split: all_masks[split] for split in splits}
+    validate_frozen_rex_identity(legacy_cfg)
+    bounded_cfg = replace(
+        legacy_cfg,
+        candidate_rex_top_n=FROZEN_REX_ROW_INDEX + 1,
+    )
+    source_events: list[dict[str, Any]] = []
+    legacy_sleeves = list(legacy_base.SLEEVES)
+    extra_sleeves = list(legacy_all.EXTRA_SLEEVES)
+    try:
+        legacy_all.add_rex_veto_candidates(
+            source_events,
+            market,
+            masks,
+            bounded_cfg,
+        )
+    finally:
+        legacy_base.SLEEVES[:] = legacy_sleeves
+        legacy_all.EXTRA_SLEEVES[:] = extra_sleeves
+    events = [
+        event
+        for event in source_events
+        if event["split"] in masks
+        and event["sleeve"] == FROZEN_REX_SLEEVE
+    ]
+    counts = {
+        split: sum(event["split"] == split for event in events)
+        for split in masks
+    }
+    if any(count != 1 for count in counts.values()):
+        raise RuntimeError(f"frozen REX event replay drifted: {counts}")
+    return market, masks, events
+
+
 def build_selection_context(
     cfg: Config,
 ) -> tuple[
@@ -608,11 +702,85 @@ def build_selection_context(
         rank7_capacity_evidence=cfg.rank7_capacity_evidence,
         cost_rate=NORMAL_COST,
     )
-    market, masks, events, _features, source_meta = (
-        gross9_context.build_gross9_selection_context(base_cfg)
+    oi_cache = gross9_context.materialize_frozen_oi_cache(
+        cfg.market_with_oi_csv
+    )
+    portfolio.ensure_runtime_inputs()
+    capacity_cfg = portfolio.Config(
+        input_csv=cfg.market_csv,
+        funding_csv=cfg.funding_csv,
+        premium_csv=cfg.premium_csv,
+        rank7_family_gross_cap=3.0,
+        rank7_capacity_evidence=cfg.rank7_capacity_evidence,
+        cost_rate=NORMAL_COST,
+    )
+    capacity = portfolio.validate_rank7_capacity_evidence(capacity_cfg)
+    legacy_cfg = legacy_all.Config(
+        random_samples=0,
+        candidate_rex_top_n=50,
+        train_mdd_cap=40.0,
+        oos_mdd_cap=20.0,
+        gross_cap=10.0,
+        min_nonzero_weight=0.25,
+        weight_step=0.05,
+        cost_rate=NORMAL_COST,
+    )
+    market, masks, events = build_frozen_rex_context(
+        legacy_cfg,
+        SELECTION_SPLITS,
+    )
+    portfolio.attach_live_rex_ohlc(events, market, masks, capacity_cfg)
+    portfolio.attach_default_favorable(events, market)
+
+    features = gross9_context.build_candidate_feature_frame(market)
+    markov = portfolio.markov_active(market, features)
+    markov_counts = portfolio.append_mask_policy(
+        events,
+        market,
+        masks,
+        name="markov_transition_long",
+        long_active=markov,
+        short_active=np.zeros(len(market), dtype=bool),
+        hold=576,
+        stride=12,
+        cost_rate=NORMAL_COST,
+    )
+    funding_active, funding_meta = portfolio.funding_lr_active(market)
+    funding_counts = portfolio.append_mask_policy(
+        events,
+        market,
+        masks,
+        name="funding_premium_lr_impact_central",
+        long_active=funding_active,
+        short_active=np.zeros(len(market), dtype=bool),
+        hold=576,
+        stride=12,
+        cost_rate=NORMAL_COST,
+    )
+    rex_counts = portfolio.append_rex_taker_policy(
+        events,
+        market,
+        masks,
+        cost_rate=NORMAL_COST,
+    )
+    path_counts = gross9_context._append_rank7_and_fresh_selection(
+        events,
+        base_cfg,
     )
     if tuple(masks) != SELECTION_SPLITS:
         raise RuntimeError("future masks entered selection")
+    source_meta = {
+        "rank7_capacity": capacity,
+        "oi_cache": oi_cache,
+        "feature_columns": int(features.shape[1]),
+        "counts": {
+            "markov_transition_long": markov_counts,
+            "funding_premium_lr_impact_central": funding_counts,
+            "rex_taker_low_range_position": rex_counts,
+            **path_counts,
+        },
+        "funding_meta": funding_meta,
+    }
     return market, masks, events, source_meta
 
 
@@ -647,15 +815,10 @@ def build_full_context(
         weight_step=0.05,
         cost_rate=NORMAL_COST,
     )
-    market, _, masks, _, events, _ = legacy_base.build_combined_events(
-        legacy_cfg
+    market, masks, events = build_frozen_rex_context(
+        legacy_cfg,
+        tuple(portfolio.SPLIT_BOUNDS),
     )
-    legacy_all.add_rex_veto_candidates(events, market, masks, legacy_cfg)
-    events = [
-        event
-        for event in events
-        if event["sleeve"] in portfolio.LIVE_WEIGHTS
-    ]
     portfolio.attach_live_rex_ohlc(events, market, masks, capacity_cfg)
     portfolio.attach_default_favorable(events, market)
     features = portfolio.feature_frame(market)
