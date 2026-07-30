@@ -89,6 +89,16 @@ These probes are not a source artifact and may not be copied into the source
 output. The official builder must refetch the complete frozen range through
 both bound transports and fail closed on any disagreement.
 
+Before the preregistration artifact, a repository metadata inventory also
+read comparator paths, whole-file hashes, and first-line/header schemas. It
+included newly computed hash-only reads for Gross9 configs, runtime code,
+lock files, the Rank7 bundle manifest, and the aggregate anchor, plus
+inspection of configuration/manifest structure. It decoded no comparator
+data row, side, entry, exit, exposure, return, PnL, CAGR, MDD, or Gross9
+outcome. The producer itself reopens no comparator, Gross9 data, or aggregate
+anchor byte; it embeds the frozen metadata and defers their byte/hash/schema
+validation to the authorized novelty or economic stage.
+
 ## Frozen source envelope
 
 ### Canonical calendar boundaries
@@ -153,6 +163,10 @@ The request chunk size is exactly 1,024 blocks. Adjacent chunks overlap only
 through the required extra next-block base fee; that overlap must agree
 exactly.
 
+Every JSON-RPC request has exactly one attempt. There is no retry, backoff,
+checkpoint resume, or replacement transport after the full replay begins.
+Any request or transport error is terminal for ESDI-288.
+
 For epoch `e`, define:
 
 ```text
@@ -187,6 +201,11 @@ median2[e] = sorted_base_fee[1,799] + sorted_base_fee[1,800]
 `median2` is exactly twice the epoch median and remains integer. No floating
 median, rounding, clipping, winsorization, unit conversion, or gas-price
 normalization is allowed.
+
+`base_fee_vector_sha256` serializes the 3,600 positive uint256 base fees in
+ascending block order, each as exactly 32 unsigned big-endian bytes, then
+hashes their concatenation with SHA-256. No JSON, delimiter, quantity string,
+or provider response bytes enter that vector hash.
 
 The normalized source row contains only:
 
@@ -310,7 +329,10 @@ Controls cannot replace or repair the primary:
 4. `base_fee_no_tail`: all nonzero primary signs, same scheduler and hold;
 5. `exact_direction_flip`: exact accepted primary entries with side flipped;
 6. `deterministic_random_side`: exact accepted primary entries with a
-   SHA-256-fixed side;
+   SHA-256-fixed side. Its signal identity is exactly
+   `ESDI-288|primary|epoch_id=<canonical decimal integer>`; append
+   `|RANDOM_SIDE`, UTF-8 encode, and choose `LONG` iff the first digest byte
+   is below 128, otherwise `SHORT`;
 7. `constant_long` and `constant_short`: exact accepted primary entries;
 8. `one_bar_delayed_entry`: exact primary parent set shifted five minutes,
    without rerunning non-overlap.
@@ -362,6 +384,9 @@ exact-entry Jaccard < 0.90
 candidate ±24h containment < 0.95
 ```
 
+The executable strict gates are exact fractions `<9/10` and `<19/20`;
+floating conversion is forbidden.
+
 These are anti-degeneracy gates, not claims that a source-only control is
 unprofitable. Economic superiority is tested only after the exact evaluator
 is separately committed.
@@ -382,6 +407,8 @@ exposure against:
 - WCTR-288 and BFWC-288;
 - every positive-weight Gross9 sleeve separately.
 
+The Ethereum-family inventory explicitly includes `EBLR-60/30`.
+
 For every Gross9 sleeve, require:
 
 ```text
@@ -394,6 +421,40 @@ absolute signed-exposure Pearson     <= 0.35
 For prior source-family clocks, use exact-entry Jaccard `<=0.20`, candidate
 `±24h` containment `<=0.50`, and absolute signed-exposure Pearson `<=0.40`.
 Comparators with fewer than ten entries report metrics but do not gate.
+
+The executable inclusive gates use only exact rationals: prior-source
+Jaccard `<=1/5`, containment `<=1/2`, and squared Pearson `<=4/25`;
+Gross9 Jaccard `<=1/10`, containment `<=7/20`, occupied-bar Jaccard `<=1/4`,
+and squared Pearson `<=49/400`. The bound `fraction_at_most` function applies
+cross multiplication, including equality; no binary floating threshold is
+authorized.
+
+The write-once artifact contains the exhaustive frozen comparator registry:
+artifact and first-header hashes, exact filters, group labels, entry/exit/side
+columns, and capabilities. Each directional group is evaluated separately
+on all three prior-source metrics. A genuinely timestamp-only group is
+evaluated separately on exact-entry Jaccard and candidate `±24h`
+containment; signed-exposure Pearson is reported as inapplicable and may
+never be zero-filled. A missing required field, unknown capability, missing
+group, or artifact/header/hash drift is a terminal novelty failure.
+
+Each registry item freezes a half-open common comparison domain. Both ESDI
+and comparator entries are filtered to that identical domain before counting
+or computing metrics. UTC timestamps are exact integer seconds with no
+rounding; duplicate or unsorted entries fail. Exact-entry Jaccard is set
+intersection over union. Containment is the maximum of the two directional
+fractions having any opposite-clock entry within the stated symmetric
+window. The `<10` non-gating rule uses comparator entries only after the
+common-domain filter.
+
+Directional intervals must be sorted, nonoverlapping, 5-minute aligned, and
+contained in the common domain. Exposure is `-1/0/+1` on every 5-minute bar
+open under half-open `[entry,exit)` semantics. Occupied-bar Jaccard uses
+nonzero-exposure bar indexes. Absolute signed-exposure Pearson is gated by
+exact squared correlation: prior-source `<=4/25`, Gross9 `<=49/400`; only the
+nonnegative square root is reported. Empty denominators or zero variance are
+terminal failures. These executable metric functions and synthetic tests are
+bound by the preregistration producer/test blobs.
 
 Failure is terminal. A comparator cannot be removed after its overlap is
 seen.
@@ -469,6 +530,33 @@ At candidate weight `w`, the treatment scales every Gross9 sleeve by
 Gross9 baseline, also gross `9.0`, under matching execution, costs, exact
 funding, and strict MDD.
 
+The artifact binds the authoritative portfolio and base-portfolio configs,
+all five sleeve configs, the portfolio/Rank7/REX runtime code, the Rank7
+bundle manifest, and the transitive source-hash manifest. No sleeve has a
+pre-existing standalone signed-clock artifact. The artifact therefore also
+binds the complete repository-local static import closure reachable from the
+three Gross9 runtime roots, each package initializer, `pyproject.toml`, and
+`uv.lock`; AST discovery must reproduce that exact closure at artifact
+creation. After ESDI source support passes, but before ESDI economics, all
+five signed clocks must be reconstructed from exactly those bound
+dependencies and every transitive source hash must validate. The three
+previously absent REX JSONL inputs were restored byte-for-byte from the main
+repository worktree and match their frozen hashes. Missing or drifting
+dependencies retire ESDI; they cannot be substituted. The pre-2025 aggregate
+anchor remains metadata only until the economic stage.
+
+The exact reconstruction environment is also frozen: CPython `3.10.10`,
+Linux `x86_64`, glibc `2.39`, NumPy `2.2.6`, pandas `2.3.3`, SciPy `1.15.3`,
+scikit-learn `1.7.2`, torch `2.9.0`, transformers `5.7.0.dev0`, peft
+`0.18.1`, datasets `4.6.1`, trl `0.29.0`, websockets `15.0.1`, and no
+installed SQLAlchemy distribution. Artifact creation fails on any mismatch;
+the environment cannot be selected later from another lock resolution.
+In addition, the artifact embeds the complete canonical inventory of all 108
+installed distributions; its compact sorted-JSON SHA-256 must equal
+`a5b435e485426d7254ed222692bf3b9c6444ae992e582084398dc57b960549dc`.
+This includes direct and transitive packages such as matplotlib, gymnasium,
+and stable-baselines3 rather than validating only a handpicked subset.
+
 Both `2023H2` and calendar 2024 must:
 
 - improve base and stress CAGR/strict-MDD by at least `0.05` versus the
@@ -489,15 +577,25 @@ The only authorized sequence is:
 1. commit this mechanism decision;
 2. commit the write-once preregistration producer and tests;
 3. create and commit the write-once preregistration artifact;
-4. commit a dual-replay source builder and synthetic-only tests bound to the
-   preregistration hash;
+4. commit the dual-replay source builder, complete source-support/incidence
+   evaluator, novelty/Gross9 reconstruction evaluator, strict economic
+   evaluator, and synthetic-only tests, all bound to the preregistration hash
+   before the full source replay;
 5. execute the full source replay once;
-6. commit source artifacts and the source-only support evaluator before
-   deriving ESDI incidence;
+6. commit the write-once source artifacts without changing any evaluator;
 7. run source support and stop on first failure;
-8. only after a pass, commit the strict outcome/Gross9 evaluator;
-9. open periods sequentially and stop on first failure;
+8. only after a pass, reconstruct and run every novelty comparator and stop
+   on first failure;
+9. only after novelty passes, open economic periods sequentially and stop on
+   first failure;
 10. reproduce all hashes/tests from a clean checkout, commit, and push.
+
+The producer permits only the singleton artifact path. Before creation it
+uses two Git metadata calls to require the mechanism document, producer,
+tests, complete Gross9 runtime import closure, package initializers, and
+environment locks to be tracked and byte-identical to `HEAD`; the artifact
+binds their Git blob IDs and SHA-256 hashes. It makes no network call, opens
+no data row, and opens no comparator or Gross9 artifact byte.
 
 At preregistration:
 
