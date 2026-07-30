@@ -1,0 +1,524 @@
+from __future__ import annotations
+
+import ast
+import hashlib
+import json
+from pathlib import Path
+import stat
+
+import pytest
+
+from training import preregister_gross9_structural_clock_bundle as prereg
+
+
+EXPECTED_AUTHORITY_AMENDMENTS = [
+    {
+        "identity": "G9CB-1A",
+        "path": (
+            "docs/"
+            "gross9-structural-clock-bundle-rank7-authority-amendment-"
+            "2026-07-31.md"
+        ),
+        "path_type": "regular_file",
+        "sha256": (
+            "a99b1a2b3d738ecc1cea8595eed2d88759c9b5fa7faf751a53b643fcc1a808cb"
+        ),
+        "git_blob": "0c7781ebe25178c592bb526ac51ee00c5ba840e2",
+        "git_mode": "100644",
+        "authority_commit": "f1ae4e68bfb0d0b861cd9979762f87e51a55f69d",
+    },
+    {
+        "identity": "G9CB-1B",
+        "path": (
+            "docs/"
+            "gross9-structural-clock-bundle-runtime-isolation-amendment-"
+            "2026-07-31.md"
+        ),
+        "path_type": "regular_file",
+        "sha256": (
+            "354ae3870dd6dedf738b38bdd266d85b24389fe5de10d1fa0b3dbdde18d1c2de"
+        ),
+        "git_blob": "c2da15ff249e46a8fac2040d67f531a683b7fd7e",
+        "git_mode": "100644",
+        "authority_commit": "2550e0b8ee348b4217744a73d9781dba1e1e91a3",
+    },
+]
+
+EXPECTED_PROTOCOL_PATHS = [
+    (
+        "docs/"
+        "gross9-structural-clock-bundle-rank7-authority-amendment-"
+        "2026-07-31.md"
+    ),
+    (
+        "docs/"
+        "gross9-structural-clock-bundle-runtime-isolation-amendment-"
+        "2026-07-31.md"
+    ),
+    "docs/gross9-structural-clock-bundle-authority-decision-2026-07-31.md",
+    "training/preregister_gross9_structural_clock_bundle.py",
+    "tests/test_preregister_gross9_structural_clock_bundle.py",
+    "tests/test_gross9_structural_clock_bundle_preregistration_artifact.py",
+    "training/build_gross9_structural_clock_bundle.py",
+    "tests/test_build_gross9_structural_clock_bundle.py",
+    "training/gross9_structural_clock_primitives.py",
+    "tests/test_gross9_structural_clock_primitives.py",
+    "execution/gross9_rank7_clock_runtime.py",
+    "tests/test_gross9_rank7_clock_runtime.py",
+]
+
+EXPECTED_CONSUMPTION_LEDGER_PATHS = [
+    (
+        "results/"
+        "gross9_structural_clock_bundle_worker_capability_consumed_pass1_"
+        "2026-07-31.json"
+    ),
+    (
+        "results/"
+        "gross9_structural_clock_bundle_worker_capability_consumed_pass2_"
+        "2026-07-31.json"
+    ),
+]
+
+
+def test_canonical_json_and_manifest_hash_contract() -> None:
+    payload = {"z": 1, "ascii": "한", "manifest_hash": "discarded"}
+    assert prereg.canonical_json_bytes(payload) == (
+        b'{"ascii":"\\ud55c","manifest_hash":"discarded","z":1}'
+    )
+    expected = hashlib.sha256(b'{"ascii":"\\ud55c","z":1}').hexdigest()
+    assert prereg.canonical_hash(payload) == expected
+    assert prereg.canonical_json_bytes(payload, trailing_lf=True).endswith(b"\n")
+
+
+def test_sha256_file_hashes_opaque_bytes_without_parsing(tmp_path: Path) -> None:
+    opaque = tmp_path / "opaque.bin"
+    opaque.write_bytes(b"\x1f\x8b\x08\x00not-a-row\x00\xff")
+    assert prereg.sha256_file(opaque) == hashlib.sha256(opaque.read_bytes()).hexdigest()
+
+
+def test_validate_file_rejects_symlink_and_hash_drift(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_bytes(b"opaque")
+    link = tmp_path / "link"
+    link.symlink_to(source)
+    digest = hashlib.sha256(b"opaque").hexdigest()
+    assert prereg.validate_file(source, digest)["path_type"] == "regular_file"
+    with pytest.raises(ValueError, match="expected regular_file"):
+        prereg.validate_file(link, digest)
+    with pytest.raises(ValueError, match="SHA-256 mismatch"):
+        prereg.validate_file(source, "0" * 64)
+
+
+def test_static_import_closure_is_exact_and_does_not_import_modules(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    package = tmp_path / "pkg"
+    package.mkdir()
+    (package / "__init__.py").write_text("MARKER = 1\n", encoding="utf-8")
+    (package / "leaf.py").write_text("VALUE = 2\n", encoding="utf-8")
+    (package / "entry.py").write_text(
+        "from . import leaf\nimport missing_external\n", encoding="utf-8"
+    )
+
+    def synthetic_binding(
+        path: str | Path,
+        *,
+        repository_root: Path,
+        expected_sha256: str | None = None,
+        expected_blob: str | None = None,
+    ) -> dict[str, object]:
+        candidate = repository_root / path
+        return {
+            "path": Path(path).as_posix(),
+            "path_type": "regular_file",
+            "sha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
+            "git_blob": "a" * 40,
+            "git_mode": "100644",
+        }
+
+    monkeypatch.setattr(prereg, "_tracked_binding", synthetic_binding)
+    closure = prereg.import_closure_inventory([Path("pkg/entry.py")], tmp_path)
+    assert [item["path"] for item in closure] == [
+        "pkg/__init__.py",
+        "pkg/entry.py",
+        "pkg/leaf.py",
+    ]
+    assert closure[0]["package_initializer"] is True
+    assert closure[1]["package_initializer"] is False
+
+
+def test_closure_validator_rejects_new_local_import(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "a.py").write_text("VALUE = 1\n", encoding="utf-8")
+
+    def synthetic_binding(
+        path: str | Path,
+        *,
+        repository_root: Path,
+        expected_sha256: str | None = None,
+        expected_blob: str | None = None,
+    ) -> dict[str, object]:
+        return {
+            "path": Path(path).as_posix(),
+            "path_type": "regular_file",
+            "sha256": prereg.sha256_file(path, repository_root),
+            "git_blob": "b" * 40,
+            "git_mode": "100644",
+        }
+
+    monkeypatch.setattr(prereg, "_tracked_binding", synthetic_binding)
+    expected = prereg.import_closure_inventory(["a.py"], tmp_path)
+    (tmp_path / "b.py").write_text("VALUE = 2\n", encoding="utf-8")
+    (tmp_path / "a.py").write_text("import b\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="closure mismatch"):
+        prereg.validate_import_closure(expected, ["a.py"], tmp_path)
+
+
+def test_repository_authority_amendments_authenticate_in_canonical_order() -> None:
+    decision = prereg._authority_decision_binding()
+    assert decision["sha256"] == prereg.AUTHORITY_DECISION_SHA256
+    assert decision["git_blob"] == prereg.AUTHORITY_DECISION_GIT_BLOB
+
+    assert prereg._authority_amendment_bindings() == EXPECTED_AUTHORITY_AMENDMENTS
+
+
+def test_protocol_paths_include_exact_g9cb_1b_authority_and_modules() -> None:
+    assert [path.as_posix() for path in prereg.PROTOCOL_PATHS] == (
+        EXPECTED_PROTOCOL_PATHS
+    )
+
+
+def test_runtime_import_inventory_has_only_isolated_facade_and_primitives(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert [path.as_posix() for path in prereg.RUNTIME_IMPORT_ROOTS] == [
+        "execution/gross9_rank7_clock_runtime.py",
+        "training/gross9_structural_clock_primitives.py",
+    ]
+    direct = prereg._direct_authority_inventory()
+    assert len(direct) == len(prereg.DIRECT_AUTHORITY_BINDINGS)
+
+    def synthetic_binding(
+        path: str | Path,
+        *,
+        repository_root: Path,
+        expected_sha256: str | None = None,
+        expected_blob: str | None = None,
+    ) -> dict[str, object]:
+        candidate = repository_root / path
+        return {
+            "path": Path(path).as_posix(),
+            "path_type": "regular_file",
+            "sha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
+            "git_blob": "c" * 40,
+            "git_mode": "100644",
+        }
+
+    monkeypatch.setattr(prereg, "_tracked_binding", synthetic_binding)
+    closure = prereg.import_closure_inventory(prereg.RUNTIME_IMPORT_ROOTS)
+    assert {path.as_posix() for path in prereg.RUNTIME_IMPORT_ROOTS}.issubset(
+        {item["path"] for item in closure}
+    )
+    assert all(item["git_blob"] and item["git_mode"] == "100644" for item in closure)
+    assert {
+        "execution/portfolio_live.py",
+        "execution/rank7_runtime.py",
+        "execution/rex_llm_live.py",
+    }.isdisjoint({item["path"] for item in closure})
+
+
+def test_worker_process_environment_substitutes_canonical_synthetic_root(
+    tmp_path: Path,
+) -> None:
+    canonical_root = tmp_path / "canonical-repository"
+    canonical_root.mkdir()
+    synthetic_alias = tmp_path / "synthetic-repository"
+    synthetic_alias.symlink_to(canonical_root, target_is_directory=True)
+
+    environment = prereg.worker_process_environment(synthetic_alias)
+
+    assert list(environment) == [
+        "BLIS_NUM_THREADS",
+        "CUDA_VISIBLE_DEVICES",
+        "LANG",
+        "LC_ALL",
+        "MKL_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+        "OMP_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "PYTHONHASHSEED",
+        "PYTHONIOENCODING",
+        "PYTHONNOUSERSITE",
+        "PYTHONDONTWRITEBYTECODE",
+        "PYTHONPATH",
+        "PYTHONPYCACHEPREFIX",
+        "PYTHONUNBUFFERED",
+        "PYTHONUTF8",
+        "TZ",
+        "VECLIB_MAXIMUM_THREADS",
+    ]
+    assert environment == {
+        "BLIS_NUM_THREADS": "1",
+        "CUDA_VISIBLE_DEVICES": "",
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+        "MKL_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "PYTHONHASHSEED": "0",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONNOUSERSITE": "1",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONPATH": canonical_root.as_posix(),
+        "PYTHONPYCACHEPREFIX": (
+            canonical_root / "results/.g9cb-bytecode-cache-disabled"
+        ).as_posix(),
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONUTF8": "1",
+        "TZ": "UTC",
+        "VECLIB_MAXIMUM_THREADS": "1",
+    }
+
+
+def test_manifest_binds_g9cb_1b_contract_and_exact_rank7_counters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(prereg, "_protocol_inventory", lambda *_args: [])
+    monkeypatch.setattr(prereg, "_direct_authority_inventory", lambda *_args: [])
+    monkeypatch.setattr(prereg, "import_closure_inventory", lambda *_args: [])
+    monkeypatch.setattr(prereg, "validate_environment", lambda *_args: {})
+    monkeypatch.setattr(prereg, "validate_config_metadata", lambda *_args: {})
+    monkeypatch.setattr(prereg, "validate_rank7_bundle", lambda *_args: {})
+    monkeypatch.setattr(prereg, "validate_sources", lambda *_args: [])
+    manifest = prereg._manifest_without_hash(
+        prereg.REPOSITORY_ROOT, require_git_seal=False
+    )
+    assert manifest["bindings"]["authority_amendments"] == (
+        EXPECTED_AUTHORITY_AMENDMENTS
+    )
+    assert manifest["bindings"]["runtime_import_roots"] == [
+        "execution/gross9_rank7_clock_runtime.py",
+        "training/gross9_structural_clock_primitives.py",
+    ]
+    assert "adapter_import_roots" not in manifest["bindings"]
+    assert "adapter_import_closure" not in manifest["bindings"]
+    assert manifest["output_paths"]["worker_capability_consumption_ledgers"] == (
+        EXPECTED_CONSUMPTION_LEDGER_PATHS
+    )
+    assert manifest["access_counter_names"]["rows_used"] == [
+        "causal_feature_rows_by_source",
+        "prediction_rows_scored",
+        "outcome_dependent_ohlc_rows_examined",
+        "rank7_training_trades_replayed",
+        "rank7_net_labels_computed",
+        "rank7_adverse_labels_computed",
+        "rank7_price_factor_values_used",
+        "rank7_funding_factor_values_used",
+        "rank7_funding_debit_factor_values_used",
+        "rank7_adverse_price_factor_values_used",
+        "rank7_fee_factor_values_used",
+        "rank7_bundle_activation_rows_scored",
+        "rank7_bundle_parity_rows_compared",
+    ]
+    manifest["manifest_hash"] = prereg.canonical_hash(manifest)
+    prereg.validate_manifest(
+        manifest,
+        verify_files=False,
+        verify_environment=False,
+        verify_git_seal=False,
+    )
+    manifest["bindings"]["authority_amendments"].reverse()
+    manifest["manifest_hash"] = prereg.canonical_hash(manifest)
+    with pytest.raises(ValueError, match="authority amendment bindings mismatch"):
+        prereg.validate_manifest(
+            manifest,
+            verify_files=False,
+            verify_environment=False,
+            verify_git_seal=False,
+        )
+
+
+def test_permitted_manifests_declare_exact_rank7_and_source_inventories() -> None:
+    assert prereg._declared_sources() == list(prereg.SOURCE_BINDINGS)
+    assert prereg._rank7_declared_files() == [
+        (path, digest)
+        for path, digest, _blob in prereg.RANK7_FILE_BINDINGS
+    ]
+    config = prereg.validate_config_metadata()
+    assert config["gross_weight"] == 9.0
+    assert config["portfolio_weights"] == {
+        sleeve["name"]: sleeve["configured_weight"] for sleeve in prereg.SLEEVES
+    }
+
+
+def test_frozen_environment_inventory_authenticates_under_project_runner() -> None:
+    environment = prereg.validate_environment()
+    assert environment["distribution_count"] == 108
+    assert environment["distribution_inventory_sha256"] == (
+        prereg.FROZEN_ENVIRONMENT["distribution_inventory_sha256"]
+    )
+    assert environment["selected_distributions"]["sqlalchemy"] == "absent"
+
+
+def test_source_preclaim_disclosures_are_exact_without_row_counts() -> None:
+    disclosures = prereg.source_preclaim_disclosures()
+    assert disclosures == {
+        "frozen_open_interest_gzip_logical_path": (
+            "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz"
+        ),
+        "frozen_open_interest_gzip_resolved_path": (
+            "/home/pakchu/rllm/data/"
+            "cache_market_ext_5m_wavefull_2020-01-01_2026-06-01_oi.csv.gz"
+        ),
+        "frozen_open_interest_gzip_size_bytes": 72_898_508,
+        "frozen_open_interest_gzip_sha256": (
+            "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192"
+        ),
+        "frozen_open_interest_gzip_opaque_bytes_opened_preclaim": True,
+        "frozen_open_interest_gzip_decompressed_preclaim": False,
+        "frozen_open_interest_gzip_headers_decoded_preclaim": 0,
+        "frozen_open_interest_gzip_rows_decoded_preclaim": 0,
+        "frozen_open_interest_gzip_fields_or_values_opened_preclaim": 0,
+        "open_interest_logical_path": (
+            "/tmp/btcusdt_open_interest_5m_2020_2026.csv"
+        ),
+        "open_interest_artifact_size_bytes": 19_657_777,
+        "open_interest_artifact_bytes_read_for_sha256_preclaim": 19_657_777,
+        "open_interest_sha256_preclaim": (
+            "e08f93033e56959e8e7a9c1e21f27c5f01efc8d06fa6b4fbbfe7354697122b31"
+        ),
+        "open_interest_headers_decoded_preclaim": 0,
+        "open_interest_rows_decoded_preclaim": 0,
+        "open_interest_fields_or_values_opened_preclaim": 0,
+    }
+
+
+def test_anchor_loader_guard_forbids_value_parsing() -> None:
+    anchor = Path("results/gross9_pre2025_authoritative_anchor_2026-07-28.json")
+    with pytest.raises(ValueError, match="hash-only"):
+        prereg._load_json_metadata(anchor, prereg.REPOSITORY_ROOT)
+
+
+def test_write_once_is_singleton_create_only_and_verifies_existing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    results = tmp_path / "results"
+    results.mkdir()
+    target = results / prereg.PREREGISTRATION_PATH.name
+    monkeypatch.setattr(prereg, "PREREGISTRATION_PATH", Path("results") / target.name)
+
+    manifest = {
+        "protocol_version": prereg.PROTOCOL_VERSION,
+        "identity": prereg.IDENTITY,
+        "candidate_independence": {
+            "candidate_identity_present": False,
+            "candidate_artifacts_opened": False,
+            "comparator_clock_rows_opened": 0,
+            "comparator_clocks_preseen_by_research_program": True,
+        },
+        "creation_evidence_boundary": dict(prereg.CREATION_EVIDENCE_BOUNDARY),
+        "source_preclaim_disclosures": {
+            "frozen_open_interest_gzip_opaque_bytes_opened_preclaim": True,
+            "frozen_open_interest_gzip_decompressed_preclaim": False,
+        },
+    }
+    manifest["manifest_hash"] = prereg.canonical_hash(manifest)
+
+    monkeypatch.setattr(prereg, "validate_manifest", lambda *_args, **_kwargs: None)
+    assert prereg.write_once(manifest, repository_root=tmp_path) is True
+    assert stat.S_IMODE(target.stat().st_mode) == 0o444
+    assert target.read_bytes() == prereg.canonical_json_bytes(
+        manifest, trailing_lf=True
+    )
+    assert prereg.write_once(manifest, repository_root=tmp_path) is False
+
+    target.chmod(0o644)
+    target.write_bytes(b"other\n")
+    with pytest.raises(FileExistsError, match="other bytes"):
+        prereg.write_once(manifest, repository_root=tmp_path)
+
+    target.unlink()
+    referent = tmp_path / "referent.json"
+    referent.write_bytes(
+        prereg.canonical_json_bytes(manifest, trailing_lf=True)
+    )
+    target.symlink_to(referent)
+    with pytest.raises(FileExistsError, match="regular file"):
+        prereg.write_once(manifest, repository_root=tmp_path)
+
+
+def test_output_path_rejects_noncanonical_alias(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        prereg,
+        "PREREGISTRATION_PATH",
+        Path("results") / prereg.PREREGISTRATION_PATH.name,
+    )
+    with pytest.raises(ValueError, match="only canonical"):
+        prereg._validate_output_path(tmp_path / "other.json", tmp_path)
+
+
+def test_module_is_stdlib_metadata_only_and_has_no_forbidden_dependency() -> None:
+    source_path = Path(prereg.__file__)
+    source = source_path.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    imported_roots = {
+        alias.name.split(".", 1)[0]
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+    } | {
+        (node.module or "").split(".", 1)[0]
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom)
+    }
+    allowed = {
+        "__future__",
+        "argparse",
+        "ast",
+        "hashlib",
+        "importlib",
+        "json",
+        "os",
+        "pathlib",
+        "platform",
+        "re",
+        "stat",
+        "subprocess",
+        "sys",
+        "tempfile",
+        "typing",
+        "zlib",
+    }
+    assert imported_roots <= allowed
+    assert not imported_roots.intersection(
+        {"numpy", "pandas", "scipy", "sklearn", "torch", "transformers"}
+    )
+    lowered = source.lower()
+    for forbidden in (
+        "read_csv",
+        "read_parquet",
+        "gzip.open",
+        "numpy.load",
+        "_reconstruct_gross9_runtime_clocks",
+        "settlement_demand_impulse",
+    ):
+        assert forbidden not in lowered
+    subprocess_calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.value
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "subprocess"
+    ]
+    assert len(subprocess_calls) == 1
+    call = subprocess_calls[0]
+    assert isinstance(call.args[0], ast.List)
+    assert isinstance(call.args[0].elts[0], ast.Constant)
+    assert call.args[0].elts[0].value == "git"
