@@ -1,0 +1,63 @@
+Traceback (most recent call last):
+  File "/tmp/rllm-alpha-orthogonal-20260718/training/build_ethereum_settlement_demand_impulse_source.py", line 577, in call
+    with self._opener.open(
+  File "/home/pakchu/.pyenv/versions/3.10.10/lib/python3.10/urllib/request.py", line 525, in open
+    response = meth(req, response)
+  File "/home/pakchu/.pyenv/versions/3.10.10/lib/python3.10/urllib/request.py", line 634, in http_response
+    response = self.parent.error(
+  File "/home/pakchu/.pyenv/versions/3.10.10/lib/python3.10/urllib/request.py", line 563, in error
+    return self._call_chain(*args)
+  File "/home/pakchu/.pyenv/versions/3.10.10/lib/python3.10/urllib/request.py", line 496, in _call_chain
+    result = func(*args)
+  File "/home/pakchu/.pyenv/versions/3.10.10/lib/python3.10/urllib/request.py", line 643, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 429: Too Many Requests
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/pakchu/.pyenv/versions/3.10.10/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/home/pakchu/.pyenv/versions/3.10.10/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/tmp/rllm-alpha-orthogonal-20260718/training/build_ethereum_settlement_demand_impulse_source.py", line 1755, in <module>
+    raise SystemExit(main())
+  File "/tmp/rllm-alpha-orthogonal-20260718/training/build_ethereum_settlement_demand_impulse_source.py", line 1749, in main
+    manifest = build_source()
+  File "/tmp/rllm-alpha-orthogonal-20260718/training/build_ethereum_settlement_demand_impulse_source.py", line 1733, in build_source
+    return _execute_source_replay(
+  File "/tmp/rllm-alpha-orthogonal-20260718/training/build_ethereum_settlement_demand_impulse_source.py", line 1539, in _execute_source_replay
+    boundary_audit = validate_boundaries(clients)
+  File "/tmp/rllm-alpha-orthogonal-20260718/training/build_ethereum_settlement_demand_impulse_source.py", line 732, in validate_boundaries
+    previous = _header_pair(clients, hex(number - 1), expected_number=number - 1)
+  File "/tmp/rllm-alpha-orthogonal-20260718/training/build_ethereum_settlement_demand_impulse_source.py", line 718, in _header_pair
+    left_raw, right_raw = _paired_call(
+  File "/tmp/rllm-alpha-orthogonal-20260718/training/build_ethereum_settlement_demand_impulse_source.py", line 703, in _paired_call
+    right = clients[1].call(method, params)
+  File "/tmp/rllm-alpha-orthogonal-20260718/training/build_ethereum_settlement_demand_impulse_source.py", line 588, in call
+    raise TerminalSourceFailure(
+__main__.TerminalSourceFailure: single RPC attempt failed for https://eth.merkle.io eth_getBlockByNumber
+Command exited with non-zero status 1
+	Command being timed: "env PYTHONPATH=. uv run --frozen python -m training.build_ethereum_settlement_demand_impulse_source"
+	User time (seconds): 0.45
+	System time (seconds): 0.37
+	Percent of CPU this job got: 46%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.79
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 40424
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 1
+	Minor (reclaiming a frame) page faults: 94257
+	Voluntary context switches: 7380
+	Involuntary context switches: 14
+	Swaps: 0
+	File system inputs: 248
+	File system outputs: 32
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1
