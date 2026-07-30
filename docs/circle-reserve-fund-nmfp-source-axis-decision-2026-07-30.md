@@ -317,8 +317,10 @@ For every original:
   comma, surrounding whitespace, NaN, or infinity;
 - every percentage must be in `[0, 100]`;
 - daily liquidity may not exceed weekly liquidity on the same date; and
-- the final retained source values are exactly the final source-native detail
-  date's daily and weekly percentages plus WAM and WAL.
+- the retained liquidity path is exactly every ordered source-native detail
+  date with its daily and weekly percentages; the unique maximum date is
+  distinguished as the final detail; and WAM and WAL are retained once per
+  filing.
 
 No row deletion, clipping, forward fill, interpolation, non-final detail
 choice, factsheet substitution, bulk-data repair, or amendment repair is
