@@ -1,0 +1,750 @@
+{
+  "calendar": {
+    "attribution": "entry time after split containment",
+    "full": [
+      "2023-06-01T00:00:00Z",
+      "2026-06-01T00:00:00Z"
+    ],
+    "full_wall_clock_years": 3,
+    "future_2025": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "future_2026": [
+      "2026-01-01T00:00:00Z",
+      "2026-06-01T00:00:00Z"
+    ],
+    "idle_warmup_included": true,
+    "selection": [
+      "2023-06-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "timezone": "UTC"
+  },
+  "candidate_overlap_opened": false,
+  "controls": {
+    "component_only": [
+      "fee_rotation_only",
+      "witness_fullness_only"
+    ],
+    "component_own_nonoverlap": [
+      "fee_rotation_only",
+      "witness_fullness_only",
+      "drop_witness",
+      "drop_fullness",
+      "one_bucket_stale_witness_fullness"
+    ],
+    "controls_cannot_replace_primary": true,
+    "definitions": {
+      "constant_long": "primary clock and accepted set; fixed LONG",
+      "constant_short": "primary clock and accepted set; fixed SHORT",
+      "deterministic_random_side": "SHA256(BFWC-288|signal_id|RANDOM_SIDE); first byte <128 LONG else SHORT",
+      "drop_fullness": "primary abs(R) rank>=0.75; R,W exact nonzero equal sign; side=sign(R); drop U",
+      "drop_witness": "primary abs(R) rank>=0.75; R,U exact nonzero equal sign; side=sign(R); drop W",
+      "exact_direction_flip": "primary clock; side multiplied by -1",
+      "fee_rotation_only": "primary abs(R) rank>=0.75; R exact nonzero; side=sign(R); drop W,U",
+      "one_bar_delayed_entry": "primary accepted set; entry and exit +300s; reject only if shifted interval is not split-contained; no rerun",
+      "one_bucket_stale_witness_fullness": "current R and rank with fully formed W,U from t-1; current availability; exact nonzero equal signs",
+      "witness_fullness_only": "Q=0.5*(abs(W)+abs(U)); same 180/120 strict-prior midrank(Q)>=0.75; W,U exact nonzero equal sign; side=common sign; no R"
+    },
+    "joint_specificity_rejection": "either component-only control passing the complete selection and every-future economic gate rejects joint-specificity",
+    "same_parent_set": [
+      "exact_direction_flip",
+      "deterministic_random_side",
+      "constant_long",
+      "constant_short",
+      "one_bar_delayed_entry"
+    ]
+  },
+  "economic_contract": {
+    "cost_cash": "abs(quantity)*execution_price*bp/10000",
+    "full_calendar_cagr": "(ending_equity/starting_equity)^(1/exact wall-clock years)-1; stitched horizon exponent is 1/3",
+    "funding_cash": "-side_sign*quantity*funding_rate*settlement_mark_price",
+    "initial_equity": 1.0,
+    "instrument": "Binance USD-M BTCUSDT perpetual",
+    "mean_gross_underlying_bp": "mean(side*(exit_open/entry_open-1)*10000)",
+    "nonpositive_equity_or_nonfinite": "fail",
+    "opens_only_after_support_novelty_and_separate_evaluator_commit": true,
+    "positive_cagr_zero_mdd_ratio": "positive infinity; passes",
+    "side_sign": {
+      "LONG": 1,
+      "SHORT": -1
+    },
+    "strict_mdd": "global pre-entry HWM; entry fee; funding credits before favorable extreme and debits before adverse extreme; adverse intrabar before favorable; adverse virtual exit fee; exit fee",
+    "weekly_cluster_signflip": {
+      "cluster": "UTC ISO entry week base-cost net trade PnL",
+      "draws": 20000,
+      "flip": "most significant bit of SHA256 byte zero is one",
+      "p": "(1+count(flipped_total>=observed_total))/20001",
+      "token": "BFWC-288|<PERIOD>|<DRAW_00000>|<ISO_YEAR_4>-W<ISO_WEEK_2>"
+    }
+  },
+  "economic_gates": {
+    "complete_gate_each_period": {
+      "base_and_stress_full_calendar_cagr_to_strict_mdd": ">=3.0",
+      "base_and_stress_strict_mdd": "<=0.15",
+      "long_subaccount_base_and_stress_absolute_return": ">0",
+      "mean_gross_underlying_bp": ">=20",
+      "one_bar_delayed_base_and_stress_absolute_return": ">0",
+      "short_subaccount_base_and_stress_absolute_return": ">0",
+      "standalone_base_and_stress_absolute_return": ">0",
+      "weekly_cluster_one_sided_signflip_p": "<=0.10"
+    },
+    "component_only_complete_gate": "same complete gate in selection and both future periods",
+    "future_is_veto_only": true,
+    "order": [
+      "selection",
+      "future_2025",
+      "future_2026"
+    ]
+  },
+  "economic_rows_opened": false,
+  "evidence_disclosure": {
+    "BCRT_broad_relational_family_previously_seen": true,
+    "BFRT_individual_incidence_previously_seen": true,
+    "WCTR_individual_incidence_previously_seen": true,
+    "candidate_exact_incidence_opened": false,
+    "candidate_exact_primitives_opened": false,
+    "candidate_outcomes_opened": false,
+    "candidate_overlap_opened": false,
+    "csv_data_rows_decoded_by_preregistration": 0,
+    "csv_headers_inspected": 9,
+    "network_calls": 0,
+    "pristine_source_claim": false,
+    "source_manifests_parsed": 2,
+    "source_values_previously_seen": true,
+    "subprocess_calls": 0
+  },
+  "execution": {
+    "aligned_availability_still_waits_seconds": 300,
+    "base_cost_bp_per_notional_side": 6.0,
+    "candidate_order": [
+      "entry_time",
+      "bucket_start_utc",
+      "canonical_signal_id"
+    ],
+    "ceil_5m": "smallest Unix-epoch multiple of 300s >= joint availability",
+    "entry": "ceil_5m(joint_availability)+300 seconds",
+    "entry_price": "BTCUSDT perpetual 5m open at entry",
+    "exit": "entry+86400 seconds",
+    "exit_price": "BTCUSDT perpetual 5m open at exit",
+    "funding_interval": "entry_time <= funding_time < exit_time",
+    "hold_bars_5m": 288,
+    "hold_seconds": 86400,
+    "joint_availability": "max(BFRT.available_at_utc,WCTR.available_at_utc)",
+    "leverage": 0.5,
+    "quantity": "0.5*pre_entry_equity/entry_open; fixed through exit",
+    "reservation": {
+      "accept": "entry_time >= prior accepted exit_time",
+      "interval": "[entry_time,exit_time)",
+      "queue_shift_replacement_or_release": false,
+      "scope": "global chronological",
+      "source_state_independent_of_suppression": true
+    },
+    "split_containment": "entry and [entry,exit) in one split; exit may equal exclusive split end",
+    "stress_cost_bp_per_notional_side": 10.0
+  },
+  "frozen_preregistration": {
+    "document": {
+      "path": "docs/blockspace-fee-witness-concordance-preregistration-2026-07-30.md",
+      "sha256": "2ac4189d89153db7846659e117036ac0744796acf60dce43bf033454cb34b04c"
+    },
+    "executable": {
+      "path": "training/preregister_blockspace_fee_witness_concordance.py",
+      "self_hash_excluded_to_avoid_circular_identity": true
+    },
+    "serialization": {
+      "allow_nan": false,
+      "encoding": "UTF-8",
+      "ensure_ascii": true,
+      "indent": 2,
+      "manifest_hash": "SHA256 compact sorted-key JSON of all top-level fields except manifest_hash",
+      "sort_keys": true,
+      "trailing_lf_count": 1
+    }
+  },
+  "join_and_feature": {
+    "R": "0.5*((Delta2 x[10]+Delta2 x[25])-(Delta2 x[75]+Delta2 x[90]))",
+    "U": "Delta2 fullness",
+    "W": "Delta2 witness_share",
+    "arithmetic": "IEEE-754 binary64; no pre-comparison rounding",
+    "base_valid": "exact join plus consecutive t,t-1,t-2 and finite defined R,W,U with primitive domain checks",
+    "delta2": "Delta2 z[t]=z[t]-z[t-2]",
+    "fullness": "avg_weight/4_000_000",
+    "join": {
+      "bucket_seconds": 43200,
+      "common_domain": "later first key through earlier last key, intersect full horizon",
+      "keys": [
+        "bucket_start_utc",
+        "bucket_end_utc"
+      ],
+      "nearest_tolerance_imputation_or_fill": false,
+      "outer_join_gaps_required": 0,
+      "required_consecutive_rows": [
+        "t",
+        "t-1",
+        "t-2"
+      ],
+      "type": "exact inner one-to-one"
+    },
+    "primitive_domains": {
+      "avg_size": "finite and >0",
+      "avg_weight": "finite and in [0,4000000]",
+      "fee_percentiles": "finite and >=0",
+      "witness_share": "finite and in [0,1]"
+    },
+    "witness_share": "(4*avg_size-avg_weight)/(3*avg_size)",
+    "x": "x[p,t]=log1p(fee_p[t]), p={10,25,75,90}"
+  },
+  "manifest_hash": "499bdcd199bfe8ae7dad9bf5e51271f8fb1fd762edbaf4a1e0d026708e9fdf9b",
+  "novelty": {
+    "candidate_outcomes_opened": false,
+    "failure_action": "retire exact BFWC-288 before outcomes",
+    "gross9": {
+      "all_five_sleeves_must_pass": true,
+      "anchor": {
+        "path": "results/gross9_pre2025_authoritative_anchor_2026-07-28.json",
+        "sha256": "329878d90b6cd9c731eb4871ac041256f95f03c14dd261ada681d3a370709875"
+      },
+      "builders": [
+        {
+          "path": "training/audit_gross9_fixed_candidate_state_substitution.py",
+          "sha256": "b727d3fb0c45801e839265e0595be457a7fb204b8f64b92247cb82d50e49f4c2"
+        },
+        {
+          "path": "training/portfolio_opt_added_alpha_update.py",
+          "sha256": "0bbe02d60ed7393e704a72c65d92d2a952eafee0d5a3d32310a782b80e2ae901"
+        },
+        {
+          "path": "training/portfolio_opt_rank7_capacity_update.py",
+          "sha256": "41df5d0bb712da09f70e56d39efb2e0344410665727aead24ff9f28d754b57e8"
+        }
+      ],
+      "compare_each_sleeve_separately": true,
+      "config": {
+        "path": "configs/shadow/portfolio_rank7_capacity_candidate_2026-07-28.json",
+        "sha256": "006f82e1f0affad9f96a08a6c600542feec4a0e1198ed99b8630627de4913450"
+      },
+      "gross": 9.0,
+      "rebuild_after_prior_clock_novelty": true,
+      "sealed_inputs": {
+        "funding": {
+          "header": [
+            "date",
+            "symbol",
+            "funding_rate",
+            "funding_time",
+            "mark_price"
+          ],
+          "header_sha256": "1c09a5cc3f8b5e7f0c06f0055e364d0dc97a9677dd505535e6f59d3cb9b48202",
+          "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_funding_2020-01-01_2026-06-01.csv.gz",
+          "sha256": "4d381be086e275bacaf31df431dc31307a71a26b3947b7082efffc10bb129dd7"
+        },
+        "market": {
+          "header": [
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "quote_asset_volume",
+            "number_of_trades",
+            "taker_buy_base",
+            "taker_buy_quote",
+            "tic",
+            "day",
+            "dxy",
+            "kimchi_premium",
+            "usdkrw",
+            "btckrw",
+            "dxy_available",
+            "kimchi_available",
+            "usdkrw_available",
+            "external_any_available",
+            "dxy_zscore",
+            "dxy_momentum",
+            "kimchi_premium_zscore",
+            "kimchi_premium_change",
+            "usdkrw_zscore",
+            "usdkrw_momentum"
+          ],
+          "header_sha256": "025c59c87c633288108b521f571e94f9d681059edbc5ba91c85f7f950801ca15",
+          "path": "data/cache_market_ext_5m_wavefull_2020-01-01_2026-06-01.csv.gz",
+          "sha256": "a77cd0ae5b88b3c95e509d8d2610773d34af3afdc9170c63d88564bc3d0b990c"
+        },
+        "premium": {
+          "header": [
+            "date",
+            "symbol",
+            "open",
+            "high",
+            "low",
+            "close",
+            "close_time"
+          ],
+          "header_sha256": "22e5715846fbfa49646f0c7c9078d40455e2e726d8e316fcdd49dbfebbd626ed",
+          "path": "data/binance_um_aux_btc_2020_2026/BTCUSDT_premium_1h_2020-01-01_2026-06-01.csv.gz",
+          "sha256": "b45fcc5a3cf75c8e594effe61a698c4652f841b1d304107e9669524e0fc9d0d7"
+        }
+      },
+      "thresholds_each_sleeve": {
+        "absolute_signed_exposure_pearson_max": 0.35,
+        "candidate_6h_containment_max": 0.35,
+        "exact_entry_jaccard_max": 0.1,
+        "occupied_bar_jaccard_max": 0.25
+      },
+      "weights": {
+        "cand_rex_veto_7": 1.6,
+        "fresh_kimchi_fx": 2.0,
+        "frozen_annual_rank7": 3.0,
+        "markov_transition_long": 2.0,
+        "rex_taker_low_range_position": 0.4
+      }
+    },
+    "metrics": {
+      "absolute_signed_exposure_pearson": "abs Pearson on full 5m grid; LONG=1 SHORT=-1 idle=0",
+      "candidate_6h_containment": "fraction candidate entries with any comparator entry within +/-6 elapsed hours; matches not consumed",
+      "exact_entry_jaccard": "distinct exact UTC entry intersection/union",
+      "interval": "[entry,exit)",
+      "invalid": "duplicate/overlap/off-grid/empty/undefined/nonfinite fails",
+      "occupied_bar_jaccard": "intersection/union of complete occupied 5m bars"
+    },
+    "opens_only_after_support": true,
+    "prior_primary_clocks": [
+      {
+        "artifact": {
+          "header": [
+            "policy_id",
+            "clock",
+            "window",
+            "bucket_start_utc",
+            "source_available_at_utc",
+            "entry_time_utc",
+            "exit_time_utc",
+            "side",
+            "location",
+            "signed_coherence",
+            "coherence",
+            "tail_divergence",
+            "magnitude_rank",
+            "tail_divergence_rank"
+          ],
+          "header_sha256": "34f459439a8db95467cbbceca6ba14254bee97e8eca53a0840da2b68d1167c05",
+          "path": "results/block_feerate_breadth_transport_primary_clock_2026-07-20.csv.gz",
+          "sha256": "33428d29c2ace9b23672b2dc9dc3e9ba0e3020fa1a6e3845d55fa5d75230d64a"
+        },
+        "id": "BFRT-288",
+        "thresholds": {
+          "absolute_signed_exposure_pearson_max": 0.4,
+          "candidate_6h_containment_max": 0.5,
+          "exact_entry_jaccard_max": 0.2
+        }
+      },
+      {
+        "artifact": {
+          "header": [
+            "policy_id",
+            "clock",
+            "window",
+            "bucket_start_utc",
+            "source_available_at_utc",
+            "entry_time_utc",
+            "exit_time_utc",
+            "side",
+            "witness_share",
+            "fullness",
+            "transport_7d",
+            "impulse_24h",
+            "log_size_7d",
+            "log_size_24h",
+            "log_weight_7d",
+            "log_weight_24h",
+            "magnitude_rank",
+            "fullness_rank",
+            "impulse_magnitude_rank",
+            "log_size_magnitude_rank",
+            "log_weight_magnitude_rank"
+          ],
+          "header_sha256": "cd90df97c515162cdd0d2fbca7f341ef65a61367168ff6bcc9d8d6e93eb3b6cb",
+          "path": "results/witness_composition_transport_primary_clock_2026-07-20.csv.gz",
+          "sha256": "7a6b56a3024d0d087322fad7b3229276c539b93374691cd2812af0630dc752b1"
+        },
+        "id": "WCTR-288",
+        "thresholds": {
+          "absolute_signed_exposure_pearson_max": 0.4,
+          "candidate_6h_containment_max": 0.5,
+          "exact_entry_jaccard_max": 0.2
+        }
+      }
+    ]
+  },
+  "outcomes_opened": false,
+  "policy": {
+    "base_cost_bp_per_notional_side": 6.0,
+    "hold_bars_5m": 288,
+    "hold_seconds": 86400,
+    "leverage": 0.5,
+    "policy_id": "BFWC-288",
+    "rank_history_max": 180,
+    "rank_history_min": 120,
+    "rank_threshold": 0.75,
+    "signflip_draws": 20000,
+    "source_bucket_seconds": 43200,
+    "stress_cost_bp_per_notional_side": 10.0
+  },
+  "protocol_version": "blockspace_fee_witness_concordance_preregistration_v1",
+  "rank_and_signal": {
+    "E": "count(prior abs(R) == current abs(R))",
+    "L": "count(prior abs(R) < current abs(R))",
+    "canonical_signal_id": "sha256_utf8(BFWC-288|bucket_start_utc|bucket_end_utc|joint_available_at_utc|side)",
+    "economic_interpretation": "R>0 means lower fee percentiles rose relative to upper fee percentiles over two buckets (flattening/broadening); W>0 means witness share rose; U>0 means fullness rose; positive concordance is LONG and the exact negative mirror is SHORT; polarity is fixed and is not a causal claim",
+    "eligibility": [
+      "midrank(abs(R))>=0.75",
+      "R!=0 exactly",
+      "W!=0 exactly",
+      "U!=0 exactly",
+      "sign(R)=sign(W)=sign(U)"
+    ],
+    "grids": {
+      "horizon": false,
+      "latency": false,
+      "leverage": false,
+      "sign": false,
+      "threshold": false
+    },
+    "history": "latest 180 strictly prior base-valid joint rows; current excluded",
+    "midrank": "(L+0.5*E)/n",
+    "minimum_prior_rows": 120,
+    "side": {
+      "negative_R": "SHORT",
+      "positive_R": "LONG"
+    },
+    "ties": "exact binary64 equality; no tie breaker"
+  },
+  "same_gross_marginal": {
+    "baseline_scale": "(9-w)/9 applied pro rata to every Gross9 sleeve",
+    "candidate_path_unit_leverage": 0.5,
+    "candidate_weights": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "comparison": "unscaled authoritative Gross9 baseline",
+    "configured_total_gross": 9.0,
+    "each_future_period_must_pass": true,
+    "future_can_rerank_repair_or_select_rank2": false,
+    "opens_only_after_selection_primary_complete_gate": true,
+    "ranking_selection_only": [
+      "larger minimum base/stress ratio improvement",
+      "lower maximum base/stress strict MDD",
+      "larger minimum base/stress return retention",
+      "lower candidate weight"
+    ],
+    "selection_requirements": {
+      "base_and_stress_absolute_return_positive": true,
+      "base_and_stress_baseline_return_retention_min": 0.97,
+      "base_and_stress_cagr_mdd_absolute_ratio_improvement_min_each": 0.05,
+      "base_and_stress_strict_mdd_nonworse": true
+    },
+    "stitched_exact_3y_report_required": true,
+    "stitched_report_can_repair": false,
+    "top_n": 1
+  },
+  "sequence_rules": {
+    "control_cannot_replace_primary": true,
+    "exact_rule_retired_on_any_failure": true,
+    "future_cannot_rerank_or_repair": true,
+    "no_repair_grid_fallback_or_polarity_flip": true,
+    "stop_at_first_failure": true
+  },
+  "singleton": true,
+  "source_contracts": {
+    "BFRT": {
+      "builders": [
+        {
+          "path": "training/download_mempool_block_feerate_history.py",
+          "sha256": "ebd30dd109a92c4dc5a2a6a444a5d5760fa4360c7fd848b02923f0670e4a2910"
+        },
+        {
+          "path": "training/preregister_block_feerate_breadth_transport.py",
+          "sha256": "2cc282d40e6791b0e4a5b5c1fb6f5081335eceb9a144db17faf157a8965deb5f"
+        },
+        {
+          "path": "training/build_block_feerate_breadth_transport_support.py",
+          "sha256": "de1ba0ac1424579b5869e8cd09986fca4383a95b3cfdffc0ef3694ecbd19ef1d"
+        }
+      ],
+      "documents": [
+        {
+          "path": "docs/block-feerate-breadth-transport-mechanism-decision-2026-07-20.md",
+          "sha256": "f6dd7d52b03d1370483a1157e24efad45b6886230bafed0931b0ac88cbde82cb"
+        },
+        {
+          "path": "docs/block-feerate-breadth-transport-source-freeze-2026-07-20.md",
+          "sha256": "0336a5d567b894964ad3aaca541548a7962e16b6a79a34dcda4bb5478e2f3092"
+        },
+        {
+          "path": "docs/block-feerate-breadth-transport-preregistration-2026-07-20.md",
+          "sha256": "04b77d6358aead4ecae494f75c71e1c0f40066fc466df01e4a7b9ede4c7fab2c"
+        }
+      ],
+      "normalized": {
+        "header": [
+          "bucket_start_utc",
+          "bucket_end_utc",
+          "available_at_utc",
+          "avg_height",
+          "avg_timestamp",
+          "fee_p0",
+          "fee_p10",
+          "fee_p25",
+          "fee_p50",
+          "fee_p75",
+          "fee_p90",
+          "fee_p100"
+        ],
+        "header_sha256": "4dde25c43055614765a18aba6aa8f03d99badae852327ab2a1d233540fc17f27",
+        "path": "data/mempool_block_feerates_3y_2026-07-20.csv.gz",
+        "sha256": "007d13ba756fd29faae1ae87caa11554438b54bb5028f24b2f0c21ddf3a0e55d"
+      },
+      "prior_support": [
+        {
+          "path": "results/block_feerate_breadth_transport_preregistration_2026-07-20.json",
+          "sha256": "73b06b94db2f844d993dcd76d6ad9e60f9b6d332d4c4d6ba8d41a3de970dae42"
+        },
+        {
+          "path": "results/block_feerate_breadth_transport_support_2026-07-20.json",
+          "sha256": "b980a0d76bd9a3084410d40e9fbf920acf1e2065bce174aa48823f41052f3bd8"
+        },
+        {
+          "header": [
+            "policy_id",
+            "clock",
+            "window",
+            "bucket_start_utc",
+            "source_available_at_utc",
+            "entry_time_utc",
+            "exit_time_utc",
+            "side",
+            "location",
+            "signed_coherence",
+            "coherence",
+            "tail_divergence",
+            "magnitude_rank",
+            "tail_divergence_rank"
+          ],
+          "header_sha256": "34f459439a8db95467cbbceca6ba14254bee97e8eca53a0840da2b68d1167c05",
+          "path": "results/block_feerate_breadth_transport_primary_clock_2026-07-20.csv.gz",
+          "sha256": "33428d29c2ace9b23672b2dc9dc3e9ba0e3020fa1a6e3845d55fa5d75230d64a"
+        },
+        {
+          "header": [
+            "policy_id",
+            "clock",
+            "window",
+            "bucket_start_utc",
+            "source_available_at_utc",
+            "entry_time_utc",
+            "exit_time_utc",
+            "side",
+            "location",
+            "signed_coherence",
+            "coherence",
+            "tail_divergence",
+            "magnitude_rank",
+            "tail_divergence_rank"
+          ],
+          "header_sha256": "34f459439a8db95467cbbceca6ba14254bee97e8eca53a0840da2b68d1167c05",
+          "path": "results/block_feerate_breadth_transport_control_clocks_2026-07-20.csv.gz",
+          "sha256": "d85197948f9418f4ab50e88825638fe33629f2db808fd1e572f8ed4d685c5a92"
+        }
+      ],
+      "raw": {
+        "path": "data/mempool_block_feerates_3y_2026-07-20.raw.json.gz",
+        "sha256": "4309dfbbdb08b89cd9cc92a341bd6186146b1e67adc2c3f926c8154ddabc4898"
+      },
+      "source_manifest": {
+        "internal_manifest_hash": "fe616bcf294e8b3b2abc6dec124e922f77df4bca47a86249fc270f2af6b46f21",
+        "path": "results/mempool_block_feerates_source_manifest_2026-07-20.json",
+        "sha256": "1ad4ee8bc9e81d3f7e7169426de21f0398bc6ab1d739e6f27e6d9ff02f331555"
+      }
+    },
+    "WCTR": {
+      "builders": [
+        {
+          "path": "training/download_mempool_witness_composition_history.py",
+          "sha256": "d5cd3f2cab5e501d5484539f1ea3c5aac5a96916dd65aa1060bb561fa639d721"
+        },
+        {
+          "path": "training/preregister_witness_composition_transport.py",
+          "sha256": "58a3725d8e64b47181a8e9310c370c583084fa27ea9c633f6e6c41dae266bf20"
+        },
+        {
+          "path": "training/build_witness_composition_transport_support.py",
+          "sha256": "77a585848311c2323f8b45b172305f257a5734c7a68db0e78256bc0e3159e6c9"
+        }
+      ],
+      "documents": [
+        {
+          "path": "docs/witness-composition-transport-mechanism-decision-2026-07-20.md",
+          "sha256": "101e84303efb3146dae587048c179b6688c93b50bb4c99edec8ba8daab72bc98"
+        },
+        {
+          "path": "docs/witness-composition-transport-source-freeze-2026-07-20.md",
+          "sha256": "6697872b690dc38c8bfe4700d75fb3e7fce8fbab507794ff4200aa0b1ff410aa"
+        },
+        {
+          "path": "docs/witness-composition-transport-preregistration-2026-07-20.md",
+          "sha256": "23b94a5c7dcf8af16e31ff6c1e62483b74a0ffeb7457eb6884f2412bf9cb4a96"
+        }
+      ],
+      "normalized": {
+        "header": [
+          "bucket_start_utc",
+          "bucket_end_utc",
+          "available_at_utc",
+          "avg_height",
+          "avg_timestamp",
+          "avg_size",
+          "avg_weight"
+        ],
+        "header_sha256": "54d106ace88b5754bb25124c0721616106053048a3154e28f1c61f8bb3024f6e",
+        "path": "data/mempool_witness_composition_4y_2026-07-20.csv.gz",
+        "sha256": "ee761e813085dfdee675ca9d420516f814c4c2824f3f5cef604acc3871d46c61"
+      },
+      "prior_support": [
+        {
+          "path": "results/witness_composition_transport_preregistration_2026-07-20.json",
+          "sha256": "f1d8d5641f1773d00dc2a99a4ca7e11b68cbc5b0cebc1456514fcbbcd9c9d3d1"
+        },
+        {
+          "path": "results/witness_composition_transport_support_2026-07-20.json",
+          "sha256": "35e3c4623be670d690b914f96e6a40d8e314e3d14554d3024d1f201fcf8ffb30"
+        },
+        {
+          "header": [
+            "policy_id",
+            "clock",
+            "window",
+            "bucket_start_utc",
+            "source_available_at_utc",
+            "entry_time_utc",
+            "exit_time_utc",
+            "side",
+            "witness_share",
+            "fullness",
+            "transport_7d",
+            "impulse_24h",
+            "log_size_7d",
+            "log_size_24h",
+            "log_weight_7d",
+            "log_weight_24h",
+            "magnitude_rank",
+            "fullness_rank",
+            "impulse_magnitude_rank",
+            "log_size_magnitude_rank",
+            "log_weight_magnitude_rank"
+          ],
+          "header_sha256": "cd90df97c515162cdd0d2fbca7f341ef65a61367168ff6bcc9d8d6e93eb3b6cb",
+          "path": "results/witness_composition_transport_primary_clock_2026-07-20.csv.gz",
+          "sha256": "7a6b56a3024d0d087322fad7b3229276c539b93374691cd2812af0630dc752b1"
+        },
+        {
+          "header": [
+            "policy_id",
+            "clock",
+            "window",
+            "bucket_start_utc",
+            "source_available_at_utc",
+            "entry_time_utc",
+            "exit_time_utc",
+            "side",
+            "witness_share",
+            "fullness",
+            "transport_7d",
+            "impulse_24h",
+            "log_size_7d",
+            "log_size_24h",
+            "log_weight_7d",
+            "log_weight_24h",
+            "magnitude_rank",
+            "fullness_rank",
+            "impulse_magnitude_rank",
+            "log_size_magnitude_rank",
+            "log_weight_magnitude_rank"
+          ],
+          "header_sha256": "cd90df97c515162cdd0d2fbca7f341ef65a61367168ff6bcc9d8d6e93eb3b6cb",
+          "path": "results/witness_composition_transport_control_clocks_2026-07-20.csv.gz",
+          "sha256": "ca5ef092d30ed9135429d8d2b830546681e289f0798ab50ef60c85ed5fd9a1f7"
+        }
+      ],
+      "raw": {
+        "path": "data/mempool_witness_composition_4y_2026-07-20.raw.json.gz",
+        "sha256": "ddd3615294d501ed3b24c5d43e2fc16319bd87f1add3c14dde2362c4b789c4c1"
+      },
+      "source_manifest": {
+        "internal_manifest_hash": "55914b3ec31fe8fb66d8a8dc31acb3784a10b256625073a5aeff1d317660ea8d",
+        "path": "results/mempool_witness_composition_source_manifest_2026-07-20.json",
+        "sha256": "2506429ebcbf9b2ada6c745bcc58bd9ec3b0fdbe245f726a408ff99bd3111342"
+      }
+    }
+  },
+  "source_incidence_opened": false,
+  "source_rows_opened": false,
+  "status": "outcome_blind_write_once_preincidence",
+  "strict_sequence": [
+    "preregistration_document_commit",
+    "write_once_preregistration_commit",
+    "separately_committed_evaluator_bound_to_file_and_manifest_hash",
+    "dependency_and_exact_header_validation",
+    "source_support_and_future_append_invariance",
+    "BFRT_WCTR_primary_clock_novelty",
+    "Gross9_each_sleeve_novelty",
+    "selection_outcomes_and_top1_freeze",
+    "future_2025_veto",
+    "future_2026_veto",
+    "stitched_3y_report"
+  ],
+  "support_gates": {
+    "exact_join_gaps": 0,
+    "failure_action": "retire exact BFWC-288 unchanged",
+    "future_2025": {
+      "each_half_min": 10,
+      "each_side_min": 10,
+      "maximum_month_share": 0.25,
+      "total_min": 30
+    },
+    "future_2026": {
+      "AprMay_min": 4,
+      "Q1_min": 6,
+      "each_side_min": 5,
+      "maximum_month_share": 0.3,
+      "total_min": 15
+    },
+    "future_append_invariance": {
+      "prefix_fields_byte_identical": [
+        "base_valid",
+        "rank_L",
+        "rank_E",
+        "rank_n",
+        "raw_candidates",
+        "accepted_signal_ids",
+        "sides",
+        "entry_exit_clocks"
+      ],
+      "required": true
+    },
+    "opens_before_novelty_or_outcomes": true,
+    "selection": {
+      "2023_NovDec_min": 6,
+      "2024_H1_min": 12,
+      "2024_H2_min": 12,
+      "each_side_min": 14,
+      "maximum_month_share": 0.2,
+      "total_min": 45
+    },
+    "undefined_empty_or_zero_denominator": "fail"
+  }
+}
