@@ -159,11 +159,13 @@ wal_vote_t =
    0 otherwise
 ```
 
-The first source report is warm-up and cannot emit any clock.
+The first two source report months, `2022-11` and `2022-12`, are warm-up and
+cannot emit any clock. Their source state still advances normally, so the
+first eligible report, `2023-01`, compares WAM and WAL with `2022-12`.
 
 ## Primary vote and side
 
-For each later report:
+For each report after the two frozen warm-up months:
 
 ```text
 daily_vote   = vote(daily_pct path)
@@ -281,7 +283,8 @@ that exact string.
 
 ## Same-parent and timing controls
 
-Using each accepted primary interval:
+Using each accepted primary interval, every control field is derived rather
+than accepted as caller input:
 
 - `exact_direction_flip`: opposite primary side;
 - `deterministic_random_side`: `LONG` iff the first byte of
@@ -291,6 +294,10 @@ Using each accepted primary interval:
 - `one_bar_delayed_entry`: primary side, entry and exit each shifted exactly
   five elapsed minutes.
 
+The accepted primary interval must itself span exactly 336 elapsed hours.
+`exact_direction_flip`, `deterministic_random_side`, `constant_long`, and
+`constant_short` preserve its exact entry and exit; `one_bar_delayed_entry`
+preserves its exact duration while shifting both endpoints by five minutes.
 No control can change source membership or primary non-overlap.
 
 For `deterministic_random_side`, the hash input is the exact UTF-8 encoding of
