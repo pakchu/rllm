@@ -1,0 +1,1518 @@
+{
+  "btc_market_rows_opened": false,
+  "calendars": {
+    "containment": "half-open; both entry and exit contained; exit may equal end",
+    "full": [
+      "2023-06-01T00:00:00Z",
+      "2026-06-01T00:00:00Z"
+    ],
+    "full_cagr_wall_clock_years": 3,
+    "future25": [
+      "2025-01-01T00:00:00Z",
+      "2026-01-01T00:00:00Z"
+    ],
+    "future26": [
+      "2026-01-01T00:00:00Z",
+      "2026-06-01T00:00:00Z"
+    ],
+    "selection": [
+      "2023-06-01T00:00:00Z",
+      "2025-01-01T00:00:00Z"
+    ],
+    "selection_reports": {
+      "2023H2": [
+        "2023-06-01T00:00:00Z",
+        "2024-01-01T00:00:00Z"
+      ],
+      "2024H1": [
+        "2024-01-01T00:00:00Z",
+        "2024-07-01T00:00:00Z"
+      ],
+      "2024H2": [
+        "2024-07-01T00:00:00Z",
+        "2025-01-01T00:00:00Z"
+      ]
+    }
+  },
+  "candidate_overlap_opened": false,
+  "controls": {
+    "controls_cannot_replace_or_repair_primary": true,
+    "definitions": {
+      "base_fee_no_tail": "all nonzero primary signs, same scheduler and hold",
+      "base_fee_one_epoch_stale": "median2[e-1] versus median2[e-3], no earlier than e availability",
+      "base_fee_primary": "exact ESDI primary",
+      "constant_long": "accepted primary entries fixed LONG",
+      "constant_short": "accepted primary entries fixed SHORT",
+      "deterministic_random_side": "SHA256(UTF-8(ESDI-288|primary|epoch_id=<canonical decimal integer>|RANDOM_SIDE)); first byte <128 LONG else SHORT",
+      "exact_direction_flip": "accepted primary entries with side flipped",
+      "gas_utilization_only": "same lag, exact prior-180 midrank, threshold, side, scheduler and hold on exact mean gas-used ratio",
+      "one_bar_delayed_entry": "accepted primary parent set shifted 300s without rerunning non-overlap"
+    },
+    "own_nonoverlap_clock": [
+      "base_fee_one_epoch_stale",
+      "gas_utilization_only",
+      "base_fee_no_tail"
+    ],
+    "same_primary_parent_set": [
+      "exact_direction_flip",
+      "deterministic_random_side",
+      "constant_long",
+      "constant_short",
+      "one_bar_delayed_entry"
+    ]
+  },
+  "economic_contract": {
+    "cannot_completely_qualify": [
+      "exact_direction_flip",
+      "deterministic_random_side",
+      "constant_long",
+      "constant_short"
+    ],
+    "evaluator_committed_tested_and_hash_bound_before_rows_open": true,
+    "primary_strictly_exceeds": [
+      "gas_utilization_only",
+      "base_fee_one_epoch_stale"
+    ],
+    "standalone_gate_base_and_stress_each_period": {
+      "absolute_return": ">0",
+      "calendar_month_clustered_signflip_p": "<=0.10",
+      "full_calendar_cagr_to_strict_mdd": ">=3.0",
+      "mean_gross_underlying_bp": ">=20",
+      "strict_mdd": "<=0.15"
+    },
+    "strict_mdd": "global/pre-entry HWM; favorable OHLC and funding credits before adverse OHLC, funding debits, liquidation envelope and exit cost"
+  },
+  "exact_incidence_opened": false,
+  "execution": {
+    "aligned_availability_still_waits_seconds": 300,
+    "base_cost_bp_per_notional_side": 6,
+    "candidate_order": [
+      "entry_time",
+      "available_at",
+      "epoch_id",
+      "side"
+    ],
+    "entry": "ceil_to_5m(available_at)+300 elapsed seconds",
+    "entry_price": "BTCUSDT perpetual 5m open at entry",
+    "exit_price": "BTCUSDT perpetual 5m open at exact scheduled exit",
+    "funding": {
+      "cash": "-side_sign*quantity*funding_rate*settlement_mark_price",
+      "interval": "entry_time <= funding_time < exit_time",
+      "realized_only": true
+    },
+    "hold_bars_5m": 288,
+    "hold_seconds": 86400,
+    "leverage": 0.5,
+    "pyramiding_stop_take_profit_trailing_or_early_close": false,
+    "reservation": {
+      "accept": "entry_time >= previous accepted exit_time",
+      "interval": "[entry_time,exit_time)",
+      "scope": "one global position",
+      "suppressed_candidates_queued": false
+    },
+    "split_crossing_action": "skip; never truncate",
+    "stress_cost_bp_per_notional_side": 10
+  },
+  "feature_and_signal": {
+    "candidate": "rank>=3/4 and sign!=0",
+    "current": "median2[e]",
+    "event_onset_filter": false,
+    "first_feature_epoch_id": 4533,
+    "lag_epochs": 2,
+    "lagged": "median2[e-2]",
+    "magnitude_den": "min(current,lagged)",
+    "magnitude_num": "max(current,lagged)",
+    "parameter_search_or_alternative_rule": false,
+    "rank": "(2*L+E)/360",
+    "rank_E": "count(prior_ratio == current_ratio exactly)",
+    "rank_L": "count(prior_ratio < current_ratio)",
+    "rank_history": "exactly previous 180 finite feature rows; current excluded",
+    "ratio_comparison": "integer cross multiplication only",
+    "side": {
+      "negative": "SHORT",
+      "positive": "LONG",
+      "zero": "ABSTAIN"
+    },
+    "sign": "sign(current-lagged)",
+    "signal_id": "ESDI-288|primary|epoch_id=<canonical decimal integer>",
+    "threshold": {
+      "denominator": 4,
+      "numerator": 3,
+      "operator": ">="
+    }
+  },
+  "frozen_preregistration": {
+    "document": {
+      "path": "docs/ethereum-settlement-demand-impulse-preregistration-2026-07-30.md",
+      "sha256": "83fc8b6d83a992e8ecb3077fb55829994073e9c7d3eeb783a8bfeb505e3462a8"
+    },
+    "producer": {
+      "committed_and_unchanged_at_creation_required": true,
+      "path": "training/preregister_ethereum_settlement_demand_impulse.py",
+      "test_path": "tests/test_preregister_ethereum_settlement_demand_impulse.py"
+    },
+    "repository_identity": {
+      "bound_paths_clean_against_HEAD_required": true,
+      "git_blobs": {
+        "docs/ethereum-settlement-demand-impulse-preregistration-2026-07-30.md": "07cd41b1aa1b95b5e433ff2d591974aa4177f254",
+        "execution/__init__.py": "6bcf6518213abf1880b05d19e20310039fee23a9",
+        "execution/binance_aggtrade_stream.py": "c94e1a4c084bb2e53c29a8720aa8d1e8ec0b3dc1",
+        "execution/portfolio_live.py": "801fae922f196c3d819b207045ba3f8d8c9f85d5",
+        "execution/portfolio_shadow_policies.py": "d7a47c23b6ff06067d8bffca5f71103948c859df",
+        "execution/rank7_runtime.py": "10294fe2b763de22c8928d061374600a2c90a1f8",
+        "execution/rex_llm_live.py": "a4ab48081786f979ad20da03db39410e8545aaac",
+        "execution/wave_execution.py": "4da5c7298fcde3d9150b8fd88e0d8bcccd4e3552",
+        "models/__init__.py": "c6456fe1e0b3f6923e3bfe9e3de92d943f93c241",
+        "models/option_a.py": "4aabf3b70ad11f3120f839ddf1d1c3b13ac7a409",
+        "models/option_b_vlm.py": "1b443afb2eeb5037f1af98e7c03fca93ddca41ed",
+        "preprocessing/__init__.py": "66035d53c8d6c427c2590f59d9ad983e225ad2aa",
+        "preprocessing/binance_aux_features.py": "9101be89a69aef8c49e4b21248ca3bcd4e7dd117",
+        "preprocessing/chart_generator.py": "3b79946b7cc49e722042f1bef954303cc40eb019",
+        "preprocessing/external_features.py": "d67f548d6e026e877fa51ab9f6fd9d31641367d0",
+        "preprocessing/indicators.py": "f6debcb4149b88c6a5c6aff24fdecfb169fbd596",
+        "preprocessing/live_db_features.py": "8ab9365412e1a53daf623fc7603faf5bbcfbe2f8",
+        "preprocessing/market_features.py": "19fd3d674575bc835f39eafafeeb901cd0fff683",
+        "preprocessing/scalars.py": "79f0bb64abb0aefbd98d4f3a69d4ced0d7ff1450",
+        "preprocessing/timeframe.py": "35f4cef6b300a65e24a135ee0e1ef5d93b21f302",
+        "pyproject.toml": "fa8a6907c7e965f588216f23a4e6e51e270bbea0",
+        "tests/test_preregister_ethereum_settlement_demand_impulse.py": "e53fe42cbdf51cdb71bd434c54f4a1442aadca92",
+        "training/__init__.py": "90c79547ecf836964f7f42f542cccfd6832091e1",
+        "training/alpha_feature_backtest.py": "76b2383b1c65e4db3c02d0754d2e48624e7d31e4",
+        "training/alpha_linear_combo_scan.py": "58ba6fef140d1ceadf3beaa16911242f28fe4fe7",
+        "training/audit_confirmed_pullback_squeeze_live_parity.py": "b45486f37e8fa114ea0d8fc6a6aa5031382ce5d7",
+        "training/audit_weak_feature_responsibility_stability.py": "56cca679af73b06ad4cd56349622103e9511ae86",
+        "training/build_rex_event_reasoning_policy_data.py": "0fa2693458e18c24ba1f3e588669ecb86608404d",
+        "training/build_rex_regime_thesis_sft.py": "48b3e961228a17dccc95be03ea94270912a10073",
+        "training/eval_pairwise_candidate_backtest.py": "2c41532308e89c8c8b1025b5990ccfc13f116845",
+        "training/eval_text_label.py": "5dd7005907a504a3a176a6fc50a6a58b70a95de4",
+        "training/eval_text_trader.py": "6ecdebf8352eb0199f4b7334f3bcc7cadbb498d3",
+        "training/evaluate_oi_llm_selector.py": "9b92023b37a2a154ffa755fd62c064374ef16eef",
+        "training/evaluate_portfolio_llm_selector.py": "d93f2454a5b8f99086869671377c9a24c919f86b",
+        "training/event_candidate_pool_probe.py": "6c7d588d236890fbb2ae321d19411c06c077f972",
+        "training/hierarchical_direct_split_search.py": "7218e5cef10fda6d17a94bdd844e430e0c0c22c9",
+        "training/hierarchical_regime_filter_search.py": "b1d3090440766f05f4c9a8033e762550b03da6f5",
+        "training/long_component_tp_union_scan.py": "d4b9eafe4393b38b6d7102d342f4e1ee332af1ed",
+        "training/long_regime_alpha_union_validate.py": "e22fcb2b7afc183070734ba248c55f7a31e232c9",
+        "training/long_regime_combo_scan.py": "27710d743e2e15cf7ba7eb21279b6e920bdaf8cc",
+        "training/long_regime_gate_scan.py": "fee3d46c1cabdc26fdb50a7177ca9b6966ff858d",
+        "training/long_regime_interest_gate_validation.py": "f925b3b6d68d89edca8cf7808738d4891abbb058",
+        "training/long_regime_score_gate_validation.py": "a6cd3b382ca32ce65c5d4d1444fbb4e436f9d878",
+        "training/online_risk_overlay_backtest.py": "b200e99a0f71f5eca23779723e361e99dad38e3c",
+        "training/path_outcome_dataset.py": "0cb4c6f6989c0150d99b9bf88fe4295b44e9b294",
+        "training/portfolio_opt_new_alpha_pool.py": "bdf9cac60e76bed0a9405835e549957a66901383",
+        "training/preregister_ethereum_settlement_demand_impulse.py": "26c99dd77083cb0432160292c723da5ac2c019c3",
+        "training/search_bidirectional_state_alpha.py": "9b1912359f5d694ffd156ae6431830e9551ec809",
+        "training/search_bocpd_state_gated_alpha.py": "d4ef7c7a2cfcf64dc837530d087254c2ba95ff47",
+        "training/search_causal_online_expert_alpha.py": "bcfa3b96fb9d5bed70c26b54ffcace68aa9acab1",
+        "training/search_confirmed_pullback_squeeze_alpha.py": "5e57fb241ca530219a384d67f991b86598334b1b",
+        "training/search_crossvenue_microstructure_consensus_alpha.py": "1c3683bc2eb6d605030c4b826be92c5b906562f7",
+        "training/search_deribit_dvol_alpha.py": "5ab9281c7c822d617a7e9581a47667c7658542dd",
+        "training/search_funding_premium_external_state_gate_alpha.py": "4fd211982f8bc475d3c378d57a564bad75506812",
+        "training/search_funding_premium_independent_gate_alpha.py": "edbfe495fabebf7a68f0025dc886f5b7f6e99168",
+        "training/search_gaussian_hmm_regime_alpha.py": "7859663cf141bfc1f7455fc5ea6add4f211293f8",
+        "training/search_inventory_purge_reclaim_alpha.py": "9d5cc4ee9488519747921583883a07a37670c551",
+        "training/search_jump_variation_bidirectional_alpha.py": "3caea37ab01b7b5d2e195857088f520a4db905f4",
+        "training/search_kalman_state_gated_alpha.py": "515c79ad53e815a86be832d99d616e9b9c474db9",
+        "training/search_kimchi_leadlag_bidirectional_alpha.py": "1b3027d8a0a590c7a629d4e8f781ead20ffe251e",
+        "training/search_liquidity_recovery_bidirectional_alpha.py": "dc4e1f72aa32b27d9c0814c21faa770f9d1e5a2f",
+        "training/search_liveparity_state_feature_interactions.py": "1448c295adcde146999689f8e273db872527bfba",
+        "training/search_market_braid_alpha.py": "6d52b6972b00024e65d51481853db48b4fcdb429",
+        "training/search_nested_barrier_witness_alpha.py": "175e73b5e204d539b5d28de8cbb39b67d3ea30bf",
+        "training/search_orderflow_trophic_succession_alpha.py": "dc607b84e8824775b2da242c5b04f1a345a6395e",
+        "training/search_positioning_disagreement_alpha.py": "f416209b2cbe131f9552117370e2b205ccfbc6f4",
+        "training/search_positioning_hgb_path_alpha.py": "cef2c55cb97d84cc9f57ebe0c9bd67ec7152cc6d",
+        "training/search_semimarkov_duration_alpha.py": "49277b661dc7f76a54c08eef9071c87ffefe9b5a",
+        "training/search_significant_cagr_mdd_pool.py": "4583e2da37919a60baac0deabdac74e1e9f64508",
+        "training/search_specific_pullback_squeeze_alpha.py": "d0ce1dc1fcf7b24f4eb90dd6f73e62fd09eb558b",
+        "training/search_spot_perp_transfer_entropy_alpha.py": "e6dc69b4c8f6c2245e201625745a1ac1ea911251",
+        "training/search_volume_clock_bidirectional_alpha.py": "86989ddad86c9abd1b34a54d3224d177860eab7e",
+        "training/strict_bar_backtest.py": "602473e01fa4c2e1a94f9f38a5f0dad9d5de1159",
+        "training/train_text_sft.py": "1c57ab541fe7fea37317f32a9dbe9333c132c2f8",
+        "training/wave_feature_ridge_policy.py": "366001ab9d047743c9ede4d436d3221345f69710",
+        "utils.py": "2c5a80f27e364b50fd086bccfd7e4eb1414324ea",
+        "uv.lock": "e4d529eca8110a530c362eb7883430bb81893140"
+      },
+      "sha256": {
+        "docs/ethereum-settlement-demand-impulse-preregistration-2026-07-30.md": "83fc8b6d83a992e8ecb3077fb55829994073e9c7d3eeb783a8bfeb505e3462a8",
+        "execution/__init__.py": "b7c3908c2f97b8146e358073f963648f916a505a890eea127adb99848fd24fa1",
+        "execution/binance_aggtrade_stream.py": "e9e6aba620f621f451605b4521b5c5ad13c081e6b819e5e45ab2cb39dac377ac",
+        "execution/portfolio_live.py": "5edd4e9aa749e538d7de6a9990e31b94fbcb444b7e1498714cea82036962863d",
+        "execution/portfolio_shadow_policies.py": "71c3866d3d73358b36652349816e008cda45736472512248ab2fefb398388d27",
+        "execution/rank7_runtime.py": "1ba1ab8f0af7cee0bac4885836776d50f2aff9dd30319d47e9a322f82f36c0dc",
+        "execution/rex_llm_live.py": "2e0de376e967b237afb711dd44503ec45dbb9b6548f575219c1cf93cc2de9c48",
+        "execution/wave_execution.py": "dea8d16a6da63db8911e4476428c74ae0381723a56f37061e92963980f981577",
+        "models/__init__.py": "73b72b4e7fd00f0524e78cec2cf02c43b37df7fd99626383e35a220e57fe02f2",
+        "models/option_a.py": "b9b1ad279aafa58619e0c89377302a6ffc6d0d6211a7d9ec925c9b4c6c054dd7",
+        "models/option_b_vlm.py": "a098326d41eb211a84968f20c92d754eb0f83eb06bc84528b3bbb696c4ca4fc5",
+        "preprocessing/__init__.py": "69f8b8be9807f7ff235a0758d573b1c0e6f49fc38292563ad65eb14613b40f99",
+        "preprocessing/binance_aux_features.py": "dc97e1694d4c0718262f8fae5cb3ea24c4a33a30e42301528973be61c6e5f1e6",
+        "preprocessing/chart_generator.py": "ce174882fa26fb06f3765bf3023274594f8ce789b44637426e16e0c01d00e2f4",
+        "preprocessing/external_features.py": "b73ed029fb516ee69482141885ce5e36040506caf9a7a61a49d47c30d39f55a5",
+        "preprocessing/indicators.py": "39c553762e7f09150f9bb73b7c7c0e243f9a94d6c9b33db03cf1c8c5770800a7",
+        "preprocessing/live_db_features.py": "a4b903913a51e1322e8946cd8dad8fea08b2361655520d20312a65f4219d5099",
+        "preprocessing/market_features.py": "f9091ecb080656c69a08ac3b4d07f7316cc2ddcc1fe4efacb9e10e8334d5cafa",
+        "preprocessing/scalars.py": "310da13aebb260ee50c554579f3502c9f8670f019b9abf224c6db01f8f80bc8d",
+        "preprocessing/timeframe.py": "8413e00429e649edfd068d6668db718aa7276e08c7bf01ec464fddbfc7b4465b",
+        "pyproject.toml": "972713ffd03a621c8e3a5acf61b8aa5f7aa68d573d68415bfab34a5b68304e90",
+        "tests/test_preregister_ethereum_settlement_demand_impulse.py": "d923e47eabbdfdf95abbc4b6c61748d48910841edf6708be8dc34de734153e30",
+        "training/__init__.py": "027b72d432cbcc92c636d48e78c59c7472c1bbfd95be9195b6c1908a8ae2a259",
+        "training/alpha_feature_backtest.py": "240465e2c09624308cfe7f2c94541d148624bcd31e1635604aeb40950b92536b",
+        "training/alpha_linear_combo_scan.py": "ffec3dca81748fb3c402db2546b178a07a7a485397c6a4a963cb60d9a622b9ec",
+        "training/audit_confirmed_pullback_squeeze_live_parity.py": "7c79e6157d0055aeca66e4eff22707d70b549eb6e4e7a79342003a7623a3b9cd",
+        "training/audit_weak_feature_responsibility_stability.py": "154352ab3af889716e06cfb6fa3ddd3242a478ded3bdd93b5bcadd54f15e25f9",
+        "training/build_rex_event_reasoning_policy_data.py": "ff7269f5a99484516b3d8575b7ea1182cfeaba28299528459e789854e27b1f6c",
+        "training/build_rex_regime_thesis_sft.py": "880ebec45dd359432cd99b2a78b82fd14b508913334e17b1b19dc78833d2f901",
+        "training/eval_pairwise_candidate_backtest.py": "d82767fda225d1be3f8961c34f204f2890ee2d9af3c02cd04a4cf9f9e0a3658c",
+        "training/eval_text_label.py": "96765917e849fe65734de98f81bf775fc7305cd5c483d3497f71ec674a1f04b8",
+        "training/eval_text_trader.py": "9bac3f2ac4c4d2b0f75790fa0c05b897f0d2a6eba9a16b8d978a1210466e0af0",
+        "training/evaluate_oi_llm_selector.py": "fd9475769b688a26b5ecf7f17fc7c128292baf27634658bcd26806cf5c751fd5",
+        "training/evaluate_portfolio_llm_selector.py": "f23b7df47f516e0ef0a7fb76f3b77538262164ca23022a7dcf69123ac8494ff9",
+        "training/event_candidate_pool_probe.py": "690f0bb0525652409785cdd51a121b722f05adeb0f14b3d6b72b955e7b2800b6",
+        "training/hierarchical_direct_split_search.py": "5193324874e08712795e913d13763b18595b82bf7c7950bbfc77b21686d33b76",
+        "training/hierarchical_regime_filter_search.py": "53ea44cfbcacabcbb31208c01cc2f2f946e089766c32ab820696e1f95fafa3f0",
+        "training/long_component_tp_union_scan.py": "5f4ea20d9a9301a284ab490f86dbbee27d9540a1663171947ff839b7c491faaf",
+        "training/long_regime_alpha_union_validate.py": "6a4e9c3209c11779415c29b6144f9cba84625ec71ee7123af08bccf84261bd8f",
+        "training/long_regime_combo_scan.py": "824219690952f03aed77cef4126a364db746fb123fad7eba0be5974f11cea92e",
+        "training/long_regime_gate_scan.py": "48f191da363e829d41e85a938f58cd6b989237c5b7c6b7167b010b255b14bec7",
+        "training/long_regime_interest_gate_validation.py": "cc9f4b0ea85079992ca060719ad2ab6afc2018884325a893adb459304e312075",
+        "training/long_regime_score_gate_validation.py": "e1ac9972c7c14e5fbc01d29fdea2b9cb83f7e3db8e8cecbfa5c5a40f1551021d",
+        "training/online_risk_overlay_backtest.py": "398e912ee1069e2b063cad62ce8be2a9002ab82eaf8612bea1e37f8db617e438",
+        "training/path_outcome_dataset.py": "f6fe0f080076250ddb9389a07785fcbb89380806aee0431e491b28b4dcdbc05e",
+        "training/portfolio_opt_new_alpha_pool.py": "88434d2aefafd763a6b09d2ad78b4b77dd493e4102b696e80cc53e67437e91fa",
+        "training/preregister_ethereum_settlement_demand_impulse.py": "1c7d7c822f16818ce0bc8fa0be99db0fe156882dbb76bf804ae19232f2a53b26",
+        "training/search_bidirectional_state_alpha.py": "99e9f93dce07d91ad7a9962e715ec993c0e379e38db94c9087eb0a0c7d8d7b64",
+        "training/search_bocpd_state_gated_alpha.py": "43be4c2bc5f91562bdfe05bd829b31024c7028c93d9881fe9fd27a4fe8653ac6",
+        "training/search_causal_online_expert_alpha.py": "911b7a659960120e7a3e2e50f781ccf6c7e73f7febdd48c31246321f35ac4589",
+        "training/search_confirmed_pullback_squeeze_alpha.py": "d91cc2f86a62973ca1508d6bb9a98b552c39cd24b8a65597e5394402f4a32bbe",
+        "training/search_crossvenue_microstructure_consensus_alpha.py": "582fb196129a32c1128d550010e0f7bba1ef1722f380c6899507af960cb8246c",
+        "training/search_deribit_dvol_alpha.py": "1aa98496b58416815a84698c97d7897e284352dd67b6ae4d633fbdb6e774ed0a",
+        "training/search_funding_premium_external_state_gate_alpha.py": "98294a4dcd5a892d4d975b9e8aad44f96bfed9a510f80638a4a6717df2509424",
+        "training/search_funding_premium_independent_gate_alpha.py": "7245aa9837a1302034d9f301b0bc1c4359a349366fbcf605233eeea138e35490",
+        "training/search_gaussian_hmm_regime_alpha.py": "36dc9b82f9e01911a91748a71460e3ee29aff87b75cea2749bedc77b061db59d",
+        "training/search_inventory_purge_reclaim_alpha.py": "5d8d4df7ea79790afb919bbb481d11de33ecba5768f6e26feb1f7667cd947d65",
+        "training/search_jump_variation_bidirectional_alpha.py": "a0e4aa9cef572a962a9adb9acdd8ecc55b4dd2a6810cbe94f50bf2e2526c064a",
+        "training/search_kalman_state_gated_alpha.py": "7aa03fab9695590e1824fb4d517b7b70e17bcc5ca611bd2840c473e90e334abf",
+        "training/search_kimchi_leadlag_bidirectional_alpha.py": "bb3bcf311222df18ead22ccd8a920cd273d4ecdc1e2fafe326681e5e72eab1b1",
+        "training/search_liquidity_recovery_bidirectional_alpha.py": "1addc712cf8d0c27e3a503af600a0a898cec0078f8639f47684b3f6781aeccd9",
+        "training/search_liveparity_state_feature_interactions.py": "1bd7c3663c6e1f84453b2f52f21cdcaa7eadd469bf60666fcec89ad800739896",
+        "training/search_market_braid_alpha.py": "ea11885e3090ab7e3a8ade8364b96828aa43c3dc4d5fcc34073ce1e55ba0317a",
+        "training/search_nested_barrier_witness_alpha.py": "33a312e858c75169e2b572777d6617711a503a2502b6db33ab3488dff2890173",
+        "training/search_orderflow_trophic_succession_alpha.py": "b3dac0dc7c85f8af794c8bb11b96b99a90c87a20be3722559ead7eb8ac933a6b",
+        "training/search_positioning_disagreement_alpha.py": "61480e7564d6cc05c87bb09ea1cab9f935619447c39471bf2c8fc18e0abba681",
+        "training/search_positioning_hgb_path_alpha.py": "ea100039aa690c0555a66a40a7ae3bdd5c31c8474bff6b360a052b5c1e08ff9b",
+        "training/search_semimarkov_duration_alpha.py": "ea9fad3f6f00c9c9f2d975a84b599ea3ccc6e46c39deb5a67a097591a5521f00",
+        "training/search_significant_cagr_mdd_pool.py": "71216f53fd20735de6fe24f4b2603e2fada16b0aa8a0c85e4d6842571d3df69d",
+        "training/search_specific_pullback_squeeze_alpha.py": "9a10bb959229df7b3653290afeb4160b7f9d431c27a15bc1c3c325b15d6b4d08",
+        "training/search_spot_perp_transfer_entropy_alpha.py": "cbd630f7f3fbc75429994fe1cd1e13a1190c0b4e1240b93c9dc447bad25f1592",
+        "training/search_volume_clock_bidirectional_alpha.py": "5c5b9176e83f9ec9c03b25ac3957fb6b1098dd8f97e9589ed31d1631a3073f93",
+        "training/strict_bar_backtest.py": "3e95ad320d8869755afa1f4907d2d478200a3ebfc015e4eaeace0be0b15f9682",
+        "training/train_text_sft.py": "e054d73d164ca533f6023b5ac513deb5b5e90dc83fc65899c5afd1e4b8a2037e",
+        "training/wave_feature_ridge_policy.py": "fc1ed3c97035e215a1bf44fcac7a4508eaf31b9baf7f587fc4d45c4a6f7daa8b",
+        "utils.py": "3966d83a7f48f39c4aae29c6f0a5267c4852b3b2eb04d2e93be31c3bbe019630",
+        "uv.lock": "ff965ca88c9eb9f17efe74a6d550ab99d093b44cda2467cee6f5738fb60f770a"
+      },
+      "whole_worktree_clean_required": false
+    },
+    "serialization": {
+      "allow_nan": false,
+      "encoding": "UTF-8",
+      "ensure_ascii": true,
+      "indent": 2,
+      "manifest_hash": "SHA256 compact sorted-key JSON excluding manifest_hash",
+      "sort_keys": true,
+      "trailing_lf_count": 1
+    }
+  },
+  "full_source_replay_opened": false,
+  "funding_rows_opened": false,
+  "gross9": {
+    "authority": {
+      "base_portfolio": {
+        "path": "configs/live/portfolio_added_alpha_mainnet_live_2026-07-18.json",
+        "sha256": "3f6c929f6b03797093b8b81f50ede533176aa169f5f81a4bb5f616d31afd24ff"
+      },
+      "clock_reconstruction": {
+        "exact_runtime_config_and_transitive_hash_validation_required": true,
+        "failure_or_missing_dependency_is_terminal": true,
+        "five_signed_sleeves_required": true,
+        "stage": "after ESDI source-support pass and before ESDI economics"
+      },
+      "portfolio": {
+        "path": "configs/shadow/portfolio_rank7_capacity_candidate_2026-07-28.json",
+        "sha256": "006f82e1f0affad9f96a08a6c600542feec4a0e1198ed99b8630627de4913450"
+      },
+      "pre2025_anchor": {
+        "metadata_only_until_economic_stage": true,
+        "path": "results/gross9_pre2025_authoritative_anchor_2026-07-28.json",
+        "sha256": "329878d90b6cd9c731eb4871ac041256f95f03c14dd261ada681d3a370709875"
+      },
+      "runtime": {
+        "portfolio_live.py": {
+          "path": "execution/portfolio_live.py",
+          "sha256": "5edd4e9aa749e538d7de6a9990e31b94fbcb444b7e1498714cea82036962863d"
+        },
+        "rank7_runtime.py": {
+          "path": "execution/rank7_runtime.py",
+          "sha256": "1ba1ab8f0af7cee0bac4885836776d50f2aff9dd30319d47e9a322f82f36c0dc"
+        },
+        "rex_llm_live.py": {
+          "path": "execution/rex_llm_live.py",
+          "sha256": "2e0de376e967b237afb711dd44503ec45dbb9b6548f575219c1cf93cc2de9c48"
+        }
+      },
+      "runtime_code_closure": {
+        "all_distribution_inventory_count": 108,
+        "all_distribution_inventory_sha256": "a5b435e485426d7254ed222692bf3b9c6444ae992e582084398dc57b960549dc",
+        "ast_import_closure_must_match_before_artifact_creation": true,
+        "bound_by_git_blob_and_sha256_in_repository_identity": true,
+        "environment_lock_paths": [
+          "pyproject.toml",
+          "uv.lock"
+        ],
+        "exact_runtime_environment": {
+          "all_distributions": {
+            "accelerate": "1.12.0",
+            "aiohappyeyeballs": "2.6.1",
+            "aiohttp": "3.13.2",
+            "aiosignal": "1.4.0",
+            "annotated-doc": "0.0.4",
+            "anyio": "4.12.1",
+            "async-timeout": "5.0.1",
+            "attrs": "25.4.0",
+            "bitsandbytes": "0.49.2",
+            "certifi": "2025.10.5",
+            "charset-normalizer": "3.4.4",
+            "chronos-forecasting": "2.3.1",
+            "click": "8.3.3",
+            "cloudpickle": "3.1.2",
+            "contourpy": "1.3.2",
+            "cycler": "0.12.1",
+            "datasets": "4.6.1",
+            "dateparser": "1.2.2",
+            "dill": "0.4.0",
+            "einops": "0.8.2",
+            "exceptiongroup": "1.3.1",
+            "farama-notifications": "0.0.4",
+            "filelock": "3.20.0",
+            "fonttools": "4.61.1",
+            "frozenlist": "1.8.0",
+            "fsspec": "2025.10.0",
+            "gymnasium": "1.2.3",
+            "h11": "0.16.0",
+            "hf-xet": "1.4.3",
+            "httpcore": "1.0.9",
+            "httpx": "0.28.1",
+            "huggingface-hub": "1.12.0",
+            "idna": "3.11",
+            "iniconfig": "2.3.0",
+            "jinja2": "3.1.6",
+            "joblib": "1.5.3",
+            "kiwisolver": "1.4.9",
+            "markdown-it-py": "4.0.0",
+            "markupsafe": "3.0.3",
+            "matplotlib": "3.10.8",
+            "mdurl": "0.1.2",
+            "momentfm": "0.1.5",
+            "mpmath": "1.3.0",
+            "multidict": "6.7.0",
+            "multiprocess": "0.70.18",
+            "networkx": "3.4.2",
+            "numpy": "2.2.6",
+            "nvidia-cublas-cu12": "12.8.4.1",
+            "nvidia-cuda-cupti-cu12": "12.8.90",
+            "nvidia-cuda-nvrtc-cu12": "12.8.93",
+            "nvidia-cuda-runtime-cu12": "12.8.90",
+            "nvidia-cudnn-cu12": "9.10.2.21",
+            "nvidia-cufft-cu12": "11.3.3.83",
+            "nvidia-cufile-cu12": "1.13.1.3",
+            "nvidia-curand-cu12": "10.3.9.90",
+            "nvidia-cusolver-cu12": "11.7.3.90",
+            "nvidia-cusparse-cu12": "12.5.8.93",
+            "nvidia-cusparselt-cu12": "0.7.1",
+            "nvidia-nccl-cu12": "2.27.5",
+            "nvidia-nvjitlink-cu12": "12.8.93",
+            "nvidia-nvshmem-cu12": "3.3.20",
+            "nvidia-nvtx-cu12": "12.8.90",
+            "packaging": "26.0",
+            "pandas": "2.3.3",
+            "peft": "0.18.1",
+            "pillow": "12.1.1",
+            "pluggy": "1.6.0",
+            "propcache": "0.4.1",
+            "protobuf": "7.34.1",
+            "psutil": "7.2.2",
+            "pyarrow": "23.0.1",
+            "pycryptodome": "3.23.0",
+            "pygments": "2.20.0",
+            "pyparsing": "3.3.2",
+            "pytest": "9.1.1",
+            "python-binance": "1.0.32",
+            "python-dateutil": "2.9.0.post0",
+            "pytz": "2025.2",
+            "pyyaml": "6.0.3",
+            "regex": "2025.11.3",
+            "requests": "2.32.5",
+            "rich": "15.0.0",
+            "safetensors": "0.7.0",
+            "scikit-learn": "1.7.2",
+            "scipy": "1.15.3",
+            "sentencepiece": "0.2.1",
+            "shellingham": "1.5.4",
+            "six": "1.17.0",
+            "stable-baselines3": "2.7.1",
+            "sympy": "1.14.0",
+            "tabicl": "2.1.1",
+            "threadpoolctl": "3.6.0",
+            "tokenizers": "0.22.2",
+            "tomli": "2.4.1",
+            "torch": "2.9.0",
+            "torchvision": "0.24.0",
+            "tqdm": "4.67.3",
+            "transformers": "5.7.0.dev0",
+            "triton": "3.5.0",
+            "trl": "0.29.0",
+            "typer": "0.25.0",
+            "typing-extensions": "4.15.0",
+            "tzdata": "2025.2",
+            "tzlocal": "5.3.1",
+            "urllib3": "2.5.0",
+            "websockets": "15.0.1",
+            "xxhash": "3.6.0",
+            "yarl": "1.22.0"
+          },
+          "all_distributions_count": 108,
+          "all_distributions_sha256": "a5b435e485426d7254ed222692bf3b9c6444ae992e582084398dc57b960549dc",
+          "packages": {
+            "SQLAlchemy": null,
+            "datasets": "4.6.1",
+            "numpy": "2.2.6",
+            "pandas": "2.3.3",
+            "peft": "0.18.1",
+            "scikit-learn": "1.7.2",
+            "scipy": "1.15.3",
+            "torch": "2.9.0",
+            "transformers": "5.7.0.dev0",
+            "trl": "0.29.0",
+            "websockets": "15.0.1"
+          },
+          "platform": {
+            "libc": [
+              "glibc",
+              "2.39"
+            ],
+            "machine": "x86_64",
+            "system": "Linux"
+          },
+          "python": {
+            "implementation": "CPython",
+            "version": [
+              3,
+              10,
+              10
+            ]
+          }
+        },
+        "paths": [
+          "execution/__init__.py",
+          "execution/binance_aggtrade_stream.py",
+          "execution/portfolio_live.py",
+          "execution/portfolio_shadow_policies.py",
+          "execution/rank7_runtime.py",
+          "execution/rex_llm_live.py",
+          "execution/wave_execution.py",
+          "models/__init__.py",
+          "models/option_a.py",
+          "models/option_b_vlm.py",
+          "preprocessing/__init__.py",
+          "preprocessing/binance_aux_features.py",
+          "preprocessing/chart_generator.py",
+          "preprocessing/external_features.py",
+          "preprocessing/indicators.py",
+          "preprocessing/live_db_features.py",
+          "preprocessing/market_features.py",
+          "preprocessing/scalars.py",
+          "preprocessing/timeframe.py",
+          "training/__init__.py",
+          "training/alpha_feature_backtest.py",
+          "training/alpha_linear_combo_scan.py",
+          "training/audit_confirmed_pullback_squeeze_live_parity.py",
+          "training/audit_weak_feature_responsibility_stability.py",
+          "training/build_rex_event_reasoning_policy_data.py",
+          "training/build_rex_regime_thesis_sft.py",
+          "training/eval_pairwise_candidate_backtest.py",
+          "training/eval_text_label.py",
+          "training/eval_text_trader.py",
+          "training/evaluate_oi_llm_selector.py",
+          "training/evaluate_portfolio_llm_selector.py",
+          "training/event_candidate_pool_probe.py",
+          "training/hierarchical_direct_split_search.py",
+          "training/hierarchical_regime_filter_search.py",
+          "training/long_component_tp_union_scan.py",
+          "training/long_regime_alpha_union_validate.py",
+          "training/long_regime_combo_scan.py",
+          "training/long_regime_gate_scan.py",
+          "training/long_regime_interest_gate_validation.py",
+          "training/long_regime_score_gate_validation.py",
+          "training/online_risk_overlay_backtest.py",
+          "training/path_outcome_dataset.py",
+          "training/portfolio_opt_new_alpha_pool.py",
+          "training/search_bidirectional_state_alpha.py",
+          "training/search_bocpd_state_gated_alpha.py",
+          "training/search_causal_online_expert_alpha.py",
+          "training/search_confirmed_pullback_squeeze_alpha.py",
+          "training/search_crossvenue_microstructure_consensus_alpha.py",
+          "training/search_deribit_dvol_alpha.py",
+          "training/search_funding_premium_external_state_gate_alpha.py",
+          "training/search_funding_premium_independent_gate_alpha.py",
+          "training/search_gaussian_hmm_regime_alpha.py",
+          "training/search_inventory_purge_reclaim_alpha.py",
+          "training/search_jump_variation_bidirectional_alpha.py",
+          "training/search_kalman_state_gated_alpha.py",
+          "training/search_kimchi_leadlag_bidirectional_alpha.py",
+          "training/search_liquidity_recovery_bidirectional_alpha.py",
+          "training/search_liveparity_state_feature_interactions.py",
+          "training/search_market_braid_alpha.py",
+          "training/search_nested_barrier_witness_alpha.py",
+          "training/search_orderflow_trophic_succession_alpha.py",
+          "training/search_positioning_disagreement_alpha.py",
+          "training/search_positioning_hgb_path_alpha.py",
+          "training/search_semimarkov_duration_alpha.py",
+          "training/search_significant_cagr_mdd_pool.py",
+          "training/search_specific_pullback_squeeze_alpha.py",
+          "training/search_spot_perp_transfer_entropy_alpha.py",
+          "training/search_volume_clock_bidirectional_alpha.py",
+          "training/strict_bar_backtest.py",
+          "training/train_text_sft.py",
+          "training/wave_feature_ridge_policy.py",
+          "utils.py",
+          "pyproject.toml",
+          "uv.lock"
+        ],
+        "required_runtime_abi_and_selected_packages": {
+          "packages": {
+            "SQLAlchemy": null,
+            "datasets": "4.6.1",
+            "numpy": "2.2.6",
+            "pandas": "2.3.3",
+            "peft": "0.18.1",
+            "scikit-learn": "1.7.2",
+            "scipy": "1.15.3",
+            "torch": "2.9.0",
+            "transformers": "5.7.0.dev0",
+            "trl": "0.29.0",
+            "websockets": "15.0.1"
+          },
+          "platform": {
+            "libc": [
+              "glibc",
+              "2.39"
+            ],
+            "machine": "x86_64",
+            "system": "Linux"
+          },
+          "python": {
+            "implementation": "CPython",
+            "version": [
+              3,
+              10,
+              10
+            ]
+          }
+        },
+        "roots": [
+          "execution/portfolio_live.py",
+          "execution/rank7_runtime.py",
+          "execution/rex_llm_live.py"
+        ],
+        "runtime_environment_must_match_before_artifact_creation": true
+      },
+      "sleeves": {
+        "cand_rex_veto_7": {
+          "clock_artifact_preexists": false,
+          "config": {
+            "path": "configs/live/rex_veto_7_candidate.json",
+            "sha256": "36df47c4737eb99f4ca5e2b257d9bd2fbf130df9d731b9ac02fcfe5192acd4db"
+          },
+          "side": "AUTO from exact REX decision"
+        },
+        "fresh_kimchi_fx": {
+          "clock_artifact_preexists": false,
+          "config": {
+            "path": "configs/shadow/fresh_kimchi_fx_2026-07-16.json",
+            "sha256": "f3e764d5d065643905105ae1c46668a22684569289c3781b79fc6b2efcc5154f"
+          },
+          "side": "AUTO from exact exclusive long/short gates"
+        },
+        "frozen_annual_rank7": {
+          "bundle_manifest": {
+            "path": "artifacts/rank7/frozen_annual_rank7_2026/manifest.json",
+            "sha256": "2c45484dce48658ef7d342df7a3bb8e83cd0f31d4728bbb72fd38e612ec3b7a9"
+          },
+          "clock_artifact_preexists": false,
+          "config": {
+            "path": "configs/shadow/frozen_annual_rank7_2026-07-16.json",
+            "sha256": "b75621bb604266d1cd2529a29f8bdb6aec3b1f2c14ff00d88673ef007362526d"
+          },
+          "immutable_model_bundle_preexists": true,
+          "side": "LONG"
+        },
+        "markov_transition_long": {
+          "clock_artifact_preexists": false,
+          "config": {
+            "path": "configs/shadow/markov_transition_long_2026-07-16.json",
+            "sha256": "ebfec66715428b2fffead13e17229fb4369816daeeeab2c02cf0115e7110b755"
+          },
+          "side": "LONG"
+        },
+        "rex_taker_low_range_position": {
+          "clock_artifact_preexists": false,
+          "config": {
+            "path": "configs/shadow/rex_taker_low_range_position_2026-07-16.json",
+            "sha256": "d4c56a6f1659189876c1d3f2e519a3dbc2608c754720c5cd1f65a02adb5589e4"
+          },
+          "side": "AUTO from exact REX decision"
+        }
+      },
+      "transitive_source_manifest": {
+        "path": "configs/shadow/portfolio_added_alpha_signal_parity_sources_2026-07-16.json",
+        "sha256": "27a5095b18acaf10c9f5aa68c2ddac1ab1ebe4f506828e1fcfec34c414eb3ba6",
+        "validate_every_declared_source_hash_at_novelty_stage": true
+      }
+    },
+    "baseline_gross": 9.0,
+    "candidate_weights": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "comparison": "unscaled authoritative Gross9 baseline at gross 9.0",
+    "configured_treatment_gross": 9.0,
+    "freeze_rank": 1,
+    "future_rerank_or_alternate_weight": false,
+    "future_uses_only_frozen_weight": true,
+    "matching_execution_costs_exact_funding_and_strict_mdd": true,
+    "ranking": "maximum minimum base/stress 2023H2/2024 improvement; tie lower weight",
+    "requirements": {
+      "base_and_stress_absolute_return_positive": true,
+      "base_and_stress_cagr_mdd_improvement_min": 0.05,
+      "strict_mdd_reduced_in_at_least_one_selection_period": true,
+      "unscaled_absolute_return_retention_min": 0.97
+    },
+    "selection_periods": [
+      "2023H2",
+      "2024"
+    ],
+    "treatment": "scale every sleeve by (9-w)/9 and add ESDI at w",
+    "weights": {
+      "cand_rex_veto_7": 1.6,
+      "fresh_kimchi_fx": 2.0,
+      "frozen_annual_rank7": 3.0,
+      "markov_transition_long": 2.0,
+      "rex_taker_low_range_position": 0.4
+    }
+  },
+  "gross9_rows_opened": false,
+  "manifest_hash": "d5279f95cc7b92757aa77ecbbc5835d8b1cc4ce34f5a81d6f279abdcf2fcfe8a",
+  "novelty": {
+    "all_frozen_comparator_artifacts_must_be_evaluated": true,
+    "clock_identity": {
+      "comparison_domain": "registry half-open domain; filter both ESDI and comparator entries to the identical domain",
+      "duplicates_or_unsorted_entries": "terminal failure",
+      "intervals": "5m-aligned, contained, sorted, nonoverlapping [entry,exit)",
+      "timestamp": "integer UTC Unix seconds; no rounding"
+    },
+    "comparator_min_entries_to_gate": 10,
+    "comparator_removal_after_overlap_seen": false,
+    "executable_metric_functions_bound_by_producer_blob": [
+      "entries_in_domain",
+      "exact_entry_jaccard",
+      "bidirectional_entry_containment",
+      "fraction_at_most",
+      "fraction_below",
+      "signed_exposure_5m",
+      "occupied_bar_jaccard",
+      "squared_signed_exposure_pearson"
+    ],
+    "failure_is_terminal": true,
+    "frozen_comparator_artifacts": {
+      "AMTR-48": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-06-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "scheduled_exit",
+        "filters": {
+          "candidate": "AMTR-48",
+          "control": "primary"
+        },
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "423287fbc7a50bd00c0ca1de8580c983df1a2d128c1cc497d68e1bc74c224ac8",
+        "path": "data/authorized_minter_turnaround_relay_clocks_2020_2023.csv.gz",
+        "required_columns": [
+          "candidate",
+          "control",
+          "entry_time",
+          "scheduled_exit",
+          "side"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "30875029daa4d6e2eff9a59f53d45eda57dbced05988df089c38a6c81abfa0f6",
+        "side_column": "side"
+      },
+      "BFMWD-primary-variants": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-06-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "each_group_is_a_separate_comparator": true,
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "control": "primary"
+        },
+        "group_column": "variant_id",
+        "groups": [
+          "bfmwd_w12_d3_z10_h12",
+          "bfmwd_w24_d3_z10_h12",
+          "bfmwd_w12_d6_z10_h12",
+          "bfmwd_w24_d6_z10_h12"
+        ],
+        "header_line_sha256": "2dbaad2b5a57b577733b5f0a1807514ef41f1fc9f9a3daf7028152338568c7f8",
+        "path": "data/bitfinex_margin_warehouse_deployment_clocks_2021_2023.csv.gz",
+        "required_columns": [
+          "control",
+          "entry_time",
+          "exit_time",
+          "side",
+          "variant_id"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "02b4fcc462a5a48be7673649f4cf4b2f9bb210baca4294eed1696d479820cccc",
+        "side_column": "side"
+      },
+      "BFRT-288": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-06-01T00:00:00Z",
+          "2026-06-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time_utc",
+        "exit_column": "exit_time_utc",
+        "filters": {
+          "clock": "primary"
+        },
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "34f459439a8db95467cbbceca6ba14254bee97e8eca53a0840da2b68d1167c05",
+        "path": "results/block_feerate_breadth_transport_primary_clock_2026-07-20.csv.gz",
+        "required_columns": [
+          "clock",
+          "entry_time_utc",
+          "exit_time_utc",
+          "side"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "33428d29c2ace9b23672b2dc9dc3e9ba0e3020fa1a6e3845d55fa5d75230d64a",
+        "side_column": "side"
+      },
+      "BFWC-288": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-06-01T00:00:00Z",
+          "2026-06-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time_utc",
+        "exit_column": "exit_time_utc",
+        "filters": {
+          "control": "primary"
+        },
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "dba03137f60eb5480b5b2f43042e55d1e59bcc2425de87ef8df980e4b64c77e5",
+        "path": "results/blockspace_fee_witness_concordance_primary_clock_2026-07-30.csv.gz",
+        "required_columns": [
+          "control",
+          "entry_time_utc",
+          "exit_time_utc",
+          "side"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "b125046a1a3defda960e51b42e03ee1c3bb72a0799c646d3ae16a3e692735ed1",
+        "side_column": "side"
+      },
+      "CAIM": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-06-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {},
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "af12feb9d921c9f8c9f1b7def3b279a4e5c1faf9918a8f67e2bddc202a72ee8d",
+        "path": "results/chain_activity_impulse_momentum_pre2024_comparator_clock_2026-07-21.csv.gz",
+        "required_columns": [
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "e50cc154e23950a381aa456180970140882083734128bd7f902257738633f320",
+        "side_column": "side"
+      },
+      "CDLTR-72A": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-06-01T00:00:00Z",
+          "2026-06-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time_utc",
+        "exit_column": "exit_time_utc",
+        "filters": {
+          "clock": "primary"
+        },
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "d4b4ecf5de4c46cc2e75c41e3a35097d314116b2bf3f0e4565410b509b75db09",
+        "path": "results/cross_domain_liquidity_transmission_relay_support_clock_2026-07-21.csv.gz",
+        "required_columns": [
+          "clock",
+          "entry_time_utc",
+          "exit_time_utc",
+          "side"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "aa2bcafd0f62ebe585f93cbd357d29c37ae526a95a90b8a6c0bd7c068cd6e5a1",
+        "side_column": "side"
+      },
+      "CDLTR-prior-chain-network-bundle": {
+        "capability_column": "capability",
+        "comparison_domain": [
+          "2023-06-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "directional_interval_groups": [
+          "CVTR-1",
+          "DFFB-601",
+          "FLCC-1:FLCC-H4-Q60",
+          "FLCC-1:FLCC-H4-Q65",
+          "FLCC-1:FLCC-H8-Q60",
+          "FLCC-1:FLCC-H8-Q65",
+          "NTB-7",
+          "NWE-8",
+          "ORFR-1",
+          "chain_activity_impulse_momentum"
+        ],
+        "each_group_is_a_separate_comparator": true,
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {},
+        "group_column": "comparator",
+        "header_line_sha256": "8b05d5e578b01d9040ffecd3ddd55bc997fac46d0ea76bbf30b22ffe3a7b654b",
+        "path": "results/cdltr_prior_comparator_views_2026-07-21.csv.gz",
+        "required_columns": [
+          "capability",
+          "comparator",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "required_metrics_by_capability": {
+          "directional_interval": [
+            "exact_entry_jaccard",
+            "candidate_24h_containment",
+            "absolute_signed_exposure_pearson"
+          ],
+          "timestamp_only": [
+            "exact_entry_jaccard",
+            "candidate_24h_containment"
+          ]
+        },
+        "sha256": "bffdcf158d7d4e38db5794fb4761de528fb73b0b772ae950f3a087a93ab63f1a",
+        "side_column": "side",
+        "timestamp_only_groups": [
+          "NWE-7",
+          "live_anchor_2023",
+          "prior_microstructure:cbfr72",
+          "prior_microstructure:mfic_fast",
+          "prior_microstructure:mfic_slow",
+          "prior_microstructure:mfic_union",
+          "prior_microstructure:netf_fast",
+          "prior_microstructure:netf_slow",
+          "prior_microstructure:netf_union",
+          "prior_microstructure:terminal_absorption_wait72_h72",
+          "prior_microstructure:wfrs_l288_q90_h144"
+        ]
+      },
+      "EBLR-60/30": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-06-25T00:00:00Z",
+          "2024-10-15T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "planned_exit_time",
+        "filters": {
+          "candidate": "EBLR-60/30"
+        },
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "17ad2bd574a60355d40fa797e4a4a4b57e1f0cfc48e6bf79ca9e8312d1f6da11",
+        "path": "data/eth_btc_liquidation_relay_clocks_2023_2024.csv.gz",
+        "required_columns": [
+          "candidate",
+          "direction",
+          "entry_time",
+          "planned_exit_time"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "b4b35a0e9ae0cf26bf08df67b5c2fc832393c638c97f5b91a86894ee693b430e",
+        "side_column": "direction"
+      },
+      "FCCM-72": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-06-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "candidate": "FCCM-72",
+          "control": "primary"
+        },
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "ffec7a169e71d896d348e875e4753c880050c8011b52eb058eee6932a5d4a6d5",
+        "path": "data/funding_currency_custody_mobility_consensus_2021_2023/fccm72_support_clocks_2021_2023.csv.gz",
+        "required_columns": [
+          "candidate",
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "71180862d9dcc4d76e055c52fd72a2424ee12387a6b8062af8a9382675af3810",
+        "side_column": "side"
+      },
+      "SDDR-12": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-09-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "candidate": "SDDR-12",
+          "control": "primary"
+        },
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "91e4b4187dccbba5c9a6407316c4205d17422b1900b319a7ef800a541e1f3550",
+        "path": "data/stablecoin_denominator_dislocation_clocks_2023.csv.gz",
+        "required_columns": [
+          "candidate",
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "eaf2d6c187af9855e76474d2951fcdc12267174980a72649b73d068982ca8c69",
+        "side_column": "side"
+      },
+      "SQFD-6": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-09-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "candidate": "SQFD-6",
+          "control": "primary"
+        },
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "2e6d34c734ddc66d15c7718cc0aed3f2c8903fc02370bd9a2446054ff96a2071",
+        "path": "data/stablecoin_quote_flow_diffusion_clocks_2023_2026.csv.gz",
+        "required_columns": [
+          "candidate",
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "a81e144eea1e80ae5439fc66db1fad5bbd00cd9ac177e25142b5cfb5a07bcc5b",
+        "side_column": "side"
+      },
+      "UCBR-12": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-09-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "candidate": "UCBR-12",
+          "control": "primary"
+        },
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "a66cd7a33793d7d0b1056171526dd67c9de5cb95b8847435a8ad1c220757ef10",
+        "path": "data/usdt_collateral_breadth_relay_clocks_2023.csv.gz",
+        "required_columns": [
+          "candidate",
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "20b3ee9f82696222a3adbde0045dfde53e0e240e85162e463166aa8fe90b1a8f",
+        "side_column": "side"
+      },
+      "UGCI-288": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-06-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "candidate": "UGCI-288",
+          "control": "primary"
+        },
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "b79639e44ce1b4488fdf6991e60831221cbc9a48565fa42d053faeb71156ad91",
+        "path": "data/usdc_gross_clearing_imbalance_clocks_2021_2023.csv.gz",
+        "required_columns": [
+          "candidate",
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "a0f861c69ac171e1efa665dc90a916d0351413ca07e5e46783bb8abd662175fd",
+        "side_column": "side"
+      },
+      "URCD-72": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-06-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "candidate": "URCD-72",
+          "control": "primary"
+        },
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "3f0faa3e408dc1343104af9805b0d356106b043d7e5eb6c18ee646ac07d2dc65",
+        "path": "data/usdc_recipient_concentration_dislocation_2021_2023/urcd72_support_clocks_2021_2023.csv.gz",
+        "required_columns": [
+          "candidate",
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "ad9617ec5af0c0189aa384a49ab9244e957758f7c8abe71b6b61e911b7663ea1",
+        "side_column": "side"
+      },
+      "WCDR-2016": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-06-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "candidate": "WCDR-2016",
+          "control": "primary"
+        },
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "e67cd52d0cadded15fd49f4ed809707e5d1601260416a93949f452dd7638680e",
+        "path": "data/wrapped_collateral_dollar_liquidity_rotation_2021_2023/wcdr2016_support_clocks_2021_2023.csv.gz",
+        "required_columns": [
+          "candidate",
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "241d96a64a654ba2faeda2d4a8460131269acf21d0bbbf31177d35d1ecd63b3c",
+        "side_column": "side"
+      },
+      "WCTR-288": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-06-01T00:00:00Z",
+          "2026-06-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time_utc",
+        "exit_column": "exit_time_utc",
+        "filters": {
+          "clock": "primary"
+        },
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "cd90df97c515162cdd0d2fbca7f341ef65a61367168ff6bcc9d8d6e93eb3b6cb",
+        "path": "results/witness_composition_transport_primary_clock_2026-07-20.csv.gz",
+        "required_columns": [
+          "clock",
+          "entry_time_utc",
+          "exit_time_utc",
+          "side"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "7a6b56a3024d0d087322fad7b3229276c539b93374691cd2812af0630dc752b1",
+        "side_column": "side"
+      },
+      "WSCF-72-SOURCE-FAMILY-SEEN": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-06-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "candidate": "WSCF-72-SOURCE-FAMILY-SEEN",
+          "control": "primary"
+        },
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "adb55cd822efbdcd8469018a51c2b037514758633599a403fae1a1868ef2e9f3",
+        "path": "data/wbtc_stablecoin_finalized_confirmation_relay_2021_2023/wscf72_support_clocks_2021_2023.csv.gz",
+        "required_columns": [
+          "candidate",
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "86565774ae97a1024c5a66b4d59a1f5413bf4608398623359dd3ee24572f0ef3",
+        "side_column": "side"
+      },
+      "WTSL-168-SOURCE-SEEN": {
+        "capability": "directional_interval",
+        "comparison_domain": [
+          "2023-06-01T00:00:00Z",
+          "2024-01-01T00:00:00Z"
+        ],
+        "entry_column": "entry_time",
+        "exit_column": "exit_time",
+        "filters": {
+          "candidate": "WTSL-168-SOURCE-SEEN",
+          "control": "primary"
+        },
+        "group_column": null,
+        "groups": [],
+        "header_line_sha256": "f206f15f5410c3bb568df4f64c0cffafcf077b5ef08dc8c427ac3af33d873937",
+        "path": "data/wbtc_turnover_stablecoin_liquidity_2021_2023/wtsl168_support_clocks_2021_2023.csv.gz",
+        "required_columns": [
+          "candidate",
+          "control",
+          "entry_time",
+          "exit_time",
+          "side"
+        ],
+        "required_metrics": [
+          "exact_entry_jaccard",
+          "candidate_24h_containment",
+          "absolute_signed_exposure_pearson"
+        ],
+        "sha256": "df8cb085d439c9ee9e89334cb891b9e3b04f54c2a8e70bd4f552a90648ea8b6d",
+        "side_column": "side"
+      }
+    },
+    "gross9_common_domain": [
+      "2023-06-01T00:00:00Z",
+      "2026-06-01T00:00:00Z"
+    ],
+    "gross9_each_positive_weight_sleeve_thresholds_exact_inclusive": {
+      "candidate_6h_containment": {
+        "denominator": 20,
+        "numerator": 7
+      },
+      "exact_entry_jaccard": {
+        "denominator": 10,
+        "numerator": 1
+      },
+      "occupied_bar_jaccard": {
+        "denominator": 4,
+        "numerator": 1
+      },
+      "squared_signed_exposure_pearson": {
+        "denominator": 400,
+        "numerator": 49
+      }
+    },
+    "metric_applicability": {
+      "directional_interval": "all three prior-source metrics are mandatory",
+      "missing_required_field_or_unknown_capability": "terminal novelty failure",
+      "timestamp_only": "exact-entry Jaccard and candidate +/-24h containment are mandatory; signed-exposure Pearson is inapplicable and must be reported as such, never zero-filled"
+    },
+    "metric_definitions": {
+      "absolute_signed_exposure_pearson_gate": "exact squared Pearson; compare prior-source <=4/25 and Gross9 <=49/400; report nonnegative square root only",
+      "candidate_containment": "max(fraction of A within +/-window of any B, fraction of B within +/-window of any A)",
+      "exact_entry_jaccard": "|A intersect B| / |A union B|",
+      "occupied_bar_jaccard": "Jaccard of bar indexes with nonzero signed exposure",
+      "signed_exposure": "{-1,0,1} on every 5m bar open in the common domain",
+      "zero_variance_or_empty_metric_denominator": "terminal failure"
+    },
+    "minimum_count_is_after_common_domain_filter": true,
+    "opens_only_after_complete_source_support": true,
+    "prior_source_family_thresholds_exact_inclusive": {
+      "candidate_24h_containment": {
+        "denominator": 2,
+        "numerator": 1
+      },
+      "exact_entry_jaccard": {
+        "denominator": 5,
+        "numerator": 1
+      },
+      "squared_signed_exposure_pearson": {
+        "denominator": 25,
+        "numerator": 4
+      }
+    }
+  },
+  "outcomes_opened": false,
+  "policy_id": "ESDI-288",
+  "producer_effects": {
+    "bound_committed_code_config_and_lock_files_hashed": 77,
+    "comparator_or_gross9_artifact_bytes_opened": 0,
+    "data_rows_opened": 0,
+    "git_metadata_subprocess_calls": 2,
+    "network_calls": 0
+  },
+  "protocol_version": "ethereum_settlement_demand_impulse_preregistration_v1",
+  "sequence_rules": {
+    "later_periods_veto_only": true,
+    "ordinary_failure_repair_under_policy_identity": false,
+    "parameter_repair_polarity_inversion_or_rank2": false,
+    "stop_at_first_failure": true
+  },
+  "singleton": true,
+  "source": {
+    "authority": "Ethereum mainnet",
+    "availability": "timestamp of end_block+64",
+    "base_fee_vector_sha256_serialization": "exactly 3600 positive uint256 integers, each as 32-byte unsigned big-endian, concatenated in ascending block order",
+    "boundaries": [
+      {
+        "first_block_at_or_after": 16308190,
+        "hash": "0x53dd35d982c984441b3b613919d64dbbf131063d0f85804d77f93f190fa5e106",
+        "utc": "2023-01-01T00:00:00Z"
+      },
+      {
+        "first_block_at_or_after": 17382266,
+        "hash": "0xe0ef11cab4909c80599087b4ffb0bf1e92b1affcc72abc3b802f20a9d5d21096",
+        "utc": "2023-06-01T00:00:00Z"
+      },
+      {
+        "first_block_at_or_after": 21525891,
+        "hash": "0x9512042c5c38145528389a91bd3d63193a1f48fb45d6a3b144ad2d833331fc4c",
+        "utc": "2025-01-01T00:00:00Z"
+      },
+      {
+        "first_block_at_or_after": 24136053,
+        "hash": "0x53e1c0caa885383824d39dc57c0692ea20e971ade409553c4a8031e90f44c516",
+        "utc": "2026-01-01T00:00:00Z"
+      },
+      {
+        "first_block_at_or_after": 25218798,
+        "hash": "0x55f8fdbda40a23cd51a9a2bffba625317ed15d9d1cdc2128c7643bf66e2a906e",
+        "utc": "2026-06-01T00:00:00Z"
+      }
+    ],
+    "chain_id": 1,
+    "common_finalized_head_min_block": 25218063,
+    "confirmation_blocks_after_end": 64,
+    "dual_replay_exact_agreement_required": true,
+    "epoch_count": 2474,
+    "epoch_size_blocks": 3600,
+    "fail_closed_replay_invariants": {
+      "adjacent_chunk_next_base_fee_overlap_equal": true,
+      "any_transport_error_after_run_start_terminal": true,
+      "boundary_previous_timestamp_and_parent_relation_exact": true,
+      "epoch_end_and_confirmation_headers_equal_between_transports": true,
+      "nonmonotone_missing_duplicate_or_invalid_quantity_rejected": true,
+      "oldest_block_base_fees_and_gas_ratios_equal_between_transports": true,
+      "resume_after_terminal_replay_error_allowed": false,
+      "shortened_fee_history_subsection_rejected": true
+    },
+    "first_epoch_id": 4531,
+    "first_source_block": 16311600,
+    "https_transports_frozen_before_replay": 2,
+    "last_epoch_id": 7004,
+    "last_source_block": 25217999,
+    "mean_gas_used_ratio_arithmetic": "exact decimal",
+    "median2": "sort 3600 positive integer base fees; values[1799]+values[1800]",
+    "normalized_row_fields": [
+      "epoch_id",
+      "start_block",
+      "end_block",
+      "end_block_hash",
+      "end_block_timestamp_utc",
+      "confirmation_block",
+      "confirmation_block_hash",
+      "available_at_utc",
+      "median_base_fee_wei_x2",
+      "base_fee_vector_sha256",
+      "mean_gas_used_ratio_decimal"
+    ],
+    "partial_epoch_timestamp_resampling_or_imputation": false,
+    "provider_fallback_after_values_open": false,
+    "request_chunk_blocks": 1024,
+    "rpc_attempts_per_request": 1,
+    "rpc_methods": [
+      "eth_feeHistory",
+      "eth_getBlockByNumber"
+    ],
+    "rpc_retry_backoff_or_resume": false
+  },
+  "status": "outcome_blind_write_once_preincidence",
+  "strict_sequence": [
+    "mechanism_decision_commit",
+    "write_once_preregistration_producer_and_tests_commit",
+    "write_once_preregistration_artifact_commit",
+    "source_builder_source_support_incidence_novelty_gross9_and_strict_economic_evaluators_with_synthetic_tests_commit_bound_to_preregistration_hash_before_full_source_replay",
+    "one_full_source_replay",
+    "commit_write_once_source_artifacts_without_changing_evaluators",
+    "source_support_run_stop_on_first_failure",
+    "reconstruct_and_run_novelty_stop_on_first_failure",
+    "open_2023H2_then_2024_then_selection_then_same_gross_Gross9_then_future25_then_future26_then_stitched",
+    "clean_checkout_hash_and_test_reproduction_commit_and_push"
+  ],
+  "support_gates": {
+    "failure_action": "retire ESDI-288 unchanged before outcomes",
+    "future25": {
+      "each_side_min": 8,
+      "maximum_month_share": 0.25,
+      "total_min": 30
+    },
+    "future26": {
+      "each_side_min": 4,
+      "maximum_month_share": 0.3,
+      "total_min": 15
+    },
+    "identity_clock_side_rank_tie_source_hash_reproducible": true,
+    "independent_control_maxima_strict": {
+      "candidate_24h_containment": {
+        "denominator": 20,
+        "numerator": 19,
+        "operator": "<"
+      },
+      "exact_entry_jaccard": {
+        "denominator": 10,
+        "numerator": 9,
+        "operator": "<"
+      }
+    },
+    "maximum_accepted_entry_gap_days": 90,
+    "maximum_same_side_run": 12,
+    "selection": {
+      "2023H2_min": 12,
+      "2024H1_min": 12,
+      "2024H2_min": 12,
+      "each_side_min": 14,
+      "maximum_month_share": 0.2,
+      "total_min": 45
+    },
+    "source": {
+      "boundary_header_differences": 0,
+      "dual_replay_differences": 0,
+      "exact_epochs": 2474,
+      "future_append_selection_differences": 0,
+      "missing_epochs": 0
+    }
+  }
+}
