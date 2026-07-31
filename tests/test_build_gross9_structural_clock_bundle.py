@@ -27,6 +27,7 @@ import pandas as pd
 import pytest
 
 from training import build_gross9_structural_clock_bundle as builder
+from training import gross9_structural_clock_primitives as primitives
 
 
 SOURCE_KEYS = (
@@ -410,6 +411,12 @@ def _all_sleeve_bars() -> list[dict[str, object]]:
     return bars
 
 
+def _reconstruct(
+    bars: list[dict[str, object]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    return builder.reconstruct_intervals(bars, domain_end=_time(len(bars)))
+
+
 def _parent_authentication(root: Path) -> dict[str, object]:
     preregistration_path = root / builder.PREREGISTRATION_PATH
     if preregistration_path.exists():
@@ -446,7 +453,7 @@ def _synthetic_preregistration(root: Path) -> dict[str, object]:
     return builder._with_hash(
         {
             "protocol_version": (
-                "gross9_structural_clock_bundle_g9cb3_preregistration_v1"
+                "gross9_structural_clock_bundle_g9cb4_preregistration_v1"
             ),
             "identity": builder.IDENTITY,
             "protocol_implementation_commit": "1" * 40,
@@ -535,6 +542,7 @@ def _prepare_synthetic_worker_repository(
     )
     claim_raw = builder._canonical_json_bytes(claim)
     (root / builder.CLAIM_PATH).write_bytes(claim_raw)
+    os.chmod(root / builder.CLAIM_PATH, 0o444)
     claim_binding = {
         "path": builder.CLAIM_PATH.as_posix(),
         "sha256": hashlib.sha256(claim_raw).hexdigest(),
@@ -543,8 +551,14 @@ def _prepare_synthetic_worker_repository(
         "claim_commit": "2" * 40,
     }
     synthetic_input = fixtures / "structural-bars.json"
+    synthetic_bars = _all_sleeve_bars()
     synthetic_input.write_bytes(
-        builder._canonical_json_bytes({"bars": _all_sleeve_bars()})
+        builder._canonical_json_bytes(
+            {
+                "bars": synthetic_bars,
+                "domain_end": _time(len(synthetic_bars)),
+            }
+        )
     )
     return (
         preregistration,
@@ -562,7 +576,8 @@ def _prepare_guarded_metadata_repository(
     results.mkdir()
     preregistration = _synthetic_preregistration(root)
     source_root = builder.prereg.REPOSITORY_ROOT
-    attempt = builder.prereg.expected_failed_predecessor_attempts()[0]
+    attempts = builder.prereg.expected_failed_predecessor_attempts()
+    attempt = attempts[0]
     for key in (
         "authority_decision",
         "preregistration",
@@ -604,9 +619,10 @@ def _prepare_guarded_metadata_repository(
         builder.prereg.__file__,
         root / builder.PREREGISTER_PATH,
     )
-    slot1 = root / attempt["residue"]["slot1_stage"]["path"]
-    slot1.mkdir(mode=0o700)
-    os.chmod(slot1, 0o700)
+    for row in attempts:
+        slot1 = root / row["residue"]["slot1_stage"]["path"]
+        slot1.mkdir(mode=0o700)
+        os.chmod(slot1, 0o700)
     environment = builder._environment_record()
     environment["worker_process_environment"] = (
         builder.prereg.worker_process_environment(root)
@@ -672,7 +688,7 @@ def _capability_row(slot: int = 1, *, parent_pid: int = 1234) -> dict[str, Any]:
         "slot": slot,
         "parent_pid": parent_pid,
         "stage_directory": (
-            f"results/.gross9-structural-clock-g9cb3-worker-slot{slot}"
+            f"results/.gross9-structural-clock-g9cb4-worker-slot{slot}"
         ),
         "carrier_kind": "anonymous_pipe_v1",
         "carrier_device": slot,
@@ -686,8 +702,8 @@ def _capability_row(slot: int = 1, *, parent_pid: int = 1234) -> dict[str, Any]:
 
 def _guard(root: Path) -> builder._WorkerIsolationGuard:
     (root / "results").mkdir(exist_ok=True)
-    own = "results/.gross9-structural-clock-g9cb3-worker-own"
-    other = "results/.gross9-structural-clock-g9cb3-worker-other"
+    own = "results/.gross9-structural-clock-g9cb4-worker-own"
+    other = "results/.gross9-structural-clock-g9cb4-worker-other"
     (root / own).mkdir(exist_ok=True)
     return builder._WorkerIsolationGuard(
         root=root,
@@ -784,8 +800,8 @@ case = sys.argv[3]
 case_root.mkdir(parents=True)
 results = case_root / "results"
 results.mkdir()
-own_stage = results / ".gross9-structural-clock-g9cb3-worker-own"
-other_stage = results / ".gross9-structural-clock-g9cb3-worker-other"
+own_stage = results / ".gross9-structural-clock-g9cb4-worker-own"
+other_stage = results / ".gross9-structural-clock-g9cb4-worker-other"
 own_stage.mkdir()
 probe = other_stage / "probe"
 scratch = case_root / "scratch"
@@ -1133,7 +1149,7 @@ def invoke_pycache(name):
     if location == "repository":
         target = case_root / "pkg" / "__pycache__" / "evil.pyc"
     else:
-        target = case_root / "results" / ".g9cb3-bytecode-cache-disabled" / "evil.pyc"
+        target = case_root / "results" / ".g9cb4-bytecode-cache-disabled" / "evil.pyc"
     guard.allowed_mutations.add(target.as_posix())
     if operation == "read":
         builtins.open(target, "rb")
@@ -1151,7 +1167,7 @@ def invoke_pycache_during_source_load(name):
     target = (
         case_root
         / "results"
-        / ".g9cb3-bytecode-cache-disabled"
+        / ".g9cb4-bytecode-cache-disabled"
         / "injected.pyc"
     )
 
@@ -1225,7 +1241,7 @@ if family == "pycache":
     pycache = (
         case_root / "pkg" / "__pycache__"
         if location == "repository"
-        else case_root / "results" / ".g9cb3-bytecode-cache-disabled"
+        else case_root / "results" / ".g9cb4-bytecode-cache-disabled"
     )
     pycache.mkdir(parents=True)
     (pycache / "evil.pyc").write_bytes(b"malicious-bytecode")
@@ -1238,7 +1254,7 @@ if family == "pycache-source-load":
     pycache = (
         case_root
         / "results"
-        / ".g9cb3-bytecode-cache-disabled"
+        / ".g9cb4-bytecode-cache-disabled"
     )
     pycache.mkdir(parents=True)
     (pycache / "injected.pyc").write_bytes(b"malicious-bytecode")
@@ -1280,7 +1296,7 @@ try:
         invoke_forbidden_path(forbidden_name)
     else:
         raise AssertionError(f"unknown family: {family}")
-except builder.TerminalG9CB3Failure as exc:
+except builder.TerminalG9CB4Failure as exc:
     emit("terminal", error_type=type(exc).__name__, message=str(exc), counters=guard.counters())
 except BaseException as exc:
     emit("unexpected", error_type=type(exc).__name__, message=str(exc), counters=guard.counters())
@@ -1347,7 +1363,7 @@ def _assert_terminal_or_exact_absence(
         assert result["exact_name"] in absent_names
         return
     assert result["status"] == "terminal", result
-    assert result["error_type"] == "TerminalG9CB3Failure"
+    assert result["error_type"] == "TerminalG9CB4Failure"
 
 
 IMPORT_RECORDER_HARNESS = r"""
@@ -1541,7 +1557,7 @@ try:
                     load_source("recorded_late", "training/late_runtime.py")
                 else:
                     raise AssertionError(f"unknown scenario: {scenario}")
-except builder.TerminalG9CB3Failure as exc:
+except builder.TerminalG9CB4Failure as exc:
     emit("terminal", error_type=type(exc).__name__, message=str(exc))
 except BaseException as exc:
     emit("unexpected", error_type=type(exc).__name__, message=str(exc))
@@ -1809,7 +1825,7 @@ def test_builder_zero_access_rejects_noninteger_zero_counter(
         "cagr_values_computed"
     ] = invalid
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="zero-access schema differs",
     ):
         builder._validate_zero_access(preregistration)
@@ -1871,7 +1887,7 @@ def test_malformed_preregistration_stops_before_all_downstream_preflight(
         forbidden("topology"),
     )
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="zero-access schema differs",
     ):
         builder.validate_claim_preflight(tmp_path)
@@ -1904,7 +1920,7 @@ def test_historical_v1_bytes_are_rejected_by_operative_version_before_zero(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="operative preregistration protocol version",
     ):
         builder.validate_preregistration(
@@ -1954,7 +1970,7 @@ def test_preregistration_seal_head_rejects_intervening_commit(
     git("commit", "-m", "X")
     intervening = git("rev-parse", "HEAD")
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="direct preregistration-seal child",
     ):
         builder._validate_preregistration_seal_head(
@@ -2025,7 +2041,7 @@ def test_committed_publication_topology_requires_exact_q_p_c_d(
     git("add", "intervening.txt")
     git("commit", "-m", "X")
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="publication chain",
     ):
         builder._validate_committed_publication_topology(
@@ -2044,20 +2060,20 @@ def test_parser_exposes_read_only_committed_publication_verifier() -> None:
 
 
 def test_frozen_contract_and_deterministic_csv_gzip() -> None:
-    assert builder.IDENTITY == "G9CB-3"
+    assert builder.IDENTITY == "G9CB-4"
     assert builder.PROTOCOL_VERSION == (
-        "gross9_structural_clock_bundle_g9cb3_v1"
+        "gross9_structural_clock_bundle_g9cb4_v1"
     )
     assert builder.TERMINAL_ACTION == (
-        "TERMINAL_G9CB3_ATTEMPT_CONSUMED_NO_RETRY"
+        "TERMINAL_G9CB4_ATTEMPT_CONSUMED_NO_RETRY"
     )
     assert builder._PYCACHE_PREFIX_RELATIVE == Path(
-        "results/.g9cb3-bytecode-cache-disabled"
+        "results/.g9cb4-bytecode-cache-disabled"
     )
     assert builder.PREREGISTRATION_PATH == (
         Path(
             "results/"
-            "gross9_structural_clock_bundle_g9cb3_preregistration_2026-07-31.json"
+            "gross9_structural_clock_bundle_g9cb4_preregistration_2026-07-31.json"
         )
     )
     assert builder.DOMAIN_START == "2023-06-01T00:00:00Z"
@@ -2081,7 +2097,7 @@ def test_frozen_contract_and_deterministic_csv_gzip() -> None:
     ) == Decimal("9.0")
     rows = [
         {
-            "identity": "G9CB-3",
+            "identity": "G9CB-4",
             "sleeve": "cand_rex_veto_7",
             "sleeve_order": 0,
             "configured_weight": "1.6",
@@ -2100,23 +2116,23 @@ def test_frozen_contract_and_deterministic_csv_gzip() -> None:
     assert plain.endswith(b"\n") and b"\r" not in plain
 
 
-def test_g9cb3_stage_prefix_is_distinct_from_preserved_g9cb2_residue(
+def test_g9cb4_stage_prefix_is_distinct_from_preserved_g9cb2_residue(
     tmp_path: Path,
 ) -> None:
     (tmp_path / "results").mkdir()
     active = Path(
-        "results/.gross9-structural-clock-g9cb3-worker-active"
+        "results/.gross9-structural-clock-g9cb4-worker-active"
     )
     historical = Path(
         "results/.gross9-structural-clock-worker-ca9ca670ffb0d1b377ed6aef"
     )
     assert builder._worker_stage_path(tmp_path, active) == active.as_posix()
-    with pytest.raises(builder.TerminalG9CB3Failure, match="name differs"):
+    with pytest.raises(builder.TerminalG9CB4Failure, match="name differs"):
         builder._worker_stage_path(tmp_path, historical)
     (tmp_path / historical).mkdir(mode=0o700)
     assert list(
         (tmp_path / "results").glob(
-            ".gross9-structural-clock-g9cb3-worker-*"
+            ".gross9-structural-clock-g9cb4-worker-*"
         )
     ) == []
 
@@ -2125,7 +2141,7 @@ def test_five_sleeves_preserve_schedule_side_and_barrier_geometry() -> None:
     bars = _all_sleeve_bars()
     bars[1]["high"] = "105"
     bars[1]["low"] = "94"
-    rows, counters = builder.reconstruct_intervals(bars)
+    rows, counters = _reconstruct(bars)
     assert [row["sleeve"] for row in rows] == [
         row["name"] for row in builder.SLEEVES
     ]
@@ -2150,8 +2166,8 @@ def test_fresh_requires_exactly_one_side_gate() -> None:
             "short_gate": True,
         }
     }
-    with pytest.raises(builder.TerminalG9CB3Failure, match="exclusive"):
-        builder.reconstruct_intervals(bars)
+    with pytest.raises(builder.TerminalG9CB4Failure, match="exclusive"):
+        _reconstruct(bars)
 
 
 def test_reconstruction_rejects_zero_side() -> None:
@@ -2159,8 +2175,8 @@ def test_reconstruction_rejects_zero_side() -> None:
     bars[0]["decisions"] = {
         "cand_rex_veto_7": {"active": True, "side": 0}
     }
-    with pytest.raises(builder.TerminalG9CB3Failure, match="forbidden side"):
-        builder.reconstruct_intervals(bars)
+    with pytest.raises(builder.TerminalG9CB4Failure, match="forbidden side"):
+        _reconstruct(bars)
 
 
 def test_per_sleeve_nonoverlap_preserves_cross_sleeve_overlap() -> None:
@@ -2170,7 +2186,7 @@ def test_per_sleeve_nonoverlap_preserves_cross_sleeve_overlap() -> None:
             "cand_rex_veto_7": {"active": True, "side": 1},
             "rex_taker_low_range_position": {"active": True, "side": -1},
         }
-    rows, _ = builder.reconstruct_intervals(bars)
+    rows, _ = _reconstruct(bars)
     veto = [row for row in rows if row["sleeve"] == "cand_rex_veto_7"]
     taker = [
         row
@@ -2198,7 +2214,7 @@ def test_rank7_premium_source_uses_exact_source_routed_exit() -> None:
         }
     }
     bars[3]["low"] = "96"
-    rows, counters = builder.reconstruct_intervals(bars)
+    rows, counters = _reconstruct(bars)
     row = next(
         row for row in rows if row["sleeve"] == "frozen_annual_rank7"
     )
@@ -2281,13 +2297,379 @@ def test_terminal_domain_boundary_does_not_require_a_boundary_row() -> None:
     assert rows[0]["exit_time_utc"] == _time(145)
 
 
+def test_market_grid_retains_warmup_and_derives_n_plus_one_boundaries() -> None:
+    dates = pd.to_datetime([_time(index) for index in range(5)])
+    market = pd.DataFrame({"date": dates})
+    values, boundaries = builder._market_value_opens_and_boundaries(
+        market,
+        domain_start=_time(1),
+        domain_end=_time(5),
+    )
+    assert values == [int(date.timestamp()) for date in dates]
+    assert boundaries == [*values, int(pd.Timestamp(_time(5)).timestamp())]
+    assert values[0] < int(pd.Timestamp(_time(1)).timestamp())
+    assert len(boundaries) == len(values) + 1
+
+
+@pytest.mark.parametrize(
+    ("dates", "match"),
+    [
+        (
+            [_time(0), _time(1), _time(2), _time(3), _time(4)],
+            "domain-end value",
+        ),
+        ([_time(0), _time(1), _time(3)], "complete unique"),
+        ([_time(0), _time(1), _time(1), _time(2), _time(3)], "complete unique"),
+        (
+            [_time(0), "2023-06-01T00:07:00Z", _time(2), _time(3)],
+            "complete unique|off",
+        ),
+        ([_time(0), _time(1), _time(2)], "ends before"),
+    ],
+)
+def test_market_grid_rejects_physical_end_gap_duplicate_offgrid_and_early_end(
+    dates: list[str],
+    match: str,
+) -> None:
+    market = pd.DataFrame({"date": pd.to_datetime(dates)})
+    with pytest.raises(builder.TerminalG9CB4Failure, match=match):
+        builder._market_value_opens_and_boundaries(
+            market,
+            domain_start=_time(0),
+            domain_end=_time(4),
+        )
+
+
+def test_raw_duplicate_normalization_preserves_sorted_keep_last_policy() -> None:
+    raw = pd.DataFrame(
+        {
+            "date": [_time(1), _time(0), _time(1), _time(2), _time(3)],
+            "open": [11, 10, 99, 12, 13],
+        }
+    )
+    normalized = primitives.normalise_market(
+        raw,
+        exclude_from=pd.Timestamp(_time(4)).tz_localize(None),
+    )
+    assert list(normalized["open"]) == [10, 99, 12, 13]
+    values, boundaries = builder._market_value_opens_and_boundaries(
+        normalized,
+        domain_start=_time(0),
+        domain_end=_time(4),
+    )
+    assert len(boundaries) == len(values) + 1
+
+
+def test_structural_horizon_n_is_geometry_only_but_rank7_cap_still_needs_price() -> None:
+    dates = pd.date_range("2023-06-01", periods=4, freq="5min")
+    market = pd.DataFrame(
+        {
+            "date": dates,
+            "open": [100.0] * 4,
+            "high": [100.0] * 4,
+            "low": [100.0] * 4,
+        }
+    )
+    counters = builder._empty_counters()
+    structural = builder._StructuralTradeEngine(
+        market, counters, "fresh_kimchi_fx"
+    )
+    trade = structural.trade_at(0, 1, 3, 1_000_000, 1_000_000)
+    assert trade is not None
+    assert trade.exit_position == len(market)
+    assert counters["rows_used"]["outcome_dependent_ohlc_rows_examined"] == 3
+    assert structural.trade_at(0, 1, 4, 1_000_000, 1_000_000) is None
+
+    funding = pd.DataFrame({"date": [], "funding_rate": []})
+    label_engine = builder._Rank7LabelEngine(market, funding, counters, np)
+    assert label_engine.trade_at(0, 1, 3, 1_000_000, 1_000_000) is None
+    tree = ast.parse(
+        textwrap.dedent(inspect.getsource(builder._StructuralTradeEngine.trade_at))
+    )
+    assert not any(
+        isinstance(node, ast.Subscript)
+        and isinstance(node.slice, ast.Name)
+        and node.slice.id == "horizon"
+        for node in ast.walk(tree)
+    )
+
+
+def test_split_eligibility_uses_physical_hits_and_only_virtual_terminal_fixed() -> None:
+    mask = np.asarray([True, True, False], dtype=bool)
+    boundaries = [0, 300, 600, 900]
+    assert not builder._structural_exit_is_eligible(
+        mask, boundaries, 2, "fixed", 0, 600
+    )
+    assert builder._structural_exit_is_eligible(
+        mask, boundaries, 1, "stop", 0, 600
+    )
+    assert boundaries[1 + 1] == 600
+    assert not builder._structural_exit_is_eligible(
+        mask, boundaries, 2, "stop", 0, 900
+    )
+    assert builder._structural_exit_is_eligible(
+        mask, boundaries, 3, "fixed", 0, 1000
+    )
+    assert not builder._structural_exit_is_eligible(
+        mask, boundaries, 3, "fixed", 0, 900
+    )
+
+
+def test_reference_fixed_and_barrier_terminal_exits_use_derived_boundary() -> None:
+    fixed = _bars(145)
+    fixed[0]["decisions"] = {
+        "cand_rex_veto_7": {"active": True, "side": 1}
+    }
+    fixed_rows, _ = builder.reconstruct_intervals(
+        fixed, domain_end=_time(len(fixed))
+    )
+    assert fixed_rows[0]["exit_time_utc"] == _time(len(fixed))
+    fixed_market = pd.DataFrame(fixed)
+    fixed_engine = builder._StructuralTradeEngine(
+        fixed_market, builder._empty_counters(), "cand_rex_veto_7"
+    )
+    fixed_trade = fixed_engine.trade_at(
+        0, 1, 144, 1_000_000, 1_000_000
+    )
+    assert fixed_trade is not None
+    assert fixed_trade.exit_position == len(fixed)
+
+    barrier = _bars(289)
+    barrier[0]["decisions"] = {
+        "fresh_kimchi_fx": {
+            "active": True,
+            "side": 1,
+            "long_gate": True,
+            "short_gate": False,
+        }
+    }
+    barrier[-1]["low"] = "90"
+    barrier_rows, counters = builder.reconstruct_intervals(
+        barrier, domain_end=_time(len(barrier))
+    )
+    assert barrier_rows[0]["exit_time_utc"] == _time(len(barrier))
+    assert counters["per_sleeve"]["fresh_kimchi_fx"]["stop_exits"] == 1
+    barrier_market = pd.DataFrame(barrier)
+    direct_counters = builder._empty_counters()
+    barrier_engine = builder._StructuralTradeEngine(
+        barrier_market, direct_counters, "fresh_kimchi_fx"
+    )
+    barrier_trade = barrier_engine.trade_at(0, 1, 288, 400, 250)
+    assert barrier_trade is not None
+    assert barrier_trade.exit_kind == "stop"
+    assert barrier_trade.exit_position + 1 == len(barrier)
+    assert _time(barrier_trade.exit_position + 1) == (
+        barrier_rows[0]["exit_time_utc"]
+    )
+    assert direct_counters["rows_used"][
+        "outcome_dependent_ohlc_rows_examined"
+    ] == 288
+
+
+def test_reference_fixed_scheduler_never_calls_barrier_or_reads_ohlc(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bars = _bars(145)
+    bars[0]["decisions"] = {
+        "cand_rex_veto_7": {"active": True, "side": 1}
+    }
+    for row in bars:
+        row["open"] = object()
+        row["high"] = object()
+        row["low"] = object()
+    monkeypatch.setattr(
+        builder,
+        "_barrier_exit",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("fixed reference entered barrier replay")
+        ),
+    )
+    rows, counters = builder.reconstruct_intervals(
+        bars,
+        domain_end=_time(len(bars)),
+    )
+    assert rows[0]["exit_time_utc"] == _time(len(bars))
+    assert counters["rows_used"][
+        "outcome_dependent_ohlc_rows_examined"
+    ] == 0
+    assert counters["per_sleeve"]["cand_rex_veto_7"] == {
+        "signal_rows_evaluated": 1,
+        "intervals_emitted": 1,
+        "long_intervals": 1,
+        "short_intervals": 0,
+        "fixed_horizon_exits": 1,
+        "take_exits": 0,
+        "stop_exits": 0,
+        "outcome_dependent_ohlc_rows_examined": 0,
+    }
+
+
+def _direct_structural_case(
+    bars: list[dict[str, object]],
+    sleeve: str,
+    *,
+    split_start: int,
+    split_end: int,
+) -> tuple[list[dict[str, object]], dict[str, object]]:
+    counters = builder._empty_counters()
+    intervals = {row["name"]: [] for row in builder.SLEEVES}
+    value_opens = [
+        builder._parse_timestamp(str(row["time_utc"]))
+        for row in bars
+    ]
+    boundaries = [*value_opens, value_opens[-1] + 300]
+    mask = np.asarray(
+        [
+            split_start <= second < split_end
+            for second in value_opens
+        ],
+        dtype=bool,
+    )
+    decision = bars[0]["decisions"][sleeve]
+    counters["per_sleeve"][sleeve]["signal_rows_evaluated"] += 1
+    spec = builder.SLEEVE_BY_NAME[sleeve]
+    if spec["kind"] == "fixed":
+        entry_position = 1
+        exit_position = entry_position + int(spec["hold_bars"])
+        builder._schedule_direct_fixed_interval(
+            intervals,
+            counters,
+            sleeve,
+            value_opens,
+            boundaries,
+            mask,
+            entry_position,
+            exit_position,
+            int(decision["side"]),
+            split_start,
+            split_end,
+        )
+    else:
+        engine = builder._StructuralTradeEngine(
+            pd.DataFrame(bars),
+            counters,
+            sleeve,
+        )
+        take_bps = int(spec["take_bps"])
+        stop_bps = int(spec["stop_bps"])
+        trade = engine.trade_at(
+            0,
+            int(decision["side"]),
+            int(spec["hold_bars"]),
+            take_bps,
+            stop_bps,
+        )
+        if trade is not None and builder._structural_exit_is_eligible(
+            mask,
+            boundaries,
+            trade.exit_position,
+            trade.exit_kind,
+            split_start,
+            split_end,
+        ):
+            boundary_position = trade.exit_position + (
+                0 if trade.exit_kind == "fixed" else 1
+            )
+            builder._append_direct_interval(
+                intervals,
+                counters,
+                sleeve,
+                value_opens[trade.entry_position],
+                boundaries[boundary_position],
+                trade.side,
+                trade.exit_kind,
+            )
+    return builder._materialize_direct_rows(intervals, counters), counters
+
+
+@pytest.mark.parametrize(
+    ("sleeve", "length", "split_end_index", "barrier_hit_index", "emits"),
+    (
+        ("cand_rex_veto_7", 145, 146, None, True),
+        ("fresh_kimchi_fx", 289, 290, 288, True),
+        ("cand_rex_veto_7", 200, 145, None, False),
+        ("fresh_kimchi_fx", 300, 145, 144, True),
+    ),
+)
+def test_direct_and_reference_structural_rows_and_complete_counters_match(
+    sleeve: str,
+    length: int,
+    split_end_index: int,
+    barrier_hit_index: int | None,
+    emits: bool,
+) -> None:
+    bars = _bars(length)
+    decision: dict[str, object] = {"active": True, "side": 1}
+    if sleeve == "fresh_kimchi_fx":
+        decision.update({"long_gate": True, "short_gate": False})
+    bars[0]["decisions"] = {sleeve: decision}
+    if barrier_hit_index is not None:
+        bars[barrier_hit_index]["low"] = "90"
+    split_start = builder._parse_timestamp(_time(0))
+    split_end = builder._parse_timestamp(_time(split_end_index))
+    reference_rows, reference_counters = builder.reconstruct_intervals(
+        bars,
+        domain_end=_time(length),
+        split_bounds=[(_time(0), _time(split_end_index))],
+    )
+    direct_rows, direct_counters = _direct_structural_case(
+        bars,
+        sleeve,
+        split_start=split_start,
+        split_end=split_end,
+    )
+    assert direct_rows == reference_rows
+    assert direct_counters == reference_counters
+    assert bool(reference_rows) is emits
+    if barrier_hit_index is not None and emits:
+        assert reference_rows[0]["exit_time_utc"] == _time(
+            barrier_hit_index + 1
+        )
+
+
+def test_markov_and_fresh_tail_ranges_preserve_interior_and_add_only_terminal() -> None:
+    source = inspect.getsource(builder._direct_generic_adapter_impl)
+    assert source.count("_schedule_direct_fixed_interval(") == 2
+    assert "len(market) - markov_hold" in source
+    assert 'len(market) - int(fresh_cfg["hold_bars"])' in source
+    for length, hold, start, stride in (
+        (500, 144, 143, 24),
+        (600, 288, 143, 6),
+    ):
+        corrected = list(range(start, max(0, length - hold), stride))
+        legacy_value_count = length + 1
+        legacy = list(
+            range(
+                start,
+                max(0, legacy_value_count - hold - 2),
+                stride,
+            )
+        )
+        assert [
+            position
+            for position in corrected
+            if position + 1 + hold < length
+        ] == legacy
+        assert all(
+            position + 1 + hold <= length
+            for position in corrected
+        )
+
+
+def test_grid_validation_precedes_feature_model_and_schedule_access() -> None:
+    source = inspect.getsource(builder._direct_generic_adapter_impl)
+    validation = source.index("_market_value_opens_and_boundaries")
+    assert validation < source.index("build_market_feature_frame")
+    assert validation < source.index("_StructuralTradeEngine")
+
+
 def test_csv_reparse_rejects_noncanonical_gzip_header() -> None:
-    rows, _ = builder.reconstruct_intervals(_all_sleeve_bars())
+    rows, _ = _reconstruct(_all_sleeve_bars())
     raw = builder.compress_csv(builder.serialize_csv(rows))
     assert len(builder.validate_csv_gzip(raw)) == 5
     changed = bytearray(raw)
     changed[9] = 3
-    with pytest.raises(builder.TerminalG9CB3Failure, match="prefix"):
+    with pytest.raises(builder.TerminalG9CB4Failure, match="prefix"):
         builder.validate_csv_gzip(bytes(changed))
 
 
@@ -2319,13 +2701,16 @@ def test_counter_schema_has_exact_source_and_sleeve_fields() -> None:
 def test_counter_schema_rejects_an_extra_source_key() -> None:
     counters = builder._empty_counters()
     counters["rows_decoded"]["legacy_adapter"] = 0
-    with pytest.raises(builder.TerminalG9CB3Failure, match="counter names"):
+    with pytest.raises(builder.TerminalG9CB4Failure, match="counter names"):
         builder._validate_counter_contract(counters)
 
 
 def test_counted_csv_reader_counts_physical_decoder_reads(tmp_path: Path) -> None:
     source = tmp_path / "market.csv"
-    source.write_bytes(b"a,b\n1,2\n3,4\n")
+    source.write_bytes(
+        b"date,b\n2023-06-01T00:00:00Z,2\n"
+        b"2023-06-01T00:05:00Z,4\n"
+    )
     counters = builder._empty_counters()
     original = builder._install_counted_csv_reader(
         pd,
@@ -2344,6 +2729,41 @@ def test_counted_csv_reader_counts_physical_decoder_reads(tmp_path: Path) -> Non
         > 0
     )
     assert counters["rows_decoded"]["market_5m"] == 2
+
+
+def test_raw_physical_domain_end_is_rejected_before_normalization(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "market.csv"
+    source.write_text(
+        "date,open,high,low,close,volume\n"
+        "2026-05-31T23:55:00Z,100,100,100,100,1\n"
+        "2026-06-01T00:00:00Z,101,101,101,101,1\n",
+        encoding="utf-8",
+    )
+    counters = builder._empty_counters()
+    original = builder._install_counted_csv_reader(
+        pd,
+        tmp_path,
+        {"market_5m": str(source)},
+        counters,
+    )
+    try:
+        with pytest.raises(
+            builder.TerminalG9CB4Failure,
+            match="physical domain-end",
+        ):
+            primitives.load_market(
+                source,
+                exclude_from=pd.Timestamp(builder.DOMAIN_END).tz_localize(None),
+            )
+    finally:
+        pd.read_csv = original
+    assert counters["rows_decoded"]["market_5m"] == 2
+    assert counters["rows_used"]["causal_feature_rows_by_source"][
+        "market_5m"
+    ] == 0
+    assert counters["rows_used"]["prediction_rows_scored"] == 0
 
 
 def test_jsonl_counter_increments_at_each_successful_physical_row(
@@ -2377,7 +2797,7 @@ def test_jsonl_counter_preserves_prior_success_before_terminal_bad_row(
     source.write_bytes(b'{"value":1}\nnot-json\n')
     counters = builder._empty_counters()
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="invalid JSONL row",
     ):
         builder._read_jsonl_rows(
@@ -2431,7 +2851,7 @@ def test_rank7_runtime_rejects_duplicate_model_open(tmp_path: Path) -> None:
         with runtime.np.load(model_paths[0], allow_pickle=False):
             pass
         with pytest.raises(
-            builder.TerminalG9CB3Failure,
+            builder.TerminalG9CB4Failure,
             match="more than once",
         ):
             runtime.np.load(model_paths[0], allow_pickle=False)
@@ -2444,7 +2864,7 @@ def test_rank7_runtime_rejects_duplicate_model_open(tmp_path: Path) -> None:
 
 
 def test_core_is_deterministic_and_binds_parent_authentication() -> None:
-    rows, counters = builder.reconstruct_intervals(_all_sleeve_bars())
+    rows, counters = _reconstruct(_all_sleeve_bars())
     compressed = builder.compress_csv(builder.serialize_csv(rows))
     parent_authentication = {
         "environment": {"worker_process_environment": {}},
@@ -2482,12 +2902,12 @@ def test_core_is_deterministic_and_binds_parent_authentication() -> None:
 
 
 def test_core_rejects_three_amendment_drift() -> None:
-    rows, counters = builder.reconstruct_intervals(_all_sleeve_bars())
+    rows, counters = _reconstruct(_all_sleeve_bars())
     compressed = builder.compress_csv(builder.serialize_csv(rows))
     amendments = builder._expected_authority_amendment_bindings()
     amendments[1]["authority_commit"] = "0" * 40
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="authority amendment",
     ):
         builder.build_core(
@@ -2517,7 +2937,7 @@ def test_prohibited_output_keys_are_valid_only_at_the_exact_zero_schema() -> Non
         "nested": {"portfolio_return_values_computed": 0},
     }
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="outside the canonical zero assertion",
     ):
         builder._validate_prohibited_output_placement(malformed)
@@ -2575,8 +2995,8 @@ def test_hashed_inputs_accept_exact_tracked_untracked_and_external_pairs(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb3-test@example.invalid")
-    git("config", "user.name", "G9CB-3 Test")
+    git("config", "user.email", "g9cb4-test@example.invalid")
+    git("config", "user.name", "G9CB-4 Test")
     tracked = repository / "tracked.bin"
     tracked.write_bytes(b"tracked")
     git("add", "tracked.bin")
@@ -2672,7 +3092,7 @@ def test_hashed_inputs_reject_malformed_git_pairs_before_byte_read(
         "sha256": hashlib.sha256(b"input").hexdigest(),
         **pair,
     }
-    with pytest.raises(builder.TerminalG9CB3Failure, match="Git metadata"):
+    with pytest.raises(builder.TerminalG9CB4Failure, match="Git metadata"):
         builder._validate_regular_hashed_inputs(
             tmp_path,
             {"binding": binding},
@@ -2695,7 +3115,7 @@ def test_hashed_inputs_reject_absolute_repository_spelling_before_byte_read(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="must be repository-relative",
     ):
         builder._validate_regular_hashed_inputs(
@@ -2744,7 +3164,7 @@ def test_hashed_inputs_reject_nonregular_paths_before_byte_read(
     )
     try:
         with pytest.raises(
-            builder.TerminalG9CB3Failure,
+            builder.TerminalG9CB4Failure,
             match="not a regular file",
         ):
             builder._validate_regular_hashed_inputs(
@@ -2771,7 +3191,7 @@ def test_nonblocking_reader_rejects_fifo_without_waiting_for_writer(
     os.mkfifo(fifo)
     started = time.monotonic()
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="not a regular file",
     ):
         builder._read_bound_regular_bytes(fifo, "candidate")
@@ -2793,8 +3213,8 @@ def test_hashed_inputs_reject_tracked_null_and_untracked_string_before_read(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb3-test@example.invalid")
-    git("config", "user.name", "G9CB-3 Test")
+    git("config", "user.email", "g9cb4-test@example.invalid")
+    git("config", "user.name", "G9CB-4 Test")
     tracked = tmp_path / "tracked.bin"
     tracked.write_bytes(b"tracked")
     git("add", "tracked.bin")
@@ -2829,7 +3249,7 @@ def test_hashed_inputs_reject_tracked_null_and_untracked_string_before_read(
         ),
     ]
     for binding, message in cases:
-        with pytest.raises(builder.TerminalG9CB3Failure, match=message):
+        with pytest.raises(builder.TerminalG9CB4Failure, match=message):
             builder._validate_regular_hashed_inputs(
                 tmp_path, {"binding": binding}
             )
@@ -2863,7 +3283,7 @@ def test_hashed_inputs_reject_paired_null_with_unborn_head_before_read(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="Git absence proof differs",
     ):
         builder._validate_regular_hashed_inputs(
@@ -2894,8 +3314,8 @@ def test_hashed_inputs_reject_index_head_drift_before_byte_read(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb3-test@example.invalid")
-    git("config", "user.name", "G9CB-3 Test")
+    git("config", "user.email", "g9cb4-test@example.invalid")
+    git("config", "user.name", "G9CB-4 Test")
     source = tmp_path / "tracked.bin"
     source.write_bytes(b"head")
     git("add", "tracked.bin")
@@ -2911,7 +3331,7 @@ def test_hashed_inputs_reject_index_head_drift_before_byte_read(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="index/HEAD metadata mismatch",
     ):
         builder._validate_regular_hashed_inputs(
@@ -2942,8 +3362,8 @@ def test_hashed_inputs_reject_staged_mode_drift_before_byte_read(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb3-test@example.invalid")
-    git("config", "user.name", "G9CB-3 Test")
+    git("config", "user.email", "g9cb4-test@example.invalid")
+    git("config", "user.name", "G9CB-4 Test")
     git("config", "core.filemode", "true")
     source = tmp_path / "tracked.bin"
     source.write_bytes(b"head")
@@ -2960,7 +3380,7 @@ def test_hashed_inputs_reject_staged_mode_drift_before_byte_read(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="index/HEAD metadata mismatch",
     ):
         builder._validate_regular_hashed_inputs(
@@ -2991,8 +3411,8 @@ def test_hashed_inputs_reject_worktree_blob_drift_after_one_opaque_read(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb3-test@example.invalid")
-    git("config", "user.name", "G9CB-3 Test")
+    git("config", "user.email", "g9cb4-test@example.invalid")
+    git("config", "user.name", "G9CB-4 Test")
     source = tmp_path / "tracked.bin"
     source.write_bytes(b"head")
     git("add", "tracked.bin")
@@ -3008,7 +3428,7 @@ def test_hashed_inputs_reject_worktree_blob_drift_after_one_opaque_read(
 
     monkeypatch.setattr(builder, "_read_bound_regular_bytes", counted_read)
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="worktree Git blob mismatch",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3039,7 +3459,7 @@ def test_hashed_inputs_reject_duplicate_null_string_git_declarations(
     )
     digest = hashlib.sha256(b"input").hexdigest()
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="conflicting duplicate input metadata",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3079,7 +3499,7 @@ def test_complete_git_inventory_fails_before_reading_earlier_valid_path(
 
     monkeypatch.setattr(builder, "_read_bound_regular_bytes", counted_read)
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="partial bound input Git metadata pair",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3119,8 +3539,8 @@ def test_parent_preclassifies_failed_attempt_git_pairs_before_single_reads(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb3-test@example.invalid")
-    git("config", "user.name", "G9CB-3 Test")
+    git("config", "user.email", "g9cb4-test@example.invalid")
+    git("config", "user.name", "G9CB-4 Test")
     git("add", ".")
     git("commit", "-m", "fixture")
     events: list[tuple[str, str]] = []
@@ -3152,15 +3572,21 @@ def test_parent_preclassifies_failed_attempt_git_pairs_before_single_reads(
         preregistration,
         verify_git=True,
     )
-    attempt = builder.prereg.expected_failed_predecessor_attempts()[0]
+    attempts = builder.prereg.expected_failed_predecessor_attempts()
     current_paths = [
-        attempt[key]["path"]
+        attempts[0][key]["path"]
         for key in (
             "authority_decision",
             "preregistration",
             "access_claim",
             "attempt_sentinel",
         )
+    ] + [
+        attempts[1][key]["path"]
+        for key in ("authority_decision", "preregistration", "access_claim")
+    ] + [
+        binding["path"]
+        for binding in attempts[1]["terminal_evidence"].values()
     ]
     first_read = next(
         index for index, event in enumerate(events) if event[0] == "read"
@@ -3178,6 +3604,314 @@ def test_parent_preclassifies_failed_attempt_git_pairs_before_single_reads(
         builder.prereg.expected_failed_predecessor_preregistration_bindings()
     ):
         assert events.count(("read", binding["path"])) == 1
+
+
+def test_produce_parent_entry_preclassifies_all_pairs_before_one_snapshot_read(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    preregistration, _binding, _parent = (
+        _prepare_guarded_metadata_repository(tmp_path)
+    )
+    source_root = builder.REPOSITORY_ROOT
+    for relative in (builder.BUILDER_PATH, builder.BUILDER_TEST_PATH):
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_root / relative, target)
+    protocol_rows = []
+    for relative in (builder.BUILDER_PATH, builder.BUILDER_TEST_PATH):
+        raw = (tmp_path / relative).read_bytes()
+        protocol_rows.append(
+            {
+                "path": relative.as_posix(),
+                "path_type": "regular_file",
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "git_blob": builder._git_blob_id(raw),
+                "git_mode": "100644",
+            }
+        )
+    preregistration["bindings"]["protocol"] = protocol_rows
+    preregistration["git_seal"]["expected_branch"] = (
+        builder.prereg.EXPECTED_BRANCH
+    )
+    preregistration["protocol_implementation_commit"] = "1" * 40
+    preregistration = builder._with_hash(
+        preregistration, "manifest_hash"
+    )
+    prereg_path = tmp_path / builder.PREREGISTRATION_PATH
+    prereg_path.chmod(0o644)
+    prereg_raw = builder._canonical_json_bytes(preregistration)
+    prereg_path.write_bytes(prereg_raw)
+    prereg_path.chmod(0o444)
+
+    def git(*arguments: str) -> str:
+        return subprocess.run(
+            ["git", *arguments],
+            cwd=tmp_path,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        ).stdout.strip()
+
+    git("init", "-b", builder.prereg.EXPECTED_BRANCH)
+    git("config", "user.email", "g9cb4-test@example.invalid")
+    git("config", "user.name", "G9CB-4 Test")
+    git("add", ".")
+    git("commit", "-m", "protocol parent")
+    parent_commit = git("rev-parse", "HEAD")
+    prereg_binding = {
+        "path": builder.PREREGISTRATION_PATH.as_posix(),
+        "sha256": hashlib.sha256(prereg_raw).hexdigest(),
+        "manifest_hash": preregistration["manifest_hash"],
+    }
+    claim_protocol = [
+        {
+            "path": row["path"],
+            "sha256": row["sha256"],
+            "git_blob": row["git_blob"],
+            "mode": "100644",
+        }
+        for row in protocol_rows
+    ]
+    claim = builder._claim_payload(
+        parent_commit,
+        prereg_binding,
+        builder._expected_authority_amendment_bindings(),
+        claim_protocol,
+        [],
+    )
+    claim_path = tmp_path / builder.CLAIM_PATH
+    claim_path.write_bytes(builder._canonical_json_bytes(claim))
+    claim_path.chmod(0o444)
+    git("add", builder.CLAIM_PATH.as_posix())
+    git("commit", "-m", "claim")
+    head = git("rev-parse", "HEAD")
+
+    monkeypatch.setattr(
+        builder,
+        "_require_clean_pushed_branch",
+        lambda *_args: head,
+    )
+    monkeypatch.setattr(
+        builder.prereg,
+        "validate_protocol_commit_topology",
+        lambda *_args: "1" * 40,
+    )
+    monkeypatch.setattr(
+        builder.prereg,
+        "validate_failed_predecessor_attempt_topology",
+        lambda *_args: None,
+    )
+    monkeypatch.setattr(
+        builder.prereg,
+        "validate_historical_preregistration_topology",
+        lambda *_args: None,
+    )
+    monkeypatch.setattr(
+        builder.prereg,
+        "validate_failed_v2_preregistration_topology",
+        lambda *_args: None,
+    )
+    monkeypatch.setattr(
+        builder.prereg,
+        "validate_failed_predecessor_attempt_history",
+        lambda *_args: None,
+    )
+    monkeypatch.setattr(
+        builder.prereg,
+        "validate_manifest",
+        lambda *_args, **_kwargs: None,
+    )
+
+    events: list[tuple[str, str]] = []
+    original_git_process = builder._git_process
+    original_read = builder._read_bound_regular_bytes
+
+    def recorded_git(
+        root: Path,
+        *arguments: str,
+    ) -> subprocess.CompletedProcess[bytes]:
+        events.append(("git", arguments[-1]))
+        return original_git_process(root, *arguments)
+
+    def recorded_read(
+        path: Path,
+        path_text: str,
+    ) -> tuple[bytes, os.stat_result]:
+        events.append(("read", path_text))
+        return original_read(path, path_text)
+
+    class ParentAuthenticated(RuntimeError):
+        pass
+
+    monkeypatch.setattr(builder, "_git_process", recorded_git)
+    monkeypatch.setattr(builder, "_read_bound_regular_bytes", recorded_read)
+    monkeypatch.setattr(
+        builder,
+        "_validate_environment",
+        lambda *_args: (_ for _ in ()).throw(ParentAuthenticated()),
+    )
+    with pytest.raises(ParentAuthenticated):
+        builder.produce_one_shot(tmp_path)
+
+    expected_paths = {
+        builder._binding_path(binding)
+        for binding in builder._iter_bindings(preregistration)
+    } | {
+        builder.PREREGISTRATION_PATH.as_posix(),
+        builder.CLAIM_PATH.as_posix(),
+    }
+    first_read = next(
+        index for index, event in enumerate(events) if event[0] == "read"
+    )
+    for path_text in expected_paths:
+        classifications = [
+            index
+            for index, event in enumerate(events)
+            if event == ("git", path_text)
+        ]
+        assert len(classifications) == 3
+        assert max(classifications) < first_read
+        assert events.count(("read", path_text)) == 1
+
+
+def _write_guarded_active_metadata(
+    root: Path,
+    preregistration_binding: Mapping[str, str],
+) -> None:
+    claim = builder._claim_payload(
+        "1" * 40,
+        preregistration_binding,
+        builder._expected_authority_amendment_bindings(),
+        [],
+        [],
+    )
+    claim_path = root / builder.CLAIM_PATH
+    claim_path.write_bytes(builder._canonical_json_bytes(claim))
+    claim_path.chmod(0o444)
+    sentinel = builder._with_hash(
+        {"identity": builder.IDENTITY, "status": "authenticated"},
+        "manifest_hash",
+    )
+    sentinel_path = root / builder.SENTINEL_PATH
+    sentinel_path.write_bytes(builder._canonical_json_bytes(sentinel))
+    sentinel_path.chmod(0o444)
+
+
+def test_worker_auth_entry_reads_each_bound_path_once_and_uses_active_fstats(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    preregistration, binding, parent_authentication = (
+        _prepare_guarded_metadata_repository(tmp_path)
+    )
+    _write_guarded_active_metadata(tmp_path, binding)
+    reads: list[str] = []
+    original_read = builder._read_bound_regular_bytes
+    original_lstat = builder.os.lstat
+    active_paths = {
+        builder.PREREGISTRATION_PATH.as_posix(),
+        builder.CLAIM_PATH.as_posix(),
+        builder.SENTINEL_PATH.as_posix(),
+    }
+
+    def recorded_read(
+        path: Path,
+        path_text: str,
+    ) -> tuple[bytes, os.stat_result]:
+        reads.append(path_text)
+        return original_read(path, path_text)
+
+    def guarded_lstat(
+        path: object,
+        *args: object,
+        **kwargs: object,
+    ) -> os.stat_result:
+        try:
+            relative = Path(path).relative_to(tmp_path).as_posix()
+        except (TypeError, ValueError):
+            relative = ""
+        if relative in active_paths:
+            raise AssertionError(f"active metadata lstat reread: {relative}")
+        return original_lstat(path, *args, **kwargs)
+
+    monkeypatch.setattr(builder, "_read_bound_regular_bytes", recorded_read)
+    monkeypatch.setattr(builder.os, "lstat", guarded_lstat)
+    result = builder._authenticate_worker_metadata_entry(
+        tmp_path,
+        parent_authentication,
+        synthetic=False,
+    )
+    expected_paths = {
+        builder._binding_path(row)
+        for row in builder._iter_bindings(preregistration)
+    } | active_paths
+    assert set(result["raw_cache"]) == expected_paths
+    assert set(reads) == expected_paths
+    assert all(reads.count(path_text) == 1 for path_text in expected_paths)
+
+
+@pytest.mark.parametrize(
+    ("relative", "message"),
+    (
+        (
+            builder.PREREGISTRATION_PATH,
+            "preregistration filesystem mode differs",
+        ),
+        (builder.CLAIM_PATH, "active claim filesystem mode differs"),
+        (builder.SENTINEL_PATH, "active sentinel filesystem mode differs"),
+    ),
+)
+def test_worker_auth_entry_rejects_active_mode_mutation_from_open_fstat(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    relative: Path,
+    message: str,
+) -> None:
+    _preregistration, binding, parent_authentication = (
+        _prepare_guarded_metadata_repository(tmp_path)
+    )
+    _write_guarded_active_metadata(tmp_path, binding)
+    (tmp_path / relative).chmod(0o644)
+    reads: list[str] = []
+    original_read = builder._read_bound_regular_bytes
+    original_lstat = builder.os.lstat
+    active_paths = {
+        builder.PREREGISTRATION_PATH.as_posix(),
+        builder.CLAIM_PATH.as_posix(),
+        builder.SENTINEL_PATH.as_posix(),
+    }
+
+    def recorded_read(
+        path: Path,
+        path_text: str,
+    ) -> tuple[bytes, os.stat_result]:
+        reads.append(path_text)
+        return original_read(path, path_text)
+
+    def guarded_lstat(
+        path: object,
+        *args: object,
+        **kwargs: object,
+    ) -> os.stat_result:
+        try:
+            path_text = Path(path).relative_to(tmp_path).as_posix()
+        except (TypeError, ValueError):
+            path_text = ""
+        if path_text in active_paths:
+            raise AssertionError(f"active metadata lstat reread: {path_text}")
+        return original_lstat(path, *args, **kwargs)
+
+    monkeypatch.setattr(builder, "_read_bound_regular_bytes", recorded_read)
+    monkeypatch.setattr(builder.os, "lstat", guarded_lstat)
+    with pytest.raises(builder.TerminalG9CB4Failure, match=message):
+        builder._authenticate_worker_metadata_entry(
+            tmp_path,
+            parent_authentication,
+            synthetic=False,
+        )
+    assert reads.count(relative.as_posix()) == 1
 
 
 @pytest.mark.parametrize(
@@ -3247,6 +3981,7 @@ def test_parent_rejects_failed_predecessor_permanent_state_before_sentinel(
 
     def parent_claim_validation(
         root: Path,
+        **_kwargs: object,
     ) -> tuple[
         dict[str, object],
         dict[str, object],
@@ -3275,7 +4010,7 @@ def test_parent_rejects_failed_predecessor_permanent_state_before_sentinel(
         "_atomic_link_write_once",
         record_sentinel_write,
     )
-    with pytest.raises(builder.TerminalG9CB3Failure, match=match):
+    with pytest.raises(builder.TerminalG9CB4Failure, match=match):
         builder.produce_one_shot(tmp_path)
     assert sentinel_writes == []
 
@@ -3327,7 +4062,7 @@ def test_stage_zero_parser_rejects_nonzero_and_conflicted_entries() -> None:
         ),
     ):
         with pytest.raises(
-            builder.TerminalG9CB3Failure,
+            builder.TerminalG9CB4Failure,
             match="stage zero|exactly one",
         ):
             builder._parse_stage_zero_binding(output, "input.bin")
@@ -3363,7 +4098,7 @@ def test_nonstage_index_entries_fail_full_preflight_before_byte_read(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="exactly one bound input index entry",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3407,7 +4142,7 @@ def test_recursive_hashed_inputs_reject_malformed_path_bindings(
 ) -> None:
     (tmp_path / "input.bin").write_bytes(b"input")
     (tmp_path / "other.bin").write_bytes(b"other")
-    with pytest.raises(builder.TerminalG9CB3Failure, match=message):
+    with pytest.raises(builder.TerminalG9CB4Failure, match=message):
         builder._validate_regular_hashed_inputs(
             tmp_path,
             {"nested": [binding]},
@@ -3433,9 +4168,9 @@ def test_bytecode_preflight_rejects_repository_cache_artifacts(
     elif cache_kind == "file":
         (tmp_path / "orphan.pyc").write_bytes(b"malicious")
     else:
-        (tmp_path / "results" / ".g9cb3-bytecode-cache-disabled").mkdir()
+        (tmp_path / "results" / ".g9cb4-bytecode-cache-disabled").mkdir()
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="bytecode",
     ):
         builder._validate_bytecode_preflight(tmp_path)
@@ -3448,7 +4183,7 @@ def test_anonymous_pipe_capability_has_exact_schema_and_is_consumed_once(
     capability = builder._prepare_worker_capability(
         root=tmp_path,
         output_dir=(
-            tmp_path / "results/.gross9-structural-clock-g9cb3-worker-slot1"
+            tmp_path / "results/.gross9-structural-clock-g9cb4-worker-slot1"
         ),
         slot=1,
         parent_pid=os.getpid(),
@@ -3479,8 +4214,8 @@ def test_guarded_metadata_validation_reaches_capability_without_child_process(
     _preregistration, binding, parent_authentication = (
         _prepare_guarded_metadata_repository(tmp_path)
     )
-    own = "results/.gross9-structural-clock-g9cb3-worker-guarded-own"
-    other = "results/.gross9-structural-clock-g9cb3-worker-guarded-other"
+    own = "results/.gross9-structural-clock-g9cb4-worker-guarded-own"
+    other = "results/.gross9-structural-clock-g9cb4-worker-guarded-other"
     (tmp_path / own).mkdir()
     script = tmp_path / "guarded_metadata.py"
     script.write_text(
@@ -3496,8 +4231,8 @@ def test_guarded_metadata_validation_reaches_capability_without_child_process(
             root = Path(os.environ["G9CB_TEST_ROOT"])
             parent = json.loads(os.environ["G9CB_PARENT_AUTH"])
             claim_binding = json.loads(os.environ["G9CB_CLAIM_PREREG"])
-            own = "results/.gross9-structural-clock-g9cb3-worker-guarded-own"
-            other = "results/.gross9-structural-clock-g9cb3-worker-guarded-other"
+            own = "results/.gross9-structural-clock-g9cb4-worker-guarded-own"
+            other = "results/.gross9-structural-clock-g9cb4-worker-guarded-other"
             token = b"g" * 32
             read_fd, write_fd = os.pipe()
             os.write(write_fd, token)
@@ -3588,6 +4323,11 @@ HISTORICAL_METADATA_CASES = (
     "g9cb2-preregistration",
     "g9cb2-access-claim",
     "g9cb2-attempt-sentinel",
+    "g9cb3-authority-decision",
+    "g9cb3-preregistration",
+    "g9cb3-access-claim",
+    "g9cb3-attempt-sentinel",
+    "g9cb3-pass1-ledger",
 )
 
 HISTORICAL_METADATA_MUTATION_CASES = tuple(
@@ -3595,7 +4335,10 @@ HISTORICAL_METADATA_MUTATION_CASES = tuple(
     for case in HISTORICAL_METADATA_CASES
     for mutation in (
         ("mode", "sha256", "derived-blob")
-        if case == "g9cb2-authority-decision"
+        if case in {
+            "g9cb2-authority-decision",
+            "g9cb3-authority-decision",
+        }
         else ("mode", "canonical", "internal-hash", "sha256", "derived-blob")
     )
 )
@@ -3610,13 +4353,26 @@ def _historical_metadata_binding(
         return bindings["failed_predecessor_preregistrations"][0]
     if case == "g9cb1-v2":
         return bindings["failed_predecessor_preregistrations"][1]
-    key = {
+    g9cb2_key = {
         "g9cb2-authority-decision": "authority_decision",
         "g9cb2-preregistration": "preregistration",
         "g9cb2-access-claim": "access_claim",
         "g9cb2-attempt-sentinel": "attempt_sentinel",
-    }[case]
-    return bindings["failed_predecessor_attempts"][0][key]
+    }.get(case)
+    if g9cb2_key is not None:
+        return bindings["failed_predecessor_attempts"][0][g9cb2_key]
+    g9cb3 = bindings["failed_predecessor_attempts"][1]
+    if case == "g9cb3-attempt-sentinel":
+        return g9cb3["terminal_evidence"]["attempt_sentinel"]
+    if case == "g9cb3-pass1-ledger":
+        return g9cb3["terminal_evidence"]["pass1_worker_ledger"]
+    return g9cb3[
+        {
+            "g9cb3-authority-decision": "authority_decision",
+            "g9cb3-preregistration": "preregistration",
+            "g9cb3-access-claim": "access_claim",
+        }[case]
+    ]
 
 
 @pytest.mark.parametrize(
@@ -3638,7 +4394,7 @@ def test_actual_guarded_metadata_routine_rejects_historical_file_tampering(
     if mutation == "mode":
         os.chmod(
             target,
-            0o555 if case == "g9cb2-authority-decision" else 0o644,
+            0o555 if case.endswith("authority-decision") else 0o644,
         )
     elif mutation == "sha256":
         os.chmod(target, 0o644)
@@ -3686,8 +4442,8 @@ def test_actual_guarded_metadata_routine_rejects_historical_file_tampering(
             "sha256": hashlib.sha256(active_path.read_bytes()).hexdigest(),
             "manifest_hash": active["manifest_hash"],
         }
-    own = "results/.gross9-structural-clock-g9cb3-worker-mutation-own"
-    other = "results/.gross9-structural-clock-g9cb3-worker-mutation-other"
+    own = "results/.gross9-structural-clock-g9cb4-worker-mutation-own"
+    other = "results/.gross9-structural-clock-g9cb4-worker-mutation-other"
     (tmp_path / own).mkdir()
     script = tmp_path / "guarded_mutation.py"
     script.write_text(
@@ -3724,11 +4480,11 @@ def test_actual_guarded_metadata_routine_rejects_historical_file_tampering(
             guard = b._WorkerIsolationGuard(
                 root=root,
                 own_stage=(
-                    "results/.gross9-structural-clock-g9cb3-"
+                    "results/.gross9-structural-clock-g9cb4-"
                     "worker-mutation-own"
                 ),
                 other_stage=(
-                    "results/.gross9-structural-clock-g9cb3-"
+                    "results/.gross9-structural-clock-g9cb4-"
                     "worker-mutation-other"
                 ),
                 ledger_paths=b.WORKER_LEDGER_PATHS,
@@ -3740,7 +4496,7 @@ def test_actual_guarded_metadata_routine_rejects_historical_file_tampering(
                     parent,
                     claim_binding,
                 )
-            except b.TerminalG9CB3Failure as exc:
+            except b.TerminalG9CB4Failure as exc:
                 print(json.dumps({
                     "status": "terminal",
                     "error": str(exc),
@@ -3834,14 +4590,14 @@ def test_preregistration_authentication_rejects_every_field_before_capability(
         record["manifest_hash"] = "f" * 64
     else:
         record["protocol_implementation_commit"] = "f" * 40
-    with pytest.raises(builder.TerminalG9CB3Failure, match=match):
+    with pytest.raises(builder.TerminalG9CB4Failure, match=match):
         builder.validate_preregistration(
             tmp_path,
             validation_mode="guarded_worker",
             parent_authentication=parent_authentication,
             claim_preregistration=binding,
         )
-    assert preregistration["identity"] == "G9CB-3"
+    assert preregistration["identity"] == "G9CB-4"
 
 
 def test_capability_preparation_orders_pipe_identity_before_mutable_token() -> None:
@@ -3902,7 +4658,7 @@ def test_worker_invocation_has_exact_environment_and_no_legacy_transport(
         root=tmp_path,
         capability=capability,
         other_stage_directory=(
-            "results/.gross9-structural-clock-g9cb3-worker-slot2"
+            "results/.gross9-structural-clock-g9cb4-worker-slot2"
         ),
         synthetic_input=None,
         parent_authentication=_parent_authentication(tmp_path),
@@ -3950,9 +4706,9 @@ def test_internal_worker_bootstrap_installs_parent_death_guard_before_argparse(
         "--repository-root",
         str(tmp_path),
         "--output-dir",
-        "results/.gross9-structural-clock-g9cb3-worker-one",
+        "results/.gross9-structural-clock-g9cb4-worker-one",
         "--other-stage-directory",
-        "results/.gross9-structural-clock-g9cb3-worker-two",
+        "results/.gross9-structural-clock-g9cb4-worker-two",
         "--worker-capability-fd",
         "7",
         "--expected-parent-pid",
@@ -4127,7 +4883,7 @@ def test_guard_rejects_procfd_and_devfd_namespaces(
 ) -> None:
     guard = _guard(tmp_path)
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="descriptor namespace",
     ):
         guard._checked_path(path)
@@ -4451,7 +5207,7 @@ def test_import_recorder_rejects_invalid_lifecycle_transition(
 ) -> None:
     result = _run_import_recorder_case(tmp_path, scenario)
     assert result["status"] == "terminal", result
-    assert result["error_type"] == "TerminalG9CB3Failure"
+    assert result["error_type"] == "TerminalG9CB4Failure"
 
 
 def test_import_recorder_accepts_authenticated_new_sources_then_freezes(
@@ -4522,11 +5278,11 @@ def test_guarded_actual_runtime_roots_import_from_authenticated_source(
             guard = b._WorkerIsolationGuard(
                 root=root,
                 own_stage=(
-                    "results/.gross9-structural-clock-g9cb3-worker-import-own-"
+                    "results/.gross9-structural-clock-g9cb4-worker-import-own-"
                     + suffix
                 ),
                 other_stage=(
-                    "results/.gross9-structural-clock-g9cb3-worker-import-other-"
+                    "results/.gross9-structural-clock-g9cb4-worker-import-other-"
                     + suffix
                 ),
                 ledger_paths=b.WORKER_LEDGER_PATHS,
@@ -4567,7 +5323,7 @@ def test_guarded_actual_runtime_roots_import_from_authenticated_source(
             "PYTHONPATH": str(repository_root),
             "PYTHONPYCACHEPREFIX": str(
                 repository_root
-                / "results/.g9cb3-bytecode-cache-disabled"
+                / "results/.g9cb4-bytecode-cache-disabled"
             ),
         }
     )
@@ -4595,7 +5351,7 @@ def test_guarded_actual_runtime_roots_import_from_authenticated_source(
         "training/preregister_gross9_structural_clock_bundle.py",
     ]
     assert not (
-        repository_root / "results/.g9cb3-bytecode-cache-disabled"
+        repository_root / "results/.g9cb4-bytecode-cache-disabled"
     ).exists()
 
 
@@ -4655,7 +5411,7 @@ def test_parent_death_kills_worker_at_every_post_handoff_phase(
 def test_guard_rejects_cross_stage_observation(tmp_path: Path) -> None:
     guard = _guard(tmp_path)
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="other worker stage",
     ):
         guard._checked_path(guard.other_stage / "probe")
@@ -4667,7 +5423,7 @@ def test_guard_rejects_path_open_of_fifo(tmp_path: Path) -> None:
     fifo = tmp_path / "named.fifo"
     os.mkfifo(fifo)
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="FIFO",
     ):
         guard._checked_path(fifo, fifo_open=True)
@@ -4676,7 +5432,7 @@ def test_guard_rejects_path_open_of_fifo(tmp_path: Path) -> None:
 @pytest.mark.parametrize("keyword", ["dir_fd", "src_dir_fd", "dst_dir_fd"])
 def test_guard_rejects_every_dir_fd_variant(keyword: str) -> None:
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match=keyword,
     ):
         builder._WorkerIsolationGuard._reject_dir_fds({keyword: -100})
@@ -4733,7 +5489,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
     monkeypatch.setattr(
         builder,
         "_validate_claim_commit",
-        lambda root: (
+        lambda root, **_kwargs: (
             claim,
             claim_binding,
             preregistration,
@@ -4771,19 +5527,19 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
     )
     assert result["identity"] == builder.IDENTITY
     assert [path.as_posix() for path in publication_paths] == [
-        "results/gross9_structural_clock_bundle_g9cb3_attempt_consumed_2026-07-31.json",
+        "results/gross9_structural_clock_bundle_g9cb4_attempt_consumed_2026-07-31.json",
         (
             "results/"
-            "gross9_structural_clock_bundle_g9cb3_"
+            "gross9_structural_clock_bundle_g9cb4_"
             "worker_capability_consumed_pass1_2026-07-31.json"
         ),
         (
             "results/"
-            "gross9_structural_clock_bundle_g9cb3_"
+            "gross9_structural_clock_bundle_g9cb4_"
             "worker_capability_consumed_pass2_2026-07-31.json"
         ),
-        "results/gross9_structural_clock_bundle_g9cb3_2026-07-31.csv.gz",
-        "results/gross9_structural_clock_bundle_g9cb3_manifest_2026-07-31.json",
+        "results/gross9_structural_clock_bundle_g9cb4_2026-07-31.csv.gz",
+        "results/gross9_structural_clock_bundle_g9cb4_manifest_2026-07-31.json",
     ]
     assert all((tmp_path / path).is_file() for path in publication_paths)
     assert lifecycle[0][0] == "create"
@@ -4894,7 +5650,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         "manifest_hash",
     )
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="parent authentication binding",
     ):
         builder._validate_final_manifest_contract(
@@ -4920,7 +5676,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         "manifest_hash",
     )
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="receipt binding|counter|core contract",
     ):
         builder._validate_final_manifest_contract(
@@ -4966,7 +5722,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         "manifest_hash",
     )
     with pytest.raises(
-        builder.TerminalG9CB3Failure,
+        builder.TerminalG9CB4Failure,
         match="receipt binding",
     ):
         builder._validate_final_manifest_contract(
@@ -4986,7 +5742,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         )
     assert not list(
         (tmp_path / "results").glob(
-            ".gross9-structural-clock-g9cb3-worker-*"
+            ".gross9-structural-clock-g9cb4-worker-*"
         )
     )
     assert not list(

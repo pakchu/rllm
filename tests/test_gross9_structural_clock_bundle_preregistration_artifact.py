@@ -23,12 +23,12 @@ EXPECTED_RUNTIME_IMPORT_ROOTS = [
 EXPECTED_CONSUMPTION_LEDGER_PATHS = [
     (
         "results/"
-        "gross9_structural_clock_bundle_g9cb3_worker_capability_consumed_pass1_"
+        "gross9_structural_clock_bundle_g9cb4_worker_capability_consumed_pass1_"
         "2026-07-31.json"
     ),
     (
         "results/"
-        "gross9_structural_clock_bundle_g9cb3_worker_capability_consumed_pass2_"
+        "gross9_structural_clock_bundle_g9cb4_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
 ]
@@ -64,18 +64,19 @@ def test_failed_g9cb1_artifacts_remain_nonoperative_evidence() -> None:
     ] == ["G9CB-1A", "G9CB-1B", "G9CB-1C"]
 
 
-def test_failed_g9cb2_terminal_evidence_and_residue_remain_exact() -> None:
+def test_failed_g9cb2_and_g9cb3_terminal_evidence_and_residue_remain_exact() -> None:
     attempts = prereg.validate_failed_predecessor_attempts()
     assert attempts == prereg.expected_failed_predecessor_attempts()
-    row = attempts[0]
-    for path_text in row["permanently_absent_outputs"]:
-        assert not (prereg.REPOSITORY_ROOT / path_text).exists()
-    slot1 = prereg.REPOSITORY_ROOT / row["residue"]["slot1_stage"]["path"]
-    slot2 = prereg.REPOSITORY_ROOT / row["residue"]["slot2_stage"]["path"]
-    assert slot1.is_dir()
-    assert list(slot1.iterdir()) == []
-    assert slot1.stat().st_mode & 0o777 == 0o700
-    assert not slot2.exists()
+    assert [row["identity"] for row in attempts] == ["G9CB-2", "G9CB-3"]
+    for row in attempts:
+        for path_text in row["permanently_absent_outputs"]:
+            assert not (prereg.REPOSITORY_ROOT / path_text).exists()
+        slot1 = prereg.REPOSITORY_ROOT / row["residue"]["slot1_stage"]["path"]
+        slot2 = prereg.REPOSITORY_ROOT / row["residue"]["slot2_stage"]["path"]
+        assert slot1.is_dir()
+        assert list(slot1.iterdir()) == []
+        assert slot1.stat().st_mode & 0o777 == 0o700
+        assert not slot2.exists()
 
 
 def test_committed_preregistration_artifact_is_exactly_reproducible() -> None:
@@ -101,7 +102,7 @@ def test_committed_preregistration_artifact_is_exactly_reproducible() -> None:
     prereg.validate_manifest(payload)
     assert payload == prereg.build_manifest()
     assert payload["protocol_version"] == (
-        "gross9_structural_clock_bundle_g9cb3_preregistration_v1"
+        "gross9_structural_clock_bundle_g9cb4_preregistration_v1"
     )
     assert payload["protocol_implementation_commit"] == (
         prereg.validate_protocol_commit_topology()

@@ -1,4 +1,4 @@
-"""Create the metadata-only G9CB-3 structural-clock preregistration.
+"""Create the metadata-only G9CB-4 structural-clock preregistration.
 
 This module deliberately has a stdlib-only import surface.  It authenticates
 opaque bytes, Git metadata, permitted JSON metadata, static Python imports,
@@ -26,7 +26,7 @@ import zlib
 
 
 PROTOCOL_VERSION = (
-    "gross9_structural_clock_bundle_g9cb3_preregistration_v1"
+    "gross9_structural_clock_bundle_g9cb4_preregistration_v1"
 )
 HISTORICAL_PROTOCOL_VERSION = (
     "gross9_structural_clock_bundle_preregistration_v1"
@@ -34,7 +34,7 @@ HISTORICAL_PROTOCOL_VERSION = (
 FAILED_V2_PROTOCOL_VERSION = (
     "gross9_structural_clock_bundle_preregistration_v2"
 )
-IDENTITY = "G9CB-3"
+IDENTITY = "G9CB-4"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 RESULTS_ROOT = REPOSITORY_ROOT / "results"
 PREREGISTRATION_SOURCE = Path(
@@ -49,6 +49,11 @@ ARTIFACT_TEST = Path(
 BUILDER_SOURCE = Path("training/build_gross9_structural_clock_bundle.py")
 BUILDER_TEST = Path("tests/test_build_gross9_structural_clock_bundle.py")
 AUTHORITY_DECISION_PATH = Path(
+    "docs/"
+    "gross9-structural-clock-bundle-g9cb4-successor-authority-decision-"
+    "2026-07-31.md"
+)
+G9CB3_AUTHORITY_DECISION_PATH = Path(
     "docs/"
     "gross9-structural-clock-bundle-g9cb3-successor-authority-decision-"
     "2026-07-31.md"
@@ -85,41 +90,58 @@ FAILED_V2_PREREGISTRATION_PATH = Path(
 )
 PREREGISTRATION_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb3_preregistration_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb4_preregistration_2026-07-31.json"
 )
 ACCESS_CLAIM_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb3_access_claim_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb4_access_claim_2026-07-31.json"
 )
 ATTEMPT_SENTINEL_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb3_attempt_consumed_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb4_attempt_consumed_2026-07-31.json"
 )
 BUNDLE_PATH = Path(
-    "results/gross9_structural_clock_bundle_g9cb3_2026-07-31.csv.gz"
+    "results/gross9_structural_clock_bundle_g9cb4_2026-07-31.csv.gz"
 )
 FINAL_MANIFEST_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb3_manifest_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb4_manifest_2026-07-31.json"
 )
 WORKER_CAPABILITY_CONSUMPTION_LEDGER_PATHS = (
     Path(
         "results/"
-        "gross9_structural_clock_bundle_g9cb3_worker_capability_consumed_pass1_"
+        "gross9_structural_clock_bundle_g9cb4_worker_capability_consumed_pass1_"
         "2026-07-31.json"
     ),
     Path(
         "results/"
-        "gross9_structural_clock_bundle_g9cb3_worker_capability_consumed_pass2_"
+        "gross9_structural_clock_bundle_g9cb4_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
 )
 
-AUTHORITY_DECISION_COMMIT = "a97576c050cf7cdf08738ddb755e63cc92484428"
+AUTHORITY_DECISION_COMMIT = "1156e2fd80957d5ef0a6027a09e08ff59349a80d"
 AUTHORITY_DECISION_SHA256 = (
+    "9199955f62abbb99c8665a5eeee6a32cf9605ba637e2b034d929b1ac91ace626"
+)
+AUTHORITY_DECISION_GIT_BLOB = "2610246e4d9fb89d775fe7d8d1998282d23e5961"
+G9CB3_AUTHORITY_DECISION_COMMIT = "a97576c050cf7cdf08738ddb755e63cc92484428"
+G9CB3_AUTHORITY_DECISION_SHA256 = (
     "1df555c5149bfe269d2cc2c87375d54032809f13ac36f4e92b5ba00dd6e87cc7"
 )
-AUTHORITY_DECISION_GIT_BLOB = "43d68f6b7407c19b3b52ef8b7bb7010797dbf3b3"
+G9CB3_AUTHORITY_DECISION_GIT_BLOB = (
+    "43d68f6b7407c19b3b52ef8b7bb7010797dbf3b3"
+)
+G9CB3_PROTOCOL_IMPLEMENTATION_COMMIT = (
+    "211752bf2529b37376b5fecdc190e0c22a1195ff"
+)
+G9CB3_PREREGISTRATION_SEAL_COMMIT = (
+    "7f4985b0685fdb6cbbde891485f08305f076e205"
+)
+G9CB3_CLAIM_COMMIT = "4365522eba5b01129c6aa12a5e06d314b611c840"
+G9CB3_TERMINAL_EVIDENCE_COMMIT = (
+    "04b9e53272ab58537235ad290551607dd071ee17"
+)
 G9CB2_AUTHORITY_DECISION_COMMIT = "0a2847c8589908def4243890727c3640f806e109"
 G9CB2_AUTHORITY_DECISION_SHA256 = (
     "b80ad199c803623c4de289d32beea913b3e1c38541e1c4f035ce3d33fa049410"
@@ -200,6 +222,7 @@ UNSEALED_PROTOCOL_IMPLEMENTATION_COMMIT = "0" * 40
 
 PROTOCOL_PATHS = (
     AUTHORITY_DECISION_PATH,
+    G9CB3_AUTHORITY_DECISION_PATH,
     G9CB2_AUTHORITY_DECISION_PATH,
     PREDECESSOR_AUTHORITY_DECISION_PATH,
     RANK7_AUTHORITY_AMENDMENT_PATH,
@@ -255,19 +278,40 @@ G9CB2_CLAIM_DIFF = (
     "A\tresults/"
     "gross9_structural_clock_bundle_g9cb2_access_claim_2026-07-31.json",
 )
-SUCCESSOR_AUTHORITY_DIFF = (
+G9CB3_SUCCESSOR_AUTHORITY_DIFF = (
     "A\tdocs/"
     "gross9-structural-clock-bundle-g9cb3-successor-authority-decision-"
     "2026-07-31.md",
 )
-TERMINAL_EVIDENCE_DIFF = (
+G9CB2_TERMINAL_EVIDENCE_DIFF = (
     "A\tresults/"
     "gross9_structural_clock_bundle_g9cb2_attempt_consumed_2026-07-31.json",
+)
+G9CB3_PROTOCOL_DIFF = G9CB2_SUCCESSOR_PROTOCOL_DIFF
+G9CB3_ACTIVE_PREREGISTRATION_DIFF = (
+    "A\tresults/"
+    "gross9_structural_clock_bundle_g9cb3_preregistration_2026-07-31.json",
+)
+G9CB3_CLAIM_DIFF = (
+    "A\tresults/"
+    "gross9_structural_clock_bundle_g9cb3_access_claim_2026-07-31.json",
+)
+SUCCESSOR_AUTHORITY_DIFF = (
+    "A\tdocs/"
+    "gross9-structural-clock-bundle-g9cb4-successor-authority-decision-"
+    "2026-07-31.md",
+)
+TERMINAL_EVIDENCE_DIFF = (
+    "A\tresults/"
+    "gross9_structural_clock_bundle_g9cb3_attempt_consumed_2026-07-31.json",
+    "A\tresults/"
+    "gross9_structural_clock_bundle_g9cb3_worker_capability_consumed_pass1_"
+    "2026-07-31.json",
 )
 SUCCESSOR_PROTOCOL_DIFF = G9CB2_SUCCESSOR_PROTOCOL_DIFF
 ACTIVE_PREREGISTRATION_DIFF = (
     "A\tresults/"
-    "gross9_structural_clock_bundle_g9cb3_preregistration_2026-07-31.json",
+    "gross9_structural_clock_bundle_g9cb4_preregistration_2026-07-31.json",
 )
 
 DIRECT_AUTHORITY_BINDINGS = (
@@ -509,7 +553,7 @@ WORKER_PROCESS_ENVIRONMENT = {
     "PYTHONDONTWRITEBYTECODE": "1",
     "PYTHONPATH": REPOSITORY_ROOT.as_posix(),
     "PYTHONPYCACHEPREFIX": (
-        REPOSITORY_ROOT / "results/.g9cb3-bytecode-cache-disabled"
+        REPOSITORY_ROOT / "results/.g9cb4-bytecode-cache-disabled"
     ).as_posix(),
     "PYTHONUNBUFFERED": "1",
     "PYTHONUTF8": "1",
@@ -1122,15 +1166,45 @@ def validate_protocol_commit_topology(
         ),
         (
             G9CB2_CLAIM_COMMIT,
-            AUTHORITY_DECISION_COMMIT,
-            SUCCESSOR_AUTHORITY_DIFF,
+            G9CB3_AUTHORITY_DECISION_COMMIT,
+            G9CB3_SUCCESSOR_AUTHORITY_DIFF,
             "successor authority",
         ),
         (
-            AUTHORITY_DECISION_COMMIT,
+            G9CB3_AUTHORITY_DECISION_COMMIT,
             G9CB2_TERMINAL_EVIDENCE_COMMIT,
-            TERMINAL_EVIDENCE_DIFF,
+            G9CB2_TERMINAL_EVIDENCE_DIFF,
             "terminal evidence",
+        ),
+        (
+            G9CB2_TERMINAL_EVIDENCE_COMMIT,
+            G9CB3_PROTOCOL_IMPLEMENTATION_COMMIT,
+            G9CB3_PROTOCOL_DIFF,
+            "G9CB-3 protocol implementation",
+        ),
+        (
+            G9CB3_PROTOCOL_IMPLEMENTATION_COMMIT,
+            G9CB3_PREREGISTRATION_SEAL_COMMIT,
+            G9CB3_ACTIVE_PREREGISTRATION_DIFF,
+            "G9CB-3 preregistration",
+        ),
+        (
+            G9CB3_PREREGISTRATION_SEAL_COMMIT,
+            G9CB3_CLAIM_COMMIT,
+            G9CB3_CLAIM_DIFF,
+            "G9CB-3 claim",
+        ),
+        (
+            G9CB3_CLAIM_COMMIT,
+            AUTHORITY_DECISION_COMMIT,
+            SUCCESSOR_AUTHORITY_DIFF,
+            "G9CB-4 successor authority",
+        ),
+        (
+            AUTHORITY_DECISION_COMMIT,
+            G9CB3_TERMINAL_EVIDENCE_COMMIT,
+            TERMINAL_EVIDENCE_DIFF,
+            "G9CB-3 terminal evidence",
         ),
     )
     for parent, child, expected_diff, label in predecessor_steps:
@@ -1142,6 +1216,10 @@ def validate_protocol_commit_topology(
     if _addition_commits(
         AUTHORITY_DECISION_PATH, repository_root
     ) != (AUTHORITY_DECISION_COMMIT,):
+        raise ValueError("G9CB-4 authority addition history differs")
+    if _addition_commits(
+        G9CB3_AUTHORITY_DECISION_PATH, repository_root
+    ) != (G9CB3_AUTHORITY_DECISION_COMMIT,):
         raise ValueError("G9CB-3 authority addition history differs")
 
     head = _run_git(["rev-parse", "HEAD"], repository_root)
@@ -1165,11 +1243,11 @@ def validate_protocol_commit_topology(
 
     if (
         _single_parent(implementation, repository_root)
-        != G9CB2_TERMINAL_EVIDENCE_COMMIT
+        != G9CB3_TERMINAL_EVIDENCE_COMMIT
     ):
         raise ValueError("protocol implementation parent differs")
     if _commit_diff(
-        G9CB2_TERMINAL_EVIDENCE_COMMIT,
+        G9CB3_TERMINAL_EVIDENCE_COMMIT,
         implementation,
         repository_root,
     ) != SUCCESSOR_PROTOCOL_DIFF:
@@ -1211,12 +1289,37 @@ def validate_failed_predecessor_attempt_topology(
         ),
         (
             G9CB2_CLAIM_COMMIT,
+            G9CB3_AUTHORITY_DECISION_COMMIT,
+            G9CB3_SUCCESSOR_AUTHORITY_DIFF,
+        ),
+        (
+            G9CB3_AUTHORITY_DECISION_COMMIT,
+            G9CB2_TERMINAL_EVIDENCE_COMMIT,
+            G9CB2_TERMINAL_EVIDENCE_DIFF,
+        ),
+        (
+            G9CB2_TERMINAL_EVIDENCE_COMMIT,
+            G9CB3_PROTOCOL_IMPLEMENTATION_COMMIT,
+            G9CB3_PROTOCOL_DIFF,
+        ),
+        (
+            G9CB3_PROTOCOL_IMPLEMENTATION_COMMIT,
+            G9CB3_PREREGISTRATION_SEAL_COMMIT,
+            G9CB3_ACTIVE_PREREGISTRATION_DIFF,
+        ),
+        (
+            G9CB3_PREREGISTRATION_SEAL_COMMIT,
+            G9CB3_CLAIM_COMMIT,
+            G9CB3_CLAIM_DIFF,
+        ),
+        (
+            G9CB3_CLAIM_COMMIT,
             AUTHORITY_DECISION_COMMIT,
             SUCCESSOR_AUTHORITY_DIFF,
         ),
         (
             AUTHORITY_DECISION_COMMIT,
-            G9CB2_TERMINAL_EVIDENCE_COMMIT,
+            G9CB3_TERMINAL_EVIDENCE_COMMIT,
             TERMINAL_EVIDENCE_DIFF,
         ),
     )
@@ -1231,6 +1334,14 @@ def validate_failed_predecessor_attempt_topology(
         repository_root,
     ) != (G9CB2_TERMINAL_EVIDENCE_COMMIT,):
         raise ValueError("G9CB-2 terminal evidence addition history differs")
+    g9cb3 = expected_failed_predecessor_attempts()[1]["terminal_evidence"]
+    for binding in g9cb3.values():
+        if _addition_commits(
+            Path(binding["path"]), repository_root
+        ) != (G9CB3_TERMINAL_EVIDENCE_COMMIT,):
+            raise ValueError(
+                "G9CB-3 terminal evidence addition history differs"
+            )
 
 
 def _historical_v1_authority_amendments() -> list[dict[str, str]]:
@@ -1541,10 +1652,172 @@ def expected_failed_predecessor_attempts() -> list[dict[str, Any]]:
                 "g9cb2_claim_commit": G9CB2_CLAIM_COMMIT,
                 "g9cb2_preregistration_commit": G9CB2_PREREGISTRATION_SEAL_COMMIT,
                 "g9cb2_protocol_commit": G9CB2_PROTOCOL_IMPLEMENTATION_COMMIT,
-                "g9cb3_authority_commit": AUTHORITY_DECISION_COMMIT,
+                "g9cb3_authority_commit": G9CB3_AUTHORITY_DECISION_COMMIT,
                 "terminal_evidence_commit": G9CB2_TERMINAL_EVIDENCE_COMMIT,
             },
-        }
+        },
+        {
+            "access_claim": {
+                "claim_hash": "886fa3b177cd6d48c630020c2afef7d85b05126fd3805676bffdbec2899f2c6a",
+                "filesystem_mode_octal": "0444",
+                "git_blob": "e4464c15f103c760a89ada18b0e49f7a874d8578",
+                "git_mode": "100644",
+                "path": "results/gross9_structural_clock_bundle_g9cb3_access_claim_2026-07-31.json",
+                "path_type": "regular_file",
+                "protocol_parent_commit": G9CB3_PREREGISTRATION_SEAL_COMMIT,
+                "seal_commit": G9CB3_CLAIM_COMMIT,
+                "sha256": "6d59505ef14ce92bf5958d32725b7e5e1ffe8ce4065f215fdd092176a44bbe98",
+            },
+            "authority_decision": {
+                "authority_commit": G9CB3_AUTHORITY_DECISION_COMMIT,
+                "git_blob": G9CB3_AUTHORITY_DECISION_GIT_BLOB,
+                "git_mode": "100644",
+                "path": G9CB3_AUTHORITY_DECISION_PATH.as_posix(),
+                "path_type": "regular_file",
+                "sha256": G9CB3_AUTHORITY_DECISION_SHA256,
+            },
+            "classification": (
+                "terminal_missing_physical_domain_end_value_row_after_pass1_"
+                "source_decode_before_features_or_model_access"
+            ),
+            "diagnostic": {
+                "elapsed_seconds_approximate": "59.35",
+                "max_rss_kb": 1352228,
+                "parent_terminal_message": (
+                    "fresh worker failed with PID 2087327 and status 1"
+                ),
+                "status": 1,
+                "stderr_sha256": "6c3f838c364acda081f576f3d379c05c71ff8cce3c8424bb8de5c59d9e7e8d88",
+                "stderr_size_bytes": 2894,
+                "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "stdout_size_bytes": 0,
+                "worker_terminal_message": (
+                    "bound market lacks the canonical domain-end boundary row"
+                ),
+            },
+            "exposure": {
+                "candidate_rows_opened": 0,
+                "comparator_clock_rows_opened": 0,
+                "decoded_and_handed_off": [
+                    "market",
+                    "funding",
+                    "premium",
+                    "open_interest",
+                ],
+                "exact_decoded_and_handoff_counts_recoverable": False,
+                "features_constructed": False,
+                "isolated_runtime_roots_imported": 2,
+                "overlap_metric_values_computed": 0,
+                "portfolio_economic_values_computed": 0,
+                "pre2025_anchor_value_rows_opened": 0,
+                "rank7_model_or_history_opened": False,
+                "rex_jsonl_opened": False,
+                "schedules_reached": False,
+                "sleeve_intervals_reached": False,
+                "worker_capabilities_consumed": {"pass1": 1, "pass2": 0},
+                "worker_ledgers_published": {"pass1": 1, "pass2": 0},
+            },
+            "identity": "G9CB-3",
+            "permanently_absent_outputs": [
+                "results/gross9_structural_clock_bundle_g9cb3_worker_capability_consumed_pass2_2026-07-31.json",
+                "results/gross9_structural_clock_bundle_g9cb3_2026-07-31.csv.gz",
+                "results/gross9_structural_clock_bundle_g9cb3_manifest_2026-07-31.json",
+            ],
+            "preregistration": {
+                "filesystem_mode_octal": "0444",
+                "git_blob": "e4b2488783f0cfa88a8478b3ff0d94c99fbece6e",
+                "git_mode": "100644",
+                "manifest_hash": "e100e54557a9654923374dec433feff494d85b0956129157231c2fb8551ec5f2",
+                "path": "results/gross9_structural_clock_bundle_g9cb3_preregistration_2026-07-31.json",
+                "path_type": "regular_file",
+                "protocol_implementation_commit": G9CB3_PROTOCOL_IMPLEMENTATION_COMMIT,
+                "protocol_version": "gross9_structural_clock_bundle_g9cb3_preregistration_v1",
+                "seal_commit": G9CB3_PREREGISTRATION_SEAL_COMMIT,
+                "sha256": "1d967a590e50822dd83c20838c8796523d6594f0fcbd22aad137b0a97c1a982c",
+            },
+            "protocol_implementation": {
+                "commit": G9CB3_PROTOCOL_IMPLEMENTATION_COMMIT,
+                "files": [
+                    {"git_blob": "ce6fec59bd8c81dcef4a1be8c04d0b6e8457aa2c", "git_mode": "100644", "path": "tests/test_build_gross9_structural_clock_bundle.py", "sha256": "b59b808b3fcd55aac3278f6914e3022d91688880bb605e8fe635543028438a77"},
+                    {"git_blob": "3158c711293fdb110f0a27b960aa0fa060eda9f6", "git_mode": "100644", "path": "tests/test_gross9_structural_clock_bundle_preregistration_artifact.py", "sha256": "19add878f1171aa9d22f18f7547cb2d0274d8c90666bcd812d7c7e1c40769a8c"},
+                    {"git_blob": "e63a1578f434d716adc260c7d26c433ce8c5dcab", "git_mode": "100644", "path": "tests/test_preregister_gross9_structural_clock_bundle.py", "sha256": "6487f6f4601e8e137846c9504373e2e76247d321c1e5b24e1e2340e1b151e67a"},
+                    {"git_blob": "0e5b96802affa0ab221f75ac1387fd84fec2867a", "git_mode": "100644", "path": "training/build_gross9_structural_clock_bundle.py", "sha256": "50cece625b4af12f81842ba501d376ed0c50589d33187b54efb2139194000e27"},
+                    {"git_blob": "a11e63d31e37ab391051bb456091401577f43b2f", "git_mode": "100644", "path": "training/preregister_gross9_structural_clock_bundle.py", "sha256": "71415da68e4a0a37cc2ff1d562f9014f74c297f62124cacba43cdf4ab375b113"},
+                ],
+                "parent_commit": G9CB2_TERMINAL_EVIDENCE_COMMIT,
+            },
+            "protocol_version": "gross9_structural_clock_bundle_g9cb3_v1",
+            "residue": {
+                "bytecode_cache": {
+                    "path": "results/.g9cb3-bytecode-cache-disabled",
+                    "state": "absent",
+                },
+                "slot1_stage": {
+                    "committed": False,
+                    "filesystem_mode_octal": "0700",
+                    "path": "results/.gross9-structural-clock-g9cb3-worker-a3dffd3cbec3afd582638a23",
+                    "staged_core_state": "absent",
+                    "staged_csv_state": "absent",
+                    "staged_receipt_state": "absent",
+                    "state": "empty_directory",
+                },
+                "slot2_stage": {
+                    "committed": False,
+                    "path": "results/.gross9-structural-clock-g9cb3-worker-26e64bf0a62646afad3d77e6",
+                    "state": "absent",
+                },
+            },
+            "root_cause": {
+                "domain_end": "2026-06-01T00:00:00Z",
+                "domain_end_is_exclusive_boundary": True,
+                "fabricated_boundary_value_authorized": False,
+                "open_interest_left_merge_can_remove_market_rows": False,
+                "source_hash_mismatch_at_authentication_ruled_out": True,
+                "wrong_requirement": (
+                    "exclusive domain-end boundary required as physical market "
+                    "value-row open"
+                ),
+            },
+            "status": "historical_terminal_attempt_consumed_no_clock_authority",
+            "terminal_evidence": {
+                "attempt_sentinel": {
+                    "claim_commit": G9CB3_CLAIM_COMMIT,
+                    "filesystem_mode_octal": "0444",
+                    "git_blob": "672a973ae09495d38253991df90c7962c6f9c2ee",
+                    "git_mode": "100644",
+                    "manifest_hash": "aab875ecc91a07619b3006967efca42664cc77d90d0bb9e45da20e93ea16c973",
+                    "path": "results/gross9_structural_clock_bundle_g9cb3_attempt_consumed_2026-07-31.json",
+                    "path_type": "regular_file",
+                    "protocol_version": "gross9_structural_clock_bundle_g9cb3_v1",
+                    "resume_allowed": False,
+                    "retry_allowed": False,
+                    "seal_commit": G9CB3_TERMINAL_EVIDENCE_COMMIT,
+                    "sha256": "7cec9807503c271e993f8bf456ca772d7ded9cec9619d37cbd4ac015d14c9f69",
+                    "size_bytes": 3300,
+                    "status": "attempt_consumed_before_runtime_or_value_access",
+                },
+                "pass1_worker_ledger": {
+                    "filesystem_mode_octal": "0444",
+                    "git_blob": "0e77d77fcdc70379d94a2c34e8dee19f9f45d0a9",
+                    "git_mode": "100644",
+                    "path": "results/gross9_structural_clock_bundle_g9cb3_worker_capability_consumed_pass1_2026-07-31.json",
+                    "path_type": "regular_file",
+                    "seal_commit": G9CB3_TERMINAL_EVIDENCE_COMMIT,
+                    "sha256": "45b27b24074c53eeaaa9a1074c7888c22c4078e5fb5922007d31ad0baf704f66",
+                    "size_bytes": 1766,
+                    "slot": 1,
+                    "status": "consumed_before_runtime_or_value_access",
+                },
+            },
+            "topology": {
+                "g9cb3_authority_commit": G9CB3_AUTHORITY_DECISION_COMMIT,
+                "g9cb3_claim_commit": G9CB3_CLAIM_COMMIT,
+                "g9cb3_preregistration_commit": G9CB3_PREREGISTRATION_SEAL_COMMIT,
+                "g9cb3_protocol_commit": G9CB3_PROTOCOL_IMPLEMENTATION_COMMIT,
+                "g9cb4_authority_commit": AUTHORITY_DECISION_COMMIT,
+                "terminal_evidence_commit": G9CB3_TERMINAL_EVIDENCE_COMMIT,
+            },
+        },
     ]
 
 
@@ -1556,7 +1829,10 @@ def _historical_attempt_git_pair(
 ) -> None:
     path_text = str(binding["path"])
     for completed in (staged, tree, matched):
-        completed.check_returncode()
+        if completed.returncode != 0:
+            raise ValueError(
+                f"predecessor Git classification differs: {path_text}"
+            )
     staged_lines = staged.stdout.splitlines()
     tree_lines = tree.stdout.splitlines()
     if (
@@ -1564,7 +1840,7 @@ def _historical_attempt_git_pair(
         or len(tree_lines) != 1
         or matched.stdout.rstrip("\n") != path_text
     ):
-        raise ValueError(f"G9CB-2 Git classification differs: {path_text}")
+        raise ValueError(f"predecessor Git classification differs: {path_text}")
     staged_fields = staged_lines[0].split()
     tree_fields = tree_lines[0].split()
     if (
@@ -1579,7 +1855,7 @@ def _historical_attempt_git_pair(
         or tree_fields[2] != binding["git_blob"]
         or tree_fields[-1] != path_text
     ):
-        raise ValueError(f"G9CB-2 index/HEAD pair differs: {path_text}")
+        raise ValueError(f"predecessor index/HEAD pair differs: {path_text}")
 
 
 def _read_no_follow_once(path: Path) -> tuple[bytes, os.stat_result]:
@@ -1611,9 +1887,9 @@ def _read_no_follow_once(path: Path) -> tuple[bytes, os.stat_result]:
 def _validate_failed_attempt_current_files(
     repository_root: Path,
 ) -> None:
-    row = expected_failed_predecessor_attempts()[0]
+    attempts = expected_failed_predecessor_attempts()
     bindings = [
-        row[key]
+        attempts[0][key]
         for key in (
             "authority_decision",
             "preregistration",
@@ -1621,6 +1897,14 @@ def _validate_failed_attempt_current_files(
             "attempt_sentinel",
         )
     ]
+    bindings.extend(
+        attempts[1][key]
+        for key in ("authority_decision", "preregistration", "access_claim")
+    )
+    bindings.extend(attempts[1]["terminal_evidence"].values())
+    paths = [str(binding["path"]) for binding in bindings]
+    if len(paths) != len(set(paths)):
+        raise ValueError("predecessor bound paths are not unique")
     classifications = []
     for binding in bindings:
         path_text = str(binding["path"])
@@ -1643,9 +1927,14 @@ def _validate_failed_attempt_current_files(
         )
     for binding, staged, tree, matched in classifications:
         _historical_attempt_git_pair(binding, staged, tree, matched)
+    observed_objects: set[tuple[int, int]] = set()
     for binding in bindings:
         path = repository_path(binding["path"], repository_root)
         raw, info = _read_no_follow_once(path)
+        object_key = (info.st_dev, info.st_ino)
+        if object_key in observed_objects:
+            raise ValueError("predecessor bound paths alias one filesystem object")
+        observed_objects.add(object_key)
         if (
             hashlib.sha256(raw).hexdigest() != binding["sha256"]
             or hashlib.sha1(
@@ -1653,61 +1942,94 @@ def _validate_failed_attempt_current_files(
             ).hexdigest()
             != binding["git_blob"]
         ):
-            raise ValueError(f"G9CB-2 byte binding differs: {binding['path']}")
+            raise ValueError(
+                f"predecessor byte binding differs: {binding['path']}"
+            )
         if (
             "filesystem_mode_octal" in binding
             and stat.S_IMODE(info.st_mode)
             != int(binding["filesystem_mode_octal"], 8)
         ):
             raise ValueError(
-                f"G9CB-2 filesystem mode differs: {binding['path']}"
+                f"predecessor filesystem mode differs: {binding['path']}"
             )
         if "size_bytes" in binding and info.st_size != binding["size_bytes"]:
-            raise ValueError(f"G9CB-2 size differs: {binding['path']}")
-        if binding is row["authority_decision"]:
+            raise ValueError(f"predecessor size differs: {binding['path']}")
+        if binding in (
+            attempts[0]["authority_decision"],
+            attempts[1]["authority_decision"],
+        ):
             continue
         payload = json.loads(raw)
         if raw != canonical_json_bytes(payload, trailing_lf=True):
             raise ValueError(
-                f"G9CB-2 canonical bytes differ: {binding['path']}"
+                f"predecessor canonical bytes differ: {binding['path']}"
             )
-        hash_field = (
-            "claim_hash"
-            if binding is row["access_claim"]
-            else "manifest_hash"
-        )
-        if canonical_hash(payload, hash_field) != binding[hash_field]:
+        hash_field = None
+        if binding in (attempts[0]["access_claim"], attempts[1]["access_claim"]):
+            hash_field = "claim_hash"
+        elif binding in (
+            attempts[0]["preregistration"],
+            attempts[0]["attempt_sentinel"],
+            attempts[1]["preregistration"],
+            attempts[1]["terminal_evidence"]["attempt_sentinel"],
+        ):
+            hash_field = "manifest_hash"
+        if (
+            hash_field is not None
+            and canonical_hash(payload, hash_field) != binding[hash_field]
+        ):
             raise ValueError(
-                f"G9CB-2 internal hash differs: {binding['path']}"
+                f"predecessor internal hash differs: {binding['path']}"
             )
+        if binding in attempts[1]["terminal_evidence"].values() and (
+            payload.get("identity") != "G9CB-3"
+            or payload.get("protocol_version")
+            != "gross9_structural_clock_bundle_g9cb3_v1"
+        ):
+            raise ValueError(
+                f"predecessor identity/protocol differs: {binding['path']}"
+            )
+        for key in (
+            "claim_commit",
+            "claim_hash",
+            "identity",
+            "manifest_hash",
+            "parent_pid",
+            "protocol_version",
+            "slot",
+            "stage_directory",
+            "status",
+        ):
+            if key in binding and payload.get(key) != binding[key]:
+                raise ValueError(
+                    f"predecessor embedded binding differs: {binding['path']}"
+                )
 
 
 def validate_failed_predecessor_attempt_history(
     repository_root: Path = REPOSITORY_ROOT,
 ) -> None:
-    row = expected_failed_predecessor_attempts()[0]
-    for file_binding in row["protocol_implementation"]["files"]:
-        completed = _git_result(
-            [
-                "show",
-                f"{G9CB2_PROTOCOL_IMPLEMENTATION_COMMIT}:"
-                f"{file_binding['path']}",
-            ],
-            repository_root,
-        )
-        completed.check_returncode()
-        output = completed.stdout.encode("utf-8")
-        if (
-            hashlib.sha256(output).hexdigest() != file_binding["sha256"]
-            or hashlib.sha1(
-                f"blob {len(output)}\0".encode("ascii") + output
-            ).hexdigest()
-            != file_binding["git_blob"]
-        ):
-            raise ValueError(
-                "G9CB-2 historical protocol file differs: "
-                f"{file_binding['path']}"
+    for row in expected_failed_predecessor_attempts():
+        commit = row["protocol_implementation"]["commit"]
+        for file_binding in row["protocol_implementation"]["files"]:
+            completed = _git_result(
+                ["show", f"{commit}:{file_binding['path']}"],
+                repository_root,
             )
+            completed.check_returncode()
+            output = completed.stdout.encode("utf-8")
+            if (
+                hashlib.sha256(output).hexdigest() != file_binding["sha256"]
+                or hashlib.sha1(
+                    f"blob {len(output)}\0".encode("ascii") + output
+                ).hexdigest()
+                != file_binding["git_blob"]
+            ):
+                raise ValueError(
+                    f"{row['identity']} historical protocol file differs: "
+                    f"{file_binding['path']}"
+                )
     validate_failed_predecessor_attempt_topology(repository_root)
 
 
@@ -1715,21 +2037,35 @@ def validate_failed_predecessor_attempts(
     repository_root: Path = REPOSITORY_ROOT,
 ) -> list[dict[str, Any]]:
     attempts = expected_failed_predecessor_attempts()
-    row = attempts[0]
     _validate_failed_attempt_current_files(repository_root)
-    for path_text in row["permanently_absent_outputs"]:
-        if _path_type(repository_path(path_text, repository_root)) != "missing":
-            raise ValueError(f"reserved G9CB-2 output exists: {path_text}")
-    slot1 = repository_path(row["residue"]["slot1_stage"]["path"], repository_root)
-    if (
-        _path_type(slot1) != "directory"
-        or stat.S_IMODE(slot1.stat().st_mode) != 0o700
-        or any(slot1.iterdir())
-    ):
-        raise ValueError("G9CB-2 slot-1 residue state differs")
-    slot2 = repository_path(row["residue"]["slot2_stage"]["path"], repository_root)
-    if _path_type(slot2) != "missing":
-        raise ValueError("G9CB-2 slot-2 residue state differs")
+    for row in attempts:
+        for path_text in row["permanently_absent_outputs"]:
+            if (
+                _path_type(repository_path(path_text, repository_root))
+                != "missing"
+            ):
+                raise ValueError(
+                    f"reserved {row['identity']} output exists: {path_text}"
+                )
+        residue = row["residue"]
+        bytecode = residue.get("bytecode_cache")
+        if bytecode is not None and _path_type(
+            repository_path(bytecode["path"], repository_root)
+        ) != "missing":
+            raise ValueError(f"{row['identity']} bytecode residue differs")
+        slot1_row = residue["slot1_stage"]
+        slot1 = repository_path(slot1_row["path"], repository_root)
+        if (
+            _path_type(slot1) != "directory"
+            or stat.S_IMODE(slot1.stat().st_mode) != 0o700
+            or any(slot1.iterdir())
+        ):
+            raise ValueError(f"{row['identity']} slot-1 residue state differs")
+        slot2 = repository_path(
+            residue["slot2_stage"]["path"], repository_root
+        )
+        if _path_type(slot2) != "missing":
+            raise ValueError(f"{row['identity']} slot-2 residue state differs")
     validate_failed_predecessor_attempt_history(repository_root)
     return attempts
 
@@ -1804,7 +2140,7 @@ def worker_process_environment(
     root = repository_root.resolve()
     environment["PYTHONPATH"] = root.as_posix()
     environment["PYTHONPYCACHEPREFIX"] = (
-        root / "results/.g9cb3-bytecode-cache-disabled"
+        root / "results/.g9cb4-bytecode-cache-disabled"
     ).as_posix()
     return environment
 
@@ -2455,12 +2791,13 @@ def _manifest_without_hash(
         if require_git_seal
         else expected_failed_predecessor_attempts()
     )
-    failed_authority = failed_attempts[0]["authority_decision"]
+    failed_authorities = {
+        row["authority_decision"]["path"]: row["authority_decision"]
+        for row in failed_attempts
+    }
     protocol_inventory = _protocol_inventory(
         repository_root,
-        preauthenticated={
-            failed_authority["path"]: failed_authority,
-        },
+        preauthenticated=failed_authorities,
     )
     return {
         "protocol_version": PROTOCOL_VERSION,
@@ -2674,7 +3011,7 @@ def _manifest_without_hash(
             "resume_allowed": False,
             "repair_allowed": False,
             "terminal_failure_action": (
-                "TERMINAL_G9CB3_ATTEMPT_CONSUMED_NO_RETRY"
+                "TERMINAL_G9CB4_ATTEMPT_CONSUMED_NO_RETRY"
             ),
         },
     }

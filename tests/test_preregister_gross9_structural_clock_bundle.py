@@ -64,6 +64,11 @@ EXPECTED_AUTHORITY_AMENDMENTS = [
 EXPECTED_PROTOCOL_PATHS = [
     (
         "docs/"
+        "gross9-structural-clock-bundle-g9cb4-successor-authority-decision-"
+        "2026-07-31.md"
+    ),
+    (
+        "docs/"
         "gross9-structural-clock-bundle-g9cb3-successor-authority-decision-"
         "2026-07-31.md"
     ),
@@ -153,12 +158,12 @@ EXPECTED_FAILED_PREDECESSOR_PREREGISTRATIONS = [
 EXPECTED_CONSUMPTION_LEDGER_PATHS = [
     (
         "results/"
-        "gross9_structural_clock_bundle_g9cb3_worker_capability_consumed_pass1_"
+        "gross9_structural_clock_bundle_g9cb4_worker_capability_consumed_pass1_"
         "2026-07-31.json"
     ),
     (
         "results/"
-        "gross9_structural_clock_bundle_g9cb3_worker_capability_consumed_pass2_"
+        "gross9_structural_clock_bundle_g9cb4_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
 ]
@@ -323,8 +328,8 @@ def test_optional_git_metadata_classifies_tracked_untracked_and_external(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb3-test@example.invalid")
-    git("config", "user.name", "G9CB-3 Test")
+    git("config", "user.email", "g9cb4-test@example.invalid")
+    git("config", "user.name", "G9CB-4 Test")
     tracked = repository / "tracked.bin"
     tracked.write_bytes(b"tracked")
     git("add", "tracked.bin")
@@ -451,16 +456,16 @@ def test_repository_authority_amendments_authenticate_in_canonical_order() -> No
     assert decision["authority_commit"] == prereg.AUTHORITY_DECISION_COMMIT
     assert decision == {
         "path": (
-            "docs/gross9-structural-clock-bundle-g9cb3-successor-"
+            "docs/gross9-structural-clock-bundle-g9cb4-successor-"
             "authority-decision-2026-07-31.md"
         ),
         "path_type": "regular_file",
         "sha256": (
-            "1df555c5149bfe269d2cc2c87375d54032809f13ac36f4e92b5ba00dd6e87cc7"
+            "9199955f62abbb99c8665a5eeee6a32cf9605ba637e2b034d929b1ac91ace626"
         ),
-        "git_blob": "43d68f6b7407c19b3b52ef8b7bb7010797dbf3b3",
+        "git_blob": "2610246e4d9fb89d775fe7d8d1998282d23e5961",
         "git_mode": "100644",
-        "authority_commit": "a97576c050cf7cdf08738ddb755e63cc92484428",
+        "authority_commit": "1156e2fd80957d5ef0a6027a09e08ff59349a80d",
     }
 
     assert prereg._authority_amendment_bindings() == EXPECTED_AUTHORITY_AMENDMENTS
@@ -489,7 +494,7 @@ def test_failed_predecessor_preregistrations_are_exact_nonoperative_evidence() -
 
 def test_g9cb2_terminal_attempt_is_exact_failed_history() -> None:
     attempts = prereg.expected_failed_predecessor_attempts()
-    assert len(attempts) == 1
+    assert len(attempts) == 2
     row = attempts[0]
     assert row["identity"] == "G9CB-2"
     assert row["topology"] == {
@@ -522,6 +527,132 @@ def test_g9cb2_terminal_attempt_is_exact_failed_history() -> None:
     assert prereg.validate_failed_predecessor_attempts() == attempts
 
 
+def test_g9cb3_terminal_attempt_binds_atomic_sentinel_and_pass1_ledger() -> None:
+    row = prereg.expected_failed_predecessor_attempts()[1]
+    assert row["identity"] == "G9CB-3"
+    assert set(row["terminal_evidence"]) == {
+        "attempt_sentinel",
+        "pass1_worker_ledger",
+    }
+    assert {
+        binding["seal_commit"]
+        for binding in row["terminal_evidence"].values()
+    } == {prereg.G9CB3_TERMINAL_EVIDENCE_COMMIT}
+    assert row["exposure"]["decoded_and_handed_off"] == [
+        "market",
+        "funding",
+        "premium",
+        "open_interest",
+    ]
+    assert row["exposure"]["exact_decoded_and_handoff_counts_recoverable"] is False
+    assert row["root_cause"]["domain_end_is_exclusive_boundary"] is True
+    assert row["root_cause"]["fabricated_boundary_value_authorized"] is False
+
+
+@pytest.mark.parametrize(
+    "missing_key",
+    ("attempt_sentinel", "pass1_worker_ledger"),
+)
+def test_g9cb3_terminal_evidence_rejects_single_file_schema_variants(
+    monkeypatch: pytest.MonkeyPatch,
+    missing_key: str,
+) -> None:
+    monkeypatch.setattr(prereg, "_protocol_inventory", lambda *_a, **_k: [])
+    monkeypatch.setattr(prereg, "_direct_authority_inventory", lambda *_a: [])
+    monkeypatch.setattr(prereg, "import_closure_inventory", lambda *_a: [])
+    monkeypatch.setattr(prereg, "validate_environment", lambda *_a: {})
+    monkeypatch.setattr(prereg, "validate_config_metadata", lambda *_a: {})
+    monkeypatch.setattr(prereg, "validate_rank7_bundle", lambda *_a: {})
+    monkeypatch.setattr(prereg, "validate_sources", lambda *_a: [])
+    manifest = prereg._manifest_without_hash(
+        prereg.REPOSITORY_ROOT, require_git_seal=False
+    )
+    row = manifest["bindings"]["failed_predecessor_attempts"][1]
+    del row["terminal_evidence"][missing_key]
+    manifest["manifest_hash"] = prereg.canonical_hash(manifest)
+    with pytest.raises(ValueError, match="failed predecessor attempt"):
+        prereg.validate_manifest(
+            manifest,
+            verify_files=False,
+            verify_environment=False,
+            verify_git_seal=False,
+        )
+
+
+def test_g9cb3_terminal_evidence_cannot_be_reclassified_as_d3_products() -> None:
+    row = prereg.expected_failed_predecessor_attempts()[1]
+    sentinel = row["terminal_evidence"]["attempt_sentinel"]
+    ledger = row["terminal_evidence"]["pass1_worker_ledger"]
+    assert sentinel["seal_commit"] == ledger["seal_commit"]
+    assert sentinel["seal_commit"] == prereg.G9CB3_TERMINAL_EVIDENCE_COMMIT
+    assert row["status"] == (
+        "historical_terminal_attempt_consumed_no_clock_authority"
+    )
+    forbidden_roles = {
+        "pass_receipt",
+        "per_pass_core",
+        "canonical_csv_gzip",
+        "final_manifest",
+        "D3",
+    }
+    assert forbidden_roles.isdisjoint(row)
+    assert forbidden_roles.isdisjoint(row["terminal_evidence"])
+
+
+@pytest.mark.parametrize(
+    "omitted",
+    ("attempt_sentinel", "pass1_worker_ledger"),
+)
+def test_g9cb3_terminal_evidence_rejects_single_file_repository_variants(
+    tmp_path: Path,
+    omitted: str,
+) -> None:
+    attempts = prereg.expected_failed_predecessor_attempts()
+    bindings = [
+        attempts[0][key]
+        for key in (
+            "authority_decision",
+            "preregistration",
+            "access_claim",
+            "attempt_sentinel",
+        )
+    ]
+    bindings.extend(
+        attempts[1][key]
+        for key in ("authority_decision", "preregistration", "access_claim")
+    )
+    bindings.extend(
+        binding
+        for key, binding in attempts[1]["terminal_evidence"].items()
+        if key != omitted
+    )
+    for binding in bindings:
+        source = prereg.REPOSITORY_ROOT / binding["path"]
+        target = tmp_path / binding["path"]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(source.read_bytes())
+        if "filesystem_mode_octal" in binding:
+            target.chmod(int(binding["filesystem_mode_octal"], 8))
+
+    def git(*arguments: str) -> str:
+        return subprocess.run(
+            ["git", *arguments],
+            cwd=tmp_path,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        ).stdout.strip()
+
+    git("init")
+    git("config", "user.email", "g9cb4-test@example.invalid")
+    git("config", "user.name", "G9CB-4 Test")
+    git("add", ".")
+    git("commit", "-m", "single evidence variant")
+    with pytest.raises(ValueError, match="Git classification"):
+        prereg._validate_failed_attempt_current_files(tmp_path)
+
+
 def test_producer_preclassifies_g9cb2_git_pairs_before_single_reads(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -550,15 +681,21 @@ def test_producer_preclassifies_g9cb2_git_pairs_before_single_reads(
     monkeypatch.setattr(prereg, "_git_result", recorded_git)
     monkeypatch.setattr(prereg, "_read_no_follow_once", recorded_read)
     prereg.validate_failed_predecessor_attempts()
-    row = prereg.expected_failed_predecessor_attempts()[0]
+    attempts = prereg.expected_failed_predecessor_attempts()
     current_paths = [
-        row[key]["path"]
+        attempts[0][key]["path"]
         for key in (
             "authority_decision",
             "preregistration",
             "access_claim",
             "attempt_sentinel",
         )
+    ] + [
+        attempts[1][key]["path"]
+        for key in ("authority_decision", "preregistration", "access_claim")
+    ] + [
+        binding["path"]
+        for binding in attempts[1]["terminal_evidence"].values()
     ]
     first_read = next(
         index for index, event in enumerate(events) if event[0] == "read"
@@ -574,7 +711,7 @@ def test_producer_preclassifies_g9cb2_git_pairs_before_single_reads(
         assert events.count(("read", path_text)) == 1
 
 
-def test_protocol_commit_topology_accepts_exact_c2_a3_t2_q3_p3_chain(
+def test_protocol_commit_topology_accepts_exact_c3_a4_t3_q4_p4_chain(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     implementation = "1" * 40
@@ -590,11 +727,22 @@ def test_protocol_commit_topology_accepts_exact_c2_a3_t2_q3_p3_chain(
             prereg.G9CB2_PROTOCOL_IMPLEMENTATION_COMMIT
         ),
         prereg.G9CB2_CLAIM_COMMIT: prereg.G9CB2_PREREGISTRATION_SEAL_COMMIT,
-        prereg.AUTHORITY_DECISION_COMMIT: prereg.G9CB2_CLAIM_COMMIT,
+        prereg.G9CB3_AUTHORITY_DECISION_COMMIT: prereg.G9CB2_CLAIM_COMMIT,
         prereg.G9CB2_TERMINAL_EVIDENCE_COMMIT: (
+            prereg.G9CB3_AUTHORITY_DECISION_COMMIT
+        ),
+        prereg.G9CB3_PROTOCOL_IMPLEMENTATION_COMMIT: (
+            prereg.G9CB2_TERMINAL_EVIDENCE_COMMIT
+        ),
+        prereg.G9CB3_PREREGISTRATION_SEAL_COMMIT: (
+            prereg.G9CB3_PROTOCOL_IMPLEMENTATION_COMMIT
+        ),
+        prereg.G9CB3_CLAIM_COMMIT: prereg.G9CB3_PREREGISTRATION_SEAL_COMMIT,
+        prereg.AUTHORITY_DECISION_COMMIT: prereg.G9CB3_CLAIM_COMMIT,
+        prereg.G9CB3_TERMINAL_EVIDENCE_COMMIT: (
             prereg.AUTHORITY_DECISION_COMMIT
         ),
-        implementation: prereg.G9CB2_TERMINAL_EVIDENCE_COMMIT,
+        implementation: prereg.G9CB3_TERMINAL_EVIDENCE_COMMIT,
         seal: implementation,
     }
     diffs = {
@@ -616,14 +764,34 @@ def test_protocol_commit_topology_accepts_exact_c2_a3_t2_q3_p3_chain(
         ): prereg.G9CB2_CLAIM_DIFF,
         (
             prereg.G9CB2_CLAIM_COMMIT,
+            prereg.G9CB3_AUTHORITY_DECISION_COMMIT,
+        ): prereg.G9CB3_SUCCESSOR_AUTHORITY_DIFF,
+        (
+            prereg.G9CB3_AUTHORITY_DECISION_COMMIT,
+            prereg.G9CB2_TERMINAL_EVIDENCE_COMMIT,
+        ): prereg.G9CB2_TERMINAL_EVIDENCE_DIFF,
+        (
+            prereg.G9CB2_TERMINAL_EVIDENCE_COMMIT,
+            prereg.G9CB3_PROTOCOL_IMPLEMENTATION_COMMIT,
+        ): prereg.G9CB3_PROTOCOL_DIFF,
+        (
+            prereg.G9CB3_PROTOCOL_IMPLEMENTATION_COMMIT,
+            prereg.G9CB3_PREREGISTRATION_SEAL_COMMIT,
+        ): prereg.G9CB3_ACTIVE_PREREGISTRATION_DIFF,
+        (
+            prereg.G9CB3_PREREGISTRATION_SEAL_COMMIT,
+            prereg.G9CB3_CLAIM_COMMIT,
+        ): prereg.G9CB3_CLAIM_DIFF,
+        (
+            prereg.G9CB3_CLAIM_COMMIT,
             prereg.AUTHORITY_DECISION_COMMIT,
         ): prereg.SUCCESSOR_AUTHORITY_DIFF,
         (
             prereg.AUTHORITY_DECISION_COMMIT,
-            prereg.G9CB2_TERMINAL_EVIDENCE_COMMIT,
+            prereg.G9CB3_TERMINAL_EVIDENCE_COMMIT,
         ): prereg.TERMINAL_EVIDENCE_DIFF,
         (
-            prereg.G9CB2_TERMINAL_EVIDENCE_COMMIT,
+            prereg.G9CB3_TERMINAL_EVIDENCE_COMMIT,
             implementation,
         ): prereg.SUCCESSOR_PROTOCOL_DIFF,
         (implementation, seal): prereg.ACTIVE_PREREGISTRATION_DIFF,
@@ -642,7 +810,11 @@ def test_protocol_commit_topology_accepts_exact_c2_a3_t2_q3_p3_chain(
             else (
                 (prereg.G9CB2_AUTHORITY_DECISION_COMMIT,)
                 if path == prereg.G9CB2_AUTHORITY_DECISION_PATH
-                else (seal,)
+                else (
+                    (prereg.G9CB3_AUTHORITY_DECISION_COMMIT,)
+                    if path == prereg.G9CB3_AUTHORITY_DECISION_PATH
+                    else (seal,)
+                )
             )
         ),
     )
@@ -658,18 +830,18 @@ def test_protocol_commit_topology_accepts_exact_c2_a3_t2_q3_p3_chain(
         implementation
     )
 
-    diffs[(prereg.G9CB2_TERMINAL_EVIDENCE_COMMIT, implementation)] = (
+    diffs[(prereg.G9CB3_TERMINAL_EVIDENCE_COMMIT, implementation)] = (
         "M\ttraining/gross9_structural_clock_primitives.py",
     )
     with pytest.raises(ValueError, match="implementation diff"):
         prereg.validate_protocol_commit_topology(Path("/synthetic"))
 
 
-def test_protocol_paths_include_exact_g9cb3_authority_and_modules() -> None:
+def test_protocol_paths_include_exact_g9cb4_authority_and_modules() -> None:
     assert [path.as_posix() for path in prereg.PROTOCOL_PATHS] == (
         EXPECTED_PROTOCOL_PATHS
     )
-    assert len(prereg.PROTOCOL_PATHS) == 15
+    assert len(prereg.PROTOCOL_PATHS) == 16
     assert sorted(path.as_posix() for path in prereg.PROTOCOL_PATHS) == sorted(
         EXPECTED_PROTOCOL_PATHS
     )
@@ -759,7 +931,7 @@ def test_worker_process_environment_substitutes_canonical_synthetic_root(
         "PYTHONDONTWRITEBYTECODE": "1",
         "PYTHONPATH": canonical_root.as_posix(),
         "PYTHONPYCACHEPREFIX": (
-            canonical_root / "results/.g9cb3-bytecode-cache-disabled"
+            canonical_root / "results/.g9cb4-bytecode-cache-disabled"
         ).as_posix(),
         "PYTHONUNBUFFERED": "1",
         "PYTHONUTF8": "1",
@@ -796,11 +968,11 @@ def test_manifest_binds_g9cb_1b_contract_and_exact_rank7_counters(
     )
     assert manifest["protocol_implementation_commit"] == "0" * 40
     assert manifest["protocol_version"] == (
-        "gross9_structural_clock_bundle_g9cb3_preregistration_v1"
+        "gross9_structural_clock_bundle_g9cb4_preregistration_v1"
     )
     assert manifest["output_paths"]["preregistration"] == (
         "results/"
-        "gross9_structural_clock_bundle_g9cb3_preregistration_2026-07-31.json"
+        "gross9_structural_clock_bundle_g9cb4_preregistration_2026-07-31.json"
     )
     assert manifest["bindings"]["runtime_import_roots"] == [
         "execution/gross9_rank7_clock_runtime.py",

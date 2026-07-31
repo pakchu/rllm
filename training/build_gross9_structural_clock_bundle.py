@@ -1,4 +1,4 @@
-"""Claim and one-shot builder for the G9CB-3 structural clock bundle.
+"""Claim and one-shot builder for the G9CB-4 structural clock bundle.
 
 The import-time and claim paths are deliberately stdlib-only.  Generic Gross9
 runtime modules are imported only by a fresh worker process after the durable
@@ -50,8 +50,8 @@ import zlib
 from training import preregister_gross9_structural_clock_bundle as prereg
 
 
-IDENTITY = "G9CB-3"
-PROTOCOL_VERSION = "gross9_structural_clock_bundle_g9cb3_v1"
+IDENTITY = "G9CB-4"
+PROTOCOL_VERSION = "gross9_structural_clock_bundle_g9cb4_v1"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 BUILDER_PATH = Path("training/build_gross9_structural_clock_bundle.py")
 BUILDER_TEST_PATH = Path("tests/test_build_gross9_structural_clock_bundle.py")
@@ -59,28 +59,28 @@ PREREGISTER_PATH = Path("training/preregister_gross9_structural_clock_bundle.py"
 PREREGISTRATION_PATH = prereg.PREREGISTRATION_PATH
 CLAIM_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb3_access_claim_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb4_access_claim_2026-07-31.json"
 )
 SENTINEL_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb3_attempt_consumed_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb4_attempt_consumed_2026-07-31.json"
 )
 CSV_PATH = Path(
-    "results/gross9_structural_clock_bundle_g9cb3_2026-07-31.csv.gz"
+    "results/gross9_structural_clock_bundle_g9cb4_2026-07-31.csv.gz"
 )
 MANIFEST_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb3_manifest_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb4_manifest_2026-07-31.json"
 )
 WORKER_LEDGER_PATHS = (
     Path(
         "results/"
-        "gross9_structural_clock_bundle_g9cb3_worker_capability_consumed_pass1_"
+        "gross9_structural_clock_bundle_g9cb4_worker_capability_consumed_pass1_"
         "2026-07-31.json"
     ),
     Path(
         "results/"
-        "gross9_structural_clock_bundle_g9cb3_worker_capability_consumed_pass2_"
+        "gross9_structural_clock_bundle_g9cb4_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
 )
@@ -195,24 +195,24 @@ RANK7_ROWS_USED_COUNTERS = (
     "rank7_bundle_parity_rows_compared",
 )
 GZIP_PREFIX = bytes.fromhex("1f8b08000000000002ff")
-TERMINAL_ACTION = "TERMINAL_G9CB3_ATTEMPT_CONSUMED_NO_RETRY"
+TERMINAL_ACTION = "TERMINAL_G9CB4_ATTEMPT_CONSUMED_NO_RETRY"
 _TIMESTAMP_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\Z")
 _SHA_RE = re.compile(r"[0-9a-f]{64}\Z")
 _DIST_NORMALIZE_RE = re.compile(r"[-_.]+")
 _STAGED_CSV_NAME = "gross9_structural_clock_bundle.csv.gz"
 _STAGED_CORE_NAME = "gross9_structural_clock_bundle_core.json"
 _STAGED_RECEIPT_NAME = "gross9_structural_clock_bundle_pass_receipt.json"
-_PYCACHE_PREFIX_RELATIVE = Path("results/.g9cb3-bytecode-cache-disabled")
+_PYCACHE_PREFIX_RELATIVE = Path("results/.g9cb4-bytecode-cache-disabled")
 _PR_SET_PDEATHSIG = 1
 _LIBC = ctypes.CDLL(None, use_errno=True)
 
 
-class TerminalG9CB3Failure(RuntimeError):
+class TerminalG9CB4Failure(RuntimeError):
     """A terminal protocol or post-sentinel failure."""
 
 
 def _fail(message: str) -> NoReturn:
-    raise TerminalG9CB3Failure(message)
+    raise TerminalG9CB4Failure(message)
 
 
 def _canonical_json_bytes(payload: Any, *, trailing_lf: bool = True) -> bytes:
@@ -258,21 +258,46 @@ def _unique_object(pairs: Sequence[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
-def _read_canonical_object(path: Path, hash_field: str | None = None) -> tuple[dict[str, Any], bytes]:
-    raw, _info = _read_bound_regular_bytes(path, path.as_posix())
+def _decode_canonical_object(
+    raw: bytes,
+    path_text: str,
+    hash_field: str | None = None,
+) -> dict[str, Any]:
     try:
         payload = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_object)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB3Failure(f"invalid canonical JSON: {path}") from exc
+        raise TerminalG9CB4Failure(
+            f"invalid canonical JSON: {path_text}"
+        ) from exc
     if not isinstance(payload, dict) or raw != _canonical_json_bytes(payload):
-        _fail(f"noncanonical JSON bytes: {path}")
+        _fail(f"noncanonical JSON bytes: {path_text}")
     if hash_field is not None:
         value = payload.get(hash_field)
         if not isinstance(value, str) or not _SHA_RE.fullmatch(value):
-            _fail(f"missing {hash_field}: {path}")
+            _fail(f"missing {hash_field}: {path_text}")
         if value != _object_hash(payload, hash_field):
-            _fail(f"{hash_field} mismatch: {path}")
-    return payload, raw
+            _fail(f"{hash_field} mismatch: {path_text}")
+    return payload
+
+
+def _read_canonical_object(
+    path: Path,
+    hash_field: str | None = None,
+    *,
+    path_text: str | None = None,
+    raw_cache: Mapping[str, tuple[bytes, os.stat_result]] | None = None,
+) -> tuple[dict[str, Any], bytes, os.stat_result]:
+    cache_key = path.as_posix() if path_text is None else path_text
+    cached = raw_cache.get(cache_key) if raw_cache is not None else None
+    raw, info = (
+        cached
+        if cached is not None
+        else _read_bound_regular_bytes(path, cache_key)
+    )
+    if cached is None and isinstance(raw_cache, dict):
+        raw_cache[cache_key] = (raw, info)
+    payload = _decode_canonical_object(raw, cache_key, hash_field)
+    return payload, raw, info
 
 
 def _rooted(root: Path, relative: Path) -> Path:
@@ -480,7 +505,7 @@ def _require_bound_regular_lstat(path: Path, path_text: str) -> None:
     try:
         mode = os.lstat(path).st_mode
     except OSError as exc:
-        raise TerminalG9CB3Failure(
+        raise TerminalG9CB4Failure(
             f"bound input cannot be inspected: {path_text}"
         ) from exc
     if not stat.S_ISREG(mode):
@@ -496,7 +521,7 @@ def _bound_regular_path(root: Path, path_text: str) -> tuple[Path, bool]:
         try:
             resolved = candidate.resolve(strict=True)
         except (OSError, RuntimeError) as exc:
-            raise TerminalG9CB3Failure(
+            raise TerminalG9CB4Failure(
                 f"bound absolute input cannot be resolved: {path_text}"
             ) from exc
         if path_text != resolved.as_posix():
@@ -514,7 +539,7 @@ def _bound_regular_path(root: Path, path_text: str) -> tuple[Path, bool]:
                 if stat.S_ISLNK(os.lstat(current).st_mode):
                     _fail(f"bound absolute input traverses a symlink: {path_text}")
             except OSError as exc:
-                raise TerminalG9CB3Failure(
+                raise TerminalG9CB4Failure(
                     f"bound absolute input cannot be inspected: {path_text}"
                 ) from exc
         _require_bound_regular_lstat(resolved, path_text)
@@ -534,7 +559,7 @@ def _bound_regular_path(root: Path, path_text: str) -> tuple[Path, bool]:
         resolved = candidate.resolve(strict=True)
         resolved.relative_to(repository_root)
     except (OSError, RuntimeError, ValueError) as exc:
-        raise TerminalG9CB3Failure(
+        raise TerminalG9CB4Failure(
             f"bound repository input escapes or is absent: {path_text}"
         ) from exc
     if resolved != candidate:
@@ -546,7 +571,7 @@ def _bound_regular_path(root: Path, path_text: str) -> tuple[Path, bool]:
             if stat.S_ISLNK(os.lstat(current).st_mode):
                 _fail(f"bound repository input traverses a symlink: {path_text}")
         except OSError as exc:
-            raise TerminalG9CB3Failure(
+            raise TerminalG9CB4Failure(
                 f"bound repository input cannot be inspected: {path_text}"
             ) from exc
     _require_bound_regular_lstat(candidate, path_text)
@@ -557,7 +582,7 @@ def _validate_zero_access(payload: Mapping[str, Any]) -> None:
     try:
         prereg.validate_zero_access_schema(payload)
     except (TypeError, ValueError) as exc:
-        raise TerminalG9CB3Failure(
+        raise TerminalG9CB4Failure(
             f"preregistration zero-access schema differs: {exc}"
         ) from exc
 
@@ -636,30 +661,44 @@ def _validate_failed_predecessor_permanent_state(
     root: Path,
     failed_attempts: Sequence[Mapping[str, Any]],
 ) -> None:
-    if len(failed_attempts) != 1:
+    if len(failed_attempts) != 2:
         _fail("failed predecessor attempt permanent-state schema differs")
-    row = failed_attempts[0]
-    for path_text in row["permanently_absent_outputs"]:
-        path = _rooted(root, Path(path_text))
+    for row in failed_attempts:
+        identity = str(row["identity"])
+        for path_text in row["permanently_absent_outputs"]:
+            path = _rooted(root, Path(path_text))
+            try:
+                os.lstat(path)
+            except FileNotFoundError:
+                continue
+            _fail(f"permanently absent {identity} output exists: {path_text}")
+        bytecode = row["residue"].get("bytecode_cache")
+        if isinstance(bytecode, Mapping):
+            path = _rooted(root, Path(str(bytecode["path"])))
+            try:
+                os.lstat(path)
+            except FileNotFoundError:
+                pass
+            else:
+                _fail(f"{identity} bytecode residue differs")
+        slot1 = _rooted(
+            root, Path(row["residue"]["slot1_stage"]["path"])
+        )
+        if (
+            stat.S_IMODE(os.lstat(slot1).st_mode) != 0o700
+            or not slot1.is_dir()
+            or any(slot1.iterdir())
+        ):
+            _fail(f"{identity} slot-1 residue state differs")
+        slot2 = _rooted(
+            root, Path(row["residue"]["slot2_stage"]["path"])
+        )
         try:
-            os.lstat(path)
+            os.lstat(slot2)
         except FileNotFoundError:
-            continue
-        _fail(f"permanently absent G9CB-2 output exists: {path_text}")
-    slot1 = _rooted(root, Path(row["residue"]["slot1_stage"]["path"]))
-    if (
-        stat.S_IMODE(os.lstat(slot1).st_mode) != 0o700
-        or not slot1.is_dir()
-        or any(slot1.iterdir())
-    ):
-        _fail("G9CB-2 slot-1 residue state differs")
-    slot2 = _rooted(root, Path(row["residue"]["slot2_stage"]["path"]))
-    try:
-        os.lstat(slot2)
-    except FileNotFoundError:
-        pass
-    else:
-        _fail("G9CB-2 slot-2 residue state differs")
+            pass
+        else:
+            _fail(f"{identity} slot-2 residue state differs")
 
 
 def _validate_guarded_preregistration_authentication(
@@ -719,19 +758,25 @@ def validate_preregistration(
     validation_mode: str = "parent",
     parent_authentication: Mapping[str, Any] | None = None,
     claim_preregistration: Mapping[str, Any] | None = None,
+    raw_cache: Mapping[str, tuple[bytes, os.stat_result]] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Authenticate the canonical preregistration without opening source values."""
 
     if validation_mode not in {"parent", "guarded_worker", "synthetic"}:
         _fail("preregistration validation mode is invalid")
     path = _rooted(root, PREREGISTRATION_PATH)
-    payload, raw = _read_canonical_object(path, "manifest_hash")
+    payload, raw, info = _read_canonical_object(
+        path,
+        "manifest_hash",
+        path_text=PREREGISTRATION_PATH.as_posix(),
+        raw_cache=raw_cache,
+    )
     if payload.get("protocol_version") != prereg.PROTOCOL_VERSION:
         _fail("operative preregistration protocol version mismatch")
     if payload.get("identity") != IDENTITY:
         _fail("preregistration identity mismatch")
     _validate_zero_access(payload)
-    if stat.S_IMODE(os.lstat(path).st_mode) != 0o444:
+    if stat.S_IMODE(info.st_mode) != 0o444:
         _fail("active preregistration filesystem mode differs")
     independence = payload.get("candidate_independence")
     if not isinstance(independence, Mapping) or independence.get(
@@ -796,7 +841,7 @@ def validate_preregistration(
             ValueError,
             subprocess.CalledProcessError,
         ) as exc:
-            raise TerminalG9CB3Failure(
+            raise TerminalG9CB4Failure(
                 "failed predecessor preregistration evidence differs"
             ) from exc
     if validation_mode in {"parent", "guarded_worker"}:
@@ -821,7 +866,7 @@ def validate_preregistration(
             ValueError,
             subprocess.CalledProcessError,
         ) as exc:
-            raise TerminalG9CB3Failure(
+            raise TerminalG9CB4Failure(
                 "protocol implementation topology differs"
             ) from exc
     if recorded_implementation != implementation:
@@ -843,7 +888,7 @@ def validate_preregistration(
                 verify_git_seal=False,
             )
         except (TypeError, ValueError) as exc:
-            raise TerminalG9CB3Failure(
+            raise TerminalG9CB4Failure(
                 "preregistration producer validation failed"
             ) from exc
 
@@ -866,25 +911,28 @@ def _authenticate_guarded_worker_metadata(
     root: Path,
     parent_authentication: Mapping[str, Any],
     claim_preregistration: Mapping[str, Any] | None,
+    *,
+    raw_cache: dict[str, tuple[bytes, os.stat_result]] | None = None,
 ) -> dict[str, Any]:
+    cache = {} if raw_cache is None else raw_cache
     preregistration, preregistration_binding = validate_preregistration(
         root,
         validation_mode="guarded_worker",
         parent_authentication=parent_authentication,
         claim_preregistration=claim_preregistration,
+        raw_cache=cache,
     )
-    raw_cache: dict[str, tuple[bytes, os.stat_result]] = {}
     hashed_inputs = _validate_regular_hashed_inputs(
         root,
         preregistration,
         verify_git=False,
-        raw_cache=raw_cache,
+        raw_cache=cache,
     )
     closures = _validate_static_closures(
         root,
         preregistration,
         verify_git=False,
-        raw_cache=raw_cache,
+        raw_cache=cache,
     )
     worker_authentication = {
         "environment": _validate_environment(preregistration, root),
@@ -906,6 +954,67 @@ def _authenticate_guarded_worker_metadata(
         "preregistration_binding": preregistration_binding,
         "closures": closures,
         "authentication": worker_authentication,
+    }
+
+
+def _authenticate_worker_metadata_entry(
+    root: Path,
+    parent_authentication: Mapping[str, Any],
+    *,
+    synthetic: bool,
+) -> dict[str, Any]:
+    """Authenticate active metadata modes and bytes from one snapshot each."""
+
+    metadata_cache: dict[str, tuple[bytes, os.stat_result]] = {}
+    sentinel, sentinel_raw, sentinel_info = _read_canonical_object(
+        _rooted(root, SENTINEL_PATH),
+        "manifest_hash",
+        path_text=SENTINEL_PATH.as_posix(),
+        raw_cache=metadata_cache,
+    )
+    claim, claim_raw, claim_info = _read_canonical_object(
+        _rooted(root, CLAIM_PATH),
+        "claim_hash",
+        path_text=CLAIM_PATH.as_posix(),
+        raw_cache=metadata_cache,
+    )
+    if stat.S_IMODE(sentinel_info.st_mode) != 0o444:
+        _fail("active sentinel filesystem mode differs")
+    if stat.S_IMODE(claim_info.st_mode) != 0o444:
+        _fail("active claim filesystem mode differs")
+    if synthetic:
+        preregistration, preregistration_binding = validate_preregistration(
+            root,
+            validation_mode="synthetic",
+            raw_cache=metadata_cache,
+        )
+        _validate_guarded_preregistration_authentication(
+            preregistration_binding,
+            str(preregistration["protocol_implementation_commit"]),
+            parent_authentication,
+            claim.get("preregistration"),
+        )
+        guarded_metadata: dict[str, Any] | None = None
+    else:
+        guarded_metadata = _authenticate_guarded_worker_metadata(
+            root,
+            parent_authentication,
+            claim.get("preregistration"),
+            raw_cache=metadata_cache,
+        )
+        preregistration = guarded_metadata["preregistration"]
+        preregistration_binding = guarded_metadata[
+            "preregistration_binding"
+        ]
+    return {
+        "claim": claim,
+        "claim_raw": claim_raw,
+        "sentinel": sentinel,
+        "sentinel_raw": sentinel_raw,
+        "preregistration": preregistration,
+        "preregistration_binding": preregistration_binding,
+        "guarded_metadata": guarded_metadata,
+        "raw_cache": metadata_cache,
     }
 
 
@@ -937,19 +1046,53 @@ def _planned_protocol_paths(preregistration: Mapping[str, Any]) -> list[str]:
     return paths
 
 
-def _head_blob_binding(root: Path, path: str) -> dict[str, str]:
-    if not _git(root, "ls-files", "--error-unmatch", "--", path, allow_failure=True).strip():
-        _fail(f"required protocol path is not tracked: {path}")
-    candidate = root / path
-    if candidate.is_symlink() or not candidate.is_file():
-        _fail(f"required protocol path is not a regular file: {path}")
-    blob = _git_text(root, "rev-parse", f"HEAD:{path}")
-    mode_line = _git_text(root, "ls-tree", "HEAD", "--", path).split()
-    if not mode_line or mode_line[0] != "100644":
+def _head_blob_binding(
+    root: Path,
+    path: str,
+    *,
+    raw_cache: Mapping[str, tuple[bytes, os.stat_result]] | None = None,
+    preclassified_pairs: Mapping[str, tuple[str, str] | None] | None = None,
+) -> dict[str, str]:
+    if raw_cache is not None or preclassified_pairs is not None:
+        cached = raw_cache.get(path) if raw_cache is not None else None
+        pair = (
+            preclassified_pairs.get(path)
+            if preclassified_pairs is not None
+            else None
+        )
+        if cached is None or pair is None:
+            _fail(f"required protocol path lacks snapshot binding: {path}")
+        raw, info = cached
+        if stat.S_IMODE(info.st_mode) & 0o111 or pair[1] != "100644":
+            _fail(f"required protocol mode differs: {path}")
+        if _git_blob_id(raw) != pair[0]:
+            _fail(f"required protocol path differs from HEAD: {path}")
+        return {
+            "path": path,
+            "sha256": _sha256_bytes(raw),
+            "git_blob": pair[0],
+            "mode": pair[1],
+        }
+    pair = _validate_git_pair_preflight(
+        root,
+        path,
+        None,
+        None,
+        require_tracked=True,
+    )
+    if pair is None or pair[1] != "100644":
         _fail(f"required protocol mode differs: {path}")
-    if _git_text(root, "hash-object", "--", path) != blob:
+    raw, info = _read_bound_regular_bytes(_rooted(root, path), path)
+    if stat.S_IMODE(info.st_mode) & 0o111:
+        _fail(f"required protocol mode differs: {path}")
+    if _git_blob_id(raw) != pair[0]:
         _fail(f"required protocol path differs from HEAD: {path}")
-    return {"path": path, "sha256": _sha256_file(candidate), "git_blob": blob, "mode": "100644"}
+    return {
+        "path": path,
+        "sha256": _sha256_bytes(raw),
+        "git_blob": pair[0],
+        "mode": pair[1],
+    }
 
 
 def _tracked_head_bytes(
@@ -1163,14 +1306,89 @@ def create_claim_only(root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
 
 def _validate_claim_commit(
     root: Path,
+    *,
+    raw_cache: dict[str, tuple[bytes, os.stat_result]] | None = None,
+    preclassified_pairs: dict[str, tuple[str, str] | None] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    head = _require_clean_pushed_branch(root, prereg.EXPECTED_BRANCH)
+    preregistration_head_raw = _git(
+        root, "show", f"HEAD:{PREREGISTRATION_PATH.as_posix()}"
+    )
+    claim_head_raw = _git(root, "show", f"HEAD:{CLAIM_PATH.as_posix()}")
+    preregistration_head = _decode_canonical_object(
+        preregistration_head_raw,
+        PREREGISTRATION_PATH.as_posix(),
+        "manifest_hash",
+    )
+    claim_head = _decode_canonical_object(
+        claim_head_raw,
+        CLAIM_PATH.as_posix(),
+        "claim_hash",
+    )
+    if _expected_branch(preregistration_head) != prereg.EXPECTED_BRANCH:
+        _fail("active preregistration branch binding differs")
+    parent = claim_head.get("protocol_parent_commit")
+    parents = _git_text(
+        root, "rev-list", "--parents", "-n", "1", "HEAD"
+    ).split()
+    if len(parents) != 2 or parents != [head, parent]:
+        _fail("HEAD is not the direct child of the claimed protocol parent")
+    changed = [
+        line
+        for line in _git_text(
+            root,
+            "diff-tree",
+            "--no-commit-id",
+            "--name-status",
+            "-r",
+            str(parent),
+            head,
+        ).splitlines()
+        if line
+    ]
+    if changed != [f"A\t{CLAIM_PATH.as_posix()}"]:
+        _fail("HEAD is not a claim-only direct-child commit")
+    try:
+        prereg.validate_protocol_commit_topology(root)
+        prereg.validate_failed_predecessor_attempt_topology(root)
+    except (
+        OSError,
+        RuntimeError,
+        ValueError,
+        subprocess.CalledProcessError,
+    ) as exc:
+        raise TerminalG9CB4Failure(
+            "pre-read protocol or predecessor topology differs"
+        ) from exc
+
+    snapshot, pairs = _preauthenticate_parent_snapshot(
+        root, preregistration_head
+    )
+    cache = {} if raw_cache is None else raw_cache
+    cache.update(snapshot)
+    classified = (
+        {} if preclassified_pairs is None else preclassified_pairs
+    )
+    classified.update(pairs)
+
     claim_path = _rooted(root, CLAIM_PATH)
-    claim, raw = _read_canonical_object(claim_path, "claim_hash")
+    claim, raw, claim_info = _read_canonical_object(
+        claim_path,
+        "claim_hash",
+        path_text=CLAIM_PATH.as_posix(),
+        raw_cache=cache,
+    )
+    if stat.S_IMODE(claim_info.st_mode) != 0o444:
+        _fail("active claim filesystem mode differs")
     if claim.get("identity") != IDENTITY or claim.get("one_shot") is not True:
         _fail("claim identity or one-shot status mismatch")
     if claim.get("retry_allowed") is not False or claim.get("resume_allowed") is not False:
         _fail("claim permits retry or resume")
-    preregistration, prereg_binding = validate_preregistration(root)
+    preregistration, prereg_binding = validate_preregistration(
+        root, raw_cache=cache
+    )
+    if preregistration != preregistration_head or claim != claim_head:
+        _fail("active metadata differs from the classified HEAD snapshot")
     if claim.get("preregistration") != prereg_binding:
         _fail("claim preregistration binding mismatch")
     authority_amendments = _authority_amendment_bindings(preregistration)
@@ -1193,33 +1411,13 @@ def _validate_claim_commit(
         opaque_inputs,
     ):
         _fail("claim schema or frozen contract differs")
-    head = _require_clean_pushed_branch(root, _expected_branch(preregistration))
-    parents = _git_text(root, "rev-list", "--parents", "-n", "1", "HEAD").split()
-    if len(parents) != 2 or parents != [head, parent]:
-        _fail("HEAD is not the direct child of the claimed protocol parent")
-    changed = [
-        line
-        for line in _git_text(
-            root,
-            "diff-tree",
-            "--no-commit-id",
-            "--name-status",
-            "-r",
-            parent,
-            head,
-        ).splitlines()
-        if line
-    ]
-    if changed != [f"A\t{CLAIM_PATH.as_posix()}"]:
-        _fail("HEAD is not a claim-only direct-child commit")
-    if not _git(root, "ls-files", "--error-unmatch", "--", CLAIM_PATH.as_posix(), allow_failure=True).strip():
-        _fail("claim is not tracked")
-    if _git_text(root, "hash-object", "--", CLAIM_PATH.as_posix()) != _git_text(
-        root, "rev-parse", f"HEAD:{CLAIM_PATH.as_posix()}"
-    ):
-        _fail("claim differs from HEAD")
     for row in protocol_files:
-        if not isinstance(row, Mapping) or _head_blob_binding(root, str(row.get("path"))) != row:
+        if not isinstance(row, Mapping) or _head_blob_binding(
+            root,
+            str(row.get("path")),
+            raw_cache=cache,
+            preclassified_pairs=classified,
+        ) != row:
             _fail("protocol file binding differs from the claim")
     for relative in (
         SENTINEL_PATH,
@@ -1304,20 +1502,36 @@ def _find_mapping(payload: Any, required_keys: set[str]) -> Mapping[str, Any] | 
     return None
 
 
-def _module_file_candidates(module: str, root: Path) -> list[Path]:
+def _module_file_candidates(
+    module: str,
+    root: Path,
+    available_paths: set[str] | None = None,
+) -> list[Path]:
     if not module:
         return []
     parts = module.split(".")
     found: list[Path] = []
     for index in range(1, len(parts)):
         initializer = Path(*parts[:index]) / "__init__.py"
-        if (root / initializer).is_file():
+        if (
+            initializer.as_posix() in available_paths
+            if available_paths is not None
+            else (root / initializer).is_file()
+        ):
             found.append(initializer)
     module_file = Path(*parts).with_suffix(".py")
     package_file = Path(*parts) / "__init__.py"
-    if (root / module_file).is_file():
+    if (
+        module_file.as_posix() in available_paths
+        if available_paths is not None
+        else (root / module_file).is_file()
+    ):
         found.append(module_file)
-    elif (root / package_file).is_file():
+    elif (
+        package_file.as_posix() in available_paths
+        if available_paths is not None
+        else (root / package_file).is_file()
+    ):
         found.append(package_file)
     return found
 
@@ -1334,6 +1548,7 @@ def _local_import_paths(
     node: ast.Import | ast.ImportFrom,
     current_path: Path,
     root: Path,
+    available_paths: set[str] | None = None,
 ) -> set[Path]:
     modules: set[str] = set()
     current_module, initializer = _path_module_name(current_path)
@@ -1359,7 +1574,9 @@ def _local_import_paths(
                 modules.add(f"{base}.{alias.name}" if base else alias.name)
     paths: set[Path] = set()
     for module in modules:
-        paths.update(_module_file_candidates(module, root))
+        paths.update(
+            _module_file_candidates(module, root, available_paths)
+        )
     return paths
 
 
@@ -1371,19 +1588,23 @@ def _discover_import_closure(
 ) -> list[Path]:
     pending = {Path(path) for path in entry_paths}
     discovered: set[Path] = set()
+    available_paths = set(raw_cache) if raw_cache is not None else None
     while pending:
         current = min(pending, key=lambda path: path.as_posix())
         pending.remove(current)
         if current in discovered:
             continue
         source_path = root / current
-        if source_path.is_symlink() or not source_path.is_file():
-            _fail(f"import root or closure member is absent: {current}")
         cached = (
             raw_cache.get(current.as_posix())
             if raw_cache is not None
             else None
         )
+        if cached is not None:
+            if not stat.S_ISREG(cached[1].st_mode):
+                _fail(f"import closure member is not regular: {current}")
+        elif source_path.is_symlink() or not source_path.is_file():
+            _fail(f"import root or closure member is absent: {current}")
         try:
             tree = ast.parse(
                 (
@@ -1394,13 +1615,21 @@ def _discover_import_closure(
                 filename=current.as_posix(),
             )
         except (UnicodeDecodeError, SyntaxError) as exc:
-            raise TerminalG9CB3Failure(
+            raise TerminalG9CB4Failure(
                 f"import closure source cannot be parsed: {current}"
             ) from exc
         discovered.add(current)
         for node in ast.walk(tree):
             if isinstance(node, (ast.Import, ast.ImportFrom)):
-                pending.update(_local_import_paths(node, current, root) - discovered)
+                pending.update(
+                    _local_import_paths(
+                        node,
+                        current,
+                        root,
+                        available_paths,
+                    )
+                    - discovered
+                )
     return sorted(discovered, key=lambda path: path.as_posix())
 
 
@@ -1452,7 +1681,7 @@ def _decode_git_stdout(
     try:
         return completed.stdout.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise TerminalG9CB3Failure(
+        raise TerminalG9CB4Failure(
             f"{operation}: Git output is not UTF-8"
         ) from exc
 
@@ -1520,11 +1749,12 @@ def _validate_git_pair_preflight(
     repository_relative: bool,
     declaration: Mapping[str, Any],
     verify_git: bool,
+    require_tracked: bool = False,
 ) -> tuple[str, str] | None:
-    if "git_blob" not in declaration:
+    if "git_blob" not in declaration and not require_tracked:
         return None
-    blob = declaration["git_blob"]
-    mode = declaration["git_mode"]
+    blob = declaration.get("git_blob")
+    mode = declaration.get("git_mode")
     if not repository_relative:
         if blob is not None or mode is not None:
             _fail(f"absolute bound input declares Git metadata: {path_text}")
@@ -1544,7 +1774,7 @@ def _validate_git_pair_preflight(
     matched_output = _decode_git_stdout(
         matched, "git ls-files --error-unmatch"
     )
-    if blob is None and mode is None:
+    if blob is None and mode is None and not require_tracked:
         if (
             staged.returncode != 0
             or tree.returncode != 0
@@ -1555,10 +1785,6 @@ def _validate_git_pair_preflight(
         ):
             _fail(f"paired-null bound input Git absence proof differs: {path_text}")
         return None
-    if type(blob) is not str or type(mode) is not str:
-        _fail(f"malformed bound input Git metadata pair: {path_text}")
-    tracked_blob = blob
-    tracked_mode = mode
     if (
         staged.returncode != 0
         or tree.returncode != 0
@@ -1570,6 +1796,12 @@ def _validate_git_pair_preflight(
         staged_output, path_text
     )
     tree_blob, tree_mode = _parse_head_tree_binding(tree_output, path_text)
+    if require_tracked and blob is None and mode is None:
+        blob, mode = tree_blob, tree_mode
+    if type(blob) is not str or type(mode) is not str:
+        _fail(f"malformed bound input Git metadata pair: {path_text}")
+    tracked_blob = blob
+    tracked_mode = mode
     if (
         index_blob != tracked_blob
         or tree_blob != tracked_blob
@@ -1595,7 +1827,7 @@ def _read_bound_regular_bytes(path: Path, path_text: str) -> tuple[bytes, os.sta
     try:
         descriptor = os.open(path, flags)
     except OSError as exc:
-        raise TerminalG9CB3Failure(
+        raise TerminalG9CB4Failure(
             f"bound input cannot be opened without following symlinks: {path_text}"
         ) from exc
     try:
@@ -1616,6 +1848,72 @@ def _read_bound_regular_bytes(path: Path, path_text: str) -> tuple[bytes, os.sta
     return raw, info
 
 
+def _preauthenticate_parent_snapshot(
+    root: Path,
+    preregistration: Mapping[str, Any],
+) -> tuple[
+    dict[str, tuple[bytes, os.stat_result]],
+    dict[str, tuple[str, str] | None],
+]:
+    """Classify every bound path before one no-follow read per unique path."""
+
+    prepared: dict[str, tuple[Path, bool]] = {}
+    declarations: dict[str, dict[str, Any]] = {}
+    for binding in _iter_bindings(preregistration):
+        path_text = _binding_path(binding)
+        candidate, repository_relative = _bound_regular_path(root, path_text)
+        _validate_git_pair_shape(binding, path_text)
+        prior = prepared.get(path_text)
+        if prior is not None and prior != (candidate, repository_relative):
+            _fail(f"conflicting duplicate input binding: {path_text}")
+        prepared[path_text] = (candidate, repository_relative)
+        declared = declarations.setdefault(path_text, {})
+        for key in ("git_blob", "git_mode"):
+            if key in binding:
+                value = binding[key]
+                if key in declared and declared[key] != value:
+                    _fail(
+                        f"conflicting duplicate input metadata: "
+                        f"{path_text}:{key}"
+                    )
+                declared[key] = value
+    for relative in (PREREGISTRATION_PATH, CLAIM_PATH):
+        path_text = relative.as_posix()
+        prepared[path_text] = (_rooted(root, relative), True)
+        declarations.setdefault(path_text, {})
+
+    tracked_pairs: dict[str, tuple[str, str] | None] = {}
+    for path_text in sorted(prepared):
+        _candidate, repository_relative = prepared[path_text]
+        tracked_pairs[path_text] = _validate_git_pair_preflight(
+            root,
+            path_text,
+            repository_relative=repository_relative,
+            declaration=declarations[path_text],
+            verify_git=True,
+            require_tracked=repository_relative,
+        )
+
+    raw_cache: dict[str, tuple[bytes, os.stat_result]] = {}
+    observed_objects: set[tuple[int, int]] = set()
+    for path_text in sorted(prepared):
+        candidate, _repository_relative = prepared[path_text]
+        raw, info = _read_bound_regular_bytes(candidate, path_text)
+        object_key = (info.st_dev, info.st_ino)
+        if object_key in observed_objects:
+            _fail("two bound paths alias the same filesystem object")
+        observed_objects.add(object_key)
+        pair = tracked_pairs[path_text]
+        if pair is not None:
+            if _git_blob_id(raw) != pair[0]:
+                _fail(f"bound input worktree Git blob mismatch: {path_text}")
+            observed_mode = "100755" if info.st_mode & 0o111 else "100644"
+            if observed_mode != pair[1]:
+                _fail(f"bound input worktree Git mode mismatch: {path_text}")
+        raw_cache[path_text] = (raw, info)
+    return raw_cache, tracked_pairs
+
+
 def _canonical_bound_json(
     raw: bytes,
     path_text: str,
@@ -1627,7 +1925,7 @@ def _canonical_bound_json(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB3Failure(
+        raise TerminalG9CB4Failure(
             f"historical metadata JSON is invalid: {path_text}"
         ) from exc
     if (
@@ -1654,7 +1952,8 @@ def _validate_historical_metadata_bytes(
         row["path"]: row
         for row in prereg.expected_failed_predecessor_preregistration_bindings()
     }
-    attempt = prereg.expected_failed_predecessor_attempts()[0]
+    attempts = prereg.expected_failed_predecessor_attempts()
+    attempt = attempts[0]
     g9cb2 = {
         attempt[key]["path"]: (key, attempt[key])
         for key in (
@@ -1694,44 +1993,110 @@ def _validate_historical_metadata_bytes(
                 f"{path_text}"
             )
         return
-    if path_text not in g9cb2:
+    if path_text in g9cb2:
+        key, binding = g9cb2[path_text]
+        if "filesystem_mode_octal" in binding and stat.S_IMODE(
+            info.st_mode
+        ) != int(str(binding["filesystem_mode_octal"]), 8):
+            _fail(f"G9CB-2 historical filesystem mode differs: {path_text}")
+        if key == "authority_decision":
+            return
+        hash_field = "claim_hash" if key == "access_claim" else "manifest_hash"
+        payload = _canonical_bound_json(raw, path_text, hash_field)
+        expected_protocol = binding.get(
+            "protocol_version",
+            attempt["protocol_version"],
+        )
+        if (
+            payload.get("identity") != "G9CB-2"
+            or payload.get("protocol_version") != expected_protocol
+            or payload.get(hash_field) != binding[hash_field]
+        ):
+            _fail(f"G9CB-2 historical metadata fields differ: {path_text}")
+        amendments = (
+            payload.get("bindings", {}).get("authority_amendments")
+            if key == "preregistration"
+            else payload.get("authority_amendments")
+        )
+        if amendments != _expected_authority_amendment_bindings():
+            _fail(f"G9CB-2 historical amendments differ: {path_text}")
+        for field in (
+            "protocol_implementation_commit",
+            "protocol_parent_commit",
+            "claim_commit",
+            "status",
+            "retry_allowed",
+            "resume_allowed",
+        ):
+            if field in binding and payload.get(field) != binding[field]:
+                _fail(f"G9CB-2 historical field differs: {path_text}:{field}")
         return
-    key, binding = g9cb2[path_text]
+
+    g9cb3_attempt = attempts[1]
+    g9cb3: dict[str, tuple[str, Mapping[str, Any]]] = {
+        g9cb3_attempt[key]["path"]: (key, g9cb3_attempt[key])
+        for key in ("authority_decision", "preregistration", "access_claim")
+    }
+    g9cb3.update(
+        {
+            binding["path"]: (key, binding)
+            for key, binding in g9cb3_attempt["terminal_evidence"].items()
+        }
+    )
+    if path_text not in g9cb3:
+        return
+    key, binding = g9cb3[path_text]
     if "filesystem_mode_octal" in binding and stat.S_IMODE(
         info.st_mode
     ) != int(str(binding["filesystem_mode_octal"]), 8):
-        _fail(f"G9CB-2 historical filesystem mode differs: {path_text}")
+        _fail(f"G9CB-3 historical filesystem mode differs: {path_text}")
     if key == "authority_decision":
         return
-    hash_field = "claim_hash" if key == "access_claim" else "manifest_hash"
-    payload = _canonical_bound_json(raw, path_text, hash_field)
+    if key == "pass1_worker_ledger":
+        try:
+            payload = json.loads(
+                raw.decode("utf-8"), object_pairs_hook=_unique_object
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise TerminalG9CB4Failure(
+                f"G9CB-3 worker ledger JSON is invalid: {path_text}"
+            ) from exc
+        if not isinstance(payload, dict) or raw != _canonical_json_bytes(payload):
+            _fail(f"G9CB-3 worker ledger is not canonical: {path_text}")
+    else:
+        hash_field = "claim_hash" if key == "access_claim" else "manifest_hash"
+        payload = _canonical_bound_json(raw, path_text, hash_field)
+        if payload.get(hash_field) != binding[hash_field]:
+            _fail(f"G9CB-3 historical internal hash differs: {path_text}")
     expected_protocol = binding.get(
-        "protocol_version",
-        attempt["protocol_version"],
+        "protocol_version", g9cb3_attempt["protocol_version"]
     )
     if (
-        payload.get("identity") != "G9CB-2"
+        payload.get("identity") != "G9CB-3"
         or payload.get("protocol_version") != expected_protocol
-        or payload.get(hash_field) != binding[hash_field]
     ):
-        _fail(f"G9CB-2 historical metadata fields differ: {path_text}")
+        _fail(f"G9CB-3 historical metadata fields differ: {path_text}")
     amendments = (
         payload.get("bindings", {}).get("authority_amendments")
         if key == "preregistration"
         else payload.get("authority_amendments")
     )
     if amendments != _expected_authority_amendment_bindings():
-        _fail(f"G9CB-2 historical amendments differ: {path_text}")
+        _fail(f"G9CB-3 historical amendments differ: {path_text}")
     for field in (
         "protocol_implementation_commit",
         "protocol_parent_commit",
         "claim_commit",
+        "claim_hash",
+        "parent_pid",
+        "slot",
+        "stage_directory",
         "status",
         "retry_allowed",
         "resume_allowed",
     ):
         if field in binding and payload.get(field) != binding[field]:
-            _fail(f"G9CB-2 historical field differs: {path_text}:{field}")
+            _fail(f"G9CB-3 historical field differs: {path_text}:{field}")
 
 
 def _validate_regular_hashed_inputs(
@@ -1740,6 +2105,7 @@ def _validate_regular_hashed_inputs(
     *,
     verify_git: bool = True,
     raw_cache: dict[str, tuple[bytes, os.stat_result]] | None = None,
+    preclassified_pairs: Mapping[str, tuple[str, str] | None] | None = None,
 ) -> list[dict[str, Any]]:
     prepared: dict[str, dict[str, Any]] = {}
     declarations: dict[str, dict[str, Any]] = {}
@@ -1805,20 +2171,29 @@ def _validate_regular_hashed_inputs(
     tracked_pairs: dict[str, tuple[str, str] | None] = {}
     for path_text in sorted(prepared):
         row = prepared[path_text]
-        tracked_pairs[path_text] = _validate_git_pair_preflight(
-            root,
-            path_text,
-            repository_relative=bool(row["repository_relative"]),
-            declaration=declarations[path_text],
-            verify_git=verify_git,
-        )
+        if preclassified_pairs is not None:
+            if path_text not in preclassified_pairs:
+                _fail(f"bound input lacks preclassification: {path_text}")
+            tracked_pairs[path_text] = preclassified_pairs[path_text]
+        else:
+            tracked_pairs[path_text] = _validate_git_pair_preflight(
+                root,
+                path_text,
+                repository_relative=bool(row["repository_relative"]),
+                declaration=declarations[path_text],
+                verify_git=verify_git,
+            )
 
     authenticated: list[dict[str, Any]] = []
     cache = {} if raw_cache is None else raw_cache
     for path_text in sorted(prepared):
         row = prepared[path_text]
-        raw, info = _read_bound_regular_bytes(row["candidate"], path_text)
-        cache[path_text] = (raw, info)
+        cached = cache.get(path_text)
+        if cached is None:
+            raw, info = _read_bound_regular_bytes(row["candidate"], path_text)
+            cache[path_text] = (raw, info)
+        else:
+            raw, info = cached
         actual = _sha256_bytes(raw)
         if actual != row["sha256"]:
             _fail(f"bound input hash mismatch: {path_text}")
@@ -1889,18 +2264,23 @@ def _validate_one_static_closure(
         if not isinstance(row, Mapping) or not isinstance(row.get("path"), str):
             _fail("invalid import closure member")
         path = root / row["path"]
-        if path.is_symlink() or not path.is_file():
-            _fail(f"closure member is absent: {row['path']}")
         cached = (
             raw_cache.get(row["path"])
             if raw_cache is not None
             else None
         )
-        raw = cached[0] if cached is not None else path.read_bytes()
+        if cached is not None:
+            raw, info = cached
+            if not stat.S_ISREG(info.st_mode):
+                _fail(f"closure member is not regular: {row['path']}")
+        else:
+            if path.is_symlink() or not path.is_file():
+                _fail(f"closure member is absent: {row['path']}")
+            raw = path.read_bytes()
         try:
             ast.parse(raw, filename=row["path"])
         except SyntaxError as exc:
-            raise TerminalG9CB3Failure(f"closure source cannot be parsed: {row['path']}") from exc
+            raise TerminalG9CB4Failure(f"closure source cannot be parsed: {row['path']}") from exc
         observed = {
             "path": row["path"],
             "path_type": "regular_file",
@@ -1983,8 +2363,8 @@ def _worker_stage_path(root: Path, output_dir: Path) -> str:
     if candidate.parent != expected_parent:
         _fail("worker staging directory is not in the results filesystem")
     if (
-        not candidate.name.startswith(".gross9-structural-clock-g9cb3-worker-")
-        or candidate.name == ".gross9-structural-clock-g9cb3-worker-"
+        not candidate.name.startswith(".gross9-structural-clock-g9cb4-worker-")
+        or candidate.name == ".gross9-structural-clock-g9cb4-worker-"
     ):
         _fail("worker staging directory name differs")
     return candidate.relative_to(repository_root).as_posix()
@@ -2123,7 +2503,7 @@ def _normalized_worker_capabilities(
         stage = row["stage_directory"]
         if (
             not isinstance(stage, str)
-            or not stage.startswith("results/.gross9-structural-clock-g9cb3-worker-")
+            or not stage.startswith("results/.gross9-structural-clock-g9cb4-worker-")
             or row["carrier_kind"] != "anonymous_pipe_v1"
             or type(row["carrier_device"]) is not int
             or type(row["carrier_inode"]) is not int
@@ -2413,7 +2793,7 @@ class _WorkerIsolationGuard:
         try:
             raw = os.fspath(value)
         except TypeError as exc:
-            raise TerminalG9CB3Failure("guarded path is not path-like") from exc
+            raise TerminalG9CB4Failure("guarded path is not path-like") from exc
         if isinstance(raw, bytes):
             text = raw.decode(sys.getfilesystemencoding(), "surrogateescape")
         elif isinstance(raw, str):
@@ -2453,7 +2833,7 @@ class _WorkerIsolationGuard:
                 except FileNotFoundError:
                     return candidate
                 except OSError as exc:
-                    raise TerminalG9CB3Failure(
+                    raise TerminalG9CB4Failure(
                         f"guarded path resolution failed: {candidate}"
                     ) from exc
                 if stat.S_ISLNK(info.st_mode):
@@ -3787,7 +4167,7 @@ def _parse_timestamp(value: str) -> int:
     try:
         parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
     except ValueError as exc:
-        raise TerminalG9CB3Failure(f"invalid timestamp: {value}") from exc
+        raise TerminalG9CB4Failure(f"invalid timestamp: {value}") from exc
     seconds = int(parsed.timestamp())
     if datetime.fromtimestamp(seconds, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") != value:
         _fail(f"noncanonical timestamp: {value}")
@@ -3806,7 +4186,7 @@ def _decimal(value: Any, field: str) -> Decimal:
     try:
         result = Decimal(str(value))
     except (InvalidOperation, ValueError) as exc:
-        raise TerminalG9CB3Failure(f"invalid decimal {field}") from exc
+        raise TerminalG9CB4Failure(f"invalid decimal {field}") from exc
     if not result.is_finite():
         _fail(f"nonfinite decimal {field}")
     return result
@@ -3887,9 +4267,9 @@ def _barrier_exit(
         stop_hit = stop is not None and (low <= stop if side == 1 else high >= stop)
         take_hit = take is not None and (high >= take if side == 1 else low <= take)
         if stop_hit:
-            return index + 1, "stop"
+            return index, "stop"
         if take_hit:
-            return index + 1, "take"
+            return index, "take"
     return horizon, "fixed"
 
 
@@ -3899,6 +4279,7 @@ def reconstruct_intervals(
     domain_start: str = DOMAIN_START,
     domain_end: str = DOMAIN_END,
     counters: dict[str, Any] | None = None,
+    split_bounds: Sequence[tuple[str, str]] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Reconstruct structural intervals from causal generic-runtime decisions.
 
@@ -3923,119 +4304,163 @@ def reconstruct_intervals(
             _fail("market rows are not a complete unique causal grid")
         previous = second
         normalized.append((second, row))
-    time_to_index = {second: index for index, (second, _) in enumerate(normalized)}
-    if len(time_to_index) != len(normalized):
-        _fail("duplicate market timestamp")
+    value_opens = [second for second, _ in normalized]
+    if not value_opens:
+        _fail("market rows are empty")
+    if any(second % 300 for second in value_opens):
+        _fail("market row is off the five-minute grid")
+    if value_opens[0] > start or start not in value_opens:
+        _fail("market rows lack the aligned domain start")
+    if any(second >= end for second in value_opens):
+        _fail("market rows contain an end-boundary value")
+    if value_opens[-1] + 300 != end:
+        _fail("market rows end before the terminal boundary")
+    boundaries = [*value_opens, end]
+    if len(boundaries) != len(value_opens) + 1:
+        _fail("market boundary vector length differs")
+    splits: list[tuple[int, int, list[bool]]] = []
+    if split_bounds is None:
+        splits.append((start, end + 300, [True] * len(value_opens)))
+    else:
+        for raw_split_start, raw_split_end in split_bounds:
+            split_start = _parse_timestamp(raw_split_start)
+            split_end = _parse_timestamp(raw_split_end)
+            if not (start <= split_start < split_end):
+                _fail("reference split lies outside the market domain")
+            splits.append(
+                (
+                    split_start,
+                    split_end,
+                    [
+                        split_start <= second < split_end
+                        for second in value_opens
+                    ],
+                )
+            )
 
     output: list[dict[str, Any]] = []
     for sleeve in SLEEVES:
         name = sleeve["name"]
-        last_exit = start
         index_in_sleeve = 0
-        for signal_index, (signal_time, row) in enumerate(normalized):
-            if signal_time < start - 300 or signal_time >= end:
-                continue
-            decisions = row.get("decisions", {})
-            if not isinstance(decisions, Mapping):
-                _fail("decisions must be an object")
-            decision = decisions.get(name)
-            audit["per_sleeve"][name]["signal_rows_evaluated"] += 1
-            if decision is None:
-                continue
-            if not isinstance(decision, Mapping):
-                _fail(f"invalid decision for {name}")
-            active = decision.get("active")
-            side = decision.get("side")
-            if active is not True:
-                if active not in (False, None):
-                    _fail(f"nonboolean active flag for {name}")
-                continue
-            if isinstance(side, bool) or side not in sleeve["sides"]:
-                _fail(f"forbidden side for {name}: {side!r}")
-            if name == "fresh_kimchi_fx":
-                long_gate = decision.get("long_gate")
-                short_gate = decision.get("short_gate")
-                if long_gate not in (True, False) or short_gate not in (True, False):
-                    _fail("fresh decision lacks exact gate booleans")
-                if long_gate == short_gate:
-                    _fail("fresh active decision violates exclusive gates")
-                expected_side = 1 if long_gate else -1
-                if side != expected_side:
-                    _fail("fresh side differs from exclusive gate")
-            entry_index = signal_index + 1
-            if entry_index >= len(normalized):
-                continue
-            entry_time = normalized[entry_index][0]
-            if entry_time < start or entry_time >= end or entry_time < last_exit:
-                continue
-            kind = sleeve["kind"]
-            if kind == "rank7":
-                source = decision.get("source")
-                if source == "funding":
-                    hold, take_bps, stop_bps = 576, 400, None
-                elif source == "premium":
-                    hold, take_bps, stop_bps = 144, None, 300
+        for split_start, split_end, mask in splits:
+            last_exit = split_start
+            for signal_index, (_signal_time, row) in enumerate(normalized):
+                if not mask[signal_index]:
+                    continue
+                decisions = row.get("decisions", {})
+                if not isinstance(decisions, Mapping):
+                    _fail("decisions must be an object")
+                decision = decisions.get(name)
+                if decision is None:
+                    continue
+                audit["per_sleeve"][name]["signal_rows_evaluated"] += 1
+                if not isinstance(decision, Mapping):
+                    _fail(f"invalid decision for {name}")
+                active = decision.get("active")
+                side = decision.get("side")
+                if active is not True:
+                    if active not in (False, None):
+                        _fail(f"nonboolean active flag for {name}")
+                    continue
+                if isinstance(side, bool) or side not in sleeve["sides"]:
+                    _fail(f"forbidden side for {name}: {side!r}")
+                if name == "fresh_kimchi_fx":
+                    long_gate = decision.get("long_gate")
+                    short_gate = decision.get("short_gate")
+                    if long_gate not in (True, False) or short_gate not in (
+                        True,
+                        False,
+                    ):
+                        _fail("fresh decision lacks exact gate booleans")
+                    if long_gate == short_gate:
+                        _fail("fresh active decision violates exclusive gates")
+                    expected_side = 1 if long_gate else -1
+                    if side != expected_side:
+                        _fail("fresh side differs from exclusive gate")
+                entry_index = signal_index + 1
+                if entry_index >= len(normalized) or not mask[entry_index]:
+                    continue
+                entry_time = normalized[entry_index][0]
+                if entry_time < last_exit:
+                    continue
+                kind = sleeve["kind"]
+                if kind == "rank7":
+                    source = decision.get("source")
+                    if source == "funding":
+                        hold, take_bps, stop_bps = 576, 400, None
+                    elif source == "premium":
+                        hold, take_bps, stop_bps = 144, None, 300
+                    else:
+                        _fail("Rank7 active decision has invalid source")
+                elif kind == "barrier":
+                    hold = int(sleeve["hold_bars"])
+                    take_bps = int(sleeve["take_bps"])
+                    stop_bps = int(sleeve["stop_bps"])
                 else:
-                    _fail("Rank7 active decision has invalid source")
-            elif kind == "barrier":
-                hold = int(sleeve["hold_bars"])
-                take_bps = int(sleeve["take_bps"])
-                stop_bps = int(sleeve["stop_bps"])
-            else:
-                hold = int(sleeve["hold_bars"])
-                take_bps = stop_bps = None
-            exit_index = entry_index + hold
-            if exit_index > len(normalized):
-                continue
-            if (
-                exit_index < len(normalized)
-                and normalized[exit_index][0] > end
-            ):
-                continue
-            if kind in ("rank7", "barrier"):
-                exit_index, exit_kind = _barrier_exit(
-                    [item for _, item in normalized],
-                    entry_index,
-                    int(side),
-                    hold_bars=hold,
-                    take_bps=take_bps,
-                    stop_bps=stop_bps,
-                    counters=audit,
-                    sleeve=name,
+                    hold = int(sleeve["hold_bars"])
+                    take_bps = stop_bps = None
+                exit_position = entry_index + hold
+                if exit_position > len(normalized):
+                    continue
+                if kind in ("rank7", "barrier"):
+                    exit_position, exit_kind = _barrier_exit(
+                        [item for _, item in normalized],
+                        entry_index,
+                        int(side),
+                        hold_bars=hold,
+                        take_bps=take_bps,
+                        stop_bps=stop_bps,
+                        counters=audit,
+                        sleeve=name,
+                    )
+                else:
+                    exit_kind = "fixed"
+                if not _structural_exit_is_eligible(
+                    mask,
+                    boundaries,
+                    exit_position,
+                    exit_kind,
+                    split_start,
+                    split_end,
+                ):
+                    continue
+                boundary_position = (
+                    exit_position + 1
+                    if exit_kind in ("take", "stop")
+                    else exit_position
                 )
-            else:
-                exit_kind = "fixed"
-            exit_time = (
-                normalized[exit_index][0]
-                if exit_index < len(normalized)
-                else normalized[-1][0] + 300
-            )
-            if not (start <= entry_time < exit_time <= end):
-                _fail(f"interval outside domain for {name}")
-            output.append(
-                {
-                    "identity": IDENTITY,
-                    "sleeve": name,
-                    "sleeve_order": int(sleeve["order"]),
-                    "configured_weight": sleeve["weight"],
-                    "interval_index": index_in_sleeve,
-                    "entry_time_utc": _timestamp(entry_time),
-                    "exit_time_utc": _timestamp(exit_time),
-                    "side": int(side),
-                }
-            )
-            last_exit = exit_time
-            index_in_sleeve += 1
-            per = audit["per_sleeve"][name]
-            per["intervals_emitted"] += 1
-            per["long_intervals" if side == 1 else "short_intervals"] += 1
-            per[
-                {
-                    "fixed": "fixed_horizon_exits",
-                    "take": "take_exits",
-                    "stop": "stop_exits",
-                }[exit_kind]
-            ] += 1
+                exit_time = boundaries[boundary_position]
+                if not (
+                    split_start
+                    <= entry_time
+                    < exit_time
+                    <= min(split_end, end)
+                ):
+                    _fail(f"interval outside split for {name}")
+                output.append(
+                    {
+                        "identity": IDENTITY,
+                        "sleeve": name,
+                        "sleeve_order": int(sleeve["order"]),
+                        "configured_weight": sleeve["weight"],
+                        "interval_index": index_in_sleeve,
+                        "entry_time_utc": _timestamp(entry_time),
+                        "exit_time_utc": _timestamp(exit_time),
+                        "side": int(side),
+                    }
+                )
+                last_exit = exit_time
+                index_in_sleeve += 1
+                per = audit["per_sleeve"][name]
+                per["intervals_emitted"] += 1
+                per["long_intervals" if side == 1 else "short_intervals"] += 1
+                per[
+                    {
+                        "fixed": "fixed_horizon_exits",
+                        "take": "take_exits",
+                        "stop": "stop_exits",
+                    }[exit_kind]
+                ] += 1
     output.sort(key=lambda row: (row["sleeve_order"], row["interval_index"]))
     return output, audit
 
@@ -4084,13 +4509,13 @@ def validate_csv_gzip(raw: bytes, *, require_all_sleeves: bool = True) -> list[d
     try:
         decompressed = gzip.decompress(raw)
     except (OSError, EOFError) as exc:
-        raise TerminalG9CB3Failure("invalid gzip stream") from exc
+        raise TerminalG9CB4Failure("invalid gzip stream") from exc
     if compress_csv(decompressed) != raw:
         _fail("gzip bytes are not canonical")
     try:
         text = decompressed.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise TerminalG9CB3Failure("CSV is not UTF-8") from exc
+        raise TerminalG9CB4Failure("CSV is not UTF-8") from exc
     if "\r" in text or not text.endswith("\n") or "\n\n" in text:
         _fail("CSV line-ending contract failure")
     reader = csv.DictReader(io.StringIO(text, newline=""))
@@ -4267,8 +4692,10 @@ def build_core(
     return core
 
 
-def _read_synthetic_worker_input(path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    payload, _ = _read_canonical_object(path)
+def _read_synthetic_worker_input(
+    path: Path,
+) -> tuple[list[dict[str, Any]], dict[str, Any], str]:
+    payload, _, _ = _read_canonical_object(path)
     bars = payload.get("bars")
     if not isinstance(bars, list):
         _fail("synthetic worker input has no bars")
@@ -4278,7 +4705,10 @@ def _read_synthetic_worker_input(path: Path) -> tuple[list[dict[str, Any]], dict
         for section in ("file_access", "rows_decoded", "rows_used"):
             if isinstance(supplied.get(section), Mapping):
                 counters[section].update(supplied[section])
-    return [dict(row) for row in bars], counters
+    domain_end = payload.get("domain_end", DOMAIN_END)
+    if not isinstance(domain_end, str):
+        _fail("synthetic worker domain end is invalid")
+    return [dict(row) for row in bars], counters, domain_end
 
 
 def _import_authenticated_modules(repository_root: str) -> dict[str, Any]:
@@ -4412,7 +4842,7 @@ def _install_counted_rank7_runtime(
         try:
             candidate = Path(os.fspath(path))
         except TypeError as exc:
-            raise TerminalG9CB3Failure(
+            raise TerminalG9CB4Failure(
                 "Rank7 model open did not use a filesystem path"
             ) from exc
         candidate = candidate if candidate.is_absolute() else root / candidate
@@ -4477,7 +4907,7 @@ def _load_worker_json(root: Path, path: str) -> dict[str, Any]:
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB3Failure(f"worker JSON input is invalid: {path}") from exc
+        raise TerminalG9CB4Failure(f"worker JSON input is invalid: {path}") from exc
     if not isinstance(value, dict):
         _fail(f"worker JSON input is not an object: {path}")
     return value
@@ -4487,7 +4917,7 @@ def _market_seconds(market: Any) -> tuple[list[int], list[Any]]:
     try:
         values = list(market["date"])
     except (KeyError, TypeError) as exc:
-        raise TerminalG9CB3Failure("generic market lacks date rows") from exc
+        raise TerminalG9CB4Failure("generic market lacks date rows") from exc
     seconds: list[int] = []
     for value in values:
         if hasattr(value, "to_pydatetime"):
@@ -4511,13 +4941,65 @@ def _market_seconds(market: Any) -> tuple[list[int], list[Any]]:
     return seconds, values
 
 
+def _market_value_opens_and_boundaries(
+    market: Any,
+    *,
+    domain_start: str = DOMAIN_START,
+    domain_end: str = DOMAIN_END,
+) -> tuple[list[int], list[int]]:
+    """Validate physical value opens and derive the geometry-only boundary."""
+
+    value_opens, _ = _market_seconds(market)
+    start = _parse_timestamp(domain_start)
+    end = _parse_timestamp(domain_end)
+    if not value_opens:
+        _fail("generic market has no value opens")
+    if any(second % 300 for second in value_opens):
+        _fail("generic market value open is off the five-minute grid")
+    if value_opens[0] > start or start not in value_opens:
+        _fail("generic market lacks the aligned domain-start value open")
+    if any(second >= end for second in value_opens):
+        _fail("generic market contains a domain-end value row")
+    if value_opens[-1] + 300 != end:
+        _fail("generic market ends before the canonical terminal boundary")
+    boundaries = [*value_opens, end]
+    if len(boundaries) != len(value_opens) + 1:
+        _fail("generic market boundary vector length differs")
+    return value_opens, boundaries
+
+
+def _structural_exit_is_eligible(
+    mask: Sequence[Any],
+    boundaries: Sequence[int],
+    exit_position: int,
+    exit_kind: str,
+    split_start: int,
+    split_end: int,
+) -> bool:
+    """Apply physical-row eligibility and the sole virtual terminal rule."""
+
+    n = len(mask)
+    if len(boundaries) != n + 1:
+        _fail("split mask and boundary vector lengths differ")
+    position = int(exit_position)
+    if position < 0 or position > n:
+        _fail("structural exit index is outside the boundary vector")
+    if exit_kind == "fixed":
+        if position < n:
+            return bool(mask[position])
+        return split_start <= int(boundaries[n]) < split_end
+    if position >= n:
+        _fail("barrier hit index lacks an occupied value row")
+    return bool(mask[position])
+
+
 def _generic_time_second(value: Any, pandas_module: Any) -> int:
     try:
         parsed = pandas_module.Timestamp(
             pandas_module.to_datetime(value, utc=True, errors="raise")
         )
     except (TypeError, ValueError) as exc:
-        raise TerminalG9CB3Failure("generic source timestamp is invalid") from exc
+        raise TerminalG9CB4Failure("generic source timestamp is invalid") from exc
     return int(parsed.timestamp())
 
 
@@ -4558,7 +5040,7 @@ def _read_jsonl_rows(
         try:
             row = json.loads(line.decode("utf-8"), object_pairs_hook=_unique_object)
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise TerminalG9CB3Failure(f"invalid JSONL row: {path}") from exc
+            raise TerminalG9CB4Failure(f"invalid JSONL row: {path}") from exc
         if not isinstance(row, dict):
             _fail(f"JSONL row is not an object: {path}")
         if "_g9cb_parser_ordinal" in row:
@@ -4719,7 +5201,7 @@ def _install_counted_csv_reader(
         try:
             source_path = Path(os.fspath(source))
         except TypeError as exc:
-            raise TerminalG9CB3Failure(
+            raise TerminalG9CB4Failure(
                 "generic CSV read did not use an authenticated path"
             ) from exc
         candidate = (
@@ -4758,18 +5240,37 @@ def _install_counted_csv_reader(
         try:
             decoded_rows = len(frame)
         except TypeError as exc:
-            raise TerminalG9CB3Failure(
+            raise TerminalG9CB4Failure(
                 "chunked or streaming CSV decode is forbidden"
             ) from exc
         first_ordinal = counters["rows_decoded"][logical_name]
         counters["rows_decoded"][logical_name] += int(decoded_rows)
+        if logical_name == "market_5m":
+            try:
+                raw_market_dates = pandas_module.to_datetime(
+                    frame["date"],
+                    utc=True,
+                    errors="raise",
+                    format="mixed",
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                raise TerminalG9CB4Failure(
+                    "raw market timestamps are invalid"
+                ) from exc
+            if bool(
+                (
+                    raw_market_dates
+                    >= pandas_module.Timestamp(DOMAIN_END)
+                ).any()
+            ):
+                _fail("raw market contains a physical domain-end value row")
         try:
             frame.attrs["_g9cb_parser_ordinals"] = tuple(
                 range(first_ordinal, first_ordinal + int(decoded_rows))
             )
             frame.attrs["_g9cb_logical_source"] = logical_name
         except (AttributeError, TypeError) as exc:
-            raise TerminalG9CB3Failure(
+            raise TerminalG9CB4Failure(
                 "decoded CSV frame cannot carry parser ordinals"
             ) from exc
         return frame
@@ -4880,14 +5381,14 @@ class _StructuralTradeEngine:
             _fail(f"{self._sleeve} structural barrier is negative")
         entry = signal + 1
         horizon = entry + hold
-        if signal < 0 or entry < 0 or horizon >= len(self._open):
+        if signal < 0 or entry < 0 or horizon > len(self._open):
             self._cache[key] = None
             return None
+        take_enabled = take_bps < 1_000_000
+        stop_enabled = stop_bps < 1_000_000
         entry_price = float(self._open[entry])
         if not entry_price > 0.0:
             _fail(f"{self._sleeve} structural entry price is invalid")
-        take_enabled = take_bps < 1_000_000
-        stop_enabled = stop_bps < 1_000_000
         take = take_bps / 10_000.0
         stop = stop_bps / 10_000.0
         exit_position = horizon
@@ -5258,6 +5759,44 @@ def _append_direct_interval(
     ] += 1
 
 
+def _schedule_direct_fixed_interval(
+    intervals: dict[str, list[tuple[int, int, int, str]]],
+    counters: dict[str, Any],
+    sleeve: str,
+    value_opens: Sequence[int],
+    boundaries: Sequence[int],
+    mask: Sequence[Any],
+    entry_position: int,
+    exit_position: int,
+    side: int,
+    split_start: int,
+    split_end: int,
+) -> bool:
+    """Schedule a fixed exit from geometry only, without reading OHLC."""
+
+    if entry_position < 0 or entry_position >= len(value_opens):
+        _fail(f"direct adapter fixed entry is outside values: {sleeve}")
+    if not _structural_exit_is_eligible(
+        mask,
+        boundaries,
+        exit_position,
+        "fixed",
+        split_start,
+        split_end,
+    ):
+        return False
+    _append_direct_interval(
+        intervals,
+        counters,
+        sleeve,
+        value_opens[entry_position],
+        boundaries[exit_position],
+        side,
+        "fixed",
+    )
+    return True
+
+
 def _materialize_direct_rows(
     intervals: Mapping[str, Sequence[tuple[int, int, int, str]]],
     counters: dict[str, Any],
@@ -5350,7 +5889,7 @@ def _direct_generic_adapter_impl(
             sources["market_5m"],
             funding_path=sources["funding"],
             premium_path=sources["premium"],
-            exclude_from="2026-06-02",
+            exclude_from=pd.Timestamp(DOMAIN_END).tz_localize(None),
         )
     finally:
         primitives.normalise_market = original_normalise
@@ -5359,15 +5898,17 @@ def _direct_generic_adapter_impl(
     open_interest = pd.read_csv(sources["open_interest"], compression="infer")
     causal_rows.handoff_frame("open_interest", open_interest)
     market = primitives.attach_open_interest(market, open_interest)
-    seconds, _ = _market_seconds(market)
-    if _parse_timestamp(DOMAIN_END) not in seconds:
-        _fail("bound market lacks the canonical domain-end boundary row")
+    value_opens, boundaries = _market_value_opens_and_boundaries(market)
     dates = pd.to_datetime(market["date"])
     masks = {
         name: np.asarray(
             (dates >= pd.Timestamp(start)) & (dates < pd.Timestamp(end)),
             dtype=bool,
         )
+        for name, start, end in SPLIT_BOUNDS
+    }
+    split_seconds = {
+        name: (_parse_timestamp(start), _parse_timestamp(end))
         for name, start, end in SPLIT_BOUNDS
     }
     intervals: dict[str, list[tuple[int, int, int, str]]] = {
@@ -5407,11 +5948,11 @@ def _direct_generic_adapter_impl(
         _fail("bound Markov stride offset differs from canonical warm-up")
     markov_positions = np.arange(
         143,
-        max(0, len(market) - markov_hold - 2),
+        max(0, len(market) - markov_hold),
         markov_stride,
         dtype=np.int64,
     )
-    for mask in masks.values():
+    for split_name, mask in masks.items():
         next_allowed = 0
         for raw_position in markov_positions:
             position = int(raw_position)
@@ -5424,17 +5965,21 @@ def _direct_generic_adapter_impl(
                 continue
             entry = position + 1
             exit_position = entry + markov_hold
-            if exit_position >= len(mask) or not bool(mask[exit_position]):
-                continue
-            _append_direct_interval(
+            split_start, split_end = split_seconds[split_name]
+            if not _schedule_direct_fixed_interval(
                 intervals,
                 counters,
                 "markov_transition_long",
-                seconds[entry],
-                seconds[exit_position],
+                value_opens,
+                boundaries,
+                mask,
+                entry,
+                exit_position,
                 1,
-                "fixed",
-            )
+                split_start,
+                split_end,
+            ):
+                continue
             next_allowed = exit_position + 1
 
     causal_rows.handoff("market_5m", range(counters["rows_decoded"]["market_5m"]))
@@ -5475,7 +6020,7 @@ def _direct_generic_adapter_impl(
             decoded.extend(source_rows)
             row_sources.update({id(row): logical_name for row in source_rows})
         ordered = _ordered_rex_source_rows(decoded, sleeve_name)
-        for mask in masks.values():
+        for split_name, mask in masks.items():
             next_allowed = 0
             for source_row in ordered:
                 position = int(source_row.get("signal_pos", -1))
@@ -5487,7 +6032,10 @@ def _direct_generic_adapter_impl(
                 if position < next_allowed:
                     continue
                 source_second = _generic_time_second(source_row["date"], pd)
-                if source_second % 300 or source_second != seconds[position]:
+                if (
+                    source_second % 300
+                    or source_second != value_opens[position]
+                ):
                     _fail(f"{sleeve_name} source row is off the market grid")
                 logical_name = row_sources[id(source_row)]
                 causal_rows.handoff(
@@ -5513,17 +6061,21 @@ def _direct_generic_adapter_impl(
                 side = 1 if side_text == "long" else -1
                 entry = position + 1
                 exit_position = entry + hold
-                if exit_position >= len(mask) or not bool(mask[exit_position]):
-                    continue
-                _append_direct_interval(
+                split_start, split_end = split_seconds[split_name]
+                if not _schedule_direct_fixed_interval(
                     intervals,
                     counters,
                     sleeve_name,
-                    seconds[entry],
-                    seconds[exit_position],
+                    value_opens,
+                    boundaries,
+                    mask,
+                    entry,
+                    exit_position,
                     side,
-                    "fixed",
-                )
+                    split_start,
+                    split_end,
+                ):
+                    continue
                 next_allowed = exit_position + 1
 
     fresh_cfg = configs["fresh_kimchi_fx"]
@@ -5589,12 +6141,12 @@ def _direct_generic_adapter_impl(
     )
     fresh_positions = np.arange(
         143,
-        len(market) - int(fresh_cfg["hold_bars"]) - 2,
+        len(market) - int(fresh_cfg["hold_bars"]),
         int(fresh_cfg["stride_bars"]),
         dtype=np.int64,
     )
     fresh_active = np.logical_xor(fresh_long_active, fresh_short_active)
-    for mask in masks.values():
+    for split_name, mask in masks.items():
         next_allowed = 0
         for raw_signal in fresh_positions:
             signal_position = int(raw_signal)
@@ -5615,7 +6167,17 @@ def _direct_generic_adapter_impl(
                 int(fresh_cfg["take_bps"]),
                 int(fresh_cfg["stop_bps"]),
             )
-            if trade is None or not bool(mask[int(trade.exit_position)]):
+            if trade is None:
+                continue
+            split_start, split_end = split_seconds[split_name]
+            if not _structural_exit_is_eligible(
+                mask,
+                boundaries,
+                int(trade.exit_position),
+                str(trade.exit_kind),
+                split_start,
+                split_end,
+            ):
                 continue
             exit_boundary = int(trade.exit_position) + (
                 0 if trade.exit_kind == "fixed" else 1
@@ -5624,8 +6186,8 @@ def _direct_generic_adapter_impl(
                 intervals,
                 counters,
                 "fresh_kimchi_fx",
-                seconds[int(trade.entry_position)],
-                seconds[exit_boundary],
+                value_opens[int(trade.entry_position)],
+                boundaries[exit_boundary],
                 side,
                 str(trade.exit_kind),
             )
@@ -5734,7 +6296,7 @@ def _direct_generic_adapter_impl(
     causal_rows.handoff("market_5m", range(counters["rows_decoded"]["market_5m"]))
     rank7_context = rank7_runtime.build_rank7_feature_context(market, bundle)
     rank7_seconds, _ = _market_seconds(rank7_context["market"])
-    if rank7_seconds != seconds:
+    if rank7_seconds != value_opens:
         _fail("Rank7 generic context market grid differs")
     structural_funding = _load_rank7_funding(
         sources["funding"],
@@ -5773,7 +6335,7 @@ def _direct_generic_adapter_impl(
         )
         if trade is None:
             targets.append((np.nan, np.nan))
-            exits.append(len(seconds))
+            exits.append(len(value_opens))
             continue
         counters["rows_used"]["rank7_training_trades_replayed"] += 1
         price_factor = float(trade.price_factor)
@@ -5822,7 +6384,7 @@ def _direct_generic_adapter_impl(
         .iloc[rank7_signals]
         .reset_index(drop=True),
         "exit_dates": pd.to_datetime(rank7_context["dates"])
-        .iloc[np.minimum(exits, len(seconds) - 1)]
+        .iloc[np.minimum(exits, len(value_opens) - 1)]
         .to_numpy(),
         "width": rank7_context["matrix"][
             :, feature_columns.index("rex_2016_range_width_pct")
@@ -5871,7 +6433,7 @@ def _direct_generic_adapter_impl(
         np,
         pd,
     )
-    for mask in masks.values():
+    for split_name, mask in masks.items():
         next_allowed = 0
         for raw_signal in rank7_signals:
             signal_position = int(raw_signal)
@@ -5893,7 +6455,17 @@ def _direct_generic_adapter_impl(
             trade = rank7_structural_engine.trade_at(
                 signal_position, 1, hold, take, stop
             )
-            if trade is None or not bool(mask[int(trade.exit_position)]):
+            if trade is None:
+                continue
+            split_start, split_end = split_seconds[split_name]
+            if not _structural_exit_is_eligible(
+                mask,
+                boundaries,
+                int(trade.exit_position),
+                str(trade.exit_kind),
+                split_start,
+                split_end,
+            ):
                 continue
             exit_boundary = int(trade.exit_position) + (
                 0 if trade.exit_kind == "fixed" else 1
@@ -5902,8 +6474,8 @@ def _direct_generic_adapter_impl(
                 intervals,
                 counters,
                 "frozen_annual_rank7",
-                seconds[int(trade.entry_position)],
-                seconds[exit_boundary],
+                value_opens[int(trade.entry_position)],
+                boundaries[exit_boundary],
                 1,
                 str(trade.exit_kind),
             )
@@ -6009,7 +6581,7 @@ def _worker_main(
                 object_pairs_hook=_unique_object,
             )
         except (UnicodeEncodeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise TerminalG9CB3Failure(
+            raise TerminalG9CB4Failure(
                 "worker parent authentication is invalid"
             ) from exc
         if (
@@ -6024,34 +6596,18 @@ def _worker_main(
             parent_authentication_raw
         )
 
-        sentinel, sentinel_raw = _read_canonical_object(
-            _rooted(root, SENTINEL_PATH), "manifest_hash"
+        active_metadata = _authenticate_worker_metadata_entry(
+            root,
+            parent_authentication,
+            synthetic=synthetic,
         )
-        claim, claim_raw = _read_canonical_object(
-            _rooted(root, CLAIM_PATH), "claim_hash"
-        )
-        if synthetic:
-            preregistration, prereg_binding = validate_preregistration(
-                root,
-                validation_mode="synthetic",
-            )
-            _validate_guarded_preregistration_authentication(
-                prereg_binding,
-                str(preregistration["protocol_implementation_commit"]),
-                parent_authentication,
-                claim.get("preregistration"),
-            )
-            guarded_metadata: dict[str, Any] | None = None
-        else:
-            guarded_metadata = _authenticate_guarded_worker_metadata(
-                root,
-                parent_authentication,
-                claim.get("preregistration"),
-            )
-            preregistration = guarded_metadata["preregistration"]
-            prereg_binding = guarded_metadata[
-                "preregistration_binding"
-            ]
+        sentinel = active_metadata["sentinel"]
+        sentinel_raw = active_metadata["sentinel_raw"]
+        claim = active_metadata["claim"]
+        claim_raw = active_metadata["claim_raw"]
+        preregistration = active_metadata["preregistration"]
+        prereg_binding = active_metadata["preregistration_binding"]
+        guarded_metadata = active_metadata["guarded_metadata"]
         authority_amendments = _authority_amendment_bindings(
             preregistration
         )
@@ -6190,8 +6746,14 @@ def _worker_main(
         rebuild_invocations_started += 1
         if synthetic:
             synthetic_path = Path(str(arguments.synthetic_input))
-            bars, counters = _read_synthetic_worker_input(synthetic_path)
-            rows, counters = reconstruct_intervals(bars, counters=counters)
+            bars, counters, synthetic_domain_end = (
+                _read_synthetic_worker_input(synthetic_path)
+            )
+            rows, counters = reconstruct_intervals(
+                bars,
+                counters=counters,
+                domain_end=synthetic_domain_end,
+            )
         else:
             if modules is None:
                 _fail("official isolated modules were not imported")
@@ -6627,7 +7189,7 @@ def _validate_worker_ledger_and_receipt(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB3Failure(
+        raise TerminalG9CB4Failure(
             "worker consumption ledger is invalid"
         ) from exc
     expected_ledger = _worker_ledger_payload(
@@ -6671,7 +7233,7 @@ def _validate_worker_ledger_and_receipt(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB3Failure("worker receipt is invalid") from exc
+        raise TerminalG9CB4Failure("worker receipt is invalid") from exc
     if (
         not isinstance(receipt, dict)
         or receipt_raw != _canonical_json_bytes(receipt)
@@ -6790,7 +7352,7 @@ def _validate_worker_product(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB3Failure("worker core is invalid JSON") from exc
+        raise TerminalG9CB4Failure("worker core is invalid JSON") from exc
     if not isinstance(core, dict) or core_raw != _canonical_json_bytes(core):
         _fail("worker core bytes are not canonical")
     _validate_prohibited_output_placement(core)
@@ -7120,7 +7682,7 @@ def validate_committed_publication(
     _tracked_head_bytes(root, prereg.FAILED_V2_PREREGISTRATION_PATH)
 
     claim_tracked_raw = _tracked_head_bytes(root, CLAIM_PATH)
-    claim, claim_raw = _read_canonical_object(
+    claim, claim_raw, _claim_info = _read_canonical_object(
         _rooted(root, CLAIM_PATH),
         "claim_hash",
     )
@@ -7164,7 +7726,7 @@ def validate_committed_publication(
     }
 
     sentinel_tracked_raw = _tracked_head_bytes(root, SENTINEL_PATH)
-    sentinel, sentinel_raw = _read_canonical_object(
+    sentinel, sentinel_raw, _sentinel_info = _read_canonical_object(
         _rooted(root, SENTINEL_PATH),
         "manifest_hash",
     )
@@ -7202,7 +7764,7 @@ def validate_committed_publication(
         strict=True,
     ):
         ledger_tracked_raw = _tracked_head_bytes(root, ledger_path)
-        ledger, ledger_raw = _read_canonical_object(
+        ledger, ledger_raw, _ledger_info = _read_canonical_object(
             _rooted(root, ledger_path),
             None,
         )
@@ -7236,7 +7798,7 @@ def validate_committed_publication(
     rows = validate_csv_gzip(csv_raw, require_all_sleeves=True)
 
     manifest_tracked_raw = _tracked_head_bytes(root, MANIFEST_PATH)
-    manifest, manifest_raw = _read_canonical_object(
+    manifest, manifest_raw, _manifest_info = _read_canonical_object(
         _rooted(root, MANIFEST_PATH),
         "manifest_hash",
     )
@@ -7279,7 +7841,7 @@ def validate_committed_publication(
     )
 
     results = _rooted(root, MANIFEST_PATH).parent
-    if list(results.glob(".gross9-structural-clock-g9cb3-worker-*")):
+    if list(results.glob(".gross9-structural-clock-g9cb4-worker-*")):
         _fail("committed publication retains a worker stage")
     if list(results.glob(_STAGED_RECEIPT_NAME)):
         _fail("committed publication retains a pass receipt")
@@ -7307,21 +7869,27 @@ def produce_one_shot(
     root = root.resolve()
     if synthetic_input is not None and (root / ".git").exists():
         _fail("synthetic production hook requires a noncanonical repository")
+    raw_cache: dict[str, tuple[bytes, os.stat_result]] = {}
+    preclassified_pairs: dict[str, tuple[str, str] | None] = {}
     (
         claim,
         claim_binding,
         preregistration,
         prereg_binding,
-    ) = _validate_claim_commit(root)
+    ) = _validate_claim_commit(
+        root,
+        raw_cache=raw_cache,
+        preclassified_pairs=preclassified_pairs,
+    )
     authority_amendments = _authority_amendment_bindings(preregistration)
     if claim.get("authority_amendments") != authority_amendments:
         _fail("claim authority amendments differ before production")
     environment = _validate_environment(preregistration, root)
-    raw_cache: dict[str, tuple[bytes, os.stat_result]] = {}
     inputs = _validate_regular_hashed_inputs(
         root,
         preregistration,
         raw_cache=raw_cache,
+        preclassified_pairs=preclassified_pairs,
     )
     if claim.get("opaque_inputs_authenticated") != inputs:
         _fail("current hashed inputs differ from the immutable claim")
@@ -7352,7 +7920,7 @@ def produce_one_shot(
 
     results_directory = _rooted(root, SENTINEL_PATH).parent
     staging_patterns = [
-        ".gross9-structural-clock-g9cb3-worker-*",
+        ".gross9-structural-clock-g9cb4-worker-*",
         f".{SENTINEL_PATH.name}.stage-*",
         f".{CSV_PATH.name}.stage-*",
         f".{MANIFEST_PATH.name}.stage-*",
@@ -7376,7 +7944,7 @@ def produce_one_shot(
             continue
         stages = tuple(
             results_directory
-            / f".gross9-structural-clock-g9cb3-worker-{suffix}"
+            / f".gross9-structural-clock-g9cb4-worker-{suffix}"
             for suffix in suffixes
         )
         if not any(path.exists() or path.is_symlink() for path in stages):
@@ -7539,9 +8107,9 @@ def produce_one_shot(
             and not any(stage_one.iterdir())
         ):
             stage_one.rmdir()
-        if isinstance(exc, TerminalG9CB3Failure):
+        if isinstance(exc, TerminalG9CB4Failure):
             raise
-        raise TerminalG9CB3Failure(f"{TERMINAL_ACTION}: {exc}") from exc
+        raise TerminalG9CB4Failure(f"{TERMINAL_ACTION}: {exc}") from exc
 
 def _raw_worker_option(arguments: Sequence[str], name: str) -> str:
     positions = [
