@@ -23,33 +23,45 @@ EXPECTED_RUNTIME_IMPORT_ROOTS = [
 EXPECTED_CONSUMPTION_LEDGER_PATHS = [
     (
         "results/"
-        "gross9_structural_clock_bundle_worker_capability_consumed_pass1_"
+        "gross9_structural_clock_bundle_g9cb2_worker_capability_consumed_pass1_"
         "2026-07-31.json"
     ),
     (
         "results/"
-        "gross9_structural_clock_bundle_worker_capability_consumed_pass2_"
+        "gross9_structural_clock_bundle_g9cb2_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
 ]
 
 
-def test_historical_v1_artifact_remains_nonoperative_evidence() -> None:
-    historical = (
+def test_failed_g9cb1_artifacts_remain_nonoperative_evidence() -> None:
+    historical_v1 = (
         prereg.REPOSITORY_ROOT
         / prereg.HISTORICAL_PREREGISTRATION_PATH
     )
-    assert historical != ARTIFACT
-    assert prereg.validate_superseded_preregistration() == (
-        prereg.expected_superseded_preregistration_binding()
+    historical_v2 = (
+        prereg.REPOSITORY_ROOT
+        / prereg.FAILED_V2_PREREGISTRATION_PATH
     )
-    payload = json.loads(historical.read_bytes())
-    assert payload["protocol_version"] == prereg.HISTORICAL_PROTOCOL_VERSION
-    assert payload["protocol_version"] != prereg.PROTOCOL_VERSION
+    assert historical_v1 != ARTIFACT
+    assert historical_v2 != ARTIFACT
+    assert prereg.validate_failed_predecessor_preregistrations() == (
+        prereg.expected_failed_predecessor_preregistration_bindings()
+    )
+    payload_v1 = json.loads(historical_v1.read_bytes())
+    payload_v2 = json.loads(historical_v2.read_bytes())
+    assert payload_v1["protocol_version"] == prereg.HISTORICAL_PROTOCOL_VERSION
+    assert payload_v2["protocol_version"] == prereg.FAILED_V2_PROTOCOL_VERSION
+    assert payload_v1["protocol_version"] != prereg.PROTOCOL_VERSION
+    assert payload_v2["protocol_version"] != prereg.PROTOCOL_VERSION
     assert [
         row["identity"]
-        for row in payload["bindings"]["authority_amendments"]
+        for row in payload_v1["bindings"]["authority_amendments"]
     ] == ["G9CB-1A", "G9CB-1B"]
+    assert [
+        row["identity"]
+        for row in payload_v2["bindings"]["authority_amendments"]
+    ] == ["G9CB-1A", "G9CB-1B", "G9CB-1C"]
 
 
 def test_committed_preregistration_artifact_is_exactly_reproducible() -> None:
@@ -75,13 +87,13 @@ def test_committed_preregistration_artifact_is_exactly_reproducible() -> None:
     prereg.validate_manifest(payload)
     assert payload == prereg.build_manifest()
     assert payload["protocol_version"] == (
-        "gross9_structural_clock_bundle_preregistration_v2"
+        "gross9_structural_clock_bundle_g9cb2_preregistration_v1"
     )
     assert payload["protocol_implementation_commit"] == (
         prereg.validate_protocol_commit_topology()
     )
-    assert payload["bindings"]["superseded_preregistration"] == (
-        prereg.expected_superseded_preregistration_binding()
+    assert payload["bindings"]["failed_predecessor_preregistrations"] == (
+        prereg.expected_failed_predecessor_preregistration_bindings()
     )
     assert payload["bindings"]["authority_amendments"] == (
         prereg._authority_amendment_bindings()

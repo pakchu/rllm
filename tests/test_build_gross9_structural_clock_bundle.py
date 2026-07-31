@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import shutil
 import signal
+import socket
 import stat
 import subprocess
 import sys
@@ -425,7 +426,7 @@ def _synthetic_preregistration(root: Path) -> dict[str, object]:
     return builder._with_hash(
         {
             "protocol_version": (
-                "gross9_structural_clock_bundle_preregistration_v2"
+                "gross9_structural_clock_bundle_g9cb2_preregistration_v1"
             ),
             "identity": builder.IDENTITY,
             "protocol_implementation_commit": "1" * 40,
@@ -448,8 +449,9 @@ def _synthetic_preregistration(root: Path) -> dict[str, object]:
                 "rank7_bundle": {"declared_files": []},
                 "source_manifest_ordered_inventory": [],
                 "environment": _parent_authentication(root)["environment"],
-                "superseded_preregistration": (
-                    builder.prereg.expected_superseded_preregistration_binding()
+                "failed_predecessor_preregistrations": (
+                    builder.prereg
+                    .expected_failed_predecessor_preregistration_bindings()
                 ),
             },
             "creation_evidence_boundary": dict(
@@ -995,7 +997,7 @@ def invoke_pycache(name):
     if location == "repository":
         target = case_root / "pkg" / "__pycache__" / "evil.pyc"
     else:
-        target = case_root / "results" / ".g9cb-bytecode-cache-disabled" / "evil.pyc"
+        target = case_root / "results" / ".g9cb2-bytecode-cache-disabled" / "evil.pyc"
     guard.allowed_mutations.add(target.as_posix())
     if operation == "read":
         builtins.open(target, "rb")
@@ -1013,7 +1015,7 @@ def invoke_pycache_during_source_load(name):
     target = (
         case_root
         / "results"
-        / ".g9cb-bytecode-cache-disabled"
+        / ".g9cb2-bytecode-cache-disabled"
         / "injected.pyc"
     )
 
@@ -1087,7 +1089,7 @@ if family == "pycache":
     pycache = (
         case_root / "pkg" / "__pycache__"
         if location == "repository"
-        else case_root / "results" / ".g9cb-bytecode-cache-disabled"
+        else case_root / "results" / ".g9cb2-bytecode-cache-disabled"
     )
     pycache.mkdir(parents=True)
     (pycache / "evil.pyc").write_bytes(b"malicious-bytecode")
@@ -1100,7 +1102,7 @@ if family == "pycache-source-load":
     pycache = (
         case_root
         / "results"
-        / ".g9cb-bytecode-cache-disabled"
+        / ".g9cb2-bytecode-cache-disabled"
     )
     pycache.mkdir(parents=True)
     (pycache / "injected.pyc").write_bytes(b"malicious-bytecode")
@@ -1142,7 +1144,7 @@ try:
         invoke_forbidden_path(forbidden_name)
     else:
         raise AssertionError(f"unknown family: {family}")
-except builder.TerminalG9CB1Failure as exc:
+except builder.TerminalG9CB2Failure as exc:
     emit("terminal", error_type=type(exc).__name__, message=str(exc), counters=guard.counters())
 except BaseException as exc:
     emit("unexpected", error_type=type(exc).__name__, message=str(exc), counters=guard.counters())
@@ -1209,7 +1211,7 @@ def _assert_terminal_or_exact_absence(
         assert result["exact_name"] in absent_names
         return
     assert result["status"] == "terminal", result
-    assert result["error_type"] == "TerminalG9CB1Failure"
+    assert result["error_type"] == "TerminalG9CB2Failure"
 
 
 IMPORT_RECORDER_HARNESS = r"""
@@ -1403,7 +1405,7 @@ try:
                     load_source("recorded_late", "training/late_runtime.py")
                 else:
                     raise AssertionError(f"unknown scenario: {scenario}")
-except builder.TerminalG9CB1Failure as exc:
+except builder.TerminalG9CB2Failure as exc:
     emit("terminal", error_type=type(exc).__name__, message=str(exc))
 except BaseException as exc:
     emit("unexpected", error_type=type(exc).__name__, message=str(exc))
@@ -1671,7 +1673,7 @@ def test_builder_zero_access_rejects_noninteger_zero_counter(
         "cagr_values_computed"
     ] = invalid
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match="zero-access schema differs",
     ):
         builder._validate_zero_access(preregistration)
@@ -1724,7 +1726,7 @@ def test_malformed_preregistration_stops_before_all_downstream_preflight(
     )
     monkeypatch.setattr(
         builder.prereg,
-        "validate_superseded_preregistration",
+        "validate_failed_predecessor_preregistrations",
         forbidden("historical"),
     )
     monkeypatch.setattr(
@@ -1733,7 +1735,7 @@ def test_malformed_preregistration_stops_before_all_downstream_preflight(
         forbidden("topology"),
     )
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match="zero-access schema differs",
     ):
         builder.validate_claim_preflight(tmp_path)
@@ -1766,7 +1768,7 @@ def test_historical_v1_bytes_are_rejected_by_operative_version_before_zero(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match="operative preregistration protocol version",
     ):
         builder.validate_preregistration(
@@ -1816,7 +1818,7 @@ def test_preregistration_seal_head_rejects_intervening_commit(
     git("commit", "-m", "X")
     intervening = git("rev-parse", "HEAD")
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match="direct preregistration-seal child",
     ):
         builder._validate_preregistration_seal_head(
@@ -1887,7 +1889,7 @@ def test_committed_publication_topology_requires_exact_q_p_c_d(
     git("add", "intervening.txt")
     git("commit", "-m", "X")
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match="publication chain",
     ):
         builder._validate_committed_publication_topology(
@@ -1906,12 +1908,14 @@ def test_parser_exposes_read_only_committed_publication_verifier() -> None:
 
 
 def test_frozen_contract_and_deterministic_csv_gzip() -> None:
-    assert builder.IDENTITY == "G9CB-1"
-    assert builder.PROTOCOL_VERSION == "gross9_structural_clock_bundle_v2"
+    assert builder.IDENTITY == "G9CB-2"
+    assert builder.PROTOCOL_VERSION == (
+        "gross9_structural_clock_bundle_g9cb2_v1"
+    )
     assert builder.PREREGISTRATION_PATH == (
         Path(
             "results/"
-            "gross9_structural_clock_bundle_preregistration_v2_2026-07-31.json"
+            "gross9_structural_clock_bundle_g9cb2_preregistration_2026-07-31.json"
         )
     )
     assert builder.DOMAIN_START == "2023-06-01T00:00:00Z"
@@ -1935,7 +1939,7 @@ def test_frozen_contract_and_deterministic_csv_gzip() -> None:
     ) == Decimal("9.0")
     rows = [
         {
-            "identity": "G9CB-1",
+            "identity": "G9CB-2",
             "sleeve": "cand_rex_veto_7",
             "sleeve_order": 0,
             "configured_weight": "1.6",
@@ -1983,7 +1987,7 @@ def test_fresh_requires_exactly_one_side_gate() -> None:
             "short_gate": True,
         }
     }
-    with pytest.raises(builder.TerminalG9CB1Failure, match="exclusive"):
+    with pytest.raises(builder.TerminalG9CB2Failure, match="exclusive"):
         builder.reconstruct_intervals(bars)
 
 
@@ -1992,7 +1996,7 @@ def test_reconstruction_rejects_zero_side() -> None:
     bars[0]["decisions"] = {
         "cand_rex_veto_7": {"active": True, "side": 0}
     }
-    with pytest.raises(builder.TerminalG9CB1Failure, match="forbidden side"):
+    with pytest.raises(builder.TerminalG9CB2Failure, match="forbidden side"):
         builder.reconstruct_intervals(bars)
 
 
@@ -2120,7 +2124,7 @@ def test_csv_reparse_rejects_noncanonical_gzip_header() -> None:
     assert len(builder.validate_csv_gzip(raw)) == 5
     changed = bytearray(raw)
     changed[9] = 3
-    with pytest.raises(builder.TerminalG9CB1Failure, match="prefix"):
+    with pytest.raises(builder.TerminalG9CB2Failure, match="prefix"):
         builder.validate_csv_gzip(bytes(changed))
 
 
@@ -2152,7 +2156,7 @@ def test_counter_schema_has_exact_source_and_sleeve_fields() -> None:
 def test_counter_schema_rejects_an_extra_source_key() -> None:
     counters = builder._empty_counters()
     counters["rows_decoded"]["legacy_adapter"] = 0
-    with pytest.raises(builder.TerminalG9CB1Failure, match="counter names"):
+    with pytest.raises(builder.TerminalG9CB2Failure, match="counter names"):
         builder._validate_counter_contract(counters)
 
 
@@ -2210,7 +2214,7 @@ def test_jsonl_counter_preserves_prior_success_before_terminal_bad_row(
     source.write_bytes(b'{"value":1}\nnot-json\n')
     counters = builder._empty_counters()
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match="invalid JSONL row",
     ):
         builder._read_jsonl_rows(
@@ -2264,7 +2268,7 @@ def test_rank7_runtime_rejects_duplicate_model_open(tmp_path: Path) -> None:
         with runtime.np.load(model_paths[0], allow_pickle=False):
             pass
         with pytest.raises(
-            builder.TerminalG9CB1Failure,
+            builder.TerminalG9CB2Failure,
             match="more than once",
         ):
             runtime.np.load(model_paths[0], allow_pickle=False)
@@ -2320,7 +2324,7 @@ def test_core_rejects_three_amendment_drift() -> None:
     amendments = builder._expected_authority_amendment_bindings()
     amendments[1]["authority_commit"] = "0" * 40
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match="authority amendment",
     ):
         builder.build_core(
@@ -2350,7 +2354,7 @@ def test_prohibited_output_keys_are_valid_only_at_the_exact_zero_schema() -> Non
         "nested": {"portfolio_return_values_computed": 0},
     }
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match="outside the canonical zero assertion",
     ):
         builder._validate_prohibited_output_placement(malformed)
@@ -2391,6 +2395,647 @@ def test_recursive_hashed_inputs_are_deduplicated_and_path_sorted(
     ]
 
 
+def test_hashed_inputs_accept_exact_tracked_untracked_and_external_pairs(
+    tmp_path: Path,
+) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+
+    def git(*arguments: str) -> str:
+        return subprocess.run(
+            ["git", *arguments],
+            cwd=repository,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        ).stdout.strip()
+
+    git("init")
+    git("config", "user.email", "g9cb2-test@example.invalid")
+    git("config", "user.name", "G9CB-2 Test")
+    tracked = repository / "tracked.bin"
+    tracked.write_bytes(b"tracked")
+    git("add", "tracked.bin")
+    git("commit", "-m", "tracked")
+    tracked_blob = git("rev-parse", "HEAD:tracked.bin")
+
+    untracked = repository / "untracked.bin"
+    untracked.write_bytes(b"untracked")
+    external = tmp_path / "external.bin"
+    external.write_bytes(b"external")
+    assert builder.prereg._optional_git_metadata(
+        "tracked.bin", repository
+    ) == {"git_blob": tracked_blob, "git_mode": "100644"}
+    assert builder.prereg._optional_git_metadata(
+        "untracked.bin", repository
+    ) == {"git_blob": None, "git_mode": None}
+    assert builder.prereg._optional_git_metadata(
+        external.as_posix(), repository
+    ) == {"git_blob": None, "git_mode": None}
+    payload = {
+        "tracked": {
+            "path": "tracked.bin",
+            "sha256": hashlib.sha256(b"tracked").hexdigest(),
+            "git_blob": tracked_blob,
+            "git_mode": "100644",
+        },
+        "untracked": {
+            "path": "untracked.bin",
+            "sha256": hashlib.sha256(b"untracked").hexdigest(),
+            "git_blob": None,
+            "git_mode": None,
+        },
+        "external": {
+            "path": external.as_posix(),
+            "sha256": hashlib.sha256(b"external").hexdigest(),
+            "git_blob": None,
+            "git_mode": None,
+        },
+    }
+    assert builder._validate_regular_hashed_inputs(
+        repository, payload
+    ) == [
+        {
+            "path": external.as_posix(),
+            "sha256": hashlib.sha256(b"external").hexdigest(),
+            "size_bytes": len(b"external"),
+        },
+        {
+            "path": "tracked.bin",
+            "sha256": hashlib.sha256(b"tracked").hexdigest(),
+            "size_bytes": len(b"tracked"),
+        },
+        {
+            "path": "untracked.bin",
+            "sha256": hashlib.sha256(b"untracked").hexdigest(),
+            "size_bytes": len(b"untracked"),
+        },
+    ]
+
+
+@pytest.mark.parametrize(
+    "pair",
+    [
+        {"git_blob": None},
+        {"git_mode": None},
+        {"git_blob": None, "git_mode": "100644"},
+        {"git_blob": "a" * 40, "git_mode": None},
+        {"git_blob": False, "git_mode": False},
+        {"git_blob": 0, "git_mode": 0},
+        {"git_blob": 0.0, "git_mode": 0.0},
+        {"git_blob": [], "git_mode": []},
+        {"git_blob": {}, "git_mode": {}},
+        {"git_blob": "a" * 39, "git_mode": "100644"},
+        {"git_blob": "a" * 40, "git_mode": "100755"},
+    ],
+)
+def test_hashed_inputs_reject_malformed_git_pairs_before_byte_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pair: dict[str, object],
+) -> None:
+    (tmp_path / "input.bin").write_bytes(b"input")
+    called = False
+
+    def forbidden_read(*_args: object, **_kwargs: object) -> object:
+        nonlocal called
+        called = True
+        raise AssertionError("bound bytes must not be read")
+
+    monkeypatch.setattr(builder, "_read_bound_regular_bytes", forbidden_read)
+    binding = {
+        "path": "input.bin",
+        "sha256": hashlib.sha256(b"input").hexdigest(),
+        **pair,
+    }
+    with pytest.raises(builder.TerminalG9CB2Failure, match="Git metadata"):
+        builder._validate_regular_hashed_inputs(
+            tmp_path,
+            {"binding": binding},
+            verify_git=False,
+        )
+    assert called is False
+
+
+def test_hashed_inputs_reject_absolute_repository_spelling_before_byte_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "input.bin"
+    source.write_bytes(b"input")
+    monkeypatch.setattr(
+        builder,
+        "_read_bound_regular_bytes",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("bound bytes must not be read")
+        ),
+    )
+    with pytest.raises(
+        builder.TerminalG9CB2Failure,
+        match="must be repository-relative",
+    ):
+        builder._validate_regular_hashed_inputs(
+            tmp_path,
+            {
+                "binding": {
+                    "path": source.resolve().as_posix(),
+                    "sha256": hashlib.sha256(b"input").hexdigest(),
+                    "git_blob": None,
+                    "git_mode": None,
+                }
+            },
+        )
+
+
+@pytest.mark.parametrize("kind", ["directory", "fifo", "socket", "device"])
+def test_hashed_inputs_reject_nonregular_paths_before_byte_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+) -> None:
+    opened_socket: socket.socket | None = None
+    if kind == "directory":
+        candidate = tmp_path / "candidate"
+        candidate.mkdir()
+        path_text = "candidate"
+    elif kind == "fifo":
+        candidate = tmp_path / "candidate"
+        os.mkfifo(candidate)
+        path_text = "candidate"
+    elif kind == "socket":
+        candidate = tmp_path / "candidate"
+        opened_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        opened_socket.bind(candidate.as_posix())
+        path_text = "candidate"
+    else:
+        candidate = Path("/dev/null")
+        path_text = candidate.resolve().as_posix()
+
+    monkeypatch.setattr(
+        builder,
+        "_read_bound_regular_bytes",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("bound bytes must not be read")
+        ),
+    )
+    try:
+        with pytest.raises(
+            builder.TerminalG9CB2Failure,
+            match="not a regular file",
+        ):
+            builder._validate_regular_hashed_inputs(
+                tmp_path,
+                {
+                    "binding": {
+                        "path": path_text,
+                        "sha256": "0" * 64,
+                        "git_blob": None,
+                        "git_mode": None,
+                    }
+                },
+                verify_git=False,
+            )
+    finally:
+        if opened_socket is not None:
+            opened_socket.close()
+
+
+def test_nonblocking_reader_rejects_fifo_without_waiting_for_writer(
+    tmp_path: Path,
+) -> None:
+    fifo = tmp_path / "candidate"
+    os.mkfifo(fifo)
+    started = time.monotonic()
+    with pytest.raises(
+        builder.TerminalG9CB2Failure,
+        match="not a regular file",
+    ):
+        builder._read_bound_regular_bytes(fifo, "candidate")
+    assert time.monotonic() - started < 1.0
+
+
+def test_hashed_inputs_reject_tracked_null_and_untracked_string_before_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def git(*arguments: str) -> str:
+        return subprocess.run(
+            ["git", *arguments],
+            cwd=tmp_path,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        ).stdout.strip()
+
+    git("init")
+    git("config", "user.email", "g9cb2-test@example.invalid")
+    git("config", "user.name", "G9CB-2 Test")
+    tracked = tmp_path / "tracked.bin"
+    tracked.write_bytes(b"tracked")
+    git("add", "tracked.bin")
+    git("commit", "-m", "tracked")
+    untracked = tmp_path / "untracked.bin"
+    untracked.write_bytes(b"untracked")
+    monkeypatch.setattr(
+        builder,
+        "_read_bound_regular_bytes",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("bound bytes must not be read")
+        ),
+    )
+    cases = [
+        (
+            {
+                "path": "tracked.bin",
+                "sha256": hashlib.sha256(b"tracked").hexdigest(),
+                "git_blob": None,
+                "git_mode": None,
+            },
+            "absence proof",
+        ),
+        (
+            {
+                "path": "untracked.bin",
+                "sha256": hashlib.sha256(b"untracked").hexdigest(),
+                "git_blob": "a" * 40,
+                "git_mode": "100644",
+            },
+            "tracked bound input Git classification",
+        ),
+    ]
+    for binding, message in cases:
+        with pytest.raises(builder.TerminalG9CB2Failure, match=message):
+            builder._validate_regular_hashed_inputs(
+                tmp_path, {"binding": binding}
+            )
+    for path in (
+        builder.CLAIM_PATH,
+        builder.SENTINEL_PATH,
+        *builder.WORKER_LEDGER_PATHS,
+        builder.CSV_PATH,
+        builder.MANIFEST_PATH,
+    ):
+        assert not (tmp_path / path).exists()
+
+
+def test_hashed_inputs_reject_paired_null_with_unborn_head_before_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    subprocess.run(
+        ["git", "init"],
+        cwd=tmp_path,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    (tmp_path / "untracked.bin").write_bytes(b"untracked")
+    monkeypatch.setattr(
+        builder,
+        "_read_bound_regular_bytes",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("bound bytes must not be read")
+        ),
+    )
+    with pytest.raises(
+        builder.TerminalG9CB2Failure,
+        match="Git absence proof differs",
+    ):
+        builder._validate_regular_hashed_inputs(
+            tmp_path,
+            {
+                "binding": {
+                    "path": "untracked.bin",
+                    "sha256": hashlib.sha256(b"untracked").hexdigest(),
+                    "git_blob": None,
+                    "git_mode": None,
+                }
+            },
+        )
+
+
+def test_hashed_inputs_reject_index_head_drift_before_byte_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def git(*arguments: str) -> str:
+        return subprocess.run(
+            ["git", *arguments],
+            cwd=tmp_path,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        ).stdout.strip()
+
+    git("init")
+    git("config", "user.email", "g9cb2-test@example.invalid")
+    git("config", "user.name", "G9CB-2 Test")
+    source = tmp_path / "tracked.bin"
+    source.write_bytes(b"head")
+    git("add", "tracked.bin")
+    git("commit", "-m", "head")
+    head_blob = git("rev-parse", "HEAD:tracked.bin")
+    source.write_bytes(b"index")
+    git("add", "tracked.bin")
+    monkeypatch.setattr(
+        builder,
+        "_read_bound_regular_bytes",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("bound bytes must not be read")
+        ),
+    )
+    with pytest.raises(
+        builder.TerminalG9CB2Failure,
+        match="index/HEAD metadata mismatch",
+    ):
+        builder._validate_regular_hashed_inputs(
+            tmp_path,
+            {
+                "binding": {
+                    "path": "tracked.bin",
+                    "sha256": hashlib.sha256(b"index").hexdigest(),
+                    "git_blob": head_blob,
+                    "git_mode": "100644",
+                }
+            },
+        )
+
+
+def test_hashed_inputs_reject_staged_mode_drift_before_byte_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def git(*arguments: str) -> str:
+        return subprocess.run(
+            ["git", *arguments],
+            cwd=tmp_path,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        ).stdout.strip()
+
+    git("init")
+    git("config", "user.email", "g9cb2-test@example.invalid")
+    git("config", "user.name", "G9CB-2 Test")
+    git("config", "core.filemode", "true")
+    source = tmp_path / "tracked.bin"
+    source.write_bytes(b"head")
+    git("add", "tracked.bin")
+    git("commit", "-m", "head")
+    head_blob = git("rev-parse", "HEAD:tracked.bin")
+    source.chmod(0o755)
+    git("add", "tracked.bin")
+    monkeypatch.setattr(
+        builder,
+        "_read_bound_regular_bytes",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("bound bytes must not be read")
+        ),
+    )
+    with pytest.raises(
+        builder.TerminalG9CB2Failure,
+        match="index/HEAD metadata mismatch",
+    ):
+        builder._validate_regular_hashed_inputs(
+            tmp_path,
+            {
+                "binding": {
+                    "path": "tracked.bin",
+                    "sha256": hashlib.sha256(b"head").hexdigest(),
+                    "git_blob": head_blob,
+                    "git_mode": "100644",
+                }
+            },
+        )
+
+
+def test_hashed_inputs_reject_worktree_blob_drift_after_one_opaque_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def git(*arguments: str) -> str:
+        return subprocess.run(
+            ["git", *arguments],
+            cwd=tmp_path,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        ).stdout.strip()
+
+    git("init")
+    git("config", "user.email", "g9cb2-test@example.invalid")
+    git("config", "user.name", "G9CB-2 Test")
+    source = tmp_path / "tracked.bin"
+    source.write_bytes(b"head")
+    git("add", "tracked.bin")
+    git("commit", "-m", "head")
+    head_blob = git("rev-parse", "HEAD:tracked.bin")
+    source.write_bytes(b"worktree")
+    original_read = builder._read_bound_regular_bytes
+    reads: list[str] = []
+
+    def counted_read(path: Path, path_text: str) -> object:
+        reads.append(path_text)
+        return original_read(path, path_text)
+
+    monkeypatch.setattr(builder, "_read_bound_regular_bytes", counted_read)
+    with pytest.raises(
+        builder.TerminalG9CB2Failure,
+        match="worktree Git blob mismatch",
+    ):
+        builder._validate_regular_hashed_inputs(
+            tmp_path,
+            {
+                "binding": {
+                    "path": "tracked.bin",
+                    "sha256": hashlib.sha256(b"worktree").hexdigest(),
+                    "git_blob": head_blob,
+                    "git_mode": "100644",
+                }
+            },
+        )
+    assert reads == ["tracked.bin"]
+
+
+def test_hashed_inputs_reject_duplicate_null_string_git_declarations(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / "input.bin").write_bytes(b"input")
+    monkeypatch.setattr(
+        builder,
+        "_read_bound_regular_bytes",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("bound bytes must not be read")
+        ),
+    )
+    digest = hashlib.sha256(b"input").hexdigest()
+    with pytest.raises(
+        builder.TerminalG9CB2Failure,
+        match="conflicting duplicate input metadata",
+    ):
+        builder._validate_regular_hashed_inputs(
+            tmp_path,
+            {
+                "bindings": [
+                    {
+                        "path": "input.bin",
+                        "sha256": digest,
+                        "git_blob": None,
+                        "git_mode": None,
+                    },
+                    {
+                        "path": "input.bin",
+                        "sha256": digest,
+                        "git_blob": "a" * 40,
+                        "git_mode": "100644",
+                    },
+                ]
+            },
+            verify_git=False,
+        )
+
+
+def test_complete_git_inventory_fails_before_reading_earlier_valid_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / "a.bin").write_bytes(b"a")
+    (tmp_path / "z.bin").write_bytes(b"z")
+    reads: list[str] = []
+    original_read = builder._read_bound_regular_bytes
+
+    def counted_read(path: Path, path_text: str) -> object:
+        reads.append(path_text)
+        return original_read(path, path_text)
+
+    monkeypatch.setattr(builder, "_read_bound_regular_bytes", counted_read)
+    with pytest.raises(
+        builder.TerminalG9CB2Failure,
+        match="partial bound input Git metadata pair",
+    ):
+        builder._validate_regular_hashed_inputs(
+            tmp_path,
+            {
+                "a": {
+                    "path": "a.bin",
+                    "sha256": hashlib.sha256(b"a").hexdigest(),
+                },
+                "z": {
+                    "path": "z.bin",
+                    "sha256": hashlib.sha256(b"z").hexdigest(),
+                    "git_blob": None,
+                },
+            },
+            verify_git=False,
+        )
+    assert reads == []
+
+
+def test_duplicate_accepted_bindings_use_one_opaque_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / "input.bin").write_bytes(b"input")
+    reads: list[str] = []
+    original_read = builder._read_bound_regular_bytes
+
+    def counted_read(path: Path, path_text: str) -> object:
+        reads.append(path_text)
+        return original_read(path, path_text)
+
+    monkeypatch.setattr(builder, "_read_bound_regular_bytes", counted_read)
+    digest = hashlib.sha256(b"input").hexdigest()
+    assert builder._validate_regular_hashed_inputs(
+        tmp_path,
+        {
+            "bindings": [
+                {"path": "input.bin", "sha256": digest},
+                {
+                    "path": "input.bin",
+                    "sha256": digest,
+                    "size_bytes": len(b"input"),
+                },
+            ]
+        },
+        verify_git=False,
+    ) == [
+        {
+            "path": "input.bin",
+            "sha256": digest,
+            "size_bytes": len(b"input"),
+        }
+    ]
+    assert reads == ["input.bin"]
+
+
+def test_stage_zero_parser_rejects_nonzero_and_conflicted_entries() -> None:
+    blob = "a" * 40
+    for output in (
+        f"100644 {blob} 1\tinput.bin\n",
+        (
+            f"100644 {blob} 1\tinput.bin\n"
+            f"100644 {blob} 2\tinput.bin\n"
+        ),
+    ):
+        with pytest.raises(
+            builder.TerminalG9CB2Failure,
+            match="stage zero|exactly one",
+        ):
+            builder._parse_stage_zero_binding(output, "input.bin")
+
+
+def test_nonstage_index_entries_fail_full_preflight_before_byte_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / "input.bin").write_bytes(b"input")
+    blob = "a" * 40
+
+    def fake_git_process(
+        _root: Path, *arguments: str
+    ) -> subprocess.CompletedProcess[bytes]:
+        if arguments[:2] == ("ls-files", "--stage"):
+            output = (
+                f"100644 {blob} 1\tinput.bin\n"
+                f"100644 {blob} 2\tinput.bin\n"
+            ).encode()
+        elif arguments[0] == "ls-tree":
+            output = f"100644 blob {blob}\tinput.bin\n".encode()
+        else:
+            output = b"input.bin\n"
+        return subprocess.CompletedProcess(arguments, 0, output, b"")
+
+    monkeypatch.setattr(builder, "_git_process", fake_git_process)
+    monkeypatch.setattr(
+        builder,
+        "_read_bound_regular_bytes",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("bound bytes must not be read")
+        ),
+    )
+    with pytest.raises(
+        builder.TerminalG9CB2Failure,
+        match="exactly one bound input index entry",
+    ):
+        builder._validate_regular_hashed_inputs(
+            tmp_path,
+            {
+                "binding": {
+                    "path": "input.bin",
+                    "sha256": hashlib.sha256(b"input").hexdigest(),
+                    "git_blob": blob,
+                    "git_mode": "100644",
+                }
+            },
+        )
+
+
 @pytest.mark.parametrize(
     ("binding", "message"),
     [
@@ -2419,7 +3064,7 @@ def test_recursive_hashed_inputs_reject_malformed_path_bindings(
 ) -> None:
     (tmp_path / "input.bin").write_bytes(b"input")
     (tmp_path / "other.bin").write_bytes(b"other")
-    with pytest.raises(builder.TerminalG9CB1Failure, match=message):
+    with pytest.raises(builder.TerminalG9CB2Failure, match=message):
         builder._validate_regular_hashed_inputs(
             tmp_path,
             {"nested": [binding]},
@@ -2445,9 +3090,9 @@ def test_bytecode_preflight_rejects_repository_cache_artifacts(
     elif cache_kind == "file":
         (tmp_path / "orphan.pyc").write_bytes(b"malicious")
     else:
-        (tmp_path / "results" / ".g9cb-bytecode-cache-disabled").mkdir()
+        (tmp_path / "results" / ".g9cb2-bytecode-cache-disabled").mkdir()
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match="bytecode",
     ):
         builder._validate_bytecode_preflight(tmp_path)
@@ -2768,7 +3413,7 @@ def test_guard_rejects_procfd_and_devfd_namespaces(
 ) -> None:
     guard = _guard(tmp_path)
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match="descriptor namespace",
     ):
         guard._checked_path(path)
@@ -3092,7 +3737,7 @@ def test_import_recorder_rejects_invalid_lifecycle_transition(
 ) -> None:
     result = _run_import_recorder_case(tmp_path, scenario)
     assert result["status"] == "terminal", result
-    assert result["error_type"] == "TerminalG9CB1Failure"
+    assert result["error_type"] == "TerminalG9CB2Failure"
 
 
 def test_import_recorder_accepts_authenticated_new_sources_then_freezes(
@@ -3208,7 +3853,7 @@ def test_guarded_actual_runtime_roots_import_from_authenticated_source(
             "PYTHONPATH": str(repository_root),
             "PYTHONPYCACHEPREFIX": str(
                 repository_root
-                / "results/.g9cb-bytecode-cache-disabled"
+                / "results/.g9cb2-bytecode-cache-disabled"
             ),
         }
     )
@@ -3236,7 +3881,7 @@ def test_guarded_actual_runtime_roots_import_from_authenticated_source(
         "training/preregister_gross9_structural_clock_bundle.py",
     ]
     assert not (
-        repository_root / "results/.g9cb-bytecode-cache-disabled"
+        repository_root / "results/.g9cb2-bytecode-cache-disabled"
     ).exists()
 
 
@@ -3296,7 +3941,7 @@ def test_parent_death_kills_worker_at_every_post_handoff_phase(
 def test_guard_rejects_cross_stage_observation(tmp_path: Path) -> None:
     guard = _guard(tmp_path)
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match="other worker stage",
     ):
         guard._checked_path(guard.other_stage / "probe")
@@ -3308,7 +3953,7 @@ def test_guard_rejects_path_open_of_fifo(tmp_path: Path) -> None:
     fifo = tmp_path / "named.fifo"
     os.mkfifo(fifo)
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match="FIFO",
     ):
         guard._checked_path(fifo, fifo_open=True)
@@ -3317,7 +3962,7 @@ def test_guard_rejects_path_open_of_fifo(tmp_path: Path) -> None:
 @pytest.mark.parametrize("keyword", ["dir_fd", "src_dir_fd", "dst_dir_fd"])
 def test_guard_rejects_every_dir_fd_variant(keyword: str) -> None:
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match=keyword,
     ):
         builder._WorkerIsolationGuard._reject_dir_fds({keyword: -100})
@@ -3403,11 +4048,19 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
     )
     assert result["identity"] == builder.IDENTITY
     assert [path.as_posix() for path in publication_paths] == [
-        "results/gross9_structural_clock_bundle_attempt_consumed_2026-07-31.json",
-        "results/gross9_structural_clock_bundle_worker_capability_consumed_pass1_2026-07-31.json",
-        "results/gross9_structural_clock_bundle_worker_capability_consumed_pass2_2026-07-31.json",
-        "results/gross9_structural_clock_bundle_2026-07-31.csv.gz",
-        "results/gross9_structural_clock_bundle_manifest_2026-07-31.json",
+        "results/gross9_structural_clock_bundle_g9cb2_attempt_consumed_2026-07-31.json",
+        (
+            "results/"
+            "gross9_structural_clock_bundle_g9cb2_"
+            "worker_capability_consumed_pass1_2026-07-31.json"
+        ),
+        (
+            "results/"
+            "gross9_structural_clock_bundle_g9cb2_"
+            "worker_capability_consumed_pass2_2026-07-31.json"
+        ),
+        "results/gross9_structural_clock_bundle_g9cb2_2026-07-31.csv.gz",
+        "results/gross9_structural_clock_bundle_g9cb2_manifest_2026-07-31.json",
     ]
     assert all((tmp_path / path).is_file() for path in publication_paths)
     assert lifecycle[0][0] == "create"
@@ -3518,7 +4171,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         "manifest_hash",
     )
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match="parent authentication binding",
     ):
         builder._validate_final_manifest_contract(
@@ -3544,7 +4197,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         "manifest_hash",
     )
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match="receipt binding|counter|core contract",
     ):
         builder._validate_final_manifest_contract(
@@ -3590,7 +4243,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         "manifest_hash",
     )
     with pytest.raises(
-        builder.TerminalG9CB1Failure,
+        builder.TerminalG9CB2Failure,
         match="receipt binding",
     ):
         builder._validate_final_manifest_contract(

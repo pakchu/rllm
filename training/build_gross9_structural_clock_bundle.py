@@ -1,4 +1,4 @@
-"""Claim and one-shot builder for the G9CB-1 structural clock bundle.
+"""Claim and one-shot builder for the G9CB-2 structural clock bundle.
 
 The import-time and claim paths are deliberately stdlib-only.  Generic Gross9
 runtime modules are imported only by a fresh worker process after the durable
@@ -44,38 +44,43 @@ import stat
 import subprocess
 import sys
 import tempfile
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Iterable, Mapping, NoReturn, Sequence
 import zlib
 
 from training import preregister_gross9_structural_clock_bundle as prereg
 
 
-IDENTITY = "G9CB-1"
-PROTOCOL_VERSION = "gross9_structural_clock_bundle_v2"
+IDENTITY = "G9CB-2"
+PROTOCOL_VERSION = "gross9_structural_clock_bundle_g9cb2_v1"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 BUILDER_PATH = Path("training/build_gross9_structural_clock_bundle.py")
 BUILDER_TEST_PATH = Path("tests/test_build_gross9_structural_clock_bundle.py")
 PREREGISTER_PATH = Path("training/preregister_gross9_structural_clock_bundle.py")
 PREREGISTRATION_PATH = prereg.PREREGISTRATION_PATH
 CLAIM_PATH = Path(
-    "results/gross9_structural_clock_bundle_access_claim_2026-07-31.json"
+    "results/"
+    "gross9_structural_clock_bundle_g9cb2_access_claim_2026-07-31.json"
 )
 SENTINEL_PATH = Path(
-    "results/gross9_structural_clock_bundle_attempt_consumed_2026-07-31.json"
+    "results/"
+    "gross9_structural_clock_bundle_g9cb2_attempt_consumed_2026-07-31.json"
 )
-CSV_PATH = Path("results/gross9_structural_clock_bundle_2026-07-31.csv.gz")
+CSV_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb2_2026-07-31.csv.gz"
+)
 MANIFEST_PATH = Path(
-    "results/gross9_structural_clock_bundle_manifest_2026-07-31.json"
+    "results/"
+    "gross9_structural_clock_bundle_g9cb2_manifest_2026-07-31.json"
 )
 WORKER_LEDGER_PATHS = (
     Path(
         "results/"
-        "gross9_structural_clock_bundle_worker_capability_consumed_pass1_"
+        "gross9_structural_clock_bundle_g9cb2_worker_capability_consumed_pass1_"
         "2026-07-31.json"
     ),
     Path(
         "results/"
-        "gross9_structural_clock_bundle_worker_capability_consumed_pass2_"
+        "gross9_structural_clock_bundle_g9cb2_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
 )
@@ -190,24 +195,24 @@ RANK7_ROWS_USED_COUNTERS = (
     "rank7_bundle_parity_rows_compared",
 )
 GZIP_PREFIX = bytes.fromhex("1f8b08000000000002ff")
-TERMINAL_ACTION = "TERMINAL_G9CB1_ATTEMPT_CONSUMED_NO_RETRY"
+TERMINAL_ACTION = "TERMINAL_G9CB2_ATTEMPT_CONSUMED_NO_RETRY"
 _TIMESTAMP_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\Z")
 _SHA_RE = re.compile(r"[0-9a-f]{64}\Z")
 _DIST_NORMALIZE_RE = re.compile(r"[-_.]+")
 _STAGED_CSV_NAME = "gross9_structural_clock_bundle.csv.gz"
 _STAGED_CORE_NAME = "gross9_structural_clock_bundle_core.json"
 _STAGED_RECEIPT_NAME = "gross9_structural_clock_bundle_pass_receipt.json"
-_PYCACHE_PREFIX_RELATIVE = Path("results/.g9cb-bytecode-cache-disabled")
+_PYCACHE_PREFIX_RELATIVE = Path("results/.g9cb2-bytecode-cache-disabled")
 _PR_SET_PDEATHSIG = 1
 _LIBC = ctypes.CDLL(None, use_errno=True)
 
 
-class TerminalG9CB1Failure(RuntimeError):
+class TerminalG9CB2Failure(RuntimeError):
     """A terminal protocol or post-sentinel failure."""
 
 
-def _fail(message: str) -> None:
-    raise TerminalG9CB1Failure(message)
+def _fail(message: str) -> NoReturn:
+    raise TerminalG9CB2Failure(message)
 
 
 def _canonical_json_bytes(payload: Any, *, trailing_lf: bool = True) -> bytes:
@@ -260,7 +265,7 @@ def _read_canonical_object(path: Path, hash_field: str | None = None) -> tuple[d
     try:
         payload = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_object)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB1Failure(f"invalid canonical JSON: {path}") from exc
+        raise TerminalG9CB2Failure(f"invalid canonical JSON: {path}") from exc
     if not isinstance(payload, dict) or raw != _canonical_json_bytes(payload):
         _fail(f"noncanonical JSON bytes: {path}")
     if hash_field is not None:
@@ -471,6 +476,17 @@ def _binding_path(binding: Mapping[str, Any]) -> str:
     return str(values[0])
 
 
+def _require_bound_regular_lstat(path: Path, path_text: str) -> None:
+    try:
+        mode = os.lstat(path).st_mode
+    except OSError as exc:
+        raise TerminalG9CB2Failure(
+            f"bound input cannot be inspected: {path_text}"
+        ) from exc
+    if not stat.S_ISREG(mode):
+        _fail(f"bound input is not a regular file: {path_text}")
+
+
 def _bound_regular_path(root: Path, path_text: str) -> tuple[Path, bool]:
     if not path_text or "\x00" in path_text:
         _fail("bound input path is empty or contains NUL")
@@ -480,11 +496,17 @@ def _bound_regular_path(root: Path, path_text: str) -> tuple[Path, bool]:
         try:
             resolved = candidate.resolve(strict=True)
         except (OSError, RuntimeError) as exc:
-            raise TerminalG9CB1Failure(
+            raise TerminalG9CB2Failure(
                 f"bound absolute input cannot be resolved: {path_text}"
             ) from exc
         if path_text != resolved.as_posix():
             _fail(f"bound absolute input is not canonical: {path_text}")
+        repository_root = root.resolve(strict=True)
+        if resolved == repository_root or repository_root in resolved.parents:
+            _fail(
+                "bound absolute repository input must be repository-relative: "
+                f"{path_text}"
+            )
         current = Path(candidate.anchor)
         for part in candidate.parts[1:]:
             current /= part
@@ -492,9 +514,10 @@ def _bound_regular_path(root: Path, path_text: str) -> tuple[Path, bool]:
                 if stat.S_ISLNK(os.lstat(current).st_mode):
                     _fail(f"bound absolute input traverses a symlink: {path_text}")
             except OSError as exc:
-                raise TerminalG9CB1Failure(
+                raise TerminalG9CB2Failure(
                     f"bound absolute input cannot be inspected: {path_text}"
                 ) from exc
+        _require_bound_regular_lstat(resolved, path_text)
         return resolved, False
 
     if "\\" in path_text:
@@ -511,7 +534,7 @@ def _bound_regular_path(root: Path, path_text: str) -> tuple[Path, bool]:
         resolved = candidate.resolve(strict=True)
         resolved.relative_to(repository_root)
     except (OSError, RuntimeError, ValueError) as exc:
-        raise TerminalG9CB1Failure(
+        raise TerminalG9CB2Failure(
             f"bound repository input escapes or is absent: {path_text}"
         ) from exc
     if resolved != candidate:
@@ -523,9 +546,10 @@ def _bound_regular_path(root: Path, path_text: str) -> tuple[Path, bool]:
             if stat.S_ISLNK(os.lstat(current).st_mode):
                 _fail(f"bound repository input traverses a symlink: {path_text}")
         except OSError as exc:
-            raise TerminalG9CB1Failure(
+            raise TerminalG9CB2Failure(
                 f"bound repository input cannot be inspected: {path_text}"
             ) from exc
+    _require_bound_regular_lstat(candidate, path_text)
     return candidate, True
 
 
@@ -533,7 +557,7 @@ def _validate_zero_access(payload: Mapping[str, Any]) -> None:
     try:
         prereg.validate_zero_access_schema(payload)
     except (TypeError, ValueError) as exc:
-        raise TerminalG9CB1Failure(
+        raise TerminalG9CB2Failure(
             f"preregistration zero-access schema differs: {exc}"
         ) from exc
 
@@ -603,10 +627,10 @@ def validate_preregistration(
 
     path = _rooted(root, PREREGISTRATION_PATH)
     payload, raw = _read_canonical_object(path, "manifest_hash")
-    if payload.get("identity") != IDENTITY:
-        _fail("preregistration identity mismatch")
     if payload.get("protocol_version") != prereg.PROTOCOL_VERSION:
         _fail("operative preregistration protocol version mismatch")
+    if payload.get("identity") != IDENTITY:
+        _fail("preregistration identity mismatch")
     _validate_zero_access(payload)
     independence = payload.get("candidate_independence")
     if not isinstance(independence, Mapping) or independence.get(
@@ -621,7 +645,7 @@ def validate_preregistration(
     required_binding_keys = {
         "protocol",
         "authority_amendments",
-        "superseded_preregistration",
+        "failed_predecessor_preregistrations",
         "direct_authority",
         "config_metadata_evidence",
         "runtime_import_roots",
@@ -634,6 +658,7 @@ def validate_preregistration(
         _fail("preregistration bindings schema is incomplete")
     for prohibited in (
         "authority_amendment",
+        "superseded_preregistration",
         "adapter_import_roots",
         "adapter_import_closure",
     ):
@@ -643,21 +668,25 @@ def validate_preregistration(
     if synthetic:
         if (root / ".git").exists():
             _fail("synthetic preregistration hook requires a noncanonical root")
-        superseded = prereg.expected_superseded_preregistration_binding()
+        predecessors = (
+            prereg.expected_failed_predecessor_preregistration_bindings()
+        )
     else:
         try:
-            superseded = prereg.validate_superseded_preregistration(root)
+            predecessors = (
+                prereg.validate_failed_predecessor_preregistrations(root)
+            )
         except (
             OSError,
             RuntimeError,
             ValueError,
             subprocess.CalledProcessError,
         ) as exc:
-            raise TerminalG9CB1Failure(
-                "superseded preregistration evidence differs"
+            raise TerminalG9CB2Failure(
+                "failed predecessor preregistration evidence differs"
             ) from exc
-    if bindings.get("superseded_preregistration") != superseded:
-        _fail("superseded preregistration binding mismatch")
+    if bindings.get("failed_predecessor_preregistrations") != predecessors:
+        _fail("failed predecessor preregistration bindings mismatch")
     recorded_implementation = payload.get("protocol_implementation_commit")
     if not isinstance(recorded_implementation, str) or not re.fullmatch(
         r"[0-9a-f]{40}", recorded_implementation
@@ -674,7 +703,7 @@ def validate_preregistration(
             ValueError,
             subprocess.CalledProcessError,
         ) as exc:
-            raise TerminalG9CB1Failure(
+            raise TerminalG9CB2Failure(
                 "protocol implementation topology differs"
             ) from exc
     if recorded_implementation != implementation:
@@ -696,7 +725,7 @@ def validate_preregistration(
                 verify_git_seal=False,
             )
         except (TypeError, ValueError) as exc:
-            raise TerminalG9CB1Failure(
+            raise TerminalG9CB2Failure(
                 "preregistration producer validation failed"
             ) from exc
 
@@ -1166,7 +1195,7 @@ def _discover_import_closure(root: Path, entry_paths: Sequence[str]) -> list[Pat
                 filename=current.as_posix(),
             )
         except (UnicodeDecodeError, SyntaxError) as exc:
-            raise TerminalG9CB1Failure(
+            raise TerminalG9CB2Failure(
                 f"import closure source cannot be parsed: {current}"
             ) from exc
         discovered.add(current)
@@ -1207,12 +1236,167 @@ def _validate_environment(
     return dict(expected)
 
 
+def _git_process(
+    root: Path, *arguments: str
+) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(
+        ["git", "-C", str(root), *arguments],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+
+def _decode_git_stdout(
+    completed: subprocess.CompletedProcess[bytes], operation: str
+) -> str:
+    try:
+        return completed.stdout.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise TerminalG9CB2Failure(
+            f"{operation}: Git output is not UTF-8"
+        ) from exc
+
+
+def _parse_stage_zero_binding(output: str, path_text: str) -> tuple[str, str]:
+    lines = output.splitlines()
+    if len(lines) != 1:
+        _fail(f"expected exactly one bound input index entry: {path_text}")
+    metadata, separator, observed_path = lines[0].partition("\t")
+    fields = metadata.split()
+    if (
+        not separator
+        or observed_path != path_text
+        or len(fields) != 3
+        or fields[2] != "0"
+    ):
+        _fail(f"bound input index entry is not exact stage zero: {path_text}")
+    mode, blob, _stage = fields
+    return blob, mode
+
+
+def _parse_head_tree_binding(output: str, path_text: str) -> tuple[str, str]:
+    lines = output.splitlines()
+    if len(lines) != 1:
+        _fail(f"expected exactly one bound input HEAD entry: {path_text}")
+    metadata, separator, observed_path = lines[0].partition("\t")
+    fields = metadata.split()
+    if (
+        not separator
+        or observed_path != path_text
+        or len(fields) != 3
+        or fields[1] != "blob"
+    ):
+        _fail(f"bound input HEAD entry is not an exact blob: {path_text}")
+    mode, _kind, blob = fields
+    return blob, mode
+
+
+def _validate_git_pair_shape(
+    binding: Mapping[str, Any], path_text: str
+) -> None:
+    has_blob = "git_blob" in binding
+    has_mode = "git_mode" in binding
+    if has_blob != has_mode:
+        _fail(f"partial bound input Git metadata pair: {path_text}")
+    if not has_blob:
+        return
+    blob = binding["git_blob"]
+    mode = binding["git_mode"]
+    if blob is None and mode is None:
+        return
+    if (
+        type(blob) is not str
+        or type(mode) is not str
+        or not re.fullmatch(r"[0-9a-f]{40}", blob)
+        or mode != "100644"
+    ):
+        _fail(f"malformed bound input Git metadata pair: {path_text}")
+
+
+def _validate_git_pair_preflight(
+    root: Path,
+    path_text: str,
+    *,
+    repository_relative: bool,
+    declaration: Mapping[str, Any],
+    verify_git: bool,
+) -> tuple[str, str] | None:
+    if "git_blob" not in declaration:
+        return None
+    blob = declaration["git_blob"]
+    mode = declaration["git_mode"]
+    if not repository_relative:
+        if blob is not None or mode is not None:
+            _fail(f"absolute bound input declares Git metadata: {path_text}")
+        return None
+    if not verify_git:
+        if isinstance(blob, str) and isinstance(mode, str):
+            return blob, mode
+        return None
+
+    staged = _git_process(root, "ls-files", "--stage", "--", path_text)
+    tree = _git_process(root, "ls-tree", "HEAD", "--", path_text)
+    matched = _git_process(
+        root, "ls-files", "--error-unmatch", "--", path_text
+    )
+    staged_output = _decode_git_stdout(staged, "git ls-files --stage")
+    tree_output = _decode_git_stdout(tree, "git ls-tree")
+    matched_output = _decode_git_stdout(
+        matched, "git ls-files --error-unmatch"
+    )
+    if blob is None and mode is None:
+        if (
+            staged.returncode != 0
+            or tree.returncode != 0
+            or staged_output
+            or tree_output
+            or matched.returncode != 1
+            or matched_output
+        ):
+            _fail(f"paired-null bound input Git absence proof differs: {path_text}")
+        return None
+    if type(blob) is not str or type(mode) is not str:
+        _fail(f"malformed bound input Git metadata pair: {path_text}")
+    tracked_blob = blob
+    tracked_mode = mode
+    if (
+        staged.returncode != 0
+        or tree.returncode != 0
+        or matched.returncode != 0
+        or matched_output.rstrip("\n") != path_text
+    ):
+        _fail(f"tracked bound input Git classification differs: {path_text}")
+    index_blob, index_mode = _parse_stage_zero_binding(
+        staged_output, path_text
+    )
+    tree_blob, tree_mode = _parse_head_tree_binding(tree_output, path_text)
+    if (
+        index_blob != tracked_blob
+        or tree_blob != tracked_blob
+        or index_mode != tracked_mode
+        or tree_mode != tracked_mode
+    ):
+        _fail(f"bound input index/HEAD metadata mismatch: {path_text}")
+    return tracked_blob, tracked_mode
+
+
+def _git_blob_id(raw: bytes) -> str:
+    header = f"blob {len(raw)}\0".encode("ascii")
+    return hashlib.sha1(header + raw).hexdigest()
+
+
 def _read_bound_regular_bytes(path: Path, path_text: str) -> tuple[bytes, os.stat_result]:
-    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
     try:
         descriptor = os.open(path, flags)
     except OSError as exc:
-        raise TerminalG9CB1Failure(
+        raise TerminalG9CB2Failure(
             f"bound input cannot be opened without following symlinks: {path_text}"
         ) from exc
     try:
@@ -1239,7 +1423,7 @@ def _validate_regular_hashed_inputs(
     *,
     verify_git: bool = True,
 ) -> list[dict[str, Any]]:
-    seen: dict[str, dict[str, Any]] = {}
+    prepared: dict[str, dict[str, Any]] = {}
     declarations: dict[str, dict[str, Any]] = {}
     for binding in _iter_bindings(preregistration):
         path_text = _binding_path(binding)
@@ -1247,19 +1431,15 @@ def _validate_regular_hashed_inputs(
         if not isinstance(digest, str) or not _SHA_RE.fullmatch(digest):
             _fail(f"bound input SHA-256 is not lowercase hexadecimal: {path_text}")
         candidate, repository_relative = _bound_regular_path(root, path_text)
-        raw, info = _read_bound_regular_bytes(candidate, path_text)
-        actual = _sha256_bytes(raw)
-        if actual != digest:
-            _fail(f"bound input hash mismatch: {path_text}")
-        size = info.st_size
+        _validate_git_pair_shape(binding, path_text)
+        declared_size: int | None = None
         if "size_bytes" in binding:
             declared_size = binding["size_bytes"]
             if (
                 type(declared_size) is not int
                 or declared_size < 0
-                or declared_size != size
             ):
-                _fail(f"bound input size mismatch: {path_text}")
+                _fail(f"bound input size declaration is invalid: {path_text}")
         if "path_type" in binding and binding["path_type"] != "regular_file":
             _fail(f"bound input path_type mismatch: {path_text}")
 
@@ -1273,32 +1453,64 @@ def _validate_regular_hashed_inputs(
                     )
                 declared[key] = value
 
-        if verify_git and repository_relative and (
-            "git_blob" in binding or "git_mode" in binding
-        ):
-            if not isinstance(binding.get("git_blob"), str) or not isinstance(
-                binding.get("git_mode"), str
-            ):
-                _fail(f"incomplete bound input Git metadata: {path_text}")
-            tree = _git_text(root, "ls-tree", "HEAD", "--", path_text).split()
-            if (
-                len(tree) < 3
-                or tree[0] != binding["git_mode"]
-                or tree[1] != "blob"
-                or tree[2] != binding["git_blob"]
-            ):
-                _fail(f"bound input Git metadata mismatch: {path_text}")
-
-        record = {"path": path_text, "sha256": actual, "size_bytes": size}
-        prior = seen.get(path_text)
+        row = {
+            "path": path_text,
+            "candidate": candidate,
+            "repository_relative": repository_relative,
+            "sha256": digest,
+            "declared_sizes": (
+                set() if declared_size is None else {declared_size}
+            ),
+        }
+        prior = prepared.get(path_text)
         if prior is not None:
-            if prior != record:
+            if (
+                prior["candidate"] != candidate
+                or prior["repository_relative"] != repository_relative
+                or prior["sha256"] != digest
+            ):
                 _fail(f"conflicting duplicate input binding: {path_text}")
+            if declared_size is not None:
+                prior["declared_sizes"].add(declared_size)
+                if len(prior["declared_sizes"]) != 1:
+                    _fail(f"conflicting duplicate input size: {path_text}")
             continue
-        seen[path_text] = record
-    if not seen:
+        prepared[path_text] = row
+    if not prepared:
         _fail("preregistration exposed no path/hash bindings")
-    return [seen[path] for path in sorted(seen)]
+
+    tracked_pairs: dict[str, tuple[str, str] | None] = {}
+    for path_text in sorted(prepared):
+        row = prepared[path_text]
+        tracked_pairs[path_text] = _validate_git_pair_preflight(
+            root,
+            path_text,
+            repository_relative=bool(row["repository_relative"]),
+            declaration=declarations[path_text],
+            verify_git=verify_git,
+        )
+
+    authenticated: list[dict[str, Any]] = []
+    for path_text in sorted(prepared):
+        row = prepared[path_text]
+        raw, info = _read_bound_regular_bytes(row["candidate"], path_text)
+        actual = _sha256_bytes(raw)
+        if actual != row["sha256"]:
+            _fail(f"bound input hash mismatch: {path_text}")
+        declared_sizes = row["declared_sizes"]
+        if declared_sizes and declared_sizes != {info.st_size}:
+            _fail(f"bound input size mismatch: {path_text}")
+        tracked_pair = tracked_pairs[path_text]
+        if tracked_pair is not None and _git_blob_id(raw) != tracked_pair[0]:
+            _fail(f"bound input worktree Git blob mismatch: {path_text}")
+        authenticated.append(
+            {
+                "path": path_text,
+                "sha256": actual,
+                "size_bytes": info.st_size,
+            }
+        )
+    return authenticated
 
 
 def _validate_one_static_closure(
@@ -1334,7 +1546,7 @@ def _validate_one_static_closure(
         try:
             ast.parse(raw, filename=row["path"])
         except SyntaxError as exc:
-            raise TerminalG9CB1Failure(f"closure source cannot be parsed: {row['path']}") from exc
+            raise TerminalG9CB2Failure(f"closure source cannot be parsed: {row['path']}") from exc
         observed = {
             "path": row["path"],
             "path_type": "regular_file",
@@ -1845,7 +2057,7 @@ class _WorkerIsolationGuard:
         try:
             raw = os.fspath(value)
         except TypeError as exc:
-            raise TerminalG9CB1Failure("guarded path is not path-like") from exc
+            raise TerminalG9CB2Failure("guarded path is not path-like") from exc
         if isinstance(raw, bytes):
             text = raw.decode(sys.getfilesystemencoding(), "surrogateescape")
         elif isinstance(raw, str):
@@ -1885,7 +2097,7 @@ class _WorkerIsolationGuard:
                 except FileNotFoundError:
                     return candidate
                 except OSError as exc:
-                    raise TerminalG9CB1Failure(
+                    raise TerminalG9CB2Failure(
                         f"guarded path resolution failed: {candidate}"
                     ) from exc
                 if stat.S_ISLNK(info.st_mode):
@@ -3219,7 +3431,7 @@ def _parse_timestamp(value: str) -> int:
     try:
         parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
     except ValueError as exc:
-        raise TerminalG9CB1Failure(f"invalid timestamp: {value}") from exc
+        raise TerminalG9CB2Failure(f"invalid timestamp: {value}") from exc
     seconds = int(parsed.timestamp())
     if datetime.fromtimestamp(seconds, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") != value:
         _fail(f"noncanonical timestamp: {value}")
@@ -3238,7 +3450,7 @@ def _decimal(value: Any, field: str) -> Decimal:
     try:
         result = Decimal(str(value))
     except (InvalidOperation, ValueError) as exc:
-        raise TerminalG9CB1Failure(f"invalid decimal {field}") from exc
+        raise TerminalG9CB2Failure(f"invalid decimal {field}") from exc
     if not result.is_finite():
         _fail(f"nonfinite decimal {field}")
     return result
@@ -3516,13 +3728,13 @@ def validate_csv_gzip(raw: bytes, *, require_all_sleeves: bool = True) -> list[d
     try:
         decompressed = gzip.decompress(raw)
     except (OSError, EOFError) as exc:
-        raise TerminalG9CB1Failure("invalid gzip stream") from exc
+        raise TerminalG9CB2Failure("invalid gzip stream") from exc
     if compress_csv(decompressed) != raw:
         _fail("gzip bytes are not canonical")
     try:
         text = decompressed.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise TerminalG9CB1Failure("CSV is not UTF-8") from exc
+        raise TerminalG9CB2Failure("CSV is not UTF-8") from exc
     if "\r" in text or not text.endswith("\n") or "\n\n" in text:
         _fail("CSV line-ending contract failure")
     reader = csv.DictReader(io.StringIO(text, newline=""))
@@ -3844,7 +4056,7 @@ def _install_counted_rank7_runtime(
         try:
             candidate = Path(os.fspath(path))
         except TypeError as exc:
-            raise TerminalG9CB1Failure(
+            raise TerminalG9CB2Failure(
                 "Rank7 model open did not use a filesystem path"
             ) from exc
         candidate = candidate if candidate.is_absolute() else root / candidate
@@ -3909,7 +4121,7 @@ def _load_worker_json(root: Path, path: str) -> dict[str, Any]:
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB1Failure(f"worker JSON input is invalid: {path}") from exc
+        raise TerminalG9CB2Failure(f"worker JSON input is invalid: {path}") from exc
     if not isinstance(value, dict):
         _fail(f"worker JSON input is not an object: {path}")
     return value
@@ -3919,7 +4131,7 @@ def _market_seconds(market: Any) -> tuple[list[int], list[Any]]:
     try:
         values = list(market["date"])
     except (KeyError, TypeError) as exc:
-        raise TerminalG9CB1Failure("generic market lacks date rows") from exc
+        raise TerminalG9CB2Failure("generic market lacks date rows") from exc
     seconds: list[int] = []
     for value in values:
         if hasattr(value, "to_pydatetime"):
@@ -3949,7 +4161,7 @@ def _generic_time_second(value: Any, pandas_module: Any) -> int:
             pandas_module.to_datetime(value, utc=True, errors="raise")
         )
     except (TypeError, ValueError) as exc:
-        raise TerminalG9CB1Failure("generic source timestamp is invalid") from exc
+        raise TerminalG9CB2Failure("generic source timestamp is invalid") from exc
     return int(parsed.timestamp())
 
 
@@ -3990,7 +4202,7 @@ def _read_jsonl_rows(
         try:
             row = json.loads(line.decode("utf-8"), object_pairs_hook=_unique_object)
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise TerminalG9CB1Failure(f"invalid JSONL row: {path}") from exc
+            raise TerminalG9CB2Failure(f"invalid JSONL row: {path}") from exc
         if not isinstance(row, dict):
             _fail(f"JSONL row is not an object: {path}")
         if "_g9cb_parser_ordinal" in row:
@@ -4151,7 +4363,7 @@ def _install_counted_csv_reader(
         try:
             source_path = Path(os.fspath(source))
         except TypeError as exc:
-            raise TerminalG9CB1Failure(
+            raise TerminalG9CB2Failure(
                 "generic CSV read did not use an authenticated path"
             ) from exc
         candidate = (
@@ -4190,7 +4402,7 @@ def _install_counted_csv_reader(
         try:
             decoded_rows = len(frame)
         except TypeError as exc:
-            raise TerminalG9CB1Failure(
+            raise TerminalG9CB2Failure(
                 "chunked or streaming CSV decode is forbidden"
             ) from exc
         first_ordinal = counters["rows_decoded"][logical_name]
@@ -4201,7 +4413,7 @@ def _install_counted_csv_reader(
             )
             frame.attrs["_g9cb_logical_source"] = logical_name
         except (AttributeError, TypeError) as exc:
-            raise TerminalG9CB1Failure(
+            raise TerminalG9CB2Failure(
                 "decoded CSV frame cannot carry parser ordinals"
             ) from exc
         return frame
@@ -5441,7 +5653,7 @@ def _worker_main(
                 object_pairs_hook=_unique_object,
             )
         except (UnicodeEncodeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise TerminalG9CB1Failure(
+            raise TerminalG9CB2Failure(
                 "worker parent authentication is invalid"
             ) from exc
         if (
@@ -6051,7 +6263,7 @@ def _validate_worker_ledger_and_receipt(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB1Failure(
+        raise TerminalG9CB2Failure(
             "worker consumption ledger is invalid"
         ) from exc
     expected_ledger = _worker_ledger_payload(
@@ -6095,7 +6307,7 @@ def _validate_worker_ledger_and_receipt(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB1Failure("worker receipt is invalid") from exc
+        raise TerminalG9CB2Failure("worker receipt is invalid") from exc
     if (
         not isinstance(receipt, dict)
         or receipt_raw != _canonical_json_bytes(receipt)
@@ -6214,7 +6426,7 @@ def _validate_worker_product(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB1Failure("worker core is invalid JSON") from exc
+        raise TerminalG9CB2Failure("worker core is invalid JSON") from exc
     if not isinstance(core, dict) or core_raw != _canonical_json_bytes(core):
         _fail("worker core bytes are not canonical")
     _validate_prohibited_output_placement(core)
@@ -6541,6 +6753,7 @@ def validate_committed_publication(
     if _sha256_bytes(active_raw) != prereg_binding["sha256"]:
         _fail("committed preregistration file hash differs")
     _tracked_head_bytes(root, prereg.HISTORICAL_PREREGISTRATION_PATH)
+    _tracked_head_bytes(root, prereg.FAILED_V2_PREREGISTRATION_PATH)
 
     claim_tracked_raw = _tracked_head_bytes(root, CLAIM_PATH)
     claim, claim_raw = _read_canonical_object(
@@ -6933,9 +7146,9 @@ def produce_one_shot(
             and not any(stage_one.iterdir())
         ):
             stage_one.rmdir()
-        if isinstance(exc, TerminalG9CB1Failure):
+        if isinstance(exc, TerminalG9CB2Failure):
             raise
-        raise TerminalG9CB1Failure(f"{TERMINAL_ACTION}: {exc}") from exc
+        raise TerminalG9CB2Failure(f"{TERMINAL_ACTION}: {exc}") from exc
 
 def _raw_worker_option(arguments: Sequence[str], name: str) -> str:
     positions = [

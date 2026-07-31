@@ -1,4 +1,4 @@
-"""Create the metadata-only G9CB-1 structural-clock preregistration.
+"""Create the metadata-only G9CB-2 structural-clock preregistration.
 
 This module deliberately has a stdlib-only import surface.  It authenticates
 opaque bytes, Git metadata, permitted JSON metadata, static Python imports,
@@ -25,11 +25,16 @@ from typing import Any, Iterable, Mapping, Sequence
 import zlib
 
 
-PROTOCOL_VERSION = "gross9_structural_clock_bundle_preregistration_v2"
+PROTOCOL_VERSION = (
+    "gross9_structural_clock_bundle_g9cb2_preregistration_v1"
+)
 HISTORICAL_PROTOCOL_VERSION = (
     "gross9_structural_clock_bundle_preregistration_v1"
 )
-IDENTITY = "G9CB-1"
+FAILED_V2_PROTOCOL_VERSION = (
+    "gross9_structural_clock_bundle_preregistration_v2"
+)
+IDENTITY = "G9CB-2"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 RESULTS_ROOT = REPOSITORY_ROOT / "results"
 PREREGISTRATION_SOURCE = Path(
@@ -44,6 +49,11 @@ ARTIFACT_TEST = Path(
 BUILDER_SOURCE = Path("training/build_gross9_structural_clock_bundle.py")
 BUILDER_TEST = Path("tests/test_build_gross9_structural_clock_bundle.py")
 AUTHORITY_DECISION_PATH = Path(
+    "docs/"
+    "gross9-structural-clock-bundle-successor-authority-decision-"
+    "2026-07-31.md"
+)
+PREDECESSOR_AUTHORITY_DECISION_PATH = Path(
     "docs/gross9-structural-clock-bundle-authority-decision-2026-07-31.md"
 )
 RANK7_AUTHORITY_AMENDMENT_PATH = Path(
@@ -64,38 +74,47 @@ RANK7_FACADE_TEST = Path("tests/test_gross9_rank7_clock_runtime.py")
 HISTORICAL_PREREGISTRATION_PATH = Path(
     "results/gross9_structural_clock_bundle_preregistration_2026-07-31.json"
 )
-PREREGISTRATION_PATH = Path(
+FAILED_V2_PREREGISTRATION_PATH = Path(
     "results/"
     "gross9_structural_clock_bundle_preregistration_v2_2026-07-31.json"
 )
+PREREGISTRATION_PATH = Path(
+    "results/"
+    "gross9_structural_clock_bundle_g9cb2_preregistration_2026-07-31.json"
+)
 ACCESS_CLAIM_PATH = Path(
-    "results/gross9_structural_clock_bundle_access_claim_2026-07-31.json"
+    "results/"
+    "gross9_structural_clock_bundle_g9cb2_access_claim_2026-07-31.json"
 )
 ATTEMPT_SENTINEL_PATH = Path(
-    "results/gross9_structural_clock_bundle_attempt_consumed_2026-07-31.json"
+    "results/"
+    "gross9_structural_clock_bundle_g9cb2_attempt_consumed_2026-07-31.json"
 )
-BUNDLE_PATH = Path("results/gross9_structural_clock_bundle_2026-07-31.csv.gz")
+BUNDLE_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb2_2026-07-31.csv.gz"
+)
 FINAL_MANIFEST_PATH = Path(
-    "results/gross9_structural_clock_bundle_manifest_2026-07-31.json"
+    "results/"
+    "gross9_structural_clock_bundle_g9cb2_manifest_2026-07-31.json"
 )
 WORKER_CAPABILITY_CONSUMPTION_LEDGER_PATHS = (
     Path(
         "results/"
-        "gross9_structural_clock_bundle_worker_capability_consumed_pass1_"
+        "gross9_structural_clock_bundle_g9cb2_worker_capability_consumed_pass1_"
         "2026-07-31.json"
     ),
     Path(
         "results/"
-        "gross9_structural_clock_bundle_worker_capability_consumed_pass2_"
+        "gross9_structural_clock_bundle_g9cb2_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
 )
 
-AUTHORITY_DECISION_COMMIT = "e6ff406444a95068100cfacf617a3a23bcf918e3"
+AUTHORITY_DECISION_COMMIT = "0a2847c8589908def4243890727c3640f806e109"
 AUTHORITY_DECISION_SHA256 = (
-    "e00ed64151fa6db292bf4ee8242f30a29dfab77c26c66eab751685bfa1c1b23a"
+    "b80ad199c803623c4de289d32beea913b3e1c38541e1c4f035ce3d33fa049410"
 )
-AUTHORITY_DECISION_GIT_BLOB = "709cba7091ad7010fa2619ba856c260cf4ddc2fd"
+AUTHORITY_DECISION_GIT_BLOB = "4904a47fa75cb455cd3c5007373e149267b7f198"
 RANK7_AUTHORITY_AMENDMENT_COMMIT = (
     "f1ae4e68bfb0d0b861cd9979762f87e51a55f69d"
 )
@@ -138,15 +157,31 @@ HISTORICAL_PROTOCOL_PARENT_COMMIT = (
 HISTORICAL_PREREGISTRATION_MANIFEST_HASH = (
     "5ddf4c5c0aef42e1fb24defa78fccbd4142c8274bc22fd0a7d7e97fa9e8bb9bb"
 )
+FAILED_V2_PREREGISTRATION_SHA256 = (
+    "5e6fe5e23f78103e5e4c6a288bb12df5f6aaa4e00028a211a175221a58b48e84"
+)
+FAILED_V2_PREREGISTRATION_GIT_BLOB = (
+    "6bf7c4fd62818c639b11da943f25353946d141b6"
+)
+FAILED_V2_PREREGISTRATION_SEAL_COMMIT = (
+    "c5c5120cb5af931294524d4833f44440f8949327"
+)
+FAILED_V2_PROTOCOL_IMPLEMENTATION_COMMIT = (
+    "d4ebec8f151fc5db6d318734ca0b6a79afaad1e1"
+)
+FAILED_V2_PREREGISTRATION_MANIFEST_HASH = (
+    "e83d2bec1300c34401931c2b45c6c0b8715f4237eba0ae01811c665718b11a54"
+)
 DIRECT_AUTHORITY_VERIFICATION_COMMIT = "91b41254319686f8b64bba797708f8e637aeddd3"
 EXPECTED_BRANCH = "codex/gross9-structural-clock-bundle-20260731"
 UNSEALED_PROTOCOL_IMPLEMENTATION_COMMIT = "0" * 40
 
 PROTOCOL_PATHS = (
+    AUTHORITY_DECISION_PATH,
+    PREDECESSOR_AUTHORITY_DECISION_PATH,
     RANK7_AUTHORITY_AMENDMENT_PATH,
     RUNTIME_ISOLATION_AMENDMENT_PATH,
     PREREGISTRATION_CORRECTION_AMENDMENT_PATH,
-    AUTHORITY_DECISION_PATH,
     PREREGISTRATION_SOURCE,
     PREREGISTRATION_TEST,
     ARTIFACT_TEST,
@@ -161,12 +196,28 @@ RUNTIME_IMPORT_ROOTS = (
     RANK7_FACADE_SOURCE,
     PRIMITIVES_SOURCE,
 )
-CORRECTION_AUTHORITY_DIFF = (
+G9CB1_CORRECTION_AUTHORITY_DIFF = (
     "A\tdocs/"
     "gross9-structural-clock-bundle-preregistration-correction-amendment-"
     "2026-07-31.md",
 )
-CORRECTION_PROTOCOL_DIFF = (
+G9CB1_CORRECTION_PROTOCOL_DIFF = (
+    "M\ttests/test_build_gross9_structural_clock_bundle.py",
+    "M\ttests/test_gross9_structural_clock_bundle_preregistration_artifact.py",
+    "M\ttests/test_preregister_gross9_structural_clock_bundle.py",
+    "M\ttraining/build_gross9_structural_clock_bundle.py",
+    "M\ttraining/preregister_gross9_structural_clock_bundle.py",
+)
+FAILED_V2_PREREGISTRATION_DIFF = (
+    "A\tresults/"
+    "gross9_structural_clock_bundle_preregistration_v2_2026-07-31.json",
+)
+SUCCESSOR_AUTHORITY_DIFF = (
+    "A\tdocs/"
+    "gross9-structural-clock-bundle-successor-authority-decision-"
+    "2026-07-31.md",
+)
+SUCCESSOR_PROTOCOL_DIFF = (
     "M\ttests/test_build_gross9_structural_clock_bundle.py",
     "M\ttests/test_gross9_structural_clock_bundle_preregistration_artifact.py",
     "M\ttests/test_preregister_gross9_structural_clock_bundle.py",
@@ -175,7 +226,7 @@ CORRECTION_PROTOCOL_DIFF = (
 )
 ACTIVE_PREREGISTRATION_DIFF = (
     "A\tresults/"
-    "gross9_structural_clock_bundle_preregistration_v2_2026-07-31.json",
+    "gross9_structural_clock_bundle_g9cb2_preregistration_2026-07-31.json",
 )
 
 DIRECT_AUTHORITY_BINDINGS = (
@@ -417,7 +468,7 @@ WORKER_PROCESS_ENVIRONMENT = {
     "PYTHONDONTWRITEBYTECODE": "1",
     "PYTHONPATH": REPOSITORY_ROOT.as_posix(),
     "PYTHONPYCACHEPREFIX": (
-        REPOSITORY_ROOT / "results/.g9cb-bytecode-cache-disabled"
+        REPOSITORY_ROOT / "results/.g9cb2-bytecode-cache-disabled"
     ).as_posix(),
     "PYTHONUNBUFFERED": "1",
     "PYTHONUTF8": "1",
@@ -772,14 +823,8 @@ def validate_file(
 def _run_git(
     arguments: Sequence[str], repository_root: Path = REPOSITORY_ROOT
 ) -> str:
-    completed = subprocess.run(
-        ["git", *arguments],
-        cwd=repository_root,
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
+    completed = _git_result(arguments, repository_root)
+    completed.check_returncode()
     return completed.stdout.rstrip("\n")
 
 
@@ -937,9 +982,9 @@ def validate_historical_preregistration_topology(
     )
 
 
-def validate_protocol_commit_topology(
+def validate_failed_v2_preregistration_topology(
     repository_root: Path = REPOSITORY_ROOT,
-) -> str:
+) -> None:
     if (
         _single_parent(
             PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT,
@@ -952,8 +997,70 @@ def validate_protocol_commit_topology(
         HISTORICAL_PREREGISTRATION_SEAL_COMMIT,
         PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT,
         repository_root,
-    ) != CORRECTION_AUTHORITY_DIFF:
+    ) != G9CB1_CORRECTION_AUTHORITY_DIFF:
         raise ValueError("G9CB-1C authority diff differs")
+    if (
+        _single_parent(
+            FAILED_V2_PROTOCOL_IMPLEMENTATION_COMMIT,
+            repository_root,
+        )
+        != PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT
+    ):
+        raise ValueError("failed G9CB-1 v2 implementation parent differs")
+    if _commit_diff(
+        PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT,
+        FAILED_V2_PROTOCOL_IMPLEMENTATION_COMMIT,
+        repository_root,
+    ) != G9CB1_CORRECTION_PROTOCOL_DIFF:
+        raise ValueError("failed G9CB-1 v2 implementation diff differs")
+    if (
+        _single_parent(
+            FAILED_V2_PREREGISTRATION_SEAL_COMMIT,
+            repository_root,
+        )
+        != FAILED_V2_PROTOCOL_IMPLEMENTATION_COMMIT
+    ):
+        raise ValueError("failed G9CB-1 v2 seal parent differs")
+    if _commit_diff(
+        FAILED_V2_PROTOCOL_IMPLEMENTATION_COMMIT,
+        FAILED_V2_PREREGISTRATION_SEAL_COMMIT,
+        repository_root,
+    ) != FAILED_V2_PREREGISTRATION_DIFF:
+        raise ValueError("failed G9CB-1 v2 seal diff differs")
+    if _addition_commits(
+        FAILED_V2_PREREGISTRATION_PATH, repository_root
+    ) != (FAILED_V2_PREREGISTRATION_SEAL_COMMIT,):
+        raise ValueError("failed G9CB-1 v2 addition history differs")
+    head = _run_git(["rev-parse", "HEAD"], repository_root)
+    _require_ancestor(
+        FAILED_V2_PREREGISTRATION_SEAL_COMMIT,
+        head,
+        repository_root,
+    )
+
+
+def validate_protocol_commit_topology(
+    repository_root: Path = REPOSITORY_ROOT,
+) -> str:
+    validate_failed_v2_preregistration_topology(repository_root)
+    if (
+        _single_parent(
+            AUTHORITY_DECISION_COMMIT,
+            repository_root,
+        )
+        != FAILED_V2_PREREGISTRATION_SEAL_COMMIT
+    ):
+        raise ValueError("G9CB-2 authority parent differs")
+    if _commit_diff(
+        FAILED_V2_PREREGISTRATION_SEAL_COMMIT,
+        AUTHORITY_DECISION_COMMIT,
+        repository_root,
+    ) != SUCCESSOR_AUTHORITY_DIFF:
+        raise ValueError("G9CB-2 authority diff differs")
+    if _addition_commits(
+        AUTHORITY_DECISION_PATH, repository_root
+    ) != (AUTHORITY_DECISION_COMMIT,):
+        raise ValueError("G9CB-2 authority addition history differs")
 
     head = _run_git(["rev-parse", "HEAD"], repository_root)
     additions = _addition_commits(PREREGISTRATION_PATH, repository_root)
@@ -976,14 +1083,14 @@ def validate_protocol_commit_topology(
 
     if (
         _single_parent(implementation, repository_root)
-        != PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT
+        != AUTHORITY_DECISION_COMMIT
     ):
         raise ValueError("protocol implementation parent differs")
     if _commit_diff(
-        PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT,
+        AUTHORITY_DECISION_COMMIT,
         implementation,
         repository_root,
-    ) != CORRECTION_PROTOCOL_DIFF:
+    ) != SUCCESSOR_PROTOCOL_DIFF:
         raise ValueError("protocol implementation diff differs")
     _require_ancestor(implementation, head, repository_root)
     return implementation
@@ -1008,6 +1115,21 @@ def _historical_v1_authority_amendments() -> list[dict[str, str]]:
             "git_blob": RUNTIME_ISOLATION_AMENDMENT_GIT_BLOB,
             "git_mode": "100644",
             "authority_commit": RUNTIME_ISOLATION_AMENDMENT_COMMIT,
+        },
+    ]
+
+
+def _historical_v2_authority_amendments() -> list[dict[str, str]]:
+    return [
+        *_historical_v1_authority_amendments(),
+        {
+            "identity": "G9CB-1C",
+            "path": PREREGISTRATION_CORRECTION_AMENDMENT_PATH.as_posix(),
+            "path_type": "regular_file",
+            "sha256": PREREGISTRATION_CORRECTION_AMENDMENT_SHA256,
+            "git_blob": PREREGISTRATION_CORRECTION_AMENDMENT_GIT_BLOB,
+            "git_mode": "100644",
+            "authority_commit": PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT,
         },
     ]
 
@@ -1077,6 +1199,107 @@ def validate_superseded_preregistration(
     if binding != expected:
         raise ValueError("historical preregistration binding differs")
     return binding
+
+
+def expected_failed_v2_preregistration_binding() -> dict[str, str]:
+    return {
+        "path": FAILED_V2_PREREGISTRATION_PATH.as_posix(),
+        "path_type": "regular_file",
+        "sha256": FAILED_V2_PREREGISTRATION_SHA256,
+        "git_blob": FAILED_V2_PREREGISTRATION_GIT_BLOB,
+        "git_mode": "100644",
+        "filesystem_mode_octal": "0444",
+        "seal_commit": FAILED_V2_PREREGISTRATION_SEAL_COMMIT,
+        "protocol_implementation_commit": (
+            FAILED_V2_PROTOCOL_IMPLEMENTATION_COMMIT
+        ),
+        "protocol_version": FAILED_V2_PROTOCOL_VERSION,
+        "manifest_hash": FAILED_V2_PREREGISTRATION_MANIFEST_HASH,
+        "status": (
+            "historical_nonoperative_preclaim_git_metadata_contract_failure"
+        ),
+    }
+
+
+def validate_failed_v2_preregistration(
+    repository_root: Path = REPOSITORY_ROOT,
+) -> dict[str, str]:
+    binding = _tracked_binding(
+        FAILED_V2_PREREGISTRATION_PATH,
+        repository_root=repository_root,
+        expected_sha256=FAILED_V2_PREREGISTRATION_SHA256,
+        expected_blob=FAILED_V2_PREREGISTRATION_GIT_BLOB,
+    )
+    path = repository_path(
+        FAILED_V2_PREREGISTRATION_PATH, repository_root
+    )
+    if stat.S_IMODE(path.stat().st_mode) != 0o444:
+        raise ValueError("failed G9CB-1 v2 filesystem mode differs")
+    raw = path.read_bytes()
+    if not raw.endswith(b"\n") or raw.endswith(b"\n\n"):
+        raise ValueError("failed G9CB-1 v2 trailing LF differs")
+    payload = json.loads(raw)
+    if raw != canonical_json_bytes(payload, trailing_lf=True):
+        raise ValueError("failed G9CB-1 v2 JSON is not canonical")
+    if (
+        payload.get("identity") != "G9CB-1"
+        or payload.get("protocol_version") != FAILED_V2_PROTOCOL_VERSION
+        or payload.get("protocol_implementation_commit")
+        != FAILED_V2_PROTOCOL_IMPLEMENTATION_COMMIT
+    ):
+        raise ValueError("failed G9CB-1 v2 protocol identity differs")
+    if (
+        payload.get("manifest_hash")
+        != FAILED_V2_PREREGISTRATION_MANIFEST_HASH
+        or canonical_hash(payload)
+        != FAILED_V2_PREREGISTRATION_MANIFEST_HASH
+    ):
+        raise ValueError("failed G9CB-1 v2 manifest hash differs")
+    if (
+        payload.get("bindings", {}).get("authority_amendments")
+        != _historical_v2_authority_amendments()
+    ):
+        raise ValueError("failed G9CB-1 v2 amendments differ")
+    validate_failed_v2_preregistration_topology(repository_root)
+    binding.update(
+        {
+            "filesystem_mode_octal": "0444",
+            "seal_commit": FAILED_V2_PREREGISTRATION_SEAL_COMMIT,
+            "protocol_implementation_commit": (
+                FAILED_V2_PROTOCOL_IMPLEMENTATION_COMMIT
+            ),
+            "protocol_version": FAILED_V2_PROTOCOL_VERSION,
+            "manifest_hash": FAILED_V2_PREREGISTRATION_MANIFEST_HASH,
+            "status": (
+                "historical_nonoperative_preclaim_git_metadata_contract_failure"
+            ),
+        }
+    )
+    expected = expected_failed_v2_preregistration_binding()
+    if binding != expected:
+        raise ValueError("failed G9CB-1 v2 binding differs")
+    return binding
+
+
+def expected_failed_predecessor_preregistration_bindings(
+) -> list[dict[str, str]]:
+    return [
+        expected_superseded_preregistration_binding(),
+        expected_failed_v2_preregistration_binding(),
+    ]
+
+
+def validate_failed_predecessor_preregistrations(
+    repository_root: Path = REPOSITORY_ROOT,
+) -> list[dict[str, str]]:
+    observed = [
+        validate_superseded_preregistration(repository_root),
+        validate_failed_v2_preregistration(repository_root),
+    ]
+    expected = expected_failed_predecessor_preregistration_bindings()
+    if observed != expected:
+        raise ValueError("failed predecessor preregistration bindings differ")
+    return observed
 
 
 def validate_git_seal(
@@ -1149,7 +1372,7 @@ def worker_process_environment(
     root = repository_root.resolve()
     environment["PYTHONPATH"] = root.as_posix()
     environment["PYTHONPYCACHEPREFIX"] = (
-        root / "results/.g9cb-bytecode-cache-disabled"
+        root / "results/.g9cb2-bytecode-cache-disabled"
     ).as_posix()
     return environment
 
@@ -1302,7 +1525,7 @@ def validate_config_metadata(
     if portfolio.get("weights") != expected_weights or portfolio.get(
         "gross_weight"
     ) != 9.0:
-        raise ValueError("Gross9 portfolio weights do not match G9CB-1")
+        raise ValueError("Gross9 portfolio weights do not match the frozen contract")
 
     base = _load_json_metadata(
         Path(DIRECT_AUTHORITY_BINDINGS[1][1]), repository_root
@@ -1438,17 +1661,144 @@ def _declared_sources(
     return declared
 
 
+def _git_result(
+    arguments: Sequence[str], repository_root: Path
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", *arguments],
+        cwd=repository_root,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+
+def _require_no_symlink_components(path: Path) -> None:
+    current = Path(path.anchor)
+    for component in path.parts[1:]:
+        current /= component
+        if stat.S_ISLNK(os.lstat(current).st_mode):
+            raise ValueError(f"{path}: path traverses a symlink")
+
+
+def _normalized_git_candidate(
+    path: str, repository_root: Path
+) -> tuple[Path, bool]:
+    root = repository_root.resolve(strict=True)
+    candidate = Path(path)
+    if candidate.is_absolute():
+        resolved = candidate.resolve(strict=True)
+        if path != resolved.as_posix():
+            raise ValueError(f"{path}: absolute path is not canonical")
+        if resolved == root or root in resolved.parents:
+            raise ValueError(
+                f"{path}: absolute repository path must be repository-relative"
+            )
+        _require_no_symlink_components(resolved)
+        if _path_type(resolved) != "regular_file":
+            raise ValueError(f"{path}: external source is not a regular file")
+        return resolved, False
+
+    if "\\" in path:
+        raise ValueError(f"{path}: repository path is not POSIX text")
+    components = path.split("/")
+    if any(component in ("", ".", "..") for component in components):
+        raise ValueError(f"{path}: repository path is not normalized")
+    if Path(path).as_posix() != path:
+        raise ValueError(f"{path}: repository path is not normalized")
+    absolute = root.joinpath(*components)
+    resolved = absolute.resolve(strict=True)
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"{path}: repository path escapes the root") from exc
+    if resolved != absolute:
+        raise ValueError(f"{path}: repository path traverses a symlink")
+    _require_no_symlink_components(absolute)
+    if _path_type(absolute) != "regular_file":
+        raise ValueError(f"{path}: repository source is not a regular file")
+    return absolute, True
+
+
+def _parse_stage_zero_entry(output: str, path: str) -> tuple[str, str]:
+    lines = output.splitlines()
+    if len(lines) != 1:
+        raise ValueError(f"{path}: expected exactly one Git index entry")
+    metadata, separator, observed_path = lines[0].partition("\t")
+    fields = metadata.split()
+    if (
+        not separator
+        or observed_path != path
+        or len(fields) != 3
+        or fields[2] != "0"
+    ):
+        raise ValueError(f"{path}: Git index entry is not exact stage zero")
+    mode, blob, _stage = fields
+    return blob, mode
+
+
+def _parse_head_tree_entry(output: str, path: str) -> tuple[str, str]:
+    lines = output.splitlines()
+    if len(lines) != 1:
+        raise ValueError(f"{path}: expected exactly one HEAD tree entry")
+    metadata, separator, observed_path = lines[0].partition("\t")
+    fields = metadata.split()
+    if (
+        not separator
+        or observed_path != path
+        or len(fields) != 3
+        or fields[1] != "blob"
+    ):
+        raise ValueError(f"{path}: HEAD tree entry is not an exact blob")
+    mode, _kind, blob = fields
+    return blob, mode
+
+
 def _optional_git_metadata(
     path: str, repository_root: Path
 ) -> dict[str, str | None]:
-    candidate = Path(path)
-    if candidate.is_absolute():
+    _candidate, repository_relative = _normalized_git_candidate(
+        path, repository_root
+    )
+    if not repository_relative:
         return {"git_blob": None, "git_mode": None}
-    try:
-        blob, mode = git_blob(candidate, repository_root)
-    except (ValueError, subprocess.CalledProcessError):
+
+    staged = _git_result(
+        ["ls-files", "--stage", "--", path], repository_root
+    )
+    tree = _git_result(["ls-tree", "HEAD", "--", path], repository_root)
+    matched = _git_result(
+        ["ls-files", "--error-unmatch", "--", path], repository_root
+    )
+    if not staged.stdout and not tree.stdout:
+        if (
+            staged.returncode != 0
+            or tree.returncode != 0
+            or matched.returncode != 1
+            or matched.stdout
+        ):
+            raise ValueError(f"{path}: untracked Git classification differs")
         return {"git_blob": None, "git_mode": None}
-    return {"git_blob": blob, "git_mode": mode}
+    if staged.returncode or tree.returncode or matched.returncode:
+        raise ValueError(f"{path}: tracked Git classification is incomplete")
+    if matched.stdout.rstrip("\n") != path:
+        raise ValueError(f"{path}: tracked Git path differs")
+    index_blob, index_mode = _parse_stage_zero_entry(staged.stdout, path)
+    tree_blob, tree_mode = _parse_head_tree_entry(tree.stdout, path)
+    if (
+        index_blob != tree_blob
+        or index_mode != tree_mode
+        or index_mode != "100644"
+        or not re.fullmatch(r"[0-9a-f]{40}", index_blob)
+    ):
+        raise ValueError(f"{path}: index and HEAD Git metadata differ")
+    worktree_blob = _run_git(
+        ["hash-object", "--no-filters", "--", path], repository_root
+    )
+    if worktree_blob != index_blob:
+        raise ValueError(f"{path}: worktree Git blob differs")
+    return {"git_blob": index_blob, "git_mode": index_mode}
 
 
 def validate_sources(
@@ -1741,8 +2091,10 @@ def _manifest_without_hash(
             "authority_amendments": _authority_amendment_bindings(
                 repository_root
             ),
-            "superseded_preregistration": (
-                validate_superseded_preregistration(repository_root)
+            "failed_predecessor_preregistrations": (
+                validate_failed_predecessor_preregistrations(
+                    repository_root
+                )
             ),
             "direct_authority": _direct_authority_inventory(repository_root),
             "config_metadata_evidence": config_evidence,
@@ -1857,7 +2209,7 @@ def _manifest_without_hash(
             "resume_allowed": False,
             "repair_allowed": False,
             "terminal_failure_action": (
-                "TERMINAL_G9CB1_ATTEMPT_CONSUMED_NO_RETRY"
+                "TERMINAL_G9CB2_ATTEMPT_CONSUMED_NO_RETRY"
             ),
         },
     }
@@ -1906,27 +2258,19 @@ def validate_manifest(
     if not isinstance(bindings, Mapping):
         raise ValueError("preregistration bindings object is absent")
     amendments = bindings.get("authority_amendments")
-    expected_amendments = [
-        *_historical_v1_authority_amendments(),
-        {
-            "identity": "G9CB-1C",
-            "path": PREREGISTRATION_CORRECTION_AMENDMENT_PATH.as_posix(),
-            "path_type": "regular_file",
-            "sha256": PREREGISTRATION_CORRECTION_AMENDMENT_SHA256,
-            "git_blob": PREREGISTRATION_CORRECTION_AMENDMENT_GIT_BLOB,
-            "git_mode": "100644",
-            "authority_commit": PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT,
-        },
-    ]
+    expected_amendments = _historical_v2_authority_amendments()
     if amendments != expected_amendments:
         raise ValueError("authority amendment bindings mismatch")
-    expected_superseded = (
-        validate_superseded_preregistration(repository_root)
+    expected_predecessors = (
+        validate_failed_predecessor_preregistrations(repository_root)
         if verify_files
-        else expected_superseded_preregistration_binding()
+        else expected_failed_predecessor_preregistration_bindings()
     )
-    if bindings.get("superseded_preregistration") != expected_superseded:
-        raise ValueError("superseded preregistration binding mismatch")
+    if (
+        bindings.get("failed_predecessor_preregistrations")
+        != expected_predecessors
+    ):
+        raise ValueError("failed predecessor preregistration bindings mismatch")
     if manifest.get("source_preclaim_disclosures", {}).get(
         "frozen_open_interest_gzip_opaque_bytes_opened_preclaim"
     ) is not True:

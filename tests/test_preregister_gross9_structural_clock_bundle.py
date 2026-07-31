@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 import stat
+import subprocess
 
 import pytest
 
@@ -63,6 +64,12 @@ EXPECTED_AUTHORITY_AMENDMENTS = [
 EXPECTED_PROTOCOL_PATHS = [
     (
         "docs/"
+        "gross9-structural-clock-bundle-successor-authority-decision-"
+        "2026-07-31.md"
+    ),
+    "docs/gross9-structural-clock-bundle-authority-decision-2026-07-31.md",
+    (
+        "docs/"
         "gross9-structural-clock-bundle-rank7-authority-amendment-"
         "2026-07-31.md"
     ),
@@ -76,7 +83,6 @@ EXPECTED_PROTOCOL_PATHS = [
         "gross9-structural-clock-bundle-preregistration-correction-"
         "amendment-2026-07-31.md"
     ),
-    "docs/gross9-structural-clock-bundle-authority-decision-2026-07-31.md",
     "training/preregister_gross9_structural_clock_bundle.py",
     "tests/test_preregister_gross9_structural_clock_bundle.py",
     "tests/test_gross9_structural_clock_bundle_preregistration_artifact.py",
@@ -109,15 +115,45 @@ EXPECTED_SUPERSEDED_PREREGISTRATION = {
     "status": "historical_nonoperative_preclaim_validation_failure",
 }
 
+EXPECTED_FAILED_V2_PREREGISTRATION = {
+    "path": (
+        "results/"
+        "gross9_structural_clock_bundle_preregistration_v2_2026-07-31.json"
+    ),
+    "path_type": "regular_file",
+    "sha256": (
+        "5e6fe5e23f78103e5e4c6a288bb12df5f6aaa4e00028a211a175221a58b48e84"
+    ),
+    "git_blob": "6bf7c4fd62818c639b11da943f25353946d141b6",
+    "git_mode": "100644",
+    "filesystem_mode_octal": "0444",
+    "seal_commit": "c5c5120cb5af931294524d4833f44440f8949327",
+    "protocol_implementation_commit": (
+        "d4ebec8f151fc5db6d318734ca0b6a79afaad1e1"
+    ),
+    "protocol_version": "gross9_structural_clock_bundle_preregistration_v2",
+    "manifest_hash": (
+        "e83d2bec1300c34401931c2b45c6c0b8715f4237eba0ae01811c665718b11a54"
+    ),
+    "status": (
+        "historical_nonoperative_preclaim_git_metadata_contract_failure"
+    ),
+}
+
+EXPECTED_FAILED_PREDECESSOR_PREREGISTRATIONS = [
+    EXPECTED_SUPERSEDED_PREREGISTRATION,
+    EXPECTED_FAILED_V2_PREREGISTRATION,
+]
+
 EXPECTED_CONSUMPTION_LEDGER_PATHS = [
     (
         "results/"
-        "gross9_structural_clock_bundle_worker_capability_consumed_pass1_"
+        "gross9_structural_clock_bundle_g9cb2_worker_capability_consumed_pass1_"
         "2026-07-31.json"
     ),
     (
         "results/"
-        "gross9_structural_clock_bundle_worker_capability_consumed_pass2_"
+        "gross9_structural_clock_bundle_g9cb2_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
 ]
@@ -265,6 +301,77 @@ def test_validate_file_rejects_symlink_and_hash_drift(tmp_path: Path) -> None:
         prereg.validate_file(source, "0" * 64)
 
 
+def test_optional_git_metadata_classifies_tracked_untracked_and_external(
+    tmp_path: Path,
+) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+
+    def git(*arguments: str) -> str:
+        return subprocess.run(
+            ["git", *arguments],
+            cwd=repository,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        ).stdout.strip()
+
+    git("init")
+    git("config", "user.email", "g9cb2-test@example.invalid")
+    git("config", "user.name", "G9CB-2 Test")
+    tracked = repository / "tracked.bin"
+    tracked.write_bytes(b"tracked")
+    git("add", "tracked.bin")
+    git("commit", "-m", "tracked")
+    tracked_blob = git("rev-parse", "HEAD:tracked.bin")
+    assert prereg._optional_git_metadata(
+        "tracked.bin", repository
+    ) == {"git_blob": tracked_blob, "git_mode": "100644"}
+
+    untracked = repository / "untracked.bin"
+    untracked.write_bytes(b"untracked")
+    assert prereg._optional_git_metadata(
+        "untracked.bin", repository
+    ) == {"git_blob": None, "git_mode": None}
+
+    external = tmp_path / "external.bin"
+    external.write_bytes(b"external")
+    assert prereg._optional_git_metadata(
+        external.as_posix(), repository
+    ) == {"git_blob": None, "git_mode": None}
+
+    with pytest.raises(ValueError, match="must be repository-relative"):
+        prereg._optional_git_metadata(tracked.as_posix(), repository)
+
+    tracked.write_bytes(b"worktree drift")
+    with pytest.raises(ValueError, match="worktree Git blob differs"):
+        prereg._optional_git_metadata("tracked.bin", repository)
+    git("checkout", "--", "tracked.bin")
+
+    tracked.write_bytes(b"index drift")
+    git("add", "tracked.bin")
+    with pytest.raises(ValueError, match="index and HEAD"):
+        prereg._optional_git_metadata("tracked.bin", repository)
+
+
+def test_optional_git_metadata_rejects_unborn_or_invalid_head(
+    tmp_path: Path,
+) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    subprocess.run(
+        ["git", "init"],
+        cwd=repository,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    (repository / "untracked.bin").write_bytes(b"untracked")
+    with pytest.raises(ValueError, match="untracked Git classification"):
+        prereg._optional_git_metadata("untracked.bin", repository)
+
+
 def test_static_import_closure_is_exact_and_does_not_import_modules(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -333,26 +440,43 @@ def test_closure_validator_rejects_new_local_import(
 
 def test_repository_authority_amendments_authenticate_in_canonical_order() -> None:
     decision = prereg._authority_decision_binding()
+    assert decision["path"] == prereg.AUTHORITY_DECISION_PATH.as_posix()
     assert decision["sha256"] == prereg.AUTHORITY_DECISION_SHA256
     assert decision["git_blob"] == prereg.AUTHORITY_DECISION_GIT_BLOB
+    assert decision["authority_commit"] == prereg.AUTHORITY_DECISION_COMMIT
 
     assert prereg._authority_amendment_bindings() == EXPECTED_AUTHORITY_AMENDMENTS
 
 
-def test_historical_preregistration_is_exact_nonoperative_evidence() -> None:
+def test_failed_predecessor_preregistrations_are_exact_nonoperative_evidence() -> None:
     assert prereg.expected_superseded_preregistration_binding() == (
         EXPECTED_SUPERSEDED_PREREGISTRATION
     )
     assert prereg.validate_superseded_preregistration() == (
         EXPECTED_SUPERSEDED_PREREGISTRATION
     )
+    assert prereg.expected_failed_v2_preregistration_binding() == (
+        EXPECTED_FAILED_V2_PREREGISTRATION
+    )
+    assert prereg.validate_failed_v2_preregistration() == (
+        EXPECTED_FAILED_V2_PREREGISTRATION
+    )
+    assert prereg.expected_failed_predecessor_preregistration_bindings() == (
+        EXPECTED_FAILED_PREDECESSOR_PREREGISTRATIONS
+    )
+    assert prereg.validate_failed_predecessor_preregistrations() == (
+        EXPECTED_FAILED_PREDECESSOR_PREREGISTRATIONS
+    )
 
 
-def test_protocol_commit_topology_accepts_exact_a_q_p_chain(
+def test_protocol_commit_topology_accepts_exact_a2_q2_p2_chain(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    authority = prereg.PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT
-    historical = prereg.HISTORICAL_PREREGISTRATION_SEAL_COMMIT
+    correction = prereg.PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT
+    historical_v1 = prereg.HISTORICAL_PREREGISTRATION_SEAL_COMMIT
+    failed_implementation = prereg.FAILED_V2_PROTOCOL_IMPLEMENTATION_COMMIT
+    failed_seal = prereg.FAILED_V2_PREREGISTRATION_SEAL_COMMIT
+    authority = prereg.AUTHORITY_DECISION_COMMIT
     implementation = "1" * 40
     seal = "2" * 40
     responses = {
@@ -361,17 +485,82 @@ def test_protocol_commit_topology_accepts_exact_a_q_p_chain(
             "--parents",
             "-n",
             "1",
-            authority,
-        ): f"{authority} {historical}",
+            correction,
+        ): f"{correction} {historical_v1}",
         (
             "diff-tree",
             "--no-commit-id",
             "--name-status",
             "-r",
-            historical,
-            authority,
-        ): "\n".join(prereg.CORRECTION_AUTHORITY_DIFF),
+            historical_v1,
+            correction,
+        ): "\n".join(prereg.G9CB1_CORRECTION_AUTHORITY_DIFF),
+        (
+            "rev-list",
+            "--parents",
+            "-n",
+            "1",
+            failed_implementation,
+        ): f"{failed_implementation} {correction}",
+        (
+            "diff-tree",
+            "--no-commit-id",
+            "--name-status",
+            "-r",
+            correction,
+            failed_implementation,
+        ): "\n".join(prereg.G9CB1_CORRECTION_PROTOCOL_DIFF),
+        (
+            "rev-list",
+            "--parents",
+            "-n",
+            "1",
+            failed_seal,
+        ): f"{failed_seal} {failed_implementation}",
+        (
+            "diff-tree",
+            "--no-commit-id",
+            "--name-status",
+            "-r",
+            failed_implementation,
+            failed_seal,
+        ): "\n".join(prereg.FAILED_V2_PREREGISTRATION_DIFF),
+        (
+            "log",
+            "--format=%H",
+            "--diff-filter=A",
+            "--",
+            prereg.FAILED_V2_PREREGISTRATION_PATH.as_posix(),
+        ): failed_seal,
         ("rev-parse", "HEAD"): seal,
+        (
+            "merge-base",
+            "--is-ancestor",
+            failed_seal,
+            seal,
+        ): "",
+        (
+            "rev-list",
+            "--parents",
+            "-n",
+            "1",
+            authority,
+        ): f"{authority} {failed_seal}",
+        (
+            "diff-tree",
+            "--no-commit-id",
+            "--name-status",
+            "-r",
+            failed_seal,
+            authority,
+        ): "\n".join(prereg.SUCCESSOR_AUTHORITY_DIFF),
+        (
+            "log",
+            "--format=%H",
+            "--diff-filter=A",
+            "--",
+            prereg.AUTHORITY_DECISION_PATH.as_posix(),
+        ): authority,
         (
             "log",
             "--format=%H",
@@ -408,7 +597,7 @@ def test_protocol_commit_topology_accepts_exact_a_q_p_chain(
             "-r",
             authority,
             implementation,
-        ): "\n".join(prereg.CORRECTION_PROTOCOL_DIFF),
+        ): "\n".join(prereg.SUCCESSOR_PROTOCOL_DIFF),
         (
             "merge-base",
             "--is-ancestor",
@@ -445,7 +634,7 @@ def test_protocol_commit_topology_accepts_exact_a_q_p_chain(
         prereg.validate_protocol_commit_topology(Path("/synthetic"))
 
 
-def test_protocol_paths_include_exact_g9cb_1c_authority_and_modules() -> None:
+def test_protocol_paths_include_exact_g9cb2_authority_and_modules() -> None:
     assert [path.as_posix() for path in prereg.PROTOCOL_PATHS] == (
         EXPECTED_PROTOCOL_PATHS
     )
@@ -535,7 +724,7 @@ def test_worker_process_environment_substitutes_canonical_synthetic_root(
         "PYTHONDONTWRITEBYTECODE": "1",
         "PYTHONPATH": canonical_root.as_posix(),
         "PYTHONPYCACHEPREFIX": (
-            canonical_root / "results/.g9cb-bytecode-cache-disabled"
+            canonical_root / "results/.g9cb2-bytecode-cache-disabled"
         ).as_posix(),
         "PYTHONUNBUFFERED": "1",
         "PYTHONUTF8": "1",
@@ -560,16 +749,16 @@ def test_manifest_binds_g9cb_1b_contract_and_exact_rank7_counters(
     assert manifest["bindings"]["authority_amendments"] == (
         EXPECTED_AUTHORITY_AMENDMENTS
     )
-    assert manifest["bindings"]["superseded_preregistration"] == (
-        EXPECTED_SUPERSEDED_PREREGISTRATION
+    assert manifest["bindings"]["failed_predecessor_preregistrations"] == (
+        EXPECTED_FAILED_PREDECESSOR_PREREGISTRATIONS
     )
     assert manifest["protocol_implementation_commit"] == "0" * 40
     assert manifest["protocol_version"] == (
-        "gross9_structural_clock_bundle_preregistration_v2"
+        "gross9_structural_clock_bundle_g9cb2_preregistration_v1"
     )
     assert manifest["output_paths"]["preregistration"] == (
         "results/"
-        "gross9_structural_clock_bundle_preregistration_v2_2026-07-31.json"
+        "gross9_structural_clock_bundle_g9cb2_preregistration_2026-07-31.json"
     )
     assert manifest["bindings"]["runtime_import_roots"] == [
         "execution/gross9_rank7_clock_runtime.py",
