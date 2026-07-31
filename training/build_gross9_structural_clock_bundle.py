@@ -51,14 +51,12 @@ from training import preregister_gross9_structural_clock_bundle as prereg
 
 
 IDENTITY = "G9CB-1"
-PROTOCOL_VERSION = "gross9_structural_clock_bundle_v1"
+PROTOCOL_VERSION = "gross9_structural_clock_bundle_v2"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 BUILDER_PATH = Path("training/build_gross9_structural_clock_bundle.py")
 BUILDER_TEST_PATH = Path("tests/test_build_gross9_structural_clock_bundle.py")
 PREREGISTER_PATH = Path("training/preregister_gross9_structural_clock_bundle.py")
-PREREGISTRATION_PATH = Path(
-    "results/gross9_structural_clock_bundle_preregistration_2026-07-31.json"
-)
+PREREGISTRATION_PATH = prereg.PREREGISTRATION_PATH
 CLAIM_PATH = Path(
     "results/gross9_structural_clock_bundle_access_claim_2026-07-31.json"
 )
@@ -80,6 +78,21 @@ WORKER_LEDGER_PATHS = (
         "gross9_structural_clock_bundle_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
+)
+ACTIVE_PREREGISTRATION_DIFF = (
+    f"A\t{PREREGISTRATION_PATH.as_posix()}",
+)
+CLAIM_DIFF = (f"A\t{CLAIM_PATH.as_posix()}",)
+PUBLICATION_DIFF = tuple(
+    sorted(
+        f"A\t{path.as_posix()}"
+        for path in (
+            SENTINEL_PATH,
+            *WORKER_LEDGER_PATHS,
+            CSV_PATH,
+            MANIFEST_PATH,
+        )
+    )
 )
 DOMAIN_START = "2023-06-01T00:00:00Z"
 DOMAIN_END = "2026-06-01T00:00:00Z"
@@ -297,6 +310,37 @@ def _git_text(root: Path, *arguments: str) -> str:
     return _git(root, *arguments).decode("utf-8").strip()
 
 
+def _single_parent_commit(root: Path, commit: str) -> str:
+    fields = _git_text(
+        root,
+        "rev-list",
+        "--parents",
+        "-n",
+        "1",
+        commit,
+    ).split()
+    if len(fields) != 2 or fields[0] != commit:
+        _fail(f"{commit}: expected exactly one Git parent")
+    return fields[1]
+
+
+def _commit_name_status(
+    root: Path,
+    parent: str,
+    child: str,
+) -> tuple[str, ...]:
+    output = _git_text(
+        root,
+        "diff-tree",
+        "--no-commit-id",
+        "--name-status",
+        "-r",
+        parent,
+        child,
+    )
+    return tuple(line for line in output.splitlines() if line)
+
+
 def _require_clean_pushed_branch(root: Path, expected_branch: str | None) -> str:
     head = _git_text(root, "rev-parse", "--verify", "HEAD")
     upstream = _git_text(root, "rev-parse", "--verify", "@{upstream}")
@@ -310,6 +354,85 @@ def _require_clean_pushed_branch(root: Path, expected_branch: str | None) -> str
     if expected_branch is not None and branch != expected_branch:
         _fail(f"expected branch {expected_branch!r}, found {branch!r}")
     return head
+
+
+def _validate_preregistration_seal_head(
+    root: Path,
+    preregistration: Mapping[str, Any],
+    head: str,
+) -> None:
+    implementation = preregistration.get("protocol_implementation_commit")
+    if not isinstance(implementation, str) or not re.fullmatch(
+        r"[0-9a-f]{40}", implementation
+    ):
+        _fail("protocol implementation commit is invalid")
+    if _single_parent_commit(root, head) != implementation:
+        _fail("HEAD is not the direct preregistration-seal child of Q")
+    if _commit_name_status(
+        root,
+        implementation,
+        head,
+    ) != ACTIVE_PREREGISTRATION_DIFF:
+        _fail("preregistration-seal commit diff differs")
+    path = PREREGISTRATION_PATH.as_posix()
+    if not _git(
+        root,
+        "ls-files",
+        "--error-unmatch",
+        "--",
+        path,
+        allow_failure=True,
+    ).strip():
+        _fail("active preregistration is not tracked")
+    if _git_text(root, "hash-object", "--", path) != _git_text(
+        root,
+        "rev-parse",
+        f"HEAD:{path}",
+    ):
+        _fail("active preregistration differs from HEAD")
+    tree = _git_text(root, "ls-tree", "HEAD", "--", path).split()
+    if len(tree) < 3 or tree[0] != "100644" or tree[1] != "blob":
+        _fail("active preregistration Git mode differs")
+
+
+def _validate_committed_publication_topology(
+    root: Path,
+    preregistration: Mapping[str, Any],
+    head: str,
+) -> dict[str, str]:
+    publication = head
+    claim = _single_parent_commit(root, publication)
+    preregistration_seal = _single_parent_commit(root, claim)
+    implementation = _single_parent_commit(root, preregistration_seal)
+    if (
+        preregistration.get("protocol_implementation_commit")
+        != implementation
+    ):
+        _fail("publication chain protocol implementation commit differs")
+    if _commit_name_status(
+        root,
+        implementation,
+        preregistration_seal,
+    ) != ACTIVE_PREREGISTRATION_DIFF:
+        _fail("publication chain Q-to-P diff differs")
+    if _commit_name_status(
+        root,
+        preregistration_seal,
+        claim,
+    ) != CLAIM_DIFF:
+        _fail("publication chain P-to-C diff differs")
+    if _commit_name_status(
+        root,
+        claim,
+        publication,
+    ) != PUBLICATION_DIFF:
+        _fail("publication chain C-to-D diff differs")
+    return {
+        "protocol_implementation_commit": implementation,
+        "preregistration_seal_commit": preregistration_seal,
+        "claim_commit": claim,
+        "publication_commit": publication,
+    }
 
 
 _PATH_ALIASES = ("path", "logical_path", "repository_path")
@@ -407,36 +530,12 @@ def _bound_regular_path(root: Path, path_text: str) -> tuple[Path, bool]:
 
 
 def _validate_zero_access(payload: Mapping[str, Any]) -> None:
-    forbidden_nonzero = {
-        "source_value_rows_opened",
-        "pre2025_anchor_value_rows_opened",
-        "runtime_modules_imported",
-        "esdi_runtime_or_private_invocations",
-        "model_files_loaded",
-        "model_or_history_rows_opened",
-        "market_rows_opened",
-        "open_interest_rows_opened",
-        "funding_rows_opened",
-        "premium_rows_opened",
-        "outcome_dependent_ohlc_rows_opened",
-        "gross9_clock_rows_opened",
-        "candidate_rows_opened",
-        "comparator_clock_rows_opened",
-    }
-
-    def walk(value: Any) -> None:
-        if isinstance(value, Mapping):
-            for key, item in value.items():
-                if key in forbidden_nonzero and item != 0:
-                    _fail(f"preregistration records preclaim access: {key}={item!r}")
-                if key.endswith("_computed") and item is not False:
-                    _fail(f"preregistration records prohibited computation: {key}")
-                walk(item)
-        elif isinstance(value, list):
-            for item in value:
-                walk(item)
-
-    walk(payload)
+    try:
+        prereg.validate_zero_access_schema(payload)
+    except (TypeError, ValueError) as exc:
+        raise TerminalG9CB1Failure(
+            f"preregistration zero-access schema differs: {exc}"
+        ) from exc
 
 
 def _expected_authority_amendment_bindings() -> list[dict[str, Any]]:
@@ -458,6 +557,23 @@ def _expected_authority_amendment_bindings() -> list[dict[str, Any]]:
             "git_blob": prereg.RUNTIME_ISOLATION_AMENDMENT_GIT_BLOB,
             "git_mode": "100644",
             "authority_commit": prereg.RUNTIME_ISOLATION_AMENDMENT_COMMIT,
+        },
+        {
+            "identity": "G9CB-1C",
+            "path": (
+                prereg.PREREGISTRATION_CORRECTION_AMENDMENT_PATH.as_posix()
+            ),
+            "path_type": "regular_file",
+            "sha256": (
+                prereg.PREREGISTRATION_CORRECTION_AMENDMENT_SHA256
+            ),
+            "git_blob": (
+                prereg.PREREGISTRATION_CORRECTION_AMENDMENT_GIT_BLOB
+            ),
+            "git_mode": "100644",
+            "authority_commit": (
+                prereg.PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT
+            ),
         },
     ]
 
@@ -481,6 +597,7 @@ def validate_preregistration(
     root: Path = REPOSITORY_ROOT,
     *,
     invoke_prereg_validator: bool = True,
+    synthetic: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Authenticate the canonical preregistration without opening source values."""
 
@@ -488,6 +605,8 @@ def validate_preregistration(
     payload, raw = _read_canonical_object(path, "manifest_hash")
     if payload.get("identity") != IDENTITY:
         _fail("preregistration identity mismatch")
+    if payload.get("protocol_version") != prereg.PROTOCOL_VERSION:
+        _fail("operative preregistration protocol version mismatch")
     _validate_zero_access(payload)
     independence = payload.get("candidate_independence")
     if not isinstance(independence, Mapping) or independence.get(
@@ -502,6 +621,7 @@ def validate_preregistration(
     required_binding_keys = {
         "protocol",
         "authority_amendments",
+        "superseded_preregistration",
         "direct_authority",
         "config_metadata_evidence",
         "runtime_import_roots",
@@ -520,6 +640,45 @@ def validate_preregistration(
         if prohibited in bindings:
             _fail(f"superseded preregistration binding is present: {prohibited}")
     _authority_amendment_bindings(payload)
+    if synthetic:
+        if (root / ".git").exists():
+            _fail("synthetic preregistration hook requires a noncanonical root")
+        superseded = prereg.expected_superseded_preregistration_binding()
+    else:
+        try:
+            superseded = prereg.validate_superseded_preregistration(root)
+        except (
+            OSError,
+            RuntimeError,
+            ValueError,
+            subprocess.CalledProcessError,
+        ) as exc:
+            raise TerminalG9CB1Failure(
+                "superseded preregistration evidence differs"
+            ) from exc
+    if bindings.get("superseded_preregistration") != superseded:
+        _fail("superseded preregistration binding mismatch")
+    recorded_implementation = payload.get("protocol_implementation_commit")
+    if not isinstance(recorded_implementation, str) or not re.fullmatch(
+        r"[0-9a-f]{40}", recorded_implementation
+    ):
+        _fail("protocol implementation commit is invalid")
+    if synthetic:
+        implementation = recorded_implementation
+    else:
+        try:
+            implementation = prereg.validate_protocol_commit_topology(root)
+        except (
+            OSError,
+            RuntimeError,
+            ValueError,
+            subprocess.CalledProcessError,
+        ) as exc:
+            raise TerminalG9CB1Failure(
+                "protocol implementation topology differs"
+            ) from exc
+    if recorded_implementation != implementation:
+        _fail("protocol implementation commit mismatch")
     git_seal = payload.get("git_seal")
     if not isinstance(git_seal, Mapping) or not isinstance(
         git_seal.get("expected_branch"), str
@@ -589,6 +748,42 @@ def _head_blob_binding(root: Path, path: str) -> dict[str, str]:
     if _git_text(root, "hash-object", "--", path) != blob:
         _fail(f"required protocol path differs from HEAD: {path}")
     return {"path": path, "sha256": _sha256_file(candidate), "git_blob": blob, "mode": "100644"}
+
+
+def _tracked_head_bytes(
+    root: Path,
+    relative: Path,
+    *,
+    expected_mode: int = 0o444,
+) -> bytes:
+    path_text = relative.as_posix()
+    candidate = _rooted(root, relative)
+    if candidate.is_symlink() or not candidate.is_file():
+        _fail(f"committed artifact is not a regular file: {path_text}")
+    if stat.S_IMODE(candidate.stat().st_mode) != expected_mode:
+        _fail(f"committed artifact filesystem mode differs: {path_text}")
+    if not _git(
+        root,
+        "ls-files",
+        "--error-unmatch",
+        "--",
+        path_text,
+        allow_failure=True,
+    ).strip():
+        _fail(f"committed artifact is not tracked: {path_text}")
+    tree = _git_text(root, "ls-tree", "HEAD", "--", path_text).split()
+    if len(tree) < 3 or tree[0] != "100644" or tree[1] != "blob":
+        _fail(f"committed artifact Git mode differs: {path_text}")
+    if _git_text(root, "hash-object", "--", path_text) != _git_text(
+        root,
+        "rev-parse",
+        f"HEAD:{path_text}",
+    ):
+        _fail(f"committed artifact differs from HEAD: {path_text}")
+    raw = candidate.read_bytes()
+    if _git(root, "show", f"HEAD:{path_text}") != raw:
+        _fail(f"committed artifact bytes differ from HEAD: {path_text}")
+    return raw
 
 
 def _claim_payload(
@@ -699,10 +894,14 @@ def validate_claim_preflight(
     preregistration, prereg_binding = validate_preregistration(
         root, invoke_prereg_validator=invoke_prereg_validator
     )
+    parent = _require_clean_pushed_branch(
+        root,
+        _expected_branch(preregistration),
+    )
+    _validate_preregistration_seal_head(root, preregistration, parent)
     opaque_inputs = _validate_regular_hashed_inputs(root, preregistration)
     environment = _validate_environment(preregistration, root)
     closures = _validate_static_closures(root, preregistration)
-    parent = _require_clean_pushed_branch(root, _expected_branch(preregistration))
     for relative in (
         CLAIM_PATH,
         SENTINEL_PATH,
@@ -5266,6 +5465,7 @@ def _worker_main(
         preregistration, prereg_binding = validate_preregistration(
             root,
             invoke_prereg_validator=not synthetic,
+            synthetic=synthetic,
         )
         authority_amendments = _authority_amendment_bindings(
             preregistration
@@ -6098,6 +6298,420 @@ def _final_manifest(
     return manifest
 
 
+def _validate_final_manifest_contract(
+    manifest: Mapping[str, Any],
+    *,
+    csv_raw: bytes,
+    rows: Sequence[Mapping[str, Any]],
+    synthetic: bool,
+    prereg_binding: Mapping[str, Any],
+    claim_binding: Mapping[str, Any],
+    sentinel_binding: Mapping[str, Any],
+    authority_amendments: Sequence[Mapping[str, Any]],
+    capabilities: Sequence[Mapping[str, Any]],
+    expected_consumption: Sequence[Mapping[str, Any]],
+    ledger_hashes: Mapping[int, str],
+    expected_parent_authentication: Mapping[str, Any],
+    sentinel_parent_authentication_sha256: str,
+) -> dict[str, Any]:
+    _validate_prohibited_output_placement(manifest)
+    if (
+        manifest.get("identity") != IDENTITY
+        or manifest.get("protocol_version") != PROTOCOL_VERSION
+        or manifest.get("status") != "published_manifest_last"
+        or manifest.get("one_shot") is not True
+        or manifest.get("retry_allowed") is not False
+        or manifest.get("resume_allowed") is not False
+    ):
+        _fail("committed final manifest status differs")
+    if (
+        manifest.get("authority_amendments")
+        != [dict(row) for row in authority_amendments]
+        or manifest.get("access_claim") != dict(claim_binding)
+        or manifest.get("attempt_consumed") != dict(sentinel_binding)
+        or manifest.get("worker_capability_consumption")
+        != [dict(row) for row in expected_consumption]
+    ):
+        _fail("committed final manifest authority bindings differ")
+
+    csv_decompressed = gzip.decompress(csv_raw)
+    if (
+        manifest.get("csv_schema") != list(CSV_COLUMNS)
+        or manifest.get("csv_byte_length") != len(csv_decompressed)
+        or manifest.get("csv_sha256")
+        != _sha256_bytes(csv_decompressed)
+        or manifest.get("csv_gzip_byte_length") != len(csv_raw)
+        or manifest.get("csv_gzip_sha256") != _sha256_bytes(csv_raw)
+    ):
+        _fail("committed final manifest CSV binding differs")
+
+    final_only = {
+        "manifest_hash",
+        "status",
+        "one_shot",
+        "retry_allowed",
+        "resume_allowed",
+        "worker_capability_consumption",
+        "rebuild_receipts",
+    }
+    core = _with_hash(
+        {
+            key: value
+            for key, value in manifest.items()
+            if key not in final_only
+        },
+        "manifest_hash",
+    )
+    parent_authentication = core.get("parent_authentication")
+    counters = core.get("access_counters")
+    if not isinstance(parent_authentication, Mapping):
+        _fail("committed core parent authentication is absent")
+    if dict(parent_authentication) != dict(expected_parent_authentication):
+        _fail("committed core parent authentication binding differs")
+    parent_hash = _sha256_bytes(
+        _canonical_json_bytes(
+            parent_authentication,
+            trailing_lf=False,
+        )
+    )
+    if (
+        core.get("parent_authentication_sha256") != parent_hash
+        or parent_hash != sentinel_parent_authentication_sha256
+    ):
+        _fail("committed core parent authentication hash differs")
+    _validate_counter_contract(counters)
+    runtime_closure = parent_authentication.get(
+        "runtime_import_closure"
+    )
+    if not isinstance(runtime_closure, list):
+        _fail("committed core runtime closure is absent")
+    _validate_counter_consistency(
+        rows,
+        counters,
+        synthetic=synthetic,
+        authenticated_import_path_count=len(runtime_closure),
+    )
+    provenance = _validate_worker_provenance(
+        core.get("provenance"),
+        synthetic=synthetic,
+        prereg_binding=prereg_binding,
+        parent_authentication=parent_authentication,
+    )
+    expected_core = build_core(
+        csv_raw,
+        counters,
+        provenance,
+        claim_binding,
+        sentinel_binding,
+        authority_amendments,
+        parent_authentication,
+    )
+    if core != expected_core:
+        _fail("committed per-pass core contract differs")
+    core_sha256 = _sha256_bytes(_canonical_json_bytes(expected_core))
+
+    receipts = manifest.get("rebuild_receipts")
+    expected_receipt_keys = {
+        "identity",
+        "protocol_version",
+        "slot",
+        "parent_pid",
+        "worker_pid",
+        "stage_directory",
+        "consumed_ledger_path",
+        "consumed_ledger_sha256",
+        "rebuild_invocations_started",
+        "rebuild_invocations_completed",
+        "child_process_creation_events",
+        "other_stage_access_events",
+        "other_stage_absence_checks",
+        "other_slot_ledger_access_events",
+        "unauthorized_write_or_ipc_events",
+        "csv_gzip_sha256",
+        "per_pass_core_sha256",
+        "completion_hmac_sha256",
+        "receipt_hash",
+        "pass_receipt_sha256",
+    }
+    if (
+        not isinstance(receipts, list)
+        or len(receipts) != 2
+        or [row.get("slot") for row in receipts if isinstance(row, Mapping)]
+        != [1, 2]
+    ):
+        _fail("committed final manifest receipts differ")
+    worker_pids: set[int] = set()
+    for row, capability in zip(receipts, capabilities, strict=True):
+        if not isinstance(row, Mapping) or set(row) != expected_receipt_keys:
+            _fail("committed receipt schema differs")
+        slot = row.get("slot")
+        worker_pid = row.get("worker_pid")
+        if (
+            type(slot) is not int
+            or type(worker_pid) is not int
+            or worker_pid <= 0
+            or worker_pid == capability.get("parent_pid")
+            or worker_pid in worker_pids
+        ):
+            _fail("committed receipt PID or slot differs")
+        worker_pids.add(worker_pid)
+        exact_fields = {
+            "identity": IDENTITY,
+            "protocol_version": PROTOCOL_VERSION,
+            "slot": capability["slot"],
+            "parent_pid": capability["parent_pid"],
+            "stage_directory": capability["stage_directory"],
+            "consumed_ledger_path": capability[
+                "consumed_ledger_path"
+            ],
+            "consumed_ledger_sha256": ledger_hashes[slot],
+            "rebuild_invocations_started": 1,
+            "rebuild_invocations_completed": 1,
+            "child_process_creation_events": 0,
+            "other_stage_access_events": 0,
+            "other_stage_absence_checks": 1,
+            "other_slot_ledger_access_events": 0,
+            "unauthorized_write_or_ipc_events": 0,
+            "csv_gzip_sha256": _sha256_bytes(csv_raw),
+            "per_pass_core_sha256": core_sha256,
+        }
+        if any(row.get(key) != value for key, value in exact_fields.items()):
+            _fail("committed receipt binding differs")
+        completion_hmac = row.get("completion_hmac_sha256")
+        if not isinstance(
+            completion_hmac, str
+        ) or not _SHA_RE.fullmatch(completion_hmac):
+            _fail("committed receipt HMAC shape differs")
+        receipt = dict(row)
+        pass_receipt_sha256 = receipt.pop(
+            "pass_receipt_sha256", None
+        )
+        if (
+            not isinstance(pass_receipt_sha256, str)
+            or not _SHA_RE.fullmatch(pass_receipt_sha256)
+            or pass_receipt_sha256
+            != _sha256_bytes(_canonical_json_bytes(receipt))
+        ):
+            _fail("committed pass receipt hash differs")
+        receipt_hash = receipt.pop("receipt_hash", None)
+        if (
+            not isinstance(receipt_hash, str)
+            or not _SHA_RE.fullmatch(receipt_hash)
+            or receipt_hash
+            != _sha256_bytes(
+                _canonical_json_bytes(receipt, trailing_lf=False)
+            )
+        ):
+            _fail("committed receipt self-hash differs")
+
+    expected_manifest = _final_manifest(
+        expected_core,
+        expected_consumption,
+        receipts,
+    )
+    if dict(manifest) != expected_manifest:
+        _fail("committed final manifest contract differs")
+    return expected_core
+
+
+def validate_committed_publication(
+    root: Path = REPOSITORY_ROOT,
+) -> dict[str, Any]:
+    """Validate the pushed Q -> P -> C -> D chain and committed artifacts."""
+
+    root = root.resolve()
+    preregistration, prereg_binding = validate_preregistration(root)
+    head = _require_clean_pushed_branch(
+        root,
+        _expected_branch(preregistration),
+    )
+    commits = _validate_committed_publication_topology(
+        root,
+        preregistration,
+        head,
+    )
+    implementation = commits["protocol_implementation_commit"]
+    preregistration_seal = commits["preregistration_seal_commit"]
+    claim_commit = commits["claim_commit"]
+    publication_commit = commits["publication_commit"]
+    if preregistration["protocol_implementation_commit"] != implementation:
+        _fail("committed preregistration implementation binding differs")
+
+    active_raw = _tracked_head_bytes(root, PREREGISTRATION_PATH)
+    if _sha256_bytes(active_raw) != prereg_binding["sha256"]:
+        _fail("committed preregistration file hash differs")
+    _tracked_head_bytes(root, prereg.HISTORICAL_PREREGISTRATION_PATH)
+
+    claim_tracked_raw = _tracked_head_bytes(root, CLAIM_PATH)
+    claim, claim_raw = _read_canonical_object(
+        _rooted(root, CLAIM_PATH),
+        "claim_hash",
+    )
+    if claim_raw != claim_tracked_raw:
+        _fail("committed claim read differs")
+    authority_amendments = _authority_amendment_bindings(
+        preregistration
+    )
+    protocol_files = claim.get("protocol_files")
+    opaque_inputs = claim.get("opaque_inputs_authenticated")
+    if not isinstance(protocol_files, list) or not isinstance(
+        opaque_inputs, list
+    ):
+        _fail("committed claim bindings are incomplete")
+    if [
+        row.get("path") for row in protocol_files if isinstance(row, Mapping)
+    ] != _planned_protocol_paths(preregistration):
+        _fail("committed claim protocol path order differs")
+    for row in protocol_files:
+        if not isinstance(row, Mapping):
+            _fail("committed claim protocol row is invalid")
+        path = row.get("path")
+        if not isinstance(path, str) or _head_blob_binding(
+            root, path
+        ) != row:
+            _fail("committed claim protocol binding differs")
+    if claim != _claim_payload(
+        preregistration_seal,
+        prereg_binding,
+        authority_amendments,
+        protocol_files,
+        opaque_inputs,
+    ):
+        _fail("committed claim schema differs")
+    claim_binding = {
+        "path": CLAIM_PATH.as_posix(),
+        "sha256": _sha256_bytes(claim_raw),
+        "claim_hash": claim["claim_hash"],
+        "protocol_parent_commit": preregistration_seal,
+        "claim_commit": claim_commit,
+    }
+
+    sentinel_tracked_raw = _tracked_head_bytes(root, SENTINEL_PATH)
+    sentinel, sentinel_raw = _read_canonical_object(
+        _rooted(root, SENTINEL_PATH),
+        "manifest_hash",
+    )
+    if sentinel_raw != sentinel_tracked_raw:
+        _fail("committed sentinel read differs")
+    capabilities = _normalized_worker_capabilities(
+        sentinel.get("worker_capabilities")
+    )
+    parent_authentication_sha256 = sentinel.get(
+        "parent_authentication_sha256"
+    )
+    if not isinstance(
+        parent_authentication_sha256, str
+    ) or not _SHA_RE.fullmatch(parent_authentication_sha256):
+        _fail("committed sentinel parent authentication hash differs")
+    if sentinel != _sentinel_payload(
+        claim_binding,
+        prereg_binding,
+        authority_amendments,
+        parent_authentication_sha256,
+        capabilities,
+    ):
+        _fail("committed sentinel schema differs")
+    sentinel_binding = {
+        "path": SENTINEL_PATH.as_posix(),
+        "sha256": _sha256_bytes(sentinel_raw),
+        "manifest_hash": sentinel["manifest_hash"],
+    }
+
+    expected_consumption: list[dict[str, Any]] = []
+    ledger_hashes: dict[int, str] = {}
+    for capability, ledger_path in zip(
+        capabilities,
+        WORKER_LEDGER_PATHS,
+        strict=True,
+    ):
+        ledger_tracked_raw = _tracked_head_bytes(root, ledger_path)
+        ledger, ledger_raw = _read_canonical_object(
+            _rooted(root, ledger_path),
+            None,
+        )
+        if ledger_raw != ledger_tracked_raw:
+            _fail("committed worker ledger read differs")
+        expected_ledger = _worker_ledger_payload(
+            binding=capability,
+            claim=claim,
+            preregistration=preregistration,
+            sentinel=sentinel,
+            authority_amendments=authority_amendments,
+        )
+        if ledger != expected_ledger:
+            _fail("committed worker ledger schema differs")
+        ledger_sha256 = _sha256_bytes(ledger_raw)
+        ledger_hashes[int(capability["slot"])] = ledger_sha256
+        expected_consumption.append(
+            {
+                "slot": capability["slot"],
+                "parent_pid": capability["parent_pid"],
+                "path": capability["consumed_ledger_path"],
+                "sha256": ledger_sha256,
+                "carrier_kind": capability["carrier_kind"],
+                "carrier_device": capability["carrier_device"],
+                "carrier_inode": capability["carrier_inode"],
+                "token_sha256": capability["token_sha256"],
+            }
+        )
+
+    csv_raw = _tracked_head_bytes(root, CSV_PATH)
+    rows = validate_csv_gzip(csv_raw, require_all_sleeves=True)
+
+    manifest_tracked_raw = _tracked_head_bytes(root, MANIFEST_PATH)
+    manifest, manifest_raw = _read_canonical_object(
+        _rooted(root, MANIFEST_PATH),
+        "manifest_hash",
+    )
+    if manifest_raw != manifest_tracked_raw:
+        _fail("committed final manifest read differs")
+    preregistration_bindings = preregistration.get("bindings")
+    if not isinstance(preregistration_bindings, Mapping):
+        _fail("committed preregistration bindings are absent")
+    expected_parent_authentication = {
+        "environment": preregistration_bindings.get("environment"),
+        "hashed_inputs": opaque_inputs,
+        "runtime_import_closure": preregistration_bindings.get(
+            "runtime_import_closure"
+        ),
+    }
+    _validate_final_manifest_contract(
+        manifest,
+        csv_raw=csv_raw,
+        rows=rows,
+        synthetic=False,
+        prereg_binding=prereg_binding,
+        claim_binding=claim_binding,
+        sentinel_binding=sentinel_binding,
+        authority_amendments=authority_amendments,
+        capabilities=capabilities,
+        expected_consumption=expected_consumption,
+        ledger_hashes=ledger_hashes,
+        expected_parent_authentication=expected_parent_authentication,
+        sentinel_parent_authentication_sha256=(
+            parent_authentication_sha256
+        ),
+    )
+
+    results = _rooted(root, MANIFEST_PATH).parent
+    if list(results.glob(".gross9-structural-clock-worker-*")):
+        _fail("committed publication retains a worker stage")
+    if list(results.glob(_STAGED_RECEIPT_NAME)):
+        _fail("committed publication retains a pass receipt")
+    return {
+        **commits,
+        "identity": IDENTITY,
+        "protocol_version": PROTOCOL_VERSION,
+        "preregistration_manifest_hash": preregistration["manifest_hash"],
+        "claim_hash": claim["claim_hash"],
+        "sentinel_manifest_hash": sentinel["manifest_hash"],
+        "final_manifest_hash": manifest["manifest_hash"],
+        "csv_gzip_sha256": _sha256_bytes(csv_raw),
+        "interval_count": len(rows),
+        "head": publication_commit,
+    }
+
+
 def produce_one_shot(
     root: Path = REPOSITORY_ROOT,
     *,
@@ -6367,6 +6981,7 @@ def _parser() -> argparse.ArgumentParser:
     actions = parser.add_mutually_exclusive_group(required=True)
     actions.add_argument("--create-claim", action="store_true")
     actions.add_argument("--produce", action="store_true")
+    actions.add_argument("--verify-publication", action="store_true")
     actions.add_argument("--internal-worker", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--repository-root", default=str(REPOSITORY_ROOT), help=argparse.SUPPRESS)
     parser.add_argument("--output-dir", help=argparse.SUPPRESS)
@@ -6402,6 +7017,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         _fail("synthetic input is accepted only by an authenticated internal worker")
     if arguments.create_claim:
         create_claim_only(Path(arguments.repository_root))
+    elif arguments.verify_publication:
+        result = validate_committed_publication(
+            Path(arguments.repository_root)
+        )
+        print(
+            _canonical_json_bytes(
+                result,
+                trailing_lf=False,
+            ).decode("ascii")
+        )
     else:
         produce_one_shot(Path(arguments.repository_root))
     return 0

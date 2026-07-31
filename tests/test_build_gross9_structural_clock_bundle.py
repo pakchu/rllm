@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import copy
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import gzip
@@ -424,9 +425,10 @@ def _synthetic_preregistration(root: Path) -> dict[str, object]:
     return builder._with_hash(
         {
             "protocol_version": (
-                "gross9_structural_clock_bundle_preregistration_v1"
+                "gross9_structural_clock_bundle_preregistration_v2"
             ),
             "identity": builder.IDENTITY,
+            "protocol_implementation_commit": "1" * 40,
             "git_seal": {"expected_branch": "synthetic/g9cb1b"},
             "candidate_independence": {
                 "candidate_identity_present": False,
@@ -446,6 +448,21 @@ def _synthetic_preregistration(root: Path) -> dict[str, object]:
                 "rank7_bundle": {"declared_files": []},
                 "source_manifest_ordered_inventory": [],
                 "environment": _parent_authentication(root)["environment"],
+                "superseded_preregistration": (
+                    builder.prereg.expected_superseded_preregistration_binding()
+                ),
+            },
+            "creation_evidence_boundary": dict(
+                builder.prereg.CREATION_EVIDENCE_BOUNDARY
+            ),
+            "permanent_prohibited_counters": dict(
+                builder.prereg.PERMANENT_PROHIBITED_COUNTERS
+            ),
+            "pre2025_anchor_boundary": {
+                "pre2025_anchor_bytes_hashed": True,
+                "pre2025_anchor_git_blob_authenticated": True,
+                "pre2025_anchor_json_parsed": False,
+                "pre2025_anchor_value_rows_opened": 0,
             },
         },
         "manifest_hash",
@@ -1609,9 +1626,13 @@ def test_top_level_is_stdlib_only_and_uses_only_isolated_runtime_roots() -> None
     assert "G9CB_WORKER_TOKEN" not in source
 
 
-def test_dual_authority_amendments_have_exact_order_and_schema() -> None:
+def test_three_authority_amendments_have_exact_order_and_schema() -> None:
     amendments = builder._expected_authority_amendment_bindings()
-    assert [row["identity"] for row in amendments] == ["G9CB-1A", "G9CB-1B"]
+    assert [row["identity"] for row in amendments] == [
+        "G9CB-1A",
+        "G9CB-1B",
+        "G9CB-1C",
+    ]
     assert all(
         tuple(row)
         == (
@@ -1630,8 +1651,269 @@ def test_dual_authority_amendments_have_exact_order_and_schema() -> None:
     assert not hasattr(builder, "_expected_authority_amendment_binding")
 
 
+def test_builder_zero_access_accepts_exact_integer_prohibited_counters(
+    tmp_path: Path,
+) -> None:
+    preregistration = _synthetic_preregistration(tmp_path)
+    builder._validate_zero_access(preregistration)
+    assert preregistration["permanent_prohibited_counters"][
+        "cagr_values_computed"
+    ] == 0
+
+
+@pytest.mark.parametrize("invalid", [False, 1, -1, 0.0, "0", None, []])
+def test_builder_zero_access_rejects_noninteger_zero_counter(
+    tmp_path: Path,
+    invalid: object,
+) -> None:
+    preregistration = _synthetic_preregistration(tmp_path)
+    preregistration["permanent_prohibited_counters"][
+        "cagr_values_computed"
+    ] = invalid
+    with pytest.raises(
+        builder.TerminalG9CB1Failure,
+        match="zero-access schema differs",
+    ):
+        builder._validate_zero_access(preregistration)
+
+
+def test_malformed_preregistration_stops_before_all_downstream_preflight(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "results").mkdir()
+    preregistration = _synthetic_preregistration(tmp_path)
+    preregistration["permanent_prohibited_counters"][
+        "cagr_values_computed"
+    ] = False
+    preregistration = builder._with_hash(
+        preregistration,
+        "manifest_hash",
+    )
+    (tmp_path / builder.PREREGISTRATION_PATH).write_bytes(
+        builder._canonical_json_bytes(preregistration)
+    )
+    called: list[str] = []
+
+    def forbidden(name: str) -> object:
+        def invoke(*_args: object, **_kwargs: object) -> object:
+            called.append(name)
+            raise AssertionError(f"{name} must not run")
+
+        return invoke
+
+    monkeypatch.setattr(
+        builder,
+        "_validate_regular_hashed_inputs",
+        forbidden("hashed-input"),
+    )
+    monkeypatch.setattr(
+        builder,
+        "_validate_environment",
+        forbidden("environment"),
+    )
+    monkeypatch.setattr(
+        builder,
+        "_validate_static_closures",
+        forbidden("closure"),
+    )
+    monkeypatch.setattr(
+        builder,
+        "_require_clean_pushed_branch",
+        forbidden("git-seal"),
+    )
+    monkeypatch.setattr(
+        builder.prereg,
+        "validate_superseded_preregistration",
+        forbidden("historical"),
+    )
+    monkeypatch.setattr(
+        builder.prereg,
+        "validate_protocol_commit_topology",
+        forbidden("topology"),
+    )
+    with pytest.raises(
+        builder.TerminalG9CB1Failure,
+        match="zero-access schema differs",
+    ):
+        builder.validate_claim_preflight(tmp_path)
+    assert called == []
+    for path in (
+        builder.CLAIM_PATH,
+        builder.SENTINEL_PATH,
+        *builder.WORKER_LEDGER_PATHS,
+        builder.CSV_PATH,
+        builder.MANIFEST_PATH,
+    ):
+        assert not (tmp_path / path).exists()
+
+
+def test_historical_v1_bytes_are_rejected_by_operative_version_before_zero(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "results").mkdir()
+    historical = (
+        builder.prereg.REPOSITORY_ROOT
+        / builder.prereg.HISTORICAL_PREREGISTRATION_PATH
+    ).read_bytes()
+    (tmp_path / builder.PREREGISTRATION_PATH).write_bytes(historical)
+    monkeypatch.setattr(
+        builder,
+        "_validate_zero_access",
+        lambda *_args: (_ for _ in ()).throw(
+            AssertionError("zero schema must not classify historical v1")
+        ),
+    )
+    with pytest.raises(
+        builder.TerminalG9CB1Failure,
+        match="operative preregistration protocol version",
+    ):
+        builder.validate_preregistration(
+            tmp_path,
+            invoke_prereg_validator=False,
+        )
+
+
+def test_preregistration_seal_head_rejects_intervening_commit(
+    tmp_path: Path,
+) -> None:
+    def git(*arguments: str) -> str:
+        return subprocess.run(
+            ["git", *arguments],
+            cwd=tmp_path,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        ).stdout.strip()
+
+    git("init")
+    git("config", "user.email", "g9cb-test@example.invalid")
+    git("config", "user.name", "G9CB Test")
+    (tmp_path / "protocol.txt").write_text("Q\n", encoding="utf-8")
+    git("add", "protocol.txt")
+    git("commit", "-m", "Q")
+    implementation = git("rev-parse", "HEAD")
+
+    artifact = tmp_path / builder.PREREGISTRATION_PATH
+    artifact.parent.mkdir()
+    artifact.write_text("{}\n", encoding="utf-8")
+    git("add", "-f", builder.PREREGISTRATION_PATH.as_posix())
+    git("commit", "-m", "P")
+    seal = git("rev-parse", "HEAD")
+    preregistration = {
+        "protocol_implementation_commit": implementation,
+    }
+    builder._validate_preregistration_seal_head(
+        tmp_path,
+        preregistration,
+        seal,
+    )
+
+    (tmp_path / "intervening.txt").write_text("X\n", encoding="utf-8")
+    git("add", "intervening.txt")
+    git("commit", "-m", "X")
+    intervening = git("rev-parse", "HEAD")
+    with pytest.raises(
+        builder.TerminalG9CB1Failure,
+        match="direct preregistration-seal child",
+    ):
+        builder._validate_preregistration_seal_head(
+            tmp_path,
+            preregistration,
+            intervening,
+        )
+
+
+def test_committed_publication_topology_requires_exact_q_p_c_d(
+    tmp_path: Path,
+) -> None:
+    def git(*arguments: str) -> str:
+        return subprocess.run(
+            ["git", *arguments],
+            cwd=tmp_path,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        ).stdout.strip()
+
+    git("init")
+    git("config", "user.email", "g9cb-test@example.invalid")
+    git("config", "user.name", "G9CB Test")
+    (tmp_path / "protocol.txt").write_text("Q\n", encoding="utf-8")
+    git("add", "protocol.txt")
+    git("commit", "-m", "Q")
+    implementation = git("rev-parse", "HEAD")
+
+    preregistration_path = tmp_path / builder.PREREGISTRATION_PATH
+    preregistration_path.parent.mkdir()
+    preregistration_path.write_text("{}\n", encoding="utf-8")
+    git("add", "-f", builder.PREREGISTRATION_PATH.as_posix())
+    git("commit", "-m", "P")
+    preregistration_seal = git("rev-parse", "HEAD")
+
+    claim_path = tmp_path / builder.CLAIM_PATH
+    claim_path.write_text("{}\n", encoding="utf-8")
+    git("add", "-f", builder.CLAIM_PATH.as_posix())
+    git("commit", "-m", "C")
+    claim = git("rev-parse", "HEAD")
+
+    for path in (
+        builder.SENTINEL_PATH,
+        *builder.WORKER_LEDGER_PATHS,
+        builder.CSV_PATH,
+        builder.MANIFEST_PATH,
+    ):
+        candidate = tmp_path / path
+        candidate.write_text("{}\n", encoding="utf-8")
+        git("add", "-f", path.as_posix())
+    git("commit", "-m", "D")
+    publication = git("rev-parse", "HEAD")
+
+    assert builder._validate_committed_publication_topology(
+        tmp_path,
+        {"protocol_implementation_commit": implementation},
+        publication,
+    ) == {
+        "protocol_implementation_commit": implementation,
+        "preregistration_seal_commit": preregistration_seal,
+        "claim_commit": claim,
+        "publication_commit": publication,
+    }
+
+    (tmp_path / "intervening.txt").write_text("X\n", encoding="utf-8")
+    git("add", "intervening.txt")
+    git("commit", "-m", "X")
+    with pytest.raises(
+        builder.TerminalG9CB1Failure,
+        match="publication chain",
+    ):
+        builder._validate_committed_publication_topology(
+            tmp_path,
+            {"protocol_implementation_commit": implementation},
+            git("rev-parse", "HEAD"),
+        )
+
+
+def test_parser_exposes_read_only_committed_publication_verifier() -> None:
+    arguments = builder._parser().parse_args(["--verify-publication"])
+    assert arguments.verify_publication is True
+    assert arguments.create_claim is False
+    assert arguments.produce is False
+    assert arguments.internal_worker is False
+
+
 def test_frozen_contract_and_deterministic_csv_gzip() -> None:
     assert builder.IDENTITY == "G9CB-1"
+    assert builder.PROTOCOL_VERSION == "gross9_structural_clock_bundle_v2"
+    assert builder.PREREGISTRATION_PATH == (
+        Path(
+            "results/"
+            "gross9_structural_clock_bundle_preregistration_v2_2026-07-31.json"
+        )
+    )
     assert builder.DOMAIN_START == "2023-06-01T00:00:00Z"
     assert builder.DOMAIN_END == "2026-06-01T00:00:00Z"
     assert [row["name"] for row in builder.SLEEVES] == [
@@ -2032,7 +2314,7 @@ def test_core_is_deterministic_and_binds_parent_authentication() -> None:
     ).hexdigest()
 
 
-def test_core_rejects_dual_amendment_drift() -> None:
+def test_core_rejects_three_amendment_drift() -> None:
     rows, counters = builder.reconstruct_intervals(_all_sleeve_bars())
     compressed = builder.compress_csv(builder.serialize_csv(rows))
     amendments = builder._expected_authority_amendment_bindings()
@@ -3164,13 +3446,168 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         len(row) == 8
         for row in manifest["worker_capability_consumption"]
     )
+    csv_raw = (tmp_path / builder.CSV_PATH).read_bytes()
+    rows = builder.validate_csv_gzip(
+        csv_raw,
+        require_all_sleeves=True,
+    )
+    sentinel_raw = (tmp_path / builder.SENTINEL_PATH).read_bytes()
+    sentinel_binding = {
+        "path": builder.SENTINEL_PATH.as_posix(),
+        "sha256": hashlib.sha256(sentinel_raw).hexdigest(),
+        "manifest_hash": sentinel["manifest_hash"],
+    }
+    capabilities = builder._normalized_worker_capabilities(
+        sentinel["worker_capabilities"]
+    )
+    ledger_hashes: dict[int, str] = {}
+    expected_consumption: list[dict[str, object]] = []
     for path in builder.WORKER_LEDGER_PATHS:
         ledger_path = tmp_path / path
-        ledger = json.loads(ledger_path.read_bytes())
+        ledger_raw = ledger_path.read_bytes()
+        ledger = json.loads(ledger_raw)
         assert tuple(ledger) == tuple(sorted(LEDGER_KEYS))
         assert set(ledger) == set(LEDGER_KEYS)
         assert len(ledger) == 14
         assert stat.S_IMODE(ledger_path.stat().st_mode) == 0o444
+        slot = int(ledger["slot"])
+        capability = capabilities[slot - 1]
+        ledger_sha256 = hashlib.sha256(ledger_raw).hexdigest()
+        ledger_hashes[slot] = ledger_sha256
+        expected_consumption.append(
+            {
+                "slot": capability["slot"],
+                "parent_pid": capability["parent_pid"],
+                "path": capability["consumed_ledger_path"],
+                "sha256": ledger_sha256,
+                "carrier_kind": capability["carrier_kind"],
+                "carrier_device": capability["carrier_device"],
+                "carrier_inode": capability["carrier_inode"],
+                "token_sha256": capability["token_sha256"],
+            }
+        )
+    amendments = builder._expected_authority_amendment_bindings()
+    builder._validate_final_manifest_contract(
+        manifest,
+        csv_raw=csv_raw,
+        rows=rows,
+        synthetic=True,
+        prereg_binding=preregistration_binding,
+        claim_binding=claim_binding,
+        sentinel_binding=sentinel_binding,
+        authority_amendments=amendments,
+        capabilities=capabilities,
+        expected_consumption=expected_consumption,
+        ledger_hashes=ledger_hashes,
+        expected_parent_authentication=parent_authentication,
+        sentinel_parent_authentication_sha256=expected_parent_hash,
+    )
+
+    forged_parent = copy.deepcopy(manifest)
+    forged_parent["parent_authentication"]["hashed_inputs"] = [
+        {"path": "forged.bin", "sha256": "f" * 64, "size_bytes": 1}
+    ]
+    forged_parent["parent_authentication_sha256"] = hashlib.sha256(
+        builder._canonical_json_bytes(
+            forged_parent["parent_authentication"],
+            trailing_lf=False,
+        )
+    ).hexdigest()
+    forged_parent["manifest_hash"] = builder._object_hash(
+        forged_parent,
+        "manifest_hash",
+    )
+    with pytest.raises(
+        builder.TerminalG9CB1Failure,
+        match="parent authentication binding",
+    ):
+        builder._validate_final_manifest_contract(
+            forged_parent,
+            csv_raw=csv_raw,
+            rows=rows,
+            synthetic=True,
+            prereg_binding=preregistration_binding,
+            claim_binding=claim_binding,
+            sentinel_binding=sentinel_binding,
+            authority_amendments=amendments,
+            capabilities=capabilities,
+            expected_consumption=expected_consumption,
+            ledger_hashes=ledger_hashes,
+            expected_parent_authentication=parent_authentication,
+            sentinel_parent_authentication_sha256=expected_parent_hash,
+        )
+
+    drifted_counter = copy.deepcopy(manifest)
+    drifted_counter["access_counters"]["rows_decoded"]["market_5m"] += 1
+    drifted_counter["manifest_hash"] = builder._object_hash(
+        drifted_counter,
+        "manifest_hash",
+    )
+    with pytest.raises(
+        builder.TerminalG9CB1Failure,
+        match="receipt binding|counter|core contract",
+    ):
+        builder._validate_final_manifest_contract(
+            drifted_counter,
+            csv_raw=csv_raw,
+            rows=rows,
+            synthetic=True,
+            prereg_binding=preregistration_binding,
+            claim_binding=claim_binding,
+            sentinel_binding=sentinel_binding,
+            authority_amendments=amendments,
+            capabilities=capabilities,
+            expected_consumption=expected_consumption,
+            ledger_hashes=ledger_hashes,
+            expected_parent_authentication=parent_authentication,
+            sentinel_parent_authentication_sha256=expected_parent_hash,
+        )
+
+    drifted_receipt = copy.deepcopy(manifest)
+    receipt = drifted_receipt["rebuild_receipts"][0]
+    receipt["per_pass_core_sha256"] = "0" * 64
+    receipt_core = {
+        key: value
+        for key, value in receipt.items()
+        if key not in {"receipt_hash", "pass_receipt_sha256"}
+    }
+    receipt["receipt_hash"] = hashlib.sha256(
+        builder._canonical_json_bytes(
+            receipt_core,
+            trailing_lf=False,
+        )
+    ).hexdigest()
+    receipt_without_pass = {
+        key: value
+        for key, value in receipt.items()
+        if key != "pass_receipt_sha256"
+    }
+    receipt["pass_receipt_sha256"] = hashlib.sha256(
+        builder._canonical_json_bytes(receipt_without_pass)
+    ).hexdigest()
+    drifted_receipt["manifest_hash"] = builder._object_hash(
+        drifted_receipt,
+        "manifest_hash",
+    )
+    with pytest.raises(
+        builder.TerminalG9CB1Failure,
+        match="receipt binding",
+    ):
+        builder._validate_final_manifest_contract(
+            drifted_receipt,
+            csv_raw=csv_raw,
+            rows=rows,
+            synthetic=True,
+            prereg_binding=preregistration_binding,
+            claim_binding=claim_binding,
+            sentinel_binding=sentinel_binding,
+            authority_amendments=amendments,
+            capabilities=capabilities,
+            expected_consumption=expected_consumption,
+            ledger_hashes=ledger_hashes,
+            expected_parent_authentication=parent_authentication,
+            sentinel_parent_authentication_sha256=expected_parent_hash,
+        )
     assert not list(
         (tmp_path / "results").glob(
             ".gross9-structural-clock-worker-*"

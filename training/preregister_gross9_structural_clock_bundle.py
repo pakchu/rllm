@@ -25,7 +25,10 @@ from typing import Any, Iterable, Mapping, Sequence
 import zlib
 
 
-PROTOCOL_VERSION = "gross9_structural_clock_bundle_preregistration_v1"
+PROTOCOL_VERSION = "gross9_structural_clock_bundle_preregistration_v2"
+HISTORICAL_PROTOCOL_VERSION = (
+    "gross9_structural_clock_bundle_preregistration_v1"
+)
 IDENTITY = "G9CB-1"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 RESULTS_ROOT = REPOSITORY_ROOT / "results"
@@ -49,12 +52,21 @@ RANK7_AUTHORITY_AMENDMENT_PATH = Path(
 RUNTIME_ISOLATION_AMENDMENT_PATH = Path(
     "docs/gross9-structural-clock-bundle-runtime-isolation-amendment-2026-07-31.md"
 )
+PREREGISTRATION_CORRECTION_AMENDMENT_PATH = Path(
+    "docs/"
+    "gross9-structural-clock-bundle-preregistration-correction-amendment-"
+    "2026-07-31.md"
+)
 PRIMITIVES_SOURCE = Path("training/gross9_structural_clock_primitives.py")
 PRIMITIVES_TEST = Path("tests/test_gross9_structural_clock_primitives.py")
 RANK7_FACADE_SOURCE = Path("execution/gross9_rank7_clock_runtime.py")
 RANK7_FACADE_TEST = Path("tests/test_gross9_rank7_clock_runtime.py")
-PREREGISTRATION_PATH = Path(
+HISTORICAL_PREREGISTRATION_PATH = Path(
     "results/gross9_structural_clock_bundle_preregistration_2026-07-31.json"
+)
+PREREGISTRATION_PATH = Path(
+    "results/"
+    "gross9_structural_clock_bundle_preregistration_v2_2026-07-31.json"
 )
 ACCESS_CLAIM_PATH = Path(
     "results/gross9_structural_clock_bundle_access_claim_2026-07-31.json"
@@ -102,12 +114,38 @@ RUNTIME_ISOLATION_AMENDMENT_SHA256 = (
 RUNTIME_ISOLATION_AMENDMENT_GIT_BLOB = (
     "c2da15ff249e46a8fac2040d67f531a683b7fd7e"
 )
+PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT = (
+    "eee3383c9b2f88f4ea28f5bfe3a5ff6a650cec0f"
+)
+PREREGISTRATION_CORRECTION_AMENDMENT_SHA256 = (
+    "b79151c3378960017ddb30b7c1040f3027be538acad00776315380c267c6acaf"
+)
+PREREGISTRATION_CORRECTION_AMENDMENT_GIT_BLOB = (
+    "94c0f3e13680f9e0ebbdb07ae7646b9505891e46"
+)
+HISTORICAL_PREREGISTRATION_SHA256 = (
+    "3580a3663b54509d004dc2edac0f18ff9c79cb80b199e8de5e9b1a9feb98d472"
+)
+HISTORICAL_PREREGISTRATION_GIT_BLOB = (
+    "61992d68beff0da255b002776d0efdb4ef96ab93"
+)
+HISTORICAL_PREREGISTRATION_SEAL_COMMIT = (
+    "3810a3b7e24b83591866f2ccf9b63167795718c5"
+)
+HISTORICAL_PROTOCOL_PARENT_COMMIT = (
+    "05437c3d8f2a9c556fde4e950a815b9901f7fc98"
+)
+HISTORICAL_PREREGISTRATION_MANIFEST_HASH = (
+    "5ddf4c5c0aef42e1fb24defa78fccbd4142c8274bc22fd0a7d7e97fa9e8bb9bb"
+)
 DIRECT_AUTHORITY_VERIFICATION_COMMIT = "91b41254319686f8b64bba797708f8e637aeddd3"
 EXPECTED_BRANCH = "codex/gross9-structural-clock-bundle-20260731"
+UNSEALED_PROTOCOL_IMPLEMENTATION_COMMIT = "0" * 40
 
 PROTOCOL_PATHS = (
     RANK7_AUTHORITY_AMENDMENT_PATH,
     RUNTIME_ISOLATION_AMENDMENT_PATH,
+    PREREGISTRATION_CORRECTION_AMENDMENT_PATH,
     AUTHORITY_DECISION_PATH,
     PREREGISTRATION_SOURCE,
     PREREGISTRATION_TEST,
@@ -122,6 +160,22 @@ PROTOCOL_PATHS = (
 RUNTIME_IMPORT_ROOTS = (
     RANK7_FACADE_SOURCE,
     PRIMITIVES_SOURCE,
+)
+CORRECTION_AUTHORITY_DIFF = (
+    "A\tdocs/"
+    "gross9-structural-clock-bundle-preregistration-correction-amendment-"
+    "2026-07-31.md",
+)
+CORRECTION_PROTOCOL_DIFF = (
+    "M\ttests/test_build_gross9_structural_clock_bundle.py",
+    "M\ttests/test_gross9_structural_clock_bundle_preregistration_artifact.py",
+    "M\ttests/test_preregister_gross9_structural_clock_bundle.py",
+    "M\ttraining/build_gross9_structural_clock_bundle.py",
+    "M\ttraining/preregister_gross9_structural_clock_bundle.py",
+)
+ACTIVE_PREREGISTRATION_DIFF = (
+    "A\tresults/"
+    "gross9_structural_clock_bundle_preregistration_v2_2026-07-31.json",
 )
 
 DIRECT_AUTHORITY_BINDINGS = (
@@ -453,6 +507,28 @@ PERMANENT_PROHIBITED_COUNTERS = {
     "candidate_metric_values_computed": 0,
     "overlap_metric_values_computed": 0,
 }
+CREATION_ZERO_COUNTER_NAMES = (
+    "source_value_rows_opened",
+    "pre2025_anchor_value_rows_opened",
+    "runtime_modules_imported",
+    "esdi_runtime_or_private_invocations",
+    "model_files_loaded",
+    "model_or_history_rows_opened",
+    "market_rows_opened",
+    "open_interest_rows_opened",
+    "funding_rows_opened",
+    "premium_rows_opened",
+    "outcome_dependent_ohlc_rows_opened",
+    "gross9_clock_rows_opened",
+    "candidate_rows_opened",
+    "comparator_clock_rows_opened",
+)
+CREATION_FALSE_DECLARATION_NAMES = (
+    "portfolio_return_or_pnl_computed",
+    "funding_cash_computed",
+    "economic_metric_computed",
+    "candidate_or_overlap_metric_computed",
+)
 
 SOURCE_COUNTER_NAMES = (
     "market_5m",
@@ -475,6 +551,136 @@ PER_SLEEVE_COUNTER_NAMES = (
     "stop_exits",
     "outcome_dependent_ohlc_rows_examined",
 )
+
+
+def validate_zero_access_schema(payload: Mapping[str, Any]) -> None:
+    creation = payload.get("creation_evidence_boundary")
+    if not isinstance(creation, Mapping) or set(creation) != set(
+        CREATION_EVIDENCE_BOUNDARY
+    ):
+        raise ValueError("creation evidence boundary schema differs")
+    if creation.get("source_bytes_hashed") is not True:
+        raise ValueError("source_bytes_hashed must be boolean true")
+    for key in CREATION_ZERO_COUNTER_NAMES:
+        value = creation.get(key)
+        if type(value) is not int or value != 0:
+            raise ValueError(f"{key}: expected exact integer zero")
+    for key in CREATION_FALSE_DECLARATION_NAMES:
+        if creation.get(key) is not False:
+            raise ValueError(f"{key}: expected boolean false")
+
+    prohibited = payload.get("permanent_prohibited_counters")
+    if not isinstance(prohibited, Mapping) or set(prohibited) != set(
+        PERMANENT_PROHIBITED_COUNTERS
+    ):
+        raise ValueError("permanent prohibited counter schema differs")
+    for key, value in prohibited.items():
+        if type(value) is not int or value != 0:
+            raise ValueError(f"{key}: expected exact integer zero")
+
+    anchor = payload.get("pre2025_anchor_boundary")
+    if not isinstance(anchor, Mapping) or set(anchor) != {
+        "pre2025_anchor_bytes_hashed",
+        "pre2025_anchor_git_blob_authenticated",
+        "pre2025_anchor_json_parsed",
+        "pre2025_anchor_value_rows_opened",
+    }:
+        raise ValueError("pre-2025 anchor boundary schema differs")
+    if anchor.get("pre2025_anchor_bytes_hashed") is not True:
+        raise ValueError("pre-2025 anchor hash declaration differs")
+    if anchor.get("pre2025_anchor_git_blob_authenticated") is not True:
+        raise ValueError("pre-2025 anchor Git declaration differs")
+    if anchor.get("pre2025_anchor_json_parsed") is not False:
+        raise ValueError("pre-2025 anchor parse declaration differs")
+    anchor_rows = anchor.get("pre2025_anchor_value_rows_opened")
+    if type(anchor_rows) is not int or anchor_rows != 0:
+        raise ValueError("pre-2025 anchor row counter differs")
+
+    independence = payload.get("candidate_independence")
+    if not isinstance(independence, Mapping) or set(independence) != {
+        "candidate_identity_present",
+        "candidate_artifacts_opened",
+        "comparator_clock_rows_opened",
+        "comparator_clocks_preseen_by_research_program",
+    }:
+        raise ValueError("candidate-independence schema differs")
+    if independence.get("candidate_identity_present") is not False:
+        raise ValueError("candidate identity declaration differs")
+    if independence.get("candidate_artifacts_opened") is not False:
+        raise ValueError("candidate artifact declaration differs")
+    comparator_rows = independence.get("comparator_clock_rows_opened")
+    if type(comparator_rows) is not int or comparator_rows != 0:
+        raise ValueError("comparator clock row counter differs")
+    if (
+        independence.get("comparator_clocks_preseen_by_research_program")
+        is not True
+    ):
+        raise ValueError("comparator research-context disclosure differs")
+
+    allowed_locations = {
+        ("permanent_prohibited_counters",),
+        ("creation_evidence_boundary", "source_bytes_hashed"),
+        *{
+            ("creation_evidence_boundary", key)
+            for key in CREATION_ZERO_COUNTER_NAMES
+        },
+        *{
+            ("creation_evidence_boundary", key)
+            for key in CREATION_FALSE_DECLARATION_NAMES
+        },
+        *{
+            ("permanent_prohibited_counters", key)
+            for key in PERMANENT_PROHIBITED_COUNTERS
+        },
+        (
+            "pre2025_anchor_boundary",
+            "pre2025_anchor_value_rows_opened",
+        ),
+        (
+            "pre2025_anchor_boundary",
+            "pre2025_anchor_bytes_hashed",
+        ),
+        ("candidate_independence", "comparator_clock_rows_opened"),
+    }
+    guarded_names = {
+        "source_bytes_hashed",
+        *CREATION_ZERO_COUNTER_NAMES,
+        *CREATION_FALSE_DECLARATION_NAMES,
+        *PERMANENT_PROHIBITED_COUNTERS,
+    }
+    guarded_suffixes = (
+        "_computed",
+        "_values_computed",
+        "_rows_opened",
+        "_rows_examined",
+        "_files_loaded",
+        "_files_opened",
+        "_modules_imported",
+        "_invocations",
+        "_bytes_hashed",
+        "_counter",
+        "_counters",
+    )
+
+    def walk(value: Any, path: tuple[str, ...] = ()) -> None:
+        if isinstance(value, Mapping):
+            for raw_key, item in value.items():
+                if not isinstance(raw_key, str):
+                    raise ValueError("preregistration mapping key is not text")
+                location = (*path, raw_key)
+                if (
+                    raw_key in guarded_names
+                    or raw_key.endswith(guarded_suffixes)
+                ) and location not in allowed_locations:
+                    raise ValueError(
+                        f"{'.'.join(location)}: computed/counter key is misplaced"
+                    )
+                walk(item, location)
+        elif isinstance(value, list):
+            for index, item in enumerate(value):
+                walk(item, (*path, str(index)))
+
+    walk(payload)
 
 
 def repository_path(
@@ -635,6 +841,242 @@ def _tracked_binding(
         "git_blob": blob,
         "git_mode": mode,
     }
+
+
+def _single_parent(
+    commit: str, repository_root: Path = REPOSITORY_ROOT
+) -> str:
+    fields = _run_git(
+        ["rev-list", "--parents", "-n", "1", commit], repository_root
+    ).split()
+    if len(fields) != 2 or fields[0] != commit:
+        raise ValueError(f"{commit}: expected exactly one Git parent")
+    return fields[1]
+
+
+def _commit_diff(
+    parent: str,
+    child: str,
+    repository_root: Path = REPOSITORY_ROOT,
+) -> tuple[str, ...]:
+    output = _run_git(
+        [
+            "diff-tree",
+            "--no-commit-id",
+            "--name-status",
+            "-r",
+            parent,
+            child,
+        ],
+        repository_root,
+    )
+    return tuple(line for line in output.splitlines() if line)
+
+
+def _addition_commits(
+    path: Path, repository_root: Path = REPOSITORY_ROOT
+) -> tuple[str, ...]:
+    output = _run_git(
+        [
+            "log",
+            "--format=%H",
+            "--diff-filter=A",
+            "--",
+            path.as_posix(),
+        ],
+        repository_root,
+    )
+    return tuple(line for line in output.splitlines() if line)
+
+
+def _require_ancestor(
+    ancestor: str,
+    descendant: str,
+    repository_root: Path = REPOSITORY_ROOT,
+) -> None:
+    try:
+        _run_git(
+            ["merge-base", "--is-ancestor", ancestor, descendant],
+            repository_root,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise ValueError(
+            f"{ancestor}: not an ancestor of {descendant}"
+        ) from exc
+
+
+def validate_historical_preregistration_topology(
+    repository_root: Path = REPOSITORY_ROOT,
+) -> None:
+    if (
+        _single_parent(
+            HISTORICAL_PREREGISTRATION_SEAL_COMMIT, repository_root
+        )
+        != HISTORICAL_PROTOCOL_PARENT_COMMIT
+    ):
+        raise ValueError("historical preregistration parent differs")
+    expected = (
+        "A\t"
+        f"{HISTORICAL_PREREGISTRATION_PATH.as_posix()}",
+    )
+    if _commit_diff(
+        HISTORICAL_PROTOCOL_PARENT_COMMIT,
+        HISTORICAL_PREREGISTRATION_SEAL_COMMIT,
+        repository_root,
+    ) != expected:
+        raise ValueError("historical preregistration seal diff differs")
+    if _addition_commits(
+        HISTORICAL_PREREGISTRATION_PATH, repository_root
+    ) != (HISTORICAL_PREREGISTRATION_SEAL_COMMIT,):
+        raise ValueError("historical preregistration addition history differs")
+    head = _run_git(["rev-parse", "HEAD"], repository_root)
+    _require_ancestor(
+        HISTORICAL_PREREGISTRATION_SEAL_COMMIT,
+        head,
+        repository_root,
+    )
+
+
+def validate_protocol_commit_topology(
+    repository_root: Path = REPOSITORY_ROOT,
+) -> str:
+    if (
+        _single_parent(
+            PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT,
+            repository_root,
+        )
+        != HISTORICAL_PREREGISTRATION_SEAL_COMMIT
+    ):
+        raise ValueError("G9CB-1C authority parent differs")
+    if _commit_diff(
+        HISTORICAL_PREREGISTRATION_SEAL_COMMIT,
+        PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT,
+        repository_root,
+    ) != CORRECTION_AUTHORITY_DIFF:
+        raise ValueError("G9CB-1C authority diff differs")
+
+    head = _run_git(["rev-parse", "HEAD"], repository_root)
+    additions = _addition_commits(PREREGISTRATION_PATH, repository_root)
+    if additions:
+        if len(additions) != 1:
+            raise ValueError("active preregistration addition history differs")
+        preregistration_seal = additions[0]
+        implementation = _single_parent(
+            preregistration_seal, repository_root
+        )
+        if _commit_diff(
+            implementation,
+            preregistration_seal,
+            repository_root,
+        ) != ACTIVE_PREREGISTRATION_DIFF:
+            raise ValueError("active preregistration seal diff differs")
+        _require_ancestor(preregistration_seal, head, repository_root)
+    else:
+        implementation = head
+
+    if (
+        _single_parent(implementation, repository_root)
+        != PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT
+    ):
+        raise ValueError("protocol implementation parent differs")
+    if _commit_diff(
+        PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT,
+        implementation,
+        repository_root,
+    ) != CORRECTION_PROTOCOL_DIFF:
+        raise ValueError("protocol implementation diff differs")
+    _require_ancestor(implementation, head, repository_root)
+    return implementation
+
+
+def _historical_v1_authority_amendments() -> list[dict[str, str]]:
+    return [
+        {
+            "identity": "G9CB-1A",
+            "path": RANK7_AUTHORITY_AMENDMENT_PATH.as_posix(),
+            "path_type": "regular_file",
+            "sha256": RANK7_AUTHORITY_AMENDMENT_SHA256,
+            "git_blob": RANK7_AUTHORITY_AMENDMENT_GIT_BLOB,
+            "git_mode": "100644",
+            "authority_commit": RANK7_AUTHORITY_AMENDMENT_COMMIT,
+        },
+        {
+            "identity": "G9CB-1B",
+            "path": RUNTIME_ISOLATION_AMENDMENT_PATH.as_posix(),
+            "path_type": "regular_file",
+            "sha256": RUNTIME_ISOLATION_AMENDMENT_SHA256,
+            "git_blob": RUNTIME_ISOLATION_AMENDMENT_GIT_BLOB,
+            "git_mode": "100644",
+            "authority_commit": RUNTIME_ISOLATION_AMENDMENT_COMMIT,
+        },
+    ]
+
+
+def expected_superseded_preregistration_binding() -> dict[str, str]:
+    return {
+        "path": HISTORICAL_PREREGISTRATION_PATH.as_posix(),
+        "path_type": "regular_file",
+        "sha256": HISTORICAL_PREREGISTRATION_SHA256,
+        "git_blob": HISTORICAL_PREREGISTRATION_GIT_BLOB,
+        "git_mode": "100644",
+        "filesystem_mode_octal": "0444",
+        "seal_commit": HISTORICAL_PREREGISTRATION_SEAL_COMMIT,
+        "protocol_parent_commit": HISTORICAL_PROTOCOL_PARENT_COMMIT,
+        "protocol_version": HISTORICAL_PROTOCOL_VERSION,
+        "manifest_hash": HISTORICAL_PREREGISTRATION_MANIFEST_HASH,
+        "status": "historical_nonoperative_preclaim_validation_failure",
+    }
+
+
+def validate_superseded_preregistration(
+    repository_root: Path = REPOSITORY_ROOT,
+) -> dict[str, str]:
+    binding = _tracked_binding(
+        HISTORICAL_PREREGISTRATION_PATH,
+        repository_root=repository_root,
+        expected_sha256=HISTORICAL_PREREGISTRATION_SHA256,
+        expected_blob=HISTORICAL_PREREGISTRATION_GIT_BLOB,
+    )
+    path = repository_path(
+        HISTORICAL_PREREGISTRATION_PATH, repository_root
+    )
+    if stat.S_IMODE(path.stat().st_mode) != 0o444:
+        raise ValueError("historical preregistration filesystem mode differs")
+    raw = path.read_bytes()
+    if not raw.endswith(b"\n") or raw.endswith(b"\n\n"):
+        raise ValueError("historical preregistration trailing LF differs")
+    payload = json.loads(raw)
+    if raw != canonical_json_bytes(payload, trailing_lf=True):
+        raise ValueError("historical preregistration JSON is not canonical")
+    if payload.get("protocol_version") != HISTORICAL_PROTOCOL_VERSION:
+        raise ValueError("historical preregistration protocol version differs")
+    if (
+        payload.get("manifest_hash")
+        != HISTORICAL_PREREGISTRATION_MANIFEST_HASH
+        or canonical_hash(payload)
+        != HISTORICAL_PREREGISTRATION_MANIFEST_HASH
+    ):
+        raise ValueError("historical preregistration manifest hash differs")
+    if (
+        payload.get("bindings", {}).get("authority_amendments")
+        != _historical_v1_authority_amendments()
+    ):
+        raise ValueError("historical preregistration amendments differ")
+    validate_historical_preregistration_topology(repository_root)
+    binding.update(
+        {
+            "filesystem_mode_octal": "0444",
+            "seal_commit": HISTORICAL_PREREGISTRATION_SEAL_COMMIT,
+            "protocol_parent_commit": HISTORICAL_PROTOCOL_PARENT_COMMIT,
+            "protocol_version": HISTORICAL_PROTOCOL_VERSION,
+            "manifest_hash": HISTORICAL_PREREGISTRATION_MANIFEST_HASH,
+            "status": "historical_nonoperative_preclaim_validation_failure",
+        }
+    )
+    expected = expected_superseded_preregistration_binding()
+    if binding != expected:
+        raise ValueError("historical preregistration binding differs")
+    return binding
 
 
 def validate_git_seal(
@@ -1171,12 +1613,25 @@ def _authority_amendment_bindings(
             authority_commit=RUNTIME_ISOLATION_AMENDMENT_COMMIT,
             repository_root=repository_root,
         ),
+        _authority_amendment_binding(
+            identity="G9CB-1C",
+            path=PREREGISTRATION_CORRECTION_AMENDMENT_PATH,
+            sha256=PREREGISTRATION_CORRECTION_AMENDMENT_SHA256,
+            git_blob=PREREGISTRATION_CORRECTION_AMENDMENT_GIT_BLOB,
+            authority_commit=PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT,
+            repository_root=repository_root,
+        ),
     ]
 
 
 def _manifest_without_hash(
     repository_root: Path, *, require_git_seal: bool
 ) -> dict[str, Any]:
+    protocol_implementation_commit = (
+        validate_protocol_commit_topology(repository_root)
+        if require_git_seal
+        else UNSEALED_PROTOCOL_IMPLEMENTATION_COMMIT
+    )
     git_seal = (
         validate_git_seal(repository_root)
         if require_git_seal
@@ -1196,6 +1651,7 @@ def _manifest_without_hash(
     return {
         "protocol_version": PROTOCOL_VERSION,
         "identity": IDENTITY,
+        "protocol_implementation_commit": protocol_implementation_commit,
         "authority_decision": _authority_decision_binding(repository_root),
         "direct_authority_verification_commit": (
             DIRECT_AUTHORITY_VERIFICATION_COMMIT
@@ -1284,6 +1740,9 @@ def _manifest_without_hash(
             "protocol": _protocol_inventory(repository_root),
             "authority_amendments": _authority_amendment_bindings(
                 repository_root
+            ),
+            "superseded_preregistration": (
+                validate_superseded_preregistration(repository_root)
             ),
             "direct_authority": _direct_authority_inventory(repository_root),
             "config_metadata_evidence": config_evidence,
@@ -1435,40 +1894,39 @@ def validate_manifest(
         raise ValueError("preregistration protocol version mismatch")
     if manifest.get("identity") != IDENTITY:
         raise ValueError("preregistration identity mismatch")
+    implementation = manifest.get("protocol_implementation_commit")
+    if not isinstance(implementation, str) or not re.fullmatch(
+        r"[0-9a-f]{40}", implementation
+    ):
+        raise ValueError("protocol implementation commit is invalid")
     if manifest.get("manifest_hash") != canonical_hash(manifest):
         raise ValueError("preregistration manifest_hash mismatch")
-    if manifest.get("candidate_independence") != {
-        "candidate_identity_present": False,
-        "candidate_artifacts_opened": False,
-        "comparator_clock_rows_opened": 0,
-        "comparator_clocks_preseen_by_research_program": True,
-    }:
-        raise ValueError("candidate-independence boundary mismatch")
-    if manifest.get("creation_evidence_boundary") != CREATION_EVIDENCE_BOUNDARY:
-        raise ValueError("creation evidence boundary mismatch")
-    amendments = manifest.get("bindings", {}).get("authority_amendments")
+    validate_zero_access_schema(manifest)
+    bindings = manifest.get("bindings")
+    if not isinstance(bindings, Mapping):
+        raise ValueError("preregistration bindings object is absent")
+    amendments = bindings.get("authority_amendments")
     expected_amendments = [
+        *_historical_v1_authority_amendments(),
         {
-            "identity": "G9CB-1A",
-            "path": RANK7_AUTHORITY_AMENDMENT_PATH.as_posix(),
+            "identity": "G9CB-1C",
+            "path": PREREGISTRATION_CORRECTION_AMENDMENT_PATH.as_posix(),
             "path_type": "regular_file",
-            "sha256": RANK7_AUTHORITY_AMENDMENT_SHA256,
-            "git_blob": RANK7_AUTHORITY_AMENDMENT_GIT_BLOB,
+            "sha256": PREREGISTRATION_CORRECTION_AMENDMENT_SHA256,
+            "git_blob": PREREGISTRATION_CORRECTION_AMENDMENT_GIT_BLOB,
             "git_mode": "100644",
-            "authority_commit": RANK7_AUTHORITY_AMENDMENT_COMMIT,
-        },
-        {
-            "identity": "G9CB-1B",
-            "path": RUNTIME_ISOLATION_AMENDMENT_PATH.as_posix(),
-            "path_type": "regular_file",
-            "sha256": RUNTIME_ISOLATION_AMENDMENT_SHA256,
-            "git_blob": RUNTIME_ISOLATION_AMENDMENT_GIT_BLOB,
-            "git_mode": "100644",
-            "authority_commit": RUNTIME_ISOLATION_AMENDMENT_COMMIT,
+            "authority_commit": PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT,
         },
     ]
     if amendments != expected_amendments:
         raise ValueError("authority amendment bindings mismatch")
+    expected_superseded = (
+        validate_superseded_preregistration(repository_root)
+        if verify_files
+        else expected_superseded_preregistration_binding()
+    )
+    if bindings.get("superseded_preregistration") != expected_superseded:
+        raise ValueError("superseded preregistration binding mismatch")
     if manifest.get("source_preclaim_disclosures", {}).get(
         "frozen_open_interest_gzip_opaque_bytes_opened_preclaim"
     ) is not True:
@@ -1478,13 +1936,21 @@ def validate_manifest(
     ) is not False:
         raise ValueError("gzip preclaim decompression disclosure mismatch")
     if verify_git_seal:
+        actual_implementation = validate_protocol_commit_topology(
+            repository_root
+        )
+        if implementation != actual_implementation:
+            raise ValueError("protocol implementation commit differs")
         validate_git_seal(repository_root)
     if verify_environment:
         actual_environment = validate_environment(repository_root)
         if manifest.get("bindings", {}).get("environment") != actual_environment:
             raise ValueError("manifest environment inventory mismatch")
     if verify_files:
-        rebuilt = build_manifest(repository_root, require_git_seal=False)
+        rebuilt = build_manifest(
+            repository_root,
+            require_git_seal=verify_git_seal,
+        )
         if rebuilt != dict(manifest):
             raise ValueError("preregistration does not match authenticated metadata")
 

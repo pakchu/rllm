@@ -6,11 +6,16 @@ import subprocess
 
 import pytest
 
+from training import build_gross9_structural_clock_bundle as builder
 from training import preregister_gross9_structural_clock_bundle as prereg
 
 
 ARTIFACT = prereg.REPOSITORY_ROOT / prereg.PREREGISTRATION_PATH
-EXPECTED_AUTHORITY_AMENDMENT_IDENTITIES = ["G9CB-1A", "G9CB-1B"]
+EXPECTED_AUTHORITY_AMENDMENT_IDENTITIES = [
+    "G9CB-1A",
+    "G9CB-1B",
+    "G9CB-1C",
+]
 EXPECTED_RUNTIME_IMPORT_ROOTS = [
     "execution/gross9_rank7_clock_runtime.py",
     "training/gross9_structural_clock_primitives.py",
@@ -27,6 +32,24 @@ EXPECTED_CONSUMPTION_LEDGER_PATHS = [
         "2026-07-31.json"
     ),
 ]
+
+
+def test_historical_v1_artifact_remains_nonoperative_evidence() -> None:
+    historical = (
+        prereg.REPOSITORY_ROOT
+        / prereg.HISTORICAL_PREREGISTRATION_PATH
+    )
+    assert historical != ARTIFACT
+    assert prereg.validate_superseded_preregistration() == (
+        prereg.expected_superseded_preregistration_binding()
+    )
+    payload = json.loads(historical.read_bytes())
+    assert payload["protocol_version"] == prereg.HISTORICAL_PROTOCOL_VERSION
+    assert payload["protocol_version"] != prereg.PROTOCOL_VERSION
+    assert [
+        row["identity"]
+        for row in payload["bindings"]["authority_amendments"]
+    ] == ["G9CB-1A", "G9CB-1B"]
 
 
 def test_committed_preregistration_artifact_is_exactly_reproducible() -> None:
@@ -51,6 +74,15 @@ def test_committed_preregistration_artifact_is_exactly_reproducible() -> None:
     assert raw == prereg.canonical_json_bytes(payload, trailing_lf=True)
     prereg.validate_manifest(payload)
     assert payload == prereg.build_manifest()
+    assert payload["protocol_version"] == (
+        "gross9_structural_clock_bundle_preregistration_v2"
+    )
+    assert payload["protocol_implementation_commit"] == (
+        prereg.validate_protocol_commit_topology()
+    )
+    assert payload["bindings"]["superseded_preregistration"] == (
+        prereg.expected_superseded_preregistration_binding()
+    )
     assert payload["bindings"]["authority_amendments"] == (
         prereg._authority_amendment_bindings()
     )
@@ -100,3 +132,14 @@ def test_committed_preregistration_artifact_is_exactly_reproducible() -> None:
         stderr=subprocess.PIPE,
     ).stdout
     assert blob == raw
+
+
+def test_committed_publication_is_verified_at_d_when_present() -> None:
+    manifest = prereg.REPOSITORY_ROOT / builder.MANIFEST_PATH
+    if not manifest.exists():
+        pytest.skip("publication artifact is absent before D")
+    result = builder.validate_committed_publication()
+    assert result["head"] == result["publication_commit"]
+    assert result["protocol_implementation_commit"] == (
+        prereg.validate_protocol_commit_topology()
+    )

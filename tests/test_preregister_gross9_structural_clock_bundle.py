@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -42,6 +43,21 @@ EXPECTED_AUTHORITY_AMENDMENTS = [
         "git_mode": "100644",
         "authority_commit": "2550e0b8ee348b4217744a73d9781dba1e1e91a3",
     },
+    {
+        "identity": "G9CB-1C",
+        "path": (
+            "docs/"
+            "gross9-structural-clock-bundle-preregistration-correction-"
+            "amendment-2026-07-31.md"
+        ),
+        "path_type": "regular_file",
+        "sha256": (
+            "b79151c3378960017ddb30b7c1040f3027be538acad00776315380c267c6acaf"
+        ),
+        "git_blob": "94c0f3e13680f9e0ebbdb07ae7646b9505891e46",
+        "git_mode": "100644",
+        "authority_commit": "eee3383c9b2f88f4ea28f5bfe3a5ff6a650cec0f",
+    },
 ]
 
 EXPECTED_PROTOCOL_PATHS = [
@@ -55,6 +71,11 @@ EXPECTED_PROTOCOL_PATHS = [
         "gross9-structural-clock-bundle-runtime-isolation-amendment-"
         "2026-07-31.md"
     ),
+    (
+        "docs/"
+        "gross9-structural-clock-bundle-preregistration-correction-"
+        "amendment-2026-07-31.md"
+    ),
     "docs/gross9-structural-clock-bundle-authority-decision-2026-07-31.md",
     "training/preregister_gross9_structural_clock_bundle.py",
     "tests/test_preregister_gross9_structural_clock_bundle.py",
@@ -66,6 +87,27 @@ EXPECTED_PROTOCOL_PATHS = [
     "execution/gross9_rank7_clock_runtime.py",
     "tests/test_gross9_rank7_clock_runtime.py",
 ]
+
+EXPECTED_SUPERSEDED_PREREGISTRATION = {
+    "path": (
+        "results/"
+        "gross9_structural_clock_bundle_preregistration_2026-07-31.json"
+    ),
+    "path_type": "regular_file",
+    "sha256": (
+        "3580a3663b54509d004dc2edac0f18ff9c79cb80b199e8de5e9b1a9feb98d472"
+    ),
+    "git_blob": "61992d68beff0da255b002776d0efdb4ef96ab93",
+    "git_mode": "100644",
+    "filesystem_mode_octal": "0444",
+    "seal_commit": "3810a3b7e24b83591866f2ccf9b63167795718c5",
+    "protocol_parent_commit": "05437c3d8f2a9c556fde4e950a815b9901f7fc98",
+    "protocol_version": "gross9_structural_clock_bundle_preregistration_v1",
+    "manifest_hash": (
+        "5ddf4c5c0aef42e1fb24defa78fccbd4142c8274bc22fd0a7d7e97fa9e8bb9bb"
+    ),
+    "status": "historical_nonoperative_preclaim_validation_failure",
+}
 
 EXPECTED_CONSUMPTION_LEDGER_PATHS = [
     (
@@ -81,6 +123,29 @@ EXPECTED_CONSUMPTION_LEDGER_PATHS = [
 ]
 
 
+def _zero_access_payload() -> dict[str, object]:
+    return {
+        "creation_evidence_boundary": dict(
+            prereg.CREATION_EVIDENCE_BOUNDARY
+        ),
+        "permanent_prohibited_counters": dict(
+            prereg.PERMANENT_PROHIBITED_COUNTERS
+        ),
+        "pre2025_anchor_boundary": {
+            "pre2025_anchor_bytes_hashed": True,
+            "pre2025_anchor_git_blob_authenticated": True,
+            "pre2025_anchor_json_parsed": False,
+            "pre2025_anchor_value_rows_opened": 0,
+        },
+        "candidate_independence": {
+            "candidate_identity_present": False,
+            "candidate_artifacts_opened": False,
+            "comparator_clock_rows_opened": 0,
+            "comparator_clocks_preseen_by_research_program": True,
+        },
+    }
+
+
 def test_canonical_json_and_manifest_hash_contract() -> None:
     payload = {"z": 1, "ascii": "한", "manifest_hash": "discarded"}
     assert prereg.canonical_json_bytes(payload) == (
@@ -89,6 +154,96 @@ def test_canonical_json_and_manifest_hash_contract() -> None:
     expected = hashlib.sha256(b'{"ascii":"\\ud55c","z":1}').hexdigest()
     assert prereg.canonical_hash(payload) == expected
     assert prereg.canonical_json_bytes(payload, trailing_lf=True).endswith(b"\n")
+
+
+def test_closed_zero_access_schema_accepts_only_exact_typed_objects() -> None:
+    payload = _zero_access_payload()
+    prereg.validate_zero_access_schema(payload)
+
+    integer_locations = [
+        *[
+            ("creation_evidence_boundary", key)
+            for key in prereg.CREATION_ZERO_COUNTER_NAMES
+        ],
+        *[
+            ("permanent_prohibited_counters", key)
+            for key in prereg.PERMANENT_PROHIBITED_COUNTERS
+        ],
+        (
+            "pre2025_anchor_boundary",
+            "pre2025_anchor_value_rows_opened",
+        ),
+        ("candidate_independence", "comparator_clock_rows_opened"),
+    ]
+    for section, key in integer_locations:
+        for invalid in (False, 0.0, "0", None, []):
+            malformed = copy.deepcopy(payload)
+            malformed[section][key] = invalid  # type: ignore[index]
+            with pytest.raises(ValueError, match="counter|integer zero|rows"):
+                prereg.validate_zero_access_schema(malformed)
+
+    boolean_locations = [
+        *[
+            ("creation_evidence_boundary", key)
+            for key in prereg.CREATION_FALSE_DECLARATION_NAMES
+        ],
+        ("pre2025_anchor_boundary", "pre2025_anchor_json_parsed"),
+        ("candidate_independence", "candidate_identity_present"),
+        ("candidate_independence", "candidate_artifacts_opened"),
+    ]
+    for section, key in boolean_locations:
+        malformed = copy.deepcopy(payload)
+        malformed[section][key] = 0  # type: ignore[index]
+        with pytest.raises(ValueError, match="false|declaration"):
+            prereg.validate_zero_access_schema(malformed)
+
+
+def test_closed_zero_access_schema_rejects_unknown_and_misplaced_keys() -> None:
+    for key in (
+        "invented_values_computed",
+        "invented_rows_opened",
+        "invented_rows_examined",
+        "invented_files_loaded",
+        "invented_modules_imported",
+        "invented_counter",
+        "invented_counters",
+    ):
+        nested = _zero_access_payload()
+        nested["nested"] = {key: 0}
+        with pytest.raises(ValueError, match="misplaced"):
+            prereg.validate_zero_access_schema(nested)
+
+        top_level = _zero_access_payload()
+        top_level[key] = 0
+        with pytest.raises(ValueError, match="misplaced"):
+            prereg.validate_zero_access_schema(top_level)
+
+    misplaced = _zero_access_payload()
+    misplaced["nested"] = {"cagr_values_computed": 0}
+    with pytest.raises(ValueError, match="misplaced"):
+        prereg.validate_zero_access_schema(misplaced)
+
+    additional = _zero_access_payload()
+    additional["permanent_prohibited_counters"][  # type: ignore[index]
+        "invented_values_computed"
+    ] = 0
+    with pytest.raises(ValueError, match="schema differs"):
+        prereg.validate_zero_access_schema(additional)
+
+
+def test_historical_v1_zero_counters_are_valid_but_not_v2() -> None:
+    historical = json.loads(
+        (
+            prereg.REPOSITORY_ROOT
+            / prereg.HISTORICAL_PREREGISTRATION_PATH
+        ).read_bytes()
+    )
+    prereg.validate_zero_access_schema(historical)
+    assert historical["protocol_version"] == prereg.HISTORICAL_PROTOCOL_VERSION
+    assert historical["protocol_version"] != prereg.PROTOCOL_VERSION
+    assert prereg.PREREGISTRATION_PATH != (
+        prereg.HISTORICAL_PREREGISTRATION_PATH
+    )
 
 
 def test_sha256_file_hashes_opaque_bytes_without_parsing(tmp_path: Path) -> None:
@@ -184,7 +339,113 @@ def test_repository_authority_amendments_authenticate_in_canonical_order() -> No
     assert prereg._authority_amendment_bindings() == EXPECTED_AUTHORITY_AMENDMENTS
 
 
-def test_protocol_paths_include_exact_g9cb_1b_authority_and_modules() -> None:
+def test_historical_preregistration_is_exact_nonoperative_evidence() -> None:
+    assert prereg.expected_superseded_preregistration_binding() == (
+        EXPECTED_SUPERSEDED_PREREGISTRATION
+    )
+    assert prereg.validate_superseded_preregistration() == (
+        EXPECTED_SUPERSEDED_PREREGISTRATION
+    )
+
+
+def test_protocol_commit_topology_accepts_exact_a_q_p_chain(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    authority = prereg.PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT
+    historical = prereg.HISTORICAL_PREREGISTRATION_SEAL_COMMIT
+    implementation = "1" * 40
+    seal = "2" * 40
+    responses = {
+        (
+            "rev-list",
+            "--parents",
+            "-n",
+            "1",
+            authority,
+        ): f"{authority} {historical}",
+        (
+            "diff-tree",
+            "--no-commit-id",
+            "--name-status",
+            "-r",
+            historical,
+            authority,
+        ): "\n".join(prereg.CORRECTION_AUTHORITY_DIFF),
+        ("rev-parse", "HEAD"): seal,
+        (
+            "log",
+            "--format=%H",
+            "--diff-filter=A",
+            "--",
+            prereg.PREREGISTRATION_PATH.as_posix(),
+        ): seal,
+        (
+            "rev-list",
+            "--parents",
+            "-n",
+            "1",
+            seal,
+        ): f"{seal} {implementation}",
+        (
+            "diff-tree",
+            "--no-commit-id",
+            "--name-status",
+            "-r",
+            implementation,
+            seal,
+        ): "\n".join(prereg.ACTIVE_PREREGISTRATION_DIFF),
+        (
+            "rev-list",
+            "--parents",
+            "-n",
+            "1",
+            implementation,
+        ): f"{implementation} {authority}",
+        (
+            "diff-tree",
+            "--no-commit-id",
+            "--name-status",
+            "-r",
+            authority,
+            implementation,
+        ): "\n".join(prereg.CORRECTION_PROTOCOL_DIFF),
+        (
+            "merge-base",
+            "--is-ancestor",
+            seal,
+            seal,
+        ): "",
+        (
+            "merge-base",
+            "--is-ancestor",
+            implementation,
+            seal,
+        ): "",
+    }
+
+    def fake_git(arguments: object, _root: Path) -> str:
+        return responses[tuple(arguments)]  # type: ignore[arg-type]
+
+    monkeypatch.setattr(prereg, "_run_git", fake_git)
+    assert prereg.validate_protocol_commit_topology(Path("/synthetic")) == (
+        implementation
+    )
+
+    responses[
+        (
+            "diff-tree",
+            "--no-commit-id",
+            "--name-status",
+            "-r",
+            authority,
+            implementation,
+        )
+    ] = "M\ttraining/gross9_structural_clock_primitives.py"
+    with pytest.raises(ValueError, match="implementation diff"):
+        prereg.validate_protocol_commit_topology(Path("/synthetic"))
+
+
+def test_protocol_paths_include_exact_g9cb_1c_authority_and_modules() -> None:
     assert [path.as_posix() for path in prereg.PROTOCOL_PATHS] == (
         EXPECTED_PROTOCOL_PATHS
     )
@@ -298,6 +559,17 @@ def test_manifest_binds_g9cb_1b_contract_and_exact_rank7_counters(
     )
     assert manifest["bindings"]["authority_amendments"] == (
         EXPECTED_AUTHORITY_AMENDMENTS
+    )
+    assert manifest["bindings"]["superseded_preregistration"] == (
+        EXPECTED_SUPERSEDED_PREREGISTRATION
+    )
+    assert manifest["protocol_implementation_commit"] == "0" * 40
+    assert manifest["protocol_version"] == (
+        "gross9_structural_clock_bundle_preregistration_v2"
+    )
+    assert manifest["output_paths"]["preregistration"] == (
+        "results/"
+        "gross9_structural_clock_bundle_preregistration_v2_2026-07-31.json"
     )
     assert manifest["bindings"]["runtime_import_roots"] == [
         "execution/gross9_rank7_clock_runtime.py",
