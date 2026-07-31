@@ -491,10 +491,37 @@ def _synthetic_preregistration(root: Path) -> dict[str, object]:
         }
         for identity, suffix in (("G9CB-5", "g9cb5"), ("G9CB-6", "g9cb6"))
     ]
+    failed_pre_sentinel_closures = [
+        {
+            "identity": "G9CB-7",
+            "bytecode_incident": {"directories": [], "files": []},
+            "permanently_absent_outputs": [
+                "results/synthetic-g9cb7-reserved.json"
+            ],
+            "residue": {
+                "bytecode_cache": {
+                    "path": "results/.synthetic-g9cb7-pycache",
+                    "state": "absent",
+                },
+                "capability_probes": {
+                    "glob": "results/.synthetic-g9cb7-probe-*",
+                    "state": "absent",
+                },
+                "publication_stages": {
+                    "glob": "results/.synthetic-g9cb7-publish-*",
+                    "state": "absent",
+                },
+                "worker_stages": {
+                    "glob": "results/.synthetic-g9cb7-worker-*",
+                    "state": "absent",
+                },
+            },
+        }
+    ]
     return builder._with_hash(
         {
             "protocol_version": (
-                "gross9_structural_clock_bundle_g9cb7_preregistration_v1"
+                "gross9_structural_clock_bundle_g9cb8_preregistration_v1"
             ),
             "identity": builder.IDENTITY,
             "protocol_implementation_commit": "1" * 40,
@@ -526,6 +553,9 @@ def _synthetic_preregistration(root: Path) -> dict[str, object]:
                 ),
                 "failed_predecessor_prepublication_closures": (
                     failed_prepublication_closures
+                ),
+                "failed_predecessor_pre_sentinel_closures": (
+                    failed_pre_sentinel_closures
                 ),
             },
             "creation_evidence_boundary": dict(
@@ -731,10 +761,20 @@ def _prepare_guarded_metadata_repository(
                 "failed_predecessor_prepublication_closures"
             ]
         )
+        expected_pre_sentinel_closures = copy.deepcopy(
+            preregistration_bindings[
+                "failed_predecessor_pre_sentinel_closures"
+            ]
+        )
         monkeypatch.setattr(
             builder.prereg,
             "expected_failed_predecessor_prepublication_closures",
             lambda: copy.deepcopy(expected_prepublication_closures),
+        )
+        monkeypatch.setattr(
+            builder.prereg,
+            "expected_failed_predecessor_pre_sentinel_closures",
+            lambda: copy.deepcopy(expected_pre_sentinel_closures),
         )
     active = root / builder.PREREGISTRATION_PATH
     active.write_bytes(builder._canonical_json_bytes(preregistration))
@@ -779,7 +819,7 @@ def _capability_row(slot: int = 1, *, parent_pid: int = 1234) -> dict[str, Any]:
         "slot": slot,
         "parent_pid": parent_pid,
         "stage_directory": (
-            f"results/.gross9-structural-clock-g9cb7-worker-slot{slot}"
+            f"results/.gross9-structural-clock-g9cb8-worker-slot{slot}"
         ),
         "carrier_kind": "anonymous_pipe_v1",
         "carrier_device": slot,
@@ -799,8 +839,8 @@ def _capability_row(slot: int = 1, *, parent_pid: int = 1234) -> dict[str, Any]:
 
 def _guard(root: Path) -> builder._WorkerIsolationGuard:
     (root / "results").mkdir(exist_ok=True)
-    own = "results/.gross9-structural-clock-g9cb7-worker-own"
-    other = "results/.gross9-structural-clock-g9cb7-worker-other"
+    own = "results/.gross9-structural-clock-g9cb8-worker-own"
+    other = "results/.gross9-structural-clock-g9cb8-worker-other"
     (root / own).mkdir(exist_ok=True)
     directory_flags = (
         os.O_RDONLY
@@ -918,8 +958,8 @@ case = sys.argv[3]
 case_root.mkdir(parents=True)
 results = case_root / "results"
 results.mkdir()
-own_stage = results / ".gross9-structural-clock-g9cb7-worker-own"
-other_stage = results / ".gross9-structural-clock-g9cb7-worker-other"
+own_stage = results / ".gross9-structural-clock-g9cb8-worker-own"
+other_stage = results / ".gross9-structural-clock-g9cb8-worker-other"
 own_stage.mkdir()
 probe = other_stage / "probe"
 scratch = case_root / "scratch"
@@ -1267,7 +1307,7 @@ def invoke_pycache(name):
     if location == "repository":
         target = case_root / "pkg" / "__pycache__" / "evil.pyc"
     else:
-        target = case_root / "results" / ".g9cb7-bytecode-cache-disabled" / "evil.pyc"
+        target = case_root / "results" / ".g9cb8-bytecode-cache-disabled" / "evil.pyc"
     guard.allowed_mutations.add(target.as_posix())
     if operation == "read":
         builtins.open(target, "rb")
@@ -1285,7 +1325,7 @@ def invoke_pycache_during_source_load(name):
     target = (
         case_root
         / "results"
-        / ".g9cb7-bytecode-cache-disabled"
+        / ".g9cb8-bytecode-cache-disabled"
         / "injected.pyc"
     )
 
@@ -1359,7 +1399,7 @@ if family == "pycache":
     pycache = (
         case_root / "pkg" / "__pycache__"
         if location == "repository"
-        else case_root / "results" / ".g9cb7-bytecode-cache-disabled"
+        else case_root / "results" / ".g9cb8-bytecode-cache-disabled"
     )
     pycache.mkdir(parents=True)
     (pycache / "evil.pyc").write_bytes(b"malicious-bytecode")
@@ -1372,7 +1412,7 @@ if family == "pycache-source-load":
     pycache = (
         case_root
         / "results"
-        / ".g9cb7-bytecode-cache-disabled"
+        / ".g9cb8-bytecode-cache-disabled"
     )
     pycache.mkdir(parents=True)
     (pycache / "injected.pyc").write_bytes(b"malicious-bytecode")
@@ -1437,7 +1477,7 @@ try:
         invoke_forbidden_path(forbidden_name)
     else:
         raise AssertionError(f"unknown family: {family}")
-except builder.TerminalG9CB7Failure as exc:
+except builder.TerminalG9CB8Failure as exc:
     emit("terminal", error_type=type(exc).__name__, message=str(exc), counters=guard.counters())
 except BaseException as exc:
     emit("unexpected", error_type=type(exc).__name__, message=str(exc), counters=guard.counters())
@@ -1504,7 +1544,7 @@ def _assert_terminal_or_exact_absence(
         assert result["exact_name"] in absent_names
         return
     assert result["status"] == "terminal", result
-    assert result["error_type"] == "TerminalG9CB7Failure"
+    assert result["error_type"] == "TerminalG9CB8Failure"
 
 
 IMPORT_RECORDER_HARNESS = r"""
@@ -1698,7 +1738,7 @@ try:
                     load_source("recorded_late", "training/late_runtime.py")
                 else:
                     raise AssertionError(f"unknown scenario: {scenario}")
-except builder.TerminalG9CB7Failure as exc:
+except builder.TerminalG9CB8Failure as exc:
     emit("terminal", error_type=type(exc).__name__, message=str(exc))
 except BaseException as exc:
     emit("unexpected", error_type=type(exc).__name__, message=str(exc))
@@ -1983,7 +2023,7 @@ def test_builder_zero_access_rejects_noninteger_zero_counter(
         "cagr_values_computed"
     ] = invalid
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="zero-access schema differs",
     ):
         builder._validate_zero_access(preregistration)
@@ -2045,7 +2085,7 @@ def test_malformed_preregistration_stops_before_all_downstream_preflight(
         forbidden("topology"),
     )
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="zero-access schema differs",
     ):
         builder.validate_claim_preflight(tmp_path)
@@ -2078,7 +2118,7 @@ def test_historical_v1_bytes_are_rejected_by_operative_version_before_zero(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="operative preregistration protocol version",
     ):
         builder.validate_preregistration(
@@ -2128,7 +2168,7 @@ def test_preregistration_seal_head_rejects_intervening_commit(
     git("commit", "-m", "X")
     intervening = git("rev-parse", "HEAD")
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="direct preregistration-seal child",
     ):
         builder._validate_preregistration_seal_head(
@@ -2199,7 +2239,7 @@ def test_committed_publication_topology_requires_exact_q_p_c_d(
     git("add", "intervening.txt")
     git("commit", "-m", "X")
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="publication chain",
     ):
         builder._validate_committed_publication_topology(
@@ -2218,20 +2258,20 @@ def test_parser_exposes_read_only_committed_publication_verifier() -> None:
 
 
 def test_frozen_contract_and_deterministic_csv_gzip() -> None:
-    assert builder.IDENTITY == "G9CB-7"
+    assert builder.IDENTITY == "G9CB-8"
     assert builder.PROTOCOL_VERSION == (
-        "gross9_structural_clock_bundle_g9cb7_v1"
+        "gross9_structural_clock_bundle_g9cb8_v1"
     )
     assert builder.TERMINAL_ACTION == (
-        "TERMINAL_G9CB7_ATTEMPT_CONSUMED_NO_RETRY"
+        "TERMINAL_G9CB8_ATTEMPT_CONSUMED_NO_RETRY"
     )
     assert builder._PYCACHE_PREFIX_RELATIVE == Path(
-        "results/.g9cb7-bytecode-cache-disabled"
+        "results/.g9cb8-bytecode-cache-disabled"
     )
     assert builder.PREREGISTRATION_PATH == (
         Path(
             "results/"
-            "gross9_structural_clock_bundle_g9cb7_preregistration_2026-07-31.json"
+            "gross9_structural_clock_bundle_g9cb8_preregistration_2026-07-31.json"
         )
     )
     assert builder.DOMAIN_START == "2023-06-01T00:00:00Z"
@@ -2255,7 +2295,7 @@ def test_frozen_contract_and_deterministic_csv_gzip() -> None:
     ) == Decimal("9.0")
     rows = [
         {
-            "identity": "G9CB-7",
+            "identity": "G9CB-8",
             "sleeve": "cand_rex_veto_7",
             "sleeve_order": 0,
             "configured_weight": "1.6",
@@ -2274,23 +2314,23 @@ def test_frozen_contract_and_deterministic_csv_gzip() -> None:
     assert plain.endswith(b"\n") and b"\r" not in plain
 
 
-def test_g9cb7_stage_prefix_is_distinct_from_preserved_g9cb2_residue(
+def test_g9cb8_stage_prefix_is_distinct_from_preserved_g9cb2_residue(
     tmp_path: Path,
 ) -> None:
     (tmp_path / "results").mkdir()
     active = Path(
-        "results/.gross9-structural-clock-g9cb7-worker-active"
+        "results/.gross9-structural-clock-g9cb8-worker-active"
     )
     historical = Path(
         "results/.gross9-structural-clock-worker-ca9ca670ffb0d1b377ed6aef"
     )
     assert builder._worker_stage_path(tmp_path, active) == active.as_posix()
-    with pytest.raises(builder.TerminalG9CB7Failure, match="name differs"):
+    with pytest.raises(builder.TerminalG9CB8Failure, match="name differs"):
         builder._worker_stage_path(tmp_path, historical)
     (tmp_path / historical).mkdir(mode=0o700)
     assert list(
         (tmp_path / "results").glob(
-            ".gross9-structural-clock-g9cb7-worker-*"
+            ".gross9-structural-clock-g9cb8-worker-*"
         )
     ) == []
 
@@ -2324,7 +2364,7 @@ def test_fresh_requires_exactly_one_side_gate() -> None:
             "short_gate": True,
         }
     }
-    with pytest.raises(builder.TerminalG9CB7Failure, match="exclusive"):
+    with pytest.raises(builder.TerminalG9CB8Failure, match="exclusive"):
         _reconstruct(bars)
 
 
@@ -2333,7 +2373,7 @@ def test_reconstruction_rejects_zero_side() -> None:
     bars[0]["decisions"] = {
         "cand_rex_veto_7": {"active": True, "side": 0}
     }
-    with pytest.raises(builder.TerminalG9CB7Failure, match="forbidden side"):
+    with pytest.raises(builder.TerminalG9CB8Failure, match="forbidden side"):
         _reconstruct(bars)
 
 
@@ -2490,7 +2530,7 @@ def test_market_grid_rejects_physical_end_gap_duplicate_offgrid_and_early_end(
     match: str,
 ) -> None:
     market = pd.DataFrame({"date": pd.to_datetime(dates)})
-    with pytest.raises(builder.TerminalG9CB7Failure, match=match):
+    with pytest.raises(builder.TerminalG9CB8Failure, match=match):
         builder._market_value_opens_and_boundaries(
             market,
             domain_start=_time(0),
@@ -2827,7 +2867,7 @@ def test_csv_reparse_rejects_noncanonical_gzip_header() -> None:
     assert len(builder.validate_csv_gzip(raw)) == 5
     changed = bytearray(raw)
     changed[9] = 3
-    with pytest.raises(builder.TerminalG9CB7Failure, match="prefix"):
+    with pytest.raises(builder.TerminalG9CB8Failure, match="prefix"):
         builder.validate_csv_gzip(bytes(changed))
 
 
@@ -2859,7 +2899,7 @@ def test_counter_schema_has_exact_source_and_sleeve_fields() -> None:
 def test_counter_schema_rejects_an_extra_source_key() -> None:
     counters = builder._empty_counters()
     counters["rows_decoded"]["legacy_adapter"] = 0
-    with pytest.raises(builder.TerminalG9CB7Failure, match="counter names"):
+    with pytest.raises(builder.TerminalG9CB8Failure, match="counter names"):
         builder._validate_counter_contract(counters)
 
 
@@ -2908,7 +2948,7 @@ def test_raw_physical_domain_end_is_rejected_before_normalization(
     )
     try:
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="physical domain-end",
         ):
             primitives.load_market(
@@ -2955,7 +2995,7 @@ def test_jsonl_counter_preserves_prior_success_before_terminal_bad_row(
     source.write_bytes(b'{"value":1}\nnot-json\n')
     counters = builder._empty_counters()
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="invalid JSONL row",
     ):
         builder._read_jsonl_rows(
@@ -3009,7 +3049,7 @@ def test_rank7_runtime_rejects_duplicate_model_open(tmp_path: Path) -> None:
         with runtime.np.load(model_paths[0], allow_pickle=False):
             pass
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="more than once",
         ):
             runtime.np.load(model_paths[0], allow_pickle=False)
@@ -3065,7 +3105,7 @@ def test_core_rejects_three_amendment_drift() -> None:
     amendments = builder._expected_authority_amendment_bindings()
     amendments[1]["authority_commit"] = "0" * 40
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="authority amendment",
     ):
         builder.build_core(
@@ -3095,7 +3135,7 @@ def test_prohibited_output_keys_are_valid_only_at_the_exact_zero_schema() -> Non
         "nested": {"portfolio_return_values_computed": 0},
     }
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="outside the canonical zero assertion",
     ):
         builder._validate_prohibited_output_placement(malformed)
@@ -3153,8 +3193,8 @@ def test_hashed_inputs_accept_exact_tracked_untracked_and_external_pairs(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb7-test@example.invalid")
-    git("config", "user.name", "G9CB-7 Test")
+    git("config", "user.email", "g9cb8-test@example.invalid")
+    git("config", "user.name", "G9CB-8 Test")
     tracked = repository / "tracked.bin"
     tracked.write_bytes(b"tracked")
     git("add", "tracked.bin")
@@ -3250,7 +3290,7 @@ def test_hashed_inputs_reject_malformed_git_pairs_before_byte_read(
         "sha256": hashlib.sha256(b"input").hexdigest(),
         **pair,
     }
-    with pytest.raises(builder.TerminalG9CB7Failure, match="Git metadata"):
+    with pytest.raises(builder.TerminalG9CB8Failure, match="Git metadata"):
         builder._validate_regular_hashed_inputs(
             tmp_path,
             {"binding": binding},
@@ -3273,7 +3313,7 @@ def test_hashed_inputs_reject_absolute_repository_spelling_before_byte_read(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="must be repository-relative",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3322,7 +3362,7 @@ def test_hashed_inputs_reject_nonregular_paths_before_byte_read(
     )
     try:
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="not a regular file",
         ):
             builder._validate_regular_hashed_inputs(
@@ -3349,7 +3389,7 @@ def test_nonblocking_reader_rejects_fifo_without_waiting_for_writer(
     os.mkfifo(fifo)
     started = time.monotonic()
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="not a regular file",
     ):
         builder._read_bound_regular_bytes(fifo, "candidate")
@@ -3371,8 +3411,8 @@ def test_hashed_inputs_reject_tracked_null_and_untracked_string_before_read(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb7-test@example.invalid")
-    git("config", "user.name", "G9CB-7 Test")
+    git("config", "user.email", "g9cb8-test@example.invalid")
+    git("config", "user.name", "G9CB-8 Test")
     tracked = tmp_path / "tracked.bin"
     tracked.write_bytes(b"tracked")
     git("add", "tracked.bin")
@@ -3407,7 +3447,7 @@ def test_hashed_inputs_reject_tracked_null_and_untracked_string_before_read(
         ),
     ]
     for binding, message in cases:
-        with pytest.raises(builder.TerminalG9CB7Failure, match=message):
+        with pytest.raises(builder.TerminalG9CB8Failure, match=message):
             builder._validate_regular_hashed_inputs(
                 tmp_path, {"binding": binding}
             )
@@ -3441,7 +3481,7 @@ def test_hashed_inputs_reject_paired_null_with_unborn_head_before_read(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="Git absence proof differs",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3472,8 +3512,8 @@ def test_hashed_inputs_reject_index_head_drift_before_byte_read(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb7-test@example.invalid")
-    git("config", "user.name", "G9CB-7 Test")
+    git("config", "user.email", "g9cb8-test@example.invalid")
+    git("config", "user.name", "G9CB-8 Test")
     source = tmp_path / "tracked.bin"
     source.write_bytes(b"head")
     git("add", "tracked.bin")
@@ -3489,7 +3529,7 @@ def test_hashed_inputs_reject_index_head_drift_before_byte_read(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="index/HEAD metadata mismatch",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3520,8 +3560,8 @@ def test_hashed_inputs_reject_staged_mode_drift_before_byte_read(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb7-test@example.invalid")
-    git("config", "user.name", "G9CB-7 Test")
+    git("config", "user.email", "g9cb8-test@example.invalid")
+    git("config", "user.name", "G9CB-8 Test")
     git("config", "core.filemode", "true")
     source = tmp_path / "tracked.bin"
     source.write_bytes(b"head")
@@ -3538,7 +3578,7 @@ def test_hashed_inputs_reject_staged_mode_drift_before_byte_read(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="index/HEAD metadata mismatch",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3571,8 +3611,8 @@ def test_hashed_inputs_reject_worktree_blob_drift_after_one_opaque_read(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb7-test@example.invalid")
-    git("config", "user.name", "G9CB-7 Test")
+    git("config", "user.email", "g9cb8-test@example.invalid")
+    git("config", "user.name", "G9CB-8 Test")
     source = tmp_path / "tracked.bin"
     source.write_bytes(b"head")
     protocol_rows = []
@@ -3637,7 +3677,7 @@ def test_hashed_inputs_reject_worktree_blob_drift_after_one_opaque_read(
     )
     monkeypatch.setattr(builder.os, "pread", recorded_pread)
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="worktree Git blob mismatch",
     ):
         builder._preauthenticate_parent_snapshot(
@@ -3664,7 +3704,7 @@ def test_hashed_inputs_reject_duplicate_null_string_git_declarations(
     )
     digest = hashlib.sha256(b"input").hexdigest()
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="conflicting duplicate input metadata",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3704,7 +3744,7 @@ def test_complete_git_inventory_fails_before_reading_earlier_valid_path(
 
     monkeypatch.setattr(builder, "_read_bound_regular_bytes", counted_read)
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="partial bound input Git metadata pair",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3744,8 +3784,8 @@ def test_parent_preclassifies_all_git_pairs_before_one_open_two_same_fd_reads(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb7-test@example.invalid")
-    git("config", "user.name", "G9CB-7 Test")
+    git("config", "user.email", "g9cb8-test@example.invalid")
+    git("config", "user.name", "G9CB-8 Test")
     git("add", ".")
     git("commit", "-m", "fixture")
     events: list[tuple[str, str]] = []
@@ -4027,7 +4067,7 @@ def test_worker_auth_entry_rejects_active_mode_mutation_from_open_fstat(
     )
     _write_guarded_active_metadata(tmp_path, binding)
     (tmp_path / relative).chmod(0o644)
-    with pytest.raises(builder.TerminalG9CB7Failure, match=message):
+    with pytest.raises(builder.TerminalG9CB8Failure, match=message):
         builder._authenticate_worker_metadata_entry(
             tmp_path,
             parent_authentication,
@@ -4131,7 +4171,7 @@ def test_parent_rejects_failed_predecessor_permanent_state_before_sentinel(
         "_atomic_link_write_once",
         record_sentinel_write,
     )
-    with pytest.raises(builder.TerminalG9CB7Failure, match=match):
+    with pytest.raises(builder.TerminalG9CB8Failure, match=match):
         builder.produce_one_shot(tmp_path)
     assert sentinel_writes == []
 
@@ -4192,7 +4232,7 @@ def test_stage_zero_parser_rejects_nonzero_and_conflicted_entries() -> None:
         ),
     ):
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="stage zero|exactly one",
         ):
             builder._parse_stage_zero_binding(output, "input.bin")
@@ -4228,7 +4268,7 @@ def test_nonstage_index_entries_fail_full_preflight_before_byte_read(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="exactly one bound input index entry",
     ):
         builder._validate_regular_hashed_inputs(
@@ -4272,7 +4312,7 @@ def test_recursive_hashed_inputs_reject_malformed_path_bindings(
 ) -> None:
     (tmp_path / "input.bin").write_bytes(b"input")
     (tmp_path / "other.bin").write_bytes(b"other")
-    with pytest.raises(builder.TerminalG9CB7Failure, match=message):
+    with pytest.raises(builder.TerminalG9CB8Failure, match=message):
         builder._validate_regular_hashed_inputs(
             tmp_path,
             {"nested": [binding]},
@@ -4287,7 +4327,9 @@ def test_bytecode_preflight_accepts_a_clean_noncanonical_root(
     builder._validate_bytecode_preflight(tmp_path)
 
 
-@pytest.mark.parametrize("cache_kind", ["directory", "file", "fixed-prefix"])
+@pytest.mark.parametrize(
+    "cache_kind", ["directory", "pyc", "pyo", "fixed-prefix"]
+)
 def test_bytecode_preflight_rejects_repository_cache_artifacts(
     tmp_path: Path,
     cache_kind: str,
@@ -4295,15 +4337,72 @@ def test_bytecode_preflight_rejects_repository_cache_artifacts(
     (tmp_path / "results").mkdir()
     if cache_kind == "directory":
         (tmp_path / "pkg" / "__pycache__").mkdir(parents=True)
-    elif cache_kind == "file":
-        (tmp_path / "orphan.pyc").write_bytes(b"malicious")
+    elif cache_kind in {"pyc", "pyo"}:
+        (tmp_path / f"orphan.{cache_kind}").write_bytes(b"malicious")
     else:
-        (tmp_path / "results" / ".g9cb7-bytecode-cache-disabled").mkdir()
+        (tmp_path / "results" / ".g9cb8-bytecode-cache-disabled").mkdir()
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="bytecode",
     ):
         builder._validate_bytecode_preflight(tmp_path)
+
+
+@pytest.mark.parametrize("entry_name", ["create_claim_only", "produce_one_shot"])
+def test_c8_and_d8_bytecode_gate_precedes_git_snapshot_open_and_publication(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    entry_name: str,
+) -> None:
+    events: list[str] = []
+    traversal_error = PermissionError("synthetic traversal failure")
+
+    def failing_walk(
+        root: Path,
+        *,
+        topdown: bool,
+        onerror: Any,
+        followlinks: bool,
+    ) -> Any:
+        events.append("bytecode")
+        assert root == tmp_path.resolve()
+        assert topdown is True
+        assert followlinks is False
+        assert callable(onerror)
+        onerror(traversal_error)
+        yield root, [], []
+
+    def forbidden(name: str) -> Any:
+        def call(*_args: Any, **_kwargs: Any) -> Any:
+            events.append(name)
+            raise AssertionError(f"{name} ran after bytecode rejection")
+
+        return call
+
+    monkeypatch.setattr(builder.prereg.os, "walk", failing_walk)
+    monkeypatch.setattr(
+        builder, "validate_claim_preflight", forbidden("claim-preflight")
+    )
+    monkeypatch.setattr(
+        builder, "_validate_claim_commit", forbidden("claim-commit")
+    )
+    monkeypatch.setattr(
+        builder, "_validate_git_pair_preflight", forbidden("git-pair")
+    )
+    monkeypatch.setattr(
+        builder, "_read_bound_regular_bytes", forbidden("open")
+    )
+    monkeypatch.setattr(
+        builder, "_PublicationContext", forbidden("publication-context")
+    )
+    with pytest.raises(
+        builder.TerminalG9CB8Failure,
+        match="bytecode traversal failed",
+    ) as caught:
+        getattr(builder, entry_name)(tmp_path)
+    assert isinstance(caught.value.__cause__, ValueError)
+    assert caught.value.__cause__.__cause__ is traversal_error
+    assert events == ["bytecode"]
 
 
 def test_anonymous_pipe_capability_has_exact_schema_and_is_consumed_once(
@@ -4313,7 +4412,7 @@ def test_anonymous_pipe_capability_has_exact_schema_and_is_consumed_once(
     capability = builder._prepare_worker_capability(
         root=tmp_path,
         output_dir=(
-            tmp_path / "results/.gross9-structural-clock-g9cb7-worker-slot1"
+            tmp_path / "results/.gross9-structural-clock-g9cb8-worker-slot1"
         ),
         slot=1,
         parent_pid=os.getpid(),
@@ -4349,7 +4448,7 @@ def test_guarded_metadata_validation_reaches_capability_in_two_fd_child(
     _preregistration, binding, parent_authentication = (
         _prepare_guarded_metadata_repository(tmp_path)
     )
-    own = "results/.gross9-structural-clock-g9cb7-worker-guarded-own"
+    own = "results/.gross9-structural-clock-g9cb8-worker-guarded-own"
     (tmp_path / own).mkdir()
     script = tmp_path / "guarded_metadata.py"
     script.write_text(
@@ -4365,8 +4464,8 @@ def test_guarded_metadata_validation_reaches_capability_in_two_fd_child(
             root = Path(os.environ["G9CB_TEST_ROOT"])
             parent = json.loads(os.environ["G9CB_PARENT_AUTH"])
             claim_binding = json.loads(os.environ["G9CB_CLAIM_PREREG"])
-            own = "results/.gross9-structural-clock-g9cb7-worker-guarded-own"
-            other = "results/.gross9-structural-clock-g9cb7-worker-guarded-other"
+            own = "results/.gross9-structural-clock-g9cb8-worker-guarded-own"
+            other = "results/.gross9-structural-clock-g9cb8-worker-guarded-other"
             read_fd = int(os.environ["G9CB_CAPABILITY_FD"])
             ledger_fd = int(os.environ["G9CB_LEDGER_FD"])
             capability = json.loads(os.environ["G9CB_CAPABILITY_ROW"])
@@ -4421,6 +4520,11 @@ def test_guarded_metadata_validation_reaches_capability_in_two_fd_child(
             b.prereg.expected_failed_predecessor_prepublication_closures = (
                 lambda: active["bindings"][
                     "failed_predecessor_prepublication_closures"
+                ]
+            )
+            b.prereg.expected_failed_predecessor_pre_sentinel_closures = (
+                lambda: active["bindings"][
+                    "failed_predecessor_pre_sentinel_closures"
                 ]
             )
             snapshot = b._SecureBoundSnapshot(
@@ -4650,7 +4754,7 @@ def test_actual_guarded_metadata_routine_rejects_historical_file_tampering(
             "sha256": hashlib.sha256(active_path.read_bytes()).hexdigest(),
             "manifest_hash": active["manifest_hash"],
         }
-    own = "results/.gross9-structural-clock-g9cb7-worker-mutation-own"
+    own = "results/.gross9-structural-clock-g9cb8-worker-mutation-own"
     (tmp_path / own).mkdir()
     script = tmp_path / "guarded_mutation.py"
     script.write_text(
@@ -4679,6 +4783,11 @@ def test_actual_guarded_metadata_routine_rejects_historical_file_tampering(
                     "failed_predecessor_prepublication_closures"
                 ]
             )
+            b.prereg.expected_failed_predecessor_pre_sentinel_closures = (
+                lambda: active["bindings"][
+                    "failed_predecessor_pre_sentinel_closures"
+                ]
+            )
             traps = []
             def forbidden(name):
                 def invoke(*args, **kwargs):
@@ -4692,11 +4801,11 @@ def test_actual_guarded_metadata_routine_rejects_historical_file_tampering(
             guard = b._WorkerIsolationGuard(
                 root=root.resolve(),
                 own_stage=(
-                    "results/.gross9-structural-clock-g9cb7-"
+                    "results/.gross9-structural-clock-g9cb8-"
                     "worker-mutation-own"
                 ),
                 other_stage=(
-                    "results/.gross9-structural-clock-g9cb7-"
+                    "results/.gross9-structural-clock-g9cb8-"
                     "worker-mutation-other"
                 ),
                 ledger_paths=b.WORKER_LEDGER_PATHS,
@@ -4758,7 +4867,7 @@ def test_actual_guarded_metadata_routine_rejects_historical_file_tampering(
                     claim_binding,
                     raw_cache=snapshot,
                 )
-            except b.TerminalG9CB7Failure as exc:
+            except b.TerminalG9CB8Failure as exc:
                 print(json.dumps({
                     "status": "terminal",
                     "error": str(exc),
@@ -4853,14 +4962,14 @@ def test_preregistration_authentication_rejects_every_field_before_capability(
         record["manifest_hash"] = "f" * 64
     else:
         record["protocol_implementation_commit"] = "f" * 40
-    with pytest.raises(builder.TerminalG9CB7Failure, match=match):
+    with pytest.raises(builder.TerminalG9CB8Failure, match=match):
         builder.validate_preregistration(
             tmp_path,
             validation_mode="guarded_worker",
             parent_authentication=parent_authentication,
             claim_preregistration=binding,
         )
-    assert preregistration["identity"] == "G9CB-7"
+    assert preregistration["identity"] == "G9CB-8"
 
 
 def test_capability_preparation_orders_pipe_identity_before_mutable_token(
@@ -4904,7 +5013,7 @@ def test_capability_preparation_orders_pipe_identity_before_mutable_token(
         root=tmp_path,
         output_dir=(
             tmp_path
-            / "results/.gross9-structural-clock-g9cb7-worker-order"
+            / "results/.gross9-structural-clock-g9cb8-worker-order"
         ),
         slot=1,
         parent_pid=os.getpid(),
@@ -4932,7 +5041,7 @@ def test_worker_invocation_has_exact_environment_and_no_legacy_transport(
     capability = builder._prepare_worker_capability(
         root=tmp_path,
         output_dir=(
-            tmp_path / "results/.gross9-structural-clock-g9cb7-worker-slot1"
+            tmp_path / "results/.gross9-structural-clock-g9cb8-worker-slot1"
         ),
         slot=1,
         parent_pid=os.getpid(),
@@ -4942,7 +5051,7 @@ def test_worker_invocation_has_exact_environment_and_no_legacy_transport(
             root=tmp_path,
             capability=capability,
             other_stage_directory=(
-                "results/.gross9-structural-clock-g9cb7-worker-slot2"
+                "results/.gross9-structural-clock-g9cb8-worker-slot2"
             ),
             synthetic_input=None,
             parent_authentication=_parent_authentication(tmp_path),
@@ -5016,9 +5125,9 @@ def test_internal_worker_bootstrap_installs_parent_death_guard_before_argparse(
         "--repository-root",
         str(tmp_path),
         "--output-dir",
-        "results/.gross9-structural-clock-g9cb7-worker-one",
+        "results/.gross9-structural-clock-g9cb8-worker-one",
         "--other-stage-directory",
-        "results/.gross9-structural-clock-g9cb7-worker-two",
+        "results/.gross9-structural-clock-g9cb8-worker-two",
         "--worker-capability-fd",
         "7",
         "--worker-ledger-fd",
@@ -5146,7 +5255,7 @@ def test_worker_execution_rejects_non_two_descriptor_invocation_before_spawn(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="ledger descriptor is absent|not distinct",
     ):
         builder._execute_prepared_worker(
@@ -5206,7 +5315,7 @@ def test_worker_inherited_fd_table_rejects_real_extra_fd_above_65535(
                 capability_fd,
                 ledger_fd,
             )
-        except builder.TerminalG9CB7Failure as exc:
+        except builder.TerminalG9CB8Failure as exc:
             if "descriptor table" not in str(exc):
                 raise
             raise SystemExit(0)
@@ -5340,7 +5449,7 @@ def test_guard_rejects_procfd_and_devfd_namespaces(
 ) -> None:
     guard = _guard(tmp_path)
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="descriptor namespace",
     ):
         guard._checked_path(path)
@@ -5664,7 +5773,7 @@ def test_import_recorder_rejects_invalid_lifecycle_transition(
 ) -> None:
     result = _run_import_recorder_case(tmp_path, scenario)
     assert result["status"] == "terminal", result
-    assert result["error_type"] == "TerminalG9CB7Failure"
+    assert result["error_type"] == "TerminalG9CB8Failure"
 
 
 def test_import_recorder_accepts_authenticated_new_sources_then_freezes(
@@ -5735,11 +5844,11 @@ def test_guarded_actual_runtime_roots_import_from_authenticated_source(
             guard = b._WorkerIsolationGuard(
                 root=root.resolve(),
                 own_stage=(
-                    "results/.gross9-structural-clock-g9cb7-worker-import-own-"
+                    "results/.gross9-structural-clock-g9cb8-worker-import-own-"
                     + suffix
                 ),
                 other_stage=(
-                    "results/.gross9-structural-clock-g9cb7-worker-import-other-"
+                    "results/.gross9-structural-clock-g9cb8-worker-import-other-"
                     + suffix
                 ),
                 ledger_paths=b.WORKER_LEDGER_PATHS,
@@ -5812,7 +5921,7 @@ def test_guarded_actual_runtime_roots_import_from_authenticated_source(
             "PYTHONPATH": str(repository_root),
             "PYTHONPYCACHEPREFIX": str(
                 repository_root
-                / "results/.g9cb7-bytecode-cache-disabled"
+                / "results/.g9cb8-bytecode-cache-disabled"
             ),
         }
     )
@@ -5840,7 +5949,7 @@ def test_guarded_actual_runtime_roots_import_from_authenticated_source(
         "training/preregister_gross9_structural_clock_bundle.py",
     ]
     assert not (
-        repository_root / "results/.g9cb7-bytecode-cache-disabled"
+        repository_root / "results/.g9cb8-bytecode-cache-disabled"
     ).exists()
 
 
@@ -5902,7 +6011,7 @@ def test_parent_death_kills_worker_at_every_post_handoff_phase(
 def test_guard_rejects_cross_stage_observation(tmp_path: Path) -> None:
     guard = _guard(tmp_path)
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="other worker stage",
     ):
         guard._checked_path(guard.other_stage / "probe")
@@ -5914,7 +6023,7 @@ def test_guard_rejects_path_open_of_fifo(tmp_path: Path) -> None:
     fifo = tmp_path / "named.fifo"
     os.mkfifo(fifo)
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="FIFO",
     ):
         guard._checked_path(fifo, fifo_open=True)
@@ -5923,7 +6032,7 @@ def test_guard_rejects_path_open_of_fifo(tmp_path: Path) -> None:
 @pytest.mark.parametrize("keyword", ["dir_fd", "src_dir_fd", "dst_dir_fd"])
 def test_guard_rejects_every_dir_fd_variant(keyword: str) -> None:
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match=keyword,
     ):
         builder._WorkerIsolationGuard._reject_dir_fds({keyword: -100})
@@ -6032,19 +6141,19 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
     )
     assert result["identity"] == builder.IDENTITY
     assert [path.as_posix() for path in publication_paths] == [
-        "results/gross9_structural_clock_bundle_g9cb7_attempt_consumed_2026-07-31.json",
+        "results/gross9_structural_clock_bundle_g9cb8_attempt_consumed_2026-07-31.json",
         (
             "results/"
-            "gross9_structural_clock_bundle_g9cb7_"
+            "gross9_structural_clock_bundle_g9cb8_"
             "worker_capability_consumed_pass1_2026-07-31.json"
         ),
         (
             "results/"
-            "gross9_structural_clock_bundle_g9cb7_"
+            "gross9_structural_clock_bundle_g9cb8_"
             "worker_capability_consumed_pass2_2026-07-31.json"
         ),
-        "results/gross9_structural_clock_bundle_g9cb7_2026-07-31.csv.gz",
-        "results/gross9_structural_clock_bundle_g9cb7_manifest_2026-07-31.json",
+        "results/gross9_structural_clock_bundle_g9cb8_2026-07-31.csv.gz",
+        "results/gross9_structural_clock_bundle_g9cb8_manifest_2026-07-31.json",
     ]
     assert all((root / path).is_file() for path in publication_paths)
     assert checkpoints == list(builder.PRODUCTION_CHECKPOINTS)
@@ -6165,7 +6274,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         "manifest_hash",
     )
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="parent authentication binding",
     ):
         builder._validate_final_manifest_contract(
@@ -6191,7 +6300,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         "manifest_hash",
     )
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="receipt binding|counter|core contract",
     ):
         builder._validate_final_manifest_contract(
@@ -6237,7 +6346,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         "manifest_hash",
     )
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="receipt binding",
     ):
         builder._validate_final_manifest_contract(
@@ -6257,7 +6366,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         )
     assert not list(
         (root / "results").glob(
-            ".gross9-structural-clock-g9cb7-worker-*"
+            ".gross9-structural-clock-g9cb8-worker-*"
         )
     )
     assert not list(
@@ -6306,7 +6415,7 @@ def test_parent_advances_ledger_linked_while_worker_alive_and_stage_empty(
 
             def guarded_synthetic_read(*args, **kwargs):
                 if not checkpoint_seen:
-                    raise b.TerminalG9CB7Failure(
+                    raise b.TerminalG9CB8Failure(
                         "runtime/value access preceded worker ledger checkpoint"
                     )
                 return original_synthetic_read(*args, **kwargs)
@@ -6469,7 +6578,7 @@ def test_rank7_signal_counter_increments_at_each_evaluated_decision() -> None:
     }
     counters = builder._empty_counters()
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="nonboolean active flag",
     ):
         builder.reconstruct_intervals(
@@ -6497,7 +6606,7 @@ def _synthetic_head_binding_repository(root: Path) -> tuple[str, bytes]:
     root.mkdir()
     _git_for_q5_test(root, "init", "-q")
     _git_for_q5_test(root, "config", "user.email", "q5@example.invalid")
-    _git_for_q5_test(root, "config", "user.name", "Q7 Synthetic")
+    _git_for_q5_test(root, "config", "user.name", "Q8 Synthetic")
     relative = "protocol/binding.txt"
     candidate = root / relative
     candidate.parent.mkdir()
@@ -6528,7 +6637,7 @@ def _prepare_synthetic_a5_q5_p5_chain(
         builder.prereg.EXPECTED_BRANCH,
     )
     _git_for_q5_test(root, "config", "user.email", "q5@example.invalid")
-    _git_for_q5_test(root, "config", "user.name", "Q7 Synthetic")
+    _git_for_q5_test(root, "config", "user.name", "Q8 Synthetic")
     for relative in sorted(
         builder.prereg.PROTOCOL_PATHS,
         key=lambda path: path.as_posix(),
@@ -6549,9 +6658,9 @@ def _prepare_synthetic_a5_q5_p5_chain(
             [
                 "data/",
                 "fixtures/",
-                "results/gross9_structural_clock_bundle_g9cb7_*",
-                "results/.gross9-structural-clock-g9cb7-worker-*",
-                "results/.g9cb7-bytecode-cache-disabled",
+                "results/gross9_structural_clock_bundle_g9cb8_*",
+                "results/.gross9-structural-clock-g9cb8-worker-*",
+                "results/.g9cb8-bytecode-cache-disabled",
                 "",
             ]
         ),
@@ -6570,7 +6679,7 @@ def _prepare_synthetic_a5_q5_p5_chain(
             root / path_text,
         )
     _git_for_q5_test(root, "add", ".")
-    _git_for_q5_test(root, "commit", "-qm", "synthetic Q7")
+    _git_for_q5_test(root, "commit", "-qm", "synthetic Q8")
     q5 = _git_for_q5_test(root, "rev-parse", "HEAD")
     _git_for_q5_test(root, "remote", "add", "origin", str(remote))
     _git_for_q5_test(
@@ -6745,6 +6854,34 @@ def _prepare_synthetic_a5_q5_p5_chain(
             },
         },
     }
+    g9cb7_pre_sentinel_closure = {
+        "identity": "G9CB-7",
+        "authority_decision": dict(predecessor_binding),
+        "preregistration": dict(predecessor_binding),
+        "access_claim": dict(predecessor_binding),
+        "bytecode_incident": {"directories": [], "files": []},
+        "permanently_absent_outputs": [
+            "results/synthetic-g9cb7-reserved.json"
+        ],
+        "residue": {
+            "bytecode_cache": {
+                "path": "results/.synthetic-g9cb7-pycache",
+                "state": "absent",
+            },
+            "capability_probes": {
+                "glob": "results/.synthetic-g9cb7-probe-*",
+                "state": "absent",
+            },
+            "publication_stages": {
+                "glob": "results/.synthetic-g9cb7-publish-*",
+                "state": "absent",
+            },
+            "worker_stages": {
+                "glob": "results/.synthetic-g9cb7-worker-*",
+                "state": "absent",
+            },
+        },
+    }
     runtime_paths = [
         f"{module.replace('.', '/')}.py"
         for module in builder.RUNTIME_IMPORT_MODULES
@@ -6776,6 +6913,9 @@ def _prepare_synthetic_a5_q5_p5_chain(
             "failed_predecessor_prepublication_closures": [
                 g9cb5_prepublication_closure,
                 g9cb6_prepublication_closure,
+            ],
+            "failed_predecessor_pre_sentinel_closures": [
+                g9cb7_pre_sentinel_closure,
             ],
             "successor_preregistrations": [
                 {
@@ -6824,7 +6964,7 @@ def _prepare_synthetic_a5_q5_p5_chain(
         "-f",
         builder.PREREGISTRATION_PATH.as_posix(),
     )
-    _git_for_q5_test(root, "commit", "-qm", "synthetic P7")
+    _git_for_q5_test(root, "commit", "-qm", "synthetic P8")
     p5 = _git_for_q5_test(root, "rev-parse", "HEAD")
     _git_for_q5_test(root, "push", "-q")
     preregistration_path.chmod(0o444)
@@ -6880,6 +7020,9 @@ def _synthetic_security_profile(
         ),
         "failed_predecessor_prepublication_closures": copy.deepcopy(
             bindings["failed_predecessor_prepublication_closures"]
+        ),
+        "failed_predecessor_pre_sentinel_closures": copy.deepcopy(
+            bindings["failed_predecessor_pre_sentinel_closures"]
         ),
         "successor_preregistrations": copy.deepcopy(
             bindings["successor_preregistrations"]
@@ -6938,7 +7081,7 @@ def _publish_synthetic_claim_from_p5(
     try:
         builder._validate_closed_entry_phase(
             context,
-            builder.P7_CLAIM_PREFLIGHT,
+            builder.P8_CLAIM_PREFLIGHT,
         )
         context.probe()
         snapshot.rebaseline_directory_timestamps(
@@ -6961,7 +7104,7 @@ def _publish_synthetic_claim_from_p5(
                 snapshot,
                 pairs,
                 context,
-                builder.P7_CLAIM_PREFLIGHT,
+                builder.P8_CLAIM_PREFLIGHT,
                 builder.prereg.EXPECTED_BRANCH,
             )
 
@@ -6987,7 +7130,7 @@ def _commit_synthetic_claim(
     root = chain["root"]
     path = root / builder.CLAIM_PATH
     _git_for_q5_test(root, "add", "-f", builder.CLAIM_PATH.as_posix())
-    _git_for_q5_test(root, "commit", "-qm", "synthetic C7")
+    _git_for_q5_test(root, "commit", "-qm", "synthetic C8")
     c5 = _git_for_q5_test(root, "rev-parse", "HEAD")
     _git_for_q5_test(root, "push", "-q")
     path.chmod(0o444)
@@ -7023,7 +7166,7 @@ def _commit_synthetic_d5(chain: dict[str, Any]) -> str:
         assert (root / relative).is_file()
         assert stat.S_IMODE((root / relative).stat().st_mode) == 0o444
         _git_for_q5_test(root, "add", "-f", relative.as_posix())
-    _git_for_q5_test(root, "commit", "-qm", "synthetic D7")
+    _git_for_q5_test(root, "commit", "-qm", "synthetic D8")
     d5 = _git_for_q5_test(root, "rev-parse", "HEAD")
     _git_for_q5_test(root, "push", "-q")
     for relative in publications:
@@ -7038,7 +7181,7 @@ def test_tracked_synthetic_baseline_cannot_authorize_residue_aliases(
     root.mkdir()
     _git_for_q5_test(root, "init", "-q")
     _git_for_q5_test(root, "config", "user.email", "q5@example.invalid")
-    _git_for_q5_test(root, "config", "user.name", "Q7 Synthetic")
+    _git_for_q5_test(root, "config", "user.name", "Q8 Synthetic")
     results = root / "results"
     results.mkdir()
     marker = results / ".synthetic-baseline"
@@ -7060,12 +7203,12 @@ def test_tracked_synthetic_baseline_cannot_authorize_residue_aliases(
     context = builder._PublicationContext(root)
     try:
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="inventory|residue|authority|synthetic",
         ):
             builder._validate_closed_entry_phase(
                 context,
-                builder.Q7_PREREGISTRATION_PUBLICATION,
+                builder.Q8_PREREGISTRATION_PUBLICATION,
             )
     finally:
         context.close()
@@ -7101,8 +7244,8 @@ def test_default_claim_entry_rejects_synthetic_authority_but_profile_succeeds(
     sys.setprofile(record_security_call)
     try:
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
-            match="official A7/Q7/P7 security topology differs",
+            builder.TerminalG9CB8Failure,
+            match="official A8/Q8/P8 security topology differs",
         ):
             entry(root)
         assert not (root / builder.CLAIM_PATH).exists()
@@ -7125,7 +7268,7 @@ def test_default_claim_entry_rejects_synthetic_authority_but_profile_succeeds(
         assert not (root / builder.CLAIM_PATH).exists()
 
 
-def test_default_security_expectations_are_fixed_a7_contract_constants() -> None:
+def test_default_security_expectations_are_fixed_a8_contract_constants() -> None:
     fixed = builder._fixed_security_expectations()
     assert fixed == {
         "failed_predecessor_preregistrations": (
@@ -7139,6 +7282,9 @@ def test_default_security_expectations_are_fixed_a7_contract_constants() -> None
         ),
         "failed_predecessor_prepublication_closures": (
             builder.prereg.expected_failed_predecessor_prepublication_closures()
+        ),
+        "failed_predecessor_pre_sentinel_closures": (
+            builder.prereg.expected_failed_predecessor_pre_sentinel_closures()
         ),
         "successor_preregistrations": (
             builder.prereg.expected_successor_preregistration_bindings()
@@ -7155,7 +7301,7 @@ def test_default_security_expectations_are_fixed_a7_contract_constants() -> None
         "publication_diff": list(builder.PUBLICATION_DIFF),
     }
     assert builder.prereg.AUTHORITY_DECISION_COMMIT == (
-        "ad5a7e5f6d3edeac0928c1ef93fd0fd2209a9279"
+        "33a5aad98c19cec29aba253933145d76b893be93"
     )
     assert len(fixed["failed_predecessor_preregistrations"]) == 2
     assert len(fixed["failed_predecessor_attempts"]) == 2
@@ -7165,6 +7311,10 @@ def test_default_security_expectations_are_fixed_a7_contract_constants() -> None
         for row in fixed["failed_predecessor_prepublication_closures"]
     ] == ["G9CB-5", "G9CB-6"]
     assert [
+        row["identity"]
+        for row in fixed["failed_predecessor_pre_sentinel_closures"]
+    ] == ["G9CB-7"]
+    assert [
         row["identity"] for row in fixed["successor_preregistrations"]
     ] == ["G9CB-2", "G9CB-3", "G9CB-4"]
     assert [row["identity"] for row in fixed["authority_amendments"]] == [
@@ -7172,7 +7322,7 @@ def test_default_security_expectations_are_fixed_a7_contract_constants() -> None
         "G9CB-1B",
         "G9CB-1C",
     ]
-    assert len(fixed["protocol_paths"]) == 19
+    assert len(fixed["protocol_paths"]) == 20
     assert {
         "authority_commit",
         "protocol_implementation_commit",
@@ -7209,16 +7359,40 @@ def test_guarded_prepublication_closure_binding_rejects_nested_tampering(
         "failure"
     ]["bytes_opened"] += 1
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="prepublication closure binding differs",
     ):
         builder._validate_guarded_prepublication_closure_binding(payload, tmp_path)
 
 
+def test_guarded_pre_sentinel_closure_binding_rejects_nested_tampering() -> None:
+    expected = builder.prereg.expected_failed_predecessor_pre_sentinel_closures()
+    payload = {
+        "bindings": {
+            "failed_predecessor_pre_sentinel_closures": copy.deepcopy(
+                expected
+            )
+        }
+    }
+    assert builder._validate_failed_predecessor_pre_sentinel_closure_binding(
+        payload
+    ) == expected
+    payload["bindings"]["failed_predecessor_pre_sentinel_closures"][0][
+        "failure"
+    ]["wrapper_conformed"] = True
+    with pytest.raises(
+        builder.TerminalG9CB8Failure,
+        match="pre-sentinel closure binding differs",
+    ):
+        builder._validate_failed_predecessor_pre_sentinel_closure_binding(
+            payload
+        )
+
+
 @pytest.mark.parametrize(
     ("profile_class", "error_pattern"),
     (
-        ("authority_commit", "A7/Q7/P7 topology differs"),
+        ("authority_commit", "A8/Q8/P8 topology differs"),
         (
             "failed_predecessor_preregistrations",
             "binding differs: failed_predecessor_preregistrations",
@@ -7236,6 +7410,10 @@ def test_guarded_prepublication_closure_binding_rejects_nested_tampering(
             "binding differs: failed_predecessor_prepublication_closures",
         ),
         (
+            "failed_predecessor_pre_sentinel_closures",
+            "binding differs: failed_predecessor_pre_sentinel_closures",
+        ),
+        (
             "successor_preregistrations",
             "binding differs: successor_preregistrations",
         ),
@@ -7245,7 +7423,7 @@ def test_guarded_prepublication_closure_binding_rejects_nested_tampering(
         ),
         ("protocol_diff", "path or diff contract differs"),
         ("protocol_implementation_commit", "identity binding differs"),
-        ("preregistration_seal_commit", "A7/Q7/P7 topology differs"),
+        ("preregistration_seal_commit", "A8/Q8/P8 topology differs"),
     ),
 )
 def test_explicit_security_profile_rejects_each_mutated_authority_class(
@@ -7268,6 +7446,7 @@ def test_explicit_security_profile_rejects_each_mutated_authority_class(
     elif profile_class in {
         "failed_predecessor_closures",
         "failed_predecessor_prepublication_closures",
+        "failed_predecessor_pre_sentinel_closures",
     }:
         profile[profile_class][0]["identity"] = "forged-closure"
     elif profile_class == "protocol_diff":
@@ -7280,7 +7459,7 @@ def test_explicit_security_profile_rejects_each_mutated_authority_class(
         raise AssertionError(profile_class)
 
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match=error_pattern,
     ):
         builder.validate_claim_preflight(
@@ -7401,7 +7580,7 @@ def test_parent_snapshot_keeps_ignored_paired_null_distinct_from_required_tracke
 
     _git_for_q5_test(chain["root"], "add", "-f", materialized)
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="paired-null bound input Git absence proof differs",
     ):
         builder._preauthenticate_parent_snapshot(
@@ -7452,7 +7631,7 @@ def test_global_clean_tree_gate_does_not_replace_cached_blob_authentication(
             tmp_path / "repo", "rev-parse", "HEAD"
         ),
     )
-    with pytest.raises(builder.TerminalG9CB7Failure, match="differs from HEAD"):
+    with pytest.raises(builder.TerminalG9CB8Failure, match="differs from HEAD"):
         builder._head_blob_binding(tmp_path / "repo", relative)
 
 
@@ -7461,7 +7640,7 @@ def test_bound_reader_rejects_symlink_in_parent_component(tmp_path: Path) -> Non
     real.mkdir()
     (real / "leaf").write_bytes(b"synthetic\n")
     (tmp_path / "alias").symlink_to(real, target_is_directory=True)
-    with pytest.raises(builder.TerminalG9CB7Failure, match="symlink|component"):
+    with pytest.raises(builder.TerminalG9CB8Failure, match="symlink|component"):
         builder._read_bound_regular_bytes(
             tmp_path / "alias" / "leaf",
             "alias/leaf",
@@ -7473,7 +7652,7 @@ def test_bound_reader_rejects_leaf_symlink(tmp_path: Path) -> None:
     target.write_bytes(b"synthetic\n")
     leaf = tmp_path / "leaf"
     leaf.symlink_to(target)
-    with pytest.raises(builder.TerminalG9CB7Failure, match="symlink|open"):
+    with pytest.raises(builder.TerminalG9CB8Failure, match="symlink|open"):
         builder._read_bound_regular_bytes(leaf, "leaf")
 
 
@@ -7489,7 +7668,7 @@ def test_bound_reader_rejects_noncanonical_components(
     snapshot = builder._SecureBoundSnapshot(tmp_path)
     try:
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="component|canonical|parent",
         ):
             snapshot.open_initial(path_text, True)
@@ -7508,7 +7687,7 @@ def test_distinct_hardlinked_bound_paths_fail_snapshot_authentication(
     try:
         snapshot.open_initial("first", True)
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="alias|filesystem object",
         ):
             snapshot.open_initial("second", True)
@@ -7584,7 +7763,7 @@ def test_conflicting_duplicate_declarations_fail_before_bound_open(
         }
     }
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="conflicting duplicate input metadata",
     ):
         builder._preauthenticate_parent_snapshot(
@@ -7604,7 +7783,7 @@ def test_final_same_descriptor_read_detects_bound_byte_drift(
         snapshot.open_initial("leaf", True)
         leaf.write_bytes(b"changed\n")
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="final|snapshot",
         ):
             snapshot.verify_final()
@@ -7718,14 +7897,14 @@ def test_worktree_hash_object_is_absent_from_snapshot_entry_paths(
     try:
         builder._validate_closed_entry_phase(
             context,
-            builder.P7_CLAIM_PREFLIGHT,
+            builder.P8_CLAIM_PREFLIGHT,
         )
         builder._final_parent_snapshot_recheck(
             chain["root"],
             snapshot,
             pairs,
             context,
-            builder.P7_CLAIM_PREFLIGHT,
+            builder.P8_CLAIM_PREFLIGHT,
             builder.prereg.EXPECTED_BRANCH,
         )
     finally:
@@ -7777,7 +7956,7 @@ def test_publication_capability_probe_restores_inventory_and_rebaselines_time(
     results = tmp_path / "results"
     results.mkdir()
     context = builder._PublicationContext(tmp_path)
-    raw = b"G9CB7 O_TMPFILE capability probe\n"
+    raw = b"G9CB8 O_TMPFILE capability probe\n"
     links: list[dict[str, Any]] = []
     removals: list[tuple[tuple[str, ...], tuple[str, ...]]] = []
     fsyncs: list[int] = []
@@ -8008,7 +8187,7 @@ def test_unnamed_publication_faults_fail_closed_without_bound_reread(
         monkeypatch.setattr(builder.os, "fsync", fail_directory_fsync)
     try:
         with pytest.raises(
-            (OSError, builder.TerminalG9CB7Failure),
+            (OSError, builder.TerminalG9CB8Failure),
             match=fault + "|publication|inode",
         ):
             context.publish(
@@ -8034,7 +8213,7 @@ def test_results_directory_substitution_before_link_fails_closed(
         results.rename(moved)
         results.mkdir()
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="directory|identity",
         ):
             context.publish(
@@ -8079,7 +8258,7 @@ def test_unlisted_absolute_binding_fails_before_leaf_access(tmp_path: Path) -> N
     snapshot = builder._SecureBoundSnapshot(tmp_path)
     try:
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="absolute|allowlist",
         ):
             snapshot.open_initial(candidate.as_posix(), False)
@@ -8093,7 +8272,7 @@ def test_worker_invocation_passes_capability_and_ledger_descriptors(
     (tmp_path / "results").mkdir()
     stage = (
         tmp_path
-        / "results/.gross9-structural-clock-g9cb7-worker-invocation"
+        / "results/.gross9-structural-clock-g9cb8-worker-invocation"
     )
     capability = builder._prepare_worker_capability(
         root=tmp_path,
@@ -8106,7 +8285,7 @@ def test_worker_invocation_passes_capability_and_ledger_descriptors(
             root=tmp_path,
             capability=capability,
             other_stage_directory=(
-                "results/.gross9-structural-clock-g9cb7-worker-other"
+                "results/.gross9-structural-clock-g9cb8-worker-other"
             ),
             synthetic_input=None,
             parent_authentication={},
@@ -8138,7 +8317,7 @@ def test_worker_capability_rows_bind_unnamed_ledger_identity(
         root=tmp_path,
         output_dir=(
             tmp_path
-            / "results/.gross9-structural-clock-g9cb7-worker-capability"
+            / "results/.gross9-structural-clock-g9cb8-worker-capability"
         ),
         slot=1,
         parent_pid=os.getpid(),
@@ -8175,7 +8354,7 @@ def test_worker_ledger_uses_sole_prebound_procfd_self_link(
 ) -> None:
     results = tmp_path / "results"
     results.mkdir()
-    own = "results/.gross9-structural-clock-g9cb7-worker-ledger-own"
+    own = "results/.gross9-structural-clock-g9cb8-worker-ledger-own"
     (tmp_path / own).mkdir(mode=0o700)
     metadata = tmp_path / "synthetic-metadata"
     metadata.write_bytes(b"synthetic metadata\n")
@@ -8190,8 +8369,8 @@ def test_worker_ledger_uses_sole_prebound_procfd_self_link(
             from training import build_gross9_structural_clock_bundle as b
 
             root = Path(os.environ["G9CB_TEST_ROOT"]).resolve()
-            own = "results/.gross9-structural-clock-g9cb7-worker-ledger-own"
-            other = "results/.gross9-structural-clock-g9cb7-worker-ledger-other"
+            own = "results/.gross9-structural-clock-g9cb8-worker-ledger-own"
+            other = "results/.gross9-structural-clock-g9cb8-worker-ledger-other"
             flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
             repository_fd = os.open(root, flags)
             results_fd = os.open("results", flags, dir_fd=repository_fd)
@@ -8405,10 +8584,10 @@ def test_worker_canonical_ledger_open_authority_is_one_shot_and_fail_closed(
             case = os.environ["G9CB_TEST_CASE"]
             root = Path(os.environ["G9CB_TEST_ROOT"]).resolve()
             own_stage = (
-                "results/.gross9-structural-clock-g9cb7-worker-authority-own"
+                "results/.gross9-structural-clock-g9cb8-worker-authority-own"
             )
             other_stage = (
-                "results/.gross9-structural-clock-g9cb7-worker-authority-other"
+                "results/.gross9-structural-clock-g9cb8-worker-authority-other"
             )
             directory_flags = (
                 os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
@@ -8465,7 +8644,7 @@ def test_worker_canonical_ledger_open_authority_is_one_shot_and_fail_closed(
             def rejected(operation):
                 try:
                     result = operation()
-                except b.TerminalG9CB7Failure as exc:
+                except b.TerminalG9CB8Failure as exc:
                     return {
                         "message": str(exc),
                         "status": "terminal",
@@ -8698,7 +8877,7 @@ def test_worker_canonical_ledger_open_authority_is_one_shot_and_fail_closed(
         (root / "results").mkdir(parents=True)
         (
             root
-            / "results/.gross9-structural-clock-g9cb7-worker-authority-own"
+            / "results/.gross9-structural-clock-g9cb8-worker-authority-own"
         ).mkdir(mode=0o700)
         environment = dict(os.environ)
         environment.update(
@@ -8785,17 +8964,17 @@ def test_worker_guard_forbids_other_procfs_link_and_unregistered_dirfd(
     guard = _guard(tmp_path)
     try:
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="descriptor namespace",
         ):
             guard._checked_path(f"/proc/self/fd/{guard.repository_fd}")
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="dir_fd",
         ):
             guard._reject_dir_fds({"dir_fd": guard.repository_fd})
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="worker ledger",
         ):
             guard._checked_path(guard.ledger_paths[1])
@@ -8858,7 +9037,7 @@ def _register_test_stage(
 
 def test_production_declares_exact_stable_checkpoint_sequence() -> None:
     assert builder.PRODUCTION_CHECKPOINTS == (
-        "C7_PRODUCTION_PREFLIGHT",
+        "C8_PRODUCTION_PREFLIGHT",
         "CAPABILITY_PROBE_COMPLETE",
         "SLOT1_PREPARED",
         "SENTINEL_LINKED",
@@ -8879,7 +9058,7 @@ def test_helper_local_transients_are_not_accepted_as_checkpoints() -> None:
     assert transients
     assert transients.isdisjoint(checkpoints)
     for transient in transients:
-        with pytest.raises(builder.TerminalG9CB7Failure, match="transient"):
+        with pytest.raises(builder.TerminalG9CB8Failure, match="transient"):
             builder._validate_production_checkpoint(transient)
 
 
@@ -8891,11 +9070,11 @@ def test_closed_phase_rejects_restored_inventory_timestamp_drift(
     try:
         builder._validate_closed_entry_phase(
             context,
-            builder.Q7_PREREGISTRATION_PUBLICATION,
+            builder.Q8_PREREGISTRATION_PUBLICATION,
         )
         before = context.timestamp_token
         time.sleep(0.01)
-        ephemeral = results / ".g9cb7-unauthorized-ephemeral"
+        ephemeral = results / ".g9cb8-unauthorized-ephemeral"
         ephemeral.mkdir()
         ephemeral.rmdir()
         assert tuple(sorted(path.name for path in results.iterdir())) == (
@@ -8905,12 +9084,12 @@ def test_closed_phase_rejects_restored_inventory_timestamp_drift(
             before[:-1]
         )
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="timestamp|drift|results",
         ):
             builder._validate_closed_entry_phase(
                 context,
-                builder.Q7_PREREGISTRATION_PUBLICATION,
+                builder.Q8_PREREGISTRATION_PUBLICATION,
             )
     finally:
         context.close()
@@ -8941,7 +9120,7 @@ def test_builder_retains_predecessor_residue_edge_through_final_recheck(
     try:
         builder._validate_closed_entry_phase(
             context,
-            builder.P7_CLAIM_PREFLIGHT,
+            builder.P8_CLAIM_PREFLIGHT,
         )
         original = os.stat(
             stage_leaf,
@@ -8987,19 +9166,19 @@ def test_builder_retains_predecessor_residue_edge_through_final_recheck(
             matching_identity=context.results_token
         )
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="residue|directory|parent|component|identity|graph",
         ):
             builder._validate_closed_entry_phase(
                 context,
-                builder.P7_CLAIM_PREFLIGHT,
+                builder.P8_CLAIM_PREFLIGHT,
             )
             builder._final_parent_snapshot_recheck(
                 root,
                 snapshot,
                 pairs,
                 context,
-                builder.P7_CLAIM_PREFLIGHT,
+                builder.P8_CLAIM_PREFLIGHT,
                 builder.prereg.EXPECTED_BRANCH,
             )
     finally:
@@ -9023,7 +9202,7 @@ def test_builder_retained_predecessor_residue_rejects_restored_timestamp_drift(
     try:
         builder._validate_closed_entry_phase(
             context,
-            builder.Q7_PREREGISTRATION_PUBLICATION,
+            builder.Q8_PREREGISTRATION_PUBLICATION,
         )
         before = os.stat(stage, follow_symlinks=False)
         time.sleep(0.01)
@@ -9038,12 +9217,12 @@ def test_builder_retained_predecessor_residue_rejects_restored_timestamp_drift(
             context.entries
         )
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="timestamp|residue|directory|drift",
         ):
             builder._validate_closed_entry_phase(
                 context,
-                builder.Q7_PREREGISTRATION_PUBLICATION,
+                builder.Q8_PREREGISTRATION_PUBLICATION,
             )
     finally:
         context.close()
@@ -9061,11 +9240,11 @@ def test_real_production_checkpoints_enforce_exact_namespace_deltas(
     state = builder._ProductionStateMachine()
     stage_one = (
         root
-        / "results/.gross9-structural-clock-g9cb7-worker-checkpoint-one"
+        / "results/.gross9-structural-clock-g9cb8-worker-checkpoint-one"
     )
     stage_two = (
         root
-        / "results/.gross9-structural-clock-g9cb7-worker-checkpoint-two"
+        / "results/.gross9-structural-clock-g9cb8-worker-checkpoint-two"
     )
     transitions: list[tuple[tuple[str, ...], tuple[str, ...]]] = []
     fsynced_results = 0
@@ -9118,7 +9297,7 @@ def test_real_production_checkpoints_enforce_exact_namespace_deltas(
         os.fsync(stage_fd)
 
     try:
-        advance("C7_PRODUCTION_PREFLIGHT")
+        advance("C8_PRODUCTION_PREFLIGHT")
         context.probe()
         advance("CAPABILITY_PROBE_COMPLETE")
         builder._create_stage_directory(
@@ -9231,10 +9410,10 @@ def test_active_stage_retained_descriptor_must_match_canonical_edge_at_checkpoin
         target.write_bytes(f"synthetic checkpoint: {relative}\n".encode())
         target.chmod(0o444)
     stage_one = (
-        results / ".gross9-structural-clock-g9cb7-worker-edge-one"
+        results / ".gross9-structural-clock-g9cb8-worker-edge-one"
     )
     stage_two = (
-        results / ".gross9-structural-clock-g9cb7-worker-edge-two"
+        results / ".gross9-structural-clock-g9cb8-worker-edge-two"
     )
     active_stage = (
         stage_two
@@ -9291,7 +9470,7 @@ def test_active_stage_retained_descriptor_must_match_canonical_edge_at_checkpoin
         )
         _rebaseline_restored_results_timestamp(context)
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="stage|identity|edge|component|retained",
         ):
             builder._validate_production_namespace(
@@ -9312,10 +9491,10 @@ def test_active_stage_retained_descriptor_rejects_restored_timestamp_drift(
         (builder.PREREGISTRATION_PATH, builder.CLAIM_PATH),
     )
     stage_one = (
-        results / ".gross9-structural-clock-g9cb7-worker-timestamp-one"
+        results / ".gross9-structural-clock-g9cb8-worker-timestamp-one"
     )
     stage_two = (
-        results / ".gross9-structural-clock-g9cb7-worker-timestamp-two"
+        results / ".gross9-structural-clock-g9cb8-worker-timestamp-two"
     )
     stage_one.mkdir(mode=0o700)
     context = builder._PublicationContext(tmp_path)
@@ -9342,7 +9521,7 @@ def test_active_stage_retained_descriptor_rejects_restored_timestamp_drift(
         assert after.st_mtime_ns != before.st_mtime_ns
         assert builder._directory_entries(stage_fd) == ()
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="stage|timestamp|drift",
         ):
             builder._validate_production_namespace(
@@ -9360,12 +9539,12 @@ def test_active_stage_retained_descriptor_rejects_restored_timestamp_drift(
     [
         (
             "PASS1_LEDGER_LINKED",
-            ".gross9-structural-clock-g9cb7-worker-ledger-one",
+            ".gross9-structural-clock-g9cb8-worker-ledger-one",
             (builder.SENTINEL_PATH, builder.WORKER_LEDGER_PATHS[0]),
         ),
         (
             "PASS2_LEDGER_LINKED",
-            ".gross9-structural-clock-g9cb7-worker-ledger-two",
+            ".gross9-structural-clock-g9cb8-worker-ledger-two",
             (
                 builder.SENTINEL_PATH,
                 builder.WORKER_LEDGER_PATHS[0],
@@ -9401,12 +9580,12 @@ def test_ledger_linked_checkpoint_rejects_any_stage_output_ready_collapse(
     stage_one = (
         active_stage
         if checkpoint == "PASS1_LEDGER_LINKED"
-        else results / ".gross9-structural-clock-g9cb7-worker-unused-one"
+        else results / ".gross9-structural-clock-g9cb8-worker-unused-one"
     )
     stage_two = (
         active_stage
         if checkpoint == "PASS2_LEDGER_LINKED"
-        else results / ".gross9-structural-clock-g9cb7-worker-unused-two"
+        else results / ".gross9-structural-clock-g9cb8-worker-unused-two"
     )
     context = builder._PublicationContext(tmp_path)
     _register_test_stage(context, active_stage)
@@ -9421,7 +9600,7 @@ def test_ledger_linked_checkpoint_rejects_any_stage_output_ready_collapse(
     }
     try:
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="stage|inventory|output|checkpoint",
         ):
             builder._validate_production_namespace(
@@ -9443,9 +9622,9 @@ def test_stage_file_and_cleanup_transients_rebaseline_exact_inventories(
     context = builder._PublicationContext(tmp_path)
     stage = (
         results
-        / ".gross9-structural-clock-g9cb7-worker-stage-transients"
+        / ".gross9-structural-clock-g9cb8-worker-stage-transients"
     )
-    other = "results/.gross9-structural-clock-g9cb7-worker-stage-other"
+    other = "results/.gross9-structural-clock-g9cb8-worker-stage-other"
     builder._create_stage_directory(
         stage,
         results,
@@ -9599,7 +9778,7 @@ def test_stage_cleanup_transient_rejects_canonical_edge_substitution(
     context = builder._PublicationContext(tmp_path)
     stage = (
         results
-        / ".gross9-structural-clock-g9cb7-worker-cleanup-substitution"
+        / ".gross9-structural-clock-g9cb8-worker-cleanup-substitution"
     )
     builder._create_stage_directory(
         stage,
@@ -9643,7 +9822,7 @@ def test_stage_cleanup_transient_rejects_canonical_edge_substitution(
     _rebaseline_restored_results_timestamp(context)
     try:
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="stage|identity|edge|retained",
         ):
             builder._cleanup_successful_stage(
@@ -9672,7 +9851,7 @@ def test_preregistration_only_snapshot_succeeds_without_opening_absent_claim(
         try:
             builder._validate_closed_entry_phase(
                 context,
-                builder.P7_CLAIM_PREFLIGHT,
+                builder.P8_CLAIM_PREFLIGHT,
             )
         finally:
             context.close()
@@ -9697,14 +9876,14 @@ def test_preregistration_plus_claim_snapshot_succeeds_at_c5(
         assert builder.CLAIM_PATH.as_posix() in snapshot
         builder._validate_closed_entry_phase(
             context,
-            builder.C7_PRODUCTION_PREFLIGHT,
+            builder.C8_PRODUCTION_PREFLIGHT,
         )
         builder._final_parent_snapshot_recheck(
             chain["root"],
             snapshot,
             pairs,
             context,
-            builder.C7_PRODUCTION_PREFLIGHT,
+            builder.C8_PRODUCTION_PREFLIGHT,
             builder.prereg.EXPECTED_BRANCH,
         )
     finally:
@@ -9733,8 +9912,8 @@ def test_committed_verifier_rejects_synthetic_default_and_accepts_profile(
     d5 = _commit_synthetic_d5(chain)
     security_profile["publication_commit"] = d5
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
-        match="official A7/Q7/P7 security topology differs",
+        builder.TerminalG9CB8Failure,
+        match="official A8/Q8/P8 security topology differs",
     ):
         builder.validate_committed_publication(chain["root"])
     verified = builder.validate_committed_publication(
@@ -9745,7 +9924,7 @@ def test_committed_verifier_rejects_synthetic_default_and_accepts_profile(
         mutated_profile = copy.deepcopy(security_profile)
         mutated_profile[commit_key] = "f" * 40
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match=f"committed topology differs.*{commit_key}",
         ):
             builder.validate_committed_publication(
@@ -9858,19 +10037,19 @@ def test_results_inventory_drift_cannot_be_rebaselined_as_a_closed_phase(
     try:
         builder._validate_closed_entry_phase(
             context,
-            builder.P7_CLAIM_PREFLIGHT,
+            builder.P8_CLAIM_PREFLIGHT,
         )
         unexpected = (
-            chain["root"] / "results/.g9cb7-otmpfile-probe-stale"
+            chain["root"] / "results/.g9cb8-otmpfile-probe-stale"
         )
         unexpected.write_bytes(b"unexpected\n")
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="inventory|entry|path-state",
         ):
             builder._validate_closed_entry_phase(
                 context,
-                builder.P7_CLAIM_PREFLIGHT,
+                builder.P8_CLAIM_PREFLIGHT,
             )
     finally:
         context.close()
@@ -9892,7 +10071,7 @@ def test_builder_tracked_results_projection_rejects_malformed_paths(
     path_text: str,
 ) -> None:
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="malformed tracked results path",
     ):
         builder._tracked_results_top_level_entries(path_text)
@@ -9901,10 +10080,10 @@ def test_builder_tracked_results_projection_rejects_malformed_paths(
 @pytest.mark.parametrize(
     "phase",
     [
-        builder.Q7_PREREGISTRATION_PUBLICATION,
-        builder.P7_CLAIM_PREFLIGHT,
-        builder.C7_PRODUCTION_PREFLIGHT,
-        builder.D7_COMMITTED_VERIFICATION,
+        builder.Q8_PREREGISTRATION_PUBLICATION,
+        builder.P8_CLAIM_PREFLIGHT,
+        builder.C8_PRODUCTION_PREFLIGHT,
+        builder.D8_COMMITTED_VERIFICATION,
     ],
 )
 def test_every_builder_phase_rejects_missing_tracked_top_level_entry(
@@ -9912,13 +10091,13 @@ def test_every_builder_phase_rejects_missing_tracked_top_level_entry(
     phase: str,
 ) -> None:
     phase_presence = {
-        builder.Q7_PREREGISTRATION_PUBLICATION: (),
-        builder.P7_CLAIM_PREFLIGHT: (builder.PREREGISTRATION_PATH,),
-        builder.C7_PRODUCTION_PREFLIGHT: (
+        builder.Q8_PREREGISTRATION_PUBLICATION: (),
+        builder.P8_CLAIM_PREFLIGHT: (builder.PREREGISTRATION_PATH,),
+        builder.C8_PRODUCTION_PREFLIGHT: (
             builder.PREREGISTRATION_PATH,
             builder.CLAIM_PATH,
         ),
-        builder.D7_COMMITTED_VERIFICATION: (
+        builder.D8_COMMITTED_VERIFICATION: (
             builder.PREREGISTRATION_PATH,
             builder.CLAIM_PATH,
             builder.SENTINEL_PATH,
@@ -9940,7 +10119,7 @@ def test_every_builder_phase_rejects_missing_tracked_top_level_entry(
     tracked.parent.rmdir()
     context = builder._PublicationContext(tmp_path)
     try:
-        with pytest.raises(builder.TerminalG9CB7Failure, match="inventory"):
+        with pytest.raises(builder.TerminalG9CB8Failure, match="inventory"):
             builder._validate_closed_entry_phase(context, phase)
     finally:
         context.close()
@@ -9949,14 +10128,14 @@ def test_every_builder_phase_rejects_missing_tracked_top_level_entry(
 @pytest.mark.parametrize(
     ("phase", "present"),
     [
-        (builder.Q7_PREREGISTRATION_PUBLICATION, ()),
-        (builder.P7_CLAIM_PREFLIGHT, (builder.PREREGISTRATION_PATH,)),
+        (builder.Q8_PREREGISTRATION_PUBLICATION, ()),
+        (builder.P8_CLAIM_PREFLIGHT, (builder.PREREGISTRATION_PATH,)),
         (
-            builder.C7_PRODUCTION_PREFLIGHT,
+            builder.C8_PRODUCTION_PREFLIGHT,
             (builder.PREREGISTRATION_PATH, builder.CLAIM_PATH),
         ),
         (
-            builder.D7_COMMITTED_VERIFICATION,
+            builder.D8_COMMITTED_VERIFICATION,
             (
                 builder.PREREGISTRATION_PATH,
                 builder.CLAIM_PATH,
@@ -9995,7 +10174,7 @@ def test_each_closed_entry_phase_accepts_only_its_exact_active_topology(
     context = builder._PublicationContext(tmp_path)
     try:
         builder._validate_closed_entry_phase(context, phase)
-        if phase == builder.D7_COMMITTED_VERIFICATION:
+        if phase == builder.D8_COMMITTED_VERIFICATION:
             target = tmp_path / builder.MANIFEST_PATH
             target.chmod(0o644)
         else:
@@ -10009,7 +10188,7 @@ def test_each_closed_entry_phase_accepts_only_its_exact_active_topology(
             )
             target.write_bytes(b"forbidden phase state\n")
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="path-state|mode/type|inventory",
         ):
             builder._validate_closed_entry_phase(context, phase)
@@ -10062,7 +10241,7 @@ def test_complete_predecessor_absence_and_residue_inventory_is_behavioral(
     )
     try:
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match=identity,
         ):
             builder._validate_failed_predecessor_permanent_state(
@@ -10135,7 +10314,7 @@ def test_each_prepublication_closure_absence_and_residue_is_behavioral(
     )
     try:
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match=identity,
         ):
             builder._validate_failed_predecessor_permanent_state(
@@ -10155,18 +10334,18 @@ def test_unexpected_initial_results_entry_is_not_a_valid_rebaseline(
     results.mkdir()
     for row in builder.prereg.expected_failed_predecessor_attempts():
         (tmp_path / row["residue"]["slot1_stage"]["path"]).mkdir(mode=0o700)
-    (results / ".g9cb7-unauthorized-helper-residue").write_bytes(
+    (results / ".g9cb8-unauthorized-helper-residue").write_bytes(
         b"unexpected\n"
     )
     context = builder._PublicationContext(tmp_path)
     try:
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="inventory|entry|path-state",
         ):
             builder._validate_closed_entry_phase(
                 context,
-                builder.Q7_PREREGISTRATION_PUBLICATION,
+                builder.Q8_PREREGISTRATION_PUBLICATION,
             )
     finally:
         context.close()
@@ -10175,37 +10354,37 @@ def test_unexpected_initial_results_entry_is_not_a_valid_rebaseline(
 @pytest.mark.parametrize(
     "phase",
     [
-        builder.Q7_PREREGISTRATION_PUBLICATION,
-        builder.P7_CLAIM_PREFLIGHT,
-        builder.C7_PRODUCTION_PREFLIGHT,
-        builder.D7_COMMITTED_VERIFICATION,
+        builder.Q8_PREREGISTRATION_PUBLICATION,
+        builder.P8_CLAIM_PREFLIGHT,
+        builder.C8_PRODUCTION_PREFLIGHT,
+        builder.D8_COMMITTED_VERIFICATION,
     ],
 )
 @pytest.mark.parametrize(
     "unauthorized_leaf",
     [
-        ".g9cb7-otmpfile-probe-stale",
+        ".g9cb8-otmpfile-probe-stale",
         f".{builder.SENTINEL_PATH.name}.stage-stale",
         f".{builder.WORKER_LEDGER_PATHS[0].name}.stage-stale",
         f".{builder.CSV_PATH.name}.stage-stale",
         f".{builder.MANIFEST_PATH.name}.stage-stale",
-        ".gross9-structural-clock-g9cb7-helper-stale",
-        "gross9_structural_clock_bundle_g9cb7_named-staging-residue",
+        ".gross9-structural-clock-g9cb8-helper-stale",
+        "gross9_structural_clock_bundle_g9cb8_named-staging-residue",
     ],
 )
-def test_every_closed_phase_rejects_unauthorized_g9cb7_helper_residue(
+def test_every_closed_phase_rejects_unauthorized_g9cb8_helper_residue(
     tmp_path: Path,
     phase: str,
     unauthorized_leaf: str,
 ) -> None:
     phase_presence = {
-        builder.Q7_PREREGISTRATION_PUBLICATION: (),
-        builder.P7_CLAIM_PREFLIGHT: (builder.PREREGISTRATION_PATH,),
-        builder.C7_PRODUCTION_PREFLIGHT: (
+        builder.Q8_PREREGISTRATION_PUBLICATION: (),
+        builder.P8_CLAIM_PREFLIGHT: (builder.PREREGISTRATION_PATH,),
+        builder.C8_PRODUCTION_PREFLIGHT: (
             builder.PREREGISTRATION_PATH,
             builder.CLAIM_PATH,
         ),
-        builder.D7_COMMITTED_VERIFICATION: (
+        builder.D8_COMMITTED_VERIFICATION: (
             builder.PREREGISTRATION_PATH,
             builder.CLAIM_PATH,
             builder.SENTINEL_PATH,
@@ -10222,7 +10401,7 @@ def test_every_closed_phase_rejects_unauthorized_g9cb7_helper_residue(
     context = builder._PublicationContext(tmp_path)
     try:
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="inventory|entry|path-state|residue|staging|probe",
         ):
             builder._validate_closed_entry_phase(context, phase)
@@ -10322,7 +10501,7 @@ def test_parent_component_substitution_during_traversal_fails_closed(
         (parent / "leaf").write_bytes(b"replacement\n")
         snapshot.open_initial("parent/leaf", True)
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="directory graph|parent",
         ):
             snapshot.verify_final()
@@ -10341,7 +10520,7 @@ def test_bound_mode_is_authenticated_from_open_descriptor(
         snapshot.open_initial("leaf", True)
         leaf.chmod(0o644)
         with pytest.raises(
-            builder.TerminalG9CB7Failure,
+            builder.TerminalG9CB8Failure,
             match="final|snapshot",
         ):
             snapshot.verify_final()
@@ -10454,7 +10633,7 @@ def test_rank7_parity_counter_increments_at_each_comparison() -> None:
     drifted[2] = True
     failing_counters = builder._empty_counters()
     with pytest.raises(
-        builder.TerminalG9CB7Failure,
+        builder.TerminalG9CB8Failure,
         match="activation differ",
     ):
         builder._rank7_bundle_activation_with_parity(

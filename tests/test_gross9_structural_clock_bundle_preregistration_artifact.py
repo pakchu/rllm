@@ -19,7 +19,7 @@ FROZEN_G9CB4_ARTIFACT_PATH = Path(
 FROZEN_G9CB4_ARTIFACT = (
     prereg.REPOSITORY_ROOT / FROZEN_G9CB4_ARTIFACT_PATH
 )
-ACTIVE_G9CB7_ARTIFACT = (
+ACTIVE_G9CB8_ARTIFACT = (
     prereg.REPOSITORY_ROOT / prereg.PREREGISTRATION_PATH
 )
 FROZEN_G9CB4_SHA256 = (
@@ -217,8 +217,8 @@ def test_failed_g9cb1_artifacts_remain_nonoperative_evidence() -> None:
         prereg.REPOSITORY_ROOT
         / prereg.FAILED_V2_PREREGISTRATION_PATH
     )
-    assert historical_v1 != ACTIVE_G9CB7_ARTIFACT
-    assert historical_v2 != ACTIVE_G9CB7_ARTIFACT
+    assert historical_v1 != ACTIVE_G9CB8_ARTIFACT
+    assert historical_v2 != ACTIVE_G9CB8_ARTIFACT
     assert prereg.validate_failed_predecessor_preregistrations() == (
         prereg.expected_failed_predecessor_preregistration_bindings()
     )
@@ -390,11 +390,11 @@ def test_frozen_g9cb4_preregistration_authenticates_as_opaque_metadata() -> None
     assert blob_id == FROZEN_G9CB4_GIT_BLOB
 
 
-def test_active_g9cb7_preregistration_is_absent_before_p7_without_skip() -> None:
-    assert prereg.IDENTITY == "G9CB-7"
+def test_active_g9cb8_preregistration_is_absent_before_p8_without_skip() -> None:
+    assert prereg.IDENTITY == "G9CB-8"
     assert prereg.PREREGISTRATION_PATH.as_posix() == (
         "results/"
-        "gross9_structural_clock_bundle_g9cb7_preregistration_2026-07-31.json"
+        "gross9_structural_clock_bundle_g9cb8_preregistration_2026-07-31.json"
     )
     active_paths = (
         prereg.PREREGISTRATION_PATH,
@@ -410,12 +410,12 @@ def test_active_g9cb7_preregistration_is_absent_before_p7_without_skip() -> None
     )
     assert not list(
         (prereg.REPOSITORY_ROOT / "results").glob(
-            ".gross9-structural-clock-g9cb7-worker-*"
+            ".gross9-structural-clock-g9cb8-worker-*"
         )
     )
     assert not (
         prereg.REPOSITORY_ROOT
-        / "results/.g9cb7-bytecode-cache-disabled"
+        / "results/.g9cb8-bytecode-cache-disabled"
     ).exists()
     committed = subprocess.run(
         [
@@ -486,6 +486,34 @@ def test_g9cb6_prepublication_closure_and_materialization_are_exact() -> None:
             assert not (prereg.REPOSITORY_ROOT / residue["path"]).exists()
         else:
             assert not list(prereg.REPOSITORY_ROOT.glob(residue["glob"]))
+
+
+def test_g9cb7_pre_sentinel_closure_preserves_p7_c7_and_absent_outputs() -> None:
+    [closure] = prereg.expected_failed_predecessor_pre_sentinel_closures()
+    assert closure["identity"] == "G9CB-7"
+    assert closure["preregistration"]["seal_commit"] == (
+        "ededa5df4c5b5b91588765995ed7b1c502332925"
+    )
+    assert closure["access_claim"]["seal_commit"] == (
+        "ff1a8907d19c97beeef0bd7d2797e3bacce17617"
+    )
+    assert closure["failure"]["observed_production_invocations"] == 1
+    assert closure["failure"]["canonical_wrapper_invocations"] == 0
+    assert closure["failure"]["publication_context_constructed"] is False
+    assert len(closure["permanently_absent_outputs"]) == 5
+    assert all(
+        not (prereg.REPOSITORY_ROOT / path).exists()
+        for path in closure["permanently_absent_outputs"]
+    )
+    assert (
+        prereg.REPOSITORY_ROOT / closure["preregistration"]["path"]
+    ).is_file()
+    assert (
+        prereg.REPOSITORY_ROOT / closure["access_claim"]["path"]
+    ).is_file()
+    assert not list(prereg.REPOSITORY_ROOT.rglob("__pycache__"))
+    assert not list(prereg.REPOSITORY_ROOT.rglob("*.pyc"))
+    assert not list(prereg.REPOSITORY_ROOT.rglob("*.pyo"))
 
 
 def test_frozen_g9cb4_absence_and_residue_inventory_is_complete() -> None:
