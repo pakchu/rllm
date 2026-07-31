@@ -1,4 +1,4 @@
-"""Claim and one-shot builder for the G9CB-5 structural clock bundle.
+"""Claim and one-shot builder for the G9CB-6 structural clock bundle.
 
 The import-time and claim paths are deliberately stdlib-only.  Generic Gross9
 runtime modules are imported only by a fresh worker process after the durable
@@ -52,8 +52,8 @@ import zlib
 from training import preregister_gross9_structural_clock_bundle as prereg
 
 
-IDENTITY = "G9CB-5"
-PROTOCOL_VERSION = "gross9_structural_clock_bundle_g9cb5_v1"
+IDENTITY = "G9CB-6"
+PROTOCOL_VERSION = "gross9_structural_clock_bundle_g9cb6_v1"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 BUILDER_PATH = Path("training/build_gross9_structural_clock_bundle.py")
 BUILDER_TEST_PATH = Path("tests/test_build_gross9_structural_clock_bundle.py")
@@ -61,28 +61,28 @@ PREREGISTER_PATH = Path("training/preregister_gross9_structural_clock_bundle.py"
 PREREGISTRATION_PATH = prereg.PREREGISTRATION_PATH
 CLAIM_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb5_access_claim_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb6_access_claim_2026-07-31.json"
 )
 SENTINEL_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb5_attempt_consumed_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb6_attempt_consumed_2026-07-31.json"
 )
 CSV_PATH = Path(
-    "results/gross9_structural_clock_bundle_g9cb5_2026-07-31.csv.gz"
+    "results/gross9_structural_clock_bundle_g9cb6_2026-07-31.csv.gz"
 )
 MANIFEST_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb5_manifest_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb6_manifest_2026-07-31.json"
 )
 WORKER_LEDGER_PATHS = (
     Path(
         "results/"
-        "gross9_structural_clock_bundle_g9cb5_worker_capability_consumed_pass1_"
+        "gross9_structural_clock_bundle_g9cb6_worker_capability_consumed_pass1_"
         "2026-07-31.json"
     ),
     Path(
         "results/"
-        "gross9_structural_clock_bundle_g9cb5_worker_capability_consumed_pass2_"
+        "gross9_structural_clock_bundle_g9cb6_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
 )
@@ -197,25 +197,25 @@ RANK7_ROWS_USED_COUNTERS = (
     "rank7_bundle_parity_rows_compared",
 )
 GZIP_PREFIX = bytes.fromhex("1f8b08000000000002ff")
-TERMINAL_ACTION = "TERMINAL_G9CB5_ATTEMPT_CONSUMED_NO_RETRY"
+TERMINAL_ACTION = "TERMINAL_G9CB6_ATTEMPT_CONSUMED_NO_RETRY"
 _TIMESTAMP_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\Z")
 _SHA_RE = re.compile(r"[0-9a-f]{64}\Z")
 _DIST_NORMALIZE_RE = re.compile(r"[-_.]+")
 _STAGED_CSV_NAME = "gross9_structural_clock_bundle.csv.gz"
 _STAGED_CORE_NAME = "gross9_structural_clock_bundle_core.json"
 _STAGED_RECEIPT_NAME = "gross9_structural_clock_bundle_pass_receipt.json"
-_PYCACHE_PREFIX_RELATIVE = Path("results/.g9cb5-bytecode-cache-disabled")
+_PYCACHE_PREFIX_RELATIVE = Path("results/.g9cb6-bytecode-cache-disabled")
 _ABSOLUTE_BINDING_ALLOWLIST = frozenset(
     {"/tmp/btcusdt_open_interest_5m_2020_2026.csv"}
 )
 _PREREGISTRATION_ONLY = "preregistration-only"
 _PREREGISTRATION_PLUS_CLAIM = "preregistration-plus-claim"
-Q5_PREREGISTRATION_PUBLICATION = "Q5_PREREGISTRATION_PUBLICATION"
-P5_CLAIM_PREFLIGHT = "P5_CLAIM_PREFLIGHT"
-C5_PRODUCTION_PREFLIGHT = "C5_PRODUCTION_PREFLIGHT"
-D5_COMMITTED_VERIFICATION = "D5_COMMITTED_VERIFICATION"
+Q6_PREREGISTRATION_PUBLICATION = "Q6_PREREGISTRATION_PUBLICATION"
+P6_CLAIM_PREFLIGHT = "P6_CLAIM_PREFLIGHT"
+C6_PRODUCTION_PREFLIGHT = "C6_PRODUCTION_PREFLIGHT"
+D6_COMMITTED_VERIFICATION = "D6_COMMITTED_VERIFICATION"
 PRODUCTION_CHECKPOINTS = (
-    "C5_PRODUCTION_PREFLIGHT",
+    "C6_PRODUCTION_PREFLIGHT",
     "CAPABILITY_PROBE_COMPLETE",
     "SLOT1_PREPARED",
     "SENTINEL_LINKED",
@@ -239,12 +239,12 @@ _PR_SET_PDEATHSIG = 1
 _LIBC = ctypes.CDLL(None, use_errno=True)
 
 
-class TerminalG9CB5Failure(RuntimeError):
+class TerminalG9CB6Failure(RuntimeError):
     """A terminal protocol or post-sentinel failure."""
 
 
 def _fail(message: str) -> NoReturn:
-    raise TerminalG9CB5Failure(message)
+    raise TerminalG9CB6Failure(message)
 
 
 def _validate_production_checkpoint(checkpoint: str) -> None:
@@ -334,7 +334,7 @@ def _decode_canonical_object(
     try:
         payload = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_object)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB5Failure(
+        raise TerminalG9CB6Failure(
             f"invalid canonical JSON: {path_text}"
         ) from exc
     if not isinstance(payload, dict) or raw != _canonical_json_bytes(payload):
@@ -405,6 +405,22 @@ def _git(root: Path, *arguments: str, allow_failure: bool = False) -> bytes:
 
 def _git_text(root: Path, *arguments: str) -> str:
     return _git(root, *arguments).decode("utf-8").strip()
+
+
+def _tracked_results_top_level_entries(output: str) -> set[str]:
+    """Project normalized tracked results paths onto entries below results/."""
+    entries: set[str] = set()
+    for path_text in output.splitlines():
+        components = path_text.split("/")
+        if (
+            len(components) < 2
+            or components[0] != "results"
+            or any(component in {"", ".", ".."} for component in components)
+            or "\\" in path_text
+        ):
+            _fail("malformed tracked results path")
+        entries.add(components[1])
+    return entries
 
 
 def _single_parent_commit(root: Path, commit: str) -> str:
@@ -578,7 +594,7 @@ def _require_bound_regular_lstat(path: Path, path_text: str) -> None:
     try:
         mode = os.lstat(path).st_mode
     except OSError as exc:
-        raise TerminalG9CB5Failure(
+        raise TerminalG9CB6Failure(
             f"bound input cannot be inspected: {path_text}"
         ) from exc
     if not stat.S_ISREG(mode):
@@ -618,7 +634,7 @@ def _validate_zero_access(payload: Mapping[str, Any]) -> None:
     try:
         prereg.validate_zero_access_schema(payload)
     except (TypeError, ValueError) as exc:
-        raise TerminalG9CB5Failure(
+        raise TerminalG9CB6Failure(
             f"preregistration zero-access schema differs: {exc}"
         ) from exc
 
@@ -694,6 +710,7 @@ _EXPECTED_SECURITY_PROFILE_KEYS = frozenset(
         "failed_predecessor_preregistrations",
         "failed_predecessor_attempts",
         "failed_predecessor_closures",
+        "failed_predecessor_prepublication_closures",
         "successor_preregistrations",
         "authority_amendments",
         "protocol_paths",
@@ -715,6 +732,9 @@ def _fixed_security_expectations() -> dict[str, Any]:
         ),
         "failed_predecessor_closures": copy.deepcopy(
             prereg.expected_failed_predecessor_closures()
+        ),
+        "failed_predecessor_prepublication_closures": copy.deepcopy(
+            prereg.expected_failed_predecessor_prepublication_closures()
         ),
         "successor_preregistrations": copy.deepcopy(
             prereg.expected_successor_preregistration_bindings()
@@ -794,7 +814,7 @@ def _validated_expected_security_profile(
             or _commit_name_status(root, implementation, seal)
             != tuple(normalized["preregistration_diff"])
         ):
-            _fail("expected security profile A5/Q5/P5 topology differs")
+            _fail("expected security profile A6/Q6/P6 topology differs")
     bindings = preregistration.get("bindings")
     if not isinstance(bindings, Mapping):
         _fail("expected security profile preregistration bindings are absent")
@@ -805,6 +825,10 @@ def _validated_expected_security_profile(
         ),
         ("failed_predecessor_attempts", "failed_predecessor_attempts"),
         ("failed_predecessor_closures", "failed_predecessor_closures"),
+        (
+            "failed_predecessor_prepublication_closures",
+            "failed_predecessor_prepublication_closures",
+        ),
         ("successor_preregistrations", "successor_preregistrations"),
         ("authority_amendments", "authority_amendments"),
     ):
@@ -838,8 +862,8 @@ def _official_expected_security_profile(
         ValueError,
         subprocess.CalledProcessError,
     ) as exc:
-        raise TerminalG9CB5Failure(
-            "official A5/Q5/P5 security topology differs"
+        raise TerminalG9CB6Failure(
+            "official A6/Q6/P6 security topology differs"
         ) from exc
     if len(additions) != 1:
         _fail("official preregistration seal addition history differs")
@@ -885,13 +909,41 @@ def _validate_failed_predecessor_closure_binding(
     return expected
 
 
+def _validate_failed_predecessor_prepublication_closure_binding(
+    preregistration: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    expected = prereg.expected_failed_predecessor_prepublication_closures()
+    bindings = preregistration.get("bindings")
+    observed = (
+        bindings.get("failed_predecessor_prepublication_closures")
+        if isinstance(bindings, Mapping)
+        else None
+    )
+    if observed != expected:
+        _fail("failed predecessor prepublication closure binding differs")
+    return expected
+
+
+def _validate_guarded_prepublication_closure_binding(
+    preregistration: Mapping[str, Any], _root: Path
+) -> list[dict[str, Any]]:
+    return _validate_failed_predecessor_prepublication_closure_binding(
+        preregistration
+    )
+
+
 def _validate_failed_predecessor_permanent_state(
     results_fd: int,
     failed_attempts: Sequence[Mapping[str, Any]],
     failed_closures: Sequence[Mapping[str, Any]] = (),
+    failed_prepublication_closures: Sequence[Mapping[str, Any]] = (),
     *,
     retained_directories: Mapping[str, int] | None = None,
 ) -> None:
+    if not failed_prepublication_closures:
+        failed_prepublication_closures = (
+            prereg.expected_failed_predecessor_prepublication_closures()
+        )
     names = set(_directory_entries(results_fd))
 
     def absent(path_text: str, message: str) -> None:
@@ -982,12 +1034,39 @@ def _validate_failed_predecessor_permanent_state(
             for name in names
         ):
             _fail("G9CB-4 worker-stage residue differs")
+    if (
+        len(failed_prepublication_closures) != 1
+        or failed_prepublication_closures[0].get("identity") != "G9CB-5"
+    ):
+        _fail("failed predecessor prepublication closure schema differs")
+    row = failed_prepublication_closures[0]
+    for path_text in row["permanently_absent_outputs"]:
+        absent(
+            str(path_text),
+            f"permanently absent G9CB-5 output exists: {path_text}",
+        )
+    absent(
+        str(row["residue"]["bytecode_cache"]["path"]),
+        "G9CB-5 bytecode residue differs",
+    )
+    if any(
+        name.startswith(".gross9_structural_clock_bundle_g9cb5_")
+        and ".stage-" in name
+        for name in names
+    ):
+        _fail("G9CB-5 publication-stage residue differs")
+    if any(
+        name.startswith(".gross9-structural-clock-g9cb5-worker-")
+        for name in names
+    ):
+        _fail("G9CB-5 worker-stage residue differs")
 
 
 def _validate_predecessor_inventory_standalone(
     root: Path,
     failed_attempts: Sequence[Mapping[str, Any]],
     failed_closures: Sequence[Mapping[str, Any]],
+    failed_prepublication_closures: Sequence[Mapping[str, Any]],
 ) -> None:
     context = _PublicationContext(root)
     try:
@@ -995,6 +1074,7 @@ def _validate_predecessor_inventory_standalone(
             context.results_fd,
             failed_attempts,
             failed_closures,
+            failed_prepublication_closures,
         )
     finally:
         context.close()
@@ -1116,6 +1196,7 @@ def validate_preregistration(
         _fail("preregistration bindings schema is incomplete")
     successor_binding_keys = {
         "failed_predecessor_closures",
+        "failed_predecessor_prepublication_closures",
         "successor_preregistrations",
     }
     missing_successor_keys = successor_binding_keys.difference(bindings)
@@ -1147,6 +1228,9 @@ def validate_preregistration(
         ]
         failed_attempts = security_profile["failed_predecessor_attempts"]
         failed_closures = security_profile["failed_predecessor_closures"]
+        failed_prepublication_closures = security_profile[
+            "failed_predecessor_prepublication_closures"
+        ]
     elif validation_mode == "synthetic":
         if (root / ".git").exists():
             _fail("synthetic preregistration hook requires a noncanonical root")
@@ -1155,6 +1239,9 @@ def validate_preregistration(
         )
         failed_attempts = prereg.expected_failed_predecessor_attempts()
         failed_closures = prereg.expected_failed_predecessor_closures()
+        failed_prepublication_closures = (
+            prereg.expected_failed_predecessor_prepublication_closures()
+        )
     elif (
         validation_mode == "guarded_worker"
         and "failed_predecessor_closures" in bindings
@@ -1168,6 +1255,9 @@ def validate_preregistration(
         failed_closures = _validate_failed_predecessor_closure_binding(
             payload
         )
+        failed_prepublication_closures = (
+            _validate_guarded_prepublication_closure_binding(payload, root)
+        )
     elif validation_mode == "guarded_worker":
         predecessors = (
             prereg.expected_failed_predecessor_preregistration_bindings()
@@ -1176,6 +1266,9 @@ def validate_preregistration(
             payload
         )
         failed_closures = prereg.expected_failed_predecessor_closures()
+        failed_prepublication_closures = (
+            _validate_guarded_prepublication_closure_binding(payload, root)
+        )
     else:
         try:
             prereg.validate_historical_preregistration_topology(root)
@@ -1186,13 +1279,16 @@ def validate_preregistration(
             )
             failed_attempts = prereg.expected_failed_predecessor_attempts()
             failed_closures = prereg.expected_failed_predecessor_closures()
+            failed_prepublication_closures = (
+                prereg.expected_failed_predecessor_prepublication_closures()
+            )
         except (
             OSError,
             RuntimeError,
             ValueError,
             subprocess.CalledProcessError,
         ) as exc:
-            raise TerminalG9CB5Failure(
+            raise TerminalG9CB6Failure(
                 "failed predecessor preregistration evidence differs"
             ) from exc
     if validation_mode in {"parent", "guarded_worker"}:
@@ -1203,11 +1299,17 @@ def validate_preregistration(
             if results_fd is None:
                 _fail("predecessor path-state results descriptor is absent")
             _validate_failed_predecessor_permanent_state(
-                results_fd, failed_attempts, failed_closures
+                results_fd,
+                failed_attempts,
+                failed_closures,
+                failed_prepublication_closures,
             )
         else:
             _validate_predecessor_inventory_standalone(
-                root, failed_attempts, failed_closures
+                root,
+                failed_attempts,
+                failed_closures,
+                failed_prepublication_closures,
             )
     if bindings.get("failed_predecessor_preregistrations") != predecessors:
         _fail("failed predecessor preregistration bindings mismatch")
@@ -1218,6 +1320,11 @@ def validate_preregistration(
         and bindings.get("failed_predecessor_closures") != failed_closures
     ):
         _fail("failed predecessor closure binding mismatch")
+    if (
+        bindings.get("failed_predecessor_prepublication_closures")
+        != failed_prepublication_closures
+    ):
+        _fail("failed predecessor prepublication closure binding mismatch")
     successor_rows = bindings.get("successor_preregistrations")
     if "successor_preregistrations" in bindings:
         expected_successors = (
@@ -1247,7 +1354,7 @@ def validate_preregistration(
             ValueError,
             subprocess.CalledProcessError,
         ) as exc:
-            raise TerminalG9CB5Failure(
+            raise TerminalG9CB6Failure(
                 "protocol implementation topology differs"
             ) from exc
     if recorded_implementation != implementation:
@@ -1273,7 +1380,7 @@ def validate_preregistration(
                 verify_git_seal=False,
             )
         except (TypeError, ValueError) as exc:
-            raise TerminalG9CB5Failure(
+            raise TerminalG9CB6Failure(
                 "preregistration producer validation failed"
             ) from exc
 
@@ -1745,7 +1852,7 @@ def _open_unnamed_completed(
         return descriptor, completed
     except NameError as exc:
         os.close(descriptor)
-        raise TerminalG9CB5Failure(
+        raise TerminalG9CB6Failure(
             "publication helper failure"
         ) from exc
     except BaseException:
@@ -1804,6 +1911,13 @@ class _PublicationContext:
             prereg.expected_failed_predecessor_closures()
             if expected_security_profile is None
             else expected_security_profile["failed_predecessor_closures"]
+        )
+        self.failed_predecessor_prepublication_closures = copy.deepcopy(
+            prereg.expected_failed_predecessor_prepublication_closures()
+            if expected_security_profile is None
+            else expected_security_profile[
+                "failed_predecessor_prepublication_closures"
+            ]
         )
 
     def _require_bound_results(
@@ -1915,10 +2029,10 @@ class _PublicationContext:
             return
         self._require_bound_results()
         baseline = self.entries
-        leaf = f".g9cb5-otmpfile-probe-{os.getpid()}-{os.urandom(8).hex()}"
+        leaf = f".g9cb6-otmpfile-probe-{os.getpid()}-{os.urandom(8).hex()}"
         if leaf in baseline:
             _fail("publication capability probe leaf already exists")
-        raw = b"G9CB5 O_TMPFILE capability probe\n"
+        raw = b"G9CB6 O_TMPFILE capability probe\n"
         descriptor, unnamed_info = _open_unnamed_completed(
             self.results_fd, raw, mode=0o444
         )
@@ -1979,7 +2093,7 @@ class _PublicationContext:
             os.fsync(self.results_fd)
             self._rebaseline(baseline)
         except NameError as exc:
-            raise TerminalG9CB5Failure(
+            raise TerminalG9CB6Failure(
                 "publication helper failure"
             ) from exc
         finally:
@@ -2056,7 +2170,7 @@ class _PublicationContext:
                 "mode": stat.S_IMODE(canonical_info.st_mode),
             }
         except NameError as exc:
-            raise TerminalG9CB5Failure(
+            raise TerminalG9CB6Failure(
                 "publication helper failure"
             ) from exc
         finally:
@@ -2081,7 +2195,7 @@ class _PublicationContext:
         os.close(self.repository_fd)
 
 
-def _is_forbidden_g9cb5_helper_name(name: str) -> bool:
+def _is_forbidden_g9cb6_helper_name(name: str) -> bool:
     canonical = (
         PREREGISTRATION_PATH,
         CLAIM_PATH,
@@ -2091,11 +2205,11 @@ def _is_forbidden_g9cb5_helper_name(name: str) -> bool:
         MANIFEST_PATH,
     )
     return (
-        name.startswith(".g9cb5-otmpfile-probe-")
-        or name.startswith(".gross9-structural-clock-g9cb5-worker-")
+        name.startswith(".g9cb6-otmpfile-probe-")
+        or name.startswith(".gross9-structural-clock-g9cb6-worker-")
         or any(name.startswith(f".{path.name}.stage-") for path in canonical)
         or (
-            name.startswith(".gross9_structural_clock_bundle_g9cb5_")
+            name.startswith(".gross9_structural_clock_bundle_g9cb6_")
             and ".stage-" in name
         )
     )
@@ -2105,10 +2219,10 @@ def _validate_closed_entry_phase(
     context: _PublicationContext, phase: str
 ) -> None:
     phase_states = {
-        Q5_PREREGISTRATION_PUBLICATION: (False, False, False),
-        P5_CLAIM_PREFLIGHT: (True, False, False),
-        C5_PRODUCTION_PREFLIGHT: (True, True, False),
-        D5_COMMITTED_VERIFICATION: (True, True, True),
+        Q6_PREREGISTRATION_PUBLICATION: (False, False, False),
+        P6_CLAIM_PREFLIGHT: (True, False, False),
+        C6_PRODUCTION_PREFLIGHT: (True, True, False),
+        D6_COMMITTED_VERIFICATION: (True, True, True),
     }
     if phase not in phase_states:
         _fail("closed entry-point phase is invalid")
@@ -2145,13 +2259,9 @@ def _validate_closed_entry_phase(
                 _fail(f"{phase} active leaf mode/type differs: {leaf}")
     tracked_results: set[str] = set()
     if (context.root / ".git").exists():
-        tracked_results = {
-            Path(line).name
-            for line in _git_text(
-                context.root, "ls-files", "--", "results"
-            ).splitlines()
-            if line and Path(line).parent == Path("results")
-        }
+        tracked_results = _tracked_results_top_level_entries(
+            _git_text(context.root, "ls-files", "--", "results")
+        )
     predecessor_residue_names = {
         Path(str(row["residue"]["slot1_stage"]["path"])).name
         for row in context.failed_predecessor_attempts
@@ -2166,13 +2276,14 @@ def _validate_closed_entry_phase(
         _fail(f"{phase} exact results inventory differs")
     if _PYCACHE_PREFIX_RELATIVE.name in names:
         _fail(f"{phase} fixed pycache path exists")
-    if any(_is_forbidden_g9cb5_helper_name(name) for name in names):
-        _fail(f"{phase} forbidden G9CB5 helper path exists")
+    if any(_is_forbidden_g9cb6_helper_name(name) for name in names):
+        _fail(f"{phase} forbidden G9CB6 helper path exists")
     context.retain_predecessor_residues()
     _validate_failed_predecessor_permanent_state(
         context.results_fd,
         context.failed_predecessor_attempts,
         context.failed_predecessor_closures,
+        context.failed_predecessor_prepublication_closures,
         retained_directories=context.predecessor_descriptors,
     )
 
@@ -2223,7 +2334,7 @@ def _validate_production_namespace(
         MANIFEST_PATH.name,
     )
     publication_counts = {
-        "C5_PRODUCTION_PREFLIGHT": 0,
+        "C6_PRODUCTION_PREFLIGHT": 0,
         "CAPABILITY_PROBE_COMPLETE": 0,
         "SLOT1_PREPARED": 0,
         "SENTINEL_LINKED": 1,
@@ -2241,7 +2352,7 @@ def _validate_production_namespace(
         if (leaf in names) != (index < count):
             _fail(f"{checkpoint} publication state differs: {leaf}")
     stage_expectation = {
-        "C5_PRODUCTION_PREFLIGHT": (),
+        "C6_PRODUCTION_PREFLIGHT": (),
         "CAPABILITY_PROBE_COMPLETE": (),
         "SLOT1_PREPARED": (stage_one,),
         "SENTINEL_LINKED": (stage_one,),
@@ -2289,19 +2400,20 @@ def _validate_production_namespace(
                 _fail(f"{checkpoint} worker-stage leaf differs: {leaf}")
     if _PYCACHE_PREFIX_RELATIVE.name in names:
         _fail(f"{checkpoint} fixed pycache path exists")
-    if any(_is_forbidden_g9cb5_helper_name(name) for name in names):
+    if any(_is_forbidden_g9cb6_helper_name(name) for name in names):
         allowed_stages = {stage.name for stage in stage_expectation}
         if any(
-            _is_forbidden_g9cb5_helper_name(name)
+            _is_forbidden_g9cb6_helper_name(name)
             and name not in allowed_stages
             for name in names
         ):
-            _fail(f"{checkpoint} forbidden G9CB5 helper path exists")
+            _fail(f"{checkpoint} forbidden G9CB6 helper path exists")
     context.retain_predecessor_residues()
     _validate_failed_predecessor_permanent_state(
         context.results_fd,
         context.failed_predecessor_attempts,
         context.failed_predecessor_closures,
+        context.failed_predecessor_prepublication_closures,
         retained_directories=context.predecessor_descriptors,
     )
 
@@ -2479,12 +2591,12 @@ def validate_claim_preflight(
             )
             for path in _planned_protocol_paths(preregistration)
         ]
-        _validate_closed_entry_phase(context, P5_CLAIM_PREFLIGHT)
+        _validate_closed_entry_phase(context, P6_CLAIM_PREFLIGHT)
         context.probe()
         snapshot.rebaseline_directory_timestamps(
             matching_identity=context.results_token
         )
-        _validate_closed_entry_phase(context, P5_CLAIM_PREFLIGHT)
+        _validate_closed_entry_phase(context, P6_CLAIM_PREFLIGHT)
         result = {
             "preregistration": preregistration,
             "preregistration_binding": prereg_binding,
@@ -2508,7 +2620,7 @@ def validate_claim_preflight(
             snapshot,
             pairs,
             context,
-            P5_CLAIM_PREFLIGHT,
+            P6_CLAIM_PREFLIGHT,
             prereg.EXPECTED_BRANCH,
         )
         return result
@@ -2553,7 +2665,7 @@ def create_claim_only(
                 snapshot,
                 pairs,
                 context,
-                P5_CLAIM_PREFLIGHT,
+                P6_CLAIM_PREFLIGHT,
                 prereg.EXPECTED_BRANCH,
             ),
             publication_context=context,
@@ -2906,7 +3018,7 @@ def _discover_import_closure(
                 filename=current.as_posix(),
             )
         except (UnicodeDecodeError, SyntaxError) as exc:
-            raise TerminalG9CB5Failure(
+            raise TerminalG9CB6Failure(
                 f"import closure source cannot be parsed: {current}"
             ) from exc
         discovered.add(current)
@@ -2975,7 +3087,7 @@ def _decode_git_stdout(
     try:
         return completed.stdout.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise TerminalG9CB5Failure(
+        raise TerminalG9CB6Failure(
             f"{operation}: Git output is not UTF-8"
         ) from exc
 
@@ -3204,7 +3316,7 @@ class _SecureBoundSnapshot(dict[str, tuple[bytes, os.stat_result]]):
                     repository_fd = opener(root, directory_flags)
                     filesystem_root_fd = opener("/", directory_flags)
             except OSError as exc:
-                raise TerminalG9CB5Failure(
+                raise TerminalG9CB6Failure(
                     "snapshot anchors cannot be securely opened"
                 ) from exc
         if repository_fd is None or filesystem_root_fd is None:
@@ -3278,7 +3390,7 @@ class _SecureBoundSnapshot(dict[str, tuple[bytes, os.stat_result]]):
                     )
                 except OSError as exc:
                     self.close()
-                    raise TerminalG9CB5Failure(
+                    raise TerminalG9CB6Failure(
                         "bound input parent component cannot be opened "
                         f"no-follow (possible symlink): {path_text}"
                     ) from exc
@@ -3319,7 +3431,7 @@ class _SecureBoundSnapshot(dict[str, tuple[bytes, os.stat_result]]):
         try:
             descriptor = self._opener(leaf, flags, dir_fd=parent_fd)
         except OSError as exc:
-            raise TerminalG9CB5Failure(
+            raise TerminalG9CB6Failure(
                 f"retained directory cannot be opened no-follow: {path_text}"
             ) from exc
         try:
@@ -3357,7 +3469,7 @@ class _SecureBoundSnapshot(dict[str, tuple[bytes, os.stat_result]]):
             descriptor = self._opener(leaf, flags, dir_fd=parent_fd)
         except OSError as exc:
             self.close()
-            raise TerminalG9CB5Failure(
+            raise TerminalG9CB6Failure(
                 f"bound input cannot be opened component-wise no-follow: {path_text}"
             ) from exc
         before = os.fstat(descriptor)
@@ -3416,7 +3528,7 @@ class _SecureBoundSnapshot(dict[str, tuple[bytes, os.stat_result]]):
                     leaf, dir_fd=parent_fd, follow_symlinks=False
                 )
             except OSError as exc:
-                raise TerminalG9CB5Failure(
+                raise TerminalG9CB6Failure(
                     f"bound input leaf path changed: {path_text}"
                 ) from exc
             if _descriptor_token(path_info) != self.file_tokens[path_text]:
@@ -3441,7 +3553,7 @@ class _SecureBoundSnapshot(dict[str, tuple[bytes, os.stat_result]]):
                         follow_symlinks=False,
                     )
                 except OSError as exc:
-                    raise TerminalG9CB5Failure(
+                    raise TerminalG9CB6Failure(
                         f"bound input parent path changed: {key}"
                     ) from exc
                 if _descriptor_token(path_info) != self.directory_tokens[key]:
@@ -3727,7 +3839,7 @@ def _canonical_bound_json(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB5Failure(
+        raise TerminalG9CB6Failure(
             f"historical metadata JSON is invalid: {path_text}"
         ) from exc
     if (
@@ -3891,7 +4003,7 @@ def _validate_historical_metadata_bytes(
                 raw.decode("utf-8"), object_pairs_hook=_unique_object
             )
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise TerminalG9CB5Failure(
+            raise TerminalG9CB6Failure(
                 f"G9CB-3 worker ledger JSON is invalid: {path_text}"
             ) from exc
         if not isinstance(payload, dict) or raw != _canonical_json_bytes(payload):
@@ -4124,7 +4236,7 @@ def _validate_one_static_closure(
         try:
             ast.parse(raw, filename=row["path"])
         except SyntaxError as exc:
-            raise TerminalG9CB5Failure(f"closure source cannot be parsed: {row['path']}") from exc
+            raise TerminalG9CB6Failure(f"closure source cannot be parsed: {row['path']}") from exc
         observed = {
             "path": row["path"],
             "path_type": "regular_file",
@@ -4209,8 +4321,8 @@ def _worker_stage_path(root: Path, output_dir: Path) -> str:
     if candidate.parent != expected_parent:
         _fail("worker staging directory is not in the results filesystem")
     if (
-        not candidate.name.startswith(".gross9-structural-clock-g9cb5-worker-")
-        or candidate.name == ".gross9-structural-clock-g9cb5-worker-"
+        not candidate.name.startswith(".gross9-structural-clock-g9cb6-worker-")
+        or candidate.name == ".gross9-structural-clock-g9cb6-worker-"
     ):
         _fail("worker staging directory name differs")
     return candidate.relative_to(repository_root).as_posix()
@@ -4394,7 +4506,7 @@ def _normalized_worker_capabilities(
         stage = row["stage_directory"]
         if (
             not isinstance(stage, str)
-            or not stage.startswith("results/.gross9-structural-clock-g9cb5-worker-")
+            or not stage.startswith("results/.gross9-structural-clock-g9cb6-worker-")
             or row["carrier_kind"] != "anonymous_pipe_v1"
             or type(row["carrier_device"]) is not int
             or type(row["carrier_inode"]) is not int
@@ -4784,7 +4896,7 @@ class _WorkerIsolationGuard:
         try:
             raw = os.fspath(value)
         except TypeError as exc:
-            raise TerminalG9CB5Failure("guarded path is not path-like") from exc
+            raise TerminalG9CB6Failure("guarded path is not path-like") from exc
         if isinstance(raw, bytes):
             text = raw.decode(sys.getfilesystemencoding(), "surrogateescape")
         elif isinstance(raw, str):
@@ -4824,7 +4936,7 @@ class _WorkerIsolationGuard:
                 except FileNotFoundError:
                     return candidate
                 except OSError as exc:
-                    raise TerminalG9CB5Failure(
+                    raise TerminalG9CB6Failure(
                         f"guarded path resolution failed: {candidate}"
                     ) from exc
                 if stat.S_ISLNK(info.st_mode):
@@ -6522,7 +6634,7 @@ def _parse_timestamp(value: str) -> int:
     try:
         parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
     except ValueError as exc:
-        raise TerminalG9CB5Failure(f"invalid timestamp: {value}") from exc
+        raise TerminalG9CB6Failure(f"invalid timestamp: {value}") from exc
     seconds = int(parsed.timestamp())
     if datetime.fromtimestamp(seconds, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") != value:
         _fail(f"noncanonical timestamp: {value}")
@@ -6541,7 +6653,7 @@ def _decimal(value: Any, field: str) -> Decimal:
     try:
         result = Decimal(str(value))
     except (InvalidOperation, ValueError) as exc:
-        raise TerminalG9CB5Failure(f"invalid decimal {field}") from exc
+        raise TerminalG9CB6Failure(f"invalid decimal {field}") from exc
     if not result.is_finite():
         _fail(f"nonfinite decimal {field}")
     return result
@@ -6864,13 +6976,13 @@ def validate_csv_gzip(raw: bytes, *, require_all_sleeves: bool = True) -> list[d
     try:
         decompressed = gzip.decompress(raw)
     except (OSError, EOFError) as exc:
-        raise TerminalG9CB5Failure("invalid gzip stream") from exc
+        raise TerminalG9CB6Failure("invalid gzip stream") from exc
     if compress_csv(decompressed) != raw:
         _fail("gzip bytes are not canonical")
     try:
         text = decompressed.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise TerminalG9CB5Failure("CSV is not UTF-8") from exc
+        raise TerminalG9CB6Failure("CSV is not UTF-8") from exc
     if "\r" in text or not text.endswith("\n") or "\n\n" in text:
         _fail("CSV line-ending contract failure")
     reader = csv.DictReader(io.StringIO(text, newline=""))
@@ -7211,7 +7323,7 @@ def _install_counted_rank7_runtime(
         try:
             candidate = Path(os.fspath(path))
         except TypeError as exc:
-            raise TerminalG9CB5Failure(
+            raise TerminalG9CB6Failure(
                 "Rank7 model open did not use a filesystem path"
             ) from exc
         candidate = candidate if candidate.is_absolute() else root / candidate
@@ -7276,7 +7388,7 @@ def _load_worker_json(root: Path, path: str) -> dict[str, Any]:
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB5Failure(f"worker JSON input is invalid: {path}") from exc
+        raise TerminalG9CB6Failure(f"worker JSON input is invalid: {path}") from exc
     if not isinstance(value, dict):
         _fail(f"worker JSON input is not an object: {path}")
     return value
@@ -7286,7 +7398,7 @@ def _market_seconds(market: Any) -> tuple[list[int], list[Any]]:
     try:
         values = list(market["date"])
     except (KeyError, TypeError) as exc:
-        raise TerminalG9CB5Failure("generic market lacks date rows") from exc
+        raise TerminalG9CB6Failure("generic market lacks date rows") from exc
     seconds: list[int] = []
     for value in values:
         if hasattr(value, "to_pydatetime"):
@@ -7368,7 +7480,7 @@ def _generic_time_second(value: Any, pandas_module: Any) -> int:
             pandas_module.to_datetime(value, utc=True, errors="raise")
         )
     except (TypeError, ValueError) as exc:
-        raise TerminalG9CB5Failure("generic source timestamp is invalid") from exc
+        raise TerminalG9CB6Failure("generic source timestamp is invalid") from exc
     return int(parsed.timestamp())
 
 
@@ -7409,7 +7521,7 @@ def _read_jsonl_rows(
         try:
             row = json.loads(line.decode("utf-8"), object_pairs_hook=_unique_object)
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise TerminalG9CB5Failure(f"invalid JSONL row: {path}") from exc
+            raise TerminalG9CB6Failure(f"invalid JSONL row: {path}") from exc
         if not isinstance(row, dict):
             _fail(f"JSONL row is not an object: {path}")
         if "_g9cb_parser_ordinal" in row:
@@ -7570,7 +7682,7 @@ def _install_counted_csv_reader(
         try:
             source_path = Path(os.fspath(source))
         except TypeError as exc:
-            raise TerminalG9CB5Failure(
+            raise TerminalG9CB6Failure(
                 "generic CSV read did not use an authenticated path"
             ) from exc
         candidate = (
@@ -7609,7 +7721,7 @@ def _install_counted_csv_reader(
         try:
             decoded_rows = len(frame)
         except TypeError as exc:
-            raise TerminalG9CB5Failure(
+            raise TerminalG9CB6Failure(
                 "chunked or streaming CSV decode is forbidden"
             ) from exc
         first_ordinal = counters["rows_decoded"][logical_name]
@@ -7623,7 +7735,7 @@ def _install_counted_csv_reader(
                     format="mixed",
                 )
             except (KeyError, TypeError, ValueError) as exc:
-                raise TerminalG9CB5Failure(
+                raise TerminalG9CB6Failure(
                     "raw market timestamps are invalid"
                 ) from exc
             if bool(
@@ -7639,7 +7751,7 @@ def _install_counted_csv_reader(
             )
             frame.attrs["_g9cb_logical_source"] = logical_name
         except (AttributeError, TypeError) as exc:
-            raise TerminalG9CB5Failure(
+            raise TerminalG9CB6Failure(
                 "decoded CSV frame cannot carry parser ordinals"
             ) from exc
         return frame
@@ -8964,7 +9076,7 @@ def _worker_main(
                 object_pairs_hook=_unique_object,
             )
         except (UnicodeEncodeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise TerminalG9CB5Failure(
+            raise TerminalG9CB6Failure(
                 "worker parent authentication is invalid"
             ) from exc
         if (
@@ -8987,7 +9099,7 @@ def _worker_main(
                 object_pairs_hook=_unique_object,
             )
         except (UnicodeEncodeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise TerminalG9CB5Failure(
+            raise TerminalG9CB6Failure(
                 "worker expected security profile is invalid"
             ) from exc
         if (
@@ -9743,7 +9855,7 @@ def _validate_worker_ledger_and_receipt(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB5Failure(
+        raise TerminalG9CB6Failure(
             "worker consumption ledger is invalid"
         ) from exc
     expected_ledger = _worker_ledger_payload(
@@ -9801,7 +9913,7 @@ def _validate_worker_ledger_and_receipt(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB5Failure("worker receipt is invalid") from exc
+        raise TerminalG9CB6Failure("worker receipt is invalid") from exc
     if (
         not isinstance(receipt, dict)
         or receipt_raw != _canonical_json_bytes(receipt)
@@ -9984,7 +10096,7 @@ def _validate_worker_product(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB5Failure("worker core is invalid JSON") from exc
+        raise TerminalG9CB6Failure("worker core is invalid JSON") from exc
     if not isinstance(core, dict) or core_raw != _canonical_json_bytes(core):
         _fail("worker core bytes are not canonical")
     _validate_prohibited_output_placement(core)
@@ -10347,7 +10459,7 @@ def validate_committed_publication(
         root, expected_security_profile=security_profile
     )
     _validate_closed_entry_phase(
-        publication_context, D5_COMMITTED_VERIFICATION
+        publication_context, D6_COMMITTED_VERIFICATION
     )
     preregistration, prereg_binding = validate_preregistration(
         root,
@@ -10551,7 +10663,7 @@ def validate_committed_publication(
         snapshot,
         pairs,
         publication_context,
-        D5_COMMITTED_VERIFICATION,
+        D6_COMMITTED_VERIFICATION,
         prereg.EXPECTED_BRANCH,
     )
     result = {
@@ -10645,13 +10757,13 @@ def produce_one_shot(
     )
     production_state = _ProductionStateMachine()
     _validate_closed_entry_phase(
-        publication_context, C5_PRODUCTION_PREFLIGHT
+        publication_context, C6_PRODUCTION_PREFLIGHT
     )
     production_state.advance(
-        "C5_PRODUCTION_PREFLIGHT",
+        "C6_PRODUCTION_PREFLIGHT",
         lambda: _validate_production_namespace(
             publication_context,
-            "C5_PRODUCTION_PREFLIGHT",
+            "C6_PRODUCTION_PREFLIGHT",
             Path("<slot-1-unreserved>"),
             Path("<slot-2-unreserved>"),
         ),
@@ -10661,7 +10773,7 @@ def produce_one_shot(
         matching_identity=publication_context.results_token
     )
     _validate_closed_entry_phase(
-        publication_context, C5_PRODUCTION_PREFLIGHT
+        publication_context, C6_PRODUCTION_PREFLIGHT
     )
     production_state.advance(
         "CAPABILITY_PROBE_COMPLETE",
@@ -10674,7 +10786,7 @@ def produce_one_shot(
     )
     results_directory = _rooted(root, SENTINEL_PATH).parent
     staging_patterns = [
-        ".gross9-structural-clock-g9cb5-worker-*",
+        ".gross9-structural-clock-g9cb6-worker-*",
         f".{SENTINEL_PATH.name}.stage-*",
         f".{CSV_PATH.name}.stage-*",
         f".{MANIFEST_PATH.name}.stage-*",
@@ -10698,7 +10810,7 @@ def produce_one_shot(
             continue
         stages = tuple(
             results_directory
-            / f".gross9-structural-clock-g9cb5-worker-{suffix}"
+            / f".gross9-structural-clock-g9cb6-worker-{suffix}"
             for suffix in suffixes
         )
         if not any(path.name in current_names for path in stages):
@@ -10781,7 +10893,7 @@ def produce_one_shot(
                     snapshot,
                     snapshot_pairs,
                     publication_context,
-                    C5_PRODUCTION_PREFLIGHT,
+                    C6_PRODUCTION_PREFLIGHT,
                     prereg.EXPECTED_BRANCH,
                     path_state_check=lambda: (
                         _validate_production_checkpoint_two(
@@ -11031,9 +11143,9 @@ def produce_one_shot(
             stage_one.rmdir()
         snapshot.close()
         publication_context.close()
-        if isinstance(exc, TerminalG9CB5Failure):
+        if isinstance(exc, TerminalG9CB6Failure):
             raise
-        raise TerminalG9CB5Failure(f"{TERMINAL_ACTION}: {exc}") from exc
+        raise TerminalG9CB6Failure(f"{TERMINAL_ACTION}: {exc}") from exc
 
 def _raw_worker_option(arguments: Sequence[str], name: str) -> str:
     positions = [
