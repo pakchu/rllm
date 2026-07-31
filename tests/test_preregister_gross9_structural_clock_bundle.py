@@ -64,6 +64,11 @@ EXPECTED_AUTHORITY_AMENDMENTS = [
 EXPECTED_PROTOCOL_PATHS = [
     (
         "docs/"
+        "gross9-structural-clock-bundle-g9cb3-successor-authority-decision-"
+        "2026-07-31.md"
+    ),
+    (
+        "docs/"
         "gross9-structural-clock-bundle-successor-authority-decision-"
         "2026-07-31.md"
     ),
@@ -148,12 +153,12 @@ EXPECTED_FAILED_PREDECESSOR_PREREGISTRATIONS = [
 EXPECTED_CONSUMPTION_LEDGER_PATHS = [
     (
         "results/"
-        "gross9_structural_clock_bundle_g9cb2_worker_capability_consumed_pass1_"
+        "gross9_structural_clock_bundle_g9cb3_worker_capability_consumed_pass1_"
         "2026-07-31.json"
     ),
     (
         "results/"
-        "gross9_structural_clock_bundle_g9cb2_worker_capability_consumed_pass2_"
+        "gross9_structural_clock_bundle_g9cb3_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
 ]
@@ -318,8 +323,8 @@ def test_optional_git_metadata_classifies_tracked_untracked_and_external(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb2-test@example.invalid")
-    git("config", "user.name", "G9CB-2 Test")
+    git("config", "user.email", "g9cb3-test@example.invalid")
+    git("config", "user.name", "G9CB-3 Test")
     tracked = repository / "tracked.bin"
     tracked.write_bytes(b"tracked")
     git("add", "tracked.bin")
@@ -444,6 +449,19 @@ def test_repository_authority_amendments_authenticate_in_canonical_order() -> No
     assert decision["sha256"] == prereg.AUTHORITY_DECISION_SHA256
     assert decision["git_blob"] == prereg.AUTHORITY_DECISION_GIT_BLOB
     assert decision["authority_commit"] == prereg.AUTHORITY_DECISION_COMMIT
+    assert decision == {
+        "path": (
+            "docs/gross9-structural-clock-bundle-g9cb3-successor-"
+            "authority-decision-2026-07-31.md"
+        ),
+        "path_type": "regular_file",
+        "sha256": (
+            "1df555c5149bfe269d2cc2c87375d54032809f13ac36f4e92b5ba00dd6e87cc7"
+        ),
+        "git_blob": "43d68f6b7407c19b3b52ef8b7bb7010797dbf3b3",
+        "git_mode": "100644",
+        "authority_commit": "a97576c050cf7cdf08738ddb755e63cc92484428",
+    }
 
     assert prereg._authority_amendment_bindings() == EXPECTED_AUTHORITY_AMENDMENTS
 
@@ -469,173 +487,190 @@ def test_failed_predecessor_preregistrations_are_exact_nonoperative_evidence() -
     )
 
 
-def test_protocol_commit_topology_accepts_exact_a2_q2_p2_chain(
+def test_g9cb2_terminal_attempt_is_exact_failed_history() -> None:
+    attempts = prereg.expected_failed_predecessor_attempts()
+    assert len(attempts) == 1
+    row = attempts[0]
+    assert row["identity"] == "G9CB-2"
+    assert row["topology"] == {
+        "g9cb2_authority_commit": "0a2847c8589908def4243890727c3640f806e109",
+        "g9cb2_claim_commit": "731f093eb963b9e7213778ed4f259ee5466cd893",
+        "g9cb2_preregistration_commit": "04550a47686ee039f82dfdb412d3c3eec4b5d6a1",
+        "g9cb2_protocol_commit": "f48634af22dcad84ffde885fa970635d133cc126",
+        "g9cb3_authority_commit": "a97576c050cf7cdf08738ddb755e63cc92484428",
+        "terminal_evidence_commit": "edad4de5cf5524c4646c64b0581e47c914e31425",
+    }
+    assert len(row["protocol_implementation"]["files"]) == 5
+    assert [item["path"] for item in row["protocol_implementation"]["files"]] == [
+        "tests/test_build_gross9_structural_clock_bundle.py",
+        "tests/test_gross9_structural_clock_bundle_preregistration_artifact.py",
+        "tests/test_preregister_gross9_structural_clock_bundle.py",
+        "training/build_gross9_structural_clock_bundle.py",
+        "training/preregister_gross9_structural_clock_bundle.py",
+    ]
+    assert len(row["permanently_absent_outputs"]) == 4
+    assert row["failure_counters"] == {
+        "candidate_rows_opened": 0,
+        "comparator_clock_rows_opened": 0,
+        "generic_runtime_modules_imported": 0,
+        "pre2025_anchor_value_rows_opened": 0,
+        "source_value_rows_opened": 0,
+        "worker_capabilities_consumed": 0,
+        "worker_git_children_launched": 0,
+        "worker_ledgers_published": 0,
+    }
+    assert prereg.validate_failed_predecessor_attempts() == attempts
+
+
+def test_producer_preclassifies_g9cb2_git_pairs_before_single_reads(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    correction = prereg.PREREGISTRATION_CORRECTION_AMENDMENT_COMMIT
-    historical_v1 = prereg.HISTORICAL_PREREGISTRATION_SEAL_COMMIT
-    failed_implementation = prereg.FAILED_V2_PROTOCOL_IMPLEMENTATION_COMMIT
-    failed_seal = prereg.FAILED_V2_PREREGISTRATION_SEAL_COMMIT
-    authority = prereg.AUTHORITY_DECISION_COMMIT
+    events: list[tuple[str, str]] = []
+    original_git = prereg._git_result
+    original_read = prereg._read_no_follow_once
+
+    def recorded_git(
+        arguments: object,
+        root: Path,
+    ) -> subprocess.CompletedProcess[str]:
+        values = list(arguments)  # type: ignore[arg-type]
+        if values and values[0] in {"ls-files", "ls-tree"}:
+            events.append(("git", values[-1]))
+        return original_git(values, root)
+
+    def recorded_read(path: Path) -> tuple[bytes, object]:
+        events.append(
+            (
+                "read",
+                path.relative_to(prereg.REPOSITORY_ROOT).as_posix(),
+            )
+        )
+        return original_read(path)
+
+    monkeypatch.setattr(prereg, "_git_result", recorded_git)
+    monkeypatch.setattr(prereg, "_read_no_follow_once", recorded_read)
+    prereg.validate_failed_predecessor_attempts()
+    row = prereg.expected_failed_predecessor_attempts()[0]
+    current_paths = [
+        row[key]["path"]
+        for key in (
+            "authority_decision",
+            "preregistration",
+            "access_claim",
+            "attempt_sentinel",
+        )
+    ]
+    first_read = next(
+        index for index, event in enumerate(events) if event[0] == "read"
+    )
+    for path_text in current_paths:
+        git_events = [
+            index
+            for index, event in enumerate(events)
+            if event == ("git", path_text)
+        ]
+        assert len(git_events) == 3
+        assert max(git_events) < first_read
+        assert events.count(("read", path_text)) == 1
+
+
+def test_protocol_commit_topology_accepts_exact_c2_a3_t2_q3_p3_chain(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     implementation = "1" * 40
     seal = "2" * 40
-    responses = {
-        (
-            "rev-list",
-            "--parents",
-            "-n",
-            "1",
-            correction,
-        ): f"{correction} {historical_v1}",
-        (
-            "diff-tree",
-            "--no-commit-id",
-            "--name-status",
-            "-r",
-            historical_v1,
-            correction,
-        ): "\n".join(prereg.G9CB1_CORRECTION_AUTHORITY_DIFF),
-        (
-            "rev-list",
-            "--parents",
-            "-n",
-            "1",
-            failed_implementation,
-        ): f"{failed_implementation} {correction}",
-        (
-            "diff-tree",
-            "--no-commit-id",
-            "--name-status",
-            "-r",
-            correction,
-            failed_implementation,
-        ): "\n".join(prereg.G9CB1_CORRECTION_PROTOCOL_DIFF),
-        (
-            "rev-list",
-            "--parents",
-            "-n",
-            "1",
-            failed_seal,
-        ): f"{failed_seal} {failed_implementation}",
-        (
-            "diff-tree",
-            "--no-commit-id",
-            "--name-status",
-            "-r",
-            failed_implementation,
-            failed_seal,
-        ): "\n".join(prereg.FAILED_V2_PREREGISTRATION_DIFF),
-        (
-            "log",
-            "--format=%H",
-            "--diff-filter=A",
-            "--",
-            prereg.FAILED_V2_PREREGISTRATION_PATH.as_posix(),
-        ): failed_seal,
-        ("rev-parse", "HEAD"): seal,
-        (
-            "merge-base",
-            "--is-ancestor",
-            failed_seal,
-            seal,
-        ): "",
-        (
-            "rev-list",
-            "--parents",
-            "-n",
-            "1",
-            authority,
-        ): f"{authority} {failed_seal}",
-        (
-            "diff-tree",
-            "--no-commit-id",
-            "--name-status",
-            "-r",
-            failed_seal,
-            authority,
-        ): "\n".join(prereg.SUCCESSOR_AUTHORITY_DIFF),
-        (
-            "log",
-            "--format=%H",
-            "--diff-filter=A",
-            "--",
-            prereg.AUTHORITY_DECISION_PATH.as_posix(),
-        ): authority,
-        (
-            "log",
-            "--format=%H",
-            "--diff-filter=A",
-            "--",
-            prereg.PREREGISTRATION_PATH.as_posix(),
-        ): seal,
-        (
-            "rev-list",
-            "--parents",
-            "-n",
-            "1",
-            seal,
-        ): f"{seal} {implementation}",
-        (
-            "diff-tree",
-            "--no-commit-id",
-            "--name-status",
-            "-r",
-            implementation,
-            seal,
-        ): "\n".join(prereg.ACTIVE_PREREGISTRATION_DIFF),
-        (
-            "rev-list",
-            "--parents",
-            "-n",
-            "1",
-            implementation,
-        ): f"{implementation} {authority}",
-        (
-            "diff-tree",
-            "--no-commit-id",
-            "--name-status",
-            "-r",
-            authority,
-            implementation,
-        ): "\n".join(prereg.SUCCESSOR_PROTOCOL_DIFF),
-        (
-            "merge-base",
-            "--is-ancestor",
-            seal,
-            seal,
-        ): "",
-        (
-            "merge-base",
-            "--is-ancestor",
-            implementation,
-            seal,
-        ): "",
+    parents = {
+        prereg.G9CB2_AUTHORITY_DECISION_COMMIT: (
+            prereg.FAILED_V2_PREREGISTRATION_SEAL_COMMIT
+        ),
+        prereg.G9CB2_PROTOCOL_IMPLEMENTATION_COMMIT: (
+            prereg.G9CB2_AUTHORITY_DECISION_COMMIT
+        ),
+        prereg.G9CB2_PREREGISTRATION_SEAL_COMMIT: (
+            prereg.G9CB2_PROTOCOL_IMPLEMENTATION_COMMIT
+        ),
+        prereg.G9CB2_CLAIM_COMMIT: prereg.G9CB2_PREREGISTRATION_SEAL_COMMIT,
+        prereg.AUTHORITY_DECISION_COMMIT: prereg.G9CB2_CLAIM_COMMIT,
+        prereg.G9CB2_TERMINAL_EVIDENCE_COMMIT: (
+            prereg.AUTHORITY_DECISION_COMMIT
+        ),
+        implementation: prereg.G9CB2_TERMINAL_EVIDENCE_COMMIT,
+        seal: implementation,
     }
-
-    def fake_git(arguments: object, _root: Path) -> str:
-        return responses[tuple(arguments)]  # type: ignore[arg-type]
-
-    monkeypatch.setattr(prereg, "_run_git", fake_git)
+    diffs = {
+        (
+            prereg.FAILED_V2_PREREGISTRATION_SEAL_COMMIT,
+            prereg.G9CB2_AUTHORITY_DECISION_COMMIT,
+        ): prereg.G9CB2_SUCCESSOR_AUTHORITY_DIFF,
+        (
+            prereg.G9CB2_AUTHORITY_DECISION_COMMIT,
+            prereg.G9CB2_PROTOCOL_IMPLEMENTATION_COMMIT,
+        ): prereg.G9CB2_SUCCESSOR_PROTOCOL_DIFF,
+        (
+            prereg.G9CB2_PROTOCOL_IMPLEMENTATION_COMMIT,
+            prereg.G9CB2_PREREGISTRATION_SEAL_COMMIT,
+        ): prereg.G9CB2_ACTIVE_PREREGISTRATION_DIFF,
+        (
+            prereg.G9CB2_PREREGISTRATION_SEAL_COMMIT,
+            prereg.G9CB2_CLAIM_COMMIT,
+        ): prereg.G9CB2_CLAIM_DIFF,
+        (
+            prereg.G9CB2_CLAIM_COMMIT,
+            prereg.AUTHORITY_DECISION_COMMIT,
+        ): prereg.SUCCESSOR_AUTHORITY_DIFF,
+        (
+            prereg.AUTHORITY_DECISION_COMMIT,
+            prereg.G9CB2_TERMINAL_EVIDENCE_COMMIT,
+        ): prereg.TERMINAL_EVIDENCE_DIFF,
+        (
+            prereg.G9CB2_TERMINAL_EVIDENCE_COMMIT,
+            implementation,
+        ): prereg.SUCCESSOR_PROTOCOL_DIFF,
+        (implementation, seal): prereg.ACTIVE_PREREGISTRATION_DIFF,
+    }
+    monkeypatch.setattr(
+        prereg, "validate_failed_v2_preregistration_topology", lambda *_: None
+    )
+    monkeypatch.setattr(prereg, "_single_parent", lambda commit, *_: parents[commit])
+    monkeypatch.setattr(prereg, "_commit_diff", lambda parent, child, *_: diffs[(parent, child)])
+    monkeypatch.setattr(
+        prereg,
+        "_addition_commits",
+        lambda path, *_: (
+            (prereg.AUTHORITY_DECISION_COMMIT,)
+            if path == prereg.AUTHORITY_DECISION_PATH
+            else (
+                (prereg.G9CB2_AUTHORITY_DECISION_COMMIT,)
+                if path == prereg.G9CB2_AUTHORITY_DECISION_PATH
+                else (seal,)
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        prereg,
+        "_run_git",
+        lambda arguments, *_: seal
+        if arguments == ["rev-parse", "HEAD"]
+        else "",
+    )
+    monkeypatch.setattr(prereg, "_require_ancestor", lambda *_: None)
     assert prereg.validate_protocol_commit_topology(Path("/synthetic")) == (
         implementation
     )
 
-    responses[
-        (
-            "diff-tree",
-            "--no-commit-id",
-            "--name-status",
-            "-r",
-            authority,
-            implementation,
-        )
-    ] = "M\ttraining/gross9_structural_clock_primitives.py"
+    diffs[(prereg.G9CB2_TERMINAL_EVIDENCE_COMMIT, implementation)] = (
+        "M\ttraining/gross9_structural_clock_primitives.py",
+    )
     with pytest.raises(ValueError, match="implementation diff"):
         prereg.validate_protocol_commit_topology(Path("/synthetic"))
 
 
-def test_protocol_paths_include_exact_g9cb2_authority_and_modules() -> None:
+def test_protocol_paths_include_exact_g9cb3_authority_and_modules() -> None:
     assert [path.as_posix() for path in prereg.PROTOCOL_PATHS] == (
+        EXPECTED_PROTOCOL_PATHS
+    )
+    assert len(prereg.PROTOCOL_PATHS) == 15
+    assert sorted(path.as_posix() for path in prereg.PROTOCOL_PATHS) == sorted(
         EXPECTED_PROTOCOL_PATHS
     )
 
@@ -724,7 +759,7 @@ def test_worker_process_environment_substitutes_canonical_synthetic_root(
         "PYTHONDONTWRITEBYTECODE": "1",
         "PYTHONPATH": canonical_root.as_posix(),
         "PYTHONPYCACHEPREFIX": (
-            canonical_root / "results/.g9cb2-bytecode-cache-disabled"
+            canonical_root / "results/.g9cb3-bytecode-cache-disabled"
         ).as_posix(),
         "PYTHONUNBUFFERED": "1",
         "PYTHONUTF8": "1",
@@ -736,7 +771,11 @@ def test_worker_process_environment_substitutes_canonical_synthetic_root(
 def test_manifest_binds_g9cb_1b_contract_and_exact_rank7_counters(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(prereg, "_protocol_inventory", lambda *_args: [])
+    monkeypatch.setattr(
+        prereg,
+        "_protocol_inventory",
+        lambda *_args, **_kwargs: [],
+    )
     monkeypatch.setattr(prereg, "_direct_authority_inventory", lambda *_args: [])
     monkeypatch.setattr(prereg, "import_closure_inventory", lambda *_args: [])
     monkeypatch.setattr(prereg, "validate_environment", lambda *_args: {})
@@ -752,13 +791,16 @@ def test_manifest_binds_g9cb_1b_contract_and_exact_rank7_counters(
     assert manifest["bindings"]["failed_predecessor_preregistrations"] == (
         EXPECTED_FAILED_PREDECESSOR_PREREGISTRATIONS
     )
+    assert manifest["bindings"]["failed_predecessor_attempts"] == (
+        prereg.expected_failed_predecessor_attempts()
+    )
     assert manifest["protocol_implementation_commit"] == "0" * 40
     assert manifest["protocol_version"] == (
-        "gross9_structural_clock_bundle_g9cb2_preregistration_v1"
+        "gross9_structural_clock_bundle_g9cb3_preregistration_v1"
     )
     assert manifest["output_paths"]["preregistration"] == (
         "results/"
-        "gross9_structural_clock_bundle_g9cb2_preregistration_2026-07-31.json"
+        "gross9_structural_clock_bundle_g9cb3_preregistration_2026-07-31.json"
     )
     assert manifest["bindings"]["runtime_import_roots"] == [
         "execution/gross9_rank7_clock_runtime.py",
