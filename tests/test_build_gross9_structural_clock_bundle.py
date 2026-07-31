@@ -4,6 +4,7 @@ import ast
 import copy
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+import errno
 import gzip
 import hashlib
 import hmac
@@ -18,9 +19,10 @@ import stat
 import subprocess
 import sys
 import textwrap
+import threading
 import time
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Mapping
 
 import numpy as np
 import pandas as pd
@@ -60,6 +62,12 @@ CAPABILITY_KEYS = (
     "carrier_inode",
     "token_sha256",
     "consumed_ledger_path",
+    "ledger_carrier_kind",
+    "ledger_device",
+    "ledger_inode",
+    "ledger_initial_type",
+    "ledger_initial_mode",
+    "ledger_initial_size",
 )
 LEDGER_KEYS = (
     "identity",
@@ -453,7 +461,7 @@ def _synthetic_preregistration(root: Path) -> dict[str, object]:
     return builder._with_hash(
         {
             "protocol_version": (
-                "gross9_structural_clock_bundle_g9cb4_preregistration_v1"
+                "gross9_structural_clock_bundle_g9cb5_preregistration_v1"
             ),
             "identity": builder.IDENTITY,
             "protocol_implementation_commit": "1" * 40,
@@ -501,6 +509,22 @@ def _synthetic_preregistration(root: Path) -> dict[str, object]:
     )
 
 
+def _synthetic_protocol_bindings(root: Path) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for relative in (builder.BUILDER_PATH, builder.BUILDER_TEST_PATH):
+        raw = (root / relative).read_bytes()
+        rows.append(
+            {
+                "path": relative.as_posix(),
+                "path_type": "regular_file",
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "git_blob": builder._git_blob_id(raw),
+                "git_mode": "100644",
+            }
+        )
+    return rows
+
+
 def _prepare_synthetic_worker_repository(
     root: Path,
 ) -> tuple[
@@ -522,8 +546,21 @@ def _prepare_synthetic_worker_repository(
         Path(builder.prereg.__file__),
         root / builder.PREREGISTER_PATH,
     )
+    builder_test = root / builder.BUILDER_TEST_PATH
+    builder_test.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(
+        builder.REPOSITORY_ROOT / builder.BUILDER_TEST_PATH,
+        builder_test,
+    )
 
     preregistration = _synthetic_preregistration(root)
+    preregistration_bindings = preregistration["bindings"]
+    assert isinstance(preregistration_bindings, dict)
+    preregistration_bindings["protocol"] = _synthetic_protocol_bindings(root)
+    preregistration = builder._with_hash(
+        preregistration,
+        "manifest_hash",
+    )
     preregistration_raw = builder._canonical_json_bytes(preregistration)
     (root / builder.PREREGISTRATION_PATH).write_bytes(preregistration_raw)
     os.chmod(root / builder.PREREGISTRATION_PATH, 0o444)
@@ -619,6 +656,12 @@ def _prepare_guarded_metadata_repository(
         builder.prereg.__file__,
         root / builder.PREREGISTER_PATH,
     )
+    builder_test = root / builder.BUILDER_TEST_PATH
+    builder_test.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_root / builder.BUILDER_TEST_PATH, builder_test)
+    preregistration_bindings = preregistration["bindings"]
+    assert isinstance(preregistration_bindings, dict)
+    preregistration_bindings["protocol"] = _synthetic_protocol_bindings(root)
     for row in attempts:
         slot1 = root / row["residue"]["slot1_stage"]["path"]
         slot1.mkdir(mode=0o700)
@@ -688,7 +731,7 @@ def _capability_row(slot: int = 1, *, parent_pid: int = 1234) -> dict[str, Any]:
         "slot": slot,
         "parent_pid": parent_pid,
         "stage_directory": (
-            f"results/.gross9-structural-clock-g9cb4-worker-slot{slot}"
+            f"results/.gross9-structural-clock-g9cb5-worker-slot{slot}"
         ),
         "carrier_kind": "anonymous_pipe_v1",
         "carrier_device": slot,
@@ -697,19 +740,46 @@ def _capability_row(slot: int = 1, *, parent_pid: int = 1234) -> dict[str, Any]:
         "consumed_ledger_path": (
             builder.WORKER_LEDGER_PATHS[slot - 1].as_posix()
         ),
+        "ledger_carrier_kind": "unnamed_otmpfile_v1",
+        "ledger_device": slot + 200,
+        "ledger_inode": slot + 300,
+        "ledger_initial_type": "regular_file",
+        "ledger_initial_mode": "0600",
+        "ledger_initial_size": 0,
     }
 
 
 def _guard(root: Path) -> builder._WorkerIsolationGuard:
     (root / "results").mkdir(exist_ok=True)
-    own = "results/.gross9-structural-clock-g9cb4-worker-own"
-    other = "results/.gross9-structural-clock-g9cb4-worker-other"
+    own = "results/.gross9-structural-clock-g9cb5-worker-own"
+    other = "results/.gross9-structural-clock-g9cb5-worker-other"
     (root / own).mkdir(exist_ok=True)
+    directory_flags = (
+        os.O_RDONLY
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_CLOEXEC", 0)
+    )
+    repository_fd = os.open(root, directory_flags)
+    results_fd = os.open("results", directory_flags, dir_fd=repository_fd)
+    filesystem_root_fd = os.open("/", directory_flags)
+    ledger_fd = os.open(
+        ".",
+        os.O_RDWR
+        | getattr(os, "O_TMPFILE", 0)
+        | getattr(os, "O_CLOEXEC", 0),
+        0o600,
+        dir_fd=results_fd,
+    )
     return builder._WorkerIsolationGuard(
-        root=root,
+        root=root.resolve(),
         own_stage=own,
         other_stage=other,
         ledger_paths=builder.WORKER_LEDGER_PATHS,
+        repository_fd=repository_fd,
+        results_fd=results_fd,
+        filesystem_root_fd=filesystem_root_fd,
+        ledger_fd=ledger_fd,
     )
 
 
@@ -800,8 +870,8 @@ case = sys.argv[3]
 case_root.mkdir(parents=True)
 results = case_root / "results"
 results.mkdir()
-own_stage = results / ".gross9-structural-clock-g9cb4-worker-own"
-other_stage = results / ".gross9-structural-clock-g9cb4-worker-other"
+own_stage = results / ".gross9-structural-clock-g9cb5-worker-own"
+other_stage = results / ".gross9-structural-clock-g9cb5-worker-other"
 own_stage.mkdir()
 probe = other_stage / "probe"
 scratch = case_root / "scratch"
@@ -1149,7 +1219,7 @@ def invoke_pycache(name):
     if location == "repository":
         target = case_root / "pkg" / "__pycache__" / "evil.pyc"
     else:
-        target = case_root / "results" / ".g9cb4-bytecode-cache-disabled" / "evil.pyc"
+        target = case_root / "results" / ".g9cb5-bytecode-cache-disabled" / "evil.pyc"
     guard.allowed_mutations.add(target.as_posix())
     if operation == "read":
         builtins.open(target, "rb")
@@ -1167,7 +1237,7 @@ def invoke_pycache_during_source_load(name):
     target = (
         case_root
         / "results"
-        / ".g9cb4-bytecode-cache-disabled"
+        / ".g9cb5-bytecode-cache-disabled"
         / "injected.pyc"
     )
 
@@ -1241,7 +1311,7 @@ if family == "pycache":
     pycache = (
         case_root / "pkg" / "__pycache__"
         if location == "repository"
-        else case_root / "results" / ".g9cb4-bytecode-cache-disabled"
+        else case_root / "results" / ".g9cb5-bytecode-cache-disabled"
     )
     pycache.mkdir(parents=True)
     (pycache / "evil.pyc").write_bytes(b"malicious-bytecode")
@@ -1254,7 +1324,7 @@ if family == "pycache-source-load":
     pycache = (
         case_root
         / "results"
-        / ".g9cb4-bytecode-cache-disabled"
+        / ".g9cb5-bytecode-cache-disabled"
     )
     pycache.mkdir(parents=True)
     (pycache / "injected.pyc").write_bytes(b"malicious-bytecode")
@@ -1262,10 +1332,33 @@ if family == "forbidden-path" and case.split(":", 1)[1] == "named-fifo":
     os.mkfifo(scratch / "named.fifo")
 
 guard = builder._WorkerIsolationGuard(
-    root=case_root,
+    root=case_root.resolve(),
     own_stage=own_stage.relative_to(case_root).as_posix(),
     other_stage=other_stage.relative_to(case_root).as_posix(),
     ledger_paths=builder.WORKER_LEDGER_PATHS,
+    repository_fd=(
+        repository_fd := os.open(
+            case_root,
+            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+        )
+    ),
+    results_fd=(
+        results_fd := os.open(
+            "results",
+            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+            dir_fd=repository_fd,
+        )
+    ),
+    filesystem_root_fd=os.open(
+        "/",
+        os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+    ),
+    ledger_fd=os.open(
+        ".",
+        os.O_RDWR | os.O_TMPFILE | os.O_CLOEXEC,
+        0o600,
+        dir_fd=results_fd,
+    ),
 )
 
 try:
@@ -1296,7 +1389,7 @@ try:
         invoke_forbidden_path(forbidden_name)
     else:
         raise AssertionError(f"unknown family: {family}")
-except builder.TerminalG9CB4Failure as exc:
+except builder.TerminalG9CB5Failure as exc:
     emit("terminal", error_type=type(exc).__name__, message=str(exc), counters=guard.counters())
 except BaseException as exc:
     emit("unexpected", error_type=type(exc).__name__, message=str(exc), counters=guard.counters())
@@ -1363,7 +1456,7 @@ def _assert_terminal_or_exact_absence(
         assert result["exact_name"] in absent_names
         return
     assert result["status"] == "terminal", result
-    assert result["error_type"] == "TerminalG9CB4Failure"
+    assert result["error_type"] == "TerminalG9CB5Failure"
 
 
 IMPORT_RECORDER_HARNESS = r"""
@@ -1557,7 +1650,7 @@ try:
                     load_source("recorded_late", "training/late_runtime.py")
                 else:
                     raise AssertionError(f"unknown scenario: {scenario}")
-except builder.TerminalG9CB4Failure as exc:
+except builder.TerminalG9CB5Failure as exc:
     emit("terminal", error_type=type(exc).__name__, message=str(exc))
 except BaseException as exc:
     emit("unexpected", error_type=type(exc).__name__, message=str(exc))
@@ -1614,8 +1707,19 @@ phase = sys.argv[1]
 marker_directory = Path(sys.argv[2])
 expected_parent_pid = int(sys.argv[3])
 descriptor = int(sys.argv[4])
+ledger_descriptor = int(sys.argv[5])
 builder._establish_parent_death_contract(expected_parent_pid)
-observed = {"phase": phase, "worker_pid": os.getpid(), "bytes_read": 0}
+builder._validate_inherited_worker_descriptors(
+    descriptor,
+    ledger_descriptor,
+)
+observed = {
+    "phase": phase,
+    "worker_pid": os.getpid(),
+    "bytes_read": 0,
+    "descriptor_count": 2,
+    "descriptors_distinct": descriptor != ledger_descriptor,
+}
 if phase == "after-handoff-before-read":
     pass
 elif phase == "partial-read":
@@ -1657,6 +1761,11 @@ worker_harness = sys.argv[4]
 read_fd, write_fd = os.pipe2(os.O_CLOEXEC)
 os.write(write_fd, b"x" * 32)
 os.close(write_fd)
+ledger_fd = os.open(
+    marker_directory,
+    os.O_RDWR | os.O_TMPFILE | os.O_CLOEXEC,
+    0o600,
+)
 environment = dict(os.environ)
 environment.update(
     {
@@ -1674,11 +1783,12 @@ worker = subprocess.Popen(
         str(marker_directory),
         str(os.getpid()),
         str(read_fd),
+        str(ledger_fd),
     ],
     cwd=repository_root,
     env=environment,
     close_fds=True,
-    pass_fds=(read_fd,),
+    pass_fds=(read_fd, ledger_fd),
 )
 (marker_directory / "worker-pid").write_text(
     str(worker.pid),
@@ -1825,7 +1935,7 @@ def test_builder_zero_access_rejects_noninteger_zero_counter(
         "cagr_values_computed"
     ] = invalid
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="zero-access schema differs",
     ):
         builder._validate_zero_access(preregistration)
@@ -1887,7 +1997,7 @@ def test_malformed_preregistration_stops_before_all_downstream_preflight(
         forbidden("topology"),
     )
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="zero-access schema differs",
     ):
         builder.validate_claim_preflight(tmp_path)
@@ -1920,7 +2030,7 @@ def test_historical_v1_bytes_are_rejected_by_operative_version_before_zero(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="operative preregistration protocol version",
     ):
         builder.validate_preregistration(
@@ -1970,7 +2080,7 @@ def test_preregistration_seal_head_rejects_intervening_commit(
     git("commit", "-m", "X")
     intervening = git("rev-parse", "HEAD")
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="direct preregistration-seal child",
     ):
         builder._validate_preregistration_seal_head(
@@ -2041,7 +2151,7 @@ def test_committed_publication_topology_requires_exact_q_p_c_d(
     git("add", "intervening.txt")
     git("commit", "-m", "X")
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="publication chain",
     ):
         builder._validate_committed_publication_topology(
@@ -2060,20 +2170,20 @@ def test_parser_exposes_read_only_committed_publication_verifier() -> None:
 
 
 def test_frozen_contract_and_deterministic_csv_gzip() -> None:
-    assert builder.IDENTITY == "G9CB-4"
+    assert builder.IDENTITY == "G9CB-5"
     assert builder.PROTOCOL_VERSION == (
-        "gross9_structural_clock_bundle_g9cb4_v1"
+        "gross9_structural_clock_bundle_g9cb5_v1"
     )
     assert builder.TERMINAL_ACTION == (
-        "TERMINAL_G9CB4_ATTEMPT_CONSUMED_NO_RETRY"
+        "TERMINAL_G9CB5_ATTEMPT_CONSUMED_NO_RETRY"
     )
     assert builder._PYCACHE_PREFIX_RELATIVE == Path(
-        "results/.g9cb4-bytecode-cache-disabled"
+        "results/.g9cb5-bytecode-cache-disabled"
     )
     assert builder.PREREGISTRATION_PATH == (
         Path(
             "results/"
-            "gross9_structural_clock_bundle_g9cb4_preregistration_2026-07-31.json"
+            "gross9_structural_clock_bundle_g9cb5_preregistration_2026-07-31.json"
         )
     )
     assert builder.DOMAIN_START == "2023-06-01T00:00:00Z"
@@ -2097,7 +2207,7 @@ def test_frozen_contract_and_deterministic_csv_gzip() -> None:
     ) == Decimal("9.0")
     rows = [
         {
-            "identity": "G9CB-4",
+            "identity": "G9CB-5",
             "sleeve": "cand_rex_veto_7",
             "sleeve_order": 0,
             "configured_weight": "1.6",
@@ -2116,23 +2226,23 @@ def test_frozen_contract_and_deterministic_csv_gzip() -> None:
     assert plain.endswith(b"\n") and b"\r" not in plain
 
 
-def test_g9cb4_stage_prefix_is_distinct_from_preserved_g9cb2_residue(
+def test_g9cb5_stage_prefix_is_distinct_from_preserved_g9cb2_residue(
     tmp_path: Path,
 ) -> None:
     (tmp_path / "results").mkdir()
     active = Path(
-        "results/.gross9-structural-clock-g9cb4-worker-active"
+        "results/.gross9-structural-clock-g9cb5-worker-active"
     )
     historical = Path(
         "results/.gross9-structural-clock-worker-ca9ca670ffb0d1b377ed6aef"
     )
     assert builder._worker_stage_path(tmp_path, active) == active.as_posix()
-    with pytest.raises(builder.TerminalG9CB4Failure, match="name differs"):
+    with pytest.raises(builder.TerminalG9CB5Failure, match="name differs"):
         builder._worker_stage_path(tmp_path, historical)
     (tmp_path / historical).mkdir(mode=0o700)
     assert list(
         (tmp_path / "results").glob(
-            ".gross9-structural-clock-g9cb4-worker-*"
+            ".gross9-structural-clock-g9cb5-worker-*"
         )
     ) == []
 
@@ -2166,7 +2276,7 @@ def test_fresh_requires_exactly_one_side_gate() -> None:
             "short_gate": True,
         }
     }
-    with pytest.raises(builder.TerminalG9CB4Failure, match="exclusive"):
+    with pytest.raises(builder.TerminalG9CB5Failure, match="exclusive"):
         _reconstruct(bars)
 
 
@@ -2175,7 +2285,7 @@ def test_reconstruction_rejects_zero_side() -> None:
     bars[0]["decisions"] = {
         "cand_rex_veto_7": {"active": True, "side": 0}
     }
-    with pytest.raises(builder.TerminalG9CB4Failure, match="forbidden side"):
+    with pytest.raises(builder.TerminalG9CB5Failure, match="forbidden side"):
         _reconstruct(bars)
 
 
@@ -2332,7 +2442,7 @@ def test_market_grid_rejects_physical_end_gap_duplicate_offgrid_and_early_end(
     match: str,
 ) -> None:
     market = pd.DataFrame({"date": pd.to_datetime(dates)})
-    with pytest.raises(builder.TerminalG9CB4Failure, match=match):
+    with pytest.raises(builder.TerminalG9CB5Failure, match=match):
         builder._market_value_opens_and_boundaries(
             market,
             domain_start=_time(0),
@@ -2669,7 +2779,7 @@ def test_csv_reparse_rejects_noncanonical_gzip_header() -> None:
     assert len(builder.validate_csv_gzip(raw)) == 5
     changed = bytearray(raw)
     changed[9] = 3
-    with pytest.raises(builder.TerminalG9CB4Failure, match="prefix"):
+    with pytest.raises(builder.TerminalG9CB5Failure, match="prefix"):
         builder.validate_csv_gzip(bytes(changed))
 
 
@@ -2701,7 +2811,7 @@ def test_counter_schema_has_exact_source_and_sleeve_fields() -> None:
 def test_counter_schema_rejects_an_extra_source_key() -> None:
     counters = builder._empty_counters()
     counters["rows_decoded"]["legacy_adapter"] = 0
-    with pytest.raises(builder.TerminalG9CB4Failure, match="counter names"):
+    with pytest.raises(builder.TerminalG9CB5Failure, match="counter names"):
         builder._validate_counter_contract(counters)
 
 
@@ -2750,7 +2860,7 @@ def test_raw_physical_domain_end_is_rejected_before_normalization(
     )
     try:
         with pytest.raises(
-            builder.TerminalG9CB4Failure,
+            builder.TerminalG9CB5Failure,
             match="physical domain-end",
         ):
             primitives.load_market(
@@ -2797,7 +2907,7 @@ def test_jsonl_counter_preserves_prior_success_before_terminal_bad_row(
     source.write_bytes(b'{"value":1}\nnot-json\n')
     counters = builder._empty_counters()
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="invalid JSONL row",
     ):
         builder._read_jsonl_rows(
@@ -2851,7 +2961,7 @@ def test_rank7_runtime_rejects_duplicate_model_open(tmp_path: Path) -> None:
         with runtime.np.load(model_paths[0], allow_pickle=False):
             pass
         with pytest.raises(
-            builder.TerminalG9CB4Failure,
+            builder.TerminalG9CB5Failure,
             match="more than once",
         ):
             runtime.np.load(model_paths[0], allow_pickle=False)
@@ -2907,7 +3017,7 @@ def test_core_rejects_three_amendment_drift() -> None:
     amendments = builder._expected_authority_amendment_bindings()
     amendments[1]["authority_commit"] = "0" * 40
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="authority amendment",
     ):
         builder.build_core(
@@ -2937,7 +3047,7 @@ def test_prohibited_output_keys_are_valid_only_at_the_exact_zero_schema() -> Non
         "nested": {"portfolio_return_values_computed": 0},
     }
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="outside the canonical zero assertion",
     ):
         builder._validate_prohibited_output_placement(malformed)
@@ -2995,8 +3105,8 @@ def test_hashed_inputs_accept_exact_tracked_untracked_and_external_pairs(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb4-test@example.invalid")
-    git("config", "user.name", "G9CB-4 Test")
+    git("config", "user.email", "g9cb5-test@example.invalid")
+    git("config", "user.name", "G9CB-5 Test")
     tracked = repository / "tracked.bin"
     tracked.write_bytes(b"tracked")
     git("add", "tracked.bin")
@@ -3092,7 +3202,7 @@ def test_hashed_inputs_reject_malformed_git_pairs_before_byte_read(
         "sha256": hashlib.sha256(b"input").hexdigest(),
         **pair,
     }
-    with pytest.raises(builder.TerminalG9CB4Failure, match="Git metadata"):
+    with pytest.raises(builder.TerminalG9CB5Failure, match="Git metadata"):
         builder._validate_regular_hashed_inputs(
             tmp_path,
             {"binding": binding},
@@ -3115,7 +3225,7 @@ def test_hashed_inputs_reject_absolute_repository_spelling_before_byte_read(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="must be repository-relative",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3164,7 +3274,7 @@ def test_hashed_inputs_reject_nonregular_paths_before_byte_read(
     )
     try:
         with pytest.raises(
-            builder.TerminalG9CB4Failure,
+            builder.TerminalG9CB5Failure,
             match="not a regular file",
         ):
             builder._validate_regular_hashed_inputs(
@@ -3191,7 +3301,7 @@ def test_nonblocking_reader_rejects_fifo_without_waiting_for_writer(
     os.mkfifo(fifo)
     started = time.monotonic()
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="not a regular file",
     ):
         builder._read_bound_regular_bytes(fifo, "candidate")
@@ -3213,8 +3323,8 @@ def test_hashed_inputs_reject_tracked_null_and_untracked_string_before_read(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb4-test@example.invalid")
-    git("config", "user.name", "G9CB-4 Test")
+    git("config", "user.email", "g9cb5-test@example.invalid")
+    git("config", "user.name", "G9CB-5 Test")
     tracked = tmp_path / "tracked.bin"
     tracked.write_bytes(b"tracked")
     git("add", "tracked.bin")
@@ -3249,7 +3359,7 @@ def test_hashed_inputs_reject_tracked_null_and_untracked_string_before_read(
         ),
     ]
     for binding, message in cases:
-        with pytest.raises(builder.TerminalG9CB4Failure, match=message):
+        with pytest.raises(builder.TerminalG9CB5Failure, match=message):
             builder._validate_regular_hashed_inputs(
                 tmp_path, {"binding": binding}
             )
@@ -3283,7 +3393,7 @@ def test_hashed_inputs_reject_paired_null_with_unborn_head_before_read(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="Git absence proof differs",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3314,8 +3424,8 @@ def test_hashed_inputs_reject_index_head_drift_before_byte_read(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb4-test@example.invalid")
-    git("config", "user.name", "G9CB-4 Test")
+    git("config", "user.email", "g9cb5-test@example.invalid")
+    git("config", "user.name", "G9CB-5 Test")
     source = tmp_path / "tracked.bin"
     source.write_bytes(b"head")
     git("add", "tracked.bin")
@@ -3331,7 +3441,7 @@ def test_hashed_inputs_reject_index_head_drift_before_byte_read(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="index/HEAD metadata mismatch",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3362,8 +3472,8 @@ def test_hashed_inputs_reject_staged_mode_drift_before_byte_read(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb4-test@example.invalid")
-    git("config", "user.name", "G9CB-4 Test")
+    git("config", "user.email", "g9cb5-test@example.invalid")
+    git("config", "user.name", "G9CB-5 Test")
     git("config", "core.filemode", "true")
     source = tmp_path / "tracked.bin"
     source.write_bytes(b"head")
@@ -3380,7 +3490,7 @@ def test_hashed_inputs_reject_staged_mode_drift_before_byte_read(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="index/HEAD metadata mismatch",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3400,6 +3510,8 @@ def test_hashed_inputs_reject_worktree_blob_drift_after_one_opaque_read(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    _materialize_closed_phase_state(tmp_path)
+
     def git(*arguments: str) -> str:
         return subprocess.run(
             ["git", *arguments],
@@ -3411,38 +3523,83 @@ def test_hashed_inputs_reject_worktree_blob_drift_after_one_opaque_read(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb4-test@example.invalid")
-    git("config", "user.name", "G9CB-4 Test")
+    git("config", "user.email", "g9cb5-test@example.invalid")
+    git("config", "user.name", "G9CB-5 Test")
     source = tmp_path / "tracked.bin"
     source.write_bytes(b"head")
-    git("add", "tracked.bin")
-    git("commit", "-m", "head")
-    head_blob = git("rev-parse", "HEAD:tracked.bin")
-    source.write_bytes(b"worktree")
-    original_read = builder._read_bound_regular_bytes
-    reads: list[str] = []
-
-    def counted_read(path: Path, path_text: str) -> object:
-        reads.append(path_text)
-        return original_read(path, path_text)
-
-    monkeypatch.setattr(builder, "_read_bound_regular_bytes", counted_read)
-    with pytest.raises(
-        builder.TerminalG9CB4Failure,
-        match="worktree Git blob mismatch",
-    ):
-        builder._validate_regular_hashed_inputs(
-            tmp_path,
+    protocol_rows = []
+    for relative in (builder.BUILDER_PATH, builder.BUILDER_TEST_PATH):
+        candidate = tmp_path / relative
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        raw = f"# synthetic {relative.name}\n".encode()
+        candidate.write_bytes(raw)
+        protocol_rows.append(
             {
-                "binding": {
+                "path": relative.as_posix(),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "git_blob": builder._git_blob_id(raw),
+                "git_mode": "100644",
+            }
+        )
+    preregistration = {
+        "bindings": {
+            "inputs": [
+                {
                     "path": "tracked.bin",
                     "sha256": hashlib.sha256(b"worktree").hexdigest(),
-                    "git_blob": head_blob,
+                    "git_blob": builder._git_blob_id(b"head"),
                     "git_mode": "100644",
                 }
-            },
+            ],
+            "protocol": protocol_rows,
+        }
+    }
+    preregistration_path = tmp_path / builder.PREREGISTRATION_PATH
+    preregistration_path.parent.mkdir(parents=True, exist_ok=True)
+    preregistration_path.write_bytes(
+        builder._canonical_json_bytes(preregistration)
+    )
+    git("add", ".")
+    git("commit", "-m", "head")
+    source.write_bytes(b"worktree")
+    active_path = ""
+    opened: list[str] = []
+    reads: list[tuple[str, int]] = []
+    original_open_initial = builder._SecureBoundSnapshot.open_initial
+    original_pread = builder.os.pread
+
+    def recorded_open_initial(
+        snapshot: builder._SecureBoundSnapshot,
+        path_text: str,
+        repository_relative: bool,
+    ) -> tuple[bytes, os.stat_result]:
+        nonlocal active_path
+        active_path = path_text
+        opened.append(path_text)
+        return original_open_initial(snapshot, path_text, repository_relative)
+
+    def recorded_pread(fd: int, size: int, offset: int) -> bytes:
+        reads.append((active_path, fd))
+        return original_pread(fd, size, offset)
+
+    monkeypatch.setattr(
+        builder._SecureBoundSnapshot,
+        "open_initial",
+        recorded_open_initial,
+    )
+    monkeypatch.setattr(builder.os, "pread", recorded_pread)
+    with pytest.raises(
+        builder.TerminalG9CB5Failure,
+        match="worktree Git blob mismatch",
+    ):
+        builder._preauthenticate_parent_snapshot(
+            tmp_path,
+            preregistration,
+            content_mode=builder._PREREGISTRATION_ONLY,
         )
-    assert reads == ["tracked.bin"]
+    assert opened.count("tracked.bin") == 1
+    tracked_reads = [fd for path_text, fd in reads if path_text == "tracked.bin"]
+    assert len(tracked_reads) == 1
 
 
 def test_hashed_inputs_reject_duplicate_null_string_git_declarations(
@@ -3459,7 +3616,7 @@ def test_hashed_inputs_reject_duplicate_null_string_git_declarations(
     )
     digest = hashlib.sha256(b"input").hexdigest()
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="conflicting duplicate input metadata",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3499,7 +3656,7 @@ def test_complete_git_inventory_fails_before_reading_earlier_valid_path(
 
     monkeypatch.setattr(builder, "_read_bound_regular_bytes", counted_read)
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="partial bound input Git metadata pair",
     ):
         builder._validate_regular_hashed_inputs(
@@ -3520,7 +3677,7 @@ def test_complete_git_inventory_fails_before_reading_earlier_valid_path(
     assert reads == []
 
 
-def test_parent_preclassifies_failed_attempt_git_pairs_before_single_reads(
+def test_parent_preclassifies_all_git_pairs_before_one_open_two_same_fd_reads(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -3539,13 +3696,17 @@ def test_parent_preclassifies_failed_attempt_git_pairs_before_single_reads(
         ).stdout.strip()
 
     git("init")
-    git("config", "user.email", "g9cb4-test@example.invalid")
-    git("config", "user.name", "G9CB-4 Test")
+    git("config", "user.email", "g9cb5-test@example.invalid")
+    git("config", "user.name", "G9CB-5 Test")
     git("add", ".")
     git("commit", "-m", "fixture")
     events: list[tuple[str, str]] = []
+    active_path = ""
+    read_fds: dict[str, list[int]] = {}
+    descriptor_paths: dict[int, str] = {}
     original_git = builder._git_process
-    original_read = builder._read_bound_regular_bytes
+    original_open_initial = builder._SecureBoundSnapshot.open_initial
+    original_pread = builder.os.pread
 
     def recorded_git(
         root: Path,
@@ -3554,24 +3715,41 @@ def test_parent_preclassifies_failed_attempt_git_pairs_before_single_reads(
         events.append(("git", arguments[-1]))
         return original_git(root, *arguments)
 
-    def recorded_read(
-        path: Path,
+    def recorded_open_initial(
+        snapshot: builder._SecureBoundSnapshot,
         path_text: str,
+        repository_relative: bool,
     ) -> tuple[bytes, os.stat_result]:
+        nonlocal active_path
+        active_path = path_text
+        events.append(("open", path_text))
+        result = original_open_initial(snapshot, path_text, repository_relative)
+        descriptor_paths[snapshot.file_descriptors[path_text]] = path_text
+        return result
+
+    def recorded_pread(fd: int, size: int, offset: int) -> bytes:
+        path_text = descriptor_paths.get(fd, active_path)
         events.append(("read", path_text))
-        return original_read(path, path_text)
+        read_fds.setdefault(path_text, []).append(fd)
+        return original_pread(fd, size, offset)
 
     monkeypatch.setattr(builder, "_git_process", recorded_git)
     monkeypatch.setattr(
-        builder,
-        "_read_bound_regular_bytes",
-        recorded_read,
+        builder._SecureBoundSnapshot,
+        "open_initial",
+        recorded_open_initial,
     )
-    builder._validate_regular_hashed_inputs(
+    monkeypatch.setattr(builder.os, "pread", recorded_pread)
+    snapshot, _pairs = builder._preauthenticate_parent_snapshot(
         tmp_path,
         preregistration,
-        verify_git=True,
+        content_mode=builder._PREREGISTRATION_ONLY,
     )
+    try:
+        snapshot.verify_final()
+        expected_paths = set(snapshot.file_descriptors)
+    finally:
+        snapshot.close()
     attempts = builder.prereg.expected_failed_predecessor_attempts()
     current_paths = [
         attempts[0][key]["path"]
@@ -3588,192 +3766,107 @@ def test_parent_preclassifies_failed_attempt_git_pairs_before_single_reads(
         binding["path"]
         for binding in attempts[1]["terminal_evidence"].values()
     ]
-    first_read = next(
-        index for index, event in enumerate(events) if event[0] == "read"
+    first_open = next(
+        index for index, event in enumerate(events) if event[0] == "open"
     )
-    for path_text in current_paths:
+    assert expected_paths
+    for path_text in expected_paths:
         git_events = [
             index
             for index, event in enumerate(events)
             if event == ("git", path_text)
         ]
         assert len(git_events) == 3
-        assert max(git_events) < first_read
-        assert events.count(("read", path_text)) == 1
+        assert max(git_events) < first_open
+        assert events.count(("open", path_text)) == 1
+        assert events.count(("read", path_text)) == 2
+        assert len(set(read_fds[path_text])) == 1
+    for path_text in current_paths:
+        assert path_text in expected_paths
     for binding in (
         builder.prereg.expected_failed_predecessor_preregistration_bindings()
     ):
-        assert events.count(("read", binding["path"])) == 1
+        assert binding["path"] in expected_paths
 
 
-def test_produce_parent_entry_preclassifies_all_pairs_before_one_snapshot_read(
+def test_claim_parent_entry_preclassifies_all_pairs_before_one_open_two_reads(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    preregistration, _binding, _parent = (
-        _prepare_guarded_metadata_repository(tmp_path)
-    )
-    source_root = builder.REPOSITORY_ROOT
-    for relative in (builder.BUILDER_PATH, builder.BUILDER_TEST_PATH):
-        target = tmp_path / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source_root / relative, target)
-    protocol_rows = []
-    for relative in (builder.BUILDER_PATH, builder.BUILDER_TEST_PATH):
-        raw = (tmp_path / relative).read_bytes()
-        protocol_rows.append(
-            {
-                "path": relative.as_posix(),
-                "path_type": "regular_file",
-                "sha256": hashlib.sha256(raw).hexdigest(),
-                "git_blob": builder._git_blob_id(raw),
-                "git_mode": "100644",
-            }
-        )
-    preregistration["bindings"]["protocol"] = protocol_rows
-    preregistration["git_seal"]["expected_branch"] = (
-        builder.prereg.EXPECTED_BRANCH
-    )
-    preregistration["protocol_implementation_commit"] = "1" * 40
-    preregistration = builder._with_hash(
-        preregistration, "manifest_hash"
-    )
-    prereg_path = tmp_path / builder.PREREGISTRATION_PATH
-    prereg_path.chmod(0o644)
-    prereg_raw = builder._canonical_json_bytes(preregistration)
-    prereg_path.write_bytes(prereg_raw)
-    prereg_path.chmod(0o444)
-
-    def git(*arguments: str) -> str:
-        return subprocess.run(
-            ["git", *arguments],
-            cwd=tmp_path,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        ).stdout.strip()
-
-    git("init", "-b", builder.prereg.EXPECTED_BRANCH)
-    git("config", "user.email", "g9cb4-test@example.invalid")
-    git("config", "user.name", "G9CB-4 Test")
-    git("add", ".")
-    git("commit", "-m", "protocol parent")
-    parent_commit = git("rev-parse", "HEAD")
-    prereg_binding = {
-        "path": builder.PREREGISTRATION_PATH.as_posix(),
-        "sha256": hashlib.sha256(prereg_raw).hexdigest(),
-        "manifest_hash": preregistration["manifest_hash"],
-    }
-    claim_protocol = [
-        {
-            "path": row["path"],
-            "sha256": row["sha256"],
-            "git_blob": row["git_blob"],
-            "mode": "100644",
-        }
-        for row in protocol_rows
-    ]
-    claim = builder._claim_payload(
-        parent_commit,
-        prereg_binding,
-        builder._expected_authority_amendment_bindings(),
-        claim_protocol,
-        [],
-    )
-    claim_path = tmp_path / builder.CLAIM_PATH
-    claim_path.write_bytes(builder._canonical_json_bytes(claim))
-    claim_path.chmod(0o444)
-    git("add", builder.CLAIM_PATH.as_posix())
-    git("commit", "-m", "claim")
-    head = git("rev-parse", "HEAD")
-
-    monkeypatch.setattr(
-        builder,
-        "_require_clean_pushed_branch",
-        lambda *_args: head,
-    )
-    monkeypatch.setattr(
-        builder.prereg,
-        "validate_protocol_commit_topology",
-        lambda *_args: "1" * 40,
-    )
-    monkeypatch.setattr(
-        builder.prereg,
-        "validate_failed_predecessor_attempt_topology",
-        lambda *_args: None,
-    )
-    monkeypatch.setattr(
-        builder.prereg,
-        "validate_historical_preregistration_topology",
-        lambda *_args: None,
-    )
-    monkeypatch.setattr(
-        builder.prereg,
-        "validate_failed_v2_preregistration_topology",
-        lambda *_args: None,
-    )
-    monkeypatch.setattr(
-        builder.prereg,
-        "validate_failed_predecessor_attempt_history",
-        lambda *_args: None,
-    )
-    monkeypatch.setattr(
-        builder.prereg,
-        "validate_manifest",
-        lambda *_args, **_kwargs: None,
-    )
-
+    chain = _prepare_synthetic_a5_q5_p5_chain(tmp_path)
+    root = chain["root"]
     events: list[tuple[str, str]] = []
+    active_path = ""
+    descriptor_paths: dict[int, str] = {}
+    read_fds: dict[str, list[int]] = {}
     original_git_process = builder._git_process
-    original_read = builder._read_bound_regular_bytes
+    original_open_initial = builder._SecureBoundSnapshot.open_initial
+    original_pread = builder.os.pread
 
     def recorded_git(
-        root: Path,
+        repository: Path,
         *arguments: str,
     ) -> subprocess.CompletedProcess[bytes]:
-        events.append(("git", arguments[-1]))
-        return original_git_process(root, *arguments)
+        events.append(("pair", arguments[-1]))
+        return original_git_process(repository, *arguments)
 
-    def recorded_read(
-        path: Path,
+    def recorded_open_initial(
+        snapshot: builder._SecureBoundSnapshot,
         path_text: str,
+        repository_relative: bool,
     ) -> tuple[bytes, os.stat_result]:
-        events.append(("read", path_text))
-        return original_read(path, path_text)
+        nonlocal active_path
+        active_path = path_text
+        events.append(("open", path_text))
+        result = original_open_initial(
+            snapshot,
+            path_text,
+            repository_relative,
+        )
+        descriptor_paths[snapshot.file_descriptors[path_text]] = path_text
+        return result
 
-    class ParentAuthenticated(RuntimeError):
-        pass
+    def recorded_pread(fd: int, size: int, offset: int) -> bytes:
+        path_text = descriptor_paths.get(fd, active_path)
+        events.append(("read", path_text))
+        read_fds.setdefault(path_text, []).append(fd)
+        return original_pread(fd, size, offset)
 
     monkeypatch.setattr(builder, "_git_process", recorded_git)
-    monkeypatch.setattr(builder, "_read_bound_regular_bytes", recorded_read)
     monkeypatch.setattr(
-        builder,
-        "_validate_environment",
-        lambda *_args: (_ for _ in ()).throw(ParentAuthenticated()),
+        builder._SecureBoundSnapshot,
+        "open_initial",
+        recorded_open_initial,
     )
-    with pytest.raises(ParentAuthenticated):
-        builder.produce_one_shot(tmp_path)
-
-    expected_paths = {
-        builder._binding_path(binding)
-        for binding in builder._iter_bindings(preregistration)
-    } | {
-        builder.PREREGISTRATION_PATH.as_posix(),
-        builder.CLAIM_PATH.as_posix(),
-    }
-    first_read = next(
-        index for index, event in enumerate(events) if event[0] == "read"
+    monkeypatch.setattr(builder.os, "pread", recorded_pread)
+    binding = builder.create_claim_only(
+        root,
+        expected_security_profile=_synthetic_security_profile(chain),
     )
+    claim = _read_synthetic_claim(chain)
+    assert binding == _synthetic_claim_binding(chain, claim)
+    assert claim["identity"] == builder.IDENTITY
+    assert (root / builder.CLAIM_PATH).is_file()
+    expected_paths = set(descriptor_paths.values())
+    first_open = next(
+        index for index, event in enumerate(events) if event[0] == "open"
+    )
+    assert expected_paths
     for path_text in expected_paths:
         classifications = [
             index
             for index, event in enumerate(events)
-            if event == ("git", path_text)
+            if event == ("pair", path_text)
         ]
-        assert len(classifications) == 3
-        assert max(classifications) < first_read
-        assert events.count(("read", path_text)) == 1
+        assert len(classifications) == 3, (
+            path_text,
+            classifications,
+            first_open,
+        )
+        assert max(classifications) < first_open
+        assert events.count(("open", path_text)) == 1
+        assert events.count(("read", path_text)) == 2
+        assert len(set(read_fds[path_text])) == 1
 
 
 def _write_guarded_active_metadata(
@@ -3807,8 +3900,8 @@ def test_worker_auth_entry_reads_each_bound_path_once_and_uses_active_fstats(
         _prepare_guarded_metadata_repository(tmp_path)
     )
     _write_guarded_active_metadata(tmp_path, binding)
-    reads: list[str] = []
-    original_read = builder._read_bound_regular_bytes
+    read_fds: list[int] = []
+    original_pread = builder.os.pread
     original_lstat = builder.os.lstat
     active_paths = {
         builder.PREREGISTRATION_PATH.as_posix(),
@@ -3816,12 +3909,9 @@ def test_worker_auth_entry_reads_each_bound_path_once_and_uses_active_fstats(
         builder.SENTINEL_PATH.as_posix(),
     }
 
-    def recorded_read(
-        path: Path,
-        path_text: str,
-    ) -> tuple[bytes, os.stat_result]:
-        reads.append(path_text)
-        return original_read(path, path_text)
+    def recorded_pread(fd: int, size: int, offset: int) -> bytes:
+        read_fds.append(fd)
+        return original_pread(fd, size, offset)
 
     def guarded_lstat(
         path: object,
@@ -3836,20 +3926,35 @@ def test_worker_auth_entry_reads_each_bound_path_once_and_uses_active_fstats(
             raise AssertionError(f"active metadata lstat reread: {relative}")
         return original_lstat(path, *args, **kwargs)
 
-    monkeypatch.setattr(builder, "_read_bound_regular_bytes", recorded_read)
+    monkeypatch.setattr(builder.os, "pread", recorded_pread)
     monkeypatch.setattr(builder.os, "lstat", guarded_lstat)
     result = builder._authenticate_worker_metadata_entry(
         tmp_path,
         parent_authentication,
         synthetic=False,
     )
-    expected_paths = {
-        builder._binding_path(row)
-        for row in builder._iter_bindings(preregistration)
-    } | active_paths
-    assert set(result["raw_cache"]) == expected_paths
-    assert set(reads) == expected_paths
-    assert all(reads.count(path_text) == 1 for path_text in expected_paths)
+    snapshot = result["snapshot"]
+    try:
+        expected_paths = {
+            builder._binding_path(row)
+            for row in builder._iter_bindings(preregistration)
+        } | active_paths
+        assert set(result["raw_cache"]) == expected_paths
+        assert set(snapshot.file_descriptors) == expected_paths
+        snapshot.verify_final()
+        assert all(
+            read_fds.count(descriptor) == 2
+            for descriptor in snapshot.file_descriptors.values()
+        )
+        assert len(set(snapshot.file_descriptors.values())) == len(
+            expected_paths
+        )
+        assert not any(
+            path.as_posix() in snapshot.file_descriptors
+            for path in builder.WORKER_LEDGER_PATHS
+        )
+    finally:
+        snapshot.close()
 
 
 @pytest.mark.parametrize(
@@ -3864,7 +3969,6 @@ def test_worker_auth_entry_reads_each_bound_path_once_and_uses_active_fstats(
     ),
 )
 def test_worker_auth_entry_rejects_active_mode_mutation_from_open_fstat(
-    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     relative: Path,
     message: str,
@@ -3874,44 +3978,12 @@ def test_worker_auth_entry_rejects_active_mode_mutation_from_open_fstat(
     )
     _write_guarded_active_metadata(tmp_path, binding)
     (tmp_path / relative).chmod(0o644)
-    reads: list[str] = []
-    original_read = builder._read_bound_regular_bytes
-    original_lstat = builder.os.lstat
-    active_paths = {
-        builder.PREREGISTRATION_PATH.as_posix(),
-        builder.CLAIM_PATH.as_posix(),
-        builder.SENTINEL_PATH.as_posix(),
-    }
-
-    def recorded_read(
-        path: Path,
-        path_text: str,
-    ) -> tuple[bytes, os.stat_result]:
-        reads.append(path_text)
-        return original_read(path, path_text)
-
-    def guarded_lstat(
-        path: object,
-        *args: object,
-        **kwargs: object,
-    ) -> os.stat_result:
-        try:
-            path_text = Path(path).relative_to(tmp_path).as_posix()
-        except (TypeError, ValueError):
-            path_text = ""
-        if path_text in active_paths:
-            raise AssertionError(f"active metadata lstat reread: {path_text}")
-        return original_lstat(path, *args, **kwargs)
-
-    monkeypatch.setattr(builder, "_read_bound_regular_bytes", recorded_read)
-    monkeypatch.setattr(builder.os, "lstat", guarded_lstat)
-    with pytest.raises(builder.TerminalG9CB4Failure, match=message):
+    with pytest.raises(builder.TerminalG9CB5Failure, match=message):
         builder._authenticate_worker_metadata_entry(
             tmp_path,
             parent_authentication,
             synthetic=False,
         )
-    assert reads.count(relative.as_posix()) == 1
 
 
 @pytest.mark.parametrize(
@@ -4010,46 +4082,55 @@ def test_parent_rejects_failed_predecessor_permanent_state_before_sentinel(
         "_atomic_link_write_once",
         record_sentinel_write,
     )
-    with pytest.raises(builder.TerminalG9CB4Failure, match=match):
+    with pytest.raises(builder.TerminalG9CB5Failure, match=match):
         builder.produce_one_shot(tmp_path)
     assert sentinel_writes == []
 
 
-def test_duplicate_accepted_bindings_use_one_opaque_read(
+def test_duplicate_accepted_bindings_use_one_open_two_same_fd_reads(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     (tmp_path / "input.bin").write_bytes(b"input")
-    reads: list[str] = []
-    original_read = builder._read_bound_regular_bytes
+    reads: list[int] = []
+    original_pread = builder.os.pread
 
-    def counted_read(path: Path, path_text: str) -> object:
-        reads.append(path_text)
-        return original_read(path, path_text)
+    def recorded_pread(fd: int, size: int, offset: int) -> bytes:
+        reads.append(fd)
+        return original_pread(fd, size, offset)
 
-    monkeypatch.setattr(builder, "_read_bound_regular_bytes", counted_read)
+    monkeypatch.setattr(builder.os, "pread", recorded_pread)
     digest = hashlib.sha256(b"input").hexdigest()
-    assert builder._validate_regular_hashed_inputs(
-        tmp_path,
-        {
-            "bindings": [
-                {"path": "input.bin", "sha256": digest},
-                {
-                    "path": "input.bin",
-                    "sha256": digest,
-                    "size_bytes": len(b"input"),
-                },
-            ]
-        },
-        verify_git=False,
-    ) == [
-        {
-            "path": "input.bin",
-            "sha256": digest,
-            "size_bytes": len(b"input"),
-        }
-    ]
-    assert reads == ["input.bin"]
+    snapshot = builder._SecureBoundSnapshot(tmp_path)
+    try:
+        snapshot.open_initial("input.bin", True)
+        assert builder._validate_regular_hashed_inputs(
+            tmp_path,
+            {
+                "bindings": [
+                    {"path": "input.bin", "sha256": digest},
+                    {
+                        "path": "input.bin",
+                        "sha256": digest,
+                        "size_bytes": len(b"input"),
+                    },
+                ]
+            },
+            verify_git=False,
+            raw_cache=snapshot,
+        ) == [
+            {
+                "path": "input.bin",
+                "sha256": digest,
+                "size_bytes": len(b"input"),
+            }
+        ]
+        snapshot.verify_final()
+        assert len(snapshot.file_descriptors) == 1
+        assert len(reads) == 2
+        assert len(set(reads)) == 1
+    finally:
+        snapshot.close()
 
 
 def test_stage_zero_parser_rejects_nonzero_and_conflicted_entries() -> None:
@@ -4062,7 +4143,7 @@ def test_stage_zero_parser_rejects_nonzero_and_conflicted_entries() -> None:
         ),
     ):
         with pytest.raises(
-            builder.TerminalG9CB4Failure,
+            builder.TerminalG9CB5Failure,
             match="stage zero|exactly one",
         ):
             builder._parse_stage_zero_binding(output, "input.bin")
@@ -4098,7 +4179,7 @@ def test_nonstage_index_entries_fail_full_preflight_before_byte_read(
         ),
     )
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="exactly one bound input index entry",
     ):
         builder._validate_regular_hashed_inputs(
@@ -4142,7 +4223,7 @@ def test_recursive_hashed_inputs_reject_malformed_path_bindings(
 ) -> None:
     (tmp_path / "input.bin").write_bytes(b"input")
     (tmp_path / "other.bin").write_bytes(b"other")
-    with pytest.raises(builder.TerminalG9CB4Failure, match=message):
+    with pytest.raises(builder.TerminalG9CB5Failure, match=message):
         builder._validate_regular_hashed_inputs(
             tmp_path,
             {"nested": [binding]},
@@ -4168,9 +4249,9 @@ def test_bytecode_preflight_rejects_repository_cache_artifacts(
     elif cache_kind == "file":
         (tmp_path / "orphan.pyc").write_bytes(b"malicious")
     else:
-        (tmp_path / "results" / ".g9cb4-bytecode-cache-disabled").mkdir()
+        (tmp_path / "results" / ".g9cb5-bytecode-cache-disabled").mkdir()
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="bytecode",
     ):
         builder._validate_bytecode_preflight(tmp_path)
@@ -4183,7 +4264,7 @@ def test_anonymous_pipe_capability_has_exact_schema_and_is_consumed_once(
     capability = builder._prepare_worker_capability(
         root=tmp_path,
         output_dir=(
-            tmp_path / "results/.gross9-structural-clock-g9cb4-worker-slot1"
+            tmp_path / "results/.gross9-structural-clock-g9cb5-worker-slot1"
         ),
         slot=1,
         parent_pid=os.getpid(),
@@ -4191,6 +4272,8 @@ def test_anonymous_pipe_capability_has_exact_schema_and_is_consumed_once(
     try:
         assert tuple(capability["row"]) == CAPABILITY_KEYS
         assert capability["row"]["carrier_kind"] == "anonymous_pipe_v1"
+        assert capability["read_fd"] != capability["ledger_fd"]
+        assert stat.S_ISREG(os.fstat(capability["ledger_fd"]).st_mode)
         token = builder._consume_worker_capability(
             capability["read_fd"],
             capability["row"],
@@ -4205,17 +4288,20 @@ def test_anonymous_pipe_capability_has_exact_schema_and_is_consumed_once(
         descriptor = capability["read_fd"]
         if descriptor >= 0:
             os.close(descriptor)
+        ledger_descriptor = capability["ledger_fd"]
+        if ledger_descriptor >= 0:
+            os.close(ledger_descriptor)
         builder._zero_token(capability["token"])
 
 
-def test_guarded_metadata_validation_reaches_capability_without_child_process(
+def test_guarded_metadata_validation_reaches_capability_in_two_fd_child(
     tmp_path: Path,
 ) -> None:
     _preregistration, binding, parent_authentication = (
         _prepare_guarded_metadata_repository(tmp_path)
     )
-    own = "results/.gross9-structural-clock-g9cb4-worker-guarded-own"
-    other = "results/.gross9-structural-clock-g9cb4-worker-guarded-other"
+    own = "results/.gross9-structural-clock-g9cb5-worker-guarded-own"
+    other = "results/.gross9-structural-clock-g9cb5-worker-guarded-other"
     (tmp_path / own).mkdir()
     script = tmp_path / "guarded_metadata.py"
     script.write_text(
@@ -4231,23 +4317,13 @@ def test_guarded_metadata_validation_reaches_capability_without_child_process(
             root = Path(os.environ["G9CB_TEST_ROOT"])
             parent = json.loads(os.environ["G9CB_PARENT_AUTH"])
             claim_binding = json.loads(os.environ["G9CB_CLAIM_PREREG"])
-            own = "results/.gross9-structural-clock-g9cb4-worker-guarded-own"
-            other = "results/.gross9-structural-clock-g9cb4-worker-guarded-other"
-            token = b"g" * 32
-            read_fd, write_fd = os.pipe()
-            os.write(write_fd, token)
-            os.close(write_fd)
-            info = os.fstat(read_fd)
-            capability = {
-                "slot": 1,
-                "parent_pid": os.getpid(),
-                "stage_directory": own,
-                "carrier_kind": "anonymous_pipe_v1",
-                "carrier_device": info.st_dev,
-                "carrier_inode": info.st_ino,
-                "token_sha256": hashlib.sha256(token).hexdigest(),
-                "consumed_ledger_path": b.WORKER_LEDGER_PATHS[0].as_posix(),
-            }
+            own = "results/.gross9-structural-clock-g9cb5-worker-guarded-own"
+            other = "results/.gross9-structural-clock-g9cb5-worker-guarded-other"
+            read_fd = int(os.environ["G9CB_CAPABILITY_FD"])
+            ledger_fd = int(os.environ["G9CB_LEDGER_FD"])
+            capability = json.loads(os.environ["G9CB_CAPABILITY_ROW"])
+            assert read_fd != ledger_fd
+            b._validate_inherited_worker_descriptors(read_fd, ledger_fd)
             traps = []
             def forbidden(name):
                 def invoke(*args, **kwargs):
@@ -4259,22 +4335,72 @@ def test_guarded_metadata_validation_reaches_capability_without_child_process(
             b.prereg._run_git = forbidden("_run_git")
             b.prereg._git_result = forbidden("_git_result")
             guard = b._WorkerIsolationGuard(
-                root=root,
+                root=root.resolve(),
                 own_stage=own,
                 other_stage=other,
                 ledger_paths=b.WORKER_LEDGER_PATHS,
+                repository_fd=(
+                    repository_fd := os.open(
+                        root,
+                        os.O_RDONLY
+                        | os.O_DIRECTORY
+                        | os.O_NOFOLLOW
+                        | os.O_CLOEXEC,
+                    )
+                ),
+                results_fd=(
+                    results_fd := os.open(
+                        "results",
+                        os.O_RDONLY
+                        | os.O_DIRECTORY
+                        | os.O_NOFOLLOW
+                        | os.O_CLOEXEC,
+                        dir_fd=repository_fd,
+                    )
+                ),
+                filesystem_root_fd=os.open(
+                    "/",
+                    os.O_RDONLY
+                    | os.O_DIRECTORY
+                    | os.O_NOFOLLOW
+                    | os.O_CLOEXEC,
+                ),
+                ledger_fd=ledger_fd,
             )
+            active = json.loads(
+                (root / b.PREREGISTRATION_PATH).read_bytes()
+            )
+            snapshot = b._SecureBoundSnapshot(
+                root,
+                repository_fd=guard.repository_fd,
+                filesystem_root_fd=guard.filesystem_root_fd,
+                opener=guard._original_os_open,
+                register_descriptor=guard.register_snapshot_descriptor,
+            )
+            prepared = {b.PREREGISTRATION_PATH.as_posix(): True}
+            for declared in b._iter_bindings(active):
+                path_text = b._binding_path(declared)
+                _candidate, repository_relative = b._bound_regular_path(
+                    root,
+                    path_text,
+                )
+                prepared[path_text] = repository_relative
+            for path_text, repository_relative in sorted(prepared.items()):
+                snapshot.open_initial(path_text, repository_relative)
             guard.install()
             metadata = b._authenticate_guarded_worker_metadata(
                 root,
                 parent,
                 claim_binding,
+                raw_cache=snapshot,
             )
             consumed = b._consume_worker_capability(read_fd, capability)
             print(json.dumps({
                 "binding": metadata["preregistration_binding"],
                 "authentication": metadata["authentication"],
-                "token": bytes(consumed).decode("ascii"),
+                "token_sha256": hashlib.sha256(consumed).hexdigest(),
+                "descriptor_count": 2,
+                "descriptors_distinct": read_fd != ledger_fd,
                 "traps": traps,
                 "counters": guard.counters(),
             }, sort_keys=True))
@@ -4282,6 +4408,15 @@ def test_guarded_metadata_validation_reaches_capability_without_child_process(
         ),
         encoding="utf-8",
     )
+    capability = builder._prepare_worker_capability(
+        root=tmp_path,
+        output_dir=tmp_path / own,
+        slot=1,
+        parent_pid=os.getpid(),
+    )
+    read_fd = int(capability["read_fd"])
+    ledger_fd = int(capability["ledger_fd"])
+    assert read_fd != ledger_fd
     environment = dict(os.environ)
     environment.update(
         {
@@ -4292,25 +4427,45 @@ def test_guarded_metadata_validation_reaches_capability_without_child_process(
             "G9CB_CLAIM_PREREG": json.dumps(
                 binding, sort_keys=True, separators=(",", ":")
             ),
+            "G9CB_CAPABILITY_FD": str(read_fd),
+            "G9CB_LEDGER_FD": str(ledger_fd),
+            "G9CB_CAPABILITY_ROW": json.dumps(
+                capability["row"], sort_keys=True, separators=(",", ":")
+            ),
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONPATH": builder.REPOSITORY_ROOT.as_posix(),
         }
     )
-    completed = subprocess.run(
+    process = subprocess.Popen(
         [sys.executable, "-B", str(script)],
         cwd=builder.REPOSITORY_ROOT,
         env=environment,
+        pass_fds=(read_fd, ledger_fd),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        timeout=30,
-        check=False,
+    )
+    os.close(read_fd)
+    capability["read_fd"] = -1
+    try:
+        stdout, stderr = process.communicate(timeout=30)
+    finally:
+        os.close(ledger_fd)
+        capability["ledger_fd"] = -1
+        builder._zero_token(capability["token"])
+    completed = subprocess.CompletedProcess(
+        process.args,
+        process.returncode,
+        stdout,
+        stderr,
     )
     assert completed.returncode == 0, completed.stderr
     result = json.loads(completed.stdout.splitlines()[-1])
     assert result["binding"] == binding
     assert result["authentication"] == parent_authentication
-    assert result["token"] == "g" * 32
+    assert result["token_sha256"] == capability["row"]["token_sha256"]
+    assert result["descriptor_count"] == 2
+    assert result["descriptors_distinct"] is True
     assert result["traps"] == []
     assert result["counters"]["child_process_creation_events"] == 0
     assert result["counters"]["unauthorized_write_or_ipc_events"] == 0
@@ -4442,8 +4597,8 @@ def test_actual_guarded_metadata_routine_rejects_historical_file_tampering(
             "sha256": hashlib.sha256(active_path.read_bytes()).hexdigest(),
             "manifest_hash": active["manifest_hash"],
         }
-    own = "results/.gross9-structural-clock-g9cb4-worker-mutation-own"
-    other = "results/.gross9-structural-clock-g9cb4-worker-mutation-other"
+    own = "results/.gross9-structural-clock-g9cb5-worker-mutation-own"
+    other = "results/.gross9-structural-clock-g9cb5-worker-mutation-other"
     (tmp_path / own).mkdir()
     script = tmp_path / "guarded_mutation.py"
     script.write_text(
@@ -4478,25 +4633,75 @@ def test_actual_guarded_metadata_routine_rejects_historical_file_tampering(
             b.prereg._run_git = forbidden("_run_git")
             b.prereg._git_result = forbidden("_git_result")
             guard = b._WorkerIsolationGuard(
-                root=root,
+                root=root.resolve(),
                 own_stage=(
-                    "results/.gross9-structural-clock-g9cb4-"
+                    "results/.gross9-structural-clock-g9cb5-"
                     "worker-mutation-own"
                 ),
                 other_stage=(
-                    "results/.gross9-structural-clock-g9cb4-"
+                    "results/.gross9-structural-clock-g9cb5-"
                     "worker-mutation-other"
                 ),
                 ledger_paths=b.WORKER_LEDGER_PATHS,
+                repository_fd=(
+                    repository_fd := os.open(
+                        root,
+                        os.O_RDONLY
+                        | os.O_DIRECTORY
+                        | os.O_NOFOLLOW
+                        | os.O_CLOEXEC,
+                    )
+                ),
+                results_fd=(
+                    results_fd := os.open(
+                        "results",
+                        os.O_RDONLY
+                        | os.O_DIRECTORY
+                        | os.O_NOFOLLOW
+                        | os.O_CLOEXEC,
+                        dir_fd=repository_fd,
+                    )
+                ),
+                filesystem_root_fd=os.open(
+                    "/",
+                    os.O_RDONLY
+                    | os.O_DIRECTORY
+                    | os.O_NOFOLLOW
+                    | os.O_CLOEXEC,
+                ),
+                ledger_fd=os.open(
+                    ".",
+                    os.O_RDWR | os.O_TMPFILE | os.O_CLOEXEC,
+                    0o600,
+                    dir_fd=results_fd,
+                ),
             )
+            snapshot = b._SecureBoundSnapshot(
+                root,
+                repository_fd=guard.repository_fd,
+                filesystem_root_fd=guard.filesystem_root_fd,
+                opener=guard._original_os_open,
+                register_descriptor=guard.register_snapshot_descriptor,
+            )
+            prepared = {b.PREREGISTRATION_PATH.as_posix(): True}
+            for declared in b._iter_bindings(active):
+                path_text = b._binding_path(declared)
+                _candidate, repository_relative = b._bound_regular_path(
+                    root,
+                    path_text,
+                )
+                prepared[path_text] = repository_relative
+            for path_text, repository_relative in sorted(prepared.items()):
+                snapshot.open_initial(path_text, repository_relative)
             guard.install()
             try:
                 b._authenticate_guarded_worker_metadata(
                     root,
                     parent,
                     claim_binding,
+                    raw_cache=snapshot,
                 )
-            except b.TerminalG9CB4Failure as exc:
+            except b.TerminalG9CB5Failure as exc:
                 print(json.dumps({
                     "status": "terminal",
                     "error": str(exc),
@@ -4590,58 +4795,74 @@ def test_preregistration_authentication_rejects_every_field_before_capability(
         record["manifest_hash"] = "f" * 64
     else:
         record["protocol_implementation_commit"] = "f" * 40
-    with pytest.raises(builder.TerminalG9CB4Failure, match=match):
+    with pytest.raises(builder.TerminalG9CB5Failure, match=match):
         builder.validate_preregistration(
             tmp_path,
             validation_mode="guarded_worker",
             parent_authentication=parent_authentication,
             claim_preregistration=binding,
         )
-    assert preregistration["identity"] == "G9CB-4"
+    assert preregistration["identity"] == "G9CB-5"
 
 
-def test_capability_preparation_orders_pipe_identity_before_mutable_token() -> None:
-    source = textwrap.dedent(
-        inspect.getsource(builder._prepare_worker_capability)
+def test_capability_preparation_orders_pipe_identity_before_mutable_token(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "results").mkdir()
+    events: list[tuple[str, int | None]] = []
+    pipe_fds: set[int] = set()
+    original_pipe2 = builder.os.pipe2
+    original_fstat = builder.os.fstat
+    original_fill = builder._fill_random_token
+    original_write = builder._write_all
+
+    def recorded_pipe2(flags: int) -> tuple[int, int]:
+        pair = original_pipe2(flags)
+        pipe_fds.update(pair)
+        events.append(("pipe", pair[0]))
+        return pair
+
+    def recorded_fstat(descriptor: int) -> os.stat_result:
+        if descriptor in pipe_fds:
+            events.append(("pipe-fstat", descriptor))
+        return original_fstat(descriptor)
+
+    def recorded_fill(token: bytearray) -> None:
+        events.append(("fill", None))
+        original_fill(token)
+
+    def recorded_write(descriptor: int, raw: bytes | bytearray) -> None:
+        if descriptor in pipe_fds:
+            events.append(("pipe-write", descriptor))
+            assert isinstance(raw, bytearray)
+        original_write(descriptor, raw)
+
+    monkeypatch.setattr(builder.os, "pipe2", recorded_pipe2)
+    monkeypatch.setattr(builder.os, "fstat", recorded_fstat)
+    monkeypatch.setattr(builder, "_fill_random_token", recorded_fill)
+    monkeypatch.setattr(builder, "_write_all", recorded_write)
+    capability = builder._prepare_worker_capability(
+        root=tmp_path,
+        output_dir=(
+            tmp_path
+            / "results/.gross9-structural-clock-g9cb5-worker-order"
+        ),
+        slot=1,
+        parent_pid=os.getpid(),
     )
-    tree = ast.parse(source)
-    calls: dict[str, int] = {}
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        if isinstance(node.func, ast.Attribute) and isinstance(
-            node.func.value, ast.Name
-        ):
-            name = f"{node.func.value.id}.{node.func.attr}"
-        elif isinstance(node.func, ast.Name):
-            name = node.func.id
-        else:
-            continue
-        calls.setdefault(name, node.lineno)
-        assert not (
-            name == "bytes"
-            and node.args
-            and isinstance(node.args[0], ast.Name)
-            and node.args[0].id == "token"
-        )
-    assert (
-        calls["os.pipe2"]
-        < calls["os.fstat"]
-        < calls["_fill_random_token"]
-        < calls["_write_all"]
-    )
-    module_tree = ast.parse(
-        Path(builder.__file__).read_text(encoding="utf-8")
-    )
-    assert not any(
-        isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Name)
-        and node.func.id == "bytes"
-        and node.args
-        and isinstance(node.args[0], ast.Name)
-        and node.args[0].id == "token"
-        for node in ast.walk(module_tree)
-    )
+    try:
+        names = [name for name, _descriptor in events]
+        assert names.index("pipe") < names.index("pipe-fstat")
+        assert names.index("pipe-fstat") < names.index("fill")
+        assert names.index("fill") < names.index("pipe-write")
+        assert isinstance(capability["token"], bytearray)
+        assert capability["read_fd"] != capability["ledger_fd"]
+    finally:
+        os.close(capability["read_fd"])
+        os.close(capability["ledger_fd"])
+        builder._zero_token(capability["token"])
+        assert capability["token"] == bytearray(32)
 
 
 def test_worker_invocation_has_exact_environment_and_no_legacy_transport(
@@ -4650,36 +4871,58 @@ def test_worker_invocation_has_exact_environment_and_no_legacy_transport(
     (tmp_path / "training").mkdir()
     (tmp_path / "results").mkdir()
     (tmp_path / builder.BUILDER_PATH).write_text("", encoding="utf-8")
-    capability = {
-        "row": _capability_row(parent_pid=os.getpid()),
-        "read_fd": 91,
-    }
-    invocation = builder._prepare_worker(
+    capability = builder._prepare_worker_capability(
         root=tmp_path,
-        capability=capability,
-        other_stage_directory=(
-            "results/.gross9-structural-clock-g9cb4-worker-slot2"
+        output_dir=(
+            tmp_path / "results/.gross9-structural-clock-g9cb5-worker-slot1"
         ),
-        synthetic_input=None,
-        parent_authentication=_parent_authentication(tmp_path),
+        slot=1,
+        parent_pid=os.getpid(),
     )
-    assert invocation["command"][:4] == [
-        sys.executable,
-        "-B",
-        str(tmp_path / builder.BUILDER_PATH),
-        "--internal-worker",
-    ]
-    assert tuple(invocation["environment"]) == WORKER_ENVIRONMENT_KEYS
-    assert len(invocation["environment"]) == 18
-    assert invocation["environment"] == (
-        builder.prereg.worker_process_environment(tmp_path)
-    )
-    joined = "\0".join(invocation["command"])
-    descriptor_index = invocation["command"].index("--worker-capability-fd")
-    assert invocation["command"][descriptor_index + 1] == "91"
-    assert "--worker-token" not in joined
-    assert "G9CB_WORKER_TOKEN" not in invocation["environment"]
-    assert "PYTHONSTARTUP" not in invocation["environment"]
+    try:
+        invocation = builder._prepare_worker(
+            root=tmp_path,
+            capability=capability,
+            other_stage_directory=(
+                "results/.gross9-structural-clock-g9cb5-worker-slot2"
+            ),
+            synthetic_input=None,
+            parent_authentication=_parent_authentication(tmp_path),
+        )
+        assert invocation["command"][:4] == [
+            sys.executable,
+            "-B",
+            str(tmp_path / builder.BUILDER_PATH),
+            "--internal-worker",
+        ]
+        assert tuple(invocation["environment"]) == WORKER_ENVIRONMENT_KEYS
+        assert len(invocation["environment"]) == 18
+        assert invocation["environment"] == (
+            builder.prereg.worker_process_environment(tmp_path)
+        )
+        joined = "\0".join(invocation["command"])
+        capability_index = invocation["command"].index(
+            "--worker-capability-fd"
+        )
+        ledger_index = invocation["command"].index("--worker-ledger-fd")
+        assert int(invocation["command"][capability_index + 1]) == (
+            capability["read_fd"]
+        )
+        assert int(invocation["command"][ledger_index + 1]) == (
+            capability["ledger_fd"]
+        )
+        assert capability["read_fd"] != capability["ledger_fd"]
+        assert "--worker-token" not in joined
+        assert "G9CB_WORKER_TOKEN" not in invocation["environment"]
+        assert "PYTHONSTARTUP" not in invocation["environment"]
+    finally:
+        os.close(capability["read_fd"])
+        os.close(capability["ledger_fd"])
+        builder._zero_token(capability["token"])
+
+
+def test_stale_run_worker_wrapper_is_absent() -> None:
+    assert "_run_worker" not in vars(builder)
 
 
 def test_internal_worker_bootstrap_installs_parent_death_guard_before_argparse(
@@ -4700,35 +4943,77 @@ def test_internal_worker_bootstrap_installs_parent_death_guard_before_argparse(
         "_establish_parent_death_contract",
         lambda pid: events.append(("pdeath", pid)),
     )
+    monkeypatch.setattr(
+        builder,
+        "_validate_inherited_worker_descriptors",
+        lambda capability_fd, ledger_fd: events.append(
+            ("validate-fds", capability_fd, ledger_fd)
+        ),
+    )
     monkeypatch.setattr(builder, "_WorkerIsolationGuard", FakeGuard)
+    (tmp_path / "results").mkdir()
+    monkeypatch.chdir(tmp_path)
     arguments = [
         "--internal-worker",
         "--repository-root",
         str(tmp_path),
         "--output-dir",
-        "results/.gross9-structural-clock-g9cb4-worker-one",
+        "results/.gross9-structural-clock-g9cb5-worker-one",
         "--other-stage-directory",
-        "results/.gross9-structural-clock-g9cb4-worker-two",
+        "results/.gross9-structural-clock-g9cb5-worker-two",
         "--worker-capability-fd",
         "7",
+        "--worker-ledger-fd",
+        "9",
         "--expected-parent-pid",
         "1234",
     ]
     guard = builder._early_worker_bootstrap(arguments)
     assert isinstance(guard, FakeGuard)
     assert events[0] == ("pdeath", 1234)
-    assert events[1][0] == "guard"
-    assert events[2] == "install"
-    main_source = inspect.getsource(builder.main)
-    assert main_source.index("_early_worker_bootstrap") < main_source.index(
-        "_parser().parse_args"
+    assert events[1] == ("validate-fds", 7, 9)
+    guard_event = events[2]
+    assert isinstance(guard_event, tuple)
+    assert guard_event[0] == "guard"
+    guard_arguments = guard_event[1]
+    assert isinstance(guard_arguments, dict)
+    assert guard_arguments["ledger_fd"] == 9
+    assert events[3] == "install"
+
+    main_events: list[str] = []
+
+    class FakeParser:
+        def parse_args(self, _arguments: list[str]) -> SimpleNamespace:
+            main_events.append("parse")
+            return SimpleNamespace(
+                internal_worker=False,
+                output_dir=None,
+                other_stage_directory=None,
+                worker_capability_fd=None,
+                worker_ledger_fd=None,
+                expected_parent_pid=None,
+                synthetic_input=None,
+                create_claim=True,
+                verify_publication=False,
+                repository_root=tmp_path.as_posix(),
+            )
+
+    monkeypatch.setattr(
+        builder,
+        "_early_worker_bootstrap",
+        lambda _arguments: main_events.append("bootstrap"),
     )
-    assert "_establish_parent_death_contract" not in inspect.getsource(
-        builder._worker_main
+    monkeypatch.setattr(builder, "_parser", lambda: FakeParser())
+    monkeypatch.setattr(
+        builder,
+        "create_claim_only",
+        lambda _root: main_events.append("claim"),
     )
+    assert builder.main(["--create-claim"]) == 0
+    assert main_events == ["bootstrap", "parse", "claim"]
 
 
-def test_worker_popen_passes_only_the_bound_descriptor_and_closes_before_wait(
+def test_worker_popen_passes_two_bound_descriptors_and_closes_pipe_before_wait(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     events: list[object] = []
@@ -4765,7 +5050,7 @@ def test_worker_popen_passes_only_the_bound_descriptor_and_closes_before_wait(
         "close",
         lambda descriptor: events.append(("close", descriptor)),
     )
-    capability = {"read_fd": 17}
+    capability = {"read_fd": 17, "ledger_fd": 19}
     pid = builder._execute_prepared_worker(
         {
             "command": ["python", "-B", "builder.py", "--internal-worker"],
@@ -4775,9 +5060,123 @@ def test_worker_popen_passes_only_the_bound_descriptor_and_closes_before_wait(
         }
     )
     assert pid == 4321
-    assert events[0][-2:] == (True, (17,))
+    popen_event = events[0]
+    assert isinstance(popen_event, tuple)
+    assert popen_event[-2:] == (True, (17, 19))
     assert events[1:] == [("close", 17), "wait"]
     assert capability["read_fd"] == -1
+    assert capability["ledger_fd"] == 19
+
+
+@pytest.mark.parametrize(
+    "capability",
+    [
+        {"read_fd": 17},
+        {"read_fd": 17, "ledger_fd": 17},
+    ],
+    ids=["ledgerless", "aliased"],
+)
+def test_worker_execution_rejects_non_two_descriptor_invocation_before_spawn(
+    monkeypatch: pytest.MonkeyPatch,
+    capability: dict[str, int],
+) -> None:
+    monkeypatch.setattr(
+        builder.subprocess,
+        "Popen",
+        lambda *_a, **_k: (_ for _ in ()).throw(
+            AssertionError("invalid descriptor handoff reached process spawn")
+        ),
+    )
+    with pytest.raises(
+        builder.TerminalG9CB5Failure,
+        match="ledger descriptor is absent|not distinct",
+    ):
+        builder._execute_prepared_worker(
+            {
+                "command": [
+                    "python",
+                    "-B",
+                    "builder.py",
+                    "--internal-worker",
+                ],
+                "cwd": Path("/tmp"),
+                "environment": {"ONLY": "BOUND"},
+                "capability": capability,
+            }
+        )
+
+
+def test_worker_inherited_fd_table_rejects_real_extra_fd_above_65535(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    results.mkdir()
+    script = textwrap.dedent(
+        """
+        import fcntl
+        import os
+        from pathlib import Path
+        import resource
+        import sys
+
+        from training import build_gross9_structural_clock_bundle as builder
+
+        results = Path(sys.argv[1])
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        required = 70001
+        if soft < required:
+            if hard != resource.RLIM_INFINITY and hard < required:
+                raise SystemExit(90)
+            resource.setrlimit(resource.RLIMIT_NOFILE, (required, hard))
+        capability_fd, write_fd = os.pipe2(os.O_CLOEXEC)
+        os.close(write_fd)
+        ledger_fd = os.open(
+            results,
+            os.O_RDWR | os.O_TMPFILE | os.O_CLOEXEC,
+            0o600,
+        )
+        source_fd = os.open(os.devnull, os.O_RDONLY | os.O_CLOEXEC)
+        extra_fd = fcntl.fcntl(
+            source_fd,
+            fcntl.F_DUPFD_CLOEXEC,
+            70000,
+        )
+        os.close(source_fd)
+        assert extra_fd >= 70000
+        try:
+            builder._validate_inherited_worker_descriptors(
+                capability_fd,
+                ledger_fd,
+            )
+        except builder.TerminalG9CB5Failure as exc:
+            if "descriptor table" not in str(exc):
+                raise
+            raise SystemExit(0)
+        raise SystemExit(91)
+        """
+    )
+    environment = dict(os.environ)
+    environment.update(
+        {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PYTHONPATH": builder.REPOSITORY_ROOT.as_posix(),
+        }
+    )
+    completed = subprocess.run(
+        [sys.executable, "-B", "-c", script, results.as_posix()],
+        cwd=builder.REPOSITORY_ROOT,
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert completed.returncode != 90, "RLIMIT_NOFILE cannot represent FD 70000"
+    assert completed.returncode == 0, (
+        f"extra FD 70000 was accepted; rc={completed.returncode}; "
+        f"stderr={completed.stderr}"
+    )
 
 
 def test_worker_ledger_has_exact_14_field_schema() -> None:
@@ -4883,7 +5282,7 @@ def test_guard_rejects_procfd_and_devfd_namespaces(
 ) -> None:
     guard = _guard(tmp_path)
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="descriptor namespace",
     ):
         guard._checked_path(path)
@@ -5207,7 +5606,7 @@ def test_import_recorder_rejects_invalid_lifecycle_transition(
 ) -> None:
     result = _run_import_recorder_case(tmp_path, scenario)
     assert result["status"] == "terminal", result
-    assert result["error_type"] == "TerminalG9CB4Failure"
+    assert result["error_type"] == "TerminalG9CB5Failure"
 
 
 def test_import_recorder_accepts_authenticated_new_sources_then_freezes(
@@ -5276,16 +5675,48 @@ def test_guarded_actual_runtime_roots_import_from_authenticated_source(
             ]
             suffix = str(os.getpid())
             guard = b._WorkerIsolationGuard(
-                root=root,
+                root=root.resolve(),
                 own_stage=(
-                    "results/.gross9-structural-clock-g9cb4-worker-import-own-"
+                    "results/.gross9-structural-clock-g9cb5-worker-import-own-"
                     + suffix
                 ),
                 other_stage=(
-                    "results/.gross9-structural-clock-g9cb4-worker-import-other-"
+                    "results/.gross9-structural-clock-g9cb5-worker-import-other-"
                     + suffix
                 ),
                 ledger_paths=b.WORKER_LEDGER_PATHS,
+                repository_fd=(
+                    repository_fd := os.open(
+                        root,
+                        os.O_RDONLY
+                        | os.O_DIRECTORY
+                        | os.O_NOFOLLOW
+                        | os.O_CLOEXEC,
+                    )
+                ),
+                results_fd=(
+                    results_fd := os.open(
+                        "results",
+                        os.O_RDONLY
+                        | os.O_DIRECTORY
+                        | os.O_NOFOLLOW
+                        | os.O_CLOEXEC,
+                        dir_fd=repository_fd,
+                    )
+                ),
+                filesystem_root_fd=os.open(
+                    "/",
+                    os.O_RDONLY
+                    | os.O_DIRECTORY
+                    | os.O_NOFOLLOW
+                    | os.O_CLOEXEC,
+                ),
+                ledger_fd=os.open(
+                    ".",
+                    os.O_RDWR | os.O_TMPFILE | os.O_CLOEXEC,
+                    0o600,
+                    dir_fd=results_fd,
+                ),
             )
             guard.install()
             b._preload_runtime_package_initializers(
@@ -5323,7 +5754,7 @@ def test_guarded_actual_runtime_roots_import_from_authenticated_source(
             "PYTHONPATH": str(repository_root),
             "PYTHONPYCACHEPREFIX": str(
                 repository_root
-                / "results/.g9cb4-bytecode-cache-disabled"
+                / "results/.g9cb5-bytecode-cache-disabled"
             ),
         }
     )
@@ -5351,7 +5782,7 @@ def test_guarded_actual_runtime_roots_import_from_authenticated_source(
         "training/preregister_gross9_structural_clock_bundle.py",
     ]
     assert not (
-        repository_root / "results/.g9cb4-bytecode-cache-disabled"
+        repository_root / "results/.g9cb5-bytecode-cache-disabled"
     ).exists()
 
 
@@ -5404,6 +5835,8 @@ def test_parent_death_kills_worker_at_every_post_handoff_phase(
         "phase": phase,
         "worker_pid": worker_pid,
         "bytes_read": expected_bytes_read,
+        "descriptor_count": 2,
+        "descriptors_distinct": True,
     }
     assert _process_is_dead_or_zombie(worker_pid)
 
@@ -5411,7 +5844,7 @@ def test_parent_death_kills_worker_at_every_post_handoff_phase(
 def test_guard_rejects_cross_stage_observation(tmp_path: Path) -> None:
     guard = _guard(tmp_path)
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="other worker stage",
     ):
         guard._checked_path(guard.other_stage / "probe")
@@ -5423,7 +5856,7 @@ def test_guard_rejects_path_open_of_fifo(tmp_path: Path) -> None:
     fifo = tmp_path / "named.fifo"
     os.mkfifo(fifo)
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="FIFO",
     ):
         guard._checked_path(fifo, fifo_open=True)
@@ -5432,7 +5865,7 @@ def test_guard_rejects_path_open_of_fifo(tmp_path: Path) -> None:
 @pytest.mark.parametrize("keyword", ["dir_fd", "src_dir_fd", "dst_dir_fd"])
 def test_guard_rejects_every_dir_fd_variant(keyword: str) -> None:
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match=keyword,
     ):
         builder._WorkerIsolationGuard._reject_dir_fds({keyword: -100})
@@ -5454,69 +5887,83 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    (
-        preregistration,
-        preregistration_binding,
-        claim,
-        claim_binding,
-        synthetic_input,
-    ) = _prepare_synthetic_worker_repository(tmp_path)
-    parent_authentication = _parent_authentication(tmp_path)
-    assert set(parent_authentication) == {
-        "environment",
-        "hashed_inputs",
-        "preregistration_authentication",
-        "runtime_import_closure",
+    chain = _prepare_synthetic_a5_q5_p5_chain(tmp_path)
+    root = chain["root"]
+    preregistration = chain["preregistration"]
+    preregistration_binding = chain["preregistration_binding"]
+    security_profile = _synthetic_security_profile(chain)
+    binding = builder.create_claim_only(
+        root,
+        expected_security_profile=security_profile,
+    )
+    claim = _read_synthetic_claim(chain)
+    assert binding == _synthetic_claim_binding(chain, claim)
+    c5 = _commit_synthetic_claim(chain, claim)
+    security_profile["claim_commit"] = c5
+    claim_raw = (root / builder.CLAIM_PATH).read_bytes()
+    claim_binding = {
+        "path": builder.CLAIM_PATH.as_posix(),
+        "sha256": hashlib.sha256(claim_raw).hexdigest(),
+        "claim_hash": claim["claim_hash"],
+        "protocol_parent_commit": chain["p5"],
+        "claim_commit": c5,
     }
-    assert set(parent_authentication["preregistration_authentication"]) == {
-        "manifest_hash",
-        "path",
-        "protocol_implementation_commit",
-        "sha256",
-    }
+    synthetic_input = _write_synthetic_chain_input(chain)
     lifecycle: list[tuple[str, str]] = []
+    checkpoints: list[str] = []
+    worker_pids: list[int] = []
     original_create = builder._create_stage_directory
     original_cleanup = builder._cleanup_successful_stage
+    original_namespace = builder._validate_production_namespace
+    original_execute = builder._execute_prepared_worker
 
-    def recorded_create(stage: Path, results: Path) -> None:
+    def recorded_create(
+        stage: Path,
+        results: Path,
+        **kwargs: Any,
+    ) -> None:
         lifecycle.append(("create", stage.name))
-        original_create(stage, results)
+        original_create(stage, results, **kwargs)
 
-    def recorded_cleanup(stage: Path, results: Path) -> None:
+    def recorded_cleanup(
+        stage: Path,
+        results: Path,
+        **kwargs: Any,
+    ) -> None:
         lifecycle.append(("cleanup", stage.name))
-        original_cleanup(stage, results)
+        original_cleanup(stage, results, **kwargs)
 
-    monkeypatch.setattr(
-        builder,
-        "_validate_claim_commit",
-        lambda root, **_kwargs: (
-            claim,
-            claim_binding,
-            preregistration,
-            preregistration_binding,
-        ),
-    )
-    monkeypatch.setattr(
-        builder,
-        "_validate_environment",
-        lambda prereg, root: parent_authentication["environment"],
-    )
-    monkeypatch.setattr(
-        builder,
-        "_validate_regular_hashed_inputs",
-        lambda root, prereg, **kwargs: [],
-    )
-    monkeypatch.setattr(
-        builder,
-        "_validate_static_closures",
-        lambda root, prereg, **kwargs: {"runtime": []},
-    )
+    def recorded_namespace(
+        context: builder._PublicationContext,
+        checkpoint: str,
+        stage_one: Path,
+        stage_two: Path,
+    ) -> None:
+        original_namespace(context, checkpoint, stage_one, stage_two)
+        checkpoints.append(checkpoint)
+
+    def recorded_execute(invocation: dict[str, Any]) -> int:
+        pid = original_execute(invocation)
+        worker_pids.append(pid)
+        return pid
+
     monkeypatch.setattr(builder, "_create_stage_directory", recorded_create)
     monkeypatch.setattr(builder, "_cleanup_successful_stage", recorded_cleanup)
+    monkeypatch.setattr(
+        builder,
+        "_validate_production_namespace",
+        recorded_namespace,
+    )
+    monkeypatch.setattr(
+        builder,
+        "_execute_prepared_worker",
+        recorded_execute,
+    )
 
     result = builder.produce_one_shot(
-        tmp_path,
+        root,
         synthetic_input=synthetic_input,
+        expected_security_profile=security_profile,
     )
 
     publication_paths = (
@@ -5527,21 +5974,24 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
     )
     assert result["identity"] == builder.IDENTITY
     assert [path.as_posix() for path in publication_paths] == [
-        "results/gross9_structural_clock_bundle_g9cb4_attempt_consumed_2026-07-31.json",
+        "results/gross9_structural_clock_bundle_g9cb5_attempt_consumed_2026-07-31.json",
         (
             "results/"
-            "gross9_structural_clock_bundle_g9cb4_"
+            "gross9_structural_clock_bundle_g9cb5_"
             "worker_capability_consumed_pass1_2026-07-31.json"
         ),
         (
             "results/"
-            "gross9_structural_clock_bundle_g9cb4_"
+            "gross9_structural_clock_bundle_g9cb5_"
             "worker_capability_consumed_pass2_2026-07-31.json"
         ),
-        "results/gross9_structural_clock_bundle_g9cb4_2026-07-31.csv.gz",
-        "results/gross9_structural_clock_bundle_g9cb4_manifest_2026-07-31.json",
+        "results/gross9_structural_clock_bundle_g9cb5_2026-07-31.csv.gz",
+        "results/gross9_structural_clock_bundle_g9cb5_manifest_2026-07-31.json",
     ]
-    assert all((tmp_path / path).is_file() for path in publication_paths)
+    assert all((root / path).is_file() for path in publication_paths)
+    assert checkpoints == list(builder.PRODUCTION_CHECKPOINTS)
+    assert len(worker_pids) == 2
+    assert worker_pids[0] != worker_pids[1]
     assert lifecycle[0][0] == "create"
     assert lifecycle[1][0] == "cleanup"
     assert lifecycle[2][0] == "create"
@@ -5549,11 +5999,18 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
     assert lifecycle[2][1] != lifecycle[0][1]
     assert lifecycle[-1] == ("cleanup", lifecycle[2][1])
 
-    sentinel = json.loads((tmp_path / builder.SENTINEL_PATH).read_bytes())
-    manifest = json.loads((tmp_path / builder.MANIFEST_PATH).read_bytes())
+    sentinel = json.loads((root / builder.SENTINEL_PATH).read_bytes())
+    manifest = json.loads((root / builder.MANIFEST_PATH).read_bytes())
+    parent_authentication = manifest["parent_authentication"]
+    assert set(parent_authentication) == {
+        "environment",
+        "hashed_inputs",
+        "preregistration_authentication",
+        "runtime_import_closure",
+    }
     assert [row["slot"] for row in sentinel["worker_capabilities"]] == [1, 2]
     assert all(
-        set(row) == set(CAPABILITY_KEYS) and len(row) == 8
+        set(row) == set(CAPABILITY_KEYS) and len(row) == 14
         for row in sentinel["worker_capabilities"]
     )
     expected_parent_hash = hashlib.sha256(
@@ -5578,12 +6035,12 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         len(row) == 8
         for row in manifest["worker_capability_consumption"]
     )
-    csv_raw = (tmp_path / builder.CSV_PATH).read_bytes()
+    csv_raw = (root / builder.CSV_PATH).read_bytes()
     rows = builder.validate_csv_gzip(
         csv_raw,
         require_all_sleeves=True,
     )
-    sentinel_raw = (tmp_path / builder.SENTINEL_PATH).read_bytes()
+    sentinel_raw = (root / builder.SENTINEL_PATH).read_bytes()
     sentinel_binding = {
         "path": builder.SENTINEL_PATH.as_posix(),
         "sha256": hashlib.sha256(sentinel_raw).hexdigest(),
@@ -5595,7 +6052,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
     ledger_hashes: dict[int, str] = {}
     expected_consumption: list[dict[str, object]] = []
     for path in builder.WORKER_LEDGER_PATHS:
-        ledger_path = tmp_path / path
+        ledger_path = root / path
         ledger_raw = ledger_path.read_bytes()
         ledger = json.loads(ledger_raw)
         assert tuple(ledger) == tuple(sorted(LEDGER_KEYS))
@@ -5618,7 +6075,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
                 "token_sha256": capability["token_sha256"],
             }
         )
-    amendments = builder._expected_authority_amendment_bindings()
+    amendments = claim["authority_amendments"]
     builder._validate_final_manifest_contract(
         manifest,
         csv_raw=csv_raw,
@@ -5650,7 +6107,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         "manifest_hash",
     )
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="parent authentication binding",
     ):
         builder._validate_final_manifest_contract(
@@ -5676,7 +6133,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         "manifest_hash",
     )
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="receipt binding|counter|core contract",
     ):
         builder._validate_final_manifest_contract(
@@ -5722,7 +6179,7 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
         "manifest_hash",
     )
     with pytest.raises(
-        builder.TerminalG9CB4Failure,
+        builder.TerminalG9CB5Failure,
         match="receipt binding",
     ):
         builder._validate_final_manifest_contract(
@@ -5741,17 +6198,186 @@ def test_synthetic_two_pass_publication_consumes_pipes_and_publishes_exactly_fiv
             sentinel_parent_authentication_sha256=expected_parent_hash,
         )
     assert not list(
-        (tmp_path / "results").glob(
-            ".gross9-structural-clock-g9cb4-worker-*"
+        (root / "results").glob(
+            ".gross9-structural-clock-g9cb5-worker-*"
         )
     )
     assert not list(
-        (tmp_path / "results").glob(
+        (root / "results").glob(
             "gross9_structural_clock_bundle_pass_receipt.json"
         )
     )
-    assert not list(tmp_path.rglob("*.pyc"))
-    assert not list(tmp_path.rglob("__pycache__"))
+    assert not list(root.rglob("*.pyc"))
+    assert not list(root.rglob("__pycache__"))
+
+
+def test_parent_advances_ledger_linked_while_worker_alive_and_stage_empty(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    chain = _prepare_synthetic_a5_q5_p5_chain(tmp_path)
+    security_profile = _synthetic_security_profile(chain)
+    binding = builder.create_claim_only(
+        chain["root"],
+        expected_security_profile=security_profile,
+    )
+    claim = _read_synthetic_claim(chain)
+    assert binding == _synthetic_claim_binding(chain, claim)
+    claim_commit = _commit_synthetic_claim(chain, claim)
+    security_profile["claim_commit"] = claim_commit
+    root = chain["root"]
+    worker_probe = tmp_path / "worker_checkpoint_probe.py"
+    worker_probe.write_text(
+        textwrap.dedent(
+            """
+            import sys
+            import time
+
+            from training import build_gross9_structural_clock_bundle as b
+
+            checkpoint_seen = False
+            original_checkpoint = b._worker_ledger_linked_checkpoint
+            original_synthetic_read = b._read_synthetic_worker_input
+
+            def recorded_checkpoint(*args, **kwargs):
+                global checkpoint_seen
+                result = original_checkpoint(*args, **kwargs)
+                checkpoint_seen = True
+                time.sleep(0.25)
+                return result
+
+            def guarded_synthetic_read(*args, **kwargs):
+                if not checkpoint_seen:
+                    raise b.TerminalG9CB5Failure(
+                        "runtime/value access preceded worker ledger checkpoint"
+                    )
+                return original_synthetic_read(*args, **kwargs)
+
+            b._worker_ledger_linked_checkpoint = recorded_checkpoint
+            b._read_synthetic_worker_input = guarded_synthetic_read
+            raise SystemExit(b.main(sys.argv[1:]))
+            """
+        ),
+        encoding="utf-8",
+    )
+    original_prepare = builder._prepare_worker
+    original_popen = builder.subprocess.Popen
+    original_advance = builder._ProductionStateMachine.advance
+    workers: list[dict[str, Any]] = []
+    checkpoints: list[dict[str, Any]] = []
+
+    def probed_prepare(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        invocation = original_prepare(*args, **kwargs)
+        command = list(invocation["command"])
+        command[2] = worker_probe.as_posix()
+        invocation["command"] = command
+        return invocation
+
+    def recorded_popen(
+        command: Any,
+        *args: Any,
+        **kwargs: Any,
+    ) -> subprocess.Popen[Any]:
+        process: subprocess.Popen[Any] = original_popen(
+            command,
+            *args,
+            **kwargs,
+        )
+        command_parts = [str(part) for part in command]
+        if "--internal-worker" in command_parts:
+            stage_argument = Path(
+                command_parts[command_parts.index("--output-dir") + 1]
+            )
+            stage = (
+                stage_argument
+                if stage_argument.is_absolute()
+                else root / stage_argument
+            )
+            workers.append(
+                {
+                    "command": command_parts,
+                    "pass_fds": tuple(kwargs.get("pass_fds", ())),
+                    "process": process,
+                    "stage": stage,
+                    "stdio": tuple(
+                        kwargs.get(name) for name in ("stdin", "stdout", "stderr")
+                    ),
+                }
+            )
+        return process
+
+    def recorded_advance(
+        state: builder._ProductionStateMachine,
+        checkpoint: str,
+        validator: Any,
+    ) -> None:
+        slot_by_checkpoint = {
+            "PASS1_LEDGER_LINKED": 0,
+            "PASS1_OUTPUT_READY": 0,
+            "PASS2_LEDGER_LINKED": 1,
+            "PASS2_OUTPUT_READY": 1,
+        }
+        if checkpoint in slot_by_checkpoint:
+            worker = workers[slot_by_checkpoint[checkpoint]]
+            checkpoints.append(
+                {
+                    "checkpoint": checkpoint,
+                    "stage_entries": tuple(
+                        sorted(path.name for path in worker["stage"].iterdir())
+                    ),
+                    "worker_alive": worker["process"].poll() is None,
+                }
+            )
+        original_advance(state, checkpoint, validator)
+
+    monkeypatch.setattr(builder, "_prepare_worker", probed_prepare)
+    monkeypatch.setattr(builder.subprocess, "Popen", recorded_popen)
+    monkeypatch.setattr(
+        builder._ProductionStateMachine,
+        "advance",
+        recorded_advance,
+    )
+    result = builder.produce_one_shot(
+        root,
+        synthetic_input=_write_synthetic_chain_input(chain),
+        expected_security_profile=security_profile,
+    )
+    assert result["identity"] == builder.IDENTITY
+    assert [row["checkpoint"] for row in checkpoints] == [
+        "PASS1_LEDGER_LINKED",
+        "PASS1_OUTPUT_READY",
+        "PASS2_LEDGER_LINKED",
+        "PASS2_OUTPUT_READY",
+    ]
+    staged_outputs = tuple(
+        sorted(
+            (
+                builder._STAGED_CORE_NAME,
+                builder._STAGED_CSV_NAME,
+                builder._STAGED_RECEIPT_NAME,
+            )
+        )
+    )
+    assert [
+        (row["worker_alive"], row["stage_entries"])
+        for row in checkpoints[::2]
+    ] == [(True, ()), (True, ())]
+    for output_checkpoint in checkpoints[1::2]:
+        assert output_checkpoint["stage_entries"] == staged_outputs
+    assert len(workers) == 2
+    for worker in workers:
+        command = worker["command"]
+        capability_fd = int(
+            command[command.index("--worker-capability-fd") + 1]
+        )
+        ledger_fd = int(command[command.index("--worker-ledger-fd") + 1])
+        assert capability_fd != ledger_fd
+        assert worker["pass_fds"] == (capability_fd, ledger_fd)
+        assert worker["stdio"] == (None, None, None)
+        assert [part for part in command if part.endswith("-fd")] == [
+            "--worker-capability-fd",
+            "--worker-ledger-fd",
+        ]
 
 
 def test_source_has_no_pre2025_parser_or_legacy_worker_transport(
@@ -5767,81 +6393,3690 @@ def test_source_has_no_pre2025_parser_or_legacy_worker_transport(
     assert not any(definition in source for definition in prohibited_definitions)
     assert "G9CB_SYNTHETIC_TEST_ROOT" not in source
     bindings = _synthetic_preregistration(tmp_path)["bindings"]
+    assert isinstance(bindings, Mapping)
     assert "adapter_import_roots" not in bindings
     assert "adapter_import_closure" not in bindings
 
 
-def test_rank7_signal_counter_increments_at_each_anchor_evaluation() -> None:
-    tree = ast.parse(
-        textwrap.dedent(
-            inspect.getsource(builder._direct_generic_adapter_impl)
+def test_rank7_signal_counter_increments_at_each_evaluated_decision() -> None:
+    bars = _bars(4)
+    bars[0]["decisions"] = {
+        "frozen_annual_rank7": {"active": False}
+    }
+    bars[1]["decisions"] = {
+        "frozen_annual_rank7": {"active": False}
+    }
+    bars[2]["decisions"] = {
+        "frozen_annual_rank7": {"active": "not-a-boolean"}
+    }
+    counters = builder._empty_counters()
+    with pytest.raises(
+        builder.TerminalG9CB5Failure,
+        match="nonboolean active flag",
+    ):
+        builder.reconstruct_intervals(
+            bars,
+            counters=counters,
+            domain_end=_time(len(bars)),
+        )
+    assert counters["per_sleeve"]["frozen_annual_rank7"][
+        "signal_rows_evaluated"
+    ] == 3
+
+
+def _git_for_q5_test(root: Path, *arguments: str) -> str:
+    return subprocess.run(
+        ["git", *arguments],
+        cwd=root,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    ).stdout.strip()
+
+
+def _synthetic_head_binding_repository(root: Path) -> tuple[str, bytes]:
+    root.mkdir()
+    _git_for_q5_test(root, "init", "-q")
+    _git_for_q5_test(root, "config", "user.email", "q5@example.invalid")
+    _git_for_q5_test(root, "config", "user.name", "Q5 Synthetic")
+    relative = "protocol/binding.txt"
+    candidate = root / relative
+    candidate.parent.mkdir()
+    raw = b"synthetic-q5-binding\n"
+    candidate.write_bytes(raw)
+    _git_for_q5_test(root, "add", relative)
+    _git_for_q5_test(root, "commit", "-qm", "synthetic binding")
+    return relative, raw
+
+
+def _prepare_synthetic_a5_q5_p5_chain(
+    base: Path,
+) -> dict[str, Any]:
+    root = base / "repo"
+    remote = base / "remote.git"
+    root.mkdir()
+    subprocess.run(
+        ["git", "init", "--bare", "-q", str(remote)],
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    _git_for_q5_test(
+        root,
+        "init",
+        "-q",
+        "-b",
+        builder.prereg.EXPECTED_BRANCH,
+    )
+    _git_for_q5_test(root, "config", "user.email", "q5@example.invalid")
+    _git_for_q5_test(root, "config", "user.name", "Q5 Synthetic")
+    for relative in sorted(
+        builder.prereg.PROTOCOL_PATHS,
+        key=lambda path: path.as_posix(),
+    ):
+        candidate = root / relative
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        if relative == Path("training/__init__.py"):
+            raw = b""
+        elif relative in builder.prereg.RUNTIME_IMPORT_ROOTS:
+            raw = b"SYNTHETIC_RUNTIME_VALUE = 1\n"
+        else:
+            raw = f"synthetic A5 bytes: {relative.as_posix()}\n".encode()
+        candidate.write_bytes(raw)
+    results = root / "results"
+    results.mkdir()
+    (root / ".gitignore").write_text(
+        "\n".join(
+            [
+                "fixtures/",
+                "results/gross9_structural_clock_bundle_g9cb5_*",
+                "results/.gross9-structural-clock-g9cb5-worker-*",
+                "results/.g9cb5-bytecode-cache-disabled",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    _git_for_q5_test(root, "add", ".")
+    _git_for_q5_test(root, "commit", "-qm", "synthetic A5")
+    a5 = _git_for_q5_test(root, "rev-parse", "HEAD")
+    for entry in builder.prereg.SUCCESSOR_PROTOCOL_DIFF:
+        status, path_text = entry.split("\t", 1)
+        assert status == "M"
+        source = builder.REPOSITORY_ROOT / path_text
+        assert source.is_file()
+        shutil.copy2(
+            source,
+            root / path_text,
+        )
+    _git_for_q5_test(root, "add", ".")
+    _git_for_q5_test(root, "commit", "-qm", "synthetic Q5")
+    q5 = _git_for_q5_test(root, "rev-parse", "HEAD")
+    _git_for_q5_test(root, "remote", "add", "origin", str(remote))
+    _git_for_q5_test(
+        root,
+        "push",
+        "-qu",
+        "origin",
+        builder.prereg.EXPECTED_BRANCH,
+    )
+
+    for row in builder.prereg.expected_failed_predecessor_attempts():
+        slot_one = root / row["residue"]["slot1_stage"]["path"]
+        slot_one.mkdir(mode=0o700)
+        slot_one.chmod(0o700)
+
+    protocol_bindings = [
+        builder._head_blob_binding(root, path.as_posix())
+        for path in sorted(
+            builder.prereg.PROTOCOL_PATHS,
+            key=lambda item: item.as_posix(),
+        )
+    ]
+    protocol_snapshot_bindings = [
+        {
+            "path": row["path"],
+            "path_type": "regular_file",
+            "sha256": row["sha256"],
+            "git_blob": row["git_blob"],
+            "git_mode": row["mode"],
+        }
+        for row in protocol_bindings
+    ]
+    protocol_by_path = {
+        row["path"]: row for row in protocol_snapshot_bindings
+    }
+    amendment_paths = (
+        builder.prereg.RANK7_AUTHORITY_AMENDMENT_PATH,
+        builder.prereg.RUNTIME_ISOLATION_AMENDMENT_PATH,
+        builder.prereg.PREREGISTRATION_CORRECTION_AMENDMENT_PATH,
+    )
+    authority_amendments = [
+        {
+            "identity": identity,
+            **protocol_by_path[path.as_posix()],
+            "authority_commit": a5,
+        }
+        for identity, path in zip(
+            ("G9CB-1A", "G9CB-1B", "G9CB-1C"),
+            amendment_paths,
+            strict=True,
+        )
+    ]
+    predecessor_binding = protocol_by_path[
+        builder.prereg.PROTOCOL_PATHS[2].as_posix()
+    ]
+    predecessor_attempts = {
+        row["identity"]: row
+        for row in builder.prereg.expected_failed_predecessor_attempts()
+    }
+    failed_attempts: list[dict[str, Any]] = []
+    for identity in ("G9CB-2", "G9CB-3"):
+        prefix = identity.lower().replace("-", "")
+        expected_residue = predecessor_attempts[identity]["residue"]
+        slot_one = expected_residue["slot1_stage"]["path"]
+        failed_attempts.append(
+            {
+                "identity": identity,
+                "authority_decision": dict(predecessor_binding),
+                "preregistration": dict(predecessor_binding),
+                "access_claim": dict(predecessor_binding),
+                "attempt_sentinel": dict(predecessor_binding),
+                "permanently_absent_outputs": [
+                    f"results/synthetic-{prefix}-reserved.json"
+                ],
+                "residue": {
+                    "slot1_stage": {
+                        "path": slot_one,
+                        "state": "empty_directory",
+                        "filesystem_mode_octal": "0700",
+                        "committed": False,
+                    },
+                    "slot2_stage": {
+                        "path": expected_residue["slot2_stage"]["path"],
+                        "state": "absent",
+                        "committed": False,
+                    },
+                },
+            }
+        )
+    failed_closure = {
+        "identity": "G9CB-4",
+        "authority_decision": dict(predecessor_binding),
+        "preregistration": dict(predecessor_binding),
+        "permanently_absent_outputs": [
+            "results/synthetic-g9cb4-reserved.json"
+        ],
+        "residue": {
+            "bytecode_cache": {
+                "path": "results/.synthetic-g9cb4-pycache",
+                "state": "absent",
+            },
+            "publication_stages": {
+                "glob": "results/.synthetic-g9cb4-publish-*",
+                "state": "absent",
+            },
+            "worker_stages": {
+                "glob": "results/.synthetic-g9cb4-worker-*",
+                "state": "absent",
+            },
+        },
+    }
+    runtime_paths = [
+        f"{module.replace('.', '/')}.py"
+        for module in builder.RUNTIME_IMPORT_MODULES
+    ]
+    runtime_closure = [
+        {
+            **protocol_by_path[path],
+            "package_initializer": False,
+        }
+        for path in sorted(runtime_paths)
+    ]
+    environment = builder._environment_record()
+    environment["worker_process_environment"] = (
+        builder.prereg.worker_process_environment(root)
+    )
+    preregistration = {
+        "protocol_version": builder.prereg.PROTOCOL_VERSION,
+        "identity": builder.IDENTITY,
+        "protocol_implementation_commit": q5,
+        "git_seal": {
+            "expected_branch": builder.prereg.EXPECTED_BRANCH,
+        },
+        "bindings": {
+            "protocol": protocol_snapshot_bindings,
+            "authority_amendments": authority_amendments,
+            "failed_predecessor_preregistrations": [],
+            "failed_predecessor_attempts": failed_attempts,
+            "failed_predecessor_closures": [failed_closure],
+            "successor_preregistrations": [
+                {
+                    "identity": identity,
+                    "preregistration": dict(predecessor_binding),
+                }
+                for identity in ("G9CB-2", "G9CB-3", "G9CB-4")
+            ],
+            "direct_authority": [],
+            "config_metadata_evidence": [],
+            "runtime_import_roots": runtime_paths,
+            "runtime_import_closure": runtime_closure,
+            "rank7_bundle": {"declared_files": []},
+            "source_manifest_ordered_inventory": [],
+            "environment": environment,
+        },
+        "creation_evidence_boundary": dict(
+            builder.prereg.CREATION_EVIDENCE_BOUNDARY
+        ),
+        "permanent_prohibited_counters": dict(
+            builder.prereg.PERMANENT_PROHIBITED_COUNTERS
+        ),
+        "pre2025_anchor_boundary": {
+            "pre2025_anchor_bytes_hashed": True,
+            "pre2025_anchor_git_blob_authenticated": True,
+            "pre2025_anchor_json_parsed": False,
+            "pre2025_anchor_value_rows_opened": 0,
+        },
+        "candidate_independence": {
+            "candidate_identity_present": False,
+            "candidate_artifacts_opened": False,
+            "comparator_clock_rows_opened": 0,
+            "comparator_clocks_preseen_by_research_program": True,
+        },
+    }
+    preregistration["manifest_hash"] = builder._object_hash(
+        preregistration,
+        "manifest_hash",
+    )
+    preregistration_raw = builder._canonical_json_bytes(preregistration)
+    preregistration_path = root / builder.PREREGISTRATION_PATH
+    preregistration_path.write_bytes(preregistration_raw)
+    _git_for_q5_test(
+        root,
+        "add",
+        "-f",
+        builder.PREREGISTRATION_PATH.as_posix(),
+    )
+    _git_for_q5_test(root, "commit", "-qm", "synthetic P5")
+    p5 = _git_for_q5_test(root, "rev-parse", "HEAD")
+    _git_for_q5_test(root, "push", "-q")
+    preregistration_path.chmod(0o444)
+    preregistration_binding = {
+        "path": builder.PREREGISTRATION_PATH.as_posix(),
+        "sha256": hashlib.sha256(preregistration_raw).hexdigest(),
+        "manifest_hash": preregistration["manifest_hash"],
+    }
+    declared_residue_paths = {
+        row["residue"]["slot1_stage"]["path"]
+        for row in preregistration["bindings"]["failed_predecessor_attempts"]
+    }
+    materialized_residue_paths = {
+        path.relative_to(root).as_posix()
+        for path in results.iterdir()
+        if path.is_dir()
+    }
+    assert materialized_residue_paths == declared_residue_paths
+    assert not (results / ".synthetic-baseline").exists()
+    return {
+        "root": root,
+        "a5": a5,
+        "q5": q5,
+        "p5": p5,
+        "preregistration": preregistration,
+        "preregistration_raw": preregistration_raw,
+        "preregistration_binding": preregistration_binding,
+        "protocol_bindings": protocol_bindings,
+    }
+
+
+def _synthetic_security_profile(
+    chain: Mapping[str, Any],
+    *,
+    claim_commit: str | None = None,
+    publication_commit: str | None = None,
+) -> dict[str, Any]:
+    bindings = chain["preregistration"]["bindings"]
+    profile: dict[str, Any] = {
+        "identity": builder.IDENTITY,
+        "expected_branch": builder.prereg.EXPECTED_BRANCH,
+        "authority_commit": chain["a5"],
+        "protocol_implementation_commit": chain["q5"],
+        "preregistration_seal_commit": chain["p5"],
+        "failed_predecessor_preregistrations": copy.deepcopy(
+            bindings["failed_predecessor_preregistrations"]
+        ),
+        "failed_predecessor_attempts": copy.deepcopy(
+            bindings["failed_predecessor_attempts"]
+        ),
+        "failed_predecessor_closures": copy.deepcopy(
+            bindings["failed_predecessor_closures"]
+        ),
+        "successor_preregistrations": copy.deepcopy(
+            bindings["successor_preregistrations"]
+        ),
+        "authority_amendments": copy.deepcopy(
+            bindings["authority_amendments"]
+        ),
+        "protocol_paths": sorted(
+            path.as_posix() for path in builder.prereg.PROTOCOL_PATHS
+        ),
+        "protocol_diff": list(builder.prereg.SUCCESSOR_PROTOCOL_DIFF),
+        "preregistration_diff": list(builder.ACTIVE_PREREGISTRATION_DIFF),
+        "claim_diff": list(builder.CLAIM_DIFF),
+        "publication_diff": list(builder.PUBLICATION_DIFF),
+    }
+    if claim_commit is not None:
+        profile["claim_commit"] = claim_commit
+    if publication_commit is not None:
+        profile["publication_commit"] = publication_commit
+    return profile
+
+
+def _read_synthetic_claim(chain: Mapping[str, Any]) -> dict[str, Any]:
+    raw = (Path(chain["root"]) / builder.CLAIM_PATH).read_bytes()
+    payload = json.loads(raw)
+    assert raw == builder._canonical_json_bytes(payload)
+    return payload
+
+
+def _synthetic_claim_binding(
+    chain: Mapping[str, Any],
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    raw = (Path(chain["root"]) / builder.CLAIM_PATH).read_bytes()
+    return {
+        "path": builder.CLAIM_PATH.as_posix(),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "claim_hash": payload["claim_hash"],
+        "protocol_parent_commit": chain["p5"],
+    }
+
+
+def _publish_synthetic_claim_from_p5(
+    chain: dict[str, Any],
+    *,
+    events: list[str] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    root = chain["root"]
+    preregistration = chain["preregistration"]
+    snapshot, pairs = builder._preauthenticate_parent_snapshot(
+        root,
+        preregistration,
+        content_mode=builder._PREREGISTRATION_ONLY,
+    )
+    context = builder._PublicationContext(root)
+    try:
+        builder._validate_closed_entry_phase(
+            context,
+            builder.P5_CLAIM_PREFLIGHT,
+        )
+        context.probe()
+        snapshot.rebaseline_directory_timestamps(
+            matching_identity=context.results_token
+        )
+        payload = builder._claim_payload(
+            chain["p5"],
+            chain["preregistration_binding"],
+            preregistration["bindings"]["authority_amendments"],
+            chain["protocol_bindings"],
+            [],
+        )
+        raw = builder._canonical_json_bytes(payload)
+
+        def final_recheck() -> None:
+            if events is not None:
+                events.append("recheck")
+            builder._final_parent_snapshot_recheck(
+                root,
+                snapshot,
+                pairs,
+                context,
+                builder.P5_CLAIM_PREFLIGHT,
+                builder.prereg.EXPECTED_BRANCH,
+            )
+
+        if events is not None:
+            events.append("prepare")
+        publication = context.publish(
+            builder.CLAIM_PATH,
+            raw,
+            prelink_recheck=final_recheck,
+        )
+        if events is not None:
+            events.append("linked")
+        return payload, publication
+    finally:
+        snapshot.close()
+        context.close()
+
+
+def _commit_synthetic_claim(
+    chain: dict[str, Any],
+    claim: Mapping[str, Any],
+) -> str:
+    root = chain["root"]
+    path = root / builder.CLAIM_PATH
+    _git_for_q5_test(root, "add", "-f", builder.CLAIM_PATH.as_posix())
+    _git_for_q5_test(root, "commit", "-qm", "synthetic C5")
+    c5 = _git_for_q5_test(root, "rev-parse", "HEAD")
+    _git_for_q5_test(root, "push", "-q")
+    path.chmod(0o444)
+    assert json.loads(path.read_bytes()) == claim
+    return c5
+
+
+def _write_synthetic_chain_input(chain: Mapping[str, Any]) -> Path:
+    root = Path(chain["root"])
+    synthetic_input = root / "fixtures/structural-bars.json"
+    synthetic_input.parent.mkdir(parents=True, exist_ok=True)
+    bars = _all_sleeve_bars()
+    synthetic_input.write_bytes(
+        builder._canonical_json_bytes(
+            {
+                "bars": bars,
+                "domain_end": _time(len(bars)),
+            }
         )
     )
-    loops = [
-        node
-        for node in ast.walk(tree)
-        if isinstance(node, ast.For)
-        and isinstance(node.iter, ast.Name)
-        and node.iter.id == "rank7_signals"
-    ]
-    assert len(loops) == 1
-    loop = loops[0]
-    assert not any(
-        isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Attribute)
-        and isinstance(node.func.value, ast.Name)
-        and node.func.value.id == "np"
-        and node.func.attr == "count_nonzero"
-        for node in ast.walk(loop)
+    return synthetic_input
+
+
+def _commit_synthetic_d5(chain: dict[str, Any]) -> str:
+    root = chain["root"]
+    publications = (
+        builder.SENTINEL_PATH,
+        *builder.WORKER_LEDGER_PATHS,
+        builder.CSV_PATH,
+        builder.MANIFEST_PATH,
     )
-    increments = [
-        node
-        for node in ast.walk(loop)
-        if isinstance(node, ast.AugAssign)
-        and "signal_rows_evaluated" in ast.unparse(node.target)
+    for relative in publications:
+        assert (root / relative).is_file()
+        assert stat.S_IMODE((root / relative).stat().st_mode) == 0o444
+        _git_for_q5_test(root, "add", "-f", relative.as_posix())
+    _git_for_q5_test(root, "commit", "-qm", "synthetic D5")
+    d5 = _git_for_q5_test(root, "rev-parse", "HEAD")
+    _git_for_q5_test(root, "push", "-q")
+    for relative in publications:
+        (root / relative).chmod(0o444)
+    return d5
+
+
+def test_tracked_synthetic_baseline_cannot_authorize_residue_aliases(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    _git_for_q5_test(root, "init", "-q")
+    _git_for_q5_test(root, "config", "user.email", "q5@example.invalid")
+    _git_for_q5_test(root, "config", "user.name", "Q5 Synthetic")
+    results = root / "results"
+    results.mkdir()
+    marker = results / ".synthetic-baseline"
+    marker.write_bytes(b"must not grant alternate residue authority\n")
+    _git_for_q5_test(root, "add", marker.relative_to(root).as_posix())
+    _git_for_q5_test(root, "commit", "-qm", "tracked synthetic marker")
+    for row in builder.prereg.expected_failed_predecessor_attempts():
+        residue = root / row["residue"]["slot1_stage"]["path"]
+        residue.mkdir(mode=0o700)
+    for leaf in (".synthetic-g9cb2-slot1", ".synthetic-g9cb3-slot1"):
+        (results / leaf).mkdir(mode=0o700)
+    assert _git_for_q5_test(
+        root,
+        "ls-files",
+        "--",
+        marker.relative_to(root).as_posix(),
+    ) == marker.relative_to(root).as_posix()
+
+    context = builder._PublicationContext(root)
+    try:
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="inventory|residue|authority|synthetic",
+        ):
+            builder._validate_closed_entry_phase(
+                context,
+                builder.Q5_PREREGISTRATION_PUBLICATION,
+            )
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize(
+    "entry_name",
+    ("validate_claim_preflight", "create_claim_only"),
+)
+def test_default_claim_entry_rejects_synthetic_authority_but_profile_succeeds(
+    tmp_path: Path,
+    entry_name: str,
+) -> None:
+    chain = _prepare_synthetic_a5_q5_p5_chain(tmp_path)
+    root = chain["root"]
+    security_calls: list[str] = []
+    watched_codes = {
+        builder._official_expected_security_profile.__code__: "official",
+        builder._validated_expected_security_profile.__code__: "validated",
+        builder.validate_preregistration.__code__: "preregistration",
+    }
+
+    def record_security_call(
+        frame: Any,
+        event: str,
+        _argument: Any,
+    ) -> None:
+        if event == "call" and frame.f_code in watched_codes:
+            security_calls.append(watched_codes[frame.f_code])
+
+    entry = getattr(builder, entry_name)
+    prior_profile = sys.getprofile()
+    sys.setprofile(record_security_call)
+    try:
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="official A5/Q5/P5 security topology differs",
+        ):
+            entry(root)
+        assert not (root / builder.CLAIM_PATH).exists()
+        result = entry(
+            root,
+            expected_security_profile=_synthetic_security_profile(chain),
+        )
+    finally:
+        sys.setprofile(prior_profile)
+
+    assert security_calls.count("official") == 1
+    assert "validated" in security_calls
+    assert "preregistration" in security_calls
+    assert not hasattr(builder, "_derived_expected_security_profile")
+    if entry_name == "create_claim_only":
+        payload = _read_synthetic_claim(chain)
+        assert result == _synthetic_claim_binding(chain, payload)
+    else:
+        assert result["protocol_parent_commit"] == chain["p5"]
+        assert not (root / builder.CLAIM_PATH).exists()
+
+
+def test_default_security_expectations_are_fixed_a5_contract_constants() -> None:
+    fixed = builder._fixed_security_expectations()
+    assert fixed == {
+        "failed_predecessor_preregistrations": (
+            builder.prereg.expected_failed_predecessor_preregistration_bindings()
+        ),
+        "failed_predecessor_attempts": (
+            builder.prereg.expected_failed_predecessor_attempts()
+        ),
+        "failed_predecessor_closures": (
+            builder.prereg.expected_failed_predecessor_closures()
+        ),
+        "successor_preregistrations": (
+            builder.prereg.expected_successor_preregistration_bindings()
+        ),
+        "authority_amendments": (
+            builder._expected_authority_amendment_bindings()
+        ),
+        "protocol_paths": sorted(
+            path.as_posix() for path in builder.prereg.PROTOCOL_PATHS
+        ),
+        "protocol_diff": list(builder.prereg.SUCCESSOR_PROTOCOL_DIFF),
+        "preregistration_diff": list(builder.ACTIVE_PREREGISTRATION_DIFF),
+        "claim_diff": list(builder.CLAIM_DIFF),
+        "publication_diff": list(builder.PUBLICATION_DIFF),
+    }
+    assert builder.prereg.AUTHORITY_DECISION_COMMIT == (
+        "1ca718d9dab1077b041e753f3b011fbf5b23f047"
+    )
+    assert len(fixed["failed_predecessor_preregistrations"]) == 2
+    assert len(fixed["failed_predecessor_attempts"]) == 2
+    assert len(fixed["failed_predecessor_closures"]) == 1
+    assert [
+        row["identity"] for row in fixed["successor_preregistrations"]
+    ] == ["G9CB-2", "G9CB-3", "G9CB-4"]
+    assert [row["identity"] for row in fixed["authority_amendments"]] == [
+        "G9CB-1A",
+        "G9CB-1B",
+        "G9CB-1C",
     ]
-    assert len(increments) == 1
-    assert isinstance(increments[0].op, ast.Add)
-    assert isinstance(increments[0].value, ast.Constant)
-    assert increments[0].value.value == 1
+    assert len(fixed["protocol_paths"]) == 17
+    assert {
+        "authority_commit",
+        "protocol_implementation_commit",
+        "preregistration_seal_commit",
+        "claim_commit",
+        "publication_commit",
+    }.isdisjoint(fixed)
 
 
-def test_rank7_parity_counter_increments_at_each_comparison() -> None:
-    tree = ast.parse(
+@pytest.mark.parametrize(
+    ("profile_class", "error_pattern"),
+    (
+        ("authority_commit", "A5/Q5/P5 topology differs"),
+        (
+            "failed_predecessor_preregistrations",
+            "binding differs: failed_predecessor_preregistrations",
+        ),
+        (
+            "failed_predecessor_attempts",
+            "binding differs: failed_predecessor_attempts",
+        ),
+        (
+            "failed_predecessor_closures",
+            "binding differs: failed_predecessor_closures",
+        ),
+        (
+            "successor_preregistrations",
+            "binding differs: successor_preregistrations",
+        ),
+        (
+            "authority_amendments",
+            "binding differs: authority_amendments",
+        ),
+        ("protocol_diff", "path or diff contract differs"),
+        ("protocol_implementation_commit", "identity binding differs"),
+        ("preregistration_seal_commit", "A5/Q5/P5 topology differs"),
+    ),
+)
+def test_explicit_security_profile_rejects_each_mutated_authority_class(
+    tmp_path: Path,
+    profile_class: str,
+    error_pattern: str,
+) -> None:
+    chain = _prepare_synthetic_a5_q5_p5_chain(tmp_path)
+    profile = _synthetic_security_profile(chain)
+    if profile_class == "authority_commit":
+        profile[profile_class] = "f" * 40
+    elif profile_class == "failed_predecessor_preregistrations":
+        profile[profile_class] = [{"identity": "forged-preregistration"}]
+    elif profile_class in {
+        "failed_predecessor_attempts",
+        "successor_preregistrations",
+        "authority_amendments",
+    }:
+        profile[profile_class].reverse()
+    elif profile_class == "failed_predecessor_closures":
+        profile[profile_class][0]["identity"] = "forged-closure"
+    elif profile_class == "protocol_diff":
+        profile[profile_class][0] = "M\tforged-protocol-path"
+    elif profile_class == "protocol_implementation_commit":
+        profile[profile_class] = chain["a5"]
+    elif profile_class == "preregistration_seal_commit":
+        profile[profile_class] = chain["q5"]
+    else:  # pragma: no cover - parametrization is exhaustive
+        raise AssertionError(profile_class)
+
+    with pytest.raises(
+        builder.TerminalG9CB5Failure,
+        match=error_pattern,
+    ):
+        builder.validate_claim_preflight(
+            chain["root"],
+            expected_security_profile=profile,
+        )
+    assert not (chain["root"] / builder.CLAIM_PATH).exists()
+
+
+def test_uncached_head_blob_binding_authenticates_real_head_blob(
+    tmp_path: Path,
+) -> None:
+    relative, raw = _synthetic_head_binding_repository(tmp_path / "repo")
+    binding = builder._head_blob_binding(tmp_path / "repo", relative)
+    assert binding == {
+        "path": relative,
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "git_blob": _git_for_q5_test(
+            tmp_path / "repo",
+            "rev-parse",
+            f"HEAD:{relative}",
+        ),
+        "mode": "100644",
+    }
+
+
+def test_uncached_head_blob_binding_uses_keyword_only_git_pair_call(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    relative, raw = _synthetic_head_binding_repository(tmp_path / "repo")
+    calls: list[tuple[str, bool, bool, bool]] = []
+    original = builder._validate_git_pair_preflight
+
+    def keyword_only_pair(
+        root: Path,
+        path_text: str,
+        *,
+        repository_relative: bool,
+        declaration: Mapping[str, Any],
+        verify_git: bool,
+        require_tracked: bool = False,
+    ) -> tuple[str, str] | None:
+        calls.append(
+            (
+                path_text,
+                repository_relative,
+                verify_git,
+                require_tracked,
+            )
+        )
+        return original(
+            root,
+            path_text,
+            repository_relative=repository_relative,
+            declaration=declaration,
+            verify_git=verify_git,
+            require_tracked=require_tracked,
+        )
+
+    monkeypatch.setattr(
+        builder,
+        "_validate_git_pair_preflight",
+        keyword_only_pair,
+    )
+    binding = builder._head_blob_binding(tmp_path / "repo", relative)
+    assert binding["sha256"] == hashlib.sha256(raw).hexdigest()
+    assert calls == [(relative, True, True, True)]
+
+
+def test_head_index_pairs_are_classified_before_first_bound_open(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    relative, _raw = _synthetic_head_binding_repository(tmp_path / "repo")
+    events: list[str] = []
+    original_git = builder._git_process
+    original_read = builder._read_bound_regular_bytes
+
+    def recorded_git(root: Path, *arguments: str):
+        events.append(f"git:{arguments[0]}")
+        return original_git(root, *arguments)
+
+    def recorded_read(path: Path, path_text: str):
+        events.append("open")
+        return original_read(path, path_text)
+
+    monkeypatch.setattr(builder, "_git_process", recorded_git)
+    monkeypatch.setattr(builder, "_read_bound_regular_bytes", recorded_read)
+    builder._head_blob_binding(tmp_path / "repo", relative)
+    assert events[-1] == "open"
+    assert events[:3] == [
+        "git:ls-files",
+        "git:ls-tree",
+        "git:ls-files",
+    ]
+
+
+def test_global_clean_tree_gate_does_not_replace_cached_blob_authentication(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    relative, _raw = _synthetic_head_binding_repository(tmp_path / "repo")
+    (tmp_path / "repo" / relative).write_bytes(b"dirty synthetic bytes\n")
+    monkeypatch.setattr(
+        builder,
+        "_require_clean_pushed_branch",
+        lambda *_a, **_k: _git_for_q5_test(
+            tmp_path / "repo", "rev-parse", "HEAD"
+        ),
+    )
+    with pytest.raises(builder.TerminalG9CB5Failure, match="differs from HEAD"):
+        builder._head_blob_binding(tmp_path / "repo", relative)
+
+
+def test_bound_reader_rejects_symlink_in_parent_component(tmp_path: Path) -> None:
+    real = tmp_path / "real"
+    real.mkdir()
+    (real / "leaf").write_bytes(b"synthetic\n")
+    (tmp_path / "alias").symlink_to(real, target_is_directory=True)
+    with pytest.raises(builder.TerminalG9CB5Failure, match="symlink|component"):
+        builder._read_bound_regular_bytes(
+            tmp_path / "alias" / "leaf",
+            "alias/leaf",
+        )
+
+
+def test_bound_reader_rejects_leaf_symlink(tmp_path: Path) -> None:
+    target = tmp_path / "target"
+    target.write_bytes(b"synthetic\n")
+    leaf = tmp_path / "leaf"
+    leaf.symlink_to(target)
+    with pytest.raises(builder.TerminalG9CB5Failure, match="symlink|open"):
+        builder._read_bound_regular_bytes(leaf, "leaf")
+
+
+@pytest.mark.parametrize(
+    "path_text",
+    ["a/./b", "a/../b", "a//b"],
+    ids=["dot-component", "dotdot-component", "empty-component"],
+)
+def test_bound_reader_rejects_noncanonical_components(
+    tmp_path: Path,
+    path_text: str,
+) -> None:
+    snapshot = builder._SecureBoundSnapshot(tmp_path)
+    try:
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="component|canonical|parent",
+        ):
+            snapshot.open_initial(path_text, True)
+    finally:
+        snapshot.close()
+
+
+def test_distinct_hardlinked_bound_paths_fail_snapshot_authentication(
+    tmp_path: Path,
+) -> None:
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    first.write_bytes(b"synthetic\n")
+    os.link(first, second)
+    snapshot = builder._SecureBoundSnapshot(tmp_path)
+    try:
+        snapshot.open_initial("first", True)
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="alias|filesystem object",
+        ):
+            snapshot.open_initial("second", True)
+    finally:
+        snapshot.close()
+
+
+def test_duplicate_bound_declarations_share_one_open_and_two_reads(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    leaf = tmp_path / "leaf"
+    leaf.write_bytes(b"synthetic\n")
+    reads: list[int] = []
+    original_pread = builder.os.pread
+
+    def recorded_pread(fd: int, size: int, offset: int) -> bytes:
+        reads.append(fd)
+        return original_pread(fd, size, offset)
+
+    monkeypatch.setattr(builder.os, "pread", recorded_pread)
+    snapshot = builder._SecureBoundSnapshot(tmp_path)
+    try:
+        first = snapshot.open_initial("leaf", True)
+        second = snapshot.open_initial("leaf", True)
+        snapshot.verify_final()
+        assert first == second
+        assert len(snapshot.file_descriptors) == 1
+        assert len(reads) == 2
+    finally:
+        snapshot.close()
+
+
+def test_conflicting_duplicate_declarations_fail_before_bound_open(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    leaf = tmp_path / "leaf"
+    raw = b"synthetic\n"
+    leaf.write_bytes(raw)
+    opened: list[str] = []
+    original_open = builder._SecureBoundSnapshot.open_initial
+
+    def recorded_open(
+        snapshot: builder._SecureBoundSnapshot,
+        path_text: str,
+        repository_relative: bool,
+    ) -> tuple[bytes, os.stat_result]:
+        opened.append(path_text)
+        return original_open(snapshot, path_text, repository_relative)
+
+    monkeypatch.setattr(
+        builder._SecureBoundSnapshot,
+        "open_initial",
+        recorded_open,
+    )
+    preregistration = {
+        "bindings": {
+            "duplicates": [
+                {
+                    "path": "leaf",
+                    "sha256": hashlib.sha256(raw).hexdigest(),
+                    "git_blob": None,
+                    "git_mode": None,
+                },
+                {
+                    "path": "leaf",
+                    "sha256": hashlib.sha256(raw).hexdigest(),
+                    "git_blob": "f" * 40,
+                    "git_mode": "100644",
+                },
+            ]
+        }
+    }
+    with pytest.raises(
+        builder.TerminalG9CB5Failure,
+        match="conflicting duplicate input metadata",
+    ):
+        builder._preauthenticate_parent_snapshot(
+            tmp_path,
+            preregistration,
+        )
+    assert opened == []
+
+
+def test_final_same_descriptor_read_detects_bound_byte_drift(
+    tmp_path: Path,
+) -> None:
+    leaf = tmp_path / "leaf"
+    leaf.write_bytes(b"initial\n")
+    snapshot = builder._SecureBoundSnapshot(tmp_path)
+    try:
+        snapshot.open_initial("leaf", True)
+        leaf.write_bytes(b"changed\n")
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="final|snapshot",
+        ):
+            snapshot.verify_final()
+    finally:
+        snapshot.close()
+
+
+def test_snapshot_consumers_use_cached_bytes(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    paths = [
+        Path("execution/gross9_rank7_clock_runtime.py"),
+        Path("training/gross9_structural_clock_primitives.py"),
+    ]
+    rows: list[dict[str, Any]] = []
+    for relative in paths:
+        candidate = tmp_path / relative
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        raw = b"SYNTHETIC_VALUE = 1\n"
+        candidate.write_bytes(raw)
+        rows.append(
+            {
+                "path": relative.as_posix(),
+                "path_type": "regular_file",
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "git_blob": builder._git_blob_id(raw),
+                "git_mode": "100644",
+                "package_initializer": False,
+            }
+        )
+    rows.sort(key=lambda row: row["path"])
+    preregistration = {
+        "bindings": {
+            "protocol": [dict(row) for row in rows],
+            "runtime_import_roots": [
+                f"{module.replace('.', '/')}.py"
+                for module in builder.RUNTIME_IMPORT_MODULES
+            ],
+            "runtime_import_closure": [dict(row) for row in rows],
+        }
+    }
+    snapshot = builder._SecureBoundSnapshot(tmp_path)
+    try:
+        for row in rows:
+            snapshot.open_initial(row["path"], True)
+
+        def forbidden_path_read(*_args: Any, **_kwargs: Any) -> Any:
+            raise AssertionError("cached consumer reopened a pathname")
+
+        monkeypatch.setattr(
+            builder,
+            "_read_bound_regular_bytes",
+            forbidden_path_read,
+        )
+        authenticated = builder._validate_regular_hashed_inputs(
+            tmp_path,
+            preregistration,
+            verify_git=False,
+            raw_cache=snapshot,
+        )
+        closures = builder._validate_static_closures(
+            tmp_path,
+            preregistration,
+            verify_git=False,
+            raw_cache=snapshot,
+        )
+        first = rows[0]
+        cached_binding = builder._head_blob_binding(
+            tmp_path,
+            first["path"],
+            raw_cache=snapshot,
+            preclassified_pairs={
+                first["path"]: (
+                    builder._git_blob_id(snapshot[first["path"]][0]),
+                    "100644",
+                )
+            },
+        )
+        assert [row["path"] for row in authenticated] == [
+            row["path"] for row in rows
+        ]
+        assert closures["runtime"] == rows
+        assert cached_binding["sha256"] == first["sha256"]
+    finally:
+        snapshot.close()
+
+
+def test_worktree_hash_object_is_absent_from_snapshot_entry_paths(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    chain = _prepare_synthetic_a5_q5_p5_chain(tmp_path)
+    commands: list[tuple[str, ...]] = []
+    original_git = builder._git_process
+
+    def recorded_git(
+        root: Path,
+        *arguments: str,
+    ) -> subprocess.CompletedProcess[bytes]:
+        commands.append(tuple(arguments))
+        return original_git(root, *arguments)
+
+    monkeypatch.setattr(builder, "_git_process", recorded_git)
+    snapshot, pairs = builder._preauthenticate_parent_snapshot(
+        chain["root"],
+        chain["preregistration"],
+        content_mode=builder._PREREGISTRATION_ONLY,
+    )
+    context = builder._PublicationContext(chain["root"])
+    try:
+        builder._validate_closed_entry_phase(
+            context,
+            builder.P5_CLAIM_PREFLIGHT,
+        )
+        builder._final_parent_snapshot_recheck(
+            chain["root"],
+            snapshot,
+            pairs,
+            context,
+            builder.P5_CLAIM_PREFLIGHT,
+            builder.prereg.EXPECTED_BRANCH,
+        )
+    finally:
+        snapshot.close()
+        context.close()
+    assert commands
+    assert all(not command or command[0] != "hash-object" for command in commands)
+
+
+def test_publication_uses_unnamed_otmpfile_without_named_staging(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "artifact"
+    observations: list[tuple[str, int, tuple[str, ...]]] = []
+    original_link = builder._link_unnamed_procfd
+
+    def recorded_link(
+        unnamed_fd: int,
+        results_fd: int,
+        leaf: str,
+    ) -> None:
+        observations.append(
+            (
+                leaf,
+                os.fstat(unnamed_fd).st_nlink,
+                tuple(sorted(os.listdir(results_fd))),
+            )
+        )
+        original_link(unnamed_fd, results_fd, leaf)
+
+    monkeypatch.setattr(builder, "_link_unnamed_procfd", recorded_link)
+    publication = builder._atomic_link_write_once(
+        target,
+        b"synthetic unnamed publication\n",
+    )
+    assert observations
+    assert observations[-1] == ("artifact", 0, ())
+    assert all(nlink == 0 and not entries for _leaf, nlink, entries in observations)
+    assert all(".stage" not in leaf for leaf, _nlink, _entries in observations)
+    assert tuple(path.name for path in tmp_path.iterdir()) == ("artifact",)
+    assert publication["canonical_inode"] == publication["unnamed_inode"]
+
+
+def test_publication_capability_probe_restores_inventory_and_rebaselines_time(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    results.mkdir()
+    context = builder._PublicationContext(tmp_path)
+    raw = b"G9CB5 O_TMPFILE capability probe\n"
+    links: list[dict[str, Any]] = []
+    removals: list[tuple[tuple[str, ...], tuple[str, ...]]] = []
+    fsyncs: list[int] = []
+    rebaselines: list[
+        tuple[tuple[str, ...], tuple[str, ...], tuple[int, ...], tuple[int, ...]]
+    ] = []
+    original_linkat = builder._LIBC.linkat
+    original_link = builder._link_unnamed_procfd
+    original_unlink = builder.os.unlink
+    original_fsync = builder.os.fsync
+    original_rebaseline = context._rebaseline
+
+    def force_empty_path_fallback(
+        olddirfd: Any,
+        oldpath: Any,
+        newdirfd: Any,
+        newpath: Any,
+        flags: Any,
+    ) -> int:
+        source = getattr(oldpath, "value", oldpath)
+        if source in (b"", None):
+            builder.ctypes.set_errno(errno.ENOENT)
+            return -1
+        return int(
+            original_linkat(
+                olddirfd,
+                oldpath,
+                newdirfd,
+                newpath,
+                flags,
+            )
+        )
+
+    def recorded_link(unnamed_fd: int, results_fd: int, leaf: str) -> None:
+        unnamed = os.fstat(unnamed_fd)
+        before_entries = builder._directory_entries(results_fd)
+        unnamed_raw = builder._pread_complete(unnamed_fd, unnamed.st_size)
+        original_link(unnamed_fd, results_fd, leaf)
+        after_entries = builder._directory_entries(results_fd)
+        canonical = os.stat(leaf, dir_fd=results_fd, follow_symlinks=False)
+        canonical_fd = os.open(
+            leaf,
+            os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC,
+            dir_fd=results_fd,
+        )
+        try:
+            canonical_raw = builder._pread_complete(
+                canonical_fd,
+                canonical.st_size,
+            )
+        finally:
+            os.close(canonical_fd)
+        links.append(
+            {
+                "leaf": leaf,
+                "before": before_entries,
+                "after": after_entries,
+                "unnamed_inode": (unnamed.st_dev, unnamed.st_ino),
+                "canonical_inode": (canonical.st_dev, canonical.st_ino),
+                "nlink_before": unnamed.st_nlink,
+                "mode": stat.S_IMODE(canonical.st_mode),
+                "regular": stat.S_ISREG(canonical.st_mode),
+                "size": canonical.st_size,
+                "unnamed_raw": unnamed_raw,
+                "canonical_raw": canonical_raw,
+            }
+        )
+
+    def recorded_unlink(
+        path: str,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        before_entries = builder._directory_entries(context.results_fd)
+        original_unlink(path, *args, **kwargs)
+        removals.append(
+            (
+                before_entries,
+                builder._directory_entries(context.results_fd),
+            )
+        )
+
+    def recorded_fsync(descriptor: int) -> None:
+        fsyncs.append(descriptor)
+        original_fsync(descriptor)
+
+    def recorded_rebaseline(expected_entries: tuple[str, ...]) -> None:
+        before_entries = context.entries
+        before_token = context.timestamp_token
+        original_rebaseline(expected_entries)
+        rebaselines.append(
+            (
+                before_entries,
+                expected_entries,
+                before_token,
+                context.timestamp_token,
+            )
+        )
+
+    monkeypatch.setattr(builder._LIBC, "linkat", force_empty_path_fallback)
+    monkeypatch.setattr(builder, "_link_unnamed_procfd", recorded_link)
+    monkeypatch.setattr(builder.os, "unlink", recorded_unlink)
+    monkeypatch.setattr(builder.os, "fsync", recorded_fsync)
+    context._rebaseline = recorded_rebaseline
+    try:
+        prior_timestamp = context.timestamp_token
+        context.probe()
+        assert tuple(results.iterdir()) == ()
+        assert context.probed is True
+        assert context.entries == ()
+        assert context.timestamp_token != prior_timestamp
+        assert len(links) == 1
+        link = links[0]
+        assert link["before"] == ()
+        assert link["after"] == (link["leaf"],)
+        assert link["nlink_before"] == 0
+        assert link["regular"] is True
+        assert link["mode"] == 0o444
+        assert link["size"] == len(raw)
+        assert link["unnamed_raw"] == raw
+        assert link["canonical_raw"] == raw
+        assert link["canonical_inode"] == link["unnamed_inode"]
+        assert removals == [((link["leaf"],), ())]
+        assert fsyncs.count(context.results_fd) == 2
+        assert [
+            (before, after) for before, after, _old, _new in rebaselines
+        ] == [((), (link["leaf"],)), ((link["leaf"],), ())]
+        assert all(
+            after_token[-1] == before_token[-1] + 1
+            and after_token != before_token
+            for _before, _after, before_token, after_token in rebaselines
+        )
+    finally:
+        context.close()
+
+
+def test_unnamed_publication_eexist_never_overwrites(tmp_path: Path) -> None:
+    target = tmp_path / "artifact"
+    target.write_bytes(b"existing\n")
+    before = target.stat()
+    with pytest.raises(FileExistsError):
+        builder._atomic_link_write_once(target, b"replacement\n")
+    after = target.stat()
+    assert target.read_bytes() == b"existing\n"
+    assert (after.st_dev, after.st_ino) == (before.st_dev, before.st_ino)
+
+
+def test_unnamed_publication_preserves_inode_bytes_hash_size_and_mode(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "artifact"
+    raw = b"synthetic publication\n"
+    result = builder._atomic_link_write_once(target, raw)
+    info = os.stat(target, follow_symlinks=False)
+    assert result["canonical_inode"] == result["unnamed_inode"]
+    assert result["sha256"] == hashlib.sha256(raw).hexdigest()
+    assert info.st_size == len(raw)
+    assert stat.S_ISREG(info.st_mode)
+    assert stat.S_IMODE(info.st_mode) == 0o444
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "write",
+        "fchmod",
+        "file_fsync",
+        "same_fd_verify",
+        "procfd_link",
+        "canonical_open",
+        "inode_compare",
+        "directory_fsync",
+    ],
+)
+def test_unnamed_publication_faults_fail_closed_without_bound_reread(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fault: str,
+) -> None:
+    results = tmp_path / "results"
+    results.mkdir()
+    context = builder._PublicationContext(tmp_path)
+    context.probed = True
+    rechecks: list[str] = []
+    original_open = builder.os.open
+    original_fstat = builder.os.fstat
+    original_fsync = builder.os.fsync
+
+    def injected(*_args, **_kwargs):
+        raise OSError(errno.EIO, fault)
+
+    if fault == "write":
+        monkeypatch.setattr(builder, "_write_all", injected)
+    elif fault == "fchmod":
+        monkeypatch.setattr(builder.os, "fchmod", injected)
+    elif fault == "file_fsync":
+        monkeypatch.setattr(builder.os, "fsync", injected)
+    elif fault == "same_fd_verify":
+        monkeypatch.setattr(builder, "_pread_complete", lambda *_a: b"drift")
+    elif fault == "procfd_link":
+        monkeypatch.setattr(builder, "_link_unnamed_procfd", injected)
+    elif fault == "canonical_open":
+        def fail_canonical_open(path, *args, **kwargs):
+            if path == fault:
+                return injected()
+            return original_open(path, *args, **kwargs)
+
+        monkeypatch.setattr(builder.os, "open", fail_canonical_open)
+    elif fault == "inode_compare":
+        def drift_canonical_fstat(descriptor: int):
+            observed = original_fstat(descriptor)
+            if descriptor not in {
+                context.repository_fd,
+                context.results_fd,
+            } and stat.S_IMODE(observed.st_mode) == 0o444:
+                values = list(observed)
+                values[1] += 1
+                return os.stat_result(values)
+            return observed
+
+        monkeypatch.setattr(builder.os, "fstat", drift_canonical_fstat)
+    else:
+        def fail_directory_fsync(descriptor: int) -> None:
+            if descriptor == context.results_fd:
+                injected()
+            original_fsync(descriptor)
+
+        monkeypatch.setattr(builder.os, "fsync", fail_directory_fsync)
+    try:
+        with pytest.raises(
+            (OSError, builder.TerminalG9CB5Failure),
+            match=fault + "|publication|inode",
+        ):
+            context.publish(
+                Path("results") / fault,
+                b"synthetic\n",
+                prelink_recheck=lambda: rechecks.append("recheck"),
+            )
+        assert len(rechecks) <= 1
+        assert not any(".stage-" in path.name for path in results.iterdir())
+    finally:
+        context.close()
+
+
+def test_results_directory_substitution_before_link_fails_closed(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    results.mkdir()
+    context = builder._PublicationContext(tmp_path)
+    try:
+        context.probe()
+        moved = tmp_path / "moved"
+        results.rename(moved)
+        results.mkdir()
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="directory|identity",
+        ):
+            context.publish(
+                Path("results/artifact"),
+                b"synthetic\n",
+            )
+    finally:
+        context.close()
+
+
+def test_absolute_binding_uses_retained_root_and_tmp_anchors(
+    tmp_path: Path,
+) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    candidate = tmp_path / "absolute" / "leaf"
+    candidate.parent.mkdir()
+    candidate.write_bytes(b"synthetic absolute binding\n")
+    path_text = candidate.as_posix()
+    snapshot = builder._SecureBoundSnapshot(
+        repository,
+        absolute_allowlist=frozenset({path_text}),
+    )
+    try:
+        raw, _info = snapshot.open_initial(path_text, False)
+        expected_parents = {
+            ("absolute", tuple(candidate.parts[1:index]))
+            for index in range(1, len(candidate.parts))
+        }
+        assert ("absolute", ()) in snapshot.directory_descriptors
+        assert ("absolute", ("tmp",)) in snapshot.directory_descriptors
+        assert expected_parents.issubset(snapshot.directory_descriptors)
+        assert raw == b"synthetic absolute binding\n"
+        snapshot.verify_final()
+    finally:
+        snapshot.close()
+
+
+def test_unlisted_absolute_binding_fails_before_leaf_access(tmp_path: Path) -> None:
+    candidate = tmp_path / "unlisted"
+    candidate.write_bytes(b"synthetic\n")
+    snapshot = builder._SecureBoundSnapshot(tmp_path)
+    try:
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="absolute|allowlist",
+        ):
+            snapshot.open_initial(candidate.as_posix(), False)
+    finally:
+        snapshot.close()
+
+
+def test_worker_invocation_passes_capability_and_ledger_descriptors(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "results").mkdir()
+    stage = (
+        tmp_path
+        / "results/.gross9-structural-clock-g9cb5-worker-invocation"
+    )
+    capability = builder._prepare_worker_capability(
+        root=tmp_path,
+        output_dir=stage,
+        slot=1,
+        parent_pid=os.getpid(),
+    )
+    try:
+        invocation = builder._prepare_worker(
+            root=tmp_path,
+            capability=capability,
+            other_stage_directory=(
+                "results/.gross9-structural-clock-g9cb5-worker-other"
+            ),
+            synthetic_input=None,
+            parent_authentication={},
+        )
+        command = invocation["command"]
+        capability_fd = int(
+            command[command.index("--worker-capability-fd") + 1]
+        )
+        ledger_fd = int(command[command.index("--worker-ledger-fd") + 1])
+        assert (capability_fd, ledger_fd) == (
+            capability["read_fd"],
+            capability["ledger_fd"],
+        )
+        assert capability_fd != ledger_fd
+    finally:
+        for key in ("read_fd", "ledger_fd"):
+            descriptor = int(capability[key])
+            if descriptor >= 0:
+                os.close(descriptor)
+                capability[key] = -1
+        builder._zero_token(capability["token"])
+
+
+def test_worker_capability_rows_bind_unnamed_ledger_identity(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "results").mkdir()
+    capability = builder._prepare_worker_capability(
+        root=tmp_path,
+        output_dir=(
+            tmp_path
+            / "results/.gross9-structural-clock-g9cb5-worker-capability"
+        ),
+        slot=1,
+        parent_pid=os.getpid(),
+    )
+    try:
+        row = capability["row"]
+        ledger = os.fstat(capability["ledger_fd"])
+        carrier = os.fstat(capability["read_fd"])
+        assert tuple(row) == CAPABILITY_KEYS
+        assert row["ledger_carrier_kind"] == "unnamed_otmpfile_v1"
+        assert (row["ledger_device"], row["ledger_inode"]) == (
+            ledger.st_dev,
+            ledger.st_ino,
+        )
+        assert row["ledger_initial_type"] == "regular_file"
+        assert row["ledger_initial_mode"] == "0600"
+        assert row["ledger_initial_size"] == 0
+        assert (carrier.st_dev, carrier.st_ino) != (
+            ledger.st_dev,
+            ledger.st_ino,
+        )
+        assert capability["read_fd"] != capability["ledger_fd"]
+    finally:
+        for key in ("read_fd", "ledger_fd"):
+            descriptor = int(capability[key])
+            if descriptor >= 0:
+                os.close(descriptor)
+                capability[key] = -1
+        builder._zero_token(capability["token"])
+
+
+def test_worker_ledger_uses_sole_prebound_procfd_self_link(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    results.mkdir()
+    own = "results/.gross9-structural-clock-g9cb5-worker-ledger-own"
+    other = "results/.gross9-structural-clock-g9cb5-worker-ledger-other"
+    (tmp_path / own).mkdir(mode=0o700)
+    metadata = tmp_path / "synthetic-metadata"
+    metadata.write_bytes(b"synthetic metadata\n")
+    script = tmp_path / "worker_ledger_harness.py"
+    script.write_text(
         textwrap.dedent(
-            inspect.getsource(
-                builder._rank7_bundle_activation_with_parity
+            """
+            import json
+            import os
+            from pathlib import Path
+
+            from training import build_gross9_structural_clock_bundle as b
+
+            root = Path(os.environ["G9CB_TEST_ROOT"]).resolve()
+            own = "results/.gross9-structural-clock-g9cb5-worker-ledger-own"
+            other = "results/.gross9-structural-clock-g9cb5-worker-ledger-other"
+            flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+            repository_fd = os.open(root, flags)
+            results_fd = os.open("results", flags, dir_fd=repository_fd)
+            filesystem_root_fd = os.open("/", flags)
+            capability = b._prepare_worker_capability(
+                root=root,
+                output_dir=root / own,
+                slot=1,
+                parent_pid=os.getpid(),
+                results_fd=results_fd,
+            )
+            distinct = capability["read_fd"] != capability["ledger_fd"]
+            token = b._consume_worker_capability(
+                capability["read_fd"], capability["row"]
+            )
+            capability["read_fd"] = -1
+            guard = b._WorkerIsolationGuard(
+                root=root,
+                own_stage=own,
+                other_stage=other,
+                ledger_paths=b.WORKER_LEDGER_PATHS,
+                repository_fd=repository_fd,
+                results_fd=results_fd,
+                filesystem_root_fd=filesystem_root_fd,
+                ledger_fd=capability["ledger_fd"],
+            )
+            guard.bind_ledger_slot(1)
+            guard.authorize_directory_sync(root / own)
+            snapshot = b._SecureBoundSnapshot(
+                root,
+                repository_fd=repository_fd,
+                filesystem_root_fd=filesystem_root_fd,
+                opener=guard._original_os_open,
+                register_descriptor=guard.register_snapshot_descriptor,
+            )
+            snapshot.open_initial("synthetic-metadata", True)
+            guard.install()
+
+            events = []
+            link_calls = []
+            rechecks = []
+            canonical_opens = []
+            canonical_fds = set()
+            ledger_reads = []
+            read_phase = "prelink"
+            original_link = b._link_unnamed_procfd
+            original_recheck = b._worker_metadata_final_recheck
+            original_open = guard._original_os_open
+            original_pread_complete = b._pread_complete
+
+            def recorded_link(unnamed_fd, directory_fd, leaf):
+                global read_phase
+                link_calls.append((unnamed_fd, directory_fd, leaf))
+                events.append("procfd_link")
+                result = original_link(unnamed_fd, directory_fd, leaf)
+                read_phase = "postlink"
+                return result
+
+            def recorded_recheck(active_guard, active_snapshot, binding, ledger_fd):
+                rechecks.append(ledger_fd)
+                events.append("metadata_recheck")
+                return original_recheck(
+                    active_guard, active_snapshot, binding, ledger_fd
+                )
+
+            def recorded_open(path, flags, *args, **kwargs):
+                descriptor = original_open(path, flags, *args, **kwargs)
+                if path == b.WORKER_LEDGER_PATHS[0].name:
+                    canonical_fds.add(descriptor)
+                    canonical_opens.append({
+                        "dir_fd": kwargs.get("dir_fd"),
+                        "fd": descriptor,
+                        "flags": flags,
+                        "path": path,
+                    })
+                    events.append("canonical_open")
+                return descriptor
+
+            def recorded_pread_complete(descriptor, size):
+                if descriptor == capability["ledger_fd"]:
+                    ledger_reads.append({
+                        "fd_kind": "unnamed",
+                        "phase": read_phase,
+                    })
+                elif descriptor in canonical_fds:
+                    ledger_reads.append({
+                        "fd_kind": "canonical",
+                        "phase": read_phase,
+                    })
+                return original_pread_complete(descriptor, size)
+
+            b._link_unnamed_procfd = recorded_link
+            b._worker_metadata_final_recheck = recorded_recheck
+            b._pread_complete = recorded_pread_complete
+            guard._original_os_open = recorded_open
+            claim = {"claim_hash": "1" * 64}
+            preregistration = {"manifest_hash": "2" * 64}
+            sentinel = {"manifest_hash": "3" * 64}
+            published = b._publish_worker_ledger(
+                guard=guard,
+                snapshot=snapshot,
+                ledger_fd=capability["ledger_fd"],
+                binding=capability["row"],
+                claim=claim,
+                preregistration=preregistration,
+                sentinel=sentinel,
+                authority_amendments=[],
+            )
+            b._worker_ledger_linked_checkpoint(
+                guard,
+                capability["row"],
+                published,
+            )
+            print(json.dumps({
+                "canonical_opens": canonical_opens,
+                "canonical_distinct": (
+                    published["canonical_fd"] != capability["ledger_fd"]
+                ),
+                "descriptor_count": 2,
+                "descriptors_distinct": distinct,
+                "events": events,
+                "final_verified": snapshot.final_verified,
+                "ledger_reads": ledger_reads,
+                "link_calls": [
+                    [fd, directory_fd, leaf]
+                    for fd, directory_fd, leaf in link_calls
+                ],
+                "rechecks": rechecks,
+                "row": capability["row"],
+                "sha256": published["sha256"],
+            }, sort_keys=True))
+            if published["canonical_fd"] != capability["ledger_fd"]:
+                os.close(published["canonical_fd"])
+            snapshot.close()
+            b._zero_token(token)
+            b._zero_token(capability["token"])
+            os.close(capability["ledger_fd"])
+            os.close(guard.stage_fd)
+            os.close(filesystem_root_fd)
+            os.close(results_fd)
+            os.close(repository_fd)
+            """
+        ),
+        encoding="utf-8",
+    )
+    environment = dict(os.environ)
+    environment.update(
+        {
+            "G9CB_TEST_ROOT": tmp_path.as_posix(),
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PYTHONPATH": builder.REPOSITORY_ROOT.as_posix(),
+        }
+    )
+    completed = subprocess.run(
+        [sys.executable, "-B", str(script)],
+        cwd=tmp_path,
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    observed = json.loads(completed.stdout.splitlines()[-1])
+    assert observed["descriptor_count"] == 2
+    assert observed["descriptors_distinct"] is True
+    assert set(observed["row"]) == set(CAPABILITY_KEYS)
+    assert len(observed["row"]) == len(CAPABILITY_KEYS)
+    assert observed["final_verified"] is True
+    assert len(observed["rechecks"]) == 1
+    assert len(observed["link_calls"]) == 1
+    assert observed["link_calls"][0][2] == builder.WORKER_LEDGER_PATHS[0].name
+    assert observed["events"] == [
+        "metadata_recheck",
+        "procfd_link",
+        "canonical_open",
+    ]
+    assert observed["canonical_distinct"] is True
+    assert len(observed["canonical_opens"]) == 1
+    canonical_open = observed["canonical_opens"][0]
+    assert canonical_open["path"] == builder.WORKER_LEDGER_PATHS[0].name
+    assert canonical_open["flags"] == (
+        os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC
+    )
+    assert canonical_open["dir_fd"] == observed["link_calls"][0][1]
+    assert canonical_open["fd"] != observed["link_calls"][0][0]
+    assert observed["ledger_reads"] == [
+        {"fd_kind": "unnamed", "phase": "prelink"},
+        {"fd_kind": "canonical", "phase": "postlink"},
+    ]
+    ledger = tmp_path / builder.WORKER_LEDGER_PATHS[0]
+    assert hashlib.sha256(ledger.read_bytes()).hexdigest() == observed["sha256"]
+    assert stat.S_IMODE(ledger.stat().st_mode) == 0o444
+
+
+def test_worker_canonical_ledger_open_authority_is_one_shot_and_fail_closed(
+    tmp_path: Path,
+) -> None:
+    script = tmp_path / "canonical_ledger_open_authority_harness.py"
+    script.write_text(
+        textwrap.dedent(
+            """
+            import errno
+            import json
+            import os
+            from pathlib import Path
+
+            from training import build_gross9_structural_clock_bundle as b
+
+            case = os.environ["G9CB_TEST_CASE"]
+            root = Path(os.environ["G9CB_TEST_ROOT"]).resolve()
+            own_stage = (
+                "results/.gross9-structural-clock-g9cb5-worker-authority-own"
+            )
+            other_stage = (
+                "results/.gross9-structural-clock-g9cb5-worker-authority-other"
+            )
+            directory_flags = (
+                os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+            )
+            repository_fd = os.open(root, directory_flags)
+            results_fd = os.open(
+                "results", directory_flags, dir_fd=repository_fd
+            )
+            filesystem_root_fd = os.open("/", directory_flags)
+            ledger_fd = os.open(
+                ".",
+                os.O_RDWR | os.O_TMPFILE | os.O_CLOEXEC,
+                0o600,
+                dir_fd=results_fd,
+            )
+            guard = b._WorkerIsolationGuard(
+                root=root,
+                own_stage=own_stage,
+                other_stage=other_stage,
+                ledger_paths=b.WORKER_LEDGER_PATHS,
+                repository_fd=repository_fd,
+                results_fd=results_fd,
+                filesystem_root_fd=filesystem_root_fd,
+                ledger_fd=ledger_fd,
+            )
+            guard.bind_ledger_slot(1)
+            payload = b"synthetic one-shot canonical ledger\\n"
+            b._write_all(ledger_fd, payload)
+            os.fchmod(ledger_fd, 0o444)
+            os.fsync(ledger_fd)
+            leaf = b.WORKER_LEDGER_PATHS[0].name
+            if case == "preopen_mismatch":
+                mismatch_fd = os.open(
+                    leaf,
+                    (
+                        os.O_WRONLY
+                        | os.O_CREAT
+                        | os.O_EXCL
+                        | os.O_NOFOLLOW
+                        | os.O_CLOEXEC
+                    ),
+                    0o444,
+                    dir_fd=results_fd,
+                )
+                b._write_all(mismatch_fd, b"different canonical inode\\n")
+                os.fchmod(mismatch_fd, 0o444)
+                os.fsync(mismatch_fd)
+                os.close(mismatch_fd)
+            else:
+                b._link_unnamed_procfd(ledger_fd, results_fd, leaf)
+            guard.install()
+            exact_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC
+
+            def rejected(operation):
+                try:
+                    result = operation()
+                except b.TerminalG9CB5Failure as exc:
+                    return {
+                        "message": str(exc),
+                        "status": "terminal",
+                    }
+                if isinstance(result, int):
+                    os.close(result)
+                elif result is not None and hasattr(result, "close"):
+                    result.close()
+                return {"status": "accepted"}
+
+            def authority_evidence(calls):
+                counters = guard.counters()
+                isolation_or_unauthorized_total = sum(
+                    counters[name]
+                    for name in (
+                        "child_process_creation_events",
+                        "other_stage_access_events",
+                        "other_slot_ledger_access_events",
+                        "unauthorized_write_or_ipc_events",
+                    )
+                )
+                return {
+                    "calls": list(calls),
+                    "count": guard._owned_ledger_open_count,
+                    "counters": counters,
+                    "isolation_or_unauthorized_total": (
+                        isolation_or_unauthorized_total
+                    ),
+                    "state": guard._owned_ledger_open_state,
+                }
+
+            observed = {
+                "case": case,
+                "ledger_fd": ledger_fd,
+                "results_fd": results_fd,
+            }
+            if case == "success_then_retry":
+                underlying_open = guard._original_os_open
+                calls = []
+
+                def counted_open(path, flags, *args, **kwargs):
+                    descriptor = underlying_open(path, flags, *args, **kwargs)
+                    calls.append(
+                        {
+                            "dir_fd": kwargs.get("dir_fd"),
+                            "fd": descriptor,
+                            "flags": flags,
+                            "path": path,
+                        }
+                    )
+                    return descriptor
+
+                guard._original_os_open = counted_open
+                canonical_fd = guard.open_owned_canonical_ledger_once(
+                    leaf, exact_flags, dir_fd=results_fd
+                )
+                canonical_info = os.fstat(canonical_fd)
+                unnamed_info = os.fstat(ledger_fd)
+                observed.update(
+                    {
+                        "canonical_distinct": canonical_fd != ledger_fd,
+                        "canonical_matches_unnamed": (
+                            canonical_info.st_dev,
+                            canonical_info.st_ino,
+                        )
+                        == (unnamed_info.st_dev, unnamed_info.st_ino),
+                        "calls": calls,
+                        "retry_while_open": rejected(
+                            lambda: guard.open_owned_canonical_ledger_once(
+                                leaf, exact_flags, dir_fd=results_fd
+                            )
+                        ),
+                    }
+                )
+                os.close(canonical_fd)
+                try:
+                    os.fstat(canonical_fd)
+                except OSError as exc:
+                    observed["closed_errno"] = exc.errno
+                observed["retry_after_close"] = rejected(
+                    lambda: guard.open_owned_canonical_ledger_once(
+                        leaf, exact_flags, dir_fd=results_fd
+                    )
+                )
+                observed["calls_after_retries"] = calls
+            elif case == "failed_first_open":
+                underlying_open = guard._original_os_open
+                attempts = []
+
+                def failed_open(path, flags, *args, **kwargs):
+                    attempts.append(
+                        {
+                            "dir_fd": kwargs.get("dir_fd"),
+                            "flags": flags,
+                            "path": path,
+                        }
+                    )
+                    raise OSError(errno.EIO, "injected canonical open failure")
+
+                guard._original_os_open = failed_open
+                try:
+                    guard.open_owned_canonical_ledger_once(
+                        leaf, exact_flags, dir_fd=results_fd
+                    )
+                except OSError as exc:
+                    observed["first_failure"] = {
+                        "errno": exc.errno,
+                        "type": type(exc).__name__,
+                    }
+                guard._original_os_open = underlying_open
+                observed["retry"] = rejected(
+                    lambda: guard.open_owned_canonical_ledger_once(
+                        leaf, exact_flags, dir_fd=results_fd
+                    )
+                )
+                observed["attempts"] = attempts
+            elif case in {
+                "absolute_ledger",
+                "dot_leaf",
+                "other_ledger",
+                "preopen_mismatch",
+                "wrong_dirfd",
+                "wrong_flags",
+                "wrong_leaf",
+            }:
+                canonical = root / b.WORKER_LEDGER_PATHS[0]
+                underlying_open = guard._original_os_open
+                calls = []
+
+                def counted_invalid_open(path, flags, *args, **kwargs):
+                    calls.append(
+                        {
+                            "dir_fd": kwargs.get("dir_fd"),
+                            "flags": flags,
+                            "path": path,
+                        }
+                    )
+                    return underlying_open(path, flags, *args, **kwargs)
+
+                guard._original_os_open = counted_invalid_open
+                operations = {
+                    "dot_leaf": lambda: guard.open_owned_canonical_ledger_once(
+                        f"./{leaf}", exact_flags, dir_fd=results_fd
+                    ),
+                    "absolute_ledger": lambda: (
+                        guard.open_owned_canonical_ledger_once(
+                            canonical.as_posix(),
+                            exact_flags,
+                            dir_fd=results_fd,
+                        )
+                    ),
+                    "wrong_flags": lambda: (
+                        guard.open_owned_canonical_ledger_once(
+                            leaf,
+                            exact_flags | os.O_NONBLOCK,
+                            dir_fd=results_fd,
+                        )
+                    ),
+                    "wrong_dirfd": lambda: (
+                        guard.open_owned_canonical_ledger_once(
+                            leaf, exact_flags, dir_fd=repository_fd
+                        )
+                    ),
+                    "other_ledger": lambda: (
+                        guard.open_owned_canonical_ledger_once(
+                            b.WORKER_LEDGER_PATHS[1].name,
+                            exact_flags,
+                            dir_fd=results_fd,
+                        )
+                    ),
+                    "wrong_leaf": lambda: (
+                        guard.open_owned_canonical_ledger_once(
+                            f"wrong-{leaf}",
+                            exact_flags,
+                            dir_fd=results_fd,
+                        )
+                    ),
+                    "preopen_mismatch": lambda: (
+                        guard.open_owned_canonical_ledger_once(
+                            leaf,
+                            exact_flags,
+                            dir_fd=results_fd,
+                        )
+                    ),
+                }
+                observed["first_rejection"] = rejected(operations[case])
+                observed["after_invalid"] = authority_evidence(calls)
+                observed["exact_retry"] = rejected(
+                    lambda: guard.open_owned_canonical_ledger_once(
+                        leaf, exact_flags, dir_fd=results_fd
+                    )
+                )
+                observed["after_retry"] = authority_evidence(calls)
+            else:
+                canonical = root / b.WORKER_LEDGER_PATHS[0]
+                path_operations = {
+                    "path_open": lambda: open(canonical, "rb"),
+                    "path_stat": lambda: os.stat(canonical),
+                    "path_read": lambda: canonical.read_bytes(),
+                }
+                observed["rejection"] = rejected(path_operations[case])
+            print(json.dumps(observed, sort_keys=True))
+            """
+        ),
+        encoding="utf-8",
+    )
+    invalid_authority_cases = (
+        "dot_leaf",
+        "absolute_ledger",
+        "wrong_leaf",
+        "wrong_flags",
+        "wrong_dirfd",
+        "other_ledger",
+        "preopen_mismatch",
+    )
+    path_guard_cases = (
+        "path_open",
+        "path_stat",
+        "path_read",
+    )
+    cases = (
+        "success_then_retry",
+        *invalid_authority_cases,
+        *path_guard_cases,
+        "failed_first_open",
+    )
+    observed: dict[str, dict[str, Any]] = {}
+    for case in cases:
+        root = tmp_path / case
+        (root / "results").mkdir(parents=True)
+        (
+            root
+            / "results/.gross9-structural-clock-g9cb5-worker-authority-own"
+        ).mkdir(mode=0o700)
+        environment = dict(os.environ)
+        environment.update(
+            {
+                "G9CB_TEST_CASE": case,
+                "G9CB_TEST_ROOT": root.as_posix(),
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "PYTHONPATH": builder.REPOSITORY_ROOT.as_posix(),
+            }
+        )
+        completed = subprocess.run(
+            [sys.executable, "-B", str(script)],
+            cwd=root,
+            env=environment,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        assert completed.returncode == 0, (
+            f"{case}: stdout={completed.stdout!r} stderr={completed.stderr!r}"
+        )
+        observed[case] = json.loads(completed.stdout.splitlines()[-1])
+
+    success = observed["success_then_retry"]
+    assert success["canonical_distinct"] is True
+    assert success["canonical_matches_unnamed"] is True
+    assert success["closed_errno"] == errno.EBADF
+    assert success["calls"] == success["calls_after_retries"] == [
+        {
+            "dir_fd": success["results_fd"],
+            "fd": success["calls"][0]["fd"],
+            "flags": os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC,
+            "path": builder.WORKER_LEDGER_PATHS[0].name,
+        }
+    ]
+    assert success["calls"][0]["fd"] != success["ledger_fd"]
+    for retry in (success["retry_while_open"], success["retry_after_close"]):
+        assert retry["status"] == "terminal"
+        assert "canonical-open authority differs" in retry["message"]
+
+    for case in invalid_authority_cases:
+        first = observed[case]["first_rejection"]
+        assert first["status"] == "terminal", case
+        assert "ledger" in first["message"], case
+        immediate = observed[case]["after_invalid"]
+        assert immediate["state"] == "failed", case
+        assert immediate["count"] == 1, case
+        assert immediate["calls"] == [], case
+        assert immediate["isolation_or_unauthorized_total"] == 1, case
+        assert immediate["counters"]["other_stage_absence_checks"] == 1, case
+
+        retry = observed[case]["exact_retry"]
+        assert retry["status"] == "terminal", case
+        assert "canonical-open authority differs" in retry["message"], case
+        final = observed[case]["after_retry"]
+        assert final["state"] == "failed", case
+        assert final["count"] == 1, case
+        assert final["calls"] == [], case
+        assert final["isolation_or_unauthorized_total"] >= 1, case
+
+    for case in path_guard_cases:
+        rejection = observed[case]["rejection"]
+        assert rejection["status"] == "terminal", case
+        assert "ledger" in rejection["message"], case
+
+    failed = observed["failed_first_open"]
+    assert failed["first_failure"] == {"errno": errno.EIO, "type": "OSError"}
+    assert failed["attempts"] == [
+        {
+            "dir_fd": failed["results_fd"],
+            "flags": os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC,
+            "path": builder.WORKER_LEDGER_PATHS[0].name,
+        }
+    ]
+    assert failed["retry"]["status"] == "terminal"
+    assert "canonical-open authority differs" in failed["retry"]["message"]
+
+
+def test_worker_guard_forbids_other_procfs_link_and_unregistered_dirfd(
+    tmp_path: Path,
+) -> None:
+    guard = _guard(tmp_path)
+    try:
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="descriptor namespace",
+        ):
+            guard._checked_path(f"/proc/self/fd/{guard.repository_fd}")
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="dir_fd",
+        ):
+            guard._reject_dir_fds({"dir_fd": guard.repository_fd})
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="worker ledger",
+        ):
+            guard._checked_path(guard.ledger_paths[1])
+        assert guard.unauthorized_write_or_ipc_events == 1
+        assert guard.other_slot_ledger_access_events == 1
+    finally:
+        for descriptor in (
+            guard.ledger_fd,
+            guard.filesystem_root_fd,
+            guard.results_fd,
+            guard.repository_fd,
+        ):
+            if descriptor is not None:
+                os.close(descriptor)
+
+
+def _materialize_closed_phase_state(
+    root: Path,
+    present: tuple[Path, ...] = (),
+) -> Path:
+    results = root / "results"
+    results.mkdir(exist_ok=True)
+    for row in builder.prereg.expected_failed_predecessor_attempts():
+        stage = root / row["residue"]["slot1_stage"]["path"]
+        stage.mkdir(mode=0o700, exist_ok=True)
+        stage.chmod(0o700)
+    for relative in present:
+        target = root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(f"synthetic closed state: {relative}\n".encode())
+        target.chmod(0o444)
+    return results
+
+
+def _rebaseline_restored_results_timestamp(
+    context: builder._PublicationContext,
+) -> None:
+    context.timestamp_token = (
+        *builder._descriptor_token(os.fstat(context.results_fd)),
+        context.timestamp_token[-1] + 1,
+    )
+
+
+def _register_test_stage(
+    context: builder._PublicationContext,
+    stage: Path,
+) -> int:
+    descriptor = os.open(
+        stage.name,
+        os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+        dir_fd=context.results_fd,
+    )
+    context.stage_descriptors[stage.name] = descriptor
+    context.stage_tokens[stage.name] = builder._descriptor_token(
+        os.fstat(descriptor)
+    )
+    context.stage_entries[stage.name] = builder._directory_entries(descriptor)
+    return descriptor
+
+
+def test_production_declares_exact_stable_checkpoint_sequence() -> None:
+    assert builder.PRODUCTION_CHECKPOINTS == (
+        "C5_PRODUCTION_PREFLIGHT",
+        "CAPABILITY_PROBE_COMPLETE",
+        "SLOT1_PREPARED",
+        "SENTINEL_LINKED",
+        "PASS1_LEDGER_LINKED",
+        "PASS1_OUTPUT_READY",
+        "SLOT_TRANSITION",
+        "PASS2_LEDGER_LINKED",
+        "PASS2_OUTPUT_READY",
+        "CANONICAL_CSV_LINKED",
+        "MANIFEST_LINKED_LAST",
+        "FINAL_CLEANUP",
+    )
+
+
+def test_helper_local_transients_are_not_accepted_as_checkpoints() -> None:
+    transients = set(builder.HELPER_LOCAL_TRANSIENT_STATES)
+    checkpoints = set(builder.PRODUCTION_CHECKPOINTS)
+    assert transients
+    assert transients.isdisjoint(checkpoints)
+    for transient in transients:
+        with pytest.raises(builder.TerminalG9CB5Failure, match="transient"):
+            builder._validate_production_checkpoint(transient)
+
+
+def test_closed_phase_rejects_restored_inventory_timestamp_drift(
+    tmp_path: Path,
+) -> None:
+    results = _materialize_closed_phase_state(tmp_path)
+    context = builder._PublicationContext(tmp_path)
+    try:
+        builder._validate_closed_entry_phase(
+            context,
+            builder.Q5_PREREGISTRATION_PUBLICATION,
+        )
+        before = context.timestamp_token
+        time.sleep(0.01)
+        ephemeral = results / ".g9cb5-unauthorized-ephemeral"
+        ephemeral.mkdir()
+        ephemeral.rmdir()
+        assert tuple(sorted(path.name for path in results.iterdir())) == (
+            context.entries
+        )
+        assert builder._descriptor_token(os.fstat(context.results_fd)) != (
+            before[:-1]
+        )
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="timestamp|drift|results",
+        ):
+            builder._validate_closed_entry_phase(
+                context,
+                builder.Q5_PREREGISTRATION_PUBLICATION,
+            )
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize("identity", ["G9CB-2", "G9CB-3"])
+@pytest.mark.parametrize("replacement_state", ["empty", "nonempty"])
+def test_builder_retains_predecessor_residue_edge_through_final_recheck(
+    tmp_path: Path,
+    identity: str,
+    replacement_state: str,
+) -> None:
+    chain = _prepare_synthetic_a5_q5_p5_chain(tmp_path)
+    root = chain["root"]
+    snapshot, pairs = builder._preauthenticate_parent_snapshot(
+        root,
+        chain["preregistration"],
+        content_mode=builder._PREREGISTRATION_ONLY,
+    )
+    context = builder._PublicationContext(root)
+    row = next(
+        item
+        for item in builder.prereg.expected_failed_predecessor_attempts()
+        if item["identity"] == identity
+    )
+    stage_leaf = Path(row["residue"]["slot1_stage"]["path"]).name
+    detached_leaf = f".detached-{stage_leaf}"
+    try:
+        builder._validate_closed_entry_phase(
+            context,
+            builder.P5_CLAIM_PREFLIGHT,
+        )
+        original = os.stat(
+            stage_leaf,
+            dir_fd=context.results_fd,
+            follow_symlinks=False,
+        )
+        os.rename(
+            stage_leaf,
+            detached_leaf,
+            src_dir_fd=context.results_fd,
+            dst_dir_fd=context.results_fd,
+        )
+        os.rmdir(detached_leaf, dir_fd=context.results_fd)
+        os.mkdir(stage_leaf, 0o700, dir_fd=context.results_fd)
+        replacement = os.stat(
+            stage_leaf,
+            dir_fd=context.results_fd,
+            follow_symlinks=False,
+        )
+        assert (replacement.st_dev, replacement.st_ino) != (
+            original.st_dev,
+            original.st_ino,
+        )
+        assert stat.S_IMODE(replacement.st_mode) == 0o700
+        if replacement_state == "nonempty":
+            replacement_fd = os.open(
+                stage_leaf,
+                os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+                dir_fd=context.results_fd,
+            )
+            try:
+                marker_fd = os.open(
+                    "replacement-marker",
+                    os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC,
+                    0o600,
+                    dir_fd=replacement_fd,
+                )
+                os.close(marker_fd)
+            finally:
+                os.close(replacement_fd)
+        _rebaseline_restored_results_timestamp(context)
+        snapshot.rebaseline_directory_timestamps(
+            matching_identity=context.results_token
+        )
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="residue|directory|parent|component|identity|graph",
+        ):
+            builder._validate_closed_entry_phase(
+                context,
+                builder.P5_CLAIM_PREFLIGHT,
+            )
+            builder._final_parent_snapshot_recheck(
+                root,
+                snapshot,
+                pairs,
+                context,
+                builder.P5_CLAIM_PREFLIGHT,
+                builder.prereg.EXPECTED_BRANCH,
+            )
+    finally:
+        snapshot.close()
+        context.close()
+
+
+@pytest.mark.parametrize("identity", ["G9CB-2", "G9CB-3"])
+def test_builder_retained_predecessor_residue_rejects_restored_timestamp_drift(
+    tmp_path: Path,
+    identity: str,
+) -> None:
+    results = _materialize_closed_phase_state(tmp_path)
+    context = builder._PublicationContext(tmp_path)
+    row = next(
+        item
+        for item in builder.prereg.expected_failed_predecessor_attempts()
+        if item["identity"] == identity
+    )
+    stage = tmp_path / row["residue"]["slot1_stage"]["path"]
+    try:
+        builder._validate_closed_entry_phase(
+            context,
+            builder.Q5_PREREGISTRATION_PUBLICATION,
+        )
+        before = os.stat(stage, follow_symlinks=False)
+        time.sleep(0.01)
+        marker = stage / "ephemeral-marker"
+        marker.write_bytes(b"ephemeral\n")
+        marker.unlink()
+        after = os.stat(stage, follow_symlinks=False)
+        assert (after.st_dev, after.st_ino) == (before.st_dev, before.st_ino)
+        assert after.st_mtime_ns != before.st_mtime_ns
+        assert not tuple(stage.iterdir())
+        assert tuple(sorted(path.name for path in results.iterdir())) == (
+            context.entries
+        )
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="timestamp|residue|directory|drift",
+        ):
+            builder._validate_closed_entry_phase(
+                context,
+                builder.Q5_PREREGISTRATION_PUBLICATION,
+            )
+    finally:
+        context.close()
+
+
+def test_real_production_checkpoints_enforce_exact_namespace_deltas(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    chain = _prepare_synthetic_a5_q5_p5_chain(tmp_path)
+    claim, _publication = _publish_synthetic_claim_from_p5(chain)
+    _commit_synthetic_claim(chain, claim)
+    root = chain["root"]
+    context = builder._PublicationContext(root)
+    state = builder._ProductionStateMachine()
+    stage_one = (
+        root
+        / "results/.gross9-structural-clock-g9cb5-worker-checkpoint-one"
+    )
+    stage_two = (
+        root
+        / "results/.gross9-structural-clock-g9cb5-worker-checkpoint-two"
+    )
+    transitions: list[tuple[tuple[str, ...], tuple[str, ...]]] = []
+    fsynced_results = 0
+    original_rebaseline = context._rebaseline
+    original_fsync = builder.os.fsync
+
+    def recorded_rebaseline(expected_entries: tuple[str, ...]) -> None:
+        transitions.append((context.entries, tuple(expected_entries)))
+        original_rebaseline(expected_entries)
+
+    def recorded_fsync(descriptor: int) -> None:
+        nonlocal fsynced_results
+        if descriptor == context.results_fd:
+            fsynced_results += 1
+        original_fsync(descriptor)
+
+    monkeypatch.setattr(context, "_rebaseline", recorded_rebaseline)
+    monkeypatch.setattr(builder.os, "fsync", recorded_fsync)
+
+    def advance(checkpoint: str) -> None:
+        state.advance(
+            checkpoint,
+            lambda: builder._validate_production_namespace(
+                context,
+                checkpoint,
+                stage_one,
+                stage_two,
+            ),
+        )
+
+    def stage_outputs(stage: Path) -> None:
+        stage_fd = context.stage_descriptors[stage.name]
+        for name in (
+            builder._STAGED_CSV_NAME,
+            builder._STAGED_CORE_NAME,
+            builder._STAGED_RECEIPT_NAME,
+        ):
+            descriptor = os.open(
+                name,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC,
+                0o600,
+                dir_fd=stage_fd,
+            )
+            try:
+                os.write(descriptor, name.encode("ascii"))
+                os.fchmod(descriptor, 0o400)
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+        os.fsync(stage_fd)
+
+    try:
+        advance("C5_PRODUCTION_PREFLIGHT")
+        context.probe()
+        advance("CAPABILITY_PROBE_COMPLETE")
+        builder._create_stage_directory(
+            stage_one,
+            stage_one.parent,
+            publication_context=context,
+        )
+        advance("SLOT1_PREPARED")
+        context.publish(builder.SENTINEL_PATH, b"synthetic sentinel\n")
+        advance("SENTINEL_LINKED")
+        context.publish(
+            builder.WORKER_LEDGER_PATHS[0],
+            b"synthetic ledger one\n",
+        )
+        advance("PASS1_LEDGER_LINKED")
+        stage_outputs(stage_one)
+        advance("PASS1_OUTPUT_READY")
+        builder._cleanup_successful_stage(
+            stage_one,
+            stage_one.parent,
+            publication_context=context,
+        )
+        builder._create_stage_directory(
+            stage_two,
+            stage_two.parent,
+            publication_context=context,
+        )
+        advance("SLOT_TRANSITION")
+        context.publish(
+            builder.WORKER_LEDGER_PATHS[1],
+            b"synthetic ledger two\n",
+        )
+        advance("PASS2_LEDGER_LINKED")
+        stage_outputs(stage_two)
+        advance("PASS2_OUTPUT_READY")
+        context.publish(builder.CSV_PATH, b"synthetic csv gzip\n")
+        advance("CANONICAL_CSV_LINKED")
+        context.publish(builder.MANIFEST_PATH, b"synthetic manifest\n")
+        advance("MANIFEST_LINKED_LAST")
+        builder._cleanup_successful_stage(
+            stage_two,
+            stage_two.parent,
+            publication_context=context,
+        )
+        advance("FINAL_CLEANUP")
+        state.require_complete()
+        assert state.current == "FINAL_CLEANUP"
+        one_leaf_deltas = [
+            (before, after)
+            for before, after in transitions
+            if before != after
+        ]
+        assert len(one_leaf_deltas) == 11
+        assert all(
+            len(set(before) ^ set(after)) == 1
+            for before, after in one_leaf_deltas
+        )
+        assert fsynced_results >= len(one_leaf_deltas)
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize(
+    "checkpoint",
+    [
+        "SLOT1_PREPARED",
+        "SENTINEL_LINKED",
+        "PASS1_LEDGER_LINKED",
+        "PASS1_OUTPUT_READY",
+        "SLOT_TRANSITION",
+        "PASS2_LEDGER_LINKED",
+        "PASS2_OUTPUT_READY",
+        "CANONICAL_CSV_LINKED",
+        "MANIFEST_LINKED_LAST",
+    ],
+)
+def test_active_stage_retained_descriptor_must_match_canonical_edge_at_checkpoint(
+    tmp_path: Path,
+    checkpoint: str,
+) -> None:
+    publication_counts = {
+        "SLOT1_PREPARED": 0,
+        "SENTINEL_LINKED": 1,
+        "PASS1_LEDGER_LINKED": 2,
+        "PASS1_OUTPUT_READY": 2,
+        "SLOT_TRANSITION": 2,
+        "PASS2_LEDGER_LINKED": 3,
+        "PASS2_OUTPUT_READY": 3,
+        "CANONICAL_CSV_LINKED": 4,
+        "MANIFEST_LINKED_LAST": 5,
+    }
+    output_ready = checkpoint in {
+        "PASS1_OUTPUT_READY",
+        "PASS2_OUTPUT_READY",
+        "CANONICAL_CSV_LINKED",
+        "MANIFEST_LINKED_LAST",
+    }
+    results = _materialize_closed_phase_state(
+        tmp_path,
+        (builder.PREREGISTRATION_PATH, builder.CLAIM_PATH),
+    )
+    publication_order = (
+        builder.SENTINEL_PATH,
+        *builder.WORKER_LEDGER_PATHS,
+        builder.CSV_PATH,
+        builder.MANIFEST_PATH,
+    )
+    for relative in publication_order[: publication_counts[checkpoint]]:
+        target = tmp_path / relative
+        target.write_bytes(f"synthetic checkpoint: {relative}\n".encode())
+        target.chmod(0o444)
+    stage_one = (
+        results / ".gross9-structural-clock-g9cb5-worker-edge-one"
+    )
+    stage_two = (
+        results / ".gross9-structural-clock-g9cb5-worker-edge-two"
+    )
+    active_stage = (
+        stage_two
+        if checkpoint
+        in {
+            "SLOT_TRANSITION",
+            "PASS2_LEDGER_LINKED",
+            "PASS2_OUTPUT_READY",
+            "CANONICAL_CSV_LINKED",
+            "MANIFEST_LINKED_LAST",
+        }
+        else stage_one
+    )
+    active_stage.mkdir(mode=0o700)
+    if output_ready:
+        for name in (
+            builder._STAGED_CSV_NAME,
+            builder._STAGED_CORE_NAME,
+            builder._STAGED_RECEIPT_NAME,
+        ):
+            target = active_stage / name
+            target.write_bytes(f"synthetic stage output: {name}\n".encode())
+            target.chmod(0o400)
+    context = builder._PublicationContext(tmp_path)
+    stage_fd = _register_test_stage(context, active_stage)
+    try:
+        builder._validate_production_namespace(
+            context,
+            checkpoint,
+            stage_one,
+            stage_two,
+        )
+        original = os.fstat(stage_fd)
+        detached = tmp_path / f"detached-{active_stage.name}"
+        active_stage.rename(detached)
+        if not output_ready:
+            detached.rmdir()
+        active_stage.mkdir(mode=0o700)
+        if output_ready:
+            for name in (
+                builder._STAGED_CSV_NAME,
+                builder._STAGED_CORE_NAME,
+                builder._STAGED_RECEIPT_NAME,
+            ):
+                target = active_stage / name
+                target.write_bytes(
+                    f"replacement stage output: {name}\n".encode()
+                )
+                target.chmod(0o400)
+        replacement = os.stat(active_stage, follow_symlinks=False)
+        assert (replacement.st_dev, replacement.st_ino) != (
+            original.st_dev,
+            original.st_ino,
+        )
+        _rebaseline_restored_results_timestamp(context)
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="stage|identity|edge|component|retained",
+        ):
+            builder._validate_production_namespace(
+                context,
+                checkpoint,
+                stage_one,
+                stage_two,
+            )
+    finally:
+        context.close()
+
+
+def test_active_stage_retained_descriptor_rejects_restored_timestamp_drift(
+    tmp_path: Path,
+) -> None:
+    results = _materialize_closed_phase_state(
+        tmp_path,
+        (builder.PREREGISTRATION_PATH, builder.CLAIM_PATH),
+    )
+    stage_one = (
+        results / ".gross9-structural-clock-g9cb5-worker-timestamp-one"
+    )
+    stage_two = (
+        results / ".gross9-structural-clock-g9cb5-worker-timestamp-two"
+    )
+    stage_one.mkdir(mode=0o700)
+    context = builder._PublicationContext(tmp_path)
+    stage_fd = _register_test_stage(context, stage_one)
+    try:
+        builder._validate_production_namespace(
+            context,
+            "SLOT1_PREPARED",
+            stage_one,
+            stage_two,
+        )
+        before = os.fstat(stage_fd)
+        time.sleep(0.01)
+        marker_fd = os.open(
+            "ephemeral-marker",
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC,
+            0o600,
+            dir_fd=stage_fd,
+        )
+        os.close(marker_fd)
+        os.unlink("ephemeral-marker", dir_fd=stage_fd)
+        after = os.fstat(stage_fd)
+        assert (after.st_dev, after.st_ino) == (before.st_dev, before.st_ino)
+        assert after.st_mtime_ns != before.st_mtime_ns
+        assert builder._directory_entries(stage_fd) == ()
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="stage|timestamp|drift",
+        ):
+            builder._validate_production_namespace(
+                context,
+                "SLOT1_PREPARED",
+                stage_one,
+                stage_two,
+            )
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize(
+    ("checkpoint", "stage_name", "ledger_paths"),
+    [
+        (
+            "PASS1_LEDGER_LINKED",
+            ".gross9-structural-clock-g9cb5-worker-ledger-one",
+            (builder.SENTINEL_PATH, builder.WORKER_LEDGER_PATHS[0]),
+        ),
+        (
+            "PASS2_LEDGER_LINKED",
+            ".gross9-structural-clock-g9cb5-worker-ledger-two",
+            (
+                builder.SENTINEL_PATH,
+                builder.WORKER_LEDGER_PATHS[0],
+                builder.WORKER_LEDGER_PATHS[1],
+            ),
+        ),
+    ],
+)
+def test_ledger_linked_checkpoint_rejects_any_stage_output_ready_collapse(
+    tmp_path: Path,
+    checkpoint: str,
+    stage_name: str,
+    ledger_paths: tuple[Path, ...],
+) -> None:
+    results = _materialize_closed_phase_state(
+        tmp_path,
+        (builder.PREREGISTRATION_PATH, builder.CLAIM_PATH),
+    )
+    for relative in ledger_paths:
+        target = tmp_path / relative
+        target.write_bytes(f"synthetic linked state: {relative}\n".encode())
+        target.chmod(0o444)
+    active_stage = results / stage_name
+    active_stage.mkdir(mode=0o700)
+    for name in (
+        builder._STAGED_CSV_NAME,
+        builder._STAGED_CORE_NAME,
+        builder._STAGED_RECEIPT_NAME,
+    ):
+        target = active_stage / name
+        target.write_bytes(f"premature output: {name}\n".encode())
+        target.chmod(0o400)
+    stage_one = (
+        active_stage
+        if checkpoint == "PASS1_LEDGER_LINKED"
+        else results / ".gross9-structural-clock-g9cb5-worker-unused-one"
+    )
+    stage_two = (
+        active_stage
+        if checkpoint == "PASS2_LEDGER_LINKED"
+        else results / ".gross9-structural-clock-g9cb5-worker-unused-two"
+    )
+    context = builder._PublicationContext(tmp_path)
+    _register_test_stage(context, active_stage)
+    ledger_leaf = (
+        builder.WORKER_LEDGER_PATHS[0].name
+        if checkpoint == "PASS1_LEDGER_LINKED"
+        else builder.WORKER_LEDGER_PATHS[1].name
+    )
+    setattr(context, "worker_ledger_checkpoint_evidence", {ledger_leaf})
+    assert getattr(context, "worker_ledger_checkpoint_evidence") == {
+        ledger_leaf
+    }
+    try:
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="stage|inventory|output|checkpoint",
+        ):
+            builder._validate_production_namespace(
+                context,
+                checkpoint,
+                stage_one,
+                stage_two,
+            )
+    finally:
+        context.close()
+
+
+def test_stage_file_and_cleanup_transients_rebaseline_exact_inventories(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    results.mkdir()
+    context = builder._PublicationContext(tmp_path)
+    stage = (
+        results
+        / ".gross9-structural-clock-g9cb5-worker-stage-transients"
+    )
+    other = "results/.gross9-structural-clock-g9cb5-worker-stage-other"
+    builder._create_stage_directory(
+        stage,
+        results,
+        publication_context=context,
+    )
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+    repository_fd = os.open(tmp_path, flags)
+    results_fd = os.open("results", flags, dir_fd=repository_fd)
+    filesystem_root_fd = os.open("/", flags)
+    ledger_fd = os.open(
+        ".",
+        os.O_RDWR | os.O_TMPFILE | os.O_CLOEXEC,
+        0o600,
+        dir_fd=results_fd,
+    )
+    guard = builder._WorkerIsolationGuard(
+        root=tmp_path.resolve(),
+        own_stage=stage.relative_to(tmp_path).as_posix(),
+        other_stage=other,
+        ledger_paths=builder.WORKER_LEDGER_PATHS,
+        repository_fd=repository_fd,
+        results_fd=results_fd,
+        filesystem_root_fd=filesystem_root_fd,
+        ledger_fd=ledger_fd,
+    )
+    guard.authorize_directory_sync(stage)
+    stage_fd = guard.stage_fd
+    assert stage_fd is not None
+    prior_guard = builder._ACTIVE_WORKER_GUARD
+    inventories: list[tuple[str, ...]] = []
+    creation_tokens: list[tuple[int, ...]] = []
+    try:
+        builder._ACTIVE_WORKER_GUARD = guard
+        for name in (
+            builder._STAGED_CSV_NAME,
+            builder._STAGED_CORE_NAME,
+            builder._STAGED_RECEIPT_NAME,
+        ):
+            builder._write_exclusive_guarded_file(
+                stage / name,
+                f"synthetic {name}\n".encode(),
+                mode=0o400,
+                sync_directory=stage,
+            )
+            inventories.append(tuple(sorted(os.listdir(stage_fd))))
+            stage_token = guard.stage_token
+            assert stage_token is not None
+            creation_tokens.append(stage_token)
+        assert inventories == [
+            (builder._STAGED_CSV_NAME,),
+            tuple(
+                sorted(
+                    (builder._STAGED_CSV_NAME, builder._STAGED_CORE_NAME)
+                )
+            ),
+            tuple(
+                sorted(
+                    (
+                        builder._STAGED_CSV_NAME,
+                        builder._STAGED_CORE_NAME,
+                        builder._STAGED_RECEIPT_NAME,
+                    )
+                )
+            ),
+        ]
+        assert all(
+            stat.S_IMODE(
+                os.stat(
+                    name,
+                    dir_fd=stage_fd,
+                    follow_symlinks=False,
+                ).st_mode
+            )
+            == 0o400
+            for name in inventories[-1]
+        )
+        assert len(creation_tokens) == 3
+        assert all(token is not None for token in creation_tokens)
+        assert creation_tokens[-1] == builder._descriptor_token(
+            os.fstat(stage_fd)
+        )
+    finally:
+        builder._ACTIVE_WORKER_GUARD = prior_guard
+    cleanup_rebaselines: list[tuple[tuple[str, ...], tuple[int, ...]]] = []
+    original_require_stage = context.require_stage
+
+    def recorded_require_stage(
+        active_stage: Path,
+        expected_entries: tuple[str, ...],
+        *,
+        authorized_delta: bool = False,
+    ) -> None:
+        original_require_stage(
+            active_stage,
+            expected_entries,
+            authorized_delta=authorized_delta,
+        )
+        if authorized_delta:
+            token = context.stage_tokens[active_stage.name]
+            assert token == builder._descriptor_token(
+                os.fstat(context.stage_descriptors[active_stage.name])
+            )
+            cleanup_rebaselines.append((expected_entries, token))
+
+    monkeypatch.setattr(context, "require_stage", recorded_require_stage)
+    try:
+        builder._cleanup_successful_stage(
+            stage,
+            results,
+            publication_context=context,
+        )
+        assert stage.name not in os.listdir(context.results_fd)
+        assert [entries for entries, _token in cleanup_rebaselines] == [
+            tuple(
+                sorted(
+                    (
+                        builder._STAGED_CSV_NAME,
+                        builder._STAGED_CORE_NAME,
+                        builder._STAGED_RECEIPT_NAME,
+                    )
+                )
+            ),
+            tuple(
+                sorted((builder._STAGED_CORE_NAME, builder._STAGED_RECEIPT_NAME))
+            ),
+            (builder._STAGED_RECEIPT_NAME,),
+            (),
+        ]
+        assert len(cleanup_rebaselines) == 4
+        assert stage.name not in context.stage_descriptors
+        assert stage.name not in context.stage_tokens
+        assert stage.name not in context.stage_entries
+    finally:
+        context.close()
+        if guard.stage_fd is not None:
+            os.close(guard.stage_fd)
+        for descriptor in (
+            ledger_fd,
+            filesystem_root_fd,
+            results_fd,
+            repository_fd,
+        ):
+            os.close(descriptor)
+
+
+def test_stage_cleanup_transient_rejects_canonical_edge_substitution(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    results.mkdir()
+    context = builder._PublicationContext(tmp_path)
+    stage = (
+        results
+        / ".gross9-structural-clock-g9cb5-worker-cleanup-substitution"
+    )
+    builder._create_stage_directory(
+        stage,
+        results,
+        publication_context=context,
+    )
+    stage_fd = context.stage_descriptors[stage.name]
+    expected_entries = tuple(
+        sorted(
+            (
+                builder._STAGED_CSV_NAME,
+                builder._STAGED_CORE_NAME,
+                builder._STAGED_RECEIPT_NAME,
             )
         )
     )
-    assert not any(
-        isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Attribute)
-        and isinstance(node.func.value, ast.Name)
-        and node.func.value.id == "np"
-        and node.func.attr in {"array_equal", "count_nonzero"}
-        for node in ast.walk(tree)
+    for name in expected_entries:
+        descriptor = os.open(
+            name,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC,
+            0o600,
+            dir_fd=stage_fd,
+        )
+        try:
+            os.write(descriptor, f"synthetic cleanup: {name}\n".encode())
+            os.fchmod(descriptor, 0o400)
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    os.fsync(stage_fd)
+    context.require_stage(stage, expected_entries, authorized_delta=True)
+    original = os.fstat(stage_fd)
+    detached = tmp_path / "detached-cleanup-stage"
+    stage.rename(detached)
+    stage.mkdir(mode=0o700)
+    replacement = os.stat(stage, follow_symlinks=False)
+    assert (replacement.st_dev, replacement.st_ino) != (
+        original.st_dev,
+        original.st_ino,
     )
-    loops = [
-        node
-        for node in ast.walk(tree)
-        if isinstance(node, ast.For)
-        and isinstance(node.iter, ast.Call)
-        and isinstance(node.iter.func, ast.Name)
-        and node.iter.func.id == "enumerate"
-        and node.iter.args
-        and isinstance(node.iter.args[0], ast.Name)
-        and node.iter.args[0].id == "valid"
-    ]
-    assert len(loops) == 1
-    increments = [
-        node
-        for node in ast.walk(loops[0])
-        if isinstance(node, ast.AugAssign)
-        and "rank7_bundle_parity_rows_compared"
-        in ast.unparse(node.target)
-    ]
-    assert len(increments) == 1
-    assert isinstance(increments[0].op, ast.Add)
-    assert isinstance(increments[0].value, ast.Constant)
-    assert increments[0].value.value == 1
+    _rebaseline_restored_results_timestamp(context)
+    try:
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="stage|identity|edge|retained",
+        ):
+            builder._cleanup_successful_stage(
+                stage,
+                results,
+                publication_context=context,
+            )
+    finally:
+        context.close()
+
+
+def test_preregistration_only_snapshot_succeeds_without_opening_absent_claim(
+    tmp_path: Path,
+) -> None:
+    chain = _prepare_synthetic_a5_q5_p5_chain(tmp_path)
+    snapshot, pairs = builder._preauthenticate_parent_snapshot(
+        chain["root"],
+        chain["preregistration"],
+        content_mode=builder._PREREGISTRATION_ONLY,
+    )
+    try:
+        assert builder.PREREGISTRATION_PATH.as_posix() in snapshot
+        assert builder.CLAIM_PATH.as_posix() not in snapshot
+        assert set(pairs) == set(snapshot)
+        context = builder._PublicationContext(chain["root"])
+        try:
+            builder._validate_closed_entry_phase(
+                context,
+                builder.P5_CLAIM_PREFLIGHT,
+            )
+        finally:
+            context.close()
+    finally:
+        snapshot.close()
+
+
+def test_preregistration_plus_claim_snapshot_succeeds_at_c5(
+    tmp_path: Path,
+) -> None:
+    chain = _prepare_synthetic_a5_q5_p5_chain(tmp_path)
+    claim, _publication = _publish_synthetic_claim_from_p5(chain)
+    _commit_synthetic_claim(chain, claim)
+    snapshot, pairs = builder._preauthenticate_parent_snapshot(
+        chain["root"],
+        chain["preregistration"],
+        content_mode=builder._PREREGISTRATION_PLUS_CLAIM,
+    )
+    context = builder._PublicationContext(chain["root"])
+    try:
+        assert builder.PREREGISTRATION_PATH.as_posix() in snapshot
+        assert builder.CLAIM_PATH.as_posix() in snapshot
+        builder._validate_closed_entry_phase(
+            context,
+            builder.C5_PRODUCTION_PREFLIGHT,
+        )
+        builder._final_parent_snapshot_recheck(
+            chain["root"],
+            snapshot,
+            pairs,
+            context,
+            builder.C5_PRODUCTION_PREFLIGHT,
+            builder.prereg.EXPECTED_BRANCH,
+        )
+    finally:
+        snapshot.close()
+        context.close()
+
+
+def test_committed_verifier_rejects_synthetic_default_and_accepts_profile(
+    tmp_path: Path,
+) -> None:
+    chain = _prepare_synthetic_a5_q5_p5_chain(tmp_path)
+    security_profile = _synthetic_security_profile(chain)
+    binding = builder.create_claim_only(
+        chain["root"],
+        expected_security_profile=security_profile,
+    )
+    claim = _read_synthetic_claim(chain)
+    assert binding == _synthetic_claim_binding(chain, claim)
+    c5 = _commit_synthetic_claim(chain, claim)
+    security_profile["claim_commit"] = c5
+    production = builder.produce_one_shot(
+        chain["root"],
+        synthetic_input=_write_synthetic_chain_input(chain),
+        expected_security_profile=security_profile,
+    )
+    d5 = _commit_synthetic_d5(chain)
+    security_profile["publication_commit"] = d5
+    with pytest.raises(
+        builder.TerminalG9CB5Failure,
+        match="official A5/Q5/P5 security topology differs",
+    ):
+        builder.validate_committed_publication(chain["root"])
+    verified = builder.validate_committed_publication(
+        chain["root"],
+        expected_security_profile=security_profile,
+    )
+    for commit_key in ("claim_commit", "publication_commit"):
+        mutated_profile = copy.deepcopy(security_profile)
+        mutated_profile[commit_key] = "f" * 40
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match=f"committed topology differs.*{commit_key}",
+        ):
+            builder.validate_committed_publication(
+                chain["root"],
+                expected_security_profile=mutated_profile,
+            )
+    assert production["identity"] == builder.IDENTITY
+    assert verified["identity"] == builder.IDENTITY
+    assert verified["protocol_implementation_commit"] == chain["q5"]
+    assert verified["preregistration_seal_commit"] == chain["p5"]
+    assert verified["claim_commit"] == c5
+    assert verified["publication_commit"] == d5
+    assert security_profile["protocol_implementation_commit"] == chain["q5"]
+    assert security_profile["preregistration_seal_commit"] == chain["p5"]
+    assert security_profile["claim_commit"] == c5
+    assert security_profile["publication_commit"] == d5
+    assert verified["csv_gzip_sha256"] == production["csv_gzip_sha256"]
+    preregistration_at_d5 = subprocess.run(
+        [
+            "git",
+            "show",
+            f"HEAD:{builder.PREREGISTRATION_PATH.as_posix()}",
+        ],
+        cwd=chain["root"],
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ).stdout
+    assert preregistration_at_d5 == chain["preregistration_raw"]
+
+
+def test_temporary_git_lifecycle_uses_canonical_security_path_with_explicit_expectations(
+    tmp_path: Path,
+) -> None:
+    chain = _prepare_synthetic_a5_q5_p5_chain(tmp_path)
+    root = chain["root"]
+    expected_security_profile = _synthetic_security_profile(chain)
+    security_calls: list[str] = []
+    watched_codes = {
+        builder.validate_preregistration.__code__: "validate_preregistration",
+        builder._validated_expected_security_profile.__code__: (
+            "_validated_expected_security_profile"
+        ),
+        builder._preauthenticate_parent_snapshot.__code__: (
+            "_preauthenticate_parent_snapshot"
+        ),
+        builder._validate_committed_publication_topology.__code__: (
+            "_validate_committed_publication_topology"
+        ),
+    }
+    for forbidden_name in (
+        "_is_synthetic_security_preregistration",
+        "_validate_synthetic_preregistration_snapshot",
+    ):
+        forbidden = getattr(builder, forbidden_name, None)
+        if forbidden is not None:
+            watched_codes[forbidden.__code__] = forbidden_name
+
+    def record_security_call(
+        frame: Any,
+        event: str,
+        _argument: Any,
+    ) -> None:
+        if event == "call" and frame.f_code in watched_codes:
+            security_calls.append(watched_codes[frame.f_code])
+
+    prior_profile = sys.getprofile()
+    sys.setprofile(record_security_call)
+    try:
+        binding = builder.create_claim_only(
+            root,
+            expected_security_profile=expected_security_profile,
+        )
+        claim = _read_synthetic_claim(chain)
+        assert binding == _synthetic_claim_binding(chain, claim)
+        c5 = _commit_synthetic_claim(chain, claim)
+        expected_security_profile["claim_commit"] = c5
+        production = builder.produce_one_shot(
+            root,
+            synthetic_input=_write_synthetic_chain_input(chain),
+            expected_security_profile=expected_security_profile,
+        )
+        d5 = _commit_synthetic_d5(chain)
+        expected_security_profile["publication_commit"] = d5
+        verified = builder.validate_committed_publication(
+            root,
+            expected_security_profile=expected_security_profile,
+        )
+    finally:
+        sys.setprofile(prior_profile)
+
+    assert production["identity"] == builder.IDENTITY
+    assert verified["protocol_implementation_commit"] == chain["q5"]
+    assert verified["preregistration_seal_commit"] == chain["p5"]
+    assert verified["claim_commit"] == c5
+    assert verified["publication_commit"] == d5
+    assert "_is_synthetic_security_preregistration" not in security_calls
+    assert "_validate_synthetic_preregistration_snapshot" not in security_calls
+    assert security_calls.count("_validated_expected_security_profile") >= 3
+    assert security_calls.count("validate_preregistration") >= 3
+    assert security_calls.count("_preauthenticate_parent_snapshot") >= 3
+    assert security_calls.count("_validate_committed_publication_topology") == 1
+
+
+def test_results_inventory_drift_cannot_be_rebaselined_as_a_closed_phase(
+    tmp_path: Path,
+) -> None:
+    chain = _prepare_synthetic_a5_q5_p5_chain(tmp_path)
+    context = builder._PublicationContext(chain["root"])
+    try:
+        builder._validate_closed_entry_phase(
+            context,
+            builder.P5_CLAIM_PREFLIGHT,
+        )
+        unexpected = (
+            chain["root"] / "results/.g9cb5-otmpfile-probe-stale"
+        )
+        unexpected.write_bytes(b"unexpected\n")
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="inventory|entry|path-state",
+        ):
+            builder._validate_closed_entry_phase(
+                context,
+                builder.P5_CLAIM_PREFLIGHT,
+            )
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize(
+    ("phase", "present"),
+    [
+        (builder.Q5_PREREGISTRATION_PUBLICATION, ()),
+        (builder.P5_CLAIM_PREFLIGHT, (builder.PREREGISTRATION_PATH,)),
+        (
+            builder.C5_PRODUCTION_PREFLIGHT,
+            (builder.PREREGISTRATION_PATH, builder.CLAIM_PATH),
+        ),
+        (
+            builder.D5_COMMITTED_VERIFICATION,
+            (
+                builder.PREREGISTRATION_PATH,
+                builder.CLAIM_PATH,
+                builder.SENTINEL_PATH,
+                *builder.WORKER_LEDGER_PATHS,
+                builder.CSV_PATH,
+                builder.MANIFEST_PATH,
+            ),
+        ),
+    ],
+)
+def test_each_closed_entry_phase_accepts_only_its_exact_active_topology(
+    tmp_path: Path,
+    phase: str,
+    present: tuple[Path, ...],
+) -> None:
+    results = tmp_path / "results"
+    results.mkdir()
+    for row in builder.prereg.expected_failed_predecessor_attempts():
+        slot_one = tmp_path / row["residue"]["slot1_stage"]["path"]
+        slot_one.mkdir(mode=0o700)
+    for relative in present:
+        target = tmp_path / relative
+        target.write_bytes(b"synthetic active metadata\n")
+        target.chmod(0o444)
+    context = builder._PublicationContext(tmp_path)
+    try:
+        builder._validate_closed_entry_phase(context, phase)
+        if phase == builder.D5_COMMITTED_VERIFICATION:
+            target = tmp_path / builder.MANIFEST_PATH
+            target.chmod(0o644)
+        else:
+            candidates = (
+                builder.PREREGISTRATION_PATH,
+                builder.CLAIM_PATH,
+                builder.SENTINEL_PATH,
+            )
+            target = tmp_path / next(
+                candidate for candidate in candidates if candidate not in present
+            )
+            target.write_bytes(b"forbidden phase state\n")
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="path-state|mode/type|inventory",
+        ):
+            builder._validate_closed_entry_phase(context, phase)
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize(
+    ("identity", "mutation"),
+    [
+        ("G9CB-2", "permanent-output"),
+        ("G9CB-3", "permanent-output"),
+        ("G9CB-3", "bytecode"),
+        ("G9CB-4", "permanent-output"),
+        ("G9CB-4", "publication-stage"),
+        ("G9CB-4", "worker-stage"),
+    ],
+)
+def test_complete_predecessor_absence_and_residue_inventory_is_behavioral(
+    tmp_path: Path,
+    identity: str,
+    mutation: str,
+) -> None:
+    results = tmp_path / "results"
+    results.mkdir()
+    attempts = builder.prereg.expected_failed_predecessor_attempts()
+    closures = builder.prereg.expected_failed_predecessor_closures()
+    for row in attempts:
+        slot_one = tmp_path / row["residue"]["slot1_stage"]["path"]
+        slot_one.mkdir(mode=0o700)
+    if identity in {"G9CB-2", "G9CB-3"}:
+        row = next(row for row in attempts if row["identity"] == identity)
+    else:
+        row = closures[0]
+    if mutation == "permanent-output":
+        target = tmp_path / row["permanently_absent_outputs"][0]
+    elif mutation == "bytecode":
+        target = tmp_path / row["residue"]["bytecode_cache"]["path"]
+    elif mutation == "publication-stage":
+        target = results / ".gross9_structural_clock_bundle_g9cb4_x.stage-y"
+    else:
+        target = results / ".gross9-structural-clock-g9cb4-worker-x"
+    if mutation in {"publication-stage", "worker-stage", "bytecode"}:
+        target.mkdir(parents=True)
+    else:
+        target.write_bytes(b"synthetic forbidden predecessor residue\n")
+    results_fd = os.open(
+        results,
+        os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+    )
+    try:
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match=identity,
+        ):
+            builder._validate_failed_predecessor_permanent_state(
+                results_fd,
+                attempts,
+                closures,
+            )
+    finally:
+        os.close(results_fd)
+
+
+def test_unexpected_initial_results_entry_is_not_a_valid_rebaseline(
+    tmp_path: Path,
+) -> None:
+    results = tmp_path / "results"
+    results.mkdir()
+    for row in builder.prereg.expected_failed_predecessor_attempts():
+        (tmp_path / row["residue"]["slot1_stage"]["path"]).mkdir(mode=0o700)
+    (results / ".g9cb5-unauthorized-helper-residue").write_bytes(
+        b"unexpected\n"
+    )
+    context = builder._PublicationContext(tmp_path)
+    try:
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="inventory|entry|path-state",
+        ):
+            builder._validate_closed_entry_phase(
+                context,
+                builder.Q5_PREREGISTRATION_PUBLICATION,
+            )
+    finally:
+        context.close()
+
+
+@pytest.mark.parametrize(
+    "phase",
+    [
+        builder.Q5_PREREGISTRATION_PUBLICATION,
+        builder.P5_CLAIM_PREFLIGHT,
+        builder.C5_PRODUCTION_PREFLIGHT,
+        builder.D5_COMMITTED_VERIFICATION,
+    ],
+)
+@pytest.mark.parametrize(
+    "unauthorized_leaf",
+    [
+        ".g9cb5-otmpfile-probe-stale",
+        f".{builder.SENTINEL_PATH.name}.stage-stale",
+        f".{builder.WORKER_LEDGER_PATHS[0].name}.stage-stale",
+        f".{builder.CSV_PATH.name}.stage-stale",
+        f".{builder.MANIFEST_PATH.name}.stage-stale",
+        ".gross9-structural-clock-g9cb5-helper-stale",
+        "gross9_structural_clock_bundle_g9cb5_named-staging-residue",
+    ],
+)
+def test_every_closed_phase_rejects_unauthorized_g9cb5_helper_residue(
+    tmp_path: Path,
+    phase: str,
+    unauthorized_leaf: str,
+) -> None:
+    phase_presence = {
+        builder.Q5_PREREGISTRATION_PUBLICATION: (),
+        builder.P5_CLAIM_PREFLIGHT: (builder.PREREGISTRATION_PATH,),
+        builder.C5_PRODUCTION_PREFLIGHT: (
+            builder.PREREGISTRATION_PATH,
+            builder.CLAIM_PATH,
+        ),
+        builder.D5_COMMITTED_VERIFICATION: (
+            builder.PREREGISTRATION_PATH,
+            builder.CLAIM_PATH,
+            builder.SENTINEL_PATH,
+            *builder.WORKER_LEDGER_PATHS,
+            builder.CSV_PATH,
+            builder.MANIFEST_PATH,
+        ),
+    }
+    results = _materialize_closed_phase_state(
+        tmp_path,
+        phase_presence[phase],
+    )
+    (results / unauthorized_leaf).write_bytes(b"unauthorized residue\n")
+    context = builder._PublicationContext(tmp_path)
+    try:
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="inventory|entry|path-state|residue|staging|probe",
+        ):
+            builder._validate_closed_entry_phase(context, phase)
+    finally:
+        context.close()
+
+
+def test_actual_synthetic_claim_creation_uses_prepare_recheck_link_order(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    chain = _prepare_synthetic_a5_q5_p5_chain(tmp_path)
+    events: list[str] = []
+    verify_calls = 0
+    in_claim_publication = False
+    original_verify = builder._SecureBoundSnapshot.verify_final
+    original_atomic = builder._atomic_link_write_once
+    original_prepare = builder._open_unnamed_completed
+    original_link = builder._link_unnamed_procfd
+
+    def counted_verify(snapshot: builder._SecureBoundSnapshot) -> None:
+        nonlocal verify_calls
+        verify_calls += 1
+        events.append("recheck")
+        original_verify(snapshot)
+
+    def recorded_atomic(path: Path, raw: bytes, **kwargs: Any) -> dict[str, Any]:
+        nonlocal in_claim_publication
+        assert path == chain["root"] / builder.CLAIM_PATH
+        in_claim_publication = True
+        try:
+            return original_atomic(path, raw, **kwargs)
+        finally:
+            in_claim_publication = False
+
+    def recorded_prepare(
+        results_fd: int,
+        raw: bytes,
+        *,
+        mode: int,
+    ) -> tuple[int, os.stat_result]:
+        prepared = original_prepare(results_fd, raw, mode=mode)
+        if in_claim_publication:
+            events.append("prepare")
+        return prepared
+
+    def recorded_link(
+        unnamed_fd: int,
+        results_fd: int,
+        leaf: str,
+    ) -> None:
+        if leaf == builder.CLAIM_PATH.name:
+            events.append("linked")
+        original_link(unnamed_fd, results_fd, leaf)
+
+    monkeypatch.setattr(
+        builder._SecureBoundSnapshot,
+        "verify_final",
+        counted_verify,
+    )
+    monkeypatch.setattr(builder, "_atomic_link_write_once", recorded_atomic)
+    monkeypatch.setattr(builder, "_open_unnamed_completed", recorded_prepare)
+    monkeypatch.setattr(builder, "_link_unnamed_procfd", recorded_link)
+    binding = builder.create_claim_only(
+        chain["root"],
+        expected_security_profile=_synthetic_security_profile(chain),
+    )
+    target = chain["root"] / builder.CLAIM_PATH
+    payload = _read_synthetic_claim(chain)
+    assert binding == _synthetic_claim_binding(chain, payload)
+    assert events == ["prepare", "recheck", "linked"]
+    assert verify_calls == 1
+    assert stat.S_IMODE(target.stat().st_mode) == 0o444
+    assert payload["preregistration"] == chain["preregistration_binding"]
+    assert not any(
+        (chain["root"] / path).exists()
+        for path in (
+            builder.SENTINEL_PATH,
+            *builder.WORKER_LEDGER_PATHS,
+            builder.CSV_PATH,
+            builder.MANIFEST_PATH,
+        )
+    )
+
+
+def test_parent_component_substitution_during_traversal_fails_closed(
+    tmp_path: Path,
+) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir()
+    (parent / "leaf").write_bytes(b"synthetic\n")
+    snapshot = builder._SecureBoundSnapshot(tmp_path)
+    try:
+        snapshot._parent_fd("parent/leaf", True)
+        parent.rename(tmp_path / "moved")
+        parent.mkdir()
+        (parent / "leaf").write_bytes(b"replacement\n")
+        snapshot.open_initial("parent/leaf", True)
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="directory graph|parent",
+        ):
+            snapshot.verify_final()
+    finally:
+        snapshot.close()
+
+
+def test_bound_mode_is_authenticated_from_open_descriptor(
+    tmp_path: Path,
+) -> None:
+    leaf = tmp_path / "leaf"
+    leaf.write_bytes(b"synthetic\n")
+    leaf.chmod(0o444)
+    snapshot = builder._SecureBoundSnapshot(tmp_path)
+    try:
+        snapshot.open_initial("leaf", True)
+        leaf.chmod(0o644)
+        with pytest.raises(
+            builder.TerminalG9CB5Failure,
+            match="final|snapshot",
+        ):
+            snapshot.verify_final()
+    finally:
+        snapshot.close()
+
+
+def test_at_empty_path_enoent_preserves_required_procfd_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "results").mkdir()
+    calls: list[tuple[bytes | None, int]] = []
+    original_linkat = builder._LIBC.linkat
+
+    def linkat_with_empty_path_enoent(
+        olddirfd: Any,
+        oldpath: Any,
+        newdirfd: Any,
+        newpath: Any,
+        flags: Any,
+    ) -> int:
+        source = getattr(oldpath, "value", oldpath)
+        flag_value = int(getattr(flags, "value", flags))
+        calls.append((source, flag_value))
+        if source in (b"", None):
+            builder.ctypes.set_errno(errno.ENOENT)
+            return -1
+        return int(
+            original_linkat(
+                olddirfd,
+                oldpath,
+                newdirfd,
+                newpath,
+                flags,
+            )
+        )
+
+    monkeypatch.setattr(builder._LIBC, "linkat", linkat_with_empty_path_enoent)
+    context = builder._PublicationContext(tmp_path)
+    try:
+        context.probe()
+        empty_attempt = next(
+            index
+            for index, (source, _flags) in enumerate(calls)
+            if source in (b"", None)
+        )
+        procfd_fallback = next(
+            index
+            for index, (source, _flags) in enumerate(calls)
+            if index > empty_attempt
+            and isinstance(source, bytes)
+            and source.startswith(b"/proc/self/fd/")
+        )
+        assert empty_attempt < procfd_fallback
+        assert context.probed is True
+        assert tuple((tmp_path / "results").iterdir()) == ()
+    finally:
+        context.close()
+
+
+def test_rank7_parity_counter_increments_at_each_comparison() -> None:
+    dates = pd.date_range(builder.DOMAIN_START, periods=4, freq="5min")
+    context = {
+        "dates": dates,
+        "matrix": np.arange(4, dtype=float).reshape(4, 1),
+        "anchors": np.asarray([True, False, True, False]),
+        "funding_leg": np.asarray([True, False, False, False]),
+        "premium_leg": np.asarray([False, False, True, False]),
+    }
+    bundle = SimpleNamespace(
+        valid_from=builder.DOMAIN_START,
+        valid_until=builder.DOMAIN_END,
+        models=(object(),) * 5,
+    )
+
+    class Runtime:
+        @staticmethod
+        def score_rank7_row(
+            _bundle: object,
+            row: np.ndarray,
+            **_kwargs: Any,
+        ) -> SimpleNamespace:
+            signal = int(row[0])
+            return SimpleNamespace(
+                active=signal == 0,
+                source="funding" if signal == 0 else "premium",
+            )
+
+    historical = np.asarray([True, False, False, False])
+    counters = builder._empty_counters()
+    observed = builder._rank7_bundle_activation_with_parity(
+        Runtime,
+        bundle,
+        context,
+        historical,
+        counters,
+        np,
+        pd,
+    )
+    assert observed.tolist() == historical.tolist()
+    assert counters["rows_used"][
+        "rank7_bundle_activation_rows_scored"
+    ] == 2
+    assert counters["rows_used"][
+        "rank7_bundle_parity_rows_compared"
+    ] == 4
+
+    drifted = historical.copy()
+    drifted[2] = True
+    failing_counters = builder._empty_counters()
+    with pytest.raises(
+        builder.TerminalG9CB5Failure,
+        match="activation differ",
+    ):
+        builder._rank7_bundle_activation_with_parity(
+            Runtime,
+            bundle,
+            context,
+            drifted,
+            failing_counters,
+            np,
+            pd,
+        )
+    assert failing_counters["rows_used"][
+        "rank7_bundle_parity_rows_compared"
+    ] == 3

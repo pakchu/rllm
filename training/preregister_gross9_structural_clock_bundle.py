@@ -1,4 +1,4 @@
-"""Create the metadata-only G9CB-4 structural-clock preregistration.
+"""Create the metadata-only G9CB-5 structural-clock preregistration.
 
 This module deliberately has a stdlib-only import surface.  It authenticates
 opaque bytes, Git metadata, permitted JSON metadata, static Python imports,
@@ -20,13 +20,12 @@ import re
 import stat
 import subprocess
 import sys
-import tempfile
 from typing import Any, Iterable, Mapping, Sequence
 import zlib
 
 
 PROTOCOL_VERSION = (
-    "gross9_structural_clock_bundle_g9cb4_preregistration_v1"
+    "gross9_structural_clock_bundle_g9cb5_preregistration_v1"
 )
 HISTORICAL_PROTOCOL_VERSION = (
     "gross9_structural_clock_bundle_preregistration_v1"
@@ -34,7 +33,7 @@ HISTORICAL_PROTOCOL_VERSION = (
 FAILED_V2_PROTOCOL_VERSION = (
     "gross9_structural_clock_bundle_preregistration_v2"
 )
-IDENTITY = "G9CB-4"
+IDENTITY = "G9CB-5"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 RESULTS_ROOT = REPOSITORY_ROOT / "results"
 PREREGISTRATION_SOURCE = Path(
@@ -49,6 +48,12 @@ ARTIFACT_TEST = Path(
 BUILDER_SOURCE = Path("training/build_gross9_structural_clock_bundle.py")
 BUILDER_TEST = Path("tests/test_build_gross9_structural_clock_bundle.py")
 AUTHORITY_DECISION_PATH = Path(
+    "docs/"
+    "gross9-structural-clock-bundle-g9cb5-successor-authority-decision-"
+    "2026-07-31.md"
+)
+ACTIVE_AUTHORITY_DECISION_PATH = AUTHORITY_DECISION_PATH
+G9CB4_AUTHORITY_DECISION_PATH = Path(
     "docs/"
     "gross9-structural-clock-bundle-g9cb4-successor-authority-decision-"
     "2026-07-31.md"
@@ -90,41 +95,54 @@ FAILED_V2_PREREGISTRATION_PATH = Path(
 )
 PREREGISTRATION_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb4_preregistration_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb5_preregistration_2026-07-31.json"
 )
 ACCESS_CLAIM_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb4_access_claim_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb5_access_claim_2026-07-31.json"
 )
 ATTEMPT_SENTINEL_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb4_attempt_consumed_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb5_attempt_consumed_2026-07-31.json"
 )
 BUNDLE_PATH = Path(
-    "results/gross9_structural_clock_bundle_g9cb4_2026-07-31.csv.gz"
+    "results/gross9_structural_clock_bundle_g9cb5_2026-07-31.csv.gz"
 )
 FINAL_MANIFEST_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb4_manifest_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb5_manifest_2026-07-31.json"
 )
 WORKER_CAPABILITY_CONSUMPTION_LEDGER_PATHS = (
     Path(
         "results/"
-        "gross9_structural_clock_bundle_g9cb4_worker_capability_consumed_pass1_"
+        "gross9_structural_clock_bundle_g9cb5_worker_capability_consumed_pass1_"
         "2026-07-31.json"
     ),
     Path(
         "results/"
-        "gross9_structural_clock_bundle_g9cb4_worker_capability_consumed_pass2_"
+        "gross9_structural_clock_bundle_g9cb5_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
 )
 
-AUTHORITY_DECISION_COMMIT = "1156e2fd80957d5ef0a6027a09e08ff59349a80d"
+AUTHORITY_DECISION_COMMIT = "1ca718d9dab1077b041e753f3b011fbf5b23f047"
 AUTHORITY_DECISION_SHA256 = (
+    "d0b2e14417b4cd46213708597220067c2195d22308da9eb95921bcb59da27385"
+)
+AUTHORITY_DECISION_GIT_BLOB = "e0bb4b1d26a67c4baf681d8a48e988307c92f9f5"
+G9CB4_AUTHORITY_DECISION_COMMIT = "1156e2fd80957d5ef0a6027a09e08ff59349a80d"
+G9CB4_AUTHORITY_DECISION_SHA256 = (
     "9199955f62abbb99c8665a5eeee6a32cf9605ba637e2b034d929b1ac91ace626"
 )
-AUTHORITY_DECISION_GIT_BLOB = "2610246e4d9fb89d775fe7d8d1998282d23e5961"
+G9CB4_AUTHORITY_DECISION_GIT_BLOB = (
+    "2610246e4d9fb89d775fe7d8d1998282d23e5961"
+)
+G9CB4_PROTOCOL_IMPLEMENTATION_COMMIT = (
+    "750c837a10c4d4ac39fbc8f6097465c82b6dc3ec"
+)
+G9CB4_PREREGISTRATION_SEAL_COMMIT = (
+    "01de73258902d754905319b906345c865a016558"
+)
 G9CB3_AUTHORITY_DECISION_COMMIT = "a97576c050cf7cdf08738ddb755e63cc92484428"
 G9CB3_AUTHORITY_DECISION_SHA256 = (
     "1df555c5149bfe269d2cc2c87375d54032809f13ac36f4e92b5ba00dd6e87cc7"
@@ -219,9 +237,14 @@ FAILED_V2_PREREGISTRATION_MANIFEST_HASH = (
 DIRECT_AUTHORITY_VERIFICATION_COMMIT = "91b41254319686f8b64bba797708f8e637aeddd3"
 EXPECTED_BRANCH = "codex/gross9-structural-clock-bundle-20260731"
 UNSEALED_PROTOCOL_IMPLEMENTATION_COMMIT = "0" * 40
+_ABSOLUTE_BINDING_ALLOWLIST = frozenset(
+    {"/tmp/btcusdt_open_interest_5m_2020_2026.csv"}
+)
+Q5_PREREGISTRATION_PUBLICATION = "Q5_PREREGISTRATION_PUBLICATION"
 
 PROTOCOL_PATHS = (
-    AUTHORITY_DECISION_PATH,
+    ACTIVE_AUTHORITY_DECISION_PATH,
+    G9CB4_AUTHORITY_DECISION_PATH,
     G9CB3_AUTHORITY_DECISION_PATH,
     G9CB2_AUTHORITY_DECISION_PATH,
     PREDECESSOR_AUTHORITY_DECISION_PATH,
@@ -296,9 +319,14 @@ G9CB3_CLAIM_DIFF = (
     "A\tresults/"
     "gross9_structural_clock_bundle_g9cb3_access_claim_2026-07-31.json",
 )
-SUCCESSOR_AUTHORITY_DIFF = (
+G9CB4_SUCCESSOR_AUTHORITY_DIFF = (
     "A\tdocs/"
     "gross9-structural-clock-bundle-g9cb4-successor-authority-decision-"
+    "2026-07-31.md",
+)
+SUCCESSOR_AUTHORITY_DIFF = (
+    "A\tdocs/"
+    "gross9-structural-clock-bundle-g9cb5-successor-authority-decision-"
     "2026-07-31.md",
 )
 TERMINAL_EVIDENCE_DIFF = (
@@ -309,9 +337,13 @@ TERMINAL_EVIDENCE_DIFF = (
     "2026-07-31.json",
 )
 SUCCESSOR_PROTOCOL_DIFF = G9CB2_SUCCESSOR_PROTOCOL_DIFF
-ACTIVE_PREREGISTRATION_DIFF = (
+G9CB4_ACTIVE_PREREGISTRATION_DIFF = (
     "A\tresults/"
     "gross9_structural_clock_bundle_g9cb4_preregistration_2026-07-31.json",
+)
+ACTIVE_PREREGISTRATION_DIFF = (
+    "A\tresults/"
+    "gross9_structural_clock_bundle_g9cb5_preregistration_2026-07-31.json",
 )
 
 DIRECT_AUTHORITY_BINDINGS = (
@@ -553,7 +585,7 @@ WORKER_PROCESS_ENVIRONMENT = {
     "PYTHONDONTWRITEBYTECODE": "1",
     "PYTHONPATH": REPOSITORY_ROOT.as_posix(),
     "PYTHONPYCACHEPREFIX": (
-        REPOSITORY_ROOT / "results/.g9cb4-bytecode-cache-disabled"
+        REPOSITORY_ROOT / "results/.g9cb5-bytecode-cache-disabled"
     ).as_posix(),
     "PYTHONUNBUFFERED": "1",
     "PYTHONUTF8": "1",
@@ -804,7 +836,10 @@ def validate_zero_access_schema(payload: Mapping[str, Any]) -> None:
                 if not isinstance(raw_key, str):
                     raise ValueError("preregistration mapping key is not text")
                 location = (*path, raw_key)
-                if location == ("bindings", "failed_predecessor_attempts"):
+                if location in {
+                    ("bindings", "failed_predecessor_attempts"),
+                    ("bindings", "failed_predecessor_closures"),
+                }:
                     continue
                 if (
                     raw_key in guarded_names
@@ -849,9 +884,51 @@ def canonical_hash(
     return hashlib.sha256(canonical_json_bytes(body)).hexdigest()
 
 
+_ACTIVE_PREREGISTRATION_CACHE: Mapping[
+    str, tuple[bytes, os.stat_result]
+] | None = None
+_ACTIVE_PREREGISTRATION_GIT_PAIRS: Mapping[
+    str, tuple[str, str] | None
+] | None = None
+_ACTIVE_PREREGISTRATION_SNAPSHOT: _PreregistrationSnapshot | None = None
+_ACTIVE_PREREGISTRATION_ROOT: Path | None = None
+
+
+def _cache_key(
+    path: str | os.PathLike[str], repository_root: Path
+) -> str:
+    candidate = Path(path)
+    if candidate.is_absolute():
+        try:
+            return candidate.relative_to(repository_root).as_posix()
+        except ValueError:
+            return candidate.as_posix()
+    return candidate.as_posix()
+
+
+def _cached_file(
+    path: str | os.PathLike[str], repository_root: Path
+) -> tuple[bytes, os.stat_result] | None:
+    if _ACTIVE_PREREGISTRATION_CACHE is None:
+        return None
+    root = (
+        repository_root
+        if _ACTIVE_PREREGISTRATION_ROOT is None
+        else _ACTIVE_PREREGISTRATION_ROOT
+    )
+    key = _cache_key(path, root)
+    cached = _ACTIVE_PREREGISTRATION_CACHE.get(key)
+    if cached is None:
+        raise ValueError(f"{key}: path was not included in the bootstrap snapshot")
+    return cached
+
+
 def sha256_file(
     path: str | os.PathLike[str], repository_root: Path = REPOSITORY_ROOT
 ) -> str:
+    cached = _cached_file(path, repository_root)
+    if cached is not None:
+        return hashlib.sha256(cached[0]).hexdigest()
     digest = hashlib.sha256()
     with repository_path(path, repository_root).open("rb") as handle:
         for block in iter(lambda: handle.read(1 << 20), b""):
@@ -859,11 +936,17 @@ def sha256_file(
     return digest.hexdigest()
 
 
-def _path_type(path: Path) -> str:
-    try:
-        mode = path.lstat().st_mode
-    except FileNotFoundError:
-        return "missing"
+def _path_type(
+    path: Path, repository_root: Path = REPOSITORY_ROOT
+) -> str:
+    cached = _cached_file(path, repository_root)
+    if cached is not None:
+        mode = cached[1].st_mode
+    else:
+        try:
+            mode = path.lstat().st_mode
+        except FileNotFoundError:
+            return "missing"
     if stat.S_ISREG(mode):
         return "regular_file"
     if stat.S_ISLNK(mode):
@@ -890,13 +973,14 @@ def validate_file(
     repository_root: Path = REPOSITORY_ROOT,
 ) -> dict[str, Any]:
     absolute = repository_path(path, repository_root)
-    actual_type = _path_type(absolute)
+    actual_type = _path_type(absolute, repository_root)
     if actual_type != expected_type:
         raise ValueError(f"{path}: expected {expected_type}, found {actual_type}")
-    size = absolute.stat().st_size
+    cached = _cached_file(absolute, repository_root)
+    size = cached[1].st_size if cached is not None else absolute.stat().st_size
     if expected_size is not None and size != expected_size:
         raise ValueError(f"{path}: expected {expected_size} bytes, found {size}")
-    digest = sha256_file(absolute)
+    digest = sha256_file(absolute, repository_root)
     if digest != expected_sha256:
         raise ValueError(f"{path}: SHA-256 mismatch")
     return {
@@ -940,7 +1024,14 @@ def validate_git_blob(
     expected_mode: str = "100644",
     repository_root: Path = REPOSITORY_ROOT,
 ) -> dict[str, str]:
-    blob, mode = git_blob(path, repository_root)
+    path_text = _cache_key(path, repository_root)
+    if _ACTIVE_PREREGISTRATION_GIT_PAIRS is not None:
+        pair = _ACTIVE_PREREGISTRATION_GIT_PAIRS.get(path_text)
+        if pair is None:
+            raise ValueError(f"{path_text}: tracked Git pair is absent")
+        blob, mode = pair
+    else:
+        blob, mode = git_blob(path, repository_root)
     if blob != expected_blob:
         raise ValueError(f"{path}: Git blob mismatch")
     if mode != expected_mode:
@@ -956,7 +1047,7 @@ def _tracked_binding(
     expected_blob: str | None = None,
 ) -> dict[str, Any]:
     absolute = repository_path(path, repository_root)
-    if _path_type(absolute) != "regular_file":
+    if _path_type(absolute, repository_root) != "regular_file":
         raise ValueError(f"{path}: tracked binding must be a regular file")
     digest = sha256_file(absolute)
     if expected_sha256 is not None and digest != expected_sha256:
@@ -1196,27 +1287,50 @@ def validate_protocol_commit_topology(
         ),
         (
             G9CB3_CLAIM_COMMIT,
-            AUTHORITY_DECISION_COMMIT,
-            SUCCESSOR_AUTHORITY_DIFF,
+            G9CB4_AUTHORITY_DECISION_COMMIT,
+            G9CB4_SUCCESSOR_AUTHORITY_DIFF,
             "G9CB-4 successor authority",
         ),
         (
-            AUTHORITY_DECISION_COMMIT,
+            G9CB4_AUTHORITY_DECISION_COMMIT,
             G9CB3_TERMINAL_EVIDENCE_COMMIT,
             TERMINAL_EVIDENCE_DIFF,
             "G9CB-3 terminal evidence",
         ),
+        (
+            G9CB3_TERMINAL_EVIDENCE_COMMIT,
+            G9CB4_PROTOCOL_IMPLEMENTATION_COMMIT,
+            SUCCESSOR_PROTOCOL_DIFF,
+            "G9CB-4 protocol implementation",
+        ),
+        (
+            G9CB4_PROTOCOL_IMPLEMENTATION_COMMIT,
+            G9CB4_PREREGISTRATION_SEAL_COMMIT,
+            G9CB4_ACTIVE_PREREGISTRATION_DIFF,
+            "G9CB-4 preregistration",
+        ),
+        (
+            G9CB4_PREREGISTRATION_SEAL_COMMIT,
+            AUTHORITY_DECISION_COMMIT,
+            SUCCESSOR_AUTHORITY_DIFF,
+            "G9CB-5 successor authority",
+        ),
     )
     for parent, child, expected_diff, label in predecessor_steps:
+        observed_parent = _single_parent(child, repository_root)
         if (
-            _single_parent(child, repository_root) != parent
+            observed_parent != parent
             or _commit_diff(parent, child, repository_root) != expected_diff
         ):
             raise ValueError(f"{label} topology differs")
     if _addition_commits(
-        AUTHORITY_DECISION_PATH, repository_root
-    ) != (AUTHORITY_DECISION_COMMIT,):
+        G9CB4_AUTHORITY_DECISION_PATH, repository_root
+    ) != (G9CB4_AUTHORITY_DECISION_COMMIT,):
         raise ValueError("G9CB-4 authority addition history differs")
+    if _addition_commits(
+        ACTIVE_AUTHORITY_DECISION_PATH, repository_root
+    ) != (AUTHORITY_DECISION_COMMIT,):
+        raise ValueError("G9CB-5 authority addition history differs")
     if _addition_commits(
         G9CB3_AUTHORITY_DECISION_PATH, repository_root
     ) != (G9CB3_AUTHORITY_DECISION_COMMIT,):
@@ -1241,13 +1355,11 @@ def validate_protocol_commit_topology(
     else:
         implementation = head
 
-    if (
-        _single_parent(implementation, repository_root)
-        != G9CB3_TERMINAL_EVIDENCE_COMMIT
-    ):
+    implementation_parent = AUTHORITY_DECISION_COMMIT
+    if _single_parent(implementation, repository_root) != implementation_parent:
         raise ValueError("protocol implementation parent differs")
     if _commit_diff(
-        G9CB3_TERMINAL_EVIDENCE_COMMIT,
+        implementation_parent,
         implementation,
         repository_root,
     ) != SUCCESSOR_PROTOCOL_DIFF:
@@ -1314,11 +1426,11 @@ def validate_failed_predecessor_attempt_topology(
         ),
         (
             G9CB3_CLAIM_COMMIT,
-            AUTHORITY_DECISION_COMMIT,
-            SUCCESSOR_AUTHORITY_DIFF,
+            G9CB4_AUTHORITY_DECISION_COMMIT,
+            G9CB4_SUCCESSOR_AUTHORITY_DIFF,
         ),
         (
-            AUTHORITY_DECISION_COMMIT,
+            G9CB4_AUTHORITY_DECISION_COMMIT,
             G9CB3_TERMINAL_EVIDENCE_COMMIT,
             TERMINAL_EVIDENCE_DIFF,
         ),
@@ -1410,9 +1522,11 @@ def validate_superseded_preregistration(
     path = repository_path(
         HISTORICAL_PREREGISTRATION_PATH, repository_root
     )
-    if stat.S_IMODE(path.stat().st_mode) != 0o444:
+    cached = _cached_file(path, repository_root)
+    info = cached[1] if cached is not None else path.stat()
+    if stat.S_IMODE(info.st_mode) != 0o444:
         raise ValueError("historical preregistration filesystem mode differs")
-    raw = path.read_bytes()
+    raw = cached[0] if cached is not None else path.read_bytes()
     if not raw.endswith(b"\n") or raw.endswith(b"\n\n"):
         raise ValueError("historical preregistration trailing LF differs")
     payload = json.loads(raw)
@@ -1481,9 +1595,11 @@ def validate_failed_v2_preregistration(
     path = repository_path(
         FAILED_V2_PREREGISTRATION_PATH, repository_root
     )
-    if stat.S_IMODE(path.stat().st_mode) != 0o444:
+    cached = _cached_file(path, repository_root)
+    info = cached[1] if cached is not None else path.stat()
+    if stat.S_IMODE(info.st_mode) != 0o444:
         raise ValueError("failed G9CB-1 v2 filesystem mode differs")
-    raw = path.read_bytes()
+    raw = cached[0] if cached is not None else path.read_bytes()
     if not raw.endswith(b"\n") or raw.endswith(b"\n\n"):
         raise ValueError("failed G9CB-1 v2 trailing LF differs")
     payload = json.loads(raw)
@@ -1814,11 +1930,218 @@ def expected_failed_predecessor_attempts() -> list[dict[str, Any]]:
                 "g9cb3_claim_commit": G9CB3_CLAIM_COMMIT,
                 "g9cb3_preregistration_commit": G9CB3_PREREGISTRATION_SEAL_COMMIT,
                 "g9cb3_protocol_commit": G9CB3_PROTOCOL_IMPLEMENTATION_COMMIT,
-                "g9cb4_authority_commit": AUTHORITY_DECISION_COMMIT,
+                "g9cb4_authority_commit": G9CB4_AUTHORITY_DECISION_COMMIT,
                 "terminal_evidence_commit": G9CB3_TERMINAL_EVIDENCE_COMMIT,
             },
         },
     ]
+
+
+def expected_failed_predecessor_closures() -> list[dict[str, Any]]:
+    return [
+        {
+            "authority_decision": {
+                "authority_commit": G9CB4_AUTHORITY_DECISION_COMMIT,
+                "git_blob": G9CB4_AUTHORITY_DECISION_GIT_BLOB,
+                "git_mode": "100644",
+                "path": G9CB4_AUTHORITY_DECISION_PATH.as_posix(),
+                "path_type": "regular_file",
+                "sha256": G9CB4_AUTHORITY_DECISION_SHA256,
+            },
+            "classification": (
+                "pre_access_claim_pre_sentinel_keyword_only_call_contract_failure"
+            ),
+            "exposure": {
+                "bindings_authenticated": 63,
+                "candidate_rows_opened": 0,
+                "claim_files_published": 0,
+                "economics_or_overlap_computed": False,
+                "features_constructed": False,
+                "gzip_csv_jsonl_npz_values_decoded_or_loaded": False,
+                "historical_metadata_json_decoded": True,
+                "model_or_history_values_opened": 0,
+                "pre2025_anchor_and_rank7_manifest_bytes": 14680,
+                "production_invocations": None,
+                "rank7_history_and_model_bytes": 2121609,
+                "runtime_python_ast_parsed": True,
+                "schedules_reached": False,
+                "source_files": 8,
+                "source_files_bytes": 100551601,
+                "source_values_opened": 0,
+                "unique_paths_authenticated": 55,
+                "worker_capabilities_consumed": 0,
+                "workers_started": 0,
+            },
+            "failure": {
+                "claim_payload_constructed": False,
+                "claim_write_attempted": False,
+                "exception": (
+                    "TypeError: _validate_git_pair_preflight() takes 2 "
+                    "positional arguments but 4 positional arguments (and 1 "
+                    "keyword-only argument) were given"
+                ),
+                "official_production_invocations": None,
+                "raw_capture_recoverable": False,
+                "sentinel_published": False,
+            },
+            "identity": "G9CB-4",
+            "permanently_absent_outputs": sorted(
+                [
+                    "results/gross9_structural_clock_bundle_g9cb4_2026-07-31.csv.gz",
+                    "results/gross9_structural_clock_bundle_g9cb4_access_claim_2026-07-31.json",
+                    "results/gross9_structural_clock_bundle_g9cb4_attempt_consumed_2026-07-31.json",
+                    "results/gross9_structural_clock_bundle_g9cb4_manifest_2026-07-31.json",
+                    "results/gross9_structural_clock_bundle_g9cb4_worker_capability_consumed_pass1_2026-07-31.json",
+                    "results/gross9_structural_clock_bundle_g9cb4_worker_capability_consumed_pass2_2026-07-31.json",
+                ]
+            ),
+            "preregistration": {
+                "filesystem_mode_octal": "0444",
+                "git_blob": "76f9011d5752282c058feb531442b203a0bbdb0d",
+                "git_mode": "100644",
+                "manifest_hash": (
+                    "fa3dab6f7e6ab86428c03fc5c3d7b005e0a165cd76662bba9a7c3cd5941beeed"
+                ),
+                "path": (
+                    "results/gross9_structural_clock_bundle_g9cb4_"
+                    "preregistration_2026-07-31.json"
+                ),
+                "path_type": "regular_file",
+                "protocol_implementation_commit": (
+                    G9CB4_PROTOCOL_IMPLEMENTATION_COMMIT
+                ),
+                "protocol_version": (
+                    "gross9_structural_clock_bundle_g9cb4_preregistration_v1"
+                ),
+                "seal_commit": G9CB4_PREREGISTRATION_SEAL_COMMIT,
+                "sha256": (
+                    "f65aaf5fd2219f90421912e6fc9065ddffb54f5adf881196986f25185fe7342e"
+                ),
+                "size_bytes": 41289,
+            },
+            "protocol_implementation": {
+                "builder_path": (
+                    "training/build_gross9_structural_clock_bundle.py"
+                ),
+                "builder_sha256": (
+                    "c7c3bf1f9971e058e719139b50379c356f45a0fcc8f62c12aab100f70fa64c63"
+                ),
+                "commit": G9CB4_PROTOCOL_IMPLEMENTATION_COMMIT,
+            },
+            "protocol_version": "gross9_structural_clock_bundle_g9cb4_v1",
+            "residue": {
+                "bytecode_cache": {
+                    "path": "results/.g9cb4-bytecode-cache-disabled",
+                    "state": "absent",
+                },
+                "publication_stages": {
+                    "glob": (
+                        "results/.gross9_structural_clock_bundle_g9cb4_*.stage-*"
+                    ),
+                    "state": "absent",
+                },
+                "worker_stages": {
+                    "glob": (
+                        "results/.gross9-structural-clock-g9cb4-worker-*"
+                    ),
+                    "state": "absent",
+                },
+            },
+            "status": (
+                "historical_pre_access_pre_sentinel_closure_no_attempt_"
+                "no_clock_authority"
+            ),
+            "topology": {
+                "g9cb4_authority_commit": G9CB4_AUTHORITY_DECISION_COMMIT,
+                "g9cb4_preregistration_commit": (
+                    G9CB4_PREREGISTRATION_SEAL_COMMIT
+                ),
+                "g9cb4_protocol_commit": G9CB4_PROTOCOL_IMPLEMENTATION_COMMIT,
+                "g9cb5_authority_commit": AUTHORITY_DECISION_COMMIT,
+                "terminal_evidence_commit": None,
+            },
+        }
+    ]
+
+
+def expected_successor_preregistration_bindings() -> list[dict[str, Any]]:
+    attempts = expected_failed_predecessor_attempts()
+    closure = expected_failed_predecessor_closures()[0]
+    return [
+        {
+            "identity": attempts[0]["identity"],
+            "preregistration": attempts[0]["preregistration"],
+        },
+        {
+            "identity": attempts[1]["identity"],
+            "preregistration": attempts[1]["preregistration"],
+        },
+        {
+            "identity": closure["identity"],
+            "preregistration": closure["preregistration"],
+        },
+    ]
+
+
+def validate_failed_predecessor_closures(
+    repository_root: Path = REPOSITORY_ROOT,
+) -> list[dict[str, Any]]:
+    closures = expected_failed_predecessor_closures()
+    row = closures[0]
+    binding = row["preregistration"]
+    path_text = str(binding["path"])
+    if _ACTIVE_PREREGISTRATION_GIT_PAIRS is None:
+        staged = _git_result(
+            ["ls-files", "--stage", "--", path_text], repository_root
+        )
+        tree = _git_result(["ls-tree", "HEAD", "--", path_text], repository_root)
+        matched = _git_result(
+            ["ls-files", "--error-unmatch", "--", path_text], repository_root
+        )
+        _historical_attempt_git_pair(binding, staged, tree, matched)
+    elif _ACTIVE_PREREGISTRATION_GIT_PAIRS.get(path_text) != (
+        binding["git_blob"],
+        binding["git_mode"],
+    ):
+        raise ValueError("G9CB-4 closed Git pair differs")
+    cached = _cached_file(path_text, repository_root)
+    if cached is None:
+        raw, info = _read_no_follow_once(
+            repository_path(path_text, repository_root)
+        )
+    else:
+        raw, info = cached
+    if (
+        hashlib.sha256(raw).hexdigest() != binding["sha256"]
+        or hashlib.sha1(
+            f"blob {len(raw)}\0".encode("ascii") + raw
+        ).hexdigest()
+        != binding["git_blob"]
+        or info.st_size != binding["size_bytes"]
+        or stat.S_IMODE(info.st_mode) != 0o444
+    ):
+        raise ValueError("G9CB-4 closed preregistration binding differs")
+    if _ACTIVE_PREREGISTRATION_SNAPSHOT is not None:
+        _validate_predecessor_inventory_from_snapshot(
+            _ACTIVE_PREREGISTRATION_SNAPSHOT,
+            expected_failed_predecessor_attempts(),
+            closures,
+        )
+    else:
+        for absent in row["permanently_absent_outputs"]:
+            if _path_type(repository_path(absent, repository_root)) != "missing":
+                raise ValueError(f"reserved G9CB-4 output exists: {absent}")
+        residue = row["residue"]
+        if _path_type(
+            repository_path(residue["bytecode_cache"]["path"], repository_root)
+        ) != "missing":
+            raise ValueError("G9CB-4 bytecode residue differs")
+        results = repository_path("results", repository_root)
+        if list(results.glob(".gross9_structural_clock_bundle_g9cb4_*.stage-*")):
+            raise ValueError("G9CB-4 publication-stage residue differs")
+        if list(results.glob(".gross9-structural-clock-g9cb4-worker-*")):
+            raise ValueError("G9CB-4 worker-stage residue differs")
+    return closures
 
 
 def _historical_attempt_git_pair(
@@ -1905,32 +2228,45 @@ def _validate_failed_attempt_current_files(
     paths = [str(binding["path"]) for binding in bindings]
     if len(paths) != len(set(paths)):
         raise ValueError("predecessor bound paths are not unique")
-    classifications = []
-    for binding in bindings:
-        path_text = str(binding["path"])
-        classifications.append(
-            (
-                binding,
-                _git_result(
-                    ["ls-files", "--stage", "--", path_text],
-                    repository_root,
-                ),
-                _git_result(
-                    ["ls-tree", "HEAD", "--", path_text],
-                    repository_root,
-                ),
-                _git_result(
-                    ["ls-files", "--error-unmatch", "--", path_text],
-                    repository_root,
-                ),
+    if _ACTIVE_PREREGISTRATION_GIT_PAIRS is None:
+        classifications = []
+        for binding in bindings:
+            path_text = str(binding["path"])
+            classifications.append(
+                (
+                    binding,
+                    _git_result(
+                        ["ls-files", "--stage", "--", path_text],
+                        repository_root,
+                    ),
+                    _git_result(
+                        ["ls-tree", "HEAD", "--", path_text],
+                        repository_root,
+                    ),
+                    _git_result(
+                        ["ls-files", "--error-unmatch", "--", path_text],
+                        repository_root,
+                    ),
+                )
             )
-        )
-    for binding, staged, tree, matched in classifications:
-        _historical_attempt_git_pair(binding, staged, tree, matched)
+        for binding, staged, tree, matched in classifications:
+            _historical_attempt_git_pair(binding, staged, tree, matched)
+    else:
+        for binding in bindings:
+            if _ACTIVE_PREREGISTRATION_GIT_PAIRS.get(
+                str(binding["path"])
+            ) != (binding["git_blob"], binding["git_mode"]):
+                raise ValueError(
+                    f"predecessor Git pair differs: {binding['path']}"
+                )
     observed_objects: set[tuple[int, int]] = set()
     for binding in bindings:
-        path = repository_path(binding["path"], repository_root)
-        raw, info = _read_no_follow_once(path)
+        cached = _cached_file(binding["path"], repository_root)
+        if cached is None:
+            path = repository_path(binding["path"], repository_root)
+            raw, info = _read_no_follow_once(path)
+        else:
+            raw, info = cached
         object_key = (info.st_dev, info.st_ino)
         if object_key in observed_objects:
             raise ValueError("predecessor bound paths alias one filesystem object")
@@ -2038,6 +2374,14 @@ def validate_failed_predecessor_attempts(
 ) -> list[dict[str, Any]]:
     attempts = expected_failed_predecessor_attempts()
     _validate_failed_attempt_current_files(repository_root)
+    if _ACTIVE_PREREGISTRATION_SNAPSHOT is not None:
+        _validate_predecessor_inventory_from_snapshot(
+            _ACTIVE_PREREGISTRATION_SNAPSHOT,
+            attempts,
+            expected_failed_predecessor_closures(),
+        )
+        validate_failed_predecessor_attempt_history(repository_root)
+        return attempts
     for row in attempts:
         for path_text in row["permanently_absent_outputs"]:
             if (
@@ -2068,6 +2412,69 @@ def validate_failed_predecessor_attempts(
             raise ValueError(f"{row['identity']} slot-2 residue state differs")
     validate_failed_predecessor_attempt_history(repository_root)
     return attempts
+
+
+def _validate_predecessor_inventory_from_snapshot(
+    snapshot: _PreregistrationSnapshot,
+    attempts: Sequence[Mapping[str, Any]],
+    closures: Sequence[Mapping[str, Any]],
+) -> None:
+    results_fd = snapshot.directories.get(("repo", ("results",)))
+    if results_fd is None:
+        raise ValueError("retained results descriptor is absent")
+    names = set(os.listdir(results_fd))
+
+    def require_absent(path_text: str, message: str) -> None:
+        leaf = Path(path_text).name
+        try:
+            os.stat(leaf, dir_fd=results_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            return
+        raise ValueError(message)
+
+    for row in attempts:
+        identity = str(row["identity"])
+        for path_text in row["permanently_absent_outputs"]:
+            require_absent(
+                str(path_text),
+                f"reserved {identity} output exists: {path_text}",
+            )
+        bytecode = row["residue"].get("bytecode_cache")
+        if isinstance(bytecode, Mapping):
+            require_absent(
+                str(bytecode["path"]),
+                f"{identity} bytecode residue differs",
+            )
+        snapshot.retain_empty_directory(
+            str(row["residue"]["slot1_stage"]["path"]),
+            mode=0o700,
+        )
+        require_absent(
+            str(row["residue"]["slot2_stage"]["path"]),
+            f"{identity} slot-2 residue state differs",
+        )
+    for row in closures:
+        for path_text in row["permanently_absent_outputs"]:
+            require_absent(
+                str(path_text),
+                f"reserved G9CB-4 output exists: {path_text}",
+            )
+        residue = row["residue"]
+        require_absent(
+            str(residue["bytecode_cache"]["path"]),
+            "G9CB-4 bytecode residue differs",
+        )
+    if any(
+        name.startswith(".gross9_structural_clock_bundle_g9cb4_")
+        and ".stage-" in name
+        for name in names
+    ):
+        raise ValueError("G9CB-4 publication-stage residue differs")
+    if any(
+        name.startswith(".gross9-structural-clock-g9cb4-worker-")
+        for name in names
+    ):
+        raise ValueError("G9CB-4 worker-stage residue differs")
 
 
 def validate_git_seal(
@@ -2140,7 +2547,7 @@ def worker_process_environment(
     root = repository_root.resolve()
     environment["PYTHONPATH"] = root.as_posix()
     environment["PYTHONPYCACHEPREFIX"] = (
-        root / "results/.g9cb4-bytecode-cache-disabled"
+        root / "results/.g9cb5-bytecode-cache-disabled"
     ).as_posix()
     return environment
 
@@ -2238,7 +2645,12 @@ def discover_import_closure(
         absolute = repository_path(current, repository_root)
         if _path_type(absolute) != "regular_file":
             raise ValueError(f"{current}: import-closure member is not a regular file")
-        source = absolute.read_text(encoding="utf-8")
+        cached = _cached_file(absolute, repository_root)
+        source = (
+            cached[0].decode("utf-8")
+            if cached is not None
+            else absolute.read_text(encoding="utf-8")
+        )
         tree = ast.parse(source, filename=current.as_posix())
         discovered.add(current)
         for node in ast.walk(tree):
@@ -2277,9 +2689,11 @@ def _load_json_metadata(path: Path, repository_root: Path) -> Any:
         "results/gross9_pre2025_authoritative_anchor_2026-07-28.json"
     ):
         raise ValueError("the pre-2025 anchor is hash-only and must not be parsed")
-    with repository_path(path, repository_root).open(
-        "r", encoding="utf-8"
-    ) as handle:
+    absolute = repository_path(path, repository_root)
+    cached = _cached_file(absolute, repository_root)
+    if cached is not None:
+        return json.loads(cached[0].decode("utf-8"))
+    with absolute.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
@@ -2453,20 +2867,21 @@ def _require_no_symlink_components(path: Path) -> None:
 def _normalized_git_candidate(
     path: str, repository_root: Path
 ) -> tuple[Path, bool]:
-    root = repository_root.resolve(strict=True)
+    root = Path(os.path.abspath(repository_root))
     candidate = Path(path)
     if candidate.is_absolute():
-        resolved = candidate.resolve(strict=True)
-        if path != resolved.as_posix():
+        normalized = Path(os.path.normpath(path))
+        if (
+            path != normalized.as_posix()
+            or "//" in path
+            or any(part in ("", ".", "..") for part in path[1:].split("/"))
+        ):
             raise ValueError(f"{path}: absolute path is not canonical")
-        if resolved == root or root in resolved.parents:
+        if normalized == root or root in normalized.parents:
             raise ValueError(
                 f"{path}: absolute repository path must be repository-relative"
             )
-        _require_no_symlink_components(resolved)
-        if _path_type(resolved) != "regular_file":
-            raise ValueError(f"{path}: external source is not a regular file")
-        return resolved, False
+        return normalized, False
 
     if "\\" in path:
         raise ValueError(f"{path}: repository path is not POSIX text")
@@ -2475,18 +2890,7 @@ def _normalized_git_candidate(
         raise ValueError(f"{path}: repository path is not normalized")
     if Path(path).as_posix() != path:
         raise ValueError(f"{path}: repository path is not normalized")
-    absolute = root.joinpath(*components)
-    resolved = absolute.resolve(strict=True)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"{path}: repository path escapes the root") from exc
-    if resolved != absolute:
-        raise ValueError(f"{path}: repository path traverses a symlink")
-    _require_no_symlink_components(absolute)
-    if _path_type(absolute) != "regular_file":
-        raise ValueError(f"{path}: repository source is not a regular file")
-    return absolute, True
+    return root.joinpath(*components), True
 
 
 def _parse_stage_zero_entry(output: str, path: str) -> tuple[str, str]:
@@ -2531,6 +2935,19 @@ def _optional_git_metadata(
     )
     if not repository_relative:
         return {"git_blob": None, "git_mode": None}
+    if _ACTIVE_PREREGISTRATION_GIT_PAIRS is not None:
+        pair = _ACTIVE_PREREGISTRATION_GIT_PAIRS.get(path)
+        if pair is None:
+            return {"git_blob": None, "git_mode": None}
+        cached = _cached_file(path, repository_root)
+        if cached is None:
+            raise ValueError(f"{path}: Git pair/cache state differs")
+        raw, _info = cached
+        if hashlib.sha1(
+            f"blob {len(raw)}\0".encode("ascii") + raw
+        ).hexdigest() != pair[0]:
+            raise ValueError(f"{path}: cached worktree Git blob differs")
+        return {"git_blob": pair[0], "git_mode": pair[1]}
 
     staged = _git_result(
         ["ls-files", "--stage", "--", path], repository_root
@@ -2561,9 +2978,16 @@ def _optional_git_metadata(
         or not re.fullmatch(r"[0-9a-f]{40}", index_blob)
     ):
         raise ValueError(f"{path}: index and HEAD Git metadata differ")
-    worktree_blob = _run_git(
-        ["hash-object", "--no-filters", "--", path], repository_root
-    )
+    cached = _cached_file(path, repository_root)
+    if cached is None:
+        raw, _info = _read_no_follow_once(
+            repository_path(path, repository_root)
+        )
+    else:
+        raw, _info = cached
+    worktree_blob = hashlib.sha1(
+        f"blob {len(raw)}\0".encode("ascii") + raw
+    ).hexdigest()
     if worktree_blob != index_blob:
         raise ValueError(f"{path}: worktree Git blob differs")
     return {"git_blob": index_blob, "git_mode": index_mode}
@@ -2576,15 +3000,15 @@ def validate_sources(
     bindings = []
     for name, logical_path, digest in SOURCE_BINDINGS:
         absolute = repository_path(logical_path, repository_root)
-        path_type = _path_type(absolute)
-        if path_type not in {"regular_file", "symlink"}:
+        path_type = _path_type(absolute, repository_root)
+        if path_type != "regular_file":
             raise ValueError(f"{logical_path}: invalid preregistration path type")
-        resolved = absolute.resolve(strict=True)
-        if not resolved.is_file():
-            raise ValueError(f"{logical_path}: resolved source is not a regular file")
+        resolved = absolute
         actual = sha256_file(absolute)
         if actual != digest:
             raise ValueError(f"{logical_path}: source SHA-256 mismatch")
+        cached = _cached_file(resolved, repository_root)
+        size = cached[1].st_size if cached is not None else resolved.stat().st_size
         binding = {
             "name": name,
             "logical_path": logical_path,
@@ -2594,9 +3018,9 @@ def validate_sources(
                 else Path(logical_path).as_posix()
             ),
             "path_type": path_type,
-            "resolved_path_type": _path_type(resolved),
-            "size_bytes": resolved.stat().st_size,
-            "bytes_read_for_sha256_preclaim": resolved.stat().st_size,
+            "resolved_path_type": "regular_file",
+            "size_bytes": size,
+            "bytes_read_for_sha256_preclaim": size,
             "sha256": actual,
         }
         binding.update(_optional_git_metadata(logical_path, repository_root))
@@ -2608,19 +3032,22 @@ def source_preclaim_disclosures(
     repository_root: Path = REPOSITORY_ROOT,
 ) -> dict[str, Any]:
     frozen = repository_path(FROZEN_OPEN_INTEREST_GZIP_PATH, repository_root)
-    frozen_type = _path_type(frozen)
-    if frozen_type == "symlink":
-        if frozen.resolve(strict=True) != FROZEN_OPEN_INTEREST_GZIP_RESOLVED_PATH:
-            raise ValueError("frozen open-interest gzip resolved path mismatch")
-    elif frozen_type != "regular_file":
-        raise ValueError(
-            "frozen open-interest gzip must be the disclosed symlink or "
-            "an exact regular-file restoration"
-        )
-    if sha256_file(frozen) != FROZEN_OPEN_INTEREST_GZIP_SHA256:
-        raise ValueError("frozen open-interest gzip SHA-256 mismatch")
-    if frozen.resolve().stat().st_size != FROZEN_OPEN_INTEREST_GZIP_SIZE:
-        raise ValueError("frozen open-interest gzip size mismatch")
+    if _ACTIVE_PREREGISTRATION_CACHE is None:
+        frozen_type = _path_type(frozen, repository_root)
+        if frozen_type == "symlink":
+            if (
+                frozen.resolve(strict=True)
+                != FROZEN_OPEN_INTEREST_GZIP_RESOLVED_PATH
+            ):
+                raise ValueError(
+                    "frozen open-interest gzip resolved path mismatch"
+                )
+        elif frozen_type != "regular_file":
+            raise ValueError("frozen open-interest gzip path type differs")
+        if sha256_file(frozen) != FROZEN_OPEN_INTEREST_GZIP_SHA256:
+            raise ValueError("frozen open-interest gzip SHA-256 mismatch")
+        if frozen.resolve().stat().st_size != FROZEN_OPEN_INTEREST_GZIP_SIZE:
+            raise ValueError("frozen open-interest gzip size mismatch")
     validate_file(
         OPEN_INTEREST_PATH,
         OPEN_INTEREST_SHA256,
@@ -2702,7 +3129,20 @@ def _authority_decision_binding(
     repository_root: Path = REPOSITORY_ROOT,
 ) -> dict[str, Any]:
     binding = _tracked_binding(
-        AUTHORITY_DECISION_PATH,
+        ACTIVE_AUTHORITY_DECISION_PATH,
+        repository_root=repository_root,
+        expected_sha256=AUTHORITY_DECISION_SHA256,
+        expected_blob=AUTHORITY_DECISION_GIT_BLOB,
+    )
+    binding["authority_commit"] = AUTHORITY_DECISION_COMMIT
+    return binding
+
+
+def _active_authority_decision_binding(
+    repository_root: Path = REPOSITORY_ROOT,
+) -> dict[str, Any]:
+    binding = _tracked_binding(
+        ACTIVE_AUTHORITY_DECISION_PATH,
         repository_root=repository_root,
         expected_sha256=AUTHORITY_DECISION_SHA256,
         expected_blob=AUTHORITY_DECISION_GIT_BLOB,
@@ -2791,6 +3231,11 @@ def _manifest_without_hash(
         if require_git_seal
         else expected_failed_predecessor_attempts()
     )
+    failed_closures = (
+        validate_failed_predecessor_closures(repository_root)
+        if require_git_seal
+        else expected_failed_predecessor_closures()
+    )
     failed_authorities = {
         row["authority_decision"]["path"]: row["authority_decision"]
         for row in failed_attempts
@@ -2803,7 +3248,9 @@ def _manifest_without_hash(
         "protocol_version": PROTOCOL_VERSION,
         "identity": IDENTITY,
         "protocol_implementation_commit": protocol_implementation_commit,
-        "authority_decision": _authority_decision_binding(repository_root),
+        "authority_decision": _active_authority_decision_binding(
+            repository_root
+        ),
         "direct_authority_verification_commit": (
             DIRECT_AUTHORITY_VERIFICATION_COMMIT
         ),
@@ -2898,6 +3345,10 @@ def _manifest_without_hash(
                 )
             ),
             "failed_predecessor_attempts": failed_attempts,
+            "failed_predecessor_closures": failed_closures,
+            "successor_preregistrations": (
+                expected_successor_preregistration_bindings()
+            ),
             "direct_authority": _direct_authority_inventory(repository_root),
             "config_metadata_evidence": config_evidence,
             "runtime_import_roots": [
@@ -3011,7 +3462,7 @@ def _manifest_without_hash(
             "resume_allowed": False,
             "repair_allowed": False,
             "terminal_failure_action": (
-                "TERMINAL_G9CB4_ATTEMPT_CONSUMED_NO_RETRY"
+                "TERMINAL_G9CB5_ATTEMPT_CONSUMED_NO_RETRY"
             ),
         },
     }
@@ -3080,6 +3531,18 @@ def validate_manifest(
     )
     if bindings.get("failed_predecessor_attempts") != expected_attempts:
         raise ValueError("failed predecessor attempt binding mismatch")
+    expected_closures = (
+        validate_failed_predecessor_closures(repository_root)
+        if verify_files
+        else expected_failed_predecessor_closures()
+    )
+    if bindings.get("failed_predecessor_closures") != expected_closures:
+        raise ValueError("failed predecessor closure binding mismatch")
+    if (
+        bindings.get("successor_preregistrations")
+        != expected_successor_preregistration_bindings()
+    ):
+        raise ValueError("successor preregistration bindings mismatch")
     if manifest.get("source_preclaim_disclosures", {}).get(
         "frozen_open_interest_gzip_opaque_bytes_opened_preclaim"
     ) is not True:
@@ -3120,115 +3583,811 @@ def _validate_output_path(
     return resolved_output
 
 
+def _pread_complete(descriptor: int, size: int) -> bytes:
+    chunks: list[bytes] = []
+    offset = 0
+    while offset < size:
+        chunk = os.pread(descriptor, min(1024 * 1024, size - offset), offset)
+        if not chunk:
+            break
+        chunks.append(chunk)
+        offset += len(chunk)
+    raw = b"".join(chunks)
+    if len(raw) != size:
+        raise RuntimeError("same-descriptor read was incomplete")
+    return raw
+
+
+def _descriptor_token(info: os.stat_result) -> tuple[int, ...]:
+    return (
+        info.st_dev,
+        info.st_ino,
+        stat.S_IFMT(info.st_mode),
+        stat.S_IMODE(info.st_mode),
+        info.st_size,
+        info.st_mtime_ns,
+        info.st_ctime_ns,
+    )
+
+
+def _iter_sha_bindings(payload: Any) -> Iterable[Mapping[str, Any]]:
+    if isinstance(payload, Mapping):
+        aliases = [
+            key
+            for key in ("path", "logical_path", "repository_path")
+            if key in payload
+        ]
+        if isinstance(payload.get("sha256"), str) and aliases:
+            values = [payload[key] for key in aliases]
+            if any(not isinstance(value, str) for value in values):
+                raise ValueError("bound path alias is not text")
+            if len(set(values)) != 1:
+                raise ValueError("bound path aliases conflict")
+            yield payload
+        for key in sorted(payload):
+            if key != "protocol_implementation":
+                yield from _iter_sha_bindings(payload[key])
+    elif isinstance(payload, list):
+        for value in payload:
+            yield from _iter_sha_bindings(value)
+
+
+def _binding_text(binding: Mapping[str, Any]) -> str:
+    values = [
+        binding[key]
+        for key in ("path", "logical_path", "repository_path")
+        if isinstance(binding.get(key), str)
+    ]
+    if not values or len(set(values)) != 1:
+        raise ValueError("bound path aliases differ")
+    return str(values[0])
+
+
+def _classify_git_pair_only(
+    root: Path,
+    path_text: str,
+    declaration: Mapping[str, Any],
+) -> tuple[str, str] | None:
+    repository_relative = not path_text.startswith("/")
+    blob = declaration.get("git_blob")
+    mode = declaration.get("git_mode")
+    require_tracked = declaration.get("require_tracked") is True
+    if not repository_relative:
+        if blob is not None or mode is not None:
+            raise ValueError("absolute binding declares Git metadata")
+        return None
+    staged = _git_result(["ls-files", "--stage", "--", path_text], root)
+    tree = _git_result(["ls-tree", "HEAD", "--", path_text], root)
+    matched = _git_result(
+        ["ls-files", "--error-unmatch", "--", path_text], root
+    )
+    if blob is None and mode is None and not require_tracked:
+        if staged.stdout or tree.stdout or matched.returncode != 1:
+            raise ValueError(f"{path_text}: paired-null Git state differs")
+        return None
+    if staged.returncode or tree.returncode or matched.returncode:
+        raise ValueError(f"{path_text}: tracked Git state differs")
+    index = _parse_stage_zero_entry(staged.stdout, path_text)
+    head = _parse_head_tree_entry(tree.stdout, path_text)
+    if index != head or (
+        not require_tracked and index != (blob, mode)
+    ):
+        raise ValueError(f"{path_text}: index/HEAD Git pair differs")
+    return index
+
+
+class _PreregistrationSnapshot(dict[str, tuple[bytes, os.stat_result]]):
+    def __init__(self, root: Path) -> None:
+        super().__init__()
+        flags = (
+            os.O_RDONLY
+            | getattr(os, "O_DIRECTORY", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_CLOEXEC", 0)
+        )
+        self.root = root
+        self.directories: dict[tuple[str, tuple[str, ...]], int] = {
+            ("repo", ()): os.open(root, flags),
+            ("absolute", ()): os.open("/", flags),
+        }
+        self.directory_tokens = {
+            key: _descriptor_token(os.fstat(descriptor))
+            for key, descriptor in self.directories.items()
+        }
+        self.files: dict[str, int] = {}
+        self.file_tokens: dict[str, tuple[int, ...]] = {}
+        self.file_edges: dict[str, tuple[int, str]] = {}
+        self.directory_edges: dict[
+            tuple[str, tuple[str, ...]], tuple[int, str]
+        ] = {}
+        self.directory_entries: dict[
+            tuple[str, tuple[str, ...]], tuple[str, ...]
+        ] = {}
+        self.final_verified = False
+
+    def _parent(self, path_text: str) -> tuple[int, str]:
+        absolute = path_text.startswith("/")
+        if absolute:
+            if (
+                path_text not in _ABSOLUTE_BINDING_ALLOWLIST
+                or "//" in path_text
+                or any(
+                    part in ("", ".", "..")
+                    for part in path_text[1:].split("/")
+                )
+            ):
+                raise ValueError("absolute binding is not exactly allowlisted")
+            namespace = "absolute"
+            components = path_text[1:].split("/")
+        else:
+            if "\\" in path_text or any(
+                part in ("", ".", "..") for part in path_text.split("/")
+            ):
+                raise ValueError("repository binding is not normalized")
+            namespace = "repo"
+            components = path_text.split("/")
+        flags = (
+            os.O_RDONLY
+            | getattr(os, "O_DIRECTORY", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_CLOEXEC", 0)
+        )
+        prefix: tuple[str, ...] = ()
+        descriptor = self.directories[(namespace, prefix)]
+        for component in components[:-1]:
+            prefix += (component,)
+            key = (namespace, prefix)
+            if key not in self.directories:
+                opened = _open_component_no_follow(
+                    descriptor, component, directory=True
+                )
+                info = os.fstat(opened)
+                if not stat.S_ISDIR(info.st_mode):
+                    os.close(opened)
+                    raise ValueError(f"{path_text}: parent is not a directory")
+                self.directories[key] = opened
+                self.directory_tokens[key] = _descriptor_token(info)
+                self.directory_edges[key] = (descriptor, component)
+            descriptor = self.directories[key]
+        return descriptor, components[-1]
+
+    def retain_empty_directory(self, path_text: str, *, mode: int) -> None:
+        components = tuple(path_text.split("/"))
+        if not components or any(part in ("", ".", "..") for part in components):
+            raise ValueError("retained directory path is not normalized")
+        key = ("repo", components)
+        if key in self.directories:
+            if self.directory_entries.get(key) != ():
+                raise ValueError("retained directory declaration differs")
+            return
+        parent, leaf = self._parent(path_text)
+        descriptor = _open_component_no_follow(parent, leaf, directory=True)
+        try:
+            info = os.fstat(descriptor)
+            entries = tuple(sorted(os.listdir(descriptor)))
+            if (
+                not stat.S_ISDIR(info.st_mode)
+                or stat.S_IMODE(info.st_mode) != mode
+                or entries
+            ):
+                raise ValueError(f"{path_text}: retained directory state differs")
+            self.directories[key] = descriptor
+            self.directory_tokens[key] = _descriptor_token(info)
+            self.directory_edges[key] = (parent, leaf)
+            self.directory_entries[key] = entries
+        except BaseException:
+            os.close(descriptor)
+            raise
+
+    def open_initial(self, path_text: str) -> tuple[bytes, os.stat_result]:
+        if path_text in self:
+            return self[path_text]
+        parent, leaf = self._parent(path_text)
+        descriptor = _open_component_no_follow(
+            parent, leaf, directory=False
+        )
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            os.close(descriptor)
+            raise ValueError(f"{path_text}: leaf is not a regular file")
+        raw = _pread_complete(descriptor, before.st_size)
+        after = os.fstat(descriptor)
+        if _descriptor_token(before) != _descriptor_token(after):
+            os.close(descriptor)
+            raise ValueError(f"{path_text}: changed during initial read")
+        identity = (after.st_dev, after.st_ino)
+        if any(
+            (token[0], token[1]) == identity
+            for token in self.file_tokens.values()
+        ):
+            os.close(descriptor)
+            raise ValueError("distinct bound paths hard-link alias")
+        self.files[path_text] = descriptor
+        self.file_tokens[path_text] = _descriptor_token(after)
+        self.file_edges[path_text] = (parent, leaf)
+        self[path_text] = (raw, after)
+        return raw, after
+
+    def verify_final(self) -> None:
+        if self.final_verified:
+            raise RuntimeError("snapshot final recheck repeated")
+        for path_text in sorted(self.files):
+            descriptor = self.files[path_text]
+            before = os.fstat(descriptor)
+            raw = _pread_complete(descriptor, before.st_size)
+            after = os.fstat(descriptor)
+            if (
+                _descriptor_token(before) != self.file_tokens[path_text]
+                or _descriptor_token(after) != self.file_tokens[path_text]
+                or raw != self[path_text][0]
+            ):
+                raise RuntimeError(f"{path_text}: final same-FD recheck differs")
+            parent, leaf = self.file_edges[path_text]
+            path_info = os.stat(
+                leaf, dir_fd=parent, follow_symlinks=False
+            )
+            if _descriptor_token(path_info) != self.file_tokens[path_text]:
+                raise RuntimeError(f"{path_text}: leaf component changed")
+        for key, descriptor in self.directories.items():
+            if _descriptor_token(os.fstat(descriptor)) != self.directory_tokens[key]:
+                raise RuntimeError(f"{key}: directory graph changed")
+            expected_entries = self.directory_entries.get(key)
+            if (
+                expected_entries is not None
+                and tuple(sorted(os.listdir(descriptor))) != expected_entries
+            ):
+                raise RuntimeError(f"{key}: retained directory inventory changed")
+            edge = self.directory_edges.get(key)
+            if edge is not None:
+                parent, component = edge
+                path_info = os.stat(
+                    component, dir_fd=parent, follow_symlinks=False
+                )
+                if _descriptor_token(path_info) != self.directory_tokens[key]:
+                    raise RuntimeError(f"{key}: parent component changed")
+        self.final_verified = True
+
+    def rebaseline_directory(self, identity: tuple[int, int]) -> None:
+        for key, descriptor in self.directories.items():
+            info = os.fstat(descriptor)
+            if (info.st_dev, info.st_ino) == identity:
+                self.directory_tokens[key] = _descriptor_token(info)
+
+    def close(self) -> None:
+        for descriptor in self.files.values():
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        for descriptor in self.directories.values():
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+
+
+def _open_component_no_follow(
+    parent_fd: int, component: str, *, directory: bool
+) -> int:
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_CLOEXEC", 0)
+    )
+    if directory:
+        flags |= getattr(os, "O_DIRECTORY", 0)
+    else:
+        flags |= getattr(os, "O_NONBLOCK", 0)
+    return os.open(component, flags, dir_fd=parent_fd)
+
+
+def _require_clean_pushed_branch(repository_root: Path) -> str:
+    validate_git_seal(repository_root)
+    return _run_git(["rev-parse", "HEAD"], repository_root)
+
+
+def _validate_q5_publication_topology(repository_root: Path) -> str:
+    head = _require_clean_pushed_branch(repository_root)
+    if _single_parent(head, repository_root) != AUTHORITY_DECISION_COMMIT:
+        raise ValueError("Q5 is not the direct child of A5")
+    if (
+        _commit_diff(AUTHORITY_DECISION_COMMIT, head, repository_root)
+        != SUCCESSOR_PROTOCOL_DIFF
+    ):
+        raise ValueError("Q5 implementation diff differs")
+    return head
+
+
+def _validate_closed_path_state(
+    results_fd: int,
+    phase: str,
+    *,
+    snapshot: _PreregistrationSnapshot,
+    validate_predecessors: bool = True,
+    preregistration: bool,
+    claim: bool,
+    worker_stage: bool,
+    fixed_pycache: bool,
+) -> tuple[str, ...]:
+    if phase != Q5_PREREGISTRATION_PUBLICATION:
+        raise ValueError("preregistration publication phase differs")
+    names = tuple(sorted(os.listdir(results_fd)))
+    required_absence = {
+        ACCESS_CLAIM_PATH.name,
+        ATTEMPT_SENTINEL_PATH.name,
+        *(path.name for path in WORKER_CAPABILITY_CONSUMPTION_LEDGER_PATHS),
+        BUNDLE_PATH.name,
+        FINAL_MANIFEST_PATH.name,
+        ".g9cb5-bytecode-cache-disabled",
+    }
+    if not preregistration:
+        required_absence.add(PREREGISTRATION_PATH.name)
+    if claim or worker_stage or fixed_pycache:
+        raise ValueError("Q5 entry-point flags differ")
+    named_staging_prefixes = tuple(
+        f".{path.name}.stage-"
+        for path in (
+            PREREGISTRATION_PATH,
+            ACCESS_CLAIM_PATH,
+            ATTEMPT_SENTINEL_PATH,
+            *WORKER_CAPABILITY_CONSUMPTION_LEDGER_PATHS,
+            BUNDLE_PATH,
+            FINAL_MANIFEST_PATH,
+        )
+    )
+    if required_absence & set(names) or any(
+        name.startswith(".gross9-structural-clock-g9cb5-worker-")
+        or name.startswith(".g9cb5-otmpfile-probe-")
+        or name.startswith(named_staging_prefixes)
+        or (
+            name.startswith(".gross9_structural_clock_bundle_g9cb5_")
+            and ".stage-" in name
+        )
+        for name in names
+    ):
+        raise FileExistsError("Q5 preregistration path-state is not closed")
+    if preregistration:
+        info = os.stat(
+            PREREGISTRATION_PATH.name,
+            dir_fd=results_fd,
+            follow_symlinks=False,
+        )
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or stat.S_IMODE(info.st_mode) != 0o444
+        ):
+            raise ValueError("Q5 preregistration final state differs")
+    if (snapshot.root / ".git").exists():
+        tracked_results = {
+            Path(line).name
+            for line in _run_git(
+                ["ls-files", "--", "results"], snapshot.root
+            ).splitlines()
+            if line and Path(line).parent == Path("results")
+        }
+        residue_names = {
+            Path(str(row["residue"]["slot1_stage"]["path"])).name
+            for row in expected_failed_predecessor_attempts()
+        }
+        active = {PREREGISTRATION_PATH.name} if preregistration else set()
+        if set(names) != tracked_results | residue_names | active:
+            raise FileExistsError("Q5 exact results inventory differs")
+    if validate_predecessors:
+        _validate_predecessor_inventory_from_snapshot(
+            snapshot,
+            expected_failed_predecessor_attempts(),
+            expected_failed_predecessor_closures(),
+        )
+    return names
+
+
+def _snapshot_declarations(
+    payload: Any,
+) -> tuple[
+    dict[str, str | None],
+    dict[str, dict[str, Any]],
+]:
+    declarations: dict[str, dict[str, Any]] = {}
+    digests: dict[str, str | None] = {}
+    for binding in _iter_sha_bindings(payload):
+        path_text = _binding_text(binding)
+        digest = str(binding["sha256"])
+        if path_text in digests and digests[path_text] != digest:
+            raise ValueError(f"{path_text}: conflicting SHA-256 declarations")
+        digests[path_text] = digest
+        declaration = declarations.setdefault(path_text, {})
+        for key in ("git_blob", "git_mode"):
+            if key in binding:
+                if key in declaration and declaration[key] != binding[key]:
+                    raise ValueError(f"{path_text}: conflicting Git declaration")
+                declaration[key] = binding[key]
+    return digests, declarations
+
+
+def _prepare_declared_snapshot(
+    digests: Mapping[str, str | None],
+    declarations: Mapping[str, Mapping[str, Any]],
+    root: Path,
+) -> tuple[
+    _PreregistrationSnapshot,
+    dict[str, tuple[str, str] | None],
+]:
+    pairs = {
+        path_text: _classify_git_pair_only(
+            root, path_text, declarations.get(path_text, {})
+        )
+        for path_text in sorted(digests)
+    }
+    snapshot = _PreregistrationSnapshot(root)
+    try:
+        for path_text in sorted(digests):
+            raw, info = snapshot.open_initial(path_text)
+            digest = digests[path_text]
+            if (
+                digest is not None
+                and hashlib.sha256(raw).hexdigest() != digest
+            ):
+                raise ValueError(f"{path_text}: SHA-256 differs")
+            pair = pairs[path_text]
+            if pair is not None and (
+                hashlib.sha1(
+                    f"blob {len(raw)}\0".encode("ascii") + raw
+                ).hexdigest()
+                != pair[0]
+                or ("100755" if info.st_mode & 0o111 else "100644")
+                != pair[1]
+            ):
+                raise ValueError(f"{path_text}: cached Git binding differs")
+        return snapshot, pairs
+    except BaseException:
+        snapshot.close()
+        raise
+
+
+def _prepare_preregistration_snapshot(
+    manifest: Mapping[str, Any], root: Path
+) -> tuple[
+    _PreregistrationSnapshot,
+    dict[str, tuple[str, str] | None],
+]:
+    digests, declarations = _snapshot_declarations(manifest)
+    return _prepare_declared_snapshot(digests, declarations, root)
+
+
+def _bootstrap_q5_snapshot(
+    root: Path,
+) -> tuple[
+    _PreregistrationSnapshot,
+    dict[str, tuple[str, str] | None],
+]:
+    predecessor_path = (
+        "results/"
+        "gross9_structural_clock_bundle_g9cb4_preregistration_2026-07-31.json"
+    )
+    completed = _git_result(["show", f"HEAD:{predecessor_path}"], root)
+    completed.check_returncode()
+    predecessor = json.loads(completed.stdout)
+    bootstrap_payload = {
+        "predecessor": predecessor,
+        "successor_preregistrations": (
+            expected_successor_preregistration_bindings()
+        ),
+        "failed_attempts": expected_failed_predecessor_attempts(),
+        "failed_closures": expected_failed_predecessor_closures(),
+    }
+    digests, declarations = _snapshot_declarations(bootstrap_payload)
+    previous_protocol = {
+        str(row.get("path"))
+        for row in predecessor.get("bindings", {}).get("protocol", [])
+        if isinstance(row, Mapping)
+    }
+    for path in PROTOCOL_PATHS:
+        path_text = path.as_posix()
+        digests[path_text] = None
+        declarations[path_text] = {"require_tracked": True}
+    for path_text in previous_protocol - {
+        path.as_posix() for path in PROTOCOL_PATHS
+    }:
+        digests.pop(path_text, None)
+        declarations.pop(path_text, None)
+    return _prepare_declared_snapshot(digests, declarations, root)
+
+
+def _link_prepared_publication(
+    unnamed_fd: int, results_fd: int, leaf: str
+) -> None:
+    try:
+        os.link(
+            f"/proc/self/fd/{unnamed_fd}",
+            leaf,
+            dst_dir_fd=results_fd,
+            follow_symlinks=True,
+        )
+    except FileExistsError as exc:
+        raise FileExistsError(f"write-once path exists: {leaf}") from exc
+
+
+def _prepare_unnamed_publication(
+    results_fd: int, raw: bytes
+) -> tuple[int, os.stat_result]:
+    if not getattr(os, "O_TMPFILE", 0):
+        raise RuntimeError("O_TMPFILE is unavailable")
+    descriptor = os.open(
+        ".",
+        os.O_RDWR | os.O_TMPFILE | getattr(os, "O_CLOEXEC", 0),
+        0o600,
+        dir_fd=results_fd,
+    )
+    try:
+        view = memoryview(raw)
+        offset = 0
+        while offset < len(view):
+            written = os.write(descriptor, view[offset:])
+            if written <= 0:
+                raise RuntimeError("unnamed preregistration write stalled")
+            offset += written
+        os.fchmod(descriptor, 0o444)
+        os.fsync(descriptor)
+        info = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or stat.S_IMODE(info.st_mode) != 0o444
+            or info.st_size != len(raw)
+            or _pread_complete(descriptor, info.st_size) != raw
+        ):
+            raise RuntimeError("unnamed preregistration verification failed")
+        return descriptor, info
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+def _probe_preregistration_publication(
+    results_fd: int, snapshot: _PreregistrationSnapshot
+) -> None:
+    baseline = tuple(sorted(os.listdir(results_fd)))
+    leaf = f".g9cb5-otmpfile-probe-{os.getpid()}-{os.urandom(8).hex()}"
+    raw = b"G9CB5 preregistration capability probe\n"
+    descriptor, unnamed_info = _prepare_unnamed_publication(
+        results_fd, raw
+    )
+    canonical_fd = -1
+    try:
+        _link_prepared_publication(descriptor, results_fd, leaf)
+        added = tuple(sorted((*baseline, leaf)))
+        if tuple(sorted(os.listdir(results_fd))) != added:
+            raise RuntimeError("preregistration probe addition delta differs")
+        canonical_fd = os.open(
+            leaf,
+            os.O_RDONLY
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_CLOEXEC", 0),
+            dir_fd=results_fd,
+        )
+        canonical_info = os.fstat(canonical_fd)
+        canonical_raw = _pread_complete(canonical_fd, canonical_info.st_size)
+        if (
+            (canonical_info.st_dev, canonical_info.st_ino)
+            != (unnamed_info.st_dev, unnamed_info.st_ino)
+            or not stat.S_ISREG(canonical_info.st_mode)
+            or stat.S_IMODE(canonical_info.st_mode) != 0o444
+            or canonical_info.st_size != len(raw)
+            or canonical_raw != raw
+            or hashlib.sha256(canonical_raw).digest()
+            != hashlib.sha256(raw).digest()
+        ):
+            raise RuntimeError("preregistration capability probe differs")
+        os.fsync(results_fd)
+        results_info = os.fstat(results_fd)
+        snapshot.rebaseline_directory(
+            (results_info.st_dev, results_info.st_ino)
+        )
+        os.unlink(leaf, dir_fd=results_fd)
+        if tuple(sorted(os.listdir(results_fd))) != baseline:
+            raise RuntimeError("preregistration probe removal delta differs")
+        os.fsync(results_fd)
+        results_info = os.fstat(results_fd)
+        snapshot.rebaseline_directory(
+            (results_info.st_dev, results_info.st_ino)
+        )
+        if tuple(sorted(os.listdir(results_fd))) != baseline:
+            raise RuntimeError("preregistration capability probe left residue")
+    finally:
+        if canonical_fd >= 0:
+            os.close(canonical_fd)
+        os.close(descriptor)
+
+
 def write_once(
     manifest: Mapping[str, Any],
     output: Path = PREREGISTRATION_PATH,
     *,
     repository_root: Path = REPOSITORY_ROOT,
+    _snapshot: _PreregistrationSnapshot | None = None,
+    _pairs: Mapping[str, tuple[str, str] | None] | None = None,
 ) -> bool:
     validate_manifest(
         manifest,
         repository_root=repository_root,
-        verify_files=True,
-        verify_environment=True,
-        verify_git_seal=True,
+        verify_files=False,
+        verify_environment=False,
+        verify_git_seal=False,
     )
     target = _validate_output_path(output, repository_root)
     expected_bytes = canonical_json_bytes(dict(manifest), trailing_lf=True)
-    existing_type = _path_type(target)
-    if existing_type != "missing":
-        if existing_type != "regular_file":
-            raise FileExistsError(
-                "immutable preregistration path is not a regular file"
-            )
-        actual_bytes = target.read_bytes()
-        if actual_bytes != expected_bytes:
-            raise FileExistsError("immutable preregistration exists with other bytes")
-        parsed = json.loads(actual_bytes)
-        validate_manifest(parsed, repository_root=repository_root)
-        return False
-
-    target.parent.mkdir(parents=False, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{target.name}.", suffix=".tmp", dir=target.parent
-    )
-    temporary = Path(temporary_name)
+    canonical_git = (repository_root / ".git").exists()
+    if canonical_git:
+        _validate_q5_publication_topology(repository_root)
+        _require_clean_pushed_branch(repository_root)
+    owns_snapshot = _snapshot is None
+    if _snapshot is None:
+        snapshot, initial_pairs = _prepare_preregistration_snapshot(
+            manifest, repository_root
+        )
+    else:
+        if _pairs is None:
+            raise ValueError("retained preregistration snapshot lacks Git pairs")
+        snapshot = _snapshot
+        initial_pairs = dict(_pairs)
+        manifest_digests, _manifest_declarations = _snapshot_declarations(
+            manifest
+        )
+        if set(manifest_digests) != set(snapshot):
+            raise ValueError("manifest bound path set differs from bootstrap")
+        for path_text, digest in manifest_digests.items():
+            if (
+                digest is not None
+                and hashlib.sha256(snapshot[path_text][0]).hexdigest()
+                != digest
+            ):
+                raise ValueError(f"{path_text}: manifest cache digest differs")
+    snapshot._parent(PREREGISTRATION_PATH.as_posix())
+    results_fd = snapshot.directories.get(("repo", ("results",)))
+    if results_fd is None:
+        raise ValueError("bootstrap snapshot lacks the retained results descriptor")
+    unnamed_fd = canonical_fd = -1
     try:
-        with os.fdopen(descriptor, "wb") as handle:
-            handle.write(expected_bytes)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.chmod(temporary, 0o444)
-        try:
-            os.link(temporary, target)
-        except FileExistsError:
-            if _path_type(target) != "regular_file":
-                raise FileExistsError(
-                    "immutable preregistration race produced a non-regular path"
+        if not canonical_git and PREREGISTRATION_PATH.name in os.listdir(
+            results_fd
+        ):
+            try:
+                canonical_fd = _open_component_no_follow(
+                    results_fd,
+                    PREREGISTRATION_PATH.name,
+                    directory=False,
                 )
-            actual_bytes = target.read_bytes()
-            if actual_bytes == expected_bytes:
-                return False
-            raise FileExistsError(
-                "immutable preregistration won a race with other bytes"
+            except OSError as exc:
+                raise FileExistsError(
+                    "existing preregistration is not a regular file"
+                ) from exc
+            canonical_info = os.fstat(canonical_fd)
+            if (
+                not stat.S_ISREG(canonical_info.st_mode)
+                or stat.S_IMODE(canonical_info.st_mode) != 0o444
+                or _pread_complete(canonical_fd, canonical_info.st_size)
+                != expected_bytes
+            ):
+                raise FileExistsError(
+                    "existing preregistration has other bytes or mode"
+                )
+            snapshot.verify_final()
+            return False
+        initial_entries = _validate_closed_path_state(
+            results_fd,
+            Q5_PREREGISTRATION_PUBLICATION,
+            snapshot=snapshot,
+            preregistration=False,
+            claim=False,
+            worker_stage=False,
+            fixed_pycache=False,
+        )
+
+        _probe_preregistration_publication(results_fd, snapshot)
+        if tuple(sorted(os.listdir(results_fd))) != initial_entries:
+            raise RuntimeError("capability probe did not restore results inventory")
+        publication_flags = getattr(os, "O_TMPFILE", 0)
+        if not publication_flags:
+            raise RuntimeError("O_TMPFILE is unavailable")
+        unnamed_fd, unnamed_info = _prepare_unnamed_publication(
+            results_fd, expected_bytes
+        )
+        final_recheck = snapshot.verify_final
+        final_recheck()
+        for path_text, initial_pair in initial_pairs.items():
+            observed = _classify_git_pair_only(
+                repository_root,
+                path_text,
+                (
+                    {
+                        "git_blob": initial_pair[0],
+                        "git_mode": initial_pair[1],
+                    }
+                    if initial_pair is not None
+                    else {"git_blob": None, "git_mode": None}
+                ),
             )
-        directory_fd = os.open(target.parent, os.O_RDONLY)
-        try:
-            os.fsync(directory_fd)
-        finally:
-            os.close(directory_fd)
-        if target.read_bytes() != expected_bytes:
-            raise RuntimeError("canonical preregistration byte verification failed")
-        if stat.S_IMODE(target.stat().st_mode) != 0o444:
-            raise RuntimeError("canonical preregistration mode verification failed")
+            if observed != initial_pair:
+                raise RuntimeError(f"{path_text}: final Git pair differs")
+        if canonical_git:
+            _require_clean_pushed_branch(repository_root)
+        if tuple(sorted(os.listdir(results_fd))) != initial_entries:
+            raise RuntimeError("results inventory drifted before preregistration link")
+        _link_prepared_publication(
+            unnamed_fd, results_fd, target.name
+        )
+        canonical_fd = os.open(
+            target.name,
+            os.O_RDONLY
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_CLOEXEC", 0),
+            dir_fd=results_fd,
+        )
+        canonical_info = os.fstat(canonical_fd)
+        if (
+            (canonical_info.st_dev, canonical_info.st_ino)
+            != (unnamed_info.st_dev, unnamed_info.st_ino)
+            or stat.S_IMODE(canonical_info.st_mode) != 0o444
+            or _pread_complete(canonical_fd, canonical_info.st_size)
+            != expected_bytes
+        ):
+            raise RuntimeError("canonical preregistration verification failed")
+        expected_entries = tuple(sorted((*initial_entries, target.name)))
+        if tuple(sorted(os.listdir(results_fd))) != expected_entries:
+            raise RuntimeError("preregistration one-leaf delta differs")
+        os.fsync(results_fd)
+        _validate_closed_path_state(
+            results_fd,
+            Q5_PREREGISTRATION_PUBLICATION,
+            snapshot=snapshot,
+            validate_predecessors=False,
+            preregistration=True,
+            claim=False,
+            worker_stage=False,
+            fixed_pycache=False,
+        )
+        snapshot.rebaseline_directory(
+            (os.fstat(results_fd).st_dev, os.fstat(results_fd).st_ino)
+        )
         return True
     finally:
-        temporary.unlink(missing_ok=True)
-        directory_fd = os.open(target.parent, os.O_RDONLY)
-        try:
-            os.fsync(directory_fd)
-        finally:
-            os.close(directory_fd)
-
-
-def load_existing_artifact(
-    *,
-    repository_root: Path = REPOSITORY_ROOT,
-    verify_files: bool = True,
-) -> dict[str, Any]:
-    target = _validate_output_path(PREREGISTRATION_PATH, repository_root)
-    if _path_type(target) != "regular_file":
-        raise ValueError("preregistration artifact must be a regular file")
-    raw = target.read_bytes()
-    if not raw.endswith(b"\n") or raw.endswith(b"\n\n"):
-        raise ValueError("preregistration must have exactly one trailing LF")
-    manifest = json.loads(raw)
-    if raw != canonical_json_bytes(manifest, trailing_lf=True):
-        raise ValueError("preregistration bytes are not canonical JSON")
-    validate_manifest(
-        manifest,
-        repository_root=repository_root,
-        verify_files=verify_files,
-        verify_environment=verify_files,
-        verify_git_seal=verify_files,
-    )
-    return manifest
+        if canonical_fd >= 0:
+            os.close(canonical_fd)
+        if unnamed_fd >= 0:
+            os.close(unnamed_fd)
+        if owns_snapshot:
+            snapshot.close()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    global _ACTIVE_PREREGISTRATION_CACHE
+    global _ACTIVE_PREREGISTRATION_GIT_PAIRS
+    global _ACTIVE_PREREGISTRATION_SNAPSHOT
+    global _ACTIVE_PREREGISTRATION_ROOT
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--verify-existing",
-        action="store_true",
-        help="verify the existing canonical artifact without writing",
-    )
-    arguments = parser.parse_args(argv)
-    if arguments.verify_existing:
-        manifest = load_existing_artifact()
-        print(manifest["manifest_hash"])
-        return 0
-    manifest = build_manifest()
-    created = write_once(manifest)
+    parser.parse_args(argv)
+    _validate_q5_publication_topology(REPOSITORY_ROOT)
+    _require_clean_pushed_branch(REPOSITORY_ROOT)
+    publication_phase = Q5_PREREGISTRATION_PUBLICATION
+    if publication_phase != Q5_PREREGISTRATION_PUBLICATION:
+        raise RuntimeError("Q5 publication phase differs")
+    snapshot, pairs = _bootstrap_q5_snapshot(REPOSITORY_ROOT)
+    try:
+        _ACTIVE_PREREGISTRATION_CACHE = snapshot
+        _ACTIVE_PREREGISTRATION_GIT_PAIRS = pairs
+        _ACTIVE_PREREGISTRATION_SNAPSHOT = snapshot
+        _ACTIVE_PREREGISTRATION_ROOT = REPOSITORY_ROOT
+        manifest = build_manifest()
+        created = write_once(
+            manifest,
+            _snapshot=snapshot,
+            _pairs=pairs,
+        )
+    finally:
+        _ACTIVE_PREREGISTRATION_SNAPSHOT = None
+        _ACTIVE_PREREGISTRATION_GIT_PAIRS = None
+        _ACTIVE_PREREGISTRATION_CACHE = None
+        _ACTIVE_PREREGISTRATION_ROOT = None
+        snapshot.close()
     print(
         f"{'created' if created else 'verified'} {PREREGISTRATION_PATH} "
         f"{manifest['manifest_hash']}"

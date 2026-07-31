@@ -1,4 +1,4 @@
-"""Claim and one-shot builder for the G9CB-4 structural clock bundle.
+"""Claim and one-shot builder for the G9CB-5 structural clock bundle.
 
 The import-time and claim paths are deliberately stdlib-only.  Generic Gross9
 runtime modules are imported only by a fresh worker process after the durable
@@ -13,11 +13,13 @@ import ast
 import builtins
 import concurrent.futures
 import concurrent.futures.process
+import copy
 import csv
 import ctypes
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 import errno
+import fnmatch
 import fcntl
 import gzip
 import hashlib
@@ -50,8 +52,8 @@ import zlib
 from training import preregister_gross9_structural_clock_bundle as prereg
 
 
-IDENTITY = "G9CB-4"
-PROTOCOL_VERSION = "gross9_structural_clock_bundle_g9cb4_v1"
+IDENTITY = "G9CB-5"
+PROTOCOL_VERSION = "gross9_structural_clock_bundle_g9cb5_v1"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 BUILDER_PATH = Path("training/build_gross9_structural_clock_bundle.py")
 BUILDER_TEST_PATH = Path("tests/test_build_gross9_structural_clock_bundle.py")
@@ -59,28 +61,28 @@ PREREGISTER_PATH = Path("training/preregister_gross9_structural_clock_bundle.py"
 PREREGISTRATION_PATH = prereg.PREREGISTRATION_PATH
 CLAIM_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb4_access_claim_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb5_access_claim_2026-07-31.json"
 )
 SENTINEL_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb4_attempt_consumed_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb5_attempt_consumed_2026-07-31.json"
 )
 CSV_PATH = Path(
-    "results/gross9_structural_clock_bundle_g9cb4_2026-07-31.csv.gz"
+    "results/gross9_structural_clock_bundle_g9cb5_2026-07-31.csv.gz"
 )
 MANIFEST_PATH = Path(
     "results/"
-    "gross9_structural_clock_bundle_g9cb4_manifest_2026-07-31.json"
+    "gross9_structural_clock_bundle_g9cb5_manifest_2026-07-31.json"
 )
 WORKER_LEDGER_PATHS = (
     Path(
         "results/"
-        "gross9_structural_clock_bundle_g9cb4_worker_capability_consumed_pass1_"
+        "gross9_structural_clock_bundle_g9cb5_worker_capability_consumed_pass1_"
         "2026-07-31.json"
     ),
     Path(
         "results/"
-        "gross9_structural_clock_bundle_g9cb4_worker_capability_consumed_pass2_"
+        "gross9_structural_clock_bundle_g9cb5_worker_capability_consumed_pass2_"
         "2026-07-31.json"
     ),
 )
@@ -195,24 +197,90 @@ RANK7_ROWS_USED_COUNTERS = (
     "rank7_bundle_parity_rows_compared",
 )
 GZIP_PREFIX = bytes.fromhex("1f8b08000000000002ff")
-TERMINAL_ACTION = "TERMINAL_G9CB4_ATTEMPT_CONSUMED_NO_RETRY"
+TERMINAL_ACTION = "TERMINAL_G9CB5_ATTEMPT_CONSUMED_NO_RETRY"
 _TIMESTAMP_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\Z")
 _SHA_RE = re.compile(r"[0-9a-f]{64}\Z")
 _DIST_NORMALIZE_RE = re.compile(r"[-_.]+")
 _STAGED_CSV_NAME = "gross9_structural_clock_bundle.csv.gz"
 _STAGED_CORE_NAME = "gross9_structural_clock_bundle_core.json"
 _STAGED_RECEIPT_NAME = "gross9_structural_clock_bundle_pass_receipt.json"
-_PYCACHE_PREFIX_RELATIVE = Path("results/.g9cb4-bytecode-cache-disabled")
+_PYCACHE_PREFIX_RELATIVE = Path("results/.g9cb5-bytecode-cache-disabled")
+_ABSOLUTE_BINDING_ALLOWLIST = frozenset(
+    {"/tmp/btcusdt_open_interest_5m_2020_2026.csv"}
+)
+_PREREGISTRATION_ONLY = "preregistration-only"
+_PREREGISTRATION_PLUS_CLAIM = "preregistration-plus-claim"
+Q5_PREREGISTRATION_PUBLICATION = "Q5_PREREGISTRATION_PUBLICATION"
+P5_CLAIM_PREFLIGHT = "P5_CLAIM_PREFLIGHT"
+C5_PRODUCTION_PREFLIGHT = "C5_PRODUCTION_PREFLIGHT"
+D5_COMMITTED_VERIFICATION = "D5_COMMITTED_VERIFICATION"
+PRODUCTION_CHECKPOINTS = (
+    "C5_PRODUCTION_PREFLIGHT",
+    "CAPABILITY_PROBE_COMPLETE",
+    "SLOT1_PREPARED",
+    "SENTINEL_LINKED",
+    "PASS1_LEDGER_LINKED",
+    "PASS1_OUTPUT_READY",
+    "SLOT_TRANSITION",
+    "PASS2_LEDGER_LINKED",
+    "PASS2_OUTPUT_READY",
+    "CANONICAL_CSV_LINKED",
+    "MANIFEST_LINKED_LAST",
+    "FINAL_CLEANUP",
+)
+HELPER_LOCAL_TRANSIENT_STATES = (
+    "CAPABILITY_PROBE_LINKED_TRANSIENT",
+    "STAGE_DIRECTORY_CREATED_TRANSIENT",
+    "STAGE_FILE_IN_PROGRESS_TRANSIENT",
+    "STAGE_CLEANUP_TRANSIENT",
+    "UNNAMED_CANONICAL_LINK_TRANSIENT",
+)
 _PR_SET_PDEATHSIG = 1
 _LIBC = ctypes.CDLL(None, use_errno=True)
 
 
-class TerminalG9CB4Failure(RuntimeError):
+class TerminalG9CB5Failure(RuntimeError):
     """A terminal protocol or post-sentinel failure."""
 
 
 def _fail(message: str) -> NoReturn:
-    raise TerminalG9CB4Failure(message)
+    raise TerminalG9CB5Failure(message)
+
+
+def _validate_production_checkpoint(checkpoint: str) -> None:
+    if checkpoint in HELPER_LOCAL_TRANSIENT_STATES:
+        _fail(f"helper-local transient is not a stable checkpoint: {checkpoint}")
+    if checkpoint not in PRODUCTION_CHECKPOINTS:
+        _fail(f"unknown production checkpoint: {checkpoint}")
+
+
+class _ProductionStateMachine:
+    def __init__(self) -> None:
+        self._position = -1
+
+    @property
+    def current(self) -> str | None:
+        if self._position < 0:
+            return None
+        return PRODUCTION_CHECKPOINTS[self._position]
+
+    def advance(self, checkpoint: str, validate: Any) -> None:
+        _validate_production_checkpoint(checkpoint)
+        expected_position = self._position + 1
+        if (
+            expected_position >= len(PRODUCTION_CHECKPOINTS)
+            or PRODUCTION_CHECKPOINTS[expected_position] != checkpoint
+        ):
+            _fail(
+                "production checkpoint transition differs: "
+                f"{self.current!r} -> {checkpoint!r}"
+            )
+        validate()
+        self._position = expected_position
+
+    def require_complete(self) -> None:
+        if self.current != "FINAL_CLEANUP":
+            _fail("production checkpoint sequence is incomplete")
 
 
 def _canonical_json_bytes(payload: Any, *, trailing_lf: bool = True) -> bytes:
@@ -266,7 +334,7 @@ def _decode_canonical_object(
     try:
         payload = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_object)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB4Failure(
+        raise TerminalG9CB5Failure(
             f"invalid canonical JSON: {path_text}"
         ) from exc
     if not isinstance(payload, dict) or raw != _canonical_json_bytes(payload):
@@ -289,18 +357,19 @@ def _read_canonical_object(
 ) -> tuple[dict[str, Any], bytes, os.stat_result]:
     cache_key = path.as_posix() if path_text is None else path_text
     cached = raw_cache.get(cache_key) if raw_cache is not None else None
+    if raw_cache is not None and cached is None:
+        _fail(f"canonical cache binding is absent: {cache_key}")
     raw, info = (
         cached
         if cached is not None
         else _read_bound_regular_bytes(path, cache_key)
     )
-    if cached is None and isinstance(raw_cache, dict):
-        raw_cache[cache_key] = (raw, info)
     payload = _decode_canonical_object(raw, cache_key, hash_field)
     return payload, raw, info
 
 
 def _rooted(root: Path, relative: Path) -> Path:
+    relative = Path(relative)
     if relative.is_absolute() or any(
         part in ("", ".", "..") for part in relative.parts
     ):
@@ -388,6 +457,8 @@ def _validate_preregistration_seal_head(
     root: Path,
     preregistration: Mapping[str, Any],
     head: str,
+    *,
+    classify_worktree: bool = True,
 ) -> None:
     implementation = preregistration.get("protocol_implementation_commit")
     if not isinstance(implementation, str) or not re.fullmatch(
@@ -412,15 +483,17 @@ def _validate_preregistration_seal_head(
         allow_failure=True,
     ).strip():
         _fail("active preregistration is not tracked")
-    if _git_text(root, "hash-object", "--", path) != _git_text(
-        root,
-        "rev-parse",
-        f"HEAD:{path}",
-    ):
-        _fail("active preregistration differs from HEAD")
-    tree = _git_text(root, "ls-tree", "HEAD", "--", path).split()
-    if len(tree) < 3 or tree[0] != "100644" or tree[1] != "blob":
-        _fail("active preregistration Git mode differs")
+    if classify_worktree:
+        pair = _validate_git_pair_preflight(
+            root,
+            path,
+            repository_relative=True,
+            declaration={},
+            verify_git=True,
+            require_tracked=True,
+        )
+        if pair is None or pair[1] != "100644":
+            _fail("active preregistration Git mode differs")
 
 
 def _validate_committed_publication_topology(
@@ -505,7 +578,7 @@ def _require_bound_regular_lstat(path: Path, path_text: str) -> None:
     try:
         mode = os.lstat(path).st_mode
     except OSError as exc:
-        raise TerminalG9CB4Failure(
+        raise TerminalG9CB5Failure(
             f"bound input cannot be inspected: {path_text}"
         ) from exc
     if not stat.S_ISREG(mode):
@@ -515,35 +588,20 @@ def _require_bound_regular_lstat(path: Path, path_text: str) -> None:
 def _bound_regular_path(root: Path, path_text: str) -> tuple[Path, bool]:
     if not path_text or "\x00" in path_text:
         _fail("bound input path is empty or contains NUL")
-    candidate_text = Path(path_text)
-    if candidate_text.is_absolute():
-        candidate = Path(path_text)
-        try:
-            resolved = candidate.resolve(strict=True)
-        except (OSError, RuntimeError) as exc:
-            raise TerminalG9CB4Failure(
-                f"bound absolute input cannot be resolved: {path_text}"
-            ) from exc
-        if path_text != resolved.as_posix():
-            _fail(f"bound absolute input is not canonical: {path_text}")
-        repository_root = root.resolve(strict=True)
-        if resolved == repository_root or repository_root in resolved.parents:
+    if path_text.startswith("/"):
+        root_text = os.path.abspath(os.fspath(root))
+        if path_text == root_text or path_text.startswith(root_text + "/"):
             _fail(
                 "bound absolute repository input must be repository-relative: "
                 f"{path_text}"
             )
-        current = Path(candidate.anchor)
-        for part in candidate.parts[1:]:
-            current /= part
-            try:
-                if stat.S_ISLNK(os.lstat(current).st_mode):
-                    _fail(f"bound absolute input traverses a symlink: {path_text}")
-            except OSError as exc:
-                raise TerminalG9CB4Failure(
-                    f"bound absolute input cannot be inspected: {path_text}"
-                ) from exc
-        _require_bound_regular_lstat(resolved, path_text)
-        return resolved, False
+        if (
+            "//" in path_text
+            or Path(path_text).as_posix() != path_text
+            or any(part in ("", ".", "..") for part in path_text[1:].split("/"))
+        ):
+            _fail(f"bound absolute input is not canonical text: {path_text}")
+        return Path(path_text), False
 
     if "\\" in path_text:
         _fail(f"bound repository path is not POSIX text: {path_text}")
@@ -553,36 +611,14 @@ def _bound_regular_path(root: Path, path_text: str) -> tuple[Path, bool]:
     pure = PurePosixPath(path_text)
     if pure.is_absolute() or pure.as_posix() != path_text:
         _fail(f"bound repository path is not normalized: {path_text}")
-    repository_root = root.resolve(strict=True)
-    candidate = repository_root.joinpath(*components)
-    try:
-        resolved = candidate.resolve(strict=True)
-        resolved.relative_to(repository_root)
-    except (OSError, RuntimeError, ValueError) as exc:
-        raise TerminalG9CB4Failure(
-            f"bound repository input escapes or is absent: {path_text}"
-        ) from exc
-    if resolved != candidate:
-        _fail(f"bound repository input traverses a symlink: {path_text}")
-    current = repository_root
-    for component in components:
-        current /= component
-        try:
-            if stat.S_ISLNK(os.lstat(current).st_mode):
-                _fail(f"bound repository input traverses a symlink: {path_text}")
-        except OSError as exc:
-            raise TerminalG9CB4Failure(
-                f"bound repository input cannot be inspected: {path_text}"
-            ) from exc
-    _require_bound_regular_lstat(candidate, path_text)
-    return candidate, True
+    return root.joinpath(*components), True
 
 
 def _validate_zero_access(payload: Mapping[str, Any]) -> None:
     try:
         prereg.validate_zero_access_schema(payload)
     except (TypeError, ValueError) as exc:
-        raise TerminalG9CB4Failure(
+        raise TerminalG9CB5Failure(
             f"preregistration zero-access schema differs: {exc}"
         ) from exc
 
@@ -629,6 +665,8 @@ def _expected_authority_amendment_bindings() -> list[dict[str, Any]]:
 
 def _authority_amendment_bindings(
     preregistration: Mapping[str, Any],
+    *,
+    expected: Sequence[Mapping[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     bindings = preregistration.get("bindings")
     observed = (
@@ -636,10 +674,185 @@ def _authority_amendment_bindings(
         if isinstance(bindings, Mapping)
         else None
     )
-    expected = _expected_authority_amendment_bindings()
-    if observed != expected:
+    expected_rows = (
+        _expected_authority_amendment_bindings()
+        if expected is None
+        else [dict(row) for row in expected]
+    )
+    if observed != expected_rows:
         _fail("authority amendment bindings mismatch")
-    return expected
+    return expected_rows
+
+
+_EXPECTED_SECURITY_PROFILE_KEYS = frozenset(
+    {
+        "identity",
+        "expected_branch",
+        "authority_commit",
+        "protocol_implementation_commit",
+        "preregistration_seal_commit",
+        "failed_predecessor_preregistrations",
+        "failed_predecessor_attempts",
+        "failed_predecessor_closures",
+        "successor_preregistrations",
+        "authority_amendments",
+        "protocol_paths",
+        "protocol_diff",
+        "preregistration_diff",
+        "claim_diff",
+        "publication_diff",
+    }
+)
+
+
+def _fixed_security_expectations() -> dict[str, Any]:
+    return {
+        "failed_predecessor_preregistrations": copy.deepcopy(
+            prereg.expected_failed_predecessor_preregistration_bindings()
+        ),
+        "failed_predecessor_attempts": copy.deepcopy(
+            prereg.expected_failed_predecessor_attempts()
+        ),
+        "failed_predecessor_closures": copy.deepcopy(
+            prereg.expected_failed_predecessor_closures()
+        ),
+        "successor_preregistrations": copy.deepcopy(
+            prereg.expected_successor_preregistration_bindings()
+        ),
+        "authority_amendments": copy.deepcopy(
+            _expected_authority_amendment_bindings()
+        ),
+        "protocol_paths": sorted(
+            path.as_posix() for path in prereg.PROTOCOL_PATHS
+        ),
+        "protocol_diff": list(prereg.SUCCESSOR_PROTOCOL_DIFF),
+        "preregistration_diff": list(ACTIVE_PREREGISTRATION_DIFF),
+        "claim_diff": list(CLAIM_DIFF),
+        "publication_diff": list(PUBLICATION_DIFF),
+    }
+
+
+def _validated_expected_security_profile(
+    root: Path,
+    preregistration: Mapping[str, Any],
+    profile: Mapping[str, Any],
+    *,
+    topology_prevalidated: bool = False,
+) -> dict[str, Any]:
+    required = _EXPECTED_SECURITY_PROFILE_KEYS
+    normalized = copy.deepcopy(dict(profile))
+    if not required.issubset(normalized) or set(normalized) - (
+        required
+        | {
+            "claim_commit",
+            "publication_commit",
+        }
+    ):
+        _fail("expected security profile schema differs")
+    for key in (
+        "authority_commit",
+        "protocol_implementation_commit",
+        "preregistration_seal_commit",
+    ):
+        if not isinstance(normalized.get(key), str) or not re.fullmatch(
+            r"[0-9a-f]{40}", normalized[key]
+        ):
+            _fail(f"expected security profile commit differs: {key}")
+    for key in ("claim_commit", "publication_commit"):
+        if key in normalized and (
+            not isinstance(normalized[key], str)
+            or not re.fullmatch(r"[0-9a-f]{40}", normalized[key])
+        ):
+            _fail(f"expected security profile commit differs: {key}")
+    if (
+        normalized["identity"] != IDENTITY
+        or normalized["expected_branch"] != prereg.EXPECTED_BRANCH
+        or preregistration.get("protocol_implementation_commit")
+        != normalized["protocol_implementation_commit"]
+        or _expected_branch(preregistration) != normalized["expected_branch"]
+    ):
+        _fail("expected security profile identity binding differs")
+    implementation = normalized["protocol_implementation_commit"]
+    authority = normalized["authority_commit"]
+    seal = normalized["preregistration_seal_commit"]
+    if (
+        normalized["protocol_diff"] != list(prereg.SUCCESSOR_PROTOCOL_DIFF)
+        or normalized["preregistration_diff"]
+        != list(ACTIVE_PREREGISTRATION_DIFF)
+        or normalized["claim_diff"] != list(CLAIM_DIFF)
+        or normalized["publication_diff"] != list(PUBLICATION_DIFF)
+        or normalized["protocol_paths"]
+        != sorted(path.as_posix() for path in prereg.PROTOCOL_PATHS)
+    ):
+        _fail("expected security profile path or diff contract differs")
+    if not topology_prevalidated:
+        if (
+            _single_parent_commit(root, implementation) != authority
+            or _commit_name_status(root, authority, implementation)
+            != tuple(normalized["protocol_diff"])
+            or _single_parent_commit(root, seal) != implementation
+            or _commit_name_status(root, implementation, seal)
+            != tuple(normalized["preregistration_diff"])
+        ):
+            _fail("expected security profile A5/Q5/P5 topology differs")
+    bindings = preregistration.get("bindings")
+    if not isinstance(bindings, Mapping):
+        _fail("expected security profile preregistration bindings are absent")
+    for profile_key, binding_key in (
+        (
+            "failed_predecessor_preregistrations",
+            "failed_predecessor_preregistrations",
+        ),
+        ("failed_predecessor_attempts", "failed_predecessor_attempts"),
+        ("failed_predecessor_closures", "failed_predecessor_closures"),
+        ("successor_preregistrations", "successor_preregistrations"),
+        ("authority_amendments", "authority_amendments"),
+    ):
+        if normalized[profile_key] != bindings.get(binding_key):
+            _fail(f"expected security profile binding differs: {profile_key}")
+    if _planned_protocol_paths(preregistration) != normalized["protocol_paths"]:
+        _fail("expected security profile protocol path binding differs")
+    return normalized
+
+
+def _official_expected_security_profile(
+    root: Path, preregistration: Mapping[str, Any]
+) -> dict[str, Any]:
+    try:
+        implementation = prereg.validate_protocol_commit_topology(root)
+        additions = tuple(
+            line
+            for line in _git_text(
+                root,
+                "log",
+                "--diff-filter=A",
+                "--format=%H",
+                "--",
+                PREREGISTRATION_PATH.as_posix(),
+            ).splitlines()
+            if line
+        )
+    except (
+        OSError,
+        RuntimeError,
+        ValueError,
+        subprocess.CalledProcessError,
+    ) as exc:
+        raise TerminalG9CB5Failure(
+            "official A5/Q5/P5 security topology differs"
+        ) from exc
+    if len(additions) != 1:
+        _fail("official preregistration seal addition history differs")
+    seal = additions[0]
+    profile = {
+        "identity": IDENTITY,
+        "expected_branch": prereg.EXPECTED_BRANCH,
+        "authority_commit": prereg.AUTHORITY_DECISION_COMMIT,
+        "protocol_implementation_commit": implementation,
+        "preregistration_seal_commit": seal,
+        **_fixed_security_expectations(),
+    }
+    return _validated_expected_security_profile(root, preregistration, profile)
 
 
 def _validate_failed_predecessor_attempt_binding(
@@ -657,48 +870,134 @@ def _validate_failed_predecessor_attempt_binding(
     return expected
 
 
+def _validate_failed_predecessor_closure_binding(
+    preregistration: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    expected = prereg.expected_failed_predecessor_closures()
+    bindings = preregistration.get("bindings")
+    observed = (
+        bindings.get("failed_predecessor_closures")
+        if isinstance(bindings, Mapping)
+        else None
+    )
+    if observed != expected:
+        _fail("failed predecessor closure binding differs")
+    return expected
+
+
 def _validate_failed_predecessor_permanent_state(
-    root: Path,
+    results_fd: int,
     failed_attempts: Sequence[Mapping[str, Any]],
+    failed_closures: Sequence[Mapping[str, Any]] = (),
+    *,
+    retained_directories: Mapping[str, int] | None = None,
 ) -> None:
+    names = set(_directory_entries(results_fd))
+
+    def absent(path_text: str, message: str) -> None:
+        leaf = Path(path_text).name
+        try:
+            os.stat(leaf, dir_fd=results_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            return
+        _fail(message)
+
     if len(failed_attempts) != 2:
         _fail("failed predecessor attempt permanent-state schema differs")
     for row in failed_attempts:
         identity = str(row["identity"])
         for path_text in row["permanently_absent_outputs"]:
-            path = _rooted(root, Path(path_text))
-            try:
-                os.lstat(path)
-            except FileNotFoundError:
-                continue
-            _fail(f"permanently absent {identity} output exists: {path_text}")
+            absent(
+                str(path_text),
+                f"permanently absent {identity} output exists: {path_text}",
+            )
         bytecode = row["residue"].get("bytecode_cache")
         if isinstance(bytecode, Mapping):
-            path = _rooted(root, Path(str(bytecode["path"])))
-            try:
-                os.lstat(path)
-            except FileNotFoundError:
-                pass
-            else:
-                _fail(f"{identity} bytecode residue differs")
-        slot1 = _rooted(
-            root, Path(row["residue"]["slot1_stage"]["path"])
+            absent(
+                str(bytecode["path"]),
+                f"{identity} bytecode residue differs",
+            )
+        slot1_leaf = Path(
+            str(row["residue"]["slot1_stage"]["path"])
+        ).name
+        path_text = str(row["residue"]["slot1_stage"]["path"])
+        stage_fd = (
+            retained_directories.get(path_text)
+            if retained_directories is not None
+            else None
         )
-        if (
-            stat.S_IMODE(os.lstat(slot1).st_mode) != 0o700
-            or not slot1.is_dir()
-            or any(slot1.iterdir())
-        ):
-            _fail(f"{identity} slot-1 residue state differs")
-        slot2 = _rooted(
-            root, Path(row["residue"]["slot2_stage"]["path"])
-        )
+        owned_stage_fd = stage_fd is None
+        if stage_fd is None:
+            stage_fd = os.open(
+                slot1_leaf,
+                os.O_RDONLY
+                | getattr(os, "O_DIRECTORY", 0)
+                | getattr(os, "O_NOFOLLOW", 0)
+                | getattr(os, "O_CLOEXEC", 0),
+                dir_fd=results_fd,
+            )
         try:
-            os.lstat(slot2)
-        except FileNotFoundError:
-            pass
-        else:
-            _fail(f"{identity} slot-2 residue state differs")
+            info = os.fstat(stage_fd)
+            if (
+                not stat.S_ISDIR(info.st_mode)
+                or stat.S_IMODE(info.st_mode) != 0o700
+                or _directory_entries(stage_fd)
+            ):
+                _fail(f"{identity} slot-1 residue state differs")
+        finally:
+            if owned_stage_fd:
+                os.close(stage_fd)
+        absent(
+            str(row["residue"]["slot2_stage"]["path"]),
+            f"{identity} slot-2 residue state differs",
+        )
+    if (
+        len(failed_closures) != 1
+        or failed_closures[0].get("identity") != "G9CB-4"
+        or not isinstance(failed_closures[0].get("residue"), Mapping)
+        or not isinstance(
+            failed_closures[0].get("permanently_absent_outputs"), list
+        )
+    ):
+        _fail("failed predecessor closure permanent-state schema differs")
+    for row in failed_closures:
+        for path_text in row["permanently_absent_outputs"]:
+            absent(
+                str(path_text),
+                f"permanently absent G9CB-4 output exists: {path_text}",
+            )
+        residue = row["residue"]
+        absent(
+            str(residue["bytecode_cache"]["path"]),
+            "G9CB-4 bytecode residue differs",
+        )
+        if any(
+            name.startswith(".gross9_structural_clock_bundle_g9cb4_")
+            and ".stage-" in name
+            for name in names
+        ):
+            _fail("G9CB-4 publication-stage residue differs")
+        if any(
+            name.startswith(".gross9-structural-clock-g9cb4-worker-")
+            for name in names
+        ):
+            _fail("G9CB-4 worker-stage residue differs")
+
+
+def _validate_predecessor_inventory_standalone(
+    root: Path,
+    failed_attempts: Sequence[Mapping[str, Any]],
+    failed_closures: Sequence[Mapping[str, Any]],
+) -> None:
+    context = _PublicationContext(root)
+    try:
+        _validate_failed_predecessor_permanent_state(
+            context.results_fd,
+            failed_attempts,
+            failed_closures,
+        )
+    finally:
+        context.close()
 
 
 def _validate_guarded_preregistration_authentication(
@@ -759,6 +1058,8 @@ def validate_preregistration(
     parent_authentication: Mapping[str, Any] | None = None,
     claim_preregistration: Mapping[str, Any] | None = None,
     raw_cache: Mapping[str, tuple[bytes, os.stat_result]] | None = None,
+    expected_security_profile: Mapping[str, Any] | None = None,
+    profile_topology_prevalidated: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Authenticate the canonical preregistration without opening source values."""
 
@@ -788,6 +1089,16 @@ def validate_preregistration(
     bindings = payload.get("bindings")
     if not isinstance(bindings, Mapping):
         _fail("preregistration bindings object is absent")
+    security_profile = (
+        _validated_expected_security_profile(
+            root,
+            payload,
+            expected_security_profile,
+            topology_prevalidated=profile_topology_prevalidated,
+        )
+        if expected_security_profile is not None
+        else None
+    )
     required_binding_keys = {
         "protocol",
         "authority_amendments",
@@ -803,6 +1114,17 @@ def validate_preregistration(
     }
     if not required_binding_keys.issubset(bindings):
         _fail("preregistration bindings schema is incomplete")
+    successor_binding_keys = {
+        "failed_predecessor_closures",
+        "successor_preregistrations",
+    }
+    missing_successor_keys = successor_binding_keys.difference(bindings)
+    if (
+        missing_successor_keys
+        and root == REPOSITORY_ROOT
+        and (root / ".git").exists()
+    ):
+        _fail("preregistration bindings schema is incomplete")
     for prohibited in (
         "authority_amendment",
         "superseded_preregistration",
@@ -811,14 +1133,41 @@ def validate_preregistration(
     ):
         if prohibited in bindings:
             _fail(f"superseded preregistration binding is present: {prohibited}")
-    _authority_amendment_bindings(payload)
-    if validation_mode == "synthetic":
+    _authority_amendment_bindings(
+        payload,
+        expected=(
+            security_profile["authority_amendments"]
+            if security_profile is not None
+            else None
+        ),
+    )
+    if security_profile is not None:
+        predecessors = security_profile[
+            "failed_predecessor_preregistrations"
+        ]
+        failed_attempts = security_profile["failed_predecessor_attempts"]
+        failed_closures = security_profile["failed_predecessor_closures"]
+    elif validation_mode == "synthetic":
         if (root / ".git").exists():
             _fail("synthetic preregistration hook requires a noncanonical root")
         predecessors = (
             prereg.expected_failed_predecessor_preregistration_bindings()
         )
         failed_attempts = prereg.expected_failed_predecessor_attempts()
+        failed_closures = prereg.expected_failed_predecessor_closures()
+    elif (
+        validation_mode == "guarded_worker"
+        and "failed_predecessor_closures" in bindings
+    ):
+        predecessors = (
+            prereg.expected_failed_predecessor_preregistration_bindings()
+        )
+        failed_attempts = _validate_failed_predecessor_attempt_binding(
+            payload
+        )
+        failed_closures = _validate_failed_predecessor_closure_binding(
+            payload
+        )
     elif validation_mode == "guarded_worker":
         predecessors = (
             prereg.expected_failed_predecessor_preregistration_bindings()
@@ -826,6 +1175,7 @@ def validate_preregistration(
         failed_attempts = _validate_failed_predecessor_attempt_binding(
             payload
         )
+        failed_closures = prereg.expected_failed_predecessor_closures()
     else:
         try:
             prereg.validate_historical_preregistration_topology(root)
@@ -835,27 +1185,58 @@ def validate_preregistration(
                 prereg.expected_failed_predecessor_preregistration_bindings()
             )
             failed_attempts = prereg.expected_failed_predecessor_attempts()
+            failed_closures = prereg.expected_failed_predecessor_closures()
         except (
             OSError,
             RuntimeError,
             ValueError,
             subprocess.CalledProcessError,
         ) as exc:
-            raise TerminalG9CB4Failure(
+            raise TerminalG9CB5Failure(
                 "failed predecessor preregistration evidence differs"
             ) from exc
     if validation_mode in {"parent", "guarded_worker"}:
-        _validate_failed_predecessor_permanent_state(root, failed_attempts)
+        if isinstance(raw_cache, _SecureBoundSnapshot):
+            results_fd = raw_cache.directory_descriptors.get(
+                ("repo", ("results",))
+            )
+            if results_fd is None:
+                _fail("predecessor path-state results descriptor is absent")
+            _validate_failed_predecessor_permanent_state(
+                results_fd, failed_attempts, failed_closures
+            )
+        else:
+            _validate_predecessor_inventory_standalone(
+                root, failed_attempts, failed_closures
+            )
     if bindings.get("failed_predecessor_preregistrations") != predecessors:
         _fail("failed predecessor preregistration bindings mismatch")
     if bindings.get("failed_predecessor_attempts") != failed_attempts:
         _fail("failed predecessor attempt binding mismatch")
+    if (
+        "failed_predecessor_closures" in bindings
+        and bindings.get("failed_predecessor_closures") != failed_closures
+    ):
+        _fail("failed predecessor closure binding mismatch")
+    successor_rows = bindings.get("successor_preregistrations")
+    if "successor_preregistrations" in bindings:
+        expected_successors = (
+            prereg.expected_successor_preregistration_bindings()
+            if security_profile is None
+            else security_profile["successor_preregistrations"]
+        )
+        if successor_rows != expected_successors:
+            _fail("successor preregistration bindings mismatch")
     recorded_implementation = payload.get("protocol_implementation_commit")
     if not isinstance(recorded_implementation, str) or not re.fullmatch(
         r"[0-9a-f]{40}", recorded_implementation
     ):
         _fail("protocol implementation commit is invalid")
-    if validation_mode in {"synthetic", "guarded_worker"}:
+    if security_profile is not None:
+        implementation = security_profile[
+            "protocol_implementation_commit"
+        ]
+    elif validation_mode in {"synthetic", "guarded_worker"}:
         implementation = recorded_implementation
     else:
         try:
@@ -866,7 +1247,7 @@ def validate_preregistration(
             ValueError,
             subprocess.CalledProcessError,
         ) as exc:
-            raise TerminalG9CB4Failure(
+            raise TerminalG9CB5Failure(
                 "protocol implementation topology differs"
             ) from exc
     if recorded_implementation != implementation:
@@ -878,7 +1259,11 @@ def validate_preregistration(
         _fail("preregistration git_seal is incomplete")
 
     helper = getattr(prereg, "validate_manifest", None)
-    if validation_mode == "parent" and callable(helper):
+    if (
+        validation_mode == "parent"
+        and security_profile is None
+        and callable(helper)
+    ):
         try:
             helper(
                 payload,
@@ -888,7 +1273,7 @@ def validate_preregistration(
                 verify_git_seal=False,
             )
         except (TypeError, ValueError) as exc:
-            raise TerminalG9CB4Failure(
+            raise TerminalG9CB5Failure(
                 "preregistration producer validation failed"
             ) from exc
 
@@ -913,6 +1298,7 @@ def _authenticate_guarded_worker_metadata(
     claim_preregistration: Mapping[str, Any] | None,
     *,
     raw_cache: dict[str, tuple[bytes, os.stat_result]] | None = None,
+    expected_security_profile: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     cache = {} if raw_cache is None else raw_cache
     preregistration, preregistration_binding = validate_preregistration(
@@ -921,6 +1307,8 @@ def _authenticate_guarded_worker_metadata(
         parent_authentication=parent_authentication,
         claim_preregistration=claim_preregistration,
         raw_cache=cache,
+        expected_security_profile=expected_security_profile,
+        profile_topology_prevalidated=True,
     )
     hashed_inputs = _validate_regular_hashed_inputs(
         root,
@@ -957,15 +1345,118 @@ def _authenticate_guarded_worker_metadata(
     }
 
 
+def _prepare_worker_metadata_snapshot(
+    root: Path,
+    guard: _WorkerIsolationGuard | None,
+    *,
+    extra_repository_paths: Sequence[str] = (),
+    expected_security_profile: Mapping[str, Any] | None = None,
+) -> _SecureBoundSnapshot:
+    if guard is not None and (
+        guard.repository_fd is None
+        or guard.filesystem_root_fd is None
+        or guard.results_fd is None
+    ):
+        _fail("worker metadata snapshot anchors are absent")
+    if guard is None:
+        snapshot = _SecureBoundSnapshot(root)
+    else:
+        snapshot = _SecureBoundSnapshot(
+            root,
+            repository_fd=guard.repository_fd,
+            filesystem_root_fd=guard.filesystem_root_fd,
+            opener=guard._original_os_open,
+            register_descriptor=guard.register_snapshot_descriptor,
+        )
+        results_info = os.fstat(guard.results_fd)
+        snapshot.directory_descriptors[("repo", ("results",))] = (
+            guard.results_fd
+        )
+        snapshot.directory_tokens[("repo", ("results",))] = (
+            _descriptor_token(results_info)
+        )
+        snapshot.directory_edges[("repo", ("results",))] = (
+            guard.repository_fd,
+            "results",
+        )
+        snapshot._borrowed_descriptors.add(guard.results_fd)
+    try:
+        for path in (PREREGISTRATION_PATH, CLAIM_PATH, SENTINEL_PATH):
+            snapshot.open_initial(path.as_posix(), True)
+        preregistration = _canonical_bound_json(
+            snapshot[PREREGISTRATION_PATH.as_posix()][0],
+            PREREGISTRATION_PATH.as_posix(),
+            "manifest_hash",
+        )
+        _retain_expected_predecessor_residue_directories(
+            snapshot,
+            preregistration,
+            (
+                None
+                if expected_security_profile is None
+                else expected_security_profile[
+                    "failed_predecessor_attempts"
+                ]
+            ),
+        )
+        prepared: dict[str, bool] = {
+            PREREGISTRATION_PATH.as_posix(): True,
+            CLAIM_PATH.as_posix(): True,
+            SENTINEL_PATH.as_posix(): True,
+        }
+        for binding in _iter_bindings(preregistration):
+            path_text = _binding_path(binding)
+            _candidate, repository_relative = _bound_regular_path(
+                root, path_text
+            )
+            prior = prepared.get(path_text)
+            if prior is not None and prior != repository_relative:
+                _fail(f"conflicting worker metadata path: {path_text}")
+            prepared[path_text] = repository_relative
+        bindings = preregistration.get("bindings")
+        protocol = (
+            bindings.get("protocol")
+            if isinstance(bindings, Mapping)
+            else None
+        )
+        if protocol is not None:
+            for path_text in _planned_protocol_paths(preregistration):
+                prepared.setdefault(path_text, True)
+        for path_text in extra_repository_paths:
+            _candidate, repository_relative = _bound_regular_path(
+                root, path_text
+            )
+            if not repository_relative:
+                _fail("worker extra snapshot path is not repository-relative")
+            prepared.setdefault(path_text, True)
+        for path_text in sorted(prepared):
+            snapshot.open_initial(path_text, prepared[path_text])
+        return snapshot
+    except BaseException:
+        snapshot.close()
+        raise
+
+
 def _authenticate_worker_metadata_entry(
     root: Path,
     parent_authentication: Mapping[str, Any],
     *,
     synthetic: bool,
+    synthetic_input_path: str | None = None,
+    expected_security_profile: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Authenticate active metadata modes and bytes from one snapshot each."""
 
-    metadata_cache: dict[str, tuple[bytes, os.stat_result]] = {}
+    guard = _ACTIVE_WORKER_GUARD
+    metadata_snapshot = _prepare_worker_metadata_snapshot(
+        root,
+        guard if isinstance(guard, _WorkerIsolationGuard) else None,
+        extra_repository_paths=(
+            () if synthetic_input_path is None else (synthetic_input_path,)
+        ),
+        expected_security_profile=expected_security_profile,
+    )
+    metadata_cache: dict[str, tuple[bytes, os.stat_result]] = metadata_snapshot
     sentinel, sentinel_raw, sentinel_info = _read_canonical_object(
         _rooted(root, SENTINEL_PATH),
         "manifest_hash",
@@ -982,30 +1473,17 @@ def _authenticate_worker_metadata_entry(
         _fail("active sentinel filesystem mode differs")
     if stat.S_IMODE(claim_info.st_mode) != 0o444:
         _fail("active claim filesystem mode differs")
-    if synthetic:
-        preregistration, preregistration_binding = validate_preregistration(
-            root,
-            validation_mode="synthetic",
-            raw_cache=metadata_cache,
-        )
-        _validate_guarded_preregistration_authentication(
-            preregistration_binding,
-            str(preregistration["protocol_implementation_commit"]),
-            parent_authentication,
-            claim.get("preregistration"),
-        )
-        guarded_metadata: dict[str, Any] | None = None
-    else:
-        guarded_metadata = _authenticate_guarded_worker_metadata(
-            root,
-            parent_authentication,
-            claim.get("preregistration"),
-            raw_cache=metadata_cache,
-        )
-        preregistration = guarded_metadata["preregistration"]
-        preregistration_binding = guarded_metadata[
-            "preregistration_binding"
-        ]
+    guarded_metadata = _authenticate_guarded_worker_metadata(
+        root,
+        parent_authentication,
+        claim.get("preregistration"),
+        raw_cache=metadata_cache,
+        expected_security_profile=expected_security_profile,
+    )
+    preregistration = guarded_metadata["preregistration"]
+    preregistration_binding = guarded_metadata[
+        "preregistration_binding"
+    ]
     return {
         "claim": claim,
         "claim_raw": claim_raw,
@@ -1015,6 +1493,7 @@ def _authenticate_worker_metadata_entry(
         "preregistration_binding": preregistration_binding,
         "guarded_metadata": guarded_metadata,
         "raw_cache": metadata_cache,
+        "snapshot": metadata_snapshot,
     }
 
 
@@ -1076,8 +1555,9 @@ def _head_blob_binding(
     pair = _validate_git_pair_preflight(
         root,
         path,
-        None,
-        None,
+        repository_relative=True,
+        declaration={},
+        verify_git=True,
         require_tracked=True,
     )
     if pair is None or pair[1] != "100644":
@@ -1102,31 +1582,18 @@ def _tracked_head_bytes(
     expected_mode: int = 0o444,
 ) -> bytes:
     path_text = relative.as_posix()
-    candidate = _rooted(root, relative)
-    if candidate.is_symlink() or not candidate.is_file():
-        _fail(f"committed artifact is not a regular file: {path_text}")
-    if stat.S_IMODE(candidate.stat().st_mode) != expected_mode:
-        _fail(f"committed artifact filesystem mode differs: {path_text}")
-    if not _git(
+    pair = _validate_git_pair_preflight(
         root,
-        "ls-files",
-        "--error-unmatch",
-        "--",
         path_text,
-        allow_failure=True,
-    ).strip():
-        _fail(f"committed artifact is not tracked: {path_text}")
-    tree = _git_text(root, "ls-tree", "HEAD", "--", path_text).split()
-    if len(tree) < 3 or tree[0] != "100644" or tree[1] != "blob":
-        _fail(f"committed artifact Git mode differs: {path_text}")
-    if _git_text(root, "hash-object", "--", path_text) != _git_text(
-        root,
-        "rev-parse",
-        f"HEAD:{path_text}",
-    ):
-        _fail(f"committed artifact differs from HEAD: {path_text}")
-    raw = candidate.read_bytes()
-    if _git(root, "show", f"HEAD:{path_text}") != raw:
+        repository_relative=True,
+        declaration={},
+        verify_git=True,
+        require_tracked=True,
+    )
+    raw, info = _read_bound_regular_bytes(_rooted(root, relative), path_text)
+    if stat.S_IMODE(info.st_mode) != expected_mode:
+        _fail(f"committed artifact filesystem mode differs: {path_text}")
+    if pair is None or pair[1] != "100644" or _git_blob_id(raw) != pair[0]:
         _fail(f"committed artifact bytes differ from HEAD: {path_text}")
     return raw
 
@@ -1174,114 +1641,893 @@ def _claim_payload(
     return _with_hash(core, "claim_hash")
 
 
-def _atomic_link_write_once(path: Path, raw: bytes, *, mode: int = 0o444) -> None:
-    """Publish complete bytes using an exclusive staging inode and hard link."""
+_AT_FDCWD = -100
+_AT_SYMLINK_FOLLOW = 0x400
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists() or path.is_symlink():
-        raise FileExistsError(f"write-once path exists: {path}")
-    prefix = f".{path.name}.stage-"
-    fd, stage_name = tempfile.mkstemp(prefix=prefix, dir=path.parent)
-    stage = Path(stage_name)
-    linked = False
+
+def _link_unnamed_procfd_raw(
+    unnamed_fd: int, results_fd: int, leaf: str
+) -> None:
+    source = f"/proc/self/fd/{unnamed_fd}".encode("ascii")
+    destination = os.fsencode(leaf)
+    result = _LIBC.linkat(
+        ctypes.c_int(_AT_FDCWD),
+        ctypes.c_char_p(source),
+        ctypes.c_int(results_fd),
+        ctypes.c_char_p(destination),
+        ctypes.c_int(_AT_SYMLINK_FOLLOW),
+    )
+    if result != 0:
+        error = ctypes.get_errno()
+        if error == errno.EEXIST:
+            raise FileExistsError(f"write-once path exists: {leaf}")
+        raise OSError(error, os.strerror(error), leaf)
+
+
+def _link_unnamed_procfd(
+    unnamed_fd: int, results_fd: int, leaf: str
+) -> None:
+    _link_unnamed_procfd_raw(unnamed_fd, results_fd, leaf)
+
+
+def _openat_component(
+    directory_fd: int,
+    leaf: str,
+    flags: int,
+    mode: int = 0,
+) -> int:
+    if (
+        not leaf
+        or leaf in {".", ".."}
+        or "/" in leaf
+        or "\\" in leaf
+        or "\x00" in leaf
+    ):
+        _fail("openat leaf component is invalid")
+    descriptor = _LIBC.openat(
+        ctypes.c_int(directory_fd),
+        ctypes.c_char_p(os.fsencode(leaf)),
+        ctypes.c_int(flags),
+        ctypes.c_uint(mode),
+    )
+    if descriptor < 0:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error), leaf)
+    return int(descriptor)
+
+
+def _directory_entries(descriptor: int) -> tuple[str, ...]:
+    guard = _ACTIVE_WORKER_GUARD
+    listdir = (
+        guard._originals.get((id(os), "listdir"), os.listdir)
+        if isinstance(guard, _WorkerIsolationGuard)
+        else os.listdir
+    )
+    return tuple(sorted(listdir(descriptor)))
+
+
+def _read_publication_descriptor(descriptor: int, size: int) -> bytes:
+    return _pread_complete(descriptor, size, True)
+
+
+def _open_unnamed_completed(
+    results_fd: int, raw: bytes, *, mode: int
+) -> tuple[int, os.stat_result]:
+    flags = (
+        os.O_RDWR
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_TMPFILE", 0)
+    )
+    if not getattr(os, "O_TMPFILE", 0):
+        _fail("O_TMPFILE is unavailable")
+    descriptor = os.open(".", flags, 0o600, dir_fd=results_fd)
     try:
-        with os.fdopen(fd, "wb", closefd=True) as handle:
-            handle.write(raw)
-            handle.flush()
-            os.fchmod(handle.fileno(), mode)
-            os.fsync(handle.fileno())
-        stage_info = os.stat(stage, follow_symlinks=False)
-        os.link(stage, path, follow_symlinks=False)
-        path_info = os.stat(path, follow_symlinks=False)
+        initial = os.fstat(descriptor)
+        if not stat.S_ISREG(initial.st_mode) or initial.st_size != 0:
+            _fail("unnamed publication inode is not an empty regular file")
+        _write_all(descriptor, raw)
+        os.fchmod(descriptor, mode)
+        os.fsync(descriptor)
+        completed = os.fstat(descriptor)
         if (
-            stage_info.st_dev != path_info.st_dev
-            or stage_info.st_ino != path_info.st_ino
+            (initial.st_dev, initial.st_ino, stat.S_IFMT(initial.st_mode))
+            != (
+                completed.st_dev,
+                completed.st_ino,
+                stat.S_IFMT(completed.st_mode),
+            )
+            or stat.S_IMODE(completed.st_mode) != mode
+            or completed.st_size != len(raw)
+            or _read_publication_descriptor(descriptor, completed.st_size)
+            != raw
         ):
-            _fail(f"published path is not the staged inode: {path}")
-        linked = True
-        directory_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-        try:
-            os.fsync(directory_fd)
-        finally:
-            os.close(directory_fd)
-    finally:
-        if stage.exists():
-            stage.unlink()
-            directory_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-            try:
-                os.fsync(directory_fd)
-            finally:
-                os.close(directory_fd)
-    if not linked:
-        _fail(f"publication failed: {path}")
-    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
-    try:
-        observed = bytearray()
-        while True:
-            chunk = os.read(descriptor, 1024 * 1024)
-            if not chunk:
-                break
-            observed.extend(chunk)
-        info = os.fstat(descriptor)
-    finally:
+            _fail("unnamed publication same-FD verification failed")
+        return descriptor, completed
+    except NameError as exc:
         os.close(descriptor)
-    if bytes(observed) != raw or stat.S_IMODE(info.st_mode) != mode:
-        _fail(f"published inode verification failed: {path}")
+        raise TerminalG9CB5Failure(
+            "publication helper failure"
+        ) from exc
+    except BaseException:
+        os.close(descriptor)
+        raise
 
 
-def validate_claim_preflight(
-    root: Path = REPOSITORY_ROOT,
-) -> dict[str, Any]:
-    """Run the complete metadata-only claim preflight without writing a claim."""
+class _PublicationContext:
+    """Retained results-dir publisher using only unnamed O_TMPFILE inodes."""
 
-    preregistration, prereg_binding = validate_preregistration(root)
-    parent = _require_clean_pushed_branch(
-        root,
-        _expected_branch(preregistration),
-    )
-    _validate_preregistration_seal_head(root, preregistration, parent)
-    raw_cache: dict[str, tuple[bytes, os.stat_result]] = {}
-    opaque_inputs = _validate_regular_hashed_inputs(
-        root,
-        preregistration,
-        raw_cache=raw_cache,
-    )
-    environment = _validate_environment(preregistration, root)
-    closures = _validate_static_closures(
-        root,
-        preregistration,
-        raw_cache=raw_cache,
-    )
-    for relative in (
+    def __init__(
+        self,
+        root: Path,
+        *,
+        directory_relative: str = "results",
+        expected_security_profile: Mapping[str, Any] | None = None,
+    ) -> None:
+        flags = (
+            os.O_RDONLY
+            | getattr(os, "O_DIRECTORY", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_CLOEXEC", 0)
+        )
+        self.root = root
+        self.repository_fd = os.open(root, flags)
+        try:
+            self.results_fd = os.open(
+                directory_relative, flags, dir_fd=self.repository_fd
+            )
+        except BaseException:
+            os.close(self.repository_fd)
+            raise
+        self.repository_token = _directory_identity(
+            os.fstat(self.repository_fd)
+        )
+        self.results_token = _directory_identity(os.fstat(self.results_fd))
+        self.entries = _directory_entries(self.results_fd)
+        self._timestamp_generation = 0
+        self.timestamp_token = (
+            *_descriptor_token(os.fstat(self.results_fd)),
+            self._timestamp_generation,
+        )
+        self.probed = False
+        self.directory_relative = directory_relative
+        self.stage_descriptors: dict[str, int] = {}
+        self.stage_tokens: dict[str, tuple[int, ...]] = {}
+        self.stage_entries: dict[str, tuple[str, ...]] = {}
+        self.predecessor_descriptors: dict[str, int] = {}
+        self.predecessor_tokens: dict[str, tuple[int, ...]] = {}
+        self.failed_predecessor_attempts = copy.deepcopy(
+            prereg.expected_failed_predecessor_attempts()
+            if expected_security_profile is None
+            else expected_security_profile["failed_predecessor_attempts"]
+        )
+        self.failed_predecessor_closures = copy.deepcopy(
+            prereg.expected_failed_predecessor_closures()
+            if expected_security_profile is None
+            else expected_security_profile["failed_predecessor_closures"]
+        )
+
+    def _require_bound_results(
+        self, *, compare_timestamps: bool = True
+    ) -> None:
+        repository_info = os.fstat(self.repository_fd)
+        results_info = os.fstat(self.results_fd)
+        path_info = os.stat(
+            self.directory_relative,
+            dir_fd=self.repository_fd,
+            follow_symlinks=False,
+        )
+        if (
+            _directory_identity(repository_info) != self.repository_token
+            or _directory_identity(results_info) != self.results_token
+            or _directory_identity(path_info) != self.results_token
+        ):
+            _fail("retained repository/results directory identity drifted")
+        if (
+            compare_timestamps
+            and _descriptor_token(results_info) != self.timestamp_token[:-1]
+        ):
+            _fail("retained results-directory timestamps/inventory drifted")
+
+    def _rebaseline(self, expected_entries: tuple[str, ...]) -> None:
+        self._require_bound_results(compare_timestamps=False)
+        if _directory_entries(self.results_fd) != expected_entries:
+            _fail("results-directory entry inventory differs")
+        if len(set(self.entries) ^ set(expected_entries)) != 1:
+            _fail("results-directory rebaseline lacks one authorized delta")
+        self.entries = expected_entries
+        self._timestamp_generation += 1
+        self.timestamp_token = (
+            *_descriptor_token(os.fstat(self.results_fd)),
+            self._timestamp_generation,
+        )
+
+    def retain_predecessor_residues(self) -> None:
+        flags = (
+            os.O_RDONLY
+            | getattr(os, "O_DIRECTORY", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_CLOEXEC", 0)
+        )
+        for row in self.failed_predecessor_attempts:
+            path_text = str(row["residue"]["slot1_stage"]["path"])
+            leaf = Path(path_text).name
+            descriptor = self.predecessor_descriptors.get(path_text)
+            if descriptor is None:
+                descriptor = os.open(leaf, flags, dir_fd=self.results_fd)
+                info = os.fstat(descriptor)
+                if (
+                    not stat.S_ISDIR(info.st_mode)
+                    or stat.S_IMODE(info.st_mode) != 0o700
+                    or _directory_entries(descriptor)
+                ):
+                    os.close(descriptor)
+                    _fail(f"{row['identity']} slot-1 residue state differs")
+                self.predecessor_descriptors[path_text] = descriptor
+                self.predecessor_tokens[path_text] = _descriptor_token(info)
+            self._require_predecessor_residue(path_text)
+
+    def _require_predecessor_residue(self, path_text: str) -> None:
+        descriptor = self.predecessor_descriptors[path_text]
+        token = self.predecessor_tokens[path_text]
+        leaf = Path(path_text).name
+        info = os.fstat(descriptor)
+        edge = os.stat(leaf, dir_fd=self.results_fd, follow_symlinks=False)
+        if (
+            _descriptor_token(info) != token
+            or _descriptor_token(edge) != token
+            or _directory_entries(descriptor)
+        ):
+            _fail(f"retained predecessor residue changed: {path_text}")
+
+    def require_stage(
+        self,
+        stage: Path,
+        expected_entries: tuple[str, ...],
+        *,
+        authorized_delta: bool = False,
+    ) -> None:
+        descriptor = self.stage_descriptors.get(stage.name)
+        token = self.stage_tokens.get(stage.name)
+        if descriptor is None or token is None:
+            _fail(f"retained worker-stage descriptor is absent: {stage.name}")
+        info = os.fstat(descriptor)
+        edge = os.stat(
+            stage.name, dir_fd=self.results_fd, follow_symlinks=False
+        )
+        if (
+            _directory_identity(info) != _directory_identity(edge)
+            or _directory_identity(info) != token[:4]
+            or stat.S_IMODE(info.st_mode) != 0o700
+            or _directory_entries(descriptor) != expected_entries
+        ):
+            _fail(f"retained worker-stage state differs: {stage.name}")
+        if authorized_delta:
+            os.fsync(descriptor)
+            self.stage_entries[stage.name] = expected_entries
+            self.stage_tokens[stage.name] = _descriptor_token(
+                os.fstat(descriptor)
+            )
+        elif _descriptor_token(info) != token:
+            _fail(f"retained worker-stage timestamps drifted: {stage.name}")
+
+    def probe(self) -> None:
+        if self.probed:
+            return
+        self._require_bound_results()
+        baseline = self.entries
+        leaf = f".g9cb5-otmpfile-probe-{os.getpid()}-{os.urandom(8).hex()}"
+        if leaf in baseline:
+            _fail("publication capability probe leaf already exists")
+        raw = b"G9CB5 O_TMPFILE capability probe\n"
+        descriptor, unnamed_info = _open_unnamed_completed(
+            self.results_fd, raw, mode=0o444
+        )
+        canonical_fd = -1
+        try:
+            try:
+                empty_result = _LIBC.linkat(
+                    ctypes.c_int(descriptor),
+                    ctypes.c_char_p(b""),
+                    ctypes.c_int(self.results_fd),
+                    ctypes.c_char_p(os.fsencode(leaf)),
+                    ctypes.c_int(0x1000),
+                )
+            except NameError:
+                ctypes.set_errno(errno.ENOENT)
+                empty_result = -1
+            if empty_result == 0:
+                empty_added = tuple(sorted((*baseline, leaf)))
+                if _directory_entries(self.results_fd) != empty_added:
+                    _fail("O_TMPFILE empty-path addition delta differs")
+                os.fsync(self.results_fd)
+                self._rebaseline(empty_added)
+                os.unlink(leaf, dir_fd=self.results_fd)
+                if _directory_entries(self.results_fd) != baseline:
+                    _fail("O_TMPFILE empty-path removal delta differs")
+                os.fsync(self.results_fd)
+                self._rebaseline(baseline)
+            elif ctypes.get_errno() != errno.ENOENT:
+                _fail("O_TMPFILE empty-path capability probe differs")
+            _link_unnamed_procfd(descriptor, self.results_fd, leaf)
+            added = tuple(sorted((*baseline, leaf)))
+            if _directory_entries(self.results_fd) != added:
+                _fail("capability probe addition delta differs")
+            canonical_fd = os.open(
+                leaf,
+                os.O_RDONLY
+                | getattr(os, "O_NOFOLLOW", 0)
+                | getattr(os, "O_CLOEXEC", 0),
+                dir_fd=self.results_fd,
+            )
+            canonical_info = os.fstat(canonical_fd)
+            canonical_raw = _read_publication_descriptor(
+                canonical_fd, canonical_info.st_size
+            )
+            if (
+                (canonical_info.st_dev, canonical_info.st_ino)
+                != (unnamed_info.st_dev, unnamed_info.st_ino)
+                or not stat.S_ISREG(canonical_info.st_mode)
+                or stat.S_IMODE(canonical_info.st_mode) != 0o444
+                or canonical_info.st_size != len(raw)
+                or canonical_raw != raw
+                or _sha256_bytes(canonical_raw) != _sha256_bytes(raw)
+            ):
+                _fail("capability probe canonical inode verification failed")
+            os.fsync(self.results_fd)
+            self._rebaseline(added)
+            os.unlink(leaf, dir_fd=self.results_fd)
+            os.fsync(self.results_fd)
+            self._rebaseline(baseline)
+        except NameError as exc:
+            raise TerminalG9CB5Failure(
+                "publication helper failure"
+            ) from exc
+        finally:
+            if canonical_fd >= 0:
+                os.close(canonical_fd)
+            os.close(descriptor)
+        self.probed = True
+
+    def publish(
+        self,
+        relative: Path,
+        raw: bytes,
+        *,
+        mode: int = 0o444,
+        prelink_recheck: Any | None = None,
+    ) -> dict[str, Any]:
+        if relative.parent not in {
+            Path("results"),
+            Path("."),
+        } or relative.name in ("", ".", ".."):
+            _fail(f"publication path is not an exact results leaf: {relative}")
+        self.probe()
+        if relative.name in self.entries:
+            raise FileExistsError(f"write-once path exists: {relative}")
+        descriptor, unnamed_info = _open_unnamed_completed(
+            self.results_fd, raw, mode=mode
+        )
+        canonical_fd = -1
+        try:
+            if prelink_recheck is not None:
+                prelink_recheck()
+            self._require_bound_results()
+            if _directory_entries(self.results_fd) != self.entries:
+                _fail("results-directory drift before canonical link")
+            _link_unnamed_procfd(
+                descriptor, self.results_fd, relative.name
+            )
+            expected_entries = tuple(sorted((*self.entries, relative.name)))
+            canonical_fd = os.open(
+                relative.name,
+                os.O_RDONLY
+                | getattr(os, "O_NOFOLLOW", 0)
+                | getattr(os, "O_CLOEXEC", 0),
+                dir_fd=self.results_fd,
+            )
+            canonical_info = os.fstat(canonical_fd)
+            canonical_raw = _read_publication_descriptor(
+                canonical_fd, canonical_info.st_size
+            )
+            if (
+                (canonical_info.st_dev, canonical_info.st_ino)
+                != (unnamed_info.st_dev, unnamed_info.st_ino)
+                or stat.S_IMODE(canonical_info.st_mode) != mode
+                or canonical_info.st_size != len(raw)
+                or canonical_raw != raw
+                or _sha256_bytes(canonical_raw) != _sha256_bytes(raw)
+            ):
+                _fail("canonical publication inode verification failed")
+            if _directory_entries(self.results_fd) != expected_entries:
+                _fail("canonical publication one-leaf delta differs")
+            os.fsync(self.results_fd)
+            self._rebaseline(expected_entries)
+            return {
+                "canonical_inode": (
+                    canonical_info.st_dev,
+                    canonical_info.st_ino,
+                ),
+                "unnamed_inode": (
+                    unnamed_info.st_dev,
+                    unnamed_info.st_ino,
+                ),
+                "sha256": _sha256_bytes(canonical_raw),
+                "size_bytes": canonical_info.st_size,
+                "mode": stat.S_IMODE(canonical_info.st_mode),
+            }
+        except NameError as exc:
+            raise TerminalG9CB5Failure(
+                "publication helper failure"
+            ) from exc
+        finally:
+            if canonical_fd >= 0:
+                os.close(canonical_fd)
+            os.close(descriptor)
+
+    def close(self) -> None:
+        for descriptor in self.predecessor_descriptors.values():
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        self.predecessor_descriptors.clear()
+        for descriptor in self.stage_descriptors.values():
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        self.stage_descriptors.clear()
+        os.close(self.results_fd)
+        os.close(self.repository_fd)
+
+
+def _is_forbidden_g9cb5_helper_name(name: str) -> bool:
+    canonical = (
+        PREREGISTRATION_PATH,
         CLAIM_PATH,
         SENTINEL_PATH,
         *WORKER_LEDGER_PATHS,
         CSV_PATH,
         MANIFEST_PATH,
-    ):
-        candidate = _rooted(root, relative)
-        if candidate.exists() or candidate.is_symlink():
-            raise FileExistsError(f"planned artifact already exists: {relative}")
-    bindings = [
-        _head_blob_binding(root, path)
-        for path in _planned_protocol_paths(preregistration)
-    ]
-    return {
-        "preregistration": preregistration,
-        "preregistration_binding": prereg_binding,
-        "authority_amendments": _authority_amendment_bindings(
-            preregistration
-        ),
-        "opaque_inputs": opaque_inputs,
-        "environment": environment,
-        "closures": closures,
-        "protocol_parent_commit": parent,
-        "protocol_bindings": bindings,
+    )
+    return (
+        name.startswith(".g9cb5-otmpfile-probe-")
+        or name.startswith(".gross9-structural-clock-g9cb5-worker-")
+        or any(name.startswith(f".{path.name}.stage-") for path in canonical)
+        or (
+            name.startswith(".gross9_structural_clock_bundle_g9cb5_")
+            and ".stage-" in name
+        )
+    )
+
+
+def _validate_closed_entry_phase(
+    context: _PublicationContext, phase: str
+) -> None:
+    phase_states = {
+        Q5_PREREGISTRATION_PUBLICATION: (False, False, False),
+        P5_CLAIM_PREFLIGHT: (True, False, False),
+        C5_PRODUCTION_PREFLIGHT: (True, True, False),
+        D5_COMMITTED_VERIFICATION: (True, True, True),
     }
+    if phase not in phase_states:
+        _fail("closed entry-point phase is invalid")
+    prereg_present, claim_present, publications_present = phase_states[phase]
+    context._require_bound_results()
+    observed_entries = _directory_entries(context.results_fd)
+    if observed_entries != context.entries:
+        _fail(f"{phase} results inventory drifted")
+    names = set(observed_entries)
+    expected_presence = {
+        PREREGISTRATION_PATH.name: prereg_present,
+        CLAIM_PATH.name: claim_present,
+        **{
+            path.name: publications_present
+            for path in (
+                SENTINEL_PATH,
+                *WORKER_LEDGER_PATHS,
+                CSV_PATH,
+                MANIFEST_PATH,
+            )
+        },
+    }
+    for leaf, required in expected_presence.items():
+        if (leaf in names) != required:
+            _fail(f"{phase} active path-state differs: {leaf}")
+        if required:
+            info = os.stat(
+                leaf, dir_fd=context.results_fd, follow_symlinks=False
+            )
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or stat.S_IMODE(info.st_mode) != 0o444
+            ):
+                _fail(f"{phase} active leaf mode/type differs: {leaf}")
+    tracked_results: set[str] = set()
+    if (context.root / ".git").exists():
+        tracked_results = {
+            Path(line).name
+            for line in _git_text(
+                context.root, "ls-files", "--", "results"
+            ).splitlines()
+            if line and Path(line).parent == Path("results")
+        }
+    predecessor_residue_names = {
+        Path(str(row["residue"]["slot1_stage"]["path"])).name
+        for row in context.failed_predecessor_attempts
+    }
+    active_untracked = {
+        leaf for leaf, required in expected_presence.items() if required
+    }
+    expected_inventory = (
+        tracked_results | predecessor_residue_names | active_untracked
+    )
+    if names != expected_inventory:
+        _fail(f"{phase} exact results inventory differs")
+    if _PYCACHE_PREFIX_RELATIVE.name in names:
+        _fail(f"{phase} fixed pycache path exists")
+    if any(_is_forbidden_g9cb5_helper_name(name) for name in names):
+        _fail(f"{phase} forbidden G9CB5 helper path exists")
+    context.retain_predecessor_residues()
+    _validate_failed_predecessor_permanent_state(
+        context.results_fd,
+        context.failed_predecessor_attempts,
+        context.failed_predecessor_closures,
+        retained_directories=context.predecessor_descriptors,
+    )
 
 
-def create_claim_only(root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
-    preflight = validate_claim_preflight(root)
+def _validate_production_checkpoint_two(
+    context: _PublicationContext,
+    stage_one: Path,
+    stage_two: Path,
+) -> None:
+    context._require_bound_results()
+    names = set(_directory_entries(context.results_fd))
+    required = {PREREGISTRATION_PATH.name, CLAIM_PATH.name, stage_one.name}
+    forbidden = {
+        SENTINEL_PATH.name,
+        *(path.name for path in WORKER_LEDGER_PATHS),
+        CSV_PATH.name,
+        MANIFEST_PATH.name,
+        stage_two.name,
+        _PYCACHE_PREFIX_RELATIVE.name,
+    }
+    if not required.issubset(names) or names & forbidden:
+        _fail("production checkpoint-2 path-state differs")
+    info = os.stat(
+        stage_one.name,
+        dir_fd=context.results_fd,
+        follow_symlinks=False,
+    )
+    if not stat.S_ISDIR(info.st_mode) or stat.S_IMODE(info.st_mode) != 0o700:
+        _fail("production checkpoint-2 stage mode/type differs")
+    context.require_stage(stage_one, ())
+
+
+def _validate_production_namespace(
+    context: _PublicationContext,
+    checkpoint: str,
+    stage_one: Path,
+    stage_two: Path,
+) -> None:
+    context._require_bound_results()
+    names = set(_directory_entries(context.results_fd))
+    if tuple(sorted(names)) != context.entries:
+        _fail(f"{checkpoint} results inventory drifted")
+    publication_order = (
+        SENTINEL_PATH.name,
+        WORKER_LEDGER_PATHS[0].name,
+        WORKER_LEDGER_PATHS[1].name,
+        CSV_PATH.name,
+        MANIFEST_PATH.name,
+    )
+    publication_counts = {
+        "C5_PRODUCTION_PREFLIGHT": 0,
+        "CAPABILITY_PROBE_COMPLETE": 0,
+        "SLOT1_PREPARED": 0,
+        "SENTINEL_LINKED": 1,
+        "PASS1_LEDGER_LINKED": 2,
+        "PASS1_OUTPUT_READY": 2,
+        "SLOT_TRANSITION": 2,
+        "PASS2_LEDGER_LINKED": 3,
+        "PASS2_OUTPUT_READY": 3,
+        "CANONICAL_CSV_LINKED": 4,
+        "MANIFEST_LINKED_LAST": 5,
+        "FINAL_CLEANUP": 5,
+    }
+    count = publication_counts[checkpoint]
+    for index, leaf in enumerate(publication_order):
+        if (leaf in names) != (index < count):
+            _fail(f"{checkpoint} publication state differs: {leaf}")
+    stage_expectation = {
+        "C5_PRODUCTION_PREFLIGHT": (),
+        "CAPABILITY_PROBE_COMPLETE": (),
+        "SLOT1_PREPARED": (stage_one,),
+        "SENTINEL_LINKED": (stage_one,),
+        "PASS1_LEDGER_LINKED": (stage_one,),
+        "PASS1_OUTPUT_READY": (stage_one,),
+        "SLOT_TRANSITION": (stage_two,),
+        "PASS2_LEDGER_LINKED": (stage_two,),
+        "PASS2_OUTPUT_READY": (stage_two,),
+        "CANONICAL_CSV_LINKED": (stage_two,),
+        "MANIFEST_LINKED_LAST": (stage_two,),
+        "FINAL_CLEANUP": (),
+    }[checkpoint]
+    for stage in (stage_one, stage_two):
+        if (stage.name in names) != (stage in stage_expectation):
+            _fail(f"{checkpoint} worker-stage state differs: {stage.name}")
+    output_ready = checkpoint in {
+        "PASS1_OUTPUT_READY",
+        "PASS2_OUTPUT_READY",
+        "CANONICAL_CSV_LINKED",
+        "MANIFEST_LINKED_LAST",
+    }
+    for stage in stage_expectation:
+        expected_entries = (
+            tuple(sorted(
+                (_STAGED_CSV_NAME, _STAGED_CORE_NAME, _STAGED_RECEIPT_NAME)
+            ))
+            if output_ready
+            else ()
+        )
+        context.require_stage(
+            stage,
+            expected_entries,
+            authorized_delta=checkpoint
+            in {"PASS1_OUTPUT_READY", "PASS2_OUTPUT_READY"},
+        )
+        stage_fd = context.stage_descriptors[stage.name]
+        for leaf in expected_entries:
+            leaf_info = os.stat(
+                leaf, dir_fd=stage_fd, follow_symlinks=False
+            )
+            if (
+                not stat.S_ISREG(leaf_info.st_mode)
+                or stat.S_IMODE(leaf_info.st_mode) != 0o400
+            ):
+                _fail(f"{checkpoint} worker-stage leaf differs: {leaf}")
+    if _PYCACHE_PREFIX_RELATIVE.name in names:
+        _fail(f"{checkpoint} fixed pycache path exists")
+    if any(_is_forbidden_g9cb5_helper_name(name) for name in names):
+        allowed_stages = {stage.name for stage in stage_expectation}
+        if any(
+            _is_forbidden_g9cb5_helper_name(name)
+            and name not in allowed_stages
+            for name in names
+        ):
+            _fail(f"{checkpoint} forbidden G9CB5 helper path exists")
+    context.retain_predecessor_residues()
+    _validate_failed_predecessor_permanent_state(
+        context.results_fd,
+        context.failed_predecessor_attempts,
+        context.failed_predecessor_closures,
+        retained_directories=context.predecessor_descriptors,
+    )
+
+
+def _validate_production_ledger_checkpoint(
+    context: _PublicationContext, ledger: Path
+) -> None:
+    context._require_bound_results()
+    if ledger.name not in _directory_entries(context.results_fd):
+        _fail(f"production ledger checkpoint is absent: {ledger}")
+    info = os.stat(
+        ledger.name,
+        dir_fd=context.results_fd,
+        follow_symlinks=False,
+    )
+    if (
+        not stat.S_ISREG(info.st_mode)
+        or stat.S_IMODE(info.st_mode) != 0o444
+    ):
+        _fail(f"production ledger checkpoint differs: {ledger}")
+
+
+def _atomic_link_write_once(
+    path: Path,
+    raw: bytes,
+    *,
+    mode: int = 0o444,
+    prelink_recheck: Any | None = None,
+    publication_context: _PublicationContext | None = None,
+) -> dict[str, Any]:
+    """Publish complete bytes create-only from a verified unnamed inode."""
+
+    publication_flags = getattr(os, "O_TMPFILE", 0)
+    if not publication_flags:
+        _fail("O_TMPFILE is unavailable")
+    owned = publication_context is None
+    if publication_context is None:
+        publication_context = _PublicationContext(
+            path.parent, directory_relative="."
+        )
+    try:
+        return publication_context.publish(
+            (
+                Path("results") / path.name
+                if publication_context.directory_relative == "results"
+                else Path(path.name)
+            ),
+            raw,
+            mode=mode,
+            prelink_recheck=prelink_recheck,
+        )
+    finally:
+        if owned:
+            publication_context.close()
+
+
+def _final_parent_snapshot_recheck(
+    root: Path,
+    snapshot: _SecureBoundSnapshot,
+    initial_pairs: Mapping[str, tuple[str, str] | None],
+    context: _PublicationContext,
+    phase: str,
+    expected_branch: str,
+    path_state_check: Any | None = None,
+) -> None:
+    snapshot.verify_final()
+    for path_text in sorted(snapshot.repository_relative):
+        repository_relative = snapshot.repository_relative[path_text]
+        initial = initial_pairs[path_text]
+        if repository_relative:
+            declaration: Mapping[str, Any] = (
+                {"git_blob": initial[0], "git_mode": initial[1]}
+                if initial is not None
+                else {"git_blob": None, "git_mode": None}
+            )
+            observed = _validate_git_pair_preflight(
+                root,
+                path_text,
+                repository_relative=True,
+                declaration=declaration,
+                verify_git=True,
+                require_tracked=initial is not None,
+                process_runner=_FINAL_GIT_PROCESS,
+            )
+            if observed != initial:
+                _fail(f"final bound Git classification differs: {path_text}")
+    if path_state_check is None:
+        _validate_closed_entry_phase(context, phase)
+    else:
+        path_state_check()
+    _require_clean_pushed_branch(root, expected_branch)
+
+
+def validate_claim_preflight(
+    root: Path = REPOSITORY_ROOT,
+    *,
+    _retain_publication_resources: bool = False,
+    expected_security_profile: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Run the complete metadata-only claim preflight without writing a claim."""
+
+    if not (root / ".git").exists():
+        validate_preregistration(root)
+    head = _require_clean_pushed_branch(root, prereg.EXPECTED_BRANCH)
+    head_raw = _git(
+        root, "show", f"HEAD:{PREREGISTRATION_PATH.as_posix()}"
+    )
+    preregistration_head = _decode_canonical_object(
+        head_raw,
+        PREREGISTRATION_PATH.as_posix(),
+        "manifest_hash",
+    )
+    parent = _require_clean_pushed_branch(
+        root,
+        _expected_branch(preregistration_head),
+    )
+    if head != parent:
+        _fail("claim preflight HEAD changed during bootstrap")
+    _validate_preregistration_seal_head(
+        root,
+        preregistration_head,
+        parent,
+        classify_worktree=False,
+    )
+    security_profile = (
+        _validated_expected_security_profile(
+            root,
+            preregistration_head,
+            expected_security_profile,
+        )
+        if expected_security_profile is not None
+        else _official_expected_security_profile(
+            root, preregistration_head
+        )
+    )
+    snapshot, pairs = _preauthenticate_parent_snapshot(
+        root,
+        preregistration_head,
+        content_mode=_PREREGISTRATION_ONLY,
+        expected_security_profile=security_profile,
+    )
+    preregistration_pair = pairs.get(PREREGISTRATION_PATH.as_posix())
+    if preregistration_pair is None or preregistration_pair[1] != "100644":
+        snapshot.close()
+        _fail("active preregistration Git mode differs")
+    context = _PublicationContext(
+        root, expected_security_profile=security_profile
+    )
+    try:
+        preregistration, prereg_binding = validate_preregistration(
+            root,
+            raw_cache=snapshot,
+            expected_security_profile=security_profile,
+        )
+        if preregistration != preregistration_head:
+            _fail("worktree preregistration differs from HEAD bootstrap")
+        opaque_inputs = _validate_regular_hashed_inputs(
+            root,
+            preregistration,
+            raw_cache=snapshot,
+            preclassified_pairs=dict(pairs),
+        )
+        environment = _validate_environment(preregistration, root)
+        closures = _validate_static_closures(
+            root,
+            preregistration,
+            raw_cache=snapshot,
+        )
+        bindings = [
+            _head_blob_binding(
+                root,
+                path,
+                raw_cache=snapshot,
+                preclassified_pairs=pairs,
+            )
+            for path in _planned_protocol_paths(preregistration)
+        ]
+        _validate_closed_entry_phase(context, P5_CLAIM_PREFLIGHT)
+        context.probe()
+        snapshot.rebaseline_directory_timestamps(
+            matching_identity=context.results_token
+        )
+        _validate_closed_entry_phase(context, P5_CLAIM_PREFLIGHT)
+        result = {
+            "preregistration": preregistration,
+            "preregistration_binding": prereg_binding,
+            "authority_amendments": _authority_amendment_bindings(
+                preregistration,
+                expected=security_profile["authority_amendments"],
+            ),
+            "opaque_inputs": opaque_inputs,
+            "environment": environment,
+            "closures": closures,
+            "protocol_parent_commit": parent,
+            "protocol_bindings": bindings,
+        }
+        if _retain_publication_resources:
+            result["_snapshot"] = snapshot
+            result["_pairs"] = pairs
+            result["_publication_context"] = context
+            return result
+        _final_parent_snapshot_recheck(
+            root,
+            snapshot,
+            pairs,
+            context,
+            P5_CLAIM_PREFLIGHT,
+            prereg.EXPECTED_BRANCH,
+        )
+        return result
+    finally:
+        if not _retain_publication_resources:
+            snapshot.close()
+            context.close()
+
+
+def create_claim_only(
+    root: Path = REPOSITORY_ROOT,
+    *,
+    expected_security_profile: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    preflight = validate_claim_preflight(
+        root,
+        _retain_publication_resources=True,
+        expected_security_profile=expected_security_profile,
+    )
     prereg_binding = preflight["preregistration_binding"]
     authority_amendments = preflight["authority_amendments"]
     parent = preflight["protocol_parent_commit"]
@@ -1295,13 +2541,33 @@ def create_claim_only(root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
         opaque_inputs,
     )
     raw = _canonical_json_bytes(payload)
-    _atomic_link_write_once(_rooted(root, CLAIM_PATH), raw)
-    return {
-        "path": CLAIM_PATH.as_posix(),
-        "sha256": _sha256_bytes(raw),
-        "claim_hash": payload["claim_hash"],
-        "protocol_parent_commit": parent,
-    }
+    snapshot = preflight["_snapshot"]
+    pairs = preflight["_pairs"]
+    context = preflight["_publication_context"]
+    try:
+        _atomic_link_write_once(
+            _rooted(root, CLAIM_PATH),
+            raw,
+            prelink_recheck=lambda: _final_parent_snapshot_recheck(
+                root,
+                snapshot,
+                pairs,
+                context,
+                P5_CLAIM_PREFLIGHT,
+                prereg.EXPECTED_BRANCH,
+            ),
+            publication_context=context,
+        )
+        binding = {
+            "path": CLAIM_PATH.as_posix(),
+            "sha256": _sha256_bytes(raw),
+            "claim_hash": payload["claim_hash"],
+            "protocol_parent_commit": parent,
+        }
+        return binding
+    finally:
+        snapshot.close()
+        context.close()
 
 
 def _validate_claim_commit(
@@ -1309,6 +2575,8 @@ def _validate_claim_commit(
     *,
     raw_cache: dict[str, tuple[bytes, os.stat_result]] | None = None,
     preclassified_pairs: dict[str, tuple[str, str] | None] | None = None,
+    _resource_out: dict[str, Any] | None = None,
+    expected_security_profile: Mapping[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
     head = _require_clean_pushed_branch(root, prereg.EXPECTED_BRANCH)
     preregistration_head_raw = _git(
@@ -1327,6 +2595,13 @@ def _validate_claim_commit(
     )
     if _expected_branch(preregistration_head) != prereg.EXPECTED_BRANCH:
         _fail("active preregistration branch binding differs")
+    security_profile = (
+        _validated_expected_security_profile(
+            root, preregistration_head, expected_security_profile
+        )
+        if expected_security_profile is not None
+        else _official_expected_security_profile(root, preregistration_head)
+    )
     parent = claim_head.get("protocol_parent_commit")
     parents = _git_text(
         root, "rev-list", "--parents", "-n", "1", "HEAD"
@@ -1348,21 +2623,20 @@ def _validate_claim_commit(
     ]
     if changed != [f"A\t{CLAIM_PATH.as_posix()}"]:
         _fail("HEAD is not a claim-only direct-child commit")
-    try:
-        prereg.validate_protocol_commit_topology(root)
-        prereg.validate_failed_predecessor_attempt_topology(root)
-    except (
-        OSError,
-        RuntimeError,
-        ValueError,
-        subprocess.CalledProcessError,
-    ) as exc:
-        raise TerminalG9CB4Failure(
-            "pre-read protocol or predecessor topology differs"
-        ) from exc
+    if str(parent) != security_profile["preregistration_seal_commit"]:
+        _fail("claim parent differs from expected security profile")
+    if (
+        "claim_commit" in security_profile
+        and head != security_profile["claim_commit"]
+    ):
+        _fail("claim commit differs from expected security profile")
+    security_profile["claim_commit"] = head
 
     snapshot, pairs = _preauthenticate_parent_snapshot(
-        root, preregistration_head
+        root,
+        preregistration_head,
+        content_mode=_PREREGISTRATION_PLUS_CLAIM,
+        expected_security_profile=security_profile,
     )
     cache = {} if raw_cache is None else raw_cache
     cache.update(snapshot)
@@ -1385,13 +2659,18 @@ def _validate_claim_commit(
     if claim.get("retry_allowed") is not False or claim.get("resume_allowed") is not False:
         _fail("claim permits retry or resume")
     preregistration, prereg_binding = validate_preregistration(
-        root, raw_cache=cache
+        root,
+        raw_cache=cache,
+        expected_security_profile=security_profile,
     )
     if preregistration != preregistration_head or claim != claim_head:
         _fail("active metadata differs from the classified HEAD snapshot")
     if claim.get("preregistration") != prereg_binding:
         _fail("claim preregistration binding mismatch")
-    authority_amendments = _authority_amendment_bindings(preregistration)
+    authority_amendments = _authority_amendment_bindings(
+        preregistration,
+        expected=security_profile["authority_amendments"],
+    )
     if claim.get("authority_amendments") != authority_amendments:
         _fail("claim authority amendment bindings mismatch")
     protocol_files = claim.get("protocol_files")
@@ -1428,7 +2707,7 @@ def _validate_claim_commit(
         candidate = _rooted(root, relative)
         if candidate.exists() or candidate.is_symlink():
             raise FileExistsError(f"production output already exists: {relative}")
-    return (
+    result = (
         claim,
         {
             "path": CLAIM_PATH.as_posix(),
@@ -1440,6 +2719,16 @@ def _validate_claim_commit(
         preregistration,
         prereg_binding,
     )
+    if _resource_out is not None:
+        _resource_out["snapshot"] = snapshot
+        _resource_out["pairs"] = pairs
+        _resource_out["security_profile"] = security_profile or {}
+    else:
+        try:
+            snapshot.verify_final()
+        finally:
+            snapshot.close()
+    return result
 
 
 def _normalise_distribution_name(name: str) -> str:
@@ -1603,6 +2892,8 @@ def _discover_import_closure(
         if cached is not None:
             if not stat.S_ISREG(cached[1].st_mode):
                 _fail(f"import closure member is not regular: {current}")
+        elif isinstance(raw_cache, _SecureBoundSnapshot):
+            _fail(f"import closure cache member is absent: {current}")
         elif source_path.is_symlink() or not source_path.is_file():
             _fail(f"import root or closure member is absent: {current}")
         try:
@@ -1615,7 +2906,7 @@ def _discover_import_closure(
                 filename=current.as_posix(),
             )
         except (UnicodeDecodeError, SyntaxError) as exc:
-            raise TerminalG9CB4Failure(
+            raise TerminalG9CB5Failure(
                 f"import closure source cannot be parsed: {current}"
             ) from exc
         discovered.add(current)
@@ -1675,13 +2966,16 @@ def _git_process(
     )
 
 
+_FINAL_GIT_PROCESS = _git_process
+
+
 def _decode_git_stdout(
     completed: subprocess.CompletedProcess[bytes], operation: str
 ) -> str:
     try:
         return completed.stdout.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise TerminalG9CB4Failure(
+        raise TerminalG9CB5Failure(
             f"{operation}: Git output is not UTF-8"
         ) from exc
 
@@ -1750,6 +3044,7 @@ def _validate_git_pair_preflight(
     declaration: Mapping[str, Any],
     verify_git: bool,
     require_tracked: bool = False,
+    process_runner: Any | None = None,
 ) -> tuple[str, str] | None:
     if "git_blob" not in declaration and not require_tracked:
         return None
@@ -1764,9 +3059,10 @@ def _validate_git_pair_preflight(
             return blob, mode
         return None
 
-    staged = _git_process(root, "ls-files", "--stage", "--", path_text)
-    tree = _git_process(root, "ls-tree", "HEAD", "--", path_text)
-    matched = _git_process(
+    runner = _git_process if process_runner is None else process_runner
+    staged = runner(root, "ls-files", "--stage", "--", path_text)
+    tree = runner(root, "ls-tree", "HEAD", "--", path_text)
+    matched = runner(
         root, "ls-files", "--error-unmatch", "--", path_text
     )
     staged_output = _decode_git_stdout(staged, "git ls-files --stage")
@@ -1817,45 +3113,524 @@ def _git_blob_id(raw: bytes) -> str:
     return hashlib.sha1(header + raw).hexdigest()
 
 
-def _read_bound_regular_bytes(path: Path, path_text: str) -> tuple[bytes, os.stat_result]:
-    flags = (
-        os.O_RDONLY
-        | getattr(os, "O_CLOEXEC", 0)
-        | getattr(os, "O_NOFOLLOW", 0)
-        | getattr(os, "O_NONBLOCK", 0)
+def _descriptor_token(info: os.stat_result) -> tuple[int, ...]:
+    return (
+        info.st_dev,
+        info.st_ino,
+        stat.S_IFMT(info.st_mode),
+        stat.S_IMODE(info.st_mode),
+        info.st_size,
+        info.st_mtime_ns,
+        info.st_ctime_ns,
     )
-    try:
-        descriptor = os.open(path, flags)
-    except OSError as exc:
-        raise TerminalG9CB4Failure(
-            f"bound input cannot be opened without following symlinks: {path_text}"
-        ) from exc
-    try:
-        info = os.fstat(descriptor)
-        if not stat.S_ISREG(info.st_mode):
-            _fail(f"bound input is not a regular file: {path_text}")
+
+
+def _directory_identity(info: os.stat_result) -> tuple[int, ...]:
+    return (
+        info.st_dev,
+        info.st_ino,
+        stat.S_IFMT(info.st_mode),
+        stat.S_IMODE(info.st_mode),
+    )
+
+
+def _pread_complete(
+    descriptor: int,
+    size: int,
+    use_stream_read: bool = False,
+) -> bytes:
+    if use_stream_read:
+        os.lseek(descriptor, 0, os.SEEK_SET)
         chunks: list[bytes] = []
-        while True:
-            chunk = os.read(descriptor, 1024 * 1024)
+        remaining = size
+        while remaining:
+            chunk = os.read(descriptor, min(1024 * 1024, remaining))
             if not chunk:
                 break
             chunks.append(chunk)
-    finally:
-        os.close(descriptor)
+            remaining -= len(chunk)
+        raw = b"".join(chunks)
+        if len(raw) != size or os.read(descriptor, 1) != b"":
+            _fail("publication same-descriptor read was incomplete")
+        return raw
+    if size == 0:
+        if os.pread(descriptor, 1, 0) != b"":
+            _fail("same-descriptor zero-length read was not at EOF")
+        return b""
+    chunks: list[bytes] = []
+    offset = 0
+    while offset < size:
+        chunk = os.pread(descriptor, min(1024 * 1024, size - offset), offset)
+        if not chunk:
+            break
+        chunks.append(chunk)
+        offset += len(chunk)
     raw = b"".join(chunks)
-    if len(raw) != info.st_size:
-        _fail(f"bound input changed while authenticating: {path_text}")
-    return raw, info
+    if len(raw) != size:
+        _fail("same-descriptor content read was incomplete")
+    return raw
+
+
+class _SecureBoundSnapshot(dict[str, tuple[bytes, os.stat_result]]):
+    """Initial-byte cache plus the retained component-wise descriptor graph."""
+
+    def __init__(
+        self,
+        root: Path,
+        *,
+        absolute_allowlist: frozenset[str] = _ABSOLUTE_BINDING_ALLOWLIST,
+        repository_fd: int | None = None,
+        filesystem_root_fd: int | None = None,
+        opener: Any = os.open,
+        register_descriptor: Any | None = None,
+        instrument_reads: bool = True,
+    ) -> None:
+        super().__init__()
+        directory_flags = (
+            os.O_RDONLY
+            | getattr(os, "O_DIRECTORY", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_CLOEXEC", 0)
+        )
+        self._borrowed_anchors = repository_fd is not None
+        if (repository_fd is None) != (filesystem_root_fd is None):
+            _fail("snapshot anchor ownership is inconsistent")
+        if repository_fd is None:
+            try:
+                if opener is os.open:
+                    repository_fd = os.open(root, directory_flags)
+                    filesystem_root_fd = os.open("/", directory_flags)
+                else:
+                    repository_fd = opener(root, directory_flags)
+                    filesystem_root_fd = opener("/", directory_flags)
+            except OSError as exc:
+                raise TerminalG9CB5Failure(
+                    "snapshot anchors cannot be securely opened"
+                ) from exc
+        if repository_fd is None or filesystem_root_fd is None:
+            _fail("snapshot anchors are absent after secure open")
+        repository_anchor_fd: int = repository_fd
+        filesystem_root_anchor_fd: int = filesystem_root_fd
+        self._opener = opener
+        self._instrument_reads = instrument_reads
+        self._register_descriptor = register_descriptor
+        self._borrowed_descriptors = (
+            {repository_anchor_fd, filesystem_root_anchor_fd}
+            if self._borrowed_anchors
+            else set()
+        )
+        self.root = root
+        self.absolute_allowlist = absolute_allowlist
+        self.file_descriptors: dict[str, int] = {}
+        self.file_tokens: dict[str, tuple[int, ...]] = {}
+        self.file_edges: dict[str, tuple[int, str]] = {}
+        self.directory_descriptors: dict[tuple[str, tuple[str, ...]], int] = {
+            ("repo", ()): repository_anchor_fd,
+            ("absolute", ()): filesystem_root_anchor_fd,
+        }
+        self.directory_tokens = {
+            key: _descriptor_token(os.fstat(descriptor))
+            for key, descriptor in self.directory_descriptors.items()
+        }
+        self.directory_edges: dict[
+            tuple[str, tuple[str, ...]], tuple[int, str]
+        ] = {}
+        self.directory_entries: dict[
+            tuple[str, tuple[str, ...]], tuple[str, ...]
+        ] = {}
+        for key, token in self.directory_tokens.items():
+            if token[2] != stat.S_IFDIR:
+                self.close()
+                _fail(f"snapshot anchor is not a directory: {key}")
+        self.final_verified = False
+        self.closed = False
+        self.repository_relative: dict[str, bool] = {}
+        self.declarations: dict[str, dict[str, Any]] = {}
+
+    def _parent_fd(
+        self, path_text: str, repository_relative: bool
+    ) -> tuple[int, str]:
+        components = (
+            path_text.split("/")
+            if repository_relative
+            else path_text[1:].split("/")
+        )
+        if not repository_relative and path_text not in self.absolute_allowlist:
+            self.close()
+            _fail(f"absolute bound input is outside the allowlist: {path_text}")
+        namespace = "repo" if repository_relative else "absolute"
+        prefix: tuple[str, ...] = ()
+        parent_fd = self.directory_descriptors[(namespace, prefix)]
+        flags = (
+            os.O_RDONLY
+            | getattr(os, "O_DIRECTORY", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_CLOEXEC", 0)
+        )
+        for component in components[:-1]:
+            prefix += (component,)
+            key = (namespace, prefix)
+            descriptor = self.directory_descriptors.get(key)
+            if descriptor is None:
+                try:
+                    descriptor = self._opener(
+                        component, flags, dir_fd=parent_fd
+                    )
+                except OSError as exc:
+                    self.close()
+                    raise TerminalG9CB5Failure(
+                        "bound input parent component cannot be opened "
+                        f"no-follow (possible symlink): {path_text}"
+                    ) from exc
+                info = os.fstat(descriptor)
+                if not stat.S_ISDIR(info.st_mode):
+                    os.close(descriptor)
+                    self.close()
+                    _fail(f"bound input parent is not a directory: {path_text}")
+                self.directory_descriptors[key] = descriptor
+                self.directory_tokens[key] = _descriptor_token(info)
+                self.directory_edges[key] = (parent_fd, component)
+                if self._register_descriptor is not None:
+                    self._register_descriptor(
+                        descriptor,
+                        f"{namespace}:{'/'.join(prefix)}",
+                        info,
+                        True,
+                    )
+            parent_fd = descriptor
+        return parent_fd, components[-1]
+
+    def retain_empty_directory(self, path_text: str, *, mode: int) -> None:
+        components = tuple(path_text.split("/"))
+        if not components or any(part in ("", ".", "..") for part in components):
+            _fail("retained directory path is not normalized")
+        key = ("repo", components)
+        if key in self.directory_descriptors:
+            if self.directory_entries.get(key) != ():
+                _fail("retained directory declaration differs")
+            return
+        parent_fd, leaf = self._parent_fd(path_text, True)
+        flags = (
+            os.O_RDONLY
+            | getattr(os, "O_DIRECTORY", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_CLOEXEC", 0)
+        )
+        try:
+            descriptor = self._opener(leaf, flags, dir_fd=parent_fd)
+        except OSError as exc:
+            raise TerminalG9CB5Failure(
+                f"retained directory cannot be opened no-follow: {path_text}"
+            ) from exc
+        try:
+            info = os.fstat(descriptor)
+            if self._register_descriptor is not None:
+                self._register_descriptor(descriptor, path_text, info, True)
+            entries = _directory_entries(descriptor)
+            if (
+                not stat.S_ISDIR(info.st_mode)
+                or stat.S_IMODE(info.st_mode) != mode
+                or entries
+            ):
+                _fail(f"retained directory state differs: {path_text}")
+            self.directory_descriptors[key] = descriptor
+            self.directory_tokens[key] = _descriptor_token(info)
+            self.directory_edges[key] = (parent_fd, leaf)
+            self.directory_entries[key] = entries
+        except BaseException:
+            os.close(descriptor)
+            raise
+
+    def open_initial(
+        self, path_text: str, repository_relative: bool
+    ) -> tuple[bytes, os.stat_result]:
+        if path_text in self:
+            return self[path_text]
+        parent_fd, leaf = self._parent_fd(path_text, repository_relative)
+        flags = (
+            os.O_RDONLY
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_NONBLOCK", 0)
+        )
+        try:
+            descriptor = self._opener(leaf, flags, dir_fd=parent_fd)
+        except OSError as exc:
+            self.close()
+            raise TerminalG9CB5Failure(
+                f"bound input cannot be opened component-wise no-follow: {path_text}"
+            ) from exc
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            os.close(descriptor)
+            self.close()
+            _fail(f"bound input is not a regular file: {path_text}")
+        raw, read_info = (
+            _read_bound_regular_bytes(descriptor, path_text)
+            if self._instrument_reads
+            else _read_open_descriptor(descriptor, path_text)
+        )
+        after = os.fstat(descriptor)
+        if (
+            _descriptor_token(before) != _descriptor_token(read_info)
+            or _descriptor_token(before) != _descriptor_token(after)
+        ):
+            os.close(descriptor)
+            self.close()
+            _fail(f"bound input changed during initial authentication: {path_text}")
+        object_key = (after.st_dev, after.st_ino)
+        if any(
+            (token[0], token[1]) == object_key
+            for token in self.file_tokens.values()
+        ):
+            os.close(descriptor)
+            self.close()
+            _fail("two bound paths alias the same filesystem object")
+        self.file_descriptors[path_text] = descriptor
+        self.file_tokens[path_text] = _descriptor_token(after)
+        self.file_edges[path_text] = (parent_fd, leaf)
+        if self._register_descriptor is not None:
+            self._register_descriptor(
+                descriptor, path_text, after, False
+            )
+        self[path_text] = (raw, after)
+        return raw, after
+
+    def verify_final(self) -> None:
+        if self.final_verified:
+            _fail("bound snapshot final verification was requested twice")
+        for path_text in sorted(self.file_descriptors):
+            descriptor = self.file_descriptors[path_text]
+            before = os.fstat(descriptor)
+            raw = _pread_complete(descriptor, before.st_size)
+            after = os.fstat(descriptor)
+            if (
+                _descriptor_token(before) != self.file_tokens[path_text]
+                or _descriptor_token(after) != self.file_tokens[path_text]
+                or raw != self[path_text][0]
+            ):
+                _fail(f"bound input final same-FD verification differs: {path_text}")
+            parent_fd, leaf = self.file_edges[path_text]
+            try:
+                path_info = os.stat(
+                    leaf, dir_fd=parent_fd, follow_symlinks=False
+                )
+            except OSError as exc:
+                raise TerminalG9CB5Failure(
+                    f"bound input leaf path changed: {path_text}"
+                ) from exc
+            if _descriptor_token(path_info) != self.file_tokens[path_text]:
+                _fail(f"bound input leaf component changed: {path_text}")
+        for key, descriptor in self.directory_descriptors.items():
+            observed = _descriptor_token(os.fstat(descriptor))
+            if observed != self.directory_tokens[key]:
+                _fail(f"bound input directory graph drifted: {key}")
+            expected_entries = self.directory_entries.get(key)
+            if (
+                expected_entries is not None
+                and _directory_entries(descriptor) != expected_entries
+            ):
+                _fail(f"retained directory inventory drifted: {key}")
+            edge = self.directory_edges.get(key)
+            if edge is not None:
+                parent_fd, component = edge
+                try:
+                    path_info = os.stat(
+                        component,
+                        dir_fd=parent_fd,
+                        follow_symlinks=False,
+                    )
+                except OSError as exc:
+                    raise TerminalG9CB5Failure(
+                        f"bound input parent path changed: {key}"
+                    ) from exc
+                if _descriptor_token(path_info) != self.directory_tokens[key]:
+                    _fail(f"bound input parent component changed: {key}")
+        self.final_verified = True
+
+    def rebaseline_directory_timestamps(
+        self, *, matching_identity: tuple[int, ...]
+    ) -> None:
+        for key, descriptor in self.directory_descriptors.items():
+            info = os.fstat(descriptor)
+            if _directory_identity(info) == matching_identity:
+                self.directory_tokens[key] = _descriptor_token(info)
+
+    def close(self) -> None:
+        if getattr(self, "closed", False):
+            return
+        for descriptor in list(getattr(self, "file_descriptors", {}).values()):
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        for descriptor in list(
+            getattr(self, "directory_descriptors", {}).values()
+        ):
+            if descriptor in self._borrowed_descriptors:
+                continue
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        self.closed = True
+
+
+def _retain_expected_predecessor_residue_directories(
+    snapshot: _SecureBoundSnapshot,
+    preregistration: Mapping[str, Any],
+    expected_attempts: Sequence[Mapping[str, Any]] | None = None,
+) -> None:
+    if (
+        preregistration.get("identity") != IDENTITY
+        or preregistration.get("protocol_version") != prereg.PROTOCOL_VERSION
+    ):
+        return
+    attempts = expected_attempts
+    if attempts is None:
+        bindings = preregistration.get("bindings")
+        observed = (
+            bindings.get("failed_predecessor_attempts")
+            if isinstance(bindings, Mapping)
+            else None
+        )
+        attempts = (
+            observed
+            if isinstance(observed, list)
+            else prereg.expected_failed_predecessor_attempts()
+        )
+    for row in attempts:
+        snapshot.retain_empty_directory(
+            str(row["residue"]["slot1_stage"]["path"]),
+            mode=0o700,
+        )
+
+
+_ACTIVE_WORKER_GUARD: Any | None = None
+
+
+def _read_open_descriptor(
+    descriptor: int, path_text: str
+) -> tuple[bytes, os.stat_result]:
+    before = os.fstat(descriptor)
+    if not stat.S_ISREG(before.st_mode):
+        _fail(f"bound input is not a regular file: {path_text}")
+    raw = _pread_complete(descriptor, before.st_size)
+    after = os.fstat(descriptor)
+    if _descriptor_token(before) != _descriptor_token(after):
+        _fail(f"bound input changed during authentication: {path_text}")
+    return raw, after
+
+
+def _read_bound_regular_bytes(
+    path: Path | int, path_text: str
+) -> tuple[bytes, os.stat_result]:
+    """Compatibility reader using the same component-wise graph discipline."""
+
+    if isinstance(path, int):
+        return _read_open_descriptor(path, path_text)
+
+    repository_relative = not path_text.startswith("/")
+    guard = _ACTIVE_WORKER_GUARD
+    if guard is not None and (
+        not repository_relative
+        or guard.root
+        == path.parents[len(PurePosixPath(path_text).parts) - 1]
+    ):
+        components = (
+            path_text.split("/")
+            if repository_relative
+            else path_text[1:].split("/")
+        )
+        if (
+            not repository_relative
+            and path_text not in _ABSOLUTE_BINDING_ALLOWLIST
+        ):
+            _fail(f"absolute bound input is outside the allowlist: {path_text}")
+        parent_fd = (
+            guard.repository_fd
+            if repository_relative
+            else guard.filesystem_root_fd
+        )
+        if parent_fd is None:
+            _fail("worker bound-input anchor is absent")
+        opened_directories: list[int] = []
+        leaf_fd = -1
+        try:
+            directory_flags = (
+                os.O_RDONLY
+                | getattr(os, "O_DIRECTORY", 0)
+                | getattr(os, "O_NOFOLLOW", 0)
+                | getattr(os, "O_CLOEXEC", 0)
+            )
+            for component in components[:-1]:
+                parent_fd = guard._original_os_open(
+                    component,
+                    directory_flags,
+                    dir_fd=parent_fd,
+                )
+                opened_directories.append(parent_fd)
+            leaf_fd = guard._original_os_open(
+                components[-1],
+                os.O_RDONLY
+                | getattr(os, "O_NOFOLLOW", 0)
+                | getattr(os, "O_NONBLOCK", 0)
+                | getattr(os, "O_CLOEXEC", 0),
+                dir_fd=parent_fd,
+            )
+            before = os.fstat(leaf_fd)
+            if not stat.S_ISREG(before.st_mode):
+                _fail(f"bound input is not a regular file: {path_text}")
+            raw = _pread_complete(leaf_fd, before.st_size)
+            after = os.fstat(leaf_fd)
+            if _descriptor_token(before) != _descriptor_token(after):
+                _fail(f"bound input changed during authentication: {path_text}")
+            return raw, after
+        finally:
+            if leaf_fd >= 0:
+                guard._originals.get((os, "close"), os.close)(leaf_fd)
+            for descriptor in reversed(opened_directories):
+                guard._originals.get((os, "close"), os.close)(descriptor)
+    root = REPOSITORY_ROOT
+    if repository_relative:
+        root = path
+        for _component in PurePosixPath(path_text).parts:
+            root = root.parent
+    snapshot = _SecureBoundSnapshot(
+        root,
+        absolute_allowlist=(
+            _ABSOLUTE_BINDING_ALLOWLIST
+            if repository_relative
+            else frozenset({path_text})
+        ),
+        instrument_reads=False,
+    )
+    try:
+        raw, info = snapshot.open_initial(path_text, repository_relative)
+        snapshot.verify_final()
+        return raw, info
+    finally:
+        snapshot.close()
 
 
 def _preauthenticate_parent_snapshot(
     root: Path,
     preregistration: Mapping[str, Any],
+    *,
+    content_mode: str = _PREREGISTRATION_PLUS_CLAIM,
+    extra_tracked_paths: Sequence[Path] = (),
+    expected_security_profile: Mapping[str, Any] | None = None,
 ) -> tuple[
-    dict[str, tuple[bytes, os.stat_result]],
+    _SecureBoundSnapshot,
     dict[str, tuple[str, str] | None],
 ]:
-    """Classify every bound path before one no-follow read per unique path."""
+    """Classify all Git pairs, then open/cache each bound leaf exactly once."""
+
+    if content_mode not in {
+        _PREREGISTRATION_ONLY,
+        _PREREGISTRATION_PLUS_CLAIM,
+    }:
+        _fail("parent snapshot content mode is invalid")
 
     prepared: dict[str, tuple[Path, bool]] = {}
     declarations: dict[str, dict[str, Any]] = {}
@@ -1877,9 +3652,19 @@ def _preauthenticate_parent_snapshot(
                         f"{path_text}:{key}"
                     )
                 declared[key] = value
-    for relative in (PREREGISTRATION_PATH, CLAIM_PATH):
+    metadata_paths = [PREREGISTRATION_PATH]
+    if content_mode == _PREREGISTRATION_PLUS_CLAIM:
+        metadata_paths.append(CLAIM_PATH)
+    for relative in metadata_paths:
         path_text = relative.as_posix()
         prepared[path_text] = (_rooted(root, relative), True)
+        declarations.setdefault(path_text, {})
+    for relative in extra_tracked_paths:
+        path_text = relative.as_posix()
+        prepared[path_text] = (_rooted(root, relative), True)
+        declarations.setdefault(path_text, {})
+    for path_text in _planned_protocol_paths(preregistration):
+        prepared.setdefault(path_text, (_rooted(root, Path(path_text)), True))
         declarations.setdefault(path_text, {})
 
     tracked_pairs: dict[str, tuple[str, str] | None] = {}
@@ -1894,24 +3679,41 @@ def _preauthenticate_parent_snapshot(
             require_tracked=repository_relative,
         )
 
-    raw_cache: dict[str, tuple[bytes, os.stat_result]] = {}
-    observed_objects: set[tuple[int, int]] = set()
-    for path_text in sorted(prepared):
-        candidate, _repository_relative = prepared[path_text]
-        raw, info = _read_bound_regular_bytes(candidate, path_text)
-        object_key = (info.st_dev, info.st_ino)
-        if object_key in observed_objects:
-            _fail("two bound paths alias the same filesystem object")
-        observed_objects.add(object_key)
-        pair = tracked_pairs[path_text]
-        if pair is not None:
-            if _git_blob_id(raw) != pair[0]:
-                _fail(f"bound input worktree Git blob mismatch: {path_text}")
-            observed_mode = "100755" if info.st_mode & 0o111 else "100644"
-            if observed_mode != pair[1]:
-                _fail(f"bound input worktree Git mode mismatch: {path_text}")
-        raw_cache[path_text] = (raw, info)
-    return raw_cache, tracked_pairs
+    snapshot = _SecureBoundSnapshot(root)
+    snapshot.repository_relative = {
+        path_text: repository_relative
+        for path_text, (_candidate, repository_relative) in prepared.items()
+    }
+    snapshot.declarations = {
+        path_text: dict(declaration)
+        for path_text, declaration in declarations.items()
+    }
+    try:
+        _retain_expected_predecessor_residue_directories(
+            snapshot,
+            preregistration,
+            (
+                None
+                if expected_security_profile is None
+                else expected_security_profile[
+                    "failed_predecessor_attempts"
+                ]
+            ),
+        )
+        for path_text in sorted(prepared):
+            candidate, repository_relative = prepared[path_text]
+            raw, info = snapshot.open_initial(path_text, repository_relative)
+            pair = tracked_pairs[path_text]
+            if pair is not None:
+                if _git_blob_id(raw) != pair[0]:
+                    _fail(f"bound input worktree Git blob mismatch: {path_text}")
+                observed_mode = "100755" if info.st_mode & 0o111 else "100644"
+                if observed_mode != pair[1]:
+                    _fail(f"bound input worktree Git mode mismatch: {path_text}")
+        return snapshot, tracked_pairs
+    except BaseException:
+        snapshot.close()
+        raise
 
 
 def _canonical_bound_json(
@@ -1925,7 +3727,7 @@ def _canonical_bound_json(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB4Failure(
+        raise TerminalG9CB5Failure(
             f"historical metadata JSON is invalid: {path_text}"
         ) from exc
     if (
@@ -1953,6 +3755,37 @@ def _validate_historical_metadata_bytes(
         for row in prereg.expected_failed_predecessor_preregistration_bindings()
     }
     attempts = prereg.expected_failed_predecessor_attempts()
+    closure = prereg.expected_failed_predecessor_closures()[0]
+    closure_bindings = {
+        closure["authority_decision"]["path"]: (
+            "authority_decision",
+            closure["authority_decision"],
+        ),
+        closure["preregistration"]["path"]: (
+            "preregistration",
+            closure["preregistration"],
+        ),
+    }
+    if path_text in closure_bindings:
+        key, binding = closure_bindings[path_text]
+        if (
+            "filesystem_mode_octal" in binding
+            and stat.S_IMODE(info.st_mode)
+            != int(str(binding["filesystem_mode_octal"]), 8)
+        ):
+            _fail(f"G9CB-4 closure filesystem mode differs: {path_text}")
+        if key == "preregistration":
+            payload = _canonical_bound_json(
+                raw, path_text, "manifest_hash"
+            )
+            if (
+                payload.get("identity") != "G9CB-4"
+                or payload.get("protocol_version")
+                != "gross9_structural_clock_bundle_g9cb4_preregistration_v1"
+                or payload.get("manifest_hash") != binding["manifest_hash"]
+            ):
+                _fail(f"G9CB-4 closure metadata differs: {path_text}")
+        return
     attempt = attempts[0]
     g9cb2 = {
         attempt[key]["path"]: (key, attempt[key])
@@ -2058,7 +3891,7 @@ def _validate_historical_metadata_bytes(
                 raw.decode("utf-8"), object_pairs_hook=_unique_object
             )
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise TerminalG9CB4Failure(
+            raise TerminalG9CB5Failure(
                 f"G9CB-3 worker ledger JSON is invalid: {path_text}"
             ) from exc
         if not isinstance(payload, dict) or raw != _canonical_json_bytes(payload):
@@ -2184,12 +4017,21 @@ def _validate_regular_hashed_inputs(
                 verify_git=verify_git,
             )
 
+    if not isinstance(raw_cache, _SecureBoundSnapshot):
+        for path_text in sorted(prepared):
+            _require_bound_regular_lstat(
+                prepared[path_text]["candidate"],
+                path_text,
+            )
+
     authenticated: list[dict[str, Any]] = []
     cache = {} if raw_cache is None else raw_cache
     for path_text in sorted(prepared):
         row = prepared[path_text]
         cached = cache.get(path_text)
         if cached is None:
+            if isinstance(raw_cache, _SecureBoundSnapshot):
+                _fail(f"bound input cache binding is absent: {path_text}")
             raw, info = _read_bound_regular_bytes(row["candidate"], path_text)
             cache[path_text] = (raw, info)
         else:
@@ -2273,6 +4115,8 @@ def _validate_one_static_closure(
             raw, info = cached
             if not stat.S_ISREG(info.st_mode):
                 _fail(f"closure member is not regular: {row['path']}")
+        elif isinstance(raw_cache, _SecureBoundSnapshot):
+            _fail(f"closure cache member is absent: {row['path']}")
         else:
             if path.is_symlink() or not path.is_file():
                 _fail(f"closure member is absent: {row['path']}")
@@ -2280,7 +4124,7 @@ def _validate_one_static_closure(
         try:
             ast.parse(raw, filename=row["path"])
         except SyntaxError as exc:
-            raise TerminalG9CB4Failure(f"closure source cannot be parsed: {row['path']}") from exc
+            raise TerminalG9CB5Failure(f"closure source cannot be parsed: {row['path']}") from exc
         observed = {
             "path": row["path"],
             "path_type": "regular_file",
@@ -2290,7 +4134,9 @@ def _validate_one_static_closure(
                 if verify_git
                 else row.get("git_blob")
             ),
-            "git_mode": "100644",
+            "git_mode": (
+                "100644" if verify_git else row.get("git_mode")
+            ),
             "package_initializer": path.name == "__init__.py",
         }
         for key, value in observed.items():
@@ -2363,8 +4209,8 @@ def _worker_stage_path(root: Path, output_dir: Path) -> str:
     if candidate.parent != expected_parent:
         _fail("worker staging directory is not in the results filesystem")
     if (
-        not candidate.name.startswith(".gross9-structural-clock-g9cb4-worker-")
-        or candidate.name == ".gross9-structural-clock-g9cb4-worker-"
+        not candidate.name.startswith(".gross9-structural-clock-g9cb5-worker-")
+        or candidate.name == ".gross9-structural-clock-g9cb5-worker-"
     ):
         _fail("worker staging directory name differs")
     return candidate.relative_to(repository_root).as_posix()
@@ -2423,13 +4269,15 @@ def _prepare_worker_capability(
     output_dir: Path,
     slot: int,
     parent_pid: int,
+    results_fd: int | None = None,
 ) -> dict[str, Any]:
     if type(slot) is not int or slot not in (1, 2):
         _fail("worker capability slot is invalid")
     if type(parent_pid) is not int or parent_pid <= 0:
         _fail("worker capability parent PID is invalid")
     stage_directory = _worker_stage_path(root, output_dir)
-    read_fd = write_fd = -1
+    read_fd = write_fd = ledger_fd = -1
+    owned_results_fd = -1
     token = bytearray()
     try:
         read_fd, write_fd = os.pipe2(os.O_CLOEXEC)
@@ -2441,6 +4289,31 @@ def _prepare_worker_capability(
         _write_all(write_fd, token)
         os.close(write_fd)
         write_fd = -1
+        if results_fd is None:
+            owned_results_fd = os.open(
+                root / "results",
+                os.O_RDONLY
+                | getattr(os, "O_DIRECTORY", 0)
+                | getattr(os, "O_NOFOLLOW", 0)
+                | getattr(os, "O_CLOEXEC", 0),
+            )
+            results_fd = owned_results_fd
+        ledger_fd = os.open(
+            ".",
+            os.O_RDWR
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_TMPFILE", 0),
+            0o600,
+            dir_fd=results_fd,
+        )
+        os.fchmod(ledger_fd, 0o600)
+        ledger_info = os.fstat(ledger_fd)
+        if (
+            not stat.S_ISREG(ledger_info.st_mode)
+            or stat.S_IMODE(ledger_info.st_mode) != 0o600
+            or ledger_info.st_size != 0
+        ):
+            _fail("worker ledger carrier is not an empty mode-0600 regular file")
         row = {
             "slot": slot,
             "parent_pid": parent_pid,
@@ -2452,10 +4325,17 @@ def _prepare_worker_capability(
             "consumed_ledger_path": WORKER_LEDGER_PATHS[
                 slot - 1
             ].as_posix(),
+            "ledger_carrier_kind": "unnamed_otmpfile_v1",
+            "ledger_device": int(ledger_info.st_dev),
+            "ledger_inode": int(ledger_info.st_ino),
+            "ledger_initial_type": "regular_file",
+            "ledger_initial_mode": "0600",
+            "ledger_initial_size": 0,
         }
         return {
             "row": row,
             "read_fd": read_fd,
+            "ledger_fd": ledger_fd,
             "token": token,
             "stage_path": Path(root).resolve() / stage_directory,
         }
@@ -2464,8 +4344,13 @@ def _prepare_worker_capability(
             os.close(write_fd)
         if read_fd >= 0:
             os.close(read_fd)
+        if ledger_fd >= 0:
+            os.close(ledger_fd)
         _zero_token(token)
         raise
+    finally:
+        if owned_results_fd >= 0:
+            os.close(owned_results_fd)
 
 
 def _normalized_worker_capabilities(
@@ -2485,6 +4370,12 @@ def _normalized_worker_capabilities(
         "carrier_inode",
         "token_sha256",
         "consumed_ledger_path",
+        "ledger_carrier_kind",
+        "ledger_device",
+        "ledger_inode",
+        "ledger_initial_type",
+        "ledger_initial_mode",
+        "ledger_initial_size",
     }
     if len(rows) != 2 or any(set(row) != required for row in rows):
         _fail("worker capability schema differs")
@@ -2503,7 +4394,7 @@ def _normalized_worker_capabilities(
         stage = row["stage_directory"]
         if (
             not isinstance(stage, str)
-            or not stage.startswith("results/.gross9-structural-clock-g9cb4-worker-")
+            or not stage.startswith("results/.gross9-structural-clock-g9cb5-worker-")
             or row["carrier_kind"] != "anonymous_pipe_v1"
             or type(row["carrier_device"]) is not int
             or type(row["carrier_inode"]) is not int
@@ -2513,6 +4404,14 @@ def _normalized_worker_capabilities(
             or not _SHA_RE.fullmatch(row["token_sha256"])
             or row["consumed_ledger_path"]
             != WORKER_LEDGER_PATHS[row["slot"] - 1].as_posix()
+            or row["ledger_carrier_kind"] != "unnamed_otmpfile_v1"
+            or type(row["ledger_device"]) is not int
+            or type(row["ledger_inode"]) is not int
+            or row["ledger_device"] < 0
+            or row["ledger_inode"] <= 0
+            or row["ledger_initial_type"] != "regular_file"
+            or row["ledger_initial_mode"] != "0600"
+            or row["ledger_initial_size"] != 0
         ):
             _fail("worker capability binding differs")
     for key in (
@@ -2526,6 +4425,16 @@ def _normalized_worker_capabilities(
         {(row["carrier_device"], row["carrier_inode"]) for row in rows}
     ) != 2:
         _fail("worker capability carrier identities are not unique")
+    if len(
+        {(row["ledger_device"], row["ledger_inode"]) for row in rows}
+    ) != 2:
+        _fail("worker ledger carrier identities are not unique")
+    if {
+        (row["carrier_device"], row["carrier_inode"]) for row in rows
+    } & {
+        (row["ledger_device"], row["ledger_inode"]) for row in rows
+    }:
+        _fail("worker capability and ledger carrier identities alias")
     return rows
 
 
@@ -2535,10 +4444,17 @@ def _sentinel_payload(
     authority_amendments: Sequence[Mapping[str, Any]],
     parent_authentication_sha256: str,
     worker_capabilities: Sequence[Mapping[str, Any]],
+    *,
+    expected_authority_amendments: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     capabilities = _normalized_worker_capabilities(worker_capabilities)
     amendments = [dict(row) for row in authority_amendments]
-    if amendments != _expected_authority_amendment_bindings():
+    expected_amendments = (
+        _expected_authority_amendment_bindings()
+        if expected_authority_amendments is None
+        else [dict(row) for row in expected_authority_amendments]
+    )
+    if amendments != expected_amendments:
         _fail("sentinel authority amendments differ")
     if not _SHA_RE.fullmatch(parent_authentication_sha256):
         _fail("sentinel parent authentication hash differs")
@@ -2700,6 +4616,10 @@ class _WorkerIsolationGuard:
         own_stage: str,
         other_stage: str,
         ledger_paths: Sequence[Path],
+        repository_fd: int,
+        results_fd: int,
+        filesystem_root_fd: int,
+        ledger_fd: int,
     ) -> None:
         root_path = Path(root)
         if not root_path.is_absolute():
@@ -2717,6 +4637,8 @@ class _WorkerIsolationGuard:
         self.own_ledger: Path | None = None
         self.other_ledger: Path | None = None
         self._forbidden_ledgers = set(self.ledger_paths)
+        self._owned_ledger_open_state = "unbound"
+        self._owned_ledger_open_count = 0
         self.results_directory = (self.root / SENTINEL_PATH).parent
         self.allowed_mutations: set[str] = set()
         self.descriptors: dict[int, tuple[str, int, int, bool]] = {}
@@ -2731,8 +4653,54 @@ class _WorkerIsolationGuard:
         self._originals: dict[tuple[int, str], Any] = {}
         self._prebound_guarded_callables: dict[int, tuple[Any, str]] = {}
         self._original_lstat = os.lstat
+        self._original_stat = os.stat
+        self._original_os_open = os.open
         self._original_readlink = os.readlink
         self._original_realpath = os.path.realpath
+        if len({repository_fd, results_fd, filesystem_root_fd, ledger_fd}) != 4:
+            _fail("worker guard descriptor graph aliases")
+        self.repository_fd = repository_fd
+        self.results_fd = results_fd
+        self.filesystem_root_fd = filesystem_root_fd
+        self.ledger_fd = ledger_fd
+        self.stage_fd: int | None = None
+        self.stage_entries: tuple[str, ...] = ()
+        self.stage_token: tuple[int, ...] | None = None
+        self.results_entries: tuple[str, ...] = ()
+        self.results_timestamp_token: tuple[int, ...] | None = None
+        for descriptor, label in (
+            (repository_fd, self.root.as_posix()),
+            (results_fd, self.results_directory.as_posix()),
+            (filesystem_root_fd, "/"),
+        ):
+            info = os.fstat(descriptor)
+            if not stat.S_ISDIR(info.st_mode):
+                _fail(f"worker anchor is not a directory: {label}")
+            self.descriptors[descriptor] = (
+                label,
+                int(info.st_dev),
+                int(info.st_ino),
+                True,
+            )
+            self.allowed_directory_identities.add(
+                (int(info.st_dev), int(info.st_ino))
+            )
+            if descriptor == results_fd:
+                self.results_entries = _directory_entries(descriptor)
+                self.results_timestamp_token = _descriptor_token(info)
+        info = os.fstat(ledger_fd)
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or stat.S_IMODE(info.st_mode) != 0o600
+            or info.st_size != 0
+        ):
+            _fail("worker pending ledger descriptor differs")
+        self.descriptors[ledger_fd] = (
+            "<unnamed-worker-ledger>",
+            int(info.st_dev),
+            int(info.st_ino),
+            False,
+        )
 
     def _absolute_protocol_path(self, text: str) -> Path:
         if not isinstance(text, str):
@@ -2747,6 +4715,29 @@ class _WorkerIsolationGuard:
         except ValueError:
             _fail(f"worker stage path escapes repository: {text}")
         return candidate
+
+    def register_snapshot_descriptor(
+        self,
+        descriptor: int,
+        label: str,
+        info: os.stat_result,
+        directory: bool,
+    ) -> None:
+        if descriptor in self.descriptors:
+            _fail(f"worker snapshot descriptor was already registered: {label}")
+        expected_type = stat.S_IFDIR if directory else stat.S_IFREG
+        if stat.S_IFMT(info.st_mode) != expected_type:
+            _fail(f"worker snapshot descriptor type differs: {label}")
+        self.descriptors[descriptor] = (
+            label,
+            int(info.st_dev),
+            int(info.st_ino),
+            directory,
+        )
+        if directory:
+            self.allowed_directory_identities.add(
+                (int(info.st_dev), int(info.st_ino))
+            )
 
     @staticmethod
     def _is_within(path: Path, prefix: Path) -> bool:
@@ -2793,7 +4784,7 @@ class _WorkerIsolationGuard:
         try:
             raw = os.fspath(value)
         except TypeError as exc:
-            raise TerminalG9CB4Failure("guarded path is not path-like") from exc
+            raise TerminalG9CB5Failure("guarded path is not path-like") from exc
         if isinstance(raw, bytes):
             text = raw.decode(sys.getfilesystemencoding(), "surrogateescape")
         elif isinstance(raw, str):
@@ -2833,7 +4824,7 @@ class _WorkerIsolationGuard:
                 except FileNotFoundError:
                     return candidate
                 except OSError as exc:
-                    raise TerminalG9CB4Failure(
+                    raise TerminalG9CB5Failure(
                         f"guarded path resolution failed: {candidate}"
                     ) from exc
                 if stat.S_ISLNK(info.st_mode):
@@ -2899,6 +4890,37 @@ class _WorkerIsolationGuard:
         for key in ("dir_fd", "src_dir_fd", "dst_dir_fd"):
             if key in kwargs and kwargs[key] is not None:
                 _fail(f"guarded {key} is forbidden")
+
+    def _observation_dir_fd(
+        self, path: Any, kwargs: Mapping[str, Any]
+    ) -> int | None:
+        for key in ("src_dir_fd", "dst_dir_fd"):
+            if key in kwargs and kwargs[key] is not None:
+                _fail(f"guarded {key} is forbidden")
+        descriptor = kwargs.get("dir_fd")
+        if descriptor is None:
+            return None
+        if (
+            type(descriptor) is not int
+            or descriptor not in self.descriptors
+            or not self.descriptors[descriptor][3]
+        ):
+            _fail("guarded observation dir_fd is not registered")
+        if (
+            not isinstance(path, (str, bytes))
+            or os.fsdecode(path) in {"", ".", ".."}
+            or "/" in os.fsdecode(path)
+            or "\\" in os.fsdecode(path)
+        ):
+            _fail("guarded descriptor-relative component is invalid")
+        if (
+            descriptor == self.results_fd
+            and os.path.basename(os.path.normpath(os.fsdecode(path)))
+            in {ledger.name for ledger in self.ledger_paths}
+        ):
+            self.other_slot_ledger_access_events += 1
+            _fail("worker ledger observation is forbidden")
+        return descriptor
 
     def _patch(self, owner: Any, name: str, replacement: Any) -> None:
         if not hasattr(owner, name):
@@ -3066,15 +5088,21 @@ class _WorkerIsolationGuard:
         )
 
         def guarded(path: Any, flags: int, *args: Any, **kwargs: Any) -> int:
-            self._reject_dir_fds(kwargs)
             tmpfile = getattr(os, "O_TMPFILE", 0)
             mutation = bool(flags & mutation_mask) or bool(
                 tmpfile and (flags & tmpfile) == tmpfile
             )
-            canonical = self._checked_path(
-                path,
-                mutation=mutation,
-                fifo_open=True,
+            dir_fd = self._observation_dir_fd(path, kwargs)
+            if dir_fd is not None and mutation:
+                _fail("guarded descriptor-relative mutation is forbidden")
+            canonical = (
+                f"{self.descriptors[dir_fd][0]}/{os.fsdecode(path)}"
+                if dir_fd is not None
+                else self._checked_path(
+                    path,
+                    mutation=mutation,
+                    fifo_open=True,
+                )
             )
             descriptor = original(path, flags, *args, **kwargs)
             info = os.fstat(descriptor)
@@ -3083,10 +5111,12 @@ class _WorkerIsolationGuard:
                 os.close(descriptor)
                 self.unauthorized_write_or_ipc_events += 1
                 _fail(f"path-resolved FIFO access is forbidden: {canonical}")
-            if is_directory and (
-                info.st_dev,
-                info.st_ino,
-            ) not in self.allowed_directory_identities:
+            if (
+                is_directory
+                and dir_fd is None
+                and (info.st_dev, info.st_ino)
+                not in self.allowed_directory_identities
+            ):
                 os.close(descriptor)
                 self.unauthorized_write_or_ipc_events += 1
                 _fail(f"directory descriptor is not authorized: {canonical}")
@@ -3096,18 +5126,22 @@ class _WorkerIsolationGuard:
                 int(info.st_ino),
                 is_directory,
             )
+            if is_directory:
+                self.allowed_directory_identities.add(
+                    (int(info.st_dev), int(info.st_ino))
+                )
             return descriptor
 
         return guarded
 
     def _wrap_path_observation(self, original: Any, *, path_index: int = 0):
         def guarded(*args: Any, **kwargs: Any) -> Any:
-            self._reject_dir_fds(kwargs)
             if len(args) <= path_index:
                 path = "."
             else:
                 path = args[path_index]
-            self._checked_path(path)
+            if self._observation_dir_fd(path, kwargs) is None:
+                self._checked_path(path)
             return original(*args, **kwargs)
 
         return guarded
@@ -3537,7 +5571,16 @@ class _WorkerIsolationGuard:
         if path_indexes is not None:
             for index in path_indexes:
                 if len(arguments) > index:
-                    self._checked_path(arguments[index])
+                    value = arguments[index]
+                    if isinstance(value, int):
+                        record = self.descriptors.get(value)
+                        if record is None or not record[3]:
+                            _fail(
+                                "audit rejected unregistered directory "
+                                f"descriptor: {event}"
+                            )
+                    else:
+                        self._checked_path(value)
         mutation_spec = self._AUDIT_MUTATION_EVENTS.get(event)
         if mutation_spec is not None:
             mutation_indexes, directory_indexes = mutation_spec
@@ -3556,6 +5599,27 @@ class _WorkerIsolationGuard:
             if isinstance(path, (str, bytes, os.PathLike)):
                 mode = arguments[1] if len(arguments) > 1 else "r"
                 flags = arguments[2] if len(arguments) > 2 else 0
+                decoded_path = os.fsdecode(path)
+                normalized_leaf = os.path.basename(
+                    os.path.normpath(decoded_path)
+                )
+                ledger_leaves = {ledger.name for ledger in self.ledger_paths}
+                if normalized_leaf in ledger_leaves:
+                    exact_flags = (
+                        os.O_RDONLY
+                        | getattr(os, "O_NOFOLLOW", 0)
+                        | getattr(os, "O_CLOEXEC", 0)
+                    )
+                    if not (
+                        self.own_ledger is not None
+                        and decoded_path == self.own_ledger.name
+                        and self._owned_ledger_open_state == "opening"
+                        and self._owned_ledger_open_count == 1
+                        and flags == exact_flags
+                    ):
+                        self.other_slot_ledger_access_events += 1
+                        _fail("owned worker ledger open is forbidden")
+                    return
                 mutation = (
                     isinstance(mode, str)
                     and any(character in mode for character in "wax+")
@@ -3589,6 +5653,7 @@ class _WorkerIsolationGuard:
                 )
 
     def install(self) -> None:
+        global _ACTIVE_WORKER_GUARD
         if self._installed:
             _fail("worker isolation guard cannot be reinstalled")
         self._installed = True
@@ -3613,16 +5678,7 @@ class _WorkerIsolationGuard:
             self.other_stage_absence_checks = 1
         finally:
             self._other_stage_internal_check = False
-
-    def authorize_ledger(self, staging: Path, canonical: Path) -> None:
-        if self.own_ledger is None or canonical != self.own_ledger:
-            _fail("worker attempted to authorize a non-owned ledger")
-        self.allowed_mutations.update(
-            {
-                self._checked_path(staging),
-                self._checked_path(canonical),
-            }
-        )
+        _ACTIVE_WORKER_GUARD = self
 
     def bind_ledger_slot(self, slot: int) -> None:
         if type(slot) is not int or slot not in (1, 2):
@@ -3631,7 +5687,100 @@ class _WorkerIsolationGuard:
             _fail("worker guard ledger slot was already bound")
         self.own_ledger = self.ledger_paths[slot - 1]
         self.other_ledger = self.ledger_paths[1 - (slot - 1)]
-        self._forbidden_ledgers = {self.other_ledger}
+        self._owned_ledger_open_state = "bound"
+
+    def open_owned_canonical_ledger_once(
+        self,
+        leaf: str,
+        flags: int,
+        *,
+        dir_fd: int,
+    ) -> int:
+        if (
+            self._owned_ledger_open_state != "bound"
+            or self._owned_ledger_open_count != 0
+        ):
+            self.unauthorized_write_or_ipc_events += 1
+            _fail("owned worker ledger canonical-open authority differs")
+        self._owned_ledger_open_state = "opening"
+        self._owned_ledger_open_count = 1
+        exact_flags = (
+            os.O_RDONLY
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_CLOEXEC", 0)
+        )
+        descriptor: int | None = None
+        underlying_open_attempted = False
+        try:
+            if (
+                self.own_ledger is None
+                or type(leaf) is not str
+                or leaf != self.own_ledger.name
+                or type(flags) is not int
+                or flags != exact_flags
+                or type(dir_fd) is not int
+                or dir_fd != self.results_fd
+            ):
+                _fail("owned worker ledger canonical-open authority differs")
+            results_record = self.descriptors.get(dir_fd)
+            if results_record is None or not results_record[3]:
+                _fail("owned worker ledger results descriptor differs")
+            results_info = os.fstat(dir_fd)
+            if (int(results_info.st_dev), int(results_info.st_ino)) != (
+                results_record[1],
+                results_record[2],
+            ):
+                _fail(
+                    "owned worker ledger results descriptor was substituted"
+                )
+            edge = self._original_stat(
+                leaf,
+                dir_fd=dir_fd,
+                follow_symlinks=False,
+            )
+            unnamed = os.fstat(self.ledger_fd)
+            if (
+                not stat.S_ISREG(edge.st_mode)
+                or stat.S_IMODE(edge.st_mode) != 0o444
+                or (int(edge.st_dev), int(edge.st_ino))
+                != (int(unnamed.st_dev), int(unnamed.st_ino))
+            ):
+                _fail("owned worker ledger pre-open edge differs")
+            underlying_open_attempted = True
+            descriptor = self._original_os_open(
+                leaf,
+                flags,
+                dir_fd=dir_fd,
+            )
+            if descriptor == self.ledger_fd or descriptor in self.descriptors:
+                _fail("owned worker ledger canonical descriptor aliases")
+            info = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or stat.S_IMODE(info.st_mode) != 0o444
+                or (int(info.st_dev), int(info.st_ino))
+                != (int(edge.st_dev), int(edge.st_ino))
+            ):
+                _fail("owned worker ledger canonical descriptor differs")
+            self.descriptors[descriptor] = (
+                self.own_ledger.as_posix(),
+                int(info.st_dev),
+                int(info.st_ino),
+                False,
+            )
+        except BaseException:
+            self._owned_ledger_open_state = "failed"
+            if not underlying_open_attempted or descriptor is not None:
+                self.unauthorized_write_or_ipc_events += 1
+            if (
+                descriptor is not None
+                and descriptor != self.ledger_fd
+                and descriptor not in self.descriptors
+            ):
+                os.close(descriptor)
+            raise
+        self._owned_ledger_open_state = "consumed"
+        return descriptor
 
     def authorize_outputs(self) -> None:
         self.allowed_mutations.update(
@@ -3653,12 +5802,82 @@ class _WorkerIsolationGuard:
             self.own_stage.as_posix(),
         }:
             _fail("worker directory durability target differs")
-        info = self._original_lstat(path)
+        if canonical == self.own_stage.as_posix() and self.stage_fd is None:
+            assert self.results_fd is not None
+            flags = (
+                os.O_RDONLY
+                | getattr(os, "O_DIRECTORY", 0)
+                | getattr(os, "O_NOFOLLOW", 0)
+                | getattr(os, "O_CLOEXEC", 0)
+            )
+            self.stage_fd = self._original_os_open(
+                self.own_stage.name, flags, dir_fd=self.results_fd
+            )
+            info = os.fstat(self.stage_fd)
+            self.register_snapshot_descriptor(
+                self.stage_fd, canonical, info, True
+            )
+            self.stage_entries = _directory_entries(self.stage_fd)
+            self.stage_token = _descriptor_token(info)
+            self.allowed_mutations.add(canonical)
+        else:
+            info = self._original_lstat(path)
         if not stat.S_ISDIR(info.st_mode):
             _fail("worker durability target is not a directory")
         self.allowed_directory_identities.add(
             (int(info.st_dev), int(info.st_ino))
         )
+
+    def require_results(self, *, compare_timestamps: bool = True) -> None:
+        assert self.repository_fd is not None and self.results_fd is not None
+        info = os.fstat(self.results_fd)
+        edge = self._original_stat(
+            "results", dir_fd=self.repository_fd, follow_symlinks=False
+        )
+        record = self.descriptors[self.results_fd]
+        if (
+            self.results_timestamp_token is None
+            or _directory_identity(info) != self.results_timestamp_token[:4]
+            or (info.st_dev, info.st_ino) != (record[1], record[2])
+            or _directory_identity(edge) != _directory_identity(info)
+            or _directory_entries(self.results_fd) != self.results_entries
+        ):
+            _fail("worker retained results directory differs")
+        if (
+            compare_timestamps
+            and self.results_timestamp_token is not None
+            and _descriptor_token(info) != self.results_timestamp_token
+        ):
+            _fail("worker retained results timestamps drifted")
+
+    def require_stage(
+        self,
+        expected_entries: tuple[str, ...],
+        *,
+        authorized_delta: bool = False,
+    ) -> None:
+        if self.stage_fd is None or self.stage_token is None:
+            _fail("worker retained stage descriptor is absent")
+        assert self.results_fd is not None
+        info = os.fstat(self.stage_fd)
+        edge = self._original_stat(
+            self.own_stage.name,
+            dir_fd=self.results_fd,
+            follow_symlinks=False,
+        )
+        if (
+            _directory_identity(info) != self.stage_token[:4]
+            or _directory_identity(edge) != self.stage_token[:4]
+            or _directory_entries(self.stage_fd) != expected_entries
+        ):
+            _fail("worker retained stage state differs")
+        if authorized_delta:
+            os.fchmod(self.stage_fd, 0o700)
+            os.fsync(self.stage_fd)
+            self.stage_entries = expected_entries
+            self.stage_token = _descriptor_token(os.fstat(self.stage_fd))
+        elif _descriptor_token(info) != self.stage_token:
+            _fail("worker retained stage timestamps drifted")
 
     def counters(self) -> dict[str, int]:
         return {
@@ -3972,9 +6191,22 @@ def _write_exclusive_guarded_file(
     mode: int,
     sync_directory: Path,
 ) -> os.stat_result:
-    descriptor = os.open(
-        path,
-        os.O_WRONLY
+    guard = _ACTIVE_WORKER_GUARD
+    if (
+        not isinstance(guard, _WorkerIsolationGuard)
+        or guard.stage_fd is None
+        or path.parent != guard.own_stage
+        or sync_directory != guard.own_stage
+    ):
+        _fail("worker stage-file creation lacks the retained stage descriptor")
+    baseline = guard.stage_entries
+    guard.require_stage(baseline)
+    if path.name in baseline:
+        _fail(f"exclusive worker output already exists: {path}")
+    descriptor = _openat_component(
+        guard.stage_fd,
+        path.name,
+        os.O_RDWR
         | os.O_CREAT
         | os.O_EXCL
         | getattr(os, "O_CLOEXEC", 0)
@@ -3982,23 +6214,36 @@ def _write_exclusive_guarded_file(
         0o600,
     )
     try:
+        created = os.fstat(descriptor)
+        guard.descriptors[descriptor] = (
+            path.as_posix(),
+            int(created.st_dev),
+            int(created.st_ino),
+            False,
+        )
+        expected_created = tuple(sorted((*baseline, path.name)))
+        if _directory_entries(guard.stage_fd) != expected_created:
+            _fail("worker stage-file create delta differs")
+        guard.require_stage(expected_created, authorized_delta=True)
         _write_all(descriptor, raw)
         os.fchmod(descriptor, mode)
         os.fsync(descriptor)
         info = os.fstat(descriptor)
+        observed = _pread_complete(descriptor, info.st_size)
+        if (
+            observed != raw
+            or (info.st_dev, info.st_ino)
+            != (created.st_dev, created.st_ino)
+            or stat.S_IMODE(info.st_mode) != mode
+        ):
+            _fail(f"exclusive worker output verification failed: {path}")
+        os.fsync(guard.stage_fd)
+        if _directory_entries(guard.stage_fd) != expected_created:
+            _fail("worker stage-file stable inventory differs")
+        guard.require_stage(expected_created)
     finally:
         os.close(descriptor)
-    _sync_guarded_directory(sync_directory)
-    observed, reopened = _read_guarded_file(path, expected_mode=mode)
-    if observed != raw or (
-        reopened.st_dev,
-        reopened.st_ino,
-    ) != (
-        info.st_dev,
-        info.st_ino,
-    ):
-        _fail(f"exclusive worker output verification failed: {path}")
-    return reopened
+    return info
 
 
 def _worker_ledger_payload(
@@ -4030,32 +6275,89 @@ def _worker_ledger_payload(
     return payload
 
 
+def _worker_metadata_final_recheck(
+    guard: _WorkerIsolationGuard,
+    snapshot: _SecureBoundSnapshot,
+    binding: Mapping[str, Any],
+    ledger_fd: int,
+) -> None:
+    if (
+        guard.repository_fd is None
+        or guard.results_fd is None
+        or guard.filesystem_root_fd is None
+    ):
+        _fail("worker metadata anchors are absent at final recheck")
+    snapshot.verify_final()
+    for descriptor in (
+        guard.repository_fd,
+        guard.results_fd,
+        guard.filesystem_root_fd,
+    ):
+        info = os.fstat(descriptor)
+        record = guard.descriptors.get(descriptor)
+        if (
+            record is None
+            or not stat.S_ISDIR(info.st_mode)
+            or (info.st_dev, info.st_ino) != (record[1], record[2])
+        ):
+            _fail("worker metadata anchor final recheck differs")
+    ledger_info = os.fstat(ledger_fd)
+    if (
+        (ledger_info.st_dev, ledger_info.st_ino)
+        != (binding["ledger_device"], binding["ledger_inode"])
+        or stat.S_IMODE(ledger_info.st_mode) != 0o444
+    ):
+        _fail("worker metadata ledger final recheck differs")
+    if guard.stage_fd is None:
+        _fail("worker metadata stage descriptor is absent")
+    guard.require_stage(())
+    guard.require_results()
+    leaf = Path(str(binding["consumed_ledger_path"])).name
+    try:
+        guard._original_stat(
+            leaf, dir_fd=guard.results_fd, follow_symlinks=False
+        )
+    except FileNotFoundError:
+        pass
+    else:
+        _fail("worker canonical ledger appeared before final recheck")
+    if guard.counters() != {
+        "child_process_creation_events": 0,
+        "other_stage_access_events": 0,
+        "other_stage_absence_checks": 1,
+        "other_slot_ledger_access_events": 0,
+        "unauthorized_write_or_ipc_events": 0,
+    }:
+        _fail("worker metadata isolation counters differ at final recheck")
+
+
 def _publish_worker_ledger(
     *,
     guard: _WorkerIsolationGuard,
+    snapshot: _SecureBoundSnapshot,
+    ledger_fd: int,
     binding: Mapping[str, Any],
     claim: Mapping[str, Any],
     preregistration: Mapping[str, Any],
     sentinel: Mapping[str, Any],
     authority_amendments: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
+    if guard.results_fd is None or guard.ledger_fd != ledger_fd:
+        _fail("worker ledger publication descriptors are not registered")
     canonical = _rooted(
-        guard.root,
-        Path(str(binding["consumed_ledger_path"])),
+        guard.root, Path(str(binding["consumed_ledger_path"]))
     )
-    staging = canonical.with_name(
-        f".{canonical.name}.stage-{os.getpid()}-{binding['slot']}"
-    )
-    guard.authorize_directory_sync(canonical.parent)
-    guard.authorize_ledger(staging, canonical)
-    for path in (staging, canonical):
-        try:
-            os.lstat(path)
-        except FileNotFoundError as exc:
-            if exc.errno != errno.ENOENT:
-                _fail(f"ledger absence check returned wrong errno: {path}")
-        else:
-            _fail(f"worker ledger path already exists: {path}")
+    leaf = canonical.name
+    baseline_entries = guard.results_entries
+    guard.require_results()
+    try:
+        guard._original_stat(
+            leaf, dir_fd=guard.results_fd, follow_symlinks=False
+        )
+    except FileNotFoundError:
+        pass
+    else:
+        _fail("worker canonical ledger already exists")
     payload = _worker_ledger_payload(
         binding=binding,
         claim=claim,
@@ -4064,44 +6366,66 @@ def _publish_worker_ledger(
         authority_amendments=authority_amendments,
     )
     raw = _canonical_json_bytes(payload)
-    descriptor = os.open(
-        staging,
-        os.O_WRONLY
-        | os.O_CREAT
-        | os.O_EXCL
-        | getattr(os, "O_CLOEXEC", 0)
-        | getattr(os, "O_NOFOLLOW", 0),
-        0o600,
+    guard.allowed_mutations.add("<unnamed-worker-ledger>")
+    _write_all(ledger_fd, raw)
+    os.fchmod(ledger_fd, 0o444)
+    os.fsync(ledger_fd)
+    staged_info = os.fstat(ledger_fd)
+    if (
+        (staged_info.st_dev, staged_info.st_ino)
+        != (binding["ledger_device"], binding["ledger_inode"])
+        or not stat.S_ISREG(staged_info.st_mode)
+        or stat.S_IMODE(staged_info.st_mode) != 0o444
+        or staged_info.st_size != len(raw)
+        or _pread_complete(ledger_fd, staged_info.st_size) != raw
+    ):
+        _fail("worker unnamed ledger same-FD verification differs")
+    _worker_metadata_final_recheck(guard, snapshot, binding, ledger_fd)
+    # Sole guarded procfd/link exception, prebound to this slot and destination.
+    _link_unnamed_procfd(ledger_fd, guard.results_fd, leaf)
+    canonical_fd = guard.open_owned_canonical_ledger_once(
+        leaf,
+        os.O_RDONLY
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_CLOEXEC", 0),
+        dir_fd=guard.results_fd,
     )
     try:
-        _write_all(descriptor, raw)
-        os.fchmod(descriptor, 0o444)
-        os.fsync(descriptor)
-        staged_info = os.fstat(descriptor)
-    finally:
-        os.close(descriptor)
-    os.link(staging, canonical, follow_symlinks=False)
-    _sync_guarded_directory(canonical.parent)
-    os.unlink(staging)
-    _sync_guarded_directory(canonical.parent)
-    observed, canonical_info = _read_guarded_file(
-        canonical,
-        expected_mode=0o444,
-    )
-    if (
-        observed != raw
-        or not stat.S_ISREG(canonical_info.st_mode)
-        or (canonical_info.st_dev, canonical_info.st_ino)
-        != (staged_info.st_dev, staged_info.st_ino)
-    ):
-        _fail("worker consumption ledger publication differs")
-    return {
-        "payload": payload,
-        "raw": raw,
-        "sha256": _sha256_bytes(raw),
-        "device": int(canonical_info.st_dev),
-        "inode": int(canonical_info.st_ino),
-    }
+        canonical_info = os.fstat(canonical_fd)
+        canonical_raw = _pread_complete(
+            canonical_fd, canonical_info.st_size
+        )
+        if (
+            canonical_fd == ledger_fd
+            or canonical_raw != raw
+            or _sha256_bytes(canonical_raw) != _sha256_bytes(raw)
+            or not stat.S_ISREG(canonical_info.st_mode)
+            or stat.S_IMODE(canonical_info.st_mode) != 0o444
+            or canonical_info.st_size != len(raw)
+            or (canonical_info.st_dev, canonical_info.st_ino)
+            != (staged_info.st_dev, staged_info.st_ino)
+        ):
+            _fail("worker consumption ledger publication differs")
+        expected_entries = tuple(sorted((*baseline_entries, leaf)))
+        if _directory_entries(guard.results_fd) != expected_entries:
+            _fail("worker ledger one-leaf results delta differs")
+        os.fsync(guard.results_fd)
+        guard.results_entries = expected_entries
+        guard.results_timestamp_token = _descriptor_token(
+            os.fstat(guard.results_fd)
+        )
+        guard.require_results()
+        return {
+            "payload": payload,
+            "raw": raw,
+            "sha256": _sha256_bytes(raw),
+            "device": int(canonical_info.st_dev),
+            "inode": int(canonical_info.st_ino),
+            "canonical_fd": canonical_fd,
+        }
+    except BaseException:
+        os.close(canonical_fd)
+        raise
 
 
 def _worker_receipt_payload(
@@ -4161,13 +6485,44 @@ def _worker_receipt_payload(
     return payload
 
 
+def _worker_ledger_linked_checkpoint(
+    guard: _WorkerIsolationGuard,
+    binding: Mapping[str, Any],
+    ledger: Mapping[str, Any],
+) -> None:
+    guard.require_results()
+    guard.require_stage(())
+    canonical_fd = ledger.get("canonical_fd")
+    if not isinstance(canonical_fd, int):
+        _fail("worker ledger-linked checkpoint lacks canonical descriptor")
+    if (
+        guard._owned_ledger_open_state != "consumed"
+        or guard._owned_ledger_open_count != 1
+    ):
+        _fail("worker ledger canonical-open state differs")
+    info = os.fstat(canonical_fd)
+    leaf = Path(str(binding["consumed_ledger_path"])).name
+    edge = guard._original_stat(
+        leaf, dir_fd=guard.results_fd, follow_symlinks=False
+    )
+    if (
+        not stat.S_ISREG(info.st_mode)
+        or stat.S_IMODE(info.st_mode) != 0o444
+        or (info.st_dev, info.st_ino)
+        != (int(ledger["device"]), int(ledger["inode"]))
+        or _descriptor_token(edge) != _descriptor_token(info)
+        or info.st_size != len(ledger["raw"])
+    ):
+        _fail("worker ledger-linked checkpoint differs")
+
+
 def _parse_timestamp(value: str) -> int:
     if not isinstance(value, str) or not _TIMESTAMP_RE.fullmatch(value):
         _fail(f"invalid UTC-second timestamp: {value!r}")
     try:
         parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
     except ValueError as exc:
-        raise TerminalG9CB4Failure(f"invalid timestamp: {value}") from exc
+        raise TerminalG9CB5Failure(f"invalid timestamp: {value}") from exc
     seconds = int(parsed.timestamp())
     if datetime.fromtimestamp(seconds, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") != value:
         _fail(f"noncanonical timestamp: {value}")
@@ -4186,7 +6541,7 @@ def _decimal(value: Any, field: str) -> Decimal:
     try:
         result = Decimal(str(value))
     except (InvalidOperation, ValueError) as exc:
-        raise TerminalG9CB4Failure(f"invalid decimal {field}") from exc
+        raise TerminalG9CB5Failure(f"invalid decimal {field}") from exc
     if not result.is_finite():
         _fail(f"nonfinite decimal {field}")
     return result
@@ -4509,13 +6864,13 @@ def validate_csv_gzip(raw: bytes, *, require_all_sleeves: bool = True) -> list[d
     try:
         decompressed = gzip.decompress(raw)
     except (OSError, EOFError) as exc:
-        raise TerminalG9CB4Failure("invalid gzip stream") from exc
+        raise TerminalG9CB5Failure("invalid gzip stream") from exc
     if compress_csv(decompressed) != raw:
         _fail("gzip bytes are not canonical")
     try:
         text = decompressed.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise TerminalG9CB4Failure("CSV is not UTF-8") from exc
+        raise TerminalG9CB5Failure("CSV is not UTF-8") from exc
     if "\r" in text or not text.endswith("\n") or "\n\n" in text:
         _fail("CSV line-ending contract failure")
     reader = csv.DictReader(io.StringIO(text, newline=""))
@@ -4627,10 +6982,17 @@ def build_core(
     sentinel_binding: Mapping[str, Any],
     authority_amendments: Sequence[Mapping[str, Any]],
     parent_authentication: Mapping[str, Any] | None = None,
+    *,
+    expected_authority_amendments: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     csv_bytes = gzip.decompress(csv_gzip)
-    expected_amendments = _expected_authority_amendment_bindings()
-    if [dict(row) for row in authority_amendments] != expected_amendments:
+    amendment_rows = [dict(row) for row in authority_amendments]
+    expected_amendments = (
+        _expected_authority_amendment_bindings()
+        if expected_authority_amendments is None
+        else [dict(row) for row in expected_authority_amendments]
+    )
+    if amendment_rows != expected_amendments:
         _fail("core authority amendment bindings mismatch")
     parent_authentication_object = dict(parent_authentication or {})
     parent_authentication_sha256 = _sha256_bytes(
@@ -4649,7 +7011,7 @@ def build_core(
                 {**row, "sides": list(row["sides"])}
                 for row in SLEEVES
             ],
-            "authority_amendments": expected_amendments,
+            "authority_amendments": amendment_rows,
             "provenance": dict(provenance),
             "parent_authentication": parent_authentication_object,
             "parent_authentication_sha256": parent_authentication_sha256,
@@ -4694,8 +7056,15 @@ def build_core(
 
 def _read_synthetic_worker_input(
     path: Path,
+    *,
+    path_text: str,
+    raw_cache: Mapping[str, tuple[bytes, os.stat_result]],
 ) -> tuple[list[dict[str, Any]], dict[str, Any], str]:
-    payload, _, _ = _read_canonical_object(path)
+    payload, _, _ = _read_canonical_object(
+        path,
+        path_text=path_text,
+        raw_cache=raw_cache,
+    )
     bars = payload.get("bars")
     if not isinstance(bars, list):
         _fail("synthetic worker input has no bars")
@@ -4842,7 +7211,7 @@ def _install_counted_rank7_runtime(
         try:
             candidate = Path(os.fspath(path))
         except TypeError as exc:
-            raise TerminalG9CB4Failure(
+            raise TerminalG9CB5Failure(
                 "Rank7 model open did not use a filesystem path"
             ) from exc
         candidate = candidate if candidate.is_absolute() else root / candidate
@@ -4907,7 +7276,7 @@ def _load_worker_json(root: Path, path: str) -> dict[str, Any]:
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB4Failure(f"worker JSON input is invalid: {path}") from exc
+        raise TerminalG9CB5Failure(f"worker JSON input is invalid: {path}") from exc
     if not isinstance(value, dict):
         _fail(f"worker JSON input is not an object: {path}")
     return value
@@ -4917,7 +7286,7 @@ def _market_seconds(market: Any) -> tuple[list[int], list[Any]]:
     try:
         values = list(market["date"])
     except (KeyError, TypeError) as exc:
-        raise TerminalG9CB4Failure("generic market lacks date rows") from exc
+        raise TerminalG9CB5Failure("generic market lacks date rows") from exc
     seconds: list[int] = []
     for value in values:
         if hasattr(value, "to_pydatetime"):
@@ -4999,7 +7368,7 @@ def _generic_time_second(value: Any, pandas_module: Any) -> int:
             pandas_module.to_datetime(value, utc=True, errors="raise")
         )
     except (TypeError, ValueError) as exc:
-        raise TerminalG9CB4Failure("generic source timestamp is invalid") from exc
+        raise TerminalG9CB5Failure("generic source timestamp is invalid") from exc
     return int(parsed.timestamp())
 
 
@@ -5040,7 +7409,7 @@ def _read_jsonl_rows(
         try:
             row = json.loads(line.decode("utf-8"), object_pairs_hook=_unique_object)
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise TerminalG9CB4Failure(f"invalid JSONL row: {path}") from exc
+            raise TerminalG9CB5Failure(f"invalid JSONL row: {path}") from exc
         if not isinstance(row, dict):
             _fail(f"JSONL row is not an object: {path}")
         if "_g9cb_parser_ordinal" in row:
@@ -5201,7 +7570,7 @@ def _install_counted_csv_reader(
         try:
             source_path = Path(os.fspath(source))
         except TypeError as exc:
-            raise TerminalG9CB4Failure(
+            raise TerminalG9CB5Failure(
                 "generic CSV read did not use an authenticated path"
             ) from exc
         candidate = (
@@ -5240,7 +7609,7 @@ def _install_counted_csv_reader(
         try:
             decoded_rows = len(frame)
         except TypeError as exc:
-            raise TerminalG9CB4Failure(
+            raise TerminalG9CB5Failure(
                 "chunked or streaming CSV decode is forbidden"
             ) from exc
         first_ordinal = counters["rows_decoded"][logical_name]
@@ -5254,7 +7623,7 @@ def _install_counted_csv_reader(
                     format="mixed",
                 )
             except (KeyError, TypeError, ValueError) as exc:
-                raise TerminalG9CB4Failure(
+                raise TerminalG9CB5Failure(
                     "raw market timestamps are invalid"
                 ) from exc
             if bool(
@@ -5270,7 +7639,7 @@ def _install_counted_csv_reader(
             )
             frame.attrs["_g9cb_logical_source"] = logical_name
         except (AttributeError, TypeError) as exc:
-            raise TerminalG9CB4Failure(
+            raise TerminalG9CB5Failure(
                 "decoded CSV frame cannot carry parser ordinals"
             ) from exc
         return frame
@@ -6545,6 +8914,13 @@ def _worker_main(
 ) -> int:
     expected_parent_pid = arguments.expected_parent_pid
     capability_fd = arguments.worker_capability_fd
+    ledger_fd = arguments.worker_ledger_fd
+    if (
+        type(capability_fd) is not int
+        or type(ledger_fd) is not int
+        or capability_fd == ledger_fd
+    ):
+        _fail("worker descriptor arguments differ")
     root = Path(arguments.repository_root).resolve(strict=True)
     if root != guard.root or guard.cwd != root:
         _fail("worker bootstrap repository root or cwd differs")
@@ -6562,6 +8938,13 @@ def _worker_main(
     root = guard.root
     output_dir = guard.own_stage
     synthetic = bool(arguments.synthetic_input)
+    synthetic_input_path: str | None = None
+    if synthetic:
+        candidate = Path(os.path.abspath(str(arguments.synthetic_input)))
+        try:
+            synthetic_input_path = candidate.relative_to(root).as_posix()
+        except ValueError:
+            _fail("synthetic worker input escapes the repository")
     token: bytearray | None = None
     capability_closed = False
     try:
@@ -6581,7 +8964,7 @@ def _worker_main(
                 object_pairs_hook=_unique_object,
             )
         except (UnicodeEncodeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise TerminalG9CB4Failure(
+            raise TerminalG9CB5Failure(
                 "worker parent authentication is invalid"
             ) from exc
         if (
@@ -6595,11 +8978,34 @@ def _worker_main(
         parent_authentication_sha256 = _sha256_bytes(
             parent_authentication_raw
         )
+        expected_security_profile_raw = (
+            arguments.expected_security_profile_json.encode("ascii")
+        )
+        try:
+            expected_security_profile = json.loads(
+                expected_security_profile_raw.decode("ascii"),
+                object_pairs_hook=_unique_object,
+            )
+        except (UnicodeEncodeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise TerminalG9CB5Failure(
+                "worker expected security profile is invalid"
+            ) from exc
+        if (
+            not isinstance(expected_security_profile, dict)
+            or not expected_security_profile
+            or expected_security_profile_raw
+            != _canonical_json_bytes(
+                expected_security_profile, trailing_lf=False
+            )
+        ):
+            _fail("worker expected security profile bytes differ")
 
         active_metadata = _authenticate_worker_metadata_entry(
             root,
             parent_authentication,
             synthetic=synthetic,
+            synthetic_input_path=synthetic_input_path,
+            expected_security_profile=expected_security_profile,
         )
         sentinel = active_metadata["sentinel"]
         sentinel_raw = active_metadata["sentinel_raw"]
@@ -6608,8 +9014,10 @@ def _worker_main(
         preregistration = active_metadata["preregistration"]
         prereg_binding = active_metadata["preregistration_binding"]
         guarded_metadata = active_metadata["guarded_metadata"]
+        metadata_snapshot = active_metadata["snapshot"]
         authority_amendments = _authority_amendment_bindings(
-            preregistration
+            preregistration,
+            expected=expected_security_profile["authority_amendments"],
         )
         if claim.get("authority_amendments") != authority_amendments:
             _fail("worker claim amendment bindings differ")
@@ -6634,6 +9042,9 @@ def _worker_main(
             authority_amendments,
             parent_authentication_sha256,
             capabilities,
+            expected_authority_amendments=expected_security_profile[
+                "authority_amendments"
+            ],
         ):
             _fail("worker sentinel contract differs")
         if sentinel.get("parent_authentication_sha256") != (
@@ -6656,11 +9067,26 @@ def _worker_main(
         ):
             _fail("worker parent or cross-stage invocation binding differs")
         guard.bind_ledger_slot(int(binding["slot"]))
-
+        ledger_info = os.fstat(ledger_fd)
         if (
-            output_dir.is_symlink()
-            or not output_dir.is_dir()
-            or list(output_dir.iterdir())
+            guard.ledger_fd != ledger_fd
+            or (ledger_info.st_dev, ledger_info.st_ino)
+            != (
+                binding["ledger_device"],
+                binding["ledger_inode"],
+            )
+            or stat.S_IMODE(ledger_info.st_mode) != 0o600
+            or ledger_info.st_size != 0
+        ):
+            _fail("worker ledger descriptor does not match sentinel")
+
+        guard.authorize_directory_sync(output_dir)
+        assert guard.stage_fd is not None
+        stage_info = os.fstat(guard.stage_fd)
+        if (
+            not stat.S_ISDIR(stage_info.st_mode)
+            or stat.S_IMODE(stage_info.st_mode) != 0o700
+            or _directory_entries(guard.stage_fd)
         ):
             _fail("worker own stage is not a fresh empty directory")
         if guard.counters() != {
@@ -6671,11 +9097,12 @@ def _worker_main(
             "unauthorized_write_or_ipc_events": 0,
         }:
             _fail("worker pre-capability isolation counters differ")
-        own_ledger = _rooted(
-            root, Path(str(binding["consumed_ledger_path"]))
-        )
         try:
-            os.lstat(own_ledger)
+            guard._original_stat(
+                Path(str(binding["consumed_ledger_path"])).name,
+                dir_fd=guard.results_fd,
+                follow_symlinks=False,
+            )
         except FileNotFoundError as exc:
             if exc.errno != errno.ENOENT:
                 _fail("worker own-ledger absence check returned wrong errno")
@@ -6720,12 +9147,15 @@ def _worker_main(
         capability_closed = True
         ledger = _publish_worker_ledger(
             guard=guard,
+            snapshot=metadata_snapshot,
+            ledger_fd=ledger_fd,
             binding=binding,
             claim=claim,
             preregistration=preregistration,
             sentinel=sentinel,
             authority_amendments=authority_amendments,
         )
+        _worker_ledger_linked_checkpoint(guard, binding, ledger)
 
         rebuild_invocations_started = 0
         rebuild_invocations_completed = 0
@@ -6740,14 +9170,16 @@ def _worker_main(
             )
             recorder.install()
             modules = _import_authenticated_modules(root.as_posix())
-        elif (root / ".git").exists():
-            _fail("synthetic worker hooks are forbidden in a canonical repository")
 
         rebuild_invocations_started += 1
         if synthetic:
-            synthetic_path = Path(str(arguments.synthetic_input))
+            assert synthetic_input_path is not None
             bars, counters, synthetic_domain_end = (
-                _read_synthetic_worker_input(synthetic_path)
+                _read_synthetic_worker_input(
+                    root / synthetic_input_path,
+                    path_text=synthetic_input_path,
+                    raw_cache=active_metadata["raw_cache"],
+                )
             )
             rows, counters = reconstruct_intervals(
                 bars,
@@ -6801,28 +9233,23 @@ def _worker_main(
             sentinel_binding,
             authority_amendments,
             parent_authentication,
+            expected_authority_amendments=expected_security_profile[
+                "authority_amendments"
+            ],
         )
         core_raw = _canonical_json_bytes(core)
         rebuild_invocations_completed += 1
 
-        if (
-            not output_dir.is_dir()
-            or output_dir.is_symlink()
-            or list(output_dir.iterdir())
-        ):
+        if _directory_entries(guard.stage_fd):
             _fail("worker staging directory changed before output writing")
-        ledger_raw, ledger_info = _read_guarded_file(
-            own_ledger,
-            expected_mode=0o444,
-        )
+        ledger_info = os.fstat(ledger["canonical_fd"])
         if (
-            ledger_raw != ledger["raw"]
-            or (ledger_info.st_dev, ledger_info.st_ino)
+            (ledger_info.st_dev, ledger_info.st_ino)
             != (ledger["device"], ledger["inode"])
+            or stat.S_IMODE(ledger_info.st_mode) != 0o444
         ):
             _fail("worker consumption ledger changed before output writing")
 
-        guard.authorize_directory_sync(output_dir)
         guard.authorize_outputs()
         csv_path = output_dir / _STAGED_CSV_NAME
         core_path = output_dir / _STAGED_CORE_NAME
@@ -6839,8 +9266,8 @@ def _worker_main(
             mode=0o400,
             sync_directory=output_dir,
         )
-        observed_csv, _ = _read_guarded_file(csv_path, expected_mode=0o400)
-        observed_core, _ = _read_guarded_file(core_path, expected_mode=0o400)
+        observed_csv = csv_raw
+        observed_core = core_raw
         receipt = _worker_receipt_payload(
             binding=binding,
             worker_pid=os.getpid(),
@@ -6869,6 +9296,36 @@ def _worker_main(
                 pass
         if token is not None:
             _zero_token(token)
+        metadata = locals().get("metadata_snapshot")
+        if isinstance(metadata, _SecureBoundSnapshot):
+            metadata.close()
+        published_ledger = locals().get("ledger")
+        if isinstance(published_ledger, Mapping):
+            canonical_descriptor = published_ledger.get("canonical_fd")
+            if isinstance(canonical_descriptor, int):
+                try:
+                    os.close(canonical_descriptor)
+                except OSError:
+                    pass
+        try:
+            os.close(ledger_fd)
+        except OSError:
+            pass
+        if guard.stage_fd is not None:
+            try:
+                os.close(guard.stage_fd)
+            except OSError:
+                pass
+        for descriptor in (
+            guard.filesystem_root_fd,
+            guard.results_fd,
+            guard.repository_fd,
+        ):
+            if descriptor is not None:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
 
 
 def _prepare_worker(
@@ -6878,10 +9335,20 @@ def _prepare_worker(
     other_stage_directory: str,
     synthetic_input: Path | None,
     parent_authentication: Mapping[str, Any],
+    expected_security_profile: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     row = capability["row"]
+    if "ledger_fd" not in capability:
+        _fail("prepared worker ledger descriptor is absent")
+    ledger_fd = int(capability["ledger_fd"])
+    capability_fd = int(capability["read_fd"])
+    if capability_fd < 0 or ledger_fd < 0 or capability_fd == ledger_fd:
+        _fail("prepared worker descriptors are not distinct")
     parent_auth_json = _canonical_json_bytes(
         dict(parent_authentication), trailing_lf=False
+    ).decode("ascii")
+    expected_security_profile_json = _canonical_json_bytes(
+        dict(expected_security_profile or {}), trailing_lf=False
     ).decode("ascii")
     command = [
         sys.executable,
@@ -6895,11 +9362,15 @@ def _prepare_worker(
         "--other-stage-directory",
         other_stage_directory,
         "--worker-capability-fd",
-        str(capability["read_fd"]),
+        str(capability_fd),
+        "--worker-ledger-fd",
+        str(ledger_fd),
         "--expected-parent-pid",
         str(row["parent_pid"]),
         "--parent-auth-json",
         parent_auth_json,
+        "--expected-security-profile-json",
+        expected_security_profile_json,
     ]
     if synthetic_input is not None:
         command.extend(["--synthetic-input", str(synthetic_input)])
@@ -6916,7 +9387,12 @@ def _prepare_worker(
 
 def _execute_prepared_worker(invocation: dict[str, Any]) -> int:
     capability = invocation["capability"]
-    descriptor = int(capability["read_fd"])
+    if "ledger_fd" not in capability:
+        _fail("worker ledger descriptor is absent")
+    capability_read_fd = int(capability["read_fd"])
+    ledger_fd = int(capability["ledger_fd"])
+    if capability_read_fd < 0 or ledger_fd < 0 or capability_read_fd == ledger_fd:
+        _fail("worker capability and ledger descriptors are not distinct")
     process: subprocess.Popen[bytes] | None = None
     try:
         process = subprocess.Popen(
@@ -6924,15 +9400,70 @@ def _execute_prepared_worker(invocation: dict[str, Any]) -> int:
             cwd=invocation["cwd"],
             env=invocation["environment"],
             close_fds=True,
-            pass_fds=(descriptor,),
+            pass_fds=(capability_read_fd, ledger_fd),
         )
         try:
-            os.close(descriptor)
+            os.close(capability_read_fd)
         except BaseException:
             process.terminate()
             process.wait()
             raise
         capability["read_fd"] = -1
+        observation = invocation.get("ledger_observation")
+        if observation is not None:
+            if not isinstance(observation, Mapping):
+                _fail("worker ledger observation contract differs")
+            context = observation.get("context")
+            stage = observation.get("stage")
+            ledger = observation.get("ledger")
+            advance = observation.get("advance")
+            if (
+                not isinstance(context, _PublicationContext)
+                or not isinstance(stage, Path)
+                or not isinstance(ledger, Path)
+                or not callable(advance)
+            ):
+                _fail("worker ledger observation binding differs")
+            stage_fd = context.stage_descriptors.get(stage.name)
+            if stage_fd is None:
+                _fail("worker ledger observation stage is absent")
+            while True:
+                stage_entries = _directory_entries(stage_fd)
+                try:
+                    ledger_info = os.stat(
+                        ledger.name,
+                        dir_fd=context.results_fd,
+                        follow_symlinks=False,
+                    )
+                except FileNotFoundError:
+                    ledger_info = None
+                if ledger_info is not None:
+                    if stage_entries:
+                        _fail(
+                            "worker outputs appeared before parent ledger "
+                            "checkpoint"
+                        )
+                    if (
+                        not stat.S_ISREG(ledger_info.st_mode)
+                        or stat.S_IMODE(ledger_info.st_mode) != 0o444
+                    ):
+                        _fail("observed worker ledger mode/type differs")
+                    expected_entries = tuple(
+                        sorted((*context.entries, ledger.name))
+                    )
+                    if _directory_entries(context.results_fd) != expected_entries:
+                        _fail("worker ledger observation delta differs")
+                    os.fsync(context.results_fd)
+                    context._rebaseline(expected_entries)
+                    if process.poll() is not None:
+                        _fail("worker exited before ledger-linked checkpoint")
+                    advance()
+                    break
+                if stage_entries:
+                    _fail("worker outputs preceded canonical ledger link")
+                if process.poll() is not None:
+                    _fail("worker exited before canonical ledger link")
+                os.sched_yield()
         return_code = process.wait()
     except BaseException:
         if process is not None and process.poll() is None:
@@ -6945,24 +9476,6 @@ def _execute_prepared_worker(invocation: dict[str, Any]) -> int:
         )
     return int(process.pid)
 
-
-def _run_worker(
-    *,
-    root: Path,
-    capability: dict[str, Any],
-    other_stage_directory: str,
-    synthetic_input: Path | None,
-    parent_authentication: Mapping[str, Any],
-) -> int:
-    return _execute_prepared_worker(
-        _prepare_worker(
-            root=root,
-            capability=capability,
-            other_stage_directory=other_stage_directory,
-            synthetic_input=synthetic_input,
-            parent_authentication=parent_authentication,
-        )
-    )
 
 def _validate_counter_contract(counters: Any) -> None:
     template = _empty_counters()
@@ -7172,24 +9685,65 @@ def _validate_worker_ledger_and_receipt(
     preregistration: Mapping[str, Any],
     sentinel: Mapping[str, Any],
     authority_amendments: Sequence[Mapping[str, Any]],
+    publication_context: _PublicationContext | None = None,
 ) -> dict[str, Any]:
     binding = capability["row"]
     stage = capability["stage_path"]
-    ledger_path = _rooted(
-        root, Path(str(binding["consumed_ledger_path"]))
-    )
-    ledger_raw, ledger_info = _read_bound_regular_bytes(
-        ledger_path, str(binding["consumed_ledger_path"])
-    )
-    if stat.S_IMODE(ledger_info.st_mode) != 0o444:
+    retained_fd = int(capability["ledger_fd"])
+    ledger_info = os.fstat(retained_fd)
+    ledger_chunks: list[bytes] = []
+    ledger_offset = 0
+    while ledger_offset < ledger_info.st_size:
+        chunk = os.pread(
+            retained_fd,
+            min(1024 * 1024, ledger_info.st_size - ledger_offset),
+            ledger_offset,
+        )
+        if not chunk:
+            break
+        ledger_chunks.append(chunk)
+        ledger_offset += len(chunk)
+    ledger_raw = b"".join(ledger_chunks)
+    if (
+        stat.S_IMODE(ledger_info.st_mode) != 0o444
+        or (ledger_info.st_dev, ledger_info.st_ino)
+        != (binding["ledger_device"], binding["ledger_inode"])
+    ):
         _fail("worker consumption ledger mode differs")
+    owned_context = publication_context is None
+    if publication_context is None:
+        publication_context = _PublicationContext(root)
+    canonical_fd = os.open(
+        Path(str(binding["consumed_ledger_path"])).name,
+        os.O_RDONLY
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_CLOEXEC", 0),
+        dir_fd=publication_context.results_fd,
+    )
+    try:
+        canonical_info = os.fstat(canonical_fd)
+        if (
+            (canonical_info.st_dev, canonical_info.st_ino)
+            != (ledger_info.st_dev, ledger_info.st_ino)
+            or _pread_complete(canonical_fd, canonical_info.st_size)
+            != ledger_raw
+        ):
+            _fail("parent retained worker-ledger validation differs")
+    finally:
+        os.close(canonical_fd)
+        if owned_context:
+            publication_context.close()
+    if not owned_context and Path(
+        str(binding["consumed_ledger_path"])
+    ).name not in publication_context.entries:
+        _fail("parent ledger checkpoint was not advanced at worker time")
     try:
         ledger_payload = json.loads(
             ledger_raw.decode("utf-8"),
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB4Failure(
+        raise TerminalG9CB5Failure(
             "worker consumption ledger is invalid"
         ) from exc
     expected_ledger = _worker_ledger_payload(
@@ -7205,35 +9759,49 @@ def _validate_worker_ledger_and_receipt(
     ):
         _fail("worker consumption ledger bytes differ")
 
-    if stage.is_symlink() or not stage.is_dir():
-        _fail("worker stage is absent after successful exit")
+    stage_fd = publication_context.stage_descriptors.get(stage.name)
+    if stage_fd is None:
+        _fail("worker stage descriptor is absent after successful exit")
     expected_names = {
         _STAGED_CSV_NAME,
         _STAGED_CORE_NAME,
         _STAGED_RECEIPT_NAME,
     }
-    if {path.name for path in stage.iterdir()} != expected_names:
+    if set(_directory_entries(stage_fd)) != expected_names:
         _fail("worker stage output inventory differs")
-    csv_raw, _ = _read_bound_regular_bytes(
-        stage / _STAGED_CSV_NAME, _STAGED_CSV_NAME
-    )
-    core_raw, _ = _read_bound_regular_bytes(
-        stage / _STAGED_CORE_NAME, _STAGED_CORE_NAME
-    )
-    receipt_raw, receipt_info = _read_bound_regular_bytes(
-        stage / _STAGED_RECEIPT_NAME, _STAGED_RECEIPT_NAME
-    )
-    for name in expected_names:
-        info = os.stat(stage / name, follow_symlinks=False)
-        if not stat.S_ISREG(info.st_mode) or stat.S_IMODE(info.st_mode) != 0o400:
-            _fail(f"worker staged file mode differs: {name}")
+
+    def read_stage_leaf(name: str) -> tuple[bytes, os.stat_result]:
+        descriptor = os.open(
+            name,
+            os.O_RDONLY
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_CLOEXEC", 0),
+            dir_fd=stage_fd,
+        )
+        try:
+            before = os.fstat(descriptor)
+            raw = _pread_complete(descriptor, before.st_size)
+            after = os.fstat(descriptor)
+            if (
+                _descriptor_token(before) != _descriptor_token(after)
+                or not stat.S_ISREG(after.st_mode)
+                or stat.S_IMODE(after.st_mode) != 0o400
+            ):
+                _fail(f"worker staged file differs: {name}")
+            return raw, after
+        finally:
+            os.close(descriptor)
+
+    csv_raw, _ = read_stage_leaf(_STAGED_CSV_NAME)
+    core_raw, _ = read_stage_leaf(_STAGED_CORE_NAME)
+    receipt_raw, receipt_info = read_stage_leaf(_STAGED_RECEIPT_NAME)
     try:
         receipt = json.loads(
             receipt_raw.decode("utf-8"),
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB4Failure("worker receipt is invalid") from exc
+        raise TerminalG9CB5Failure("worker receipt is invalid") from exc
     if (
         not isinstance(receipt, dict)
         or receipt_raw != _canonical_json_bytes(receipt)
@@ -7265,6 +9833,8 @@ def _validate_worker_ledger_and_receipt(
         or receipt["stage_directory"] != binding["stage_directory"]
     ):
         _fail("worker receipt PID or stage binding differs")
+    os.close(retained_fd)
+    capability["ledger_fd"] = -1
     return {
         "csv_raw": csv_raw,
         "core_raw": core_raw,
@@ -7290,48 +9860,110 @@ def _validate_worker_ledger_and_receipt(
     }
 
 
-def _cleanup_successful_stage(stage: Path, results_directory: Path) -> None:
-    for name in (
-        _STAGED_CSV_NAME,
-        _STAGED_CORE_NAME,
-        _STAGED_RECEIPT_NAME,
-    ):
-        path = stage / name
-        if path.is_symlink() or not path.is_file():
-            _fail(f"worker stage cleanup target differs: {path}")
-        path.unlink()
-    directory_fd = os.open(
-        stage, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+def _cleanup_successful_stage(
+    stage: Path,
+    results_directory: Path,
+    *,
+    publication_context: _PublicationContext | None = None,
+) -> None:
+    owned_context = publication_context is None
+    context = publication_context or _PublicationContext(
+        results_directory, directory_relative="."
     )
+    stage_fd = context.stage_descriptors.get(stage.name, -1)
+    if stage_fd < 0:
+        _fail("worker stage cleanup lacks its retained descriptor")
     try:
-        os.fsync(directory_fd)
+        remaining = list(
+            (_STAGED_CSV_NAME, _STAGED_CORE_NAME, _STAGED_RECEIPT_NAME)
+        )
+        if _descriptor_token(os.fstat(stage_fd)) != context.stage_tokens[
+            stage.name
+        ]:
+            context.require_stage(
+                stage,
+                tuple(sorted(remaining)),
+                authorized_delta=True,
+            )
+        for name in tuple(remaining):
+            context.require_stage(stage, tuple(sorted(remaining)))
+            info = os.stat(name, dir_fd=stage_fd, follow_symlinks=False)
+            if not stat.S_ISREG(info.st_mode):
+                _fail(f"worker stage cleanup target differs: {stage / name}")
+            os.unlink(name, dir_fd=stage_fd)
+            remaining.remove(name)
+            if _directory_entries(stage_fd) != tuple(sorted(remaining)):
+                _fail("worker stage cleanup one-leaf delta differs")
+            os.fsync(stage_fd)
+            context.require_stage(
+                stage,
+                tuple(sorted(remaining)),
+                authorized_delta=True,
+            )
+        if _directory_entries(stage_fd):
+            _fail("worker stage is not empty before rmdir")
+        context.require_stage(stage, ())
+        os.fsync(stage_fd)
     finally:
-        os.close(directory_fd)
-    stage.rmdir()
-    directory_fd = os.open(
-        results_directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
-    )
-    try:
-        os.fsync(directory_fd)
-    finally:
-        os.close(directory_fd)
+        os.close(stage_fd)
+    baseline = context.entries
+    context._require_bound_results()
+    os.rmdir(stage.name, dir_fd=context.results_fd)
+    expected = tuple(name for name in baseline if name != stage.name)
+    if _directory_entries(context.results_fd) != expected:
+        _fail("worker stage rmdir one-leaf delta differs")
+    os.fsync(context.results_fd)
+    context._rebaseline(expected)
+    del context.stage_descriptors[stage.name]
+    del context.stage_tokens[stage.name]
+    del context.stage_entries[stage.name]
+    if owned_context:
+        context.close()
 
 
-def _create_stage_directory(stage: Path, results_directory: Path) -> None:
-    if stage.exists() or stage.is_symlink():
+def _create_stage_directory(
+    stage: Path,
+    results_directory: Path,
+    *,
+    publication_context: _PublicationContext | None = None,
+) -> None:
+    owned_context = publication_context is None
+    context = publication_context or _PublicationContext(
+        results_directory, directory_relative="."
+    )
+    context._require_bound_results()
+    if stage.name in context.entries:
         _fail(f"reserved worker stage already exists: {stage}")
-    os.mkdir(stage, 0o700)
-    os.chmod(stage, 0o700)
-    info = os.stat(stage, follow_symlinks=False)
-    if not stat.S_ISDIR(info.st_mode) or stat.S_IMODE(info.st_mode) != 0o700:
-        _fail("worker stage directory mode differs")
-    directory_fd = os.open(
-        results_directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    os.mkdir(stage.name, 0o700, dir_fd=context.results_fd)
+    stage_fd = os.open(
+        stage.name,
+        os.O_RDONLY
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_CLOEXEC", 0),
+        dir_fd=context.results_fd,
     )
     try:
-        os.fsync(directory_fd)
-    finally:
-        os.close(directory_fd)
+        info = os.fstat(stage_fd)
+        if (
+            not stat.S_ISDIR(info.st_mode)
+            or stat.S_IMODE(info.st_mode) != 0o700
+            or _directory_entries(stage_fd)
+        ):
+            _fail("worker stage directory mode or inventory differs")
+    except BaseException:
+        os.close(stage_fd)
+        raise
+    context.stage_descriptors[stage.name] = stage_fd
+    context.stage_tokens[stage.name] = _descriptor_token(info)
+    context.stage_entries[stage.name] = ()
+    expected = tuple(sorted((*context.entries, stage.name)))
+    if _directory_entries(context.results_fd) != expected:
+        _fail("worker stage mkdir one-leaf delta differs")
+    os.fsync(context.results_fd)
+    context._rebaseline(expected)
+    if owned_context:
+        context.close()
 
 
 def _validate_worker_product(
@@ -7352,7 +9984,7 @@ def _validate_worker_product(
             object_pairs_hook=_unique_object,
         )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TerminalG9CB4Failure("worker core is invalid JSON") from exc
+        raise TerminalG9CB5Failure("worker core is invalid JSON") from exc
     if not isinstance(core, dict) or core_raw != _canonical_json_bytes(core):
         _fail("worker core bytes are not canonical")
     _validate_prohibited_output_placement(core)
@@ -7397,6 +10029,7 @@ def _validate_worker_product(
         sentinel_binding,
         authority_amendments,
         parent_authentication,
+        expected_authority_amendments=authority_amendments,
     )
     if core != expected:
         _fail("worker core contract or authentication differs")
@@ -7543,6 +10176,7 @@ def _validate_final_manifest_contract(
         sentinel_binding,
         authority_amendments,
         parent_authentication,
+        expected_authority_amendments=authority_amendments,
     )
     if core != expected_core:
         _fail("committed per-pass core contract differs")
@@ -7654,20 +10288,80 @@ def _validate_final_manifest_contract(
 
 def validate_committed_publication(
     root: Path = REPOSITORY_ROOT,
+    *,
+    expected_security_profile: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Validate the pushed Q -> P -> C -> D chain and committed artifacts."""
 
     root = root.resolve()
-    preregistration, prereg_binding = validate_preregistration(root)
-    head = _require_clean_pushed_branch(
-        root,
-        _expected_branch(preregistration),
+    head = _require_clean_pushed_branch(root, prereg.EXPECTED_BRANCH)
+    preregistration_head = _decode_canonical_object(
+        _git(root, "show", f"HEAD:{PREREGISTRATION_PATH.as_posix()}"),
+        PREREGISTRATION_PATH.as_posix(),
+        "manifest_hash",
+    )
+    claim_head = _decode_canonical_object(
+        _git(root, "show", f"HEAD:{CLAIM_PATH.as_posix()}"),
+        CLAIM_PATH.as_posix(),
+        "claim_hash",
+    )
+    security_profile = (
+        _validated_expected_security_profile(
+            root, preregistration_head, expected_security_profile
+        )
+        if expected_security_profile is not None
+        else _official_expected_security_profile(root, preregistration_head)
     )
     commits = _validate_committed_publication_topology(
         root,
-        preregistration,
+        preregistration_head,
         head,
     )
+    for profile_key, commit_key in (
+        ("protocol_implementation_commit", "protocol_implementation_commit"),
+        ("preregistration_seal_commit", "preregistration_seal_commit"),
+        ("claim_commit", "claim_commit"),
+        ("publication_commit", "publication_commit"),
+    ):
+        if profile_key in security_profile and (
+            commits[commit_key] != security_profile[profile_key]
+        ):
+            _fail(f"committed topology differs from security profile: {profile_key}")
+    security_profile["claim_commit"] = commits["claim_commit"]
+    security_profile["publication_commit"] = commits[
+        "publication_commit"
+    ]
+    snapshot, pairs = _preauthenticate_parent_snapshot(
+        root,
+        preregistration_head,
+        content_mode=_PREREGISTRATION_PLUS_CLAIM,
+        extra_tracked_paths=(
+            SENTINEL_PATH,
+            *WORKER_LEDGER_PATHS,
+            CSV_PATH,
+            MANIFEST_PATH,
+        ),
+        expected_security_profile=security_profile,
+    )
+    publication_context = _PublicationContext(
+        root, expected_security_profile=security_profile
+    )
+    _validate_closed_entry_phase(
+        publication_context, D5_COMMITTED_VERIFICATION
+    )
+    preregistration, prereg_binding = validate_preregistration(
+        root,
+        raw_cache=snapshot,
+        expected_security_profile=security_profile,
+    )
+    synthetic = (
+        preregistration.get("bindings", {}).get(
+            "source_manifest_ordered_inventory"
+        )
+        == []
+    )
+    if preregistration != preregistration_head:
+        _fail("committed preregistration differs from HEAD bootstrap")
     implementation = commits["protocol_implementation_commit"]
     preregistration_seal = commits["preregistration_seal_commit"]
     claim_commit = commits["claim_commit"]
@@ -7675,21 +10369,21 @@ def validate_committed_publication(
     if preregistration["protocol_implementation_commit"] != implementation:
         _fail("committed preregistration implementation binding differs")
 
-    active_raw = _tracked_head_bytes(root, PREREGISTRATION_PATH)
+    active_raw = snapshot[PREREGISTRATION_PATH.as_posix()][0]
     if _sha256_bytes(active_raw) != prereg_binding["sha256"]:
         _fail("committed preregistration file hash differs")
-    _tracked_head_bytes(root, prereg.HISTORICAL_PREREGISTRATION_PATH)
-    _tracked_head_bytes(root, prereg.FAILED_V2_PREREGISTRATION_PATH)
-
-    claim_tracked_raw = _tracked_head_bytes(root, CLAIM_PATH)
+    claim_tracked_raw = snapshot[CLAIM_PATH.as_posix()][0]
     claim, claim_raw, _claim_info = _read_canonical_object(
         _rooted(root, CLAIM_PATH),
         "claim_hash",
+        path_text=CLAIM_PATH.as_posix(),
+        raw_cache=snapshot,
     )
-    if claim_raw != claim_tracked_raw:
+    if claim_raw != claim_tracked_raw or claim != claim_head:
         _fail("committed claim read differs")
     authority_amendments = _authority_amendment_bindings(
-        preregistration
+        preregistration,
+        expected=security_profile["authority_amendments"],
     )
     protocol_files = claim.get("protocol_files")
     opaque_inputs = claim.get("opaque_inputs_authenticated")
@@ -7706,7 +10400,10 @@ def validate_committed_publication(
             _fail("committed claim protocol row is invalid")
         path = row.get("path")
         if not isinstance(path, str) or _head_blob_binding(
-            root, path
+            root,
+            path,
+            raw_cache=snapshot,
+            preclassified_pairs=pairs,
         ) != row:
             _fail("committed claim protocol binding differs")
     if claim != _claim_payload(
@@ -7725,10 +10422,12 @@ def validate_committed_publication(
         "claim_commit": claim_commit,
     }
 
-    sentinel_tracked_raw = _tracked_head_bytes(root, SENTINEL_PATH)
+    sentinel_tracked_raw = snapshot[SENTINEL_PATH.as_posix()][0]
     sentinel, sentinel_raw, _sentinel_info = _read_canonical_object(
         _rooted(root, SENTINEL_PATH),
         "manifest_hash",
+        path_text=SENTINEL_PATH.as_posix(),
+        raw_cache=snapshot,
     )
     if sentinel_raw != sentinel_tracked_raw:
         _fail("committed sentinel read differs")
@@ -7748,6 +10447,9 @@ def validate_committed_publication(
         authority_amendments,
         parent_authentication_sha256,
         capabilities,
+        expected_authority_amendments=security_profile[
+            "authority_amendments"
+        ],
     ):
         _fail("committed sentinel schema differs")
     sentinel_binding = {
@@ -7763,10 +10465,12 @@ def validate_committed_publication(
         WORKER_LEDGER_PATHS,
         strict=True,
     ):
-        ledger_tracked_raw = _tracked_head_bytes(root, ledger_path)
+        ledger_tracked_raw = snapshot[ledger_path.as_posix()][0]
         ledger, ledger_raw, _ledger_info = _read_canonical_object(
             _rooted(root, ledger_path),
             None,
+            path_text=ledger_path.as_posix(),
+            raw_cache=snapshot,
         )
         if ledger_raw != ledger_tracked_raw:
             _fail("committed worker ledger read differs")
@@ -7794,13 +10498,15 @@ def validate_committed_publication(
             }
         )
 
-    csv_raw = _tracked_head_bytes(root, CSV_PATH)
+    csv_raw = snapshot[CSV_PATH.as_posix()][0]
     rows = validate_csv_gzip(csv_raw, require_all_sleeves=True)
 
-    manifest_tracked_raw = _tracked_head_bytes(root, MANIFEST_PATH)
+    manifest_tracked_raw = snapshot[MANIFEST_PATH.as_posix()][0]
     manifest, manifest_raw, _manifest_info = _read_canonical_object(
         _rooted(root, MANIFEST_PATH),
         "manifest_hash",
+        path_text=MANIFEST_PATH.as_posix(),
+        raw_cache=snapshot,
     )
     if manifest_raw != manifest_tracked_raw:
         _fail("committed final manifest read differs")
@@ -7826,7 +10532,7 @@ def validate_committed_publication(
         manifest,
         csv_raw=csv_raw,
         rows=rows,
-        synthetic=False,
+        synthetic=synthetic,
         prereg_binding=prereg_binding,
         claim_binding=claim_binding,
         sentinel_binding=sentinel_binding,
@@ -7840,12 +10546,15 @@ def validate_committed_publication(
         ),
     )
 
-    results = _rooted(root, MANIFEST_PATH).parent
-    if list(results.glob(".gross9-structural-clock-g9cb4-worker-*")):
-        _fail("committed publication retains a worker stage")
-    if list(results.glob(_STAGED_RECEIPT_NAME)):
-        _fail("committed publication retains a pass receipt")
-    return {
+    _final_parent_snapshot_recheck(
+        root,
+        snapshot,
+        pairs,
+        publication_context,
+        D5_COMMITTED_VERIFICATION,
+        prereg.EXPECTED_BRANCH,
+    )
+    result = {
         **commits,
         "identity": IDENTITY,
         "protocol_version": PROTOCOL_VERSION,
@@ -7857,20 +10566,23 @@ def validate_committed_publication(
         "interval_count": len(rows),
         "head": publication_commit,
     }
+    snapshot.close()
+    publication_context.close()
+    return result
 
 
 def produce_one_shot(
     root: Path = REPOSITORY_ROOT,
     *,
     synthetic_input: Path | None = None,
+    expected_security_profile: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Authenticate, consume exactly two carriers, and publish manifest-last."""
 
     root = root.resolve()
-    if synthetic_input is not None and (root / ".git").exists():
-        _fail("synthetic production hook requires a noncanonical repository")
     raw_cache: dict[str, tuple[bytes, os.stat_result]] = {}
     preclassified_pairs: dict[str, tuple[str, str] | None] = {}
+    snapshot_resources: dict[str, Any] = {}
     (
         claim,
         claim_binding,
@@ -7880,8 +10592,18 @@ def produce_one_shot(
         root,
         raw_cache=raw_cache,
         preclassified_pairs=preclassified_pairs,
+        _resource_out=snapshot_resources,
+        expected_security_profile=expected_security_profile,
     )
-    authority_amendments = _authority_amendment_bindings(preregistration)
+    if set(snapshot_resources) != {"snapshot", "pairs", "security_profile"}:
+        _fail("production parent snapshot resources are incomplete")
+    snapshot = snapshot_resources["snapshot"]
+    snapshot_pairs = snapshot_resources["pairs"]
+    security_profile = snapshot_resources["security_profile"]
+    authority_amendments = _authority_amendment_bindings(
+        preregistration,
+        expected=security_profile["authority_amendments"],
+    )
     if claim.get("authority_amendments") != authority_amendments:
         _fail("claim authority amendments differ before production")
     environment = _validate_environment(preregistration, root)
@@ -7891,13 +10613,13 @@ def produce_one_shot(
         raw_cache=raw_cache,
         preclassified_pairs=preclassified_pairs,
     )
-    if claim.get("opaque_inputs_authenticated") != inputs:
-        _fail("current hashed inputs differ from the immutable claim")
     closures = _validate_static_closures(
         root,
         preregistration,
         raw_cache=raw_cache,
     )
+    if claim.get("opaque_inputs_authenticated") != inputs:
+        _fail("current hashed inputs differ from the immutable claim")
     parent_authentication = {
         "environment": environment,
         "hashed_inputs": inputs,
@@ -7918,24 +10640,56 @@ def produce_one_shot(
     )
     _validate_bytecode_preflight(root)
 
+    publication_context = _PublicationContext(
+        root, expected_security_profile=security_profile
+    )
+    production_state = _ProductionStateMachine()
+    _validate_closed_entry_phase(
+        publication_context, C5_PRODUCTION_PREFLIGHT
+    )
+    production_state.advance(
+        "C5_PRODUCTION_PREFLIGHT",
+        lambda: _validate_production_namespace(
+            publication_context,
+            "C5_PRODUCTION_PREFLIGHT",
+            Path("<slot-1-unreserved>"),
+            Path("<slot-2-unreserved>"),
+        ),
+    )
+    publication_context.probe()
+    snapshot.rebaseline_directory_timestamps(
+        matching_identity=publication_context.results_token
+    )
+    _validate_closed_entry_phase(
+        publication_context, C5_PRODUCTION_PREFLIGHT
+    )
+    production_state.advance(
+        "CAPABILITY_PROBE_COMPLETE",
+        lambda: _validate_production_namespace(
+            publication_context,
+            "CAPABILITY_PROBE_COMPLETE",
+            Path("<slot-1-unreserved>"),
+            Path("<slot-2-unreserved>"),
+        ),
+    )
     results_directory = _rooted(root, SENTINEL_PATH).parent
     staging_patterns = [
-        ".gross9-structural-clock-g9cb4-worker-*",
+        ".gross9-structural-clock-g9cb5-worker-*",
         f".{SENTINEL_PATH.name}.stage-*",
         f".{CSV_PATH.name}.stage-*",
         f".{MANIFEST_PATH.name}.stage-*",
         *[f".{path.name}.stage-*" for path in WORKER_LEDGER_PATHS],
     ]
+    current_names = set(_directory_entries(publication_context.results_fd))
     leftovers = [
-        path
-        for pattern in staging_patterns
-        for path in results_directory.glob(pattern)
+        name
+        for name in current_names
+        if any(fnmatch.fnmatch(name, pattern) for pattern in staging_patterns)
     ]
     if leftovers:
         _fail("leftover pre-access publication staging path exists")
     for path in WORKER_LEDGER_PATHS:
-        candidate = _rooted(root, path)
-        if candidate.exists() or candidate.is_symlink():
+        if path.name in current_names:
             _fail(f"worker consumption ledger already exists: {path}")
 
     while True:
@@ -7944,15 +10698,28 @@ def produce_one_shot(
             continue
         stages = tuple(
             results_directory
-            / f".gross9-structural-clock-g9cb4-worker-{suffix}"
+            / f".gross9-structural-clock-g9cb5-worker-{suffix}"
             for suffix in suffixes
         )
-        if not any(path.exists() or path.is_symlink() for path in stages):
+        if not any(path.name in current_names for path in stages):
             break
     stage_one, stage_two = stages
-    _create_stage_directory(stage_one, results_directory)
-    if stage_two.exists() or stage_two.is_symlink():
+    _create_stage_directory(
+        stage_one,
+        results_directory,
+        publication_context=publication_context,
+    )
+    snapshot.rebaseline_directory_timestamps(
+        matching_identity=publication_context.results_token
+    )
+    if stage_two.name in set(_directory_entries(publication_context.results_fd)):
         _fail("slot-2 reserved stage exists before slot 1")
+    production_state.advance(
+        "SLOT1_PREPARED",
+        lambda: _validate_production_namespace(
+            publication_context, "SLOT1_PREPARED", stage_one, stage_two
+        ),
+    )
 
     parent_pid = os.getpid()
     capabilities: list[dict[str, Any]] = []
@@ -7964,6 +10731,7 @@ def produce_one_shot(
                 output_dir=stage_one,
                 slot=1,
                 parent_pid=parent_pid,
+                results_fd=publication_context.results_fd,
             )
         )
         capabilities.append(
@@ -7972,6 +10740,7 @@ def produce_one_shot(
                 output_dir=stage_two,
                 slot=2,
                 parent_pid=parent_pid,
+                results_fd=publication_context.results_fd,
             )
         )
         rows = [capability["row"] for capability in capabilities]
@@ -7982,6 +10751,7 @@ def produce_one_shot(
             other_stage_directory=rows[1]["stage_directory"],
             synthetic_input=synthetic_input,
             parent_authentication=parent_authentication,
+            expected_security_profile=security_profile,
         )
         invocation_two = _prepare_worker(
             root=root,
@@ -7989,6 +10759,7 @@ def produce_one_shot(
             other_stage_directory=rows[0]["stage_directory"],
             synthetic_input=synthetic_input,
             parent_authentication=parent_authentication,
+            expected_security_profile=security_profile,
         )
         sentinel = _sentinel_payload(
             claim_binding,
@@ -7996,13 +10767,62 @@ def produce_one_shot(
             authority_amendments,
             parent_authentication_sha256,
             rows,
+            expected_authority_amendments=security_profile[
+                "authority_amendments"
+            ],
         )
         sentinel_raw = _canonical_json_bytes(sentinel)
         _atomic_link_write_once(
-            _rooted(root, SENTINEL_PATH), sentinel_raw
+            _rooted(root, SENTINEL_PATH),
+            sentinel_raw,
+            prelink_recheck=lambda: (
+                _final_parent_snapshot_recheck(
+                    root,
+                    snapshot,
+                    snapshot_pairs,
+                    publication_context,
+                    C5_PRODUCTION_PREFLIGHT,
+                    prereg.EXPECTED_BRANCH,
+                    path_state_check=lambda: (
+                        _validate_production_checkpoint_two(
+                            publication_context, stage_one, stage_two
+                        )
+                    ),
+                )
+            ),
+            publication_context=publication_context,
         )
         sentinel_published = True
+        snapshot.close()
+        production_state.advance(
+            "SENTINEL_LINKED",
+            lambda: _validate_production_namespace(
+                publication_context,
+                "SENTINEL_LINKED",
+                stage_one,
+                stage_two,
+            ),
+        )
 
+        invocation_one["ledger_observation"] = {
+            "context": publication_context,
+            "stage": stage_one,
+            "ledger": WORKER_LEDGER_PATHS[0],
+            "advance": lambda: production_state.advance(
+                "PASS1_LEDGER_LINKED",
+                lambda: (
+                    _validate_production_ledger_checkpoint(
+                        publication_context, WORKER_LEDGER_PATHS[0]
+                    ),
+                    _validate_production_namespace(
+                        publication_context,
+                        "PASS1_LEDGER_LINKED",
+                        stage_one,
+                        stage_two,
+                    ),
+                ),
+            ),
+        }
         worker_one_pid = _execute_prepared_worker(invocation_one)
         pass_one = _validate_worker_ledger_and_receipt(
             root=root,
@@ -8012,6 +10832,16 @@ def produce_one_shot(
             preregistration=preregistration,
             sentinel=sentinel,
             authority_amendments=authority_amendments,
+            publication_context=publication_context,
+        )
+        production_state.advance(
+            "PASS1_OUTPUT_READY",
+            lambda: _validate_production_namespace(
+                publication_context,
+                "PASS1_OUTPUT_READY",
+                stage_one,
+                stage_two,
+            ),
         )
         _zero_token(capabilities[0]["token"])
         sentinel_binding = {
@@ -8029,11 +10859,49 @@ def produce_one_shot(
             sentinel_binding=sentinel_binding,
             authority_amendments=authority_amendments,
         )
-        _cleanup_successful_stage(stage_one, results_directory)
-        if stage_two.exists() or stage_two.is_symlink():
+        _cleanup_successful_stage(
+            stage_one,
+            results_directory,
+            publication_context=publication_context,
+        )
+        if stage_two.name in set(
+            _directory_entries(publication_context.results_fd)
+        ):
             _fail("slot-2 reserved stage changed during slot 1")
-        _create_stage_directory(stage_two, results_directory)
+        _create_stage_directory(
+            stage_two,
+            results_directory,
+            publication_context=publication_context,
+        )
+        production_state.advance(
+            "SLOT_TRANSITION",
+            lambda: _validate_production_namespace(
+                publication_context,
+                "SLOT_TRANSITION",
+                stage_one,
+                stage_two,
+            ),
+        )
 
+        invocation_two["ledger_observation"] = {
+            "context": publication_context,
+            "stage": stage_two,
+            "ledger": WORKER_LEDGER_PATHS[1],
+            "advance": lambda: production_state.advance(
+                "PASS2_LEDGER_LINKED",
+                lambda: (
+                    _validate_production_ledger_checkpoint(
+                        publication_context, WORKER_LEDGER_PATHS[1]
+                    ),
+                    _validate_production_namespace(
+                        publication_context,
+                        "PASS2_LEDGER_LINKED",
+                        stage_one,
+                        stage_two,
+                    ),
+                ),
+            ),
+        }
         worker_two_pid = _execute_prepared_worker(invocation_two)
         if worker_two_pid == worker_one_pid:
             _fail("the two fresh workers reported the same PID")
@@ -8045,6 +10913,16 @@ def produce_one_shot(
             preregistration=preregistration,
             sentinel=sentinel,
             authority_amendments=authority_amendments,
+            publication_context=publication_context,
+        )
+        production_state.advance(
+            "PASS2_OUTPUT_READY",
+            lambda: _validate_production_namespace(
+                publication_context,
+                "PASS2_OUTPUT_READY",
+                stage_one,
+                stage_two,
+            ),
         )
         _zero_token(capabilities[1]["token"])
         rows_two, core_two = _validate_worker_product(
@@ -8066,7 +10944,18 @@ def produce_one_shot(
             _fail("independent rebuild bytes or reparses differ")
 
         _atomic_link_write_once(
-            _rooted(root, CSV_PATH), pass_one["csv_raw"]
+            _rooted(root, CSV_PATH),
+            pass_one["csv_raw"],
+            publication_context=publication_context,
+        )
+        production_state.advance(
+            "CANONICAL_CSV_LINKED",
+            lambda: _validate_production_namespace(
+                publication_context,
+                "CANONICAL_CSV_LINKED",
+                stage_one,
+                stage_two,
+            ),
         )
         manifest = _final_manifest(
             core_one,
@@ -8078,9 +10967,35 @@ def produce_one_shot(
         )
         manifest_raw = _canonical_json_bytes(manifest)
         _atomic_link_write_once(
-            _rooted(root, MANIFEST_PATH), manifest_raw
+            _rooted(root, MANIFEST_PATH),
+            manifest_raw,
+            publication_context=publication_context,
         )
-        _cleanup_successful_stage(stage_two, results_directory)
+        production_state.advance(
+            "MANIFEST_LINKED_LAST",
+            lambda: _validate_production_namespace(
+                publication_context,
+                "MANIFEST_LINKED_LAST",
+                stage_one,
+                stage_two,
+            ),
+        )
+        _cleanup_successful_stage(
+            stage_two,
+            results_directory,
+            publication_context=publication_context,
+        )
+        production_state.advance(
+            "FINAL_CLEANUP",
+            lambda: _validate_production_namespace(
+                publication_context,
+                "FINAL_CLEANUP",
+                stage_one,
+                stage_two,
+            ),
+        )
+        production_state.require_complete()
+        publication_context.close()
         return {
             "identity": IDENTITY,
             "rows": len(rows_one),
@@ -8090,13 +11005,20 @@ def produce_one_shot(
         }
     except BaseException as exc:
         for capability in capabilities:
-            descriptor = int(capability.get("read_fd", -1))
+            descriptor = int(capability["read_fd"])
             if descriptor >= 0:
                 try:
                     os.close(descriptor)
                 except OSError:
                     pass
                 capability["read_fd"] = -1
+            ledger_descriptor = int(capability["ledger_fd"])
+            if ledger_descriptor >= 0:
+                try:
+                    os.close(ledger_descriptor)
+                except OSError:
+                    pass
+                capability["ledger_fd"] = -1
             token = capability.get("token")
             if isinstance(token, bytearray):
                 _zero_token(token)
@@ -8107,9 +11029,11 @@ def produce_one_shot(
             and not any(stage_one.iterdir())
         ):
             stage_one.rmdir()
-        if isinstance(exc, TerminalG9CB4Failure):
+        snapshot.close()
+        publication_context.close()
+        if isinstance(exc, TerminalG9CB5Failure):
             raise
-        raise TerminalG9CB4Failure(f"{TERMINAL_ACTION}: {exc}") from exc
+        raise TerminalG9CB5Failure(f"{TERMINAL_ACTION}: {exc}") from exc
 
 def _raw_worker_option(arguments: Sequence[str], name: str) -> str:
     positions = [
@@ -8118,6 +11042,43 @@ def _raw_worker_option(arguments: Sequence[str], name: str) -> str:
     if len(positions) != 1 or positions[0] + 1 >= len(arguments):
         _fail(f"internal worker raw option is absent or repeated: {name}")
     return arguments[positions[0] + 1]
+
+
+def _raw_worker_descriptor(arguments: Sequence[str], name: str) -> int:
+    text = _raw_worker_option(arguments, name)
+    if not re.fullmatch(r"(?:0|[1-9][0-9]*)", text):
+        _fail(f"internal worker raw descriptor is invalid: {name}")
+    return int(text)
+
+
+def _validate_inherited_worker_descriptors(
+    capability_fd: int, ledger_fd: int
+) -> None:
+    if capability_fd == ledger_fd or capability_fd < 0 or ledger_fd < 0:
+        _fail("worker inherited descriptors are not distinct nonnegative values")
+    capability_info = os.fstat(capability_fd)
+    ledger_info = os.fstat(ledger_fd)
+    if not stat.S_ISFIFO(capability_info.st_mode):
+        _fail("worker inherited capability descriptor is not a FIFO")
+    if (
+        not stat.S_ISREG(ledger_info.st_mode)
+        or stat.S_IMODE(ledger_info.st_mode) != 0o600
+        or ledger_info.st_size != 0
+    ):
+        _fail("worker inherited ledger descriptor differs")
+    expected = {0, 1, 2, capability_fd, ledger_fd}
+    observed: set[int] = set()
+    upper = int(os.sysconf("SC_OPEN_MAX"))
+    for descriptor in range(upper):
+        try:
+            os.fstat(descriptor)
+        except OSError as exc:
+            if exc.errno != errno.EBADF:
+                raise
+        else:
+            observed.add(descriptor)
+    if observed != expected:
+        _fail("worker inherited descriptor table differs")
 
 
 def _early_worker_bootstrap(
@@ -8135,17 +11096,49 @@ def _early_worker_bootstrap(
         _fail("expected parent PID raw argument is invalid")
     expected_parent_pid = int(expected_parent_text)
     _establish_parent_death_contract(expected_parent_pid)
+    capability_fd = _raw_worker_descriptor(
+        arguments, "--worker-capability-fd"
+    )
+    ledger_fd = _raw_worker_descriptor(arguments, "--worker-ledger-fd")
+    _validate_inherited_worker_descriptors(capability_fd, ledger_fd)
     root_text = _raw_worker_option(arguments, "--repository-root")
     own_stage_text = _raw_worker_option(arguments, "--output-dir")
     other_stage_text = _raw_worker_option(
         arguments, "--other-stage-directory"
     )
-    guard = _WorkerIsolationGuard(
-        root=Path(root_text),
-        own_stage=own_stage_text,
-        other_stage=other_stage_text,
-        ledger_paths=WORKER_LEDGER_PATHS,
+    root = Path(root_text)
+    if Path.cwd() != root:
+        _fail("worker current directory is not the exact repository root")
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_CLOEXEC", 0)
     )
+    repository_fd = results_fd = filesystem_root_fd = -1
+    try:
+        repository_fd = os.open(".", flags)
+        results_fd = os.open("results", flags, dir_fd=repository_fd)
+        filesystem_root_fd = os.open("/", flags)
+        guard = _WorkerIsolationGuard(
+            root=root,
+            own_stage=own_stage_text,
+            other_stage=other_stage_text,
+            ledger_paths=WORKER_LEDGER_PATHS,
+            repository_fd=repository_fd,
+            results_fd=results_fd,
+            filesystem_root_fd=filesystem_root_fd,
+            ledger_fd=ledger_fd,
+        )
+    except BaseException:
+        for descriptor in (
+            filesystem_root_fd,
+            results_fd,
+            repository_fd,
+        ):
+            if descriptor >= 0:
+                os.close(descriptor)
+        raise
     guard.install()
     return guard
 
@@ -8161,8 +11154,14 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-dir", help=argparse.SUPPRESS)
     parser.add_argument("--other-stage-directory", help=argparse.SUPPRESS)
     parser.add_argument("--worker-capability-fd", type=int, help=argparse.SUPPRESS)
+    parser.add_argument("--worker-ledger-fd", type=int, help=argparse.SUPPRESS)
     parser.add_argument("--expected-parent-pid", type=int, help=argparse.SUPPRESS)
     parser.add_argument("--parent-auth-json", default="{}", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--expected-security-profile-json",
+        default="{}",
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--synthetic-input", help=argparse.SUPPRESS)
     return parser
 
@@ -8180,8 +11179,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             or not arguments.other_stage_directory
             or type(arguments.worker_capability_fd) is not int
             or arguments.worker_capability_fd < 0
+            or type(arguments.worker_ledger_fd) is not int
+            or arguments.worker_ledger_fd < 0
+            or arguments.worker_capability_fd == arguments.worker_ledger_fd
             or type(arguments.expected_parent_pid) is not int
             or arguments.expected_parent_pid <= 0
+            or not isinstance(arguments.expected_security_profile_json, str)
+            or arguments.expected_security_profile_json == "{}"
         ):
             _fail("internal worker arguments are incomplete")
         return _worker_main(arguments, guard)
