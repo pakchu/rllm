@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
+import stat
 import subprocess
 
 import pytest
@@ -17,7 +19,7 @@ FROZEN_G9CB4_ARTIFACT_PATH = Path(
 FROZEN_G9CB4_ARTIFACT = (
     prereg.REPOSITORY_ROOT / FROZEN_G9CB4_ARTIFACT_PATH
 )
-ACTIVE_G9CB6_ARTIFACT = (
+ACTIVE_G9CB7_ARTIFACT = (
     prereg.REPOSITORY_ROOT / prereg.PREREGISTRATION_PATH
 )
 FROZEN_G9CB4_SHA256 = (
@@ -48,6 +50,162 @@ EXPECTED_CONSUMPTION_LEDGER_PATHS = [
         "2026-07-31.json"
     ),
 ]
+EXPECTED_G9CB6_PREPUBLICATION_CLOSURE = {
+    "authority_decision": {
+        "authority_commit": "2695ee61fbb9b5e053dbb9da597ebe2729aad361",
+        "git_blob": "eb743d9f8ecd878b83f8f8873697c58cccef9f1b",
+        "git_mode": "100644",
+        "path": (
+            "docs/gross9-structural-clock-bundle-g9cb6-successor-authority-"
+            "decision-2026-07-31.md"
+        ),
+        "path_type": "regular_file",
+        "sha256": (
+            "b64f9480741eeb4f69ac86736589fbcf8fb75565c436d76316b73f5e076acfca"
+        ),
+    },
+    "classification": (
+        "pre_preregistration_publication_bootstrap_manifest_bound_path_set_"
+        "mismatch"
+    ),
+    "failure": {
+        "bytes_opened": 105_571_805,
+        "exception": "ValueError: manifest bound path set differs from bootstrap",
+        "exit_status": 1,
+        "manifest_constructed": True,
+        "metadata_json_decoded": True,
+        "normalized_invocation": (
+            "PYTHONPATH=$PWD PYTHONDONTWRITEBYTECODE=1 uv run python -B -m "
+            "training.preregister_gross9_structural_clock_bundle"
+        ),
+        "observed_preregistration_invocations": 1,
+        "official_production_invocations": None,
+        "paths_opened": 58,
+        "preregistration_published": False,
+        "publication_capability_probe_started": False,
+        "runtime_python_ast_parsed": True,
+        "snapshot_final_recheck_completed": False,
+        "source_model_or_history_values_decoded_or_loaded": False,
+        "status": "authorized_first_invocation_closed_identity",
+    },
+    "identity": "G9CB-6",
+    "input_materialization": {
+        "authority_order": "after_clean_pushed_A7_before_Q7",
+        "destination": {
+            "git_blob": None,
+            "git_mode": None,
+            "mode_octal": "0444",
+            "path": (
+                "data/cache_market_ext_5m_wavefull_2020-01-01_"
+                "2026-06-01_oi.csv.gz"
+            ),
+            "path_type": "regular_file",
+            "sha256": (
+                "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192"
+            ),
+            "size_bytes": 72_898_508,
+        },
+        "source": {
+            "absolute_path": (
+                "/home/pakchu/rllm/data/cache_market_ext_5m_wavefull_2020-01-01_"
+                "2026-06-01_oi.csv.gz"
+            ),
+            "expected_sha256": (
+                "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192"
+            ),
+            "path_type": "regular_file",
+            "size_bytes": 72_898_508,
+        },
+        "source_values_decoded": False,
+        "status": "opaque_byte_identical_symlink_replaced_by_regular_file",
+    },
+    "permanently_absent_outputs": [
+        "results/gross9_structural_clock_bundle_g9cb6_2026-07-31.csv.gz",
+        "results/gross9_structural_clock_bundle_g9cb6_access_claim_2026-07-31.json",
+        "results/gross9_structural_clock_bundle_g9cb6_attempt_consumed_2026-07-31.json",
+        "results/gross9_structural_clock_bundle_g9cb6_manifest_2026-07-31.json",
+        "results/gross9_structural_clock_bundle_g9cb6_preregistration_2026-07-31.json",
+        (
+            "results/gross9_structural_clock_bundle_g9cb6_worker_capability_"
+            "consumed_pass1_2026-07-31.json"
+        ),
+        (
+            "results/gross9_structural_clock_bundle_g9cb6_worker_capability_"
+            "consumed_pass2_2026-07-31.json"
+        ),
+    ],
+    "protocol_implementation": {
+        "builder_git_blob": "09cb9757a230c349cd7b7df9f7ce4a20cfa9b30c",
+        "builder_path": "training/build_gross9_structural_clock_bundle.py",
+        "builder_sha256": (
+            "4fe465368fa074536e85e2e0b54e4ff4800b4cd8a034510015bef78a66d9db93"
+        ),
+        "commit": "86c7076e415ed667560bfe41c942ab4a00c75a4d",
+        "preregistration_git_blob": (
+            "af809793347a647632f07ab1d74f5fbeabaac122"
+        ),
+        "preregistration_path": (
+            "training/preregister_gross9_structural_clock_bundle.py"
+        ),
+        "preregistration_sha256": (
+            "5a04a8616a7c8416e67f349f8fd4a846fda87786c0f54fb1415dcf924bb17374"
+        ),
+    },
+    "protocol_version": "gross9_structural_clock_bundle_g9cb6_v1",
+    "residue": {
+        "bytecode_cache": {
+            "path": "results/.g9cb6-bytecode-cache-disabled",
+            "state": "absent",
+        },
+        "capability_probes": {
+            "glob": "results/.g9cb6-otmpfile-probe-*",
+            "state": "absent",
+        },
+        "publication_stages": {
+            "glob": (
+                "results/.gross9_structural_clock_bundle_g9cb6_*.stage-*"
+            ),
+            "state": "absent",
+        },
+        "worker_stages": {
+            "glob": "results/.gross9-structural-clock-g9cb6-worker-*",
+            "state": "absent",
+        },
+    },
+    "root_cause": {
+        "bootstrap_bound_path_count": 58,
+        "bootstrap_minus_manifest": [],
+        "bootstrap_missing_container": "failed_prepublication_closures",
+        "manifest_bound_path_count": 59,
+        "manifest_minus_bootstrap": [
+            {
+                "path": (
+                    "data/cache_market_ext_5m_wavefull_2020-01-01_"
+                    "2026-06-01_oi.csv.gz"
+                ),
+                "sha256": (
+                    "dbc9e53b09551b469168fe19cc750c5c3ea86278db3055d079103f7654050192"
+                ),
+                "size_bytes": 72_898_508,
+            }
+        ],
+        "publication_state_validation_started": False,
+        "set_comparison_location": (
+            "write_once_retained_snapshot_before_results_parent_lookup"
+        ),
+    },
+    "status": (
+        "historical_prepublication_closure_no_preregistration_no_attempt_no_"
+        "clock_authority"
+    ),
+    "topology": {
+        "g9cb6_authority_commit": "2695ee61fbb9b5e053dbb9da597ebe2729aad361",
+        "g9cb6_protocol_commit": "86c7076e415ed667560bfe41c942ab4a00c75a4d",
+        "g9cb7_authority_commit": "ad5a7e5f6d3edeac0928c1ef93fd0fd2209a9279",
+        "preregistration_commit": None,
+        "terminal_evidence_commit": None,
+    },
+}
 
 
 def test_failed_g9cb1_artifacts_remain_nonoperative_evidence() -> None:
@@ -59,8 +217,8 @@ def test_failed_g9cb1_artifacts_remain_nonoperative_evidence() -> None:
         prereg.REPOSITORY_ROOT
         / prereg.FAILED_V2_PREREGISTRATION_PATH
     )
-    assert historical_v1 != ACTIVE_G9CB6_ARTIFACT
-    assert historical_v2 != ACTIVE_G9CB6_ARTIFACT
+    assert historical_v1 != ACTIVE_G9CB7_ARTIFACT
+    assert historical_v2 != ACTIVE_G9CB7_ARTIFACT
     assert prereg.validate_failed_predecessor_preregistrations() == (
         prereg.expected_failed_predecessor_preregistration_bindings()
     )
@@ -232,11 +390,11 @@ def test_frozen_g9cb4_preregistration_authenticates_as_opaque_metadata() -> None
     assert blob_id == FROZEN_G9CB4_GIT_BLOB
 
 
-def test_active_g9cb6_preregistration_is_absent_before_p6_without_skip() -> None:
-    assert prereg.IDENTITY == "G9CB-6"
+def test_active_g9cb7_preregistration_is_absent_before_p7_without_skip() -> None:
+    assert prereg.IDENTITY == "G9CB-7"
     assert prereg.PREREGISTRATION_PATH.as_posix() == (
         "results/"
-        "gross9_structural_clock_bundle_g9cb6_preregistration_2026-07-31.json"
+        "gross9_structural_clock_bundle_g9cb7_preregistration_2026-07-31.json"
     )
     active_paths = (
         prereg.PREREGISTRATION_PATH,
@@ -252,12 +410,12 @@ def test_active_g9cb6_preregistration_is_absent_before_p6_without_skip() -> None
     )
     assert not list(
         (prereg.REPOSITORY_ROOT / "results").glob(
-            ".gross9-structural-clock-g9cb6-worker-*"
+            ".gross9-structural-clock-g9cb7-worker-*"
         )
     )
     assert not (
         prereg.REPOSITORY_ROOT
-        / "results/.g9cb6-bytecode-cache-disabled"
+        / "results/.g9cb7-bytecode-cache-disabled"
     ).exists()
     committed = subprocess.run(
         [
@@ -275,7 +433,7 @@ def test_active_g9cb6_preregistration_is_absent_before_p6_without_skip() -> None
 
 
 def test_g9cb5_prepublication_closure_and_all_seven_outputs_remain_exact() -> None:
-    [closure] = prereg.expected_failed_predecessor_prepublication_closures()
+    closure = prereg.expected_failed_predecessor_prepublication_closures()[0]
     assert closure["identity"] == "G9CB-5"
     assert closure["topology"] == {
         "g9cb5_authority_commit": "1ca718d9dab1077b041e753f3b011fbf5b23f047",
@@ -292,6 +450,42 @@ def test_g9cb5_prepublication_closure_and_all_seven_outputs_remain_exact() -> No
     assert not (
         prereg.REPOSITORY_ROOT / closure["residue"]["bytecode_cache"]["path"]
     ).exists()
+
+
+def test_g9cb6_prepublication_closure_and_materialization_are_exact() -> None:
+    closure = prereg.expected_failed_predecessor_prepublication_closures()[1]
+    assert closure == EXPECTED_G9CB6_PREPUBLICATION_CLOSURE
+    destination = closure["input_materialization"]["destination"]
+    source_binding = closure["input_materialization"]["source"]
+    materialized = prereg.REPOSITORY_ROOT / destination["path"]
+    source = Path(source_binding["absolute_path"])
+    info = materialized.stat(follow_symlinks=False)
+    source_info = source.stat(follow_symlinks=False)
+    assert stat.S_ISREG(info.st_mode) and not materialized.is_symlink()
+    assert stat.S_ISREG(source_info.st_mode) and not source.is_symlink()
+    assert stat.S_IMODE(info.st_mode) == 0o444
+    assert info.st_nlink == 1
+    assert info.st_size == destination["size_bytes"]
+    assert source_info.st_size == source_binding["size_bytes"]
+    assert (info.st_dev, info.st_ino) != (
+        source_info.st_dev,
+        source_info.st_ino,
+    )
+    assert hashlib.sha256(materialized.read_bytes()).hexdigest() == destination[
+        "sha256"
+    ]
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == source_binding[
+        "expected_sha256"
+    ]
+    assert all(
+        not (prereg.REPOSITORY_ROOT / path).exists()
+        for path in closure["permanently_absent_outputs"]
+    )
+    for residue in closure["residue"].values():
+        if "path" in residue:
+            assert not (prereg.REPOSITORY_ROOT / residue["path"]).exists()
+        else:
+            assert not list(prereg.REPOSITORY_ROOT.glob(residue["glob"]))
 
 
 def test_frozen_g9cb4_absence_and_residue_inventory_is_complete() -> None:
