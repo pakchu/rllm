@@ -11031,3 +11031,125 @@ def test_rank7_parity_counter_increments_at_each_comparison() -> None:
     assert failing_counters["rows_used"][
         "rank7_bundle_parity_rows_compared"
     ] == 3
+
+
+def test_q13_topology_and_frozen_paths_exact() -> None:
+    assert tuple(builder.H13_SUCCESSOR_STAGE_PATHS) == (
+        "A13", "T12", "Q13", "P13", "C13", "D13"
+    )
+    assert builder.H13_SUCCESSOR_STAGE_PATHS["Q13"] == (
+        "training/build_gross9_structural_clock_bundle.py",
+        "training/preregister_gross9_structural_clock_bundle.py",
+        "tests/test_build_gross9_structural_clock_bundle.py",
+        "tests/test_preregister_gross9_structural_clock_bundle.py",
+        "tests/test_gross9_structural_clock_bundle_preregistration_artifact.py",
+    )
+    assert builder.H13_HANDOFF_PATH.as_posix() == (
+        "results/gross9_structural_clock_bundle_g9cb13_v13_handoff_"
+        "2026-08-01.json"
+    )
+    assert builder.H13_SUPERVISOR_SENTINEL_PATH.as_posix() == (
+        "results/gross9_structural_clock_bundle_g9cb13_h13_supervisor_"
+        "attempt_consumed_2026-08-01.json"
+    )
+    assert builder.H13_STATE_TRACE == (
+        "PRE_SUPERVISOR", "SUPERVISOR_LINKED", "V13_VERIFIED", "HANDOFF_LINKED"
+    )
+    args = builder._parser().parse_args(["--publish-v13-handoff"])
+    assert args.publish_v13_handoff is True
+
+
+def test_q13_independent_inventory_oracle_rejects_production_oracle_copy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = builder.REPOSITORY_ROOT
+    raw = subprocess.run(
+        ["git", "ls-tree", "-r", "--name-only", "HEAD", "--", "results"],
+        cwd=root,
+        check=True,
+        stdout=subprocess.PIPE,
+        text=True,
+    ).stdout
+    tracked = {line.split("/", 1)[1].split("/", 1)[0] for line in raw.splitlines()}
+    independent_residues = {
+        ".gross9-structural-clock-worker-ca9ca670ffb0d1b377ed6aef",
+        ".gross9-structural-clock-g9cb3-worker-a3dffd3cbec3afd582638a23",
+        ".gross9-structural-clock-g9cb8-worker-b04b561d045e074567a96761",
+    }
+    expected = sorted(tracked | independent_residues)
+    result = builder.prereg.g9cb13_results_inventory_preflight(root)
+    assert result["names"] == expected
+    assert result["digest"] == hashlib.sha256(
+        ("\n".join(expected) + "\n").encode()
+    ).hexdigest()
+
+    monkeypatch.setattr(
+        builder.prereg,
+        "G9CB13_RESIDUE_NAMES",
+        (*builder.prereg.G9CB13_RESIDUE_NAMES[:-1], "renamed-residue"),
+    )
+    with pytest.raises((FileNotFoundError, ValueError)):
+        builder.prereg.g9cb13_results_inventory_preflight(root)
+
+
+def test_q13_real_worktree_inventory_preflight_exact() -> None:
+    if os.environ.get("G9CB13_REAL_WORKTREE_PREFLIGHT") != "1":
+        assert os.environ.get("G9CB13_REAL_WORKTREE_PREFLIGHT") is None
+        return
+    before_head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=builder.REPOSITORY_ROOT,
+        check=True,
+        stdout=subprocess.PIPE,
+    ).stdout
+    before = sorted(os.listdir(builder.REPOSITORY_ROOT / "results"))
+    result = builder.prereg.g9cb13_results_inventory_preflight()
+    after = sorted(os.listdir(builder.REPOSITORY_ROOT / "results"))
+    after_head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=builder.REPOSITORY_ROOT,
+        check=True,
+        stdout=subprocess.PIPE,
+    ).stdout
+    assert result == {
+        "count": 1357,
+        "digest": "e48ff41bfbee2e6c9a6fbdddd97ca6a76410a54a1e0392a556810f89d45beddf",
+        "names": before,
+    }
+    assert after == before
+    assert after_head == before_head
+    assert not (builder.REPOSITORY_ROOT / builder.H13_HANDOFF_PATH).exists()
+    assert not (builder.REPOSITORY_ROOT / builder.H13_SUPERVISOR_SENTINEL_PATH).exists()
+
+
+def test_q13_v13_schema_and_direct_call_rejection_exact() -> None:
+    commits = {stage: character * 40 for stage, character in zip(
+        ("A13", "T12", "Q13", "P13", "C13", "D13"), "abcdef", strict=True
+    )}
+    bindings = [
+        {"commit": commits[stage], "parent_commit": "0" * 40, "stage": stage, "tracked_files": []}
+        for stage in commits
+    ]
+    payload = {
+        "claim_commit": commits["C13"],
+        "claim_hash": "1" * 64,
+        "csv_gzip_sha256": "2" * 64,
+        "final_manifest_hash": "3" * 64,
+        "head": commits["D13"],
+        "identity": builder.G9CB13_IDENTITY,
+        "interval_count": 0,
+        "preregistration_manifest_hash": "4" * 64,
+        "preregistration_seal_commit": commits["P13"],
+        "protocol_implementation_commit": commits["Q13"],
+        "protocol_version": builder.G9CB13_PROTOCOL_VERSION,
+        "publication_commit": commits["D13"],
+        "sentinel_manifest_hash": "5" * 64,
+    }
+    raw = builder._canonical_h12_json_bytes(payload)
+    assert tuple(builder._validated_v13_stdout(raw, bindings)) == builder.V13_STDOUT_KEYS
+    drifted = dict(payload)
+    drifted["sentinel_manifest_hash"] = "not-the-d13-sentinel-self-hash"
+    with pytest.raises(builder.TerminalG9CB12Failure):
+        builder._validated_v13_stdout(builder._canonical_h12_json_bytes(drifted), bindings)
+    with pytest.raises(builder.TerminalG9CB12Failure, match="direct invocation"):
+        builder._require_h13_v13_supervision(builder.REPOSITORY_ROOT)

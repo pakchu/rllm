@@ -1513,6 +1513,100 @@ def test_q8_results_inventory_rejects_missing_tracked_or_extra_untracked_entry(
         snapshot.close()
 
 
+def test_q13_t12_terminal_failure_schema_exact() -> None:
+    raw = (
+        prereg.REPOSITORY_ROOT / prereg.G9CB12_T12_TERMINAL_FAILURE_PATH
+    ).read_bytes()
+    payload = prereg.validate_g9cb13_t12_terminal_failure(raw)
+    assert tuple(payload) == (
+        "active_alpha_goal",
+        "failure",
+        "identity",
+        "inventory",
+        "ledger_kind",
+        "output_state",
+        "predecessor_bindings",
+        "schema_version",
+        "status",
+        "terminal_failure_hash",
+    )
+    assert hashlib.sha256(raw).hexdigest() == prereg.G9CB13_T12_PERSISTED_SHA256
+    assert payload["terminal_failure_hash"] == prereg.G9CB13_T12_TERMINAL_FAILURE_HASH
+
+
+def test_q13_t12_false_history_and_overclaim_rejected() -> None:
+    path = prereg.REPOSITORY_ROOT / prereg.G9CB12_T12_TERMINAL_FAILURE_PATH
+    payload = json.loads(path.read_bytes())
+    mutations = []
+    for key, value in (
+        ("sentinel_present", True),
+        ("publication_write_count", 1),
+        ("publication_state", "sentinel_linked"),
+        ("retry_allowed", True),
+    ):
+        mutation = copy.deepcopy(payload)
+        mutation["failure"][key] = value
+        mutations.append(mutation)
+    invented = copy.deepcopy(payload)
+    invented["failure"]["source_rows_decoded"] = 0
+    mutations.append(invented)
+    for mutation in mutations:
+        with pytest.raises(ValueError):
+            prereg.validate_g9cb13_t12_terminal_failure(mutation)
+
+
+def test_q13_t12_adoption_exactness_and_drift_rejected() -> None:
+    adopted = prereg.g9cb13_adopted_source_bindings()
+    prereg.validate_g9cb13_adopted_source_bindings(adopted)
+    canonical = prereg._g9cb13_canonical_bytes(adopted, trailing_lf=False)
+    assert len(canonical) == 5_186
+    assert hashlib.sha256(canonical).hexdigest() == (
+        "f33c061e7f555725621b3ad8b0bdd257ddf211997162ae9da32a4815cd674c4a"
+    )
+    mutations = []
+    changed_hash = copy.deepcopy(adopted)
+    changed_hash["materialized_sources"]["market_5m"]["sha256"] = "0" * 64
+    mutations.append(changed_hash)
+    changed_path = copy.deepcopy(adopted)
+    changed_path["raw_sources"][0]["path"] += ".drift"
+    mutations.append(changed_path)
+    placeholder = copy.deepcopy(adopted)
+    placeholder["stage_bindings"][0]["commit"] = "<S12>"
+    mutations.append(placeholder)
+    for mutation in mutations:
+        with pytest.raises(prereg.G9CB13FreshAuthorityRequired):
+            prereg.validate_g9cb13_adopted_source_bindings(mutation)
+
+
+def test_q13_t12_residual_active_g12_literals_rejected() -> None:
+    payload = prereg.build_g9cb13_preregistration_payload(
+        protocol_implementation_commit="a" * 40
+    )
+    active = {
+        "identity": payload["identity"],
+        "protocol_version": payload["protocol_version"],
+        "output_paths": payload["output_paths"],
+        "terminal_action": payload["terminal_action"],
+    }
+    text = json.dumps(active, sort_keys=True)
+    assert "g9cb12" not in text.lower()
+    assert "G9CB-12" not in text
+    assert payload["source_adoption_mode"].startswith("authenticated_g9cb12")
+
+
+def test_q13_exact_adoption_gate_failure_requires_new_authority() -> None:
+    adopted = prereg.g9cb13_adopted_source_bindings()
+    adopted = copy.deepcopy(adopted)
+    adopted["stage_bindings"] = list(reversed(adopted["stage_bindings"]))
+    with pytest.raises(
+        prereg.G9CB13FreshAuthorityRequired,
+        match="fresh Ralplan/authority required",
+    ):
+        prereg.validate_g9cb13_adopted_source_bindings(adopted)
+    assert not hasattr(prereg, "G9CB13_MATERIALIZER_SOURCE")
+    assert not hasattr(prereg, "G9CB13_SOURCE_MANIFEST_PATH")
+
+
 def test_runtime_import_inventory_has_only_isolated_facade_and_primitives(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

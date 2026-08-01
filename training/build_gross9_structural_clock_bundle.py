@@ -12500,6 +12500,522 @@ def _early_worker_bootstrap(
     return guard
 
 
+G9CB13_IDENTITY = prereg.G9CB13_IDENTITY
+G9CB13_PROTOCOL_VERSION = prereg.G9CB13_PROTOCOL_VERSION
+G9CB13_PREREGISTRATION_PATH = prereg.G9CB13_PREREGISTRATION_PATH
+G9CB13_CLAIM_PATH = prereg.G9CB13_ACCESS_CLAIM_PATH
+G9CB13_SENTINEL_PATH = prereg.G9CB13_ATTEMPT_SENTINEL_PATH
+G9CB13_WORKER_LEDGER_PATHS = (
+    prereg.G9CB13_WORKER_CAPABILITY_CONSUMPTION_LEDGER_PATHS
+)
+G9CB13_CSV_PATH = prereg.G9CB13_BUNDLE_PATH
+G9CB13_MANIFEST_PATH = prereg.G9CB13_FINAL_MANIFEST_PATH
+H13_HANDOFF_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb13_v13_handoff_"
+    "2026-08-01.json"
+)
+H13_SUPERVISOR_SENTINEL_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb13_h13_supervisor_"
+    "attempt_consumed_2026-08-01.json"
+)
+V13_COMMAND = (
+    "PYTHONPATH=$PWD PYTHONDONTWRITEBYTECODE=1 uv run python -B -m "
+    "training.build_gross9_structural_clock_bundle --verify-publication"
+)
+H13_COMMAND = (
+    "PYTHONPATH=$PWD PYTHONDONTWRITEBYTECODE=1 uv run python -B -m "
+    "training.build_gross9_structural_clock_bundle --publish-v13-handoff"
+)
+H13_SUPERVISOR_ENV = "G9CB13_H13_SUPERVISOR_SENTINEL_SHA256"
+H13_CAPABILITY_FD_ENV = "G9CB13_H13_V13_CAPABILITY_FD"
+H13_CAPABILITY_SHA256_ENV = "G9CB13_H13_V13_CAPABILITY_SHA256"
+H13_SUPERVISOR_PID_ENV = "G9CB13_H13_SUPERVISOR_PID"
+H13_STATE_TRACE = (
+    "PRE_SUPERVISOR",
+    "SUPERVISOR_LINKED",
+    "V13_VERIFIED",
+    "HANDOFF_LINKED",
+)
+H13_TOP_LEVEL_KEYS = (
+    "active_alpha_goal",
+    "adopted_source_bindings",
+    "adopted_source_generation",
+    "identity",
+    "ledger_kind",
+    "next_workflow",
+    "no_economics",
+    "no_future_commit_prediction",
+    "schema_version",
+    "source_adoption_mode",
+    "successor_bindings",
+    "successor_generation",
+    "t12_persisted_sha256",
+    "t12_terminal_failure_hash",
+    "v13_stdout_hash",
+)
+V13_STDOUT_KEYS = V12_STDOUT_KEYS
+H13_SUPERVISOR_KEYS = (
+    "attempt_hash",
+    "capability_sha256",
+    "expected_handoff_path",
+    "h13_command",
+    "identity",
+    "one_shot",
+    "repository_head",
+    "repository_parent",
+    "resume_allowed",
+    "retry_allowed",
+    "supervisor_pid",
+    "uv_executable",
+    "uv_executable_sha256",
+    "v13_command",
+    "zero_economics",
+)
+H13_SUCCESSOR_STAGE_PATHS = {
+    "A13": (
+        "docs/gross9-structural-clock-bundle-g9cb13-successor-authority-"
+        "decision-2026-08-01.md",
+    ),
+    "T12": (prereg.G9CB12_T12_TERMINAL_FAILURE_PATH.as_posix(),),
+    "Q13": prereg.G9CB13_Q13_PATHS,
+    "P13": (G9CB13_PREREGISTRATION_PATH.as_posix(),),
+    "C13": (G9CB13_CLAIM_PATH.as_posix(),),
+    "D13": (
+        G9CB13_SENTINEL_PATH.as_posix(),
+        G9CB13_WORKER_LEDGER_PATHS[0].as_posix(),
+        G9CB13_WORKER_LEDGER_PATHS[1].as_posix(),
+        G9CB13_CSV_PATH.as_posix(),
+        G9CB13_MANIFEST_PATH.as_posix(),
+    ),
+}
+
+
+class _H13StateMachine:
+    def __init__(self) -> None:
+        self.state = "PRE_SUPERVISOR"
+        self.events = [self.state]
+
+    def advance(self, expected: str, target: str) -> None:
+        if self.state != expected:
+            _fail(f"H13 illegal state transition: {self.state} -> {target}")
+        expected_target = H13_STATE_TRACE[H13_STATE_TRACE.index(expected) + 1]
+        if target != expected_target:
+            _fail(f"H13 illegal state transition: {expected} -> {target}")
+        self.state = target
+        self.events.append(target)
+
+
+def _contains_forbidden_economics(value: Any) -> bool:
+    forbidden = {"candidate", "comparator", "economic_result", "economic-result"}
+    if isinstance(value, Mapping):
+        return any(
+            key in forbidden
+            or _contains_forbidden_economics(member)
+            for key, member in value.items()
+        )
+    if isinstance(value, list):
+        return any(_contains_forbidden_economics(member) for member in value)
+    return False
+
+
+def _g9cb13_topology_active(root: Path) -> bool:
+    return bool(
+        _git(
+            root,
+            "ls-files",
+            "--",
+            prereg.G9CB12_T12_TERMINAL_FAILURE_PATH.as_posix(),
+        ).strip()
+    )
+
+
+def _activate_g9cb13_topology() -> tuple[dict[str, Any], dict[str, Any]]:
+    builder_updates = {
+        "IDENTITY": G9CB13_IDENTITY,
+        "PROTOCOL_VERSION": G9CB13_PROTOCOL_VERSION,
+        "PREREGISTRATION_PATH": G9CB13_PREREGISTRATION_PATH,
+        "CLAIM_PATH": G9CB13_CLAIM_PATH,
+        "SENTINEL_PATH": G9CB13_SENTINEL_PATH,
+        "WORKER_LEDGER_PATHS": G9CB13_WORKER_LEDGER_PATHS,
+        "CSV_PATH": G9CB13_CSV_PATH,
+        "MANIFEST_PATH": G9CB13_MANIFEST_PATH,
+        "TERMINAL_ACTION": "TERMINAL_G9CB13_ATTEMPT_CONSUMED_NO_RETRY",
+        "_PYCACHE_PREFIX_RELATIVE": Path("results/.g9cb13-bytecode-cache-disabled"),
+    }
+    prereg_updates = {
+        "IDENTITY": prereg.G9CB13_IDENTITY,
+        "PROTOCOL_VERSION": prereg.G9CB13_PREREGISTRATION_PROTOCOL_VERSION,
+        "PREREGISTRATION_PATH": prereg.G9CB13_PREREGISTRATION_PATH,
+        "ACCESS_CLAIM_PATH": prereg.G9CB13_ACCESS_CLAIM_PATH,
+        "ATTEMPT_SENTINEL_PATH": prereg.G9CB13_ATTEMPT_SENTINEL_PATH,
+        "WORKER_CAPABILITY_CONSUMPTION_LEDGER_PATHS": (
+            prereg.G9CB13_WORKER_CAPABILITY_CONSUMPTION_LEDGER_PATHS
+        ),
+        "BUNDLE_PATH": prereg.G9CB13_BUNDLE_PATH,
+        "FINAL_MANIFEST_PATH": prereg.G9CB13_FINAL_MANIFEST_PATH,
+    }
+    saved_builder = {key: globals()[key] for key in builder_updates}
+    saved_prereg = {key: getattr(prereg, key) for key in prereg_updates}
+    globals().update(builder_updates)
+    for key, value in prereg_updates.items():
+        setattr(prereg, key, value)
+    return saved_builder, saved_prereg
+
+
+def _restore_g9cb12_topology(
+    saved: tuple[dict[str, Any], dict[str, Any]]
+) -> None:
+    saved_builder, saved_prereg = saved
+    globals().update(saved_builder)
+    for key, value in saved_prereg.items():
+        setattr(prereg, key, value)
+
+
+def _validated_v13_stdout(
+    raw: bytes, successor_bindings: Sequence[Mapping[str, Any]]
+) -> dict[str, Any]:
+    payload = _decode_h12_canonical_object(raw, "V13 stdout")
+    if tuple(payload) != V13_STDOUT_KEYS:
+        _fail("V13 stdout keys/order differ")
+    for key in (
+        "claim_commit",
+        "head",
+        "preregistration_seal_commit",
+        "protocol_implementation_commit",
+        "publication_commit",
+    ):
+        if not isinstance(payload.get(key), str) or not _COMMIT_RE.fullmatch(
+            payload[key]
+        ):
+            _fail(f"V13 stdout commit differs: {key}")
+    for key in (
+        "claim_hash",
+        "csv_gzip_sha256",
+        "final_manifest_hash",
+        "preregistration_manifest_hash",
+        "sentinel_manifest_hash",
+    ):
+        if not isinstance(payload.get(key), str) or not _SHA_RE.fullmatch(
+            payload[key]
+        ):
+            _fail(f"V13 stdout hash differs: {key}")
+    by_stage = {row["stage"]: row for row in successor_bindings}
+    if (
+        payload.get("identity") != G9CB13_IDENTITY
+        or payload.get("protocol_version") != G9CB13_PROTOCOL_VERSION
+        or type(payload.get("interval_count")) is not int
+        or payload["interval_count"] < 0
+        or payload["head"] != payload["publication_commit"]
+        or payload["protocol_implementation_commit"] != by_stage["Q13"]["commit"]
+        or payload["preregistration_seal_commit"] != by_stage["P13"]["commit"]
+        or payload["claim_commit"] != by_stage["C13"]["commit"]
+        or payload["publication_commit"] != by_stage["D13"]["commit"]
+    ):
+        _fail("V13 stdout topology differs")
+    return payload
+
+
+def _h13_supervisor_payload(
+    head: str, parent: str, capability_sha256: str, supervisor_pid: int
+) -> dict[str, Any]:
+    core = {
+        "capability_sha256": capability_sha256,
+        "expected_handoff_path": H13_HANDOFF_PATH.as_posix(),
+        "h13_command": H13_COMMAND,
+        "identity": "G9CB-13-H13-SUPERVISOR",
+        "one_shot": True,
+        "repository_head": head,
+        "repository_parent": parent,
+        "resume_allowed": False,
+        "retry_allowed": False,
+        "supervisor_pid": supervisor_pid,
+        "uv_executable": H12_UV_EXECUTABLE.as_posix(),
+        "uv_executable_sha256": H12_UV_EXECUTABLE_SHA256,
+        "v13_command": V13_COMMAND,
+        "zero_economics": True,
+    }
+    return {"attempt_hash": _sha256_bytes(_canonical_h12_json_bytes(core, trailing_lf=False)), **core}
+
+
+def validate_g9cb13_h13_supervisor(payload: Mapping[str, Any] | bytes) -> dict[str, Any]:
+    observed = (
+        _decode_h12_canonical_object(payload, "H13 supervisor")
+        if isinstance(payload, bytes)
+        else dict(payload)
+    )
+    if tuple(observed) != H13_SUPERVISOR_KEYS:
+        _fail("H13 supervisor keys/order differ")
+    core = dict(observed)
+    attempt_hash = core.pop("attempt_hash", None)
+    if (
+        attempt_hash != _sha256_bytes(_canonical_h12_json_bytes(core, trailing_lf=False))
+        or observed.get("identity") != "G9CB-13-H13-SUPERVISOR"
+        or observed.get("one_shot") is not True
+        or observed.get("retry_allowed") is not False
+        or observed.get("resume_allowed") is not False
+        or observed.get("zero_economics") is not True
+        or _contains_forbidden_economics(observed)
+    ):
+        _fail("H13 supervisor contract differs")
+    return observed
+
+
+def _h13_handoff_payload(
+    successor_bindings: Sequence[Mapping[str, Any]], v13_stdout: bytes
+) -> dict[str, Any]:
+    _validated_v13_stdout(v13_stdout, successor_bindings)
+    return {
+        "active_alpha_goal": "incomplete",
+        "adopted_source_bindings": prereg.g9cb13_adopted_source_bindings(),
+        "adopted_source_generation": "G9CB12",
+        "identity": G9CB13_IDENTITY,
+        "ledger_kind": "gross9_structural_clock_bundle_g9cb13_v13_handoff_v1",
+        "next_workflow": "ralplan",
+        "no_economics": True,
+        "no_future_commit_prediction": True,
+        "schema_version": 1,
+        "source_adoption_mode": (
+            "authenticated_g9cb12_source_bytes_consumable_by_g9cb13_"
+            "no_republication_v1"
+        ),
+        "successor_bindings": [dict(row) for row in successor_bindings],
+        "successor_generation": "G9CB13",
+        "t12_persisted_sha256": prereg.G9CB13_T12_PERSISTED_SHA256,
+        "t12_terminal_failure_hash": prereg.G9CB13_T12_TERMINAL_FAILURE_HASH,
+        "v13_stdout_hash": _sha256_bytes(v13_stdout),
+    }
+
+
+def validate_g9cb13_h13_handoff(
+    payload: Mapping[str, Any] | bytes,
+    *,
+    v13_stdout: bytes,
+    successor_bindings: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    observed = (
+        _decode_h12_canonical_object(payload, "H13 handoff")
+        if isinstance(payload, bytes)
+        else dict(payload)
+    )
+    if (
+        tuple(observed) != H13_TOP_LEVEL_KEYS
+        or observed != _h13_handoff_payload(successor_bindings, v13_stdout)
+        or observed.get("no_economics") is not True
+        or observed.get("no_future_commit_prediction") is not True
+        or _contains_forbidden_economics(observed)
+    ):
+        _fail("H13 verified handoff contract differs")
+    for row in observed["successor_bindings"]:
+        if row.get("stage") not in H13_SUCCESSOR_STAGE_PATHS:
+            _fail("H13 successor stage differs")
+        if [entry["path"] for entry in row.get("tracked_files", [])] != list(
+            H13_SUCCESSOR_STAGE_PATHS[row["stage"]]
+        ):
+            _fail("H13 successor tracked-file inventory differs")
+        if any(
+            entry["path"] == H13_SUPERVISOR_SENTINEL_PATH.as_posix()
+            for entry in row["tracked_files"]
+        ):
+            _fail("H13 supervisor leaked into successor bindings")
+    return observed
+
+
+def _g9cb13_tracked_file_row(
+    root: Path, commit: str, path_text: str, worktree_mode: str
+) -> dict[str, Any]:
+    raw_entry = _git(root, "ls-tree", commit, "--", path_text).decode().strip()
+    metadata, observed_path = raw_entry.split("\t", 1)
+    git_mode, kind, blob = metadata.split()
+    raw = _git(root, "show", f"{commit}:{path_text}")
+    if observed_path != path_text or git_mode != "100644" or kind != "blob":
+        _fail(f"G13 stage tree entry differs: {path_text}")
+    worktree = _rooted(root, Path(path_text))
+    if (
+        not worktree.is_file()
+        or worktree.is_symlink()
+        or _sha256_file(worktree) != _sha256_bytes(raw)
+        or f"{stat.S_IMODE(worktree.stat().st_mode):04o}" != worktree_mode
+    ):
+        _fail(f"G13 stage worktree binding differs: {path_text}")
+    return {
+        "git_blob": blob,
+        "git_mode": git_mode,
+        "path": path_text,
+        "sha256": _sha256_bytes(raw),
+        "size_bytes": len(raw),
+        "worktree_mode": worktree_mode,
+    }
+
+
+def _expected_h13_successor_bindings(
+    root: Path, d13_head: str
+) -> list[dict[str, Any]]:
+    stages = tuple(H13_SUCCESSOR_STAGE_PATHS)
+    commits: dict[str, str] = {"D13": d13_head}
+    for current, prior in zip(reversed(stages[1:]), reversed(stages[:-1]), strict=True):
+        commits[prior] = _single_parent_commit(root, commits[current])
+    q12 = _single_parent_commit(root, commits["A13"])
+    if q12 != "e64f8de05e18b1d0fdfc9f3582d5f32041d0fa54":
+        _fail("A13 direct parent differs from Q12 authority")
+    parents = {"A13": q12}
+    for prior, current in zip(stages, stages[1:], strict=False):
+        parents[current] = commits[prior]
+    rows: list[dict[str, Any]] = []
+    for stage in stages:
+        paths = H13_SUCCESSOR_STAGE_PATHS[stage]
+        status = "M" if stage == "Q13" else "A"
+        expected_diff = tuple(
+            f"{status}\t{path_text}" for path_text in sorted(paths)
+        )
+        if _commit_name_status(root, parents[stage], commits[stage]) != expected_diff:
+            _fail(f"H13 {stage} parent diff differs")
+        worktree_mode = "0644" if stage in {"A13", "Q13"} else "0444"
+        rows.append(
+            {
+                "commit": commits[stage],
+                "parent_commit": parents[stage],
+                "stage": stage,
+                "tracked_files": [
+                    _g9cb13_tracked_file_row(
+                        root, commits[stage], path_text, worktree_mode
+                    )
+                    for path_text in paths
+                ],
+            }
+        )
+    return rows
+
+
+def _require_h13_v13_supervision(root: Path) -> dict[str, Any]:
+    sentinel_sha = os.environ.get(H13_SUPERVISOR_ENV, "")
+    capability_sha = os.environ.get(H13_CAPABILITY_SHA256_ENV, "")
+    descriptor_text = os.environ.get(H13_CAPABILITY_FD_ENV, "")
+    pid_text = os.environ.get(H13_SUPERVISOR_PID_ENV, "")
+    if (
+        not _SHA_RE.fullmatch(sentinel_sha)
+        or not _SHA_RE.fullmatch(capability_sha)
+        or not re.fullmatch(r"[0-9]+", descriptor_text)
+        or not re.fullmatch(r"[1-9][0-9]*", pid_text)
+    ):
+        _fail("V13 direct invocation is forbidden")
+    descriptor = int(descriptor_text)
+    try:
+        capability = os.read(descriptor, 33)
+    finally:
+        os.close(descriptor)
+    if len(capability) != 32 or _sha256_bytes(capability) != capability_sha:
+        _fail("V13 capability differs")
+    raw = _rooted(root, H13_SUPERVISOR_SENTINEL_PATH).read_bytes()
+    if _sha256_bytes(raw) != sentinel_sha:
+        _fail("V13 supervisor persisted hash differs")
+    sentinel = validate_g9cb13_h13_supervisor(raw)
+    if sentinel["capability_sha256"] != capability_sha:
+        _fail("V13 supervisor capability binding differs")
+    return sentinel
+
+
+def publish_v13_handoff(root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
+    """Publish supervisor, run V13 once, then publish the verified H13 handoff."""
+
+    root = root.resolve()
+    _validate_bytecode_preflight(root)
+    head = _require_clean_pushed_branch(root, prereg.EXPECTED_BRANCH)
+    bindings = _expected_h13_successor_bindings(root, head)
+    for relative in (H13_SUPERVISOR_SENTINEL_PATH, H13_HANDOFF_PATH):
+        if _path_lexists(_rooted(root, relative)):
+            _fail(f"H13 write-once path already exists: {relative}")
+    state = _H13StateMachine()
+    baseline = prereg.g9cb13_results_inventory_preflight(root)["names"]
+    capability = bytearray(os.urandom(32))
+    capability_sha = _sha256_bytes(capability)
+    read_fd, write_fd = os.pipe2(getattr(os, "O_CLOEXEC", 0))
+    supervisor = _h13_supervisor_payload(
+        head, _single_parent_commit(root, head), capability_sha, os.getpid()
+    )
+    validate_g9cb13_h13_supervisor(supervisor)
+    supervisor_raw = _canonical_h12_json_bytes(supervisor)
+    try:
+        supervisor_publication = _publish_h12_leaf(
+            root,
+            H13_SUPERVISOR_SENTINEL_PATH,
+            supervisor_raw,
+            expected_entries=tuple(baseline),
+            prelink_recheck=lambda: prereg.g9cb13_results_inventory_preflight(root),
+        )
+        state.advance("PRE_SUPERVISOR", "SUPERVISOR_LINKED")
+        if os.write(write_fd, capability) != 32:
+            _fail("H13 capability write was incomplete")
+        os.close(write_fd)
+        write_fd = -1
+        environment = dict(os.environ)
+        environment.update(
+            {
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "PYTHONPATH": str(root),
+                H13_CAPABILITY_FD_ENV: str(read_fd),
+                H13_CAPABILITY_SHA256_ENV: capability_sha,
+                H13_SUPERVISOR_ENV: _sha256_bytes(supervisor_raw),
+                H13_SUPERVISOR_PID_ENV: str(os.getpid()),
+            }
+        )
+        before_v13 = _repository_namespace_snapshot(root)
+        completed = subprocess.run(
+            [
+                H12_UV_EXECUTABLE,
+                "run",
+                "python",
+                "-B",
+                "-m",
+                "training.build_gross9_structural_clock_bundle",
+                "--verify-publication",
+            ],
+            cwd=root,
+            env=environment,
+            pass_fds=(read_fd,),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    finally:
+        for descriptor in (write_fd, read_fd):
+            if descriptor >= 0:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
+        capability[:] = b"\0" * len(capability)
+    if completed.returncode != 0 or completed.stderr:
+        _fail("nested V13 failed or emitted stderr")
+    _validated_v13_stdout(completed.stdout, bindings)
+    if _repository_namespace_snapshot(root) != before_v13:
+        _fail("nested V13 changed repository namespace")
+    state.advance("SUPERVISOR_LINKED", "V13_VERIFIED")
+    handoff = _h13_handoff_payload(bindings, completed.stdout)
+    validate_g9cb13_h13_handoff(
+        handoff, v13_stdout=completed.stdout, successor_bindings=bindings
+    )
+    after_supervisor = prereg.g9cb13_results_inventory_preflight(
+        root, active_untracked_prefix=(H13_SUPERVISOR_SENTINEL_PATH.name,)
+    )["names"]
+    handoff_raw = _canonical_h12_json_bytes(handoff)
+    handoff_publication = _publish_h12_leaf(
+        root,
+        H13_HANDOFF_PATH,
+        handoff_raw,
+        expected_entries=tuple(after_supervisor),
+        prelink_recheck=lambda: prereg.g9cb13_results_inventory_preflight(
+            root, active_untracked_prefix=(H13_SUPERVISOR_SENTINEL_PATH.name,)
+        ),
+    )
+    state.advance("V13_VERIFIED", "HANDOFF_LINKED")
+    return {
+        "events": tuple(state.events),
+        "handoff": handoff,
+        "handoff_publication": handoff_publication,
+        "supervisor_publication": supervisor_publication,
+    }
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     actions = parser.add_mutually_exclusive_group(required=True)
@@ -12507,6 +13023,7 @@ def _parser() -> argparse.ArgumentParser:
     actions.add_argument("--produce", action="store_true")
     actions.add_argument("--verify-publication", action="store_true")
     actions.add_argument("--publish-v12-handoff", action="store_true")
+    actions.add_argument("--publish-v13-handoff", action="store_true")
     actions.add_argument("--internal-worker", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--repository-root", default=str(REPOSITORY_ROOT), help=argparse.SUPPRESS)
     parser.add_argument("--output-dir", help=argparse.SUPPRESS)
@@ -12526,49 +13043,70 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     raw_arguments = list(sys.argv[1:] if argv is None else argv)
-    guard = _early_worker_bootstrap(raw_arguments)
-    arguments = _parser().parse_args(raw_arguments)
-    if arguments.internal_worker:
-        if (
-            guard is None
-            or not isinstance(arguments.output_dir, str)
-            or not arguments.output_dir
-            or not isinstance(arguments.other_stage_directory, str)
-            or not arguments.other_stage_directory
-            or type(arguments.worker_capability_fd) is not int
-            or arguments.worker_capability_fd < 0
-            or type(arguments.worker_ledger_fd) is not int
-            or arguments.worker_ledger_fd < 0
-            or arguments.worker_capability_fd == arguments.worker_ledger_fd
-            or type(arguments.expected_parent_pid) is not int
-            or arguments.expected_parent_pid <= 0
-            or not isinstance(arguments.expected_security_profile_json, str)
-            or arguments.expected_security_profile_json == "{}"
-        ):
-            _fail("internal worker arguments are incomplete")
-        return _worker_main(arguments, guard)
-    if guard is not None:
-        _fail("worker bootstrap was installed for a non-worker action")
-    if arguments.synthetic_input:
-        _fail("synthetic input is accepted only by an authenticated internal worker")
-    if arguments.create_claim:
-        create_claim_only(Path(arguments.repository_root))
-    elif arguments.verify_publication:
-        _require_h12_v12_supervision(Path(arguments.repository_root))
-        result = validate_committed_publication(
-            Path(arguments.repository_root)
-        )
-        print(
-            _canonical_json_bytes(
-                result,
-                trailing_lf=False,
-            ).decode("ascii")
-        )
-    elif arguments.publish_v12_handoff:
-        publish_v12_handoff(Path(arguments.repository_root))
-    else:
-        produce_one_shot(Path(arguments.repository_root))
-    return 0
+    root_text = str(REPOSITORY_ROOT)
+    if "--repository-root" in raw_arguments:
+        index = raw_arguments.index("--repository-root")
+        if index + 1 < len(raw_arguments):
+            root_text = raw_arguments[index + 1]
+    root = Path(root_text)
+    active_g13 = root.exists() and _g9cb13_topology_active(root)
+    saved = _activate_g9cb13_topology() if active_g13 else None
+    try:
+        guard = _early_worker_bootstrap(raw_arguments)
+        arguments = _parser().parse_args(raw_arguments)
+        if arguments.internal_worker:
+            if (
+                guard is None
+                or not isinstance(arguments.output_dir, str)
+                or not arguments.output_dir
+                or not isinstance(arguments.other_stage_directory, str)
+                or not arguments.other_stage_directory
+                or type(arguments.worker_capability_fd) is not int
+                or arguments.worker_capability_fd < 0
+                or type(arguments.worker_ledger_fd) is not int
+                or arguments.worker_ledger_fd < 0
+                or arguments.worker_capability_fd == arguments.worker_ledger_fd
+                or type(arguments.expected_parent_pid) is not int
+                or arguments.expected_parent_pid <= 0
+                or not isinstance(arguments.expected_security_profile_json, str)
+                or arguments.expected_security_profile_json == "{}"
+            ):
+                _fail("internal worker arguments are incomplete")
+            return _worker_main(arguments, guard)
+        if guard is not None:
+            _fail("worker bootstrap was installed for a non-worker action")
+        if arguments.synthetic_input:
+            _fail("synthetic input is accepted only by an authenticated internal worker")
+        if active_g13 and getattr(arguments, "publish_v12_handoff", False):
+            _fail("legacy G12 execution is prohibited under active G13 topology")
+        if arguments.create_claim:
+            create_claim_only(Path(arguments.repository_root))
+        elif arguments.verify_publication:
+            if active_g13:
+                _require_h13_v13_supervision(Path(arguments.repository_root))
+            else:
+                _require_h12_v12_supervision(Path(arguments.repository_root))
+            result = validate_committed_publication(
+                Path(arguments.repository_root)
+            )
+            print(
+                _canonical_json_bytes(
+                    result,
+                    trailing_lf=False,
+                ).decode("ascii")
+            )
+        elif getattr(arguments, "publish_v13_handoff", False):
+            if not active_g13:
+                _fail("H13 requires active G13 topology")
+            publish_v13_handoff(Path(arguments.repository_root))
+        elif getattr(arguments, "publish_v12_handoff", False):
+            publish_v12_handoff(Path(arguments.repository_root))
+        else:
+            produce_one_shot(Path(arguments.repository_root))
+        return 0
+    finally:
+        if saved is not None:
+            _restore_g9cb12_topology(saved)
 
 
 if __name__ == "__main__":

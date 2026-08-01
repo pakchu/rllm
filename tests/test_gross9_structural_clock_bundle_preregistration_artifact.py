@@ -557,3 +557,118 @@ def test_committed_publication_is_verified_at_d_when_present() -> None:
     assert result["protocol_implementation_commit"] == (
         prereg.validate_protocol_commit_topology()
     )
+
+
+def _q13_handoff_fixture() -> tuple[list[dict[str, object]], bytes]:
+    commits = {
+        stage: character * 40
+        for stage, character in zip(
+            ("A13", "T12", "Q13", "P13", "C13", "D13"),
+            "abcdef",
+            strict=True,
+        )
+    }
+    bindings: list[dict[str, object]] = []
+    parent = "0" * 40
+    for stage, paths in builder.H13_SUCCESSOR_STAGE_PATHS.items():
+        bindings.append(
+            {
+                "commit": commits[stage],
+                "parent_commit": parent,
+                "stage": stage,
+                "tracked_files": [
+                    {
+                        "git_blob": "1" * 40,
+                        "git_mode": "100644",
+                        "path": path,
+                        "sha256": "2" * 64,
+                        "size_bytes": 1,
+                        "worktree_mode": (
+                            "0644" if stage in {"A13", "Q13"} else "0444"
+                        ),
+                    }
+                    for path in paths
+                ],
+            }
+        )
+        parent = commits[stage]
+    stdout = builder._canonical_h12_json_bytes(
+        {
+            "claim_commit": commits["C13"],
+            "claim_hash": "3" * 64,
+            "csv_gzip_sha256": "4" * 64,
+            "final_manifest_hash": "5" * 64,
+            "head": commits["D13"],
+            "identity": builder.G9CB13_IDENTITY,
+            "interval_count": 0,
+            "preregistration_manifest_hash": "6" * 64,
+            "preregistration_seal_commit": commits["P13"],
+            "protocol_implementation_commit": commits["Q13"],
+            "protocol_version": builder.G9CB13_PROTOCOL_VERSION,
+            "publication_commit": commits["D13"],
+            "sentinel_manifest_hash": "7" * 64,
+        }
+    )
+    return bindings, stdout
+
+
+def test_q13_h13_schema_and_supervisor_leakage_exact() -> None:
+    supervisor = builder._h13_supervisor_payload(
+        "f" * 40, "e" * 40, "d" * 64, 1234
+    )
+    assert tuple(supervisor) == builder.H13_SUPERVISOR_KEYS
+    assert builder.validate_g9cb13_h13_supervisor(supervisor) == supervisor
+    bindings, stdout = _q13_handoff_fixture()
+    handoff = builder._h13_handoff_payload(bindings, stdout)
+    assert tuple(handoff) == builder.H13_TOP_LEVEL_KEYS
+    assert builder.validate_g9cb13_h13_handoff(
+        handoff, v13_stdout=stdout, successor_bindings=bindings
+    ) == handoff
+    leaked = json.loads(json.dumps(handoff))
+    leaked["successor_bindings"][0]["tracked_files"][0]["path"] = (
+        builder.H13_SUPERVISOR_SENTINEL_PATH.as_posix()
+    )
+    with pytest.raises(builder.TerminalG9CB12Failure):
+        builder.validate_g9cb13_h13_handoff(
+            leaked, v13_stdout=stdout, successor_bindings=bindings
+        )
+
+
+def test_q13_preregistration_artifact_exact() -> None:
+    payload = prereg.build_g9cb13_preregistration_payload(
+        protocol_implementation_commit="a" * 40
+    )
+    prereg.validate_g9cb13_preregistration_payload(payload)
+    raw = prereg._g9cb13_canonical_bytes(payload)
+    assert raw.endswith(b"\n") and not raw.endswith(b"\n\n")
+    assert json.loads(raw)["manifest_hash"] == payload["manifest_hash"]
+    stdout = (
+        f"created {prereg.G9CB13_PREREGISTRATION_PATH} "
+        f"{payload['manifest_hash']}\n"
+    )
+    assert stdout.count("\n") == 1
+    assert stdout.startswith(
+        "created results/gross9_structural_clock_bundle_g9cb13_"
+        "preregistration_2026-08-01.json "
+    )
+
+
+def test_q13_h13_verified_handoff_not_approval_and_no_economics_exact() -> None:
+    bindings, stdout = _q13_handoff_fixture()
+    handoff = builder._h13_handoff_payload(bindings, stdout)
+    assert handoff["next_workflow"] == "ralplan"
+    assert handoff["active_alpha_goal"] == "incomplete"
+    assert handoff["no_economics"] is True
+    assert handoff["no_future_commit_prediction"] is True
+    assert handoff["v13_stdout_hash"] == hashlib.sha256(stdout).hexdigest()
+    assert builder.H13_STATE_TRACE == (
+        "PRE_SUPERVISOR", "SUPERVISOR_LINKED", "V13_VERIFIED", "HANDOFF_LINKED"
+    )
+    for key in ("candidate", "comparator", "economic_result", "economic-result"):
+        mutation = json.loads(json.dumps(handoff))
+        mutation["successor_bindings"][0][key] = {}
+        with pytest.raises(builder.TerminalG9CB12Failure):
+            builder.validate_g9cb13_h13_handoff(
+                mutation, v13_stdout=stdout, successor_bindings=bindings
+            )
+    assert "approval" not in json.dumps(handoff).lower()

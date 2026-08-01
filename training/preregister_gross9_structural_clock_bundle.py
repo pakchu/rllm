@@ -5514,6 +5514,9 @@ def validate_manifest(
     verify_environment: bool = True,
     verify_git_seal: bool = True,
 ) -> None:
+    if manifest.get("identity") == G9CB13_IDENTITY:
+        validate_g9cb13_preregistration_payload(manifest)
+        return
     if manifest.get("protocol_version") != PROTOCOL_VERSION:
         raise ValueError("preregistration protocol version mismatch")
     if manifest.get("identity") != IDENTITY:
@@ -6473,7 +6476,463 @@ def write_once(
             snapshot.close()
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+G9CB13_IDENTITY = "G9CB-13-SOURCE-SUCCESSOR"
+G9CB13_PROTOCOL_VERSION = "gross9_structural_clock_bundle_g9cb13_v1"
+G9CB13_PREREGISTRATION_PROTOCOL_VERSION = (
+    "gross9_structural_clock_bundle_g9cb13_preregistration_v1"
+)
+G9CB13_AUTHORITY_DECISION_PATH = Path(
+    "docs/gross9-structural-clock-bundle-g9cb13-successor-authority-decision-"
+    "2026-08-01.md"
+)
+G9CB12_T12_TERMINAL_FAILURE_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb12_p12_terminal_failure_"
+    "2026-08-01.json"
+)
+G9CB13_PREREGISTRATION_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb13_preregistration_"
+    "2026-08-01.json"
+)
+G9CB13_ACCESS_CLAIM_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb13_access_claim_2026-08-01.json"
+)
+G9CB13_ATTEMPT_SENTINEL_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb13_attempt_consumed_"
+    "2026-08-01.json"
+)
+G9CB13_WORKER_CAPABILITY_CONSUMPTION_LEDGER_PATHS = (
+    Path(
+        "results/gross9_structural_clock_bundle_g9cb13_worker_capability_"
+        "consumed_pass1_2026-08-01.json"
+    ),
+    Path(
+        "results/gross9_structural_clock_bundle_g9cb13_worker_capability_"
+        "consumed_pass2_2026-08-01.json"
+    ),
+)
+G9CB13_BUNDLE_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb13_2026-08-01.csv.gz"
+)
+G9CB13_FINAL_MANIFEST_PATH = Path(
+    "results/gross9_structural_clock_bundle_g9cb13_manifest_2026-08-01.json"
+)
+G9CB13_ADOPTED_SOURCE_BINDINGS_SHA256 = (
+    "f33c061e7f555725621b3ad8b0bdd257ddf211997162ae9da32a4815cd674c4a"
+)
+G9CB13_T12_PERSISTED_SHA256 = (
+    "9c3597df4ef900f696135d428e994de081ce9deaec44d1151c25822f2dfea745"
+)
+G9CB13_T12_TERMINAL_FAILURE_HASH = (
+    "ccabc3c46ef2e7cb44568d303e7fd8f622bab8366185c627e5e53d071211f124"
+)
+G9CB13_Q13_PATHS = (
+    "training/build_gross9_structural_clock_bundle.py",
+    "training/preregister_gross9_structural_clock_bundle.py",
+    "tests/test_build_gross9_structural_clock_bundle.py",
+    "tests/test_preregister_gross9_structural_clock_bundle.py",
+    "tests/test_gross9_structural_clock_bundle_preregistration_artifact.py",
+)
+G9CB13_RESIDUE_NAMES = (
+    ".gross9-structural-clock-worker-ca9ca670ffb0d1b377ed6aef",
+    ".gross9-structural-clock-g9cb3-worker-a3dffd3cbec3afd582638a23",
+    ".gross9-structural-clock-g9cb8-worker-b04b561d045e074567a96761",
+)
+
+
+class G9CB13FreshAuthorityRequired(RuntimeError):
+    """The adopted-source gate failed and no S13/M13 fallback is authorized."""
+
+
+def _g9cb13_canonical_bytes(
+    payload: Any, *, trailing_lf: bool = True
+) -> bytes:
+    raw = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    return raw + (b"\n" if trailing_lf else b"")
+
+
+def _g9cb13_decode_canonical_object(raw: bytes, label: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(
+            raw.decode("utf-8"), object_pairs_hook=_unique_metadata_object
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"{label}: invalid duplicate-free UTF-8 JSON") from exc
+    if not isinstance(payload, dict) or raw != _g9cb13_canonical_bytes(payload):
+        raise ValueError(f"{label}: noncanonical JSON")
+    return payload
+
+
+def validate_g9cb13_t12_terminal_failure(
+    payload: Mapping[str, Any] | bytes,
+    *,
+    repository_root: Path = REPOSITORY_ROOT,
+) -> dict[str, Any]:
+    """Validate T12 as immutable historical pre-sentinel failure evidence."""
+
+    expected_raw = repository_path(
+        G9CB12_T12_TERMINAL_FAILURE_PATH, repository_root
+    ).read_bytes()
+    if hashlib.sha256(expected_raw).hexdigest() != G9CB13_T12_PERSISTED_SHA256:
+        raise ValueError("authenticated T12 persisted bytes differ")
+    expected = _g9cb13_decode_canonical_object(expected_raw, "T12")
+    observed = (
+        _g9cb13_decode_canonical_object(payload, "T12")
+        if isinstance(payload, bytes)
+        else dict(payload)
+    )
+    if observed != expected or tuple(observed) != (
+        "active_alpha_goal",
+        "failure",
+        "identity",
+        "inventory",
+        "ledger_kind",
+        "output_state",
+        "predecessor_bindings",
+        "schema_version",
+        "status",
+        "terminal_failure_hash",
+    ):
+        raise ValueError("T12 terminal-failure contract differs")
+    core = dict(observed)
+    terminal_hash = core.pop("terminal_failure_hash")
+    if (
+        terminal_hash != G9CB13_T12_TERMINAL_FAILURE_HASH
+        or hashlib.sha256(
+            _g9cb13_canonical_bytes(core, trailing_lf=False)
+        ).hexdigest()
+        != terminal_hash
+    ):
+        raise ValueError("T12 terminal_failure_hash differs")
+    failure = observed["failure"]
+    if (
+        tuple(failure)
+        != (
+            "command",
+            "exception_class",
+            "exception_message",
+            "exit_status",
+            "failure_location",
+            "invocation_count",
+            "one_shot",
+            "phase",
+            "publication_state",
+            "publication_write_count",
+            "resume_allowed",
+            "retry_allowed",
+            "sentinel_present",
+        )
+        or failure["publication_state"] != "pre_sentinel_failure"
+        or failure["publication_write_count"] != 0
+        or failure["sentinel_present"] is not False
+        or failure["retry_allowed"] is not False
+        or failure["resume_allowed"] is not False
+    ):
+        raise ValueError("T12 false-history or recovery claim")
+    return observed
+
+
+def _g9cb13_stage_binding(
+    repository_root: Path,
+    *,
+    stage: str,
+    commit: str,
+    parent_commit: str,
+    paths: Sequence[str],
+    worktree_mode: str | None = None,
+) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    for path_text in paths:
+        tree_result = _git_result(
+            ["ls-tree", commit, "--", path_text], repository_root
+        )
+        if tree_result.returncode:
+            raise ValueError(f"{stage} tree lookup failed: {path_text}")
+        tree = tree_result.stdout.strip()
+        metadata, observed_path = tree.split("\t", 1)
+        mode, kind, blob = metadata.split()
+        if observed_path != path_text or mode != "100644" or kind != "blob":
+            raise ValueError(f"{stage} tracked binding differs: {path_text}")
+        show_result = _git_result(
+            ["show", f"{commit}:{path_text}"], repository_root, text=False
+        )
+        if show_result.returncode:
+            raise ValueError(f"{stage} blob lookup failed: {path_text}")
+        raw = show_result.stdout
+        expected_worktree_mode = (
+            worktree_mode
+            if worktree_mode is not None
+            else ("0644" if stage == "S12" else "0444")
+        )
+        worktree_path = repository_path(path_text, repository_root)
+        worktree_info = worktree_path.lstat()
+        if (
+            not stat.S_ISREG(worktree_info.st_mode)
+            or stat.S_ISLNK(worktree_info.st_mode)
+            or f"{stat.S_IMODE(worktree_info.st_mode):04o}" != expected_worktree_mode
+            or worktree_path.read_bytes() != raw
+        ):
+            raise ValueError(f"{stage} worktree binding differs: {path_text}")
+        rows.append(
+            {
+                "git_blob": blob,
+                "git_mode": mode,
+                "path": path_text,
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "size_bytes": len(raw),
+                "worktree_mode": expected_worktree_mode,
+            }
+        )
+    return {
+        "commit": commit,
+        "parent_commit": parent_commit,
+        "stage": stage,
+        "tracked_files": rows,
+    }
+
+
+def g9cb13_adopted_source_bindings(
+    repository_root: Path = REPOSITORY_ROOT,
+) -> dict[str, Any]:
+    """Return the exact authenticated S12/M12 bytes adopted by G13."""
+
+    support_raw = repository_path(
+        G9CB12_SOURCE_SUPPORT_PATH, repository_root
+    ).read_bytes()
+    if hashlib.sha256(support_raw).hexdigest() != G9CB12_SOURCE_SUPPORT_SHA256:
+        raise G9CB13FreshAuthorityRequired(
+            "G9CB13 adoption gate failed; fresh Ralplan/authority required"
+        )
+    support = _g9cb13_decode_canonical_object(support_raw, "S12/M12 support")
+    bindings = {
+        "materialized_sources": support["materialized_sources"],
+        "raw_sources": support["raw_sources"],
+        "stage_bindings": [
+            _g9cb13_stage_binding(
+                repository_root,
+                stage="S12",
+                commit=G9CB12_SOURCE_SUPPORT_COMMIT,
+                parent_commit=G9CB11_TERMINAL_EVIDENCE_COMMIT,
+                paths=(
+                    G9CB12_MATERIALIZER_SOURCE.as_posix(),
+                    G9CB12_MATERIALIZER_TEST.as_posix(),
+                ),
+            ),
+            _g9cb13_stage_binding(
+                repository_root,
+                stage="M12",
+                commit=G9CB12_SOURCE_MANIFEST_COMMIT,
+                parent_commit=G9CB12_SOURCE_SUPPORT_COMMIT,
+                paths=(
+                    G9CB12_SOURCE_ATTEMPT_PATH.as_posix(),
+                    G9CB12_SOURCE_MANIFEST_PATH.as_posix(),
+                    G9CB12_SOURCE_SUPPORT_PATH.as_posix(),
+                ),
+            ),
+        ],
+    }
+    raw = _g9cb13_canonical_bytes(bindings, trailing_lf=False)
+    if (
+        len(raw) != 5_186
+        or hashlib.sha256(raw).hexdigest()
+        != G9CB13_ADOPTED_SOURCE_BINDINGS_SHA256
+    ):
+        raise G9CB13FreshAuthorityRequired(
+            "G9CB13 adoption gate failed; fresh Ralplan/authority required"
+        )
+    return bindings
+
+
+def validate_g9cb13_adopted_source_bindings(payload: Mapping[str, Any]) -> None:
+    raw = _g9cb13_canonical_bytes(payload, trailing_lf=False)
+    if (
+        tuple(payload) != ("materialized_sources", "raw_sources", "stage_bindings")
+        or len(raw) != 5_186
+        or hashlib.sha256(raw).hexdigest()
+        != G9CB13_ADOPTED_SOURCE_BINDINGS_SHA256
+    ):
+        raise G9CB13FreshAuthorityRequired(
+            "G9CB13 adoption gate failed; fresh Ralplan/authority required"
+        )
+
+
+def g9cb13_preregistration_successor_bindings(
+    protocol_implementation_commit: str,
+    repository_root: Path = REPOSITORY_ROOT,
+) -> list[dict[str, Any]]:
+    commits = {"Q13": protocol_implementation_commit}
+    for current, prior in (("Q13", "T12"), ("T12", "A13")):
+        result = _git_result(["rev-parse", f"{commits[current]}^"], repository_root)
+        if result.returncode or not re.fullmatch(r"[0-9a-f]{40}\n?", result.stdout):
+            raise ValueError(f"G9CB13 {current} parent lookup failed")
+        commits[prior] = result.stdout.strip()
+    q12 = _git_result(["rev-parse", f"{commits['A13']}^"], repository_root)
+    if (
+        q12.returncode
+        or q12.stdout.strip() != "e64f8de05e18b1d0fdfc9f3582d5f32041d0fa54"
+    ):
+        raise ValueError("G9CB13 A13 direct parent differs")
+    stage_paths = {
+        "A13": (G9CB13_AUTHORITY_DECISION_PATH.as_posix(),),
+        "T12": (G9CB12_T12_TERMINAL_FAILURE_PATH.as_posix(),),
+        "Q13": G9CB13_Q13_PATHS,
+    }
+    parents = {"A13": q12.stdout.strip(), "T12": commits["A13"], "Q13": commits["T12"]}
+    rows = []
+    for stage, paths in stage_paths.items():
+        diff = _git_result(
+            [
+                "diff-tree",
+                "--no-commit-id",
+                "--name-status",
+                "-r",
+                parents[stage],
+                commits[stage],
+            ],
+            repository_root,
+        )
+        status = "M" if stage == "Q13" else "A"
+        expected = [f"{status}\t{path}" for path in sorted(paths)]
+        if diff.returncode or diff.stdout.splitlines() != expected:
+            raise ValueError(f"G9CB13 {stage} exact parent diff differs")
+        rows.append(
+            _g9cb13_stage_binding(
+                repository_root,
+                stage=stage,
+                commit=commits[stage],
+                parent_commit=parents[stage],
+                paths=paths,
+                worktree_mode="0644" if stage in {"A13", "Q13"} else "0444",
+            )
+        )
+    return rows
+
+
+def build_g9cb13_preregistration_payload(
+    *,
+    protocol_implementation_commit: str,
+    repository_root: Path = REPOSITORY_ROOT,
+    require_git_seal: bool = False,
+) -> dict[str, Any]:
+    if not re.fullmatch(r"[0-9a-f]{40}", protocol_implementation_commit):
+        raise ValueError("Q13 protocol implementation commit is invalid")
+    t12 = validate_g9cb13_t12_terminal_failure(
+        repository_path(G9CB12_T12_TERMINAL_FAILURE_PATH, repository_root).read_bytes(),
+        repository_root=repository_root,
+    )
+    # Preserve the mature G12 preregistration contract and replace only the
+    # active generation/topology fields.  Historical G12 disclosures remain
+    # authenticated evidence; they are not relabelled as G13 production.
+    payload = _manifest_without_hash(
+        repository_root, require_git_seal=False
+    )
+    payload.update(
+        {
+            "active_alpha_goal": "incomplete",
+            "adopted_source_bindings": g9cb13_adopted_source_bindings(
+                repository_root
+            ),
+            "identity": G9CB13_IDENTITY,
+            "no_economics": True,
+            "no_future_commit_prediction": True,
+            "protocol_implementation_commit": protocol_implementation_commit,
+            "protocol_version": G9CB13_PREREGISTRATION_PROTOCOL_VERSION,
+            "schema_version": 1,
+            "source_adoption_mode": (
+                "authenticated_g9cb12_source_bytes_consumable_by_g9cb13_"
+                "no_republication_v1"
+            ),
+            "t12_persisted_sha256": G9CB13_T12_PERSISTED_SHA256,
+            "t12_terminal_failure_hash": t12["terminal_failure_hash"],
+            "terminal_action": "TERMINAL_G9CB13_ATTEMPT_CONSUMED_NO_RETRY",
+        }
+    )
+    payload["output_paths"] = {
+            "access_claim": G9CB13_ACCESS_CLAIM_PATH.as_posix(),
+            "attempt_sentinel": G9CB13_ATTEMPT_SENTINEL_PATH.as_posix(),
+            "canonical_csv_gzip": G9CB13_BUNDLE_PATH.as_posix(),
+            "final_manifest": G9CB13_FINAL_MANIFEST_PATH.as_posix(),
+            "preregistration": G9CB13_PREREGISTRATION_PATH.as_posix(),
+            "worker_capability_consumption_ledgers": [
+                path.as_posix()
+                for path in G9CB13_WORKER_CAPABILITY_CONSUMPTION_LEDGER_PATHS
+            ],
+    }
+    payload["one_shot_policy"] = dict(payload["one_shot_policy"])
+    payload["one_shot_policy"]["terminal_failure_action"] = (
+        "TERMINAL_G9CB13_ATTEMPT_CONSUMED_NO_RETRY"
+    )
+    if require_git_seal:
+        successor_bindings = g9cb13_preregistration_successor_bindings(
+            protocol_implementation_commit, repository_root
+        )
+        payload["successor_bindings"] = successor_bindings
+        payload["authority_decision"] = successor_bindings[0]["tracked_files"][0]
+    payload["manifest_hash"] = hashlib.sha256(
+        _g9cb13_canonical_bytes(payload, trailing_lf=False)
+    ).hexdigest()
+    return payload
+
+
+def validate_g9cb13_preregistration_payload(payload: Mapping[str, Any]) -> None:
+    observed = dict(payload)
+    manifest_hash = observed.pop("manifest_hash", None)
+    if (
+        manifest_hash
+        != hashlib.sha256(
+            _g9cb13_canonical_bytes(observed, trailing_lf=False)
+        ).hexdigest()
+        or payload.get("identity") != G9CB13_IDENTITY
+        or payload.get("no_economics") is not True
+        or payload.get("no_future_commit_prediction") is not True
+        or payload.get("protocol_version")
+        != G9CB13_PREREGISTRATION_PROTOCOL_VERSION
+        or payload.get("adopted_source_bindings") is None
+    ):
+        raise ValueError("G9CB13 preregistration contract differs")
+
+
+def g9cb13_results_inventory_preflight(
+    repository_root: Path = REPOSITORY_ROOT,
+    *, active_untracked_prefix: Sequence[str] = (),
+) -> dict[str, Any]:
+    """Names-only, read-only inventory gate; it cannot consume a one-shot."""
+
+    tracked_result = _git_result(
+        ["ls-tree", "-r", "--name-only", "HEAD", "--", "results"],
+        repository_root,
+    )
+    if tracked_result.returncode:
+        raise ValueError("G9CB13 tracked results inventory lookup failed")
+    tracked_raw = tracked_result.stdout
+    tracked = sorted(
+        {line.split("/", 1)[1].split("/", 1)[0] for line in tracked_raw.splitlines()}
+    )
+    residues = G9CB13_RESIDUE_NAMES
+    for name in residues:
+        path = repository_root / "results" / name
+        info = path.lstat()
+        if (
+            not stat.S_ISDIR(info.st_mode)
+            or stat.S_ISLNK(info.st_mode)
+            or stat.S_IMODE(info.st_mode) != 0o700
+            or any(path.iterdir())
+        ):
+            raise ValueError(f"G9CB13 residue differs: {name}")
+    expected = sorted({*tracked, *residues, *active_untracked_prefix})
+    observed = sorted(os.listdir(repository_root / "results"))
+    if observed != expected:
+        raise FileExistsError("Q13 exact results inventory differs")
+    digest = hashlib.sha256(("\n".join(observed) + "\n").encode()).hexdigest()
+    return {"count": len(observed), "digest": digest, "names": observed}
+
+
+def _main_g9cb12(argv: Sequence[str] | None = None) -> int:
     global _ACTIVE_PREREGISTRATION_CACHE
     global _ACTIVE_PREREGISTRATION_GIT_PAIRS
     global _ACTIVE_PREREGISTRATION_SNAPSHOT
@@ -6508,6 +6967,47 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"{'created' if created else 'verified'} {PREREGISTRATION_PATH} "
         f"{manifest['manifest_hash']}"
     )
+    return 0
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.parse_args(argv)
+    validate_repository_bytecode_preflight(REPOSITORY_ROOT)
+    tracked_t12 = _git_result(
+        [
+            "ls-files",
+            "--error-unmatch",
+            "--",
+            G9CB12_T12_TERMINAL_FAILURE_PATH.as_posix(),
+        ],
+        REPOSITORY_ROOT,
+    ).returncode == 0
+    if not tracked_t12:
+        return _main_g9cb12(argv)
+    g9cb13_results_inventory_preflight(REPOSITORY_ROOT)
+    head = _require_clean_pushed_branch(REPOSITORY_ROOT)
+    manifest = build_g9cb13_preregistration_payload(
+        protocol_implementation_commit=head,
+        repository_root=REPOSITORY_ROOT,
+        require_git_seal=True,
+    )
+    validate_g9cb13_preregistration_payload(manifest)
+    raw = _g9cb13_canonical_bytes(manifest)
+    target = repository_path(G9CB13_PREREGISTRATION_PATH, REPOSITORY_ROOT)
+    descriptor = os.open(
+        target,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_CLOEXEC", 0),
+        0o444,
+    )
+    try:
+        if os.write(descriptor, raw) != len(raw):
+            raise RuntimeError("P13 preregistration write was incomplete")
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    os.chmod(target, 0o444)
+    print(f"created {G9CB13_PREREGISTRATION_PATH} {manifest['manifest_hash']}")
     return 0
 
 
